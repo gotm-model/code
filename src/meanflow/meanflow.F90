@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.8 2003-07-23 12:33:21 hb Exp $
+!$Id: meanflow.F90,v 1.9 2004-01-12 15:21:09 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -80,8 +80,8 @@
    integer,  public                    :: MaxItz0b=10
    logical,  public                    :: no_shear=.false.
 
-!  the surface roughness length
-   REALTYPE, public                    :: z0b,z0s
+!  the roughness lengths
+   REALTYPE, public                    :: z0b,z0s,za
 
 !  the coriolis parameter
    REALTYPE, public                    :: cori
@@ -103,7 +103,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
-!  Revision 1.8  2003-07-23 12:33:21  hb
+!  Revision 1.9  2004-01-12 15:21:09  lars
+!  added za for sediment-induced bottom roughness
+!
+!  Revision 1.8  2003/07/23 12:33:21  hb
 !  fixed bioshade init and use
 !
 !  Revision 1.6  2003/04/05 07:01:16  kbk
@@ -265,6 +268,8 @@
    z0b=0.03*h0b
 
    z0s=z0s_min    ! lu (otherwise z0s is not initialised
+
+   za=_ZERO_      ! roughness caused by suspended sediment
 
    cori=2*omega * sin(2*pi*latitude/360.)
 
