@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.3 2004-07-30 09:22:20 hb Exp $
+!$Id: bio_fasham.F90,v 1.4 2004-08-01 15:52:57 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
-!  Revision 1.3  2004-07-30 09:22:20  hb
+!  Revision 1.4  2004-08-01 15:52:57  hb
+!  alpha now devided by seconds per day
+!
+!  Revision 1.3  2004/07/30 09:22:20  hb
 !  use bio_var in specific bio models - simpliefied internal interface
 !
 !  Revision 1.2  2004/07/28 11:34:29  hb
@@ -147,6 +150,7 @@
    gmax = gmax /secs_pr_day
    w_p  = w_p  /secs_pr_day
    w_d  = w_d  /secs_pr_day
+   alpha= alpha/secs_pr_day
 
    out_unit=unit
 
@@ -296,8 +300,7 @@
 ! !IROUTINE: Light properties for the NPZD model
 !
 ! !INTERFACE
-   subroutine light_fasham(numc,nlev,h,rad,cc,par,bioshade_feedback, &
-                           bioshade)
+   subroutine light_fasham(nlev,h,rad,bioshade_feedback,bioshade)
 !
 ! !DESCRIPTION
 !
@@ -305,14 +308,12 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  integer                              :: numc,nlev
+  integer                              :: nlev
   logical                              :: bioshade_feedback
   REALTYPE, intent(in)                 :: h(0:nlev)
   REALTYPE, intent(in)                 :: rad(0:nlev)
-  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: par(0:nlev)
    REALTYPE, intent(out)               :: bioshade(0:nlev)
 !
 ! !REVISION HISTORY:
