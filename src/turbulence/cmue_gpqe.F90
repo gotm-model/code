@@ -1,4 +1,4 @@
-!$Id: cmue_gpqe.F90,v 1.1 2003-03-10 09:00:35 gotm Exp $
+!$Id: cmue_gpqe.F90,v 1.2 2003-03-28 08:37:26 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -28,7 +28,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_gpqe.F90,v $
-!  Revision 1.1  2003-03-10 09:00:35  gotm
+!  Revision 1.2  2003-03-28 08:37:26  kbk
+!  removed tabs
+!
+!  Revision 1.1  2003/03/10 09:00:35  gotm
 !  Part of new generic turbulence model
 !
 !  Revision 1.2  2002/02/08 08:59:58  gotm
@@ -40,8 +43,8 @@
 !
 ! !LOCAL VARIABLES:
    logical                   :: qesmooth
-   integer		     :: i
-   REALTYPE 		     :: gh,sm,sh
+   integer                   :: i
+   REALTYPE                  :: gh,sm,sh
    REALTYPE                  :: a1,a2,b1,b2,c2,c3
    REALTYPE                  :: qeghmax,qeghmin,qeghcrit
 !   

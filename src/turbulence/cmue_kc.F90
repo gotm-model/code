@@ -1,4 +1,4 @@
-!$Id: cmue_kc.F90,v 1.3 2003-03-10 09:02:03 gotm Exp $
+!$Id: cmue_kc.F90,v 1.4 2003-03-28 08:37:26 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -42,7 +42,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_kc.F90,v $
-!  Revision 1.3  2003-03-10 09:02:03  gotm
+!  Revision 1.4  2003-03-28 08:37:26  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 09:02:03  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !  Revision 1.2  2002/02/08 08:59:58  gotm
@@ -53,11 +56,11 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: i
-   REALTYPE		:: gm,gh,sm,sh
-   REALTYPE		:: c11,c12,c13,c21,c22,c23
-   REALTYPE             :: a1,a2,b1,b2,c1,c2,c3
-   REALTYPE             :: bb1,bb2,bb3,bb4,gmlim
+   integer                   :: i
+   REALTYPE                  :: gm,gh,sm,sh
+   REALTYPE                  :: c11,c12,c13,c21,c22,c23
+   REALTYPE                  :: a1,a2,b1,b2,c1,c2,c3
+   REALTYPE                  :: bb1,bb2,bb3,bb4,gmlim
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -83,7 +86,7 @@
          if (gm.gt.gmlim) gm=gmlim
       else
          if (gm.gt.0.825-25.0*gh) gm=0.825-25.0*gh
-      endif 
+      endif
       c11=6*a1*a2*gm
       c12=1-3*a2*b2*(1-c3)*gh-12*a1*a2*gh
       c13=a2

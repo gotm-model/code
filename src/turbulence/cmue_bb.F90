@@ -1,4 +1,4 @@
-!$Id: cmue_bb.F90,v 1.2 2003-03-10 09:02:03 gotm Exp $
+!$Id: cmue_bb.F90,v 1.3 2003-03-28 08:37:26 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -53,7 +53,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_bb.F90,v $
-!  Revision 1.2  2003-03-10 09:02:03  gotm
+!  Revision 1.3  2003-03-28 08:37:26  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 09:02:03  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
@@ -95,25 +98,25 @@
    do i=1,nlev-1
       k(1)= a1+a2+2*(a3+a4+a10*ct*an(i))
 
-      k(2)=4.*a3*(a4+a10*ct*an(i)) &
-           +2.*(a1+a2)*(a3+a4+a10*ct*an(i))+a1*a2 &
+      k(2)=4.*a3*(a4+a10*ct*an(i))                                   &
+           +2.*(a1+a2)*(a3+a4+a10*ct*an(i))+a1*a2                    &
            +8./3.*a11*an(i)+2*a7*an(i)-2./3.*(1.-a5)*a6*as(i)
 
-      k(3)=16./3.*a11*(0.5*a1+a3)*an(i) &
-           +4.*a7*(0.5*a2+a4+a10*ct*an(i))*an(i) &
-           -4./3.*a6*(1.-a5)*(a3+a4+a10*ct*an(i))*as(i)	&
-           +4.*a3*(a1+a2)*(a4+a10*ct*an(i)) &
-           +2.*a1*a2*(a3+a4+a10*ct*an(i)) &
+      k(3)=16./3.*a11*(0.5*a1+a3)*an(i)                              &
+           +4.*a7*(0.5*a2+a4+a10*ct*an(i))*an(i)                     &
+           -4./3.*a6*(1.-a5)*(a3+a4+a10*ct*an(i))*as(i)              &
+           +4.*a3*(a1+a2)*(a4+a10*ct*an(i))                          &
+           +2.*a1*a2*(a3+a4+a10*ct*an(i))                            &
            -8./3.*(c1-1.)*(0.25*as(i)*(1.-a5)-0.5*an(i))
 
-      k(4)=16./3.*a1*a3*a11*an(i)+4.*a2*a7*(a4+a10*ct*an(i))*an(i) &
-           -8./3.*a3*a6*(1.-a5)*(a4+a10*ct*an(i))*as(i)	&
-           +16./3.*a7*a11*an(i)*an(i) &
+      k(4)=16./3.*a1*a3*a11*an(i)+4.*a2*a7*(a4+a10*ct*an(i))*an(i)   &
+           -8./3.*a3*a6*(1.-a5)*(a4+a10*ct*an(i))*as(i)              &
+           +16./3.*a7*a11*an(i)*an(i)                                &
            +8./3.*a6*a7*a9*as(i)*an(i)+4.*a1*a2*a3*(a4+a10*ct*an(i)) &
-           -8./3.*(c1-1.)*(0.5*(1.-a5)*(a3+a4+a10*ct*an(i))*as(i) &
+           -8./3.*(c1-1.)*(0.5*(1.-a5)*(a3+a4+a10*ct*an(i))*as(i)    &
            -(0.5*a1+a3)*an(i))
 
-      k(5)=-8./3.*(c1-1.)*(((1.-a5)*a3*(a4+a10*ct*an(i)) &
+      k(5)=-8./3.*(c1-1.)*(((1.-a5)*a3*(a4+a10*ct*an(i))             &
            -a7*a9*an(i))*as(i)-a7*an(i)*an(i)-a1*a3*an(i))
 
       kk(1) = 4*k(1)

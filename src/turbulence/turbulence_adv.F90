@@ -1,4 +1,4 @@
-!$Id: turbulence_adv.F90,v 1.2 2003-03-10 09:05:02 gotm Exp $
+!$Id: turbulence_adv.F90,v 1.3 2003-03-28 08:37:27 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,7 +31,10 @@
 !  Original author(s): Hans Burchard
 !
 !  $Log: turbulence_adv.F90,v $
-!  Revision 1.2  2003-03-10 09:05:02  gotm
+!  Revision 1.3  2003-03-28 08:37:27  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 09:05:02  gotm
 !  Fixed comment char
 !
 !  Revision 1.1  2003/03/10 09:00:36  gotm
@@ -64,13 +67,13 @@
       w_t(N)=0.
       if ((tke_method.eq.tke_keps).or.(tke_method.eq.tke_MY)) &
          call w_split_it_adv(N-1,dt,h_t,ho_t,tke,w_t,w_adv_discr, &
-	                     surf_flux,bott_flux,1)
+                             surf_flux,bott_flux,1)
       if (len_scale_method.eq.diss_eq)  & 
          call w_split_it_adv(N-1,dt,h_t,ho_t,eps,w_t,w_adv_discr, &
-	                     surf_flux,bott_flux,1)
+                             surf_flux,bott_flux,1)
       if ((len_scale_method.eq.length_eq).or.(len_scale_method.eq.generic_eq)) & 
          call w_split_it_adv(N-1,dt,h_t,ho_t,L,w_t,w_adv_discr, &
-	                     surf_flux,bott_flux,1)
+                             surf_flux,bott_flux,1)
    end if
 
    if (grid_method .ne. 0) then
@@ -83,13 +86,13 @@
       w_grid_t(N)=0.
       if ((tke_method.eq.tke_keps).or.(tke_method.eq.tke_MY)) &
          call w_split_it_adv(N-1,dt,h_t,ho_t,tke,w_grid_t,w_adv_discr, &
-	                     surf_flux,bott_flux,2)
+                             surf_flux,bott_flux,2)
       if (len_scale_method.eq.diss_eq)  & 
          call w_split_it_adv(N-1,dt,h_t,ho_t,eps,w_grid_t,w_adv_discr, &
-	                     surf_flux,bott_flux,2)
+                             surf_flux,bott_flux,2)
       if ((len_scale_method.eq.length_eq).or.(len_scale_method.eq.generic_eq)) & 
          call w_split_it_adv(N-1,dt,h_t,ho_t,L,w_grid_t,w_adv_discr, &
-	                     surf_flux,bott_flux,2)
+                             surf_flux,bott_flux,2)
    end if
 
    do i=1,N-1

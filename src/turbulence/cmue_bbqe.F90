@@ -1,4 +1,4 @@
-!$Id: cmue_bbqe.F90,v 1.2 2003-03-10 09:02:03 gotm Exp $
+!$Id: cmue_bbqe.F90,v 1.3 2003-03-28 08:37:26 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_bbqe.F90,v $
-!  Revision 1.2  2003-03-10 09:02:03  gotm
+!  Revision 1.3  2003-03-28 08:37:26  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 09:02:03  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
@@ -60,7 +63,7 @@
          as(i) = 1. + an(i)*Prinv + 1/cmue1(i)
          ww=2./3.*0.8/(E*(1.8+X)-0.16/(1.8+X)*H/D*as(i))
          cmue1(i)  = 0.4/(1.8+X)*H/D*ww
-	 if (abs(as0-as(i)).lt.1e-12) goto 111
+         if (abs(as0-as(i)).lt.1e-12) goto 111
       end do  
 
 111   ww=2./3.*0.8/(E*(1.8+X)-0.16/(1.8+X)*H/D*as(i))
