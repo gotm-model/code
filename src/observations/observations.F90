@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.7 2003-03-28 09:20:35 kbk Exp $
+!$Id: observations.F90,v 1.8 2004-07-30 09:26:01 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -183,7 +183,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
-!  Revision 1.7  2003-03-28 09:20:35  kbk
+!  Revision 1.8  2004-07-30 09:26:01  hb
+!  Simple exponential light absorption added --> Wilfried Kuehn
+!
+!  Revision 1.7  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.6  2003/03/28 08:08:21  kbk
@@ -470,6 +473,8 @@
          A=0.78;g1=1.40;g2=7.9
       case (7)
          A=0.7;g1=0.40;g2=8.0 ! Adolf Stips - Lago Maggiore
+      case (8)
+         A=1.0;g1=11.11;g2=8.0 ! Wilfried Kuehn - North Sea (g2 irrelevant)
       case default
    end select
    
