@@ -1,4 +1,4 @@
-!$Id: eqstate.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: eqstate.F90,v 1.2 2001-11-27 19:44:32 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,8 +38,11 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: eqstate.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-27 19:44:32  gotm
+!  Fixed an initialisation bug
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 !
 ! !BUGS
@@ -131,8 +134,7 @@
    REALTYPE, save		:: rh0,dtr,dsr
    REALTYPE			:: dTT,dSS
    logical			:: press
-   logical, save		:: first
-!
+   logical, save		:: first=.true.
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -151,7 +153,7 @@
             rh0= unesco(S0,T0,p0,press)
             dtr=(unesco(S0,T0+0.5*dTT,p0,press)-unesco(S0,T0-0.5*dTT,p0,press))/dTT
             dsr=(unesco(S0+0.5*dSS,T0,p0,press)-unesco(S0-0.5*dSS,T0,p0,press))/dSS
-            first=.true.
+            first=.false.
          end if
          x=rh0+dtr*(T-T0)+dsr*(S-S0)
       case (4)
@@ -248,3 +250,4 @@
 
 !-----------------------------------------------------------------------
 !Copyright (C) 2000 - Karsten Bolding & Hans Burchard.
+!-----------------------------------------------------------------------
