@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.3 2001-02-13 16:03:09 gotm Exp $
+#$Id: Rules.make,v 1.4 2001-05-23 11:32:10 gotm Exp $
 
 SHELL   = /bin/sh
 
@@ -8,10 +8,13 @@ SUBLEVEL = 1
 
 VER     = $(VERSION).$(PATCHLEVEL).$(SUBLEVEL)
 
-# Here you chose the compilation mode - the last will be used.
-compilation=profiling
-compilation=debug
+# The compilation mode is obtained from $COMPILATION_MODE - 
+# default production - else debug or profiling
+ifndef COMPILATION_MODE
 compilation=production
+else
+compilation=$(COMPILATION_MODE)
+endif
 
 DEFINES=-DNUDGE_VEL
 DEFINES=
@@ -27,17 +30,20 @@ SEAGRASS=true
 FEATURES	=
 FEATURE_LIBS	=
 EXTRA_LIBS	=
+INCDIRS		=
+LDFLAGS		=
 
 # If we want NetCDF - where are the include files and the library
 ifdef NETCDFINC
 INCDIRS		+= -I$(NETCDFINC)
 endif
-ifdef NETCDFLIBDIR
-NETCDFLIB	= -lnetcdf
-endif
-ifdef NETCDFLIB
+ifdef NETCDFLIBNAME
+NETCDFLIB	= $(NETCDFLIBNAME)
 else
-NETCDFLIB	= /opt/netcdf/lib/libnetcdf.a
+NETCDFLIB	= -lnetcdf
+ifdef NETCDFLIBDIR
+LDFLAGS		+= -L$(NETCDFLIBDIR)
+endif
 endif
 
 #
@@ -179,7 +185,7 @@ LINKDIR	= -L$(LIBDIR)
 CPPFLAGS	= $(DEFINES) $(INCDIRS)
 FFLAGS  	= $(DEFINES) $(FLAGS) $(MODULES) $(INCDIRS) $(EXTRAS)
 F90FLAGS  	= $(FFLAGS)
-LDFLAGS		= $(FFLAGS) $(LINKDIR)
+LDFLAGS		+= $(FFLAGS) $(LINKDIR)
 
 #
 # Common rules
