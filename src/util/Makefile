@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.1 2001-02-12 15:55:57 gotm Exp $
+#$Id: Makefile,v 1.2 2001-11-27 19:38:49 gotm Exp $
 #
 # Makefile to build the the Util library - libutil.a
 #
@@ -7,13 +7,14 @@ include ../Rules.make
 
 LIB	= $(LIBDIR)/libutil$(buildtype).a
 
-DOCSRC	= time.F90 tridiagonal.F90 advection.F90 eqstate.F90 gridinterpol.F90  yevol.F90
+DOCSRC	= time.F90 tridiagonal.F90 advection.F90 w_split_it_adv.F90 eqstate.F90 gridinterpol.F90  yevol.F90
 
 
 OBJ   = \
 ${LIB}(time.o)			\
 ${LIB}(tridiagonal.o)		\
 ${LIB}(advection.o)		\
+${LIB}(w_split_it_adv.o)		\
 ${LIB}(eqstate.o)		\
 ${LIB}(gridinterpol.o)		\
 ${LIB}(yevol.o)
@@ -21,7 +22,7 @@ ${LIB}(yevol.o)
 all: $(OBJ)
 	$(MOVE_MODULES_COMMAND)
 
-${LIB}(yevol.o): ${LIB}(tridiagonal.o) ${LIB}(advection.o)
+${LIB}(yevol.o): ${LIB}(tridiagonal.o) ${LIB}(advection.o) ${LIB}(w_split_it_adv.o)
 
 doc:
 	$(PROTEX) $(DOCSRC) > ../../doc/util.tex 
