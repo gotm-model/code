@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.9 2004-01-12 15:21:09 lars Exp $
+!$Id: meanflow.F90,v 1.10 2004-01-27 08:33:20 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -103,7 +103,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
-!  Revision 1.9  2004-01-12 15:21:09  lars
+!  Revision 1.10  2004-01-27 08:33:20  lars
+!  omega-value bug fix
+!
+!  Revision 1.9  2004/01/12 15:21:09  lars
 !  added za for sediment-induced bottom roughness
 !
 !  Revision 1.8  2003/07/23 12:33:21  hb
@@ -129,7 +132,7 @@
 !EOP
 !
 !  private date members
-   REALTYPE, parameter       :: omega=2*pi/86400.
+   REALTYPE, parameter       :: omega=2*pi/86164.
 !
 !-----------------------------------------------------------------------
 
