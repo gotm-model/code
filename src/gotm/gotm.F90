@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.3 2001-11-18 15:58:02 gotm Exp $
+!$Id: gotm.F90,v 1.4 2002-04-30 14:22:55 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,6 +47,9 @@
 #ifdef SEAGRASS
    use seagrass
 #endif
+#ifdef LAGRANGE
+   use lagrange
+#endif
    IMPLICIT NONE
 !
    private
@@ -75,12 +78,18 @@
 #ifdef SEAGRASS
    integer, parameter		:: unit_seagrass=62
 #endif
+#ifdef LAGRANGE
+   integer, parameter		:: unit_lagrange=63
+#endif
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.3  2001-11-18 15:58:02  gotm
+!  Revision 1.4  2002-04-30 14:22:55  gotm
+!  Added lagrangian module
+!
+!  Revision 1.3  2001/11/18 15:58:02  gotm
 !  Vertical grid can now be read from file
 !
 !  Revision 1.2  2001/06/13 07:40:39  gotm
@@ -178,6 +187,9 @@
 #ifdef SEAGRASS
    call init_seagrass(namlst,'seagrass.inp',unit_seagrass,nlev,h)
 #endif
+#ifdef LAGRANGE
+   call init_lagrange(namlst,'lagrange.inp',unit_lagrange,nlev)
+#endif
    LEVEL2 'done.'
    STDERR LINE
 
@@ -267,6 +279,9 @@
       call stratification(nlev,buoy_method,dt,gravity,rho_0,nuh)
 #ifdef SEDIMENT
       call calc_sediment(nlev,dt)
+#endif
+#ifdef LAGRANGE
+      call calc_lagrange(nlev,dt)
 #endif
       select case (turb_method)
          case (0)
