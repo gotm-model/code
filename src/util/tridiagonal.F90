@@ -1,9 +1,9 @@
-!$Id: tridiagonal.F90,v 1.4 2003-03-28 09:20:36 kbk Exp $
+!$Id: tridiagonal.F90,v 1.5 2004-08-17 15:33:47 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: mtridiagonal --- solver for tri-diagonal matrices \label{sec:tridiagonal}
+! !MODULE: mtridiagonal --- solving the system\label{sec:tridiagonal}
 !
 ! !INTERFACE:
    MODULE mtridiagonal
@@ -22,7 +22,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.4  2003-03-28 09:20:36  kbk
+!  Revision 1.5  2004-08-17 15:33:47  lars
+!  removed tabs
+!
+!  Revision 1.4  2003/03/28 09:20:36  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 08:06:33  kbk
@@ -53,7 +56,7 @@
 !
 ! !DESCRIPTION:
 !  This routines allocates memory necessary to perform the Gaussian 
-! elimination.
+!  elimination.
 !
 ! !USES:
    IMPLICIT NONE
@@ -107,7 +110,7 @@
    subroutine tridiagonal(N,fi,lt,value)
 !
 ! !DESCRIPTION:
-! A linear equation with tridiagonal matrix is solved here. The main
+! A linear equation with tridiagonal matrix structure is solved here. The main
 ! diagonal is stored on {\tt bu}, the upper diagonal on {\tt au}, and the
 ! lower diagonal on {\tt cu}, the right hand side is stored on {\tt du}. 
 ! The method used here is the simplified Gauss elimination, also called 
@@ -125,7 +128,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.4  2003-03-28 09:20:36  kbk
+!  Revision 1.5  2004-08-17 15:33:47  lars
+!  removed tabs
+!
+!  Revision 1.4  2003/03/28 09:20:36  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 08:06:33  kbk
