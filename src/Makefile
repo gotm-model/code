@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.3 2001-05-31 12:00:52 gotm Exp $
+#$Id: Makefile,v 1.4 2001-05-31 12:23:45 gotm Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -56,8 +56,12 @@ ifdef FEATURES
 endif
 
 doc:
-	$(PROTEX) $(DOCSRC) > ../doc/main.tex
-	$(MAKE) -C ../doc
+ifdef SUBDIRS
+	set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i $@; done
+endif
+ifdef FEATURES
+	set -e; for i in $(FEATURES); do $(MAKE) -C $$i $@; done
+endif
 	
 bkup: distclean
 	tar -czvf ../../backups/bkup.`date +%y%m%d%H`_`cat ../VERSION`.tar.gz *
