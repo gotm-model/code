@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.4 2003-03-10 08:33:21 gotm Exp $
+#$Id: Makefile,v 1.5 2003-03-10 10:13:37 gotm Exp $
 #
 # Makefile to build the the Dynamics library - libmeanflow.a
 #
@@ -40,7 +40,6 @@ ${LIB}(temperature.o)		\
 ${LIB}(salinity.o)		\
 ${LIB}(stratification.o)	\
 ${LIB}(buoyancy.o)		\
-${LIB}(analytical_profile.o)	\
 ${LIB}(convectiveadjustment.o)	\
 ${LIB}(production.o)
 

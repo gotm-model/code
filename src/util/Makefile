@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.3 2003-03-10 08:33:23 gotm Exp $
+#$Id: Makefile,v 1.4 2003-03-10 10:13:37 gotm Exp $
 #
 # Makefile to build the the Util library - libutil.a
 #
@@ -9,16 +9,17 @@ LIB	= $(LIBDIR)/libutil$(buildtype).a
 
 DOCSRC	= time.F90 tridiagonal.F90 eqstate.F90 yevol.F90 w_split_it_adv.F90 gridinterpol.F90  
 
-
-OBJ   = \
+MOD   = \
 ${LIB}(time.o)			\
 ${LIB}(tridiagonal.o)		\
-${LIB}(eqstate.o)		\
+${LIB}(eqstate.o)
+
+OBJ   = \
 ${LIB}(gridinterpol.o)		\
 ${LIB}(w_split_it_adv.o)	\
 ${LIB}(yevol.o)
 
-all: $(OBJ)
+all: $(MOD) $(OBJ)
 	$(MOVE_MODULES_COMMAND)
 
 ${LIB}(yevol.o): ${LIB}(tridiagonal.o)  ${LIB}(w_split_it_adv.o)
