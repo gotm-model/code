@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.6 2003-03-10 08:33:20 gotm Exp $
+#$Id: Makefile,v 1.7 2003-03-27 15:35:16 kbk Exp $
 #
 # Makefile for making new release of GOTM.
 #
@@ -15,14 +15,19 @@ VERSION=2.3.6
 VERSION=2.3.7
 # 20011118
 VERSION=2.3.8
+# 20030327
+VERSION=3.1.0
 
-export CVSROOT=gotm@gotm.net:/cvsroot
+#export CVSROOT=gotm@gotm.net:/cvsroot
+export CVSROOT=kbk@80.198.12.199:/public/cvs
 
 TAGNAME	= v$(shell cat VERSION | tr . _)
 RELEASE	= gotm-$(VERSION)
-OLDDIR	= $(HOME)/old_gotm/Unstable
+#OLDDIR	= $(HOME)/old_gotm/Unstable
+OLDDIR	= /data/kbk/old_gotm/Unstable
 TARFILE	= $(RELEASE).tar.gz
-RHOST	= gotm.net
+#RHOST	= gotm.net
+RHOST	= gotm@80.198.12.199
 RDIR	= src/devel
 
 SCP	= /usr/bin/scp
