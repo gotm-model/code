@@ -1,42 +1,76 @@
-!$Id: airsea.F90,v 1.3 2001-11-18 11:43:48 gotm Exp $
+!$Id: airsea.F90,v 1.4 2003-03-10 08:37:56 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: airsea - the air sea interaction.
+! !MODULE: airsea --- atmopheric fluxes \label{sec:airsea}
 !
 ! !INTERFACE:
    module airsea
 !
 ! !DESCRIPTION:
-!  This module provides various ways to obtain the heat, momentum and freshwater
-!  fluxes. In the future the air/sea interaction will hopefully spin off as
-!  a separate Open Source project - but with close links to GOTM.
+!  This module provides various ways to calculate the heat, momentum 
+!  and freshwater fluxes. They are either prescribed as constant values,
+!  see {\tt airsea.inp}, read in from files or calculated by means of
+!  bulk formulae, using observed or modelled meteorological parameters.
 !
-! !USE:
-   use time, only: julian_day, time_diff, calendar_date
+! !USES:
+   use time,only: julian_day, time_diff, calendar_date
    use observations, only: read_obs
-   IMPLICIT NONE
 !
-!  Default all is private.
+   IMPLICIT NONE
+!  default: all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public		:: init_air_sea,air_sea_interaction
-   public		:: set_sst
-   public		:: integrated_fluxes
+   public                              :: init_air_sea
+   public                              :: air_sea_interaction
+   public                              :: set_sst
+   public                              :: integrated_fluxes
 !
 ! !PUBLIC DATA MEMBERS:
-   logical, public	:: calc_fluxes=.false.
-   REALTYPE, public	:: tx,ty,I_0,heat
-   REALTYPE, public	:: sst,sss
-   REALTYPE, public	:: int_sw=0.,int_hf=0.,int_total=0.
+   logical,  public                    :: calc_fluxes=.false.
+!  tx and ty are the surface stress components:
+   REALTYPE, public                    :: tx,ty
+!  I_0 and heat are short-wave radiation and heat flux at the surface:
+   REALTYPE, public                    :: I_0,heat
+!  sst and sss are sea surface temperature and sea surface salinity:
+   REALTYPE, public                    :: sst,sss
+!  integrated short-wave radiation, heat flux and total heat flux:
+   REALTYPE, public                    :: int_sw=0.,int_hf=0.
+   REALTYPE, public                    :: int_total=0.
+!
+! !DEFINED PARAMETERS:
+   integer, parameter                  :: meteo_unit=20
+   integer, parameter                  :: heat_unit=21
+   integer, parameter                  :: momentum_unit=22
+   integer, parameter                  :: p_e_unit=23
+   integer, parameter                  :: sst_unit=24
+   integer, parameter                  :: sss_unit=25
+   integer, parameter                  :: airt_unit=26
+
+   REALTYPE, parameter                 :: cpa=1008.
+   REALTYPE, parameter                 :: cp=3985.
+   REALTYPE, parameter                 :: emiss=0.97
+   REALTYPE, parameter                 :: bolz=5.67e-8
+   REALTYPE, parameter                 :: Kelvin=273.16
+   REALTYPE, parameter                 :: const06=0.62198
+   REALTYPE, parameter                 :: pi=3.14159265358979323846
+   REALTYPE, parameter                 :: deg2rad=pi/180.
+   REALTYPE, parameter                 :: rad2deg=180./pi
+
+   integer, parameter                  :: CONSTVAL=1
+   integer, parameter                  :: FROMFILE=2
+!
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.3  2001-11-18 11:43:48  gotm
+!  Revision 1.4  2003-03-10 08:37:56  gotm
+!  HB fixed the Kondo calculations
+!
+!  Revision 1.3  2001/11/18 11:43:48  gotm
 !  Cleaned
 !
 !  Revision 1.2  2001/06/13 07:40:39  gotm
@@ -45,63 +79,39 @@
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
 !  initial import into CVS
 !
-!
-! !LOCAL VARIABLES:
-   integer	:: heat_method
-   integer	:: momentum_method
-   integer	:: p_e_method
-   integer	:: sst_method
-   integer	:: sss_method
-   integer	:: airt_method
-
-   character(len=PATH_MAX)	:: meteo_file
-   character(len=PATH_MAX)	:: heatflux_file
-   character(len=PATH_MAX)	:: momentumflux_file
-   character(len=PATH_MAX)	:: p_e_flux_file
-   character(len=PATH_MAX)	:: sss_file
-   character(len=PATH_MAX)	:: sst_file
-   character(len=PATH_MAX)	:: airt_file
-
-   integer, parameter	:: meteo_unit=20
-   integer, parameter	:: heat_unit=21
-   integer, parameter	:: momentum_unit=22
-   integer, parameter	:: p_e_unit=23
-   integer, parameter	:: sst_unit=24
-   integer, parameter	:: sss_unit=25
-   integer, parameter	:: airt_unit=26
-
-   REALTYPE	:: wx,wy
-   REALTYPE	:: w
-   REALTYPE	:: airp
-   REALTYPE	:: airt,twet
-   REALTYPE	:: cloud
-   REALTYPE	:: rh
-   REALTYPE	:: rho_air
-   REALTYPE	:: const_tx,const_ty
-   REALTYPE	:: const_qin,const_qout
-
-   REALTYPE	:: es,ea,qs,qa,L,S
-   REALTYPE	:: cee_heat,ced_heat
-   REALTYPE	:: cee_mom,ced_mom
-
-   REALTYPE, parameter	:: cpa=1008.
-   REALTYPE, parameter	:: cp=3985.
-   REALTYPE, parameter	:: emiss=0.97
-   REALTYPE, parameter	:: bolz=5.67e-8
-   REALTYPE, parameter	:: Kelvin=273.16
-   REALTYPE, parameter	:: const06=0.62198
-   REALTYPE, parameter	:: pi=3.14159265358979323846
-   REALTYPE, parameter	:: deg2rad=pi/180.
-   REALTYPE, parameter	:: rad2deg=180./pi
-
-   integer, parameter	:: CONSTVAL=1
-   integer, parameter	:: FROMFILE=2
-
-   REALTYPE		:: alon,alat
-!
-! !BUGS
-!
 !EOP
+!
+! private data members
+   integer                   :: heat_method
+   integer                   :: momentum_method
+   integer                   :: p_e_method
+   integer                   :: sst_method
+   integer                   :: sss_method
+   integer                   :: airt_method
+
+   character(len=PATH_MAX)   :: meteo_file
+   character(len=PATH_MAX)   :: heatflux_file
+   character(len=PATH_MAX)   :: momentumflux_file
+   character(len=PATH_MAX)   :: p_e_flux_file
+   character(len=PATH_MAX)   :: sss_file
+   character(len=PATH_MAX)   :: sst_file
+   character(len=PATH_MAX)   :: airt_file
+
+   REALTYPE                  :: wx,wy
+   REALTYPE                  :: w
+   REALTYPE                  :: airp
+   REALTYPE                  :: airt,twet
+   REALTYPE                  :: cloud
+   REALTYPE                  :: rh
+   REALTYPE                  :: rho_air
+   REALTYPE                  :: const_tx,const_ty
+   REALTYPE                  :: const_qin,const_qout
+
+   REALTYPE                  :: es,ea,qs,qa,L,S
+   REALTYPE                  :: cdd,chd,ced
+
+   REALTYPE                  :: alon,alat
+!
 !-----------------------------------------------------------------------
 
    contains
@@ -109,46 +119,43 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Initialise the air-sea interaction module
+! !IROUTINE: Initialise the air--sea interaction module
 !
 ! !INTERFACE:
    subroutine init_air_sea(namlst,lat,lon)
 !
 ! !DESCRIPTION:
-!  This routine initialises the Air-Sea module by reading various variables
+!  This routine initialises the air--sea module by reading various variables
 !  from a namelist and open relevant files.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)		:: namlst
-   REALTYPE, intent(in)		:: lat,lon
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: namlst
+   REALTYPE, intent(in)                :: lat,lon
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
-!
-! !LOCAL VARIABLES:
-   namelist /airsea/ calc_fluxes,		&
-                     meteo_file,		&
-                     heat_method,		&
-                     const_qin,const_qout,	&
-                     heatflux_file,		&
-                     momentum_method,		&
-                     const_tx,const_ty,		&
-                     momentumflux_file,		&
-                     p_e_method,p_e_flux_file, 	&
-                     sst_method, sst_file,	&
-                     sss_method, sss_file,	&
-                     airt_method, airt_file
+!  See log for airsea module
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+   namelist /airsea/ calc_fluxes, &
+                     meteo_file, &
+                     heat_method, &
+                     const_qin,const_qout, &
+                     heatflux_file, &
+                     momentum_method, &
+                     const_tx,const_ty, &
+                     momentumflux_file, &
+                     p_e_method,p_e_flux_file, &
+                     sst_method, sst_file, &
+                     sss_method, sss_file, &
+                     airt_method, airt_file
+!
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_air_sea'
@@ -168,7 +175,8 @@
 !     The heat fluxes
       select case (heat_method)
          case (FROMFILE)
-            open(heat_unit,file=heatflux_file,action='read',status='old',err=93)
+            open(heat_unit,file=heatflux_file,action='read', &
+	         status='old',err=93)
             LEVEL2 'Reading heat fluxes from:'
             LEVEL3 trim(heatflux_file)
          case default
@@ -177,7 +185,8 @@
 !     The momentum fluxes
       select case (momentum_method)
          case (FROMFILE)
-            open(momentum_unit,file=momentumflux_file,action='read',status='old',err=94)
+            open(momentum_unit,file=momentumflux_file,action='read', &
+                 status='old',err=94)
             LEVEL2 'Reading momentum fluxes from:'
             LEVEL3 trim(momentumflux_file)
          case default
@@ -186,7 +195,8 @@
 !     The fresh water fluxes
       select case (p_e_method)
          case (FROMFILE)
-            open(p_e_unit,file=p_e_flux_file,action='read',status='old',err=95)
+            open(p_e_unit,file=p_e_flux_file,action='read', &
+                 status='old',err=95)
             LEVEL2 'Reading precipitatio/evaporation data from:'
             LEVEL3 trim(p_e_flux_file)
          case default
@@ -257,63 +267,43 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: air_sea_interaction
+! !IROUTINE: Obtain the air--sea fluxes
 !
 ! !INTERFACE:
    subroutine air_sea_interaction(jul,secs)
 !
 ! !DESCRIPTION:
-!  In the longer run this will be the routine to call to calculate and
-!  obtain air/sea related variables. For now only simple things are done.
-!  The short-wave radiation, heat and momentum fluxes are either read from
-!  file or set to constant values.
+!
+!  Depending on the value of the boolean variable {\tt calc\_fluxes},
+!  the calculation of the fluxes and the short wave radiation are
+!  called or the fluxes are directly read in from the namelist
+!  {\tt airsea.inp} as constants or read in from files. With the present
+!  version of GOTM, the 
+!  surface momentum flux and the surface heat flux can be caluclated.
+!  The surface salinity flux is not coded yet. 
+!
+!  On the long run this will be the routine to call, to calculate and
+!  to obtain air--sea related variables. 
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)		:: jul,secs
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: jul,secs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
-!
-! !LOCAL VARIABLES:
+!  See log for airsea module
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
-
    if (calc_fluxes) then
-
-#define TESTING
-#undef TESTING
-#ifdef TESTING
-   wx  = 11.03
-   wy  = 7.84
-   w   = sqrt(wx*wx+wy*wy)
-   airp=1013.*100 !kbk mbar/hPa ---> Pa
-   rh=83.2
-   cloud=0.88
-   airt=8.47
-   sst=5.
-   call misc_variables()
-   call do_calc_fluxes()
-   STDERR heat,tx,ty
-STOP 'TESTING'
-#endif
 
       call flux_from_meteo(jul,secs)
       call short_wave_radiation(jul,secs,alon,alat)
-
    else
-
 !     The heat fluxes
       select case (heat_method)
          case (CONSTVAL)
@@ -323,7 +313,6 @@ STOP 'TESTING'
             call read_heat_flux(jul,secs,I_0,heat)
          case default
       end select
-
 !     The momentum fluxes
       select case (momentum_method)
          case (CONSTVAL)
@@ -333,26 +322,22 @@ STOP 'TESTING'
             call read_momentum_flux(jul,secs,tx,ty)
          case default
       end select
-
 !     The sea surface temperature
       select case (sst_method)
          case (FROMFILE)
             call read_sst(jul,secs,sst)
          case default
       end select
-
 !     The sea surface salinity
       select case (sss_method)
          case (FROMFILE)
          case default
       end select
-
 !     The air temperature
       select case (airt_method)
          case (FROMFILE)
          case default
       end select
-
    end if
 
    return
@@ -362,29 +347,21 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: finish_air_sea_interaction
+! !IROUTINE: Finish the air--sea interactions
 !
 ! !INTERFACE:
    subroutine finish_air_sea_interaction
 !
 ! !DESCRIPTION:
-!  Sofar only files are closed in this routine.
+!  Various files are closed in this routine.
 !
 ! !USES:
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
-!
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
-!
-! !LOCAL VARIABLES:
+!  See log for airsea module
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -392,12 +369,12 @@ STOP 'TESTING'
    if (calc_fluxes) then
       close(meteo_unit)
    else
-      if (heat_method .eq. FROMFILE) close(heat_unit)
+      if (heat_method     .eq. FROMFILE) close(heat_unit)
       if (momentum_method .eq. FROMFILE) close(momentum_unit)
-      if (p_e_method .eq. FROMFILE) close(p_e_unit)
-      if (sst_method .eq. FROMFILE) close(sst_unit)
-      if (sss_method .eq. FROMFILE) close(sss_unit)
-      if (airt_method .eq. FROMFILE) close(airt_unit)
+      if (p_e_method      .eq. FROMFILE) close(p_e_unit)
+      if (sst_method      .eq. FROMFILE) close(sst_unit)
+      if (sss_method      .eq. FROMFILE) close(sss_unit)
+      if (airt_method     .eq. FROMFILE) close(airt_unit)
    end if
    return
    end subroutine finish_air_sea_interaction
@@ -406,45 +383,49 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: misc_variables()
+! !IROUTINE: Compute the exchange coefficients \label{sec:calcCoeff}
 !
 ! !INTERFACE:
-   subroutine misc_variables()
+   subroutine exchange_coefficients()
 !
 ! !DESCRIPTION:
-!  Based on modelled SST the heatfluxes are culculated.
+!  Based on the wind vector at 10 m, the sea surface temperature (either 
+!  from the model or from a data file), the 
+!  relative humidity, the air temperature and the air pressure at 2 m,
+!  this function computes the surface momentum flux and the latent and 
+!  sensible heat flux coefficients according to the \cite{Kondo75} 
+!  bulk formulae.
 !
 ! !USES:
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+! !DEFINED PARAMETERS:
+   REALTYPE, parameter                 :: a1=6.107799961
+   REALTYPE, parameter                 :: a2=4.436518521e-1
+   REALTYPE, parameter                 :: a3=1.428945805e-2
+   REALTYPE, parameter                 :: a4=2.650648471e-4
+   REALTYPE, parameter                 :: a5=3.031240396e-6
+   REALTYPE, parameter                 :: a6=2.034080948e-8
+   REALTYPE, parameter                 :: a7=6.136820929e-11
+   REALTYPE, parameter                 :: eps=1.0e-12
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
-!
-! !LOCAL VARIABLES:
-   REALTYPE		:: tvirt,s,s0
-   REALTYPE		:: ae_h,be_h,ce_h,pe_h
-   REALTYPE		:: ae_m,be_m,ce_m,pe_m
-   REALTYPE, parameter	:: a1=6.107799961
-   REALTYPE, parameter	:: a2=4.436518521e-1
-   REALTYPE, parameter	:: a3=1.428945805e-2
-   REALTYPE, parameter	:: a4=2.650648471e-4
-   REALTYPE, parameter	:: a5=3.031240396e-6
-   REALTYPE, parameter	:: a6=2.034080948e-8
-   REALTYPE, parameter	:: a7=6.136820929e-11
-   REALTYPE		:: x
-   REALTYPE, parameter	:: eps=1.0e-12
+!  See log for the airsear module
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+   REALTYPE                  :: tvirt,s,s0
+   REALTYPE                  :: ae_d,be_d,pe_d
+   REALTYPE                  :: ae_h,be_h,ce_h,pe_h
+   REALTYPE                  :: ae_e,be_e,ce_e,pe_e
+   REALTYPE                  :: x
+!
 !-----------------------------------------------------------------------
 !BOC
+
    w = sqrt(wx*wx+wy*wy)
    L = (2.5-0.00234*sst)*1.e6
    es = a1 +sst*(a2+sst*(a3+sst*(a4+sst*(a5+sst*(a6+sst*a7)))))
@@ -472,80 +453,95 @@ STOP 'TESTING'
 !  Transfer coefficient for heat and momentum
 
    if (w .lt. 2.2) then
-      ae_h=0.0;   be_h=1.23;   ce_h=0.0;      pe_h=-0.16;
-      ae_m=0.0;   be_m=1.185;  ce_m=0.0;      pe_m=-0.157;
+      ae_d=0.0;   be_d=1.08;                  pe_d=-0.15;
+      ae_h=0.0;   be_h=1.185;  ce_h=0.0;      pe_h=-0.157;
+      ae_e=0.0;   be_e=1.23;   ce_e=0.0;      pe_e=-0.16;
    else if (w .lt. 5.0) then
-      ae_h=0.969; be_h=0.0521; ce_h=0.0;      pe_h=1.0;
-      ae_m=0.927; be_m=0.0546; ce_m=0.0;      pe_m=1.0;
+      ae_d=0.771; be_d=0.0858;                pe_d=1.0;
+      ae_h=0.927; be_h=0.0546; ce_h=0.0;      pe_h=1.0;
+      ae_e=0.969; be_e=0.0521; ce_e=0.0;      pe_e=1.0;
    else if (w .lt. 8.0) then
-      ae_h=1.18;  be_h=0.01;   ce_h=0.0;      pe_h=1.0;
-      ae_m=1.15;  be_m=0.01;   ce_m=0.0;      pe_m=1.0;
+      ae_d=0.867; be_d=0.0667;                pe_d=1.0;
+      ae_h=1.15;  be_h=0.01;   ce_h=0.0;      pe_h=1.0;
+      ae_e=1.18;  be_e=0.01;   ce_e=0.0;      pe_e=1.0;
    else if (w .lt. 25.0) then
-      ae_h=1.196; be_h=0.008;  ce_h=-0.0004;  pe_h=1.0
-      ae_m=1.17;  be_m=0.0075; ce_m=-0.00044; pe_m=1.0;
+      ae_d=1.2;   be_d=0.025;                 pe_d=1.0;
+      ae_h=1.17;  be_h=0.0075; ce_h=-0.00045; pe_h=1.0;
+      ae_e=1.196; be_e=0.008;  ce_e=-0.0004;  pe_e=1.0
    else
-      ae_h=1.68;  be_h=-0.016; ce_h=0;        pe_h=1;
-      ae_m=1.652; be_m=-0.017; ce_m=0.0;      pe_m=1.0;
+      ae_d=0.0;   be_d=0.073;                 pe_d=1.0;
+      ae_h=1.652; be_h=-0.017; ce_h=0.0;      pe_h=1.0;
+      ae_e=1.68;  be_e=-0.016; ce_e=0;        pe_e=1.0;
    end if
 
-   cee_heat=(ae_h+be_h*exp(pe_h*log(w+eps))+ce_h*(w-8.0)**2)*1.0e-3
-   cee_mom =(ae_m+be_m*exp(pe_m*log(w+eps)))*1.0e-3
+   cdd=(ae_d+be_d*exp(pe_d*log(w+eps)))*1.0e-3
+   chd=(ae_h+be_h*exp(pe_h*log(w+eps))+ce_h*(w-8.0)**2)*1.0e-3
+   ced=(ae_e+be_e*exp(pe_e*log(w+eps))+ce_e*(w-8.0)**2)*1.0e-3
 
    if(s .lt. 0.) then
-      x = 0.1+0.03*s+0.9*exp(4.8*s)
-      ced_heat=x*cee_heat
-      ced_mom =x*cee_mom
+      if (s .gt. -3.3) then
+         x = 0.1+0.03*s+0.9*exp(4.8*s)
+      else
+         x = 0.0
+      end if 	 
+      cdd=x*cdd
+      chd=x*chd
+      ced=x*ced
    else
-      ced_heat=cee_heat*(1.0+0.63*sqrt(s))
-      ced_mom =cee_mom *(1.0+0.47*sqrt(s))
+      cdd=cdd*(1.0+0.47*sqrt(s))
+      chd=chd*(1.0+0.63*sqrt(s))
+      ced=ced*(1.0+0.63*sqrt(s))
    end if
 
    return
-   end subroutine misc_variables
+   end subroutine exchange_coefficients
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Calculates the heat fluxes using SST from model
+! !IROUTINE: Calculate the heat fluxes \label{sec:calcFluxes}
 !
 ! !INTERFACE:
    subroutine do_calc_fluxes(heatf,taux,tauy)
 !
 ! !DESCRIPTION:
-!  Based on modelled SST the heatfluxes are culculated.
+!  The latent and the sensible heat flux, the long-wave back
+!  radiation (and thus the total net surface heat flux) and
+!  the surface momentum flux are calclated here. For the
+!  long--wave back radiation, the formulae of \cite{Clarketal74} 
+!  and \cite{HastenrathLamb78} may be used as alternatives. 
 !
 ! !USES:
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
 ! !OUTPUT PARAMETERS:
-   REALTYPE, optional, intent(out)	:: heatf,taux,tauy
+   REALTYPE, optional, intent(out)     :: heatf,taux,tauy
+!
+! !DEFINED PARAMETERS:
+   integer, parameter                  :: clark=1
+   integer, parameter                  :: hastenrath=2
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
-!
-! !LOCAL VARIABLES:
-   REALTYPE		:: tmp
-   REALTYPE		:: qe,qh,qb
-
-   integer, parameter	:: clark=1	! Clark et. al, 1974
-   integer, parameter	:: hastenrath=2	! Hastenrath and Lamb, 1978
-   integer		:: back_radiation_method=clark
+!  See log for airsea module
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+   REALTYPE                  :: tmp
+   REALTYPE                  :: qe,qh,qb
+   integer                   :: back_radiation_method=clark
+!
 !-----------------------------------------------------------------------
 !BOC
-   qe=ced_heat*L*rho_air*w*(qs-qa)			! latent
-   qh=ced_heat*cpa*rho_air*w*(sst-airt)			! sensible
+
+   qe=ced*L*rho_air*w*(qs-qa)			! latent
+   qh=chd*cpa*rho_air*w*(sst-airt)		! sensible
 
    tmp=sst+Kelvin
-   select case(back_radiation_method)			! back radiation
+   select case(back_radiation_method)		! back radiation
       case(clark)
          qb=(1.0-.8*cloud*cloud)				&
             *emiss*bolz*(tmp**4)*(0.39-0.05*sqrt(ea/100.0))	&
@@ -563,10 +559,7 @@ STOP 'TESTING'
      heat = -(qe+qh+qb)
    end if
 
-   tmp = -ced_mom*rho_air*w
-!kbk
-!kbk   tmp = 1.2*tmp
-!kbk
+   tmp = -cdd*rho_air*w
    if(present(taux)) then
      taux  = tmp*wx
    else
@@ -585,66 +578,70 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Calculates the short wave radiation
+! !IROUTINE: Calculate the short--wave radiation \label{sec:swr}
 !
 ! !INTERFACE:
    subroutine short_wave_radiation(jul,secs,lon,lat,swr)
 !
 ! !DESCRIPTION:
-!  Calculates the SW radiation - based on lat,lon,time,cloud and albedo.
-!
-!  albedo monthly values from Payne (1972) as means of the values
-!  at 40N and 30N for the Atlantic Ocean ( hence the same latitudinal
-!  band of the Mediterranean Sea ) :
+!  This subroutine calculates the short--wave net radiation based on 
+!  latitude, longitude, time, fractional cloud cover and albedo.
+!  The albedo monthly values from \cite{Payne72} are given  here
+!  as means of the values between 
+!  at 30$^{\circ}$ N and 40$^{\circ}$ N for the Atlantic Ocean 
+!  (hence the same latitudinal band of the Mediterranean Sea).
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)			:: jul,secs
-   REALTYPE, intent(in)			:: lon,lat
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer, intent(in)                 :: jul,secs
+   REALTYPE, intent(in)                :: lon,lat
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, optional, intent(out)	:: swr
+   REALTYPE, optional, intent(out)     :: swr
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
-!
-! !LOCAL VARIABLES:
-!kbk   integer	:: year_day
-   REALTYPE	:: solar=1350.
-   REALTYPE	:: eclips=23.439*deg2rad
-   REALTYPE	:: tau=0.7
-   REALTYPE	:: aozone=0.09
-!kbk   REALTYPE	:: sunalpha=0.03
-
-   REALTYPE	:: alb1(20) = (/.719,.656,.603,.480,.385,.300,.250,.193,.164, &
-                      .131,.103,.084,.071,.061,.054,.039,.036,.032,.031,.030 /)
-
-   REALTYPE	:: za(20)   = (/90.,88.,86.,84.,82.,80.,78.,76.,74.,70.,  &
-                                66.,62.,58.,54.,50.,40.,30.,20.,10.,0.0 /)
-   REALTYPE	:: dza(19)
-   data            dza/8*2.0, 6*4.0, 5*10.0/
-
-   integer	:: yday(12) = (/ 0,31,59,90,120,151,181,212,233,273,304,334 /)
-
-   REALTYPE	:: th0,th02,th03,sundec
-   REALTYPE	:: thsun,coszen,zen,dzen,sunbet
-   REALTYPE	:: qatten,qzer,qdir,qdiff,qtot,qshort
-   REALTYPE	:: albedo
-   integer	:: jab
-   integer	:: yy,mm,dd
-   REALTYPE	:: yrdays,days,hour,tjul
+!  See log for airsea module
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+!
+   REALTYPE                  :: solar=1350.
+   REALTYPE                  :: eclips=23.439*deg2rad
+   REALTYPE                  :: tau=0.7
+   REALTYPE                  :: aozone=0.09
+
+
+   REALTYPE                  :: th0,th02,th03,sundec
+   REALTYPE                  :: thsun,coszen,zen,dzen,sunbet
+   REALTYPE                  :: qatten,qzer,qdir,qdiff,qtot,qshort
+   REALTYPE                  :: albedo
+   integer                   :: jab
+   integer                   :: yy,mm,dd
+   REALTYPE                  :: yrdays,days,hour,tjul
+
+   integer                   :: yday(12) = &
+                 (/ 0,31,59,90,120,151,181,212,233,273,304,334 /)
+
+   REALTYPE                  :: alb1(20) = &
+                 (/.719,.656,.603,.480,.385,.300,.250,.193,.164, &
+                   .131,.103,.084,.071,.061,.054,.039,.036,.032,.031,.030 /)
+
+   REALTYPE                  :: za(20) = &
+                 (/90.,88.,86.,84.,82.,80.,78.,76.,74.,70.,  &
+                   66.,62.,58.,54.,50.,40.,30.,20.,10.,0.0 /)
+
+   REALTYPE                  :: dza(19)
+   data           dza/8*2.0, 6*4.0, 5*10.0/
+!
 !-----------------------------------------------------------------------
 !BOC
+
 !  number of days in a year :
-!kbk   days = 30.*float(imonth-1) + float(iday) -1.
    call calendar_date(jul,yy,mm,dd)
    days=float(yday(mm))+float(dd)
    hour=1.0*secs/3600.
@@ -702,15 +699,10 @@ STOP 'TESTING'
 !  Rosati,Miyakoda 1988 ; eq. 3.8
 !  clouds from COADS perpetual data set
    if(cloud .lt. 0.3) then
-!kbkSTDERR 'no cloud effect'
       qshort  = qtot
    else
       qshort  = qtot*(1-0.62*cloud + .0019*sunbet)*(1.-albedo)
    endif
-
-!kbk
-!kbk   qshort = 0.75*qshort
-!kbk
 
    if (present(swr)) then
       swr = qshort
@@ -725,29 +717,31 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: flux_from_meteo
+! !IROUTINE: Read meteo data, interpolate in time
 !
 ! !INTERFACE:
    subroutine flux_from_meteo(jul,secs)
 !
 ! !DESCRIPTION:
-!  This routine will read meteo data from a file and do interpolation in
-!  time.
+!  This routine reads meteo data from a file and calculates the 
+!  fluxes of heat and momentum, and the
+!  short--wave radiation, from these data as described in 
+!  \sect{sec:calcCoeff}, \sect{sec:calcFluxes}, and \sect{sec:swr}.
+!  Then, the results are interpolated in time.
+
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: jul,secs
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: jul,secs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
+!  See log for airsea module
+!
+!EOP
 !
 ! !LOCAL VARIABLES:
    integer		:: yy,mm,dd,hh,min,ss
@@ -762,10 +756,9 @@ STOP 'TESTING'
    logical, save	:: first=.true.
    integer		:: rc
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
-!  This part initialise and read in new values if necessary.
+!  This part initialises and reads in new values if necessary.
    if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .lt. 0) then
       do
          meteo_jul1 = meteo_jul2
@@ -781,7 +774,7 @@ STOP 'TESTING'
       airt  = obs(4)
       rh    = obs(5)
       cloud = obs(6)
-      call misc_variables()
+      call exchange_coefficients()
       if (first) then
          call do_calc_fluxes(heatf=h1,taux=tx1,tauy=ty1)
          call short_wave_radiation(jul,secs,alon,alat,swr=I1)
@@ -819,30 +812,30 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: read_heat_flux
+! !IROUTINE: Read heat flux data, interpolate in time
 !
 ! !INTERFACE:
    subroutine read_heat_flux(jul,secs,I_0,heat)
 !
 ! !DESCRIPTION:
-!  This routine will read heat-fluxes from a file and do interpolation in
+!  This routine reads heat fluxes from a file and interpolates them in
 !  time.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: jul,secs
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer, intent(in)                 :: jul,secs
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out):: I_0,heat
+   REALTYPE, intent(out)               :: I_0,heat
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
+!  See log for airsea module
+!
+!EOP
 !
 ! !LOCAL VARIABLES:
    integer		:: yy,mm,dd,hh,min,ss
@@ -853,7 +846,6 @@ STOP 'TESTING'
    REALTYPE, save	:: obs1(2),obs2(2)=0.
    integer		:: rc
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
 !  This part initialise and read in new values if necessary.
@@ -885,30 +877,28 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: read_momentum_flux
+! !IROUTINE: Read momentum flux data, interpolate in time
 !
 ! !INTERFACE:
    subroutine read_momentum_flux(jul,secs,tx,ty)
 !
 ! !DESCRIPTION:
-!  This routine will read momentum-fluxes from a file and do interpolation in
+!  This routine reads momentum fluxes from a file and interpolates them in
 !  time.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer,intent(in)	:: jul,secs
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer,intent(in)                  :: jul,secs
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE,intent(out)	:: tx,ty
+   REALTYPE,intent(out)                :: tx,ty
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
+!  See log for airsea module
 !
 ! !LOCAL VARIABLES:
    integer		:: yy,mm,dd,hh,min,ss
@@ -922,6 +912,7 @@ STOP 'TESTING'
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+
 !  This part initialise and read in new values if necessary.
    if(time_diff(mom_jul2,mom_secs2,jul,secs) .lt. 0) then
       do
@@ -950,41 +941,40 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: read_sst
+! !IROUTINE: Read SST, interpolate in time
 !
 ! !INTERFACE:
    subroutine read_sst(jul,secs,sst)
 !
 ! !DESCRIPTION:
-!  This routine will read the sea surface temperature from a file and
-!  do interpolation in time.
+!  This routine reads sea surface temperature (SST) from a file 
+!  and interpolates in time.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: jul,secs
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer, intent(in)                 :: jul,secs
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE,intent(out)	:: sst
+   REALTYPE,intent(out)	               :: sst
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
-!
-! !LOCAL VARIABLES:
-   integer		:: yy,mm,dd,hh,min,ss
-   REALTYPE		:: t,alpha
-   REALTYPE, save	:: dt
-   integer, save        :: sst_jul1,sst_secs1
-   integer, save	:: sst_jul2=0,sst_secs2=0
-   REALTYPE, save	:: obs1(1),obs2(1)=0.
-   integer		:: rc
+!  See log for airsea module
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t,alpha
+   REALTYPE, save            :: dt
+   integer, save             :: sst_jul1,sst_secs1
+   integer, save             :: sst_jul2=0,sst_secs2=0
+   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   integer                   :: rc
+!
 !-----------------------------------------------------------------------
 !BOC
 !  This part initialise and read in new values if necessary.
@@ -1013,30 +1003,26 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Integrate shortwave and sea surface fluxes.
+! !IROUTINE: Integrate short--wave and sea surface fluxes
 !
 ! !INTERFACE:
    subroutine integrated_fluxes(dt)
 !
 ! !DESCRIPTION:
-!  This routine integrates the short-wave radiation and heat-fluxes over time.
+!  This utility routine integrates the short--wave radiation 
+!  and heat--fluxes over time.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)	:: dt
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   REALTYPE, intent(in)	               :: dt
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
+!  See log for airsea module
 !
-! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1050,30 +1036,26 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Set the SST from model.
+! !IROUTINE: Set the SST to be used from model.
 !
 ! !INTERFACE:
    subroutine set_sst(temp)
 !
 ! !DESCRIPTION:
-!  This routine sets the sst to be used fro flux calculations.
+!  This routine sets the sea surface temperature (SST) to be used for 
+!  the surface flux calculations.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)	:: temp
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   REALTYPE, intent(in)	     :: temp
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See airsea module
+!  See log for airsea module
 !
-! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1082,7 +1064,6 @@ STOP 'TESTING'
    end subroutine set_sst
 !EOC
 
-   end module airsea
-
 !-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard
+
+   end module airsea
