@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.10 2003-12-11 09:58:22 kbk Exp $
+!$Id: bio.F90,v 1.11 2004-03-30 11:32:48 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,7 +40,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.10  2003-12-11 09:58:22  kbk
+!  Revision 1.11  2004-03-30 11:32:48  kbk
+!  select between eulerian or lagrangian solver
+!
+!  Revision 1.10  2003/12/11 09:58:22  kbk
 !  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
 !
 !  Revision 1.9  2003/10/28 10:22:45  hb
@@ -70,11 +73,16 @@
 ! !PRIVATE DATA MEMBERS:
 !  from a namelist
    logical                   :: bio_calc=.false.
+   logical                   :: bio_eulerian=.true.
    integer                   :: numc
    REALTYPE                  :: cnpar=0.5
    integer                   :: w_adv_discr=6
    integer                   :: ode_method=1
    integer                   :: split_factor=1
+   logical                   :: bio_lagrange_mean=.true.
+   integer                   :: bio_npar=10000
+   REALTYPE                  :: depth
+!KBK
 !EOP
 !-----------------------------------------------------------------------
 
@@ -86,7 +94,7 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_bio(namlst,fname,unit,nlev)
+   subroutine init_bio(namlst,fname,unit,nlev,h)
 !
 ! !DESCRIPTION:
 ! Here, the bio namelist {\tt bio.inp} is read and memory is
@@ -100,19 +108,23 @@
    character(len=*), intent(in)        :: fname
    integer, intent(in)                 :: unit
    integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: h(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   integer                   :: rc,n
-   namelist /bio_nml/ bio_calc,bio_model, &
-                      cnpar,w_adv_discr,ode_method,split_factor
+   integer                   :: rc,i,j,n
+   namelist /bio_nml/ bio_calc,bio_model,bio_eulerian, &
+                      cnpar,w_adv_discr,ode_method,split_factor, &
+                      bio_lagrange_mean,bio_npar
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
    LEVEL1 'init_bio'
+
+   depth=sum(h)
 
 !  Open and read the namelist
    open(namlst,file=fname,action='read',status='old',err=98)
@@ -120,6 +132,13 @@
    close(namlst)
 
    if (bio_calc) then
+
+!     a sanity check (only temporarely)
+      if (.not. bio_eulerian) then
+         if (bio_model .ne. 3) then
+            FATAL "Lagrangian simulations only tested/works with bio_model=3"
+         end if
+      end if
 
       allocate(par(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_bio: Error allocating (par)'
@@ -176,31 +195,76 @@
 !KBK                '  ',trim(var_long(n)),'  ',mussels_inhale(n)
       end do
 
-      select case (ode_method)
-         case (1)
-            LEVEL2 'Using euler_forward()'
-         case (2)
-            LEVEL2 'Using runge_kutta_2()'
-         case (3)
-            LEVEL2 'Using runge_kutta_4()'
-         case (4)
-            LEVEL2 'Using patankar()'
-         case (5)
-            LEVEL2 'Using patankar_runge_kutta_2()'
-         case (6)
-            LEVEL2 'Using patankar_runge_kutta_4()'
-         case (7)
-            LEVEL2 'Using modified_patankar()'
-         case (8)
-            LEVEL2 'Using modified_patankar_2()'
-         case (9)
-            LEVEL2 'Using modified_patankar_4()'
-         case default
-            stop "bio: no valid ode_method specified in bio.inp!"
-      end select
+      if ( bio_eulerian ) then
+         LEVEL3 "Using Eulerian solver"
+         select case (ode_method)
+            case (1)
+               LEVEL2 'Using euler_forward()'
+            case (2)
+               LEVEL2 'Using runge_kutta_2()'
+            case (3)
+               LEVEL2 'Using runge_kutta_4()'
+            case (4)
+               LEVEL2 'Using patankar()'
+            case (5)
+               LEVEL2 'Using patankar_runge_kutta_2()'
+            case (6)
+               LEVEL2 'Using patankar_runge_kutta_4()'
+            case (7)
+               LEVEL2 'Using modified_patankar()'
+            case (8)
+               LEVEL2 'Using modified_patankar_2()'
+            case (9)
+               LEVEL2 'Using modified_patankar_4()'
+            case default
+               stop "bio: no valid ode_method specified in bio.inp!"
+         end select
+      else
+         LEVEL3 "Using Lagrangian solver"
+         allocate(zlev(nlev),stat=rc)
+         if (rc /= 0) &
+         STOP 'init_bio: Error allocating (zlev)'
+
+         allocate(particle_active(numc,bio_npar),stat=rc)
+         if (rc /= 0) &
+         STOP 'init_bio: Error allocating (particle_active)'
+
+         allocate(particle_indx(numc,bio_npar),stat=rc)
+         if (rc /= 0) &
+         STOP 'init_bio: Error allocating (particle_indx)'
+
+         allocate(particle_pos(numc,bio_npar),stat=rc)
+         if (rc /= 0) &
+         STOP 'init_bio: Error allocating (particle_pos)'
+
+         zlev(0)=-depth
+         do n=1,nlev
+            zlev(n)=zlev(n-1)+h(n)
+         end do
+!Equidist. particle distribution
+         do n=1,bio_npar
+            particle_pos(:,n)=-depth+n/float(bio_npar+1)*depth
+         end do
+         do j=1,numc
+            do n=1,bio_npar
+               do i=1,nlev
+                  if (zlev(i) .gt. particle_pos(j,n)) EXIT
+               end do
+               particle_indx(j,n)=i
+               particle_active(j,n)=.true.
+            end do
+         end do
+      end if
 
 !     Initialise 'mussels' module
-      call init_mussels(namlst,"mussels.inp",unit,nlev)
+      call init_mussels(namlst,"mussels.inp",unit,nlev,h)
+!  a sanity check (only temporarely)
+      if (.not. bio_eulerian) then
+         if (mussels_calc) then
+            FATAL "Mussel calculations not implemented for Lagragian simulations yet"
+            stop "init_bio"
+         end if
+      end if
    end if
 
    return
@@ -250,10 +314,12 @@
    REALTYPE                  :: RelaxTau(0:nlev)
    REALTYPE                  :: zz,add
    REALTYPE                  :: totn,dt_eff
-   integer                   :: i,j,ci
+   integer                   :: i,j,n,np,ci
    integer                   :: Bcup=1,Bcdw=1,flag=2,char=1,grid_method=0
    integer                   :: split
    logical                   :: surf_flux=.false.,bott_flux=.false.
+   integer, save             :: count=0
+   logical, save             :: set_C_zero=.true.
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -274,15 +340,53 @@
       end select
 
       if (mussels_calc) then
-         call do_mussels(numc,dt)
+         call do_mussels(numc,dt,depth,nlev,h,nuh)
       end if
 
-      do j=1,numc
-         call Yevol(nlev,Bcup,Bcdw,dt,cnpar,sfl(j),bfl(j), &
-                    RelaxTau,h,h,nuh,ws(j,:),QSour,cc(j,:), &
-                    char,w_adv_discr,cc(j,:),surf_flux,bott_flux,  & 
-                    grid_method,w_grid,flag)
-      end do
+      if (bio_eulerian) then
+         do j=1,numc
+            call Yevol(nlev,Bcup,Bcdw,dt,cnpar,sfl(j),bfl(j), &
+                       RelaxTau,h,h,nuh,ws(j,:),QSour,cc(j,:), &
+                       char,w_adv_discr,cc(j,:),surf_flux,bott_flux,  & 
+                       grid_method,w_grid,flag)
+         end do
+      else
+         zlev(0)=-depth
+         do n=1,nlev
+            zlev(n)=zlev(n-1)+h(n)
+         end do
+         do j=1,numc
+            call lagrange(nlev,dt,zlev,nuh,ws(j,1),bio_npar, &
+                          particle_active(j,:), &
+                          particle_indx(j,:),   &
+                          particle_pos(j,:))
+!           convert particle counts  into concentrations
+            if( write_results .or. bio_lagrange_mean ) then
+               if (set_C_zero) then
+                  cc(j,:)=_ZERO_
+                  set_C_zero=.false.
+               end if
+               do np=1,bio_npar
+                  if (particle_active(j,np)) then
+                    n=particle_indx(j,np)
+                    cc(j,n)=cc(j,n)+_ONE_
+                  end if
+               end do
+               if (bio_lagrange_mean) then
+                  count=count+1
+               else
+                  count=1
+               end if
+               if (write_results) then
+                  do n=1,nlev
+                     cc(j,n) = cc(j,n)/bio_npar*depth/h(n)/count
+                  end do
+                  count=0
+                  set_C_zero=.true.
+               end if
+            end if
+         end do
+      end if
 
       do split=1,split_factor
          dt_eff=dt/float(split_factor)
@@ -332,7 +436,6 @@
    IMPLICIT NONE
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
 !
 !EOP
 !-----------------------------------------------------------------------
