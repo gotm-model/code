@@ -1,4 +1,4 @@
-!$Id: bio_npzd.F90,v 1.3 2004-06-29 08:04:03 hb Exp $
+!$Id: bio_npzd.F90,v 1.4 2004-06-29 14:22:45 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_npzd.F90,v $
-!  Revision 1.3  2004-06-29 08:04:03  hb
+!  Revision 1.4  2004-06-29 14:22:45  hb
+!  removed superfluous print statement
+!
+!  Revision 1.3  2004/06/29 08:04:03  hb
 !  small changes
 !
 !  Revision 1.2  2003/10/16 15:42:16  kbk
@@ -393,8 +396,6 @@
 !KBK - is it necessary to initialise every time - expensive in a 3D model
    pp = _ZERO_
    dd = _ZERO_
-
-   write(90,*) par(105),I_min
 
    do ci=1,nlev
       if (par(ci) .ge. I_min) then
