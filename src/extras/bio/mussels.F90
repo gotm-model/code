@@ -1,4 +1,4 @@
-!$Id: mussels.F90,v 1.4 2003-12-11 09:58:22 kbk Exp $
+!$Id: mussels.F90,v 1.5 2004-03-31 12:58:52 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -23,12 +23,16 @@
 ! !PUBLIC DATA MEMBERS:
 !  from a namelist
    logical, public           :: mussels_calc=.false.
+   REALTYPE, public          :: total_mussel_flux=_ZERO_
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Karsten Bolding, Marie Maar & Hans Burchard
 !
 !  $Log: mussels.F90,v $
-!  Revision 1.4  2003-12-11 09:58:22  kbk
+!  Revision 1.5  2004-03-31 12:58:52  kbk
+!  lagrangian solver uses - total_mussel_flux
+!
+!  Revision 1.4  2003/12/11 09:58:22  kbk
 !  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
 !
 !  Revision 1.3  2003/10/28 10:26:33  hb
@@ -49,6 +53,7 @@
    REALTYPE                  :: nmussels=1000. 
    REALTYPE                  :: rate
    REALTYPE                  :: biomass=_ZERO_
+   REALTYPE                  :: depth
 !EOP
 !-----------------------------------------------------------------------
 
@@ -60,7 +65,7 @@
 ! !IROUTINE: Initialise the mussels module
 !
 ! !INTERFACE:
-   subroutine init_mussels(namlst,fname,unit,nlev)
+   subroutine init_mussels(namlst,fname,unit,nlev,h)
 !
 ! !DESCRIPTION:
 !  Here, the mussels namelist {\tt mussels.inp} is read and memory is
@@ -74,12 +79,13 @@
    character(len=*), intent(in)        :: fname
    integer, intent(in)                 :: unit
    integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: h(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Marie Maar & Hans Burchard
 !
 ! !LOCAL VARIABLES:
-   integer                   :: rc,n
+   integer                   :: rc,i,n
    namelist /mussels_nml/ mussels_calc,mussels_model,filter_rate, &
                           filter_lag,nmussels
 !EOP
@@ -93,16 +99,19 @@
    read(namlst,nml=mussels_nml,err=99)
    close(namlst)
 
-   if (mussels_calc) then
+   depth = sum(h)
+   if(mussels_calc) then
 
       LEVEL3 "We will do mussels calculations..."
       select case (mussels_model)
          case(1)
             LEVEL4 "using the simple mussels model..."
             rate=0.001*filter_rate/3600.
+         case(2)
+            LEVEL4 "lagrangian approach ..."
+            rate=0.001*filter_rate/3600.
          case default
       end select
-
    end if
 
    return
@@ -123,7 +132,7 @@
 ! !IROUTINE: Update the mussels model
 !
 ! !INTERFACE:
-   subroutine do_mussels(numc,dt)
+   subroutine do_mussels(numc,dt,depth,nlev,h,nuh)
 !
 ! !DESCRIPTION:
 !
@@ -132,7 +141,9 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: numc
-   REALTYPE, intent(in)                :: dt
+   REALTYPE, intent(in)                :: dt,depth
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: h(0:),nuh(0:)
 !
 ! !OUTPUT PARAMETERS:
 !
@@ -140,9 +151,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   integer                   :: n
-   REALTYPE                  :: flux
-   REALTYPE, save            :: elapsed=_ZERO_
+   integer         :: i,n
+   REALTYPE        :: sink=1.e-6
+   REALTYPE, save  :: elapsed=_ZERO_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -151,27 +162,22 @@
       elapsed=elapsed+dt
       select case (mussels_model)
          case (1)
-            flux=rate*nmussels
+            total_mussel_flux=rate*nmussels
             do n=1,numc
                if(mussels_inhale(n)) then
                   if (elapsed .gt. filter_lag) then
-                     bfl(n) = -flux*cc(n,1)
+                     bfl(n) = -total_mussel_flux*cc(n,1)
                   else   
                      bfl(n) = _ZERO_
                   end if   
                end if
             end do
             call mussel_biomass()
+         case (2)
          case default
       end select
-
-#if 0
-      if (write_results) then
-         call mussels_save(numc,nlev,h,totn)
-      end if
-#endif
-
    end if
+
    return
    end subroutine do_mussels
 !EOC

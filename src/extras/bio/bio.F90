@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.11 2004-03-30 11:32:48 kbk Exp $
+!$Id: bio.F90,v 1.12 2004-03-31 12:58:52 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,7 @@
    use bio_sed, only : init_bio_sed,init_var_sed,var_info_sed
 
    use mussels, only : init_mussels, do_mussels, end_mussels
-   use mussels, only : mussels_calc
+   use mussels, only : mussels_calc,total_mussel_flux
 
    use output, only: out_fmt,write_results,ts
 !
@@ -40,7 +40,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.11  2004-03-30 11:32:48  kbk
+!  Revision 1.12  2004-03-31 12:58:52  kbk
+!  lagrangian solver uses - total_mussel_flux
+!
+!  Revision 1.11  2004/03/30 11:32:48  kbk
 !  select between eulerian or lagrangian solver
 !
 !  Revision 1.10  2003/12/11 09:58:22  kbk
@@ -258,13 +261,6 @@
 
 !     Initialise 'mussels' module
       call init_mussels(namlst,"mussels.inp",unit,nlev,h)
-!  a sanity check (only temporarely)
-      if (.not. bio_eulerian) then
-         if (mussels_calc) then
-            FATAL "Mussel calculations not implemented for Lagragian simulations yet"
-            stop "init_bio"
-         end if
-      end if
    end if
 
    return
@@ -320,6 +316,7 @@
    logical                   :: surf_flux=.false.,bott_flux=.false.
    integer, save             :: count=0
    logical, save             :: set_C_zero=.true.
+   REALTYPE                  :: filter_depth
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -360,6 +357,13 @@
                           particle_active(j,:), &
                           particle_indx(j,:),   &
                           particle_pos(j,:))
+            if (mussels_calc) then
+               filter_depth=-depth+total_mussel_flux*dt
+               do i=1,bio_npar
+                  if (particle_pos(j,i) .lt. filter_depth) &
+                      particle_active(j,i)=.false.
+               end do 
+            end if 
 !           convert particle counts  into concentrations
             if( write_results .or. bio_lagrange_mean ) then
                if (set_C_zero) then
