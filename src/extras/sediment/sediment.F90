@@ -1,4 +1,4 @@
-!$Id: sediment.F90,v 1.8 2004-03-22 10:14:25 kbk Exp $
+!$Id: sediment.F90,v 1.9 2004-06-29 12:56:36 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -91,7 +91,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: sediment.F90,v $
-!  Revision 1.8  2004-03-22 10:14:25  kbk
+!  Revision 1.9  2004-06-29 12:56:36  lars
+!  removed tabs
+!
+!  Revision 1.8  2004/03/22 10:14:25  kbk
 !  cleaned, store old index -> much faster, fixed conc. calc.
 !
 !  Revision 1.7  2004/03/04 09:34:54  kbk
@@ -275,11 +278,11 @@
          do n=1,nlev
             zlev(n)=zlev(n-1)+h(n)
          end do
-	 do n=1,sedi_npar
+         do n=1,sedi_npar
             do i=1,nlev
                if (zlev(i) .gt. zp(n)) EXIT
             end do
-	    zi(n)=i
+            zi(n)=i
          end do
       end if
    end if
