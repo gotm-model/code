@@ -1,4 +1,4 @@
-!$Id: friction.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
+!$Id: friction.F90,v 1.5 2004-01-13 08:39:49 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -11,10 +11,13 @@
 ! !DESCRIPTION:
 !  This subroutine updates the bottom roughness
 !  \begin{equation}\label{Defz0b}
-!    z_0^b = 0.1 \frac{\nu}{u_*^b} + 0.03 h_0^b \point
+!    z_0^b = 0.1 \frac{\nu}{u_*^b} + 0.03 h_0^b + z_a \point
 !  \end{equation}
-!  Then, it uses the well--known law--of--the--wall relations
-!  to compute the friction velocity
+!  Note that $z_a$ is the contribution of suspended sediments to the 
+! roughness length, see \cite{SmithMcLean77}. It is updated during calls
+! to the sediment-routines discussed in \sect{sec:sediment}.
+!
+! The law-of-the-wall relations are used to compute the friction velocity
 ! \begin{equation}
 !  \label{uStar}
 !   u_*^b = r \sqrt{u_1^2 + v_1^2}
@@ -43,10 +46,11 @@
 !  \end{equation}
 !
 ! !USES:
-   use meanflow, only: h,z0b,h0b,MaxItz0b,z0s
+   use meanflow, only: h,z0b,h0b,MaxItz0b,z0s,za
    use meanflow, only: u,v,gravity
    use meanflow, only: u_taub,u_taus,drag
    use meanflow, only: charnok,charnok_val,z0s_min
+
 !
    IMPLICIT NONE
 !
@@ -57,7 +61,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: friction.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2004-01-13 08:39:49  lars
+!  included roughness due to suspended sediments
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 08:56:56  kbk
@@ -92,11 +99,11 @@
    do i=1,MaxItz0b
 
       if (avmolu.le.0) then
-         z0b=0.03*h0b 
+         z0b=0.03*h0b + za
       else
-         z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b 
+         z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
       end if
-      
+
       !  compute the factor r (version 1, with log-law)
       rr=kappa/(log((z0b+h(1)/2)/z0b))
       
