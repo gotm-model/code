@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
+!$Id: ncdfout.F90,v 1.5 2003-06-13 09:27:16 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,7 +38,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2003-06-13 09:27:16  hb
+!  Implemented freshwater fluxes
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/10 08:53:05  gotm
@@ -60,7 +63,7 @@
    integer, private          :: zeta_id
    integer, private          :: sst_id,sss_id
    integer, private          :: x_taus_id,y_taus_id
-   integer, private          :: swr_id,heat_id,total_id
+   integer, private          :: swr_id,heat_id,total_id,p_e_id
    integer, private          :: int_sw_id,int_hf_id,int_total_id
    integer, private          :: u_taus_id,u_taub_id
    integer, private          :: h_id
@@ -189,6 +192,8 @@
    call check_err(iret)
    iret = nf_def_var(ncid,'int_total',NF_REAL,3,dims, int_total_id)
    call check_err(iret)
+   iret = nf_def_var(ncid,'p_e',NF_REAL,3,dims, p_e_id)
+   call check_err(iret)
 
    iret = nf_def_var(ncid,'u_taus',NF_REAL,3,dims, u_taus_id)
    call check_err(iret)
@@ -293,6 +298,7 @@
    iret = set_attributes(ncid,int_sw_id,units='J/m2',long_name='integrated short wave radiation')
    iret = set_attributes(ncid,int_hf_id,units='J/m2',long_name='integrated surface heat flux')
    iret = set_attributes(ncid,int_total_id,units='J/m2',long_name='integrated total surface heat exchange')
+   iret = set_attributes(ncid,p_e_id,units='m/s',long_name='surface freshwater flux')
    iret = set_attributes(ncid,u_taus_id,units='m/s',long_name='surface friction velocity')
    iret = set_attributes(ncid,u_taub_id,units='m/s',long_name='bottom friction velocity')
 
@@ -363,7 +369,7 @@
 !  Write the GOTM core variables to the NetCDF file.
 !
 ! !USES:
-   use airsea,       only: tx,ty,I_0,heat,sst,sss,int_sw,int_hf,int_total
+   use airsea,       only: tx,ty,I_0,heat,p_e,sst,sss,int_sw,int_hf,int_total
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
    use meanflow,     only: h,u,v,z,S,T,buoy,SS,NN,P,B
    use turbulence,   only: num,nuh,tke,eps,L,uu,vv,ww,tt,chi
@@ -431,6 +437,7 @@
    iret = store_data(ncid,int_sw_id,XYT_SHAPE,1,scalar=int_sw)
    iret = store_data(ncid,int_hf_id,XYT_SHAPE,1,scalar=int_hf)
    iret = store_data(ncid,int_total_id,XYT_SHAPE,1,scalar=int_total)
+   iret = store_data(ncid,p_e_id,XYT_SHAPE,1,scalar=p_e)
    iret = store_data(ncid,u_taub_id,XYT_SHAPE,1,scalar=u_taub)
    iret = store_data(ncid,u_taus_id,XYT_SHAPE,1,scalar=u_taus)
 

@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.6 2003-03-28 09:20:34 kbk Exp $
+!$Id: airsea.F90,v 1.7 2003-06-13 09:27:16 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -34,6 +34,8 @@
    REALTYPE, public                    :: tx,ty
 !  I_0 and heat are short-wave radiation and heat flux at the surface:
    REALTYPE, public                    :: I_0,heat
+!  p_e is the surface freshwater flux:
+   REALTYPE, public                    :: p_e
 !  sst and sss are sea surface temperature and sea surface salinity:
    REALTYPE, public                    :: sst,sss
 !  integrated short-wave radiation, heat flux and total heat flux:
@@ -67,7 +69,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.6  2003-03-28 09:20:34  kbk
+!  Revision 1.7  2003-06-13 09:27:16  hb
+!  Implemented freshwater fluxes
+!
+!  Revision 1.6  2003/03/28 09:20:34  kbk
 !  added new copyright to files
 !
 !  Revision 1.5  2003/03/28 08:13:47  kbk
@@ -317,6 +322,15 @@
             heat=const_qout
          case (FROMFILE)
             call read_heat_flux(jul,secs,I_0,heat)
+         case default
+      end select
+!     The freshwater flux
+      select case (p_e_method)
+         case (CONSTVAL)
+             STDERR 'Not coded yet, program aborted in airsea.F90'
+             stop
+         case (FROMFILE)
+            call read_p_e_flux(jul,secs,p_e)
          case default
       end select
 !     The momentum fluxes
@@ -947,6 +961,66 @@
 !-----------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: Read P-E, interpolate in time
+!
+! !INTERFACE:
+   subroutine read_p_e_flux(jul,secs,p_e)
+!
+! !DESCRIPTION:
+!  This routine reads the surface freshwater flux (in m/s) from a file 
+!  and interpolates in time.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: jul,secs
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE,intent(out)                :: p_e
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding
+!
+!  See log for airsea module
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t,alpha
+   REALTYPE, save            :: dt
+   integer, save             :: p_e_jul1,p_e_secs1
+   integer, save             :: p_e_jul2=0,p_e_secs2=0
+   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   integer                   :: rc
+!
+!-----------------------------------------------------------------------
+!BOC
+!  This part initialise and read in new values if necessary.
+   if(time_diff(p_e_jul2,p_e_secs2,jul,secs) .lt. 0) then
+      do
+         p_e_jul1 = p_e_jul2
+         p_e_secs1 = p_e_secs2
+         obs1 = obs2
+         call read_obs(p_e_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
+         call julian_day(yy,mm,dd,p_e_jul2)
+         p_e_secs2 = hh*3600 + min*60 + ss
+         if(time_diff(p_e_jul2,p_e_secs2,jul,secs) .gt. 0) EXIT
+      end do
+      dt = time_diff(p_e_jul2,p_e_secs2,p_e_jul1,p_e_secs1)
+   end if
+
+!  Do the time interpolation
+   t  = time_diff(jul,secs,p_e_jul1,p_e_secs1)
+   alpha = (obs2(1)-obs1(1))/dt
+   p_e = obs1(1) + t*alpha
+
+   return
+   end subroutine read_p_e_flux
+!-----------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: Read SST, interpolate in time
 !
 ! !INTERFACE:
@@ -1034,7 +1108,7 @@
 !BOC
    int_sw = int_sw + dt*I_0
    int_hf = int_hf + dt*heat
-   int_total = int_total + int_sw + int_hf
+   int_total = int_sw + int_hf
    return
    end subroutine integrated_fluxes
 !EOC

@@ -1,4 +1,4 @@
-!$Id: salinity.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
+!$Id: salinity.F90,v 1.5 2003-06-13 09:27:15 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -44,8 +44,15 @@
 !  towards a precribed (changing in time)
 !  profile $S_{obs}$ is possible. 
 
-!  Surface fluxes and inner sources or
-!  sinks are not considered. Diffusion is numerically treated implicitly, 
+!  Inner sources or sinks are not considered. 
+!  The surface freshwater flux is given by means of the $P-E$ (precipitation
+!  - evaporation) data read in as p_e through the {\tt airsea.inp} namelist:
+!  \begin{equation}
+!  \nu'_t\partial_z \bar S = -\bar S(P-E),
+!  \qquad \mbox{for } z=\zeta,
+!  \end{equation}
+!  with $P$ and $E$ given as velocities.
+!  Diffusion is numerically treated implicitly, 
 !  see equations (\ref{sigmafirst})-
 !  (\ref{sigmalast}).   
 !  The tri--diagonal matrix is solved then by a simplified Gauss elimination.
@@ -57,6 +64,7 @@
    use meanflow, only: h,ho,u,v,S,avh,w,grid_method,w_grid
    use observations, only: dsdx,dsdy,s_adv,w_adv,w_adv_discr,w_adv_method
    use observations, only: sprof,SRelaxTau
+   use airsea, only: p_e
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -68,7 +76,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: salinity.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2003-06-13 09:27:15  hb
+!  Implemented freshwater fluxes
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 08:56:56  kbk
@@ -92,7 +103,7 @@
 !BOC
 ! hard coding of parameters, to be included into namelist for gotm2.0 
    Bcup=1                    !BC Neumann
-   Sup=0.                    !No flux
+   Sup=-S(nlev)*p_e          !freshwater flux
    Bcdw=1                    !BC Neumann
    Sdw=0.                    !No flux
    surf_flux=.false.                      
