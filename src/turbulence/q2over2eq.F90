@@ -1,4 +1,4 @@
-#$Id: q2over2eq.F90,v 1.1 2003-03-10 09:00:36 gotm Exp $
+!$Id: q2over2eq.F90,v 1.2 2003-03-10 09:04:04 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -72,7 +72,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: q2over2eq.F90,v $
-!  Revision 1.1  2003-03-10 09:00:36  gotm
+!  Revision 1.2  2003-03-10 09:04:04  gotm
+!  Fixed comment char
+!
+!  Revision 1.1  2003/03/10 09:00:36  gotm
 !  Part of new generic turbulence model
 !
 !
