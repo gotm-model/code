@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.9 2003-04-04 14:25:52 hb Exp $
+!$Id: gotm.F90,v 1.10 2003-07-23 12:14:07 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -79,7 +79,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.9  2003-04-04 14:25:52  hb
+!  Revision 1.10  2003-07-23 12:14:07  hb
+!  preparing for general bio interface
+!
+!  Revision 1.9  2003/04/04 14:25:52  hb
 !  First iteration of four-compartment geobiochemical model implemented
 !
 !  Revision 1.8  2003/04/01 17:01:00  hb
@@ -203,7 +206,7 @@
    call init_seagrass(namlst,'seagrass.inp',unit_seagrass,nlev,h)
 #endif
 #ifdef BIO
-   call init_bio(namlst,'bio.inp',unit_bio,nlev,h)
+   call init_bio(namlst,'bio.inp',unit_bio,nlev)
 #endif
    LEVEL2 'done.'
    STDERR LINE
@@ -309,7 +312,7 @@
       call calc_sediment(nlev,dt)
 #endif
 #ifdef BIO
-      call calc_bio(nlev,I_0,dt)
+      call do_bio(nlev,I_0,dt,h,nuh,rad,bioshade)
 #endif
       select case (turb_method)
          case (0)
