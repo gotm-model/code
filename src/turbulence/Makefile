@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.1 2001-02-12 15:55:58 gotm Exp $
+#$Id: Makefile,v 1.2 2001-11-18 19:13:15 gotm Exp $
 #
 # Makefile to build the the Turbulence library - libturbulence.a
 #
@@ -14,6 +14,7 @@ tkeeq.F90		\
 tkealgebraic.F90	\
 lengthscaleeq.F90	\
 dissipationeq.F90	\
+genericeq.F90	\
 algebraiclength.F90	\
 cmue_bb.F90		\
 cmue_bbqe.F90		\
@@ -38,6 +39,7 @@ ${LIB}(tkeeq.o)			\
 ${LIB}(tkealgebraic.o)		\
 ${LIB}(algebraiclength.o)	\
 ${LIB}(dissipationeq.o)		\
+${LIB}(genericeq.o)		\
 ${LIB}(lengthscaleeq.o)		\
 ${LIB}(ispralength.o)		\
 ${LIB}(potentialml.o)		\
