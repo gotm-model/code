@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.3 2001-05-31 12:22:38 gotm Exp $
+#$Id: Makefile,v 1.4 2001-11-18 13:20:09 gotm Exp $
 #
 # Makefile for making new release of GOTM.
 #
@@ -9,8 +9,12 @@
 
 # 20010531
 VERSION=2.3.5
+# 20010531
+VERSION=2.3.6
+# 20010613
+VERSION=2.3.7
 
-export CVSROOT=gotm@gotm.net:/void/cvsroot
+export CVSROOT=gotm@gotm.net:/cvsroot
 
 TAGNAME	= v$(shell cat VERSION | tr . _)
 RELEASE	= gotm-$(VERSION)
@@ -36,7 +40,7 @@ unstable: new_version
 	echo $(TAGNAME)
 	cvs tag $(TAGNAME)	
 	(cd src/ ; make ../include/version.h)
-	(cd src/ ; cvs2cl)
+	cvs2cl
 	cvs export -r $(TAGNAME) -d $(RELEASE) gotm
 	mv $(RELEASE) $(OLDDIR)
 	cp ChangeLog $(OLDDIR)/$(RELEASE)
