@@ -1,4 +1,4 @@
-!$Id: production.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: production.F90,v 1.2 2001-11-18 16:02:16 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -20,7 +20,7 @@
 !  xP is an extra production term which might come from e.g. seagrass friction.
 !
 ! !USES:
-   use meanflow, only: NN,SS,xP,P,B
+   use meanflow, only: NN,SS,xP,P,B,no_shear 
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -36,14 +36,21 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: production.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-18 16:02:16  gotm
+!  Allow no_shear calculation
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
 !
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   P=num*(SS+alpha*NN) + xP
+   if (no_shear) then
+      P= xP
+   else 
+      P=num*(SS+alpha*NN) + xP
+   end if 
    B=-nuh*NN
 
    return
