@@ -1,4 +1,4 @@
-!$Id: output.F90,v 1.5 2003-03-28 09:20:35 kbk Exp $
+!$Id: output.F90,v 1.6 2003-10-14 08:04:32 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -42,7 +42,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: output.F90,v $
-!  Revision 1.5  2003-03-28 09:20:35  kbk
+!  Revision 1.6  2003-10-14 08:04:32  kbk
+!  time is now stored as real
+!
+!  Revision 1.5  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/28 08:24:19  kbk
@@ -218,11 +221,9 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
-   integer                   :: secs
-!
+   REALTYPE                   :: secs
+!EOP
 !-------------------------------------------------------------------------
 !BOC
    if (write_results) then
@@ -234,7 +235,7 @@
 !kbk     call write_time_string(julianday,secondsofday,ts)
 !kbk     call ss_nn_obs 
       LEVEL2 'Saving....',ts
-      secs = nint(n*timestep)
+      secs = n*timestep
       select case (out_fmt)
          case (ASCII)
             call do_ascii_out(nlev,ts,variances,ascii_unit)

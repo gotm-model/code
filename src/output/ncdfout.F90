@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.5 2003-06-13 09:27:16 hb Exp $
+!$Id: ncdfout.F90,v 1.6 2003-10-14 08:04:32 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,7 +38,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.5  2003-06-13 09:27:16  hb
+!  Revision 1.6  2003-10-14 08:04:32  kbk
+!  time is now stored as real
+!
+!  Revision 1.5  2003/06/13 09:27:16  hb
 !  Implemented freshwater fluxes
 !
 !  Revision 1.4  2003/03/28 09:20:35  kbk
@@ -160,7 +163,7 @@
       call check_err(iret)
    end if
    dims(1) = time_dim
-   iret = nf_def_var(ncid,'time',NF_INT,1,dims,time_id)
+   iret = nf_def_var(ncid,'time',NF_REAL,1,dims,time_id)
    call check_err(iret)
 
 !  define variables
@@ -381,7 +384,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   integer, intent(in)                 :: secs
+   REALTYPE, intent(in)                 :: secs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -392,7 +395,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: iret,i
-   integer                   :: time
+   REALTYPE                  :: time
    REALTYPE                  :: dum(0:nlev)
    REAL_4B                   :: buoyp,buoym,dz
    REALTYPE                  :: zz
@@ -423,7 +426,7 @@
       case default
          time = secs
    end select
-   iret = store_data(ncid,time_id,T_SHAPE,1,iscalar=time)
+   iret = store_data(ncid,time_id,T_SHAPE,1,scalar=time)
 
 !  Time varying data : x,y,t 
    iret = store_data(ncid,zeta_id,XYT_SHAPE,1,scalar=zeta)
