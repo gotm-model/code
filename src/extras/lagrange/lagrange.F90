@@ -1,4 +1,4 @@
-!$Id: lagrange.F90,v 1.1 2002-04-30 14:22:55 gotm Exp $
+!$Id: lagrange.F90,v 1.2 2002-04-30 14:47:10 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -36,7 +36,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: lagrange.F90,v $
-!  Revision 1.1  2002-04-30 14:22:55  gotm
+!  Revision 1.2  2002-04-30 14:47:10  gotm
+!  Fixed saving
+!
+!  Revision 1.1  2002/04/30 14:22:55  gotm
 !  Added lagrangian module
 !
 !
@@ -265,8 +268,7 @@
       concentration(i)=concentration(i)*load/h(i)
    end do
    select case (out_fmt)
-!      case (ASCII)
-      case (NETCDF)
+      case (ASCII)
          if(first) then
             open(out_unit,file='lagrange.out',status='unknown')
             first = .false.
@@ -279,10 +281,9 @@
             write(out_unit,*) z,concentration(i)
             z=z-0.5*h(i)
          end do
-      case (ASCII)
+      case (NETCDF)
 #ifdef NETCDF_FMT
          if(first) then
-#if 0
             dims(1) = lon_dim
             dims(2) = lat_dim
             dims(3) = z_dim
@@ -293,7 +294,6 @@
 	            long_name='lagrange concentration')
             iret = define_mode(ncid,.false.)
             first = .false.
-#endif
          end if
          iret = store_data(ncid,lagrange_id,XYZT_SHAPE,n,array=concentration)
 #endif
