@@ -1,5 +1,5 @@
 %
-%$Id: cases.tex,v 1.1 2003-03-10 09:42:23 gotm Exp $
+%$Id: cases.tex,v 1.2 2003-03-28 15:47:54 lars Exp $
 %
 
 \section{GOTM scenarios \label{sec:cases}}
@@ -70,7 +70,9 @@ N\,m$^{-2}$ and the water depth is set to 10 m. Rotation,
 pressure-gradients and stratification are neglected.  The simulation
 is run for 12 hours until a steady-state is reached. These parameters
 are set (among many others) in the input files {\tt gotmrun.inp}, {\tt
-gotmmean.inp}, and {\tt airsea.inp}. Take some time to have a look at
+gotmmean.inp}, and {\tt airsea.inp}. A set of these files has been
+provided for several turbulence models in the sub-directories {\tt
+kepsilon\_inp/}, {\tt komega\_inp/} etc. Take some time to have a look at
 the contents of these files. Most of the parameters found in {\tt
 gotmmean.inp} and {\tt airsea.inp} are explained to some extent in
 \sect{sec:mainIntro}, \sect{sec:meanflowIntro}, and
@@ -78,13 +80,14 @@ gotmmean.inp} and {\tt airsea.inp} are explained to some extent in
 mainly parameters concerning the model run, like the time step, 
 the model time, the output format, etc.
  
-
-All information about the turbulence models is read-in from the file
-{\tt gotmturb.inp}. Having a look in this file, you see that we
-selected {\tt tke\_method = 2} and {\tt length\_scale\_method = 8},
-which corresponds exactly to the $k$-$\epsilon$ model described in
-\sect{sec:dissipationeq}. The model parameters are given in 
-the {\tt keps} namelist.
+Copy all files from the subdirectory {\tt kepsilon\_inp/} to the
+directory with the GOTM executable. We will call this directory the 
+\emph{current directory} in the following.  All information about the
+turbulence models is read-in from the file {\tt gotmturb.inp}. Having
+a look in this file, you see that we selected {\tt tke\_method = 2}
+and {\tt length\_scale\_method = 8}, which corresponds exactly to the
+$k$-$\epsilon$ model described in \sect{sec:dissipationeq}. The model
+parameters are given in the {\tt keps} namelist.
 
 If you run this scenario as described on the GOTM homepage, GOTM will
 write information about the turbulence model on your screen: What are
@@ -105,18 +108,18 @@ constants of the $k$-$\epsilon$ model to compute the value of $\kappa$
 prescribed in {\tt gotmturb.inp} (see \sect{sec:analyse}).
 
 There are other models you can use to calculate the Couette-flow.  If
-you copy the file {\tt MellorYamada\-turb.inp} to {\tt gotmturb.inp},
-GOTM will use the Mellor-Yamada model described in
+you copy all files from the directory {\tt MellorYamada\_inp/} to the
+current directory, GOTM will use the Mellor-Yamada model described in
 \sect{sec:lengthscaleeq} with parameters set in {\tt gotmturb.inp}.
 A special role plays the so-called `generic model' described in 
 \sect{sec:genericeq}. Other model like the $k$-$\epsilon$ model
 of the $k$-$\omega$ model by \cite{Umlaufetal2003} can be considered
-as special cases of the generic model. If you copy e.g.\ {\tt
-komegaturb.inp} to {\tt gotmturb.inp}, the $k$-$\omega$ model is run
-for the couette case. If you copy {\tt
-genericturb.inp} to {\tt gotmturb.inp}, the generic model described 
-by \cite{UmlaufBurchard2003} is activated. For this simple flow, however,
-model results will be quite similiar in all cases.
+as special cases of the generic model. If you copy e.g.\ the files
+from {\tt komega\_inp/} to the current directory, the $k$-$\omega$
+model is run for the couette case. If you copy the files from {\tt
+generic\_inp/} to the current directory, the generic model described
+by \cite{UmlaufBurchard2003} is activated. For this simple flow,
+however, model results will be quite similiar in all cases.
 
 
 
@@ -171,10 +174,11 @@ scenario.
  discussed in \sect{sec:generate} and \sect{sec:analyse}.
 
  If you want to simulate wave breaking with a model of this type,
- simply copy {\tt prescribed\-turb.inp} to {\tt gotmturb.inp} and run
- GOTM. A dynamic equation for $k$ is used, but the length scale is
- fixed, and described by a triangular shape with slope $\kappa$ (see
- {\tt length\_scale\_method = 2}, see \sect{sec:algebraiclength}).
+ simply copy all files from {\tt prescribed\_inp/} to the current
+ directoy, and run GOTM. A dynamic equation for $k$ is used, but the
+ length scale is fixed, and described by a triangular shape with slope
+ $\kappa$ (see {\tt length\_scale\_method = 2}, see
+ \sect{sec:algebraiclength}).
 
  \item For two-equation models, the slope of the length scale in the
  upper layer affected by breaking waves is naturally not equal to
@@ -184,10 +188,11 @@ scenario.
  ratio $P/\epsilon$. For appropriate parameters, his model could
  reproduce the slope $\kappa$ of the length scale also under breaking
  waves. Note again, however, that there is no physical evidence for
- $l = \kappa (z + z_0)$ in the wave-affected boundary layer.
+ $l = \kappa (z + z_0)$ in the wave-affected boundary layer. 
 
-  If you want to simulate wave breaking with this model simply copy
- {\tt kepspilonturb.inp} to {\tt gotmturb.inp} and run gotm.
+ If you want to simulate wave breaking with this model simply copy the
+ files from {\tt kepspilon\_inp/} to the current directory, and run
+ GOTM. Results are quite similar as for the prescribed length scale.
 
  \item \cite{Umlaufetal2003} derived analytical solutions for the
  non-linear system of equations describing the behaviour of
@@ -202,22 +207,24 @@ scenario.
  A numerical solution of the $k$-$\epsilon$ model can be obtained by
  copying {\tt kepspilonturb.inp} to {\tt gotmturb.inp}, but setting
  now {\tt compute\_kappa = .true.}  and {\tt sig\_peps =
- .false.}. Because the spatial decay rate of the TKE is very large
- for this model, the wave-affected layer is very small. As discussed
- by \cite{Umlaufetal2003}, this disadvantage can be overcome by using
- the $k$-$\omega$ model with  parameters given in {\tt
- komegaturb.inp}. The Mellor-Yamada model in {\tt
- MellorYamadaturb.inp} has also been investigated by
- \cite{Umlaufetal2003}, but for this model, again, decay is too
- strong. In addition, the decay rate depends in an unphysical way on
- the wall-function required in this model.
+ .false.}. Because the spatial decay rate of the TKE is very large for
+ this model, the wave-affected layer is very small, and of the order
+ of only a few tens of centimeters for this scenario.  As discussed by
+ \cite{Umlaufetal2003}, this disadvantage can be overcome by using the
+ $k$-$\omega$ model with parameters given in {\tt komegaturb.inp}. The
+ Mellor-Yamada model in {\tt MellorYamada\_inp/} has also been
+ investigated by \cite{Umlaufetal2003}, but for this model, again,
+ decay is too strong. In addition, the decay rate depends in an
+ unphysical way on the wall-function required in this model. You can
+ run all these models by copying files from their subdirectories
+ to your current directory with the GOTM executable.
   
  \item \cite{UmlaufBurchard2003} analysed the properties of a whole
  class of two-equation models for the case of TKE injection at the
  surface. They suggested a `generic' model which could satisfy the
  power-laws under breaking waves for any desired decay rate,
  $\alpha$, and length scale slope, $L$.  This model is activated with
- the parameters in {\tt genericturb.inp}.  Users can select any
+ the input files from {\tt generic\_inp/}.  Users can select any
  reasonable values for $\alpha$ and $L$ (and many others parameters like
  $\kappa$ and $d$), and GOTM will automatically generate a
  two-equation model with exactly the desired properties. Parameters
@@ -253,32 +260,32 @@ You can reproduce this scenario with several two-equation models
 in GOTM.
 
 \begin{itemize}
- \item To run the $k$-$\epsilon$ model, copy {\tt kepsilonturb.inp} to
- {\tt gotmturb.inp}. Note, that in this file, we selected {\tt
- compute\_c3 = .true.}, which means that the model constant
- $c_{\epsilon 3}$ in \eq{dissipation} is computed from a prescribed
- steady-state Richardson-number, $Ri_{st}$ (see discussion in the
- context of \eq{Ri_st}). You can set the value of $Ri_{st}$ in {\tt
+ \item To run the $k$-$\epsilon$ model, copy the input files from {\tt
+ kepsilon\_inp/} to the current directory with the GOTM
+ executable. Note, that in this file, we selected {\tt compute\_c3 =
+ .true.}, which means that the model constant $c_{\epsilon 3}$ in
+ \eq{dissipation} is computed from a prescribed steady-state
+ Richardson-number, $Ri_{st}$ (see discussion in the context of
+ \eq{Ri_st}). You can set the value of $Ri_{st}$ in {\tt
  gotmturb.inp}. Some discussion is given in
  \cite{BurchardBolding2001}.
 
- \item To run the Mellor-Yamada model, copy {\tt MellorYamadaturb.inp}
- to {\tt gotmturb.inp}. Looking at the results you will realize that
+ \item To run the Mellor-Yamada model, use the input files in {\tt
+ MellorYamada\_inp/}. Looking at the results you will realize that
  this model is not at all in accordance with the experimental results
  of \cite{Price79}. The reason can be traced back to the behaviour of
  the turbulent length scale in the strongly stratified thermocline.
  \cite{Galperinetal88} suggested to clip the length scale at a certain
- value. Their solution can be activated by setting {\tt length\_lim = .true.}
- in {\tt gotmturb.inp}. 
- A second solution has been suggested by \cite{Burchard2001c}, who
- computed the model constant $E_3$ in \eq{MY} from the steady-state
- Richardson-number as described above. To activate his method,
- select {\tt compute\_c3 = .true.}
+ value. Their solution can be activated by setting {\tt length\_lim =
+ .true.}  in {\tt gotmturb.inp}.  A second solution has been suggested
+ by \cite{Burchard2001c}, who computed the model constant $E_3$ in
+ \eq{MY} from the steady-state Richardson-number as described
+ above. To activate his method, select {\tt compute\_c3 = .true.}
 
- \item The $k$-$\omega$ model can be run by copying {\tt komegaturb.inp}
- to {\tt gotmturb.inp}. Results for this model are in perfect agreement
- with the measured data.
-
+ \item Input files for the $k$-$\omega$ model can be found in {\tt
+ komega\_inp/}. Results for this model are in perfect agreement with
+ the measured data, because the value of the steady-state Richardson
+ number is computed by GOTM.
 \end{itemize}
 
 Within the GOTM Team, this scenario has been used in several publications
