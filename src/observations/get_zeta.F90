@@ -1,4 +1,4 @@
-!$Id: get_zeta.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: get_zeta.F90,v 1.2 2001-11-18 16:06:31 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -16,8 +16,8 @@
    use time, only: time_diff,julian_day,fsecs
    use observations, only: pi,read_obs
 !   use observations, only: zeta_method,zeta_unit
-   use observations, only: Period1,Amp1,Phase1,Period2,Amp2,Phase2
-   use observations, only: zeta,zeta0
+   use observations, only: period_1,amp_1,phase_1,period_2,amp_2,phase_2
+   use observations, only: zeta,zeta_0
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -31,8 +31,11 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_zeta.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-18 16:06:31  gotm
+!  Avoid namelist member clashes by changing names in zetaspec
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 !
 ! !LOCAL VARIABLES:
@@ -50,11 +53,11 @@
 !BOC
    select case(method)
       case(0)	! constant
-         zeta = zeta0
+         zeta = zeta_0
       case(1)	! tides
-         Zeta = Amp1*sin(2*pi*(fsecs-Phase1)/Period1) &
-               +Amp2*sin(2*pi*(fsecs-Phase2)/Period2) &
-               +zeta0
+         Zeta = amp_1*sin(2*pi*(fsecs-phase_1)/period_1) &
+               +amp_2*sin(2*pi*(fsecs-phase_2)/period_2) &
+               +zeta_0
       case(2)	! from file
 !        This part initialise and read in new values if necessary.
          if(time_diff(jul2,secs2,jul,secs) .lt. 0) then 

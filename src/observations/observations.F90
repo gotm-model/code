@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: observations.F90,v 1.2 2001-11-18 16:06:31 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -113,13 +113,13 @@
 !  Sea surface elevations - 'zetaspec' namelist
    integer		:: zeta_method=0
    character(LEN=PATH_MAX)      :: zeta_file='zeta.dat'
-   REALTYPE, public	:: zeta0=0.
-   REALTYPE, public	:: Period1=44714.
-   REALTYPE, public	:: Amp1=0.
-   REALTYPE, public	:: Phase1=0.
-   REALTYPE, public	:: Period2=43200.
-   REALTYPE, public	:: Amp2=0.
-   REALTYPE, public	:: Phase2=0.
+   REALTYPE, public	:: zeta_0=0.
+   REALTYPE, public	:: period_1=44714.
+   REALTYPE, public	:: amp_1=0.
+   REALTYPE, public	:: phase_1=0.
+   REALTYPE, public	:: period_2=43200.
+   REALTYPE, public	:: amp_2=0.
+   REALTYPE, public	:: phase_2=0.
 
 !  Observed velocity profile profiles - typically from ADCP
    integer		:: vel_prof_method=0
@@ -140,8 +140,11 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-18 16:06:31  gotm
+!  Avoid namelist member clashes by changing names in zetaspec
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 !
 ! !LOCAL VARIABLES:
@@ -209,8 +212,8 @@
    namelist /w_advspec/                                         &
             w_adv_method,w_adv_file,w_adv0,w_adv_discr                      
    namelist /zetaspec/                                          &
-            zeta_method,zeta_file,zeta0,                        &
-            Period1,Amp1,Phase1,Period2,Amp2,Phase2
+            zeta_method,zeta_file,zeta_0,                       &
+            period_1,amp_1,phase_1,period_2,amp_2,phase_2
    namelist /velprofile/ vel_prof_method,vel_prof_file
    namelist /eprofile/ e_prof_method,e_obs_const,e_prof_file
    namelist /bprofile/ b_obs_surf,b_obs_NN,b_obs_sbf
@@ -390,6 +393,10 @@
 !  The light extinction profiles
    select case (extinct_method)
       case (0)
+         open(extinct_unit,file=extinct_file,status='unknown',err=105)
+         LEVEL2 'Reading extinction data from:'
+         LEVEL3 trim(extinct_file)
+         call read_extinction(extinct_unit,julday,secs)
       case (1)
          A=0.58;g1=0.35;g2=23.0
       case (2)
@@ -403,14 +410,10 @@
       case (6)
          A=0.78;g1=1.40;g2=7.9
       case (7)
-         open(extinct_unit,file=extinct_file,status='unknown',err=105)
-         LEVEL2 'Reading extinction data from:'
-         LEVEL3 trim(extinct_file)
-         call read_extinction(extinct_unit,julday,secs)
-      case (8)
-         A=0.7;g1=0.40;g2=8.0 ! Adolf - Lago Maggiore
+         A=0.7;g1=0.40;g2=8.0 ! Adolf Stips - Lago Maggiore
       case default
    end select
+   
 
 !  The vertical advection velocity
    select case (w_adv_method)
@@ -552,7 +555,7 @@
 
    call get_int_pressure(int_press_method,int_press_unit,julday,secs,nlev,z)
 
-   if(extinct_method .eq. 7) then
+   if(extinct_method .eq. 0) then
       call read_extinction(extinct_unit,julday,secs)
    end if
 
