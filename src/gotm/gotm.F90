@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.7 2003-03-28 09:20:34 kbk Exp $
+!$Id: gotm.F90,v 1.8 2003-04-01 17:01:00 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -52,6 +52,9 @@
 #ifdef SEAGRASS
    use seagrass
 #endif
+#ifdef BIO
+   use bio
+#endif
 !
    IMPLICIT NONE
    private
@@ -67,12 +70,18 @@
 #ifdef SEAGRASS
    integer, parameter                  :: unit_seagrass=62
 #endif
+#ifdef BIO
+   integer, parameter                  :: unit_bio=63
+#endif
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.7  2003-03-28 09:20:34  kbk
+!  Revision 1.8  2003-04-01 17:01:00  hb
+!  Added infrastructure for geobiochemical model
+!
+!  Revision 1.7  2003/03/28 09:20:34  kbk
 !  added new copyright to files
 !
 !  Revision 1.6  2003/03/28 09:11:30  kbk
@@ -189,6 +198,9 @@
 #ifdef SEAGRASS
    call init_seagrass(namlst,'seagrass.inp',unit_seagrass,nlev,h)
 #endif
+#ifdef BIO
+   call init_bio(namlst,'bio.inp',unit_bio,nlev,h)
+#endif
    LEVEL2 'done.'
    STDERR LINE
 
@@ -291,6 +303,9 @@
       call stratification(nlev,buoy_method,dt,cnpar,gravity,rho_0,nuh)
 #ifdef SEDIMENT
       call calc_sediment(nlev,dt)
+#endif
+#ifdef BIO
+      call calc_bio(nlev,dt)
 #endif
       select case (turb_method)
          case (0)
