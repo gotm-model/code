@@ -1,4 +1,4 @@
-!$Id: yevol.F90,v 1.5 2003-03-28 09:20:36 kbk Exp $
+!$Id: yevol.F90,v 1.6 2003-10-28 10:29:07 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,7 +40,10 @@
 !  Original author(s): Pierre-Philippe Mathieu
 !
 !  $Log: yevol.F90,v $
-!  Revision 1.5  2003-03-28 09:20:36  kbk
+!  Revision 1.6  2003-10-28 10:29:07  hb
+!  now implicit solution
+!
+!  Revision 1.5  2003/03/28 09:20:36  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/28 09:10:39  kbk
@@ -88,8 +91,13 @@
    if (Bcup.eq.1) then                       !BC Neuman
       a      =2*dt*avh(N-1)/(h(N)+h(N-1))/h(N)
       au(N)=-cnpar*a
-      bu(N)=1-au(N)
-      du(N)=Y(N)+dt*(Qsour(N)-Yup/h(N))+(1-cnpar)*a*(Y(N-1)-Y(N))
+      if (Yup.lt.0.) then
+         bu(N)=1.-au(N)
+         du(N)=Y(N)+dt*(Qsour(N)-Yup/h(N))+(1.-cnpar)*a*(Y(N-1)-Y(N))
+      else ! Patankar (1980) trick
+         bu(N)=1.-au(N)+dt*Yup/Y(n)/h(N)
+         du(N)=Y(N)+dt*Qsour(N)+(1.-cnpar)*a*(Y(N-1)-Y(N))
+      end if	 
    else if (Bcup.eq.2) then                    !BC Dirichlet
       au(N)=0.
       bu(N)=1.
@@ -101,8 +109,13 @@
    if (Bcdw.eq.1) then                                !BC Neuman              
       c    =2*dt*avh(1)/(h(1)+h(2))/h(1)
       cu(1)=-cnpar*c 
-      bu(1)=1-cu(1)
-      du(1)=Y(1)+dt*(Qsour(1)+Ydw/h(1))+(1-cnpar)*c*(Y(2)-Y(1))
+      if (Ydw.gt.0) then
+         bu(1)=1.-cu(1)
+         du(1)=Y(1)+dt*(Qsour(1)+Ydw/h(1))+(1-cnpar)*c*(Y(2)-Y(1))
+      else ! Patankar (1980) trick
+         bu(1)=1.-cu(1)-dt*Ydw/Y(1)/h(1)
+         du(1)=Y(1)+dt*Qsour(1)+(1-cnpar)*c*(Y(2)-Y(1))
+      end if
    else if (Bcdw.eq.2) then                           !BC Dirichlet
       cu(1)=0.
       bu(1)=1.
