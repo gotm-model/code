@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.11 2003-09-16 12:17:10 hb Exp $
+!$Id: gotm.F90,v 1.12 2004-03-04 10:13:01 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -79,7 +79,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.11  2003-09-16 12:17:10  hb
+!  Revision 1.12  2004-03-04 10:13:01  kbk
+!  calc_sediment --> do_sediment
+!
+!  Revision 1.11  2003/09/16 12:17:10  hb
 !  added new biological model - bio_iow
 !
 !  Revision 1.10  2003/07/23 12:14:07  hb
@@ -312,7 +315,7 @@
          call temperature(nlev,dt,cnpar,I_0,heat,nuh,rad)
       call stratification(nlev,buoy_method,dt,cnpar,gravity,rho_0,nuh)
 #ifdef SEDIMENT
-      call calc_sediment(nlev,dt)
+      call do_sediment(nlev,dt)
 #endif
 #ifdef BIO
       call do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
