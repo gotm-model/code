@@ -1,4 +1,4 @@
-!$Id: output.F90,v 1.1 2001-02-12 15:55:59 gotm Exp $
+!$Id: output.F90,v 1.2 2001-11-18 11:51:52 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -54,8 +54,11 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: output.F90,v $
-!  Revision 1.1  2001-02-12 15:55:59  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-18 11:51:52  gotm
+!  Fixed a typo
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:59  gotm
+!  initial import into CVS
 !
 !
 !EOP
@@ -111,7 +114,7 @@
 #ifdef NETCDF_FMT
          EXT = 'nc'
          fname = TRIM(out_dir) //'/'// TRIM(out_fn) // '.' // ext
-         LEVEL2 'Output in NetCDF (time unit is saet to seconds):'
+         LEVEL2 'Output in NetCDF (time unit is set to seconds):'
          LEVEL2 TRIM(fname)
          call init_ncdf(fname,title,latitude,longitude,nlev,ts,0)
       case (GRADS)
