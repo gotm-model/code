@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.9 2003-03-28 09:20:35 kbk Exp $
+!$Id: updategrid.F90,v 1.10 2003-07-23 10:52:52 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -10,12 +10,12 @@
 !
 ! !DESCRIPTION:
 !  This subroutine calculates for each time step new layer thicknesses
-!  in order to fit them to the changing water depth. 
+!  in order to fit them to the changing water depth.
 !  Four different grids can be specified:
 !  \begin{enumerate}
 !  \item Equidistant grid with possible zooming towards surface and bottom.
 !  The number of layers, {\tt nlev}, and the zooming factors,
-!  {\tt ddu}=$d_u$ and  {\tt ddl}=$d_l$, 
+!  {\tt ddu}=$d_u$ and  {\tt ddl}=$d_l$,
 !  are specified in {\tt gotmmean.inp}.
 !  Zooming is applied according to the formula
 !  \begin{equation}\label{formula_Antoine}
@@ -29,11 +29,11 @@
 !    \item $d_l=d_u=0$ results in equidistant discretisations.
 !    \item $d_l>0, d_u=0$ results in zooming near the bottom.
 !    \item $d_l=0, d_u>0$ results in zooming near the surface.
-!    \item $d_l>0, d_u>0$ results in double zooming nea both, 
+!    \item $d_l>0, d_u>0$ results in double zooming nea both,
 !          the surface and the bottom.
 !  \end{itemize}
-!  
-!  \item Sigma--layers. The fraction that every layer occupies is 
+!
+!  \item Sigma--layers. The fraction that every layer occupies is
 !  read--in from file, see {\tt gotmmean.inp}.
 !  \item Cartesian layers. The height of every layer is read in from file,
 !  see {\tt gotmmean.inp}.
@@ -55,11 +55,11 @@
 !  \end{equation}
 !
 ! with the observed vertical velocity $w_{adv}$ at height $z_w$, which
-! is read in through the {\tt w\_advspec} namelist in {\tt obs.inp}. 
+! is read in through the {\tt w\_advspec} namelist in {\tt obs.inp}.
 !
 ! !USES:
-   use meanflow,     only: depth0,depth,z,h,ho,ddu,ddl,grid_method
-   use meanflow,     only: NN,SS,w_grid,grid_file,w
+   use meanflow, only: depth0,depth,z,h,ho,ddu,ddl,grid_method
+   use meanflow, only: NN,SS,w_grid,grid_file,w
    use observations, only: zeta_method,w_adv,w_height,w_adv_discr
    IMPLICIT NONE
 !
@@ -70,7 +70,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
-!  Revision 1.9  2003-03-28 09:20:35  kbk
+!  Revision 1.10  2003-07-23 10:52:52  hb
+!  proper initialisation of gridinit + cleaning
+!
+!  Revision 1.9  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.8  2003/03/28 08:56:56  kbk
@@ -93,45 +96,43 @@
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
 !  initial import into CVS
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
    integer                   :: i,rc,j,nlayers
-   integer, save             :: gridinit  
+   integer, save             :: gridinit=0
    REALTYPE                  :: zi(0:nlev)
    REALTYPE                  :: znew,zold
    integer, parameter        :: grid_unit = 101
    REALTYPE, save, dimension(:), allocatable     :: ga
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (gridinit .eq. 0) then ! Build up dimensionless grid (0<=ga<=1)  
+   if (gridinit .eq. 0) then ! Build up dimensionless grid (0<=ga<=1)
       allocate(ga(0:nlev),stat=rc)
       if (rc /= 0) STOP 'updategrid: Error allocating (ga)'
-      ga(0)=0 
+      ga(0) = _ZERO_
       select case (grid_method)
       case(0) !Equidistant grid with possible zooming to surface and bottom
          LEVEL2 "sigma coordinates (zooming possible)"
-         if (ddu .le. 0 .and. ddl .le. 0) then 
-            do i=1,nlev 
-               ga(i)=ga(i-1)+1/float(nlev)  
-            end do  
-         else 
+         if (ddu .le. 0 .and. ddl .le. 0) then
+            do i=1,nlev
+               ga(i)=ga(i-1)+1/float(nlev)
+            end do
+         else
             do i=1,nlev ! This zooming routine is from Antoine Garapon, ICCH, DK
-               ga(i)=tanh((ddl+ddu)*i/nlev-ddl)+tanh(ddl) 
-               ga(i)=ga(i)/(tanh(ddl)+tanh(ddu)) 
-            end do 
+               ga(i)=tanh((ddl+ddu)*i/nlev-ddl)+tanh(ddl)
+               ga(i)=ga(i)/(tanh(ddl)+tanh(ddu))
+            end do
          end if
-         depth = depth0 + Zeta 
+         depth = depth0 + Zeta
          do i=1,nlev
             h(i)=(ga(i)-ga(i-1))*depth
          end do
-      case(1) !Sigma, the fraction each layer occupies is specified. 
+      case(1) !Sigma, the fraction each layer occupies is specified.
          LEVEL2 "external specified sigma coordinates"
          open (grid_unit,FILE =grid_file,status='unknown',ERR=100)
          read (grid_unit,*) nlayers
          if (nlayers /= nlev) then
-            FATAL "number of layers spefified in file <> # of model layers" 
+            FATAL "number of layers spefified in file <> # of model layers"
             stop 'updategrid'
          end if
          depth = _ZERO_
@@ -142,7 +143,7 @@
             j=j+1
          end do
          if (j /= nlayers) then
-            FATAL "number of layers read from file <> # of model layers" 
+            FATAL "number of layers read from file <> # of model layers"
             stop 'updategrid'
          end if
          close (grid_unit)
@@ -163,7 +164,7 @@
             FATAL "nlev must be equal to the number of layers in: ", &
                    trim(grid_file)
             stop 'updategrid'
-         end if  
+         end if
          depth = _ZERO_
          j=0
          do i=nlev,1,-1 !The first layer read is the surface
@@ -172,7 +173,7 @@
             j=j+1
          end do
          if (j /= nlayers) then
-            FATAL "number of layers read from file <> # of model layers" 
+            FATAL "number of layers read from file <> # of model layers"
             stop 'updategrid'
          end if
          close (grid_unit)
@@ -199,32 +200,32 @@
      case default
          stop "updategrid: No valid grid_method specified"
      end select
-     
-     gridinit = 1  !  Grid is now initialised ! 
+
+     gridinit = 1  !  Grid is now initialised !
    end if
-   
+
    depth = depth0 + zeta
 
-   select case(grid_method) 
-   case (0)   
+   select case(grid_method)
+   case (0)
       do i=1,nlev
          ho(i) = h(i)
          h(i)  = (ga(i)-ga(i-1)) * depth
-      end do 
+      end do
    case (1)
       ho = h
       h = ga *depth
-   case (2) 
-      ho=h   
+   case (2)
+      ho=h
    case(3) ! Adaptive grid
       if (w_adv_discr.eq.0) then
-         STDERR 'You chose to use an adaptive vertical grid, ' 
-         STDERR 'but set the advection discretisation method to zero.' 
-         STDERR 'Please set w_adv_discr to a value > zero, for' 
-         STDERR 'doing so, see namelist w_advspec in obs.inp.' 
-         STDERR 'Program is aborted now in updategrid.F90.' 
+         STDERR 'You chose to use an adaptive vertical grid, '
+         STDERR 'but set the advection discretisation method to zero.'
+         STDERR 'Please set w_adv_discr to a value > zero, for'
+         STDERR 'doing so, see namelist w_advspec in obs.inp.'
+         STDERR 'Program is aborted now in updategrid.F90.'
          stop
-      end if 
+      end if
       call adaptivegrid(ga,NN,SS,h,depth,nlev,dt)
       znew=-depth
       zold=-depth
@@ -237,12 +238,12 @@
       end do
     case default
          stop "updategrid: No valid grid_method specified"
-   end select   
-   
-   z(1)=-depth0+0.5*h(1) 
-   do i=2,nlev 
-      z(i)=z(i-1)+0.5*(h(i-1)+h(i)) 
-   end do  
+   end select
+
+   z(1)=-depth0+0.5*h(1)
+   do i=2,nlev
+      z(i)=z(i-1)+0.5*(h(i-1)+h(i))
+   end do
 
    zi(0)=-depth0
    do i=1,nlev
@@ -261,17 +262,17 @@
 
     w(0)=0.
     w(nlev)=0.
-   
+
    return
 
 100 FATAL 'Unable to open ',trim(grid_file),' for reading'
    stop 'updategrid'
 101 FATAL 'Error reading grid file ',trim(grid_file)
-   stop 'updategrid'    
+   stop 'updategrid'
 
-   end subroutine updategrid 
+   end subroutine updategrid
 !EOC
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
