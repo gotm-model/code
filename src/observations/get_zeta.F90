@@ -1,4 +1,4 @@
-!$Id: get_zeta.F90,v 1.3 2003-03-10 08:51:58 gotm Exp $
+!$Id: get_zeta.F90,v 1.4 2003-03-28 09:02:09 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -30,7 +30,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_zeta.F90,v $
-!  Revision 1.3  2003-03-10 08:51:58  gotm
+!  Revision 1.4  2003-03-28 09:02:09  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 08:51:58  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.2  2001/11/18 16:06:31  gotm
@@ -54,13 +57,13 @@
 !-----------------------------------------------------------------------
 !BOC
    select case(method)
-      case(0)	! constant
+      case(0)                                         ! constant
          zeta = zeta_0
-      case(1)	! tides
+      case(1)                                         ! tides
          Zeta = amp_1*sin(2*pi*(fsecs-phase_1)/period_1) &
                +amp_2*sin(2*pi*(fsecs-phase_2)/period_2) &
                +zeta_0
-      case(2)	! from file
+      case(2)                                         ! from file
 !        This part initialise and read in new values if necessary.
          if(time_diff(jul2,secs2,jul,secs) .lt. 0) then 
             do

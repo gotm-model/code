@@ -1,4 +1,4 @@
-!$Id: analytical_profile.F90,v 1.2 2003-03-10 08:51:57 gotm Exp $
+!$Id: analytical_profile.F90,v 1.3 2003-03-28 09:02:09 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -17,8 +17,8 @@
 !
 ! !INPUT PARAMETERS:
    integer,  intent(in)                :: nlev
-   REALTYPE, intent(in)	               :: z(0:nlev)
-   REALTYPE, intent(in)	               :: z1,v1,z2,v2
+   REALTYPE, intent(in)                :: z(0:nlev)
+   REALTYPE, intent(in)                :: z1,v1,z2,v2
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: prof(0:nlev)
@@ -27,7 +27,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: analytical_profile.F90,v $
-!  Revision 1.2  2003-03-10 08:51:57  gotm
+!  Revision 1.3  2003-03-28 09:02:09  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 08:51:57  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm

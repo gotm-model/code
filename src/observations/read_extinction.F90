@@ -1,4 +1,4 @@
-!$Id: read_extinction.F90,v 1.2 2003-03-10 08:51:58 gotm Exp $
+!$Id: read_extinction.F90,v 1.3 2003-03-28 09:02:09 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,13 +19,16 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	               :: unit,jul,secs
+   integer, intent(in)                 :: unit,jul,secs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
 !  $Log: read_extinction.F90,v $
-!  Revision 1.2  2003-03-10 08:51:58  gotm
+!  Revision 1.3  2003-03-28 09:02:09  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 08:51:58  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
