@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.6 2004-01-13 08:29:13 lars Exp $
+#$Id: Makefile,v 1.7 2004-03-04 09:33:49 kbk Exp $
 #
 # Makefile to build the the Util library - libutil.a
 #
@@ -19,9 +19,10 @@ ${LIB}(eqstate.o)
 OBJ   = \
 ${LIB}(gridinterpol.o)		\
 ${LIB}(w_split_it_adv.o)	\
-${LIB}(yevol.o)	                \
-${LIB}(diffusionMean.o)             \
-${LIB}(advectionMean.o)
+${LIB}(yevol.o)			\
+${LIB}(diffusionMean.o)		\
+${LIB}(advectionMean.o)		\
+${LIB}(lagrange.o)
 
 all: $(MOD) $(OBJ)
 	$(MOVE_MODULES_COMMAND)
