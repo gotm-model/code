@@ -1,4 +1,4 @@
-!$Id: mussels.F90,v 1.2 2003-10-17 14:36:49 kbk Exp $
+!$Id: mussels.F90,v 1.3 2003-10-28 10:26:33 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -28,7 +28,10 @@
 !  Original author(s): Karsten Bolding, Marie Maar & Hans Burchard
 !
 !  $Log: mussels.F90,v $
-!  Revision 1.2  2003-10-17 14:36:49  kbk
+!  Revision 1.3  2003-10-28 10:26:33  hb
+!  allow for delayed filtering + removed dt from flux calc.
+!
+!  Revision 1.2  2003/10/17 14:36:49  kbk
 !  skeleton bio mass subroutine added
 !
 !  Revision 1.1  2003/10/16 15:42:16  kbk
@@ -39,6 +42,7 @@
 !  from a namelist
    integer                   :: mussels_model=1
    REALTYPE                  :: filter_rate=1.
+   REALTYPE                  :: filter_lag=0.0
    REALTYPE                  :: nmussels=1000. 
    REALTYPE                  :: rate
    REALTYPE                  :: biomass=_ZERO_
@@ -73,7 +77,8 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: rc,n
-   namelist /mussels_nml/ mussels_calc,mussels_model,filter_rate,nmussels
+   namelist /mussels_nml/ mussels_calc,mussels_model,filter_rate, &
+                          filter_lag,nmussels
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -134,17 +139,23 @@
 ! !LOCAL VARIABLES:
    integer                   :: n
    REALTYPE                  :: flux
+   REALTYPE, save            :: elapsed=_ZERO_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    if (mussels_calc) then
 
+      elapsed=elapsed+dt
       select case (mussels_model)
          case (1)
-            flux=dt*rate*nmussels
+            flux=rate*nmussels
             do n=1,numc
                if(mussels_inhale(n)) then
-                  bfl(n) = -flux*cc(n,1)
+	          if (elapsed .gt. filter_lag) then
+                     bfl(n) = -flux*cc(n,1)
+		  else   
+                     bfl(n) = _ZERO_
+		  end if   
                end if
             end do
             call mussel_biomass()
