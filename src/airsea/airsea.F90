@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.2 2001-06-13 07:40:39 gotm Exp $
+!$Id: airsea.F90,v 1.3 2001-11-18 11:43:48 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,9 +6,9 @@
 ! !MODULE: airsea - the air sea interaction.
 !
 ! !INTERFACE:
-   module airsea 
+   module airsea
 !
-! !DESCRIPTION: 
+! !DESCRIPTION:
 !  This module provides various ways to obtain the heat, momentum and freshwater
 !  fluxes. In the future the air/sea interaction will hopefully spin off as
 !  a separate Open Source project - but with close links to GOTM.
@@ -29,14 +29,17 @@
 ! !PUBLIC DATA MEMBERS:
    logical, public	:: calc_fluxes=.false.
    REALTYPE, public	:: tx,ty,I_0,heat
-   REALTYPE, public	:: sst,sss 
+   REALTYPE, public	:: sst,sss
    REALTYPE, public	:: int_sw=0.,int_hf=0.,int_total=0.
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.2  2001-06-13 07:40:39  gotm
+!  Revision 1.3  2001-11-18 11:43:48  gotm
+!  Cleaned
+!
+!  Revision 1.2  2001/06/13 07:40:39  gotm
 !  Lon, lat was hardcoded in meteo.F90 - now passed via init_meteo()
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
@@ -81,8 +84,8 @@
    REALTYPE	:: cee_heat,ced_heat
    REALTYPE	:: cee_mom,ced_mom
 
-   REALTYPE, parameter	:: cpa=1008. 
-   REALTYPE, parameter	:: cp=3985. 
+   REALTYPE, parameter	:: cpa=1008.
+   REALTYPE, parameter	:: cp=3985.
    REALTYPE, parameter	:: emiss=0.97
    REALTYPE, parameter	:: bolz=5.67e-8
    REALTYPE, parameter	:: Kelvin=273.16
@@ -112,7 +115,7 @@
    subroutine init_air_sea(namlst,lat,lon)
 !
 ! !DESCRIPTION:
-!  This routine initialises the Air-Sea module by reading various variables 
+!  This routine initialises the Air-Sea module by reading various variables
 !  from a namelist and open relevant files.
 !
 ! !USES:
@@ -169,7 +172,7 @@
             LEVEL2 'Reading heat fluxes from:'
             LEVEL3 trim(heatflux_file)
          case default
-      end select 
+      end select
 
 !     The momentum fluxes
       select case (momentum_method)
@@ -196,7 +199,7 @@
             LEVEL2 'Reading sea surface temperature from:'
             LEVEL3 trim(sst_file)
          case default
-      end select 
+      end select
 
 !     The sea surface salinity
       select case (sss_method)
@@ -205,7 +208,7 @@
             LEVEL2 'Reading sea surface salinity from:'
             LEVEL3 trim(sss_file)
          case default
-      end select 
+      end select
 
 !     The air temperature
       select case (airt_method)
@@ -214,7 +217,7 @@
             LEVEL2 'Reading air temperatur from from:'
             LEVEL3 trim(airt_file)
          case default
-      end select 
+      end select
 
    end if
 
@@ -319,7 +322,7 @@ STOP 'TESTING'
          case (FROMFILE)
             call read_heat_flux(jul,secs,I_0,heat)
          case default
-      end select 
+      end select
 
 !     The momentum fluxes
       select case (momentum_method)
@@ -336,19 +339,19 @@ STOP 'TESTING'
          case (FROMFILE)
             call read_sst(jul,secs,sst)
          case default
-      end select 
+      end select
 
 !     The sea surface salinity
       select case (sss_method)
          case (FROMFILE)
          case default
-      end select 
+      end select
 
 !     The air temperature
       select case (airt_method)
          case (FROMFILE)
          case default
-      end select 
+      end select
 
    end if
 
@@ -426,7 +429,7 @@ STOP 'TESTING'
 !  See airsea module
 !
 ! !LOCAL VARIABLES:
-   REALTYPE		:: tvirt,s,s0 
+   REALTYPE		:: tvirt,s,s0
    REALTYPE		:: ae_h,be_h,ce_h,pe_h
    REALTYPE		:: ae_m,be_m,ce_m,pe_m
    REALTYPE, parameter	:: a1=6.107799961
@@ -588,7 +591,7 @@ STOP 'TESTING'
    subroutine short_wave_radiation(jul,secs,lon,lat,swr)
 !
 ! !DESCRIPTION:
-!  Calculates the SW radiation - based on lat,lon,time,cloud and albedo. 
+!  Calculates the SW radiation - based on lat,lon,time,cloud and albedo.
 !
 !  albedo monthly values from Payne (1972) as means of the values
 !  at 40N and 30N for the Atlantic Ocean ( hence the same latitudinal
@@ -763,7 +766,7 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOC
 !  This part initialise and read in new values if necessary.
-   if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .lt. 0) then 
+   if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .lt. 0) then
       do
          meteo_jul1 = meteo_jul2
          meteo_secs1 = meteo_secs2
@@ -854,7 +857,7 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOC
 !  This part initialise and read in new values if necessary.
-   if(time_diff(heat_jul2,heat_secs2,jul,secs) .lt. 0) then 
+   if(time_diff(heat_jul2,heat_secs2,jul,secs) .lt. 0) then
       do
          heat_jul1 = heat_jul2
          heat_secs1 = heat_secs2
@@ -920,7 +923,7 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOC
 !  This part initialise and read in new values if necessary.
-   if(time_diff(mom_jul2,mom_secs2,jul,secs) .lt. 0) then 
+   if(time_diff(mom_jul2,mom_secs2,jul,secs) .lt. 0) then
       do
          mom_jul1 = mom_jul2
          mom_secs1 = mom_secs2
@@ -953,7 +956,7 @@ STOP 'TESTING'
    subroutine read_sst(jul,secs,sst)
 !
 ! !DESCRIPTION:
-!  This routine will read the sea surface temperature from a file and 
+!  This routine will read the sea surface temperature from a file and
 !  do interpolation in time.
 !
 ! !USES:
@@ -985,7 +988,7 @@ STOP 'TESTING'
 !-----------------------------------------------------------------------
 !BOC
 !  This part initialise and read in new values if necessary.
-   if(time_diff(sst_jul2,sst_secs2,jul,secs) .lt. 0) then 
+   if(time_diff(sst_jul2,sst_secs2,jul,secs) .lt. 0) then
       do
          sst_jul1 = sst_jul2
          sst_secs1 = sst_secs2
