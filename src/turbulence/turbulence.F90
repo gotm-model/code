@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: turbulence.F90,v 1.2 2001-11-18 16:15:30 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -32,7 +32,8 @@
    REALTYPE, public, dimension(:), allocatable	:: as,an
    REALTYPE, public, dimension(:), allocatable	:: xRf 
    REALTYPE, public	:: cde,sig_e0,sig_e1
-   REALTYPE, public	:: craig_m
+   REALTYPE, public	:: craig_m,beta_gen 
+   REALTYPE, public	:: sig_phi,c_phi1,c_phi2,nnx,mmx,nx 
 !  These variables are read from the 'turbulence' namelist.
    integer, public	:: turb_method=2 
    integer, public	:: tke_method=2
@@ -40,11 +41,19 @@
    integer, public	:: stab_method=3
    logical, public	:: length_lim=.true.
    logical, public	:: craig_banner=.false.
+   REALTYPE, public	:: nnn=0.
+   REALTYPE, public	:: mmm=1.
    REALTYPE, public	:: const_num= 5.e-4 
    REALTYPE, public	:: const_nuh= 5.e-4 
    REALTYPE, public	:: k_min=3e-6 
    REALTYPE, public	:: eps_min=5e-10
    REALTYPE, public	:: L_min=0.01 
+!  Turbulence parameters - 'umlauf' namelist.
+   logical, public      :: umlauf_burchard=.false. 
+   REALTYPE, public     :: mx=1.0
+   REALTYPE, public     :: d_gen=-1.2
+   REALTYPE, public     :: alpha_gen=-2.0
+   REALTYPE, public     :: l_gen=0.2 
 !  Turbulence parameters - 'turb_parameters' namelist.
    REALTYPE, public	:: kappa=0.4
    REALTYPE, public 	:: Prandtl0=0.714 
@@ -115,6 +124,7 @@
 !  Length scale calculation.
    integer, parameter	:: diss_eq=8
    integer, parameter	:: length_eq=9
+   integer, parameter   :: generic_eq=10
    integer, parameter	:: BougeaultAndre=6
    integer, parameter	:: ispra_length=6
 
@@ -122,8 +132,11 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-18 16:15:30  gotm
+!  New generic two-equation model
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 !
 ! !BUGS
@@ -164,9 +177,13 @@
 !
 ! !LOCAL VARIABLES:
    integer		:: rc
-   namelist /turbulence/ turb_method,tke_method,len_scale_method,stab_method, &
-                         craig_banner,length_lim,const_num,const_nuh,k_min,   &
+   REALTYPE             :: rad
+   namelist /turbulence/ turb_method,tke_method,len_scale_method,nnn,mmm,     &
+                         stab_method, &
+                         craig_banner,const_num,const_nuh,           &
+                         length_lim,const_num,const_nuh,k_min,   &
                          L_min,eps_min
+   namelist /umlauf/ umlauf_burchard,mx,d_gen,alpha_gen,l_gen  
    namelist /turb_parameters/ kappa,Prandtl0,cm0,cm_craig,cw,galp
    namelist /keps/ ce1,ce2,ce3minus,ce3plus,sig_k,flux_bdy
    namelist /my/ sl,e1,e2,e3,MY_length
@@ -183,6 +200,7 @@
    open(namlst,file=fn,status='old',action='read',err=80)
    LEVEL2 'reading turbulence namelists..'
    read(namlst,nml=turbulence,err=81)
+   read(namlst,nml=umlauf,err=87)
    read(namlst,nml=turb_parameters,err=82)
    read(namlst,nml=keps,err=83)
    read(namlst,nml=my,err=84)
@@ -196,6 +214,51 @@
    craig_m=sqrt(1.5*cm_craig**2*sig_k/kappa**2)
    sig_e0=(4./3.*craig_m+1.)*(craig_m+1.)*kappa**2/(ce2*cm_craig**2)
    sig_e1= kappa*kappa*cm0/(ce2-ce1)/cde
+
+   if (umlauf_burchard) then
+      if ((stab_method.lt.3).or.(stab_method.eq.4)) then
+         STDERR 'Please chose stab_func=3 or stab_func>4 when '
+         STDERR 'working with the Umlauf & Burchard model.'
+         STDERR 'Program aborted in turbulence.F90.'
+         stop
+      end if    
+      beta_gen=1.5*alpha_gen-1.   ! slope of epsilon in shear-free turbulence
+      c_phi1=mx        ! with (3.9)
+      sig_k=1.5*(alpha_gen*L_gen)**2/cm0**2
+!      l-exponent for Umlauf & Burchard model calculated here:
+      rad=8.*alpha_gen**2*(2.+d_gen)**2*l_gen**2*             &
+       (kappa**2-l_gen**2)*mx*(1.+2.*mx) +                   &
+        (-4.*d_gen*kappa**2*mx                                &
+        + alpha_gen*(2.+d_gen)*l_gen**2*(1.+4.*mx))**2
+      if (rad.gt.0) then
+         nx= -1./( 4.*(2.+d_gen)*(kappa**2-l_gen**2) )*          &
+           (4.*d_gen*kappa**2*mx                                 &
+           -alpha_gen*(2.+d_gen)*l_gen**2*(1.+4.*mx)  +          &
+           sqrt(rad) )
+         if (nx.gt.0) then
+            STDERR 'Negative nx-exponent in Umlauf & Burchard model.'
+            STDERR 'Please choose other value for mx.'
+            STDERR 'Program abort now in generic_eq.F90.'
+            stop
+         end if
+      else
+         STDERR 'Negative radicant in Umlauf & Burchard model.'
+         STDERR 'Please choose other value for mx or empirical parameters.'
+         STDERR 'Program abort now in generic_eq.F90.'
+         stop
+      endif
+      sig_phi=2.*kappa**2*d_gen*nx/(cm0**2*(d_gen+2.))  ! with (3.16)
+      c_phi2=nx**2*kappa**2/(cm0**2*sig_phi)+c_phi1     ! with (3.2)
+      mmx=-nx         ! exponent for epsilon in Burchard 2001 notation
+      nnx=1.5*nx+mx   ! exponent for k in Burchard 2001 notation
+   else
+      mmx=mmm         ! exponent for epsilon in Burchard 2001 notation
+      nnx=nnn         ! exponent for k in Burchard 2001 notation
+      sig_phi = mmx*kappa*kappa*cm0/(ce2-ce1)/cde
+      c_phi1=ce1*mmx+nnx
+      c_phi2=ce2*mmx+nnx
+   end if
+
 
    LEVEL2 'allocation memory..'
    allocate(tke(0:nlev),stat=rc)
@@ -278,6 +341,8 @@
 85 FATAL 'I could not read "stabfunc" namelist'
    stop 'init_turbulence'
 86 FATAL 'I could not read "iw" namelist'
+   stop 'init_turbulence'
+87 FATAL 'I could not read "umlauf" namelist'
    stop 'init_turbulence'
 
    end subroutine init_turbulence 
@@ -465,6 +530,8 @@
    select case(len_scale_method)
       case(diss_eq)
          call dissipationeq(nlev,dt,z0b,z0s,u_taus,u_taub,h,NN,P,B)
+      case(generic_eq)
+         call genericeq(nlev,dt,z0b,z0s,u_taus,u_taub,h,NN,P,B)
       case(length_eq)
          do i=1,nlev-1
             numtke(i)=Sl*sqrt(2.*tke(i))*L(i)

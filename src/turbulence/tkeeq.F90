@@ -1,4 +1,4 @@
-!$Id: tkeeq.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: tkeeq.F90,v 1.2 2001-11-18 16:15:30 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -56,7 +56,8 @@
    use mTridiagonal
    use turbulence, ONLY: tkeo,tke,k_min,eps,num,cm0,cde,flux_bdy
    use turbulence, ONLY: tke_method
-   use turbulence, ONLY: craig_banner,craig_m,cw
+   use turbulence, ONLY: craig_banner,craig_m,cw,umlauf_burchard
+   use turbulence, ONLY: sig_phi,l_gen,alpha_gen,cm_craig 
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS: 
@@ -75,8 +76,11 @@
 !  Original author(s): Hans Burchard & Karsten Bolding 
 !
 !  $Log: tkeeq.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-18 16:15:30  gotm
+!  New generic two-equation model
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 ! 
 ! !LOCAL VARIABLES:
@@ -89,7 +93,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-! To be put into namelist later:
+
 
    tkeo=tke
  
@@ -156,6 +160,14 @@
       call tridiagonal(N,1,N-1,tke)
       tke(0) = u_taub*u_taub/sqrt(cm0*cde) 
       tke(N) = u_taus*u_taus/sqrt(cm0*cde) 
+      if (umlauf_burchard) then
+         STDERR 'Flux boundary conditions for the Umlauf & Burchard model'
+         STDERR 'are not coded yet. Please chose Dirichlet boundary'
+         STDERR 'conditions (flux_bdy=     .true.)'
+         STDERR 'in the keps namelist in the gotmturb.inp file.'  
+         STDERR 'Program aborted in tkeeq.F90.'  
+         stop
+      end if 
    else
 !  +-------------------------------------------------------------+
 !  | Dirichlet conditions for TKE                                | 
@@ -173,8 +185,15 @@
  
       bu(N-1)=1.
       au(N-1)=0.
-      du(N-1)=u_taus*u_taus/sqrt(cm0*cde)
-
+      if (umlauf_burchard) then        ! from eqs. (4.14), (4.19) 
+         du(N-1)=(cw*sig_phi/(-cm_craig*l_gen*alpha_gen))**(2./3.)   &
+                  *u_taus**2/(z0s**alpha_gen)*(h(N)+z0s)**alpha_gen
+         tke(N)=(cw*sig_phi/(-cm_craig*l_gen*alpha_gen))**(2./3.)   &
+                  *u_taus**2/(z0s**alpha_gen)*z0s**alpha_gen
+      else 
+         du(N-1)=u_taus*u_taus/sqrt(cm0*cde)
+         tke(N) =u_taus*u_taus/sqrt(cm0*cde)
+      end if 
       call tridiagonal(N,1,N-1,tke)
    end if 
 
