@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.5 2003-03-12 14:13:48 kbk Exp $
+#$Id: Makefile,v 1.6 2003-03-12 18:45:07 kbk Exp $
 #
 # Makefile for making the source code documentation. 
 #
@@ -122,5 +122,5 @@ realclean: clean
 distclean: realclean
 	$(RM) *.gz *.zip *.Z
 	$(RM) html html_scp
-	$(RM) -r agu.bst figures
+	$(RM) -r figures
 
