@@ -1,4 +1,4 @@
-!$Id: lagrange.F90,v 1.2 2004-03-22 10:14:24 kbk Exp $
+!$Id: lagrange.F90,v 1.3 2004-08-18 16:09:39 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,6 +9,10 @@
    subroutine lagrange(nlev,dt,zlev,nuh,w,npar,active,zi,zp)
 !
 ! !DESCRIPTION:
+!
+! Particle random walk in turbulent field according to Visser [1997] and
+! Yamazaki and Nagai [2005] (CARTUM Book). Set visc_corr=.true. for
+! evaluating eddy viscosity in a semi-implicit way.
 !
 ! !USES:
 !
@@ -31,7 +35,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: lagrange.F90,v $
-!  Revision 1.2  2004-03-22 10:14:24  kbk
+!  Revision 1.3  2004-08-18 16:09:39  hb
+!  Visser correction for viscosity evaluation included
+!
+!  Revision 1.2  2004/03/22 10:14:24  kbk
 !  cleaned, store old index -> much faster, fixed conc. calc.
 !
 !  Revision 1.1  2004/03/04 09:28:41  kbk
@@ -41,7 +48,8 @@
    integer         :: i,n,ni
    REALTYPE        :: rnd(npar)
    REALTYPE        :: depth,dz(nlev),dzn(nlev),step,zp_old
-   REALTYPE        :: visc,rat,dt_inv
+   REALTYPE        :: visc,rat,dt_inv,zloc
+   logical         :: visc_corr=.true.
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -58,9 +66,28 @@
 
    depth=-zlev(0)
    do n=1,npar
-      i=zi(n)
-      rat=(zp(n)-zlev(i-1))/dz(i)
+!     local viscosity calculation
+      if (visc_corr) then ! correction suggested by Visser [1997]
+         zloc=zp(n)+0.5*(dzn(zi(n))+w)*dt
+         if (zloc .lt. -depth) zloc=-depth+(-depth-zloc)
+         if (zloc .gt. _ZERO_) zloc=-zloc
+         step=zloc-zp(n)
+         if (step.gt.0) then ! search new index above old index
+            do i=zi(n),nlev
+               if (zlev(i) .gt. zloc) EXIT
+            end do
+         else                ! search new index below old index
+            do i=zi(n),1,-1
+               if (zlev(i-1) .lt. zloc) EXIT
+            end do
+         end if
+      else
+         i=zi(n)
+         zloc=zp(n)
+      end if
+      rat=(zloc-zlev(i-1))/dz(i)
       visc=rat*nuh(i)+(1.-rat)*nuh(i-1)
+
       zp_old=zp(n)
       step=dt*(sqrt(6*dt_inv*visc)*rnd(n)+w+dzn(i))
       zp(n)=zp(n)+step
