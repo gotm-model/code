@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.4 2001-05-23 11:32:10 gotm Exp $
+#$Id: Rules.make,v 1.5 2001-11-18 11:56:13 gotm Exp $
 
 SHELL   = /bin/sh
 
@@ -52,8 +52,8 @@ endif
 .PHONY: dummy
 
 # Top of this version of GOTM.
-ifndef TOPDIR
-TOPDIR  := $(HOME)/gotm
+ifndef GOTMDIR
+GOTMDIR  := $(HOME)/gotm
 endif
 
 # The Fortran compiler is determined from the EV FORTRAN_COMPILER - options 
@@ -82,23 +82,23 @@ endif
 # Directory related settings.
 
 ifndef BINDIR
-BINDIR	= $(TOPDIR)/bin
+BINDIR	= $(GOTMDIR)/bin
 endif
 
 ifndef LIBDIR
-LIBDIR	= $(TOPDIR)/lib/$(FORTRAN_COMPILER)
+LIBDIR	= $(GOTMDIR)/lib/$(FORTRAN_COMPILER)
 endif
 
 ifndef MODDIR
-MODDIR	= $(TOPDIR)/modules
-MODDIR	= $(TOPDIR)/modules/$(FORTRAN_COMPILER)
+MODDIR	= $(GOTMDIR)/modules
+MODDIR	= $(GOTMDIR)/modules/$(FORTRAN_COMPILER)
 endif
-INCDIRS	+= -I/usr/local/include -I$(TOPDIR)/include -I$(MODDIR)
+INCDIRS	+= -I/usr/local/include -I$(GOTMDIR)/include -I$(MODDIR)
 
 # Normaly this should not be changed - unless you want something very specific.
 
 #ifneq (compiler_included,true)
-#include $(TOPDIR)/compilers/compiler.$(FORTRAN_COMPILER)
+#include $(GOTMDIR)/compilers/compiler.$(FORTRAN_COMPILER)
 #endif
 
 # Set options for the NAG Fortran compiler.
@@ -116,7 +116,7 @@ endif
 
 # Set options for the Fujitsu compiler - on Linux/Intel.
 ifeq ($(FORTRAN_COMPILER),FUJITSU)
-FC=f95
+FC=frt
 can_do_F90=true
 MODULES=-Am -M$(MODDIR)
 EXTRAS  = -ml=cdecl -fw
