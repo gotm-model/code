@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.4 2003-03-12 13:02:01 lars Exp $
+#$Id: Makefile,v 1.5 2003-03-12 14:13:48 kbk Exp $
 #
 # Makefile for making the source code documentation. 
 #
@@ -50,13 +50,13 @@ all: code_a4.pdf code_letter.pdf code_html.pdf
 $(PROTEXSRC):
 	$(MAKE) doc -C $(SRCDIR)
 
-code_a4.tex: $(PROTEXSRC) $(TEXSRC)
+code_a4.tex: $(PROTEXSRC) $(TEXSRC) figures
 	touch $@
 
-code_letter.tex: $(PROTEXSRC)  $(TEXSRC)
+code_letter.tex: $(PROTEXSRC)  $(TEXSRC) figures
 	touch $@
 
-code_html.tex: $(PROTEXSRC) $(TEXHTMLSRC)
+code_html.tex: $(PROTEXSRC) $(TEXHTMLSRC) figures
 	$(MAKE) doc -C $(SRCDIR)
 	touch $@
 
@@ -107,6 +107,11 @@ html_scp: html
 	scp -r code_html/* gotm@80.198.12.199:code_html/
 	touch html_scp
 
+figures:
+	wget -nd -nH -q http://www.gotm.net/data_files/doc_figures.tar.gz 
+	tar -xvzf doc_figures.tar.gz
+	$(RM) doc_figures.tar.gz
+
 clean:
 	$(RM) *.log *.toc *.aux *.bbl *.blg *.bac *~
 
@@ -115,5 +120,7 @@ realclean: clean
 	$(RM) -r code_html/
 
 distclean: realclean
-	$(RM)  *.gz *.zip *.Z 
+	$(RM) *.gz *.zip *.Z
+	$(RM) html html_scp
+	$(RM) -r agu.bst figures
 
