@@ -1,4 +1,4 @@
-!$Id: tkeeq.F90,v 1.2 2001-11-18 16:15:30 gotm Exp $
+!$Id: tkeeq.F90,v 1.3 2002-02-08 08:59:59 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,7 +47,6 @@
 !  c_{\mu}^{1/4}c_w\left(\frac{z'+z_0^s}{z_0^s}\right)^{-m}
 !  \right]^{2/3}. 
 !  \end{equation}
-! 
 !   
 !  The sink terms are treated quasi-implicitely in oder to guarantee
 !  positivity. 
@@ -73,15 +72,18 @@
 ! !OUTPUT PARAMETERS:
 !
 ! !REVISION HISTORY: 
-!  Original author(s): Hans Burchard & Karsten Bolding 
+!  Original author(s): Hans Burchard, Karsten Bolding 
+!                      & Manuel Ruiz Villarreal
 !
 !  $Log: tkeeq.F90,v $
-!  Revision 1.2  2001-11-18 16:15:30  gotm
+!  Revision 1.3  2002-02-08 08:59:59  gotm
+!  Added Manuel as author and copyright holder
+!
+!  Revision 1.2  2001/11/18 16:15:30  gotm
 !  New generic two-equation model
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
-!
 ! 
 ! !LOCAL VARIABLES:
    REALTYPE 		:: avh(0:N)
@@ -93,8 +95,6 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
-
    tkeo=tke
  
    do i=2,N-1
@@ -204,4 +204,6 @@
 !EOC
 
 !-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard & Karsten Bolding.
+!Copyright (C) 2000 - Hans Burchard, Karsten Bolding 
+!                     & Manuel Ruiz Villarreal.
+!-----------------------------------------------------------------------

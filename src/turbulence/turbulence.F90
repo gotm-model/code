@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.3 2001-11-27 19:42:58 gotm Exp $
+!$Id: turbulence.F90,v 1.4 2002-02-08 08:59:59 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -129,10 +129,14 @@
    integer, parameter	:: ispra_length=6
 
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Karsten Bolding & Hans Burchard & Manuel Ruiz Villarreal
+!                      Hans Burchard and Lars Umlauf for the generic model
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.3  2001-11-27 19:42:58  gotm
+!  Revision 1.4  2002-02-08 08:59:59  gotm
+!  Added Manuel as author and copyright holder
+!
+!  Revision 1.3  2001/11/27 19:42:58  gotm
 !  Cleaned
 !
 !  Revision 1.2  2001/11/18 16:15:30  gotm
@@ -140,7 +144,6 @@
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
-!
 !
 ! !BUGS
 !
@@ -174,7 +177,8 @@
 ! !OUTPUT PARAMETERS:
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Karsten Bolding, Hans Burchard 
+!                      & Manuel Ruiz Villarreal
 !
 !  See turbulence module
 !
@@ -375,7 +379,8 @@
 ! !OUTPUT PARAMETERS:
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Karsten Bolding, Hans Burchard 
+!                      & Manuel Ruiz Villarreal
 !
 !  See turbulence module
 !
@@ -458,7 +463,8 @@
 ! !OUTPUT PARAMETERS:
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Karsten Bolding, Hans Burchard
+!                      & Manuel Ruiz Villarreal
 !
 !  See turbulence module
 !
@@ -519,14 +525,14 @@
 ! !OUTPUT PARAMETERS:
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Karsten Bolding, Hans Burchard 
+!                      & Manuel Ruiz Villarreal
 !
 !  See turbulence module
 !
 ! !LOCAL VARIABLES:
    integer		:: i
    REALTYPE		:: numtke(0:nlev)
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -599,7 +605,8 @@
 ! !OUTPUT PARAMETERS:
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Manuel Ruiz Villarreal & Karsten Bolding 
+!                      & Hans Burchard
 !
 !  See turbulence module
 !
@@ -607,7 +614,6 @@
    REALTYPE 		:: rich(0:nlev)	 
    REALTYPE 		:: rich2,pot,x      
    integer 		:: i
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -671,14 +677,14 @@
 ! !OUTPUT PARAMETERS:
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Karsten Bolding, Hans Burchard 
+!                      & Manuel Ruiz Villarreal
 !
 !  See turbulence module
 !
 ! !LOCAL VARIABLES:
    REALTYPE		:: x
    integer		:: i
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -728,12 +734,12 @@
 ! !FILES USED:
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Karsten Bolding & Hans Burchard 
+!                      & Manuel Ruiz Villarreal
 !
 !  See turbulence module
 !
 ! !LOCAL VARIABLES:
-!
 !EOP
 !-------------------------------------------------------------------------
 !BOC
@@ -754,4 +760,7 @@
 
 !-----------------------------------------------------------------------
 
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard.
+!-----------------------------------------------------------------------
+!Copyright (C) 2000 - Hans Burchard, Karsten Bolding 
+!                     & Manuel Ruiz Villarreal.
+!-----------------------------------------------------------------------

@@ -1,4 +1,4 @@
-!$Id: production.F90,v 1.2 2001-11-18 16:02:16 gotm Exp $
+!$Id: production.F90,v 1.3 2002-02-08 08:59:57 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -17,7 +17,8 @@
 !  \item B : buoyancy production of turbulent kinetic energy
 !  \end{itemize}
 !
-!  xP is an extra production term which might come from e.g. seagrass friction.
+!  xP is an extra production term which might come from e.g. 
+!  seagrass friction.
 !
 ! !USES:
    use meanflow, only: NN,SS,xP,P,B,no_shear 
@@ -33,10 +34,14 @@
 ! !OUTPUT PARAMETERS:
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Karsten Bolding, Hans Burchard 
+!                      & Manuel Ruiz Villarreal
 !
 !  $Log: production.F90,v $
-!  Revision 1.2  2001-11-18 16:02:16  gotm
+!  Revision 1.3  2002-02-08 08:59:57  gotm
+!  Added Manuel as author and copyright holder
+!
+!  Revision 1.2  2001/11/18 16:02:16  gotm
 !  Allow no_shear calculation
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
@@ -59,3 +64,4 @@
 
 !-----------------------------------------------------------------------
 !Copyright (C) 2000 - Karsten Bolding & Hans Burchard.
+!-----------------------------------------------------------------------

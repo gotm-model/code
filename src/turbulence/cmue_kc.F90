@@ -1,4 +1,4 @@
-!$Id: cmue_kc.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: cmue_kc.F90,v 1.2 2002-02-08 08:59:58 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,7 +9,7 @@
    subroutine cmue_kc(nlev)
 !
 ! !DESCRIPTION:
-!  This subroutine computes Burchard and Baumert [1995] stability functions.
+!  This subroutine computes Kantha and Clayson [1994] stability functions.
 !
 ! !USES:
    use turbulence, only: a1,a2,b2,c1,c2,c3
@@ -25,11 +25,15 @@
 ! !OUTPUT PARAMETERS:
 !
 ! !REVISION HISTORY: 
-!  Original author(s): Hans Burchard & Karsten Bolding 
+!  Original author(s): Hans Burchard, Karsten Bolding 
+!                      & Manuel Ruiz Villarreal
 !
 !  $Log: cmue_kc.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2002-02-08 08:59:58  gotm
+!  Added Manuel as author and copyright holder
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 !
 ! !LOCAL VARIABLES:
@@ -71,4 +75,6 @@
 !EOC
 
 !-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard & Karsten Bolding.
+!Copyright (C) 2000 - Hans Burchard, Karsten Bolding 
+!                     & Manuel Ruiz Villarreal.
+!-----------------------------------------------------------------------

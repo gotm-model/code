@@ -1,4 +1,4 @@
-!$Id: potentialml.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: potentialml.F90,v 1.2 2002-02-08 08:59:59 gotm Exp $
 #include"cppdefs.h"
 !-------------------------------------------------------------------------
 !BOP
@@ -48,12 +48,15 @@
 ! !BUGS:
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s):  Manuel Ruiz Villarreal, Hans Burchard 
+!                       & Karsten Bolding
 !
 !  $Log: potentialml.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2002-02-08 08:59:59  gotm
+!  Added Manuel as author and copyright holder
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 ! !LOCAL VARIABLES:
    REALTYPE		:: ds(0:nlev),db(0:nlev)
@@ -167,4 +170,6 @@
 !EOC
 
 !-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard.
+!Copyright (C) 2000 - Hans Burchard, Karsten Bolding 
+!                     & Manuel Ruiz Villarreal.
+!-----------------------------------------------------------------------
