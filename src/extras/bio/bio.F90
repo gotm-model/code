@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.20 2004-08-02 11:44:12 kbk Exp $
+!$Id: bio.F90,v 1.21 2004-08-18 11:34:14 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -44,7 +44,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.20  2004-08-02 11:44:12  kbk
+!  Revision 1.21  2004-08-18 11:34:14  hb
+!  zlev now allocated from 0 to nlev
+!
+!  Revision 1.20  2004/08/02 11:44:12  kbk
 !  bio module compiles and runs with GETM
 !
 !  Revision 1.19  2004/08/02 08:35:08  hb
@@ -262,7 +265,7 @@
          end select
       else
          LEVEL3 "Using Lagrangian solver"
-         allocate(zlev(nlev),stat=rc)
+         allocate(zlev(0:nlev),stat=rc)
          if (rc /= 0) &
          STOP 'init_bio: Error allocating (zlev)'
 
