@@ -1,21 +1,21 @@
-!$Id: extpressure.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
+!$Id: extpressure.F90,v 1.5 2004-08-18 11:41:02 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The external pressure--gradient \label{sec:extpressure}
+! !ROUTINE: The external pressure-gradient \label{sec:extpressure}
 !
 ! !INTERFACE:
    subroutine extpressure(method,nlev) 
 !
 ! !DESCRIPTION:
 !
-!  This subroutine calculates the external pressure--gradient. Two methods
+!  This subroutine calculates the external pressure-gradient. Two methods
 !  are implemented here, relating either to the velocity vector at a
 !  given height above bed prescribed or to the vector for the vertical mean
 !  velocity. For details of this method, see \cite{Burchard99}. 
 
-!  If the external pressure--gradient is prescribed by the
+!  If the external pressure-gradient is prescribed by the
 !  surface slope, then it is directly inserted in \eq{uEq} and \eq{vEq}. 
 !
 ! !USES:
@@ -31,7 +31,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: extpressure.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2004-08-18 11:41:02  lars
+!  corrected typo in docu
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 08:56:56  kbk

@@ -1,4 +1,4 @@
-!$Id: adaptivegrid.F90,v 1.4 2003-12-11 09:58:22 kbk Exp $
+!$Id: adaptivegrid.F90,v 1.5 2004-08-18 11:40:12 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,24 +19,24 @@
 !  \frstder{\sigma} \left( k^{grid} \partder{z}{\sigma} \right)=0
 ! \end{equation}
 ! has to be solved for the vertical 
-! coordinate $z$ in the normalised $z$--space (or $\sigma$--space)
-! for $\sigma\in [-1,0]$. $k^{grid}$ is a grid--related diffusivity
+! coordinate $z$ in the normalised $z$-space (or $\sigma$-space)
+! for $\sigma\in [-1,0]$. $k^{grid}$ is a grid-related diffusivity
 ! with physical unit s$^{-1}$. It is computed from
 ! \begin{equation}
 ! k^{grid}=\frac{cD}{T^{grid}}
 ! \left(c_{\rho}K^{grid}_{\rho}+c_uK^{grid}_u+c_dK^{grid}_d+c_bK^{grid}_b\right)
 ! \end{equation}
-! with the stratification--related component
+! with the stratification-related component
 ! \begin{equation}\label{Krho}
 !   K^{grid}_{\rho} = \frac{\max(0,\partial_z\rho)}{\Delta \rho}
 !   \comma
 ! \end{equation}
-! the shear--related component
+! the shear-related component
 ! \begin{equation}\label{Ku}
 !   K^{grid}_u = \frac{M}{\Delta u}
 !  \comma
 ! \end{equation}
-! the near--surface component
+! the near-surface component
 ! \begin{equation}\label{Kd}
 !   K^{grid}_d = \frac{1}{d+d_0}
 !   \comma
@@ -52,7 +52,7 @@
 ! The grid diffusion time scale is denoted by $T^{grid}$.
 ! The parameter $d$ is the distance from the surface and
 ! $d_0$ is a quantity determining the intensity of
-! the near--surface grid zooming.
+! the near-surface grid zooming.
 !
 ! \eq{grid_eq} is discretised according to
 ! \begin{equation}\label{iterate_grid}
@@ -82,7 +82,10 @@
 !  Original author(s): Hans Burchard & Jean-Marie Beckers
 !
 !  $Log: adaptivegrid.F90,v $
-!  Revision 1.4  2003-12-11 09:58:22  kbk
+!  Revision 1.5  2004-08-18 11:40:12  lars
+!  corrected typo in docu
+!
+!  Revision 1.4  2003/12/11 09:58:22  kbk
 !  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
 !
 !  Revision 1.3  2003/03/28 09:20:35  kbk

@@ -1,4 +1,4 @@
-!$Id: coriolis.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
+!$Id: coriolis.F90,v 1.5 2004-08-18 11:38:03 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -11,7 +11,7 @@
 ! !DESCRIPTION:
 !  This subroutine carries out the Coriolis rotation by applying a 
 !  $2\times 2$ rotation matrix with the angle $f\Delta t$ on the
-!  horizontal velocity vector $(u,v)$.  
+!  horizontal velocity vector $(U,V)$.  
 !
 ! !USES:
    USE meanflow, only: u,v,cori
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: coriolis.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2004-08-18 11:38:03  lars
+!  corrected typo in docu
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 08:56:56  kbk
