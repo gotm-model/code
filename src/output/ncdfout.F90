@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.7 2003-12-11 09:58:22 kbk Exp $
+!$Id: ncdfout.F90,v 1.8 2004-01-09 10:14:01 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,7 +38,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.7  2003-12-11 09:58:22  kbk
+!  Revision 1.8  2004-01-09 10:14:01  kbk
+!  consistency between stored surface stress and units (now N/m^2)
+!
+!  Revision 1.7  2003/12/11 09:58:22  kbk
 !  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
 !
 !  Revision 1.6  2003/10/14 08:04:32  kbk
@@ -435,8 +438,8 @@
    iret = store_data(ncid,zeta_id,XYT_SHAPE,1,scalar=zeta)
    iret = store_data(ncid,sst_id,XYT_SHAPE,1,scalar=sst)
    iret = store_data(ncid,sss_id,XYT_SHAPE,1,scalar=sss)
-   iret = store_data(ncid,x_taus_id,XYT_SHAPE,1,scalar=tx)
-   iret = store_data(ncid,y_taus_id,XYT_SHAPE,1,scalar=ty)
+   iret = store_data(ncid,x_taus_id,XYT_SHAPE,1,scalar=rho_0*tx)
+   iret = store_data(ncid,y_taus_id,XYT_SHAPE,1,scalar=rho_0*ty)
    iret = store_data(ncid,swr_id,XYT_SHAPE,1,scalar=I_0)
    iret = store_data(ncid,heat_id,XYT_SHAPE,1,scalar=heat)
    iret = store_data(ncid,total_id,XYT_SHAPE,1,scalar=heat+I_0)
