@@ -1,4 +1,4 @@
-!$Id: sediment.F90,v 1.7 2004-03-04 09:34:54 kbk Exp $
+!$Id: sediment.F90,v 1.8 2004-03-22 10:14:25 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -76,8 +76,8 @@
 
 !  specification of possible boundary conditions
 !  for diffusion   
-   integer, parameter      :: Dirichlet       = 0
-   integer, parameter      :: Neumann         = 1
+   integer, parameter      :: Dirichlet      = 0
+   integer, parameter      :: Neumann        = 1
 !  for advection
    integer,parameter       :: flux           = 1
    integer,parameter       :: value          = 2
@@ -91,7 +91,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: sediment.F90,v $
-!  Revision 1.7  2004-03-04 09:34:54  kbk
+!  Revision 1.8  2004-03-22 10:14:25  kbk
+!  cleaned, store old index -> much faster, fixed conc. calc.
+!
+!  Revision 1.7  2004/03/04 09:34:54  kbk
 !  selection between eularian and lagrangian solver
 !
 !  Revision 1.6  2004/01/13 10:20:21  lars
@@ -115,17 +118,18 @@
 !  private data members from here on
 !
 !  the 'sedi' namelist
-   logical          :: sedi_calc=.false.
-   logical          :: sedi_eularian=.true.
-   logical          :: sedi_dens=.false.
-   REALTYPE         :: rho_sed=2650.
-   REALTYPE         :: size=62.5e-6
-   REALTYPE         :: init_conc=0.0001
-   integer          :: adv_method=1
-   REALTYPE         :: cnpar=0.5
-   integer          :: sedi_method
-   integer          :: z0bMethod
-   integer          :: sedi_npar=10000
+   logical         :: sedi_calc=.false.
+   logical         :: sedi_eulerian=.true.
+   logical         :: sedi_dens=.false.
+   REALTYPE        :: rho_sed=2650.
+   REALTYPE        :: size=62.5e-6
+   REALTYPE        :: init_conc=0.0001
+   integer         :: adv_method=1
+   REALTYPE        :: cnpar=0.5
+   integer         :: sedi_method
+   integer         :: z0bMethod
+   integer         :: sedi_npar=10000
+   logical         :: take_mean=.true.
 !
 !  sediment concentration
    REALTYPE, dimension(:), allocatable :: C
@@ -135,24 +139,25 @@
 !
 !  particle postions for lagragian simulation
    REALTYPE, dimension(:), allocatable :: zp
+   integer,  dimension(:), allocatable :: zi
 !
 !  boundary condition types for diffusion and advection
-   integer                   :: DiffBcup
-   integer                   :: DiffBcdw
-   integer                   :: AdvBcup
-   integer                   :: AdvBcdw
+   integer         :: DiffBcup
+   integer         :: DiffBcdw
+   integer         :: AdvBcup
+   integer         :: AdvBcdw
 !
 !  boundary values for diffusion and advection
-   REALTYPE                  :: DiffCup
-   REALTYPE                  :: DiffCdw
-   REALTYPE                  :: AdvCup
-   REALTYPE                  :: AdvCdw
+   REALTYPE        :: DiffCup
+   REALTYPE        :: DiffCdw
+   REALTYPE        :: AdvCup
+   REALTYPE        :: AdvCdw
 
 !  some parameter of the sediment model
-   REALTYPE                  :: ustarc,gs
+   REALTYPE        :: ustarc,gs
 !
 !  output unit
-   integer                   :: out_unit
+   integer         :: out_unit
 !EOP
 !----------------------------------------------------------------------
 
@@ -191,12 +196,13 @@
 !
 ! !LOCAL VARIABLES:
    integer          :: rc 
-   integer          :: n 
+   integer          :: i,n 
    REALTYPE         :: x,Dsize,avmolu=1.3e-6
-   namelist /sedi/ sedi_calc,sedi_eularian,sedi_dens, &
+   namelist /sedi/ sedi_calc,sedi_eulerian,sedi_dens, &
                    rho_sed,size,init_conc, &
                    adv_method,cnpar,sedi_method,z0bMethod, &
-                   sedi_npar
+                   sedi_npar,take_mean
+   REALTYPE        :: zlev(0:nlev)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -235,8 +241,8 @@
       x = -10.0*avmolu/size*(sqrt(1+(0.01*gs*size**3)/avmolu/avmolu)-1.0) 
       wc= x
       
-      if (sedi_eularian) then
-         LEVEL2 'Using eularian approach'
+      if (sedi_eulerian) then
+         LEVEL2 'Using eulerian approach'
          select case(sedi_method)
             case(NoFlux)
                LEVEL2 'Assuming no net flux across the lowest interface'
@@ -258,13 +264,24 @@
          LEVEL3 sedi_npar,' particles'
          allocate(zp(sedi_npar),stat=rc)
          if (rc /= 0) stop 'init_sediment: Error allocating (zp)'
+         allocate(zi(sedi_npar),stat=rc)
+         if (rc /= 0) stop 'init_sediment: Error allocating (zi)'
 
          do n=1,sedi_npar
 !           Equidist. particle distribution
             zp(n)=-depth+n/float(sedi_npar+1)*depth
          end do
+         zlev(0)=-depth
+         do n=1,nlev
+            zlev(n)=zlev(n-1)+h(n)
+         end do
+	 do n=1,sedi_npar
+            do i=1,nlev
+               if (zlev(i) .gt. zp(n)) EXIT
+            end do
+	    zi(n)=i
+         end do
       end if
-
    end if
 
    return
@@ -307,8 +324,8 @@
 !-----------------------------------------------------------------------
 !BOC
    if (sedi_calc) then
-      if( sedi_eularian ) then
-         call sediment_eularian(nlev,dt)
+      if( sedi_eulerian ) then
+         call sediment_eulerian(nlev,dt)
       else
          call sediment_lagrangian(nlev,dt)
       end if
@@ -342,7 +359,7 @@
 ! !IROUTINE: Eularian sediment transport calculation\label{sec:calcSediment}
 !
 ! !INTERFACE:
-   subroutine sediment_eularian(nlev,dt)
+   subroutine sediment_eulerian(nlev,dt)
 !
 ! !DESCRIPTION:
 !  In this subroutine, the dynamical equation for sediment \eq{CEq}
@@ -464,9 +481,9 @@
 
    call diffusionMean(nlev,dt,cnpar,h, &
                       DiffBcup,DiffBcdw,DiffCup,DiffCdw, &
-                      num,Qsour,RelaxT,Cobs,C)
+                      nuh,Qsour,RelaxT,Cobs,C)
    return
-   end subroutine sediment_eularian 
+   end subroutine sediment_eulerian 
 !EOC
 
 !-----------------------------------------------------------------------
@@ -495,8 +512,10 @@
 !
 ! !LOCAL VARIABLES:
    integer         :: n,np
-   REALTYPE        :: zlev(0:nlev)
+   integer, save   :: count=0
+   logical, save   :: set_C_zero=.true.
    logical         :: active(sedi_npar)
+   REALTYPE        :: zlev(0:nlev)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -506,22 +525,34 @@
    end do
 
    active=.true.
-   call lagrange(nlev,dt,zlev,nuh,wc(1),sedi_npar,active,zp)
+   call lagrange(nlev,dt,zlev,nuh,wc(1),sedi_npar,active,zi,zp)
    active=.true.
-   do n=1,nlev
-      C(n)=_ZERO_
+   if (write_results .or. take_mean) then
+      if (set_C_zero) then
+         C=_ZERO_
+         set_C_zero=.false.
+      end if
+
       do np=1,sedi_npar
-         if (active(np) .and. &
-            zlev(n-1) .le. zp(np) .and. zp(np) .lt. zlev(n)) then
+         if (active(np)) then
+            n=zi(np)
             C(n) = C(n)+_ONE_
             active(np)=.false.
          end if
       end do
-   end do
-
-   do n=1,nlev
-      C(n) = init_conc*C(n)/sedi_npar
-   end do
+      if (take_mean) then
+         count=count+1
+      else
+         count=1
+      end if
+      if (write_results) then
+         do n=1,nlev
+            C(n) = init_conc*C(n)/sedi_npar*depth/h(n)/count
+         end do
+         count=0
+         set_C_zero=.true.
+      end if
+   end if
 
    return
    end subroutine sediment_lagrangian 
