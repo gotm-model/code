@@ -1,4 +1,4 @@
-!$Id: gridinterpol.F90,v 1.2 2003-03-10 08:54:16 gotm Exp $
+!$Id: gridinterpol.F90,v 1.3 2003-03-28 09:20:36 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -28,7 +28,10 @@
 ! !REVISION HISTORY: 
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  $Log: gridinterpol.F90,v $
-!  Revision 1.2  2003-03-10 08:54:16  gotm
+!  Revision 1.3  2003-03-28 09:20:36  kbk
+!  added new copyright to files
+!
+!  Revision 1.2  2003/03/10 08:54:16  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
@@ -77,3 +80,7 @@
    return  
    end 
 !EOC
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

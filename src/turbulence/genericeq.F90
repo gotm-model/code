@@ -146,7 +146,10 @@
 !  Original author(s): Lars Umlauf, Hans Burchard
 !
 !  $Log: genericeq.F90,v $
-!  Revision 1.3  2003-03-10 09:02:05  gotm
+!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  added new copyright to files
+!
+!  Revision 1.3  2003/03/10 09:02:05  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !
@@ -288,3 +291,7 @@
    return
    end subroutine genericeq
 !EOC
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

@@ -1,4 +1,4 @@
-!$Id: tridiagonal.F90,v 1.3 2003-03-28 08:06:33 kbk Exp $
+!$Id: tridiagonal.F90,v 1.4 2003-03-28 09:20:36 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -22,7 +22,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.3  2003-03-28 08:06:33  kbk
+!  Revision 1.4  2003-03-28 09:20:36  kbk
+!  added new copyright to files
+!
+!  Revision 1.3  2003/03/28 08:06:33  kbk
 !  removed tabs
 !
 !  Revision 1.2  2003/03/10 08:54:16  gotm
@@ -122,7 +125,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.3  2003-03-28 08:06:33  kbk
+!  Revision 1.4  2003-03-28 09:20:36  kbk
+!  added new copyright to files
+!
+!  Revision 1.3  2003/03/28 08:06:33  kbk
 !  removed tabs
 !
 !  Revision 1.2  2003/03/10 08:54:16  gotm
@@ -161,3 +167,7 @@
 !-----------------------------------------------------------------------
 
    end module mtridiagonal
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

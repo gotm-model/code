@@ -1,4 +1,4 @@
-!$Id: turbulence_adv.F90,v 1.3 2003-03-28 08:37:27 kbk Exp $
+!$Id: turbulence_adv.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,7 +31,10 @@
 !  Original author(s): Hans Burchard
 !
 !  $Log: turbulence_adv.F90,v $
-!  Revision 1.3  2003-03-28 08:37:27  kbk
+!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  added new copyright to files
+!
+!  Revision 1.3  2003/03/28 08:37:27  kbk
 !  removed tabs
 !
 !  Revision 1.2  2003/03/10 09:05:02  gotm
@@ -110,3 +113,7 @@
    return
    end subroutine turbulence_adv
 !EOC
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

@@ -1,4 +1,4 @@
-!$Id: time.F90,v 1.4 2003-03-28 07:56:05 kbk Exp $
+!$Id: time.F90,v 1.5 2003-03-28 09:20:36 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -41,7 +41,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  $Log: time.F90,v $
-!  Revision 1.4  2003-03-28 07:56:05  kbk
+!  Revision 1.5  2003-03-28 09:20:36  kbk
+!  added new copyright to files
+!
+!  Revision 1.4  2003/03/28 07:56:05  kbk
 !  removed tabs
 !
 !  Revision 1.3  2003/03/10 13:48:15  lars
@@ -416,3 +419,7 @@
 !-----------------------------------------------------------------------
 
    end module time
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

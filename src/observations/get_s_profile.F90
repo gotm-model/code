@@ -1,4 +1,4 @@
-!$Id: get_s_profile.F90,v 1.2 2003-03-10 08:51:57 gotm Exp $
+!$Id: get_s_profile.F90,v 1.3 2003-03-28 09:20:35 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,7 +31,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_s_profile.F90,v $
-!  Revision 1.2  2003-03-10 08:51:57  gotm
+!  Revision 1.3  2003-03-28 09:20:35  kbk
+!  added new copyright to files
+!
+!  Revision 1.2  2003/03/10 08:51:57  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
@@ -106,3 +109,7 @@
    return
    end subroutine get_s_profile
 !EOC
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

@@ -1,4 +1,4 @@
-!$Id: lagrange.F90,v 1.3 2003-03-10 10:15:54 gotm Exp $
+!$Id: lagrange.F90,v 1.4 2003-03-28 09:20:34 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -36,7 +36,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: lagrange.F90,v $
-!  Revision 1.3  2003-03-10 10:15:54  gotm
+!  Revision 1.4  2003-03-28 09:20:34  kbk
+!  added new copyright to files
+!
+!  Revision 1.3  2003/03/10 10:15:54  gotm
 !  Cleaned up the code - not included yet
 !
 !  Revision 1.2  2002/04/30 14:47:10  gotm
@@ -295,3 +298,7 @@
 !-----------------------------------------------------------------------
 
    end module lagrange
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

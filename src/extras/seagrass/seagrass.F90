@@ -1,4 +1,4 @@
-!$Id: seagrass.F90,v 1.3 2003-03-28 08:28:36 kbk Exp $
+!$Id: seagrass.F90,v 1.4 2003-03-28 09:20:34 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -34,7 +34,10 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: seagrass.F90,v $
-!  Revision 1.3  2003-03-28 08:28:36  kbk
+!  Revision 1.4  2003-03-28 09:20:34  kbk
+!  added new copyright to files
+!
+!  Revision 1.3  2003/03/28 08:28:36  kbk
 !  removed tabs
 !
 !  Revision 1.2  2003/03/10 09:13:09  gotm
@@ -405,10 +408,12 @@
    end select   
    return
    end subroutine save_seagrass 
+!EOC
 
 !-----------------------------------------------------------------------
 
    end module seagrass
 
 !-----------------------------------------------------------------------
-!EOC
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

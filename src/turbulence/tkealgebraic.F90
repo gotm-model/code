@@ -1,4 +1,4 @@
-!$Id: tkealgebraic.F90,v 1.4 2003-03-28 08:29:16 kbk Exp $
+!$Id: tkealgebraic.F90,v 1.5 2003-03-28 09:20:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -42,7 +42,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: tkealgebraic.F90,v $
-!  Revision 1.4  2003-03-28 08:29:16  kbk
+!  Revision 1.5  2003-03-28 09:20:35  kbk
+!  added new copyright to files
+!
+!  Revision 1.4  2003/03/28 08:29:16  kbk
 !  removed tabs
 !
 !  Revision 1.3  2003/03/10 09:02:05  gotm
@@ -75,3 +78,7 @@
    return
    end subroutine tkealgebraic
 !EOC
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

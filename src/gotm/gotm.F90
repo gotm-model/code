@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.6 2003-03-28 09:11:30 kbk Exp $
+!$Id: gotm.F90,v 1.7 2003-03-28 09:20:34 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -72,7 +72,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.6  2003-03-28 09:11:30  kbk
+!  Revision 1.7  2003-03-28 09:20:34  kbk
+!  added new copyright to files
+!
+!  Revision 1.6  2003/03/28 09:11:30  kbk
 !  removed tabs
 !
 !  Revision 1.5  2003/03/10 09:20:27  gotm
@@ -368,3 +371,7 @@
 !-----------------------------------------------------------------------
 
    end module gotm
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

@@ -1,4 +1,4 @@
-!$Id: fk_craig.F90,v 1.1 2003-03-10 09:00:36 gotm Exp $
+!$Id: fk_craig.F90,v 1.2 2003-03-28 09:20:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -32,7 +32,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: fk_craig.F90,v $
-!  Revision 1.1  2003-03-10 09:00:36  gotm
+!  Revision 1.2  2003-03-28 09:20:35  kbk
+!  added new copyright to files
+!
+!  Revision 1.1  2003/03/10 09:00:36  gotm
 !  Part of new generic turbulence model
 !
 ! 
@@ -43,3 +46,7 @@
 
    end function fk_craig
 !EOC
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.8 2003-03-28 08:56:56 kbk Exp $
+!$Id: updategrid.F90,v 1.9 2003-03-28 09:20:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,7 +70,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
-!  Revision 1.8  2003-03-28 08:56:56  kbk
+!  Revision 1.9  2003-03-28 09:20:35  kbk
+!  added new copyright to files
+!
+!  Revision 1.8  2003/03/28 08:56:56  kbk
 !  removed tabs
 !
 !  Revision 1.7  2003/03/10 13:43:42  lars
@@ -268,3 +271,7 @@
 
    end subroutine updategrid 
 !EOC
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

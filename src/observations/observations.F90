@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.6 2003-03-28 08:08:21 kbk Exp $
+!$Id: observations.F90,v 1.7 2003-03-28 09:20:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -183,7 +183,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
-!  Revision 1.6  2003-03-28 08:08:21  kbk
+!  Revision 1.7  2003-03-28 09:20:35  kbk
+!  added new copyright to files
+!
+!  Revision 1.6  2003/03/28 08:08:21  kbk
 !  removed tabs
 !
 !  Revision 1.5  2003/03/10 13:51:08  lars
@@ -773,3 +776,7 @@
 !-----------------------------------------------------------------------
 
    end module observations
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

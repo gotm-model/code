@@ -1,4 +1,4 @@
-!$Id: main.F90,v 1.4 2003-03-10 09:20:28 gotm Exp $
+!$Id: main.F90,v 1.5 2003-03-28 09:20:34 kbk Exp $
 #include<cppdefs.h>
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: main.F90,v $
-!  Revision 1.4  2003-03-10 09:20:28  gotm
+!  Revision 1.5  2003-03-28 09:20:34  kbk
+!  added new copyright to files
+!
+!  Revision 1.4  2003/03/10 09:20:28  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !  Revision 1.3  2001/11/18 13:07:06  gotm
@@ -78,3 +81,7 @@
 
    end
 !EOC
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

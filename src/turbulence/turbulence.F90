@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.6 2003-03-28 08:20:01 kbk Exp $
+!$Id: turbulence.F90,v 1.7 2003-03-28 09:20:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -193,7 +193,10 @@
 
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.6  2003-03-28 08:20:01  kbk
+!  Revision 1.7  2003-03-28 09:20:35  kbk
+!  added new copyright to files
+!
+!  Revision 1.6  2003/03/28 08:20:01  kbk
 !  removed tabs
 !
 !  Revision 1.5  2003/03/10 09:02:06  gotm
@@ -2811,3 +2814,7 @@
 !-----------------------------------------------------------------------
 
  end module turbulence
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

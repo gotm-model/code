@@ -1,4 +1,4 @@
-!$Id: lengthscaleeq.F90,v 1.3 2003-03-10 09:02:05 gotm Exp $
+!$Id: lengthscaleeq.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -96,7 +96,10 @@
 !                      Lars Umlauf
 !
 !  $Log: lengthscaleeq.F90,v $
-!  Revision 1.3  2003-03-10 09:02:05  gotm
+!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  added new copyright to files
+!
+!  Revision 1.3  2003/03/10 09:02:05  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !
@@ -253,3 +256,7 @@
   return
   end subroutine lengthscaleeq
 !EOC
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

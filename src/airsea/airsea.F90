@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.5 2003-03-28 08:13:47 kbk Exp $
+!$Id: airsea.F90,v 1.6 2003-03-28 09:20:34 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -67,7 +67,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.5  2003-03-28 08:13:47  kbk
+!  Revision 1.6  2003-03-28 09:20:34  kbk
+!  added new copyright to files
+!
+!  Revision 1.5  2003/03/28 08:13:47  kbk
 !  removed tabs
 !
 !  Revision 1.4  2003/03/10 08:37:56  gotm
@@ -1070,3 +1073,7 @@
 !-----------------------------------------------------------------------
 
    end module airsea
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 

@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.3 2003-03-10 08:53:05 gotm Exp $
+!$Id: ncdfout.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,7 +38,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.3  2003-03-10 08:53:05  gotm
+!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  added new copyright to files
+!
+!  Revision 1.3  2003/03/10 08:53:05  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
@@ -842,3 +845,7 @@
    endif
    end
 
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!----------------------------------------------------------------------- 
