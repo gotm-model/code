@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.1 2002-04-30 14:22:55 gotm Exp $
+#$Id: Makefile,v 1.2 2003-03-10 10:15:54 gotm Exp $
 #
 # Makefile to build the 'lagrange' module - liblagrange.a
 #
@@ -19,10 +19,10 @@ doc:
 	$(PROTEX) $(DOCSRC) > ../../../doc/lagrange.tex 
 
 clean:
-	-rm -f ${LIB}
+	$(RM) ${LIB}
 
 realclean: clean
-	-rm -f *.o
+	$(RM) *.o *~
 
 distclean: realclean
 

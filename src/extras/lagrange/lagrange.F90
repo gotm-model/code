@@ -1,4 +1,4 @@
-!$Id: lagrange.F90,v 1.2 2002-04-30 14:47:10 gotm Exp $
+!$Id: lagrange.F90,v 1.3 2003-03-10 10:15:54 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -23,20 +23,23 @@
 ! !PUBLIC DATA MEMBERS:
 !
 ! !PRIVATE DATA MEMBERS:
-   integer	:: out_unit
-   REALTYPE, dimension(:), allocatable	:: zpos
-   REALTYPE, dimension(:), allocatable	:: concentration
+   integer                   :: out_unit
 !  From namelist
-   logical	:: lagrange_calc=.false.
-   integer	:: np=10000
-   REALTYPE	:: ws=0.001
-   REALTYPE	:: load=0.1
+   logical                   :: lagrange_calc=.false.
+   integer                   :: np=10000
+   REALTYPE                  :: ws=0.001
+   REALTYPE                  :: load=0.1
+   REALTYPE, dimension(:), allocatable           :: zpos
+   REALTYPE, dimension(:), allocatable           :: concentration
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: lagrange.F90,v $
-!  Revision 1.2  2002-04-30 14:47:10  gotm
+!  Revision 1.3  2003-03-10 10:15:54  gotm
+!  Cleaned up the code - not included yet
+!
+!  Revision 1.2  2002/04/30 14:47:10  gotm
 !  Fixed saving
 !
 !  Revision 1.1  2002/04/30 14:22:55  gotm
@@ -62,14 +65,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: namlst
-   character(len=*), intent(in)	:: fname
-   integer, intent(in)	:: unit
-   integer, intent(in)	:: nlev
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: namlst
+   character(len=*), intent(in)        :: fname
+   integer, intent(in)                 :: unit
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -77,7 +76,7 @@
 !  See lagrange module
 !
 ! !LOCAL VARIABLES:
-   integer 		:: n,rc
+   integer                   :: n,rc
    namelist /lagrange/  lagrange_calc,np,ws,load
 !
 !EOP
@@ -132,8 +131,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
-   REALTYPE, intent(in)	:: dt
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: dt
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
@@ -145,8 +144,8 @@
 !  See lagrange module
 !
 ! !LOCAL VARIABLES:
-  integer i,n
-  REALTYPE visc,rnd,z,rat
+  integer                    :: i,n
+  REALTYPE                   :: visc,rnd,z,rat
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -191,12 +190,6 @@
 ! !USES:
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
-!
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
@@ -207,7 +200,6 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
 
    return
    end subroutine end_lagrange
@@ -234,11 +226,6 @@
 #include "netcdf.inc"
 #endif
 !
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -246,10 +233,10 @@
 !  See lagrange module
 !
 ! !LOCAL VARIABLES:
-   logical, save	:: first=.true.
-   integer, save	:: lagrange_id,n
-   integer		:: i,j,iret
-   REALTYPE		:: z
+   logical, save             :: first=.true.
+   integer, save             :: lagrange_id,n
+   integer                   :: i,j,iret
+   REALTYPE                  :: z
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -308,7 +295,3 @@
 !-----------------------------------------------------------------------
 
    end module lagrange
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2002 - Hans Burchard, Karsten Bolding and Frank Wolk.
-!-----------------------------------------------------------------------
