@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.5 2003-03-10 08:33:20 gotm Exp $
+#$Id: Makefile,v 1.6 2003-12-11 10:00:09 kbk Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -30,7 +30,8 @@ all: ../include/version.h $(EXEC)
 	@echo "#endif" >> ../include/version.h
 
 $(EXEC): makedirs subdirs features gotmlib 
-	$(FC) -o $@ $(LDFLAGS) -lgotm$(buildtype) $(ALL_LIBS)
+	$(FC) -o $@ ./gotm/main.o $(LDFLAGS) -lgotm$(buildtype) $(ALL_LIBS)
+	$(RM) ./gotm/main.o
 
 makedirs:
 	mkdir -p $(MODDIR) $(LIBDIR)

@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.2 2003-03-10 08:33:20 gotm Exp $
+#$Id: Makefile,v 1.3 2003-12-11 10:00:09 kbk Exp $
 #
 # Makefile to build the the main library - libgotm.a
 #
@@ -16,7 +16,7 @@ ${LIB}(gotm.o)
 
 
 OBJ   = \
-${LIB}(main.o)
+main.o
 
 all: $(MOD) $(OBJ)
 	$(MOVE_MODULES_COMMAND)
