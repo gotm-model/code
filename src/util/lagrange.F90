@@ -1,4 +1,4 @@
-!$Id: lagrange.F90,v 1.3 2004-08-18 16:09:39 hb Exp $
+!$Id: lagrange.F90,v 1.4 2004-08-19 09:24:57 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -11,8 +11,10 @@
 ! !DESCRIPTION:
 !
 ! Particle random walk in turbulent field according to Visser [1997] and
-! Yamazaki and Nagai [2005] (CARTUM Book). Set visc_corr=.true. for
-! evaluating eddy viscosity in a semi-implicit way.
+! Yamazaki and Nagai [2005] (CARTUM Book). Set visc$\_$corr=.true. for
+! evaluating eddy viscosity in a semi-implicit way. A background viscosity
+! (visc$\_$back) may be set. The variance of the random walk scheme 
+! (rnd$\_$var)has to be set as well.
 !
 ! !USES:
 !
@@ -35,7 +37,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: lagrange.F90,v $
-!  Revision 1.3  2004-08-18 16:09:39  hb
+!  Revision 1.4  2004-08-19 09:24:57  hb
+!  Variance of random walk and background diffusivity explicitely prescribed --> Hidekatsu Yamazaki
+!
+!  Revision 1.3  2004/08/18 16:09:39  hb
 !  Visser correction for viscosity evaluation included
 !
 !  Revision 1.2  2004/03/22 10:14:24  kbk
@@ -46,7 +51,8 @@
 !
 ! !LOCAL VARIABLES:
    integer         :: i,n,ni
-   REALTYPE        :: rnd(npar)
+   REALTYPE        :: rnd(npar),rnd_var=0.333333333,rnd_var_inv
+   REALTYPE        :: visc_back=1.e-6
    REALTYPE        :: depth,dz(nlev),dzn(nlev),step,zp_old
    REALTYPE        :: visc,rat,dt_inv,zloc
    logical         :: visc_corr=.true.
@@ -55,6 +61,7 @@
 !BOC
 
    dt_inv=1./dt
+   rnd_var_inv=1./rnd_var
 
    call random_number(rnd)
    rnd=(2.*rnd-1.)
@@ -87,9 +94,9 @@
       end if
       rat=(zloc-zlev(i-1))/dz(i)
       visc=rat*nuh(i)+(1.-rat)*nuh(i-1)
-
+      if (visc.lt.visc_back) visc=visc_back
       zp_old=zp(n)
-      step=dt*(sqrt(6*dt_inv*visc)*rnd(n)+w+dzn(i))
+      step=dt*(sqrt(2.*rnd_var_inv*dt_inv*visc)*rnd(n)+w+dzn(i))
       zp(n)=zp(n)+step
       if (zp(n) .lt. -depth) zp(n)=-depth+(-depth-zp(n))
       if (zp(n) .gt. _ZERO_) zp(n)=-zp(n)
