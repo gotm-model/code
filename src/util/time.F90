@@ -1,4 +1,4 @@
-!$Id: time.F90,v 1.2 2003-03-10 08:54:16 gotm Exp $
+!$Id: time.F90,v 1.3 2003-03-10 13:48:15 lars Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -41,7 +41,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  $Log: time.F90,v $
-!  Revision 1.2  2003-03-10 08:54:16  gotm
+!  Revision 1.3  2003-03-10 13:48:15  lars
+!  changed intent(out) to intent(inout) for MaxN in init_time
+!
+!  Revision 1.2  2003/03/10 08:54:16  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
@@ -74,8 +77,8 @@
 ! !USES:
    IMPLICIT NONE
 !
-! !OUTPUT PARAMETERS:
-   integer, intent(out)	               :: MinN,MaxN
+! !INPUT/OUTPUT PARAMETERS:
+   integer, intent(inout)    :: MinN,MaxN
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
