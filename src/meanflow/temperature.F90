@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.9 2003-07-23 12:33:21 hb Exp $
+!$Id: temperature.F90,v 1.10 2004-07-28 11:29:10 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -84,7 +84,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.9  2003-07-23 12:33:21  hb
+!  Revision 1.10  2004-07-28 11:29:10  hb
+!  Bug removed, rad is not any more multiplied with bioshade; bug found by Jorn Bruggeman, Amsterdam
+!
+!  Revision 1.9  2003/07/23 12:33:21  hb
 !  fixed bioshade init and use
 !
 !  Revision 1.7  2003/04/05 07:01:16  kbk
@@ -127,23 +130,29 @@
    bott_flux=.false.
 
    rad(nlev)=I_0
-   z=0. 
+   z=_ZERO_
    do i=nlev-1,0,-1 
       z=z+h(i+1)
-      rad(i)=I_0*(A*exp(-z/g1)+(1-A)*exp(-z/g2))*bioshade(i)
+      rad(i)=I_0*(A*exp(-z/g1)+(1-A)*exp(-z/g2))
       avh(i)=nuh(i)+avmolT 
    end do
 
-   do i=1,nlev
-      Qsour(i)=(rad(i)-rad(i-1))/(rho_0*cp)/h(i) 
-      if (t_adv) Qsour(i)=Qsour(i)-u(i)*dtdx(i)-v(i)*dtdy(i) 
+   Qsour(nlev)=(I_0-rad(nlev-1)*bioshade(nlev))/(rho_0*cp*h(nlev)) 
+   do i=1,nlev-1
+      Qsour(i)=(rad(i)*bioshade(i+1)-rad(i-1)*bioshade(i))    &
+                /(rho_0*cp*h(i)) 
    end do
+   if (t_adv) then
+      do i=1,nlev
+         Qsour(i)=Qsour(i)-u(i)*dtdx(i)-v(i)*dtdy(i) 
+      end do
+   end if
 
    flag=1  ! divergence correction for vertical advection
 
-   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Tup,Tdw,TRelaxTau,h,ho,avh,w,        &
-              Qsour,tprof,w_adv_method,w_adv_discr,T,surf_flux,bott_flux,  &
-              grid_method,w_grid,flag)
+   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Tup,Tdw,TRelaxTau,h,ho,avh,w, &
+              Qsour,tprof,w_adv_method,w_adv_discr,T,surf_flux,     &
+              bott_flux,grid_method,w_grid,flag)
    return
    end subroutine temperature
 !EOC
