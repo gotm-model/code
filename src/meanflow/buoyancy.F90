@@ -1,4 +1,4 @@
-!$Id: buoyancy.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: buoyancy.F90,v 1.2 2001-11-18 11:50:37 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -46,8 +46,11 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: buoyancy.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-18 11:50:37  gotm
+!  Cleaned
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
 !
 !
 ! !LOCAL VARIABLES:
@@ -97,3 +100,4 @@
 
 !-----------------------------------------------------------------------
 !Copyright (C) 2000 - Hans Burchard and Karsten Bolding
+!-----------------------------------------------------------------------
