@@ -1,4 +1,4 @@
-!$Id: bio_npzd.F90,v 1.1 2003-07-23 12:27:31 hb Exp $
+!$Id: bio_npzd.F90,v 1.2 2003-10-16 15:42:16 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_npzd.F90,v $
-!  Revision 1.1  2003-07-23 12:27:31  hb
+!  Revision 1.2  2003-10-16 15:42:16  kbk
+!  simple mussesl model implemented - filter only
+!
+!  Revision 1.1  2003/07/23 12:27:31  hb
 !  more generic support for different bio models
 !
 !  Revision 1.3  2003/04/05 07:01:41  kbk
@@ -141,7 +144,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_npzd(numc,nlev,cc,ws)
+   subroutine init_var_npzd(numc,nlev,cc,ws,mussels_inhale)
 !
 ! !DESCRIPTION:
 !  Here, the cc and ws varibles are filled with initial conditions
@@ -155,6 +158,7 @@
 ! !INPUT/OUTPUT PARAMETERS:
   REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
   REALTYPE, intent(inout)              :: ws(1:numc,0:nlev)
+  logical, intent(inout)               :: mussels_inhale(1:numc)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -177,6 +181,11 @@
       ws(z,i) = _ZERO_
       ws(d,i) = w_d
    end do
+
+   mussels_inhale(n) = .true.
+   mussels_inhale(p) = .true.
+   mussels_inhale(z) = .true.
+   mussels_inhale(d) = .true.
 
    LEVEL3 'NPZD variables initialised ...'
 

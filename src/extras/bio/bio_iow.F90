@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.1 2003-09-16 12:11:24 hb Exp $
+!$Id: bio_iow.F90,v 1.2 2003-10-16 15:42:16 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.1  2003-09-16 12:11:24  hb
+!  Revision 1.2  2003-10-16 15:42:16  kbk
+!  simple mussesl model implemented - filter only
+!
+!  Revision 1.1  2003/09/16 12:11:24  hb
 !  added new biological model - bio_iow
 !
 !  Revision 1.1  2003/07/23 12:27:31  hb
@@ -187,7 +190,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_iow(numc,nlev,cc,ws,sfl)
+   subroutine init_var_iow(numc,nlev,cc,ws,sfl,mussels_inhale)
 !
 ! !DESCRIPTION:
 !  Here, the cc and ws varibles are filled with initial conditions
@@ -202,6 +205,7 @@
   REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
   REALTYPE, intent(inout)              :: ws(1:numc,0:nlev)
   REALTYPE, intent(inout)              :: sfl(1:numc)
+  logical, intent(inout)               :: mussels_inhale(1:numc)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -236,6 +240,16 @@
    end do
 
    sfl = _ZERO_
+
+   mussels_inhale(p1) = .true.
+   mussels_inhale(p2) = .true.
+   mussels_inhale(p3) = .true.
+   mussels_inhale(zo) = .true.
+   mussels_inhale(de) = .true.
+   mussels_inhale(am) = .true.
+   mussels_inhale(ni) = .true.
+   mussels_inhale(po) = .true.
+   mussels_inhale(o2) = .true.
 
    LEVEL3 'IOW variables initialised ...'
 

@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.2 2003-09-16 12:11:24 hb Exp $
+!$Id: bio_var.F90,v 1.3 2003-10-16 15:42:16 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -20,7 +20,8 @@
    REALTYPE                              :: I_0
    REALTYPE, dimension(:), allocatable   :: par
    REALTYPE, dimension(:,:), allocatable :: cc,ws
-   REALTYPE, dimension(:), allocatable   :: sfl
+   REALTYPE, dimension(:), allocatable   :: sfl,bfl
+   logical, dimension(:), allocatable    :: mussels_inhale
 
    integer, dimension(:), allocatable    :: var_ids
    character(len=64), dimension(:), allocatable :: var_names
@@ -31,7 +32,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
-!  Revision 1.2  2003-09-16 12:11:24  hb
+!  Revision 1.3  2003-10-16 15:42:16  kbk
+!  simple mussesl model implemented - filter only
+!
+!  Revision 1.2  2003/09/16 12:11:24  hb
 !  added new biological model - bio_iow
 !
 !  Revision 1.1  2003/07/23 12:27:31  hb

@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.7 2003-10-14 08:00:09 hb Exp $
+!$Id: bio.F90,v 1.8 2003-10-16 15:42:16 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -23,6 +23,9 @@
    use bio_iow, only : init_bio_iow,init_var_iow,var_info_iow
    use bio_iow, only : light_iow,surface_fluxes_iow
 
+   use mussels, only : init_mussels, do_mussels, end_mussels
+   use mussels, only : mussels_calc
+
    use output, only: out_fmt,write_results,ts
 !
 !  default: all is private.
@@ -35,7 +38,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.7  2003-10-14 08:00:09  hb
+!  Revision 1.8  2003-10-16 15:42:16  kbk
+!  simple mussesl model implemented - filter only
+!
+!  Revision 1.7  2003/10/14 08:00:09  hb
 !  initialise sfl - no special treatment when cc(,) < 0
 !
 !  Revision 1.6  2003/09/16 12:11:24  hb
@@ -113,82 +119,32 @@
       select case (bio_model)
 
       case (-1)
-         call init_bio_template(namlst,'bio_template.inp',unit,numc)
-         allocate(cc(1:numc,0:nlev),stat=rc)
-         if (rc /= 0) STOP 'init_bio: Error allocating (cc)'
 
-         allocate(ws(1:numc,0:nlev),stat=rc)
-         if (rc /= 0) STOP 'init_bio: Error allocating (ws)'
+         call init_bio_template(namlst,'bio_template.inp',unit,numc)
+
+         call allocate_memory(numc,nlev)
 
          call init_var_template(numc,nlev,cc,ws)
-
-         allocate(var_ids(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_ids)'
-
-         allocate(var_names(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_names)'
-
-         allocate(var_units(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_units)'
-
-         allocate(var_long(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_long)'
 
 	 call var_info_template(numc,var_names,var_units,var_long)
 
       case (1)  ! The NPZD model
+
          call init_bio_npzd(namlst,'bio_npzd.inp',unit,numc)
-         allocate(cc(1:numc,0:nlev),stat=rc)
-         if (rc /= 0) STOP 'init_bio: Error allocating (cc)'
 
-         allocate(ws(1:numc,0:nlev),stat=rc)
-         if (rc /= 0) STOP 'init_bio: Error allocating (ws)'
+         call allocate_memory(numc,nlev)
 
-         allocate(sfl(1:numc),stat=rc)
-         if (rc /= 0) STOP 'init_bio: Error allocating (sfl)'
-	 sfl=_ZERO_
+         call init_var_npzd(numc,nlev,cc,ws,mussels_inhale)
 
-         call init_var_npzd(numc,nlev,cc,ws)
-
-         allocate(var_ids(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_ids)'
-
-         allocate(var_names(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_names)'
-
-         allocate(var_units(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_units)'
-
-         allocate(var_long(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_long)'
-
-	 call var_info_npzd(numc,var_names,var_units,var_long)
+         call var_info_npzd(numc,var_names,var_units,var_long)
 
       case (2)  ! The IOW model
+
          call init_bio_iow(namlst,'bio_iow.inp',unit,numc)
-         allocate(cc(1:numc,0:nlev),stat=rc)
-         if (rc /= 0) STOP 'init_bio: Error allocating (cc)'
 
-         allocate(ws(1:numc,0:nlev),stat=rc)
-         if (rc /= 0) STOP 'init_bio: Error allocating (ws)'
+         call allocate_memory(numc,nlev)
 
-         allocate(sfl(1:numc),stat=rc)
-         if (rc /= 0) STOP 'init_bio: Error allocating (sfl)'
-	 sfl=_ZERO_
-
-         call init_var_iow(numc,nlev,cc,ws,sfl)
-
-         allocate(var_ids(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_ids)'
-
-         allocate(var_names(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_names)'
-
-         allocate(var_units(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_units)'
-
-         allocate(var_long(numc),stat=rc)
-         if (rc /= 0) stop 'bio_save(): Error allocating var_long)'
+         call init_var_iow(numc,nlev,cc,ws,sfl,mussels_inhale)
 
 	 call var_info_iow(numc,var_names,var_units,var_long)
 
@@ -199,6 +155,7 @@
       do n=1,numc
          LEVEL4 trim(var_names(n)),'  ',trim(var_units(n)), &
                 '  ',trim(var_long(n))
+!KBK                '  ',trim(var_long(n)),'  ',mussels_inhale(n)
       end do
 
       select case (ode_method)
@@ -224,6 +181,8 @@
             stop "bio: no valid ode_method specified in bio.inp!"
       end select
 
+!     Initialise 'mussels' module
+      call init_mussels(namlst,"mussels.inp",unit,nlev)
    end if
 
    return
@@ -269,7 +228,7 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE                  :: Qsour(0:nlev),w_grid(0:nlev)
-   REALTYPE                  :: Sup=0,Sdw=0
+!KBK   REALTYPE                  :: Sup=0,Sdw=0
    REALTYPE                  :: RelaxTau(0:nlev)
    REALTYPE                  :: zz,add
    REALTYPE                  :: totn,dt_eff
@@ -295,10 +254,15 @@
             call surface_fluxes_iow(numc,nlev,cc,t(nlev),sfl)
       end select
 
+      if (mussels_calc) then
+         call do_mussels(numc,dt)
+      end if
+
       do j=1,numc
-         call Yevol(nlev,Bcup,Bcdw,dt,cnpar,sfl(j),Sdw,RelaxTau,h,h,nuh,ws(j,:), &
-                 QSour,cc(j,:),char,w_adv_discr,cc(j,:),surf_flux,bott_flux,  &
-                 grid_method,w_grid,flag)
+         call Yevol(nlev,Bcup,Bcdw,dt,cnpar,sfl(j),bfl(j), &
+                    RelaxTau,h,h,nuh,ws(j,:),QSour,cc(j,:), &
+                    char,w_adv_discr,cc(j,:),surf_flux,bott_flux,  & 
+                    grid_method,w_grid,flag)
       end do
 
       do split=1,split_factor
@@ -354,10 +318,72 @@
 !-----------------------------------------------------------------------
 !BOC
 
+   if (mussels_calc) then
+      call end_mussels()
+   end if
+
    return
    end subroutine end_bio
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Allocate memory for biological variables
+!
+! !INTERFACE:
+   subroutine allocate_memory(numc,nlev)
+!
+! !DESCRIPTION:
+!  Allocate biological related global variables.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,  intent(in)                :: numc,nlev
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard & Karsten Bolding
+!
+! !LOCAL VARIABLES:
+   integer                   :: rc
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   allocate(cc(1:numc,0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_bio: Error allocating (cc)'
+
+   allocate(ws(1:numc,0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_bio: Error allocating (ws)'
+
+   allocate(sfl(1:numc),stat=rc)
+   if (rc /= 0) STOP 'init_bio: Error allocating (sfl)'
+   sfl=_ZERO_
+
+   allocate(bfl(1:numc),stat=rc)
+   if (rc /= 0) STOP 'init_bio: Error allocating (bfl)'
+   bfl=_ZERO_
+
+   allocate(mussels_inhale(1:numc),stat=rc)
+   if (rc /= 0) STOP 'init_bio: Error allocating (mussels_inhale)'
+   mussels_inhale=.false.
+
+   allocate(var_ids(numc),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating var_ids)'
+
+   allocate(var_names(numc),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating var_names)'
+
+   allocate(var_units(numc),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating var_units)'
+
+   allocate(var_long(numc),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating var_long)'
+
+   return
+   end subroutine allocate_memory
+!EOC
 !-----------------------------------------------------------------------
 
    end module bio
