@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.7 2003-04-05 07:01:16 kbk Exp $
+!$Id: temperature.F90,v 1.8 2003-04-07 07:51:18 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -84,7 +84,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.7  2003-04-05 07:01:16  kbk
+!  Revision 1.8  2003-04-07 07:51:18  kbk
+!  initialised and enabled bioshade
+!
+!  Revision 1.7  2003/04/05 07:01:16  kbk
 !  moved bioshade variable to meanflow - to compile properly
 !
 !  Revision 1.6  2003/04/04 14:25:52  hb
@@ -127,7 +130,7 @@
    z=0. 
    do i=nlev-1,0,-1 
       z=z+h(i+1)
-      rad(i)=I_0*(A*exp(-z/g1)+(1-A)*exp(-z/g2))! *bioshade(i)
+      rad(i)=I_0*(A*exp(-z/g1)+(1-A)*exp(-z/g2))*bioshade(i)
       avh(i)=nuh(i)+avmolT 
    end do
 

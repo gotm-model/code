@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.6 2003-04-05 07:01:16 kbk Exp $
+!$Id: meanflow.F90,v 1.7 2003-04-07 07:51:18 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -103,7 +103,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
-!  Revision 1.6  2003-04-05 07:01:16  kbk
+!  Revision 1.7  2003-04-07 07:51:18  kbk
+!  initialised and enabled bioshade
+!
+!  Revision 1.6  2003/04/05 07:01:16  kbk
 !  moved bioshade variable to meanflow - to compile properly
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk
@@ -252,12 +255,9 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (w_grid)'
    w_grid = _ZERO_
 
-#if 1
    allocate(bioshade(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_bio: Error allocating (bioshade)'
-   bioshade= _ZERO_
-#endif
-
+   bioshade = _ONE_
 
    LEVEL2 'done.'
 
