@@ -1,10 +1,10 @@
-#$Id: Makefile,v 1.1 2001-03-05 15:07:57 gotm Exp $
+#$Id: Makefile,v 1.2 2001-03-05 15:13:13 gotm Exp $
 #
 # Makefile for making new release of GOTM.
 #
 
 # Should be update for each new unstable release.
-TAGNAME	= v2_3_2
+TAGNAME	= v2_3_3
 
 all:
 
