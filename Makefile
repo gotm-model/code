@@ -1,19 +1,58 @@
-#$Id: Makefile,v 1.2 2001-03-05 15:13:13 gotm Exp $
+#$Id: Makefile,v 1.3 2001-05-31 12:22:38 gotm Exp $
 #
 # Makefile for making new release of GOTM.
 #
+# Before doing - make release - be sure to commit all files.
 
-# Should be update for each new unstable release.
-TAGNAME	= v2_3_3
+# Remember to update  - VERSION - for each new release
 
-all:
 
-dist:
+# 20010531
+VERSION=2.3.5
+
+export CVSROOT=gotm@gotm.net:/void/cvsroot
+
+TAGNAME	= v$(shell cat VERSION | tr . _)
+RELEASE	= gotm-$(VERSION)
+OLDDIR	= $(HOME)/old_gotm/Unstable
+TARFILE	= $(RELEASE).tar.gz
+RHOST	= gotm.net
+RDIR	= src/devel
+
+SCP	= /usr/bin/scp
+SSH	= /usr/bin/ssh
+
+all: release
+
+new_version:
+	@if [ -d $(OLDDIR)/$(RELEASE) ]; then		\
+	   echo "$(RELEASE) is already released";	\
+	   echo "update VERSION in Makefile";		\
+	   exit 99;					\
+	fi;
+	echo $(VERSION) > VERSION
+
+unstable: new_version
+	echo $(TAGNAME)
 	cvs tag $(TAGNAME)	
+	(cd src/ ; make ../include/version.h)
 	(cd src/ ; cvs2cl)
-	cvs export -r $(TAGNAME) -d gotm-`cat VERSION` gotm
-	mv gotm-`cat VERSION` ~/old_gotm
-	cp ChangeLog ~/old_gotm/gotm-`cat VERSION`
+	cvs export -r $(TAGNAME) -d $(RELEASE) gotm
+	mv $(RELEASE) $(OLDDIR)
+	cp ChangeLog $(OLDDIR)/$(RELEASE)
+
+tarfile: unstable
+	(cd $(OLDDIR); tar -cvzf $(TARFILE) $(RELEASE) )
+
+release: tarfile
+	$(SCP) $(OLDDIR)/$(TARFILE) $(RHOST):$(RDIR)
+	$(SSH) $(RHOST) \( cd $(RDIR) \; ln -sf $(TARFILE) gotm-devel.tar.gz \) 
+
+diff:
+	( cvs diff > cvs.diff ; vi cvs.diff )
+	
+update:
+	( cvs update > cvs.update ; vi cvs.update )
 	
 #-----------------------------------------------------------------------
 # Copyright (C) 2001 - Hans Burchard and Karsten Bolding (BBH)         !
