@@ -1,4 +1,4 @@
-!$Id: ode_solvers.F90,v 1.3 2004-05-28 13:24:49 hb Exp $
+!$Id: ode_solvers.F90,v 1.4 2004-07-03 20:32:37 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -518,7 +518,7 @@
          a(i,i)=0.
          do j=1,numc
             a(i,i)=a(i,i)+dd(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*dd(j,i,ci)/cc(j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc(i,ci)
          a(i,i)=1.+a(i,i)
@@ -576,7 +576,7 @@
          a(i,i)=0.
          do j=1,numc
             a(i,i)=a(i,i)+dd(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*dd(j,i,ci)/cc(j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc(i,ci)
          a(i,i)=1.+a(i,i)
@@ -595,7 +595,7 @@
          a(i,i)=0.
          do j=1,numc
             a(i,i)=a(i,i)+dd(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*dd(j,i,ci)/cc1(j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc1(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1(i,ci)
          a(i,i)=1.+a(i,i)
@@ -655,7 +655,7 @@
          a(i,i)=0.
          do j=1,numc
             a(i,i)=a(i,i)+dd(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*dd(j,i,ci)/cc(j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc(i,ci)
          a(i,i)=1.+a(i,i)
@@ -671,7 +671,7 @@
          a(i,i)=0.
          do j=1,numc
             a(i,i)=a(i,i)+dd1(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*dd1(j,i,ci)/cc1(j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp1(i,j,ci)/cc1(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1(i,ci)
          a(i,i)=1.+a(i,i)
@@ -687,7 +687,7 @@
          a(i,i)=0.
          do j=1,numc
             a(i,i)=a(i,i)+dd2(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*dd2(j,i,ci)/cc1(j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp2(i,j,ci)/cc1(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1(i,ci)
          a(i,i)=1.+a(i,i)
@@ -706,7 +706,7 @@
          a(i,i)=0.
          do j=1,numc
             a(i,i)=a(i,i)+dd(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*dd(j,i,ci)/cc1(j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc1(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1(i,ci)
          a(i,i)=1.+a(i,i)
