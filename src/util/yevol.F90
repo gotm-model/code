@@ -1,4 +1,4 @@
-!$Id: yevol.F90,v 1.3 2003-03-10 08:54:16 gotm Exp $
+!$Id: yevol.F90,v 1.4 2003-03-28 09:10:39 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -23,15 +23,15 @@
    use mtridiagonal
 !
 ! !INPUT PARAMETERS:
-   integer,  intent(in)	               :: N,grid_method,w_adv_discr,flag
-   integer,  intent(in)	               :: Bcup,Bcdw,w_adv_method
-   REALTYPE, intent(in)	               :: dt,cnpar
-   REALTYPE, intent(in)	               :: Yup,Ydw
-   REALTYPE, intent(in)	               :: Taur(0:N)
-   REALTYPE, intent(in)	               :: h(0:N),ho(0:N),avh(0:N)
-   REALTYPE, intent(in)	               :: w(0:N),Qsour(0:N),w_grid(0:N)
-   REALTYPE, intent(in)	               :: Yobs(0:N)
-   logical,  intent(in)	               :: surf_flux,bott_flux
+   integer,  intent(in)                :: N,grid_method,w_adv_discr,flag
+   integer,  intent(in)                :: Bcup,Bcdw,w_adv_method
+   REALTYPE, intent(in)                :: dt,cnpar
+   REALTYPE, intent(in)                :: Yup,Ydw
+   REALTYPE, intent(in)                :: Taur(0:N)
+   REALTYPE, intent(in)                :: h(0:N),ho(0:N),avh(0:N)
+   REALTYPE, intent(in)                :: w(0:N),Qsour(0:N),w_grid(0:N)
+   REALTYPE, intent(in)                :: Yobs(0:N)
+   logical,  intent(in)                :: surf_flux,bott_flux
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: Y(0:N)
@@ -40,7 +40,10 @@
 !  Original author(s): Pierre-Philippe Mathieu
 !
 !  $Log: yevol.F90,v $
-!  Revision 1.3  2003-03-10 08:54:16  gotm
+!  Revision 1.4  2003-03-28 09:10:39  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 08:54:16  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.2  2001/11/27 19:49:48  gotm
@@ -70,10 +73,10 @@
    do i=2,N-1
       c    =2*dt*avh(i)  /(h(i)+h(i+1))/h(i) 
       a    =2*dt*avh(i-1)/(h(i)+h(i-1))/h(i)
-      cu(i)=-cnpar*c                                 		!i+1,n+1
-      au(i)=-cnpar*a                                 		!i-1,n+1
-      bu(i)=1-au(i)-cu(i)                            		!i  ,n+1
-      du(i)=Y(i)+dt*Qsour(i)                        &		!i  ,n
+      cu(i)=-cnpar*c                                !i+1,n+1
+      au(i)=-cnpar*a                                !i-1,n+1
+      bu(i)=1-au(i)-cu(i)                           !i  ,n+1
+      du(i)=Y(i)+dt*Qsour(i)               &        !i  ,n
             +(1-cnpar)*(a*Y(i-1)-(a+c)*Y(i)+c*Y(i+1))
     end do
 
@@ -92,12 +95,12 @@
 
 !  Bottom  
 ! => [/ b c].X=[d] where X=[/,1,2]
-   if (Bcdw.eq.1) then					!BC Neuman              
+   if (Bcdw.eq.1) then                                !BC Neuman              
       c    =2*dt*avh(1)/(h(1)+h(2))/h(1)
       cu(1)=-cnpar*c 
       bu(1)=1-cu(1)
       du(1)=Y(1)+dt*(Qsour(1)+Ydw/h(1))+(1-cnpar)*c*(Y(2)-Y(1))
-   else if (Bcdw.eq.2) then				!BC Dirichlet
+   else if (Bcdw.eq.2) then                           !BC Dirichlet
       cu(1)=0.
       bu(1)=1.
       du(1)=Ydw

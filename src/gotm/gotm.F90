@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.5 2003-03-10 09:20:27 gotm Exp $
+!$Id: gotm.F90,v 1.6 2003-03-28 09:11:30 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -72,7 +72,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.5  2003-03-10 09:20:27  gotm
+!  Revision 1.6  2003-03-28 09:11:30  kbk
+!  removed tabs
+!
+!  Revision 1.5  2003/03/10 09:20:27  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !  Revision 1.3  2001/11/18 15:58:02  gotm
@@ -300,7 +303,7 @@
             call stabilityfunctions(nlev,NN,SS,1)
             call do_tke(nlev,dt,u_taus,u_taub,z0s,z0b,h,SS,NN,P,B)
             call lengthscale(nlev,dt,z0b,z0s,u_taus,u_taub,depth,h,NN,P,B)
-	    call turbulence_adv(nlev,dt,h)
+            call turbulence_adv(nlev,dt,h)
             call kolpran(nlev)
          case default
       end select
@@ -321,7 +324,7 @@
 !     Diagnostic output
       if(diagnostics) then
          call do_diagnostics(n,nlev,buoy_method,dt, &
-	                     u_taus,u_taub,I_0,heat)
+                             u_taus,u_taub,I_0,heat)
       end if
    end do
    STDERR LINE

@@ -1,4 +1,4 @@
-!$Id: advection.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: advection.F90,v 1.2 2003-03-28 09:10:39 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -27,12 +27,12 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: N
-   REALTYPE, intent(in)	:: dt
-   REALTYPE, intent(in)	:: h(0:N),Y(0:N)
-   REALTYPE, intent(in)	:: w(0:N)
-   integer, intent(in)	:: Method
-   LOGICAL,  intent(in)	:: surf_flux,bott_flux
+   integer, intent(in)       :: N
+   REALTYPE, intent(in)      :: dt
+   REALTYPE, intent(in)      :: h(0:N),Y(0:N)
+   REALTYPE, intent(in)      :: w(0:N)
+   integer, intent(in)       :: Method
+   LOGICAL,  intent(in)      :: surf_flux,bott_flux
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
@@ -43,16 +43,19 @@
 !  Original author(s): Hans Burchard & Karsten Bolding 
 !
 !  $Log: advection.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-28 09:10:39  kbk
+!  removed tabs
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
 !
 ! !LOCAL VARIABLES:
-   REALTYPE 		:: Cint(0:N),Clow(0:N)
-   REALTYPE 		:: Chig(0:N),Ci(0:N)   
-   REALTYPE 		:: rp(0:N),rm(0:N) 
-   REALTYPE 		:: Cd,Cu,Cuu,ww,CMin,CMax,Cl,UppFlux,LowFlux,fac     
-   integer		:: i 
+   REALTYPE                  :: Cint(0:N),Clow(0:N)
+   REALTYPE                  :: Chig(0:N),Ci(0:N)   
+   REALTYPE                  :: rp(0:N),rm(0:N) 
+   REALTYPE                  :: Cd,Cu,Cuu,ww,CMin,CMax,Cl
+   REALTYPE                  :: UppFlux,LowFlux,fac     
+   integer                   :: i 
 ! 
 !EOP
 !-----------------------------------------------------------------------
@@ -92,7 +95,7 @@
                Cu  = Y(i  )
                Cuu = Y(i-1)
                ww  = abs(w(i))*dt/(0.5*(h(i)+h(i+1)))
-               Cint(i) = w(i)*(0.5*(Cd+Cu) - 0.5*ww*(Cd-Cu)		&
+               Cint(i) = w(i)*(0.5*(Cd+Cu) - 0.5*ww*(Cd-Cu)          &
                         - (1-ww*ww)/6.*(Cd-2*Cu+Cuu))   
             end if
          else
@@ -102,7 +105,7 @@
                Cu  = Y(i+1)
                Cuu = Y(i+2)
                ww  = abs(w(i))*dt/(0.5*(h(i)+h(i+1)))
-               Cint(i) = w(i)*(0.5*(Cd+Cu) - 0.5*ww*(Cd-Cu)		&
+               Cint(i) = w(i)*(0.5*(Cd+Cu) - 0.5*ww*(Cd-Cu)          &
                         - (1-ww*ww)/6.*(Cd-2*Cu+Cuu))   
             end if
          end if
@@ -199,6 +202,3 @@
    return
    end subroutine advection
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard and Karsten Bolding
