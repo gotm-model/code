@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.11 2003-04-05 06:56:48 kbk Exp $
+#$Id: Rules.make,v 1.12 2004-01-12 08:08:34 lars Exp $
 
 SHELL   = /bin/sh
 
@@ -43,9 +43,9 @@ endif
 endif
 
 #
-# False targets.
+# phony targets
 #
-.PHONY: dummy
+.PHONY: clean realclean distclean dummy
 
 # Top of this version of GOTM.
 ifndef GOTMDIR
