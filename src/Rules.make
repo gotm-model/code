@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.5 2001-11-18 11:56:13 gotm Exp $
+#$Id: Rules.make,v 1.6 2001-11-27 19:41:45 gotm Exp $
 
 SHELL   = /bin/sh
 
@@ -56,10 +56,6 @@ ifndef GOTMDIR
 GOTMDIR  := $(HOME)/gotm
 endif
 
-# The Fortran compiler is determined from the EV FORTRAN_COMPILER - options 
-# sofar NAG(linux), FUJITSU(Linux), DECF90 (OSF1 and likely Linux on alpha),
-# SunOS.
-
 CPP	= /lib/cpp
 
 # Here you can put defines for the [c|f]pp - some will also be set depending
@@ -101,9 +97,14 @@ INCDIRS	+= -I/usr/local/include -I$(GOTMDIR)/include -I$(MODDIR)
 #include $(GOTMDIR)/compilers/compiler.$(FORTRAN_COMPILER)
 #endif
 
+# The Fortran compiler is determined from the EV FORTRAN_COMPILER - options 
+# sofar NAG(linux), FUJITSU(Linux), DECF90 (OSF1 and likely Linux on alpha),
+# SunOS, PGF90 - Portland Group Fortran Compiler (on Intel Linux).
+
 # Set options for the NAG Fortran compiler.
 ifeq ($(FORTRAN_COMPILER),NAG)
 FC=f95nag
+DEFINES += -DFORTRAN95
 can_do_F90=true
 MODULES=-mdir $(MODDIR)
 EXTRAS	= -f77
@@ -117,6 +118,7 @@ endif
 # Set options for the Fujitsu compiler - on Linux/Intel.
 ifeq ($(FORTRAN_COMPILER),FUJITSU)
 FC=frt
+DEFINES += -DFORTRAN95
 can_do_F90=true
 MODULES=-Am -M$(MODDIR)
 EXTRAS  = -ml=cdecl -fw
@@ -130,6 +132,7 @@ endif
 # Set options for the Compaq fort compiler - on alphas.
 ifeq ($(FORTRAN_COMPILER),DECFOR)
 FC=f95
+DEFINES += -DFORTRAN95
 can_do_F90=true
 MODULES=-module $(MODDIR)
 EXTRAS	=
@@ -139,11 +142,11 @@ PROD_FLAGS  = -O -fast -inline speed -pipeline
 REAL_4B = real\(4\)
 endif
 
-DEFINES += -DREAL_4B=$(REAL_4B)
 
 # Set options for the SunOS fortran compiler.
 ifeq ($(FORTRAN_COMPILER),SunOS)
 FC=f90
+DEFINES += -DFORTRAN95
 can_do_F90=true
 MODULES=-M$(MODDIR)
 MOVE_MODULES_COMMAND=/usr/bin/mv -f *.mod $(MODDIR)
@@ -151,7 +154,24 @@ EXTRAS  =
 DEBUG_FLAGS = -C
 PROF_FLAGS  = -pg
 PROD_FLAGS  = -fast
+REAL_4B = real\(4\)
 endif
+
+# Set options for the Portland Group Fortran 90 compiler.
+ifeq ($(FORTRAN_COMPILER),PGF90)
+FC=pgf90
+DEFINES += -DFORTRAN90
+can_do_F90=false
+F90_to_f90=$(FC) -E $(F90FLAGS) $(EXTRA_FFLAGS) $< > $@
+MODULES=-module $(MODDIR)
+EXTRAS  =
+DEBUG_FLAGS = -g
+PROF_FLAGS  =
+PROD_FLAGS  = -fast
+REAL_4B = real\(4\)
+endif
+
+DEFINES += -DREAL_4B=$(REAL_4B)
 
 # Sets options for debug compilation
 ifeq ($(compilation),debug)
@@ -195,14 +215,8 @@ ifeq  ($(can_do_F90),true)
 	$(FC) $(F90FLAGS) $(EXTRA_FFLAGS) -c $< -o $@
 else
 %.f90: %.F90
-	$(CPP) $(CPPFLAGS) $< -o $@
-
+#	$(CPP) $(CPPFLAGS) $< -o $@
+	$(F90_to_f90)
 %.o: %.f90
 	$(FC) $(F90FLAGS) $(EXTRA_FFLAGS) -c $< -o $@
 endif
-
-#clean:
-#	-rm -f ${LIB}
-
-#realclean: clean
-#	-rm -f *.o
