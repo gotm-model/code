@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.4 2003-03-10 08:51:58 gotm Exp $
+!$Id: observations.F90,v 1.5 2003-03-10 13:51:08 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -183,7 +183,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
-!  Revision 1.4  2003-03-10 08:51:58  gotm
+!  Revision 1.5  2003-03-10 13:51:08  lars
+!  changed intent(out) to intent(inout) for lines in read_profiles()
+!
+!  Revision 1.4  2003/03/10 08:51:58  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.3  2001/11/27 15:35:55  gotm
@@ -702,7 +705,7 @@
    REALTYPE, intent(in)                :: z(:)
 !
 ! !INPUT/OUTPUT PARAMETERS:
-   integer, intent(out)                :: lines
+   integer, intent(inout)              :: lines
 !
 ! !OUTPUT PARAMETERS:
    integer, intent(out)                :: yy,mm,dd,hh,min,ss
