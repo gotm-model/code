@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.9 2004-06-25 07:50:29 hb Exp $
+!$Id: airsea.F90,v 1.10 2004-07-30 09:19:03 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -69,7 +69,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.9  2004-06-25 07:50:29  hb
+!  Revision 1.10  2004-07-30 09:19:03  hb
+!  wet_mode now red from namelist
+!
+!  Revision 1.9  2004/06/25 07:50:29  hb
 !  Preliminary wet mode choices improved
 !
 !  Revision 1.8  2004/05/28 13:14:14  hb
@@ -105,6 +108,7 @@
    integer                   :: sst_method
    integer                   :: sss_method
    integer                   :: airt_method
+   integer                   :: wet_mode
 
    character(len=PATH_MAX)   :: meteo_file
    character(len=PATH_MAX)   :: heatflux_file
@@ -162,6 +166,7 @@
 ! !LOCAL VARIABLES:
    namelist /airsea/ calc_fluxes, &
                      meteo_file, &
+                     wet_mode, &
                      heat_method, &
                      const_qin,const_qout, &
                      heatflux_file, &
@@ -450,9 +455,6 @@
    REALTYPE                  :: ae_e,be_e,ce_e,pe_e
    REALTYPE                  :: x,x1,x2,x3,ta_k
    REALTYPE                  :: aa=17.27, bb=237.7
-!   integer                   :: wet_mode=1  ! Relative humidity
-!   integer                   :: wet_mode=2  ! Wet bulb temperature
-   integer                   :: wet_mode=3  ! Dew point temperature
 !
 !-----------------------------------------------------------------------
 !BOC
