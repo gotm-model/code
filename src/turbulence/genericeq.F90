@@ -1,4 +1,4 @@
-!$Id: genericeq.F90,v 1.1 2001-11-18 16:15:30 gotm Exp $
+!$Id: genericeq.F90,v 1.2 2001-11-18 19:02:29 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -48,7 +48,9 @@
    use turbulence, ONLY: num,eps,L,tkeo,tke,eps_min,L_min
    use turbulence, ONLY: cmue1,craig_banner,cw,nnn,mmm,craig_m,mx
    use turbulence, ONLY: sig_phi,c_phi1,c_phi2,nnx,mmx,nx,beta_gen,cm_craig
+#if 0
    use meanflow,   ONLY: avmolu
+#endif
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -68,9 +70,11 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: genericeq.F90,v $
-!  Revision 1.1  2001-11-18 16:15:30  gotm
-!  New generic two-equation model
+!  Revision 1.2  2001-11-18 19:02:29  gotm
+!  Problems with avmolu - should be passed
 !
+!  Revision 1.1  2001/11/18 16:15:30  gotm
+!  New generic two-equation model
 !
 ! !LOCAL VARIABLES:
    REALTYPE 		:: avh(0:nlev),flux(0:nlev)
@@ -88,7 +92,8 @@
    end do
 
    do i=1,nlev
-      avh(i)=0.5*(num(i-1)/sig_phi+num(i)/sig_phi)+avmolu
+!kbk      avh(i)=0.5*(num(i-1)/sig_phi+num(i)/sig_phi)+avmolu
+      avh(i)=0.5*(num(i-1)/sig_phi+num(i)/sig_phi)
    end do
 
 !  The following boundary conditions are derived from the law of the wall:
