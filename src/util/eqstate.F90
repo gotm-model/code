@@ -1,4 +1,4 @@
-!$Id: eqstate.F90,v 1.3 2003-03-10 08:54:16 gotm Exp $
+!$Id: eqstate.F90,v 1.4 2003-03-28 08:06:33 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,7 +31,10 @@
 !  Original author(s): Hans Burchard \& Karsten Bolding
 !
 !  $Log: eqstate.F90,v $
-!  Revision 1.3  2003-03-10 08:54:16  gotm
+!  Revision 1.4  2003-03-28 08:06:33  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 08:54:16  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.2  2001/11/27 19:44:32  gotm
@@ -120,7 +123,7 @@
 !
 ! !INPUT PARAMETERS:
    REALTYPE,intent(in)                 :: S,T,p
-   REALTYPE,optional,intent(in)	       :: g,rho_0
+   REALTYPE,optional,intent(in)        :: g,rho_0
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard \& Karsten Bolding
@@ -150,9 +153,9 @@
             dSS=0.001
             rh0= unesco(S0,T0,p0,press)
             dtr=(unesco(S0,T0+0.5*dTT,p0,press)        &
-	         -unesco(S0,T0-0.5*dTT,p0,press))/dTT
+                -unesco(S0,T0-0.5*dTT,p0,press))/dTT
             dsr=(unesco(S0+0.5*dSS,T0,p0,press)        &
-	         -unesco(S0-0.5*dSS,T0,p0,press))/dSS
+                -unesco(S0-0.5*dSS,T0,p0,press))/dSS
             first=.false.
          end if
          x=rh0+dtr*(T-T0)+dsr*(S-S0)
@@ -217,19 +220,19 @@
 
      if ((UNPress).and.(p.gt.0)) then
      p2=p*p
-     K= 19652.21 						&
-       +148.4206     *T          -2.327105    *T2		&
-       +  1.360477E-2*T3         -5.155288E-5 *T4		&
-       +  3.239908      *p       +1.43713E-3  *T *p		&
-       +  1.16092E-4 *T2*p       -5.77905E-7  *T3*p		&
-       +  8.50935E-5    *p2      -6.12293E-6  *T *p2		&
-       +  5.2787E-8  *T2*p2					&
-       + 54.6746             *S  -0.603459    *T    *S		&
-       +  1.09987E-2 *T2     *S  -6.1670E-5   *T3   *S		&
-       +  7.944E-2           *S15+1.6483E-2   *T    *S15	&
-       -  5.3009E-4  *T2     *S15+2.2838E-3      *p *S		&
-       -  1.0981E-5  *T *p   *S  -1.6078E-6   *T2*p *S		&
-       +  1.91075E-4    *p   *S15-9.9348E-7      *p2*S		&
+     K= 19652.21                                         &
+       +148.4206     *T          -2.327105    *T2        &
+       +  1.360477E-2*T3         -5.155288E-5 *T4        &
+       +  3.239908      *p       +1.43713E-3  *T *p      &
+       +  1.16092E-4 *T2*p       -5.77905E-7  *T3*p      &
+       +  8.50935E-5    *p2      -6.12293E-6  *T *p2     &
+       +  5.2787E-8  *T2*p2                              &
+       + 54.6746             *S  -0.603459    *T    *S   &
+       +  1.09987E-2 *T2     *S  -6.1670E-5   *T3   *S   &
+       +  7.944E-2           *S15+1.6483E-2   *T    *S15 &
+       -  5.3009E-4  *T2     *S15+2.2838E-3      *p *S   &
+       -  1.0981E-5  *T *p   *S  -1.6078E-6   *T2*p *S   &
+       +  1.91075E-4    *p   *S15-9.9348E-7      *p2*S   &
        +  2.0816E-8  *T *p2*S    +9.1697E-10  *T2*p2*S
      x=x/(1.-p/K) 
    end if

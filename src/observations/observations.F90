@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.5 2003-03-10 13:51:08 lars Exp $
+!$Id: observations.F90,v 1.6 2003-03-28 08:08:21 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -183,7 +183,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
-!  Revision 1.5  2003-03-10 13:51:08  lars
+!  Revision 1.6  2003-03-28 08:08:21  kbk
+!  removed tabs
+!
+!  Revision 1.5  2003/03/10 13:51:08  lars
 !  changed intent(out) to intent(inout) for lines in read_profiles()
 !
 !  Revision 1.4  2003/03/10 08:51:58  gotm
@@ -198,14 +201,14 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer, parameter	     :: READ_SUCCESS=1
-   integer, parameter	     :: END_OF_FILE=-1
-   integer, parameter	     :: READ_ERROR=-2
-   integer, parameter	     :: NOTHING=0
-   integer, parameter	     :: ANALYTICAL=1
-   integer, parameter	     :: CONSTANT=1
-   integer, parameter	     :: FROMFILE=2
-   character(len=72)	     :: cbuf
+   integer, parameter        :: READ_SUCCESS=1
+   integer, parameter        :: END_OF_FILE=-1
+   integer, parameter        :: READ_ERROR=-2
+   integer, parameter        :: NOTHING=0
+   integer, parameter        :: ANALYTICAL=1
+   integer, parameter        :: CONSTANT=1
+   integer, parameter        :: FROMFILE=2
+   character(len=72)         :: cbuf
 !
 !-----------------------------------------------------------------------
 
@@ -581,7 +584,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	               :: julday,secs
+   integer, intent(in)                 :: julday,secs
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: z(:)
 !

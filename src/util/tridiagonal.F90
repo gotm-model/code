@@ -1,4 +1,4 @@
-!$Id: tridiagonal.F90,v 1.2 2003-03-10 08:54:16 gotm Exp $
+!$Id: tridiagonal.F90,v 1.3 2003-03-28 08:06:33 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -22,7 +22,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.2  2003-03-10 08:54:16  gotm
+!  Revision 1.3  2003-03-28 08:06:33  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 08:54:16  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
@@ -53,7 +56,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)    :: N
+   integer, intent(in)                 :: N
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -61,7 +64,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer 		:: rc
+   integer                   :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -111,15 +114,18 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)         :: N,fi,lt
+   integer, intent(in)                 :: N,fi,lt
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE                    :: value(0:N)
+   REALTYPE                            :: value(0:N)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.2  2003-03-10 08:54:16  gotm
+!  Revision 1.3  2003-03-28 08:06:33  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 08:54:16  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
@@ -128,7 +134,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer 		:: i
+   integer                   :: i
 !
 !-----------------------------------------------------------------------
 !BOC
