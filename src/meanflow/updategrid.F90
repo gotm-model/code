@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.10 2003-07-23 10:52:52 hb Exp $
+!$Id: updategrid.F90,v 1.11 2004-08-18 11:46:19 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -33,8 +33,8 @@
 !          the surface and the bottom.
 !  \end{itemize}
 !
-!  \item Sigma--layers. The fraction that every layer occupies is
-!  read--in from file, see {\tt gotmmean.inp}.
+!  \item Sigma-layers. The fraction that every layer occupies is
+!  read-in from file, see {\tt gotmmean.inp}.
 !  \item Cartesian layers. The height of every layer is read in from file,
 !  see {\tt gotmmean.inp}.
 !  This method is not recommended when a varying sea surface is considered.
@@ -56,6 +56,9 @@
 !
 ! with the observed vertical velocity $w_{adv}$ at height $z_w$, which
 ! is read in through the {\tt w\_advspec} namelist in {\tt obs.inp}.
+! Thus, $w(z)$ varies linearly between its maximum value at $z_w$, and 
+! the surface and the bottom, respectively. This mechanism can be used 
+! to simulate vertical advection of e.g. the thermocline in upwelling situations.
 !
 ! !USES:
    use meanflow, only: depth0,depth,z,h,ho,ddu,ddl,grid_method
@@ -70,7 +73,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
-!  Revision 1.10  2003-07-23 10:52:52  hb
+!  Revision 1.11  2004-08-18 11:46:19  lars
+!  updated documentation
+!
+!  Revision 1.10  2003/07/23 10:52:52  hb
 !  proper initialisation of gridinit + cleaning
 !
 !  Revision 1.9  2003/03/28 09:20:35  kbk
@@ -96,6 +102,8 @@
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
 !  initial import into CVS
 !
+!EOP
+!
 ! !LOCAL VARIABLES:
    integer                   :: i,rc,j,nlayers
    integer, save             :: gridinit=0
@@ -103,7 +111,6 @@
    REALTYPE                  :: znew,zold
    integer, parameter        :: grid_unit = 101
    REALTYPE, save, dimension(:), allocatable     :: ga
-!EOP
 !-----------------------------------------------------------------------
 !BOC
    if (gridinit .eq. 0) then ! Build up dimensionless grid (0<=ga<=1)

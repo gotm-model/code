@@ -1,4 +1,4 @@
-!$Id: salinity.F90,v 1.6 2004-01-07 12:17:47 lars Exp $
+!$Id: salinity.F90,v 1.7 2004-08-18 11:43:10 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -14,8 +14,7 @@
 !   \label{SEq}
 !    \dot{S}
 !    = {\cal D}_S
-!    - \frac{1}{\tau_R(S)}(S-S_{obs})
-!    + \frac{1}{C_p \rho_0} \partder{I}{z}
+!    - \frac{1}{\tau^S_R}(S-S_{obs})
 !    \comma
 !  \end{equation}
 !  where $\dot{S}$ denotes the material derivative of the salinity $S$, and
@@ -26,36 +25,37 @@
 !    {\cal D}_S 
 !    = \frstder{z} 
 !     \left( 
-!        \left( \nu'_t + \nu^S \right) \partder{S}{z}
-!      \right) 
+!        \left( \nu^S_t + \nu^S \right) \partder{S}{z} - \tilde{\Gamma}_S 
+!        \right) 
 !    \point
 !  \end{equation}
-!  In this equation, $\nu'_t$ and $\nu^S$ are the turbulent diffusivity
-! of heat and the molecular diffusivity of salt, respectively. The computation
-!  of $\nu'_t$ is discussed in \sect{sec:turbulenceIntro}. Note, 
-!  that the model \eq{DS} assumes that turbulent transport of heat
-!  and salt are identical. 
+!  In this equation, $\nu^S_t$ and $\nu^S$ are the turbulent and 
+!  molecular diffusivities of salinity, respectively, 
+!  and $\tilde{\Gamma}_S$
+!  denotes the so-called counter-gradient flux of salinity, see 
+!  \sect{sec:turbulenceIntro}. In the current version of GOTM,
+!  we set $\nu^S_t = \nu'_t$ for simplicity.
 !
 !  Horizontal advection is optionally
 !  included  (see {\tt obs.inp}) by means of prescribed
 !  horizontal gradients $\partial_xS$ and $\partial_yS$ and 
 !  calculated horizontal velocities $u$ and $v$.
-!  Relaxation with the time scale $\tau_R (S)$ 
+!  Relaxation with the time scale $\tau^S_R$ 
 !  towards a precribed (changing in time)
 !  profile $S_{obs}$ is possible. 
 
 !  Inner sources or sinks are not considered. 
-!  The surface freshwater flux is given by means of the $P-E$ (precipitation
-!  - evaporation) data read in as $p_e$ through the {\tt airsea.inp} namelist:
+!  The surface freshwater flux is given by means of the precipitation
+!  - evaporation data read in as $p_e$ through the {\tt airsea.inp} namelist:
 !  \begin{equation}
-!  \nu'_t\partial_z \bar S = -\bar S(P-E),
-!  \qquad \mbox{for } z=\zeta,
+!    {\cal D}_S = - S p_e,
+!    \qquad \mbox{at } z=\zeta,
 !  \end{equation}
-!  with $P$ and $E$ given as velocities.
+!  with $p_e$ given as a velocity.
 !  Diffusion is numerically treated implicitly, 
 !  see equations (\ref{sigmafirst})-
 !  (\ref{sigmalast}).   
-!  The tri--diagonal matrix is solved then by a simplified Gauss elimination.
+!  The tri-diagonal matrix is solved then by a simplified Gauss elimination.
 !  Vertical advection is included for accounting for adaptive grids,
 !  see {\tt adaptivegrid.F90}.
 !
@@ -76,7 +76,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: salinity.F90,v $
-!  Revision 1.6  2004-01-07 12:17:47  lars
+!  Revision 1.7  2004-08-18 11:43:10  lars
+!  updated documentation
+!
+!  Revision 1.6  2004/01/07 12:17:47  lars
 !  Removed latex bug
 !
 !  Revision 1.5  2003/06/13 09:27:15  hb

@@ -1,33 +1,34 @@
-!$Id: vequation.F90,v 1.5 2003-03-28 09:20:35 kbk Exp $
+!$Id: vequation.F90,v 1.6 2004-08-18 11:44:49 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The $v$--momentum equation \label{sec:vequation}
+! !ROUTINE: The V-momentum equation\label{sec:vequation}
 !
 ! !INTERFACE:
    subroutine vequation(nlev,dt,cnpar,ty,num,Method) 
 !
 ! !DESCRIPTION:
 !  This subroutine computes the transport of momentum in 
-!  $y$--direction according to
+!  $y$-direction according to
 !  \begin{equation}
 !   \label{vEq}
-!    \dot{v}
-!    = {\cal D}_v
-!    - g \partder{\zeta}{y} + \int_z^{\zeta} \partder{b}{y} \,dz' 
-!    - \frac{1}{\tau_R(v)}(v-v_{obs})-C_f v \sqrt{u^2+v^2}
+!    \dot{V}
+!    = {\cal D}_V
+!    - g \partder{\zeta}{y} + \int_z^{\zeta} \partder{B}{y} \,dz' 
+!    - \frac{1}{\tau^V_R}(V-V_{obs})-C_f V \sqrt{U^2+V^2}
 !    \comma
 !  \end{equation}
-!  where $\dot{v}$ denotes the material derivative of $v$, and
-!  ${\cal D}_v$ is the sum of the turbulent and viscous transport
-!  terms modelled according to
+!  where $\dot{V}$ denotes the material derivative of $V$, $\zeta$
+!  the free surface elevation and $B$ the mean buoyancy defined 
+!  in  \eq{DefBuoyancy}. ${\cal D}_V$ is the sum of the turbulent 
+!  and viscous transport terms modelled according to
 !  \begin{equation}
 !   \label{Dv}
-!    {\cal D}_v 
+!    {\cal D}_V 
 !    = \frstder{z} 
 !     \left( 
-!        \left( \nu_t + \nu \right) \partder{v}{z}
+!        \left( \nu_t + \nu \right) \partder{V}{z}
 !      \right) 
 !    \point
 !  \end{equation}
@@ -40,8 +41,8 @@
 !  to those described in \sect{sec:uequation}.
 !
 ! !USES:
-   use meanflow, only : gravity,avmolu
-   use meanflow, only : h,ho,u,v,w,avh,drag,SS,grid_method,w_grid
+   use meanflow,     only : gravity,avmolu
+   use meanflow,     only : h,ho,u,v,w,avh,drag,SS,grid_method,w_grid
    use observations, only : vel_relax_tau,vel_relax_ramp
    use observations, only : idpdy,dpdy,vprof
    use observations, only : w_adv_method,w_adv_discr
@@ -58,7 +59,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: vequation.F90,v $
-!  Revision 1.5  2003-03-28 09:20:35  kbk
+!  Revision 1.6  2004-08-18 11:44:49  lars
+!  updated documentation
+!
+!  Revision 1.5  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/28 08:56:56  kbk

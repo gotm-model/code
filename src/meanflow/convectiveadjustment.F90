@@ -1,4 +1,4 @@
-!$Id: convectiveadjustment.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
+!$Id: convectiveadjustment.F90,v 1.5 2004-08-18 11:39:10 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -12,18 +12,18 @@
 ! !DESCRIPTION:
 ! 
 ! In this subroutine, convective adjustment is performed for the temperature,
-! $\theta$, and the salinity, $S$, or alternatively for the buoyancy, $b$, 
+! $\Theta$, and the salinity, $S$, or alternatively for the buoyancy, $B$, 
 !  if a dynamic
 ! equation is solved for this quantity. Beginning from the first interface 
 ! below the surface, the water column is checked for static instability.
-! If the Brunt--V\"ais\"al\"a frequency squared, $N^2$, is negative, the two
+! If the Brunt-V\"ais\"al\"a frequency squared, $N^2$, is negative, the two
 ! adjacent boxes are completely mixed. The stability for
 ! the interface below this homogenised upper part of the water column
 ! is then analysed, and, if needed, mixing is performed again. By doing so,
 ! the water column is scanned until  the first interface with
 ! statically stable or neutral stratification or the bottom is reached. 
 ! An equation of state described in \sect{sec:eqstate} is used 
-! for calculating the Brunt--V\"ais\"al\"a frequency.
+! for calculating the Brunt-V\"ais\"al\"a frequency.
 !
 ! The constant values {\tt const\_num} and {\tt const\_nuh} are then imposed for
 ! the eddy viscosity $\nu_t$ and the eddy diffusivity $\nu'_t$, respectively. 
@@ -46,7 +46,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: convectiveadjustment.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2004-08-18 11:39:10  lars
+!  updated documentation
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 08:56:56  kbk

@@ -1,33 +1,34 @@
-!$Id: uequation.F90,v 1.6 2003-03-28 09:20:35 kbk Exp $
+!$Id: uequation.F90,v 1.7 2004-08-18 11:44:49 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The $u$--momentum equation \label{sec:uequation}
+! !ROUTINE: The U-momentum equation\label{sec:uequation}
 !
 ! !INTERFACE:
    subroutine uequation(nlev,dt,cnpar,tx,num,Method)
 !
 ! !DESCRIPTION:
 !  This subroutine computes the transport of momentum in 
-!  $x$--direction according to
+!  $x$-direction according to
 !  \begin{equation}
 !   \label{uEq}
-!    \dot{u}
-!    = {\cal D}_u
-!    - g \partder{\zeta}{x} + \int_z^{\zeta} \partder{b}{x} \,dz' 
-!    - \frac{1}{\tau_R(u)}(u-u_{obs})-C_fu\sqrt{u^2+v^2}
+!    \dot{U}
+!    = {\cal D}_U
+!    - g \partder{\zeta}{x} + \int_z^{\zeta} \partder{B}{x} \,dz' 
+!    - \frac{1}{\tau^U_R}(U-U_{obs})-C_f U \sqrt{U^2+V^2}
 !    \comma
 !  \end{equation}
-!  where $\dot{u}$ denotes the material derivative of $u$, and
-!  ${\cal D}_u$ is the sum of the turbulent and viscous transport
-!  terms modelled according to
+!  where $\dot{U}$ denotes the material derivative of $U$, $\zeta$
+!  the free surface elevation and $B$ the mean buoyancy defined 
+!  in  \eq{DefBuoyancy}. ${\cal D}_U$ is the sum of the turbulent 
+!  and viscous transport terms modelled according to
 !  \begin{equation}
 !   \label{Du}
-!    {\cal D}_u 
+!    {\cal D}_U 
 !    = \frstder{z} 
 !     \left( 
-!        \left( \nu_t + \nu \right) \partder{u}{z}
+!        \left( \nu_t + \nu \right) \partder{U}{z}
 !      \right) 
 !    \point
 !  \end{equation}
@@ -45,7 +46,7 @@
 !  term on right hand side) is calculated in {\tt intpressure.F90}, see
 !  \sect{sec:intpressure}.
 !  The fourth term on the right hand side allows for nudging velocity
-!  to observed profiles with the relaxation time scale $\tau_R (u)$.
+!  to observed profiles with the relaxation time scale $\tau^U_R$.
 !  This is useful for initialising 
 !  velocity profiles in case of significant inertial oscillations.
 !  Bottom friction is implemented implicitely using the fourth term
@@ -55,21 +56,22 @@
 !
 !  Diffusion is numerically treated implicitly, see equations (\ref{sigmafirst})-
 !  (\ref{sigmalast}).
-!  The tri--diagonal matrix is solved then by a simplified Gauss elimination.
+!  The tri-diagonal matrix is solved then by a simplified Gauss elimination.
 !  Vertical advection is included for accounting for adaptive grids,
 !  see {\tt adaptivegrid.F90} in \sect{sec:adaptivegrid}.
 !
-!  The $u$--contribution to shear frequency squared $M^2$ is now also
+!  The $U$-contribution to shear frequency squared $M^2$ is now also
 !  computed here, using a new scheme which guarantees energy conservation
 !  of kinetic energy from mean to turbulent flow, see \cite{Burchard2002}. 
 ! With this method, the discretisation of the
-! $u$-contribution to shear squared $M^2$ is discretised as
-! \begin{equation}\label{shearsquared}
-! \left(\partial_z u\right)^2 \approx \frac{(\bar u_{j+1}-\bar u_j)
-! (\tilde u_{j+1}-\tilde u_j)}{(z_{j+1}-z_j)^2}
+! $U$-contribution to shear squared $M^2$ is discretised as
+! \begin{equation}
+!   \label{shearsquared}
+!    \left(\partial_z U\right)^2 \approx \frac{(\bar U_{j+1}-\bar U_j)
+!    (\tilde U_{j+1}-\tilde U_j)}{(z_{j+1}-z_j)^2}
 ! \end{equation}
-! where $\tilde u_j=\frac12(\hat u_j+u_j)$. The shear obtained from (\ref{shearsquared})
-! plus the $v$-contribution calculated in {\tt vequation.F90} is then used
+! where $\tilde U_j=\frac12(\hat U_j+U_j)$. The shear obtained from (\ref{shearsquared})
+! plus the $V$-contribution calculated in {\tt vequation.F90} is then used
 ! for the calculation of the turbulence shear production, see equation (\ref{computeP}). 
 !
 ! !USES:
@@ -92,7 +94,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: uequation.F90,v $
-!  Revision 1.6  2003-03-28 09:20:35  kbk
+!  Revision 1.7  2004-08-18 11:44:49  lars
+!  updated documentation
+!
+!  Revision 1.6  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.5  2003/03/28 08:56:56  kbk
