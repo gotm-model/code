@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.12 2004-03-04 10:13:01 kbk Exp $
+!$Id: gotm.F90,v 1.13 2004-03-30 11:31:52 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -79,7 +79,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.12  2004-03-04 10:13:01  kbk
+!  Revision 1.13  2004-03-30 11:31:52  kbk
+!  h in parameter list to init_bio()
+!
+!  Revision 1.12  2004/03/04 10:13:01  kbk
 !  calc_sediment --> do_sediment
 !
 !  Revision 1.11  2003/09/16 12:17:10  hb
@@ -212,7 +215,7 @@
    call init_seagrass(namlst,'seagrass.inp',unit_seagrass,nlev,h)
 #endif
 #ifdef BIO
-   call init_bio(namlst,'bio.inp',unit_bio,nlev)
+   call init_bio(namlst,'bio.inp',unit_bio,nlev,h)
 #endif
    LEVEL2 'done.'
    STDERR LINE
