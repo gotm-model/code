@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.7 2003-06-13 09:27:16 hb Exp $
+!$Id: airsea.F90,v 1.8 2004-05-28 13:14:14 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -69,7 +69,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.7  2003-06-13 09:27:16  hb
+!  Revision 1.8  2004-05-28 13:14:14  hb
+!  airsea.F90 extended for dew point temperature
+!
+!  Revision 1.7  2003/06/13 09:27:16  hb
 !  Implemented freshwater fluxes
 !
 !  Revision 1.6  2003/03/28 09:20:34  kbk
@@ -111,7 +114,7 @@
    REALTYPE                  :: wx,wy
    REALTYPE                  :: w
    REALTYPE                  :: airp
-   REALTYPE                  :: airt,twet
+   REALTYPE                  :: airt,twet,tdew
    REALTYPE                  :: cloud
    REALTYPE                  :: rh
    REALTYPE                  :: rho_air
@@ -243,6 +246,7 @@
    end if
 
    twet=0.
+   tdew=0.
    rh=0.
    cloud=0.
    sss=0.
@@ -441,7 +445,9 @@
    REALTYPE                  :: ae_d,be_d,pe_d
    REALTYPE                  :: ae_h,be_h,ce_h,pe_h
    REALTYPE                  :: ae_e,be_e,ce_e,pe_e
-   REALTYPE                  :: x
+   REALTYPE                  :: x,x1,x2,x3,ta_k
+   REALTYPE                  :: aa=17.27, bb=237.7
+   integer                   :: wet_mode=3
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -452,16 +458,52 @@
    es = es * 100.0 ! Conversion millibar --> Pascal
    qs = const06*es/(airp-0.377*es)
 
-   if (rh .lt. 0.0) then
-      ea = es - 67.*(airt-twet);
-      x = (airt-twet)/(CONST06*L);
-      ea = (es-cpa*airp*x)/(1+cpa*x);
-      if(ea .lt. 0.0) ea = 0.0
-      qa = CONST06*ea/(airp-0.377*ea);
-   else
-      qa = 0.01*rh*qs;
-      ea = qa*airp/(const06 + 0.377*qa);
-   end if
+   select case(wet_mode)    ! back radiation
+      case(1)  ! Relative humidity is given
+         qa = 0.01*rh*qs;
+         ea = qa*airp/(const06 + 0.377*qa)
+         if (rh .lt. 20.) STDERR 'Warning: Relative humidity below 20 %, is wet_mode correct ?'
+      case(2)  ! Wet bulb temperature is given
+      if (rh .gt. 50.) then
+         STDERR 'Wet bulb temperature is larger than 50 deg C.'
+         STDERR 'Probably wet_mode is set to a wrong value.'
+         STDERR 'Please correct this in airsea.F90.'
+         STDERR 'Program aborted.'
+      end if
+         twet=rh
+         ea = es - 67.*(airt-twet);
+         x = (airt-twet)/(CONST06*L);
+         ea = (es-cpa*airp*x)/(1+cpa*x);
+         if(ea .lt. 0.0) ea = 0.0
+         qa = CONST06*ea/(airp-0.377*ea);
+      case(3)
+      ! Piece of code taken from HAMSOM for calculating relative
+      ! humidity from dew point temperature and dry air temperature.
+      ! It must be sure that hum is dew point temperature in Kelvin
+      ! in the next line ...
+
+      if (rh .gt. 50.) then
+         STDERR 'Dew point temperature is larger than 50 deg C.'
+         STDERR 'Probably wet_mode is set to a wrong value.'
+         STDERR 'Please correct this in airsea.F90.'
+         STDERR 'Program aborted.'
+      end if
+      tdew=rh+273.15
+      x1 = (18.729 - (min(tdew,300.*_ONE_)-273.15)/227.3)
+      x2 = (min(tdew,300.*_ONE_)-273.15)
+      x3 = (max(tdew,200.*_ONE_)-273.15+257.87)
+      ea = 611.21*exp(x1*x2/x3)
+
+      ta_k=airt+273.15
+      x1 = (18.729 - (min(ta_k,300.*_ONE_)-273.15)/227.3)
+      x2 = (min(ta_k,300.*_ONE_)-273.15)
+      x3 = (max(ta_k,200.*_ONE_)-273.15+257.87)
+      es = 611.21*exp(x1*x2/x3)
+      rh = 100.*ea/es
+      qa = 0.01*rh*qs
+      ea = qa*airp/(const06 + 0.377*qa)
+      case default
+   end select
 
    tvirt = (airt+Kelvin)*(1+qa/const06)/(1+qa)
    rho_air = airp/(287.05*Tvirt)
