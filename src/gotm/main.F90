@@ -1,4 +1,4 @@
-!$Id: main.F90,v 1.2 2001-05-31 12:00:52 gotm Exp $
+!$Id: main.F90,v 1.3 2001-11-18 13:07:06 gotm Exp $
 #include<cppdefs.h>
 !-----------------------------------------------------------------------
 !BOI
@@ -71,7 +71,13 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: main.F90,v $
-!  Revision 1.2  2001-05-31 12:00:52  gotm
+!  Revision 1.3  2001-11-18 13:07:06  gotm
+!  Cleaned
+!
+!  Revision 1.3  2001/09/19 08:26:08  gotm
+!  Only calls CPU_time() if -DFORTRAN95
+!
+!  Revision 1.2  2001/05/31 12:00:52  gotm
 !  Correction in the calculation of the shear squared calculation - now according
 !  to Burchard 1995 (Ph.D. thesis).
 !  Also some cosmetics and cleaning of Makefiles.
@@ -82,12 +88,14 @@
 !
 ! !LOCAL VARIABLES:
    character(LEN=8)	:: datestr
-   real 		:: t1,t2
+   real 		:: t1=-1,t2=-1
 ! 
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+#ifdef FORTRAN95
    call CPU_Time(t1)
+#endif
    call Date_And_Time(datestr,timestr)
    STDERR LINE 
    STDERR 'GOTM ver. ',RELEASE,': Started on  ',datestr,' ',timestr
@@ -97,12 +105,16 @@
    call time_loop()
    call clean_up()
 
+#ifdef FORTRAN95
    call CPU_Time(t2)
+#endif
    call Date_And_Time(datestr,timestr)
    STDERR LINE
    STDERR 'GOTM ver. ',RELEASE,': Finished on ',datestr,' ',timestr
+#ifdef FORTRAN95
    STDERR 'CPU-time was in loop:  ',t2-t1,' seconds'
    STDERR 'Sim-time/CPU-time:     ',simtime/(t2-t1)
+#endif
    STDERR LINE
 !kbk   STDERR 'Copyright (C) Karsten Bolding & Hans Burchard'
    STDERR LINE
