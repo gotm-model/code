@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.12 2004-08-02 09:01:38 kbk Exp $
+!$Id: bio_iow.F90,v 1.13 2004-08-09 11:55:06 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.12  2004-08-02 09:01:38  kbk
+!  Revision 1.13  2004-08-09 11:55:06  hb
+!  surface phosphorus flux not any more multiplied by 10 when read from file
+!
+!  Revision 1.12  2004/08/02 09:01:38  kbk
 !  does not use modules time and observations
 !
 !  Revision 1.11  2004/07/30 09:22:20  hb
@@ -371,7 +374,7 @@
 
    var_names(7) = 'nit'
    var_units(7) = 'mmol n/m**3'
-   var_long(7)  = 'nitrtate'
+   var_long(7)  = 'nitrate'
 
    var_names(8) = 'pho'
    var_units(8) = 'mmol p/m**3'
@@ -514,7 +517,7 @@
       case (2) ! from file via sfl_read
          sfl(ni) =   -1.*sfl_read(1)/secs_pr_day
          sfl(am) =   -1.*sfl_read(2)/secs_pr_day
-         sfl(po) =  -10.*sfl_read(3)/secs_pr_day
+         sfl(po) =   -1.*sfl_read(3)/secs_pr_day
       case (3) ! sfl array filled externally - for 3D models
       case default
    end select
