@@ -1,4 +1,4 @@
-!$Id: cmue_gen.F90,v 1.1 2004-01-27 08:28:28 lars Exp $
+!$Id: cmue_gen.F90,v 1.2 2004-01-27 10:03:11 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -178,7 +178,7 @@
    integer, parameter                  :: CHCD01B     = 6
    integer, parameter                  :: CCH02       = 7
 
-   integer, parameter                  :: scnd_coeff  = GL78
+   integer, parameter                  :: scnd_coeff  = LDOR96
 
 
 
@@ -188,7 +188,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: cmue_gen.F90,v $
-!  Revision 1.1  2004-01-27 08:28:28  lars
+!  Revision 1.2  2004-01-27 10:03:11  hb
+!  bugfix
+!
+!  Revision 1.1  2004/01/27 08:28:28  lars
 !  trial version of generic stability function
 !
 !
@@ -243,6 +246,19 @@
         ct5     =    ct5MY82
         ctt     =    cttMY82
      case (KC94)
+        cc1     =    cc1KC94
+        cc2     =    cc2KC94
+        cc3     =    cc3KC94
+        cc4     =    cc4KC94
+        cc5     =    cc5KC94
+        cc6     =    cc6KC94
+        ct1     =    ct1KC94
+        ct2     =    ct2KC94
+        ct3     =    ct3KC94
+        ct4     =    ct4KC94
+        ct5     =    ct5KC94
+        ctt     =    cttKC94
+     case (LDOR96)
         cc1     =    cc1LDOR96
         cc2     =    cc2LDOR96
         cc3     =    cc3LDOR96
@@ -375,7 +391,7 @@
 !        if (anKe.lt.anMin) anKe = anMin
 
 ! uncomment this for shear limiter
-!        if (asKE.gt.asMax) asKE = asMax
+        if (asKE.gt.asMax) asKE = asMax
 
         
         dCm      = d0  +  d1*anKE +  d2*asKE + d3*anKE*asKE + d4*anKE*anKE + d5*asKE*asKE 
