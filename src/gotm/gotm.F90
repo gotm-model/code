@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.1 2001-02-12 15:55:59 gotm Exp $
+!$Id: gotm.F90,v 1.2 2001-06-13 07:40:39 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -80,8 +80,11 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.1  2001-02-12 15:55:59  gotm
-!  Initial revision
+!  Revision 1.2  2001-06-13 07:40:39  gotm
+!  Lon, lat was hardcoded in meteo.F90 - now passed via init_meteo()
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:59  gotm
+!  initial import into CVS
 !
 !
 ! !LOCAL VARIABLES:
@@ -163,7 +166,7 @@
    v = vprof
    call init_tridiagonal(nlev)
    call init_output(title,nlev,latitude,longitude)
-   call init_air_sea(namlst)
+   call init_air_sea(namlst,latitude,longitude)
 
 !  Initialize each of the extra features/modules
 #ifdef SEDIMENT

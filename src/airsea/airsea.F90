@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: airsea.F90,v 1.2 2001-06-13 07:40:39 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -36,60 +36,65 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2001-06-13 07:40:39  gotm
+!  Lon, lat was hardcoded in meteo.F90 - now passed via init_meteo()
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
 !
 !
 ! !LOCAL VARIABLES:
-   integer, private	:: heat_method
-   integer, private	:: momentum_method
-   integer, private	:: p_e_method
-   integer, private	:: sst_method
-   integer, private	:: sss_method
-   integer, private	:: airt_method
+   integer	:: heat_method
+   integer	:: momentum_method
+   integer	:: p_e_method
+   integer	:: sst_method
+   integer	:: sss_method
+   integer	:: airt_method
 
-   character(len=PATH_MAX), private	:: meteo_file
-   character(len=PATH_MAX), private	:: heatflux_file
-   character(len=PATH_MAX), private	:: momentumflux_file
-   character(len=PATH_MAX), private	:: p_e_flux_file
-   character(len=PATH_MAX), private	:: sss_file
-   character(len=PATH_MAX), private	:: sst_file
-   character(len=PATH_MAX), private	:: airt_file
+   character(len=PATH_MAX)	:: meteo_file
+   character(len=PATH_MAX)	:: heatflux_file
+   character(len=PATH_MAX)	:: momentumflux_file
+   character(len=PATH_MAX)	:: p_e_flux_file
+   character(len=PATH_MAX)	:: sss_file
+   character(len=PATH_MAX)	:: sst_file
+   character(len=PATH_MAX)	:: airt_file
 
-   integer, private, parameter	:: meteo_unit=20
-   integer, private, parameter	:: heat_unit=21
-   integer, private, parameter	:: momentum_unit=22
-   integer, private, parameter	:: p_e_unit=23
-   integer, private, parameter	:: sst_unit=24
-   integer, private, parameter	:: sss_unit=25
-   integer, private, parameter	:: airt_unit=26
+   integer, parameter	:: meteo_unit=20
+   integer, parameter	:: heat_unit=21
+   integer, parameter	:: momentum_unit=22
+   integer, parameter	:: p_e_unit=23
+   integer, parameter	:: sst_unit=24
+   integer, parameter	:: sss_unit=25
+   integer, parameter	:: airt_unit=26
 
-   REALTYPE, private	:: wx,wy
-   REALTYPE, private	:: w
-   REALTYPE, private	:: airp
-   REALTYPE, private	:: airt,twet
-   REALTYPE, private	:: cloud
-   REALTYPE, private	:: rh
-   REALTYPE, private	:: rho_air
-   REALTYPE, private	:: const_tx,const_ty
-   REALTYPE, private	:: const_qin,const_qout
+   REALTYPE	:: wx,wy
+   REALTYPE	:: w
+   REALTYPE	:: airp
+   REALTYPE	:: airt,twet
+   REALTYPE	:: cloud
+   REALTYPE	:: rh
+   REALTYPE	:: rho_air
+   REALTYPE	:: const_tx,const_ty
+   REALTYPE	:: const_qin,const_qout
 
-   REALTYPE, private	:: es,ea,qs,qa,L,S
-   REALTYPE, private	:: cee_heat,ced_heat
-   REALTYPE, private	:: cee_mom,ced_mom
+   REALTYPE	:: es,ea,qs,qa,L,S
+   REALTYPE	:: cee_heat,ced_heat
+   REALTYPE	:: cee_mom,ced_mom
 
-   REALTYPE, private, parameter	:: cpa=1008. 
-   REALTYPE, private, parameter	:: cp=3985. 
-   REALTYPE, private, parameter	:: emiss=0.97
-   REALTYPE, private, parameter	:: bolz=5.67e-8
-   REALTYPE, private, parameter	:: Kelvin=273.16
-   REALTYPE, private, parameter	:: const06=0.62198
-   REALTYPE, private, parameter :: pi=3.14159265358979323846
-   REALTYPE, private, parameter	:: deg2rad=pi/180.
-   REALTYPE, private, parameter	:: rad2deg=180./pi
+   REALTYPE, parameter	:: cpa=1008. 
+   REALTYPE, parameter	:: cp=3985. 
+   REALTYPE, parameter	:: emiss=0.97
+   REALTYPE, parameter	:: bolz=5.67e-8
+   REALTYPE, parameter	:: Kelvin=273.16
+   REALTYPE, parameter	:: const06=0.62198
+   REALTYPE, parameter	:: pi=3.14159265358979323846
+   REALTYPE, parameter	:: deg2rad=pi/180.
+   REALTYPE, parameter	:: rad2deg=180./pi
 
    integer, parameter	:: CONSTVAL=1
    integer, parameter	:: FROMFILE=2
+
+   REALTYPE		:: alon,alat
 !
 ! !BUGS
 !
@@ -104,7 +109,7 @@
 ! !IROUTINE: Initialise the air-sea interaction module
 !
 ! !INTERFACE:
-   subroutine init_air_sea(namlst)
+   subroutine init_air_sea(namlst,lat,lon)
 !
 ! !DESCRIPTION:
 !  This routine initialises the Air-Sea module by reading various variables 
@@ -115,6 +120,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)		:: namlst
+   REALTYPE, intent(in)		:: lat,lon
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
@@ -218,6 +224,9 @@
    sss=0.
    airt=0.
 
+   alon = deg2rad*lon
+   alat = deg2rad*lat
+
    return
 
 90 FATAL 'I could not open airsea.inp'
@@ -298,7 +307,7 @@ STOP 'TESTING'
 #endif
 
       call flux_from_meteo(jul,secs)
-      call short_wave_radiation(jul,secs)
+      call short_wave_radiation(jul,secs,alon,alat)
 
    else
 
@@ -576,10 +585,10 @@ STOP 'TESTING'
 ! !IROUTINE: Calculates the short wave radiation
 !
 ! !INTERFACE:
-   subroutine short_wave_radiation(jul,secs,swr)
+   subroutine short_wave_radiation(jul,secs,lon,lat,swr)
 !
 ! !DESCRIPTION:
-! Calculates the SW radiation - based on lat,lon,time,cloud and albedo. 
+!  Calculates the SW radiation - based on lat,lon,time,cloud and albedo. 
 !
 !  albedo monthly values from Payne (1972) as means of the values
 !  at 40N and 30N for the Atlantic Ocean ( hence the same latitudinal
@@ -590,6 +599,7 @@ STOP 'TESTING'
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)			:: jul,secs
+   REALTYPE, intent(in)			:: lon,lat
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
@@ -602,7 +612,6 @@ STOP 'TESTING'
 !  See airsea module
 !
 ! !LOCAL VARIABLES:
-   REALTYPE	:: alat,alon
 !kbk   integer	:: year_day
    REALTYPE	:: solar=1350.
    REALTYPE	:: eclips=23.439*deg2rad
@@ -638,9 +647,6 @@ STOP 'TESTING'
    hour=1.0*secs/3600.
 !kbk   if (mod(yy,4) .eq. 0 ! leap year I forgot
    yrdays=365.
-
-   alat = deg2rad*59.33333
-   alon = deg2rad*1.283333
 
    th0 = 2.*pi*days/yrdays
    th02 = 2.*th0
@@ -775,7 +781,7 @@ STOP 'TESTING'
       call misc_variables()
       if (first) then
          call do_calc_fluxes(heatf=h1,taux=tx1,tauy=ty1)
-         call short_wave_radiation(jul,secs,swr=I1)
+         call short_wave_radiation(jul,secs,alon,alat,swr=I1)
          I2  = I1
          h2  = h1
          tx2 = tx1
@@ -787,7 +793,7 @@ STOP 'TESTING'
          tx1 = tx2
          ty1 = ty2
          call do_calc_fluxes(heatf=h2,taux=tx2,tauy=ty2)
-         call short_wave_radiation(jul,secs,swr=I2)
+         call short_wave_radiation(jul,secs,alon,alat,swr=I2)
       end if
       dt = time_diff(meteo_jul2,meteo_secs2,meteo_jul1,meteo_secs1)
       alpha(1) = (I2-I1)/dt
