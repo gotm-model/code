@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.8 2003-04-07 07:51:18 kbk Exp $
+!$Id: temperature.F90,v 1.9 2003-07-23 12:33:21 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -84,8 +84,8 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.8  2003-04-07 07:51:18  kbk
-!  initialised and enabled bioshade
+!  Revision 1.9  2003-07-23 12:33:21  hb
+!  fixed bioshade init and use
 !
 !  Revision 1.7  2003/04/05 07:01:16  kbk
 !  moved bioshade variable to meanflow - to compile properly
