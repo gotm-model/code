@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.5 2004-08-02 08:34:36 hb Exp $
+!$Id: bio_fasham.F90,v 1.6 2004-08-09 11:53:39 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
-!  Revision 1.5  2004-08-02 08:34:36  hb
+!  Revision 1.6  2004-08-09 11:53:39  hb
+!  bioshading now without detritus
+!
+!  Revision 1.5  2004/08/02 08:34:36  hb
 !  updated init routines to reflect new internal bio interface
 !
 !  Revision 1.4  2004/08/01 15:52:57  hb
@@ -315,10 +318,10 @@
    zz = _ZERO_
    add = _ZERO_
    do i=nlev,1,-1
-      add=add+0.5*h(i)*(cc(d,i)+cc(p,i)+p0)
+      add=add+0.5*h(i)*(cc(p,i)+p0)
       zz=zz+0.5*h(i)
       par(i)=0.25*(rad(i)+rad(i-1))*exp(-kc*add)
-      add=add+0.5*h(i)*(cc(d,i)+cc(p,i)+p0)
+      add=add+0.5*h(i)*(cc(p,i)+p0)
       zz=zz+0.5*h(i)
       if (bioshade_feedback) bioshade(i)=exp(-kc*add)
    end do
