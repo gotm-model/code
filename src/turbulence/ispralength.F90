@@ -1,4 +1,4 @@
-!$Id: ispralength.F90,v 1.3 2003-03-10 09:02:05 gotm Exp $
+!$Id: ispralength.F90,v 1.4 2003-03-28 08:30:15 kbk Exp $
 #include"cppdefs.h"
 !-------------------------------------------------------------------------
 !BOP
@@ -47,7 +47,10 @@
 !  Original author(s):  Manuel Ruiz Villarreal, Hans Burchard
 !
 !  $Log: ispralength.F90,v $
-!  Revision 1.3  2003-03-10 09:02:05  gotm
+!  Revision 1.4  2003-03-28 08:30:15  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 09:02:05  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !  Revision 1.2  2002/02/08 08:59:58  gotm
@@ -58,14 +61,14 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-  integer		:: i,SLind,BLind,Index,Index2
-  REALTYPE 		:: hms,hmb,db,ds
-  REALTYPE 		:: kml,c2_i,c3_i
-  REALTYPE 		:: l_min
+  integer                    :: i,SLind,BLind,Index,Index2
+  REALTYPE                   :: hms,hmb,db,ds
+  REALTYPE                   :: kml,c2_i,c3_i
+  REALTYPE                   :: l_min
 !
 !-------------------------------------------------------------------------
 !BOC
-  l_min = cde*k_min**1.5/eps_min
+   l_min = cde*k_min**1.5/eps_min
 
    kml   = 1.e-5
    c2_i  = 0.065

@@ -1,4 +1,4 @@
-!$Id: tkealgebraic.F90,v 1.3 2003-03-10 09:02:05 gotm Exp $
+!$Id: tkealgebraic.F90,v 1.4 2003-03-28 08:29:16 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -36,13 +36,16 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: u_taus,u_taub
-   REALTYPE, intent(in)	               :: NN(0:nlev),SS(0:nlev)
+   REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
 !
 ! !REVISION HISTORY: 
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: tkealgebraic.F90,v $
-!  Revision 1.3  2003-03-10 09:02:05  gotm
+!  Revision 1.4  2003-03-28 08:29:16  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 09:02:05  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !  Revision 1.2  2002/02/08 08:59:58  gotm

@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.5 2003-03-10 09:02:06 gotm Exp $
+!$Id: turbulence.F90,v 1.6 2003-03-28 08:20:01 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -34,26 +34,26 @@
 ! !PUBLIC DATA MEMBERS:
 !  TKE, rate of dissipation, 
 !  turbulent length-scale
-   REALTYPE, public, dimension(:), allocatable	:: tke,eps,L
+   REALTYPE, public, dimension(:), allocatable   :: tke,eps,L
 
 !  the turbulent diffusivities
-   REALTYPE, public, dimension(:), allocatable	:: num,nuh
+   REALTYPE, public, dimension(:), allocatable   :: num,nuh
 
 !  the stability functions
-   REALTYPE, public, dimension(:), allocatable	:: cmue1,cmue2
+   REALTYPE, public, dimension(:), allocatable   :: cmue1,cmue2
 
 !  long. Reynolds-stresses, temp.  variance, 
 !  its rate of dissipation
-   REALTYPE, public, dimension(:), allocatable	:: uu,vv,ww,tt,chi
+   REALTYPE, public, dimension(:), allocatable   :: uu,vv,ww,tt,chi
 
 !  TKE at the old timestep
-   REALTYPE, public, dimension(:), allocatable	:: tkeo
+   REALTYPE, public, dimension(:), allocatable   :: tkeo
 
 !  alpha_M and alpha_N
-   REALTYPE, public, dimension(:), allocatable	:: as,an
+   REALTYPE, public, dimension(:), allocatable   :: as,an
  
 !  the flux Richardson number
-   REALTYPE, public, dimension(:), allocatable	:: xRf 
+   REALTYPE, public, dimension(:), allocatable   :: xRf 
 
 !  some additional constants
    REALTYPE, public          :: cm0,cmsf,cde,rcm, b1
@@ -193,7 +193,10 @@
 
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.5  2003-03-10 09:02:06  gotm
+!  Revision 1.6  2003-03-28 08:20:01  kbk
+!  removed tabs
+!
+!  Revision 1.5  2003/03/10 09:02:06  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !
@@ -1092,7 +1095,7 @@
       ! compute kappa from the parameters
       if (compute_kappa)  then
          rad=sig_e*(ce2-ce1)
-         if (rad.gt.0) then
+         if (rad .gt. 0) then
             kappa=cm0*sqrt(rad)
          else
             STDERR 'Negative radicand discovered in computing'
@@ -1102,14 +1105,14 @@
             STDERR 'Program aborts now in turbulence.F90'
             stop
          endif
-	 if (sig_peps) then
+         if (sig_peps) then
             STDERR 'For using the Craig & Banner 1994 parameterisation'
-	    STDERR 'by Burchard (2001) kappa must be prescribed.'
-	    STDERR 'For doing so, compute_kappa=.false. must be set.'
+            STDERR 'by Burchard (2001) kappa must be prescribed.'
+            STDERR 'For doing so, compute_kappa=.false. must be set.'
             STDERR 'Please change gotmturb.inp accordingly.'
             STDERR 'Program aborts now in turbulence.F90'
-	    stop
-	 endif
+            stop
+         end if
 
          sig_e0=sig_e  ! use constant Schmidt-number always
 
@@ -1120,11 +1123,11 @@
 
          ! compute Schmidt-number for Burchard (2001) wave-breaking
          if (sig_peps) then
-	    craig_m=sqrt(1.5*cmsf**2*sig_k/kappa**2)
-	    sig_e0=(4./3.*craig_m+1.)*(craig_m+1.)*kappa**2/(ce2*cmsf**2)
-	 else
-	    sig_e0=sig_e
-	 endif
+            craig_m=sqrt(1.5*cmsf**2*sig_k/kappa**2)
+            sig_e0=(4./3.*craig_m+1.)*(craig_m+1.)*kappa**2/(ce2*cmsf**2)
+         else
+            sig_e0=sig_e
+         endif
       endif
 
 
@@ -1475,10 +1478,10 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)	               :: dt,depth,u_taus,u_taub,z0s,z0b
-   REALTYPE, intent(in)	               :: h(0:nlev)
-   REALTYPE, intent(in)	               :: NN(0:nlev),SS(0:nlev)
-   REALTYPE, intent(in)	               :: P(0:nlev),B(0:nlev)
+   REALTYPE, intent(in)                :: dt,depth,u_taus,u_taub,z0s,z0b
+   REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
+   REALTYPE, intent(in)                :: P(0:nlev),B(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard, 
@@ -1520,11 +1523,11 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)	               :: dt
-   REALTYPE, intent(in)	               :: u_taus,u_taub,z0s,z0b
-   REALTYPE, intent(in)	               :: h(0:nlev)
+   REALTYPE, intent(in)                :: dt
+   REALTYPE, intent(in)                :: u_taus,u_taub,z0s,z0b
+   REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: P(0:nlev),B(0:nlev)
-   REALTYPE, intent(in)	               :: NN(0:nlev),SS(0:nlev)
+   REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard, 
@@ -1579,12 +1582,12 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)	               :: dt
-   REALTYPE, intent(in)	               :: z0b,z0s
-   REALTYPE, intent(in)	               :: u_taus,u_taub
-   REALTYPE, intent(in)	               :: depth
-   REALTYPE, intent(in)	               :: h(0:nlev),NN(0:nlev)
-   REALTYPE, intent(in)	               :: P(0:nlev),B(0:nlev)
+   REALTYPE, intent(in)                :: dt
+   REALTYPE, intent(in)                :: z0b,z0s
+   REALTYPE, intent(in)                :: u_taus,u_taub
+   REALTYPE, intent(in)                :: depth
+   REALTYPE, intent(in)                :: h(0:nlev),NN(0:nlev)
+   REALTYPE, intent(in)                :: P(0:nlev),B(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard, 
@@ -1780,7 +1783,7 @@
          ! compute the capital K from the analytical solution 
          ! for shear-free flows
 
-	 ! compute the flux of k from the wave-breaking model
+         ! compute the flux of k from the wave-breaking model
          f_k  = fk_craig(u_tau)
 
          K    = (-sig_k*f_k/(cmsf*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
@@ -1921,7 +1924,7 @@
          ! compute the capital K from the analytical solution 
          ! of shear-free flows and from f_k given by the wave-breaking model
 
-	 ! compute the flux of k from the wave-breaking model
+         ! compute the flux of k from the wave-breaking model
          f_k  = fk_craig(u_tau)
          
          K = ( -f_k/(sqrt(2.)*sq*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
@@ -1930,7 +1933,7 @@
             q2over2_bc = K*(zi+z0)**gen_alpha
          else
             q2over2_bc = -sqrt(2.)*sq*K**1.5*gen_alpha*gen_l* &
-	                 (zi+z0)**(1.5*gen_alpha)
+                         (zi+z0)**(1.5*gen_alpha)
          endif
       
       case default
@@ -2058,7 +2061,7 @@
       case(injection)
          ! compute the capital K from the analytical solution 
          ! for shear-free flows
-	 ! compute the flux of k from the wave-breaking model
+         ! compute the flux of k from the wave-breaking model
          f_k  = fk_craig(u_tau)
 
          K    = (-sig_k*f_k/(cmsf*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
@@ -2067,7 +2070,7 @@
             epsilon_bc = cde*K**1.5/gen_l*(zi+z0)**(1.5*gen_alpha-1.)
          else
             epsilon_bc = -cmsf*cde/sig_e0*K**2. &
-	                 *(1.5*gen_alpha-1.)*(zi+z0)**(2.*gen_alpha-1.)
+                         *(1.5*gen_alpha-1.)*(zi+z0)**(2.*gen_alpha-1.)
          endif
       case default
    end select
@@ -2193,14 +2196,14 @@
          ! compute the capital K from the analytical solution 
          ! of shear-free flows and from f_k given by the wave-breaking model
          
-	 ! compute the flux of k from the wave-breaking model
+         ! compute the flux of k from the wave-breaking model
          f_k  = fk_craig(u_tau)
 
          K    = (-sig_k*f_k/(cmsf*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
          
          if (bc.eq.Dirichlet) then
             psi_bc = cm0**gen_p*K**gen_m*gen_l**gen_n &
-	             *(zi+z0)**(gen_m*gen_alpha+gen_n)
+                     *(zi+z0)**(gen_m*gen_alpha+gen_n)
          else
             psi_bc = - (gen_m*gen_alpha+gen_n)*cmsf*cm0**gen_p/sig_psi &
                          *K**(gen_m+0.5)*gen_l**(gen_n+1.) &
@@ -2329,7 +2332,7 @@
          ! compute the capital K from the analytical solution 
          ! of shear-free flows and from f_k given by the wave-breaking model
          
-	 ! compute the flux of k from the wave-breaking model
+         ! compute the flux of k from the wave-breaking model
          f_k  = fk_craig(u_tau) 
 
          K = ( -f_k/(sqrt(2.)*sq*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
@@ -2375,7 +2378,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev,calc_asan
-   REALTYPE, intent(in)	               :: NN(0:nlev),SS(0:nlev)
+   REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard, 
@@ -2555,7 +2558,7 @@
          STDERR 'Please change gotmturb.inp accordingly.'
          STDERR 'You have chosen the stability function no.',stab_method
          STDERR 'If the problem persists, then use another' 
-	 STDERR 'stability function.' 
+         STDERR 'stability function.' 
          STDERR 'Program aborts now in turbulence.F90.'
          stop
       endif
@@ -2641,7 +2644,7 @@
             goto 333
          endif
 
-	 if (abs(step).lt.1.e-10) goto 111
+         if (abs(step).lt.1.e-10) goto 111
       end do 
 111   an(1)=ann
       as(1)=an(1)/Rii
@@ -2768,7 +2771,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   REALTYPE              :: rich(0:nlev)	 
+   REALTYPE              :: rich(0:nlev)
    REALTYPE              :: rich2,pot,x      
    integer               :: i
 !

@@ -1,4 +1,4 @@
-!$Id: seagrass.F90,v 1.2 2003-03-10 09:13:09 gotm Exp $
+!$Id: seagrass.F90,v 1.3 2003-03-28 08:28:36 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -34,7 +34,10 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: seagrass.F90,v $
-!  Revision 1.2  2003-03-10 09:13:09  gotm
+!  Revision 1.3  2003-03-28 08:28:36  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 09:13:09  gotm
 !  Improved documentation
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
@@ -45,16 +48,16 @@
 !-----------------------------------------------------------------------
 !
 !  private data members
-   REALTYPE, dimension(:), allocatable	:: xx,yy
-   REALTYPE, dimension(:), allocatable	:: exc,vfric,grassz
+   REALTYPE, dimension(:), allocatable :: xx,yy
+   REALTYPE, dimension(:), allocatable :: exc,vfric,grassz
 
 !  from a namelist
-   logical		:: grass_calc=.false.
-   character(len=PATH_MAX)	:: grassfile='seagrass.dat'
-   REALTYPE		:: XP_rat
-   integer		:: grassind 
-   integer		:: grassn 
-   integer		:: out_unit
+   logical                   :: grass_calc=.false.
+   character(len=PATH_MAX)   :: grassfile='seagrass.dat'
+   REALTYPE                  :: XP_rat
+   integer                   :: grassind 
+   integer                   :: grassn 
+   integer                   :: out_unit
 
 !-----------------------------------------------------------------------
 
@@ -92,13 +95,13 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !EOP
-!-----------------------------------------------------------------------
-!BOC
 !
 ! !LOCAL VARIABLES:
-   integer		:: i,rc
-   REALTYPE		:: z
+   integer                   :: i,rc
+   REALTYPE                  :: z
    namelist /canopy/  grass_calc,grassfile,XP_rat
+!-----------------------------------------------------------------------
+!BOC
 
 
    LEVEL1 'init_seagrass'
@@ -237,16 +240,16 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!EOP
-!-----------------------------------------------------------------------
 !BOC
 ! !LOCAL VARIABLES:
-   integer		:: i
-   REALTYPE		:: dist
-   REALTYPE		:: grassfric(0:nlev) 
-   REALTYPE		:: excur(0:nlev) 
-   REALTYPE		:: z(0:nlev) 
-   REALTYPE		:: xxP(0:nlev) 
+   integer                   :: i
+   REALTYPE                  :: dist
+   REALTYPE                  :: grassfric(0:nlev) 
+   REALTYPE                  :: excur(0:nlev) 
+   REALTYPE                  :: z(0:nlev) 
+   REALTYPE                  :: xxP(0:nlev) 
+!EOP
+!-----------------------------------------------------------------------
 
    if (grass_calc) then 
 
@@ -350,22 +353,22 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+   logical, save             :: first=.true.
+   integer, save             :: x_excur_id,y_excur_id,n
+   integer                   :: i,iret
+   REALTYPE                  :: zz
+   REALTYPE                  :: miss_val
 !-----------------------------------------------------------------------
 !BOC
-! !LOCAL VARIABLES:
-   logical, save	:: first=.true.
-   integer, save	:: x_excur_id,y_excur_id,n
-   integer		:: i,iret
-   REALTYPE		:: zz
-   REALTYPE		:: miss_val
-!
 
    select case (out_fmt)
       case (ASCII)
          if(first) then
-	    open(out_unit,file='seagrass.out',status='unknown')
-	    first = .false.
-	 end if
+            open(out_unit,file='seagrass.out',status='unknown')
+            first = .false.
+         end if
          write(out_unit,*)
          write(out_unit,*) trim(ts)
          zz = _ZERO_
@@ -381,16 +384,16 @@
             dims(2) = lat_dim
             dims(3) = z_dim
             dims(4) = time_dim
-	    miss_val = -999.0
+            miss_val = -999.0
             iret = define_mode(ncid,.true.)
             iret = new_nc_variable(ncid,'x-excur',NF_REAL,4,dims,x_excur_id)
-	    iret = set_attributes(ncid,x_excur_id,units='m',	&
-	            long_name='seagrass excursion(x)',missing_value=miss_val)
+            iret = set_attributes(ncid,x_excur_id,units='m',    &
+                   long_name='seagrass excursion(x)',missing_value=miss_val)
             iret = new_nc_variable(ncid,'y-excur',NF_REAL,4,dims,y_excur_id)
-	    iret = set_attributes(ncid,y_excur_id,units='m',	&
-	            long_name='seagrass excursion(y)',missing_value=miss_val)
+            iret = set_attributes(ncid,y_excur_id,units='m',    &
+                   long_name='seagrass excursion(y)',missing_value=miss_val)
             iret = define_mode(ncid,.false.)
-	    n = ubound(xx,1)
+            n = ubound(xx,1)
             first = .false.
          end if
          iret = store_data(ncid,x_excur_id,XYZT_SHAPE,n,array=xx)
@@ -398,7 +401,7 @@
 #endif
       case default
          FATAL 'A non valid output format has been chosen'
-	 stop 'save_seagrass'
+         stop 'save_seagrass'
    end select   
    return
    end subroutine save_seagrass 

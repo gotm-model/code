@@ -1,4 +1,4 @@
-!$Id: output.F90,v 1.3 2003-03-10 08:53:05 gotm Exp $
+!$Id: output.F90,v 1.4 2003-03-28 08:24:19 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -42,7 +42,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: output.F90,v $
-!  Revision 1.3  2003-03-10 08:53:05  gotm
+!  Revision 1.4  2003-03-28 08:24:19  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 08:53:05  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.2  2001/11/18 11:51:52  gotm
@@ -82,9 +85,9 @@
    IMPLICIT NONE
 !
 ! !INPUT/OUTPUT PARAMETERS:
-   character(len=*), intent(in)	       :: title
+   character(len=*), intent(in)        :: title
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)	               :: latitude,longitude
+   REALTYPE, intent(in)                :: latitude,longitude
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -314,7 +317,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	                :: nlev
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard
@@ -447,7 +450,7 @@
    if (BuoyMeth .eq. 1) then
       dtt=0.01
       x=0.5*h(nlev)/10.
-      dTb=(eqstate1(S(nlev),T(nlev)+0.5*dtt,x,gravity,rho_0)		&
+      dTb=(eqstate1(S(nlev),T(nlev)+0.5*dtt,x,gravity,rho_0)         &
           -eqstate1(S(nlev),T(nlev)-0.5*dtt,x,gravity,rho_0))/dtt
       sbf=-heat/cp/rho_0*dTb
 !     Correction of surface buoyancy and temperature flux

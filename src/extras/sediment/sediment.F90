@@ -1,4 +1,4 @@
-!$Id: sediment.F90,v 1.2 2003-03-10 09:13:24 gotm Exp $
+!$Id: sediment.F90,v 1.3 2003-03-28 08:24:01 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -74,7 +74,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: sediment.F90,v $
-!  Revision 1.2  2003-03-10 09:13:24  gotm
+!  Revision 1.3  2003-03-28 08:24:01  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 09:13:24  gotm
 !  Improved documentation
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
@@ -83,8 +86,8 @@
 !EOP
 !
 ! !PRIVATE DATE MEMBERS
-   REALTYPE, dimension(:), allocatable	:: C
-   REALTYPE, dimension(:), allocatable	:: wc,Cobs,Qsour
+   REALTYPE, dimension(:), allocatable :: C
+   REALTYPE, dimension(:), allocatable :: wc,Cobs,Qsour
 !
 !  From a namelist
    logical:: sedi_calc=.true.
@@ -142,7 +145,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: rc 
    REALTYPE                  :: x,Dsize,avmolu=1.3e-6
-   namelist /sedi/  sedi_calc,sedi_dens,rho_sed,size,init_conc,		&
+   namelist /sedi/  sedi_calc,sedi_dens,rho_sed,size,init_conc,      &
                     adv_method,cnpar,Bcup,Bcdw,Cup,CbObsDt,z0bMethod 
 !
 !-----------------------------------------------------------------------
@@ -175,14 +178,14 @@
 
       C=init_conc 
 
-      gs=g*(rho_sed-rho_0)/rho_0 			! reduced gravity  
+      gs=g*(rho_sed-rho_0)/rho_0            ! reduced gravity  
       ! Zanke formula for fall velocity of sediment  
       x=-10.0*avmolu/size*(sqrt(1+(0.01*gs*size**3)/avmolu/avmolu)-1.0) 
       wc=x
       wc(0) = _ZERO_
       wc(nlev) = _ZERO_
       Dsize=size*(gs/avmolu/avmolu)**0.3333333  
-      if (Dsize.gt.10.0) then 				! critical fall velocity
+      if (Dsize.gt.10.0) then               ! critical fall velocity
          ustarc=-0.4*wc(1)  
       else 
          ustarc=-4.0/Dsize*wc(1)  
@@ -245,14 +248,14 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   REALTYPE		:: CBott,Cbalg
-   REALTYPE		:: y,z,ya,za
-   REALTYPE		:: dcdz,rho_mean
-   REALTYPE		:: rho(0:nlev)
-   REALTYPE,save	:: Cb
-   REALTYPE		:: RelaxT(0:nlev)
-   integer		:: i,flag
-   LOGICAL              :: surf_flux=.false.,bott_flux=.false.  
+   REALTYPE                  :: CBott,Cbalg
+   REALTYPE                  :: y,z,ya,za
+   REALTYPE                  :: dcdz,rho_mean
+   REALTYPE                  :: rho(0:nlev)
+   REALTYPE,save             :: Cb
+   REALTYPE                  :: RelaxT(0:nlev)
+   integer                   :: i,flag
+   LOGICAL                   :: surf_flux=.false.,bott_flux=.false.  
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -276,7 +279,7 @@
          ya=log(za/depth)  
          z=0.5*h(1)+za  
          y=log(z/depth)  
-         CBalg=CBott*exp(sigma*wc(1)/kappa/u_taub*			&
+         CBalg=CBott*exp(sigma*wc(1)/kappa/u_taub*    &
                (y -log(1-exp(y ))-(ya-log(1-exp(ya)))))  
       else 
          CBalg = 0.0 
@@ -375,10 +378,10 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   logical, save	:: first=.true.
-   integer, save	:: sedi_id,n
-   integer		:: i,iret
-   REALTYPE		:: z
+   logical, save             :: first=.true.
+   integer, save             :: sedi_id,n
+   integer                   :: i,iret
+   REALTYPE                  :: z
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -386,9 +389,9 @@
       case (ASCII)
          if(first) then
             open(out_unit,file='sediment.out',status='unknown')
-	    n = ubound(C,1)
+            n = ubound(C,1)
             first = .false.
-	 end if
+         end if
          write(out_unit,*) trim(ts)
          z = _ZERO_
          do i=n,1,-1
@@ -405,17 +408,17 @@
             dims(4) = time_dim
             iret = define_mode(ncid,.true.)
             iret = new_nc_variable(ncid,'sediment',NF_REAL,4,dims,sedi_id)
-            iret = set_attributes(ncid,sedi_id,units=' ',	&
-	            long_name='sediment concentration')
+            iret = set_attributes(ncid,sedi_id,units=' ',  &
+                                  long_name='sediment concentration')
             iret = define_mode(ncid,.false.)
-	    n = ubound(C,1)
+            n = ubound(C,1)
             first = .false.
          end if
          iret = store_data(ncid,sedi_id,XYZT_SHAPE,n,array=C)
 #endif
       case default
          FATAL 'A non valid output format has been chosen'
-	 stop 'save_sediment'
+         stop 'save_sediment'
    end select   
    return
    end subroutine save_sediment 
