@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.4 2003-03-10 08:37:56 gotm Exp $
+!$Id: airsea.F90,v 1.5 2003-03-28 08:13:47 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -67,7 +67,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.4  2003-03-10 08:37:56  gotm
+!  Revision 1.5  2003-03-28 08:13:47  kbk
+!  removed tabs
+!
+!  Revision 1.4  2003/03/10 08:37:56  gotm
 !  HB fixed the Kondo calculations
 !
 !  Revision 1.3  2001/11/18 11:43:48  gotm
@@ -176,7 +179,7 @@
       select case (heat_method)
          case (FROMFILE)
             open(heat_unit,file=heatflux_file,action='read', &
-	         status='old',err=93)
+                 status='old',err=93)
             LEVEL2 'Reading heat fluxes from:'
             LEVEL3 trim(heatflux_file)
          case default
@@ -483,7 +486,7 @@
          x = 0.1+0.03*s+0.9*exp(4.8*s)
       else
          x = 0.0
-      end if 	 
+      end if
       cdd=x*cdd
       chd=x*chd
       ced=x*ced
@@ -537,18 +540,18 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   qe=ced*L*rho_air*w*(qs-qa)			! latent
-   qh=chd*cpa*rho_air*w*(sst-airt)		! sensible
+   qe=ced*L*rho_air*w*(qs-qa)            ! latent
+   qh=chd*cpa*rho_air*w*(sst-airt)       ! sensible
 
    tmp=sst+Kelvin
-   select case(back_radiation_method)		! back radiation
+   select case(back_radiation_method)    ! back radiation
       case(clark)
-         qb=(1.0-.8*cloud*cloud)				&
-            *emiss*bolz*(tmp**4)*(0.39-0.05*sqrt(ea/100.0))	&
+         qb=(1.0-.8*cloud*cloud)                                     &
+            *emiss*bolz*(tmp**4)*(0.39-0.05*sqrt(ea/100.0))          &
             +4.0*emiss*bolz*(tmp**3)*(sst-airt)
-      case(hastenrath) ! qa in g(water)/kg(wet air)
-         qb=(1.0-.8*cloud*cloud)				&
-            *emiss*bolz*(tmp**4)*(0.39-0.056*sqrt(1000*qa))		&
+      case(hastenrath)                    ! qa in g(water)/kg(wet air)
+         qb=(1.0-.8*cloud*cloud)                                     &
+            *emiss*bolz*(tmp**4)*(0.39-0.056*sqrt(1000*qa))          &
             +4.0*emiss*bolz*(tmp**3)*(sst-airt)
       case default
    end select
@@ -652,8 +655,8 @@
    th02 = 2.*th0
    th03 = 3.*th0
 !  sun declination :
-   sundec = 0.006918 - 0.399912*cos(th0) + 0.070257*sin(th0)	&
-           - 0.006758*cos(th02) + 0.000907*sin(th02)		&
+   sundec = 0.006918 - 0.399912*cos(th0) + 0.070257*sin(th0)         &
+           - 0.006758*cos(th02) + 0.000907*sin(th02)                 &
            - 0.002697*cos(th03) + 0.001480*sin(th03)
 
 !  sun hour angle :
@@ -744,17 +747,17 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: yy,mm,dd,hh,min,ss
-   REALTYPE		:: t
-   REALTYPE, SAVE	:: dt
-   integer, save        :: meteo_jul1,meteo_secs1
-   integer, save	:: meteo_jul2=0,meteo_secs2=0
-   REALTYPE, save	:: obs(6)
-   REALTYPE, save	:: alpha(4)
-   REALTYPE, save	:: I1,h1,tx1,ty1
-   REALTYPE, save	:: I2=0.,h2=0.,tx2=0.,ty2=0.
-   logical, save	:: first=.true.
-   integer		:: rc
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t
+   REALTYPE, SAVE            :: dt
+   integer, save             :: meteo_jul1,meteo_secs1
+   integer, save             :: meteo_jul2=0,meteo_secs2=0
+   REALTYPE, save            :: obs(6)
+   REALTYPE, save            :: alpha(4)
+   REALTYPE, save            :: I1,h1,tx1,ty1
+   REALTYPE, save            :: I2=0.,h2=0.,tx2=0.,ty2=0.
+   logical, save             :: first=.true.
+   integer                   :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -838,13 +841,13 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: yy,mm,dd,hh,min,ss
-   REALTYPE		:: t,alpha
-   REALTYPE, SAVE	:: dt
-   integer, save        :: heat_jul1,heat_secs1
-   integer, save	:: heat_jul2=0,heat_secs2=0
-   REALTYPE, save	:: obs1(2),obs2(2)=0.
-   integer		:: rc
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t,alpha
+   REALTYPE, SAVE            :: dt
+   integer, save             :: heat_jul1,heat_secs1
+   integer, save             :: heat_jul2=0,heat_secs2=0
+   REALTYPE, save            :: obs1(2),obs2(2)=0.
+   integer                   :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -901,13 +904,13 @@
 !  See log for airsea module
 !
 ! !LOCAL VARIABLES:
-   integer		:: yy,mm,dd,hh,min,ss
-   REALTYPE		:: t,alpha
-   REALTYPE, save	:: dt
-   integer, save        :: mom_jul1,mom_secs1
-   integer, save	:: mom_jul2=0,mom_secs2=0
-   REALTYPE, save	:: obs1(2),obs2(2)=0.
-   integer		:: rc
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t,alpha
+   REALTYPE, save            :: dt
+   integer, save             :: mom_jul1,mom_secs1
+   integer, save             :: mom_jul2=0,mom_secs2=0
+   REALTYPE, save            :: obs1(2),obs2(2)=0.
+   integer                   :: rc
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -957,7 +960,7 @@
    integer, intent(in)                 :: jul,secs
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE,intent(out)	               :: sst
+   REALTYPE,intent(out)                :: sst
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -1016,7 +1019,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)	               :: dt
+   REALTYPE, intent(in)                :: dt
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -1049,7 +1052,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)	     :: temp
+   REALTYPE, intent(in)                :: temp
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding

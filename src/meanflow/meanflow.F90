@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.3 2003-03-10 08:50:06 gotm Exp $
+!$Id: meanflow.F90,v 1.4 2003-03-28 08:15:01 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -100,7 +100,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
-!  Revision 1.3  2003-03-10 08:50:06  gotm
+!  Revision 1.4  2003-03-28 08:15:01  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 08:50:06  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.2  2001/11/18 15:58:02  gotm
@@ -146,7 +149,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: rc
+   integer                   :: rc
 
    namelist /meanflow/  h0b,z0s_min,charnok,charnok_val,ddu,ddl,       &
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
