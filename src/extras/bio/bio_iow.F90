@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.6 2004-06-29 08:04:03 hb Exp $
+!$Id: bio_iow.F90,v 1.7 2004-06-29 13:48:25 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.6  2004-06-29 08:04:03  hb
+!  Revision 1.7  2004-06-29 13:48:25  hb
+!  bug removed
+!
+!  Revision 1.6  2004/06/29 08:04:03  hb
 !  small changes
 !
 !  Revision 1.5  2004/05/28 15:52:13  hb
@@ -628,7 +631,8 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE, save             :: iopt,rat(0:nlev,0:nlev)
+  REALTYPE, save             :: iopt
+  REALTYPE                   :: rat(0:nlev,0:nlev)
   REALTYPE                   :: psum,llda,llan,llsa,r1,r2,r3
   integer                    :: i,j,ci
 !EOP
@@ -641,14 +645,14 @@
       do ci=1,nlev
          ppi(ci)=par(ci)/iopt*exp(1.-par(ci)/iopt)
       end do
-      rat=1.         ! fixed (in time  space) ratio between sink and source
-      rat(de,fl)=h(1)
-      rat(fl,am)=1./h(1)
    end if
 
 !KBK - is it necessary to initialise every time - expensive in a 3D model
    pp = _ZERO_
    dd = _ZERO_
+   rat=1.         ! fixed (in time  space) ratio between sink and source
+   rat(de,fl)=h(1)
+   rat(fl,am)=1./h(1)
 
    do ci=1,nlev
 
