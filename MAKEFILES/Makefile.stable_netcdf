@@ -1,4 +1,4 @@
-#$Id: Makefile.stable_netcdf,v 1.4 2001-11-22 19:33:44 gotm Exp $
+#$Id: Makefile.stable_netcdf,v 1.5 2001-11-27 20:42:41 gotm Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -42,6 +42,7 @@ libturbulence.a(seagrass.o)
 
 UTIL	= \
 libutil.a(advection.o)		\
+libutil.a(w_split_it_adv.o)	\
 libutil.a(gridinterpol.o)	\
 libutil.a(yevol.o)
 
