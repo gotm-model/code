@@ -1,11 +1,11 @@
-!$Id: bio_save.F90,v 1.2 2003-12-11 09:58:22 kbk Exp $
+!$Id: bio_save.F90,v 1.3 2004-07-30 09:22:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 ! !ROUTINE: Storing the results
 !
 ! !INTERFACE:
-   subroutine bio_save(numc,nlev,h,totn)
+   subroutine bio_save(nlev,h,totn)
 !
 ! !DESCRIPTION:
 !  Here, storing of the sediment profiles to an ascii or a
@@ -25,7 +25,7 @@
 #endif
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
+   integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: totn
 !

@@ -1,4 +1,4 @@
-!$Id: bio_template.F90,v 1.1 2003-07-23 12:27:31 hb Exp $
+!$Id: bio_template.F90,v 1.2 2004-07-30 09:22:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -13,6 +13,7 @@
 !
 ! !USES:
 !  default: all is private.
+   use bio_var
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -25,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_template.F90,v $
-!  Revision 1.1  2003-07-23 12:27:31  hb
+!  Revision 1.2  2004-07-30 09:22:20  hb
+!  use bio_var in specific bio models - simpliefied internal interface
+!
+!  Revision 1.1  2003/07/23 12:27:31  hb
 !  more generic support for different bio models
 !
 !
@@ -40,7 +44,7 @@
 ! !IROUTINE: Initialise the template bio module
 !
 ! !INTERFACE:
-   subroutine init_bio_template(namlst,fname,unit,numc)
+   subroutine init_bio_template(namlst,fname,unit)
 !
 ! !DESCRIPTION:
 !  Here, the bio namelist {\tt bio_template.inp} is read and memory is
@@ -53,34 +57,21 @@
    integer,          intent(in)   :: namlst
    character(len=*), intent(in)   :: fname
    integer,          intent(in)   :: unit
-
-! !OUTPUT PARAMETERS:
-   integer,          intent(out)   :: numc
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-! !LOCAL VARIABLES:
-   namelist /bio_template_nml/ numc
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'init_bio_template'
 
-   open(namlst,file=fname,action='read',status='old',err=98)
-   read(namlst,nml=bio_template_nml,err=99)
-   close(namlst)
+   numc=5
 
    LEVEL3 'TEMPLATE bio module initialised ...'
 
    return
 
-98 LEVEL2 'I could not open bio_template.inp'
-   LEVEL2 'If thats not what you want you have to supply bio_template.inp'
-   LEVEL2 'See the bio example on www.gotm.net for a working bio_template.inp'
-   return
-99 FATAL 'I could not read bio_template.inp'
-   stop 'init_bio_template'
    end subroutine init_bio_template
 !EOC
 
@@ -90,7 +81,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_template(numc,nlev,cc,ws)
+   subroutine init_var_template(nlev)
 !
 ! !DESCRIPTION:
 !  Here, the cc and ws varibles are filled with initial conditions
@@ -99,17 +90,12 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
-
-! !INPUT/OUTPUT PARAMETERS:
-  REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
-  REALTYPE, intent(inout)              :: ws(1:numc,0:nlev)
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 
-! !LOCAL:
-  integer                    :: i
+! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -126,7 +112,7 @@
 ! !IROUTINE: Providing info on variables
 !
 ! !INTERFACE:
-   subroutine var_info_template(numc,var_names,var_units,var_long)
+   subroutine var_info_template()
 !
 ! !DESCRIPTION:
 !  This subroutine provides information on the variables. To be used
@@ -135,18 +121,9 @@
 ! !USES:
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc
-!
-! !OUTPUT PARAMETERS:
-   character(len=64), intent(out)       :: var_names(:)
-   character(len=64), intent(out)       :: var_units(:)
-   character(len=64), intent(out)       :: var_long(:)
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -181,7 +158,7 @@
 ! !IROUTINE: Light properties for the template model
 !
 ! !INTERFACE
-   subroutine light_template(numc,nlev,h,rad,cc,par,bioshade)
+   subroutine light_template(nlev,h,rad,bioshade_feedback,bioshade)
 !
 ! !DESCRIPTION
 !
@@ -189,13 +166,12 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer                              :: numc,nlev
+   integer                              :: nlev
    REALTYPE, intent(in)                 :: h(0:nlev)
    REALTYPE, intent(in)                 :: rad(0:nlev)
-   REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+   logical, intent(in)                  :: bioshade_feedback
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: par(0:nlev)
    REALTYPE, intent(out)               :: bioshade(0:nlev)
 !
 ! !REVISION HISTORY:
@@ -217,7 +193,7 @@
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
 ! !INTERFACE
-   subroutine do_bio_template(first,numc,nlev,cc,pp,dd)
+   subroutine do_bio_template(numc,nlev)
 !
 ! !DESCRIPTION
 !
@@ -226,21 +202,11 @@
 !
 ! !INPUT PARAMETERS:
   integer                              :: numc,nlev
-  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS:
-  logical                              :: first
-!
-! !OUTPUT PARAMETERS:
-  REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-  REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE, save             :: iopt
-  integer                    :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC

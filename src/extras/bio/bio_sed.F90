@@ -1,4 +1,4 @@
-!$Id: bio_sed.F90,v 1.1 2003-10-28 10:22:45 hb Exp $
+!$Id: bio_sed.F90,v 1.2 2004-07-30 09:22:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -13,6 +13,7 @@
 !
 ! !USES:
 !  default: all is private.
+   use bio_var
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -25,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_sed.F90,v $
-!  Revision 1.1  2003-10-28 10:22:45  hb
+!  Revision 1.2  2004-07-30 09:22:20  hb
+!  use bio_var in specific bio models - simpliefied internal interface
+!
+!  Revision 1.1  2003/10/28 10:22:45  hb
 !  added support for sedimentation only 1 compartment bio model
 !
 !
@@ -178,37 +182,21 @@
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
 ! !INTERFACE
-   subroutine do_bio_sed(first,numc,nlev,cc,pp,dd)
+   subroutine do_bio_sed()
 !
 ! !DESCRIPTION
 !
 ! !USES
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-  integer                              :: numc,nlev
-  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS:
-  logical                              :: first
-!
-! !OUTPUT PARAMETERS:
-  REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-  REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
-! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
-   if (first) then
-      first = .false.
-      pp = _ZERO_
-      dd = _ZERO_
-   end if
+!  no right hand sides necessary
 
    return
    end subroutine do_bio_sed

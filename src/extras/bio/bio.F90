@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.16 2004-07-28 11:34:29 hb Exp $
+!$Id: bio.F90,v 1.17 2004-07-30 09:22:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,13 +38,16 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_bio, do_bio, end_bio
-   integer, public                   :: numc,numcc
+!NUMC   integer, public                   :: numc,numcc
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.16  2004-07-28 11:34:29  hb
+!  Revision 1.17  2004-07-30 09:22:20  hb
+!  use bio_var in specific bio models - simpliefied internal interface
+!
+!  Revision 1.16  2004/07/28 11:34:29  hb
 !  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.inp
 !
 !  Revision 1.15  2004/06/29 08:03:16  hb
@@ -167,39 +170,40 @@
 
       case (-1)
 
-         call init_bio_template(namlst,'bio_template.inp',unit,numc)
+         call init_bio_template(namlst,'bio_template.inp',unit)
 
-         call allocate_memory(numc,nlev)
+         call allocate_memory(nlev)
 
-         call init_var_template(numc,nlev,cc,ws)
+         call init_var_template(nlev)
 
-         call var_info_template(numc,var_names,var_units,var_long)
+         call var_info_template()
 
       case (1)  ! The NPZD model
 
-         call init_bio_npzd(namlst,'bio_npzd.inp',unit,numc,numcc)
+         call init_bio_npzd(namlst,'bio_npzd.inp',unit)
 
-         call allocate_memory(numc,nlev)
+         call allocate_memory(nlev)
 
-         call init_var_npzd(numc,nlev,cc,ws,mussels_inhale)
+         call init_var_npzd(nlev)
 
-         call var_info_npzd(numc,var_names,var_units,var_long)
+         call var_info_npzd()
 
       case (2)  ! The IOW model
 
-         call init_bio_iow(namlst,'bio_iow.inp',unit,numc,numcc)
+         call init_bio_iow(namlst,'bio_iow.inp',unit)
 
-         call allocate_memory(numc,nlev)
+         call allocate_memory(nlev)
 
-         call init_var_iow(numc,nlev,cc,ws,sfl,mussels_inhale)
+         call init_var_iow(nlev)
 
-         call var_info_iow(numc,var_names,var_units,var_long)
+         call var_info_iow()
 
       case (3)  ! The simple sedimentation model
 
          call init_bio_sed(namlst,'bio_sed.inp',unit,numc)
 
-         call allocate_memory(numc,nlev)
+!NUMC         call allocate_memory(numc,nlev)
+         call allocate_memory(nlev)
 
          call init_var_sed(numc,nlev,cc,ws,mussels_inhale)
 
@@ -209,7 +213,8 @@
 
          call init_bio_fasham(namlst,'bio_fasham.inp',unit,numc,numcc)
 
-         call allocate_memory(numc,nlev)
+!NUMC         call allocate_memory(numc,nlev)
+         call allocate_memory(nlev)
 
          call init_var_fasham(numc,nlev,cc,ws,mussels_inhale)
 
@@ -360,7 +365,7 @@
          case (-1)
          case (1)
          case (2)
-            call surface_fluxes_iow(numc,nlev,jul,secs,cc,t(nlev),sfl)
+            call surface_fluxes_iow(nlev,t(nlev))
          case (3)
          case (4)
       end select
@@ -430,17 +435,14 @@ STDERR total_mussel_flux,t(1)
 
          select case (bio_model)
             case (-1)
-               call light_template(numc,nlev,h,rad,cc,par,bioshade)
+               call light_template(nlev,h,rad,bioshade_feedback,bioshade)
             case (1)
-               call light_npzd(numc,nlev,h,rad,cc,par, &
-                               bioshade_feedback,bioshade)
+               call light_npzd(nlev,h,rad,bioshade_feedback,bioshade)
             case (2)
-               call light_iow(numc,nlev,h,rad,cc,par, &
-                              bioshade_feedback,bioshade)
+               call light_iow(nlev,h,rad,bioshade_feedback,bioshade)
             case (3)
             case (4)
-               call light_fasham(numc,nlev,h,rad,cc,par, &
-                                 bioshade_feedback,bioshade)
+!KBK               call light_fasham(nlev,h,rad,bioshade_feedback,bioshade)
          end select
 
          call ode_solver(ode_method,numc,nlev,dt_eff,h,cc,t)
@@ -455,7 +457,7 @@ STDERR total_mussel_flux,t(1)
             end do
          end do
 
-         call bio_save(numc,nlev,h,totn)
+         call bio_save(nlev,h,totn)
       end if
 
    end if
@@ -497,7 +499,8 @@ STDERR total_mussel_flux,t(1)
 ! !IROUTINE: Allocate memory for biological variables
 !
 ! !INTERFACE:
-   subroutine allocate_memory(numc,nlev)
+!NUMC   subroutine allocate_memory(numc,nlev)
+   subroutine allocate_memory(nlev)
 !
 ! !DESCRIPTION:
 !  Allocate biological related global variables.
@@ -506,7 +509,8 @@ STDERR total_mussel_flux,t(1)
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer,  intent(in)                :: numc,nlev
+!NUMC   integer,  intent(in)                :: numc,nlev
+   integer,  intent(in)                :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding

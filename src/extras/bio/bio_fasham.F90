@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.2 2004-07-28 11:34:29 hb Exp $
+!$Id: bio_fasham.F90,v 1.3 2004-07-30 09:22:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -13,6 +13,7 @@
 !
 ! !USES:
 !  default: all is private.
+   use bio_var
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -25,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
-!  Revision 1.2  2004-07-28 11:34:29  hb
+!  Revision 1.3  2004-07-30 09:22:20  hb
+!  use bio_var in specific bio models - simpliefied internal interface
+!
+!  Revision 1.2  2004/07/28 11:34:29  hb
 !  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.inp
 !
 !  Revision 1.1  2004/06/29 08:03:16  hb
@@ -117,7 +121,6 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   REALTYPE, parameter       :: secs_pr_day=86400.
    namelist /bio_fasham_nml/ numc, &
                         p_initial,z_initial,b_initial,d_initial,n_initial,&
                         a_initial,l_initial,p0,z0,b0,vp,alpha,k1,k2,mu1,k5,&
@@ -343,7 +346,7 @@
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
 ! !INTERFACE
-   subroutine do_bio_fasham(first,numc,nlev,cc,pp,dd,par,I_0)
+   subroutine do_bio_fasham(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION
 !
@@ -351,23 +354,22 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  integer                              :: numc,nlev
-  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-  REALTYPE, intent(in)                 :: par(0:nlev),I_0
+   integer                             :: numc,nlev
+   REALTYPE, intent(in)                :: cc(1:numc,0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETERS:
-  logical                              :: first
+   logical                             :: first
 !
 ! !OUTPUT PARAMETERS:
-  REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-  REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+   REALTYPE, intent(out)               :: pp(1:numc,1:numc,0:nlev)
+   REALTYPE, intent(out)               :: dd(1:numc,1:numc,0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE                   :: ff,fac,fac2,min67
-  integer                    :: i,j,ci
+   REALTYPE                   :: ff,fac,fac2,min67
+   integer                    :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC

@@ -1,4 +1,4 @@
-!$Id: ode_solvers.F90,v 1.4 2004-07-03 20:32:37 hb Exp $
+!$Id: ode_solvers.F90,v 1.5 2004-07-30 09:22:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,23 +31,23 @@
 !BOC
    select case (solver)
       case (1)
-         call euler_forward(numc,nlev,dt,h,cc,t)
+         call euler_forward(dt,numc,nlev,cc,h,t)
       case (2)
-         call runge_kutta_2(numc,nlev,dt,h,cc,t)
+         call runge_kutta_2(dt,numc,nlev,cc,h,t)
       case (3)
-         call runge_kutta_4(numc,nlev,dt,h,cc,t)
+         call runge_kutta_4(dt,numc,nlev,cc,h,t)
       case (4)
-         call patankar(numc,nlev,dt,h,cc,t)
+         call patankar(dt,numc,nlev,cc,h,t)
       case (5)
-         call patankar_runge_kutta_2(numc,nlev,dt,h,cc,t)
+         call patankar_runge_kutta_2(dt,numc,nlev,cc,h,t)
       case (6)
-         call patankar_runge_kutta_4(numc,nlev,dt,h,cc,t)
+         call patankar_runge_kutta_4(dt,numc,nlev,cc,h,t)
       case (7)
-         call modified_patankar(numc,nlev,dt,h,cc,t)
+         call modified_patankar(dt,numc,nlev,cc,h,t)
       case (8)
-         call modified_patankar_2(numc,nlev,dt,h,cc,t)
+         call modified_patankar_2(dt,numc,nlev,cc,h,t)
       case (9)
-         call modified_patankar_4(numc,nlev,dt,h,cc,t)
+         call modified_patankar_4(dt,numc,nlev,cc,h,t)
       case default
          stop "bio: no valid solver method specified in bio.inp !"
    end select
@@ -62,7 +62,7 @@
 ! !IROUTINE: Euler-forward scheme for geobiochemical models
 !
 ! !INTERFACE
-   subroutine euler_forward(numc,nlev,dt,h,cc,t)
+   subroutine euler_forward(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION
 !
@@ -70,10 +70,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: t(0:nlev)
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETER:
   REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
@@ -91,7 +91,7 @@
 !BOC
    first=.true.
 
-   call process_model(first,numc,nlev,h,cc,pp,dd,t)
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -113,7 +113,7 @@
 ! !IROUTINE: Second-order Runge-Kutta scheme for geobiochemical models
 !
 ! !INTERFACE
-   subroutine runge_kutta_2(numc,nlev,dt,h,cc,t)
+   subroutine runge_kutta_2(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION
 !
@@ -121,10 +121,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: t(0:nlev)
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
@@ -142,7 +142,7 @@
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call process_model(first,numc,nlev,h,cc,pp,dd,t)
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -154,7 +154,7 @@
       end do
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp,dd,t)
+   call process_model(first,numc,nlev,cc1,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -176,7 +176,7 @@
 ! !IROUTINE: Fourth-order Runge-Kutta scheme for geobiochemical models
 !
 ! !INTERFACE
-   subroutine runge_kutta_4(numc,nlev,dt,h,cc,t)
+   subroutine runge_kutta_4(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION
 !
@@ -184,10 +184,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: t(0:nlev)
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
@@ -206,7 +206,7 @@
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call process_model(first,numc,nlev,h,cc,pp,dd,t)
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -218,7 +218,7 @@
       end do
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp,dd,t)
+   call process_model(first,numc,nlev,cc1,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -230,7 +230,7 @@
       end do
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp,dd,t)
+   call process_model(first,numc,nlev,cc1,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -242,7 +242,7 @@
       end do
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp,dd,t)
+   call process_model(first,numc,nlev,cc1,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -264,7 +264,7 @@
 ! !IROUTINE: Patankar scheme for geobiochemical models
 !
 ! !INTERFACE
-   subroutine patankar(numc,nlev,dt,h,cc,t)
+   subroutine patankar(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION
 !
@@ -272,8 +272,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: dt
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: t(0:nlev)
    REALTYPE, intent(in)                :: h(0:nlev)
 !
@@ -292,7 +292,7 @@
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call process_model(first,numc,nlev,h,cc,pp,dd,t)
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
    do ci=1,nlev
       do i=1,numc
          ppsum=0.
@@ -316,7 +316,7 @@
 !  models
 !
 ! !INTERFACE
-   subroutine patankar_runge_kutta_2(numc,nlev,dt,h,cc,t)
+   subroutine patankar_runge_kutta_2(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION
 !
@@ -324,10 +324,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: t(0:nlev)
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
@@ -345,7 +345,7 @@
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call process_model(first,numc,nlev,h,cc,pp,dd,t)
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -359,7 +359,7 @@
       end do
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp,dd,t)
+   call process_model(first,numc,nlev,cc1,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -382,7 +382,7 @@
 !  models
 !
 ! !INTERFACE
-   subroutine patankar_runge_kutta_4(numc,nlev,dt,h,cc,t)
+   subroutine patankar_runge_kutta_4(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION
 !
@@ -390,10 +390,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: t(0:nlev)
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
@@ -414,7 +414,7 @@
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call process_model(first,numc,nlev,h,cc,pp,dd,t)
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -428,7 +428,7 @@
       end do
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp,dd,t)
+   call process_model(first,numc,nlev,cc1,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -442,7 +442,7 @@
       end do
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp,dd,t)
+   call process_model(first,numc,nlev,cc1,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -456,7 +456,7 @@
       end do
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp,dd,t)
+   call process_model(first,numc,nlev,cc1,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -482,7 +482,7 @@
 ! !IROUTINE: Modified Patankar scheme for geobiochemical models
 !
 ! !INTERFACE
-   subroutine modified_patankar(numc,nlev,dt,h,cc,t)
+   subroutine modified_patankar(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION
 !
@@ -490,10 +490,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: t(0:nlev)
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
@@ -511,7 +511,7 @@
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call process_model(first,numc,nlev,h,cc,pp,dd,t)
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -538,7 +538,7 @@
 !  geobiochemical models
 !
 ! !INTERFACE
-   subroutine modified_patankar_2(numc,nlev,dt,h,cc,t)
+   subroutine modified_patankar_2(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION
 !
@@ -546,10 +546,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: t(0:nlev)
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
@@ -569,7 +569,7 @@
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call process_model(first,numc,nlev,h,cc,pp,dd,t)
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -585,7 +585,7 @@
       call matrix(numc,a,r,cc1(:,ci))
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp1,dd1,t)
+   call process_model(first,numc,nlev,cc1,pp1,dd1,h,t)
 
    pp=0.5*(pp+pp1)
    dd=0.5*(dd+dd1)
@@ -615,7 +615,7 @@
 !  geobiochemical models
 !
 ! !INTERFACE
-   subroutine modified_patankar_4(numc,nlev,dt,h,cc,t)
+   subroutine modified_patankar_4(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION
 !
@@ -623,10 +623,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: t(0:nlev)
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
@@ -648,7 +648,7 @@
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call process_model(first,numc,nlev,h,cc,pp,dd,t)
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -664,7 +664,7 @@
       call matrix(numc,a,r,cc1(:,ci))
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp1,dd1,t)
+   call process_model(first,numc,nlev,cc1,pp1,dd1,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -680,7 +680,7 @@
       call matrix(numc,a,r,cc1(:,ci))
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp2,dd2,t)
+   call process_model(first,numc,nlev,cc1,pp2,dd2,h,t)
 
    do ci=1,nlev
       do i=1,numc
@@ -696,7 +696,7 @@
       call matrix(numc,a,r,cc1(:,ci))
    end do
 
-   call process_model(first,numc,nlev,h,cc1,pp3,dd3,t)
+   call process_model(first,numc,nlev,cc1,pp3,dd3,h,t)
 
    pp=1./3.*(0.5*pp+pp1+pp2+0.5*pp3)
    dd=1./3.*(0.5*dd+dd1+dd2+0.5*dd3)

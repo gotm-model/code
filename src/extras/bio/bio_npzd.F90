@@ -1,4 +1,4 @@
-!$Id: bio_npzd.F90,v 1.5 2004-07-28 11:34:29 hb Exp $
+!$Id: bio_npzd.F90,v 1.6 2004-07-30 09:22:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -13,6 +13,7 @@
 !
 ! !USES:
 !  default: all is private.
+   use bio_var
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -25,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_npzd.F90,v $
-!  Revision 1.5  2004-07-28 11:34:29  hb
+!  Revision 1.6  2004-07-30 09:22:20  hb
+!  use bio_var in specific bio models - simpliefied internal interface
+!
+!  Revision 1.5  2004/07/28 11:34:29  hb
 !  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.inp
 !
 !  Revision 1.4  2004/06/29 14:22:45  hb
@@ -85,7 +89,7 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_bio_npzd(namlst,fname,unit,numc,numcc)
+   subroutine init_bio_npzd(namlst,fname,unit)
 !
 ! !DESCRIPTION:
 !  Here, the bio namelist {\tt bio_npzd.inp} is read and memory is
@@ -98,15 +102,11 @@
    integer,          intent(in)   :: namlst
    character(len=*), intent(in)   :: fname
    integer,          intent(in)   :: unit
-
-! !OUTPUT PARAMETERS:
-   integer,          intent(out)   :: numc,numcc
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   REALTYPE, parameter       :: secs_pr_day=86400.
    namelist /bio_npzd_nml/ numc, &
                       N_initial,P_initial,Z_initial,D_initial,   &
                       P0,Z0,w_P,w_D,kc,I_min,rmax,gmax,Iv,alpha,rpn,  &
@@ -115,6 +115,8 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'init_bio_npzd'
+
+   numc=4
 
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_npzd_nml,err=99)
@@ -155,7 +157,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_npzd(numc,nlev,cc,ws,mussels_inhale)
+   subroutine init_var_npzd(nlev)
 !
 ! !DESCRIPTION:
 !  Here, the cc and ws varibles are filled with initial conditions
@@ -164,12 +166,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
-
-! !INPUT/OUTPUT PARAMETERS:
-  REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
-  REALTYPE, intent(inout)              :: ws(1:numc,0:nlev)
-  logical, intent(inout)               :: mussels_inhale(1:numc)
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -211,7 +208,7 @@
 ! !IROUTINE: Providing info on variables
 !
 ! !INTERFACE:
-   subroutine var_info_npzd(numc,var_names,var_units,var_long)
+   subroutine var_info_npzd()
 !
 ! !DESCRIPTION:
 !  This subroutine provides information on the variables. To be used
@@ -220,18 +217,9 @@
 ! !USES:
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc
-!
-! !OUTPUT PARAMETERS:
-   character(len=64), intent(out)       :: var_names(:)
-   character(len=64), intent(out)       :: var_units(:)
-   character(len=64), intent(out)       :: var_long(:)
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -315,8 +303,7 @@
 ! !IROUTINE: Light properties for the NPZD model
 !
 ! !INTERFACE
-   subroutine light_npzd(numc,nlev,h,rad,cc,par,bioshade_feedback, &
-                         bioshade)
+   subroutine light_npzd(nlev,h,rad,bioshade_feedback,bioshade)
 !
 ! !DESCRIPTION
 !
@@ -324,14 +311,12 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  integer                              :: numc,nlev
-  logical                              :: bioshade_feedback
+  integer                              :: nlev
   REALTYPE, intent(in)                 :: h(0:nlev)
   REALTYPE, intent(in)                 :: rad(0:nlev)
-  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+  logical                              :: bioshade_feedback
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: par(0:nlev)
    REALTYPE, intent(out)               :: bioshade(0:nlev)
 !
 ! !REVISION HISTORY:
@@ -364,7 +349,7 @@
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
 ! !INTERFACE
-   subroutine do_bio_npzd(first,numc,nlev,cc,pp,dd,par,I_0)
+   subroutine do_bio_npzd(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION
 !
@@ -372,23 +357,22 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  integer                              :: numc,nlev
-  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-  REALTYPE, intent(in)                 :: par(0:nlev),I_0
+   integer                              :: numc,nlev
+   REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETERS:
-  logical                              :: first
+   logical                              :: first
 !
 ! !OUTPUT PARAMETERS:
-  REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-  REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+   REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+   REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE, save             :: iopt
-  integer                    :: i,j,ci
+   REALTYPE, save             :: iopt
+   integer                    :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -409,7 +393,6 @@
          rpd=rpdl
       end if
 
-   
       dd(n,p,ci)=fnp(cc(n,ci),cc(p,ci),par(ci),iopt)  ! snp
       dd(p,z,ci)=fpz(cc(p,ci),cc(z,ci))               ! spz
       dd(p,n,ci)=rpn*cc(p,ci)                         ! spn

@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.10 2004-07-28 11:34:29 hb Exp $
+!$Id: bio_iow.F90,v 1.11 2004-07-30 09:22:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -13,6 +13,7 @@
 !
 ! !USES:
 !  default: all is private.
+   use bio_var
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -25,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.10  2004-07-28 11:34:29  hb
+!  Revision 1.11  2004-07-30 09:22:20  hb
+!  use bio_var in specific bio models - simpliefied internal interface
+!
+!  Revision 1.10  2004/07/28 11:34:29  hb
 !  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.inp
 !
 !  Revision 1.9  2004/07/26 12:20:59  hb
@@ -81,7 +85,6 @@
    REALTYPE                  :: sfl_po=0.0015
    REALTYPE                  :: sfl_am=0.07
    REALTYPE                  :: sfl_ni=0.09
-   integer                   :: nutrient_flux_method=0
    logical                   :: fluff=.false.
    REALTYPE                  :: fl_initial=0.0
    REALTYPE, public          :: p10=0.0225
@@ -147,7 +150,7 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_bio_iow(namlst,fname,unit,numc,numcc)
+   subroutine init_bio_iow(namlst,fname,unit)
 !
 ! !DESCRIPTION:
 !  Here, the bio namelist {\tt bio_iow.inp} is read and memory is
@@ -160,18 +163,14 @@
    integer,          intent(in)   :: namlst
    character(len=*), intent(in)   :: fname
    integer,          intent(in)   :: unit
-
-! !OUTPUT PARAMETERS:
-   integer,          intent(out)   :: numc,numcc
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   REALTYPE, parameter       :: secs_pr_day=86400.
    namelist /bio_iow_nml/ numc,p1_initial,p2_initial,p3_initial,zo_initial,  &
                       de_initial,am_initial,ni_initial,po_initial,           &
-                      o2_initial,sfl_po,sfl_am,sfl_ni,nutrient_flux_method,  &
+                      o2_initial,sfl_po,sfl_am,sfl_ni,surface_flux_method,   &
                       fluff,fl_initial,p10,p20,p30,zo0,                      &
                       w_p1,w_p2,w_p3,                                        &
                       w_de,kc,i_min,r1max,r2max,r3max,alpha1,alpha2,         &
@@ -179,15 +178,17 @@
                       g3max,lza,lzd,iv,topt,lan,oan,beta_an,lda,             &
                       tda,beta_da,lds,lsa,bsa,ph1,ph2,pvel,sr,               &
                       s1,s2,s3,s4,a0,a1,a2
-
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'init_bio_iow'
 
+   numc=9
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_iow_nml,err=99)
    close(namlst)
+
+   n_surface_fluxes=3
 
    numcc=numc
    if (fluff) numc=numc+1
@@ -234,7 +235,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_iow(numc,nlev,cc,ws,sfl,mussels_inhale)
+   subroutine init_var_iow(nlev)
 !
 ! !DESCRIPTION:
 !  Here, the cc and ws varibles are filled with initial conditions
@@ -243,13 +244,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
-
-! !INPUT/OUTPUT PARAMETERS:
-  REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
-  REALTYPE, intent(inout)              :: ws(1:numc,0:nlev)
-  REALTYPE, intent(inout)              :: sfl(1:numc)
-  logical, intent(inout)               :: mussels_inhale(1:numc)
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -305,19 +300,33 @@
    allocate(ppi(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_iow(): Error allocating ppi)'
 
+!  NOTE: Positive fluxes into the sea surface must have negative sign !
+   select case (surface_flux_method)
+      case (-1)! absolutely nothing
+      case (0) ! constant
+
+         sfl(po)=-sfl_po /secs_pr_day
+         sfl(am)=-sfl_am /secs_pr_day
+         sfl(ni)=-sfl_ni /secs_pr_day
+
+      case (2) ! from file via sfl_read
+
+      case default
+   end select
+
    LEVEL3 'IOW variables initialised ...'
 
    return
-
    end subroutine init_var_iow
 !EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
 ! !IROUTINE: Providing info on variables
 !
 ! !INTERFACE:
-   subroutine var_info_iow(numc,var_names,var_units,var_long)
+   subroutine var_info_iow()
 !
 ! !DESCRIPTION:
 !  This subroutine provides information on the variables. To be used
@@ -325,14 +334,6 @@
 !
 ! !USES:
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc
-!
-! !OUTPUT PARAMETERS:
-   character(len=64), intent(out)       :: var_names(:)
-   character(len=64), intent(out)       :: var_units(:)
-   character(len=64), intent(out)       :: var_long(:)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -422,6 +423,7 @@
    return
    end function th
 !EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -448,6 +450,7 @@
    return
    end function yy
 !EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -482,7 +485,7 @@
 ! !IROUTINE: Surface fluxes for the IOW model
 !
 ! !INTERFACE
-   subroutine surface_fluxes_iow(numc,nlev,jul,secs,cc,t,sfl)
+   subroutine surface_fluxes_iow(nlev,t)
 !
 ! !DESCRIPTION
 !
@@ -492,90 +495,42 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  integer                              :: numc,nlev
-  integer, intent(in)                  :: jul,secs
-  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev),t
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: sfl(1:numc)
+  integer                              :: nlev
+  REALTYPE, intent(in)                 :: t
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   integer                   :: i
-   integer                   :: sfl_unit=40
-   logical,save              :: first = .true.
-   integer                   :: yy,mm,dd,hh,min,ss
-   REALTYPE                  :: tfrac
-   REALTYPE, SAVE            :: dt
-   integer, save             :: jul1,secs1,jul2=0,secs2=0
-   REALTYPE, save            :: alpha(3)
-   REALTYPE, save            :: obs1(3),obs2(3)=0.
-   integer                   :: rc
-   REALTYPE, parameter       :: secs_pr_day=86400.
-
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
-   select case (nutrient_flux_method)
-
 !  NOTE: Positive fluxes into the sea surface must have negative sign !
-
-   case (0) ! constant
-
-      sfl(po)=-sfl_po /secs_pr_day
-      sfl(am)=-sfl_am /secs_pr_day
-      sfl(ni)=-sfl_ni /secs_pr_day
-
-   case (2) ! from file
-
-      if (first) then
-         open(sfl_unit,file='nutrients.dat',status='unknown')
-         first=.false.
-      end if
-
-!     Reading nutrient surface fluxes from file
-
-      if(time_diff(jul2,secs2,jul,secs) .lt. 0) then
-         do
-            jul1 = jul2
-            secs1 = secs2
-            obs1 = obs2
-            call read_obs(sfl_unit,yy,mm,dd,hh,min,ss,3,obs2,rc)
-            call julian_day(yy,mm,dd,jul2)
-            secs2 = hh*3600 + min*60 + ss
-            if(time_diff(jul2,secs2,jul,secs) .gt. 0) EXIT
-         end do
-         dt = time_diff(jul2,secs2,jul1,secs1)
-         alpha = (obs2-obs1)/dt
-      end if
-!     Do the time interpolation
-      tfrac  = time_diff(jul,secs,jul1,secs1)
-      sfl(ni) =  -1.*(obs1(1) + tfrac*alpha(1)) /secs_pr_day
-      sfl(am) =  -1.*(obs1(2) + tfrac*alpha(2)) /secs_pr_day
-      sfl(po) =  -10.*(obs1(3) + tfrac*alpha(3)) /secs_pr_day
-
-   case default
-      stop "bio: no valid nutrient_flux_method specified in bio_iow.inp !"
+   select case (surface_flux_method)
+      case (-1)! absolutely nothing
+      case (0) ! constant
+      case (2) ! from file via sfl_read
+         sfl(ni) =   -1.*sfl_read(1)/secs_pr_day
+         sfl(am) =   -1.*sfl_read(2)/secs_pr_day
+         sfl(po) =  -10.*sfl_read(3)/secs_pr_day
+      case (3) ! sfl array filled externally - for 3D models
+      case default
    end select
 
 ! surface oxygen flux
-
    sfl(o2)=-pvel*(a0*(a1-a2*t)-cc(o2,nlev))
-
    return
    end subroutine surface_fluxes_iow
 !EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
 ! !IROUTINE: Light properties for the IOW model
 !
 ! !INTERFACE
-   subroutine light_iow(numc,nlev,h,rad,cc,par,bioshade_feedback, &
-                        bioshade)
+   subroutine light_iow(nlev,h,rad,bioshade_feedback,bioshade)
 !
 ! !DESCRIPTION
 !
@@ -583,14 +538,12 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  integer                              :: numc,nlev
-  logical                              :: bioshade_feedback
-  REALTYPE, intent(in)                 :: h(0:nlev)
-  REALTYPE, intent(in)                 :: rad(0:nlev)
-  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+   integer                             :: nlev
+   REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: rad(0:nlev)
+   logical, intent(in)                 :: bioshade_feedback
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: par(0:nlev)
    REALTYPE, intent(out)               :: bioshade(0:nlev)
 !
 ! !REVISION HISTORY:
@@ -623,7 +576,7 @@
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
 ! !INTERFACE
-   subroutine do_bio_iow(first,numc,nlev,h,cc,pp,dd,t,par,I_0)
+   subroutine do_bio_iow(first,numc,nlev,cc,pp,dd,h,t)
 !
 ! !DESCRIPTION
 !
@@ -631,10 +584,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  integer                              :: numc,nlev
-  REALTYPE, intent(in)                 :: h(0:nlev)
-  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-  REALTYPE, intent(in)                 :: t(0:nlev),par(0:nlev),I_0
+   integer                             :: numc,nlev
+   REALTYPE, intent(in)                :: cc(1:numc,0:nlev)
+   REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETERS:
   logical                              :: first
