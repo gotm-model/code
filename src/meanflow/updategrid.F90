@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.6 2003-03-10 08:50:08 gotm Exp $
+!$Id: updategrid.F90,v 1.7 2003-03-10 13:43:42 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,8 +58,8 @@
 ! is read in through the {\tt w\_advspec} namelist in {\tt obs.inp}. 
 !
 ! !USES:
-   use meanflow, only: depth0,depth,z,h,ho,ddu,ddl,grid_method
-   use meanflow, only: ddu,ddl,NN,SS,w_grid,grid_file,w
+   use meanflow,     only: depth0,depth,z,h,ho,ddu,ddl,grid_method
+   use meanflow,     only: NN,SS,w_grid,grid_file,w
    use observations, only: zeta_method,w_adv,w_height,w_adv_discr
    IMPLICIT NONE
 !
@@ -70,7 +70,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
-!  Revision 1.6  2003-03-10 08:50:08  gotm
+!  Revision 1.7  2003-03-10 13:43:42  lars
+!  double definitions removed - to conform with DEC compiler
+!
+!  Revision 1.6  2003/03/10 08:50:08  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.5  2002/02/08 08:33:44  gotm

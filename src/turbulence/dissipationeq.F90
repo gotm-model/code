@@ -66,7 +66,7 @@
    use mTridiagonal
    use turbulence, ONLY: ce1,ce2,ce3plus,ce3minus,sig_e
    use turbulence, only: tkeo,tke,k_min,eps,eps_min,L
-   use turbulence, ONLY: cm0,cde,galp,length_lim,galp
+   use turbulence, ONLY: cm0,cde,galp,length_lim
    use turbulence, only: epsilon_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
    use turbulence, only: sig_e0,sig_peps
    IMPLICIT NONE
@@ -92,7 +92,10 @@
 !                      Lars Umlauf
 !
 !  $Log: dissipationeq.F90,v $
-!  Revision 1.3  2003-03-10 09:02:04  gotm
+!  Revision 1.4  2003-03-10 13:43:42  lars
+!  double definitions removed - to conform with DEC compiler
+!
+!  Revision 1.3  2003/03/10 09:02:04  gotm
 !  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !
