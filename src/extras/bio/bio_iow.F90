@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.8 2004-07-02 13:41:19 hb Exp $
+!$Id: bio_iow.F90,v 1.9 2004-07-26 12:20:59 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.8  2004-07-02 13:41:19  hb
+!  Revision 1.9  2004-07-26 12:20:59  hb
+!  Small inconsistencies with non-conservative sources removed
+!
+!  Revision 1.8  2004/07/02 13:41:19  hb
 !  Hard switches (theta) softened with tanh and Michaelis-Menten
 !
 !  Revision 1.7  2004/06/29 13:48:25  hb
@@ -700,8 +703,8 @@
       dd(p3,zo,ci)=fpz(g3max,t(ci),topt,psum)*cc(p3,ci)/psum*(cc(zo,ci)+zo0)
       dd(p3,de,ci)=lpd*cc(p3,ci)
       dd(p3,am,ci)=lpa*cc(p3,ci)
-      dd(zo,de,ci)=lzd*cc(zo,ci)**2
-      dd(zo,am,ci)=lza*cc(zo,ci)**2
+      dd(zo,de,ci)=lzd*(cc(zo,ci)+zo0)*cc(zo,ci)
+      dd(zo,am,ci)=lza*(cc(zo,ci)+zo0)*cc(zo,ci)
       dd(de,am,ci)=llda*cc(de,ci)
       dd(am,p1,ci)=cc(am,ci)/(cc(am,ci)+cc(ni,ci))*r1*(cc(p1,ci)+p10)
       dd(am,p2,ci)=cc(am,ci)/(cc(am,ci)+cc(ni,ci))*r2*(cc(p2,ci)+p20)
@@ -715,12 +718,13 @@
 
 !  Sink terms for positive compartments, which do not appear 
 !  as source terms for other compartments:
-      dd(ni,ni,ci)=s1*llda*cc(de,ci)*thomnp
+      dd(ni,ni,ci)=s1*llda*cc(de,ci)*thomnp    ! denitrification
       dd(po,po,ci)=sr*( r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)                &
                        +r3*(cc(p3,ci)+p30)) 
+      
       if ((fluff).and.(ci.eq.1)) then
-         dd(fl,fl,ci)=th(cc(o2,ci),wo,_ZERO_,_ONE_)*llsa*cc(fl,ci)
-         dd(ni,ni,ci)=dd(ni,ni,ci)+s1*thomnp*llsa*cc(fl,ci)/h(ci)
+         dd(fl,fl,ci)=th(cc(o2,ci),wo,_ZERO_,_ONE_)*dd(fl,am,ci)
+         dd(ni,ni,ci)=dd(ni,ni,ci)+s1*thomnp*dd(fl,am,ci)/h(ci)
       end if
 
 !  Source terms which are exactly sinks terms of other compartments or
@@ -731,19 +735,27 @@
          end do
       end do
 
-!   Source terms which are not related to sinks of other compartments:
-      pp(p3,p3,ci)=r3*(cc(p3,ci)+p30)
-      pp(po,po,ci)=sr*(lpa*(cc(p1,ci)+cc(p2,ci)+cc(p3,ci))                    &
-                   +llda*cc(de,ci)+lza*cc(zo,ci)**2)
-      pp(o2,o2,ci)=(s2*cc(am,ci)+s3*cc(ni,ci))/(cc(am,ci)+cc(ni,ci))*         &
-                  (r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)+r3*(cc(p3,ci)+p30))  &
-                   -s2*(lpa*psum+lza*(cc(zo,ci)+zo0)**2)                      &
-                   -s4*llan*cc(am,ci)-s2*(thopnp+thomnm)*llda*cc(de,ci)
+!   Non-conservative source terms or source and sink terms which are 
+!   stoichiometrically related to other source terms:
+      pp(p3,p3,ci)=r3*(cc(p3,ci)+p30)     ! nitrogen fixation
+      pp(po,p1,ci)=sr*dd(p1,am,ci)   
+      pp(po,p2,ci)=sr*dd(p2,am,ci)  
+      pp(po,p3,ci)=sr*dd(p3,am,ci)  
+      pp(po,de,ci)=sr*dd(de,am,ci)   
+      pp(po,zo,ci)=sr*dd(zo,am,ci)    
+      pp(o2,am,ci)=s2*(dd(am,p1,ci)+dd(am,p2,ci))-s4*dd(am,ni,ci)    
+      pp(o2,ni,ci)=s3*(dd(ni,p1,ci)+dd(ni,p2,ci))  
+      pp(o2,o2,ci)=s2*pp(p3,p3,ci)        ! nitrogen fixation
+      pp(o2,p1,ci)=-s2*dd(p1,am,ci)  
+      pp(o2,p2,ci)=-s2*dd(p2,am,ci)  
+      pp(o2,p3,ci)=-s2*dd(p3,am,ci)  
+      pp(o2,zo,ci)=-s2*dd(zo,am,ci)  
+!      pp(o2,am,ci)=-s4*dd(am,ni,ci) 
+      pp(o2,de,ci)=-s2*(thopnp+thomnm)*dd(de,am,ci)
       if ((fluff).and.(ci.eq.1)) then
-         pp(o2,o2,ci)=pp(o2,o2,ci)-(s4+s2*(thopnp+thomnm))*llsa*cc(fl,ci)/h(ci)
-         pp(po,po,ci)=pp(po,po,ci)+llsa                                       &
-                   *(1.-ph1*th(cc(o2,ci),wo,_ZERO_,_ONE_)*             &
-                      yy(ph2,cc(o2,ci)))*cc(fl,ci)/h(i)
+         pp(o2,fl,ci)=-(s4+s2*(thopnp+thomnm))*dd(fl,am,ci)/h(ci)
+         pp(po,po,ci)=(1.-ph1*th(cc(o2,ci),wo,_ZERO_,_ONE_)* &
+                      yy(ph2,cc(o2,ci)))*dd(fl,am,ci)/h(i)
       end if
    end do
 
