@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.5 2003-07-23 12:27:31 hb Exp $
+!$Id: bio.F90,v 1.6 2003-09-16 12:11:24 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -20,6 +20,9 @@
    use bio_npzd, only : init_bio_npzd,init_var_npzd,var_info_npzd
    use bio_npzd, only : light_npzd
 
+   use bio_iow, only : init_bio_iow,init_var_iow,var_info_iow
+   use bio_iow, only : light_iow,surface_fluxes_iow
+
    use output, only: out_fmt,write_results,ts
 !
 !  default: all is private.
@@ -32,7 +35,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.5  2003-07-23 12:27:31  hb
+!  Revision 1.6  2003-09-16 12:11:24  hb
+!  added new biological model - bio_iow
+!
+!  Revision 1.5  2003/07/23 12:27:31  hb
 !  more generic support for different bio models
 !
 !  Revision 1.3  2003/04/05 07:01:41  kbk
@@ -127,13 +133,16 @@
 
 	 call var_info_template(numc,var_names,var_units,var_long)
 
-      case (1)
+      case (1)  ! The NPZD model
          call init_bio_npzd(namlst,'bio_npzd.inp',unit,numc)
          allocate(cc(1:numc,0:nlev),stat=rc)
          if (rc /= 0) STOP 'init_bio: Error allocating (cc)'
 
          allocate(ws(1:numc,0:nlev),stat=rc)
          if (rc /= 0) STOP 'init_bio: Error allocating (ws)'
+
+         allocate(sfl(1:numc),stat=rc)
+         if (rc /= 0) STOP 'init_bio: Error allocating (sfl)'
 
          call init_var_npzd(numc,nlev,cc,ws)
 
@@ -150,6 +159,33 @@
          if (rc /= 0) stop 'bio_save(): Error allocating var_long)'
 
 	 call var_info_npzd(numc,var_names,var_units,var_long)
+
+      case (2)  ! The IOW model
+         call init_bio_iow(namlst,'bio_iow.inp',unit,numc)
+         allocate(cc(1:numc,0:nlev),stat=rc)
+         if (rc /= 0) STOP 'init_bio: Error allocating (cc)'
+
+         allocate(ws(1:numc,0:nlev),stat=rc)
+         if (rc /= 0) STOP 'init_bio: Error allocating (ws)'
+
+         allocate(sfl(1:numc),stat=rc)
+         if (rc /= 0) STOP 'init_bio: Error allocating (sfl)'
+
+         call init_var_iow(numc,nlev,cc,ws,sfl)
+
+         allocate(var_ids(numc),stat=rc)
+         if (rc /= 0) stop 'bio_save(): Error allocating var_ids)'
+
+         allocate(var_names(numc),stat=rc)
+         if (rc /= 0) stop 'bio_save(): Error allocating var_names)'
+
+         allocate(var_units(numc),stat=rc)
+         if (rc /= 0) stop 'bio_save(): Error allocating var_units)'
+
+         allocate(var_long(numc),stat=rc)
+         if (rc /= 0) stop 'bio_save(): Error allocating var_long)'
+
+	 call var_info_iow(numc,var_names,var_units,var_long)
 
       case default
          stop "bio: no valid biomodel specified in bio.inp !"
@@ -203,7 +239,7 @@
 ! !IROUTINE: Update the bio model
 !
 ! !INTERFACE:
-   subroutine do_bio(nlev,I_0,dt,h,nuh,rad,bioshade)
+   subroutine do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
 !
 ! !DESCRIPTION:
 !
@@ -217,6 +253,7 @@
    REALTYPE, intent(in)                :: dt
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: nuh(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
    REALTYPE, intent(in)                :: rad(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
@@ -246,8 +283,15 @@
       RelaxTau = 1.e15
       w_grid   = _ZERO_
 
+      select case (bio_model)
+         case (-1)
+         case (1)
+         case (2)
+            call surface_fluxes_iow(numc,nlev,cc,t(nlev),sfl)
+      end select
+
       do j=1,numc
-         call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Sup,Sdw,RelaxTau,h,h,nuh,ws(j,:), &
+         call Yevol(nlev,Bcup,Bcdw,dt,cnpar,sfl(j),Sdw,RelaxTau,h,h,nuh,ws(j,:), &
                  QSour,cc(j,:),char,w_adv_discr,cc(j,:),surf_flux,bott_flux,  &
                  grid_method,w_grid,flag)
       end do
@@ -260,9 +304,11 @@
                call light_template(numc,nlev,h,rad,cc,par,bioshade)
             case (1)
                call light_npzd(numc,nlev,h,rad,cc,par,bioshade)
+            case (2)
+               call light_iow(numc,nlev,h,rad,cc,par,bioshade)
          end select
 
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc)
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,t)
 
       end do
 
@@ -274,7 +320,6 @@
                totn=totn+cc(ci,i)*h(i)
             end do
          end do
-         write(91,*) totn
 
          call bio_save(numc,nlev,h,totn)
       end if

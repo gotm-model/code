@@ -1,0 +1,621 @@
+!$Id: bio_iow.F90,v 1.1 2003-09-16 12:11:24 hb Exp $
+#include"cppdefs.h"
+!-----------------------------------------------------------------------
+!BOP
+!
+! !MODULE: bio_iow --- IOW 9 compartment model \label{sec:bio_iow}
+!
+! !INTERFACE:
+   module bio_iow
+!
+! !DESCRIPTION:
+!  Remember this Hans
+!
+! !USES:
+!  default: all is private.
+   private
+!
+! !PUBLIC MEMBER FUNCTIONS:
+   public init_bio_iow, init_var_iow, var_info_iow, &
+          surface_fluxes_iow,light_iow, do_bio_iow, end_bio_iow
+!
+! !PRIVATE DATA MEMBERS:
+!
+! !REVISION HISTORY:!
+!  Original author(s): Hans Burchard & Karsten Bolding
+!
+!  $Log: bio_iow.F90,v $
+!  Revision 1.1  2003-09-16 12:11:24  hb
+!  added new biological model - bio_iow
+!
+!  Revision 1.1  2003/07/23 12:27:31  hb
+!  more generic support for different bio models
+!
+!  Revision 1.3  2003/04/05 07:01:41  kbk
+!  moved bioshade variable to meanflow - to compile properly
+!
+!  Revision 1.2  2003/04/04 14:25:52  hb
+!  First iteration of four-compartment geobiochemical model implemented
+!
+!  Revision 1.1  2003/04/01 17:01:00  hb
+!  Added infrastructure for geobiochemical model
+!
+! !LOCAL VARIABLES:
+!  from a namelist
+   REALTYPE                  :: p1_initial=4.5
+   REALTYPE                  :: p2_initial=4.5
+   REALTYPE                  :: p3_initial=4.5
+   REALTYPE                  :: zo_initial=4.5
+   REALTYPE                  :: de_initial=4.5
+   REALTYPE                  :: am_initial=4.5
+   REALTYPE                  :: ni_initial=4.5
+   REALTYPE                  :: po_initial=4.5
+   REALTYPE                  :: o2_initial=4.5
+   REALTYPE, public          :: p10=0.0225
+   REALTYPE, public          :: p20=0.0225
+   REALTYPE, public          :: p30=0.0225
+   REALTYPE                  :: zo0=0.0225
+   REALTYPE                  :: w_p1=-1.157407e-05
+   REALTYPE                  :: w_p2=-5.787037e-05
+   REALTYPE                  :: w_p3=-5.787037e-05
+   REALTYPE                  :: w_de=-3.
+   REALTYPE, public          :: kc=0.03
+   REALTYPE                  :: i_min=25.
+   REALTYPE                  :: r1max=1.
+   REALTYPE                  :: r2max=1.
+   REALTYPE                  :: r3max=1.
+   REALTYPE                  :: alpha1=0.3
+   REALTYPE                  :: alpha2=0.15
+   REALTYPE                  :: alpha3=0.5
+   REALTYPE                  :: lpa=0.01
+   REALTYPE                  :: lpd=0.02
+   REALTYPE                  :: Tf=10.
+   REALTYPE                  :: Tbg=16.
+   REALTYPE                  :: beta_bg=1.
+   REALTYPE                  :: g1max=0.5
+   REALTYPE                  :: g2max=0.5
+   REALTYPE                  :: g3max=0.25
+   REALTYPE                  :: lza=0.3
+   REALTYPE                  :: lzd=0.6
+   REALTYPE, public          :: iv=1.2
+   REALTYPE                  :: topt=20.
+   REALTYPE                  :: lan=0.1
+   REALTYPE                  :: oan=0.01
+   REALTYPE                  :: beta_an=0.11
+   REALTYPE                  :: lda=0.003
+   REALTYPE                  :: Tda=13.
+   REALTYPE                  :: beta_da=20.
+   REALTYPE                  :: ph1=0.15
+   REALTYPE                  :: ph2=0.1
+   REALTYPE                  :: pvel=5.
+   REALTYPE                  :: sr=0.0625
+   REALTYPE                  :: s1=5.3
+   REALTYPE                  :: s2=6.625
+   REALTYPE                  :: s3=8.125
+   REALTYPE                  :: s4=0.666666666
+   REALTYPE                  :: a0=31.25
+   REALTYPE                  :: a1=14.603
+   REALTYPE                  :: a2=0.4025
+   integer                   :: out_unit
+   integer, parameter        :: p1=1,p2=2,p3=3,zo=4,de=5,am=6,ni=7,po=8,o2=9
+!EOP
+!-----------------------------------------------------------------------
+
+   contains
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the bio module
+!
+! !INTERFACE:
+   subroutine init_bio_iow(namlst,fname,unit,numc)
+!
+! !DESCRIPTION:
+!  Here, the bio namelist {\tt bio_iow.inp} is read and memory is
+!  allocated - and various variables are initialised.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,          intent(in)   :: namlst
+   character(len=*), intent(in)   :: fname
+   integer,          intent(in)   :: unit
+
+! !OUTPUT PARAMETERS:
+   integer,          intent(out)   :: numc
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard & Karsten Bolding
+!
+! !LOCAL VARIABLES:
+   REALTYPE, parameter       :: secs_pr_day=86400.
+   namelist /bio_iow_nml/ numc,p1_initial,p2_initial,p3_initial,zo_initial,  & 
+                      de_initial,am_initial,ni_initial,po_initial,       &
+                      o2_initial,p10,p20,p30,zo0,w_p1,w_p2,w_p3,         &
+		      w_de,kc,i_min,r1max,r2max,r3max,alpha1,alpha2,     &
+		      alpha3,lpa,lpd,tf,tbg,beta_bg,g1max,g2max,         &
+		      g3max,lza,lzd,iv,topt,lan,oan,beta_an,lda,         &
+		      tda,beta_da,ph1,ph2,pvel,sr,s1,s2,s3,s4,a0,a1,a2
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'init_bio_iow'
+
+   open(namlst,file=fname,action='read',status='old',err=98)
+   read(namlst,nml=bio_iow_nml,err=99)
+   close(namlst)
+
+!  Conversion from day to second
+   w_p1   = w_p1    /secs_pr_day
+   w_p2   = w_p2    /secs_pr_day
+   w_p3   = w_p3    /secs_pr_day
+   w_de   = w_de    /secs_pr_day
+   r1max  = r1max   /secs_pr_day
+   r2max  = r2max   /secs_pr_day
+   r3max  = r3max   /secs_pr_day
+   lpa    = lpa     /secs_pr_day
+   lpd    = lpd     /secs_pr_day
+   g1max  = g1max   /secs_pr_day
+   g2max  = g2max   /secs_pr_day
+   g3max  = g3max   /secs_pr_day
+   lza    = lza     /secs_pr_day
+   lzd    = lzd     /secs_pr_day
+   lan    = lan     /secs_pr_day
+   lda    = lda     /secs_pr_day
+   pvel   = pvel    /secs_pr_day
+
+   out_unit=unit
+
+   LEVEL3 'IOW bio module initialised ...'
+
+   return
+
+98 LEVEL2 'I could not open bio_iow.inp'
+   LEVEL2 'If thats not what you want you have to supply bio_iow.inp'
+   LEVEL2 'See the bio example on www.gotm.net for a working bio_iow.inp'
+   return
+99 FATAL 'I could not read bio_iow.inp'
+   stop 'init_bio_iow'
+   end subroutine init_bio_iow
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the concentration variables
+!
+! !INTERFACE:
+   subroutine init_var_iow(numc,nlev,cc,ws,sfl)
+!
+! !DESCRIPTION:
+!  Here, the cc and ws varibles are filled with initial conditions
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: numc,nlev
+
+! !INPUT/OUTPUT PARAMETERS:
+  REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
+  REALTYPE, intent(inout)              :: ws(1:numc,0:nlev)
+  REALTYPE, intent(inout)              :: sfl(1:numc)
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard & Karsten Bolding
+
+! !LOCAL VARIABLES:
+  integer                    :: i
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   do i=1,nlev
+      cc(p1,i)=p1_initial
+      cc(p2,i)=p2_initial
+      cc(p3,i)=p3_initial
+      cc(zo,i)=zo_initial
+      cc(de,i)=de_initial
+      cc(am,i)=am_initial
+      cc(ni,i)=ni_initial
+      cc(po,i)=po_initial
+      cc(o2,i)=o2_initial
+   end do
+
+   do i=0,nlev
+      ws(p1,i) = w_p1
+      ws(p2,i) = w_p2
+      ws(p3,i) = w_p3
+      ws(zo,i) = _ZERO_
+      ws(de,i) = w_de
+      ws(am,i) = _ZERO_
+      ws(ni,i) = _ZERO_
+      ws(po,i) = _ZERO_
+      ws(o2,i) = _ZERO_
+   end do
+
+   sfl = _ZERO_
+
+   LEVEL3 'IOW variables initialised ...'
+
+   return
+
+   end subroutine init_var_iow
+!EOC
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Providing info on variables
+!
+! !INTERFACE:
+   subroutine var_info_iow(numc,var_names,var_units,var_long)
+!
+! !DESCRIPTION:
+!  This subroutine provides information on the variables. To be used
+!  when storing data in NetCDF files.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: numc
+!
+! !OUTPUT PARAMETERS:
+   character(len=64), intent(out)       :: var_names(:)
+   character(len=64), intent(out)       :: var_units(:)
+   character(len=64), intent(out)       :: var_long(:)
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard & Karsten Bolding
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   var_names(1) = 'dia'
+   var_units(1) = 'mmol n/m**3'
+   var_long(1)  = 'diatoms'
+
+   var_names(2) = 'fla'
+   var_units(2) = 'mmol n/m**3'
+   var_long(2)  = 'flagellates'
+
+   var_names(3) = 'cya'
+   var_units(3) = 'mmol n/m**3'
+   var_long(3)  = 'cyanobacteria'
+
+   var_names(4) = 'zoo'
+   var_units(4) = 'mmol n/m**3'
+   var_long(4)  = 'zooplankton'
+
+   var_names(5) = 'det'
+   var_units(5) = 'mmol n/m**3'
+   var_long(5)  = 'detritus'
+
+   var_names(6) = 'amm'
+   var_units(6) = 'mmol n/m**3'
+   var_long(6)  = 'ammonium'
+
+   var_names(7) = 'nit'
+   var_units(7) = 'mmol n/m**3'
+   var_long(7)  = 'nitrtate'
+
+   var_names(8) = 'pho'
+   var_units(8) = 'mmol p/m**3'
+   var_long(8)  = 'phosphate'
+
+   var_names(9) = 'oxy'
+   var_units(9) = 'mmol n/m**3'
+   var_long(9)  = 'oxygen'   
+
+   return
+   end subroutine var_info_iow
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Step function
+!
+! !INTERFACE
+   REALTYPE function theta(x)
+!
+! !DESCRIPTION
+!
+! !USES
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: x
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (x.gt.0) then
+      theta=1.
+   else
+      theta=0.
+   end if    
+   return
+   end function theta
+!EOC
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Saturation function squared
+!
+! !INTERFACE
+   REALTYPE function yy(a,x)
+!
+! !DESCRIPTION
+!
+! !USES
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: a,x
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   yy=x**2/(a**2+x**2)
+   return
+   end function yy
+!EOC
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Ivlev formulation for zooplankton grazing on phytoplankton
+!
+! !INTERFACE
+   REALTYPE function fpz(g,t,topt,psum)
+!
+! !DESCRIPTION
+!
+! !USES
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: g,t,topt,psum
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   fpz=g*(1.+t**2/topt**2*exp(1.-2.*t/topt))*               &
+        (1.-exp(-iv**2*psum**2))
+   return
+   end function fpz
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Surface fluxes for the IOW model
+!
+! !INTERFACE
+   subroutine surface_fluxes_iow(numc,nlev,cc,t,sfl)
+!
+! !DESCRIPTION
+!
+! !USES
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+  integer                              :: numc,nlev
+  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev),t
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: sfl(1:numc)
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Karsten Bolding
+!
+! !LOCAL VARIABLES:
+   integer                   :: i
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   sfl(o2)=-pvel*(a0*(a1-a2*t)-cc(o2,nlev))
+
+   return
+   end subroutine surface_fluxes_iow
+!EOC
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Light properties for the IOW model
+!
+! !INTERFACE
+   subroutine light_iow(numc,nlev,h,rad,cc,par,bioshade)
+!
+! !DESCRIPTION
+!
+! !USES
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+  integer                              :: numc,nlev
+  REALTYPE, intent(in)                 :: h(0:nlev)
+  REALTYPE, intent(in)                 :: rad(0:nlev)
+  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: par(0:nlev)
+   REALTYPE, intent(out)               :: bioshade(0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Karsten Bolding
+!
+! !LOCAL VARIABLES:
+   integer                   :: i
+   REALTYPE                  :: zz,add
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   zz = _ZERO_
+   add = _ZERO_
+   do i=nlev,1,-1
+      add=add+0.5*h(i)*(cc(de,i)+cc(p1,i)+cc(p2,i)+cc(p3,i)+p10+p20+p30)
+      zz=zz+0.5*h(i)
+      par(i)=0.25*(rad(i)+rad(i-1))*exp(-kc*add)
+      add=add+0.5*h(i)*(cc(de,i)+cc(p1,i)+cc(p2,i)+cc(p3,i)+p10+p20+p30)
+      bioshade(i)=exp(-kc*add)
+      zz=zz+0.5*h(i)
+   end do
+
+   return
+   end subroutine light_iow
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Right hand sides of geobiochemical model
+!
+! !INTERFACE
+   subroutine do_bio_iow(first,numc,nlev,cc,pp,dd,t,par,I_0)
+!
+! !DESCRIPTION
+!
+! !USES
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+  integer                              :: numc,nlev
+  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+  REALTYPE, intent(in)                 :: t(0:nlev),par(0:nlev),I_0
+!
+! !INPUT/OUTPUT PARAMETERS:
+  logical                              :: first
+!
+! !OUTPUT PARAMETERS:
+  REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+  REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Karsten Bolding
+!
+! !LOCAL VARIABLES:
+  REALTYPE, save             :: iopt,ppi(0:nlev)
+  REALTYPE                   :: psum,llda,llan,r1,r2,r3
+  integer                    :: i,j,ci
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   if (first) then
+      first = .false.
+      iopt=max(0.25*I_0,I_min)
+      do ci=1,nlev
+         ppi(ci)=par(ci)/iopt*exp(1.-par(ci)/iopt)
+      end do
+   end if
+
+!KBK - is it necessary to initialise every time - expensive in a 3D model
+   pp = _ZERO_
+   dd = _ZERO_
+
+   do ci=1,nlev
+
+      psum=cc(p1,ci)+cc(p2,ci)+cc(p3,ci)+p10+p20+p30 
+      llda=lda*(1.+beta_da*yy(tda,t(ci)))
+      llan=theta(cc(o2,ci))*cc(o2,ci)/(oan+cc(o2,ci))*lan*exp(beta_an*t(ci))
+      r1=r1max*min(yy(alpha1,cc(am,ci)+cc(ni,ci)),yy(sr*alpha1,cc(po,ci)),   &
+                   ppi(ci))
+      r2=r2max*(1.+yy(tf,t(ci)))*                                            &
+               min(yy(alpha2,cc(am,ci)+cc(ni,ci)),yy(sr*alpha2,cc(po,ci)),   &
+                   ppi(ci))
+      r3=r3max*1./(1.+exp(beta_bg*(tbg-t(ci))))*min(yy(sr*alpha3,cc(po,ci)), &
+                   ppi(ci))		   
+
+!  Sink terms for positive compartments, which appear exactly 
+!  as source terms for other compartments:
+      dd(p1,zo,ci)=fpz(g1max,t(ci),topt,psum)*cc(p1,ci)/psum*(cc(zo,ci)+zo0)
+      dd(p1,de,ci)=lpd*cc(p1,ci)
+      dd(p1,am,ci)=lpa*cc(p1,ci)
+      dd(p2,zo,ci)=fpz(g2max,t(ci),topt,psum)*cc(p2,ci)/psum*(cc(zo,ci)+zo0)
+      dd(p2,de,ci)=lpd*cc(p2,ci)
+      dd(p2,am,ci)=lpa*cc(p2,ci)
+      dd(p3,zo,ci)=fpz(g3max,t(ci),topt,psum)*cc(p3,ci)/psum*(cc(zo,ci)+zo0)
+      dd(p3,de,ci)=lpd*cc(p3,ci)
+      dd(p3,am,ci)=lpa*cc(p3,ci)
+      dd(zo,de,ci)=lzd*cc(zo,ci)**2
+      dd(zo,am,ci)=lza*cc(zo,ci)**2
+      dd(de,am,ci)=llda*cc(de,ci)
+      dd(am,p1,ci)=cc(am,ci)/(cc(am,ci)+cc(ni,ci))*r1*cc(p1,ci)
+      dd(am,p2,ci)=cc(am,ci)/(cc(am,ci)+cc(ni,ci))*r2*cc(p2,ci)
+      dd(am,ni,ci)=llan*cc(am,ci)
+      dd(ni,p1,ci)=cc(ni,ci)/(cc(ni,ci)+cc(am,ci))*r1*cc(p1,ci)
+      dd(ni,p2,ci)=cc(ni,ci)/(cc(ni,ci)+cc(am,ci))*r2*cc(p2,ci)
+
+!  Sink terms for positive compartments, which do not appear 
+!  as source terms for other compartments:
+      dd(ni,ni,ci)=s1*llda*cc(de,ci)*theta(-cc(o2,ci))*theta(cc(ni,ci))
+      dd(po,po,ci)=sr*( r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)                &
+                       +r3*(cc(p3,ci)+p30)) 
+
+!  Source terms which are exactly sinks terms of other compartments:
+      do i=1,numc
+         do j=1,numc
+	    if (i.ne.j) pp(i,j,ci)=dd(j,i,ci)
+         end do
+      end do
+
+!   Source terms which are not related to sinks of other compartments:
+      pp(p3,p3,ci)=r3*(cc(p3,ci)+p30)
+      pp(po,po,ci)=sr*(lpa*(cc(p1,ci)+cc(p2,ci)+cc(p3,ci))                    &
+                   +llda*cc(de,ci)+lza*cc(zo,ci)**2)
+      pp(o2,o2,ci)=(s2*cc(am,ci)+s3*cc(ni,ci))/(cc(am,ci)+cc(ni,ci))*         &
+                  (r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)+r3*(cc(p3,ci)+p30))  &
+                   -s2*(lpa*psum+lza*(cc(zo,ci)+zo0)**2)                      &
+		   -s4*llan*cc(am,ci)-s2*(theta(cc(o2,ci))                    &
+		   +theta(-cc(o2,ci))*theta(-cc(ni,ci)))*llda*cc(de,ci)
+   end do
+
+   return
+   end subroutine do_bio_iow
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Finish the bio calculations
+!
+! !INTERFACE:
+   subroutine end_bio_iow
+!
+! !DESCRIPTION:
+!  Nothing done yet --- supplied for completeness.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard & Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   return
+   end subroutine end_bio_iow
+!EOC
+
+!-----------------------------------------------------------------------
+
+   end module bio_iow
+
+!-----------------------------------------------------------------------
+! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
+!-----------------------------------------------------------------------
