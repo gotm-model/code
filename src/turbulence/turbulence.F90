@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.2 2001-11-18 16:15:30 gotm Exp $
+!$Id: turbulence.F90,v 1.3 2001-11-27 19:42:58 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -132,7 +132,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.2  2001-11-18 16:15:30  gotm
+!  Revision 1.3  2001-11-27 19:42:58  gotm
+!  Cleaned
+!
+!  Revision 1.2  2001/11/18 16:15:30  gotm
 !  New generic two-equation model
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
@@ -178,10 +181,10 @@
 ! !LOCAL VARIABLES:
    integer		:: rc
    REALTYPE             :: rad
-   namelist /turbulence/ turb_method,tke_method,len_scale_method,nnn,mmm,     &
-                         stab_method, &
-                         craig_banner,const_num,const_nuh,           &
-                         length_lim,const_num,const_nuh,k_min,   &
+   namelist /turbulence/ turb_method,tke_method,len_scale_method,nnn,mmm,&
+                         stab_method,&
+                         craig_banner,const_num,const_nuh,&
+                         length_lim,const_num,const_nuh,k_min,&
                          L_min,eps_min
    namelist /umlauf/ umlauf_burchard,mx,d_gen,alpha_gen,l_gen  
    namelist /turb_parameters/ kappa,Prandtl0,cm0,cm_craig,cw,galp
