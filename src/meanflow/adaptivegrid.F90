@@ -1,4 +1,4 @@
-!$Id: adaptivegrid.F90,v 1.3 2003-03-28 09:20:35 kbk Exp $
+!$Id: adaptivegrid.F90,v 1.4 2003-12-11 09:58:22 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -82,7 +82,10 @@
 !  Original author(s): Hans Burchard & Jean-Marie Beckers
 !
 !  $Log: adaptivegrid.F90,v $
-!  Revision 1.3  2003-03-28 09:20:35  kbk
+!  Revision 1.4  2003-12-11 09:58:22  kbk
+!  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
+!
+!  Revision 1.3  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.2  2003/03/28 08:56:56  kbk
@@ -124,17 +127,17 @@
 
 !     Stratification 
       do i=1,nlev
-         av1(i)=min(1.,max(0.,0.5*(NNloc(i)+NNloc(i-1)))/g*1024./NNnorm) 
+         av1(i)=min(_ONE_,max(_ZERO_,0.5*(NNloc(i)+NNloc(i-1)))/g*1024./NNnorm) 
       end do 
 
 !     Shear
       do i=1,nlev
-         av2(i)=min(1.,sqrt(max(0.,0.5*(SSloc(i)+SSloc(i-1))))/SSnorm) 
+         av2(i)=min(_ONE_,sqrt(max(_ZERO_,0.5*(SSloc(i)+SSloc(i-1))))/SSnorm) 
       end do
 
 !     Distance from surface
       do i=1,nlev
-         av3(i)=1./(dsurf-0.5*(ga(i-1)+ga(i))*depth) 
+         av3(i)=_ONE_/(dsurf-0.5*(ga(i-1)+ga(i))*depth) 
       end do 
 
 !     Calculation of grid diffusivity

@@ -1,4 +1,4 @@
-!$Id: bio_save.F90,v 1.1 2003-07-23 12:27:31 hb Exp $
+!$Id: bio_save.F90,v 1.2 2003-12-11 09:58:22 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,7 +47,7 @@
       case (ASCII)
          if(first) then
             open(out_unit,file='bio.out',status='unknown')
-	    nn = ubound(cc(1,:),1)
+            nn = ubound(cc(1,:),1)
             first = .false.
          end if
          write(out_unit,*)

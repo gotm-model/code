@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.2 2003-10-16 15:42:16 kbk Exp $
+!$Id: bio_iow.F90,v 1.3 2003-12-11 09:58:22 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.2  2003-10-16 15:42:16  kbk
+!  Revision 1.3  2003-12-11 09:58:22  kbk
+!  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
+!
+!  Revision 1.2  2003/10/16 15:42:16  kbk
 !  simple mussesl model implemented - filter only
 !
 !  Revision 1.1  2003/09/16 12:11:24  hb
@@ -101,6 +104,7 @@
    REALTYPE                  :: a2=0.4025
    integer                   :: out_unit
    integer, parameter        :: p1=1,p2=2,p3=3,zo=4,de=5,am=6,ni=7,po=8,o2=9
+   REALTYPE, allocatable     :: ppi(:)
 !EOP
 !-----------------------------------------------------------------------
 
@@ -137,10 +141,10 @@
    namelist /bio_iow_nml/ numc,p1_initial,p2_initial,p3_initial,zo_initial,  & 
                       de_initial,am_initial,ni_initial,po_initial,       &
                       o2_initial,p10,p20,p30,zo0,w_p1,w_p2,w_p3,         &
-		      w_de,kc,i_min,r1max,r2max,r3max,alpha1,alpha2,     &
-		      alpha3,lpa,lpd,tf,tbg,beta_bg,g1max,g2max,         &
-		      g3max,lza,lzd,iv,topt,lan,oan,beta_an,lda,         &
-		      tda,beta_da,ph1,ph2,pvel,sr,s1,s2,s3,s4,a0,a1,a2
+                      w_de,kc,i_min,r1max,r2max,r3max,alpha1,alpha2,     &
+                      alpha3,lpa,lpd,tf,tbg,beta_bg,g1max,g2max,         &
+                      g3max,lza,lzd,iv,topt,lan,oan,beta_an,lda,         &
+                      tda,beta_da,ph1,ph2,pvel,sr,s1,s2,s3,s4,a0,a1,a2
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -211,7 +215,7 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 
 ! !LOCAL VARIABLES:
-  integer                    :: i
+  integer                    :: i,rc
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -250,6 +254,9 @@
    mussels_inhale(ni) = .true.
    mussels_inhale(po) = .true.
    mussels_inhale(o2) = .true.
+
+   allocate(ppi(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_var_iow(): Error allocating ppi)'
 
    LEVEL3 'IOW variables initialised ...'
 
@@ -521,7 +528,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE, save             :: iopt,ppi(0:nlev)
+  REALTYPE, save             :: iopt
   REALTYPE                   :: psum,llda,llan,r1,r2,r3
   integer                    :: i,j,ci
 !EOP
@@ -551,7 +558,7 @@
                min(yy(alpha2,cc(am,ci)+cc(ni,ci)),yy(sr*alpha2,cc(po,ci)),   &
                    ppi(ci))
       r3=r3max*1./(1.+exp(beta_bg*(tbg-t(ci))))*min(yy(sr*alpha3,cc(po,ci)), &
-                   ppi(ci))		   
+                   ppi(ci))
 
 !  Sink terms for positive compartments, which appear exactly 
 !  as source terms for other compartments:
@@ -582,7 +589,7 @@
 !  Source terms which are exactly sinks terms of other compartments:
       do i=1,numc
          do j=1,numc
-	    if (i.ne.j) pp(i,j,ci)=dd(j,i,ci)
+            if (i.ne.j) pp(i,j,ci)=dd(j,i,ci)
          end do
       end do
 
@@ -593,8 +600,8 @@
       pp(o2,o2,ci)=(s2*cc(am,ci)+s3*cc(ni,ci))/(cc(am,ci)+cc(ni,ci))*         &
                   (r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)+r3*(cc(p3,ci)+p30))  &
                    -s2*(lpa*psum+lza*(cc(zo,ci)+zo0)**2)                      &
-		   -s4*llan*cc(am,ci)-s2*(theta(cc(o2,ci))                    &
-		   +theta(-cc(o2,ci))*theta(-cc(ni,ci)))*llda*cc(de,ci)
+                   -s4*llan*cc(am,ci)-s2*(theta(cc(o2,ci))                    &
+                   +theta(-cc(o2,ci))*theta(-cc(ni,ci)))*llda*cc(de,ci)
    end do
 
    return

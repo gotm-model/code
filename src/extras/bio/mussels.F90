@@ -1,4 +1,4 @@
-!$Id: mussels.F90,v 1.3 2003-10-28 10:26:33 hb Exp $
+!$Id: mussels.F90,v 1.4 2003-12-11 09:58:22 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -28,7 +28,10 @@
 !  Original author(s): Karsten Bolding, Marie Maar & Hans Burchard
 !
 !  $Log: mussels.F90,v $
-!  Revision 1.3  2003-10-28 10:26:33  hb
+!  Revision 1.4  2003-12-11 09:58:22  kbk
+!  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
+!
+!  Revision 1.3  2003/10/28 10:26:33  hb
 !  allow for delayed filtering + removed dt from flux calc.
 !
 !  Revision 1.2  2003/10/17 14:36:49  kbk
@@ -151,11 +154,11 @@
             flux=rate*nmussels
             do n=1,numc
                if(mussels_inhale(n)) then
-	          if (elapsed .gt. filter_lag) then
+                  if (elapsed .gt. filter_lag) then
                      bfl(n) = -flux*cc(n,1)
-		  else   
+                  else   
                      bfl(n) = _ZERO_
-		  end if   
+                  end if   
                end if
             end do
             call mussel_biomass()

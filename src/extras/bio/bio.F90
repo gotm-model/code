@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.9 2003-10-28 10:22:45 hb Exp $
+!$Id: bio.F90,v 1.10 2003-12-11 09:58:22 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,7 +40,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.9  2003-10-28 10:22:45  hb
+!  Revision 1.10  2003-12-11 09:58:22  kbk
+!  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
+!
+!  Revision 1.9  2003/10/28 10:22:45  hb
 !  added support for sedimentation only 1 compartment bio model
 !
 !  Revision 1.8  2003/10/16 15:42:16  kbk
@@ -131,7 +134,7 @@
 
          call init_var_template(numc,nlev,cc,ws)
 
-	 call var_info_template(numc,var_names,var_units,var_long)
+         call var_info_template(numc,var_names,var_units,var_long)
 
       case (1)  ! The NPZD model
 
@@ -151,7 +154,7 @@
 
          call init_var_iow(numc,nlev,cc,ws,sfl,mussels_inhale)
 
-	 call var_info_iow(numc,var_names,var_units,var_long)
+         call var_info_iow(numc,var_names,var_units,var_long)
 
       case (3)  ! The simple sedimentation model
 
@@ -161,7 +164,7 @@
 
          call init_var_sed(numc,nlev,cc,ws,mussels_inhale)
 
-	 call var_info_sed(numc,var_names,var_units,var_long)
+         call var_info_sed(numc,var_names,var_units,var_long)
 
       case default
          stop "bio: no valid biomodel specified in bio.inp !"

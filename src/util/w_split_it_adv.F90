@@ -1,4 +1,4 @@
-!$Id: w_split_it_adv.F90,v 1.4 2003-03-28 09:20:36 kbk Exp $
+!$Id: w_split_it_adv.F90,v 1.5 2003-12-11 09:58:21 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -66,7 +66,10 @@
 !  Original author(s): Hans Burchard
 !
 !  $Log: w_split_it_adv.F90,v $
-!  Revision 1.4  2003-03-28 09:20:36  kbk
+!  Revision 1.5  2003-12-11 09:58:21  kbk
+!  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
+!
+!  Revision 1.4  2003/03/28 09:20:36  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 09:10:39  kbk
@@ -148,9 +151,9 @@
                   limit=max(_ZERO_,min(Phi,2./(1.-c),2.*r/(c+1.e-10)))
                end if
             case (Superbee)
-               limit=max(_ZERO_, min(1.0, 2.0*r), min(r,2.0) )
+               limit=max(_ZERO_, min(_ONE_, 2.0*r), min(r,2.*_ONE_) )
             case (MUSCL)
-               limit=max(_ZERO_,min(2.0,2.0*r,0.5*(1.0+r)))
+               limit=max(_ZERO_,min(2.*_ONE_,2.0*r,0.5*(1.0+r)))
             case default
                FATAL 'This is not so good - w_split_it_adv()'
                stop

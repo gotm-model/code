@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.6 2003-10-14 08:04:32 kbk Exp $
+!$Id: ncdfout.F90,v 1.7 2003-12-11 09:58:22 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,7 +38,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.6  2003-10-14 08:04:32  kbk
+!  Revision 1.7  2003-12-11 09:58:22  kbk
+!  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
+!
+!  Revision 1.6  2003/10/14 08:04:32  kbk
 !  time is now stored as real
 !
 !  Revision 1.5  2003/06/13 09:27:16  hb
@@ -571,7 +574,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer	:: iret
+   integer         :: iret
 !
 !-----------------------------------------------------------------------
 !BOC

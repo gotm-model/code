@@ -1,4 +1,4 @@
-!$Id: yevol.F90,v 1.6 2003-10-28 10:29:07 hb Exp $
+!$Id: yevol.F90,v 1.7 2003-12-11 09:58:21 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,7 +40,10 @@
 !  Original author(s): Pierre-Philippe Mathieu
 !
 !  $Log: yevol.F90,v $
-!  Revision 1.6  2003-10-28 10:29:07  hb
+!  Revision 1.7  2003-12-11 09:58:21  kbk
+!  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
+!
+!  Revision 1.6  2003/10/28 10:29:07  hb
 !  now implicit solution
 !
 !  Revision 1.5  2003/03/28 09:20:36  kbk
@@ -97,7 +100,7 @@
       else ! Patankar (1980) trick
          bu(N)=1.-au(N)+dt*Yup/Y(n)/h(N)
          du(N)=Y(N)+dt*Qsour(N)+(1.-cnpar)*a*(Y(N-1)-Y(N))
-      end if	 
+      end if
    else if (Bcup.eq.2) then                    !BC Dirichlet
       au(N)=0.
       bu(N)=1.
