@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.12 2004-03-31 12:58:52 kbk Exp $
+!$Id: bio.F90,v 1.13 2004-04-13 09:18:54 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,7 +40,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.12  2004-03-31 12:58:52  kbk
+!  Revision 1.13  2004-04-13 09:18:54  kbk
+!  size and temperature dependend filtration rate
+!
+!  Revision 1.12  2004/03/31 12:58:52  kbk
 !  lagrangian solver uses - total_mussel_flux
 !
 !  Revision 1.11  2004/03/30 11:32:48  kbk
@@ -337,7 +340,8 @@
       end select
 
       if (mussels_calc) then
-         call do_mussels(numc,dt,depth,nlev,h,nuh)
+         call do_mussels(numc,dt,t(1))
+STDERR total_mussel_flux,t(1)
       end if
 
       if (bio_eulerian) then

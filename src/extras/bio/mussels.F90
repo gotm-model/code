@@ -1,4 +1,4 @@
-!$Id: mussels.F90,v 1.5 2004-03-31 12:58:52 kbk Exp $
+!$Id: mussels.F90,v 1.6 2004-04-13 09:18:54 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,7 +29,10 @@
 !  Original author(s): Karsten Bolding, Marie Maar & Hans Burchard
 !
 !  $Log: mussels.F90,v $
-!  Revision 1.5  2004-03-31 12:58:52  kbk
+!  Revision 1.6  2004-04-13 09:18:54  kbk
+!  size and temperature dependend filtration rate
+!
+!  Revision 1.5  2004/03/31 12:58:52  kbk
 !  lagrangian solver uses - total_mussel_flux
 !
 !  Revision 1.4  2003/12/11 09:58:22  kbk
@@ -50,7 +53,9 @@
    integer                   :: mussels_model=1
    REALTYPE                  :: filter_rate=1.
    REALTYPE                  :: filter_lag=0.0
-   REALTYPE                  :: nmussels=1000. 
+   REALTYPE                  :: nmussels=1000.
+   REALTYPE                  :: mussel_size=23.
+   REALTYPE                  :: Q10=2.1
    REALTYPE                  :: rate
    REALTYPE                  :: biomass=_ZERO_
    REALTYPE                  :: depth
@@ -87,7 +92,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: rc,i,n
    namelist /mussels_nml/ mussels_calc,mussels_model,filter_rate, &
-                          filter_lag,nmussels
+                          filter_lag,nmussels,mussel_size,Q10
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -108,8 +113,7 @@
             LEVEL4 "using the simple mussels model..."
             rate=0.001*filter_rate/3600.
          case(2)
-            LEVEL4 "lagrangian approach ..."
-            rate=0.001*filter_rate/3600.
+	    LEVEL4 "using the size_temp mussels filtration model..."
          case default
       end select
    end if
@@ -132,7 +136,7 @@
 ! !IROUTINE: Update the mussels model
 !
 ! !INTERFACE:
-   subroutine do_mussels(numc,dt,depth,nlev,h,nuh)
+   subroutine do_mussels(numc,dt,bottom_temp)
 !
 ! !DESCRIPTION:
 !
@@ -141,9 +145,8 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: numc
-   REALTYPE, intent(in)                :: dt,depth
-   integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: h(0:),nuh(0:)
+   REALTYPE, intent(in)                :: dt
+   REALTYPE, intent(in)                :: bottom_temp
 !
 ! !OUTPUT PARAMETERS:
 !
@@ -154,6 +157,7 @@
    integer         :: i,n
    REALTYPE        :: sink=1.e-6
    REALTYPE, save  :: elapsed=_ZERO_
+   REALTYPE        :: size_rate,temp_rate
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -167,13 +171,27 @@
                if(mussels_inhale(n)) then
                   if (elapsed .gt. filter_lag) then
                      bfl(n) = -total_mussel_flux*cc(n,1)
-                  else   
+                  else
                      bfl(n) = _ZERO_
-                  end if   
+                  end if
                end if
             end do
             call mussel_biomass()
          case (2)
+            size_rate=0.001/3600*0.0012*(mussel_size)**2.14
+            temp_rate=10**(log10 (size_rate) &
+	              +log10 (Q10)*((bottom_temp-15)/10))
+            total_mussel_flux=temp_rate*nmussels
+            do n=1,numc
+               if(mussels_inhale(n)) then
+                  if (elapsed .gt. filter_lag) then
+                     bfl(n) = -total_mussel_flux*cc(n,1)
+                  else
+                     bfl(n) = _ZERO_
+                  end if
+               end if
+            end do
+            call mussel_biomass()
          case default
       end select
    end if
@@ -185,7 +203,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Mussels bio-mass 
+! !IROUTINE: Mussels bio-mass
 !
 ! !INTERFACE:
    subroutine mussel_biomass
@@ -206,7 +224,7 @@
 !BOC
 
    if (first) then
-      first=.false.      
+      first=.false.
       STDERR "here we should do mussel bio-mass calculation ..."
    end if
 
