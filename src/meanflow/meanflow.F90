@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.5 2003-03-28 09:20:35 kbk Exp $
+!$Id: meanflow.F90,v 1.6 2003-04-05 07:01:16 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -50,6 +50,9 @@
 !  extra friction terms due to e.g. seagrass
    REALTYPE, public, dimension(:), allocatable  :: fric,drag
 
+!  shading in the water column
+   REALTYPE, public, dimension(:), allocatable  :: bioshade
+
 !  the 'meanflow' namelist
    REALTYPE, public                    :: h0b=0.05
    REALTYPE, public                    :: z0s_min=0.02
@@ -100,7 +103,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
-!  Revision 1.5  2003-03-28 09:20:35  kbk
+!  Revision 1.6  2003-04-05 07:01:16  kbk
+!  moved bioshade variable to meanflow - to compile properly
+!
+!  Revision 1.5  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/28 08:15:01  kbk
@@ -172,79 +178,85 @@
    LEVEL2 'allocation meanflow memory..'
    allocate(z(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (z)'
-   z = 0.
+   z = _ZERO_
 
    allocate(h(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (h)'
-   h = 0.
+   h = _ZERO_
 
    allocate(ho(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (ho)'
-   ho = 0.
+   ho = _ZERO_
 
    allocate(u(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (u)'
-   u = 0.
+   u = _ZERO_
 
    allocate(v(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (v)'
-   v = 0.
+   v = _ZERO_
 
    allocate(w(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (w)'
-   w = 0.
+   w = _ZERO_
 
    allocate(fric(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (fric)'
-   fric = 0.
+   fric = _ZERO_
 
    allocate(drag(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (drag)'
-   drag = 0.
+   drag = _ZERO_
 
    allocate(T(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (T)'
-   T = 0.
+   T = _ZERO_
 
    allocate(S(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (S)'
-   S = 0.
+   S = _ZERO_
 
    allocate(NN(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (NN)'
-   NN = 0.
+   NN = _ZERO_
 
    allocate(SS(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (SS)'
-   SS = 0.
+   SS = _ZERO_
 
    allocate(P(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_meanflow: Error allocating (P)'
-   P = 0.
+   P = _ZERO_
 
    allocate(B(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_meanflow: Error allocating (B)'
-   B = 0.
+   B = _ZERO_
 
    allocate(xP(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (xP)'
-   xP = 0.
+   xP = _ZERO_
 
    allocate(buoy(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (buoy)'
-   buoy = 0.
+   buoy = _ZERO_
 
    allocate(rad(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (rad)'
-   rad = 0.
+   rad = _ZERO_
 
    allocate(avh(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (avh)'
-   avh = 0.
+   avh = _ZERO_
 
    allocate(w_grid(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (w_grid)'
-   w_grid = 0.
+   w_grid = _ZERO_
+
+#if 1
+   allocate(bioshade(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_bio: Error allocating (bioshade)'
+   bioshade= _ZERO_
+#endif
 
 
    LEVEL2 'done.'

@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.6 2003-04-04 14:25:52 hb Exp $
+!$Id: temperature.F90,v 1.7 2003-04-05 07:01:16 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -65,10 +65,10 @@
 ! !USES:
    use meanflow, only: avmolt,rho_0,cp
    use meanflow, only: h,ho,u,v,T,avh,w,grid_method,w_grid
+   use meanflow, only: bioshade
    use observations, only: dtdx,dtdy,t_adv,w_adv,w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau
    use observations, only: A,g1,g2
-   use bio, only: bioshade
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -84,7 +84,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.6  2003-04-04 14:25:52  hb
+!  Revision 1.7  2003-04-05 07:01:16  kbk
+!  moved bioshade variable to meanflow - to compile properly
+!
+!  Revision 1.6  2003/04/04 14:25:52  hb
 !  First iteration of four-compartment geobiochemical model implemented
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk

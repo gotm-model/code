@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.2 2003-04-04 14:25:52 hb Exp $
+!$Id: bio.F90,v 1.3 2003-04-05 07:01:41 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -12,9 +12,9 @@
 !  Remember this Hans
 !
 ! !USES:
-   use turbulence, only:    nuh 
-   use meanflow,   only: h
-   use output,   only:     out_fmt,write_results,ts
+   use meanflow, only: h, bioshade
+   use turbulence, only: nuh 
+   use output, only: out_fmt,write_results,ts
 !  default: all is private.
    private
 !
@@ -25,19 +25,20 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.2  2003-04-04 14:25:52  hb
+!  Revision 1.3  2003-04-05 07:01:41  kbk
+!  moved bioshade variable to meanflow - to compile properly
+!
+!  Revision 1.2  2003/04/04 14:25:52  hb
 !  First iteration of four-compartment geobiochemical model implemented
 !
 !  Revision 1.1  2003/04/01 17:01:00  hb
 !  Added infrastructure for geobiochemical model
-!
 !
 !EOP
 !-----------------------------------------------------------------------
 !
 !  private data members
    REALTYPE, dimension(:), allocatable         :: n,p,z,d
-   REALTYPE, dimension(:), allocatable, public :: bioshade
 
 !  from a namelist
    logical                   :: bio_calc=.true.
@@ -99,6 +100,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: rc
+   REALTYPE, parameter       :: secs_pr_day=86400.
    namelist /bio_nml/ bio_calc,N_initial,P_initial,Z_initial,D_initial,  &
                       P0,Z0,w_P,w_D,kc,I_min,rmax,gmax,Iv,alpha,rpn,    &
 		      rzn,rdn,rpdu,rpdl,rzd,cnpar,w_adv_discr,sink_discr
@@ -113,20 +115,16 @@
    close(namlst)
 
 !  Conversion from day to second
-   rpn  = rpn  / (24.*3600.) 
-   rzn  = rzn  / (24.*3600.)
-   rdn  = rdn  / (24.*3600.)
-   rpdu = rpdu / (24.*3600.)
-   rpdl = rpdl / (24.*3600.)
-   rzd  = rzd  / (24.*3600.)
-   gmax = gmax / (24.*3600.)
-   rmax = rmax / (24.*3600.)
-   w_p  = w_p  / (24.*3600.)
-   w_d  = w_d  / (24.*3600.)
-
-   allocate(bioshade(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_bio: Error allocating (bioshade)'
-   bioshade=0.
+   rpn  = rpn  /secs_pr_day
+   rzn  = rzn  /secs_pr_day
+   rdn  = rdn  /secs_pr_day
+   rpdu = rpdu /secs_pr_day
+   rpdl = rpdl /secs_pr_day
+   rzd  = rzd  /secs_pr_day
+   gmax = gmax /secs_pr_day
+   rmax = rmax /secs_pr_day
+   w_p  = w_p  /secs_pr_day
+   w_d  = w_d  /secs_pr_day
 
    if (bio_calc) then 
       out_unit=unit
@@ -143,18 +141,12 @@
       allocate(d(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_bio: Error allocating (d)'
        
-      n=n_initial 
-      p=p_initial 
-      z=z_initial 
-      d=d_initial 
+      n = n_initial 
+      p = p_initial 
+      z = z_initial 
+      d = d_initial 
 
-
-!KBK
-#if 0
-      close(unit) 
-#endif
-
-      LEVEL1 'bio module is initialised ...'
+      LEVEL1 'Fennel/Neumann/Burchard bio module initialised ...'
 
    end if
    return
@@ -178,8 +170,8 @@
    subroutine calc_bio(nlev,I_0,dt)
 !
 ! !DESCRIPTION:
-! Let $N$ denote nutrient, $P$ denote phytoplankton, $Z$ denote zooplankton and
-! $D$ denote detritus concentration, given as
+! Let $N$ denote nutrient, $P$ denote phytoplankton, $Z$ denote 
+! zooplankton and $D$ denote detritus concentration, given as
 ! nutrient equivalents in mmol\,m$^{-3}$. According to
 ! \cite{FENNELea96}, a four-compartment geobiochemical model
 ! could then be constructed as:
@@ -272,7 +264,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-!BOC
 ! !LOCAL VARIABLES:
    REALTYPE                  :: Qsour(0:nlev),w(0:nlev)
    REALTYPE                  :: Sup=0,Sdw=0
@@ -290,173 +281,171 @@
 
 !EOP
 !-----------------------------------------------------------------------
+!BOC
 
    if (bio_calc) then 
 
-!      STDERR 'bio_calc'
-
-      Qsour=0.
-      RelaxTau=1.e15
+      Qsour= _ZERO_
+      RelaxTau = 1.e15
 
 !  Diffusion of N
-   w=0.
-   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Sup,Sdw,RelaxTau,h,h,nuh,w,     &
-              QSour,n,char,w_adv_discr,N,surf_flux,bott_flux,         &
-              grid_method,w_grid,flag)
+      w = _ZERO_
+      call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Sup,Sdw,RelaxTau,h,h,nuh,w, &
+                 QSour,n,char,w_adv_discr,N,surf_flux,bott_flux,     &
+                 grid_method,w_grid,flag)
 
 !  Diffusion and sinking of P
-   w=w_P
-   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Sup,Sdw,RelaxTau,h,h,nuh,w,     &
-              QSour,p,char,w_adv_discr,P,surf_flux,bott_flux,         &
-              grid_method,w_grid,flag)
+      w = w_P
+      call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Sup,Sdw,RelaxTau,h,h,nuh,w, &
+                 QSour,p,char,w_adv_discr,P,surf_flux,bott_flux,     &
+                 grid_method,w_grid,flag)
 
 !  Diffusion of Z
-   w=0.
-   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Sup,Sdw,RelaxTau,h,h,nuh,w,     &
-              QSour,z,char,w_adv_discr,Z,surf_flux,bott_flux,         &
-              grid_method,w_grid,flag)
+      w = _ZERO_
+      call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Sup,Sdw,RelaxTau,h,h,nuh,w, &
+                 QSour,z,char,w_adv_discr,Z,surf_flux,bott_flux,     &
+                 grid_method,w_grid,flag)
 
 !  Diffusion and sinking of D
-   w=w_D
-   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Sup,Sdw,RelaxTau,h,h,nuh,w,     &
-              QSour,d,char,w_adv_discr,D,surf_flux,bott_flux,         &
-              grid_method,w_grid,flag)
-
+      w = w_D
+      call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Sup,Sdw,RelaxTau,h,h,nuh,w, &
+                 QSour,d,char,w_adv_discr,D,surf_flux,bott_flux,     &
+                 grid_method,w_grid,flag)
 
 !  Source and sink terms (right hand sides)
 
-   zz=0.
-   add=0.
-   do i=nlev,1,-1
-      add=add+0.5*h(i)*(d(i)+p(i)+p0)
-      zz=zz+0.5*h(i)
-      par(i)=0.25*(rad(i)+rad(i-1))*exp(-kc*add) 
-      add=add+0.5*h(i)*(d(i)+p(i)+p0)
-      bioshade(i)=exp(-kc*add)
-      zz=zz+0.5*h(i)
-   end do 
-   iopt=max(0.25*I_0,I_min)
+      zz = _ZERO_
+      add = _ZERO_
+      do i=nlev,1,-1
+         add=add+0.5*h(i)*(d(i)+p(i)+p0)
+         zz=zz+0.5*h(i)
+         par(i)=0.25*(rad(i)+rad(i-1))*exp(-kc*add) 
+         add=add+0.5*h(i)*(d(i)+p(i)+p0)
+         bioshade(i)=exp(-kc*add)
+         zz=zz+0.5*h(i)
+      end do 
+      iopt=max(0.25*I_0,I_min)
 
-   totn=0.
-   do i=nlev,1,-1
-      if (par(i).ge.I_min) then 
-         rpd=rpdu
-      else
-         rpd=rpdl
-      end if 
+      totn= _ZERO_
+      do i=nlev,1,-1
+         if (par(i).ge.I_min) then 
+            rpd=rpdu
+         else
+            rpd=rpdl
+         end if 
 !
-      snp1=fnp(n(i),p(i),par(i),iopt)
-      spz1=fpz(p(i),z(i)) 
-      spn1=rpn*p(i)
-      szn1=rzn*z(i)
-      sdn1=rdn*d(i)
-      spd1=rpd*p(i)
-      szd1=rzd*z(i)
-    
-      n1=n(i)+dt*(-snp1+spn1+szn1+sdn1)
-      p1=p(i)+dt*(+snp1-spn1-spd1-spz1)
-      z1=z(i)+dt*(+spz1-szn1-szd1)
-      d1=d(i)+dt*(+spd1+szd1-sdn1)
+         snp1=fnp(n(i),p(i),par(i),iopt)
+         spz1=fpz(p(i),z(i)) 
+         spn1=rpn*p(i)
+         szn1=rzn*z(i)
+         sdn1=rdn*d(i)
+         spd1=rpd*p(i)
+         szd1=rzd*z(i)
 
-      if (sink_discr.eq.1) then
-         n(i)=n1
-         p(i)=p1
-         z(i)=z1
-         d(i)=d1
-      end if 
+         n1=n(i)+dt*(-snp1+spn1+szn1+sdn1)
+         p1=p(i)+dt*(+snp1-spn1-spd1-spz1)
+         z1=z(i)+dt*(+spz1-szn1-szd1)
+         d1=d(i)+dt*(+spd1+szd1-sdn1)
 
-      if (sink_discr.eq.2) then   ! Second order Runge-Kutta
-         snp2=fnp(n1,p1,par(i),iopt)
-         spz2=fpz(p1,z1)
-         spn2=rpn*P1
-         szn2=rzn*Z1
-         sdn2=rdn*D1
-         spd2=rpd*P1
-         szd2=rzd*Z1
-
-         n1=n(i)+dt*0.5*(-snp1+spn1+szn1+sdn1-snp2+spn2+szn2+sdn2)
-         p1=p(i)+dt*0.5*(+snp1-spn1-spd1-spz1+snp2-spn2-spd2-spz2)
-         z1=z(i)+dt*0.5*(+spz1-szn1-szd1     +spz2-szn2-szd2)
-         d1=d(i)+dt*0.5*(+spd1+szd1-sdn1     +spd2+szd2-sdn2)
-
-         if (sink_discr.eq.2) then
+         if (sink_discr.eq.1) then
             n(i)=n1
             p(i)=p1
             z(i)=z1
             d(i)=d1
          end if 
-      end if 
 
-      if (sink_discr.eq.3) then   ! Fourth order Runge-Kutta
-         n1=n(i)+0.5*dt*(-snp1+spn1+szn1+sdn1)
-         p1=p(i)+0.5*dt*(+snp1-spn1-spd1-spz1)
-         z1=z(i)+0.5*dt*(+spz1-szn1-szd1)
-         d1=d(i)+0.5*dt*(+spd1+szd1-sdn1)
+         if (sink_discr.eq.2) then   ! Second order Runge-Kutta
+            snp2=fnp(n1,p1,par(i),iopt)
+            spz2=fpz(p1,z1)
+            spn2=rpn*P1
+            szn2=rzn*Z1
+            sdn2=rdn*D1
+            spd2=rpd*P1
+            szd2=rzd*Z1
 
-         snp2=fnp(n1,p1,par(i),iopt)
-         spz2=fpz(p1,z1)
-         spn2=rpn*p1
-         szn2=rzn*z1
-         sdn2=rdn*d1
-         spd2=rpd*p1
-         szd2=rzd*z1
+            n1=n(i)+dt*0.5*(-snp1+spn1+szn1+sdn1-snp2+spn2+szn2+sdn2)
+            p1=p(i)+dt*0.5*(+snp1-spn1-spd1-spz1+snp2-spn2-spd2-spz2)
+            z1=z(i)+dt*0.5*(+spz1-szn1-szd1     +spz2-szn2-szd2)
+            d1=d(i)+dt*0.5*(+spd1+szd1-sdn1     +spd2+szd2-sdn2)
 
-         n1=n(i)+0.5*dt*(-snp2+spn2+szn2+sdn2)
-         p1=p(i)+0.5*dt*(+snp2-spn2-spd2-spz2)
-         z1=z(i)+0.5*dt*(+spz2-szn2-szd2)
-         d1=d(i)+0.5*dt*(+spd2+szd2-sdn2)
+            if (sink_discr.eq.2) then
+               n(i)=n1
+               p(i)=p1
+               z(i)=z1
+               d(i)=d1
+            end if 
+         end if 
 
-         snp3=fnp(n1,p1,par(i),iopt)
-         spz3=fpz(p1,z1)
-         spn3=rpn*p1
-         szn3=rzn*z1
-         sdn3=rdn*d1
-         spd3=rpd*p1
-         szd3=rzd*z1
+         if (sink_discr.eq.3) then   ! Fourth order Runge-Kutta
+            n1=n(i)+0.5*dt*(-snp1+spn1+szn1+sdn1)
+            p1=p(i)+0.5*dt*(+snp1-spn1-spd1-spz1)
+            z1=z(i)+0.5*dt*(+spz1-szn1-szd1)
+            d1=d(i)+0.5*dt*(+spd1+szd1-sdn1)
 
-         n1=n(i)+dt*(-snp3+spn3+szn3+sdn3)
-         p1=p(i)+dt*(+snp3-spn3-spd3-spz3)
-         z1=z(i)+dt*(+spz3-szn3-szd3)
-         d1=d(i)+dt*(+spd3+szd3-sdn3)
+            snp2=fnp(n1,p1,par(i),iopt)
+            spz2=fpz(p1,z1)
+            spn2=rpn*p1
+            szn2=rzn*z1
+            sdn2=rdn*d1
+            spd2=rpd*p1
+            szd2=rzd*z1
 
-         snp4=fnp(n1,p1,par(i),iopt)
-         spz4=fpz(p1,z1)
-         spn4=rpn*p1
-         szn4=rzn*z1
-         sdn4=rdn*d1
-         spd4=rpd*p1
-         szd4=rzd*z1
+            n1=n(i)+0.5*dt*(-snp2+spn2+szn2+sdn2)
+            p1=p(i)+0.5*dt*(+snp2-spn2-spd2-spz2)
+            z1=z(i)+0.5*dt*(+spz2-szn2-szd2)
+            d1=d(i)+0.5*dt*(+spd2+szd2-sdn2)
 
-         n(i)=n(i)+dt/6.*(-snp1+spn1+szn1+sdn1-snp4+spn4+szn4+sdn4)  &
-	          +dt/3.*(-snp2+spn2+szn2+sdn2-snp3+spn3+szn3+sdn3)
-         p(i)=p(i)+dt/6.*(+snp1-spn1-spd1-spz1+snp4-spn4-spd4-spz4)  &
-	          +dt/3.*(+snp2-spn2-spd2-spz2+snp3-spn3-spd3-spz3)
-         z(i)=z(i)+dt/6.*(+spz1-szn1-szd1     +spz4-szn4-szd4)       &
-	          +dt/3.*(+spz2-szn2-szd2     +spz3-szn3-szd3) 
-         d(i)=d(i)+dt/6.*(+spd1+szd1-sdn1     +spd4+szd4-sdn4)       &
-	          +dt/3.*(+spd2+szd2-sdn2     +spd3+szd3-sdn3)
+            snp3=fnp(n1,p1,par(i),iopt)
+            spz3=fpz(p1,z1)
+            spn3=rpn*p1
+            szn3=rzn*z1
+            sdn3=rdn*d1
+            spd3=rpd*p1
+            szd3=rzd*z1
 
-      end if 
+            n1=n(i)+dt*(-snp3+spn3+szn3+sdn3)
+            p1=p(i)+dt*(+snp3-spn3-spd3-spz3)
+            z1=z(i)+dt*(+spz3-szn3-szd3)
+            d1=d(i)+dt*(+spd3+szd3-sdn3)
 
-      if (n(i).lt.0) n(i)=0.
-      if (p(i).lt.0) p(i)=0.
-      if (z(i).lt.0) z(i)=0.
-      if (d(i).lt.0) d(i)=0.
+            snp4=fnp(n1,p1,par(i),iopt)
+            spz4=fpz(p1,z1)
+            spn4=rpn*p1
+            szn4=rzn*z1
+            sdn4=rdn*d1
+            spd4=rpd*p1
+            szd4=rzd*z1
 
-      totn=totn+(n(i)+p(i)+z(i)+d(i))*h(i)
-   end do
-   write(90,*) totn
+            n(i)=n(i)+dt/6.*(-snp1+spn1+szn1+sdn1-snp4+spn4+szn4+sdn4)  &
+	             +dt/3.*(-snp2+spn2+szn2+sdn2-snp3+spn3+szn3+sdn3)
+            p(i)=p(i)+dt/6.*(+snp1-spn1-spd1-spz1+snp4-spn4-spd4-spz4)  &
+	             +dt/3.*(+snp2-spn2-spd2-spz2+snp3-spn3-spd3-spz3)
+            z(i)=z(i)+dt/6.*(+spz1-szn1-szd1     +spz4-szn4-szd4)       &
+	             +dt/3.*(+spz2-szn2-szd2     +spz3-szn3-szd3) 
+            d(i)=d(i)+dt/6.*(+spd1+szd1-sdn1     +spd4+szd4-sdn4)       &
+	             +dt/3.*(+spd2+szd2-sdn2     +spd3+szd3-sdn3)
 
+         end if 
 
-   if (write_results) then
-      call save_bio()
-   end if
+         if (n(i).lt.0) n(i)= _ZERO_
+         if (p(i).lt.0) p(i)= _ZERO_
+         if (z(i).lt.0) z(i)= _ZERO_
+         if (d(i).lt.0) d(i)= _ZERO_
+
+         totn=totn+(n(i)+p(i)+z(i)+d(i))*h(i)
+      end do
+!KBK  write(90,*) totn
+
+      if (write_results) then
+         call save_bio()
+      end if
 
    end if
 
    return
    end subroutine calc_bio 
 !EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -477,14 +466,13 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 !EOP
-!
-! !LOCAL VARIABLES:
 !-----------------------------------------------------------------------
 !BOC
-      fnp=rmax*par/iopt*exp(1.-par/iopt)*n**2/(alpha**2+n**2)*(p+p0)
+   fnp=rmax*par/iopt*exp(1.-par/iopt)*n**2/(alpha**2+n**2)*(p+p0)
    return
    end function fnp 
 !EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -505,14 +493,13 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 !EOP
-!
-! !LOCAL VARIABLES:
 !-----------------------------------------------------------------------
 !BOC
-      fpz=gmax*(1.-exp(-Iv**2*p**2))*(z+z0)
+   fpz=gmax*(1.-exp(-Iv**2*p**2))*(z+z0)
    return
    end function fpz 
 !EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -537,6 +524,7 @@
    return
    end subroutine end_bio 
 !EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -575,8 +563,6 @@
    integer, save             :: nut_id,phy_id,zoo_id,det_id,nn
    integer                   :: i,iret
    REALTYPE                  :: zz
-
-
 !-----------------------------------------------------------------------
 !BOC
 
