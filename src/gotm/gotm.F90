@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.10 2003-07-23 12:14:07 hb Exp $
+!$Id: gotm.F90,v 1.11 2003-09-16 12:17:10 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -79,7 +79,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.10  2003-07-23 12:14:07  hb
+!  Revision 1.11  2003-09-16 12:17:10  hb
+!  added new biological model - bio_iow
+!
+!  Revision 1.10  2003/07/23 12:14:07  hb
 !  preparing for general bio interface
 !
 !  Revision 1.9  2003/04/04 14:25:52  hb
@@ -312,7 +315,7 @@
       call calc_sediment(nlev,dt)
 #endif
 #ifdef BIO
-      call do_bio(nlev,I_0,dt,h,nuh,rad,bioshade)
+      call do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
 #endif
       select case (turb_method)
          case (0)
