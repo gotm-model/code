@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.3 2001-11-27 15:38:06 gotm Exp $
+!$Id: updategrid.F90,v 1.4 2001-11-27 19:51:49 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,7 +6,6 @@
 ! !ROUTINE: The calculation grid. 
 !
 ! !INTERFACE:
-!   subroutine updategrid(nlev,zeta,grid_method,grid_file)
    subroutine updategrid(nlev,zeta)
 !
 ! !DESCRIPTION:
@@ -41,8 +40,6 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)	:: nlev
    REALTYPE, intent(in)	:: zeta
-!   integer              :: grid_method 
-!   character (LEN=PATH_MAX) :: grid_file 
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
@@ -52,7 +49,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding 
 !
 !  $Log: updategrid.F90,v $
-!  Revision 1.3  2001-11-27 15:38:06  gotm
+!  Revision 1.4  2001-11-27 19:51:49  gotm
+!  Cleaned
+!
+!  Revision 1.3  2001/11/27 15:38:06  gotm
 !  Possible to read coordinate distribution from file
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
