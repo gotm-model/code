@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.4 2004-01-12 08:52:50 lars Exp $
+#$Id: Makefile,v 1.5 2004-01-27 10:02:38 hb Exp $
 #
 # Makefile to build the the Turbulence library - libturbulence.a
 #
@@ -19,6 +19,7 @@ tkealgebraic.F90	\
 algebraiclength.F90	\
 ispralength.F90		\
 potentialml.F90	        \
+cmue_gen.F90		\
 cmue_bb.F90		\
 cmue_bbqe.F90		\
 cmue_ca.F90		\
@@ -52,6 +53,7 @@ ${LIB}(turbulence_adv.o)	\
 ${LIB}(ispralength.o)		\
 ${LIB}(potentialml.o)		\
 ${LIB}(fk_craig.o)		\
+${LIB}(cmue_gen.o)		\
 ${LIB}(cmue_bb.o)		\
 ${LIB}(cmue_bbqe.o)		\
 ${LIB}(cmue_ca.o)		\
