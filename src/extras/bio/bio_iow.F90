@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.4 2004-05-28 13:24:49 hb Exp $
+!$Id: bio_iow.F90,v 1.5 2004-05-28 15:52:13 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.4  2004-05-28 13:24:49  hb
+!  Revision 1.5  2004-05-28 15:52:13  hb
+!  small change for fluff
+!
+!  Revision 1.4  2004/05/28 13:24:49  hb
 !  Extention of bio_iow to fluff layer and surface nutrient fluxes
 !
 !  Revision 1.3  2003/12/11 09:58:22  kbk
@@ -251,7 +254,13 @@
       cc(ni,i)=ni_initial
       cc(po,i)=po_initial
       cc(o2,i)=o2_initial
-      if (fluff) cc(fl,i)=fl_initial
+      if (fluff) then 
+         if (i .eq. 1) then
+            cc(fl,i)=fl_initial+1.e-10
+         else
+            cc(fl,i)=1.e-10
+         end if
+      end if
    end do
 
    do i=0,nlev
