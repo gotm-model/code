@@ -1,4 +1,4 @@
-!$Id: time.F90,v 1.3 2003-03-10 13:48:15 lars Exp $
+!$Id: time.F90,v 1.4 2003-03-28 07:56:05 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -41,7 +41,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  $Log: time.F90,v $
-!  Revision 1.3  2003-03-10 13:48:15  lars
+!  Revision 1.4  2003-03-28 07:56:05  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 13:48:15  lars
 !  changed intent(out) to intent(inout) for MaxN in init_time
 !
 !  Revision 1.2  2003/03/10 08:54:16  gotm
@@ -176,7 +179,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer, parameter	     :: IGREG=2299161
+   integer, parameter        :: IGREG=2299161
    integer 		     :: ja,jb,jc,jd,je
    REAL			     :: x
 !
@@ -313,7 +316,7 @@
    character(len=19)                   :: timestr
 !
 ! !OUTPUT PARAMETERS:
-   integer, intent(out)	               :: jul,secs
+   integer, intent(out)                :: jul,secs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
