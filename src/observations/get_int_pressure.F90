@@ -1,4 +1,4 @@
-!$Id: get_int_pressure.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: get_int_pressure.F90,v 1.2 2003-03-10 08:51:57 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,8 +9,12 @@
    subroutine get_int_pressure(method,unit,jul,secs,nlev,z)
 !
 ! !DESCRIPTION:
-!  This routine will provide the internal pressure gradients - either analytical
-!  expressions or read from a file.
+!  This routine will provide the internal pressure-gradients, 
+!  either analytically prescribed or read from a file.
+!  The subroutine is called in the {\tt get\_all\_obs()} subroutine
+!  as part of the main integration loop.
+!  The spatial interpolation is done via the reading routine
+!  and the temporal interpolation is done in this routine.
 !
 ! !USES:
    use time, only: time_diff,julian_day
@@ -19,35 +23,34 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: method
-   integer, intent(in)	:: unit
-   integer, intent(in)	:: jul,secs
-   integer, intent(in)	:: nlev
-   REALTYPE, intent(in)	:: z(0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: method
+   integer, intent(in)                 :: unit
+   integer, intent(in)                 :: jul,secs
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: z(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_int_pressure.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:51:57  gotm
+!  Improved documentation and cleaned up code
 !
-!
-! !LOCAL VARIABLES:
-   integer		:: rc
-   integer		:: yy,mm,dd,hh,min,ss
-   REALTYPE		:: t,dt
-   integer, save        :: jul1,secs1
-   integer, save	:: jul2=0,secs2=0
-   REALTYPE, save, dimension(:,:), allocatable	:: prof1,prof2,alpha
-   integer, parameter	:: cols=4
-   integer, save	:: lines=0
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: rc
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t,dt
+   integer, save             :: jul1,secs1
+   integer, save             :: jul2=0,secs2=0
+   integer, parameter        :: cols=4
+   integer, save             :: lines=0
+   REALTYPE, save, dimension(:,:), allocatable :: prof1,prof2,alpha
+!
 !-----------------------------------------------------------------------
 !BOC
    select case(method)
@@ -102,6 +105,3 @@
    return
    end subroutine get_int_pressure
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard

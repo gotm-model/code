@@ -1,42 +1,39 @@
-!$Id: asciiout.F90,v 1.2 2001-11-18 11:51:16 gotm Exp $
+!$Id: asciiout.F90,v 1.3 2003-03-10 08:53:05 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: Saving the results in ASCII format.
+! !MODULE: asciiout --- saving the results in ASCII
 ! 
 ! !INTERFACE:
    MODULE asciiout
 !
 ! !DESCRIPTION: 
-!  This module contains 3 subroutines for writing model output in ASCII format.
-!  The authors do not encourage using ASCII for output - instead we recommend
-!  NetCDF. We only provide ASCII output because some users might not have 
-!  access to NetCDF - yet :-).
+!  This module contains three subroutines for writing model output in ASCII format.
+!  The authors do not encourage using ASCII for output --- instead we recommend
+!  NetCDF. 
 !
 ! !USES:
    IMPLICIT NONE
 !   
 !  Default all is private.
-!  private
+   private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_ascii, do_ascii_out, close_ascii
-!
-! !PUBLIC DATA MEMBERS:
 !
 ! !REVISION HISTORY: 
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: asciiout.F90,v $
-!  Revision 1.2  2001-11-18 11:51:16  gotm
+!  Revision 1.3  2003-03-10 08:53:05  gotm
+!  Improved documentation and cleaned up code
+!
+!  Revision 1.2  2001/11/18 11:51:16  gotm
 !  Now format statements
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
-!
-! 
-! !LOCAL VARIABLES:
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -46,29 +43,27 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Open the file unit for writing.
+! !IROUTINE: Open the file unit for writing
 !
 ! !INTERFACE:
    subroutine init_ascii(fn,title,unit)
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
-!  Connects a unit with a file name. 
+!  Opens a file giving in the {\tt output} namelist and connects
+!  it with a unit number.
 !
 ! !INPUT PARAMETERS:
+   character(len=*), intent(in)        :: fn,title
 !
 ! !INPUT/OUTPUT PARAMETERS:
-   character(len=*), intent(in)	:: fn,title
-   integer, intent(in)		:: unit
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: unit
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See asciiout module
 !
-! !LOCAL VARIABLES:
 !EOP
 !-------------------------------------------------------------------------
 !BOC
@@ -81,17 +76,17 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Save the model results to file.
+! !IROUTINE: Save the model results to file
 !
 ! !INTERFACE:
    subroutine do_ascii_out(nlev,timestr,variances,unit)
 !
 ! !DESCRIPTION:
-!  Writes calculated fields to file.
+!  Writes all calculated data to an ASCII file.
 !
 ! !USES:
-   use meanflow, only: depth0,h,u,v,z,S,T,NN,buoy
-   use turbulence, only: num,nuh,tke,eps,L,uu,vv,ww,tt,chi
+   use meanflow,     only: depth0,h,u,v,z,S,T,NN,buoy
+   use turbulence,   only: num,nuh,tke,eps,L,uu,vv,ww,tt,chi
    use observations, only: tprof,sprof,epsprof
 !#ifdef SEDIMENT
 !   use sediment, only: ascii_sediment
@@ -99,30 +94,28 @@
 !#ifdef SEDIMENT
 !   use seagrass, only: ascii_seagrass
 !#endif
+
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)		:: nlev
-   CHARACTER(len=*), intent(in)	:: timestr
-   logical, intent(in)		:: variances
-   integer, intent(in)		:: unit
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+   CHARACTER(len=*), intent(in)        :: timestr
+   logical, intent(in)                 :: variances
+   integer, intent(in)                 :: unit
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See asciiout module
 !
-! !LOCAL VARIABLES:
-   integer			:: i
-   integer, save		:: set=0
-   REALTYPE			:: d
-   REALTYPE			:: zz(0:nlev)
-!
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: i
+   integer, save             :: set=0
+   REALTYPE                  :: d
+   REALTYPE                  :: zz(0:nlev)
+!
 !-------------------------------------------------------------------------
 !BOC
    set = set + 1
@@ -178,28 +171,22 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Close files used for saving model results.
+! !IROUTINE: Close files used for saving model results
 !
 ! !INTERFACE:
    subroutine close_ascii(unit)
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
-!  Close the open file.
+!  Close the open ASCII file.
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)		:: unit
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: unit
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See asciiout module
-!
-! !LOCAL VARIABLES:
 !
 !EOP
 !-------------------------------------------------------------------------
@@ -214,6 +201,3 @@
 !-----------------------------------------------------------------------
 
    end module asciiout
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard.

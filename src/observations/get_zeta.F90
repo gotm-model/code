@@ -1,4 +1,4 @@
-!$Id: get_zeta.F90,v 1.2 2001-11-18 16:06:31 gotm Exp $
+!$Id: get_zeta.F90,v 1.3 2003-03-10 08:51:58 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -11,44 +11,46 @@
 ! !DESCRIPTION:
 !  This routine will provide sea surface elevation - either by an 
 !  analytical expression or read from file.
+!  The subroutine is called in the {\tt get\_all\_obs()} subroutine
+!  as part of the main integration loop.
+!  The spatial interpolation is done via the reading routine
+!  and the temporal interpolation is done in this routine.
 !
 ! !USES:
-   use time, only: time_diff,julian_day,fsecs
+   use time,         only: time_diff,julian_day,fsecs
    use observations, only: pi,read_obs
-!   use observations, only: zeta_method,zeta_unit
    use observations, only: period_1,amp_1,phase_1,period_2,amp_2,phase_2
    use observations, only: zeta,zeta_0
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: method,unit,jul,secs
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: method,unit,jul,secs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_zeta.F90,v $
-!  Revision 1.2  2001-11-18 16:06:31  gotm
+!  Revision 1.3  2003-03-10 08:51:58  gotm
+!  Improved documentation and cleaned up code
+!
+!  Revision 1.2  2001/11/18 16:06:31  gotm
 !  Avoid namelist member clashes by changing names in zetaspec
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
 !
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: yy,mm,dd,hh,min,ss
-   REALTYPE		:: t
-   REALTYPE, save	:: dt
-   integer, save        :: jul1,secs1
-   integer, save	:: jul2=0,secs2=0
-   REALTYPE, save	:: alpha(1)
-   REALTYPE, save	:: obs1(1),obs2(1)=0.
-   integer		:: rc
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t
+   REALTYPE, save            :: dt
+   integer, save             :: jul1,secs1
+   integer, save             :: jul2=0,secs2=0
+   REALTYPE, save            :: alpha(1)
+   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   integer                   :: rc
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
    select case(method)
@@ -84,6 +86,3 @@
    return
    end subroutine get_zeta
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard

@@ -1,79 +1,74 @@
-!$Id: intpressure.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: intpressure.F90,v 1.2 2003-03-10 08:50:06 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The internal pressure gradient. 
+! !ROUTINE: The internal pressure--gradient \label{sec:intpressure}
 !
 ! !INTERFACE:
    subroutine intpressure(nlev) 
 !
 ! !DESCRIPTION:
 !   With the hydrostatic assumption
-!
 !  \begin{equation}\label{HydroStat}
-!  \partial_z p + g \rho = 0,
+!   \partder{p}{z} + g \rho = 0
+!   \comma
 !  \end{equation}
-
-!  where $g=9.81$m\,s$^{-2}$ is the gravitational acceleration,
+!  where $g=9.81$m\,s$^{-2}$ is the gravitational acceleration
 !  and $\rho$ the density,
-!  the pressure gradients may be expressed as
-!
-!  \begin{equation}\label{InternalPressurex}
-!  - \frac{1}{\rho_0} \partial_x p=
-!  -g \frac{\rho(\zeta)}{\rho_0} \partial_x \zeta
-!  +\int_z^{\zeta}\partial_x b \, dz'
+!  the components of the pressure--gradient may be expressed as
+!  \begin{equation}
+!   \label{InternalPressurex}
+!  - \frac{1}{\rho_0} \partder{p}{x}=
+!  -g \frac{\rho(\zeta)}{\rho_0} \partder{\zeta}{x}
+!  +\int_z^{\zeta}\partder{b}{x} \, dz'
 !  \end{equation}
 !  and
 !  \begin{equation}\label{InternalPressurey}
-!  - \frac{1}{\rho_0} \partial_y p=
-!  -g \frac{\rho(\zeta)}{\rho_0} \partial_y \zeta
-!  +\int_z^{\zeta}\partial_y b \, dz'
+!  - \frac{1}{\rho_0} \partder{p}{y}=
+!  -g \frac{\rho(\zeta)}{\rho_0} \partder{\zeta}{y}
+!  +\int_z^{\zeta} \partder{b}{y} \, dz'
+!   \comma
 !  \end{equation}
+!  where $b$ is the buoyancy as defined in \eq{DefBuoyancy}.
 !
-!  where
-!
-!  \begin{equation}\label{DefBuoyancy}
-!  b=-g\frac{\rho-\rho_0}{\rho_0}
-!  \end{equation}
-!
-!  is the buoyancy.
 !  The first term on the right hand side
-!  in (\ref{InternalPressurex})
-!  and (\ref{InternalPressurey}) is the external (due to surface slopes)
-!  and the second the internal (due to density gradients)
-!  pressure gradient, which are calculated by means of this subroutine.
-!  The internal pressure gradients will only be established by
-!  gradients of temperature $T$ and salinity $S$, sediment
-!  concentration is assumed to be horizontally homogeneous which
+!  in \eq{InternalPressurex}
+!  and \eq{InternalPressurey} is the external pressure--gradient 
+!  due to surface slopes,  and the second the internal pressure--gradient
+!  due to the density gradient.
+!  The internal pressure--gradient will only be established by
+!  gradients of temperature $\theta$ and salinity $S$. Sediment
+!  concentration is assumed to be horizontally homogeneous, which
 !  of course could easily be changed.
 !
 !  In this subroutine, first, the terms $\partial_xb$ and $\partial_yb$
 !  are calculated from the prescribed gradients of salinity ($\partial_xS$
-!  and $\partial_yS$) and temperature ($\partial_xT$ and $\partial_yT$)
-!  in the following way:
-!
+!  and $\partial_yS$) and temperature ($\partial_x\theta$ and $\partial_y\theta$)
+!  according to
 !  \begin{equation}
-!  \partial_xb=\frac{b(S+\Delta_xS,T+\Delta_xT,p)-b(S,T,p)}{\Delta x}
+!    \partder{b}{x} \approx 
+!    \frac{b(S+\Delta_xS,\theta+\Delta_x\theta,p)-b(S,\theta,p)}{\Delta x}
+!    \comma
 !  \end{equation}
-!
 !  \begin{equation}
-!  \partial_yb=\frac{b(S+\Delta_yS,T+\Delta_yT,p)-b(S,T,p)}{\Delta y}
+!    \partder{b}{x} \approx 
+!    \frac{b(S+\Delta_yS,\theta+\Delta_y\theta,p)-b(S,\theta,p)}{\Delta y}
+!   \comma
 !  \end{equation}
-!
-!  with
-!
+!  where we used
 !  \begin{equation}
-!  \Delta_xS=\Delta x \partial_xS;\qquad \Delta_yS=\Delta y \partial_yS
+!    \Delta_xS=\Delta x \partial_xS \comma 
+!    \Delta_yS=\Delta y \partial_yS \comma
 !  \end{equation}
 !  and
 !  \begin{equation}
-!  \Delta_xT=\Delta x \partial_xT;\qquad \Delta_yT=\Delta y \partial_yT
+!   \Delta_x\theta=\Delta x \partial_x\theta \comma 
+!   \Delta_y\theta=\Delta y \partial_y\theta \comma
 !  \end{equation}
-!
 !  where $\Delta x$ and $\Delta y$ are lengths to be specified in the
 !  namelist file. A small sensitivity to $\Delta x$ and $\Delta y$
-!  is expected due to the non-linearity of the equation of state.
+!  is expected due to the non--linearity of the equation of state.
 !  $\Delta x$ and $\Delta y$ should be small (about 10 m), but large
 !  enough to prevent inaccuracies caused by the precision of the
 !  computer.
@@ -83,22 +78,23 @@
    use observations, only: dsdx,dsdy,dtdx,dtdy	
    use observations, only: idpdx,idpdy
    use eqstate, only: eqstate1
+!
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding 
+!  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: intpressure.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:50:06  gotm
+!  Improved documentation and cleaned up code
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
+!
+!EOP
 !
 ! !LOCAL VARIABLES:
    integer 		:: i 
@@ -106,10 +102,8 @@
    REALTYPE		:: dSS,dTT,Bl,Br,int
    REALTYPE 		:: dxB(0:nlev),dyB(0:nlev)
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
-
    idpdx=0.
    idpdy=0.
 
@@ -155,6 +149,3 @@
    return
    end subroutine intpressure
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard and Karsten Bolding

@@ -1,20 +1,18 @@
-!$Id: output.F90,v 1.2 2001-11-18 11:51:52 gotm Exp $
+!$Id: output.F90,v 1.3 2003-03-10 08:53:05 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE:  Saving the results.
+! !MODULE: output -- saving the results
 !
 ! !INTERFACE:
    module output
 !
 ! !DESCRIPTION:
-!  This module acts as an interface between \em{GOTM} and modules/routines
+!  This module acts as an interface between GOTM and modules/routines
 !  doing the actual output. In order to add a new output format it is only
 !  necessary to add hooks in this module and write the actual output
-!  routines. It is not necessary to change anything in \em{GOTM} itself.
-!
-!kbk   private
+!  routines. It is not necessary to change anything in GOTM itself.
 !
 ! !USES:
    use time, ONLY: write_time_string,julianday,secondsofday,timestep
@@ -22,82 +20,82 @@
 #ifdef NETCDF_FMT
    use ncdfout, ONLY:  init_ncdf,do_ncdf_out,close_ncdf
 #endif 
-!kbk   use gradsout
+
    IMPLICIT NONE
 !
 ! !PUBLIC DATA MEMBERS:
-   logical		:: write_results
-   character(len=19)	:: ts
-   integer		:: out_fmt=ASCII
-   character(len=PATH_MAX)	:: out_dir='.'
-   character(len=PATH_MAX)	:: out_fn='gotm'
-   integer		:: nsave=1
-   logical		:: variances=.false.
-   logical		:: diagnostics=.false.
-   integer		:: mld_method=1
-   REALTYPE		:: diff_k=1.e-5
-   REALTYPE		:: Ri_crit=0.5
-   logical		:: rad_corr=.true.
-!
-! !PRIVATE DATA MEMBERS:
-   integer, private, parameter	:: ascii_unit=50
-   integer, private, parameter	:: grads_unit=51
-!  Used for diagnostic output
-   integer, private, parameter	:: temp_unit=54
-   integer, private, parameter	:: mld_unit=55
-   integer, private, parameter	:: sf_unit=56
-   integer, private, parameter	:: fric_unit=57
-   integer, private, parameter	:: heat_unit=58
-   integer, private, parameter	:: energy_unit=59
+   logical                             :: write_results
+   character(len=19)                   :: ts
+   integer                             :: out_fmt=ASCII
+   character(len=PATH_MAX)             :: out_dir='.'
+   character(len=PATH_MAX)             :: out_fn='gotm'
+   integer                             :: nsave=1
+   logical                             :: variances=.false.
+   logical                             :: diagnostics=.false.
+   integer                             :: mld_method=1
+   REALTYPE                            :: diff_k=1.e-5
+   REALTYPE                            :: Ri_crit=0.5
+   logical                             :: rad_corr=.true.
+
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: output.F90,v $
-!  Revision 1.2  2001-11-18 11:51:52  gotm
+!  Revision 1.3  2003-03-10 08:53:05  gotm
+!  Improved documentation and cleaned up code
+!
+!  Revision 1.2  2001/11/18 11:51:52  gotm
 !  Fixed a typo
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:59  gotm
 !  initial import into CVS
 !
-!
 !EOP
 !-----------------------------------------------------------------------
-
+!
+! !PRIVATE DATA MEMBERS:
+   integer, private, parameter         :: ascii_unit=50
+   integer, private, parameter         :: grads_unit=51
+!  Used for diagnostic output
+   integer, private, parameter         :: temp_unit=54
+   integer, private, parameter         :: mld_unit=55
+   integer, private, parameter         :: sf_unit=56
+   integer, private, parameter         :: fric_unit=57
+   integer, private, parameter         :: heat_unit=58
+   integer, private, parameter         :: energy_unit=59
    contains
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Prepare for saving model results.
+! !IROUTINE: Initialize the output module
 !
 ! !INTERFACE:
    subroutine init_output(title,nlev,latitude,longitude)
 !
 ! !DESCRIPTION:
-!  Calls the initialization routine based on output format selected by the user.
+!  Calls the initialization routine based on output format selected by 
+!  the user.
 !
 ! !USES:
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-!
 ! !INPUT/OUTPUT PARAMETERS:
-   character(len=*), intent(in)	:: title
-   integer, intent(in)	:: nlev
-   REALTYPE, intent(in)	:: latitude,longitude
-!
-! !OUTPUT PARAMETERS:
+   character(len=*), intent(in)	       :: title
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)	               :: latitude,longitude
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See output module
 !
-! !LOCAL VARIABLES:
-   character(len=PATH_MAX)	:: ext,fname,tmp_fn
-!
 !EOP
+!
+! !LOCAL VARIABLES:
+   character(len=PATH_MAX)   :: ext,fname,tmp_fn
+!
 !-------------------------------------------------------------------------
 !BOC
    LEVEL1 'init_output'
@@ -153,42 +151,38 @@
    stop
 
    end subroutine init_output
-
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: sets various variables related to output
+! !IROUTINE: Set some variables related to output
 !
 ! !INTERFACE:
    subroutine prepare_output(n)
 !
 ! !DESCRIPTION:
-!  Sets various variables related to output.
+!  This routine check whether output should  be written at
+!  the current time step. If this is the case, the model
+!  time is written to a string for display on the screen.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: n
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: n
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See output module
 !
-! !LOCAL VARIABLES:
-!
 !EOP
 !-------------------------------------------------------------------------
 !BOC
    write_results = mod(n,nsave).eq.0
    call write_time_string(julianday,secondsofday,ts)
+
    return
    end subroutine prepare_output
 !EOC
@@ -196,38 +190,33 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Save the model results to file.
+! !IROUTINE: Save the model results in file
 !
 ! !INTERFACE:
    subroutine do_output(n,nlev)
 !
 ! !DESCRIPTION:
-!  Calls the routine which will do the actual storing of results.
+!  Calls the routine, which will do the actual storing of results, depending
+!  on the output format.
 !
 ! !USES:
 #ifdef HOWARTH
-   use meanflow, only: u,v,h
+   use meanflow,     only: u,v,h
    use observations, only: uprof,vprof
 #endif
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: n,nlev
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: n,nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See output module
-!  Original author(s): Karsten Bolding & Hans Burchard
-!  01Jan2000: Ver. 2.0.0 (kbk): A complete rewrite to F90.
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: secs
-!EOP
+   integer                   :: secs
+!
 !-------------------------------------------------------------------------
 !BOC
    if (write_results) then
@@ -266,7 +255,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Close files used for saving model results.
+! !IROUTINE: Close files used for saving model results
 !
 ! !INTERFACE:
    subroutine close_output()
@@ -277,18 +266,10 @@
 ! !USES:
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
-!
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See output module
-!
-! !LOCAL VARIABLES:
 !
 !EOP
 !-------------------------------------------------------------------------
@@ -317,51 +298,46 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Calculation of variances uu,vv,ww,tt according to the
-!    Canuto et al. [2000] version A non-equilibrium stability functions.
+! !IROUTINE: Calculate variances of turbulent quantities 
 !
 ! !INTERFACE:
    subroutine do_variances(nlev)
 !
 ! !DESCRIPTION:
-!  This subroutine computes Canuto et al. [2000] version A non-equilibrium
-!  stability functions.
+!  This subroutine diagnostically computes variances of $u'$, 
+!  $v'$, $w'$, $\theta'$ for output. Presently, the Algebraic
+!  Stress Model of \cite{Canutoetal2001a} is used.
 !
 ! !USES:
-   use meanflow, only: depth0,h,u,v,t,B
+   use meanflow,   only: depth0,h,u,v,t,B
    use turbulence, only: tke,eps,num,nuh,uu,vv,ww,tt,chi
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)	                :: nlev
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
+!  Original author(s): Hans Burchard
 !
 !  See output module
 !
-! !LOCAL VARIABLES:
-   integer:: i
-   REALTYPE:: dzu2,dzv2,dzt2
-   REALTYPE, parameter	:: L1=0.1070
-   REALTYPE, parameter	:: L2=0.0032
-   REALTYPE, parameter	:: L3=0.0864
-   REALTYPE, parameter	:: L4=0.1200
-   REALTYPE, parameter	:: L5=11.9000
-   REALTYPE, parameter	:: L6=0.4000
-   REALTYPE, parameter	:: L7=0.0000
-   REALTYPE, parameter	:: L8=0.4800
-   REALTYPE		:: zz(0:nlev)
-!
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: i
+   REALTYPE                  :: dzu2,dzv2,dzt2
+   REALTYPE, parameter       :: L1=0.1070
+   REALTYPE, parameter       :: L2=0.0032
+   REALTYPE, parameter       :: L3=0.0864
+   REALTYPE, parameter       :: L4=0.1200
+   REALTYPE, parameter       :: L5=11.9000
+   REALTYPE, parameter       :: L6=0.4000
+   REALTYPE, parameter       :: L7=0.0000
+   REALTYPE, parameter       :: L8=0.4800
+   REALTYPE                  :: zz(0:nlev)
+!
 !-----------------------------------------------------------------------
 !BOC
-
-!kbkSTDERR 'In output version' 
    do i=1,nlev-1
       dzu2=( (u(i+1)-u(i)) / (0.5*(h(i+1)+h(i))) )**2
       dzv2=( (v(i+1)-v(i)) / (0.5*(h(i+1)+h(i))) )**2
@@ -390,7 +366,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Various diagnostic/integrated variables
+! !IROUTINE: Compute various diagnostic/integrated variables
 !
 ! !INTERFACE:
    subroutine do_diagnostics(n,nlev,BuoyMeth,dt,u_taus,u_taub,I_0,heat)
@@ -399,45 +375,41 @@
 !  This subroutine calculates the following diagnostic/integrated variables.
 !
 ! !USES:
-   use airsea, only: sst
-   use meanflow, only: gravity,rho_0,cp
-   use meanflow, only: h,u,v,s,t,NN,SS,buoy,rad
-   use turbulence, only: kappa
-   use turbulence, only: tke
+   use airsea,       only: sst
+   use meanflow,     only: gravity,rho_0,cp
+   use meanflow,     only: h,u,v,s,t,NN,SS,buoy,rad
+   use turbulence,   only: kappa
+   use turbulence,   only: tke
    use observations, only: tprof,b_obs_sbf
-   use eqstate, only: eqstate1
+   use eqstate,      only: eqstate1
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: n,nlev,BuoyMeth
-   REALTYPE, intent(in)	:: dt
-   REALTYPE, intent(in)	:: u_taus,u_taub
-   REALTYPE, intent(in)	:: I_0,heat
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: n,nlev,BuoyMeth
+   REALTYPE, intent(in)                :: dt
+   REALTYPE, intent(in)                :: u_taus,u_taub
+   REALTYPE, intent(in)                :: I_0,heat
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See output module
 !
-! !LOCAL VARIABLES:
-   integer		:: i
-   REALTYPE		:: mld_surf,mld_bott
-   REALTYPE		:: ekin,epot,eturb
-   REALTYPE, save	:: epot0
-   REALTYPE		:: heat_sim,heat_obs
-   REALTYPE, save	:: heat_sim0,heat_obs0,heat_flux
-
-   REALTYPE		:: z,dtt,dtb,x
-   REALTYPE		:: wstar,tstar
-   REALTYPE		:: sbf,stf,MOL
-   REALTYPE		:: Ri(0:nlev)
-   logical, save	:: first=.true.
-!
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: i
+   REALTYPE                  :: mld_surf,mld_bott
+   REALTYPE                  :: ekin,epot,eturb
+   REALTYPE, save            :: epot0
+   REALTYPE                  :: heat_sim,heat_obs
+   REALTYPE, save            :: heat_sim0,heat_obs0,heat_flux
+   REALTYPE                  :: z,dtt,dtb,x
+   REALTYPE                  :: wstar,tstar
+   REALTYPE                  :: sbf,stf,MOL
+   REALTYPE                  :: Ri(0:nlev)
+   logical, save             :: first=.true.
+!
 !-----------------------------------------------------------------------
 !BOC
    select case(mld_method)
@@ -585,7 +557,3 @@
 !-----------------------------------------------------------------------
 
    end module output
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard.
-!-----------------------------------------------------------------------

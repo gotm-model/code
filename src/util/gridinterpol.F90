@@ -1,43 +1,46 @@
-!$Id: gridinterpol.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: gridinterpol.F90,v 1.2 2003-03-10 08:54:16 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
-! !ROUTINE: gridinterpol - interpolates from observation space to model grid.
+! !ROUTINE: Interpolate from observation space to model grid
 ! 
 ! !INTERFACE:
    subroutine gridinterpol(N,cols,obs_z,obs_prof,nlev,model_z,model_prof)
 !
 ! !DESCRIPTION:
 ! 
-!  This is a utility subroutine in which observational data which might 
-!  be given on an arbitrary, but ordered grid, are interpolated and 
+!  This is a utility subroutine in which observational data, which might 
+!  be given on an arbitrary, but structured grid, are linearly interpolated and 
 !  extrapolated to the actual (moving) model grid. 
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in) 	:: N,cols
-   REALTYPE, intent(in)	:: obs_z(0:N),obs_prof(0:N,cols)
-   integer, intent(in) 	:: nlev
-   REALTYPE, intent(in)	:: model_z(0:nlev)
+   integer,  intent(in)                :: N,cols
+   REALTYPE, intent(in)                :: obs_z(0:N),obs_prof(0:N,cols)
+   integer,  intent(in)                :: nlev
+   REALTYPE, intent(in)                :: model_z(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out):: model_prof(0:nlev,cols)
+   REALTYPE, intent(out)               :: model_prof(0:nlev,cols)
 !
 ! !REVISION HISTORY: 
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
 !  $Log: gridinterpol.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:54:16  gotm
+!  Improved documentation and cleaned up code
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
+!
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer 		:: i,j,ii
-   REALTYPE 		:: rat 
+   integer                   :: i,j,ii,jj
+   REALTYPE                  :: rat 
+   REALTYPE                  :: z,w0,w1,w2,r1,r2 
 ! 
-!EOP
 !-----------------------------------------------------------------------
 !BOC
 !  Set surface values to uppermost input value 
@@ -71,37 +74,6 @@
       end if 
    end do 
 
-#ifdef OLD_METHOD
-   i=Nmx+1 
-222 i=i-1 
-   if ((z(i).ge.zz(md)).and.(i.gt.0)) then 
-      S(i)=ss(md) 
-      goto 222 
-   end if 
-
-!  Set bottom values to lowest input value 
-   i=0 
-223 i=i+1 
-   if (z(i).le.zz(1)) then 
-      S(i)=ss(1) 
-      goto 223 
-   end if 
-
-!  Interpolate inner values linearly 
-   do i=1,Nmx 
-      if ((z(i).lt.zz(Nmx)).and.(z(i).gt.zz(1))) then 
-         ii=0 
-224      ii=ii+1 
-         if (zz(ii).le.z(i)) goto 224 
-         rat=(z(i)-zz(ii-1))/(zz(ii)-zz(ii-1)) 
-         S(i)=(1-rat)*ss(ii-1)+rat*ss(ii) 
-      end if 
-   end do 
-#endif
-
    return  
    end 
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard & Karsten Bolding.

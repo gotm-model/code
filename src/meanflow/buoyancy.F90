@@ -1,70 +1,93 @@
-!$Id: buoyancy.F90,v 1.2 2001-11-18 11:50:37 gotm Exp $
+!$Id: buoyancy.F90,v 1.3 2003-03-10 08:50:06 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The 'up-drift' - buoyancy. 
+! !ROUTINE: The buoyancy equation 
 ! 
 ! !INTERFACE:
-   subroutine buoyancy(nlev,dt,nuh)
+   subroutine buoyancy(nlev,dt,cnpar,nuh)
 !
 ! !DESCRIPTION:
-!  This subroutine calculates the diffusion equation for buoyancy
-!
-!  \begin{equation}\label{DefBuoyancy}
-!  b=-g\frac{\rho-\rho_0}{\rho_0}.
+!  This subroutine computes the transport of the buoyancy,
+!  \begin{equation}
+!    \label{DefBuoyancy}
+!    b=-g\frac{\rho-\rho_0}{\rho_0}
+!    \comma
 !  \end{equation}
-!
-!  \begin{equation}\label{bEq}
-!  \partial_tb
-!  -\partial_z(\nu'_t(b) \partial_z b)  = 0.  
+!  where $g$ is the accelaration of gravity, and $\rho$ and $\rho_0$ 
+!  are the actual and the reference densitiy. 
+!  A simplified transport equation for $b$ can be written as
+!  \begin{equation}
+!   \label{bEq}
+!    \dot{b}
+!    = {\cal D}_b
+!    \comma
 !  \end{equation}
+!  where $\dot{b}$ denotes the material derivative of $b$, and
+!  ${\cal D}_b$ is the sum of the turbulent and viscous transport
+!  terms modelled according to
+!  \begin{equation}
+!   \label{Db}
+!    {\cal D}_b 
+!    = \frstder{z} 
+!     \left( 
+!        \nu'_t\partder{b}{z}
+!      \right) 
+!    \point
+!  \end{equation}
+!  In this equation, $\nu'_t$ is the turbulent diffusivity
+!  of buoyancy. 
+!  The computation
+!  of $\nu'_t$ is discussed in \sect{sec:turbulenceIntro}. Note, 
+!  that the model \eq{DS} assumes that turbulent transport of heat
+!  and salt is identical.  Source and sink
+! terms are completely disregarded, and thus \eq{bEq} serves
+! mainly as a convenient tool for some idealised test cases in 
+! GOTM.
 !
-!  No sources or sinks, no boundary fluxes included so far.  
-!
-!  Used for idealistic simulations such as Kato-Phillips experiment.
-!
-!  Diffusion treated implicitly in space, and then solved by a 
+!  Diffusion is treated implicitly in space (see equations (\ref{sigmafirst})-
+!  (\ref{sigmalast})), and then solved by a 
 !  simplified Gauss elimination. 
+!   Vertical advection is included for accounting for adaptive grids,
+!  see {\tt adaptivegrid.F90}.
 !
 ! !USES:
    use mtridiagonal
-   use meanflow, only:	h,buoy,avh
-   use observations, ONLY: b_obs_NN,b_obs_surf,b_obs_sbf
+   use meanflow,     only:   h,ho,buoy,avh,w,w_grid,grid_method
+   use observations, ONLY:   b_obs_NN,b_obs_surf,b_obs_sbf
+   use observations, ONLY:   w_adv_discr,w_adv_method
+!
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS: 
-   integer, intent(in)		:: nlev
-   REALTYPE, intent(in)		:: dt
-   REALTYPE, intent(in)		:: nuh(0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS: 
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: dt,cnpar
+   REALTYPE, intent(in)                :: nuh(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: buoyancy.F90,v $
-!  Revision 1.2  2001-11-18 11:50:37  gotm
-!  Cleaned
+!  Revision 1.3  2003-03-10 08:50:06  gotm
+!  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
 !  initial import into CVS
 !
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer			:: i 
-   REALTYPE			:: zz
+   integer			:: i,Meth,Bcup,Bcdw,flag 
+   REALTYPE			:: zz,tot
    logical, save		:: first=.true.
+   REALTYPE                     :: Qsour(0:nlev),RelaxT(0:nlev)
+   REALTYPE                     :: Tup,Tdw,z
+   logical                      :: surf_flux,bott_flux
 !
-! !BUGS
-!
-!EOP
 !-----------------------------------------------------------------------
 !BOC
-! Construct initial linear profile from information in namelist 
-
+!  Construct initial linear profile from information in namelist 
    if (first) then
       zz=0.0
       do i=nlev,1,-1
@@ -75,29 +98,24 @@
       first=.false.
    end if
 
+!  hard coding of parameters, to be included into namelist for gotm2.0
+   Bcup=1                               !BC Neumann
+   Tup=b_obs_sbf                        !Buoyancy flux 
+   Bcdw=1                               !BC Neumann
+   Tdw=0.                               !No flux
+   surf_flux=.false.
+   bott_flux=.false.
+
    avh=nuh
+   Qsour=0.
+   RelaxT=1.e15
 
-   do i=2,nlev-1
-      cu(i)=-2*dt*avh(i)/(h(i)+h(i+1))/h(i)
-      au(i)=-2*dt*avh(i-1)/(h(i)+h(i-1))/h(i)
-      bu(i)=1-au(i)-cu(i)
-      du(i)=buoy(i)
-   end do
+   flag=1  ! divergence correction for vertical advection
 
-   cu(1)=-2*dt*avh(1)/(h(1)+h(2))/h(1)
-   bu(1)=1-cu(1)
-   du(1)=buoy(1)
-
-   au(nlev)=-2*dt*avh(nlev-1)/(h(nlev)+h(nlev-1))/h(nlev)
-   bu(nlev)=1-au(nlev)
-   du(nlev)=buoy(nlev)-dt/h(nlev)*b_obs_sbf 
-
-   call tridiagonal(nlev,1,nlev,buoy)
+   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Tup,Tdw,RelaxT,h,ho,avh,w,        &
+              Qsour,buoy,w_adv_method,w_adv_discr,buoy,surf_flux,  &
+              bott_flux,grid_method,w_grid,flag)
 
    return
    end subroutine buoyancy
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard and Karsten Bolding
-!-----------------------------------------------------------------------

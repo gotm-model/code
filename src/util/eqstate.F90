@@ -1,53 +1,52 @@
-!$Id: eqstate.F90,v 1.2 2001-11-27 19:44:32 gotm Exp $
+!$Id: eqstate.F90,v 1.3 2003-03-10 08:54:16 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: eqstate
+! !MODULE: eqstate --- the equation of state \label{sec:eqstate}
 !
 ! !INTERFACE:
    MODULE eqstate
 !
 ! !DESCRIPTION:
-!  Calculating the equation of state for sea water based on temperature,
-!  salinity and pressure. i At present 4 different methods are implemented.
-!  \begin{itemize}
-!     \item Full Unesco - including pressure effects.
-!     \item Full Unesco - excluding pressure effects.
-!     \item Linerized Unesco.
-!     \item Linerized equation of state.
-!  \end{itemize}
+!  Calculates the equation of state for sea water based on temperature,
+!  salinity and pressure. At present, four different methods are implemented.
+!  \begin{enumerate}
+!     \item the full UNESCO equation --- including pressure effects
+!     \item the full UNESCO equation --- without pressure effects
+!     \item the linearised UNESCO equation
+!     \item a general linear form of the equation of state
+!  \end{enumerate}
 !
-  private
-!
-! !USE:
+! !USES:
+   IMPLICIT NONE
+
+!  default: all is private.
+   private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_eqstate,eqstate1,unesco
 !
-! !PUBLIC DATA MEMBERS:
-!
-! !PUBLIC MEMBER FUNCTIONS:
-!
-! !PRIVATE DATA MEMBERS:
-   integer		:: eq_state_method
-   REALTYPE		:: T0,S0,p0,dtr0,dsr0
-   logical		:: use_density=.false.
-!
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Hans Burchard \& Karsten Bolding
 !
 !  $Log: eqstate.F90,v $
-!  Revision 1.2  2001-11-27 19:44:32  gotm
+!  Revision 1.3  2003-03-10 08:54:16  gotm
+!  Improved documentation and cleaned up code
+!
+!  Revision 1.2  2001/11/27 19:44:32  gotm
 !  Fixed an initialisation bug
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
 !
-!
-! !BUGS
-!
 !EOP
+!
+!  private data memebers
+   integer                   :: eq_state_method
+   REALTYPE                  :: T0,S0,p0,dtr0,dsr0
+   logical                   :: use_density=.false.
+!
 !-----------------------------------------------------------------------
 
    contains
@@ -55,33 +54,29 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Allocates memory for later use.
+! !IROUTINE: Read the namelist {\tt eqstate}
 !
 ! !INTERFACE:
    subroutine init_eqstate(namlst)
 !
 ! !DESCRIPTION:
-!  This routines allocates memory to be used in \em{tridiagonal}.
+!  Here, the namelist {\tt eqstate} in the namelist file {\tt gotmrun.inp}
+!  is read. 
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, optional, intent(in):: namlst
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, optional, intent(in)       :: namlst
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Hans Burchard \& Karsten Bolding
 !
-!  See eqstate module
+!EOP
 !
 ! !LOCAL VARIABLES:
    namelist /eqstate/ eq_state_method,T0,S0,p0,dtr0,dsr0
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_eqstate'
@@ -97,45 +92,48 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The equation of state.
+! !IROUTINE: Select an equation of state
 !
 ! !INTERFACE:
    REALTYPE function eqstate1(S,T,p,g,rho_0) 
 !
 ! !DESCRIPTION:
-!  Calculates the buoyancy according to various methods. For values for
-!  Method ranging from 1 to 4 the following methods will be used:
+!  Calculates the buoyancy according to the selected method. For values of
+!  {\tt eq\_state\_method} ranging from 1 to 4, one of the following methods 
+!  will be used.
 !
-!   1. The full UNESCO equation of state for sea water including the 
-!      thermobaric effect.
-!   2. The UNESCO equation of state for sea water related to surface pressure.
-!   3. Linearisation of the UNESCO equation of state. T0, S0 and p0 have
-!      to be specified in the namelist.
-!   4. Linear equation of state with prescribed rho0,T0,S0,dtrho,dsrho
+!   \begin{enumerate}
+!     \item the full UNESCO equation of state for sea water 
+!           including the thermobaric effect, see \cite{FofonoffMillard83}  
+!     \item the UNESCO equation of state for sea water 
+!           related to surface pressure, see \cite{FofonoffMillard83}
+!     \item a linearised UNESCO equation of state, 
+!           see \cite{FofonoffMillard83}. The parameters {\tt T0}, 
+!           {\tt S0} and {\tt p0} have to be specified in the namelist.
+!     \item a linear equation of state with prescribed {\tt rho0}, {\tt T0},
+!           {\tt S0}, {\tt dtrho}, {\tt dsrho}
+!   \end{enumerate}
+
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE,intent(in)		:: S,T,p
-   REALTYPE,optional,intent(in)	:: g,rho_0
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   REALTYPE,intent(in)                 :: S,T,p
+   REALTYPE,optional,intent(in)	       :: g,rho_0
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Hans Burchard \& Karsten Bolding
 !
-!  See eqstate module
+!EOP
 !
 ! !LOCAL VARIABLES:
-   REALTYPE			:: x
-   REALTYPE, save		:: rh0,dtr,dsr
-   REALTYPE			:: dTT,dSS
-   logical			:: press
-   logical, save		:: first=.true.
-!EOP
+   REALTYPE                  :: x
+   REALTYPE, save            :: rh0,dtr,dsr
+   REALTYPE                  :: dTT,dSS
+   logical                   :: press
+   logical, save             :: first=.true.
+!
 !-----------------------------------------------------------------------
 !BOC
    select case (eq_state_method)
@@ -151,8 +149,10 @@
             dTT=0.001
             dSS=0.001
             rh0= unesco(S0,T0,p0,press)
-            dtr=(unesco(S0,T0+0.5*dTT,p0,press)-unesco(S0,T0-0.5*dTT,p0,press))/dTT
-            dsr=(unesco(S0+0.5*dSS,T0,p0,press)-unesco(S0-0.5*dSS,T0,p0,press))/dSS
+            dtr=(unesco(S0,T0+0.5*dTT,p0,press)        &
+	         -unesco(S0,T0-0.5*dTT,p0,press))/dTT
+            dsr=(unesco(S0+0.5*dSS,T0,p0,press)        &
+	         -unesco(S0-0.5*dSS,T0,p0,press))/dSS
             first=.false.
          end if
          x=rh0+dtr*(T-T0)+dsr*(S-S0)
@@ -172,37 +172,32 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: The UNESCO equation of state.
+! !IROUTINE: The UNESCO equation of state
 !
 ! !INTERFACE:
    REALTYPE function unesco(S,T,p,UNPress) 
 !
 ! !DESCRIPTION:
-!  Calculates the density according to the UNESCO equation of state for 
-!  sea water. The thermobaric effect can be switched on (UNPress=.true.)
-!  or off (UNPress=.false.). 
+!  Calculates the density according to the UNESCO equation of state 
+!  (see \cite{FofonoffMillard83}) for sea water. The thermobaric effect 
+!  can be switched on ({\tt UNPress=.true.}) or off ({\tt UNPress=.false.}). 
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)		:: S,T,p
-   LOGICAL, intent(in)		:: UNPress
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   REALTYPE, intent(in)                :: S,T,p
+   LOGICAL, intent(in)                 :: UNPress
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
-!
-!  See eqstate module
-!
-! !LOCAL VARIABLES:
-   REALTYPE			:: x,K  
-   REALTYPE			:: T2,T3,T4,T5,S15,S2,S3,p2 
+!  Original author(s): Hans Burchard \& Karsten Bolding
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+   REALTYPE                  :: x,K  
+   REALTYPE                  :: T2,T3,T4,T5,S15,S2,S3,p2 
+!
 !-----------------------------------------------------------------------
 !BOC
    T2 = T*T
@@ -247,7 +242,3 @@
 !-----------------------------------------------------------------------
 
    end module eqstate
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard.
-!-----------------------------------------------------------------------

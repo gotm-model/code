@@ -1,4 +1,4 @@
-!$Id: analytical_profile.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: analytical_profile.F90,v 1.2 2003-03-10 08:51:57 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -10,36 +10,38 @@
 !
 ! !DESCRIPTION:
 !  This routine creates an analytical profile of a variable.
+!  It can be used to set up a simple two layer density structure.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
-   REALTYPE, intent(in)	:: z(0:nlev)
-   REALTYPE, intent(in)	:: z1,v1,z2,v2
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer,  intent(in)                :: nlev
+   REALTYPE, intent(in)	               :: z(0:nlev)
+   REALTYPE, intent(in)	               :: z1,v1,z2,v2
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out):: prof(0:nlev)
+   REALTYPE, intent(out)               :: prof(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
 !  $Log: analytical_profile.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:51:57  gotm
+!  Improved documentation and cleaned up code
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
+!
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: i
-   REALTYPE		:: alpha
-!EOP
+   integer                   :: i
+   REALTYPE                  :: alpha
+!   
 !-----------------------------------------------------------------------
 !BOC
-   
-   if (z2-z1.gt.-1.e-15) then 
+   if (z2-z1 .gt. -1.e-15) then 
          alpha = (v2-v1)/(z2-z1+2.e-15) 
    else
       STDERR '**********************************************'
@@ -67,6 +69,3 @@
    return
    end subroutine analytical_profile
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard

@@ -1,9 +1,9 @@
-!$Id: lightabsorbtion.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: lightabsorbtion.F90,v 1.2 2003-03-10 08:50:06 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Light absorbtion in the water column.  
+! !ROUTINE: The light absorbtion
 !
 ! !INTERFACE:
    subroutine light_absorbtion(nlev,I_0) 
@@ -15,40 +15,44 @@
 !  equation to compute the depth-profile of PAR (Photosyntehic Active
 !  Radiation). Absorbtion of radiation at interface levels is calculated
 !  following various exponential law:
-
+!
 !  \begin{equation}
-!   Rad(z)=Qlw+Qsw
-!   Qlw=I_0*A*e^{-K1.zint}
-!   Qsw=I_0*(1-A)*e^{-(K2+K3*Phy_av).zint} where Phy_av=Phyt/zint
+!  \begin{array}{l}
+!   Rad(z)=Qlw+Qsw \\ 
+!   Qlw=I_0*A*e^{-K1.zint} \\
+!   Qsw=I_0*(1-A)*e^{-(K2+K3*Phy_av).zint}, \mbox{where } Phy_av=Phyt/zint
+!   \end{array}
 !  \end{equation}
-
+!
 !  where "A"=the weighting function for spectral range
-!  \& the extinction coefficients read:
-!        "K1"=for long-wave radiation  "Qlw"    (red) [/m]
-!        "K2"=for short-wave radiation "Qsw"    (visible blue-green) [/m]
-!        "K3"=for biotic self-shading substance (Cholrophyll a) [m2/mmolN]
+!  and the extinction coefficients read:
+!
+!        \begin{tabular}{ll}
+!        "K1"=for long-wave radiation  "Qlw" &   (red) [/m] \\
+!        "K2"=for short-wave radiation "Qsw" &   (visible blue-green) [/m] \\
+!        "K3"=for biotic self-shading substance & (Cholrophyll a) [m2/mmolN]
+!        \end{tabular}
+!
 ! !USES:
    use meanflow, only: h
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
-   REALTYPE, intent(in)	:: I_0
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)	                :: nlev
+   REALTYPE, intent(in)	                :: I_0
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding 
+!  Original author(s): Pierre-Phillipe Mathieu 
 !
 !  $Log: lightabsorbtion.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:50:06  gotm
+!  Improved documentation and cleaned up code
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
 !
 ! !LOCAL VARIABLES:
-   logical, save :: kbk_dummy = .true.
+   logical, save             :: kbk_dummy = .true.
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -79,9 +83,7 @@
       Rad(i)=Q_lw+Q_sw                !Total Irradiance
    end do
 #endif
+
    return
    end subroutine light_absorbtion 
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard and Karsten Bolding

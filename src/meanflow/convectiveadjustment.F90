@@ -1,9 +1,9 @@
-!$Id: convectiveadjustment.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: convectiveadjustment.F90,v 1.2 2003-03-10 08:50:06 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Convective adjustment for S,T and Buoy. 
+! !ROUTINE: Convective adjustment \label{sec:convective}
 !
 ! !INTERFACE:
    subroutine convectiveadjustment(nlev,num,nuh,const_num,const_nuh, &
@@ -11,44 +11,48 @@
 !
 ! !DESCRIPTION:
 ! 
-! In this subroutine, convective adjustment is performed for temperature
-! $T$ and salinity $S$, or alternatively for buoyancy $b$, if a dynamic
-! equation is calculated for this quantity. Beginning from the first interface 
+! In this subroutine, convective adjustment is performed for the temperature,
+! $\theta$, and the salinity, $S$, or alternatively for the buoyancy, $b$, 
+!  if a dynamic
+! equation is solved for this quantity. Beginning from the first interface 
 ! below the surface, the water column is checked for static instability.
-! If the Brunt Vaisala frequency squared ($N^2$) is negative, the two
-! adjacent tracer boxes are completely mixed. The static stability for
+! If the Brunt--V\"ais\"al\"a frequency squared, $N^2$, is negative, the two
+! adjacent boxes are completely mixed. The stability for
 ! the interface below this homogenised upper part of the water column
-! is then calculated, and, if needed, mixing performed again. By doing so,
-! the water column is scanned as long, as a the first interface with
+! is then analysed, and, if needed, mixing is performed again. By doing so,
+! the water column is scanned until  the first interface with
 ! statically stable or neutral stratification or the bottom is reached. 
+! An equation of state described in \sect{sec:eqstate} is used 
+! for calculating the Brunt--V\"ais\"al\"a frequency.
 !
-! The constant values {\tt const-num} and {\tt const-nuh} are then imposed for
-! eddy viscosity $\nu_t$ and eddy diffusivity $\nu'_t$, respectively. 
+! The constant values {\tt const\_num} and {\tt const\_nuh} are then imposed for
+! the eddy viscosity $\nu_t$ and the eddy diffusivity $\nu'_t$, respectively. 
 !
 ! !USES:
    use meanflow, only: h,t,s,buoy,NN
    use eqstate, only: eqstate1
+!
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)		:: nlev,buoy_method
-   REALTYPE, intent(in)		:: g,rho_0
-   REALTYPE, intent(in)		:: const_num,const_nuh
-!
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer, intent(in)                 :: nlev,buoy_method
+   REALTYPE, intent(in)                :: g,rho_0
+   REALTYPE, intent(in)                :: const_num,const_nuh
 !
 ! !OUTPUT PARAMETERS:
-!
-   REALTYPE, intent(out)	:: num(1:nlev),nuh(1:nlev)
+   REALTYPE, intent(out)               :: num(1:nlev),nuh(1:nlev)
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding 
+!  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: convectiveadjustment.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:50:06  gotm
+!  Improved documentation and cleaned up code
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
+!
+!EOP
 !
 ! !LOCAL VARIABLES:
    integer 			:: i,ii
@@ -56,11 +60,9 @@
    REALTYPE 			:: buoyupp,buoylow,buoyint
    REALTYPE 			:: zero=0.
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
 !  Imposing constant values for num and nuh.
-
    num=const_num
    nuh=const_nuh
 
@@ -115,6 +117,3 @@
    return
    end subroutine convectiveadjustment 
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard and Karsten Bolding

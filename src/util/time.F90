@@ -1,95 +1,93 @@
-!$Id: time.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: time.F90,v 1.2 2003-03-10 08:54:16 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE:  time - keeps control of time
+! !MODULE:  time --- keep control of time \label{sec:time}
 !
 ! !INTERFACE:
    MODULE time
 !
 ! !DESCRIPTION:
-!  This module provides a number of routine/functions and variables
-!  related to time.
+!  This module provides a number of routines/functions and variables
+!  related to the mode time in GOTM.
 !  The basic concept used in this module is that time is expressed
-!  as two integers - one is the true Julian day and the other is
-!  seconds since midnight. All calculations with time then becomes very simple
-!  since it becomes operations on integers.
-!  In the future it is the intention to extend this module - so resolutions
-!  higher than secs can be used.
+!  as two integers --- one is the true Julian day and the other is
+!  seconds since midnight. All calculations with time then become
+!  very simple operations on integers.
 !
 ! !USES:
    IMPLICIT NONE
 !
-!  Default all is private.
+!  default: all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public :: init_time, calendar_date, julian_day, update_time
-   public :: write_time_string
-   public :: time_diff
-
-! !PUBLIC DATA MEMBERS:
-   character(len=19), public	:: timestr
-   integer, public	:: julianday,secondsofday
-   REALTYPE, public	:: timestep
-   REALTYPE, public	:: fsecs,simtime
-   integer, public	:: timefmt
-   integer, public	:: MinN,MaxN
-   character(len=19), public	:: start='2000-01-01 00:00:00',stop
+   public                              :: init_time, calendar_date
+   public                              :: julian_day, update_time
+   public                              :: write_time_string
+   public                              :: time_diff
 !
-! !PRIVATE DATA MEMBERS:
-   logical		:: HasRealTime=.true. 
-   integer		:: jul0=-1,secs0=-1
+! !PUBLIC DATA MEMBERS:
+   character(len=19), public           :: timestr
+   character(len=19), public           :: start='2000-01-01 00:00:00'
+   character(len=19), public           :: stop
+   REALTYPE,          public           :: timestep
+   REALTYPE,          public           :: fsecs,simtime
+   integer,           public           :: julianday,secondsofday
+   integer,           public           :: timefmt
+   integer,           public           :: MinN,MaxN
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
 !  $Log: time.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:54:16  gotm
+!  Improved documentation and cleaned up code
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
 !
 !EOP
+!
+! !PRIVATE DATA MEMBERS:
+   logical                   :: HasRealTime=.true. 
+   integer                   :: jul0=-1,secs0=-1
+!
 !-----------------------------------------------------------------------
-
+!
    contains
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: init_time - initialise the time system.
+! !IROUTINE: Initialise the time system.
 !
 ! !INTERFACE:
    subroutine init_time(MinN,MaxN)
 !
 ! !DESCRIPTION:
-!  Reads the namelist and makes calls to the init functions of the
-!  various model components.
+!  The subroutine {\tt init\_time()} initialises the time module by reading
+!  a namelist and take actions according to the specifications.
+!  On exit from this subroutine the two variables MinN and MaxN have well
+!  defined values and can be used in the time loop.
 !
 ! !USES:
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
 ! !OUTPUT PARAMETERS:
-   integer, intent(out)	:: MinN,MaxN
+   integer, intent(out)	               :: MinN,MaxN
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See time module
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: jul1,secs1,jul2,secs2
-   integer		:: ndays,nsecs
+   integer                   :: jul1,secs1,jul2,secs2
+   integer                   :: ndays,nsecs
 !
-!EOP
 !-------------------------------------------------------------------------
 !BOC
-!
 !  Read time specific things from the namelist. 
 !
    LEVEL1 'init_time'
@@ -108,8 +106,8 @@
       case (2)
          LEVEL2 'Start:          ',start
          LEVEL2 'Stop:           ',stop
-         Call String2JulSecs(start,jul1,secs1)
-         Call String2JulSecs(stop,jul2,secs2)
+         call read_time_string(start,jul1,secs1)
+         call read_time_string(stop,jul2,secs2)
 
          nsecs = time_diff(jul2,secs2,jul1,secs1)
          MaxN  = nint(nsecs/timestep)
@@ -122,7 +120,7 @@
          LEVEL2 'Start:          ',start
          LEVEL2 '# of timesteps: ',MaxN
 
-         call String2JulSecs(start,jul1,secs1)
+         call read_time_string(start,jul1,secs1)
 
          nsecs = nint(MaxN*timestep) + secs1
          ndays = nsecs/86400 
@@ -151,36 +149,34 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE:  calendar_date() - converts true Julian day to calender date
+! !IROUTINE:  Convert true Julian day to calendar date
 !
 ! !INTERFACE:
    subroutine calendar_date(julian,yyyy,mm,dd)
 !
 ! !DESCRIPTION:
-!  Converts a Julian day to a calendar date - year, month and day.
-!  Based on a similar routine in \em{Numerical Recipes}.
+!  Converts a Julian day to a calendar date --- year, month and day.
+!  Based on a similar routine in \emph{Numerical Recipes}.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer		:: julian
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer                             :: julian
 !
 ! !OUTPUT PARAMETERS:
-   integer		:: yyyy,mm,dd
+   integer                             :: yyyy,mm,dd
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See time module
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer, parameter	:: IGREG=2299161
-   integer 		:: ja,jb,jc,jd,je
-   REAL			:: x
-!EOP
+   integer, parameter	     :: IGREG=2299161
+   integer 		     :: ja,jb,jc,jd,je
+   REAL			     :: x
+!
 !-----------------------------------------------------------------------
 !BOC
    if(julian .ge. IGREG ) then
@@ -209,35 +205,33 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE:  julian_day() - converts a calendar date to true Julian day
+! !IROUTINE:  Convert a calendar date to true Julian day
 !
 ! !INTERFACE:
    subroutine julian_day(yyyy,mm,dd,julian)
 !
 ! !DESCRIPTION:
-!  Converts a calendar date to a aJulian day.
-!  Based on a similar routine in \em{Numerical Recipes}.
+!  Converts a calendar date to a Julian day.
+!  Based on a similar routine in \emph{Numerical Recipes}.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer		:: yyyy,mm,dd
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer                             :: yyyy,mm,dd
 !
 ! !OUTPUT PARAMETERS:
-   integer		:: julian
+   integer                             :: julian
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See time module
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer, PARAMETER	:: IGREG=15+31*(10+12*1582)
-   integer 		:: ja,jy,jm
-!EOP
+   integer, PARAMETER        :: IGREG=15+31*(10+12*1582)
+   integer                   :: ja,jy,jm
+!
 !-----------------------------------------------------------------------
 !BOC
    jy = yyyy
@@ -261,36 +255,33 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE:  update_time() - keep track of real time (Julian Days and secs)
+! !IROUTINE:  Keep track of time (Julian days and seconds)
 !
 ! !INTERFACE:
    subroutine update_time(n)
 !
 ! !DESCRIPTION:
-!  Based on a starting time - this routine calculates the actual time
-!  in a model integration using n and the timestep (dt).
+!  Based on a starting time this routine calculates the actual time
+!  in a model integration using the number of time steps, {\tt n},
+!  and the size of the time step, {\tt timestep}. More public variables
+!  can be updated here if necessary.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: n
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: n
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See time module
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: nsecs
-!EOP
+   integer                   :: nsecs
+!
 !-----------------------------------------------------------------------
 !BOC
-
    nsecs = nint(n*timestep) + secs0
    fsecs = n*timestep + secs0
    julianday    = jul0 + nsecs/86400
@@ -303,34 +294,33 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE:  String2JulSecs() - converts time string to julian day and secs
+! !IROUTINE:  Convert a time string to Julian day and seconds
 !
 ! !INTERFACE:
-   subroutine String2JulSecs(timestr,jul,secs)
+   subroutine read_time_string(timestr,jul,secs)
 !
 ! !DESCRIPTION:
-!  Converts a time string to Julian day ans seconds of that day.
+!  Converts a time string to the true Julian day and seconds of that day.
+!  The format of the time string must be: {\tt yyyy-mm-dd hh:hh:ss }.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   character(len=19)	:: timestr
-!
-! !INPUT/OUTPUT PARAMETERS:
+   character(len=19)                   :: timestr
 !
 ! !OUTPUT PARAMETERS:
-   integer, intent(out)	:: jul,secs
+   integer, intent(out)	               :: jul,secs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See time module
+!EOP
 !
 ! !LOCAL VARIABLES:
-   character		:: c1,c2,c3,c4
-   integer		:: yy,mm,dd,hh,min,ss
-!EOP
+   character                 :: c1,c2,c3,c4
+   integer                   :: yy,mm,dd,hh,min,ss
+!
 !-----------------------------------------------------------------------
 !BOC
    read(timestr,'(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)')  &
@@ -339,47 +329,49 @@
    secs = 3600*hh + 60*min + ss
 
    return
-   end subroutine String2JulSecs
+   end subroutine read_time_string
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE:  write_time_string() - a nice formatted time string
+! !IROUTINE:  Convert Julian day and seconds into a time string
 !
 ! !INTERFACE:
    subroutine write_time_string(jul,secs,timestr)
 !
 ! !DESCRIPTION:
-!  Formats a Julian day and seconds of that day to a readeble string
+!  Formats Julian day and seconds of that day to a nice looking
+!  character string.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: jul,secs
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer, intent(in)                 :: jul,secs
 !
 ! !OUTPUT PARAMETERS:
-   character(len=19)	:: timestr
+   character(len=19)                   :: timestr
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See time module
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: ss,min,hh,dd,mm,yy
-!EOP
+   integer                   :: ss,min,hh,dd,mm,yy
+!
 !-----------------------------------------------------------------------
 !BOC
    hh   = secs/3600
    min  = (secs-hh*3600)/60
    ss   = secs - 3600*hh - 60*min
-   Call calendar_date(jul,yy,mm,dd)
+
+   call calendar_date(jul,yy,mm,dd)
+
    write(timestr,'(i4.4,a1,i2.2,a1,i2.2,1x,i2.2,a1,i2.2,a1,i2.2)')  &
                         yy,'-',mm,'-',dd,hh,':',min,':',ss
+
    return
    end subroutine write_time_string
 !EOC
@@ -387,42 +379,34 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE:  time_diff() - the time difference in seconds
+! !IROUTINE:  Return the time difference in seconds
 !
 ! !INTERFACE:
    integer FUNCTION time_diff(jul1,secs1,jul2,secs2)
 !
 ! !DESCRIPTION:
-!  The time difference (in seconds) betwen two times.
+! This functions returns the time difference between two
+! dates in seconds. The dates are given as Julian day and seconds
+! of that day. 
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: jul1,secs1,jul2,secs2
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: jul1,secs1,jul2,secs2
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See time module
-!
-! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    time_diff = 86400*(jul1-jul2) + (secs1-secs2)
+
    return
    end function  time_diff
-
 !EOC
 
 !-----------------------------------------------------------------------
 
    end module time
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard

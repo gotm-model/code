@@ -1,4 +1,4 @@
-!$Id: get_ext_pressure.F90,v 1.2 2001-05-31 12:00:52 gotm Exp $
+!$Id: get_ext_pressure.F90,v 1.3 2003-03-10 08:51:57 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,11 +9,16 @@
    subroutine get_ext_pressure(method,unit,jul,secs)
 !
 ! !DESCRIPTION:
-!  This routine will provide the external pressure. Either from analytical
-!  expressions or read from a file.
+!  This routine will provide the external pressure-gradient,
+!  either from analytical expressions or read-in from a file.
+!  The subroutine is called in {\tt get\_all\_obs()} 
+!  as part of the main integration loop.
+!  In case of observations from file the temporal interpolation is 
+!  done in this routine.
+
 !
 ! !USES:
-   use time, only: time_diff,julian_day,fsecs
+   use time,         only: time_diff,julian_day,fsecs
    use observations, only: read_obs 
    use observations, only: pi,h_press,dpdx,dpdy 
    use observations, only: AmpMu,AmpMv,PhaseMu,PhaseMv,PeriodM 
@@ -22,17 +27,16 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: method,unit,jul,secs
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: method,unit,jul,secs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_ext_pressure.F90,v $
-!  Revision 1.2  2001-05-31 12:00:52  gotm
+!  Revision 1.3  2003-03-10 08:51:57  gotm
+!  Improved documentation and cleaned up code
+!
+!  Revision 1.2  2001/05/31 12:00:52  gotm
 !  Correction in the calculation of the shear squared calculation - now according
 !  to Burchard 1995 (Ph.D. thesis).
 !  Also some cosmetics and cleaning of Makefiles.
@@ -40,18 +44,18 @@
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
 !
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: yy,mm,dd,hh,min,ss
-   REALTYPE		:: t
-   REALTYPE, SAVE	:: dt
-   integer, save        :: jul1,secs1
-   integer, save	:: jul2=0,secs2=0
-   REALTYPE, save	:: alpha(3)
-   REALTYPE, save	:: obs(3),obs1(3),obs2(3)=0.
-   integer		:: rc
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t
+   REALTYPE, SAVE            :: dt
+   integer, save             :: jul1,secs1
+   integer, save             :: jul2=0,secs2=0
+   REALTYPE, save            :: alpha(3)
+   REALTYPE, save            :: obs(3),obs1(3),obs2(3)=0.
+   integer                   :: rc
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
    select case(method)
@@ -96,7 +100,3 @@
    return
    end subroutine get_ext_pressure
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard
-!-----------------------------------------------------------------------

@@ -1,77 +1,105 @@
-!$Id: temperature.F90,v 1.2 2001-11-18 11:50:37 gotm Exp $
+!$Id: temperature.F90,v 1.3 2003-03-10 08:50:07 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The temperature equation. 
+! !ROUTINE: The temperature equation \label{sec:temperature}
 !
 ! !INTERFACE:
    subroutine temperature(nlev,dt,cnpar,I_0,heat,nuh,rad)
 !
 ! !DESCRIPTION:
-!  This subroutine calculates the diffusion equation for temperature $T$:
-!
-!  \begin{equation}\label{TEq}
-!  \partial_tT
-!  -\partial_z((\nu'_t(T)+\nu'(T)) \partial_z T)  =
-!  - \frac{1}{\tau_R (T)} (T-T_d) + \frac{\partial_z I}{C_p\rho_0}
+! This subroutine computes the balance of heat in the form
+!  \begin{equation}
+!   \label{TEq}
+!    \dot{\theta}
+!    = {\cal D}_\theta
+!    - \frac{1}{\tau_R(\theta)}(\theta-\theta_{obs})
+!    + \frac{1}{C_p \rho_0} \partder{I}{z}
+!    \comma
 !  \end{equation}
+!  where $\dot{\theta}$ denotes the material derivative of the potential 
+!  temperature $\theta$, and
+!  ${\cal D}_\theta$ is the sum of the turbulent and viscous transport
+!  terms modelled according to
+!  \begin{equation}
+!   \label{DT}
+!    {\cal D}_\theta 
+!    = \frstder{z} 
+!     \left( 
+!        \left( \nu'_t + \nu^\theta \right) \partder{\theta}{z}
+!      \right) 
+!    \point
+!  \end{equation}
+!  In this equation, $\nu'_t$ and $\nu^\theta$ are the turbulent and 
+!  molecular diffusivities of heat, respectively. The computation
+!  of $\nu'_t$ is discussed in \sect{sec:turbulenceIntro}.
 !
-!  Relaxation with $\tau_R (T)$ to a precribed (changing in time)
-!  profile $Tobs$ is possible. 
+!  Horizontal advection is optionally
+!  included  (see {\tt obs.inp}) by means of prescribed
+!  horizontal gradients $\partial_x\theta$ and $\partial_y\theta$ and 
+!  calculated horizontal velocities $u$ and $v$.
+!  Relaxation with the time scale $\tau_R (\theta)$ 
+!  towards a precribed (changing in time)
+!  profile $\theta_{obs}$ is possible. 
 !
 !  The sum of latent, sensible, and longwave radiation is treated
-!  as a boundary condition. Solar radiation is treated as an inner source.
-!  Absorbtion of shortwave radiation is calculated following the
-!  following exponential law. 
-!      
+!  as a boundary condition. Solar radiation is treated as an inner 
+!  source, $I(z)$. It is computed according the
+!  exponential law (see \cite{PaulsonSimpson77})
 !  \begin{equation}
-!  I(z) = I_0 \bigg(Ae^{-\eta_1z}+(1-A)e^{-\eta_2z}\bigg).
+!    \label{Iz}
+!    I(z) = I_0 \bigg(Ae^{-\eta_1z}+(1-A)e^{-\eta_2z}\bigg).
 !  \end{equation}
-!
-!  Absorbtion coefficients $\eta_1$ and $\eta_2$ depend on the water type
-!  and have to be prescribed. 
+!  The absorbtion coefficients $\eta_1$ and $\eta_2$ depend on the water type
+!  and have to be prescribed either by means of choosing a \cite{Jerlov68} class
+!  (see \cite{PaulsonSimpson77}) or by reading in a file through the namelist
+!  {\tt extinct} in {\tt obs.inp}. 
 
-!  Diffusion is numerically treated implicitly.
-!  The tri-diagonal matrix is solved then by a simplified Gauss elimination.
+!  Diffusion is numerically treated implicitly, see equations (\ref{sigmafirst})-
+!  (\ref{sigmalast}).
+!  The tri--diagonal matrix is solved then by a simplified Gauss elimination.
+!  Vertical advection is included for accounting for adaptive grids,
+!  see {\tt adaptivegrid.F90}.
 !
 ! !USES:
-   use meanflow, only:  avmolt,rho_0,cp
-   use meanflow, only:  h,u,v,T,avh
-   use observations, only:  dtdx,dtdy,t_adv,w_adv,w_adv_discr
-   use observations, only:  tprof,TRelaxTau
-   use observations, only:  A,g1,g2
+   use meanflow, only: avmolt,rho_0,cp
+   use meanflow, only: h,ho,u,v,T,avh,w,grid_method,w_grid
+   use observations, only: dtdx,dtdy,t_adv,w_adv,w_adv_discr,w_adv_method
+   use observations, only: tprof,TRelaxTau
+   use observations, only: A,g1,g2
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
-   REALTYPE, intent(in)	:: dt,cnpar
-   REALTYPE, intent(in)	:: I_0,heat
-   REALTYPE, intent(in)	:: nuh(0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)	               :: dt,cnpar
+   REALTYPE, intent(in)	               :: I_0,heat
+   REALTYPE, intent(in)	               :: nuh(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE		:: rad(0:nlev)
+   REALTYPE                            :: rad(0:nlev)
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding 
+!  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.2  2001-11-18 11:50:37  gotm
+!  Revision 1.3  2003-03-10 08:50:07  gotm
+!  Improved documentation and cleaned up code
+!
+!  Revision 1.2  2001/11/18 11:50:37  gotm
 !  Cleaned
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
 !  initial import into CVS
 !
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: i,Meth,Bcup,Bcdw
-   REALTYPE		:: w(0:nlev),Qsour(0:nlev) 
+   integer		:: i,Bcup,Bcdw,flag
+   REALTYPE		:: Qsour(0:nlev) 
    REALTYPE		:: Tup,Tdw,z
    logical		:: surf_flux,bott_flux
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
 !  hard coding of parameters, to be included into namelist for gotm2.0 
@@ -79,9 +107,8 @@
    Tup=-heat/(rho_0*cp)			!Heat flux (positive upward)
    Bcdw=1				!BC Neumann
    Tdw=0.				!No flux
-   Meth=w_adv_discr	      		!Type of vertical advection scheme
-   surf_flux=.true.                     
-   bott_flux=.true.
+   surf_flux=.false.                     
+   bott_flux=.false.
 
    rad(nlev)=I_0/(rho_0*cp)
    z=0. 
@@ -89,7 +116,6 @@
       z=z+h(i+1)
       rad(i)=I_0/(rho_0*cp)*(A*exp(-z/g1)+(1-A)*exp(-z/g2))
       avh(i)=nuh(i)+avmolT 
-      w(i)=w_adv
    end do
 
    do i=1,nlev
@@ -97,12 +123,11 @@
       if (t_adv) Qsour(i)=Qsour(i)-u(i)*dtdx(i)-v(i)*dtdy(i) 
    end do
 
-   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Tup,Tdw,TRelaxTau,h,avh,w,   &
-              Qsour,tprof,Meth,T,surf_flux,bott_flux)
+   flag=1  ! divergence correction for vertical advection
+
+   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Tup,Tdw,TRelaxTau,h,ho,avh,w,        &
+              Qsour,tprof,w_adv_method,w_adv_discr,T,surf_flux,bott_flux,  &
+	      grid_method,w_grid,flag)
    return
    end subroutine temperature
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard and Karsten Bolding
-!-----------------------------------------------------------------------

@@ -1,47 +1,52 @@
-!$Id: extpressure.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: extpressure.F90,v 1.2 2003-03-10 08:50:06 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The external pressure gradient. 
+! !ROUTINE: The external pressure--gradient \label{sec:extpressure}
 !
 ! !INTERFACE:
    subroutine extpressure(method,nlev) 
 !
 ! !DESCRIPTION:
-!  This subroutine aplies the external presure gradient. Two methods
-!  are implemented here, it is either the velocity vector at a
-!  given height prescribed or the vector for the vertical mean
-!  velocity. If the external pressure gradient is prescribed as
-!  surface slopes, then it is directly applied in uequation() and
-!  vequation().  
+!
+!  This subroutine calculates the external pressure--gradient. Two methods
+!  are implemented here, relating either to the velocity vector at a
+!  given height above bed prescribed or to the vector for the vertical mean
+!  velocity. For details of this method, see \cite{Burchard99}. 
+
+!  If the external pressure--gradient is prescribed by the
+!  surface slope, then it is directly inserted in \eq{uEq} and \eq{vEq}. 
 !
 ! !USES:
    use meanflow, only: u,v,h
    use observations, only: dpdx,dpdy,h_press
+!
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)		:: method,nlev
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: method,nlev
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding 
+!  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: extpressure.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:50:06  gotm
+!  Improved documentation and cleaned up code
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
+!
+!EOP
 !
 ! !LOCAL VARIABLES:
    integer 			:: i 
    REALTYPE	 		:: z(0:nlev)
    REALTYPE	 		:: rat,uint,vint,hint
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
+
    select case (method)
       case (1) ! Current measurement at h_press above bed
          z(1)=0.5*h(1) 
@@ -77,6 +82,3 @@
    return
    end subroutine extpressure
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard and Karsten Bolding

@@ -1,60 +1,67 @@
-!$Id: yevol.F90,v 1.2 2001-11-27 19:49:48 gotm Exp $
+!$Id: yevol.F90,v 1.3 2003-03-10 08:54:16 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Source/sink + vertical mixing/advection operator.
+! !ROUTINE: The tracer advection-diffusion equation \label{sec:yevol}
 ! 
 ! !INTERFACE:
-   subroutine yevol(N,Bcup,Bcdw,dt,cnpar,Yup,Ydw,Taur,h,avh,w,Qsour,Yobs,Method,Y,surf_flux,bott_flux)
-
+   subroutine yevol(N,Bcup,Bcdw,dt,cnpar,Yup,Ydw,Taur,h,ho,avh,w,Qsour, &
+                    Yobs,w_adv_method,w_adv_discr,Y,surf_flux,bott_flux, &
+                    grid_method,w_grid,flag)
 ! !DESCRIPTION:
-!  This subroutine computes the evolution of any state variable "Y" 
-!  after Mixing/Advection/Source
-!  \begin{itemize} 
-!  \item with Neuman    Boundary Condition: Bc=1
-!  \item with Dirichlet Boundary Condition: Bc=2
-!  \end{itemize} 
-!  Convention: fluxex are taken positive upward
+!  This general tracer advection-diffusion routine
+!  computes the evolution of any tracer variable $Y$ 
+!  including sources, sinks and internal restoring. The advection 
+!  methods are described in \sect{sec:advection}. At the end,
+!  the tri-diagonal matrix solver described in \sect{sec:tridiagonal} is called.
+!  {\tt yevol()} is used in
+!  {\tt temperature.F90}, {\tt salinity.F90}, {\tt buoyancy.F90} and
+!  {\tt sediment.F90}.
 !
 ! !USES:
    use mtridiagonal
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: N
-   integer, intent(in)	:: Bcup,Bcdw
-   REALTYPE, intent(in)	:: dt,cnpar
-   REALTYPE, intent(in)	:: Yup,Ydw
-   REALTYPE, intent(in)	:: Taur(0:N)
-   REALTYPE, intent(in)	:: h(0:N),avh(0:N)
-   REALTYPE, intent(in)	:: w(0:N),Qsour(0:N)
-   REALTYPE, intent(in)	:: Yobs(0:N)
-   logical, intent(in)	:: surf_flux,bott_flux
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer,  intent(in)	               :: N,grid_method,w_adv_discr,flag
+   integer,  intent(in)	               :: Bcup,Bcdw,w_adv_method
+   REALTYPE, intent(in)	               :: dt,cnpar
+   REALTYPE, intent(in)	               :: Yup,Ydw
+   REALTYPE, intent(in)	               :: Taur(0:N)
+   REALTYPE, intent(in)	               :: h(0:N),ho(0:N),avh(0:N)
+   REALTYPE, intent(in)	               :: w(0:N),Qsour(0:N),w_grid(0:N)
+   REALTYPE, intent(in)	               :: Yobs(0:N)
+   logical,  intent(in)	               :: surf_flux,bott_flux
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out):: Y(0:N)
+   REALTYPE, intent(out)               :: Y(0:N)
 !
 ! !REVISION HISTORY: 
 !  Original author(s): Pierre-Philippe Mathieu
 !
 !  $Log: yevol.F90,v $
-!  Revision 1.2  2001-11-27 19:49:48  gotm
+!  Revision 1.3  2003-03-10 08:54:16  gotm
+!  Improved documentation and cleaned up code
+!
+!  Revision 1.2  2001/11/27 19:49:48  gotm
 !  Added higher order advection via w_split_it_adv()
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
 !  initial import into CVS
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer 		:: i,Method
-   REALTYPE 		:: a,c
-!EOP
+   integer                   :: i
+   REALTYPE                  :: a,c,saltot
+!
 !-----------------------------------------------------------------------
 !BOC
 !  Advection step: 
-   if (Method .ne. 0) then 
-      call w_split_it_adv(N,dt,h,Y,w,Method,surf_flux,bott_flux)
+   if (w_adv_method .ne. 0) then 
+      call w_split_it_adv(N,dt,h,ho,Y,w,w_adv_discr,surf_flux,bott_flux,flag)
+   end if
+   if (grid_method .eq. 3) then 
+      call w_split_it_adv(N,dt,h,ho,Y,w_grid,w_adv_discr,surf_flux,bott_flux,2)
    end if
 
 !  Array of Diffusion/Advection terms + sources 
@@ -110,6 +117,3 @@
    return
    end subroutine yevol
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Pierre-Philippe Mathieu

@@ -1,4 +1,4 @@
-!$Id: read_extinction.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: read_extinction.F90,v 1.2 2003-03-10 08:51:58 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,8 +9,8 @@
    subroutine read_extinction(unit,jul,secs)
 !
 ! !DESCRIPTION:
-!  This routine will provide the extinction coefficients - either by Jerlov
-!  classes or by reading from file.
+!  This routine will provide the light extinction coefficients. It
+!  is only called if no Jerlov class has been specified in {\tt obs.inp}.
 !
 ! !USES:
    use time
@@ -19,31 +19,30 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: unit,jul,secs
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)	               :: unit,jul,secs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
 !  $Log: read_extinction.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:51:58  gotm
+!  Improved documentation and cleaned up code
 !
-!
-! !LOCAL VARIABLES:
-   integer		:: yy,mm,dd,hh,min,ss
-   REALTYPE		:: t
-   REALTYPE, SAVE	:: dt
-   integer, save        :: jul1,secs1
-   integer, save	:: jul2=0,secs2=0
-   REALTYPE, save	:: alpha(3)
-   REALTYPE, save	:: obs(3),obs1(3),obs2(3)=0.
-   integer		:: rc
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t
+   REALTYPE, save            :: dt
+   integer, save             :: jul1,secs1
+   integer, save             :: jul2=0,secs2=0
+   REALTYPE, save            :: alpha(3)
+   REALTYPE, save            :: obs(3),obs1(3),obs2(3)=0.
+   integer                   :: rc
+!
 !-----------------------------------------------------------------------
 !BOC
 !  This part initialise and read in new values if necessary.
@@ -73,6 +72,3 @@
    return
    end subroutine read_extinction
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard

@@ -1,4 +1,4 @@
-!$Id: gradsout.F90,v 1.1 2001-02-12 15:55:59 gotm Exp $
+!$Id: gradsout.F90,v 1.2 2003-03-10 08:53:05 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -14,7 +14,7 @@
 !  Instead use NetCDF - which GrADS can read.
 !
 ! !USES:
-   use time, ONLY: julianday,secondsofday,calendar_date
+   use time, only: julianday,secondsofday,calendar_date
    IMPLICIT NONE
 !
 !  Default all is private.
@@ -23,16 +23,15 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_grads, do_grads_out, close_grads
 !   
-! !PUBLIC DATA MEMBERS:
-!
 ! !REVISION HISTORY: 
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  01Jan2000: Ver. 2.0.0 (kbk): A complete rewrite to F90.
 ! 
-! !LOCAL VARIABLES:
-   integer, parameter		:: grads_unit=50
-!
 !EOP
+! 
+! !LOCAL VARIABLES:
+   integer, parameter        :: grads_unit=50
+!
 !-----------------------------------------------------------------------
 
    contains
@@ -53,29 +52,25 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   character(len=*), intent(in)	:: fn,title
-   integer, intent(in)		:: nlev
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   character(len=*), intent(in)        :: fn,title
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  01Jan2000: Ver. 2.0.0 (kbk): A complete rewrite to F90.
 !
+!EOP
+!
 ! !LOCAL VARIABLES:
-   character(len=3)   		:: mlist(12)
-   character(len=200)		:: varlist
-
+   character(len=3)   	     :: mlist(12)
+   character(len=200)        :: varlist
+   integer                   :: i,reclen
+   integer                   :: yy,mm,dd,hh
+   integer, parameter        :: nvar_tot=14
    data mlist /'jan','feb','mar','apr','may','jun', 	&
                'jul','aug','sep','oct','nov','dec'/
 
-   integer  			:: i,reclen
-   integer			:: yy,mm,dd,hh
-   integer, parameter 		:: nvar_tot=14
 !
-!EOP
 !-------------------------------------------------------------------------
 !BOC
    open(grads_unit,status='unknown',file=trim(fn)//'.ctl')
@@ -148,23 +143,20 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)		:: nlev
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  01Jan2000: Ver. 2.0.0 (kbk): A complete rewrite to F90.
 !
-! !LOCAL VARIABLES:
-   integer 			:: i
-   integer, save		:: irec 
-   REALTYPE  			:: C_tot,H_tot,KE_tot
-   real*4 			:: dum4(nlev)
-!
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: i
+   integer, save             :: irec 
+   REALTYPE                  :: C_tot,H_tot,KE_tot
+   real*4                    :: dum4(nlev)
+!
 !-------------------------------------------------------------------------
 !BOC
    C_tot=0.
@@ -220,17 +212,9 @@
 ! !DESCRIPTION:
 !  Closes the GrADS file.
 !
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
-!
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  01Jan2000: Ver. 2.0.0 (kbk): A complete rewrite to F90.
-!
-! !LOCAL VARIABLES:
 !
 !EOP
 !-------------------------------------------------------------------------
@@ -244,6 +228,3 @@
 !-----------------------------------------------------------------------
 
    end module gradsout
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard.

@@ -1,85 +1,83 @@
-!$Id: ncdfout.F90,v 1.2 2002-04-30 14:18:21 gotm Exp $
+!$Id: ncdfout.F90,v 1.3 2003-03-10 08:53:05 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE:  Saving the results in NetCDF format.
+! !MODULE: ncdfout --- saving the results in NetCDF
 !
 ! !INTERFACE:
    module ncdfout
 !
 ! !DESCRIPTION:
-!  This module provides routines for saving the \em{GOTM} results using
-!  the \em{NetCDF} format. A hack has been provided for saving in a way
-!  which can be used by \em{GrADS}. The \em{sdfopen} interface to \em{GrADS}
-!  does not allow for smaller time units than 1 hour - so if \em{GrADS}
-!  output is selected the units for time is set to 'hours since...' and
-!  not 'secs since ...'. In addition all variables are saved on the same grid
-!  - this is a bug which might be fixed at a later stage. 
+!  This module provides routines for saving the GOTM results using
+!  NetCDF format. A hack has been provided for saving in a way
+!  that can be used by the GrADS graphics software.
+!  The {\tt sdfopen()} interface to GrADS
+!  does not allow for smaller time units than 1 hour, so if GrADS
+!  output is selected the units for time are set to {\tt hours} and
+!  not {\tt secs}. In addition, all variables are saved on 
+!  the same grid, which is actually a bug to be fixed at a later stage. 
 !
 ! !USES:
    IMPLICIT NONE
    include 'netcdf.inc'
-!
-!  Default all is private.
-!  private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_ncdf, do_ncdf_out, close_ncdf
    public define_mode, new_nc_variable, set_attributes, store_data
 !
 ! !PUBLIC DATA MEMBERS:
-   integer, public	:: ncid
+   integer, public                     :: ncid
 !  dimension ids
-   integer		:: lon_dim,lat_dim,z_dim,z1_dim
-   integer		:: time_dim
-   integer, parameter	:: dim1=1,dim4=4
-   integer		:: dims(dim4)
-!
-! !PRIVATE DATA MEMBERS
-!  dimension lengths
-   integer, parameter	:: lon_len=1
-   integer, parameter	:: lat_len=1
-   integer		:: depth_len
-   integer		:: time_len=NF_UNLIMITED
-!  variable ids
-   integer, private	:: lon_id,lat_id,z_id,z1_id,time_id
-   integer, private	:: zeta_id
-   integer, private	:: sst_id,sss_id
-   integer, private	:: x_taus_id,y_taus_id
-   integer, private	:: swr_id,heat_id,total_id
-   integer, private	:: int_sw_id,int_hf_id,int_total_id
-   integer, private	:: u_taus_id,u_taub_id
-   integer, private	:: h_id
-   integer, private	:: u_id,u_obs_id
-   integer, private	:: v_id,v_obs_id
-   integer, private	:: temp_id,temp_obs_id
-   integer, private	:: salt_id,salt_obs_id
-   integer, private	:: num_id,nuh_id
-   integer, private	:: SS_id,SS_obs_id
-   integer, private	:: NN_id,NN_obs_id
-   integer, private	:: sigma_t_id,sigma_t_obs_id
-   integer, private	:: tke_id,tmls_id
-   integer, private	:: tked_id,tked_obs_id
-   integer, private	:: prod_shear_id,prod_buoy_id
-   integer, private	:: uu_id,vv_id,ww_id,tt_id,chi_id
-   integer, private	:: ncdf_time_unit
-   logical,save,private	:: GrADS=.false.
-   integer, private	:: set=1
-   integer, private	:: start(4),edges(4)
+   integer                             :: lon_dim,lat_dim,z_dim,z1_dim
+   integer                             :: time_dim
+   integer, parameter                  :: dim1=1,dim4=4
+   integer                             :: dims(dim4)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.2  2002-04-30 14:18:21  gotm
-!  pgf90 does not accept time as variable name --> ti
+!  Revision 1.3  2003-03-10 08:53:05  gotm
+!  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
 !
-!
 !EOP
+!
+! !PRIVATE DATA MEMBERS
+!  dimension lengths
+   integer, parameter        :: lon_len=1
+   integer, parameter        :: lat_len=1
+   integer                   :: depth_len
+   integer                   :: time_len=NF_UNLIMITED
+!  variable ids
+   integer, private          :: lon_id,lat_id,z_id,z1_id,time_id
+   integer, private          :: zeta_id
+   integer, private          :: sst_id,sss_id
+   integer, private          :: x_taus_id,y_taus_id
+   integer, private          :: swr_id,heat_id,total_id
+   integer, private          :: int_sw_id,int_hf_id,int_total_id
+   integer, private          :: u_taus_id,u_taub_id
+   integer, private          :: h_id
+   integer, private          :: u_id,u_obs_id
+   integer, private          :: v_id,v_obs_id
+   integer, private          :: temp_id,temp_obs_id
+   integer, private          :: salt_id,salt_obs_id
+   integer, private          :: num_id,nuh_id
+   integer, private          :: SS_id,SS_obs_id
+   integer, private          :: NN_id,NN_obs_id
+   integer, private          :: sigma_t_id,sigma_t_obs_id
+   integer, private          :: tke_id,tmls_id
+   integer, private          :: tked_id,tked_obs_id
+   integer, private          :: prod_shear_id,prod_buoy_id
+   integer, private          :: uu_id,vv_id,ww_id,tt_id,chi_id
+   integer, private          :: ncdf_time_unit
+   integer, private          :: set=1
+   integer, private          :: start(4),edges(4)
+   logical,save,private      :: GrADS=.false.
+!
 !-----------------------------------------------------------------------
 
    contains
@@ -94,31 +92,27 @@
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
-!  Opens and creates the NetCDF file - initialize all dimensions and
-!  variables for the core \em{GOTM} model. If the time unit is hours
-!  specific actions for \em{GrADS} is taken.
+!  Opens and creates the NetCDF file, and initialises all dimensions and
+!  variables for the core GOTM model. 
 !
 ! !INPUT PARAMETERS:
-   character(len=*), intent(in)	:: fn,title,start_time
-   REALTYPE, intent(in)		:: lat,lon
-   integer, intent(in)		:: nlev,time_unit
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   character(len=*), intent(in)        :: fn,title,start_time
+   REALTYPE, intent(in)                :: lat,lon
+   integer, intent(in)                 :: nlev,time_unit
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See ncdfout module
 !
-! !LOCAL VARIABLES:
-   integer		:: iret
-   character(len=128)	:: ncdf_time_str,history,name
-   REAL_4B		:: r4
-   REALTYPE		:: miss_val
-!
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: iret
+   character(len=128)        :: ncdf_time_str,history,name
+   REAL_4B                   :: r4
+   REALTYPE                  :: miss_val
+!
 !-------------------------------------------------------------------------
 !BOC
    iret = nf_create(fn,NF_CLOBBER,ncid)
@@ -357,45 +351,44 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Save the model results to file.
+! !IROUTINE: Save model results to file
 !
 ! !INTERFACE:
    subroutine do_ncdf_out(nlev,secs)
 !
 ! !DESCRIPTION:
-!  Write the \em{GOTM} core variables to the \em{NetCDF} file.
+!  Write the GOTM core variables to the NetCDF file.
 !
 ! !USES:
-   use airsea, only: tx,ty,I_0,heat,sst,sss,int_sw,int_hf,int_total
-   use meanflow, only: depth0,u_taub,u_taus,rho_0,gravity
-   use meanflow, only: h,u,v,z,S,T,buoy,SS,NN,P,B
-   use turbulence, only: num,nuh,tke,eps,L,uu,vv,ww,tt,chi
+   use airsea,       only: tx,ty,I_0,heat,sst,sss,int_sw,int_hf,int_total
+   use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
+   use meanflow,     only: h,u,v,z,S,T,buoy,SS,NN,P,B
+   use turbulence,   only: num,nuh,tke,eps,L,uu,vv,ww,tt,chi
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof
-   use eqstate, only: eqstate1
+   use eqstate,      only: eqstate1
+
    IMPLICIT NONE
+
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
-   integer, intent(in)	:: secs
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+   integer, intent(in)                 :: secs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See ncdfout module
 !
-! !LOCAL VARIABLES:
-   integer		:: iret,i
-   integer		:: ti 
-   REALTYPE		:: dum(0:nlev)
-   REAL_4B		:: buoyp,buoym,dz
-   REALTYPE		:: zz
-   logical, save	:: first = .true.
-!
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: iret,i
+   integer                   :: time
+   REALTYPE                  :: dum(0:nlev)
+   REAL_4B                   :: buoyp,buoym,dz
+   REALTYPE                  :: zz
+   logical, save             :: first = .true.
+!
 !-------------------------------------------------------------------------
 !BOC
    if ( first ) then
@@ -413,15 +406,15 @@
 !  Storing the time - both the coordinate and later a time string.
    select case (ncdf_time_unit)
       case(0)                           ! seconds
-         ti = secs
+         time = secs
       case(1)                           ! minutes
-         ti = secs/60
+         time = secs/60
       case(2)                           ! hours
-         ti = secs/3600
+         time = secs/3600
       case default
-         ti = secs
+         time = secs
    end select
-   iret = store_data(ncid,time_id,T_SHAPE,1,iscalar=ti)
+   iret = store_data(ncid,time_id,T_SHAPE,1,iscalar=time)
 
 !  Time varying data : x,y,t 
    iret = store_data(ncid,zeta_id,XYT_SHAPE,1,scalar=zeta)
@@ -508,30 +501,25 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Close files used for saving model results.
+! !IROUTINE: Close files used for saving model results
 !
 ! !INTERFACE:
    subroutine close_ncdf()
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
-!  Closes the \em{NetCDF} file.
-!
-! !INPUT PARAMETERS:
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+!  Closes the NetCDF file.
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See ncdfout module
 !
-! !LOCAL VARIABLES:
-   integer		:: iret
-!
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: iret
+!
 !-------------------------------------------------------------------------
 !BOC
    LEVEL1 'Output has been written in NetCDF'
@@ -546,34 +534,32 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: begin or end define mode
+! !IROUTINE: Begin or end define mode
 !
 ! !INTERFACE:
    integer function define_mode(ncid,action)
 !
 ! !DESCRIPTION:
-!  This routine is used to define a new variable to store in a NetCDF file.
+!  Depending on the value of the argument {\tt action},
+!  this routine put NetCDF in the `define' mode or not.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)		:: ncid
-   logical, intent(in)		:: action
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)       :: ncid
+   logical, intent(in)       :: action
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See ncdfout module
 !
+!EOP
+!
 ! !LOCAL VARIABLES:
    integer	:: iret
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
    if(action) then
@@ -591,7 +577,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: define a new NetCDF variable
+! !IROUTINE: Define a new NetCDF variable
 !
 ! !INTERFACE:
    integer function new_nc_variable(ncid,name,data_type,n,dims,id)
@@ -603,25 +589,24 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)		:: ncid
-   character(len=*), intent(in)	:: name
-   integer, intent(in)		:: data_type,n
-   integer, intent(in)		:: dims(:)
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer, intent(in)                 :: ncid
+   character(len=*), intent(in)        :: name
+   integer, intent(in)                 :: data_type,n
+   integer, intent(in)                 :: dims(:)
 !
 ! !OUTPUT PARAMETERS:
-   integer, intent(out)         :: id
+   integer, intent(out)                :: id
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See ncdfout module
 !
-! !LOCAL VARIABLES:
-   integer	:: iret
-!
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: iret
+!
 !-----------------------------------------------------------------------
 !BOC
    iret = nf_def_var(ncid,name,data_type,n,dims,id)
@@ -634,36 +619,33 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Sets various attributes for a NetCDF variable.
+! !IROUTINE: Set attributes for a NetCDF variable.
 !
 ! !INTERFACE:
-   integer function set_attributes(ncid,id,                             &
-                                   units,long_name,                     &
-                                   valid_min,valid_max,valid_range,     &
-                                   scale_factor,add_offset,             &
-                                   FillValue,missing_value,             &
+   integer function set_attributes(ncid,id,                         &
+                                   units,long_name,                 &
+                                   valid_min,valid_max,valid_range, &
+                                   scale_factor,add_offset,         &
+                                   FillValue,missing_value,         &
                                    C_format,FORTRAN_format)
 !
 ! !DESCRIPTION:
-!  This routine is used to set a number of attributes for the various
-!  variables. The routine make heavy use of the \em{optional} keyword. 
-!  The list of recognized keywords is very easy expandable. We have 
+!  This routine is used to set a number of attributes for 
+!  variables. The routine makes heavy use of the {\tt optional} keyword. 
+!  The list of recognized keywords is very easy to extend. We have 
 !  included a sub-set of the COARDS conventions. 
 !
 ! !USES:
 !  IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)          :: ncid,id
-   character(len=*), optional   :: units,long_name
-   REALTYPE, optional           :: valid_min,valid_max,valid_range(2)
-   REALTYPE, optional           :: scale_factor,add_offset
-   REALTYPE, optional           :: FillValue,missing_value
-   character(len=*), optional   :: C_format,FORTRAN_format
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: ncid,id
+   character(len=*), optional          :: units,long_name
+   REALTYPE, optional                  :: valid_min,valid_max
+   REALTYPE, optional                  :: valid_range(2)
+   REALTYPE, optional                  :: scale_factor,add_offset
+   REALTYPE, optional                  :: FillValue,missing_value
+   character(len=*), optional          :: C_format,FORTRAN_format
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -671,8 +653,8 @@
 !  See ncdfout module
 !
 ! !LOCAL VARIABLES:
-   integer			:: len,iret
-   REAL_4B			:: vals(2)
+   integer                   :: len,iret
+   REAL_4B                   :: vals(2)
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -741,43 +723,39 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: stores values in a netcdf file
+! !IROUTINE: Store values in a NetCDF file
 !
 ! !INTERFACE:
    integer function store_data(ncid,id,var_shape,nlev, &
                                iscalar,iarray,scalar,array)
 !
 ! !DESCRIPTION:
-!  This routine is used to set a number of attributes for the various
-!  variables. The routine make heavy use of the \em{optional} keyword. 
-!  The list of recognized keywords is very easy expandable. We have 
-!  included a sub-set of the COARDS conventions. 
+!  This routine is used to store a  variable in the NetCDF file.
+!  The subroutine uses {\tt optional} parameters to find out which data
+!  type to save.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: ncid,id,var_shape,nlev
-   integer, optional	:: iscalar
-   integer, optional	:: iarray(0:nlev)
-   REALTYPE, optional	:: scalar
-   REALTYPE, optional	:: array(0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: ncid,id,var_shape,nlev
+   integer, optional                   :: iscalar
+   integer, optional                   :: iarray(0:nlev)
+   REALTYPE, optional                  :: scalar
+   REALTYPE, optional                  :: array(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  See ncdfout module
 !
-! !LOCAL VARIABLES:
-   integer	:: iret,n=0
-   integer	:: idum(1:nlev)
-   REAL_4B	:: r4,dum(1:nlev)
-!
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: iret,n=0
+   integer                   :: idum(1:nlev)
+   REAL_4B                   :: r4,dum(1:nlev)
+!
 !-----------------------------------------------------------------------
 !BOC
    if (.not. present(iscalar) .and. .not. present(iarray) .and. &
@@ -848,12 +826,12 @@
    return
    end function store_data
 !EOC
+
 !-----------------------------------------------------------------------
 
    end module ncdfout
 
 !-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard.
 
    subroutine check_err(iret)
    integer iret
@@ -863,3 +841,4 @@
    stop
    endif
    end
+

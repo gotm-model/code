@@ -1,9 +1,9 @@
-!$Id: tridiagonal.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: tridiagonal.F90,v 1.2 2003-03-10 08:54:16 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: mtridiagonal 
+! !MODULE: mtridiagonal --- solver for tri-diagonal matrices \label{sec:tridiagonal}
 !
 ! !INTERFACE:
    MODULE mtridiagonal
@@ -11,30 +11,28 @@
 ! !DESCRIPTION: 
 !
 !  Solves a linear system of equations with a tridiagonal matrix
-!  using Gauss Elimination. 
-!
-! !USE:
+!  using Gaussian elimination. 
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   PUBLIC init_tridiagonal,tridiagonal
+   public init_tridiagonal,tridiagonal
 !
 ! !PUBLIC DATA MEMBERS:
-   REALTYPE, dimension(:), allocatable		:: au,bu,cu,du
+   REALTYPE, dimension(:), allocatable     :: au,bu,cu,du
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding 
-!
+!  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:54:16  gotm
+!  Improved documentation and cleaned up code
 !
-!
-! !LOCAL VARIABLES:
-   REALTYPE,private,dimension(:),allocatable	::  ru,qu
-!
-! !BUGS
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 !EOP
+!
+!  private data members
+   REALTYPE, private, dimension(:),allocatable  ::  ru,qu
+!
 !-----------------------------------------------------------------------
 
    contains
@@ -42,33 +40,29 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Allocates memory for later use.
+! !IROUTINE: Allocate memory
 !
 ! !INTERFACE:
    subroutine init_tridiagonal(N)
 !
 ! !DESCRIPTION:
-!  This routines allocates memory to be used in \em{tridiagonal}.
+!  This routines allocates memory necessary to perform the Gaussian 
+! elimination.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: N
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)    :: N
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding 
+!  Original author(s): Hans Burchard & Karsten Bolding
 !
-!  See tridiagonal module
+!EOP
 !
 ! !LOCAL VARIABLES:
    integer 		:: rc
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_tridiagonal'
@@ -101,41 +95,41 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: tridiagonal 
+! !IROUTINE: Simplified Gaussian elimination 
 !
 ! !INTERFACE:
    subroutine tridiagonal(N,fi,lt,value)
 !
 ! !DESCRIPTION:
-!
 ! A linear equation with tridiagonal matrix is solved here. The main
-! diagonal is stored on bu, the upper diagonal on au, and the
-! lower diagonal on cu, the right hand side is stored on du. The method
-! used here is the simplified Gauss elimination, also called Thomas algorithm.  
+! diagonal is stored on {\tt bu}, the upper diagonal on {\tt au}, and the
+! lower diagonal on {\tt cu}, the right hand side is stored on {\tt du}. 
+! The method used here is the simplified Gauss elimination, also called 
+! \emph{Thomas algorithm}.  
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: N,fi,lt
-!
-! !INPUT/OUTPUT PARAMETERS:
+   integer, intent(in)         :: N,fi,lt
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE		:: value(0:N)
+   REALTYPE                    :: value(0:N)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
-!
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:54:16  gotm
+!  Improved documentation and cleaned up code
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
+!
+!EOP
 !
 ! !LOCAL VARIABLES:
    integer 		:: i
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
    ru(lt)=au(lt)/bu(lt)
@@ -161,6 +155,3 @@
 !-----------------------------------------------------------------------
 
    end module mtridiagonal
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard and Karsten Bolding

@@ -1,4 +1,4 @@
-!$Id: get_vel_profile.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: get_vel_profile.F90,v 1.2 2003-03-10 08:51:57 gotm Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,8 +9,12 @@
    subroutine get_vel_profile(unit,jul,secs,nlev,z)
 !
 ! !DESCRIPTION:
-!  This routine will get the velocity profile - either by setting to a 
-!  constant or be reading from a file.
+!  This routine is responsible for providing sane values to `observed'
+!  velocity profiles.
+!  The subroutine is called in the {\tt get\_all\_obs{}} subroutine
+!  as part of the main integration loop.
+!  In case of observations from file the temporal interpolation is
+!  done in this routine.
 !
 ! !USES:
    use time
@@ -18,36 +22,35 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: unit
-   integer, intent(in)	:: jul,secs
-   integer, intent(in)	:: nlev
-   REALTYPE, intent(in)	:: z(0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in):: unit
+   integer, intent(in):: jul,secs
+   integer, intent(in):: nlev
+   REALTYPE, intent(in):: z(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_vel_profile.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 08:51:57  gotm
+!  Improved documentation and cleaned up code
 !
-!
-! !LOCAL VARIABLES:
-   integer		:: rc
-   integer		:: yy,mm,dd,hh,min,ss
-   REALTYPE		:: t,dt
-   integer, save        :: jul1,secs1
-   integer, save	:: jul2=0,secs2=0
-   REALTYPE, save, dimension(:,:), allocatable	:: prof1,prof2,alpha
-   integer, parameter	:: cols=2
-   integer, save	:: lines=0
-   integer, save	:: nprofiles=0
-   logical, save	:: one_profile=.false.
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: rc
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t,dt
+   integer, save             :: jul1,secs1
+   integer, save             :: jul2=0,secs2=0
+   integer, parameter        :: cols=2
+   integer, save             :: lines=0
+   integer, save             :: nprofiles=0
+   logical, save             :: one_profile=.false.
+   REALTYPE, save, dimension(:,:), allocatable :: prof1,prof2,alpha
+!
 !-----------------------------------------------------------------------
 !BOC
    if ( .not. allocated(prof1)) then
@@ -105,7 +108,3 @@
    return
    end subroutine get_vel_profile
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Karsten Bolding & Hans Burchard
-!-----------------------------------------------------------------------

@@ -1,103 +1,129 @@
-!$Id: uequation.F90,v 1.3 2001-05-31 12:00:52 gotm Exp $
+!$Id: uequation.F90,v 1.4 2003-03-10 08:50:07 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The u-momentum equation. 
+! !ROUTINE: The $u$--momentum equation \label{sec:uequation}
 !
 ! !INTERFACE:
    subroutine uequation(nlev,dt,cnpar,tx,num,Method)
 !
 ! !DESCRIPTION:
-!  This subroutine calculates the diffusion equation for x-velocity $u$:
-!
-!  \begin{equation}\label{uEq}
-!  \partial_tu
-!  -\partial_z((\nu_t+\nu) \partial_z u)  =
-!  -g\partial_x \zeta 
+!  This subroutine computes the transport of momentum in 
+!  $x$--direction according to
+!  \begin{equation}
+!   \label{uEq}
+!    \dot{u}
+!    = {\cal D}_u
+!    - g \partder{\zeta}{x} + \int_z^{\zeta} \partder{b}{x} \,dz' 
+!    - \frac{1}{\tau_R(u)}(u-u_{obs})-C_fu\sqrt{u^2+v^2}
+!    \comma
 !  \end{equation}
+!  where $\dot{u}$ denotes the material derivative of $u$, and
+!  ${\cal D}_u$ is the sum of the turbulent and viscous transport
+!  terms modelled according to
+!  \begin{equation}
+!   \label{Du}
+!    {\cal D}_u 
+!    = \frstder{z} 
+!     \left( 
+!        \left( \nu_t + \nu \right) \partder{u}{z}
+!      \right) 
+!    \point
+!  \end{equation}
+!  In this equation, $\nu_t$ and $\nu$ are the turbulent and 
+!  molecular diffusivities of momentum, respectively. The computation
+!  of $\nu_t$ is discussed in \sect{sec:turbulenceIntro}.
 !
-!  Coriolis rotation is already carried out in coriolis().
-!     
-!  Pressure gradient is applied here only if surface slopes are
-!  directly given. If velocities at a certain height or the depth
-!  mean velocities are given, the pressure gradient is applied in
-!  pressuregradient(). 
-!
-!  Bottom friction is implemented implicitely. Implicit friction may indeed be
+!  Coriolis rotation is accounted for as described in 
+!  \sect{sec:coriolis}.
+!  The external pressure gradient (second term on right hand side)
+!  is applied here only if surface slopes are
+!  directly given. Otherwise, the gradient is computed as
+!   described in \sect{sec:extpressure}, see \cite{Burchard99}.
+!  The internal pressure gradient (third
+!  term on right hand side) is calculated in {\tt intpressure.F90}, see
+!  \sect{sec:intpressure}.
+!  The fourth term on the right hand side allows for nudging velocity
+!  to observed profiles with the relaxation time scale $\tau_R (u)$.
+!  This is useful for initialising 
+!  velocity profiles in case of significant inertial oscillations.
+!  Bottom friction is implemented implicitely using the fourth term
+!  on the right hand side. Implicit friction may  be
 !  applied on all levels in order to allow for inner friction terms such
-!  as seagrass friction.
+!  as seagrass friction (see \sect{sec:seagrass}).
 !
-!  Diffusion is numerically treated implicitly.
-!  The tri-diagonal matrix is solved then by a simplified Gauss elimination.
+!  Diffusion is numerically treated implicitly, see equations (\ref{sigmafirst})-
+!  (\ref{sigmalast}).
+!  The tri--diagonal matrix is solved then by a simplified Gauss elimination.
+!  Vertical advection is included for accounting for adaptive grids,
+!  see {\tt adaptivegrid.F90} in \sect{sec:adaptivegrid}.
 !
-!  The $u$-contribution to shear frequency squared is now also
+!  The $u$--contribution to shear frequency squared $M^2$ is now also
 !  computed here, using a new scheme which guarantees energy conservation
-!  of kinetic from mean to turbulent flow (see {\it Burchard} [1995]):
-!
-!  \begin{equation}\label{prod_diskret}
-!  \begin{array}{l}
-!  \!\!\!\!\!\!\!\!\!\!\!\!\!
-!  P_{j+1/2}= \nu_{j+1/2}
-!  \\ \\
-!  \!\!\!\!\!\!\!\!\!\!\!\!\!
-!  \times
-!  \frac12\bigg[
-!   \frac{\sigma(\hat u_{j+1}-\hat u_j)(\hat u_{j+1}-u_j)+(1-\sigma)
-!   (u_{j+1}-u_j)(u_{j+1}-\hat u_j)}{(z_{j+1/2}-z_{j-1/2})(z_{j+1}-z_j)}
-!  \\ \\
-!  \!\!\!\!\!\!\!\!\!\!\!\!\!
-!  \quad + \frac{\sigma(\hat u_{j+1}-\hat u_j)( u_{j+1}-\hat u_j)+(1-\sigma)
-!   (u_{j+1}-u_j)(\hat u_{j+1}-u_j)}{(z_{j+3/2}-z_{j+1/2})(z_{j+1}-z_j)}
-!  \bigg]
-!  \end{array}
-!  \end{equation}
-!
-!  where the indices $j-1/2=i-1$, $j+1/2=i$, $j+1=i+1$, $j+3/2=i+1$. This
-!  schemes corrects the slightly erroneous scheme used before.
+!  of kinetic energy from mean to turbulent flow, see \cite{Burchard2002}. 
+! With this method, the discretisation of the
+! $u$-contribution to shear squared $M^2$ is discretised as
+! \begin{equation}\label{shearsquared}
+! \left(\partial_z u\right)^2 \approx \frac{(\bar u_{j+1}-\bar u_j)
+! (\tilde u_{j+1}-\tilde u_j)}{(z_{j+1}-z_j)^2}
+! \end{equation}
+! where $\tilde u_j=\frac12(\hat u_j+u_j)$. The shear obtained from (\ref{shearsquared})
+! plus the $v$-contribution calculated in {\tt vequation.F90} is then used
+! for the calculation of the turbulence shear production, see equation (\ref{computeP}). 
 !
 ! !USES:
-   use meanflow, only : gravity,avmolu
-   use meanflow, only : h,u,v,avh,drag,SS
-   use observations, only : idpdx,dpdx
-#ifdef NUDGE_VEL
-   use observations, only : uprof
-#endif
+   use meanflow, only: gravity,avmolu
+   use meanflow, only: h,ho,u,v,w,avh,drag,SS,grid_method,w_grid
+   use observations, only: vel_relax_tau,vel_relax_ramp
+   use observations, only: w_adv_method,w_adv_discr	
+   use observations, only: idpdx,dpdx,uprof
    use mtridiagonal
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev,Method
-   REALTYPE, intent(in)	:: dt
-   REALTYPE, intent(in)	:: cnpar
-   REALTYPE, intent(in)	:: tx
-   REALTYPE, intent(in)	:: num(0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: nlev,Method
+   REALTYPE, intent(in)	               :: dt
+   REALTYPE, intent(in)	               :: cnpar
+   REALTYPE, intent(in)	               :: tx
+   REALTYPE, intent(in)	               :: num(0:nlev)
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding 
+!  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: uequation.F90,v $
-!  Revision 1.3  2001-05-31 12:00:52  gotm
-!  Correction in the calculation of the shear squared calculation - now according
-!  to Burchard 1995 (Ph.D. thesis).
+!  Revision 1.4  2003-03-10 08:50:07  gotm
+!  Improved documentation and cleaned up code
+!
+!  Revision 1.3  2001/05/31 12:00:52  gotm
+!  Correction in the calculation of the shear squared calculation
+!  --- now according to Burchard 1995 (Ph.D. thesis).
 !  Also some cosmetics and cleaning of Makefiles.
 !
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: i
-   REALTYPE		:: a,c
-   REALTYPE		:: uo(0:nlev)
-#ifdef NUDGE_VEL
-   REALTYPE		:: tau=900.
-#endif
+   integer                   :: i
+   REALTYPE                  :: a,c
+   REALTYPE                  :: uo(0:nlev)
+   REALTYPE                  :: tau=1.e15
+   REALTYPE,save             :: runtime= _ZERO_
+   logical                   :: surf_flux,bott_flux
 !
-!EOP
 !-----------------------------------------------------------------------
 !BOC
+   surf_flux=.false.
+   bott_flux=.false.
+	    
+   !  Advection step:
+   if (w_adv_method .ne. 0) then
+      call w_split_it_adv(nlev,dt,h,ho,u,w,w_adv_discr,surf_flux,bott_flux,1)
+   end if
+   if (grid_method .eq. 3) then
+      call w_split_it_adv(nlev,dt,h,ho,u,w_grid,w_adv_discr, &
+                          surf_flux,bott_flux,2)
+   end if
+
    avh=num+avmolu
    do i=2,nlev-1
       c    =2*dt*avh(i)  /(h(i)+h(i+1))/h(i)
@@ -113,7 +139,6 @@
       du(i)=u(i)+(1-cnpar)*(a*u(i-1)-(a+c)*u(i)+c*u(i+1))	!i  ,n
       du(i)=du(i)+dt*idpdx(i)
    end do
-
 
    c    =2*dt*avh(1)/(h(1)+h(2))/h(1)
    cu(1)=-cnpar*c
@@ -136,26 +161,38 @@
    end if 
 
    uo = u
-#ifdef NUDGE_VEL
-   do i=1,nlev
-      bu(i)=bu(i)+dt/tau
-      du(i)=du(i)+dt/tau*uprof(i)
-   end do
-#endif
+
+   if (vel_relax_tau .lt. 1.e15) then 
+      runtime=runtime+dt
+      if (runtime .lt. vel_relax_ramp) then
+         if (vel_relax_ramp .ge. 1.e15) then
+            tau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtime)
+	 else
+	    tau=vel_relax_tau
+	 end if   
+      else
+         tau=1.e15
+      end if
+      do i=1,nlev  
+         bu(i)=bu(i)+dt/tau
+         du(i)=du(i)+dt/tau*uprof(i)
+      end do
+   end if 
+
    call tridiagonal(nlev,1,nlev,u)
 
-!  Discretisation of vertiacal shear squared according to Burchard 1995
+!  Discretisation of vertical shear squared according to Burchard 2002
 !  in order to guarantee conservation of kinetic energy when transformed
 !  from mean kinetic energy to turbulent kinetic energy.
  
    do i=1,nlev-1
-      SS(i)=SS(i)+0.5*(                                              &
-                  (cnpar*(u(i+1)-u(i))*(u(i+1)-uo(i))+               &
-                  (1.-cnpar)*(uo(i+1)-uo(i))*(uo(i+1)-u(i)))         &
-                  /(0.5*(h(i+1)+h(i)))/h(i)                          &
-                 +(cnpar*(u(i+1)-u(i))*(uo(i+1)-u(i))+               &
-                  (1.-cnpar)*(uo(i+1)-uo(i))*(u(i+1)-uo(i)))         &
-                  /(0.5*(h(i+1)+h(i)))/h(i+1)                        &
+      SS(i)=SS(i)+0.5*( &
+                  (cnpar*(u(i+1)-u(i))*(u(i+1)-uo(i))+       &
+                  (1.-cnpar)*(uo(i+1)-uo(i))*(uo(i+1)-u(i))) &
+                  /(0.5*(h(i+1)+h(i)))/h(i)                  &
+                 +(cnpar*(u(i+1)-u(i))*(uo(i+1)-u(i))+       &
+                  (1.-cnpar)*(uo(i+1)-uo(i))*(u(i+1)-uo(i))) &
+                  /(0.5*(h(i+1)+h(i)))/h(i+1)                &
                   )
    end do 
 
@@ -165,6 +202,3 @@
    return
    end subroutine uequation 
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard and Karsten Bolding
