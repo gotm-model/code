@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: ncdfout.F90,v 1.2 2002-04-30 14:18:21 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -72,8 +72,11 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2002-04-30 14:18:21  gotm
+!  pgf90 does not accept time as variable name --> ti
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 !
 !EOP
@@ -386,7 +389,7 @@
 !
 ! !LOCAL VARIABLES:
    integer		:: iret,i
-   integer		:: time
+   integer		:: ti 
    REALTYPE		:: dum(0:nlev)
    REAL_4B		:: buoyp,buoym,dz
    REALTYPE		:: zz
@@ -410,15 +413,15 @@
 !  Storing the time - both the coordinate and later a time string.
    select case (ncdf_time_unit)
       case(0)                           ! seconds
-         time = secs
+         ti = secs
       case(1)                           ! minutes
-         time = secs/60
+         ti = secs/60
       case(2)                           ! hours
-         time = secs/3600
+         ti = secs/3600
       case default
-         time = secs
+         ti = secs
    end select
-   iret = store_data(ncid,time_id,T_SHAPE,1,iscalar=time)
+   iret = store_data(ncid,time_id,T_SHAPE,1,iscalar=ti)
 
 !  Time varying data : x,y,t 
    iret = store_data(ncid,zeta_id,XYT_SHAPE,1,scalar=zeta)
