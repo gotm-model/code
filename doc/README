@@ -1,5 +1,5 @@
 #
-#$Id: README,v 1.2 2003-03-10 09:42:23 gotm Exp $
+#$Id: README,v 1.3 2004-01-12 09:39:04 lars Exp $
 #
 
 Currently, there are three versions of the GOTM documentation with the
@@ -10,17 +10,17 @@ code_letter.filetype
 code_html.filetype
 
 "filetype" can be dvi, ps, or pdf. To produce these files type "make
-code_*.filetype" in this directory. For example, "make
-code_letter.pdf" will create the documention in "letter" format, which
-you can display with "acroread letter.pdf".
+"papertype_filetype" in this directory. For example, "make
+letter_pdf" will create the documention in US-letter format, which
+can be display with "acroread code_letter.pdf".
 
 The files "code_html.filetype" are without figures, because
-"latex2html" does not yet work for our figures.  Currently, only the
+"latex2html" does not yet work for our postscript-figures. Currently, only the
 LaTeX files "meanflowIntro.tex" and "utilIntro.tex" are
 different from the printed versions, with figures commented out.
 Also the figure on the titlepage is missing.
 
-To produce the html-code in ./code_html/ type "make html".
+To produce the html-code type "make html_web".
 To copy code on the server type "make html_scp".
 
 Note, that there is no reason any more to run things like "make doc"
