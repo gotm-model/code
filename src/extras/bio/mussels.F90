@@ -1,4 +1,4 @@
-!$Id: mussels.F90,v 1.1 2003-10-16 15:42:16 kbk Exp $
+!$Id: mussels.F90,v 1.2 2003-10-17 14:36:49 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -28,7 +28,10 @@
 !  Original author(s): Karsten Bolding, Marie Maar & Hans Burchard
 !
 !  $Log: mussels.F90,v $
-!  Revision 1.1  2003-10-16 15:42:16  kbk
+!  Revision 1.2  2003-10-17 14:36:49  kbk
+!  skeleton bio mass subroutine added
+!
+!  Revision 1.1  2003/10/16 15:42:16  kbk
 !  simple mussesl model implemented - filter only
 !
 !
@@ -38,6 +41,7 @@
    REALTYPE                  :: filter_rate=1.
    REALTYPE                  :: nmussels=1000. 
    REALTYPE                  :: rate
+   REALTYPE                  :: biomass=_ZERO_
 !EOP
 !-----------------------------------------------------------------------
 
@@ -143,6 +147,7 @@
                   bfl(n) = -flux*cc(n,1)
                end if
             end do
+            call mussel_biomass()
          case default
       end select
 
@@ -155,6 +160,40 @@
    end if
    return
    end subroutine do_mussels
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Mussels bio-mass 
+!
+! !INTERFACE:
+   subroutine mussel_biomass
+!
+! !DESCRIPTION:
+!  Marie - remember this!!!!
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding, Marie Maar & Hans Burchard
+!
+   logical, save             :: first=.true.
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   if (first) then
+      first=.false.      
+      STDERR "here we should do mussel bio-mass calculation ..."
+   end if
+
+!   biomass= et eller andet funktionsudtryk
+
+   return
+   end subroutine mussel_biomass
 !EOC
 
 !-----------------------------------------------------------------------
