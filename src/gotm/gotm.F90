@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.8 2003-04-01 17:01:00 hb Exp $
+!$Id: gotm.F90,v 1.9 2003-04-04 14:25:52 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -43,6 +43,7 @@
    use observations
    use output
    use time
+   use bio
    use mtridiagonal
    use eqstate
 
@@ -78,7 +79,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.8  2003-04-01 17:01:00  hb
+!  Revision 1.9  2003-04-04 14:25:52  hb
+!  First iteration of four-compartment geobiochemical model implemented
+!
+!  Revision 1.8  2003/04/01 17:01:00  hb
 !  Added infrastructure for geobiochemical model
 !
 !  Revision 1.7  2003/03/28 09:20:34  kbk
@@ -305,7 +309,7 @@
       call calc_sediment(nlev,dt)
 #endif
 #ifdef BIO
-      call calc_bio(nlev,dt)
+      call calc_bio(nlev,I_0,dt)
 #endif
       select case (turb_method)
          case (0)

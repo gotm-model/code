@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.5 2003-03-28 09:20:35 kbk Exp $
+!$Id: temperature.F90,v 1.6 2003-04-04 14:25:52 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -68,6 +68,7 @@
    use observations, only: dtdx,dtdy,t_adv,w_adv,w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau
    use observations, only: A,g1,g2
+   use bio, only: bioshade
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -83,7 +84,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.5  2003-03-28 09:20:35  kbk
+!  Revision 1.6  2003-04-04 14:25:52  hb
+!  First iteration of four-compartment geobiochemical model implemented
+!
+!  Revision 1.5  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/28 08:56:56  kbk
@@ -116,16 +120,16 @@
    surf_flux=.false.                     
    bott_flux=.false.
 
-   rad(nlev)=I_0/(rho_0*cp)
+   rad(nlev)=I_0
    z=0. 
    do i=nlev-1,0,-1 
       z=z+h(i+1)
-      rad(i)=I_0/(rho_0*cp)*(A*exp(-z/g1)+(1-A)*exp(-z/g2))
+      rad(i)=I_0*(A*exp(-z/g1)+(1-A)*exp(-z/g2))! *bioshade(i)
       avh(i)=nuh(i)+avmolT 
    end do
 
    do i=1,nlev
-      Qsour(i)=(rad(i)-rad(i-1))/h(i) 
+      Qsour(i)=(rad(i)-rad(i-1))/(rho_0*cp)/h(i) 
       if (t_adv) Qsour(i)=Qsour(i)-u(i)*dtdx(i)-v(i)*dtdy(i) 
    end do
 

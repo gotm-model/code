@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.9 2003-04-01 17:01:00 hb Exp $
+#$Id: Rules.make,v 1.10 2003-04-04 14:25:51 hb Exp $
 
 SHELL   = /bin/sh
 
@@ -55,8 +55,9 @@ endif
 
 # Top of this version of GOTM.
 ifndef GOTMDIR
-GOTMDIR  := $(HOME)/gotm
+GOTMDIR  := $(HOME)/gotm-3.1.x
 endif
+GOTMDIR  := $(HOME)/gotm-3.1.x
 
 CPP	= /lib/cpp
 
