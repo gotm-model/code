@@ -1,4 +1,4 @@
-!$Id: cmue_ma.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
+!$Id: cmue_ma.F90,v 1.5 2003-03-28 09:38:54 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -37,7 +37,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_ma.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2003-03-28 09:38:54  kbk
+!  removed tabs
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/10 09:02:04  gotm
@@ -51,8 +54,8 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: i
-   REALTYPE		:: Ri,Prandtl
+   integer                   :: i
+   REALTYPE                  :: Ri,Prandtl
 !
 !-----------------------------------------------------------------------
 !BOC
