@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.8 2003-10-16 15:42:16 kbk Exp $
+!$Id: bio.F90,v 1.9 2003-10-28 10:22:45 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -23,6 +23,8 @@
    use bio_iow, only : init_bio_iow,init_var_iow,var_info_iow
    use bio_iow, only : light_iow,surface_fluxes_iow
 
+   use bio_sed, only : init_bio_sed,init_var_sed,var_info_sed
+
    use mussels, only : init_mussels, do_mussels, end_mussels
    use mussels, only : mussels_calc
 
@@ -38,7 +40,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.8  2003-10-16 15:42:16  kbk
+!  Revision 1.9  2003-10-28 10:22:45  hb
+!  added support for sedimentation only 1 compartment bio model
+!
+!  Revision 1.8  2003/10/16 15:42:16  kbk
 !  simple mussesl model implemented - filter only
 !
 !  Revision 1.7  2003/10/14 08:00:09  hb
@@ -148,6 +153,16 @@
 
 	 call var_info_iow(numc,var_names,var_units,var_long)
 
+      case (3)  ! The simple sedimentation model
+
+         call init_bio_sed(namlst,'bio_sed.inp',unit,numc)
+
+         call allocate_memory(numc,nlev)
+
+         call init_var_sed(numc,nlev,cc,ws,mussels_inhale)
+
+	 call var_info_sed(numc,var_names,var_units,var_long)
+
       case default
          stop "bio: no valid biomodel specified in bio.inp !"
       end select
@@ -252,6 +267,7 @@
          case (1)
          case (2)
             call surface_fluxes_iow(numc,nlev,cc,t(nlev),sfl)
+         case (3)
       end select
 
       if (mussels_calc) then
@@ -275,6 +291,7 @@
                call light_npzd(numc,nlev,h,rad,cc,par,bioshade)
             case (2)
                call light_iow(numc,nlev,h,rad,cc,par,bioshade)
+            case (3)
          end select
 
          call ode_solver(ode_method,numc,nlev,dt_eff,cc,t)

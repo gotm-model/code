@@ -1,4 +1,4 @@
-!$Id: process_model.F90,v 1.2 2003-09-16 12:11:24 hb Exp $
+!$Id: process_model.F90,v 1.3 2003-10-28 10:22:45 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -15,6 +15,7 @@
    use bio_template, only: do_bio_template
    use bio_npzd, only: do_bio_npzd
    use bio_iow, only: do_bio_iow
+   use bio_sed, only: do_bio_sed
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -41,6 +42,8 @@
          call do_bio_npzd(first,numc,nlev,cc,pp,dd,par,I_0)
       case (2)
          call do_bio_iow(first,numc,nlev,cc,pp,dd,t,par,I_0)
+      case (3)
+         call do_bio_sed(first,numc,nlev,cc,pp,dd)
       case default
          stop "bio: no valid biomodel specified in bio.inp !"
    end select
