@@ -1,4 +1,4 @@
-!$Id: uequation.F90,v 1.2 2001-03-05 13:58:27 gotm Exp $
+!$Id: uequation.F90,v 1.3 2001-05-31 12:00:52 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -33,21 +33,28 @@
 !
 !  The $u$-contribution to shear frequency squared is now also
 !  computed here, using a new scheme which guarantees energy conservation
-!  of kinetic from mean to turbulent flow:
+!  of kinetic from mean to turbulent flow (see {\it Burchard} [1995]):
 !
 !  \begin{equation}\label{prod_diskret}
 !  \begin{array}{l}
-!  (S^2)_{j+1/2}=
-!  \frac12\left[
-!  \frac{\bar u_{j+1}-\tilde u_{j}}{z_{j+1/2}-z_{j-1/2}}+
-!  \frac{\tilde u_{j+1}-\bar u_{j}}{z_{j+3/2}-z_{j+1/2}}
-!  \right]
-!  \frac{\bar u_{j+1}-\bar u_j}
-!  {z_{j+1}-z_j},
+!  \!\!\!\!\!\!\!\!\!\!\!\!\!
+!  P_{j+1/2}= \nu_{j+1/2}
+!  \\ \\
+!  \!\!\!\!\!\!\!\!\!\!\!\!\!
+!  \times
+!  \frac12\bigg[
+!   \frac{\sigma(\hat u_{j+1}-\hat u_j)(\hat u_{j+1}-u_j)+(1-\sigma)
+!   (u_{j+1}-u_j)(u_{j+1}-\hat u_j)}{(z_{j+1/2}-z_{j-1/2})(z_{j+1}-z_j)}
+!  \\ \\
+!  \!\!\!\!\!\!\!\!\!\!\!\!\!
+!  \quad + \frac{\sigma(\hat u_{j+1}-\hat u_j)( u_{j+1}-\hat u_j)+(1-\sigma)
+!   (u_{j+1}-u_j)(\hat u_{j+1}-u_j)}{(z_{j+3/2}-z_{j+1/2})(z_{j+1}-z_j)}
+!  \bigg]
 !  \end{array}
 !  \end{equation}
 !
-!  where the indices $j-1/2=i-1$, $j+1/2=i$, $j+1=i+1$, $j+3/2=i+1$.
+!  where the indices $j-1/2=i-1$, $j+1/2=i$, $j+1=i+1$, $j+3/2=i+1$. This
+!  schemes corrects the slightly erroneous scheme used before.
 !
 ! !USES:
    use meanflow, only : gravity,avmolu
@@ -74,17 +81,16 @@
 !  Original author(s): Hans Burchard & Karsten Bolding 
 !
 !  $Log: uequation.F90,v $
-!  Revision 1.2  2001-03-05 13:58:27  gotm
-!  preparing for release
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
+!  Revision 1.3  2001-05-31 12:00:52  gotm
+!  Correction in the calculation of the shear squared calculation - now according
+!  to Burchard 1995 (Ph.D. thesis).
+!  Also some cosmetics and cleaning of Makefiles.
 !
 !
 ! !LOCAL VARIABLES:
    integer		:: i
    REALTYPE		:: a,c
-   REALTYPE		:: uo(0:nlev),ut(0:nlev),um(0:nlev)
+   REALTYPE		:: uo(0:nlev)
 #ifdef NUDGE_VEL
    REALTYPE		:: tau=900.
 #endif
@@ -107,6 +113,7 @@
       du(i)=u(i)+(1-cnpar)*(a*u(i-1)-(a+c)*u(i)+c*u(i+1))	!i  ,n
       du(i)=du(i)+dt*idpdx(i)
    end do
+
 
    c    =2*dt*avh(1)/(h(1)+h(2))/h(1)
    cu(1)=-cnpar*c
@@ -137,12 +144,19 @@
 #endif
    call tridiagonal(nlev,1,nlev,u)
 
-   um=cnpar*u +(1.-cnpar)*uo
-   ut=cnpar*uo+(1.-cnpar)*u
-
+!  Discretisation of vertiacal shear squared according to Burchard 1995
+!  in order to guarantee conservation of kinetic energy when transformed
+!  from mean kinetic energy to turbulent kinetic energy.
+ 
    do i=1,nlev-1
-      SS(i)=SS(i)+0.5*(um(i+1)-um(i))/(0.5*(h(i+1)+h(i))) *          &
-                     ((um(i+1)-ut(i))/h(i) + (ut(i+1)-um(i))/h(i+1))
+      SS(i)=SS(i)+0.5*(                                              &
+                  (cnpar*(u(i+1)-u(i))*(u(i+1)-uo(i))+               &
+                  (1.-cnpar)*(uo(i+1)-uo(i))*(uo(i+1)-u(i)))         &
+                  /(0.5*(h(i+1)+h(i)))/h(i)                          &
+                 +(cnpar*(u(i+1)-u(i))*(uo(i+1)-u(i))+               &
+                  (1.-cnpar)*(uo(i+1)-uo(i))*(u(i+1)-uo(i)))         &
+                  /(0.5*(h(i+1)+h(i)))/h(i+1)                        &
+                  )
    end do 
 
    SS(0)=SS(1)

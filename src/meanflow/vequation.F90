@@ -1,4 +1,4 @@
-!$Id: vequation.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: vequation.F90,v 1.2 2001-05-31 12:00:52 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -59,14 +59,16 @@
 !  Original author(s): Hans Burchard & Karsten Bolding 
 !
 !  $Log: vequation.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2001-05-31 12:00:52  gotm
+!  Correction in the calculation of the shear squared calculation - now according
+!  to Burchard 1995 (Ph.D. thesis).
+!  Also some cosmetics and cleaning of Makefiles.
 !
 !
 ! !LOCAL VARIABLES:
    integer		:: i
    REALTYPE		:: a,c
-   REALTYPE		:: vo(0:nlev),vt(0:nlev),vm(0:nlev)
+   REALTYPE		:: vo(0:nlev)
 #ifdef NUDGE_VEL
    REALTYPE		:: tau=900.
 #endif
@@ -120,12 +122,19 @@
 #endif
    call tridiagonal(nlev,1,nlev,v)
 
-   vm=cnpar*v +(1.-cnpar)*vo 
-   vt=cnpar*vo+(1.-cnpar)*v 
+!  Discretisation of vertiacal shear squared according to Burchard 1995
+!  in order to guarantee conservation of kinetic energy when transformed
+!  from mean kinetic energy to turbulent kinetic energy.
 
    do i=1,nlev-1
-      SS(i)=SS(i)+0.5*(vm(i+1)-vm(i))/(0.5*(h(i+1)+h(i))) *          &
-                     ((vm(i+1)-vt(i))/h(i) + (vt(i+1)-vm(i))/h(i+1))
+      SS(i)=SS(i)+0.5*(                                              &
+                  (cnpar*(v(i+1)-v(i))*(v(i+1)-vo(i))+               &
+                  (1.-cnpar)*(vo(i+1)-vo(i))*(vo(i+1)-v(i)))         &
+                  /(0.5*(h(i+1)+h(i)))/h(i)                          &
+                 +(cnpar*(v(i+1)-v(i))*(vo(i+1)-v(i))+               &
+                  (1.-cnpar)*(vo(i+1)-vo(i))*(v(i+1)-vo(i)))         &
+                  /(0.5*(h(i+1)+h(i)))/h(i+1)                        &  
+                  )
    end do
 
    SS(0)=SS(1)

@@ -1,4 +1,4 @@
-!$Id: main.F90,v 1.1 2001-02-12 15:55:59 gotm Exp $
+!$Id: main.F90,v 1.2 2001-05-31 12:00:52 gotm Exp $
 #include<cppdefs.h>
 !-----------------------------------------------------------------------
 !BOI
@@ -71,8 +71,13 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: main.F90,v $
-!  Revision 1.1  2001-02-12 15:55:59  gotm
-!  Initial revision
+!  Revision 1.2  2001-05-31 12:00:52  gotm
+!  Correction in the calculation of the shear squared calculation - now according
+!  to Burchard 1995 (Ph.D. thesis).
+!  Also some cosmetics and cleaning of Makefiles.
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:59  gotm
+!  initial import into CVS
 !
 !
 ! !LOCAL VARIABLES:
@@ -107,3 +112,4 @@
 
 !-----------------------------------------------------------------------
 !Copyright (C) 2000 - Karsten Bolding & Hans Burchard
+!-----------------------------------------------------------------------

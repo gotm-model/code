@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.2 2001-03-05 13:58:27 gotm Exp $
+#$Id: Makefile,v 1.3 2001-05-31 12:00:52 gotm Exp $
 #
 # Makefile to build the the Dynamics library - libmeanflow.a
 #
@@ -22,7 +22,6 @@ lightabsorbtion.F90	\
 stratification.F90	\
 buoyancy.F90		\
 convectiveadjustment.F90\
-analytical_profile.F90	\
 production.F90
 
 MOD	= \

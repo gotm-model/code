@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.2 2001-03-06 13:58:37 gotm Exp $
+#$Id: Makefile,v 1.3 2001-05-31 12:00:52 gotm Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -63,10 +63,10 @@ bkup: distclean
 	tar -czvf ../../backups/bkup.`date +%y%m%d%H`_`cat ../VERSION`.tar.gz *
 
 clean:
-	$(RM) -f main.o $(OBJ)
 
 realclean: clean
-	$(RM) -f ../modules/$(FORTRAN_COMPILER)/*.mod ../lib/$(FORTRAN_COMPILER)/lib*$(buildtype).a
+	$(RM) ../modules/$(FORTRAN_COMPILER)/*.{m,mod} 
+	$(RM) ../lib/$(FORTRAN_COMPILER)/lib*$(buildtype).a
 ifdef SUBDIRS
 	set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i $@; done
 endif
