@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.1 2001-02-12 15:55:57 gotm Exp $
+#$Id: Makefile,v 1.2 2001-03-06 13:58:37 gotm Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -25,7 +25,9 @@ all: ../include/version.h $(EXEC)
 
 ../include/version.h: ../VERSION
 	$(MAKE) realclean
-	@echo "#define RELEASE \"`cat ../VERSION`\"" > ../include/version.h
+	@echo "#ifndef RELEASE" > ../include/version.h
+	@echo "#define RELEASE \"`cat ../VERSION`\"" >> ../include/version.h
+	@echo "#endif" >> ../include/version.h
 
 $(EXEC): makedirs subdirs features gotmlib 
 	$(FC) -o $@ $(LDFLAGS) -lgotm$(buildtype) $(ALL_LIBS)
