@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.2 2001-06-13 07:40:39 gotm Exp $
+!$Id: gotm.F90,v 1.3 2001-11-18 15:58:02 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -8,23 +8,23 @@
 ! !INTERFACE:
    module gotm
 !
-! !DESCRIPTION: 
+! !DESCRIPTION:
 !  This is 'where it all happens'. This module provides routines for
 !  initializing, integrating and finishing \em{GOTM}.
 !  Units in Fortran is really anoying - since you have to specify a unit.
 !  We have chosen the following method - which is far from optimal - and which
-!  we might change in the future when we have a better alternative. 
+!  we might change in the future when we have a better alternative.
 !  \begin{itemize}
 !     \item unit=10 is reserved for reading namelists.
 !     \item units 20-29 is reserved for the \em{airsea} module.
 !     \item units 30-39 is reserved for the \em{meanflow} module.
 !     \item units 40-49 is reserved for the \em{turbulence} module.
 !     \item units 50-59 is reserved for the \em{output} module.
-!     \item units 60-69 is reserved for the extra modules and will be passed 
+!     \item units 60-69 is reserved for the extra modules and will be passed
 !           from this module - see SEDIMENT or SEAGRASS for an example.
 !     \item units 70- is \em{not} reserved and can be used as you wish.
 !  \end{itemize}
-!  The right solution is ofcourse that you ask the system to give you 
+!  The right solution is ofcourse that you ask the system to give you
 !  a file handle and the system keeps track of resources - like in C and
 !  also used in \em{NetCDF}.
 !
@@ -62,7 +62,7 @@
    REALTYPE			:: dt
    REALTYPE			:: cnpar
    integer			:: buoy_method
-   
+
 !  Station description.
    character(len=80)		:: name
    REALTYPE			:: latitude,longitude
@@ -80,7 +80,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.2  2001-06-13 07:40:39  gotm
+!  Revision 1.3  2001-11-18 15:58:02  gotm
+!  Vertical grid can now be read from file
+!
+!  Revision 1.2  2001/06/13 07:40:39  gotm
 !  Lon, lat was hardcoded in meteo.F90 - now passed via init_meteo()
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:59  gotm
@@ -99,7 +102,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Initialize GOTM. 
+! !IROUTINE: Initialize GOTM.
 !
 ! !INTERFACE:
    subroutine init_gotm()
@@ -157,7 +160,7 @@
 !  From here - each init_? is responsible for opening and closing the
 !  namlst - unit.
    call init_meanflow(namlst,'gotmmean.inp',nlev,latitude)
-   call updategrid(nlev,ddu,ddl,zeta)
+   call updategrid(nlev,zeta)
    call init_turbulence(namlst,'gotmturb.inp',nlev)
    call init_observations(namlst,'obs.inp',julianday,secondsofday,depth,nlev,z,h)
    s = sprof
@@ -194,19 +197,19 @@
    stop 'init_gotm'
 96 FATAL 'I could not read the "turbulence" namelist'
    stop 'init_gotm'
-   end subroutine init_gotm 
+   end subroutine init_gotm
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: The actual model integration. 
+! !IROUTINE: The actual model integration.
 !
 ! !INTERFACE:
    subroutine time_loop()
 !
 ! !DESCRIPTION:
-!  Please actual integration is done in this routine. The relevant 
+!  Please actual integration is done in this routine. The relevant
 !  time-dependent routines are called in a do-loop.
 !
 ! !USES:
@@ -247,7 +250,7 @@
       ty = ty/rho_0
 
 !     meanflow integration starts
-      call updategrid(nlev,ddu,ddl,zeta)
+      call updategrid(nlev,zeta)
       call coriolis(nlev,dt)
       SS = 0.
       call uequation(nlev,dt,cnpar,tx,num,PressMethod)
@@ -289,7 +292,7 @@
 
       call integrated_fluxes(dt)
 
-!kbk - next version      call heat_content() 
+!kbk - next version      call heat_content()
 
 !     Write out variances
       if(variances) then
@@ -305,7 +308,7 @@
    STDERR LINE
 
    return
-   end subroutine time_loop 
+   end subroutine time_loop
 !EOC
 
 !-----------------------------------------------------------------------
@@ -343,7 +346,7 @@
    call close_output()
 
    return
-   end subroutine clean_up 
+   end subroutine clean_up
 !EOC
 
 !-----------------------------------------------------------------------

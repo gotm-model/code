@@ -1,15 +1,15 @@
-!$Id: meanflow.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: meanflow.F90,v 1.2 2001-11-18 15:58:02 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: A dynamical 1D model (ex. turbulence). 
+! !MODULE: A dynamical 1D model (ex. turbulence).
 !
 ! !INTERFACE:
-   module meanflow 
+   module meanflow
 !
-! !DESCRIPTION: 
-!  This module provides all variables necessary for the meanflow 
+! !DESCRIPTION:
+!  This module provides all variables necessary for the meanflow
 !  calculation and also make the proper initializations.
 !
 ! !USES:
@@ -24,11 +24,11 @@
 ! !PUBLIC DATA MEMBERS:
    REALTYPE, public, dimension(:), allocatable	:: z,h,ho
    REALTYPE, public, dimension(:), allocatable	:: u,v
-   REALTYPE, public, dimension(:), allocatable	:: fric,drag 
+   REALTYPE, public, dimension(:), allocatable	:: fric,drag
    REALTYPE, public, dimension(:), allocatable	:: T,S
    REALTYPE, public, dimension(:), allocatable	:: NN,SS
    REALTYPE, public, dimension(:), allocatable	:: P,B
-   REALTYPE, public, dimension(:), allocatable	:: buoy,rad,xP 
+   REALTYPE, public, dimension(:), allocatable	:: buoy,rad,xP
    REALTYPE, public, dimension(:), allocatable	:: avh
 !  depth0 is read from the 'station' namelist.
    REALTYPE, public	:: depth0=0.
@@ -43,13 +43,16 @@
    REALTYPE, public	:: charnok_val=1400.
    REALTYPE, public	:: ddu=0.
    REALTYPE, public	:: ddl=0.
+   integer, public	:: grid_method=1
+   character(LEN=PATH_MAX), public :: grid_file='grid.dat'
    REALTYPE, public	:: gravity=9.81
    REALTYPE, public	:: rho_0=1027.
    REALTYPE, public	:: cp=3985.
    REALTYPE, public	:: avmolu=1.3e-6
    REALTYPE, public	:: avmolT=1.4e-7
    REALTYPE, public	:: avmolS=1.1e-9
-   integer, public		:: MaxItz0b=10
+   integer, public	:: MaxItz0b=10
+   logical, public	:: no_shear=.false.
 
    REALTYPE, public	:: depth
    REALTYPE, public 	:: z0b,z0s
@@ -62,11 +65,14 @@
    REALTYPE, parameter	:: omega=2*pi/86400.
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard 
+!  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-18 15:58:02  gotm
+!  Vertical grid can now be read from file
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
 !
 !
 ! !BUGS
@@ -107,9 +113,9 @@
 !
 ! !LOCAL VARIABLES:
    integer		:: rc
-   namelist /meanflow/  h0b,z0s_min,charnok,charnok_val,ddu,ddl,        & 
-                        gravity,rho_0,cp,                               &
-                        avmolu,avmolT,avmolS,MaxItz0b
+   namelist /meanflow/  h0b,z0s_min,charnok,charnok_val,ddu,ddl,        &
+                        grid_method,grid_file,gravity,rho_0,cp,         &
+                        avmolu,avmolT,avmolS,MaxItz0b,no_shear
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -203,12 +209,12 @@
 81 FATAL 'I could not read "meanflow" namelist'
    stop 'init_meanflow'
 
-   end subroutine init_meanflow 
+   end subroutine init_meanflow
 !EOC
 
 !-----------------------------------------------------------------------
 
-   end module meanflow 
+   end module meanflow
 
 !-----------------------------------------------------------------------
 !Copyright (C) 2000 - Karsten Bolding & Hans Burchard
