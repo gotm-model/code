@@ -1,4 +1,4 @@
-#$Id: Makefile.stable_netcdf,v 1.6 2003-03-10 10:10:13 gotm Exp $
+#$Id: Makefile.stable_netcdf,v 1.7 2003-03-28 09:27:56 kbk Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -18,12 +18,17 @@ NETCDFLIB       = /usr/lib/libnetcdf.a
 #FFLAGS = -f77 -I$(NETCDFINCDIR)
 
 #Fujitsu F95 compiler for Linux
-FC     = f95
-FFLAGS = -Am -fw -I$(NETCDFINCDIR)
+#FC     = f95
+#FFLAGS = -Am -fw -I$(NETCDFINCDIR)
 
 #DECFOR F95 compiler for OSF1 - alpha
 #FC    = f95
 #FFLAGS = -I$(NETCDFINCDIR)
+
+#Intel Fortran  compiler for 
+FC    = ifc
+FFLAGS = -I$(NETCDFINCDIR)
+
 
 MODULES	= \
 libutil.a(time.o)			\
