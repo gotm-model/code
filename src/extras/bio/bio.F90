@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.3 2003-04-05 07:01:41 kbk Exp $
+!$Id: bio.F90,v 1.4 2003-04-07 09:28:23 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.3  2003-04-05 07:01:41  kbk
+!  Revision 1.4  2003-04-07 09:28:23  kbk
+!  all protex tags needs to end with a :
+!
+!  Revision 1.3  2003/04/05 07:01:41  kbk
 !  moved bioshade variable to meanflow - to compile properly
 !
 !  Revision 1.2  2003/04/04 14:25:52  hb
@@ -451,12 +454,12 @@
 !
 ! !IROUTINE: Michaelis-Menten formulation for nutrient uptake
 !
-! !INTERFACE
+! !INTERFACE:
    REALTYPE function fnp(n,p,par,iopt)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -478,12 +481,12 @@
 !
 ! !IROUTINE: Ivlev formulation for zooplankton grazing on phytoplankton
 !
-! !INTERFACE
+! !INTERFACE:
    REALTYPE function fpz(p,z)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -536,7 +539,6 @@
 ! !DESCRIPTION:
 !  Here, storing of the sediment profiles to an ascii or a
 !  netCDF file is managed.
-
 !
 ! !USES:
    use output, only: out_fmt
