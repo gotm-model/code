@@ -1,12 +1,6 @@
-#$Id: Rules.make,v 1.10 2003-04-04 14:25:51 hb Exp $
+#$Id: Rules.make,v 1.11 2003-04-05 06:56:48 kbk Exp $
 
 SHELL   = /bin/sh
-
-VERSION = 2
-PATCHLEVEL = 3
-SUBLEVEL = 1
-
-VER     = $(VERSION).$(PATCHLEVEL).$(SUBLEVEL)
 
 # The compilation mode is obtained from $COMPILATION_MODE - 
 # default production - else debug or profiling
@@ -55,9 +49,8 @@ endif
 
 # Top of this version of GOTM.
 ifndef GOTMDIR
-GOTMDIR  := $(HOME)/gotm-3.1.x
+GOTMDIR  := $(HOME)/gotm
 endif
-GOTMDIR  := $(HOME)/gotm-3.1.x
 
 CPP	= /lib/cpp
 
