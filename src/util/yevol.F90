@@ -1,4 +1,4 @@
-!$Id: yevol.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: yevol.F90,v 1.2 2001-11-27 19:49:48 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,23 +40,21 @@
 !  Original author(s): Pierre-Philippe Mathieu
 !
 !  $Log: yevol.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-27 19:49:48  gotm
+!  Added higher order advection via w_split_it_adv()
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
 !
 ! !LOCAL VARIABLES:
    integer 		:: i,Method
-   REALTYPE  		:: Qadv(0:N)
    REALTYPE 		:: a,c
-! 
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  Advection term: Qadv
+!  Advection step: 
    if (Method .ne. 0) then 
-      call advection(N,dt,h,Y,w,Qadv,Method,surf_flux,bott_flux)
-   else
-      Qadv=0.
+      call w_split_it_adv(N,dt,h,Y,w,Method,surf_flux,bott_flux)
    end if
 
 !  Array of Diffusion/Advection terms + sources 
@@ -68,7 +66,7 @@
       cu(i)=-cnpar*c                                 		!i+1,n+1
       au(i)=-cnpar*a                                 		!i-1,n+1
       bu(i)=1-au(i)-cu(i)                            		!i  ,n+1
-      du(i)=Y(i)+dt*(Qsour(i)+Qadv(i))               &		!i  ,n
+      du(i)=Y(i)+dt*Qsour(i)                        &		!i  ,n
             +(1-cnpar)*(a*Y(i-1)-(a+c)*Y(i)+c*Y(i+1))
     end do
 
@@ -78,7 +76,7 @@
       a      =2*dt*avh(N-1)/(h(N)+h(N-1))/h(N)
       au(N)=-cnpar*a
       bu(N)=1-au(N)
-      du(N)=Y(N)+dt*(Qsour(N)+Qadv(N)-Yup/h(N))+(1-cnpar)*a*(Y(N-1)-Y(N))
+      du(N)=Y(N)+dt*(Qsour(N)-Yup/h(N))+(1-cnpar)*a*(Y(N-1)-Y(N))
    else if (Bcup.eq.2) then                    !BC Dirichlet
       au(N)=0.
       bu(N)=1.
@@ -91,7 +89,7 @@
       c    =2*dt*avh(1)/(h(1)+h(2))/h(1)
       cu(1)=-cnpar*c 
       bu(1)=1-cu(1)
-      du(1)=Y(1)+dt*(Qsour(1)+Qadv(1)+Ydw/h(1))+(1-cnpar)*c*(Y(2)-Y(1))
+      du(1)=Y(1)+dt*(Qsour(1)+Ydw/h(1))+(1-cnpar)*c*(Y(2)-Y(1))
    else if (Bcdw.eq.2) then				!BC Dirichlet
       cu(1)=0.
       bu(1)=1.
