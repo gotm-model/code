@@ -1,4 +1,4 @@
-!$Id: bio_npzd.F90,v 1.2 2003-10-16 15:42:16 kbk Exp $
+!$Id: bio_npzd.F90,v 1.3 2004-06-29 08:04:03 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_npzd.F90,v $
-!  Revision 1.2  2003-10-16 15:42:16  kbk
+!  Revision 1.3  2004-06-29 08:04:03  hb
+!  small changes
+!
+!  Revision 1.2  2003/10/16 15:42:16  kbk
 !  simple mussesl model implemented - filter only
 !
 !  Revision 1.1  2003/07/23 12:27:31  hb
@@ -76,7 +79,7 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_bio_npzd(namlst,fname,unit,numc)
+   subroutine init_bio_npzd(namlst,fname,unit,numc,numcc)
 !
 ! !DESCRIPTION:
 !  Here, the bio namelist {\tt bio_npzd.inp} is read and memory is
@@ -91,7 +94,7 @@
    integer,          intent(in)   :: unit
 
 ! !OUTPUT PARAMETERS:
-   integer,          intent(out)   :: numc
+   integer,          intent(out)   :: numc,numcc
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -110,6 +113,8 @@
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_npzd_nml,err=99)
    close(namlst)
+
+   numcc=numc
 
 !  Conversion from day to second
    rpn  = rpn  /secs_pr_day
@@ -389,12 +394,15 @@
    pp = _ZERO_
    dd = _ZERO_
 
+   write(90,*) par(105),I_min
+
    do ci=1,nlev
       if (par(ci) .ge. I_min) then
          rpd=rpdu
       else
          rpd=rpdl
       end if
+
    
       dd(n,p,ci)=fnp(cc(n,ci),cc(p,ci),par(ci),iopt)  ! snp
       dd(p,z,ci)=fpz(cc(p,ci),cc(z,ci))               ! spz

@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.5 2004-05-28 15:52:13 hb Exp $
+!$Id: bio_iow.F90,v 1.6 2004-06-29 08:04:03 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.5  2004-05-28 15:52:13  hb
+!  Revision 1.6  2004-06-29 08:04:03  hb
+!  small changes
+!
+!  Revision 1.5  2004/05/28 15:52:13  hb
 !  small change for fluff
 !
 !  Revision 1.4  2004/05/28 13:24:49  hb
@@ -501,6 +504,8 @@
 
    select case (nutrient_flux_method)
 
+!  NOTE: Positive fluxes into the sea surface must have negative sign !
+
    case (0) ! constant
 
       sfl(po)=-sfl_po /secs_pr_day
@@ -531,9 +536,9 @@
       end if
 !     Do the time interpolation
       tfrac  = time_diff(jul,secs,jul1,secs1)
-      sfl(ni) = - (obs1(1) + tfrac*alpha(1)) /secs_pr_day
-      sfl(am) = - (obs1(2) + tfrac*alpha(2)) /secs_pr_day
-      sfl(po) = - (obs1(3) + tfrac*alpha(3)) /secs_pr_day
+      sfl(ni) =  -1.*(obs1(1) + tfrac*alpha(1)) /secs_pr_day
+      sfl(am) =  -1.*(obs1(2) + tfrac*alpha(2)) /secs_pr_day
+      sfl(po) =  -10.*(obs1(3) + tfrac*alpha(3)) /secs_pr_day
 
    case default
       stop "bio: no valid nutrient_flux_method specified in bio_iow.inp !"
