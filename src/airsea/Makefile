@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.2 2003-03-10 08:33:20 gotm Exp $
+#$Id: Makefile,v 1.3 2004-01-12 08:49:22 lars Exp $
 #
 # Makefile to build the the airsea interaction library - libairsea.a
 #
@@ -22,11 +22,12 @@ $(OBJ): $(MOD)
 tst_airsea: $(MOD)
 	$(FC) -o tst_airsea tst_airsea.F90 $(MOD)
 
-doc:
+doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../doc/airsea.tex 
+	touch doc
 
 clean:
-	$(RM) -f ${LIB} $(MODDIR)/airsea.{m,mod}
+	$(RM) -f ${LIB} $(MODDIR)/airsea.{m,mod} doc
 
 realclean: clean
 	$(RM) -f *.o *~
