@@ -1,9 +1,9 @@
-!$Id: cmue_ma.F90,v 1.5 2003-03-28 09:38:54 kbk Exp $
+!$Id: cmue_ma.F90,v 1.6 2004-08-18 12:53:07 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: \cite{MunkAnderson48} stability func. 
+! !ROUTINE: The \cite{MunkAnderson48} stability function\label{sec:cmueMA} 
 ! 
 ! !INTERFACE:
    subroutine cmue_ma(nlev)
@@ -21,8 +21,8 @@
 !      \comma
 !    \end{array}
 !  \end{equation}
-!  where where $Ri$ is the gradient Richardson--number and $Pr_t^0$
-! is the turbulent Prandtl--number for $Ri \rightarrow 0$. $Pr_t^0$ 
+!  where where $Ri$ is the gradient Richardson-number and $Pr_t^0$
+! is the turbulent Prandtl-number for $Ri \rightarrow 0$. $Pr_t^0$ 
 ! and the fixed value $c_\mu^0$ have to be set in {\tt gotmturb.inp}.
 !
 ! !USES:
@@ -37,7 +37,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_ma.F90,v $
-!  Revision 1.5  2003-03-28 09:38:54  kbk
+!  Revision 1.6  2004-08-18 12:53:07  lars
+!  updated documentation
+!
+!  Revision 1.5  2003/03/28 09:38:54  kbk
 !  removed tabs
 !
 !  Revision 1.4  2003/03/28 09:20:35  kbk
@@ -71,7 +74,7 @@
    end do
 
    return
-   end subroutine
+   end subroutine cmue_ma
 !EOC
 
 !-----------------------------------------------------------------------

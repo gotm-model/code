@@ -1,9 +1,9 @@
-!$Id: fk_craig.F90,v 1.2 2003-03-28 09:20:35 kbk Exp $
+!$Id: fk_craig.F90,v 1.3 2004-08-18 12:50:57 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: TKE flux from wave--breaking \label{sec:fkCraig}
+! !ROUTINE: TKE flux from wave-breaking\label{sec:fkCraig}
 ! 
 ! !INTERFACE:
    REALTYPE  function fk_craig(u_tau)
@@ -32,7 +32,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: fk_craig.F90,v $
-!  Revision 1.2  2003-03-28 09:20:35  kbk
+!  Revision 1.3  2004-08-18 12:50:57  lars
+!  updated documentation
+!
+!  Revision 1.2  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.1  2003/03/10 09:00:36  gotm

@@ -1,9 +1,9 @@
-!$Id: cmue_sg.F90,v 1.3 2003-03-28 09:20:35 kbk Exp $
+!$Id: cmue_sg.F90,v 1.4 2004-08-18 12:53:07 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: \cite{SchumannGerz95} stability funct. \label{sec:sg} 
+! !ROUTINE: \cite{SchumannGerz95} stability function\label{sec:sg} 
 ! 
 ! !INTERFACE:
    subroutine cmue_sg(nlev)
@@ -14,7 +14,7 @@
 ! c_{\mu}=c_{\mu}^0,\qquad c'_{\mu}=\frac{c_{\mu}^0}{Pr_t}
 ! \end{equation}
 ! with constant $c_{\mu}^0$. Based simulation data on stratified homogeneous
-! shear--flows, \cite{SchumannGerz95} proposed the empirical relation
+! shear-flows, \cite{SchumannGerz95} proposed the empirical relation
 ! for the turbulent Prandtl--number,
 ! \begin{equation}
 !   Pr_t = Pr_t^0 \exp\left(-\frac{Ri}{Pr_t^0 Ri^{\infty}}\right)
@@ -38,7 +38,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_sg.F90,v $
-!  Revision 1.3  2003-03-28 09:20:35  kbk
+!  Revision 1.4  2004-08-18 12:53:07  lars
+!  updated documentation
+!
+!  Revision 1.3  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.2  2003/03/10 09:02:04  gotm

@@ -1,9 +1,9 @@
-!$Id: cmue_rf.F90,v 1.5 2003-03-28 09:20:35 kbk Exp $
+!$Id: cmue_rf.F90,v 1.6 2004-08-18 12:53:07 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Flux Richardson number depending stability func. 
+! !ROUTINE: Flux Richardson number stability function\label{sec:rf} 
 ! 
 ! !INTERFACE:
    subroutine cmue_rf(nlev)
@@ -33,7 +33,7 @@
 ! R_f=\frac{c'_{\mu}}{c_{\mu}}R_i
 ! \end{equation}
 ! 
-! and eq.\ (\ref{ISPRAcmues}), see \cite{Beckers95}:
+! and \eq{ISPRAcmues}, see \cite{Beckers95}:
 ! 
 ! \begin{equation}
 ! (1-R_f)=[(\tilde R_i^2+1)^{1/2}-\tilde R_i]^2
@@ -58,7 +58,10 @@
 !  Original author(s):  Manuel Ruiz Villarreal, Hans Burchard
 !
 !  $Log: cmue_rf.F90,v $
-!  Revision 1.5  2003-03-28 09:20:35  kbk
+!  Revision 1.6  2004-08-18 12:53:07  lars
+!  updated documentation
+!
+!  Revision 1.5  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/28 08:37:27  kbk
