@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.2 2001-11-18 16:06:31 gotm Exp $
+!$Id: observations.F90,v 1.3 2001-11-27 15:35:55 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -111,7 +111,7 @@
    integer, public	:: w_adv_discr=1
 
 !  Sea surface elevations - 'zetaspec' namelist
-   integer		:: zeta_method=0
+   integer,public		:: zeta_method=0
    character(LEN=PATH_MAX)      :: zeta_file='zeta.dat'
    REALTYPE, public	:: zeta_0=0.
    REALTYPE, public	:: period_1=44714.
@@ -140,8 +140,8 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
-!  Revision 1.2  2001-11-18 16:06:31  gotm
-!  Avoid namelist member clashes by changing names in zetaspec
+!  Revision 1.3  2001-11-27 15:35:55  gotm
+!  zeta_method now public - used by updategrid()
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
