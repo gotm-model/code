@@ -1,4 +1,4 @@
-#$Id: Makefile.stable_netcdf,v 1.5 2001-11-27 20:42:41 gotm Exp $
+#$Id: Makefile.stable_netcdf,v 1.6 2003-03-10 10:10:13 gotm Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -48,30 +48,30 @@ libutil.a(yevol.o)
 
 MEANFLOW	= \
 libmeanflow.a(updategrid.o)		\
+libmeanflow.a(adaptivegrid.o)		\
 libmeanflow.a(coriolis.o)		\
 libmeanflow.a(uequation.o)		\
 libmeanflow.a(vequation.o)		\
 libmeanflow.a(extpressure.o)		\
 libmeanflow.a(intpressure.o)		\
 libmeanflow.a(friction.o)		\
-libmeanflow.a(lightabsorbtion.o)	\
 libmeanflow.a(temperature.o)		\
 libmeanflow.a(salinity.o)		\
 libmeanflow.a(stratification.o)		\
 libmeanflow.a(buoyancy.o)		\
-libmeanflow.a(convectiveadjustment.o)
+libmeanflow.a(convectiveadjustment.o)	\
+libmeanflow.a(production.o)
 
 TURBULENCE   = \
 libturbulence.a(tkeeq.o)		\
-libturbulence.a(tkealgebraic.o)		\
-libturbulence.a(genericeq.o)		\
-libturbulence.a(algebraiclength.o)	\
-libturbulence.a(dissipationeq.o)	\
+libturbulence.a(q2over2eq.o)		\
 libturbulence.a(lengthscaleeq.o)	\
+libturbulence.a(dissipationeq.o)	\
+libturbulence.a(genericeq.o)		\
+libturbulence.a(tkealgebraic.o)		\
+libturbulence.a(algebraiclength.o)	\
 libturbulence.a(ispralength.o)		\
-libturbulence.a(production.o)		\
 libturbulence.a(potentialml.o)		\
-libturbulence.a(get_eps_profile.o)	\
 libturbulence.a(cmue_bb.o)		\
 libturbulence.a(cmue_bbqe.o)		\
 libturbulence.a(cmue_ca.o)		\
@@ -80,9 +80,14 @@ libturbulence.a(cmue_cb.o)		\
 libturbulence.a(cmue_cbqe.o)		\
 libturbulence.a(cmue_kc.o)		\
 libturbulence.a(cmue_kcqe.o)		\
+libturbulence.a(cmue_my.o)		\
+libturbulence.a(cmue_gpqe.o)		\
 libturbulence.a(cmue_ma.o)		\
+libturbulence.a(cmue_sg.o)		\
 libturbulence.a(cmue_rf.o)		\
-libturbulence.a(cmue_sg.o)
+libturbulence.a(fk_craig.o)		\
+libturbulence.a(turbulence_adv.o)	\
+libturbulence.a(gotm_lib_version.o)
 
 OBSERVATIONS   = \
 libobservations.a(analytical_profile.o)	\
@@ -132,7 +137,3 @@ realclean: clean
 %.o: %.f90
 	$(FC) $(FFLAGS) -c $< -o $@
 
-
-#-----------------------------------------------------------------------
-# Copyright (C) 2000 - Hans Burchard and Karsten Bolding (BBH)         !
-#-----------------------------------------------------------------------
