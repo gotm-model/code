@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.11 2004-07-30 09:22:20 hb Exp $
+!$Id: bio_iow.F90,v 1.12 2004-08-02 09:01:38 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.11  2004-07-30 09:22:20  hb
+!  Revision 1.12  2004-08-02 09:01:38  kbk
+!  does not use modules time and observations
+!
+!  Revision 1.11  2004/07/30 09:22:20  hb
 !  use bio_var in specific bio models - simpliefied internal interface
 !
 !  Revision 1.10  2004/07/28 11:34:29  hb
@@ -490,8 +493,6 @@
 ! !DESCRIPTION
 !
 ! !USES
-   use time,         only: time_diff,julian_day,fsecs
-   use observations, only: read_obs
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
