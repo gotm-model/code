@@ -1,5 +1,5 @@
 %
-%$Id: code_a4.tex,v 1.2 2003-03-10 09:42:23 gotm Exp $
+%$Id: code_a4.tex,v 1.3 2003-04-07 09:39:47 kbk Exp $
 %
 
 \documentclass[a4paper,twoside]{article}
@@ -21,8 +21,8 @@
 \usepackage{ae}
 
 % center it on a4-format
-\setlength{\evensidemargin}{4.6mm} 
-\setlength{\oddsidemargin}{4.6mm} 
+\setlength{\evensidemargin}{4.6mm}
+\setlength{\oddsidemargin}{4.6mm}
 \setlength{\textwidth}{150mm}
 
 \begin{document}
@@ -43,7 +43,7 @@
 
 {\sf \bf \Huge
  \begin{center}
-   GOTM 
+   GOTM
  \end{center}
 }
 
@@ -51,8 +51,8 @@
 
 {\sf \bf \LARGE
  \begin{center}
-   Sourcecode \\ 
-      and \\ 
+   Sourcecode \\
+      and \\
 Test Case Documentation
  \end{center}
 }
@@ -62,7 +62,7 @@ Test Case Documentation
 
 {\sf \bf \Large
  \begin{center}
-  Version 3.0 
+  Version 3.0
  \end{center}
 }
 
@@ -91,45 +91,46 @@ Test Case Documentation
 \tableofcontents
 
 % include the section files
-% the introduction. All files 
+% the introduction. All files
 % ending with 'Intro.tex' are hand-made,
 % all others come from 'ProTeX'
 
 \cleardoublepage
- 
+
 \include{introduction}
 
 \cleardoublepage
-\include{mainIntro}   
-\include{gotm}        
+\include{mainIntro}
+\include{gotm}
 
 \cleardoublepage
-\include{meanflowIntro} 
-\include{meanflow}      
+\include{meanflowIntro}
+\include{meanflow}
 
 \cleardoublepage
-\include{turbulenceIntro} 
-\include{turbulence}      
+\include{turbulenceIntro}
+\include{turbulence}
 
-\include{airseaIntro}  
-\include{airsea}       
-
-\cleardoublepage
-\include{observationsIntro} 
-\include{observations}      
+\include{airseaIntro}
+\include{airsea}
 
 \cleardoublepage
-\include{outputIntro} 
-\include{output}      
+\include{observationsIntro}
+\include{observations}
 
 \cleardoublepage
-\include{utilIntro}   
-\include{util}       
+\include{outputIntro}
+\include{output}
 
 \cleardoublepage
-\include{extraIntro}  
-\include{sediment}    
-\include{seagrass}    
+\include{utilIntro}
+\include{util}
+
+\cleardoublepage
+\include{extraIntro}
+\include{sediment}
+\include{seagrass}
+\include{bio}
 
 \cleardoublepage
 \include{cases}
@@ -138,7 +139,7 @@ Test Case Documentation
 \cleardoublepage
 \bibliographystyle{agu}
 \addcontentsline{toc}{section}{Bibliography}
-\bibliography{gotm}  
+\bibliography{gotm}
 
 
 \end{document}
