@@ -1,4 +1,4 @@
-!$Id: uequation.F90,v 1.4 2003-03-10 08:50:07 gotm Exp $
+!$Id: uequation.F90,v 1.5 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -76,23 +76,26 @@
    use meanflow, only: gravity,avmolu
    use meanflow, only: h,ho,u,v,w,avh,drag,SS,grid_method,w_grid
    use observations, only: vel_relax_tau,vel_relax_ramp
-   use observations, only: w_adv_method,w_adv_discr	
+   use observations, only: w_adv_method,w_adv_discr
    use observations, only: idpdx,dpdx,uprof
    use mtridiagonal
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev,Method
-   REALTYPE, intent(in)	               :: dt
-   REALTYPE, intent(in)	               :: cnpar
-   REALTYPE, intent(in)	               :: tx
-   REALTYPE, intent(in)	               :: num(0:nlev)
+   REALTYPE, intent(in)                :: dt
+   REALTYPE, intent(in)                :: cnpar
+   REALTYPE, intent(in)                :: tx
+   REALTYPE, intent(in)                :: num(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: uequation.F90,v $
-!  Revision 1.4  2003-03-10 08:50:07  gotm
+!  Revision 1.5  2003-03-28 08:56:56  kbk
+!  removed tabs
+!
+!  Revision 1.4  2003/03/10 08:50:07  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.3  2001/05/31 12:00:52  gotm
@@ -114,7 +117,7 @@
 !BOC
    surf_flux=.false.
    bott_flux=.false.
-	    
+
    !  Advection step:
    if (w_adv_method .ne. 0) then
       call w_split_it_adv(nlev,dt,h,ho,u,w,w_adv_discr,surf_flux,bott_flux,1)
@@ -128,15 +131,15 @@
    do i=2,nlev-1
       c    =2*dt*avh(i)  /(h(i)+h(i+1))/h(i)
       a    =2*dt*avh(i-1)/(h(i)+h(i-1))/h(i)
-      cu(i)=-cnpar*c				!i+1,n+1
-      au(i)=-cnpar*a				!i-1,n+1
+      cu(i)=-cnpar*c                                       !i+1,n+1
+      au(i)=-cnpar*a                                       !i-1,n+1
 #ifndef SEAGRASS
-      bu(i)=1-au(i)-cu(i)			!i  ,n+1
+      bu(i)=1-au(i)-cu(i)                                  !i  ,n+1
 #else
-      bu(i)=1-au(i)-cu(i)	&		!i  ,n+1
+      bu(i)=1-au(i)-cu(i)                &                 !i  ,n+1
             + drag(i)*dt/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
 #endif
-      du(i)=u(i)+(1-cnpar)*(a*u(i-1)-(a+c)*u(i)+c*u(i+1))	!i  ,n
+      du(i)=u(i)+(1-cnpar)*(a*u(i-1)-(a+c)*u(i)+c*u(i+1))  !i  ,n
       du(i)=du(i)+dt*idpdx(i)
    end do
 
@@ -150,7 +153,7 @@
 #ifndef SEAGRASS
    bu(nlev)=1-au(nlev)
 #else
-   bu(nlev)=1-au(nlev)		&
+   bu(nlev)=1-au(nlev) &
             + drag(nlev)*dt/h(nlev)*sqrt(u(nlev)*u(nlev)+v(nlev)*v(nlev))
 #endif
    du(nlev)=u(nlev)+tx*dt/h(nlev)+(1-cnpar)*a*(u(nlev-1)-u(nlev))
@@ -167,9 +170,9 @@
       if (runtime .lt. vel_relax_ramp) then
          if (vel_relax_ramp .ge. 1.e15) then
             tau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtime)
-	 else
-	    tau=vel_relax_tau
-	 end if   
+          else
+             tau=vel_relax_tau
+         end if   
       else
          tau=1.e15
       end if

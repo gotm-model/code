@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.7 2003-03-10 13:43:42 lars Exp $
+!$Id: updategrid.F90,v 1.8 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,7 +70,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
-!  Revision 1.7  2003-03-10 13:43:42  lars
+!  Revision 1.8  2003-03-28 08:56:56  kbk
+!  removed tabs
+!
+!  Revision 1.7  2003/03/10 13:43:42  lars
 !  double definitions removed - to conform with DEC compiler
 !
 !  Revision 1.6  2003/03/10 08:50:08  gotm
@@ -95,7 +98,7 @@
    REALTYPE                  :: zi(0:nlev)
    REALTYPE                  :: znew,zold
    integer, parameter        :: grid_unit = 101
-   REALTYPE, save, dimension(:), allocatable	:: ga
+   REALTYPE, save, dimension(:), allocatable     :: ga
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -123,56 +126,56 @@
       case(1) !Sigma, the fraction each layer occupies is specified. 
          LEVEL2 "external specified sigma coordinates"
          open (grid_unit,FILE =grid_file,status='unknown',ERR=100)
-	 read (grid_unit,*) nlayers
-	 if (nlayers /= nlev) then
-	    FATAL "number of layers spefified in file <> # of model layers" 
-	   stop 'updategrid'
-	 end if  	      
-	 depth = _ZERO_
-	 j = 0
-	 do i=nlev,1,-1 !The first layer to be read is at the surface
+         read (grid_unit,*) nlayers
+         if (nlayers /= nlev) then
+            FATAL "number of layers spefified in file <> # of model layers" 
+            stop 'updategrid'
+         end if
+         depth = _ZERO_
+         j = 0
+         do i=nlev,1,-1 !The first layer to be read is at the surface
             read(grid_unit,*,ERR=101,END=101) ga(i)
             depth = depth + ga(i)
-	    j=j+1
-         end do	 
-	 if (j /= nlayers) then
-	    FATAL "number of layers read from file <> # of model layers" 
-	    stop 'updategrid'		
-         end if			 
-	 close (grid_unit)
-	 if (depth /= 1.) then
-	    FATAL "sum of all layers in grid_file should be 1."
-	    stop 'updategrid'
-	 end if
+            j=j+1
+         end do
+         if (j /= nlayers) then
+            FATAL "number of layers read from file <> # of model layers" 
+            stop 'updategrid'
+         end if
+         close (grid_unit)
+         if (depth /= 1.) then
+            FATAL "sum of all layers in grid_file should be 1."
+            stop 'updategrid'
+         end if
      case(2) !Cartesian, the layer thickness is read from file
          LEVEL2 "external specified cartesian coordinates"
-	 open (grid_unit,FILE =grid_file,ERR=100)
+         open (grid_unit,FILE =grid_file,ERR=100)
 ! Observations is called after meanflow is initialised, and we don#t have
 ! zeta_method
-!	 if (zeta_method /= 0) then
-!	     stop "You are using Cartesian coordinates with varying surface elevation"
-!	 end if
-	 read (grid_unit,*) nlayers
-	 if(nlayers /= nlev) then
-	    FATAL "nlev must be equal to the number of layers in: ", &
+!        if (zeta_method /= 0) then
+!          stop "You are using Cartesian coordinates with varying surface elevation"
+!        end if
+         read (grid_unit,*) nlayers
+         if(nlayers /= nlev) then
+            FATAL "nlev must be equal to the number of layers in: ", &
                    trim(grid_file)
-	    stop 'updategrid'
-	 end if  
-	 depth = _ZERO_
-	 j=0
-	 do i=nlev,1,-1 !The first layer read is the surface
+            stop 'updategrid'
+         end if  
+         depth = _ZERO_
+         j=0
+         do i=nlev,1,-1 !The first layer read is the surface
             read(grid_unit,*,ERR=101) h(i)
             depth = depth + h(i)
-	    j=j+1
-         end do	 
-	 if (j /= nlayers) then
-	    FATAL "number of layers read from file <> # of model layers" 
-	    stop 'updategrid'
-         end if	
-	 close (grid_unit)
-	 if (depth /= depth0) then
-	    FATAL "sum of all layers should be equal to the total depth",depth0
-	    stop 'updategrid'
+            j=j+1
+         end do
+         if (j /= nlayers) then
+            FATAL "number of layers read from file <> # of model layers" 
+            stop 'updategrid'
+         end if
+         close (grid_unit)
+         if (depth /= depth0) then
+            FATAL "sum of all layers should be equal to the total depth",depth0
+            stop 'updategrid'
          end if
      case(3) ! Adaptive grid
           ga(0)=-1.
@@ -183,15 +186,15 @@
           else
              do i=1,nlev ! This zooming is from Antoine Garapon, ICCH, DK
                 ga(i)=tanh((ddl+ddu)*i/nlev-ddl)+tanh(ddl)
-    	        ga(i)=ga(i)/(tanh(ddl)+tanh(ddu))-1.
-	     end do
-	  end if
-	  depth = depth0 + Zeta
-	  do i=1,nlev
-	     h(i)  = (ga(i)-ga(i-1)) * depth
+                ga(i)=ga(i)/(tanh(ddl)+tanh(ddu))-1.
+             end do
+          end if
+          depth = depth0 + Zeta
+          do i=1,nlev
+             h(i)  = (ga(i)-ga(i-1)) * depth
           end do
      case default
-         stop "updategrid: No valid grid_method specified" 	 
+         stop "updategrid: No valid grid_method specified"
      end select
      
      gridinit = 1  !  Grid is now initialised ! 
@@ -217,7 +220,7 @@
          STDERR 'Please set w_adv_discr to a value > zero, for' 
          STDERR 'doing so, see namelist w_advspec in obs.inp.' 
          STDERR 'Program is aborted now in updategrid.F90.' 
-	 stop
+         stop
       end if 
       call adaptivegrid(ga,NN,SS,h,depth,nlev,dt)
       znew=-depth
@@ -230,7 +233,7 @@
          w_grid(i)=-(znew-zold)/dt
       end do
     case default
-         stop "updategrid: No valid grid_method specified" 	
+         stop "updategrid: No valid grid_method specified"
    end select   
    
    z(1)=-depth0+0.5*h(1) 

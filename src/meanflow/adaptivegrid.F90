@@ -1,4 +1,4 @@
-!$Id: adaptivegrid.F90,v 1.1 2003-03-10 08:49:52 gotm Exp $
+!$Id: adaptivegrid.F90,v 1.2 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -72,8 +72,8 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)	               :: NN(0:nlev),SS(0:nlev),h(0:nlev)
-   REALTYPE, intent(in)	               :: depth,dt
+   REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev),h(0:nlev)
+   REALTYPE, intent(in)                :: depth,dt
 !
 ! !INPUT/OUTPUT PARAMETERS:
    REALTYPE                            :: ga(0:nlev)
@@ -82,18 +82,20 @@
 !  Original author(s): Hans Burchard & Jean-Marie Beckers
 !
 !  $Log: adaptivegrid.F90,v $
-!  Revision 1.1  2003-03-10 08:49:52  gotm
-!  Added support for adaptive vertical grid
+!  Revision 1.2  2003-03-28 08:56:56  kbk
+!  removed tabs
 !
+!  Revision 1.1  2003/03/10 08:49:52  gotm
+!  Added support for adaptive vertical grid
 !
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer 		     :: i,j,split
-   REALTYPE		     :: ganew(0:nlev),gaold(0:nlev)
-   REALTYPE		     :: NNloc(0:nlev),SSloc(0:nlev)
-   REALTYPE		     :: rat,center,g=9.81
-   logical,save		     :: first=.true.
+   integer                   :: i,j,split
+   REALTYPE                  :: ganew(0:nlev),gaold(0:nlev)
+   REALTYPE                  :: NNloc(0:nlev),SSloc(0:nlev)
+   REALTYPE                  :: rat,center,g=9.81
+   logical,save              :: first=.true.
    REALTYPE,dimension(0:nlev):: av1,av2,av3,av
 !
 !-----------------------------------------------------------------------

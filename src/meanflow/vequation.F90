@@ -1,4 +1,4 @@
-!$Id: vequation.F90,v 1.3 2003-03-10 08:50:08 gotm Exp $
+!$Id: vequation.F90,v 1.4 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -50,15 +50,18 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev,Method
-   REALTYPE, intent(in)	               :: dt
-   REALTYPE, intent(in)	               :: cnpar
-   REALTYPE, intent(in)	               :: ty
-   REALTYPE, intent(in)	               :: num(0:nlev)
+   REALTYPE, intent(in)                :: dt
+   REALTYPE, intent(in)                :: cnpar
+   REALTYPE, intent(in)                :: ty
+   REALTYPE, intent(in)                :: num(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: vequation.F90,v $
-!  Revision 1.3  2003-03-10 08:50:08  gotm
+!  Revision 1.4  2003-03-28 08:56:56  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 08:50:08  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.2  2001/05/31 12:00:52  gotm
@@ -97,9 +100,9 @@
       cu(i)=-cnpar*c!i+1,n+1
       au(i)=-cnpar*a!i-1,n+1
 #ifndef SEAGRASS
-      bu(i)=1-au(i)-cu(i)			!i  ,n+1
+      bu(i)=1-au(i)-cu(i)                                  !i  ,n+1
 #else
-      bu(i)=1-au(i)-cu(i)	&		!i  ,n+1
+      bu(i)=1-au(i)-cu(i)              &                   !i  ,n+1
             + drag(i)*dt/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
 #endif
 
@@ -117,7 +120,7 @@
 #ifndef SEAGRASS
    bu(nlev)=1-au(nlev)
 #else
-   bu(nlev)=1-au(nlev)		&
+   bu(nlev)=1-au(nlev)  &
             +drag(nlev)*dt/h(nlev)*sqrt(u(nlev)*u(nlev)+v(nlev)*v(nlev))
 #endif
    du(nlev)=v(nlev)+ty*dt/h(nlev)+(1-cnpar)*a*(v(nlev-1)-v(nlev))

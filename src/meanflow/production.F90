@@ -1,4 +1,4 @@
-!$Id: production.F90,v 1.4 2003-03-10 08:50:07 gotm Exp $
+!$Id: production.F90,v 1.5 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,14 +40,17 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)	               :: alpha
-   REALTYPE, intent(in)	               :: num(0:nlev),nuh(0:nlev)
+   REALTYPE, intent(in)                :: alpha
+   REALTYPE, intent(in)                :: num(0:nlev),nuh(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: production.F90,v $
-!  Revision 1.4  2003-03-10 08:50:07  gotm
+!  Revision 1.5  2003-03-28 08:56:56  kbk
+!  removed tabs
+!
+!  Revision 1.4  2003/03/10 08:50:07  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.3  2002/02/08 08:59:57  gotm

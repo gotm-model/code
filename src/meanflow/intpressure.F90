@@ -1,4 +1,4 @@
-!$Id: intpressure.F90,v 1.2 2003-03-10 08:50:06 gotm Exp $
+!$Id: intpressure.F90,v 1.3 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -75,7 +75,7 @@
 !
 ! !USES:
    use meanflow, only: gravity,rho_0,h,T,S
-   use observations, only: dsdx,dsdy,dtdx,dtdy	
+   use observations, only: dsdx,dsdy,dtdx,dtdy
    use observations, only: idpdx,idpdy
    use eqstate, only: eqstate1
 !
@@ -88,7 +88,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: intpressure.F90,v $
-!  Revision 1.2  2003-03-10 08:50:06  gotm
+!  Revision 1.3  2003-03-28 08:56:56  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 08:50:06  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
@@ -97,10 +100,10 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer 		:: i 
-   REALTYPE		:: z,dx,dy
-   REALTYPE		:: dSS,dTT,Bl,Br,int
-   REALTYPE 		:: dxB(0:nlev),dyB(0:nlev)
+   integer                   :: i 
+   REALTYPE                  :: z,dx,dy
+   REALTYPE                  :: dSS,dTT,Bl,Br,int
+   REALTYPE                  :: dxB(0:nlev),dyB(0:nlev)
 !
 !-----------------------------------------------------------------------
 !BOC

@@ -1,4 +1,4 @@
-!$Id: stratification.F90,v 1.3 2003-03-10 08:50:07 gotm Exp $
+!$Id: stratification.F90,v 1.4 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -45,7 +45,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev,buoy_method
-   REALTYPE, intent(in)	               :: dt,g,rho_0,cnpar
+   REALTYPE, intent(in)                :: dt,g,rho_0,cnpar
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: nuh(0:nlev)
@@ -54,7 +54,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: stratification.F90,v $
-!  Revision 1.3  2003-03-10 08:50:07  gotm
+!  Revision 1.4  2003-03-28 08:56:56  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 08:50:07  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.2  2001/11/18 11:50:37  gotm

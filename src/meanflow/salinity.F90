@@ -1,4 +1,4 @@
-!$Id: salinity.F90,v 1.2 2003-03-10 08:50:07 gotm Exp $
+!$Id: salinity.F90,v 1.3 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -61,14 +61,17 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)	               :: dt,cnpar
-   REALTYPE, intent(in)	               :: nuh(0:nlev)
+   REALTYPE, intent(in)                :: dt,cnpar
+   REALTYPE, intent(in)                :: nuh(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: salinity.F90,v $
-!  Revision 1.2  2003-03-10 08:50:07  gotm
+!  Revision 1.3  2003-03-28 08:56:56  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 08:50:07  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
@@ -77,10 +80,10 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   REALTYPE		:: Qsour(0:nlev)
-   REALTYPE		:: Sup,Sdw,saltot
-   integer 		:: i,Bcup,Bcdw,flag
-   logical		:: surf_flux,bott_flux
+   REALTYPE                  :: Qsour(0:nlev)
+   REALTYPE                  :: Sup,Sdw,saltot
+   integer                   :: i,Bcup,Bcdw,flag
+   logical                   :: surf_flux,bott_flux
 !
 !-----------------------------------------------------------------------
 !BOC

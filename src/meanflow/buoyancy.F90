@@ -1,4 +1,4 @@
-!$Id: buoyancy.F90,v 1.3 2003-03-10 08:50:06 gotm Exp $
+!$Id: buoyancy.F90,v 1.4 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -69,7 +69,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: buoyancy.F90,v $
-!  Revision 1.3  2003-03-10 08:50:06  gotm
+!  Revision 1.4  2003-03-28 08:56:56  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 08:50:06  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
@@ -78,9 +81,9 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer			:: i,Meth,Bcup,Bcdw,flag 
-   REALTYPE			:: zz,tot
-   logical, save		:: first=.true.
+   integer                      :: i,Meth,Bcup,Bcdw,flag 
+   REALTYPE                     :: zz,tot
+   logical, save                :: first=.true.
    REALTYPE                     :: Qsour(0:nlev),RelaxT(0:nlev)
    REALTYPE                     :: Tup,Tdw,z
    logical                      :: surf_flux,bott_flux

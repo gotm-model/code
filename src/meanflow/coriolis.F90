@@ -1,4 +1,4 @@
-!$Id: coriolis.F90,v 1.2 2003-03-10 08:50:06 gotm Exp $
+!$Id: coriolis.F90,v 1.3 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: coriolis.F90,v $
-!  Revision 1.2  2003-03-10 08:50:06  gotm
+!  Revision 1.3  2003-03-28 08:56:56  kbk
+!  removed tabs
+!
+!  Revision 1.2  2003/03/10 08:50:06  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
@@ -35,8 +38,8 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer			:: i
-   REALTYPE			:: ua,omega,cosomega,sinomega
+   integer                   :: i
+   REALTYPE                  :: ua,omega,cosomega,sinomega
 !
 !-----------------------------------------------------------------------
 !BOC

@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.3 2003-03-10 08:50:07 gotm Exp $
+!$Id: temperature.F90,v 1.4 2003-03-28 08:56:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -72,9 +72,9 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)	               :: dt,cnpar
-   REALTYPE, intent(in)	               :: I_0,heat
-   REALTYPE, intent(in)	               :: nuh(0:nlev)
+   REALTYPE, intent(in)                :: dt,cnpar
+   REALTYPE, intent(in)                :: I_0,heat
+   REALTYPE, intent(in)                :: nuh(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE                            :: rad(0:nlev)
@@ -83,7 +83,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.3  2003-03-10 08:50:07  gotm
+!  Revision 1.4  2003-03-28 08:56:56  kbk
+!  removed tabs
+!
+!  Revision 1.3  2003/03/10 08:50:07  gotm
 !  Improved documentation and cleaned up code
 !
 !  Revision 1.2  2001/11/18 11:50:37  gotm
@@ -95,18 +98,18 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: i,Bcup,Bcdw,flag
-   REALTYPE		:: Qsour(0:nlev) 
-   REALTYPE		:: Tup,Tdw,z
-   logical		:: surf_flux,bott_flux
+   integer                   :: i,Bcup,Bcdw,flag
+   REALTYPE                  :: Qsour(0:nlev) 
+   REALTYPE                  :: Tup,Tdw,z
+   logical                   :: surf_flux,bott_flux
 !
 !-----------------------------------------------------------------------
 !BOC
 !  hard coding of parameters, to be included into namelist for gotm2.0 
-   Bcup=1				!BC Neumann 
-   Tup=-heat/(rho_0*cp)			!Heat flux (positive upward)
-   Bcdw=1				!BC Neumann
-   Tdw=0.				!No flux
+   Bcup=1!BC Neumann 
+   Tup=-heat/(rho_0*cp)!Heat flux (positive upward)
+   Bcdw=1!BC Neumann
+   Tdw=0.!No flux
    surf_flux=.false.                     
    bott_flux=.false.
 
@@ -127,7 +130,7 @@
 
    call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Tup,Tdw,TRelaxTau,h,ho,avh,w,        &
               Qsour,tprof,w_adv_method,w_adv_discr,T,surf_flux,bott_flux,  &
-	      grid_method,w_grid,flag)
+              grid_method,w_grid,flag)
    return
    end subroutine temperature
 !EOC
