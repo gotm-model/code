@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.8 2004-05-28 13:14:14 hb Exp $
+!$Id: airsea.F90,v 1.9 2004-06-25 07:50:29 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -69,7 +69,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.8  2004-05-28 13:14:14  hb
+!  Revision 1.9  2004-06-25 07:50:29  hb
+!  Preliminary wet mode choices improved
+!
+!  Revision 1.8  2004/05/28 13:14:14  hb
 !  airsea.F90 extended for dew point temperature
 !
 !  Revision 1.7  2003/06/13 09:27:16  hb
@@ -447,7 +450,9 @@
    REALTYPE                  :: ae_e,be_e,ce_e,pe_e
    REALTYPE                  :: x,x1,x2,x3,ta_k
    REALTYPE                  :: aa=17.27, bb=237.7
-   integer                   :: wet_mode=3
+!   integer                   :: wet_mode=1  ! Relative humidity
+!   integer                   :: wet_mode=2  ! Wet bulb temperature
+   integer                   :: wet_mode=3  ! Dew point temperature
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -458,7 +463,7 @@
    es = es * 100.0 ! Conversion millibar --> Pascal
    qs = const06*es/(airp-0.377*es)
 
-   select case(wet_mode)    ! back radiation
+   select case(wet_mode)    
       case(1)  ! Relative humidity is given
          qa = 0.01*rh*qs;
          ea = qa*airp/(const06 + 0.377*qa)
@@ -469,6 +474,7 @@
          STDERR 'Probably wet_mode is set to a wrong value.'
          STDERR 'Please correct this in airsea.F90.'
          STDERR 'Program aborted.'
+         stop 
       end if
          twet=rh
          ea = es - 67.*(airt-twet);
@@ -487,6 +493,7 @@
          STDERR 'Probably wet_mode is set to a wrong value.'
          STDERR 'Please correct this in airsea.F90.'
          STDERR 'Program aborted.'
+         stop 
       end if
       tdew=rh+273.15
       x1 = (18.729 - (min(tdew,300.*_ONE_)-273.15)/227.3)
