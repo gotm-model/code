@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.2 2003-03-10 08:33:22 gotm Exp $
+#$Id: Makefile,v 1.3 2004-01-12 08:51:42 lars Exp $
 #
 # Makefile to build the the Observtions library - libobservations.a
 #
@@ -41,11 +41,12 @@ all: $(MOD) $(OBJ)
 
 $(OBJ): $(MOD)
 
-doc:
+doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../doc/observations.tex 
+	touch doc
 
 clean:
-	$(RM) -f ${LIB} $(MODDIR)/observations.{m,mod}
+	$(RM) -f ${LIB} $(MODDIR)/observations.{m,mod} doc
 
 realclean: clean
 	$(RM) -f *.o *~

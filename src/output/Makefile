@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.2 2003-03-10 08:33:22 gotm Exp $
+#$Id: Makefile,v 1.3 2004-01-12 08:51:52 lars Exp $
 #
 # Makefile to build the the output library - liboutput.a
 #
@@ -21,11 +21,12 @@ ${LIB}(output.o)
 all: $(MOD)
 	$(MOVE_MODULES_COMMAND)
 
-doc:
+doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../doc/output.tex 
+	touch doc
 
 clean:
-	$(RM) -f ${LIB} $(MODDIR)/{asciiout,ncdfout,output}.{m,mod}
+	$(RM) -f ${LIB} $(MODDIR)/{asciiout,ncdfout,output}.{m,mod} doc
 
 realclean: clean
 	$(RM) -f *.o *~

@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.3 2003-03-10 08:33:23 gotm Exp $
+#$Id: Makefile,v 1.4 2004-01-12 08:52:50 lars Exp $
 #
 # Makefile to build the the Turbulence library - libturbulence.a
 #
@@ -72,11 +72,12 @@ all: $(MOD) ${OBJ}
 
 $(OBJ): $(MOD)
 
-doc:
+doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../doc/turbulence.tex 
+	touch doc
 
 clean:
-	$(RM) -f ${LIB} $(MODDIR)/turbulence.{m,mod}
+	$(RM) -f ${LIB} $(MODDIR)/turbulence.{m,mod} doc
 
 realclean: clean
 	$(RM) -f *.o *~

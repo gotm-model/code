@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.2 2003-03-10 08:33:24 gotm Exp $
+#$Id: Makefile,v 1.3 2004-01-12 08:50:43 lars Exp $
 #
 # Makefile to build the Seagrass Module - libseagrass.a
 #
@@ -15,11 +15,12 @@ ${LIB}(seagrass.o)
 all: ${OBJ}
 	$(MOVE_MODULES_COMMAND)
 
-doc:
+doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../../doc/seagrass.tex 
+	touch doc
 
 clean:
-	$(RM) ${LIB}
+	$(RM) ${LIB} doc
 
 realclean: clean
 	$(RM) *.o *~

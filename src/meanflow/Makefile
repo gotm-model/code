@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.5 2003-03-10 10:13:37 gotm Exp $
+#$Id: Makefile,v 1.6 2004-01-12 08:51:29 lars Exp $
 #
 # Makefile to build the the Dynamics library - libmeanflow.a
 #
@@ -49,11 +49,12 @@ all: $(MOD) $(OBJ)
 
 $(OBJ): $(MOD)
 
-doc:
+doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../doc/meanflow.tex 
+	touch doc
 
 clean:
-	$(RM) -f ${LIB} $(MODDIR)/meanflow.{m,mod}
+	$(RM) -f ${LIB} $(MODDIR)/meanflow.{m,mod} doc
 
 realclean: clean
 	$(RM) -f *.o *~

@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.6 2004-01-07 12:24:29 lars Exp $
+#$Id: Makefile,v 1.7 2004-01-12 08:50:25 lars Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -29,11 +29,12 @@ ${LIB}(bio.o)
 all: ${OBJ}
 	$(MOVE_MODULES_COMMAND)
 
-doc:
+doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../../doc/bio.tex 
+	touch doc
 
 clean:
-	$(RM) ${LIB}
+	$(RM) ${LIB} doc
 
 realclean: clean
 	$(RM) *.o *~

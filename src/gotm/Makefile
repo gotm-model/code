@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.3 2003-12-11 10:00:09 kbk Exp $
+#$Id: Makefile,v 1.4 2004-01-12 08:51:16 lars Exp $
 #
 # Makefile to build the the main library - libgotm.a
 #
@@ -21,11 +21,12 @@ main.o
 all: $(MOD) $(OBJ)
 	$(MOVE_MODULES_COMMAND)
 
-doc:
+doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../doc/gotm.tex 
+	touch doc
 
 clean:
-	$(RM) -f ${LIB} $(MODDIR)/gotm.{m,mod}
+	$(RM) -f ${LIB} $(MODDIR)/gotm.{m,mod} doc
 
 realclean: clean
 	$(RM) -f *.o *~

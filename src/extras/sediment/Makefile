@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.2 2003-03-10 08:33:24 gotm Exp $
+#$Id: Makefile,v 1.3 2004-01-12 08:51:01 lars Exp $
 #
 # Makefile to build the Sediment Module - libsediment.a
 #
@@ -15,11 +15,12 @@ ${LIB}(sediment.o)
 all: ${OBJ}
 	$(MOVE_MODULES_COMMAND)
 
-doc:
+doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../../doc/sediment.tex 
+	touch doc
 
 clean:
-	$(RM) ${LIB}
+	$(RM) ${LIB} doc
 
 realclean: clean
 	$(RM) *.o *~
