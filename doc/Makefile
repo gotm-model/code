@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.3 2003-03-10 09:42:22 gotm Exp $
+#$Id: Makefile,v 1.4 2003-03-12 13:02:01 lars Exp $
 #
 # Makefile for making the source code documentation. 
 #
@@ -7,41 +7,56 @@ SHELL	= /bin/sh
 
 SRCDIR = ../src
 
-TEXSRC = introduction.tex mainIntro.tex gotm.tex  \
-         meanflowIntro.tex meanflow.tex           \
-         turbulenceIntro.tex turbulence.tex       \
-         airseaIntro.tex airsea.tex               \
-         observationsIntro.tex observations.tex   \
-         outputIntro.tex output.tex               \
-         utilIntro.tex util.tex                   \
-         extraIntro.tex sediment.tex seagrass.tex \
-         cases.tex gotm.bib
+PROTEXSRC = gotm.tex              \
+            meanflow.tex          \
+            turbulence.tex        \
+            airsea.tex            \
+            observations.tex      \
+            output.tex            \
+            util.tex              \
+            sediment.tex          \
+            seagrass.tex
 
-TEXHTMLSRC = introduction.tex mainIntro.tex gotm.tex  \
-         meanflowIntroHTML.tex meanflow.tex           \
-         turbulenceIntro.tex turbulence.tex           \
-         airseaIntro.tex airsea.tex                   \
-         observationsIntro.tex observations.tex       \
-         outputIntro.tex output.tex               \
-         utilIntroHTML.tex util.tex                   \
-         extraIntro.tex sediment.tex seagrass.tex \
-         cases.tex gotm.bib
+TEXSRC    = introduction.tex      \
+            mainIntro.tex         \
+            meanflowIntro.tex     \
+            turbulenceIntro.tex   \
+            airseaIntro.tex       \
+            observationsIntro.tex \
+            outputIntro.tex       \
+            utilIntro.tex         \
+            extraIntro.tex        \
+            cases.tex             \
+            gotm.bib
 
+
+TEXHTMLSRC    = introduction.tex          \
+                mainIntro.tex             \
+                meanflowIntroHTML.tex     \
+                turbulenceIntro.tex       \
+                airseaIntro.tex           \
+                observationsIntro.tex     \
+                outputIntro.tex           \
+                utilIntroHTML.tex         \
+                extraIntro.tex            \
+                cases.tex                 \
+                gotm.bib
 
 .PHONY :  clean realclean distclean 
 
 
 all: code_a4.pdf code_letter.pdf code_html.pdf
 
-code_a4.tex: $(TEXSRC)
+$(PROTEXSRC):
 	$(MAKE) doc -C $(SRCDIR)
+
+code_a4.tex: $(PROTEXSRC) $(TEXSRC)
 	touch $@
 
-code_letter.tex: $(TEXSRC)
-	$(MAKE) doc -C $(SRCDIR)
+code_letter.tex: $(PROTEXSRC)  $(TEXSRC)
 	touch $@
 
-code_html.tex: $(TEXHTMLSRC)
+code_html.tex: $(PROTEXSRC) $(TEXHTMLSRC)
 	$(MAKE) doc -C $(SRCDIR)
 	touch $@
 
