@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.1 2004-06-29 08:03:16 hb Exp $
+!$Id: bio_fasham.F90,v 1.2 2004-07-28 11:34:29 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
-!  Revision 1.1  2004-06-29 08:03:16  hb
+!  Revision 1.2  2004-07-28 11:34:29  hb
+!  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.inp
+!
+!  Revision 1.1  2004/06/29 08:03:16  hb
 !  Fasham et al. 1990 model implemented
 !
 !  Revision 1.2  2003/10/16 15:42:16  kbk
@@ -290,7 +293,8 @@
 ! !IROUTINE: Light properties for the NPZD model
 !
 ! !INTERFACE
-   subroutine light_fasham(numc,nlev,h,rad,cc,par,bioshade)
+   subroutine light_fasham(numc,nlev,h,rad,cc,par,bioshade_feedback, &
+                           bioshade)
 !
 ! !DESCRIPTION
 !
@@ -299,6 +303,7 @@
 !
 ! !INPUT PARAMETERS:
   integer                              :: numc,nlev
+  logical                              :: bioshade_feedback
   REALTYPE, intent(in)                 :: h(0:nlev)
   REALTYPE, intent(in)                 :: rad(0:nlev)
   REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
@@ -323,8 +328,8 @@
       zz=zz+0.5*h(i)
       par(i)=0.25*(rad(i)+rad(i-1))*exp(-kc*add)
       add=add+0.5*h(i)*(cc(d,i)+cc(p,i)+p0)
-      bioshade(i)=exp(-kc*add)
       zz=zz+0.5*h(i)
+      if (bioshade_feedback) bioshade(i)=exp(-kc*add)
    end do
 
 

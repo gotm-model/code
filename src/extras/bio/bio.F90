@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.15 2004-06-29 08:03:16 hb Exp $
+!$Id: bio.F90,v 1.16 2004-07-28 11:34:29 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -44,7 +44,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.15  2004-06-29 08:03:16  hb
+!  Revision 1.16  2004-07-28 11:34:29  hb
+!  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.inp
+!
+!  Revision 1.15  2004/06/29 08:03:16  hb
 !  Fasham et al. 1990 model implemented
 !
 !  Revision 1.14  2004/05/28 13:24:49  hb
@@ -94,6 +97,7 @@
    integer                   :: w_adv_discr=6
    integer                   :: ode_method=1
    integer                   :: split_factor=1
+   logical                   :: bioshade_feedback=.true.
    logical                   :: bio_lagrange_mean=.true.
    integer                   :: bio_npar=10000
    REALTYPE                  :: depth
@@ -132,7 +136,7 @@
    integer                   :: rc,i,j,n
    namelist /bio_nml/ bio_calc,bio_model,bio_eulerian, &
                       cnpar,w_adv_discr,ode_method,split_factor, &
-                      bio_lagrange_mean,bio_npar
+                      bioshade_feedback,bio_lagrange_mean,bio_npar
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -157,6 +161,7 @@
 
       allocate(par(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_bio: Error allocating (par)'
+
 
       select case (bio_model)
 
@@ -420,16 +425,22 @@ STDERR total_mussel_flux,t(1)
       do split=1,split_factor
          dt_eff=dt/float(split_factor)
 
+!        Very important for 3D models to save extra 3D field:
+         bioshade=_ONE_
+
          select case (bio_model)
             case (-1)
                call light_template(numc,nlev,h,rad,cc,par,bioshade)
             case (1)
-               call light_npzd(numc,nlev,h,rad,cc,par,bioshade)
+               call light_npzd(numc,nlev,h,rad,cc,par, &
+                               bioshade_feedback,bioshade)
             case (2)
-               call light_iow(numc,nlev,h,rad,cc,par,bioshade)
+               call light_iow(numc,nlev,h,rad,cc,par, &
+                              bioshade_feedback,bioshade)
             case (3)
             case (4)
-               call light_fasham(numc,nlev,h,rad,cc,par,bioshade)
+               call light_fasham(numc,nlev,h,rad,cc,par, &
+                                 bioshade_feedback,bioshade)
          end select
 
          call ode_solver(ode_method,numc,nlev,dt_eff,h,cc,t)
