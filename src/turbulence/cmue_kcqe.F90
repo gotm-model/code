@@ -1,48 +1,67 @@
-!$Id: cmue_kcqe.F90,v 1.2 2002-02-08 08:59:58 gotm Exp $
+!$Id: cmue_kcqe.F90,v 1.3 2003-03-10 09:02:03 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE:  Kantha and Clayson [1995] stability functions.
+! !ROUTINE: \cite{KanthaClayson94} quasi-eq.\ stability func.
 ! 
-! !INTERFACE:
+! !INTERFACE: 
    subroutine cmue_kcqe(nlev)
 !
 ! !DESCRIPTION:
-!  This subroutine computes Kantha and Clayson [19995] stability functions
-!  including smoothing for convective conditions as discussed by Burchard
-!  and Petersen [1999].
+!  This subroutine computes the stability functions suggested by 
+!  \cite{KanthaClayson94}, which are based on the quasi-equilibrium
+!  assumption, including smoothing for convective conditions as discussed 
+!  by \cite{BurchardPetersen99}. This is the quasi-equilibrium version of the
+!  stability functions calculated in section \ref{cmue_kc}.
 !
 ! !USES:
-   use turbulence, only: a1,a2,b1,b2,c2,c3,an
-   use turbulence, only: qesmooth,qeghmax,qeghmin,qeghcrit
+   use turbulence, only: an
    use turbulence, only: cmue1,cmue2
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
+   integer, intent(in)                 :: nlev
 !
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
-!
-! !REVISION HISTORY: 
-!  Original author(s): Hans Burchard, Karsten Bolding 
-!                      & Manuel Ruiz Villarreal
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_kcqe.F90,v $
-!  Revision 1.2  2002-02-08 08:59:58  gotm
-!  Added Manuel as author and copyright holder
+!  Revision 1.3  2003-03-10 09:02:03  gotm
+!  Added new Generic Turbulence Model + improved documentation and cleaned up code
+!
+!  Revision 1.2  2002/02/08 08:59:58  gotm
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
 !
-! !LOCAL VARIABLES:
-   integer		:: i
-   REALTYPE 		:: gh,sm,sh
 !EOP
+!
+! !LOCAL VARIABLES:
+   logical                   :: qesmooth
+   integer                   :: i
+   REALTYPE                  :: gh,sm,sh
+   REALTYPE                  :: a1,a2,b1,b2,c2,c3
+   REALTYPE                  :: qeghmax,qeghmin,qeghcrit
+!   
 !-----------------------------------------------------------------------
 !BOC
+! do smoothing
+   qesmooth=     .true.
+
+! define the model constants
+   a1=           0.92
+   a2=           0.74
+   b1=           16.6
+   b2=           10.1
+   c2=           0.7
+   c3=           0.2
+ 
+! define the smoothing parameters   
+   qeghmax=      0.0233
+   qeghmin=      -0.2809
+   qeghcrit=     0.02
+
    do i=1,nlev-1
       gh=-0.5*an(i)           ! Transformation to MY notation 
       qeghmax=1/(a2*(b1+12*a1+3*b2*(1-c3)))
@@ -62,8 +81,3 @@
    return
    end subroutine cmue_kcqe
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard, Karsten Bolding 
-!                     & Manuel Ruiz Villarreal.
-!-----------------------------------------------------------------------

@@ -1,209 +1,187 @@
-!$Id: tkeeq.F90,v 1.3 2002-02-08 08:59:59 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Dynamic equation for TKE.
+! !ROUTINE: The dynamic $k$--equation \label{sec:tkeeq} 
 ! 
 ! !INTERFACE:
-   subroutine tkeeq(N,dt,u_taus,u_taub,z0s,h,P,B,numtke)
+   subroutine tkeeq(N,dt,u_taus,u_taub,z0s,z0b,h,P,B,num)
+
+! !DESCRIPTION: 
+! The transport equation for the turbulent kinetic energy, $k$, 
+! follows immediately from the contraction of the Reynolds--stress
+! tensor. In the case of a Boussinesq--fluid, this equation can
+! be written as
+! \begin{equation}
+!   \label{tkeA}
+!   \dot{k}
+!   = 
+!   {\cal D}_k +  P + B  - \epsilon 
+!   \comma
+! \end{equation}
+! where $\dot{k}$ denotes the material derivative of $k$. $P$ and $B$ are
+! the production of $k$ by mean shear and buoyancy, respectively, and
+! $\epsilon$ the rate of dissipation. ${\cal D}_k$ represents the sum of
+! the viscous and turbulent transport terms.
+! For horizontally homogeneous flows, the transport term ${\cal D}_k$
+! appearing in \eq{tkeA} is presently expressed by a simple
+! gradient formulation,
+! \begin{equation}
+!   \label{diffusionTKE}
+!   {\cal D}_k = \frstder{z} \left( \dfrac{\nu_t}{\sigma_k} \partder{k}{z} \right)
+!  \comma
+! \end{equation}
+! where $\sigma_k$ is the constant Schmidt--number for $k$.
+! 
+! In horizontally homogeneous flows, the shear and the buoyancy
+! production, $P$ and $B$, can be written as
+! \begin{equation}
+!   \label{PandG}
+!   \begin{array}{rcl}
+!   P &=& - \mean{u'w'} \partder{u}{z} - \mean{v'w'} \partder{v}{z}  \comma \\[3mm]  
+!   B &=&  g \alpha \mean{w' \theta'}                                \point
+!   \end{array}
+! \end{equation}
+! There computation is discussed in \sect{sec:production}.
 !
-! !DESCRIPTION:
-!  This subroutine calculates the turbulent kinetic energy as
-!  needed for one- or two-equation models:
-!
-!  \begin{equation}\label{k_eq}
-!  \partial_t k - \partial_z(\nu_k\partial_z k) =  P + B -\varepsilon,
-!  \end{equation}
-!
-!  The diffusion coefficient depends on the type of model (k-epsilon
-!  or Mellor-Yamada). 
-!
-!  As boundary conditions a choice between Dirichlet (flux-bdy=.false.)
-!  and Neumann no-flux conditions (flux-bdy=.true.) has to be made.
-!
-!  Dirichlet condition:
-!
-!  \begin{equation}
-!  k=\left(\frac{u_*}{c_{\mu}^0}\right)^2. 
-!  \end{equation}
-!
-!  If flux conditions are chose, the {\it Craig and Banner} [1994] and
-!  the {\it Craig} [1996] surface wave breaking theory can
-!  be used. The boundarz condition is then:
-!
-!   \begin{equation}
-!   -\nu_t \partial_zk =c_w (u_s^*)^3 \hfill z= 0. \qquad
-!   \end{equation}
-!
-!   Since the flux is applied half a grid-box away from the boundary,
-!   the {\it Craig} [1996] analytical solution is used for the
-!   construction of this boundary condition:
-!
-!  \begin{equation}\label{tkeanalyt}
-!  k=\frac{(u_s^*)^2}{c_{\mu}^{1/2}}
-!  \left[a+
-!  \left(\frac{3\sigma_k}{2}\right)^{1/2}
-!  c_{\mu}^{1/4}c_w\left(\frac{z'+z_0^s}{z_0^s}\right)^{-m}
-!  \right]^{2/3}. 
-!  \end{equation}
-!   
-!  The sink terms are treated quasi-implicitely in oder to guarantee
-!  positivity. 
-!
+! The rate of dissipation, $\epsilon$, can be either obtained directly
+! from its parameterised transport equation as discussed in 
+! \sect{sec:dissipationeq}, or from any other model yielding
+! an appropriate description of the dissipative length-scale, $l$.
+! Then, $\epsilon$ follows from the well--known cascading relation
+! of turbulence,
+! \begin{equation}
+!   \label{epsilon}
+!   \epsilon = (c_\mu^0)^3 \frac{k^{\frac{3}{2}}}{l}
+!   \comma
+! \end{equation}
+! where $c_\mu^0$ is a constant of the model.
+! 
 ! !USES:
    use mTridiagonal
-   use turbulence, ONLY: tkeo,tke,k_min,eps,num,cm0,cde,flux_bdy
-   use turbulence, ONLY: tke_method
-   use turbulence, ONLY: craig_banner,craig_m,cw,umlauf_burchard
-   use turbulence, ONLY: sig_phi,l_gen,alpha_gen,cm_craig 
+   use turbulence, only: tkeo,tke,k_min,eps
+   use turbulence, only: k_bc, k_ubc, k_lbc, ubc_type, lbc_type
+   use turbulence, only: sig_k
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS: 
-   integer, intent(in)	:: N
-   REALTYPE, intent(in)	:: dt 
-   REALTYPE, intent(in)	:: u_taus,u_taub,z0s
-   REALTYPE, intent(in)	:: h(0:N)
-   REALTYPE, intent(in)	:: P(0:N),B(0:N)
-   REALTYPE, intent(in)	:: numtke(0:N)
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: N
+   REALTYPE, intent(in)                :: dt
+   REALTYPE, intent(in)                :: u_taus,u_taub,z0s,z0b
+   REALTYPE, intent(in)                :: h(0:N)
+   REALTYPE, intent(in)                :: P(0:N),B(0:N)
+   REALTYPE, intent(in)                :: num(0:N)
 !
-! !INPUT/OUTPUT PARAMETERS: 
+! !DEFINED PARAMETERS:
+!  boundary conditions 
+   integer, parameter                  :: Dirichlet=0
+   integer, parameter                  :: Neumann=1
+   integer, parameter                  :: viscous=0
+   integer, parameter                  :: logarithmic=1
+   integer, parameter                  :: injection=2
 !
-! !OUTPUT PARAMETERS:
-!
-! !REVISION HISTORY: 
-!  Original author(s): Hans Burchard, Karsten Bolding 
-!                      & Manuel Ruiz Villarreal
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Karsten Bolding,
+!                      Lars Umlauf
 !
 !  $Log: tkeeq.F90,v $
-!  Revision 1.3  2002-02-08 08:59:59  gotm
-!  Added Manuel as author and copyright holder
+!  Revision 1.4  2003-03-10 09:02:06  gotm
+!  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
-!  Revision 1.2  2001/11/18 16:15:30  gotm
-!  New generic two-equation model
 !
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
-! 
-! !LOCAL VARIABLES:
-   REALTYPE 		:: avh(0:N)
-   REALTYPE 		:: pminus(0:N),pplus(0:N)
-   REALTYPE 		:: prod,buoyan,diss
-   REALTYPE 		:: zz 
-   logical, save	:: warning=.true. 
-   integer 		:: i
 !EOP
-!-----------------------------------------------------------------------
+!
+! !LOCAL VARIABLES:
+   REALTYPE                  :: avh(0:N)
+   REALTYPE                  :: pminus(0:N),pplus(0:N)
+   REALTYPE                  :: prod,buoyan,diss
+   integer                   :: i
+   REALTYPE                  :: bc_tmp
+!
+!------------------------------------------------------------------------
 !BOC
+! save old time step (needed for the length-scale equation)
    tkeo=tke
- 
+
+! compute diffusivities at levels of the mean variables
    do i=2,N-1
-      avh(i)=0.5*(numtke(i-1)+numtke(i))
+      avh(i)=0.5/sig_k*(num(i-1)+num(i))
    end do
 
-   if (flux_bdy) then 
-      avh(1)=0
+! for Neumann boundary conditions set the boundary fluxes preliminary to zero
+   if (k_ubc.eq.Neumann) then
       avh(N)=0
-   else       ! Not needed any more for Dirichlet conditions, only 
-              ! kept for "historical" reasons, see Burchard et al. [1998].
-      if (tke_method .eq. 2) then  
-         avh(1)=u_taub**4*2/(eps(0)+eps(1  ))
-         avh(N)=u_taus**4*2/(eps(N)+eps(N-1))
-      else   
-         avh(1)= 0.5*(num(0)+numtke(1  ))
-         avh(N)= 0.5*(num(N)+numtke(N-1))
-      end if
    end if
 
-   zz=0.
+   if (k_lbc.eq.Neumann) then
+      avh(1)=0
+   end if
+
+! prepare the production terms
    do i=N-1,1,-1
-      prod=P(i)
-      buoyan=B(i)
-      diss=eps(i)
+      prod   = P(i)
+      buoyan = B(i)
+      diss   = eps(i)
       if (prod+buoyan.gt.0) then
-         pplus(i)=prod+buoyan
-         pminus(i)=diss
+         pplus(i)  = prod+buoyan
+         pminus(i) = diss
       else
-         pplus(i)=prod
-         pminus(i)=diss-buoyan
+         pplus(i)  = prod
+         pminus(i) = diss-buoyan
       end if
    end do
-   i=N-1
- 
+
+! construct the matrix
    do i=1,N-1
-      au(i)=-2.*dt*avh(i)/(h(i)+h(i+1))/h(i)
-      cu(i)=-2.*dt*avh(i+1)/(h(i)+h(i+1))/h(i+1)
-      bu(i)=1.-au(i)-cu(i)+pminus(i)*dt/tke(i)
-      du(i)=(1+pplus(i)*dt/tke(i))*tke(i)
+      au(i) = -2.*dt*avh(i)/(h(i)+h(i+1))/h(i)
+      cu(i) = -2.*dt*avh(i+1)/(h(i)+h(i+1))/h(i+1)
+      bu(i) =  1.-au(i)-cu(i)+pminus(i)*dt/tke(i)
+      du(i) = (1+pplus(i)*dt/tke(i))*tke(i)
    end do
 
-!  Surface flux of TKE due to surface wave breaking 
-!  according to Craig and Banner 1994: 
-
-   if (craig_banner) then 
-      if (h(N) .gt. z0s .and.  warning) then
-         STDERR 'WARNING: Surface roughness length smaller than'
-         STDERR '         thickness of upper grid box. Calculations'
-         STDERR '         might be inaccurate in this Craig and Banner'
-         STDERR '         surface wave breaking parameterisation.'
-         STDERR '         Computation is continued.' 
-         warning=.false.   
-      end if 
-      du(N-1)=du(N-1)+cw*u_taus**3*dt/(0.5*(h(N)+h(N-1)))   & 
-                 *((0.5*h(N)+z0s)/z0s)**(-craig_m)                      
-   end if 
-
-   if (flux_bdy) then
-!  +-------------------------------------------------------------+
-!  | No-flux conditions for TKE                                  | 
-!  +-------------------------------------------------------------+
-      call tridiagonal(N,1,N-1,tke)
-      tke(0) = u_taub*u_taub/sqrt(cm0*cde) 
-      tke(N) = u_taus*u_taus/sqrt(cm0*cde) 
-      if (umlauf_burchard) then
-         STDERR 'Flux boundary conditions for the Umlauf & Burchard model'
-         STDERR 'are not coded yet. Please chose Dirichlet boundary'
-         STDERR 'conditions (flux_bdy=     .true.)'
-         STDERR 'in the keps namelist in the gotmturb.inp file.'  
-         STDERR 'Program aborted in tkeeq.F90.'  
-         stop
-      end if 
+! impose upper boundary conditions
+   if (k_ubc.eq.Neumann) then
+      ! compute the BC
+      bc_tmp  = k_bc(Neumann,ubc_type,0.5*h(N),z0s,u_taus)
+      ! insert the BC into system
+      du(N-1) = du(N-1)+bc_tmp*dt/(0.5*(h(N)+h(N-1)))
    else
-!  +-------------------------------------------------------------+
-!  | Dirichlet conditions for TKE                                | 
-!  +-------------------------------------------------------------+
-      if (craig_banner) then
-          STDERR 'For the Craig and Banner wave breaking condition,' 
-          STDERR 'flux boundary conditions should be used.'
-          STDERR 'Please, change namelist gotmturb.inp !'
-          STDERR 'Program aborted ...'
-          stop
-       end if   
-      cu(1)=0
-      bu(1)=1.
-      du(1)=u_taub*u_taub/sqrt(cm0*cde)
- 
-      bu(N-1)=1.
-      au(N-1)=0.
-      if (umlauf_burchard) then        ! from eqs. (4.14), (4.19) 
-         du(N-1)=(cw*sig_phi/(-cm_craig*l_gen*alpha_gen))**(2./3.)   &
-                  *u_taus**2/(z0s**alpha_gen)*(h(N)+z0s)**alpha_gen
-         tke(N)=(cw*sig_phi/(-cm_craig*l_gen*alpha_gen))**(2./3.)   &
-                  *u_taus**2/(z0s**alpha_gen)*z0s**alpha_gen
-      else 
-         du(N-1)=u_taus*u_taus/sqrt(cm0*cde)
-         tke(N) =u_taus*u_taus/sqrt(cm0*cde)
-      end if 
-      call tridiagonal(N,1,N-1,tke)
-   end if 
+      ! prepare matrix 
+      bu(N-1) = 1.
+      au(N-1) = 0.
+      ! compute the BC
+      bc_tmp  = k_bc(Dirichlet,ubc_type,h(N),z0s,u_taus)
+      ! insert the BC into system
+      du(N-1) = bc_tmp
+   end if
 
+! impose lower boundary conditions
+   if (k_lbc.eq.Neumann) then
+      ! compute the BC            
+      bc_tmp  = k_bc(Neumann,lbc_type,0.5*h(1),z0b,u_taub)
+      ! insert the BC into system 
+      du(1)   = du(1)+bc_tmp*dt/(0.5*(h(1)+h(2)))
+   else
+      ! prepare matrix        
+      cu(1)   = 0.
+      bu(1)   = 1.
+      ! compute the BC
+      bc_tmp  = k_bc(Dirichlet,lbc_type,h(1),z0b,u_taub)
+      ! insert the BC into system
+      du(1)   = bc_tmp
+   end if
+
+   ! solve the system
+   call tridiagonal(N,1,N-1,tke)
+
+   ! overwrite the uppermost value
+   tke(N)  = k_bc(Dirichlet,ubc_type,z0s,z0s,u_taus)
+   ! overwrite the lowest value
+   tke(0)  = k_bc(Dirichlet,lbc_type,z0b,z0b,u_taub)
+
+   ! substitute minimum value
    where (tke .lt. k_min) tke = k_min
 
    return
    end subroutine tkeeq
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard, Karsten Bolding 
-!                     & Manuel Ruiz Villarreal.
-!-----------------------------------------------------------------------

@@ -1,78 +1,72 @@
-!$Id: ispralength.F90,v 1.2 2002-02-08 08:59:58 gotm Exp $
+!$Id: ispralength.F90,v 1.3 2003-03-10 09:02:05 gotm Exp $
 #include"cppdefs.h"
 !-------------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Ispralength() - length scale from ISPRAMIX
+! !ROUTINE: Algebraic length--scale from ISPRAMIX \label{sec:ispramix}
 !
 ! !INTERFACE:
    subroutine Ispralength(nlev,NN,h,depth)
 !
 ! !DESCRIPTION:
 !  This subroutine calculates the 
-!  lengthscale used in the ISPRAMIX model of JRC, Ispra, Italy
-!  (Eifler and Schrimpf [1992] and Demirov et al. [1998]).
-!  $L$ in both mixed layers is obtained from a {\it Blackadar} [1962]
-!  type formula:
-!  \begin{equation}\label {Lmixed}
-!  L=\frac {\kappa \tilde z} {1+\frac {\kappa \tilde z} {c_2 \cdot h_m}}
-!  (1-R_f)^e
+!  lengthscale used in the ISPRAMIX model,
+!  see \cite{EiflerSchrimpf92} and \cite{Demirovetal98}.
+!  In both mixing regions (close to the surface and the bottom),
+!  $l$ is obtained from the formula
+!  \begin{equation}
+!    \label {Lmixed}
+!    l = \frac {\kappa \tilde z} {1+\frac {\kappa \tilde z} {c_2 \cdot h_m}}
+!        (1-R_f)^e
 !  \end{equation}
 !  where $\tilde z$
 !  is the distance from the interface (surface or bottom). The
 !  fraction in (\ref{Lmixed})
-!  predicts an approximation to a linear behavior of $L$ near boundaries 
+!  predicts an approximation to a linear behavior of $l$ near boundaries 
 !  and a value proportional to the thickness of the mixed
-!  layer far from the interface, $L=c_2 h_m$, where $c_2=0.065$
+!  layer far from the interface, $l=c_2 h_m$, where $c_2=0.065$
 !  is estimated from experimental data as discussed in
-!  {\it Eifler and Schrimpf} [1992].
+!  \cite{EiflerSchrimpf92}.
 !  The factor $(1-R_f)$, with the flux Richardson
 !  number $R_f=-B/P$, accounts for the effect
-!  of stratification on the length scale.
+!  of stratification on the length--scale.
 !  The parameter $e$ is here a tuning parameter
 !  (pers.\ comm.\ Walter Eifler, JRC, Ispra, Italy)
 !  which is usually set to $e=1$.
 !
 ! !USES:
-   use turbulence, ONLY: L,tke,L_min,xRF,kappa
+   use turbulence, ONLY: L,tke,k_min,eps_min,xRF,kappa,cde
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
-   REALTYPE, intent(in)	:: NN(0:nlev)
-   REALTYPE, intent(in)	:: h(0:nlev),depth
-!
-! !OUTPUT PARAMETERS:
-!
-! !BUGS:
-!
-! !SEE ALSO: 
-!  potentialml(), algebraiclength()   
-!
-! !SYSTEM ROUTINES:
-!
-! !FILES USED:
+   integer, intent(in)       :: nlev
+   REALTYPE, intent(in)      :: NN(0:nlev)
+   REALTYPE, intent(in)      :: h(0:nlev),depth
 !
 ! !REVISION HISTORY:
-!  Original author(s):  Manuel Ruiz Villarreal, Hans Burchard 
-!                       & Karsten Bolding
+!  Original author(s):  Manuel Ruiz Villarreal, Hans Burchard
 !
 !  $Log: ispralength.F90,v $
-!  Revision 1.2  2002-02-08 08:59:58  gotm
-!  Added Manuel as author and copyright holder
+!  Revision 1.3  2003-03-10 09:02:05  gotm
+!  Added new Generic Turbulence Model + improved documentation and cleaned up code
+!
+!  Revision 1.2  2002/02/08 08:59:58  gotm
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
 !
+!EOP
 !
 ! !LOCAL VARIABLES:
   integer		:: i,SLind,BLind,Index,Index2
   REALTYPE 		:: hms,hmb,db,ds
   REALTYPE 		:: kml,c2_i,c3_i
+  REALTYPE 		:: l_min
 !
-!EOP
 !-------------------------------------------------------------------------
 !BOC
+  l_min = cde*k_min**1.5/eps_min
+
    kml   = 1.e-5
    c2_i  = 0.065
 
@@ -164,8 +158,3 @@
    return
    end
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard, Karsten Bolding 
-!                     & Manuel Ruiz Villarreal.
-!-----------------------------------------------------------------------

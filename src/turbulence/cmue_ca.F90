@@ -1,58 +1,74 @@
-!$Id: cmue_ca.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: cmue_ca.F90,v 1.2 2003-03-10 09:02:03 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Canuto et al. [2000] version A non-equilibrium stability functions. 
+! !ROUTINE: \cite{Canutoetal2001a} non-eq.\ stability func.\ ver.\ A
 ! 
 ! !INTERFACE:
    subroutine cmue_ca(nlev)
 !
 ! !DESCRIPTION:
-!  This subroutine computes Canuto et al. [2000] version A non-equilibrium
-!  stability functions.
+!  \label{cmue_ca}
+!  This subroutine computes non-equilibrium version of the stability functions
+!  according to \cite{Canutoetal2001a}. The version `A' is implemented here as
+!  follows: 
+! \begin{equation}
+! \begin{array}{l}
+! \displaystyle
+! c_{\mu}=\frac{0.1070+0.01741\alpha_N-0.00012\alpha_M}{A},
+! \\
+! \\
+! \displaystyle
+! c'_{\mu}=\frac{0.1120+0.004519\alpha_N+0.00088\alpha_M}{A},
+! \end{array}
+! \end{equation}
+! with
+! $A=1+0.26\alpha_N+0.029\alpha_M
+!             +0.0087 \alpha_N^2+0.005\alpha_N\alpha_M
+! 	                -0.000034\alpha_M^2$.
 !
 ! !USES:
    use turbulence, only: an,as
-   use turbulence, only: cmue1,cmue2
+   use turbulence, only: cmue1,cmue2,cm0
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY: 
-!  Original author(s): Hans Burchard & Karsten Bolding 
+!  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_ca.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 09:02:03  gotm
+!  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
+!
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: i
-   REALTYPE, parameter	:: L1=0.1070
-   REALTYPE, parameter	:: L2=0.0032
-   REALTYPE, parameter	:: L3=0.0864
-   REALTYPE, parameter	:: L4=0.1200
-   REALTYPE, parameter	:: L5=11.9000
-   REALTYPE, parameter	:: L6=0.4000
-   REALTYPE, parameter	:: L7=0.0000
-   REALTYPE, parameter	:: L8=0.4800
-   REALTYPE, parameter	:: cm0=0.5270
-   REALTYPE, parameter	:: tnmin=-12.27
-   REALTYPE, parameter	:: a2_cm03=2./cm0**3
-   REALTYPE		:: s0,s1,s2,s4,s5,s6
-   REALTYPE		:: d,d0,d1,d2,d3,d4,d5
-   REALTYPE		:: tsmax
-   REALTYPE		:: tn,ts,sm,sh
+   integer                   :: i
+   REALTYPE, parameter       :: L1=0.1070
+   REALTYPE, parameter       :: L2=0.0032
+   REALTYPE, parameter       :: L3=0.0864
+   REALTYPE, parameter       :: L4=0.1200
+   REALTYPE, parameter       :: L5=11.9000
+   REALTYPE, parameter       :: L6=0.4000
+   REALTYPE, parameter       :: L7=0.0000
+   REALTYPE, parameter       :: L8=0.4800
+   REALTYPE, parameter       :: tnmin=-12.27
+   REALTYPE                  :: a2_cm03
+   REALTYPE                  :: s0,s1,s2,s4,s5,s6
+   REALTYPE                  :: d,d0,d1,d2,d3,d4,d5
+   REALTYPE                  :: tsmax
+   REALTYPE                  :: tn,ts,sm,sh
 ! 
-!EOP
 !-----------------------------------------------------------------------
 !BOC
+   a2_cm03=2./cm0**3
+
    s0 = 1.5*L1*L5*L5
    s1 = -L4*(L6+L7)+2.*L4*L5*(L1-1./3.*L2-L3)+1.5*L1*L5*L8
    s2 = -0.375*L1*(L6*L6-L7*L7)
@@ -87,6 +103,3 @@
    return
    end subroutine cmue_ca
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard & Karsten Bolding.

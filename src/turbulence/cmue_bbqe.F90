@@ -1,47 +1,46 @@
-!$Id: cmue_bbqe.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: cmue_bbqe.F90,v 1.2 2003-03-10 09:02:03 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Burchard and Baumert [1995] stability functions.
+! !ROUTINE: \cite{BurchardBaumert95} quasi-eq.\ stability func.
 ! 
 ! !INTERFACE:
    subroutine cmue_bbqe(nlev)
 !
 ! !DESCRIPTION:
-!  This subroutine computes the quasi-equilibrium version of the
-!  Burchard and Baumert [1995] stability functions.
+!  This subroutine computes quasi-equilibrium version of the stability functions
+!  according to \cite{BurchardBaumert95}, see section \ref{cmue_bb}. Here, the 
+!  quasi-equilibrium assumption (\ref{quasieq}) is applied in addition.
 !
 ! !USES:
    use turbulence, only: an,as 
-   use turbulence, only: cmue1,cmue2
+   use turbulence, only: cmue1,cmue2,cm0
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev
-!
-! !INPUT/OUTPUT PARAMETERS:
-!
-! !OUTPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY: 
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_bbqe.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2003-03-10 09:02:03  gotm
+!  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
+!
+!EOP
 !
 ! !LOCAL VARIABLES:
-   integer		:: i,j
-   REALTYPE		:: X,D,A,E,H,ww
-   REALTYPE		:: Prinv
-   REALTYPE, parameter	:: c1=1.8
-   REALTYPE, parameter	:: c2=0.6
-   REALTYPE, parameter	:: c1t=3.0
-   REALTYPE, parameter	:: cm0=0.59
+   integer                   :: i,j
+   REALTYPE                  :: X,D,A,E,H,ww,as0
+   REALTYPE                  :: Prinv
+   REALTYPE, parameter       :: c1=1.8
+   REALTYPE, parameter       :: c2=0.6
+   REALTYPE, parameter       :: c1t=3.0
 ! 
-!EOP
 !-----------------------------------------------------------------------
 !BOC
    an = 1./cm0**6 * an
@@ -56,13 +55,15 @@
 
       cmue1(i)=0.4/(1.8+X)*H/D*0.33
 
-      do j=1,10         ! Loop for iteration to calculate as
+      do j=1,1000         ! Loop for iteration to calculate as
+         as0=as(i)
          as(i) = 1. + an(i)*Prinv + 1/cmue1(i)
          ww=2./3.*0.8/(E*(1.8+X)-0.16/(1.8+X)*H/D*as(i))
          cmue1(i)  = 0.4/(1.8+X)*H/D*ww
+	 if (abs(as0-as(i)).lt.1e-12) goto 111
       end do  
 
-      ww=2./3.*0.8/(E*(1.8+X)-0.16/(1.8+X)*H/D*as(i))
+111   ww=2./3.*0.8/(E*(1.8+X)-0.16/(1.8+X)*H/D*as(i))
 
       cmue1(i) = 0.4/(1.8+X)*H/D*ww
       cmue2(i) = A/(3.0+0.5*X)*ww
@@ -74,6 +75,3 @@
    return
    end subroutine cmue_bbqe
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard & Karsten Bolding.

@@ -1,9 +1,9 @@
-!$Id: potentialml.F90,v 1.2 2002-02-08 08:59:59 gotm Exp $
+!$Id: potentialml.F90,v 1.3 2003-03-10 09:02:05 gotm Exp $
 #include"cppdefs.h"
 !-------------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: PotentialML - length sacle using 2 master lenghth scales
+! !ROUTINE: Algebraic length--scale with two master scales \label{sec:potentialml}
 !
 ! !INTERFACE:
    subroutine potentialml(nlev,z0b,z0s,h,depth,NN)
@@ -13,63 +13,71 @@
 !  length scales $l_u$ and $l_d$
 !  \begin{equation}
 !  \begin{array}{l}
-!  \int_{z_0}^{z_0+l_u(z_0)} [b(z_0)-b(z)] dz =k(z_0) \\
-!  \int_{z_0-l_d(z_0)}^{z_0} [b(z)-b(z_0)] dz =k(z_0)
+!  \int_{z_0}^{z_0+l_u(z_0)} (b(z_0)-b(z)) dz =k(z_0) \comma \\[4mm]
+!  \int_{z_0-l_d(z_0)}^{z_0} (b(z)-b(z_0)) dz =k(z_0)
 !  \end{array}
 !  \end{equation}
 ! 
-!   From $l_u$ and $l_d$ two length scales are defined $l_k$ 
-!   (characteristic mixing length)
-!   and $l_\epsilon$ (characteristic dissipation length):
+!   From $l_u$ and $l_d$ two length--scales are defined: $l_k$, 
+!   a characteristic mixing length,
+!   and $l_\epsilon$, a characteristic dissipation length.
+!   They are computed according to
 !   \begin{equation}
 !   \begin{array}{l}
-!   l_k(z_0)= min[l_d(z_0),l_u(z_0)] \\
-!   l_{\epsilon}(z_0)={[l_d(z_0)l_u(z_0)]}^{1/2}
+!   l_k(z_0)= \text{Min} ( l_d(z_0),l_u(z_0)) \comma \\[4mm]
+!   l_{\epsilon}(z_0)=\left( l_d(z_0)l_u(z_0)\right)^\frac{1}{2}
+!   \point
 !   \end{array}
 !   \end{equation}
 ! 
-!   $l_k$ is used in kolpran() to compute eddy viscosity/difussivity  
-!   (is transported as L()). $l_{\epsilon}$ is ed to compute $\epsilon$:
+!   $l_k$ is used in {\tt kolpran()} to compute eddy viscosity/difussivity.  
+!   $l_{\epsilon}$ is used to compute the dissipation rate, $\epsilon$
+!    according to
 !   \begin{equation}
-!   \epsilon=C_{\epsilon}k^{3/2}l_{\epsilon}^{-1}, with C_{\epsilon}=0.7
+!     \epsilon=C_{\epsilon} k^{3/2} l_{\epsilon}^{-1} 
+!     \comma
+!     C_{\epsilon}=0.7
+!    \point
 !   \end{equation}
 !
 ! !USES:
-   use turbulence, ONLY: L,eps,tkeo,tke,L_min,eps_min,cde,galp,kappa,length_lim
+   use turbulence, ONLY: L,eps,tkeo,tke,k_min,eps_min,  &
+                         cde,galp,kappa,length_lim
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)	:: nlev 
-   REALTYPE, intent(in)	:: h(0:nlev),depth,NN(0:nlev)
-   REALTYPE, intent(in)	:: z0b,z0s
-!
-! !OUTPUT PARAMETERS:
-!
-! !BUGS:
+   integer, intent(in)                 :: nlev 
+   REALTYPE, intent(in)                :: h(0:nlev),depth,NN(0:nlev)
+   REALTYPE, intent(in)                :: z0b,z0s
+
 !
 ! !REVISION HISTORY:
-!  Original author(s):  Manuel Ruiz Villarreal, Hans Burchard 
-!                       & Karsten Bolding
+!  Original author(s):  Manuel Ruiz Villarreal, Hans Burchard
 !
 !  $Log: potentialml.F90,v $
-!  Revision 1.2  2002-02-08 08:59:59  gotm
-!  Added Manuel as author and copyright holder
+!  Revision 1.3  2003-03-10 09:02:05  gotm
+!  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
+!  Revision 1.2  2002/02/08 08:59:59  gotm
+
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS
 !
-! !LOCAL VARIABLES:
-   REALTYPE		:: ds(0:nlev),db(0:nlev)
-   REALTYPE		:: lu(0:nlev),ld(0:nlev)
-   REALTYPE		:: lk(0:nlev),leps(0:nlev)
-   REALTYPE, parameter	:: NNmin=1.e-8
-   REALTYPE		:: Lcrit,buoydiff,integral,ceps
-   integer 		:: i,j
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: i,j
+   REALTYPE                  :: ds(0:nlev),db(0:nlev)
+   REALTYPE                  :: lu(0:nlev),ld(0:nlev)
+   REALTYPE                  :: lk(0:nlev),leps(0:nlev)
+   REALTYPE                  :: Lcrit,buoydiff,integral,ceps
+   REALTYPE, parameter       :: NNmin=1.e-8
+!
 !-------------------------------------------------------------------------
 !BOC
    db(0)=0.
    ds(nlev)=0.
+
    do i=1,nlev-1
       db(i)=db(i-1)+h(i)      ! distance of intercace i from bottom 
       ds(i)=depth-db(i)       ! distance of intercace i from surface 
@@ -94,10 +102,10 @@
                   lu(i)=lu(i)-(integral-tkeo(i))/buoydiff
                else 
 !           To avoid lu(i) from becoming too large if NN(i) is too small
-	          if(NN(i).gt.NNmin) then
-	             lu(i)=sqrt(2.)*sqrt(tkeo(i))/sqrt(NN(i))
+               if(NN(i).gt.NNmin) then
+                     lu(i)=sqrt(2.)*sqrt(tkeo(i))/sqrt(NN(i))
                   else
-	             lu(i)=h(i)
+                     lu(i)=h(i)
                   end if
                end if 
                goto 600
@@ -151,25 +159,31 @@
    do i=1,nlev-1
       L(i)=lk(i)
    end do      
-     
+
+! do the boundaries assuming linear log-law length-scale
    L(0)=kappa*z0b
    L(nlev)=kappa*z0s
-!  Gaspar uses null gradient
+
    do i=0,nlev
+      
+      !  clip the length-scale at the Galperin et al. (1988) value
+      !  under stable stratifcitation
       if ((NN(i).gt.0).and.(length_lim)) then
          Lcrit=sqrt(2*galp*galp*tke(i)/NN(i))
          if (L(i).gt.Lcrit) L(i)=Lcrit
       end if
-      if (L(i).lt.L_min) L(i)=L_min
+
+!     compute the dissipation rate
       eps(i)=cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
-      if(eps(i).lt.eps_min) eps(i)=eps_min
-   end do  
- 
+
+      ! substitute minimum value
+      if (eps(i).lt.eps_min) then
+        eps(i) = eps_min
+          L(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/eps_min
+      endif
+
+   enddo
+
    return
    end
 !EOC
-
-!-----------------------------------------------------------------------
-!Copyright (C) 2000 - Hans Burchard, Karsten Bolding 
-!                     & Manuel Ruiz Villarreal.
-!-----------------------------------------------------------------------
