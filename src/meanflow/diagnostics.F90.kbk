@@ -1,0 +1,53 @@
+#include"cppdefs.h"
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Calculates various diagnostic variables.
+!
+! !INTERFACE:
+   subroutine integrated_heat_content(nlev,buoy_method,dt,g,rho_0,nuh)
+!
+! !DESCRIPTION:
+!  This subroutine calculates different parameters needed for the
+!  turbulence equations such as:
+!
+!  \begin{itemize}
+!  \item buoy: buoyancy in [m/s**2]
+!  \end{itemize}
+!
+! !USES:
+   use meanflow, only: cp,rho_0,h,t,tprof
+   use meanflow, only: cp,rho_0,h,t,tprof
+   use meanflow, only: obs_heat_content,calc_heat_content
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!
+! !INPUT/OUTPUT PARAMETERS:
+!
+! !OUTPUT PARAMETERS:
+!
+! !REVISION HISTORY:
+!  Author(s): Karsten Bolding & Hans Burchard
+!  01Jan2000: Ver. 2.0.0 (kbk): A complete rewrite to F90.
+!
+! !LOCAL VARIABLES:
+   integer 			:: i
+   REALTYPE, save		:: obs0,calc0
+   logical,save			:: first=.true.
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (first) then
+      obs0  = sum(tprof(1:nlev)*h(1:nlev)*cp*rho_0)
+      calc0 = sum(t(1:nlev)*h(1:nlev)*cp*rho_0)
+      first = .false.
+   end if
+   obs_heat_content  = obs_heat_content
+   calc_heat_content = calc_heat_content
+   return
+   end subroutine integrated_heat_content
+!EOC
+
+!Copyright (C) 2000 - Karsten Bolding & Hans Burchard.

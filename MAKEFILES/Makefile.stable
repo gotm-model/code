@@ -1,0 +1,129 @@
+#
+# Master Makefile for making the GOTM executable.
+#
+
+.SUFFIXES:
+.SUFFIXES: .f90
+
+SHELL	= /bin/sh
+
+#NAG F95 compiler for Linux
+FC     = f95nag
+FFLAGS = -f77
+
+#Fujitsu F95 compiler for Linux
+#FC     = f95
+#FFLAGS = -Am -fw
+
+#DECFOR F95 compiler for OSF1 - alpha
+#FC=    = f95
+#FFLAGS =
+
+MODULES	= \
+libutil.a(time.o)			\
+libutil.a(tridiagonal.o)		\
+libutil.a(eqstate.o)			\
+libobservations.a(observations.o)	\
+libairsea.a(airsea.o)			\
+libmeanflow.a(meanflow.o)		\
+libturbulence.a(turbulence.o)		\
+libturbulence.a(sediment.o)		\
+libturbulence.a(seagrass.o)		\
+liboutput.a(asciiout.o)			\
+liboutput.a(gradsout.o)			\
+liboutput.a(output.o)			\
+
+UTIL	= \
+libutil.a(advection.o)		\
+libutil.a(gridinterpol.o)	\
+libutil.a(yevol.o)
+
+MEANFLOW	= \
+libmeanflow.a(updategrid.o)		\
+libmeanflow.a(coriolis.o)		\
+libmeanflow.a(uequation.o)		\
+libmeanflow.a(vequation.o)		\
+libmeanflow.a(extpressure.o)		\
+libmeanflow.a(intpressure.o)		\
+libmeanflow.a(friction.o)		\
+libmeanflow.a(lightabsorbtion.o)	\
+libmeanflow.a(temperature.o)		\
+libmeanflow.a(salinity.o)		\
+libmeanflow.a(stratification.o)		\
+libmeanflow.a(buoyancy.o)		\
+libmeanflow.a(convectiveadjustment.o)
+
+TURBULENCE   = \
+libturbulence.a(tkeeq.o)		\
+libturbulence.a(tkealgebraic.o)		\
+libturbulence.a(algebraiclength.o)	\
+libturbulence.a(dissipationeq.o)	\
+libturbulence.a(lengthscaleeq.o)	\
+libturbulence.a(ispralength.o)		\
+libturbulence.a(production.o)		\
+libturbulence.a(potentialml.o)		\
+libturbulence.a(get_eps_profile.o)	\
+libturbulence.a(cmue_bb.o)		\
+libturbulence.a(cmue_bbqe.o)		\
+libturbulence.a(cmue_ca.o)		\
+libturbulence.a(cmue_caqe.o)		\
+libturbulence.a(cmue_cb.o)		\
+libturbulence.a(cmue_cbqe.o)		\
+libturbulence.a(cmue_kc.o)		\
+libturbulence.a(cmue_kcqe.o)		\
+libturbulence.a(cmue_ma.o)		\
+libturbulence.a(cmue_rf.o)		\
+libturbulence.a(cmue_sg.o)
+
+OBSERVATIONS   = \
+libobservations.a(analytical_profile.o)	\
+libobservations.a(get_eps_profile.o)	\
+libobservations.a(get_ext_pressure.o)	\
+libobservations.a(get_int_pressure.o)	\
+libobservations.a(get_s_profile.o)	\
+libobservations.a(get_t_profile.o)	\
+libobservations.a(get_vel_profile.o)	\
+libobservations.a(get_w_adv.o)	\
+libobservations.a(get_zeta.o)	\
+libobservations.a(read_extinction.o)
+
+LIBS	=	libairsea.a		\
+		libturbulence.a 	\
+		libmeanflow.a 		\
+		libobservations.a	\
+		liboutput.a		\
+		libutil.a
+
+all: gotm 
+
+gotm: $(MODULES) $(LIBS) main.o 
+	$(FC) main.o -o $@ gotm.o $(LIBS)
+	-rm main.o
+
+main.o: gotm.o
+
+modules: $(MODULES)
+
+libairsea.a: $(AIRSEA)
+
+libturbulence.a: $(TURBULENCE)
+
+libutil.a: $(UTIL)
+
+libmeanflow.a: $(MEANFLOW)
+
+libobservations.a: $(OBSERVATIONS)
+
+clean:
+	-rm -f lib*.a  *.mod *.o
+
+realclean: clean
+	-rm -f gotm 
+
+%.o: %.f90
+	$(FC) $(FFLAGS) -c $< -o $@
+
+
+#-----------------------------------------------------------------------
+# Copyright (C) 2000 - Hans Burchard and Karsten Bolding (BBH)         !
+#-----------------------------------------------------------------------

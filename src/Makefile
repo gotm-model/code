@@ -1,0 +1,84 @@
+#$Id: Makefile,v 1.1 2001-02-12 15:55:57 gotm Exp $
+#
+# Master Makefile for making the GOTM executable.
+#
+
+include Rules.make
+
+DOCSRC	= main.F90 gotm.F90
+
+SUBDIRS	= util observations airsea meanflow turbulence output $(FEATURES)
+
+CORE_LIBS	=	\
+		-lairsea$(buildtype)		\
+		-lmeanflow$(buildtype) 		\
+		-lturbulence$(buildtype) 	\
+		-lobservations$(buildtype)	\
+		-loutput$(buildtype)		\
+		-lutil$(buildtype)
+
+ALL_LIBS	= $(FEATURE_LIBS) $(CORE_LIBS) $(EXTRA_LIBS)
+
+EXEC		= gotm$(buildtype)_$(FORTRAN_COMPILER)
+
+all: ../include/version.h $(EXEC)
+
+../include/version.h: ../VERSION
+	$(MAKE) realclean
+	@echo "#define RELEASE \"`cat ../VERSION`\"" > ../include/version.h
+
+$(EXEC): makedirs subdirs features gotmlib 
+	$(FC) -o $@ $(LDFLAGS) -lgotm$(buildtype) $(ALL_LIBS)
+
+makedirs:
+	mkdir -p $(MODDIR) $(LIBDIR)
+
+gotmlib:
+	$(MAKE) -C gotm all
+
+.PHONY: subdirs $(SUBDIRS)
+
+subdirs: $(SUBDIRS)
+
+install: $(EXEC) 
+	$(MV) $(EXEC) $(BINDIR)
+
+$(SUBDIRS):
+	$(MAKE) -C $@
+
+observations airsea meanflow turbulence output: util
+
+features:
+ifdef FEATURES
+	set -e; for i in $(FEATURES); do $(MAKE) -C $$i; done
+endif
+
+doc:
+	$(PROTEX) $(DOCSRC) > ../doc/main.tex
+	$(MAKE) -C ../doc
+	
+bkup: distclean
+	tar -czvf ../../backups/bkup.`date +%y%m%d%H`_`cat ../VERSION`.tar.gz *
+
+clean:
+	$(RM) -f main.o $(OBJ)
+
+realclean: clean
+	$(RM) -f ../modules/$(FORTRAN_COMPILER)/*.mod ../lib/$(FORTRAN_COMPILER)/lib*$(buildtype).a
+ifdef SUBDIRS
+	set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i $@; done
+endif
+ifdef FEATURES
+	set -e; for i in $(FEATURES); do $(MAKE) -C $$i $@; done
+endif
+	$(MAKE) -C ../doc $@
+
+distclean: realclean
+	$(RM) -f ../lib/*/lib*.a
+	$(RM) -f ../modules/*/*.{m,mod}
+	$(RM) -f gotm_debug_* gotm_prof_* gotm_prod_*
+	$(MAKE) -C ../doc $@
+
+#-----------------------------------------------------------------------
+# Copyright (C) 2000 - Hans Burchard and Karsten Bolding (BBH)         !
+#-----------------------------------------------------------------------

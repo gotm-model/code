@@ -1,0 +1,36 @@
+The GOTM source code.
+
+This documnet contains important information on how to obtain the source code,
+an explenation on the version # scheme used in GOTM (stable and unstable releases
+and finally how to compile GOTM and finally how to contribute to further GOTM
+development.
+
+How to get the code:
+The most recent release can always be obtained from http://www.gotm.net in the 
+section download. The source code comes as a gzipped tar file (can be unpacked
+both under Windoews using WinZip and Unix using gzip) which in addition to the
+source code itself contains various other information, e.g. Copyright information.
+
+Stable and unstable releases:
+The version number scheme used in GOTM is similar to the system used by the Linux
+kernel. The version number has the following form:
+VERSION.LEVEL.SUBLEVEL
+where VERSION is the major version number. This number will only change when 
+there has been major changes in the core of the GOTM model. The LEVEL number 
+defines whether it is a stable or unstable (developers) release. If the LEVEL number
+is even it is a stable release and if LEVEL is un-even it is a unstable release.
+The SUBLEVEL number will be increased whenever bugs have been fixed or new features/
+modules are included - which will only change to core of GOTM a limited number of 
+places an not the overall structure of the code.
+
+
+How to compile GOTM:
+The first requirement for compiling GOTM is a F90/F95 compiler.
+If only the stable version is considered this is enough. 
+To compile the unstable two more things are necessary: preprocessing of the source
+code should be possible, a build system which will allow the source code to be placed in different directories. 
+
+Documentation of the source code:
+The source code has been documented by embedding additional information in the code
+itself. 
+

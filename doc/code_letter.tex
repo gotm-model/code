@@ -1,0 +1,64 @@
+\documentclass[letter,fleqn]{article}
+\usepackage{graphicx}
+% Insert formatting instructions here
+\textwidth    15cm
+\textheight   20cm
+\setcounter{secnumdepth}{5}
+\setcounter{tocdepth}{5}
+\newcommand\eps{\varepsilon}
+\evensidemargin1cm
+\oddsidemargin1cm
+\parindent0pt
+\pagestyle{headings}
+
+\title{{\bf GOTM}, \\ a {\bf G}eneral {\bf O}cean {\bf T}urbulence
+{\bf M}odel. \\ Source code documentation.}
+\author{\sc Hans Burchard, Karsten Bolding, Manuel Ruiz Villarreal and Pierre-Philippe Matheiu}
+
+\begin{document}
+
+\thispagestyle{empty}
+
+{\LARGE
+\begin{center}
+{\bf GOTM}, 
+\\ a {\bf G}eneral {\bf O}cean {\bf T}urbulence {\bf M}odel. 
+\\ Source code documentation.
+\end{center}
+}
+
+{\large
+\begin{center}
+{\sc Hans Burchard, Karsten Bolding, Manuel R.\ Villarreal and Pierre-Philippe Matheiu}
+\end{center}
+}
+
+\newpage
+\tableofcontents
+\newpage
+
+
+%\section{Introductionical model}
+
+\section{The GOTM main program}
+\include{main}
+
+\section{The 1D-dynamical model}
+\include{meanflow}
+
+\section{The turbulence model}
+\include{turbulence}
+
+\section{Observations in GOTM}
+\include{observations}
+
+\section{Saving the results}
+\include{output}
+
+\section{Utilities}
+\include{util}
+
+\section{Extra features}
+\include{sediment}
+
+\end{document}

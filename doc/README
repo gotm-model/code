@@ -1,0 +1,9 @@
+Don't ever delete code.tex
+
+To create the source code documentation do:
+latex code
+latex code
+latex code
+xdvi code or dvips -o code.ps code
+
+kbk

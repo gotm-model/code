@@ -1,0 +1,28 @@
+This is a list of the anticipated extensions to GOTM in the near future. 
+
+Physical features:
+- convective adjustment as simple mixing parameterization for instable 
+  stratification
+- K-profile parameterization (KPP) for vertical mixing coefficients according
+  to Large et al. [1994] 
+- prescription of horizontal gradients for temperature and salinity 
+  (and with that density)
+- linearization of equation of state 
+
+Boundary conditions:
+- surface buoyancy flux for buoyancy equation
+- surface fluxes (precipitation - evaporation, P-E) for salinity equation   
+- relaxation of surface temperature and salinity to measurements as simple  
+  parameterization of surface fluxes
+
+Biological features:
+- simple seagrass dynamics according to Verduin and Backhaus [1999]
+- simple phytoplancton model  
+
+Informatic features:
+- reorganization of namelist input
+- imposing a new system for time calculation
+- restructuring code for easier inclusion of new features
+
+
+
