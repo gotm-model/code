@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.14 2004-05-28 13:24:49 hb Exp $
+!$Id: bio.F90,v 1.15 2004-06-29 08:03:16 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -23,6 +23,9 @@
    use bio_iow, only : init_bio_iow,init_var_iow,var_info_iow
    use bio_iow, only : light_iow,surface_fluxes_iow
 
+   use bio_fasham, only : init_bio_fasham,init_var_fasham,var_info_fasham
+   use bio_fasham, only : light_fasham
+
    use bio_sed, only : init_bio_sed,init_var_sed,var_info_sed
 
    use mussels, only : init_mussels, do_mussels, end_mussels
@@ -35,12 +38,16 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_bio, do_bio, end_bio
+   integer, public                   :: numc,numcc
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.14  2004-05-28 13:24:49  hb
+!  Revision 1.15  2004-06-29 08:03:16  hb
+!  Fasham et al. 1990 model implemented
+!
+!  Revision 1.14  2004/05/28 13:24:49  hb
 !  Extention of bio_iow to fluff layer and surface nutrient fluxes
 !
 !  Revision 1.13  2004/04/13 09:18:54  kbk
@@ -83,7 +90,6 @@
 !  from a namelist
    logical                   :: bio_calc=.false.
    logical                   :: bio_eulerian=.true.
-   integer                   :: numc,numcc
    REALTYPE                  :: cnpar=0.5
    integer                   :: w_adv_discr=6
    integer                   :: ode_method=1
@@ -166,7 +172,7 @@
 
       case (1)  ! The NPZD model
 
-         call init_bio_npzd(namlst,'bio_npzd.inp',unit,numc)
+         call init_bio_npzd(namlst,'bio_npzd.inp',unit,numc,numcc)
 
          call allocate_memory(numc,nlev)
 
@@ -193,6 +199,17 @@
          call init_var_sed(numc,nlev,cc,ws,mussels_inhale)
 
          call var_info_sed(numc,var_names,var_units,var_long)
+
+      case (4)  ! The FASHAM model
+
+         call init_bio_fasham(namlst,'bio_fasham.inp',unit,numc,numcc)
+
+         call allocate_memory(numc,nlev)
+
+         call init_var_fasham(numc,nlev,cc,ws,mussels_inhale)
+
+         call var_info_fasham(numc,var_names,var_units,var_long)
+
 
       case default
          stop "bio: no valid biomodel specified in bio.inp !"
@@ -340,6 +357,7 @@
          case (2)
             call surface_fluxes_iow(numc,nlev,jul,secs,cc,t(nlev),sfl)
          case (3)
+         case (4)
       end select
 
       if (mussels_calc) then
@@ -410,6 +428,8 @@ STDERR total_mussel_flux,t(1)
             case (2)
                call light_iow(numc,nlev,h,rad,cc,par,bioshade)
             case (3)
+            case (4)
+               call light_fasham(numc,nlev,h,rad,cc,par,bioshade)
          end select
 
          call ode_solver(ode_method,numc,nlev,dt_eff,h,cc,t)
