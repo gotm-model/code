@@ -1,4 +1,4 @@
-!$Id: mussels.F90,v 1.6 2004-04-13 09:18:54 kbk Exp $
+!$Id: mussels.F90,v 1.7 2004-06-29 13:02:56 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,7 +29,10 @@
 !  Original author(s): Karsten Bolding, Marie Maar & Hans Burchard
 !
 !  $Log: mussels.F90,v $
-!  Revision 1.6  2004-04-13 09:18:54  kbk
+!  Revision 1.7  2004-06-29 13:02:56  lars
+!  removed tabs
+!
+!  Revision 1.6  2004/04/13 09:18:54  kbk
 !  size and temperature dependend filtration rate
 !
 !  Revision 1.5  2004/03/31 12:58:52  kbk
@@ -113,7 +116,7 @@
             LEVEL4 "using the simple mussels model..."
             rate=0.001*filter_rate/3600.
          case(2)
-	    LEVEL4 "using the size_temp mussels filtration model..."
+            LEVEL4 "using the size_temp mussels filtration model..."
          case default
       end select
    end if
@@ -180,7 +183,7 @@
          case (2)
             size_rate=0.001/3600*0.0012*(mussel_size)**2.14
             temp_rate=10**(log10 (size_rate) &
-	              +log10 (Q10)*((bottom_temp-15)/10))
+                 +log10 (Q10)*((bottom_temp-15)/10))
             total_mussel_flux=temp_rate*nmussels
             do n=1,numc
                if(mussels_inhale(n)) then
