@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.5 2003-10-28 10:22:45 hb Exp $
+#$Id: Makefile,v 1.6 2004-01-07 12:24:29 lars Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -7,9 +7,12 @@ include ../../Rules.make
 
 LIB	= $(LIBDIR)/libbio$(buildtype).a
 
-DOCSRC	= bio.F90 bio_var.F90 bio_template.F90 bio_npzd.F90 bio_iow.F90 \
-          bio_sed.F90 \
-          process_model.F90 ode_solvers.F90 bio_save.F90
+DOCSRC	=  bio.F90 
+#bio_var.F90 bio_template.F90 bio_npzd.F90 bio_iow.F90 \
+#          bio_sed.F90 \
+#          process_model.F90 ode_solvers.F90 bio_save.F90
+
+# commented out, because protex does not compile (lars)
 
 OBJ   = \
 ${LIB}(bio_var.o)		\
