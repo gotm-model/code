@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.19 2004-08-02 08:35:08 hb Exp $
+!$Id: bio.F90,v 1.20 2004-08-02 11:44:12 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,12 +38,16 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_bio, do_bio, end_bio
+   logical, public                     :: bio_calc=.false.
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.19  2004-08-02 08:35:08  hb
+!  Revision 1.20  2004-08-02 11:44:12  kbk
+!  bio module compiles and runs with GETM
+!
+!  Revision 1.19  2004/08/02 08:35:08  hb
 !  no need to pass time information
 !
 !  Revision 1.18  2004/08/01 15:54:49  hb
@@ -99,7 +103,6 @@
 !
 ! !PRIVATE DATA MEMBERS:
 !  from a namelist
-   logical                   :: bio_calc=.false.
    logical                   :: bio_eulerian=.true.
    REALTYPE                  :: cnpar=0.5
    integer                   :: w_adv_discr=6
@@ -109,7 +112,6 @@
    logical                   :: bio_lagrange_mean=.true.
    integer                   :: bio_npar=10000
    REALTYPE                  :: depth
-!KBK
 !EOP
 !-----------------------------------------------------------------------
 
@@ -452,6 +454,9 @@ STDERR total_mussel_flux,t(1)
 
       end do
 
+! To use in a 3D model the following needs to be excluded from compilation.
+! Will be fixed when a propr solution has been found.
+#if 1
       if (write_results) then
          totn= _ZERO_
          do i=nlev,1,-1
@@ -462,7 +467,7 @@ STDERR total_mussel_flux,t(1)
 
          call bio_save(nlev,h,totn)
       end if
-
+#endif
    end if
    return
    end subroutine do_bio
