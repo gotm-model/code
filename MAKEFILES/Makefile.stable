@@ -1,4 +1,4 @@
-#$Id: Makefile.stable,v 1.3 2001-03-05 15:02:08 gotm Exp $
+#$Id: Makefile.stable,v 1.4 2001-11-22 19:33:44 gotm Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -17,7 +17,7 @@ FC     = f95
 FFLAGS = -Am -fw
 
 #DECFOR F95 compiler for OSF1 - alpha
-#FC=    = f95
+#FC    = f95
 #FFLAGS =
 
 MODULES	= \
@@ -56,6 +56,7 @@ libmeanflow.a(convectiveadjustment.o)
 TURBULENCE   = \
 libturbulence.a(tkeeq.o)		\
 libturbulence.a(tkealgebraic.o)		\
+libturbulence.a(genericeq.o)		\
 libturbulence.a(algebraiclength.o)	\
 libturbulence.a(dissipationeq.o)	\
 libturbulence.a(lengthscaleeq.o)	\
