@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.10 2004-07-28 11:29:10 hb Exp $
+!$Id: temperature.F90,v 1.11 2004-08-18 12:31:52 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -12,36 +12,37 @@
 ! This subroutine computes the balance of heat in the form
 !  \begin{equation}
 !   \label{TEq}
-!    \dot{\theta}
-!    = {\cal D}_\theta
-!    - \frac{1}{\tau_R(\theta)}(\theta-\theta_{obs})
+!    \dot{\Theta}
+!    = {\cal D}_\Theta
+!    - \frac{1}{\tau^\Theta_R}(\Theta-\Theta_{obs})
 !    + \frac{1}{C_p \rho_0} \partder{I}{z}
 !    \comma
 !  \end{equation}
-!  where $\dot{\theta}$ denotes the material derivative of the potential 
-!  temperature $\theta$, and
-!  ${\cal D}_\theta$ is the sum of the turbulent and viscous transport
+!  where $\dot{\Theta}$ denotes the material derivative of the mean  potential 
+!  temperature $\Theta$, and
+!  ${\cal D}_\Theta$ is the sum of the turbulent and viscous transport
 !  terms modelled according to
 !  \begin{equation}
 !   \label{DT}
-!    {\cal D}_\theta 
+!    {\cal D}_\Theta 
 !    = \frstder{z} 
 !     \left( 
-!        \left( \nu'_t + \nu^\theta \right) \partder{\theta}{z}
-!      \right) 
+!        \left( \nu'_t + \nu^\Theta \right) \partder{\Theta}{z} 
+!               - \tilde{\Gamma}_\Theta
+!        \right)
 !    \point
 !  \end{equation}
-!  In this equation, $\nu'_t$ and $\nu^\theta$ are the turbulent and 
-!  molecular diffusivities of heat, respectively. The computation
-!  of $\nu'_t$ is discussed in \sect{sec:turbulenceIntro}.
+!  In this equation, $\nu'_t$ and $\nu^\Theta$ are the turbulent and 
+!  molecular diffusivities of heat, respectively, and $\tilde{\Gamma}_\Theta$
+!  denotes the so-called counter-gradient flux of heat, see 
+!  \sect{sec:turbulenceIntro}. 
 !
 !  Horizontal advection is optionally
 !  included  (see {\tt obs.inp}) by means of prescribed
-!  horizontal gradients $\partial_x\theta$ and $\partial_y\theta$ and 
-!  calculated horizontal velocities $u$ and $v$.
-!  Relaxation with the time scale $\tau_R (\theta)$ 
-!  towards a precribed (changing in time)
-!  profile $\theta_{obs}$ is possible. 
+!  horizontal gradients $\partial_x\Theta$ and $\partial_y\Theta$ and 
+!  calculated horizontal mean velocities $U$ and $V$.
+!  Relaxation with the time scale $\tau^\Theta_R$ 
+!  towards a precribed profile $\Theta_{obs}$, changing in time, is possible. 
 !
 !  The sum of latent, sensible, and longwave radiation is treated
 !  as a boundary condition. Solar radiation is treated as an inner 
@@ -58,7 +59,7 @@
 
 !  Diffusion is numerically treated implicitly, see equations (\ref{sigmafirst})-
 !  (\ref{sigmalast}).
-!  The tri--diagonal matrix is solved then by a simplified Gauss elimination.
+!  The tri-diagonal matrix is solved then by a simplified Gauss elimination.
 !  Vertical advection is included for accounting for adaptive grids,
 !  see {\tt adaptivegrid.F90}.
 !
@@ -84,7 +85,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.10  2004-07-28 11:29:10  hb
+!  Revision 1.11  2004-08-18 12:31:52  lars
+!  updated documentation
+!
+!  Revision 1.10  2004/07/28 11:29:10  hb
 !  Bug removed, rad is not any more multiplied with bioshade; bug found by Jorn Bruggeman, Amsterdam
 !
 !  Revision 1.9  2003/07/23 12:33:21  hb
