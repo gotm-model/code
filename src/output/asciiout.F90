@@ -1,4 +1,4 @@
-!$Id: asciiout.F90,v 1.1 2001-02-12 15:55:58 gotm Exp $
+!$Id: asciiout.F90,v 1.2 2001-11-18 11:51:16 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,8 +29,11 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: asciiout.F90,v $
-!  Revision 1.1  2001-02-12 15:55:58  gotm
-!  Initial revision
+!  Revision 1.2  2001-11-18 11:51:16  gotm
+!  Now format statements
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
+!  initial import into CVS
 !
 ! 
 ! !LOCAL VARIABLES:
@@ -156,9 +159,9 @@
 
 112 format(A9,6(1x,A10))
 113 format(A9,3(1x,A10))
-114 format(F9.3,2(1x,E10.4E2),2(1x,F10.6),2(1x,E10.4E2))
-115 format(F9.3,6(1x,E10.4E2))
-116 format(F9.3,2(1x,F10.6),1(1x,E10.4E2))
+114 format(F10.4,2(1x,E10.4E2),2(1x,F10.6),2(1x,E10.4E2))
+115 format(F10.4,6(1x,E10.4E2))
+116 format(F10.4,2(1x,F10.6),1(1x,E10.4E2))
 117 format(A9,4(1x,A10))
 
 !#ifdef SEDIMENT
