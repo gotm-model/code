@@ -1,4 +1,4 @@
-!$Id: sediment.F90,v 1.5 2004-01-13 10:00:52 lars Exp $
+!$Id: sediment.F90,v 1.6 2004-01-13 10:20:21 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -94,7 +94,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: sediment.F90,v $
-!  Revision 1.5  2004-01-13 10:00:52  lars
+!  Revision 1.6  2004-01-13 10:20:21  lars
+!  removed small bug in namelist
+!
+!  Revision 1.5  2004/01/13 10:00:52  lars
 !  partical re-write using new adv.-diff. routines
 !
 !  Revision 1.4  2003/03/28 09:20:34  kbk
@@ -122,7 +125,6 @@
    integer          :: adv_method=1
    REALTYPE         :: cnpar=0.5
    integer          :: sedi_method
-   REALTYPE         :: CbObsDt=600.
    integer          :: z0bMethod
 !
 !  sediment concentration
@@ -191,7 +193,7 @@
    integer                   :: rc 
    REALTYPE                  :: x,Dsize,avmolu=1.3e-6
    namelist /sedi/  sedi_calc,sedi_dens,rho_sed,size,init_conc,      &
-                    adv_method,cnpar,sedi_method,CbObsDt,z0bMethod 
+                    adv_method,cnpar,sedi_method,z0bMethod 
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -345,7 +347,7 @@
          AdvBcup       = flux
          AdvBcdw       = flux
          AdvCup        = _ZERO_
-         AdvCdw        = _ZERO
+         AdvCdw        = _ZERO_
 
       case(SmithMcLean)
          
