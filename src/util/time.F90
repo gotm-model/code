@@ -1,4 +1,4 @@
-!$Id: time.F90,v 1.6 2003-03-28 09:38:54 kbk Exp $
+!$Id: time.F90,v 1.7 2004-08-17 15:45:16 lars Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -41,7 +41,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  $Log: time.F90,v $
-!  Revision 1.6  2003-03-28 09:38:54  kbk
+!  Revision 1.7  2004-08-17 15:45:16  lars
+!  corrected typos in docu
+!
+!  Revision 1.6  2003/03/28 09:38:54  kbk
 !  removed tabs
 !
 !  Revision 1.5  2003/03/28 09:20:36  kbk
@@ -72,7 +75,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Initialise the time system.
+! !IROUTINE: Initialise the time system
 !
 ! !INTERFACE:
    subroutine init_time(MinN,MaxN)
