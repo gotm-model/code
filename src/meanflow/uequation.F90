@@ -1,4 +1,4 @@
-!$Id: uequation.F90,v 1.1 2001-02-12 15:55:57 gotm Exp $
+!$Id: uequation.F90,v 1.2 2001-03-05 13:58:27 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -74,8 +74,11 @@
 !  Original author(s): Hans Burchard & Karsten Bolding 
 !
 !  $Log: uequation.F90,v $
-!  Revision 1.1  2001-02-12 15:55:57  gotm
-!  Initial revision
+!  Revision 1.2  2001-03-05 13:58:27  gotm
+!  preparing for release
+!
+!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
+!  initial import into CVS
 !
 !
 ! !LOCAL VARIABLES:
@@ -104,7 +107,6 @@
       du(i)=u(i)+(1-cnpar)*(a*u(i-1)-(a+c)*u(i)+c*u(i+1))	!i  ,n
       du(i)=du(i)+dt*idpdx(i)
    end do
-
 
    c    =2*dt*avh(1)/(h(1)+h(2))/h(1)
    cu(1)=-cnpar*c

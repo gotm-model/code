@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.1 2001-02-12 15:55:57 gotm Exp $
+#$Id: Makefile,v 1.2 2001-03-05 13:58:27 gotm Exp $
 #
 # Makefile to build the the Dynamics library - libmeanflow.a
 #
@@ -23,13 +23,10 @@ stratification.F90	\
 buoyancy.F90		\
 convectiveadjustment.F90\
 analytical_profile.F90	\
-production.F90		\
-pressuregradient.F90	\
-diagnostics.F90
+production.F90
 
 MOD	= \
 ${LIB}(meanflow.o)
-
 
 OBJ   = \
 ${LIB}(updategrid.o)		\

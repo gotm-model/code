@@ -1,3 +1,4 @@
+#$Id: Makefile.stable,v 1.2 2001-03-05 13:58:27 gotm Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -8,12 +9,12 @@
 SHELL	= /bin/sh
 
 #NAG F95 compiler for Linux
-FC     = f95nag
-FFLAGS = -f77
+#FC     = f95nag
+#FFLAGS = -f77
 
 #Fujitsu F95 compiler for Linux
-#FC     = f95
-#FFLAGS = -Am -fw
+FC     = f95
+FFLAGS = -Am -fw
 
 #DECFOR F95 compiler for OSF1 - alpha
 #FC=    = f95

@@ -1,3 +1,4 @@
+#$Id: Makefile.stable_netcdf,v 1.2 2001-03-05 13:58:27 gotm Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -13,12 +14,12 @@ NETCDFLIB       = /usr/lib/libnetcdf.a
 
 
 #NAG F95 compiler for Linux
-FC     = f95nag
-FFLAGS = -f77 -I$(NETCDFINCDIR)
+#FC     = f95nag
+#FFLAGS = -f77 -I$(NETCDFINCDIR)
 
 #Fujitsu F95 compiler for Linux
-#FC     = f95
-#FFLAGS = -Am -fw -I$(NETCDFINCDIR)
+FC     = f95
+FFLAGS = -Am -fw -I$(NETCDFINCDIR)
 
 #DECFOR F95 compiler for OSF1 - alpha
 #FC=    = f95
