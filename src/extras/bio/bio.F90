@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.6 2003-09-16 12:11:24 hb Exp $
+!$Id: bio.F90,v 1.7 2003-10-14 08:00:09 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -35,7 +35,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.6  2003-09-16 12:11:24  hb
+!  Revision 1.7  2003-10-14 08:00:09  hb
+!  initialise sfl - no special treatment when cc(,) < 0
+!
+!  Revision 1.6  2003/09/16 12:11:24  hb
 !  added new biological model - bio_iow
 !
 !  Revision 1.5  2003/07/23 12:27:31  hb
@@ -143,6 +146,7 @@
 
          allocate(sfl(1:numc),stat=rc)
          if (rc /= 0) STOP 'init_bio: Error allocating (sfl)'
+	 sfl=_ZERO_
 
          call init_var_npzd(numc,nlev,cc,ws)
 
@@ -170,6 +174,7 @@
 
          allocate(sfl(1:numc),stat=rc)
          if (rc /= 0) STOP 'init_bio: Error allocating (sfl)'
+	 sfl=_ZERO_
 
          call init_var_iow(numc,nlev,cc,ws,sfl)
 
@@ -316,7 +321,6 @@
          totn= _ZERO_
          do i=nlev,1,-1
             do ci=1,numc
-               if (cc(ci,i) .lt. 0) cc(ci,i)= _ZERO_
                totn=totn+cc(ci,i)*h(i)
             end do
          end do
