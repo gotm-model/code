@@ -1,4 +1,4 @@
-!$Id: salinity.F90,v 1.5 2003-06-13 09:27:15 hb Exp $
+!$Id: salinity.F90,v 1.6 2004-01-07 12:17:47 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -46,7 +46,7 @@
 
 !  Inner sources or sinks are not considered. 
 !  The surface freshwater flux is given by means of the $P-E$ (precipitation
-!  - evaporation) data read in as p_e through the {\tt airsea.inp} namelist:
+!  - evaporation) data read in as $p_e$ through the {\tt airsea.inp} namelist:
 !  \begin{equation}
 !  \nu'_t\partial_z \bar S = -\bar S(P-E),
 !  \qquad \mbox{for } z=\zeta,
@@ -76,7 +76,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: salinity.F90,v $
-!  Revision 1.5  2003-06-13 09:27:15  hb
+!  Revision 1.6  2004-01-07 12:17:47  lars
+!  Removed latex bug
+!
+!  Revision 1.5  2003/06/13 09:27:15  hb
 !  Implemented freshwater fluxes
 !
 !  Revision 1.4  2003/03/28 09:20:35  kbk
