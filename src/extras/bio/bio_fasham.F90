@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.4 2004-08-01 15:52:57 hb Exp $
+!$Id: bio_fasham.F90,v 1.5 2004-08-02 08:34:36 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
-!  Revision 1.4  2004-08-01 15:52:57  hb
+!  Revision 1.5  2004-08-02 08:34:36  hb
+!  updated init routines to reflect new internal bio interface
+!
+!  Revision 1.4  2004/08/01 15:52:57  hb
 !  alpha now devided by seconds per day
 !
 !  Revision 1.3  2004/07/30 09:22:20  hb
@@ -103,7 +106,7 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_bio_fasham(namlst,fname,unit,numc,numcc)
+   subroutine init_bio_fasham(namlst,fname,unit)
 !
 ! !DESCRIPTION:
 !  Here, the bio namelist {\tt bio_fasham.inp} is read and memory is
@@ -116,9 +119,6 @@
    integer,          intent(in)   :: namlst
    character(len=*), intent(in)   :: fname
    integer,          intent(in)   :: unit
-
-! !OUTPUT PARAMETERS:
-   integer,          intent(out)   :: numc,numcc
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -173,7 +173,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_fasham(numc,nlev,cc,ws,mussels_inhale)
+   subroutine init_var_fasham(nlev)
 !
 ! !DESCRIPTION:
 !  Here, the cc and ws varibles are filled with initial conditions
@@ -182,12 +182,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
-
-! !INPUT/OUTPUT PARAMETERS:
-  REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
-  REALTYPE, intent(inout)              :: ws(1:numc,0:nlev)
-  logical, intent(inout)               :: mussels_inhale(1:numc)
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -238,7 +233,7 @@
 ! !IROUTINE: Providing info on variables
 !
 ! !INTERFACE:
-   subroutine var_info_fasham(numc,var_names,var_units,var_long)
+   subroutine var_info_fasham()
 !
 ! !DESCRIPTION:
 !  This subroutine provides information on the variables. To be used
@@ -246,14 +241,6 @@
 !
 ! !USES:
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc
-!
-! !OUTPUT PARAMETERS:
-   character(len=64), intent(out)       :: var_names(:)
-   character(len=64), intent(out)       :: var_units(:)
-   character(len=64), intent(out)       :: var_long(:)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
