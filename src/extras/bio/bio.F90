@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.17 2004-07-30 09:22:20 hb Exp $
+!$Id: bio.F90,v 1.18 2004-08-01 15:54:49 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -44,7 +44,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.17  2004-07-30 09:22:20  hb
+!  Revision 1.18  2004-08-01 15:54:49  hb
+!  call to light_fasham commented in again
+!
+!  Revision 1.17  2004/07/30 09:22:20  hb
 !  use bio_var in specific bio models - simpliefied internal interface
 !
 !  Revision 1.16  2004/07/28 11:34:29  hb
@@ -442,7 +445,7 @@ STDERR total_mussel_flux,t(1)
                call light_iow(nlev,h,rad,bioshade_feedback,bioshade)
             case (3)
             case (4)
-!KBK               call light_fasham(nlev,h,rad,bioshade_feedback,bioshade)
+               call light_fasham(nlev,h,rad,bioshade_feedback,bioshade)
          end select
 
          call ode_solver(ode_method,numc,nlev,dt_eff,h,cc,t)
