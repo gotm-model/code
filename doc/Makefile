@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.6 2003-03-12 18:45:07 kbk Exp $
+#$Id: Makefile,v 1.7 2003-03-28 10:41:34 kbk Exp $
 #
 # Makefile for making the source code documentation. 
 #
@@ -102,6 +102,10 @@ code_html.pdf: code_html.ps
 html:   code_html.tex
 	latex2html code_html.tex
 	touch html
+
+pdf_scp: code_a4.pdf code_letter.pdf
+	scp -r code_a4.pdf code_letter.pdf gotm@80.198.12.199:doc/
+	touch pdf_scp
 
 html_scp: html
 	scp -r code_html/* gotm@80.198.12.199:code_html/
