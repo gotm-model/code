@@ -1,0 +1,46 @@
+%
+%$Id: airseaIntro.tex,v 1.1 2003-03-10 09:42:23 gotm Exp $
+%
+
+\section{Air--Sea interaction \label{sec:airseaIntro}}
+
+\subsection{Introduction}
+
+This module provides the surface forcing for GOTM. For all dynamic
+equations, surface boundary conditions need to be specified.  For the
+momentum equations described in \sect{sec:uequation} and
+\sect{sec:vequation}, these are the surface momentum fluxes $\tau_x^s$ and
+$\tau_y^s$ in N\,m$^{-2}$. For the temperature
+equation described in \sect{sec:temperature}, it is the total surface heat flux,
+\begin{equation}
+  Q_{tot}=Q_E+Q_H+Q_B
+\end{equation}
+in W\,m$^{-2}$ that has to be determined\footnote{Note, that $Q_{tot}$
+has to be divided by the mean density and the specific heat capacity
+to be used as a boundary condition in \eq{TEq}, since this equation is
+formulated in terms of the temperature, and the the internal
+energy}. The total surface heat flux $Q_{tot}$ is calculated as the
+sum of the latent heat flux $Q_E$, the sensible heat flux $Q_H$, and
+the long wave back radiation $Q_B$.  In contrast to the total surface
+heat flux $Q_{tot}$, the net short wave radiation at the surface,
+$I_0$, is not used as a boundary condition but as a source of heat, as
+calculated by means of equation \eq{Iz}, see \cite{PaulsonSimpson77}.
+For the salinity equation described in \sect{sec:salinity}, the fresh
+water fluxes at the surface would be needed. These fluxes are ignored
+in the present version of GOTM, since for most short term applications
+they are negligible. They way how boundary conditions for the
+transport equations of turbulent quantities are derived, is discussed
+in \sect{sec:turbulenceIntro}.
+
+There are basically two ways of calculating the surface heat and
+momentum fluxes implemented into GOTM. They are either prescribed (as
+constant values or to be read--in from files) or calculated on the
+basis of standard meteorological data which have to be read in from
+files. The necessary parameters are sea surface temperature (SST), air
+temperature, air humidity and air pressure (each at 2 m height), and
+the wind velocity vector at 10 m height. Instead of the observed SST,
+also the SST from the model may be used.  For the calculation of these
+fluxes, the bulk formulae of \cite{Kondo75} are used. Since the
+\cite{Kondo75} bulk formulae are fairly old, they should soon be
+replaced by newer versions, such as those suggested by
+\cite{Fairalletal96}.

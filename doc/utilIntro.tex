@@ -1,0 +1,56 @@
+%
+%$Id: utilIntro.tex,v 1.1 2003-03-10 09:42:25 gotm Exp $
+%
+
+\section{Utilities}\label{sec:util}
+
+\subsection{Introduction}
+
+Here, some completely different utility modules and
+routines are assembled,
+such as the time module (see {\tt time.F90}) keeping track of all 
+time calculations,
+the tridiagonal module with the Gaussian solver for systems of equations
+with tri--diagonal matrices (see {\tt tridiagonal.F90}),
+the equation of state module (see {\tt eqstate.F90}) and some 
+helpful routines such as the general advection--diffusion solver
+(see {\tt yevol.F90}), the vertical advection routine
+(see {\tt w\_split\_it\_adv.F90}) and the vertical interpolation routine
+(see {\tt gridinterpol.F90}). Some one--dimensional test calculations for
+the vertical advection schemes included in
+{\tt w\_split\_it\_adv.F90} (see section \ref{sec:advection})
+are shown in figure \ref{OneDAdvection}.
+
+\begin{figure}[h]
+\begin{center}
+\psfrag{Y}[cc][][0.8]{$\Psi$}
+\psfrag{Analytical}[cc][][0.4]{Analytical}
+\psfrag{Numerical}[cc][][0.4]{Equidistant}
+\psfrag{Equidistant}[cc][][0.4]{Equidistant}
+\psfrag{Non--equidistant}[cc][][0.4]{Non--equidistant}
+\psfrag{X}[ct][][0.8]{Unlimited P$_2$ scheme}
+\includegraphics[width=6.5cm,bbllx=50,bblly=50,bburx=543,bbury=396]{./figures/cubenoneq.ps}
+\psfrag{X}[ct][][0.8]{Limited P$_2$--PDM scheme}
+\includegraphics[width=6.5cm,bbllx=50,bblly=50,bburx=543,bbury=396]{./figures/rectUQ.ps}
+\psfrag{X}[ct][][0.8]{Limited MUSCL scheme}
+\includegraphics[width=6.5cm,bbllx=50,bblly=50,bburx=543,bbury=396]{./figures/rectmuscl.ps}
+\psfrag{X}[ct][][0.8]{Limited Superbee scheme}
+\includegraphics[width=6.5cm,bbllx=50,bblly=50,bburx=543,bbury=396]{./figures/rectsuper.ps}
+\caption{
+One--dimensional advection scheme test showing the analytical solution
+(dashed line) and the numerical approximation (contineous lines) after
+6 revolutions through a periodic domain of length
+$L$ = 100 m with $\Delta x$ = 1 m and an advection speed of
+$u=1$ m\,s$^{-1}$. The Courant number was $c=0.5$ for the equidistant 
+grid--spacing
+and the maximum Courant number was $c=0.88$ 
+for the non--equidistant grid--spacing.
+Four different schemes have been used. It should be noted for the
+Superbee scheme (lower right) that it is anti-diffusive
+in the sense that it sharpens smooth gradients.
+For details concerning the used schemes, see \cite{Pietrzak98}
+and \cite{BurchardBolding2002}.
+}\label{OneDAdvection}
+\end{center}
+\end{figure}
+

@@ -1,0 +1,216 @@
+%
+%$Id: turbulenceIntro.tex,v 1.1 2003-03-10 09:42:25 gotm Exp $
+%
+
+\section{The turbulence model \label{sec:turbulenceIntro}}
+
+\subsection{Introduction}
+To close the differential equations for momentum and heat (or
+buoyancy), a description of the turbulent fluxes of momentum, $\mean{u'
+w'}$, and heat, $\mean{w' \theta'}$, are required\footnote{Here, a
+prime denotes the fluctuating part of a turbulent quantity and
+$\mean{\cdots}$ is the ensemble average.}. For brevity, we discuss
+here only the case of stratification caused by temperature. Other
+effects like salinity have also been included in GOTM in a
+completely analogous manner (see \sect{sec:stratification}).
+
+
+\subsubsection{Physics}
+
+There are different levels of one-point closure models available in
+GOTM to compute the vertical turbulent fluxes. Presently, all of them
+rely on the idea, that theses fluxes can be computed as the product of
+a so-called turbulent diffusivity and a mean flow gradient. Using this
+assumption, the fluxes of momentum and heat can be expressed as
+\begin{equation}
+  \label{fluxes}
+  \mean{u' w'}      = - \nu_t  \partder{u}{z} \comma
+  \mean{v' w'}      = - \nu_t  \partder{v}{z} \comma
+  \mean{w' \theta'} = - \nu'_t \partder{\theta}{z}
+\point
+\end{equation}
+Using an analogy to the kinetic theory of gases, the vertical
+turbulent diffusivities, $\nu_t$ and $\nu'_t$, are assumed to be the
+product of a typical velocity scale of turbulence, $q$, times a
+typical length scale, $l$, see \cite{TennekesLumley72}. The velocity
+scale $q$ can e.g.\ be identified with the average value of the
+turbulent fluctuations expressed by the turbulent kinetic energy, $k=
+q^2 /2$.  Then, the diffusivities of momentum and heat can be written
+as
+\begin{equation}
+  \label{nu}
+  \nu_t = c_\mu k^\frac{1}{2} l  \comma   \nu'_t = {c_\mu}' k^\frac{1}{2} l  
+  \comma
+\end{equation}
+where the dimensionless quantities $c_\mu$ and ${c_\mu}'$ are usually
+referred to as the `stability functions'.  Depending on the level of
+turbulent closure, these stability functions can be either constants
+or functions of some non-dimensional flow parameters (see below).
+
+There are different possibilities in GOTM to compute the scales $q$ (or
+$k$) and $l$ appearing in \eq{nu}. According to the level of
+complexity, they are ordered in GOTM in the following fashion.
+
+\begin{enumerate}
+\item Both, $k$ and $l$ are computed from algebraic relations. The
+ algebraic equation for $k$ is based on a strongly simplified form of
+ the transport equation of the turbulent kinetic energy. In contrast,
+ the equation for the length-scale is fully empirical. This level of
+ closure can be identified with the `level 2' model of
+ \cite{MellorYamada82}, who also give further explanations. This model
+ often is an over-simplification in many situations and can also lead to
+ numerical instabilities.
+\item At the next level, $k$ is computed from the differential
+ transport equation for the turbulent kinetic energy. As
+ before, the length-scale is computed from an empirical
+ relation. Models of this type are quite popular in geophysical
+ modelling. A description is given in \sect{sec:algebraiclength}.
+\item In the so-called two-equation models, both, $k$ and $l$, are computed from
+ differential transport equations. As before, $k$ follows from the
+ transport equation of the turbulent kinetic energy. Now, however, also
+ the length-scale is determined from a differential transport
+ equation. This equation is usually not directly formulated for the
+ length-scale, but for a related, length-scale determining
+ variable. Presently, there are different possibilities for the
+ length-scale determining variables implemented in GOTM, such as the
+ rate of dissipation, $\epsilon$, or the product $kl$. They are
+ discussed in \sect{sec:updateLength}.
+
+ The main advantage of the two-equation models is their greater
+ generality. There are, for example, a number of fundamental flows
+ which cannot be reproduced with an algebraically prescribed
+ length-scale. Examples are the temporal decay of homogeneous
+ turbulence, the exponential decay of turbulence in stratified
+ homogeneous shear flows, and the spatial decay of shear-free
+ turbulence from a planar source. A discussion of these points is
+ given in \sect{sec:generate} and \sect{sec:analyse}. Also see
+ \cite{Umlaufetal2003} and \cite{UmlaufBurchard2003}.
+\end{enumerate}
+
+In addition to the hierarchy of turbulence models in terms of their
+method to describe the length scale, GOTM also supports an ordering
+scheme according to the extent to which transport equations for the
+second moments of turbulent quantities are solved.
+\begin{enumerate}
+\item At the lowest level of this scheme, it is postulated that
+ $c_\mu=c_\mu^0$ and $c'_\mu=c'^0_\mu$ are constant. Because these models also
+ assume an isotropic tensor relation between the velocity gradient and
+ the tensor of the Reynolds-stresses, they usually fail in situations
+ of strong anisotropy, most notably in stably stratified, curved or
+ shallow flows. In unstratified flows with balanced aspect ratios
+ (which seldom occur in nature), however, they usually yield
+ reasonable results. Models of this type are referred to as the
+ `standard' models in the following.
+\item Some problems associated with standard versions of the models can
+ be ameliorated by making $c_\mu$ and $c'_\mu$ empirical functions of
+ one or several significant non-dimensional flow parameters. At this
+ level, the simplest approach would be to formulate empirical
+ relations suggested from observations in the field or in the
+ laboratory. An example of such a relation is the model of
+ \cite{SchumannGerz95} which has been implemented in GOTM (see
+ \sect{sec:sg}).
+\item Another, more consistent, approach results from the solution of 
+ simplified forms of the transport equations for the Reynolds-stresses
+ and the turbulent heat fluxes in addition to the transport equations
+ for $k$ and the length-scale determining variable.  Surprisingly, it
+ turns out that under some assumptions, and after tedious algebra, the
+ turbulent fluxes computed by these models can be expressed by
+ \eq{nu}. The important difference is, however, that the existence of the eddy
+ diffusivities is not a postulate, but a consequence of the model. The
+ stability functions $c_\mu$ and $c'_\mu$ can be shown to become
+ functions of some non-dimensional numbers like 
+ \begin{equation}
+   \label{alphaMN} 
+    \alpha_M = \frac{k^2}{\epsilon^2} M^2 \comma 
+    \alpha_N = \frac{k^2}{\epsilon^2} N^2 \comma 
+ \end{equation} 
+ with the shear-frequency, $M$, and the buoyancy frequency, $N$,
+ computed as described in \sect{sec:uequation} and 
+ \sect{sec:stratification}, respectively.
+
+ Most of the known results for this type of models have been
+ implemented into GOTM. An up-to-date account of their derivation can
+ be found in \cite{Canutoetal2001a}. Their evaluation for the oceanic
+ mixed layer has been extensively discussed by
+ \cite{BurchardBolding2001}.
+\end{enumerate}
+
+Evidently, this short introduction cannot serve as an
+introductory text on one-point turbulence modelling. It serves merely
+as a place to define the most important quantities and relations used
+in this manual. Readers not familiar with this subject will certainly
+feel the need for a more in-depth discussion. An excellent introduction
+to turbulence is still the book of \cite{TennekesLumley72}. A modern
+and detailed approach to one and two-equation models for unstratified
+flows is given in the book of \cite{Wilcox98}, and the effects of
+stratification are discussed e.g.\ by \cite{Rodi87} and by
+\cite{Burchard2002a}.
+
+
+
+\subsubsection{Numerics}
+
+The numerical approximation of the turbulence equations is in principle
+carried out as explained in section \ref{SectionNumericsMean}. 
+One basic difference is however due to the fact that turbulent
+quantities are generally non-negative such that
+it is necessary that the discretised forms of the physical
+equations retain the principle of non-negativity. 
+A typical model problem would be the following:
+
+\begin{equation}
+ \label{eq:burchard11}
+ \partder{X}{t} =P-QX, \quad P,Q > 0
+\end{equation}
+with $X$ denoting any non-negative quantity, $P$ a non-negative
+source term, $QX$ a non-negative linear sink term, and $t$ denoting
+time. $P$ and $Q$ may depend on $X$ and $t$. It can easily be shown
+that with \eq{eq:burchard11}, $X$ remains non-negative for any
+non-negative initial value $X_0$ and limited $Q$.  For the $q^2
+l$-equation and the $\epsilon$-equation (described in
+\sect{sec:lengthscaleeq} and \sect{sec:dissipationeq}), 
+$Q$ would be proportional to $q/l$ and $\epsilon
+/k¨$, repsectively.
+
+A straight-forward, explicit discretisation in time of \eq{eq:burchard11}
+can be written as
+\begin{equation}
+  \label{eq:burchard12}
+  \frac{X^{n+1}-X^n}{\Delta t}=P^n-Q^nX^n
+\end{equation}
+with the superscripts denoting the old ($n$) and the new ($n+1$) time
+level and $\Delta t$ denoting the time step.  In this case, the
+numerical solution on the new time level would be
+\begin{equation}
+  \label{eq:burchard13}
+  X^{n+1}_i= X^n_i(1-\Delta tQ^n_i)+\Delta t P_i^n
+  \comma
+\end{equation}
+which is negative for negative right hand side of \eq{eq:burchard12},
+provided that
+\begin{equation}
+  \label{eq:burchard14}
+  \Delta t > \frac{X^n}{X^nQ^n-P^n}
+  \point
+\end{equation}
+
+Since it is computationally unreasonable to restrict the time step in
+such a way that \eq{eq:burchard14} is avoided, a numerical procedure
+first published by \cite{Patankar80} is generally applied
+\begin{equation}
+  \label{eq:burchard15}
+  \frac{X^{n+1}-X^n}{\Delta t}=P^n-Q^nX^{n+1}
+  \comma
+\end{equation}
+which yields an always non-negative solution for $X^{n+1}$,
+\begin{equation}
+  \label{eq:burchard16}
+   X^{n+1}= \frac{X^n+\Delta t P^n}{1+\Delta t Q^n}
+   \point
+\end{equation}
+Thus, the so-called quasi-implicit formulation
+\eq{eq:burchard15} by \cite{Patankar80}
+is a sufficient condition for positivity applied in almost all
+numerical turbulence models.
+
+ 

@@ -1,64 +1,144 @@
-\documentclass[letter,fleqn]{article}
-\usepackage{graphicx}
-% Insert formatting instructions here
-\textwidth    15cm
-\textheight   20cm
-\setcounter{secnumdepth}{5}
-\setcounter{tocdepth}{5}
-\newcommand\eps{\varepsilon}
-\evensidemargin1cm
-\oddsidemargin1cm
-\parindent0pt
-\pagestyle{headings}
+%
+%$Id: code_letter.tex,v 1.2 2003-03-10 09:42:23 gotm Exp $
+%
 
-\title{{\bf GOTM}, \\ a {\bf G}eneral {\bf O}cean {\bf T}urbulence
-{\bf M}odel. \\ Source code documentation.}
-\author{\sc Hans Burchard, Karsten Bolding, Manuel Ruiz Villarreal and Pierre-Philippe Matheiu}
+\documentclass[letter,twoside]{article}
+
+% AMS math and symbols
+\usepackage{amsmath,amsfonts,amssymb,amsbsy,latexsym}
+
+% natural science bibliography
+\usepackage[round]{natbib}
+
+% definitions used in the GOTM-manual
+\input definitions.tex
+
+% graphics
+\usepackage[dvips]{graphicx}
+\usepackage{psfrag}
+
+% to make pdf files look OK
+\usepackage{ae}
+
+% center it on a4-format
+\setlength{\evensidemargin}{7.5mm} 
+\setlength{\oddsidemargin}{7.5mm} 
+\setlength{\textwidth}{150mm}
 
 \begin{document}
 
-\thispagestyle{empty}
 
-{\LARGE
-\begin{center}
-{\bf GOTM}, 
-\\ a {\bf G}eneral {\bf O}cean {\bf T}urbulence {\bf M}odel. 
-\\ Source code documentation.
+
+% the titlepage
+\begin{titlepage}
+
+
+{\sf \bf \LARGE
+ \begin{center}
+   Lars Umlauf $\bs \cdot$ Hans Burchard $\bs \cdot$ Karsten Bolding
+ \end{center}
+}
+
+\vspace{14mm}
+
+{\sf \bf \Huge
+ \begin{center}
+   GOTM 
+ \end{center}
+}
+
+\vspace{6mm}
+
+{\sf \bf \LARGE
+ \begin{center}
+   Sourcecode \\ 
+      and \\ 
+Test Case Documentation
+ \end{center}
+}
+
+
+\vspace{5mm}
+
+{\sf \bf \Large
+ \begin{center}
+  Version 3.0 
+ \end{center}
+}
+
+\vspace{8mm}
+
+\begin{figure}[!h]
+  \begin{center}
+  \includegraphics[scale=0.6]{./figures/mixerA.eps}
+  \end{center}
+\end{figure}
+
+\vspace{7mm}
+
+{\sf \bf \Large
+ \begin{center}
+  Flow ---  Mixing --- Sediment Transport
 \end{center}
 }
 
-{\large
-\begin{center}
-{\sc Hans Burchard, Karsten Bolding, Manuel R.\ Villarreal and Pierre-Philippe Matheiu}
-\end{center}
-}
 
-\newpage
+\end{titlepage}
+
+
+% table of contents
+\cleardoublepage
 \tableofcontents
-\newpage
 
+% include the section files
+% the introduction. All files 
+% ending with 'Intro.tex' are hand-made,
+% all others come from 'ProTeX'
 
-%\section{Introductionical model}
+\cleardoublepage
+ 
+\include{introduction}
 
-\section{The GOTM main program}
-\include{main}
+\cleardoublepage
+\include{mainIntro}   
+\include{gotm}        
 
-\section{The 1D-dynamical model}
-\include{meanflow}
+\cleardoublepage
+\include{meanflowIntro} 
+\include{meanflow}      
 
-\section{The turbulence model}
-\include{turbulence}
+\cleardoublepage
+\include{turbulenceIntro} 
+\include{turbulence}      
 
-\section{Observations in GOTM}
-\include{observations}
+\include{airseaIntro}  
+\include{airsea}       
 
-\section{Saving the results}
-\include{output}
+\cleardoublepage
+\include{observationsIntro} 
+\include{observations}      
 
-\section{Utilities}
-\include{util}
+\cleardoublepage
+\include{outputIntro} 
+\include{output}      
 
-\section{Extra features}
-\include{sediment}
+\cleardoublepage
+\include{utilIntro}   
+\include{util}       
+
+\cleardoublepage
+\include{extraIntro}  
+\include{sediment}    
+\include{seagrass}    
+
+\cleardoublepage
+\include{cases}
+
+% bibliography with BibTeX:
+\cleardoublepage
+\bibliographystyle{agu}
+\addcontentsline{toc}{section}{Bibliography}
+\bibliography{gotm}  
+
 
 \end{document}

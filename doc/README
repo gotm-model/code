@@ -1,9 +1,30 @@
-Don't ever delete code.tex
+#
+#$Id: README,v 1.2 2003-03-10 09:42:23 gotm Exp $
+#
 
-To create the source code documentation do:
-latex code
-latex code
-latex code
-xdvi code or dvips -o code.ps code
+Currently, there are three versions of the GOTM documentation with the
+names:
 
-kbk
+code_a4.filetype
+code_letter.filetype
+code_html.filetype
+
+"filetype" can be dvi, ps, or pdf. To produce these files type "make
+code_*.filetype" in this directory. For example, "make
+code_letter.pdf" will create the documention in "letter" format, which
+you can display with "acroread letter.pdf".
+
+The files "code_html.filetype" are without figures, because
+"latex2html" does not yet work for our figures.  Currently, only the
+LaTeX files "meanflowIntro.tex" and "utilIntro.tex" are
+different from the printed versions, with figures commented out.
+Also the figure on the titlepage is missing.
+
+To produce the html-code in ./code_html/ type "make html".
+To copy code on the server type "make html_scp".
+
+Note, that there is no reason any more to run things like "make doc"
+in the gotm/src directory. If you change anything in a LaTeX source
+file, "make" will notice it, and the *.dvi, *.ps, *.pdf, and *.html
+files will be always updated automatically if you make them. Also 
+files copied to the server will be checked if they are up to date.

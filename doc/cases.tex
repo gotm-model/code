@@ -1,0 +1,901 @@
+%
+%$Id: cases.tex,v 1.1 2003-03-10 09:42:23 gotm Exp $
+%
+
+\section{GOTM scenarios \label{sec:cases}}
+
+In this section, all scenarios included in the GOTM homepage for download
+are briefly discussed here. An overview is given in table 
+\ref{table_scenarios}. Information about how to install and run
+the scenarios can be found on the GOTM homepage, {\tt www.gotm.net}.
+
+\vspace{10mm}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+Section & Title & Scenario name \\ \hline\hline 
+\ref{couette} & Couette-flow & {\tt couette} \\ \hline  
+\ref{channel} & Pressure-gradient driven channel flow& {\tt channel} \\ \hline
+\ref{breaking_waves} & Breaking surface-waves & {\tt breaking\_waves} \\ \hline 
+\ref{kato} & Kato-Phillips entrainment experiment & {\tt kato} \\ \hline        
+\ref{convection} & Free convection experiment & {\tt convection} \\ \hline     
+\ref{estuary} & Estarine dynamics & {\tt estuary} \\ \hline 
+\ref{rouse} & Rouse profile  & {\tt rouse} \\ \hline 
+\ref{seagrass} &Seagrass canopy  & {\tt seagrass} \\ \hline 
+\ref{vertical_advection} &Vertical advection  & {\tt vertical\_advection} \\ \hline 
+\ref{flex} &Fladenground Experiment  & {\tt flex} \\ \hline 
+\ref{nns_annual} & Annual North Sea simulation & {\tt nns\_annual} \\ \hline 
+\ref{provess_nns} & PROVESS North Sea simulation & {\tt provess\_nns} \\ \hline 
+\ref{irishsea} & Irish Sea & {\tt irishsea} \\ \hline 
+\ref{liverpool_bay} &Liverpool Bay  & {\tt liverpool\_bay} \\ \hline 
+\ref{knebelvig} & Knebel Vig & {\tt knebelvig} \\ \hline 
+\ref{ooster} &Eastern Scheldt  & {\tt ooster} \\ \hline 
+\ref{ows_papa} &Ocean Weather Ship Papa & {\tt ows\_papa} \\ \hline 
+\ref{ows_november} & Ocean Weather Ship November & {\tt ows\_november} \\ \hline 
+\ref{lago_maggiore} & Lago Maggiore & {\tt lago\_maggiore} \\ \hline 
+\end{tabular}
+\caption{List of GOTM scenarios described in this section}
+\label{table_scenarios}
+\end{center}
+\end{table}
+
+
+\subsection{Idealised scenarios}
+
+In this subsection, the performance of GOTM in some idealised
+turbulent flows is discussed. In these flows there are regions, where
+certain analytical solutions, like the law of the wall or the Rouse
+profile, apply. These solutions can be used to test the correctness of
+the implementation and the accuracy of the numerical schemes.
+ 
+The first few of these idealised flows serve also as a short tutorial for new
+GOTM users. We supplied several input files for these scenarios
+to illustrate the performance of different turbulence models for 
+the same flow. It is recommended to start with the Couette-flow described
+next.
+
+\subsubsection{Couette-flow}\label{couette}
+
+The term Couette-flow flow traditionally denotes an uni-directional,
+unstratified, non-rotating flow confined between two plates, of which
+one is moving with constant velocity. No pressure-gradient is applied.
+It is clear that this flow can also serve as a very simple model of
+the steady-state flow in a horizontally infinite ocean of finite
+depth, driven solely by a shear-stress at the surface.
+
+In our example, the prescribed surface stress is $\tau_x= 1.027$
+N\,m$^{-2}$ and the water depth is set to 10 m. Rotation,
+pressure-gradients and stratification are neglected.  The simulation
+is run for 12 hours until a steady-state is reached. These parameters
+are set (among many others) in the input files {\tt gotmrun.inp}, {\tt
+gotmmean.inp}, and {\tt airsea.inp}. Take some time to have a look at
+the contents of these files. Most of the parameters found in {\tt
+gotmmean.inp} and {\tt airsea.inp} are explained to some extent in
+\sect{sec:mainIntro}, \sect{sec:meanflowIntro}, and
+\sect{sec:airseaIntro}. The input file {\tt gotmrun.inp} contains
+mainly parameters concerning the model run, like the time step, 
+the model time, the output format, etc.
+ 
+
+All information about the turbulence models is read-in from the file
+{\tt gotmturb.inp}. Having a look in this file, you see that we
+selected {\tt tke\_method = 2} and {\tt length\_scale\_method = 8},
+which corresponds exactly to the $k$-$\epsilon$ model described in
+\sect{sec:dissipationeq}. The model parameters are given in 
+the {\tt keps} namelist.
+
+If you run this scenario as described on the GOTM homepage, GOTM will
+write information about the turbulence model on your screen: What are
+the model parameters? What value has the von K{\'a}rm{\'a}n constant,
+$\kappa$?  What value has the decay rate in homogeneous turbulence,
+$d$? And so on. All other output is written to files called {\tt
+couette.out} or {\tt couette.nc}, depending on whether you selected
+ASCII or NetCDF output in {\tt gotmrun.inp}.
+
+If you analyse the results, you will find that the turbulent kinetic
+energy is constant over the whole depth, whereas the profiles of the
+turbulent diffusivity and the length scale are approximately
+parabolic. The length scale approaches the constant slope $\kappa
+\approx 0.433$ near the boundaries. If you want to change this value,
+you can set {\tt compute\_kappa = .false.} in {\tt
+gotmturb.inp}. Then, GOTM will automatically change the model
+constants of the $k$-$\epsilon$ model to compute the value of $\kappa$
+prescribed in {\tt gotmturb.inp} (see \sect{sec:analyse}).
+
+There are other models you can use to calculate the Couette-flow.  If
+you copy the file {\tt MellorYamada\-turb.inp} to {\tt gotmturb.inp},
+GOTM will use the Mellor-Yamada model described in
+\sect{sec:lengthscaleeq} with parameters set in {\tt gotmturb.inp}.
+A special role plays the so-called `generic model' described in 
+\sect{sec:genericeq}. Other model like the $k$-$\epsilon$ model
+of the $k$-$\omega$ model by \cite{Umlaufetal2003} can be considered
+as special cases of the generic model. If you copy e.g.\ {\tt
+komegaturb.inp} to {\tt gotmturb.inp}, the $k$-$\omega$ model is run
+for the couette case. If you copy {\tt
+genericturb.inp} to {\tt gotmturb.inp}, the generic model described 
+by \cite{UmlaufBurchard2003} is activated. For this simple flow, however,
+model results will be quite similiar in all cases.
+
+
+
+
+\subsubsection{Pressure-gradient driven channel flow}\label{channel}
+
+A pressure-gradient driven open channel flow is investigated here with
+a prescribed surface slope $\partial_x\zeta=-10^{-5}$ at a fixed water
+depth of 10 m. The surface slope is set in the namelist {\tt
+ext\_pressure} in the input file {\tt obs.inp}. No surface stress is
+applied, and rotation and stratification are neglected.  The simulation
+is run for 12 hours until a steady-state is reached.
+
+As in the Couette-scenario, the standard model defined in {\tt gotmturb.inp}
+is the $k$-$\epsilon$ model. If you want to try out the other models
+mentioned in the Couette-case (see \sect{couette}), copy the corresponding
+files to {\tt gotmturb.inp}.
+
+In the following publications some of the results in comparison to
+laboratory data are shown: \cite{Burchardetal98}, \cite{Burchardetal99}, 
+\cite{Burchard2002a}. The simulation has been motivated by
+the work of \cite{BaumertRadach92}.
+
+
+
+\subsubsection{Turbulence under breaking surface waves}\label{breaking_waves}
+
+In this scenario, it is demonstrated how the effect of breaking surface
+waves is parameterised in one- and two-equation models. This is usually done
+by injecting turbulent kinetic energy (TKE)
+at the surface, see \cite{CraigBanner94}
+and \cite{Craig96}. The rate of TKE injected is proportional to the
+surface friction velocity cubed, as defined in \eq{craig}. Injection
+of TKE at the surface leads to a thin surface boundary layer, in which
+the vertical transport of TKE and its dissipation approximately
+balance. Even though there can be considerable shear in this layer, 
+shear-production of turbulence is negligible (also see \sect{sec:analyse}). 
+
+
+
+Different types of models are available in GOTM for the wave-breaking
+scenario.
+
+\begin{itemize}
+
+ \item For the one-equation models, as discussed in
+ \cite{CraigBanner94}, a linearly increasing macro length scale, $l$,
+ is assumed with a slope of $\kappa=0.4$. This is analogous to the law
+ of the wall, even though there is no physical evidence for the assumption
+ that the length-scale under breaking waves behaves identically
+ as in wall-bounded shear-flows. The TKE follows a power-law as
+ discussed in \sect{sec:generate} and \sect{sec:analyse}.
+
+ If you want to simulate wave breaking with a model of this type,
+ simply copy {\tt prescribed\-turb.inp} to {\tt gotmturb.inp} and run
+ GOTM. A dynamic equation for $k$ is used, but the length scale is
+ fixed, and described by a triangular shape with slope $\kappa$ (see
+ {\tt length\_scale\_method = 2}, see \sect{sec:algebraiclength}).
+
+ \item For two-equation models, the slope of the length scale in the
+ upper layer affected by breaking waves is naturally not equal to
+ $\kappa$. \cite{Burchard2001b} suggested to use a turbulent Schmidt
+ number for the $\epsilon$-equation \eq{dissipation} of the
+ $k$-$\epsilon$ model, which depends on the production-dissipation
+ ratio $P/\epsilon$. For appropriate parameters, his model could
+ reproduce the slope $\kappa$ of the length scale also under breaking
+ waves. Note again, however, that there is no physical evidence for
+ $l = \kappa (z + z_0)$ in the wave-affected boundary layer.
+
+  If you want to simulate wave breaking with this model simply copy
+ {\tt kepspilonturb.inp} to {\tt gotmturb.inp} and run gotm.
+
+ \item \cite{Umlaufetal2003} derived analytical solutions for the
+ non-linear system of equations describing the behaviour of
+ two-equation models for injection of TKE at the surface, when
+ turbulent transport is balanced by dissipation. They showed that the
+ TKE follows a power-law and that the length scale increases linearly,
+ however with slope $L \neq \kappa$. They also compared the spatial
+ decay of turbulence in grid stirring experiments (thought as an
+ analogy to wave-breaking) with the results of several two-equation
+ models.
+
+ A numerical solution of the $k$-$\epsilon$ model can be obtained by
+ copying {\tt kepspilonturb.inp} to {\tt gotmturb.inp}, but setting
+ now {\tt compute\_kappa = .true.}  and {\tt sig\_peps =
+ .false.}. Because the spatial decay rate of the TKE is very large
+ for this model, the wave-affected layer is very small. As discussed
+ by \cite{Umlaufetal2003}, this disadvantage can be overcome by using
+ the $k$-$\omega$ model with  parameters given in {\tt
+ komegaturb.inp}. The Mellor-Yamada model in {\tt
+ MellorYamadaturb.inp} has also been investigated by
+ \cite{Umlaufetal2003}, but for this model, again, decay is too
+ strong. In addition, the decay rate depends in an unphysical way on
+ the wall-function required in this model.
+  
+ \item \cite{UmlaufBurchard2003} analysed the properties of a whole
+ class of two-equation models for the case of TKE injection at the
+ surface. They suggested a `generic' model which could satisfy the
+ power-laws under breaking waves for any desired decay rate,
+ $\alpha$, and length scale slope, $L$.  This model is activated with
+ the parameters in {\tt genericturb.inp}.  Users can select any
+ reasonable values for $\alpha$ and $L$ (and many others parameters like
+ $\kappa$ and $d$), and GOTM will automatically generate a
+ two-equation model with exactly the desired properties. Parameters
+ are computed according to the formulae described in \sect{sec:generate}.
+
+\end{itemize}
+
+In all cases a surface-stress of $\tau_x= 1.027$ N\,m$^{-2}$ was
+applied. After a runtime of 2 days, a steady-state with a constant
+stress over the whole water column of 20 m depth is reached. The wave
+affected layer can be found in the uppermost meter or so, and because
+of the strong gradients in this region we used a refined grid close to
+the surface. If you want to compare the computed profiles with the
+analytical solutions in \eq{power_law}, you'll need a specification of
+the parameter $K$. This parameter is computed in {\tt k\_bc()} to be
+found in {\tt turbulence.F90}.
+
+\subsubsection{Kato-Phillips entrainment experiment}\label{kato}
+
+Wind-entrainment experiment motivated by the laboratory experiment
+by \cite{KatoPhillips69}. The experiment has been up-scaled to
+ocean mixed layer dimensional according to the suggestions by
+\cite{Deleersnijder94}, such that the prescribed surface stress
+is $\tau_x= 0.1027$ N\,m$^{-2}$. The initial background stratification
+is set to $N^2=10^{-4}$ s$^{-1}$. The water depth is $H=50$ m, deep
+enough for the surface induced mixing not reaching the bed within the
+30 hours of simulation. Rotation is neglected here. The file {\tt
+kato.dat} contains the empirical mixed-layer evolution as suggested by
+\cite{Price79}. The first column gives simulation time in hours, the second
+mixed-layer depth.
+
+You can reproduce this scenario with several two-equation models
+in GOTM.
+
+\begin{itemize}
+ \item To run the $k$-$\epsilon$ model, copy {\tt kepsilonturb.inp} to
+ {\tt gotmturb.inp}. Note, that in this file, we selected {\tt
+ compute\_c3 = .true.}, which means that the model constant
+ $c_{\epsilon 3}$ in \eq{dissipation} is computed from a prescribed
+ steady-state Richardson-number, $Ri_{st}$ (see discussion in the
+ context of \eq{Ri_st}). You can set the value of $Ri_{st}$ in {\tt
+ gotmturb.inp}. Some discussion is given in
+ \cite{BurchardBolding2001}.
+
+ \item To run the Mellor-Yamada model, copy {\tt MellorYamadaturb.inp}
+ to {\tt gotmturb.inp}. Looking at the results you will realize that
+ this model is not at all in accordance with the experimental results
+ of \cite{Price79}. The reason can be traced back to the behaviour of
+ the turbulent length scale in the strongly stratified thermocline.
+ \cite{Galperinetal88} suggested to clip the length scale at a certain
+ value. Their solution can be activated by setting {\tt length\_lim = .true.}
+ in {\tt gotmturb.inp}. 
+ A second solution has been suggested by \cite{Burchard2001c}, who
+ computed the model constant $E_3$ in \eq{MY} from the steady-state
+ Richardson-number as described above. To activate his method,
+ select {\tt compute\_c3 = .true.}
+
+ \item The $k$-$\omega$ model can be run by copying {\tt komegaturb.inp}
+ to {\tt gotmturb.inp}. Results for this model are in perfect agreement
+ with the measured data.
+
+\end{itemize}
+
+Within the GOTM Team, this scenario has been used in several publications
+as a test for vertical mixing scheme, see \cite{Burchardetal98},
+\cite{Burchardetal99}, \cite{BurchardPetersen99}, \cite{BurchardBolding2001}
+\cite{BurchardDeleersnijder2001}, \cite{DeleersnijderBurchard2003}, and
+\cite{Umlaufetal2003}.
+
+
+\subsubsection{Free convection experiment}\label{convection}
+
+
+This free convection experiment is inspired by the laboratory experiments
+of Deardorff (see e.g.\ \cite{Deardorff85}). Following \cite{Largeetal94},
+this experiment is scaled to ocean dimensions.
+
+The initial potential temperature profile is given by a
+sea surface temperature is 22$^{\circ}$C  and a vertical
+the vertical temperature gradient of 0.1$^{\circ}$C\,m$^{-1}$. 
+The salinity is constant with $S=35$ ppt.
+All velocities are set to zero.
+The water column is constantly
+cooled by a heat loss at the surface of 100 W\,m$^2$.
+Surfaces stresses and solar radiation are zero.
+the water depth is set to $H=40$ m.
+
+Several authors have used this experiment for comparing vertical mixing schemes,
+see e.g.\ \cite{Largeetal94} and \cite{dAlessioetal98}.
+
+In the test case directory on the GOTM Website is a  subdirectory {\tt LES} 
+with results of a Large Eddy Simulation
+of free convection made by \cite{Mironov2000}. 
+In the directory change to directory {\tt LES},
+type 'show' and follow the instructions. It is necessary to have {\tt gnuplot}
+installed for viewing the LES results. 
+
+\subsubsection{Estuarine dynamics}\label{estuary}
+
+
+In this idealistic experiment an estuarine circulation is simulated, mainly
+in order to demonstrate how to use tracer advection and internal pressure
+gradients in GOTM. 
+
+The average water depth is $H=15$ m, the model is run for 10 days. 
+The forcing is a M$_2$ tide (of period 44714 s)
+which prescribes sinusoidal time series
+for the vertically averaged momentum in west-east direction with an
+amplitude of 1.5 m\,s$^{-1}$ and an offset
+of 0.05 m\,s$^{-1}$ directed to the west in order to simulate river run-off. 
+The surface elevation is sinusoidal as well with an amplitude of 1 m
+and a phase shift of 1.5 hours compared to the velocity.
+A constant in time and space horizontal west-east salinity 
+gradient of -0.0005 ppt\,m$^{-1}$ is prescribed, advection of salinity is
+turned on. In order not to obtain negative salinities, relaxation to
+the initial salinity profile of 15 ppt is made.  
+
+In order to avoid strong stratification near the surface, a small wind
+stress of 0.01027 N/m$^2$ is applied.  
+
+The result is that estuarine circulation is set on and near bed 
+residual velocity is directed upstream. It is interesting to have a look
+into the resulting buoyancy production or Brunt-V\"ais\"al\"a frequency. 
+
+See also the {\tt liverpool\_bay} test case (section \ref{liverpool_bay})
+for a simulation based on real data. 
+
+For two-dimensional simulations of estuarine circulation,
+see e.g.\ \cite{BurchardBaumert98} and \cite{Burchardetal2003}.
+
+
+\subsubsection{Rouse profile}\label{rouse}
+
+This analytical test case reflects open channel flow under idealistic
+conditions for which an analytical solution exists. 
+
+This test case is documented in the GOTM report in chapter 3.2.2 (see
+\cite{Burchardetal99}).  The length scale profile is prescribed as a
+distorted parabola, stress is linear (the only forcing is an external
+pressure gradient), the $k$-equation is algebraic based on production
+equals dissipation. The resulting velocity profile is logarithmic, the
+$k$-profile linear and the eddy viscosity profile parabolic. A
+sediment profile which is resulting is the so-called Rouse profile.
+
+In the subdirectory {\tt graphics} of the {\tt rouse} scenario, 
+a comparison between 
+numerical and analytical
+solutions is shown. For all turbulent quantities the fit is close to perfect,
+however, due to the strong gradients near the bed, modelled velocity and 
+sediment profiles are acceptable only for very high vertical resolution
+with $N=1000$ layers. A logarithmic zooming towards the bed should 
+improve the numerical results.
+
+To visualise the analytical and the numerical profiles, run under
+UNIX the following command: {\tt gnuplot plot}. 
+The script {\tt plot} should also explain the meaning
+of the data files for those who want to use other visualisation software than
+gnuplot.
+  
+\subsubsection{Seagrass canopy}\label{seagrass}
+
+Here, the two-dimensional seagrass canopy simulation by 
+\cite{VerduinBackhaus2000}
+is reproduced by means of a one-dimensional model for a position in the middle
+of the seagrass canopy where leading edge effects should be negligible.
+
+A wave with 0.15 m amplitude, 15 s period and a wave length of 100 m
+travels in positive x-direction. Water depth is $H=4.2$ m. At the bed,
+a seagrass canopy of 0.48 m height is situated. Seagrass specification
+such as excursion limits and friction parameters are read in from
+the file {\tt seagrass.dat}. 
+
+For further info, see 
+\cite{VerduinBackhaus2000} and \cite{BurchardBolding2000}.
+
+
+\subsubsection{Vertical advection}\label{vertical_advection}
+
+
+This simple scenario is for testing the vertical advection schemes.
+
+A sinusoidially varying vertical velocity is given ({\tt w\_adv.dat})
+which moves the vertical potential temperature profile given in {\tt tprof.dat}
+ up and down.  
+The time step in {\tt w\_adv.dat} is one hour, the period of the oscillation
+is one day. The vertical velocity amplitude is 0.0005787037 m\,s$^{-1}$,
+the grid spacing is 1 m, and the time step is 3600 s, such that the
+maximum Courant number is 2.08. The schemes are however all stable due to 
+the iterative procedure in the vertical advection subroutine 
+{\tt w\_split\_it\_adv} which s found in the directory {\tt util},
+see section \ref{sec:util}.
+
+By testing the 5 vertical advection schemes coded in {\tt w\_split\_it\_adv},
+the numerical diffusivity of the individual schemes can be checked.  
+For changing the advection scheme for this scenario, one has to 
+edit the namelist {\tt w\_adv} in {\tt obs.inp}.
+
+\subsection{Shelf sea scenarios}
+
+All shelf sea scenarios briefly discussed here are from the Irish Sea and the
+North Sea. A Baltic Sea mixed layer scenario is in preparation.
+
+\subsubsection{Fladenground Experiment}\label{flex}
+
+A data set which has been used throughout the last 20 years
+as a calibration for mixing parameterisations
+has been collected during the
+measurements of the Fladenground
+Experiment 1976 (FLEX'76) campaign. These measurements
+of meteorological forcing and potential temperature profiles
+were carried out in spring 1976 in the northern North Sea at a water
+depth of about 145 m and a geographical position
+at 58$^{\circ}$55'N and 0$^{\circ}$32'E. 
+The simulation is run from April 6 to June 7, 1976.
+The \cite{Kondo75} bulk formulae have been used for calculating the
+surface fluxes. 
+For further details concerning the measurements,
+see \cite{Soetjeetal80} and \cite{Brockmannetal85}.
+This FLEX'76 data set has been used by several authors in order to
+test different mixing schemes (see e.g.\ \cite{Friedrich83},
+\cite{Frey91}, \cite{BurchardBaumert95}, \cite{Pohlmann97},
+\cite{BurchardPetersen99}, \cite{Mellor2001}).
+\\
+
+{\bf Data files:}
+
+\begin{tabular}{ll}
+{\tt momentumflux.dat}&  surface stress components, $\tau_x$ and
+$\tau_y$ in N\,m$^{-2}$ \\
+{\tt heatflux.dat}    &  solar radiation and outgoing heat flux, $Q_{in}$ and 
+                   $Q_{out}$ in W\,m$^{-2}$ \\
+{\tt sst.dat}         &  observed SST in $^{\circ}$C \\ 
+               
+{\tt pressure.dat}    & time series of surface slopes fitted to the 
+nip-spring cycle for that region \\ 
+{\tt tprof.dat}       & profiles of measured potential temperature for initial conditions and \\ & validation, data are reanalysed and low pass filtered \\  
+{\tt sprof.dat}       & profiles of idealised salinity for initial conditions and relaxation \\   
+{\tt tprof\_ctd}       & CTD-profiles of potential temperature, with some gaps \\
+{\tt sprof\_ctd}       & CTD-profiles of salinity, with some gaps \\
+{\tt extinction.dat}  & extinction coefficients fitted to measurements \\  
+\end{tabular}
+
+
+\subsubsection{Annual North Sea simulation}\label{nns_annual}
+
+Here the annual simulation of the Northern Sea at 59$^{\circ}$20" N
+and 1$^{\circ}$17' E during the year 1998 as discussed
+by \cite{Boldingetal2002} is performed.
+
+For this simulation, time series of surface slopes 
+$\partial_x \zeta$ and $\partial_y \zeta$ were extrapolated from observations
+during autumn 1998 based on four partial tides by means of harmonic analysis
+(the program for doing this was kindly provided by Frank Janssen, now at
+the Baltic Sea Research Institute Warnem\"unde). 
+All necessary meteorological data are from the UK Meteorological Office Model. 
+For calculating the resulting surface fluxes, the bulk formulae from
+\cite{Kondo75} are used here.
+Since no observations for the sea surface temperature (SST)
+are available for the whole year 1998 at station NNS, the simulated SST
+is used as input into the bulk formulae.
+For the evolution of the vertical
+salinity profile, which is known to stabilise stratification
+during summer months, a relaxation to results obtained with a
+prognostic three-dimensional model of the North Sea 
+by \cite{Pohlmann96}. 
+By doing so, the horizontal advection, which is the dominant process
+for salinity dynamics in the Northern North Sea, is parameterised.
+\\ 
+
+{\bf Data files:}
+
+\begin{tabular}{ll}
+{\tt sprof.dat}         &  salinity in ppt from three-dimensional model
+of \cite{Pohlmann96}\\ 
+{\tt tprof.dat}         &  potential temperature in $^{\circ}$C from three-dimensional
+model of \cite{Pohlmann96}\\ 
+{\tt pressure.dat} & sea surface slopes from tidal analysis of observations \\
+{\tt meteonns.dat} & meteorological data from UK Met Office model \\
+{\tt sst.dat} & sea surface temperature in $^{\circ}$C
+from analysis by Bundesamt f\"ur \\ & Seeschifffahrt und
+Hydrographie, Hamburg, Germany
+\end{tabular}
+
+
+\subsubsection{PROVESS North Sea simulation}\label{provess_nns}
+
+This Northern North Sea Experiment has been carried out in the framework
+of the PROVESS (PROcesses of VErtical mixing in Shealf Seas) project 
+(MAS3-CT97-0025, 1998-2001) which has been funded by the European Communities 
+MAST-III program.
+
+The observations in the Northern North Sea were carried out in September 
+and October 1998.
+Here, a period of 20 days from October 7 - 27, 1998 is simulated.
+All forcing and validation data have been carefully processes from
+observations during this PROVESS-NNS experiment. 
+
+Two different dissipation rate data sets are included:
+
+\begin{tabular}{ll}
+{\tt eps\_fly.dat}& data from a FLY profiler, processed by School
+of Ocean Sciences, \\ & University of Bangor, Wales \\  
+{\tt eps\_mst.dat}& data from an MST profiler, processed by the Joint
+Research Centre, Ispra, Italy. 
+\end{tabular}
+\\
+
+These files can be read in into GOTM through the {\tt eobs} namelist in
+{\tt obs.inp}. It is the file specified at last, which is actually read in.  
+The dissipation rate has only been observed at short intervals, periods
+without observations are set to minimum values in the files. 
+
+The data files are prepared such that the maximum simulation
+interval can be extended to September 7 at 10.00 h -- 
+November 2 at 13.00 h, 1998. 
+
+For details on dissipation rate data processing, see \cite{Prandkeetal2000}.
+
+For discussions of various model simulations, see \cite{Burchardetal2002}
+and also the annual simulation in section \ref{nns_annual} and
+\cite{Boldingetal2002}.
+\\ 
+
+{\bf Other data files:}
+
+\begin{tabular}{ll}
+{\tt sprof.dat} &  salinity in ppt from CTDs and microstructure \\ & 
+shear probes from several ships\\
+{\tt tprof.dat} &  potential temperature in $^{\circ}$C from CTDs and microstructure \\ &
+shear probes from several ships\\
+{\tt pressure.dat} & sea surface elevation gradients analysed from
+a triangle of pressure gauges \\
+{\tt w\_adv.dat} & vertical velocities analysed from vertical displacement 
+\\ & of pycnocline \\
+{\tt velprof.dat} &  horizontal velocities from bottom mounted ADCP \\
+{\tt meteo\_dana.dat} & meteorological observations from R/V Dana, only used 
+\\ & for {\tt calc\_fluxes=.true.}\\
+\end{tabular}
+
+
+\subsubsection{Irish Sea}\label{irishsea}
+
+Here, dissipation rate measurements 
+carried out by
+\cite{Simpsonetal96} in the Western Irish Sea 
+with the FLY shear probe 
+are simulated, see
+also \cite{Burchardetal98}.
+The measurements were made over a 24 hour period in July 1993 at a site with
+water depth of 90 m and position 53$^{\circ}$49'N, 5$^{\circ}$27'W.
+The site has rectilinear tidal currents, and the tidal current amplitude
+at the time of the measurements was 0.45 m s$^{-1}$. During the observational
+period the water column was thermally stratified with near surface
+temperature of 14$^{\circ}$C and temperatures of 10$^{\circ}$C below the
+thermocline, which was situated 75 m above the sea-bed. In addition to
+hourly CTD-profiles and moored current meter measurements, turbulent
+dissipation was measured using a FLY free-fall 
+shear probe. Six profiles
+were made per hour, and these were averaged together to give hourly
+means. Measurements made in the top 10 m of the water column have been
+excluded as the probe may still be accelerating, and the signal may be
+contaminated by the ships wake.
+
+The forcing data for the model is
+provided by a time series of current measurements taken 12~m
+above the bed, from which a sea surface slope is calculated such that the
+model exactly reproduces the observed flow
+(see \cite{Burchard99}). Cross-surface heat
+exchange is calculated from dew point temperature, wind speed, and direct
+solar radiation observed at a nearby meteorological station.
+Cross-surface momentum exchange is calculated from the observed wind
+speed and direction (following \cite{Simpsonetal96}).
+\\ 
+
+{\bf Data files:}
+
+\begin{tabular}{ll}
+{\tt pressure.dat} & time series of current meter measurements 12 m above bed\\
+{\tt tprof.dat} & profiles of measured potential temperature in $^{\circ}$C 
+for initial conditions \\ & and relaxation  \\
+{\tt sprof.dat} & profiles of measured salinity in ppt 
+for initial conditions and relaxation \\
+{\tt epsprof.dat} & profiles of measured dissipation rate in W\,kg$^{-1}$. 
+Until July 7, 1993 \\ & at 13.00 h filled with dummy values. Upper 10 m were 
+not measured and \\ & also filled with dummy values (10$^{-11}$ W/kg)\\ 
+{\tt heatflux.dat} &    surface heat fluxes in W\,m$^{-2}$  \\ &
+              (fluxes calculated with \cite{Kondo75} bulk formulae \\ 
+{\tt momentumflux.dat} &    surface momentum flux 
+              $\tau_x$ and $\tau_y$ in N\,m$^{-2}$ \\ &
+              (fluxes calculated with \cite{Kondo75} bulk formulae \\ 
+\end{tabular}
+\\
+
+The data have been kindly provided by Tom Rippeth, see
+\cite{Simpsonetal96}.
+      
+{\bf Comments:} Using this experimental set-up creates a bottom boundary 
+layer (BBL) thickness significantly shallower than in the simulation in
+the literature (see \cite{Burchardetal99}). This is because here, the 
+BBL has first to develop into the stratified regime from below. 
+In other simulations (\cite{Burchardetal98}), the model has been 
+spun up for some time. 
+          
+\subsubsection{Liverpool Bay}\label{liverpool_bay}
+
+The observations for this scenario
+have been carried out by \cite{Rippethetal2001} 
+in the Liverpool Bay ROFI \index{region of  
+freshwater inflow} on July 5 and 6, 1999 at a position
+of 53$^{\circ}$28.4'N, 3$^{\circ}$39.2'W.
+This period is about three days after spring tide,
+with calm weather and clear sky.
+The dissipation rate measurements were carried out with a FLY shear probe
+mounted on a free-falling profiler. 
+Sensors for temperature and conductivity attached to the profiler
+give detailed information on the vertical density distribution
+during each cast.
+Nearby, an ADCP was mounted on the bottom, giving information on the
+vertical velocity structure. Some accompanying CTD casts were made in
+order to achieve estimates for the horizontal gradients of
+temperature and salinity.   
+For further details concerning the observations, see
+\cite{Rippethetal2001}. 
+
+The surface fluxes are based on ship observations and from a
+nearby meteorological station at Hawarden. From the ship,
+wind speed  and direction at 10 m above the sea surface and
+air pressure have been taken. From Hawarden station, observations of
+dry air,
+wet bulb and dew point temperature are used. Since the
+surface fluxes
+are calculated externally by means of 
+bulk
+formulae of \cite{Kondo75}, the sea surface temperature
+from measurements (FLY profiler) 
+has been used.
+The bed roughness has been estimated from near-bed ADCP measurements
+as $z_0^b\approx 0.0025$ m 
+by means of fits to the law of the wall.
+The external pressure gradient due to surface slopes is
+estimated according to a method suggested by \cite{Burchard99}
+by means of adjustment to near bed velocity observations.
+The CTD casts carried out during the campaign did only allow for rough
+estimates of the horizontal density gradient. 
+The  
+horizontal salinity and temperature gradients for a typical summer situation
+have been estimated
+by \cite{Sharples92} to $\partial_s S=0.0425$ ppt\,km$^{-1}$ and
+$\partial_s T=-0.0575$ K\,km$^{-1}$, respectively. Here, $s$ is the
+gradient into the direction $\alpha=78^{\circ}$ rotated
+anti-clockwise from North.
+\\ 
+
+{\bf Data files:}
+
+\begin{tabular}{ll}
+{\tt sprof.dat} & salinity in ppt from free-falling shear-probe \\
+{\tt tprof.dat} & potential temperature in $^{\circ}$ from free-falling shear-probe \\
+{\tt pressure.dat} & near-bed velocity from ADCP for external pressure forcing \\
+{\tt zeta.dat} & sea surface elevation from pressure gauge \\
+{\tt velprof.dat} &  horizontal velocities from bottom mounted ADCP \\
+{\tt eprof.dat} & observed dissipation rates in W\,kg$^{-1}$ \\
+{\tt heatflux.dat} & surface heat fluxes calculated by means of the 
+\cite{Kondo75} bulk formulae \\
+{\tt momentumflux.dat} & surface momentum fluxes calculated by means 
+of the \cite{Kondo75} \\ & bulk formulae \\
+\end{tabular}
+\\
+
+
+The numerical simulations of this scenario
+has been described in \cite{Simpsonetal2002}.
+
+
+\subsection{Estarine scenarios}
+
+The two estuarine scenarios discussed here have been developed in
+the framework of the 
+European Communities MAST III project PhaSE (MAS3-CT-0053). Both have 
+been published by \cite{Burchardetal2000}.
+
+\subsubsection{Knebel Vig}\label{knebelvig}
+
+The data for this scenario have been collected in the framework of the
+European Communities MAST III project PhaSE (MAS3-CT-0053) in
+Knebel Vig, a small embayment in eastern Jutland Denmark.
+The geographical position was 
+10$^{\circ}$27' E, 56$^{\circ}$13' N at a mean water depth of $H=11.65$ m. 
+The simulation period is September 11, 0.00 h to September 13, 13.00 h in 1997.
+\\
+
+\begin{tabular}{ll}
+{\tt sprof.dat} &  profiles of measured salinity in ppt for initial 
+conditions and relaxation \\
+{\tt tprof.dat} & profiles of measured potential temperature for 
+initial conditions and \\ & relaxation \\    
+{\tt pressure.dat} & time series of current velocity at 1 m above bed, 
+estimated from current \\ & direction and dissipation rate measurements \\
+{\tt extinction.dat} &  extinction coefficients fitted to measurements \\ 
+{\tt zeta.dat} & time series of measured surface elevation \\
+{\tt epsprof.dat} & profiles of measured dissipation rate for validation \\
+{\tt heatflux.dat} & surface heat fluxes calculated by means of the 
+\cite{Kondo75} bulk formulae \\
+{\tt momentumflux.dat} & surface momentum fluxes calculated by means 
+of the \cite{Kondo75} \\ & bulk formulae \\
+\end{tabular}
+\\
+
+For a discussion of the simulation, see \cite{Burchardetal2000}. 
+
+
+\subsubsection{Eastern Scheldt}\label{ooster}
+
+The data for this scenario have been collected in the framework of the
+European Communities MAST III project PhaSE (MAS3-CT-0053) in
+the Eastern Scheldt (Oosterschelde), Zeeland, The Netherlands.    
+The geographical position was 
+3$^{\circ}$54' E, 51$^{\circ}$33' N at a mean water depth of $H=12.1$ m. 
+The simulation period is June 25, 12.00 h to June 28, 12.30 h in 1996.
+\\
+
+\begin{tabular}{ll}
+{\tt sprof.dat} &  profiles of measured salinity in ppt for initial 
+conditions and relaxation \\
+{\tt tprof.dat} & profiles of measured potential temperature for 
+initial conditions and \\ & relaxation \\    
+{\tt pressure.dat} & time series of current velocity at 1 m above bed, 
+estimated from current \\ & direction and dissipation rate measurements \\
+{\tt zeta.dat} & time series of measured surface elevation \\
+{\tt epsprof.dat} & profiles of measured dissipation rate for validation \\
+{\tt heatflux.dat} & surface heat fluxes calculated by means of the 
+\cite{Kondo75} bulk formulae \\
+{\tt momentumflux.dat} & surface momentum fluxes calculated by means 
+of the \cite{Kondo75} \\ & bulk formulae \\
+\end{tabular}
+\\
+
+For a discussion of the simulation, see \cite{Burchardetal2000}. 
+
+\subsection{Open ocean scenarios}
+
+The two open ocean scenarios introduced here are two classical
+test cases from the Northern Pacific Ocean. For an overview, see
+\cite{Martin85}.
+
+\subsubsection{Ocean Weather Ship Papa}\label{ows_papa}
+
+
+This scenario is a classical scenario 
+for the Northern Pacific, for which
+long term observations of meteorological parameters
+and temperature profiles are available. The station Papa at 145$^{\circ}$W,
+50$^{\circ}$N has the advantage
+that it is situated in a region where the horizontal advection of
+heat and salt is assumed to be small. Various authors used these data for
+validating turbulence closure schemes (\cite{Denman73}, \cite{Martin85},
+\cite{Gasparetal90}, \cite{Largeetal94}, \cite{KanthaClayson94},
+\cite{dAlessioetal98}, \cite{Burchardetal99}, \cite{Villarreal2000},
+\cite{AxellLiungman2001}, \cite{BurchardBolding2001}).
+
+The way how bulk formulae for the surface momentum and heat fluxes
+have been used here is discussed in detail in \cite{Burchardetal99}.
+
+For mixing below the thermocline, an 
+internal wave and shear instability
+parameterisation 
+as suggested by \cite{Largeetal94} has been used.
+The maximum simulation time allowed by
+the included surface forcing file and the temperature profile file
+is January 1 (17.00 h), 1960 - December 31 (12.00 h), 1968.
+In this scenario, the simulation time is run from
+March 25, 1961 (0.00 h) to March 25, 1962 (0.00 h).
+\\
+
+\begin{tabular}{ll}
+{\tt sprof.dat} &   salinity profiles in ppt of monthly climatology from 
+Levitus data set. First \\ & profile interpolated to January, 1 \\ 
+{\tt tprof.dat} & profiles of measured potential temperature for 
+initial conditions and \\ & relaxation \\    
+{\tt heatflux.dat} & surface heat fluxes calculated by means of the 
+\cite{Kondo75} bulk formulae \\
+{\tt momentumflux.dat} & surface momentum fluxes calculated by means 
+of the \cite{Kondo75} \\ & bulk formulae \\
+\end{tabular}
+\\
+
+This scenario has been discussed in detail by \cite{Burchardetal99}.
+We are grateful to Paul Martin for providing the meteorological data
+and the temperature profiles, see also \cite{Martin85}.
+
+\subsubsection{Ocean Weather Ship November}\label{ows_november}
+
+This Ocean Weather Ship November scenario is treated similarly as the
+Ocean Weather Ship Papa scenario, see section \ref{ows_papa}.
+Here, the geographical position is further south, at 140 $^{\circ}$W
+and 30$^{\circ}$N. 
+The maximum simulation time allowed by
+the included surface forcing file and the temperature profile file
+is February 2 (15.00 h), 1960 - December 31 (18.00 h), 1970.
+In this scenario, the simulation time is run from
+January 1, 1961 (0.00 h) to January 1, 1962 (0.00 h).
+\\
+
+\begin{tabular}{ll}
+{\tt sprof.dat} &   salinity profiles in ppt of monthly climatology from 
+Levitus data set. First \\ & profile interpolated to January, 1 \\ 
+{\tt tprof.dat} & profiles of measured potential temperature for 
+initial conditions and \\ & relaxation \\    
+{\tt heatflux.dat} & surface heat fluxes calculated by means of the 
+\cite{Kondo75} bulk formulae \\
+{\tt momentumflux.dat} & surface momentum fluxes calculated by means 
+of the \cite{Kondo75} \\ & bulk formulae \\
+\end{tabular}
+\\
+
+We are grateful to Paul Martin for providing the meteorological data
+and the temperature profiles, see also \cite{Martin85}.
+
+
+
+\subsection{Lake scenarios}
+
+So far, the Lago Maggiore scenario discussed in section \ref{lago_maggiore}
+is the only lake scenario. 
+
+\subsubsection{Lago Maggiore}\label{lago_maggiore}
+
+
+The measurements for this Lago Maggiore
+scenario were made during three days in winter 1995
+(December 18-21) at the shore of Ispra 
+(45$^{\circ}$ 49,244'N, 8$^{\circ}$ 36,377'E). 
+The measurements were carried out with an
+uprising profiler located 150 m from the shore at a water depth of 42 m. 
+Such the sampled depth interval ranged from 30 m up to the surface.
+On the profiler, an MST shear 
+probe, a fast temperature sensor
+and temperature and conductivity probes were mounted such that
+profiles of turbulent dissipation rate $\epsilon$, temperature variance
+$\epsilon_\theta$, mean temperature $\theta$ and mean salinity $S$
+could be derived. For a detailed description of the data analysis, see
+\cite{Stipsetal2002}.  
+
+Wind speed was measured from a small buoy about 30 m away from the 
+probe location with an anemometer at a height of 95 cm above the water 
+surface. The accuracy is $\pm 0.1$ m\,s$^{-1}$. 
+Air temperature and relative humidity were recorded at the measurement 
+location on shore at a height of 10 m above lake surface.
+The cloud cover has been estimated every hour. 
+Incident solar radiation was measured at the meteorological station in 
+Pallanza, in a distance of about 10 km from the 
+measuring site.
+An analysis of heat fluxes obtained by various bulk 
+formulae showed
+however a significant deviation between the heat content of the water column
+and accumulation of these heat fluxes. This could be due to the fact that these
+bulk formulae are designed for oceanic conditions such that they are not
+valid for a lake with weak wind conditions. Thus, instead of using the
+calculated surface heat fluxes from bulk 
+formulae, they were
+calculated from the heat gain of the water column under consideration
+of the solar radiation.
+\\
+
+\begin{tabular}{ll}
+{\tt salz\_lmd95.dat} &  profiles of measured salinity in ppt for initial 
+conditions and relaxation \\
+{\tt temp\_lmd95.dat} & profiles of measured potential temperature for 
+initial conditions and \\ & relaxation \\    
+{\tt eps\_lmd95.dat} & profiles of measured dissipation rate for validation \\
+{\tt hflu2\_05lt.dat} & surface heat fluxes calculated by means of the 
+\cite{Kondo75} bulk formulae \\
+{\tt momentumflux.dat} & surface momentum fluxes calculated by means 
+of the \cite{Kondo75} \\ & bulk formulae \\
+\end{tabular}
+\\
+
+For a discussion of the simulation, see \cite{Stipsetal2002}. 
+
+
+
