@@ -1,9 +1,9 @@
-!$Id: sediment.F90,v 1.4 2003-03-28 09:20:34 kbk Exp $
+!$Id: sediment.F90,v 1.5 2004-01-13 10:00:52 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: sediment --- suspended sediment dynamics
+! !MODULE: sediment --- suspended sediment dynamics\label{sec:sediment}
 !
 ! !INTERFACE:
    module sediment 
@@ -14,52 +14,51 @@
 !  quantity can be written as
 !  \begin{equation}
 !   \label{CEq}
-!    \dot{C}
+!    \partder{C}{t} +  \partder{w_s C}{z}
 !    = {\cal D}_C
 !    \comma
 !  \end{equation}
-!  where $\dot{C}$ denotes the material derivative of $C$, and
-!  ${\cal D}_C$ is the sum of the turbulent and viscous transport
+!  where $w_s$ is the constant sinking speed of the sediment, and 
+!  ${\cal D}_C$ denotes the sum of the turbulent and viscous transport
 !   terms modelled according to
 !  \begin{equation}
 !   \label{DC}
 !    {\cal D}_C 
 !    = \frstder{z} 
 !     \left( 
-!        \nu'_t \partder{C}{z}
+!        \nu_t \partder{C}{z}
 !      \right) 
 !    \point
 !  \end{equation}
-!  In this equation, $\nu'_t$ is the turbulent diffusivity of heat
-!  as discussed in \sect{sec:turbulenceIntro}. Note, 
-!  that the simple model \eq{DC} assumes that turbulent transport of heat
-!  and sediment are identical.  Surface fluxes and inner sources or 
+!  For simplicity, we set the turbulent diffusivity of the sediment
+!  equal to $\nu_t$, the turbulent diffusivity of momentum, see 
+!   \sect{sec:turbulenceIntro}. Surface fluxes and inner sources or 
 !  sinks are not considered. 
 !
-!  The convective part of the material derivative $\dot{C}$ requires 
-!  knowledge about the vertical settling velocity $w_s$.
-!  This quantity is positive by definition, and depends according
-!  to \cite{Zanke77} on the grain diameter, molecular viscosity of water
-!  and sediment density.
-!
-!  At the bed, a Dirichlet condition suggested by \cite{SmithMcLean77}
-!  is used. We extrapolate from the bed to the center of the
-!  lowest grid box by assuming a Rouse profile in that grid box. 
-!  Relaxation of the bottom sediment concentration to the algebraically
-!  calculated value is possible. This is recommended if the density
-!  of sediment is considered for water column stability. 
-!
-!  Advection (settling) is treated explicitely, 
-!  see \sect{sec:yevol} and \sect{sec:advection}.
-!  Diffusion is numerically treated implicitly.
-!  The tri-diagonal matrix is solved then by a simplified Gauss elimination,
-!  see \sect{sec:tridiagonal}.
-
+!  The sinking speed, $w_s$, is negative by definition, and may depend on the grain 
+!  diameter, molecular viscosity of water
+!  and sediment density as discussed in \sect{sec:initSediment}.
+!  Diffusion is discretized implicitly as discussed in \sect{sec:diffusionMean},
+!  advection (settling) is treated explicitely, 
+!  see \sect{sec:advectionMean}. 
+! 
+!  There is an interesting stationary solution of \eq{CEq} for the case that
+!  advection by vertical settling and mixing by diffusion balance exactly. If
+!  one consideres only the region of a turbulent flow near to a rigid wall, 
+!  where the law-of-the-wall
+!  relation $\nu_t = \kappa u_* (z+z_0)$ holds, it is easy to show that 
+!  \begin{equation}
+!   \label{rouseProfile}
+!     \dfrac{C}{C_0} = \left( \dfrac{z+z_0}{z_0} \right)^R
+!  \end{equation}
+!  is a solution of \eq{CEq}. Here, $C_0$ is the reference sediment concentration
+!  at $z=0$ and $R=w_s/(\kappa u_*)$ is the so-called Rouse number. \eq{rouseProfile}
+!  can be used to derive boundary conditions for \eq{CEq}.
 !
 ! !USES:
-   use meanflow,   only:    depth,u_taub,gravity,rho_0,z0b
+   use meanflow,   only:    depth,u_taub,gravity,rho_0,z0b,za
    use meanflow,   only:    h,avh,NN,buoy 
-   use turbulence, only:    kappa,nuh 
+   use turbulence, only:    kappa,num 
    use output,     only:    out_fmt,write_results,ts
 !
    IMPLICIT NONE
@@ -70,11 +69,35 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_sediment, calc_sediment, end_sediment
 !
+! !PUBLIC DATA MEMBERS:
+
+!
+!  !DEFINED PARAMETERS:
+
+!  specification of possible boundary conditions
+
+!  for diffusion   
+   integer, parameter      :: Dirichlet       = 0
+   integer, parameter      :: Neumann         = 1
+
+!  for advection
+   integer,parameter       :: flux           = 1
+   integer,parameter       :: value          = 2
+   integer,parameter       :: oneSided       = 3
+   integer,parameter       :: zeroDivergence = 4
+
+!  how to compute bottom sediment flux or concentration
+   integer, parameter      :: NoFlux          = 1
+   integer, parameter      :: SmithMcLean     = 2
+
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: sediment.F90,v $
-!  Revision 1.4  2003-03-28 09:20:34  kbk
+!  Revision 1.5  2004-01-13 10:00:52  lars
+!  partical re-write using new adv.-diff. routines
+!
+!  Revision 1.4  2003/03/28 09:20:34  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 08:24:01  kbk
@@ -85,29 +108,47 @@
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
 !  initial import into CVS
-!
+
 !EOP
 !
-! !PRIVATE DATE MEMBERS
+!  private data members from here on
+!
+!  the 'sedi' namelist
+   logical          :: sedi_calc=.false.
+   logical          :: sedi_dens=.false.
+   REALTYPE         :: rho_sed=2650.
+   REALTYPE         :: size=62.5e-6
+   REALTYPE         :: init_conc=0.0001
+   integer          :: adv_method=1
+   REALTYPE         :: cnpar=0.5
+   integer          :: sedi_method
+   REALTYPE         :: CbObsDt=600.
+   integer          :: z0bMethod
+!
+!  sediment concentration
    REALTYPE, dimension(:), allocatable :: C
+!
+!  sinking speed, observed cocentration, source term
    REALTYPE, dimension(:), allocatable :: wc,Cobs,Qsour
 !
-!  From a namelist
-   logical:: sedi_calc=.true.
-   logical:: sedi_dens=.true.
-   REALTYPE:: rho_sed=2650.
-   REALTYPE:: size=62.5e-6
-   REALTYPE:: init_conc=0.
-   integer:: adv_method=1
-   REALTYPE:: cnpar=0.5
-   integer:: Bcup=1
-   REALTYPE:: Cup=0.
-   REALTYPE:: CbObsDt=600.
-   integer:: z0bMethod
-   REALTYPE:: Cdw
-   REALTYPE:: ustarc,gs
-   integer:: Bcdw=2
-   integer:: out_unit
+!  boundary condition types for diffusion and advection
+   integer                   :: DiffBcup
+   integer                   :: DiffBcdw
+   integer                   :: AdvBcup
+   integer                   :: AdvBcdw
+
+!  boundary values for diffusion and advection
+   REALTYPE                  :: DiffCup
+   REALTYPE                  :: DiffCdw
+   REALTYPE                  :: AdvCup
+   REALTYPE                  :: AdvCdw
+
+!  some parameter of the sediment model
+   REALTYPE                  :: ustarc,gs
+
+!  output unit
+   integer                   :: out_unit
+
 !
 !----------------------------------------------------------------------
 
@@ -116,19 +157,20 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Initialise the sediment module
+! !IROUTINE: Initialise the sediment module\label{sec:initSediment}
 !
 ! !INTERFACE:
    subroutine init_sediment(namlst,fname,unit,nlev,g,rho_0) 
 !
 ! !DESCRIPTION:
-!  After reading the sediment namelist and allocating memory for
-!  some related vectors, the settling velocity, $w_s$, and the critical
-!  friction velocity, $u_*^c$, are calculated here.   
+!  This routine reads the sediment namelist from {\tt sediment.inp} 
+!  and allocates memory for the sediment-related vectors. 
+!  Further, depending on the sediment model, the settling velocity, $w_s$,
+! and the critical friction velocity, $u_*^c$, are calculated here.   
 !  The settling velocity is based on a formula proposed
 !  by \cite{Zanke77} which is valid for spherical particles.
 !  The critical friction velocity is a function of the settling
-! velocity and the particle size. 
+!  velocity and the particle size (see \cite{SmithMcLean77}). 
 !
 ! !USES:
    IMPLICIT NONE
@@ -149,7 +191,7 @@
    integer                   :: rc 
    REALTYPE                  :: x,Dsize,avmolu=1.3e-6
    namelist /sedi/  sedi_calc,sedi_dens,rho_sed,size,init_conc,      &
-                    adv_method,cnpar,Bcup,Bcdw,Cup,CbObsDt,z0bMethod 
+                    adv_method,cnpar,sedi_method,CbObsDt,z0bMethod 
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -177,22 +219,33 @@
 
       allocate(Qsour(0:nlev),stat=rc)
       if (rc /= 0) STOP 'InitSediment: Error allocating (Qsour)'
-      Qsour= _ZERO_
 
-      C=init_conc 
+      Qsour = _ZERO_
+      C     = init_conc 
 
-      gs=g*(rho_sed-rho_0)/rho_0            ! reduced gravity  
+      ! reduced gravity  
+      gs=g*(rho_sed-rho_0)/rho_0
+
       ! Zanke formula for fall velocity of sediment  
-      x=-10.0*avmolu/size*(sqrt(1+(0.01*gs*size**3)/avmolu/avmolu)-1.0) 
-      wc=x
-      wc(0) = _ZERO_
-      wc(nlev) = _ZERO_
-      Dsize=size*(gs/avmolu/avmolu)**0.3333333  
-      if (Dsize.gt.10.0) then               ! critical fall velocity
-         ustarc=-0.4*wc(1)  
-      else 
-         ustarc=-4.0/Dsize*wc(1)  
-      end if
+      x         = -10.0*avmolu/size*(sqrt(1+(0.01*gs*size**3)/avmolu/avmolu)-1.0) 
+      wc        = x
+      
+      select case(sedi_method)
+      case(NoFlux)
+         LEVEL2 'Assuming no net flux across the lowest interface'
+      case(SmithMcLean)
+         LEVEL2 'Computing sediment concentration in lowest box according to Smith and McLean (1977)'
+         Dsize=size*(gs/avmolu/avmolu)**0.3333333  
+         if (Dsize.gt.10.0) then
+            ustarc=-0.4*wc(1)  
+         else 
+            ustarc=-4.0/Dsize*wc(1)  
+         endif
+      case default
+         FATAL "unkown method to compute sediment flux"
+         stop "init sediment"
+      end select
+      
    end if
 
    return
@@ -210,28 +263,40 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Update the sediment transport equation
+! !IROUTINE: Update the sediment transport equation\label{sec:calcSediment}
 !
 ! !INTERFACE:
    subroutine calc_sediment(nlev,dt)
 !
 ! !DESCRIPTION:
 !  In this subroutine, the dynamical equation for sediment \eq{CEq}
-!  including 
-!  turbulent diffusion and settling of suspended matter  is updated.
-!  The bed concentration is imposed by means of a Dirichlet boundary
-!  condition proposed by \cite{SmithMcLean77}, which is a function of
-!  actual bed shear velocity, $u_*^b$, and the critical  bed shear velocity, 
-!  $u_*^c$. The latter and the settling velocity $w_s$ are calculated in
-!  subroutine {\tt init\_sediment()}.
-!  Since the tracer points, on which the discrete sediment values are 
-!  positioned, are half a grid box above the bed, an analytical solution 
-!  by Rouse has been used for calculating the lowest discrete sediment 
-!  concentration. For this, a roughness length
-!  $z_a$ is calculated according to \cite{SmithMcLean77}. The bottom
-!  concentration might be numerically noisy. Therefore, a relaxation 
-!  procedure to the instantaneous value of the Rouse profile is provided.    
-
+!  including turbulent diffusion and settling of suspended matter  is updated.
+!
+!  The models to compute the boundary  conditions at the lowest grid box are 
+!  set by the parameter {\tt sedi\_method} in {\tt sediment.inp}.
+!  Currently, there are the following models available in GOTM:
+!  \begin{itemize}
+!    \item zero-flux at the lowest interface ({\tt sedi\_method = 1}). 
+!    With this option, no sediment can
+!    leave the domain. The net zero-flux boundary condition is implemented as zero-flux
+!    for both, advection and diffusion. Note, that this boundary condition 
+!    results in the Rouse-profile \eq{rouseProfile}, however, with unkown
+!    reference concentration $C_0$.
+!    \item Dirichlet boundary condition suggested by \cite{SmithMcLean77} 
+!    ({\tt sedi\_method = 2}). These authors set the concentration 
+!    at the lowest interface to zero, unless
+!    the friction velocity is larger than a threshold, $u_*^c$. Then, they
+!    assume that the concentration at the lowest interface, $C_0$, is a 
+!    quadratic function of the ratio $u_*/u_*^c$. In GOTM, the Rouse profile
+!    \eq{rouseProfile} is assumed to interpolate the value of $C_0$ (located
+!   at the lowest interface) to the center of the lowest grid cell.
+!  \end{itemize}
+!
+!  The sediment induced bottom roughness $z_a$ (also see \sect{sec:friction}) can
+!  be either ignored ({\tt z0bMethod = 1}) or updated from empirical formulae 
+!  as suggested for example by \cite{SmithMcLean77} ({\tt z0bMethod = 2}).
+!  If {\tt sedi\_dens = .true.}, the effect of sediment on the density
+!  stratifiction (and hence on turbulence) is considered in the code.
 !
 ! !USES:
    IMPLICIT NONE
@@ -241,10 +306,9 @@
    REALTYPE, intent(in)                :: dt
 
 ! !DEFINED PARAMETERS:
-   REALTYPE, parameter                 :: g1=1.56E-3
-   REALTYPE, parameter                 :: a0=26.3
-   REALTYPE, parameter                 :: sigma=0.7963
-!
+   REALTYPE, parameter                 :: g1            =  1.56E-3
+   REALTYPE, parameter                 :: a0            = 26.3
+ !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
@@ -252,63 +316,93 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE                  :: CBott,Cbalg
-   REALTYPE                  :: y,z,ya,za
+   REALTYPE                  :: y,z,ya
    REALTYPE                  :: dcdz,rho_mean
    REALTYPE                  :: rho(0:nlev)
    REALTYPE,save             :: Cb
    REALTYPE                  :: RelaxT(0:nlev)
    integer                   :: i,flag
-   LOGICAL                   :: surf_flux=.false.,bott_flux=.false.  
+   
+
+   REALTYPE                  :: Cint
+   REALTYPE                  :: rouse
+
 !
 !-----------------------------------------------------------------------
 !BOC
    if (sedi_calc) then 
-      if (u_taub .ge. ustarc) then  
-         Cbott = g1*((u_taub/ustarc)**2-1)  
-         if (CBott.gt.1.) CBott=1. 
-         if (z0bMethod.eq.1) then
-            za    = a0/gs*(u_taub**2-ustarc**2)
-         else 
-            za    = z0b
-         end if 
-      else                                 
-         Cbott = 0.0                        
-         za    = 0.0  
-      end if 
 
-!     Calculate analytically average sediment concentration in bottom layer
-!     from Rouse profile at the centre of the lowest layer.
-      if (za .gt. 1.e-12) then 
-         ya=log(za/depth)  
-         z=0.5*h(1)+za  
-         y=log(z/depth)  
-         CBalg=CBott*exp(sigma*wc(1)/kappa/u_taub*    &
-               (y -log(1-exp(y ))-(ya-log(1-exp(ya)))))  
-      else 
-         CBalg = 0.0 
-      end if   
+      select case(sedi_method)
+      case(NoFlux)
 
-!     In order to avoid oscillations of Cb, it should be relaxed to
-!     the analytical value.
+         za            = _ZERO_      ! no model to update za
 
-      Cb=(Cb+Cbalg*dt/CbObsDt)/(1.0+dt/CbObsDt) 
-      if (Cb.lt.C(2)) Cb=C(2) 
+         DiffBcup      = Neumann
+         DiffBcdw      = Neumann
+         DiffCup       = _ZERO_
+         DiffCdw       = _ZERO_
 
-      Cdw=Cb              !Impose concentration
+         AdvBcup       = flux
+         AdvBcdw       = flux
+         AdvCup        = _ZERO_
+         AdvCdw        = _ZERO
 
-      avh=nuh
+      case(SmithMcLean)
+         
+         if (u_taub .ge. ustarc) then  
 
-      RelaxT=1.e15
+            ! compute reference level
+            if (z0bMethod.ne.1) then
+               za  = a0/gs*(u_taub**2-ustarc**2)
+            else
+               za  = _ZERO_
+            end if
 
-      flag=2 ! no divergence correction for vertical advection
+            ! Compute reference concentration at the interface
+            Cbott = g1*((u_taub/ustarc)**2-1)     
+    
+            ! compute Rouse number
+            rouse = wc(1)/kappa/u_taub
+
+         else                                 
+            Cbott = _ZERO_                        
+            za    = _ZERO_
+            rouse = _ZERO_
+         end if
+         
+
+       
+         DiffBcup      = Neumann
+         DiffBcdw      = Dirichlet
+         DiffCup       = 0.
+         DiffCdw       = Cbott*((0.5*h(1)+z0b)/z0b)**rouse
+
+         AdvBcup       = flux
+         AdvBcdw       = oneSided     ! allow for sinking sediment to leave domain
+         AdvCup        = 0.
+         AdvCdw        = 0.           ! not used
+         
+      case default
+         FATAL 'Invalid method for sedi_calc'
+         stop  'sediment.F90'
+      end select
+      
       
 !     Does not work for prescribed vertical current velocity and 
-!     adaptive grids. 
+!     adaptive grids!!
 
-      call yevol(nlev,Bcup,Bcdw,dt,cnpar,Cup,Cdw,RelaxT,h,h,avh,wc,Qsour, &
-          CObs,1,adv_method,C,surf_flux,bott_flux,0,wc,flag)
+      flag=2          ! conservative form of vertical advection
+      RelaxT = 1.e15  ! no relaxation to observed value
 
-      if (sedi_dens) then   ! Update buoyancy and NN. 
+      call advectionMean(nlev,dt,h,wc,AdvBcup,AdvBcdw,AdvCup,AdvCdw,adv_method,C)
+
+      call diffusionMean(nlev,dt,cnpar,h,DiffBcup,DiffBcdw,DiffCup,DiffCdw,        &
+                         num,Qsour,RelaxT,Cobs,C)
+
+
+
+      ! Update buoyancy and NN if stratification plays a role. 
+      if (sedi_dens) then
         do i=1,nlev
            rho(i)  = rho_0*(1.0-buoy(i)/gravity)
            buoy(i) = -gravity*((1.0-C(i))*rho(i) + C(i)*rho_sed - rho_0)/rho_0 
@@ -411,7 +505,7 @@
             dims(4) = time_dim
             iret = define_mode(ncid,.true.)
             iret = new_nc_variable(ncid,'sediment',NF_REAL,4,dims,sedi_id)
-            iret = set_attributes(ncid,sedi_id,units=' ',  &
+            iret = set_attributes(ncid,sedi_id,units='-',  &
                                   long_name='sediment concentration')
             iret = define_mode(ncid,.false.)
             n = ubound(C,1)
