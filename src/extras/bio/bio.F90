@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.18 2004-08-01 15:54:49 hb Exp $
+!$Id: bio.F90,v 1.19 2004-08-02 08:35:08 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,13 +38,15 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_bio, do_bio, end_bio
-!NUMC   integer, public                   :: numc,numcc
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.18  2004-08-01 15:54:49  hb
+!  Revision 1.19  2004-08-02 08:35:08  hb
+!  no need to pass time information
+!
+!  Revision 1.18  2004/08/01 15:54:49  hb
 !  call to light_fasham commented in again
 !
 !  Revision 1.17  2004/07/30 09:22:20  hb
@@ -203,25 +205,23 @@
 
       case (3)  ! The simple sedimentation model
 
-         call init_bio_sed(namlst,'bio_sed.inp',unit,numc)
+         call init_bio_sed(namlst,'bio_sed.inp',unit)
 
-!NUMC         call allocate_memory(numc,nlev)
          call allocate_memory(nlev)
 
-         call init_var_sed(numc,nlev,cc,ws,mussels_inhale)
+         call init_var_sed(nlev)
 
-         call var_info_sed(numc,var_names,var_units,var_long)
+         call var_info_sed()
 
       case (4)  ! The FASHAM model
 
-         call init_bio_fasham(namlst,'bio_fasham.inp',unit,numc,numcc)
+         call init_bio_fasham(namlst,'bio_fasham.inp',unit)
 
-!NUMC         call allocate_memory(numc,nlev)
          call allocate_memory(nlev)
 
-         call init_var_fasham(numc,nlev,cc,ws,mussels_inhale)
+         call init_var_fasham(nlev)
 
-         call var_info_fasham(numc,var_names,var_units,var_long)
+         call var_info_fasham()
 
 
       case default
@@ -317,7 +317,7 @@
 ! !IROUTINE: Update the bio model
 !
 ! !INTERFACE:
-   subroutine do_bio(nlev,jul,secs,I_0,dt,h,t,nuh,rad,bioshade)
+   subroutine do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
 !
 ! !DESCRIPTION:
 !
@@ -326,7 +326,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer,  intent(in)                :: nlev,jul,secs
+   integer,  intent(in)                :: nlev
    REALTYPE, intent(in)                :: I_0
    REALTYPE, intent(in)                :: dt
    REALTYPE, intent(in)                :: h(0:nlev)
@@ -502,7 +502,6 @@ STDERR total_mussel_flux,t(1)
 ! !IROUTINE: Allocate memory for biological variables
 !
 ! !INTERFACE:
-!NUMC   subroutine allocate_memory(numc,nlev)
    subroutine allocate_memory(nlev)
 !
 ! !DESCRIPTION:
@@ -512,7 +511,6 @@ STDERR total_mussel_flux,t(1)
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-!NUMC   integer,  intent(in)                :: numc,nlev
    integer,  intent(in)                :: nlev
 !
 ! !REVISION HISTORY:

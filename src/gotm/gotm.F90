@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.15 2004-07-29 17:36:36 hb Exp $
+!$Id: gotm.F90,v 1.16 2004-08-02 08:35:46 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -79,7 +79,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.15  2004-07-29 17:36:36  hb
+!  Revision 1.16  2004-08-02 08:35:46  hb
+!  no need to pass time information
+!
+!  Revision 1.15  2004/07/29 17:36:36  hb
 !  separate reading fluxes from bio() - benefit of 3D models
 !
 !  Revision 1.14  2004/05/28 13:24:49  hb
@@ -329,7 +332,7 @@
 #endif
 #ifdef BIO
       call do_bio_fluxes(julianday,secondsofday)
-      call do_bio(nlev,julianday,secondsofday,I_0,dt,h,t,nuh,rad,bioshade)
+      call do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
 #endif
       select case (turb_method)
          case (0)
