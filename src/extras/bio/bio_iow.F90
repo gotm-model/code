@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.7 2004-06-29 13:48:25 hb Exp $
+!$Id: bio_iow.F90,v 1.8 2004-07-02 13:41:19 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.7  2004-06-29 13:48:25  hb
+!  Revision 1.8  2004-07-02 13:41:19  hb
+!  Hard switches (theta) softened with tanh and Michaelis-Menten
+!
+!  Revision 1.7  2004/06/29 13:48:25  hb
 !  bug removed
 !
 !  Revision 1.6  2004/06/29 08:04:03  hb
@@ -384,7 +387,7 @@
 ! !IROUTINE: Step function
 !
 ! !INTERFACE
-   REALTYPE function theta(x)
+   REALTYPE function th(x,w,min,max)
 !
 ! !DESCRIPTION
 !
@@ -392,7 +395,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: x
+   REALTYPE, intent(in)                :: x,w,min,max
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -400,13 +403,18 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (x.gt.0) then
-      theta=1.
+   if (w.gt.1.e-10) then
+   th=min+(max-min)*0.5*(1.+tanh(x/w))
    else
-      theta=0.
-   end if    
+      if (x.gt.0) then
+         th=1.
+      else
+         th=0.
+      end if    
+   
+   end if
    return
-   end function theta
+   end function th
 !EOC
 !-----------------------------------------------------------------------
 !BOP
@@ -634,6 +642,8 @@
   REALTYPE, save             :: iopt
   REALTYPE                   :: rat(0:nlev,0:nlev)
   REALTYPE                   :: psum,llda,llan,llsa,r1,r2,r3
+  REALTYPE                   :: wo=30.,wn=0.1,dot2=0.2
+  REALTYPE                   :: thopnp,thomnp,thomnm,thsum
   integer                    :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
@@ -656,11 +666,20 @@
 
    do ci=1,nlev
 
+      thopnp=th( cc(o2,ci),wo,_ZERO_,_ONE_)*yy(wn,cc(ni,ci))
+      thomnp=th(-cc(o2,ci),wo,_ZERO_,_ONE_)*yy(wn,cc(ni,ci))
+      thomnm=th(-cc(o2,ci),wo,_ZERO_,_ONE_)*(1.-yy(wn,cc(ni,ci)))
+      thsum=thopnp+thomnp+thomnm
+      thopnp=thopnp/thsum
+      thomnp=thomnp/thsum
+      thomnm=thomnm/thsum
+
       psum=cc(p1,ci)+cc(p2,ci)+cc(p3,ci)+p10+p20+p30 
       llda=lda*(1.+beta_da*yy(tda,t(ci)))
-      llan=theta(cc(o2,ci))*cc(o2,ci)/(oan+cc(o2,ci))*lan*exp(beta_an*t(ci))
+      llan=th(cc(o2,ci),_ZERO_,_ZERO_,_ONE_)*cc(o2,ci)/(oan+cc(o2,ci))      &
+              *lan*exp(beta_an*t(ci))
       if ((fluff).and.(ci.eq.1)) then
-         llsa=lsa*exp(bsa*t(ci))*(theta(cc(o2,ci))+0.2*theta(-cc(o2,ci)))
+         llsa=lsa*exp(bsa*t(ci))*(th(cc(o2,ci),wo,dot2,_ONE_))
       end if
       r1=r1max*min(yy(alpha1,cc(am,ci)+cc(ni,ci)),yy(sr*alpha1,cc(po,ci)),   &
                    ppi(ci))
@@ -696,12 +715,12 @@
 
 !  Sink terms for positive compartments, which do not appear 
 !  as source terms for other compartments:
-      dd(ni,ni,ci)=s1*llda*cc(de,ci)*theta(-cc(o2,ci))*theta(cc(ni,ci))
+      dd(ni,ni,ci)=s1*llda*cc(de,ci)*thomnp
       dd(po,po,ci)=sr*( r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)                &
                        +r3*(cc(p3,ci)+p30)) 
       if ((fluff).and.(ci.eq.1)) then
-         dd(fl,fl,ci)=theta(cc(o2,ci))*llsa*cc(fl,ci)
-         dd(ni,ni,ci)=s1*theta(-cc(o2,ci))*theta(cc(ni,ci))*llsa*cc(fl,ci)/h(ci)
+         dd(fl,fl,ci)=th(cc(o2,ci),wo,_ZERO_,_ONE_)*llsa*cc(fl,ci)
+         dd(ni,ni,ci)=dd(ni,ni,ci)+s1*thomnp*llsa*cc(fl,ci)/h(ci)
       end if
 
 !  Source terms which are exactly sinks terms of other compartments or
@@ -719,12 +738,11 @@
       pp(o2,o2,ci)=(s2*cc(am,ci)+s3*cc(ni,ci))/(cc(am,ci)+cc(ni,ci))*         &
                   (r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)+r3*(cc(p3,ci)+p30))  &
                    -s2*(lpa*psum+lza*(cc(zo,ci)+zo0)**2)                      &
-                   -s4*llan*cc(am,ci)-s2*(theta(cc(o2,ci))                    &
-                   +theta(-cc(o2,ci))*theta(-cc(ni,ci)))*llda*cc(de,ci)
+                   -s4*llan*cc(am,ci)-s2*(thopnp+thomnm)*llda*cc(de,ci)
       if ((fluff).and.(ci.eq.1)) then
-         pp(o2,o2,ci)=pp(o2,o2,ci)-(s4+s2*(theta(cc(o2,ci))                   &
-                   +theta(-cc(o2,ci))*theta(-cc(ni,ci))))*llsa*cc(fl,ci)/h(ci)
-         pp(po,po,ci)=pp(po,po,ci)+llsa*(1.-ph1*theta(cc(o2,ci))*             &
+         pp(o2,o2,ci)=pp(o2,o2,ci)-(s4+s2*(thopnp+thomnm))*llsa*cc(fl,ci)/h(ci)
+         pp(po,po,ci)=pp(po,po,ci)+llsa                                       &
+                   *(1.-ph1*th(cc(o2,ci),wo,_ZERO_,_ONE_)*             &
                       yy(ph2,cc(o2,ci)))*cc(fl,ci)/h(i)
       end if
    end do
