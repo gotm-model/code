@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.1 2001-02-12 15:55:57 gotm Exp $
+#$Id: Makefile,v 1.2 2003-03-10 08:33:24 gotm Exp $
 #
 # Makefile to build the Sediment Module - libsediment.a
 #
@@ -19,10 +19,10 @@ doc:
 	$(PROTEX) $(DOCSRC) > ../../../doc/sediment.tex 
 
 clean:
-	-rm -f ${LIB}
+	$(RM) ${LIB}
 
 realclean: clean
-	-rm -f *.o
+	$(RM) *.o *~
 
 distclean: realclean
 

@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.3 2001-05-31 12:00:52 gotm Exp $
+#$Id: Makefile,v 1.4 2003-03-10 08:33:21 gotm Exp $
 #
 # Makefile to build the the Dynamics library - libmeanflow.a
 #
@@ -10,18 +10,18 @@ LIB	= $(LIBDIR)/libmeanflow$(buildtype).a
 DOCSRC	= \
 meanflow.F90		\
 updategrid.F90		\
+adaptivegrid.F90	\
 coriolis.F90		\
 uequation.F90		\
 vequation.F90		\
 extpressure.F90		\
 intpressure.F90		\
 friction.F90		\
-salinity.F90		\
 temperature.F90		\
-lightabsorbtion.F90	\
-stratification.F90	\
+salinity.F90		\
 buoyancy.F90		\
-convectiveadjustment.F90\
+stratification.F90	\
+convectiveadjustment.F90 \
 production.F90
 
 MOD	= \
@@ -29,13 +29,13 @@ ${LIB}(meanflow.o)
 
 OBJ   = \
 ${LIB}(updategrid.o)		\
+${LIB}(adaptivegrid.o)		\
 ${LIB}(coriolis.o)		\
 ${LIB}(uequation.o)		\
 ${LIB}(vequation.o)		\
 ${LIB}(extpressure.o)		\
 ${LIB}(intpressure.o)		\
 ${LIB}(friction.o)		\
-${LIB}(lightabsorbtion.o)	\
 ${LIB}(temperature.o)		\
 ${LIB}(salinity.o)		\
 ${LIB}(stratification.o)	\
@@ -57,7 +57,7 @@ clean:
 	$(RM) -f ${LIB} $(MODDIR)/meanflow.{m,mod}
 
 realclean: clean
-	$(RM) -f *.o
+	$(RM) -f *.o *~
 
 distclean: realclean
 

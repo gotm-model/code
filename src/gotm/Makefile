@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.1 2001-02-12 15:55:59 gotm Exp $
+#$Id: Makefile,v 1.2 2003-03-10 08:33:20 gotm Exp $
 #
 # Makefile to build the the main library - libgotm.a
 #
@@ -8,7 +8,7 @@ include ../Rules.make
 LIB	= $(LIBDIR)/libgotm$(buildtype).a
 
 DOCSRC	= \
-main.F90		\
+main.F90  \
 gotm.F90
 
 MOD	= \
@@ -28,7 +28,7 @@ clean:
 	$(RM) -f ${LIB} $(MODDIR)/gotm.{m,mod}
 
 realclean: clean
-	$(RM) -f *.o
+	$(RM) -f *.o *~
 
 distclean: realclean
 

@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.2 2001-11-18 19:13:15 gotm Exp $
+#$Id: Makefile,v 1.3 2003-03-10 08:33:23 gotm Exp $
 #
 # Makefile to build the the Turbulence library - libturbulence.a
 #
@@ -7,15 +7,18 @@ include ../Rules.make
 
 LIB	= $(LIBDIR)/libturbulence$(buildtype).a
 
+
 DOCSRC	= \
-gotm_lib_version.F90	\
 turbulence.F90		\
 tkeeq.F90		\
-tkealgebraic.F90	\
+q2over2eq.F90		\
 lengthscaleeq.F90	\
 dissipationeq.F90	\
-genericeq.F90	\
+genericeq.F90	        \
+tkealgebraic.F90	\
 algebraiclength.F90	\
+ispralength.F90		\
+potentialml.F90	        \
 cmue_bb.F90		\
 cmue_bbqe.F90		\
 cmue_ca.F90		\
@@ -24,11 +27,14 @@ cmue_cb.F90		\
 cmue_cbqe.F90		\
 cmue_kc.F90		\
 cmue_kcqe.F90		\
+cmue_my.F90		\
+cmue_gpqe.F90		\
 cmue_ma.F90		\
-cmue_rf.F90		\
 cmue_sg.F90		\
-ispralength.F90		\
-potentialml.F90
+cmue_rf.F90		\
+fk_craig.F90            \
+turbulence_adv.F90      \
+gotm_lib_version.F90
 
 MOD   = \
 ${LIB}(turbulence.o)
@@ -36,13 +42,16 @@ ${LIB}(turbulence.o)
 OBJ   = \
 ${LIB}(gotm_lib_version.o)	\
 ${LIB}(tkeeq.o)			\
+${LIB}(q2over2eq.o)		\
 ${LIB}(tkealgebraic.o)		\
 ${LIB}(algebraiclength.o)	\
 ${LIB}(dissipationeq.o)		\
 ${LIB}(genericeq.o)		\
 ${LIB}(lengthscaleeq.o)		\
+${LIB}(turbulence_adv.o)	\
 ${LIB}(ispralength.o)		\
 ${LIB}(potentialml.o)		\
+${LIB}(fk_craig.o)		\
 ${LIB}(cmue_bb.o)		\
 ${LIB}(cmue_bbqe.o)		\
 ${LIB}(cmue_ca.o)		\
@@ -50,7 +59,9 @@ ${LIB}(cmue_caqe.o)		\
 ${LIB}(cmue_cb.o)		\
 ${LIB}(cmue_cbqe.o)		\
 ${LIB}(cmue_kc.o)		\
+${LIB}(cmue_my.o)		\
 ${LIB}(cmue_kcqe.o)		\
+${LIB}(cmue_gpqe.o)		\
 ${LIB}(cmue_ma.o)		\
 ${LIB}(cmue_rf.o)		\
 ${LIB}(cmue_sg.o)		\
@@ -68,7 +79,7 @@ clean:
 	$(RM) -f ${LIB} $(MODDIR)/turbulence.{m,mod}
 
 realclean: clean
-	$(RM) -f *.o
+	$(RM) -f *.o *~
 
 distclean: realclean
 

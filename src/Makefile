@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.4 2001-05-31 12:23:45 gotm Exp $
+#$Id: Makefile,v 1.5 2003-03-10 08:33:20 gotm Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -57,18 +57,19 @@ endif
 
 doc:
 ifdef SUBDIRS
-	set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i $@; done
+	set -e; for i in gotm $(SUBDIRS); do $(MAKE) -C $$i $@; done
 endif
 ifdef FEATURES
 	set -e; for i in $(FEATURES); do $(MAKE) -C $$i $@; done
 endif
-	
+
 bkup: distclean
 	tar -czvf ../../backups/bkup.`date +%y%m%d%H`_`cat ../VERSION`.tar.gz *
 
 clean:
 
 realclean: clean
+	$(RM) *~
 	$(RM) ../modules/$(FORTRAN_COMPILER)/*.{m,mod} 
 	$(RM) ../lib/$(FORTRAN_COMPILER)/lib*$(buildtype).a
 ifdef SUBDIRS
@@ -77,14 +78,7 @@ endif
 ifdef FEATURES
 	set -e; for i in $(FEATURES); do $(MAKE) -C $$i $@; done
 endif
-	$(MAKE) -C ../doc $@
 
 distclean: realclean
-	$(RM) -f ../lib/*/lib*.a
-	$(RM) -f ../modules/*/*.{m,mod}
-	$(RM) -f gotm_debug_* gotm_prof_* gotm_prod_*
-	$(MAKE) -C ../doc $@
+	$(RM) gotm_debug_* gotm_prof_* gotm_prod_*
 
-#-----------------------------------------------------------------------
-# Copyright (C) 2000 - Hans Burchard and Karsten Bolding (BBH)         !
-#-----------------------------------------------------------------------

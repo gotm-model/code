@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.7 2002-04-30 14:22:55 gotm Exp $
+#$Id: Rules.make,v 1.8 2003-03-10 08:33:20 gotm Exp $
 
 SHELL   = /bin/sh
 
@@ -26,8 +26,6 @@ SEDIMENT=false
 SEDIMENT=true
 SEAGRASS=false
 SEAGRASS=true
-LAGRANGE=false
-LAGRANGE=true
 
 FEATURES	=
 FEATURE_LIBS	=
@@ -76,11 +74,6 @@ DEFINES += -DSEAGRASS
 FEATURES += extras/seagrass
 FEATURE_LIBS += -lseagrass$(buildtype)
 endif
-ifeq ($(LAGRANGE),true)
-DEFINES += -DLAGRANGE
-FEATURES += extras/lagrange
-FEATURE_LIBS += -llagrange$(buildtype)
-endif
 
 # Directory related settings.
 
@@ -100,83 +93,11 @@ INCDIRS	+= -I/usr/local/include -I$(GOTMDIR)/include -I$(MODDIR)
 
 # Normaly this should not be changed - unless you want something very specific.
 
-#ifneq (compiler_included,true)
-#include $(GOTMDIR)/compilers/compiler.$(FORTRAN_COMPILER)
-#endif
-
 # The Fortran compiler is determined from the EV FORTRAN_COMPILER - options 
 # sofar NAG(linux), FUJITSU(Linux), DECF90 (OSF1 and likely Linux on alpha),
 # SunOS, PGF90 - Portland Group Fortran Compiler (on Intel Linux).
 
-# Set options for the NAG Fortran compiler.
-ifeq ($(FORTRAN_COMPILER),NAG)
-FC=f95nag
-DEFINES += -DFORTRAN95
-can_do_F90=true
-MODULES=-mdir $(MODDIR)
-EXTRAS	= -f77
-DEBUG_FLAGS = -g -C=all -O0
-PROF_FLAGS  = -O -pg
-PROF_FLAGS  = -pg -O3
-PROD_FLAGS  = -O3
-REAL_4B = real*4
-endif
-
-# Set options for the Fujitsu compiler - on Linux/Intel.
-ifeq ($(FORTRAN_COMPILER),FUJITSU)
-FC=frt
-DEFINES += -DFORTRAN95
-can_do_F90=true
-MODULES=-Am -M$(MODDIR)
-EXTRAS  = -ml=cdecl -fw
-EXTRAS  = -fw
-DEBUG_FLAGS = -g
-PROF_FLAGS  = -pg -O3
-PROD_FLAGS  = -O -K fast
-REAL_4B = real\(4\)
-endif
-
-# Set options for the Compaq fort compiler - on alphas.
-ifeq ($(FORTRAN_COMPILER),DECFOR)
-FC=f95
-DEFINES += -DFORTRAN95
-can_do_F90=true
-MODULES=-module $(MODDIR)
-EXTRAS	=
-DEBUG_FLAGS = -g -arch host -check bounds -check overflow -check nopower -std90
-PROF_FLAGS  = -pg -O3
-PROD_FLAGS  = -O -fast -inline speed -pipeline
-REAL_4B = real\(4\)
-endif
-
-
-# Set options for the SunOS fortran compiler.
-ifeq ($(FORTRAN_COMPILER),SunOS)
-FC=f90
-DEFINES += -DFORTRAN95
-can_do_F90=true
-MODULES=-M$(MODDIR)
-MOVE_MODULES_COMMAND=/usr/bin/mv -f *.mod $(MODDIR)
-EXTRAS  =
-DEBUG_FLAGS = -C
-PROF_FLAGS  = -pg
-PROD_FLAGS  = -fast
-REAL_4B = real\(4\)
-endif
-
-# Set options for the Portland Group Fortran 90 compiler.
-ifeq ($(FORTRAN_COMPILER),PGF90)
-FC=pgf90
-DEFINES += -DFORTRAN90
-can_do_F90=false
-F90_to_f90=$(FC) -E $(F90FLAGS) $(EXTRA_FFLAGS) $< > $@
-MODULES=-module $(MODDIR)
-EXTRAS  =
-DEBUG_FLAGS = -g
-PROF_FLAGS  =
-PROD_FLAGS  = -fast
-REAL_4B = real\(4\)
-endif
+include $(GOTMDIR)/compilers/compiler.$(FORTRAN_COMPILER)
 
 DEFINES += -DREAL_4B=$(REAL_4B)
 

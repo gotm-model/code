@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.5 2001-11-18 19:06:02 gotm Exp $
+#$Id: Makefile,v 1.6 2003-03-10 08:33:20 gotm Exp $
 #
 # Makefile for making new release of GOTM.
 #
@@ -59,6 +59,11 @@ diff:
 	
 update:
 	( cvs update > cvs.update ; vi cvs.update )
+
+distclean:
+	make -C doc/ $@
+	make -C src/ $@
+	$(RM) -r lib/ modules/
 	
 #-----------------------------------------------------------------------
 # Copyright (C) 2001 - Hans Burchard and Karsten Bolding (BBH)         !

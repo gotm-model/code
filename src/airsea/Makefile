@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.1 2001-02-12 15:55:57 gotm Exp $
+#$Id: Makefile,v 1.2 2003-03-10 08:33:20 gotm Exp $
 #
 # Makefile to build the the airsea interaction library - libairsea.a
 #
@@ -29,7 +29,7 @@ clean:
 	$(RM) -f ${LIB} $(MODDIR)/airsea.{m,mod}
 
 realclean: clean
-	$(RM) -f *.o
+	$(RM) -f *.o *~
 
 distclean: realclean
 
