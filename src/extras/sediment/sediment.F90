@@ -1,4 +1,4 @@
-!$Id: sediment.F90,v 1.6 2004-01-13 10:20:21 lars Exp $
+!$Id: sediment.F90,v 1.7 2004-03-04 09:34:54 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -35,8 +35,8 @@
 !   \sect{sec:turbulenceIntro}. Surface fluxes and inner sources or 
 !  sinks are not considered. 
 !
-!  The sinking speed, $w_s$, is negative by definition, and may depend on the grain 
-!  diameter, molecular viscosity of water
+!  The sinking speed, $w_s$, is negative by definition, and may depend 
+!  on the grain diameter, molecular viscosity of water
 !  and sediment density as discussed in \sect{sec:initSediment}.
 !  Diffusion is discretized implicitly as discussed in \sect{sec:diffusionMean},
 !  advection (settling) is treated explicitely, 
@@ -51,14 +51,15 @@
 !   \label{rouseProfile}
 !     \dfrac{C}{C_0} = \left( \dfrac{z+z_0}{z_0} \right)^R
 !  \end{equation}
-!  is a solution of \eq{CEq}. Here, $C_0$ is the reference sediment concentration
-!  at $z=0$ and $R=w_s/(\kappa u_*)$ is the so-called Rouse number. \eq{rouseProfile}
-!  can be used to derive boundary conditions for \eq{CEq}.
+!  is a solution of \eq{CEq}. Here, $C_0$ is the reference sediment 
+!  concentration at $z=0$ and $R=w_s/(\kappa u_*)$ is the so-called 
+!  Rouse number. \eq{rouseProfile} can be used to derive boundary 
+!  conditions for \eq{CEq}.
 !
 ! !USES:
    use meanflow,   only:    depth,u_taub,gravity,rho_0,z0b,za
-   use meanflow,   only:    h,avh,NN,buoy 
-   use turbulence, only:    kappa,num 
+   use meanflow,   only:    h,avh,NN,buoy
+   use turbulence, only:    kappa,num,nuh
    use output,     only:    out_fmt,write_results,ts
 !
    IMPLICIT NONE
@@ -66,26 +67,22 @@
 !  default: all is private
    private
 !
-! !PUBLIC MEMBER FUNCTIONS:
-   public init_sediment, calc_sediment, end_sediment
+!  !PUBLIC MEMBER FUNCTIONS:
+   public init_sediment, do_sediment, end_sediment
 !
-! !PUBLIC DATA MEMBERS:
-
+!  !PUBLIC DATA MEMBERS:
 !
 !  !DEFINED PARAMETERS:
 
 !  specification of possible boundary conditions
-
 !  for diffusion   
    integer, parameter      :: Dirichlet       = 0
    integer, parameter      :: Neumann         = 1
-
 !  for advection
    integer,parameter       :: flux           = 1
    integer,parameter       :: value          = 2
    integer,parameter       :: oneSided       = 3
    integer,parameter       :: zeroDivergence = 4
-
 !  how to compute bottom sediment flux or concentration
    integer, parameter      :: NoFlux          = 1
    integer, parameter      :: SmithMcLean     = 2
@@ -94,7 +91,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: sediment.F90,v $
-!  Revision 1.6  2004-01-13 10:20:21  lars
+!  Revision 1.7  2004-03-04 09:34:54  kbk
+!  selection between eularian and lagrangian solver
+!
+!  Revision 1.6  2004/01/13 10:20:21  lars
 !  removed small bug in namelist
 !
 !  Revision 1.5  2004/01/13 10:00:52  lars
@@ -111,13 +111,12 @@
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
 !  initial import into CVS
-
-!EOP
 !
 !  private data members from here on
 !
 !  the 'sedi' namelist
    logical          :: sedi_calc=.false.
+   logical          :: sedi_eularian=.true.
    logical          :: sedi_dens=.false.
    REALTYPE         :: rho_sed=2650.
    REALTYPE         :: size=62.5e-6
@@ -126,6 +125,7 @@
    REALTYPE         :: cnpar=0.5
    integer          :: sedi_method
    integer          :: z0bMethod
+   integer          :: sedi_npar=10000
 !
 !  sediment concentration
    REALTYPE, dimension(:), allocatable :: C
@@ -133,12 +133,15 @@
 !  sinking speed, observed cocentration, source term
    REALTYPE, dimension(:), allocatable :: wc,Cobs,Qsour
 !
+!  particle postions for lagragian simulation
+   REALTYPE, dimension(:), allocatable :: zp
+!
 !  boundary condition types for diffusion and advection
    integer                   :: DiffBcup
    integer                   :: DiffBcdw
    integer                   :: AdvBcup
    integer                   :: AdvBcdw
-
+!
 !  boundary values for diffusion and advection
    REALTYPE                  :: DiffCup
    REALTYPE                  :: DiffCdw
@@ -147,11 +150,10 @@
 
 !  some parameter of the sediment model
    REALTYPE                  :: ustarc,gs
-
+!
 !  output unit
    integer                   :: out_unit
-
-!
+!EOP
 !----------------------------------------------------------------------
 
    contains
@@ -187,14 +189,15 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
-   integer                   :: rc 
-   REALTYPE                  :: x,Dsize,avmolu=1.3e-6
-   namelist /sedi/  sedi_calc,sedi_dens,rho_sed,size,init_conc,      &
-                    adv_method,cnpar,sedi_method,z0bMethod 
-!
+   integer          :: rc 
+   integer          :: n 
+   REALTYPE         :: x,Dsize,avmolu=1.3e-6
+   namelist /sedi/ sedi_calc,sedi_eularian,sedi_dens, &
+                   rho_sed,size,init_conc, &
+                   adv_method,cnpar,sedi_method,z0bMethod, &
+                   sedi_npar
+!EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_sediment'
@@ -229,29 +232,42 @@
       gs=g*(rho_sed-rho_0)/rho_0
 
       ! Zanke formula for fall velocity of sediment  
-      x         = -10.0*avmolu/size*(sqrt(1+(0.01*gs*size**3)/avmolu/avmolu)-1.0) 
-      wc        = x
+      x = -10.0*avmolu/size*(sqrt(1+(0.01*gs*size**3)/avmolu/avmolu)-1.0) 
+      wc= x
       
-      select case(sedi_method)
-      case(NoFlux)
-         LEVEL2 'Assuming no net flux across the lowest interface'
-      case(SmithMcLean)
-         LEVEL2 'Computing sediment concentration in lowest box according to Smith and McLean (1977)'
-         Dsize=size*(gs/avmolu/avmolu)**0.3333333  
-         if (Dsize.gt.10.0) then
-            ustarc=-0.4*wc(1)  
-         else 
-            ustarc=-4.0/Dsize*wc(1)  
-         endif
-      case default
-         FATAL "unkown method to compute sediment flux"
-         stop "init sediment"
-      end select
-      
+      if (sedi_eularian) then
+         LEVEL2 'Using eularian approach'
+         select case(sedi_method)
+            case(NoFlux)
+               LEVEL2 'Assuming no net flux across the lowest interface'
+            case(SmithMcLean)
+               LEVEL2 'Computing sediment concentration in lowest box'
+               LEVEL2 'according to Smith and McLean (1977)'
+               Dsize=size*(gs/avmolu/avmolu)**0.3333333  
+               if (Dsize.gt.10.0) then
+                  ustarc=-0.4*wc(1)  
+               else 
+                  ustarc=-4.0/Dsize*wc(1)  
+               endif
+            case default
+               FATAL "unkown method to compute sediment flux"
+               stop "init sediment"
+         end select
+      else
+         LEVEL2 'Using lagragian approach..'
+         LEVEL3 sedi_npar,' particles'
+         allocate(zp(sedi_npar),stat=rc)
+         if (rc /= 0) stop 'init_sediment: Error allocating (zp)'
+
+         do n=1,sedi_npar
+!           Equidist. particle distribution
+            zp(n)=-depth+n/float(sedi_npar+1)*depth
+         end do
+      end if
+
    end if
 
    return
-
 98 LEVEL2 'I could not open sediment.inp'
    LEVEL2 'Ill continue but set sedi_calc to false.'
    LEVEL2 'If thats not what you want you have to supply sediment.inp'
@@ -262,13 +278,71 @@
    stop 'init_sediment'
    end subroutine init_sediment
 !EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Update the sediment transport equation\label{sec:calcSediment}
+! !IROUTINE: do sediment calculations
 !
 ! !INTERFACE:
-   subroutine calc_sediment(nlev,dt)
+   subroutine do_sediment(nlev,dt)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,  intent(in)                :: nlev
+   REALTYPE, intent(in)                :: dt
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+! !LOCAL VARIABLES:
+   integer         :: n
+   REALTYPE        :: dcdz,rho_mean
+   REALTYPE        :: rho(0:nlev)
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (sedi_calc) then
+      if( sedi_eularian ) then
+         call sediment_eularian(nlev,dt)
+      else
+         call sediment_lagrangian(nlev,dt)
+      end if
+
+      if (sedi_dens) then   ! Update buoyancy and NN.
+         do n=1,nlev
+            rho(n)  = rho_0*(1.0-buoy(n)/gravity)
+            buoy(n) = -gravity*((1.0-C(n))*rho(n) &
+                      +C(n)*rho_sed - rho_0)/rho_0
+         end do
+         do n=1,nlev-1
+            rho_mean = 0.5*(rho(n+1)+rho(n))
+            dcdz     = (C(n+1)-C(n))/(0.5*(h(n+1)+h(n)))
+            NN(n)=(1-C(n))*NN(n) &
+                 -gravity/rho_0*(rho_sed-rho_mean)*dcdz
+         end do
+      end if
+
+      if (write_results) then
+         call save_sediment()
+      end if
+
+   end if
+   return
+   end subroutine do_sediment
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Eularian sediment transport calculation\label{sec:calcSediment}
+!
+! !INTERFACE:
+   subroutine sediment_eularian(nlev,dt)
 !
 ! !DESCRIPTION:
 !  In this subroutine, the dynamical equation for sediment \eq{CEq}
@@ -308,13 +382,11 @@
    REALTYPE, intent(in)                :: dt
 
 ! !DEFINED PARAMETERS:
-   REALTYPE, parameter                 :: g1            =  1.56E-3
-   REALTYPE, parameter                 :: a0            = 26.3
- !
+   REALTYPE, parameter                 :: g1 =  1.56E-3
+   REALTYPE, parameter                 :: a0 = 26.3
+!
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!EOP
 !
 ! !LOCAL VARIABLES:
    REALTYPE                  :: CBott,Cbalg
@@ -324,30 +396,25 @@
    REALTYPE,save             :: Cb
    REALTYPE                  :: RelaxT(0:nlev)
    integer                   :: i,flag
-   
-
    REALTYPE                  :: Cint
    REALTYPE                  :: rouse
-
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (sedi_calc) then 
-
-      select case(sedi_method)
+   select case(sedi_method)
       case(NoFlux)
 
-         za            = _ZERO_      ! no model to update za
+         za       = _ZERO_      ! no model to update za
 
-         DiffBcup      = Neumann
-         DiffBcdw      = Neumann
-         DiffCup       = _ZERO_
-         DiffCdw       = _ZERO_
+         DiffBcup = Neumann
+         DiffBcdw = Neumann
+         DiffCup  = _ZERO_
+         DiffCdw  = _ZERO_
 
-         AdvBcup       = flux
-         AdvBcdw       = flux
-         AdvCup        = _ZERO_
-         AdvCdw        = _ZERO_
+         AdvBcup  = flux
+         AdvBcdw  = flux
+         AdvCup   = _ZERO_
+         AdvCdw   = _ZERO_
 
       case(SmithMcLean)
          
@@ -355,9 +422,9 @@
 
             ! compute reference level
             if (z0bMethod.ne.1) then
-               za  = a0/gs*(u_taub**2-ustarc**2)
+               za = a0/gs*(u_taub**2-ustarc**2)
             else
-               za  = _ZERO_
+               za = _ZERO_
             end if
 
             ! Compute reference concentration at the interface
@@ -365,62 +432,99 @@
     
             ! compute Rouse number
             rouse = wc(1)/kappa/u_taub
-
          else                                 
             Cbott = _ZERO_                        
             za    = _ZERO_
             rouse = _ZERO_
          end if
-         
 
-       
-         DiffBcup      = Neumann
-         DiffBcdw      = Dirichlet
-         DiffCup       = 0.
-         DiffCdw       = Cbott*((0.5*h(1)+z0b)/z0b)**rouse
+         DiffBcup = Neumann
+         DiffBcdw = Dirichlet
+         DiffCup  = _ZERO_
+         DiffCdw  = Cbott*((0.5*h(1)+z0b)/z0b)**rouse
 
-         AdvBcup       = flux
-         AdvBcdw       = oneSided     ! allow for sinking sediment to leave domain
-         AdvCup        = 0.
-         AdvCdw        = 0.           ! not used
+         AdvBcup  = flux
+         AdvBcdw  = oneSided     ! allow for sinking sediment to leave domain
+         AdvCup   = _ZERO_
+         AdvCdw   = _ZERO_       ! not used
          
       case default
          FATAL 'Invalid method for sedi_calc'
          stop  'sediment.F90'
-      end select
-      
-      
-!     Does not work for prescribed vertical current velocity and 
-!     adaptive grids!!
+   end select
 
-      flag=2          ! conservative form of vertical advection
-      RelaxT = 1.e15  ! no relaxation to observed value
+!  Does not work for prescribed vertical current velocity and 
+!  adaptive grids!!
 
-      call advectionMean(nlev,dt,h,wc,AdvBcup,AdvBcdw,AdvCup,AdvCdw,adv_method,C)
+   flag=2          ! conservative form of vertical advection
+   RelaxT = 1.e15  ! no relaxation to observed value
 
-      call diffusionMean(nlev,dt,cnpar,h,DiffBcup,DiffBcdw,DiffCup,DiffCdw,        &
-                         num,Qsour,RelaxT,Cobs,C)
+   call advectionMean(nlev,dt,h,wc, &
+                      AdvBcup,AdvBcdw,AdvCup,AdvCdw,adv_method,C)
 
-
-
-      ! Update buoyancy and NN if stratification plays a role. 
-      if (sedi_dens) then
-        do i=1,nlev
-           rho(i)  = rho_0*(1.0-buoy(i)/gravity)
-           buoy(i) = -gravity*((1.0-C(i))*rho(i) + C(i)*rho_sed - rho_0)/rho_0 
-        end do 
-        do i=1,nlev-1
-           rho_mean = 0.5*(rho(i+1)+rho(i))
-           dcdz     = (C(i+1)-C(i))/(0.5*(h(i+1)+h(i)))
-           NN(i)=(1-C(i))*NN(i)-gravity/rho_0*(rho_sed-rho_mean)*dcdz 
-        end do 
-      end if
-      if (write_results) then
-         call save_sediment()
-      end if
-   end if
+   call diffusionMean(nlev,dt,cnpar,h, &
+                      DiffBcup,DiffBcdw,DiffCup,DiffCdw, &
+                      num,Qsour,RelaxT,Cobs,C)
    return
-   end subroutine calc_sediment 
+   end subroutine sediment_eularian 
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Lagrangian sediment transport calculation\label{sec:calcSediment}
+!
+! !INTERFACE:
+   subroutine sediment_lagrangian(nlev,dt)
+!
+! !DESCRIPTION:
+!  In this subroutine, the dynamical equation for sediment \eq{CEq}
+!  including turbulent diffusion and settling of suspended matter is 
+!  this routine uses a lagrangian approach.
+!  Should contain more info (KBK).
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer,  intent(in)                :: nlev
+   REALTYPE, intent(in)                :: dt
+
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+! !LOCAL VARIABLES:
+   integer         :: n,np
+   REALTYPE        :: zlev(0:nlev)
+   logical         :: active(sedi_npar)
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   zlev(0)=-depth
+   do n=1,nlev
+      zlev(n)=zlev(n-1)+h(n)
+   end do
+
+   active=.true.
+   call lagrange(nlev,dt,zlev,nuh,wc(1),sedi_npar,active,zp)
+   active=.true.
+   do n=1,nlev
+      C(n)=_ZERO_
+      do np=1,sedi_npar
+         if (active(np) .and. &
+            zlev(n-1) .le. zp(np) .and. zp(np) .lt. zlev(n)) then
+            C(n) = C(n)+_ONE_
+            active(np)=.false.
+         end if
+      end do
+   end do
+
+   do n=1,nlev
+      C(n) = init_conc*C(n)/sedi_npar
+   end do
+
+   return
+   end subroutine sediment_lagrangian 
 !EOC
 
 !-----------------------------------------------------------------------
