@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.13 2004-04-13 09:18:54 kbk Exp $
+!$Id: bio.F90,v 1.14 2004-05-28 13:24:49 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,7 +40,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.13  2004-04-13 09:18:54  kbk
+!  Revision 1.14  2004-05-28 13:24:49  hb
+!  Extention of bio_iow to fluff layer and surface nutrient fluxes
+!
+!  Revision 1.13  2004/04/13 09:18:54  kbk
 !  size and temperature dependend filtration rate
 !
 !  Revision 1.12  2004/03/31 12:58:52  kbk
@@ -80,7 +83,7 @@
 !  from a namelist
    logical                   :: bio_calc=.false.
    logical                   :: bio_eulerian=.true.
-   integer                   :: numc
+   integer                   :: numc,numcc
    REALTYPE                  :: cnpar=0.5
    integer                   :: w_adv_discr=6
    integer                   :: ode_method=1
@@ -173,7 +176,7 @@
 
       case (2)  ! The IOW model
 
-         call init_bio_iow(namlst,'bio_iow.inp',unit,numc)
+         call init_bio_iow(namlst,'bio_iow.inp',unit,numc,numcc)
 
          call allocate_memory(numc,nlev)
 
@@ -284,7 +287,7 @@
 ! !IROUTINE: Update the bio model
 !
 ! !INTERFACE:
-   subroutine do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
+   subroutine do_bio(nlev,jul,secs,I_0,dt,h,t,nuh,rad,bioshade)
 !
 ! !DESCRIPTION:
 !
@@ -293,7 +296,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer,  intent(in)                :: nlev
+   integer,  intent(in)                :: nlev,jul,secs
    REALTYPE, intent(in)                :: I_0
    REALTYPE, intent(in)                :: dt
    REALTYPE, intent(in)                :: h(0:nlev)
@@ -335,7 +338,7 @@
          case (-1)
          case (1)
          case (2)
-            call surface_fluxes_iow(numc,nlev,cc,t(nlev),sfl)
+            call surface_fluxes_iow(numc,nlev,jul,secs,cc,t(nlev),sfl)
          case (3)
       end select
 
@@ -345,7 +348,7 @@ STDERR total_mussel_flux,t(1)
       end if
 
       if (bio_eulerian) then
-         do j=1,numc
+         do j=1,numcc
             call Yevol(nlev,Bcup,Bcdw,dt,cnpar,sfl(j),bfl(j), &
                        RelaxTau,h,h,nuh,ws(j,:),QSour,cc(j,:), &
                        char,w_adv_discr,cc(j,:),surf_flux,bott_flux,  & 
@@ -409,7 +412,7 @@ STDERR total_mussel_flux,t(1)
             case (3)
          end select
 
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,t)
+         call ode_solver(ode_method,numc,nlev,dt_eff,h,cc,t)
 
       end do
 

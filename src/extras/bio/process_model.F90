@@ -1,4 +1,4 @@
-!$Id: process_model.F90,v 1.3 2003-10-28 10:22:45 hb Exp $
+!$Id: process_model.F90,v 1.4 2004-05-28 13:24:49 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,7 +6,7 @@
 ! !ROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine process_model(first,numc,nlev,cc,pp,dd,t)
+   subroutine process_model(first,numc,nlev,h,cc,pp,dd,t)
 !
 ! !DESCRIPTION:
 !
@@ -21,7 +21,7 @@
 ! !INPUT PARAMETERS:
    logical, intent(in)                 :: first
    integer, intent(in)                 :: numc,nlev
-   REALTYPE, intent(in)                :: t(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev),h(0:nlev)
 !
 ! !INPUT/OUTPUT PARAMETERS:
    REALTYPE, intent(inout)             :: cc(1:numc,1:numc,0:nlev)
@@ -41,7 +41,7 @@
       case (1)
          call do_bio_npzd(first,numc,nlev,cc,pp,dd,par,I_0)
       case (2)
-         call do_bio_iow(first,numc,nlev,cc,pp,dd,t,par,I_0)
+         call do_bio_iow(first,numc,nlev,h,cc,pp,dd,t,par,I_0)
       case (3)
          call do_bio_sed(first,numc,nlev,cc,pp,dd)
       case default

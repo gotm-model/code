@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.13 2004-03-30 11:31:52 kbk Exp $
+!$Id: gotm.F90,v 1.14 2004-05-28 13:24:49 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -79,7 +79,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.13  2004-03-30 11:31:52  kbk
+!  Revision 1.14  2004-05-28 13:24:49  hb
+!  Extention of bio_iow to fluff layer and surface nutrient fluxes
+!
+!  Revision 1.13  2004/03/30 11:31:52  kbk
 !  h in parameter list to init_bio()
 !
 !  Revision 1.12  2004/03/04 10:13:01  kbk
@@ -321,7 +324,7 @@
       call do_sediment(nlev,dt)
 #endif
 #ifdef BIO
-      call do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
+      call do_bio(nlev,julianday,secondsofday,I_0,dt,h,t,nuh,rad,bioshade)
 #endif
       select case (turb_method)
          case (0)

@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.3 2003-12-11 09:58:22 kbk Exp $
+!$Id: bio_iow.F90,v 1.4 2004-05-28 13:24:49 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.3  2003-12-11 09:58:22  kbk
+!  Revision 1.4  2004-05-28 13:24:49  hb
+!  Extention of bio_iow to fluff layer and surface nutrient fluxes
+!
+!  Revision 1.3  2003/12/11 09:58:22  kbk
 !  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
 !
 !  Revision 1.2  2003/10/16 15:42:16  kbk
@@ -57,6 +60,12 @@
    REALTYPE                  :: ni_initial=4.5
    REALTYPE                  :: po_initial=4.5
    REALTYPE                  :: o2_initial=4.5
+   REALTYPE                  :: sfl_po=0.0015
+   REALTYPE                  :: sfl_am=0.07
+   REALTYPE                  :: sfl_ni=0.09
+   integer                   :: nutrient_flux_method=0
+   logical                   :: fluff=.false.
+   REALTYPE                  :: fl_initial=0.0
    REALTYPE, public          :: p10=0.0225
    REALTYPE, public          :: p20=0.0225
    REALTYPE, public          :: p30=0.0225
@@ -91,6 +100,9 @@
    REALTYPE                  :: lda=0.003
    REALTYPE                  :: Tda=13.
    REALTYPE                  :: beta_da=20.
+   REALTYPE                  :: lds=4.05e-5
+   REALTYPE                  :: lsa=1.16e-8
+   REALTYPE                  :: bsa=0.15
    REALTYPE                  :: ph1=0.15
    REALTYPE                  :: ph2=0.1
    REALTYPE                  :: pvel=5.
@@ -103,7 +115,8 @@
    REALTYPE                  :: a1=14.603
    REALTYPE                  :: a2=0.4025
    integer                   :: out_unit
-   integer, parameter        :: p1=1,p2=2,p3=3,zo=4,de=5,am=6,ni=7,po=8,o2=9
+   integer, parameter        :: p1=1,p2=2,p3=3,zo=4,de=5,     &
+                                am=6,ni=7,po=8,o2=9,fl=10
    REALTYPE, allocatable     :: ppi(:)
 !EOP
 !-----------------------------------------------------------------------
@@ -116,7 +129,7 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_bio_iow(namlst,fname,unit,numc)
+   subroutine init_bio_iow(namlst,fname,unit,numc,numcc)
 !
 ! !DESCRIPTION:
 !  Here, the bio namelist {\tt bio_iow.inp} is read and memory is
@@ -131,20 +144,24 @@
    integer,          intent(in)   :: unit
 
 ! !OUTPUT PARAMETERS:
-   integer,          intent(out)   :: numc
+   integer,          intent(out)   :: numc,numcc
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
    REALTYPE, parameter       :: secs_pr_day=86400.
-   namelist /bio_iow_nml/ numc,p1_initial,p2_initial,p3_initial,zo_initial,  & 
-                      de_initial,am_initial,ni_initial,po_initial,       &
-                      o2_initial,p10,p20,p30,zo0,w_p1,w_p2,w_p3,         &
-                      w_de,kc,i_min,r1max,r2max,r3max,alpha1,alpha2,     &
-                      alpha3,lpa,lpd,tf,tbg,beta_bg,g1max,g2max,         &
-                      g3max,lza,lzd,iv,topt,lan,oan,beta_an,lda,         &
-                      tda,beta_da,ph1,ph2,pvel,sr,s1,s2,s3,s4,a0,a1,a2
+   namelist /bio_iow_nml/ numc,p1_initial,p2_initial,p3_initial,zo_initial,  &
+                      de_initial,am_initial,ni_initial,po_initial,           &
+                      o2_initial,sfl_po,sfl_am,sfl_ni,nutrient_flux_method,  &
+                      fluff,fl_initial,p10,p20,p30,zo0,                      &
+                      w_p1,w_p2,w_p3,                                        &
+                      w_de,kc,i_min,r1max,r2max,r3max,alpha1,alpha2,         &
+                      alpha3,lpa,lpd,tf,tbg,beta_bg,g1max,g2max,             &
+                      g3max,lza,lzd,iv,topt,lan,oan,beta_an,lda,             &
+                      tda,beta_da,lds,lsa,bsa,ph1,ph2,pvel,sr,               &
+                      s1,s2,s3,s4,a0,a1,a2
+
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -153,6 +170,9 @@
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_iow_nml,err=99)
    close(namlst)
+
+   numcc=numc
+   if (fluff) numc=numc+1
 
 !  Conversion from day to second
    w_p1   = w_p1    /secs_pr_day
@@ -171,6 +191,8 @@
    lzd    = lzd     /secs_pr_day
    lan    = lan     /secs_pr_day
    lda    = lda     /secs_pr_day
+   lds    = lds     /secs_pr_day
+   lsa    = lsa     /secs_pr_day
    pvel   = pvel    /secs_pr_day
 
    out_unit=unit
@@ -229,6 +251,7 @@
       cc(ni,i)=ni_initial
       cc(po,i)=po_initial
       cc(o2,i)=o2_initial
+      if (fluff) cc(fl,i)=fl_initial
    end do
 
    do i=0,nlev
@@ -330,6 +353,12 @@
    var_units(9) = 'mmol n/m**3'
    var_long(9)  = 'oxygen'   
 
+   if (fluff) then
+      var_names(10) = 'flf'
+      var_units(10) = 'mmol n/m**2'
+      var_long(10)  = 'fluff'
+   end if
+
    return
    end subroutine var_info_iow
 !EOC
@@ -424,15 +453,18 @@
 ! !IROUTINE: Surface fluxes for the IOW model
 !
 ! !INTERFACE
-   subroutine surface_fluxes_iow(numc,nlev,cc,t,sfl)
+   subroutine surface_fluxes_iow(numc,nlev,jul,secs,cc,t,sfl)
 !
 ! !DESCRIPTION
 !
 ! !USES
+   use time,         only: time_diff,julian_day,fsecs
+   use observations, only: read_obs
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
   integer                              :: numc,nlev
+  integer, intent(in)                  :: jul,secs
   REALTYPE, intent(in)                 :: cc(1:numc,0:nlev),t
 !
 ! !OUTPUT PARAMETERS:
@@ -443,9 +475,62 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
+   integer                   :: sfl_unit=40
+   logical,save              :: first = .true.
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: tfrac
+   REALTYPE, SAVE            :: dt
+   integer, save             :: jul1,secs1,jul2=0,secs2=0
+   REALTYPE, save            :: alpha(3)
+   REALTYPE, save            :: obs1(3),obs2(3)=0.
+   integer                   :: rc
+   REALTYPE, parameter       :: secs_pr_day=86400.
+
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+
+   select case (nutrient_flux_method)
+
+   case (0) ! constant
+
+      sfl(po)=-sfl_po /secs_pr_day
+      sfl(am)=-sfl_am /secs_pr_day
+      sfl(ni)=-sfl_ni /secs_pr_day
+
+   case (2) ! from file
+
+      if (first) then
+         open(sfl_unit,file='nutrients.dat',status='unknown')
+         first=.false.
+      end if
+
+!     Reading nutrient surface fluxes from file
+
+      if(time_diff(jul2,secs2,jul,secs) .lt. 0) then
+         do
+            jul1 = jul2
+            secs1 = secs2
+            obs1 = obs2
+            call read_obs(sfl_unit,yy,mm,dd,hh,min,ss,3,obs2,rc)
+            call julian_day(yy,mm,dd,jul2)
+            secs2 = hh*3600 + min*60 + ss
+            if(time_diff(jul2,secs2,jul,secs) .gt. 0) EXIT
+         end do
+         dt = time_diff(jul2,secs2,jul1,secs1)
+         alpha = (obs2-obs1)/dt
+      end if
+!     Do the time interpolation
+      tfrac  = time_diff(jul,secs,jul1,secs1)
+      sfl(ni) = - (obs1(1) + tfrac*alpha(1)) /secs_pr_day
+      sfl(am) = - (obs1(2) + tfrac*alpha(2)) /secs_pr_day
+      sfl(po) = - (obs1(3) + tfrac*alpha(3)) /secs_pr_day
+
+   case default
+      stop "bio: no valid nutrient_flux_method specified in bio_iow.inp !"
+   end select
+
+! surface oxygen flux
 
    sfl(o2)=-pvel*(a0*(a1-a2*t)-cc(o2,nlev))
 
@@ -505,7 +590,7 @@
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
 ! !INTERFACE
-   subroutine do_bio_iow(first,numc,nlev,cc,pp,dd,t,par,I_0)
+   subroutine do_bio_iow(first,numc,nlev,h,cc,pp,dd,t,par,I_0)
 !
 ! !DESCRIPTION
 !
@@ -514,6 +599,7 @@
 !
 ! !INPUT PARAMETERS:
   integer                              :: numc,nlev
+  REALTYPE, intent(in)                 :: h(0:nlev)
   REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
   REALTYPE, intent(in)                 :: t(0:nlev),par(0:nlev),I_0
 !
@@ -528,8 +614,8 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE, save             :: iopt
-  REALTYPE                   :: psum,llda,llan,r1,r2,r3
+  REALTYPE, save             :: iopt,rat(0:nlev,0:nlev)
+  REALTYPE                   :: psum,llda,llan,llsa,r1,r2,r3
   integer                    :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
@@ -541,6 +627,9 @@
       do ci=1,nlev
          ppi(ci)=par(ci)/iopt*exp(1.-par(ci)/iopt)
       end do
+      rat=1.         ! fixed (in time  space) ratio between sink and source
+      rat(de,fl)=h(1)
+      rat(fl,am)=1./h(1)
    end if
 
 !KBK - is it necessary to initialise every time - expensive in a 3D model
@@ -552,16 +641,19 @@
       psum=cc(p1,ci)+cc(p2,ci)+cc(p3,ci)+p10+p20+p30 
       llda=lda*(1.+beta_da*yy(tda,t(ci)))
       llan=theta(cc(o2,ci))*cc(o2,ci)/(oan+cc(o2,ci))*lan*exp(beta_an*t(ci))
+      if ((fluff).and.(ci.eq.1)) then
+         llsa=lsa*exp(bsa*t(ci))*(theta(cc(o2,ci))+0.2*theta(-cc(o2,ci)))
+      end if
       r1=r1max*min(yy(alpha1,cc(am,ci)+cc(ni,ci)),yy(sr*alpha1,cc(po,ci)),   &
                    ppi(ci))
       r2=r2max*(1.+yy(tf,t(ci)))*                                            &
                min(yy(alpha2,cc(am,ci)+cc(ni,ci)),yy(sr*alpha2,cc(po,ci)),   &
                    ppi(ci))
-      r3=r3max*1./(1.+exp(beta_bg*(tbg-t(ci))))*min(yy(sr*alpha3,cc(po,ci)), &
-                   ppi(ci))
+      r3=r3max*1./(1.+exp(beta_bg*(tbg-t(ci))))                              &
+                    *min(yy(sr*alpha3,cc(po,ci)),ppi(ci))
 
-!  Sink terms for positive compartments, which appear exactly 
-!  as source terms for other compartments:
+!  Sink terms for non-negative compartments, which appear exactly
+!  as or proportional to source terms for other compartments:
       dd(p1,zo,ci)=fpz(g1max,t(ci),topt,psum)*cc(p1,ci)/psum*(cc(zo,ci)+zo0)
       dd(p1,de,ci)=lpd*cc(p1,ci)
       dd(p1,am,ci)=lpa*cc(p1,ci)
@@ -574,22 +666,31 @@
       dd(zo,de,ci)=lzd*cc(zo,ci)**2
       dd(zo,am,ci)=lza*cc(zo,ci)**2
       dd(de,am,ci)=llda*cc(de,ci)
-      dd(am,p1,ci)=cc(am,ci)/(cc(am,ci)+cc(ni,ci))*r1*cc(p1,ci)
-      dd(am,p2,ci)=cc(am,ci)/(cc(am,ci)+cc(ni,ci))*r2*cc(p2,ci)
+      dd(am,p1,ci)=cc(am,ci)/(cc(am,ci)+cc(ni,ci))*r1*(cc(p1,ci)+p10)
+      dd(am,p2,ci)=cc(am,ci)/(cc(am,ci)+cc(ni,ci))*r2*(cc(p2,ci)+p20)
       dd(am,ni,ci)=llan*cc(am,ci)
-      dd(ni,p1,ci)=cc(ni,ci)/(cc(ni,ci)+cc(am,ci))*r1*cc(p1,ci)
-      dd(ni,p2,ci)=cc(ni,ci)/(cc(ni,ci)+cc(am,ci))*r2*cc(p2,ci)
+      dd(ni,p1,ci)=cc(ni,ci)/(cc(ni,ci)+cc(am,ci))*r1*(cc(p1,ci)+p10)
+      dd(ni,p2,ci)=cc(ni,ci)/(cc(ni,ci)+cc(am,ci))*r2*(cc(p2,ci)+p20)
+      if ((fluff).and.(ci.eq.1)) then
+         dd(de,fl,ci)=lds*cc(de,ci)/h(ci)
+         dd(fl,am,ci)=llsa*cc(fl,ci)
+      end if
 
 !  Sink terms for positive compartments, which do not appear 
 !  as source terms for other compartments:
       dd(ni,ni,ci)=s1*llda*cc(de,ci)*theta(-cc(o2,ci))*theta(cc(ni,ci))
       dd(po,po,ci)=sr*( r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)                &
                        +r3*(cc(p3,ci)+p30)) 
+      if ((fluff).and.(ci.eq.1)) then
+         dd(fl,fl,ci)=theta(cc(o2,ci))*llsa*cc(fl,ci)
+         dd(ni,ni,ci)=s1*theta(-cc(o2,ci))*theta(cc(ni,ci))*llsa*cc(fl,ci)/h(ci)
+      end if
 
-!  Source terms which are exactly sinks terms of other compartments:
+!  Source terms which are exactly sinks terms of other compartments or
+!   proportional to them:
       do i=1,numc
          do j=1,numc
-            if (i.ne.j) pp(i,j,ci)=dd(j,i,ci)
+            if (i.ne.j) pp(i,j,ci)=rat(j,i)*dd(j,i,ci)
          end do
       end do
 
@@ -602,6 +703,12 @@
                    -s2*(lpa*psum+lza*(cc(zo,ci)+zo0)**2)                      &
                    -s4*llan*cc(am,ci)-s2*(theta(cc(o2,ci))                    &
                    +theta(-cc(o2,ci))*theta(-cc(ni,ci)))*llda*cc(de,ci)
+      if ((fluff).and.(ci.eq.1)) then
+         pp(o2,o2,ci)=pp(o2,o2,ci)-(s4+s2*(theta(cc(o2,ci))                   &
+                   +theta(-cc(o2,ci))*theta(-cc(ni,ci))))*llsa*cc(fl,ci)/h(ci)
+         pp(po,po,ci)=pp(po,po,ci)+llsa*(1.-ph1*theta(cc(o2,ci))*             &
+                      yy(ph2,cc(o2,ci)))*cc(fl,ci)/h(i)
+      end if
    end do
 
    return
