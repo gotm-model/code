@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.4 2001-11-27 19:51:49 gotm Exp $
+!$Id: updategrid.F90,v 1.5 2002-02-08 08:33:44 gotm Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -49,7 +49,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding 
 !
 !  $Log: updategrid.F90,v $
-!  Revision 1.4  2001-11-27 19:51:49  gotm
+!  Revision 1.5  2002-02-08 08:33:44  gotm
+!  Manuel added support for reading grid distribution from file
+!
+!  Revision 1.4  2001/11/27 19:51:49  gotm
 !  Cleaned
 !
 !  Revision 1.3  2001/11/27 15:38:06  gotm
@@ -175,10 +178,9 @@
    return
 
 100 FATAL 'Unable to open ',trim(grid_file),' for reading'
-    stop 'updategrid'
+   stop 'updategrid'
 101 FATAL 'Error reading grid file ',trim(grid_file)
-    stop 'updategrid'    
-
+   stop 'updategrid'    
 
    end subroutine updategrid 
 !EOC
