@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.14 2004-05-28 13:24:49 hb Exp $
+!$Id: gotm.F90,v 1.15 2004-07-29 17:36:36 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -43,7 +43,6 @@
    use observations
    use output
    use time
-   use bio
    use mtridiagonal
    use eqstate
 
@@ -55,6 +54,7 @@
 #endif
 #ifdef BIO
    use bio
+   use bio_fluxes
 #endif
 !
    IMPLICIT NONE
@@ -79,7 +79,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.14  2004-05-28 13:24:49  hb
+!  Revision 1.15  2004-07-29 17:36:36  hb
+!  separate reading fluxes from bio() - benefit of 3D models
+!
+!  Revision 1.14  2004/05/28 13:24:49  hb
 !  Extention of bio_iow to fluff layer and surface nutrient fluxes
 !
 !  Revision 1.13  2004/03/30 11:31:52  kbk
@@ -219,6 +222,7 @@
 #endif
 #ifdef BIO
    call init_bio(namlst,'bio.inp',unit_bio,nlev,h)
+   call init_bio_fluxes()
 #endif
    LEVEL2 'done.'
    STDERR LINE
@@ -324,6 +328,7 @@
       call do_sediment(nlev,dt)
 #endif
 #ifdef BIO
+      call do_bio_fluxes(julianday,secondsofday)
       call do_bio(nlev,julianday,secondsofday,I_0,dt,h,t,nuh,rad,bioshade)
 #endif
       select case (turb_method)
