@@ -26,6 +26,7 @@ release_dir=$base_dir/$release_type
 tarfile=$release_name.tar.gz
 
 TAG=v`echo $release_version | tr . _`
+BRANCH=$TAG
 
 RHOST=gotm@gotm.net
 RDIR=src/
@@ -44,14 +45,20 @@ if [ -d $release_dir/$release_name ] ; then
 fi
 
 if [ "$release_type" = "stable" ] ; then
+   cvs tag -b $TAG
    CVS2CL="cvs2cl -b -F $BRANCH --no-ancestors"
 fi
 
 if [ "$release_type" = "devel" ] ; then
+   cvs tag $TAG
    CVS2CL="cvs2cl -F trunk"
 fi
 
-cvs tag $TAG
+if [ "$release_type" = "branch" ] ; then
+   cvs tag -b $TAG
+   CVS2CL="cvs2cl -b -F $BRANCH --no-ancestors"
+fi
+
 
 $CVS2CL && mkdir -p $release_dir/$release_name &&  mv ChangeLog $release_dir/$release_name
 
