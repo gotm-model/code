@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.7 2003-03-27 15:35:16 kbk Exp $
+#$Id: Makefile,v 1.8 2005-06-27 08:57:40 kbk Exp $
 #
 # Makefile for making new release of GOTM.
 #
@@ -17,59 +17,31 @@ VERSION=2.3.7
 VERSION=2.3.8
 # 20030327
 VERSION=3.1.0
+# 20050627
+VERSION=3.1.3
 
-#export CVSROOT=gotm@gotm.net:/cvsroot
-export CVSROOT=kbk@80.198.12.199:/public/cvs
+all: VERSION
 
-TAGNAME	= v$(shell cat VERSION | tr . _)
-RELEASE	= gotm-$(VERSION)
-#OLDDIR	= $(HOME)/old_gotm/Unstable
-OLDDIR	= /data/kbk/old_gotm/Unstable
-TARFILE	= $(RELEASE).tar.gz
-#RHOST	= gotm.net
-RHOST	= gotm@80.198.12.199
-RDIR	= src/devel
+VERSION: include/version.h
+	@echo $(VERSION) > $@
+	@date > timestamp
 
-SCP	= /usr/bin/scp
-SSH	= /usr/bin/ssh
+include/version.h: ./Makefile
+	@echo \#define RELEASE \"$(VERSION)\" > .ver
+	@mv -f .ver $@
 
-all: release
+devel stable:
+	@echo
+	@echo "making a new "$@" release: v"$(VERSION)
+	@echo
+	@. release.sh $@ $(VERSION)
 
-new_version:
-	@if [ -d $(OLDDIR)/$(RELEASE) ]; then		\
-	   echo "$(RELEASE) is already released";	\
-	   echo "update VERSION in Makefile";		\
-	   exit 99;					\
-	fi;
-	echo $(VERSION) > VERSION
-
-unstable: new_version
-	echo $(TAGNAME)
-	cvs tag $(TAGNAME)	
-	(cd src/ ; make ../include/version.h)
-	cvs2cl
-	cvs export -r $(TAGNAME) -d $(RELEASE) gotm
-	mv $(RELEASE) $(OLDDIR)
-	cp VERSION ChangeLog $(OLDDIR)/$(RELEASE)
-
-tarfile: unstable
-	(cd $(OLDDIR); tar -cvzf $(TARFILE) $(RELEASE) )
-
-release: tarfile
-	$(SCP) $(OLDDIR)/$(TARFILE) $(RHOST):$(RDIR)
-	$(SSH) $(RHOST) \( cd $(RDIR) \; ln -sf $(TARFILE) gotm-devel.tar.gz \) 
-
-diff:
-	( cvs diff > cvs.diff ; vi cvs.diff )
-	
-update:
-	( cvs update > cvs.update ; vi cvs.update )
 
 distclean:
 	make -C doc/ $@
 	make -C src/ $@
 	$(RM) -r lib/ modules/
-	
+
 #-----------------------------------------------------------------------
 # Copyright (C) 2001 - Hans Burchard and Karsten Bolding (BBH)         !
 #-----------------------------------------------------------------------

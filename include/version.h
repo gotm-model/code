@@ -1,3 +1,1 @@
-#ifndef RELEASE
-#define RELEASE "2.3.3"
-#endif
+#define RELEASE "3.1.3"
