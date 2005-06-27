@@ -1,4 +1,4 @@
-!$Id: gotm_lib_version.F90,v 1.3 2003-03-28 09:20:35 kbk Exp $
+!$Id: gotm_lib_version.F90,v 1.4 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-------------------------------------------------------------------------
 !BOP
@@ -17,11 +17,14 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: unit
 !
-! !REVISION HISTORY: 
+! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm_lib_version.F90,v $
-!  Revision 1.3  2003-03-28 09:20:35  kbk
+!  Revision 1.4  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.3  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.2  2003/03/10 09:02:05  gotm
@@ -41,4 +44,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

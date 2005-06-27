@@ -1,4 +1,4 @@
-!$Id: time.F90,v 1.7 2004-08-17 15:45:16 lars Exp $
+!$Id: time.F90,v 1.8 2005-06-27 13:44:07 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -41,7 +41,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  $Log: time.F90,v $
-!  Revision 1.7  2004-08-17 15:45:16  lars
+!  Revision 1.8  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.7  2004/08/17 15:45:16  lars
 !  corrected typos in docu
 !
 !  Revision 1.6  2003/03/28 09:38:54  kbk
@@ -65,7 +68,7 @@
 !EOP
 !
 ! !PRIVATE DATA MEMBERS:
-   logical                   :: HasRealTime=.true. 
+   logical                   :: HasRealTime=.true.
    integer                   :: jul0=-1,secs0=-1
 !
 !-----------------------------------------------------------------------
@@ -103,7 +106,7 @@
 !
 !-------------------------------------------------------------------------
 !BOC
-!  Read time specific things from the namelist. 
+!  Read time specific things from the namelist.
 !
    LEVEL1 'init_time'
 !
@@ -130,7 +133,7 @@
          ndays = jul2-jul1
          if (nsecs .lt. 86400 .and. jul1 .ne. jul2) ndays = ndays-1
          nsecs = nsecs - 86400*ndays
-         STDERR '        ==> ',ndays,' day(s) and ',nsecs,' seconds ==> ',MaxN,' micro time steps' 
+         STDERR '        ==> ',ndays,' day(s) and ',nsecs,' seconds ==> ',MaxN,' micro time steps'
       case (3)
          LEVEL2 'Start:          ',start
          LEVEL2 '# of timesteps: ',MaxN
@@ -138,7 +141,7 @@
          call read_time_string(start,jul1,secs1)
 
          nsecs = nint(MaxN*timestep) + secs1
-         ndays = nsecs/86400 
+         ndays = nsecs/86400
          jul2  = jul1 + ndays
          secs2 = mod(nsecs,86400)
 
@@ -148,9 +151,9 @@
          STDERR 'Fatal error: A non valid input format has been chosen'
          stop 'init_time'
    end select
- 
+
    jul0  = jul1
-   secs0 = secs1 
+   secs0 = secs1
 
    julianday    = jul0
    secondsofday = secs0
@@ -402,7 +405,7 @@
 ! !DESCRIPTION:
 ! This functions returns the time difference between two
 ! dates in seconds. The dates are given as Julian day and seconds
-! of that day. 
+! of that day.
 !
 ! !USES:
    IMPLICIT NONE
@@ -428,4 +431,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

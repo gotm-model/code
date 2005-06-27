@@ -1,4 +1,4 @@
-!$Id: tridiagonal.F90,v 1.5 2004-08-17 15:33:47 lars Exp $
+!$Id: tridiagonal.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -8,10 +8,10 @@
 ! !INTERFACE:
    MODULE mtridiagonal
 !
-! !DESCRIPTION: 
+! !DESCRIPTION:
 !
 !  Solves a linear system of equations with a tridiagonal matrix
-!  using Gaussian elimination. 
+!  using Gaussian elimination.
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_tridiagonal,tridiagonal
@@ -22,7 +22,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.5  2004-08-17 15:33:47  lars
+!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.5  2004/08/17 15:33:47  lars
 !  removed tabs
 !
 !  Revision 1.4  2003/03/28 09:20:36  kbk
@@ -55,7 +58,7 @@
    subroutine init_tridiagonal(N)
 !
 ! !DESCRIPTION:
-!  This routines allocates memory necessary to perform the Gaussian 
+!  This routines allocates memory necessary to perform the Gaussian
 !  elimination.
 !
 ! !USES:
@@ -104,7 +107,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Simplified Gaussian elimination 
+! !IROUTINE: Simplified Gaussian elimination
 !
 ! !INTERFACE:
    subroutine tridiagonal(N,fi,lt,value)
@@ -112,9 +115,9 @@
 ! !DESCRIPTION:
 ! A linear equation with tridiagonal matrix structure is solved here. The main
 ! diagonal is stored on {\tt bu}, the upper diagonal on {\tt au}, and the
-! lower diagonal on {\tt cu}, the right hand side is stored on {\tt du}. 
-! The method used here is the simplified Gauss elimination, also called 
-! \emph{Thomas algorithm}.  
+! lower diagonal on {\tt cu}, the right hand side is stored on {\tt du}.
+! The method used here is the simplified Gauss elimination, also called
+! \emph{Thomas algorithm}.
 !
 ! !USES:
    IMPLICIT NONE
@@ -128,7 +131,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.5  2004-08-17 15:33:47  lars
+!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.5  2004/08/17 15:33:47  lars
 !  removed tabs
 !
 !  Revision 1.4  2003/03/28 09:20:36  kbk
@@ -176,4 +182,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

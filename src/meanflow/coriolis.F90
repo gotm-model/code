@@ -1,4 +1,4 @@
-!$Id: coriolis.F90,v 1.5 2004-08-18 11:38:03 lars Exp $
+!$Id: coriolis.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,9 +9,9 @@
    subroutine coriolis(nlev,dt)
 !
 ! !DESCRIPTION:
-!  This subroutine carries out the Coriolis rotation by applying a 
+!  This subroutine carries out the Coriolis rotation by applying a
 !  $2\times 2$ rotation matrix with the angle $f\Delta t$ on the
-!  horizontal velocity vector $(U,V)$.  
+!  horizontal velocity vector $(U,V)$.
 !
 ! !USES:
    USE meanflow, only: u,v,cori
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: coriolis.F90,v $
-!  Revision 1.5  2004-08-18 11:38:03  lars
+!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.5  2004/08/18 11:38:03  lars
 !  corrected typo in docu
 !
 !  Revision 1.4  2003/03/28 09:20:35  kbk
@@ -58,7 +61,7 @@
       ua=u(i)
       u(i)= u(i) *cosomega+v(i)*sinomega
       v(i)=-ua   *sinomega+v(i)*cosomega
-   end do 
+   end do
 
    return
    end subroutine coriolis
@@ -66,4 +69,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

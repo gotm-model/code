@@ -1,15 +1,15 @@
-!$Id: cmue_ma.F90,v 1.6 2004-08-18 12:53:07 lars Exp $
+!$Id: cmue_ma.F90,v 1.7 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The \cite{MunkAnderson48} stability function\label{sec:cmueMA} 
-! 
+! !ROUTINE: The \cite{MunkAnderson48} stability function\label{sec:cmueMA}
+!
 ! !INTERFACE:
    subroutine cmue_ma(nlev)
 !
-! !DESCRIPTION: 
-!  This subroutine computes the stability functions 
+! !DESCRIPTION:
+!  This subroutine computes the stability functions
 !  according to \cite{MunkAnderson48}. These are expressed
 !  by the empirical relations
 !  \begin{equation}
@@ -22,7 +22,7 @@
 !    \end{array}
 !  \end{equation}
 !  where where $Ri$ is the gradient Richardson-number and $Pr_t^0$
-! is the turbulent Prandtl-number for $Ri \rightarrow 0$. $Pr_t^0$ 
+! is the turbulent Prandtl-number for $Ri \rightarrow 0$. $Pr_t^0$
 ! and the fixed value $c_\mu^0$ have to be set in {\tt gotmturb.inp}.
 !
 ! !USES:
@@ -33,11 +33,14 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
 !
-! !REVISION HISTORY: 
+! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_ma.F90,v $
-!  Revision 1.6  2004-08-18 12:53:07  lars
+!  Revision 1.7  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.6  2004/08/18 12:53:07  lars
 !  updated documentation
 !
 !  Revision 1.5  2003/03/28 09:38:54  kbk
@@ -63,8 +66,8 @@
 !-----------------------------------------------------------------------
 !BOC
    do i=1,nlev-1
-      Ri=an(i)/(as(i)+1e-8)   ! Gradient Richardson number 
-      if (Ri.ge.1e-10) then 
+      Ri=an(i)/(as(i)+1e-8)   ! Gradient Richardson number
+      if (Ri.ge.1e-10) then
          Prandtl=Prandtl0_fix*(1.+3.33*Ri)**1.5/sqrt(1.+10.0*Ri)
       else
          Prandtl=Prandtl0_fix
@@ -79,4 +82,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

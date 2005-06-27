@@ -1,4 +1,4 @@
-!$Id: get_int_pressure.F90,v 1.3 2003-03-28 09:20:35 kbk Exp $
+!$Id: get_int_pressure.F90,v 1.4 2005-06-27 13:44:07 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,7 +9,7 @@
    subroutine get_int_pressure(method,unit,jul,secs,nlev,z)
 !
 ! !DESCRIPTION:
-!  This routine will provide the internal pressure-gradients, 
+!  This routine will provide the internal pressure-gradients,
 !  either analytically prescribed or read from a file.
 !  The subroutine is called in the {\tt get\_all\_obs()} subroutine
 !  as part of the main integration loop.
@@ -33,7 +33,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_int_pressure.F90,v $
-!  Revision 1.3  2003-03-28 09:20:35  kbk
+!  Revision 1.4  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.3  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.2  2003/03/10 08:51:57  gotm
@@ -58,10 +61,10 @@
 !BOC
    select case(method)
       case(0)
-         dsdx = 0.0
-         dsdy = 0.0
-         dtdx = 0.0
-         dtdy = 0.0
+         dsdx = _ZERO_
+         dsdy = _ZERO_
+         dtdx = _ZERO_
+         dtdy = _ZERO_
       case(1)
 !        already initialised in observations.F90
       case(2)
@@ -79,9 +82,9 @@
             allocate(alpha(0:nlev,cols),stat=rc)
             if (rc /= 0) stop 'read_tprofile: Error allocating memory (alpha)'
          end if
-   
+
 !        This part initialises and reads in new values if necessary.
-         if(time_diff(jul2,secs2,jul,secs) .lt. 0) then 
+         if(time_diff(jul2,secs2,jul,secs) .lt. 0) then
             do
                jul1 = jul2
                secs1 = secs2
@@ -111,4 +114,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

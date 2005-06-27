@@ -1,19 +1,19 @@
-!$Id: main.F90,v 1.5 2003-03-28 09:20:34 kbk Exp $
+!$Id: main.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
 #include<cppdefs.h>
 !-----------------------------------------------------------------------
 !BOP
 !
 ! !ROUTINE: GOTM --- the main program  \label{sec:main}
-! 
-! !INTERFACE:
-   program main 
 !
-! !DESCRIPTION: 
+! !INTERFACE:
+   program main
+!
+! !DESCRIPTION:
 ! This is the main program of GOTM. However, because GOTM has been programmed
-! in a modular way, this routine is very short and merely calls internal 
+! in a modular way, this routine is very short and merely calls internal
 ! routines of other modules. Its main purpose is to update the time and to
-! call the internal routines {\tt init\_gotm()}, {\tt time\_loop()}, and 
-! {\tt clean\_up()}, which are defined in the module {\tt gotm} as discussed in 
+! call the internal routines {\tt init\_gotm()}, {\tt time\_loop()}, and
+! {\tt clean\_up()}, which are defined in the module {\tt gotm} as discussed in
 ! \sect{sec:gotm}.
 !
 ! !USES:
@@ -21,12 +21,15 @@
    use gotm
 !
    IMPLICIT NONE
-! 
+!
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: main.F90,v $
-!  Revision 1.5  2003-03-28 09:20:34  kbk
+!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.5  2003/03/28 09:20:34  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/10 09:20:28  gotm
@@ -58,7 +61,7 @@
    call CPU_Time(t1)
 #endif
    call Date_And_Time(datestr,timestr)
-   STDERR LINE 
+   STDERR LINE
    STDERR 'GOTM ver. ',RELEASE,': Started on  ',datestr,' ',timestr
    STDERR LINE
 
@@ -84,4 +87,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

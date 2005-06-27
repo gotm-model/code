@@ -1,4 +1,4 @@
-!$Id: salinity.F90,v 1.7 2004-08-18 11:43:10 lars Exp $
+!$Id: salinity.F90,v 1.8 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,7 +6,7 @@
 ! !ROUTINE: The salinity equation \label{sec:salinity}
 !
 ! !INTERFACE:
-   subroutine salinity(nlev,dt,cnpar,nuh) 
+   subroutine salinity(nlev,dt,cnpar,nus,gams)
 !
 ! !DESCRIPTION:
 ! This subroutine computes the balance of salinity in the form
@@ -22,61 +22,80 @@
 !  terms modelled according to
 !  \begin{equation}
 !   \label{DS}
-!    {\cal D}_S 
-!    = \frstder{z} 
-!     \left( 
-!        \left( \nu^S_t + \nu^S \right) \partder{S}{z} - \tilde{\Gamma}_S 
-!        \right) 
+!    {\cal D}_S
+!    = \frstder{z}
+!     \left(
+!        \left( \nu^S_t + \nu^S \right) \partder{S}{z} - \tilde{\Gamma}_S
+!        \right)
 !    \point
 !  \end{equation}
-!  In this equation, $\nu^S_t$ and $\nu^S$ are the turbulent and 
-!  molecular diffusivities of salinity, respectively, 
+!  In this equation, $\nu^S_t$ and $\nu^S$ are the turbulent and
+!  molecular diffusivities of salinity, respectively,
 !  and $\tilde{\Gamma}_S$
-!  denotes the so-called counter-gradient flux of salinity, see 
+!  denotes the non-local flux of salinity, see
 !  \sect{sec:turbulenceIntro}. In the current version of GOTM,
-!  we set $\nu^S_t = \nu'_t$ for simplicity.
+!  we set $\nu^S_t = \nu^\Theta_t$ for simplicity.
 !
 !  Horizontal advection is optionally
 !  included  (see {\tt obs.inp}) by means of prescribed
-!  horizontal gradients $\partial_xS$ and $\partial_yS$ and 
-!  calculated horizontal velocities $u$ and $v$.
-!  Relaxation with the time scale $\tau^S_R$ 
+!  horizontal gradients $\partial_xS$ and $\partial_yS$ and
+!  calculated horizontal mean velocities $U$ and $V$.
+!  Relaxation with the time scale $\tau^S_R$
 !  towards a precribed (changing in time)
-!  profile $S_{obs}$ is possible. 
+!  profile $S_{obs}$ is possible.
 
-!  Inner sources or sinks are not considered. 
+!  Inner sources or sinks are not considered.
 !  The surface freshwater flux is given by means of the precipitation
-!  - evaporation data read in as $p_e$ through the {\tt airsea.inp} namelist:
+!  - evaporation data read in as $P-E$ through the {\tt airsea.inp} namelist:
 !  \begin{equation}
-!    {\cal D}_S = - S p_e,
+!     \label{S_sbc}
+!    {\cal D}_S =  S (P-E),
 !    \qquad \mbox{at } z=\zeta,
 !  \end{equation}
-!  with $p_e$ given as a velocity.
-!  Diffusion is numerically treated implicitly, 
-!  see equations (\ref{sigmafirst})-
-!  (\ref{sigmalast}).   
+!  with $P-E$ given as a velocity (note that ${\cal D}_S$ is the flux in the
+!  direction of $z$, and thus positive for a \emph{loss} of salinity) .
+!  Diffusion is numerically treated implicitly,
+!  see equations (\ref{sigmafirst})-(\ref{sigmalast}).
 !  The tri-diagonal matrix is solved then by a simplified Gauss elimination.
-!  Vertical advection is included for accounting for adaptive grids,
-!  see {\tt adaptivegrid.F90}.
+!  Vertical advection is included, see \sect{sec:advectionMean}.
 !
 ! !USES:
-   use meanflow, only: avmols
-   use meanflow, only: h,ho,u,v,S,avh,w,grid_method,w_grid
-   use observations, only: dsdx,dsdy,s_adv,w_adv,w_adv_discr,w_adv_method
+   use meanflow,     only: avmols
+   use meanflow,     only: h,u,v,w,S,avh
+   use observations, only: dsdx,dsdy,s_adv
+   use observations, only: w_adv_discr,w_adv_method
    use observations, only: sprof,SRelaxTau
-   use airsea, only: p_e
+   use airsea,       only: p_e
+   use util,         only: Dirichlet,Neumann
+   use util,         only: oneSided,zeroDivergence
+
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+
+!  number of vertical layers
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: dt,cnpar
-   REALTYPE, intent(in)                :: nuh(0:nlev)
+
+!   time step (s)
+   REALTYPE, intent(in)                :: dt
+
+!  numerical "implicitness" parameter
+   REALTYPE, intent(in)                :: cnpar
+
+!  diffusivity of salinity (m^2/s)
+   REALTYPE, intent(in)                :: nus(0:nlev)
+
+!  non-local salinity flux (psu m/s)
+   REALTYPE, intent(in)                :: gams(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: salinity.F90,v $
-!  Revision 1.7  2004-08-18 11:43:10  lars
+!  Revision 1.8  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.7  2004/08/18 11:43:10  lars
 !  updated documentation
 !
 !  Revision 1.6  2004/01/07 12:17:47  lars
@@ -100,40 +119,66 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                   :: i
+   integer                   :: DiffBcup,DiffBcdw
+   integer                   :: AdvBcup,AdvBcdw
+   REALTYPE                  :: DiffSup,DiffSdw
+   REALTYPE                  :: AdvSup,AdvSdw
+   REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
-   REALTYPE                  :: Sup,Sdw,saltot
-   integer                   :: i,Bcup,Bcdw,flag
-   logical                   :: surf_flux,bott_flux
 !
 !-----------------------------------------------------------------------
 !BOC
-! hard coding of parameters, to be included into namelist for gotm2.0 
-   Bcup=1                    !BC Neumann
-   Sup=-S(nlev)*p_e          !freshwater flux
-   Bcdw=1                    !BC Neumann
-   Sdw=0.                    !No flux
-   surf_flux=.false.                      
-   bott_flux=.false.
+!
+!  set boundary conditions
+   DiffBcup       = Neumann
+   DiffBcdw       = Neumann
+   DiffSup        = -S(nlev)*p_e
+   DiffSdw        = _ZERO_
 
-   do i=1,nlev-1
-      avh(i)=nuh(i)+avmolS 
-!      w(i)=w_adv
+   AdvBcup       = zeroDivergence
+   AdvBcdw       = oneSided
+   AdvSup        = _ZERO_
+   AdvSdw        = _ZERO_
+
+!  compute total diffusivity
+   do i=0,nlev
+      avh(i)=nus(i)+avmolS
    end do
+
+!  add contributions to source term
+   Lsour=_ZERO_
+   Qsour=_ZERO_
+
    do i=1,nlev
-      Qsour(i)=0.
-      if (s_adv) Qsour(i)=Qsour(i)-u(i)*dsdx(i)-v(i)*dsdy(i)
+!     from non-local turbulence
+#ifdef NONLOCAL
+      Qsour(i) = Qsour(i) - ( gams(i) - gams(i-1) )/h(i)
+#endif
    end do
 
-   flag=1  ! divergence correction for vertical advection
-   
-   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Sup,Sdw,SRelaxTau,h,ho,avh,w,        &
-              QSour,sprof,w_adv_method,w_adv_discr,S,surf_flux,bott_flux,  &
-              grid_method,w_grid,flag)
+!  ... and from lateral advection
+   if (s_adv) then
+      do i=1,nlev
+         Qsour(i) = Qsour(i) - u(i)*dsdx(i) - v(i)*dsdy(i)
+      end do
+   end if
+
+
+!  do advection step
+   if (w_adv_method .ne. 0) then
+      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
+                          AdvSup,AdvSdw,w_adv_discr,S)
+   end if
+
+!  do diffusion step
+   call diff_center(nlev,dt,cnpar,h,DiffBcup,DiffBcdw,                  &
+                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
 
    return
-   end subroutine salinity 
+   end subroutine salinity
 !EOC
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

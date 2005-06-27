@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.10 2004-01-27 08:33:20 lars Exp $
+!$Id: meanflow.F90,v 1.11 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -28,20 +28,26 @@
 !  the velocity components
    REALTYPE, public, dimension(:), allocatable  :: u,v,w
 
+!  velocity at old time step
+   REALTYPE, public, dimension(:), allocatable  :: uo,vo
+
 !  potential temperature, salinity
-   REALTYPE, public, dimension(:), allocatable  :: T,S
+   REALTYPE, public, dimension(:), allocatable  :: T,S,rho
 
-!  buoyancy frequency and shear-frequency
-   REALTYPE, public, dimension(:), allocatable  :: NN,SS
+!  boyancy frequency squared
+!  (total, from temperature only, from salinity only)
+   REALTYPE, public, dimension(:), allocatable  :: NN,NNT,NNS
 
-!  shear and buoyancy production of tke
-   REALTYPE, public, dimension(:), allocatable  :: P,B
+!  shear-frequency squared
+!  (total, from u only, from v only)
+   REALTYPE, public, dimension(:), allocatable  :: SS,SSU,SSV
 
-!  buoyancy, short-wave radiation, 
+!  buoyancy, short-wave radiation,
 !  extra production of tke by see-grass etc
    REALTYPE, public, dimension(:), allocatable  :: buoy,rad,xP
 
-!  a temporal diffusivity
+!  a dummy array
+!  (most often used for diffusivities)
    REALTYPE, public, dimension(:), allocatable  :: avh
 
 !  grid-related vertical velocity
@@ -52,6 +58,13 @@
 
 !  shading in the water column
    REALTYPE, public, dimension(:), allocatable  :: bioshade
+
+# ifdef EXTRA_OUTPUT
+
+!  dummies for testing
+   REALTYPE, public, dimension(:), allocatable   :: mean1,mean2,mean3,mean4,mean5
+
+# endif
 
 !  the 'meanflow' namelist
    REALTYPE, public                    :: h0b=0.05
@@ -103,7 +116,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
-!  Revision 1.10  2004-01-27 08:33:20  lars
+!  Revision 1.11  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.10  2004/01/27 08:33:20  lars
 !  omega-value bug fix
 !
 !  Revision 1.9  2004/01/12 15:21:09  lars
@@ -147,7 +163,7 @@
    subroutine init_meanflow(namlst,fn,nlev,latitude)
 !
 ! !DESCRIPTION:
-!  Allocates memory and initialises everything related 
+!  Allocates memory and initialises everything related
 !  to the `meanflow' component of GOTM.
 !
 ! !USES:
@@ -201,9 +217,17 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (u)'
    u = _ZERO_
 
+   allocate(uo(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (uo)'
+   uo = _ZERO_
+
    allocate(v(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (v)'
    v = _ZERO_
+
+   allocate(vo(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (vo)'
+   vo = _ZERO_
 
    allocate(w(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (w)'
@@ -225,21 +249,33 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (S)'
    S = _ZERO_
 
+   allocate(rho(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (rho)'
+   rho = _ZERO_
+
    allocate(NN(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (NN)'
    NN = _ZERO_
+
+   allocate(NNT(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (NNT)'
+   NNT = _ZERO_
+
+   allocate(NNS(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (NNS)'
+   NNS = _ZERO_
 
    allocate(SS(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (SS)'
    SS = _ZERO_
 
-   allocate(P(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_meanflow: Error allocating (P)'
-   P = _ZERO_
+   allocate(SSU(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (SSU)'
+   SSU = _ZERO_
 
-   allocate(B(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_meanflow: Error allocating (B)'
-   B = _ZERO_
+   allocate(SSV(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (SSV)'
+   SSV = _ZERO_
 
    allocate(xP(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (xP)'
@@ -262,15 +298,39 @@
    w_grid = _ZERO_
 
    allocate(bioshade(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_bio: Error allocating (bioshade)'
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (bioshade)'
    bioshade= _ONE_
+
+# ifdef EXTRA_OUTPUT
+
+   allocate(mean1(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_meanflow: Error allocating (mean1)'
+   mean1 = _ZERO_
+
+   allocate(mean2(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_meanflow: Error allocating (mean2)'
+   mean2 = _ZERO_
+
+   allocate(mean3(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_meanflow: Error allocating (mean3)'
+   mean3 = _ZERO_
+
+   allocate(mean4(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_meanflow: Error allocating (mean4)'
+   mean4 = _ZERO_
+
+   allocate(mean5(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_meanflow: Error allocating (mean5)'
+   mean5 = _ZERO_
+
+# endif
 
    LEVEL2 'done.'
 
    depth0=depth
    z0b=0.03*h0b
 
-   z0s=z0s_min    ! lu (otherwise z0s is not initialised
+   z0s=z0s_min    ! lu (otherwise z0s is not initialized)
 
    za=_ZERO_      ! roughness caused by suspended sediment
 
@@ -291,4 +351,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

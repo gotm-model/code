@@ -1,4 +1,4 @@
-!$Id: get_zeta.F90,v 1.5 2003-03-28 09:20:35 kbk Exp $
+!$Id: get_zeta.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,7 +9,7 @@
    subroutine get_zeta(method,unit,jul,secs)
 !
 ! !DESCRIPTION:
-!  This routine will provide sea surface elevation - either by an 
+!  This routine will provide sea surface elevation - either by an
 !  analytical expression or read from file.
 !  The subroutine is called in the {\tt get\_all\_obs()} subroutine
 !  as part of the main integration loop.
@@ -30,7 +30,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_zeta.F90,v $
-!  Revision 1.5  2003-03-28 09:20:35  kbk
+!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.5  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/28 09:02:09  kbk
@@ -68,7 +71,7 @@
                +zeta_0
       case(2)                                         ! from file
 !        This part initialise and read in new values if necessary.
-         if(time_diff(jul2,secs2,jul,secs) .lt. 0) then 
+         if(time_diff(jul2,secs2,jul,secs) .lt. 0) then
             do
                jul1 = jul2
                secs1 = secs2
@@ -85,7 +88,7 @@
 !        Do the time interpolation
          t  = time_diff(jul,secs,jul1,secs1)
 
-         zeta = obs1(1) + t*alpha(1) 
+         zeta = obs1(1) + t*alpha(1)
       case default
    end select
 
@@ -95,4 +98,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

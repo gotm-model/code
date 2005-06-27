@@ -1,60 +1,110 @@
-!$Id: stratification.F90,v 1.5 2003-03-28 09:20:35 kbk Exp $
+!$Id: stratification.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Calculation of $N^2$ and $b$ \label{sec:stratification}
+! !ROUTINE: Calculation of $N^2$ and $B$ \label{sec:stratification}
 !
 ! !INTERFACE:
-   subroutine stratification(nlev,buoy_method,dt,cnpar,g,rho_0,nuh)
+   subroutine stratification(nlev,buoy_method,dt,cnpar,nub,gamB)
 !
 ! !DESCRIPTION:
-!
-!  The first part in this subroutine is devoted to the computation of
-!  the (square of the ) Brunt--V\"ais\"al\"a frequency, $N^2=\partial_zb$,
-!  with the buoyancy $b$ defined by \eq{DefBuoyancy}. The differencing
-!  scheme for $N^2$ can be written as
+! This routine computes the mean potential density, $\mean{\rho}$, the mean
+! potential buoyancy, $B$, defined in \eq{DefBuoyancy}, and the mean buoyancy
+! frequency,
 !  \begin{equation}
-!    \left(N^2\right)_{k+1/2}
-!    = \frac{b(S_{k+1},\theta_{k+1},p_{k+1})
-!           -b(S_k,\theta_k,p_k)}
-!           {\frac12(h_{k+1}+h_k)}
+!    \label{DefBuoyancyFrequency}
+!     N^2 = - \dfrac{g}{\rho_0} \partder{\rho}{z} = \partder{B}{z}
 !     \comma
 !  \end{equation}
-!  where the buoyancy is computed from an equation of state,
-!  \begin{equation}
-!    b_k=b(S_k,\theta_k,p_k)
-!    \comma
-!  \end{equation}
-!  as a function of salinity, temperature and pressure (see 
-!  \sect{sec:eqstate}). Note, that the local pressure (in bar) is
-!  computed here from the relation $p \approx 0.1 z$, which is only
-!  a coarse (but for this purpose sufficient) approximation of the 
-!  hydrostatic limit. 
-!  The Brunt--V\"ais\"al\"a frequency is
-!  located at $z_{k+1/2}$, which is the vertical position of the interface 
-!  between the boxes with indices $k$ and $k+1$. 
+! which is based on potential density or buoyancy such that for $N^2=0$, the entropy
+! is constant in the whole water column and mixing does not work against buoyancy
+! forces. If GOTM used as a turbulence library in your own three-dimensional model,
+! you have to insure that the $N^2$ computed by you, and passed to the turbulence
+! routines in GOTM, is consistent with the concept of potential density and your
+! equation of state.
 !
-!  Alternatively, depending on the values of the parameter {\tt buoy\_method}, 
-!  the buoyancy may be calculated by means of the transport equation \eq{bEq}.
+! The mean potential density is evaluated from the equation of state, \eq{DefEOS},
+! according to
+!  \begin{equation}
+!    \label{DefPotentialDensity}
+!     \mean{\rho} = \hat{\rho} (\Theta,S,P_R)
+!     \comma
+!  \end{equation}
+!  where $\Theta$ denotes the mean potential temperature, $S$ the mean salinity
+!  and $P_R$ the mean reference pressure. The buoyancy frequency defined in
+! \eq{DefBuoyancyFrequency} can be decomposed into contributions due to
+!  potential temperature and salinity stratification,
+!  \begin{equation}
+!    \label{NDecompostionA}
+!     N^2 = N_\Theta^2 + N_S^2
+!     \comma
+!  \end{equation}
+!  where we introduced the quantities
+!  \begin{equation}
+!    \label{NNT}
+!     N_\Theta^2  = - \dfrac{g}{\rho_0} \partder{\rho}{z} \Big|_{S}
+!                 = g \alpha(\Theta,S,P_R) \partder{\Theta}{z}
+!     \comma
+!  \end{equation}
+!  with the thermal expansion coefficient defined in \eq{eosAlpha}, and
+!  \begin{equation}
+!    \label{NNS}
+!     N_S^2  = - \dfrac{g}{\rho_0} \partder{\rho}{z} \Big|_{\Theta}
+!                 = - g \beta(\Theta,S,P_R) \partder{S}{z}
+!  \comma
+!  \end{equation}
+!  with the saline contraction coefficient defined in \eq{eosBeta}. It is important
+!  to note that in the actual code the reference pressure, $P_R$, has been replaced by
+!  the (approximate) hydrostatic pressure. Only if this dependence is replaced by
+!  the constant reference pressure at the surface in the equation of state,
+!  see \sect{sec:eqstate}, the model is truely based on potential temperature and density.
+!  Otherwise,  the model is based on \emph{in-situ} quantities.
+!
+!  Alternatively to the procedure outlined above, depending on the values of the
+!  parameter {\tt buoy\_method}, the buoyancy may be calculated by means of the
+!  transport equation \eq{bEq}. This equation then replaces the computation of $\Theta$
+!  and $S$ and is only recommended for idealized studies.
 !
 ! !USES:
-   use meanflow, only: h,S,T,NN,buoy
-   use eqstate, only: eqstate1
+   use meanflow,   only: h,S,T,buoy,rho
+   use meanflow,   only: NN,NNT,NNS
+   use meanflow,   only: gravity,rho_0
+   use eqstate,    only: eqstate1
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev,buoy_method
-   REALTYPE, intent(in)                :: dt,g,rho_0,cnpar
+
+!  number of vertical layers
+   integer,  intent(in)                :: nlev
+
+!  method to compute buoyancy
+   integer,  intent(in)                :: buoy_method
+
+!   time step (s)
+   REALTYPE, intent(in)                :: dt
+
+!  numerical "implicitness" parameter
+   REALTYPE, intent(in)                :: cnpar
+
+!  diffusivity of buoyancy (m^2/s)
+   REALTYPE, intent(in)                :: nub(0:nlev)
+
+!  non-local buoyancy flux (m^2/s^3)
+   REALTYPE, intent(in)                :: gamb(0:nlev)
+
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: nuh(0:nlev)
+
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: stratification.F90,v $
-!  Revision 1.5  2003-03-28 09:20:35  kbk
+!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.5  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/28 08:56:56  kbk
@@ -73,41 +123,83 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: buoyp,buoym,z
-   REALTYPE                  :: dz
-   integer,parameter         :: USEEQSTATE=1
+   REALTYPE                  :: buoyp,buoym,Sface,Tface
+   REALTYPE                  :: zCenter,zFace,dz
+   REALTYPE                  :: pFace,pCenter
+   integer,  parameter       :: USEEQSTATE=1
+   REALTYPE, parameter       :: oneTenth=_ONE_/10.
 !
 !-----------------------------------------------------------------------
 !BOC
    if (buoy_method .EQ. USEEQSTATE) then
-      z=0.0  
-      do i=nlev-1,1,-1 
-         z=z+h(i+1)
-         dz=0.5*(h(i)+h(i+1)) 
-         buoyp=eqstate1(S(i+1),T(i+1),z/10.,g,rho_0) 
-         buoym=eqstate1(S(i  ),T(i  ),z/10.,g,rho_0) 
-         NN(i)=(buoyp-buoym)/dz 
+
+!     initialize parameters for uppermost grid box
+      zFace   = _ZERO_
+      zCenter = 0.5*h(nlev)
+      pCenter = oneTenth*zCenter
+
+      buoy(nlev) = eqstate1(S(nlev),T(nlev),pCenter,gravity,rho_0)
+      rho(nlev)  = rho_0 - rho_0/gravity*buoy(nlev)
+
+      do i=nlev-1,1,-1
+
+         ! compute distances between centers
+         dz     = 0.5*(h(i)+h(i+1))
+
+         ! compute local depths
+         zFace   = zFace   + h(i+1)
+         zCenter = zCenter + dz
+
+         ! compute approximate local pressure
+         pFace   = oneTenth*zFace
+         pCenter = oneTenth*zCenter
+
+         ! interpolate T and S from centers to faces
+         Sface  = ( S(i+1)*h(i) + S(i)*h(i+1) ) / ( h(i+1) + h(i) )
+         Tface  = ( T(i+1)*h(i) + T(i)*h(i+1) ) / ( h(i+1) + h(i) )
+
+         ! T contribution to buoyancy frequency
+         buoyp  = eqstate1(Sface,T(i+1),pFace,gravity,rho_0)
+         buoym  = eqstate1(Sface,T(i  ),pFace,gravity,rho_0)
+         NNT(i) = (buoyp-buoym)/dz
+
+         ! S contribution to buoyancy frequency
+         buoyp  = eqstate1(S(i+1),Tface,pFace,gravity,rho_0)
+         buoym  = eqstate1(S(i  ),Tface,pFace,gravity,rho_0)
+         NNS(i) = (buoyp-buoym)/dz
+
+         ! total buoyancy frequency is the sum
+         NN(i) = NNT(i) + NNS(i)
+
+         ! compute buoyancy and density
+         buoy(i) = eqstate1(S(i),T(i),pCenter,gravity,rho_0)
+         rho(i)  = rho_0 - rho_0/gravity*buoy(i)
       end do
-      z=0. 
-      do i=nlev,1,-1 
-         buoy(i)=eqstate1(S(i),T(i),z/10.,g,rho_0) 
-      end do
+
    else
-      call buoyancy(nlev,dt,cnpar,nuh) 
-      do i=nlev-1,1,-1 
-         dz=0.5*(h(i)+h(i+1)) 
-         NN(i)=(buoy(i+1)-buoy(i))/dz 
+
+      ! for some idealized cases, compute buoyancy from
+      ! prognostic equation
+      call buoyancy(nlev,dt,cnpar,nub,gamb)
+
+      ! compute density and buoyancy frequency
+      rho(nlev)  = rho_0 - rho_0/gravity*buoy(nlev)
+
+      do i=nlev-1,1,-1
+         dz     = 0.5*(h(i)+h(i+1))
+         NN(i)  = (buoy(i+1)-buoy(i))/dz
+         rho(i) = rho_0 - rho_0/gravity*buoy(i)
       end do
    end if
 
-   
-   NN(0)=NN(1)
-   NN(nlev)=NN(nlev-1)
- 
+   ! update boundary values
+   NN(0)    = _ZERO_
+   NN(nlev) = _ZERO_
+
    return
    end subroutine stratification
 !EOC
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

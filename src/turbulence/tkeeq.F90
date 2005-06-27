@@ -1,25 +1,26 @@
+!$Id: tkeeq.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The dynamic $k$--equation \label{sec:tkeeq} 
-! 
+! !ROUTINE: The dynamic k-equation \label{sec:tkeeq}
+!
 ! !INTERFACE:
-   subroutine tkeeq(N,dt,u_taus,u_taub,z0s,z0b,h,P,B,num)
+   subroutine tkeeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
 
-! !DESCRIPTION: 
-! The transport equation for the turbulent kinetic energy, $k$, 
-! follows immediately from the contraction of the Reynolds--stress
-! tensor. In the case of a Boussinesq--fluid, this equation can
+! !DESCRIPTION:
+! The transport equation for the turbulent kinetic energy, $k$,
+! follows immediately from the contraction of the Reynolds-stress
+! tensor. In the case of a Boussinesq-fluid, this equation can
 ! be written as
 ! \begin{equation}
 !   \label{tkeA}
 !   \dot{k}
-!   = 
-!   {\cal D}_k +  P + B  - \epsilon 
+!   =
+!   {\cal D}_k +  P + G  - \epsilon
 !   \comma
 ! \end{equation}
-! where $\dot{k}$ denotes the material derivative of $k$. $P$ and $B$ are
+! where $\dot{k}$ denotes the material derivative of $k$. $P$ and $G$ are
 ! the production of $k$ by mean shear and buoyancy, respectively, and
 ! $\epsilon$ the rate of dissipation. ${\cal D}_k$ represents the sum of
 ! the viscous and turbulent transport terms.
@@ -31,24 +32,24 @@
 !   {\cal D}_k = \frstder{z} \left( \dfrac{\nu_t}{\sigma_k} \partder{k}{z} \right)
 !  \comma
 ! \end{equation}
-! where $\sigma_k$ is the constant Schmidt--number for $k$.
-! 
+! where $\sigma_k$ is the constant Schmidt-number for $k$.
+!
 ! In horizontally homogeneous flows, the shear and the buoyancy
-! production, $P$ and $B$, can be written as
+! production, $P$ and $G$, can be written as
 ! \begin{equation}
 !   \label{PandG}
 !   \begin{array}{rcl}
-!   P &=& - \mean{u'w'} \partder{u}{z} - \mean{v'w'} \partder{v}{z}  \comma \\[3mm]  
-!   B &=&  g \alpha \mean{w' \theta'}                                \point
+!   P &=& - \mean{u'w'} \partder{U}{z} - \mean{v'w'} \partder{V}{z}  \comma \\[3mm]
+!   G &=&  \mean{w'b'}                                               \comma
 !   \end{array}
 ! \end{equation}
-! There computation is discussed in \sect{sec:production}.
+! see \eq{PG}. Their computation is discussed in \sect{sec:production}.
 !
 ! The rate of dissipation, $\epsilon$, can be either obtained directly
-! from its parameterised transport equation as discussed in 
+! from its parameterised transport equation as discussed in
 ! \sect{sec:dissipationeq}, or from any other model yielding
 ! an appropriate description of the dissipative length-scale, $l$.
-! Then, $\epsilon$ follows from the well--known cascading relation
+! Then, $\epsilon$ follows from the well-known cascading relation
 ! of turbulence,
 ! \begin{equation}
 !   \label{epsilon}
@@ -56,36 +57,49 @@
 !   \comma
 ! \end{equation}
 ! where $c_\mu^0$ is a constant of the model.
-! 
+!
 ! !USES:
-   use mTridiagonal
-   use turbulence, only: tkeo,tke,k_min,eps
-   use turbulence, only: k_bc, k_ubc, k_lbc, ubc_type, lbc_type
-   use turbulence, only: sig_k
+   use turbulence,   only: P,B,num
+   use turbulence,   only: tke,k_min,eps
+   use turbulence,   only: k_bc, k_ubc, k_lbc, ubc_type, lbc_type
+   use turbulence,   only: sig_k
+   use util,         only: Dirichlet,Neumann
+
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: N
+
+!  number of vertical layers
+   integer,  intent(in)                :: nlev
+
+!  time step (s)
    REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: u_taus,u_taub,z0s,z0b
-   REALTYPE, intent(in)                :: h(0:N)
-   REALTYPE, intent(in)                :: P(0:N),B(0:N)
-   REALTYPE, intent(in)                :: num(0:N)
-!
-! !DEFINED PARAMETERS:
-!  boundary conditions 
-   integer, parameter                  :: Dirichlet=0
-   integer, parameter                  :: Neumann=1
-   integer, parameter                  :: viscous=0
-   integer, parameter                  :: logarithmic=1
-   integer, parameter                  :: injection=2
+
+!  surface and bottom
+!  friction velocity (m/s)
+   REALTYPE, intent(in)                :: u_taus,u_taub
+
+!  surface and bottom
+!  roughness length (m)
+   REALTYPE, intent(in)                :: z0s,z0b
+
+!  layer thickness (m)
+   REALTYPE, intent(in)                :: h(0:nlev)
+
+!  square of shear and buoyancy
+!  frequency (1/s^2)
+   REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard, Karsten Bolding,
-!                      Lars Umlauf
+!  Original author(s): Lars Umlauf
+!                     (re-write after first version of
+!                      H. Burchard and K. Bolding)
 !
 !  $Log: tkeeq.F90,v $
-!  Revision 1.5  2003-03-28 09:20:35  kbk
+!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.5  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/10 09:02:06  gotm
@@ -93,97 +107,86 @@
 !
 !
 !EOP
+!------------------------------------------------------------------------
 !
 ! !LOCAL VARIABLES:
-   REALTYPE                  :: avh(0:N)
-   REALTYPE                  :: pminus(0:N),pplus(0:N)
+   REALTYPE                  :: DiffKup,DiffKdw,pos_bc
    REALTYPE                  :: prod,buoyan,diss
+   REALTYPE                  :: prod_pos,prod_neg,buoyan_pos,buoyan_neg
+   REALTYPE                  :: cnpar=_ONE_
+   REALTYPE                  :: avh(0:nlev)
+   REALTYPE                  :: Lsour(0:nlev),Qsour(0:nlev)
+
    integer                   :: i
-   REALTYPE                  :: bc_tmp
 !
 !------------------------------------------------------------------------
 !BOC
-! save old time step (needed for the length-scale equation)
-   tkeo=tke
+!
+!  compute diffusivity
+   avh = num/sig_k
 
-! compute diffusivities at levels of the mean variables
-   do i=2,N-1
-      avh(i)=0.5/sig_k*(num(i-1)+num(i))
+   do i=1,nlev-1
+
+!     compute production terms in k-equation
+      prod     = P(i)
+      buoyan   = B(i)
+      diss     = eps(i)
+
+!     compute positive and negative parts of RHS
+      prod_pos    =  max(prod  ,_ZERO_)
+      buoyan_pos  =  max(buoyan,_ZERO_)
+
+      prod_neg    =  min(prod  ,_ZERO_)
+      buoyan_neg  =  min(buoyan,_ZERO_)
+
+!     compose source terms
+      Qsour(i) =   prod_pos + buoyan_pos
+      Lsour(i) =  (prod_neg + buoyan_neg - diss)/tke(i)
+
    end do
 
-! for Neumann boundary conditions set the boundary fluxes preliminary to zero
+
+
+!  position for upper BC
    if (k_ubc.eq.Neumann) then
-      avh(N)=0
-   end if
-
-   if (k_lbc.eq.Neumann) then
-      avh(1)=0
-   end if
-
-! prepare the production terms
-   do i=N-1,1,-1
-      prod   = P(i)
-      buoyan = B(i)
-      diss   = eps(i)
-      if (prod+buoyan.gt.0) then
-         pplus(i)  = prod+buoyan
-         pminus(i) = diss
-      else
-         pplus(i)  = prod
-         pminus(i) = diss-buoyan
-      end if
-   end do
-
-! construct the matrix
-   do i=1,N-1
-      au(i) = -2.*dt*avh(i)/(h(i)+h(i+1))/h(i)
-      cu(i) = -2.*dt*avh(i+1)/(h(i)+h(i+1))/h(i+1)
-      bu(i) =  1.-au(i)-cu(i)+pminus(i)*dt/tke(i)
-      du(i) = (1+pplus(i)*dt/tke(i))*tke(i)
-   end do
-
-! impose upper boundary conditions
-   if (k_ubc.eq.Neumann) then
-      ! compute the BC
-      bc_tmp  = k_bc(Neumann,ubc_type,0.5*h(N),z0s,u_taus)
-      ! insert the BC into system
-      du(N-1) = du(N-1)+bc_tmp*dt/(0.5*(h(N)+h(N-1)))
+!     flux at center "nlev"
+      pos_bc = 0.5*h(nlev)
    else
-      ! prepare matrix 
-      bu(N-1) = 1.
-      au(N-1) = 0.
-      ! compute the BC
-      bc_tmp  = k_bc(Dirichlet,ubc_type,h(N),z0s,u_taus)
-      ! insert the BC into system
-      du(N-1) = bc_tmp
+!     value at face "nlev-1"
+      pos_bc = h(nlev)
    end if
 
-! impose lower boundary conditions
+!  obtain BC for upper boundary of type "ubc_type"
+   DiffKup  = k_bc(k_ubc,ubc_type,pos_bc,z0s,u_taus)
+
+
+!  position for lower BC
    if (k_lbc.eq.Neumann) then
-      ! compute the BC            
-      bc_tmp  = k_bc(Neumann,lbc_type,0.5*h(1),z0b,u_taub)
-      ! insert the BC into system 
-      du(1)   = du(1)+bc_tmp*dt/(0.5*(h(1)+h(2)))
+!     flux at center "1"
+      pos_bc = 0.5*h(1)
    else
-      ! prepare matrix        
-      cu(1)   = 0.
-      bu(1)   = 1.
-      ! compute the BC
-      bc_tmp  = k_bc(Dirichlet,lbc_type,h(1),z0b,u_taub)
-      ! insert the BC into system
-      du(1)   = bc_tmp
+!     value at face "1"
+      pos_bc = h(1)
    end if
 
-   ! solve the system
-   call tridiagonal(N,1,N-1,tke)
+!  obtain BC for lower boundary of type "lbc_type"
+   DiffKdw  = k_bc(k_lbc,lbc_type,pos_bc,z0b,u_taub)
 
-   ! overwrite the uppermost value
-   tke(N)  = k_bc(Dirichlet,ubc_type,z0s,z0s,u_taus)
-   ! overwrite the lowest value
-   tke(0)  = k_bc(Dirichlet,lbc_type,z0b,z0b,u_taub)
 
-   ! substitute minimum value
-   where (tke .lt. k_min) tke = k_min
+!  do diffusion step
+   call diff_face(nlev,dt,cnpar,h,k_ubc,k_lbc,                          &
+                  DiffKup,DiffKdw,avh,Lsour,Qsour,tke)
+
+
+!  fill top and bottom value with something nice
+!  (only for output)
+   tke(nlev)  = k_bc(Dirichlet,ubc_type,z0s,z0s,u_taus)
+   tke(0   )  = k_bc(Dirichlet,lbc_type,z0b,z0b,u_taub)
+
+!  clip at k_min
+   do i=0,nlev
+      tke(i) = max(tke(i),k_min)
+   enddo
 
    return
    end subroutine tkeeq
@@ -191,4 +194,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

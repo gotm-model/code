@@ -1,35 +1,35 @@
-!$Id: q2over2eq.F90,v 1.3 2003-03-28 09:20:35 kbk Exp $
+!$Id: q2over2eq.F90,v 1.4 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The dynamic $q^2/2$--equation \label{sec:q2over2eq} 
-! 
+! !ROUTINE: The dynamic q2/2-equation \label{sec:q2over2eq}
+!
 ! !INTERFACE:
-   subroutine q2over2eq(N,dt,u_taus,u_taub,z0s,z0b,h,P,B)
+   subroutine q2over2eq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
 
 ! !DESCRIPTION:
 ! The transport equation for the TKE $q^2/2=k$ can be written as
 ! \begin{equation}
 !   \label{tkeB}
 !   \dot{\overline{q^2/2}}
-!   = 
-!   {\cal D}_q +  P + B  - \epsilon 
+!   =
+!   {\cal D}_q +  P + G  - \epsilon
 !   \comma
 ! \end{equation}
-! where $\dot{\overline{q^2/2}}$ denotes the material derivative of $q^2/2$. 
-! With $P$ and $B$ following from \eq{PandG}, evidently, this equation is
+! where $\dot{\overline{q^2/2}}$ denotes the material derivative of $q^2/2$.
+! With $P$ and $G$ following from \eq{PandG}, evidently, this equation is
 ! formally identical to \eq{tkeA}. The only reason why it is discretized
-! seperately here, is the slightly different down--gradient model for the
-! transport term, 
+! seperately here, is the slightly different down-gradient model for the
+! transport term,
 ! \begin{equation}
 !   \label{diffusionMYTKE}
 !   {\cal D}_q = \frstder{z} \left( q l S_q \partder{q^2/2}{z} \right)
 !  \comma
 ! \end{equation}
 ! where $S_q$ is a model constant. The notation has been chosen according
-! to that introduced by \cite{MellorYamada82}. Using their notation, 
-! also \eq{epsilon} can be expressed in mathematically identical from 
+! to that introduced by \cite{MellorYamada82}. Using their notation,
+! also \eq{epsilon} can be expressed in mathematically identical form
 ! as
 ! \begin{equation}
 !   \label{epsilonMY}
@@ -37,7 +37,7 @@
 !   \comma
 ! \end{equation}
 ! where $B_1$ is a constant of the model. Note, that the equivalence of
-! \eq{epsilon} and \eq{epsilonMY} require
+! \eq{epsilon} and \eq{epsilonMY} requires that
 ! \begin{equation}
 !   \label{B1}
 !   (c_\mu^0)^{-2} = \frac{1}{2} B_1^\frac{2}{3}
@@ -45,34 +45,46 @@
 ! \end{equation}
 !
 ! !USES:
-   use mTridiagonal
-   use turbulence, only: tkeo,tke,eps,L
-   use turbulence, only: k_min
-   use turbulence, only: q2over2_bc, k_ubc, k_lbc, ubc_type, lbc_type
-   use turbulence, only: sq
+   use turbulence,   only: P,B
+   use turbulence,   only: tke,k_min,eps,L
+   use turbulence,   only: q2over2_bc, k_ubc, k_lbc, ubc_type, lbc_type
+   use turbulence,   only: sq
+   use util,         only: Dirichlet,Neumann
+
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: N
-   REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: u_taus,u_taub,z0s,z0b
-   REALTYPE, intent(in)                :: h(0:N)
-   REALTYPE, intent(in)                :: P(0:N),B(0:N)
-!
-! !DEFINED PARAMETERS:
 
-!  boundary conditions 
-   integer, parameter                  :: Dirichlet=0
-   integer, parameter                  :: Neumann=1
-   integer, parameter                  :: viscous=0
-   integer, parameter                  :: logarithmic=1
-   integer, parameter                  :: injection=2
+!  number of vertical layers
+   integer,  intent(in)                :: nlev
+
+!  time step (s)
+   REALTYPE, intent(in)                :: dt
+
+!  surface and bottom
+!  friction velocity (m/s)
+   REALTYPE, intent(in)                :: u_taus,u_taub
+
+!  surface and bottom
+!  roughness length (m)
+   REALTYPE, intent(in)                :: z0s,z0b
+
+!  layer thickness (m)
+   REALTYPE, intent(in)                :: h(0:nlev)
+
+!  square of shear and buoyancy
+!  frequency (1/s^2)
+   REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
+
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
 !  $Log: q2over2eq.F90,v $
-!  Revision 1.3  2003-03-28 09:20:35  kbk
+!  Revision 1.4  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.3  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.2  2003/03/10 09:04:04  gotm
@@ -83,97 +95,83 @@
 !
 !
 !EOP
+!------------------------------------------------------------------------
 !
 ! !LOCAL VARIABLES:
-   REALTYPE                  :: avh(0:N)
-   REALTYPE                  :: pminus(0:N),pplus(0:N)
+   REALTYPE                  :: DiffKup,DiffKdw,pos_bc
    REALTYPE                  :: prod,buoyan,diss
+   REALTYPE                  :: prod_pos,prod_neg,buoyan_pos,buoyan_neg
+   REALTYPE                  :: cnpar=_ONE_
+   REALTYPE                  :: avh(0:nlev)
+   REALTYPE                  :: Lsour(0:nlev),Qsour(0:nlev)
    integer                   :: i
-   REALTYPE                  :: bc_tmp
 !
 !------------------------------------------------------------------------
 !BOC
-! save old time step (needed for the length-scale equation)
-   tkeo=tke
+!
+   do i=1,nlev-1
 
-! compute diffusivities at levels of the mean variables
-   do i=2,N-1
-      avh(i) = 0.5*sq*( sqrt(2.*tke(i-1))*L(i-1) + sqrt(2.*tke(i))*L(i) )
+!     compute diffusivity
+      avh(i) = sq*sqrt( 2.*tke(i) )*L(i)
+
+!     compute production terms in q^2/2-equation
+      prod     = P(i)
+      buoyan   = B(i)
+      diss     = eps(i)
+
+!     compute positive and negative parts of RHS
+      prod_pos    =  max(prod  ,_ZERO_)
+      buoyan_pos  =  max(buoyan,_ZERO_)
+
+      prod_neg    =  min(prod  ,_ZERO_)
+      buoyan_neg  =  min(buoyan,_ZERO_)
+
+!     compose source terms
+      Qsour(i) =   prod_pos + buoyan_pos
+      Lsour(i) =  (prod_neg + buoyan_neg - diss)/tke(i)
+
    end do
 
-! for Neumann boundary conditions set the boundary fluxes preliminary to zero
+!  position for upper BC
    if (k_ubc.eq.Neumann) then
-      avh(N)=0
-   end if
-
-   if (k_lbc.eq.Neumann) then
-      avh(1)=0
-   end if
-
-! prepare the production terms
-   do i=N-1,1,-1
-      prod   = P(i)
-      buoyan = B(i)
-      diss   = eps(i)
-      if (prod+buoyan.gt.0) then
-         pplus(i)  = prod+buoyan
-         pminus(i) = diss
-      else
-         pplus(i)  = prod
-         pminus(i) = diss-buoyan
-      end if
-   end do
-
-! construct the matrix
-   do i=1,N-1
-      au(i) = -2.*dt*avh(i)/(h(i)+h(i+1))/h(i)
-      cu(i) = -2.*dt*avh(i+1)/(h(i)+h(i+1))/h(i+1)
-      bu(i) =  1.-au(i)-cu(i)+pminus(i)*dt/tke(i)
-      du(i) = (1+pplus(i)*dt/tke(i))*tke(i)
-   end do
-
-! impose upper boundary conditions
-   if (k_ubc.eq.Neumann) then
-      ! compute the BC
-      bc_tmp  = q2over2_bc(Neumann,ubc_type,0.5*h(N),z0s,u_taus)
-      ! insert the BC into system
-      du(N-1) = du(N-1)+bc_tmp*dt/(0.5*(h(N)+h(N-1)))
+!     flux at center "nlev"
+      pos_bc = 0.5*h(nlev)
    else
-      ! prepare matrix 
-      bu(N-1) = 1.
-      au(N-1) = 0.
-      ! compute the BC
-      bc_tmp  = q2over2_bc(Dirichlet,ubc_type,h(N),z0s,u_taus)
-      ! insert the BC into system
-      du(N-1) = bc_tmp
+!     value at face "nlev-1"
+      pos_bc = h(nlev)
    end if
 
-! impose lower boundary conditions
+!  obtain BC for upper boundary of type "ubc_type"
+   DiffKup  = q2over2_bc(k_ubc,ubc_type,pos_bc,z0s,u_taus)
+
+
+!  position for lower BC
    if (k_lbc.eq.Neumann) then
-      ! compute the BC            
-      bc_tmp  = q2over2_bc(Neumann,lbc_type,0.5*h(1),z0b,u_taub)
-      ! insert the BC into system 
-      du(1)   = du(1)+bc_tmp*dt/(0.5*(h(1)+h(2)))
+!     flux at center "1"
+      pos_bc = 0.5*h(1)
    else
-      ! prepare matrix        
-      cu(1)   = 0.
-      bu(1)   = 1.
-      ! compute the BC
-      bc_tmp  = q2over2_bc(Dirichlet,lbc_type,h(1),z0b,u_taub)
-      ! insert the BC into system
-      du(1)   = bc_tmp
+!     value at face "1"
+      pos_bc = h(1)
    end if
 
-   ! solve the system
-   call tridiagonal(N,1,N-1,tke)
+!  obtain BC for lower boundary of type "lbc_type"
+   DiffKdw  = q2over2_bc(k_lbc,lbc_type,pos_bc,z0b,u_taub)
 
-   ! overwrite the uppermost value
-   tke(N)  = q2over2_bc(Dirichlet,ubc_type,z0s,z0s,u_taus)
-   ! overwrite the lowest value
-   tke(0)  = q2over2_bc(Dirichlet,lbc_type,z0b,z0b,u_taub)
 
-   ! substitute minimum value
-   where (tke .lt. k_min) tke = k_min
+
+!  do diffusion step
+   call diff_face(nlev,dt,cnpar,h,k_ubc,k_lbc,                          &
+                    DiffKup,DiffKdw,avh,Lsour,Qsour,tke)
+
+!  fill top and bottom value with something nice
+!  (only for output)
+   tke(nlev)  = q2over2_bc(Dirichlet,ubc_type,z0s,z0s,u_taus)
+   tke(0   )  = q2over2_bc(Dirichlet,lbc_type,z0b,z0b,u_taub)
+
+!  clip at k_min
+   do i=0,nlev
+      tke(i) = max(tke(i),k_min)
+   enddo
 
    return
    end subroutine q2over2eq
@@ -181,4 +179,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

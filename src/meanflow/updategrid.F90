@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.11 2004-08-18 11:46:19 lars Exp $
+!$Id: updategrid.F90,v 1.12 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -11,7 +11,7 @@
 ! !DESCRIPTION:
 !  This subroutine calculates for each time step new layer thicknesses
 !  in order to fit them to the changing water depth.
-!  Four different grids can be specified:
+!  Three different grids can be specified:
 !  \begin{enumerate}
 !  \item Equidistant grid with possible zooming towards surface and bottom.
 !  The number of layers, {\tt nlev}, and the zooming factors,
@@ -38,32 +38,12 @@
 !  \item Cartesian layers. The height of every layer is read in from file,
 !  see {\tt gotmmean.inp}.
 !  This method is not recommended when a varying sea surface is considered.
-!  \item Adaptive grid, see {\tt adaptivegrid.F90} described
-!  in \sect{sec:adaptivegrid}.
 !  \end{enumerate}
-!
-!  Furthermore, the diagnostic vertical velocity is calculated from
-!  \begin{equation}
-!  w(z)=\left\{
-!  \begin{array}{ll}
-!  \displaystyle
-!  \frac{\zeta-z}{\zeta-z_w}w_{adv}, & \mbox{for } z\geq z_w \comma \\ \\
-!  \displaystyle
-!  \frac{z+H}{z_w+H}w_{adv},         & \mbox{for } z<z_w \comma
-!  \end{array}
-!  \right.
-!  \end{equation}
-!
-! with the observed vertical velocity $w_{adv}$ at height $z_w$, which
-! is read in through the {\tt w\_advspec} namelist in {\tt obs.inp}.
-! Thus, $w(z)$ varies linearly between its maximum value at $z_w$, and 
-! the surface and the bottom, respectively. This mechanism can be used 
-! to simulate vertical advection of e.g. the thermocline in upwelling situations.
 !
 ! !USES:
    use meanflow, only: depth0,depth,z,h,ho,ddu,ddl,grid_method
    use meanflow, only: NN,SS,w_grid,grid_file,w
-   use observations, only: zeta_method,w_adv,w_height,w_adv_discr
+   use observations, only: zeta_method,w_adv_method,w_adv,w_height,w_adv_discr
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -73,7 +53,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
-!  Revision 1.11  2004-08-18 11:46:19  lars
+!  Revision 1.12  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.11  2004/08/18 11:46:19  lars
 !  updated documentation
 !
 !  Revision 1.10  2003/07/23 10:52:52  hb
@@ -224,25 +207,6 @@
       h = ga *depth
    case (2)
       ho=h
-   case(3) ! Adaptive grid
-      if (w_adv_discr.eq.0) then
-         STDERR 'You chose to use an adaptive vertical grid, '
-         STDERR 'but set the advection discretisation method to zero.'
-         STDERR 'Please set w_adv_discr to a value > zero, for'
-         STDERR 'doing so, see namelist w_advspec in obs.inp.'
-         STDERR 'Program is aborted now in updategrid.F90.'
-         stop
-      end if
-      call adaptivegrid(ga,NN,SS,h,depth,nlev,dt)
-      znew=-depth
-      zold=-depth
-      do i=1,nlev
-         ho(i) = h(i)
-         h(i)  = (ga(i)-ga(i-1)) * depth
-         zold=zold+ho(i)
-         znew=znew+h(i)
-         w_grid(i)=-(znew-zold)/dt
-      end do
     case default
          stop "updategrid: No valid grid_method specified"
    end select
@@ -259,16 +223,26 @@
 
 !  Vertical velocity calculation:
 
-   do i=1,nlev-1
-      if (zi(i).gt.w_height) then
-         w(i)=(zi(nlev)-zi(i))/(zi(nlev)-w_height)*w_adv
-      else
-         w(i)=(zi(0)-zi(i))/(zi(0)-w_height)*w_adv
-      end if
-    end do
-
-    w(0)=0.
-    w(nlev)=0.
+   select case(w_adv_method)
+      case(0)
+         ! no vertical advection
+      case(1)
+         ! constant advection velocity
+         w = w_adv
+      case(2)
+         ! linearly varying advection velocity with peak at "w_height"
+         if (w_height.lt.0.01*(zi(nlev)-zi(0))) w_height=0.5*(zi(0)-zi(nlev))
+         do i=1,nlev-1
+            if (zi(i).gt.w_height) then
+               w(i)=(zi(nlev)-zi(i))/(zi(nlev)-w_height)*w_adv
+            else
+               w(i)=(zi(0)-zi(i))/(zi(0)-w_height)*w_adv
+            end if
+         end do
+         w(0)    =_ZERO_
+         w(nlev) =_ZERO_
+      case default
+    end select
 
    return
 

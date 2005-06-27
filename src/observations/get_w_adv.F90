@@ -1,4 +1,4 @@
-!$Id: get_w_adv.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
+!$Id: get_w_adv.F90,v 1.5 2005-06-27 13:44:07 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,7 +29,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_w_adv.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 09:02:09  kbk
@@ -57,12 +60,12 @@
 !BOC
    select case(method)
       case(0)                               ! no vertical advection
-         w_adv = 0.
+         w_adv = _ZERO_
       case(1)
          w_adv = w_adv0
       case(2)                               ! from file
 !        This part initialises and reads in new values if necessary.
-         if(time_diff(jul2,secs2,jul,secs) .lt. 0) then 
+         if(time_diff(jul2,secs2,jul,secs) .lt. 0) then
             do
                jul1 = jul2
                secs1 = secs2
@@ -91,4 +94,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

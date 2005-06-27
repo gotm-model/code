@@ -1,4 +1,4 @@
-!$Id: sediment.F90,v 1.9 2004-06-29 12:56:36 lars Exp $
+!$Id: sediment.F90,v 1.10 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,7 +6,7 @@
 ! !MODULE: sediment --- suspended sediment dynamics\label{sec:sediment}
 !
 ! !INTERFACE:
-   module sediment 
+   module sediment
 !
 ! !DESCRIPTION:
 !  This subroutine computes the transport of sediment, given
@@ -18,49 +18,52 @@
 !    = {\cal D}_C
 !    \comma
 !  \end{equation}
-!  where $w_s$ is the constant sinking speed of the sediment, and 
+!  where $w_s$ is the constant sinking speed of the sediment, and
 !  ${\cal D}_C$ denotes the sum of the turbulent and viscous transport
 !   terms modelled according to
 !  \begin{equation}
 !   \label{DC}
-!    {\cal D}_C 
-!    = \frstder{z} 
-!     \left( 
+!    {\cal D}_C
+!    = \frstder{z}
+!     \left(
 !        \nu_t \partder{C}{z}
-!      \right) 
+!      \right)
 !    \point
 !  \end{equation}
-!  For simplicity, we set the turbulent diffusivity of the sediment
-!  equal to $\nu_t$, the turbulent diffusivity of momentum, see 
-!   \sect{sec:turbulenceIntro}. Surface fluxes and inner sources or 
-!  sinks are not considered. 
+!  For simplicity, we set the turbulent diffusivity of sediment
+!  equal to $\nu_t$, the turbulent diffusivity of momentum, see
+!   \sect{sec:turbulenceIntro}. Surface fluxes and inner sources or
+!  sinks are not considered.
 !
-!  The sinking speed, $w_s$, is negative by definition, and may depend 
+!  The sinking speed, $w_s$, is negative by definition, and may depend
 !  on the grain diameter, molecular viscosity of water
 !  and sediment density as discussed in \sect{sec:initSediment}.
 !  Diffusion is discretized implicitly as discussed in \sect{sec:diffusionMean},
-!  advection (settling) is treated explicitely, 
-!  see \sect{sec:advectionMean}. 
-! 
-!  There is an interesting stationary solution of \eq{CEq} for the case that
-!  advection by vertical settling and mixing by diffusion balance exactly. If
-!  one consideres only the region of a turbulent flow near to a rigid wall, 
+!  advection (settling) is treated explicitely,
+!  see \sect{sec:advectionMean}.
+!
+!  There is an interesting stationary solution of \eq{CEq} for the case of
+!  advection by vertical settling and mixing by diffusion to balance exactly. If
+!  one considers only the region of a turbulent flow near to a rigid wall,
 !  where the law-of-the-wall
-!  relation $\nu_t = \kappa u_* (z+z_0)$ holds, it is easy to show that 
+!  relation $\nu_t = \kappa u_* (z+z_0)$ holds, it is easy to show that
 !  \begin{equation}
 !   \label{rouseProfile}
 !     \dfrac{C}{C_0} = \left( \dfrac{z+z_0}{z_0} \right)^R
 !  \end{equation}
-!  is a solution of \eq{CEq}. Here, $C_0$ is the reference sediment 
-!  concentration at $z=0$ and $R=w_s/(\kappa u_*)$ is the so-called 
-!  Rouse number. \eq{rouseProfile} can be used to derive boundary 
+!  is a solution of \eq{CEq}. Here, $C_0$ is the reference sediment
+!  concentration at $z=0$ and $R=w_s/(\kappa u_*)$ is the so-called
+!  Rouse number. \eq{rouseProfile} can be used to derive boundary
 !  conditions for \eq{CEq}.
 !
 ! !USES:
-   use meanflow,   only:    depth,u_taub,gravity,rho_0,z0b,za
-   use meanflow,   only:    h,avh,NN,buoy
-   use turbulence, only:    kappa,num,nuh
-   use output,     only:    out_fmt,write_results,ts
+   use util
+   use meanflow,     only:    depth,u_taub,gravity,rho_0,z0b,za
+   use meanflow,     only:    h,avh,NN,buoy
+   use meanflow,     only:    ho,w_grid,grid_method
+   use turbulence,   only:    kappa,num,nuh
+   use observations, only:    w_adv_discr,w_adv_method
+   use output,       only:    out_fmt,write_results,ts
 !
    IMPLICIT NONE
 !
@@ -70,19 +73,7 @@
 !  !PUBLIC MEMBER FUNCTIONS:
    public init_sediment, do_sediment, end_sediment
 !
-!  !PUBLIC DATA MEMBERS:
-!
 !  !DEFINED PARAMETERS:
-
-!  specification of possible boundary conditions
-!  for diffusion   
-   integer, parameter      :: Dirichlet      = 0
-   integer, parameter      :: Neumann        = 1
-!  for advection
-   integer,parameter       :: flux           = 1
-   integer,parameter       :: value          = 2
-   integer,parameter       :: oneSided       = 3
-   integer,parameter       :: zeroDivergence = 4
 !  how to compute bottom sediment flux or concentration
    integer, parameter      :: NoFlux          = 1
    integer, parameter      :: SmithMcLean     = 2
@@ -91,7 +82,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: sediment.F90,v $
-!  Revision 1.9  2004-06-29 12:56:36  lars
+!  Revision 1.10  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.9  2004/06/29 12:56:36  lars
 !  removed tabs
 !
 !  Revision 1.8  2004/03/22 10:14:25  kbk
@@ -172,17 +166,17 @@
 ! !IROUTINE: Initialise the sediment module\label{sec:initSediment}
 !
 ! !INTERFACE:
-   subroutine init_sediment(namlst,fname,unit,nlev,g,rho_0) 
+   subroutine init_sediment(namlst,fname,unit,nlev,g,rho_0)
 !
 ! !DESCRIPTION:
-!  This routine reads the sediment namelist from {\tt sediment.inp} 
-!  and allocates memory for the sediment-related vectors. 
+!  This routine reads the sediment namelist from {\tt sediment.inp}
+!  and allocates memory for the sediment-related vectors.
 !  Further, depending on the sediment model, the settling velocity, $w_s$,
-! and the critical friction velocity, $u_*^c$, are calculated here.   
+! and the critical friction velocity, $u_*^c$, are calculated here.
 !  The settling velocity is based on a formula proposed
 !  by \cite{Zanke77} which is valid for spherical particles.
 !  The critical friction velocity is a function of the settling
-!  velocity and the particle size (see \cite{SmithMcLean77}). 
+!  velocity and the particle size (see \cite{SmithMcLean77}).
 !
 ! !USES:
    IMPLICIT NONE
@@ -198,8 +192,8 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 ! !LOCAL VARIABLES:
-   integer          :: rc 
-   integer          :: i,n 
+   integer          :: rc
+   integer          :: i,n
    REALTYPE         :: x,Dsize,avmolu=1.3e-6
    namelist /sedi/ sedi_calc,sedi_eulerian,sedi_dens, &
                    rho_sed,size,init_conc, &
@@ -217,7 +211,7 @@
    close(namlst)
 
    if (sedi_calc) then
-      out_unit = unit 
+      out_unit = unit
 
       allocate(C(0:nlev),stat=rc)
       if (rc /= 0) STOP 'InitSediment: Error allocating (C)'
@@ -235,15 +229,15 @@
       if (rc /= 0) STOP 'InitSediment: Error allocating (Qsour)'
 
       Qsour = _ZERO_
-      C     = init_conc 
+      C     = init_conc
 
-      ! reduced gravity  
+      ! reduced gravity
       gs=g*(rho_sed-rho_0)/rho_0
 
-      ! Zanke formula for fall velocity of sediment  
-      x = -10.0*avmolu/size*(sqrt(1+(0.01*gs*size**3)/avmolu/avmolu)-1.0) 
+      ! Zanke formula for fall velocity of sediment
+      x = -10.0*avmolu/size*(sqrt(1+(0.01*gs*size**3)/avmolu/avmolu)-1.0)
       wc= x
-      
+
       if (sedi_eulerian) then
          LEVEL2 'Using eulerian approach'
          select case(sedi_method)
@@ -252,11 +246,11 @@
             case(SmithMcLean)
                LEVEL2 'Computing sediment concentration in lowest box'
                LEVEL2 'according to Smith and McLean (1977)'
-               Dsize=size*(gs/avmolu/avmolu)**0.3333333  
+               Dsize=size*(gs/avmolu/avmolu)**0.3333333
                if (Dsize.gt.10.0) then
-                  ustarc=-0.4*wc(1)  
-               else 
-                  ustarc=-4.0/Dsize*wc(1)  
+                  ustarc=-0.4*wc(1)
+               else
+                  ustarc=-4.0/Dsize*wc(1)
                endif
             case default
                FATAL "unkown method to compute sediment flux"
@@ -368,28 +362,28 @@
 !  In this subroutine, the dynamical equation for sediment \eq{CEq}
 !  including turbulent diffusion and settling of suspended matter  is updated.
 !
-!  The models to compute the boundary  conditions at the lowest grid box are 
+!  The models to compute the boundary  conditions at the lowest grid box are
 !  set by the parameter {\tt sedi\_method} in {\tt sediment.inp}.
 !  Currently, there are the following models available in GOTM:
 !  \begin{itemize}
-!    \item zero-flux at the lowest interface ({\tt sedi\_method = 1}). 
+!    \item zero-flux at the lowest interface ({\tt sedi\_method = 1}).
 !    With this option, no sediment can
 !    leave the domain. The net zero-flux boundary condition is implemented as zero-flux
-!    for both, advection and diffusion. Note, that this boundary condition 
+!    for both, advection and diffusion. Note, that this boundary condition
 !    results in the Rouse-profile \eq{rouseProfile}, however, with unkown
 !    reference concentration $C_0$.
-!    \item Dirichlet boundary condition suggested by \cite{SmithMcLean77} 
-!    ({\tt sedi\_method = 2}). These authors set the concentration 
+!    \item Dirichlet boundary condition suggested by \cite{SmithMcLean77}
+!    ({\tt sedi\_method = 2}). These authors set the concentration
 !    at the lowest interface to zero, unless
 !    the friction velocity is larger than a threshold, $u_*^c$. Then, they
-!    assume that the concentration at the lowest interface, $C_0$, is a 
+!    assume that the concentration at the lowest interface, $C_0$, is a
 !    quadratic function of the ratio $u_*/u_*^c$. In GOTM, the Rouse profile
 !    \eq{rouseProfile} is assumed to interpolate the value of $C_0$ (located
 !   at the lowest interface) to the center of the lowest grid cell.
 !  \end{itemize}
 !
 !  The sediment induced bottom roughness $z_a$ (also see \sect{sec:friction}) can
-!  be either ignored ({\tt z0bMethod = 1}) or updated from empirical formulae 
+!  be either ignored ({\tt z0bMethod = 1}) or updated from empirical formulae
 !  as suggested for example by \cite{SmithMcLean77} ({\tt z0bMethod = 2}).
 !  If {\tt sedi\_dens = .true.}, the effect of sediment on the density
 !  stratifiction (and hence on turbulence) is considered in the code.
@@ -437,8 +431,8 @@
          AdvCdw   = _ZERO_
 
       case(SmithMcLean)
-         
-         if (u_taub .ge. ustarc) then  
+
+         if (u_taub .ge. ustarc) then
 
             ! compute reference level
             if (z0bMethod.ne.1) then
@@ -448,12 +442,12 @@
             end if
 
             ! Compute reference concentration at the interface
-            Cbott = g1*((u_taub/ustarc)**2-1)     
-    
+            Cbott = g1*((u_taub/ustarc)**2-1)
+
             ! compute Rouse number
             rouse = wc(1)/kappa/u_taub
-         else                                 
-            Cbott = _ZERO_                        
+         else
+            Cbott = _ZERO_
             za    = _ZERO_
             rouse = _ZERO_
          end if
@@ -467,27 +461,35 @@
          AdvBcdw  = oneSided     ! allow for sinking sediment to leave domain
          AdvCup   = _ZERO_
          AdvCdw   = _ZERO_       ! not used
-         
+
       case default
          FATAL 'Invalid method for sedi_calc'
          stop  'sediment.F90'
    end select
 
-!  Does not work for prescribed vertical current velocity and 
+!  Does not work for prescribed vertical current velocity and
 !  adaptive grids!!
 
-   flag=2          ! conservative form of vertical advection
+   if (w_adv_method .ne. 0) then
+      FATAL 'w_adv_method=0 in obs.inp is required for sediment'
+      stop 'sediment.F90'
+   endif
+
+   if (grid_method .eq. 3) then
+      FATAL 'adaptive grids do not yet work with sediment.'
+      stop 'sediment.F90'
+   endif
+
+   call advection_mean(nlev,dt,h,h,wc,AdvBcup,AdvBcdw,AdvCup,AdvCdw,adv_method,conserv,C)
+
    RelaxT = 1.e15  ! no relaxation to observed value
 
-   call advectionMean(nlev,dt,h,wc, &
-                      AdvBcup,AdvBcdw,AdvCup,AdvCdw,adv_method,C)
+   call diffusion_mean(nlev,dt,cnpar,h,DiffBcup,DiffBcdw,DiffCup,DiffCdw,        &
+        num,Qsour,RelaxT,Cobs,C)
 
-   call diffusionMean(nlev,dt,cnpar,h, &
-                      DiffBcup,DiffBcdw,DiffCup,DiffCdw, &
-                      nuh,Qsour,RelaxT,Cobs,C)
    return
-   end subroutine sediment_eulerian 
-!EOC
+ end subroutine sediment_eulerian
+ !EOC
 
 !-----------------------------------------------------------------------
 !BOP
@@ -499,7 +501,7 @@
 !
 ! !DESCRIPTION:
 !  In this subroutine, the dynamical equation for sediment \eq{CEq}
-!  including turbulent diffusion and settling of suspended matter is 
+!  including turbulent diffusion and settling of suspended matter is
 !  this routine uses a lagrangian approach.
 !  Should contain more info (KBK).
 !
@@ -558,16 +560,16 @@
    end if
 
    return
-   end subroutine sediment_lagrangian 
+   end subroutine sediment_lagrangian
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Finish  sediment calculations 
+! !IROUTINE: Finish  sediment calculations
 !
 ! !INTERFACE:
-   subroutine end_sediment 
+   subroutine end_sediment
 !
 ! !DESCRIPTION:
 !  Nothing done yet --- supplied for completeness.
@@ -582,20 +584,20 @@
 !-----------------------------------------------------------------------
 !BOC
    return
-   end subroutine end_sediment 
+   end subroutine end_sediment
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Storing the results 
+! !IROUTINE: Storing the results
 !
 ! !INTERFACE:
-   subroutine save_sediment 
+   subroutine save_sediment
 !
 ! !DESCRIPTION:
 !  Here, the storing of the sediment profiles to an ascii or a
-!  netCDF file is managed. 
+!  netCDF file is managed.
 !
 ! !USES:
    use output,  only:    out_fmt
@@ -656,9 +658,9 @@
       case default
          FATAL 'A non valid output format has been chosen'
          stop 'save_sediment'
-   end select   
+   end select
    return
-   end subroutine save_sediment 
+   end subroutine save_sediment
 !EOC
 
 !-----------------------------------------------------------------------
@@ -667,4 +669,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

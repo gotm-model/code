@@ -1,4 +1,4 @@
-!$Id: uequation.F90,v 1.7 2004-08-18 11:44:49 lars Exp $
+!$Id: uequation.F90,v 1.8 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,37 +6,39 @@
 ! !ROUTINE: The U-momentum equation\label{sec:uequation}
 !
 ! !INTERFACE:
-   subroutine uequation(nlev,dt,cnpar,tx,num,Method)
+   subroutine uequation(nlev,dt,cnpar,tx,num,gamu,Method)
 !
 ! !DESCRIPTION:
-!  This subroutine computes the transport of momentum in 
+!  This subroutine computes the transport of momentum in
 !  $x$-direction according to
 !  \begin{equation}
 !   \label{uEq}
 !    \dot{U}
 !    = {\cal D}_U
-!    - g \partder{\zeta}{x} + \int_z^{\zeta} \partder{B}{x} \,dz' 
+!    - g \partder{\zeta}{x} + \int_z^{\zeta} \partder{B}{x} \,dz'
 !    - \frac{1}{\tau^U_R}(U-U_{obs})-C_f U \sqrt{U^2+V^2}
 !    \comma
 !  \end{equation}
 !  where $\dot{U}$ denotes the material derivative of $U$, $\zeta$
-!  the free surface elevation and $B$ the mean buoyancy defined 
-!  in  \eq{DefBuoyancy}. ${\cal D}_U$ is the sum of the turbulent 
+!  the free surface elevation and $B$ the mean buoyancy defined
+!  in  \eq{DefBuoyancy}. ${\cal D}_U$ is the sum of the turbulent
 !  and viscous transport terms modelled according to
 !  \begin{equation}
 !   \label{Du}
-!    {\cal D}_U 
-!    = \frstder{z} 
-!     \left( 
+!    {\cal D}_U
+!    = \frstder{z}
+!     \left(
 !        \left( \nu_t + \nu \right) \partder{U}{z}
-!      \right) 
+!               - \tilde{\Gamma}_U
+!      \right)
 !    \point
 !  \end{equation}
-!  In this equation, $\nu_t$ and $\nu$ are the turbulent and 
-!  molecular diffusivities of momentum, respectively. The computation
-!  of $\nu_t$ is discussed in \sect{sec:turbulenceIntro}.
+!  In this equation, $\nu_t$ and $\nu$ are the turbulent and
+!  molecular diffusivities of momentum, respectively, and
+!  $\tilde{\Gamma}_U$ denotes the non-local flux of momentum,
+!  see \sect{sec:turbulenceIntro}.
 !
-!  Coriolis rotation is accounted for as described in 
+!  Coriolis rotation is accounted for as described in
 !  \sect{sec:coriolis}.
 !  The external pressure gradient (second term on right hand side)
 !  is applied here only if surface slopes are
@@ -45,56 +47,71 @@
 !  The internal pressure gradient (third
 !  term on right hand side) is calculated in {\tt intpressure.F90}, see
 !  \sect{sec:intpressure}.
-!  The fourth term on the right hand side allows for nudging velocity
+!  The fifth term on the right hand side allows for nudging the velocity
 !  to observed profiles with the relaxation time scale $\tau^U_R$.
-!  This is useful for initialising 
+!  This is useful for initialising
 !  velocity profiles in case of significant inertial oscillations.
-!  Bottom friction is implemented implicitely using the fourth term
+!  Bottom friction is implemented implicitly using the fourth term
 !  on the right hand side. Implicit friction may  be
 !  applied on all levels in order to allow for inner friction terms such
 !  as seagrass friction (see \sect{sec:seagrass}).
 !
-!  Diffusion is numerically treated implicitly, see equations (\ref{sigmafirst})-
-!  (\ref{sigmalast}).
+!  Diffusion is numerically treated implicitly, see equations \eq{sigmafirst}-
+!  \eq{sigmalast}.
 !  The tri-diagonal matrix is solved then by a simplified Gauss elimination.
-!  Vertical advection is included for accounting for adaptive grids,
-!  see {\tt adaptivegrid.F90} in \sect{sec:adaptivegrid}.
-!
-!  The $U$-contribution to shear frequency squared $M^2$ is now also
-!  computed here, using a new scheme which guarantees energy conservation
-!  of kinetic energy from mean to turbulent flow, see \cite{Burchard2002}. 
-! With this method, the discretisation of the
-! $U$-contribution to shear squared $M^2$ is discretised as
-! \begin{equation}
-!   \label{shearsquared}
-!    \left(\partial_z U\right)^2 \approx \frac{(\bar U_{j+1}-\bar U_j)
-!    (\tilde U_{j+1}-\tilde U_j)}{(z_{j+1}-z_j)^2}
-! \end{equation}
-! where $\tilde U_j=\frac12(\hat U_j+U_j)$. The shear obtained from (\ref{shearsquared})
-! plus the $V$-contribution calculated in {\tt vequation.F90} is then used
-! for the calculation of the turbulence shear production, see equation (\ref{computeP}). 
+!  Vertical advection is included, see \sect{sec:advectionMean}.
 !
 ! !USES:
-   use meanflow, only: gravity,avmolu
-   use meanflow, only: h,ho,u,v,w,avh,drag,SS,grid_method,w_grid
-   use observations, only: vel_relax_tau,vel_relax_ramp
+   use meanflow,     only: gravity,avmolu
+   use meanflow,     only: h,u,uo,v,w,avh
+   use meanflow,     only: drag,SS
    use observations, only: w_adv_method,w_adv_discr
-   use observations, only: idpdx,dpdx,uprof
-   use mtridiagonal
+   use observations, only: uProf,vel_relax_tau,vel_relax_ramp
+   use observations, only: idpdx,dpdx
+   use util,         only: Dirichlet,Neumann
+   use util,         only: oneSided,zeroDivergence
+
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev,Method
+
+!  number of vertical layers
+   integer, intent(in)                 :: nlev
+
+!  time step (s)
    REALTYPE, intent(in)                :: dt
+
+!  numerical "implicitness" parameter
    REALTYPE, intent(in)                :: cnpar
+
+!  wind stress in x-direction
+!  divided by rho_0 (m^2/s^2)
    REALTYPE, intent(in)                :: tx
+
+!  diffusivity of momentum (m^2/s)
    REALTYPE, intent(in)                :: num(0:nlev)
+
+!  non-local flux of momentum (m^2/s^2)
+   REALTYPE, intent(in)                :: gamu(0:nlev)
+
+!  method to compute external
+!  pressure gradient
+   integer, intent(in)                 :: method
 !
+!
+! !DEFINED PARAMETERS:
+   REALTYPE, parameter                 :: long=1.0D15
+
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Lars Umlauf
+!                      (re-write after first version of
+!                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: uequation.F90,v $
-!  Revision 1.7  2004-08-18 11:44:49  lars
+!  Revision 1.8  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.7  2004/08/18 11:44:49  lars
 !  updated documentation
 !
 !  Revision 1.6  2003/03/28 09:20:35  kbk
@@ -115,105 +132,90 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: a,c
-   REALTYPE                  :: uo(0:nlev)
-   REALTYPE                  :: tau=1.e15
-   REALTYPE,save             :: runtime= _ZERO_
-   logical                   :: surf_flux,bott_flux
+   integer                   :: DiffBcup,DiffBcdw
+   integer                   :: AdvBcup,AdvBcdw
+   REALTYPE                  :: DiffUup,DiffUdw
+   REALTYPE                  :: AdvUup,AdvUdw
+   REALTYPE                  :: dzetadx
+   REALTYPE                  :: Lsour(0:nlev)
+   REALTYPE                  :: Qsour(0:nlev)
+   REALTYPE                  :: URelaxTau(0:nlev)
+   REALTYPE, save            :: runtime=_ZERO_
 !
 !-----------------------------------------------------------------------
 !BOC
-   surf_flux=.false.
-   bott_flux=.false.
-
-   !  Advection step:
-   if (w_adv_method .ne. 0) then
-      call w_split_it_adv(nlev,dt,h,ho,u,w,w_adv_discr,surf_flux,bott_flux,1)
-   end if
-   if (grid_method .eq. 3) then
-      call w_split_it_adv(nlev,dt,h,ho,u,w_grid,w_adv_discr, &
-                          surf_flux,bott_flux,2)
-   end if
-
-   avh=num+avmolu
-   do i=2,nlev-1
-      c    =2*dt*avh(i)  /(h(i)+h(i+1))/h(i)
-      a    =2*dt*avh(i-1)/(h(i)+h(i-1))/h(i)
-      cu(i)=-cnpar*c                                       !i+1,n+1
-      au(i)=-cnpar*a                                       !i-1,n+1
-#ifndef SEAGRASS
-      bu(i)=1-au(i)-cu(i)                                  !i  ,n+1
-#else
-      bu(i)=1-au(i)-cu(i)                &                 !i  ,n+1
-            + drag(i)*dt/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
-#endif
-      du(i)=u(i)+(1-cnpar)*(a*u(i-1)-(a+c)*u(i)+c*u(i+1))  !i  ,n
-      du(i)=du(i)+dt*idpdx(i)
-   end do
-
-   c    =2*dt*avh(1)/(h(1)+h(2))/h(1)
-   cu(1)=-cnpar*c
-   bu(1)=1-cu(1)+drag(1)*dt/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
-   du(1)=u(1)+(1-cnpar)*c*(u(2)-u(1))+dt*idpdx(1)
-   
-   a    =2*dt*avh(nlev-1)/(h(nlev)+h(nlev-1))/h(nlev)
-   au(nlev)=-cnpar*a
-#ifndef SEAGRASS
-   bu(nlev)=1-au(nlev)
-#else
-   bu(nlev)=1-au(nlev) &
-            + drag(nlev)*dt/h(nlev)*sqrt(u(nlev)*u(nlev)+v(nlev)*v(nlev))
-#endif
-   du(nlev)=u(nlev)+tx*dt/h(nlev)+(1-cnpar)*a*(u(nlev-1)-u(nlev))
-   du(nlev)=du(nlev)+dt*idpdx(nlev) 
-
-   if (Method .eq. 0) then
-      du=du-dt*gravity*dpdx
-   end if 
-
+!  save old value
    uo = u
 
-   if (vel_relax_tau .lt. 1.e15) then 
+!  set boundary conditions
+   DiffBcup       = Neumann
+   DiffBcdw       = Neumann
+   DiffUup        = tx
+   DiffUdw        = _ZERO_   ! bottom friction treated as a source term
+
+   AdvBcup        = zeroDivergence
+   AdvBcdw        = oneSided
+   AdvUup         = _ZERO_
+   AdvUdw         = _ZERO_
+
+!  set external pressure gradient
+   if (method .eq. 0) then
+      dzetadx = dpdx
+   else
+      dzetadx = _ZERO_
+   endif
+
+!  set vector of relaxation times
+   if (vel_relax_ramp .lt. long) then
       runtime=runtime+dt
       if (runtime .lt. vel_relax_ramp) then
-         if (vel_relax_ramp .ge. 1.e15) then
-            tau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtime)
-          else
-             tau=vel_relax_tau
-         end if   
+         URelaxTau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtime)
       else
-         tau=1.e15
+         URelaxTau=long
       end if
-      do i=1,nlev  
-         bu(i)=bu(i)+dt/tau
-         du(i)=du(i)+dt/tau*uprof(i)
-      end do
-   end if 
+   else
+      URelaxTau=vel_relax_tau
+   end if
 
-   call tridiagonal(nlev,1,nlev,u)
+!  compute total diffusivity
+   avh=num+avmolu
 
-!  Discretisation of vertical shear squared according to Burchard 2002
-!  in order to guarantee conservation of kinetic energy when transformed
-!  from mean kinetic energy to turbulent kinetic energy.
- 
-   do i=1,nlev-1
-      SS(i)=SS(i)+0.5*( &
-                  (cnpar*(u(i+1)-u(i))*(u(i+1)-uo(i))+       &
-                  (1.-cnpar)*(uo(i+1)-uo(i))*(uo(i+1)-u(i))) &
-                  /(0.5*(h(i+1)+h(i)))/h(i)                  &
-                 +(cnpar*(u(i+1)-u(i))*(uo(i+1)-u(i))+       &
-                  (1.-cnpar)*(uo(i+1)-uo(i))*(u(i+1)-uo(i))) &
-                  /(0.5*(h(i+1)+h(i)))/h(i+1)                &
-                  )
-   end do 
+   do i=1,nlev
+      Qsour(i) = _ZERO_
+      Lsour(i) = _ZERO_
 
-   SS(0)=SS(1)
-   SS(nlev)=SS(nlev-1)
+!     add external and internal pressure gradients
+      Qsour(i) = Qsour(i) - gravity*dzetadx + idpdx(i)
+
+#ifdef SEAGRASS
+      Lsour(i) = -drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
+#endif
+
+!     add non-local fluxes
+#ifdef NONLOCAL
+!      Qsour(i) = Qsour(i) - ( gamu(i) - gamu(i-1) )/h(i)
+#endif
+
+   end do
+
+!  implement bottom friction as source term
+   Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
+
+!  do advection step
+   if (w_adv_method.ne.0) then
+      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
+                          AdvUup,AdvUdw,w_adv_discr,U)
+   end if
+
+!  do diffusion step
+   call diff_center(nlev,dt,cnpar,h,DiffBcup,DiffBcdw,                  &
+                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uProf,U)
+
 
    return
-   end subroutine uequation 
+   end subroutine uequation
 !EOC
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

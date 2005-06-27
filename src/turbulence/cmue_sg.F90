@@ -1,10 +1,10 @@
-!$Id: cmue_sg.F90,v 1.4 2004-08-18 12:53:07 lars Exp $
+!$Id: cmue_sg.F90,v 1.5 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: \cite{SchumannGerz95} stability function\label{sec:sg} 
-! 
+! !ROUTINE: \cite{SchumannGerz95} stability function\label{sec:sg}
+!
 ! !INTERFACE:
    subroutine cmue_sg(nlev)
 !
@@ -22,7 +22,7 @@
 !   \comma
 ! \end{equation}
 ! where where $Ri$ is the gradient Richardson--number and $Pr_t^0$
-! is the turbulent Prandtl--number for $Ri \rightarrow 0$. $Pr_t^0$ 
+! is the turbulent Prandtl--number for $Ri \rightarrow 0$. $Pr_t^0$
 ! and the fixed value $c_\mu^0$ have to be set in {\tt gotmturb.inp}.
 ! \cite{SchumannGerz95}  suggested $Pr_t^0=0.74$ and $Ri^{\infty}=0.25$.
 !
@@ -38,7 +38,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_sg.F90,v $
-!  Revision 1.4  2004-08-18 12:53:07  lars
+!  Revision 1.5  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.4  2004/08/18 12:53:07  lars
 !  updated documentation
 !
 !  Revision 1.3  2003/03/28 09:20:35  kbk
@@ -54,7 +57,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: Ri,Prandtl
+   REALTYPE                  :: Ri,Prandtl,limit=3.
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -67,7 +70,7 @@
       end if
 
       cmue1(i)=cm0_fix
-      cmue2(i)=cm0_fix/Prandtl
+      cmue2(i)=cm0_fix/min(limit,Prandtl)
 
    end do
    return
@@ -76,4 +79,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

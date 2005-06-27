@@ -1,4 +1,4 @@
-!$Id: get_eps_profile.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
+!$Id: get_eps_profile.F90,v 1.5 2005-06-27 13:44:07 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -30,7 +30,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_eps_profile.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 09:02:09  kbk
@@ -74,7 +77,7 @@
    end if
 
 !  This part initialises and reads in new values if necessary.
-   if(.not. one_profile .and. time_diff(jul2,secs2,jul,secs) .lt. 0) then 
+   if(.not. one_profile .and. time_diff(jul2,secs2,jul,secs) .lt. 0) then
       do
          jul1 = jul2
          secs1 = secs2
@@ -93,7 +96,7 @@
             nprofiles = nprofiles + 1
             call julian_day(yy,mm,dd,jul2)
             secs2 = hh*3600 + min*60 + ss
-            if(time_diff(jul2,secs2,jul,secs) .gt. 0) EXIT 
+            if(time_diff(jul2,secs2,jul,secs) .gt. 0) EXIT
          end if
       end do
       if( .not. one_profile) then
@@ -107,11 +110,11 @@
       t  = time_diff(jul,secs,jul1,secs1)
       epsprof = prof1(:,1) + t*alpha(:,1)
    end if
-   
+
    return
    end subroutine get_eps_profile
 !EOC
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

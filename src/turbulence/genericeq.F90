@@ -1,11 +1,12 @@
+!$Id: genericeq.F90,v 1.5 2005-06-27 13:44:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The generic $\psi$--equation  \label{sec:genericeq}
-! 
+! !ROUTINE: The dynamic psi-equation  \label{sec:genericeq}
+!
 ! !INTERFACE:
-   subroutine genericeq(N,dt,u_taus,u_taub,z0s,z0b,h,P,B,NN,num)
+   subroutine genericeq(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
 
 ! !DESCRIPTION:
 ! This model has been formulated by \cite{UmlaufBurchard2003},
@@ -16,25 +17,25 @@
 !   \comma
 ! \end{equation}
 ! where $k$ is the turbulent kinetic energy computed from \eq{tkeA} and
-! $l$ is the dissipative length--scale defined in \eq{epsilon}.
+! $l$ is the dissipative length-scale defined in \eq{epsilon}.
 ! For appropriate choices of the exponents $p$, $m$, and $n$, the variable
-! $\psi$ can be directly identified with the classic length--scale determining
-! variables like the rate of dissipation, $\epsilon$, or the product 
-! $kl$ used by \cite{MellorYamada82} (see \sect{sec:lengthscaleeq} 
-! and \sect{sec:dissipationeq}). 
+! $\psi$ can be directly identified with the classic length-scale determining
+! variables like the rate of dissipation, $\epsilon$, or the product
+! $kl$ used by \cite{MellorYamada82} (see \sect{sec:lengthscaleeq}
+! and \sect{sec:dissipationeq}).
 !  Some examples are compiled in \tab{tab:psi}.
 ! \begin{table}[ht]
 !   \begin{center}
 !     \begin{tabular}{clccc}
 !       $\psi$     & two-equation model by:      &  $p$   & $m$           & $n$    \\[2mm]  \hline
-!       $\omega$   & \cite{Wilcox88}             &  $-1$ & $\frac{1}{2}$  & $-1$   \\[1mm] 
-!       $k l$      & \cite{MellorYamada82}       &  $0$  & $1$            & $1$    \\[1mm] 
-!       $\epsilon$ & \cite{Rodi87}               &  $3$  & $\frac{3}{2}$  & $-1$   \\[1mm] 
+!       $\omega$   & \cite{Wilcox88}             &  $-1$ & $\frac{1}{2}$  & $-1$   \\[1mm]
+!       $k l$      & \cite{MellorYamada82}       &  $0$  & $1$            & $1$    \\[1mm]
+!       $\epsilon$ & \cite{Rodi87}               &  $3$  & $\frac{3}{2}$  & $-1$   \\[1mm]
 !       $k \tau$   & \cite{ZeiermanWolfshtein86} &  $-3$ & $\frac{1}{2}$  & $1$    \\
 !     \end{tabular}
-!    \caption{\label{tab:psi}Exponents $p$, $n$, $m$ defined in  \eq{psi_l}, and 
-!     their relation to the variable of the second equation in some well--known
-!     two--equation models.}
+!    \caption{\label{tab:psi}Exponents $p$, $n$, $m$ defined in  \eq{psi_l}, and
+!     their relation to the variable of the second equation in some well-known
+!     two-equation models.}
 !  \end{center}
 !\end{table}
 !
@@ -42,14 +43,14 @@
 ! \begin{equation}
 !   \label{generic}
 !   \dot{\psi} = {\cal D}_\psi
-!   + \frac{\psi}{k} (  c_{\psi_1} P + c_{\psi_3} B 
-!    - c_{\psi 2} \epsilon )   
+!   + \frac{\psi}{k} (  c_{\psi_1} P + c_{\psi_3} G
+!    - c_{\psi 2} \epsilon )
 !   \comma
 ! \end{equation}
-! where $\dot{\psi}$ denotes the material derivative of $\psi$, 
+! where $\dot{\psi}$ denotes the material derivative of $\psi$,
 ! see \cite{UmlaufBurchard2003}.
-! The production terms $P$ and $B$ follow from \eq{PandG}. 
-! ${\cal D}_\psi$ represents the sum of the viscous and turbulent 
+! The production terms $P$ and $G$ follow from \eq{PandG}.
+! ${\cal D}_\psi$ represents the sum of the viscous and turbulent
 ! transport terms. The rate of dissipation can computed by solving
 ! \eq{psi_l} for $l$ and inserting the result into \eq{epsilon}.
 !
@@ -58,15 +59,15 @@
 ! gradient formulation,
 ! \begin{equation}
 !   \label{diffusionGeneric}
-!   {\cal D}_\psi = \frstder{z} 
+!   {\cal D}_\psi = \frstder{z}
 !   \left( \dfrac{\nu_t}{\sigma_\psi} \partder{\psi}{z} \right)
 !  \point
 ! \end{equation}
-! 
+!
 ! For appropriate choices of the parameters, most of the classic transport
 ! equations can be directly recovered from the generic equation \eq{generic}.
 ! An example is the transport equation for the inverse turbulent time scale,
-! $\omega \propto \epsilon / k$, which has been formulated by \cite{Wilcox88} 
+! $\omega \propto \epsilon / k$, which has been formulated by \cite{Wilcox88}
 ! and extended to buoyancy affected flows by \cite{Umlaufetal2003}. The precise
 ! definition of $\omega$ follows from \tab{tab:psi}, and its transport
 ! equation can be written as
@@ -75,78 +76,90 @@
 !   \dot{\omega}
 !   =
 !   {\cal D}_\omega
-!   + \frac{\omega}{k} (  c_{\omega_1} P + c_{\omega_3} B 
-!   - c_{\omega 2} \epsilon )   
+!   + \frac{\omega}{k} (  c_{\omega_1} P + c_{\omega_3} G
+!   - c_{\omega 2} \epsilon )
 !   \comma
 ! \end{equation}
 ! which is clearly a special case of \eq{generic}. Model constants for this
 ! and other traditional models are given in \tab{tab:constants}.
 ! \begin{table}[ht]
 !   \begin{center}
-!     \begin{tabular}{lccccccc} 
-!       & $c_\mu^0$ 
-!       & $\sigma_k^\psi$ 
-!       & $\sigma_\psi$ 
-!       & $c_{\psi 1}$ 
-!       & $c_{\psi 2}$ 
-!       & $c_{\psi 3}$  \\[2mm] \hline 
-!       $k$-$\epsilon$,  \cite{Rodi87}             : 
+!     \begin{tabular}{lccccccc}
+!       & $c_\mu^0$
+!       & $\sigma_k^\psi$
+!       & $\sigma_\psi$
+!       & $c_{\psi 1}$
+!       & $c_{\psi 2}$
+!       & $c_{\psi 3}$  \\[2mm] \hline
+!       $k$-$\epsilon$,  \cite{Rodi87}             :
 !       & $0.5477$ & $1.0$  &  $1.3$  & $1.44$  & $1.92$  & (see eq.\ (\ref{Ri_st})) \\[1mm]
-!       $k$-$kl$,       \cite{MellorYamada82}      : 
+!       $k$-$kl$,       \cite{MellorYamada82}      :
 !       & $0.5544$ & $1.96$ &  $1.96$ & $0.9$   & $0.5$   & $0.9$ &    \\[1mm]
-!       $k$-$\omega$,   \cite{Wilcox88}            : 
+!       $k$-$\omega$,   \cite{Wilcox88}            :
 !       & $0.5477$ & $2$    &  $2$    & $0.555$ & $0.833$ & (see eq.\ (\ref{Ri_st})) \\[1mm]
-!       $k$-$\tau$     \cite{ZeiermanWolfshtein86}: 
+!       $k$-$\tau$     \cite{ZeiermanWolfshtein86}:
 !        & $0.5477$ & $1.46$ &  $10.8$ & $0.173$ & $0.225$ & (---)      \\
 !     \end{tabular}
 !     \caption{\label{tab:constants} Model constants of some standard models,
-! converted to the notation used here. The Schmidt--numbers for the model of
-!    \cite{MellorYamada82} are valid only in the logarithmic boundary--layer, 
+! converted to the notation used here. The Schmidt-numbers for the model of
+!    \cite{MellorYamada82} are valid only in the logarithmic boundary-layer,
 !    because the diffusion models \eq{diffusionMYTKE} and \eq{diffusionMYlength}
-!    are slightly different from \eq{diffusionTKE} and \eq{diffusionGeneric}. 
+!    are slightly different from \eq{diffusionTKE} and \eq{diffusionGeneric}.
 !    There is no indication that one class of  diffusion models is superior.}
 !   \end{center}
 ! \end{table}
-! Apart from having to code only one equation to recover all of the 
+! Apart from having to code only one equation to recover all of the
 ! traditional models, the main advantage of the generic equation is its
 ! flexibility. After choosing meaningful values for physically relevant
 ! parameters like  the von K{\'a}rm{\'a}n constant, $\kappa$, the temporal
-! decay rate for homogeneous turbulence, $d$, some parameters related to 
-! breaking surface waves, etc, a two--equation model can be generated, 
+! decay rate for homogeneous turbulence, $d$, some parameters related to
+! breaking surface waves, etc, a two-equation model can be generated,
 ! which has exactly the required properties. This is discussed in
 ! great detail in  \cite{UmlaufBurchard2003}. All algorithms have been
 ! implemented in GOTM and are described in \sect{sec:generate}.
-! 
+!
 ! !USES:
-   use mTridiagonal
+   use turbulence, only: P,B,num
+   use turbulence, only: tke,k_min,eps,eps_min,L
    use turbulence, only: cpsi1,cpsi2,cpsi3plus,cpsi3minus,sig_psi
    use turbulence, only: gen_m,gen_n,gen_p
-   use turbulence, only: tkeo,tke,k_min,eps,eps_min,L
    use turbulence, only: cm0,cde,galp,length_lim
    use turbulence, only: psi_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
+   use util,       only: Dirichlet,Neumann
+
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:
-   integer, intent(in)       :: N
-   REALTYPE, intent(in)      :: dt
-   REALTYPE, intent(in)      :: u_taus,u_taub,z0s,z0b
-   REALTYPE, intent(in)      :: h(0:N)
-   REALTYPE, intent(in)      :: P(0:N),B(0:N),NN(0:N)
-   REALTYPE, intent(in)      :: num(0:N)
-!
-! !DEFINED PARAMETERS:
-!  boundary conditions 
-   integer, parameter        :: Dirichlet=0
-   integer, parameter        :: Neumann=1
-   integer, parameter        :: viscous=0
-   integer, parameter        :: logarithmic=1
-   integer, parameter        :: injection=2
+
+!  number of vertical layers
+   integer,  intent(in)                :: nlev
+
+!  time step (s)
+   REALTYPE, intent(in)                :: dt
+
+!  surface and bottom
+!  friction velocity (m/s)
+   REALTYPE, intent(in)                :: u_taus,u_taub
+
+!  surface and bottom
+!  roughness length (m)
+   REALTYPE, intent(in)                :: z0s,z0b
+
+!  layer thickness (m)
+   REALTYPE, intent(in)                :: h(0:nlev)
+
+!  square of shear and buoyancy
+!  frequency (1/s^2)
+   REALTYPE, intent(in)                :: NN(0:nlev),SS(0:nlev)
 !
 ! !REVISION HISTORY:
-!  Original author(s): Lars Umlauf, Hans Burchard
-!
+!  Original author(s): Lars Umlauf and Hans Burchard
+
 !  $Log: genericeq.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/10 09:02:05  gotm
@@ -154,139 +167,138 @@
 !
 !
 !EOP
+!------------------------------------------------------------------------
 !
 ! !LOCAL VARIABLES:
+   REALTYPE                  :: DiffPsiup,DiffPsidw,pos_bc
+   REALTYPE                  :: prod,buoyan,diss
+   REALTYPE                  :: prod_pos,prod_neg,buoyan_pos,buoyan_neg
+   REALTYPE                  :: ki,epslim,PsiOverTke,NN_pos
+   REALTYPE                  :: cnpar=_ONE_
+   REALTYPE                  :: exp1,exp2,exp3
+   REALTYPE                  :: psi(0:nlev)
+   REALTYPE                  :: avh(0:nlev)
+   REALTYPE                  :: Lsour(0:nlev),Qsour(0:nlev)
+
    integer                   :: i
-   REALTYPE                  :: psi(0:N)
-   REALTYPE                  :: avh(0:N)
-   REALTYPE                  :: pminus(0:N),pplus(0:N)
-   REALTYPE                  :: prod,buoyan,diss,epslim
-   REALTYPE                  :: cpsi3
-   REALTYPE                  :: bc_tmp
-   REALTYPE                  :: ki
 !
 !------------------------------------------------------------------------
 !BOC
-! compute diffusivities at levels of the mean variables
-   do i=2,N-1
-      avh(i)=0.5/sig_psi*(num(i-1)+num(i))
+
+!  compute some parameters
+   exp1 = 3.0 + gen_p/gen_n
+   exp2 = 1.5 + gen_m/gen_n
+   exp3 =       - 1.0/gen_n
+
+!  compute epsilon diffusivity
+   avh = num/sig_psi
+
+!  re-construct psi at "old" timestep
+   do i=0,nlev
+      psi(i) = cm0**gen_p * tke(i)**gen_m * L(i)**gen_n
    end do
 
-! for Neumann boundary conditions set the boundary fluxes preliminary to zero
+!  compute RHS
+   do i=1,nlev-1
+
+!     compute production terms in psi-equation
+      PsiOverTke  = psi(i)/tke(i)
+      prod        = cpsi1*PsiOverTke*P(i)
+      buoyan      =       PsiOverTke*B(i)
+      diss        = cpsi2*PsiOverTke*eps(i)
+
+!     compute positive and negative parts of RHS
+      prod_pos    =            max(prod  ,_ZERO_)
+      buoyan_pos  =  cpsi3plus*max(buoyan,_ZERO_)
+
+      prod_neg    =             min(prod  ,_ZERO_)
+      buoyan_neg  =  cpsi3minus*min(buoyan,_ZERO_)
+
+!     compose source terms
+      Qsour(i) =   prod_pos + buoyan_pos
+      Lsour(i) =  (prod_neg + buoyan_neg - diss)/psi(i)
+
+   end do
+
+
+!  TKE and position for upper BC
    if (psi_ubc.eq.Neumann) then
-      avh(N)=0
-   end if
+!     tke at center "nlev"
+      ki = tke(nlev-1)
 
-   if (psi_lbc.eq.Neumann) then
-      avh(1)=0
-   end if
-
-! construct the variable psi at the old timestep
-   do i=0,N
-      psi(i) = cm0**gen_p * tkeo(i)**gen_m * L(i)**gen_n 
-   end do
-
-! prepare the production terms
-   do i=N-1,1,-1
-
-      if (B(i).gt.0) then
-         cpsi3=cpsi3plus 
-      else
-         cpsi3=cpsi3minus 
-      end if
-
-      prod   = cpsi1*psi(i)/tkeo(i)*P(i)
-      buoyan = cpsi3*psi(i)/tkeo(i)*B(i)
-      diss   = cpsi2*psi(i)/tkeo(i)*eps(i)
-
-      if (prod+buoyan.gt.0) then
-         pplus(i)  = prod+buoyan
-         pminus(i) = diss
-      else
-         pplus(i)  = prod
-         pminus(i) = diss-buoyan
-      end if
-   end do
-
-! construct the matrix
-   do i=1,N-1
-      au(i) = -2.*dt*avh(i)/(h(i)+h(i+1))/h(i)
-      cu(i) = -2.*dt*avh(i+1)/(h(i)+h(i+1))/h(i+1)
-      bu(i) =  1.-au(i)-cu(i)+pminus(i)*dt/psi(i)
-      du(i) = (1+pplus(i)*dt/psi(i))*psi(i)
-   end do
-
-   
-! impose upper boundary conditions
-   if (psi_ubc.eq.Neumann) then
-      ! value of k at the top cell
-      ki      = 0.5*(tke(N-1)+tke(N))
-      ! compute the BC
-      bc_tmp  = psi_bc(Neumann,ubc_type,0.5*h(N),ki,z0s,u_taus)
-      ! insert the BC into system
-      du(N-1) = du(N-1)+bc_tmp*dt/(0.5*(h(N)+h(N-1)))
+!     flux at center "nlev"
+      pos_bc = 0.5*h(nlev)
    else
-      ! prepare matrix 
-      bu(N-1) = 1.
-      au(N-1) = 0.
-      ! value of k at the top cell
-      ki      = tke(N-1)
-      ! compute the BC
-      bc_tmp  = psi_bc(Dirichlet,ubc_type,h(N),ki,z0s,u_taus)
-      ! insert the BC into system
-      du(N-1) = bc_tmp
+!     tke at face "nlev-1"
+      ki = tke(nlev-1)
+
+!     value at face "nlev-1"
+      pos_bc = h(nlev)
    end if
 
-! impose lower boundary conditions
+!  obtain BC for upper boundary of type "ubc_type"
+   DiffPsiup  = psi_bc(psi_ubc,ubc_type,pos_bc,ki,z0s,u_taus)
+
+
+!  TKE and position for lower BC
    if (psi_lbc.eq.Neumann) then
-      ! value of k at the bottom cell
-      ki     = 0.5*(tke(1)+tke(2))
-      ! compute the BC
-      bc_tmp  = psi_bc(Neumann,lbc_type,0.5*h(1),ki,z0b,u_taub)
-      ! insert the BC into system
-      du(1)   = du(1)+bc_tmp*dt/(0.5*(h(1)+h(2)))
+!     tke at center "1"
+      ki = tke(1)
+
+!     flux at center "1"
+      pos_bc = 0.5*h(1)
    else
-      ! prepare matrix
-      cu(1)   = 0.
-      bu(1)   = 1.
- 
-      ! value of k at the bottom cell
-      ki      = tke(1)
-      ! compute the BC
-      bc_tmp  = psi_bc(Dirichlet,lbc_type,h(1),ki,z0b,u_taub)
-      ! insert the BC into system
-      du(1)   = bc_tmp
+!     tke at face "1"
+      ki = tke(1)
+
+!     value at face "1"
+      pos_bc = h(1)
    end if
 
-   ! solve the system
-   call tridiagonal(N,1,N-1,psi)
-
-   !overwrite the uppermost value
-   psi(N)  = psi_bc(Dirichlet,ubc_type,z0s,tke(N),z0s,u_taus)
-   !overwrite the lowest value
-   psi(0)  = psi_bc(Dirichlet,lbc_type,z0b,tke(0),z0b,u_taub)
+!  obtain BC for lower boundary of type "lbc_type"
+   DiffPsidw  = psi_bc(psi_lbc,lbc_type,pos_bc,ki,z0b,u_taub)
 
 
+!  do diffusion step
+   call diff_face(nlev,dt,cnpar,h,psi_ubc,psi_lbc,                          &
+                  DiffPsiup,DiffPsidw,avh,Lsour,Qsour,psi)
 
-! finish
-   do i=0,N
 
-!     recover the length scale and the dissipation rate
-      L(i)=( psi(i) * cm0**(-gen_p) * tke(i)**(-gen_m) )**(1./gen_n)
-      eps(i)=cde*sqrt(tke(i)*tke(i)*tke(i))/L(i)
-      
-      ! substitute minimum value
-      if ((NN(i).gt.0).and.(length_lim)) then
-         epslim = cde/sqrt(2.)/galp*tke(i)*sqrt(NN(i))
-      else
-         epslim = eps_min
-      endif
+!  fill top and bottom value with something nice
+!  (only for output)
+   psi(nlev)  = psi_bc(Dirichlet,ubc_type,z0s,tke(nlev),z0s,u_taus)
+   psi(0   )  = psi_bc(Dirichlet,lbc_type,z0b,tke(0   ),z0b,u_taub)
 
-      if (eps(i).lt.epslim) then
-         eps(i) = epslim
-           L(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/epslim
-      endif
+   do i=0,nlev
+!     recover dissipation rate from k and psi
+      eps(i)=cm0**exp1 * tke(i)**exp2 * psi(i)**exp3
+
+!     clip at eps_min
+      eps(i) = max(eps(i),eps_min)
+
+!     compute dissipative scale
+      L(i)=cde*sqrt(tke(i)*tke(i)*tke(i))/eps(i)
    enddo
+
+!  limit dissipation rate under stable stratification,
+!  see Galperin et al. (1988)
+   if (length_lim) then
+      do i=0,nlev
+
+ !       look for N^2 > 0
+         NN_pos = 0.5*( NN(i) + abs( NN(i) ) )
+
+!        compute limit
+         epslim = cde/sqrt(2.)/galp*tke(i)*sqrt(NN_pos)
+
+!        clip at limit
+         eps(i) = max(eps(i),epslim)
+
+!        re-compute dissipative scale
+         L(i) = cde*sqrt(tke(i)*tke(i)*tke(i))/eps(i)
+
+      end do
+   endif
 
    return
    end subroutine genericeq
@@ -294,4 +306,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

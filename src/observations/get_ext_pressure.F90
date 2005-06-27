@@ -1,4 +1,4 @@
-!$Id: get_ext_pressure.F90,v 1.5 2003-03-28 09:20:35 kbk Exp $
+!$Id: get_ext_pressure.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -11,19 +11,19 @@
 ! !DESCRIPTION:
 !  This routine will provide the external pressure-gradient,
 !  either from analytical expressions or read-in from a file.
-!  The subroutine is called in {\tt get\_all\_obs()} 
+!  The subroutine is called in {\tt get\_all\_obs()}
 !  as part of the main integration loop.
-!  In case of observations from file the temporal interpolation is 
+!  In case of observations from file the temporal interpolation is
 !  done in this routine.
 
 !
 ! !USES:
    use time,         only: time_diff,julian_day,fsecs
-   use observations, only: read_obs 
-   use observations, only: pi,h_press,dpdx,dpdy 
-   use observations, only: AmpMu,AmpMv,PhaseMu,PhaseMv,PeriodM 
+   use observations, only: read_obs
+   use observations, only: pi,h_press,dpdx,dpdy
+   use observations, only: AmpMu,AmpMv,PhaseMu,PhaseMv,PeriodM
    use observations, only: AmpSu,AmpSv,PhaseSu,PhaseSv,PeriodS
-   use observations, only: PressConstU,PressConstV 
+   use observations, only: PressConstU,PressConstV
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -33,7 +33,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_ext_pressure.F90,v $
-!  Revision 1.5  2003-03-28 09:20:35  kbk
+!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  modified + removed traling blanks
+!
+!  Revision 1.5  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/28 09:02:09  kbk
@@ -75,12 +78,12 @@
                 + PressConstU
          dpdy = AmpMv*sin(2*pi*(fsecs-PhaseMv)/PeriodM)    &
                 + AmpSv*sin(2*pi*(fsecs-PhaseSv)/PeriodS)    &
-                + PressConstV 
+                + PressConstV
 !         STDERR 'get_ext_press(): Something needs to be done here - kbk'
 !         stop 'KBK'
       case(2)                                    ! from file
 !        This part initialises and reads in new values if necessary.
-         if(time_diff(jul2,secs2,jul,secs) .lt. 0) then 
+         if(time_diff(jul2,secs2,jul,secs) .lt. 0) then
             do
                jul1 = jul2
                secs1 = secs2
@@ -109,4 +112,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
