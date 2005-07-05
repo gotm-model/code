@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.8 2004-01-27 08:31:00 lars Exp $
+!$Id: turbulence.F90,v 1.8.2.1 2005-07-05 17:16:37 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,7 +18,7 @@
 !
 !
 ! !USES:
-   use meanflow, only : z0b,z0s
+!HB   use meanflow, only : z0b,z0s
    IMPLICIT NONE
 
 !  default: all is private.
@@ -194,7 +194,10 @@
 
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.8  2004-01-27 08:31:00  lars
+!  Revision 1.8.2.1  2005-07-05 17:16:37  hb
+!  turbulence module MUST NOT use meanflow module
+!
+!  Revision 1.8  2004/01/27 08:31:00  lars
 !  support for gen. stability function
 !
 !  Revision 1.7  2003/03/28 09:20:35  kbk
@@ -1033,7 +1036,7 @@
 ! flow, see \cite{Umlaufetal2003}.
 ! 
 ! !USES:
-   use meanflow, only:       depth
+!HB   use meanflow, only:       depth
    IMPLICIT NONE
 !
 ! !REVISION HISTORY:
@@ -1073,9 +1076,12 @@
       ! Slope at the surface computed from the analytical profile
       ! of Robert and Ouellet (1987) (see algebraiclength.F90)
 
-      gen_l     = kappa*( (depth+z0b)/depth/(2.*sqrt(z0s/depth)) &
-                         - sqrt(z0s/depth) )  
-      gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
+!HB      gen_l     = kappa*( (depth+z0b)/depth/(2.*sqrt(z0s/depth)) &
+!HB                         - sqrt(z0s/depth) )  
+!HB      gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
+
+         gen_l    =-999.
+         gen_alpha=-999.
       
    case(Blackadar)
       
@@ -1329,8 +1335,8 @@
          LEVEL3 'in shear-free turbulence,        cmsf =', cmsf
          LEVEL2 ' '
          LEVEL3 'At the surface:'
-         LEVEL3 'spatial decay rate (no shear), alpha =', gen_alpha
-         LEVEL3 'length-scale slope (no shear),     L =', gen_l
+         LEVEL3 'spatial decay rate (no shear), alpha = not computed'
+         LEVEL3 'length-scale slope (no shear),     L = not computed'
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 ' '
       case(Blackadar)
