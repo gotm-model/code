@@ -1,16 +1,16 @@
-!$Id: ode_solvers.F90,v 1.5 2004-07-30 09:22:20 hb Exp $
+!$Id: ode_solvers.F90,v 1.5.2.1 2005-07-05 17:12:28 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
 ! !ROUTINE: General ODE solver
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine ode_solver(solver,numc,nlev,dt,h,cc,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -48,6 +48,10 @@
          call modified_patankar_2(dt,numc,nlev,cc,h,t)
       case (9)
          call modified_patankar_4(dt,numc,nlev,cc,h,t)
+      case (10)
+         call emp_1(dt,numc,nlev,cc,h,t)
+      case (11)
+         call emp_2(dt,numc,nlev,cc,h,t)
       case default
          stop "bio: no valid solver method specified in bio.inp !"
    end select
@@ -61,12 +65,12 @@
 !
 ! !IROUTINE: Euler-forward scheme for geobiochemical models
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine euler_forward(dt,numc,nlev,cc,h,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -112,12 +116,12 @@
 !
 ! !IROUTINE: Second-order Runge-Kutta scheme for geobiochemical models
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine runge_kutta_2(dt,numc,nlev,cc,h,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -175,12 +179,12 @@
 !
 ! !IROUTINE: Fourth-order Runge-Kutta scheme for geobiochemical models
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine runge_kutta_4(dt,numc,nlev,cc,h,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -263,12 +267,12 @@
 !
 ! !IROUTINE: Patankar scheme for geobiochemical models
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine patankar(dt,numc,nlev,cc,h,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -315,12 +319,12 @@
 ! !IROUTINE: Patankar-Runge-Kutta (2nd-order) scheme for geobiochemical
 !  models
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine patankar_runge_kutta_2(dt,numc,nlev,cc,h,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -381,12 +385,12 @@
 ! !IROUTINE: Patankar-Runge-Kutta (4th-order) scheme for geobiochemical
 !  models
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine patankar_runge_kutta_4(dt,numc,nlev,cc,h,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -481,12 +485,12 @@
 !
 ! !IROUTINE: Modified Patankar scheme for geobiochemical models
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine modified_patankar(dt,numc,nlev,cc,h,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -537,12 +541,12 @@
 ! !IROUTINE: Modified Patankar-Runge-Kutta (2nd-order) scheme for
 !  geobiochemical models
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine modified_patankar_2(dt,numc,nlev,cc,h,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -614,12 +618,12 @@
 ! !IROUTINE: Modified Patankar-Runge-Kutta (4th-order) scheme for
 !  geobiochemical models
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine modified_patankar_4(dt,numc,nlev,cc,h,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -722,14 +726,230 @@
 !-----------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: First-order extended modified Patankar scheme for
+!  geobiochemical models. Submitted to Applied Numerical Mathematics
+!  (2005), authors: Bruggeman, Burchard, Kooi, Sommeijer.
+!
+! !INTERFACE:
+   subroutine emp_1(dt,numc,nlev,cc,h,t)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: dt
+   integer, intent(in)                 :: numc,nlev
+   REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
+!
+! !INPUT/OUTPUT PARAMETER:
+  REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
+!
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+  logical  :: first
+  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
+  integer  :: ci
+  REALTYPE :: pi, derivative(1:numc)
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   first=.true.
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
+
+   do ci=1,nlev
+      derivative(:) = sum(pp(:,:,ci),2)-sum(dd(:,:,ci),2)
+      call findpi_bisection(numc, cc(:,ci), derivative(:), dt, 1.d-9, pi)
+      cc(:,ci) = cc(:,ci) + dt*derivative(:)*pi
+   end do
+
+   return
+   end subroutine emp_1
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Second-order extended modified Patankar scheme for geobiochemical
+! models. Submitted to Applied Numerical Mathematics (2005),
+! authors: Bruggeman, Burchard, Kooi, Sommeijer.
+!
+! !INTERFACE:
+   subroutine emp_2(dt,numc,nlev,cc,h,t)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: dt
+   integer, intent(in)                 :: numc,nlev
+   REALTYPE, intent(in)                :: h(0:nlev)
+   REALTYPE, intent(in)                :: t(0:nlev)
+!
+! !INPUT/OUTPUT PARAMETER:
+  REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+  logical  :: first
+  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
+  integer  :: i,ci
+  REALTYPE :: pi, rhs(1:numc,0:nlev), cc_med(1:numc,0:nlev)
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   first=.true.
+
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
+
+   do ci=1,nlev
+      rhs(:,ci) = sum(pp(:,:,ci),2) - sum(dd(:,:,ci),2)
+      call findpi_bisection(numc, cc(:,ci), rhs(:,ci), dt, 1.d-9, pi)
+      cc_med(:,ci) = cc(:,ci) + dt*rhs(:,ci)*pi
+   end do
+
+   call process_model(first,numc,nlev,cc,pp,dd,h,t)
+
+   do ci=1,nlev
+      rhs(:,ci) = 0.5 * (rhs(:,ci) + sum(pp(:,:,ci),2) - sum(dd(:,:,ci),2))
+
+      ! Correct for the state variables that will be included in 'pi'.
+      do i=1,numc
+         if (rhs(i,ci) .lt. 0.) rhs(:,ci) = rhs(:,ci) * cc(i,ci)/cc_med(i,ci)
+      end do
+
+      call findpi_bisection(numc, cc(:,ci), rhs(:,ci), dt, 1.d-9, pi)
+
+      cc(:,ci) = cc(:,ci) + dt*rhs(:,ci)*pi
+   end do ! ci (z-levels)
+
+   return
+   end subroutine emp_2
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Finds the Extended Modified Patankar product term 'pi'
+!  with the bisection technique.
+!
+! !INTERFACE:
+   subroutine findpi_bisection(numc, cc, derivative, dt, accuracy, pi)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   implicit none
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)   :: numc
+   REALTYPE, intent(in)  :: cc(1:numc), derivative(1:numc)
+   REALTYPE, intent(in)  :: dt, accuracy
+!
+! !OUTPUT PARAMETER:
+   REALTYPE, intent(out) :: pi
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   REALTYPE :: pileft, piright, fnow
+   REALTYPE :: relderivative(1:numc)
+   integer  :: iter, i, potnegcount
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+! Sort the supplied derivatives (find out which are negative).
+   potnegcount = 0
+   piright = 1.
+   do i=1,numc
+
+      if (derivative(i).lt.0.) then
+!        State variable could become zero or less; include it in the
+!        J set of the EMP scheme.
+         if (cc(i).eq.0.) write (*,*) "Error: state variable ",i," is zero and has negative derivative!"
+         potnegcount = potnegcount+1
+         relderivative(potnegcount) = dt*derivative(i)/cc(i)
+
+!        Derivative is negative, and therefore places an upper bound on pi.
+         if (-1./relderivative(potnegcount).lt.piright) piright = -1./relderivative(potnegcount)
+     end if
+
+   end do
+
+   if (potnegcount.eq.0) then
+!     All derivatives are positive, just do Euler.
+      pi = 1.0
+      return
+   end if
+
+   pileft = 0.      ! polynomial(0) = 1
+
+!  Determine maximum number of bisection iterations from
+!  requested accuracy.
+!  maxiter = -int(ceiling(dlog10(accuracy)/dlog10(2.D0)))
+
+   do iter=1,20
+!     New pi to test is middle of current pi-domain.
+      pi = 0.5*(piright+pileft)
+
+!     Calculate polynomial value.
+      fnow = 1.
+      do i=1,potnegcount
+         fnow = fnow*(1.+relderivative(i)*pi)
+      end do
+
+      if (fnow>pi) then
+!        Polynomial(pi)>0; we have a new left bound for pi.
+         pileft = pi
+      elseif (fnow<pi) then
+!       Polynomial(pi)<0; we have a new right bound for pi.
+        piright = pi
+      else
+!       Freak occurrence: polynomial(pi)=0, we happened to pinpoint
+!       the exact pi.
+        exit
+      end if
+!     Check if we now pi accurately enough (accuracy refers to the
+!     number of decimals we know).
+      if ((piright-pileft)/pi<accuracy) exit
+   end do
+
+!  Low pi values imply very large negative relative derivative. This happens
+!  for stiff systems (or very high delta_t), and for non-positive systems.
+!  Then EMP is not suitable (it will stall state variable values), so warn user.
+   if (pi.lt.1.d-4) then
+     write (*,*) "Warning: small pi=",pi," in Extended Modified Patankar slows down system!"
+!    write (*,*) "relative derivatives: ",derivative(:)*dt/cc(:)
+!    write (*,*) "You system may be stiff or non-positive, or you time step is too large."
+!    stop "ode_solvers::findpi_bisection"
+   end if
+
+   return
+
+   end subroutine findpi_bisection
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: Matrix solver
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine matrix(n,a,r,c)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
