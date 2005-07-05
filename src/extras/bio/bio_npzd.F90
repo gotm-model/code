@@ -1,4 +1,4 @@
-!$Id: bio_npzd.F90,v 1.6 2004-07-30 09:22:20 hb Exp $
+!$Id: bio_npzd.F90,v 1.6.2.1 2005-07-05 20:25:35 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_npzd.F90,v $
-!  Revision 1.6  2004-07-30 09:22:20  hb
+!  Revision 1.6.2.1  2005-07-05 20:25:35  hb
+!  added control over par calculation
+!
+!  Revision 1.6  2004/07/30 09:22:20  hb
 !  use bio_var in specific bio models - simpliefied internal interface
 !
 !  Revision 1.5  2004/07/28 11:34:29  hb
@@ -76,6 +79,8 @@
    REALTYPE                  :: rpdl=1.157407e-06
    REALTYPE                  :: rpd
    REALTYPE                  :: rzd=2.314814e-07
+   REALTYPE                  :: aa=0.62
+   REALTYPE                  :: g2=20.0
    integer                   :: out_unit
    integer, parameter        :: n=1,p=2,z=3,d=4
 !EOP
@@ -110,7 +115,7 @@
    namelist /bio_npzd_nml/ numc, &
                       N_initial,P_initial,Z_initial,D_initial,   &
                       P0,Z0,w_P,w_D,kc,I_min,rmax,gmax,Iv,alpha,rpn,  &
-                      rzn,rdn,rpdu,rpdl,rzd
+                      rzn,rdn,rpdu,rpdl,rzd,aa,g2
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -333,7 +338,7 @@
    do i=nlev,1,-1
       add=add+0.5*h(i)*(cc(d,i)+cc(p,i)+p0)
       zz=zz+0.5*h(i)
-      par(i)=0.25*(rad(i)+rad(i-1))*exp(-kc*add)
+      par(i)=rad(nlev)*(1.-aa)*exp(-zz/g2)*exp(-kc*add)
       add=add+0.5*h(i)*(cc(d,i)+cc(p,i)+p0)
       zz=zz+0.5*h(i)
       if (bioshade_feedback) bioshade(i)=exp(-kc*add)
