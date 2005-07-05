@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.12 2005-06-27 13:44:07 kbk Exp $
+!$Id: temperature.F90,v 1.11.2.1 2005-07-05 17:21:39 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,7 +6,7 @@
 ! !ROUTINE: The temperature equation \label{sec:temperature}
 !
 ! !INTERFACE:
-   subroutine temperature(nlev,dt,cnpar,I_0,heat,nuh,gamh,rad)
+   subroutine temperature(nlev,dt,cnpar,I_0,heat,nuh,rad)
 !
 ! !DESCRIPTION:
 ! This subroutine computes the balance of heat in the form
@@ -27,14 +27,15 @@
 !    {\cal D}_\Theta
 !    = \frstder{z}
 !     \left(
-!        \left( \nu^\Theta_t + \nu^\Theta \right) \partder{\Theta}{z}
+!        \left( \nu'_t + \nu^\Theta \right) \partder{\Theta}{z}
 !               - \tilde{\Gamma}_\Theta
 !        \right)
 !    \point
 !  \end{equation}
-!  In this equation, $\nu^\Theta_t$ and $\nu^\Theta$ are the turbulent and
+!  In this equation, $\nu'_t$ and $\nu^\Theta$ are the turbulent and
 !  molecular diffusivities of heat, respectively, and $\tilde{\Gamma}_\Theta$
-!  denotes the non-local flux of heat, see \sect{sec:turbulenceIntro}.
+!  denotes the so-called counter-gradient flux of heat, see
+!  \sect{sec:turbulenceIntro}.
 !
 !  Horizontal advection is optionally
 !  included  (see {\tt obs.inp}) by means of prescribed
@@ -59,55 +60,33 @@
 !  Diffusion is numerically treated implicitly, see equations (\ref{sigmafirst})-
 !  (\ref{sigmalast}).
 !  The tri-diagonal matrix is solved then by a simplified Gauss elimination.
-!  Vertical advection is included, see \sect{sec:advectionMean}.
+!  Vertical advection is included for accounting for adaptive grids,
+!  see {\tt adaptivegrid.F90}.
 !
 ! !USES:
-   use meanflow,     only: avmolt,rho_0,cp
-   use meanflow,     only: h,u,v,w,T,avh
-   use meanflow,     only: bioshade
-   use observations, only: dtdx,dtdy,t_adv
-   use observations, only: w_adv_discr,w_adv_method
+   use meanflow, only: avmolt,rho_0,cp
+   use meanflow, only: h,ho,u,v,T,avh,w,grid_method,w_grid
+   use meanflow, only: bioshade
+   use observations, only: dtdx,dtdy,t_adv,w_adv,w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau
    use observations, only: A,g1,g2
-   use util,         only: Dirichlet,Neumann
-   use util,         only: oneSided,zeroDivergence
-
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-
-!  number of vertical layers
    integer, intent(in)                 :: nlev
-
-!  time step (s)
-   REALTYPE, intent(in)                :: dt
-
-!  numerical "implicitness" parameter
-   REALTYPE, intent(in)                :: cnpar
-
-!  surface short waves radiation  (W/m^2)
-   REALTYPE, intent(in)                :: I_0
-
-!  surface heat flux (W/m^2)
-!  (negative for heat loss)
-   REALTYPE, intent(in)                :: heat
-
-!  diffusivity of heat (m^2/s)
+   REALTYPE, intent(in)                :: dt,cnpar
+   REALTYPE, intent(in)                :: I_0,heat
    REALTYPE, intent(in)                :: nuh(0:nlev)
-
-!  non-local heat flux (Km/s)
-   REALTYPE, intent(in)                :: gamh(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
-!  shortwave radiation profile (W/m^2)
    REALTYPE                            :: rad(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.12  2005-06-27 13:44:07  kbk
-!  modified + removed traling blanks
+!  Revision 1.11.2.1  2005-07-05 17:21:39  hb
+!  bioshading only on visible part of spectrum
 !
 !  Revision 1.11  2004/08/18 12:31:52  lars
 !  updated documentation
@@ -142,78 +121,44 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: i
-   integer                   :: DiffBcup,DiffBcdw
-   integer                   :: AdvBcup,AdvBcdw
-   REALTYPE                  :: DiffTup,DiffTdw
-   REALTYPE                  :: AdvTup,AdvTdw
-   REALTYPE                  :: Lsour(0:nlev)
+   integer                   :: i,Bcup,Bcdw,flag
    REALTYPE                  :: Qsour(0:nlev)
-   REALTYPE                  :: z
+   REALTYPE                  :: Tup,Tdw,z
+   logical                   :: surf_flux,bott_flux
 !
 !-----------------------------------------------------------------------
 !BOC
-!
-!  set boundary conditions
-   DiffBcup       = Neumann
-   DiffBcdw       = Neumann
-   DiffTup        = heat/(rho_0*cp)
-   DiffTdw        = _ZERO_
+!  hard coding of parameters, to be included into namelist for gotm2.0
+   Bcup=1!BC Neumann
+   Tup=-heat/(rho_0*cp)!Heat flux (positive upward)
+   Bcdw=1!BC Neumann
+   Tdw=0.!No flux
+   surf_flux=.false.
+   bott_flux=.false.
 
-   AdvBcup        = zeroDivergence
-   AdvBcdw        = oneSided
-   AdvTup         = _ZERO_
-   AdvTdw         = _ZERO_
-
-!  initalize radiation
-   rad(nlev)  = I_0
-   z          =_ZERO_
-
+   rad(nlev)=I_0
+   z=_ZERO_
    do i=nlev-1,0,-1
-
       z=z+h(i+1)
-
-!     compute short wave radiation
-      rad(i)=I_0*(A*exp(-z/g1)+(1-A)*exp(-z/g2))
-
-!     compute total diffusivity
+      rad(i)=I_0*(A*exp(-z/g1)+(1.-A)*exp(-z/g2)*bioshade(i+1))
       avh(i)=nuh(i)+avmolT
    end do
 
-
-!  add contributions to source term
-   Lsour=_ZERO_
-   Qsour=_ZERO_
-
-   Qsour(nlev)=(I_0-rad(nlev-1)*bioshade(nlev))/(rho_0*cp*h(nlev))
+   Qsour(nlev)=(I_0-rad(nlev-1))/(rho_0*cp*h(nlev))
    do i=1,nlev-1
-!     from radiation
-      Qsour(i) = (rad(i)*bioshade(i+1) - rad(i-1)*bioshade(i))/(rho_0*cp*h(i))
-   enddo
-
-   do i=1,nlev
-!     from non-local turbulence
-#ifdef NONLOCAL
-      Qsour(i) = Qsour(i) - ( gamh(i) - gamh(i-1) )/h(i)
-#endif
+      Qsour(i)=(rad(i)-rad(i-1))/(rho_0*cp*h(i))
    end do
-
-!  ... and from lateral advection
    if (t_adv) then
       do i=1,nlev
-         Qsour(i) = Qsour(i) - u(i)*dtdx(i) - v(i)*dtdy(i)
+         Qsour(i)=Qsour(i)-u(i)*dtdx(i)-v(i)*dtdy(i)
       end do
    end if
 
-!  do advection step
-   if (w_adv_method.ne.0) then
-      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                          AdvTup,AdvTdw,w_adv_discr,T)
-   end if
+   flag=1  ! divergence correction for vertical advection
 
-!  do diffusion step
-   call diff_center(nlev,dt,cnpar,h,DiffBcup,DiffBcdw,                  &
-                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
+   call Yevol(nlev,Bcup,Bcdw,dt,cnpar,Tup,Tdw,TRelaxTau,h,ho,avh,w, &
+              Qsour,tprof,w_adv_method,w_adv_discr,T,surf_flux,     &
+              bott_flux,grid_method,w_grid,flag)
 
    return
    end subroutine temperature
