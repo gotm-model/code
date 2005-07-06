@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.13 2005-07-06 14:41:14 kbk Exp $
+#$Id: Rules.make,v 1.14 2005-07-06 14:46:24 kbk Exp $
 
 SHELL   = /bin/sh
 
@@ -21,7 +21,7 @@ SEDIMENT=false
 SEAGRASS=false
 SEAGRASS=true
 BIO=false
-BIO=true
+#BIO=true
 
 FEATURES	=
 FEATURE_LIBS	=
