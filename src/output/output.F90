@@ -1,9 +1,9 @@
-!$Id: output.F90,v 1.6 2003-10-14 08:04:32 kbk Exp $
+!$Id: output.F90,v 1.7 2005-07-06 14:22:40 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: output -- saving the results
+! !MODULE: output --- saving the results
 !
 ! !INTERFACE:
    module output
@@ -19,7 +19,7 @@
    use asciiout
 #ifdef NETCDF_FMT
    use ncdfout, ONLY:  init_ncdf,do_ncdf_out,close_ncdf
-#endif 
+#endif
 
    IMPLICIT NONE
 !
@@ -30,7 +30,6 @@
    character(len=PATH_MAX)             :: out_dir='.'
    character(len=PATH_MAX)             :: out_fn='gotm'
    integer                             :: nsave=1
-   logical                             :: variances=.false.
    logical                             :: diagnostics=.false.
    integer                             :: mld_method=1
    REALTYPE                            :: diff_k=1.e-5
@@ -42,7 +41,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: output.F90,v $
-!  Revision 1.6  2003-10-14 08:04:32  kbk
+!  Revision 1.7  2005-07-06 14:22:40  kbk
+!  updated documentation - saves KPP related variables
+!
+!  Revision 1.6  2003/10/14 08:04:32  kbk
 !  time is now stored as real
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk
@@ -84,7 +86,7 @@
    subroutine init_output(title,nlev,latitude,longitude)
 !
 ! !DESCRIPTION:
-!  Calls the initialization routine based on output format selected by 
+!  Calls the initialization routine based on output format selected by
 !  the user.
 !
 ! !USES:
@@ -134,7 +136,7 @@
          FATAL 'It is not supported in this version of GOTM.'
          FATAL 'You have to download a version which support NetCDF from www.gotm.net'
          FATAL 'Thank you for using GOTM - The GOTM team.'
-         stop 'init_output' 
+         stop 'init_output'
 #endif
       case default
         LEVEL1 'Fatal error: A non valid output format has been chosen'
@@ -209,10 +211,6 @@
 !  on the output format.
 !
 ! !USES:
-#ifdef HOWARTH
-   use meanflow,     only: u,v,h
-   use observations, only: uprof,vprof
-#endif
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -228,17 +226,13 @@
 !BOC
    if (write_results) then
 
-      if(variances) then
-         call do_variances(nlev)
-      end if
-
 !kbk     call write_time_string(julianday,secondsofday,ts)
-!kbk     call ss_nn_obs 
+!kbk     call ss_nn_obs
       LEVEL2 'Saving....',ts
       secs = n*timestep
       select case (out_fmt)
          case (ASCII)
-            call do_ascii_out(nlev,ts,variances,ascii_unit)
+            call do_ascii_out(nlev,ts,ascii_unit)
 #ifdef NETCDF_FMT
          case (NETCDF, GRADS)
             call do_ncdf_out(nlev,secs)
@@ -302,73 +296,6 @@
    end subroutine close_output
 !EOC
 
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Calculate variances of turbulent quantities 
-!
-! !INTERFACE:
-   subroutine do_variances(nlev)
-!
-! !DESCRIPTION:
-!  This subroutine diagnostically computes variances of $u'$, 
-!  $v'$, $w'$, $\theta'$ for output. Presently, the Algebraic
-!  Stress Model of \cite{Canutoetal2001a} is used.
-!
-! !USES:
-   use meanflow,   only: depth0,h,u,v,t,B
-   use turbulence, only: tke,eps,num,nuh,uu,vv,ww,tt,chi
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
-!
-! !REVISION HISTORY:
-!  Original author(s): Hans Burchard
-!
-!  See output module
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer                   :: i
-   REALTYPE                  :: dzu2,dzv2,dzt2
-   REALTYPE, parameter       :: L1=0.1070
-   REALTYPE, parameter       :: L2=0.0032
-   REALTYPE, parameter       :: L3=0.0864
-   REALTYPE, parameter       :: L4=0.1200
-   REALTYPE, parameter       :: L5=11.9000
-   REALTYPE, parameter       :: L6=0.4000
-   REALTYPE, parameter       :: L7=0.0000
-   REALTYPE, parameter       :: L8=0.4800
-   REALTYPE                  :: zz(0:nlev)
-!
-!-----------------------------------------------------------------------
-!BOC
-   do i=1,nlev-1
-      dzu2=( (u(i+1)-u(i)) / (0.5*(h(i+1)+h(i))) )**2
-      dzv2=( (v(i+1)-v(i)) / (0.5*(h(i+1)+h(i))) )**2
-      dzt2=( (t(i+1)-t(i)) / (0.5*(h(i+1)+h(i))) )**2
-      uu(i)=2./3.*tke(i)+2./3.*tke(i)/eps(i)*(                      &
-            num(i)*((L2+3*L3)*dzu2-2*L2*dzv2)-2*L4*B(i))
-      vv(i)=2./3.*tke(i)+2./3.*tke(i)/eps(i)*(                      &
-            num(i)*((L2+3*L3)*dzv2-2*L2*dzu2)-2*L4*B(i))
-      ww(i)=2./3.*tke(i)+2./3.*tke(i)/eps(i)*(                      &
-            num(i)*((L2-3*L3)*(dzu2+dzv2))+4*L4*B(i))
-      tt(i)=1.44*nuh(i)*tke(i)/eps(i)*dzt2
-      chi(i)=tt(i)*eps(i)/tke(i)*2./1.44
-      if (abs(uu(i)+vv(i)+ww(i)-2*tke(i)) .gt. 1.e-8) then
-         STDERR 'Velocity variances do not add up to 2k.'
-         STDERR 'Program aborted.'
-         STDERR i,uu(i),vv(i),ww(i)
-         STDERR tke(i),abs(uu(i)+vv(i)+ww(i)-2*tke(i))
-         stop
-      end if
-   end do
-
-   return
-   end subroutine do_variances
-!EOC
 
 !-----------------------------------------------------------------------
 !BOP
@@ -567,4 +494,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

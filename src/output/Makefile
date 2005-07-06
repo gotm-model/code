@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.3 2004-01-12 08:51:52 lars Exp $
+#$Id: Makefile,v 1.4 2005-07-06 14:22:40 kbk Exp $
 #
 # Makefile to build the the output library - liboutput.a
 #
@@ -7,7 +7,6 @@ include ../Rules.make
 
 LIB	= $(LIBDIR)/liboutput$(buildtype).a
 
-#DOCSRC	= output.F90 asciiout.F90 ncdfout.F90 gradsout.F90
 DOCSRC	= output.F90 asciiout.F90 ncdfout.F90
 
 
