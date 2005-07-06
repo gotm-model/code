@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.12 2004-01-12 08:08:34 lars Exp $
+#$Id: Rules.make,v 1.13 2005-07-06 14:41:14 kbk Exp $
 
 SHELL   = /bin/sh
 
@@ -17,7 +17,7 @@ DEFINES=
 NetCDF=false
 NetCDF=true
 SEDIMENT=false
-SEDIMENT=true
+#SEDIMENT=true
 SEAGRASS=false
 SEAGRASS=true
 BIO=false
