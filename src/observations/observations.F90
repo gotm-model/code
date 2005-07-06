@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.8 2004-07-30 09:26:01 hb Exp $
+!$Id: observations.F90,v 1.9 2005-07-06 16:20:14 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -8,18 +8,18 @@
 ! !INTERFACE:
    module observations
 !
-! !DESCRIPTION: 
+! !DESCRIPTION:
 !  This module provides the necessary subroutines for communicating
-!  `observations' to GOTM. 
-!  The module operates according to the general philosophy used in GOTM, 
-!  i.e.\ it provides {\tt init\_observ\-ations()} to be called in the overall 
-!  initialisation routine and {\tt get\_all\_obs()} to be called in the time 
+!  `observations' to GOTM.
+!  The module operates according to the general philosophy used in GOTM,
+!  i.e.\ it provides {\tt init\_observ\-ations()} to be called in the overall
+!  initialisation routine and {\tt get\_all\_obs()} to be called in the time
 !  loop to actually obtain the `observations'.
-!  In addition to these subroutines the module also provides two routines 
+!  In addition to these subroutines the module also provides two routines
 !  for reading scalar-type observations and profile-type observations.
-!  Each observation has a date stamp with the format {\tt yyyy-mm-dd hh:dd:mm}. 
-!  The module uses the {\tt time} module (see \sect{sec:time}) 
-!  to convert the time string to the 
+!  Each observation has a date stamp with the format {\tt yyyy-mm-dd hh:dd:mm}.
+!  The module uses the {\tt time} module (see \sect{sec:time})
+!  to convert the time string to the
 !  internal time representation of GOTM.
 !  Profiles are interpolated to the actual GOTM model grid.
 !  Free format is used for reading-in the actual data.
@@ -62,7 +62,7 @@
 !  sea surface elevation, sea surface gradients and height of velocity obs.
    REALTYPE, public          :: zeta=0.,dpdx=0.,dpdy=0.,h_press=0
 
-!  vertical advection velocity 
+!  vertical advection velocity
    REALTYPE, public          :: w_adv=0.,w_height
 
 !  Parameters for water classification - default Jerlov type I
@@ -77,8 +77,10 @@
 
 !  Salinity profile(s)
    integer, public           :: s_prof_method=0
+   integer, public           :: s_analyt_method=1
    character(LEN=PATH_MAX)   :: s_prof_file='sprof.dat'
    REALTYPE                  :: z_s1,s_1,z_s2,s_2
+   REALTYPE                  :: s_obs_NN
    REALTYPE                  :: SRelaxTauM=0.
    REALTYPE                  :: SRelaxTauS=0.
    REALTYPE                  :: SRelaxTauB=0.
@@ -87,8 +89,10 @@
 
 !  Temperature profile(s)
    integer, public           :: t_prof_method=0
+   integer, public           :: t_analyt_method=1
    character(LEN=PATH_MAX)   :: t_prof_file='tprof.dat'
    REALTYPE                  :: z_t1,t_1,z_t2,t_2
+   REALTYPE                  :: t_obs_NN
    REALTYPE                  :: TRelaxTauM=0.
    REALTYPE                  :: TRelaxTauS=0.
    REALTYPE                  :: TRelaxTauB=0.
@@ -119,8 +123,6 @@
    REALTYPE, public          :: const_dsdy=0.
    REALTYPE, public          :: const_dtdx=0.
    REALTYPE, public          :: const_dtdy=0.
-   REALTYPE                  :: const_idpdx=0.
-   REALTYPE                  :: const_idpdy=0.
    logical, public           :: s_adv=.false.
    logical, public           :: t_adv=.false.
 
@@ -175,15 +177,26 @@
    integer, parameter        :: vel_prof_unit=37
    integer, parameter        :: e_prof_unit=38
 
-
-
-
+!  pre-defined parameters
+   integer, parameter        :: READ_SUCCESS=1
+   integer, parameter        :: END_OF_FILE=-1
+   integer, parameter        :: READ_ERROR=-2
+   integer, parameter        :: NOTHING=0
+   integer, parameter        :: ANALYTICAL=1
+   integer, parameter        :: CONSTANT=1
+   integer, parameter        :: FROMFILE=2
+   integer, parameter        :: CONST_PROF=1
+   integer, parameter        :: TWO_LAYERS=2
+   integer, parameter        :: CONST_NN=3
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
-!  Revision 1.8  2004-07-30 09:26:01  hb
+!  Revision 1.9  2005-07-06 16:20:14  kbk
+!  updated documentation - added const_NNT and const_NNS
+!
+!  Revision 1.8  2004/07/30 09:26:01  hb
 !  Simple exponential light absorption added --> Wilfried Kuehn
 !
 !  Revision 1.7  2003/03/28 09:20:35  kbk
@@ -207,13 +220,6 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer, parameter        :: READ_SUCCESS=1
-   integer, parameter        :: END_OF_FILE=-1
-   integer, parameter        :: READ_ERROR=-2
-   integer, parameter        :: NOTHING=0
-   integer, parameter        :: ANALYTICAL=1
-   integer, parameter        :: CONSTANT=1
-   integer, parameter        :: FROMFILE=2
    character(len=72)         :: cbuf
 !
 !-----------------------------------------------------------------------
@@ -226,7 +232,8 @@
 ! !IROUTINE: Initialise the observation module
 !
 ! !INTERFACE:
-   subroutine init_observations(namlst,fn,julday,secs,depth,nlev,z,h)
+   subroutine init_observations(namlst,fn,julday,secs,                 &
+                                depth,nlev,z,h,gravity,rho_0)
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.inp}
@@ -234,7 +241,7 @@
 !  to the specifications in the different namelists.
 !  In this routine also memory is allocated to hold the 'observations'.
 !  Finally, all variables are initialised to sane values, either by
-!  reading from files, by prescribing constant values, or by using analytical 
+!  reading from files, by prescribing constant values, or by using analytical
 !  expressions.
 !
 ! !USES:
@@ -247,38 +254,52 @@
    REALTYPE, intent(in)                :: depth
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
+   REALTYPE, intent(in)                :: gravity,rho_0
 !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See observation module
-!
 !EOP
 !
 ! !LOCAL VARIABLES:
-   namelist /sprofile/ s_prof_method,z_s1,s_1,z_s2,s_2,s_prof_file, &
-                       SRelaxTauM,SRelaxTauB,SRelaxTauS,SRelaxBott,SRelaxSurf
-   namelist /tprofile/ t_prof_method,z_t1,t_1,z_t2,t_2,t_prof_file, &
-                       TRelaxTauM,TRelaxTauB,TRelaxTauS,TRelaxBott,TRelaxSurf
+   namelist /sprofile/                                          &
+            s_prof_method,s_analyt_method,                      &
+            z_s1,s_1,z_s2,s_2,s_prof_file,s_obs_NN,             &
+            SRelaxTauM,SRelaxTauB,SRelaxTauS,                   &
+            SRelaxBott,SRelaxSurf
+
+   namelist /tprofile/                                          &
+            t_prof_method,t_analyt_method,                      &
+            z_t1,t_1,z_t2,t_2,t_prof_file,t_obs_NN,             &
+            TRelaxTauM,TRelaxTauB,TRelaxTauS,                   &
+            TRelaxBott,TRelaxSurf
+
    namelist /ext_pressure/                                      &
             ext_press_method,PressMethod,ext_press_file,        &
             PressConstU,PressConstV,PressHeight,                &
             PeriodM,AmpMu,AmpMv,PhaseMu,PhaseMv,                &
             PeriodS,AmpSu,AmpSv,PhaseSu,PhaseSv
+
    namelist /int_pressure/                                      &
             int_press_method,int_press_file,                    &
             const_dsdx,const_dsdy,const_dtdx,const_dtdy,        &
-            const_idpdx,const_idpdy,s_adv,t_adv
+            s_adv,t_adv
+
    namelist /extinct/ extinct_method,extinct_file
+
    namelist /w_advspec/                                         &
-            w_adv_method,w_adv_file,w_adv0,w_adv_discr                      
+            w_adv_method,w_adv_file,w_adv0,w_adv_discr
+
    namelist /zetaspec/                                          &
             zeta_method,zeta_file,zeta_0,                       &
             period_1,amp_1,phase_1,period_2,amp_2,phase_2
+
    namelist /velprofile/ vel_prof_method,vel_prof_file,         &
             vel_relax_tau,vel_relax_ramp
+
    namelist /eprofile/ e_prof_method,e_obs_const,e_prof_file
+
    namelist /bprofile/ b_obs_surf,b_obs_NN,b_obs_sbf
 
    integer                   :: rc,i
@@ -351,21 +372,12 @@
 
    allocate(epsprof(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_observations: Error allocating (epsprof)'
-   epsprof = 0.
+   epsprof = _ZERO_
 
-!  Setting relaxation time profiles TRelaxTau and SRelaxTau for T and S
-!  SRelaxBott : height of bottom relaxation layer for S in meters
-!  SRelaxSurf : height of surface relaxation layer for S in meters
-!  SRelaxTauB : relaxation time in bottom relaxation layer for S in seconds
-!  SRelaxTauS : relaxation time in surface relaxation layer for S in seconds
-!  SRelaxTauM : relaxation time outside relaxation layers for S in seconds
-!  TRelaxBott : height of bottom relaxation layer for T in meters
-!  TRelaxTurf : height of surface relaxation layer for T in meters
-!  TRelaxTauB : relaxation time in bottom relaxation layer for T in seconds
-!  TRelaxTauS : relaxation time in surface relaxation layer for T in seconds
-!  TRelaxTauM : relaxation time outside relaxation layers for T in seconds
-   db=0.
+   db=_ZERO_
    ds=depth
+   SRelaxTau(0)=SRelaxTauB
+   TRelaxTau(0)=TRelaxTauB
    do i=1,nlev
       TRelaxTau(i)=TRelaxTauM
       SRelaxTau(i)=SRelaxTauM
@@ -400,9 +412,33 @@
 !  The salinity profile
    select case (s_prof_method)
       case (NOTHING)
-         sprof = 0.
+         sprof = _ZERO_
       case (ANALYTICAL)
-         call analytical_profile(nlev,z,z_s1,s_1,z_s2,s_2,sprof)
+
+         ! different ways to prescribe profiles analytically
+         select case (s_analyt_method)
+            case (CONST_PROF)
+               sprof = s_1
+            case (TWO_LAYERS)
+               call analytical_profile(nlev,z,z_s1,s_1,z_s2,s_2,sprof)
+            case (CONST_NN)
+
+               if (.not.((t_prof_method       .eq. ANALYTICAL) .and.      &
+                         (t_analyt_method .eq. CONST_PROF))   )  then
+                  LEVEL2 ''
+                  LEVEL2 '***************************************************'
+                  LEVEL2 'For salinity profiles with NN=const. you have to   '
+                  LEVEL2 'prescribe constant temperature.                    '
+                  LEVEL2 'Please correct obs.inp and re-run.                 '
+                  LEVEL2 'Program aborted.                                   '
+                  LEVEL2 '***************************************************'
+                  stop 'init_observations'
+               endif
+
+               call const_NNS(nlev,z,s_1,t_1,s_obs_NN,gravity,rho_0,sprof)
+            case default
+         end select
+
       case (FROMFILE)
          open(s_prof_unit,file=s_prof_file,status='unknown',err=101)
          LEVEL2 'Reading salinity profiles from:'
@@ -416,7 +452,31 @@
       case (NOTHING)
          tprof = 0.
       case (ANALYTICAL)
-         call analytical_profile(nlev,z,z_t1,t_1,z_t2,t_2,tprof)
+
+        ! different ways to prescribe profiles analytically
+         select case (t_analyt_method)
+         case (CONST_PROF)
+               tprof = t_1
+            case (TWO_LAYERS)
+               call analytical_profile(nlev,z,z_t1,t_1,z_t2,t_2,tprof)
+            case (CONST_NN)
+
+               if (.not.((s_prof_method       .eq. ANALYTICAL) .and.      &
+                         (s_analyt_method .eq. CONST_PROF))   )  then
+
+                  LEVEL2 ''
+                  LEVEL2 '***************************************************'
+                  LEVEL2 'For temperature profiles with NN=const you have to '
+                  LEVEL2 'prescribe constant salinity.                       '
+                  LEVEL2 'Please correct obs.inp and re-run.                 '
+                  LEVEL2 'Program aborted.                                   '
+                  LEVEL2 '***************************************************'
+                  stop 'init_observations'
+               endif
+
+               call const_NNT(nlev,z,t_1,s_1,t_obs_NN,gravity,rho_0,tprof)
+            case default
+         end select
       case (FROMFILE)
          open(t_prof_unit,file=t_prof_file,status='unknown',err=102)
          LEVEL2 'Reading temperature profiles from:'
@@ -442,8 +502,6 @@
          dsdy=const_dsdy
          dtdx=const_dtdx
          dtdy=const_dtdy
-         idpdx=const_idpdx
-         idpdy=const_idpdy
       case (FROMFILE)
          open(int_press_unit,file=int_press_file,status='unknown',err=104)
          LEVEL2 'Reading internal pressure from:'
@@ -473,11 +531,9 @@
          A=0.78;g1=1.40;g2=7.9
       case (7)
          A=0.7;g1=0.40;g2=8.0 ! Adolf Stips - Lago Maggiore
-      case (8)
-         A=1.0;g1=11.11;g2=8.0 ! Wilfried Kuehn - North Sea (g2 irrelevant)
       case default
    end select
-   
+
 
 !  The vertical advection velocity
    select case (w_adv_method)
@@ -569,7 +625,7 @@
    stop 'init_observations'
 
    return
-   end subroutine init_observations 
+   end subroutine init_observations
 !EOC
 
 !-----------------------------------------------------------------------
@@ -584,7 +640,7 @@
 !  During the time integration this subroutine is called each time step
 !  to update all 'observation'. The routine is basically a wrapper
 !  routine which calls the variable specific routines.
-!  The only input to this routine is the time (in internal GOTM 
+!  The only input to this routine is the time (in internal GOTM
 !  representation) and the vertical grid. It is up to each of the individual
 !  routines to use this information and to provide updated 'observations'.
 !
@@ -683,9 +739,9 @@
    read(cbuf(20:),*,ERR=100,END=110) (obs(i),i=1,N)
 
    return
-100 ierr=READ_ERROR 
+100 ierr=READ_ERROR
    return
-110 ierr=END_OF_FILE 
+110 ierr=END_OF_FILE
    return
 900 format(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)
    end subroutine read_obs
@@ -701,11 +757,11 @@
                             profiles,lines,ierr)
 !
 ! !DESCRIPTION:
-!  Similar to {\tt read\_obs()} but used for reading profiles instead of 
+!  Similar to {\tt read\_obs()} but used for reading profiles instead of
 !  scalar data.
 !  The data will be interpolated on the grid specified by nlev and z.
 !  The data can be read 'from the top' or 'from the bottom' depending on
-!  a flag in the actual file. 
+!  a flag in the actual file.
 !
 ! !USES:
    IMPLICIT NONE
@@ -757,7 +813,7 @@
          read(unit,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,cols)
       end do
    else
-      do i=N,1,-1 
+      do i=N,1,-1
          lines = lines+1
          read(unit,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,cols)
       end do
@@ -769,9 +825,9 @@
    deallocate(tmp_profs)
 
    return
-100 ierr=READ_ERROR 
+100 ierr=READ_ERROR
    return
-110 ierr=END_OF_FILE 
+110 ierr=END_OF_FILE
    return
 900 format(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)
 
@@ -784,4 +840,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

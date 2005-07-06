@@ -1,4 +1,4 @@
-!$Id: read_extinction.F90,v 1.4 2003-03-28 09:20:35 kbk Exp $
+!$Id: read_extinction.F90,v 1.5 2005-07-06 16:20:14 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: read_extinction.F90,v $
-!  Revision 1.4  2003-03-28 09:20:35  kbk
+!  Revision 1.5  2005-07-06 16:20:14  kbk
+!  updated documentation - added const_NNT and const_NNS
+!
+!  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/28 09:02:09  kbk
@@ -52,7 +55,7 @@
 !-----------------------------------------------------------------------
 !BOC
 !  This part initialise and read in new values if necessary.
-   if(time_diff(jul2,secs2,jul,secs) .lt. 0) then 
+   if(time_diff(jul2,secs2,jul,secs) .lt. 0) then
       do
          jul1 = jul2
          secs1 = secs2
@@ -69,7 +72,7 @@
 !  Do the time interpolation
    t  = time_diff(jul,secs,jul1,secs1)
 
-   obs = obs1 + t*alpha 
+   obs = obs1 + t*alpha
 
    A = obs(1)
    g1 = obs(2)
@@ -81,4 +84,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.3 2004-01-12 08:51:42 lars Exp $
+#$Id: Makefile,v 1.4 2005-07-06 16:20:14 kbk Exp $
 #
 # Makefile to build the the Observtions library - libobservations.a
 #
@@ -18,7 +18,10 @@ get_w_adv.F90           \
 get_zeta.F90            \
 get_vel_profile.F90     \
 get_eps_profile.F90	\
-analytical_profile.F90
+analytical_profile.F90	\
+const_NNT.F90		\
+const_NNS.F90             
+
 
 MOD	= \
 ${LIB}(observations.o)
@@ -33,7 +36,9 @@ ${LIB}(get_w_adv.o)		\
 ${LIB}(get_zeta.o)		\
 ${LIB}(get_vel_profile.o)	\
 ${LIB}(get_eps_profile.o)	\
-${LIB}(analytical_profile.o)
+${LIB}(analytical_profile.o)	\
+${LIB}(const_NNT.o)             \
+${LIB}(const_NNS.o)
 
 #kbkall: $(MOD)
 all: $(MOD) $(OBJ)
