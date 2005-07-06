@@ -30,7 +30,6 @@
 #define XYT_SHAPE       4
 #define XYZT_SHAPE      5
 
-
 #define RAWBINARY       0
 #define ASCII           1
 #define NETCDF          2
@@ -59,3 +58,19 @@
 #define _ZERO_ 0.0d0
 #define _ONE_  1.0d0
 #endif
+
+! non-local fluxes
+#undef NONLOCAL
+
+! KPP turbulence model
+#define KPP_SHEAR
+#define KPP_INTERNAL_WAVE
+#define KPP_CONVEC
+#undef KPP_DDMIX
+#undef KPP_TWOPOINT_REF
+#define KPP_IP_FC
+#undef KPP_CLIP_GS
+#define KPP_SALINITY
+
+
+
