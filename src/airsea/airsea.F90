@@ -1,24 +1,31 @@
-!$Id: airsea.F90,v 1.10 2004-07-30 09:19:03 hb Exp $
+!$Id: airsea.F90,v 1.11 2005-07-06 13:58:07 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: airsea --- atmopheric fluxes \label{sec:airsea}
+! !MODULE: airsea --- atmospheric fluxes \label{sec:airsea}
 !
 ! !INTERFACE:
    module airsea
 !
 ! !DESCRIPTION:
-!  This module provides various ways to calculate the heat, momentum 
-!  and freshwater fluxes. They are either prescribed as constant values,
-!  see {\tt airsea.inp}, read in from files or calculated by means of
-!  bulk formulae, using observed or modelled meteorological parameters.
+!  This module calculates the heat, momentum
+!  and freshwater fluxes between the ocean and the atmosphere as well as
+!  the incoming solar radiation. Fluxes and solar radiation may be
+!  prescribed. Alternatively, they may be calculated by means
+!  of bulk formulae from observed or modelled meteorological
+!  parameters and the solar radiation may be calculated
+!  from longitude, latitude,
+!  time and cloudiness. For the prescibed fluxes and solar radiation,
+!  values may be constant or read in from files. All necessary
+!  setting have to be made in the namelist file {\tt airsea.inp}.
 !
 ! !USES:
-   use time,only: julian_day, time_diff, calendar_date
+   use time,         only: julian_day, time_diff, calendar_date
    use observations, only: read_obs
 !
    IMPLICIT NONE
+
 !  default: all is private.
    private
 !
@@ -30,26 +37,37 @@
 !
 ! !PUBLIC DATA MEMBERS:
    logical,  public                    :: calc_fluxes=.false.
-!  tx and ty are the surface stress components:
+
+!  surface stress components (Pa)
    REALTYPE, public                    :: tx,ty
-!  I_0 and heat are short-wave radiation and heat flux at the surface:
+
+!  surface short-wave radiation
+!  and surface heat flux (W/m^2)
    REALTYPE, public                    :: I_0,heat
-!  p_e is the surface freshwater flux:
+
+!  precipitation minus evaporation
+!  (m/s)
    REALTYPE, public                    :: p_e
-!  sst and sss are sea surface temperature and sea surface salinity:
+
+!  sea surface temperature (degC) and
+!  sea surface salinity (psu)
    REALTYPE, public                    :: sst,sss
-!  integrated short-wave radiation, heat flux and total heat flux:
-   REALTYPE, public                    :: int_sw=0.,int_hf=0.
-   REALTYPE, public                    :: int_total=0.
+
+!  integrated short-wave radiation,
+!  surface heat flux (J/m^2)
+   REALTYPE, public                    :: int_swr=_ZERO_,int_heat=_ZERO_
+
+!  sum of short wave radiation
+!  and surface heat flux (J/m^2)
+   REALTYPE, public                    :: int_total=_ZERO_
 !
 ! !DEFINED PARAMETERS:
-   integer, parameter                  :: meteo_unit=20
-   integer, parameter                  :: heat_unit=21
-   integer, parameter                  :: momentum_unit=22
-   integer, parameter                  :: p_e_unit=23
-   integer, parameter                  :: sst_unit=24
-   integer, parameter                  :: sss_unit=25
-   integer, parameter                  :: airt_unit=26
+   integer,  parameter                 :: meteo_unit=20
+   integer,  parameter                 :: heat_unit=21
+   integer,  parameter                 :: momentum_unit=22
+   integer,  parameter                 :: p_e_unit=23
+   integer,  parameter                 :: sst_unit=24
+   integer,  parameter                 :: sss_unit=25
 
    REALTYPE, parameter                 :: cpa=1008.
    REALTYPE, parameter                 :: cp=3985.
@@ -61,15 +79,18 @@
    REALTYPE, parameter                 :: deg2rad=pi/180.
    REALTYPE, parameter                 :: rad2deg=180./pi
 
-   integer, parameter                  :: CONSTVAL=1
-   integer, parameter                  :: FROMFILE=2
+   integer,  parameter                 :: CONSTVAL=1
+   integer,  parameter                 :: FROMFILE=2
 !
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.10  2004-07-30 09:19:03  hb
+!  Revision 1.11  2005-07-06 13:58:07  kbk
+!  added fresh water, updated documentation
+!
+!  Revision 1.10  2004/07/30 09:19:03  hb
 !  wet_mode now red from namelist
 !
 !  Revision 1.9  2004/06/25 07:50:29  hb
@@ -107,7 +128,6 @@
    integer                   :: p_e_method
    integer                   :: sst_method
    integer                   :: sss_method
-   integer                   :: airt_method
    integer                   :: wet_mode
 
    character(len=PATH_MAX)   :: meteo_file
@@ -116,7 +136,6 @@
    character(len=PATH_MAX)   :: p_e_flux_file
    character(len=PATH_MAX)   :: sss_file
    character(len=PATH_MAX)   :: sst_file
-   character(len=PATH_MAX)   :: airt_file
 
    REALTYPE                  :: wx,wy
    REALTYPE                  :: w
@@ -126,7 +145,8 @@
    REALTYPE                  :: rh
    REALTYPE                  :: rho_air
    REALTYPE                  :: const_tx,const_ty
-   REALTYPE                  :: const_qin,const_qout
+   REALTYPE                  :: const_swr,const_heat
+   REALTYPE                  :: const_p_e
 
    REALTYPE                  :: es,ea,qs,qa,L,S
    REALTYPE                  :: cdd,chd,ced
@@ -146,8 +166,56 @@
    subroutine init_air_sea(namlst,lat,lon)
 !
 ! !DESCRIPTION:
-!  This routine initialises the air--sea module by reading various variables
-!  from a namelist and open relevant files.
+!  This routine initialises the air-sea module by reading various variables
+!  from the namelist {\tt airsea.inp} and opens relevant files.
+!  These parameters are:
+!
+!  \begin{tabular}{ll}
+! {\tt calc$\_$fluxes}     & {\tt .true.}: Surface fluxes are calculated by means of bulk formulae. \\
+!                          & Solar radiation is calculated from time, latitude,                     \\
+!                          & longitude and clouds. In this case, {\tt meteo$\_$file} must be given  \\
+!                          & and {\tt wet$\_$mode} must be specified.                               \\
+!                          & {\tt .false.}: Surface fluxes and solar radiation are prescribed.      \\
+! {\tt meteo$\_$file}      & file with meteo data (for {\tt calc$\_$fluxes=.true.}) with            \\
+!                          & date: {\tt yyyy-mm-dd hh:mm:ss}                                        \\
+!                          & $x$-component of wind (10 m) in m\,s$^{-1}$                            \\
+!                          & $y$-component of wind (10 m) in m\,s$^{-1}$                            \\
+!                          & air pressure (2 m) in hectopascal                                      \\
+!                          & dry air temperature (2 m) in Celsius                                   \\
+!                          & rel. hum. in \% or wet bulb temp. in C or dew point temp. in C         \\
+!                          & cloud cover in 1/10                                                    \\
+!                          & Example:                                                               \\
+!                          & {\tt 1998-01-01 00:00:00    6.87  10.95 1013.0   6.80   73.2   0.91}   \\
+! {\tt wet$\_$mode}        & 1: relative humidity given as 7.\ column in {\tt meteo$\_$file}        \\
+!                          & 2: wet bulb temperature given as 7. column in {\tt meteo$\_$file}      \\
+!                          & 3: dew point temperature given as 7. column in {\tt meteo$\_$file}     \\
+! {\tt heat$\_$method}     & 0: heat flux not prescribed                                            \\
+!                          & 1: constant value for short wave radiation ({\tt const$\_$swr})
+!                               and surface heat flux ({\tt const$\_$qh})                           \\
+!                          & 2: {\tt swr}, {\tt heat} are read from {\tt heatflux$\_$file}            \\
+! {\tt const$\_$swr}       & constant value for short wave radiation in W\,m$^{-2}$                 \\
+!                          & (always positive)                                                      \\
+! {\tt const$\_$heat }     & constant value for surface heat flux in  W\,m$^{-2}$                   \\
+!                          & (negative for heat loss)                                               \\
+! {\tt heatflux$\_$file}   & file with date and {\tt swr} and {\tt heat} in W\,m$^{-2}$               \\
+! {\tt momentum$\_$method} & 0: momentum flux not prescribed                                        \\
+!                          & 1: constant momentum fluxes {\tt const$\_$tx}, {\tt const$\_$tx} given \\
+!                          & 2: surface momentum fluxes given from file {\tt momentumflux$\_$file}  \\
+! {\tt const$\_$tx}        & $x$-component of constant surface momentum flux in N\,m$^{-2}$         \\
+! {\tt const$\_$ty}        & $y$-component of constant surface momentum flux in N\,m$^{-2}$         \\
+! {\tt momentumflux$\_$file} & File with date, {\tt tx} and {\tt ty} given                          \\
+! {\tt p$\_$e$\_$method}   & 0: surface freshwater fluxes not applied                               \\
+!                          & 1: constant value for P-E used (P-E = precipitation-evaporation)       \\
+!                          & 2: values for P-E read from file {\tt p$\_$e$\_$flux$\_$file}          \\
+! {\tt const$\_$p$\_$e}    & value for P-E in m\,s$^{-1}$                                           \\
+! {\tt p$\_$e$\_$flux$\_$file}& file with date and {\tt P-E} in m\,s$^{-1}$                         \\
+! {\tt sst$\_$method}      & 0: no independent SST observation is read from file                    \\
+!                          & 2: independent SST observation is read from file, only for output      \\
+! {\tt sst$\_$file}        & file with date and SST (sea surface temperature) in Celsius            \\
+! {\tt sss$\_$method}      & 0: no independent SSS observation is read from file                    \\
+!                          & 2: independent SSS observation is read from file, only for output      \\
+! {\tt sss$\_$file}        & file with date and SSS (sea surface salinity) in psu                   \\
+!  \end{tabular}
 !
 ! !USES:
    IMPLICIT NONE
@@ -168,15 +236,14 @@
                      meteo_file, &
                      wet_mode, &
                      heat_method, &
-                     const_qin,const_qout, &
+                     const_swr,const_heat, &
                      heatflux_file, &
                      momentum_method, &
                      const_tx,const_ty, &
                      momentumflux_file, &
-                     p_e_method,p_e_flux_file, &
+                     p_e_method,const_p_e,p_e_flux_file, &
                      sst_method, sst_file, &
-                     sss_method, sss_file, &
-                     airt_method, airt_file
+                     sss_method, sss_file
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -214,16 +281,6 @@
          case default
       end select
 
-!     The fresh water fluxes
-      select case (p_e_method)
-         case (FROMFILE)
-            open(p_e_unit,file=p_e_flux_file,action='read', &
-                 status='old',err=95)
-            LEVEL2 'Reading precipitatio/evaporation data from:'
-            LEVEL3 trim(p_e_flux_file)
-         case default
-      end select
-
 !     The sea surface temperature
       select case (sst_method)
          case (FROMFILE)
@@ -242,16 +299,17 @@
          case default
       end select
 
-!     The air temperature
-      select case (airt_method)
-         case (FROMFILE)
-            open(airt_unit,file=airt_file,action='read',status='old',err=98)
-            LEVEL2 'Reading air temperatur from from:'
-            LEVEL3 trim(airt_file)
-         case default
-      end select
-
    end if
+
+!  The fresh water fluxes (used for calc_fluxes=.true. and calc_fluxes=.false.)
+   select case (p_e_method)
+      case (FROMFILE)
+         open(p_e_unit,file=p_e_flux_file,action='read', &
+              status='old',err=95)
+         LEVEL2 'Reading precipitatio/evaporation data from:'
+         LEVEL3 trim(p_e_flux_file)
+      case default
+   end select
 
    twet=0.
    tdew=0.
@@ -281,8 +339,6 @@
    stop 'init_airsea'
 97 FATAL 'I could not open ',trim(sss_file)
    stop 'init_airsea'
-98 FATAL 'I could not open ',trim(airt_file)
-   stop 'init_airsea'
 
    end subroutine init_air_sea
 !EOC
@@ -298,15 +354,12 @@
 ! !DESCRIPTION:
 !
 !  Depending on the value of the boolean variable {\tt calc\_fluxes},
-!  the calculation of the fluxes and the short wave radiation are
+!  the subroutines for the calculation of the fluxes
+!  and the short wave radiation are
 !  called or the fluxes are directly read in from the namelist
-!  {\tt airsea.inp} as constants or read in from files. With the present
-!  version of GOTM, the 
-!  surface momentum flux and the surface heat flux can be caluclated.
-!  The surface salinity flux is not coded yet. 
-!
-!  On the long run this will be the routine to call, to calculate and
-!  to obtain air--sea related variables. 
+!  {\tt airsea.inp} as constants or read in from files.
+!  Furthermore, the surface freshwater flux is set to a constant
+!  value or is read in from a file.
 !
 ! !USES:
    IMPLICIT NONE
@@ -323,26 +376,16 @@
 !-----------------------------------------------------------------------
 !BOC
    if (calc_fluxes) then
-
       call flux_from_meteo(jul,secs)
       call short_wave_radiation(jul,secs,alon,alat)
    else
 !     The heat fluxes
       select case (heat_method)
          case (CONSTVAL)
-            I_0=const_qin
-            heat=const_qout
+            I_0=const_swr
+            heat=const_heat
          case (FROMFILE)
             call read_heat_flux(jul,secs,I_0,heat)
-         case default
-      end select
-!     The freshwater flux
-      select case (p_e_method)
-         case (CONSTVAL)
-             STDERR 'Not coded yet, program aborted in airsea.F90'
-             stop
-         case (FROMFILE)
-            call read_p_e_flux(jul,secs,p_e)
          case default
       end select
 !     The momentum fluxes
@@ -363,14 +406,18 @@
 !     The sea surface salinity
       select case (sss_method)
          case (FROMFILE)
-         case default
-      end select
-!     The air temperature
-      select case (airt_method)
-         case (FROMFILE)
+            call read_sss(jul,secs,sss)
          case default
       end select
    end if
+!  The freshwater flux (used for calc_fluxes=.true. and calc_fluxes=.false.)
+   select case (p_e_method)
+      case (CONSTVAL)
+         p_e=const_p_e
+      case (FROMFILE)
+         call read_p_e_flux(jul,secs,p_e)
+      case default
+   end select
 
    return
    end subroutine air_sea_interaction
@@ -385,7 +432,8 @@
    subroutine finish_air_sea_interaction
 !
 ! !DESCRIPTION:
-!  Various files are closed in this routine.
+!  All files related to air-sea interaction which have been opened
+!  are now closed by this routine.
 !
 ! !USES:
    IMPLICIT NONE
@@ -406,7 +454,6 @@
       if (p_e_method      .eq. FROMFILE) close(p_e_unit)
       if (sst_method      .eq. FROMFILE) close(sst_unit)
       if (sss_method      .eq. FROMFILE) close(sss_unit)
-      if (airt_method     .eq. FROMFILE) close(airt_unit)
    end if
    return
    end subroutine finish_air_sea_interaction
@@ -421,12 +468,18 @@
    subroutine exchange_coefficients()
 !
 ! !DESCRIPTION:
-!  Based on the wind vector at 10 m, the sea surface temperature (either 
-!  from the model or from a data file), the 
-!  relative humidity, the air temperature and the air pressure at 2 m,
-!  this function computes the surface momentum flux and the latent and 
-!  sensible heat flux coefficients according to the \cite{Kondo75} 
-!  bulk formulae.
+!  Based on the model sea surface temperature, the wind vector
+!  at 10 m height, the air pressure at 2 m, the dry air
+!  temperature and the air pressure at 2 m, and the relative
+!  humidity (either directly given or recalculated from the
+!  wet bulb or the dew point temperature),
+!  this routine computes the coefficients for the surface
+!  momentum flux ({\tt cdd}) and the latent ({\tt ced})
+!  and the sensible ({\tt chd}) heat flux according to the \cite{Kondo75}
+!  bulk formulae. The setting for {\tt wet\_mode} but be in
+!  agreement with the type of air humidity measure given in the
+!  {\tt meteo$\_$file} as 7.\ column, i.e.\ 1 for relative humidity,
+!  2 for wet bulb temperature and 3 for dew point temperature.
 !
 ! !USES:
    IMPLICIT NONE
@@ -444,7 +497,7 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See log for the airsear module
+!  See log for the airsea module
 !
 !EOP
 !
@@ -453,8 +506,7 @@
    REALTYPE                  :: ae_d,be_d,pe_d
    REALTYPE                  :: ae_h,be_h,ce_h,pe_h
    REALTYPE                  :: ae_e,be_e,ce_e,pe_e
-   REALTYPE                  :: x,x1,x2,x3,ta_k
-   REALTYPE                  :: aa=17.27, bb=237.7
+   REALTYPE                  :: x
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -463,54 +515,42 @@
    L = (2.5-0.00234*sst)*1.e6
    es = a1 +sst*(a2+sst*(a3+sst*(a4+sst*(a5+sst*(a6+sst*a7)))))
    es = es * 100.0 ! Conversion millibar --> Pascal
-   qs = const06*es/(airp-0.377*es)
+   qs = const06*es/(airp-0.377*es) ! specific humidity at sea surface
 
-   select case(wet_mode)    
+   select case(wet_mode)
       case(1)  ! Relative humidity is given
-         qa = 0.01*rh*qs;
-         ea = qa*airp/(const06 + 0.377*qa)
-         if (rh .lt. 20.) STDERR 'Warning: Relative humidity below 20 %, is wet_mode correct ?'
-      case(2)  ! Wet bulb temperature is given
-      if (rh .gt. 50.) then
-         STDERR 'Wet bulb temperature is larger than 50 deg C.'
-         STDERR 'Probably wet_mode is set to a wrong value.'
-         STDERR 'Please correct this in airsea.F90.'
-         STDERR 'Program aborted.'
-         stop 
-      end if
+         ea = a1 +airt*(a2+airt*(a3+airt*(a4+airt*(a5+airt*(a6+airt*a7)))))
+         ea = rh*ea ! millibar --> Pascal and saturation --> actual vap. press.
+         qa = const06*ea/(airp-0.377*ea) ! specific humidity at 2m
+         if (rh .lt. 20.) then
+            STDERR 'Warning: Relative humidity below 20 %,i'
+            STDERR 'is wet_mode correct ?'
+         end if
+      case(2) ! Specific humidity from wet bulb temperature
+         if (rh .gt. 50.) then
+            STDERR 'Wet bulb temperature is larger than 50 deg C.'
+            STDERR 'Probably wet_mode is set to a wrong value.'
+            STDERR 'Please correct this in airsea.F90.'
+            STDERR 'Program aborted.'
+            stop
+         end if
          twet=rh
-         ea = es - 67.*(airt-twet);
-         x = (airt-twet)/(CONST06*L);
-         ea = (es-cpa*airp*x)/(1+cpa*x);
-         if(ea .lt. 0.0) ea = 0.0
-         qa = CONST06*ea/(airp-0.377*ea);
-      case(3)
-      ! Piece of code taken from HAMSOM for calculating relative
-      ! humidity from dew point temperature and dry air temperature.
-      ! It must be sure that hum is dew point temperature in Kelvin
-      ! in the next line ...
-
-      if (rh .gt. 50.) then
-         STDERR 'Dew point temperature is larger than 50 deg C.'
-         STDERR 'Probably wet_mode is set to a wrong value.'
-         STDERR 'Please correct this in airsea.F90.'
-         STDERR 'Program aborted.'
-         stop 
-      end if
-      tdew=rh+273.15
-      x1 = (18.729 - (min(tdew,300.*_ONE_)-273.15)/227.3)
-      x2 = (min(tdew,300.*_ONE_)-273.15)
-      x3 = (max(tdew,200.*_ONE_)-273.15+257.87)
-      ea = 611.21*exp(x1*x2/x3)
-
-      ta_k=airt+273.15
-      x1 = (18.729 - (min(ta_k,300.*_ONE_)-273.15)/227.3)
-      x2 = (min(ta_k,300.*_ONE_)-273.15)
-      x3 = (max(ta_k,200.*_ONE_)-273.15+257.87)
-      es = 611.21*exp(x1*x2/x3)
-      rh = 100.*ea/es
-      qa = 0.01*rh*qs
-      ea = qa*airp/(const06 + 0.377*qa)
+         ea = a1 +twet*(a2+twet*(a3+twet*(a4+twet*(a5+twet*(a6+twet*a7)))))
+         ea = ea * 100.0 ! Conversion millibar --> Pascal
+         ea=  ea-0.00066*(1.+0.00155*twet)*airp*(airt-twet)
+         qa = const06*ea/(airp-0.377*ea) ! specific humidity at 2m
+      case(3) ! Specific humidity from dew point temperature
+         if (rh .gt. 50.) then
+            STDERR 'Dew point temperature is larger than 50 deg C.'
+            STDERR 'Probably wet_mode is set to a wrong value.'
+            STDERR 'Please correct this in airsea.F90.'
+            STDERR 'Program aborted.'
+            stop
+         end if
+         tdew=rh
+         ea = a1 +tdew*(a2+tdew*(a3+tdew*(a4+tdew*(a5+tdew*(a6+tdew*a7)))))
+         ea = ea * 100.0 ! Conversion millibar --> Pascal
+         qa = const06*ea/(airp-0.377*ea) ! specific humidity at 2m
       case default
    end select
 
@@ -579,9 +619,32 @@
 ! !DESCRIPTION:
 !  The latent and the sensible heat flux, the long-wave back
 !  radiation (and thus the total net surface heat flux) and
-!  the surface momentum flux are calclated here. For the
-!  long--wave back radiation, the formulae of \cite{Clarketal74} 
-!  and \cite{HastenrathLamb78} may be used as alternatives. 
+!  the surface momentum flux are calculated here, based on the
+!  exchange coefficients $c_{dd}$, $c_{ed}$ and $c_{hd}$,
+!  calculated in the subroutine
+!  {\tt exchange\_coefficients}:
+!
+!  \begin{equation}
+!  \begin{array}{rcl}
+!  \tau_x^s &=& c_{dd} \rho_a W_x W \\ \\
+!  \tau_y^s &=& c_{dd} \rho_a W_y W \\ \\
+!  Q_e &=& c_{ed} L \rho_a W (q_s-q_a) \\ \\
+!  Q_h &=& c_{hd} C_{pa} \rho_a W (T_w-T_a)
+!  \end{array}
+!  \end{equation}
+!
+!  with the air density $\rho_a$, the wind speed at 10 m, $W$,
+!  the $x$- and the $y$-component of the wind velocity vector,
+!  $W_x$ and $W_y$, respectively, the specific evaporation heat of sea water,
+!  $L$, the specific saturation humidity, $q_s$, the actual
+!  specific humidity $q_a$, the specific heat capacity of air at constant
+!  pressure, $C_{pa}$, the sea surface temperature, $T_w$ and the
+!  dry air temperature, $T_a$.
+!  For the
+!  long-wave back radiation, the formulae of \cite{Clarketal74}
+!  and \cite{HastenrathLamb78} may be used as alternatives, the setting for
+!  has to be made directly in the code, see the variable
+!  {\tt back\_radiation\_method}.
 !
 ! !USES:
    IMPLICIT NONE
@@ -655,12 +718,26 @@
    subroutine short_wave_radiation(jul,secs,lon,lat,swr)
 !
 ! !DESCRIPTION:
-!  This subroutine calculates the short--wave net radiation based on 
+!  This subroutine calculates the short--wave net radiation based on
 !  latitude, longitude, time, fractional cloud cover and albedo.
 !  The albedo monthly values from \cite{Payne72} are given  here
-!  as means of the values between 
-!  at 30$^{\circ}$ N and 40$^{\circ}$ N for the Atlantic Ocean 
+!  as means of the values between
+!  at 30$^{\circ}$ N and 40$^{\circ}$ N for the Atlantic Ocean
 !  (hence the same latitudinal band of the Mediterranean Sea).
+!  The basic formula for the short-wave radiation at the surface, $Q_s$,
+!  has been taken from \cite{RosatiMiyacoda88}, who adapted the work
+!  of \cite{Reed77} and \cite{SimpsonPaulson99}:
+!
+!  \begin{equation}
+!  Q_s=Q_{tot} (1-0.62 C + 0.0019 \beta) (1-\alpha),
+!  \end{equation}
+!
+!  with the total radiation reaching the surface under clear skies,
+!  $Q_{tot}$, the fractional cloud cover, $C$, the solar noon altitude,
+!  $\beta$, and the albedo, $\alpha$.
+!  This piece of code has been taken the MOM-I (Modular Ocean Model)
+!  version at the INGV (Istituto Nazionale di Geofisica e Vulcanologia,
+!  see {\tt http://www.bo.ingv.it/}.
 !
 ! !USES:
    IMPLICIT NONE
@@ -769,11 +846,8 @@
 !  calculates SHORT WAVE FLUX ( watt/m*m )
 !  Rosati,Miyakoda 1988 ; eq. 3.8
 !  clouds from COADS perpetual data set
-   if(cloud .lt. 0.3) then
-      qshort  = qtot
-   else
-      qshort  = qtot*(1-0.62*cloud + .0019*sunbet)*(1.-albedo)
-   endif
+
+   qshort  = qtot*(1.0-0.62*cloud + 0.0019*sunbet)*(1.-albedo)
 
    if (present(swr)) then
       swr = qshort
@@ -794,11 +868,14 @@
    subroutine flux_from_meteo(jul,secs)
 !
 ! !DESCRIPTION:
-!  This routine reads meteo data from a file and calculates the 
+!  For {\tt calc\_fluxes=.true.}, this routine reads meteo data
+!  from {\tt meteo$\_$file} and calculates the
 !  fluxes of heat and momentum, and the
-!  short--wave radiation, from these data as described in 
+!  short-wave radiation by calling the routines {\tt  exchange\_coefficients},
+!  {\tt do\_calc\_fluxes} and
+!  {\tt short\_wave\_radiation}, see
 !  \sect{sec:calcCoeff}, \sect{sec:calcFluxes}, and \sect{sec:swr}.
-!  Then, the results are interpolated in time.
+!  Then, the results are interpolated in time to the actual time step.
 
 !
 ! !USES:
@@ -889,8 +966,9 @@
    subroutine read_heat_flux(jul,secs,I_0,heat)
 !
 ! !DESCRIPTION:
-!  This routine reads heat fluxes from a file and interpolates them in
-!  time.
+!   For {\tt calc\_fluxes=.false.}, this routine reads solar
+!   radiation and the surface heat flux  in W\,m$^{-2}$ from
+!   {\tt heatflux\_file} and interpolates them in time.
 !
 ! !USES:
    IMPLICIT NONE
@@ -954,8 +1032,9 @@
    subroutine read_momentum_flux(jul,secs,tx,ty)
 !
 ! !DESCRIPTION:
-!  This routine reads momentum fluxes from a file and interpolates them in
-!  time.
+!   For {\tt calc\_fluxes=.false.}, this routine reads momentum fluxes
+!   in N\,m$^{-2}$ from
+!   {\tt momentumflux\_file} and interpolates them in time.
 !
 ! !USES:
    IMPLICIT NONE
@@ -1018,7 +1097,8 @@
    subroutine read_p_e_flux(jul,secs,p_e)
 !
 ! !DESCRIPTION:
-!  This routine reads the surface freshwater flux (in m/s) from a file 
+!  This routine reads the surface freshwater flux (in m\,s$^{-1}$) from
+!  {\tt p\_e\_flux\_file}
 !  and interpolates in time.
 !
 ! !USES:
@@ -1078,7 +1158,8 @@
    subroutine read_sst(jul,secs,sst)
 !
 ! !DESCRIPTION:
-!  This routine reads sea surface temperature (SST) from a file 
+!   For {\tt calc\_fluxes=.false.}, this routine reads sea surface
+!   temperature (SST) from {\tt sst\_file}
 !  and interpolates in time.
 !
 ! !USES:
@@ -1134,13 +1215,76 @@
 !-----------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: Read SSS, interpolate in time
+!
+! !INTERFACE:
+   subroutine read_sss(jul,secs,sss)
+!
+! !DESCRIPTION:
+!   For {\tt calc\_fluxes=.false.}, this routine reads sea surface
+!   salinity (SSS) from {\tt sss\_file}
+!  and interpolates in time.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: jul,secs
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE,intent(out)                :: sss
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding
+!
+!  See log for airsea module
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t,alpha
+   REALTYPE, save            :: dt
+   integer, save             :: sss_jul1,sss_secs1
+   integer, save             :: sss_jul2=0,sss_secs2=0
+   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   integer                   :: rc
+!
+!-----------------------------------------------------------------------
+!BOC
+!  This part initialise and read in new values if necessary.
+   if(time_diff(sss_jul2,sss_secs2,jul,secs) .lt. 0) then
+      do
+         sss_jul1 = sss_jul2
+         sss_secs1 = sss_secs2
+         obs1 = obs2
+         call read_obs(sss_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
+         call julian_day(yy,mm,dd,sss_jul2)
+         sss_secs2 = hh*3600 + min*60 + ss
+         if(time_diff(sss_jul2,sss_secs2,jul,secs) .gt. 0) EXIT
+      end do
+      dt = time_diff(sss_jul2,sss_secs2,sss_jul1,sss_secs1)
+   end if
+
+!  Do the time interpolation
+   t  = time_diff(jul,secs,sss_jul1,sss_secs1)
+   alpha = (obs2(1)-obs1(1))/dt
+   sss = obs1(1) + t*alpha
+
+   return
+   end subroutine read_sss
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: Integrate short--wave and sea surface fluxes
 !
 ! !INTERFACE:
    subroutine integrated_fluxes(dt)
 !
 ! !DESCRIPTION:
-!  This utility routine integrates the short--wave radiation 
+!  This utility routine integrates the short--wave radiation
 !  and heat--fluxes over time.
 !
 ! !USES:
@@ -1157,9 +1301,9 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   int_sw = int_sw + dt*I_0
-   int_hf = int_hf + dt*heat
-   int_total = int_sw + int_hf
+   int_swr   = int_swr + dt*I_0
+   int_heat  = int_heat + dt*heat
+   int_total = int_swr + int_heat
    return
    end subroutine integrated_fluxes
 !EOC
@@ -1173,7 +1317,8 @@
    subroutine set_sst(temp)
 !
 ! !DESCRIPTION:
-!  This routine sets the sea surface temperature (SST) to be used for 
+!  This routine sets the simulated
+!  sea surface temperature (SST) to be used for
 !  the surface flux calculations.
 !
 ! !USES:
@@ -1201,4 +1346,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
