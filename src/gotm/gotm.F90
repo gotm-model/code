@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.16 2004-08-02 08:35:46 hb Exp $
+!$Id: gotm.F90,v 1.16.2.1 2005-07-06 09:00:19 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -79,7 +79,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.16  2004-08-02 08:35:46  hb
+!  Revision 1.16.2.1  2005-07-06 09:00:19  hb
+!  moved bio_save() from do_bio() to time_loop - temporary no NPZD totn calculation
+!
+!  Revision 1.16  2004/08/02 08:35:46  hb
 !  no need to pass time information
 !
 !  Revision 1.15  2004/07/29 17:36:36  hb
@@ -356,6 +359,10 @@
       call internal_wave(nlev,NN,SS)
 
       call do_output(n,nlev)
+#ifdef BIO
+      if (write_results) call bio_save(nlev,h,_ZERO_)
+#endif
+
 
       call integrated_fluxes(dt)
 

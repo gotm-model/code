@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.21 2004-08-18 11:34:14 hb Exp $
+!$Id: bio.F90,v 1.21.2.1 2005-07-06 09:00:19 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -44,7 +44,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.21  2004-08-18 11:34:14  hb
+!  Revision 1.21.2.1  2005-07-06 09:00:19  hb
+!  moved bio_save() from do_bio() to time_loop - temporary no NPZD totn calculation
+!
+!  Revision 1.21  2004/08/18 11:34:14  hb
 !  zlev now allocated from 0 to nlev
 !
 !  Revision 1.20  2004/08/02 11:44:12  kbk
@@ -260,6 +263,10 @@
                LEVEL2 'Using modified_patankar_2()'
             case (9)
                LEVEL2 'Using modified_patankar_4()'
+            case (10)
+               LEVEL2 'Using emp_1()'
+            case (11)
+               LEVEL2 'Using emp_2()'
             case default
                stop "bio: no valid ode_method specified in bio.inp!"
          end select
@@ -380,7 +387,6 @@
 
       if (mussels_calc) then
          call do_mussels(numc,dt,t(1))
-STDERR total_mussel_flux,t(1)
       end if
 
       if (bio_eulerian) then
@@ -457,20 +463,6 @@ STDERR total_mussel_flux,t(1)
 
       end do
 
-! To use in a 3D model the following needs to be excluded from compilation.
-! Will be fixed when a propr solution has been found.
-#if 1
-      if (write_results) then
-         totn= _ZERO_
-         do i=nlev,1,-1
-            do ci=1,numc
-               totn=totn+cc(ci,i)*h(i)
-            end do
-         end do
-
-         call bio_save(nlev,h,totn)
-      end if
-#endif
    end if
    return
    end subroutine do_bio
