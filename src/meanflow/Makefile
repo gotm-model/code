@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.6 2004-01-12 08:51:29 lars Exp $
+#$Id: Makefile,v 1.7 2005-07-06 14:17:31 kbk Exp $
 #
 # Makefile to build the the Dynamics library - libmeanflow.a
 #
@@ -10,7 +10,6 @@ LIB	= $(LIBDIR)/libmeanflow$(buildtype).a
 DOCSRC	= \
 meanflow.F90		\
 updategrid.F90		\
-adaptivegrid.F90	\
 coriolis.F90		\
 uequation.F90		\
 vequation.F90		\
@@ -20,16 +19,15 @@ friction.F90		\
 temperature.F90		\
 salinity.F90		\
 buoyancy.F90		\
+shear.F90	\
 stratification.F90	\
-convectiveadjustment.F90 \
-production.F90
+convectiveadjustment.F90 
 
 MOD	= \
 ${LIB}(meanflow.o)
 
 OBJ   = \
 ${LIB}(updategrid.o)		\
-${LIB}(adaptivegrid.o)		\
 ${LIB}(coriolis.o)		\
 ${LIB}(uequation.o)		\
 ${LIB}(vequation.o)		\
@@ -39,9 +37,9 @@ ${LIB}(friction.o)		\
 ${LIB}(temperature.o)		\
 ${LIB}(salinity.o)		\
 ${LIB}(stratification.o)	\
+${LIB}(shear.o)	\
 ${LIB}(buoyancy.o)		\
-${LIB}(convectiveadjustment.o)	\
-${LIB}(production.o)
+${LIB}(convectiveadjustment.o)	
 
 
 all: $(MOD) $(OBJ)
