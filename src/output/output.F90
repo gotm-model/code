@@ -1,4 +1,4 @@
-!$Id: output.F90,v 1.6 2003-10-14 08:04:32 kbk Exp $
+!$Id: output.F90,v 1.6.2.1 2005-07-06 09:03:18 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -20,6 +20,7 @@
 #ifdef NETCDF_FMT
    use ncdfout, ONLY:  init_ncdf,do_ncdf_out,close_ncdf
 #endif 
+!KBK   use meanflow, only: h
 
    IMPLICIT NONE
 !
@@ -42,7 +43,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: output.F90,v $
-!  Revision 1.6  2003-10-14 08:04:32  kbk
+!  Revision 1.6.2.1  2005-07-06 09:03:18  hb
+!  removed commented out lines
+!
+!  Revision 1.6  2003/10/14 08:04:32  kbk
 !  time is now stored as real
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk
@@ -232,8 +236,6 @@
          call do_variances(nlev)
       end if
 
-!kbk     call write_time_string(julianday,secondsofday,ts)
-!kbk     call ss_nn_obs 
       LEVEL2 'Saving....',ts
       secs = n*timestep
       select case (out_fmt)
@@ -247,6 +249,7 @@
            LEVEL1 'Fatal error: A non valid output format has been chosen'
            stop 'do_output'
       end select
+
    end if
 
 !  Diagnostic output
