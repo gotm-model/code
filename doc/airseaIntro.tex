@@ -1,5 +1,5 @@
 %
-%$Id: airseaIntro.tex,v 1.1 2003-03-10 09:42:23 gotm Exp $
+%$Id: airseaIntro.tex,v 1.2 2005-07-06 14:11:27 kbk Exp $
 %
 
 \section{Air--Sea interaction \label{sec:airseaIntro}}
@@ -26,21 +26,27 @@ heat flux $Q_{tot}$, the net short wave radiation at the surface,
 $I_0$, is not used as a boundary condition but as a source of heat, as
 calculated by means of equation \eq{Iz}, see \cite{PaulsonSimpson77}.
 For the salinity equation described in \sect{sec:salinity}, the fresh
-water fluxes at the surface would be needed. These fluxes are ignored
-in the present version of GOTM, since for most short term applications
-they are negligible. They way how boundary conditions for the
+water fluxes at the surface are given by the difference 
+of the evaporation and the 
+precipitation, $p_e$, given in m\,s$^{-1}$, see also the surface boundary
+condition for salinity, \eq{S_sbc}. 
+The way how boundary conditions for the
 transport equations of turbulent quantities are derived, is discussed
 in \sect{sec:turbulenceIntro}.
 
 There are basically two ways of calculating the surface heat and
 momentum fluxes implemented into GOTM. They are either prescribed (as
-constant values or to be read--in from files) or calculated on the
+constant values or to be read in from files) or calculated on the
 basis of standard meteorological data which have to be read in from
-files. The necessary parameters are sea surface temperature (SST), air
-temperature, air humidity and air pressure (each at 2 m height), and
-the wind velocity vector at 10 m height. Instead of the observed SST,
+files. The necessary parameters are 
+the wind velocity vector at 10 m height in m\,s$^{-1}$,
+the sea surface temperature (SST in Celsius), 
+air temperature in Celsius), air humidity (either as relative humidity
+in \%, as wet bulb temperature or as dew point
+temperature in Celsius) and air pressure (in hectopascal), each at 2 m height
+above the sea surface, and
+the wind velocity vector at 10 m height in m\,s$^{-1}$. 
+Instead of the observed SST,
 also the SST from the model may be used.  For the calculation of these
-fluxes, the bulk formulae of \cite{Kondo75} are used. Since the
-\cite{Kondo75} bulk formulae are fairly old, they should soon be
-replaced by newer versions, such as those suggested by
-\cite{Fairalletal96}.
+fluxes, the bulk formulae of \cite{Kondo75} or \cite{Fairalletal96}
+are used. 

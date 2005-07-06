@@ -1,5 +1,5 @@
 %
-%$Id: meanflowIntro.tex,v 1.1 2003-03-10 09:42:24 gotm Exp $
+%$Id: meanflowIntro.tex,v 1.2 2005-07-06 14:11:27 kbk Exp $
 %
 
 \section{The mean flow model \label{sec:meanflowIntro}}
@@ -10,36 +10,59 @@ This module contains the definitions of the most important
 mean flow variables used in geophysical models. In GOTM, these
 are
 \begin{itemize}
-  \item the horizontal velocity components, $u$ and $v$,
-  \item the potential temperature, $\theta$, (or the buoyancy, $b$),
-  \item and the salinity, $S$.
+  \item the mean horizontal velocity components, $U$ and $V$
+  \item the mean potential temperature, $\Theta$, (or the mean buoyancy, $B$)
+  \item the mean salinity, $S$
 \end{itemize}
-All operations on these variables are executed or coordinated in the 
-{\tt meanflow} module.
+Note that in general a variable $\phi$ describing a turbulent
+field can be decomposed into a mean and a fluctuating part. In GOTM, 
+we use the notation
+\begin{equation}
+  \label{decomposition}
+    \phi = \mean{\phi} + \phi'
+   \comma
+\end{equation}
+where $\mean{\rule{3mm}{0mm}}$ denotes the ensemble mean and the prime 
+the fluctuating part. In addition, for brevity, we use the following conventions:
+\begin{equation}
+  \label{decompositionConventions}
+   \begin{array}{rcl}
+     U      &=& \mean{u}      \quad \text{for the x-velocity}            \\	
+     V      &=& \mean{v}      \quad \text{for the y-velocity}            \\
+     P      &=& \mean{p}      \quad \text{for the pressure}              \\
+     \Theta &=& \mean{\theta} \quad \text{for the potential temperature} \\
+     B      &=& \mean{b}      \quad \text{for the buoyancy}              \\
+     S      &=& \mean{s}      \quad \text{for the salinity}             
+   \end{array}
+\end{equation}
+Note that, if not explicitly mentioned, GOTM uses the units kg, m, s,
+K. Further conventions are introduced in the turbulence chapter
+\sect{sec:turbulenceIntro}. All operations on these meanflow variables
+are executed and coordinated in the {\tt meanflow} module.
 
 \subsubsection{Physics}
 Due to the one-dimensional character of GOTM, the state-variables
 listed above are assumed to be horizontally homogeneous, depending
-only on the vertical $z$-coordinate. This has the consequence that
-all horizontal gradients have to be taken from observations, or they
-have to be estimated, parameterised or neglected.
+only on the vertical $z$-coordinate. As a consequence, all 
+horizontal gradients have to be taken from observations, or they have
+to be estimated, parameterised or neglected.
 
 For example, the surface slopes $\partial_x\zeta$ and
 $\partial_y\zeta$ representing the barotropic pressure-gradients may
 be determined by means of local observations or results from
-three-dimensional numerical models. It is also possible to prescribe
-a time series of the near-bed velocity components for reconstructing
-the barotropic pressure gradient, see
-\cite{Burchard99}.  The implementation of these options for the
-external pressure gradient is carried out in {\tt extpressure.F90},
-described in \sect{sec:extpressure}.  The internal pressure-gradient,
-which results from horizontal density gradients, can be prescribed
-from observations of horizontal gradients of $\theta$ and $S$ or from
+three-dimensional numerical models. It is also possible to prescribe a
+time series of the near-bed velocity components for reconstructing the
+barotropic pressure gradient, see \cite{Burchard99}.  The
+implementation of these options for the external pressure gradient is
+carried out in {\tt extpressure.F90}, described in
+\sect{sec:extpressure}.  The internal pressure-gradient, which results
+from horizontal density gradients, can be prescribed from observations
+of horizontal gradients of $\Theta$ and $S$ or from three-dimensional
 model results (see {\tt intpressure.F90} in \sect{sec:intpressure}).
-These gradients may also be used for horizontally advecting $\theta$
+These gradients may also be used for horizontally advecting $\Theta$
 and $S$ (see \sect{sec:temperature} and \sect{sec:salinity}).
 
-Another option in GOTM for parameterising the advection of $\theta$
+Another option in GOTM for parameterising the advection of $\Theta$
 and $S$ is to relax the model results to observations. Evidently, this
 raises questions about the physical consistency of the model, but it
 might help to provide a more realistic density field for studies of
@@ -51,7 +74,7 @@ horizontal diffusion terms are neglected.
 
 In hydrostatic ocean models, the vertical velocity is calculated by
 means of the continuity equation, where the horizontal gradients of
-$u$ and $v$ are needed. Since these are not available or set to zero,
+$U$ and $V$ are needed. Since these are not available or set to zero,
 the assumption of zero vertical velocity would be consistent.  In many
 applications however, a non-zero vertical velocity is needed in order
 to reflect the vertical adiabatic motion of e.g.\ a thermocline.  In
@@ -79,22 +102,17 @@ special cases, the buoyancy may also be calculated from a simple
 transport equation. {\tt stratification.F90} is also used for
 calculating the Brunt-V\"ais\"al\"a frequency, $N$.
 
-Typically, the turbulent quantities are calculated by means of various
-different turbulence closure models in the {\tt turbulence} module,
-see \sect{sec:turbulence}.  For these turbulence models, the shear and
-buoyancy production terms are calculated in {\tt production.F90} as
-explained in \sect{sec:production}. As a simplifying alternative,
-mixing can be computed according to the so-called `convective
-adjustment' algorithm, see \sect{sec:convective}.
+The turbulent fluxes are calculated by means of various different
+turbulence closure models described in great detail in the {\tt
+turbulence} module, see \sect{sec:turbulence}.  As a simplifying
+alternative, mixing can be computed according to the so-called
+`convective adjustment' algorithm, see \sect{sec:convective}.
 
 Furthermore, the vertical grid is also defined in the meanflow module
 (see {\tt updategrid.F90} in \sect{sec:updategrid}). Choices for the
-numerical grid are so-called $\sigma$-coordinates with layers
-heights having a fixed portion of the water depth throughout the
-simulation. Equidistant and non-equidistant grids are possible.  We
-do also allow for grids vertically adapting to shear and
-stratification as suggested by \cite{BurchardBeckers2003}, see {\tt
-adaptivegrid.F90} in \sect{sec:adaptivegrid}.
+numerical grid are so-called $\sigma$-coordinates with layers heights
+having a fixed portion of the water depth throughout the
+simulation. Equidistant and non-equidistant grids are possible. 
 
 \subsubsection{Numerics}\label{SectionNumericsMean}
 
@@ -109,15 +127,22 @@ with nondimensional interfaces $\gamma_i$ with $\gamma_0=-1$,
 $\gamma_{i-1}< \gamma_i$ and $\gamma_{N_i}=0$,
 see \cite{BurchardPetersen97}.
 
-The discrete values for the mean flow quantities $u$, $v$, $\theta$,
+The discrete values for the mean flow quantities $U$, $V$, $\Theta$,
 and $S$ represent interval means and are therefore located at the
 centres of the intervals, and the turbulent quantities like $k$, $L$,
-$\epsilon$, $\nu_t$, $\nu'_t$, $N$, $P$, $B$, $c_{\mu}$, and $c_{\mu}'$
-are positioned at the interfaces of the intervals.  The indexing is
-such, that the interface above an interval has the same index as the
-interval itself.  This means that mean flow quantities range from
-$i=1,..,N_i$ while turbulent quantities range from $i=0,..,N_i$ (see
-figure \ref{FigGrid}).  The staggering of the grid allows for a
+$\epsilon$, $\nu_t$, $\nu'_t$, $N$, $P$, $G$, $c_{\mu}$, and
+$c_{\mu}'$ are positioned at the interfaces of the intervals (see
+\sect{sec:turbulence}).  The indexing is such, that the interface
+above an interval has the same index as the interval itself.  This
+means that mean flow quantities range from $i=1,..,N_i$ while
+turbulent quantities range from $i=0,..,N_i$ (see \fig{FigGrid}).
+\begin{figure}[!h]	
+  \begin{center}	
+    \scalebox{0.5}{\includegraphics{\figloc{gridvert.eps}}}
+    \caption{Spatial organisation and indexing of the numerical grid.\label{FigGrid}}
+  \end{center}
+\end{figure}
+The staggering of the grid allows for a
 straight-forward discretisation of the vertical fluxes of momentum
 and tracers without averaging.  However, for the vertical fluxes of
 e.g.\ $k$ and $\epsilon$, averaging of the eddy diffusivities is
@@ -125,44 +150,34 @@ necessary. This is only problematic for the fluxes near the surface
 and the bottom, where viscosities at the boundaries have to be
 considered for the averaging. These can however be derived from the
 law of the wall.
-
 \begin{figure}
-\begin{center}
-\includegraphics[width=7cm,bbllx=5cm,bblly=13.0cm,bburx=17cm,bbury=27.7cm]{./figures/GridVert.ps}
-\caption{Spatial organisation and indexing of the numerical grid.
-}\label{FigGrid}
-\end{center}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-\includegraphics[width=10cm,bbllx=58,bblly=590,bburx=554,bbury=832]{./figures/gridtime.ps}
-\caption{Temporal organisation and indexing of the numerical grid.
-Here, a time stepping slightly more implicit than the \index{Crank-Nicolson scheme}
-\cite{CrankNicolson47}
-scheme with $\sigma=0.6$ is shown.
-}\label{FigGridTime}
+  \begin{center}
+   \scalebox{0.5}{\includegraphics{\figloc{gridtime.eps}}}
+   \caption{Temporal organisation and indexing of the numerical grid.
+            Here, a time stepping slightly more implicit than the 
+            \index{Crank-Nicolson scheme} \cite{CrankNicolson47} 
+            scheme with $\sigma=0.6$ is shown.\label{FigGridTime}}
 \end{center}
 \end{figure}
 
 The time stepping is equidistant, based on two time levels and not
 limited by Courant numbers, because of the absence of advection and an
-implicit treatment of vertical diffusion.  In the following, the
-discretisation of a simple diffusion equation,
+implicit treatment of vertical diffusion, see \fig{FigGridTime}.  In
+the following, the discretisation of a simple diffusion equation,
 \begin{equation}
   \label{simpleDiffusion}
-  \partial_t X - \partial_z(\nu \partial_z X)=0
+  \partder{X}{t} - \partder{}{z} \left( \nu \partder{X}{z} \right) = 0
   \comma
 \end{equation}
 will be illustrated for Neumann-type
 boundary conditions
 \begin{equation}
-  \nu \partial_z X = F_s
+  \nu \partder{X}{z} = F_s
   \qquad \mbox{for } z=\zeta,\qquad
 \end{equation}
 and
 \begin{equation}
-  \nu \partial_z X = F_b
+  \nu \partder{X}{z} = F_b
   \qquad \mbox{for } z=-H.\qquad
 \end{equation}
 
@@ -200,8 +215,6 @@ for $1<i<N_i$. Here, the semi-implicit time level is defined by
 \begin{equation}
   X^{n+\sigma}=\sigma X^{n+1}+(1-\sigma)X^n.
 \end{equation}
-
-
 Thus, for $\sigma=0$, a fully explicit, for $\sigma=1$ a fully
 implicit, and for $\sigma=0.5$ the \cite{CrankNicolson47}
 second-order scheme are obtained. \Fig{FigGridTime} shows an
@@ -210,6 +223,9 @@ stepping is preferable which is slightly more implicit than the
 \cite{CrankNicolson47} scheme in order to obtain
 asymptotic stability.  The resulting linear system of equations
 (\ref{sigmafirst}) -- (\ref{sigmalast}) with tri-diagonal matrix
-structure is solved by means of the simplified Gaussian
-elimination.
+structure is solved by means of the simplified Gaussian elimination. 
+
+With the same strategy, a very similar system of equations can be
+derived for variables located at the interfaces of the grid cells,
+i.e. variables describing turbulence.
 

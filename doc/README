@@ -1,5 +1,5 @@
 #
-#$Id: README,v 1.3 2004-01-12 09:39:04 lars Exp $
+#$Id: README,v 1.4 2005-07-06 14:11:27 kbk Exp $
 #
 
 Currently, there are three versions of the GOTM documentation with the
@@ -10,9 +10,14 @@ code_letter.filetype
 code_html.filetype
 
 "filetype" can be dvi, ps, or pdf. To produce these files type "make
-"papertype_filetype" in this directory. For example, "make
-letter_pdf" will create the documention in US-letter format, which
-can be display with "acroread code_letter.pdf".
+"papertype_filetype" in this directory. For example, 
+
+"make letter_pdf"
+
+will create the documention in US-letter format, which
+can be display with 
+
+"acroread code_letter.pdf".
 
 The files "code_html.filetype" are without figures, because
 "latex2html" does not yet work for our postscript-figures. Currently, only the
@@ -21,10 +26,4 @@ different from the printed versions, with figures commented out.
 Also the figure on the titlepage is missing.
 
 To produce the html-code type "make html_web".
-To copy code on the server type "make html_scp".
-
-Note, that there is no reason any more to run things like "make doc"
-in the gotm/src directory. If you change anything in a LaTeX source
-file, "make" will notice it, and the *.dvi, *.ps, *.pdf, and *.html
-files will be always updated automatically if you make them. Also 
-files copied to the server will be checked if they are up to date.
+To copy code to the server type "make html_scp".

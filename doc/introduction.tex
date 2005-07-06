@@ -1,5 +1,5 @@
 %
-%$Id: introduction.tex,v 1.1 2003-03-10 09:42:24 gotm Exp $
+%$Id: introduction.tex,v 1.2 2005-07-06 14:11:27 kbk Exp $
 %
 
 \section{Introduction}
@@ -53,18 +53,19 @@ cases, less talented programmers. Additional time had to be spend for
 providing components for atmospheric forcing, etc, before the own
 research project could finally be attacked.
 
-To overcome these problems, the GOTM project was originated, its purpose
-being twofold. First, GOTM should provide an integrative environment
-for all researchers interested in the \emph{application} of a turbulence model
-in studies of oceanic processes. Such a software should, evidently,
-contain a core part for solving transport equations of mean and turbulent
-quantities, but equally well routines to compute the atmosphere-ocean
-fluxes from meteorological or measured data, including routines to interpolate
-and manipulate them. Second, however, GOTM should also be a research tool for
-those interested in the \emph{development} of turbulence models
-and numerical algorithms. This implies that GOTM should always contain
-the state-of-the-art models and algorithms in these disciplines. The current
-version 3.0 of GOTM was developed under these premises.
+To overcome these problems, the GOTM project was originated, its
+purpose being twofold. First, GOTM should provide an integrative
+environment for all researchers interested in the \emph{application}
+of a turbulence model in studies of oceanic processes. Such a software
+should contain a core part for solving transport equations of mean and
+turbulent quantities, but equally well routines to compute the
+atmosphere-ocean fluxes from meteorological or measured data,
+including routines to interpolate and manipulate them. Second,
+however, GOTM should also be a research tool for those interested in
+the \emph{development} of turbulence models and numerical
+algorithms. This implies that GOTM should always contain the
+state-of-the-art models and algorithms in these disciplines. The
+current version of GOTM was developed under these premises.
 
 In both cases, a detailed and comprehensible documentation is crucial,
 and we spent a lot of effort to come close to this goal.  All methods
@@ -75,11 +76,10 @@ understandable, and extensible, as possible.
 
 
 \subsection{How to read the documentation}
-This document is the official scientific documentation of GOTM,
-replacing an older report by \cite{Burchardetal99}. Due to the fast
-and continuing evolution of GOTM, we have been looking for a new and
-flexible way of giving a comprehensive and up-to-date documentation
-for GOTM. We decided for the following strategy.
+This document is the official scientific documentation of GOTM. Due to
+the fast and continuing evolution of GOTM, we have been looking for a
+new and flexible way of giving a comprehensive and up-to-date
+documentation for GOTM. We decided for the following strategy.
 
 Every module of GOTM is accompanied by an introductory text on the
 general theory of the subject, including mathematical derivations,
@@ -98,11 +98,11 @@ code. These fragments of the documentation will be updated every time
 the code changes. We use a software called PROTEX, which looks into
 \emph{every} FORTRAN file of GOTM, extracts the \LaTeX\ parts, and
 compiles some information about the FORTRAN interfaces, public member
-functions, public date members, defined parameters, etc. All these
+functions, public data members, defined parameters, etc. All these
 pieces of information are assembled by PROTEX to yield a nice
 documentation including table of contents, figures, tables,
 references, and formulae for each part of the program. The largest
-part of the report has been created in this way. Note, that PROTEX
+part of the report has been created in this way. Note that PROTEX
 looks for certain key words in the FORTRAN code to organise the
 structure of the final document. Therefore, don't be confused if you
 find things like {\tt !DESCRIPTION:}, {\tt !INTERFACE:}, {\tt !PUBLIC
@@ -114,13 +114,13 @@ parts of GOTM described in \sect{sec:mainIntro}, \sect{sec:meanflowIntro},
 and \sect{sec:turbulenceIntro}. In these sections, you will find also
 references to the relevant introductory literature. The other
 parts of this documentation should be used like an encyclopedia: you
-can look up things fast, when you need more information about parts
+can look up things fast when you need more information about parts
 of the program. Extra comments can be found in the form of standard
-FORTRAN comments, that should help users to find their way through the many
+FORTRAN comments that should help users to find their way through the
 lines of the code.
 
 A special status in this documentation has \sect{sec:cases}
-illustrating the prepared scenarios for GOTM. This section gives
+illustrating particular scenarios prepared for GOTM. This section contains
 useful information about the theoretical background and the
 implementation of each scenario currently available in GOTM. Scenarios
 range from simple test cases, like a turbulent Couette flow, to full
@@ -133,9 +133,9 @@ This documentation does not contain information about how to download,
 compile and run the code and the test cases. All information necessary
 to run GOTM on a number of well-known platforms is compiled at {\tt
 www.gotm.net}. If you wish to directly contact to the GOTM developers,
-please write an e-mail to {\tt devel@gotm.net}. All users of GOTM,
+please write an e-mail to {\tt gotm-devel@gotm.net}. All users of GOTM,
 who signed up on the GOTM web page, will be on the users' mailing
-list, {\tt users@gotm.net}. Information about updates, bug fixes, and
+list, {\tt gotm-users@gotm.net}. Information about updates, bug fixes, and
 new versions of GOTM are communicated via this list.
 
 \subsection{Acknowledgements}
@@ -146,10 +146,10 @@ those from the very first days of GOTM which took place at the Joint
 Research Centre in Ispra (Italy) in 1998: Manuel Ruiz Villarreal who
 worked after the Ispra time in Santiago de Compostela (Spain), Lisboa
 (Portugal), Hamburg (Germany), and Warnem\"unde (Germany) before he
-moved back to his home county for working in A Coru\~na
+moved back to his home country for working in A Coru\~na
 (Spain). Pierre-Phillipe Mathieu who went to Reading (U.K.) for some
 time before he arrived in Frascati (Italy) recently.  We further want
-to acknowledge the currently 155 subscribed users of GOTM from all
+to acknowledge the almost 200 subscribed users of GOTM from all
 over the world who helped us to improve GOTM and motivated to go on
 with this no-budget project.  It was also the important role which
 GOTM played in several projects funded by the European Commission
