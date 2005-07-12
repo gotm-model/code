@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.17 2005-07-06 15:30:17 kbk Exp $
+!$Id: gotm.F90,v 1.18 2005-07-12 10:13:21 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -77,7 +77,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.17  2005-07-06 15:30:17  kbk
+!  Revision 1.18  2005-07-12 10:13:21  hb
+!  dependence of init_turbulence from depth, z0s, z0b removed
+!
+!  Revision 1.17  2005/07/06 15:30:17  kbk
 !  added KPP, no bio, no sediment, updated documentation
 !
 !  Revision 1.16  2004/08/02 08:35:46  hb
@@ -220,7 +223,7 @@
    call init_observations(namlst,'obs.inp',julianday,secondsofday,      &
                           depth,nlev,z,h,gravity,rho_0)
 
-   call init_turbulence(namlst,'gotmturb.inp',nlev,depth,z0s,z0b)
+   call init_turbulence(namlst,'gotmturb.inp',nlev)
 
 !  initalise mean fields
    s = sprof

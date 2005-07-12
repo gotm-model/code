@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.9 2005-07-06 14:07:17 kbk Exp $
+!$Id: turbulence.F90,v 1.10 2005-07-12 10:13:22 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -259,7 +259,10 @@
 
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.9  2005-07-06 14:07:17  kbk
+!  Revision 1.10  2005-07-12 10:13:22  hb
+!  dependence of init_turbulence from depth, z0s, z0b removed
+!
+!  Revision 1.9  2005/07/06 14:07:17  kbk
 !  added KPP, updated documentation, new structure of turbulence module
 !
 !  Revision 1.7  2003/03/28 09:20:35  kbk
@@ -291,7 +294,7 @@
 ! !IROUTINE: Initialise the turbulence module
 !
 ! !INTERFACE:
-   subroutine init_turbulence(namlst,fn,nlev,depth,z0s,z0b)
+   subroutine init_turbulence(namlst,fn,nlev)
 !
 ! !DESCRIPTION:
 ! Initialises all turbulence related stuff. This routine reads a number
@@ -318,8 +321,6 @@
    integer,          intent(in)        :: namlst
    character(len=*), intent(in)        :: fn
    integer,          intent(in)        :: nlev
-   REALTYPE,         intent(in)        :: depth
-   REALTYPE,         intent(in)        :: z0s,z0b
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard,
@@ -565,7 +566,7 @@
    if ((len_scale_method.eq.generic_eq).and.compute_param) then
       call generate_model
    else
-      call analyse_model(depth,z0s,z0b)
+      call analyse_model
    endif
 
 !  report on parameters and properties of the model
@@ -1342,7 +1343,7 @@
 ! !IROUTINE: Analyse the turbulence models\label{sec:analyse}
 !
 ! !INTERFACE:
-   subroutine analyse_model(depth,z0s,z0b)
+   subroutine analyse_model
 !
 ! !DESCRIPTION:
 ! This routine analyses all models in GOTM for their physical properties
@@ -1467,8 +1468,6 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE,         intent(in)        :: depth
-   REALTYPE,         intent(in)        :: z0s,z0b
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
@@ -1477,7 +1476,7 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE                   :: rad,one=1.0
-   REALTYPE, external         ::  compute_cpsi3,compute_rist
+   REALTYPE, external         :: compute_cpsi3,compute_rist
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -1506,11 +1505,11 @@
 
       if (compute_kappa) kappa=0.4
       ! Slope at the surface computed from the analytical profile
-      ! of Robert and Ouellet (1987) (see algebraiclength.F90)
-
-      gen_l     = kappa*( (depth+z0b)/depth/(2.*sqrt(z0s/depth)) &
-                         - sqrt(z0s/depth) )
-      gen_alpha = -sqrt(2./3.*cm0**2.*rcm*sig_k/gen_l**2.)
+      ! of Robert and Ouellet (1987) (see algebraiclength.F90):
+      ! gen_l and gen_alpha will not be computed since they require
+      ! the depth, and the surface and bed roughness length, three
+      ! quantities which are not available in init_turbulence when
+      ! the GOTM turbulence module is coupled to 3D models.
 
    case(Blackadar)
 
@@ -1764,8 +1763,8 @@
          LEVEL3 'in shear-free turbulence,        cmsf =', cmsf
          LEVEL2 ' '
          LEVEL3 'At the surface:'
-         LEVEL3 'spatial decay rate (no shear), alpha =', gen_alpha
-         LEVEL3 'length-scale slope (no shear),     L =', gen_l
+         LEVEL3 'spatial decay rate (no shear), alpha = not computed'
+         LEVEL3 'length-scale slope (no shear),     L = not computed'
          LEVEL2 '--------------------------------------------------------'
          LEVEL2 ' '
       case(Blackadar)
