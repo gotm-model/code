@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.6 2003-12-11 10:00:09 kbk Exp $
+#$Id: Makefile,v 1.7 2005-07-14 14:23:29 lars Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -74,7 +74,7 @@ realclean: clean
 	$(RM) ../modules/$(FORTRAN_COMPILER)/*.{m,mod} 
 	$(RM) ../lib/$(FORTRAN_COMPILER)/lib*$(buildtype).a
 ifdef SUBDIRS
-	set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i $@; done
+	set -e; for i in $(DOCDIRS) $(SUBDIRS); do $(MAKE) -C $$i $@; done
 endif
 ifdef FEATURES
 	set -e; for i in $(FEATURES); do $(MAKE) -C $$i $@; done
