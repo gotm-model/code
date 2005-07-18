@@ -1,13 +1,13 @@
 #
-#$Id: README,v 1.4 2005-07-06 14:11:27 kbk Exp $
+#$Id: README,v 1.5 2005-07-18 07:56:19 lars Exp $
 #
 
 Currently, there are three versions of the GOTM documentation with the
-names:
+names coded as "papertype.filetype". These are:
 
-code_a4.filetype
-code_letter.filetype
-code_html.filetype
+a4.filetype
+letter.filetype
+html.filetype
 
 "filetype" can be dvi, ps, or pdf. To produce these files type "make
 "papertype_filetype" in this directory. For example, 
@@ -17,13 +17,18 @@ code_html.filetype
 will create the documention in US-letter format, which
 can be display with 
 
-"acroread code_letter.pdf".
+"acroread letter.pdf".
 
-The files "code_html.filetype" are without figures, because
-"latex2html" does not yet work for our postscript-figures. Currently, only the
-LaTeX files "meanflowIntro.tex" and "utilIntro.tex" are
-different from the printed versions, with figures commented out.
-Also the figure on the titlepage is missing.
+Similarly, the files "a4.pdf" and "html.pdf" can be produced, where
+"html.pdf" essentially corresponds to the paper version of the 
+GOTM web documentation. The web version is produced from the 
+latex source code by typing 
 
-To produce the html-code type "make html_web".
-To copy code to the server type "make html_scp".
+"make html_web". 
+
+The html-pages are created by "latex2html" such that your result
+depends on the variables you have set in ".latex2html-init" in 
+your home directory (or their defaults if you don't have this file). 
+
+To copy the html-pages to the server type "make html_scp". 
+This option is available only to those that have the password. 
