@@ -1,9 +1,9 @@
-!$Id: cmue_sg.F90,v 1.5 2005-06-27 13:44:07 kbk Exp $
+!$Id: cmue_sg.F90,v 1.6 2005-07-18 08:54:56 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: \cite{SchumannGerz95} stability function\label{sec:sg}
+! !ROUTINE: The Schumann and Gerz (1995) stability function\label{sec:sg}
 !
 ! !INTERFACE:
    subroutine cmue_sg(nlev)
@@ -38,7 +38,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_sg.F90,v $
-!  Revision 1.5  2005-06-27 13:44:07  kbk
+!  Revision 1.6  2005-07-18 08:54:56  lars
+!  changed docu for html compliance
+!
+!  Revision 1.5  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.4  2004/08/18 12:53:07  lars

@@ -1,9 +1,9 @@
-!$Id: stratification.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: stratification.F90,v 1.7 2005-07-18 08:54:33 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Calculation of $N^2$ and $B$ \label{sec:stratification}
+! !ROUTINE: Calculation of the stratification\label{sec:stratification}
 !
 ! !INTERFACE:
    subroutine stratification(nlev,buoy_method,dt,cnpar,nub,gamB)
@@ -101,7 +101,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: stratification.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2005-07-18 08:54:33  lars
+!  changed docu for html compliance
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk

@@ -1,9 +1,9 @@
-!$Id: cmue_ma.F90,v 1.7 2005-06-27 13:44:07 kbk Exp $
+!$Id: cmue_ma.F90,v 1.8 2005-07-18 08:54:56 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: The \cite{MunkAnderson48} stability function\label{sec:cmueMA}
+! !ROUTINE: The Munk and Anderson (1948) stability function\label{sec:cmueMA}
 !
 ! !INTERFACE:
    subroutine cmue_ma(nlev)
@@ -37,7 +37,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_ma.F90,v $
-!  Revision 1.7  2005-06-27 13:44:07  kbk
+!  Revision 1.8  2005-07-18 08:54:56  lars
+!  changed docu for html compliance
+!
+!  Revision 1.7  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.6  2004/08/18 12:53:07  lars
