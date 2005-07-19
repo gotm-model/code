@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.11 2005-07-19 16:33:22 hb Exp $
+!$Id: turbulence.F90,v 1.12 2005-07-19 16:46:14 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -259,7 +259,10 @@
 
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.11  2005-07-19 16:33:22  hb
+!  Revision 1.12  2005-07-19 16:46:14  hb
+!  removed superfluous variables - NNT, NNS, SSU, SSV
+!
+!  Revision 1.11  2005/07/19 16:33:22  hb
 !  moved  variances() from do_turbulence() to time_loop()
 !
 !  Revision 1.10  2005/07/12 10:13:22  hb
@@ -1908,7 +1911,7 @@
 !
 ! !INTERFACE:
    subroutine do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,NNT,NNS,SS,SSU,SSV,xP)
+                            NN,SS,xP)
 !
 ! !DESCRIPTION: This routine is the central point of the
 ! turbulence scheme. It determines the order, in which
@@ -1975,12 +1978,14 @@
    REALTYPE, intent(in)                :: h(0:nlev)
 
 !  boyancy frequency squared (1/s^2)
-!  (total, from T only, from S only)
-   REALTYPE, intent(in)                :: NN(0:nlev),NNT(0:nlev),NNS(0:nlev)
+   REALTYPE, intent(in)                :: NN(0:nlev)
+!  (from T only, from S only)
+!   REALTYPE, intent(in)                :: NNT(0:nlev),NNS(0:nlev)
 
 !  shear-frequency squared (1/s^2)
-!  (total, from U only, from V only)
-   REALTYPE, intent(in)                :: SS(0:nlev),SSU(0:nlev),SSV(0:nlev)
+   REALTYPE, intent(in)                :: SS(0:nlev)
+!  (from U only, from V only)
+!   REALTYPE, intent(in)                :: SSU(0:nlev),SSV(0:nlev)
 
 !  TKE production due to seagrass
 !  friction (m^2/s^3)
@@ -2012,10 +2017,10 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,NNT,NNS,SS,SSU,SSV,xP)
+         call production(nlev,NN,SS,xP)
       else
 !        without
-         call production(nlev,NN,NNT,NNS,SS,SSU,SSV)
+         call production(nlev,NN,SS)
       end if
 
       call alpha_mnb(nlev,NN,SS)
@@ -2033,10 +2038,10 @@
 
       if ( PRESENT(xP) ) then
 !        with seagrass turbulence
-         call production(nlev,NN,NNT,NNS,SS,SSU,SSV,xP)
+         call production(nlev,NN,SS,xP)
       else
 !        without
-         call production(nlev,NN,NNT,NNS,SS,SSU,SSV)
+         call production(nlev,NN,SS)
       end if
 
       select case(scnd_method)

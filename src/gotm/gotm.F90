@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.19 2005-07-19 16:33:22 hb Exp $
+!$Id: gotm.F90,v 1.20 2005-07-19 16:46:14 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -77,7 +77,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.19  2005-07-19 16:33:22  hb
+!  Revision 1.20  2005-07-19 16:46:14  hb
+!  removed superfluous variables - NNT, NNS, SSU, SSV
+!
+!  Revision 1.19  2005/07/19 16:33:22  hb
 !  moved  variances() from do_turbulence() to time_loop()
 !
 !  Revision 1.18  2005/07/12 10:13:21  hb
@@ -380,7 +383,7 @@
       case default
 !        update one-point models
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
-                            NN,NNT,NNS,SS,SSU,SSV,xP)
+                            NN,SS,xP)
       end select
 
 !     do the output

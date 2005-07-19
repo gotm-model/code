@@ -1,4 +1,4 @@
-!$Id: production.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: production.F90,v 1.2 2005-07-19 16:46:14 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,7 +6,7 @@
 ! !ROUTINE: Update turbulence production\label{sec:production}
 !
 ! !INTERFACE:
-   subroutine production(nlev,NN,NNT,NNS,SS,SSU,SSV,xP)
+   subroutine production(nlev,NN,SS,xP)
 !
 ! !DESCRIPTION:
 !  This subroutine calculates the production terms of turbulent kinetic
@@ -53,11 +53,8 @@
 !
 ! !USES:
    use turbulence, only: P,B,Pb
-   use turbulence, only: num,nuh,nus
-   use turbulence, only: gamu,gamv,gamh,gams
+   use turbulence, only: num,nuh
    use turbulence, only: alpha,iw_model
-   use meanflow,   only: h
-
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -66,12 +63,10 @@
    integer,  intent(in)                :: nlev
 
 !  boyancy frequency squared (1/s^2)
-!  (total, from T only, from S only)
-   REALTYPE, intent(in)                :: NN(0:nlev),NNT(0:nlev),NNS(0:nlev)
+   REALTYPE, intent(in)                :: NN(0:nlev)
 
 !  shear-frequency squared (1/s^2)
-!  (total, from U only, from V only)
-   REALTYPE, intent(in)                :: SS(0:nlev),SSU(0:nlev),SSV(0:nlev)
+   REALTYPE, intent(in)                :: SS(0:nlev)
 
 !  TKE production due to seagrass
 !  friction (m^2/s^3)
@@ -82,7 +77,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: production.F90,v $
-!  Revision 1.1  2005-06-27 10:54:33  kbk
+!  Revision 1.2  2005-07-19 16:46:14  hb
+!  removed superfluous variables - NNT, NNS, SSU, SSV
+!
+!  Revision 1.1  2005/06/27 10:54:33  kbk
 !  new files needed
 !
 !  Revision 1.6  2003/03/28 09:20:35  kbk
@@ -119,7 +117,8 @@
       P=num*(SS+alpha_eff*NN)
    endif
 
-   B    = -nuh*NNT - nus*NNS
+!  B    = -nuh*NNT - nus*NNS - when double diffusion is introduced
+   B    = -nuh*NN
    Pb   = -B*NN
 
    return
