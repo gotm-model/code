@@ -1,4 +1,4 @@
-!$Id: output.F90,v 1.7 2005-07-06 14:22:40 kbk Exp $
+!$Id: output.F90,v 1.8 2005-07-19 17:09:37 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -41,7 +41,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: output.F90,v $
-!  Revision 1.7  2005-07-06 14:22:40  kbk
+!  Revision 1.8  2005-07-19 17:09:37  hb
+!  removed code commented out
+!
+!  Revision 1.7  2005/07/06 14:22:40  kbk
 !  updated documentation - saves KPP related variables
 !
 !  Revision 1.6  2003/10/14 08:04:32  kbk
@@ -226,8 +229,6 @@
 !BOC
    if (write_results) then
 
-!kbk     call write_time_string(julianday,secondsofday,ts)
-!kbk     call ss_nn_obs
       LEVEL2 'Saving....',ts
       secs = n*timestep
       select case (out_fmt)
@@ -242,12 +243,6 @@
            stop 'do_output'
       end select
    end if
-
-!  Diagnostic output
-!   if(diagnostics) then
-!      STDERR 'Diagnostics'
-!      call do_diagnostics(n,nlev,BuoyMeth,dt,u_taus,u_taub)
-!   end if
 
    return
    end subroutine do_output
