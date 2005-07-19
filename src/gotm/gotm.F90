@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.18 2005-07-12 10:13:21 hb Exp $
+!$Id: gotm.F90,v 1.19 2005-07-19 16:33:22 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -77,7 +77,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.18  2005-07-12 10:13:21  hb
+!  Revision 1.19  2005-07-19 16:33:22  hb
+!  moved  variances() from do_turbulence() to time_loop()
+!
+!  Revision 1.18  2005/07/12 10:13:21  hb
 !  dependence of init_turbulence from depth, z0s, z0b removed
 !
 !  Revision 1.17  2005/07/06 15:30:17  kbk
@@ -381,7 +384,10 @@
       end select
 
 !     do the output
-      call do_output(n,nlev)
+      if (write_results) then
+         call variances(nlev,SSU,SSV)
+         call do_output(n,nlev)
+      end if
 
       call integrated_fluxes(dt)
 

@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.10 2005-07-12 10:13:22 hb Exp $
+!$Id: turbulence.F90,v 1.11 2005-07-19 16:33:22 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -259,7 +259,10 @@
 
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.10  2005-07-12 10:13:22  hb
+!  Revision 1.11  2005-07-19 16:33:22  hb
+!  moved  variances() from do_turbulence() to time_loop()
+!
+!  Revision 1.10  2005/07/12 10:13:22  hb
 !  dependence of init_turbulence from depth, z0s, z0b removed
 !
 !  Revision 1.9  2005/07/06 14:07:17  kbk
@@ -2046,7 +2049,6 @@
          call do_kb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
-         call variances(nlev,SSU,SSV)
          call alpha_mnb(nlev,NN,SS)
          call kolpran(nlev)
 
@@ -2058,7 +2060,6 @@
          call do_kb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_lengthscale(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,NN,SS)
          call do_epsb(nlev,dt,u_taus,u_taub,z0s,z0b,h,NN,SS)
-         call variances(nlev,SSU,SSV)
          call alpha_mnb(nlev,NN,SS)
          call kolpran(nlev)
 
