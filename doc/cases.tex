@@ -1,5 +1,5 @@
 %
-%$Id: cases.tex,v 1.2 2003-03-28 15:47:54 lars Exp $
+%$Id: cases.tex,v 1.3 2005-07-20 12:38:01 lars Exp $
 %
 
 \section{GOTM scenarios \label{sec:cases}}
@@ -18,13 +18,9 @@ the scenarios can be found on the GOTM homepage, {\tt www.gotm.net}.
 Section & Title & Scenario name \\ \hline\hline 
 \ref{couette} & Couette-flow & {\tt couette} \\ \hline  
 \ref{channel} & Pressure-gradient driven channel flow& {\tt channel} \\ \hline
-\ref{breaking_waves} & Breaking surface-waves & {\tt breaking\_waves} \\ \hline 
-\ref{kato} & Kato-Phillips entrainment experiment & {\tt kato} \\ \hline        
-\ref{convection} & Free convection experiment & {\tt convection} \\ \hline     
+\ref{breaking_waves} & Breaking surface-waves & {\tt wave\_breaking} \\ \hline 
+\ref{entrainment} & Some entrainment scenarios & {\tt entrainment} \\ \hline        
 \ref{estuary} & Estarine dynamics & {\tt estuary} \\ \hline 
-\ref{rouse} & Rouse profile  & {\tt rouse} \\ \hline 
-\ref{seagrass} &Seagrass canopy  & {\tt seagrass} \\ \hline 
-\ref{vertical_advection} &Vertical advection  & {\tt vertical\_advection} \\ \hline 
 \ref{flex} &Fladenground Experiment  & {\tt flex} \\ \hline 
 \ref{nns_annual} & Annual North Sea simulation & {\tt nns\_annual} \\ \hline 
 \ref{provess_nns} & PROVESS North Sea simulation & {\tt provess\_nns} \\ \hline 
@@ -48,54 +44,71 @@ In this subsection, the performance of GOTM in some idealised
 turbulent flows is discussed. In these flows there are regions, where
 certain analytical solutions, like the law of the wall or the Rouse
 profile, apply. These solutions can be used to test the correctness of
-the implementation and the accuracy of the numerical schemes.
- 
-The first few of these idealised flows serve also as a short tutorial for new
-GOTM users. We supplied several input files for these scenarios
-to illustrate the performance of different turbulence models for 
-the same flow. It is recommended to start with the Couette-flow described
-next.
+the implementation and the accuracy of the numerical schemes. The
+theoretical background is discussed in \sect{sec:turbulenceIntro} and
+in the review article of \cite{UmlaufBurchard2005a}.
+
+The first few of these idealised flows serve also as a short tutorial
+for new GOTM users. We supplied several input files for these
+scenarios to illustrate the performance of different turbulence models
+for the same flow. It is recommended to start with the Couette-flow
+described next.
 
 \subsubsection{Couette-flow}\label{couette}
 
-The term Couette-flow flow traditionally denotes an uni-directional,
-unstratified, non-rotating flow confined between two plates, of which
-one is moving with constant velocity. No pressure-gradient is applied.
-It is clear that this flow can also serve as a very simple model of
-the steady-state flow in a horizontally infinite ocean of finite
-depth, driven solely by a shear-stress at the surface.
+This is the simplest example designed for new users. It will tell you
+about how to run a simple unstratified flow with the most frequently
+used turbulence models. The term Couette-flow flow traditionally
+denotes an uni-directional, unstratified, non-rotating flow confined
+between two plates, of which one is moving with constant velocity. No
+pressure-gradient is applied.  It is clear that this flow can also
+serve as a very simple model of the steady-state flow in a
+horizontally infinite ocean of finite depth, driven solely by a
+shear-stress at the surface.
 
-In our example, the prescribed surface stress is $\tau_x= 1.027$
-N\,m$^{-2}$ and the water depth is set to 10 m. Rotation,
-pressure-gradients and stratification are neglected.  The simulation
-is run for 12 hours until a steady-state is reached. These parameters
-are set (among many others) in the input files {\tt gotmrun.inp}, {\tt
-gotmmean.inp}, and {\tt airsea.inp}. A set of these files has been
-provided for several turbulence models in the sub-directories {\tt
-kepsilon\_inp/}, {\tt komega\_inp/} etc. Take some time to have a look at
-the contents of these files. Most of the parameters found in {\tt
-gotmmean.inp} and {\tt airsea.inp} are explained to some extent in
-\sect{sec:mainIntro}, \sect{sec:meanflowIntro}, and
-\sect{sec:airseaIntro}. The input file {\tt gotmrun.inp} contains
-mainly parameters concerning the model run, like the time step, 
-the model time, the output format, etc.
- 
-Copy all files from the subdirectory {\tt kepsilon\_inp/} to the
-directory with the GOTM executable. We will call this directory the 
-\emph{current directory} in the following.  All information about the
-turbulence models is read-in from the file {\tt gotmturb.inp}. Having
-a look in this file, you see that we selected {\tt tke\_method = 2}
-and {\tt length\_scale\_method = 8}, which corresponds exactly to the
-$k$-$\epsilon$ model described in \sect{sec:dissipationeq}. The model
-parameters are given in the {\tt keps} namelist.
+A set of GOTM input files (containing all specifications needed for
+the runs) has been provided for 3 different turbulence models in the
+sub-directories {\tt kepsilon\_inp/}, {\tt komega\_inp/} and {\tt
+MellorYamada\_inp/}.  Copy all files from the subdirectory {\tt
+kepsilon\_inp/} to the directory with the GOTM executable. We will
+call this directory the \emph{current directory} in the following. How
+to install GOTM and create the executable is described on the GOTM web
+page at {\tt www.gotm.net}.  Take some time to have a look at the
+contents of these files. 
 
-If you run this scenario as described on the GOTM homepage, GOTM will
-write information about the turbulence model on your screen: What are
-the model parameters? What value has the von K{\'a}rm{\'a}n constant,
-$\kappa$?  What value has the decay rate in homogeneous turbulence,
-$d$? And so on. All other output is written to files called {\tt
-couette.out} or {\tt couette.nc}, depending on whether you selected
-ASCII or NetCDF output in {\tt gotmrun.inp}.
+In our example, the prescribed surface stress is $\tau_x= 1.027$ Pa, a
+quantity that can be set in the input file {\tt airsea.inp}. This file
+contains many other variables that are related to the air-sea fluxes
+driving the model.
+
+Parameters concerning the run are set in the input file {\tt
+gotmrun.inp}. There, you will find for example the specification of
+the water depth ($10$ m in this case) and the date and time of this
+run (24 hours until a steady-state is reached). The input file
+{\tt gotmrun.inp} contains mainly parameters concerning the model run,
+the time step, the model time, the output format, etc.
+
+All information about the turbulence models is read-in from the file
+{\tt gotmturb.inp}. Having a look in this file, you see that we
+selected {\tt tke\_method = 2} and {\tt length\_scale\_method = 8},
+which corresponds exactly to the $k$-$\epsilon$ model described in
+\sect{sec:dissipationeq}. The model parameters are given in the {\tt
+keps} namelist. In this simple example, no Explicit Algebraic Stress
+Model (see \sect{sec:secondOrder}) is solved in addition to the
+transport equations for $k$ and $\epsilon$. If you compare this {\tt
+gotmturb.inp} with those found in the other sub-directories (e.g.\ for
+the Mellor-Yamada model) it is easy to see how different turbulence
+models can be activated by changing e.g.\ the value for {\tt
+length\_scale\_method}.
+
+If you run this scenario, GOTM will write information about the run
+and the turbulence model to your screen: What are the parameters of
+the run, like time step, date, layers, etc? What are the model
+parameters of the turbulence model? What value has the von
+K{\'a}rm{\'a}n constant, $\kappa$?  What value has the decay rate in
+homogeneous turbulence, $d$? And so on. All other output is written to
+files called {\tt couette.out} or {\tt couette.nc}, depending on
+whether you selected ASCII or NetCDF output in {\tt gotmrun.inp}.
 
 If you analyse the results, you will find that the turbulent kinetic
 energy is constant over the whole depth, whereas the profiles of the
@@ -110,16 +123,14 @@ prescribed in {\tt gotmturb.inp} (see \sect{sec:analyse}).
 There are other models you can use to calculate the Couette-flow.  If
 you copy all files from the directory {\tt MellorYamada\_inp/} to the
 current directory, GOTM will use the Mellor-Yamada model described in
-\sect{sec:lengthscaleeq} with parameters set in {\tt gotmturb.inp}.
-A special role plays the so-called `generic model' described in 
-\sect{sec:genericeq}. Other model like the $k$-$\epsilon$ model
-of the $k$-$\omega$ model by \cite{Umlaufetal2003} can be considered
-as special cases of the generic model. If you copy e.g.\ the files
-from {\tt komega\_inp/} to the current directory, the $k$-$\omega$
-model is run for the couette case. If you copy the files from {\tt
-generic\_inp/} to the current directory, the generic model described
-by \cite{UmlaufBurchard2003} is activated. For this simple flow,
-however, model results will be quite similiar in all cases.
+\sect{sec:lengthscaleeq} with parameters set in {\tt gotmturb.inp}.  A
+special role plays the so-called `generic model' described in
+\sect{sec:genericeq}. Other model like the $k$-$\epsilon$ model or the
+$k$-$\omega$ model by \cite{Umlaufetal2003} can be considered as
+special cases of the generic model. If you copy e.g.\ the files from
+{\tt komega\_inp/} to the current directory, the $k$-$\omega$ model is
+run for the couette case. For this simple flow, however, model results
+will be quite similiar in all cases.
 
 
 
@@ -128,15 +139,30 @@ however, model results will be quite similiar in all cases.
 
 A pressure-gradient driven open channel flow is investigated here with
 a prescribed surface slope $\partial_x\zeta=-10^{-5}$ at a fixed water
-depth of 10 m. The surface slope is set in the namelist {\tt
-ext\_pressure} in the input file {\tt obs.inp}. No surface stress is
-applied, and rotation and stratification are neglected.  The simulation
-is run for 12 hours until a steady-state is reached.
+depth of $10$ m. No surface stress is applied, and rotation and
+stratification are neglected.  The simulation is run for $24$ h until
+a steady-state is reached. The specification of all these parameters
+and those related to the turbulence models by use of the inp-files is
+analogous to \sect{couette}.
 
-As in the Couette-scenario, the standard model defined in {\tt gotmturb.inp}
-is the $k$-$\epsilon$ model. If you want to try out the other models
-mentioned in the Couette-case (see \sect{couette}), copy the corresponding
-files to {\tt gotmturb.inp}.
+The surface slope is set in the namelist {\tt ext\_pressure} in the
+input file {\tt obs.inp}. How the parameters given in this file are
+interpreted by GOTM is described in \sect{sec:extpressure} and briefly
+also in {\tt obs.inp}. This file typically contains information about
+``observed'' quantities that are used to either force the model (like
+internal and external pressure gradients) or for comparision with
+computed results. In the latter case, ``observed'' quantities are
+displayed in the output file next to the computed quantities.
+
+If you want to try out the different turbulence models mentioned in
+the couette-case (see \sect{couette}), simply copy the corresponding
+files from the respective subdirectories to the current directory with
+the GOTM executable. Note that in {\tt gotmturb.inp} we now set {\tt
+turb\_method = 3}. This implies that the turbulent fluxes are computed
+from a second-order turbulence model. A new thing in GOTM 3.2 is that
+parameters for the second-order model can now be directly specified
+via the ``scnd'' namelist in {\tt gotmturb.inp}. For the theoretical
+background of this, please see \sect{sec:secondOrder}
 
 In the following publications some of the results in comparison to
 laboratory data are shown: \cite{Burchardetal98}, \cite{Burchardetal99}, 
@@ -147,77 +173,94 @@ the work of \cite{BaumertRadach92}.
 
 \subsubsection{Turbulence under breaking surface waves}\label{breaking_waves}
 
-In this scenario, it is demonstrated how the effect of breaking surface
-waves is parameterised in one- and two-equation models. This is usually done
-by injecting turbulent kinetic energy (TKE)
-at the surface, see \cite{CraigBanner94}
-and \cite{Craig96}. The rate of TKE injected is proportional to the
-surface friction velocity cubed, as defined in \eq{craig}. Injection
-of TKE at the surface leads to a thin surface boundary layer, in which
-the vertical transport of TKE and its dissipation approximately
-balance. Even though there can be considerable shear in this layer, 
-shear-production of turbulence is negligible (also see \sect{sec:analyse}). 
-
+In this scenario, it is demonstrated how the effect of breaking
+surface waves is parameterised in one- and two-equation models. This
+is usually done by injecting turbulent kinetic energy (TKE) at the
+surface, see \cite{CraigBanner94} and \cite{Craig96}. The rate of TKE
+injected is proportional to the surface friction velocity cubed, as
+defined in \eq{craig}. Injection of TKE at the surface leads to a thin
+surface boundary layer, in which the vertical transport of TKE and its
+dissipation approximately balance. This layer is sometimes called the
+\emph{transport layer}. Even though there can be considerable shear in
+this layer, shear-production of turbulence is negligible by definition
+(also see \sect{sec:analyse}).
 
 
 Different types of models are available in GOTM for the wave-breaking
-scenario.
+scenario. The key change in {\tt gotmturb.inp} for runs with TKE
+injection is to set {\tt ubc\_type = 2}, telling GOTM to set the type
+of the upper boundary to TKE injection. The decay rates of the TKE and
+the dissipation rate in the wave-affected layer are then an natural
+outcome of the model. Note that with the KPP model, this scenario
+cannot be run.
 
 \begin{itemize}
 
  \item For the one-equation models, as discussed in
  \cite{CraigBanner94}, a linearly increasing macro length scale, $l$,
- is assumed with a slope of $\kappa=0.4$. This is analogous to the law
- of the wall, even though there is no physical evidence for the assumption
- that the length-scale under breaking waves behaves identically
- as in wall-bounded shear-flows. The TKE follows a power-law as
- discussed in \sect{sec:generate} and \sect{sec:analyse}.
+ is postulated with a slope of $\kappa=0.4$. This is analogous to the
+ law of the wall, even though there is no physical evidence for the
+ assumption that the length-scale under breaking waves behaves
+ identically as in wall-bounded shear-flows. As shown by
+ \cite{CraigBanner94}, an analytical solution for the one-equation
+ model can be derived, but only inside the transport layer, according
+ to which the TKE (and all other turbulence quantities) follows a
+ power-law (see discussion in \sect{sec:generate} and
+ \sect{sec:analyse}).
 
  If you want to simulate wave breaking with a model of this type,
  simply copy all files from {\tt prescribed\_inp/} to the current
  directoy, and run GOTM. A dynamic equation for $k$ is used, but the
- length scale is fixed, and described by a triangular shape with slope
- $\kappa$ (see {\tt length\_scale\_method = 2}, see
+ length scale is fixed, and prescribed by a triangular shape with slope
+ $\kappa$ ({\tt length\_scale\_method = 2} in {\tt gotmturb.inp}, see
  \sect{sec:algebraiclength}).
 
  \item For two-equation models, the slope of the length scale in the
- upper layer affected by breaking waves is naturally not equal to
- $\kappa$. \cite{Burchard2001b} suggested to use a turbulent Schmidt
- number for the $\epsilon$-equation \eq{dissipation} of the
- $k$-$\epsilon$ model, which depends on the production-dissipation
- ratio $P/\epsilon$. For appropriate parameters, his model could
- reproduce the slope $\kappa$ of the length scale also under breaking
- waves. Note again, however, that there is no physical evidence for
- $l = \kappa (z + z_0)$ in the wave-affected boundary layer. 
-
- If you want to simulate wave breaking with this model simply copy the
- files from {\tt kepspilon\_inp/} to the current directory, and run
- GOTM. Results are quite similar as for the prescribed length scale.
-
- \item \cite{Umlaufetal2003} derived analytical solutions for the
+ transport layer is not simply prescribed and generally not equal to
+ $\kappa$. \cite{Umlaufetal2003} generalized the solution of
+ \cite{CraigBanner94} and derived analytical solutions for the
  non-linear system of equations describing the behaviour of
- two-equation models for injection of TKE at the surface, when
- turbulent transport is balanced by dissipation. They showed that the
- TKE follows a power-law and that the length scale increases linearly,
- however with slope $L \neq \kappa$. They also compared the spatial
- decay of turbulence in grid stirring experiments (thought as an
- analogy to wave-breaking) with the results of several two-equation
- models.
+ two-equation models for injection of TKE at the surface. They showed
+ that the TKE follows a power-law and that the length scale increases
+ linearly, however, with a slope $L \neq \kappa$. They also compared
+ the spatial decay of turbulence in grid stirring experiments (thought
+ as an analogy to wave-breaking) to the results of several
+ two-equation models.
 
  A numerical solution of the $k$-$\epsilon$ model can be obtained by
- copying {\tt kepspilonturb.inp} to {\tt gotmturb.inp}, but setting
- now {\tt compute\_kappa = .true.}  and {\tt sig\_peps =
- .false.}. Because the spatial decay rate of the TKE is very large for
- this model, the wave-affected layer is very small, and of the order
- of only a few tens of centimeters for this scenario.  As discussed by
- \cite{Umlaufetal2003}, this disadvantage can be overcome by using the
- $k$-$\omega$ model with parameters given in {\tt komegaturb.inp}. The
- Mellor-Yamada model in {\tt MellorYamada\_inp/} has also been
- investigated by \cite{Umlaufetal2003}, but for this model, again,
- decay is too strong. In addition, the decay rate depends in an
- unphysical way on the wall-function required in this model. You can
- run all these models by copying files from their subdirectories
- to your current directory with the GOTM executable.
+ copying the files in {\tt kepspilon\_inp} to the current directory,
+ and insuring that {\tt compute\_kappa = .true.}  and {\tt sig\_peps =
+ .false.} in {\tt gotmturb.inp}. Because the spatial decay rate of the
+ TKE is very large for this model, the wave-affected layer is very
+ small, and of the order of only a few tens of centimeters for this
+ scenario.  As discussed by \cite{Umlaufetal2003}, this disadvantage
+ can be overcome by using the $k$-$\omega$ model with parameters given
+ in {\tt gotmturb.inp} in the directory {\tt komega\_inp/}. The decay
+ rates of this model nicely correspond to those measured in the
+ laboratory grid strirring experiments. The Mellor-Yamada model has
+ also been investigated by \cite{Umlaufetal2003}, but for this model,
+ again, decay was shown to be too strong. In addition, the decay rate
+ depends in an unphysical way on the wall-function required in this
+ model.
+
+ \item As an alternative to the standard $k$-$\epsilon$ model,
+ \cite{Burchard2001b} suggested to make the turbulent Schmidt number
+ for the $\epsilon$-equation, \eq{dissipation}, a function of the
+ production-to-dissipation ratio, $P/\epsilon$. As shown in detail in
+ this paper, the variable Schmidt number can be used to ``force'' the
+ $k$-$\epsilon$ model to compute $\kappa$ for the slope of the length
+ scale, even under breaking waves. Then, obviously, the solution of
+ the $k$-$\epsilon$ model corresponds to the solution of the simpler
+ one-equation model investigated by \cite{CraigBanner94}. Note again,
+ however, that there is no physical evidence for $l = \kappa (z +
+ z_0)$ in the wave-affected boundary layer.
+
+ If you want to simulate wave breaking with this model, simply copy the
+ files from {\tt kepspilon\_inp/} to the current directory, and make
+ sure that you set {\tt compute\_kappa = .false.}  and {\tt sig\_peps
+ = .true.} in {\tt gotmturb.inp}.  Results are quite similar to those
+ with the prescribed length scale.
+
   
  \item \cite{UmlaufBurchard2003} analysed the properties of a whole
  class of two-equation models for the case of TKE injection at the
@@ -237,190 +280,139 @@ applied. After a runtime of 2 days, a steady-state with a constant
 stress over the whole water column of 20 m depth is reached. The wave
 affected layer can be found in the uppermost meter or so, and because
 of the strong gradients in this region we used a refined grid close to
-the surface. If you want to compare the computed profiles with the
-analytical solutions in \eq{power_law}, you'll need a specification of
-the parameter $K$. This parameter is computed in {\tt k\_bc()} to be
-found in {\tt turbulence.F90}.
+the surface. The parameters for such a `zoomed grid' can be set in the
+input file {\tt gotmmean.inp} according to the decription in
+\sect{sec:updategrid}.  If you want to compare the computed profiles
+with the analytical solutions in \eq{power_law}, you'll need a
+specification of the parameter $K$. This parameter is computed in {\tt
+k\_bc()} to be found in {\tt turbulence.F90}, where you can add a few
+FORTRAN lines to write it out.
 
-\subsubsection{Kato-Phillips entrainment experiment}\label{kato}
+\subsubsection{Some entrainment scenarios}\label{entrainment}
 
-Wind-entrainment experiment motivated by the laboratory experiment
-by \cite{KatoPhillips69}. The experiment has been up-scaled to
-ocean mixed layer dimensional according to the suggestions by
-\cite{Deleersnijder94}, such that the prescribed surface stress
-is $\tau_x= 0.1027$ N\,m$^{-2}$. The initial background stratification
-is set to $N^2=10^{-4}$ s$^{-1}$. The water depth is $H=50$ m, deep
-enough for the surface induced mixing not reaching the bed within the
-30 hours of simulation. Rotation is neglected here. The file {\tt
-kato.dat} contains the empirical mixed-layer evolution as suggested by
-\cite{Price79}. The first column gives simulation time in hours, the second
-mixed-layer depth.
+This test case describes three idealised entrainment scenarios as
+discussed in the review paper of \cite{UmlaufBurchard2005a}.  These
+are: wind-driven entrainment into a linearly stratified fluid,
+wind-driven entrainment into a two-layer fluid, and entrainment in
+free convection. As in the cases before, the input files for different
+turbulence closure models are contained in a number of
+sub-directories.  The {\tt entrainment} test cases is also the first
+test for the GOTM implementation of the KPP turbulence model described
+in \sect{sec:kpp}.
 
-You can reproduce this scenario with several two-equation models
-in GOTM.
+For all input files, the default is a linear density stratification
+due to a not necessarly linear temperature stratification (because the
+equation of state is not necessarily linear).  The stratification
+corresponds to $N^2=1 \cdot 10^{-4}$ s$^{-2}$. Salinity is
+constant. Have look into {\tt obs.inp} to understand how different
+types of initial stratifcations can be specified in GOTM. The water
+depth is $H=50$ m, deep enough for the surface induced mixing not
+to reach the bed within the $24$ h of simulation. Rotation is
+neglected. By default, a constant wind stress of $\tau_x= 0.1027$ Pa
+is set in {\tt airsea.inp}.
 
-\begin{itemize}
- \item To run the $k$-$\epsilon$ model, copy the input files from {\tt
- kepsilon\_inp/} to the current directory with the GOTM
- executable. Note, that in this file, we selected {\tt compute\_c3 =
- .true.}, which means that the model constant $c_{\epsilon 3}$ in
- \eq{dissipation} is computed from a prescribed steady-state
- Richardson-number, $Ri_{st}$ (see discussion in the context of
- \eq{Ri_st}). You can set the value of $Ri_{st}$ in {\tt
- gotmturb.inp}. Some discussion is given in
- \cite{BurchardBolding2001}.
+Note, that for all turbulence models, except the Mellor-Yamada model,
+we set {\tt compute\_c3 = .true.} in {\tt gotmturb.inp}, which means
+that the model constant $c_{\epsilon 3}$ in \eq{dissipation} (or its
+counterpart in all other models) is computed from a prescribed
+steady-state Richardson-number, $Ri_{st}$ (see discussion in the
+context of \eq{Ri_st}). Some more discussion is given in
+\cite{BurchardBolding2001} and \cite{UmlaufBurchard2005a}.  As pointed
+out in these papers, it is the value of the steady-state Richardson
+number (and thus the value of $c_{\epsilon 3}$) that determines the
+mixed layer depth in almost all shear-driven entrainment scenarios.
 
- \item To run the Mellor-Yamada model, use the input files in {\tt
- MellorYamada\_inp/}. Looking at the results you will realize that
- this model is not at all in accordance with the experimental results
- of \cite{Price79}. The reason can be traced back to the behaviour of
- the turbulent length scale in the strongly stratified thermocline.
- \cite{Galperinetal88} suggested to clip the length scale at a certain
- value. Their solution can be activated by setting {\tt length\_lim =
- .true.}  in {\tt gotmturb.inp}.  A second solution has been suggested
- by \cite{Burchard2001c}, who computed the model constant $E_3$ in
- \eq{MY} from the steady-state Richardson-number as described
- above. To activate his method, select {\tt compute\_c3 = .true.}
+To run the Mellor-Yamada model, use the input files in {\tt
+MellorYamada\_inp/}. Looking at the results you will realize that this
+model is not at all in accordance with the experimental results of
+\cite{Price79} for the entrainment in a linearly stratified fluid. The
+reason can be traced back to the behaviour of the turbulent length
+scale in the strongly stratified thermocline.  \cite{Galperinetal88}
+suggested to clip the length scale at a certain value to circumvent
+this problem. Their solution can be activated by setting {\tt
+length\_lim = .true.}  in {\tt gotmturb.inp}.  A second solution has
+been suggested by \cite{Burchard2001c}, who computed the model
+constant $E_3$ in \eq{MY} from the steady-state Richardson-number as
+described above. To activate this method, select {\tt compute\_c3 =
+.true.} (and {\tt length\_lim = .false.} because clipping is not
+needed any more).
 
- \item Input files for the $k$-$\omega$ model can be found in {\tt
- komega\_inp/}. Results for this model are in perfect agreement with
- the measured data, because the value of the steady-state Richardson
- number is computed by GOTM.
-\end{itemize}
+This scenario has been used by us in several publications as a test
+for vertical mixing schemes, see \cite{Burchardetal98},
+\cite{Burchardetal99}, \cite{BurchardPetersen99},
+\cite{BurchardBolding2001} \cite{BurchardDeleersnijder2001},
+\cite{DeleersnijderBurchard2003}, and \cite{Umlaufetal2003}.
 
-Within the GOTM Team, this scenario has been used in several publications
-as a test for vertical mixing scheme, see \cite{Burchardetal98},
-\cite{Burchardetal99}, \cite{BurchardPetersen99}, \cite{BurchardBolding2001}
-\cite{BurchardDeleersnijder2001}, \cite{DeleersnijderBurchard2003}, and
-\cite{Umlaufetal2003}.
+The second entrainment scenario discussed in
+\cite{UmlaufBurchard2005a} is essentially identical to the one just
+described, however, it starts from a two layer stratification.  To use
+this kind of initial condition, first set {\tt analyt\_method=2} in
+{\tt obs.inp}, and specify the desired temperatures, {\tt t\_1} and
+{\tt t\_2} for the upper and lower layer, respectively. The thickness
+of the upper layer is {\tt z\_t1}. For a pure two-layer
+stratification, set {\tt z\_t2=z\_t1}, otherwise you will get a linear
+transition between the upper and the lower layer.
 
+For convective entrainment, you simply need to set the momentum flux,
+{\tt const\_tx}, to zero and specify an appropriate negative heat
+flux, {\tt const\_heat}, in {\tt airsea.inp}, see \cite{UmlaufBurchard2005a}. 
 
-\subsubsection{Free convection experiment}\label{convection}
+If you run the KPP-model, some model parameters can be set in the
+extra input file {\tt kpp.inp} found in {kpp\_inp/}. With this model,
+the depth of the mixing layer depends mostly on the value of the
+critical bulk Richardson number that can also be set in this file.
+When you work with the KPP-model in free convection, don't forget to
+check if the pre-processor macro {\tt NONLOCAL} is defined {\tt
+cppdefs.h} (after changes in this file, don't forget to re-compile the
+whole code!).  If {\tt NONLOCAL} is defined, the KPP model also
+computes the non-local fluxes of heat (and salinity, if the salinity
+equation is active). In any case, the $z$-coordinate of the
+edges of the upper and lower mixing layers are given as {\tt zsbl} and
+{\tt zbbl}, respectively, in the netCDF output file.
 
-
-This free convection experiment is inspired by the laboratory experiments
-of Deardorff (see e.g.\ \cite{Deardorff85}). Following \cite{Largeetal94},
-this experiment is scaled to ocean dimensions.
-
-The initial potential temperature profile is given by a
-sea surface temperature is 22$^{\circ}$C  and a vertical
-the vertical temperature gradient of 0.1$^{\circ}$C\,m$^{-1}$. 
-The salinity is constant with $S=35$ ppt.
-All velocities are set to zero.
-The water column is constantly
-cooled by a heat loss at the surface of 100 W\,m$^2$.
-Surfaces stresses and solar radiation are zero.
-the water depth is set to $H=40$ m.
-
-Several authors have used this experiment for comparing vertical mixing schemes,
-see e.g.\ \cite{Largeetal94} and \cite{dAlessioetal98}.
-
-In the test case directory on the GOTM Website is a  subdirectory {\tt LES} 
-with results of a Large Eddy Simulation
-of free convection made by \cite{Mironov2000}. 
-In the directory change to directory {\tt LES},
-type 'show' and follow the instructions. It is necessary to have {\tt gnuplot}
-installed for viewing the LES results. 
 
 \subsubsection{Estuarine dynamics}\label{estuary}
 
 
-In this idealistic experiment an estuarine circulation is simulated, mainly
-in order to demonstrate how to use tracer advection and internal pressure
-gradients in GOTM. 
+In this idealised experiment, an estuarine circulation is simulated,
+mainly in order to demonstrate how to use tracer advection and
+internal pressure gradients in GOTM.
 
-The average water depth is $H=15$ m, the model is run for 10 days. 
-The forcing is a M$_2$ tide (of period 44714 s)
-which prescribes sinusoidal time series
-for the vertically averaged momentum in west-east direction with an
-amplitude of 1.5 m\,s$^{-1}$ and an offset
-of 0.05 m\,s$^{-1}$ directed to the west in order to simulate river run-off. 
-The surface elevation is sinusoidal as well with an amplitude of 1 m
-and a phase shift of 1.5 hours compared to the velocity.
-A constant in time and space horizontal west-east salinity 
-gradient of -0.0005 ppt\,m$^{-1}$ is prescribed, advection of salinity is
-turned on. In order not to obtain negative salinities, relaxation to
-the initial salinity profile of 15 ppt is made.  
+The average water depth is $H=15$ m, the model is run for 10 days.
+The forcing is a M$_2$ tide (of period 44714 s) which prescribes
+sinusoidal time series for the vertically averaged momentum in
+west-east direction with an amplitude of 1.5 m\,s$^{-1}$ and an offset
+of 0.05 m\,s$^{-1}$ directed to the west in order to simulate river
+run-off.  The surface elevation is sinusoidal as well with an
+amplitude of 1 m and a phase shift of 1.5 hours compared to the
+velocity.  A constant in time and space horizontal west-east salinity
+gradient of -0.0005 ppt\,m$^{-1}$ is prescribed, advection of salinity
+is turned on. In order not to obtain negative salinities, relaxation
+to the initial salinity profile of 15 ppt is made.  In order to avoid
+strong stratification near the surface, a small wind stress of 0.01027
+N/m$^2$ is applied.
 
-In order to avoid strong stratification near the surface, a small wind
-stress of 0.01027 N/m$^2$ is applied.  
+It is recommended to go through the description in the routines
+computing the external and internal pressure gradients, see
+\sect{sec:extpressure} and \sect{sec:intpressure}, to understand the
+corresponding settings in the input file {\tt obs.inp}. The relaxation
+scheme for salinity is described in \sect{sec:salinity}.  Essential
+for this case is also the parametrisation of horizontal advection,
+which is set in {\tt obs.inp} and described in
+\sect{sec:salinity}. Note that horizontal advection is calculated from
+the same horizontal salinity gradient that causes the internal
+pressure gradient.
 
-The result is that estuarine circulation is set on and near bed 
-residual velocity is directed upstream. It is interesting to have a look
-into the resulting buoyancy production or Brunt-V\"ais\"al\"a frequency. 
 
-See also the {\tt liverpool\_bay} test case (section \ref{liverpool_bay})
-for a simulation based on real data. 
+The result is that estuarine circulation is set on and near bed
+residual velocity is directed upstream. It is interesting to have a
+look into the resulting buoyancy production or Brunt-V\"ais\"al\"a
+frequency.  The effect of lateral advection on stratification leads to
+either production or supression of turbulence, and thus to an
+unsymmetric time series of the turbulent diffusivity.
 
 For two-dimensional simulations of estuarine circulation,
 see e.g.\ \cite{BurchardBaumert98} and \cite{Burchardetal2003}.
-
-
-\subsubsection{Rouse profile}\label{rouse}
-
-This analytical test case reflects open channel flow under idealistic
-conditions for which an analytical solution exists. 
-
-This test case is documented in the GOTM report in chapter 3.2.2 (see
-\cite{Burchardetal99}).  The length scale profile is prescribed as a
-distorted parabola, stress is linear (the only forcing is an external
-pressure gradient), the $k$-equation is algebraic based on production
-equals dissipation. The resulting velocity profile is logarithmic, the
-$k$-profile linear and the eddy viscosity profile parabolic. A
-sediment profile which is resulting is the so-called Rouse profile.
-
-In the subdirectory {\tt graphics} of the {\tt rouse} scenario, 
-a comparison between 
-numerical and analytical
-solutions is shown. For all turbulent quantities the fit is close to perfect,
-however, due to the strong gradients near the bed, modelled velocity and 
-sediment profiles are acceptable only for very high vertical resolution
-with $N=1000$ layers. A logarithmic zooming towards the bed should 
-improve the numerical results.
-
-To visualise the analytical and the numerical profiles, run under
-UNIX the following command: {\tt gnuplot plot}. 
-The script {\tt plot} should also explain the meaning
-of the data files for those who want to use other visualisation software than
-gnuplot.
-  
-\subsubsection{Seagrass canopy}\label{seagrass}
-
-Here, the two-dimensional seagrass canopy simulation by 
-\cite{VerduinBackhaus2000}
-is reproduced by means of a one-dimensional model for a position in the middle
-of the seagrass canopy where leading edge effects should be negligible.
-
-A wave with 0.15 m amplitude, 15 s period and a wave length of 100 m
-travels in positive x-direction. Water depth is $H=4.2$ m. At the bed,
-a seagrass canopy of 0.48 m height is situated. Seagrass specification
-such as excursion limits and friction parameters are read in from
-the file {\tt seagrass.dat}. 
-
-For further info, see 
-\cite{VerduinBackhaus2000} and \cite{BurchardBolding2000}.
-
-
-\subsubsection{Vertical advection}\label{vertical_advection}
-
-
-This simple scenario is for testing the vertical advection schemes.
-
-A sinusoidially varying vertical velocity is given ({\tt w\_adv.dat})
-which moves the vertical potential temperature profile given in {\tt tprof.dat}
- up and down.  
-The time step in {\tt w\_adv.dat} is one hour, the period of the oscillation
-is one day. The vertical velocity amplitude is 0.0005787037 m\,s$^{-1}$,
-the grid spacing is 1 m, and the time step is 3600 s, such that the
-maximum Courant number is 2.08. The schemes are however all stable due to 
-the iterative procedure in the vertical advection subroutine 
-{\tt w\_split\_it\_adv} which s found in the directory {\tt util},
-see section \ref{sec:util}.
-
-By testing the 5 vertical advection schemes coded in {\tt w\_split\_it\_adv},
-the numerical diffusivity of the individual schemes can be checked.  
-For changing the advection scheme for this scenario, one has to 
-edit the namelist {\tt w\_adv} in {\tt obs.inp}.
 
 \subsection{Shelf sea scenarios}
 
