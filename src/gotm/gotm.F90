@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.20 2005-07-19 16:46:14 hb Exp $
+!$Id: gotm.F90,v 1.21 2005-07-20 09:36:11 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -77,7 +77,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.20  2005-07-19 16:46:14  hb
+!  Revision 1.21  2005-07-20 09:36:11  lars
+!  bug-fix in variances output
+!
+!  Revision 1.20  2005/07/19 16:46:14  hb
 !  removed superfluous variables - NNT, NNS, SSU, SSV
 !
 !  Revision 1.19  2005/07/19 16:33:22  hb
@@ -388,7 +391,9 @@
 
 !     do the output
       if (write_results) then
-         call variances(nlev,SSU,SSV)
+         if (turb_method .ne. 99) then
+            call variances(nlev,SSU,SSV)
+         endif
          call do_output(n,nlev)
       end if
 
