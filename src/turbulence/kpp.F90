@@ -1,4 +1,4 @@
-!$Id: kpp.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: kpp.F90,v 1.2 2005-07-21 10:20:00 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -99,7 +99,7 @@
 !   \partder{}{z} = - \frac{1}{h} \partder{}{\sigma}
 ! \comma
 ! \end{equation}
-! if motion of the free surface is ignored.
+! if the motion of the free surface is ignored.
 !
 ! The derivative of $w_\phi$ appearing in \eq{GPrimeOfOne} can be evaluted with
 ! the help of the formulae given in \sect{sec:wscale}. As discussed in \sect{sec:wscale},
@@ -128,7 +128,7 @@
 ! the minus sign in \eq{GPrimeOfOneB} has to be replaced by a plus. Note that
 ! if the pre-processor macro {\tt KPP\_CLIP\_GS} is defined in {\tt cppdef.h},
 ! the slope of  $G$ is set to zero for negative slopes. For stably stratified
-! flows with a stabilizing buoyancy flux, this limiter breaks to continuity of
+! flows with a stabilizing buoyancy flux, this limiter breaks the continuity of
 ! the first derivatives.
 !
 ! The non-local transport term defined in \eq{kppNonlocal} is computed
@@ -145,13 +145,13 @@
 ! \end{equation}
 ! defined by \cite{Largeetal94}, reaches the critical value $Ri_c$.
 ! The subscript "r" in \eq{Rib} denotes a certain reference value of the buoyancy
-! and velocity close to the surface. The choice of this reference is
-! not unique, and several possiblities have been implemented in numerical
-! models. Presently, GOTM uses the uppermost grid point at the reference value.
-! The bulk Richardson-number if then computed at the grid faces by linear
+! and velocity close to the surface. The choice of this reference value is
+! not unique, and several possibilities have been implemented in numerical
+! models. Presently, GOTM uses the uppermost grid point as the reference value.
+! The bulk Richardson-number is then computed at the grid faces by linear
 ! interpolation of quantities defined at the centers (if
-! ${\tt KPP\_TWOPOINT\_REF}$ is defined) or by simply identifying the neighbouting
-! center-value with the value at the face.
+! ${\tt KPP\_TWOPOINT\_REF}$ is defined) or by simply identifying the 
+! neighbouring center-value with the value at the face.
 ! The "turbulent velocity shear", $V_t$, is computed as described
 ! by \cite{Largeetal94}. The value of $z_{bl}$ is then found from
 ! \eq{Rib} by linear interpolation.
@@ -324,7 +324,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: kpp.F90,v $
-!  Revision 1.1  2005-06-27 10:54:33  kbk
+!  Revision 1.2  2005-07-21 10:20:00  lars
+!  polished documentation
+!
+!  Revision 1.1  2005/06/27 10:54:33  kbk
 !  new files needed
 !
 
@@ -392,7 +395,7 @@
 ! number of parameters needed later in the time loop.
 !
 ! If you call the GOTM KPP routines from a three-dimensional model, make sure
-! that this function is called \emph{after} the call to {\tt do\_turbulence()}.
+! that this function is called \emph{after} the call to {\tt init\_turbulence()}.
 ! Also make sure that you pass the correct arguments.
 !
 ! !USES:
@@ -412,7 +415,7 @@
 !  bathymetry (m)
    REALTYPE,         intent(in)        :: h0
 
-!  size of grid cells
+!  size of grid cells (m)
    REALTYPE,         intent(in)        :: h(0:nlev)
 
 !  acceleration of gravity (m/s^2)
@@ -641,14 +644,14 @@
 ! Here, the time step for the KPP model is managed. If {\tt kpp\_interior=.true.}
 ! in {\tt kpp.inp}, the mixing algorithm for the computation of the interior
 ! diffusivities is called first. This algorithm is described in \sect{sec:kppInterior}.
-! Then, if {\tt kpp\_sbl=.true.} and {\tt kpp\_bbl=.true.} are true, the algorithms
+! Then, if {\tt kpp\_sbl=.true.} and {\tt kpp\_bbl=.true.}, the algorithms
 ! for the surface and bottom boundary layer are called. They are described in
 ! \sect{sec:kppSurface} and \sect{sec:kppBottom}, respectively.
 !
 ! If this routine is called from a three-dimensional code, it is essential to
 ! pass the correct arguments. The first 3 parameters relate to the numerical
 ! grid, discussed in \sect{SectionNumericsMean}. Note that {\tt h0} denotes
-! the local topography, i.e.\ the positive distance between the reference level
+! the local bathymetry, i.e.\ the positive distance between the reference level
 ! $z=0$ and the bottom.
 
 ! The next three parameters denote the potential density, $\rho$,
@@ -667,13 +670,13 @@
 ! parameter is passed from a three-dimensional code, it has to be insured that the parameter
 ! $r$ in \eq{uStar} is computed consistently, see \eq{rParam}.
 !
-! All fluxes witout exception are counted positive, if they enter the water body.
-! It is necessary to pass the temperature and salinity fluxes, as well as the
-! corresponding buoyancy fluxes, because this subroutine has to be independent
-! of the equation of state used in the code which calls this routine. The same applies
-! for the radiative fluxes. For consistency, he equation of state in GOTM cannot
-! be used if the KPP routines are called from another model. The user is responsible
-! that the flux conversions are performed in the correct way. To get an idea
+! All fluxes without exception are counted positive, if they enter the water body.
+! Note that for consistency, the equations of state in GOTM cannot
+! be used if the KPP routines are called from a 3-D model. Therefore,
+! it is necessary to pass the temperature and salinity fluxes, as well as the
+! corresponding buoyancy fluxes. The same applies
+! to the radiative fluxes. The user is responsible for
+! performing the flux conversions in the correct way. To get an idea
 ! have a look at \sect{sec:convertFluxes}.
 !
 ! The last argument is the Coriolis parameter, $f$. It is only used for clippling the mixing
@@ -714,7 +717,7 @@
    REALTYPE                                      :: u_taus,u_taub
 
 !  surface temperature flux (K m/s) and
-!  salinity flux (sal m/s) (negative for loss)
+!  salinity flux (psu m/s) (negative for loss)
    REALTYPE                                      :: tFlux,sFlux
 
 !  surface buoyancy fluxes (m^2/s^3) due to
@@ -1945,9 +1948,20 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: Bfsfc, u_taus, d
+
+!  buoyancy flux (m^2/s^3)
+   REALTYPE, intent(in)                :: Bfsfc
+
+!  friction velocity (m/s)
+   REALTYPE, intent(in)                :: u_taus
+
+!  (limited) distance (m)
+   REALTYPE, intent(in)                :: d
 !
 ! !OUTPUT PARAMETERS:
+
+!  velocity scale (m/s)
+!  for momentum and tracer
    REALTYPE, intent(out)               :: wm, ws
 !
 ! !REVISION HISTORY:
