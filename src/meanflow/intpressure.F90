@@ -1,4 +1,4 @@
-!$Id: intpressure.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: intpressure.F90,v 1.7 2005-08-11 12:32:50 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,7 +18,7 @@
 !  the gravitational acceleration  and $\mean{\rho}$ the mean density,
 !  the components of the pressure-gradient may be expressed as
 !  \begin{equation}
-!   \label{InternalPressure}
+!   \label{InternalPressurex}
 !  - \frac{1}{\rho_0} \partder{P}{x}=
 !  -g \partder{\zeta}{x}
 !  +\int_z^{\zeta}\partder{B}{x} \, dz'
@@ -70,7 +70,8 @@
 !  \end{equation}
 !  have been used. $\Delta x$ and $\Delta y$ are "small enough", but otherwise
 !  arbitrary length scales. The buoyancy gradients computed with this method
-!  are then vertically integrated according to \eq{InternalPressure}.
+!  are then vertically integrated according to \eq{InternalPressurex} and
+!  \eq{InternalPressurey}.
 !
 ! The horizontal salinity and temperature gradients have to supplied by the
 ! user, either as constant values or as profiles given in a file (see
@@ -93,7 +94,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: intpressure.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2005-08-11 12:32:50  lars
+!  corrected error in Latex referencing
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2004/08/18 11:43:51  lars
