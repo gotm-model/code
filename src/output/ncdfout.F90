@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.9 2005-07-06 14:22:40 kbk Exp $
+!$Id: ncdfout.F90,v 1.10 2005-08-11 14:15:33 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,7 +58,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.9  2005-07-06 14:22:40  kbk
+!  Revision 1.10  2005-08-11 14:15:33  kbk
+!  when storing time changed variable time to temp_time - Portland compiler
+!
+!  Revision 1.9  2005/07/06 14:22:40  kbk
 !  updated documentation - saves KPP related variables
 !
 !  Revision 1.8  2004/01/09 10:14:01  kbk
@@ -511,7 +514,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                             :: iret,i
-   REALTYPE                            :: time
+   REALTYPE                            :: temp_time
    REALTYPE                            :: dum(0:nlev)
    REAL_4B                             :: buoyp,buoym,dz
    REALTYPE                            :: zz
@@ -534,15 +537,15 @@
 !  Storing the time - both the coordinate and later a time string.
    select case (ncdf_time_unit)
       case(0)                           ! seconds
-         time = secs
+         temp_time = secs
       case(1)                           ! minutes
-         time = secs/60.
+         temp_time = secs/60.
       case(2)                           ! hours
-         time = secs/3600.
+         temp_time = secs/3600.
       case default
-         time = secs
+         temp_time = secs
    end select
-   iret = store_data(ncid,time_id,T_SHAPE,1,scalar=time)
+   iret = store_data(ncid,time_id,T_SHAPE,1,scalar=temp_time)
 
 !  Time varying data : x,y,t
    iret = store_data(ncid,zeta_id,XYT_SHAPE,1,scalar=zeta)
