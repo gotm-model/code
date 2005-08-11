@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.12 2005-07-19 16:46:14 hb Exp $
+!$Id: turbulence.F90,v 1.13 2005-08-11 13:00:15 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -259,7 +259,10 @@
 
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.12  2005-07-19 16:46:14  hb
+!  Revision 1.13  2005-08-11 13:00:15  lars
+!  Added explicit interface for xP. Bug found by Vicente Fernandez.
+!
+!  Revision 1.12  2005/07/19 16:46:14  hb
 !  removed superfluous variables - NNT, NNS, SSU, SSV
 !
 !  Revision 1.11  2005/07/19 16:33:22  hb
@@ -1922,30 +1925,46 @@
 ! exactly to those mean flow and grid-related variables required to update
 ! the turbulent quantities. These variables have to be passed
 ! from a 3-D model, if the {\tt turbulence} module of GOTM is used
-! for the computation of the turbulent fluxes.
+! for the computation of the turbulent fluxes. Do not forget to call
+! {\tt init\_turbulence()} from the 3-D model before the first call to
+! {\tt do\_turbulence()}.
 !
 !
-! The variable {\tt turb\_method} sets the principle structure
-! of the calls in {\tt do\_turbulence()}. Possible models are convective
-! adjustment, algebraic models, first-order models, and second-order models.
+! The variable {\tt turb\_method} determines the essential structure
+! of the calls in {\tt do\_turbulence()}. At the moment, the following
+! model types are available:
+! \begin{itemize}
+!   \item {\tt turb\_method = 0} corresponds to the "convective adjustment"
+!   algorithm, see \sect{sec:convective}. Since this model is not a real
+!   one-point turbulence closure, it is not called from {\tt do\_turbulence} but
+!   directly from the main GOTM loop.
+!   \item {\tt turb\_method = 1} corresponds to a purely algebraic description
+!   of the turbulent diffusivities.
+!  \item  {\tt turb\_method = 2} corresponds to models computing the diffusivities
+!  from the TKE and the turbulent length scale according to \eq{nu}. TKE and length scale
+!  are computed from dynamic PDEs or algebraic relations, an empirical (i.e.\ not 
+!  derived from a second-order model) stability function is used, see 
+!  \sect{sec:stabilityFunctions}.
+!  \item  {\tt turb\_method = 3} corresponds to a second-order model for the turbulent
+!  fluxes. 
+! \end{itemize}
+!
 ! The second-order models fall into different categories, depending on the
 ! value of {\tt second\_method}. These models, discussed in detail
 ! in \sect{sec:EASM}, are listed in the following.
 ! \begin{itemize}
 !   \item {\tt second\_method = 1} corresponds to algebraic quasi-equilibrium models
-!         with scaling in the spirit of \cite{Galperinetal88}.
+!         with scaling in the spirit of \cite{Galperinetal88}, see \sect{sec:cmueD}.
 !  \item  {\tt second\_method = 2} corresponds to algebraic models
 !         assuming $P_b=\epsilon_b$, and hence using \eq{Tequilibrium}. Furthermore,
 !         full equilibrium $P+G=\epsilon$ and $P_b=\epsilon_b$ is assumed for the
-!         computation of ${\cal N}$ and ${\cal N}_b$ in \eq{NandNb}.
+!         computation of ${\cal N}$ and ${\cal N}_b$ in \eq{NandNb}, see \sect{sec:cmueC}
 !  \item  {\tt second\_method = 3} corresponds to algebraic models assuming
 !         full equilibrium $P+G=\epsilon$ and $P_b=\epsilon_b$ for the
 !         computation of ${\cal N}$ and ${\cal N}_b$ in \eq{NandNb}. Now, however,
 !         also an equation for (half) the buoyancy variance $k_b$ is solved,
-!         leading to the appearance of the counter-gradient term in \eq{b13}.
-!  \item  {\tt second\_method = 4} corresponds to algebraic models computing
-!         the full expressions for ${\cal N}$ and ${\cal N}_b$ in \eq{NandNb},
-!         and solving an equation for (half) the buoyancy variance $k_b$.
+!         leading to the appearance of the counter-gradient term in \eq{b13}, see \sect{sec:cmueB}.
+!         This model is not yet fully tested and therefore not available.
 ! \end{itemize}
 ! Depending on the values of {\tt kb\_method} and {\tt epsb\_method}, different
 ! algebraic or differential equations for $k_b$ and $\epsilon_b$ are solved for
@@ -1953,6 +1972,16 @@
 !
 ! !USES:
    IMPLICIT NONE
+
+   interface
+      subroutine production(nlev,NN,SS,xP)
+        integer,  intent(in)                :: nlev
+        REALTYPE, intent(in)                :: NN(0:nlev)
+        REALTYPE, intent(in)                :: SS(0:nlev)
+        REALTYPE, intent(in), optional      :: xP(0:nlev)
+      end subroutine production
+   end interface
+
 !
 ! !INPUT PARAMETERS:
 
@@ -1979,13 +2008,9 @@
 
 !  boyancy frequency squared (1/s^2)
    REALTYPE, intent(in)                :: NN(0:nlev)
-!  (from T only, from S only)
-!   REALTYPE, intent(in)                :: NNT(0:nlev),NNS(0:nlev)
 
 !  shear-frequency squared (1/s^2)
    REALTYPE, intent(in)                :: SS(0:nlev)
-!  (from U only, from V only)
-!   REALTYPE, intent(in)                :: SSU(0:nlev),SSV(0:nlev)
 
 !  TKE production due to seagrass
 !  friction (m^2/s^3)
@@ -1999,14 +2024,13 @@
 !-------------------------------------------------------------------------
 !BOC
 
-
    select case (turb_method)
    case (algebraic)
 !  solve a model for algebraically described diffusity
 
       STDERR '----------------------------------------------------------'
       STDERR 'Model for turb_method=1 not coded yet.'
-      STDERR 'Choose  turb_method=0,2,3'
+      STDERR 'Choose  turb_method=0,2,3,99'
       STDERR 'Program execution stopped ...'
       stop 'turbulence.F90'
       STDERR '----------------------------------------------------------'
