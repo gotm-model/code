@@ -1,5 +1,5 @@
 %
-%$Id: introduction.tex,v 1.2 2005-07-06 14:11:27 kbk Exp $
+%$Id: introduction.tex,v 1.3 2005-08-11 13:58:17 lars Exp $
 %
 
 \section{Introduction}
@@ -7,7 +7,10 @@
 \subsection{What is GOTM?}
 GOTM is the abbreviation for `General Ocean Turbulence Model'. It is a
 one-dimensional water column model for the most important hydrodynamic
-and thermodynamic processes in natural waters. The core of the model
+and thermodynamic processes related to vertical mixing in natural
+waters. In addition, it has been designed such that it can easily be
+coupled to 3-D circulation models, and used as a module for the
+computation of vertical turbulent mixing. The core of the model
 computes solutions for the one-dimensional versions of the transport
 equations of momentum, salt and heat. The key component in solving
 these equations is the model for the turbulent fluxes of these
@@ -19,7 +22,7 @@ differential transport equations to solve. Even though, evidently, not
 all turbulence models published in oceanography could be implemented,
 at least one member of every relevant model family can be found in
 GOTM (empirical models, energy models, two-equation models, Algebraic
-Stress Models, etc).
+Stress Models, K-profile parameterisations, etc).
 
 Besides the classic combination of the hydrodynamic and turbulent part
 of the model, GOTM has been growing considerably with the years, and
@@ -30,12 +33,12 @@ the computation of atmosphere-ocean interactions exists now. In
 addition, there is a number of scientific research groups that adopted
 GOTM for their own projects. Even though the modules developed by
 these groups (biological and bio-geochemical components, air-sea
-interaction modules, etc) are not part of the core structure of GOTM,
-as downloadable from our web-site at {\tt www.gotm.net}, 
-they are in most cases available
-directly from these groups. In that sense, GOTM is an integrated,
-community based software environment for an almost unlimited range of
-applications in geophysical modelling.
+interaction modules, plotting routines, etc) are not part of the core
+structure of GOTM, as downloadable from our web-site at {\tt
+www.gotm.net}, they are in most cases available directly from these
+groups. In that sense, GOTM is an integrated, community based software
+environment for an almost unlimited range of applications in
+geophysical turbulence modelling.
 
 
 
@@ -46,14 +49,14 @@ goals. Some are interested in the development of turbulence models,
 others in oceanic applications of these models, and yet others want to
 compare the effects of different turbulence models on different
 processes in the ocean or in lakes. The attempt to use one of their
-specialised programs for one's own project resulted in most cases in
+specialised programs for one's own project resulted in many cases in
 spending weeks of work for deciphering non-documented FORTRAN lines,
-scattered with pre-historic fragments of code from more or, in most
+scattered with pre-historic fragments of code from more or, in some
 cases, less talented programmers. Additional time had to be spend for
 providing components for atmospheric forcing, etc, before the own
 research project could finally be attacked.
 
-To overcome these problems, the GOTM project was originated, its
+To overcome these problems, the GOTM project was intiated, its
 purpose being twofold. First, GOTM should provide an integrative
 environment for all researchers interested in the \emph{application}
 of a turbulence model in studies of oceanic processes. Such a software
@@ -140,25 +143,25 @@ new versions of GOTM are communicated via this list.
 
 \subsection{Acknowledgements}
 
-The authors of this report are grateful to the other members of the
+The authors of this report are grateful to the former members of the
 GOTM Team for their persisting cooperation. These are particularly
-those from the very first days of GOTM which took place at the Joint
+members from the very first days of GOTM which took place at the Joint
 Research Centre in Ispra (Italy) in 1998: Manuel Ruiz Villarreal who
 worked after the Ispra time in Santiago de Compostela (Spain), Lisboa
 (Portugal), Hamburg (Germany), and Warnem\"unde (Germany) before he
 moved back to his home country for working in A Coru\~na
 (Spain). Pierre-Phillipe Mathieu who went to Reading (U.K.) for some
 time before he arrived in Frascati (Italy) recently.  We further want
-to acknowledge the almost 200 subscribed users of GOTM from all
-over the world who helped us to improve GOTM and motivated to go on
-with this no-budget project.  It was also the important role which
-GOTM played in several projects funded by the European Commission
-which helped a lot to maintain GOTM.  These projects were
-MAS3-CT96-0053 ('PHASE'), MAS3-CT96-0051 ('MTP II-MATER'),
-MAS3-CT97-0025 ('PROVESS'), and especially CARTUM (Comparative
-Analysis and Rationalisation of Second-Moment Turbulence Models), a
-brainstorming activity (MAS3-CT98-0172), which brought together
-turbulence specialists from all over the world.  We are finally
-grateful to all those other people working on Public Domain Software
-without which a project like GOTM would be unthinkable:
-\LaTeX, PROTEX, LINUX and many others. 
+to acknowledge those of the almost 200 subscribed users of GOTM from
+all over the world who helped us to improve GOTM, reported bugs, and
+motivated us to go on with this zero-budget project.  It was also the
+important role which GOTM played in several projects, mostly funded by
+the European Commission, which helped a lot to maintain GOTM.  These
+projects were MAS3-CT96-0053 ('PHASE'), MAS3-CT96-0051 ('MTP
+II-MATER'), MAS3-CT97-0025 ('PROVESS'), and especially CARTUM
+(Comparative Analysis and Rationalisation of Second-Moment Turbulence
+Models), a brainstorming activity (MAS3-CT98-0172), which brought
+together turbulence specialists from all over the world.  We are
+finally grateful to all those other people working on the Public
+Domain Software without which a project like GOTM would be
+unthinkable: \LaTeX, PROTEX, LINUX and many others.
