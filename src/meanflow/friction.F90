@@ -1,4 +1,4 @@
-!$Id: friction.F90,v 1.7 2005-06-27 13:44:07 kbk Exp $
+!$Id: friction.F90,v 1.8 2005-08-11 12:31:54 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,7 +19,7 @@
 !  for completely rough surfaces. Note that the third term, $z_a$,
 !  is the contribution of suspended sediments to the
 !  roughness length, see \cite{SmithMcLean77}. It is updated during calls
-!  to the sediment-routines discussed in \sect{sec:sediment}.
+!  to the sediment-routines.
 !
 ! The law-of-the-wall relations are used to compute the friction velocity
 ! \begin{equation}
@@ -43,8 +43,8 @@
 !  this method is supported in {\tt friction()} and can be activated by
 !  uncommenting one line in the code.
 !
-!  If no wave-breaking is considered, the same formula holds
-!  at the sea surface.  Then, the surface roughness may
+!  If no breaking surface waves are considered, the law of the wall 
+!  also holds at the surface. The surface roughness length may 
 !  be calculated according to the \cite{Charnok55} formula,
 !  \begin{equation}
 !   \label{Charnok}
@@ -70,7 +70,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: friction.F90,v $
-!  Revision 1.7  2005-06-27 13:44:07  kbk
+!  Revision 1.8  2005-08-11 12:31:54  lars
+!  corrected error in documentation. Thanks to Patrizio Mariani
+!
+!  Revision 1.7  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.6  2004/08/18 12:33:30  lars
