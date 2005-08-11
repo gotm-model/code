@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.21 2005-07-20 09:36:11 lars Exp $
+!$Id: gotm.F90,v 1.22 2005-08-11 12:29:38 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -77,7 +77,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.21  2005-07-20 09:36:11  lars
+!  Revision 1.22  2005-08-11 12:29:38  lars
+!  added #ifdef for xP argument in do_turbulence()
+!
+!  Revision 1.21  2005/07/20 09:36:11  lars
 !  bug-fix in variances output
 !
 !  Revision 1.20  2005/07/19 16:46:14  hb
@@ -385,8 +388,13 @@
 
       case default
 !        update one-point models
+# ifdef SEAGRASS
          call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
                             NN,SS,xP)
+# else
+         call do_turbulence(nlev,dt,depth,u_taus,u_taub,z0s,z0b,h,      &
+                            NN,SS)
+# endif
       end select
 
 !     do the output
