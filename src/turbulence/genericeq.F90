@@ -1,4 +1,4 @@
-!$Id: genericeq.F90,v 1.5 2005-06-27 13:44:07 kbk Exp $
+!$Id: genericeq.F90,v 1.6 2005-08-11 13:11:50 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -156,7 +156,10 @@
 !  Original author(s): Lars Umlauf and Hans Burchard
 
 !  $Log: genericeq.F90,v $
-!  Revision 1.5  2005-06-27 13:44:07  kbk
+!  Revision 1.6  2005-08-11 13:11:50  lars
+!  Added explicit loops for diffusivities for 3-D z-level support. Thanks to Vicente Fernandez.
+!
+!  Revision 1.5  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.4  2003/03/28 09:20:35  kbk
@@ -190,9 +193,6 @@
    exp2 = 1.5 + gen_m/gen_n
    exp3 =       - 1.0/gen_n
 
-!  compute epsilon diffusivity
-   avh = num/sig_psi
-
 !  re-construct psi at "old" timestep
    do i=0,nlev
       psi(i) = cm0**gen_p * tke(i)**gen_m * L(i)**gen_n
@@ -200,6 +200,9 @@
 
 !  compute RHS
    do i=1,nlev-1
+
+!     compute psi diffusivity
+      avh(i) = num(i)/sig_psi
 
 !     compute production terms in psi-equation
       PsiOverTke  = psi(i)/tke(i)

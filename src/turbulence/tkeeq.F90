@@ -1,4 +1,4 @@
-!$Id: tkeeq.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: tkeeq.F90,v 1.7 2005-08-11 13:11:50 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -96,7 +96,10 @@
 !                      H. Burchard and K. Bolding)
 !
 !  $Log: tkeeq.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2005-08-11 13:11:50  lars
+!  Added explicit loops for diffusivities for 3-D z-level support. Thanks to Vicente Fernandez.
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk
@@ -122,10 +125,11 @@
 !------------------------------------------------------------------------
 !BOC
 !
-!  compute diffusivity
-   avh = num/sig_k
 
    do i=1,nlev-1
+
+!     compute diffusivity
+      avh(i) = num(i)/sig_k
 
 !     compute production terms in k-equation
       prod     = P(i)

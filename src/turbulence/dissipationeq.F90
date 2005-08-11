@@ -1,4 +1,4 @@
-!$Id: dissipationeq.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: dissipationeq.F90,v 1.7 2005-08-11 13:11:50 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -103,7 +103,10 @@
 
 !
 !  $Log: dissipationeq.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2005-08-11 13:11:50  lars
+!  Added explicit loops for diffusivities for 3-D z-level support. Thanks to Vicente Fernandez.
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk
@@ -144,15 +147,16 @@
       end do
       sig_eff(0)=sig_e
    else                        ! No wave breaking
-      sig_eff=sig_e
+      do i=1,nlev-1
+         sig_eff(i)=sig_e
+      enddo
    end if
-
-
-!  compute epsilon diffusivity
-   avh = num/sig_eff
 
 !  compute RHS
    do i=1,nlev-1
+
+!     compute epsilon diffusivity
+      avh(i) = num(i)/sig_eff(i)
 
 !     compute production terms in eps-equation
       EpsOverTke  = eps(i)/tke(i)
