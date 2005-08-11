@@ -1,4 +1,4 @@
-!$Id: production.F90,v 1.2 2005-07-19 16:46:14 hb Exp $
+!$Id: production.F90,v 1.3 2005-08-11 13:01:49 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -77,7 +77,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: production.F90,v $
-!  Revision 1.2  2005-07-19 16:46:14  hb
+!  Revision 1.3  2005-08-11 13:01:49  lars
+!  Added explicit loops for 3-D z-level support. Thanks to Vicente Fernandez.
+!
+!  Revision 1.2  2005/07/19 16:46:14  hb
 !  removed superfluous variables - NNT, NNS, SSU, SSV
 !
 !  Revision 1.1  2005/06/27 10:54:33  kbk
@@ -104,7 +107,7 @@
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
    REALTYPE                      :: alpha_eff=_ZERO_
-
+   integer                       :: i
 !-----------------------------------------------------------------------
 !BOC
    if (iw_model.eq.1) then
@@ -112,14 +115,18 @@
    end if
 
    if ( PRESENT(xP) ) then
-      P=num*(SS+alpha_eff*NN) + xP
+      do i=0,nlev
+         P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) ) + xP(i)
+         B(i)    = -nuh(i)*NN(i)
+         Pb(i)   = -  B(i)*NN(i)
+      enddo
    else
-      P=num*(SS+alpha_eff*NN)
+      do i=0,nlev
+         P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) ) 
+         B(i)    = -nuh(i)*NN(i)
+         Pb(i)   = -  B(i)*NN(i)
+      enddo
    endif
-
-!  B    = -nuh*NNT - nus*NNS - when double diffusion is introduced
-   B    = -nuh*NN
-   Pb   = -B*NN
 
    return
    end subroutine production
