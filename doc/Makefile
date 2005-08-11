@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.9 2005-07-06 14:11:27 kbk Exp $
+#$Id: Makefile,v 1.10 2005-08-11 13:59:25 lars Exp $
 #
 # Makefile for making the source code documentation. 
 #
@@ -14,8 +14,8 @@ PROTEXSRC  = gotm.tex              \
              observations.tex      \
              output.tex            \
              util.tex              \
-#             sediment.tex          \
              seagrass.tex          \
+#             sediment.tex          \
 #             bio.tex
 
 TEXSRC     = introduction.tex      \
@@ -52,7 +52,7 @@ TEXHTMLSRC = introduction.tex      \
              html_web
 
 
-all:         a4_pdf letter_pdf html_pdf html
+all:         a4_pdf letter_pdf html_pdf html_web
 
 
 # do the pdf-versions
@@ -78,7 +78,6 @@ html_dvi:    protex html.dvi
 
 # do the web-version
 html_web:    protex html
-
 
 protex:
 	$(MAKE) realclean -C $(SRCDIR)
@@ -124,7 +123,7 @@ html.pdf: html.ps
 	ps2pdf html.ps
 
 html:   html.dvi
-	latex2html html.tex
+	latex2html -antialias_text -white html.tex
 	touch html
 
 pdf_scp: a4.pdf letter.pdf
@@ -146,11 +145,11 @@ clean:
 
 realclean: clean
 	$(RM) *.dvi *.ps *.pdf
-	$(RM) -rf html/
+	$(RM) -rf html/ 
 	$(RM) -rf $(PROTEXSRC)
 
 distclean: realclean
 	$(RM) *.gz *.zip *.Z
-	$(RM) html html_scp pdf_scp
+	$(RM) html html_scp pdf_scp 
 	$(RM) -rf figures
 
