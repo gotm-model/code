@@ -1,11 +1,11 @@
-!$Id: convert_fluxes.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: convert_fluxes.F90,v 1.2 2005-08-11 12:34:32 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 ! !ROUTINE: Convert between buoyancy fluxes and others \label{sec:convertFluxes}
 !
 ! !INTERFACE:
-subroutine  convert_fluxes(nlev,g,cp,rho_0,heat,p_e,rad,T,S,           &
+  subroutine  convert_fluxes(nlev,g,cp,rho_0,heat,p_e,rad,T,S,           &
                             tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 !
 ! !DESCRIPTION:
@@ -49,7 +49,10 @@ subroutine  convert_fluxes(nlev,g,cp,rho_0,heat,p_e,rad,T,S,           &
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !  $Log: convert_fluxes.F90,v $
-!  Revision 1.1  2005-06-27 10:54:33  kbk
+!  Revision 1.2  2005-08-11 12:34:32  lars
+!  corrected indentation for Protex
+!
+!  Revision 1.1  2005/06/27 10:54:33  kbk
 !  new files needed
 !
 !
