@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.9 2005-07-06 16:20:14 kbk Exp $
+!$Id: observations.F90,v 1.10 2005-08-15 11:54:01 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -133,6 +133,7 @@
 !  Vertical advection velocity - 'w_advspec' namelist
    integer, public           :: w_adv_method=0
    REALTYPE, public          :: w_adv0=0.
+   REALTYPE, public          :: w_adv_height0=0.
    character(LEN=PATH_MAX)   :: w_adv_file='w_adv.dat'
    integer, public           :: w_adv_discr=1
 
@@ -193,7 +194,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
-!  Revision 1.9  2005-07-06 16:20:14  kbk
+!  Revision 1.10  2005-08-15 11:54:01  hb
+!  sequence of reading w_adv and w_height changed, w_adv_height0 introduced, documentation extended
+!
+!  Revision 1.9  2005/07/06 16:20:14  kbk
 !  updated documentation - added const_NNT and const_NNS
 !
 !  Revision 1.8  2004/07/30 09:26:01  hb
@@ -289,7 +293,7 @@
    namelist /extinct/ extinct_method,extinct_file
 
    namelist /w_advspec/                                         &
-            w_adv_method,w_adv_file,w_adv0,w_adv_discr
+            w_adv_method,w_adv_file,w_adv_height0,w_adv0,w_adv_discr
 
    namelist /zetaspec/                                          &
             zeta_method,zeta_file,zeta_0,                       &
