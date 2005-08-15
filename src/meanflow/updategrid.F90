@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.12 2005-06-27 13:44:07 kbk Exp $
+!$Id: updategrid.F90,v 1.13 2005-08-15 20:23:40 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,6 +40,16 @@
 !  This method is not recommended when a varying sea surface is considered.
 !  \end{enumerate}
 !
+!  Furthermore, vertical velocity profiles are calculated here, if
+!  {\tt w\_adv\_method} is 1 or 2, which has to be chosen in the
+!  {\tt w\_advspec} namelist in {\tt obs.inp}. The profiles of vertical 
+!  velocity are determined by two values,
+!  the height of maximum absolute value of vertical velocity, {\tt w\_height}, 
+!  and the vertical velocity at this height, {\tt w\_adv}. From {\tt w\_height},
+!  the vertical velocity is linearly decreasing towards the surface and 
+!  the bottom, where is value is zero.
+
+!
 ! !USES:
    use meanflow, only: depth0,depth,z,h,ho,ddu,ddl,grid_method
    use meanflow, only: NN,SS,w_grid,grid_file,w
@@ -53,7 +63,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
-!  Revision 1.12  2005-06-27 13:44:07  kbk
+!  Revision 1.13  2005-08-15 20:23:40  hb
+!  Vertical advection profiles triangle-shaped also for temporally constant vertical velocity
+!
+!  Revision 1.12  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.11  2004/08/18 11:46:19  lars
@@ -226,10 +239,7 @@
    select case(w_adv_method)
       case(0)
          ! no vertical advection
-      case(1)
-         ! constant advection velocity
-         w = w_adv
-      case(2)
+      case(1,2)
          ! linearly varying advection velocity with peak at "w_height"
          if (w_height.lt.0.01*(zi(nlev)-zi(0))) w_height=0.5*(zi(0)-zi(nlev))
          do i=1,nlev-1
