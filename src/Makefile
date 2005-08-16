@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.8 2005-07-14 14:40:05 lars Exp $
+#$Id: Makefile,v 1.9 2005-08-16 14:38:37 kbk Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -21,13 +21,10 @@ ALL_LIBS	= $(FEATURE_LIBS) $(CORE_LIBS) $(EXTRA_LIBS)
 
 EXEC		= gotm$(buildtype)_$(FORTRAN_COMPILER)
 
-all: ../include/version.h $(EXEC)
+all: ../VERSION $(EXEC)
 
-../include/version.h: ../VERSION
-	$(MAKE) realclean
-	@echo "#ifndef RELEASE" > ../include/version.h
-	@echo "#define RELEASE \"`cat ../VERSION`\"" >> ../include/version.h
-	@echo "#endif" >> ../include/version.h
+../VERSION: ../Makefile
+	$(MAKE) -C ..
 
 $(EXEC): makedirs subdirs features gotmlib 
 	$(FC) -o $@ ./gotm/main.o $(LDFLAGS) -lgotm$(buildtype) $(ALL_LIBS)

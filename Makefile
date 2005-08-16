@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.9 2005-06-27 09:36:47 kbk Exp $
+#$Id: Makefile,v 1.10 2005-08-16 14:38:37 kbk Exp $
 #
 # Makefile for making new release of GOTM.
 #
@@ -21,16 +21,19 @@ VERSION=3.1.0
 VERSION=3.1.3
 # 20050627
 VERSION=3.1.3_bio
+# 20050817
+VERSION=3.2.0
 
 all: VERSION
 
-VERSION: include/version.h
+VERSION: Makefile
+	$(MAKE) distclean
 	@echo $(VERSION) > $@
 	@date > timestamp
-
-include/version.h: ./Makefile
 	@echo \#define RELEASE \"$(VERSION)\" > .ver
-	@mv -f .ver $@
+	@mv -f .ver include/version.h
+
+Makefile:
 
 devel stable branch: distclean
 	@echo
@@ -38,10 +41,10 @@ devel stable branch: distclean
 	@echo
 	@. release.sh $@ $(VERSION)
 
-
 distclean:
 	make -C doc/ $@
 	make -C src/ $@
+	$(RM) VERSION include/version.h
 	$(RM) -r lib/ modules/
 
 #-----------------------------------------------------------------------
