@@ -31,7 +31,7 @@ BRANCH=$TAG
 RHOST=gotm@gotm.net
 RDIR=src/
 
-export CVSROOT=$USER@bbh.homelinux.net:/public/cvs
+export CVSROOT=$USER@gate:/public/cvs
 export CVS_RSH=ssh
 
 if [ -d $release_dir/$release_name ] ; then
