@@ -46,7 +46,7 @@ fi
 
 if [ "$release_type" = "stable" ] ; then
    cvs tag -b $TAG
-   CVS2CL="cvs2cl -b -F $BRANCH --no-ancestors"
+   CVS2CL="cvs2cl -b -F v3_2_0 --no-ancestors"
 fi
 
 if [ "$release_type" = "devel" ] ; then
@@ -60,7 +60,7 @@ if [ "$release_type" = "branch" ] ; then
 fi
 
 
-$CVS2CL && mkdir -p $release_dir/$release_name &&  mv ChangeLog $release_dir/$release_name
+$CVS2CL && mkdir -p $release_dir/$release_name/include/ && mv ChangeLog VERSION $release_dir/$release_name && mv include/version.h $release_dir/$release_name/include/
 
 cd $release_dir && cvs export -r $TAG -d $release_name gotm && tar -cvzf $tarfile $release_name/ && ln -sf $release_name.tar.gz gotm_$release_type.tar.gz
 
