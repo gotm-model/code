@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.22 2005-08-11 12:29:38 lars Exp $
+!$Id: gotm.F90,v 1.22.2.1 2005-08-18 13:07:49 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -36,7 +36,6 @@
 ! !USES:
    use meanflow
    use observations
-   use output
    use time
 
    use airsea,      only: init_air_sea,air_sea_interaction
@@ -60,6 +59,8 @@
    use seagrass
 #endif
 
+   use output
+
    IMPLICIT NONE
    private
 !
@@ -77,7 +78,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.22  2005-08-11 12:29:38  lars
+!  Revision 1.22.2.1  2005-08-18 13:07:49  kbk
+!  moved use output to compile on Intel compiler v9
+!
+!  Revision 1.22  2005/08/11 12:29:38  lars
 !  added #ifdef for xP argument in do_turbulence()
 !
 !  Revision 1.21  2005/07/20 09:36:11  lars
