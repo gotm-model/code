@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.13 2005-08-15 20:23:40 hb Exp $
+!$Id: updategrid.F90,v 1.14 2005-08-25 19:41:33 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -63,7 +63,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
-!  Revision 1.13  2005-08-15 20:23:40  hb
+!  Revision 1.14  2005-08-25 19:41:33  hb
+!  small deviations between depth and depth0 tolerated now
+!
+!  Revision 1.13  2005/08/15 20:23:40  hb
 !  Vertical advection profiles triangle-shaped also for temporally constant vertical velocity
 !
 !  Revision 1.12  2005/06/27 13:44:07  kbk
@@ -150,7 +153,7 @@
             stop 'updategrid'
          end if
          close (grid_unit)
-         if (depth /= 1.) then
+         if (abs(depth-1.).gt.1.e-8) then
             FATAL "sum of all layers in grid_file should be 1."
             stop 'updategrid'
          end if
@@ -180,8 +183,8 @@
             stop 'updategrid'
          end if
          close (grid_unit)
-         if (depth /= depth0) then
-            FATAL "sum of all layers should be equal to the total depth",depth0
+         if (abs(depth-depth0).gt.1.e-5) then
+            FATAL "sum of all layers should be equal to the total depth",depth0,depth
             stop 'updategrid'
          end if
      case(3) ! Adaptive grid
