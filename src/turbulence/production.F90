@@ -1,4 +1,4 @@
-!$Id: production.F90,v 1.3 2005-08-11 13:01:49 lars Exp $
+!$Id: production.F90,v 1.4 2005-08-28 09:40:03 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,7 @@
 !  \cite{Mellor89}. $X_P$ is an extra production term, connected for
 !  example with turbulence production caused by sea-grass, see
 !  \eq{sgProduction} in  \sect{sec:seagrass}. {\tt xP} is an {\tt optional}
-!  argument in the FOTRAN code.
+!  argument in the FORTRAN code.
 !
 !  Similarly, according to \eq{PeVertical}, the buoyancy production
 !  is computed from the expression
@@ -77,7 +77,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: production.F90,v $
-!  Revision 1.3  2005-08-11 13:01:49  lars
+!  Revision 1.4  2005-08-28 09:40:03  hb
+!  Misspelling in documentation corrected.
+!
+!  Revision 1.3  2005/08/11 13:01:49  lars
 !  Added explicit loops for 3-D z-level support. Thanks to Vicente Fernandez.
 !
 !  Revision 1.2  2005/07/19 16:46:14  hb
