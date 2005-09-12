@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.12 2005-06-27 13:44:07 kbk Exp $
+!$Id: temperature.F90,v 1.13 2005-09-12 21:46:46 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -106,7 +106,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.12  2005-06-27 13:44:07  kbk
+!  Revision 1.13  2005-09-12 21:46:46  hb
+!  use of bioshade corrected (should work on short wave length part of light spectrum only
+!
+!  Revision 1.12  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.11  2004/08/18 12:31:52  lars
@@ -174,7 +177,7 @@
       z=z+h(i+1)
 
 !     compute short wave radiation
-      rad(i)=I_0*(A*exp(-z/g1)+(1-A)*exp(-z/g2))
+      rad(i)=I_0*(A*exp(-z/g1)+(1.-A)*exp(-z/g2)*bioshade(i+1))
 
 !     compute total diffusivity
       avh(i)=nuh(i)+avmolT
@@ -185,10 +188,10 @@
    Lsour=_ZERO_
    Qsour=_ZERO_
 
-   Qsour(nlev)=(I_0-rad(nlev-1)*bioshade(nlev))/(rho_0*cp*h(nlev))
+   Qsour(nlev)=(I_0-rad(nlev-1))/(rho_0*cp*h(nlev))
    do i=1,nlev-1
 !     from radiation
-      Qsour(i) = (rad(i)*bioshade(i+1) - rad(i-1)*bioshade(i))/(rho_0*cp*h(i))
+      Qsour(i) = (rad(i)-rad(i-1))/(rho_0*cp*h(i))
    enddo
 
    do i=1,nlev
