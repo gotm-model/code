@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.6 2004-08-09 11:53:39 hb Exp $
+!$Id: bio_fasham.F90,v 1.7 2005-09-12 14:48:33 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,13 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
-!  Revision 1.6  2004-08-09 11:53:39  hb
+!  Revision 1.7  2005-09-12 14:48:33  kbk
+!  merged generic biological module support
+!
+!  Revision 1.6.2.1  2005/07/05 20:25:35  hb
+!  added control over par calculation
+!
+!  Revision 1.6  2004/08/09 11:53:39  hb
 !  bioshading now without detritus
 !
 !  Revision 1.5  2004/08/02 08:34:36  hb
@@ -96,6 +102,8 @@
    REALTYPE                  ::  mu4      = 0.02
    REALTYPE                  ::  w_d      = -2.0
    REALTYPE, public          ::  kc=0.03
+   REALTYPE                  ::  aa=0.62
+   REALTYPE                  ::  g2=20.0
    integer                   ::  out_unit
    integer, parameter        ::  p=1,z=2,b=3,d=4,n=5,a=6,l=7
 !EOP
@@ -131,7 +139,7 @@
                         p_initial,z_initial,b_initial,d_initial,n_initial,&
                         a_initial,l_initial,p0,z0,b0,vp,alpha,k1,k2,mu1,k5,&
                         gamma,w_p,gmax,k3,beta,mu2,k6,delta,epsi,r1,r2,r3, &
-                        vb,k4,mu3,eta,mu4,w_d,kc
+                        vb,k4,mu3,eta,mu4,w_d,kc,aa,g2
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -320,7 +328,7 @@
    do i=nlev,1,-1
       add=add+0.5*h(i)*(cc(p,i)+p0)
       zz=zz+0.5*h(i)
-      par(i)=0.25*(rad(i)+rad(i-1))*exp(-kc*add)
+      par(i)=rad(nlev)*(1.-aa)*exp(-zz/g2)*exp(-kc*add)
       add=add+0.5*h(i)*(cc(p,i)+p0)
       zz=zz+0.5*h(i)
       if (bioshade_feedback) bioshade(i)=exp(-kc*add)

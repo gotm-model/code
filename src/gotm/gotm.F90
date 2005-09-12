@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.22 2005-08-11 12:29:38 lars Exp $
+!$Id: gotm.F90,v 1.23 2005-09-12 14:48:33 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -36,7 +36,6 @@
 ! !USES:
    use meanflow
    use observations
-   use output
    use time
 
    use airsea,      only: init_air_sea,air_sea_interaction
@@ -59,6 +58,12 @@
 #ifdef SEAGRASS
    use seagrass
 #endif
+#ifdef BIO
+   use bio
+   use bio_fluxes
+#endif
+
+   use output
 
    IMPLICIT NONE
    private
@@ -72,12 +77,18 @@
 #ifdef SEAGRASS
    integer, parameter                  :: unit_seagrass=62
 #endif
+#ifdef BIO
+   integer, parameter                  :: unit_bio=63
+#endif
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.22  2005-08-11 12:29:38  lars
+!  Revision 1.23  2005-09-12 14:48:33  kbk
+!  merged generic biological module support
+!
+!  Revision 1.22  2005/08/11 12:29:38  lars
 !  added #ifdef for xP argument in do_turbulence()
 !
 !  Revision 1.21  2005/07/20 09:36:11  lars
@@ -255,7 +266,10 @@
 #ifdef SEAGRASS
    call init_seagrass(namlst,'seagrass.inp',unit_seagrass,nlev,h)
 #endif
-
+#ifdef BIO
+   call init_bio(namlst,'bio.inp',unit_bio,nlev,h)
+   call init_bio_fluxes()
+#endif
    LEVEL2 'done.'
    STDERR LINE
 
@@ -370,6 +384,10 @@
       call shear(nlev,cnpar)
       call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
 
+#ifdef BIO
+      call do_bio_fluxes(julianday,secondsofday)
+      call do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
+#endif
 
 !    compute turbulent mixing
       select case (turb_method)
@@ -403,6 +421,9 @@
             call variances(nlev,SSU,SSV)
          endif
          call do_output(n,nlev)
+#ifdef BIO
+         call bio_save(nlev,h,_ZERO_)
+#endif
       end if
 
       call integrated_fluxes(dt)

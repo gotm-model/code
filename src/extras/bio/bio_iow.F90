@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.13 2004-08-09 11:55:06 hb Exp $
+!$Id: bio_iow.F90,v 1.14 2005-09-12 14:48:33 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,13 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.13  2004-08-09 11:55:06  hb
+!  Revision 1.14  2005-09-12 14:48:33  kbk
+!  merged generic biological module support
+!
+!  Revision 1.13.2.1  2005/07/05 20:25:35  hb
+!  added control over par calculation
+!
+!  Revision 1.13  2004/08/09 11:55:06  hb
 !  surface phosphorus flux not any more multiplied by 10 when read from file
 !
 !  Revision 1.12  2004/08/02 09:01:38  kbk
@@ -141,6 +147,8 @@
    REALTYPE                  :: a0=31.25
    REALTYPE                  :: a1=14.603
    REALTYPE                  :: a2=0.4025
+   REALTYPE                  :: aa=0.62
+   REALTYPE                  :: g2=20.0
    integer                   :: out_unit
    integer, parameter        :: p1=1,p2=2,p3=3,zo=4,de=5,     &
                                 am=6,ni=7,po=8,o2=9,fl=10
@@ -183,7 +191,7 @@
                       alpha3,lpa,lpd,tf,tbg,beta_bg,g1max,g2max,             &
                       g3max,lza,lzd,iv,topt,lan,oan,beta_an,lda,             &
                       tda,beta_da,lds,lsa,bsa,ph1,ph2,pvel,sr,               &
-                      s1,s2,s3,s4,a0,a1,a2
+                      s1,s2,s3,s4,a0,a1,a2,aa,g2
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -564,7 +572,7 @@
    do i=nlev,1,-1
       add=add+0.5*h(i)*(cc(de,i)+cc(p1,i)+cc(p2,i)+cc(p3,i)+p10+p20+p30)
       zz=zz+0.5*h(i)
-      par(i)=0.25*(rad(i)+rad(i-1))*exp(-kc*add)
+      par(i)=rad(nlev)*(1.-aa)*exp(-zz/g2)*exp(-kc*add)
       add=add+0.5*h(i)*(cc(de,i)+cc(p1,i)+cc(p2,i)+cc(p3,i)+p10+p20+p30)
       zz=zz+0.5*h(i)
       if (bioshade_feedback) bioshade(i)=exp(-kc*add)
