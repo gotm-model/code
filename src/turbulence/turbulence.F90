@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.13 2005-08-11 13:00:15 lars Exp $
+!$Id: turbulence.F90,v 1.14 2005-09-13 10:00:54 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -259,7 +259,10 @@
 
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.13  2005-08-11 13:00:15  lars
+!  Revision 1.14  2005-09-13 10:00:54  kbk
+!  init_turbulence() now prints version - obtained from Makefile
+!
+!  Revision 1.13  2005/08/11 13:00:15  lars
 !  Added explicit interface for xP. Bug found by Vicente Fernandez.
 !
 !  Revision 1.12  2005/07/19 16:46:14  hb
@@ -375,7 +378,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_turbulence'
+   LEVEL1 'init_turbulence: v',RELEASE
 
    ! read the variables from the namelist file
 
