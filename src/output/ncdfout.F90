@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.10 2005-08-11 14:15:33 kbk Exp $
+!$Id: ncdfout.F90,v 1.11 2005-09-14 11:53:06 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,7 +58,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.10  2005-08-11 14:15:33  kbk
+!  Revision 1.11  2005-09-14 11:53:06  kbk
+!  fixed position of counter for time dimension - fixes bio storing
+!
+!  Revision 1.10  2005/08/11 14:15:33  kbk
 !  when storing time changed variable time to temp_time - Portland compiler
 !
 !  Revision 1.9  2005/07/06 14:22:40  kbk
@@ -121,7 +124,7 @@
    integer, private          :: P_id,G_id,Pb_id
    integer, private          :: uu_id,vv_id,ww_id
    integer, private          :: ncdf_time_unit
-   integer, private          :: set=1
+   integer, private          :: set_no=0
    integer, private          :: start(4),edges(4)
    logical,save,private      :: GrADS=.false.
 !
@@ -534,6 +537,8 @@
       first = .false.
    end if
 
+   set_no = set_no + 1
+
 !  Storing the time - both the coordinate and later a time string.
    select case (ncdf_time_unit)
       case(0)                           ! seconds
@@ -647,8 +652,6 @@
    iret = store_data(ncid,turb4_id,XYZT_SHAPE,nlev,array=turb4)
    iret = store_data(ncid,turb5_id,XYZT_SHAPE,nlev,array=turb5)
 # endif
-
-   set = set + 1
 
    iret = nf_sync(ncid)
    call check_err(iret)
@@ -937,7 +940,7 @@
          case(POINT)
             iret = nf_put_var_int(ncid,id,iscalar)
          case(T_SHAPE)
-            start(1) = set; edges(1) = 1
+            start(1) = set_no; edges(1) = 1
             idum(1)=iscalar
             iret = nf_put_vara_int(ncid,id,start,edges,idum)
          case default
@@ -950,13 +953,13 @@
             r4 = scalar
             iret = nf_put_var_real(ncid,id,r4)
          case(T_SHAPE)
-            start(1) = set; edges(1) = 1
+            start(1) = set_no; edges(1) = 1
             dum(1)=scalar
             iret = nf_put_vara_real(ncid,id,start,edges,dum)
          case(XYT_SHAPE)
             start(1) = 1;   edges(1) = lon_len
             start(2) = 1;   edges(2) = lat_len
-            start(3) = set; edges(3) = 1
+            start(3) = set_no; edges(3) = 1
             dum(1)=scalar
             iret = nf_put_vara_real(ncid,id,start,edges,dum)
          case default
@@ -971,7 +974,7 @@
             start(1) = 1;   edges(1) = lon_len
             start(2) = 1;   edges(2) = lat_len
             start(3) = 1;   edges(3) = depth_len
-            start(4) = set; edges(4) = 1
+            start(4) = set_no; edges(4) = 1
          case default
             FATAL 'A non valid - var_shape - has been passed in store_data()'
             stop 'store_data'
