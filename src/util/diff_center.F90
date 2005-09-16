@@ -1,4 +1,4 @@
-!$Id: diff_center.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: diff_center.F90,v 1.2 2005-09-16 13:54:02 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -50,6 +50,8 @@
 ! !USES:
    use util,          only  : Dirichlet, Neumann
    use mtridiagonal
+
+   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
 
@@ -101,7 +103,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: diff_center.F90,v $
-!  Revision 1.1  2005-06-27 10:54:33  kbk
+!  Revision 1.2  2005-09-16 13:54:02  lars
+!  added missing IMPLICIT NONE
+!
+!  Revision 1.1  2005/06/27 10:54:33  kbk
 !  new files needed
 !
 !
