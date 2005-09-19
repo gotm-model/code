@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.22 2005-09-12 14:48:33 kbk Exp $
+!$Id: bio.F90,v 1.23 2005-09-19 21:07:00 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -32,6 +32,9 @@
    use mussels, only : mussels_calc,total_mussel_flux
 
    use output, only: out_fmt,write_results,ts
+
+   use util
+
 !
 !  default: all is private.
    private
@@ -44,7 +47,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.22  2005-09-12 14:48:33  kbk
+!  Revision 1.23  2005-09-19 21:07:00  hb
+!  yevol replaced by adv_center and diff_center
+!
+!  Revision 1.22  2005/09/12 14:48:33  kbk
 !  merged generic biological module support
 !
 !  Revision 1.21.2.1  2005/07/06 09:00:19  hb
@@ -394,14 +400,23 @@
 
       if (bio_eulerian) then
          do j=1,numcc
-#if 0
-            call Yevol(nlev,Bcup,Bcdw,dt,cnpar,sfl(j),bfl(j), &
-                       RelaxTau,h,h,nuh,ws(j,:),QSour,cc(j,:), &
-                       char,w_adv_discr,cc(j,:),surf_flux,bott_flux,  & 
-                       grid_method,w_grid,flag)
-#else
-            STDERR 'Should have called Yevol: ',j,' of ',numcc
-#endif
+
+            !  do advection step
+            call adv_center(nlev,dt,h,h,ws(j,:),flux,         &
+                 flux,_ZERO_,_ZERO_,w_adv_discr,cc(j,:))
+            
+            !  do diffusion step
+            call diff_center(nlev,dt,cnpar,h,Neumann,Neumann,           &
+                 sfl(j),bfl(j),nuh,Qsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
+            
+! Still included for testing:
+!
+!            call Yevol(nlev,Bcup,Bcdw,dt,cnpar,sfl(j),bfl(j), &
+!                       RelaxTau,h,h,nuh,ws(j,:),QSour,cc(j,:), &
+!                      char,w_adv_discr,cc(j,:),surf_flux,bott_flux,  & 
+!                      grid_method,w_grid,flag)
+
+
          end do
       else
          zlev(0)=-depth
