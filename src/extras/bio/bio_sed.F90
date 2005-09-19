@@ -1,4 +1,4 @@
-!$Id: bio_sed.F90,v 1.3 2004-08-02 08:34:36 hb Exp $
+!$Id: bio_sed.F90,v 1.4 2005-09-19 21:03:31 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_sed.F90,v $
-!  Revision 1.3  2004-08-02 08:34:36  hb
+!  Revision 1.4  2005-09-19 21:03:31  hb
+!  pp and dd properly set to zero
+!
+!  Revision 1.3  2004/08/02 08:34:36  hb
 !  updated init routines to reflect new internal bio interface
 !
 !  Revision 1.2  2004/07/30 09:22:20  hb
@@ -80,6 +83,8 @@
    close(namlst)
 
    LEVEL3 'Sedimentation bio module initialised ...'
+
+   numcc=numc
 
    w_C = w_C/86400.
 
@@ -167,21 +172,33 @@
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
 ! !INTERFACE
-   subroutine do_bio_sed()
+   subroutine do_bio_sed(nlev,pp,dd)
 !
 ! !DESCRIPTION
 !
 ! !USES
    IMPLICIT NONE
+
+! !INPUT PARAMETERS:
+   integer                              :: nlev
+
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+   REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
+
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
 !  no right hand sides necessary
+
+      pp=0.
+      dd=0.
 
    return
    end subroutine do_bio_sed

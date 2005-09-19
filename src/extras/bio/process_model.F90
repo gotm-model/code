@@ -1,4 +1,4 @@
-!$Id: process_model.F90,v 1.6 2004-07-30 09:22:20 hb Exp $
+!$Id: process_model.F90,v 1.7 2005-09-19 21:03:31 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -44,7 +44,7 @@
       case (2)
          call do_bio_iow(first,numc,nlev,cc,pp,dd,h,t)
       case (3)
-         call do_bio_sed()
+         call do_bio_sed(nlev,pp,dd)
       case (4)
          call do_bio_fasham(first,numc,nlev,cc,pp,dd)
       case default
