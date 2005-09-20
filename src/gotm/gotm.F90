@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.16.2.1 2005-07-06 09:00:19 hb Exp $
+!$Id: gotm.F90,v 1.16.2.2 2005-09-20 06:59:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -41,7 +41,6 @@
    use meanflow
    use turbulence
    use observations
-   use output
    use time
    use mtridiagonal
    use eqstate
@@ -56,6 +55,7 @@
    use bio
    use bio_fluxes
 #endif
+   use output
 !
    IMPLICIT NONE
    private
@@ -79,7 +79,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.16.2.1  2005-07-06 09:00:19  hb
+!  Revision 1.16.2.2  2005-09-20 06:59:56  kbk
+!  moved - use output - to compile on newer Intel compilers
+!
+!  Revision 1.16.2.1  2005/07/06 09:00:19  hb
 !  moved bio_save() from do_bio() to time_loop - temporary no NPZD totn calculation
 !
 !  Revision 1.16  2004/08/02 08:35:46  hb
