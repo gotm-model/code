@@ -1,4 +1,4 @@
-!$Id: w_split_it_adv.F90,v 1.5.2.1 2005-07-06 09:25:05 hb Exp $
+!$Id: w_split_it_adv.F90,v 1.5.2.2 2005-09-20 06:59:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -60,13 +60,16 @@
    integer,parameter                    :: Superbee=4
    integer,parameter                    :: MUSCL=5
    integer,parameter                    :: P2_PDM=6
-   integer,parameter                    :: one6th=0.1666666666
+   REALTYPE,parameter                   :: one6th=_ONE_/6.
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard
 !
 !  $Log: w_split_it_adv.F90,v $
-!  Revision 1.5.2.1  2005-07-06 09:25:05  hb
+!  Revision 1.5.2.2  2005-09-20 06:59:15  kbk
+!  fixed one6th parameter
+!
+!  Revision 1.5.2.1  2005/07/06 09:25:05  hb
 !  renamed w_split_it_adv() to w_split_it_adv_1d() to avoid clash with GETM
 !
 !  Revision 1.5  2003/12/11 09:58:21  kbk
