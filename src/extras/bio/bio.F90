@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.23 2005-09-19 21:07:00 hb Exp $
+!$Id: bio.F90,v 1.24 2005-10-11 08:43:44 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,7 +47,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.23  2005-09-19 21:07:00  hb
+!  Revision 1.24  2005-10-11 08:43:44  lars
+!  checked new transport routines
+!
+!  Revision 1.23  2005/09/19 21:07:00  hb
 !  yevol replaced by adv_center and diff_center
 !
 !  Revision 1.22  2005/09/12 14:48:33  kbk
@@ -362,7 +365,7 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   REALTYPE                  :: Qsour(0:nlev),w_grid(0:nlev)
+   REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev),w_grid(0:nlev)
 !KBK   REALTYPE                  :: Sup=0,Sdw=0
    REALTYPE                  :: RelaxTau(0:nlev)
    REALTYPE                  :: zz,add
@@ -382,6 +385,7 @@
       I_0_local = I_0
 
       Qsour    = _ZERO_
+      Lsour    = _ZERO_
       RelaxTau = 1.e15
       w_grid   = _ZERO_
 
@@ -401,22 +405,14 @@
       if (bio_eulerian) then
          do j=1,numcc
 
-            !  do advection step
-            call adv_center(nlev,dt,h,h,ws(j,:),flux,         &
+!           do advection step
+            call adv_center(nlev,dt,h,h,ws(j,:),flux,                   &
                  flux,_ZERO_,_ZERO_,w_adv_discr,cc(j,:))
             
-            !  do diffusion step
+!           do diffusion step
             call diff_center(nlev,dt,cnpar,h,Neumann,Neumann,           &
-                 sfl(j),bfl(j),nuh,Qsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
+                -sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
             
-! Still included for testing:
-!
-!            call Yevol(nlev,Bcup,Bcdw,dt,cnpar,sfl(j),bfl(j), &
-!                       RelaxTau,h,h,nuh,ws(j,:),QSour,cc(j,:), &
-!                      char,w_adv_discr,cc(j,:),surf_flux,bott_flux,  & 
-!                      grid_method,w_grid,flag)
-
-
          end do
       else
          zlev(0)=-depth
