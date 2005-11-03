@@ -1,4 +1,4 @@
-!$Id: diff_center.F90,v 1.2 2005-09-16 13:54:02 lars Exp $
+!$Id: diff_center.F90,v 1.3 2005-11-03 20:56:55 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -103,7 +103,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: diff_center.F90,v $
-!  Revision 1.2  2005-09-16 13:54:02  lars
+!  Revision 1.3  2005-11-03 20:56:55  hb
+!  Source term linearisation now fully explicit again, reversion to old method
+!
+!  Revision 1.2  2005/09/16 13:54:02  lars
 !  added missing IMPLICIT NONE
 !
 !  Revision 1.1  2005/06/27 10:54:33  kbk
@@ -127,8 +130,8 @@
 
       cu(i) =-cnpar*c
       au(i) =-cnpar*a
-      bu(i) = _ONE_ + cnpar*( a + c - l)
-      du(i) = (_ONE_ - (_ONE_-cnpar)*(a + c - l))*Y(i)                  &
+      bu(i) = _ONE_ + cnpar*(a + c) - l
+      du(i) = (_ONE_ - (_ONE_-cnpar)*(a + c))*Y(i)                  &
             + (_ONE_ - cnpar)*( a*Y(i-1) + c*Y(i+1) ) + dt*Qsour(i)
    end do
 
@@ -139,8 +142,8 @@
       l     = dt*Lsour(N)
 
       au(N) =-cnpar*a
-      bu(N) =  _ONE_ - au(N) - cnpar*l
-      du(N) = (_ONE_ + (_ONE_-cnpar)*l)*Y(N) + dt*(Qsour(N)+Yup/h(N))   &
+      bu(N) =  _ONE_ - au(N) - l
+      du(N) = Y(N) + dt*(Qsour(N)+Yup/h(N))   &
             + (_ONE_ - cnpar)*a*(Y(N-1)-Y(N))
    case(Dirichlet)
       au(N) = _ZERO_
@@ -158,8 +161,8 @@
       l     = dt*Lsour(1)
 
       cu(1) =-cnpar*c
-      bu(1) = _ONE_ - cu(1) - cnpar*l
-      du(1) = (_ONE_ + (_ONE_-cnpar)*l)*Y(1) + dt*(Qsour(1)+Ydw/h(1))   &
+      bu(1) = _ONE_ - cu(1) - l
+      du(1) = Y(1) + dt*(Qsour(1)+Ydw/h(1))   &
             + (_ONE_ - cnpar)*c*(Y(2)-Y(1))
    case(Dirichlet)
       cu(1) = _ZERO_
