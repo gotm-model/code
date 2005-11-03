@@ -1,4 +1,4 @@
-!$Id: tkeeq.F90,v 1.7 2005-08-11 13:11:50 lars Exp $
+!$Id: tkeeq.F90,v 1.8 2005-11-03 20:53:37 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -60,7 +60,7 @@
 !
 ! !USES:
    use turbulence,   only: P,B,num
-   use turbulence,   only: tke,k_min,eps
+   use turbulence,   only: tke,tkeo,k_min,eps
    use turbulence,   only: k_bc, k_ubc, k_lbc, ubc_type, lbc_type
    use turbulence,   only: sig_k
    use util,         only: Dirichlet,Neumann
@@ -96,7 +96,10 @@
 !                      H. Burchard and K. Bolding)
 !
 !  $Log: tkeeq.F90,v $
-!  Revision 1.7  2005-08-11 13:11:50  lars
+!  Revision 1.8  2005-11-03 20:53:37  hb
+!  Patankar trick reverted to older versions for stabilising 3D computations
+!
+!  Revision 1.7  2005/08/11 13:11:50  lars
 !  Added explicit loops for diffusivities for 3-D z-level support. Thanks to Vicente Fernandez.
 !
 !  Revision 1.6  2005/06/27 13:44:07  kbk
@@ -126,6 +129,8 @@
 !BOC
 !
 
+   tkeo=tke
+
    do i=1,nlev-1
 
 !     compute diffusivity
@@ -136,19 +141,16 @@
       buoyan   = B(i)
       diss     = eps(i)
 
-!     compute positive and negative parts of RHS
-      prod_pos    =  max(prod  ,_ZERO_)
-      buoyan_pos  =  max(buoyan,_ZERO_)
 
-      prod_neg    =  min(prod  ,_ZERO_)
-      buoyan_neg  =  min(buoyan,_ZERO_)
-
-!     compose source terms
-      Qsour(i) =   prod_pos + buoyan_pos
-      Lsour(i) =  (prod_neg + buoyan_neg - diss)/tke(i)
+      if (prod+buoyan.gt.0) then
+         Qsour(i)  = prod+buoyan
+         Lsour(i) = -diss/tke(i)
+      else
+         Qsour(i)  = prod
+         Lsour(i) = -(diss-buoyan)/tke(i)
+      end if
 
    end do
-
 
 
 !  position for upper BC

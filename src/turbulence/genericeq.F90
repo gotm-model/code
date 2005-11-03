@@ -1,4 +1,4 @@
-!$Id: genericeq.F90,v 1.6 2005-08-11 13:11:50 lars Exp $
+!$Id: genericeq.F90,v 1.7 2005-11-03 20:53:37 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -120,7 +120,7 @@
 !
 ! !USES:
    use turbulence, only: P,B,num
-   use turbulence, only: tke,k_min,eps,eps_min,L
+   use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
    use turbulence, only: cpsi1,cpsi2,cpsi3plus,cpsi3minus,sig_psi
    use turbulence, only: gen_m,gen_n,gen_p
    use turbulence, only: cm0,cde,galp,length_lim
@@ -156,7 +156,10 @@
 !  Original author(s): Lars Umlauf and Hans Burchard
 
 !  $Log: genericeq.F90,v $
-!  Revision 1.6  2005-08-11 13:11:50  lars
+!  Revision 1.7  2005-11-03 20:53:37  hb
+!  Patankar trick reverted to older versions for stabilising 3D computations
+!
+!  Revision 1.6  2005/08/11 13:11:50  lars
 !  Added explicit loops for diffusivities for 3-D z-level support. Thanks to Vicente Fernandez.
 !
 !  Revision 1.5  2005/06/27 13:44:07  kbk
@@ -182,6 +185,7 @@
    REALTYPE                  :: psi(0:nlev)
    REALTYPE                  :: avh(0:nlev)
    REALTYPE                  :: Lsour(0:nlev),Qsour(0:nlev)
+   REALTYPE                  :: cpsi3
 
    integer                   :: i
 !
@@ -205,24 +209,27 @@
       avh(i) = num(i)/sig_psi
 
 !     compute production terms in psi-equation
-      PsiOverTke  = psi(i)/tke(i)
+      if (B(i).gt.0) then
+         cpsi3=cpsi3plus
+      else
+         cpsi3=cpsi3minus
+      end if
+
+!     compute production terms in psi-equation
+      PsiOverTke  = psi(i)/tkeo(i)
       prod        = cpsi1*PsiOverTke*P(i)
-      buoyan      =       PsiOverTke*B(i)
+      buoyan      = cpsi3*PsiOverTke*B(i)
       diss        = cpsi2*PsiOverTke*eps(i)
 
-!     compute positive and negative parts of RHS
-      prod_pos    =            max(prod  ,_ZERO_)
-      buoyan_pos  =  cpsi3plus*max(buoyan,_ZERO_)
-
-      prod_neg    =             min(prod  ,_ZERO_)
-      buoyan_neg  =  cpsi3minus*min(buoyan,_ZERO_)
-
-!     compose source terms
-      Qsour(i) =   prod_pos + buoyan_pos
-      Lsour(i) =  (prod_neg + buoyan_neg - diss)/psi(i)
+      if (prod+buoyan.gt.0) then
+         Qsour(i)  = prod+buoyan
+         Lsour(i) = -diss/psi(i)
+      else
+         Qsour(i)  = prod
+         Lsour(i) = -(diss-buoyan)/psi(i)
+      end if
 
    end do
-
 
 !  TKE and position for upper BC
    if (psi_ubc.eq.Neumann) then
