@@ -1,4 +1,4 @@
-!$Id: main.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: main.F90,v 1.7 2005-11-15 11:45:08 lars Exp $
 #include<cppdefs.h>
 !-----------------------------------------------------------------------
 !BOP
@@ -26,14 +26,18 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: main.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2005-11-15 11:45:08  lars
+!  documentation finish for print
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2003/03/28 09:20:34  kbk
 !  added new copyright to files
 !
 !  Revision 1.4  2003/03/10 09:20:28  gotm
-!  Added new Generic Turbulence Model + improved documentation and cleaned up code
+!  Added new Generic Turbulence Model + 
+!  improved documentation and cleaned up code
 !
 !  Revision 1.3  2001/11/18 13:07:06  gotm
 !  Cleaned
@@ -42,8 +46,8 @@
 !  Only calls CPU_time() if -DFORTRAN95
 !
 !  Revision 1.2  2001/05/31 12:00:52  gotm
-!  Correction in the calculation of the shear squared calculation - now according
-!  to Burchard 1995 (Ph.D. thesis).
+!  Correction in the calculation of the shear squared calculation
+!  - now according to Burchard 1995 (Ph.D. thesis).
 !  Also some cosmetics and cleaning of Makefiles.
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:59  gotm

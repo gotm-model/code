@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.23 2005-09-12 14:48:33 kbk Exp $
+!$Id: gotm.F90,v 1.24 2005-11-15 11:45:08 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,7 +85,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.23  2005-09-12 14:48:33  kbk
+!  Revision 1.24  2005-11-15 11:45:08  lars
+!  documentation finish for print
+!
+!  Revision 1.23  2005/09/12 14:48:33  kbk
 !  merged generic biological module support
 !
 !  Revision 1.22  2005/08/11 12:29:38  lars
@@ -140,7 +143,8 @@
 !  removed tabs
 !
 !  Revision 1.5  2003/03/10 09:20:27  gotm
-!  Added new Generic Turbulence Model + improved documentation and cleaned up code
+!  Added new Generic Turbulence Model + 
+!  improved documentation and cleaned up code
 !
 !  Revision 1.3  2001/11/18 15:58:02  gotm
 !  Vertical grid can now be read from file

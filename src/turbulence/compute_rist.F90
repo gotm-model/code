@@ -1,4 +1,4 @@
-!$Id: compute_rist.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: compute_rist.F90,v 1.2 2005-11-15 11:35:02 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
@@ -20,7 +20,8 @@
 ! !USES:
    use turbulence, only:           as,an,cmue1,cmue2
    use turbulence, only:           cm0
-   use turbulence, only:           turb_method,stab_method,cm0_fix,Prandtl0_fix
+   use turbulence, only:           turb_method,stab_method
+   use turbulence, only:           cm0_fix,Prandtl0_fix
    use turbulence, only:           Constant
    use turbulence, only:           MunkAnderson
    use turbulence, only:           SchumGerz

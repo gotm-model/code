@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.11 2005-07-06 13:58:07 kbk Exp $
+!$Id: airsea.F90,v 1.12 2005-11-15 11:42:33 lars Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -87,7 +87,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.11  2005-07-06 13:58:07  kbk
+!  Revision 1.12  2005-11-15 11:42:33  lars
+!  documentation finish for print
+!
+!  Revision 1.11  2005/07/06 13:58:07  kbk
 !  added fresh water, updated documentation
 !
 !  Revision 1.10  2004/07/30 09:19:03  hb
@@ -190,14 +193,14 @@
 !                          & 2: wet bulb temperature given as 7. column in {\tt meteo$\_$file}      \\
 !                          & 3: dew point temperature given as 7. column in {\tt meteo$\_$file}     \\
 ! {\tt heat$\_$method}     & 0: heat flux not prescribed                                            \\
-!                          & 1: constant value for short wave radiation ({\tt const$\_$swr})
-!                               and surface heat flux ({\tt const$\_$qh})                           \\
-!                          & 2: {\tt swr}, {\tt heat} are read from {\tt heatflux$\_$file}            \\
+!                          & 1: constant value for short wave radiation ({\tt const$\_$swr})        \\
+!                          &    and surface heat flux ({\tt const$\_$qh})                           \\
+!                          & 2: {\tt swr}, {\tt heat} are read from {\tt heatflux$\_$file}          \\
 ! {\tt const$\_$swr}       & constant value for short wave radiation in W\,m$^{-2}$                 \\
 !                          & (always positive)                                                      \\
 ! {\tt const$\_$heat }     & constant value for surface heat flux in  W\,m$^{-2}$                   \\
 !                          & (negative for heat loss)                                               \\
-! {\tt heatflux$\_$file}   & file with date and {\tt swr} and {\tt heat} in W\,m$^{-2}$               \\
+! {\tt heatflux$\_$file}   & file with date and {\tt swr} and {\tt heat} in W\,m$^{-2}$             \\
 ! {\tt momentum$\_$method} & 0: momentum flux not prescribed                                        \\
 !                          & 1: constant momentum fluxes {\tt const$\_$tx}, {\tt const$\_$tx} given \\
 !                          & 2: surface momentum fluxes given from file {\tt momentumflux$\_$file}  \\
@@ -1033,7 +1036,7 @@
 !
 ! !DESCRIPTION:
 !   For {\tt calc\_fluxes=.false.}, this routine reads momentum fluxes
-!   in N\,m$^{-2}$ from
+!   in N\,m$^{-2}$ from \linebreak
 !   {\tt momentumflux\_file} and interpolates them in time.
 !
 ! !USES:

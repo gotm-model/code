@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.13 2005-09-12 21:46:46 hb Exp $
+!$Id: temperature.F90,v 1.14 2005-11-15 11:39:32 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -106,8 +106,12 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.13  2005-09-12 21:46:46  hb
-!  use of bioshade corrected (should work on short wave length part of light spectrum only
+!  Revision 1.14  2005-11-15 11:39:32  lars
+!  documentation finish for print
+!
+!  Revision 1.13  2005/09/12 21:46:46  hb
+!  use of bioshade corrected (should work on short 
+!  wave length part of light spectrum only)
 !
 !  Revision 1.12  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
@@ -116,7 +120,8 @@
 !  updated documentation
 !
 !  Revision 1.10  2004/07/28 11:29:10  hb
-!  Bug removed, rad is not any more multiplied with bioshade; bug found by Jorn Bruggeman, Amsterdam
+!  Bug removed, rad is not any more multiplied with bioshade; 
+!  bug found by Jorn Bruggeman, Amsterdam
 !
 !  Revision 1.9  2003/07/23 12:33:21  hb
 !  fixed bioshade init and use

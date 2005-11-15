@@ -1,4 +1,4 @@
-!$Id: tkeeq.F90,v 1.8 2005-11-03 20:53:37 hb Exp $
+!$Id: tkeeq.F90,v 1.9 2005-11-15 11:35:02 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -96,11 +96,16 @@
 !                      H. Burchard and K. Bolding)
 !
 !  $Log: tkeeq.F90,v $
-!  Revision 1.8  2005-11-03 20:53:37  hb
-!  Patankar trick reverted to older versions for stabilising 3D computations
+!  Revision 1.9  2005-11-15 11:35:02  lars
+!  documentation finish for print
+!
+!  Revision 1.8  2005/11/03 20:53:37  hb
+!  Patankar trick reverted to older versions for 
+!  stabilising 3D computations
 !
 !  Revision 1.7  2005/08/11 13:11:50  lars
-!  Added explicit loops for diffusivities for 3-D z-level support. Thanks to Vicente Fernandez.
+!  Added explicit loops for diffusivities for 3-D z-level support. 
+!  Thanks to Vicente Fernandez.
 !
 !  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks

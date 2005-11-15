@@ -1,4 +1,4 @@
-!$Id: cmue_sg.F90,v 1.6 2005-07-18 08:54:56 lars Exp $
+!$Id: cmue_sg.F90,v 1.7 2005-11-15 11:35:02 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,7 +38,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_sg.F90,v $
-!  Revision 1.6  2005-07-18 08:54:56  lars
+!  Revision 1.7  2005-11-15 11:35:02  lars
+!  documentation finish for print
+!
+!  Revision 1.6  2005/07/18 08:54:56  lars
 !  changed docu for html compliance
 !
 !  Revision 1.5  2005/06/27 13:44:07  kbk
@@ -51,7 +54,8 @@
 !  added new copyright to files
 !
 !  Revision 1.2  2003/03/10 09:02:04  gotm
-!  Added new Generic Turbulence Model + improved documentation and cleaned up code
+!  Added new Generic Turbulence Model + 
+!  improved documentation and cleaned up code
 !
 !  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
 !  initial import into CVS

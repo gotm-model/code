@@ -1,4 +1,4 @@
-!$Id: ispralength.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: ispralength.F90,v 1.7 2005-11-15 11:35:02 lars Exp $
 #include"cppdefs.h"
 !-------------------------------------------------------------------------
 !BOP
@@ -57,7 +57,10 @@
 !  Original author(s):  Manuel Ruiz Villarreal, Hans Burchard
 !
 !  $Log: ispralength.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2005-11-15 11:35:02  lars
+!  documentation finish for print
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk
@@ -67,7 +70,8 @@
 !  removed tabs
 !
 !  Revision 1.3  2003/03/10 09:02:05  gotm
-!  Added new Generic Turbulence Model + improved documentation and cleaned up code
+!  Added new Generic Turbulence Model + 
+!  improved documentation and cleaned up code
 !
 !  Revision 1.2  2002/02/08 08:59:58  gotm
 !

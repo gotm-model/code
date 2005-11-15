@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.14 2005-08-25 19:41:33 hb Exp $
+!$Id: updategrid.F90,v 1.15 2005-11-15 11:39:32 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -51,9 +51,10 @@
 
 !
 ! !USES:
-   use meanflow, only: depth0,depth,z,h,ho,ddu,ddl,grid_method
-   use meanflow, only: NN,SS,w_grid,grid_file,w
-   use observations, only: zeta_method,w_adv_method,w_adv,w_height,w_adv_discr
+   use meanflow,     only: depth0,depth,z,h,ho,ddu,ddl,grid_method
+   use meanflow,     only: NN,SS,w_grid,grid_file,w
+   use observations, only: zeta_method,w_adv_method
+   use observations, only: w_adv,w_height,w_adv_discr
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -63,11 +64,15 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
-!  Revision 1.14  2005-08-25 19:41:33  hb
+!  Revision 1.15  2005-11-15 11:39:32  lars
+!  documentation finish for print
+!
+!  Revision 1.14  2005/08/25 19:41:33  hb
 !  small deviations between depth and depth0 tolerated now
 !
 !  Revision 1.13  2005/08/15 20:23:40  hb
-!  Vertical advection profiles triangle-shaped also for temporally constant vertical velocity
+!  Vertical advection profiles triangle-shaped also for 
+!  temporally constant vertical velocity
 !
 !  Revision 1.12  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks

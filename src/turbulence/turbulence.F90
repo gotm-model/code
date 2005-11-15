@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.14 2005-09-13 10:00:54 kbk Exp $
+!$Id: turbulence.F90,v 1.15 2005-11-15 11:35:02 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -259,7 +259,10 @@
 
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.14  2005-09-13 10:00:54  kbk
+!  Revision 1.15  2005-11-15 11:35:02  lars
+!  documentation finish for print
+!
+!  Revision 1.14  2005/09/13 10:00:54  kbk
 !  init_turbulence() now prints version - obtained from Makefile
 !
 !  Revision 1.13  2005/08/11 13:00:15  lars
@@ -284,7 +287,8 @@
 !  removed tabs
 !
 !  Revision 1.5  2003/03/10 09:02:06  gotm
-!  Added new Generic Turbulence Model + improved documentation and cleaned up code
+!  Added new Generic Turbulence Model + 
+!  improved documentation and cleaned up code
 !
 !
 !  Revision 1.3  2001/11/27 19:42:58  gotm

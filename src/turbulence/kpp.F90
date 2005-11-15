@@ -1,4 +1,4 @@
-!$Id: kpp.F90,v 1.2 2005-07-21 10:20:00 lars Exp $
+!$Id: kpp.F90,v 1.3 2005-11-15 11:35:02 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -280,7 +280,8 @@
 !  (tdd3=0.54).
    REALTYPE, parameter :: tdd3    = 0.54
 
-!  proportionality coefficient parameterizing nonlocal  transport (Cstar=10.0)
+!  proportionality coefficient parameterizing nonlocal  transport
+!  (Cstar=10.0)
    REALTYPE, parameter :: Cstar   = 10.0
 
 !  ratio of interior Brunt-Vaisala frequency to that
@@ -324,7 +325,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: kpp.F90,v $
-!  Revision 1.2  2005-07-21 10:20:00  lars
+!  Revision 1.3  2005-11-15 11:35:02  lars
+!  documentation finish for print
+!
+!  Revision 1.2  2005/07/21 10:20:00  lars
 !  polished documentation
 !
 !  Revision 1.1  2005/06/27 10:54:33  kbk
