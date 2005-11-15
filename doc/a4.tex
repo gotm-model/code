@@ -1,8 +1,8 @@
 %
-%$Id: a4.tex,v 1.2 2005-08-11 13:56:37 lars Exp $
+%$Id: a4.tex,v 1.3 2005-11-15 12:07:31 lars Exp $
 %
 
-\documentclass[a4paper,twoside]{article}
+\documentclass[a4paper,twoside,11pt]{article}
 
 % AMS math and symbols
 \usepackage{amsmath,amsfonts,amssymb,amsbsy,latexsym}
@@ -19,13 +19,14 @@
 % to make pdf files look OK
 \usepackage{ae}
 
-% center it on a4-format
-\setlength{\evensidemargin}{4.6mm}
+% set page margins for print
+\setlength{\evensidemargin}{-0.4mm}
 \setlength{\oddsidemargin}{4.6mm}
-\setlength{\textwidth}{150mm}
+\setlength{\textwidth}{155mm}
 
+\pagestyle{myheadings}
 
-
+\renewcommand{\baselinestretch}{1.0}
 \begin{document}
 
 
@@ -79,13 +80,12 @@ Test Case Documentation
 
 {\sf \bf \Large
  \begin{center}
-  Flow ---  Mixing --- Sediment Transport
+  Flow ---  Mixing --- Transport
 \end{center}
 }
 
 
 \end{titlepage}
-
 
 % table of contents
 \cleardoublepage
@@ -112,6 +112,7 @@ Test Case Documentation
 \include{turbulenceIntro}
 \include{turbulence}
 
+\cleardoublepage
 \include{airseaIntro}
 \include{airsea}
 

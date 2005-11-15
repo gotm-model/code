@@ -1,5 +1,5 @@
 %
-%$Id: cases.tex,v 1.4 2005-08-16 14:42:17 hb Exp $
+%$Id: cases.tex,v 1.5 2005-11-15 12:07:52 lars Exp $
 %
 
 \section{GOTM scenarios \label{sec:cases}}
@@ -226,20 +226,20 @@ cannot be run.
  two-equation models.
 
  A numerical solution of the $k$-$\epsilon$ model can be obtained by
- copying the files in {\tt kepspilon\_inp} to the current directory,
- and insuring that {\tt compute\_kappa = .true.}  and {\tt sig\_peps =
- .false.} in {\tt gotmturb.inp}. Because the spatial decay rate of the
- TKE is very large for this model, the wave-affected layer is very
- small, and of the order of only a few tens of centimeters for this
- scenario.  As discussed by \cite{Umlaufetal2003}, this disadvantage
- can be overcome by using the $k$-$\omega$ model with parameters given
- in {\tt gotmturb.inp} in the directory {\tt komega\_inp/}. The decay
- rates of this model nicely correspond to those measured in the
- laboratory grid strirring experiments. The Mellor-Yamada model has
- also been investigated by \cite{Umlaufetal2003}, but for this model,
- again, decay was shown to be too strong. In addition, the decay rate
- depends in an unphysical way on the wall-function required in this
- model.
+ copying the files in \linebreak {\tt kepspilon\_inp} to the current
+ directory, and insuring that {\tt compute\_kappa = .true.}  and {\tt
+ sig\_peps = .false.} in {\tt gotmturb.inp}. Because the spatial decay
+ rate of the TKE is very large for this model, the wave-affected layer
+ is very small, and of the order of only a few tens of centimeters for
+ this scenario.  As discussed by \cite{Umlaufetal2003}, this
+ disadvantage can be overcome by using the $k$-$\omega$ model with
+ parameters given in {\tt gotmturb.inp} in the directory {\tt
+ komega\_inp/}. The decay rates of this model nicely correspond to
+ those measured in the laboratory grid strirring experiments. The
+ Mellor-Yamada model has also been investigated by
+ \cite{Umlaufetal2003}, but for this model, again, decay was shown to
+ be too strong. In addition, the decay rate depends in an unphysical
+ way on the wall-function required in this model.
 
  \item As an alternative to the standard $k$-$\epsilon$ model,
  \cite{Burchard2001b} suggested to make the turbulent Schmidt number
@@ -448,8 +448,8 @@ $\tau_y$ in N\,m$^{-2}$ \\
                    $Q_{out}$ in W\,m$^{-2}$ \\
 {\tt sst.dat}         &  observed SST in $^{\circ}$C \\ 
                
-{\tt pressure.dat}    & time series of surface slopes fitted to the 
-nip-spring cycle for that region \\ 
+{\tt pressure.dat}    & time series of surface slopes fitted to the local
+spring-neap cycle  \\ 
 {\tt tprof.dat}       & profiles of measured potential temperature for initial conditions and \\ & validation, data are reanalysed and low pass filtered \\  
 {\tt sprof.dat}       & profiles of idealised salinity for initial conditions and relaxation \\   
 {\tt tprof\_ctd}       & CTD-profiles of potential temperature, with some gaps \\
@@ -489,8 +489,8 @@ for salinity dynamics in the Northern North Sea, is parameterised.
 \begin{tabular}{ll}
 {\tt sprof.dat}         &  salinity in ppt from three-dimensional model
 of \cite{Pohlmann96}\\ 
-{\tt tprof.dat}         &  potential temperature in $^{\circ}$C from three-dimensional
-model of \cite{Pohlmann96}\\ 
+{\tt tprof.dat}         &  potential temperature in $^{\circ}$C from the three-dimensional \\
+                        &  model of \cite{Pohlmann96}\\ 
 {\tt pressure.dat} & sea surface slopes from tidal analysis of observations \\
 {\tt meteonns.dat} & meteorological data from UK Met Office model \\
 {\tt sst.dat} & sea surface temperature in $^{\circ}$C
@@ -517,8 +517,7 @@ Two different dissipation rate data sets are included:
 \begin{tabular}{ll}
 {\tt eps\_fly.dat}& data from a FLY profiler, processed by School
 of Ocean Sciences, \\ & University of Bangor, Wales \\  
-{\tt eps\_mst.dat}& data from an MST profiler, processed by the Joint
-Research Centre, Ispra, Italy. 
+{\tt eps\_mst.dat}& data from an MST profiler, processed by JRC, Ispra, Italy. 
 \end{tabular}
 \\
 
@@ -545,8 +544,8 @@ and also the annual simulation in section \ref{nns_annual} and
 shear probes from several ships\\
 {\tt tprof.dat} &  potential temperature in $^{\circ}$C from CTDs and microstructure \\ &
 shear probes from several ships\\
-{\tt pressure.dat} & sea surface elevation gradients analysed from
-a triangle of pressure gauges \\
+{\tt pressure.dat} & sea surface elevation gradients analysed from \\
+                   & a triangle of pressure gauges \\
 {\tt w\_adv.dat} & vertical velocities analysed from vertical displacement 
 \\ & of pycnocline \\
 {\tt velprof.dat} &  horizontal velocities from bottom mounted ADCP \\
@@ -614,10 +613,8 @@ anti-clockwise from North.
 {\tt zeta.dat} & sea surface elevation from pressure gauge \\
 {\tt velprof.dat} &  horizontal velocities from bottom mounted ADCP \\
 {\tt eprof.dat} & observed dissipation rates in W\,kg$^{-1}$ \\
-{\tt heatflux.dat} & surface heat fluxes calculated by means of the 
-\cite{Kondo75} bulk formulae \\
-{\tt momentumflux.dat} & surface momentum fluxes calculated by means 
-of the \cite{Kondo75} \\ & bulk formulae \\
+{\tt heatflux.dat} & surface heat fluxes calculated accroding to \cite{Kondo75} \\
+{\tt momentumflux.dat} & surface momentum fluxes calculated according to \cite{Kondo75} \\
 \end{tabular}
 \\
 
@@ -699,7 +696,7 @@ and a halocline at about 50 m depth. The simulation period
 is charaterised by storms up to 0.2 N\,m$^{-2}$.
 As forcing, surface stress, heat fluxes and solar radiation
 has been calculated on the basis of meteorological observations
-by using the bulk formulae of \cite{Kondo75}.
+according to \cite{Kondo75}.
 The barotropic pressure gradient has been recalculated 
 from vertically averaged observed velocity profiles, see section
 \ref{sec:meanflowIntroPhysics}.
@@ -770,13 +767,12 @@ March 25, 1961 (0.00 h) to March 25, 1962 (0.00 h).
 
 \begin{tabular}{ll}
 {\tt sprof.dat} &   salinity profiles in ppt of monthly climatology from 
-Levitus data set. First \\ & profile interpolated to January, 1 \\ 
+Levitus data set. \\ & First profile interpolated to January, 1st \\ 
 {\tt tprof.dat} & profiles of measured potential temperature for 
 initial conditions and \\ & relaxation \\    
-{\tt heatflux.dat} & surface heat fluxes calculated by means of the 
-\cite{Kondo75} bulk formulae \\
-{\tt momentumflux.dat} & surface momentum fluxes calculated by means 
-of the \cite{Kondo75} \\ & bulk formulae \\
+{\tt heatflux.dat} & surface heat fluxes calculated according to
+\cite{Kondo75} \\
+{\tt momentumflux.dat} & surface momentum fluxes calculated according to \cite{Kondo75} \\
 \end{tabular}
 \\
 
@@ -835,10 +831,8 @@ conditions and relaxation \\
 {\tt temp\_lmd95.dat} & profiles of measured potential temperature for 
 initial conditions and \\ & relaxation \\    
 {\tt eps\_lmd95.dat} & profiles of measured dissipation rate for validation \\
-{\tt hflu2\_05lt.dat} & surface heat fluxes calculated by means of the 
-\cite{Kondo75} bulk formulae \\
-{\tt momentumflux.dat} & surface momentum fluxes calculated by means 
-of the \cite{Kondo75} \\ & bulk formulae \\
+{\tt hflu2\_05lt.dat} & surface heat fluxes calculated according to \cite{Kondo75} \\
+{\tt momentumflux.dat} & surface momentum fluxes calculated according to \cite{Kondo75} \\
 \end{tabular}
 \\
 
