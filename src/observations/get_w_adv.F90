@@ -1,4 +1,4 @@
-!$Id: get_w_adv.F90,v 1.6 2005-08-15 11:54:01 hb Exp $
+!$Id: get_w_adv.F90,v 1.7 2005-11-15 11:02:32 lars Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -35,8 +35,12 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_w_adv.F90,v $
-!  Revision 1.6  2005-08-15 11:54:01  hb
-!  sequence of reading w_adv and w_height changed, w_adv_height0 introduced, documentation extended
+!  Revision 1.7  2005-11-15 11:02:32  lars
+!  documentation finish for print
+!
+!  Revision 1.6  2005/08/15 11:54:01  hb
+!  sequence of reading w_adv and w_height changed, 
+!  w_adv_height0 introduced, documentation extended
 !
 !  Revision 1.5  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
