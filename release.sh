@@ -28,8 +28,8 @@ tarfile=$release_name.tar.gz
 TAG=v`echo $release_version | tr . _`
 BRANCH=$TAG
 
-RHOST=gotm@gotm.net
-RDIR=src/
+RHOST=bolding@gotm.net
+RDIR=/data/kamel/domains/gotm.net/src/
 
 export CVSROOT=$USER@gate:/public/cvs
 export CVS_RSH=ssh
