@@ -1,4 +1,4 @@
-!$Id: vequation.F90,v 1.7 2005-06-27 13:44:07 kbk Exp $
+!$Id: vequation.F90,v 1.8 2005-11-17 09:58:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -88,7 +88,10 @@
 !                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: vequation.F90,v $
-!  Revision 1.7  2005-06-27 13:44:07  kbk
+!  Revision 1.8  2005-11-17 09:58:20  hb
+!  explicit argument for positive definite variables in diff_center()
+!
+!  Revision 1.7  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.7  2004/08/18 11:44:49  lars
@@ -111,6 +114,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                   :: posconc=0
    integer                   :: i
    integer                   :: DiffBcup,DiffBcdw
    integer                   :: AdvBcup,AdvBcdw
@@ -188,7 +192,7 @@
    end if
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,h,DiffBcup,DiffBcdw,                  &
+   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
                     DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,V)
 
 

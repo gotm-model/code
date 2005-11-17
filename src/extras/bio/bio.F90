@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.24 2005-10-11 08:43:44 lars Exp $
+!$Id: bio.F90,v 1.25 2005-11-17 09:58:18 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,7 +47,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.24  2005-10-11 08:43:44  lars
+!  Revision 1.25  2005-11-17 09:58:18  hb
+!  explicit argument for positive definite variables in diff_center()
+!
+!  Revision 1.24  2005/10/11 08:43:44  lars
 !  checked new transport routines
 !
 !  Revision 1.23  2005/09/19 21:07:00  hb
@@ -366,7 +369,6 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev),w_grid(0:nlev)
-!KBK   REALTYPE                  :: Sup=0,Sdw=0
    REALTYPE                  :: RelaxTau(0:nlev)
    REALTYPE                  :: zz,add
    REALTYPE                  :: totn,dt_eff
@@ -410,9 +412,8 @@
                  flux,_ZERO_,_ZERO_,w_adv_discr,cc(j,:))
             
 !           do diffusion step
-            call diff_center(nlev,dt,cnpar,h,Neumann,Neumann,           &
+            call diff_center(nlev,dt,cnpar,posconc(j),h,Neumann,Neumann,&
                 -sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
-            
          end do
       else
          zlev(0)=-depth
@@ -556,6 +557,10 @@
    allocate(bfl(1:numc),stat=rc)
    if (rc /= 0) STOP 'init_bio: Error allocating (bfl)'
    bfl=_ZERO_
+
+   allocate(posconc(1:numc),stat=rc)
+   if (rc /= 0) STOP 'init_bio: Error allocating (posconc)'
+   posconc=1
 
    allocate(mussels_inhale(1:numc),stat=rc)
    if (rc /= 0) STOP 'init_bio: Error allocating (mussels_inhale)'

@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.5 2004-07-30 09:22:20 hb Exp $
+!$Id: bio_var.F90,v 1.6 2005-11-17 09:58:18 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,6 +26,7 @@
    integer                               :: n_surface_fluxes=-1
    REALTYPE, dimension(:), allocatable   :: sfl_read
    REALTYPE, dimension(:), allocatable   :: sfl,bfl
+   integer, dimension(:), allocatable    :: posconc
    logical, dimension(:), allocatable    :: mussels_inhale
    logical, dimension(:,:), allocatable  :: particle_active
    integer, dimension(:,:), allocatable  :: particle_indx
@@ -43,7 +44,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
-!  Revision 1.5  2004-07-30 09:22:20  hb
+!  Revision 1.6  2005-11-17 09:58:18  hb
+!  explicit argument for positive definite variables in diff_center()
+!
+!  Revision 1.5  2004/07/30 09:22:20  hb
 !  use bio_var in specific bio models - simpliefied internal interface
 !
 !  Revision 1.4  2004/03/30 11:32:48  kbk

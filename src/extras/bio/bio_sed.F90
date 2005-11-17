@@ -1,4 +1,4 @@
-!$Id: bio_sed.F90,v 1.4 2005-09-19 21:03:31 hb Exp $
+!$Id: bio_sed.F90,v 1.5 2005-11-17 09:58:18 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_sed.F90,v $
-!  Revision 1.4  2005-09-19 21:03:31  hb
+!  Revision 1.5  2005-11-17 09:58:18  hb
+!  explicit argument for positive definite variables in diff_center()
+!
+!  Revision 1.4  2005/09/19 21:03:31  hb
 !  pp and dd properly set to zero
 !
 !  Revision 1.3  2004/08/02 08:34:36  hb
@@ -125,6 +128,8 @@
    cc(1,:)=C_initial
 
    ws(1,:) = w_C
+
+   posconc(1) = 1
 
    mussels_inhale(1) = .true.
 

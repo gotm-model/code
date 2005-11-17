@@ -1,4 +1,4 @@
-!$Id: buoyancy.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: buoyancy.F90,v 1.7 2005-11-17 09:58:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -80,7 +80,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: buoyancy.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2005-11-17 09:58:20  hb
+!  explicit argument for positive definite variables in diff_center()
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk
@@ -98,6 +101,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                   :: posconc=0
    integer                   :: i
    integer                   :: DiffBcup,DiffBcdw
    integer                   :: AdvBcup,AdvBcdw
@@ -154,7 +158,7 @@
    end if
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,h,DiffBcup,DiffBcdw,                  &
+   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
                     DiffBup,DiffBdw,avh,Lsour,Qsour,                    &
                     BRelaxTau,buoy,buoy)
 

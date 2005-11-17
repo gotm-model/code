@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.14 2005-11-15 11:39:32 lars Exp $
+!$Id: temperature.F90,v 1.15 2005-11-17 09:58:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -106,7 +106,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
-!  Revision 1.14  2005-11-15 11:39:32  lars
+!  Revision 1.15  2005-11-17 09:58:20  hb
+!  explicit argument for positive definite variables in diff_center()
+!
+!  Revision 1.14  2005/11/15 11:39:32  lars
 !  documentation finish for print
 !
 !  Revision 1.13  2005/09/12 21:46:46  hb
@@ -150,6 +153,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                   :: posconc=0
    integer                   :: i
    integer                   :: DiffBcup,DiffBcdw
    integer                   :: AdvBcup,AdvBcdw
@@ -220,7 +224,7 @@
    end if
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,h,DiffBcup,DiffBcdw,                  &
+   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
                     DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
 
    return

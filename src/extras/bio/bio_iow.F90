@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.14 2005-09-12 14:48:33 kbk Exp $
+!$Id: bio_iow.F90,v 1.15 2005-11-17 09:58:18 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
-!  Revision 1.14  2005-09-12 14:48:33  kbk
+!  Revision 1.15  2005-11-17 09:58:18  hb
+!  explicit argument for positive definite variables in diff_center()
+!
+!  Revision 1.14  2005/09/12 14:48:33  kbk
 !  merged generic biological module support
 !
 !  Revision 1.13.2.1  2005/07/05 20:25:35  hb
@@ -301,6 +304,16 @@
 
    sfl = _ZERO_
 
+   posconc(p1) = 1
+   posconc(p2) = 1
+   posconc(p3) = 1
+   posconc(zo) = 1
+   posconc(de) = 1
+   posconc(am) = 1
+   posconc(ni) = 1
+   posconc(po) = 1
+   posconc(o2) = 0
+
    mussels_inhale(p1) = .true.
    mussels_inhale(p2) = .true.
    mussels_inhale(p3) = .true.
@@ -314,14 +327,13 @@
    allocate(ppi(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_iow(): Error allocating ppi)'
 
-!  NOTE: Positive fluxes into the sea surface must have negative sign !
    select case (surface_flux_method)
       case (-1)! absolutely nothing
       case (0) ! constant
 
-         sfl(po)=-sfl_po /secs_pr_day
-         sfl(am)=-sfl_am /secs_pr_day
-         sfl(ni)=-sfl_ni /secs_pr_day
+         sfl(po)=sfl_po/secs_pr_day
+         sfl(am)=sfl_am/secs_pr_day
+         sfl(ni)=sfl_ni/secs_pr_day
 
       case (2) ! from file via sfl_read
 
@@ -424,15 +436,14 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (w.gt.1.e-10) then
-   th=min+(max-min)*0.5*(1.+tanh(x/w))
+   if (w .gt. 1.e-10) then
+      th=min+(max-min)*0.5*(1.+tanh(x/w))
    else
-      if (x.gt.0) then
-         th=1.
+      if (x .gt. _ZERO_) then
+         th=_ONE_
       else
-         th=0.
+         th=_ZERO_
       end if    
-   
    end if
    return
    end function th
@@ -518,20 +529,19 @@
 !-----------------------------------------------------------------------
 !BOC
 
-!  NOTE: Positive fluxes into the sea surface must have negative sign !
    select case (surface_flux_method)
       case (-1)! absolutely nothing
       case (0) ! constant
       case (2) ! from file via sfl_read
-         sfl(ni) =   -1.*sfl_read(1)/secs_pr_day
-         sfl(am) =   -1.*sfl_read(2)/secs_pr_day
-         sfl(po) =   -1.*sfl_read(3)/secs_pr_day
+         sfl(ni) = sfl_read(1)/secs_pr_day
+         sfl(am) = sfl_read(2)/secs_pr_day
+         sfl(po) = sfl_read(3)/secs_pr_day
       case (3) ! sfl array filled externally - for 3D models
       case default
    end select
 
 ! surface oxygen flux
-   sfl(o2)=-pvel*(a0*(a1-a2*t)-cc(o2,nlev))
+   sfl(o2) = -pvel*(a0*(a1-a2*t)-cc(o2,nlev))
    return
    end subroutine surface_fluxes_iow
 !EOC

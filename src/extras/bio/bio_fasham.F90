@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.7 2005-09-12 14:48:33 kbk Exp $
+!$Id: bio_fasham.F90,v 1.8 2005-11-17 09:58:18 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,7 +26,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
-!  Revision 1.7  2005-09-12 14:48:33  kbk
+!  Revision 1.8  2005-11-17 09:58:18  hb
+!  explicit argument for positive definite variables in diff_center()
+!
+!  Revision 1.7  2005/09/12 14:48:33  kbk
 !  merged generic biological module support
 !
 !  Revision 1.6.2.1  2005/07/05 20:25:35  hb
@@ -222,6 +225,15 @@
       ws(p,i) = w_p
       ws(d,i) = w_d
    end do
+
+   
+   posconc(p) = 1
+   posconc(z) = 1
+   posconc(b) = 1
+   posconc(d) = 1
+   posconc(n) = 1
+   posconc(a) = 1
+   posconc(l) = 1
 
    mussels_inhale(p) = .true.
    mussels_inhale(z) = .true.

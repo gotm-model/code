@@ -1,4 +1,4 @@
-!$Id: diff_center.F90,v 1.3 2005-11-03 20:56:55 hb Exp $
+!$Id: diff_center.F90,v 1.4 2005-11-17 09:58:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,7 +6,7 @@
 ! !ROUTINE: Diffusion schemes --- grid centers\label{sec:diffusionMean}
 !
 ! !INTERFACE:
-   subroutine diff_center(N,dt,cnpar,h,Bcup,Bcdw,                       &
+   subroutine diff_center(N,dt,cnpar,posconc,h,Bcup,Bcdw, &
                           Yup,Ydw,nuY,Lsour,Qsour,Taur,Yobs,Y)
 !
 ! !DESCRIPTION:
@@ -40,12 +40,17 @@
 ! {\tt Yup} and {\tt Ydw} are the values of the boundary conditions at
 ! the surface and the bottom. Depending on the values of {\tt Bcup} and
 ! {\tt Bcdw}, they represent either fluxes or prescribed values.
+! The integer {\tt posconc} indicates if a quantity is
+! non-negative by definition ({\tt posconc}=1, such as for concentrations)
+! or not ({\tt posconc}=0). For {\tt posconc}=1 and negative
+! boundary fluxes, the source term linearisation according to
+! \cite{Patankar80} is applied.
 !
 ! Note that fluxes \emph{entering} a boundary cell are counted positive
 ! by convention. The lower and upper position for prescribing these fluxes
 ! are located at the lowest und uppermost grid faces with index "0" and
 ! index "N", respectively. If values are prescribed, they are located at
-! the centers with index "1" and index "N", respectivly.
+! the centers with index "1" and index "N", respectively.
 !
 ! !USES:
    use util,          only  : Dirichlet, Neumann
@@ -63,6 +68,9 @@
 
 !  "implicitness" parameter
    REALTYPE, intent(in)                :: cnpar
+
+!  1: non-negative concentration, 0: else
+   integer, intent(in)                 :: posconc
 
 !  layer thickness (m)
    REALTYPE, intent(in)                :: h(0:N)
@@ -103,7 +111,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: diff_center.F90,v $
-!  Revision 1.3  2005-11-03 20:56:55  hb
+!  Revision 1.4  2005-11-17 09:58:20  hb
+!  explicit argument for positive definite variables in diff_center()
+!
+!  Revision 1.3  2005/11/03 20:56:55  hb
 !  Source term linearisation now fully explicit again, reversion to old method
 !
 !  Revision 1.2  2005/09/16 13:54:02  lars
@@ -142,9 +153,15 @@
       l     = dt*Lsour(N)
 
       au(N) =-cnpar*a
-      bu(N) =  _ONE_ - au(N) - l
-      du(N) = Y(N) + dt*(Qsour(N)+Yup/h(N))   &
-            + (_ONE_ - cnpar)*a*(Y(N-1)-Y(N))
+      if (posconc .eq. 1 .and. Yup.lt._ZERO_) then ! Patankar (1980) trick
+         bu(N) =  _ONE_ - au(N) - l  - dt*Yup/Y(N)/h(N)
+         du(N) = Y(N) + dt*Qsour(N)   &
+               + (_ONE_ - cnpar)*a*(Y(N-1)-Y(N))
+      else
+         bu(N) =  _ONE_ - au(N) - l
+         du(N) = Y(N) + dt*(Qsour(N)+Yup/h(N))   &
+               + (_ONE_ - cnpar)*a*(Y(N-1)-Y(N))
+      end if
    case(Dirichlet)
       au(N) = _ZERO_
       bu(N) = _ONE_
@@ -161,9 +178,15 @@
       l     = dt*Lsour(1)
 
       cu(1) =-cnpar*c
-      bu(1) = _ONE_ - cu(1) - l
-      du(1) = Y(1) + dt*(Qsour(1)+Ydw/h(1))   &
-            + (_ONE_ - cnpar)*c*(Y(2)-Y(1))
+      if (posconc.eq.1 .and. Ydw.lt._ZERO_) then ! Patankar (1980) trick
+         bu(1) = _ONE_ - cu(1) - l - dt*Ydw/Y(1)/h(1)
+         du(1) = Y(1) + dt*(Qsour(1))   &
+               + (_ONE_ - cnpar)*c*(Y(2)-Y(1))
+      else
+         bu(1) = _ONE_ - cu(1) - l 
+         du(1) = Y(1) + dt*(Qsour(1)+Ydw/h(1))   &
+               + (_ONE_ - cnpar)*c*(Y(2)-Y(1))
+      end if
    case(Dirichlet)
       cu(1) = _ZERO_
       bu(1) = _ONE_
