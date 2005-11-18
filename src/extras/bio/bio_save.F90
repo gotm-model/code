@@ -1,4 +1,4 @@
-!$Id: bio_save.F90,v 1.3 2004-07-30 09:22:20 hb Exp $
+!$Id: bio_save.F90,v 1.4 2005-11-18 10:59:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -37,7 +37,7 @@
    integer, save             :: nn
    integer, save             :: totn_id
    integer                   :: iret
-   integer                   :: out_unit=67,rc
+   integer                   :: out_unit=67
    REALTYPE                  :: zz
    integer                   :: i,j,n
 !EOP

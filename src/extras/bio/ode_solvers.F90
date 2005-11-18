@@ -1,4 +1,4 @@
-!$Id: ode_solvers.F90,v 1.6 2005-09-12 14:48:33 kbk Exp $
+!$Id: ode_solvers.F90,v 1.7 2005-11-18 10:59:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -507,7 +507,6 @@
 !
 ! !LOCAL VARIABLES:
   logical  :: first
-  REALTYPE :: ppsum,ddsum
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   REALTYPE :: a(1:numc,1:numc),r(1:numc)
   integer  :: i,j,ci
@@ -563,7 +562,6 @@
 !
 ! !LOCAL VARIABLES:
   logical  :: first
-  REALTYPE :: ppsum,ddsum
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   REALTYPE :: pp1(1:numc,1:numc,0:nlev),dd1(1:numc,1:numc,0:nlev)
   REALTYPE :: a(1:numc,1:numc),r(1:numc)
@@ -640,7 +638,6 @@
 !
 ! !LOCAL VARIABLES:
   logical  :: first
-  REALTYPE :: ppsum,ddsum
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   REALTYPE :: pp1(1:numc,1:numc,0:nlev),dd1(1:numc,1:numc,0:nlev)
   REALTYPE :: pp2(1:numc,1:numc,0:nlev),dd2(1:numc,1:numc,0:nlev)

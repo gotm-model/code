@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.15 2005-11-15 11:39:32 lars Exp $
+!$Id: updategrid.F90,v 1.16 2005-11-18 10:59:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -64,7 +64,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
-!  Revision 1.15  2005-11-15 11:39:32  lars
+!  Revision 1.16  2005-11-18 10:59:35  kbk
+!  removed unused variables - some left in parameter lists
+!
+!  Revision 1.15  2005/11/15 11:39:32  lars
 !  documentation finish for print
 !
 !  Revision 1.14  2005/08/25 19:41:33  hb
@@ -112,7 +115,6 @@
    integer                   :: i,rc,j,nlayers
    integer, save             :: gridinit=0
    REALTYPE                  :: zi(0:nlev)
-   REALTYPE                  :: znew,zold
    integer, parameter        :: grid_unit = 101
    REALTYPE, save, dimension(:), allocatable     :: ga
 !-----------------------------------------------------------------------

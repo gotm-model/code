@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.25 2005-11-17 09:58:18 hb Exp $
+!$Id: bio.F90,v 1.26 2005-11-18 10:59:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,7 +47,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.25  2005-11-17 09:58:18  hb
+!  Revision 1.26  2005-11-18 10:59:35  kbk
+!  removed unused variables - some left in parameter lists
+!
+!  Revision 1.25  2005/11/17 09:58:18  hb
 !  explicit argument for positive definite variables in diff_center()
 !
 !  Revision 1.24  2005/10/11 08:43:44  lars
@@ -370,15 +373,15 @@
 ! !LOCAL VARIABLES:
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev),w_grid(0:nlev)
    REALTYPE                  :: RelaxTau(0:nlev)
-   REALTYPE                  :: zz,add
-   REALTYPE                  :: totn,dt_eff
-   integer                   :: i,j,n,np,ci
-   integer                   :: Bcup=1,Bcdw=1,flag=2,char=1,grid_method=0
+   REALTYPE                  :: dt_eff
+   integer                   :: j,n
    integer                   :: split
-   logical                   :: surf_flux=.false.,bott_flux=.false.
+#ifdef LAGRANGE
+   integer                   :: i,np
+   REALTYPE                  :: filter_depth
    integer, save             :: count=0
    logical, save             :: set_C_zero=.true.
-   REALTYPE                  :: filter_depth
+#endif
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -421,7 +424,7 @@
             zlev(n)=zlev(n-1)+h(n)
          end do
          do j=1,numc
-#if 0
+#ifdef LAGRANGE
             call lagrange(nlev,dt,zlev,nuh,ws(j,1),bio_npar, &
                           particle_active(j,:), &
                           particle_indx(j,:),   &

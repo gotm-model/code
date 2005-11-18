@@ -1,4 +1,4 @@
-!$Id: adv_center.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: adv_center.F90,v 1.2 2005-11-18 10:59:34 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -174,7 +174,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: adv_center.F90,v $
-!  Revision 1.1  2005-06-27 10:54:33  kbk
+!  Revision 1.2  2005-11-18 10:59:34  kbk
+!  removed unused variables - some left in parameter lists
+!
+!  Revision 1.1  2005/06/27 10:54:33  kbk
 !  new files needed
 !
 !
@@ -183,7 +186,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                              :: i,k,it
-   REALTYPE                             :: alpha,beta,x,r,Phi,limit
+   REALTYPE                             :: x,r,Phi,limit=_ZERO_
    REALTYPE                             :: Yu,Yc,Yd
    REALTYPE                             :: c,cmax
    REALTYPE                             :: cu(0:N)
@@ -276,7 +279,7 @@
 !        limit the flux according to different suggestions
          select case (method)
             case (UPSTREAM)
-               limit=0.
+               limit=_ZERO_
             case (P1)
                FATAL "P1 advection method not yet implemented, choose other method"
                stop  "adv_center.F90"

@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.24 2005-11-15 11:45:08 lars Exp $
+!$Id: gotm.F90,v 1.25 2005-11-18 10:59:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,7 +85,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
-!  Revision 1.24  2005-11-15 11:45:08  lars
+!  Revision 1.25  2005-11-18 10:59:35  kbk
+!  removed unused variables - some left in parameter lists
+!
+!  Revision 1.24  2005/11/15 11:45:08  lars
 !  documentation finish for print
 !
 !  Revision 1.23  2005/09/12 14:48:33  kbk
@@ -332,10 +335,10 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: n,i
+   integer                   :: n
 
-   REALTYPE                  ::  tFlux,btFlux,sFlux,bsFlux
-   REALTYPE                  ::  tRad(0:nlev),bRad(0:nlev)
+   REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
+   REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
 !
 !-----------------------------------------------------------------------
 !BOC

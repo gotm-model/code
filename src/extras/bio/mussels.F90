@@ -1,4 +1,4 @@
-!$Id: mussels.F90,v 1.7 2004-06-29 13:02:56 lars Exp $
+!$Id: mussels.F90,v 1.8 2005-11-18 10:59:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,7 +29,10 @@
 !  Original author(s): Karsten Bolding, Marie Maar & Hans Burchard
 !
 !  $Log: mussels.F90,v $
-!  Revision 1.7  2004-06-29 13:02:56  lars
+!  Revision 1.8  2005-11-18 10:59:35  kbk
+!  removed unused variables - some left in parameter lists
+!
+!  Revision 1.7  2004/06/29 13:02:56  lars
 !  removed tabs
 !
 !  Revision 1.6  2004/04/13 09:18:54  kbk
@@ -93,7 +96,6 @@
 !  Original author(s): Karsten Bolding, Marie Maar & Hans Burchard
 !
 ! !LOCAL VARIABLES:
-   integer                   :: rc,i,n
    namelist /mussels_nml/ mussels_calc,mussels_model,filter_rate, &
                           filter_lag,nmussels,mussel_size,Q10
 !EOP
@@ -157,8 +159,7 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   integer         :: i,n
-   REALTYPE        :: sink=1.e-6
+   integer         :: n
    REALTYPE, save  :: elapsed=_ZERO_
    REALTYPE        :: size_rate,temp_rate
 !EOP
