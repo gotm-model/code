@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.11 2005-09-14 11:53:06 kbk Exp $
+!$Id: ncdfout.F90,v 1.12 2005-11-18 11:16:27 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,7 +58,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.11  2005-09-14 11:53:06  kbk
+!  Revision 1.12  2005-11-18 11:16:27  kbk
+!  removed unused variables
+!
+!  Revision 1.11  2005/09/14 11:53:06  kbk
 !  fixed position of counter for time dimension - fixes bio storing
 !
 !  Revision 1.10  2005/08/11 14:15:33  kbk
@@ -159,10 +162,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: iret
-   character(len=128)        :: ncdf_time_str,history,name
-   REAL_4B                   :: r4
-   REALTYPE                  :: miss_val
-!
+   character(len=128)        :: ncdf_time_str,history
 !-------------------------------------------------------------------------
 !BOC
    iret = nf_create(fn,NF_CLOBBER,ncid)
