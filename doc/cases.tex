@@ -1,5 +1,5 @@
 %
-%$Id: cases.tex,v 1.5 2005-11-15 12:07:52 lars Exp $
+%$Id: cases.tex,v 1.6 2005-12-02 20:21:54 hb Exp $
 %
 
 \section{GOTM scenarios \label{sec:cases}}
@@ -681,7 +681,8 @@ the temperature and salinity profiles have been collected from the IOW
 data bank by Iris Theil (University of Hamburg, Germany).
 
 These data have been used for simulating the Gotland Deep ecosystem dynamics
-for the years 1983-1991, see \cite{Burchardetal05}.
+for the years 1983-1991, see \cite{Burchardetal05},
+see also section \ref{gotland_iow}.
 
 \subsubsection{Middelbank}\label{reynolds}
 
@@ -838,5 +839,230 @@ initial conditions and \\ & relaxation \\
 
 For a discussion of the simulation, see \cite{Stipsetal2002}. 
 
+\subsection{Biogeochemical scenarios}
+
+The functionality of biogeochemical models in GOTM is demonstrated here for
+four different scenarios:
+
+\begin{itemize}
+\item The idealised channel flow scenario introduced in
+section \ref{channel} is here complemented with a simple suspended matter
+equation, see section \ref{channel_rouse}.
+\item The PROVESS Northern North Sea scenario (see section \ref{nns_annual})
+is here coupled to the NPZD model, see section \ref{nns_annual_npzd}.
+\item The Fladenground Experiment (FLEX'76), see section \ref{flex}
+is here coupled to the \cite{Fashametal1990} biogeochemical model,
+see section \ref{flex_fasham}.
+\item The multiannual Gotland Deep scenario (see section \ref{gotland_deep}) 
+is here
+coupled to the biogeochemical model by \cite{Neumannetal2002},
+with adaptations by \cite{Burchardetal05}, see section \ref{gotland_iow}.
+\end{itemize}
+
+\subsubsection{Channel flow - Rouse profile}\label{channel_rouse}
 
 
+In this scenario, the water depth and the surface slope have been
+chosen identical to those in the purely physical
+{\tt channel} scenario introduced in section \ref{channel}.
+
+Under certain conditions, the suspended matter equation 
+
+\begin{equation}\label{eq_rouse}
+\partial_t C + \partial_z\left(w_c C - \nu_t \partial_z C\right) = 0,
+\end{equation}
+
+has an analytical solution:
+
+\begin{itemize}
+\item Constant settling velocity $w_c$
+\item Parabolic eddy diffusivity $\nu_t$
+\item Reflective bottom and surface
+\item Steady-state solution
+\item No sources and sinks
+\end{itemize}
+
+Let the eddy diffusivity profile be parabolic with
+
+\begin{equation}
+\nu_t = \kappa u_* (-z)\frac{D+z_0+z}{D+z_0}
+\end{equation}
+
+with the depth $D$, the bottom roughness length $z_0$, the van Karman
+number $\kappa$ and the bottom friction velocity $u_*$ and the vertical
+coordinate $z$.
+Then the analytical solution of (\ref{eq_rouse}) is
+
+\begin{equation}\label{rouse_analytical}
+\displaystyle
+\frac{C}{C_0} = \left(\frac{-z}{D+z_0+z} \right)^{-w_c/(\kappa u_*)},
+\end{equation}
+
+where $C_0$ is the suspended matter concentration at $z=-(D+z_0)/2$i
+and depends on the initial conditions for $C$.
+The Rouse number is then defined as:
+
+\begin{equation}
+R =\frac{-w_c}{u_*}.
+\end{equation}
+
+When running the {\tt rouse} scenario with a two-equation turbulence 
+closure model, then the analytical solution for the Rouse profile 
+is only approximated, since the eddy diffusivity deviates from 
+(\ref{rouse_analytical}).
+In order to be closer to the analytical solution, it is ncessary to chose in
+{\tt gotmturb.inp} the analytical parabolic profile for eddy diffusivity,
+which is done by the follwing settings in {\tt gotmturb.inp}:
+
+\begin{verbatim}
+ &turbulence
+  turb_method=     2,
+  tke_method=      1,
+  len_scale_method=4,
+  stab_method=     1
+\end{verbatim}
+
+This Rouse scenario may be calculated with Eulerian concentrations 
+or with Lagrangian particles, depending on the setting
+of {\tt bio\_eulerian} in {\tt bio.inp}.
+When using the Lagrangian particle method, it is advisable
+to average the concentration over all time steps 
+which belong to one output time step, 
+by setting {\tt bio\_lagrange\_mean=.true.}
+
+It is also possible to include a sink term at the bed
+(for simulating the effect of grazing by benthic filter feeder),
+the seetings for this have to be made in {\tt mussels.inp}.
+
+
+\subsubsection{Northern North Sea - NPZD model}\label{nns_annual_npzd}
+
+In order to provide a typical and clearly defined physical environment
+for testing the NPZD model discussed in section \ref{sec:bio-npzd},
+we use an annual simulation of the water column in the Northern North
+Sea. The setup is similar to the one described in section
+\ref{nns_annual} and validated
+in detail by \cite{Boldingetal2002}.
+The photosynthetically available radiation (PAR)
+has been simply taken as visible part of the short-wave radiation,
+a feedback of increased turbidity due to plankton blooms to the
+light absorption has not been considered for the heat budget.
+For further details of the physical model setup, see section \ref{nns_annual}.
+
+As shown by \cite{Burchardetal2005b}, the explicit ODE solvers
+introduced in section \ref{sec:ode-solver} do not guarantee
+non-negative solutions for biogeochemical concentrations when the
+biogeochemical model is stiff, i.e.\ when time scales are involved which may
+be shorter than the time step. In order to make the NPZD model stiff,
+\cite{Burchardetal2005b} chose a
+half-saturation nutrient concentration $\alpha$ 
+of 0.02  mmol N\, m$^{-3}$, whereas the typical values for $\alpha$ would be 
+between 0.2 and 1.5 mmol N\, m$^{-3}$,
+This has the consequence that nutrient is taken up by phytoplankton
+even at low concentrations, which strongly decreases the
+time scale of this process. The overall phytoplankton evolution over
+an annual cycle 
+is not much affected by this
+manipulation, except from the fact that now the summer surface nutrient
+concentrations are much lower.
+It should be noted that such low half saturation concentrations
+for nutrients have actually been observed in the oceanic mixed
+layer. \cite{Harrisonetal1996} calculated for the mixed layer
+of the North Atlantic mean half saturation concentrations
+for nitrate and ammonium as small as 0.02  mmol N\, m$^{-3}$.
+
+In order to demonstrate the advantages of the 
+Modified Patankar schemes over the fully explicit schemes, 
+the simulation carried out here is based on
+a time step of 2 h for the physical part. For the biogeochemical part,
+a time splitting is used (set {\tt split\_factor}  in
+{\t bio.inp}) such that fractional time
+steps are possible for the biogeochemical part.
+Thus, by using a time step of $\Delta^{phy} t = 7200$ s for the
+physical part and iterating the biogeochemical part 1,4 and 36 times
+per physical time step with unchanged physical forcing,
+biogochemical time steps of  $\Delta^{bio} t = 7200$ s,
+$\Delta^{bio} t = 1800$ s and $\Delta^{bio} t = 200$ s,
+respectively, can be obtained.
+By doing so, it is possible to use exactly the same physical forcing
+for all ODE solvers and all biogeochemical time steps.
+
+When using the explicit ODE solver (to do so, set {\tt ode\_method}
+in {\tt bio.inp} to 1, 2 or 3), the summer nutrient concentration
+goes down to negative values.
+This does not happen for the other conservative methods
+7 and 8 (first- and second-order Modified Patankar schemes) and
+10 and 11 (first- and second-oder Extended Modified Patankar
+schemes). 
+
+
+\subsubsection{Fladenground Experiment - \cite{Fashametal1990} model
+}\label{flex_fasham}
+
+During the Fladenground Experiment 1976, extensive biogeochemical
+observations have been carried out as well. Here,
+the modelling work of \cite{KuehnRadach1997} will be
+reproduced with GOTM. All GOTM modelling details have been
+documented by \cite{Burchardetal05}.
+
+The bloom at the Fladenground started with the onset of thermal 
+stratification of the water
+column at 19 April (Julian day 110), reached its maximum at 1 May
+with an depth-integrated phytoplankton biomass of about 11 g C m$^{-2}$
+(\cite{Radachetal1980}). At 16 May the phytoplankton stock reached again the
+pre-bloom level. This main bloom was dominated by diatoms;
+flagellates constituted a smaller secondary bloom some weeks later.
+In accordance with the rapid production of organic matter the
+nitrate pool was depleted: from 8 mmol N m$^{-3}$ before the bloom to
+less than 0.1 mmol N m$^{-3}$ at the end of the bloom
+(\cite{Brockmannetal1983}).
+The observed average daily primary production during the bloom was
+1.2 g C m$^{-2}$ d$^{-1}$ (\cite{Weigeletal1980}).
+The part of organic substance settling to the bottom was estimated
+from sediment trap measurements to about $20 \pm 10$ \%
+of the primary production during that period
+(\cite{Daviesetal1984}, \cite{Radachetal1984}). The remaining 80 \% were
+obviously used by the zooplankton and partly --
+via dissolution of the PON -- also by bacteria. From estimates
+of the grazing pressure of the dominant copepod, {\it Calanus finmarchicus}
+(see \cite{Krauseetal1980}) it was concluded that additionally herbivorous
+microzooplankton must have played an essential role in grazing
+on the phytoplankton stock.
+The role of advection on the ecosystem dynamics was discussed
+by \cite{Eberleinetal1980}. Thus the total FLEX '76 period could be
+divided into two phases: the first 6 weeks (until 6 May) with
+only weak horizontal advection, and the following 4 weeks with distinctively
+larger influence of advection on the nutrient concentrations.
+
+This biogeochemical scenario has been reproduced by \cite{KuehnRadach1997}
+by means of the \cite{Fashametal1990} biogeochemical
+model (see also section \ref{sec:bio-fasham}) together with a
+one-equation turbulence closure model. \cite{Burchardetal05},
+from which most of the present section has been adapted
+documented the implementation of this model into GOTM.
+
+\subsubsection{Gotland Deep - \cite{Neumannetal2002} model}\label{gotland_iow}
+
+The Gotland Deep scenario (Central Baltic Sea) which has been described 
+in section \ref{gotland_deep} has been used for 
+demonstrating the implementation of the \cite{Neumannetal2002}
+biogeochemical model into GOTM, see \cite{Burchardetal05}.
+For the description of the implementation into GOTM,
+see section \ref{sec:bio-iow}. 
+
+Some adaptations to the \cite{Neumannetal2002} had to be made,
+in order to provide acceptable results for the
+ecosystem simulations in the Gotland Deep. The 
+the maximum growth rate of diatoms from
+a value of $r_1^{\max}=1.5$ d$^{-1}$ to $r_1^{\max}=2.0$ d$^{-1}$.
+This is due to the fact that the simple turbulence closure scheme
+(\cite{Pacanowski81})
+used by \cite{Neumannetal2002} mixed substantially less than the
+$k$-$\eps$ used here.
+The surface
+fluxes of nutrients have been calibrated in such a way that
+winter nutrient concentrations are close to observations.
+By doing do, the effect of lateral nutrient transport is
+parameterised.
+
+For further details, see \cite{Burchardetal05}.

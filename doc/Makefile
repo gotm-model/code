@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.10 2005-08-11 13:59:25 lars Exp $
+#$Id: Makefile,v 1.11 2005-12-02 20:21:54 hb Exp $
 #
 # Makefile for making the source code documentation. 
 #
@@ -16,7 +16,7 @@ PROTEXSRC  = gotm.tex              \
              util.tex              \
              seagrass.tex          \
 #             sediment.tex          \
-#             bio.tex
+             bio.tex
 
 TEXSRC     = introduction.tex      \
              mainIntro.tex         \
@@ -136,9 +136,9 @@ html_scp: html
 
 
 figures:
-	wget -nd -nH -q http://www.gotm.net/data_files/doc_figures.tar.gz 
-	tar -xvzf doc_figures.tar.gz
-	$(RM) doc_figures.tar.gz
+#	wget -nd -nH -q http://www.gotm.net/data_files/doc_figures.tar.gz 
+#	tar -xvzf doc_figures.tar.gz
+#	$(RM) doc_figures.tar.gz
 
 clean:
 	$(RM) *.log *.toc *.aux *.bbl *.blg *.bac *~
