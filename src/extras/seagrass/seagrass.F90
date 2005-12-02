@@ -1,4 +1,4 @@
-!$Id: seagrass.F90,v 1.5 2005-06-27 13:44:07 kbk Exp $
+!$Id: seagrass.F90,v 1.6 2005-12-02 21:10:25 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -34,7 +34,10 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: seagrass.F90,v $
-!  Revision 1.5  2005-06-27 13:44:07  kbk
+!  Revision 1.6  2005-12-02 21:10:25  hb
+!  Documentation updated
+!
+!  Revision 1.5  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.4  2003/03/28 09:20:34  kbk
@@ -336,9 +339,8 @@
    subroutine save_seagrass
 !
 ! !DESCRIPTION:
-!  Here, storing of the sediment profiles to an ascii or a
+!  Here, storing of the seagrass profiles to an ascii or a
 !  netCDF file is managed.
-
 !
 ! !USES:
    use output, only: out_fmt
