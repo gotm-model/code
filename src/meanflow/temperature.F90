@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.15 2005-11-17 09:58:20 hb Exp $
+!$Id: temperature.F90,v 1.16 2005-12-02 21:03:03 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -49,12 +49,14 @@
 !  exponential law (see \cite{PaulsonSimpson77})
 !  \begin{equation}
 !    \label{Iz}
-!    I(z) = I_0 \bigg(Ae^{-\eta_1z}+(1-A)e^{-\eta_2z}\bigg).
+!    I(z) = I_0 \bigg(Ae^{z/\eta_1}+(1-A)e^{z/\eta_2}\bigg)B(z).
 !  \end{equation}
 !  The absorbtion coefficients $\eta_1$ and $\eta_2$ depend on the water type
 !  and have to be prescribed either by means of choosing a \cite{Jerlov68} class
 !  (see \cite{PaulsonSimpson77}) or by reading in a file through the namelist
-!  {\tt extinct} in {\tt obs.inp}.
+!  {\tt extinct} in {\tt obs.inp}. The damping term due to bioturbidity,
+!  $B(z)$ is calculated in the biogeochemical routines, see section
+!  \ref{sec:bio}.
 
 !  Diffusion is numerically treated implicitly, see equations (\ref{sigmafirst})-
 !  (\ref{sigmalast}).
@@ -106,6 +108,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
+!  Revision 1.16  2005-12-02 21:03:03  hb
+!  Documentation updated
+!
 !  Revision 1.15  2005-11-17 09:58:20  hb
 !  explicit argument for positive definite variables in diff_center()
 !
@@ -224,7 +229,7 @@
    end if
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
+   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,                  &
                     DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
 
    return
