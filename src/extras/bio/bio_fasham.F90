@@ -1,16 +1,40 @@
-!$Id: bio_fasham.F90,v 1.8 2005-11-17 09:58:18 hb Exp $
+!$Id: bio_fasham.F90,v 1.9 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: bio_fasham --- Fasham et al. bio model \label{sec:bio_fasham}
+! !MODULE: bio_fasham --- Fasham et al. biological model \label{sec:bio-fasham}
 !
 ! !INTERFACE:
    module bio_fasham
 !
 ! !DESCRIPTION:
-!  Remember this Hans
-!
+!  The model developed by \cite{Fashametal1990} 
+!  uses nitrogen as 'currency' according to the evidence that in
+!  most cases nitrogen is the limiting macronutrient. It consists of
+!  seven state variables: phytoplankton, zooplankton, bacteria,
+!  particulate organic matter (detritus), dissolved organic matter
+!  and the nutrients nitrate and ammonium.
+!  The structure of the \cite{Fashametal1990} biogeochemical model
+!  is given in figure \ref{fig_fasham}.
+! \begin{figure}
+! \begin{center}
+! \scalebox{0.5}{\includegraphics{figures/fasham_structure.eps}}
+! \caption{Structure of the \cite{Fashametal1990} model with bacteria (bac),
+! phytoplankton (phy), detritus (det), zooplankton (zoo), labile dissolved
+! organic nitrogen (don), ammonium (amm) and nitrate (nit) as the seven
+! state variables.
+! The concentrations are in mmol N\,m$^{-3}$,
+! all fluxes (green arrows) are conservative.
+! }\label{fig_fasham}
+! \end{center}
+! \end{figure}
+!  A detailed mathematical description of all
+!  processes is given in section \ref{sec:bio-fasham-rhs}.
+!  The version of the \cite{Fashametal1990} model which is implemented includes
+!  slight modifications by \cite{KuehnRadach1997} and has been 
+!  included into GOTM by \cite{Burchardetal05}. 
+
 ! !USES:
 !  default: all is private.
    use bio_var
@@ -26,6 +50,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
+!  Revision 1.9  2005-12-02 20:57:27  hb
+!  Documentation updated and some bugs fixed
+!
 !  Revision 1.8  2005-11-17 09:58:18  hb
 !  explicit argument for positive definite variables in diff_center()
 !
@@ -123,8 +150,9 @@
    subroutine init_bio_fasham(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio_fasham.inp} is read and memory is
-!  allocated - and various variables are initialised.
+!  Here, the bio namelist {\tt bio\_fasham.inp} is read and
+!  various variables (rates and settling velocities)
+!  are transformed into SI units.
 !
 ! !USES:
    IMPLICIT NONE
@@ -190,7 +218,10 @@
    subroutine init_var_fasham(nlev)
 !
 ! !DESCRIPTION:
-!  Here, the cc and ws varibles are filled with initial conditions
+!  Here, the the initial conditions are set and the settling velocities are
+!  transferred to all vertical levels. All concentrations are declared
+!  as non-negative variables, and it is defined which variables would be
+!  taken up by benthic filter feeders.
 !
 ! !USES:
    IMPLICIT NONE
@@ -237,10 +268,10 @@
 
    mussels_inhale(p) = .true.
    mussels_inhale(z) = .true.
-   mussels_inhale(b) = .true.
+   mussels_inhale(b) = .false.
    mussels_inhale(d) = .true.
-   mussels_inhale(n) = .true.
-   mussels_inhale(a) = .true.
+   mussels_inhale(n) = .false.
+   mussels_inhale(a) = .false.
    mussels_inhale(l) = .true.
 
    LEVEL3 'FASHAM variables initialised ...'
@@ -259,8 +290,8 @@
    subroutine var_info_fasham()
 !
 ! !DESCRIPTION:
-!  This subroutine provides information on the variables. To be used
-!  when storing data in NetCDF files.
+!  This subroutine provides information about the variable names as they
+!  will be used when storing data in NetCDF files.
 !
 ! !USES:
    IMPLICIT NONE
@@ -307,14 +338,27 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Light properties for the NPZD model
+! !IROUTINE: Light properties for the Fasham model
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine light_fasham(nlev,h,rad,bioshade_feedback,bioshade)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! Here, the photosynthetically available radiation is calculated
+! by simply assuming that the short wave part of the total
+! radiation is available for photosynthesis. 
+! The photosynthetically
+! available radiation, $I_{PAR}$, follows from (\ref{light}).
+! The user should make
+! sure that this is consistent with the light class given in the
+! {\tt extinct} namelist of the {\tt obs.inp} file.
+! The self-shading effect is also calculated in this subroutine,
+! which may be used to consider the effect of bio-turbidity also
+! in the temperature equation (if {\tt bioshade\_feedback} is set
+! to true in {\tt bio.inp}).
+! For details, see section \ref{sec:do-bio}.
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -354,14 +398,87 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Right hand sides of geobiochemical model
+! !IROUTINE: Right hand sides of geobiochemical model \label{sec:bio-fasham-rhs}
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine do_bio_fasham(first,numc,nlev,cc,pp,dd)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! 
+! The \cite{Fashametal1990} model consisting of the $I=7$
+! state variables phytoplankton, bacteria, detritus, zooplankton, 
+! nitrate, ammonium and dissolved organic nitrogen is described here
+! in detail.
+! 
+! Phytoplankton mortality and zooplankton grazing loss of phytoplankton:
+! \begin{equation}\label{d13}
+! d_{1,3} = \mu_1 \frac{c_1+c_{1}^{\min}}{K_5+c_1+c_{1}^{\min}}c_1+
+! (1-\beta)\frac{g\rho_1 c_1^2}{K_3 \sum_{j=1}^3 \rho_jc_j
+! + \sum_{j=1}^3 \rho_jc_j^2} (c_4+c_{4}^{\min}).
+! \end{equation}
+! Phytoplankton loss to LDON (labile dissolved organic nitrogen):
+! \begin{equation}\label{d17}
+! d_{1,7} = \gamma
+! F(I_{PAR})\frac{\frac{c_5}{K_1}
+! +\frac{c_6}{K_2}}{1+\frac{c_5}{K_1}+\frac{c_6}{K_2}}c_1,
+! \end{equation}
+! with
+! \begin{equation}\label{FI}
+!  F(I_{PAR}) = \frac{V_p\alpha I_{PAR}(z)}{\left(V_p^2+\alpha^2(I_{PAR}(z))^2 
+! \right)^{1/2}}.
+! \end{equation}
+! With $I_{PAR}$ from (\ref{light}). 
+! 
+! Zooplankton grazing loss:
+! \begin{equation}\label{di3}
+! d_{2,3} = (1-\beta)\frac{g\rho_2 c_2^2}{K_3 \sum_{j=1}^3 \rho_jc_j 
+! + \sum_{j=1}^3 \rho_jc_j^2} (c_4+c_{4}^{\min}).
+! \end{equation}
+! Zooplankton grazing:
+! \begin{equation}\label{di4}
+! d_{i,4} = \beta\frac{g\rho_i c_i^2}{K_3 \sum_{j=1}^3 \rho_jc_j 
+! + \sum_{j=1}^3 \rho_jc_j^2} (c_4+c_{4}^{\min}), \quad i=1,\dots,3.
+! \end{equation}
+! Bacteria excretion rate:
+! \begin{equation}\label{d26}
+! d_{2,6} = \mu_3 c_2.
+! \end{equation}
+! Detritus breakdown rate:
+! \begin{equation}\label{d37}
+! d_{3,7} = \mu_4 c_3.
+! \end{equation}
+! Zooplankton losses to detritus, ammonium and LDON:
+! \begin{equation}\label{d43}
+! d_{4,3} = (1-\epsilon-\delta)\mu_2 
+! \frac{c_4+c_{4}^{\min}}{K_6+c_4+c_{4}^{\min}}c_4.
+! \end{equation}
+! \begin{equation}\label{d46}
+! d_{4,6} = \epsilon\mu_2 \frac{c_4+c_{4}^{\min}}{K_6+c_4+c_{4}^{\min}}c_4.
+! \end{equation}
+! \begin{equation}\label{d47}
+! d_{4,7} = \delta\mu_2 \frac{c_4+c_{4}^{\min}}{K_6+c_4+c_{4}^{\min}}c_4.
+! \end{equation}
+! Nitrate uptake by phytoplankton:
+! \begin{equation}\label{d51}
+! d_{5,1} = F(I_{PAR})\frac{\frac{c_5}{K_1}}{1+\frac{c_5}{K_1}
+! +\frac{c_6}{K_2}}(c_1+c_{1}^{\min}).
+! \end{equation}
+! Ammonium uptake by phytoplankton:
+! \begin{equation}\label{d61}
+! d_{6,1} = F(I_{PAR})\frac{\frac{c_6}{K_2}}{1+\frac{c_5}{K_1}
+! +\frac{c_6}{K_2}}(c_1+c_{1}^{\min}).
+! \end{equation}
+! Ammonium uptake by bacteria:
+! \begin{equation}\label{d62}
+! d_{6,2} = V_b \frac{\min(c_6,\eta c_7)}{K_4+\min(c_6,\eta c_7)+c_7} 
+! (c_2+c_{2}^{\min}).
+! \end{equation}
+! LDON uptake by bacteria:
+! \begin{equation}\label{d72}
+! d_{7,2} = V_b \frac{c_7}{K_4+\min(c_6,\eta c_7)+c_7} (c_2+c_{2}^{\min}).
+! \end{equation}
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:

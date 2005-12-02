@@ -1,14 +1,57 @@
-!$Id: ode_solvers.F90,v 1.7 2005-11-18 10:59:35 kbk Exp $
+!$Id: ode_solvers.F90,v 1.8 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: General ODE solver
+! !ROUTINE: General ODE solver \label{sec:ode-solver}
 !
 ! !INTERFACE:
    subroutine ode_solver(solver,numc,nlev,dt,h,cc,t)
 !
 ! !DESCRIPTION:
+! Here, 10 different numerical solvers for the right hand sides of the
+! biogeochemical models are implemented for computing the ordinary
+! differential equations (ODEs) which are calculated as the second
+! step of the operational split method for the complete biogeochemical
+! models. The remaining ODE is
+! \begin{equation}\label{ODESystem}
+!   \partial_t c_i 
+! =   P_i(\vec{c}) -D_i(\vec{c}), \;\; i = 1,\ldots,I, 
+! \end{equation}
+! with $c_i$ denoting the concentrations of state variables.
+! The right hand side denotes the reaction terms,
+! which are composed of contributions
+! $d_{i,j}(\vec{c})$, which represent reactive fluxes from
+! $c_i$ to $c_j$, and in turn, $p_{i,j}(\vec{c})$ are reactive fluxes from
+! $c_j$ received by $c_i$, see equation (\ref{eq:am:a}).
+! 
+! These methods are:
+!
+! \begin{enumerate}
+! \item First-order explicit (not unconditionally positive)
+! \item Second order explicit Runge-Kutta (not unconditionally positive)
+! \item Fourth-order explicit Runge-Kutta (not unconditionally positive)
+! \item First-order Patankar (not conservative)
+! \item Second-order Patankar-Runge-Kutta (not conservative)
+! \item Fourth-order Patankar-Runge-Kutta (does not work, not conservative)
+! \item First-order Modified Patankar (conservative and positive)
+! \item Second-order Modified Patankar-Runge-Kutta (conservative and positive)
+! \item Fourth-order Modified Patankar-Runge-Kutta 
+!       (does not work, conservative and positive)
+! \item First-order Extended Modified Patankar 
+!       (stoichiometrically conservative and positive)
+! \item Second-order Extended Modified Patankar-Runge-Kutta 
+!       (stoichiometrically conservative and positive)
+! \end{enumerate}
+!
+! The schemes 1 - 5 and 7 - 8 have been described in detail by
+! \cite{Burchardetal2003b}. Later, \cite{Bruggemanetal2005} could
+! show that the Modified Patankar schemes 7 - 8 are only conservative
+! for one limiting nutrient and therefore they developed the
+! Extended Modified Patankar (EMP) schemes 10 and 11 which are also
+! stoichiometrically conservative. Patankar and Modified Patankar
+! schemes of fourth order have not yet been developed, such that 
+! choices 6 and 9 do not work yet.
 !
 ! !USES:
    IMPLICIT NONE
@@ -63,12 +106,22 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Euler-forward scheme for geobiochemical models
+! !IROUTINE: First-order Euler-forward scheme
 !
 ! !INTERFACE:
    subroutine euler_forward(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
+! Here, the first-order Euler-forward (E1) scheme is coded, with one 
+! evaluation of the right-hand sides per time step:
+! \begin{equation}\label{eq:am:euler}
+! \begin{array}{rcl}
+! c_i^{n+1} &=&
+! \displaystyle
+!  c_i^n  + \Delta t \left\{P_i\left(\underline{c}^n\right)
+! - D_i\left(\underline{c}^n\right) \right\}.
+! \end{array}
+! \end{equation}
 !
 ! !USES:
    IMPLICIT NONE
@@ -114,12 +167,30 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Second-order Runge-Kutta scheme for geobiochemical models
+! !IROUTINE: Second-order Runge-Kutta scheme
 !
 ! !INTERFACE:
    subroutine runge_kutta_2(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
+! Here, the second-order Runge-Kutta (RK2) scheme is coded, with two
+! evaluations of the right hand side per time step:
+! \begin{equation}\label{eq:am:RK}
+! \left.
+! \begin{array}{rcl}
+! c_i^{(1)} &=&
+! \displaystyle
+! c_i^n  + \Delta t \left\{P_i\left(\underline{c}^n\right)
+! - D_i\left(\underline{c}^n\right) \right), \\ \\
+!  c_i^{n+1} &=&
+! \displaystyle
+!  c_i^n  + \dfrac{\Delta t}{2}
+! \left\{P_i\left(\underline{c}^n\right) + P_i\left(\underline{c}^{(1)}\right)
+!  - D_i\left(\underline{c}^n\right) - D_i\left(\underline{c}^{(1)}\right)
+! \right\}.
+! \end{array}
+! \right\}
+! \end{equation}
 !
 ! !USES:
    IMPLICIT NONE
@@ -177,12 +248,42 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Fourth-order Runge-Kutta scheme for geobiochemical models
+! !IROUTINE: Fourth-order Runge-Kutta scheme
 !
 ! !INTERFACE:
    subroutine runge_kutta_4(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
+! Here, the fourth-order Runge-Kutta (RK4) scheme is coded, 
+! with four evaluations
+! of the right hand sides per time step:
+! \begin{equation}\label{eq2}
+! \left.
+! \begin{array}{rcl}
+! c_i^{(1)} &=&
+! \displaystyle
+! c_i^n+\Delta t \left\{P_i\left(\underline c^n\right)
+! -D_i\left(\underline c^n\right)\right\} \\ \\
+! c_i^{(2)} &=&
+! \displaystyle
+! c_i^n+\Delta t \left\{P_i\left(\frac12\left(\underline c^n+\underline 
+! c^{(1)}\right)\right)-D_i\left(\frac12\left(\underline c^n+\underline 
+! c^{(1)}\right)\right)\right\} \\ \\
+! c_i^{(3)} &=&
+! \displaystyle
+! c_i^n+\Delta t \left\{P_i\left(\frac12\left(\underline c^n+\underline 
+! c^{(2)}\right)\right)-D_i\left(\frac12\left(\underline c^n+\underline 
+! c^{(2)}\right)\right)\right\} \\ \\
+! c_i^{(4)} &=&
+! \displaystyle
+! c_i^n+\Delta t \left\{P_i\left(\underline c^{(3)}\right)-D_i\left(\underline 
+! c^{(3)}\right)\right\} \\ \\
+! c_i^{n+1} &=&
+! \displaystyle
+!  \frac16 \left\{c_i^{(1)}+2c_i^{(2)}+2c_i^{(3)}+c_i^{(4)}   \right\}.
+! \end{array}
+! \right\}
+! \end{equation}
 !
 ! !USES:
    IMPLICIT NONE
@@ -265,12 +366,23 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Patankar scheme for geobiochemical models
+! !IROUTINE: First-order Patankar scheme
 !
 ! !INTERFACE:
    subroutine patankar(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
+! Here, the first-order Patankar-Euler scheme (PE1) scheme is coded,
+! with one evaluation of the right hand sides per time step:
+! \begin{equation}\label{eq:am:patankar}
+! \begin{array}{rcl}
+!   c_i^{n+1} &=&
+! \displaystyle
+!  c_i^n  + \Delta t \left\{P_i\left(\underline{c}^n\right)
+!                                       - D_i\left(\underline{c}^n\right)
+!                                         \frac{c_i^{n+1}}{c_i^n} \right\}.
+! \end{array}
+! \end{equation}
 !
 ! !USES:
    IMPLICIT NONE
@@ -316,13 +428,37 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Patankar-Runge-Kutta (2nd-order) scheme for geobiochemical
-!  models
+! !IROUTINE: Second-order Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
    subroutine patankar_runge_kutta_2(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
+! Here, the second-order Patankar-Runge-Kutta (PRK2) scheme is coded,
+! with two evaluations of the right hand sides per time step:
+! 
+! \begin{equation}\label{eq:am:PRK}
+!   \left.
+!   \begin{array}{rcl}
+!     c_i^{(1)} &=&
+! \displaystyle
+!  c_i^n  + \Delta t
+!                   \left\{P_i\left(\underline{c}^n\right)
+!                       - D_i\left(\underline{c}^n\right)
+!                         \dfrac{c_i^{(1)}}{c_i^n}\right\},
+!                   \\ \\
+!     c_i^{n+1} &=&
+! \displaystyle
+!  c_i^n  + \dfrac{\Delta t}{2}
+!                   \left\{P_i\left(\underline{c}^n\right)
+!                         + P_i\left(\underline{c}^{(1)}\right)
+!                         - \left( D_i\left(\underline{c}^n\right)
+!                         + D_i\left(\underline{c}^{(1)}\right)\right)
+!                         \dfrac{c_i^{n+1}}{c_i^{(1)}}
+!                   \right\}.
+!   \end{array}
+!   \right\}
+! \end{equation}
 !
 ! !USES:
    IMPLICIT NONE
@@ -382,13 +518,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Patankar-Runge-Kutta (4th-order) scheme for geobiochemical
-!  models
+! !IROUTINE: Fourth-order Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
    subroutine patankar_runge_kutta_4(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
+! This subroutine should become the fourth-order Patankar Runge-Kutta
+! scheme, but it does not yet work.
 !
 ! !USES:
    IMPLICIT NONE
@@ -483,12 +620,27 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Modified Patankar scheme for geobiochemical models
+! !IROUTINE: First-order Modified Patankar scheme
 !
 ! !INTERFACE:
    subroutine modified_patankar(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
+! Here, the first-order Modified Patankar-Euler scheme (MPE1) scheme is coded,
+! with one evaluation of the right hand side per time step:
+! \begin{equation}\label{eq:am:MP}
+! \begin{array}{rcl}
+!   c_i^{n+1} &=&
+! \displaystyle
+!  c_i^n
+!               + \Delta t \left\{ \sum\limits_{\stackrel{j=1}{j \not= i}}^I
+!                p_{i,j}\left(\underline{c}^n\right) \dfrac{c_j^{n+1}}{c_j^n}
+!                                         + p_{i,i}\left(\underline{c}^n\right)
+!                           - \sum_{j=1}^I d_{i,j}\left(\underline{c}^n\right)
+!                                         \dfrac{c_i^{n+1}}{c_i^n} \right\}.
+! \end{array}
+! \end{equation}
+! 
 !
 ! !USES:
    IMPLICIT NONE
@@ -537,14 +689,51 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Modified Patankar-Runge-Kutta (2nd-order) scheme for
-!  geobiochemical models
+! !IROUTINE: Second-order Modified Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
    subroutine modified_patankar_2(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
-!
+! Here, the second-order Modified Patankar-Runge-Kutta (MPRK2) scheme is coded,
+! with two evaluations of the right hand sides per time step:
+! 
+! \begin{equation}\label{eq:am:MPRK}
+!   \left. \begin{array}{rcl}
+!     c_i^{(1)} &=&
+! \displaystyle
+! c_i^n  + \Delta t
+! \left\{
+! \sum\limits_{\stackrel{j=1}{j \not= i}}^I p_{i,j}\left(\underline{c}^n\right)
+! \dfrac{c_j^{(1)}}{c_j^n}
+! + p_{i,i}\left(\underline{c}^n\right)
+! - \sum_{j=1}^I d_{i,j}\left(\underline{c}^n\right)
+! \dfrac{c_i^{(1)}}{c_i^n}
+! \right\},
+! \\ \\
+! c_i^{n+1} &=&
+! \displaystyle
+! c_i^n  + \dfrac{\Delta t}{2}
+!                   \left\{
+!                     \sum\limits_{\stackrel{j=1}{j \not= i}}^I
+!                       \left(p_{i,j}\left(\underline{c}^n\right)
+!                           + p_{i,j}\left(\underline{c}^{(1)}\right)
+!                       \right) \dfrac{c_j^{n+1}}{c_j^{(1)}}
+!                       + p_{i,i}\left(\underline{c}^n\right)
+!                       + p_{i,i}\left(\underline{c}^{(1)}\right)
+! \right.\\ \\
+!               & &
+! \displaystyle
+! \left.\phantom{c_i^n  + \dfrac{\Delta t}{2} }
+!                   - \sum_{j=1}^I
+!                       \left(d_{i,j}\left(\underline{c}^n\right)
+!                           + d_{i,j}\left(\underline{c}^{(1)}\right)
+!                       \right) \dfrac{c_i^{n+1}}{c_i^{(1)}}
+!                   \right\}.
+!   \end{array}
+!   \right\}
+! \end{equation}
+! 
 ! !USES:
    IMPLICIT NONE
 !
@@ -613,13 +802,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Modified Patankar-Runge-Kutta (4th-order) scheme for
-!  geobiochemical models
+! !IROUTINE: Fourth-order Modified Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
    subroutine modified_patankar_4(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
+! This subroutine should become the fourth-order Modified Patankar Runge-Kutta
+! scheme, but it does not yet work.
 !
 ! !USES:
    IMPLICIT NONE
@@ -723,14 +913,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: First-order extended modified Patankar scheme for
-!  geobiochemical models. Submitted to Applied Numerical Mathematics
-!  (2005), authors: Bruggeman, Burchard, Kooi, Sommeijer.
+! !IROUTINE: First-order Extended Modified Patankar scheme
 !
 ! !INTERFACE:
    subroutine emp_1(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
+! Here, the first-order Extended Modified Patankar scheme for
+! biogeochemical models is coded. For details, see \cite{Bruggemanetal2005}.
 !
 ! !USES:
    IMPLICIT NONE
@@ -772,14 +962,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Second-order extended modified Patankar scheme for geobiochemical
-! models. Submitted to Applied Numerical Mathematics (2005),
-! authors: Bruggeman, Burchard, Kooi, Sommeijer.
+! !IROUTINE: Second-order Extended Modified Patankar scheme
 !
 ! !INTERFACE:
    subroutine emp_2(dt,numc,nlev,cc,h,t)
 !
 ! !DESCRIPTION:
+! Here, the second-order Extended Modified Patankar scheme for
+! biogeochemical models is coded. For details, see \cite{Bruggemanetal2005}.
 !
 ! !USES:
    IMPLICIT NONE
@@ -836,13 +1026,15 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Finds the Extended Modified Patankar product term 'pi'
-!  with the bisection technique.
+! !IROUTINE: Calculation of the EMP product term 'pi'
 !
 ! !INTERFACE:
    subroutine findpi_bisection(numc, cc, derivative, dt, accuracy, pi)
 !
 ! !DESCRIPTION:
+! Auxiluary subroutine for finding the Extended Modified Patankar 
+! product term 'pi'
+! with the bisection technique. For details, see \cite{Bruggemanetal2005}.
 !
 ! !USES:
    implicit none
@@ -945,6 +1137,7 @@
    subroutine matrix(n,a,r,c)
 !
 ! !DESCRIPTION:
+! This is a Gaussian solver for multi-dimensional linear equations.
 !
 ! !USES:
    IMPLICIT NONE

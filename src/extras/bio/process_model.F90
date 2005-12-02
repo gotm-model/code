@@ -1,4 +1,4 @@
-!$Id: process_model.F90,v 1.7 2005-09-19 21:03:31 hb Exp $
+!$Id: process_model.F90,v 1.8 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,6 +9,9 @@
    subroutine process_model(first,numc,nlev,cc,pp,dd,h,t)
 !
 ! !DESCRIPTION:
+! This routine is called from the ODE solvers implemented in
+! {\tt ode\_solver.F90} and updates the sources and sinks for
+! the individual biogeochemical models.
 !
 ! !USES:
    use bio_var, only: bio_model

@@ -1,15 +1,59 @@
-!$Id: bio_iow.F90,v 1.15 2005-11-17 09:58:18 hb Exp $
+!$Id: bio_iow.F90,v 1.16 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: bio_iow --- IOW 9 compartment model \label{sec:bio_iow}
+! !MODULE: bio_iow --- IOW biogeochemical model ERGOM \label{sec:bio-iow}
 !
 ! !INTERFACE:
    module bio_iow
 !
 ! !DESCRIPTION:
-!  Remember this Hans
+! The biogeochemical model by
+! \cite{Neumannetal2002} consists of $I=10$
+! state variables. The nutrient state variables are dissolved
+! ammonium, nitrate, and phosphate. Primary production is provided
+! by three functional phytoplankton groups: diatoms, flagellates,
+! and blue-green algae (cyanobacteria). Diatoms represent larger
+! cells which grow fast in nutrient-rich conditions. Flagellates
+! represent smaller cells with an advantage at lower nutrients
+! concentrations especially during summer conditions. The
+! cyanobacteria group is able to fix and utilise atmospheric
+! nitrogen and therefore, the model assumes phosphate to be the only
+! limiting nutrient for cyanobacteria. Due to the ability of
+! nitrogen fixation, cyanobacteria are a nitrogen source for the
+! system. A dynamically developing bulk zooplankton variable
+! provides grazing pressure on phytoplankton. Dead particles are
+! accumulated in a detritus state variable. The detritus is
+! mineralised into dissolved ammonium and phosphate during the
+! sedimentation process. A certain amount of the detritus reaches
+! the bottom, where it is accumulated in the sedimentary detritus.
+! Detritus in the sediment is either buried in the sediment,
+! mineralised or resuspended into the water column, depending on the
+! velocity of near-bottom currents. The development of oxygen in the
+! model is coupled to the biogeochemical processes via
+! stoichiometric ratios. Oxygen concentration controls processes as
+! denitrification and nitrification.
+! The basic structure of the model is explained in figure \ref{fig_neumann},
+! and a detailed description of the
+! model is given in section \ref{sec:bio-iow-details}.
+! \begin{figure}
+! \begin{center}
+! \scalebox{0.5}{\includegraphics{figures/iow_structure.eps}}
+! \caption{Structure of the \cite{Neumannetal2002} model 
+! with cyanobacteria (cya),
+! diatoms (dia), dinoflagellates (fla), detritus (det), zooplankton (zoo),
+! ammonium (amm), nitrate (nit) detritus sediment (sed), oxygen (oxy)
+! and phosphorus (pho) as the ten
+! state variables.
+! The concentrations are in mmol N\,m$^{-3}$,
+!  mmol N\,m$^{-2}$,  mmol P\,m$^{-3}$ and l O$_2$m$^{-3}$.
+! Conservative fluxes are denoted by thin green arrows, non-conservative fluxes
+! by bold arrows.
+! }\label{fig_neumann}
+! \end{center}
+! \end{figure}
+! 
 !
 ! !USES:
 !  default: all is private.
@@ -26,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.16  2005-12-02 20:57:27  hb
+!  Documentation updated and some bugs fixed
+!
 !  Revision 1.15  2005-11-17 09:58:18  hb
 !  explicit argument for positive definite variables in diff_center()
 !
@@ -170,8 +217,9 @@
    subroutine init_bio_iow(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio_iow.inp} is read and memory is
-!  allocated - and various variables are initialised.
+!  Here, the bio namelist {\tt bio\_iow.inp} is read and
+!  various variables (rates and settling velocities)
+!  are transformed into SI units.
 !
 ! !USES:
    IMPLICIT NONE
@@ -255,7 +303,12 @@
    subroutine init_var_iow(nlev)
 !
 ! !DESCRIPTION:
-!  Here, the cc and ws varibles are filled with initial conditions
+!  Here, the the initial conditions are set and the settling velocities are
+!  transferred to all vertical levels. All concentrations except oxygen 
+!  are declared
+!  as non-negative variables, and it is defined which variables would be
+!  taken up by benthic filter feeders.
+!  Furthermore, the primary production {\tt ppi} is allocated.
 !
 ! !USES:
    IMPLICIT NONE
@@ -319,10 +372,10 @@
    mussels_inhale(p3) = .true.
    mussels_inhale(zo) = .true.
    mussels_inhale(de) = .true.
-   mussels_inhale(am) = .true.
-   mussels_inhale(ni) = .true.
-   mussels_inhale(po) = .true.
-   mussels_inhale(o2) = .true.
+   mussels_inhale(am) = .false.
+   mussels_inhale(ni) = .false.
+   mussels_inhale(po) = .false.
+   mussels_inhale(o2) = .false.
 
    allocate(ppi(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_iow(): Error allocating ppi)'
@@ -331,9 +384,9 @@
       case (-1)! absolutely nothing
       case (0) ! constant
 
-         sfl(po)=sfl_po/secs_pr_day
-         sfl(am)=sfl_am/secs_pr_day
-         sfl(ni)=sfl_ni/secs_pr_day
+         sfl(po)= sfl_po /secs_pr_day
+         sfl(am)= sfl_am /secs_pr_day
+         sfl(ni)= sfl_ni /secs_pr_day
 
       case (2) ! from file via sfl_read
 
@@ -355,8 +408,8 @@
    subroutine var_info_iow()
 !
 ! !DESCRIPTION:
-!  This subroutine provides information on the variables. To be used
-!  when storing data in NetCDF files.
+!  This subroutine provides information about the variable names as they
+!  will be used when storing data in NetCDF files.
 !
 ! !USES:
    IMPLICIT NONE
@@ -419,12 +472,19 @@
 !
 ! !IROUTINE: Step function
 !
-! !INTERFACE
+! !INTERFACE:
    REALTYPE function th(x,w,min,max)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! Instead of the
+! heavyside switches used by \cite{Neumannetal2002}, we apply here a smoothed
+! {\it tangens hyperbolicus} transition with prescribed width $x_w$:
+! \begin{equation}\label{theta}
+! \theta (x,x_w,y_{\min},y_{\max})= y_{\min}+(y_{\max}-y_{\min})
+! \frac12\left(1-\tanh \left(\frac{x}{x_w}   \right)      \right).
+! \end{equation}
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -454,12 +514,16 @@
 !
 ! !IROUTINE: Saturation function squared
 !
-! !INTERFACE
+! !INTERFACE:
    REALTYPE function yy(a,x)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! This is a squared Michaelis-Menten type of limiter:
+! \begin{equation}\label{Y}
+! Y(x_w,x) = \frac{x^2}{x_w^2+x^2}.
+! \end{equation}
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -481,12 +545,21 @@
 !
 ! !IROUTINE: Ivlev formulation for zooplankton grazing on phytoplankton
 !
-! !INTERFACE
+! !INTERFACE:
    REALTYPE function fpz(g,t,topt,psum)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! The Ivlev formulation for zooplankton grazing on the three phytoplankton 
+! classes $c_1$, $c_2$, and $c_3$ is given here as a function:
+! \begin{equation}\label{neu_di4}
+! d_{i,4}=g_i^{\max}\left(1+\frac{T^2}{T_{opt}^2}\exp
+! \left(1-\frac{2T}{T_{opt}} \right)\right)
+! \left( 1-\exp\left(-I_v^2 \left( \sum_{
+! j=1}^3c_j \right)^2\right)  \right)
+! \frac{c_i}{\sum_{j=1}^3c_j}\left( c_4+c_4^{\min} \right)
+! \end{equation}
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -509,12 +582,22 @@
 !
 ! !IROUTINE: Surface fluxes for the IOW model
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine surface_fluxes_iow(nlev,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! Here, those surface fluxes which have been read from a file are transformed
+! to SI units, and the surface oxygen flux is calculated by means of the 
+! following formula:
+! \begin{equation}\label{o2flux}
+! F^s_9 = p_{vel} \left(O_{sat}-c_9 \right)
+! \end{equation}
+! with
+! \begin{equation}\label{osat}
+! O_{sat}= a_0\left(a_1-a_2T  \right).
+! \end{equation}
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -541,7 +624,7 @@
    end select
 
 ! surface oxygen flux
-   sfl(o2) = -pvel*(a0*(a1-a2*t)-cc(o2,nlev))
+   sfl(o2) = pvel*(a0*(a1-a2*t)-cc(o2,nlev))
    return
    end subroutine surface_fluxes_iow
 !EOC
@@ -551,12 +634,22 @@
 !
 ! !IROUTINE: Light properties for the IOW model
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine light_iow(nlev,h,rad,bioshade_feedback,bioshade)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! Here, the photosynthetically available radiation is calculated
+! by simply assuming that the short wave part of the total
+! radiation is available for photosynthesis. The user should make
+! sure that this is consistent with the light class given in the
+! {\tt extinct} namelist of the {\tt obs.inp} file.
+! The self-shading effect is also calculated in this subroutine,
+! which may be used to consider the effect of bio-turbidity also
+! in the temperature equation (if {\tt bioshade\_feedback} is set
+! to true in {\tt bio.inp}).
+! For details, see section \ref{sec:do-bio}.
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -595,14 +688,197 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Right hand sides of geobiochemical model
+! !IROUTINE: Right hand sides of the IOW geobiochemical model\label{sec:bio-iow-details}
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine do_bio_iow(first,numc,nlev,cc,pp,dd,h,t)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! The right hand sides of the \cite{Neumannetal2002} biogeochemical model are 
+! coded in this soubroutine.
+! First of all, based on (\ref{theta}) and (\ref{Y}), 
+! we construct limiters for chemical
+! reactions which depend on the availability of oxygen ($c_9$) and nitrate
+! ($c_7$) and have to add up to unity:
+! \begin{equation}\label{limits}
+! \begin{array}{rcl}
+! l^+_+ &=& \theta(c_9,c_9^t,0,1)Y(c_7^t,c_7), \\ \\
+! l^-_+ &=& \theta(-c_9,c_9^t,0,1)Y(c_7^t,c_7), \\ \\
+! l^-_- &=& \theta(-c_9,c_9^t,0,1)(1-Y(c_7^t,c_7)), \\ \\
+! L^+_+ &=& \frac{l^+_+}{l^+_+ + l^-_+ + l^-_-}, \\ \\
+! L^-_+ &=& \frac{l^-_+}{l^+_+ + l^-_+ + l^-_-}, \\ \\
+! L^-_- &=& \frac{l^-_-}{l^+_+ + l^-_+ + l^-_-}. \\ \\
+! \end{array}
+! \end{equation}
+! 
+! Mortality of the three phytoplankton classes $c_i$, $i=1,\dots,3$:
+! \begin{equation}\label{neu_di5}
+! d_{i,5}=l_{PD} c_i
+! \end{equation}
+! 
+! Respiration of the three phytoplankton classes $c_i$, $i=1,\dots,3$
+! into ammonium:
+! \begin{equation}\label{neu_di6}
+! d_{i,6}=l_{PA} c_i
+! \end{equation}
+! 
+! Zooplankton mortality:
+! \begin{equation}\label{neu_d45}
+! d_{4,5}=l_{ZD}(c_4+c_4^{\min})c_4
+! \end{equation}
+! 
+! Zooplankton exudation into ammonium:
+! \begin{equation}\label{neu_d46}
+! d_{4,6}=l_{ZA}(c_4+c_4^{\min})c_4
+! \end{equation}
+! 
+! Detritus mineralisation:
+! \begin{equation}\label{neu_d56}
+! d_{5,6}=L_{DA}c_5
+! \end{equation}
+! with
+! \begin{equation}\label{LDA}
+! L_{DA} = l_{DA} \left(1+\beta_{DA}Y(T_{DA},T)\right).
+! \end{equation}
+! 
+! Ammonium uptake by phytoplankta $c_i$, $i=1,2$:
+! \begin{equation}\label{neu_d6i}
+! d_{6,i}=R_i\frac{c_6}{c_6+c_7}\left(c_i+c_i^{\min} \right)
+! \end{equation}
+! with the growth rate for diatoms,
+! \begin{equation}\label{r1}
+! R_1=r_1^{\max} \min\left\{ 
+! Y(\alpha_1,c_6+c_7), Y(s_R\alpha_1,c_8), PPI  
+! \right\}
+! \end{equation}
+! and the growth rate for flagellates,
+! \begin{equation}\label{r2}
+! R_2=r_2^{\max}\left(1+Y\left(T_f,T \right)\right)\min\left\{
+! Y(\alpha_2,c_6+c_7),Y(s_R\alpha_2,c_8),PPI 
+! \right\}.
+! \end{equation}
+! Here, 
+! \begin{equation}\label{ppi}
+! PPI=\frac{I_{PAR}}{I_{opt}}\exp\left(1-\frac{I_{PAR}}{I_{opt}}  \right)
+! \end{equation}
+! with
+! \begin{equation}\label{iopt}
+! I_{opt}=\max\left\{\frac{I_0}{4},I_{\min}   \right\}
+! \end{equation}
+! and $I_{PAR}$ from (\ref{light}).
+! 
+! Nitrification of ammonium to nitrate:
+! \begin{equation}\label{neu_d67}
+! d_{6,7}=L_{AN}c_6
+! \end{equation}
+! with
+! \begin{equation}\label{LAN}
+! L_{AN}=l_{AN}\theta(c_9,0,0,1)\frac{c_9}{O_{AN}+c_9}\exp\left(\beta_{AN}T\right).
+! \end{equation}
+! 
+! Nitrate uptake by phytoplankta $c_i$, $i=1,2$:
+! \begin{equation}\label{neu_d7i}
+! d_{7,i}=R_i\frac{c_7}{c_6+c_7}\left(c_i+c_i^{\min} \right).
+! \end{equation}
+! 
+! Settling of detritus into sediment:
+! \begin{equation}\label{neu_d510}
+! d_{5,10}=l_{DS} \frac{c_5}{h_1}\delta_{k,1}
+! \end{equation}
+! 
+! Mineralisation of sediment into ammonium:
+! \begin{equation}\label{neu_d106}
+! d_{10,6}=L_{SA} c_{10}
+! \end{equation} 
+! with
+! \begin{equation}\label{LSA}
+! L_{SA}=l_{SA} \exp\left(\beta_{SA}T \right) \theta(c_9,c_9^t,0.2,1)
+! \end{equation}
+! 
+! From the above sink terms, respective source terms are calculated by means of (\ref{eq:am:symmetry}),
+! except for settling of detritus into sediment and mineralisation of sediment into
+! ammonium, for which we have:
+! \begin{equation}\label{neu_p105}
+! p_{10,5}=h_1 d_{5,10}, \quad p_{6,10}=\frac{d_{10,6}}{h_1}.
+! \end{equation}
+! 
+! Denitrification in water column:
+! \begin{equation}\label{neu_d77}
+! d_{7,7}=s_1 \left(L_{DA} c_5 +L_{SA} \frac{c_{10}}{h_1}\delta_{k,1} \right)L^-_+.
+! \end{equation}
+! 
+! Denitrification in sediment:
+! \begin{equation}\label{neu_d1010}
+! d_{10,10}=\theta(c_9,c_9^t,0,1) L_{SA} c_{10}
+! \end{equation}
+! 
+! Phosphorus uptake by the three phytoplankton classes $c_i$, $i=1,\dots,3$:
+! \begin{equation}\label{neu_d88}
+! d_{8,8}=s_R \left(\sum_{j=1}^3 R_j \left(c_j+c_j^{\min}   \right)     \right). 
+! \end{equation}
+! 
+! Nitrogen fixation:
+! \begin{equation}\label{neu_p33}
+! p_{3,3}=R_3\left(c_3+c_3^{\min}\right)
+! \end{equation}
+! with
+! \begin{equation}\label{r3}
+! R_3=r_3^{\max}\frac{1}{1+\exp\left(\beta_{bg}\left(T_{bg}-T  \right)   \right)}\min\left\{Y\left(s_R\alpha_3,c_8\right),PPI   \right\}
+! \end{equation}
+! 
+! Respiration of the three phytoplankton classes $c_i$, $i=1,\dots,3$
+! into phosphorus:
+! \begin{equation}\label{neu_p8i}
+! p_{8,i}=s_R d_{i,6}.
+! \end{equation}
+! 
+! Zooplankton exudation into phosphorus:
+! \begin{equation}\label{neu_p84}
+! p_{8,4}=s_R d_{4,6}.
+! \end{equation}
+! 
+! Oxygen production due to ammonium uptake by phytoplankton classes $c_i$, $i=1,2$and nitrification of ammonium into nitrate:
+! \begin{equation}\label{neu_p96}
+! p_{9,6}= s_2 \left(d_{6,1}+d_{6,2} \right)-s_4 d_{6,7}.
+! \end{equation}
+! 
+! Oxygen production due to nitrate uptake by phytoplankton classes $c_i$, $i=1,2$:
+! \begin{equation}\label{neu_p97}
+! p_{9,7}= s_3 \left(d_{7,1}+d_{7,2} \right).
+! \end{equation}
+! 
+! Oxygen production due to nitrogen fixation by blue-greens:
+! \begin{equation}\label{neu_p99}
+! p_{9,9}=s_2 p{3,3}
+! \end{equation}
+! 
+! Oxygen demand due to
+! respiration of the three phytoplankton classes $c_i$, $i=1,\dots,3$:
+! \begin{equation}\label{neu_p9i}
+! p_{9,i}=-s_2 d_{i,6}.
+! \end{equation}
+! 
+! Oxygen demand of zooplankton exudation:
+! \begin{equation}\label{neu_p94}
+! p_{9,4}=-s_2 d_{4,6}.
+! \end{equation}
+! 
+! Oxygen demand of mineralisation of detritus into ammonium:
+! \begin{equation}\label{neu_p95}
+! p_{9,5}=-s_2\left(L_+^++L_-^- \right) d_{5,6}.
+! \end{equation}
+! 
+! Oxygen demand of mineralisation of sediment into ammonium:
+! \begin{equation}\label{neu_p910}
+! p_{9,10}=-\left(s_4+s_2\left(L_+^++L_-^- \right)\right) \frac{d_{10,6}}{h_1}\delta_{k,1}.
+! \end{equation}
+! 
+! Phosphate release due to mineralisation of sediment into ammonium:
+! \begin{equation}\label{neu_p88}
+! p_{8,8}=(1-p_1\theta\left(c_9,c_9^t,0,1\right)Y(p_2,c_9))\frac{d_{10,6}}{h_1}\delta_{k,1}.
+! \end{equation}
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:

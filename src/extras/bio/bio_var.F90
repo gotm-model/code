@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.6 2005-11-17 09:58:18 hb Exp $
+!$Id: bio_var.F90,v 1.7 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,7 +9,8 @@
    module bio_var
 !
 ! !DESCRIPTION:
-!  Remember this Hans
+!  Here all variables necessary for the biogeochemical models are
+!  declared, mostly as allocatable variables.
 !
 ! !USES:
 !  default: all is public.
@@ -44,6 +45,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
+!  Revision 1.7  2005-12-02 20:57:27  hb
+!  Documentation updated and some bugs fixed
+!
 !  Revision 1.6  2005-11-17 09:58:18  hb
 !  explicit argument for positive definite variables in diff_center()
 !

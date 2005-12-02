@@ -1,15 +1,18 @@
-!$Id: bio_template.F90,v 1.2 2004-07-30 09:22:20 hb Exp $
+!$Id: bio_template.F90,v 1.3 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: bio_template --- TEMPLATE bio model \label{sec:bio_template}
+! !MODULE: bio_template --- template bio model \label{sec:biotemplate}
 !
 ! !INTERFACE:
    module bio_template
 !
 ! !DESCRIPTION:
-!  Remember this Hans
+! This is a template for including new biogeochemical models into
+! GOTM. It has the full structural functionality of a GOTM
+! biogeochemical model, but is terminated  in {\tt do\_bio\-template},
+! where the right hand sides should be calculated.
 !
 ! !USES:
 !  default: all is private.
@@ -26,7 +29,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_template.F90,v $
-!  Revision 1.2  2004-07-30 09:22:20  hb
+!  Revision 1.3  2005-12-02 20:57:27  hb
+!  Documentation updated and some bugs fixed
+!
+!  Revision 1.2  2004/07/30 09:22:20  hb
 !  use bio_var in specific bio models - simpliefied internal interface
 !
 !  Revision 1.1  2003/07/23 12:27:31  hb
@@ -47,8 +53,9 @@
    subroutine init_bio_template(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio_template.inp} is read and memory is
-!  allocated - and various variables are initialised.
+!  Here, the bio namelist {\tt bio\_template.inp} should be read and
+!  various variables (rates and settling velocities)
+!  should be transformed into SI units.
 !
 ! !USES:
    IMPLICIT NONE
@@ -84,7 +91,12 @@
    subroutine init_var_template(nlev)
 !
 ! !DESCRIPTION:
-!  Here, the cc and ws varibles are filled with initial conditions
+!  Here, the the initial conditions should be set and the settling 
+!  velocities should be
+!  transferred to all vertical levels. Non-negative concentrations 
+!  should be declared  as non-negative variables, 
+!  and it should be defined which variables would be
+!  taken up by benthic filter feeders.
 !
 ! !USES:
    IMPLICIT NONE
@@ -115,8 +127,8 @@
    subroutine var_info_template()
 !
 ! !DESCRIPTION:
-!  This subroutine provides information on the variables. To be used
-!  when storing data in NetCDF files.
+!  This subroutine provides information about the variable names as they
+!  will be used when storing data in NetCDF files.
 !
 ! !USES:
    IMPLICIT NONE
@@ -151,18 +163,26 @@
    end subroutine var_info_template
 !EOC
 
-
 !-----------------------------------------------------------------------
 !BOP
 !
 ! !IROUTINE: Light properties for the template model
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine light_template(nlev,h,rad,bioshade_feedback,bioshade)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! Here, the photosynthetically available radiation should be calculated
+! by simply assuming that the short wave part of the total
+! radiation is available for photosynthesis. The user should make
+! sure that this is consistent with the light class given in the
+! {\tt extinct} namelist of the {\tt obs.inp} file.
+! The self-shading effect should also be calculated in this subroutine,
+! which may be used to consider the effect of bio-turbidity also
+! in the temperature equation (if {\tt bioshade\_feedback} is set
+! to true in {\tt bio.inp}). For details, see section \ref{sec:do-bio}.
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -182,7 +202,7 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   LEVEL2 'calculating TEMPLATE light properties'
+   STDERR 'TEMPLATE light properties are calculated here.'
 
    end subroutine light_template
 !EOC
@@ -192,12 +212,15 @@
 !
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine do_bio_template(numc,nlev)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! Here, the source and sink terms for the right hand sides need to be
+! defined. Since this is a template file only, nothing is done here,
+! and the execution of the program is terminated here. 
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:

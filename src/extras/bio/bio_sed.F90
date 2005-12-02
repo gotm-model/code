@@ -1,15 +1,20 @@
-!$Id: bio_sed.F90,v 1.5 2005-11-17 09:58:18 hb Exp $
+!$Id: bio_sed.F90,v 1.6 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: bio_sed --- simple sedimentation model \label{sec:bio_sed}
+! !MODULE: bio_sed --- simple suspended matter model \label{sec:biosed}
 !
 ! !INTERFACE:
    module bio_sed
 !
 ! !DESCRIPTION:
-!  Remember this Hans
+!  This is a simple suspended matter model with one non-dimensional
+!  state variable called {\tt conc}. The suspended matter is subject
+!  to a constant settling velocity, has no surface fluxes of suspended matter,
+!  but the suspended matter may be taken out at the bed, if the mussel
+!  module of GOTM is activated. No right-hand side process terms are 
+!  involved here.
 !
 ! !USES:
 !  default: all is private.
@@ -26,6 +31,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_sed.F90,v $
+!  Revision 1.6  2005-12-02 20:57:27  hb
+!  Documentation updated and some bugs fixed
+!
 !  Revision 1.5  2005-11-17 09:58:18  hb
 !  explicit argument for positive definite variables in diff_center()
 !
@@ -60,8 +68,9 @@
    subroutine init_bio_sed(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio_sed.inp} is read and memory is
-!  allocated - and various variables are initialised.
+!  Here, the bio namelist {\tt bio\_sed.inp} (mainly including
+!  settling velocity and initial value) is read
+!  and the settling velocity is converted to SI units.
 !
 ! !USES:
    IMPLICIT NONE
@@ -111,7 +120,8 @@
    subroutine init_var_sed(nlev)
 !
 ! !DESCRIPTION:
-!  Here, the cc and ws varibles are filled with initial conditions
+!  Here, the initial concentrations are set and the settling velocity is
+!  transferred to all vertical levels.
 !
 ! !USES:
    IMPLICIT NONE
@@ -133,7 +143,6 @@
 
    mussels_inhale(1) = .true.
 
-
    LEVEL3 'Sedimentation variables initialised ...'
 
    return
@@ -144,14 +153,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Providing info on variables
+! !IROUTINE: Providing info on variable names
 !
 ! !INTERFACE:
    subroutine var_info_sed()
 !
 ! !DESCRIPTION:
-!  This subroutine provides information on the variables. To be used
-!  when storing data in NetCDF files.
+!  This subroutine provides information about the variable names as they
+!  will be used when storing data in NetCDF files.
 !
 ! !USES:
    IMPLICIT NONE
@@ -165,7 +174,7 @@
 !BOC
    var_names(1) = 'conc'
    var_units(1) = 'fractions'
-   var_long(1) = 'concentration'
+   var_long(1)  = 'concentration'
 
    return
    end subroutine var_info_sed
@@ -176,12 +185,14 @@
 !
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine do_bio_sed(nlev,pp,dd)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! This routine sets the sinks and sources of this simple suspended
+! matter module to zero.
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:

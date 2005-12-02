@@ -1,4 +1,4 @@
-!$Id: bio_save.F90,v 1.4 2005-11-18 10:59:35 kbk Exp $
+!$Id: bio_save.F90,v 1.5 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -8,8 +8,8 @@
    subroutine bio_save(nlev,h,totn)
 !
 ! !DESCRIPTION:
-!  Here, storing of the sediment profiles to an ascii or a
-!  netCDF file is managed.
+! Here, the output of biogeochemical parameters either as ascii or as
+! NetCDF files is managed.
 !
 ! !USES:
    use bio_var

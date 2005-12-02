@@ -1,4 +1,4 @@
-!$Id: bio_fluxes.F90,v 1.1 2004-07-29 17:36:37 hb Exp $
+!$Id: bio_fluxes.F90,v 1.2 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -27,7 +27,10 @@
 !  Original author(s): Karsten Bolding and Hans Burchard
 !
 !  $Log: bio_fluxes.F90,v $
-!  Revision 1.1  2004-07-29 17:36:37  hb
+!  Revision 1.2  2005-12-02 20:57:27  hb
+!  Documentation updated and some bugs fixed
+!
+!  Revision 1.1  2004/07/29 17:36:37  hb
 !  separate reading fluxes from bio() - benefit of 3D models
 !
 !
@@ -96,12 +99,12 @@
 !
 ! !IROUTINE: Read in surface fluxes
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine do_bio_fluxes(jul,secs)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
 !
-! !USES
+! !USES:
    use time,         only: time_diff,julian_day
    use observations, only: read_obs
    IMPLICIT NONE

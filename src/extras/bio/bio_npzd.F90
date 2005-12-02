@@ -1,15 +1,27 @@
-!$Id: bio_npzd.F90,v 1.8 2005-11-17 09:58:18 hb Exp $
+!$Id: bio_npzd.F90,v 1.9 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: bio_npzd --- simple NPZD bio model \label{sec:bio_npzd}
+! !MODULE: bio_npzd --- NPZD biogeochemical model \label{sec:bio-npzd}
 !
 ! !INTERFACE:
    module bio_npzd
 !
 ! !DESCRIPTION:
-!  Remember this Hans
+! The NPZD (nutrient-phytoplankton-zooplankton-detritus) model described here
+! consists of $I=4$ state variables.
+! Nutrient uptake (phytoplankton growth) is limited by light and nutrient
+! availability, the latter of which is modelled by means
+! of Michaelis-Menten kinetics, see eq.\ (\ref{dnp}).
+! The half-saturation nutrient concentration $\alpha$ used in this
+! formulation has typically a value between 0.2 and 1.5 mmol N\, m$^{-3}$.
+! Zooplankton grazing which is limited by the phytoplankton standing stock
+! is modelled by means of an Ivlev formulation, see eq.\ (\ref{dpz}).
+! All other processes are based on linear first-order kinematics,
+! see eqs.\ (\ref{dpn}) - (\ref{dzd}).
+! For all details of the NPZD model implemented here, 
+! see \cite{Burchardetal2005b}.
 !
 ! !USES:
 !  default: all is private.
@@ -26,6 +38,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_npzd.F90,v $
+!  Revision 1.9  2005-12-02 20:57:27  hb
+!  Documentation updated and some bugs fixed
+!
 !  Revision 1.8  2005-11-17 09:58:18  hb
 !  explicit argument for positive definite variables in diff_center()
 !
@@ -64,19 +79,19 @@
 !
 ! !LOCAL VARIABLES:
 !  from a namelist
-   REALTYPE                  :: N_initial=4.5
-   REALTYPE                  :: P_initial=0.
-   REALTYPE                  :: Z_initial=0.
-   REALTYPE                  :: D_initial=4.5
-   REALTYPE, public          :: P0=0.0225
-   REALTYPE                  :: Z0=0.0225
-   REALTYPE                  :: w_P=-1.157407e-05
-   REALTYPE                  :: w_D=-5.787037e-05
+   REALTYPE                  :: n_initial=4.5
+   REALTYPE                  :: p_initial=0.
+   REALTYPE                  :: z_initial=0.
+   REALTYPE                  :: d_initial=4.5
+   REALTYPE, public          :: p0=0.0225
+   REALTYPE                  :: z0=0.0225
+   REALTYPE                  :: w_p=-1.157407e-05
+   REALTYPE                  :: w_d=-5.787037e-05
    REALTYPE, public          :: kc=0.03
-   REALTYPE                  :: I_min=25.
+   REALTYPE                  :: i_min=25.
    REALTYPE                  :: rmax=1.157407e-05
    REALTYPE                  :: gmax=5.787037e-06
-   REALTYPE                  :: Iv=1.1
+   REALTYPE                  :: iv=1.1
    REALTYPE                  :: alpha=0.3
    REALTYPE                  :: rpn=1.157407e-07
    REALTYPE                  :: rzn=1.157407e-07
@@ -103,8 +118,9 @@
    subroutine init_bio_npzd(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio_npzd.inp} is read and memory is
-!  allocated - and various variables are initialised.
+!  Here, the bio namelist {\tt bio\_npzd.inp} is read and 
+!  various variables (rates and settling velocities) 
+!  are transformed into SI units.
 !
 ! !USES:
    IMPLICIT NONE
@@ -119,8 +135,8 @@
 !
 ! !LOCAL VARIABLES:
    namelist /bio_npzd_nml/ numc, &
-                      N_initial,P_initial,Z_initial,D_initial,   &
-                      P0,Z0,w_P,w_D,kc,I_min,rmax,gmax,Iv,alpha,rpn,  &
+                      n_initial,p_initial,z_initial,d_initial,   &
+                      p0,z0,w_p,w_d,kc,i_min,rmax,gmax,iv,alpha,rpn,  &
                       rzn,rdn,rpdu,rpdl,rzd,aa,g2
 !EOP
 !-----------------------------------------------------------------------
@@ -171,7 +187,10 @@
    subroutine init_var_npzd(nlev)
 !
 ! !DESCRIPTION:
-!  Here, the cc and ws varibles are filled with initial conditions
+!  Here, the the initial conditions are set and the settling velocities are
+!  transferred to all vertical levels. All concentrations are declared
+!  as non-negative variables, and it is defined which variables would be 
+!  taken up by benthic filter feeders.
 !
 ! !USES:
    IMPLICIT NONE
@@ -206,7 +225,7 @@
    posconc(z) = 1
    posconc(d) = 1
 
-   mussels_inhale(n) = .true.
+   mussels_inhale(n) = .false.
    mussels_inhale(p) = .true.
    mussels_inhale(z) = .true.
    mussels_inhale(d) = .true.
@@ -221,14 +240,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Providing info on variables
+! !IROUTINE: Providing info on variable names
 !
 ! !INTERFACE:
    subroutine var_info_npzd()
 !
 ! !DESCRIPTION:
-!  This subroutine provides information on the variables. To be used
-!  when storing data in NetCDF files.
+!  This subroutine provides information about the variable names as they
+!  will be used when storing data in NetCDF files.
 !
 ! !USES:
    IMPLICIT NONE
@@ -264,12 +283,14 @@
 !
 ! !IROUTINE: Michaelis-Menten formulation for nutrient uptake
 !
-! !INTERFACE
+! !INTERFACE:
    REALTYPE function fnp(n,p,par,iopt)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! Here, the classical Michaelis-Menten formulation for nutrient uptake
+! is formulated.
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -291,12 +312,14 @@
 !
 ! !IROUTINE: Ivlev formulation for zooplankton grazing on phytoplankton
 !
-! !INTERFACE
+! !INTERFACE:
    REALTYPE function fpz(p,z)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! Here, the classical Ivlev formulation for zooplankton grazing on 
+! phytoplankton is formulated.
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -308,7 +331,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   fpz=gmax*(1.-exp(-Iv**2*p**2))*(z+z0)
+   fpz=gmax*(1.-exp(-iv**2*p**2))*(z+z0)
    return
    end function fpz
 !EOC
@@ -318,12 +341,21 @@
 !
 ! !IROUTINE: Light properties for the NPZD model
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine light_npzd(nlev,h,rad,bioshade_feedback,bioshade)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! Here, the photosynthetically available radiation is calculated
+! by simply assuming that the short wave part of the total
+! radiation is available for photosynthesis. The user should make
+! sure that this is consistent with the light class given in the
+! {\tt extinct} namelist of the {\tt obs.inp} file.
+! The self-shading effect is also calculated in this subroutine,
+! which may be used to consider the effect of bio-turbidity also
+! in the temperature equation (if {\tt bioshade\_feedback} is set
+! to true in {\tt bio.inp}). For details, see section \ref{sec:do-bio}.
 !
-! !USES
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -354,6 +386,7 @@
       zz=zz+0.5*h(i)
       if (bioshade_feedback) bioshade(i)=exp(-kc*add)
    end do
+   write(90,*) par(100),rad(nlev)
 
    return
    end subroutine light_npzd
@@ -362,14 +395,59 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Right hand sides of geobiochemical model
+! !IROUTINE: Right hand sides of NPZD model
 !
-! !INTERFACE
+! !INTERFACE:
    subroutine do_bio_npzd(first,numc,nlev,cc,pp,dd)
 !
-! !DESCRIPTION
+! !DESCRIPTION:
+! Seven processes expressed as sink terms are included in this
+! conservative model, see eqs.\ (\ref{dnp}) - (\ref{dzd}). \\
 !
-! !USES
+! Nutrient uptake by phytoplankton:
+! \begin{equation}\label{dnp}
+! d_{np} = r_{\max}\frac{I_{PAR}}{I_{opt}}
+! \exp\left(1-\frac{I_{PAR}}{I_{opt}}\right)
+! \frac{c_n}{\alpha+c_n}c_p
+! \end{equation}
+! 
+! with
+! 
+! \begin{equation}
+! I_{opt}=\max\left(\frac14I_{PAR},I_{\min}\right).
+! \end{equation}
+! 
+! Grazing of zooplankton on phytoplankton:
+! \begin{equation}\label{dpz}
+! d_{pz}=g_{\max}\left(1-\exp\left(-I_v^2c_p^2\right)\right)c_z
+! \end{equation}
+! 
+! Phytoplankton excretion:
+! \begin{equation}\label{dpn}
+! d_{pn} = r_{pn} c_p
+! \end{equation}
+! 
+! Zooplankton excretion:
+! \begin{equation}\label{dzn}
+! d_{zn} = r_{zn} c_z
+! \end{equation}
+! 
+! Remineralisation of detritus into nutrients:
+! \begin{equation}\label{ddn}
+! d_{dn} = r_{dn} c_d
+! \end{equation}
+! 
+! Phytoplankton mortality:
+! \begin{equation}\label{dpd}
+! d_{pd} = r_{pd} c_p
+! \end{equation}
+! 
+! Zooplankton mortality:
+! \begin{equation}\label{dzd}
+! d_{zd} = r_{zd} c_z
+! \end{equation}
+!
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -395,7 +473,7 @@
 
    if (first) then
       first = .false.
-      iopt=max(0.25*I_0,I_min)
+      iopt=max(0.25*i_0,i_min)
    end if
 
 !KBK - is it necessary to initialise every time - expensive in a 3D model
@@ -403,7 +481,7 @@
    dd = _ZERO_
 
    do ci=1,nlev
-      if (par(ci) .ge. I_min) then
+      if (par(ci) .ge. i_min) then
          rpd=rpdu
       else
          rpd=rpdl

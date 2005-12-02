@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.26 2005-11-18 10:59:35 kbk Exp $
+!$Id: bio.F90,v 1.27 2005-12-02 20:57:27 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,8 +9,13 @@
    module bio
 !
 ! !DESCRIPTION:
-!  Remember this Hans
-!
+! This is the central module for all biogeochemical models. 
+! From here, after reading the namelist file {\tt bio.inp},
+! the individual biogeochemical model is initialised, the memory
+! is allocated, the advection and diffusion is called, the ODE solvers
+! for the right hand sides are called, and simple Lagrangian particle
+! calculations are managed.
+! 
 ! !USES:
    use bio_var
 
@@ -47,6 +52,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.27  2005-12-02 20:57:27  hb
+!  Documentation updated and some bugs fixed
+!
 !  Revision 1.26  2005-11-18 10:59:35  kbk
 !  removed unused variables - some left in parameter lists
 !
@@ -150,8 +158,14 @@
    subroutine init_bio(namlst,fname,unit,nlev,h)
 !
 ! !DESCRIPTION:
-! Here, the bio namelist {\tt bio.inp} is read and memory is
-! allocated - and various variables are initialised.
+! Here, the bio namelist {\tt bio.inp} is read and memory for the
+! Lagrangian part of the model is allocated (note that the
+! Lagrangian model up to now only works for the simple suspended matter model).
+! If a Lagrangian particle method is chosen, particles are 
+! equidistantly distributed. 
+! The initial  Furthermore, information on the specific settings are
+! written to standard output.
+! Finally, the mussel module is called for initialisation.
 !
 ! !USES:
    IMPLICIT NONE
@@ -257,7 +271,6 @@
       do n=1,numc
          LEVEL4 trim(var_names(n)),'  ',trim(var_units(n)), &
                 '  ',trim(var_long(n))
-!KBK                '  ',trim(var_long(n)),'  ',mussels_inhale(n)
       end do
 
       if ( bio_eulerian ) then
@@ -344,12 +357,53 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Update the bio model
+! !IROUTINE: Update the bio model \label{sec:do-bio}
 !
 ! !INTERFACE:
    subroutine do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
 !
 ! !DESCRIPTION:
+! This is the main loop for the biogeochemical model. Basically 
+! an operational split method is used, with first calculating the
+! transport part, and than the reaction part.
+! During the transport part, all sinks and sources are set to zero,
+! and the surface fluxes are computed by calling the
+! model specific surface flux subroutine. Then the mussel module
+! is called.  For the Eulerian calculation, vertical advection
+! (due to settling or rising or vertical migration) and vertical
+! diffusion (due to mixing) and afterwards the light 
+! calculation (for the PAR) and the ODE solver for the right
+! hand sides are called. 
+! It should be noted here that the PAR and the selfshading effect
+! is calculated in a similar way for all biogeochemical models
+! implemented in GOTM so far. In the temperature equation the
+! absorption of solar radiation, $I(z)$, is the only source term,
+! see equation (\ref{Iz}) section \ref{sec:temperature}.
+! In (\ref{Iz}), a term $B(z)$ due to bioturbidity is used, which 
+! is calculated as a function of the biogeochemical particulate
+! matter in the water column:
+! \begin{equation}\label{B}
+! B(z)=\exp\left(-k_c\int_z^0\left(\sum C_{turb}(\xi)\right)\,d\xi\right),
+! \end{equation}
+! where $k_c$ is the attenuation constant for self shading and 
+! $\sum C_{turb}$ is the sum of the biogeochemical particulate 
+! matter concentrations.
+! The photosynthetically
+! available radiation, $I_{PAR}$, follows from
+! \begin{equation}
+!   \label{light}
+!   I_{PAR}(z)=I_0
+! (1-a)\exp\left(\frac{z}{\tilde\eta_2}\right)
+!   B(z).
+! \end{equation}
+! 
+! For Lagrangian particle calculations, 
+! the Lagrangian advection-diffusion routine {\tt lagrange} is called,
+! and afterwards, if chosen, the removal of particles due to benthic
+! filter feeders (mussels) is done.
+! Finally, the calculation of Eulerian concentrations are calculated
+! from Lagrangian counts per grid cell for output.
+! 
 !
 ! !USES:
    use bio_var, only: I_0_local => I_0
@@ -371,7 +425,7 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev),w_grid(0:nlev)
+   REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev)
    REALTYPE                  :: RelaxTau(0:nlev)
    REALTYPE                  :: dt_eff
    integer                   :: j,n
@@ -392,7 +446,6 @@
       Qsour    = _ZERO_
       Lsour    = _ZERO_
       RelaxTau = 1.e15
-      w_grid   = _ZERO_
 
       select case (bio_model)
          case (-1)
@@ -416,9 +469,13 @@
             
 !           do diffusion step
             call diff_center(nlev,dt,cnpar,posconc(j),h,Neumann,Neumann,&
-                -sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
+                sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
+            
          end do
-      else
+      else ! Lagrangian particle calculations
+         if (bio_model.ne.3) then
+            stop 'set bio_model=3 for Lagrangian calculations. Stop in bio.F90'
+         end if
          zlev(0)=-depth
          do n=1,nlev
             zlev(n)=zlev(n-1)+h(n)
@@ -531,7 +588,9 @@
    subroutine allocate_memory(nlev)
 !
 ! !DESCRIPTION:
-!  Allocate biological related global variables.
+! Here, the memory for the global biogeochemical parameters
+! such as concentrations, settling velocities, surface and bottom
+! boundary fluxes, and various other parameters is allocated.
 !
 ! !USES:
    IMPLICIT NONE
