@@ -1,20 +1,34 @@
-!$Id: lagrange.F90,v 1.4 2004-08-19 09:24:57 hb Exp $
+!$Id: lagrange.F90,v 1.5 2005-12-02 21:06:09 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: lagrangian particles
+! !ROUTINE: Lagrangian particle random walk
 ! 
 ! !INTERFACE:
    subroutine lagrange(nlev,dt,zlev,nuh,w,npar,active,zi,zp)
 !
 ! !DESCRIPTION:
 !
-! Particle random walk in turbulent field according to Visser [1997] and
-! Yamazaki and Nagai [2005] (CARTUM Book). Set visc$\_$corr=.true. for
+! Here a Lagrangian particle random walk for spatially
+! inhomogeneous turbulence according to \cite{Visser1997} is implemented.
+! With the random walk, the particle $i$ is moved from the vertical
+! position $z_i^n$ to $z_i^{n+1}$ according to the following algorithm:
+! \begin{equation}
+! \begin{array}{rcl}
+! z_i^{n+1} &=&
+! z^n_i + \partial_z \nu_t (z^n_i)\Delta t \\ \\
+! &+&
+! R \left\{2 r^{-1} \nu_t (z^n_i + \frac12  \partial_z \nu_t (z^n_i)\Delta t)
+! \Delta t\right\}^{1/2},
+! \end{array}
+! \end{equation}
+! where $R$ is a random process with $\langle R \rangle =0$ (zero mean) and  
+! and the variance $\langle R^2 \rangle=r$.
+! Set {\tt visc\_corr=.true.} for
 ! evaluating eddy viscosity in a semi-implicit way. A background viscosity
-! (visc$\_$back) may be set. The variance of the random walk scheme 
-! (rnd$\_$var)has to be set as well.
+! ({\tt visc\_back}) may be set. The variance $r$ of the random walk scheme 
+! ({\tt rnd\_var}) has to be set manually as well here.
 !
 ! !USES:
 !
@@ -37,7 +51,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: lagrange.F90,v $
-!  Revision 1.4  2004-08-19 09:24:57  hb
+!  Revision 1.5  2005-12-02 21:06:09  hb
+!  Lagrangian routine included into source code documentation
+!
+!  Revision 1.4  2004/08/19 09:24:57  hb
 !  Variance of random walk and background diffusivity explicitely prescribed --> Hidekatsu Yamazaki
 !
 !  Revision 1.3  2004/08/18 16:09:39  hb
@@ -52,10 +69,10 @@
 ! !LOCAL VARIABLES:
    integer         :: i,n,ni
    REALTYPE        :: rnd(npar),rnd_var=0.333333333,rnd_var_inv
-   REALTYPE        :: visc_back=1.e-6
+   REALTYPE        :: visc_back=0.e-6
    REALTYPE        :: depth,dz(nlev),dzn(nlev),step,zp_old
    REALTYPE        :: visc,rat,dt_inv,zloc
-   logical         :: visc_corr=.true.
+   logical         :: visc_corr=.false.
 !EOP
 !-----------------------------------------------------------------------
 !BOC

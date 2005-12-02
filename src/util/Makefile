@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.8 2005-07-06 15:00:36 kbk Exp $
+#$Id: Makefile,v 1.9 2005-12-02 21:06:09 hb Exp $
 #
 # Makefile to build the the Util library - libutil.a
 #
@@ -8,9 +8,9 @@ include ../Rules.make
 LIB	= $(LIBDIR)/libutil$(buildtype).a
 
 DOCSRC	=  util.F90                                                           \
-           diff_center.F90 diff_face.F90  adv_center.F90                      \
+           diff_center.F90 diff_face.F90  adv_center.F90  lagrange.F90        \
            tridiagonal.F90 eqstate.F90  gridinterpol.F90  convert_fluxes.F90  \
-           time.F90
+           time.F90 lagrange.F90
 
 
 MOD   = \
@@ -24,6 +24,7 @@ ${LIB}(gridinterpol.o)		\
 ${LIB}(convert_fluxes.o)	\
 ${LIB}(diff_center.o)           \
 ${LIB}(diff_face.o)             \
+${LIB}(lagrange.o)              \
 ${LIB}(adv_center.o)            
 
 all: $(MOD) $(OBJ)
