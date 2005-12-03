@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.11 2005-12-02 20:21:54 hb Exp $
+#$Id: Makefile,v 1.12 2005-12-03 08:40:28 kbk Exp $
 #
 # Makefile for making the source code documentation. 
 #
@@ -136,9 +136,9 @@ html_scp: html
 
 
 figures:
-#	wget -nd -nH -q http://www.gotm.net/data_files/doc_figures.tar.gz 
-#	tar -xvzf doc_figures.tar.gz
-#	$(RM) doc_figures.tar.gz
+	wget -nd -nH -q http://www.gotm.net/data_files/gotm-figs-4.0.gz
+	tar -xvzf gotm-figs-4.0.gz
+	$(RM) gotm-figs-4.0.gz
 
 clean:
 	$(RM) *.log *.toc *.aux *.bbl *.blg *.bac *~
