@@ -1,4 +1,4 @@
-!$Id: diff_face.F90,v 1.3 2005-11-03 20:56:55 hb Exp $
+!$Id: diff_face.F90,v 1.1.4.1 2005-12-07 14:42:58 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,12 +9,42 @@
    subroutine diff_face(N,dt,cnpar,h,Bcup,Bcdw,Yup,Ydw,nuY,Lsour,Qsour,Y)
 !
 ! !DESCRIPTION:
+! This subroutine solves the one-dimensional diffusion equation
+! including source terms,
+!  \begin{equation}
+!   \label{YdiffFace}
+!    \partder{Y}{t}
+!    = \partder{}{z} \left( \nu_Y \partder{Y}{z} \right)
+!    + Y L_{\text{sour}} + Q_{\text{sour}}
+!    \comma
+!  \end{equation}
+! with all variables including the diffusion coefficient, $\nu_Y$,
+! defined at the faces. $L_{\text{sour}}$ specifies a
+! linear source term, and $Q_{\text{sour}}$ a constant source term.
+! Central differences are used to discretize the problem.
+! The diffusion term and the linear source term are treated
+! with an implicit method, whereas the constant source term is treated
+! fully explicit.
+!
+! The input parameters {\tt Bcup} and {\tt Bcdw} specify the type
+! of the upper and lower boundary conditions, which can be either
+! Dirichlet or Neumann-type. {\tt Bcup} and {\tt Bcdw} must have integer
+! values corresponding to the parameters {\tt Dirichlet} and {\tt Neumann}
+! defined in the module {\tt util}, see \sect{sec:utils}.
+! {\tt Yup} and {\tt Ydw} are the values of the boundary conditions at
+! the surface and the bottom. Depending on the values of {\tt Bcup} and
+! {\tt Bcdw}, they represent either fluxes or prescribed values.
+!
+! Note that fluxes \emph{entering} a boundary cell are counted positive
+! by convention. The lower and upper position for prescribing these fluxes
+! are located at the lowest and uppermost grid centers with index "1" and
+! index "N", respectively.  If values are prescribed, they are located at
+! the faces with index "1" and index "N-1", respectivly.
+!
 !
 ! !USES:
    use util,          only  : Dirichlet, Neumann
    use mtridiagonal
-
-   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
 
@@ -61,13 +91,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: diff_face.F90,v $
-!  Revision 1.3  2005-11-03 20:56:55  hb
-!  Source term linearisation now fully explicit again, reversion to old method
+!  Revision 1.1.4.1  2005-12-07 14:42:58  hb
+!  Patankar trick reverted to older versions for stabilising 3D computations
 !
-!  Revision 1.2  2005/09/16 13:54:02  lars
-!  added missing IMPLICIT NONE
-!
-!  Revision 1.1  2005/06/27 10:54:33  kbk
+!  Revision 1.1  2005-06-27 10:54:33  kbk
 !  new files needed
 !
 !

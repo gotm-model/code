@@ -1,4 +1,4 @@
-!$Id: lengthscaleeq.F90,v 1.7 2005-11-15 11:35:02 lars Exp $
+!$Id: lengthscaleeq.F90,v 1.5.4.1 2005-12-07 14:42:57 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -110,22 +110,17 @@
 !                      H. Burchard and K. Bolding
 !
 !  $Log: lengthscaleeq.F90,v $
-!  Revision 1.7  2005-11-15 11:35:02  lars
-!  documentation finish for print
+!  Revision 1.5.4.1  2005-12-07 14:42:57  hb
+!  Patankar trick reverted to older versions for stabilising 3D computations
 !
-!  Revision 1.6  2005/11/03 20:53:37  hb
-!  Patankar trick reverted to older versions for 
-!  stabilising 3D computations
-!
-!  Revision 1.5  2005/06/27 13:44:07  kbk
+!  Revision 1.5  2005-06-27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.4  2003/03/28 09:20:35  kbk
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/10 09:02:05  gotm
-!  Added new Generic Turbulence Model + 
-!  improved documentation and cleaned up code
+!  Added new Generic Turbulence Model + improved documentation and cleaned up code
 !
 !
 !EOP
@@ -189,7 +184,7 @@
          Qsour(i) =  prod + buoyan
          Lsour(i) = -diss/q2l(i)
       else
-         Qsour(i) =  prod 
+         Qsour(i) =  prod
          Lsour(i) = -(diss-buoyan)/q2l(i)
       end if
 
