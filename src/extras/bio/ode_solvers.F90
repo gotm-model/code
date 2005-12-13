@@ -1,4 +1,4 @@
-!$Id: ode_solvers.F90,v 1.8 2005-12-02 20:57:27 hb Exp $
+!$Id: ode_solvers.F90,v 1.9 2005-12-13 14:12:45 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -920,7 +920,19 @@
 !
 ! !DESCRIPTION:
 ! Here, the first-order Extended Modified Patankar scheme for
-! biogeochemical models is coded. For details, see \cite{Bruggemanetal2005}.
+! biogeochemical models is coded, with one evaluation of the right-hand
+! side per time step:
+!
+! \begin{eqnarray}
+!    \lefteqn{\vec{c}^{n + 1} = \vec{c}^n + \Delta t \: \vec{f}(t^n,\vec{c}^n)\prod\limits_{j \in J^n} {\frac{c_j^{n + 1} }{c_j^n}}} \nonumber \\
+!    & & \mbox{with } J^n = \left\{ {i:f_i (t^n,\vec{c}^n) < 0,i \in \{1,...,I\}} \right\}
+! \end{eqnarray}
+!
+! This system of non-linear implicit equations is solved in auxiliary subroutine
+! findp\_bisection, using the fact this system can be reduced to a polynomial in one
+! unknown, and additionally using the restrictions imposed by the requirement of positivity.
+! For more details, see \cite{Bruggemanetal2005}.
+!
 !
 ! !USES:
    IMPLICIT NONE
@@ -951,7 +963,7 @@
 
    do ci=1,nlev
       derivative(:) = sum(pp(:,:,ci),2)-sum(dd(:,:,ci),2)
-      call findpi_bisection(numc, cc(:,ci), derivative(:), dt, 1.d-9, pi)
+      call findp_bisection(numc, cc(:,ci), derivative(:), dt, 1.d-9, pi)
       cc(:,ci) = cc(:,ci) + dt*derivative(:)*pi
    end do
 
@@ -969,7 +981,35 @@
 !
 ! !DESCRIPTION:
 ! Here, the second-order Extended Modified Patankar scheme for
-! biogeochemical models is coded. For details, see \cite{Bruggemanetal2005}.
+! biogeochemical models is coded, with two evaluations of the right-hand
+! side per time step:
+!
+! \begin{eqnarray}
+!   \vec{c}^{(1)} & = & \vec{c}^n  + \Delta t \: \vec{f}(t^n ,\vec{c}^n )\prod\limits_{j \in J^n } {\frac{{c_j^{(1)} }}{{c_j^n }}} \nonumber \\
+!   \vec{c}^{n + 1} & = & \vec{c}^n  + \frac{{\Delta t}}{2}\left( {\vec{f}(t^n ,\vec{c}^n ) + \vec{f}(t^{n + 1} ,\vec{c}^{(1)} )} \right)\prod\limits_{k \in K^n } {\frac{{c_k^{n + 1} }}{{c_k^{(1)} }}} 
+! \end{eqnarray}
+!
+! where
+!
+! \begin{eqnarray}
+!   J^n & = & \left\{ {i:f_i (t^n ,\vec{c}^n ) < 0, i \in \{ 1,...,I\} } \right\} \nonumber \\ 
+!   K^n & = & \left\{ {i:f_i (t^n ,\vec{c}^n ) + f_i (t^{n+1} ,\vec{c}^{(1)} ) < 0, i \in \{ 1,...,I\} } \right\}.
+! \end{eqnarray}
+!
+! The first step is identical to a step with the first-order EMP scheme. The second step mathmatically identical to
+! a step with the first-order scheme if we rewrite it as
+!
+! \begin{eqnarray}
+!   \lefteqn{\vec{c}^{n + 1} = \vec{c}^n + \Delta t \: \vec{h}(t^n,t^{n + 1},\vec{c}^n,\vec{c}^{(1)})\prod\limits_{k \in 
+!     K^n} {\frac{c_k^{n + 1} }{c_k^n }}} \nonumber \\ 
+!   & & \mbox{with }\vec{h}(t^n,t^{n + 1},\vec{c}^n,\vec{c}^{(1)}) = \frac{1}{2}\left( {\vec{f}(t^n,\vec{c}^n) + \vec{f}(t^{n + 1},\vec{c}^{(1)})} \right)\prod\limits_{k \in K^n} {\frac{c_k^n }{c_k^{(1)} }}.
+! \end{eqnarray}
+!
+! Therefore, this scheme can be implemented as two consecutive steps with the first-order scheme, the second using
+! $\vec{h}(t^n,t^{n + 1},\vec{c}^n,\vec{c}^{(1)})$. The non-linear problem of each consecutive step is solved
+! in auxiliary subroutine findp\_bisection.
+!
+! For more details, see \cite{Bruggemanetal2005}.
 !
 ! !USES:
    IMPLICIT NONE
@@ -1000,7 +1040,7 @@
 
    do ci=1,nlev
       rhs(:,ci) = sum(pp(:,:,ci),2) - sum(dd(:,:,ci),2)
-      call findpi_bisection(numc, cc(:,ci), rhs(:,ci), dt, 1.d-9, pi)
+      call findp_bisection(numc, cc(:,ci), rhs(:,ci), dt, 1.d-9, pi)
       cc_med(:,ci) = cc(:,ci) + dt*rhs(:,ci)*pi
    end do
 
@@ -1009,12 +1049,12 @@
    do ci=1,nlev
       rhs(:,ci) = 0.5 * (rhs(:,ci) + sum(pp(:,:,ci),2) - sum(dd(:,:,ci),2))
 
-      ! Correct for the state variables that will be included in 'pi'.
+      ! Correct for the state variables that will be included in 'p'.
       do i=1,numc
          if (rhs(i,ci) .lt. 0.) rhs(:,ci) = rhs(:,ci) * cc(i,ci)/cc_med(i,ci)
       end do
 
-      call findpi_bisection(numc, cc(:,ci), rhs(:,ci), dt, 1.d-9, pi)
+      call findp_bisection(numc, cc(:,ci), rhs(:,ci), dt, 1.d-9, pi)
 
       cc(:,ci) = cc(:,ci) + dt*rhs(:,ci)*pi
    end do ! ci (z-levels)
@@ -1026,15 +1066,47 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Calculation of the EMP product term 'pi'
+! !IROUTINE: Calculation of the EMP product term 'p'
 !
 ! !INTERFACE:
-   subroutine findpi_bisection(numc, cc, derivative, dt, accuracy, pi)
+   subroutine findp_bisection(numc, cc, derivative, dt, accuracy, pi)
 !
 ! !DESCRIPTION:
-! Auxiluary subroutine for finding the Extended Modified Patankar 
-! product term 'pi'
-! with the bisection technique. For details, see \cite{Bruggemanetal2005}.
+! Auxiliary subroutine for finding the Extended Modified Patankar 
+! product term $p$ with the bisection technique.
+!
+! This subroutine solves the non-linear problem
+!
+! \begin{eqnarray}
+!    \lefteqn{\vec{c}^{n + 1} = \vec{c}^n + \Delta t \: \vec{f}(t^n,\vec{c}^n)\prod\limits_{j \in J^n} {\frac{c_j^{n + 1} }{c_j^n}}} \nonumber \\
+!    & & \mbox{with } J^n = \left\{ {i:f_i (t^n,\vec{c}^n) < 0,i \in \{1,...,I\}} \right\}
+! \end{eqnarray}
+!
+! using the fact that it can be reduced to the problem of finding the root of a polynomial
+! in one unknown $p: = \prod\limits_{j \in J^n}{{c_j^{n + 1}}/{c_j^n}}$:
+!
+! \begin{equation}
+!   g(p) = \prod\limits_{j \in J^n} {\left( {1 + \frac{\Delta t \: f_j(t^n,\vec{c}^n)}{c_j^n }p} \right)} - p = 0,
+! \end{equation}
+!
+! with
+!
+! \begin{equation}
+!   J^n = \left\{ {i:f_i (t^n,\vec{c}^n) < 0,i \in \{1,...,I\}} \right\},
+! \end{equation}
+!
+! Additionally, it makes use of the the positivity requirement $\vec{c}^{n+1}_i>0\ \forall\ i$, which
+! imposes restriction
+!
+! \begin{equation}
+!   p \in \left( 0, \min \left( {1,\mathop {\min }\limits_{j \in J^n} \left( { - 
+!                   \frac{c_j^n }{\Delta t \: f_j (t^n,\vec{c}^n)}} \right)} \right) \right).
+! \end{equation}
+!
+! It has been proved that there exists exactly one $p$ for which the above is 
+! true, see \cite{Bruggemanetal2005}.
+! The resulting problem is solved using the bisection scheme, which is guaranteed to converge.
+!
 !
 ! !USES:
    implicit none
@@ -1120,12 +1192,12 @@
      write (*,*) "Warning: small pi=",pi," in Extended Modified Patankar slows down system!"
 !    write (*,*) "relative derivatives: ",derivative(:)*dt/cc(:)
 !    write (*,*) "You system may be stiff or non-positive, or you time step is too large."
-!    stop "ode_solvers::findpi_bisection"
+!    stop "ode_solvers::findp_bisection"
    end if
 
    return
 
-   end subroutine findpi_bisection
+   end subroutine findp_bisection
 !EOC
 
 !-----------------------------------------------------------------------
