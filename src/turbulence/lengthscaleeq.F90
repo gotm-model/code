@@ -1,4 +1,4 @@
-!$Id: lengthscaleeq.F90,v 1.5 2005-06-27 13:44:07 kbk Exp $
+!$Id: lengthscaleeq.F90,v 1.5.2.1 2005-12-15 11:13:52 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -69,7 +69,7 @@
 !
 ! !USES:
    use turbulence, only: P,B
-   use turbulence, only: tke,k_min,eps,eps_min,L
+   use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
    use turbulence, only: kappa,e1,e2,e3,b1
    use turbulence, only: MY_length,cm0,cde,galp,length_lim
    use turbulence, only: q2l_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
@@ -110,6 +110,12 @@
 !                      H. Burchard and K. Bolding
 !
 !  $Log: lengthscaleeq.F90,v $
+!  Revision 1.5.2.1  2005-12-15 11:13:52  kbk
+!  Patankar trick re-introduced
+!
+!  Revision 1.5.4.1  2005-12-07 14:42:57  hb
+!  Patankar trick reverted to older versions for stabilising 3D computations
+!
 !  Revision 1.5  2005-06-27 13:44:07  kbk
 !  modified + removed traling blanks
 !
@@ -147,7 +153,7 @@
 
 !  some quantities in Mellor-Yamada notation
    do i=1,nlev-1
-      q2l(i)=2.*tke(i)*L(i)
+      q2l(i)=2.*tkeo(i)*L(i)
       q3 (i)=sqrt(8.*tke(i)*tke(i)*tke(i))
    end do
 
@@ -177,16 +183,13 @@
       diss        =  q3(i)/b1*(1.+e2*(L(i)/Lz(i))*(L(i)/Lz(i)))
 
 !     compute positive and negative parts of RHS
-      prod_pos    =  max(prod  ,_ZERO_)
-      buoyan_pos  =  max(buoyan,_ZERO_)
-
-      prod_neg    =  min(prod  ,_ZERO_)
-      buoyan_neg  =  min(buoyan,_ZERO_)
-
-!     compose source terms
-      Qsour(i) =   prod_pos + buoyan_pos
-      Lsour(i) =  (prod_neg + buoyan_neg - diss)/q2l(i)
-
+      if (prod+buoyan .gt. 0) then
+         Qsour(i) =  prod + buoyan
+         Lsour(i) = -diss/q2l(i)
+      else
+         Qsour(i) =  prod
+         Lsour(i) = -(diss-buoyan)/q2l(i)
+      end if
 
    end do
 

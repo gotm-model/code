@@ -1,4 +1,4 @@
-!$Id: diff_face.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: diff_face.F90,v 1.1.2.1 2005-12-15 11:13:52 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -91,6 +91,12 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: diff_face.F90,v $
+!  Revision 1.1.2.1  2005-12-15 11:13:52  kbk
+!  Patankar trick re-introduced
+!
+!  Revision 1.1.4.1  2005-12-07 14:42:58  hb
+!  Patankar trick reverted to older versions for stabilising 3D computations
+!
 !  Revision 1.1  2005-06-27 10:54:33  kbk
 !  new files needed
 !
@@ -112,8 +118,8 @@
 
       cu(i) =-cnpar*c
       au(i) =-cnpar*a
-      bu(i) =  _ONE_ + cnpar*(a + c - l)
-      du(i) = (_ONE_ - (_ONE_-cnpar)*(a + c - l))*Y(i)                   &
+      bu(i) =  _ONE_ + cnpar*(a + c) - l
+      du(i) = (_ONE_ - (_ONE_-cnpar)*(a + c))*Y(i)                   &
             + (_ONE_ - cnpar)*( a*Y(i-1) + c*Y(i+1) ) + dt*Qsour(i)
    end do
 
@@ -124,8 +130,8 @@
       l     = dt*Lsour(N-1)
 
       au(N-1) =-cnpar*a
-      bu(N-1) =  _ONE_ + cnpar*(a - l)
-      du(N-1) = (_ONE_ - (_ONE_-cnpar)*(a - l))*Y(N-1)                  &
+      bu(N-1) =  _ONE_ + cnpar*a - l
+      du(N-1) = (_ONE_ - (_ONE_-cnpar)*a)*Y(N-1)                  &
               + (_ONE_ - cnpar)*a*Y(N-2) + dt*Qsour(N-1)                &
               + 2.0*dt*Yup/( h(N-1)+h(N) )
    case(Dirichlet)
@@ -144,8 +150,8 @@
       l     = dt*Lsour(1)
 
       cu(1) =-cnpar*c
-      bu(1) =  _ONE_ + cnpar*(c - l)
-      du(1) = (_ONE_ - (_ONE_-cnpar)*(c - l))*Y(1)                      &
+      bu(1) =  _ONE_ + cnpar*c - l
+      du(1) = (_ONE_ - (_ONE_-cnpar)*c)*Y(1)                      &
             + (_ONE_ - cnpar)*c*Y(2)  + dt*Qsour(1)                     &
             + 2.0*dt*Ydw/( h(1)+h(2) )
    case(Dirichlet)

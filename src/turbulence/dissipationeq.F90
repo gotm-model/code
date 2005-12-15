@@ -1,4 +1,4 @@
-!$Id: dissipationeq.F90,v 1.7 2005-08-11 13:11:50 lars Exp $
+!$Id: dissipationeq.F90,v 1.7.2.1 2005-12-15 11:13:52 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -64,7 +64,7 @@
 !
 ! !USES:
    use turbulence, only: P,B,num
-   use turbulence, only: tke,k_min,eps,eps_min,L
+   use turbulence, only: tke,tkeo,k_min,eps,eps_min,L
    use turbulence, only: ce1,ce2,ce3plus,ce3minus
    use turbulence, only: cm0,cde,galp,length_lim
    use turbulence, only: epsilon_bc, psi_ubc, psi_lbc, ubc_type, lbc_type
@@ -103,6 +103,12 @@
 
 !
 !  $Log: dissipationeq.F90,v $
+!  Revision 1.7.2.1  2005-12-15 11:13:52  kbk
+!  Patankar trick re-introduced
+!
+!  Revision 1.7.4.1  2005-12-07 14:42:57  hb
+!  Patankar trick reverted to older versions for stabilising 3D computations
+!
 !  Revision 1.7  2005-08-11 13:11:50  lars
 !  Added explicit loops for diffusivities for 3-D z-level support. Thanks to Vicente Fernandez.
 !
@@ -129,6 +135,7 @@
    REALTYPE                  :: cnpar=_ONE_
    REALTYPE                  :: avh(0:nlev),sig_eff(0:nlev)
    REALTYPE                  :: Lsour(0:nlev),Qsour(0:nlev)
+   REALTYPE                  :: ce3
 
    integer                   :: i
 !
@@ -159,22 +166,24 @@
       avh(i) = num(i)/sig_eff(i)
 
 !     compute production terms in eps-equation
-      EpsOverTke  = eps(i)/tke(i)
+      if (B(i).gt.0) then
+         ce3=ce3plus
+      else
+         ce3=ce3minus
+      end if
+
+      EpsOverTke  = eps(i)/tkeo(i)
       prod        = ce1*EpsOverTke*P(i)
-      buoyan      =     EpsOverTke*B(i)
+      buoyan      = ce3*EpsOverTke*B(i)
       diss        = ce2*EpsOverTke*eps(i)
 
-!     compute positive and negative parts of RHS
-      prod_pos    =          max(prod  ,_ZERO_)
-      buoyan_pos  =  ce3plus*max(buoyan,_ZERO_)
-
-      prod_neg    =           min(prod  ,_ZERO_)
-      buoyan_neg  =  ce3minus*min(buoyan,_ZERO_)
-
-
-!     compose source terms
-      Qsour(i) =   prod_pos + buoyan_pos
-      Lsour(i) =  (prod_neg + buoyan_neg - diss)/eps(i)
+      if (prod+buoyan.gt.0) then
+         Qsour(i)  = prod+buoyan
+         Lsour(i) = -diss/eps(i)
+      else
+         Qsour(i)  = prod
+         Lsour(i) = -(diss-buoyan)/eps(i)
+      end if
 
    end do
 
