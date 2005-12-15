@@ -45,7 +45,7 @@ if [ -d $release_dir/$release_name ] ; then
 fi
 
 if [ "$release_type" = "stable" ] ; then
-   cvs tag -b $TAG
+   cvs tag $TAG
    CVS2CL="cvs2cl -b -F v3_2_0 --no-ancestors"
 fi
 
