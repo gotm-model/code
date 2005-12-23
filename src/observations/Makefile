@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.4 2005-07-06 16:20:14 kbk Exp $
+#$Id: Makefile,v 1.5 2005-12-23 14:11:19 kbk Exp $
 #
 # Makefile to build the the Observtions library - libobservations.a
 #
@@ -11,6 +11,7 @@ DOCSRC	= \
 observations.F90 	\
 get_s_profile.F90       \
 get_t_profile.F90       \
+get_o2_profile.F90      \
 get_ext_pressure.F90    \
 get_int_pressure.F90    \
 read_extinction.F90     \
@@ -29,6 +30,7 @@ ${LIB}(observations.o)
 OBJ	= \
 ${LIB}(get_s_profile.o)		\
 ${LIB}(get_t_profile.o)		\
+${LIB}(get_o2_profile.o)	\
 ${LIB}(get_ext_pressure.o)	\
 ${LIB}(get_int_pressure.o)	\
 ${LIB}(read_extinction.o)	\

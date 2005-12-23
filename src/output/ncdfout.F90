@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.12 2005-11-18 11:16:27 kbk Exp $
+!$Id: ncdfout.F90,v 1.13 2005-12-23 14:10:35 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,7 +58,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
-!  Revision 1.12  2005-11-18 11:16:27  kbk
+!  Revision 1.13  2005-12-23 14:10:35  kbk
+!  support for reading oxygen profiles
+!
+!  Revision 1.12  2005/11/18 11:16:27  kbk
 !  removed unused variables
 !
 !  Revision 1.11  2005/09/14 11:53:06  kbk
@@ -126,6 +129,7 @@
    integer, private          :: eps_id,epsb_id,eps_obs_id
    integer, private          :: P_id,G_id,Pb_id
    integer, private          :: uu_id,vv_id,ww_id
+   integer, private          :: o2_obs_id
    integer, private          :: ncdf_time_unit
    integer, private          :: set_no=0
    integer, private          :: start(4),edges(4)
@@ -332,6 +336,9 @@
       call check_err(iret)
    endif
 
+   iret = nf_def_var(ncid,'o2_obs',NF_REAL,4,dims,o2_obs_id)
+   call check_err(iret)
+
 # ifdef EXTRA_OUTPUT
    iret = nf_def_var(ncid,'mean1',NF_REAL,4,dims,mean1_id)
    call check_err(iret)
@@ -439,6 +446,8 @@
       iret = set_attributes(ncid,ww_id,units='m2/s2',long_name='variance of w-fluctuation')
    endif
 
+   iret = set_attributes(ncid,o2_obs_id,units='???',long_name='obs. oxygen')
+
 # ifdef EXTRA_OUTPUT
    iret = set_attributes(ncid,mean1_id,units='---',long_name='mean 1')
    iret = set_attributes(ncid,mean2_id,units='---',long_name='mean 2')
@@ -495,7 +504,7 @@
    use turbulence,   only: gamu,gamv,gamh,gams
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
-   use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof
+   use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
@@ -639,6 +648,8 @@
       iret = store_data(ncid,vv_id,XYZT_SHAPE,nlev,array=vv)
       iret = store_data(ncid,ww_id,XYZT_SHAPE,nlev,array=ww)
    endif
+
+   iret = store_data(ncid,o2_obs_id,XYZT_SHAPE,nlev,array=o2_prof)
 
 # ifdef EXTRA_OUTPUT
    iret = store_data(ncid,mean1_id,XYZT_SHAPE,nlev,array=mean1)

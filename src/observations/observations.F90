@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.11 2005-11-15 11:02:32 lars Exp $
+!$Id: observations.F90,v 1.12 2005-12-23 14:10:34 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,6 +40,9 @@
 
 !  'observed' temperature profile
    REALTYPE, public, dimension(:), allocatable   :: tprof
+
+!  'observed' oxygen profile
+   REALTYPE, public, dimension(:), allocatable   :: o2_prof
 
 !  'observed' horizontal salinity  gradients
    REALTYPE, public, dimension(:), allocatable   :: dsdx,dsdy
@@ -98,6 +101,11 @@
    REALTYPE                  :: TRelaxTauB=0.
    REALTYPE                  :: TRelaxSurf=0.
    REALTYPE                  :: TRelaxBott=0.
+
+!  Oxygen profile(s)
+   integer, public           :: o2_prof_method=0
+   integer, public           :: o2_units=1
+   character(LEN=PATH_MAX)   :: o2_prof_file='o2.dat'
 
 !  External pressure - 'press' namelist
    integer, public           :: ext_press_method=0,PressMethod=0
@@ -177,6 +185,7 @@
    integer, parameter        :: zeta_unit=36
    integer, parameter        :: vel_prof_unit=37
    integer, parameter        :: e_prof_unit=38
+   integer, parameter        :: o2_prof_unit=39
 
 !  pre-defined parameters
    integer, parameter        :: READ_SUCCESS=1
@@ -194,7 +203,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
-!  Revision 1.11  2005-11-15 11:02:32  lars
+!  Revision 1.12  2005-12-23 14:10:34  kbk
+!  support for reading oxygen profiles
+!
+!  Revision 1.11  2005/11/15 11:02:32  lars
 !  documentation finish for print
 !
 !  Revision 1.10  2005/08/15 11:54:01  hb
@@ -283,6 +295,9 @@
             TRelaxTauM,TRelaxTauB,TRelaxTauS,                   &
             TRelaxBott,TRelaxSurf
 
+   namelist /o2_profile/                                        &
+            o2_prof_method,o2_units,o2_prof_file
+
    namelist /ext_pressure/                                      &
             ext_press_method,PressMethod,ext_press_file,        &
             PressConstU,PressConstV,PressHeight,                &
@@ -328,6 +343,7 @@
    read(namlst,nml=velprofile,err=88)
    read(namlst,nml=eprofile,err=89)
    read(namlst,nml=bprofile,err=90)
+   read(namlst,nml=o2_profile,err=91)
    close(namlst)
 
    allocate(sprof(0:nlev),stat=rc)
@@ -417,6 +433,10 @@
       end if
    end do
 
+   allocate(o2_prof(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (o2_prof)'
+   o2_prof = _ZERO_
+
 !  The salinity profile
    select case (s_prof_method)
       case (NOTHING)
@@ -492,6 +512,7 @@
          call get_t_profile(t_prof_unit,julday,secs,nlev,z)
       case default
    end select
+
 
 !  The external pressure
    select case (ext_press_method)
@@ -588,6 +609,18 @@
       case default
    end select
 
+!  The oxygen profile
+   select case (o2_prof_method)
+      case (NOTHING)
+         o2_prof = _ZERO_
+      case (ANALYTICAL)
+      case (FROMFILE)
+         open(o2_prof_unit,file=o2_prof_file,status='unknown',err=110)
+         LEVEL2 'Reading oxygen profiles from:'
+         LEVEL3 trim(o2_prof_file)
+         call get_o2_profile(o2_prof_unit,julday,secs,nlev,z)
+      case default
+   end select
    return
 
 80 FATAL 'Unable to open "',trim(fn),'" for reading'
@@ -612,6 +645,8 @@
    stop 'init_observations'
 90 FATAL 'I could not read "bprofile" namelist'
    stop 'init_observations'
+91 FATAL 'I could not read "o2_profile" namelist'
+   stop 'init_observations'
 
 101 FATAL 'Unable to open "',trim(s_prof_file),'" for reading'
    stop 'init_observations'
@@ -630,6 +665,8 @@
 108 FATAL 'Unable to open "',trim(vel_prof_file),'" for reading'
    stop 'init_observations'
 109 FATAL 'Unable to open "',trim(e_prof_file),'" for reading'
+   stop 'init_observations'
+110 FATAL 'Unable to open "',trim(o2_prof_file),'" for reading'
    stop 'init_observations'
 
    return
@@ -694,6 +731,10 @@
 
    if(e_prof_method .eq. 2) then
       call get_eps_profile(e_prof_unit,julday,secs,nlev,z)
+   end if
+
+   if(o2_prof_method .eq. 2) then
+      call get_o2_profile(o2_prof_unit,julday,secs,nlev,z)
    end if
 
    return
