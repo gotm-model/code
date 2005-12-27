@@ -486,7 +486,7 @@
 ! !IROUTINE: Surface fluxes for the IOW model
 !
 ! !INTERFACE:
-   subroutine surface_fluxes_mab(nlev,t)
+   subroutine surface_fluxes_mab(nlev,t,s)
 !
 ! !DESCRIPTION:
 ! Here, those surface fluxes which have been read from a file are transformed
@@ -495,22 +495,59 @@
 ! \begin{equation}\label{o2flux}
 ! F^s_9 = p_{vel} \left(O_{sat}-c_9 \right)
 ! \end{equation}
-! with
+! with the \cite{Weiss1970} formula
 ! \begin{equation}\label{osat}
-! O_{sat}= a_0\left(a_1-a_2T  \right).
+! O_{sat}= \exp\left[a_1 +a_2\frac{100}{T}+a_3\ln\left(\frac{T}{100}\right)
+! +a_4\frac{T}{100}+S \left\{b_1+b_2\frac{T}{100}
+! +b_3\left(\frac{T}{100}\right)^2   \right\}\right],
 ! \end{equation}
+!
+! where $T$ is the temperature in Kelvin and the empirical constants are
+! given in table \ref{table_weiss}.
+! 
+! \begin{table}[h]
+! \begin{center}
+! \begin{tabular}{|l|l|l|l|l|l|l|}
+! \hline
+! $a_1$ & $a_2$ & $a_3$ & $a_4$ & $b_1$ & $b_2$ & $b_3$  \\ \hline
+! -173.4292 &
+! 249.6339 &
+! 143.3483 &
+! -21.8492 &
+! -0.033096 &
+! 0.014259 &
+! -0.001700 \\ \hline
+! \end{tabular}
+! \caption{Constants for the oxygen saturation formula by \cite{Weiss1970},
+! see equation (\ref{osat_weiss}).}
+! \label{table_weiss}
+! \end{center}
+! \end{table}
+! 
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
   integer                              :: nlev
-  REALTYPE, intent(in)                 :: t
+  REALTYPE, intent(in)                 :: t,s
+
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
+  REALTYPE                 :: osat_weiss,tk
+  REALTYPE                 :: a1=-173.4292
+  REALTYPE                 :: a2=249.6339
+  REALTYPE                 :: a3=143.3483
+  REALTYPE                 :: a4=-21.8492
+  REALTYPE                 :: b1=-0.033096
+  REALTYPE                 :: b2=0.014259
+  REALTYPE                 :: b3=-0.001700
+  REALTYPE                 :: kelvin=273.16
+  REALTYPE                 :: mol_per_liter=44.661
+
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -527,7 +564,12 @@
    end select
 
 ! surface oxygen flux
-   sfl(o2) = pvel*(a0*(a1-a2*t)-cc(o2,nlev))
+      tk=t+kelvin
+      osat_weiss=a1+a2*100./tk+a3*log(0.01*tk)+a4*0.01*tk
+      osat_weiss=osat_weiss+s*(b1+b2*0.01*tk+b3*(0.01*tk)**2)
+      osat_weiss=exp(osat_weiss)*mol_per_liter
+
+   sfl(o2) = pvel*(osat_weiss-cc(o2,nlev))
    return
    end subroutine surface_fluxes_mab
 !EOC

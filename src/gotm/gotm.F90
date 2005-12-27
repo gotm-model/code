@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.25 2005-11-18 10:59:35 kbk Exp $
+!$Id: gotm.F90,v 1.26 2005-12-27 11:23:04 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.26  2005-12-27 11:23:04  hb
+!  Weiss 1970 formula now used for surface oxygen saturation calculation in bio_mab.F90
+!
 !  Revision 1.25  2005-11-18 10:59:35  kbk
 !  removed unused variables - some left in parameter lists
 !
@@ -393,7 +396,7 @@
 
 #ifdef BIO
       call do_bio_fluxes(julianday,secondsofday)
-      call do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
+      call do_bio(nlev,I_0,dt,h,t,s,nuh,rad,bioshade)
 #endif
 
 !    compute turbulent mixing

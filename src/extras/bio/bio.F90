@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.28 2005-12-27 06:51:49 hb Exp $
+!$Id: bio.F90,v 1.29 2005-12-27 11:23:04 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -55,6 +55,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.29  2005-12-27 11:23:04  hb
+!  Weiss 1970 formula now used for surface oxygen saturation calculation in bio_mab.F90
+!
 !  Revision 1.28  2005-12-27 06:51:49  hb
 !  New biomodel bio_mab (bio_iow with additional sediment equation) added
 !
@@ -375,7 +378,7 @@
 ! !IROUTINE: Update the bio model \label{sec:do-bio}
 !
 ! !INTERFACE:
-   subroutine do_bio(nlev,I_0,dt,h,t,nuh,rad,bioshade)
+   subroutine do_bio(nlev,I_0,dt,h,t,s,nuh,rad,bioshade)
 !
 ! !DESCRIPTION:
 ! This is the main loop for the biogeochemical model. Basically 
@@ -431,6 +434,7 @@
    REALTYPE, intent(in)                :: h(0:nlev)
    REALTYPE, intent(in)                :: nuh(0:nlev)
    REALTYPE, intent(in)                :: t(0:nlev)
+   REALTYPE, intent(in)                :: s(0:nlev)
    REALTYPE, intent(in)                :: rad(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
@@ -470,7 +474,7 @@
          case (3)
          case (4)
          case (5)
-            call surface_fluxes_mab(nlev,t(nlev))
+            call surface_fluxes_mab(nlev,t(nlev),s(nlev))
       end select
 
       if (mussels_calc) then
