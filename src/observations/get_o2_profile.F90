@@ -1,4 +1,4 @@
-!$Id: get_o2_profile.F90,v 1.2 2005-12-27 07:53:55 hb Exp $
+!$Id: get_o2_profile.F90,v 1.3 2005-12-27 10:55:02 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_o2_profile.F90,v $
+!  Revision 1.3  2005-12-27 10:55:02  hb
+!  Unit conversion correct
+!
 !  Revision 1.2  2005-12-27 07:53:55  hb
 !  Oxygen unit conversions to mmol/m^3 included
 !
@@ -109,9 +112,9 @@
 !  conversion to mmol/m^3
    select case (o2_units)
          case (1) ! mg/l
-            o2_prof=o2_prof*mol_per_liter
-         case (2) ! ml/l
             o2_prof=o2_prof*mol_per_liter*g_per_liter
+         case (2) ! ml/l
+            o2_prof=o2_prof*mol_per_liter
          case (3) ! mmol/m^3
          case default
             STDERR "Invalid choice for oxygen unit conversion given in"
