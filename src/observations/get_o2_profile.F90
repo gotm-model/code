@@ -1,4 +1,4 @@
-!$Id: get_o2_profile.F90,v 1.1 2005-12-23 14:10:34 kbk Exp $
+!$Id: get_o2_profile.F90,v 1.2 2005-12-27 07:53:55 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,7 +18,7 @@
 !
 ! !USES:
    use time
-   use observations, only: read_profiles,o2_prof
+   use observations, only: read_profiles,o2_prof,o2_units
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -31,6 +31,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_o2_profile.F90,v $
+!  Revision 1.2  2005-12-27 07:53:55  hb
+!  Oxygen unit conversions to mmol/m^3 included
+!
 !  Revision 1.1  2005-12-23 14:10:34  kbk
 !  support for reading oxygen profiles
 !
@@ -41,6 +44,8 @@
    integer                   :: rc
    integer                   :: yy,mm,dd,hh,min,ss
    REALTYPE                  :: t,dt
+   REALTYPE                  :: mol_per_liter=44.661
+   REALTYPE                  :: g_per_liter=0.7
    integer, save             :: jul1,secs1
    integer, save             :: jul2=0,secs2=0
    integer, parameter        :: cols=1
@@ -100,6 +105,20 @@
       t  = time_diff(jul,secs,jul1,secs1)
       o2_prof = prof1(:,1) + t*alpha(:,1)
    end if
+
+!  conversion to mmol/m^3
+   select case (o2_units)
+         case (1) ! mg/l
+            o2_prof=o2_prof*mol_per_liter
+         case (2) ! ml/l
+            o2_prof=o2_prof*mol_per_liter*g_per_liter
+         case (3) ! mmol/m^3
+         case default
+            STDERR "Invalid choice for oxygen unit conversion given in"
+            STDERR "namelist o2_profile of obs.inp. program aborted in"
+            STDERR "get_o2_profile.F90."
+            stop
+   end select 
 
    return
    end subroutine get_o2_profile
