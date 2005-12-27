@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.10 2005-12-02 20:57:27 hb Exp $
+#$Id: Makefile,v 1.11 2005-12-27 06:51:49 hb Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -12,14 +12,13 @@ bio_var.F90 bio_template.F90 bio_npzd.F90 bio_iow.F90 \
           bio_sed.F90 bio_fasham.F90 \
           process_model.F90 ode_solvers.F90 bio_save.F90
 
-# commented out, because protex does not compile (lars)
-
 OBJ   = \
 ${LIB}(bio_var.o)		\
 ${LIB}(bio_fluxes.o)		\
 ${LIB}(bio_template.o)		\
 ${LIB}(bio_npzd.o)		\
 ${LIB}(bio_iow.o)		\
+${LIB}(bio_mab.o)		\
 ${LIB}(bio_fasham.o)		\
 ${LIB}(bio_sed.o)		\
 ${LIB}(process_model.o)		\

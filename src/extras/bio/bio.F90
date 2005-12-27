@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.27 2005-12-02 20:57:27 hb Exp $
+!$Id: bio.F90,v 1.28 2005-12-27 06:51:49 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -33,6 +33,9 @@
 
    use bio_sed, only : init_bio_sed,init_var_sed,var_info_sed
 
+   use bio_mab, only : init_bio_mab,init_var_mab,var_info_mab
+   use bio_mab, only : light_mab,surface_fluxes_mab
+
    use mussels, only : init_mussels, do_mussels, end_mussels
    use mussels, only : mussels_calc,total_mussel_flux
 
@@ -52,6 +55,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.28  2005-12-27 06:51:49  hb
+!  New biomodel bio_mab (bio_iow with additional sediment equation) added
+!
 !  Revision 1.27  2005-12-02 20:57:27  hb
 !  Documentation updated and some bugs fixed
 !
@@ -263,6 +269,15 @@
 
          call var_info_fasham()
 
+      case (5)  ! The IOW model, modified for MaBenE
+
+         call init_bio_mab(namlst,'bio_mab.inp',unit)
+
+         call allocate_memory(nlev)
+
+         call init_var_mab(nlev)
+
+         call var_info_mab()
 
       case default
          stop "bio: no valid biomodel specified in bio.inp !"
@@ -454,6 +469,8 @@
             call surface_fluxes_iow(nlev,t(nlev))
          case (3)
          case (4)
+         case (5)
+            call surface_fluxes_mab(nlev,t(nlev))
       end select
 
       if (mussels_calc) then
@@ -540,6 +557,8 @@
             case (3)
             case (4)
                call light_fasham(nlev,h,rad,bioshade_feedback,bioshade)
+            case (5)
+               call light_mab(nlev,h,rad,bioshade_feedback,bioshade)
          end select
 
          call ode_solver(ode_method,numc,nlev,dt_eff,h,cc,t)
