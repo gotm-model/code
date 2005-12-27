@@ -353,7 +353,7 @@
    var_long(8)  = 'phosphate'
 
    var_names(9) = 'oxy'
-   var_units(9) = 'mmol n/m**3'
+   var_units(9) = 'mmol o2/m**3'
    var_long(9)  = 'oxygen'   
 
    var_names(10) = 'slt'

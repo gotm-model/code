@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.13 2005-12-23 14:10:35 kbk Exp $
+!$Id: ncdfout.F90,v 1.14 2005-12-27 08:37:58 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,6 +58,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
+!  Revision 1.14  2005-12-27 08:37:58  hb
+!  Oxygen units indicated as mmol o2/m**3 in netCDF output
+!
 !  Revision 1.13  2005-12-23 14:10:35  kbk
 !  support for reading oxygen profiles
 !
@@ -446,7 +449,7 @@
       iret = set_attributes(ncid,ww_id,units='m2/s2',long_name='variance of w-fluctuation')
    endif
 
-   iret = set_attributes(ncid,o2_obs_id,units='???',long_name='obs. oxygen')
+   iret = set_attributes(ncid,o2_obs_id,units='mmol o2/m**3',long_name='obs. oxygen')
 
 # ifdef EXTRA_OUTPUT
    iret = set_attributes(ncid,mean1_id,units='---',long_name='mean 1')

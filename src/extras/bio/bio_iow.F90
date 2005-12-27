@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.16 2005-12-02 20:57:27 hb Exp $
+!$Id: bio_iow.F90,v 1.17 2005-12-27 08:37:57 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.17  2005-12-27 08:37:57  hb
+!  Oxygen units indicated as mmol o2/m**3 in netCDF output
+!
 !  Revision 1.16  2005-12-02 20:57:27  hb
 !  Documentation updated and some bugs fixed
 !
@@ -454,7 +457,7 @@
    var_long(8)  = 'phosphate'
 
    var_names(9) = 'oxy'
-   var_units(9) = 'mmol n/m**3'
+   var_units(9) = 'mmol o2/m**3'
    var_long(9)  = 'oxygen'   
 
    if (fluff) then
