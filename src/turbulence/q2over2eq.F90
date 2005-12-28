@@ -1,4 +1,4 @@
-!$Id: q2over2eq.F90,v 1.4 2005-06-27 13:44:07 kbk Exp $
+!$Id: q2over2eq.F90,v 1.5 2005-12-28 09:42:33 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -46,7 +46,7 @@
 !
 ! !USES:
    use turbulence,   only: P,B
-   use turbulence,   only: tke,k_min,eps,L
+   use turbulence,   only: tke,tkeo,k_min,eps,L
    use turbulence,   only: q2over2_bc, k_ubc, k_lbc, ubc_type, lbc_type
    use turbulence,   only: sq
    use util,         only: Dirichlet,Neumann
@@ -81,7 +81,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: q2over2eq.F90,v $
-!  Revision 1.4  2005-06-27 13:44:07  kbk
+!  Revision 1.5  2005-12-28 09:42:33  hb
+!  Patankar trick reverted to older versions for stabilising 3D computations
+!
+!  Revision 1.4  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.3  2003/03/28 09:20:35  kbk
@@ -109,6 +112,9 @@
 !------------------------------------------------------------------------
 !BOC
 !
+
+   tkeo=tke
+ 
    do i=1,nlev-1
 
 !     compute diffusivity
@@ -119,16 +125,15 @@
       buoyan   = B(i)
       diss     = eps(i)
 
-!     compute positive and negative parts of RHS
-      prod_pos    =  max(prod  ,_ZERO_)
-      buoyan_pos  =  max(buoyan,_ZERO_)
 
-      prod_neg    =  min(prod  ,_ZERO_)
-      buoyan_neg  =  min(buoyan,_ZERO_)
+      if (prod+buoyan.gt.0) then
+         Qsour(i)  = prod+buoyan
+         Lsour(i) = -diss/tke(i)
+      else
+         Qsour(i)  = prod
+         Lsour(i) = -(diss-buoyan)/tke(i)
+      end if
 
-!     compose source terms
-      Qsour(i) =   prod_pos + buoyan_pos
-      Lsour(i) =  (prod_neg + buoyan_neg - diss)/tke(i)
 
    end do
 
