@@ -1,4 +1,4 @@
-!$Id: genericeq.F90,v 1.8 2005-11-15 11:35:02 lars Exp $
+!$Id: genericeq.F90,v 1.9 2005-12-28 08:51:10 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -156,6 +156,9 @@
 !  Original author(s): Lars Umlauf and Hans Burchard
 
 !  $Log: genericeq.F90,v $
+!  Revision 1.9  2005-12-28 08:51:10  hb
+!  Bug fix: Now tkeo is used for reconstruction of psi
+!
 !  Revision 1.8  2005-11-15 11:35:02  lars
 !  documentation finish for print
 !
@@ -205,7 +208,7 @@
 
 !  re-construct psi at "old" timestep
    do i=0,nlev
-      psi(i) = cm0**gen_p * tke(i)**gen_m * L(i)**gen_n
+      psi(i) = cm0**gen_p * tkeo(i)**gen_m * L(i)**gen_n
    end do
 
 !  compute RHS
