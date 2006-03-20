@@ -1,4 +1,4 @@
-!$Id: alpha_mnb.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: alpha_mnb.F90,v 1.2 2006-03-20 09:06:37 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -33,7 +33,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: alpha_mnb.F90,v $
-!  Revision 1.1  2005-06-27 10:54:33  kbk
+!  Revision 1.2  2006-03-20 09:06:37  kbk
+!  removed explicit double precission dependency
+!
+!  Revision 1.1  2005/06/27 10:54:33  kbk
 !  new files needed
 !
 !
@@ -53,8 +56,8 @@
      at(i)  = tke(i)/eps(i) * kb(i)/eps(i)
 
 !    clip negative values
-     as(i) = max(as(i),1.d-10)
-     at(i) = max(at(i),1.d-10)
+     as(i) = max(as(i),1.e-10*_ONE_)
+     at(i) = max(at(i),1.e-10*_ONE_)
   end do
 
   return
