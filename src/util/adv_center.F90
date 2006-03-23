@@ -1,4 +1,4 @@
-!$Id: adv_center.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: adv_center.F90,v 1.1.2.1 2006-03-23 11:49:19 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -174,7 +174,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: adv_center.F90,v $
-!  Revision 1.1  2005-06-27 10:54:33  kbk
+!  Revision 1.1.2.1  2006-03-23 11:49:19  kbk
+!  removed explicit double precission dependency
+!
+!  Revision 1.1  2005/06/27 10:54:33  kbk
 !  new files needed
 !
 !
@@ -204,7 +207,7 @@
 
 !  compute maximum Courant number
    do k=1,N-1
-      c=dabs(ww(k))*dt/(0.5*(h(k)+h(k+1)))
+      c=abs(ww(k))*dt/(0.5*(h(k)+h(k+1)))
       if (c.gt.cmax) cmax=c
    enddo
 
