@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.11.2.3 2005-12-15 12:19:55 kbk Exp $
+#$Id: Makefile,v 1.11.2.4 2006-03-23 12:26:47 kbk Exp $
 #
 # Makefile for making new release of GOTM.
 #
@@ -27,6 +27,8 @@ VERSION=3.2.0
 VERSION=3.2.1
 # 20051215
 VERSION=3.2.2
+# 20060322
+VERSION=3.2.3
 
 all: VERSION
 
@@ -46,8 +48,8 @@ devel stable branch: distclean VERSION
 	@. release.sh $@ $(VERSION)
 
 distclean:
-	make -C doc/ $@
-	make -C src/ $@
+	$(MAKE) -C doc/ $@
+	$(MAKE) -C src/ $@
 	$(RM) timestep VERSION include/version.h
 	$(RM) -r lib/ modules/
 
