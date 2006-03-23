@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.14 2005-07-06 14:46:24 kbk Exp $
+#$Id: Rules.make,v 1.14.2.1 2006-03-23 12:03:51 kbk Exp $
 
 SHELL   = /bin/sh
 
@@ -11,7 +11,7 @@ compilation=$(COMPILATION_MODE)
 endif
 
 DEFINES=-DNUDGE_VEL
-DEFINES=
+DEFINES=-D$(FORTRAN_COMPILER)
 
 # What do we include in this compilation
 NetCDF=false
@@ -98,10 +98,6 @@ INCDIRS	+= -I/usr/local/include -I$(GOTMDIR)/include -I$(MODDIR)
 # sofar NAG(linux), FUJITSU(Linux), DECF90 (OSF1 and likely Linux on alpha),
 # SunOS, PGF90 - Portland Group Fortran Compiler (on Intel Linux).
 
-include $(GOTMDIR)/compilers/compiler.$(FORTRAN_COMPILER)
-
-DEFINES += -DREAL_4B=$(REAL_4B)
-
 # Sets options for debug compilation
 ifeq ($(compilation),debug)
 buildtype = _debug
@@ -122,6 +118,8 @@ buildtype = _prod
 DEFINES += -DPRODUCTION $(STATIC)
 FLAGS   = $(PROD_FLAGS) 
 endif
+
+include $(GOTMDIR)/compilers/compiler.$(FORTRAN_COMPILER)
 
 # For making the source code documentation.
 PROTEX	= protex -b -n -s
