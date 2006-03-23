@@ -11,5 +11,5 @@ DEBUG_FLAGS = -g -arch host -check bounds -check overflow -check nopower -assume
 PROF_FLAGS  = -pg -O
 PROD_FLAGS  = -O -fast -inline speed -pipeline
 #PROD_FLAGS  = -O -fast -inline speed -unroll  1 -pipeline
-REAL_4B	= real\(4\)
+DEFINES += -DREAL_4B=real\(4\)
 endif

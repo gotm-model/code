@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.15 2005-09-12 14:48:32 kbk Exp $
+#$Id: Rules.make,v 1.16 2006-03-23 12:13:33 kbk Exp $
 
 SHELL   = /bin/sh
 
@@ -11,7 +11,7 @@ compilation=$(COMPILATION_MODE)
 endif
 
 DEFINES=-DNUDGE_VEL
-DEFINES=
+DEFINES=-D$(FORTRAN_COMPILER)
 
 # What do we include in this compilation
 NetCDF=false
@@ -20,8 +20,8 @@ SEDIMENT=false
 #SEDIMENT=true
 SEAGRASS=false
 SEAGRASS=true
-#BIO=false
-BIO=true
+BIO=false
+#BIO=true
 
 FEATURES	=
 FEATURE_LIBS	=
@@ -98,10 +98,6 @@ INCDIRS	+= -I/usr/local/include -I$(GOTMDIR)/include -I$(MODDIR)
 # sofar NAG(linux), FUJITSU(Linux), DECF90 (OSF1 and likely Linux on alpha),
 # SunOS, PGF90 - Portland Group Fortran Compiler (on Intel Linux).
 
-include $(GOTMDIR)/compilers/compiler.$(FORTRAN_COMPILER)
-
-DEFINES += -DREAL_4B=$(REAL_4B)
-
 # Sets options for debug compilation
 ifeq ($(compilation),debug)
 buildtype = _debug
@@ -122,6 +118,14 @@ buildtype = _prod
 DEFINES += -DPRODUCTION $(STATIC)
 FLAGS   = $(PROD_FLAGS) 
 endif
+
+include $(GOTMDIR)/compilers/compiler.$(FORTRAN_COMPILER)
+
+#DEFINES += -DREAL_4B=$(REAL_4B)
+#ifeq ($(FORTRAN_COMPILER),XLF)
+#DEFINES:=-WF,"$(DEFINES)"
+#DEFINES=-WF,"-DXLF -DNETCDF_FMT -DSEAGRASS -DFORTRAN95 -DPRODUCTION -DREAL_4B=real\(4\)"
+#endif
 
 # For making the source code documentation.
 PROTEX	= protex -b -n -s
