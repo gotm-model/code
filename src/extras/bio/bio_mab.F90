@@ -283,9 +283,9 @@
       case (-1)! absolutely nothing
       case (0) ! constant
 
-         sfl(po)= sfl_po /secs_pr_day
-         sfl(am)= sfl_am /secs_pr_day
-         sfl(ni)= sfl_ni /secs_pr_day
+         sfl(po)=-sfl_po /secs_pr_day
+         sfl(am)=-sfl_am /secs_pr_day
+         sfl(ni)=-sfl_ni /secs_pr_day
 
       case (2) ! from file via sfl_read
 
@@ -556,9 +556,9 @@
       case (-1)! absolutely nothing
       case (0) ! constant
       case (2) ! from file via sfl_read
-         sfl(ni) = sfl_read(1)/secs_pr_day
-         sfl(am) = sfl_read(2)/secs_pr_day
-         sfl(po) = sfl_read(3)/secs_pr_day
+         sfl(ni) =-sfl_read(1)/secs_pr_day
+         sfl(am) =-sfl_read(2)/secs_pr_day
+         sfl(po) =-sfl_read(3)/secs_pr_day
       case (3) ! sfl array filled externally - for 3D models
       case default
    end select

@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.17 2005-12-27 08:37:57 hb Exp $
+!$Id: bio_iow.F90,v 1.18 2006-03-27 11:38:41 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.18  2006-03-27 11:38:41  kbk
+!  right sign on surface fluxes
+!
 !  Revision 1.17  2005-12-27 08:37:57  hb
 !  Oxygen units indicated as mmol o2/m**3 in netCDF output
 !
@@ -387,9 +390,9 @@
       case (-1)! absolutely nothing
       case (0) ! constant
 
-         sfl(po)= sfl_po /secs_pr_day
-         sfl(am)= sfl_am /secs_pr_day
-         sfl(ni)= sfl_ni /secs_pr_day
+         sfl(po)=-sfl_po /secs_pr_day
+         sfl(am)=-sfl_am /secs_pr_day
+         sfl(ni)=-sfl_ni /secs_pr_day
 
       case (2) ! from file via sfl_read
 
@@ -615,13 +618,14 @@
 !-----------------------------------------------------------------------
 !BOC
 
+!  NOTE: Positive fluxes into the sea surface must have negative sign !
    select case (surface_flux_method)
       case (-1)! absolutely nothing
       case (0) ! constant
       case (2) ! from file via sfl_read
-         sfl(ni) = sfl_read(1)/secs_pr_day
-         sfl(am) = sfl_read(2)/secs_pr_day
-         sfl(po) = sfl_read(3)/secs_pr_day
+         sfl(ni) =-sfl_read(1)/secs_pr_day
+         sfl(am) =-sfl_read(2)/secs_pr_day
+         sfl(po) =-sfl_read(3)/secs_pr_day
       case (3) ! sfl array filled externally - for 3D models
       case default
    end select
