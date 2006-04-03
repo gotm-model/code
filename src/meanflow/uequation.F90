@@ -1,4 +1,4 @@
-!$Id: uequation.F90,v 1.8 2005-06-27 13:44:07 kbk Exp $
+!$Id: uequation.F90,v 1.8.2.1 2006-04-03 08:33:46 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -108,6 +108,9 @@
 !                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: uequation.F90,v $
+!  Revision 1.8.2.1  2006-04-03 08:33:46  lars
+!  fixed bug in relaxation times - Thanks to Adolf Stips
+!
 !  Revision 1.8  2005-06-27 13:44:07  kbk
 !  modified + removed traling blanks
 !
@@ -171,7 +174,7 @@
       if (runtime .lt. vel_relax_ramp) then
          URelaxTau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtime)
       else
-         URelaxTau=long
+         URelaxTau=vel_relax_tau
       end if
    else
       URelaxTau=vel_relax_tau

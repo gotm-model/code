@@ -1,4 +1,4 @@
-!$Id: vequation.F90,v 1.7 2005-06-27 13:44:07 kbk Exp $
+!$Id: vequation.F90,v 1.7.2.1 2006-04-03 08:33:46 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -88,6 +88,9 @@
 !                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: vequation.F90,v $
+!  Revision 1.7.2.1  2006-04-03 08:33:46  lars
+!  fixed bug in relaxation times - Thanks to Adolf Stips
+!
 !  Revision 1.7  2005-06-27 13:44:07  kbk
 !  modified + removed traling blanks
 !
@@ -151,7 +154,7 @@
       if (runtime .lt. vel_relax_ramp) then
          VRelaxTau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtime)
       else
-         VRelaxTau=long
+         VRelaxTau=vel_relax_tau
       end if
    else
       VRelaxTau=vel_relax_tau
