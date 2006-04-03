@@ -1,4 +1,4 @@
-!$Id: uequation.F90,v 1.9 2005-11-17 09:58:20 hb Exp $
+!$Id: uequation.F90,v 1.10 2006-04-03 08:39:12 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -108,6 +108,9 @@
 !                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: uequation.F90,v $
+!  Revision 1.10  2006-04-03 08:39:12  lars
+!  fixed bug in relaxation times - Thanks to Adolf Stips
+!
 !  Revision 1.9  2005-11-17 09:58:20  hb
 !  explicit argument for positive definite variables in diff_center()
 !
@@ -175,7 +178,7 @@
       if (runtime .lt. vel_relax_ramp) then
          URelaxTau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtime)
       else
-         URelaxTau=long
+         URelaxTau=vel_relax_tau
       end if
    else
       URelaxTau=vel_relax_tau

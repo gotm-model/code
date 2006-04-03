@@ -1,4 +1,4 @@
-!$Id: vequation.F90,v 1.8 2005-11-17 09:58:20 hb Exp $
+!$Id: vequation.F90,v 1.9 2006-04-03 08:39:12 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -88,6 +88,9 @@
 !                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: vequation.F90,v $
+!  Revision 1.9  2006-04-03 08:39:12  lars
+!  fixed bug in relaxation times - Thanks to Adolf Stips
+!
 !  Revision 1.8  2005-11-17 09:58:20  hb
 !  explicit argument for positive definite variables in diff_center()
 !
@@ -155,7 +158,7 @@
       if (runtime .lt. vel_relax_ramp) then
          VRelaxTau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtime)
       else
-         VRelaxTau=long
+         VRelaxTau=vel_relax_tau
       end if
    else
       VRelaxTau=vel_relax_tau
