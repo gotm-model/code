@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.26 2005-12-27 11:23:04 hb Exp $
+!$Id: gotm.F90,v 1.27 2006-10-26 13:12:46 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.27  2006-10-26 13:12:46  kbk
+!  updated bio models to new ode_solver
+!
 !  Revision 1.26  2005-12-27 11:23:04  hb
 !  Weiss 1970 formula now used for surface oxygen saturation calculation in bio_mab.F90
 !
@@ -278,7 +281,7 @@
 #endif
 #ifdef BIO
    call init_bio(namlst,'bio.inp',unit_bio,nlev,h)
-   call init_bio_fluxes()
+   if (bio_calc) call init_bio_fluxes()
 #endif
    LEVEL2 'done.'
    STDERR LINE
@@ -395,8 +398,12 @@
       call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
 
 #ifdef BIO
-      call do_bio_fluxes(julianday,secondsofday)
-      call do_bio(nlev,I_0,dt,h,t,s,nuh,rad,bioshade)
+      if (bio_calc) then
+         call set_env_bio(nlev,h,t,s,nuh,rad,I_0)
+         call do_bio_fluxes(julianday,secondsofday)
+         call do_bio(nlev,dt)
+         call get_bio_updates(nlev,bioshade)
+      end if
 #endif
 
 !    compute turbulent mixing
@@ -432,7 +439,7 @@
          endif
          call do_output(n,nlev)
 #ifdef BIO
-         call bio_save(nlev,h,_ZERO_)
+         if (bio_calc) call bio_save(nlev,_ZERO_)
 #endif
       end if
 

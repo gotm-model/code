@@ -266,6 +266,7 @@
    posconc(po) = 1
    posconc(o2) = 0
 
+#if 0
    mussels_inhale(p1) = .true.
    mussels_inhale(p2) = .true.
    mussels_inhale(p3) = .true.
@@ -275,6 +276,7 @@
    mussels_inhale(ni) = .false.
    mussels_inhale(po) = .false.
    mussels_inhale(o2) = .false.
+#endif
 
    allocate(ppi(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_mab(): Error allocating ppi)'
@@ -580,7 +582,7 @@
 ! !IROUTINE: Light properties for the IOW model
 !
 ! !INTERFACE:
-   subroutine light_mab(nlev,h,rad,bioshade_feedback,bioshade)
+   subroutine light_mab(nlev,bioshade_feedback)
 !
 ! !DESCRIPTION:
 ! Here, the photosynthetically available radiation is calculated
@@ -598,13 +600,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer                             :: nlev
-   REALTYPE, intent(in)                :: h(0:nlev)
-   REALTYPE, intent(in)                :: rad(0:nlev)
+   integer, intent(in)                 :: nlev
    logical, intent(in)                 :: bioshade_feedback
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: bioshade(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -623,7 +620,7 @@
       par(i)=rad(nlev)*(1.-aa)*exp(-zz/g2)*exp(-kc*add)
       add=add+0.5*h(i)*(cc(de,i)+cc(p1,i)+cc(p2,i)+cc(p3,i)+p10+p20+p30)
       zz=zz+0.5*h(i)
-      if (bioshade_feedback) bioshade(i)=exp(-kc*add)
+      if (bioshade_feedback) bioshade_(i)=exp(-kc*add)
    end do
 
    return
@@ -636,7 +633,7 @@
 ! !IROUTINE: Right hand sides of the IOW geobiochemical model\label{sec:bio-mab-details}
 !
 ! !INTERFACE:
-   subroutine do_bio_mab(first,numc,nlev,cc,pp,dd,h,t)
+   subroutine do_bio_mab(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION:
 ! The right hand sides of the \cite{Neumannetal2002} biogeochemical model are 
@@ -827,17 +824,13 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer                             :: numc,nlev
+   logical, intent(in)                 :: first
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: cc(1:numc,0:nlev)
-   REALTYPE, intent(in)                :: h(0:nlev)
-   REALTYPE, intent(in)                :: t(0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS:
-  logical                              :: first
 !
 ! !OUTPUT PARAMETERS:
-  REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-  REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+   REALTYPE, intent(out)               :: pp(1:numc,1:numc,0:nlev)
+   REALTYPE, intent(out)               :: dd(1:numc,1:numc,0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -852,18 +845,17 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+!KBK - is it necessary to initialise every time - expensive in a 3D model
+   pp = _ZERO_
+   dd = _ZERO_
 
    if (first) then
-      first = .false.
       iopt=max(0.25*I_0,I_min)
       do ci=1,nlev
          ppi(ci)=par(ci)/iopt*exp(1.-par(ci)/iopt)
       end do
    end if
 
-!KBK - is it necessary to initialise every time - expensive in a 3D model
-   pp = _ZERO_
-   dd = _ZERO_
    rat=1.         ! fixed (in time  space) ratio between sink and source
    rat(de,fl)=h(1)
    rat(fl,am)=1./h(1)

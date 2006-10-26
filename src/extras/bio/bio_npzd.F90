@@ -1,4 +1,4 @@
-!$Id: bio_npzd.F90,v 1.9 2005-12-02 20:57:27 hb Exp $
+!$Id: bio_npzd.F90,v 1.10 2006-10-26 13:12:46 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,6 +38,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_npzd.F90,v $
+!  Revision 1.10  2006-10-26 13:12:46  kbk
+!  updated bio models to new ode_solver
+!
 !  Revision 1.9  2005-12-02 20:57:27  hb
 !  Documentation updated and some bugs fixed
 !
@@ -225,10 +228,12 @@
    posconc(z) = 1
    posconc(d) = 1
 
+#if 0
    mussels_inhale(n) = .false.
    mussels_inhale(p) = .true.
    mussels_inhale(z) = .true.
    mussels_inhale(d) = .true.
+#endif
 
    LEVEL3 'NPZD variables initialised ...'
 
@@ -342,7 +347,7 @@
 ! !IROUTINE: Light properties for the NPZD model
 !
 ! !INTERFACE:
-   subroutine light_npzd(nlev,h,rad,bioshade_feedback,bioshade)
+   subroutine light_npzd(nlev,bioshade_feedback)
 !
 ! !DESCRIPTION:
 ! Here, the photosynthetically available radiation is calculated
@@ -359,13 +364,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  integer                              :: nlev
-  REALTYPE, intent(in)                 :: h(0:nlev)
-  REALTYPE, intent(in)                 :: rad(0:nlev)
-  logical                              :: bioshade_feedback
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: bioshade(0:nlev)
+   integer, intent(in)                 :: nlev
+   logical, intent(in)                 :: bioshade_feedback
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -384,9 +384,9 @@
       par(i)=rad(nlev)*(1.-aa)*exp(-zz/g2)*exp(-kc*add)
       add=add+0.5*h(i)*(cc(d,i)+cc(p,i)+p0)
       zz=zz+0.5*h(i)
-      if (bioshade_feedback) bioshade(i)=exp(-kc*add)
+      if (bioshade_feedback) bioshade_(i)=exp(-kc*add)
    end do
-   write(90,*) par(100),rad(nlev)
+!KBK   write(90,*) par(100),rad(nlev)
 
    return
    end subroutine light_npzd
@@ -451,11 +451,9 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer                              :: numc,nlev
+   logical, intent(in)                  :: first
+   integer, intent(in)                  :: numc,nlev
    REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS:
-   logical                              :: first
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
@@ -470,15 +468,13 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
-   if (first) then
-      first = .false.
-      iopt=max(0.25*i_0,i_min)
-   end if
-
 !KBK - is it necessary to initialise every time - expensive in a 3D model
    pp = _ZERO_
    dd = _ZERO_
+
+   if (first) then
+      iopt=max(0.25*I_0,I_min)
+   end if
 
    do ci=1,nlev
       if (par(ci) .ge. i_min) then

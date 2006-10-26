@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.9 2005-12-02 20:57:27 hb Exp $
+!$Id: bio_fasham.F90,v 1.10 2006-10-26 13:12:46 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -50,6 +50,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
+!  Revision 1.10  2006-10-26 13:12:46  kbk
+!  updated bio models to new ode_solver
+!
 !  Revision 1.9  2005-12-02 20:57:27  hb
 !  Documentation updated and some bugs fixed
 !
@@ -257,7 +260,6 @@
       ws(d,i) = w_d
    end do
 
-   
    posconc(p) = 1
    posconc(z) = 1
    posconc(b) = 1
@@ -266,6 +268,7 @@
    posconc(a) = 1
    posconc(l) = 1
 
+#if 0
    mussels_inhale(p) = .true.
    mussels_inhale(z) = .true.
    mussels_inhale(b) = .false.
@@ -273,6 +276,7 @@
    mussels_inhale(n) = .false.
    mussels_inhale(a) = .false.
    mussels_inhale(l) = .true.
+#endif
 
    LEVEL3 'FASHAM variables initialised ...'
 
@@ -341,7 +345,7 @@
 ! !IROUTINE: Light properties for the Fasham model
 !
 ! !INTERFACE:
-   subroutine light_fasham(nlev,h,rad,bioshade_feedback,bioshade)
+   subroutine light_fasham(nlev,bioshade_feedback)
 !
 ! !DESCRIPTION:
 ! Here, the photosynthetically available radiation is calculated
@@ -362,13 +366,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  integer                              :: nlev
-  logical                              :: bioshade_feedback
-  REALTYPE, intent(in)                 :: h(0:nlev)
-  REALTYPE, intent(in)                 :: rad(0:nlev)
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: bioshade(0:nlev)
+  integer, intent(in)                  :: nlev
+  logical, intent(in)                  :: bioshade_feedback
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -387,7 +386,7 @@
       par(i)=rad(nlev)*(1.-aa)*exp(-zz/g2)*exp(-kc*add)
       add=add+0.5*h(i)*(cc(p,i)+p0)
       zz=zz+0.5*h(i)
-      if (bioshade_feedback) bioshade(i)=exp(-kc*add)
+      if (bioshade_feedback) bioshade_(i)=exp(-kc*add)
    end do
 
 
@@ -482,11 +481,9 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer                             :: numc,nlev
+   logical, intent(in)                 :: first
+   integer, intent(in)                 :: numc,nlev
    REALTYPE, intent(in)                :: cc(1:numc,0:nlev)
-!
-! !INPUT/OUTPUT PARAMETERS:
-   logical                             :: first
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)               :: pp(1:numc,1:numc,0:nlev)
@@ -501,7 +498,6 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
 !KBK - is it necessary to initialise every time - expensive in a 3D model
    pp = _ZERO_
    dd = _ZERO_

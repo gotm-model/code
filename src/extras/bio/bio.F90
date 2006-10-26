@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.29 2005-12-27 11:23:04 hb Exp $
+!$Id: bio.F90,v 1.30 2006-10-26 13:12:46 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -23,18 +23,18 @@
    use bio_template, only : var_info_template,light_template
 
    use bio_npzd, only : init_bio_npzd,init_var_npzd,var_info_npzd
-   use bio_npzd, only : light_npzd
+   use bio_npzd, only : light_npzd, do_bio_npzd
 
    use bio_iow, only : init_bio_iow,init_var_iow,var_info_iow
-   use bio_iow, only : light_iow,surface_fluxes_iow
+   use bio_iow, only : light_iow,surface_fluxes_iow,do_bio_iow
 
    use bio_fasham, only : init_bio_fasham,init_var_fasham,var_info_fasham
-   use bio_fasham, only : light_fasham
+   use bio_fasham, only : light_fasham,do_bio_fasham
 
    use bio_sed, only : init_bio_sed,init_var_sed,var_info_sed
 
    use bio_mab, only : init_bio_mab,init_var_mab,var_info_mab
-   use bio_mab, only : light_mab,surface_fluxes_mab
+   use bio_mab, only : light_mab,surface_fluxes_mab,do_bio_mab
 
    use mussels, only : init_mussels, do_mussels, end_mussels
    use mussels, only : mussels_calc,total_mussel_flux
@@ -42,19 +42,21 @@
    use output, only: out_fmt,write_results,ts
 
    use util
-
 !
 !  default: all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio, do_bio, end_bio
+   public init_bio, set_env_bio, do_bio, get_bio_updates, end_bio
    logical, public                     :: bio_calc=.false.
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.30  2006-10-26 13:12:46  kbk
+!  updated bio models to new ode_solver
+!
 !  Revision 1.29  2005-12-27 11:23:04  hb
 !  Weiss 1970 formula now used for surface oxygen saturation calculation in bio_mab.F90
 !
@@ -375,10 +377,52 @@
 !-----------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: Set external variables used by the BIO
+! modules
+!
+! !INTERFACE: 
+   subroutine set_env_bio(nlev,h_,t_,s_,nuh_,rad_,I_0_)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: h_(0:nlev)
+   REALTYPE, intent(in)                :: nuh_(0:nlev)
+   REALTYPE, intent(in)                :: t_(0:nlev)
+   REALTYPE, intent(in)                :: s_(0:nlev)
+   REALTYPE, intent(in)                :: rad_(0:nlev)
+   REALTYPE, intent(in)                :: I_0_
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard & Karsten Bolding
+!
+! !LOCAL VARIABLES
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   h         = h_
+   t         = t_
+   s         = s_
+   nuh       = nuh_
+   rad       = rad_
+   I_0       = I_0_
+
+   return
+   end subroutine set_env_bio
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: Update the bio model \label{sec:do-bio}
 !
 ! !INTERFACE:
-   subroutine do_bio(nlev,I_0,dt,h,t,s,nuh,rad,bioshade)
+   subroutine do_bio(nlev,dt)
 !
 ! !DESCRIPTION:
 ! This is the main loop for the biogeochemical model. Basically 
@@ -429,16 +473,7 @@
 !
 ! !INPUT PARAMETERS:
    integer,  intent(in)                :: nlev
-   REALTYPE, intent(in)                :: I_0
    REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: h(0:nlev)
-   REALTYPE, intent(in)                :: nuh(0:nlev)
-   REALTYPE, intent(in)                :: t(0:nlev)
-   REALTYPE, intent(in)                :: s(0:nlev)
-   REALTYPE, intent(in)                :: rad(0:nlev)
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: bioshade(0:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -549,29 +584,68 @@
          dt_eff=dt/float(split_factor)
 
 !        Very important for 3D models to save extra 3D field:
-         bioshade=_ONE_
+         bioshade_=_ONE_
 
          select case (bio_model)
             case (-1)
-               call light_template(nlev,h,rad,bioshade_feedback,bioshade)
+               call light_template(nlev,bioshade_feedback)
+!               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_template)
             case (1)
-               call light_npzd(nlev,h,rad,bioshade_feedback,bioshade)
+               call light_npzd(nlev,bioshade_feedback)
+               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd)
             case (2)
-               call light_iow(nlev,h,rad,bioshade_feedback,bioshade)
+               call light_iow(nlev,bioshade_feedback)
+               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_iow)
             case (3)
             case (4)
-               call light_fasham(nlev,h,rad,bioshade_feedback,bioshade)
+               call light_fasham(nlev,bioshade_feedback)
+               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_fasham)
             case (5)
-               call light_mab(nlev,h,rad,bioshade_feedback,bioshade)
+               call light_mab(nlev,bioshade_feedback)
+               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_mab)
          end select
-
-         call ode_solver(ode_method,numc,nlev,dt_eff,h,cc,t)
 
       end do
 
    end if
    return
    end subroutine do_bio
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: return updated variables in the bio modules
+! modules
+!
+! !INTERFACE: 
+   subroutine get_bio_updates(nlev,bioshade)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: bioshade(0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard & Karsten Bolding
+!
+! !LOCAL VARIABLES
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   if (bioshade_feedback) then
+      bioshade = bioshade_
+   end if
+
+   return
+   end subroutine get_bio_updates
 !EOC
 
 !-----------------------------------------------------------------------
@@ -662,6 +736,28 @@
 
    allocate(var_long(numc),stat=rc)
    if (rc /= 0) stop 'bio_save(): Error allocating var_long)'
+
+!  The external provide arrays
+   allocate(h(0:nlev),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating (h)'
+
+   allocate(nuh(0:nlev),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating (nuh)'
+
+   allocate(t(0:nlev),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating (t)'
+
+   allocate(s(0:nlev),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating (s)'
+
+   allocate(rad(0:nlev),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating (rad)'
+
+   allocate(bioshade_(0:nlev),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating (bioshade)'
+
+   allocate(abioshade_(0:nlev),stat=rc)
+   if (rc /= 0) stop 'bio_save(): Error allocating (abioshade)'
 
    return
    end subroutine allocate_memory

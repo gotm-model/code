@@ -1,4 +1,4 @@
-!$Id: bio_sed.F90,v 1.6 2005-12-02 20:57:27 hb Exp $
+!$Id: bio_sed.F90,v 1.7 2006-10-26 13:12:46 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,12 +25,13 @@
    public init_bio_sed, init_var_sed, var_info_sed, &
           do_bio_sed, end_bio_sed
 !
-! !PRIVATE DATA MEMBERS:
-!
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_sed.F90,v $
+!  Revision 1.7  2006-10-26 13:12:46  kbk
+!  updated bio models to new ode_solver
+!
 !  Revision 1.6  2005-12-02 20:57:27  hb
 !  Documentation updated and some bugs fixed
 !
@@ -141,7 +142,9 @@
 
    posconc(1) = 1
 
+#if 0
    mussels_inhale(1) = .true.
+#endif
 
    LEVEL3 'Sedimentation variables initialised ...'
 
@@ -186,7 +189,7 @@
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
 ! !INTERFACE:
-   subroutine do_bio_sed(nlev,pp,dd)
+   subroutine do_bio_sed(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION:
 ! This routine sets the sinks and sources of this simple suspended
@@ -196,25 +199,24 @@
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:
-   integer                              :: nlev
+   logical, intent(in)                  :: first
+   integer, intent(in)                  :: numc,nlev
+   REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
 
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
    REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
-
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
 !  no right hand sides necessary
 
-      pp=0.
-      dd=0.
+!   pp=_ZERO_
+!   dd=_ZERO_
 
    return
    end subroutine do_bio_sed

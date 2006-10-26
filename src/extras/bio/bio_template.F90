@@ -1,4 +1,4 @@
-!$Id: bio_template.F90,v 1.3 2005-12-02 20:57:27 hb Exp $
+!$Id: bio_template.F90,v 1.4 2006-10-26 13:12:46 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,6 +29,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_template.F90,v $
+!  Revision 1.4  2006-10-26 13:12:46  kbk
+!  updated bio models to new ode_solver
+!
 !  Revision 1.3  2005-12-02 20:57:27  hb
 !  Documentation updated and some bugs fixed
 !
@@ -169,7 +172,7 @@
 ! !IROUTINE: Light properties for the template model
 !
 ! !INTERFACE:
-   subroutine light_template(nlev,h,rad,bioshade_feedback,bioshade)
+   subroutine light_template(nlev,bioshade_feedback)
 !
 ! !DESCRIPTION:
 ! Here, the photosynthetically available radiation should be calculated
@@ -186,13 +189,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer                              :: nlev
-   REALTYPE, intent(in)                 :: h(0:nlev)
-   REALTYPE, intent(in)                 :: rad(0:nlev)
-   logical, intent(in)                  :: bioshade_feedback
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: bioshade(0:nlev)
+   integer, intent(in)                 :: nlev
+   logical, intent(in)                 :: bioshade_feedback
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding

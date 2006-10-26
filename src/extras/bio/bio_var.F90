@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.7 2005-12-02 20:57:27 hb Exp $
+!$Id: bio_var.F90,v 1.8 2006-10-26 13:12:46 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,7 +19,6 @@
 ! !PUBLIC DATA MEMBERS:
    integer                               :: bio_model
    integer                               :: numc,numcc
-   REALTYPE                              :: I_0
    REALTYPE, dimension(:), allocatable   :: zlev
    REALTYPE, dimension(:), allocatable   :: par
    REALTYPE, dimension(:,:), allocatable :: cc,ws
@@ -40,11 +39,29 @@
 
    REALTYPE, parameter                   :: secs_pr_day=86400.
 
+!  external variables - i.e. provided by the calling program but
+!  made available via this module to the different biological models
+!  the variables are copied via set_env_spm() in bio.F90
+   REALTYPE                                 :: I_0
+   REALTYPE, dimension(:), allocatable      :: h
+   REALTYPE, dimension(:), allocatable      :: t
+   REALTYPE, dimension(:), allocatable      :: s
+   REALTYPE, dimension(:), allocatable      :: nuh
+   REALTYPE, dimension(:), allocatable      :: rad
+
+!  external variables updated by the biological models
+!  the variables are copied back to the calling program using
+!  get_bio_updates()
+   REALTYPE, dimension(:), allocatable      :: bioshade_
+   REALTYPE, dimension(:), allocatable      :: abioshade_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
+!  Revision 1.8  2006-10-26 13:12:46  kbk
+!  updated bio models to new ode_solver
+!
 !  Revision 1.7  2005-12-02 20:57:27  hb
 !  Documentation updated and some bugs fixed
 !
