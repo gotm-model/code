@@ -1,4 +1,4 @@
-!$Id: vequation.F90,v 1.9 2006-04-03 08:39:12 lars Exp $
+!$Id: vequation.F90,v 1.10 2006-11-06 13:36:45 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -88,6 +88,9 @@
 !                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: vequation.F90,v $
+!  Revision 1.10  2006-11-06 13:36:45  hb
+!  Option for conservative vertical advection added to adv_center
+!
 !  Revision 1.9  2006-04-03 08:39:12  lars
 !  fixed bug in relaxation times - Thanks to Adolf Stips
 !
@@ -117,6 +120,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                   :: adv_mode=0
    integer                   :: posconc=0
    integer                   :: i
    integer                   :: DiffBcup,DiffBcdw
@@ -191,7 +195,7 @@
 !  do advection step
    if (w_adv_method.ne.0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                      AdvVup,AdvVdw,w_adv_discr,V)
+                      AdvVup,AdvVdw,w_adv_discr,adv_mode,V)
    end if
 
 !  do diffusion step

@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.30 2006-10-26 13:12:46 kbk Exp $
+!$Id: bio.F90,v 1.31 2006-11-06 13:36:46 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -54,6 +54,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.31  2006-11-06 13:36:46  hb
+!  Option for conservative vertical advection added to adv_center
+!
 !  Revision 1.30  2006-10-26 13:12:46  kbk
 !  updated bio models to new ode_solver
 !
@@ -435,7 +438,9 @@
 ! (due to settling or rising or vertical migration) and vertical
 ! diffusion (due to mixing) and afterwards the light 
 ! calculation (for the PAR) and the ODE solver for the right
-! hand sides are called. 
+! hand sides are called. The vertical advection must be conservative,
+! which is ensured by setting the local variable {\tt adv\_mode=1},
+! see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 ! It should be noted here that the PAR and the selfshading effect
 ! is calculated in a similar way for all biogeochemical models
 ! implemented in GOTM so far. In the temperature equation the
@@ -479,6 +484,7 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
+   integer                   :: adv_mode=1
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev)
    REALTYPE                  :: RelaxTau(0:nlev)
    REALTYPE                  :: dt_eff
@@ -521,7 +527,7 @@
 
 !           do advection step
             call adv_center(nlev,dt,h,h,ws(j,:),flux,                   &
-                 flux,_ZERO_,_ZERO_,w_adv_discr,cc(j,:))
+                 flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode,cc(j,:))
             
 !           do diffusion step
             call diff_center(nlev,dt,cnpar,posconc(j),h,Neumann,Neumann,&

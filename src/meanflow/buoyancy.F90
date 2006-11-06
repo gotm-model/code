@@ -1,4 +1,4 @@
-!$Id: buoyancy.F90,v 1.7 2005-11-17 09:58:20 hb Exp $
+!$Id: buoyancy.F90,v 1.8 2006-11-06 13:36:45 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,7 +47,9 @@
 !  Diffusion is treated implicitly in space (see equations (\ref{sigmafirst})-
 !  (\ref{sigmalast})), and then solved by a
 !  simplified Gauss elimination.
-!  Vertical advection is included, see \sect{sec:advectionMean}.
+!  Vertical advection is included, and it must be non-conservative,
+!  which is ensured by setting the local variable {\tt adv\_mode=0},
+!  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
 ! !USES:
    use meanflow,      only: h,w,buoy,T,avh
@@ -80,6 +82,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: buoyancy.F90,v $
+!  Revision 1.8  2006-11-06 13:36:45  hb
+!  Option for conservative vertical advection added to adv_center
+!
 !  Revision 1.7  2005-11-17 09:58:20  hb
 !  explicit argument for positive definite variables in diff_center()
 !
@@ -101,6 +106,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                   :: adv_mode=0
    integer                   :: posconc=0
    integer                   :: i
    integer                   :: DiffBcup,DiffBcdw
@@ -154,7 +160,7 @@
 !  do advection step
    if (w_adv_method .ne. 0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                      AdvBup,AdvBdw,w_adv_discr,buoy)
+                      AdvBup,AdvBdw,w_adv_discr,adv_mode,buoy)
    end if
 
 !  do diffusion step

@@ -1,4 +1,4 @@
-!$Id: adv_center.F90,v 1.3 2006-03-20 09:06:38 kbk Exp $
+!$Id: adv_center.F90,v 1.4 2006-11-06 13:36:46 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,30 +6,61 @@
 ! !ROUTINE: Advection schemes --- grid centers\label{sec:advectionMean}
 !
 ! !INTERFACE:
-   subroutine adv_center(N,dt,h,ho,ww,Bcup,Bcdw,Yup,Ydw,method,Y)
+   subroutine adv_center(N,dt,h,ho,ww,Bcup,Bcdw,Yup,Ydw,method,mode,Y)
 !
 ! !DESCRIPTION:
 !
-! This subroutine solves a one-dimensional advection equation of the form
+! This subroutine solves a one-dimensional advection equation. There are two
+! options, depending whether the advection should be conservative or not.
+! Conservative advection has to be applied when settling of sediment or
+! rising of phytoplankton is considered. In this case the advection is of
+! the form
 !  \begin{equation}
-!   \label{Yadvection}
-!    \partder{Y}{t} = - w\partder{Y}{z}
-!                   = - \left(\partder{F}{z} - Y\partder{w}{z} \right)
+!   \label{Yadvection_cons}
+!    \partder{Y}{t} = - \partder{F}{z}
 !    \comma
 !  \end{equation}
 ! where $F=wY$ is the flux caused by the advective velocity, $w$.
 !
-! The discretized form of \eq{Yadvection} is
+! Non-conservative advective transport has to be applied, when the water
+! has a non-zero vertical velocity. In three-dimensional applications,
+! this transport would be conservative, since vertical divergence would be
+! compensated by horizontal convergence and vice versa. However, the
+! key assumption of one-dimensional modelling is horizontal homogeneity, 
+! such that we indeed have to apply a vertically non-conservative method,
+! which is of the form
 !  \begin{equation}
-!   \label{advDiscretized}
+!   \label{Yadvection_noncons}
+!    \partder{Y}{t} = - w\partder{Y}{z}
+!                   = - \left(\partder{F}{z} - Y\partder{w}{z} \right).
+!  \end{equation}
+!
+! The discretized form of \eq{Yadvection_cons} is
+!  \begin{equation}
+!   \label{advDiscretized_cons}
 !   Y_i^{n+1} = Y_i^n
 !   - \dfrac{\Delta t}{h_i}
-!    \left( F^n_{i} - F^n_{i-1} -Y_i^n \left(w_k-w_{k-1}  \right)\right)
+!    \left( F^n_{i} - F^n_{i-1} \right)
 !   \comma
 !  \end{equation}
 ! where the integers $n$ and $i$ correspond to the present time and space
-! level, respectively. Fluxes are defined at the grid faces,
-! the variable $Y_i$ is defined at the
+! level, respectively. 
+!
+! For the non-conservative form \eq{Yadvection_noncons}, 
+! an extra term needs to be included:
+!  \begin{equation}
+!   \label{advDiscretized_noncons}
+!   Y_i^{n+1} = Y_i^n
+!   - \dfrac{\Delta t}{h_i}
+!    \left( F^n_{i} - F^n_{i-1} -Y_i^n \left(w_k-w_{k-1}  \right)\right).
+!  \end{equation}
+!
+!  Which advection method is applied is decided by the flag {\tt mode},
+!  which gives conservative advection \eq{advDiscretized_cons}
+!  for {\tt mode=1} and 
+!  non-conservative advection \eq{advDiscretized_noncons} for {\tt mode=0}. 
+!
+! Fluxes are defined at the grid faces, the variable $Y_i$ is defined at the
 !  grid centers. The fluxes are computed in an upstream-biased way,
 !  \begin{equation}
 !   \label{upstream}
@@ -162,6 +193,9 @@
 
 !  type of advection scheme
    integer,  intent(in)                :: method
+
+!  advection mode (0: non-conservative, 1: conservative)
+   integer,  intent(in)                :: mode
 !
 ! !INPUT/OUTPUT PARAMETERS:
    REALTYPE                            :: Y(0:N)
@@ -174,6 +208,9 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: adv_center.F90,v $
+!  Revision 1.4  2006-11-06 13:36:46  hb
+!  Option for conservative vertical advection added to adv_center
+!
 !  Revision 1.3  2006-03-20 09:06:38  kbk
 !  removed explicit double precission dependency
 !
@@ -348,11 +385,17 @@
 
 !     do the vertical advection step which will be used for prescribed
 !     vertical flow velocity and for settling of suspended matter.
-      do k=1,N
-         Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/        &
-              h(k)-Y(k)*(ww(k)-ww(k-1))/h(k))
-      enddo
-
+ 
+      if (mode.eq.0) then ! non-conservative 
+         do k=1,N
+            Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/        &
+                 h(k)-Y(k)*(ww(k)-ww(k-1))/h(k))
+         enddo
+      else                ! conservative  
+         do k=1,N
+            Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/h(k))
+         enddo
+      end if   
 
    end do ! end of the iteration loop
 

@@ -1,4 +1,4 @@
-!$Id: uequation.F90,v 1.10 2006-04-03 08:39:12 lars Exp $
+!$Id: uequation.F90,v 1.11 2006-11-06 13:36:45 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -59,7 +59,9 @@
 !  Diffusion is numerically treated implicitly, see equations \eq{sigmafirst}-
 !  \eq{sigmalast}.
 !  The tri-diagonal matrix is solved then by a simplified Gauss elimination.
-!  Vertical advection is included, see \sect{sec:advectionMean}.
+!  Vertical advection is included, and it must be non-conservative,
+!  which is ensured by setting the local variable {\tt adv\_mode=0},
+!  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
 ! !USES:
    use meanflow,     only: gravity,avmolu
@@ -108,6 +110,9 @@
 !                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: uequation.F90,v $
+!  Revision 1.11  2006-11-06 13:36:45  hb
+!  Option for conservative vertical advection added to adv_center
+!
 !  Revision 1.10  2006-04-03 08:39:12  lars
 !  fixed bug in relaxation times - Thanks to Adolf Stips
 !
@@ -137,6 +142,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                   :: adv_mode=0
    integer                   :: posconc=0
    integer                   :: i
    integer                   :: DiffBcup,DiffBcdw
@@ -211,7 +217,7 @@
 !  do advection step
    if (w_adv_method.ne.0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                          AdvUup,AdvUdw,w_adv_discr,U)
+                          AdvUup,AdvUdw,w_adv_discr,adv_mode,U)
    end if
 
 !  do diffusion step
