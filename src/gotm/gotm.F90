@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.27 2006-10-26 13:12:46 kbk Exp $
+!$Id: gotm.F90,v 1.28 2006-11-12 19:42:45 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.28  2006-11-12 19:42:45  hb
+!  vertical advection due to physical vertical velocities enabled for the bio module
+!
 !  Revision 1.27  2006-10-26 13:12:46  kbk
 !  updated bio models to new ode_solver
 !
@@ -399,7 +402,7 @@
 
 #ifdef BIO
       if (bio_calc) then
-         call set_env_bio(nlev,h,t,s,nuh,rad,I_0)
+         call set_env_bio(nlev,h,t,s,nuh,rad,I_0,w,w_adv_discr)
          call do_bio_fluxes(julianday,secondsofday)
          call do_bio(nlev,dt)
          call get_bio_updates(nlev,bioshade)

@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.31 2006-11-06 13:36:46 hb Exp $
+!$Id: bio.F90,v 1.32 2006-11-12 19:42:44 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -54,6 +54,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.32  2006-11-12 19:42:44  hb
+!  vertical advection due to physical vertical velocities enabled for the bio module
+!
 !  Revision 1.31  2006-11-06 13:36:46  hb
 !  Option for conservative vertical advection added to adv_center
 !
@@ -384,7 +387,7 @@
 ! modules
 !
 ! !INTERFACE: 
-   subroutine set_env_bio(nlev,h_,t_,s_,nuh_,rad_,I_0_)
+   subroutine set_env_bio(nlev,h_,t_,s_,nuh_,rad_,I_0_,w_,w_adv_ctr_)
 !
 ! !DESCRIPTION:
 !
@@ -399,6 +402,8 @@
    REALTYPE, intent(in)                :: s_(0:nlev)
    REALTYPE, intent(in)                :: rad_(0:nlev)
    REALTYPE, intent(in)                :: I_0_
+   REALTYPE, optional, intent(in)      :: w_(0:nlev)
+   integer, optional, intent(in)       :: w_adv_ctr_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -414,6 +419,8 @@
    nuh       = nuh_
    rad       = rad_
    I_0       = I_0_
+   if (present(w_)) w = w_
+   if (present(w_adv_ctr_)) w_adv_ctr = w_adv_ctr_
 
    return
    end subroutine set_env_bio
@@ -435,12 +442,18 @@
 ! and the surface fluxes are computed by calling the
 ! model specific surface flux subroutine. Then the mussel module
 ! is called.  For the Eulerian calculation, vertical advection
-! (due to settling or rising or vertical migration) and vertical
+! (due to settling or rising or vertical migration), vertical advection due
+! to physical velocity and vertical
 ! diffusion (due to mixing) and afterwards the light 
 ! calculation (for the PAR) and the ODE solver for the right
-! hand sides are called. The vertical advection must be conservative,
-! which is ensured by setting the local variable {\tt adv\_mode=1},
+! hand sides are called. The vertical advection due to settling and
+! rising must be conservative,
+! which is ensured by setting the local variable {\tt adv\_mode\_1=1},
 ! see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
+! In contrast to this, the vertical advection due to physical velocities must be
+! non-conservative, such that for that the local variable {\tt adv\_mode\_0}
+! is set to 0, see  see section \ref{sec:advectionMean} on page
+! \pageref{sec:advectionMean}.
 ! It should be noted here that the PAR and the selfshading effect
 ! is calculated in a similar way for all biogeochemical models
 ! implemented in GOTM so far. In the temperature equation the
@@ -484,7 +497,8 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   integer                   :: adv_mode=1
+   integer, parameter        :: adv_mode_0=0
+   integer, parameter        :: adv_mode_1=1
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev)
    REALTYPE                  :: RelaxTau(0:nlev)
    REALTYPE                  :: dt_eff
@@ -525,9 +539,15 @@
       if (bio_eulerian) then
          do j=1,numcc
 
-!           do advection step
+!           do advection step due to settling or rising
             call adv_center(nlev,dt,h,h,ws(j,:),flux,                   &
-                 flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode,cc(j,:))
+                 flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(j,:))
+
+!           do advection step due to vertical velocity
+            if(w_adv_ctr .ne. 0) then
+               call adv_center(nlev,dt,h,h,w,flux,                   &
+                    flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(j,:))
+            end if
             
 !           do diffusion step
             call diff_center(nlev,dt,cnpar,posconc(j),h,Neumann,Neumann,&
@@ -732,38 +752,41 @@
    mussels_inhale=.false.
 
    allocate(var_ids(numc),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating var_ids)'
+   if (rc /= 0) stop 'init_bio(): Error allocating var_ids)'
 
    allocate(var_names(numc),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating var_names)'
+   if (rc /= 0) stop 'init_bio(): Error allocating var_names)'
 
    allocate(var_units(numc),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating var_units)'
+   if (rc /= 0) stop 'init_bio(): Error allocating var_units)'
 
    allocate(var_long(numc),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating var_long)'
+   if (rc /= 0) stop 'init_bio(): Error allocating var_long)'
 
 !  The external provide arrays
    allocate(h(0:nlev),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating (h)'
+   if (rc /= 0) stop 'init_bio(): Error allocating (h)'
 
    allocate(nuh(0:nlev),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating (nuh)'
+   if (rc /= 0) stop 'init_bio(): Error allocating (nuh)'
 
    allocate(t(0:nlev),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating (t)'
+   if (rc /= 0) stop 'init_bio(): Error allocating (t)'
 
    allocate(s(0:nlev),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating (s)'
+   if (rc /= 0) stop 'init_bio(): Error allocating (s)'
 
    allocate(rad(0:nlev),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating (rad)'
+   if (rc /= 0) stop 'init_bio(): Error allocating (rad)'
+
+   allocate(w(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_bio(): Error allocating (w)'
 
    allocate(bioshade_(0:nlev),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating (bioshade)'
+   if (rc /= 0) stop 'init_bio(): Error allocating (bioshade)'
 
    allocate(abioshade_(0:nlev),stat=rc)
-   if (rc /= 0) stop 'bio_save(): Error allocating (abioshade)'
+   if (rc /= 0) stop 'init_bio(): Error allocating (abioshade)'
 
    return
    end subroutine allocate_memory
