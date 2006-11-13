@@ -1,4 +1,4 @@
-!$Id: ode_solvers.F90,v 1.1 2006-10-26 10:12:34 kbk Exp $
+!$Id: ode_solvers.F90,v 1.2 2006-11-13 14:44:51 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -139,7 +139,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: rhs
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   integer  :: i,j,ci
@@ -150,8 +150,11 @@
    pp=_ZERO_
    dd=_ZERO_
 
+   first=.true.
+!   STDERR 'euler_forward ',first
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
+!   STDERR 'euler_forward ',first
 
    do ci=1,nlev
       do i=1,numc
@@ -211,7 +214,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: rhs(1:numc,0:nlev),rhs1(1:numc)
   REALTYPE :: cc1(1:numc,0:nlev)
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
@@ -223,6 +226,7 @@
    pp=_ZERO_
    dd=_ZERO_
 
+   first=.true.
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
 
@@ -308,7 +312,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: rhs(1:numc,0:nlev),rhs1(1:numc,0:nlev)
   REALTYPE :: rhs2(1:numc,0:nlev),rhs3(1:numc,0:nlev)
   REALTYPE :: cc1(1:numc,0:nlev)
@@ -321,6 +325,7 @@
    pp=_ZERO_
    dd=_ZERO_
 
+   first=.true.
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
 
@@ -411,7 +416,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: ppsum,ddsum
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   integer  :: i,j,ci
@@ -422,6 +427,7 @@
    pp=_ZERO_
    dd=_ZERO_
 
+   first=.true.
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
 
@@ -492,7 +498,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: ppsum(1:numc,0:nlev),ddsum(1:numc,0:nlev)
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   REALTYPE :: cc1(1:numc,0:nlev)
@@ -504,6 +510,7 @@
    pp=_ZERO_
    dd=_ZERO_
 
+   first=.true.
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
 
@@ -563,7 +570,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: ppsum(1:numc,0:nlev),ddsum(1:numc,0:nlev)
   REALTYPE :: ppsum1(1:numc,0:nlev),ddsum1(1:numc,0:nlev)
   REALTYPE :: ppsum2(1:numc,0:nlev),ddsum2(1:numc,0:nlev)
@@ -578,6 +585,7 @@
    pp=_ZERO_
    dd=_ZERO_
 
+   first=.true.
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
 
@@ -682,7 +690,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   REALTYPE :: a(1:numc,1:numc),r(1:numc)
   integer  :: i,j,ci
@@ -693,6 +701,7 @@
    pp=_ZERO_
    dd=_ZERO_
 
+   first=.true.
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
 
@@ -778,7 +787,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   REALTYPE :: pp1(1:numc,1:numc,0:nlev),dd1(1:numc,1:numc,0:nlev)
   REALTYPE :: a(1:numc,1:numc),r(1:numc)
@@ -791,6 +800,7 @@
    pp=_ZERO_ ; pp1=_ZERO_
    dd=_ZERO_ ; dd1=_ZERO_
 
+   first=.true.
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
 
@@ -859,7 +869,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   REALTYPE :: pp1(1:numc,1:numc,0:nlev),dd1(1:numc,1:numc,0:nlev)
   REALTYPE :: pp2(1:numc,1:numc,0:nlev),dd2(1:numc,1:numc,0:nlev)
@@ -874,6 +884,7 @@
    pp=_ZERO_ ; pp1=_ZERO_ ; pp2=_ZERO_ ; pp3=_ZERO_
    dd=_ZERO_ ; dd1=_ZERO_ ; dd2=_ZERO_ ; dd3=_ZERO_
 
+   first=.true.
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
 
@@ -985,7 +996,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   integer  :: ci
   REALTYPE :: pi, derivative(1:numc)
@@ -996,6 +1007,7 @@
    pp=_ZERO_
    dd=_ZERO_
 
+   first=.true.
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
 
@@ -1065,7 +1077,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-  logical  :: first=.true.
+  logical  :: first
   REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   integer  :: i,ci
   REALTYPE :: pi, rhs(1:numc,0:nlev), cc_med(1:numc,0:nlev)
@@ -1076,6 +1088,7 @@
    pp=_ZERO_
    dd=_ZERO_
 
+   first=.true.
    call right_hand_side(first,numc,nlev,cc,pp,dd)
    first=.false.
 
