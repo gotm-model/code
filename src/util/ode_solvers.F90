@@ -1,4 +1,4 @@
-!$Id: ode_solvers.F90,v 1.2 2006-11-13 14:44:51 kbk Exp $
+!$Id: ode_solvers.F90,v 1.3 2006-11-14 10:54:59 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -1098,7 +1098,7 @@
       cc_med(:,ci) = cc(:,ci) + dt*rhs(:,ci)*pi
    end do
 
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
+   call right_hand_side(first,numc,nlev,cc_med,pp,dd)
 
    do ci=1,nlev
       rhs(:,ci) = 0.5 * (rhs(:,ci) + sum(pp(:,:,ci),2) - sum(dd(:,:,ci),2))
