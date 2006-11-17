@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.32 2006-11-12 19:42:44 hb Exp $
+!$Id: bio.F90,v 1.33 2006-11-17 07:13:17 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -54,6 +54,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.33  2006-11-17 07:13:17  kbk
+!  rho amd wind-speed available via bio_var
+!
 !  Revision 1.32  2006-11-12 19:42:44  hb
 !  vertical advection due to physical vertical velocities enabled for the bio module
 !
@@ -387,7 +390,8 @@
 ! modules
 !
 ! !INTERFACE: 
-   subroutine set_env_bio(nlev,h_,t_,s_,nuh_,rad_,I_0_,w_,w_adv_ctr_)
+   subroutine set_env_bio(nlev,h_,t_,s_,rho_,nuh_,rad_,wind_,I_0_, &
+                          w_,w_adv_ctr_)
 !
 ! !DESCRIPTION:
 !
@@ -400,7 +404,9 @@
    REALTYPE, intent(in)                :: nuh_(0:nlev)
    REALTYPE, intent(in)                :: t_(0:nlev)
    REALTYPE, intent(in)                :: s_(0:nlev)
+   REALTYPE, intent(in)                :: rho_(0:nlev)
    REALTYPE, intent(in)                :: rad_(0:nlev)
+   REALTYPE, intent(in)                :: wind_
    REALTYPE, intent(in)                :: I_0_
    REALTYPE, optional, intent(in)      :: w_(0:nlev)
    integer, optional, intent(in)       :: w_adv_ctr_
@@ -416,8 +422,10 @@
    h         = h_
    t         = t_
    s         = s_
+   rho       = rho_
    nuh       = nuh_
    rad       = rad_
+   wind      = wind_
    I_0       = I_0_
    if (present(w_)) w = w_
    if (present(w_adv_ctr_)) w_adv_ctr = w_adv_ctr_
@@ -775,6 +783,9 @@
 
    allocate(s(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_bio(): Error allocating (s)'
+
+   allocate(rho(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_bio(): Error allocating (rho)'
 
    allocate(rad(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_bio(): Error allocating (rad)'

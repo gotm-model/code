@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.28 2006-11-12 19:42:45 hb Exp $
+!$Id: gotm.F90,v 1.29 2006-11-17 07:13:16 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -41,7 +41,7 @@
    use airsea,      only: init_air_sea,air_sea_interaction
    use airsea,      only: set_sst,integrated_fluxes
    use airsea,      only: calc_fluxes
-   use airsea,      only: tx,ty,I_0,heat,p_e
+   use airsea,      only: wind=>w,tx,ty,I_0,heat,p_e
 
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,do_turbulence
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.29  2006-11-17 07:13:16  kbk
+!  rho amd wind-speed available via bio_var
+!
 !  Revision 1.28  2006-11-12 19:42:45  hb
 !  vertical advection due to physical vertical velocities enabled for the bio module
 !
@@ -402,7 +405,8 @@
 
 #ifdef BIO
       if (bio_calc) then
-         call set_env_bio(nlev,h,t,s,nuh,rad,I_0,w,w_adv_discr)
+         call set_env_bio(nlev,h,t,s,rho,nuh,rad,wind,I_0, &
+                          w,w_adv_discr)
          call do_bio_fluxes(julianday,secondsofday)
          call do_bio(nlev,dt)
          call get_bio_updates(nlev,bioshade)

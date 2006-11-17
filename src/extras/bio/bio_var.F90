@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.9 2006-11-12 19:42:44 hb Exp $
+!$Id: bio_var.F90,v 1.10 2006-11-17 07:13:17 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -45,9 +45,11 @@
    REALTYPE, dimension(:), allocatable      :: h
    REALTYPE, dimension(:), allocatable      :: t
    REALTYPE, dimension(:), allocatable      :: s
+   REALTYPE, dimension(:), allocatable      :: rho
    REALTYPE, dimension(:), allocatable      :: nuh
    REALTYPE, dimension(:), allocatable      :: w
    REALTYPE, dimension(:), allocatable      :: rad
+   REALTYPE                                 :: wind
    REALTYPE                                 :: I_0
    integer                                  :: w_adv_ctr=0
 
@@ -61,6 +63,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
+!  Revision 1.10  2006-11-17 07:13:17  kbk
+!  rho amd wind-speed available via bio_var
+!
 !  Revision 1.9  2006-11-12 19:42:44  hb
 !  vertical advection due to physical vertical velocities enabled for the bio module
 !

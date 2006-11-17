@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.12 2005-11-15 11:42:33 lars Exp $
+!$Id: airsea.F90,v 1.13 2006-11-17 07:13:17 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -37,6 +37,9 @@
 !
 ! !PUBLIC DATA MEMBERS:
    logical,  public                    :: calc_fluxes=.false.
+
+!  wind speed (m/s)
+   REALTYPE, public                    :: w
 
 !  surface stress components (Pa)
    REALTYPE, public                    :: tx,ty
@@ -87,7 +90,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.12  2005-11-15 11:42:33  lars
+!  Revision 1.13  2006-11-17 07:13:17  kbk
+!  rho amd wind-speed available via bio_var
+!
+!  Revision 1.12  2005/11/15 11:42:33  lars
 !  documentation finish for print
 !
 !  Revision 1.11  2005/07/06 13:58:07  kbk
@@ -141,7 +147,6 @@
    character(len=PATH_MAX)   :: sst_file
 
    REALTYPE                  :: wx,wy
-   REALTYPE                  :: w
    REALTYPE                  :: airp
    REALTYPE                  :: airt,twet,tdew
    REALTYPE                  :: cloud
