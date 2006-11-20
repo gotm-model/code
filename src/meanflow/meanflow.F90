@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.11 2005-06-27 13:44:07 kbk Exp $
+!$Id: meanflow.F90,v 1.12 2006-11-20 17:26:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -69,8 +69,8 @@
 !  the 'meanflow' namelist
    REALTYPE, public                    :: h0b=0.05
    REALTYPE, public                    :: z0s_min=0.02
-   logical,  public                    :: charnok=.false.
-   REALTYPE, public                    :: charnok_val=1400.
+   logical,  public                    :: charnock=.false.
+   REALTYPE, public                    :: charnock_val=1400.
    REALTYPE, public                    :: ddu=0.
    REALTYPE, public                    :: ddl=0.
    integer,  public                    :: grid_method=1
@@ -116,7 +116,10 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
-!  Revision 1.11  2005-06-27 13:44:07  kbk
+!  Revision 1.12  2006-11-20 17:26:15  kbk
+!  [Cc]harnok -> [Cc]harnock - A. Jenkins
+!
+!  Revision 1.11  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.10  2004/01/27 08:33:20  lars
@@ -185,7 +188,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: rc
 
-   namelist /meanflow/  h0b,z0s_min,charnok,charnok_val,ddu,ddl,       &
+   namelist /meanflow/  h0b,z0s_min,charnock,charnock_val,ddu,ddl,     &
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
                         avmolu,avmolT,avmolS,MaxItz0b,no_shear

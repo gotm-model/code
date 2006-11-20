@@ -1,4 +1,4 @@
-!$Id: friction.F90,v 1.8 2005-08-11 12:31:54 lars Exp $
+!$Id: friction.F90,v 1.10 2006-11-20 17:28:58 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -45,20 +45,20 @@
 !
 !  If no breaking surface waves are considered, the law of the wall 
 !  also holds at the surface. The surface roughness length may 
-!  be calculated according to the \cite{Charnok55} formula,
+!  be calculated according to the \cite{Charnock55} formula,
 !  \begin{equation}
-!   \label{Charnok}
+!   \label{Charnock}
 !    z_0^s=\alpha \frac{(u_*^s)^2}{g}
 !   \point
 !  \end{equation}
-!  The model constant $\alpha$ is read in as {\tt charnok\_val} from
+!  The model constant $\alpha$ is read in as {\tt charnock\_val} from
 !  the {\tt meanflow} namelist.
 !
 ! !USES:
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za
    use meanflow,      only: u,v,gravity
    use meanflow,      only: u_taub,u_taus,drag
-   use meanflow,      only: charnok,charnok_val,z0s_min
+   use meanflow,      only: charnock,charnock_val,z0s_min
 
 !
    IMPLICIT NONE
@@ -70,7 +70,13 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: friction.F90,v $
-!  Revision 1.8  2005-08-11 12:31:54  lars
+!  Revision 1.10  2006-11-20 17:28:58  kbk
+!  [Cc]harnok -> [Cc]harnock - A. Jenkins
+!
+!  Revision 1.9  2006-11-20 17:26:15  kbk
+!  [Cc]harnok -> [Cc]harnock - A. Jenkins
+!
+!  Revision 1.8  2005/08/11 12:31:54  lars
 !  corrected error in documentation. Thanks to Patrizio Mariani
 !
 !  Revision 1.7  2005/06/27 13:44:07  kbk
@@ -105,9 +111,9 @@
 
    drag = _ZERO_
 
-!  use the Charnok formula to compute the surface roughness
-   if (charnok) then
-      z0s=charnok_val*u_taus**2/gravity
+!  use the Charnock formula to compute the surface roughness
+   if (charnock) then
+      z0s=charnock_val*u_taus**2/gravity
       if (z0s.lt.z0s_min) z0s=z0s_min
    else
       z0s=z0s_min
