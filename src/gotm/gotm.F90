@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.29 2006-11-17 07:13:16 kbk Exp $
+!$Id: gotm.F90,v 1.30 2006-11-21 15:21:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.30  2006-11-21 15:21:56  kbk
+!  seagrass working again
+!
 !  Revision 1.29  2006-11-17 07:13:16  kbk
 !  rho amd wind-speed available via bio_var
 !
@@ -387,7 +390,7 @@
       call friction(kappa,avmolu,tx,ty)
 
 #ifdef SEAGRASS
-      call calc_seagrass(nlev,dt)
+      if(seagrass_calc) call do_seagrass(nlev,dt)
 #endif
 
 !     update temperature and salinity
@@ -445,6 +448,9 @@
             call variances(nlev,SSU,SSV)
          endif
          call do_output(n,nlev)
+#ifdef SEAGRASS
+         if (seagrass_calc) call save_seagrass()
+#endif
 #ifdef BIO
          if (bio_calc) call bio_save(nlev,_ZERO_)
 #endif

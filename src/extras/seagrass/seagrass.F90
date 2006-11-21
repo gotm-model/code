@@ -1,4 +1,4 @@
-!$Id: seagrass.F90,v 1.6 2005-12-02 21:10:25 hb Exp $
+!$Id: seagrass.F90,v 1.7 2006-11-21 15:21:56 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -20,20 +20,20 @@
 
 !
 ! !USES:
-   use meanflow, only:     u,v,h,drag,xP
-   use output,   only:     out_fmt,write_results,ts
-
+!
 !  default: all is private.
    private
-
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_seagrass, calc_seagrass, end_seagrass
-
+   public init_seagrass, do_seagrass, save_seagrass, end_seagrass
+   logical, public                     :: seagrass_calc=.false.
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: seagrass.F90,v $
+!  Revision 1.7  2006-11-21 15:21:56  kbk
+!  seagrass working again
+!
 !  Revision 1.6  2005-12-02 21:10:25  hb
 !  Documentation updated
 !
@@ -52,22 +52,16 @@
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
 !  initial import into CVS
 !
-!
-!EOP
-!-----------------------------------------------------------------------
-!
-!  private data members
    REALTYPE, dimension(:), allocatable :: xx,yy
    REALTYPE, dimension(:), allocatable :: exc,vfric,grassz
-
 !  from a namelist
-   logical                   :: grass_calc=.false.
    character(len=PATH_MAX)   :: grassfile='seagrass.dat'
    REALTYPE                  :: XP_rat
    integer                   :: grassind
    integer                   :: grassn
    integer                   :: out_unit
 
+!EOP
 !-----------------------------------------------------------------------
 
    contains
@@ -86,11 +80,9 @@
 ! for some relevant vectors. Afterwards, excursion limits and friction
 ! coefficients are read from a file. The uppermost grid related index
 ! for the seagrass canopy is then calculated.
-
 !
 ! !USES:
    IMPLICIT NONE
-
 !
 ! !INPUT PARAMETERS:
    integer,          intent(in)   :: namlst
@@ -98,21 +90,17 @@
    integer,          intent(in)   :: unit
    integer,          intent(in)   :: nlev
    REALTYPE,         intent(in)   :: h(0:nlev)
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
    integer                   :: i,rc
    REALTYPE                  :: z
-   namelist /canopy/  grass_calc,grassfile,XP_rat
+   namelist /canopy/  seagrass_calc,grassfile,XP_rat
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-
-
    LEVEL1 'init_seagrass'
 
 !  Open and read the namelist
@@ -120,7 +108,7 @@
    read(namlst,nml=canopy,err=99)
    close(namlst)
 
-   if (grass_calc) then
+   if (seagrass_calc) then
       out_unit=unit
 
       allocate(xx(0:nlev),stat=rc)
@@ -160,16 +148,16 @@
 
       close(unit)
 
-      LEVEL1 'Seagrass initialised ...'
+      LEVEL2 'seagrass initialised ...'
 
    end if
    return
 
 98 LEVEL2 'I could not open seagrass.inp'
-   LEVEL2 'Ill continue but set grass_calc to false.'
+   LEVEL2 'Ill continue but set seagrass_calc to false.'
    LEVEL2 'If thats not what you want you have to supply seagrass.inp'
    LEVEL2 'See the Seagrass example on www.gotm.net for a working seagrass.inp'
-   grass_calc = .false.
+   seagrass_calc = .false.
    return
 99 FATAL 'I could not read seagrass.inp'
    stop 'init_seagrass'
@@ -182,7 +170,7 @@
 ! !IROUTINE: Update the sea grass model
 !
 ! !INTERFACE:
-   subroutine calc_seagrass(nlev,dt)
+   subroutine do_seagrass(nlev,dt)
 !
 ! !DESCRIPTION:
 !
@@ -235,21 +223,18 @@
 !  by sea--grass friction, $\alpha_{sg}$, is denoted as {\tt xP\_rat}
 !  in the code. It has to be read--in from the {\tt canopy} namelist.
 !  For details and example calculations, see \cite{BurchardBolding2000}.
-
 !
 ! !USES:
+   use meanflow, only:     u,v,h,drag,xP
    IMPLICIT NONE
-
 !
 ! !INPUT PARAMETERS:
    integer,  intent(in)     :: nlev
    REALTYPE, intent(in)     :: dt
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!BOC
 ! !LOCAL VARIABLES:
    integer                   :: i
    REALTYPE                  :: dist
@@ -259,15 +244,14 @@
    REALTYPE                  :: xxP(0:nlev)
 !EOP
 !-----------------------------------------------------------------------
-
-   if (grass_calc) then
+   if (seagrass_calc) then
 
       z(1)=0.5*h(1)
       do i=2,nlev
          z(i)=z(i-1)+0.5*(h(i-1)+h(i))
       end do
 
-! Interpolate excursion limits and frcition to actual grid.
+!     Interpolate excursion limits and friction to actual grid.
 
       call gridinterpol(grassn,1,grassz,exc,nlev,z,excur)
       call gridinterpol(grassn,1,grassz,vfric,nlev,z,grassfric)
@@ -280,56 +264,26 @@
             xx(i)= excur(i)/dist * xx(i)
             yy(i)= excur(i)/dist * yy(i)
 
-   ! Increased drag by seagrass friction
+!           Increased drag by seagrass friction
             drag(i)=drag(i)+grassfric(i)
 
-   ! Extra turbulence production by seagrass friction
+!           Extra turbulence production by seagrass friction
             xxP(i)=xP_rat*grassfric(i)*(sqrt(u(i)**2+v(i)**2))**3
          else
-            xxP(i)=0.
+            xxP(i)=_ZERO_
          end if
       end do
 
-   ! Interpolate onto turbulence grid points
+!     Interpolate onto turbulence grid points
       do i=1,nlev-1
          xP(i)=0.5*(xxP(i)+xxP(i+1))
       end do
 
-      if (write_results) then
-         call save_seagrass()
-      end if
-
    end if
-
    return
-   end subroutine calc_seagrass
+   end subroutine do_seagrass
 !EOC
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Finish the sea grass calculations
-!
-! !INTERFACE:
-   subroutine end_seagrass
-!
-! !DESCRIPTION:
-!  Nothing done yet --- supplied for completeness.
 
-!
-! !USES:
-   IMPLICIT NONE
-
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding & Hans Burchard
-!
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-
-   return
-   end subroutine end_seagrass
-!EOC
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -343,13 +297,13 @@
 !  netCDF file is managed.
 !
 ! !USES:
-   use output, only: out_fmt
+   use meanflow, only:     h
+   use output, only: out_fmt,ts
 #ifdef NETCDF_FMT
    use ncdfout, only: ncid
    use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dims
    use ncdfout, only: define_mode,new_nc_variable,set_attributes,store_data
 #endif
-
    IMPLICIT NONE
 
 #ifdef NETCDF_FMT
@@ -360,14 +314,13 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
    logical, save             :: first=.true.
    integer, save             :: x_excur_id,y_excur_id,n
    integer                   :: i,iret
    REALTYPE                  :: zz
    REALTYPE                  :: miss_val
+!EOP
 !-----------------------------------------------------------------------
 !BOC
 
@@ -415,6 +368,30 @@
    end subroutine save_seagrass
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Finish the sea grass calculations
+!
+! !INTERFACE:
+   subroutine end_seagrass
+!
+! !DESCRIPTION:
+!  Nothing done yet --- supplied for completeness.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   return
+   end subroutine end_seagrass
+!EOC
 !-----------------------------------------------------------------------
 
    end module seagrass
