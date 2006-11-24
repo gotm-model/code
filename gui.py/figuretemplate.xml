@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<folder id="figure" label="figure">
+
+			<variable id="Title" type="string" label="title"/>
+
+			<folder id="TimeAxis" label="time axis">
+				<variable id="Minimum" type="datetime" label="minimum"/>
+				<variable id="Maximum" type="datetime" label="maximum"/>
+				<variable id="Label"   type="string" label="label"/>
+			</folder>
+
+			<variable id="HasDepthAxis" type="bool" label="depth axis" hidden="True"/>
+			
+			<folder id="DepthAxis" label="depth axis">
+				<condition type="eq" variable="./HasDepthAxis" value="True"/>
+				<variable id="Minimum" type="float" label="minimum" unit="m" maximum="0"/>
+				<variable id="Maximum" type="float" label="maximum" unit="m" maximum="0"/>
+				<variable id="Label"   type="string" label="label"/>
+			</folder>
+
+			<folder id="Data" label="data">
+				<folder id="Series" label="series" maxoccurs="10">
+					<variable id="Variable"       type="string" label="variable"    readonly="True"/>
+					<variable id="Source"         type="string" label="data source" readonly="True"/>
+					<variable id="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
+					<variable id="Label"          type="string" label="label"/>
+					<variable id="PlotType2D" type="select" label="plot type">
+						<condition type="eq" variable="./DimensionCount" value="1"/>
+						<options>
+							<option label="line" value="0"/>
+						</options>
+					</variable>
+					<variable id="PlotType3D" type="select" label="plot type">
+						<condition type="eq" variable="./DimensionCount" value="2"/>
+						<options>
+							<option label="grid"            value="0"/>
+							<option label="filled contours" value="1"/>
+						</options>
+					</variable>
+					<variable id="LogScale" type="bool" label="log-scale"/>
+				</folder>
+			</folder>
+		
+</folder>

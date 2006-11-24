@@ -1,0 +1,63 @@
+﻿<?xml version="1.0"?>
+<root>
+	<folder name="Turbulent quantities">
+		<variable id="tke"/>
+		<variable id="P"/>
+		<variable id="G"/>
+		<variable id="eps"/>
+		<variable id="eps_obs"/>
+		<variable id="l"/>
+		<variable id="num"/>
+		<variable id="nuh"/>
+		<variable id="nus"/>
+		<variable id="NN"/>
+		<variable id="NN_obs"/>
+		<variable id="SS"/>
+		<variable id="SS_obs"/>
+		<variable id="kb"/>
+		<variable id="Pb"/>
+		<variable id="epsb"/>
+		<variable id="uu"/>
+		<variable id="vv"/>
+		<variable id="ww"/>
+		<variable id="sigma_t"/>
+		<variable id="sigma_t_obs"/>
+	</folder>
+	<folder name="Tracers">
+		<variable id="temp"/>
+		<variable id="temp_obs"/>
+		<variable id="salt"/>
+		<variable id="salt_obs"/>
+	</folder>
+	<folder name="Velocities">
+		<variable id="u"/>
+		<variable id="u_obs"/>
+		<variable id="v"/>
+		<variable id="v_obs"/>
+	</folder>
+	<folder name="Boundaries">
+		<variable id="sst"/>
+		<variable id="sss"/>
+		<variable id="p_e"/>
+		<variable id="x-taus"/>
+		<variable id="y-taus"/>
+		<variable id="u_taus"/>
+		<variable id="u_taub"/>
+		<variable id="swr"/>
+		<variable id="int_swr"/>
+		<variable id="heat"/>
+		<variable id="int_heat"/>
+		<variable id="total"/>
+		<variable id="int_total"/>
+		<variable id="zeta"/>
+	</folder>
+	<folder name="Column structure">
+		<variable id="h"/>
+	</folder>
+	<folder name="Non-local fluxes">
+		<variable id="gamh"/>
+		<variable id="gams"/>
+		<variable id="gamu"/>
+		<variable id="gamv"/>
+	</folder>
+</root>
