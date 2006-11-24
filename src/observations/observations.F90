@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.12 2005-12-23 14:10:34 kbk Exp $
+!$Id: observations.F90,v 1.13 2006-11-24 15:13:41 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,7 +31,8 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_observations,get_all_obs,read_obs,read_profiles
+   public init_observations, get_all_obs, read_obs, read_profiles,&
+          clean_observations
 !
 ! !PUBLIC DATA MEMBERS:
 !
@@ -203,6 +204,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.13  2006-11-24 15:13:41  kbk
+!  de-allocate memory and close open files
+!
 !  Revision 1.12  2005-12-23 14:10:34  kbk
 !  support for reading oxygen profiles
 !
@@ -883,6 +887,61 @@
    end subroutine read_profiles
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Clean up the observation module
+!
+! !INTERFACE:
+   subroutine clean_observations()
+!
+! !DESCRIPTION:
+!  De-allocates memory allocated in init\_observations().
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'clean_observations'
+
+   LEVEL2 'de-allocate observation memory ...'
+   if (allocated(sprof)) deallocate(sprof)
+   if (allocated(tprof)) deallocate(tprof)
+   if (allocated(dsdx)) deallocate(dsdx)
+   if (allocated(dsdy)) deallocate(dsdy)
+   if (allocated(dtdx)) deallocate(dtdx)
+   if (allocated(dtdy)) deallocate(dtdy)
+   if (allocated(idpdx)) deallocate(idpdx)
+   if (allocated(idpdy)) deallocate(idpdy)
+   if (allocated(SRelaxTau)) deallocate(SRelaxTau)
+   if (allocated(TRelaxTau)) deallocate(TRelaxTau)
+   if (allocated(uprof)) deallocate(uprof)
+   if (allocated(vprof)) deallocate(vprof)
+   if (allocated(epsprof)) deallocate(epsprof)
+   if (allocated(o2_prof)) deallocate(o2_prof)
+   LEVEL2 'done.'
+
+   LEVEL2 'closing any open files ...'
+   close(s_prof_unit)
+   close(t_prof_unit)
+   close(ext_press_unit)
+   close(int_press_unit)
+   close(extinct_unit)
+   close(w_adv_unit)
+   close(zeta_unit)
+   close(vel_prof_unit)
+   close(e_prof_unit)
+   close(o2_prof_unit)
+   LEVEL2 'done.'
+
+   return
+   end subroutine clean_observations
+!EOC
 !-----------------------------------------------------------------------
 
    end module observations

@@ -1,4 +1,4 @@
-!$Id: tridiagonal.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: tridiagonal.F90,v 1.7 2006-11-24 15:13:41 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -14,7 +14,7 @@
 !  using Gaussian elimination.
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_tridiagonal,tridiagonal
+   public init_tridiagonal, tridiagonal, clean_tridiagonal
 !
 ! !PUBLIC DATA MEMBERS:
    REALTYPE, dimension(:), allocatable     :: au,bu,cu,du
@@ -22,7 +22,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2006-11-24 15:13:41  kbk
+!  de-allocate memory and close open files
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2004/08/17 15:33:47  lars
@@ -131,7 +134,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2006-11-24 15:13:41  kbk
+!  de-allocate memory and close open files
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2004/08/17 15:33:47  lars
@@ -176,6 +182,43 @@
    end subroutine tridiagonal
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: De-allocate memory
+!
+! !INTERFACE:
+   subroutine clean_tridiagonal()
+!
+! !DESCRIPTION:
+!  De-allocates memory allocated in init\_tridiagonal.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'clean_tridiagonal'
+
+   if (allocated(au)) deallocate(au)
+
+   if (allocated(bu)) deallocate(bu)
+
+   if (allocated(cu)) deallocate(cu)
+
+   if (allocated(du)) deallocate(du)
+
+   if (allocated(ru)) deallocate(ru)
+
+   if (allocated(qu)) deallocate(qu)
+
+   return
+   end subroutine clean_tridiagonal
+!EOC
 !-----------------------------------------------------------------------
 
    end module mtridiagonal

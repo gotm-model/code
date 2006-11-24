@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.12 2006-11-20 17:26:15 kbk Exp $
+!$Id: meanflow.F90,v 1.13 2006-11-24 15:13:41 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,12 +18,12 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_meanflow
+   public init_meanflow, clean_meanflow
 !
 ! !PUBLIC DATA MEMBERS:
 
 !  coordinate z, layer thicknesses
-   REALTYPE, public, dimension(:), allocatable  :: z,h,ho
+   REALTYPE, public, dimension(:), allocatable  :: ga,z,h,ho
 
 !  the velocity components
    REALTYPE, public, dimension(:), allocatable  :: u,v,w
@@ -116,6 +116,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
+!  Revision 1.13  2006-11-24 15:13:41  kbk
+!  de-allocate memory and close open files
+!
 !  Revision 1.12  2006-11-20 17:26:15  kbk
 !  [Cc]harnok -> [Cc]harnock - A. Jenkins
 !
@@ -204,6 +207,11 @@
    LEVEL2 'done.'
 
    LEVEL2 'allocation meanflow memory..'
+
+   allocate(ga(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (ga)'
+   ga = _ZERO_
+
    allocate(z(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (z)'
    z = _ZERO_
@@ -346,6 +354,71 @@
    stop 'init_meanflow'
 
    end subroutine init_meanflow
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Cleaning up the mean flow variables
+!
+! !INTERFACE:
+   subroutine clean_meanflow()
+!
+! !DESCRIPTION:
+!  De-allocates all memory allocated via init_meanflow()
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+!  See log for the meanflow module
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'clean_meanflow'
+
+   LEVEL2 'de-allocation meanflow memory ...'
+   if (allocated(z)) deallocate(z)
+   if (allocated(h)) deallocate(h)
+   if (allocated(ho)) deallocate(ho)
+   if (allocated(u)) deallocate(u)
+   if (allocated(uo)) deallocate(uo)
+   if (allocated(v)) deallocate(v)
+   if (allocated(vo)) deallocate(vo)
+   if (allocated(w)) deallocate(w)
+   if (allocated(fric)) deallocate(fric)
+   if (allocated(drag)) deallocate(drag)
+   if (allocated(T)) deallocate(T)
+   if (allocated(S)) deallocate(S)
+   if (allocated(rho)) deallocate(rho)
+   if (allocated(NN)) deallocate(NN)
+   if (allocated(NNT)) deallocate(NNT)
+   if (allocated(NNS)) deallocate(NNS)
+   if (allocated(SS)) deallocate(SS)
+   if (allocated(SSU)) deallocate(SSU)
+   if (allocated(SSV)) deallocate(SSV)
+   if (allocated(xP)) deallocate(xP)
+   if (allocated(buoy)) deallocate(buoy)
+   if (allocated(rad)) deallocate(rad)
+   if (allocated(avh)) deallocate(avh)
+   if (allocated(w_grid)) deallocate(w_grid)
+   if (allocated(bioshade)) deallocate(bioshade)
+# ifdef EXTRA_OUTPUT
+   if (allocated(mean1)) dallocate(mean1)
+   if (allocated(mean2)) dallocate(mean2)
+   if (allocated(mean3)) dallocate(mean3)
+   if (allocated(mean4)) dallocate(mean4)
+   if (allocated(mean5)) dallocate(mean5)
+# endif
+   LEVEL2 'done.'
+
+   return
+   end subroutine clean_meanflow
 !EOC
 
 !-----------------------------------------------------------------------

@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.16 2005-11-18 10:59:35 kbk Exp $
+!$Id: updategrid.F90,v 1.17 2006-11-24 15:13:41 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -51,7 +51,8 @@
 
 !
 ! !USES:
-   use meanflow,     only: depth0,depth,z,h,ho,ddu,ddl,grid_method
+   use meanflow,     only: depth0,depth
+   use meanflow,     only: ga,z,h,ho,ddu,ddl,grid_method
    use meanflow,     only: NN,SS,w_grid,grid_file,w
    use observations, only: zeta_method,w_adv_method
    use observations, only: w_adv,w_height,w_adv_discr
@@ -64,6 +65,9 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
+!  Revision 1.17  2006-11-24 15:13:41  kbk
+!  de-allocate memory and close open files
+!
 !  Revision 1.16  2005-11-18 10:59:35  kbk
 !  removed unused variables - some left in parameter lists
 !
@@ -116,13 +120,9 @@
    integer, save             :: gridinit=0
    REALTYPE                  :: zi(0:nlev)
    integer, parameter        :: grid_unit = 101
-   REALTYPE, save, dimension(:), allocatable     :: ga
 !-----------------------------------------------------------------------
 !BOC
    if (gridinit .eq. 0) then ! Build up dimensionless grid (0<=ga<=1)
-      allocate(ga(0:nlev),stat=rc)
-      if (rc /= 0) STOP 'updategrid: Error allocating (ga)'
-      ga(0) = _ZERO_
       select case (grid_method)
       case(0) !Equidistant grid with possible zooming to surface and bottom
          LEVEL2 "sigma coordinates (zooming possible)"
@@ -239,11 +239,6 @@
       z(i)=z(i-1)+0.5*(h(i-1)+h(i))
    end do
 
-   zi(0)=-depth0
-   do i=1,nlev
-      zi(i)=zi(i-1)+h(i)
-   end do
-
 !  Vertical velocity calculation:
 
    select case(w_adv_method)
@@ -251,6 +246,10 @@
          ! no vertical advection
       case(1,2)
          ! linearly varying advection velocity with peak at "w_height"
+         zi(0)=-depth0
+         do i=1,nlev
+            zi(i)=zi(i-1)+h(i)
+         end do
          if (w_height.lt.0.01*(zi(nlev)-zi(0))) w_height=0.5*(zi(0)-zi(nlev))
          do i=1,nlev-1
             if (zi(i).gt.w_height) then

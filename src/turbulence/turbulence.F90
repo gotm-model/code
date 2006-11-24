@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.15 2005-11-15 11:35:02 lars Exp $
+!$Id: turbulence.F90,v 1.16 2006-11-24 15:13:41 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -39,6 +39,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_turbulence, do_turbulence
    public k_bc,q2over2_bc,epsilon_bc,psi_bc,q2l_bc
+   public clean_turbulence
 
 ! !PUBLIC DATA MEMBERS:
 !  TKE, rate of dissipation, turbulent length-scale
@@ -259,7 +260,10 @@
 
 !
 !  $Log: turbulence.F90,v $
-!  Revision 1.15  2005-11-15 11:35:02  lars
+!  Revision 1.16  2006-11-24 15:13:41  kbk
+!  de-allocate memory and close open files
+!
+!  Revision 1.15  2005/11/15 11:35:02  lars
 !  documentation finish for print
 !
 !  Revision 1.14  2005/09/13 10:00:54  kbk
@@ -3292,7 +3296,69 @@
    end function q2l_bc
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Clean up the turbulence module
+!
+! !INTERFACE:
+   subroutine clean_turbulence()
+!
+! !DESCRIPTION:
+!  De-allocate all memory allocated in init\_turbulence().
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'clean_turbulence'
 
+   LEVEL2 'de-allocating turbulence memory ...'
+   if (allocated(tke)) deallocate(tke)
+   if (allocated(tkeo)) deallocate(tkeo)
+   if (allocated(eps)) deallocate(eps)
+   if (allocated(L)) deallocate(L)
+   if (allocated(kb)) deallocate(kb)
+   if (allocated(epsb)) deallocate(epsb)
+   if (allocated(P)) deallocate(P)
+   if (allocated(B)) deallocate(B)
+   if (allocated(Pb)) deallocate(Pb)
+   if (allocated(num)) deallocate(num)
+   if (allocated(nuh)) deallocate(nuh)
+   if (allocated(nus)) deallocate(nus)
+   if (allocated(gamu)) deallocate(gamu)
+   if (allocated(gamv)) deallocate(gamv)
+   if (allocated(gamb)) deallocate(gamb)
+   if (allocated(gamh)) deallocate(gamh)
+   if (allocated(gams)) deallocate(gams)
+   if (allocated(cmue1)) deallocate(cmue1)
+   if (allocated(cmue2)) deallocate(cmue2)
+   if (allocated(gam)) deallocate(gam)
+   if (allocated(an)) deallocate(an)
+   if (allocated(as)) deallocate(as)
+   if (allocated(at)) deallocate(at)
+   if (allocated(r)) deallocate(r)
+   if (allocated(Rig)) deallocate(Rig)
+   if (allocated(xRf)) deallocate(xRf)
+   if (allocated(uu)) deallocate(uu)
+   if (allocated(vv)) deallocate(vv)
+   if (allocated(ww)) deallocate(ww)
+# ifdef EXTRA_OUTPUT
+   if (allocated(turb1)) deallocate(turb1)
+   if (allocated(turb2)) deallocate(turb2)
+   if (allocated(turb3)) deallocate(turb3)
+   if (allocated(turb4)) deallocate(turb4)
+   if (allocated(turb5)) deallocate(turb5)
+# endif
+   LEVEL2 'done.'
+
+   return
+   end subroutine clean_turbulence
 
 !-----------------------------------------------------------------------
 

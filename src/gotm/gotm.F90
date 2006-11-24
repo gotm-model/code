@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.30 2006-11-21 15:21:56 kbk Exp $
+!$Id: gotm.F90,v 1.31 2006-11-24 15:13:40 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -49,10 +49,11 @@
    use turbulence,  only: const_num,const_nuh
    use turbulence,  only: gamu,gamv,gamh,gams
    use turbulence,  only: kappa
+   use turbulence,  only: clean_turbulence
 
    use kpp,         only: init_kpp,do_kpp
 
-   use mtridiagonal,only: init_tridiagonal
+   use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
 
 #ifdef SEAGRASS
@@ -85,6 +86,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.31  2006-11-24 15:13:40  kbk
+!  de-allocate memory and close open files
+!
 !  Revision 1.30  2006-11-21 15:21:56  kbk
 !  seagrass working again
 !
@@ -496,6 +500,14 @@
    LEVEL1 'clean_up'
 
    call close_output()
+
+   call clean_meanflow()
+
+   call clean_turbulence()
+
+   call clean_observations()
+
+   call clean_tridiagonal()
 
    return
    end subroutine clean_up
