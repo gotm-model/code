@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.13 2006-11-24 15:13:41 kbk Exp $
+!$Id: meanflow.F90,v 1.14 2006-11-27 08:44:33 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -116,6 +116,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
+!  Revision 1.14  2006-11-27 08:44:33  kbk
+!  de-allocate ga
+!
 !  Revision 1.13  2006-11-24 15:13:41  kbk
 !  de-allocate memory and close open files
 !
@@ -383,6 +386,7 @@
    LEVEL1 'clean_meanflow'
 
    LEVEL2 'de-allocation meanflow memory ...'
+   if (allocated(ga)) deallocate(ga)
    if (allocated(z)) deallocate(z)
    if (allocated(h)) deallocate(h)
    if (allocated(ho)) deallocate(ho)
