@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.13 2006-11-24 15:13:41 kbk Exp $
+!$Id: observations.F90,v 1.14 2006-11-27 09:25:18 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -35,6 +35,7 @@
           clean_observations
 !
 ! !PUBLIC DATA MEMBERS:
+   logical, public                               :: init_saved_vars=.true.
 !
 !  'observed' salinity profile
    REALTYPE, public, dimension(:), allocatable   :: sprof
@@ -204,6 +205,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.14  2006-11-27 09:25:18  kbk
+!  use logical var init_saved_vars to initialise saved variables
+!
 !  Revision 1.13  2006-11-24 15:13:41  kbk
 !  de-allocate memory and close open files
 !
@@ -625,6 +629,8 @@
          call get_o2_profile(o2_prof_unit,julday,secs,nlev,z)
       case default
    end select
+
+   init_saved_vars=.false.
    return
 
 80 FATAL 'Unable to open "',trim(fn),'" for reading'
@@ -938,6 +944,8 @@
    close(e_prof_unit)
    close(o2_prof_unit)
    LEVEL2 'done.'
+
+   init_saved_vars=.true.
 
    return
    end subroutine clean_observations

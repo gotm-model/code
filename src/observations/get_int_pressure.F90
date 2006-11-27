@@ -1,4 +1,4 @@
-!$Id: get_int_pressure.F90,v 1.4 2005-06-27 13:44:07 kbk Exp $
+!$Id: get_int_pressure.F90,v 1.5 2006-11-27 09:25:18 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,7 +18,7 @@
 !
 ! !USES:
    use time, only: time_diff,julian_day
-   use observations, only: read_profiles
+   use observations, only: init_saved_vars,read_profiles
    use observations, only: dsdx,dsdy,dtdx,dtdy
    IMPLICIT NONE
 !
@@ -33,7 +33,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_int_pressure.F90,v $
-!  Revision 1.4  2005-06-27 13:44:07  kbk
+!  Revision 1.5  2006-11-27 09:25:18  kbk
+!  use logical var init_saved_vars to initialise saved variables
+!
+!  Revision 1.4  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.3  2003/03/28 09:20:35  kbk
@@ -59,6 +62,12 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (init_saved_vars) then
+      jul2=0
+      secs2=0
+      lines=0
+   end if
+
    select case(method)
       case(0)
          dsdx = _ZERO_

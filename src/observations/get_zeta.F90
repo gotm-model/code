@@ -1,4 +1,4 @@
-!$Id: get_zeta.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: get_zeta.F90,v 1.7 2006-11-27 09:25:18 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,7 +18,7 @@
 !
 ! !USES:
    use time,         only: time_diff,julian_day,fsecs
-   use observations, only: pi,read_obs
+   use observations, only: pi,init_saved_vars,read_obs
    use observations, only: period_1,amp_1,phase_1,period_2,amp_2,phase_2
    use observations, only: zeta,zeta_0
    IMPLICIT NONE
@@ -30,7 +30,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_zeta.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2006-11-27 09:25:18  kbk
+!  use logical var init_saved_vars to initialise saved variables
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk
@@ -62,6 +65,12 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (init_saved_vars) then
+      jul2=0
+      secs2=0
+      obs2(1)=0.
+   end if
+
    select case(method)
       case(0)                                         ! constant
          zeta = zeta_0

@@ -1,4 +1,4 @@
-!$Id: get_w_adv.F90,v 1.7 2005-11-15 11:02:32 lars Exp $
+!$Id: get_w_adv.F90,v 1.8 2006-11-27 09:25:18 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -24,7 +24,7 @@
 !
 ! !USES:
    use time,         only: time_diff,julian_day
-   use observations, only: read_obs
+   use observations, only: init_saved_vars,read_obs
    use observations, only: w_adv,w_adv0,w_adv_height0,w_height
    IMPLICIT NONE
 !
@@ -35,7 +35,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_w_adv.F90,v $
-!  Revision 1.7  2005-11-15 11:02:32  lars
+!  Revision 1.8  2006-11-27 09:25:18  kbk
+!  use logical var init_saved_vars to initialise saved variables
+!
+!  Revision 1.7  2005/11/15 11:02:32  lars
 !  documentation finish for print
 !
 !  Revision 1.6  2005/08/15 11:54:01  hb
@@ -71,6 +74,12 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (init_saved_vars) then
+      jul2=0
+      secs2=0
+      obs2(2)=0.
+   end if
+
    select case(method)
       case(0)                               ! no vertical advection
          w_adv = _ZERO_

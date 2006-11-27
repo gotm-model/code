@@ -1,4 +1,4 @@
-!$Id: get_ext_pressure.F90,v 1.7 2005-11-15 11:02:32 lars Exp $
+!$Id: get_ext_pressure.F90,v 1.8 2006-11-27 09:25:18 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,7 +19,7 @@
 !
 ! !USES:
    use time,         only: time_diff,julian_day,fsecs
-   use observations, only: read_obs
+   use observations, only: init_saved_vars,read_obs
    use observations, only: pi,h_press,dpdx,dpdy
    use observations, only: AmpMu,AmpMv,PhaseMu,PhaseMv,PeriodM
    use observations, only: AmpSu,AmpSv,PhaseSu,PhaseSv,PeriodS
@@ -33,7 +33,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_ext_pressure.F90,v $
-!  Revision 1.7  2005-11-15 11:02:32  lars
+!  Revision 1.8  2006-11-27 09:25:18  kbk
+!  use logical var init_saved_vars to initialise saved variables
+!
+!  Revision 1.7  2005/11/15 11:02:32  lars
 !  documentation finish for print
 !
 !  Revision 1.6  2005/06/27 13:44:07  kbk
@@ -70,6 +73,12 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (init_saved_vars) then
+      jul2=0
+      secs2=0
+      obs2(3)=0.
+   end if
+
    select case(method)
       case(0)                                    ! constant
          h_press = 0.
