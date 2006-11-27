@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.14 2005-12-27 08:37:58 hb Exp $
+!$Id: ncdfout.F90,v 1.15 2006-11-27 15:13:43 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -46,7 +46,7 @@
 ! !PUBLIC DATA MEMBERS:
 
 !  netCDF file id
-   integer, public                     :: ncid
+   integer, public                     :: ncid=-1
 
 !  dimension ids
    integer                             :: lon_dim,lat_dim,z_dim,z1_dim
@@ -58,6 +58,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
+!  Revision 1.15  2006-11-27 15:13:43  kbk
+!  re-initialse first and set_no when closing .nc file
+!
 !  Revision 1.14  2005-12-27 08:37:58  hb
 !  Oxygen units indicated as mmol o2/m**3 in netCDF output
 !
@@ -100,6 +103,8 @@
 !EOP
 !
 ! !PRIVATE DATA MEMBERS
+   logical, private          :: first=.true.
+   integer, private          :: set_no=0
 !  dimension lengths
    integer, parameter        :: lon_len=1
    integer, parameter        :: lat_len=1
@@ -134,7 +139,6 @@
    integer, private          :: uu_id,vv_id,ww_id
    integer, private          :: o2_obs_id
    integer, private          :: ncdf_time_unit
-   integer, private          :: set_no=0
    integer, private          :: start(4),edges(4)
    logical,save,private      :: GrADS=.false.
 !
@@ -533,7 +537,6 @@
    REALTYPE                            :: dum(0:nlev)
    REAL_4B                             :: buoyp,buoym,dz
    REALTYPE                            :: zz
-   logical, save                       :: first = .true.
 !
 !-------------------------------------------------------------------------
 !BOC
@@ -700,8 +703,12 @@
 !BOC
    LEVEL1 'Output has been written in NetCDF'
 
-   iret = nf_close(ncid)
-   call check_err(iret)
+   if (ncid .ne. -1) then
+      iret = nf_close(ncid)
+      call check_err(iret)
+   end if
+   first=.true.
+   set_no=0
 
    return
    end subroutine close_ncdf
