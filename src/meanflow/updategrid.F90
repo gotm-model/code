@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.17 2006-11-24 15:13:41 kbk Exp $
+!$Id: updategrid.F90,v 1.18 2006-11-27 15:26:37 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -51,6 +51,7 @@
 
 !
 ! !USES:
+   use meanflow,     only: grid_ready
    use meanflow,     only: depth0,depth
    use meanflow,     only: ga,z,h,ho,ddu,ddl,grid_method
    use meanflow,     only: NN,SS,w_grid,grid_file,w
@@ -65,6 +66,9 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
+!  Revision 1.18  2006-11-27 15:26:37  kbk
+!  initialise grid depending on grid_ready
+!
 !  Revision 1.17  2006-11-24 15:13:41  kbk
 !  de-allocate memory and close open files
 !
@@ -117,12 +121,11 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,rc,j,nlayers
-   integer, save             :: gridinit=0
    REALTYPE                  :: zi(0:nlev)
    integer, parameter        :: grid_unit = 101
 !-----------------------------------------------------------------------
 !BOC
-   if (gridinit .eq. 0) then ! Build up dimensionless grid (0<=ga<=1)
+   if (.not. grid_ready) then ! Build up dimensionless grid (0<=ga<=1)
       select case (grid_method)
       case(0) !Equidistant grid with possible zooming to surface and bottom
          LEVEL2 "sigma coordinates (zooming possible)"
@@ -214,7 +217,7 @@
          stop "updategrid: No valid grid_method specified"
      end select
 
-     gridinit = 1  !  Grid is now initialised !
+     grid_ready=.true.  !  Grid is now initialised !
    end if
 
    depth = depth0 + zeta

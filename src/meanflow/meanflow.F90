@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.14 2006-11-27 08:44:33 kbk Exp $
+!$Id: meanflow.F90,v 1.15 2006-11-27 15:26:37 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -21,6 +21,7 @@
    public init_meanflow, clean_meanflow
 !
 ! !PUBLIC DATA MEMBERS:
+   logical, public                              :: grid_ready=.false.
 
 !  coordinate z, layer thicknesses
    REALTYPE, public, dimension(:), allocatable  :: ga,z,h,ho
@@ -116,6 +117,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
+!  Revision 1.15  2006-11-27 15:26:37  kbk
+!  initialise grid depending on grid_ready
+!
 !  Revision 1.14  2006-11-27 08:44:33  kbk
 !  de-allocate ga
 !
@@ -420,6 +424,8 @@
    if (allocated(mean5)) dallocate(mean5)
 # endif
    LEVEL2 'done.'
+
+   grid_ready=.false.
 
    return
    end subroutine clean_meanflow
