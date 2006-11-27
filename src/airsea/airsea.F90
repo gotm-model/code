@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.13 2006-11-17 07:13:17 kbk Exp $
+!$Id: airsea.F90,v 1.14 2006-11-27 10:08:33 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,7 +31,8 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public                              :: init_air_sea
-   public                              :: air_sea_interaction
+   public                              :: do_air_sea
+   public                              :: clean_air_sea
    public                              :: set_sst
    public                              :: integrated_fluxes
 !
@@ -90,6 +91,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.14  2006-11-27 10:08:33  kbk
+!  use var init_saved_vars to initialise saved variables - air_sea_interaction -> do_air_sea
+!
 !  Revision 1.13  2006-11-17 07:13:17  kbk
 !  rho amd wind-speed available via bio_var
 !
@@ -132,6 +136,7 @@
 !EOP
 !
 ! private data members
+   logical                   :: init_saved_vars=.true.
    integer                   :: heat_method
    integer                   :: momentum_method
    integer                   :: p_e_method
@@ -357,7 +362,7 @@
 ! !IROUTINE: Obtain the air--sea fluxes
 !
 ! !INTERFACE:
-   subroutine air_sea_interaction(jul,secs)
+   subroutine do_air_sea(jul,secs)
 !
 ! !DESCRIPTION:
 !
@@ -427,8 +432,10 @@
       case default
    end select
 
+   if (init_saved_vars) init_saved_vars=.false.
+
    return
-   end subroutine air_sea_interaction
+   end subroutine do_air_sea
 !EOC
 
 !-----------------------------------------------------------------------
@@ -437,7 +444,7 @@
 ! !IROUTINE: Finish the air--sea interactions
 !
 ! !INTERFACE:
-   subroutine finish_air_sea_interaction
+   subroutine clean_air_sea
 !
 ! !DESCRIPTION:
 !  All files related to air-sea interaction which have been opened
@@ -463,8 +470,9 @@
       if (sst_method      .eq. FROMFILE) close(sst_unit)
       if (sss_method      .eq. FROMFILE) close(sss_unit)
    end if
+   init_saved_vars=.true.
    return
-   end subroutine finish_air_sea_interaction
+   end subroutine clean_air_sea
 !EOC
 
 !-----------------------------------------------------------------------
@@ -914,6 +922,15 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (init_saved_vars) then
+      meteo_jul2=0
+      meteo_secs2=0
+      I2=0.
+      h2=0.
+      tx2=0.
+      ty2=0.
+      first=.true.
+   end if
 !  This part initialises and reads in new values if necessary.
    if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .lt. 0) then
       do
@@ -1005,6 +1022,11 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (init_saved_vars) then
+      heat_jul2=0
+      heat_secs2=0
+      obs2(2)=0.
+   end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(heat_jul2,heat_secs2,jul,secs) .lt. 0) then
       do
@@ -1070,7 +1092,11 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
+   if (init_saved_vars) then
+      mom_jul2=0
+      mom_secs2=0
+      obs2(2)=0.
+   end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(mom_jul2,mom_secs2,jul,secs) .lt. 0) then
       do
@@ -1136,6 +1162,11 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (init_saved_vars) then
+      p_e_jul2=0
+      p_e_secs2=0
+      obs2(1)=0.
+   end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(p_e_jul2,p_e_secs2,jul,secs) .lt. 0) then
       do
@@ -1197,6 +1228,11 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (init_saved_vars) then
+     sst_jul2=0
+     sst_secs2=0
+     obs2(1)=0.
+   end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(sst_jul2,sst_secs2,jul,secs) .lt. 0) then
       do
@@ -1260,6 +1296,11 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (init_saved_vars) then
+      sss_jul2=0
+      sss_secs2=0
+      obs2(1)=0.
+   end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(sss_jul2,sss_secs2,jul,secs) .lt. 0) then
       do

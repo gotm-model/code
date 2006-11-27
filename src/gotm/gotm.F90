@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.31 2006-11-24 15:13:40 kbk Exp $
+!$Id: gotm.F90,v 1.32 2006-11-27 10:08:33 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,7 +38,7 @@
    use observations
    use time
 
-   use airsea,      only: init_air_sea,air_sea_interaction
+   use airsea,      only: init_air_sea,do_air_sea,clean_air_sea
    use airsea,      only: set_sst,integrated_fluxes
    use airsea,      only: calc_fluxes
    use airsea,      only: wind=>w,tx,ty,I_0,heat,p_e
@@ -86,6 +86,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.32  2006-11-27 10:08:33  kbk
+!  use var init_saved_vars to initialise saved variables - air_sea_interaction -> do_air_sea
+!
 !  Revision 1.31  2006-11-24 15:13:40  kbk
 !  de-allocate memory and close open files
 !
@@ -376,7 +379,7 @@
       if( calc_fluxes ) then
          call set_sst(T(nlev))
       end if
-      call air_sea_interaction(julianday,secondsofday)
+      call do_air_sea(julianday,secondsofday)
 
 !     reset some quantities
       tx = tx/rho_0
@@ -500,6 +503,8 @@
    LEVEL1 'clean_up'
 
    call close_output()
+
+   call clean_air_sea()
 
    call clean_meanflow()
 
