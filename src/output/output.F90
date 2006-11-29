@@ -1,4 +1,4 @@
-!$Id: output.F90,v 1.8 2005-07-19 17:09:37 hb Exp $
+!$Id: output.F90,v 1.9 2006-11-29 09:31:20 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,6 +25,8 @@
 !
 ! !PUBLIC DATA MEMBERS:
    logical                             :: write_results
+   integer, public, parameter          :: ascii_unit=50
+   integer, public, parameter          :: grads_unit=51
    character(len=19)                   :: ts
    integer                             :: out_fmt=ASCII
    character(len=PATH_MAX)             :: out_dir='.'
@@ -41,7 +43,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: output.F90,v $
-!  Revision 1.8  2005-07-19 17:09:37  hb
+!  Revision 1.9  2006-11-29 09:31:20  kbk
+!  output units made public
+!
+!  Revision 1.8  2005/07/19 17:09:37  hb
 !  removed code commented out
 !
 !  Revision 1.7  2005/07/06 14:22:40  kbk
@@ -69,8 +74,6 @@
 !-----------------------------------------------------------------------
 !
 ! !PRIVATE DATA MEMBERS:
-   integer, private, parameter         :: ascii_unit=50
-   integer, private, parameter         :: grads_unit=51
 !  Used for diagnostic output
    integer, private, parameter         :: temp_unit=54
    integer, private, parameter         :: mld_unit=55
