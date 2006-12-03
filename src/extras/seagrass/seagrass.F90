@@ -1,4 +1,4 @@
-!$Id: seagrass.F90,v 1.7 2006-11-21 15:21:56 kbk Exp $
+!$Id: seagrass.F90,v 1.8 2006-12-03 13:54:22 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,9 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: seagrass.F90,v $
+!  Revision 1.8  2006-12-03 13:54:22  hb
+!  No extra production above seagrass
+!
 !  Revision 1.7  2006-11-21 15:21:56  kbk
 !  seagrass working again
 !
@@ -53,13 +56,14 @@
 !  initial import into CVS
 !
    REALTYPE, dimension(:), allocatable :: xx,yy
-   REALTYPE, dimension(:), allocatable :: exc,vfric,grassz
+   REALTYPE, dimension(:), allocatable :: exc,vfric,grassz,xxP
 !  from a namelist
    character(len=PATH_MAX)   :: grassfile='seagrass.dat'
    REALTYPE                  :: XP_rat
    integer                   :: grassind
    integer                   :: grassn
    integer                   :: out_unit
+   integer                   :: maxn
 
 !EOP
 !-----------------------------------------------------------------------
@@ -103,6 +107,8 @@
 !BOC
    LEVEL1 'init_seagrass'
 
+   maxn=nlev
+
 !  Open and read the namelist
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=canopy,err=99)
@@ -111,27 +117,31 @@
    if (seagrass_calc) then
       out_unit=unit
 
+      open(unit,status='unknown',file=grassfile)
+
+      read(unit,*) grassn
+
       allocate(xx(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (xx)'
 
       allocate(yy(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (yy)'
 
-      allocate(exc(0:nlev),stat=rc)
+      allocate(xxP(0:nlev),stat=rc)
+      if (rc /= 0) STOP 'init_seagrass: Error allocating (xxP)'
+
+      allocate(exc(0:grassn),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (exc)'
 
-      allocate(vfric(0:nlev),stat=rc)
+      allocate(vfric(0:grassn),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (vfric)'
 
-      allocate(grassz(0:nlev),stat=rc)
+      allocate(grassz(0:grassn),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (grassz)'
 
-      xx = -999.0
-      yy = -999.0
-
-      open(unit,status='unknown',file=grassfile)
-
-      read(unit,*) grassn
+      xx = _ZERO_
+      yy = _ZERO_
+      xxP= _ZERO_
 
       do i=1,grassn
          read(unit,*) grassz(i),exc(i),vfric(i)
@@ -143,8 +153,6 @@
          if (grassz(grassn).gt.z) grassind=i
       end do
 
-      xx = _ZERO_
-      yy = _ZERO_
 
       close(unit)
 
@@ -241,7 +249,6 @@
    REALTYPE                  :: grassfric(0:nlev)
    REALTYPE                  :: excur(0:nlev)
    REALTYPE                  :: z(0:nlev)
-   REALTYPE                  :: xxP(0:nlev)
 !EOP
 !-----------------------------------------------------------------------
    if (seagrass_calc) then
@@ -256,7 +263,7 @@
       call gridinterpol(grassn,1,grassz,exc,nlev,z,excur)
       call gridinterpol(grassn,1,grassz,vfric,nlev,z,grassfric)
 
-      do i=1,nlev
+      do i=1,grassind
          xx(i)=xx(i)+dt*u(i)                ! Motion of seagrass elements with
          yy(i)=yy(i)+dt*v(i)                ! mean flow.
          dist=sqrt(xx(i)*xx(i)+yy(i)*yy(i))
@@ -298,7 +305,7 @@
 !
 ! !USES:
    use meanflow, only:     h
-   use output, only: out_fmt,ts
+   use output, only: out_fmt,ascii_unit,ts
 #ifdef NETCDF_FMT
    use ncdfout, only: ncid
    use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dims
@@ -326,16 +333,12 @@
 
    select case (out_fmt)
       case (ASCII)
-         if(first) then
-            open(out_unit,file='seagrass.out',status='unknown')
-            first = .false.
-         end if
-         write(out_unit,*)
-         write(out_unit,*) trim(ts)
+         write(ascii_unit,*) 'Seagrass ',grassind
+         write(ascii_unit,110) 'height','x-excur','y-excur'
          zz = _ZERO_
          do i=1,grassind
             zz=zz+0.5*h(i)
-            write(out_unit,*) zz,xx(i),yy(i)
+            write(ascii_unit,111) zz,xx(i),yy(i)
             zz=zz+0.5*h(i)
          end do
       case (NETCDF)
@@ -357,6 +360,8 @@
             n = ubound(xx,1)
             first = .false.
          end if
+         xx(grassind+1:maxn)=miss_val
+         yy(grassind+1:maxn)=miss_val
          iret = store_data(ncid,x_excur_id,XYZT_SHAPE,n,array=xx)
          iret = store_data(ncid,y_excur_id,XYZT_SHAPE,n,array=yy)
 #endif
@@ -364,6 +369,8 @@
          FATAL 'A non valid output format has been chosen'
          stop 'save_seagrass'
    end select
+110 format(3(1x,A12))
+111 format(3(1x,E12.3E2))
    return
    end subroutine save_seagrass
 !EOC
