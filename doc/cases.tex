@@ -1,5 +1,5 @@
 %
-%$Id: cases.tex,v 1.6 2005-12-02 20:21:54 hb Exp $
+%$Id: cases.tex,v 1.7 2006-12-03 13:48:55 hb Exp $
 %
 
 \section{GOTM scenarios \label{sec:cases}}
@@ -21,6 +21,7 @@ Section & Title & Scenario name \\ \hline\hline
 \ref{breaking_waves} & Breaking surface-waves & {\tt wave\_breaking} \\ \hline 
 \ref{entrainment} & Some entrainment scenarios & {\tt entrainment} \\ \hline        
 \ref{estuary} & Estarine dynamics & {\tt estuary} \\ \hline 
+\ref{seagrass} & seagrass canopy dynamics & {\tt seagrass} \\ \hline 
 \ref{flex} &Fladenground Experiment  & {\tt flex} \\ \hline 
 \ref{nns_annual} & Annual North Sea simulation & {\tt nns\_annual} \\ \hline 
 \ref{nns_seasonal} & Seasonal North Sea simulation & {\tt nns\_seasonal} \\ \hline 
@@ -411,6 +412,60 @@ unsymmetric time series of the turbulent diffusivity.
 
 For two-dimensional simulations of estuarine circulation,
 see e.g.\ \cite{BurchardBaumert98} and \cite{Burchardetal2003}.
+
+
+\subsubsection{Seagrass canopy dynamics}\label{seagrass}
+
+
+The seagrass-current interaction has been successfully simulated
+by \cite{VerduinBackhaus2000} by means of coupling an
+ocean circulation model (HAMSOM) and a Lagrangian tracer model. 
+The model set-up was basically two-dimensional with a vertical and
+a horizontal coordinate. A harmonic swell wave travelling into the
+direction of the positive $x$-coordinate had been specified at one open
+boundary. 
+
+The seagrass was represented by passive Lagrangian tracers which freely
+followed the flow as long as they were located inside prescribed
+excursion limits. The movement was simply frozen when the excursion limit
+was reached and the flow tendency was to carry them even further out. 
+Only in that situation, the seagrass tracers had an effect on the current speed
+by exerting a quadratic friction on the flow. 
+
+The basic result of \cite{VerduinBackhaus2000}
+for a location inside the seagrass meadow was, that the mean kinetic energy
+had a local maximum just above the upper reach of the seagrass. That was
+found to be in good agreement with field measurements.  
+
+It is interesting to perform the following two experiments:
+
+\begin{itemize}
+\item[A:] Now extra turbulence is produced by leaf-current friction,
+$\alpha=0$. 
+\item[B:] All friction losses between leaves and current are
+converted to turbulence, 
+$\alpha=1$. 
+\end{itemize} 
+
+The results for these two experiments are shown in \cite{BurchardBolding2000}.
+The sensivity to $\alpha$ seems to be small, only the profiles
+of averaged turbulent kinetic energy are significantly influenced. 
+The results of \cite{VerduinBackhaus2000} are basically
+reproduced. 
+Especially, the local maximaum of mean kinetic energy just above the upper
+reach of seagrass is well simulated. 
+The only striking difference is that in our model the
+seagrass shows an asymmetry for the excursion which is following the residual  
+transport caused by the waves travelling from left to right. 
+\\
+
+{\bf Data files:}
+
+\begin{tabular}{ll}
+{\tt seagrass.dat}&  height above bed in m, excursion limit in m,
+friction coefficient in m$^{-1}$.
+\end{tabular}
+
 
 \subsection{Shelf sea scenarios}
 
