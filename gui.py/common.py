@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.1 2006-11-24 15:52:14 kbk Exp $
+#$Id: common.py,v 1.2 2006-12-04 07:33:26 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re
@@ -15,6 +15,8 @@ matplotlib.rcParams['numerix'] = 'numeric'
 import matplotlib.numerix.ma
 import matplotlib.dates
 import matplotlib.pylab
+
+# Jorn: testing commit
 
 datetime_displayformat = '%Y-%m-%d %H:%M:%S'
 datetime_displayformat = '%x %X'
