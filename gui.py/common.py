@@ -1,23 +1,30 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.2 2006-12-04 07:33:26 jorn Exp $
+#$Id: common.py,v 1.3 2006-12-04 08:03:10 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re
 import zipfile, tarfile, tempfile, shutil
-import StringIO
 
+# Import NetCDF file format support
 import pycdf
 
+# Import all MatPlotLib libraries
 import matplotlib
 matplotlib.use('Qt4Agg')
 matplotlib.rcParams['numerix'] = 'numeric'
-import matplotlib.numerix.ma
+import matplotlib.numerix,matplotlib.numerix.ma
 import matplotlib.dates
 import matplotlib.pylab
 
-# Jorn: testing commit
+import scenarioformats
 
+# Current GOTM/namelist version used by the gotm.so/gotm.pyd engine
+gotmscenarioversion = 'gotm-3.3.2'
+guiscenarioversion = 'gotmgui-0.5.0'
+savedscenarioversion = 'gotm-3.3.2'
+
+# datetime_displayformat: date format used to display datetime objects in the GUI.
 datetime_displayformat = '%Y-%m-%d %H:%M:%S'
 datetime_displayformat = '%x %X'
 
@@ -29,7 +36,7 @@ dateformat = '%Y-%m-%d %H:%M:%S'
 # Counterpart of datetime.strftime.
 def parsedatetime(str,fmt):
     t1tmp = time.strptime(str,fmt) 
-    return datetime.datetime(*t1tmp[0:6])       
+    return datetime.datetime(*t1tmp[0:6])
 
 def findDescendantNode(root,location,create=False):
     if root==None: raise Exception('findDescendantNode called on non-existent parent node (parent = None).')
@@ -355,10 +362,14 @@ class TypedXMLPropertyStore:
                     else:
                         index += 1
 
+            if templatenode==None: return None
+
             # Create child node
-            location = self.location[:] + [childname]
+            location = self.location + [childname]
             valuenode = addDescendantNode(self.store.xmlroot,location)
             child = TypedXMLPropertyStore.Node(self.controller,templatenode,valuenode,location,parent=self)
+            if not child.canHaveClones():
+                raise Exception('Cannot add another child "'+childname+'" because there must exist only one child with this name.')
             child.futureindex = index
             self.controller.beforeVisibilityChange(child,True,False)
             self.children.insert(index,child)
@@ -379,16 +390,29 @@ class TypedXMLPropertyStore:
             while ipos<len(self.children):
                 child = self.children[ipos]
                 if child.location[-1]==childname:
+                    if not child.canHaveClones():
+                        raise Exception('Cannot remove child "'+childname+'" because it has to occur exactly one time.')
                     ichildpos += 1
                     if last!=None and ichildpos>last: return
                     if ichildpos>=first:
                         self.controller.beforeVisibilityChange(child,False,False)
                         child = self.children.pop(ipos)
+                        self.store.clearNodeProperty(child.valuenode)
                         self.controller.afterVisibilityChange(child,False,False)
-                        if child.valuenode!=None:
-                            self.store.clearNodeProperty(child.valuenode)
                         ipos -= 1
                 ipos += 1
+
+        def removeAllChildren(self):
+            ipos = 0
+            while ipos<len(self.children):
+                child = self.children[ipos]
+                if child.canHaveClones():
+                    self.controller.beforeVisibilityChange(child,False,False)
+                    child = self.children.pop(ipos)
+                    self.store.clearNodeProperty(child.valuenode)
+                    self.controller.afterVisibilityChange(child,False,False)
+                else:
+                    ipos += 1
 
         def clearValue(self):
             if self.valuenode==None: return
@@ -490,6 +514,9 @@ class TypedXMLPropertyStore:
             templatenode = self.templatenode
             return (templatenode.nodeType==templatenode.ELEMENT_NODE and templatenode.localName=='variable')
 
+        def canHaveClones(self):
+            return self.templatenode.hasAttribute('maxoccurs')
+
         def getNodesByType(self,valuetype):
             res = []
             if self.getValueType()==valuetype: res.append(self)
@@ -515,12 +542,34 @@ class TypedXMLPropertyStore:
                 for child in children:
                     child.updateVisibility(recursive=True)
 
+        def copyFrom(self,sourcenode,replace=True):
+            if self.isVariable():
+                if replace or self.getValue()==None:
+                    self.setValue(sourcenode.getValue())
+            elif replace:
+                self.removeAllChildren()
+            prevchildname = None
+            index = 0
+            for sourcechild in sourcenode.children:
+                childname = sourcechild.location[-1]
+                if childname!=prevchildname:
+                    index = 0
+                    prevchildname = childname
+                if sourcechild.canHaveClones():
+                    child = self.getNumberedChild(childname,index)
+                else:
+                    child = self.getLocation([childname])
+                if child==None: continue
+                child.copyFrom(sourcechild,replace=replace)
+                index += 1
+
     def __init__(self,xmltemplate,xmldocument,xmlroot=None):
 
         # The template can be specified as a DOM object, or as string (i.e. path to XML file)
         if isinstance(xmltemplate,str):
             xmltemplate = xml.dom.minidom.parse(xmltemplate)
         self.templatedom = xmltemplate
+        self.version = self.templatedom.documentElement.getAttribute('version')
 
         # Set event handlers
         self.visibilityhandlers = []
@@ -553,10 +602,19 @@ class TypedXMLPropertyStore:
         templateroot = self.templatedom.documentElement
 
         if xmldocument==None:
-            impl = xml.dom.minidom.getDOMImplementation()
-            xmldocument = impl.createDocument('', templateroot.getAttribute('id'), None)
-            xmlroot = None
-            
+            if xmlroot!=None:
+                xmldocument = xmlroot
+                while xmldocument.parentNode!=None: xmldocument = xmldocument.parentNode
+            else:
+                impl = xml.dom.minidom.getDOMImplementation()
+                xmldocument = impl.createDocument('', templateroot.getAttribute('id'), None)
+                xmldocument.documentElement.setAttribute('version',self.version)
+
+        if xmlroot==None: xmlroot = xmldocument.documentElement
+        storeversion = xmlroot.getAttribute('version')
+        if storeversion!=self.version:
+            raise Exception('Versions of the xml template and and the xml values do not match.')
+                    
         self.store = XMLPropertyStore(xmldocument,xmlroot=xmlroot)
         self.root = TypedXMLPropertyStore.Node(self,templateroot,self.store.xmlroot,[],None)
         if not self.suppressConditionChecking: self.updateVisibility()
@@ -753,12 +811,12 @@ class TypedXMLPropertyStore:
     def beforeVisibilityChange(self,node,visible,showhide=True):
         if self.enableevents:
             for callback in self.visibilityhandlers:
-                callback[0](node,visible,showhide)
+                if callback[0]!=None: callback[0](node,visible,showhide)
 
     def afterVisibilityChange(self,node,visible,showhide=True):
         if self.enableevents:
             for callback in self.visibilityhandlers:
-                callback[1](node,visible,showhide)
+                if callback[1]!=None: callback[1](node,visible,showhide)
 
     def save(self,path):
         return self.store.save(path)
@@ -793,16 +851,86 @@ class TypedXMLPropertyStore:
         self.enableevents = enabled
 
 class Scenario(TypedXMLPropertyStore):
-    def __init__(self,xmltemplate,xmldocument=None):
+
+    templates = None
+    
+    def __init__(self,xmltemplate=None,xmldocument=None,templatename=None):
+        if templatename!=None:
+            # If the specified scenario is the id of a template, fill in the path to the template file
+            tmpls = Scenario.getTemplates()
+            if templatename in tmpls:
+                xmltemplate = tmpls[templatename]
+            else:
+                raise Exception('Unable to locate template XML file for specified scenario version "'+templatename+'".')
+        elif xmltemplate==None:
+            raise Exception('No scenario template specified. Either specify a file, or a name or a template (as "templatename").')
+        elif not os.path.isfile(xmltemplate):
+            raise Exception('Scenario template "'+xmltemplate+'" does not exist.')
+
         TypedXMLPropertyStore.__init__(self,xmltemplate,xmldocument)
 
         self.tempdir = None
+        self.tempdirowner = True
+        self.filesourcepath = None
+        self.suppressautofilecopy = False
+
+    @staticmethod
+    def getTemplates():
+        if Scenario.templates==None:
+            Scenario.templates = {}
+            templatedir = os.path.join(os.path.dirname(__file__),'scenariotemplates')
+            if os.path.isdir(templatedir):
+                for templatename in os.listdir(templatedir):
+                    (root,ext) = os.path.splitext(templatename)
+                    Scenario.templates[root] = os.path.join(templatedir,templatename)
+            else:
+                print 'WARNING: no templates will be available, because subdir "scenariotemplates" is not present!'
+        return Scenario.templates
+
+    @staticmethod
+    def fromNamelists(path):
+        
+        templates = Scenario.getTemplates()
+        sourceids = scenarioformats.rankSources(guiscenarioversion,templates.keys(),requireplatform='gotm')
+        scenario = None
+        failures = ''
+        for sourceid in sourceids:
+            print 'Trying scenario format "'+sourceid+'"...'
+            scenario = Scenario(templatename=sourceid)
+            try:
+                scenario.loadFromNamelists(path,requireordered = True)
+            except Scenario.NamelistParseException,e:
+                failures += 'Path "'+path+'" does not match template "'+sourceid+'".\nReason: '+str(e)+'\n'
+                scenario.unlink()
+                scenario = None
+            if scenario!=None:
+                #print 'Path "'+path+'" matches template "'+template+'".'
+                break
+        if scenario==None:
+            raise Exception('The path "'+path+'" does not contain a supported GOTM scenario. Details:\n'+failures)
+        newscenario = scenario.convert(guiscenarioversion)
+        scenario.unlink()
+        return newscenario
 
     def unlink(self):
         if self.tempdir!=None:
-            print 'Deleting temporary scenario directory "'+self.tempdir+'".'
-            shutil.rmtree(self.tempdir)
+            if self.tempdirowner:
+                print 'Deleting temporary scenario directory "'+self.tempdir+'".'
+                shutil.rmtree(self.tempdir)
+            self.tempdir = None
         TypedXMLPropertyStore.unlink(self)
+
+    def convert(self,target,targetownstemp=True):        
+        if isinstance(target,str):
+            target = Scenario(templatename=target)
+        
+        convertor = scenarioformats.getConvertor(self.version,target.version)
+        convertor.targetownstemp = targetownstemp
+        if convertor==None:
+            raise Exception('No convertor available to convert version "'+self.version+'" into "'+target.version+'".')
+        convertor.convert(self,target)
+
+        return target
 
     class NamelistParseException(Exception):
         def __init__(self,error,filename=None,namelistname=None,variablename=None):
@@ -816,17 +944,18 @@ class Scenario(TypedXMLPropertyStore):
 
     def getTempDir(self,empty=False):
         if self.tempdir!=None:
-            if empty:
+            if empty and self.tempdirowner:
                 for f in os.listdir(self.tempdir): 
                     os.remove(os.path.join(self.tempdir,f))
         else:
             self.tempdir = tempfile.mkdtemp('','gotm-')
+            self.tempdirowner = True
             print 'Created temporary scenario directory "'+self.tempdir+'".'
         return self.tempdir
 
     def loadFromNamelists(self, srcpath, requireordered = False):
         print 'Importing scenario from namelist files...'
-        self.suppressVisibilityUpdates(True)
+        self.suppressautofilecopy = True
         self.setStore(None,None)
 
         nmltempdir = None
@@ -841,6 +970,7 @@ class Scenario(TypedXMLPropertyStore):
                 print 'Created temporary namelist directory "'+nmltempdir+'".'
                 for tarinfo in tf:
                     tf.extract(tarinfo,nmltempdir)
+                tf.close()
                 srcpath = nmltempdir
                 extracteditems = os.listdir(srcpath)
                 if len(extracteditems)==1:
@@ -849,135 +979,141 @@ class Scenario(TypedXMLPropertyStore):
                         srcpath = itempath
             else:
                 raise Exception('Path "'+srcpath+'" is not an existing directory or file.')
-        
-        filenodes = []
-        for mainchild in self.root.getChildren(showhidden=True):
-            if not mainchild.isFolder():
-                raise Exception('Found non-folder node with id '+mainchild.getId()+' below root, where only folders are expected.')
 
-            # Get name (excl. extension) for the namelist file, and its full path.
-            nmlfilename = mainchild.getId()
-            nmlfilepath = os.path.join(srcpath, nmlfilename+'.inp')
+        try:
+            filenodes = []
+            for mainchild in self.root.getChildren(showhidden=True):
+                if not mainchild.isFolder():
+                    raise Exception('Found non-folder node with id '+mainchild.getId()+' below root, where only folders are expected.')
 
-            # Attempt to open namelist file and read all data
-            try:
-                nmlfile = open(nmlfilepath,'rU')
-            except Exception,e:
-                if mainchild.isHidden(): return
-                raise self.NamelistParseException('Cannot open namelist file. Error: '+str(e),nmlfilepath)
-            nmldata = nmlfile.read()
-            nmlfile.close()
+                # Get name (excl. extension) for the namelist file, and its full path.
+                nmlfilename = mainchild.getId()
+                nmlfilepath = os.path.join(srcpath, nmlfilename+'.inp')
 
-            # Strip comments, i.e. on every line, remove everything after (and including) the first exclamation mark
-            commentre = re.compile('![^\n]*')
-            nmldata = commentre.sub('',nmldata)
-            
-            listre = re.compile('\s*&\s*(\w+)\s*(.*?)\s*/\s*',re.DOTALL)
-            strre = re.compile('^[\'"](.*?)[\'"]$')
-            datetimere = re.compile('(\d\d\d\d)[/\-](\d\d)[/\-](\d\d) (\d\d):(\d\d):(\d\d)')
+                # Attempt to open namelist file and read all data
+                try:
+                    nmlfile = open(nmlfilepath,'rU')
+                except Exception,e:
+                    if mainchild.isHidden(): continue
+                    raise self.NamelistParseException('Cannot open namelist file. Error: '+str(e),nmlfilepath)
+                nmldata = nmlfile.read()
+                nmlfile.close()
 
-            for filechild in mainchild.getChildren(showhidden=True):
-                if not filechild.isFolder():
-                    raise 'Found non-folder node with id '+filechild.getId()+' below branch '+nmlfilename+', where only folders are expected.'
+                # Strip comments, i.e. on every line, remove everything after (and including) the first exclamation mark
+                commentre = re.compile('![^\n]*')
+                nmldata = commentre.sub('',nmldata)
+                
+                listre = re.compile('\s*&\s*(\w+)\s*(.*?)\s*/\s*',re.DOTALL)
+                strre = re.compile('^[\'"](.*?)[\'"]$')
+                datetimere = re.compile('(\d\d\d\d)[/\-](\d\d)[/\-](\d\d) (\d\d):(\d\d):(\d\d)')
 
-                listname = filechild.getId()
-                match = listre.match(nmldata)
-                if match==None:
-                    raise self.NamelistParseException('Cannot find another namelist, while expecting namelist '+listname+'.',nmlfilepath,listname)
-                foundlistname = match.group(1)
-                listdata = match.group(2)
-                nmldata = nmldata[len(match.group(0)):]
-                if foundlistname!=listname:
-                    raise self.NamelistParseException('Expected namelist '+listname+', but found '+foundlistname+'.',nmlfilepath,listname)
-                    
-                for listchild in filechild.getChildren(showhidden=True):
-                    if not listchild.isVariable():
-                        raise 'Found non-variable node with id '+listchild.getId()+' below branch '+nmlfilename+'/'+listname+', where only variables are expected.'
+                for filechild in mainchild.getChildren(showhidden=True):
+                    if not filechild.isFolder():
+                        raise 'Found non-folder node with id '+filechild.getId()+' below branch '+nmlfilename+', where only folders are expected.'
 
-                    varname = listchild.getId()
-                    vartype = listchild.getValueType()
+                    listname = filechild.getId()
+                    match = listre.match(nmldata)
+                    if match==None:
+                        raise self.NamelistParseException('Cannot find another namelist, while expecting namelist '+listname+'.',nmlfilepath,listname)
+                    foundlistname = match.group(1)
+                    listdata = match.group(2)
+                    nmldata = nmldata[len(match.group(0)):]
+                    if foundlistname!=listname:
+                        raise self.NamelistParseException('Expected namelist '+listname+', but found '+foundlistname+'.',nmlfilepath,listname)
+                        
+                    for listchild in filechild.getChildren(showhidden=True):
+                        if not listchild.isVariable():
+                            raise 'Found non-variable node with id '+listchild.getId()+' below branch '+nmlfilename+'/'+listname+', where only variables are expected.'
 
-                    if requireordered:
-                        varmatch = re.match('\s*'+varname+'\s*=\s*(.*?)[ \t]*(?:$|(?:[,\n]\s*))',listdata,re.IGNORECASE)
-                    else:
-                        varmatch = re.search('(?<!\w)'+varname+'\s*=\s*(.*?)[ \t]*(?:$|(?:[,\n]))',listdata,re.IGNORECASE)
-                    if varmatch==None:
-                        raise self.NamelistParseException('Cannot find variable ' + varname + '. Current namelist data: "'+listdata+'"',nmlfilepath,listname,varname)
-                    vardata = varmatch.group(1)
-                    if requireordered: listdata = listdata[len(varmatch.group(0)):]
+                        varname = listchild.getId()
+                        vartype = listchild.getValueType()
 
-                    if vartype=='string' or vartype=='datetime' or vartype=='file':
-                        strmatch = strre.match(vardata)
-                        if strmatch==None:
-                            raise self.NamelistParseException('Variable is not a string. Data: "'+vardata+'"',nmlfilepath,listname,varname)
-                        val = strmatch.group(1)
-                    elif vartype=='int':
-                        try:
-                            val = int(vardata)
-                        except:
-                            raise self.NamelistParseException('Variable is not an integer. Data: "'+vardata+'"',nmlfilepath,listname,varname)
-                    elif vartype=='float':
-                        try:
-                            val = float(vardata)
-                        except:
-                            raise self.NamelistParseException('Variable is not a floating point value. Data: "'+vardata+'"',nmlfilepath,listname,varname)
-                    elif vartype=='bool':
-                        if   vardata[0].lower()=='f' or vardata[0:2].lower()=='.f':
-                            val = False
-                        elif vardata[0].lower()=='t' or vardata[0:2].lower()=='.t':
-                            val = True
+                        if requireordered:
+                            varmatch = re.match('\s*'+varname+'\s*=\s*(.*?)[ \t]*(?:$|(?:[,\n]\s*))',listdata,re.IGNORECASE)
                         else:
-                            raise self.NamelistParseException('Variable is not a boolean. Data: "'+vardata+'"',nmlfilepath,listname,varname)
-                    elif vartype=='select':
-                        try:
-                            val = int(vardata)
-                        except:
-                            raise self.NamelistParseException('Variable is not an integer. Data: "'+vardata+'"',nmlfilepath,listname,varname)
-                    else:
-                        raise 'Unknown variable type '+str(vartype)+' in scenario template.'
-                    
-                    if vartype=='datetime':
-                        datetimematch = datetimere.match(val)
-                        if datetimematch==None:
-                            raise self.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',nmlfilepath,listname,varname)
-                        refvals = map(lambda(i): int(i),datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                        val = datetime.datetime(*refvals)
-                    elif vartype=='file':
-                        # Make absolute path
-                        val = os.path.normpath(os.path.join(os.getcwd(),srcpath, val))
-                        filenodes.append(listchild)
+                            varmatch = re.search('(?<!\w)'+varname+'\s*=\s*(.*?)[ \t]*(?:$|(?:[,\n]))',listdata,re.IGNORECASE)
+                        if varmatch==None:
+                            raise self.NamelistParseException('Cannot find variable ' + varname + '. Current namelist data: "'+listdata+'"',nmlfilepath,listname,varname)
+                        vardata = varmatch.group(1)
+                        if requireordered: listdata = listdata[len(varmatch.group(0)):]
 
-                    listchild.setValue(val)
+                        if vartype=='string' or vartype=='datetime' or vartype=='file':
+                            strmatch = strre.match(vardata)
+                            if strmatch==None:
+                                raise self.NamelistParseException('Variable is not a string. Data: "'+vardata+'"',nmlfilepath,listname,varname)
+                            val = strmatch.group(1)
+                        elif vartype=='int':
+                            try:
+                                val = int(vardata)
+                            except:
+                                raise self.NamelistParseException('Variable is not an integer. Data: "'+vardata+'"',nmlfilepath,listname,varname)
+                        elif vartype=='float':
+                            try:
+                                val = float(vardata)
+                            except:
+                                raise self.NamelistParseException('Variable is not a floating point value. Data: "'+vardata+'"',nmlfilepath,listname,varname)
+                        elif vartype=='bool':
+                            if   vardata[0].lower()=='f' or vardata[0:2].lower()=='.f':
+                                val = False
+                            elif vardata[0].lower()=='t' or vardata[0:2].lower()=='.t':
+                                val = True
+                            else:
+                                raise self.NamelistParseException('Variable is not a boolean. Data: "'+vardata+'"',nmlfilepath,listname,varname)
+                        elif vartype=='select':
+                            try:
+                                val = int(vardata)
+                            except:
+                                raise self.NamelistParseException('Variable is not an integer. Data: "'+vardata+'"',nmlfilepath,listname,varname)
+                        else:
+                            raise 'Unknown variable type '+str(vartype)+' in scenario template.'
+                        
+                        if vartype=='datetime':
+                            datetimematch = datetimere.match(val)
+                            if datetimematch==None:
+                                raise self.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',nmlfilepath,listname,varname)
+                            refvals = map(lambda(i): int(i),datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+                            val = datetime.datetime(*refvals)
+                        elif vartype=='file':
+                            # Make absolute path
+                            val = os.path.normpath(os.path.join(os.getcwd(),srcpath, val))
+                            filenodes.append(listchild)
 
-        self.suppressVisibilityUpdates(False)
-        for fn in filenodes: self.onChange(fn)
+                        listchild.setValue(val)
 
-        if nmltempdir!=None:
-            print 'Removing temporary namelist directory "'+nmltempdir+'".'
-            shutil.rmtree(nmltempdir)
+            self.suppressautofilecopy = False
+            for fn in filenodes: self.onChange(fn)
+        finally:
+            if nmltempdir!=None:
+                print 'Removing temporary namelist directory "'+nmltempdir+'".'
+                shutil.rmtree(nmltempdir)
 
     def writeAsNamelists(self, targetpath, copydatafiles=True):
         print 'Exporting scenario to namelist files...'
 
         # If the directory to write to does not exist, create it.
-        if (not os.path.exists(targetpath)):
-            os.mkdir(targetpath)
-        elif (not os.path.isdir(targetpath)):
-            raise 'Cannot write namelist files to directory '+targetpath+', because a file with that name exists.'
+        if (not os.path.isdir(targetpath)):
+            try:
+                os.mkdir(targetpath)
+            except Exception,e:
+                raise Exception('Unable to create target directory "'+targetpath+'". Error: '+str(e))
         
         for mainchild in self.root.getChildren(showhidden=True):
-            if not mainchild.isFolder(): raise 'Found a variable below root; only folders expected.'
+            if not mainchild.isFolder():
+                raise Exception('Found a variable below the root node, where only folders are expected.')
+            if mainchild.isHidden(): continue
 
             nmlfilename = mainchild.getId()
             nmlfilepath = os.path.join(targetpath, nmlfilename+'.inp')
             nmlfile = open(nmlfilepath,'w')
     
             for filechild in mainchild.getChildren(showhidden=True):
-                if not filechild.isFolder(): raise 'Found a variable directly below branch '+nmlfilename+'; only folders expected.'
+                if not filechild.isFolder():
+                    raise Exception('Found a variable directly below branch '+str(nmlfilename)+', where only folders are expected.')
                 listname = filechild.getId()
                 nmlfile.write('&'+listname+'\n')
                 for listchild in filechild.getChildren(showhidden=True):
-                    if not listchild.isVariable(): raise 'Found a folder ('+str(listchild.getId())+') below branch '+str(nmlfilename)+'/'+str(listname)+'; only variables expected.'
+                    if not listchild.isVariable():
+                        raise Exception('Found a folder ('+str(listchild.getId())+') below branch '+str(nmlfilename)+'/'+str(listname)+', where only variables are expected.')
                     varname = listchild.getId()
                     vartype = listchild.getValueType()
                     varval = listchild.getValue()
@@ -1011,6 +1147,12 @@ class Scenario(TypedXMLPropertyStore):
                     shutil.copyfile(os.path.join(self.getTempDir(),filename),os.path.join(targetpath,filename))
 
     def saveAll(self,path):
+        if self.version!=savedscenarioversion:
+            tempscenario = self.convert(savedscenarioversion,targetownstemp=False)
+            tempscenario.saveAll(path)
+            tempscenario.unlink()
+        else:
+
 ##        tfile = tarfile.open(path,'w:gz')
 ##        scenarioxml = self.toxml('utf-8')
 ##        buf = StringIO.StringIO(scenarioxml)
@@ -1029,15 +1171,15 @@ class Scenario(TypedXMLPropertyStore):
 ##
 ##        tfile.close()
         
-        zfile = zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED)
-        zfile.writestr('scenario.xml', self.toxml('utf-8'))
-        filenodes = self.root.getNodesByType('file')
-        for fn in filenodes:
-            if not fn.isHidden():
-                filename = fn.getValue()
-                print 'Adding "'+filename+'" to archive...'
-                zfile.write(os.path.join(self.getTempDir(),filename),filename)
-        zfile.close()
+            zfile = zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED)
+            zfile.writestr('scenario.xml', self.toxml('utf-8'))
+            filenodes = self.root.getNodesByType('file')
+            for fn in filenodes:
+                if not fn.isHidden():
+                    filename = fn.getValue()
+                    print 'Adding "'+filename+'" to archive...'
+                    zfile.write(os.path.join(self.getTempDir(),filename),filename)
+            zfile.close()
         
         self.resetChanged()
 
@@ -1052,37 +1194,60 @@ class Scenario(TypedXMLPropertyStore):
             raise Exception('The archive "'+path+'" does not contain "scenario.xml"; it cannot be a GOTM scenario.')
 
         scenariodata = zfile.read('scenario.xml')
-        self.setStore(xml.dom.minidom.parseString(scenariodata),None)
+        storedom = xml.dom.minidom.parseString(scenariodata)
+        
+        version = storedom.documentElement.getAttribute('version')
+        if self.version!=version:
+            print 'The file "'+path+'" contains a scenario with version "'+version+'". Converting it to version "'+self.version+'".'
+            zfile.close()
+            tempscenario = Scenario(templatename=version)
+            tempscenario.loadAll(path)
+            tempscenario.convert(self)
+            tempscenario.unlink()
 
-        tmpdir = self.getTempDir(empty=True)
-        filenodes = self.root.getNodesByType('file')
-        for fn in filenodes:
-            if not fn.isHidden():
-                filename = fn.getValue()
-                if files.count(filename)==0:
-                    raise Exception('The archive "'+path+'" does not contain required data file "'+filename+'".')
-                print 'Getting "'+filename+'" from archive...'
-                filedata = zfile.read(filename)
-                f = open(os.path.join(tmpdir,filename),'wb')
-                f.write(filedata)
-                f.close()
+            # If the scenario was stored in the official 'save' format, we should not consider it changed.
+            # (even though we had to convert it to the 'display' format). There, reset the 'changed' status.
+            if version==savedscenarioversion: self.resetChanged()
+        else:
+            self.setStore(storedom,None)
 
-        zfile.close()
+            tmpdir = self.getTempDir(empty=True)
+            filenodes = self.root.getNodesByType('file')
+            for fn in filenodes:
+                if not fn.isHidden():
+                    filename = fn.getValue()
+                    if files.count(filename)==0:
+                        raise Exception('The archive "'+path+'" does not contain required data file "'+filename+'".')
+                    print 'Getting "'+filename+'" from archive...'
+                    filedata = zfile.read(filename)
+                    f = open(os.path.join(tmpdir,filename),'wb')
+                    f.write(filedata)
+                    f.close()
+
+            zfile.close()
 
     def onChange(self,node):
         TypedXMLPropertyStore.onChange(self,node)
 
         # If the changed node is of type "file", create a local copy of it.
-        if (not self.suppressConditionChecking) and node.getValueType()=='file':
-            sourcepath = node.getValue()
+        if (not self.suppressautofilecopy) and node.getValueType()=='file':
+            if self.filesourcepath!=None:
+                sourcepath = os.path.join(self.filesourcepath,node.getValue())
+            elif self.tempdir!=None:
+                sourcepath = os.path.join(self.tempdir,node.getValue())
+            else:
+                sourcepath = node.getValue()
             filename = node.getId()+'.dat'
             if not node.isHidden():
+                # Only actually copy the file if the node is currently visible.
                 tmpdir = self.getTempDir()
-                print 'Creating local copy of '+sourcepath
-                shutil.copyfile(sourcepath,os.path.join(tmpdir,filename))
-            self.suppressConditionChecking = True
+                targetpath = os.path.join(tmpdir,filename)
+                if sourcepath!=targetpath:
+                    print 'Creating local copy of '+sourcepath
+                    shutil.copyfile(sourcepath,targetpath)
+            self.suppressautofilecopy = True
             node.setValue(filename)
-            self.suppressConditionChecking = False
+            self.suppressautofilecopy = False
 
 class PlotVariableStore:
 
@@ -1190,7 +1355,7 @@ class Result(PlotVariableStore):
           else:
               raise Exception('Asked for bounds of unknown dimension "'+dim+'".')
 
-        def getValues(self,bounds):
+        def getValues(self,bounds,staggered=False):
           nc = self.result.getcdf()
             
           # Read generic information for NetCDF variable
@@ -1211,6 +1376,9 @@ class Result(PlotVariableStore):
           # Get requested time range
           timebounds = findindices(bounds[-1],t)
           t = t[timebounds[0]:timebounds[1]+1]
+          if staggered:
+              halfdt = datetime.timedelta(seconds=float((secs[1]-secs[0])/2))
+              t = [t[0]-halfdt] + map(lambda(d): d+halfdt,t)
 
           if len(dims)==4:
               # Four-dimensional variable: longitude, latitude, depth, time
@@ -1219,10 +1387,28 @@ class Result(PlotVariableStore):
                   # (i.e. the choice between z and z1 is automatic)
                   z = nc.var(dims[1]).get()
                   depthbounds = findindices(bounds[0],z)
-                  z = z[depthbounds[0]:depthbounds[1]+1]
-                  #print 'depth range = '+str(bounds[0])
-                  #print 'depth bounds = '+str(depthbounds)
-                  #print 'effective depth range = '+str((z[0],z[-1]))
+                  if not staggered:
+                      z = z[depthbounds[0]:depthbounds[1]+1]
+                  else:
+                      if dims[1]=='z':
+                          z1 = nc.var('z1').get()
+                          z1[-1] = 0    # Cover up slight numerical inaccuracies (e.g. surface at 1e-14)
+                          if depthbounds[0]==0:
+                              # Calculate maximum depth (preferably use specified station depth; other measure may be numerically inaccurate)
+                              maxdepth = None
+                              if self.result.scenario!=None:
+                                  maxdepth = -self.result.scenario.getProperty(['station','depth'])
+                              if maxdepth==None:
+                                  maxdepth = 2*z[0]-z1[0]
+                              z = [maxdepth] + list(z1[0:depthbounds[1]+1])
+                          else:
+                              z = z1[depthbounds[0]-1:depthbounds[1]+1]
+                      elif dims[1]=='z1':
+                          z = nc.var('z').get()
+                          if depthbounds[1]==len(z)-1:
+                              z = list(z[depthbounds[0]:depthbounds[1]+1]) + [0]
+                          else:
+                              z = z[depthbounds[0]:depthbounds[1]+2]
                   dat = v[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1,0,0]
               except pycdf.CDFError, msg:
                   print msg
@@ -1303,9 +1489,9 @@ class Result(PlotVariableStore):
 
         zfile.close()
 
-        self.scenario = Scenario('./scenariotemplate.xml')
+        self.scenario = Scenario(templatename=guiscenarioversion)
         self.scenario.loadAll(scenariofile)
-        os.unlink(scenariofile)
+        os.remove(scenariofile)
         self.datafile = resultfile
 
         # Try to open the CDF file
@@ -1436,6 +1622,13 @@ class Result(PlotVariableStore):
       refvals = map(lambda(i): int(i),datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
       dateref = datetime.datetime(*refvals)
       return dateref
+
+class MonthFormatter(matplotlib.dates.DateFormatter):
+    def __init__(self):
+        matplotlib.dates.DateFormatter.__init__(self,'%b')
+
+    def __call__(self, x, pos=None):
+        return matplotlib.dates.DateFormatter.__call__(self,x,pos)[0]
 
 class Figure:
 
@@ -1575,6 +1768,9 @@ class Figure:
             if plottype==None: plottype=0
             newseriesnode.getLocation([plottypenodename]).setValue(plottype)
 
+            staggered = False
+            if plottypenodename=='PlotType3D' and plottype==0: staggered = True
+
             # Set bounds for the different dimensions
             dimbounds = []
             for dimname in dims:
@@ -1586,7 +1782,7 @@ class Figure:
                     raise Exception('Variable has unknown dimension "'+dimname+'".')
 
             # Get the data
-            data = var.getValues(dimbounds)
+            data = var.getValues(dimbounds,staggered=staggered)
 
             # Transform to log-scale if needed
             logscale = forcedseriesnode.getLocation(['LogScale']).getValue()
@@ -1604,6 +1800,7 @@ class Figure:
             newseriesnode.getLocation(['Label']).setValue(label)
 
             for idim in range(len(dims)):
+                #print dims[idim]+' '+str(data[idim])
                 if dims[idim]=='time':
                     if tmin_eff==None or data[idim][0] <tmin_eff: tmin_eff=data[idim][0]
                     if tmax_eff==None or data[idim][-1]>tmax_eff: tmax_eff=data[idim][-1]
@@ -1628,7 +1825,7 @@ class Figure:
                 if plottype==1:
                   pc = axes.contourf(X,Y,Z)
                 else:
-                  #pc = self.axes.pcolor(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
+                  #pc = axes.pcolor(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
                   pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
                   #im.set_interpolation('bilinear')
                 cb = self.figure.colorbar(mappable=pc)
@@ -1645,20 +1842,29 @@ class Figure:
         dayspan = (tmax_eff-tmin_eff).days
         if dayspan/365>10:
           # more than 10 years
-          axes.xaxis.set_major_locator(matplotlib.dates.YearLocator(5))
+          axes.xaxis.set_major_locator(matplotlib.dates.YearLocator(base=5))
           axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
         elif dayspan/365>1:
           # less than 10 but more than 1 year
-          axes.xaxis.set_major_locator(matplotlib.dates.YearLocator(1))
+          axes.xaxis.set_major_locator(matplotlib.dates.YearLocator(base=1))
           axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
         elif dayspan>61:
           # less than 1 year but more than 2 months
-          axes.xaxis.set_major_locator(matplotlib.dates.MonthLocator(1))
-          axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b'))
-        else:
-          # less than 2 months
-          axes.xaxis.set_major_locator(matplotlib.dates.DayLocator(1))
+          axes.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
+          axes.xaxis.set_major_formatter(MonthFormatter())
+        elif dayspan>7:
+          # less than 2 months but more than 1 day
+          axes.xaxis.set_major_locator(matplotlib.dates.DayLocator(interval=15))
           axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d %b'))
+        elif dayspan>1:
+          # less than 1 week but more than 1 day
+          axes.xaxis.set_major_locator(matplotlib.dates.DayLocator(interval=1))
+          axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d %b'))
+        else:
+          # less than 1 day
+          axes.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
+          axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+          pass
 
         #axes.autoscale_view()
 

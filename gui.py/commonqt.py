@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.1 2006-11-24 15:52:14 kbk Exp $
+#$Id: commonqt.py,v 1.2 2006-12-04 08:03:10 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -63,6 +63,7 @@ class PathEditor(QtGui.QWidget):
         self.setLayout(lo)
 
         self.connect(self.lineedit, QtCore.SIGNAL('textChanged(const QString &)'), self.onChanged)
+        self.connect(self.lineedit, QtCore.SIGNAL('editingFinished()'), self.onEditingFinished)
         self.connect(self.browsebutton, QtCore.SIGNAL("clicked()"), self.onBrowse)
 
         self.getdirectory = getdirectory
@@ -82,17 +83,25 @@ class PathEditor(QtGui.QWidget):
             path = unicode(QtGui.QFileDialog.getExistingDirectory(self))
         elif self.save:
             path = unicode(QtGui.QFileDialog.getSaveFileName(self,'','',self.filter))
-            if self.forcedextension!='' and (not path.endswith(self.forcedextension)):
-                path += self.forcedextension
         else:
             path = unicode(QtGui.QFileDialog.getOpenFileName(self,'','',self.filter))
-        if path!='': self.lineedit.setText(path)
+
+        # If the browse dialog was cancelled, just return.
+        if path=='': return
+        
+        if self.forcedextension!='' and (not path.endswith(self.forcedextension)):
+            # Append imposed extension
+            path += self.forcedextension
+        self.lineedit.setText(path)
 
     def hasPath(self):
         return (len(unicode(self.lineedit.text()))>0)
 
-    def onChanged(self):
+    def onChanged(self,text):
         self.emit(QtCore.SIGNAL('onChanged()'))
+
+    def onEditingFinished(self):
+        self.emit(QtCore.SIGNAL('editingFinished()'))
 
 # =======================================================================
 # ScientificDoubleValidator: a Qt validator for floating point values
@@ -757,41 +766,74 @@ class WizardFork(WizardSequence):
 
 class PropertyEditorFactory:
 
-    def __init__(self,typedstore):
+    def __init__(self,typedstore,live=False):
         self.store = typedstore
         self.changed = False
+        self.live = live
         self.editors = []
 
-        #self.store.addChangeHandler(self.onNodeChanged)
+        if self.live:
+            self.store.addChangeHandler(self.onStoreNodeChanged)
+            self.store.addVisibilityChangeHandler(None,self.onStoreVisibilityChanged)
+            self.store.addStoreChangedHandler(self.onStoreChanged)
 
     def createEditor(self,location,parent):
         node = self.store.root.getLocation(location)
+        if node==None:
+            raise Exception('Unable to create editor for '+str(location)+'; this node does not exist.')
         editor = PropertyEditor(node,parent)
-        editor.addChangeHandler(self.onNodeChanged)
+        editor.addChangeHandler(self.onNodeEdited)
         self.editors.append(editor)
         return editor
 
-    def update(self):
+    def updateStore(self):
         for editor in self.editors:
-            editor.update()
+            editor.updateStore()
 
     def hasChanged(self):
         return self.changed
 
-    def onNodeChanged(self,node):
+    def onStoreNodeChanged(self,node):
+        for editor in self.editors:
+            if editor.node is node:
+                editor.updateEditorValue()
+                break
+
+    def onStoreVisibilityChanged(self,node,visible,showhide):
+        if not showhide: return
+        for editor in self.editors:
+            editor.updateEditorEnabled()
+
+    def onStoreChanged(self):
+        for editor in self.editors:
+            editor.node = self.store.root.getLocation(editor.location)
+            editor.updateEditorValue()
+            editor.updateEditorEnabled()
+
+    def onNodeEdited(self,editor):
         self.changed = True
+        if self.live:
+            if not editor.updateStore(): editor.updateEditorValue()
 
 class PropertyEditor:
 
     def __init__(self,node,parent):
         self.node = node
         self.editor = self.createEditor(node,parent)
-        self.setEditorData(self.editor,self.node)
+        self.updateEditorValue()
+        self.updateEditorEnabled()
         self.changehandlers = []
         self.suppresschangeevent = False
+        self.location = node.location[:]
 
-    def update(self):
-        self.setNodeData(self.editor,self.node)
+    def updateStore(self):
+        return self.setNodeData(self.editor,self.node)
+
+    def updateEditorValue(self):
+        self.setEditorData(self.editor,self.node)
+
+    def updateEditorEnabled(self):
+        self.editor.setEnabled(not self.node.isHidden())
 
     def addChangeHandler(self,callback):
         self.changehandlers.append(callback)
@@ -807,12 +849,12 @@ class PropertyEditor:
         editor = None
         if nodetype=='string':
             editor = QtGui.QLineEdit(parent)
-            editor.connect(editor, QtCore.SIGNAL("textEdited(const QString &)"), self.onChange)
+            editor.connect(editor, QtCore.SIGNAL("editingFinished()"), self.onChange)
         elif nodetype=='int':
             editor = QtGui.QSpinBox(parent)
             if templatenode.hasAttribute('minimum'): editor.setMinimum(int(templatenode.getAttribute('minimum')))
             if templatenode.hasAttribute('maximum'): editor.setMaximum(int(templatenode.getAttribute('maximum')))
-            editor.connect(editor, QtCore.SIGNAL("valueChanged(int)"), self.onChange)
+            editor.connect(editor, QtCore.SIGNAL("editingFinished()"), self.onChange)
         elif nodetype=='float':
             editor = QtGui.QLineEdit(parent)
             validator = ScientificDoubleValidator(editor)
@@ -820,7 +862,7 @@ class PropertyEditor:
             if templatenode.hasAttribute('maximum'): validator.maximum = float(templatenode.getAttribute('maximum'))
             editor.setValidator(validator)
             self.currentvalidator = validator
-            editor.connect(editor, QtCore.SIGNAL("textEdited(const QString &)"), self.onChange)
+            editor.connect(editor, QtCore.SIGNAL("editingFinished()"), self.onChange)
         elif nodetype=='bool':
             editor = QtGui.QComboBox(parent)
             editor.addItem('True',QtCore.QVariant(True))
@@ -836,11 +878,11 @@ class PropertyEditor:
             editor.connect(editor, QtCore.SIGNAL("currentIndexChanged(int)"), self.onChange)
         elif nodetype=='datetime':
             editor = QtGui.QDateTimeEdit(parent)
-            editor.connect(editor, QtCore.SIGNAL("dateTimeChanged(const QDateTime &)"), self.onChange)
+            editor.connect(editor, QtCore.SIGNAL("editingFinished()"), self.onChange)
         elif nodetype=='file':
             editor = PathEditor(parent,compact=True)
             self.currenteditor = editor
-            editor.connect(editor, QtCore.SIGNAL("textEdited(const QString &)"), self.onChange)
+            editor.connect(editor, QtCore.SIGNAL("editingFinished()"), self.onChange)
         else:
             raise 'Unknown node type "'+str(nodetype)+'".'
         return editor
@@ -848,30 +890,41 @@ class PropertyEditor:
     def setEditorData(self,editor,node):
         self.suppresschangeevent = True
         value = node.getValue()
-        if value==None: return
         nodetype = node.getValueType()
-        if nodetype=='string':
-            editor.setText(value)
-        elif nodetype=='int':
-            editor.setValue(value)
-        elif nodetype=='float':
-            editor.setText(unicode(value))
-        elif nodetype=='bool':
-            for ioption in range(editor.count()):
-                optionvalue = editor.itemData(ioption).toBool()
-                if optionvalue==value:
-                    editor.setCurrentIndex(ioption)
-                    break
-        elif nodetype=='select':
-            for ioption in range(editor.count()):
-                optionvalue,ret = editor.itemData(ioption).toInt()
-                if optionvalue==value:
-                    editor.setCurrentIndex(ioption)
-                    break
-        elif nodetype=='datetime':
-            editor.setDateTime(datetime2qtdatetime(value))
-        elif nodetype=='file':
-            editor.setPath(value)
+        if value==None:
+            if nodetype=='string' or nodetype=='float':
+                editor.setText('')
+            elif nodetype=='int':
+                editor.setValue(0)
+            elif nodetype=='bool' or nodetype=='select':
+                editor.setCurrentIndex(0)
+            elif nodetype=='datetime':
+                editor.setDateTime(QtCore.QDateTime())
+            elif nodetype=='file':
+                editor.setPath('')
+        else:
+            if nodetype=='string':
+                editor.setText(value)
+            elif nodetype=='int':
+                editor.setValue(value)
+            elif nodetype=='float':
+                editor.setText(unicode(value))
+            elif nodetype=='bool':
+                for ioption in range(editor.count()):
+                    optionvalue = editor.itemData(ioption).toBool()
+                    if optionvalue==value:
+                        editor.setCurrentIndex(ioption)
+                        break
+            elif nodetype=='select':
+                for ioption in range(editor.count()):
+                    optionvalue,ret = editor.itemData(ioption).toInt()
+                    if optionvalue==value:
+                        editor.setCurrentIndex(ioption)
+                        break
+            elif nodetype=='datetime':
+                editor.setDateTime(datetime2qtdatetime(value))
+            elif nodetype=='file':
+                editor.setPath(value)
         self.suppresschangeevent = False
 
     # setModelData (inherited from QtGui.QItemDelegate)
@@ -879,10 +932,10 @@ class PropertyEditor:
     def setNodeData(self,editor,node):
         nodetype = node.getValueType()
         if nodetype=='string':
-            node.setValue(editor.text())
+            return node.setValue(editor.text())
         elif nodetype=='int':
             editor.interpretText()
-            node.setValue(editor.value())
+            return node.setValue(editor.value())
         elif nodetype=='float':
             tx = editor.text()
             if not editor.hasAcceptableInput(): editor.validator().fixup(tx)
@@ -890,12 +943,13 @@ class PropertyEditor:
                 tx = float(tx)
             except Exception,e:
                 tx = None
-            node.setValue(tx)
+            return node.setValue(tx)
         elif nodetype=='bool':
-            node.setValue(editor.itemData(editor.currentIndex()).toBool())
+            return node.setValue(editor.itemData(editor.currentIndex()).toBool())
         elif nodetype=='select':
-            node.setValue(editor.itemData(editor.currentIndex()).toInt())
+            return node.setValue(editor.itemData(editor.currentIndex()).toInt())
         elif nodetype=='datetime':
-            node.setValue(qtdatetime2datetime(editor.dateTime()))
+            return node.setValue(qtdatetime2datetime(editor.dateTime()))
         elif nodetype=='file':
-            node.setValue(editor.path())
+            return node.setValue(editor.path())
+

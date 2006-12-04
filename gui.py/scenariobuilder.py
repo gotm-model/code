@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.1 2006-11-24 15:52:14 kbk Exp $
+#$Id: scenariobuilder.py,v 1.2 2006-12-04 08:03:10 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -22,7 +22,7 @@ class ScenarioWidget(QtGui.QWidget):
         self.pathImport1 = commonqt.PathEditor(self,header='Directory to import: ',getdirectory=True)
         self.pathImport2 = commonqt.PathEditor(self,header='Archive to import: ')
 
-        self.pathOpen.filter    = 'GOTM result files (*.gotmscenario);;All files (*.*)'
+        self.pathOpen.filter    = 'GOTM scenario files (*.gotmscenario);;GOTM result files (*.gotmresult);;All files (*.*)'
         self.pathImport2.filter = 'tar/gz files (*.tar.gz);;All files (*.*)'
         
         self.bngroup.addButton(self.radioNew,    0)
@@ -68,22 +68,34 @@ class ScenarioWidget(QtGui.QWidget):
 
     def getScenario(self):
         if not self.isComplete(): return None
-        scenario = common.Scenario('./scenariotemplate.xml')
         checkedid = self.bngroup.checkedId()
-        if   checkedid==1:
-            try:
-                scenario.loadAll(self.pathOpen.path())
-            except Exception,e:
-                raise Exception('An error occurred while loading the scenario: '+str(e))
+        if   checkedid==0:
+            scenario = common.Scenario(templatename=common.guiscenarioversion)
+        elif checkedid==1:
+            path = self.pathOpen.path()
+            if path.endswith('.gotmresult'):
+                try:
+                    result = common.Result()
+                    result.load(path)
+                except Exception,e:
+                    raise Exception('An error occurred while loading the result: '+str(e))
+                scenario = result.scenario
+                result.unlink()
+            else:
+                try:
+                    scenario = common.Scenario(templatename=common.guiscenarioversion)
+                    scenario.loadAll(path)
+                except Exception,e:
+                    raise Exception('An error occurred while loading the scenario: '+str(e))
         elif checkedid==2:
             try:
-                scenario.loadFromNamelists(self.pathImport1.path(),requireordered = True)
-            except common.Scenario.NamelistParseException,e:
+                scenario = common.Scenario.fromNamelists(self.pathImport1.path())
+            except Exception,e:
                 raise Exception('Cannot parse namelist files. Error: '+str(e))
         elif checkedid==3:
             try:
-                scenario.loadFromNamelists(self.pathImport2.path(),requireordered = True)
-            except common.Scenario.NamelistParseException,e:
+                scenario = common.Scenario.fromNamelists(self.pathImport2.path())
+            except Exception,e:
                 raise Exception('Cannot parse namelist files. Error: '+str(e))
         return scenario
 
@@ -109,14 +121,17 @@ class PageOpen(commonqt.WizardPage):
         return self.scenariowidget.isComplete()
 
     def saveData(self,mustbevalid):
-        if 'scenario' in self.parent().shared:
-            oldscen = self.parent().shared['scenario']
-            if oldscen!=None: oldscen.unlink()
         try:
             newscen = self.scenariowidget.getScenario()
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
             return False
+        if 'result' in self.parent().shared:
+            result = self.parent().shared.pop('result')
+            result.unlink()
+        if 'scenario' in self.parent().shared:
+            oldscen = self.parent().shared['scenario']
+            if oldscen!=None: oldscen.unlink()
         self.parent().shared['scenario'] = newscen
         return True
 
@@ -137,10 +152,10 @@ class PageLocation(commonqt.WizardPage):
         self.labLongitude  = QtGui.QLabel('Longitude: ',self)
         self.labLatitude   = QtGui.QLabel('Latitude: ',self)
         self.labDepth      = QtGui.QLabel('Water depth: ',self)
-        self.lineName      = self.factory.createEditor(['gotmrun','station','name'],self)
-        self.lineLongitude = self.factory.createEditor(['gotmrun','station','longitude'],self)
-        self.lineLatitude  = self.factory.createEditor(['gotmrun','station','latitude' ],self)
-        self.lineDepth     = self.factory.createEditor(['gotmrun','station','depth'    ],self)
+        self.lineName      = self.factory.createEditor(['station','name'],self)
+        self.lineLongitude = self.factory.createEditor(['station','longitude'],self)
+        self.lineLatitude  = self.factory.createEditor(['station','latitude' ],self)
+        self.lineDepth     = self.factory.createEditor(['station','depth'    ],self)
         loclayout.addWidget(self.labName, 0,0)
         loclayout.addWidget(self.lineName.editor,0,1)
         loclayout.addWidget(self.labLongitude, 1,0)
@@ -156,8 +171,8 @@ class PageLocation(commonqt.WizardPage):
         periodlayout = QtGui.QGridLayout()
         self.labStart  = QtGui.QLabel('Start date: ',self)
         self.labStop   = QtGui.QLabel('Stop date: ',self)
-        self.lineStart = self.factory.createEditor(['gotmrun','time','start'],self)
-        self.lineStop  = self.factory.createEditor(['gotmrun','time','stop'] ,self)
+        self.lineStart = self.factory.createEditor(['time','start'],self)
+        self.lineStop  = self.factory.createEditor(['time','stop'] ,self)
         periodlayout.addWidget(self.labStart, 0,0)
         periodlayout.addWidget(self.lineStart.editor,0,1)
         periodlayout.addWidget(self.labStop, 1,0)
@@ -177,7 +192,7 @@ class PageLocation(commonqt.WizardPage):
             res = QtGui.QMessageBox.question(self,'Your scenario has changed','Do you want to preserve your changes?',QtGui.QMessageBox.Yes,QtGui.QMessageBox.No,QtGui.QMessageBox.NoButton)
             if res==QtGui.QMessageBox.No: return True
 
-        self.factory.update()
+        self.factory.updateStore()
         return True
 
     def isComplete(self):

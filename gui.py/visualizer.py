@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.1 2006-11-24 15:52:15 kbk Exp $
+#$Id: visualizer.py,v 1.2 2006-12-04 08:03:10 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -177,48 +177,39 @@ class FigurePanel(QtGui.QWidget):
         mplfigure = matplotlib.figure.Figure(facecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.),edgecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.))
         self.figure = common.Figure(mplfigure)
 
-        self.figure.properties.addChangeHandler(self.onFigurePropertyChanged)
-
         self.canvas = FigureCanvas(mplfigure)
         self.canvas.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
         self.canvas.setMinimumSize(300,250)
         self.figure.canvas = self.canvas
 
+        self.factory = commonqt.PropertyEditorFactory(self.figure.properties,live=True)
+
         # Controls for time range.
-        self.dateeditStart = QtGui.QDateEdit(self)
-        self.dateeditStop  = QtGui.QDateEdit(self)
-        self.connect(self.dateeditStart, QtCore.SIGNAL('editingFinished()'), self.onStartDateChanged)
-        self.connect(self.dateeditStop,  QtCore.SIGNAL('editingFinished()'), self.onStopDateChanged)
+        self.dateeditStart = self.factory.createEditor(['TimeAxis','Minimum'],self)
+        self.dateeditStop  = self.factory.createEditor(['TimeAxis','Maximum'],self)
 
         # Controls for depth range.
-        self.lineeditStartDepth = QtGui.QLineEdit(self)
-        self.lineeditStopDepth = QtGui.QLineEdit(self)
-        self.connect(self.lineeditStartDepth, QtCore.SIGNAL('editingFinished()'), self.onStartDepthChanged)
-        self.connect(self.lineeditStopDepth,  QtCore.SIGNAL('editingFinished()'), self.onStopDepthChanged)
-
-        # Control for plot type.
-        self.comboPlotType = None
+        self.lineeditStartDepth = self.factory.createEditor(['DepthAxis','Minimum'],self)
+        self.lineeditStopDepth = self.factory.createEditor(['DepthAxis','Maximum'],self)
 
         layout = QtGui.QVBoxLayout()
         
         layoutOptions = QtGui.QGridLayout()
-        #self.labelPlotType = QtGui.QLabel('Plot type:',self)
-        #layoutOptions.addWidget(self.labelPlotType,0,0)
 
         layoutTime = QtGui.QHBoxLayout()
-        layoutTime.addWidget(self.dateeditStart)
+        layoutTime.addWidget(self.dateeditStart.editor)
         self.labelDateTo = QtGui.QLabel(self.tr(' to '),self)
         layoutTime.addWidget(self.labelDateTo)
-        layoutTime.addWidget(self.dateeditStop)
+        layoutTime.addWidget(self.dateeditStop.editor)
         self.labelDateRange = QtGui.QLabel(self.tr('Time range:'),self)
         layoutOptions.addWidget(self.labelDateRange,1,0)
         layoutOptions.addLayout(layoutTime,1,1)
         
         layoutDepth = QtGui.QHBoxLayout()
-        layoutDepth.addWidget(self.lineeditStartDepth)
+        layoutDepth.addWidget(self.lineeditStartDepth.editor)
         self.labelDepthTo = QtGui.QLabel(self.tr(' to '),self)
         layoutDepth.addWidget(self.labelDepthTo)
-        layoutDepth.addWidget(self.lineeditStopDepth)
+        layoutDepth.addWidget(self.lineeditStopDepth.editor)
         self.labelDepthRange = QtGui.QLabel(self.tr('Depth range:'),self)
         layoutOptions.addWidget(self.labelDepthRange,2,0)
         layoutOptions.addLayout(layoutDepth,2,1)
@@ -281,106 +272,6 @@ class FigurePanel(QtGui.QWidget):
     def plotFromProperties(self,properties):
         self.figure.setProperties(properties)    
         self.setEnabled(True)
-
-    def onFigurePropertyChanged(self,node):
-        self.updateControls()
-
-    def updateControls(self):
-        # This function updates values of plot controls so that they reflect
-        # what is currently shown in the plot. This has to be called AFTER
-        # the plot is drawn (i.e. figure.setUpdating(True) is called), in
-        # order to ensure that e.g. autoscaling of axes has been done.
-
-        props = self.figure.properties
-        
-        # Show time range in UI.
-        starttime  = props.getProperty(['TimeAxis','Minimum'])
-        stoptime   = props.getProperty(['TimeAxis','Maximum'])
-        if starttime!=None:
-            self.dateeditStart.setDate(commonqt.datetime2qtdate(starttime))
-        if stoptime!=None:
-            self.dateeditStop.setDate (commonqt.datetime2qtdate(stoptime))
-
-        # Show depth range in UI.
-        startdepth = props.getProperty(['DepthAxis','Minimum'])
-        stopdepth  = props.getProperty(['DepthAxis','Maximum'])
-        if stopdepth!=None:
-            # Variable is depth-dependent; show depth maximum in UI.
-            self.lineeditStartDepth.setEnabled(True)
-            self.lineeditStartDepth.setText('%.1f' % -float(stopdepth))
-        else:
-            # Variable is not depth-dependent; disable depth maximum in UI.
-            self.lineeditStartDepth.setText('')
-            self.lineeditStartDepth.setEnabled(False)
-
-        if startdepth!=None:
-            # Variable is depth-dependent; show depth minimum in UI.
-            self.lineeditStopDepth.setEnabled(True)
-            self.lineeditStopDepth.setText ('%.1f' % -float(startdepth))
-        else:
-            # Variable is not depth-dependent; disable depth minimum in UI.
-            self.lineeditStopDepth.setText('')
-            self.lineeditStopDepth.setEnabled(False)
-
-##        factory = commonqt.PropertyEditorFactory()
-##        datanode = self.figure.properties.root.getLocation(['Data'])
-
-##        if self.comboPlotType!=None: self.layoutOptions.removeWidget(self.comboPlotType)
-##        series = datanode.getLocation(['Series'])
-##        dimcount = series.getLocation(['DimensionCount']).getValue()
-##        if dimcount!=None:
-##            if dimcount==1:
-##                plottypenodename = 'PlotType2D'
-##            elif dimcount==2:
-##                plottypenodename = 'PlotType3D'
-##            else:
-##                raise Exception('Do not know how to handle this number of independent dimensions ('+str(dimcount)+').')
-##            plottypenode = series.getLocation([plottypenodename])
-##            self.comboPlotType = factory.createEditor(plottypenode,self)
-##            self.connect(self.comboPlotType, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPlotTypeChanged)
-##            factory.setEditorData(self.comboPlotType,plottypenode)
-##            self.layoutOptions.addWidget(self.comboPlotType,0,1)
-
-##
-##        series = self.figure.getSeries(index=0)
-##        gotmfile = self.figure.getSource()
-##
-##        # Obtain available plot types.
-##        varname = series.getProperty(['Variable'])
-##        plottypes = gotmfile.getplottypes(varname)
-##        self.noplottypechange = True
-##        self.comboPlotType.clear()
-##        for pt in plottypes:
-##            self.comboPlotType.addItem(pt)
-##        plottype = series.getProperty(['PlotType'],valuetype=int)
-##        self.comboPlotType.setCurrentIndex(plottype)
-##        if len(plottypes)==1:
-##            self.comboPlotType.setEnabled(False)
-##        else:
-##            self.comboPlotType.setEnabled(True)
-##        self.noplottypechange = False
-
-    def onStartDateChanged(self):
-        starttime = commonqt.qtdate2datetime(self.dateeditStart.date())
-        self.figure.properties.setProperty(['TimeAxis','Minimum'],starttime)
-
-    def onStopDateChanged(self):
-        stoptime = commonqt.qtdate2datetime(self.dateeditStop.date())
-        self.figure.properties.setProperty(['TimeAxis','Maximum'],stoptime)
-
-    def onStartDepthChanged(self):
-        # Note: we change from negative depth to positive depth, thus start and stop interchange!
-        stopdepth = -float(self.lineeditStartDepth.text())
-        self.figure.properties.setProperty(['DepthAxis','Maximum'],stopdepth)
-
-    def onStopDepthChanged(self):
-        # Note: we change from negative depth to positive depth, thus start and stop interchange!
-        startdepth = -float(self.lineeditStopDepth.text())
-        self.figure.properties.setProperty(['DepthAxis','Minimum'],startdepth)
-
-    def onPlotTypeChanged(self,curitem=None):
-        if not self.noplottypechange:
-            self.figure.getSeries(index=0).setProperty(['PlotType'],self.comboPlotType.currentIndex())
 
     def onAdvancedClicked(self):
         if self.dialogAdvanced==None:

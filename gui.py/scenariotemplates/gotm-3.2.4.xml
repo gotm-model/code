@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<folder id="scenario" label="scenario">
+<folder id="scenario" label="scenario" version="gotm-3.2.4">
 
 	<folder id="gotmrun" label="general">
 	
@@ -124,10 +124,10 @@
 		<folder id="gotmmean">
 			<folder id="meanflow">
 				<variable id="h0b"         type="float" label="bottom roughness  - Note: z0b=0.03*h0b+0.1*nu/ustar"    unit="m"/>
-				<variable id="z0s_min"     type="float" label="minimum value of z0s, default value if charnock=.false." unit="m"/>
-				<variable id="charnock"    type="bool"  label="adaptation of Charnock 1955 formula used"/>
-				<variable id="charnock_val" type="float" label="emp. constant in Charnok 1955 formula (default = 1400.)">
-					<condition type="eq" variable="./charnock" value="True"/>
+				<variable id="z0s_min"     type="float" label="minimum value of z0s, default value if charnok=.false." unit="m"/>
+				<variable id="charnok"     type="bool"  label="adaptation of Charnok 1955 formula used"/>
+				<variable id="charnok_val" type="float" label="emp. constant in Charnok 1955 formula (default = 1400.)">
+					<condition type="eq" variable="./charnok" value="True"/>
 				</variable>
 				<variable id="ddu"         type="float" label="grid zooming (surface), 0: no zooming; > 3 strong zooming">
 					<condition type="eq" variable="./grid_method" value="0"/>
@@ -1032,29 +1032,5 @@
 				<variable id="b_obs_sbf"  type="float" label="prescribed constant surface buoyancy flux"/>
 			</folder>
 			
-			<folder id="o2_profile" label="observed oxygen profiles">
-				<variable id="o2_prof_method" type="select" label="method to select initial observed oxygen profiles">
-					<options>
-						<option value="0" label="no observed oxygen profiles" />
-						<option value="1" label="(not used)" />
-						<option value="2" label="read profiles at different dates from &quot;o2_prof_file&quot; and interpolate to GOTM timestep"/>
-					</options>
-				</variable>
-				<variable id="o2_units" type="select" label="which unit are the observations reported in">
-					<options>
-						<option value="0" label="saturation (%)" />
-						<option value="1" label="mmol/m3 ???" />
-						<option value="2" label="ml/m3 ???"/>
-					</options>
-				</variable>
-				<variable id="o2_prof_file" type="file" label="filename of file with oxygen profiles">
-					<condition type="eq" variable="./o2_prof_method" value="2"/>
-					<fileinfo type="profilesintime">
-						<filevariables>
-							<filevariable label="turbulent dissipation rate" unit="W/kg"/>
-						</filevariables>
-					</fileinfo>
-				</variable>
-			</folder>
 		</folder>
 </folder>
