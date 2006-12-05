@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.19 2006-10-26 13:12:46 kbk Exp $
+!$Id: bio_iow.F90,v 1.20 2006-12-05 10:59:10 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.20  2006-12-05 10:59:10  hb
+!  Corrections by Ivan Kuznetzov (IOW): Redfield ratio for phosphate release added and bug fixed
+!
 !  Revision 1.19  2006-10-26 13:12:46  kbk
 !  updated bio models to new ode_solver
 !
@@ -882,7 +885,7 @@
 ! 
 ! Phosphate release due to mineralisation of sediment into ammonium:
 ! \begin{equation}\label{neu_p88}
-! p_{8,8}=(1-p_1\theta\left(c_9,c_9^t,0,1\right)Y(p_2,c_9))\frac{d_{10,6}}{h_1}\delta_{k,1}.
+! p_{8,8}=s_R(1-p_1\theta\left(c_9,c_9^t,0,1\right)Y(p_2,c_9))\frac{d_{10,6}}{h_1}\delta_{k,1}.
 ! \end{equation}
 !
 ! !USES:
@@ -1007,12 +1010,12 @@
       pp(o2,p2,ci)=-s2*dd(p2,am,ci)  
       pp(o2,p3,ci)=-s2*dd(p3,am,ci)  
       pp(o2,zo,ci)=-s2*dd(zo,am,ci)  
-!      pp(o2,am,ci)=-s4*dd(am,ni,ci) 
       pp(o2,de,ci)=-s2*(thopnp+thomnm)*dd(de,am,ci)
       if ((fluff).and.(ci.eq.1)) then
          pp(o2,fl,ci)=-(s4+s2*(thopnp+thomnm))*dd(fl,am,ci)/h(ci)
-         pp(po,po,ci)=(1.-ph1*th(cc(o2,ci),wo,_ZERO_,_ONE_)* &
-                      yy(ph2,cc(o2,ci)))*dd(fl,am,ci)/h(i)
+         pp(po,po,ci)=sr*(1.-ph1*th(cc(o2,ci),wo,_ZERO_,_ONE_)* &
+                      yy(ph2,cc(o2,ci)))*dd(fl,am,ci)/h(ci)           
+
       end if
    end do
 
