@@ -1,4 +1,4 @@
-!$Id: get_ext_pressure.F90,v 1.8 2006-11-27 09:25:18 kbk Exp $
+!$Id: get_ext_pressure.F90,v 1.9 2006-12-07 16:47:50 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -23,7 +23,7 @@
    use observations, only: pi,h_press,dpdx,dpdy
    use observations, only: AmpMu,AmpMv,PhaseMu,PhaseMv,PeriodM
    use observations, only: AmpSu,AmpSv,PhaseSu,PhaseSv,PeriodS
-   use observations, only: PressConstU,PressConstV
+   use observations, only: PressConstU,PressConstV,PressHeight
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -33,6 +33,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_ext_pressure.F90,v $
+!  Revision 1.9  2006-12-07 16:47:50  hb
+!  Bug removed for PressMethod=1
+!
 !  Revision 1.8  2006-11-27 09:25:18  kbk
 !  use logical var init_saved_vars to initialise saved variables
 !
@@ -81,9 +84,9 @@
 
    select case(method)
       case(0)                                    ! constant
-         h_press = 0.
-         dpdx = PressConstU
-         dpdy = PressConstV
+         h_press = PressHeight
+         dpdx    = PressConstU
+         dpdy    = PressConstV
       case(1)                                    ! tides
          dpdx = AmpMu*sin(2*pi*(fsecs-PhaseMu)/PeriodM)    &
                 + AmpSu*sin(2*pi*(fsecs-PhaseSu)/PeriodS)    &
