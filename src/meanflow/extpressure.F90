@@ -1,4 +1,4 @@
-!$Id: extpressure.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: extpressure.F90,v 1.7 2006-12-07 16:50:28 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -52,6 +52,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: extpressure.F90,v $
+!  Revision 1.7  2006-12-07 16:50:28  hb
+!  Program abortion introduced for PressHeight<=0 when PressMethod=1
+!
 !  Revision 1.6  2005-06-27 13:44:07  kbk
 !  modified + removed traling blanks
 !
@@ -83,6 +86,15 @@
    select case (method)
       case (1)
 !        current measurement at h_press above bed
+         if (h_press.le._ZERO_) then
+            LEVEL2 ''
+            LEVEL2 '***************************************************'
+            LEVEL2 'PressHeight=',h_press, 'but it must be positive.'
+            LEVEL2 'Please correct this in obs.inp and rerun.'
+            LEVEL2 'Program aborted.'
+            LEVEL2 '***************************************************' 
+            stop 'extpressure'
+         end if
          z(1)=0.5*h(1)
          i   =0
 222      i=i+1
