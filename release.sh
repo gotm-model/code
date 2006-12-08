@@ -62,11 +62,11 @@ fi
 
 $CVS2CL && mkdir -p $release_dir/$release_name/include/ && mv ChangeLog VERSION $release_dir/$release_name && mv include/version.h $release_dir/$release_name/include/
 
-cd $release_dir && cvs export -r $TAG -d $release_name gotm && tar -cvzf $tarfile $release_name/ && ln -sf $release_name.tar.gz gotm_$release_type.tar.gz
+cd $release_dir && cvs export -r $TAG -d $release_name gotm && tar -cvzf $tarfile $release_name/ && ln -sf $release_name.tar.gz gotm_$release_type.tar.gz && ln -sf $release_name/Changelog
 
 #rsync -av --include=*.tar.gz --exclude=* $base_dir/ $RHOST:$RDIR
 
-scp -p $release_dir/$tarfile $RHOST:$RDIR/$release_type/
+scp -p $release_dir/$tarfile  $release_dir/Changelog $RHOST:$RDIR/$release_type/
 ssh $RHOST \( cd $RDIR/$release_type \; rm gotm-$release_type.tar.gz \; ln -s $tarfile gotm-$release_type.tar.gz \)
 
 exit 0
