@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.14 2006-11-27 10:08:33 kbk Exp $
+!$Id: airsea.F90,v 1.15 2006-12-08 06:50:37 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -91,6 +91,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.15  2006-12-08 06:50:37  kbk
+!  fixed September in yday - Chris Locke
+!
 !  Revision 1.14  2006-11-27 10:08:33  kbk
 !  use var init_saved_vars to initialise saved variables - air_sea_interaction -> do_air_sea
 !
@@ -789,7 +792,7 @@
    REALTYPE                  :: yrdays,days,hour,tjul
 
    integer                   :: yday(12) = &
-                 (/ 0,31,59,90,120,151,181,212,233,273,304,334 /)
+                 (/ 0,31,59,90,120,151,181,212,243,273,304,334 /)
 
    REALTYPE                  :: alb1(20) = &
                  (/.719,.656,.603,.480,.385,.300,.250,.193,.164, &
