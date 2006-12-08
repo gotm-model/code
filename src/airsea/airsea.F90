@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.11 2005-07-06 13:58:07 kbk Exp $
+!$Id: airsea.F90,v 1.11.2.1 2006-12-08 06:35:34 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -87,7 +87,10 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
-!  Revision 1.11  2005-07-06 13:58:07  kbk
+!  Revision 1.11.2.1  2006-12-08 06:35:34  kbk
+!  fixed September in yday - Chris Locke
+!
+!  Revision 1.11  2005/07/06 13:58:07  kbk
 !  added fresh water, updated documentation
 !
 !  Revision 1.10  2004/07/30 09:19:03  hb
@@ -773,7 +776,7 @@
    REALTYPE                  :: yrdays,days,hour,tjul
 
    integer                   :: yday(12) = &
-                 (/ 0,31,59,90,120,151,181,212,233,273,304,334 /)
+                 (/ 0,31,59,90,120,151,181,212,243,273,304,334 /)
 
    REALTYPE                  :: alb1(20) = &
                  (/.719,.656,.603,.480,.385,.300,.250,.193,.164, &
