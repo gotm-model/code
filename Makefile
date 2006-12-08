@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.11.2.5 2006-04-03 12:00:09 kbk Exp $
+#$Id: Makefile,v 1.11.2.6 2006-12-08 06:37:35 kbk Exp $
 #
 # Makefile for making new release of GOTM.
 #
@@ -31,6 +31,8 @@ VERSION=3.2.2
 VERSION=3.2.3
 # 20060403
 VERSION=3.2.4
+# 20061208
+VERSION=3.2.5
 
 all: VERSION
 
