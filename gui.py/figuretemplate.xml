@@ -24,11 +24,18 @@
 					<variable id="Source"         type="string" label="data source" readonly="True"/>
 					<variable id="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
 					<variable id="Label"          type="string" label="label"/>
+					<variable id="LogScale" type="bool" label="log-scale"/>
 					<variable id="PlotType2D" type="select" label="plot type">
 						<condition type="eq" variable="./DimensionCount" value="1"/>
 						<options>
 							<option label="line" value="0"/>
 						</options>
+					</variable>
+					<variable id="LineWidth" type="float" label="line width">
+						<condition type="and">
+							<condition type="eq" variable="./DimensionCount" value="1"/>
+							<condition type="eq" variable="./PlotType2D"     value="0"/>
+						</condition>
 					</variable>
 					<variable id="PlotType3D" type="select" label="plot type">
 						<condition type="eq" variable="./DimensionCount" value="2"/>
@@ -37,7 +44,6 @@
 							<option label="filled contours" value="1"/>
 						</options>
 					</variable>
-					<variable id="LogScale" type="bool" label="log-scale"/>
 				</folder>
 			</folder>
 		

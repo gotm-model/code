@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.2 2006-12-04 08:03:10 jorn Exp $
+#$Id: commonqt.py,v 1.3 2006-12-12 08:19:32 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -429,6 +429,10 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         # Get node (XML element) from given node index (QtCore.QModelIndex)
         node = index.internalPointer()
         templatenode = node.templatenode
+
+        if not value.isValid():
+            node.clearValue()
+            return True
         
         # Get the type of the variable
         fieldtype = node.getValueType()
@@ -534,6 +538,17 @@ class ExtendedTreeView(QtGui.QTreeView):
                 for ich in range(rc):
                     ch = model.index(ich,0,root)
                     self.setExpandedAll(value=value,root=ch,depth=depth+1,maxdepth=maxdepth)
+
+    def contextMenuEvent(self,e):
+        index = self.indexAt(e.pos())
+        model = self.model()
+        if (model.flags(index) & QtCore.Qt.ItemIsEditable) and index.isValid():
+            menu = QtGui.QMenu(self)
+            actReset = menu.addAction('Reset value')
+            actChosen = menu.exec_(e.globalPos())
+            if actChosen is actReset:
+                model.setData(index,QtCore.QVariant())
+            e.accept()
 
 class PropertyEditorDialog(QtGui.QDialog):
     

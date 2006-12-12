@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.2 2006-12-04 08:03:10 jorn Exp $
+#$Id: visualizer.py,v 1.3 2006-12-12 08:19:32 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -17,6 +17,36 @@ import os.path
 import matplotlib.figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+def loadResult(path):
+    result = common.Result()
+
+    try:
+        if path.endswith('.gotmresult'):
+            result.load(path)
+        elif path.endswith('.nc'):
+            result.attach(path)
+        else:
+            # We do not recognize this file type; try both GOTM result and NetCDF
+            done = True
+            try:
+                result.attach(path)
+            except Exception,e:
+                done = False
+            if not done:
+                done = True
+                try:
+                    result.load(path)
+                except Exception,e:
+                    done = False
+            if (not done):
+                raise Exception('The file "'+path+'" is probably not a GOTM result or a NetCDF file.')
+    except:
+        result.unlink()
+        result = None
+        raise
+
+    return result
 
 class OpenWidget(QtGui.QWidget):
     def __init__(self,parent=None):
@@ -37,35 +67,7 @@ class OpenWidget(QtGui.QWidget):
         return self.pathOpen.hasPath()
 
     def getResult(self):
-        result = common.Result()
-        path = self.pathOpen.path()
-
-        try:
-            if path.endswith('.gotmresult'):
-                result.load(path)
-            elif path.endswith('.nc'):
-                result.attach(path)
-            else:
-                # We do not recognize this file type; try both GOTM result and NetCDF
-                done = True
-                try:
-                    result.attach(path)
-                except Exception,e:
-                    done = False
-                if not done:
-                    done = True
-                    try:
-                        result.load(path)
-                    except Exception,e:
-                        done = False
-                if (not done):
-                    raise Exception('The file "'+path+'" is probably not a GOTM result or a NetCDF file.')
-        except:
-            result.unlink()
-            result = None
-            raise
-
-        return result
+        return loadResult(self.pathOpen.path())
 
 class PageOpen(commonqt.WizardPage):
 
@@ -512,7 +514,21 @@ def main():
     wiz.setWindowTitle('Result visualizer')
     wiz.resize(800, 600)
 
-    seq = commonqt.WizardSequence([PageOpen,PageVisualize,PageSave,PageFinal])
+    seq = [PageOpen,PageVisualize,PageSave,PageFinal]
+
+    # Get NetCDF file to open from command line or from FileOpen dialog.
+    if len(sys.argv)>1:
+        result = None
+        try:
+            result = loadResult(sys.argv[1])
+        except Exception,e:
+            QtGui.QMessageBox.critical(self, 'Unable to load result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+        if result!=None:
+            seq.pop(0)
+            wiz.shared['result'] = result
+            wiz.shared['scenario'] = result.scenario
+
+    seq = commonqt.WizardSequence(seq)
     wiz.setSequence(seq)
     wiz.show()
 

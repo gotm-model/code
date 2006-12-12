@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.3 2006-12-04 08:03:10 jorn Exp $
+#$Id: common.py,v 1.4 2006-12-12 08:19:32 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re
@@ -319,7 +319,7 @@ class TypedXMLPropertyStore:
                         self.valuenode = findDescendantNode(self.store.xmlroot,self.location[:],create=True)
                         if self.valuenode==None: raise Exception('unable to create value node at '+str(self.location))
                     changed = self.store.setNodeProperty(self.valuenode,value)
-                    if changed: self.controller.onChange(self)
+                    self.controller.onChange(self)
                     return changed
             return False
 
@@ -416,9 +416,10 @@ class TypedXMLPropertyStore:
 
         def clearValue(self):
             if self.valuenode==None: return
-            self.store.clearNodeProperty(self.valuenode)
-            self.valuenode = None
-            self.controller.onChange(self)
+            if self.controller.onBeforeChange(self,None):
+                self.store.clearNodeProperty(self.valuenode)
+                self.valuenode = None
+                self.controller.onChange(self)
 
         def getId(self):
             return self.templatenode.getAttribute('id')
@@ -955,7 +956,12 @@ class Scenario(TypedXMLPropertyStore):
 
     def loadFromNamelists(self, srcpath, requireordered = False):
         print 'Importing scenario from namelist files...'
+
+        # Disable automatic copying of linked data files, becasue we do not know yet whether they will indeed be "active".
+        # (they may be active/visible only if other, later nodes have the right value)
         self.suppressautofilecopy = True
+
+        # Start with empty scenario
         self.setStore(None,None)
 
         nmltempdir = None
@@ -981,7 +987,9 @@ class Scenario(TypedXMLPropertyStore):
                 raise Exception('Path "'+srcpath+'" is not an existing directory or file.')
 
         try:
+            # Here we store the nodes of type "file"; later we'll return to this list and copy visible (i.e. active) data files.
             filenodes = []
+            
             for mainchild in self.root.getChildren(showhidden=True):
                 if not mainchild.isFolder():
                     raise Exception('Found non-folder node with id '+mainchild.getId()+' below root, where only folders are expected.')
@@ -1080,12 +1088,19 @@ class Scenario(TypedXMLPropertyStore):
 
                         listchild.setValue(val)
 
+            # Reenable automatic copying of linked data files; we know the value of all nodes and can safely see whether
+            # a given file node is active/visible.
             self.suppressautofilecopy = False
+
+            # Force copy of linked (and active/visible) data files.
             for fn in filenodes: self.onChange(fn)
         finally:
             if nmltempdir!=None:
                 print 'Removing temporary namelist directory "'+nmltempdir+'".'
                 shutil.rmtree(nmltempdir)
+
+            # If an exception occured, we need toreset the property below (otherwise it has been done above).
+            self.suppressautofilecopy = False
 
     def writeAsNamelists(self, targetpath, copydatafiles=True):
         print 'Exporting scenario to namelist files...'
@@ -1191,14 +1206,16 @@ class Scenario(TypedXMLPropertyStore):
 
         files = zfile.namelist()
         if files.count('scenario.xml')==0:
-            raise Exception('The archive "'+path+'" does not contain "scenario.xml"; it cannot be a GOTM scenario.')
+            raise Exception('This archive does not contain "scenario.xml"; it cannot be a GOTM scenario.')
 
         scenariodata = zfile.read('scenario.xml')
         storedom = xml.dom.minidom.parseString(scenariodata)
         
         version = storedom.documentElement.getAttribute('version')
+        if version=='':
+            print Exception('This is an unversioned scenario created with a gotm-gui alpha. These are no longer supported; please recreate your scenario with the current gotm-gui.')
         if self.version!=version:
-            print 'The file "'+path+'" contains a scenario with version "'+version+'". Converting it to version "'+self.version+'".'
+            print 'Scenario "'+path+'" has version "'+version+'"; starting conversion to "'+self.version+'".'
             zfile.close()
             tempscenario = Scenario(templatename=version)
             tempscenario.loadAll(path)
@@ -1206,7 +1223,7 @@ class Scenario(TypedXMLPropertyStore):
             tempscenario.unlink()
 
             # If the scenario was stored in the official 'save' format, we should not consider it changed.
-            # (even though we had to convert it to the 'display' format). There, reset the 'changed' status.
+            # (even though we had to convert it to the 'display' format). Therefore, reset the 'changed' status.
             if version==savedscenarioversion: self.resetChanged()
         else:
             self.setStore(storedom,None)
@@ -1336,7 +1353,7 @@ class Result(PlotVariableStore):
                   return ('time',)
           elif dimcount==4:
               if (dimnames==('time','z','lat','lon')) or (dimnames==('time','z1','lat','lon')):
-                  return ('z','time')
+                  return ('time','z')
           return ()
 
         def getDimensionBounds(self,dim):
@@ -1362,58 +1379,69 @@ class Result(PlotVariableStore):
           # (needed independent of the number of dimensions of the variable)
           try:
               v = nc.var(self.varname)
-              secs = nc.var('time').get()
               dims = v.dimensions()
               atts = v.attributes()
           except pycdf.CDFError, msg:
               print msg
               return False
-            
-          # Convert time-in-seconds to time unit used by MatPlotLib
-          dateref = self.result.getReferenceDate()
-          t = map(lambda(d): dateref + datetime.timedelta(d/3600/24),secs)
 
-          # Get requested time range
-          timebounds = findindices(bounds[-1],t)
-          t = t[timebounds[0]:timebounds[1]+1]
-          if staggered:
-              halfdt = datetime.timedelta(seconds=float((secs[1]-secs[0])/2))
-              t = [t[0]-halfdt] + map(lambda(d): d+halfdt,t)
+          (t,t_stag) = self.result.getTime()
+          timebounds = findindices(bounds[0],t)
+          if not staggered:
+              t_eff = t[timebounds[0]:timebounds[1]+1]
+          else:
+              t_eff = t_stag[timebounds[0]:timebounds[1]+2]
 
           if len(dims)==4:
               # Four-dimensional variable: longitude, latitude, depth, time
               try:
-                  # Note that the code below automatically uses the 'true' depth dimension
-                  # (i.e. the choice between z and z1 is automatic)
-                  z = nc.var(dims[1]).get()
-                  depthbounds = findindices(bounds[0],z)
-                  if not staggered:
-                      z = z[depthbounds[0]:depthbounds[1]+1]
-                  else:
+                  variableheights = True
+                  if variableheights:
+                      (z,z1,z_stag,z1_stag) = self.result.getDepth()
+                      depthbounds = (0,z.shape[1])
                       if dims[1]=='z':
-                          z1 = nc.var('z1').get()
-                          z1[-1] = 0    # Cover up slight numerical inaccuracies (e.g. surface at 1e-14)
-                          if depthbounds[0]==0:
-                              # Calculate maximum depth (preferably use specified station depth; other measure may be numerically inaccurate)
-                              maxdepth = None
-                              if self.result.scenario!=None:
-                                  maxdepth = -self.result.scenario.getProperty(['station','depth'])
-                              if maxdepth==None:
-                                  maxdepth = 2*z[0]-z1[0]
-                              z = [maxdepth] + list(z1[0:depthbounds[1]+1])
+                          if staggered:
+                              z_cur = z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
                           else:
-                              z = z1[depthbounds[0]-1:depthbounds[1]+1]
+                              z_cur = z[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1]
                       elif dims[1]=='z1':
-                          z = nc.var('z').get()
-                          if depthbounds[1]==len(z)-1:
-                              z = list(z[depthbounds[0]:depthbounds[1]+1]) + [0]
+                          if staggered:
+                              z_cur = matplotlib.numerix.concatenate((z_stag,matplotlib.numerix.take(z1_stag,(-1,),1)),1)
+                              z_cur = z_cur[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
                           else:
-                              z = z[depthbounds[0]:depthbounds[1]+2]
+                              z_cur = z1[timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2]
+                  else:
+                      # Note that the code below automatically uses the 'true' depth dimension
+                      # (i.e. the choice between z and z1 is automatic)
+                      z = nc.var(dims[1]).get()
+                      depthbounds = findindices(bounds[1],z)
+                      if not staggered:
+                          z = z[depthbounds[0]:depthbounds[1]+1]
+                      else:
+                          if dims[1]=='z':
+                              z1 = nc.var('z1').get()
+                              z1[-1] = 0    # Cover up slight numerical inaccuracies (e.g. surface at 1e-14)
+                              if depthbounds[0]==0:
+                                  # Calculate maximum depth (preferably use specified station depth; other measure may be numerically inaccurate)
+                                  maxdepth = None
+                                  if self.result.scenario!=None:
+                                      maxdepth = -self.result.scenario.getProperty(['station','depth'])
+                                  if maxdepth==None:
+                                      maxdepth = 2*z[0]-z1[0]
+                                  z = [maxdepth] + list(z1[0:depthbounds[1]+1])
+                              else:
+                                  z = z1[depthbounds[0]-1:depthbounds[1]+1]
+                          elif dims[1]=='z1':
+                              z = nc.var('z').get()
+                              if depthbounds[1]==len(z)-1:
+                                  z = list(z[depthbounds[0]:depthbounds[1]+1]) + [0]
+                              else:
+                                  z = z[depthbounds[0]:depthbounds[1]+2]
                   dat = v[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1,0,0]
               except pycdf.CDFError, msg:
                   print msg
                   return False
-              return [z,t,matplotlib.pylab.transpose(dat)]
+              return [t_eff,z_cur,dat]
           elif len(dims)==3:
               # Three-dimensional variable: longitude, latitude, time
               try:
@@ -1421,7 +1449,7 @@ class Result(PlotVariableStore):
               except pycdf.CDFError, msg:
                   print msg
                   return False
-              return [t,dat]
+              return [t_eff,dat]
           else:
             raise Exception('Cannot deal with this variable')
 
@@ -1431,6 +1459,12 @@ class Result(PlotVariableStore):
         self.datafile = None
         self.nc = None
         self.changed = False
+        self.t = None
+        self.t1 = None
+        self.z = None
+        self.z1 = None
+        self.z_stag = None
+        self.z1_stag = None
 
     def getTempDir(self,empty=False):
         if self.tempdir!=None:
@@ -1596,6 +1630,68 @@ class Result(PlotVariableStore):
           return
       return (min(z[0],z1[0]),max(z[-1],z1[-1]))
 
+    def getTime(self):
+        if self.t==None:
+            nc = self.getcdf()
+
+            # Get time coordinate (in seconds since reference date)
+            try:
+                secs = nc.var('time').get()
+            except pycdf.CDFError, msg:
+                print msg
+                return None
+            
+            # Convert time-in-seconds to Python datetime objects.
+            dateref = self.getReferenceDate()
+            t = matplotlib.numerix.zeros((secs.shape[0],),matplotlib.numerix.PyObject)
+            for it in range(t.shape[0]):
+                t[it] = dateref + datetime.timedelta(secs[it]/3600/24)
+
+            # Create staggered time grid.
+            t1 = matplotlib.numerix.zeros((secs.shape[0]+1,),matplotlib.numerix.PyObject)
+            halfdt = datetime.timedelta(seconds=float((secs[1]-secs[0])/2))
+            t1[0]  = t[0]-halfdt
+            t1[1:] = t[:]+halfdt
+            
+            # Cache time grids.
+            self.t = t
+            self.t1 = t1
+            
+        return (self.t,self.t1)
+
+    def getDepth(self):
+        if self.z==None:
+            nc = self.getcdf()
+
+            # Get layers heights
+            try:
+                h = nc.var('h')[:,:,0,0]
+            except pycdf.CDFError, msg:
+                print msg
+                return None
+            
+            # Get depths of interfaces
+            z1 = matplotlib.numerix.cumsum(h[:,:],1)
+            z1 = matplotlib.numerix.concatenate((matplotlib.numerix.zeros((z1.shape[0],1),matplotlib.numerix.Float32),z1),1)
+            z1 = z1[:,:]-z1[0,-1]
+
+            # Get depth of layer centers
+            z = z1[:,1:z1.shape[1]]-0.5*h
+
+            # Interpolate in time to create staggered grid in time
+            z1_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z1,(0,),0),z1,matplotlib.numerix.take(z1,(-1,),0)),0)
+            z1_stag = 0.5 * (z1_med[0:z1_med.shape[0]-1,:] + z1_med[1:z1_med.shape[0],:])
+            
+            z_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z,(0,),0),z,matplotlib.numerix.take(z,(-1,),0)),0)
+            z_stag = 0.5 * (z_med[0:z_med.shape[0]-1,:] + z_med[1:z_med.shape[0],:])
+
+            self.z = z
+            self.z1 = z1
+            self.z_stag = z_stag
+            self.z1_stag = z1_stag
+
+        return (self.z,self.z1,self.z_stag,self.z1_stag)
+
     def getplottypes(self,variable):
       nc = self.getcdf()
       variable = str(variable)
@@ -1711,32 +1807,42 @@ class Figure:
 
         axes = self.figure.add_subplot(111)
 
+        # Get forced axes boundaries (will be None if not set; then we autoscale)
         tmin = self.forcedproperties.getProperty(['TimeAxis','Minimum'])
         tmax = self.forcedproperties.getProperty(['TimeAxis','Maximum'])
         zmin = self.forcedproperties.getProperty(['DepthAxis','Minimum'])
         zmax = self.forcedproperties.getProperty(['DepthAxis','Maximum'])
 
+        # Variables below will store the effective dimension boundaries
         tmin_eff = None
         tmax_eff = None
         zmin_eff = None
         zmax_eff = None
 
+        # Link between dimension name (e.g., "time","z") and axis (e.g., "x", "y")
+        dim2axis = {}
+
         # We will now adjust the plot properties; disable use of property-change notifications,
         # as those would otherwise call plot.update again, leading to infinite recursion.
         self.ignorechanges = True
 
+        # Shortcuts to the nodes specifying the variables to plot.
         forceddatanode = self.forcedproperties.root.getLocation(['Data'])
         forcedseries = forceddatanode.getLocationMultiple(['Series'])
 
+        # Shortcut to the node that will hold the variables effectively plotted.
         datanode = self.properties.root.getLocation(['Data'])
 
+        # This variable will hold all long names of the plotted variables; will be used to create plot title.
         longnames = []
 
         iseries = 0
         for forcedseriesnode in forcedseries:
+            # Get the name and data source of the variable to plot.
             varname   = forcedseriesnode.getLocation(['Variable']).getValue()
             varsource = forcedseriesnode.getLocation(['Source']).getValue()
             if varsource==None:
+                # No data source specified; take default.
                 if self.defaultsource==None: raise Exception('No data source set for variable '+varname+', but no default source available either.')
                 varsource = self.defaultsource
                 
@@ -1750,10 +1856,10 @@ class Figure:
             if varsource!=None:
                 newseriesnode.getLocation(['Source']).setValue(varsource)
 
-            # Store the variables long name (to be used for building title)
+            # Store the variable long name (to be used for building title)
             longnames.append(var.getLongName())
 
-            # Get the (number of) independent dimensions
+            # Get the (number of) independent dimensions of the current variable.
             dims = var.getDimensions()
             newseriesnode.getLocation(['DimensionCount']).setValue(len(dims))
 
@@ -1771,7 +1877,7 @@ class Figure:
             staggered = False
             if plottypenodename=='PlotType3D' and plottype==0: staggered = True
 
-            # Set bounds for the different dimensions
+            # Set forced bounds for the different dimensions
             dimbounds = []
             for dimname in dims:
                 if dimname=='time':
@@ -1800,28 +1906,83 @@ class Figure:
             newseriesnode.getLocation(['Label']).setValue(label)
 
             for idim in range(len(dims)):
+                if len(data[idim].shape)==1:
+                    datamin = data[idim][0]
+                    datamax = data[idim][-1]
+                else:
+                    if idim==0:
+                        datamin = min(data[idim][0,:])
+                        datamax = max(data[idim][-1,:])
+                    else:
+                        datamin = min(data[idim][:,0])
+                        datamax = max(data[idim][:,-1])
+
                 #print dims[idim]+' '+str(data[idim])
                 if dims[idim]=='time':
-                    if tmin_eff==None or data[idim][0] <tmin_eff: tmin_eff=data[idim][0]
-                    if tmax_eff==None or data[idim][-1]>tmax_eff: tmax_eff=data[idim][-1]
+                    # Update effective time bounds
+                    if tmin_eff==None or datamin<tmin_eff: tmin_eff=datamin
+                    if tmax_eff==None or datamax>tmax_eff: tmax_eff=datamax
                     
                     # Convert time (datetime objects) to time unit used by MatPlotLib
-                    data[idim] = map(lambda(d): matplotlib.dates.date2num(d),data[idim])
+                    data[idim] = matplotlib.dates.date2num(data[idim])
                 elif dims[idim]=='z':
-                    if zmin_eff==None or data[idim][0] <zmin_eff: zmin_eff=data[idim][0]
-                    if zmax_eff==None or data[idim][-1]>zmax_eff: zmax_eff=data[idim][-1]
+                    # Update effective depth bounds
+                    if zmin_eff==None or datamin<zmin_eff: zmin_eff=datamin
+                    if zmax_eff==None or datamax>zmax_eff: zmax_eff=datamax
 
             # Plot the data series
             if len(dims)==1:
+                # One-dimensional variable; currently this implies dependent on time only.
                 xdim = 0
-                im = axes.plot(data[xdim],data[-1],'-')
+
+                linewidth = forcedseriesnode.getLocation(['LineWidth']).getValue()
+                if linewidth==None: linewidth = .5
+                newseriesnode.getLocation(['LineWidth']).setValue(linewidth)
+
+                lines = axes.plot(data[xdim],data[-1],'-',linewidth=linewidth)
+                dim2axis[dims[xdim]] = 'x'
                 axes.set_ylabel(label)
             elif len(dims)==2:
-                xdim = 1
-                ydim = 0
-                X, Y = matplotlib.pylab.meshgrid(data[xdim],data[ydim])
+                # Two-dimensional variable, i.e. dependent on time and depth.
+                xdim = 0
+                ydim = 1
+
+                dim2axis[dims[xdim]] = 'x'
+                dim2axis[dims[ydim]] = 'y'
+
+                X = data[xdim]
+                Y = data[ydim]
                 Z = data[-1]
-                if xdim<ydim: Z = matplotlib.pylab.transpose(Z)
+
+                # Get length of coordinate dimensions.
+                if len(X.shape)==1:
+                    xlength = X.shape[0]
+                else:
+                    xlength = X.shape[xdim]
+                if len(Y.shape)==1:
+                    ylength = Y.shape[0]
+                else:
+                    ylength = Y.shape[ydim]
+                
+                # Adjust X dimension.
+                if len(X.shape)==1:
+                    X = matplotlib.numerix.reshape(X,(1,-1))
+                    X = matplotlib.numerix.repeat(X, ylength, 0)
+                elif xdim<ydim:
+                    X = matplotlib.numerix.transpose(X)
+                    
+                # Adjust Y dimension.
+                if len(Y.shape)==1:
+                    Y = matplotlib.numerix.reshape(Y,(-1,1))
+                    Y = matplotlib.numerix.repeat(Y, xlength, 1)
+                elif xdim<ydim:
+                    Y = matplotlib.numerix.transpose(Y)
+                    
+                # Adjust Z dimension.
+                if xdim<ydim:
+                    # Note: using masked array transpose because values can be masked (e.g. after log-transform)
+                    Z = matplotlib.numerix.ma.transpose(Z)
+
                 if plottype==1:
                   pc = axes.contourf(X,Y,Z)
                 else:
@@ -1829,49 +1990,22 @@ class Figure:
                   pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
                   #im.set_interpolation('bilinear')
                 cb = self.figure.colorbar(mappable=pc)
-                cb.set_label(label)
+                if label!='': cb.set_label(label)
 
+            # Hold all plot properties so we can plot additional data series.
             axes.hold(True)
 
             iseries += 1
 
-        # Remove unused series
+        # Remove unused series (remaining from previous plots that had more data series)
         datanode.removeChildren('Series',first=iseries)
-
-        # Select tick type and spacing based on the time span to show.
-        dayspan = (tmax_eff-tmin_eff).days
-        if dayspan/365>10:
-          # more than 10 years
-          axes.xaxis.set_major_locator(matplotlib.dates.YearLocator(base=5))
-          axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
-        elif dayspan/365>1:
-          # less than 10 but more than 1 year
-          axes.xaxis.set_major_locator(matplotlib.dates.YearLocator(base=1))
-          axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
-        elif dayspan>61:
-          # less than 1 year but more than 2 months
-          axes.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
-          axes.xaxis.set_major_formatter(MonthFormatter())
-        elif dayspan>7:
-          # less than 2 months but more than 1 day
-          axes.xaxis.set_major_locator(matplotlib.dates.DayLocator(interval=15))
-          axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d %b'))
-        elif dayspan>1:
-          # less than 1 week but more than 1 day
-          axes.xaxis.set_major_locator(matplotlib.dates.DayLocator(interval=1))
-          axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d %b'))
-        else:
-          # less than 1 day
-          axes.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
-          axes.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-          pass
 
         #axes.autoscale_view()
 
         # Create and store title
         title = self.forcedproperties.getProperty(['Title'])
         if title==None: title = ', '.join(longnames)
-        axes.set_title(title)
+        if title!='': axes.set_title(title)
         self.properties.setProperty(['Title'],title)
 
         # Store current axes bounds
@@ -1884,30 +2018,75 @@ class Figure:
         self.properties.setProperty(['DepthAxis','Minimum'],zmin)
         self.properties.setProperty(['DepthAxis','Maximum'],zmax)
 
-        # Configure time axis (x-axis)
-        if tmin_eff!=None and tmax_eff!=None:
-            # We have at least one variable with dimension 'time'
-            axes.set_xlim(matplotlib.dates.date2num(tmin),matplotlib.dates.date2num(tmax))
+        # Configure time axis (x-axis), if any.
+        if 'time' in dim2axis:
+            timeaxis = dim2axis['time']
+            
+            # Obtain label for time axis.
             tlabel = self.forcedproperties.getProperty(['TimeAxis','Label'])
             if tlabel==None: tlabel = 'time'
-            axes.set_xlabel(tlabel)
-        else:
-            tlabel = None
-        self.properties.setProperty(['TimeAxis', 'Label'],tlabel)
+            self.properties.setProperty(['TimeAxis', 'Label'],tlabel)
 
-        # Configure depth axis (y-axis)
-        if zmin_eff!=None and zmax_eff!=None:
-            # We have at least one variable with dimension 'depth'
-            axes.set_ylim(zmin,zmax)
+            # Configure limits and label of time axis.
+            if timeaxis=='x':
+                taxis = axes.xaxis
+                if tlabel!='': axes.set_xlabel(tlabel)
+                axes.set_xlim(matplotlib.dates.date2num(tmin),matplotlib.dates.date2num(tmax))
+            elif timeaxis=='y':
+                taxis = axes.yaxis
+                if tlabel!='': axes.set_ylabel(tlabel)
+                axes.set_ylim(matplotlib.dates.date2num(tmin),matplotlib.dates.date2num(tmax))
+
+            # Select tick type and spacing based on the time span to show.
+            dayspan = (tmax-tmin).days
+            if dayspan/365>10:
+              # more than 10 years
+              taxis.set_major_locator(matplotlib.dates.YearLocator(base=5))
+              taxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
+            elif dayspan/365>1:
+              # less than 10 but more than 1 year
+              taxis.set_major_locator(matplotlib.dates.YearLocator(base=1))
+              taxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
+            elif dayspan>61:
+              # less than 1 year but more than 2 months
+              taxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
+              taxis.set_major_formatter(MonthFormatter())
+            elif dayspan>7:
+              # less than 2 months but more than 1 day
+              taxis.set_major_locator(matplotlib.dates.DayLocator(interval=15))
+              taxis.set_major_formatter(matplotlib.dates.DateFormatter('%d %b'))
+            elif dayspan>1:
+              # less than 1 week but more than 1 day
+              taxis.set_major_locator(matplotlib.dates.DayLocator(interval=1))
+              taxis.set_major_formatter(matplotlib.dates.DateFormatter('%d %b'))
+            else:
+              # less than 1 day
+              taxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
+              taxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+
+        # Configure depth axis (y-axis), if any.
+        if 'z' in dim2axis:
+            zaxis = dim2axis['z']
+
+            # Obtain label for depth axis.
             zlabel = self.forcedproperties.getProperty(['DepthAxis','Label'])
             if zlabel==None: zlabel = 'depth (m)'
-            axes.set_ylabel(zlabel)
-        else:
-            zlabel = None
-        self.properties.setProperty(['DepthAxis', 'Label'],zlabel)
-        self.properties.setProperty(['HasDepthAxis'],zlabel!=None)
-            
-        self.ignorechanges = False
+            self.properties.setProperty(['DepthAxis', 'Label'],zlabel)
 
+            # Configure limits and label of depth axis.
+            if zaxis=='x':
+                axes.set_xlim(zmin,zmax)
+                if zlabel!='': axes.set_xlabel(zlabel)
+            elif zaxis=='y':
+                axes.set_ylim(zmin,zmax)
+                if zlabel!='': axes.set_ylabel(zlabel)
+        self.properties.setProperty(['HasDepthAxis'],'z' in dim2axis)
+
+        # Draw the plot to screen.            
         self.canvas.draw()
+
+        # Re-enable property-change notifications; we are done changing plot properties,
+        # and want to be notified if anyone else changes them.
+        self.ignorechanges = False
+        
         self.haschanged = False

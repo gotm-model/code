@@ -26,12 +26,36 @@
 			<condition type="ne" variable="./timefmt" value="2"/>
 		</variable>
 	</folder>
+	
+	<folder id="grid" label="column structure">
+		<variable id="nlev" type="int" label="number of levels" minimum="1" maximum="1000" description="Number of depth levels used to describe the water column"/>
+		<variable id="grid_method" type="select" label="type of vertical grid">
+			<options>
+				<option value="0" label="zooming of grid with ddl, ddu >= 0"/>
+				<option value="1" label="sigma grid (relative depth fractions) read from file"/>
+				<option value="2" label="cartesian grid (fixed layer height in m) read from file"/>
+			</options>
+		</variable>
+		<variable id="ddu"         type="float" label="grid zooming (surface), 0: no zooming; > 3 strong zooming">
+			<condition type="eq" variable="./grid_method" value="0"/>
+		</variable>
+		<variable id="ddl"         type="float" label="grid zooming (bottom), 0: no zooming; > 3 strong zooming">
+			<condition type="eq" variable="./grid_method" value="0"/>
+		</variable>
+		<variable id="grid_file" type="file" label="file for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
+			<condition type="ne" variable="./grid_method" value="0"/>
+			<fileinfo type="verticalgrid">
+				<filevariables>
+					<filevariable label="height"/>
+				</filevariables>
+			</fileinfo>
+		</variable>
+	</folder>
 
 	<folder id="gotmrun" label="general">
 	
 		<folder id="model_setup" label="general model setup">
 			<variable id="title"       type="string" label="title of simulation"/>
-			<variable id="nlev"        type="int"    label="number of levels" minimum="1" maximum="1000" description="Number of depth levels used to describe the water column"/>
 			<variable id="dt"          type="float"  label="time step" minimum="1" maximum="86400" unit="s" description="Time step for integration"/>
 			<variable id="cnpar"       type="float"  label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)" minimum="0" maximum="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems."/>
 			<variable id="buoy_method" type="select" label="method to compute mean buoyancy">
@@ -128,27 +152,6 @@
 				<variable id="charnock"    type="bool"  label="adaptation of Charnock 1955 formula used"/>
 				<variable id="charnock_val" type="float" label="emp. constant in Charnock 1955 formula (default = 1400.)">
 					<condition type="eq" variable="./charnock" value="True"/>
-				</variable>
-				<variable id="ddu"         type="float" label="grid zooming (surface), 0: no zooming; > 3 strong zooming">
-					<condition type="eq" variable="./grid_method" value="0"/>
-				</variable>
-				<variable id="ddl"         type="float" label="grid zooming (bottom), 0: no zooming; > 3 strong zooming">
-					<condition type="eq" variable="./grid_method" value="0"/>
-				</variable>
-				<variable id="grid_method" type="select" label="type of vertical grid">
-					<options>
-						<option value="0" label="zooming of grid with ddl, ddu >= 0"/>
-						<option value="1" label="sigma grid (relative depth fractions) read from file"/>
-						<option value="2" label="cartesian grid (fixed layer height in m) read from file"/>
-					</options>
-				</variable>
-				<variable id="grid_file" type="file" label="file for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
-					<condition type="ne" variable="./grid_method" value="0"/>
-					<fileinfo type="verticalgrid">
-						<filevariables>
-							<filevariable label="height"/>
-						</filevariables>
-					</fileinfo>
 				</variable>
 				<variable id="gravity"     type="float" label="gravitational acceleration"          unit="m/s^2"/>
 				<variable id="rho_0"       type="float" label="reference density"                   unit="kg/m^3"/>

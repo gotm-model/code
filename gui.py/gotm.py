@@ -70,15 +70,18 @@ class PageChooseAction(commonqt.WizardPage):
         if not mustbevalid: return True
         checkedid = self.bngroup.checkedId()
         if checkedid==0:
-            self.parent().shared['mainaction'] = 'scenario'
-            if 'scenario' in self.parent().shared:
-                oldscen = self.parent().shared['scenario']
-                if oldscen!=None: oldscen.unlink()
             try:
                 newscen = self.scenariowidget.getScenario()
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
+            if 'result' in self.parent().shared:
+                result = self.parent().shared.pop('result')
+                result.unlink()
+            if 'scenario' in self.parent().shared:
+                oldscen = self.parent().shared['scenario']
+                if oldscen!=None: oldscen.unlink()
+            self.parent().shared['mainaction'] = 'scenario'
             self.parent().shared['scenario'] = newscen
             return True
         if checkedid==1:

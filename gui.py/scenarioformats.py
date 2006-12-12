@@ -200,6 +200,11 @@ class Convertor_gotm_3_3_2_to_gotmgui_0_5_0(Convertor):
         Convertor.convert(self,source,target)
         target.root.getLocation(['station']).copyFrom(source.root.getLocation(['gotmrun','station']))
         target.root.getLocation(['time'   ]).copyFrom(source.root.getLocation(['gotmrun','time'   ]))
+        target.setProperty(['grid','nlev'       ],source.getProperty(['gotmrun','model_setup','nlev']))
+        target.setProperty(['grid','grid_method'],source.getProperty(['gotmmean','meanflow','grid_method']))
+        target.setProperty(['grid','ddu'        ],source.getProperty(['gotmmean','meanflow','ddu']))
+        target.setProperty(['grid','ddl'        ],source.getProperty(['gotmmean','meanflow','ddl']))
+        target.setProperty(['grid','grid_file'  ],source.getProperty(['gotmmean','meanflow','grid_file']))
 addConvertor('gotm-3.3.2','gotmgui-0.5.0',Convertor_gotm_3_3_2_to_gotmgui_0_5_0)
 
 class Convertor_gotmgui_0_5_0_to_gotm_3_3_2(Convertor):
@@ -207,4 +212,9 @@ class Convertor_gotmgui_0_5_0_to_gotm_3_3_2(Convertor):
         Convertor.convert(self,source,target)
         target.root.getLocation(['gotmrun','station']).copyFrom(source.root.getLocation(['station']))
         target.root.getLocation(['gotmrun','time'   ]).copyFrom(source.root.getLocation(['time'   ]))
+        target.setProperty(['gotmrun','model_setup','nlev'     ],source.getProperty(['grid','nlev'       ]))
+        target.setProperty(['gotmmean','meanflow','grid_method'],source.getProperty(['grid','grid_method']))
+        target.setProperty(['gotmmean','meanflow','ddu'        ],source.getProperty(['grid','ddu'        ]))
+        target.setProperty(['gotmmean','meanflow','ddl'        ],source.getProperty(['grid','ddl'        ]))
+        target.setProperty(['gotmmean','meanflow','grid_file'  ],source.getProperty(['grid','grid_file'  ]))
 addConvertor('gotmgui-0.5.0','gotm-3.3.2',Convertor_gotmgui_0_5_0_to_gotm_3_3_2)
