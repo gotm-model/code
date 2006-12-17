@@ -1,14 +1,18 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.3 2006-12-12 08:19:32 jorn Exp $
+#$Id: commonqt.py,v 1.4 2006-12-17 20:24:59 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
 import common
 
+import matplotlib.figure
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+
 def getTopLevelWidget(child):
     parent = child.parent()
-    if parent==None: return child
+    if parent==None or (child.windowFlags() & QtCore.Qt.Window): return child
     return getTopLevelWidget(parent)
 
 # =======================================================================
@@ -102,6 +106,85 @@ class PathEditor(QtGui.QWidget):
 
     def onEditingFinished(self):
         self.emit(QtCore.SIGNAL('editingFinished()'))
+
+
+class LinkedFilePlotDialog(QtGui.QDialog):
+    def __init__(self,parent=None):
+        QtGui.QDialog.__init__(self,parent)
+
+        lo = QtGui.QHBoxLayout()
+
+        lolist = QtGui.QVBoxLayout()
+
+        self.label = QtGui.QLabel('Available variables:',self)
+        lolist.addWidget(self.label)
+
+        self.list = QtGui.QListWidget(self)
+        self.list.setMaximumWidth(200)
+        lolist.addWidget(self.list)
+        
+        lo.addLayout(lolist)
+
+        self.panel = FigurePanel(self)
+        lo.addWidget(self.panel)
+
+        self.setLayout(lo)
+
+        self.connect(self.list, QtCore.SIGNAL('itemSelectionChanged()'), self.onSelectionChanged)
+
+        self.resize(700, 450)
+
+    def setStore(self,varstore):
+        self.varstore = varstore
+
+        namedict = varstore.getVariableLongNames()
+        for name in varstore.getVariableNames():
+            item = QtGui.QListWidgetItem(namedict[name],self.list)
+            item.setData(QtCore.Qt.UserRole,QtCore.QVariant(name))
+
+        self.setWindowTitle('Variables in %s' % self.varstore.datafile.getName())
+
+    def onSelectionChanged(self):
+        items = self.list.selectedItems()
+        varname = unicode(items[0].data(QtCore.Qt.UserRole).toString())
+        self.panel.plot(self.varstore,varname)
+
+class LinkedFileEditor(QtGui.QWidget):
+    def __init__(self,parent=None):
+        QtGui.QWidget.__init__(self, parent)
+
+        lo = QtGui.QHBoxLayout()
+
+        self.patheditor = PathEditor(self,compact=True)
+        self.patheditor.layout().setSpacing(0)
+        self.patheditor.layout().setMargin(0)
+        lo.addWidget(self.patheditor)
+
+        self.plotbutton = QtGui.QPushButton('Plot',self)
+        lo.addWidget(self.plotbutton)
+
+        self.setLayout(lo)
+
+        self.connect(self.patheditor, QtCore.SIGNAL('onChanged()'), self.onChanged)
+        self.connect(self.plotbutton, QtCore.SIGNAL('clicked()'), self.onPlot)
+
+    def onChanged(self):
+        self.emit(QtCore.SIGNAL('onChanged()'))
+
+    def setNode(self,node):
+        self.node = node
+        datafile = node.getValue()
+        self.plotbutton.setEnabled(datafile.isValid())
+        self.patheditor.setPath(datafile.getName())
+
+    def path(self):
+        return self.patheditor.path()
+
+    def onPlot(self):
+        dialog = LinkedFilePlotDialog(self)
+        varstore = common.LinkedFileVariableStore(self.node)
+        dialog.setStore(varstore)
+        dialog.exec_()
 
 # =======================================================================
 # ScientificDoubleValidator: a Qt validator for floating point values
@@ -202,7 +285,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
         elif nodetype=='datetime':
             editor = QtGui.QDateTimeEdit(parent)
         elif nodetype=='file':
-            editor = PathEditor(parent,compact=True)
+            editor = LinkedFileEditor(parent)
             self.currenteditor = editor
         else:
             raise 'Unknown node type "'+str(nodetype)+'".'
@@ -213,7 +296,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
     def setEditorData(self, editor,index):
         value = index.data(QtCore.Qt.EditRole)
         if not value.isValid(): return
-        nodetype = index.internalPointer().getValueType()
+        node = index.internalPointer()
+        nodetype = node.getValueType()
         if nodetype=='string':
             editor.setText(value.toString())
         elif nodetype=='int':
@@ -239,7 +323,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
             value = value.toDateTime()
             editor.setDateTime(value)
         elif nodetype=='file':
-            editor.setPath(value.toString())
+            editor.setNode(node)
 
     # setModelData (inherited from QtGui.QItemDelegate)
     #   Obtains the value from the editor widget, and set it for the model item at the given index
@@ -392,7 +476,10 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 if fieldtype=='datetime':
                     # Format datetime according to our convention
                     value = value.strftime(common.datetime_displayformat)
-                if fieldtype=='select':
+                elif fieldtype=='file':
+                    # Return filename only (not the path)
+                    value = value.getName()
+                elif fieldtype=='select':
                     # Get label of currently selected option
                     options = common.findDescendantNode(templatenode,['options'])
                     if options==None: raise 'variable with "select" type lacks "options" element below'
@@ -416,6 +503,9 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 if fieldtype=='datetime':
                     # First convert Python datetime to QDateTime, then cast to variant.
                     return QtCore.QVariant(datetime2qtdatetime(value))
+                elif fieldtype=='file':
+                    # Return full path
+                    return QtCore.QVariant(unicode(value))
                 else:
                     # Simply cast the current value to variant.
                     return QtCore.QVariant(value)
@@ -438,8 +528,10 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         fieldtype = node.getValueType()
 
         # Convert given variant to the type we need.
-        if fieldtype=='string' or fieldtype=='file':
+        if fieldtype=='string':
             value = value.toString()
+        elif fieldtype=='file':
+            value = common.DataFile(value.toString())
         elif fieldtype=='int':
             value,converted = value.toInt()
             if not converted: return False
@@ -584,24 +676,40 @@ class PropertyEditorDialog(QtGui.QDialog):
 
 class Wizard(QtGui.QDialog):
     
-    def __init__(self,parent=None,sequence=None):
+    def __init__(self,parent=None,sequence=None,closebutton=False):
         QtGui.QDialog.__init__(self, parent, QtCore.Qt.Window|QtCore.Qt.WindowContextHelpButtonHint)
 
         layout = QtGui.QVBoxLayout()
 
+        self.pm = QtGui.QPixmap('./logo.png','PNG')
+        self.piclabel = QtGui.QLabel(self)
+        self.piclabel.setPixmap(self.pm)
+        self.piclabel.setScaledContents(True)
+        layout.addWidget(self.piclabel)
+        layout.setMargin(0)
+
         bnlayout = QtGui.QHBoxLayout()
         bnlayout.addStretch()
-        self.bnHome = QtGui.QPushButton('&Home',self)
-        self.bnBack = QtGui.QPushButton('< &Back',self)
-        self.bnNext = QtGui.QPushButton('&Next >',self)
-        bnlayout.addWidget(self.bnHome)
-        bnlayout.addWidget(self.bnBack)
-        bnlayout.addWidget(self.bnNext)
-        layout.addLayout(bnlayout)
 
+        self.bnHome = QtGui.QPushButton('&Home',self)
         self.connect(self.bnHome, QtCore.SIGNAL("clicked()"), self.onHome)
+        bnlayout.addWidget(self.bnHome)
+
+        self.bnBack = QtGui.QPushButton('< &Back',self)
         self.connect(self.bnBack, QtCore.SIGNAL("clicked()"), self.onBack)
+        bnlayout.addWidget(self.bnBack)
+
+        self.bnNext = QtGui.QPushButton('&Next >',self)
         self.connect(self.bnNext, QtCore.SIGNAL("clicked()"), self.onNext)
+        bnlayout.addWidget(self.bnNext)
+
+        if closebutton:
+            self.bnClose = QtGui.QPushButton('&Close',self)
+            self.connect(self.bnClose, QtCore.SIGNAL("clicked()"), self.onClose)
+            bnlayout.addWidget(self.bnClose)
+
+        bnlayout.setMargin(11)
+        layout.addLayout(bnlayout)
 
         self.setLayout(layout)
 
@@ -659,6 +767,9 @@ class Wizard(QtGui.QDialog):
         newpage = prevcls(self)
         self.switchPage(newpage)
 
+    def onClose(self):
+        self.close()
+
     def switchPage(self,newpage):
         layout = self.layout()
         if self.currentpage!=None:
@@ -666,7 +777,7 @@ class Wizard(QtGui.QDialog):
             layout.removeWidget(self.currentpage)
             self.disconnect(self.currentpage, QtCore.SIGNAL("onCompleteStateChanged()"),self.onCompleteStateChanged)
         self.currentpage = newpage
-        layout.insertWidget(0,self.currentpage)
+        layout.insertWidget(1,self.currentpage)
         self.currentpage.show()
         self.connect(self.currentpage, QtCore.SIGNAL("onCompleteStateChanged()"),self.onCompleteStateChanged)
         cangoback = (self.sequence.getPreviousPage(stay=True)!=None)
@@ -968,3 +1079,241 @@ class PropertyEditor:
         elif nodetype=='file':
             return node.setValue(editor.path())
 
+class FigurePanel(QtGui.QWidget):
+    
+    def __init__(self,parent,detachbutton=True):
+        QtGui.QWidget.__init__(self,parent)
+
+        bgcolor = self.palette().window().color()
+        mplfigure = matplotlib.figure.Figure(facecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.),edgecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.))
+        self.figure = common.Figure(mplfigure)
+
+        self.canvas = FigureCanvas(mplfigure)
+        self.canvas.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
+        self.canvas.setMinimumSize(300,250)
+        self.figure.canvas = self.canvas
+
+        self.factory = PropertyEditorFactory(self.figure.properties,live=True)
+
+        # Controls for time range.
+        self.dateeditStart = self.factory.createEditor(['TimeAxis','Minimum'],self)
+        self.dateeditStop  = self.factory.createEditor(['TimeAxis','Maximum'],self)
+
+        # Controls for depth range.
+        self.lineeditStartDepth = self.factory.createEditor(['DepthAxis','Minimum'],self)
+        self.lineeditStopDepth = self.factory.createEditor(['DepthAxis','Maximum'],self)
+
+        layout = QtGui.QVBoxLayout()
+        
+        layoutOptions = QtGui.QGridLayout()
+
+        layoutTime = QtGui.QHBoxLayout()
+        layoutTime.addWidget(self.dateeditStart.editor)
+        self.labelDateTo = QtGui.QLabel(self.tr(' to '),self)
+        layoutTime.addWidget(self.labelDateTo)
+        layoutTime.addWidget(self.dateeditStop.editor)
+        self.labelDateRange = QtGui.QLabel(self.tr('Time range:'),self)
+        layoutOptions.addWidget(self.labelDateRange,1,0)
+        layoutOptions.addLayout(layoutTime,1,1)
+        
+        layoutDepth = QtGui.QHBoxLayout()
+        layoutDepth.addWidget(self.lineeditStartDepth.editor)
+        self.labelDepthTo = QtGui.QLabel(self.tr(' to '),self)
+        layoutDepth.addWidget(self.labelDepthTo)
+        layoutDepth.addWidget(self.lineeditStopDepth.editor)
+        self.labelDepthRange = QtGui.QLabel(self.tr('Depth range:'),self)
+        layoutOptions.addWidget(self.labelDepthRange,2,0)
+        layoutOptions.addLayout(layoutDepth,2,1)
+
+        self.layoutOptions = layoutOptions
+
+        self.buttonAdvanced = QtGui.QPushButton(self.tr('Advanced...'),self)
+        self.buttonAdvanced.setAutoDefault(False)
+        self.buttonAdvanced.setDefault(False)
+        self.connect(self.buttonAdvanced, QtCore.SIGNAL('clicked()'), self.onAdvancedClicked)
+        layoutOptions.addWidget(self.buttonAdvanced,3,0,1,2)
+
+        self.layoutButtons = QtGui.QHBoxLayout()
+
+        # Button for showing/hiding properties
+        self.buttonProperties = QtGui.QPushButton(self.tr('Edit plot &properties'),self)
+        self.buttonProperties.setAutoDefault(False)
+        self.buttonProperties.setDefault(False)
+        self.connect(self.buttonProperties, QtCore.SIGNAL('clicked()'), self.onPropertiesClicked)
+        self.layoutButtons.addWidget(self.buttonProperties)
+
+        # Button for exporting to file
+        self.buttonExport = QtGui.QPushButton(self.tr('&Export to file'),self)
+        self.buttonExport.setAutoDefault(False)
+        self.buttonExport.setDefault(False)
+        self.connect(self.buttonExport, QtCore.SIGNAL('clicked()'), self.onExport)
+        self.layoutButtons.addWidget(self.buttonExport)
+
+        # Button for printing
+        self.buttonPrint = QtGui.QPushButton(self.tr('&Print'),self)
+        self.buttonPrint.setAutoDefault(False)
+        self.buttonPrint.setDefault(False)
+        self.connect(self.buttonPrint, QtCore.SIGNAL('clicked()'), self.onPrint)
+        self.layoutButtons.addWidget(self.buttonPrint)
+
+        # Detach button
+        if detachbutton:
+            self.buttonDetach = QtGui.QPushButton('&Detach figure',self)
+            self.buttonDetach.setAutoDefault(False)
+            self.buttonDetach.setDefault(False)
+            self.connect(self.buttonDetach, QtCore.SIGNAL('clicked()'), self.onDetach)
+            self.layoutButtons.addWidget(self.buttonDetach)
+
+        self.widgetProperties = QtGui.QWidget(self)
+        self.widgetProperties.setLayout(layoutOptions)
+        self.widgetProperties.setVisible(False)
+
+        layout.addWidget(self.canvas)
+        layout.addLayout(self.layoutButtons)
+        layout.addWidget(self.widgetProperties)
+
+        self.setLayout(layout)
+
+        self.dialogAdvanced = None
+
+        # Initially disable all controls; we have no plot to configure yet...
+        self.setEnabled(False)
+
+        self.detachedfigures = []
+
+    def plot(self,varstore,varname):
+        self.figure.setUpdating(False)
+        self.figure.clearSources()
+        self.figure.clearProperties()
+        self.figure.addDataSource('main',varstore)
+        self.figure.addVariable(varname)
+        self.figure.setUpdating(True)
+        self.setEnabled(True)
+
+    def plotFromProperties(self,properties):
+        self.figure.setProperties(properties)    
+        self.setEnabled(True)
+
+    def onAdvancedClicked(self):
+        if self.dialogAdvanced==None:
+            self.dialogAdvanced = PropertyEditorDialog(self,self.figure.properties,title='Figure properties')
+        self.dialogAdvanced.show()
+        self.dialogAdvanced.activateWindow()
+
+    def onPropertiesClicked(self):
+        window = getTopLevelWidget(self)
+        window.setUpdatesEnabled(False)
+        sz = window.size()
+        if not self.widgetProperties.isVisible():
+            self.widgetProperties.setVisible(True)
+            self.buttonProperties.setText('Hide plot &properties')
+            self.propheight = self.widgetProperties.height()+self.layout().spacing()
+            sz.setHeight(sz.height() + self.propheight)
+        else:
+            self.widgetProperties.setVisible(False)
+            self.buttonProperties.setText('Edit plot &properties')
+            sz.setHeight(sz.height() - self.propheight)
+        window.resize(sz)
+        window.setUpdatesEnabled(True)
+
+    def onExport(self):
+        fname = QtGui.QFileDialog.getSaveFileName(self,'Choose location to save plot to','','Portable Network Graphics (*.png);;Encapsulated PostScript (*.eps);;Scalable Vector Graphics (*.svg);;Bitmap (*.bmp)')
+        if fname:
+            QtGui.qApp.setOverrideCursor(QtCore.Qt.WaitCursor)
+            agg = self.canvas.switch_backends(FigureCanvasAgg)
+            agg.print_figure(str(fname.toLatin1()),dpi=150, facecolor='w', edgecolor='w', orientation='portrait')
+            self.canvas.figure.set_canvas(self.canvas)
+            QtGui.qApp.restoreOverrideCursor()
+
+            #self.canvas.print_figure( str(fname.toLatin1()) )
+        
+    def onPrint(self):
+        printer = QtGui.QPrinter(QtGui.QPrinter.HighResolution)
+        printDialog = QtGui.QPrintDialog(printer, self)
+        if printDialog.exec_() == QtGui.QDialog.Accepted:
+            print 'Printing to '+printer.printerName()
+            p = QtGui.QPainter(printer)
+            
+            canvas = self.canvas.switch_backends(FigureCanvasAgg)
+
+            # Store current DPI and colors.
+            origDPI       = canvas.figure.dpi.get()
+            origfacecolor = canvas.figure.get_facecolor()
+            origedgecolor = canvas.figure.get_edgecolor()
+
+            res = printer.resolution()
+            if res>600: res=600
+            print 'Using resolution of '+ str(res) + ' dpi.'
+
+            # Adjust DPI and colors for printer.
+            canvas.figure.dpi.set(res)
+            canvas.figure.set_facecolor('w')
+            canvas.figure.set_edgecolor('w')
+
+
+            # Draw the plot (in memory)
+            print 'MatPlotLib: creating Agg in-memory bitmap.'
+            canvas.draw()
+
+            # matplotlib is in rgba byte order.
+            # qImage wants to put the bytes into argb format and
+            # is in a 4 byte unsigned int.  little endian system is LSB first
+            # and expects the bytes in reverse order (bgra).
+            print 'Converting in-memory bitmap to format suitable for Qt.'
+            if (QtCore.QSysInfo.ByteOrder == QtCore.QSysInfo.LittleEndian):
+                stringBuffer = canvas.renderer._renderer.tostring_bgra()
+            else:
+                stringBuffer = canvas.renderer._renderer.tostring_argb()
+                
+            print 'Creating QImage object from in-memory data. Using width = ' + str(canvas.renderer.width) + ', height = '+ str(canvas.renderer.height)
+            qImage = QtGui.QImage(stringBuffer, canvas.renderer.width, canvas.renderer.height, QtGui.QImage.Format_ARGB32)
+            #pixmap = QtGui.QPixmap.fromImage(qImage)
+            #print 'Drawing pixmap to QPainter object connected to printer.'
+            #p.drawPixmap(QtCore.QPoint(0, 0), pixmap )
+            print 'Drawing bitmap to QPainter object connected to printer.'
+            p.drawImage(QtCore.QPoint(0, 0), qImage)
+            #p.drawImage(QtCore.QPoint(0, 0), qImage, QtCore.QRect(0,0,1000,1000))
+            print 'Done drawing; closing painter.'
+            p.end()
+
+            print 'printing done; restoring original figure resolution and color.'
+
+            # Restore original DPI and colors.
+            canvas.figure.dpi.set(origDPI)
+            canvas.figure.set_facecolor(origfacecolor)
+            canvas.figure.set_edgecolor(origedgecolor)
+
+            # Restore original canvas.
+            self.figure.figure.set_canvas(self.canvas)
+
+    def onDetach(self):
+        fd = FigureDialog(self,sourcefigure=self.figure)
+        fd.show()
+        self.detachedfigures.append(fd)
+
+    def closeEvent(self,ev):
+        for ch in self.detachedfigures: ch.close()
+        QtGui.QWidget.closeEvent(self,ev)
+
+class FigureDialog(QtGui.QDialog):
+    
+    def __init__(self,parent,sourcefigure):
+        QtGui.QDialog.__init__(self,parent,QtCore.Qt.Window | QtCore.Qt.WindowMaximizeButtonHint | QtCore.Qt.WindowSystemMenuHint )
+
+        self.setSizeGripEnabled(True)
+        layout = QtGui.QVBoxLayout(self)
+        self.panel = FigurePanel(self,detachbutton=False)
+        layout.addWidget(self.panel)
+
+        properties = sourcefigure.getPropertiesCopy()
+        self.panel.figure.sources = sourcefigure.sources
+        self.panel.figure.defaultsource = sourcefigure.defaultsource
+        self.panel.plotFromProperties(properties)
+
+        title = self.panel.figure.properties.getProperty(['Title'])
+        self.setWindowTitle(title)
+
+        # Prevent this window from keeping the appliaction alive after the main window was closed.
+        self.setAttribute(QtCore.Qt.WA_QuitOnClose,False)
+        
+        self.resize(500, 500)

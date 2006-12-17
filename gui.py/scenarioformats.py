@@ -137,8 +137,6 @@ class Convertor:
                 source.tempdirowner = False
             else:
                 target.tempdirowner = False
-        else:
-            target.filesourcepath = source.tempdir
         target.root.copyFrom(source.root)
 
 # ConvertorChain

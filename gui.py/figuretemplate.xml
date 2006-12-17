@@ -13,8 +13,8 @@
 			
 			<folder id="DepthAxis" label="depth axis">
 				<condition type="eq" variable="./HasDepthAxis" value="True"/>
-				<variable id="Minimum" type="float" label="minimum" unit="m" minimum="-5000" maximum="0"/>
-				<variable id="Maximum" type="float" label="maximum" unit="m" minimum="-5000" maximum="0"/>
+				<variable id="Minimum" type="float" label="minimum" unit="m" minimum="-5000" maximum="50"/>
+				<variable id="Maximum" type="float" label="maximum" unit="m" minimum="-5000" maximum="50"/>
 				<variable id="Label"   type="string" label="label"/>
 			</folder>
 

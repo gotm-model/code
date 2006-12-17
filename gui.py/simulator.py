@@ -1,10 +1,14 @@
 #!/usr/bin/python
-#$Id: simulator.py,v 1.2 2006-12-04 08:03:10 jorn Exp $
+
+#$Id: simulator.py,v 1.3 2006-12-17 20:25:00 jorn Exp $
+
 from PyQt4 import QtGui,QtCore
 import common,commonqt
 import os, tempfile, sys, math, shutil
 import gotm
+
 class GOTMThread(QtCore.QThread):
+
   def __init__(self, parent, scenariodir, receiver):
     QtCore.QThread.__init__(self,parent)
     self.scenariodir = scenariodir
@@ -14,14 +18,17 @@ class GOTMThread(QtCore.QThread):
     self.result = 0
     self.stderr = ''
     self.stdout = ''
+    
   def rungotm(self):
     self.start(QtCore.QThread.LowPriority)
+    
   def run(self):
     # Result can be 0 (success), 1 (error occurred), or 2 (cancelled)
     self.result = 0
       
     # Save old working directory
     olddir = os.getcwdu()
+    
     # Change to directory with GOTM scenario (catch exceptions that can occur,
     # for instance, if the specified directory does not exist).
     try:
@@ -31,18 +38,21 @@ class GOTMThread(QtCore.QThread):
         self.result = 1
         os.chdir(olddir)
         return
+    
     # Redirect FORTRAN output to (temporary) files.
     (h,outfile) = tempfile.mkstemp('.txt','gotm')
     os.close(h)
     (h,errfile) = tempfile.mkstemp('.txt','gotm')
     os.close(h)
     gotm.gui_util.redirectoutput(outfile,errfile)
+    
     # Initialize GOTM
     try:
         gotm.gotm.init_gotm()
     except Exception,e:
         self.error = 'Exception thrown while initializing GOTM: '+str(e)
         self.result = 1
+        
     # Only enter the time loop if we succeeded so far.
     if self.result==0:
         # Calculate the size of time batches (small enough to respond rapidly to requests
@@ -82,8 +92,10 @@ class GOTMThread(QtCore.QThread):
     except Exception,e:
         self.error = 'Exception thrown during GOTM clean-up: '+str(e)
         if self.result==0: self.result = 1
+        
     # Reset FORTRAN output
     gotm.gui_util.resetoutput()
+    
     # Read GOTM output from temporary files, then delete these files.
     f = open(errfile,'r')
     self.stderr = f.read()
@@ -93,35 +105,43 @@ class GOTMThread(QtCore.QThread):
     self.stdout = f.read()
     f.close()
     os.remove(outfile)
+    
     # Return to previous working directory.
     os.chdir(olddir)
+    
   def stop(self):
     wl = QtCore.QWriteLocker(self.rwlock)
     self.stopped = True
+    
 class PageProgress(commonqt.WizardPage):
     def __init__(self, parent):
         commonqt.WizardPage.__init__(self, parent)
         self.scenario = parent.shared['scenario']
         layout = QtGui.QVBoxLayout()
+        
         # Progress bar
         self.bar = QtGui.QProgressBar(self)
         self.bar.setMinimum(0)
         self.bar.setMaximum(1000)
         layout.addWidget(self.bar)
+        
         # Add label for time remaining.
         self.labelRemaining = QtGui.QLabel(self)
         layout.addWidget(self.labelRemaining)
+        
         # Text window to display GOTM output in.
         self.text = QtGui.QTextEdit(self)
         self.text.setLineWrapMode(QtGui.QTextEdit.NoWrap)
         self.text.setReadOnly(True)
         layout.addWidget(self.text)
         self.setLayout(layout)
+        
         # Initialize GOTM run variables.
         self.gotmthread = None
         self.runcount = 1
         self.bar.setValue(0)
         self.result = None
+        
     def showEvent(self,event):
         namelistscenario = self.scenario.convert(common.gotmscenarioversion,targetownstemp=False)
         self.tempdir = tempfile.mkdtemp('','gotm-')
@@ -136,6 +156,7 @@ class PageProgress(commonqt.WizardPage):
         self.connect(self.gotmthread, QtCore.SIGNAL("progressed(double)"), self.progressed, QtCore.Qt.QueuedConnection)
         self.connect(self.gotmthread, QtCore.SIGNAL("finished()"), self.done, QtCore.Qt.QueuedConnection)
         self.gotmthread.rungotm()
+        
     def progressed(self,progress):
         #print 'progress = '+str(progress)
         self.bar.setValue(int(round(self.bar.maximum()*progress)))
@@ -144,9 +165,11 @@ class PageProgress(commonqt.WizardPage):
             self.labelRemaining.setText('%i seconds remaining' % round(remaining))
         else:
             self.labelRemaining.setText('%i minutes %i seconds remaining' % (math.floor(remaining/60),round(remaining % 60)))
+            
     def done(self):
         success = self.gotmthread.result
         print 'GOTM thread shut-down; return code = '+str(success)
+        
         # Display GOTM output (append if error message if an error occurred)
         restext = ''
         if success==1:
@@ -155,16 +178,21 @@ class PageProgress(commonqt.WizardPage):
             restext += 'GOTM run was cancelled.\n\n'
         if len(self.gotmthread.stderr)>0: restext += 'GOTM output:\n'+self.gotmthread.stderr
         self.text.setPlainText(restext)
+        
         # Create result object
         if success==0:
             self.result = common.Result()
             self.result.attach(os.path.join(self.tempdir,'result.nc'),self.scenario)
+            self.result.changed = True
             self.completeStateChanged()
+            
         # For debugging purposes only: start GOTM again.
         self.runcount -= 1
         if self.runcount>0: self.startGotm(self.scendir)
+        
     def isComplete(self):
         return (self.result!=None)
+    
     def saveData(self,mustbevalid):
         # Stop worker thread
         if self.gotmthread!=None:

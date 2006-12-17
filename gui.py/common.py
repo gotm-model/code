@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.4 2006-12-12 08:19:32 jorn Exp $
+#$Id: common.py,v 1.5 2006-12-17 20:24:59 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re
@@ -113,6 +113,12 @@ class XMLPropertyStore:
         if xmlroot==None: xmlroot = xmldocument.documentElement
         self.xmlroot = xmlroot
         self.xmlnamespace = self.xmldocument.namespaceURI
+
+        self.filetypes = {'string'  :unicode,
+                          'int'     :int,
+                          'float'   :float,
+                          'bool'    :bool,
+                          'datetime':datetime.datetime}
 
     # =========================================================================================
     # PROTECTED
@@ -240,31 +246,64 @@ class XMLPropertyStore:
     # =========================================================================================
     # unpackvalue: converts string representation of a value to the desired type.
     def unpackvalue(self,value,valuetype=str):
-        #if not (isinstance(value,str) or isinstance(value,unicode)):
-        #    raise 'unpackvalue: incoming value must be string'
         if isinstance(valuetype,str) or isinstance(valuetype,unicode):
-            if   valuetype=='string' or valuetype=='str':   valuetype=unicode
-            elif valuetype=='int':                          valuetype=int
-            elif valuetype=='double' or valuetype=='float': valuetype=float
-            elif valuetype=='bool':                         valuetype=bool
-            elif valuetype=='datetime':                     valuetype=datetime.datetime
-            elif valuetype=='file':                         valuetype=str
-            elif valuetype=='select':                       valuetype=int
-            else: raise 'unpackvalue: unknown type "' + valuetype + '" requested.'
+            if valuetype not in self.filetypes:
+                raise Exception('unpackvalue: unknown type "' + valuetype + '" requested.')
+            valuetype = self.filetypes[valuetype]
         if valuetype==datetime.datetime:
             return parsedatetime(value,dateformat)
         elif valuetype==bool:
             return (value=='True')
         else:
             return valuetype(value)
+
+class DataFile:
+    def __init__(self,path=None):
+        if path!=None:
+            self.path = unicode(path)
+        else:
+            self.path = None
+
+    def __str__(self):
+        if self.path==None: return ''
+        return str(self.path)
+
+    def __unicode__(self):
+        if self.path==None: return ''
+        return unicode(self.path)
+
+    def getName(self):
+        if self.path==None: return ''
+        (path,name) = os.path.split(self.path)
+        return name
+
+    def isValid(self):
+        return (self.path!=None and os.path.isfile(self.path))
+
+    def getAsReadOnlyFile(self):
+        if not self.isValid():
+            Exception('Cannot get file because the source file ('+str(self.path)+') does not exist.')
+        f = open(self.path,'rU')
+        return f
+
+    def save(self,targetpath,claim=True):
+        if self.path==targetpath: return
+        (sourcepath,sourcename) = os.path.split(self.path)
+        print 'Copying "%s".' % sourcename
+        shutil.copyfile(self.path,targetpath)
+        if claim: self.path=targetpath
+
+    def addToZip(self,zfile,filename):
+        if not self.isValid():
+            raise Exception('Cannot add '+filename+' to zip archive because the source file ('+str(self.path)+') does not exist.')
+        zfile.write(self.path,filename)
             
-# TypedXMLPropertyStore: inherits from the above XMLPropertyStore.
+# TypedXMLPropertyStore: encapsulates the above XMLPropertyStore.
 #   Adds the use of a second XML document (template) that describes the data types
 #   of the nodes of the first DOM, and that describes dependencies between nodes.
-#   For any node in the original document for which conditions are not met, a 'hidden'
-#   attribute is added to the corresponding node in the template.
+#   Any node in the original document for which conditions are not met is hidden.
 #   Nodes that are not described by the template are not allowed in the property store.
-#   Node are obtained by traversing the tree.
+#   Node are obtained by traversing the tree (start: TypedXMLPropertyStore.root).
 class TypedXMLPropertyStore:
 
     class Node:
@@ -312,6 +351,19 @@ class TypedXMLPropertyStore:
             if value==None:
                 self.clearValue()
                 return
+
+            # If the changed node is of type "file", create a local copy of it.
+            valuetype = self.templatenode.getAttribute('type')
+            if (not self.controller.suppressautofilecopy) and valuetype=='file':
+                datafile = value
+                filename = self.getId()+'.dat'
+                if not self.isHidden() and datafile.isValid():
+                    # Only actually copy the file if the node is currently visible.
+                    tmpdir = self.controller.getTempDir()
+                    targetpath = os.path.join(tmpdir,filename)
+                    datafile.save(targetpath)
+                value = filename
+            
             curval = self.getValue()
             if curval!=value:
                 if self.controller.onBeforeChange(self,value):
@@ -326,7 +378,14 @@ class TypedXMLPropertyStore:
         def getValue(self):
             if self.valuenode==None: return None
             valuetype = self.templatenode.getAttribute('type')
-            return self.store.getNodeProperty(self.valuenode,valuetype=valuetype)
+            value = self.store.getNodeProperty(self.valuenode,valuetype=valuetype)
+            if valuetype=='file':
+                if self.controller.tempdir!=None:
+                    datafile = DataFile(os.path.join(self.controller.tempdir,value))
+                else:
+                    datafile = DataFile()
+                return datafile
+            return value
 
         def addChild(self,childname):
             index = -1
@@ -588,7 +647,19 @@ class TypedXMLPropertyStore:
         self.root = None
         self.setStore(xmldocument,xmlroot)
 
+        # Variables that deal with storage of data files the store links to.
+        self.tempdir = None
+        self.tempdirowner = True
+        self.suppressautofilecopy = False
+        self.datafiles = {}
+
     def unlink(self):
+        if self.tempdir!=None:
+            if self.tempdirowner:
+                print 'Deleting temporary directory "'+self.tempdir+'".'
+                shutil.rmtree(self.tempdir)
+            self.tempdir = None
+
         if self.root!=None: self.root.destroy()
         self.root = None
         self.store = None
@@ -596,6 +667,17 @@ class TypedXMLPropertyStore:
         self.changehandlers = []
         self.beforechangehandlers = []
         self.storechangedhandlers = []
+
+    def getTempDir(self,empty=False):
+        if self.tempdir!=None:
+            if empty and self.tempdirowner:
+                for f in os.listdir(self.tempdir): 
+                    os.remove(os.path.join(self.tempdir,f))
+        else:
+            self.tempdir = tempfile.mkdtemp('','gotm-')
+            self.tempdirowner = True
+            print 'Created temporary property store directory "'+self.tempdir+'".'
+        return self.tempdir
 
     def setStore(self,xmldocument,xmlroot=None):
         if self.root!=None: self.root.destroy()
@@ -617,6 +699,8 @@ class TypedXMLPropertyStore:
             raise Exception('Versions of the xml template and and the xml values do not match.')
                     
         self.store = XMLPropertyStore(xmldocument,xmlroot=xmlroot)
+        self.store.filetypes['select'] = int
+        self.store.filetypes['file'] = str
         self.root = TypedXMLPropertyStore.Node(self,templateroot,self.store.xmlroot,[],None)
         if not self.suppressConditionChecking: self.updateVisibility()
         self.changed = False
@@ -870,11 +954,6 @@ class Scenario(TypedXMLPropertyStore):
 
         TypedXMLPropertyStore.__init__(self,xmltemplate,xmldocument)
 
-        self.tempdir = None
-        self.tempdirowner = True
-        self.filesourcepath = None
-        self.suppressautofilecopy = False
-
     @staticmethod
     def getTemplates():
         if Scenario.templates==None:
@@ -913,14 +992,6 @@ class Scenario(TypedXMLPropertyStore):
         scenario.unlink()
         return newscenario
 
-    def unlink(self):
-        if self.tempdir!=None:
-            if self.tempdirowner:
-                print 'Deleting temporary scenario directory "'+self.tempdir+'".'
-                shutil.rmtree(self.tempdir)
-            self.tempdir = None
-        TypedXMLPropertyStore.unlink(self)
-
     def convert(self,target,targetownstemp=True):        
         if isinstance(target,str):
             target = Scenario(templatename=target)
@@ -943,23 +1014,8 @@ class Scenario(TypedXMLPropertyStore):
         def __str__(self):
             return Exception.__str__(self)+'.\nFile: '+str(self.filename)+', namelist: '+str(self.namelistname)+', variable: '+str(self.variablename)
 
-    def getTempDir(self,empty=False):
-        if self.tempdir!=None:
-            if empty and self.tempdirowner:
-                for f in os.listdir(self.tempdir): 
-                    os.remove(os.path.join(self.tempdir,f))
-        else:
-            self.tempdir = tempfile.mkdtemp('','gotm-')
-            self.tempdirowner = True
-            print 'Created temporary scenario directory "'+self.tempdir+'".'
-        return self.tempdir
-
     def loadFromNamelists(self, srcpath, requireordered = False):
         print 'Importing scenario from namelist files...'
-
-        # Disable automatic copying of linked data files, becasue we do not know yet whether they will indeed be "active".
-        # (they may be active/visible only if other, later nodes have the right value)
-        self.suppressautofilecopy = True
 
         # Start with empty scenario
         self.setStore(None,None)
@@ -987,9 +1043,6 @@ class Scenario(TypedXMLPropertyStore):
                 raise Exception('Path "'+srcpath+'" is not an existing directory or file.')
 
         try:
-            # Here we store the nodes of type "file"; later we'll return to this list and copy visible (i.e. active) data files.
-            filenodes = []
-            
             for mainchild in self.root.getChildren(showhidden=True):
                 if not mainchild.isFolder():
                     raise Exception('Found non-folder node with id '+mainchild.getId()+' below root, where only folders are expected.')
@@ -1083,24 +1136,14 @@ class Scenario(TypedXMLPropertyStore):
                             val = datetime.datetime(*refvals)
                         elif vartype=='file':
                             # Make absolute path
-                            val = os.path.normpath(os.path.join(os.getcwd(),srcpath, val))
-                            filenodes.append(listchild)
+                            filepath = os.path.normpath(os.path.join(os.getcwd(),srcpath, val))
+                            val = DataFile(filepath)
 
                         listchild.setValue(val)
-
-            # Reenable automatic copying of linked data files; we know the value of all nodes and can safely see whether
-            # a given file node is active/visible.
-            self.suppressautofilecopy = False
-
-            # Force copy of linked (and active/visible) data files.
-            for fn in filenodes: self.onChange(fn)
         finally:
             if nmltempdir!=None:
                 print 'Removing temporary namelist directory "'+nmltempdir+'".'
                 shutil.rmtree(nmltempdir)
-
-            # If an exception occured, we need toreset the property below (otherwise it has been done above).
-            self.suppressautofilecopy = False
 
     def writeAsNamelists(self, targetpath, copydatafiles=True):
         print 'Exporting scenario to namelist files...'
@@ -1134,8 +1177,13 @@ class Scenario(TypedXMLPropertyStore):
                     varval = listchild.getValue()
                     if varval==None:
                         raise Exception('Value for variable "'+varname+'" in namelist "'+listname+'" not set.')
-                    if vartype=='string' or vartype=='file':
+                    if vartype=='string':
                         varval = '\''+varval+'\''
+                    elif vartype=='file':
+                        filename = listchild.getId()+'.dat'
+                        if not listchild.isHidden() and copydatafiles:
+                            varval.save(os.path.join(targetpath,filename),claim=False)
+                        varval = '\''+filename+'\''
                     elif vartype=='int' or vartype=='select':
                         varval = str(varval)
                     elif vartype=='float':
@@ -1153,13 +1201,6 @@ class Scenario(TypedXMLPropertyStore):
                 nmlfile.write('/\n\n')
 
             nmlfile.close()
-
-        if copydatafiles:
-            filenodes = self.root.getNodesByType('file')
-            for fn in filenodes:
-                if not fn.isHidden():
-                    filename = fn.getId()+'.dat'
-                    shutil.copyfile(os.path.join(self.getTempDir(),filename),os.path.join(targetpath,filename))
 
     def saveAll(self,path):
         if self.version!=savedscenarioversion:
@@ -1191,30 +1232,38 @@ class Scenario(TypedXMLPropertyStore):
             filenodes = self.root.getNodesByType('file')
             for fn in filenodes:
                 if not fn.isHidden():
-                    filename = fn.getValue()
+                    filename = str(fn.getId()+'.dat')
+                    datafile = fn.getValue()
                     print 'Adding "'+filename+'" to archive...'
-                    zfile.write(os.path.join(self.getTempDir(),filename),filename)
+                    datafile.addToZip(zfile,filename)
             zfile.close()
         
         self.resetChanged()
 
     def loadAll(self,path):
+        # Basic check: does the specified file exist?
         if not os.path.exists(path):
             raise Exception('File "'+path+'" does not exist.')
 
+        # Open the archive
         zfile = zipfile.ZipFile(path,'r')
 
+        # Get list of files in the archive, and check whether the scenario file is present.
         files = zfile.namelist()
         if files.count('scenario.xml')==0:
             raise Exception('This archive does not contain "scenario.xml"; it cannot be a GOTM scenario.')
 
+        # Read and parse the scenario file.
         scenariodata = zfile.read('scenario.xml')
         storedom = xml.dom.minidom.parseString(scenariodata)
         
+        # Get the scenario version
         version = storedom.documentElement.getAttribute('version')
         if version=='':
+            # Unsupported
             print Exception('This is an unversioned scenario created with a gotm-gui alpha. These are no longer supported; please recreate your scenario with the current gotm-gui.')
         if self.version!=version:
+            # The version of the saved scenario does not match the version of this scenario object; convert it.
             print 'Scenario "'+path+'" has version "'+version+'"; starting conversion to "'+self.version+'".'
             zfile.close()
             tempscenario = Scenario(templatename=version)
@@ -1222,17 +1271,19 @@ class Scenario(TypedXMLPropertyStore):
             tempscenario.convert(self)
             tempscenario.unlink()
 
-            # If the scenario was stored in the official 'save' format, we should not consider it changed.
-            # (even though we had to convert it to the 'display' format). Therefore, reset the 'changed' status.
+            # If the scenario was stored in the official 'save' version, we should not consider it changed.
+            # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
             if version==savedscenarioversion: self.resetChanged()
         else:
+            # Attach the parsed scenario to ourselves.
             self.setStore(storedom,None)
 
+            # Get all data files that belong to this scenario from the archive.
             tmpdir = self.getTempDir(empty=True)
             filenodes = self.root.getNodesByType('file')
             for fn in filenodes:
                 if not fn.isHidden():
-                    filename = fn.getValue()
+                    filename = fn.getId()+'.dat'
                     if files.count(filename)==0:
                         raise Exception('The archive "'+path+'" does not contain required data file "'+filename+'".')
                     print 'Getting "'+filename+'" from archive...'
@@ -1241,31 +1292,11 @@ class Scenario(TypedXMLPropertyStore):
                     f.write(filedata)
                     f.close()
 
+            # Close the archive
             zfile.close()
 
-    def onChange(self,node):
-        TypedXMLPropertyStore.onChange(self,node)
-
-        # If the changed node is of type "file", create a local copy of it.
-        if (not self.suppressautofilecopy) and node.getValueType()=='file':
-            if self.filesourcepath!=None:
-                sourcepath = os.path.join(self.filesourcepath,node.getValue())
-            elif self.tempdir!=None:
-                sourcepath = os.path.join(self.tempdir,node.getValue())
-            else:
-                sourcepath = node.getValue()
-            filename = node.getId()+'.dat'
-            if not node.isHidden():
-                # Only actually copy the file if the node is currently visible.
-                tmpdir = self.getTempDir()
-                targetpath = os.path.join(tmpdir,filename)
-                if sourcepath!=targetpath:
-                    print 'Creating local copy of '+sourcepath
-                    shutil.copyfile(sourcepath,targetpath)
-            self.suppressautofilecopy = True
-            node.setValue(filename)
-            self.suppressautofilecopy = False
-
+# Abstract class that contains one or more variables that can be plotted.
+# Classes deriving from it must support the virtual methods below.
 class PlotVariableStore:
 
     def __init__(self):
@@ -1281,30 +1312,48 @@ class PlotVariableStore:
             vardict[name] = self.getVariable(name).getLongName()
         return vardict
 
-    def getVariable(self):
+    def getVariable(self,varname):
         return None
 
+# Abstract class that represents a variable that can be plotted.
+# Classes deriving from it must support the virtual methods below.
 class PlotVariable:
 
     def __init__(self):
-        self.sourcename = None
+        pass
 
+    # getName()
+    #   Return type: string
+    #   Returns the short name (or identifier) of the variable.
     def getName(self):
         return ''
 
-    def getDimensions(self):
-        return ()
-
+    # getLongName()
+    #   Return type: string
+    #   Returns the pretty name for the variable.
     def getLongName(self):
         return ''
 
+    # getUnit()
+    #   Return type: string
+    #   Returns the unit of the variable.
     def getUnit(self):
         return ''
 
-    def getDimensionBounds(self,dim):
-        return None
+    # getDimensions()
+    #   Return type: tuple of strings
+    #   Returns the names of the dimensions of the variable; currently supported dimensions: "time", "z".
+    def getDimensions(self):
+        return ()
 
-    def getValues(self,bounds):
+    # getValues(bounds, staggered=False)
+    #   Return type: tuple of (numpy/numeric) arrays
+    #   Returns the arrays with coordinates (in order of dimnesions returned by getDimensions), and the value array.
+    #   Coordinates may be given as 1D arrays (if the coordinates are constant across all other dimensions), or as arrays with
+    #   the same numbers of dimensions as the value array (i.e., for every value a coordinate is supplied). If staggered is True,
+    #   coordinates must be given at the interfaces and values at the centers; then coordinate arrays must have one extra value in
+    #   every dimension compared to the value array.
+    def getValues(self,bounds,staggered=False):
         return ()
 
 def findindices(bounds,data):
@@ -1324,6 +1373,192 @@ def findindices(bounds,data):
         
     return (start,stop)
 
+def interp1(x,y,X):
+    if len(x.shape)!=1:
+        raise Exception('Original coordinates must be supplied as 1D array.')
+    if len(X.shape)!=1:
+        raise Exception('New coordinates must be supplied as 1D array.')
+    newshape = [X.shape[0]]
+    for i in y.shape[1:]: newshape.append(i)
+    Y = matplotlib.numerix.zeros(newshape,y.typecode())
+    icurx = 0
+    for i in range(X.shape[0]):
+        while icurx<x.shape[0] and x[icurx]<X[i]: icurx+=1
+        if icurx==0:
+            Y[i,:] = y[0,:]
+        elif icurx>=x.shape[0]:
+            Y[i,:] = y[-1,:]
+        else:
+            rc = (y[icurx,:]-y[icurx-1,:])/(x[icurx]-x[icurx-1])
+            Y[i,:] = y[icurx-1,:] + rc*(X[i]-x[icurx-1])
+    return Y
+
+class LinkedFileVariableStore(PlotVariableStore):
+
+    class LinkedFileVariable(PlotVariable):
+
+        def __init__(self,store,data,index):
+            self.store = store
+            self.data = data
+            self.index = index
+
+        def getName(self):
+            return self.data[0]
+
+        def getLongName(self):
+            return self.data[1]
+
+        def getUnit(self):
+            return self.data[2]
+
+        def getDimensions(self):
+            filetype = self.store.type
+            if filetype=='profilesintime':
+                return ('time','z')
+            elif filetype=='pointsintime':
+                return ('time',)
+            else:
+                raise Exception('Cannot plot variables from file of unknown type "'+filetype+'".')
+
+        def getValues(self,bounds,staggered=False):
+            data = self.store.getData()
+            timebounds = findindices(bounds[0],data[0])
+            if len(data)==2:
+                return [data[0][timebounds[0]:timebounds[1]+1],data[1][timebounds[0]:timebounds[1]+1,self.index]]
+            elif len(data)==3:
+                return [data[0][timebounds[0]:timebounds[1]+1],data[1],data[2][timebounds[0]:timebounds[1]+1,:,self.index]]
+            else:
+                raise Exception('Cannot handle variables with %i dimensions; only know how to deal with 2 or 3 dimensions.' % len(data))
+
+    def __init__(self,node):
+        self.vardata = []
+
+        finfo = findDescendantNode(node.templatenode,['fileinfo'])
+        self.type = finfo.getAttribute('type')
+        
+        fvars = findDescendantNode(finfo,['filevariables'])
+        if fvars!=None:
+            for ch in fvars.childNodes:
+                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filevariable':
+                    longname = ch.getAttribute('label')
+                    unit = ch.getAttribute('unit')
+                    name = longname
+                    self.vardata.append([name,longname,unit])
+
+        self.datafile = node.getValue()
+        self.data = None
+
+    def getVariableNames(self):
+        varnames = []
+        for data in self.vardata:
+            varnames.append(data[0])
+        return varnames
+
+    def getVariableLongNames(self):
+        vardict = {}
+        for data in self.vardata:
+            vardict[data[0]] = data[1]
+        return vardict
+
+    def getVariable(self,varname):
+        index = 0
+        for data in self.vardata:
+            if data[0]==varname:
+                return self.LinkedFileVariable(self,data,index)
+            index += 1
+        raise Exception('Variable with name "%s" not found in store.' % varname)
+
+    def getData(self):
+        if self.data!=None: return self.data
+        varcount = len(self.vardata)
+        
+        # Access the data through some read-only file-like object.
+        f = self.datafile.getAsReadOnlyFile()
+
+        # Compile regular expression for reading dates.
+        datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
+
+        filetype = self.type
+        if filetype=='pointsintime':
+            line = f.readline()
+            times = []
+            values = []
+            iline = 1
+            while line!='':
+                datematch = datetimere.match(line)
+                if datematch==None:
+                    raise Exception('Line %i does not start with time (yyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
+                refvals = map(lambda(i): int(i),datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+                curdate = datetime.datetime(*refvals)
+                data = line[datematch.end()+1:].split()
+                if len(data)<varcount:
+                    raise Exception('Line %i contains only %i observations, where %i are expected.' % (iline,len(data),varcount))
+                data = map(lambda(i): float(i),data)
+                times.append(curdate)
+                values.append(data)
+                line = f.readline()
+                iline += 1
+            times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
+            values = matplotlib.numerix.array(values,matplotlib.numerix.Float32)
+            self.data = (times,values)
+        elif filetype=='profilesintime':
+            line = f.readline()
+            times = []
+            depths = []
+            values = []
+            uniquedepths = {}
+            iline = 1
+            while line!='':
+                # Read date & time
+                datematch = datetimere.match(line)
+                if datematch==None:
+                    raise Exception('Line %i does not start with time (yyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
+                refvals = map(lambda(i): int(i),datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+                curdate = datetime.datetime(*refvals)
+
+                # Get the number of observations and the depth direction.
+                (depthcount,updown) = map(lambda(i): int(i), line[datematch.end()+1:].split())
+
+                # Create arrays that will contains depths and observed values.
+                curdepths = matplotlib.numerix.zeros((depthcount,),matplotlib.numerix.Float32)
+                curvalues = matplotlib.numerix.zeros((depthcount,varcount),matplotlib.numerix.Float32)
+                
+                if updown==1:
+                    depthindices = range(0,depthcount,1)
+                else:
+                    depthindices = range(depthcount-1,-1,-1)
+                for idepthline in depthindices:
+                    line = f.readline()
+                    if line=='':
+                        raise Exception('Premature end-of-file after line %i; expected %i more observations.' % (iline,depthcount-depthindices.index(idepthline)))
+                    iline += 1
+                    linedata = map(lambda(i): float(i),line.split())
+                    if len(linedata)<varcount+1:
+                        raise Exception('Line %i contains only %i value(s), where %i (1 time and %i observations) are expected.' % (iline,len(linedata),varcount+1,varcount))
+                    uniquedepths[linedata[0]] = True
+                    curdepths[idepthline] = linedata[0]
+                    curvalues[idepthline,:] = linedata[1:varcount+1]
+                times.append(curdate)
+                depths.append(curdepths)
+                values.append(curvalues)
+                line = f.readline()
+                iline += 1
+            times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
+            uniquedepths = uniquedepths.keys()
+            uniquedepths.sort()
+            depthgrid = matplotlib.numerix.array(uniquedepths,matplotlib.numerix.Float32)
+            griddedvalues = matplotlib.numerix.zeros((times.shape[0],depthgrid.shape[0],varcount),matplotlib.numerix.Float32)
+            for it in range(len(times)):
+                griddedvalues[it,:,:] = interp1(depths[it],values[it],depthgrid)
+            self.data = (times,depthgrid,griddedvalues)
+        else:
+            raise Exception('Cannot plot variables from file of unknown type "'+filetype+'".')
+        f.close()
+        return self.data
+
+# Class that represents a GOTM result.
+#   Inherits from PlotVariableStore, as it contains variables that can be plotted.
+#   Contains a link to the scenario from which the result was created (if available)
 class Result(PlotVariableStore):
 
     class ResultVariable(PlotVariable):
@@ -1354,37 +1589,21 @@ class Result(PlotVariableStore):
           elif dimcount==4:
               if (dimnames==('time','z','lat','lon')) or (dimnames==('time','z1','lat','lon')):
                   return ('time','z')
-          return ()
-
-        def getDimensionBounds(self,dim):
-          nc = self.result.getcdf()
-          if dim=='t':
-              return self.result.getTimeRange()
-          elif dim=='z':
-              try:
-                  v = nc.var(self.varname)
-                  dims = v.dimensions()
-                  z = nc.var(dims[1]).get()
-              except pycdf.CDFError, msg:
-                  print msg
-                  return
-              return (z[0],z[-1])
           else:
-              raise Exception('Asked for bounds of unknown dimension "'+dim+'".')
+            raise Exception('This variable has '+str(dimcount)+' dimensions; I do not know how to handle such variables.')
 
         def getValues(self,bounds,staggered=False):
           nc = self.result.getcdf()
             
-          # Read generic information for NetCDF variable
-          # (needed independent of the number of dimensions of the variable)
+          # Get the variable and its dimensions from CDF.
           try:
               v = nc.var(self.varname)
               dims = v.dimensions()
-              atts = v.attributes()
           except pycdf.CDFError, msg:
               print msg
               return False
 
+          # Get time coordinates and time bounds.
           (t,t_stag) = self.result.getTime()
           timebounds = findindices(bounds[0],t)
           if not staggered:
@@ -1392,57 +1611,28 @@ class Result(PlotVariableStore):
           else:
               t_eff = t_stag[timebounds[0]:timebounds[1]+2]
 
-          if len(dims)==4:
+          dimcount = len(dims)
+          if dimcount==4:
               # Four-dimensional variable: longitude, latitude, depth, time
               try:
-                  variableheights = True
-                  if variableheights:
-                      (z,z1,z_stag,z1_stag) = self.result.getDepth()
-                      depthbounds = (0,z.shape[1])
-                      if dims[1]=='z':
-                          if staggered:
-                              z_cur = z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
-                          else:
-                              z_cur = z[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1]
-                      elif dims[1]=='z1':
-                          if staggered:
-                              z_cur = matplotlib.numerix.concatenate((z_stag,matplotlib.numerix.take(z1_stag,(-1,),1)),1)
-                              z_cur = z_cur[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
-                          else:
-                              z_cur = z1[timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2]
-                  else:
-                      # Note that the code below automatically uses the 'true' depth dimension
-                      # (i.e. the choice between z and z1 is automatic)
-                      z = nc.var(dims[1]).get()
-                      depthbounds = findindices(bounds[1],z)
-                      if not staggered:
-                          z = z[depthbounds[0]:depthbounds[1]+1]
+                  (z,z1,z_stag,z1_stag) = self.result.getDepth()
+                  depthbounds = (0,z.shape[1])
+                  if dims[1]=='z':
+                      if staggered:
+                          z_cur = z_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
                       else:
-                          if dims[1]=='z':
-                              z1 = nc.var('z1').get()
-                              z1[-1] = 0    # Cover up slight numerical inaccuracies (e.g. surface at 1e-14)
-                              if depthbounds[0]==0:
-                                  # Calculate maximum depth (preferably use specified station depth; other measure may be numerically inaccurate)
-                                  maxdepth = None
-                                  if self.result.scenario!=None:
-                                      maxdepth = -self.result.scenario.getProperty(['station','depth'])
-                                  if maxdepth==None:
-                                      maxdepth = 2*z[0]-z1[0]
-                                  z = [maxdepth] + list(z1[0:depthbounds[1]+1])
-                              else:
-                                  z = z1[depthbounds[0]-1:depthbounds[1]+1]
-                          elif dims[1]=='z1':
-                              z = nc.var('z').get()
-                              if depthbounds[1]==len(z)-1:
-                                  z = list(z[depthbounds[0]:depthbounds[1]+1]) + [0]
-                              else:
-                                  z = z[depthbounds[0]:depthbounds[1]+2]
+                          z_cur = z[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1]
+                  elif dims[1]=='z1':
+                      if staggered:
+                          z_cur = z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
+                      else:
+                          z_cur = z1[timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2]
                   dat = v[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1,0,0]
               except pycdf.CDFError, msg:
                   print msg
                   return False
               return [t_eff,z_cur,dat]
-          elif len(dims)==3:
+          elif dimcount==3:
               # Three-dimensional variable: longitude, latitude, time
               try:
                   dat = v[timebounds[0]:timebounds[1]+1,0,0]
@@ -1451,7 +1641,7 @@ class Result(PlotVariableStore):
                   return False
               return [t_eff,dat]
           else:
-            raise Exception('Cannot deal with this variable')
+            raise Exception('This variable has '+str(len(dims))+' dimensions; I do not know how to handle such variables.')
 
     def __init__(self):
         self.scenario = None
@@ -1459,8 +1649,10 @@ class Result(PlotVariableStore):
         self.datafile = None
         self.nc = None
         self.changed = False
+
+        # Cached coordinates
         self.t = None
-        self.t1 = None
+        self.t_stag = None
         self.z = None
         self.z1 = None
         self.z_stag = None
@@ -1497,62 +1689,75 @@ class Result(PlotVariableStore):
         self.changed = False
 
     def load(self,path):
+        # Basic check: does the specified file exist?
         if not os.path.exists(path): raise Exception('File "'+path+'" does not exist.')
 
+        # Open the archive
         zfile = zipfile.ZipFile(path,'r')
 
+        # Get a list of files in the archive, and check whether it contains a scenario and a result.
         files = zfile.namelist()
         if files.count('scenario.gotmscenario')==0:
             raise Exception('The archive "'+path+'" does not contain "scenario.gotmscenario"; it cannot be a GOTM result.')
         if files.count('result.nc')==0:
             raise Exception('The archive "'+path+'" does not contain "result.nc"; it cannot be a GOTM result.')
 
+        # Create a temporary directory to which we can unpack the archive.
         tempdir = self.getTempDir()
-        
+
+        # Unpack the scenario        
         scenariofile = os.path.join(tempdir,'scenario.gotmscenario')
         scenariodata = zfile.read('scenario.gotmscenario')
         f = open(scenariofile,'wb')
         f.write(scenariodata)
         f.close()
-        
+
+        # Unpack the result
         resultfile = os.path.join(tempdir,'result.nc')
         resultdata = zfile.read('result.nc')
         f = open(resultfile,'wb')
         f.write(resultdata)
         f.close()
 
+        # Close the archive
         zfile.close()
 
+        # Load the scenario from file.
         self.scenario = Scenario(templatename=guiscenarioversion)
         self.scenario.loadAll(scenariofile)
         os.remove(scenariofile)
-        self.datafile = resultfile
 
-        # Try to open the CDF file
+        # Attach the result, try to open the CDF file
+        self.datafile = resultfile
         self.getcdf()
 
+        # Reset "changed" status.
         self.changed = False
 
     def unlink(self):
         if self.nc!=None:
+            # Close NetCDF result file.
             self.nc.close()
             self.nc = None
         if self.tempdir!=None:
+            # Delete temporary directory.
             print 'Deleting temporary result directory "'+self.tempdir+'".'
             shutil.rmtree(self.tempdir)
             self.tempdir = None
 
     def attach(self,srcpath,scenario=None):
         self.scenario = scenario
+        
+        # Create a copy of the result file.
         tempdir = self.getTempDir(empty=True)
         datafile = os.path.join(tempdir,'result.nc')
         shutil.copyfile(srcpath,datafile)
-        self.datafile = datafile
 
-        # Try to open the CDF file
+        # Store link to result file, and try to open the CDF file
+        self.datafile = datafile
         self.getcdf()
 
-        self.changed = True
+        self.changed = False
 
     def getcdf(self):
         if self.nc!=None: return self.nc
@@ -1648,16 +1853,16 @@ class Result(PlotVariableStore):
                 t[it] = dateref + datetime.timedelta(secs[it]/3600/24)
 
             # Create staggered time grid.
-            t1 = matplotlib.numerix.zeros((secs.shape[0]+1,),matplotlib.numerix.PyObject)
-            halfdt = datetime.timedelta(seconds=float((secs[1]-secs[0])/2))
-            t1[0]  = t[0]-halfdt
-            t1[1:] = t[:]+halfdt
+            t_stag = matplotlib.numerix.zeros((secs.shape[0]+1,),matplotlib.numerix.PyObject)
+            halfdt = datetime.timedelta(seconds=float(secs[1]-secs[0])/2)
+            t_stag[0]  = t[0]-halfdt
+            t_stag[1:] = t[:]+halfdt
             
             # Cache time grids.
             self.t = t
-            self.t1 = t1
+            self.t_stag = t_stag
             
-        return (self.t,self.t1)
+        return (self.t,self.t_stag)
 
     def getDepth(self):
         if self.z==None:
@@ -1672,18 +1877,20 @@ class Result(PlotVariableStore):
             
             # Get depths of interfaces
             z1 = matplotlib.numerix.cumsum(h[:,:],1)
-            z1 = matplotlib.numerix.concatenate((matplotlib.numerix.zeros((z1.shape[0],1),matplotlib.numerix.Float32),z1),1)
-            z1 = z1[:,:]-z1[0,-1]
+            z1 = matplotlib.numerix.concatenate((matplotlib.numerix.zeros((z1.shape[0],1),z1.typecode()),z1),1)
+            bottomdepth = z1[0,-1]
+            z1 = z1[:,:]-bottomdepth
 
             # Get depth of layer centers
             z = z1[:,1:z1.shape[1]]-0.5*h
 
-            # Interpolate in time to create staggered grid in time
+            # Interpolate in time to create staggered grid
             z1_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z1,(0,),0),z1,matplotlib.numerix.take(z1,(-1,),0)),0)
-            z1_stag = 0.5 * (z1_med[0:z1_med.shape[0]-1,:] + z1_med[1:z1_med.shape[0],:])
+            z_stag = 0.5 * (z1_med[0:z1_med.shape[0]-1,:] + z1_med[1:z1_med.shape[0],:])
             
-            z_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z,(0,),0),z,matplotlib.numerix.take(z,(-1,),0)),0)
-            z_stag = 0.5 * (z_med[0:z_med.shape[0]-1,:] + z_med[1:z_med.shape[0],:])
+            z_med = matplotlib.numerix.concatenate((z,matplotlib.numerix.take(z1,(-1,),1)),1)
+            z_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z_med,(0,),0),z_med,matplotlib.numerix.take(z_med,(-1,),0)),0)
+            z1_stag = 0.5 * (z_med[0:z_med.shape[0]-1,:] + z_med[1:z_med.shape[0],:])
 
             self.z = z
             self.z1 = z1
@@ -1869,7 +2076,7 @@ class Figure:
             elif len(dims)==2:
                 plottypenodename = 'PlotType3D'
             else:
-                raise Exception('Cannot currently plot variables with more than 2 independent dimensions.')
+                raise Exception('This variable has %i independent dimensions. Can only plot variables with 2 or 3 independent dimensions.' % len(dims))
             plottype = forcedseriesnode.getLocation([plottypenodename]).getValue()
             if plottype==None: plottype=0
             newseriesnode.getLocation([plottypenodename]).setValue(plottype)

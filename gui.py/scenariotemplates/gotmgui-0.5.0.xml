@@ -797,7 +797,6 @@
 					<condition type="eq" variable="./ext_press_method" value="2"/>
 					<fileinfo type="pointsintime">
 						<filevariables>
-							<filevariable label="height above bottom for current meter observations"/>
 							<filevariable label="external pressure gradient data for x-direction"/>
 							<filevariable label="external pressure gradient data for y-direction"/>
 						</filevariables>
@@ -810,10 +809,7 @@
 					<condition type="eq" variable="./ext_press_method" value="0"/>
 				</variable>
 				<variable id="PressHeight" type="float" label="height above bottom for current meter observations" unit="m">
-					<condition type="and">
-						<condition type="eq" variable="./ext_press_method" value="0"/>
-						<condition type="eq" variable="./PressMethod"      value="1"/>
-					</condition>
+					<condition type="eq" variable="./PressMethod"      value="1"/>
 				</variable>
 				<variable id="PeriodM" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
 					<condition type="eq" variable="./ext_press_method" value="1"/>
