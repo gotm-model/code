@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.15 2006-11-27 15:26:37 kbk Exp $
+!$Id: meanflow.F90,v 1.16 2007-01-03 21:45:20 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -117,6 +117,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
+!  Revision 1.16  2007-01-03 21:45:20  hb
+!  LaTeX bug fix in documentation
+!
 !  Revision 1.15  2006-11-27 15:26:37  kbk
 !  initialise grid depending on grid_ready
 !
@@ -372,7 +375,7 @@
    subroutine clean_meanflow()
 !
 ! !DESCRIPTION:
-!  De-allocates all memory allocated via init_meanflow()
+!  De-allocates all memory allocated via init\_meanflow()
 !
 ! !USES:
    IMPLICIT NONE
