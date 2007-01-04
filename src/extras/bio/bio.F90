@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.33 2006-11-17 07:13:17 kbk Exp $
+!$Id: bio.F90,v 1.34 2007-01-04 12:54:12 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -54,6 +54,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.34  2007-01-04 12:54:12  hb
+!  ifdef LAGRANGE removed
+!
 !  Revision 1.33  2006-11-17 07:13:17  kbk
 !  rho amd wind-speed available via bio_var
 !
@@ -512,12 +515,10 @@
    REALTYPE                  :: dt_eff
    integer                   :: j,n
    integer                   :: split
-#ifdef LAGRANGE
    integer                   :: i,np
    REALTYPE                  :: filter_depth
    integer, save             :: count=0
    logical, save             :: set_C_zero=.true.
-#endif
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -571,7 +572,6 @@
             zlev(n)=zlev(n-1)+h(n)
          end do
          do j=1,numc
-#ifdef LAGRANGE
             call lagrange(nlev,dt,zlev,nuh,ws(j,1),bio_npar, &
                           particle_active(j,:), &
                           particle_indx(j,:),   &
@@ -608,9 +608,6 @@
                   set_C_zero=.true.
                end if
             end if
-#else
-            STDERR 'Should have called lagrange: ',j,' of ',numc
-#endif
          end do
       end if
 
