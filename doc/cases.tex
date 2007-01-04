@@ -1,5 +1,5 @@
 %
-%$Id: cases.tex,v 1.7 2006-12-03 13:48:55 hb Exp $
+%$Id: cases.tex,v 1.8 2007-01-04 13:21:30 hb Exp $
 %
 
 \section{GOTM scenarios \label{sec:cases}}
@@ -375,7 +375,8 @@ edges of the upper and lower mixing layers are given as {\tt zsbl} and
 
 In this idealised experiment, an estuarine circulation is simulated,
 mainly in order to demonstrate how to use tracer advection and
-internal pressure gradients in GOTM.
+internal pressure gradients in GOTM, but also to show the basic
+physical process of tidal asymmetries and its impact on SPM dynamics.
 
 The average water depth is $H=15$ m, the model is run for 10 days.
 The forcing is a M$_2$ tide (of period 44714 s) which prescribes
@@ -391,6 +392,12 @@ to the initial salinity profile of 15 ppt is made.  In order to avoid
 strong stratification near the surface, a small wind stress of 0.01027
 N/m$^2$ is applied.
 
+A simple suspended matter equation with constant settling velocity is
+calculated in order to show the effect of tidal asymmetries on SPM
+transport. It is clearly seen that during flood SPM is mixed higher up into 
+the water column than during ebb, an effect which has been described 
+by \cite{Geyer93}.
+
 It is recommended to go through the description in the routines
 computing the external and internal pressure gradients, see
 \sect{sec:extpressure} and \sect{sec:intpressure}, to understand the
@@ -402,13 +409,12 @@ which is set in {\tt obs.inp} and described in
 the same horizontal salinity gradient that causes the internal
 pressure gradient.
 
-
 The result is that estuarine circulation is set on and near bed
 residual velocity is directed upstream. It is interesting to have a
 look into the resulting buoyancy production or Brunt-V\"ais\"al\"a
 frequency.  The effect of lateral advection on stratification leads to
 either production or supression of turbulence, and thus to an
-unsymmetric time series of the turbulent diffusivity.
+asymmetric time series of the turbulent diffusivity.
 
 For two-dimensional simulations of estuarine circulation,
 see e.g.\ \cite{BurchardBaumert98} and \cite{Burchardetal2003}.
