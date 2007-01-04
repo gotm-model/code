@@ -1,4 +1,4 @@
-!$Id: bio_save.F90,v 1.6 2006-10-26 13:12:46 kbk Exp $
+!$Id: bio_save.F90,v 1.7 2007-01-04 10:03:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -78,8 +78,6 @@
                                      long_name=var_long(n))
             end do
 
-            nn = ubound(cc(1,:),1)
-
             dims(1) = time_dim
             iret = new_nc_variable(ncid,'totn',NF_REAL,1,dims,totn_id)
             iret = set_attributes(ncid,totn_id,units='mmol/m**2',    &
@@ -89,10 +87,10 @@
          end if
 
          do n=1,numc
-            iret = store_data(ncid,var_ids(n),XYZT_SHAPE,nn,array=cc(n,:))
+            iret = store_data(ncid,var_ids(n),XYZT_SHAPE,nlev,array=cc(n,:))
          end do
-!KBK         iret = store_data(ncid,phy_id,XYZT_SHAPE,nn,array=cc(2,:)+P0)
-!KBK         iret = store_data(ncid,zoo_id,XYZT_SHAPE,nn,array=cc(3,:)+Z0)
+!KBK         iret = store_data(ncid,phy_id,XYZT_SHAPE,nlev,array=cc(2,:)+P0)
+!KBK         iret = store_data(ncid,zoo_id,XYZT_SHAPE,nlev,array=cc(3,:)+Z0)
 
          iret = store_data(ncid,totn_id,T_SHAPE,1,scalar=totn)
 #endif
