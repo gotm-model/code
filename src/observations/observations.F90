@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.14 2006-11-27 09:25:18 kbk Exp $
+!$Id: observations.F90,v 1.15 2007-01-04 12:08:12 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -158,6 +158,13 @@
    REALTYPE, public          :: amp_2=0.
    REALTYPE, public          :: phase_2=0.
 
+!  Wind waves - 'wave_nml' namelist
+   integer,public            :: wave_method=0
+   character(LEN=PATH_MAX)   :: wave_file='wave.dat'
+   REALTYPE, public          :: Hs=_ZERO_
+   REALTYPE, public          :: Tz=_ZERO_
+   REALTYPE, public          :: phiw=_ZERO_
+
 !  Observed velocity profile profiles - typically from ADCP
    integer                   :: vel_prof_method=0
    CHARACTER(LEN=PATH_MAX)   :: vel_prof_file='velprof.dat'
@@ -185,9 +192,10 @@
    integer, parameter        :: extinct_unit=34
    integer, parameter        :: w_adv_unit=35
    integer, parameter        :: zeta_unit=36
-   integer, parameter        :: vel_prof_unit=37
-   integer, parameter        :: e_prof_unit=38
-   integer, parameter        :: o2_prof_unit=39
+   integer, parameter        :: wave_unit=37
+   integer, parameter        :: vel_prof_unit=38
+   integer, parameter        :: e_prof_unit=39
+   integer, parameter        :: o2_prof_unit=40
 
 !  pre-defined parameters
    integer, parameter        :: READ_SUCCESS=1
@@ -205,6 +213,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.15  2007-01-04 12:08:12  kbk
+!  adding surface waves
+!
 !  Revision 1.14  2006-11-27 09:25:18  kbk
 !  use logical var init_saved_vars to initialise saved variables
 !
@@ -326,6 +337,9 @@
             zeta_method,zeta_file,zeta_0,                       &
             period_1,amp_1,phase_1,period_2,amp_2,phase_2
 
+   namelist /wave_nml/                                          &
+            wave_method,wave_file,Hs,Tz,phiw
+
    namelist /velprofile/ vel_prof_method,vel_prof_file,         &
             vel_relax_tau,vel_relax_ramp
 
@@ -348,10 +362,11 @@
    read(namlst,nml=extinct,err=85)
    read(namlst,nml=w_advspec,err=86)
    read(namlst,nml=zetaspec,err=87)
-   read(namlst,nml=velprofile,err=88)
-   read(namlst,nml=eprofile,err=89)
-   read(namlst,nml=bprofile,err=90)
-   read(namlst,nml=o2_profile,err=91)
+   read(namlst,nml=wave_nml,err=88)
+   read(namlst,nml=velprofile,err=89)
+   read(namlst,nml=eprofile,err=90)
+   read(namlst,nml=bprofile,err=91)
+   read(namlst,nml=o2_profile,err=92)
    close(namlst)
 
    allocate(sprof(0:nlev),stat=rc)
@@ -592,13 +607,28 @@
    end select
    call get_zeta(zeta_method,zeta_unit,julday,secs)
 
+!  Wind waves
+   select case (wave_method)
+      case (NOTHING)
+         Hs=_ZERO_
+         Tz=_ZERO_
+         phiw=_ZERO_
+      case (CONSTANT)
+      case (FROMFILE)
+         open(wave_unit,file=wave_file,status='unknown',err=108)
+         LEVEL2 'Reading wind wave data from:'
+         LEVEL3 trim(wave_file)
+         call get_wave(wave_unit,julday,secs)
+      case default
+   end select
+
 !  The observed velocity profile
    select case (vel_prof_method)
       case (0)
          uprof = 0.
          vprof = 0.
       case (2)
-         open(vel_prof_unit,file=vel_prof_file,status='UNKNOWN',err=108)
+         open(vel_prof_unit,file=vel_prof_file,status='UNKNOWN',err=109)
          LEVEL2 'Reading velocity profiles from:'
          LEVEL3 trim(vel_prof_file)
          call get_vel_profile(vel_prof_unit,julday,secs,nlev,z)
@@ -610,7 +640,7 @@
       case (0)
          epsprof = 0.
       case (2)
-         open(e_prof_unit,file=e_prof_file,status='UNKNOWN',err=109)
+         open(e_prof_unit,file=e_prof_file,status='UNKNOWN',err=110)
          LEVEL2 'Reading dissipation profiles from:'
          LEVEL3 trim(e_prof_file)
          call get_eps_profile(e_prof_unit,julday,secs,nlev,z)
@@ -623,7 +653,7 @@
          o2_prof = _ZERO_
       case (ANALYTICAL)
       case (FROMFILE)
-         open(o2_prof_unit,file=o2_prof_file,status='unknown',err=110)
+         open(o2_prof_unit,file=o2_prof_file,status='unknown',err=111)
          LEVEL2 'Reading oxygen profiles from:'
          LEVEL3 trim(o2_prof_file)
          call get_o2_profile(o2_prof_unit,julday,secs,nlev,z)
@@ -649,13 +679,15 @@
    stop 'init_observations'
 87 FATAL 'I could not read "zetaspec" namelist'
    stop 'init_observations'
-88 FATAL 'I could not read "velprofile" namelist'
+88 FATAL 'I could not read "wave_nml" namelist'
    stop 'init_observations'
-89 FATAL 'I could not read "eprofile" namelist'
+89 FATAL 'I could not read "velprofile" namelist'
    stop 'init_observations'
-90 FATAL 'I could not read "bprofile" namelist'
+90 FATAL 'I could not read "eprofile" namelist'
    stop 'init_observations'
-91 FATAL 'I could not read "o2_profile" namelist'
+91 FATAL 'I could not read "bprofile" namelist'
+   stop 'init_observations'
+92 FATAL 'I could not read "o2_profile" namelist'
    stop 'init_observations'
 
 101 FATAL 'Unable to open "',trim(s_prof_file),'" for reading'
@@ -672,11 +704,13 @@
    stop 'init_observations'
 107 FATAL 'Unable to open "',trim(zeta_file),'" for reading'
    stop 'init_observations'
-108 FATAL 'Unable to open "',trim(vel_prof_file),'" for reading'
+108 FATAL 'Unable to open "',trim(wave_file),'" for reading'
    stop 'init_observations'
-109 FATAL 'Unable to open "',trim(e_prof_file),'" for reading'
+109 FATAL 'Unable to open "',trim(vel_prof_file),'" for reading'
    stop 'init_observations'
-110 FATAL 'Unable to open "',trim(o2_prof_file),'" for reading'
+110 FATAL 'Unable to open "',trim(e_prof_file),'" for reading'
+   stop 'init_observations'
+111 FATAL 'Unable to open "',trim(o2_prof_file),'" for reading'
    stop 'init_observations'
 
    return
@@ -734,6 +768,10 @@
    call get_w_adv(w_adv_method,w_adv_unit,julday,secs)
 
    call get_zeta(zeta_method,zeta_unit,julday,secs)
+
+   if(wave_method .eq. 2) then
+      call get_wave(wave_unit,julday,secs)
+   end if
 
    if(vel_prof_method .eq. 2) then
       call get_vel_profile(vel_prof_unit,julday,secs,nlev,z)

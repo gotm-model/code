@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.5 2005-12-23 14:11:19 kbk Exp $
+#$Id: Makefile,v 1.6 2007-01-04 12:08:12 kbk Exp $
 #
 # Makefile to build the the Observtions library - libobservations.a
 #
@@ -17,6 +17,7 @@ get_int_pressure.F90    \
 read_extinction.F90     \
 get_w_adv.F90           \
 get_zeta.F90            \
+get_wave.F90            \
 get_vel_profile.F90     \
 get_eps_profile.F90	\
 analytical_profile.F90	\
@@ -36,6 +37,7 @@ ${LIB}(get_int_pressure.o)	\
 ${LIB}(read_extinction.o)	\
 ${LIB}(get_w_adv.o)		\
 ${LIB}(get_zeta.o)		\
+${LIB}(get_wave.o)		\
 ${LIB}(get_vel_profile.o)	\
 ${LIB}(get_eps_profile.o)	\
 ${LIB}(analytical_profile.o)	\
