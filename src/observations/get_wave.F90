@@ -1,4 +1,4 @@
-!$Id: get_wave.F90,v 1.1 2007-01-04 12:08:12 kbk Exp $
+!$Id: get_wave.F90,v 1.2 2007-01-04 12:19:09 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -10,13 +10,10 @@
 !
 ! !DESCRIPTION:
 !  This routine is responsible for providing sane values to `observed'
-!  vertical velocity which will then be applied for vertical
-!  advection of mean flow properties. A height and a vertical velocity value are
-!  either set to constant values or read from a file. The height will be
-!  assigned to be the position of maximum vertical velocity, and the
-!  vertical profiles of vertical velocity will be then constructed in
-!  such a way that the velocity is linearly decreasing away from this height,
-!  with zero values at the surface and the bottom.
+!  wind generated waves. The observations consist of significant wave height
+!  (Hs), mean zero-crossing period (Tz) and mean direction (phiw).
+!  The variables can be set to constant values (wave\_method=1) or read
+!  from file (wave\_method=2). For wave\_method=0 nothing is done.
 !  The subroutine is called in the {\tt get\_all\_obs()} subroutine
 !  as part of the main integration loop.
 !  In case of observations from file the temporal interpolation is
@@ -35,6 +32,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_wave.F90,v $
+!  Revision 1.2  2007-01-04 12:19:09  kbk
+!  updated documentation
+!
 !  Revision 1.1  2007-01-04 12:08:12  kbk
 !  adding surface waves
 !
