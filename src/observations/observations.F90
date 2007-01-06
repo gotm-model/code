@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.16 2007-01-06 11:49:15 kbk Exp $
+!$Id: observations.F90,v 1.17 2007-01-06 11:57:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -110,7 +110,7 @@
    character(LEN=PATH_MAX)   :: o2_prof_file='o2.dat'
 
 !  External pressure - 'press' namelist
-   integer, public           :: ext_press_method=0,PressMethod=0
+   integer, public           :: ext_press_method=0,ext_press_mode=0
    character(LEN=PATH_MAX)   :: ext_press_file=''
    REALTYPE, public          :: PressConstU=0.
    REALTYPE, public          :: PressConstV=0.
@@ -213,6 +213,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.17  2007-01-06 11:57:07  kbk
+!  PressMethod --> ext_press_mode
+!
 !  Revision 1.16  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -321,7 +324,7 @@
             o2_prof_method,o2_units,o2_prof_file
 
    namelist /ext_pressure/                                      &
-            ext_press_method,PressMethod,ext_press_file,        &
+            ext_press_method,ext_press_mode,ext_press_file,     &
             PressConstU,PressConstV,PressHeight,                &
             PeriodM,AmpMu,AmpMv,PhaseMu,PhaseMv,                &
             PeriodS,AmpSu,AmpSv,PhaseSu,PhaseSv

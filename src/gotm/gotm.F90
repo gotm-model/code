@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.32 2006-11-27 10:08:33 kbk Exp $
+!$Id: gotm.F90,v 1.33 2007-01-06 11:57:08 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -59,6 +59,10 @@
 #ifdef SEAGRASS
    use seagrass
 #endif
+#ifdef SPM
+   use spm_var, only: spm_calc
+   use spm, only: init_spm, set_env_spm, do_spm, end_spm
+#endif
 #ifdef BIO
    use bio
    use bio_fluxes
@@ -78,6 +82,9 @@
 #ifdef SEAGRASS
    integer, parameter                  :: unit_seagrass=62
 #endif
+#ifdef SPM
+   integer, parameter                  :: unit_spm=64
+#endif
 #ifdef BIO
    integer, parameter                  :: unit_bio=63
 #endif
@@ -86,6 +93,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.33  2007-01-06 11:57:08  kbk
+!  PressMethod --> ext_press_mode
+!
 !  Revision 1.32  2006-11-27 10:08:33  kbk
 !  use var init_saved_vars to initialise saved variables - air_sea_interaction -> do_air_sea
 !
@@ -206,7 +216,7 @@
 !
 ! !DESCRIPTION:
 !  This internal routine triggers the initialization of the model.
-!  The first section reads the namelists of {\tt gotmrun.inp} with
+!  The first section reads the namelists of {\tt gotmrun.nml} with
 !  the user specifications. Then, one by one each of the modules are
 !  initialised with help of more specialised routines like
 !  {\tt init\_meanflow()} or {\tt init\_turbulence()} defined inside
@@ -241,7 +251,7 @@
 
 !  open the namelist file.
    LEVEL2 'reading model setup namelists..'
-   open(namlst,file='gotmrun.inp',status='old',action='read',err=90)
+   open(namlst,file='gotmrun.nml',status='old',action='read',err=90)
 
    read(namlst,nml=model_setup,err=91)
    read(namlst,nml=station,err=92)
@@ -268,14 +278,14 @@
 
 !  From here - each init_? is responsible for opening and closing the
 !  namlst - unit.
-   call init_meanflow(namlst,'gotmmean.inp',nlev,latitude)
+   call init_meanflow(namlst,'gotmmean.nml',nlev,latitude)
    call init_tridiagonal(nlev)
    call updategrid(nlev,dt,zeta)
 
-   call init_observations(namlst,'obs.inp',julianday,secondsofday,      &
+   call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
                           depth,nlev,z,h,gravity,rho_0)
 
-   call init_turbulence(namlst,'gotmturb.inp',nlev)
+   call init_turbulence(namlst,'gotmturb.nml',nlev)
 
 !  initalise mean fields
    s = sprof
@@ -285,7 +295,7 @@
 
 !  initalise KPP model
    if (turb_method.eq.99) then
-      call init_kpp(namlst,'kpp.inp',nlev,depth,h,gravity,rho_0)
+      call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
    endif
 
    call init_output(title,nlev,latitude,longitude)
@@ -293,10 +303,13 @@
 
 !  initialise each of the extra features/modules
 #ifdef SEAGRASS
-   call init_seagrass(namlst,'seagrass.inp',unit_seagrass,nlev,h)
+   call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h)
+#endif
+#ifdef SPM
+   call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
 #ifdef BIO
-   call init_bio(namlst,'bio.inp',unit_bio,nlev,h)
+   call init_bio(namlst,'bio.nml',unit_bio,nlev,h)
    if (bio_calc) call init_bio_fluxes()
 #endif
    LEVEL2 'done.'
@@ -304,7 +317,7 @@
 
    return
 
-90 FATAL 'I could not open gotmrun.inp for reading'
+90 FATAL 'I could not open gotmrun.nml for reading'
    stop 'init_gotm'
 91 FATAL 'I could not read the "model_setup" namelist'
    stop 'init_gotm'
@@ -390,9 +403,9 @@
       call coriolis(nlev,dt)
 
 !     update velocity
-      call uequation(nlev,dt,cnpar,tx,num,gamu,PressMethod)
-      call vequation(nlev,dt,cnpar,ty,num,gamv,PressMethod)
-      call extpressure(PressMethod,nlev)
+      call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
+      call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
+      call extpressure(ext_press_mode,nlev)
       call intpressure(nlev)
       call friction(kappa,avmolu,tx,ty)
 
@@ -413,6 +426,13 @@
       call shear(nlev,cnpar)
       call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
 
+#ifdef SPM
+      if (spm_calc) then
+         call set_env_spm(nlev,rho_0,depth,u_taub,h,u,v,nuh, &
+                          tx,ty,Hs,Tz,Phiw)
+         call do_spm(nlev,dt)
+      end if
+#endif
 #ifdef BIO
       if (bio_calc) then
          call set_env_bio(nlev,h,t,s,rho,nuh,rad,wind,I_0, &
@@ -457,6 +477,9 @@
          call do_output(n,nlev)
 #ifdef SEAGRASS
          if (seagrass_calc) call save_seagrass()
+#endif
+#ifdef SPM
+         if (spm_calc) call spm_save(nlev)
 #endif
 #ifdef BIO
          if (bio_calc) call bio_save(nlev,_ZERO_)

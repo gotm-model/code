@@ -1,4 +1,4 @@
-!$Id: extpressure.F90,v 1.8 2007-01-06 11:49:15 kbk Exp $
+!$Id: extpressure.F90,v 1.9 2007-01-06 11:57:08 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -52,11 +52,14 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: extpressure.F90,v $
+!  Revision 1.9  2007-01-06 11:57:08  kbk
+!  PressMethod --> ext_press_mode
+!
 !  Revision 1.8  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
 !  Revision 1.7  2006-12-07 16:50:28  hb
-!  Program abortion introduced for PressHeight<=0 when PressMethod=1
+!  Program abortion introduced for PressHeight<=0 when ext_press_mode=1
 !
 !  Revision 1.6  2005-06-27 13:44:07  kbk
 !  modified + removed traling blanks
