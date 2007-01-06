@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.17 2006-11-06 13:36:45 hb Exp $
+!$Id: temperature.F90,v 1.18 2007-01-06 11:49:16 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -37,7 +37,7 @@
 !  denotes the non-local flux of heat, see \sect{sec:turbulenceIntro}.
 !
 !  Horizontal advection is optionally
-!  included  (see {\tt obs.inp}) by means of prescribed
+!  included  (see {\tt obs.nml}) by means of prescribed
 !  horizontal gradients $\partial_x\Theta$ and $\partial_y\Theta$ and
 !  calculated horizontal mean velocities $U$ and $V$.
 !  Relaxation with the time scale $\tau^\Theta_R$
@@ -54,7 +54,7 @@
 !  The absorbtion coefficients $\eta_1$ and $\eta_2$ depend on the water type
 !  and have to be prescribed either by means of choosing a \cite{Jerlov68} class
 !  (see \cite{PaulsonSimpson77}) or by reading in a file through the namelist
-!  {\tt extinct} in {\tt obs.inp}. The damping term due to bioturbidity,
+!  {\tt extinct} in {\tt obs.nml}. The damping term due to bioturbidity,
 !  $B(z)$ is calculated in the biogeochemical routines, see section
 !  \ref{sec:bio}.
 
@@ -110,6 +110,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
+!  Revision 1.18  2007-01-06 11:49:16  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.17  2006-11-06 13:36:45  hb
 !  Option for conservative vertical advection added to adv_center
 !

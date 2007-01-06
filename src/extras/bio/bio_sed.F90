@@ -1,4 +1,4 @@
-!$Id: bio_sed.F90,v 1.7 2006-10-26 13:12:46 kbk Exp $
+!$Id: bio_sed.F90,v 1.8 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,6 +29,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_sed.F90,v $
+!  Revision 1.8  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.7  2006-10-26 13:12:46  kbk
 !  updated bio models to new ode_solver
 !
@@ -69,7 +72,7 @@
    subroutine init_bio_sed(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio\_sed.inp} (mainly including
+!  Here, the bio namelist {\tt bio\_sed.nml} (mainly including
 !  settling velocity and initial value) is read
 !  and the settling velocity is converted to SI units.
 !
@@ -103,11 +106,11 @@
 
    return
 
-98 LEVEL2 'I could not open bio_sed.inp'
-   LEVEL2 'If thats not what you want you have to supply bio_sed.inp'
-   LEVEL2 'See the bio example on www.gotm.net for a working bio_sed.inp'
+98 LEVEL2 'I could not open bio_sed.nml'
+   LEVEL2 'If thats not what you want you have to supply bio_sed.nml'
+   LEVEL2 'See the bio example on www.gotm.net for a working bio_sed.nml'
    return
-99 FATAL 'I could not read bio_sed.inp'
+99 FATAL 'I could not read bio_sed.nml'
    stop 'init_bio_sed'
    end subroutine init_bio_sed
 !EOC

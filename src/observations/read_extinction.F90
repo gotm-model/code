@@ -1,4 +1,4 @@
-!$Id: read_extinction.F90,v 1.5 2005-07-06 16:20:14 kbk Exp $
+!$Id: read_extinction.F90,v 1.6 2007-01-06 11:49:15 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -10,7 +10,7 @@
 !
 ! !DESCRIPTION:
 !  This routine will provide the light extinction coefficients. It
-!  is only called if no Jerlov class has been specified in {\tt obs.inp}.
+!  is only called if no Jerlov class has been specified in {\tt obs.nml}.
 !
 ! !USES:
    use time
@@ -25,7 +25,10 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: read_extinction.F90,v $
-!  Revision 1.5  2005-07-06 16:20:14  kbk
+!  Revision 1.6  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
+!  Revision 1.5  2005/07/06 16:20:14  kbk
 !  updated documentation - added const_NNT and const_NNS
 !
 !  Revision 1.4  2003/03/28 09:20:35  kbk

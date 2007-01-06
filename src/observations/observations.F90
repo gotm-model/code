@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.15 2007-01-04 12:08:12 kbk Exp $
+!$Id: observations.F90,v 1.16 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -213,6 +213,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.16  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.15  2007-01-04 12:08:12  kbk
 !  adding surface waves
 !
@@ -275,7 +278,7 @@
                                 depth,nlev,z,h,gravity,rho_0)
 !
 ! !DESCRIPTION:
-!  The {\tt init\_observations()} subroutine basically reads the {\tt obs.inp}
+!  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
 !  file with a number of different namelists and takes actions according
 !  to the specifications in the different namelists.
 !  In this routine also memory is allocated to hold the 'observations'.
@@ -440,7 +443,7 @@
          LEVEL2 ''
          LEVEL2 '***************************************************'
          LEVEL2 'SRelaxTau at i=',i,' is not a positive value.'
-         LEVEL2 'Please correct namelist.inp and rerun.'
+         LEVEL2 'Please correct obs.nml and rerun.'
          LEVEL2 'Program aborted.'
          LEVEL2 '***************************************************'
          stop 'init_observations'
@@ -449,7 +452,7 @@
          LEVEL2 ''
          LEVEL2 '***************************************************'
          LEVEL2 'TRelaxTau at i=',i,' is not a positive value.'
-         LEVEL2 'Please correct namelist.inp and rerun.'
+         LEVEL2 'Please correct obs.nml and rerun.'
          LEVEL2 'Program aborted.'
          LEVEL2 '***************************************************'
          stop 'init_observations'
@@ -480,7 +483,7 @@
                   LEVEL2 '***************************************************'
                   LEVEL2 'For salinity profiles with NN=const. you have to   '
                   LEVEL2 'prescribe constant temperature.                    '
-                  LEVEL2 'Please correct obs.inp and re-run.                 '
+                  LEVEL2 'Please correct obs.nml and re-run.                 '
                   LEVEL2 'Program aborted.                                   '
                   LEVEL2 '***************************************************'
                   stop 'init_observations'
@@ -519,7 +522,7 @@
                   LEVEL2 '***************************************************'
                   LEVEL2 'For temperature profiles with NN=const you have to '
                   LEVEL2 'prescribe constant salinity.                       '
-                  LEVEL2 'Please correct obs.inp and re-run.                 '
+                  LEVEL2 'Please correct obs.nml and re-run.                 '
                   LEVEL2 'Program aborted.                                   '
                   LEVEL2 '***************************************************'
                   stop 'init_observations'
@@ -539,11 +542,15 @@
 
 !  The external pressure
    select case (ext_press_method)
+      case (NOTHING)
+      case (ANALYTICAL)
       case (FROMFILE)
          open(ext_press_unit,file=ext_press_file,status='unknown',err=103)
          LEVEL2 'Reading external pressure from:'
          LEVEL3 trim(ext_press_file)
       case default
+         LEVEL1 'A non-valid ext_press_method has been given ',ext_press_method
+         stop 'init_observations()'
    end select
    call get_ext_pressure(ext_press_method,ext_press_unit,julday,secs)
 

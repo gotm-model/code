@@ -1,4 +1,4 @@
-!$Id: bio_template.F90,v 1.4 2006-10-26 13:12:46 kbk Exp $
+!$Id: bio_template.F90,v 1.5 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,6 +29,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_template.F90,v $
+!  Revision 1.5  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.4  2006-10-26 13:12:46  kbk
 !  updated bio models to new ode_solver
 !
@@ -56,7 +59,7 @@
    subroutine init_bio_template(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio\_template.inp} should be read and
+!  Here, the bio namelist {\tt bio\_template.nml} should be read and
 !  various variables (rates and settling velocities)
 !  should be transformed into SI units.
 !
@@ -179,11 +182,11 @@
 ! by simply assuming that the short wave part of the total
 ! radiation is available for photosynthesis. The user should make
 ! sure that this is consistent with the light class given in the
-! {\tt extinct} namelist of the {\tt obs.inp} file.
+! {\tt extinct} namelist of the {\tt obs.nml} file.
 ! The self-shading effect should also be calculated in this subroutine,
 ! which may be used to consider the effect of bio-turbidity also
 ! in the temperature equation (if {\tt bioshade\_feedback} is set
-! to true in {\tt bio.inp}). For details, see section \ref{sec:do-bio}.
+! to true in {\tt bio.nml}). For details, see section \ref{sec:do-bio}.
 !
 ! !USES:
    IMPLICIT NONE

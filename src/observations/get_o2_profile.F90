@@ -1,4 +1,4 @@
-!$Id: get_o2_profile.F90,v 1.4 2006-11-27 09:25:18 kbk Exp $
+!$Id: get_o2_profile.F90,v 1.5 2007-01-06 11:49:15 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_o2_profile.F90,v $
+!  Revision 1.5  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.4  2006-11-27 09:25:18  kbk
 !  use logical var init_saved_vars to initialise saved variables
 !
@@ -129,7 +132,7 @@
          case (3) ! mmol/m^3
          case default
             STDERR "Invalid choice for oxygen unit conversion given in"
-            STDERR "namelist o2_profile of obs.inp. program aborted in"
+            STDERR "namelist o2_profile of obs.nml. program aborted in"
             STDERR "get_o2_profile.F90."
             stop
    end select 

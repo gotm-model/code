@@ -1,4 +1,4 @@
-!$Id: extpressure.F90,v 1.7 2006-12-07 16:50:28 hb Exp $
+!$Id: extpressure.F90,v 1.8 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -52,6 +52,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: extpressure.F90,v $
+!  Revision 1.8  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.7  2006-12-07 16:50:28  hb
 !  Program abortion introduced for PressHeight<=0 when PressMethod=1
 !
@@ -90,7 +93,7 @@
             LEVEL2 ''
             LEVEL2 '***************************************************'
             LEVEL2 'PressHeight=',h_press, 'but it must be positive.'
-            LEVEL2 'Please correct this in obs.inp and rerun.'
+            LEVEL2 'Please correct this in obs.nml and rerun.'
             LEVEL2 'Program aborted.'
             LEVEL2 '***************************************************' 
             stop 'extpressure'

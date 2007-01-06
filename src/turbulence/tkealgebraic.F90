@@ -1,4 +1,4 @@
-!$Id: tkealgebraic.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: tkealgebraic.F90,v 1.7 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -32,7 +32,7 @@
 !  small (e.g.\ {\tt c\_filt = 0.2}) in order to reduce the strong oscillations
 !  associated with this scheme, and to couple it with an algebraically prescribed
 !  length scale with the length scale limitation active ({\tt length\_lim=.true.} in
-!  {\tt gotmturb.inp}, see \cite{Galperinetal88}).
+!  {\tt gotmturb.nml}, see \cite{Galperinetal88}).
 !
 ! !USES:
    use turbulence,   only: tke,tkeo,L,k_min
@@ -60,7 +60,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: tkealgebraic.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2003/03/28 09:20:35  kbk

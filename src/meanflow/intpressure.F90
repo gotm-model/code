@@ -1,4 +1,4 @@
-!$Id: intpressure.F90,v 1.7 2005-08-11 12:32:50 lars Exp $
+!$Id: intpressure.F90,v 1.8 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -75,7 +75,7 @@
 !
 ! The horizontal salinity and temperature gradients have to supplied by the
 ! user, either as constant values or as profiles given in a file (see
-! {\tt obs.inp}).
+! {\tt obs.nml}).
 !
 ! !USES:
    use meanflow,      only: T,S
@@ -94,7 +94,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: intpressure.F90,v $
-!  Revision 1.7  2005-08-11 12:32:50  lars
+!  Revision 1.8  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
+!  Revision 1.7  2005/08/11 12:32:50  lars
 !  corrected error in Latex referencing
 !
 !  Revision 1.6  2005/06/27 13:44:07  kbk

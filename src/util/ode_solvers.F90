@@ -1,4 +1,4 @@
-!$Id: ode_solvers.F90,v 1.3 2006-11-14 10:54:59 kbk Exp $
+!$Id: ode_solvers.F90,v 1.4 2007-01-06 11:49:13 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -96,7 +96,7 @@
       case (11)
          call emp_2(dt,numc,nlev,cc,right_hand_side)
       case default
-         stop "bio: no valid solver method specified in bio.inp !"
+         stop "bio: no valid solver method specified in bio.nml !"
    end select
 
    return

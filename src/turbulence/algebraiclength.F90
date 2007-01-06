@@ -1,4 +1,4 @@
-!$Id: algebraiclength.F90,v 1.6 2005-11-15 11:35:02 lars Exp $
+!$Id: algebraiclength.F90,v 1.7 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -13,7 +13,7 @@
 ! scale $l$ from different types of analytical expressions. These
 ! range from simple geometrical forms to more complicated expressions
 ! taking into account the effects of stratification and shear. The
-! users can select their method in the input file {\tt gotmturb.inp}.
+! users can select their method in the input file {\tt gotmturb.nml}.
 ! For convenience, we define here $d_b$ and $d_s$ as the distance
 ! from the bottom and the surface, respectively. The water
 ! depth is then given by $H=d_b+d_s$, and $z_0^b$ and
@@ -93,7 +93,7 @@
 ! \end{enumerate}
 ! After the length--scale has been computed, it is optionally
 ! limited by the method suggested by \cite{Galperinetal88}. This
-! option can be activated in {\tt gotmturb.inp} by setting
+! option can be activated in {\tt gotmturb.nml} by setting
 ! {\tt length\_lim = .true.} The rate of dissipation is computed
 ! according to \eq{epsilon}.
 !
@@ -134,7 +134,10 @@
 !  Original author(s):  Manuel Ruiz Villarreal, Hans Burchard
 !
 !  $Log: algebraiclength.F90,v $
-!  Revision 1.6  2005-11-15 11:35:02  lars
+!  Revision 1.7  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
+!  Revision 1.6  2005/11/15 11:35:02  lars
 !  documentation finish for print
 !
 !  Revision 1.5  2005/06/27 13:44:07  kbk

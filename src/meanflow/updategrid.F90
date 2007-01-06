@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.18 2006-11-27 15:26:37 kbk Exp $
+!$Id: updategrid.F90,v 1.19 2007-01-06 11:49:16 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -16,7 +16,7 @@
 !  \item Equidistant grid with possible zooming towards surface and bottom.
 !  The number of layers, {\tt nlev}, and the zooming factors,
 !  {\tt ddu}=$d_u$ and  {\tt ddl}=$d_l$,
-!  are specified in {\tt gotmmean.inp}.
+!  are specified in {\tt gotmmean.nml}.
 !  Zooming is applied according to the formula
 !  \begin{equation}\label{formula_Antoine}
 !    h_k = D\frac{\mbox{tanh}\left( (d_l+d_u)\frac{k}{M}-d_l\right)
@@ -34,15 +34,15 @@
 !  \end{itemize}
 !
 !  \item Sigma-layers. The fraction that every layer occupies is
-!  read-in from file, see {\tt gotmmean.inp}.
+!  read-in from file, see {\tt gotmmean.nml}.
 !  \item Cartesian layers. The height of every layer is read in from file,
-!  see {\tt gotmmean.inp}.
+!  see {\tt gotmmean.nml}.
 !  This method is not recommended when a varying sea surface is considered.
 !  \end{enumerate}
 !
 !  Furthermore, vertical velocity profiles are calculated here, if
 !  {\tt w\_adv\_method} is 1 or 2, which has to be chosen in the
-!  {\tt w\_advspec} namelist in {\tt obs.inp}. The profiles of vertical 
+!  {\tt w\_advspec} namelist in {\tt obs.nml}. The profiles of vertical 
 !  velocity are determined by two values,
 !  the height of maximum absolute value of vertical velocity, {\tt w\_height}, 
 !  and the vertical velocity at this height, {\tt w\_adv}. From {\tt w\_height},
@@ -66,6 +66,9 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
+!  Revision 1.19  2007-01-06 11:49:16  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.18  2006-11-27 15:26:37  kbk
 !  initialise grid depending on grid_ready
 !

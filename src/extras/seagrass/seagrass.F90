@@ -1,4 +1,4 @@
-!$Id: seagrass.F90,v 1.8 2006-12-03 13:54:22 hb Exp $
+!$Id: seagrass.F90,v 1.9 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -14,7 +14,7 @@
 ! rest at their excursion limits and thus exert friction on the mean flow,
 ! see \cite{VerduinBackhaus2000}.
 ! Turbulence generation due to seagrass friction is possible, see
-! namelist file {\tt seagrass.inp}. The extra production term
+! namelist file {\tt seagrass.nml}. The extra production term
 ! in the balance of TKE, \eq{tkeA}, is included as described in
 ! \sect{sec:production}.
 
@@ -31,6 +31,9 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: seagrass.F90,v $
+!  Revision 1.9  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.8  2006-12-03 13:54:22  hb
 !  No extra production above seagrass
 !
@@ -79,7 +82,7 @@
    subroutine init_seagrass(namlst,fname,unit,nlev,h)
 !
 ! !DESCRIPTION:
-! Here, the seagrass namelist {\tt seagrass.inp} is read
+! Here, the seagrass namelist {\tt seagrass.nml} is read
 ! and memory is allocated
 ! for some relevant vectors. Afterwards, excursion limits and friction
 ! coefficients are read from a file. The uppermost grid related index
@@ -161,13 +164,13 @@
    end if
    return
 
-98 LEVEL2 'I could not open seagrass.inp'
+98 LEVEL2 'I could not open seagrass.nml'
    LEVEL2 'Ill continue but set seagrass_calc to false.'
-   LEVEL2 'If thats not what you want you have to supply seagrass.inp'
-   LEVEL2 'See the Seagrass example on www.gotm.net for a working seagrass.inp'
+   LEVEL2 'If thats not what you want you have to supply seagrass.nml'
+   LEVEL2 'See the Seagrass example on www.gotm.net for a working seagrass.nml'
    seagrass_calc = .false.
    return
-99 FATAL 'I could not read seagrass.inp'
+99 FATAL 'I could not read seagrass.nml'
    stop 'init_seagrass'
    end subroutine init_seagrass
 !EOC

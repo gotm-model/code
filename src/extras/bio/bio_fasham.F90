@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.10 2006-10-26 13:12:46 kbk Exp $
+!$Id: bio_fasham.F90,v 1.11 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -50,6 +50,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
+!  Revision 1.11  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.10  2006-10-26 13:12:46  kbk
 !  updated bio models to new ode_solver
 !
@@ -78,7 +81,7 @@
 !  use bio_var in specific bio models - simpliefied internal interface
 !
 !  Revision 1.2  2004/07/28 11:34:29  hb
-!  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.inp
+!  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.nml
 !
 !  Revision 1.1  2004/06/29 08:03:16  hb
 !  Fasham et al. 1990 model implemented
@@ -153,7 +156,7 @@
    subroutine init_bio_fasham(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio\_fasham.inp} is read and
+!  Here, the bio namelist {\tt bio\_fasham.nml} is read and
 !  various variables (rates and settling velocities)
 !  are transformed into SI units.
 !
@@ -203,11 +206,11 @@
 
    return
 
-98 LEVEL2 'I could not open bio_fasham.inp'
-   LEVEL2 'If thats not what you want you have to supply bio_fasham.inp'
-   LEVEL2 'See the bio example on www.gotm.net for a working bio_fasham.inp'
+98 LEVEL2 'I could not open bio_fasham.nml'
+   LEVEL2 'If thats not what you want you have to supply bio_fasham.nml'
+   LEVEL2 'See the bio example on www.gotm.net for a working bio_fasham.nml'
    return
-99 FATAL 'I could not read bio_fasham.inp'
+99 FATAL 'I could not read bio_fasham.nml'
    stop 'init_bio_fasham'
    end subroutine init_bio_fasham
 !EOC
@@ -355,11 +358,11 @@
 ! available radiation, $I_{PAR}$, follows from (\ref{light}).
 ! The user should make
 ! sure that this is consistent with the light class given in the
-! {\tt extinct} namelist of the {\tt obs.inp} file.
+! {\tt extinct} namelist of the {\tt obs.nml} file.
 ! The self-shading effect is also calculated in this subroutine,
 ! which may be used to consider the effect of bio-turbidity also
 ! in the temperature equation (if {\tt bioshade\_feedback} is set
-! to true in {\tt bio.inp}).
+! to true in {\tt bio.nml}).
 ! For details, see section \ref{sec:do-bio}.
 !
 ! !USES:

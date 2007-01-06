@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.20 2006-12-05 10:59:10 hb Exp $
+!$Id: bio_iow.F90,v 1.21 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.21  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.20  2006-12-05 10:59:10  hb
 !  Corrections by Ivan Kuznetzov (IOW): Redfield ratio for phosphate release added and bug fixed
 !
@@ -104,7 +107,7 @@
 !  use bio_var in specific bio models - simpliefied internal interface
 !
 !  Revision 1.10  2004/07/28 11:34:29  hb
-!  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.inp
+!  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.nml
 !
 !  Revision 1.9  2004/07/26 12:20:59  hb
 !  Small inconsistencies with non-conservative sources removed
@@ -229,7 +232,7 @@
    subroutine init_bio_iow(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio\_iow.inp} is read and
+!  Here, the bio namelist {\tt bio\_iow.nml} is read and
 !  various variables (rates and settling velocities)
 !  are transformed into SI units.
 !
@@ -297,11 +300,11 @@
 
    return
 
-98 LEVEL2 'I could not open bio_iow.inp'
-   LEVEL2 'If thats not what you want you have to supply bio_iow.inp'
-   LEVEL2 'See the bio example on www.gotm.net for a working bio_iow.inp'
+98 LEVEL2 'I could not open bio_iow.nml'
+   LEVEL2 'If thats not what you want you have to supply bio_iow.nml'
+   LEVEL2 'See the bio example on www.gotm.net for a working bio_iow.nml'
    return
-99 FATAL 'I could not read bio_iow.inp'
+99 FATAL 'I could not read bio_iow.nml'
    stop 'init_bio_iow'
    end subroutine init_bio_iow
 !EOC
@@ -657,11 +660,11 @@
 ! by simply assuming that the short wave part of the total
 ! radiation is available for photosynthesis. The user should make
 ! sure that this is consistent with the light class given in the
-! {\tt extinct} namelist of the {\tt obs.inp} file.
+! {\tt extinct} namelist of the {\tt obs.nml} file.
 ! The self-shading effect is also calculated in this subroutine,
 ! which may be used to consider the effect of bio-turbidity also
 ! in the temperature equation (if {\tt bioshade\_feedback} is set
-! to true in {\tt bio.inp}).
+! to true in {\tt bio.nml}).
 ! For details, see section \ref{sec:do-bio}.
 !
 ! !USES:

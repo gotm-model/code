@@ -1,4 +1,4 @@
-!$Id: lengthscaleeq.F90,v 1.7 2005-11-15 11:35:02 lars Exp $
+!$Id: lengthscaleeq.F90,v 1.8 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -32,7 +32,7 @@
 ! $\kappa$ being the von K{\'a}rm{\'a}n constant and ${\cal L}_z$ some
 ! measure for the distance from the wall. Different possiblities
 ! for  ${\cal L}_z$ are implemented in GOTM, which can be activated
-! be setting the parameter {\tt MY\_length} in {\tt gotmturb.inp} to
+! be setting the parameter {\tt MY\_length} in {\tt gotmturb.nml} to
 ! appropriate values. Close to the wall, however, one always has
 ! ${\cal L}_z= \overline{z}$, where $\overline{z}$ is the distance from
 ! the wall.
@@ -46,7 +46,7 @@
 ! \end{equation}
 ! where $S_l$ is a constant of the model. The values for the model
 ! constants recommended by \cite{MellorYamada82} are displayed in
-! \tab{tab:MY_constants}. They can be set in {\tt gotmturb.inp}. Note,
+! \tab{tab:MY_constants}. They can be set in {\tt gotmturb.nml}. Note,
 ! that the parameter $E_3$ in stably stratifed flows is in principle
 ! a function of the so-called steady state Richardson-number,
 ! as discussed by \cite{Burchard2001c}, see discussion in the context
@@ -65,7 +65,7 @@
 !
 ! At the end of this routine the length-scale can be constrained according to a
 ! suggestion of \cite{Galperinetal88}. This feature is optional and can be activated
-! by setting {\tt length\_lim = .true.} in {\tt gotmturb.inp}.
+! by setting {\tt length\_lim = .true.} in {\tt gotmturb.nml}.
 !
 ! !USES:
    use turbulence, only: P,B
@@ -110,7 +110,10 @@
 !                      H. Burchard and K. Bolding
 !
 !  $Log: lengthscaleeq.F90,v $
-!  Revision 1.7  2005-11-15 11:35:02  lars
+!  Revision 1.8  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
+!  Revision 1.7  2005/11/15 11:35:02  lars
 !  documentation finish for print
 !
 !  Revision 1.6  2005/11/03 20:53:37  hb

@@ -1,4 +1,4 @@
-!$Id: compute_cpsi3.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: compute_cpsi3.F90,v 1.2 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -32,7 +32,10 @@
 !  Original author(s): Hans Burchard, Lars Umlauf
 !
 ! $Log: compute_cpsi3.F90,v $
-! Revision 1.1  2005-06-27 10:54:33  kbk
+! Revision 1.2  2007-01-06 11:49:15  kbk
+! namelist file extension changed .inp --> .nml
+!
+! Revision 1.1  2005/06/27 10:54:33  kbk
 ! new files needed
 !
 !
@@ -88,7 +91,7 @@
          STDERR 'Method for calculating c3 does not converge.'
          STDERR 'Probably, the prescribed steady-state Richardson number'
          STDERR 'is outside the range of the chosen stability function.'
-         STDERR 'Please change gotmturb.inp accordingly.'
+         STDERR 'Please change gotmturb.nml accordingly.'
          STDERR 'If the problem persists, then use another'
          STDERR 'stability function or Algebraic Stress Model.'
          STDERR 'Program aborts now in turbulence.F90.'

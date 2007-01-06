@@ -1,4 +1,4 @@
-!$Id: eqstate.F90,v 1.6 2005-06-27 13:44:07 kbk Exp $
+!$Id: eqstate.F90,v 1.7 2007-01-06 11:49:13 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -46,7 +46,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: eqstate.F90,v $
-!  Revision 1.6  2005-06-27 13:44:07  kbk
+!  Revision 1.7  2007-01-06 11:49:13  kbk
+!  namelist file extension changed .inp --> .nml
+!
+!  Revision 1.6  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.5  2003/03/28 09:20:36  kbk
@@ -83,7 +86,7 @@
    subroutine init_eqstate(namlst)
 !
 ! !DESCRIPTION:
-!  Here, the namelist {\tt eqstate} in the namelist file {\tt gotmrun.inp}
+!  Here, the namelist {\tt eqstate} in the namelist file {\tt gotmrun.nml}
 !  is read.
 !
 ! !USES:

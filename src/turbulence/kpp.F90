@@ -1,4 +1,4 @@
-!$Id: kpp.F90,v 1.3 2005-11-15 11:35:02 lars Exp $
+!$Id: kpp.F90,v 1.4 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -179,7 +179,7 @@
 ! Clearly, all approaches are grid-depending, a difficulty that cannot
 ! be overcome with the KPP model.
 !
-! Finally, provided {\tt clip\_mld=.true.} in {\tt kpp.inp}, the boundary layer is cut
+! Finally, provided {\tt clip\_mld=.true.} in {\tt kpp.nml}, the boundary layer is cut
 ! if it exceeds the Ekman or the Monin-Obukhov length scale, see \cite{Largeetal94}.
 !
 ! !USES:
@@ -325,7 +325,10 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: kpp.F90,v $
-!  Revision 1.3  2005-11-15 11:35:02  lars
+!  Revision 1.4  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
+!  Revision 1.3  2005/11/15 11:35:02  lars
 !  documentation finish for print
 !
 !  Revision 1.2  2005/07/21 10:20:00  lars
@@ -393,7 +396,7 @@
 ! !DESCRIPTION:
 ! This routine first reads the namelist {\tt kpp}, which has to be contained
 ! in a file with filename specified by the string {\tt fn} (typically called
-! {\tt kpp.inp}). Since the {\tt kpp} module uses fields defined in the
+! {\tt kpp.nml}). Since the {\tt kpp} module uses fields defined in the
 ! {\tt turbulence} module, it has to allocate dynamic memory for them.
 ! Apart from this, this routine reports the model settings and initialises a
 ! number of parameters needed later in the time loop.
@@ -627,7 +630,7 @@
 
    return
 
-80 FATAL 'I could not open "kpp.inp"'
+80 FATAL 'I could not open "kpp.nml"'
    stop 'init_kpp'
 81 FATAL 'I could not read "kpp" namelist'
    stop 'init_kpp'
@@ -646,7 +649,7 @@
 !
 ! !DESCRIPTION:
 ! Here, the time step for the KPP model is managed. If {\tt kpp\_interior=.true.}
-! in {\tt kpp.inp}, the mixing algorithm for the computation of the interior
+! in {\tt kpp.nml}, the mixing algorithm for the computation of the interior
 ! diffusivities is called first. This algorithm is described in \sect{sec:kppInterior}.
 ! Then, if {\tt kpp\_sbl=.true.} and {\tt kpp\_bbl=.true.}, the algorithms
 ! for the surface and bottom boundary layer are called. They are described in
@@ -1024,7 +1027,7 @@
 ! In this routine all computations related to turbulence in the surface layer
 ! are performed. The algorithms are described in \sect{sec:kpp}. Note that these
 ! algorithms are affected by some pre-processor macros defined in {\tt cppdefs.inp},
-! and by the parameters set in {\tt kpp.inp}, see \sect{sec:kpp}.
+! and by the parameters set in {\tt kpp.nml}, see \sect{sec:kpp}.
 !
 ! !USES:
    IMPLICIT NONE
@@ -1514,7 +1517,7 @@
 ! In this routine all computations related to turbulence in the bottom layer
 ! are performed. The algorithms are described in \sect{sec:kpp}. Note that these
 ! algorithms are affected by some pre-processor macros defined in {\tt cppdefs.inp},
-! and by the parameters set in {\tt kpp.inp}, see \sect{sec:kpp}.
+! and by the parameters set in {\tt kpp.nml}, see \sect{sec:kpp}.
 
 ! The computation of the bulk Richardson number is slightly different from the
 ! surface boundary layer, since for the bottom boundary layer this quantity

@@ -1,4 +1,4 @@
-!$Id: salinity.F90,v 1.10 2006-11-06 13:36:45 hb Exp $
+!$Id: salinity.F90,v 1.11 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -37,7 +37,7 @@
 !  we set $\nu^S_t = \nu^\Theta_t$ for simplicity.
 !
 !  Horizontal advection is optionally
-!  included  (see {\tt obs.inp}) by means of prescribed
+!  included  (see {\tt obs.nml}) by means of prescribed
 !  horizontal gradients $\partial_xS$ and $\partial_yS$ and
 !  calculated horizontal mean velocities $U$ and $V$.
 !  Relaxation with the time scale $\tau^S_R$
@@ -46,7 +46,7 @@
 
 !  Inner sources or sinks are not considered.
 !  The surface freshwater flux is given by means of the precipitation
-!  - evaporation data read in as $P-E$ through the {\tt airsea.inp} namelist:
+!  - evaporation data read in as $P-E$ through the {\tt airsea.nml} namelist:
 !  \begin{equation}
 !     \label{S_sbc}
 !    {\cal D}_S =  S (P-E),
@@ -94,6 +94,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: salinity.F90,v $
+!  Revision 1.11  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.10  2006-11-06 13:36:45  hb
 !  Option for conservative vertical advection added to adv_center
 !

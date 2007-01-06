@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.16 2006-11-24 15:13:41 kbk Exp $
+!$Id: turbulence.F90,v 1.17 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -260,6 +260,9 @@
 
 !
 !  $Log: turbulence.F90,v $
+!  Revision 1.17  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.16  2006-11-24 15:13:41  kbk
 !  de-allocate memory and close open files
 !
@@ -594,7 +597,7 @@
 
    return
 
-80 FATAL 'I could not open "gotmturb.inp"'
+80 FATAL 'I could not open "gotmturb.nml"'
    stop 'init_turbulence'
 81 FATAL 'I could not read "turbulence" namelist'
    stop 'init_turbulence'
@@ -888,7 +891,7 @@
 !
 ! !DESCRIPTION:
 ! Computes the parameters of an instance of the `generic' two-equation
-! model according to the specifications set in {\tt gotmturb.inp}. This model
+! model according to the specifications set in {\tt gotmturb.nml}. This model
 ! solves \eq{tkeA} for the $k$ and \eq{generic} for the generic length-scale
 ! defined in \sect{sec:genericeq} together with an Algebraic Stress Model. For several
 ! simple turbulent flows, analytical solutions of this models exist and
@@ -1260,7 +1263,7 @@
       STDERR 'The generic scale equation should be used only'
       STDERR 'in connection with the dynamic equation for'
       STDERR 'the tke (use tke_method = 2).'
-      STDERR 'Please change gotmturb.inp accordingly'
+      STDERR 'Please change gotmturb.nml accordingly'
       STDERR 'Program aborts now in turbulence.F90'
       stop
    endif
@@ -1269,7 +1272,7 @@
       STDERR 'Temporal decay rate d in homogeneous'
       STDERR 'turbulence has to be negative.'
       STDERR 'Measured values are: -1.0 < d < -1.3'
-      STDERR 'Please change gotmturb.inp accordingly'
+      STDERR 'Please change gotmturb.nml accordingly'
       STDERR 'Program aborts now in turbulence.F90'
       stop
    endif
@@ -1277,7 +1280,7 @@
    if (gen_alpha.gt.0.) then
       STDERR 'Decay exponent alpha has to be negative.'
       STDERR 'Measured values are: -3 < alpha < -2'
-      STDERR 'Please change gotmturb.inp accordingly'
+      STDERR 'Please change gotmturb.nml accordingly'
       STDERR 'Program aborts now in turbulence.F90'
       stop
    endif
@@ -1286,7 +1289,7 @@
       STDERR 'Slope L of the length scale in shear-free'
       STDERR 'turbulence has to be positive.'
       STDERR 'Measured values are: 0.15 < L < 0.25'
-      STDERR 'Please change gotmturb.inp accordingly'
+      STDERR 'Please change gotmturb.nml accordingly'
       STDERR 'Program aborts now in turbulence.F90'
       stop
    endif
@@ -1311,7 +1314,7 @@
    else
       STDERR 'Negative radicand discovered in computing'
       STDERR 'exponent n of the generic model.'
-      STDERR 'Please choose other value for gen_m in gotmturb.inp'
+      STDERR 'Please choose other value for gen_m in gotmturb.nml'
       STDERR 'Program aborts now in turbulence.F90'
       stop
    endif
@@ -1321,7 +1324,7 @@
       STDERR 'A positive exponent n of the lengt scale l'
       STDERR 'has been computed. This indicates that the model'
       STDERR 'would require a wall-function.'
-      STDERR 'Please change gotmturb.inp accordingly'
+      STDERR 'Please change gotmturb.nml accordingly'
       STDERR 'Program aborts now in turbulence.F90'
       stop
    endif
@@ -1333,8 +1336,8 @@
    if (sig_psi.lt.0.) then
       STDERR 'A negative Schmidt-number sig_psi has been'
       STDERR 'computed. Physically, that does not make sense.'
-      STDERR 'Possible reason: You set gen_d < -2 in gotmturb.inp?'
-      STDERR 'Please change gotmturb.inp accordingly'
+      STDERR 'Possible reason: You set gen_d < -2 in gotmturb.nml?'
+      STDERR 'Please change gotmturb.nml accordingly'
       STDERR 'Program aborts now in turbulence.F90'
       stop
    endif
@@ -1562,7 +1565,7 @@
             STDERR 'Negative radicand discovered in computing'
             STDERR 'kappa for the k-epsilon model.'
             STDERR 'Possible reason: you took ce2 < ce1 '
-            STDERR 'Please change gotmturb.inp accordingly.'
+            STDERR 'Please change gotmturb.nml accordingly.'
             STDERR 'Program aborts now in turbulence.F90'
             stop
          endif
@@ -1570,7 +1573,7 @@
             STDERR 'For using the Craig & Banner 1994 parameterisation'
             STDERR 'by Burchard (2001) kappa must be prescribed.'
             STDERR 'For doing so, compute_kappa=.false. must be set.'
-            STDERR 'Please change gotmturb.inp accordingly.'
+            STDERR 'Please change gotmturb.nml accordingly.'
             STDERR 'Program aborts now in turbulence.F90'
             stop
          end if
@@ -1612,7 +1615,7 @@
          STDERR 'Negative radicand discovered in computing'
          STDERR 'kappa for the generic model.'
          STDERR 'Possible reason: you took cpsi2 < cpsi1'
-         STDERR 'Please change gotmturb.inp accordingly.'
+         STDERR 'Please change gotmturb.nml accordingly.'
          STDERR 'Program aborts now in turbulence.F90'
          stop
       endif
@@ -1650,7 +1653,7 @@
             STDERR 'Negative radicand discovered in computing'
             STDERR 'kappa for the Mellor-Yamada model.'
             STDERR 'Possible reason: you took E2 < E1-1 '
-            STDERR 'Please change gotmturb.inp accordingly.'
+            STDERR 'Please change gotmturb.nml accordingly.'
             STDERR 'Program aborts now in turbulence.F90'
             stop
          endif
@@ -2106,14 +2109,14 @@
       case (weakEqKb)
 
       STDERR 'This second-order model is not yet tested.'
-      STDERR 'Choose scnd_method=1,2 in gotmturb.inp.'
+      STDERR 'Choose scnd_method=1,2 in gotmturb.nml.'
       STDERR 'Program execution stopped ...'
       stop 'turbulence.F90'
 
       case default
 
       STDERR 'Not a valid method for second-order model'
-      STDERR 'Choose scnd_method=1,2,3 in gotmturb.inp.'
+      STDERR 'Choose scnd_method=1,2,3 in gotmturb.nml.'
       STDERR 'Program execution stopped ...'
       stop 'turbulence.F90'
 
@@ -2229,7 +2232,7 @@
       case default
 
       STDERR '... not a valid method to compute kb'
-      STDERR 'Choose  kb_method=1,2 in gotmturb.inp'
+      STDERR 'Choose  kb_method=1,2 in gotmturb.nml'
       STDERR 'Program execution stopped ...'
       stop 'turbulence.F90'
 
@@ -2341,14 +2344,14 @@
       case(epsb_dynamic)
 
          STDERR '... sorry, epsb_method = 2 not yet implemented.'
-         STDERR 'Choose  epsb_method=1 in gotmturb.inp'
+         STDERR 'Choose  epsb_method=1 in gotmturb.nml'
          STDERR 'Program execution stopped ...'
          stop 'turbulence.F90'
 
       case default
 
          STDERR '... not a valid method to compute epsb'
-         STDERR 'Choose  epsb_method=1,2 in gotmturb.inp'
+         STDERR 'Choose  epsb_method=1,2 in gotmturb.nml'
          STDERR 'Program execution stopped ...'
          stop 'turbulence.F90'
 
@@ -2425,7 +2428,7 @@
    subroutine stabilityfunctions(nlev)
 !
 ! !DESCRIPTION:
-! Based on the user's specifications in {\tt gotmtub.inp}, this internal
+! Based on the user's specifications in {\tt gotmtub.nml}, this internal
 ! routine selects the desired stability functions defined in \eq{nu}.
 ! These simple functions depend on $\alpha_M$ and $\alpha_N$ defined
 ! in \eq{alphaMN}, which are in most cases only used to compute the
@@ -2629,7 +2632,7 @@
 ! has to be specified. Presently, there is only one possibility
 ! to do so implemented in GOTM. It is described in \sect{sec:fkCraig}.
 ! All parameters that determine the boundary layer have to be
-! set in {\tt gotmturb.inp}.
+! set in {\tt gotmturb.nml}.
 !
 ! Note that  in this section, for brevity, $z$ denotes the distance
 ! from the wall (or the surface), and \emph{not} the standard
@@ -2716,7 +2719,7 @@
 
       case(viscous)
          STDERR 'Sorry, viscous boundary layers not yet implemented.'
-         STDERR 'Please change gotmturb.inp accordingly'
+         STDERR 'Please change gotmturb.nml accordingly'
          STDERR 'Program aborts now in turbulence.F90'
          stop
 
@@ -2769,7 +2772,7 @@
 ! has to be specified. Presently, there is only one possibility
 ! to do so implemented in GOTM. It is described in \sect{sec:fkCraig}.
 ! All parameters that determine the boundary layer have to be
-! set in {\tt gotmturb.inp}.
+! set in {\tt gotmturb.nml}.
 !
 ! Note that  in this section, for brevity, $z$ denotes the distance
 ! from the wall (or the surface), and \emph{not} the standard
@@ -2857,7 +2860,7 @@
 
       case(viscous)
          STDERR 'Sorry, viscous boundary layers not yet implemented.'
-         STDERR 'Please change gotmturb.inp accordingly'
+         STDERR 'Please change gotmturb.nml accordingly'
          STDERR 'Program aborts now in turbulence.F90'
          stop
 
@@ -2909,7 +2912,7 @@
 ! has to be specified. Presently, there is only one possibility
 ! to do so implemented in GOTM. It is described in \sect{sec:fkCraig}.
 ! All parameters that determine the boundary layer have to be
-! set in {\tt gotmturb.inp}.
+! set in {\tt gotmturb.nml}.
 !
 ! Note that  in this section, for brevity, $z$ denotes the distance
 ! from the wall (or the surface), and \emph{not} the standard
@@ -2997,7 +3000,7 @@
    select case(type)
       case(viscous)
          STDERR 'Sorry, viscous boundary layers not yet implemented.'
-         STDERR 'Please change gotmturb.inp accordingly'
+         STDERR 'Please change gotmturb.nml accordingly'
          STDERR 'Program aborts now in turbulence.F90'
          stop
       case(logarithmic)
@@ -3044,7 +3047,7 @@
 ! has to be specified. Presently, there is only one possibility
 ! to do so implemented in GOTM. It is described in \sect{sec:fkCraig}.
 ! All parameters that determine the boundary layer have to be
-! set in {\tt gotmturb.inp}.
+! set in {\tt gotmturb.nml}.
 !
 ! Note that  in this section, for brevity, $z$ denotes the distance
 ! from the wall (or the surface), and \emph{not} the standard
@@ -3130,7 +3133,7 @@
    select case(type)
       case(viscous)
          STDERR 'Sorry, viscous boundary layers not yet implemented.'
-         STDERR 'Please change gotmturb.inp accordingly'
+         STDERR 'Please change gotmturb.nml accordingly'
          STDERR 'Program aborts now in turbulence.F90'
          stop
       case(logarithmic)
@@ -3182,7 +3185,7 @@
 ! has to be specified. Presently, there is only one possibility
 ! to do so implemented in GOTM. It is described in \sect{sec:fkCraig}.
 ! All parameters that determine the boundary layer have to be
-! set in {\tt gotmturb.inp}.
+! set in {\tt gotmturb.nml}.
 !
 ! Note that  in this section, for brevity, $z$ denotes the distance
 ! from the wall (or the surface), and \emph{not} the standard
@@ -3267,7 +3270,7 @@
    select case(type)
       case(viscous)
          STDERR 'Sorry, viscous boundary layers not yet implemented.'
-         STDERR 'Please change gotmturb.inp accordingly'
+         STDERR 'Please change gotmturb.nml accordingly'
          STDERR 'Program aborts now in turbulence.F90'
          stop
       case(logarithmic)

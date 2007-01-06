@@ -112,7 +112,7 @@
    subroutine init_bio_mab(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio\_mab.inp} is read and
+!  Here, the bio namelist {\tt bio\_mab.nml} is read and
 !  various variables (rates and settling velocities)
 !  are transformed into SI units.
 !
@@ -182,11 +182,11 @@
 
    return
 
-98 LEVEL2 'I could not open bio_mab.inp'
-   LEVEL2 'If thats not what you want you have to supply bio_mab.inp'
-   LEVEL2 'See the bio example on www.gotm.net for a working bio_mab.inp'
+98 LEVEL2 'I could not open bio_mab.nml'
+   LEVEL2 'If thats not what you want you have to supply bio_mab.nml'
+   LEVEL2 'See the bio example on www.gotm.net for a working bio_mab.nml'
    return
-99 FATAL 'I could not read bio_mab.inp'
+99 FATAL 'I could not read bio_mab.nml'
    stop 'init_bio_mab'
    end subroutine init_bio_mab
 !EOC
@@ -589,11 +589,11 @@
 ! by simply assuming that the short wave part of the total
 ! radiation is available for photosynthesis. The user should make
 ! sure that this is consistent with the light class given in the
-! {\tt extinct} namelist of the {\tt obs.inp} file.
+! {\tt extinct} namelist of the {\tt obs.nml} file.
 ! The self-shading effect is also calculated in this subroutine,
 ! which may be used to consider the effect of bio-turbidity also
 ! in the temperature equation (if {\tt bioshade\_feedback} is set
-! to true in {\tt bio.inp}).
+! to true in {\tt bio.nml}).
 ! For details, see section \ref{sec:do-bio}.
 !
 ! !USES:

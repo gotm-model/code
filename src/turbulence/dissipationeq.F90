@@ -1,4 +1,4 @@
-!$Id: dissipationeq.F90,v 1.9 2005-11-15 11:35:02 lars Exp $
+!$Id: dissipationeq.F90,v 1.10 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -60,7 +60,7 @@
 !
 ! At the end of this routine the length-scale can be constrained according to a
 ! suggestion of \cite{Galperinetal88}. This feature is optional and can be activated
-! by setting {\tt length\_lim = .true.} in {\tt gotmturb.inp}.
+! by setting {\tt length\_lim = .true.} in {\tt gotmturb.nml}.
 !
 ! !USES:
    use turbulence, only: P,B,num
@@ -103,7 +103,10 @@
 
 !
 !  $Log: dissipationeq.F90,v $
-!  Revision 1.9  2005-11-15 11:35:02  lars
+!  Revision 1.10  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
+!  Revision 1.9  2005/11/15 11:35:02  lars
 !  documentation finish for print
 !
 !  Revision 1.8  2005/11/03 20:53:37  hb

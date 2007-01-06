@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.34 2007-01-04 12:54:12 hb Exp $
+!$Id: bio.F90,v 1.35 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -10,7 +10,7 @@
 !
 ! !DESCRIPTION:
 ! This is the central module for all biogeochemical models. 
-! From here, after reading the namelist file {\tt bio.inp},
+! From here, after reading the namelist file {\tt bio.nml},
 ! the individual biogeochemical model is initialised, the memory
 ! is allocated, the advection and diffusion is called, the ODE solvers
 ! for the right hand sides are called, and simple Lagrangian particle
@@ -54,6 +54,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.35  2007-01-06 11:49:15  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.34  2007-01-04 12:54:12  hb
 !  ifdef LAGRANGE removed
 !
@@ -112,7 +115,7 @@
 !  use bio_var in specific bio models - simpliefied internal interface
 !
 !  Revision 1.16  2004/07/28 11:34:29  hb
-!  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.inp
+!  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.nml
 !
 !  Revision 1.15  2004/06/29 08:03:16  hb
 !  Fasham et al. 1990 model implemented
@@ -181,7 +184,7 @@
    subroutine init_bio(namlst,fname,unit,nlev,h)
 !
 ! !DESCRIPTION:
-! Here, the bio namelist {\tt bio.inp} is read and memory for the
+! Here, the bio namelist {\tt bio.nml} is read and memory for the
 ! Lagrangian part of the model is allocated (note that the
 ! Lagrangian model up to now only works for the simple suspended matter model).
 ! If a Lagrangian particle method is chosen, particles are 
@@ -238,7 +241,7 @@
 
       case (-1)
 
-         call init_bio_template(namlst,'bio_template.inp',unit)
+         call init_bio_template(namlst,'bio_template.nml',unit)
 
          call allocate_memory(nlev)
 
@@ -248,7 +251,7 @@
 
       case (1)  ! The NPZD model
 
-         call init_bio_npzd(namlst,'bio_npzd.inp',unit)
+         call init_bio_npzd(namlst,'bio_npzd.nml',unit)
 
          call allocate_memory(nlev)
 
@@ -258,7 +261,7 @@
 
       case (2)  ! The IOW model
 
-         call init_bio_iow(namlst,'bio_iow.inp',unit)
+         call init_bio_iow(namlst,'bio_iow.nml',unit)
 
          call allocate_memory(nlev)
 
@@ -268,7 +271,7 @@
 
       case (3)  ! The simple sedimentation model
 
-         call init_bio_sed(namlst,'bio_sed.inp',unit)
+         call init_bio_sed(namlst,'bio_sed.nml',unit)
 
          call allocate_memory(nlev)
 
@@ -278,7 +281,7 @@
 
       case (4)  ! The FASHAM model
 
-         call init_bio_fasham(namlst,'bio_fasham.inp',unit)
+         call init_bio_fasham(namlst,'bio_fasham.nml',unit)
 
          call allocate_memory(nlev)
 
@@ -288,7 +291,7 @@
 
       case (5)  ! The IOW model, modified for MaBenE
 
-         call init_bio_mab(namlst,'bio_mab.inp',unit)
+         call init_bio_mab(namlst,'bio_mab.nml',unit)
 
          call allocate_memory(nlev)
 
@@ -297,7 +300,7 @@
          call var_info_mab()
 
       case default
-         stop "bio: no valid biomodel specified in bio.inp !"
+         stop "bio: no valid biomodel specified in bio.nml !"
       end select
 
       do n=1,numc
@@ -331,7 +334,7 @@
             case (11)
                LEVEL2 'Using emp_2()'
             case default
-               stop "bio: no valid ode_method specified in bio.inp!"
+               stop "bio: no valid ode_method specified in bio.nml!"
          end select
       else
          LEVEL3 "Using Lagrangian solver"
@@ -371,17 +374,17 @@
       end if
 
 !     Initialise 'mussels' module
-      call init_mussels(namlst,"mussels.inp",unit,nlev,h)
+      call init_mussels(namlst,"mussels.nml",unit,nlev,h)
    end if
 
    return
 
-98 LEVEL2 'I could not open bio.inp'
-   LEVEL2 'If thats not what you want you have to supply bio.inp'
-   LEVEL2 'See the bio example on www.gotm.net for a working bio.inp'
+98 LEVEL2 'I could not open bio.nml'
+   LEVEL2 'If thats not what you want you have to supply bio.nml'
+   LEVEL2 'See the bio example on www.gotm.net for a working bio.nml'
    bio_calc = .false.
    return
-99 FATAL 'I could not read bio.inp'
+99 FATAL 'I could not read bio.nml'
    stop 'init_bio'
    end subroutine init_bio
 !EOC

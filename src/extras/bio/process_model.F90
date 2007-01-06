@@ -1,4 +1,4 @@
-!$Id: process_model.F90,v 1.9 2005-12-27 06:51:49 hb Exp $
+!$Id: process_model.F90,v 1.10 2007-01-06 11:49:15 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -54,7 +54,7 @@
       case (5)
          call do_bio_mab(first,numc,nlev,cc,pp,dd,h,t)
       case default
-         stop "bio: no valid biomodel specified in bio.inp !"
+         stop "bio: no valid biomodel specified in bio.nml !"
    end select
    return
 
