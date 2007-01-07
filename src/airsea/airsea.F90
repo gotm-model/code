@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.15 2006-12-08 06:50:37 kbk Exp $
+!$Id: airsea.F90,v 1.16 2007-01-07 13:21:27 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,7 +18,7 @@
 !  from longitude, latitude,
 !  time and cloudiness. For the prescibed fluxes and solar radiation,
 !  values may be constant or read in from files. All necessary
-!  setting have to be made in the namelist file {\tt airsea.inp}.
+!  setting have to be made in the namelist file {\tt airsea.nml}.
 !
 ! !USES:
    use time,         only: julian_day, time_diff, calendar_date
@@ -91,6 +91,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.16  2007-01-07 13:21:27  kbk
+!  namelist file extension changed .inp --> .nml
+!
 !  Revision 1.15  2006-12-08 06:50:37  kbk
 !  fixed September in yday - Chris Locke
 !
@@ -183,7 +186,7 @@
 !
 ! !DESCRIPTION:
 !  This routine initialises the air-sea module by reading various variables
-!  from the namelist {\tt airsea.inp} and opens relevant files.
+!  from the namelist {\tt airsea.nml} and opens relevant files.
 !  These parameters are:
 !
 !  \begin{tabular}{ll}
@@ -265,7 +268,7 @@
 !BOC
    LEVEL1 'init_air_sea'
 
-   open(namlst,file='airsea.inp',action='read',status='old',err=90)
+   open(namlst,file='airsea.nml',action='read',status='old',err=90)
    read(namlst,nml=airsea,err=91)
    close(namlst)
 
@@ -339,7 +342,7 @@
 
    return
 
-90 FATAL 'I could not open airsea.inp'
+90 FATAL 'I could not open airsea.nml'
    stop 'init_airsea'
 91 FATAL 'I could not read airsea namelist'
    stop 'init_airsea'
@@ -373,7 +376,7 @@
 !  the subroutines for the calculation of the fluxes
 !  and the short wave radiation are
 !  called or the fluxes are directly read in from the namelist
-!  {\tt airsea.inp} as constants or read in from files.
+!  {\tt airsea.nml} as constants or read in from files.
 !  Furthermore, the surface freshwater flux is set to a constant
 !  value or is read in from a file.
 !
