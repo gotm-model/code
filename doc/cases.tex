@@ -1,5 +1,5 @@
 %
-%$Id: cases.tex,v 1.8 2007-01-04 13:21:30 hb Exp $
+%$Id: cases.tex,v 1.9 2007-01-08 21:35:39 hb Exp $
 %
 
 \section{GOTM scenarios \label{sec:cases}}
@@ -67,35 +67,35 @@ shear-stress at the surface.
 
 A set of GOTM input files (containing all specifications needed for
 the runs) has been provided for 3 different turbulence models in the
-sub-directories {\tt kepsilon\_inp/}, {\tt komega\_inp/} and {\tt
-MellorYamada\_inp/}.  Copy all files from the subdirectory {\tt
-kepsilon\_inp/} to the directory with the GOTM executable. We will
+sub-directories {\tt kepsilon\_nml/}, {\tt komega\_nml/} and {\tt
+MellorYamada\_nml/}.  Copy all files from the subdirectory {\tt
+kepsilon\_nml/} to the directory with the GOTM executable. We will
 call this directory the \emph{current directory} in the following. How
 to install GOTM and create the executable is described on the GOTM web
 page at {\tt www.gotm.net}.  Take some time to have a look at the
 contents of these files. 
 
 In our example, the prescribed surface stress is $\tau_x= 1.027$ Pa, a
-quantity that can be set in the input file {\tt airsea.inp}. This file
+quantity that can be set in the input file {\tt airsea.nml}. This file
 contains many other variables that are related to the air-sea fluxes
 driving the model.
 
 Parameters concerning the run are set in the input file {\tt
-gotmrun.inp}. There, you will find for example the specification of
+gotmrun.nml}. There, you will find for example the specification of
 the water depth ($10$ m in this case) and the date and time of this
 run (24 hours until a steady-state is reached). The input file
-{\tt gotmrun.inp} contains mainly parameters concerning the model run,
+{\tt gotmrun.nml} contains mainly parameters concerning the model run,
 the time step, the model time, the output format, etc.
 
 All information about the turbulence models is read-in from the file
-{\tt gotmturb.inp}. Having a look in this file, you see that we
+{\tt gotmturb.nml}. Having a look in this file, you see that we
 selected {\tt tke\_method = 2} and {\tt length\_scale\_method = 8},
 which corresponds exactly to the $k$-$\epsilon$ model described in
 \sect{sec:dissipationeq}. The model parameters are given in the {\tt
 keps} namelist. In this simple example, no Explicit Algebraic Stress
 Model (see \sect{sec:secondOrder}) is solved in addition to the
 transport equations for $k$ and $\epsilon$. If you compare this {\tt
-gotmturb.inp} with those found in the other sub-directories (e.g.\ for
+gotmturb.nml} with those found in the other sub-directories (e.g.\ for
 the Mellor-Yamada model) it is easy to see how different turbulence
 models can be activated by changing e.g.\ the value for {\tt
 length\_scale\_method}.
@@ -107,7 +107,7 @@ parameters of the turbulence model? What value has the von
 K{\'a}rm{\'a}n constant, $\kappa$?  What value has the decay rate in
 homogeneous turbulence, $d$? And so on. All other output is written to
 files called {\tt couette.out} or {\tt couette.nc}, depending on
-whether you selected ASCII or NetCDF output in {\tt gotmrun.inp}.
+whether you selected ASCII or NetCDF output in {\tt gotmrun.nml}.
 
 If you analyse the results, you will find that the turbulent kinetic
 energy is constant over the whole depth, whereas the profiles of the
@@ -115,19 +115,19 @@ turbulent diffusivity and the length scale are approximately
 parabolic. The length scale approaches the constant slope $\kappa
 \approx 0.433$ near the boundaries. If you want to change this value,
 you can set {\tt compute\_kappa = .false.} in {\tt
-gotmturb.inp}. Then, GOTM will automatically change the model
+gotmturb.nml}. Then, GOTM will automatically change the model
 constants of the $k$-$\epsilon$ model to compute the value of $\kappa$
-prescribed in {\tt gotmturb.inp} (see \sect{sec:analyse}).
+prescribed in {\tt gotmturb.nml} (see \sect{sec:analyse}).
 
 There are other models you can use to calculate the Couette-flow.  If
-you copy all files from the directory {\tt MellorYamada\_inp/} to the
+you copy all files from the directory {\tt MellorYamada\_nml/} to the
 current directory, GOTM will use the Mellor-Yamada model described in
-\sect{sec:lengthscaleeq} with parameters set in {\tt gotmturb.inp}.  A
+\sect{sec:lengthscaleeq} with parameters set in {\tt gotmturb.nml}.  A
 special role plays the so-called `generic model' described in
 \sect{sec:genericeq}. Other model like the $k$-$\epsilon$ model or the
 $k$-$\omega$ model by \cite{Umlaufetal2003} can be considered as
 special cases of the generic model. If you copy e.g.\ the files from
-{\tt komega\_inp/} to the current directory, the $k$-$\omega$ model is
+{\tt komega\_nml/} to the current directory, the $k$-$\omega$ model is
 run for the couette case. For this simple flow, however, model results
 will be quite similiar in all cases.
 
@@ -141,13 +141,13 @@ a prescribed surface slope $\partial_x\zeta=-10^{-5}$ at a fixed water
 depth of $10$ m. No surface stress is applied, and rotation and
 stratification are neglected.  The simulation is run for $24$ h until
 a steady-state is reached. The specification of all these parameters
-and those related to the turbulence models by use of the inp-files is
+and those related to the turbulence models by use of the nml-files is
 analogous to \sect{couette}.
 
 The surface slope is set in the namelist {\tt ext\_pressure} in the
-input file {\tt obs.inp}. How the parameters given in this file are
+input file {\tt obs.nml}. How the parameters given in this file are
 interpreted by GOTM is described in \sect{sec:extpressure} and briefly
-also in {\tt obs.inp}. This file typically contains information about
+also in {\tt obs.nml}. This file typically contains information about
 ``observed'' quantities that are used to either force the model (like
 internal and external pressure gradients) or for comparision with
 computed results. In the latter case, ``observed'' quantities are
@@ -156,11 +156,11 @@ displayed in the output file next to the computed quantities.
 If you want to try out the different turbulence models mentioned in
 the couette-case (see \sect{couette}), simply copy the corresponding
 files from the respective subdirectories to the current directory with
-the GOTM executable. Note that in {\tt gotmturb.inp} we now set {\tt
+the GOTM executable. Note that in {\tt gotmturb.nml} we now set {\tt
 turb\_method = 3}. This implies that the turbulent fluxes are computed
 from a second-order turbulence model. A new thing in GOTM 3.2 is that
 parameters for the second-order model can now be directly specified
-via the ``scnd'' namelist in {\tt gotmturb.inp}. For the theoretical
+via the ``scnd'' namelist in {\tt gotmturb.nml}. For the theoretical
 background of this, please see \sect{sec:secondOrder}
 
 In the following publications some of the results in comparison to
@@ -186,7 +186,7 @@ this layer, shear-production of turbulence is negligible by definition
 
 
 Different types of models are available in GOTM for the wave-breaking
-scenario. The key change in {\tt gotmturb.inp} for runs with TKE
+scenario. The key change in {\tt gotmturb.nml} for runs with TKE
 injection is to set {\tt ubc\_type = 2}, telling GOTM to set the type
 of the upper boundary to TKE injection. The decay rates of the TKE and
 the dissipation rate in the wave-affected layer are then an natural
@@ -208,10 +208,10 @@ cannot be run.
  \sect{sec:analyse}).
 
  If you want to simulate wave breaking with a model of this type,
- simply copy all files from {\tt prescribed\_inp/} to the current
+ simply copy all files from {\tt prescribed\_nml/} to the current
  directoy, and run GOTM. A dynamic equation for $k$ is used, but the
  length scale is fixed, and prescribed by a triangular shape with slope
- $\kappa$ ({\tt length\_scale\_method = 2} in {\tt gotmturb.inp}, see
+ $\kappa$ ({\tt length\_scale\_method = 2} in {\tt gotmturb.nml}, see
  \sect{sec:algebraiclength}).
 
  \item For two-equation models, the slope of the length scale in the
@@ -227,15 +227,15 @@ cannot be run.
  two-equation models.
 
  A numerical solution of the $k$-$\epsilon$ model can be obtained by
- copying the files in \linebreak {\tt kepspilon\_inp} to the current
+ copying the files in \linebreak {\tt kepspilon\_nml} to the current
  directory, and insuring that {\tt compute\_kappa = .true.}  and {\tt
- sig\_peps = .false.} in {\tt gotmturb.inp}. Because the spatial decay
+ sig\_peps = .false.} in {\tt gotmturb.nml}. Because the spatial decay
  rate of the TKE is very large for this model, the wave-affected layer
  is very small, and of the order of only a few tens of centimeters for
  this scenario.  As discussed by \cite{Umlaufetal2003}, this
  disadvantage can be overcome by using the $k$-$\omega$ model with
- parameters given in {\tt gotmturb.inp} in the directory {\tt
- komega\_inp/}. The decay rates of this model nicely correspond to
+ parameters given in {\tt gotmturb.nml} in the directory {\tt
+ komega\_nml/}. The decay rates of this model nicely correspond to
  those measured in the laboratory grid strirring experiments. The
  Mellor-Yamada model has also been investigated by
  \cite{Umlaufetal2003}, but for this model, again, decay was shown to
@@ -255,9 +255,9 @@ cannot be run.
  z_0)$ in the wave-affected boundary layer.
 
  If you want to simulate wave breaking with this model, simply copy the
- files from {\tt kepspilon\_inp/} to the current directory, and make
+ files from {\tt kepspilon\_nml/} to the current directory, and make
  sure that you set {\tt compute\_kappa = .false.}  and {\tt sig\_peps
- = .true.} in {\tt gotmturb.inp}.  Results are quite similar to those
+ = .true.} in {\tt gotmturb.nml}.  Results are quite similar to those
  with the prescribed length scale.
 
   
@@ -266,7 +266,7 @@ cannot be run.
  surface. They suggested a `generic' model which could satisfy the
  power-laws under breaking waves for any desired decay rate,
  $\alpha$, and length scale slope, $L$.  This model is activated with
- the input files from {\tt generic\_inp/}.  Users can select any
+ the input files from {\tt generic\_nml/}.  Users can select any
  reasonable values for $\alpha$ and $L$ (and many others parameters like
  $\kappa$ and $d$), and GOTM will automatically generate a
  two-equation model with exactly the desired properties. Parameters
@@ -280,7 +280,7 @@ stress over the whole water column of 20 m depth is reached. The wave
 affected layer can be found in the uppermost meter or so, and because
 of the strong gradients in this region we used a refined grid close to
 the surface. The parameters for such a `zoomed grid' can be set in the
-input file {\tt gotmmean.inp} according to the decription in
+input file {\tt gotmmean.nml} according to the decription in
 \sect{sec:updategrid}.  If you want to compare the computed profiles
 with the analytical solutions in \eq{power_law}, you'll need a
 specification of the parameter $K$. This parameter is computed in {\tt
@@ -303,15 +303,15 @@ For all input files, the default is a linear density stratification
 due to a not necessarly linear temperature stratification (because the
 equation of state is not necessarily linear).  The stratification
 corresponds to $N^2=1 \cdot 10^{-4}$ s$^{-2}$. Salinity is
-constant. Have look into {\tt obs.inp} to understand how different
+constant. Have look into {\tt obs.nml} to understand how different
 types of initial stratifcations can be specified in GOTM. The water
 depth is $H=50$ m, deep enough for the surface induced mixing not
 to reach the bed within the $24$ h of simulation. Rotation is
 neglected. By default, a constant wind stress of $\tau_x= 0.1027$ Pa
-is set in {\tt airsea.inp}.
+is set in {\tt airsea.nml}.
 
 Note, that for all turbulence models, except the Mellor-Yamada model,
-we set {\tt compute\_c3 = .true.} in {\tt gotmturb.inp}, which means
+we set {\tt compute\_c3 = .true.} in {\tt gotmturb.nml}, which means
 that the model constant $c_{\epsilon 3}$ in \eq{dissipation} (or its
 counterpart in all other models) is computed from a prescribed
 steady-state Richardson-number, $Ri_{st}$ (see discussion in the
@@ -322,14 +322,14 @@ number (and thus the value of $c_{\epsilon 3}$) that determines the
 mixed layer depth in almost all shear-driven entrainment scenarios.
 
 To run the Mellor-Yamada model, use the input files in {\tt
-MellorYamada\_inp/}. Looking at the results you will realize that this
+MellorYamada\_nml/}. Looking at the results you will realize that this
 model is not at all in accordance with the experimental results of
 \cite{Price79} for the entrainment in a linearly stratified fluid. The
 reason can be traced back to the behaviour of the turbulent length
 scale in the strongly stratified thermocline.  \cite{Galperinetal88}
 suggested to clip the length scale at a certain value to circumvent
 this problem. Their solution can be activated by setting {\tt
-length\_lim = .true.}  in {\tt gotmturb.inp}.  A second solution has
+length\_lim = .true.}  in {\tt gotmturb.nml}.  A second solution has
 been suggested by \cite{Burchard2001c}, who computed the model
 constant $E_3$ in \eq{MY} from the steady-state Richardson-number as
 described above. To activate this method, select {\tt compute\_c3 =
@@ -346,7 +346,7 @@ The second entrainment scenario discussed in
 \cite{UmlaufBurchard2005a} is essentially identical to the one just
 described, however, it starts from a two layer stratification.  To use
 this kind of initial condition, first set {\tt analyt\_method=2} in
-{\tt obs.inp}, and specify the desired temperatures, {\tt t\_1} and
+{\tt obs.nml}, and specify the desired temperatures, {\tt t\_1} and
 {\tt t\_2} for the upper and lower layer, respectively. The thickness
 of the upper layer is {\tt z\_t1}. For a pure two-layer
 stratification, set {\tt z\_t2=z\_t1}, otherwise you will get a linear
@@ -354,10 +354,10 @@ transition between the upper and the lower layer.
 
 For convective entrainment, you simply need to set the momentum flux,
 {\tt const\_tx}, to zero and specify an appropriate negative heat
-flux, {\tt const\_heat}, in {\tt airsea.inp}, see \cite{UmlaufBurchard2005a}. 
+flux, {\tt const\_heat}, in {\tt airsea.nml}, see \cite{UmlaufBurchard2005a}. 
 
 If you run the KPP-model, some model parameters can be set in the
-extra input file {\tt kpp.inp} found in {kpp\_inp/}. With this model,
+extra input file {\tt kpp.nml} found in {kpp\_nml/}. With this model,
 the depth of the mixing layer depends mostly on the value of the
 critical bulk Richardson number that can also be set in this file.
 When you work with the KPP-model in free convection, don't forget to
@@ -401,10 +401,10 @@ by \cite{Geyer93}.
 It is recommended to go through the description in the routines
 computing the external and internal pressure gradients, see
 \sect{sec:extpressure} and \sect{sec:intpressure}, to understand the
-corresponding settings in the input file {\tt obs.inp}. The relaxation
+corresponding settings in the input file {\tt obs.nml}. The relaxation
 scheme for salinity is described in \sect{sec:salinity}.  Essential
 for this case is also the parametrisation of horizontal advection,
-which is set in {\tt obs.inp} and described in
+which is set in {\tt obs.nml} and described in
 \sect{sec:salinity}. Note that horizontal advection is calculated from
 the same horizontal salinity gradient that causes the internal
 pressure gradient.
@@ -583,7 +583,7 @@ of Ocean Sciences, \\ & University of Bangor, Wales \\
 \\
 
 These files can be read in into GOTM through the {\tt eobs} namelist in
-{\tt obs.inp}. It is the file specified at last, which is actually read in.  
+{\tt obs.nml}. It is the file specified at last, which is actually read in.  
 The dissipation rate has only been observed at short intervals, periods
 without observations are set to minimum values in the files. 
 
@@ -972,8 +972,8 @@ closure model, then the analytical solution for the Rouse profile
 is only approximated, since the eddy diffusivity deviates from 
 (\ref{rouse_analytical}).
 In order to be closer to the analytical solution, it is ncessary to chose in
-{\tt gotmturb.inp} the analytical parabolic profile for eddy diffusivity,
-which is done by the follwing settings in {\tt gotmturb.inp}:
+{\tt gotmturb.nml} the analytical parabolic profile for eddy diffusivity,
+which is done by the follwing settings in {\tt gotmturb.nml}:
 
 \begin{verbatim}
  &turbulence
@@ -985,7 +985,7 @@ which is done by the follwing settings in {\tt gotmturb.inp}:
 
 This Rouse scenario may be calculated with Eulerian concentrations 
 or with Lagrangian particles, depending on the setting
-of {\tt bio\_eulerian} in {\tt bio.inp}.
+of {\tt bio\_eulerian} in {\tt bio.nml}.
 When using the Lagrangian particle method, it is advisable
 to average the concentration over all time steps 
 which belong to one output time step, 
@@ -993,7 +993,7 @@ by setting {\tt bio\_lagrange\_mean=.true.}
 
 It is also possible to include a sink term at the bed
 (for simulating the effect of grazing by benthic filter feeder),
-the seetings for this have to be made in {\tt mussels.inp}.
+the seetings for this have to be made in {\tt mussels.nml}.
 
 
 \subsubsection{Northern North Sea - NPZD model}\label{nns_annual_npzd}
@@ -1018,7 +1018,7 @@ be shorter than the time step. In order to make the NPZD model stiff,
 \cite{Burchardetal2005b} chose a
 half-saturation nutrient concentration $\alpha$ 
 of 0.02  mmol N\, m$^{-3}$, whereas the typical values for $\alpha$ would be 
-between 0.2 and 1.5 mmol N\, m$^{-3}$,
+between 0.2 and 1.5 mmol N\, m$^{-3}$.
 This has the consequence that nutrient is taken up by phytoplankton
 even at low concentrations, which strongly decreases the
 time scale of this process. The overall phytoplankton evolution over
@@ -1037,7 +1037,7 @@ Modified Patankar schemes over the fully explicit schemes,
 the simulation carried out here is based on
 a time step of 2 h for the physical part. For the biogeochemical part,
 a time splitting is used (set {\tt split\_factor}  in
-{\t bio.inp}) such that fractional time
+{\tt bio.nml}) such that fractional time
 steps are possible for the biogeochemical part.
 Thus, by using a time step of $\Delta^{phy} t = 7200$ s for the
 physical part and iterating the biogeochemical part 1,4 and 36 times
@@ -1049,7 +1049,7 @@ By doing so, it is possible to use exactly the same physical forcing
 for all ODE solvers and all biogeochemical time steps.
 
 When using the explicit ODE solver (to do so, set {\tt ode\_method}
-in {\tt bio.inp} to 1, 2 or 3), the summer nutrient concentration
+in {\tt bio.nml} to 1, 2 or 3), the summer nutrient concentration
 goes down to negative values.
 This does not happen for the other conservative methods
 7 and 8 (first- and second-order Modified Patankar schemes) and
