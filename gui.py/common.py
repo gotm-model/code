@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.5 2006-12-17 20:24:59 jorn Exp $
+#$Id: common.py,v 1.6 2007-01-11 15:56:28 jorn Exp $
 
 import datetime,time
-import xml.dom.minidom, os, re
+import xml.dom.minidom, os, re, sys
 import zipfile, tarfile, tempfile, shutil
 
 # Import NetCDF file format support
@@ -37,6 +37,16 @@ dateformat = '%Y-%m-%d %H:%M:%S'
 def parsedatetime(str,fmt):
     t1tmp = time.strptime(str,fmt) 
     return datetime.datetime(*t1tmp[0:6])
+
+def getNamedArgument(name):
+    try:
+        iarg = sys.argv.index(name)
+    except ValueError:
+        return None
+    val = sys.argv[iarg+1]
+    del sys.argv[iarg+1]
+    del sys.argv[iarg]
+    return val
 
 def findDescendantNode(root,location,create=False):
     if root==None: raise Exception('findDescendantNode called on non-existent parent node (parent = None).')
@@ -93,6 +103,29 @@ def addDescendantNode(root,location):
     node = doc.createElementNS(parent.namespaceURI,name)
     parent.appendChild(node)
     return node
+
+def readNamelist(string):
+    restopchar = re.compile('[\'"/]')
+    match = re.compile('\s*&\s*(\w+)\s*').match(string)
+    if match==None:
+        raise Exception('No namelist found; expected ampersand followed by namelist name.')
+    name = match.group(1)
+    istart = match.end(0)
+    ipos = istart
+    while True:
+        match = restopchar.search(string,pos=ipos)
+        if match==None:
+            raise Exception('End of namelist (slash) not found.')
+        ch = match.group(0)
+        ipos = match.end(0)
+        if ch=='/':
+            break
+        else:
+            inextquote = string.find(ch,ipos)
+            if inextquote==-1:
+                raise Exception('Opening quote %s was not matched by end quote.' % ch)
+            ipos = inextquote+1
+    return (name,string[istart:ipos],string[ipos:])
 
 # XMLPropertyStore: class for storing 'properties' (i.e name,value pairs) in
 #   hierarchical structure, using in-memory XML DOM. All values are stored as
@@ -282,7 +315,7 @@ class DataFile:
 
     def getAsReadOnlyFile(self):
         if not self.isValid():
-            Exception('Cannot get file because the source file ('+str(self.path)+') does not exist.')
+            Exception('Cannot get file because the source file "'+str(self.path)+'" does not exist.')
         f = open(self.path,'rU')
         return f
 
@@ -295,7 +328,7 @@ class DataFile:
 
     def addToZip(self,zfile,filename):
         if not self.isValid():
-            raise Exception('Cannot add '+filename+' to zip archive because the source file ('+str(self.path)+') does not exist.')
+            raise Exception('Cannot add "'+filename+'" to zip archive because the source file "'+str(self.path)+'" does not exist.')
         zfile.write(self.path,filename)
             
 # TypedXMLPropertyStore: encapsulates the above XMLPropertyStore.
@@ -485,6 +518,16 @@ class TypedXMLPropertyStore:
 
         def getValueType(self):
             return self.templatenode.getAttribute('type')
+
+        def getDescription(self,idallowed = False):
+            templatenode = self.templatenode
+            if templatenode.hasAttribute('description'):
+                return templatenode.getAttribute('description')
+            elif templatenode.hasAttribute('label'):
+                return templatenode.getAttribute('label')
+            elif idallowed:
+                return self.getId()
+            return None
 
         def getChildCount(self,showhidden=False):
             if showhidden: return len(self.children)
@@ -961,24 +1004,30 @@ class Scenario(TypedXMLPropertyStore):
             templatedir = os.path.join(os.path.dirname(__file__),'scenariotemplates')
             if os.path.isdir(templatedir):
                 for templatename in os.listdir(templatedir):
-                    (root,ext) = os.path.splitext(templatename)
-                    Scenario.templates[root] = os.path.join(templatedir,templatename)
+                    fullpath = os.path.join(templatedir,templatename)
+                    if os.path.isfile(fullpath):
+                        (root,ext) = os.path.splitext(templatename)
+                        if ext=='.xml':
+                            Scenario.templates[root] = fullpath
+                        else:
+                            print 'WARNING: template directory contains non-XML file "%s"; this file will be ignored.' % templatename
             else:
                 print 'WARNING: no templates will be available, because subdir "scenariotemplates" is not present!'
         return Scenario.templates
 
     @staticmethod
-    def fromNamelists(path):
+    def fromNamelists(path,protodir=None,targetversion=None):
+        if targetversion==None: targetversion=guiscenarioversion
         
         templates = Scenario.getTemplates()
-        sourceids = scenarioformats.rankSources(guiscenarioversion,templates.keys(),requireplatform='gotm')
+        sourceids = scenarioformats.rankSources(targetversion,templates.keys(),requireplatform='gotm')
         scenario = None
         failures = ''
         for sourceid in sourceids:
             print 'Trying scenario format "'+sourceid+'"...'
             scenario = Scenario(templatename=sourceid)
             try:
-                scenario.loadFromNamelists(path,requireordered = True)
+                scenario.loadFromNamelists(path,requireordered = True,protodir=protodir)
             except Scenario.NamelistParseException,e:
                 failures += 'Path "'+path+'" does not match template "'+sourceid+'".\nReason: '+str(e)+'\n'
                 scenario.unlink()
@@ -988,9 +1037,12 @@ class Scenario(TypedXMLPropertyStore):
                 break
         if scenario==None:
             raise Exception('The path "'+path+'" does not contain a supported GOTM scenario. Details:\n'+failures)
-        newscenario = scenario.convert(guiscenarioversion)
-        scenario.unlink()
-        return newscenario
+        if scenario.version!=targetversion:
+            newscenario = scenario.convert(targetversion)
+            scenario.unlink()
+            return newscenario
+        else:
+            return scenario
 
     def convert(self,target,targetownstemp=True):        
         if isinstance(target,str):
@@ -1014,7 +1066,7 @@ class Scenario(TypedXMLPropertyStore):
         def __str__(self):
             return Exception.__str__(self)+'.\nFile: '+str(self.filename)+', namelist: '+str(self.namelistname)+', variable: '+str(self.variablename)
 
-    def loadFromNamelists(self, srcpath, requireordered = False):
+    def loadFromNamelists(self, srcpath, requireordered = False, protodir = None):
         print 'Importing scenario from namelist files...'
 
         # Start with empty scenario
@@ -1042,6 +1094,22 @@ class Scenario(TypedXMLPropertyStore):
             else:
                 raise Exception('Path "'+srcpath+'" is not an existing directory or file.')
 
+        if protodir!=None:
+            valuesubs = []
+            regexpre = re.compile('s/(\w+)/(.+)/')
+            valuespath = os.path.join(srcpath,os.path.basename(srcpath)+'.values')
+            try:
+                valuesfile = open(valuespath,'rU')
+            except Exception,e:
+                raise self.NamelistParseException('Cannot open .values file. Error: '+str(e))
+            line = valuesfile.readline()
+            while line!='':
+                m = regexpre.match(line)
+                if m!=None:
+                    valuesubs.append((re.compile(m.group(1)),m.group(2)))
+                line = valuesfile.readline()
+            valuesfile.close()
+
         try:
             for mainchild in self.root.getChildren(showhidden=True):
                 if not mainchild.isFolder():
@@ -1049,7 +1117,11 @@ class Scenario(TypedXMLPropertyStore):
 
                 # Get name (excl. extension) for the namelist file, and its full path.
                 nmlfilename = mainchild.getId()
-                nmlfilepath = os.path.join(srcpath, nmlfilename+'.inp')
+
+                if protodir==None:
+                    nmlfilepath = os.path.join(srcpath, nmlfilename+'.inp')
+                else:
+                    nmlfilepath = os.path.join(protodir, nmlfilename+'.proto')
 
                 # Attempt to open namelist file and read all data
                 try:
@@ -1059,6 +1131,10 @@ class Scenario(TypedXMLPropertyStore):
                     raise self.NamelistParseException('Cannot open namelist file. Error: '+str(e),nmlfilepath)
                 nmldata = nmlfile.read()
                 nmlfile.close()
+
+                if protodir!=None:
+                    for (exp,repl) in valuesubs:
+                        nmldata = exp.sub(repl,nmldata)
 
                 # Strip comments, i.e. on every line, remove everything after (and including) the first exclamation mark
                 commentre = re.compile('![^\n]*')
@@ -1073,12 +1149,13 @@ class Scenario(TypedXMLPropertyStore):
                         raise 'Found non-folder node with id '+filechild.getId()+' below branch '+nmlfilename+', where only folders are expected.'
 
                     listname = filechild.getId()
-                    match = listre.match(nmldata)
-                    if match==None:
-                        raise self.NamelistParseException('Cannot find another namelist, while expecting namelist '+listname+'.',nmlfilepath,listname)
-                    foundlistname = match.group(1)
-                    listdata = match.group(2)
-                    nmldata = nmldata[len(match.group(0)):]
+                    #match = listre.match(nmldata)
+                    #if match==None:
+                    #    raise self.NamelistParseException('Cannot find another namelist, while expecting namelist '+listname+'.',nmlfilepath,listname)
+                    (foundlistname,listdata,nmldata) = readNamelist(nmldata)
+                    #foundlistname = match.group(1)
+                    #listdata = match.group(2)
+                    #nmldata = nmldata[len(match.group(0)):]
                     if foundlistname!=listname:
                         raise self.NamelistParseException('Expected namelist '+listname+', but found '+foundlistname+'.',nmlfilepath,listname)
                         
@@ -1145,7 +1222,7 @@ class Scenario(TypedXMLPropertyStore):
                 print 'Removing temporary namelist directory "'+nmltempdir+'".'
                 shutil.rmtree(nmltempdir)
 
-    def writeAsNamelists(self, targetpath, copydatafiles=True):
+    def writeAsNamelists(self, targetpath, copydatafiles=True, addcomments = False):
         print 'Exporting scenario to namelist files...'
 
         # If the directory to write to does not exist, create it.
@@ -1154,6 +1231,12 @@ class Scenario(TypedXMLPropertyStore):
                 os.mkdir(targetpath)
             except Exception,e:
                 raise Exception('Unable to create target directory "'+targetpath+'". Error: '+str(e))
+
+        if addcomments:
+            # Import and configure text wrapping utility.
+            import textwrap
+            linelength = 80
+            wrapper = textwrap.TextWrapper(subsequent_indent='  ')
         
         for mainchild in self.root.getChildren(showhidden=True):
             if not mainchild.isFolder():
@@ -1163,11 +1246,39 @@ class Scenario(TypedXMLPropertyStore):
             nmlfilename = mainchild.getId()
             nmlfilepath = os.path.join(targetpath, nmlfilename+'.inp')
             nmlfile = open(nmlfilepath,'w')
-    
+
             for filechild in mainchild.getChildren(showhidden=True):
                 if not filechild.isFolder():
                     raise Exception('Found a variable directly below branch '+str(nmlfilename)+', where only folders are expected.')
                 listname = filechild.getId()
+
+                if addcomments:
+                    nmlfile.write('!'+(linelength-1)*'-'+'\n')
+                    title = filechild.getDescription(idallowed=True).encode('ascii','xmlcharrefreplace')
+                    nmlfile.write(textwrap.fill(title,linelength-2,initial_indent='! ',subsequent_indent='! '))
+                    nmlfile.write('\n!'+(linelength-1)*'-'+'\n')
+
+                    comments = []
+                    varnamelength = 0
+                    for listchild in filechild.getChildren(showhidden=True):
+                        comment = self.getNamelistVariableDescription(listchild)
+                        if len(comment[0])>varnamelength: varnamelength = len(comment[0])
+                        comments.append(comment)
+                    wrapper.width = linelength-varnamelength-5
+                    for (varid,vartype,lines) in comments:
+                        wrappedlines = []
+                        lines.insert(0,'['+vartype+']')
+                        for line in lines:
+                            line = line.encode('ascii','xmlcharrefreplace')
+                            wrappedlines += wrapper.wrap(line)
+                        firstline = wrappedlines.pop(0)
+                        nmlfile.write('! %-*s %s\n' % (varnamelength,varid,firstline))
+                        for line in wrappedlines:
+                            nmlfile.write('! '+varnamelength*' '+'   '+line+'\n')
+                    if len(comments)>0:
+                        nmlfile.write('!'+(linelength-1)*'-'+'\n')
+                    nmlfile.write('\n')
+
                 nmlfile.write('&'+listname+'\n')
                 for listchild in filechild.getChildren(showhidden=True):
                     if not listchild.isVariable():
@@ -1202,60 +1313,123 @@ class Scenario(TypedXMLPropertyStore):
 
             nmlfile.close()
 
-    def saveAll(self,path):
-        if self.version!=savedscenarioversion:
-            tempscenario = self.convert(savedscenarioversion,targetownstemp=False)
-            tempscenario.saveAll(path)
+    @staticmethod
+    def getNamelistVariableDescription(node):
+        varid = node.getId()
+        datatype = node.getValueType()
+        description = node.getDescription(idallowed=True)
+        lines = [description]
+        
+        if datatype == 'select':
+            # Create list of options.
+            options = findDescendantNode(node.templatenode,['options'])
+            if options==None: raise 'Node is of type "select" but lacks "options" childnode.'
+            for ch in options.childNodes:
+                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                    lab = ch.getAttribute('description')
+                    if lab=='': lab = ch.getAttribute('label')
+                    lines.append(ch.getAttribute('value') + ': ' + lab)
+
+        # Create description of data type and range.
+        if datatype=='file':
+            datatype = 'file path'
+        elif datatype=='int' or datatype=='select':
+            datatype = 'integer'
+        elif datatype=='datetime':
+            datatype = 'string, format = "yyyy-mm-dd hh:mm:ss"'
+        if node.templatenode.hasAttribute('minimum'):
+            datatype += ', minimum = ' + node.templatenode.getAttribute('minimum')
+        if node.templatenode.hasAttribute('maximum'):
+            datatype += ', maximum = ' + node.templatenode.getAttribute('maximum')
+        if node.templatenode.hasAttribute('unit'):
+            datatype += ', unit = ' + node.templatenode.getAttribute('unit')
+
+        # Get description of conditions (if any).
+        condition = findDescendantNode(node.templatenode,['condition'])
+        if condition!=None:
+            condline = Scenario.getNamelistConditionDescription(condition)
+            lines.append('This variable is used only if '+condline)
+
+        return (varid,datatype,lines)
+
+    @staticmethod
+    def getNamelistConditionDescription(node):
+        condtype = node.getAttribute('type')
+        if condtype=='eq' or condtype=='ne':
+            var = node.getAttribute('variable')
+            val = node.getAttribute('value')
+            if var.startswith('./'): var=var[2:]
+            if condtype=='eq':
+                return var+' = '+val
+            else:
+                return var+' != '+val
+        elif condtype=='and' or condtype=='or':
+            conds = findDescendantNodes(node,['condition'])
+            conddescs = map(Scenario.getNamelistConditionDescription,conds)
+            return '('+(' '+condtype+' ').join(conddescs)+')'
+        else:
+            raise Exception('Unknown condition type "%s".' % condtype)
+
+    def saveAll(self,path,targetversion=None,targetisdir = False):
+        if targetversion==None: targetversion = savedscenarioversion
+        if self.version!=targetversion:
+            tempscenario = self.convert(targetversion,targetownstemp=False)
+            tempscenario.saveAll(path,targetversion=targetversion)
             tempscenario.unlink()
         else:
+            if targetisdir:
+                # If the directory to write to does not exist, create it.
+                if (not os.path.isdir(path)):
+                    try:
+                        os.mkdir(path)
+                    except Exception,e:
+                        raise Exception('Unable to create target directory "'+path+'". Error: '+str(e))
+                self.save(os.path.join(path,'scenario.xml'))
+            else:
+                zfile = zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED)
+                zfile.writestr('scenario.xml', self.toxml('utf-8'))
 
-##        tfile = tarfile.open(path,'w:gz')
-##        scenarioxml = self.toxml('utf-8')
-##        buf = StringIO.StringIO(scenarioxml)
-##        tarinfo = tarfile.TarInfo()
-##        tarinfo.name = 'scenario.xml'
-##        tarinfo.size = len(scenarioxml)
-##        tarinfo.mtime = time.time()
-##        tfile.addfile(tarinfo,buf)
-##
-##        filenodes = self.root.getNodesByType('file')
-##        for fn in filenodes:
-##            if not fn.isHidden():
-##                filename = fn.getValue()
-##                print 'Adding "'+filename+'" to archive...'
-##                tfile.add(os.path.join(self.getTempDir(),filename),filename)
-##
-##        tfile.close()
-        
-            zfile = zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED)
-            zfile.writestr('scenario.xml', self.toxml('utf-8'))
             filenodes = self.root.getNodesByType('file')
             for fn in filenodes:
                 if not fn.isHidden():
                     filename = str(fn.getId()+'.dat')
                     datafile = fn.getValue()
-                    print 'Adding "'+filename+'" to archive...'
-                    datafile.addToZip(zfile,filename)
-            zfile.close()
+                    if targetisdir:
+                        datafile.save(os.path.join(path,filename),claim=False)
+                    else:
+                        print 'Adding "'+filename+'" to archive...'
+                        datafile.addToZip(zfile,filename)
+            if not targetisdir: zfile.close()
         
         self.resetChanged()
 
     def loadAll(self,path):
-        # Basic check: does the specified file exist?
+        # Basic check: does the specified source path exist?
         if not os.path.exists(path):
-            raise Exception('File "'+path+'" does not exist.')
+            raise Exception('Source path "'+path+'" does not exist.')
 
-        # Open the archive
-        zfile = zipfile.ZipFile(path,'r')
+        # The specified source file may be a ZIP archive, or a directory that contains the extracted
+        # contents of such an archive; decide which.
+        srcisdir = os.path.isdir(path)
 
-        # Get list of files in the archive, and check whether the scenario file is present.
-        files = zfile.namelist()
-        if files.count('scenario.xml')==0:
-            raise Exception('This archive does not contain "scenario.xml"; it cannot be a GOTM scenario.')
+        if srcisdir:
+            # Get list of files in source directory.
+            files = os.listdir(path)
+        else:
+            # Open the archive, and get list of members.
+            zfile = zipfile.ZipFile(path,'r')
+            files = zfile.namelist()
+
+        # Check for existence of main scenario file.
+        if 'scenario.xml' not in files:
+            raise Exception('The specified source does not contain "scenario.xml"; it cannot contain a GOTM scenario.')
 
         # Read and parse the scenario file.
-        scenariodata = zfile.read('scenario.xml')
-        storedom = xml.dom.minidom.parseString(scenariodata)
+        if not srcisdir:
+            scenariodata = zfile.read('scenario.xml')
+            storedom = xml.dom.minidom.parseString(scenariodata)
+        else:
+            storedom = xml.dom.minidom.parse(os.path.join(path,'scenario.xml'))
         
         # Get the scenario version
         version = storedom.documentElement.getAttribute('version')
@@ -1265,7 +1439,7 @@ class Scenario(TypedXMLPropertyStore):
         if self.version!=version:
             # The version of the saved scenario does not match the version of this scenario object; convert it.
             print 'Scenario "'+path+'" has version "'+version+'"; starting conversion to "'+self.version+'".'
-            zfile.close()
+            if not srcisdir: zfile.close()
             tempscenario = Scenario(templatename=version)
             tempscenario.loadAll(path)
             tempscenario.convert(self)
@@ -1275,7 +1449,7 @@ class Scenario(TypedXMLPropertyStore):
             # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
             if version==savedscenarioversion: self.resetChanged()
         else:
-            # Attach the parsed scenario to ourselves.
+            # Attach the parsed scenario (XML DOM) to ourselves.
             self.setStore(storedom,None)
 
             # Get all data files that belong to this scenario from the archive.
@@ -1284,16 +1458,21 @@ class Scenario(TypedXMLPropertyStore):
             for fn in filenodes:
                 if not fn.isHidden():
                     filename = fn.getId()+'.dat'
-                    if files.count(filename)==0:
+                    if filename not in files:
                         raise Exception('The archive "'+path+'" does not contain required data file "'+filename+'".')
-                    print 'Getting "'+filename+'" from archive...'
-                    filedata = zfile.read(filename)
-                    f = open(os.path.join(tmpdir,filename),'wb')
-                    f.write(filedata)
-                    f.close()
+                    targetfilepath = os.path.join(tmpdir,filename)
+                    if srcisdir:
+                        print 'Copying "'+filename+'" to temporary scenario directory...'
+                        shutil.copyfile(os.path.join(path,filename),targetfilepath)
+                    else:
+                        print 'Extracting "'+filename+'" to temporary scenario directory...'
+                        filedata = zfile.read(filename)
+                        f = open(targetfilepath,'wb')
+                        f.write(filedata)
+                        f.close()
 
             # Close the archive
-            zfile.close()
+            if not srcisdir: zfile.close()
 
 # Abstract class that contains one or more variables that can be plotted.
 # Classes deriving from it must support the virtual methods below.

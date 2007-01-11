@@ -64,7 +64,7 @@ def rankSources(targetid,sourceids,requireplatform=None):
                 version = versionStringToInt(version)
                 sourceinfo.append((platform,version,sid))
 
-    # Sort by platform (because we want the target paltform first)
+    # Sort by platform (because we want the target platform first)
     sourceinfoclasses = {}
     for sinf in sourceinfo:
         if sinf[0] not in sourceinfoclasses: sourceinfoclasses[sinf[0]] = []
