@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.7 2007-01-12 10:40:51 jorn Exp $
+#$Id: common.py,v 1.8 2007-01-12 11:49:46 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -176,33 +176,37 @@ class NamelistParser:
                 nmlfile = open(path,'rU')
             except Exception,e:
                 raise NamelistParser.NamelistParseException('Cannot open namelist file. Error: %s' % (str(e),),path)
-            self.data = ''
-            line = nmlfile.readline()
-            iline = 1
-            while line!='':
 
-                # Strip comments, i.e. on every line, remove everything after (and including) the first exclamation
-                # mark; ignore text between single and double quotes.
-                ipos = 0
-                match = self.commentchar_re.search(line,pos=ipos)
-                while match!=None:
-                    ch = match.group(0)
-                    if ch=='\'' or ch=='"':
-                        ipos = match.end(0)
-                        inextquote = self.data.find(ch,ipos)
-                        if inextquote==-1:
-                            raise NamelistParser.NamelistParseException('Line %i: opening quote %s was not matched by end quote.' % (iline,ch),path)
-                        ipos = inextquote+1
-                    else:
-                        # Found start of comment; only keep everything preceding the start position.
-                        line = line[0:match.start(0)]
-                        break
-                    match = self.commentchar_re.search(line,pos=ipos)
-
-                self.data += line
+            try:
+                
+                self.data = ''
                 line = nmlfile.readline()
-                iline += 1
-            nmlfile.close()
+                iline = 1
+                while line!='':
+
+                    # Strip comments, i.e. on every line, remove everything after (and including) the first exclamation
+                    # mark; ignore text between single and double quotes.
+                    ipos = 0
+                    match = self.commentchar_re.search(line,pos=ipos)
+                    while match!=None:
+                        ch = match.group(0)
+                        if ch=='\'' or ch=='"':
+                            ipos = match.end(0)
+                            inextquote = line.find(ch,ipos)
+                            if inextquote==-1:
+                                raise NamelistParser.NamelistParseException('Line %i: opening quote %s was not matched by end quote.' % (iline,ch),path)
+                            ipos = inextquote+1
+                        else:
+                            # Found start of comment; only keep everything preceding the start position.
+                            line = line[:match.start(0)]
+                            break
+                        match = self.commentchar_re.search(line,pos=ipos)
+
+                    self.data += line
+                    line = nmlfile.readline()
+                    iline += 1
+            finally:
+                nmlfile.close()
 
             # Make substitutions (if any).
             for (old,new) in subs:
