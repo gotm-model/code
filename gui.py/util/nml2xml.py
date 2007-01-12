@@ -68,5 +68,8 @@ def main():
     # Export to scenario.
     scenario.saveAll(targetpath,targetversion=targetversion,targetisdir=targetisdir)
 
+    # Clean-up (delete temporary directories etc.)
+    scenario.unlink()
+
 # If the script has been run (as opposed to imported), enter the main loop.
 if (__name__=='__main__'): main()

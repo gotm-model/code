@@ -193,7 +193,28 @@ class Convertor_gotm_3_3_2_to_gotm_3_2_4(Convertor):
         # Note: we implicitly lose the oxygen profile namelist in obs.inp; GOTM 3.2.4 does not support it.
 addConvertor('gotm-3.3.2','gotm-3.2.4',Convertor_gotm_3_3_2_to_gotm_3_2_4)
 
-class Convertor_gotm_3_3_2_to_gotmgui_0_5_0(Convertor):
+class Convertor_gotm_3_3_2_to_gotm_4_0_0(Convertor):
+    def convert(self,source,target):
+        Convertor.convert(self,source,target)
+
+        target.setProperty(['obs','ext_pressure','ext_press_mode'], source.getProperty(['obs','ext_pressure','PressMethod']))
+
+        # Initialize wind wave namelist in obs.inp with a set of defaults.
+        target.setProperty(['obs','wave_nml','wave_method'],0)
+        target.setProperty(['obs','wave_nml','wave_file'],'')
+        target.setProperty(['obs','wave_nml','Hs'],0)
+        target.setProperty(['obs','wave_nml','Tz'],0)
+        target.setProperty(['obs','wave_nml','phiw'],0)
+addConvertor('gotm-3.3.2','gotm-4.0.0',Convertor_gotm_3_3_2_to_gotm_4_0_0)
+
+class Convertor_gotm_4_0_0_to_gotm_3_3_2(Convertor):
+    def convert(self,source,target):
+        Convertor.convert(self,source,target)
+        target.setProperty(['obs','ext_pressure','PressMethod'], source.getProperty(['obs','ext_pressure','ext_press_mode']))
+        # Note: we implicitly lose the wind wave profile namelist in obs.inp; GOTM 3.3.2 does not support it.
+addConvertor('gotm-4.0.0','gotm-3.3.2',Convertor_gotm_4_0_0_to_gotm_3_3_2)
+
+class Convertor_gotm_4_0_0_to_gotmgui_0_5_0(Convertor):
     def convert(self,source,target):
         Convertor.convert(self,source,target)
         target.root.getLocation(['station']).copyFrom(source.root.getLocation(['gotmrun','station']))
@@ -203,9 +224,9 @@ class Convertor_gotm_3_3_2_to_gotmgui_0_5_0(Convertor):
         target.setProperty(['grid','ddu'        ],source.getProperty(['gotmmean','meanflow','ddu']))
         target.setProperty(['grid','ddl'        ],source.getProperty(['gotmmean','meanflow','ddl']))
         target.setProperty(['grid','grid_file'  ],source.getProperty(['gotmmean','meanflow','grid_file']))
-addConvertor('gotm-3.3.2','gotmgui-0.5.0',Convertor_gotm_3_3_2_to_gotmgui_0_5_0)
+addConvertor('gotm-4.0.0','gotmgui-0.5.0',Convertor_gotm_4_0_0_to_gotmgui_0_5_0)
 
-class Convertor_gotmgui_0_5_0_to_gotm_3_3_2(Convertor):
+class Convertor_gotmgui_0_5_0_to_gotm_4_0_0(Convertor):
     def convert(self,source,target):
         Convertor.convert(self,source,target)
         target.root.getLocation(['gotmrun','station']).copyFrom(source.root.getLocation(['station']))
@@ -215,4 +236,4 @@ class Convertor_gotmgui_0_5_0_to_gotm_3_3_2(Convertor):
         target.setProperty(['gotmmean','meanflow','ddu'        ],source.getProperty(['grid','ddu'        ]))
         target.setProperty(['gotmmean','meanflow','ddl'        ],source.getProperty(['grid','ddl'        ]))
         target.setProperty(['gotmmean','meanflow','grid_file'  ],source.getProperty(['grid','grid_file'  ]))
-addConvertor('gotmgui-0.5.0','gotm-3.3.2',Convertor_gotmgui_0_5_0_to_gotm_3_3_2)
+addConvertor('gotmgui-0.5.0','gotm-4.0.0',Convertor_gotmgui_0_5_0_to_gotm_4_0_0)

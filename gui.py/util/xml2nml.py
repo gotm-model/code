@@ -76,5 +76,8 @@ def main():
     # Export to namelists.
     scenario.writeAsNamelists(targetdir,copydatafiles = copydata,addcomments = comments)
 
+    # Clean-up (delete temporary directories etc.)
+    scenario.unlink()
+
 # If the script has been run (as opposed to imported), enter the main loop.
 if (__name__=='__main__'): main()

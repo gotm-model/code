@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<folder id="scenario" label="scenario" version="gotm-3.3.2" namelistextension=".inp">
+<folder id="scenario" label="scenario" version="gotm-4.0.0" namelistextension=".nml">
 
 	<folder id="gotmrun" label="general">
 	
@@ -783,7 +783,7 @@
 						<option value="2" label="external pressure gradient from data found in &quot;ext_press_file&quot;"/>
 					</options>
 				</variable>
-				<variable id="PressMethod" type="select" label="how to interprete ANY prescribed data for the computation of the external pressure gradient">
+				<variable id="ext_press_mode" type="select" label="how to interprete ANY prescribed data for the computation of the external pressure gradient">
 					<options>
 						<option value="0" label="interprete all data as surface elevation gradients" />
 						<option value="1" label="interprete all data as current meter measurements at a given height &quot;PressHeight&quot; (see documentation)" />
@@ -806,7 +806,7 @@
 					<condition type="eq" variable="./ext_press_method" value="0"/>
 				</variable>
 				<variable id="PressHeight" type="float" label="height above bottom for current meter observations" unit="m">
-					<condition type="eq" variable="./PressMethod"      value="1"/>
+					<condition type="eq" variable="./ext_press_mode"   value="1"/>
 				</variable>
 				<variable id="PeriodM" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
 					<condition type="eq" variable="./ext_press_method" value="1"/>
@@ -976,6 +976,35 @@
 				</variable>
 				<variable id="phase_2" type="float" label="phase of 2nd harmonic" unit="s">
 					<condition type="eq" variable="./zeta_method" value="1"/>
+				</variable>
+			</folder>
+
+			<folder id="wave_nml" label="wind waves" description="Wind induced waves can be specified. Used in e.g. the spm module to account for wave-current interaction.">
+				<variable id="wave_method" type="select" label="method to prescribe the wind waves">
+					<options>
+						<option value="0" label="nothing is done - all variables equal 0" />
+						<option value="1" label="constant values" />
+						<option value="2" label="time varying variables read from file"/>
+					</options>
+				</variable>
+				<variable id="wave_file" type="file" label="filename for file wind waves">
+					<condition type="eq" variable="./wave_method" value="2"/>
+					<fileinfo type="pointsintime">
+						<filevariables>
+							<filevariable label="significant wave-height"/>
+							<filevariable label="mean zero-crossing period"/>
+							<filevariable label="mean direction"/>
+						</filevariables>
+					</fileinfo>
+				</variable>
+				<variable id="Hs" type="float" label="constant value for significant wave-height">
+					<condition type="eq" variable="./wave_method" value="1"/>
+				</variable>
+				<variable id="Tz" type="float" label="constant value for mean zero-crossing period">
+					<condition type="eq" variable="./wave_method" value="1"/>
+				</variable>
+				<variable id="phiw" type="float" label="constant value for mean direction">
+					<condition type="eq" variable="./wave_method" value="1"/>
 				</variable>
 			</folder>
 

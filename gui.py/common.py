@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.8 2007-01-12 11:49:46 jorn Exp $
+#$Id: common.py,v 1.9 2007-01-12 14:56:10 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -23,9 +23,9 @@ import scenarioformats
 # (2) the GUI, (3) saved GUI scenario files. Currently (3) differs from (2)
 # because (2) is still in development, while saved files must use a frozen
 # scenario version in order to be usable later too.
-gotmscenarioversion = 'gotm-3.3.2'
+gotmscenarioversion = 'gotm-4.0.0'
 guiscenarioversion = 'gotmgui-0.5.0'
-savedscenarioversion = 'gotm-3.3.2'
+savedscenarioversion = 'gotm-4.0.0'
 
 # ------------------------------------------------------------------------------------------
 # Date-time parsing variables and functions
@@ -221,7 +221,7 @@ class NamelistParser:
                 raise NamelistParser.NamelistParseException('No namelist found; expected ampersand followed by namelist name.',self.path)
             name = match.group(1)
             if expectedlist!=None and name!=expectedlist:
-                raise NamelistParser.NamelistParseException('Expected namelist "%s", but found "%s".' % (expectedlist,name),nmlfilepath,expectedlist)
+                raise NamelistParser.NamelistParseException('Expected namelist "%s", but found "%s".' % (expectedlist,name),self.path,expectedlist)
             istart = match.end(0)
             ipos = istart
             while True:
@@ -1146,11 +1146,13 @@ class Scenario(TypedXMLPropertyStore):
             else:
                 raise Exception('Unable to locate template XML file for specified scenario version "'+templatename+'".')
         elif xmltemplate==None:
-            raise Exception('No scenario template specified. Either specify a file, or a name or a template (as "templatename").')
+            raise Exception('No scenario template specified. Either specify a file path, or a name of a template (named argument "templatename").')
         elif not os.path.isfile(xmltemplate):
             raise Exception('Scenario template "'+xmltemplate+'" does not exist.')
 
         TypedXMLPropertyStore.__init__(self,xmltemplate,xmldocument)
+
+        self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
 
     @staticmethod
     def getTemplates():
@@ -1266,7 +1268,7 @@ class Scenario(TypedXMLPropertyStore):
 
                 if protodir==None:
                     # Normal namelist file
-                    nmlfilepath = os.path.join(srcpath, nmlfilename+'.inp')
+                    nmlfilepath = os.path.join(srcpath, nmlfilename+self.namelistextension)
                 else:
                     # Prototype namelist in which values will be substituted.
                     nmlfilepath = os.path.join(protodir, nmlfilename+'.proto')
@@ -1363,7 +1365,8 @@ class Scenario(TypedXMLPropertyStore):
             if mainchild.isHidden(): continue
 
             nmlfilename = mainchild.getId()
-            nmlfilepath = os.path.join(targetpath, nmlfilename+'.inp')
+            nmlfilepath = os.path.join(targetpath, nmlfilename+self.namelistextension)
+            print nmlfilepath
             nmlfile = open(nmlfilepath,'w')
 
             for filechild in mainchild.getChildren(showhidden=True):

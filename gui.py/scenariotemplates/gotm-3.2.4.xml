@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<folder id="scenario" label="scenario" version="gotm-3.2.4">
+<folder id="scenario" label="scenario" version="gotm-3.2.4" namelistextension=".inp">
 
 	<folder id="gotmrun" label="general">
 	
