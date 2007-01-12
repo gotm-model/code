@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.4 2006-12-17 20:24:59 jorn Exp $
+#$Id: commonqt.py,v 1.5 2007-01-12 10:40:51 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -409,27 +409,24 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
 
         # First handle roles that are shared over the whole row.
         if role==QtCore.Qt.WhatsThisRole:
-            node = index.internalPointer().templatenode
-            if node.hasAttribute('description'):
-                text = node.getAttribute('description')
-            elif node.hasAttribute('label'):
-                text = node.getAttribute('label').capitalize()
-            else:
-                text = node.getAttribute('id').capitalize()
-            nodetype = node.getAttribute('type')
+            node = index.internalPointer()
+            templatenode = node.templatenode
+            text = node.getDescription(idallowed=True)
+            nodetype = node.getValueType()
             if nodetype=='select':
-                options = common.findDescendantNode(node,['options'])
-                if options==None: raise 'variable with "select" type lacks "options" element below'
-                for ch in options.childNodes:
-                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                        text += '\n- '
-                        if ch.hasAttribute('description'):
-                            text += ch.getAttribute('description')
-                        else:
-                            text += ch.getAttribute('label')
+                optionsroot = common.findDescendantNode(templatenode,['options'])
+                if optionsroot==None: raise Exception('Variable with "select" type lacks "options" element below.')
+                optionnodes = common.findDescendantNodes(optionsroot,['option'])
+                if len(optionnodes)==0: raise Exception('Variable with "select" type does not have any options assigned to it.')
+                for optionnode in optionnodes:
+                    text += '\n- '
+                    if optionnode.hasAttribute('description'):
+                        text += optionnode.getAttribute('description')
+                    else:
+                        text += optionnode.getAttribute('label')
             elif nodetype=='int' or nodetype=='float':
-                if node.hasAttribute('minimum'): text += '\nminimum value: '+node.getAttribute('minimum')
-                if node.hasAttribute('maximum'): text += '\nmaximum value: '+node.getAttribute('maximum')
+                if templatenode.hasAttribute('minimum'): text += '\nminimum value: '+templatenode.getAttribute('minimum')
+                if templatenode.hasAttribute('maximum'): text += '\nmaximum value: '+templatenode.getAttribute('maximum')
             return QtCore.QVariant(text)
         elif role==QtCore.Qt.TextColorRole:
             if self.nohide and index.internalPointer().isHidden():
@@ -443,13 +440,13 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         if index.column()==0:
             if role==QtCore.Qt.DisplayRole:
                 # Get node (XML element) from given node index (QtCore.QModelIndex)
-                node = index.internalPointer().templatenode
+                node = index.internalPointer()
+                templatenode = node.templatenode
                 label = ''
-                if node.hasAttribute('label'):
-                    label = node.getAttribute('label')
+                if templatenode.hasAttribute('label'):
+                    label = templatenode.getAttribute('label')
                 else:
-                    label = node.getAttribute('id')
-                if label=='': raise 'Node to display does not have a "label" attribute, nor an "id" attribute.'
+                    label = node.getId()
 
                 return QtCore.QVariant(label)
             else:
@@ -463,7 +460,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             templatenode = node.templatenode
 
             # Only variables can have a value.
-            if templatenode.localName!='variable': return QtCore.QVariant()
+            if not node.isVariable(): return QtCore.QVariant()
             fieldtype = node.getValueType()
             
             # Get the current value of the variable
@@ -481,9 +478,9 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                     value = value.getName()
                 elif fieldtype=='select':
                     # Get label of currently selected option
-                    options = common.findDescendantNode(templatenode,['options'])
-                    if options==None: raise 'variable with "select" type lacks "options" element below'
-                    for ch in options.childNodes:
+                    optionsroot = common.findDescendantNode(templatenode,['options'])
+                    if optionsroot==None: raise Exception('Variable with "select" type lacks "options" element below.')
+                    for ch in optionsroot.childNodes:
                         if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
                             if value==int(ch.getAttribute('value')):
                                 # We found the currently selected option; its label will serve as displayed value.

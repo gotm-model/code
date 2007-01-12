@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.6 2007-01-11 15:56:28 jorn Exp $
+#$Id: common.py,v 1.7 2007-01-12 10:40:51 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -19,25 +19,36 @@ import matplotlib.pylab
 
 import scenarioformats
 
-# Current GOTM/namelist version used by the gotm.so/gotm.pyd engine
+# Current GOTM/namelist version used by (1) the gotm.so/gotm.pyd engine,
+# (2) the GUI, (3) saved GUI scenario files. Currently (3) differs from (2)
+# because (2) is still in development, while saved files must use a frozen
+# scenario version in order to be usable later too.
 gotmscenarioversion = 'gotm-3.3.2'
 guiscenarioversion = 'gotmgui-0.5.0'
 savedscenarioversion = 'gotm-3.3.2'
+
+# ------------------------------------------------------------------------------------------
+# Date-time parsing variables and functions
+# ------------------------------------------------------------------------------------------
 
 # datetime_displayformat: date format used to display datetime objects in the GUI.
 datetime_displayformat = '%Y-%m-%d %H:%M:%S'
 datetime_displayformat = '%x %X'
 
-# dateformat: date format used for storing datetime objects in XML.
-#   used in conversion of (XML) string to datetime, and vice versa.
-dateformat = '%Y-%m-%d %H:%M:%S'
-
 # parsedatetime: Convert string to Python datetime object, using specified format.
-# Counterpart of datetime.strftime.
+#   Counterpart of datetime.strftime.
 def parsedatetime(str,fmt):
     t1tmp = time.strptime(str,fmt) 
     return datetime.datetime(*t1tmp[0:6])
 
+# ------------------------------------------------------------------------------------------
+# Command line argument utility functions
+# ------------------------------------------------------------------------------------------
+
+# getNamedArgument: Get the value of a named command line argument, and removes both name
+#   and value from the global list of command line arguments. Returns None if the command
+#   line argument was not specified. If the script was called with 'script.py -d hello',
+#   getNamedArgument('-d') will return 'hello'.
 def getNamedArgument(name):
     try:
         iarg = sys.argv.index(name)
@@ -48,6 +59,13 @@ def getNamedArgument(name):
     del sys.argv[iarg]
     return val
 
+# ------------------------------------------------------------------------------------------
+# XML DOM utility functions
+# ------------------------------------------------------------------------------------------
+
+# findDescendantNode: Return the first child XML DOM node with the specified location
+#   (location = array of path components) below the specified XML DOM node (root).
+#   If create = True, the node will be created if it does not exist yet.
 def findDescendantNode(root,location,create=False):
     if root==None: raise Exception('findDescendantNode called on non-existent parent node (parent = None).')
     node = root
@@ -69,6 +87,8 @@ def findDescendantNode(root,location,create=False):
         node = foundchild
     return node
 
+# findDescendantNodes: Return a list of all child XML DOM nodes with the specified location
+#   (location = array of path components) below the specified XML DOM node (root).
 def findDescendantNodes(root,location):
     parentloc = location[:]
     name = parentloc.pop()
@@ -80,18 +100,18 @@ def findDescendantNodes(root,location):
                 children.append(ch)
     return children
 
-def removeDescendantNodes(root,location):
-    parentloc = location[:]
-    name = parentloc.pop()
-    parent = findDescendantNode(root,parentloc,create=False)
-    if parent==None: return
-    children = []
-    for ch in node.childNodes:
-        if ch.nodeType==ch.ELEMENT_NODE and ch.localName==name:
-            children.append(ch)
-    for ch in children:
-        parent.removeChild(ch)
-        ch.unlink()
+##def removeDescendantNodes(root,location):
+##    parentloc = location[:]
+##    name = parentloc.pop()
+##    parent = findDescendantNode(root,parentloc,create=False)
+##    if parent==None: return
+##    children = []
+##    for ch in node.childNodes:
+##        if ch.nodeType==ch.ELEMENT_NODE and ch.localName==name:
+##            children.append(ch)
+##    for ch in children:
+##        parent.removeChild(ch)
+##        ch.unlink()
 
 def addDescendantNode(root,location):
     parentloc = location[:]
@@ -104,28 +124,150 @@ def addDescendantNode(root,location):
     parent.appendChild(node)
     return node
 
-def readNamelist(string):
-    restopchar = re.compile('[\'"/]')
-    match = re.compile('\s*&\s*(\w+)\s*').match(string)
-    if match==None:
-        raise Exception('No namelist found; expected ampersand followed by namelist name.')
-    name = match.group(1)
-    istart = match.end(0)
-    ipos = istart
-    while True:
-        match = restopchar.search(string,pos=ipos)
-        if match==None:
-            raise Exception('End of namelist (slash) not found.')
-        ch = match.group(0)
-        ipos = match.end(0)
-        if ch=='/':
-            break
-        else:
-            inextquote = string.find(ch,ipos)
-            if inextquote==-1:
-                raise Exception('Opening quote %s was not matched by end quote.' % ch)
-            ipos = inextquote+1
-    return (name,string[istart:ipos],string[ipos:])
+# ------------------------------------------------------------------------------------------
+# Namelist parsing utilities
+# ------------------------------------------------------------------------------------------
+
+class NamelistParser:
+
+    class NamelistParseException(Exception):
+        def __init__(self,error,filename=None,namelistname=None,variablename=None):
+            Exception.__init__(self,error)
+            self.filename     = filename
+            self.namelistname = namelistname
+            self.variablename = variablename
+
+        def __str__(self):
+            return Exception.__str__(self)+'.\nFile: '+str(self.filename)+', namelist: '+str(self.namelistname)+', variable: '+str(self.variablename)
+
+    class NamelistFile:
+
+        class Namelist:
+
+            def __init__(self,name,data,requireordered,filepath=None):
+                self.name = name
+                self.data = data
+                self.requireordered = requireordered
+                self.filepath = filepath
+
+            def getVariableValue(self,varname):
+                if self.requireordered:
+                    varmatch = re.match('\s*'+varname+'\s*=\s*(.*?)[ \t]*(?:$|(?:[,\n]\s*))',self.data,re.IGNORECASE)
+                else:
+                    varmatch = re.search('(?<!\w)'+varname+'\s*=\s*(.*?)[ \t]*(?:$|(?:[,\n]))',self.data,re.IGNORECASE)
+                if varmatch==None:
+                    raise NamelistParser.NamelistParseException('Cannot find variable "%s". Current namelist data: "%s"' % (varname,self.data),self.filepath,self.name,varname)
+                vardata = varmatch.group(1)
+                if self.requireordered:
+                    self.data = self.data[len(varmatch.group(0)):]
+                return vardata
+        
+        # Commonly used regular expressions, for:
+        #   - locating the start of comments, or opening quotes.
+        #   - locating the start of namelist (ampersand followed by list name).
+        #   - locating the end of a namelist, i.e. a slash, or opening quotes.
+        commentchar_re = re.compile('[!"\']')
+        namelistname_re = re.compile('\s*&\s*(\w+)\s*')
+        stopchar_re = re.compile('[/"\']')
+
+        def __init__(self,path,requireordered,subs=[]):
+            # Attempt to open namelist file and read all data
+            try:
+                nmlfile = open(path,'rU')
+            except Exception,e:
+                raise NamelistParser.NamelistParseException('Cannot open namelist file. Error: %s' % (str(e),),path)
+            self.data = ''
+            line = nmlfile.readline()
+            iline = 1
+            while line!='':
+
+                # Strip comments, i.e. on every line, remove everything after (and including) the first exclamation
+                # mark; ignore text between single and double quotes.
+                ipos = 0
+                match = self.commentchar_re.search(line,pos=ipos)
+                while match!=None:
+                    ch = match.group(0)
+                    if ch=='\'' or ch=='"':
+                        ipos = match.end(0)
+                        inextquote = self.data.find(ch,ipos)
+                        if inextquote==-1:
+                            raise NamelistParser.NamelistParseException('Line %i: opening quote %s was not matched by end quote.' % (iline,ch),path)
+                        ipos = inextquote+1
+                    else:
+                        # Found start of comment; only keep everything preceding the start position.
+                        line = line[0:match.start(0)]
+                        break
+                    match = self.commentchar_re.search(line,pos=ipos)
+
+                self.data += line
+                line = nmlfile.readline()
+                iline += 1
+            nmlfile.close()
+
+            # Make substitutions (if any).
+            for (old,new) in subs:
+                self.data = self.data.replace(old,new)
+
+            self.requireordered = requireordered
+            self.path = path
+
+        def parseNextNamelist(self,expectedlist=None):
+            match = self.namelistname_re.match(self.data)
+            if match==None:
+                raise NamelistParser.NamelistParseException('No namelist found; expected ampersand followed by namelist name.',self.path)
+            name = match.group(1)
+            if expectedlist!=None and name!=expectedlist:
+                raise NamelistParser.NamelistParseException('Expected namelist "%s", but found "%s".' % (expectedlist,name),nmlfilepath,expectedlist)
+            istart = match.end(0)
+            ipos = istart
+            while True:
+                match = self.stopchar_re.search(self.data,pos=ipos)
+                if match==None:
+                    raise NamelistParser.NamelistParseException('End of namelist (slash) not found.',self.path,name)
+                ch = match.group(0)
+                ipos = match.end(0)
+                if ch=='/':
+                    break
+                else:
+                    inextquote = self.data.find(ch,ipos)
+                    if inextquote==-1:
+                        raise NamelistParser.NamelistParseException('Opening quote %s was not matched by end quote.' % (ch,),self.path,name)
+                    ipos = inextquote+1
+            namelistdata = self.data[istart:ipos]
+            self.data = self.data[ipos:]
+            return self.Namelist(name,namelistdata,self.requireordered,filepath=self.path)
+
+    # Commonly used regular expression (for parsing substitions in the .values file)
+    subs_re = re.compile('\s*s/(\w+)/(.+)/')
+
+    def __init__(self,requireordered):
+        self.subs = []
+        self.requireordered = requireordered
+
+    def loadSubstitutions(self,path):
+        self.subs = []
+        try:
+            valuesfile = open(path,'rU')
+        except Exception,e:
+            raise NamelistParser.NamelistParseException('Cannot open .values file "%s". Error: %s' % (path,str(e)))
+        line = valuesfile.readline()
+        while line!='':
+            m = self.subs_re.match(line)
+            if m!=None:
+                self.subs.append((m.group(1),m.group(2)))
+            line = valuesfile.readline()
+        valuesfile.close()
+
+    def parseFile(self,path):
+        return self.NamelistFile(path,self.requireordered,subs=self.subs)
+
+# ------------------------------------------------------------------------------------------
+# XMLPropertyStore
+# ------------------------------------------------------------------------------------------
+
+# dateformat: date format used for storing datetime objects in XML.
+#   Used in conversion of (XML) string to datetime, and vice versa.
+dateformat = '%Y-%m-%d %H:%M:%S'
 
 # XMLPropertyStore: class for storing 'properties' (i.e name,value pairs) in
 #   hierarchical structure, using in-memory XML DOM. All values are stored as
@@ -147,6 +289,11 @@ class XMLPropertyStore:
         self.xmlroot = xmlroot
         self.xmlnamespace = self.xmldocument.namespaceURI
 
+        # Links data type names (strings) to their respective Python classes.
+        #   This is particularly relevant for the later TypedXMLPropertyStore, which
+        #   uses these data type names in its template XML files. Note that this is extensible:
+        #   one can simple add other data types to the self.filetypes dictionary; just make sure
+        #   their classes have an associated __unicode__ function.
         self.filetypes = {'string'  :unicode,
                           'int'     :int,
                           'float'   :float,
@@ -330,6 +477,10 @@ class DataFile:
         if not self.isValid():
             raise Exception('Cannot add "'+filename+'" to zip archive because the source file "'+str(self.path)+'" does not exist.')
         zfile.write(self.path,filename)
+
+# ------------------------------------------------------------------------------------------
+# TypedXMLPropertyStore
+# ------------------------------------------------------------------------------------------
             
 # TypedXMLPropertyStore: encapsulates the above XMLPropertyStore.
 #   Adds the use of a second XML document (template) that describes the data types
@@ -524,9 +675,9 @@ class TypedXMLPropertyStore:
             if templatenode.hasAttribute('description'):
                 return templatenode.getAttribute('description')
             elif templatenode.hasAttribute('label'):
-                return templatenode.getAttribute('label')
+                return templatenode.getAttribute('label').capitalize()
             elif idallowed:
-                return self.getId()
+                return self.getId().capitalize()
             return None
 
         def getChildCount(self,showhidden=False):
@@ -1028,7 +1179,7 @@ class Scenario(TypedXMLPropertyStore):
             scenario = Scenario(templatename=sourceid)
             try:
                 scenario.loadFromNamelists(path,requireordered = True,protodir=protodir)
-            except Scenario.NamelistParseException,e:
+            except NamelistParser.NamelistParseException,e:
                 failures += 'Path "'+path+'" does not match template "'+sourceid+'".\nReason: '+str(e)+'\n'
                 scenario.unlink()
                 scenario = None
@@ -1056,16 +1207,6 @@ class Scenario(TypedXMLPropertyStore):
 
         return target
 
-    class NamelistParseException(Exception):
-        def __init__(self,error,filename=None,namelistname=None,variablename=None):
-            Exception.__init__(self,error)
-            self.filename     = filename
-            self.namelistname = namelistname
-            self.variablename = variablename
-
-        def __str__(self):
-            return Exception.__str__(self)+'.\nFile: '+str(self.filename)+', namelist: '+str(self.namelistname)+', variable: '+str(self.variablename)
-
     def loadFromNamelists(self, srcpath, requireordered = False, protodir = None):
         print 'Importing scenario from namelist files...'
 
@@ -1074,12 +1215,13 @@ class Scenario(TypedXMLPropertyStore):
 
         nmltempdir = None
         if not os.path.isdir(srcpath):
+            # The source path does not point to a directory; it may be a compressed .tar.gz file.
             if os.path.isfile(srcpath):
+                # The source path points to a file; try to open it as .tar.gz file.
                 try:
                     tf = tarfile.open(srcpath,'r')
                 except Exception,e:
-                    print e
-                    raise Exception('Path "'+srcpath+'" is not a directory, and could also not be opened as tar/gz archive. '+str(e))
+                    raise Exception('Path "%s" is not a directory, and could also not be opened as tar/gz archive. %s' % (srcpath,str(e)))
                 nmltempdir = tempfile.mkdtemp('','gotm-')
                 print 'Created temporary namelist directory "'+nmltempdir+'".'
                 for tarinfo in tf:
@@ -1088,127 +1230,100 @@ class Scenario(TypedXMLPropertyStore):
                 srcpath = nmltempdir
                 extracteditems = os.listdir(srcpath)
                 if len(extracteditems)==1:
+                    # Only one item in the folder with extracted files. If this is a directory, then
+                    # that directory will contain the input files.
                     itempath = os.path.join(srcpath,extracteditems[0])
                     if os.path.isdir(itempath):
                         srcpath = itempath
             else:
-                raise Exception('Path "'+srcpath+'" is not an existing directory or file.')
+                raise Exception('Path "%s" does not point to an existing directory or file.' % srcpath)
+
+        # Create the namelist parser.
+        parser = NamelistParser(requireordered)
 
         if protodir!=None:
-            valuesubs = []
-            regexpre = re.compile('s/(\w+)/(.+)/')
-            valuespath = os.path.join(srcpath,os.path.basename(srcpath)+'.values')
-            try:
-                valuesfile = open(valuespath,'rU')
-            except Exception,e:
-                raise self.NamelistParseException('Cannot open .values file. Error: '+str(e))
-            line = valuesfile.readline()
-            while line!='':
-                m = regexpre.match(line)
-                if m!=None:
-                    valuesubs.append((re.compile(m.group(1)),m.group(2)))
-                line = valuesfile.readline()
-            valuesfile.close()
+            # Namelist are specified as .proto files plus a .values file. Load the substitutions specified
+            # in the .values file.
+            valuesname = os.path.basename(srcpath)+'.values'
+            valuespath = os.path.join(srcpath,valuesname)
+            parser.loadSubstitutions(valuespath)
+
+        # Commonly used regular expressions (for parsing strings and datetimes).
+        strre = re.compile('^([\'"])(.*?)\\1$')
+        datetimere = re.compile('(\d\d\d\d)[/\-](\d\d)[/\-](\d\d) (\d\d):(\d\d):(\d\d)')
 
         try:
             for mainchild in self.root.getChildren(showhidden=True):
-                if not mainchild.isFolder():
-                    raise Exception('Found non-folder node with id '+mainchild.getId()+' below root, where only folders are expected.')
-
                 # Get name (excl. extension) for the namelist file, and its full path.
                 nmlfilename = mainchild.getId()
 
+                if not mainchild.isFolder():
+                    raise Exception('Found non-folder node with id %s below root, where only folders are expected.' % nmlfilename)
+
                 if protodir==None:
+                    # Normal namelist file
                     nmlfilepath = os.path.join(srcpath, nmlfilename+'.inp')
                 else:
+                    # Prototype namelist in which values will be substituted.
                     nmlfilepath = os.path.join(protodir, nmlfilename+'.proto')
 
-                # Attempt to open namelist file and read all data
-                try:
-                    nmlfile = open(nmlfilepath,'rU')
-                except Exception,e:
-                    if mainchild.isHidden(): continue
-                    raise self.NamelistParseException('Cannot open namelist file. Error: '+str(e),nmlfilepath)
-                nmldata = nmlfile.read()
-                nmlfile.close()
+                # Parse the namelist file.
+                nmlfile = parser.parseFile(nmlfilepath)
 
-                if protodir!=None:
-                    for (exp,repl) in valuesubs:
-                        nmldata = exp.sub(repl,nmldata)
-
-                # Strip comments, i.e. on every line, remove everything after (and including) the first exclamation mark
-                commentre = re.compile('![^\n]*')
-                nmldata = commentre.sub('',nmldata)
-                
-                listre = re.compile('\s*&\s*(\w+)\s*(.*?)\s*/\s*',re.DOTALL)
-                strre = re.compile('^[\'"](.*?)[\'"]$')
-                datetimere = re.compile('(\d\d\d\d)[/\-](\d\d)[/\-](\d\d) (\d\d):(\d\d):(\d\d)')
-
+                # Loop over all nodes below the root (each node represents a namelist file)
                 for filechild in mainchild.getChildren(showhidden=True):
-                    if not filechild.isFolder():
-                        raise 'Found non-folder node with id '+filechild.getId()+' below branch '+nmlfilename+', where only folders are expected.'
-
+                    # Get name of the expected namelist.
                     listname = filechild.getId()
-                    #match = listre.match(nmldata)
-                    #if match==None:
-                    #    raise self.NamelistParseException('Cannot find another namelist, while expecting namelist '+listname+'.',nmlfilepath,listname)
-                    (foundlistname,listdata,nmldata) = readNamelist(nmldata)
-                    #foundlistname = match.group(1)
-                    #listdata = match.group(2)
-                    #nmldata = nmldata[len(match.group(0)):]
-                    if foundlistname!=listname:
-                        raise self.NamelistParseException('Expected namelist '+listname+', but found '+foundlistname+'.',nmlfilepath,listname)
+
+                    if not filechild.isFolder():
+                        raise Exception('Found non-folder node with id %s below branch %s, where only folders are expected.' % (listname,nmlfilename))
+
+                    # Parse the next namelist.
+                    namelist = nmlfile.parseNextNamelist(expectedlist=listname)
                         
                     for listchild in filechild.getChildren(showhidden=True):
-                        if not listchild.isVariable():
-                            raise 'Found non-variable node with id '+listchild.getId()+' below branch '+nmlfilename+'/'+listname+', where only variables are expected.'
-
                         varname = listchild.getId()
-                        vartype = listchild.getValueType()
 
-                        if requireordered:
-                            varmatch = re.match('\s*'+varname+'\s*=\s*(.*?)[ \t]*(?:$|(?:[,\n]\s*))',listdata,re.IGNORECASE)
-                        else:
-                            varmatch = re.search('(?<!\w)'+varname+'\s*=\s*(.*?)[ \t]*(?:$|(?:[,\n]))',listdata,re.IGNORECASE)
-                        if varmatch==None:
-                            raise self.NamelistParseException('Cannot find variable ' + varname + '. Current namelist data: "'+listdata+'"',nmlfilepath,listname,varname)
-                        vardata = varmatch.group(1)
-                        if requireordered: listdata = listdata[len(varmatch.group(0)):]
+                        if not listchild.isVariable():
+                            raise Exception('Found non-variable node with id %s below branch %s/%s, where only variables are expected.' % (varname,nmlfilename,listname))
+
+                        vardata = namelist.getVariableValue(varname)
+                        vartype = listchild.getValueType()
 
                         if vartype=='string' or vartype=='datetime' or vartype=='file':
                             strmatch = strre.match(vardata)
                             if strmatch==None:
-                                raise self.NamelistParseException('Variable is not a string. Data: "'+vardata+'"',nmlfilepath,listname,varname)
-                            val = strmatch.group(1)
+                                raise NamelistParser.NamelistParseException('Variable is not a string. Data: %s' % vardata,nmlfilepath,listname,varname)
+                            val = strmatch.group(2)
                         elif vartype=='int':
                             try:
                                 val = int(vardata)
                             except:
-                                raise self.NamelistParseException('Variable is not an integer. Data: "'+vardata+'"',nmlfilepath,listname,varname)
+                                raise NamelistParser.NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,nmlfilepath,listname,varname)
                         elif vartype=='float':
                             try:
                                 val = float(vardata)
                             except:
-                                raise self.NamelistParseException('Variable is not a floating point value. Data: "'+vardata+'"',nmlfilepath,listname,varname)
+                                raise NamelistParser.NamelistParseException('Variable is not a floating point value. Data: "%s"' % vardata,nmlfilepath,listname,varname)
                         elif vartype=='bool':
                             if   vardata[0].lower()=='f' or vardata[0:2].lower()=='.f':
                                 val = False
                             elif vardata[0].lower()=='t' or vardata[0:2].lower()=='.t':
                                 val = True
                             else:
-                                raise self.NamelistParseException('Variable is not a boolean. Data: "'+vardata+'"',nmlfilepath,listname,varname)
+                                raise NamelistParser.NamelistParseException('Variable is not a boolean. Data: "%s"' % vardata,nmlfilepath,listname,varname)
                         elif vartype=='select':
                             try:
                                 val = int(vardata)
                             except:
-                                raise self.NamelistParseException('Variable is not an integer. Data: "'+vardata+'"',nmlfilepath,listname,varname)
+                                raise NamelistParser.NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,nmlfilepath,listname,varname)
                         else:
                             raise 'Unknown variable type '+str(vartype)+' in scenario template.'
                         
                         if vartype=='datetime':
                             datetimematch = datetimere.match(val)
                             if datetimematch==None:
-                                raise self.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',nmlfilepath,listname,varname)
+                                raise NamelistParser.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',nmlfilepath,listname,varname)
                             refvals = map(lambda(i): int(i),datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
                             val = datetime.datetime(*refvals)
                         elif vartype=='file':
