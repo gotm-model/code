@@ -1,5 +1,5 @@
 %
-%$Id: cases.tex,v 1.9 2007-01-08 21:35:39 hb Exp $
+%$Id: cases.tex,v 1.10 2007-01-18 07:38:22 hb Exp $
 %
 
 \section{GOTM scenarios \label{sec:cases}}
@@ -570,7 +570,7 @@ MAST-III program.
 The observations in the Northern North Sea were carried out in September 
 and October 1998.
 Here, a period of 20 days from October 7 - 27, 1998 is simulated.
-All forcing and validation data have been carefully processes from
+All forcing and validation data have been carefully processed from
 observations during this PROVESS-NNS experiment. 
 
 Two different dissipation rate data sets are included:
@@ -583,9 +583,11 @@ of Ocean Sciences, \\ & University of Bangor, Wales \\
 \\
 
 These files can be read in into GOTM through the {\tt eobs} namelist in
-{\tt obs.nml}. It is the file specified at last, which is actually read in.  
-The dissipation rate has only been observed at short intervals, periods
-without observations are set to minimum values in the files. 
+{\tt obs.nml}.  The dissipation rate has only been observed at 
+short intervals, periods without observations are set to minimum 
+values in the files. These dissipation rate observations are read in
+into GOTM in order to allow for proper interpolation to the temporal and spatial
+output steps, and they are not used for any type of nudging.
 
 The data files are prepared such that the maximum simulation
 interval can be extended to September 7 at 10.00 h -- 
