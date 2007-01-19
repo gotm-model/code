@@ -1,18 +1,20 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.10 2007-01-19 09:40:25 jorn Exp $
+#$Id: common.py,v 1.11 2007-01-19 11:33:02 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
 import zipfile, tarfile, tempfile, shutil
 
 # Import NetCDF file format support
-import pycdf
+#import pycdf
+from pynetcdf import NetCDFFile
 
 # Import all MatPlotLib libraries
 import matplotlib
 matplotlib.use('Qt4Agg')
-matplotlib.rcParams['numerix'] = 'numeric'
+#matplotlib.rcParams['numerix'] = 'numeric'
+matplotlib.rcParams['numerix'] = 'numpy'
 import matplotlib.numerix,matplotlib.numerix.ma
 import matplotlib.dates
 import matplotlib.pylab
@@ -1678,7 +1680,7 @@ def interp1(x,y,X):
         raise Exception('New coordinates must be supplied as 1D array.')
     newshape = [X.shape[0]]
     for i in y.shape[1:]: newshape.append(i)
-    Y = matplotlib.numerix.zeros(newshape,y.typecode())
+    Y = matplotlib.numerix.zeros(newshape,matplotlib.numerix.typecode(y))
     icurx = 0
     for i in range(X.shape[0]):
         while icurx<x.shape[0] and x[icurx]<X[i]: icurx+=1
@@ -1870,16 +1872,29 @@ class Result(PlotVariableStore):
 
         def getLongName(self):
             nc = self.result.getcdf()
-            return nc.var(self.varname).long_name
+            #pycdf return nc.var(self.varname).long_name
+            return nc.variables[self.varname].long_name
 
         def getUnit(self):
             nc = self.result.getcdf()
-            return nc.var(self.varname).units
+            #pycdf return nc.var(self.varname).units
+            return nc.variables[self.varname].units
 
         def getDimensions(self):
           nc = self.result.getcdf()
-          vars = nc.variables()
-          dimnames = vars[self.varname][0]
+          #pycdf vars = nc.variables()
+          #dimnames = vars[self.varname][0]
+          #dimcount = len(dimnames)
+          #if   dimcount==3:
+          #    if dimnames==('time','lat','lon'):
+          #        return ('time',)
+          #elif dimcount==4:
+          #    if (dimnames==('time','z','lat','lon')) or (dimnames==('time','z1','lat','lon')):
+          #        return ('time','z')
+          #else:
+          #  raise Exception('This variable has '+str(dimcount)+' dimensions; I do not know how to handle such variables.')
+
+          dimnames = nc.variables[self.varname].dimensions
           dimcount = len(dimnames)
           if   dimcount==3:
               if dimnames==('time','lat','lon'):
@@ -1887,19 +1902,22 @@ class Result(PlotVariableStore):
           elif dimcount==4:
               if (dimnames==('time','z','lat','lon')) or (dimnames==('time','z1','lat','lon')):
                   return ('time','z')
-          else:
-            raise Exception('This variable has '+str(dimcount)+' dimensions; I do not know how to handle such variables.')
+          raise Exception('This variable has dimensions %s; I do not know how to handle such variables.' % str(dimnames))
 
         def getValues(self,bounds,staggered=False):
           nc = self.result.getcdf()
             
           # Get the variable and its dimensions from CDF.
-          try:
-              v = nc.var(self.varname)
-              dims = v.dimensions()
-          except pycdf.CDFError, msg:
-              print msg
-              return False
+
+          #pycdf
+          #try:
+          #    v = nc.var(self.varname)
+          #    dims = v.dimensions()
+          #except pycdf.CDFError, msg:
+          #    print msg
+          #    return False
+          v = nc.variables[self.varname]
+          dims = v.dimensions
 
           # Get time coordinates and time bounds.
           (t,t_stag) = self.result.getTime()
@@ -1912,34 +1930,32 @@ class Result(PlotVariableStore):
           dimcount = len(dims)
           if dimcount==4:
               # Four-dimensional variable: longitude, latitude, depth, time
+              (z,z1,z_stag,z1_stag) = self.result.getDepth()
+              depthbounds = (0,z.shape[1])
+              if dims[1]=='z':
+                  if staggered:
+                      z_cur = z_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
+                  else:
+                      z_cur = z[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1]
+              elif dims[1]=='z1':
+                  if staggered:
+                      z_cur = z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
+                  else:
+                      z_cur = z1[timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2]
               try:
-                  (z,z1,z_stag,z1_stag) = self.result.getDepth()
-                  depthbounds = (0,z.shape[1])
-                  if dims[1]=='z':
-                      if staggered:
-                          z_cur = z_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
-                      else:
-                          z_cur = z[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1]
-                  elif dims[1]=='z1':
-                      if staggered:
-                          z_cur = z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
-                      else:
-                          z_cur = z1[timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2]
                   dat = v[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1,0,0]
-              except pycdf.CDFError, msg:
-                  print msg
-                  return False
+              except Exception, e:
+                  raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
               return [t_eff,z_cur,dat]
           elif dimcount==3:
               # Three-dimensional variable: longitude, latitude, time
               try:
                   dat = v[timebounds[0]:timebounds[1]+1,0,0]
-              except pycdf.CDFError, msg:
-                  print msg
-                  return False
+              except Exception, e:
+                  raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
               return [t_eff,dat]
           else:
-            raise Exception('This variable has '+str(len(dims))+' dimensions; I do not know how to handle such variables.')
+            raise Exception('This variable has dimensions %s; I do not know how to handle such variables.' % str(dimensions))
 
     def __init__(self):
         self.scenario = None
@@ -1988,7 +2004,7 @@ class Result(PlotVariableStore):
 
     def load(self,path):
         # Basic check: does the specified file exist?
-        if not os.path.exists(path): raise Exception('File "'+path+'" does not exist.')
+        if not os.path.exists(path): raise Exception('File "%s" does not exist.' % path)
 
         # Open the archive
         zfile = zipfile.ZipFile(path,'r')
@@ -1996,9 +2012,9 @@ class Result(PlotVariableStore):
         # Get a list of files in the archive, and check whether it contains a scenario and a result.
         files = zfile.namelist()
         if files.count('scenario.gotmscenario')==0:
-            raise Exception('The archive "'+path+'" does not contain "scenario.gotmscenario"; it cannot be a GOTM result.')
+            raise Exception('The archive "%s" does not contain "scenario.gotmscenario"; it cannot be a GOTM result.' % path)
         if files.count('result.nc')==0:
-            raise Exception('The archive "'+path+'" does not contain "result.nc"; it cannot be a GOTM result.')
+            raise Exception('The archive "%s" does not contain "result.nc"; it cannot be a GOTM result.' % path)
 
         # Create a temporary directory to which we can unpack the archive.
         tempdir = self.getTempDir()
@@ -2062,9 +2078,11 @@ class Result(PlotVariableStore):
         if self.datafile==None:
             raise Exception('The result object has not yet been attached to an actual result.')
         try:
-          self.nc = pycdf.CDF(str(self.datafile))
-        except pycdf.CDFError, e:
-            raise Exception('An error occured while opening the NetCDF file "'+self.datafile+'": '+str(e))
+          #pycdf self.nc = pycdf.CDF(str(self.datafile))
+          self.nc = NetCDFFile(self.datafile)
+        #pycdf except pycdf.CDFError, e:
+        except Exception, e:
+            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (self.datafile,str(e)))
         return self.nc
 
     def getVariableNames(self,plotableonly=True):
@@ -2072,12 +2090,14 @@ class Result(PlotVariableStore):
 
         # Get names of NetCDF variables
         try:
-          vars = nc.variables()
+          #pycdf vars = nc.variables()
+          vars = nc.variables
           if plotableonly:
               # Only take variables with 3 or 4 dimensions
               varNames = []
               for v in vars.keys():
-                  dimnames = vars[v][0]
+                  #pycdf dimnames = vars[v][0]
+                  dimnames = vars[v].dimensions
                   dimcount = len(dimnames)
                   if   dimcount==3:
                       if dimnames==('time','lat','lon'):
@@ -2089,8 +2109,9 @@ class Result(PlotVariableStore):
               # Take all variables
               varNames = vars.keys()
 
-        except pycdf.CDFError, msg:
-            raise Exception('CDFError: '+str(msg))
+        #pycdf except pycdf.CDFError, msg:
+        except Exception, e:
+            raise Exception('CDFError: '+str(e))
 
         return varNames
 
@@ -2099,25 +2120,28 @@ class Result(PlotVariableStore):
       nc = self.getcdf()
       vardict = {}
       for varname in varnames:
-          varname_str = str(varname)
-          vardict[varname] = nc.var(varname_str).long_name
+          #pycdf varname_str = str(varname)
+          #pycdf vardict[varname] = nc.var(varname_str).long_name
+          vardict[varname] = nc.variables[varname].long_name
       return vardict
 
     def getVariable(self,varname,check=True):
         varname = str(varname)
         if check:
             nc = self.getcdf()
-            vars = nc.variables()
+            #pycdf vars = nc.variables()
+            vars = nc.variables
             if not (varname in vars): return None
         return self.ResultVariable(self,varname)
 
     def getTimeRange(self):
       nc = self.getcdf()
-      try:
-          secs = nc.var('time').get()
-      except pycdf.CDFError, msg:
-          print msg
-          return
+      #pycdf try:
+      #    secs = nc.var('time').get()
+      #except pycdf.CDFError, msg:
+      #    print msg
+      #    return
+      secs = nc.variables['time'][:]
       dateref = self.getReferenceDate()
       t1 = dateref + datetime.timedelta(secs[0]/3600/24)
       t2 = dateref + datetime.timedelta(secs[-1]/3600/24)
@@ -2125,12 +2149,14 @@ class Result(PlotVariableStore):
 
     def getDepthRange(self):
       nc = self.getcdf()
-      try:
-          z  = nc.var('z').get()
-          z1 = nc.var('z1').get()
-      except pycdf.CDFError, msg:
-          print msg
-          return
+      #pycdf try:
+      #    z  = nc.var('z').get()
+      #    z1 = nc.var('z1').get()
+      #except pycdf.CDFError, msg:
+      #    print msg
+      #    return
+      z = nc.variables['z'][:]
+      z1 = nc.variables['z1'][:]
       return (min(z[0],z1[0]),max(z[-1],z1[-1]))
 
     def getTime(self):
@@ -2138,11 +2164,8 @@ class Result(PlotVariableStore):
             nc = self.getcdf()
 
             # Get time coordinate (in seconds since reference date)
-            try:
-                secs = nc.var('time').get()
-            except pycdf.CDFError, msg:
-                print msg
-                return None
+            #pycdf secs = nc.var('time').get()
+            secs = nc.variables['time'][:]
             
             # Convert time-in-seconds to Python datetime objects.
             dateref = self.getReferenceDate()
@@ -2167,15 +2190,12 @@ class Result(PlotVariableStore):
             nc = self.getcdf()
 
             # Get layers heights
-            try:
-                h = nc.var('h')[:,:,0,0]
-            except pycdf.CDFError, msg:
-                print msg
-                return None
+            #pycdf h = nc.var('h')[:,:,0,0]
+            h = nc.variables['h'][:,:,0,0]
             
             # Get depths of interfaces
             z1 = matplotlib.numerix.cumsum(h[:,:],1)
-            z1 = matplotlib.numerix.concatenate((matplotlib.numerix.zeros((z1.shape[0],1),z1.typecode()),z1),1)
+            z1 = matplotlib.numerix.concatenate((matplotlib.numerix.zeros((z1.shape[0],1),matplotlib.numerix.typecode(z1)),z1),1)
             bottomdepth = z1[0,-1]
             z1 = z1[:,:]-bottomdepth
 
@@ -2197,25 +2217,11 @@ class Result(PlotVariableStore):
 
         return (self.z,self.z1,self.z_stag,self.z1_stag)
 
-    def getplottypes(self,variable):
-      nc = self.getcdf()
-      variable = str(variable)
-      try:
-          v = nc.var(variable)
-          dims = v.dimensions()
-      except pycdf.CDFError, msg:
-          print msg
-          return
-      if len(dims)==4:
-          return ('rectangular grid','filled contours')
-      elif len(dims)==3:
-          return ('default',)
-      return
-
     def getReferenceDate(self):
       # Retrieve reference date/time.
       nc = self.getcdf()
-      timeunit = nc.var('time').attr('units').get()
+      #pycdf timeunit = nc.var('time').units
+      timeunit = nc.variables['time'].units
       datematch = re.compile('(\d\d\d\d)[-\/](\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)').search(timeunit, 1)
       if datematch==None:
           print 'Unable to parse "units" attribute of "time" variable in NetCDF file!'

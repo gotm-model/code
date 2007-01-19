@@ -1,4 +1,4 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <root>
 	<folder name="Turbulent quantities">
 		<variable id="tke"/>
@@ -28,6 +28,7 @@
 		<variable id="temp_obs"/>
 		<variable id="salt"/>
 		<variable id="salt_obs"/>
+		<variable id="o2_obs"/>
 	</folder>
 	<folder name="Velocities">
 		<variable id="u"/>

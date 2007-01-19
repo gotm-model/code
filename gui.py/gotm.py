@@ -5,9 +5,6 @@ from PyQt4 import QtGui,QtCore
 import common,commonqt
 import sys,xml
 
-# For version only:
-import matplotlib,pycdf,numpy,Numeric
-
 import scenariobuilder,simulator,visualizer
 
 class PageIntroduction(commonqt.WizardPage):
@@ -17,19 +14,24 @@ class PageIntroduction(commonqt.WizardPage):
 
         layout = QtGui.QVBoxLayout()
 
-        self.label = QtGui.QLabel('Placeholder for introduction to GOTM (and a pretty picture or so).',self)
+        self.label = QtGui.QLabel('Placeholder for introduction to GOTM.',self)
         layout.addWidget(self.label)
 
         layout.addStretch()
+
+        # For version only:
+        import matplotlib,numpy,gotm,pynetcdf
+        #import Numeric,pycdf
 
         versions = []
         versions.append(('Python','%i.%i.%i %s %i' % sys.version_info))
         versions.append(('Qt4',QtCore.qVersion()))
         versions.append(('PyQt4',QtCore.PYQT_VERSION_STR))
-        versions.append(('Numeric',Numeric.__version__))
         versions.append(('numpy',numpy.__version__))
         versions.append(('matplotlib',matplotlib.__version__))
-        versions.append(('pycdf',pycdf.pycdfVersion()))
+        #versions.append(('Numeric',Numeric.__version__))
+        #versions.append(('pycdf',pycdf.pycdfVersion()))
+        versions.append(('gotm',gotm.gui_util.getversion().rstrip()))
 
         strversions = ''
         for v in versions:
