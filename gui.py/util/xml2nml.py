@@ -13,7 +13,7 @@ def main():
     copydata = True
     comments = True
 
-    # Read optional command line argument.
+    # Read optional command line arguments.
     if '-nd' in sys.argv:
         sys.argv.remove('-nd')
         copydata = False

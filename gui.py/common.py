@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.9 2007-01-12 14:56:10 jorn Exp $
+#$Id: common.py,v 1.10 2007-01-19 09:40:25 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -19,11 +19,9 @@ import matplotlib.pylab
 
 import scenarioformats
 
-# Current GOTM/namelist version used by (1) the gotm.so/gotm.pyd engine,
-# (2) the GUI, (3) saved GUI scenario files. Currently (3) differs from (2)
-# because (2) is still in development, while saved files must use a frozen
+# Current GOTM/namelist version used by (1) the GUI, (2) saved GUI scenario files.
+# Currently (2) differs from (1) because (1) is still in development, while saved files must use a frozen
 # scenario version in order to be usable later too.
-gotmscenarioversion = 'gotm-4.0.0'
 guiscenarioversion = 'gotmgui-0.5.0'
 savedscenarioversion = 'gotm-4.0.0'
 
@@ -1366,7 +1364,6 @@ class Scenario(TypedXMLPropertyStore):
 
             nmlfilename = mainchild.getId()
             nmlfilepath = os.path.join(targetpath, nmlfilename+self.namelistextension)
-            print nmlfilepath
             nmlfile = open(nmlfilepath,'w')
 
             for filechild in mainchild.getChildren(showhidden=True):
@@ -1406,10 +1403,10 @@ class Scenario(TypedXMLPropertyStore):
                     if not listchild.isVariable():
                         raise Exception('Found a folder ('+str(listchild.getId())+') below branch '+str(nmlfilename)+'/'+str(listname)+', where only variables are expected.')
                     varname = listchild.getId()
-                    vartype = listchild.getValueType()
                     varval = listchild.getValue()
                     if varval==None:
                         raise Exception('Value for variable "'+varname+'" in namelist "'+listname+'" not set.')
+                    vartype = listchild.getValueType()
                     if vartype=='string':
                         varval = '\''+varval+'\''
                     elif vartype=='file':
@@ -1429,7 +1426,7 @@ class Scenario(TypedXMLPropertyStore):
                     elif vartype=='datetime':
                         varval = '\''+varval.strftime('%Y-%m-%d %H:%M:%S')+'\''
                     else:
-                        raise Exception('Unknown variable type '+str(vartype)+' in scenario template.')
+                        raise Exception('Unknown variable type %s in scenario template.' % str(vartype))
                     nmlfile.write('   '+varname+' = '+varval+',\n')
                 nmlfile.write('/\n\n')
 

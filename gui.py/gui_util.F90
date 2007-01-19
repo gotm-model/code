@@ -1,4 +1,4 @@
-!$Id: gui_util.F90,v 1.1 2006-11-24 15:52:14 kbk Exp $
+!$Id: gui_util.F90,v 1.2 2007-01-19 09:40:25 jorn Exp $
 
 #include"cppdefs.h"
 
@@ -10,9 +10,6 @@ module gui_util
 contains
 
     subroutine redirectoutput(outpath,errpath)
-#ifdef WINDOWS
-        !DEC$ ATTRIBUTES DEFAULT,ALIAS:'_GUI_UTIL_mp_redirectoutput',NOMIXED_STR_LEN_ARG :: redirectoutput
-#endif
         implicit none
         
         character(len=255), intent(in) :: outpath
@@ -33,5 +30,13 @@ contains
             redirected = .false.
         end if
     end subroutine resetoutput
+    
+    subroutine getversion(versionstring)
+        implicit none
+        
+        character(len=255), intent(out) :: versionstring
+        
+        versionstring = RELEASE
+    end subroutine getversion
     
 end module gui_util

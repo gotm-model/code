@@ -217,23 +217,51 @@ addConvertor('gotm-4.0.0','gotm-3.3.2',Convertor_gotm_4_0_0_to_gotm_3_3_2)
 class Convertor_gotm_4_0_0_to_gotmgui_0_5_0(Convertor):
     def convert(self,source,target):
         Convertor.convert(self,source,target)
+        target.setProperty(['title'],source.getProperty(['gotmrun','model_setup','title']))
+        target.setProperty(['timeintegration','dt'   ],source.getProperty(['gotmrun','model_setup','dt']))
+        target.setProperty(['timeintegration','cnpar'],source.getProperty(['gotmrun','model_setup','cnpar']))
         target.root.getLocation(['station']).copyFrom(source.root.getLocation(['gotmrun','station']))
         target.root.getLocation(['time'   ]).copyFrom(source.root.getLocation(['gotmrun','time'   ]))
+        target.root.getLocation(['output' ]).copyFrom(source.root.getLocation(['gotmrun','output' ]))
         target.setProperty(['grid','nlev'       ],source.getProperty(['gotmrun','model_setup','nlev']))
+        
         target.setProperty(['grid','grid_method'],source.getProperty(['gotmmean','meanflow','grid_method']))
         target.setProperty(['grid','ddu'        ],source.getProperty(['gotmmean','meanflow','ddu']))
         target.setProperty(['grid','ddl'        ],source.getProperty(['gotmmean','meanflow','ddl']))
         target.setProperty(['grid','grid_file'  ],source.getProperty(['gotmmean','meanflow','grid_file']))
+        target.root.getLocation(['meanflow']).copyFrom(source.root.getLocation(['gotmmean','meanflow']))
+        target.setProperty(['meanflow','z0s'],source.getProperty(['gotmmean','meanflow','z0s_min']))
+        
+        target.root.getLocation(['airsea'  ]).copyFrom(source.root.getLocation(['airsea',  'airsea']))
+        target.root.getLocation(['gotmturb']).copyFrom(source.root.getLocation(['gotmturb','turbulence']))
 addConvertor('gotm-4.0.0','gotmgui-0.5.0',Convertor_gotm_4_0_0_to_gotmgui_0_5_0)
 
 class Convertor_gotmgui_0_5_0_to_gotm_4_0_0(Convertor):
     def convert(self,source,target):
         Convertor.convert(self,source,target)
+
+        # Convert gotmrun namelists
+        target.setProperty(['gotmrun','model_setup','title'],source.getProperty(['title']))
+        target.setProperty(['gotmrun','model_setup','dt'   ],source.getProperty(['timeintegration','dt']))
+        target.setProperty(['gotmrun','model_setup','cnpar'],source.getProperty(['timeintegration','cnpar']))
         target.root.getLocation(['gotmrun','station']).copyFrom(source.root.getLocation(['station']))
         target.root.getLocation(['gotmrun','time'   ]).copyFrom(source.root.getLocation(['time'   ]))
+        target.root.getLocation(['gotmrun','output' ]).copyFrom(source.root.getLocation(['output' ]))
         target.setProperty(['gotmrun','model_setup','nlev'     ],source.getProperty(['grid','nlev'       ]))
+        
+        target.root.getLocation(['gotmmean','meanflow']).copyFrom(source.root.getLocation(['meanflow']))
         target.setProperty(['gotmmean','meanflow','grid_method'],source.getProperty(['grid','grid_method']))
         target.setProperty(['gotmmean','meanflow','ddu'        ],source.getProperty(['grid','ddu'        ]))
         target.setProperty(['gotmmean','meanflow','ddl'        ],source.getProperty(['grid','ddl'        ]))
         target.setProperty(['gotmmean','meanflow','grid_file'  ],source.getProperty(['grid','grid_file'  ]))
+        if not source.getProperty(['meanflow','charnock']):
+            target.setProperty(['gotmmean','meanflow','z0s_min'],source.getProperty(['meanflow','z0s']))
+
+        target.root.getLocation(['airsea',  'airsea'  ]).copyFrom(source.root.getLocation(['airsea']))
+        target.root.getLocation(['gotmturb','turbulence']).copyFrom(source.root.getLocation(['gotmturb']))
+
+        # Add output path and type (not present in GUI scenarios)
+        target.setProperty(['gotmrun','output','out_fmt'],2)
+        target.setProperty(['gotmrun','output','out_dir'],'.')
+        target.setProperty(['gotmrun','output','out_fn'],'result')
 addConvertor('gotmgui-0.5.0','gotm-4.0.0',Convertor_gotmgui_0_5_0_to_gotm_4_0_0)

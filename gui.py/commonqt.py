@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.5 2007-01-12 10:40:51 jorn Exp $
+#$Id: commonqt.py,v 1.6 2007-01-19 09:40:25 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -273,8 +273,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             self.currentvalidator = validator
         elif nodetype=='bool':
             editor = QtGui.QComboBox(parent)
-            editor.addItem('True',QtCore.QVariant(True))
-            editor.addItem('False',QtCore.QVariant(False))
+            editor.addItem('Yes',QtCore.QVariant(True))
+            editor.addItem('No',QtCore.QVariant(False))
         elif nodetype=='select':
             editor = QtGui.QComboBox(parent)
             options = common.findDescendantNode(templatenode,['options'])
@@ -473,6 +473,11 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 if fieldtype=='datetime':
                     # Format datetime according to our convention
                     value = value.strftime(common.datetime_displayformat)
+                if fieldtype=='bool':
+                    if value:
+                        value = 'Yes'
+                    else:
+                        value = 'No'
                 elif fieldtype=='file':
                     # Return filename only (not the path)
                     value = value.getName()

@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <folder id="scenario" label="scenario" version="gotmgui-0.5.0">
 
+	<variable id="title" type="string" label="title of simulation"/>
+
 	<folder id="station" label="geographic location">
 		<variable id="name"      type="string" label="station name"/>
 		<variable id="latitude"  type="float"  label="latitude"    minimum="-90"  maximum="90"   unit="º North"/>
@@ -9,7 +11,7 @@
 	</folder>
 
 	<folder id="time" label="period">
-		<variable id="timefmt" type="select" label="method to specify period" description="method to specify start and of model run">
+		<variable id="timefmt" type="select" label="type of period specification" description="method to specify start and of model run">
 			<options>
 				<option value="1" label="number of time steps only"/>
 				<option value="2" label="start and stop dates"/>
@@ -31,18 +33,18 @@
 		<variable id="nlev" type="int" label="number of levels" minimum="1" maximum="1000" description="Number of depth levels used to describe the water column"/>
 		<variable id="grid_method" type="select" label="type of vertical grid">
 			<options>
-				<option value="0" label="zooming of grid with ddl, ddu >= 0"/>
-				<option value="1" label="sigma grid (relative depth fractions) read from file"/>
-				<option value="2" label="cartesian grid (fixed layer height in m) read from file"/>
+				<option value="0" label="equal layers heights, optional zooming"/>
+				<option value="1" label="custom sigma grid (relative depth fractions)"/>
+				<option value="2" label="custom cartesian grid (absolute layer heights)"/>
 			</options>
 		</variable>
-		<variable id="ddu"         type="float" label="grid zooming (surface), 0: no zooming; > 3 strong zooming">
+		<variable id="ddu" type="float" label="surface zooming" description="Grid zooming (surface), 0: no zooming; > 3 strong zooming" minimum="0">
 			<condition type="eq" variable="./grid_method" value="0"/>
 		</variable>
-		<variable id="ddl"         type="float" label="grid zooming (bottom), 0: no zooming; > 3 strong zooming">
+		<variable id="ddl" type="float" label="bottom zooming" description="Grid zooming (bottom), 0: no zooming; > 3 strong zooming" minimum="0">
 			<condition type="eq" variable="./grid_method" value="0"/>
 		</variable>
-		<variable id="grid_file" type="file" label="file for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
+		<variable id="grid_file" type="file" label="file for sigma or cartesian grid" description="File for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
 			<condition type="ne" variable="./grid_method" value="0"/>
 			<fileinfo type="verticalgrid">
 				<filevariables>
@@ -52,12 +54,41 @@
 		</variable>
 	</folder>
 
+	<folder id="timeintegration" label="time integration">
+		<variable id="dt"    type="float"  label="time step" minimum="1" maximum="86400" unit="s" description="Time step for integration"/>
+		<variable id="cnpar" type="float"  label="&quot;explicitness&quot; of numerical scheme" minimum="0" maximum="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems."/>
+	</folder>
+
+	<folder id="output" label="output">
+		<variable id="nsave"       type="int"    label="time steps between saves" minimum="1" maximum="86400"/>
+		<variable id="diagnostics" type="bool"   label="include diagnostics" description="Write diagnostics to output."/>
+		<variable id="mld_method"  type="select" label="mixed layer depth criterion">
+			<options>
+				<option value="1" label="TKE threshold"/>
+				<option value="2" label="Ri threshold"/>
+			</options>
+			<condition type="eq" variable="./diagnostics" value="True"/>
+		</variable>
+		<variable id="diff_k" type="float" label="TKE threshold" minimum="0" maximum="1" unit="m^2/s^2">
+			<condition type="and">
+				<condition type="eq" variable="./diagnostics" value="True"/>
+				<condition type="eq" variable="./mld_method" value="1"/>
+			</condition>
+		</variable>
+		<variable id="Ri_crit" type="float" label="Ri threshold" minimum="0" maximum="1000">
+			<condition type="and">
+				<condition type="eq" variable="./diagnostics" value="True"/>
+				<condition type="eq" variable="./mld_method" value="2"/>
+			</condition>
+		</variable>
+		<variable id="rad_corr" type="bool" label="correct surface buoyancy flux for solar radiation">
+			<condition type="eq" variable="./diagnostics" value="True"/>
+		</variable>
+	</folder>
+
 	<folder id="gotmrun" label="general">
 	
 		<folder id="model_setup" label="general model setup">
-			<variable id="title"       type="string" label="title of simulation"/>
-			<variable id="dt"          type="float"  label="time step" minimum="1" maximum="86400" unit="s" description="Time step for integration"/>
-			<variable id="cnpar"       type="float"  label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)" minimum="0" maximum="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems."/>
 			<variable id="buoy_method" type="select" label="method to compute mean buoyancy">
 				<options>
 					<option value="1" label="from equation of state (i.e. from potential temperature and salinity)"/>
@@ -66,44 +97,8 @@
 			</variable>
 		</folder>
 		
-		<folder id="output" label="format for output and filename(s)">
-			<variable id="out_fmt" type="select" label="format for GOTM output">
-				<options>
-					<option value="1" label="ASCII"/>
-					<option value="2" label="NetCDF"/>
-					<option value="3" label="GrADS"/>
-				</options>
-			</variable>
-			<variable id="out_dir"     type="string" label="path to output directory (set permissions)"/>
-			<variable id="out_fn"      type="string" label="output string used to generate output file names"/>
-			<variable id="nsave"       type="int"    label="save results every 'nsave' timesteps" minimum="1" maximum="86400"/>
-			<variable id="diagnostics" type="bool"   label="diagnostics are written to output (if .true.)"/>
-			<variable id="mld_method"  type="select" label="how to diagnose mixed layer depth">
-				<options>
-					<option value="1" label="mixed layer depth computed from TKE threshold"/>
-					<option value="2" label="mixed layer depth from Ri threshold"/>
-				</options>
-				<condition type="eq" variable="./diagnostics" value="True"/>
-			</variable>
-			<variable id="diff_k" type="float" label="TKE threshold for mixed layer depth" minimum="0" maximum="1" unit="m^2/s^2">
-				<condition type="and">
-					<condition type="eq" variable="./diagnostics" value="True"/>
-					<condition type="eq" variable="./mld_method" value="1"/>
-				</condition>
-			</variable>
-			<variable id="Ri_crit" type="float" label="Ri threshold for mixed layer depth" minimum="0" maximum="1000">
-				<condition type="and">
-					<condition type="eq" variable="./diagnostics" value="True"/>
-					<condition type="eq" variable="./mld_method" value="2"/>
-				</condition>
-			</variable>
-			<variable id="rad_corr" type="bool" label="correct surface buoyancy flux for solar radiation for output">
-				<condition type="eq" variable="./diagnostics" value="True"/>
-			</variable>
-		</folder>
-
  		<folder id="eqstate" label="equation of state">
-			<variable id="eq_state_mode" type="select" label="choice for empirical formula for equation of state">
+			<variable id="eq_state_mode" type="select" label="formula for equation of state" description="choice for empirical formula for equation of state">
 				<options>
 					<option value="1" label="UNESCO equation of state by Fofonoff and Millard (1983)"/>
 					<option value="2" label="equation of state according Jackett et al. (2005)"/>
@@ -145,235 +140,233 @@
 		
 	</folder>
 
-		<folder id="gotmmean">
-			<folder id="meanflow">
-				<variable id="h0b"         type="float" label="bottom roughness  - Note: z0b=0.03*h0b+0.1*nu/ustar"    unit="m"/>
-				<variable id="z0s_min"     type="float" label="minimum value of z0s, default value if charnock=.false." unit="m"/>
-				<variable id="charnock"    type="bool"  label="adaptation of Charnock 1955 formula used"/>
-				<variable id="charnock_val" type="float" label="emp. constant in Charnock 1955 formula (default = 1400.)">
-					<condition type="eq" variable="./charnock" value="True"/>
-				</variable>
-				<variable id="gravity"     type="float" label="gravitational acceleration"          unit="m/s^2"/>
-				<variable id="rho_0"       type="float" label="reference density"                   unit="kg/m^3"/>
-				<variable id="cp"          type="float" label="specific heat of sea water"          unit="J/kg/K"/>
-				<variable id="avmolu"      type="float" label="molecular viscosity for momentum"    unit="m^2/s"/>
-				<variable id="avmolt"      type="float" label="molecular diffusity for temperature" unit="m^2/s"/>
-				<variable id="avmols"      type="float" label="molecular diffusity for salinity"    unit="m^2/s"/>
-				<variable id="MaxItz0b"    type="int"   label="max # of iterations for z0b as function of u_taub" minimum="1" maximum="1000"/>
-				<variable id="no_shear"    type="bool"  label=".true.: shear production term P is set to zero"/>
-			</folder>
+		<folder id="meanflow">
+			<variable id="h0b"         type="float" label="physical bottom roughness" description="Bottom roughness - Note: z0b=0.03*h0b+0.1*nu/ustar" unit="m"/>
+			<variable id="MaxItz0b"    type="int"   label="number of iterations for hydrodynamic bottom roughness" description="Number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness." minimum="1" maximum="1000"/>
+			<variable id="charnock"    type="bool"  label="use surface roughness adaptation of Charnock 1955"/>
+			<variable id="charnock_val" type="float" label="empirical constant in Charnock 1955 formula" description="Empirical constant in Charnock 1955 formula (default = 1400).">
+				<condition type="eq" variable="./charnock" value="True"/>
+			</variable>
+			<variable id="z0s_min"     type="float" label="minimum hydrodynamic surface roughness" description="Minimum hydrodynamic surface roughness" unit="m">
+				<condition type="eq" variable="./charnock" value="True"/>
+			</variable>
+			<variable id="z0s"         type="float" label="hydrodynamic surface roughness" description="Hydrodynamic surface roughness" unit="m">
+				<condition type="eq" variable="./charnock" value="False"/>
+			</variable>
+			<variable id="gravity"     type="float" label="gravitational acceleration"          unit="m/s^2"/>
+			<variable id="rho_0"       type="float" label="reference density"                   unit="kg/m^3"/>
+			<variable id="cp"          type="float" label="specific heat of sea water"          unit="J/kg/K"/>
+			<variable id="avmolu"      type="float" label="molecular viscosity for momentum"    unit="m^2/s"/>
+			<variable id="avmolt"      type="float" label="molecular diffusity for temperature" unit="m^2/s"/>
+			<variable id="avmols"      type="float" label="molecular diffusity for salinity"    unit="m^2/s"/>
+			<variable id="no_shear"    type="bool"  label="set shear production term to zero"/>
 		</folder>
 		
-		<folder id="airsea">
-			<folder id="airsea">
-				<variable id="calc_fluxes" type="bool" label="surface fluxes calculated by means of bulk formulae"/>
-				<variable id="meteo_file"  type="file" label="file with meteo data">
-					<condition type="eq" variable="./calc_fluxes" value="True"/>
-					<fileinfo type="pointsintime">
-						<filevariables>
-							<filevariable label="wind speed in x-direction" unit="m/s"/>
-							<filevariable label="wind speed in y-direction" unit="m/s"/>
-							<filevariable label="air pressure" unit="hPa"/>
-							<filevariable label="air temperature" unit="°C"/>
-							<filevariable label="air humidity"/>
-							<filevariable label="cloud cover" minimum="0" maximum="1"/>
-						</filevariables>
-					</fileinfo>
-				</variable>
-				<variable id="wet_mode"    type="select" label="decides what is given in 7. column in meteo_file">
-					<condition type="eq" variable="./calc_fluxes" value="True"/>
-					<options>
-						<option value="1" label="relative humidity"/>
-						<option value="2" label="wet bulb temperature"/>
-						<option value="3" label="dew point temperature"/>
-					</options>
-				</variable>
+		<folder id="airsea" label="air-sea interaction">
+			<variable id="calc_fluxes" type="bool" label="surface fluxes calculated by means of bulk formulae"/>
+			<variable id="meteo_file"  type="file" label="file with meteo data">
+				<condition type="eq" variable="./calc_fluxes" value="True"/>
+				<fileinfo type="pointsintime">
+					<filevariables>
+						<filevariable label="wind speed in x-direction" unit="m/s"/>
+						<filevariable label="wind speed in y-direction" unit="m/s"/>
+						<filevariable label="air pressure" unit="hPa"/>
+						<filevariable label="air temperature" unit="°C"/>
+						<filevariable label="air humidity"/>
+						<filevariable label="cloud cover" minimum="0" maximum="1"/>
+					</filevariables>
+				</fileinfo>
+			</variable>
+			<variable id="wet_mode"    type="select" label="decides what is given in 7. column in meteo_file">
+				<condition type="eq" variable="./calc_fluxes" value="True"/>
+				<options>
+					<option value="1" label="relative humidity"/>
+					<option value="2" label="wet bulb temperature"/>
+					<option value="3" label="dew point temperature"/>
+				</options>
+			</variable>
 
-				<variable id="heat_method" type="select" label="method to provide short wave radiation (swr) and surface heat flux (qh)">
+			<variable id="heat_method" type="select" label="method to provide short wave radiation (swr) and surface heat flux (qh)">
+				<condition type="eq" variable="./calc_fluxes" value="False"/>
+				<options>
+					<option value="0" label="heat flux not prescribed"/>
+					<option value="1" label="constant &quot;const_swr&quot; and &quot;const_qh&quot; given (see below)"/>
+					<option value="2" label="swr and qh are read from heatflux_file"/>
+				</options>
+			</variable>
+			<variable id="const_swr"  type="float" label="constant value of incoming short wave radiation" unit="W/m^2" minimum="0" maximum="1000">
+				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False"/>
-					<options>
-						<option value="0" label="heat flux not prescribed"/>
-						<option value="1" label="constant &quot;const_swr&quot; and &quot;const_qh&quot; given (see below)"/>
-						<option value="2" label="swr and qh are read from heatflux_file"/>
-					</options>
-				</variable>
-				<variable id="const_swr"  type="float" label="constant value of incoming short wave radiation" unit="W/m^2" minimum="0" maximum="1000">
-					<condition type="and">
-						<condition type="eq" variable="./calc_fluxes" value="False"/>
-						<condition type="eq" variable="./heat_method" value="1"/>
-					</condition>
-				</variable>
-				<variable id="const_heat" type="float" label="constant value of surface heat flux" unit="W/m^2" minimum="-1000" maximum="1000">
-					<condition type="and">
-						<condition type="eq" variable="./calc_fluxes" value="False"/>
-						<condition type="eq" variable="./heat_method" value="1"/>
-					</condition>
-				</variable>
-				<variable id="heatflux_file" type="file" label="file with qin and qout given in W/m^2 (negative for net outgoing)">
-					<condition type="and">
-						<condition type="eq" variable="./calc_fluxes" value="False"/>
-						<condition type="eq" variable="./heat_method" value="2"/>
-					</condition>
-					<fileinfo type="pointsintime">
-						<filevariables>
-							<filevariable label="solar radiation"   unit="W/m^2"/>
-							<filevariable label="surface heat flux" unit="W/m^2"/>
-						</filevariables>
-					</fileinfo>
-				</variable>
-
-				<variable id="momentum_method" type="select" label="method how momentum fluxes are given">
+					<condition type="eq" variable="./heat_method" value="1"/>
+				</condition>
+			</variable>
+			<variable id="const_heat" type="float" label="constant value of surface heat flux" unit="W/m^2" minimum="-1000" maximum="1000">
+				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False"/>
-					<options>
-						<option value="0" label="momentum flux not prescribed"/>
-						<option value="1" label="constant surface momentum fluxes given"/>
-						<option value="2" label="surface momentum fluxes given from file momentumflux_file"/>
-					</options>
-				</variable>
-				<variable id="const_tx"  type="float" label="x-component of surface momentum flux" unit="N/m^2" minimum="-1000" maximum="1000">
-					<condition type="and">
-						<condition type="eq" variable="./calc_fluxes" value="False"/>
-						<condition type="eq" variable="./momentum_method" value="1"/>
-					</condition>
-				</variable>
-				<variable id="const_ty"  type="float" label="y-component of surface momentum flux" unit="N/m^2" minimum="-1000" maximum="1000">
-					<condition type="and">
-						<condition type="eq" variable="./calc_fluxes" value="False"/>
-						<condition type="eq" variable="./momentum_method" value="1"/>
-					</condition>
-				</variable>
-				<variable id="momentumflux_file" type="file" label="file with tx and ty given in N/m^2">
-					<condition type="and">
-						<condition type="eq" variable="./calc_fluxes" value="False"/>
-						<condition type="eq" variable="./momentum_method" value="2"/>
-					</condition>
-					<fileinfo type="pointsintime">
-						<filevariables>
-							<filevariable label="x-component of surface momentum flux" unit="N/m^2"/>
-							<filevariable label="y-component of surface momentum flux" unit="N/m^2"/>
-						</filevariables>
-					</fileinfo>
-				</variable>
-
-				<variable id="p_e_method" type="select" label="method how fresh water fluxes (P-E) are given">
-					<options>
-						<option value="0" label="P-E not used"/>
-						<option value="1" label="constant value for P-E (in m/s) used (P-E = precipitation-evaporation)"/>
-						<option value="2" label="values for P-E read from file"/>
-					</options>
-				</variable>
-				<variable id="const_p_e" type="float" label="constant value for P-E in (positive for P>E)" unit="m/s" minimum="-0.01" maximum="0.01">
-					<condition type="eq" variable="./p_e_method" value="1"/>
-				</variable>
-				<variable id="p_e_flux_file" type="file" label="file with value for P-E (positive for P>E)">
-					<condition type="eq" variable="./p_e_method" value="2"/>
-					<fileinfo type="pointsintime">
-						<filevariables>
-							<filevariable label="precipitation minus evaporation" unit="m/s"/>
-						</filevariables>
-					</fileinfo>
-				</variable>
-
-				<variable id="sst_method" type="select" label="method how sea surface temperature (SST) is given">
+					<condition type="eq" variable="./heat_method" value="1"/>
+				</condition>
+			</variable>
+			<variable id="heatflux_file" type="file" label="file with qin and qout given in W/m^2 (negative for net outgoing)">
+				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False"/>
-					<options>
-						<option value="0" label="no independent SST observation is read from file"/>
-						<option value="2" label="independent SST observation is read from file, only for output"/>
-					</options>
-				</variable>
-				<variable id="sst_file" type="file" label="file with independent SST observation">
-					<condition type="and">
-						<condition type="eq" variable="./calc_fluxes" value="False"/>
-						<condition type="eq" variable="./sst_method" value="2"/>
-					</condition>
-					<fileinfo type="pointsintime">
-						<filevariables>
-							<filevariable label="sea surface temperature" unit="°C"/>
-						</filevariables>
-					</fileinfo>
-				</variable>
+					<condition type="eq" variable="./heat_method" value="2"/>
+				</condition>
+				<fileinfo type="pointsintime">
+					<filevariables>
+						<filevariable label="solar radiation"   unit="W/m^2"/>
+						<filevariable label="surface heat flux" unit="W/m^2"/>
+					</filevariables>
+				</fileinfo>
+			</variable>
 
-				<variable id="sss_method" type="select" label="method how sea surface salinity (SSS) is given">
+			<variable id="momentum_method" type="select" label="method how momentum fluxes are given">
+				<condition type="eq" variable="./calc_fluxes" value="False"/>
+				<options>
+					<option value="0" label="momentum flux not prescribed"/>
+					<option value="1" label="constant surface momentum fluxes given"/>
+					<option value="2" label="surface momentum fluxes given from file momentumflux_file"/>
+				</options>
+			</variable>
+			<variable id="const_tx"  type="float" label="x-component of surface momentum flux" unit="N/m^2" minimum="-1000" maximum="1000">
+				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False"/>
-					<options>
-						<option value="0" label="no independent SSS observation is read from file"/>
-						<option value="2" label="independent SSS observation is read from file, only for output"/>
-					</options>
-				</variable>
-				<variable id="sss_file" type="file" label="file with independent SSS observation">
-					<condition type="and">
-						<condition type="eq" variable="./calc_fluxes" value="False"/>
-						<condition type="eq" variable="./sss_method" value="2"/>
-					</condition>
-					<fileinfo type="pointsintime">
-						<filevariables>
-							<filevariable label="sea surface salinity" unit="psu"/>
-						</filevariables>
-					</fileinfo>
-				</variable>
+					<condition type="eq" variable="./momentum_method" value="1"/>
+				</condition>
+			</variable>
+			<variable id="const_ty"  type="float" label="y-component of surface momentum flux" unit="N/m^2" minimum="-1000" maximum="1000">
+				<condition type="and">
+					<condition type="eq" variable="./calc_fluxes" value="False"/>
+					<condition type="eq" variable="./momentum_method" value="1"/>
+				</condition>
+			</variable>
+			<variable id="momentumflux_file" type="file" label="file with tx and ty given in N/m^2">
+				<condition type="and">
+					<condition type="eq" variable="./calc_fluxes" value="False"/>
+					<condition type="eq" variable="./momentum_method" value="2"/>
+				</condition>
+				<fileinfo type="pointsintime">
+					<filevariables>
+						<filevariable label="x-component of surface momentum flux" unit="N/m^2"/>
+						<filevariable label="y-component of surface momentum flux" unit="N/m^2"/>
+					</filevariables>
+				</fileinfo>
+			</variable>
 
-			</folder>
+			<variable id="p_e_method" type="select" label="method how fresh water fluxes (P-E) are given">
+				<options>
+					<option value="0" label="P-E not used"/>
+					<option value="1" label="constant value for P-E (in m/s) used (P-E = precipitation-evaporation)"/>
+					<option value="2" label="values for P-E read from file"/>
+				</options>
+			</variable>
+			<variable id="const_p_e" type="float" label="constant value for P-E in (positive for P>E)" unit="m/s" minimum="-0.01" maximum="0.01">
+				<condition type="eq" variable="./p_e_method" value="1"/>
+			</variable>
+			<variable id="p_e_flux_file" type="file" label="file with value for P-E (positive for P>E)">
+				<condition type="eq" variable="./p_e_method" value="2"/>
+				<fileinfo type="pointsintime">
+					<filevariables>
+						<filevariable label="precipitation minus evaporation" unit="m/s"/>
+					</filevariables>
+				</fileinfo>
+			</variable>
+
+			<variable id="sst_method" type="select" label="method how sea surface temperature (SST) is given">
+				<condition type="eq" variable="./calc_fluxes" value="False"/>
+				<options>
+					<option value="0" label="no independent SST observation is read from file"/>
+					<option value="2" label="independent SST observation is read from file, only for output"/>
+				</options>
+			</variable>
+			<variable id="sst_file" type="file" label="file with independent SST observation">
+				<condition type="and">
+					<condition type="eq" variable="./calc_fluxes" value="False"/>
+					<condition type="eq" variable="./sst_method" value="2"/>
+				</condition>
+				<fileinfo type="pointsintime">
+					<filevariables>
+						<filevariable label="sea surface temperature" unit="°C"/>
+					</filevariables>
+				</fileinfo>
+			</variable>
+
+			<variable id="sss_method" type="select" label="method how sea surface salinity (SSS) is given">
+				<condition type="eq" variable="./calc_fluxes" value="False"/>
+				<options>
+					<option value="0" label="no independent SSS observation is read from file"/>
+					<option value="2" label="independent SSS observation is read from file, only for output"/>
+				</options>
+			</variable>
+			<variable id="sss_file" type="file" label="file with independent SSS observation">
+				<condition type="and">
+					<condition type="eq" variable="./calc_fluxes" value="False"/>
+					<condition type="eq" variable="./sss_method" value="2"/>
+				</condition>
+				<fileinfo type="pointsintime">
+					<filevariables>
+						<filevariable label="sea surface salinity" unit="psu"/>
+					</filevariables>
+				</fileinfo>
+			</variable>
 
 		</folder>
 		
 		<folder id="gotmturb" label="turbulence">
 
-			<folder id="turbulence" label="general">
-				<variable id="turb_method" type="select" label="type of turbulence closure">
-					<options>
-						<option value="0"  label="convective adjustment"/>
-						<option value="1"  label="analytical eddy visc. and diff. profiles, not coded yet"/>
-						<option value="2"  label="turbulence Model calculating TKE and length scale"/>
-						<option value="3"  label="second-order model"/>
-						<option value="99" label="KPP model"/>
-					</options>
-				</variable>
-				<variable id="tke_method" type="select" label="type of equation for TKE">
-					<condition type="or">
-						<condition type="eq" variable="./turb_method" value="2"/>
-						<condition type="eq" variable="./turb_method" value="3"/>
-					</condition>
-					<options>
-						<option value="1" label="algebraic equation"/>
-						<option value="2" label="dynamic equation (k-epsilon style)"/>
-						<option value="3" label="dynamic equation (Mellor-Yamada style)"/>
-					</options>
-				</variable>
-				<variable id="len_scale_method" type="select" label="type of model for dissipative length scale">
-					<condition type="or">
-						<condition type="eq" variable="./turb_method" value="2"/>
-						<condition type="eq" variable="./turb_method" value="3"/>
-					</condition>
-					<options>
-						<option value="1"  label="parabolic shape"/>
-						<option value="2"  label="triangle shape"/>
-						<option value="3"  label="Xing and Davies [1995]"/>
-						<option value="4"  label="Robert and Ouellet [1987]"/>
-						<option value="5"  label="Blackadar (two boundaries) [1962]"/>
-						<option value="6"  label="Bougeault and Andre [1986]"/>
-						<option value="7"  label="Eifler and Schrimpf (ISPRAMIX) [1992]"/>
-						<option value="8"  label="dynamic dissipation rate equation"/>
-						<option value="9"  label="dynamic Mellor-Yamada q^2l-equation"/>
-						<option value="10" label="generic length scale (GLS)"/>
-					</options>
-				</variable>
-				<variable id="stab_method" type="select" label="type of stability function">
+			<variable id="turb_method" type="select" label="type of turbulence closure">
+				<options>
+					<option value="0"  label="convective adjustment"/>
+					<option value="1"  label="analytical eddy visc. and diff. profiles, not coded yet"/>
+					<option value="2"  label="turbulence Model calculating TKE and length scale"/>
+					<option value="3"  label="second-order model"/>
+					<option value="99" label="KPP model"/>
+				</options>
+			</variable>
+			<variable id="tke_method" type="select" label="type of equation for TKE">
+				<condition type="or">
 					<condition type="eq" variable="./turb_method" value="2"/>
-					<options>
-						<option value="1" label="constant stability functions"/>
-						<option value="2" label="Munk and Anderson [1954]"/>
-						<option value="3" label="Schumann and Gerz [1995]"/>
-						<option value="4" label="Eifler and Schrimpf [1992]"/>
-					</options>
-				</variable>
-			</folder>
+					<condition type="eq" variable="./turb_method" value="3"/>
+				</condition>
+				<options>
+					<option value="1" label="algebraic equation"/>
+					<option value="2" label="dynamic equation (k-epsilon style)"/>
+					<option value="3" label="dynamic equation (Mellor-Yamada style)"/>
+				</options>
+			</variable>
+			<variable id="len_scale_method" type="select" label="type of model for dissipative length scale">
+				<condition type="or">
+					<condition type="eq" variable="./turb_method" value="2"/>
+					<condition type="eq" variable="./turb_method" value="3"/>
+				</condition>
+				<options>
+					<option value="1"  label="parabolic shape"/>
+					<option value="2"  label="triangle shape"/>
+					<option value="3"  label="Xing and Davies [1995]"/>
+					<option value="4"  label="Robert and Ouellet [1987]"/>
+					<option value="5"  label="Blackadar (two boundaries) [1962]"/>
+					<option value="6"  label="Bougeault and Andre [1986]"/>
+					<option value="7"  label="Eifler and Schrimpf (ISPRAMIX) [1992]"/>
+					<option value="8"  label="dynamic dissipation rate equation"/>
+					<option value="9"  label="dynamic Mellor-Yamada q^2l-equation"/>
+					<option value="10" label="generic length scale (GLS)"/>
+				</options>
+			</variable>
+			<variable id="stab_method" type="select" label="type of stability function">
+				<condition type="eq" variable="./turb_method" value="2"/>
+				<options>
+					<option value="1" label="constant stability functions"/>
+					<option value="2" label="Munk and Anderson [1954]"/>
+					<option value="3" label="Schumann and Gerz [1995]"/>
+					<option value="4" label="Eifler and Schrimpf [1992]"/>
+				</options>
+			</variable>
 
 			<folder id="bc" label="boundary conditions">
 				<condition type="and">
-					<condition type="ne" variable="./turbulence/tke_method" value="1"/>
+					<condition type="ne" variable="./tke_method" value="1"/>
 					<condition type="or">
-						<condition type="eq" variable="./turbulence/turb_method" value="2"/>
-						<condition type="eq" variable="./turbulence/turb_method" value="3"/>
+						<condition type="eq" variable="./turb_method" value="2"/>
+						<condition type="eq" variable="./turb_method" value="3"/>
 					</condition>
 				</condition>
 				<variable id="k_ubc" type="select" label="upper boundary condition for k-equation">
@@ -417,10 +410,10 @@
 
 			<folder id="turb_param" label="turbulence parameters">
 				<variable id="cm0_fix" type="float" label="value of cm0">
-					<condition type="eq" variable="/gotmturb/turbulence/turb_method" value="2"/>
+					<condition type="eq" variable="/gotmturb/turb_method" value="2"/>
 				</variable>
 				<variable id="Prandtl0_fix" type="float" label="value of the turbulent Prandtl-number">
-					<condition type="eq" variable="/gotmturb/turbulence/turb_method" value="2"/>
+					<condition type="eq" variable="/gotmturb/turb_method" value="2"/>
 				</variable>
 				<variable id="cw" type="float" label="constant of the wave-breaking model (Craig &amp; Banner (1994) use cw=100)"/>
 				<variable id="compute_kappa" type="bool" label="compute von Karman constant from model parameters"/>
@@ -436,10 +429,10 @@
 					<condition type="eq" variable="./length_lim" value="True"/>
 				</variable>
 				<variable id="const_num" type="float" label="minimum eddy diffusivity" unit="m^2/s">
-					<condition type="eq" variable="/gotmturb/turbulence/turb_method" value="0"/>
+					<condition type="eq" variable="/gotmturb/turb_method" value="0"/>
 				</variable>
 				<variable id="const_nuh" type="float" label="minimum heat diffusivity" unit="m^2/s">
-					<condition type="eq" variable="/gotmturb/turbulence/turb_method" value="0"/>
+					<condition type="eq" variable="/gotmturb/turb_method" value="0"/>
 				</variable>
 				<variable id="k_min"    type="float" label="minimum TKE" unit="m^2/s^2"/>
 				<variable id="eps_min"  type="float" label="minimum dissipation rate" unit="m^2/s^3"/>
@@ -448,7 +441,7 @@
 			</folder>
 
 			<folder id="generic" label="the generic model (Umlauf &amp; Burchard, J. Mar. Res., 2003)">
-				<condition type="eq" variable="./turbulence/len_scale_method" value="10"/>
+				<condition type="eq" variable="./len_scale_method" value="10"/>
 				<variable id="compute_param" type="bool" label="compute the model parameters"/>
 				<variable id="gen_m" type="float" label="exponent for k"/>
 				<variable id="gen_n" type="float" label="exponent for l">
@@ -487,7 +480,7 @@
 			</folder>
 
 			<folder id="keps" label="the k-epsilon model (Rodi 1987)">
-				<condition type="eq" variable="./turbulence/len_scale_method" value="8"/>
+				<condition type="eq" variable="./len_scale_method" value="8"/>
 				<variable id="ce1" type="float" label="emp. coef. ce1 in diss. eq."/>
 				<variable id="ce2" type="float" label="emp. coef. ce2 in diss. eq."/>
 				<variable id="ce3minus" type="float" label="ce3 for stable stratification">
@@ -500,7 +493,7 @@
 			</folder>
 
 			<folder id="my" label="the Mellor-Yamada model (Mellor &amp; Yamada 1982)">
-				<condition type="eq" variable="./turbulence/len_scale_method" value="9"/>
+				<condition type="eq" variable="./len_scale_method" value="9"/>
 				<variable id="e1"        type="float"  label="coef. e1 in MY q**2 l equation"/>
 				<variable id="e2"        type="float"  label="coef. e2 in MY q**2 l equation"/>
 				<variable id="e3"        type="float"  label="coef. e3 in MY q**2 l equation"/>
@@ -517,7 +510,7 @@
 			</folder>
 
 			<folder id="scnd" label="the second-order model">
-				<condition type="eq" variable="./turbulence/turb_method" value="3"/>
+				<condition type="eq" variable="./turb_method" value="3"/>
 				<variable id="scnd_method" type="select" label="type of second-order model">
 					<options>
 						<option value="1" label="EASM with quasi-equilibrium"/>
@@ -618,7 +611,7 @@
 		</folder>
 
 		<folder id="kpp" label="KPP turbulence model">
-			<condition type="eq" variable="/gotmturb/turbulence/turb_method" value="99"/>
+			<condition type="eq" variable="/gotmturb/turb_method" value="99"/>
 			<folder id="kpp" label="KPP turbulence model">
 				<variable id="kpp_sbl"      type="bool"  label=".true. for active surface boundary layer module"/>
 				<variable id="kpp_bbl"      type="bool"  label=".true. for active bottom boundary layer module"/>
