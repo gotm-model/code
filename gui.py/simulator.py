@@ -1,11 +1,15 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.3 2006-12-17 20:25:00 jorn Exp $
+#$Id: simulator.py,v 1.4 2007-01-19 09:40:25 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import common,commonqt
 import os, tempfile, sys, math, shutil
 import gotm
+
+gotmversion = gotm.gui_util.getversion().rstrip()
+gotmscenarioversion = 'gotm-%s' % gotmversion
+print 'GOTM library reports version %s; will use scenario template %s.xml.' % (gotmversion,gotmscenarioversion)
 
 class GOTMThread(QtCore.QThread):
 
@@ -34,7 +38,7 @@ class GOTMThread(QtCore.QThread):
     try:
         os.chdir(self.scenariodir)
     except Exception,e:
-        self.error = 'Failed to enter scenario directory "' + self.scenariodir + '". ' + str(e)
+        self.error = 'Failed to enter scenario directory "%s". %s' % (self.scenariodir,str(e))
         self.result = 1
         os.chdir(olddir)
         return
@@ -50,7 +54,7 @@ class GOTMThread(QtCore.QThread):
     try:
         gotm.gotm.init_gotm()
     except Exception,e:
-        self.error = 'Exception thrown while initializing GOTM: '+str(e)
+        self.error = 'Exception thrown while initializing GOTM: %s' % str(e)
         self.result = 1
         
     # Only enter the time loop if we succeeded so far.
@@ -59,11 +63,17 @@ class GOTMThread(QtCore.QThread):
         # for cancellation, and to show sufficiently detailed progress - e.g. in % -
         # but not so small that GUI slows down due to the avalanche of progress notifications)
         visualres = 0.01
-        start = gotm.time.minn*1
-        stop  = gotm.time.maxn*1
+
+        # Get # of first step, last step, number of steps for whole GOTM run.
+        start = gotm.time.minn*1    # Multiply by 1 to ensure we have the integer value, not a reference to the attribute
+        stop  = gotm.time.maxn*1    # Multiply by 1 to ensure we have the integer value, not a reference to the attribute
         stepcount = stop-start+1
+        
+        # Get number of GOTM steps within one slice (slices for progress report), and the
+        # total number of slices.
         visualstep = int(math.floor(visualres*stepcount))
         visualstepcount = int(math.ceil(stepcount/float(visualstep)))
+        
         for istep in range(1,visualstepcount+1):
             # Check if we have to cancel
             rl = QtCore.QReadLocker(self.rwlock)
@@ -72,17 +82,20 @@ class GOTMThread(QtCore.QThread):
                 self.result = 2
                 break
             rl.unlock()
-            # Configure GOTM for new batch.
+            
+            # Configure GOTM for new slice.
             gotm.time.minn = start + (istep-1)*visualstep
             gotm.time.maxn = start +     istep*visualstep - 1
             if istep==visualstepcount: gotm.time.maxn = stop
+            
             # Process time batch
             try:
                 gotm.gotm.time_loop()
             except Exception,e:
-                self.error = 'Exception thrown in GOTM time loop: '+str(e)
+                self.error = 'Exception thrown in GOTM time loop: %s' % str(e)
                 self.result = 1
                 break
+            
             # Send 'progress' event
             prog = gotm.time.maxn/float(stop)
             self.emit(QtCore.SIGNAL("progressed(double)"), prog)
@@ -143,7 +156,7 @@ class PageProgress(commonqt.WizardPage):
         self.result = None
         
     def showEvent(self,event):
-        namelistscenario = self.scenario.convert(common.gotmscenarioversion,targetownstemp=False)
+        namelistscenario = self.scenario.convert(gotmscenarioversion,targetownstemp=False)
         self.tempdir = tempfile.mkdtemp('','gotm-')
         namelistscenario.setProperty(['gotmrun','output','out_fmt'],2)
         namelistscenario.setProperty(['gotmrun','output','out_dir'],'.')
