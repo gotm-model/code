@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.12 2007-01-26 11:55:25 jorn Exp $
+#$Id: common.py,v 1.13 2007-01-26 14:12:27 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -1293,12 +1293,12 @@ class Scenario(TypedXMLPropertyStore):
             else:
                 raise Exception('Path "%s" does not point to an existing directory or file.' % srcpath)
 
-        globalsubs = None
+        globalsubs = []
         if protodir!=None:
             # Namelist are specified as .proto files plus one or more .values files.
             # Load the substitutions specified in the main .values file.
             valuespath = os.path.join(srcpath,os.path.basename(srcpath)+'.values')
-            globalsubs = NamelistSubstitutions(valuespath)
+            globalsubs.append(NamelistSubstitutions(valuespath))
 
         # Commonly used regular expressions (for parsing strings and datetimes).
         strre = re.compile('^([\'"])(.*?)\\1$')
@@ -1311,29 +1311,29 @@ class Scenario(TypedXMLPropertyStore):
                 # namelists.
                 if protodir!=None and mainchild.isHidden(): continue
                 
-                # Get name (excl. extension) for the namelist file, and its full path.
+                # Get name (excl. extension) for the namelist file.
                 nmlfilename = mainchild.getId()
 
                 if not mainchild.isFolder():
                     raise Exception('Found non-folder node with id %s below root, where only folders are expected.' % nmlfilename)
 
+                cursubs = globalsubs
                 if protodir==None:
                     # Normal namelist file
                     nmlfilepath = os.path.join(srcpath, nmlfilename+self.namelistextension)
-                    cursubs = []
                 else:
                     # Prototype namelist in which values will be substituted.
                     nmlfilepath = os.path.join(protodir, nmlfilename+'.proto')
 
                     # Load the relevant value substitutions (if any); otherwise use global substitutions.
-                    cursubs = [globalsubs]
                     cursubspath = os.path.join(srcpath,nmlfilename+'.values')
                     if os.path.isfile(cursubspath):
                         cursubs = [NamelistSubstitutions(cursubspath)]
 
                 # Parse the namelist file.
                 if not os.path.isfile(nmlfilepath):
-                    if mainchild.templatenode.hasAttribute('optional'):
+                    if mainchild.templatenode.hasAttribute('optional') or mainchild.isHidden():
+                        # This namelist file is not required. Thus no worries: continue
                         continue
                     else:
                         raise NamelistParseException('Namelist file "%s" is not present.' % (os.path.basename(nmlfilepath),),nmlfilepath,None,None)
@@ -2129,13 +2129,16 @@ class Result(PlotVariableStore):
             shutil.rmtree(self.tempdir)
             self.tempdir = None
 
-    def attach(self,srcpath,scenario=None):
+    def attach(self,srcpath,scenario=None,copy=True):
         self.scenario = scenario
         
-        # Create a copy of the result file.
-        tempdir = self.getTempDir(empty=True)
-        datafile = os.path.join(tempdir,'result.nc')
-        shutil.copyfile(srcpath,datafile)
+        if copy:
+            # Create a copy of the result file.
+            tempdir = self.getTempDir(empty=True)
+            datafile = os.path.join(tempdir,'result.nc')
+            shutil.copyfile(srcpath,datafile)
+        else:
+            datafile = srcpath
 
         # Store link to result file, and try to open the CDF file
         self.datafile = datafile

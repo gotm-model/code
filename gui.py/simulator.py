@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.5 2007-01-26 11:55:25 jorn Exp $
+#$Id: simulator.py,v 1.6 2007-01-26 14:12:28 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import common,commonqt
@@ -216,8 +216,8 @@ class PageProgress(commonqt.WizardPage):
         self.timer = QtCore.QTime()
         self.timer.start()
         self.gotmthread = GOTMThread(self,self.tempdir,self)
-        self.connect(self.gotmthread, QtCore.SIGNAL("progressed(double)"), self.progressed, QtCore.Qt.QueuedConnection)
-        self.connect(self.gotmthread, QtCore.SIGNAL("finished()"), self.done, QtCore.Qt.QueuedConnection)
+        self.connect(self.gotmthread, QtCore.SIGNAL('progressed(double)'), self.progressed, QtCore.Qt.QueuedConnection)
+        self.connect(self.gotmthread, QtCore.SIGNAL('finished()'), self.done, QtCore.Qt.QueuedConnection)
         self.gotmthread.rungotm()
         
     def progressed(self,progress):
@@ -266,7 +266,10 @@ class PageProgress(commonqt.WizardPage):
         # Create result object
         if result==0:
             self.result = common.Result()
-            self.result.attach(os.path.join(self.tempdir,'result.nc'),self.scenario)
+            respath = os.path.join(self.tempdir,'result.nc')
+            self.result.tempdir = self.tempdir
+            self.tempdir = None
+            self.result.attach(respath,self.scenario,copy=False)
             self.result.changed = True
             self.completeStateChanged()
             
