@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.2 2006-12-04 08:03:10 jorn Exp $
+#$Id: scenariobuilder.py,v 1.3 2007-01-26 11:55:25 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -245,6 +245,9 @@ class PageSave(commonqt.WizardPage):
         self.pathSave = commonqt.PathEditor(self,header='File to save to: ',save=True)
         self.pathSave.filter = 'GOTM scenario files (*.gotmscenario);;All files (*.*)'
         self.pathSave.forcedextension = '.gotmscenario'
+
+        if self.scenario.path!=None:
+            self.pathSave.setPath(self.scenario.path)
 
         self.bngroup.addButton(self.radioNoSave, 0)
         self.bngroup.addButton(self.radioSave,   1)

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.6 2007-01-19 09:40:25 jorn Exp $
+#$Id: commonqt.py,v 1.7 2007-01-26 11:55:25 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -66,9 +66,9 @@ class PathEditor(QtGui.QWidget):
 
         self.setLayout(lo)
 
-        self.connect(self.lineedit, QtCore.SIGNAL('textChanged(const QString &)'), self.onChanged)
-        self.connect(self.lineedit, QtCore.SIGNAL('editingFinished()'), self.onEditingFinished)
-        self.connect(self.browsebutton, QtCore.SIGNAL("clicked()"), self.onBrowse)
+        self.connect(self.lineedit,     QtCore.SIGNAL('textChanged(const QString &)'), self.onChanged)
+        self.connect(self.lineedit,     QtCore.SIGNAL('editingFinished()'),            self.onEditingFinished)
+        self.connect(self.browsebutton, QtCore.SIGNAL('clicked()'),                    self.onBrowse)
 
         self.getdirectory = getdirectory
         self.save = save
@@ -84,11 +84,11 @@ class PathEditor(QtGui.QWidget):
 
     def onBrowse(self):
         if self.getdirectory:
-            path = unicode(QtGui.QFileDialog.getExistingDirectory(self))
+            path = unicode(QtGui.QFileDialog.getExistingDirectory(self,'',self.path()))
         elif self.save:
-            path = unicode(QtGui.QFileDialog.getSaveFileName(self,'','',self.filter))
+            path = unicode(QtGui.QFileDialog.getSaveFileName(self,'',self.path(),self.filter))
         else:
-            path = unicode(QtGui.QFileDialog.getOpenFileName(self,'','',self.filter))
+            path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',self.path(),self.filter))
 
         # If the browse dialog was cancelled, just return.
         if path=='': return

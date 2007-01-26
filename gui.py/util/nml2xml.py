@@ -14,6 +14,7 @@ def main():
     targetversion = common.savedscenarioversion
     targetisdir = False
     protodir = None
+    strict = True
 
     # Get optional arguments
     protodir = common.getNamedArgument('-p')
@@ -22,6 +23,9 @@ def main():
     if '-d' in sys.argv:
         sys.argv.remove('-d')
         targetisdir = True
+    if '-ns' in sys.argv:
+        sys.argv.remove('-ns')
+        strict = False
 
     # Check if we have the required arguments.
     # Note: sys.argv[0] contains the path name of the script.
@@ -33,6 +37,7 @@ def main():
         print 'To force a particular version for the created scenario, add -v platform-version (e.g., -v gotm-3.2.4); by default the scenario is created with the version that GOTM-GUI uses to store scenarios (currently %s).\n' % common.savedscenarioversion
         print 'To save to a directory rather than directly to a ZIP archive (which would contain all files in the directory), add the switch -d.\n'
         print 'if you are saving to ZIP archive rather than to a directory, use the file extension ".gotmscenario" to ensure the produced file is automatically recognized by GOTM-GUI.'
+        print 'By default, namelists are parsed in "strict" mode: all variables must be present once, and in the right order. Add the switch -ns to enable Fortran-like loose parsing.\n'
         print '\nExamples:\n'
         print 'nml2xml.py ./seagrass ./seagrass.gotmscenario\n'
         print 'Converts the namelists (plus data files) in the directory "./seagrass" to the scenario file "./seagrass.gotmscenario" suitable for GOTM-GUI.'
@@ -63,7 +68,12 @@ def main():
         print 'Warning! The output file does not have extension .gotmscenario, and will therefore not be recognized automatically by the GUI.'
 
     # Try to parse the namelist files (implicitly converts to the specified target version).
-    scenario = common.Scenario.fromNamelists(srcpath,protodir=protodir,targetversion=targetversion)
+    try:
+        scenario = common.Scenario.fromNamelists(srcpath,protodir=protodir,targetversion=targetversion,strict=strict)
+    except Exception,e:
+        print '\n\nFailed to load scenario form namelists. Reason:\n'+str(e)
+        print '\nYou might try adding the switch -ns. This switch disables strict namelist parsing.'
+        return 1
 
     # Export to scenario.
     scenario.saveAll(targetpath,targetversion=targetversion,targetisdir=targetisdir)

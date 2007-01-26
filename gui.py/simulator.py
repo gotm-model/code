@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.4 2007-01-19 09:40:25 jorn Exp $
+#$Id: simulator.py,v 1.5 2007-01-26 11:55:25 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import common,commonqt
@@ -11,10 +11,16 @@ gotmversion = gotm.gui_util.getversion().rstrip()
 gotmscenarioversion = 'gotm-%s' % gotmversion
 print 'GOTM library reports version %s; will use scenario template %s.xml.' % (gotmversion,gotmscenarioversion)
 
+# Here we can set the stack size for GOTM (in bytes). Note: bio modules sometimes
+# need a very high stack size (in particular if Lagrangian variables are used)
+stacksize = 16000000
+
 class GOTMThread(QtCore.QThread):
 
   def __init__(self, parent, scenariodir, receiver):
     QtCore.QThread.__init__(self,parent)
+    self.setStackSize(stacksize)
+    
     self.scenariodir = scenariodir
     self.receiver = receiver
     self.rwlock = QtCore.QReadWriteLock()
@@ -68,13 +74,18 @@ class GOTMThread(QtCore.QThread):
         start = gotm.time.minn*1    # Multiply by 1 to ensure we have the integer value, not a reference to the attribute
         stop  = gotm.time.maxn*1    # Multiply by 1 to ensure we have the integer value, not a reference to the attribute
         stepcount = stop-start+1
+
+        minslicesize = 1
+        maxslicesize = int(round(stepcount/20.))
+        if maxslicesize<minslicesize: maxslicesize = minslicesize
         
-        # Get number of GOTM steps within one slice (slices for progress report), and the
-        # total number of slices.
-        visualstep = int(math.floor(visualres*stepcount))
-        visualstepcount = int(math.ceil(stepcount/float(visualstep)))
+        timer = QtCore.QTime()
+
+        islicestart = start
+        islicesize = 100
         
-        for istep in range(1,visualstepcount+1):
+        timer.start()
+        while islicestart<=stop:
             # Check if we have to cancel
             rl = QtCore.QReadLocker(self.rwlock)
             if self.stopped:
@@ -84,9 +95,10 @@ class GOTMThread(QtCore.QThread):
             rl.unlock()
             
             # Configure GOTM for new slice.
-            gotm.time.minn = start + (istep-1)*visualstep
-            gotm.time.maxn = start +     istep*visualstep - 1
-            if istep==visualstepcount: gotm.time.maxn = stop
+            gotm.time.minn = islicestart
+            islicestop = islicestart + islicesize - 1
+            if islicestop>stop: islicestop = stop
+            gotm.time.maxn = islicestop
             
             # Process time batch
             try:
@@ -95,10 +107,19 @@ class GOTMThread(QtCore.QThread):
                 self.error = 'Exception thrown in GOTM time loop: %s' % str(e)
                 self.result = 1
                 break
-            
+
             # Send 'progress' event
-            prog = gotm.time.maxn/float(stop)
+            prog = (islicestop-start+1)/float(stepcount)
             self.emit(QtCore.SIGNAL("progressed(double)"), prog)
+
+            # Adjust slice size
+            elapsed = timer.restart()
+            islicesize = int(round(islicesize * 400./elapsed))
+            if islicesize<minslicesize: islicesize = minslicesize
+            if islicesize>maxslicesize: islicesize = maxslicesize
+
+            islicestart = islicestop + 1
+            
     # GOTM clean-up
     try:
         gotm.gotm.clean_up()
@@ -131,22 +152,48 @@ class PageProgress(commonqt.WizardPage):
         commonqt.WizardPage.__init__(self, parent)
         self.scenario = parent.shared['scenario']
         layout = QtGui.QVBoxLayout()
+
+        self.busylabel = QtGui.QLabel('Please wait while the simulation runs...',self)
+        layout.addWidget(self.busylabel)
         
         # Progress bar
         self.bar = QtGui.QProgressBar(self)
-        self.bar.setMinimum(0)
-        self.bar.setMaximum(1000)
+        self.bar.setRange(0,1000)
         layout.addWidget(self.bar)
         
         # Add label for time remaining.
         self.labelRemaining = QtGui.QLabel(self)
         layout.addWidget(self.labelRemaining)
-        
-        # Text window to display GOTM output in.
+
+        # Add (initially hidden) label for result.
+        self.resultlabel = QtGui.QLabel('',self)
+        self.resultlabel.hide()
+        layout.addWidget(self.resultlabel)
+
+        # Add (initially hidden) show/hide output button.
+        self.showhidebutton = QtGui.QPushButton('Show output',self)
+        self.showhidebutton.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
+        self.showhidebutton.hide()
+        layout.addWidget(self.showhidebutton)
+        self.connect(self.showhidebutton, QtCore.SIGNAL('clicked()'),self.onShowHideOutput)
+
+        # Add (initially hidden) text box for GOTM output.
         self.text = QtGui.QTextEdit(self)
         self.text.setLineWrapMode(QtGui.QTextEdit.NoWrap)
         self.text.setReadOnly(True)
+        self.text.hide()
         layout.addWidget(self.text)
+        layout.setStretchFactor(self.text,1)
+
+        # Add (initially hidden) save-output button.
+        self.savebutton = QtGui.QPushButton('Save output to file',self)
+        self.savebutton.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
+        self.savebutton.hide()
+        layout.addWidget(self.savebutton)
+        self.connect(self.savebutton, QtCore.SIGNAL('clicked()'),self.onSaveOutput)
+
+        layout.addStretch()
+        
         self.setLayout(layout)
         
         # Initialize GOTM run variables.
@@ -156,6 +203,9 @@ class PageProgress(commonqt.WizardPage):
         self.result = None
         
     def showEvent(self,event):
+        self.startRun()
+
+    def startRun(self):
         namelistscenario = self.scenario.convert(gotmscenarioversion,targetownstemp=False)
         self.tempdir = tempfile.mkdtemp('','gotm-')
         namelistscenario.setProperty(['gotmrun','output','out_fmt'],2)
@@ -171,7 +221,6 @@ class PageProgress(commonqt.WizardPage):
         self.gotmthread.rungotm()
         
     def progressed(self,progress):
-        #print 'progress = '+str(progress)
         self.bar.setValue(int(round(self.bar.maximum()*progress)))
         remaining = (1-progress)*self.timer.elapsed()/1000/progress
         if remaining<60:
@@ -180,20 +229,42 @@ class PageProgress(commonqt.WizardPage):
             self.labelRemaining.setText('%i minutes %i seconds remaining' % (math.floor(remaining/60),round(remaining % 60)))
             
     def done(self):
-        success = self.gotmthread.result
-        print 'GOTM thread shut-down; return code = '+str(success)
-        
-        # Display GOTM output (append if error message if an error occurred)
+        result = self.gotmthread.result
+        print 'GOTM thread shut-down; return code = %s' % str(result)
+
+        layout = self.layout()
+
+        # Hide progress bar and remaining time.
+        self.busylabel.hide()
+        self.bar.hide()
+        self.labelRemaining.hide()
+
+        # Add label for result.
+        if result==0:
+            self.resultlabel.setText('The simulation is complete.')
+        elif result==1:
+            self.resultlabel.setText('The simulation failed:')
+        elif result==2:
+            self.resultlabel.setText('The simulation was cancelled')
+        self.resultlabel.show()
+
+        if result!=1:
+            self.showhidebutton.show()
+        else:
+            self.text.show()
+            self.savebutton.show()
+
+        # Set text with GOTM output (append error message if an error occurred)
         restext = ''
-        if success==1:
-            restext += 'Error: '+self.gotmthread.error + '\n'
-        elif success==2:
+        if result==1:
+            restext += 'Error: %s\n' % self.gotmthread.error
+        elif result==2:
             restext += 'GOTM run was cancelled.\n\n'
-        if len(self.gotmthread.stderr)>0: restext += 'GOTM output:\n'+self.gotmthread.stderr
+        if len(self.gotmthread.stderr)>0: restext += 'GOTM output:\n%s' % self.gotmthread.stderr
         self.text.setPlainText(restext)
         
         # Create result object
-        if success==0:
+        if result==0:
             self.result = common.Result()
             self.result.attach(os.path.join(self.tempdir,'result.nc'),self.scenario)
             self.result.changed = True
@@ -222,3 +293,19 @@ class PageProgress(commonqt.WizardPage):
                 print 'Unable to completely remove GOTM temporary directory "'+self.tempdir+'".\nError: '+str(e)
             self.tempdir = None
         return True
+
+    def onShowHideOutput(self):
+        makevisible = self.text.isHidden()
+        self.text.setVisible(makevisible)
+        self.savebutton.setVisible(makevisible)
+        if makevisible:
+            self.showhidebutton.setText('Hide output')
+        else:
+            self.showhidebutton.setText('Show output')
+
+    def onSaveOutput(self):
+        path = unicode(QtGui.QFileDialog.getSaveFileName(self,'','','Text files (*.txt);;All files (*.*)'))
+        if path=='': return
+        f = open(path,'w')
+        f.write(self.text.toPlainText())
+        f.close()

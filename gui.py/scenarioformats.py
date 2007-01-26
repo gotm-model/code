@@ -205,6 +205,18 @@ class Convertor_gotm_3_3_2_to_gotm_4_0_0(Convertor):
         target.setProperty(['obs','wave_nml','Hs'],0)
         target.setProperty(['obs','wave_nml','Tz'],0)
         target.setProperty(['obs','wave_nml','phiw'],0)
+
+        # Initialize bio namelist in obs.inp with a set of defaults.
+        target.setProperty(['bio','bio_nml','bio_calc'],False)
+        target.setProperty(['bio','bio_nml','bio_model'],1)
+        target.setProperty(['bio','bio_nml','bio_eulerian'],True)
+        target.setProperty(['bio','bio_nml','cnpar'],1)
+        target.setProperty(['bio','bio_nml','w_adv_discr'],6)
+        target.setProperty(['bio','bio_nml','ode_method'],3)
+        target.setProperty(['bio','bio_nml','split_factor'],1)
+        target.setProperty(['bio','bio_nml','bioshade_feedback'],False)
+        target.setProperty(['bio','bio_nml','bio_lagrange_mean'],True)
+        target.setProperty(['bio','bio_nml','bio_npar'],100000)
 addConvertor('gotm-3.3.2','gotm-4.0.0',Convertor_gotm_3_3_2_to_gotm_4_0_0)
 
 class Convertor_gotm_4_0_0_to_gotm_3_3_2(Convertor):

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.11 2007-01-19 11:33:02 jorn Exp $
+#$Id: common.py,v 1.12 2007-01-26 11:55:25 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -128,142 +128,161 @@ def addDescendantNode(root,location):
 # Namelist parsing utilities
 # ------------------------------------------------------------------------------------------
 
-class NamelistParser:
+class NamelistParseException(Exception):
+    def __init__(self,error,filename=None,namelistname=None,variablename=None):
+        Exception.__init__(self,error)
+        self.filename     = filename
+        self.namelistname = namelistname
+        self.variablename = variablename
 
-    class NamelistParseException(Exception):
-        def __init__(self,error,filename=None,namelistname=None,variablename=None):
-            Exception.__init__(self,error)
-            self.filename     = filename
-            self.namelistname = namelistname
-            self.variablename = variablename
+    def __str__(self):
+        return Exception.__str__(self)+'.\nFile: '+str(self.filename)+', namelist: '+str(self.namelistname)+', variable: '+str(self.variablename)
 
-        def __str__(self):
-            return Exception.__str__(self)+'.\nFile: '+str(self.filename)+', namelist: '+str(self.namelistname)+', variable: '+str(self.variablename)
-
-    class NamelistFile:
-
-        class Namelist:
-
-            def __init__(self,name,data,requireordered,filepath=None):
-                self.name = name
-                self.data = data
-                self.requireordered = requireordered
-                self.filepath = filepath
-
-            def getVariableValue(self,varname):
-                if self.requireordered:
-                    varmatch = re.match('\s*'+varname+'\s*=\s*(.*?)[ \t]*(?:$|(?:[,\n]\s*))',self.data,re.IGNORECASE)
-                else:
-                    varmatch = re.search('(?<!\w)'+varname+'\s*=\s*(.*?)[ \t]*(?:$|(?:[,\n]))',self.data,re.IGNORECASE)
-                if varmatch==None:
-                    raise NamelistParser.NamelistParseException('Cannot find variable "%s". Current namelist data: "%s"' % (varname,self.data),self.filepath,self.name,varname)
-                vardata = varmatch.group(1)
-                if self.requireordered:
-                    self.data = self.data[len(varmatch.group(0)):]
-                return vardata
-        
-        # Commonly used regular expressions, for:
-        #   - locating the start of comments, or opening quotes.
-        #   - locating the start of namelist (ampersand followed by list name).
-        #   - locating the end of a namelist, i.e. a slash, or opening quotes.
-        commentchar_re = re.compile('[!"\']')
-        namelistname_re = re.compile('\s*&\s*(\w+)\s*')
-        stopchar_re = re.compile('[/"\']')
-
-        def __init__(self,path,requireordered,subs=[]):
-            # Attempt to open namelist file and read all data
-            try:
-                nmlfile = open(path,'rU')
-            except Exception,e:
-                raise NamelistParser.NamelistParseException('Cannot open namelist file. Error: %s' % (str(e),),path)
-
-            try:
-                
-                self.data = ''
-                line = nmlfile.readline()
-                iline = 1
-                while line!='':
-
-                    # Strip comments, i.e. on every line, remove everything after (and including) the first exclamation
-                    # mark; ignore text between single and double quotes.
-                    ipos = 0
-                    match = self.commentchar_re.search(line,pos=ipos)
-                    while match!=None:
-                        ch = match.group(0)
-                        if ch=='\'' or ch=='"':
-                            ipos = match.end(0)
-                            inextquote = line.find(ch,ipos)
-                            if inextquote==-1:
-                                raise NamelistParser.NamelistParseException('Line %i: opening quote %s was not matched by end quote.' % (iline,ch),path)
-                            ipos = inextquote+1
-                        else:
-                            # Found start of comment; only keep everything preceding the start position.
-                            line = line[:match.start(0)]
-                            break
-                        match = self.commentchar_re.search(line,pos=ipos)
-
-                    self.data += line
-                    line = nmlfile.readline()
-                    iline += 1
-            finally:
-                nmlfile.close()
-
-            # Make substitutions (if any).
-            for (old,new) in subs:
-                self.data = self.data.replace(old,new)
-
-            self.requireordered = requireordered
-            self.path = path
-
-        def parseNextNamelist(self,expectedlist=None):
-            match = self.namelistname_re.match(self.data)
-            if match==None:
-                raise NamelistParser.NamelistParseException('No namelist found; expected ampersand followed by namelist name.',self.path)
-            name = match.group(1)
-            if expectedlist!=None and name!=expectedlist:
-                raise NamelistParser.NamelistParseException('Expected namelist "%s", but found "%s".' % (expectedlist,name),self.path,expectedlist)
-            istart = match.end(0)
-            ipos = istart
-            while True:
-                match = self.stopchar_re.search(self.data,pos=ipos)
-                if match==None:
-                    raise NamelistParser.NamelistParseException('End of namelist (slash) not found.',self.path,name)
-                ch = match.group(0)
-                ipos = match.end(0)
-                if ch=='/':
-                    break
-                else:
-                    inextquote = self.data.find(ch,ipos)
-                    if inextquote==-1:
-                        raise NamelistParser.NamelistParseException('Opening quote %s was not matched by end quote.' % (ch,),self.path,name)
-                    ipos = inextquote+1
-            namelistdata = self.data[istart:ipos]
-            self.data = self.data[ipos:]
-            return self.Namelist(name,namelistdata,self.requireordered,filepath=self.path)
-
+class NamelistSubstitutions:
     # Commonly used regular expression (for parsing substitions in the .values file)
     subs_re = re.compile('\s*s/(\w+)/(.+)/')
 
-    def __init__(self,requireordered):
-        self.subs = []
-        self.requireordered = requireordered
-
-    def loadSubstitutions(self,path):
+    def __init__(self,path):
         self.subs = []
         try:
             valuesfile = open(path,'rU')
         except Exception,e:
-            raise NamelistParser.NamelistParseException('Cannot open .values file "%s". Error: %s' % (path,str(e)))
+            raise NamelistParseException('Cannot open .values file "%s". Error: %s' % (path,str(e)))
         line = valuesfile.readline()
         while line!='':
             m = self.subs_re.match(line)
             if m!=None:
+                #pat = re.compile(m.group(1),re.IGNORECASE)
+                #self.subs.append((pat,m.group(2)))
                 self.subs.append((m.group(1),m.group(2)))
             line = valuesfile.readline()
         valuesfile.close()
 
-    def parseFile(self,path):
-        return self.NamelistFile(path,self.requireordered,subs=self.subs)
+    def substitute(self,text):
+        for (old,new) in self.subs:
+            #text = old.sub(new,text)
+            text = text.replace(old,new)
+        return text
+
+class Namelist:
+
+    varassign_re = re.compile('\s*(\w+)\s*=\s*')
+    varstopchar_re = re.compile('[/,\n"\']')
+
+    def __init__(self,name,data,filepath=None):
+        self.name = name
+        self.data = data
+        self.filepath = filepath
+
+    def getNextVariable(self):
+        match = self.varassign_re.match(self.data);
+        if match==None:
+            raise NamelistParseException('Cannot find a variable assignment (variable_name = ...). Current namelist data: "%s"' % (self.data,),self.filepath,self.name,None)
+        foundvarname = match.group(1)
+        
+        self.data = self.data[match.end():]
+        ipos = 0
+        while True:
+            match = self.varstopchar_re.search(self.data,pos=ipos)
+            if match==None:
+                raise NamelistParseException('End of variable value not found. Current namelist data: "%s"' % (self.data,),self.filepath,self.name,foundvarname)
+            ch = match.group(0)
+            if ch=='\'' or ch=='"':
+                ipos = match.end(0)
+                inextquote = self.data.find(ch,ipos)
+                if inextquote==-1:
+                    raise NamelistParseException('Opening quote %s was not matched by end quote.' % (ch,),self.filepath,self.name,foundvarname)
+                ipos = inextquote+1
+            else:
+                # Found end of variable value.
+                vardata = self.data[0:match.start()].rstrip()
+                self.data = self.data[match.end():].lstrip()
+                break
+
+        return (foundvarname,vardata)
+
+    def isEmpty(self):
+        return len(self.data)==0
+
+class NamelistFile:
+    
+    # Commonly used regular expressions, for:
+    #   - locating the start of comments, or opening quotes.
+    #   - locating the start of namelist (ampersand followed by list name).
+    #   - locating the end of a namelist, i.e. a slash, or opening quotes.
+    commentchar_re = re.compile('[!#"\']')
+    namelistname_re = re.compile('\s*&\s*(\w+)\s*')
+    stopchar_re = re.compile('[/"\']')
+
+    def __init__(self,path,subs=[]):
+        # Attempt to open namelist file and read all data
+        try:
+            nmlfile = open(path,'rU')
+        except Exception,e:
+            raise NamelistParseException('Cannot open namelist file. Error: %s' % (str(e),),path)
+
+        try:
+            
+            self.data = ''
+            line = nmlfile.readline()
+            iline = 1
+            while line!='':
+
+                # Strip comments, i.e. on every line, remove everything after (and including) the first exclamation
+                # mark; ignore text between single and double quotes.
+                ipos = 0
+                match = self.commentchar_re.search(line,pos=ipos)
+                while match!=None:
+                    ch = match.group(0)
+                    if ch=='\'' or ch=='"':
+                        ipos = match.end(0)
+                        inextquote = line.find(ch,ipos)
+                        if inextquote==-1:
+                            raise NamelistParseException('Line %i: opening quote %s was not matched by end quote.' % (iline,ch),path)
+                        ipos = inextquote+1
+                    else:
+                        # Found start of comment; only keep everything preceding the start position.
+                        line = line[:match.start(0)]
+                        break
+                    match = self.commentchar_re.search(line,pos=ipos)
+
+                self.data += line
+                line = nmlfile.readline()
+                iline += 1
+        finally:
+            nmlfile.close()
+
+        # Make substitutions (if any).
+        for sub in subs:
+            self.data = sub.substitute(self.data)
+
+        self.path = path
+
+    def parseNextNamelist(self,expectedlist=None):
+        match = self.namelistname_re.match(self.data)
+        if match==None:
+            raise NamelistParseException('No namelist found; expected ampersand followed by namelist name.',self.path)
+        name = match.group(1)
+        if expectedlist!=None and name!=expectedlist:
+            raise NamelistParseException('Expected namelist "%s", but found "%s".' % (expectedlist,name),self.path,expectedlist)
+        istart = match.end(0)
+        ipos = istart
+        while True:
+            match = self.stopchar_re.search(self.data,pos=ipos)
+            if match==None:
+                raise NamelistParseException('End of namelist (slash) not found.',self.path,name)
+            ch = match.group(0)
+            ipos = match.end(0)
+            if ch=='/':
+                break
+            else:
+                inextquote = self.data.find(ch,ipos)
+                if inextquote==-1:
+                    raise NamelistParseException('Opening quote %s was not matched by end quote.' % (ch,),self.path,name)
+                ipos = inextquote+1
+        namelistdata = self.data[istart:ipos-1]
+        self.data = self.data[ipos:]
+        return Namelist(name,namelistdata,filepath=self.path)
 
 # ------------------------------------------------------------------------------------------
 # XMLPropertyStore
@@ -692,7 +711,7 @@ class TypedXMLPropertyStore:
             return childcount
 
         def getChildren(self,showhidden=False):
-            if showhidden: return self.children
+            if showhidden: return self.children[:]
             res = []
             for child in self.children:
                 if not child.isHidden(): res.append(child)
@@ -839,6 +858,9 @@ class TypedXMLPropertyStore:
 
         # For every variable: build a list of variables/folders that depend on its value.
         self.buildDependencies()
+
+        # Link to original source (if any)
+        self.path = None
 
         # Set property store
         self.store = None
@@ -1104,6 +1126,33 @@ class TypedXMLPropertyStore:
     def save(self,path):
         return self.store.save(path)
 
+    def saveAll(self,path,xmlname,targetisdir = False):
+        if targetisdir:
+            # If the directory to write to does not exist, create it.
+            if (not os.path.isdir(path)):
+                try:
+                    os.mkdir(path)
+                except Exception,e:
+                    raise Exception('Unable to create target directory "%s". Error: %s' % (path,str(e)))
+            self.save(os.path.join(path,xmlname))
+        else:
+            zfile = zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED)
+            zfile.writestr(xmlname, self.toxml('utf-8'))
+
+        filenodes = self.root.getNodesByType('file')
+        for fn in filenodes:
+            if not fn.isHidden():
+                filename = str(fn.getId()+'.dat')
+                datafile = fn.getValue()
+                if targetisdir:
+                    datafile.save(os.path.join(path,filename),claim=False)
+                else:
+                    print 'Adding "%s" to archive...' % filename
+                    datafile.addToZip(zfile,filename)
+        if not targetisdir: zfile.close()
+        
+        self.resetChanged()
+
     def toxml(self,enc):
         return self.store.xmldocument.toxml(enc)
 
@@ -1173,7 +1222,7 @@ class Scenario(TypedXMLPropertyStore):
         return Scenario.templates
 
     @staticmethod
-    def fromNamelists(path,protodir=None,targetversion=None):
+    def fromNamelists(path,protodir=None,targetversion=None,strict = True):
         if targetversion==None: targetversion=guiscenarioversion
         
         templates = Scenario.getTemplates()
@@ -1184,8 +1233,8 @@ class Scenario(TypedXMLPropertyStore):
             print 'Trying scenario format "'+sourceid+'"...'
             scenario = Scenario(templatename=sourceid)
             try:
-                scenario.loadFromNamelists(path,requireordered = True,protodir=protodir)
-            except NamelistParser.NamelistParseException,e:
+                scenario.loadFromNamelists(path,strict=strict,protodir=protodir)
+            except NamelistParseException,e:
                 failures += 'Path "'+path+'" does not match template "'+sourceid+'".\nReason: '+str(e)+'\n'
                 scenario.unlink()
                 scenario = None
@@ -1213,7 +1262,7 @@ class Scenario(TypedXMLPropertyStore):
 
         return target
 
-    def loadFromNamelists(self, srcpath, requireordered = False, protodir = None):
+    def loadFromNamelists(self, srcpath, strict = False, protodir = None):
         print 'Importing scenario from namelist files...'
 
         # Start with empty scenario
@@ -1244,15 +1293,12 @@ class Scenario(TypedXMLPropertyStore):
             else:
                 raise Exception('Path "%s" does not point to an existing directory or file.' % srcpath)
 
-        # Create the namelist parser.
-        parser = NamelistParser(requireordered)
-
+        globalsubs = None
         if protodir!=None:
-            # Namelist are specified as .proto files plus a .values file. Load the substitutions specified
-            # in the .values file.
-            valuesname = os.path.basename(srcpath)+'.values'
-            valuespath = os.path.join(srcpath,valuesname)
-            parser.loadSubstitutions(valuespath)
+            # Namelist are specified as .proto files plus one or more .values files.
+            # Load the substitutions specified in the main .values file.
+            valuespath = os.path.join(srcpath,os.path.basename(srcpath)+'.values')
+            globalsubs = NamelistSubstitutions(valuespath)
 
         # Commonly used regular expressions (for parsing strings and datetimes).
         strre = re.compile('^([\'"])(.*?)\\1$')
@@ -1260,6 +1306,11 @@ class Scenario(TypedXMLPropertyStore):
 
         try:
             for mainchild in self.root.getChildren(showhidden=True):
+                # If we are using prototypes, all namelist files are available, but not all contain
+                # values; then, just skip namelist files that are disabled by settings in the preceding
+                # namelists.
+                if protodir!=None and mainchild.isHidden(): continue
+                
                 # Get name (excl. extension) for the namelist file, and its full path.
                 nmlfilename = mainchild.getId()
 
@@ -1269,12 +1320,24 @@ class Scenario(TypedXMLPropertyStore):
                 if protodir==None:
                     # Normal namelist file
                     nmlfilepath = os.path.join(srcpath, nmlfilename+self.namelistextension)
+                    cursubs = []
                 else:
                     # Prototype namelist in which values will be substituted.
                     nmlfilepath = os.path.join(protodir, nmlfilename+'.proto')
 
+                    # Load the relevant value substitutions (if any); otherwise use global substitutions.
+                    cursubs = [globalsubs]
+                    cursubspath = os.path.join(srcpath,nmlfilename+'.values')
+                    if os.path.isfile(cursubspath):
+                        cursubs = [NamelistSubstitutions(cursubspath)]
+
                 # Parse the namelist file.
-                nmlfile = parser.parseFile(nmlfilepath)
+                if not os.path.isfile(nmlfilepath):
+                    if mainchild.templatenode.hasAttribute('optional'):
+                        continue
+                    else:
+                        raise NamelistParseException('Namelist file "%s" is not present.' % (os.path.basename(nmlfilepath),),nmlfilepath,None,None)
+                nmlfile = NamelistFile(nmlfilepath,cursubs)
 
                 # Loop over all nodes below the root (each node represents a namelist file)
                 for filechild in mainchild.getChildren(showhidden=True):
@@ -1286,50 +1349,63 @@ class Scenario(TypedXMLPropertyStore):
 
                     # Parse the next namelist.
                     namelist = nmlfile.parseNextNamelist(expectedlist=listname)
-                        
-                    for listchild in filechild.getChildren(showhidden=True):
-                        varname = listchild.getId()
 
-                        if not listchild.isVariable():
-                            raise Exception('Found non-variable node with id %s below branch %s/%s, where only variables are expected.' % (varname,nmlfilename,listname))
+                    listchildren = filechild.getChildren(showhidden=True)
 
-                        vardata = namelist.getVariableValue(varname)
+                    while not namelist.isEmpty():
+                        (foundvarname,vardata) = namelist.getNextVariable()
+
+                        if strict:
+                            listchild = listchildren.pop(0)
+                            varname = listchild.getId()
+                            if varname.lower()!=foundvarname.lower():
+                                raise NamelistParseException('Found variable "%s" where "%s" was expected.' % (foundvarname,varname),nmlfilepath,listname,varname)
+                        else:
+                            listchild = None
+                            for lc in listchildren:
+                                varname = lc.getId()
+                                if varname.lower()==foundvarname.lower():
+                                    listchild = lc
+                                    break
+                            if listchild==None:
+                                raise NamelistParseException('Found variable "%s" not expected in namelist.' % (foundvarname,),nmlfilepath,listname,varname)
+
                         vartype = listchild.getValueType()
 
                         if vartype=='string' or vartype=='datetime' or vartype=='file':
                             strmatch = strre.match(vardata)
                             if strmatch==None:
-                                raise NamelistParser.NamelistParseException('Variable is not a string. Data: %s' % vardata,nmlfilepath,listname,varname)
+                                raise NamelistParseException('Variable is not a string. Data: %s' % vardata,nmlfilepath,listname,varname)
                             val = strmatch.group(2)
                         elif vartype=='int':
                             try:
                                 val = int(vardata)
                             except:
-                                raise NamelistParser.NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,nmlfilepath,listname,varname)
+                                raise NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,nmlfilepath,listname,varname)
                         elif vartype=='float':
                             try:
                                 val = float(vardata)
                             except:
-                                raise NamelistParser.NamelistParseException('Variable is not a floating point value. Data: "%s"' % vardata,nmlfilepath,listname,varname)
+                                raise NamelistParseException('Variable is not a floating point value. Data: "%s"' % vardata,nmlfilepath,listname,varname)
                         elif vartype=='bool':
                             if   vardata[0].lower()=='f' or vardata[0:2].lower()=='.f':
                                 val = False
                             elif vardata[0].lower()=='t' or vardata[0:2].lower()=='.t':
                                 val = True
                             else:
-                                raise NamelistParser.NamelistParseException('Variable is not a boolean. Data: "%s"' % vardata,nmlfilepath,listname,varname)
+                                raise NamelistParseException('Variable is not a boolean. Data: "%s"' % vardata,nmlfilepath,listname,varname)
                         elif vartype=='select':
                             try:
                                 val = int(vardata)
                             except:
-                                raise NamelistParser.NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,nmlfilepath,listname,varname)
+                                raise NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,nmlfilepath,listname,varname)
                         else:
                             raise 'Unknown variable type '+str(vartype)+' in scenario template.'
                         
                         if vartype=='datetime':
                             datetimematch = datetimere.match(val)
                             if datetimematch==None:
-                                raise NamelistParser.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',nmlfilepath,listname,varname)
+                                raise NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',nmlfilepath,listname,varname)
                             refvals = map(lambda(i): int(i),datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
                             val = datetime.datetime(*refvals)
                         elif vartype=='file':
@@ -1338,6 +1414,11 @@ class Scenario(TypedXMLPropertyStore):
                             val = DataFile(filepath)
 
                         listchild.setValue(val)
+                    if strict and len(listchildren)>0:
+                        lcnames = []
+                        for lc in listchildren:
+                            lcnames.append('"%s"' % lc.getId())
+                        raise NamelistParseException('Variables %s are missing' % ', '.join(lcnames),nmlfilepath,listname,None)
         finally:
             if nmltempdir!=None:
                 print 'Removing temporary namelist directory "'+nmltempdir+'".'
@@ -1407,6 +1488,7 @@ class Scenario(TypedXMLPropertyStore):
                     varname = listchild.getId()
                     varval = listchild.getValue()
                     if varval==None:
+                        continue
                         raise Exception('Value for variable "'+varname+'" in namelist "'+listname+'" not set.')
                     vartype = listchild.getValueType()
                     if vartype=='string':
@@ -1492,42 +1574,26 @@ class Scenario(TypedXMLPropertyStore):
             raise Exception('Unknown condition type "%s".' % condtype)
 
     def saveAll(self,path,targetversion=None,targetisdir = False):
-        if targetversion==None: targetversion = savedscenarioversion
+        if targetversion==None:
+            # Default save version
+            targetversion = savedscenarioversion
+            
         if self.version!=targetversion:
             tempscenario = self.convert(targetversion,targetownstemp=False)
-            tempscenario.saveAll(path,targetversion=targetversion)
+            tempscenario.saveAll(path,targetversion=targetversion,targetisdir = targetisdir)
             tempscenario.unlink()
         else:
-            if targetisdir:
-                # If the directory to write to does not exist, create it.
-                if (not os.path.isdir(path)):
-                    try:
-                        os.mkdir(path)
-                    except Exception,e:
-                        raise Exception('Unable to create target directory "'+path+'". Error: '+str(e))
-                self.save(os.path.join(path,'scenario.xml'))
-            else:
-                zfile = zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED)
-                zfile.writestr('scenario.xml', self.toxml('utf-8'))
-
-            filenodes = self.root.getNodesByType('file')
-            for fn in filenodes:
-                if not fn.isHidden():
-                    filename = str(fn.getId()+'.dat')
-                    datafile = fn.getValue()
-                    if targetisdir:
-                        datafile.save(os.path.join(path,filename),claim=False)
-                    else:
-                        print 'Adding "'+filename+'" to archive...'
-                        datafile.addToZip(zfile,filename)
-            if not targetisdir: zfile.close()
+            TypedXMLPropertyStore.saveAll(self,path,'scenario.xml',targetisdir = targetisdir)
         
         self.resetChanged()
 
     def loadAll(self,path):
         # Basic check: does the specified source path exist?
         if not os.path.exists(path):
-            raise Exception('Source path "'+path+'" does not exist.')
+            raise Exception('Source path "%s" does not exist.' % path)
+
+        # File name for XML.
+        xmlname = 'scenario.xml'
 
         # The specified source file may be a ZIP archive, or a directory that contains the extracted
         # contents of such an archive; decide which.
@@ -1542,15 +1608,15 @@ class Scenario(TypedXMLPropertyStore):
             files = zfile.namelist()
 
         # Check for existence of main scenario file.
-        if 'scenario.xml' not in files:
-            raise Exception('The specified source does not contain "scenario.xml"; it cannot contain a GOTM scenario.')
+        if xmlname not in files:
+            raise Exception('The specified source does not contain "%s" and can therefore not be a GOTM scenario.' % xmlname)
 
         # Read and parse the scenario file.
         if not srcisdir:
-            scenariodata = zfile.read('scenario.xml')
-            storedom = xml.dom.minidom.parseString(scenariodata)
+            xmldata = zfile.read(xmlname)
+            storedom = xml.dom.minidom.parseString(xmldata)
         else:
-            storedom = xml.dom.minidom.parse(os.path.join(path,'scenario.xml'))
+            storedom = xml.dom.minidom.parse(os.path.join(path,xmlname))
         
         # Get the scenario version
         version = storedom.documentElement.getAttribute('version')
@@ -1559,7 +1625,7 @@ class Scenario(TypedXMLPropertyStore):
             print Exception('This is an unversioned scenario created with a gotm-gui alpha. These are no longer supported; please recreate your scenario with the current gotm-gui.')
         if self.version!=version:
             # The version of the saved scenario does not match the version of this scenario object; convert it.
-            print 'Scenario "'+path+'" has version "'+version+'"; starting conversion to "'+self.version+'".'
+            print 'Scenario "%s" has version "%s"; starting conversion to "%s".' % (path,version,self.version)
             if not srcisdir: zfile.close()
             tempscenario = Scenario(templatename=version)
             tempscenario.loadAll(path)
@@ -1570,7 +1636,7 @@ class Scenario(TypedXMLPropertyStore):
             # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
             if version==savedscenarioversion: self.resetChanged()
         else:
-            # Attach the parsed scenario (XML DOM) to ourselves.
+            # Attach the parsed scenario (XML DOM).
             self.setStore(storedom,None)
 
             # Get all data files that belong to this scenario from the archive.
@@ -1580,13 +1646,13 @@ class Scenario(TypedXMLPropertyStore):
                 if not fn.isHidden():
                     filename = fn.getId()+'.dat'
                     if filename not in files:
-                        raise Exception('The archive "'+path+'" does not contain required data file "'+filename+'".')
+                        raise Exception('The archive "%s" does not contain required data file "%s".' % (path,filename))
                     targetfilepath = os.path.join(tmpdir,filename)
                     if srcisdir:
-                        print 'Copying "'+filename+'" to temporary scenario directory...'
+                        print 'Copying "filename" to temporary scenario directory...' % filename
                         shutil.copyfile(os.path.join(path,filename),targetfilepath)
                     else:
-                        print 'Extracting "'+filename+'" to temporary scenario directory...'
+                        print 'Extracting "%s" to temporary scenario directory...' % filename
                         filedata = zfile.read(filename)
                         f = open(targetfilepath,'wb')
                         f.write(filedata)
@@ -1594,6 +1660,9 @@ class Scenario(TypedXMLPropertyStore):
 
             # Close the archive
             if not srcisdir: zfile.close()
+
+        # Store source path.
+        self.path = path
 
 # Abstract class that contains one or more variables that can be plotted.
 # Classes deriving from it must support the virtual methods below.
@@ -1843,6 +1912,7 @@ class LinkedFileVariableStore(PlotVariableStore):
                 values.append(curvalues)
                 line = f.readline()
                 iline += 1
+            print 'Data read; starting interpolation...'
             times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
             uniquedepths = uniquedepths.keys()
             uniquedepths.sort()
