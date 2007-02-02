@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.6 2007-01-26 14:12:28 jorn Exp $
+#$Id: simulator.py,v 1.7 2007-02-02 11:20:45 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import common,commonqt
@@ -114,9 +114,12 @@ class GOTMThread(QtCore.QThread):
 
             # Adjust slice size
             elapsed = timer.restart()
-            islicesize = int(round(islicesize * 400./elapsed))
-            if islicesize<minslicesize: islicesize = minslicesize
-            if islicesize>maxslicesize: islicesize = maxslicesize
+            if elapsed==0:
+                islicesize = maxslicesize
+            else:
+                islicesize = int(round(islicesize * 400./elapsed))
+                if islicesize<minslicesize: islicesize = minslicesize
+                if islicesize>maxslicesize: islicesize = maxslicesize
 
             islicestart = islicestop + 1
             
@@ -171,7 +174,7 @@ class PageProgress(commonqt.WizardPage):
         layout.addWidget(self.resultlabel)
 
         # Add (initially hidden) show/hide output button.
-        self.showhidebutton = QtGui.QPushButton('Show output',self)
+        self.showhidebutton = QtGui.QPushButton('Show diagnostic output',self)
         self.showhidebutton.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
         self.showhidebutton.hide()
         layout.addWidget(self.showhidebutton)
@@ -301,10 +304,11 @@ class PageProgress(commonqt.WizardPage):
         makevisible = self.text.isHidden()
         self.text.setVisible(makevisible)
         self.savebutton.setVisible(makevisible)
+        curtext = unicode(self.showhidebutton.text())
         if makevisible:
-            self.showhidebutton.setText('Hide output')
+            self.showhidebutton.setText(curtext.replace('Show','Hide'))
         else:
-            self.showhidebutton.setText('Show output')
+            self.showhidebutton.setText(curtext.replace('Hide','Show'))
 
     def onSaveOutput(self):
         path = unicode(QtGui.QFileDialog.getSaveFileName(self,'','','Text files (*.txt);;All files (*.*)'))

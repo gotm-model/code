@@ -36,7 +36,7 @@ def getConvertor(sourceid,targetid,directonly=False):
     # Try direct route first.
     if (sourceid in convertorsfrom) and (targetid in convertorsfrom[sourceid]):
         convertorclass = convertorsfrom[sourceid][targetid]
-        return convertorclass(sourceid,targetid)
+        return convertorclass()
 
     # Direct route not available, try indirect routes
     if not directonly:
@@ -103,19 +103,37 @@ def findIndirectConversion(sourceid,targetid,disallowed=[],depth=''):
                 routes.append([sourceid]+cr)
     return routes
 
-# addConvertor(sourceid,targetid,convertorclass)
+# addConvertor(convertorclass)
 #   [internal use only!]
-#   Register a convertor class, instances of with can convert between the specified sourceid and targetid.
-def addConvertor(sourceid,targetid,convertorclass):
+#   Register a convertor class.
+def addConvertor(convertorclass):
+    sourceid = convertorclass.fixedsourceid
+    targetid = convertorclass.fixedtargetid
+    if sourceid==None:
+        raise Exception('Error! Specified convertor class lacks a source identifier.')
+    if targetid==None:
+        raise Exception('Error! Specified convertor class lacks a target identifier.')
     if sourceid not in convertorsfrom: convertorsfrom[sourceid] = {}
     if targetid in convertorsfrom[sourceid]:
-        raise Exception('Error! A class for converting between '+sourceid+' and '+targetid+' was already specified previously.')
+        raise Exception('Error! A class for converting from "%s" to "%s" was already specified previously.' % (sourceid,targetid))
     convertorsfrom[sourceid][targetid] = convertorclass
 
 # Convertor
 #   Base class for conversion; derive custom convertors from this class.
 class Convertor:
-    def __init__(self,sourceid,targetid):
+    fixedsourceid = None
+    fixedtargetid = None
+
+    def __init__(self,sourceid=None,targetid=None):
+        if sourceid==None:
+            if self.fixedsourceid==None:
+                raise Exception('Convertor class was created without explicit version identifiers, but also lacks default identifiers.')
+            sourceid = self.fixedsourceid
+            targetid = self.fixedtargetid
+        else:
+            if self.fixedsourceid!=None:
+                raise Exception('Convertor class was created with explicit version identifiers, but also has default identifiers.')
+        
         self.sourceid = sourceid
         self.targetid = targetid
 
@@ -127,17 +145,54 @@ class Convertor:
 
         self.inplace = True
         self.targetownstemp = True
-    
+
+        self.links = []
+        self.defaults = []
+        self.registerLinks()
+
+    def registerLinks(self):
+        pass
+
     def convert(self,source,target):
-        # Try simple deep copy: nodes with the same name and location in both
-        # source and target scenario will have their value copied.
         if self.inplace:
             target.tempdir = source.tempdir
             if self.targetownstemp:
                 source.tempdirowner = False
             else:
                 target.tempdirowner = False
+
+        # Try simple deep copy: nodes with the same name and location in both
+        # source and target scenario will have their value copied.
         target.root.copyFrom(source.root)
+
+        # Handle one-to-one links between source nodes and target nodes.
+        for (sourcepath,targetpath) in self.links:
+            if isinstance(sourcepath,str): sourcepath = sourcepath.split('/')
+            if isinstance(targetpath,str): targetpath = targetpath.split('/')
+            sourcenode = source.root.getLocation(sourcepath)
+            if sourcenode==None:
+                raise Exception('Cannot locate node "%s" in source scenario.' % '/'.join(sourcepath))
+            targetnode = target.root.getLocation(targetpath)
+            if targetnode==None:
+                raise Exception('Cannot locate node "%s" in target scenario.' % '/'.join(targetpath))
+            targetnode.copyFrom(sourcenode)
+
+        # Reset target nodes to defaults where applicable.
+        if len(self.defaults)>0:
+            defscen = common.Scenario.getDefault(None,target.version)
+            for path in self.defaults:
+                if isinstance(path,str): path = path.split('/')
+                sourcenode = defscen.root.getLocation(path)
+                if sourcenode==None:
+                    raise Exception('Cannot locate node "%s" in scenario.')
+                targetnode = target.root.getLocation(path)
+                targetnode.copyFrom(sourcenode)
+
+    def reverseLinks(self):
+        newlinks = []
+        for (sourcepath,targetpath) in self.links:
+            newlinks.append((targetpath,sourcepath))
+        return newlinks
 
 # ConvertorChain
 #   Generic class for multiple-step conversions
@@ -174,106 +229,117 @@ class ConvertorChain(Convertor):
 # ========================================================================================
 
 class Convertor_gotm_3_2_4_to_gotm_3_3_2(Convertor):
+    fixedsourceid = 'gotm-3.2.4'
+    fixedtargetid = 'gotm-3.3.2'
+    
+    def registerLinks(self):
+        self.links = [('/gotmmean/meanflow/charnok',    '/gotmmean/meanflow/charnock'),
+                      ('/gotmmean/meanflow/charnok_val','/gotmmean/meanflow/charnock_val')]
+
     def convert(self,source,target):
         Convertor.convert(self,source,target)
-        target.setProperty(['gotmmean','meanflow','charnock'],    source.getProperty(['gotmmean','meanflow','charnok']))
-        target.setProperty(['gotmmean','meanflow','charnock_val'],source.getProperty(['gotmmean','meanflow','charnok_val']))
 
         # Initialize oxygen profile namelist in obs.inp with a set of defaults.
         target.setProperty(['obs','o2_profile','o2_prof_method'],0)
         target.setProperty(['obs','o2_profile','o2_units'],0)
         target.setProperty(['obs','o2_profile','o2_prof_file'],'')
-addConvertor('gotm-3.2.4','gotm-3.3.2',Convertor_gotm_3_2_4_to_gotm_3_3_2)
+addConvertor(Convertor_gotm_3_2_4_to_gotm_3_3_2)
 
 class Convertor_gotm_3_3_2_to_gotm_3_2_4(Convertor):
+    fixedsourceid = 'gotm-3.3.2'
+    fixedtargetid = 'gotm-3.2.4'
+
+    def registerLinks(self):
+        self.links = Convertor_gotm_3_2_4_to_gotm_3_3_2().reverseLinks()
+
     def convert(self,source,target):
         Convertor.convert(self,source,target)
-        target.setProperty(['gotmmean','meanflow','charnok'],    source.getProperty(['gotmmean','meanflow','charnock']))
-        target.setProperty(['gotmmean','meanflow','charnok_val'],source.getProperty(['gotmmean','meanflow','charnock_val']))
+
         # Note: we implicitly lose the oxygen profile namelist in obs.inp; GOTM 3.2.4 does not support it.
-addConvertor('gotm-3.3.2','gotm-3.2.4',Convertor_gotm_3_3_2_to_gotm_3_2_4)
+addConvertor(Convertor_gotm_3_3_2_to_gotm_3_2_4)
 
 class Convertor_gotm_3_3_2_to_gotm_4_0_0(Convertor):
+    fixedsourceid = 'gotm-3.3.2'
+    fixedtargetid = 'gotm-4.0.0'
+
+    def registerLinks(self):
+        self.links = [('/obs/ext_pressure/PressMethod','/obs/ext_pressure/ext_press_mode')]
+
+        self.defaults = ['/obs/wave_nml','/bio','/bio_npzd','/bio_iow','/bio_sed','/bio_fasham']
+
     def convert(self,source,target):
         Convertor.convert(self,source,target)
-
-        target.setProperty(['obs','ext_pressure','ext_press_mode'], source.getProperty(['obs','ext_pressure','PressMethod']))
-
-        # Initialize wind wave namelist in obs.inp with a set of defaults.
-        target.setProperty(['obs','wave_nml','wave_method'],0)
-        target.setProperty(['obs','wave_nml','wave_file'],'')
-        target.setProperty(['obs','wave_nml','Hs'],0)
-        target.setProperty(['obs','wave_nml','Tz'],0)
-        target.setProperty(['obs','wave_nml','phiw'],0)
-
-        # Initialize bio namelist in obs.inp with a set of defaults.
-        target.setProperty(['bio','bio_nml','bio_calc'],False)
-        target.setProperty(['bio','bio_nml','bio_model'],1)
-        target.setProperty(['bio','bio_nml','bio_eulerian'],True)
-        target.setProperty(['bio','bio_nml','cnpar'],1)
-        target.setProperty(['bio','bio_nml','w_adv_discr'],6)
-        target.setProperty(['bio','bio_nml','ode_method'],3)
-        target.setProperty(['bio','bio_nml','split_factor'],1)
-        target.setProperty(['bio','bio_nml','bioshade_feedback'],False)
-        target.setProperty(['bio','bio_nml','bio_lagrange_mean'],True)
-        target.setProperty(['bio','bio_nml','bio_npar'],100000)
-addConvertor('gotm-3.3.2','gotm-4.0.0',Convertor_gotm_3_3_2_to_gotm_4_0_0)
+addConvertor(Convertor_gotm_3_3_2_to_gotm_4_0_0)
 
 class Convertor_gotm_4_0_0_to_gotm_3_3_2(Convertor):
+    fixedsourceid = 'gotm-4.0.0'
+    fixedtargetid = 'gotm-3.3.2'
+
+    def registerLinks(self):
+        self.links = Convertor_gotm_3_3_2_to_gotm_4_0_0().reverseLinks()
+
     def convert(self,source,target):
         Convertor.convert(self,source,target)
-        target.setProperty(['obs','ext_pressure','PressMethod'], source.getProperty(['obs','ext_pressure','ext_press_mode']))
+
         # Note: we implicitly lose the wind wave profile namelist in obs.inp; GOTM 3.3.2 does not support it.
-addConvertor('gotm-4.0.0','gotm-3.3.2',Convertor_gotm_4_0_0_to_gotm_3_3_2)
+addConvertor(Convertor_gotm_4_0_0_to_gotm_3_3_2)
 
 class Convertor_gotm_4_0_0_to_gotmgui_0_5_0(Convertor):
+    fixedsourceid = 'gotm-4.0.0'
+    fixedtargetid = 'gotmgui-0.5.0'
+
+    def registerLinks(self):
+        self.links = [('/gotmrun/model_setup/title',      '/title'),
+                      ('/gotmrun/model_setup/dt',         '/timeintegration/dt'),
+                      ('/gotmrun/model_setup/cnpar',      '/timeintegration/cnpar'),
+                      ('/gotmrun/station',                '/station'),
+                      ('/gotmrun/time',                   '/time'),
+                      ('/gotmrun/output',                 '/output'),
+                      ('/gotmrun/model_setup/buoy_method','/meanflow/buoy_method'),
+                      ('/gotmrun/model_setup/nlev',       '/grid/nlev'),
+                      ('/gotmrun/eqstate',                '/meanflow'),
+                      ('/gotmrun/eqstate',                '/meanflow/eq_state_method'),
+                      ('/gotmmean/meanflow/grid_method',  '/grid/grid_method'),
+                      ('/gotmmean/meanflow/ddu',          '/grid/ddu'),
+                      ('/gotmmean/meanflow/ddl',          '/grid/ddl'),
+                      ('/gotmmean/meanflow/grid_file',    '/grid/grid_file'),
+                      ('/gotmmean/meanflow',              '/meanflow'),
+                      ('/airsea/airsea',                  '/airsea'),
+                      ('/gotmturb/turbulence',            '/gotmturb'),
+                      ('/gotmturb/scnd',                  '/gotmturb/scnd/scnd_coeff'),
+                      ('/kpp/kpp',                        '/gotmturb/kpp')]
+    
     def convert(self,source,target):
         Convertor.convert(self,source,target)
-        target.setProperty(['title'],source.getProperty(['gotmrun','model_setup','title']))
-        target.setProperty(['timeintegration','dt'   ],source.getProperty(['gotmrun','model_setup','dt']))
-        target.setProperty(['timeintegration','cnpar'],source.getProperty(['gotmrun','model_setup','cnpar']))
-        target.root.getLocation(['station']).copyFrom(source.root.getLocation(['gotmrun','station']))
-        target.root.getLocation(['time'   ]).copyFrom(source.root.getLocation(['gotmrun','time'   ]))
-        target.root.getLocation(['output' ]).copyFrom(source.root.getLocation(['gotmrun','output' ]))
-        target.setProperty(['grid','nlev'       ],source.getProperty(['gotmrun','model_setup','nlev']))
-        
-        target.setProperty(['grid','grid_method'],source.getProperty(['gotmmean','meanflow','grid_method']))
-        target.setProperty(['grid','ddu'        ],source.getProperty(['gotmmean','meanflow','ddu']))
-        target.setProperty(['grid','ddl'        ],source.getProperty(['gotmmean','meanflow','ddl']))
-        target.setProperty(['grid','grid_file'  ],source.getProperty(['gotmmean','meanflow','grid_file']))
-        target.root.getLocation(['meanflow']).copyFrom(source.root.getLocation(['gotmmean','meanflow']))
-        target.setProperty(['meanflow','z0s'],source.getProperty(['gotmmean','meanflow','z0s_min']))
-        
-        target.root.getLocation(['airsea'  ]).copyFrom(source.root.getLocation(['airsea',  'airsea']))
-        target.root.getLocation(['gotmturb']).copyFrom(source.root.getLocation(['gotmturb','turbulence']))
-addConvertor('gotm-4.0.0','gotmgui-0.5.0',Convertor_gotm_4_0_0_to_gotmgui_0_5_0)
+
+        target.setProperty(['meanflow','z0s'],target.getProperty(['meanflow','z0s_min']))
+
+        dt = target.getProperty(['timeintegration','dt'])
+        target.setProperty(['output','dtsave'],dt*source.getProperty(['gotmrun','output','nsave']))
+
+        # Note: we implicitly lose output settings out_fmt, out_dir and out_fn; the GUI scenario
+        # does not support (or need) these.
+addConvertor(Convertor_gotm_4_0_0_to_gotmgui_0_5_0)
 
 class Convertor_gotmgui_0_5_0_to_gotm_4_0_0(Convertor):
+    fixedsourceid = 'gotmgui-0.5.0'
+    fixedtargetid = 'gotm-4.0.0'
+
+    def registerLinks(self):
+        self.links = Convertor_gotm_4_0_0_to_gotmgui_0_5_0().reverseLinks()
+    
     def convert(self,source,target):
         Convertor.convert(self,source,target)
 
-        # Convert gotmrun namelists
-        target.setProperty(['gotmrun','model_setup','title'],source.getProperty(['title']))
-        target.setProperty(['gotmrun','model_setup','dt'   ],source.getProperty(['timeintegration','dt']))
-        target.setProperty(['gotmrun','model_setup','cnpar'],source.getProperty(['timeintegration','cnpar']))
-        target.root.getLocation(['gotmrun','station']).copyFrom(source.root.getLocation(['station']))
-        target.root.getLocation(['gotmrun','time'   ]).copyFrom(source.root.getLocation(['time'   ]))
-        target.root.getLocation(['gotmrun','output' ]).copyFrom(source.root.getLocation(['output' ]))
-        target.setProperty(['gotmrun','model_setup','nlev'     ],source.getProperty(['grid','nlev'       ]))
-        
-        target.root.getLocation(['gotmmean','meanflow']).copyFrom(source.root.getLocation(['meanflow']))
-        target.setProperty(['gotmmean','meanflow','grid_method'],source.getProperty(['grid','grid_method']))
-        target.setProperty(['gotmmean','meanflow','ddu'        ],source.getProperty(['grid','ddu'        ]))
-        target.setProperty(['gotmmean','meanflow','ddl'        ],source.getProperty(['grid','ddl'        ]))
-        target.setProperty(['gotmmean','meanflow','grid_file'  ],source.getProperty(['grid','grid_file'  ]))
         if not source.getProperty(['meanflow','charnock']):
             target.setProperty(['gotmmean','meanflow','z0s_min'],source.getProperty(['meanflow','z0s']))
 
-        target.root.getLocation(['airsea',  'airsea'  ]).copyFrom(source.root.getLocation(['airsea']))
-        target.root.getLocation(['gotmturb','turbulence']).copyFrom(source.root.getLocation(['gotmturb']))
+        dt = source.getProperty(['timeintegration','dt'])
+        target.setProperty(['gotmrun','output','nsave'],int(source.getProperty(['output','dtsave'])/dt))
 
         # Add output path and type (not present in GUI scenarios)
         target.setProperty(['gotmrun','output','out_fmt'],2)
         target.setProperty(['gotmrun','output','out_dir'],'.')
         target.setProperty(['gotmrun','output','out_fn'],'result')
-addConvertor('gotmgui-0.5.0','gotm-4.0.0',Convertor_gotmgui_0_5_0_to_gotm_4_0_0)
+addConvertor(Convertor_gotmgui_0_5_0_to_gotm_4_0_0)
+

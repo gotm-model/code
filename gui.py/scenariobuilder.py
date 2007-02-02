@@ -1,28 +1,39 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.3 2007-01-26 11:55:25 jorn Exp $
+#$Id: scenariobuilder.py,v 1.4 2007-02-02 11:20:45 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
 import common,commonqt
-import sys,xml
+import sys,xml, os.path
 
 class ScenarioWidget(QtGui.QWidget):
 
     def __init__(self,parent=None):
         QtGui.QWidget.__init__(self,parent)
 
-        self.bngroup     = QtGui.QButtonGroup()
-        self.radioNew    = QtGui.QRadioButton('Create a new scenario based on a template.', parent)
-        self.radioOpen   = QtGui.QRadioButton('Open an existing scenario.', parent)
-        self.radioImport1 = QtGui.QRadioButton('Import a GOTM scenario from an existing directory.', parent)
-        self.radioImport2 = QtGui.QRadioButton('Import a GOTM scenario from a tar/gz archive.', parent)
+        self.bngroup      = QtGui.QButtonGroup()
+        self.radioNew     = QtGui.QRadioButton('Create a new scenario from a template.',parent)
+        self.radioOpen    = QtGui.QRadioButton('Open an existing scenario.',parent)
+        self.radioImport1 = QtGui.QRadioButton('Import a namelist-based scenario from an existing directory.',parent)
+        self.radioImport2 = QtGui.QRadioButton('Import a namelist-based scenario from a tar/gz archive.',parent)
+
+        self.labTemplate = QtGui.QLabel('Template:',parent)
+        default2path = common.Scenario.getDefaultPaths()
+        self.comboTemplates = QtGui.QComboBox(parent)
+        for (name,path) in default2path.items():
+            self.comboTemplates.addItem(name,QtCore.QVariant(name))
+        self.comboTemplates.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
+        self.templatelayout = QtGui.QHBoxLayout()
+        self.templatelayout.addWidget(self.labTemplate)
+        self.templatelayout.addWidget(self.comboTemplates,1)
+        self.templatelayout.addStretch()
 
         self.pathOpen    = commonqt.PathEditor(self,header='File to open: ')
         self.pathImport1 = commonqt.PathEditor(self,header='Directory to import: ',getdirectory=True)
         self.pathImport2 = commonqt.PathEditor(self,header='Archive to import: ')
 
-        self.pathOpen.filter    = 'GOTM scenario files (*.gotmscenario);;GOTM result files (*.gotmresult);;All files (*.*)'
+        self.pathOpen.filter    = 'GOTM scenario files (*.gotmscenario);;GOTM result files (*.gotmresult);;dataless GOTM scenario files (*.xml);;All files (*.*)'
         self.pathImport2.filter = 'tar/gz files (*.tar.gz);;All files (*.*)'
         
         self.bngroup.addButton(self.radioNew,    0)
@@ -31,13 +42,20 @@ class ScenarioWidget(QtGui.QWidget):
         self.bngroup.addButton(self.radioImport2,3)
 
         layout = QtGui.QGridLayout()
-        layout.addWidget(self.radioNew,    0,0)
-        layout.addWidget(self.radioOpen,   1,0)
-        layout.addWidget(self.pathOpen,    2,0)
-        layout.addWidget(self.radioImport1,3,0)
-        layout.addWidget(self.pathImport1, 4,0)
-        layout.addWidget(self.radioImport2,5,0)
-        layout.addWidget(self.pathImport2, 6,0)
+        layout.addWidget(self.radioNew, 0,0,1,2)
+        layout.addLayout(self.templatelayout, 1,1)
+        layout.addWidget(self.radioOpen,      2,0,1,2)
+        layout.addWidget(self.pathOpen,       3,1)
+        layout.addWidget(self.radioImport1,   4,0,1,2)
+        layout.addWidget(self.pathImport1,    5,1)
+        layout.addWidget(self.radioImport2,   6,0,1,2)
+        layout.addWidget(self.pathImport2,    7,1)
+
+        layout.setColumnStretch(1,1)
+
+        radiowidth = QtGui.QRadioButton().sizeHint().width()
+        layout.setColumnMinimumWidth(0,radiowidth)
+        
         self.setLayout(layout)
 
         self.connect(self.bngroup,     QtCore.SIGNAL("buttonClicked(int)"), self.onSourceChange)
@@ -49,11 +67,15 @@ class ScenarioWidget(QtGui.QWidget):
         self.onSourceChange()
 
     def onSourceChange(self):
+        self.setUpdatesEnabled(False)
         checkedid = self.bngroup.checkedId()
+        self.labTemplate.setVisible(checkedid==0)
+        self.comboTemplates.setVisible(checkedid==0)
         self.pathOpen.setVisible(checkedid==1)
         self.pathImport1.setVisible(checkedid==2)
         self.pathImport2.setVisible(checkedid==3)
         self.completeStateChanged()
+        self.setUpdatesEnabled(True)
 
     def isComplete(self):
         checkedid = self.bngroup.checkedId()
@@ -70,7 +92,11 @@ class ScenarioWidget(QtGui.QWidget):
         if not self.isComplete(): return None
         checkedid = self.bngroup.checkedId()
         if   checkedid==0:
+            index = self.comboTemplates.currentIndex()
+            defscenario = common.Scenario.getDefault(unicode(self.comboTemplates.itemData(index).toString()))
+            xmldom = defscenario.toxmldom()
             scenario = common.Scenario(templatename=common.guiscenarioversion)
+            scenario.setStore(xmldom)
         elif checkedid==1:
             path = self.pathOpen.path()
             if path.endswith('.gotmresult'):
@@ -81,6 +107,12 @@ class ScenarioWidget(QtGui.QWidget):
                     raise Exception('An error occurred while loading the result: '+str(e))
                 scenario = result.scenario
                 result.unlink()
+            elif path.endswith('.xml'):
+                try:
+                    scenario = common.Scenario(templatename=common.guiscenarioversion)
+                    scenario.load(path)
+                except Exception,e:
+                    raise Exception('An error occurred while loading the scenario: '+str(e))
             else:
                 try:
                     scenario = common.Scenario(templatename=common.guiscenarioversion)
@@ -97,6 +129,15 @@ class ScenarioWidget(QtGui.QWidget):
                 scenario = common.Scenario.fromNamelists(self.pathImport2.path())
             except Exception,e:
                 raise Exception('Cannot parse namelist files. Error: '+str(e))
+
+        if checkedid!=0:
+            # We have loaded a scenario from file. Look for empty nodes and reset these to their defaults.
+            emptynodes = scenario.root.getEmptyNodes()
+            emptycount = len(emptynodes)
+            if emptycount>0:
+                QtGui.QMessageBox.information(self,'Scenario is incomplete','In this scenario %i variables do not have a value. These will be set to their default value.' % emptycount,QtGui.QMessageBox.Ok)
+                scenario.root.copyFrom(scenario.defaultstore.root,replace=False)
+                
         return scenario
 
     def completeStateChanged(self):
@@ -213,8 +254,9 @@ class PageAdvanced(commonqt.WizardPage):
         self.tree.setItemDelegate(self.delegate)
         self.tree.setModel(self.model)
         self.tree.setExpandedAll(maxdepth=1)
+        self.tree.expandNonDefaults()
 
-        lab = QtGui.QLabel('Here you can change all properties of the GOTM scenario. Currently this still uses the GOTM namelist structure. This will change in the future; we will move to a more intuitive structure.',self)
+        lab = QtGui.QLabel('Here you can change all properties of your scenario. Values that differ from the default are shown in bold; they can be reset to their default through the context menu that opens after clicking the right mousebutton.',self)
         lab.setWordWrap(True)
 
         layout = QtGui.QVBoxLayout()
@@ -222,7 +264,7 @@ class PageAdvanced(commonqt.WizardPage):
         layout.addWidget(self.tree)
         self.setLayout(layout)
 
-        self.connect(self.model, QtCore.SIGNAL("dataChanged(const QModelIndex&,const QModelIndex&)"),self.completeStateChanged)
+        self.connect(self.model, QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),self.completeStateChanged)
 
     def showEvent(self,event):
         self.tree.header().resizeSection(0,.65*self.tree.width())
@@ -252,12 +294,18 @@ class PageSave(commonqt.WizardPage):
         self.bngroup.addButton(self.radioNoSave, 0)
         self.bngroup.addButton(self.radioSave,   1)
 
-        layout = QtGui.QVBoxLayout()
-        layout.addWidget(self.label)
-        layout.addWidget(self.radioNoSave)
-        layout.addWidget(self.radioSave)
-        layout.addWidget(self.pathSave)
-        layout.addStretch()
+        layout = QtGui.QGridLayout()
+        layout.addWidget(self.label,0,0,1,2)
+        layout.addWidget(self.radioNoSave,1,0,1,2)
+        layout.addWidget(self.radioSave,2,0,1,2)
+        layout.addWidget(self.pathSave,3,1,1,1)
+
+        layout.setRowStretch(4,1)
+        layout.setColumnStretch(1,1)
+
+        radiowidth = QtGui.QRadioButton().sizeHint().width()
+        layout.setColumnMinimumWidth(0,radiowidth)
+
         self.setLayout(layout)
 
         self.connect(self.bngroup,  QtCore.SIGNAL("buttonClicked(int)"), self.onSourceChange)
@@ -282,8 +330,13 @@ class PageSave(commonqt.WizardPage):
         if not mustbevalid: return True
         checkedid = self.bngroup.checkedId()
         if checkedid==1:
+            targetpath = self.pathSave.path()
+            if os.path.isfile(targetpath):
+                ret = QtGui.QMessageBox.warning(self, 'Overwrite existing scenario?', 'There already exists a file at the specified location. Overwrite it?', QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+                if ret==QtGui.QMessageBox.No:
+                    return False
             try:
-                self.scenario.saveAll(self.pathSave.path())
+                self.scenario.saveAll(targetpath)
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to save scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False

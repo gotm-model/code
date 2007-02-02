@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.13 2007-01-26 14:12:27 jorn Exp $
+#$Id: common.py,v 1.14 2007-02-02 11:20:45 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -67,7 +67,7 @@ def getNamedArgument(name):
 #   (location = array of path components) below the specified XML DOM node (root).
 #   If create = True, the node will be created if it does not exist yet.
 def findDescendantNode(root,location,create=False):
-    if root==None: raise Exception('findDescendantNode called on non-existent parent node (parent = None).')
+    assert root!=None,'findDescendantNode called on non-existent parent node (parent = None).'
     node = root
     for childname in location:
         if childname=='': continue
@@ -117,7 +117,7 @@ def addDescendantNode(root,location):
     parentloc = location[:]
     name = parentloc.pop()
     parent = findDescendantNode(root,parentloc,create=True)
-    if parent==None: raise Exception('Unable to locate or create parent node for "'+str(location)+'".')
+    assert parent!=None,'Unable to locate or create parent node for "%s".' % str(location)
     doc = root
     while doc.parentNode!=None: doc=doc.parentNode
     node = doc.createElementNS(parent.namespaceURI,name)
@@ -304,7 +304,7 @@ class XMLPropertyStore:
     # __init__: constructor
     def __init__(self,xmldocument=None,xmlroot=None):
         if isinstance(xmldocument,str):
-            if xmlroot!=None: raise 'Path to XML file specified, but also a (already parsed!) root node was supplied. This combination is invalid'
+            assert xmlroot==None,'Path to XML file specified, but also a (already parsed!) root node was supplied. This combination is invalid'
             xmldocument = xml.dom.minidom.parse(xmldocument)
 
         self.xmldocument = xmldocument
@@ -344,7 +344,7 @@ class XMLPropertyStore:
                 node.removeChild(ch)
                 ch.unlink()
         val = self.xmldocument.createTextNode(text)
-        node.appendChild(val)
+        node.insertBefore(val,node.firstChild)
 
     # =========================================================================================
     # PUBLIC
@@ -352,8 +352,8 @@ class XMLPropertyStore:
     # setProperty: sets specified location (list of ancestor names) to specified value.
     #   autoconverts specified value to string format.
     def setProperty(self,location,value):
-        node = findDescendantNode(self.xmlroot,location[:],create=True)
-        if node==None: raise 'Unable to create new child node at '+str(location)
+        node = findDescendantNode(self.xmlroot,location,create=True)
+        assert node!=None, 'Unable to create new child node at "%s".' % str(location)
         return self.setNodeProperty(node,value)
 
     # =========================================================================================
@@ -365,7 +365,7 @@ class XMLPropertyStore:
         parentloc = location[:]
         name = parentloc.pop()
         parent = findDescendantNode(self.xmlroot,parentloc,create=True)
-        if parent==None: raise Exception('Unable to locate or create parent node for "'+str(location)+'".')
+        assert parent!=None, 'Unable to locate or create parent node for "%s".' % str(location)
         node = self.xmldocument.createElementNS(parent.namespaceURI,name)
         parent.appendChild(node)
         self.setNodeProperty(node,value)
@@ -389,7 +389,7 @@ class XMLPropertyStore:
     # getProperty: gets value at specified location (list of ancestor names).
     #   autoconverts value to the type requested (otherwise value = string).
     def getProperty(self,location,valuetype=str):
-        node = findDescendantNode(self.xmlroot,location[:])
+        node = findDescendantNode(self.xmlroot,location)
         if node==None: return None
         return self.getNodeProperty(node,valuetype=valuetype)
 
@@ -451,7 +451,7 @@ class XMLPropertyStore:
     def unpackvalue(self,value,valuetype=str):
         if isinstance(valuetype,str) or isinstance(valuetype,unicode):
             if valuetype not in self.filetypes:
-                raise Exception('unpackvalue: unknown type "' + valuetype + '" requested.')
+                raise Exception('unpackvalue: unknown type "%s" requested.' % valuetype)
             valuetype = self.filetypes[valuetype]
         if valuetype==datetime.datetime:
             return parsedatetime(value,dateformat)
@@ -485,7 +485,7 @@ class DataFile:
 
     def getAsReadOnlyFile(self):
         if not self.isValid():
-            Exception('Cannot get file because the source file "'+str(self.path)+'" does not exist.')
+            Exception('Cannot get the contents of file because the source file "%s" does not exist.' % self.path)
         f = open(self.path,'rU')
         return f
 
@@ -498,7 +498,7 @@ class DataFile:
 
     def addToZip(self,zfile,filename):
         if not self.isValid():
-            raise Exception('Cannot add "'+filename+'" to zip archive because the source file "'+str(self.path)+'" does not exist.')
+            raise Exception('Cannot add "%s" to zip archive because the source file "%s" does not exist.' % (filename,self.path))
         zfile.write(self.path,filename)
 
 # ------------------------------------------------------------------------------------------
@@ -526,17 +526,14 @@ class TypedXMLPropertyStore:
             self.visible = (not self.templatenode.hasAttribute('hidden'))
 
             for templatechild in self.templatenode.childNodes:
-                if templatechild.nodeType==templatechild.ELEMENT_NODE and (templatechild.localName=='variable' or templatechild.localName=='folder'):
+                if templatechild.nodeType==templatechild.ELEMENT_NODE and templatechild.localName=='element':
                     childloc = self.location[:] + [templatechild.getAttribute('id')]
                     if templatechild.hasAttribute('maxoccurs'):
                         maxoccurs = int(templatechild.getAttribute('maxoccurs'))
                         valuechildren = findDescendantNodes(self.store.xmlroot,childloc)
-                        childcount = 0
+                        assert len(valuechildren)<=maxoccurs, 'Number of children is greater than the imposed maximum (%i).' % maxoccurs
                         for valuechild in valuechildren:
-                            if childcount==maxoccurs:
-                                raise Exception('Number of children is greater than the imposed maximum ('+str(maxoccurs)+').')
                             self.children.append(TypedXMLPropertyStore.Node(self.controller,templatechild,valuechild,childloc,parent=self))
-                            childcount += 1
                     else:
                         valuechild = findDescendantNode(self.store.xmlroot,childloc)                            
                         self.children.append(TypedXMLPropertyStore.Node(self.controller,templatechild,valuechild,childloc,parent=self))
@@ -575,8 +572,8 @@ class TypedXMLPropertyStore:
             if curval!=value:
                 if self.controller.onBeforeChange(self,value):
                     if self.valuenode==None:
-                        self.valuenode = findDescendantNode(self.store.xmlroot,self.location[:],create=True)
-                        if self.valuenode==None: raise Exception('unable to create value node at '+str(self.location))
+                        self.valuenode = findDescendantNode(self.store.xmlroot,self.location,create=True)
+                        assert self.valuenode!=None, 'unable to create value node at %s.' % str(self.location)
                     changed = self.store.setNodeProperty(self.valuenode,value)
                     self.controller.onChange(self)
                     return changed
@@ -585,6 +582,7 @@ class TypedXMLPropertyStore:
         def getValue(self):
             if self.valuenode==None: return None
             valuetype = self.templatenode.getAttribute('type')
+            assert valuetype!='', 'getValue was used on node without type (%s); canHaveValue should have showed that this node does not have a type.' % self
             value = self.store.getNodeProperty(self.valuenode,valuetype=valuetype)
             if valuetype=='file':
                 if self.controller.tempdir!=None:
@@ -593,6 +591,19 @@ class TypedXMLPropertyStore:
                     datafile = DataFile()
                 return datafile
             return value
+
+        def getDefaultValue(self):
+            defaultstore = self.controller.defaultstore
+            if defaultstore==None: return None
+            return defaultstore.getProperty(self.location)
+
+        def setToDefault(self,recursive=False):
+            if recursive:
+                for ch in self.children: ch.setToDefault(True)
+            if self.controller.defaultstore!=None:
+                return self.setValue(self.getDefaultValue())
+            else:
+                return self.setValue(None)
 
         def addChild(self,childname):
             index = -1
@@ -612,7 +623,7 @@ class TypedXMLPropertyStore:
             if index==-1:
                 predecessors = []
                 for templatechild in self.templatenode.childNodes:
-                    if templatechild.nodeType==templatechild.ELEMENT_NODE and (templatechild.localName=='variable' or templatechild.localName=='folder'):
+                    if templatechild.nodeType==templatechild.ELEMENT_NODE and templatechild.localName=='element':
                         childid = templatechild.getAttribute('id')
                         if childid==childname:
                             templatenode = templatechild
@@ -634,8 +645,7 @@ class TypedXMLPropertyStore:
             location = self.location + [childname]
             valuenode = addDescendantNode(self.store.xmlroot,location)
             child = TypedXMLPropertyStore.Node(self.controller,templatenode,valuenode,location,parent=self)
-            if not child.canHaveClones():
-                raise Exception('Cannot add another child "'+childname+'" because there must exist only one child with this name.')
+            assert child.canHaveClones(), 'Cannot add another child "%s" because there can exist only one child with this name.' % childname
             child.futureindex = index
             self.controller.beforeVisibilityChange(child,True,False)
             self.children.insert(index,child)
@@ -656,8 +666,7 @@ class TypedXMLPropertyStore:
             while ipos<len(self.children):
                 child = self.children[ipos]
                 if child.location[-1]==childname:
-                    if not child.canHaveClones():
-                        raise Exception('Cannot remove child "'+childname+'" because it has to occur exactly one time.')
+                    assert child.canHaveClones(),'Cannot remove child "%s" because it must occur exactly one time.' % childname
                     ichildpos += 1
                     if last!=None and ichildpos>last: return
                     if ichildpos>=first:
@@ -724,7 +733,7 @@ class TypedXMLPropertyStore:
                 if not child.isHidden():
                     if curindex==index: return child
                     curindex += 1
-            raise Exception('Could not find child number '+str(index))
+            assert False, 'Node %s: could not find child number %i' % (self,index)
 
         def getOwnIndex(self,showhidden=False):
             offspring = self.parent.children
@@ -740,22 +749,25 @@ class TypedXMLPropertyStore:
                 for child in offspring:
                     if child is self: return irow
                     if showhidden or (not child.isHidden()): irow += 1
-            raise Exception('Cannot find ourselves in child list of parent.')
+            assert False, 'Cannot find ourselves in child list of parent.'
 
         def getLocation(self,location):
-            # Get the first non-empty path term.
-            path = location[:]
-            target = ''
-            while target=='' and len(path)>0: target = path.pop(0)
-            if target=='': return self
-
-            for child in self.children:
-                if child.location[-1]==target:
-                    if len(path)==0:
-                        return child
-                    else:
-                        return child.getLocation(path)
-            return None
+            node = self
+            for childname in location:
+                if childname=='' or childname=='.':
+                    continue
+                elif childname=='..':
+                    assert self.parent!=None,'Cannot go up one level because we are at the root.'
+                    node = node.parent
+                    continue
+                foundchild = None
+                for child in node.children:
+                    if child.location[-1]==childname:
+                        foundchild = child
+                        break
+                if foundchild == None: return None
+                node = foundchild
+            return node
 
         def getLocationMultiple(self,location):
             # Get the first non-empty path term.
@@ -782,24 +794,30 @@ class TypedXMLPropertyStore:
 
         def isReadOnly(self):
             return self.templatenode.hasAttribute('readonly')
-    
-        def isFolder(self):
-            templatenode = self.templatenode
-            return (templatenode.nodeType==templatenode.ELEMENT_NODE and templatenode.localName=='folder')
 
-        def isVariable(self):
-            templatenode = self.templatenode
-            return (templatenode.nodeType==templatenode.ELEMENT_NODE and templatenode.localName=='variable')
+        def hasChildren(self):
+            return len(self.children)>0
+    
+        def canHaveValue(self):
+            return self.templatenode.hasAttribute('type')
 
         def canHaveClones(self):
             return self.templatenode.hasAttribute('maxoccurs')
 
         def getNodesByType(self,valuetype):
             res = []
-            if self.getValueType()==valuetype: res.append(self)
-            children = self.getChildren(showhidden=True)
-            for ch in children:
+            if self.getValueType()==valuetype:
+                res.append(self)
+            for ch in self.children:
                 res += ch.getNodesByType(valuetype)
+            return res
+
+        def getEmptyNodes(self):
+            res = []
+            if self.canHaveValue() and self.getValue()==None:
+                res.append(self)
+            for ch in self.children:
+                res += ch.getEmptyNodes()
             return res
 
         def updateVisibility(self,recursive=False):
@@ -814,17 +832,21 @@ class TypedXMLPropertyStore:
                     self.controller.beforeVisibilityChange(self,shownew)
                     self.visible = shownew
                     self.controller.afterVisibilityChange(self,shownew)
+            if self.controller.blockNotifyOfHiddenNodes and (not self.visible):
+                return
             if recursive:
                 children = self.getChildren(showhidden=True)
                 for child in children:
                     child.updateVisibility(recursive=True)
 
         def copyFrom(self,sourcenode,replace=True):
-            if self.isVariable():
+            # Copy node value (if both source and target can have a value)
+            if self.canHaveValue() and sourcenode.canHaveValue():
                 if replace or self.getValue()==None:
                     self.setValue(sourcenode.getValue())
-            elif replace:
-                self.removeAllChildren()
+
+            # If replacing previous contents, remove optional nodes (with minoccurs=0)
+            if replace: self.removeAllChildren()
             prevchildname = None
             index = 0
             for sourcechild in sourcenode.children:
@@ -855,6 +877,7 @@ class TypedXMLPropertyStore:
         self.storechangedhandlers = []
         self.enableevents = True
         self.suppressConditionChecking = False
+        self.blockNotifyOfHiddenNodes = True
 
         # For every variable: build a list of variables/folders that depend on its value.
         self.buildDependencies()
@@ -864,6 +887,7 @@ class TypedXMLPropertyStore:
 
         # Set property store
         self.store = None
+        self.defaultstore = None
         self.root = None
         self.setStore(xmldocument,xmlroot)
 
@@ -876,7 +900,7 @@ class TypedXMLPropertyStore:
     def unlink(self):
         if self.tempdir!=None:
             if self.tempdirowner:
-                print 'Deleting temporary directory "'+self.tempdir+'".'
+                print 'Deleting temporary directory "%s".' % self.tempdir
                 shutil.rmtree(self.tempdir)
             self.tempdir = None
 
@@ -896,7 +920,7 @@ class TypedXMLPropertyStore:
         else:
             self.tempdir = tempfile.mkdtemp('','gotm-')
             self.tempdirowner = True
-            print 'Created temporary property store directory "'+self.tempdir+'".'
+            print 'Created temporary property store directory "%s".' % self.tempdir
         return self.tempdir
 
     def setStore(self,xmldocument,xmlroot=None):
@@ -912,11 +936,13 @@ class TypedXMLPropertyStore:
                 impl = xml.dom.minidom.getDOMImplementation()
                 xmldocument = impl.createDocument('', templateroot.getAttribute('id'), None)
                 xmldocument.documentElement.setAttribute('version',self.version)
+        elif isinstance(xmldocument,str):
+            assert xmlroot==None,'Path to XML file specified, but also a (already parsed!) root node was supplied. This combination is invalid'
+            xmldocument = xml.dom.minidom.parse(xmldocument)
 
         if xmlroot==None: xmlroot = xmldocument.documentElement
         storeversion = xmlroot.getAttribute('version')
-        if storeversion!=self.version:
-            raise Exception('Versions of the xml template and and the xml values do not match.')
+        assert storeversion==self.version, 'Versions of the xml template ("%s") and and the xml values ("%s") do not match.' % (self.version,storeversion)
                     
         self.store = XMLPropertyStore(xmldocument,xmlroot=xmlroot)
         self.store.filetypes['select'] = int
@@ -926,6 +952,10 @@ class TypedXMLPropertyStore:
         self.changed = False
 
         self.afterStoreChange()
+
+    def setDefaultStore(self,store):
+        assert self.version==store.version
+        self.defaultstore = store
 
     def hasChanged(self):
         return self.changed
@@ -960,16 +990,15 @@ class TypedXMLPropertyStore:
         if root==None: root=self.templatedom.documentElement
         for ch in root.childNodes:
             if ch.nodeType==ch.ELEMENT_NODE:
-                if ch.localName=='variable' or ch.localName=='folder':
+                if ch.localName=='element':
                     self.buildDependencies(root=ch,curpath=curpath+'/'+ch.getAttribute('id'),curowner=ch)
                 elif ch.localName=='condition':
                     if ch.hasAttribute('variable'):
-                        deppath = ch.getAttribute('variable').split('/')
-                        if deppath[0]=='.':
-                            dep = self.getTemplateNode(deppath[1:],root=curowner.parentNode)
-                        else:
-                            dep = self.getTemplateNode(deppath[:])
-                        if dep==None: raise 'checkCondition: cannot locate variable with path "' + str(ch.getAttribute('variable')) + '".'
+                        deppath = ch.getAttribute('variable')
+                        refnode = None
+                        if deppath[0]!='/': refnode = curowner.parentNode
+                        dep = self.getTemplateNode(deppath.split('/'),root=refnode)
+                        assert dep!=None, 'Cannot locate dependency "%s" for node "%s".' % (ch.getAttribute('variable'),curpath)
                         deplist = findDescendantNode(dep,['dependentvariables'],create=True)
                         node = self.templatedom.createElementNS(deplist.namespaceURI,'dependentvariable')
                         node.setAttribute('path',curpath)
@@ -988,36 +1017,21 @@ class TypedXMLPropertyStore:
     #   "ownernode" is the "variable" or "folder" XML node that 'owns' the condition
     #       (= the first ancestor that is not a condition itself)
     def checkCondition(self,nodeCondition,ownernode):
-        if not nodeCondition.hasAttribute('type'):
-            raise Exception('condition lacks "type" attribute in XML scenario template')
+        assert nodeCondition.hasAttribute('type'), 'condition lacks "type" attribute in XML scenario template'
         condtype = nodeCondition.getAttribute('type')
         if condtype=='eq' or condtype=='ne':
             # Check for required XML attributes
-            if not nodeCondition.hasAttribute('variable'):
-                raise Exception('condition lacks "variable" attribute in XML scenario template')
-            if not nodeCondition.hasAttribute('value'):
-                raise Exception('condition lacks "value" attribute in XML scenario template')
+            assert nodeCondition.hasAttribute('variable'), 'condition lacks "variable" attribute in XML scenario template'
+            assert nodeCondition.hasAttribute('value'), 'condition lacks "value" attribute in XML scenario template'
 
-            # Get path specification for the vairbale we depend on (split on slashes)
-            valuepath = nodeCondition.getAttribute('variable').split('/')
-            
-            if valuepath[0]=='.':
-                # First path component = '.': we got relative path for the variable we depend on.
-                # Note: this path is now relative to our *parent*, not to us!
+            valuepath = nodeCondition.getAttribute('variable')
+            refnode = self.root
+            if valuepath[0]!='/': refnode = self.root.getLocation(self.getTemplateNodePath(ownernode)).parent
+            node = refnode.getLocation(valuepath.split('/'))
+            assert node!=None, 'Cannot locate dependency "%s" for node "%s".' % (nodeCondition.getAttribute('variable'),self.getTemplateNodePath(ownernode))
 
-                # Get absolute path specification
-                valuepath = self.getTemplateNodePath(ownernode.parentNode)+valuepath[1:]
-
-            node = self.root.getLocation(valuepath)
-            templatenode = node.templatenode
-                
-            # Ensure that we have found the variable we depend on.
-            if templatenode==None: raise 'checkCondition: cannot locate variable with path "' + str(nodeCondition.getAttribute('variable')) + '".'
-
-            # Get type of node to examine
-            valuetype = templatenode.getAttribute('type')
-            
-            # Get the current value of the variable we depend on
+            # Get the type and current value of the variable we depend on
+            valuetype = node.getValueType()
             curvalue = node.getValue()
 
             # If the node in question currently does not have a value, we cannot check the condition; just return 'valid'.
@@ -1047,22 +1061,27 @@ class TypedXMLPropertyStore:
             if condtype=='and': return True
             return False
         else:
-            raise 'unknown condition type "' + condtype + '" in XML scenario template'
+            raise Exception('unknown condition type "%s" in XML scenario template' % condtype)
 
     # getTemplateNode: obtains template node at given path
     # (path specification consists of array of node ids)
     def getTemplateNode(self,path,root=None):
         if root==None: root=self.templatedom.documentElement
-        target = ''
-        while target=='' and len(path)>0: target = path.pop(0)
-        if target=='' and len(path)==0: return root
-        for ch in root.childNodes:
-            if ch.nodeType==ch.ELEMENT_NODE and (ch.localName=='folder' or ch.localName=='variable') and ch.getAttribute('id')==target:
-                if len(path)==0:
-                    return ch
-                else:
-                    return self.getTemplateNode(path,root=ch)
-        return None
+        for childname in path:
+            if childname=='' or childname=='.':
+                continue
+            elif childname=='..':
+                assert not root.isSameNode(self.templatedom.documentElement)
+                root = root.parentNode
+                continue
+            foundnode = None
+            for ch in root.childNodes:
+                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='element' and ch.getAttribute('id')==childname:
+                    foundnode = ch
+                    break
+            assert foundnode!=None, 'Could not find child node "%s" while locating "%s".' % (childname,path)
+            root = foundnode
+        return root
 
     # getNodePath: obtains path specification for given template node
     # (path specification consists of node ids with slash separators)
@@ -1087,7 +1106,7 @@ class TypedXMLPropertyStore:
         self.changed = True
 
         # Emit change event
-        if self.enableevents:
+        if self.enableevents and not (self.blockNotifyOfHiddenNodes and node.isHidden()):
             for callback in self.changehandlers:
                 callback(node)
 
@@ -1095,12 +1114,12 @@ class TypedXMLPropertyStore:
         if self.suppressConditionChecking: return
         deps = findDescendantNode(node.templatenode,['dependentvariables'])
         if deps==None: return
-        for d in deps.childNodes:
-            if d.nodeType==d.ELEMENT_NODE and d.localName=='dependentvariable':
-                # We found a dependent node; update its visibility
-                varpath = d.getAttribute('path').split('/')
-                varnode = self.root.getLocation(varpath)
-                varnode.updateVisibility()
+        for d in findDescendantNodes(deps,['dependentvariable']):
+            varpath = d.getAttribute('path').split('/')
+            varnode = self.root.getLocation(varpath)
+            if self.blockNotifyOfHiddenNodes and varnode.parent!=None and varnode.parent.isHidden():
+                continue
+            varnode.updateVisibility()
 
     def addStoreChangedHandler(self,callback):
         self.storechangedhandlers += [callback]
@@ -1185,21 +1204,30 @@ class TypedXMLPropertyStore:
 class Scenario(TypedXMLPropertyStore):
 
     templates = None
+    defaultname2path = None
+    defaultname2scenarios = {}
+
+    defaultdirname = 'defaultscenarios'
+    schemadirname = 'scenarioschemas'
     
-    def __init__(self,xmltemplate=None,xmldocument=None,templatename=None):
+    def __init__(self,xmltemplate=None,xmldocument=None,templatename=None,adddefault = True):
         if templatename!=None:
             # If the specified scenario is the id of a template, fill in the path to the template file
             tmpls = Scenario.getTemplates()
             if templatename in tmpls:
                 xmltemplate = tmpls[templatename]
             else:
-                raise Exception('Unable to locate template XML file for specified scenario version "'+templatename+'".')
+                raise Exception('Unable to locate template XML file for specified scenario version "%s".' % templatename)
         elif xmltemplate==None:
             raise Exception('No scenario template specified. Either specify a file path, or a name of a template (named argument "templatename").')
         elif not os.path.isfile(xmltemplate):
-            raise Exception('Scenario template "'+xmltemplate+'" does not exist.')
+            raise Exception('Scenario template "%s" does not exist.' % xmltemplate)
 
         TypedXMLPropertyStore.__init__(self,xmltemplate,xmldocument)
+
+        if adddefault:
+            defscenario = Scenario.getDefault(None,self.version)
+            self.setDefaultStore(defscenario)
 
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
 
@@ -1207,7 +1235,7 @@ class Scenario(TypedXMLPropertyStore):
     def getTemplates():
         if Scenario.templates==None:
             Scenario.templates = {}
-            templatedir = os.path.join(os.path.dirname(__file__),'scenariotemplates')
+            templatedir = os.path.join(os.path.dirname(__file__),Scenario.schemadirname)
             if os.path.isdir(templatedir):
                 for templatename in os.listdir(templatedir):
                     fullpath = os.path.join(templatedir,templatename)
@@ -1216,10 +1244,51 @@ class Scenario(TypedXMLPropertyStore):
                         if ext=='.xml':
                             Scenario.templates[root] = fullpath
                         else:
-                            print 'WARNING: template directory contains non-XML file "%s"; this file will be ignored.' % templatename
+                            print 'WARNING: schema directory "" contains non-XML file "%s"; this file will be ignored.' % (Scenario.schemadirname,templatename)
             else:
-                print 'WARNING: no templates will be available, because subdir "scenariotemplates" is not present!'
+                print 'WARNING: no templates will be available, because subdirectory "%s" is not present!' % Scenario.schemadirname
         return Scenario.templates
+
+    @staticmethod
+    def getDefaultPaths():
+        if Scenario.defaultname2path==None:
+            Scenario.defaultname2path = {}
+            defaultdir = os.path.join(os.path.dirname(__file__),Scenario.defaultdirname)
+            if os.path.isdir(defaultdir):
+                for filename in os.listdir(defaultdir):
+                    fullpath = os.path.join(defaultdir,filename)
+                    if os.path.isfile(fullpath):
+                        (root,ext) = os.path.splitext(filename)
+                        if ext=='.xml':
+                            Scenario.defaultname2path[root] = fullpath
+                        else:
+                            print 'WARNING: default directory "" contains non-XML file "%s"; this file will be ignored.' % (Scenario.defaultdirname,filename)
+            else:
+                print 'WARNING: no default scenarios will be available, because subdirectory "%s" is not present!' % Scenario.defaultdirname
+        return Scenario.defaultname2path
+
+    @staticmethod
+    def getDefault(name=None,version=None):
+        if name   ==None: name = 'default'
+        if version==None: version=guiscenarioversion
+        if name not in Scenario.defaultname2scenarios: Scenario.defaultname2scenarios[name] = {}
+        version2scenario = Scenario.defaultname2scenarios[name]
+        if version in version2scenario:
+            # We have the requested default with the requested version in our cache; return it.
+            return version2scenario[version]
+        elif 'source' not in version2scenario:
+            # We do not have any version of the requested default; first obtain the source version.
+            path = Scenario.getDefaultPaths()[name]
+            sourcescen = Scenario.fromXmlFile(path,adddefault=False)
+            version2scenario['source'] = sourcescen
+            version2scenario[sourcescen.version] = sourcescen
+            if sourcescen.version==version: return sourcescen
+        # We now have the source version of the requested default, but we need another version. Convert.
+        sourcescen = version2scenario['source']
+        scenario = Scenario(templatename=version,adddefault=False)
+        sourcescen.convert(scenario)
+        version2scenario[version] = scenario
+        return scenario
 
     @staticmethod
     def fromNamelists(path,protodir=None,targetversion=None,strict = True):
@@ -1250,6 +1319,16 @@ class Scenario(TypedXMLPropertyStore):
         else:
             return scenario
 
+    @staticmethod
+    def fromXmlFile(path,adddefault=True):
+        if not os.path.isfile(path):
+            raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
+        xmldocument = xml.dom.minidom.parse(path)
+        version = xmldocument.documentElement.getAttribute('version')
+        scenario = Scenario(templatename=version,adddefault=adddefault)
+        scenario.load(path)
+        return scenario
+
     def convert(self,target,targetownstemp=True):        
         if isinstance(target,str):
             target = Scenario(templatename=target)
@@ -1276,7 +1355,7 @@ class Scenario(TypedXMLPropertyStore):
                 try:
                     tf = tarfile.open(srcpath,'r')
                 except Exception,e:
-                    raise Exception('Path "%s" is not a directory, and could also not be opened as tar/gz archive. %s' % (srcpath,str(e)))
+                    raise Exception('Path "%s" is not a directory or a tar/gz archive. %s' % (srcpath,str(e)))
                 nmltempdir = tempfile.mkdtemp('','gotm-')
                 print 'Created temporary namelist directory "'+nmltempdir+'".'
                 for tarinfo in tf:
@@ -1314,8 +1393,7 @@ class Scenario(TypedXMLPropertyStore):
                 # Get name (excl. extension) for the namelist file.
                 nmlfilename = mainchild.getId()
 
-                if not mainchild.isFolder():
-                    raise Exception('Found non-folder node with id %s below root, where only folders are expected.' % nmlfilename)
+                assert not mainchild.canHaveValue(), 'Found non-folder node with id %s below root, where only folders are expected.' % nmlfilename
 
                 cursubs = globalsubs
                 if protodir==None:
@@ -1325,7 +1403,7 @@ class Scenario(TypedXMLPropertyStore):
                     # Prototype namelist in which values will be substituted.
                     nmlfilepath = os.path.join(protodir, nmlfilename+'.proto')
 
-                    # Load the relevant value substitutions (if any); otherwise use global substitutions.
+                    # Load the relevant value substitutions (if any).
                     cursubspath = os.path.join(srcpath,nmlfilename+'.values')
                     if os.path.isfile(cursubspath):
                         cursubs = [NamelistSubstitutions(cursubspath)]
@@ -1344,8 +1422,7 @@ class Scenario(TypedXMLPropertyStore):
                     # Get name of the expected namelist.
                     listname = filechild.getId()
 
-                    if not filechild.isFolder():
-                        raise Exception('Found non-folder node with id %s below branch %s, where only folders are expected.' % (listname,nmlfilename))
+                    assert not filechild.canHaveValue(), 'Found non-folder node with id %s below branch %s, where only folders are expected.' % (listname,nmlfilename)
 
                     # Parse the next namelist.
                     namelist = nmlfile.parseNextNamelist(expectedlist=listname)
@@ -1356,11 +1433,13 @@ class Scenario(TypedXMLPropertyStore):
                         (foundvarname,vardata) = namelist.getNextVariable()
 
                         if strict:
+                            # Strict parsing: all variables must appear once and in predefined order.
                             listchild = listchildren.pop(0)
                             varname = listchild.getId()
                             if varname.lower()!=foundvarname.lower():
                                 raise NamelistParseException('Found variable "%s" where "%s" was expected.' % (foundvarname,varname),nmlfilepath,listname,varname)
                         else:
+                            # Loose parsing: variables can appear multiple times or not at all, and do not need to appear in order.
                             listchild = None
                             for lc in listchildren:
                                 varname = lc.getId()
@@ -1368,7 +1447,7 @@ class Scenario(TypedXMLPropertyStore):
                                     listchild = lc
                                     break
                             if listchild==None:
-                                raise NamelistParseException('Found variable "%s" not expected in namelist.' % (foundvarname,),nmlfilepath,listname,varname)
+                                raise NamelistParseException('Encountered variable "%s", which should not be present in this namelist.' % (foundvarname,),nmlfilepath,listname,varname)
 
                         vartype = listchild.getValueType()
 
@@ -1400,7 +1479,7 @@ class Scenario(TypedXMLPropertyStore):
                             except:
                                 raise NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,nmlfilepath,listname,varname)
                         else:
-                            raise 'Unknown variable type '+str(vartype)+' in scenario template.'
+                            raise Exception('Unknown variable type. I do not know how to parse a variable with type "%s" from namelists.' % vartype)
                         
                         if vartype=='datetime':
                             datetimematch = datetimere.match(val)
@@ -1428,93 +1507,99 @@ class Scenario(TypedXMLPropertyStore):
         print 'Exporting scenario to namelist files...'
 
         # If the directory to write to does not exist, create it.
+        createddir = False
         if (not os.path.isdir(targetpath)):
             try:
                 os.mkdir(targetpath)
+                createddir = True
             except Exception,e:
-                raise Exception('Unable to create target directory "'+targetpath+'". Error: '+str(e))
+                raise Exception('Unable to create target directory "%s". Error: %s' %(targetpath,str(e)))
 
-        if addcomments:
-            # Import and configure text wrapping utility.
-            import textwrap
-            linelength = 80
-            wrapper = textwrap.TextWrapper(subsequent_indent='  ')
-        
-        for mainchild in self.root.getChildren(showhidden=True):
-            if not mainchild.isFolder():
-                raise Exception('Found a variable below the root node, where only folders are expected.')
-            if mainchild.isHidden(): continue
+        try:
+            if addcomments:
+                # Import and configure text wrapping utility.
+                import textwrap
+                linelength = 80
+                wrapper = textwrap.TextWrapper(subsequent_indent='  ')
+            
+            for mainchild in self.root.getChildren(showhidden=True):
+                assert not mainchild.canHaveValue(), 'Found a variable below the root node, where only folders are expected.'
 
-            nmlfilename = mainchild.getId()
-            nmlfilepath = os.path.join(targetpath, nmlfilename+self.namelistextension)
-            nmlfile = open(nmlfilepath,'w')
+                if mainchild.isHidden(): continue
 
-            for filechild in mainchild.getChildren(showhidden=True):
-                if not filechild.isFolder():
-                    raise Exception('Found a variable directly below branch '+str(nmlfilename)+', where only folders are expected.')
-                listname = filechild.getId()
+                # Create the namelist file.
+                nmlfilename = mainchild.getId()
+                nmlfilepath = os.path.join(targetpath, nmlfilename+self.namelistextension)
+                nmlfile = open(nmlfilepath,'w')
 
-                if addcomments:
-                    nmlfile.write('!'+(linelength-1)*'-'+'\n')
-                    title = filechild.getDescription(idallowed=True).encode('ascii','xmlcharrefreplace')
-                    nmlfile.write(textwrap.fill(title,linelength-2,initial_indent='! ',subsequent_indent='! '))
-                    nmlfile.write('\n!'+(linelength-1)*'-'+'\n')
+                try:
+                    for filechild in mainchild.getChildren(showhidden=True):
+                        assert not filechild.canHaveValue(), 'Found a variable directly below branch "%s", where only folders are expected.' % nmlfilename
+                        listname = filechild.getId()
 
-                    comments = []
-                    varnamelength = 0
-                    for listchild in filechild.getChildren(showhidden=True):
-                        comment = self.getNamelistVariableDescription(listchild)
-                        if len(comment[0])>varnamelength: varnamelength = len(comment[0])
-                        comments.append(comment)
-                    wrapper.width = linelength-varnamelength-5
-                    for (varid,vartype,lines) in comments:
-                        wrappedlines = []
-                        lines.insert(0,'['+vartype+']')
-                        for line in lines:
-                            line = line.encode('ascii','xmlcharrefreplace')
-                            wrappedlines += wrapper.wrap(line)
-                        firstline = wrappedlines.pop(0)
-                        nmlfile.write('! %-*s %s\n' % (varnamelength,varid,firstline))
-                        for line in wrappedlines:
-                            nmlfile.write('! '+varnamelength*' '+'   '+line+'\n')
-                    if len(comments)>0:
-                        nmlfile.write('!'+(linelength-1)*'-'+'\n')
-                    nmlfile.write('\n')
+                        if addcomments:
+                            nmlfile.write('!'+(linelength-1)*'-'+'\n')
+                            title = filechild.getDescription(idallowed=True).encode('ascii','xmlcharrefreplace')
+                            nmlfile.write(textwrap.fill(title,linelength-2,initial_indent='! ',subsequent_indent='! '))
+                            nmlfile.write('\n!'+(linelength-1)*'-'+'\n')
 
-                nmlfile.write('&'+listname+'\n')
-                for listchild in filechild.getChildren(showhidden=True):
-                    if not listchild.isVariable():
-                        raise Exception('Found a folder ('+str(listchild.getId())+') below branch '+str(nmlfilename)+'/'+str(listname)+', where only variables are expected.')
-                    varname = listchild.getId()
-                    varval = listchild.getValue()
-                    if varval==None:
-                        continue
-                        raise Exception('Value for variable "'+varname+'" in namelist "'+listname+'" not set.')
-                    vartype = listchild.getValueType()
-                    if vartype=='string':
-                        varval = '\''+varval+'\''
-                    elif vartype=='file':
-                        filename = listchild.getId()+'.dat'
-                        if not listchild.isHidden() and copydatafiles:
-                            varval.save(os.path.join(targetpath,filename),claim=False)
-                        varval = '\''+filename+'\''
-                    elif vartype=='int' or vartype=='select':
-                        varval = str(varval)
-                    elif vartype=='float':
-                        varval = str(varval)
-                    elif vartype=='bool':
-                        if varval:
-                            varval = '.true.'
-                        else:
-                            varval = '.false.'
-                    elif vartype=='datetime':
-                        varval = '\''+varval.strftime('%Y-%m-%d %H:%M:%S')+'\''
-                    else:
-                        raise Exception('Unknown variable type %s in scenario template.' % str(vartype))
-                    nmlfile.write('   '+varname+' = '+varval+',\n')
-                nmlfile.write('/\n\n')
+                            comments = []
+                            varnamelength = 0
+                            for listchild in filechild.getChildren(showhidden=True):
+                                comment = self.getNamelistVariableDescription(listchild)
+                                if len(comment[0])>varnamelength: varnamelength = len(comment[0])
+                                comments.append(comment)
+                            wrapper.width = linelength-varnamelength-5
+                            for (varid,vartype,lines) in comments:
+                                wrappedlines = []
+                                lines.insert(0,'['+vartype+']')
+                                for line in lines:
+                                    line = line.encode('ascii','xmlcharrefreplace')
+                                    wrappedlines += wrapper.wrap(line)
+                                firstline = wrappedlines.pop(0)
+                                nmlfile.write('! %-*s %s\n' % (varnamelength,varid,firstline))
+                                for line in wrappedlines:
+                                    nmlfile.write('! '+varnamelength*' '+'   '+line+'\n')
+                            if len(comments)>0:
+                                nmlfile.write('!'+(linelength-1)*'-'+'\n')
+                            nmlfile.write('\n')
 
-            nmlfile.close()
+                        nmlfile.write('&'+listname+'\n')
+                        for listchild in filechild.getChildren(showhidden=True):
+                            if listchild.hasChildren():
+                                raise Exception('Found a folder ("%s") below branch %s/%s, where only variables are expected.' % (listchild.getId(),nmlfilename,listname))
+                            varname = listchild.getId()
+                            varval = listchild.getValue()
+                            if varval==None:
+                                raise Exception('Value for variable "%s" in namelist "%s" not set.' % (varname,listname))
+                            vartype = listchild.getValueType()
+                            if vartype=='string':
+                                varval = '\''+varval+'\''
+                            elif vartype=='file':
+                                filename = listchild.getId()+'.dat'
+                                if not listchild.isHidden() and copydatafiles:
+                                    varval.save(os.path.join(targetpath,filename),claim=False)
+                                varval = '\''+filename+'\''
+                            elif vartype=='int' or vartype=='select':
+                                varval = str(varval)
+                            elif vartype=='float':
+                                varval = str(varval)
+                            elif vartype=='bool':
+                                if varval:
+                                    varval = '.true.'
+                                else:
+                                    varval = '.false.'
+                            elif vartype=='datetime':
+                                varval = '\''+varval.strftime('%Y-%m-%d %H:%M:%S')+'\''
+                            else:
+                                raise Exception('Unknown variable type %s in scenario template.' % str(vartype))
+                            nmlfile.write('   '+varname+' = '+varval+',\n')
+                        nmlfile.write('/\n\n')
+                finally:
+                    nmlfile.close()
+        except:
+            if createddir: shutil.rmtree(targetpath)
+            raise
 
     @staticmethod
     def getNamelistVariableDescription(node):
@@ -1526,7 +1611,7 @@ class Scenario(TypedXMLPropertyStore):
         if datatype == 'select':
             # Create list of options.
             options = findDescendantNode(node.templatenode,['options'])
-            if options==None: raise 'Node is of type "select" but lacks "options" childnode.'
+            assert options!=None, 'Node is of type "select" but lacks "options" childnode.'
             for ch in options.childNodes:
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
                     lab = ch.getAttribute('description')
@@ -1587,6 +1672,28 @@ class Scenario(TypedXMLPropertyStore):
         
         self.resetChanged()
 
+    def load(self,path):
+        if not os.path.isfile(path):
+            raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
+        xmldocument = xml.dom.minidom.parse(path)
+
+        version = xmldocument.documentElement.getAttribute('version')
+        if version=='':
+            raise Exception('This file lacks the "version" attribute; it cannot be a GOTM scenario.')
+        if self.version!=version:
+            # The version of the saved scenario does not match the version of this scenario object; convert it.
+            print 'Scenario "%s" has version "%s"; starting conversion to "%s".' % (path,version,self.version)
+            tempscenario = Scenario(templatename=version)
+            tempscenario.setStore(xmldocument)
+            tempscenario.convert(self)
+            tempscenario.unlink()
+
+            # If the scenario was stored in the official 'save' version, we should not consider it changed.
+            # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
+            if version==savedscenarioversion: self.resetChanged()
+        else:
+            self.setStore(xmldocument)
+
     def loadAll(self,path):
         # Basic check: does the specified source path exist?
         if not os.path.exists(path):
@@ -1622,7 +1729,7 @@ class Scenario(TypedXMLPropertyStore):
         version = storedom.documentElement.getAttribute('version')
         if version=='':
             # Unsupported
-            print Exception('This is an unversioned scenario created with a gotm-gui alpha. These are no longer supported; please recreate your scenario with the current gotm-gui.')
+            raise Exception('This is an unversioned scenario created with a gotm-gui alpha. These are no longer supported; please recreate your scenario with the current gotm-gui.')
         if self.version!=version:
             # The version of the saved scenario does not match the version of this scenario object; convert it.
             print 'Scenario "%s" has version "%s"; starting conversion to "%s".' % (path,version,self.version)
@@ -1743,10 +1850,8 @@ def findindices(bounds,data):
     return (start,stop)
 
 def interp1(x,y,X):
-    if len(x.shape)!=1:
-        raise Exception('Original coordinates must be supplied as 1D array.')
-    if len(X.shape)!=1:
-        raise Exception('New coordinates must be supplied as 1D array.')
+    assert len(x.shape)==1, 'Original coordinates must be supplied as 1D array.'
+    assert len(X.shape)==1, 'New coordinates must be supplied as 1D array.'
     newshape = [X.shape[0]]
     for i in y.shape[1:]: newshape.append(i)
     Y = matplotlib.numerix.zeros(newshape,matplotlib.numerix.typecode(y))
@@ -1787,7 +1892,7 @@ class LinkedFileVariableStore(PlotVariableStore):
             elif filetype=='pointsintime':
                 return ('time',)
             else:
-                raise Exception('Cannot plot variables from file of unknown type "'+filetype+'".')
+                assert False, 'Cannot plot variables from file of unknown type "%s".' % filetype
 
         def getValues(self,bounds,staggered=False):
             data = self.store.getData()
@@ -1796,8 +1901,7 @@ class LinkedFileVariableStore(PlotVariableStore):
                 return [data[0][timebounds[0]:timebounds[1]+1],data[1][timebounds[0]:timebounds[1]+1,self.index]]
             elif len(data)==3:
                 return [data[0][timebounds[0]:timebounds[1]+1],data[1],data[2][timebounds[0]:timebounds[1]+1,:,self.index]]
-            else:
-                raise Exception('Cannot handle variables with %i dimensions; only know how to deal with 2 or 3 dimensions.' % len(data))
+            assert False, 'Cannot handle variables with %i dimensions; only know how to deal with 2 or 3 dimensions.' % len(data)
 
     def __init__(self,node):
         self.vardata = []
@@ -1835,7 +1939,7 @@ class LinkedFileVariableStore(PlotVariableStore):
             if data[0]==varname:
                 return self.LinkedFileVariable(self,data,index)
             index += 1
-        raise Exception('Variable with name "%s" not found in store.' % varname)
+        assert False, 'Variable with name "%s" not found in store.' % varname
 
     def getData(self):
         if self.data!=None: return self.data
@@ -1922,7 +2026,7 @@ class LinkedFileVariableStore(PlotVariableStore):
                 griddedvalues[it,:,:] = interp1(depths[it],values[it],depthgrid)
             self.data = (times,depthgrid,griddedvalues)
         else:
-            raise Exception('Cannot plot variables from file of unknown type "'+filetype+'".')
+            assert False, 'Cannot plot variables from file of unknown type "%s".' % filetype
         f.close()
         return self.data
 
@@ -2053,8 +2157,7 @@ class Result(PlotVariableStore):
         return self.tempdir
 
     def save(self,path):
-        if self.datafile==None:
-            raise Exception('The result object was not yet attached to a result file (NetCDF).')
+        assert self.datafile!=None, 'The result object was not yet attached to a result file (NetCDF).'
 
         zfile = zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED)
 
@@ -2148,8 +2251,7 @@ class Result(PlotVariableStore):
 
     def getcdf(self):
         if self.nc!=None: return self.nc
-        if self.datafile==None:
-            raise Exception('The result object has not yet been attached to an actual result.')
+        assert self.datafile!=None, 'The result object has not yet been attached to an actual result.'
         try:
           #pycdf self.nc = pycdf.CDF(str(self.datafile))
           self.nc = NetCDFFile(self.datafile)
@@ -2427,12 +2529,12 @@ class Figure:
             varsource = forcedseriesnode.getLocation(['Source']).getValue()
             if varsource==None:
                 # No data source specified; take default.
-                if self.defaultsource==None: raise Exception('No data source set for variable '+varname+', but no default source available either.')
+                assert self.defaultsource!=None, 'No data source set for variable "%s", but no default source available either.' % varname
                 varsource = self.defaultsource
                 
             # Get variable object.
             var = self.sources[varsource].getVariable(varname)
-            if var==None: raise Exception('Source "'+varsource+'" does not contain variable with name "'+varname+'".')
+            assert var!=None, 'Source "%s" does not contain variable with name "%s".' % (varsource,varname)
 
             # Copy series information
             newseriesnode = datanode.getNumberedChild('Series',iseries)

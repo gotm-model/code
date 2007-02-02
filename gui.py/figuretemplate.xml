@@ -1,50 +1,50 @@
 <?xml version="1.0"?>
-<folder id="figure" label="figure">
+<element id="figure" label="figure">
 
-			<variable id="Title" type="string" label="title"/>
+			<element id="Title" type="string" label="title"/>
 
-			<folder id="TimeAxis" label="time axis">
-				<variable id="Minimum" type="datetime" label="minimum"/>
-				<variable id="Maximum" type="datetime" label="maximum"/>
-				<variable id="Label"   type="string" label="label"/>
-			</folder>
+			<element id="TimeAxis" label="time axis">
+				<element id="Minimum" type="datetime" label="minimum"/>
+				<element id="Maximum" type="datetime" label="maximum"/>
+				<element id="Label"   type="string" label="label"/>
+			</element>
 
-			<variable id="HasDepthAxis" type="bool" label="depth axis" hidden="True"/>
+			<element id="HasDepthAxis" type="bool" label="depth axis" hidden="True"/>
 			
-			<folder id="DepthAxis" label="depth axis">
+			<element id="DepthAxis" label="depth axis">
 				<condition type="eq" variable="./HasDepthAxis" value="True"/>
-				<variable id="Minimum" type="float" label="minimum" unit="m" minimum="-5000" maximum="50"/>
-				<variable id="Maximum" type="float" label="maximum" unit="m" minimum="-5000" maximum="50"/>
-				<variable id="Label"   type="string" label="label"/>
-			</folder>
+				<element id="Minimum" type="float" label="minimum" unit="m" minimum="-5000" maximum="50"/>
+				<element id="Maximum" type="float" label="maximum" unit="m" minimum="-5000" maximum="50"/>
+				<element id="Label"   type="string" label="label"/>
+			</element>
 
-			<folder id="Data" label="data">
-				<folder id="Series" label="series" maxoccurs="10">
-					<variable id="Variable"       type="string" label="variable"    readonly="True"/>
-					<variable id="Source"         type="string" label="data source" readonly="True"/>
-					<variable id="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
-					<variable id="Label"          type="string" label="label"/>
-					<variable id="LogScale" type="bool" label="log-scale"/>
-					<variable id="PlotType2D" type="select" label="plot type">
+			<element id="Data" label="data">
+				<element id="Series" label="series" maxoccurs="10">
+					<element id="Variable"       type="string" label="variable"    readonly="True"/>
+					<element id="Source"         type="string" label="data source" readonly="True"/>
+					<element id="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
+					<element id="Label"          type="string" label="label"/>
+					<element id="LogScale" type="bool" label="log-scale"/>
+					<element id="PlotType2D" type="select" label="plot type">
 						<condition type="eq" variable="./DimensionCount" value="1"/>
 						<options>
 							<option label="line" value="0"/>
 						</options>
-					</variable>
-					<variable id="LineWidth" type="float" label="line width">
+					</element>
+					<element id="LineWidth" type="float" label="line width">
 						<condition type="and">
 							<condition type="eq" variable="./DimensionCount" value="1"/>
 							<condition type="eq" variable="./PlotType2D"     value="0"/>
 						</condition>
-					</variable>
-					<variable id="PlotType3D" type="select" label="plot type">
+					</element>
+					<element id="PlotType3D" type="select" label="plot type">
 						<condition type="eq" variable="./DimensionCount" value="2"/>
 						<options>
 							<option label="grid"            value="0"/>
 							<option label="filled contours" value="1"/>
 						</options>
-					</variable>
-				</folder>
-			</folder>
+					</element>
+				</element>
+			</element>
 		
-</folder>
+</element>

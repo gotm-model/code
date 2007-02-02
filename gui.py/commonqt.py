@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.7 2007-01-26 11:55:25 jorn Exp $
+#$Id: commonqt.py,v 1.8 2007-02-02 11:20:45 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -64,6 +64,8 @@ class PathEditor(QtGui.QWidget):
         self.browsebutton = QtGui.QPushButton(text,self)
         lo.addWidget(self.browsebutton)
 
+        lo.setMargin(0)
+
         self.setLayout(lo)
 
         self.connect(self.lineedit,     QtCore.SIGNAL('textChanged(const QString &)'), self.onChanged)
@@ -76,6 +78,8 @@ class PathEditor(QtGui.QWidget):
         self.filter=''
         self.forcedextension = ''
 
+        self.dlgoptions = QtGui.QFileDialog.DontConfirmOverwrite
+
     def setPath(self,path):
         return self.lineedit.setText(path)
 
@@ -86,7 +90,7 @@ class PathEditor(QtGui.QWidget):
         if self.getdirectory:
             path = unicode(QtGui.QFileDialog.getExistingDirectory(self,'',self.path()))
         elif self.save:
-            path = unicode(QtGui.QFileDialog.getSaveFileName(self,'',self.path(),self.filter))
+            path = unicode(QtGui.QFileDialog.getSaveFileName(self,'',self.path(),self.filter,None,self.dlgoptions))
         else:
             path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',self.path(),self.filter))
 
@@ -157,7 +161,6 @@ class LinkedFileEditor(QtGui.QWidget):
 
         self.patheditor = PathEditor(self,compact=True)
         self.patheditor.layout().setSpacing(0)
-        self.patheditor.layout().setMargin(0)
         lo.addWidget(self.patheditor)
 
         self.plotbutton = QtGui.QPushButton('Plot',self)
@@ -361,6 +364,8 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         self.typedstore.addVisibilityChangeHandler(self.beforeNodeVisibilityChange,self.afterNodeVisibilityChange)
         self.typedstore.addChangeHandler(self.onNodeChanged)
         self.typedstore.addStoreChangedHandler(self.reset)
+
+        self.typedstore.blockNotifyOfHiddenNodes = (not self.nohide)
         
     # index (inherited from QtCore.QAbstractItemModel)
     #   Supplies unique index for the node at the given (row,column) position
@@ -429,7 +434,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 if templatenode.hasAttribute('maximum'): text += '\nmaximum value: '+templatenode.getAttribute('maximum')
             return QtCore.QVariant(text)
         elif role==QtCore.Qt.TextColorRole:
-            if self.nohide and index.internalPointer().isHidden():
+            if self.nohide and not index.internalPointer().visible:
                 # If we should show 'hidden' nodes too, color them blue to differentiate.
                 return QtCore.QVariant(QtGui.QColor(0,0,255))
             elif index.column()==1 and index.internalPointer().isReadOnly():
@@ -453,17 +458,22 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 return QtCore.QVariant()
         else:
             # We only process the 'display' and 'edit' roles.
-            if role!=QtCore.Qt.DisplayRole and role!=QtCore.Qt.EditRole: return QtCore.QVariant()
+            if not (role==QtCore.Qt.DisplayRole or role==QtCore.Qt.EditRole or role==QtCore.Qt.FontRole): return QtCore.QVariant()
 
             # Get node (XML element) from given node index (QtCore.QModelIndex)
             node = index.internalPointer()
-            templatenode = node.templatenode
 
-            # Only variables can have a value.
-            if not node.isVariable(): return QtCore.QVariant()
+            # Column 1 is nly used for variables that can have a value.
+            if not node.canHaveValue(): return QtCore.QVariant()
+
+            # Return bold font if the node value is set to something different than the default.
+            if role==QtCore.Qt.FontRole and self.typedstore.defaultstore!=None:
+                font = QtGui.QFont()
+                font.setBold(node.getValue() != node.getDefaultValue())
+                return QtCore.QVariant(font)
+
+            templatenode = node.templatenode
             fieldtype = node.getValueType()
-            
-            # Get the current value of the variable
             value = node.getValue()
 
             # Now distinguish between display of value and editing of value.
@@ -574,7 +584,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             node = index.internalPointer()
             
             # If this is a variable, its value is also editable.
-            if node.isVariable() and (not node.isReadOnly()): f = f | QtCore.Qt.ItemIsEditable
+            if node.canHaveValue() and (not node.isReadOnly()): f = f | QtCore.Qt.ItemIsEditable
             
         return f
 
@@ -599,18 +609,31 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             self.beginRemoveRows(par,irow,irow)
 
     def afterNodeVisibilityChange(self,node,newvisibility,showhide):
-        if self.nohide and showhide: return self.onNodeChanged(node)
+        if self.nohide and showhide: return self.onNodeChanged(node,headertoo=True)
         if newvisibility:
             self.endInsertRows()
         else:
             self.endRemoveRows()
 
-    def onNodeChanged(self,node):
+    def onNodeChanged(self,node,headertoo = False):
         index = self.createIndex(node.getOwnIndex(showhidden=self.nohide),1,node)
         self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
 
+        if headertoo:
+            index = self.createIndex(node.getOwnIndex(showhidden=self.nohide),0,node)
+            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+
         # For debugging purposes only: write current scenario values to XML
         # self.typedstore.save('./scenario.xml')
+
+    def resetData(self,index,recursive=False):
+        node = index.internalPointer()
+        node.setToDefault(recursive)
+
+    def hasDefaultValue(self,index):
+        node = index.internalPointer()
+        if node==None or not node.canHaveValue(): return True
+        return node.getValue() == node.getDefaultValue()
 
 # =======================================================================
 # ExtendedTreeView: based on Qt QTreeView, additionally supports batch
@@ -633,16 +656,57 @@ class ExtendedTreeView(QtGui.QTreeView):
                     ch = model.index(ich,0,root)
                     self.setExpandedAll(value=value,root=ch,depth=depth+1,maxdepth=maxdepth)
 
+    def expandNonDefaults(self,root=None):
+        model = self.model()
+        if root==None: root=QtCore.QModelIndex()
+        exp = False
+        rc = model.rowCount(root)
+        if rc>0:
+            for ich in range(rc):
+                ch = model.index(ich,0,root)
+                if self.expandNonDefaults(root=ch):
+                    exp = True
+            if exp: self.expand(root)
+        if not model.hasDefaultValue(root): exp = True
+        return exp
+
     def contextMenuEvent(self,e):
         index = self.indexAt(e.pos())
+        if not index.isValid(): return
+
+        # We will handle the context menu event.
+        e.accept()
+        
+        # Get indices of name and value cell.
+        if index.column()==0:
+            nameindex = index
+            valueindex = index.sibling(index.row(),1)
+        else:
+            nameindex = index.sibling(index.row(),0)
+            valueindex = index
+
+        # Check whether we can reset the current value and/or its decendants. Stop if not.
         model = self.model()
-        if (model.flags(index) & QtCore.Qt.ItemIsEditable) and index.isValid():
-            menu = QtGui.QMenu(self)
-            actReset = menu.addAction('Reset value')
-            actChosen = menu.exec_(e.globalPos())
-            if actChosen is actReset:
-                model.setData(index,QtCore.QVariant())
-            e.accept()
+        resetself = (model.flags(valueindex) & QtCore.Qt.ItemIsEditable)
+        resetchildren = model.hasChildren(nameindex)
+        if not (resetself or resetchildren): return
+        
+        # Build context menu
+        menu = QtGui.QMenu(self)
+        if resetself:     actReset = menu.addAction('Reset value')
+        if resetchildren: actResetChildren = menu.addAction('Reset entire branch')
+        actChosen = menu.exec_(e.globalPos())
+        if resetself and actChosen is actReset:
+            #model.setData(index,QtCore.QVariant())
+            model.resetData(nameindex)
+        elif resetchildren and actChosen is actResetChildren:
+            model.resetData(nameindex,recursive=True)
+
+    def rowsInserted(self,parent,start,end):
+        QtGui.QTreeView.rowsInserted(self,parent,start,end)
+        model = self.model()
+        if model.rowCount(parent)==end-start+1:
+            self.expand(parent)
 
 class PropertyEditorDialog(QtGui.QDialog):
     
