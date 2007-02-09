@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.5 2007-02-09 11:20:54 jorn Exp $
+#$Id: scenariobuilder.py,v 1.6 2007-02-09 12:50:07 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -125,12 +125,12 @@ class ScenarioWidget(QtGui.QWidget):
                         raise Exception('An error occurred while loading the scenario: '+str(e))
             elif checkedid==2:
                 try:
-                    scenario = common.Scenario.fromNamelists(self.pathImport1.path())
+                    scenario = common.Scenario.fromNamelists(self.pathImport1.path(),strict = False)
                 except Exception,e:
                     raise Exception('Cannot parse namelist files. Error: '+str(e))
             elif checkedid==3:
                 try:
-                    scenario = common.Scenario.fromNamelists(self.pathImport2.path())
+                    scenario = common.Scenario.fromNamelists(self.pathImport2.path(),strict = False)
                 except Exception,e:
                     raise Exception('Cannot parse namelist files. Error: '+str(e))
 

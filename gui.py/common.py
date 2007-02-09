@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.16 2007-02-09 11:39:01 jorn Exp $
+#$Id: common.py,v 1.17 2007-02-09 12:50:07 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -1353,7 +1353,8 @@ class Scenario(TypedXMLPropertyStore):
     def getTemplates():
         if Scenario.templates==None:
             Scenario.templates = {}
-            templatedir = os.path.join(os.path.dirname(__file__),Scenario.schemadirname)
+            #templatedir = os.path.join(os.path.dirname(__file__),Scenario.schemadirname)
+            templatedir = Scenario.schemadirname
             if os.path.isdir(templatedir):
                 for templatename in os.listdir(templatedir):
                     fullpath = os.path.join(templatedir,templatename)
@@ -1371,7 +1372,8 @@ class Scenario(TypedXMLPropertyStore):
     def getDefaultPaths():
         if Scenario.defaultname2path==None:
             Scenario.defaultname2path = {}
-            defaultdir = os.path.join(os.path.dirname(__file__),Scenario.defaultdirname)
+            #defaultdir = os.path.join(os.path.dirname(__file__),Scenario.defaultdirname)
+            defaultdir = Scenario.defaultdirname
             if os.path.isdir(defaultdir):
                 for filename in os.listdir(defaultdir):
                     fullpath = os.path.join(defaultdir,filename)
@@ -1417,19 +1419,19 @@ class Scenario(TypedXMLPropertyStore):
         scenario = None
         failures = ''
         for sourceid in sourceids:
-            print 'Trying scenario format "'+sourceid+'"...'
+            print 'Trying scenario format "%s"...' % sourceid
             scenario = Scenario(templatename=sourceid)
             try:
                 scenario.loadFromNamelists(path,strict=strict,protodir=protodir)
             except NamelistParseException,e:
-                failures += 'Path "'+path+'" does not match template "'+sourceid+'".\nReason: '+str(e)+'\n'
+                failures += 'Path "%s" does not match template "%s".\nReason: %s\n' % (path,sourceid,e)
                 scenario.unlink()
                 scenario = None
             if scenario!=None:
                 #print 'Path "'+path+'" matches template "'+template+'".'
                 break
         if scenario==None:
-            raise Exception('The path "'+path+'" does not contain a supported GOTM scenario. Details:\n'+failures)
+            raise Exception('The path "%s" does not contain a supported GOTM scenario. Details:\n%s' % (path,failures))
         if scenario.version!=targetversion:
             newscenario = scenario.convert(targetversion)
             scenario.unlink()
@@ -2197,7 +2199,8 @@ class Result(PlotVariableStore):
     def getReportTemplates():
         if Result.reportname2path==None:
             Result.reportname2path = {}
-            sourcedir = os.path.join(os.path.dirname(__file__),Result.reportdirname)
+            #sourcedir = os.path.join(os.path.dirname(__file__),Result.reportdirname)
+            sourcedir = Result.reportdirname
             if os.path.isdir(sourcedir):
                 for filename in os.listdir(sourcedir):
                     if filename=='CVS': continue

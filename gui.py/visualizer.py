@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.6 2007-02-09 11:39:01 jorn Exp $
+#$Id: visualizer.py,v 1.7 2007-02-09 12:50:07 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -112,7 +112,7 @@ class ConfigureReportWidget(QtGui.QWidget):
         self.pathOutput = commonqt.PathEditor(self,getdirectory=True)
 
         self.labVariables = QtGui.QLabel('Included variables:',self)
-        self.treestore = self.result.getVariableTree(os.path.join(os.path.dirname(__file__),'outputtree.xml'))
+        self.treestore = self.result.getVariableTree('outputtree.xml')
         self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True,checkboxes=True)
         self.treeVariables = commonqt.ExtendedTreeView(self)
         self.treeVariables.header().hide()
@@ -335,7 +335,7 @@ class PageVisualize(commonqt.WizardPage):
         commonqt.WizardPage.__init__(self, parent)
 
         self.result = parent.shared['result']
-        self.treestore = self.result.getVariableTree(os.path.join(os.path.dirname(__file__),'outputtree.xml'))
+        self.treestore = self.result.getVariableTree('outputtree.xml')
         self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True)
 
         self.treeVariables = commonqt.ExtendedTreeView(self)
