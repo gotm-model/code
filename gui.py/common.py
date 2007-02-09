@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.15 2007-02-09 11:20:53 jorn Exp $
+#$Id: common.py,v 1.16 2007-02-09 11:39:01 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -2200,6 +2200,7 @@ class Result(PlotVariableStore):
             sourcedir = os.path.join(os.path.dirname(__file__),Result.reportdirname)
             if os.path.isdir(sourcedir):
                 for filename in os.listdir(sourcedir):
+                    if filename=='CVS': continue
                     fullpath = os.path.join(sourcedir,filename)
                     if os.path.isdir(fullpath):
                         if os.path.isfile(os.path.join(fullpath,'index.xml')):
@@ -2593,7 +2594,8 @@ class Result(PlotVariableStore):
         if not os.path.isdir(outputpath): os.mkdir(outputpath)
 
         for f in os.listdir(templatepath):
-            if f.lower()!='index.xml': shutil.copy(os.path.join(templatepath,f),os.path.join(outputpath,f))
+            fullpath = os.path.join(templatepath,f)
+            if f.lower()!='index.xml' and os.path.isfile(fullpath): shutil.copy(fullpath,os.path.join(outputpath,f))
 
         for node in xmldocument.getElementsByTagName('gotm:scenarioproperty'):
             variablepath = node.getAttribute('variable')

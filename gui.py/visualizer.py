@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.5 2007-02-09 11:20:54 jorn Exp $
+#$Id: visualizer.py,v 1.6 2007-02-09 11:39:01 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -234,7 +234,7 @@ class PageReportGenerator(commonqt.WizardPage):
         return self.reportwidget.isComplete()
 
     def saveData(self,mustbevalid):
-        if self.checkReport.isChecked():
+        if mustbevalid and self.checkReport.isChecked():
             return self.reportwidget.generate()
         return True
 
