@@ -13,7 +13,7 @@ def adddir(path):
 
 own_data_files = []
 
-own_data_files.append(('',['logo.png','outputtree.xml','figuretemplate.xml']))
+own_data_files.append(('',['logo.png','outputtree.xml','figuretemplate.xml','settingsschema.xml']))
 
 adddir(matplotlib.get_data_path())
 adddir('defaultscenarios')

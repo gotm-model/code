@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.7 2007-02-09 12:50:07 jorn Exp $
+#$Id: visualizer.py,v 1.8 2007-02-09 15:46:44 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -170,7 +170,9 @@ class ConfigureReportWidget(QtGui.QWidget):
         templateindex = self.comboTemplates.currentIndex()
         templatepath = unicode(self.comboTemplates.itemData(templateindex).toString())
         outputpath = self.pathOutput.path()
-        varids = [node.location[-1] for node in self.model.getCheckedNodes()]
+        varids = []
+        for node in self.model.getCheckedNodes():
+            if node.canHaveValue(): varids.append(node.location[-1])
         dpiindex = self.comboDpi.currentIndex()
         dpi,ret = self.comboDpi.itemData(dpiindex).toInt()
         size = (self.spinWidth.value(),self.spinHeight.value())

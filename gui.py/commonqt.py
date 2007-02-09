@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.10 2007-02-09 14:33:11 jorn Exp $
+#$Id: commonqt.py,v 1.11 2007-02-09 15:46:44 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -432,6 +432,8 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         self.typedstore.addStoreChangedHandler(self.reset)
 
         self.typedstore.blockNotifyOfHiddenNodes = (not self.nohide)
+
+        self.inheritingchecks = False
         
     # index (inherited from QtCore.QAbstractItemModel)
     #   Supplies unique index for the node at the given (row,column) position
@@ -509,9 +511,23 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             elif index.column()==1 and node.isReadOnly():
                 # Color read-only nodes grey to differentiate.
                 return QtCore.QVariant(QtGui.QColor(128,128,128))
-        elif self.checkboxes and role==QtCore.Qt.CheckStateRole and node.canHaveValue():
-            curval = node.getValue()
-            return QtCore.QVariant(curval!=None and curval)
+        elif self.checkboxes and role==QtCore.Qt.CheckStateRole:
+            if node.canHaveValue():
+                if node.getValue():
+                    return QtCore.QVariant(QtCore.Qt.Checked)
+                else:
+                    return QtCore.QVariant(QtCore.Qt.Unchecked)
+            elif node.hasChildren():
+                state = None
+                for i in range(self.rowCount(index)):
+                    chstate = index.child(i,0).data(QtCore.Qt.CheckStateRole)
+                    if chstate==QtCore.QVariant(QtCore.Qt.PartiallyChecked):
+                        return QtCore.QVariant(QtCore.Qt.PartiallyChecked)
+                    elif state==None:
+                        state = chstate
+                    elif chstate!=state:
+                        return QtCore.QVariant(QtCore.Qt.PartiallyChecked)
+                return state
 
         # Now handle column-specific roles.
         if index.column()==0:
@@ -564,8 +580,19 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         node = index.internalPointer()
 
         if self.checkboxes and role==QtCore.Qt.CheckStateRole:
-            node.setValue(value.toBool())
-            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+            if node.canHaveValue():
+                node.setValue(value.toBool())
+                self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+                if not self.inheritingchecks:
+                    par = index.parent()
+                    self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),par,par)
+            elif node.hasChildren():
+                checkroot = (not self.inheritingchecks)
+                self.inheritingchecks = True
+                for i in range(self.rowCount(index)):
+                    self.setData(index.child(i,0),value,role=QtCore.Qt.CheckStateRole)
+                self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+                if checkroot: self.inheritingchecks = False
             return True
         
         assert index.column()==1, 'Column %i is being set, but should not be editable (only column 1 should)' % index.column()
@@ -624,7 +651,9 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         node = index.internalPointer()
 
         # Add checkbox if needed
-        if self.checkboxes and node.canHaveValue(): f |= QtCore.Qt.ItemIsUserCheckable
+        if self.checkboxes:
+            f |= QtCore.Qt.ItemIsUserCheckable
+            if node.hasChildren(): f |= QtCore.Qt.ItemIsTristate
 
         # Make editable if it's the 1st column and the node is editable.
         if index.column()==1 and node.canHaveValue() and (not node.isReadOnly()): f |= QtCore.Qt.ItemIsEditable
@@ -683,7 +712,8 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         res = []
         for irow in range(self.rowCount(index)):
             child = self.index(irow,0,index)
-            if child.data(QtCore.Qt.CheckStateRole).toBool(): res.append(child.internalPointer())
+            if child.data(QtCore.Qt.CheckStateRole)==QtCore.Qt.Checked:
+                res.append(child.internalPointer())
             res += self.getCheckedNodes(child)
         return res
 
