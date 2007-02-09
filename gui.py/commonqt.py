@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.11 2007-02-09 15:46:44 jorn Exp $
+#$Id: commonqt.py,v 1.12 2007-02-09 16:34:10 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -520,14 +520,14 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             elif node.hasChildren():
                 state = None
                 for i in range(self.rowCount(index)):
-                    chstate = index.child(i,0).data(QtCore.Qt.CheckStateRole)
-                    if chstate==QtCore.QVariant(QtCore.Qt.PartiallyChecked):
+                    chstate,ret = index.child(i,0).data(QtCore.Qt.CheckStateRole).toInt()
+                    if chstate==QtCore.Qt.PartiallyChecked:
                         return QtCore.QVariant(QtCore.Qt.PartiallyChecked)
                     elif state==None:
                         state = chstate
                     elif chstate!=state:
                         return QtCore.QVariant(QtCore.Qt.PartiallyChecked)
-                return state
+                return QtCore.QVariant(state)
 
         # Now handle column-specific roles.
         if index.column()==0:
@@ -712,7 +712,8 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         res = []
         for irow in range(self.rowCount(index)):
             child = self.index(irow,0,index)
-            if child.data(QtCore.Qt.CheckStateRole)==QtCore.Qt.Checked:
+            state,ret = child.data(QtCore.Qt.CheckStateRole).toInt()
+            if state==QtCore.Qt.Checked:
                 res.append(child.internalPointer())
             res += self.getCheckedNodes(child)
         return res

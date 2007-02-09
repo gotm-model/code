@@ -1,3 +1,19 @@
+import sys
+
+try:
+    import modulefinder
+    #import win32com
+    #for p in win32com.__path__[1:]:
+    #    modulefinder.AddPackagePath("win32com", p)
+    for extra in ["win32com","win32com.shell"]: #,"win32com.mapi"
+        __import__(extra)
+        m = sys.modules[extra]
+        for p in m.__path__[1:]:
+            modulefinder.AddPackagePath(extra, p)
+except ImportError:
+    # no build path setup, no worries.
+    pass
+
 from distutils.core import setup
 import py2exe
 
@@ -5,17 +21,18 @@ from distutils.filelist import findall
 import os, os.path
 import matplotlib
 
-def adddir(path):
+def adddir(path,localtarget=None):
+    if localtarget==None: localtarget = path
     for f in findall(path):
-        localname = os.path.join(path, f[len(path)+1:])
+        localname = os.path.join(localtarget, f[len(path)+1:])
         if 'CVS' in localname: continue
-        own_data_files.append((os.path.split(localname)[0],[f]))
+        own_data_files.append((os.path.dirname(localname),[f]))
 
 own_data_files = []
 
 own_data_files.append(('',['logo.png','outputtree.xml','figuretemplate.xml','settingsschema.xml']))
 
-adddir(matplotlib.get_data_path())
+adddir(matplotlib.get_data_path(),'matplotlibdata')
 adddir('defaultscenarios')
 adddir('reporttemplates')
 adddir('scenarioschemas')
@@ -24,7 +41,7 @@ setup(
     console=['gotm.py'],
     options={'py2exe': {
                 'packages' : ['matplotlib', 'pytz'],
-                'includes' : ['sip'],
+                'includes' : ['sip','win32com'],
                 'excludes' : ['_gtkagg', '_tkagg', '_wxagg','tcl'],
                 'dll_excludes': ['libgdk-win32-2.0-0.dll', 'libgobject-2.0-0.dll', 'libgdk_pixbuf-2.0-0.dll','wxmsw26uh_vc.dll']
             }},
