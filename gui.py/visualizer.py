@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.4 2006-12-17 20:25:00 jorn Exp $
+#$Id: visualizer.py,v 1.5 2007-02-09 11:20:54 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -53,6 +53,7 @@ class OpenWidget(QtGui.QWidget):
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.pathOpen)
+        layout.setMargin(0)
         self.setLayout(layout)
         self.connect(self.pathOpen, QtCore.SIGNAL("onChanged()"), self.completeStateChanged)
 
@@ -94,6 +95,163 @@ class PageOpen(commonqt.WizardPage):
         self.parent().shared['scenario'] = result.scenario
         return True
 
+class ConfigureReportWidget(QtGui.QWidget):
+    def __init__(self,parent,result):
+        QtGui.QWidget.__init__(self,parent)
+        
+        self.result = result
+
+        reportname2path = common.Result.getReportTemplates()
+
+        self.labTemplates = QtGui.QLabel('Report template:',self)
+        self.comboTemplates = QtGui.QComboBox(parent)
+        for (name,path) in reportname2path.items():
+            self.comboTemplates.addItem(name,QtCore.QVariant(path))
+        
+        self.labOutput = QtGui.QLabel('Directory to save to:',self)
+        self.pathOutput = commonqt.PathEditor(self,getdirectory=True)
+
+        self.labVariables = QtGui.QLabel('Included variables:',self)
+        self.treestore = self.result.getVariableTree(os.path.join(os.path.dirname(__file__),'outputtree.xml'))
+        self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True,checkboxes=True)
+        self.treeVariables = commonqt.ExtendedTreeView(self)
+        self.treeVariables.header().hide()
+        self.treeVariables.setModel(self.model)
+        self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
+
+        self.labWidth = QtGui.QLabel('Width (cm):',self)
+        self.spinWidth = QtGui.QDoubleSpinBox(self)
+        self.spinWidth.setMinimum(1)
+        self.spinWidth.setValue(10)
+
+        self.labHeight = QtGui.QLabel('Height (cm):',self)
+        self.spinHeight = QtGui.QDoubleSpinBox(self)
+        self.spinHeight.setMinimum(1)
+        self.spinHeight.setValue(8)
+
+        self.labDpi = QtGui.QLabel('Image resolution (dpi):',self)
+        self.comboDpi = QtGui.QComboBox(parent)
+        for (dpi) in [72,96,100,150,300,600,1200]:
+            self.comboDpi.addItem(unicode(dpi),QtCore.QVariant(dpi))
+        self.comboDpi.setCurrentIndex(1)
+        
+        layout = QtGui.QGridLayout()
+        layout.addWidget(self.labOutput,     0,0)
+        layout.addWidget(self.pathOutput,    0,1)
+        layout.addWidget(self.labTemplates,  1,0)
+        layout.addWidget(self.comboTemplates,1,1)
+        layout.addWidget(self.labVariables,  2,0,QtCore.Qt.AlignTop)
+        layout.addWidget(self.treeVariables, 2,1)
+
+        self.figbox = QtGui.QGroupBox('Figure settings',self)
+        figlayout = QtGui.QGridLayout()
+        figlayout.addWidget(self.labWidth,      3,0)
+        figlayout.addWidget(self.spinWidth,     3,1)
+        figlayout.addWidget(self.labHeight,     4,0)
+        figlayout.addWidget(self.spinHeight,    4,1)
+        figlayout.addWidget(self.labDpi,        5,0)
+        figlayout.addWidget(self.comboDpi,      5,1)
+        figlayout.setColumnStretch(1,1)
+        self.figbox.setLayout(figlayout)
+        layout.addWidget(self.figbox,3,0,1,2)
+        
+        layout.setMargin(0)
+        self.setLayout(layout)
+
+        self.connect(self.pathOutput, QtCore.SIGNAL('onChanged()'), self.completeStateChanged)
+
+    def completeStateChanged(self):
+        self.emit(QtCore.SIGNAL('onCompleteStateChanged()'))
+
+    def isComplete(self):
+        return self.pathOutput.hasPath()
+
+    def generate(self):
+        templateindex = self.comboTemplates.currentIndex()
+        templatepath = unicode(self.comboTemplates.itemData(templateindex).toString())
+        outputpath = self.pathOutput.path()
+        varids = [node.location[-1] for node in self.model.getCheckedNodes()]
+        dpiindex = self.comboDpi.currentIndex()
+        dpi,ret = self.comboDpi.itemData(dpiindex).toInt()
+        size = (self.spinWidth.value(),self.spinHeight.value())
+
+        if os.path.isdir(outputpath) and len(os.listdir(outputpath))>0:
+            ret = QtGui.QMessageBox.warning(self,'Directory is not empty','The specified target directory ("%s") contains one or more files, which may be overwritten. Do you want to continue?' % outputpath,QtGui.QMessageBox.Yes,QtGui.QMessageBox.No)
+            if ret==QtGui.QMessageBox.No: return False
+
+        QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
+        self.result.generateReport(outputpath,templatepath,varids,dpi=dpi,figuresize=size,callback=self.onReportProgressed)
+        QtGui.QApplication.restoreOverrideCursor()
+
+        return True
+
+    def onReportProgressed(self,progressed,status):
+        self.emit(QtCore.SIGNAL('onReportProgressed'),progressed,status)
+        
+class PageReportGenerator(commonqt.WizardPage):
+    def __init__(self,parent=None):
+        commonqt.WizardPage.__init__(self, parent)
+
+        self.result = parent.shared['result']
+
+        self.label = QtGui.QLabel('You can generate a report that describes the scenario and the simulation results. A report consists of an HTML file, associated files (CSS, javascript) and image files for all figures.',self)
+        self.label.setWordWrap(True)
+        self.checkReport = QtGui.QCheckBox('Yes, I want to generate a report.', parent)
+        self.reportwidget = ConfigureReportWidget(self,self.result)
+
+        self.progressbar = QtGui.QProgressBar(self)
+        self.progressbar.setRange(0,100)
+        self.labStatus = QtGui.QLabel(self)
+        self.progressbar.hide()
+        self.labStatus.hide()
+
+        layout = QtGui.QGridLayout()
+        layout.addWidget(self.label,0,0,1,2)
+        layout.addWidget(self.checkReport,1,0,1,2)
+        layout.addWidget(self.reportwidget,2,1,1,1)
+
+        layout.addWidget(self.progressbar,3,0,1,2)
+        layout.addWidget(self.labStatus,4,0,1,2)
+
+        layout.setRowStretch(5,1)
+        layout.setColumnStretch(1,1)
+        radiowidth = QtGui.QCheckBox().sizeHint().width()
+        layout.setColumnMinimumWidth(0,radiowidth)
+
+        self.setLayout(layout)
+
+        self.connect(self.checkReport, QtCore.SIGNAL('stateChanged(int)'),        self.onCheckChange)
+        self.connect(self.reportwidget,QtCore.SIGNAL('onCompleteStateChanged()'), self.completeStateChanged)
+        self.connect(self.reportwidget,QtCore.SIGNAL('onReportProgressed'),       self.reportProgressed)
+        self.onCheckChange()
+
+    def onCheckChange(self):
+        self.reportwidget.setVisible(self.checkReport.isChecked())
+        self.completeStateChanged()
+
+    def isComplete(self):
+        if not self.checkReport.isChecked(): return True
+        return self.reportwidget.isComplete()
+
+    def saveData(self,mustbevalid):
+        if self.checkReport.isChecked():
+            return self.reportwidget.generate()
+        return True
+
+    def reportProgressed(self,progressed,status):
+        if self.progressbar.isHidden():
+            self.label.setText('Please wait while the report is created...')
+            self.checkReport.hide()
+            self.reportwidget.hide()
+            self.progressbar.show()
+            self.labStatus.show()
+            self.repaint()
+            
+        self.progressbar.setValue(round(progressed*100))
+        self.labStatus.setText(status)
+
+        self.labStatus.repaint()
+
 class PageSave(commonqt.WizardPage):
 
     def __init__(self,parent=None):
@@ -113,16 +271,21 @@ class PageSave(commonqt.WizardPage):
         self.bngroup.addButton(self.radioNoSave, 0)
         self.bngroup.addButton(self.radioSave,   1)
 
-        layout = QtGui.QVBoxLayout()
-        layout.addWidget(self.label)
-        layout.addWidget(self.radioNoSave)
-        layout.addWidget(self.radioSave)
-        layout.addWidget(self.pathSave)
-        layout.addStretch()
+        layout = QtGui.QGridLayout()
+        layout.addWidget(self.label,      0,0,1,2)
+        layout.addWidget(self.radioNoSave,1,0,1,2)
+        layout.addWidget(self.radioSave,  2,0,1,2)
+        layout.addWidget(self.pathSave,   3,1,1,1)
+
+        layout.setRowStretch(4,1)
+        layout.setColumnStretch(1,1)
+        radiowidth = QtGui.QRadioButton().sizeHint().width()
+        layout.setColumnMinimumWidth(0,radiowidth)
+
         self.setLayout(layout)
 
-        self.connect(self.bngroup,  QtCore.SIGNAL("buttonClicked(int)"), self.onSourceChange)
-        self.connect(self.pathSave, QtCore.SIGNAL("onChanged()"),        self.completeStateChanged)
+        self.connect(self.bngroup,  QtCore.SIGNAL('buttonClicked(int)'), self.onSourceChange)
+        self.connect(self.pathSave, QtCore.SIGNAL('onChanged()'),        self.completeStateChanged)
 
         self.radioSave.setChecked(True)
         self.onSourceChange()
@@ -172,84 +335,32 @@ class PageVisualize(commonqt.WizardPage):
         commonqt.WizardPage.__init__(self, parent)
 
         self.result = parent.shared['result']
+        self.treestore = self.result.getVariableTree(os.path.join(os.path.dirname(__file__),'outputtree.xml'))
+        self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True)
 
-        self.treewidgetVars = QtGui.QTreeWidget(self)
-        self.treewidgetVars.setColumnCount(1)
-        self.treewidgetVars.header().hide()
-        self.connect(self.treewidgetVars, QtCore.SIGNAL("itemSelectionChanged()"), self.OnVarSelected)
-        self.treewidgetVars.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Expanding)
-        self.treewidgetVars.setMaximumWidth(250)
+        self.treeVariables = commonqt.ExtendedTreeView(self)
+        self.treeVariables.header().hide()
+        self.connect(self.treeVariables, QtCore.SIGNAL('onSelectionChanged()'), self.OnVarSelected)
+        self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Expanding)
+        self.treeVariables.setMaximumWidth(250)
+        self.treeVariables.setModel(self.model)
 
         self.figurepanel = commonqt.FigurePanel(self)
 
         layout = QtGui.QHBoxLayout()
-        layout.addWidget(self.treewidgetVars)
+        layout.addWidget(self.treeVariables)
         layout.addWidget(self.figurepanel)
         self.setLayout(layout)
 
-        self.BuildVariableTree()
-
     def OnVarSelected(self):
-        if len(self.treewidgetVars.selectedItems())==0: return
-        it = self.treewidgetVars.selectedItems()[0]
-        varid = it.data(0,QtCore.Qt.UserRole)
-        if varid.isNull(): return
-        varname = varid.toString()
+        selected = self.treeVariables.selectedIndexes()
+        if len(selected)==0: return
+        node = selected[0].internalPointer()
+        if node.hasChildren(): return
+        varname = node.getId()
+        QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
         self.figurepanel.plot(self.result,varname)
-
-    def BuildVariableTree(self):
-        self.treewidgetVars.clear()
-        handler = self.TreeContentHandler(self.treewidgetVars,self.result)
-        f = file(os.path.join(os.path.dirname(__file__),'varstructure.xml'), 'r')
-        xml.sax.parse(f,handler)
-
-    class TreeContentHandler(xml.sax.handler.ContentHandler):
-
-        def __init__(self,treewidget,result):
-            xml.sax.handler.ContentHandler.__init__(self)
-            self.treewidget = treewidget
-            self.dict = result.getVariableLongNames()
-            self.curitem = self.treewidget
-            self.dictFound = {}
-
-        def startElement(self,name,attrs):
-            if name=='variable':
-                varid = attrs.getValue('id')
-                if self.dict.has_key(varid):
-                    varnode = QtGui.QTreeWidgetItem(self.curitem,[self.dict[varid]])
-                    varnode.setData(0,QtCore.Qt.UserRole,QtCore.QVariant(varid))
-                    self.dictFound[varid] = True
-                else:
-                    print 'Skipped variable '+varid+' because it is not present in result file.'
-            elif name=='folder':
-                self.curitem = QtGui.QTreeWidgetItem(self.curitem,[attrs.getValue('name')])
-                self.curitem.setFlags(self.curitem.flags() & (~QtCore.Qt.ItemIsSelectable))
-
-        def endElement(self,name):
-            if name=='folder':
-                self.curitem = self.curitem.parent()
-                if self.curitem==None: self.curitem = self.treewidget
-
-        def endDocument(self):
-            # Find all variables that have not been added to the tree yet.
-            # (because they were not known when the tree file was made)
-            add = [];
-            for varid in self.dict.keys():
-                if not varid in self.dictFound: add.append(varid)
-
-            # Add any left variables to the tree, below the node 'Other'
-            if len(add)>0:
-                # Add 'other' folder
-                folderOther = QtGui.QTreeWidgetItem(self.treewidget,['Other'])
-                folderOther.setFlags(folderOther.flags() & (~QtCore.Qt.ItemIsSelectable))
-
-                # Sort variables by long name, case-insensitive.
-                add.sort(lambda x,y: cmp(self.dict[x].lower(),self.dict[y].lower()))
-
-                # Add remaining variables.
-                for varid in add:
-                    varnode = QtGui.QTreeWidgetItem(folderOther,[self.dict[varid]])
-                    varnode.setData(0,QtCore.Qt.UserRole,QtCore.QVariant(varid))
+        QtGui.QApplication.restoreOverrideCursor()
 
     def isComplete(self):
         return True
@@ -273,7 +384,7 @@ def main():
     wiz.setWindowTitle('Result visualizer')
     wiz.resize(800, 600)
 
-    seq = [PageOpen,PageVisualize,PageSave,PageFinal]
+    seq = [PageOpen,PageChooseAction,PageVisualize,PageReportGenerator,PageSave,PageFinal]
 
     # Get NetCDF file to open from command line or from FileOpen dialog.
     if len(sys.argv)>1:

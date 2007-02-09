@@ -624,7 +624,7 @@
 					<option value="2" label="custom observed profiles"/>
 				</options>
 			</element>
-			<element id="s_analyt_method" type="select" label="method to create analytically precribed inital profile">
+			<element id="s_analyt_method" type="select" label="method to create analytically prescribed inital profile">
 				<condition type="eq" variable="./s_prof_method" value="1"/>
 				<options>
 					<option value="1" label="constant salinity across column"/>
@@ -653,13 +653,13 @@
 					<condition type="eq" variable="./s_analyt_method" value="2"/>
 				</condition>
 			</element>
-			<element id="s_obs_NN" type="float" label="constant N^2 corresponding to salinity profile">
+			<element id="s_obs_NN" type="float" label="constant N^2">
 				<condition type="and">
 					<condition type="eq" variable="./s_prof_method" value="1"/>
 					<condition type="eq" variable="./s_analyt_method" value="3"/>
 				</condition>
 			</element>
-			<element id="s_prof_file" type="file" label="filename of file with salinity profiles if s_prof_method=2">
+			<element id="s_prof_file" type="file" label="custom salinity profiles">
 				<condition type="eq" variable="./s_prof_method" value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -698,7 +698,7 @@
 					<option value="2" label="custom observed profiles"/>
 				</options>
 			</element>
-			<element id="t_analyt_method" type="select" label="method to create analytically precribed inital profile">
+			<element id="t_analyt_method" type="select" label="method to create analytically prescribed inital profile">
 				<condition type="eq" variable="./t_prof_method" value="1"/>
 				<options>
 					<option value="1" label="constant temperature across column"/>
@@ -727,13 +727,13 @@
 					<condition type="eq" variable="./t_analyt_method" value="2"/>
 				</condition>
 			</element>
-			<element id="t_obs_NN" type="float" label="constant N^2 corresponding to temperature profile">
+			<element id="t_obs_NN" type="float" label="constant N^2">
 				<condition type="and">
 					<condition type="eq" variable="./t_prof_method" value="1"/>
 					<condition type="eq" variable="./t_analyt_method" value="3"/>
 				</condition>
 			</element>
-			<element id="t_prof_file" type="file" label="filename of file with temperature profiles if t_prof_method=2">
+			<element id="t_prof_file" type="file" label="custom temperature profiles">
 				<condition type="eq" variable="./t_prof_method" value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -767,16 +767,16 @@
 		<element id="ext_pressure" label="external pressure gradients">
 			<element id="ext_press_method" type="select" label="type of external pressure gradient">
 				<options>
-					<option value="0" label="constant external pressure gradient" />
+					<option value="0" label="constant" />
 					<option value="1" label="calculated from tidal constituents" />
 					<option value="2" label="custom observed gradients"/>
 				</options>
 			</element>
-			<element id="ext_press_mode" type="select" label="how to interprete ANY prescribed data for the computation of the external pressure gradient">
+			<element id="ext_press_mode" type="select" label="measure of external pressure gradient">
 				<options>
-					<option value="0" label="interprete all data as surface elevation gradients" />
-					<option value="1" label="interprete all data as current meter measurements at a given height &quot;PressHeight&quot; (see documentation)" />
-					<option value="2" label="interprete all data as vertically averaged current speeds (see documentation)"/>
+					<option value="0" label="surface elevation gradient" />
+					<option value="1" label="current meter measurement at a given height" />
+					<option value="2" label="vertically averaged current speed"/>
 				</options>
 			</element>
 			<element id="ext_press_file" type="file" label="filename of input file">
@@ -998,14 +998,14 @@
 		</element>
 
 		<element id="velprofile" label="velocity profiles" description="observed or prescribed velocity profiles">
-			<element id="vel_prof_method" type="select" label="method to create initial or observed velocity profiles">
+			<element id="vel_prof_method" type="select" label="type of velocity profiles">
 				<options>
-					<option value="0" label="start from zero inital velocities" />
+					<option value="0" label="zero initial velocities" />
 					<option value="1" label="(not implemented)" />
 					<option value="2" label="read profiles at different dates from &quot;vel_prof_file&quot; and interpolate to GOTM timestep"/>
 				</options>
 			</element>
-			<element id="vel_prof_file" type="file" label="filename of file with u- and v profiles">
+			<element id="vel_prof_file" type="file" label="custom velocity profiles">
 				<condition type="eq" variable="./vel_prof_method" value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>

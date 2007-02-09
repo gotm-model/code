@@ -63,13 +63,19 @@ class PageChooseAction(commonqt.WizardPage):
         self.bngroup.addButton(self.radioResult,1)
         self.connect(self.bngroup, QtCore.SIGNAL("buttonClicked(int)"), self.onSourceChange)
 
-        layout = QtGui.QVBoxLayout()
-        layout.addWidget(self.label)
-        layout.addWidget(self.radioScenario)
-        layout.addWidget(self.scenariowidget)
-        layout.addWidget(self.radioResult)
-        layout.addWidget(self.resultwidget)
-        layout.addStretch()
+        layout = QtGui.QGridLayout()
+        layout.addWidget(self.label,0,0,1,2)
+        layout.addWidget(self.radioScenario,1,0,1,2)
+        layout.addWidget(self.scenariowidget,2,1,1,1)
+        layout.addWidget(self.radioResult,3,0,1,2)
+        layout.addWidget(self.resultwidget,4,1,1,1)
+        
+        radiowidth = QtGui.QRadioButton().sizeHint().width()
+        layout.setColumnMinimumWidth(0,radiowidth)
+
+        layout.setRowStretch(5,1)
+        layout.setColumnStretch(1,1)
+        
         self.setLayout(layout)
 
         self.radioScenario.setChecked(True)
@@ -143,7 +149,7 @@ def main():
 
     # Create wizard dialog
     wiz = commonqt.Wizard(closebutton=True)
-    seq = commonqt.WizardSequence([PageIntroduction,PageChooseAction,ForkOnAction(wiz),visualizer.PageVisualize,visualizer.PageSave,visualizer.PageFinal])
+    seq = commonqt.WizardSequence([PageIntroduction,PageChooseAction,ForkOnAction(wiz),visualizer.PageVisualize,visualizer.PageReportGenerator,visualizer.PageSave,visualizer.PageFinal])
     wiz.setSequence(seq)
     wiz.setWindowTitle('GOTM-GUI')
     wiz.resize(800, 600)

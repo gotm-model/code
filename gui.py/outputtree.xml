@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<element id="root">
+	<element id="turbulence" label="Turbulent quantities">
+		<element id="tke"/>
+		<element id="P"/>
+		<element id="G"/>
+		<element id="eps"/>
+		<element id="eps_obs"/>
+		<element id="l"/>
+		<element id="num"/>
+		<element id="nuh"/>
+		<element id="nus"/>
+		<element id="NN"/>
+		<element id="NN_obs"/>
+		<element id="SS"/>
+		<element id="SS_obs"/>
+		<element id="kb"/>
+		<element id="Pb"/>
+		<element id="epsb"/>
+		<element id="uu"/>
+		<element id="vv"/>
+		<element id="ww"/>
+		<element id="sigma_t"/>
+		<element id="sigma_t_obs"/>
+	</element>
+	<element id="tracers" label="Tracers">
+		<element id="temp"/>
+		<element id="temp_obs"/>
+		<element id="salt"/>
+		<element id="salt_obs"/>
+		<element id="o2_obs"/>
+	</element>
+	<element id="velocities" label="Velocities">
+		<element id="u"/>
+		<element id="u_obs"/>
+		<element id="v"/>
+		<element id="v_obs"/>
+	</element>
+	<element id="boundaries" label="Boundaries">
+		<element id="sst"/>
+		<element id="sss"/>
+		<element id="p_e"/>
+		<element id="x-taus"/>
+		<element id="y-taus"/>
+		<element id="u_taus"/>
+		<element id="u_taub"/>
+		<element id="swr"/>
+		<element id="int_swr"/>
+		<element id="heat"/>
+		<element id="int_heat"/>
+		<element id="total"/>
+		<element id="int_total"/>
+		<element id="zeta"/>
+	</element>
+	<element id="column" label="Column structure">
+		<element id="h"/>
+	</element>
+	<element id="nonlocal" label="Non-local fluxes">
+		<element id="gamh"/>
+		<element id="gams"/>
+		<element id="gamu"/>
+		<element id="gamv"/>
+	</element>
+	<element id="other" label="Other"/>
+</element>

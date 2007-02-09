@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.8 2007-02-02 11:20:45 jorn Exp $
+#$Id: commonqt.py,v 1.9 2007-02-09 11:20:54 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -202,29 +202,87 @@ class ScientificDoubleValidator(QtGui.QValidator):
         QtGui.QValidator.__init__(self,parent)
         self.minimum = None
         self.maximum = None
-    
+        self.suffix = ''
+
     def validate(self,input,pos):
+        input = unicode(input)
+        if self.suffix != '':
+            # Check for suffix (if ok, cut it off for further value checking)
+            if not input.endswith(self.suffix): return (QtGui.QValidator.Invalid,pos)
+            input = input[0:len(input)-len(self.suffix)]
+
+        # Check for invalid characters
         rx = QtCore.QRegExp('[^\d\-+eE,.]')
         if rx.indexIn(input)!=-1: return (QtGui.QValidator.Invalid,pos)
         
+        # Check if we can convert it into a floating point value
         try:
             v = float(input)
         except:
             return (QtGui.QValidator.Intermediate,pos)
 
+        # Check for minimum and maximum.
         if self.minimum!=None and v<self.minimum: return (QtGui.QValidator.Intermediate,pos)
         if self.maximum!=None and v>self.maximum: return (QtGui.QValidator.Intermediate,pos)
         
         return (QtGui.QValidator.Acceptable,pos)
 
     def fixup(self,input):
+        if not input.endsWith(self.suffix): return
+        vallength = input.length()-len(self.suffix)
+
         try:
-            v = float(input)
+            v = float(input.left(vallength))
         except:
             return
 
-        if self.minimum!=None and v<self.minimum: input.replace(0,input.length(),str(self.minimum))
-        if self.maximum!=None and v>self.maximum: input.replace(0,input.length(),str(self.maximum))
+        if self.minimum!=None and v<self.minimum: input.replace(0,vallength,str(self.minimum))
+        if self.maximum!=None and v>self.maximum: input.replace(0,vallength,str(self.maximum))
+
+    def setSuffix(self,suffix):
+        self.suffix = suffix
+
+class ScientificDoubleEditor(QtGui.QLineEdit):
+    def __init__(self,parent=None):
+        QtGui.QLineEdit.__init__(self,parent)
+        self.curvalidator = ScientificDoubleValidator(self)
+        self.setValidator(self.curvalidator)
+        self.suffix = ''
+
+    def setSuffix(self,suffix):
+        value = self.value()
+        self.suffix = suffix
+        self.curvalidator.setSuffix(suffix)
+        self.setValue(value)
+
+    def value(self):
+        text = self.text()
+        text = text[0:len(text)-len(self.suffix)]
+        if text=='': return 0
+        return float(text)
+
+    def setValue(self,value):
+        strvalue = unicode(value)
+        self.setText(strvalue+self.suffix)
+
+    def focusInEvent(self,e):
+        QtGui.QLineEdit.focusInEvent(self,e)
+        self.selectAll()
+
+    def selectAll(self):
+        QtGui.QLineEdit.setSelection(self,0,self.text().length()-len(self.suffix))
+
+    def setMinimum(self,minimum):
+        self.curvalidator.minimum = minimum
+
+    def setMaximum(self,maximum):
+        self.curvalidator.maximum = maximum
+
+    def interpretText(self):
+        if not self.hasAcceptableInput():
+            text = self.text()
+            self.curvalidator.fixup(text)
+            self.setText(text)
 
 # =======================================================================
 # PropertyDelegate: a Qt delegate used to create editors for property
@@ -267,13 +325,13 @@ class PropertyDelegate(QtGui.QItemDelegate):
             editor = QtGui.QSpinBox(parent)
             if templatenode.hasAttribute('minimum'): editor.setMinimum(int(templatenode.getAttribute('minimum')))
             if templatenode.hasAttribute('maximum'): editor.setMaximum(int(templatenode.getAttribute('maximum')))
+            if templatenode.hasAttribute('unit'):    editor.setSuffix(' '+templatenode.getAttribute('unit'))
         elif nodetype=='float':
-            editor = QtGui.QLineEdit(parent)
-            validator = ScientificDoubleValidator(editor)
-            if templatenode.hasAttribute('minimum'): validator.minimum = float(templatenode.getAttribute('minimum'))
-            if templatenode.hasAttribute('maximum'): validator.maximum = float(templatenode.getAttribute('maximum'))
-            editor.setValidator(validator)
-            self.currentvalidator = validator
+            editor = ScientificDoubleEditor(parent)
+            if templatenode.hasAttribute('minimum'): editor.setMinimum(float(templatenode.getAttribute('minimum')))
+            if templatenode.hasAttribute('maximum'): editor.setMaximum(float(templatenode.getAttribute('maximum')))
+            if templatenode.hasAttribute('unit'):    editor.setSuffix(' '+templatenode.getAttribute('unit'))
+            self.currenteditor = editor
         elif nodetype=='bool':
             editor = QtGui.QComboBox(parent)
             editor.addItem('Yes',QtCore.QVariant(True))
@@ -281,7 +339,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
         elif nodetype=='select':
             editor = QtGui.QComboBox(parent)
             options = common.findDescendantNode(templatenode,['options'])
-            if options==None: raise 'Node is of type "select" but lacks "options" childnode.'
+            assert options!=None, 'Node %s is of type "select" but lacks "options" childnode.' % node
             for ch in options.childNodes:
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
                     editor.addItem(ch.getAttribute('label'),QtCore.QVariant(int(ch.getAttribute('value'))))
@@ -291,7 +349,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             editor = LinkedFileEditor(parent)
             self.currenteditor = editor
         else:
-            raise 'Unknown node type "'+str(nodetype)+'".'
+            assert False, 'Unknown node type "%s".' % nodetype
+
         return editor
 
     # setEditorData (inherited from QtGui.QItemDelegate)
@@ -300,6 +359,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
         value = index.data(QtCore.Qt.EditRole)
         if not value.isValid(): return
         node = index.internalPointer()
+
         nodetype = node.getValueType()
         if nodetype=='string':
             editor.setText(value.toString())
@@ -307,7 +367,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             value,ret = value.toInt()
             editor.setValue(value)
         elif nodetype=='float':
-            editor.setText(value.toString())
+            value,ret = value.toDouble()
+            editor.setValue(value)
         elif nodetype=='bool':
             value = value.toBool()
             for ioption in range(editor.count()):
@@ -331,16 +392,16 @@ class PropertyDelegate(QtGui.QItemDelegate):
     # setModelData (inherited from QtGui.QItemDelegate)
     #   Obtains the value from the editor widget, and set it for the model item at the given index
     def setModelData(self, editor, model, index):
-        nodetype = index.internalPointer().getValueType()
+        node = index.internalPointer()
+        nodetype = node.getValueType()
         if nodetype=='string':
             model.setData(index, QtCore.QVariant(editor.text()))
         elif nodetype=='int':
             editor.interpretText()
             model.setData(index, QtCore.QVariant(editor.value()))
         elif nodetype=='float':
-            tx = editor.text()
-            if not editor.hasAcceptableInput(): editor.validator().fixup(tx)
-            model.setData(index, QtCore.QVariant(tx))
+            editor.interpretText()
+            model.setData(index, QtCore.QVariant(editor.value()))
         elif nodetype=='bool' or nodetype=='select':
             model.setData(index,editor.itemData(editor.currentIndex()))
         elif nodetype=='datetime':
@@ -355,11 +416,13 @@ class PropertyDelegate(QtGui.QItemDelegate):
 
 class PropertyStoreModel(QtCore.QAbstractItemModel):
     
-    def __init__(self,typedstore,nohide = False):
+    def __init__(self,typedstore,nohide = False, novalues = False, checkboxes = False):
         QtCore.QAbstractItemModel.__init__(self)
 
         self.typedstore = typedstore
         self.nohide = nohide
+        self.novalues = novalues
+        self.checkboxes = checkboxes
 
         self.typedstore.addVisibilityChangeHandler(self.beforeNodeVisibilityChange,self.afterNodeVisibilityChange)
         self.typedstore.addChangeHandler(self.onNodeChanged)
@@ -382,12 +445,12 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
     #   Supplies unique index for the parent of the given node (specified as index).
     def parent(self,index):
         # We must have a valid index
-        if not index.isValid(): raise 'Asked for parent of root node, but Qt asker knows it is the root.'
+        assert index.isValid(), 'Asked for parent of root node (invalid index), but Qt asker knows it is the root.'
 
         current = index.internalPointer()
         parent = current.parent
 
-        if parent==None: raise 'We were asked for the parent of the actual root, but we should never have been able to get so far up the tree'
+        assert parent!=None, 'We were asked for the parent of the actual root, but we should never have been able to get so far up the tree.'
         
         if parent.parent==None: return QtCore.QModelIndex()
         return self.createIndex(parent.getOwnIndex(showhidden=self.nohide),0,parent)
@@ -405,24 +468,27 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
     # columnCount (inherited from QtCore.QAbstractItemModel)
     #   Returns the number of child columns below the given parent (specified as index).
     def columnCount(self,parent):
-        # We always have 2 columns (variable,value)
-        return 2
+        if self.novalues:
+            return 1
+        else:
+            return 2
 
     # data (inherited from QtCore.QAbstractItemModel)
     #   Returns data for the given node (specified as index), and the given role.
     def data(self,index,role=QtCore.Qt.DisplayRole):
 
+        node = index.internalPointer()
+
         # First handle roles that are shared over the whole row.
         if role==QtCore.Qt.WhatsThisRole:
-            node = index.internalPointer()
             templatenode = node.templatenode
             text = node.getDescription(idallowed=True)
             nodetype = node.getValueType()
             if nodetype=='select':
                 optionsroot = common.findDescendantNode(templatenode,['options'])
-                if optionsroot==None: raise Exception('Variable with "select" type lacks "options" element below.')
+                assert optionsroot!=None, 'Variable with "select" type lacks "options" element below.'
                 optionnodes = common.findDescendantNodes(optionsroot,['option'])
-                if len(optionnodes)==0: raise Exception('Variable with "select" type does not have any options assigned to it.')
+                assert len(optionnodes)>0, 'Variable with "select" type does not have any options assigned to it.'
                 for optionnode in optionnodes:
                     text += '\n- '
                     if optionnode.hasAttribute('description'):
@@ -434,18 +500,20 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 if templatenode.hasAttribute('maximum'): text += '\nmaximum value: '+templatenode.getAttribute('maximum')
             return QtCore.QVariant(text)
         elif role==QtCore.Qt.TextColorRole:
-            if self.nohide and not index.internalPointer().visible:
+            if self.nohide and not node.visible:
                 # If we should show 'hidden' nodes too, color them blue to differentiate.
                 return QtCore.QVariant(QtGui.QColor(0,0,255))
-            elif index.column()==1 and index.internalPointer().isReadOnly():
+            elif index.column()==1 and node.isReadOnly():
                 # Color read-only nodes grey to differentiate.
                 return QtCore.QVariant(QtGui.QColor(128,128,128))
+        elif self.checkboxes and role==QtCore.Qt.CheckStateRole and node.canHaveValue():
+            curval = node.getValue()
+            return QtCore.QVariant(curval!=None and curval)
 
         # Now handle column-specific roles.
         if index.column()==0:
             if role==QtCore.Qt.DisplayRole:
                 # Get node (XML element) from given node index (QtCore.QModelIndex)
-                node = index.internalPointer()
                 templatenode = node.templatenode
                 label = ''
                 if templatenode.hasAttribute('label'):
@@ -460,9 +528,6 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             # We only process the 'display' and 'edit' roles.
             if not (role==QtCore.Qt.DisplayRole or role==QtCore.Qt.EditRole or role==QtCore.Qt.FontRole): return QtCore.QVariant()
 
-            # Get node (XML element) from given node index (QtCore.QModelIndex)
-            node = index.internalPointer()
-
             # Column 1 is nly used for variables that can have a value.
             if not node.canHaveValue(): return QtCore.QVariant()
 
@@ -472,45 +537,12 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 font.setBold(node.getValue() != node.getDefaultValue())
                 return QtCore.QVariant(font)
 
-            templatenode = node.templatenode
-            fieldtype = node.getValueType()
-            value = node.getValue()
-
             # Now distinguish between display of value and editing of value.
             if role==QtCore.Qt.DisplayRole:
-                if value==None: return QtCore.QVariant('')
-                
-                if fieldtype=='datetime':
-                    # Format datetime according to our convention
-                    value = value.strftime(common.datetime_displayformat)
-                if fieldtype=='bool':
-                    if value:
-                        value = 'Yes'
-                    else:
-                        value = 'No'
-                elif fieldtype=='file':
-                    # Return filename only (not the path)
-                    value = value.getName()
-                elif fieldtype=='select':
-                    # Get label of currently selected option
-                    optionsroot = common.findDescendantNode(templatenode,['options'])
-                    if optionsroot==None: raise Exception('Variable with "select" type lacks "options" element below.')
-                    for ch in optionsroot.childNodes:
-                        if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                            if value==int(ch.getAttribute('value')):
-                                # We found the currently selected option; its label will serve as displayed value.
-                                value = ch.getAttribute('label')
-                                break
-                else:
-                    value = unicode(value)
-
-                # Append unit specifier (if available)
-                if templatenode.hasAttribute('unit'):
-                    value = value + ' ' + templatenode.getAttribute('unit')
-
-                # Now return the current value (= string).
-                return QtCore.QVariant(value)
+                return QtCore.QVariant(node.getValueAsString())
             else:
+                fieldtype = node.getValueType()
+                value = node.getValue()
                 if value==None: return QtCore.QVariant()
                 if fieldtype=='datetime':
                     # First convert Python datetime to QDateTime, then cast to variant.
@@ -525,18 +557,22 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
     # setData (inherited from QtCore.QAbstractItemModel)
     #   Set data for the given node (specified as index), and the given role.
     def setData(self,index,value,role=QtCore.Qt.EditRole):
-        if index.column()!=1:
-            raise 'Column '+str(index.column())+' is being set, but should not be editable (only column 1 should)'
-
         # Get node (XML element) from given node index (QtCore.QModelIndex)
         node = index.internalPointer()
-        templatenode = node.templatenode
+
+        if self.checkboxes and role==QtCore.Qt.CheckStateRole:
+            node.setValue(value.toBool())
+            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+            return True
+        
+        assert index.column()==1, 'Column %i is being set, but should not be editable (only column 1 should)' % index.column()
 
         if not value.isValid():
             node.clearValue()
+            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
             return True
         
-        # Get the type of the variable
+        templatenode = node.templatenode
         fieldtype = node.getValueType()
 
         # Convert given variant to the type we need.
@@ -566,10 +602,11 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             value,converted = value.toInt()
             if not converted: return False
         else:
-            raise 'unknown variable type "' + fieldtype + '" in XML scenario template'
+            assert False, 'unknown variable type "%s" in XML scenario template' % fieldtype
 
         node.setValue(value)
 
+        self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
         return True
 
     # flags (inherited from QtCore.QAbstractItemModel)
@@ -580,11 +617,14 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
 
         # Default flags: selectable and enabled
         f = QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
-        if index.column()==1:
-            node = index.internalPointer()
-            
-            # If this is a variable, its value is also editable.
-            if node.canHaveValue() and (not node.isReadOnly()): f = f | QtCore.Qt.ItemIsEditable
+
+        node = index.internalPointer()
+
+        # Add checkbox if needed
+        if self.checkboxes and node.canHaveValue(): f |= QtCore.Qt.ItemIsUserCheckable
+
+        # Make editable if it's the 1st column and the node is editable.
+        if index.column()==1 and node.canHaveValue() and (not node.isReadOnly()): f |= QtCore.Qt.ItemIsEditable
             
         return f
 
@@ -634,6 +674,15 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         node = index.internalPointer()
         if node==None or not node.canHaveValue(): return True
         return node.getValue() == node.getDefaultValue()
+
+    def getCheckedNodes(self,index=None):
+        if index==None: index = QtCore.QModelIndex()
+        res = []
+        for irow in range(self.rowCount(index)):
+            child = self.index(irow,0,index)
+            if child.data(QtCore.Qt.CheckStateRole).toBool(): res.append(child.internalPointer())
+            res += self.getCheckedNodes(child)
+        return res
 
 # =======================================================================
 # ExtendedTreeView: based on Qt QTreeView, additionally supports batch
@@ -708,6 +757,9 @@ class ExtendedTreeView(QtGui.QTreeView):
         if model.rowCount(parent)==end-start+1:
             self.expand(parent)
 
+    def selectionChanged(self,selected,deselected):
+        self.emit(QtCore.SIGNAL('onSelectionChanged()'))
+    
 class PropertyEditorDialog(QtGui.QDialog):
     
     def __init__(self,parent,store,title='',instructions=''):
@@ -803,8 +855,7 @@ class Wizard(QtGui.QDialog):
         ready = False
         while not ready:
             cls = self.sequence.getNextPage()
-            if cls==None:
-                raise Exception('No next page available to show; the next button should have been disabled.')
+            assert cls!=None, 'No next page available to show; the next button should have been disabled.'
             newpage = cls(self)
             ready = (not newpage.doNotShow())
         self.switchPage(newpage)
@@ -815,8 +866,7 @@ class Wizard(QtGui.QDialog):
         ready = False
         while not ready:
             cls = self.sequence.getPreviousPage()
-            if cls==None:
-                raise Exception('No previous page available to show; the back button should have been disabled.')
+            assert cls!=None, 'No previous page available to show; the back button should have been disabled.'
             newpage = cls(self)
             ready = (not newpage.doNotShow())
         self.switchPage(newpage)
@@ -825,8 +875,7 @@ class Wizard(QtGui.QDialog):
         oldpage = self.currentpage
         if not oldpage.saveData(mustbevalid=False): return
         cls = self.sequence.getPreviousPage()
-        if cls==None:
-            raise Exception('No previous page available to show; the home button should have been disabled.')
+        assert cls!=None, 'No previous page available to show; the home button should have been disabled.'
         while cls!=None:
             prevcls = cls
             cls = self.sequence.getPreviousPage()
@@ -841,11 +890,11 @@ class Wizard(QtGui.QDialog):
         if self.currentpage!=None:
             self.currentpage.hide()
             layout.removeWidget(self.currentpage)
-            self.disconnect(self.currentpage, QtCore.SIGNAL("onCompleteStateChanged()"),self.onCompleteStateChanged)
+            self.disconnect(self.currentpage, QtCore.SIGNAL('onCompleteStateChanged()'),self.onCompleteStateChanged)
         self.currentpage = newpage
         layout.insertWidget(1,self.currentpage)
         self.currentpage.show()
-        self.connect(self.currentpage, QtCore.SIGNAL("onCompleteStateChanged()"),self.onCompleteStateChanged)
+        self.connect(self.currentpage, QtCore.SIGNAL('onCompleteStateChanged()'),self.onCompleteStateChanged)
         cangoback = (self.sequence.getPreviousPage(stay=True)!=None)
         self.bnHome.setEnabled(cangoback)
         self.bnBack.setEnabled(cangoback)
@@ -949,7 +998,7 @@ class WizardFork(WizardSequence):
         if stay: return WizardSequence()
         if self.index==-1:
             seq = self.getSequence()
-            if seq==None: raise Exception('Fork did not return a new sequence')
+            assert seq!=None, 'Fork did not return a new sequence'
             self.items = [seq]
         return WizardSequence.getNextPage(self,stay=False)
 
@@ -971,8 +1020,7 @@ class PropertyEditorFactory:
 
     def createEditor(self,location,parent):
         node = self.store.root.getLocation(location)
-        if node==None:
-            raise Exception('Unable to create editor for '+str(location)+'; this node does not exist.')
+        assert node!=None, 'Unable to create editor for "%s"; this node does not exist.' % location
         editor = PropertyEditor(node,parent)
         editor.addChangeHandler(self.onNodeEdited)
         self.editors.append(editor)
@@ -1041,20 +1089,20 @@ class PropertyEditor:
         editor = None
         if nodetype=='string':
             editor = QtGui.QLineEdit(parent)
-            editor.connect(editor, QtCore.SIGNAL("editingFinished()"), self.onChange)
+            editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='int':
             editor = QtGui.QSpinBox(parent)
             if templatenode.hasAttribute('minimum'): editor.setMinimum(int(templatenode.getAttribute('minimum')))
             if templatenode.hasAttribute('maximum'): editor.setMaximum(int(templatenode.getAttribute('maximum')))
-            editor.connect(editor, QtCore.SIGNAL("editingFinished()"), self.onChange)
+            if templatenode.hasAttribute('unit'):    editor.setSuffix(' '+templatenode.getAttribute('unit'))
+            editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='float':
-            editor = QtGui.QLineEdit(parent)
-            validator = ScientificDoubleValidator(editor)
-            if templatenode.hasAttribute('minimum'): validator.minimum = float(templatenode.getAttribute('minimum'))
-            if templatenode.hasAttribute('maximum'): validator.maximum = float(templatenode.getAttribute('maximum'))
-            editor.setValidator(validator)
-            self.currentvalidator = validator
-            editor.connect(editor, QtCore.SIGNAL("editingFinished()"), self.onChange)
+            editor = ScientificDoubleEditor(parent)
+            if templatenode.hasAttribute('minimum'): editor.setMinimum(float(templatenode.getAttribute('minimum')))
+            if templatenode.hasAttribute('maximum'): editor.setMaximum(float(templatenode.getAttribute('maximum')))
+            if templatenode.hasAttribute('unit'):    editor.setSuffix(' '+templatenode.getAttribute('unit'))
+            self.currenteditor = editor
+            editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='bool':
             editor = QtGui.QComboBox(parent)
             editor.addItem('True',QtCore.QVariant(True))
@@ -1070,11 +1118,11 @@ class PropertyEditor:
             editor.connect(editor, QtCore.SIGNAL("currentIndexChanged(int)"), self.onChange)
         elif nodetype=='datetime':
             editor = QtGui.QDateTimeEdit(parent)
-            editor.connect(editor, QtCore.SIGNAL("editingFinished()"), self.onChange)
+            editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='file':
             editor = PathEditor(parent,compact=True)
             self.currenteditor = editor
-            editor.connect(editor, QtCore.SIGNAL("editingFinished()"), self.onChange)
+            editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         else:
             raise 'Unknown node type "'+str(nodetype)+'".'
         return editor
@@ -1084,10 +1132,12 @@ class PropertyEditor:
         value = node.getValue()
         nodetype = node.getValueType()
         if value==None:
-            if nodetype=='string' or nodetype=='float':
+            if nodetype=='string':
                 editor.setText('')
             elif nodetype=='int':
                 editor.setValue(0)
+            elif nodetype=='float':
+                editor.setText(editor.suffix)
             elif nodetype=='bool' or nodetype=='select':
                 editor.setCurrentIndex(0)
             elif nodetype=='datetime':
@@ -1100,7 +1150,7 @@ class PropertyEditor:
             elif nodetype=='int':
                 editor.setValue(value)
             elif nodetype=='float':
-                editor.setText(unicode(value))
+                editor.setValue(value)
             elif nodetype=='bool':
                 for ioption in range(editor.count()):
                     optionvalue = editor.itemData(ioption).toBool()
@@ -1119,8 +1169,6 @@ class PropertyEditor:
                 editor.setPath(value)
         self.suppresschangeevent = False
 
-    # setModelData (inherited from QtGui.QItemDelegate)
-    #   Obtains the value from the editor widget, and set it for the model item at the given index
     def setNodeData(self,editor,node):
         nodetype = node.getValueType()
         if nodetype=='string':
@@ -1129,13 +1177,8 @@ class PropertyEditor:
             editor.interpretText()
             return node.setValue(editor.value())
         elif nodetype=='float':
-            tx = editor.text()
-            if not editor.hasAcceptableInput(): editor.validator().fixup(tx)
-            try:
-                tx = float(tx)
-            except Exception,e:
-                tx = None
-            return node.setValue(tx)
+            editor.interpretText()
+            return node.setValue(editor.value())
         elif nodetype=='bool':
             return node.setValue(editor.itemData(editor.currentIndex()).toBool())
         elif nodetype=='select':
@@ -1150,14 +1193,17 @@ class FigurePanel(QtGui.QWidget):
     def __init__(self,parent,detachbutton=True):
         QtGui.QWidget.__init__(self,parent)
 
+        # Create MatPlotLib figure with background and border colors equal to our background color.
         bgcolor = self.palette().window().color()
         mplfigure = matplotlib.figure.Figure(facecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.),edgecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.))
-        self.figure = common.Figure(mplfigure)
 
+        # Create MatPlotLib canvas (Qt-backend) attached to our MatPlotLib figure.
         self.canvas = FigureCanvas(mplfigure)
         self.canvas.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
         self.canvas.setMinimumSize(300,250)
-        self.figure.canvas = self.canvas
+
+        # Create our figure that encapsulates MatPlotLib figure.
+        self.figure = common.Figure(mplfigure)
 
         self.factory = PropertyEditorFactory(self.figure.properties,live=True)
 

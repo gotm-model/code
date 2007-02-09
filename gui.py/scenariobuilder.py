@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.4 2007-02-02 11:20:45 jorn Exp $
+#$Id: scenariobuilder.py,v 1.5 2007-02-09 11:20:54 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -13,17 +13,17 @@ class ScenarioWidget(QtGui.QWidget):
         QtGui.QWidget.__init__(self,parent)
 
         self.bngroup      = QtGui.QButtonGroup()
-        self.radioNew     = QtGui.QRadioButton('Create a new scenario from a template.',parent)
-        self.radioOpen    = QtGui.QRadioButton('Open an existing scenario.',parent)
-        self.radioImport1 = QtGui.QRadioButton('Import a namelist-based scenario from an existing directory.',parent)
-        self.radioImport2 = QtGui.QRadioButton('Import a namelist-based scenario from a tar/gz archive.',parent)
+        self.radioNew     = QtGui.QRadioButton('Create a new scenario from a template.',self)
+        self.radioOpen    = QtGui.QRadioButton('Open an existing scenario.',self)
+        self.radioImport1 = QtGui.QRadioButton('Import a namelist-based scenario from an existing directory.',self)
+        self.radioImport2 = QtGui.QRadioButton('Import a namelist-based scenario from a tar/gz archive.',self)
 
-        self.labTemplate = QtGui.QLabel('Template:',parent)
+        self.labTemplate = QtGui.QLabel('Template:',self)
         default2path = common.Scenario.getDefaultPaths()
         self.comboTemplates = QtGui.QComboBox(parent)
         for (name,path) in default2path.items():
             self.comboTemplates.addItem(name,QtCore.QVariant(name))
-        self.comboTemplates.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
+        #self.comboTemplates.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
         self.templatelayout = QtGui.QHBoxLayout()
         self.templatelayout.addWidget(self.labTemplate)
         self.templatelayout.addWidget(self.comboTemplates,1)
@@ -42,7 +42,7 @@ class ScenarioWidget(QtGui.QWidget):
         self.bngroup.addButton(self.radioImport2,3)
 
         layout = QtGui.QGridLayout()
-        layout.addWidget(self.radioNew, 0,0,1,2)
+        layout.addWidget(self.radioNew,       0,0,1,2)
         layout.addLayout(self.templatelayout, 1,1)
         layout.addWidget(self.radioOpen,      2,0,1,2)
         layout.addWidget(self.pathOpen,       3,1)
@@ -55,13 +55,15 @@ class ScenarioWidget(QtGui.QWidget):
 
         radiowidth = QtGui.QRadioButton().sizeHint().width()
         layout.setColumnMinimumWidth(0,radiowidth)
+
+        layout.setMargin(0)
         
         self.setLayout(layout)
 
-        self.connect(self.bngroup,     QtCore.SIGNAL("buttonClicked(int)"), self.onSourceChange)
-        self.connect(self.pathOpen,    QtCore.SIGNAL("onChanged()"),        self.completeStateChanged)
-        self.connect(self.pathImport1, QtCore.SIGNAL("onChanged()"),        self.completeStateChanged)
-        self.connect(self.pathImport2, QtCore.SIGNAL("onChanged()"),        self.completeStateChanged)
+        self.connect(self.bngroup,     QtCore.SIGNAL('buttonClicked(int)'), self.onSourceChange)
+        self.connect(self.pathOpen,    QtCore.SIGNAL('onChanged()'),        self.completeStateChanged)
+        self.connect(self.pathImport1, QtCore.SIGNAL('onChanged()'),        self.completeStateChanged)
+        self.connect(self.pathImport2, QtCore.SIGNAL('onChanged()'),        self.completeStateChanged)
 
         self.radioNew.setChecked(True)
         self.onSourceChange()
@@ -90,45 +92,50 @@ class ScenarioWidget(QtGui.QWidget):
 
     def getScenario(self):
         if not self.isComplete(): return None
-        checkedid = self.bngroup.checkedId()
-        if   checkedid==0:
-            index = self.comboTemplates.currentIndex()
-            defscenario = common.Scenario.getDefault(unicode(self.comboTemplates.itemData(index).toString()))
-            xmldom = defscenario.toxmldom()
-            scenario = common.Scenario(templatename=common.guiscenarioversion)
-            scenario.setStore(xmldom)
-        elif checkedid==1:
-            path = self.pathOpen.path()
-            if path.endswith('.gotmresult'):
+        QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
+        try:
+            checkedid = self.bngroup.checkedId()
+            if   checkedid==0:
+                index = self.comboTemplates.currentIndex()
+                defscenario = common.Scenario.getDefault(unicode(self.comboTemplates.itemData(index).toString()))
+                xmldom = defscenario.toxmldom()
+                scenario = common.Scenario(templatename=common.guiscenarioversion)
+                scenario.setStore(xmldom)
+            elif checkedid==1:
+                path = self.pathOpen.path()
+                if path.endswith('.gotmresult'):
+                    try:
+                        result = common.Result()
+                        result.load(path)
+                    except Exception,e:
+                        raise Exception('An error occurred while loading the result: '+str(e))
+                    scenario = result.scenario
+                    result.unlink()
+                elif path.endswith('.xml'):
+                    try:
+                        scenario = common.Scenario(templatename=common.guiscenarioversion)
+                        scenario.load(path)
+                    except Exception,e:
+                        raise Exception('An error occurred while loading the scenario: '+str(e))
+                else:
+                    try:
+                        scenario = common.Scenario(templatename=common.guiscenarioversion)
+                        scenario.loadAll(path)
+                    except Exception,e:
+                        raise Exception('An error occurred while loading the scenario: '+str(e))
+            elif checkedid==2:
                 try:
-                    result = common.Result()
-                    result.load(path)
+                    scenario = common.Scenario.fromNamelists(self.pathImport1.path())
                 except Exception,e:
-                    raise Exception('An error occurred while loading the result: '+str(e))
-                scenario = result.scenario
-                result.unlink()
-            elif path.endswith('.xml'):
+                    raise Exception('Cannot parse namelist files. Error: '+str(e))
+            elif checkedid==3:
                 try:
-                    scenario = common.Scenario(templatename=common.guiscenarioversion)
-                    scenario.load(path)
+                    scenario = common.Scenario.fromNamelists(self.pathImport2.path())
                 except Exception,e:
-                    raise Exception('An error occurred while loading the scenario: '+str(e))
-            else:
-                try:
-                    scenario = common.Scenario(templatename=common.guiscenarioversion)
-                    scenario.loadAll(path)
-                except Exception,e:
-                    raise Exception('An error occurred while loading the scenario: '+str(e))
-        elif checkedid==2:
-            try:
-                scenario = common.Scenario.fromNamelists(self.pathImport1.path())
-            except Exception,e:
-                raise Exception('Cannot parse namelist files. Error: '+str(e))
-        elif checkedid==3:
-            try:
-                scenario = common.Scenario.fromNamelists(self.pathImport2.path())
-            except Exception,e:
-                raise Exception('Cannot parse namelist files. Error: '+str(e))
+                    raise Exception('Cannot parse namelist files. Error: '+str(e))
+
+        finally:
+            QtGui.QApplication.restoreOverrideCursor()
 
         if checkedid!=0:
             # We have loaded a scenario from file. Look for empty nodes and reset these to their defaults.
@@ -137,7 +144,7 @@ class ScenarioWidget(QtGui.QWidget):
             if emptycount>0:
                 QtGui.QMessageBox.information(self,'Scenario is incomplete','In this scenario %i variables do not have a value. These will be set to their default value.' % emptycount,QtGui.QMessageBox.Ok)
                 scenario.root.copyFrom(scenario.defaultstore.root,replace=False)
-                
+            
         return scenario
 
     def completeStateChanged(self):

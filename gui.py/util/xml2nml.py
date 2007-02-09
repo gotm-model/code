@@ -56,7 +56,7 @@ def main():
     # Create the scenario object for the specified version.
     scenario = common.Scenario(templatename=template)
 
-    # Load the scenario form the source path.
+    # Load the scenario from the source path.
     if os.path.isfile(src):
         if   src.endswith('.gotmscenario'):
             scenario.loadAll(src)
@@ -66,7 +66,7 @@ def main():
                 if src=='scenario.xml':
                     print 'If the data files are located in the directory of the specified scenario.xml file, specify the directory rather than scenario.xml as source.'
                 sys.exit(1)
-            scenario.setStore(src)
+            scenario.load(src)
     elif os.path.isdir(src):
         scenario.loadAll(src)
     else:

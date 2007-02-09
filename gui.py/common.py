@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.14 2007-02-02 11:20:45 jorn Exp $
+#$Id: common.py,v 1.15 2007-02-09 11:20:53 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -18,6 +18,7 @@ matplotlib.rcParams['numerix'] = 'numpy'
 import matplotlib.numerix,matplotlib.numerix.ma
 import matplotlib.dates
 import matplotlib.pylab
+import matplotlib.backends.backend_agg
 
 import scenarioformats
 
@@ -515,6 +516,8 @@ class TypedXMLPropertyStore:
 
     class Node:
         def __init__(self,controller,templatenode,valuenode,location,parent):
+            assert templatenode.hasAttribute('id'),'Schema node %s lacks "id" attribute.' % location
+
             self.controller = controller
             self.store = controller.store
             self.templatenode = templatenode
@@ -596,6 +599,40 @@ class TypedXMLPropertyStore:
             defaultstore = self.controller.defaultstore
             if defaultstore==None: return None
             return defaultstore.getProperty(self.location)
+
+        def getValueAsString(self,addunit = True):
+            templatenode = self.templatenode
+            fieldtype = templatenode.getAttribute('type')
+            value = self.getValue()
+            if value==None: return ''
+            if fieldtype=='datetime':
+                value = value.strftime(datetime_displayformat)
+            if fieldtype=='bool':
+                if value:
+                    value = 'Yes'
+                else:
+                    value = 'No'
+            elif fieldtype=='file':
+                # Return filename only (not the path)
+                value = value.getName()
+            elif fieldtype=='select':
+                # Get label of currently selected option
+                optionsroot = findDescendantNode(templatenode,['options'])
+                if optionsroot==None: raise Exception('Variable with "select" type lacks "options" element below.')
+                for ch in optionsroot.childNodes:
+                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                        if value==int(ch.getAttribute('value')):
+                            # We found the currently selected option; its label will serve as displayed value.
+                            value = ch.getAttribute('label')
+                            break
+            else:
+                value = unicode(value)
+
+            # Append unit specifier (if available)
+            if addunit and templatenode.hasAttribute('unit'):
+                value = value + ' ' + templatenode.getAttribute('unit')
+
+            return value
 
         def setToDefault(self,recursive=False):
             if recursive:
@@ -697,7 +734,7 @@ class TypedXMLPropertyStore:
                 self.controller.onChange(self)
 
         def getId(self):
-            return self.templatenode.getAttribute('id')
+            return self.location[-1]
 
         def getValueType(self):
             return self.templatenode.getAttribute('type')
@@ -726,6 +763,14 @@ class TypedXMLPropertyStore:
                 if not child.isHidden(): res.append(child)
             return res
 
+        def getDepth(self,showhidden=False):
+            childmax = 0
+            for child in self.children:
+                if showhidden or not child.isHidden():
+                    curchilddepth = child.getDepth(showhidden=showhidden)
+                    if curchilddepth>childmax: childmax = curchilddepth
+            return childmax+1
+
         def getChildByIndex(self,index,showhidden=False):
             if showhidden: return self.children[index]
             curindex = 0
@@ -741,7 +786,6 @@ class TypedXMLPropertyStore:
             if self.futureindex!=None:
                 if showhidden: return self.futureindex
                 else:
-                    irow = 0
                     for isibling in range(self.futureindex):
                         if not offspring[isibling].isHidden(): irow += 1
                     return irow
@@ -862,7 +906,61 @@ class TypedXMLPropertyStore:
                 child.copyFrom(sourcechild,replace=replace)
                 index += 1
 
-    def __init__(self,xmltemplate,xmldocument,xmlroot=None):
+        def toHtml(self,xmldocument,totaldepth,level=0,hidedefaults=False):
+            res = []
+
+            tr = None
+            if level>=0:
+                tr = xmldocument.createElement('tr')
+
+                for i in range(level):
+                    td = xmldocument.createElement('td')
+                    tr.appendChild(td)
+
+                td1 = xmldocument.createElement('td')
+                templatenode = self.templatenode
+                if templatenode.hasAttribute('label'):
+                    lab = templatenode.getAttribute('label')
+                else:
+                    lab = self.getId()
+                td1.appendChild(xmldocument.createTextNode(lab))
+                if level+1<totaldepth:
+                    td1.setAttribute('colspan',str(totaldepth-level))
+                tr.appendChild(td1)
+
+                td2 = xmldocument.createElement('td')
+                if self.canHaveValue():
+                    val = self.getValueAsString()
+                else:
+                    val = ' '
+                td2.appendChild(xmldocument.createTextNode(val))
+                tr.appendChild(td2)
+
+                res.append(tr)
+
+            childtrs = []
+            for child in self.children:
+                if not child.isHidden():
+                    childnodes = child.toHtml(xmldocument,totaldepth,level+1,hidedefaults=hidedefaults)
+                    childtrs += childnodes
+            res += childtrs
+
+            if tr!=None and hidedefaults:
+                isdefault = True
+                if self.canHaveValue() and self.getValue()!=self.getDefaultValue():
+                    isdefault = False
+                else:
+                    for childtr in childtrs:
+                        if not childtr.hasAttribute('default'):
+                            isdefault = False
+                            break
+                if isdefault:
+                    tr.setAttribute('style','display:none')
+                    tr.setAttribute('default','')
+
+            return res
+            
+    def __init__(self,xmltemplate,xmldocument=None,xmlroot=None):
 
         # The template can be specified as a DOM object, or as string (i.e. path to XML file)
         if isinstance(xmltemplate,str):
@@ -934,6 +1032,7 @@ class TypedXMLPropertyStore:
                 while xmldocument.parentNode!=None: xmldocument = xmldocument.parentNode
             else:
                 impl = xml.dom.minidom.getDOMImplementation()
+                assert templateroot.hasAttribute('id'), 'Root of the schema does not have attribute "id".'
                 xmldocument = impl.createDocument('', templateroot.getAttribute('id'), None)
                 xmldocument.documentElement.setAttribute('version',self.version)
         elif isinstance(xmldocument,str):
@@ -1178,6 +1277,25 @@ class TypedXMLPropertyStore:
     def toxmldom(self):
         return self.store.xmldocument.cloneNode(True)
 
+    def toHtml(self,xmldocument,hidedefaults=True):
+        table = xmldocument.createElement('table')
+        table.setAttribute('id','tableScenario')
+
+        totaldepth = self.root.getDepth()
+
+        # Create columns.
+        for i in range(totaldepth-2):
+            col = xmldocument.createElement('col')
+            col.setAttribute('width','25')
+            table.appendChild(col)
+        col = xmldocument.createElement('col')
+        table.appendChild(col)
+
+        for tr in self.root.toHtml(xmldocument,totaldepth-1,level=-1,hidedefaults=hidedefaults):
+            table.appendChild(tr)
+
+        return table
+
     # =========================================================================================
     # PUBLIC
     # =========================================================================================
@@ -1411,7 +1529,7 @@ class Scenario(TypedXMLPropertyStore):
                 # Parse the namelist file.
                 if not os.path.isfile(nmlfilepath):
                     if mainchild.templatenode.hasAttribute('optional') or mainchild.isHidden():
-                        # This namelist file is not required. Thus no worries: continue
+                        # This namelist file is mssing but not required. Thus no worries: continue
                         continue
                     else:
                         raise NamelistParseException('Namelist file "%s" is not present.' % (os.path.basename(nmlfilepath),),nmlfilepath,None,None)
@@ -1791,6 +1909,44 @@ class PlotVariableStore:
     def getVariable(self,varname):
         return None
 
+    def getVariableTree(self,path):
+        xmlschema = xml.dom.minidom.parse(path)
+        vardict = self.getVariableLongNames()
+        self.filterNodes(xmlschema.documentElement,vardict)
+        other = None
+        for ch in xmlschema.getElementsByTagName('element'):
+            if ch.getAttribute('id')=='other':
+                other = ch
+                break
+        if other!=None:
+            if len(vardict)==0:
+                other.parentNode.removeChild(other)
+            else:
+                ids = vardict.keys()
+                ids.sort(cmp=lambda x,y: cmp(vardict[x].lower(), vardict[y].lower()))
+                for varid in ids:
+                    el = xmlschema.createElement('element')
+                    el.setAttribute('id',varid)
+                    el.setAttribute('label',vardict[varid])
+                    other.appendChild(el)
+        store = TypedXMLPropertyStore(xmlschema)
+        return store
+
+    def filterNodes(self,node,vardict):
+        nodeid = node.getAttribute('id')
+        assert nodeid!='', 'Node lacks "id" attribute.'
+        keep = (nodeid in vardict)
+        if keep:
+            node.setAttribute('label',vardict[nodeid])
+            node.setAttribute('type','bool')
+            del vardict[nodeid]
+        children = findDescendantNodes(node,['element'])
+        for ch in children:
+            if self.filterNodes(ch,vardict) and not keep: keep = True
+        if not keep and nodeid!='other':
+            node.parentNode.removeChild(node)
+        return keep
+
 # Abstract class that represents a variable that can be plotted.
 # Classes deriving from it must support the virtual methods below.
 class PlotVariable:
@@ -2034,6 +2190,27 @@ class LinkedFileVariableStore(PlotVariableStore):
 #   Inherits from PlotVariableStore, as it contains variables that can be plotted.
 #   Contains a link to the scenario from which the result was created (if available)
 class Result(PlotVariableStore):
+    reportdirname = 'reporttemplates'
+    reportname2path = None
+
+    @staticmethod
+    def getReportTemplates():
+        if Result.reportname2path==None:
+            Result.reportname2path = {}
+            sourcedir = os.path.join(os.path.dirname(__file__),Result.reportdirname)
+            if os.path.isdir(sourcedir):
+                for filename in os.listdir(sourcedir):
+                    fullpath = os.path.join(sourcedir,filename)
+                    if os.path.isdir(fullpath):
+                        if os.path.isfile(os.path.join(fullpath,'index.xml')):
+                            Result.reportname2path[filename] = fullpath
+                        else:
+                            print 'WARNING: template directory "%s" does not contain "index.xml"; it will be ignored.' % fullpath
+                    else:
+                        print 'WARNING: template directory "%s" contains "%s" which is not a directory; the latter will be ignored.' % (sourcedir,filename)
+            else:
+                print 'WARNING: no report templates will be available, because subdirectory "%s" is not present!' % Result.reportdirname
+        return Result.reportname2path
 
     class ResultVariable(PlotVariable):
         def __init__(self,result,varname):
@@ -2405,6 +2582,96 @@ class Result(PlotVariableStore):
       dateref = datetime.datetime(*refvals)
       return dateref
 
+    def generateReport(self,outputpath,templatepath,plotvariables,dpi=150,columncount=2,figuresize=(10,8),callback=None):
+        xmldocument = xml.dom.minidom.parse(os.path.join(templatepath,'index.xml'))
+        scenario = self.scenario
+
+        steps = float(2+len(plotvariables))
+        istep = 0
+
+        # Create output directory if it does not exist yet.
+        if not os.path.isdir(outputpath): os.mkdir(outputpath)
+
+        for f in os.listdir(templatepath):
+            if f.lower()!='index.xml': shutil.copy(os.path.join(templatepath,f),os.path.join(outputpath,f))
+
+        for node in xmldocument.getElementsByTagName('gotm:scenarioproperty'):
+            variablepath = node.getAttribute('variable')
+            assert variablepath!='', 'gotm:scenarioproperty node in report template lacks "variable" attribute pointing to a location in the scenario.'
+            variablenode = scenario.root.getLocation(variablepath.split('/'))
+            assert variablenode!=None, 'Unable to locate "%s" in the scenario.' % variablepath
+            val = variablenode.getValueAsString()
+            node.parentNode.replaceChild(xmldocument.createTextNode(unicode(val)),node)
+            node.unlink()
+
+        scenarionodes = xmldocument.getElementsByTagName('gotm:scenario')
+        assert len(scenarionodes)<=1, 'Found more than one "gotm:scenario" node in the report template.'
+        if len(scenarionodes)>0:
+            if callback!=None: callback(istep/steps,'Creating scenario description...')
+            scenarionode = scenarionodes[0]
+            scentable = scenario.toHtml(xmldocument,hidedefaults=True)
+            scenarionode.parentNode.replaceChild(scentable,scenarionode)
+
+        istep += 1
+
+        figuresnodes = xmldocument.getElementsByTagName('gotm:figures')
+        assert len(figuresnodes)<=1, 'Found more than one "gotm:figures" node in the report template.'
+        if len(figuresnodes)>0:
+            figuresnode = figuresnodes[0]
+        else:
+            figuresnode = None
+        if len(plotvariables)>0 and figuresnode!=None:
+            mplfigure = matplotlib.figure.Figure(figsize=(figuresize[0]/2.54,figuresize[1]/2.54))
+            canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(mplfigure)
+            fig = Figure(mplfigure)
+            fig.addDataSource('result',self)
+            figurestable = xmldocument.createElement('table')
+            icurvar = 0
+            tr = None
+            for pv in plotvariables:
+                longname = self.getVariable(pv).getLongName()
+                if callback!=None: callback(istep/steps,'Creating figure for %s...' % longname)
+                
+                if icurvar % columncount == 0:
+                    tr = xmldocument.createElement('tr')
+                    figurestable.appendChild(tr)
+                fig.setUpdating(False)
+                fig.clearProperties()
+                fig.addVariable(pv)
+                fig.setUpdating(True)
+                filename = pv+'.png'
+                outputfile = os.path.join(outputpath,filename)
+                canvas.print_figure(outputfile,dpi=dpi)
+
+                img = xmldocument.createElement('img')
+                img.setAttribute('src',filename)
+                img.setAttribute('alt',longname)
+                img.setAttribute('style','width:%.2fcm' % figuresize[0])
+                td = xmldocument.createElement('td')
+                td.appendChild(img)
+                tr.appendChild(td)
+
+                icurvar = icurvar+1
+                istep += 1
+            for i in range(columncount - len(tr.childNodes)):
+                tr.appendChild(xmldocument.createElement('td'))
+            figuresnode.parentNode.replaceChild(figurestable,figuresnode)
+        elif figuresnode!=None:
+            figuresnode.parentNode.removeChild(figuresnode)
+        
+        if callback!=None: callback(istep/steps,'Writing HTML...')
+
+        if outputpath!='':
+            import codecs
+            f = codecs.open(os.path.join(outputpath,'index.html'),'w','utf-8')
+            xmldocument.writexml(f,encoding='utf-8')
+            f.close()
+        else:
+            print xmldocument.toxml('utf-8')
+        istep += 1
+
+        if callback!=None: callback(istep/steps,'Done.')
+
 class MonthFormatter(matplotlib.dates.DateFormatter):
     def __init__(self):
         matplotlib.dates.DateFormatter.__init__(self,'%b')
@@ -2505,7 +2772,7 @@ class Figure:
         zmin_eff = None
         zmax_eff = None
 
-        # Link between dimension name (e.g., "time","z") and axis (e.g., "x", "y")
+        # Link between dimension name (e.g., "time", "z") and axis (e.g., "x", "y")
         dim2axis = {}
 
         # We will now adjust the plot properties; disable use of property-change notifications,
