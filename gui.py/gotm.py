@@ -3,7 +3,7 @@
 from PyQt4 import QtGui,QtCore
 
 import common,commonqt
-import sys,xml
+import sys,xml,os
 
 import scenariobuilder,simulator,visualizer
 
@@ -81,6 +81,9 @@ class PageChooseAction(commonqt.WizardPage):
         self.radioScenario.setChecked(True)
         self.onSourceChange()
 
+        defdir = self.parent().settings.getProperty(['Paths','LastScenarioDirectory'])
+        if defdir!=None: self.scenariowidget.setDefaultDirectory(defdir)
+
     def onSourceChange(self):
         checkedid = self.bngroup.checkedId()
         self.scenariowidget.setVisible(checkedid==0)
@@ -112,6 +115,10 @@ class PageChooseAction(commonqt.WizardPage):
                 if oldscen!=None: oldscen.unlink()
             self.parent().shared['mainaction'] = 'scenario'
             self.parent().shared['scenario'] = newscen
+
+            if newscen.path!=None:
+                self.parent().settings.setProperty(['Paths','LastScenarioDirectory'],os.path.dirname(newscen.path))
+            
             return True
         if checkedid==1:
             self.parent().shared['mainaction'] = 'result'

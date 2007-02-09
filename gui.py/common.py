@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: common.py,v 1.17 2007-02-09 12:50:07 jorn Exp $
+#$Id: common.py,v 1.18 2007-02-09 14:33:11 jorn Exp $
 
 import datetime,time
 import xml.dom.minidom, os, re, sys
@@ -1930,6 +1930,7 @@ class PlotVariableStore:
                     el = xmlschema.createElement('element')
                     el.setAttribute('id',varid)
                     el.setAttribute('label',vardict[varid])
+                    el.setAttribute('type','bool')
                     other.appendChild(el)
         store = TypedXMLPropertyStore(xmlschema)
         return store
@@ -1939,7 +1940,8 @@ class PlotVariableStore:
         assert nodeid!='', 'Node lacks "id" attribute.'
         keep = (nodeid in vardict)
         if keep:
-            node.setAttribute('label',vardict[nodeid])
+            if not node.hasAttribute('label'):
+                node.setAttribute('label',vardict[nodeid])
             node.setAttribute('type','bool')
             del vardict[nodeid]
         children = findDescendantNodes(node,['element'])
@@ -3048,3 +3050,26 @@ class Figure:
         self.ignorechanges = False
         
         self.haschanged = False
+
+
+class SettingsStore(TypedXMLPropertyStore):
+    def __init__(self):
+        TypedXMLPropertyStore.__init__(self,'settingsschema.xml')
+        settingspath = self.getSettingsPath()
+        if os.path.isfile(settingspath):
+            xmldocument = xml.dom.minidom.parse(settingspath)
+            self.setStore(xmldocument)
+    
+    def getSettingsPath(self):
+        if sys.platform == 'win32':
+            from win32com.shell import shellcon, shell
+            appdata = shell.SHGetFolderPath(0, shellcon.CSIDL_APPDATA, 0, 0)
+            return os.path.join(appdata,'GOTM','settings.xml')
+        else:
+            return '~/.gotm.gui'
+
+    def save(self):
+        settingspath = self.getSettingsPath()
+        settingsdir = os.path.dirname(settingspath)
+        if not os.path.isdir(settingsdir): os.mkdir(settingsdir)
+        TypedXMLPropertyStore.save(self,settingspath)

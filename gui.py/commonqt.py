@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.9 2007-02-09 11:20:54 jorn Exp $
+#$Id: commonqt.py,v 1.10 2007-02-09 14:33:11 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -77,6 +77,7 @@ class PathEditor(QtGui.QWidget):
 
         self.filter=''
         self.forcedextension = ''
+        self.defaultpath = None
 
         self.dlgoptions = QtGui.QFileDialog.DontConfirmOverwrite
 
@@ -87,12 +88,14 @@ class PathEditor(QtGui.QWidget):
         return unicode(self.lineedit.text())
 
     def onBrowse(self):
+        curpath = self.path()
+        if curpath=='' and self.defaultpath != None: curpath=self.defaultpath
         if self.getdirectory:
-            path = unicode(QtGui.QFileDialog.getExistingDirectory(self,'',self.path()))
+            path = unicode(QtGui.QFileDialog.getExistingDirectory(self,'',curpath))
         elif self.save:
-            path = unicode(QtGui.QFileDialog.getSaveFileName(self,'',self.path(),self.filter,None,self.dlgoptions))
+            path = unicode(QtGui.QFileDialog.getSaveFileName(self,'',curpath,self.filter,None,self.dlgoptions))
         else:
-            path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',self.path(),self.filter))
+            path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',curpath,self.filter))
 
         # If the browse dialog was cancelled, just return.
         if path=='': return
@@ -833,10 +836,15 @@ class Wizard(QtGui.QDialog):
 
         self.shared = {}
 
+        self.settings = common.SettingsStore()
+
         self.sequence = sequence
         self.currentpage = None
 
     def unlink(self):
+        self.settings.save()
+        self.settings.unlink()
+        self.settings = None
         for v in self.shared.values():
             try:
                 v.unlink()
@@ -914,6 +922,7 @@ class WizardPage(QtGui.QWidget):
 
     def __init__(self,parent=None):
         QtGui.QWidget.__init__(self,parent)
+        self.owner = parent
         self.hide()
 
     def isComplete(self):

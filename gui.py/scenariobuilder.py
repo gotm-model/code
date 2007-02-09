@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.6 2007-02-09 12:50:07 jorn Exp $
+#$Id: scenariobuilder.py,v 1.7 2007-02-09 14:33:11 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -67,6 +67,9 @@ class ScenarioWidget(QtGui.QWidget):
 
         self.radioNew.setChecked(True)
         self.onSourceChange()
+
+    def setDefaultDirectory(self,path):
+        self.pathOpen.defaultpath = path
 
     def onSourceChange(self):
         self.setUpdatesEnabled(False)
@@ -347,6 +350,7 @@ class PageSave(commonqt.WizardPage):
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to save scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
+            self.owner.settings.setProperty(['Paths','LastScenarioDirectory'],os.path.dirname(targetpath))
         return True
 
     def doNotShow(self):

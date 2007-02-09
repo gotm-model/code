@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<element id="Settings">
+	<element id="Paths">
+		<element id="LastScenarioDirectory" type="string"/>
+	</element>
+</element>
