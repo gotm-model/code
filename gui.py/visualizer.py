@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.8 2007-02-09 15:46:44 jorn Exp $
+#$Id: visualizer.py,v 1.9 2007-03-02 12:32:47 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
-import common,commonqt
+import commonqt, data
 
 import matplotlib
 matplotlib.use('Qt4Agg')
@@ -15,7 +15,7 @@ import xml.sax
 import os.path
 
 def loadResult(path):
-    result = common.Result()
+    result = data.Result()
 
     try:
         if path.endswith('.gotmresult'):
@@ -101,7 +101,7 @@ class ConfigureReportWidget(QtGui.QWidget):
         
         self.result = result
 
-        reportname2path = common.Result.getReportTemplates()
+        reportname2path = data.Result.getReportTemplates()
 
         self.labTemplates = QtGui.QLabel('Report template:',self)
         self.comboTemplates = QtGui.QComboBox(parent)
@@ -251,8 +251,7 @@ class PageReportGenerator(commonqt.WizardPage):
             
         self.progressbar.setValue(round(progressed*100))
         self.labStatus.setText(status)
-
-        self.labStatus.repaint()
+        QtGui.qApp.processEvents()
 
 class PageSave(commonqt.WizardPage):
 
@@ -349,9 +348,12 @@ class PageVisualize(commonqt.WizardPage):
 
         self.figurepanel = commonqt.FigurePanel(self)
 
-        layout = QtGui.QHBoxLayout()
-        layout.addWidget(self.treeVariables)
-        layout.addWidget(self.figurepanel)
+        self.label = QtGui.QLabel('Here you can view the results of the simulation. Please choose a variable to be plotted from the menu.',self)
+
+        layout = QtGui.QGridLayout()
+        layout.addWidget(self.label,0,0,1,2)
+        layout.addWidget(self.treeVariables,1,0)
+        layout.addWidget(self.figurepanel,1,1)
         self.setLayout(layout)
 
     def OnVarSelected(self):

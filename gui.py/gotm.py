@@ -2,7 +2,7 @@
 
 from PyQt4 import QtGui,QtCore
 
-import common,commonqt
+import commonqt, scenario
 import sys,xml,os
 
 import scenariobuilder,simulator,visualizer
@@ -33,10 +33,7 @@ class PageIntroduction(commonqt.WizardPage):
         #versions.append(('pycdf',pycdf.pycdfVersion()))
         versions.append(('gotm',gotm.gui_util.getversion().rstrip()))
 
-        strversions = ''
-        for v in versions:
-            strversions += '%s %s\n' % v
-
+        strversions = '\n'.join(['%s %s' % v for v in versions])
         self.labelVersions = QtGui.QLabel('Module versions:\n'+strversions,self)
         layout.addWidget(self.labelVersions)
 
@@ -107,12 +104,12 @@ class PageChooseAction(commonqt.WizardPage):
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
-            if 'result' in self.parent().shared:
-                result = self.parent().shared.pop('result')
-                result.unlink()
             if 'scenario' in self.parent().shared:
                 oldscen = self.parent().shared['scenario']
                 if oldscen!=None: oldscen.unlink()
+            if 'result' in self.parent().shared:
+                result = self.parent().shared.pop('result')
+                result.unlink()
             self.parent().shared['mainaction'] = 'scenario'
             self.parent().shared['scenario'] = newscen
 
@@ -122,14 +119,17 @@ class PageChooseAction(commonqt.WizardPage):
             return True
         if checkedid==1:
             self.parent().shared['mainaction'] = 'result'
-            if 'result' in self.parent().shared:
-                oldresult = self.parent().shared['result']
-                if oldresult!=None: oldresult.unlink()
             try:
                 newresult = self.resultwidget.getResult()
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to load result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
+            if 'scenario' in self.parent().shared:
+                oldscen = self.parent().shared['scenario']
+                if oldscen!=None: oldscen.unlink()
+            if 'result' in self.parent().shared:
+                oldresult = self.parent().shared['result']
+                if oldresult!=None: oldresult.unlink()
             self.parent().shared['result'] = newresult
             self.parent().shared['scenario'] = newresult.scenario
             return True
@@ -155,7 +155,7 @@ def main():
         app = QtGui.qApp
 
     # Create wizard dialog
-    wiz = commonqt.Wizard(closebutton=True)
+    wiz = commonqt.Wizard(closebutton = sys.platform!='win32')
     seq = commonqt.WizardSequence([PageIntroduction,PageChooseAction,ForkOnAction(wiz),visualizer.PageVisualize,visualizer.PageReportGenerator,visualizer.PageSave,visualizer.PageFinal])
     wiz.setSequence(seq)
     wiz.setWindowTitle('GOTM-GUI')

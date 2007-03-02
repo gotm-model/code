@@ -41,7 +41,7 @@ setup(
     console=['gotm.py'],
     options={'py2exe': {
                 'packages' : ['matplotlib', 'pytz'],
-                'includes' : ['sip','win32com'],
+                'includes' : ['sip'],
                 'excludes' : ['_gtkagg', '_tkagg', '_wxagg','tcl'],
                 'dll_excludes': ['libgdk-win32-2.0-0.dll', 'libgobject-2.0-0.dll', 'libgdk_pixbuf-2.0-0.dll','wxmsw26uh_vc.dll']
             }},

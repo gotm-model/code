@@ -7,19 +7,20 @@ function showHideDefaults() {
 		newweight = 'normal';
 	}
 	
-	rows = document.all.tableScenario.rows;
+	rows = document.getElementById('tableScenario').rows;
 	for (i=0; i<rows.length; i++) {
-		tr = rows(i);
+		tr = rows[i];
 		if (tr.getAttribute('default')!=null)
 			tr.style.display = newdisplaystyle;
 		else
-			tr.cells(tr.cells.length-1).style.fontWeight = newweight;
+			tr.cells[tr.cells.length-1].style.fontWeight = newweight;
 	}
 	
 	showdefaults = (!showdefaults);
+	aShowHideDefaults = document.getElementById('aShowHideDefaults');
 	if (showdefaults) {
-		document.all.aShowHideDefaults.innerHTML = 'Hide default values';
+		aShowHideDefaults.innerHTML = 'Hide default values';
 	} else {
-		document.all.aShowHideDefaults.innerHTML = 'Show default values';
+		aShowHideDefaults.innerHTML = 'Show default values';
 	}
 }

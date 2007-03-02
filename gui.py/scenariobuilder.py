@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.7 2007-02-09 14:33:11 jorn Exp $
+#$Id: scenariobuilder.py,v 1.8 2007-03-02 12:32:47 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
-import common,commonqt
+import scenario, data, commonqt
 import sys,xml, os.path
 
 class ScenarioWidget(QtGui.QWidget):
@@ -19,7 +19,7 @@ class ScenarioWidget(QtGui.QWidget):
         self.radioImport2 = QtGui.QRadioButton('Import a namelist-based scenario from a tar/gz archive.',self)
 
         self.labTemplate = QtGui.QLabel('Template:',self)
-        default2path = common.Scenario.getDefaultPaths()
+        default2path = scenario.Scenario.defaultname2path()
         self.comboTemplates = QtGui.QComboBox(parent)
         for (name,path) in default2path.items():
             self.comboTemplates.addItem(name,QtCore.QVariant(name))
@@ -100,40 +100,41 @@ class ScenarioWidget(QtGui.QWidget):
             checkedid = self.bngroup.checkedId()
             if   checkedid==0:
                 index = self.comboTemplates.currentIndex()
-                defscenario = common.Scenario.getDefault(unicode(self.comboTemplates.itemData(index).toString()))
+                defname = unicode(self.comboTemplates.itemData(index).toString())
+                defscenario = scenario.Scenario.getDefault(defname,scenario.guiscenarioversion)
                 xmldom = defscenario.toxmldom()
-                scenario = common.Scenario(templatename=common.guiscenarioversion)
-                scenario.setStore(xmldom)
+                scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
+                scen.setStore(xmldom)
             elif checkedid==1:
                 path = self.pathOpen.path()
                 if path.endswith('.gotmresult'):
                     try:
-                        result = common.Result()
+                        result = data.Result()
                         result.load(path)
                     except Exception,e:
                         raise Exception('An error occurred while loading the result: '+str(e))
-                    scenario = result.scenario
+                    scen = result.scenario
                     result.unlink()
                 elif path.endswith('.xml'):
                     try:
-                        scenario = common.Scenario(templatename=common.guiscenarioversion)
-                        scenario.load(path)
+                        scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
+                        scen.load(path)
                     except Exception,e:
                         raise Exception('An error occurred while loading the scenario: '+str(e))
                 else:
                     try:
-                        scenario = common.Scenario(templatename=common.guiscenarioversion)
-                        scenario.loadAll(path)
+                        scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
+                        scen.loadAll(path)
                     except Exception,e:
                         raise Exception('An error occurred while loading the scenario: '+str(e))
             elif checkedid==2:
                 try:
-                    scenario = common.Scenario.fromNamelists(self.pathImport1.path(),strict = False)
+                    scen = scenario.Scenario.fromNamelists(self.pathImport1.path(),strict = False)
                 except Exception,e:
                     raise Exception('Cannot parse namelist files. Error: '+str(e))
             elif checkedid==3:
                 try:
-                    scenario = common.Scenario.fromNamelists(self.pathImport2.path(),strict = False)
+                    scen = scenario.Scenario.fromNamelists(self.pathImport2.path(),strict = False)
                 except Exception,e:
                     raise Exception('Cannot parse namelist files. Error: '+str(e))
 
@@ -142,13 +143,14 @@ class ScenarioWidget(QtGui.QWidget):
 
         if checkedid!=0:
             # We have loaded a scenario from file. Look for empty nodes and reset these to their defaults.
-            emptynodes = scenario.root.getEmptyNodes()
+            emptynodes = scen.root.getEmptyNodes()
+            #emptynodes = [n for n in scen.root.getEmptyNodes() if not n.isHidden()]
             emptycount = len(emptynodes)
             if emptycount>0:
                 QtGui.QMessageBox.information(self,'Scenario is incomplete','In this scenario %i variables do not have a value. These will be set to their default value.' % emptycount,QtGui.QMessageBox.Ok)
-                scenario.root.copyFrom(scenario.defaultstore.root,replace=False)
+                scen.root.copyFrom(scen.defaultstore.root,replace=False)
             
-        return scenario
+        return scen
 
     def completeStateChanged(self):
         self.emit(QtCore.SIGNAL('onCompleteStateChanged()'))
@@ -260,6 +262,7 @@ class PageAdvanced(commonqt.WizardPage):
         self.model = commonqt.PropertyStoreModel(self.scenario,nohide=False)
 
         self.tree = commonqt.ExtendedTreeView(self)
+        #self.tree.header().hide()
         self.delegate = commonqt.PropertyDelegate()
         self.tree.setItemDelegate(self.delegate)
         self.tree.setModel(self.model)
@@ -318,8 +321,8 @@ class PageSave(commonqt.WizardPage):
 
         self.setLayout(layout)
 
-        self.connect(self.bngroup,  QtCore.SIGNAL("buttonClicked(int)"), self.onSourceChange)
-        self.connect(self.pathSave, QtCore.SIGNAL("onChanged()"),        self.completeStateChanged)
+        self.connect(self.bngroup,  QtCore.SIGNAL('buttonClicked(int)'), self.onSourceChange)
+        self.connect(self.pathSave, QtCore.SIGNAL('onChanged()'),        self.completeStateChanged)
 
         self.radioSave.setChecked(True)
         self.onSourceChange()

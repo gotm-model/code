@@ -1,11 +1,12 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.7 2007-02-02 11:20:45 jorn Exp $
+#$Id: simulator.py,v 1.8 2007-03-02 12:32:47 jorn Exp $
+
+import os, tempfile, sys, math, shutil
 
 from PyQt4 import QtGui,QtCore
-import common,commonqt
-import os, tempfile, sys, math, shutil
-import gotm
+
+import commonqt, data, gotm
 
 gotmversion = gotm.gui_util.getversion().rstrip()
 gotmscenarioversion = 'gotm-%s' % gotmversion
@@ -153,30 +154,39 @@ class GOTMThread(QtCore.QThread):
 class PageProgress(commonqt.WizardPage):
     def __init__(self, parent):
         commonqt.WizardPage.__init__(self, parent)
-        self.scenario = parent.shared['scenario']
+        
+        self.scenario = parent.getProperty('scenario')
+        assert self.scenario!=None, 'No scenario available.'
+
+        self.result = parent.getProperty('result')
+        
         layout = QtGui.QVBoxLayout()
 
+        # Add label that asks user to wait
         self.busylabel = QtGui.QLabel('Please wait while the simulation runs...',self)
+        self.busylabel.setVisible(self.result==None)
         layout.addWidget(self.busylabel)
         
-        # Progress bar
+        # Add progress bar
         self.bar = QtGui.QProgressBar(self)
         self.bar.setRange(0,1000)
+        self.bar.setVisible(self.result==None)
         layout.addWidget(self.bar)
         
         # Add label for time remaining.
         self.labelRemaining = QtGui.QLabel(self)
+        self.labelRemaining.setVisible(self.result==None)
         layout.addWidget(self.labelRemaining)
 
         # Add (initially hidden) label for result.
-        self.resultlabel = QtGui.QLabel('',self)
-        self.resultlabel.hide()
+        self.resultlabel = QtGui.QLabel('The simulation is complete.',self)
+        self.resultlabel.setVisible(self.result!=None)
         layout.addWidget(self.resultlabel)
 
         # Add (initially hidden) show/hide output button.
         self.showhidebutton = QtGui.QPushButton('Show diagnostic output',self)
         self.showhidebutton.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
-        self.showhidebutton.hide()
+        self.showhidebutton.setVisible(self.result!=None)
         layout.addWidget(self.showhidebutton)
         self.connect(self.showhidebutton, QtCore.SIGNAL('clicked()'),self.onShowHideOutput)
 
@@ -184,6 +194,7 @@ class PageProgress(commonqt.WizardPage):
         self.text = QtGui.QTextEdit(self)
         self.text.setLineWrapMode(QtGui.QTextEdit.NoWrap)
         self.text.setReadOnly(True)
+        if self.result!=None: self.text.setPlainText(self.result.gotmoutput)
         self.text.hide()
         layout.addWidget(self.text)
         layout.setStretchFactor(self.text,1)
@@ -201,15 +212,15 @@ class PageProgress(commonqt.WizardPage):
         
         # Initialize GOTM run variables.
         self.gotmthread = None
+        self.tempdir = None
         self.runcount = 1
         self.bar.setValue(0)
-        self.result = None
-        
+       
     def showEvent(self,event):
-        self.startRun()
+        if self.result==None: self.startRun()
 
     def startRun(self):
-        namelistscenario = self.scenario.convert(gotmscenarioversion,targetownstemp=False)
+        namelistscenario = self.scenario.convert(gotmscenarioversion)
         self.tempdir = tempfile.mkdtemp('','gotm-')
         namelistscenario.setProperty(['gotmrun','output','out_fmt'],2)
         namelistscenario.setProperty(['gotmrun','output','out_dir'],'.')
@@ -242,11 +253,9 @@ class PageProgress(commonqt.WizardPage):
         self.bar.hide()
         self.labelRemaining.hide()
 
-        # Add label for result.
-        if result==0:
-            self.resultlabel.setText('The simulation is complete.')
-        elif result==1:
-            self.resultlabel.setText('The simulation failed:')
+        # Show label for result; change text if not successfull.
+        if result==1:
+            self.resultlabel.setText('The simulation failed: %s' % self.gotmthread.error)
         elif result==2:
             self.resultlabel.setText('The simulation was cancelled')
         self.resultlabel.show()
@@ -257,22 +266,17 @@ class PageProgress(commonqt.WizardPage):
             self.text.show()
             self.savebutton.show()
 
-        # Set text with GOTM output (append error message if an error occurred)
-        restext = ''
-        if result==1:
-            restext += 'Error: %s\n' % self.gotmthread.error
-        elif result==2:
-            restext += 'GOTM run was cancelled.\n\n'
-        if len(self.gotmthread.stderr)>0: restext += 'GOTM output:\n%s' % self.gotmthread.stderr
-        self.text.setPlainText(restext)
+        # Set text with GOTM output
+        self.text.setPlainText(self.gotmthread.stderr)
         
         # Create result object
         if result==0:
-            self.result = common.Result()
+            self.result = data.Result()
             respath = os.path.join(self.tempdir,'result.nc')
             self.result.tempdir = self.tempdir
             self.tempdir = None
             self.result.attach(respath,self.scenario,copy=False)
+            self.result.gotmoutput = self.gotmthread.stderr
             self.result.changed = True
             self.completeStateChanged()
             
@@ -288,16 +292,24 @@ class PageProgress(commonqt.WizardPage):
         if self.gotmthread!=None:
             self.gotmthread.stop()
             if not self.gotmthread.isFinished(): self.gotmthread.wait()
-        # Store result (if needed and available)
-        if (mustbevalid and self.result!=None):
-            self.parent().shared['result'] = self.result
+            
+        if mustbevalid:
+            if self.parent().getProperty('result')==None:
+                # Store result
+                assert self.result!=None, 'Cannot move on because result is not available ("next" button should have been disabled?)'
+                self.parent().setProperty('result',self.result)
+        else:
+            # Remove any currently stored result.
+            self.parent().setProperty('result',None)
+                    
         # Remove temporary directory
         if self.tempdir!=None:
             try:
                 shutil.rmtree(self.tempdir)
             except Exception,e:
-                print 'Unable to completely remove GOTM temporary directory "'+self.tempdir+'".\nError: '+str(e)
+                print 'Unable to completely remove GOTM temporary directory "%s".\nError: %s' % (self.tempdir,e)
             self.tempdir = None
+            
         return True
 
     def onShowHideOutput(self):
