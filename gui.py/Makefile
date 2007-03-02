@@ -1,11 +1,12 @@
-#$Id: Makefile,v 1.1 2006-11-24 15:52:14 kbk Exp $
+#$Id: Makefile,v 1.2 2007-03-02 14:11:15 jorn Exp $
 
 # Makefile for creating the Python based GUI for GOTM
 
 include ../src/Rules.make
 
 # The flag -fexceptions is needed to generate FORTRAN code capable of 
-# passing C++ exceptions EXTRA_FFLAGS+=-fexceptions
+# passing C++ exceptions
+EXTRA_FFLAGS+=-fexceptions
 
 NUMPYDIR = /usr/local/lib/python2.4/site-packages/numpy
 NUMPYDIR = /usr/lib/python2.4/site-packages/numpy
