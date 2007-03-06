@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<element id="figure" label="figure">
+<element id="Figure" label="figure">
 
 			<element id="Title" type="string" label="title"/>
 

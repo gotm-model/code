@@ -16,8 +16,8 @@ class Scenario(xmlstore.TypedStore):
     storefilename = 'scenario.xml'
     storetitle = 'GOTM scenario'
 
-    def __init__(self,schemadom,valuedom=None,adddefault = True):
-        xmlstore.TypedStore.__init__(self,schemadom,valuedom,adddefault=adddefault)
+    def __init__(self,schemadom,valueroot=None,adddefault = True):
+        xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
 
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
 
@@ -87,7 +87,7 @@ class Scenario(xmlstore.TypedStore):
         print 'Importing scenario from namelist files...'
 
         # Start with empty scenario
-        self.setStore(None,None)
+        self.setStore(None)
 
         container = None
         if os.path.isdir(srcpath):

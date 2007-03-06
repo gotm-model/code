@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.14 2007-03-02 12:33:45 jorn Exp $
+#$Id: commonqt.py,v 1.15 2007-03-06 07:51:36 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -196,6 +196,8 @@ class LinkedFilePlotDialog(QtGui.QDialog):
 
         self.varstore = newstore
         self.datafile = datafile
+
+        self.panel.closeDetached()
 
         self.list.clear()
         namedict = newstore.getVariableLongNames()
@@ -1444,6 +1446,7 @@ class FigurePanel(QtGui.QWidget):
         self.figure.addDataSource('main',varstore)
         self.figure.addVariable(varname)
         self.figure.setUpdating(True)
+        self.figure.resetChanged()
         self.setEnabled(True)
 
     def plotFromProperties(self,properties):
@@ -1454,6 +1457,9 @@ class FigurePanel(QtGui.QWidget):
         self.figure.clearProperties()
         self.figure.clearSources()
         self.setEnabled(False)
+
+    def closeDetached(self):
+        for ch in self.detachedfigures: ch.close()
 
     def onAdvancedClicked(self):
         if self.dialogAdvanced==None:
@@ -1555,7 +1561,7 @@ class FigurePanel(QtGui.QWidget):
         self.detachedfigures.append(fd)
 
     def closeEvent(self,ev):
-        for ch in self.detachedfigures: ch.close()
+        self.closeDetached()
         QtGui.QWidget.closeEvent(self,ev)
 
 class FigureDialog(QtGui.QDialog):

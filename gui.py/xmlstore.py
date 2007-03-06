@@ -449,6 +449,7 @@ class DataContainerDirectory(DataContainer):
 
     def getItem(self,name):
         sourcepath = os.path.join(self.path,name)
+        if not os.path.isfile(sourcepath): return None
         return self.DataFileFile(sourcepath)
 
     def addItem(self,datafile,newname=None):
@@ -521,6 +522,7 @@ class DataContainerZip(DataContainer):
         self.path = None
     
     def getItem(self,name):
+        if name not in self.listFiles(): return None
         return self.DataFileZip(self,name)
 
     def setMode(self,mode):
@@ -611,6 +613,7 @@ class DataContainerTar(DataContainer):
         self.tfile = None
     
     def getItem(self,name):
+        if name not in self.listFiles(): return None
         return self.DataFileTar(self,name)
 
     def setMode(self,mode):
@@ -1286,11 +1289,11 @@ class TypedStore:
         return defstore
 
     @classmethod
-    def fromSchemaName(cls,schemaname,valuedom=None,adddefault=True):
+    def fromSchemaName(cls,schemaname,valueroot=None,adddefault=True):
         path = cls.schemaname2path(schemaname)
         if path==None:
             raise Exception('Unable to locate XML schema file for "%s".' % schemaname)
-        store = cls(path, valuedom = valuedom, adddefault = adddefault)
+        store = cls(path, valueroot, adddefault = adddefault)
         cls.schemas[schemaname] = store.schemadom
         return store
 
@@ -1300,9 +1303,9 @@ class TypedStore:
             raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
         valuedom = xml.dom.minidom.parse(path)
         version = valuedom.documentElement.getAttribute('version')
-        return cls.fromSchemaName(version,valuedom=valuedom,adddefault=adddefault)
+        return cls.fromSchemaName(version,valuedom,adddefault=adddefault)
 
-    def __init__(self,schemadom,valuedom=None,xmlroot=None,otherstores={},adddefault=True):
+    def __init__(self,schemadom,valueroot=None,otherstores={},adddefault=True):
 
         # The template can be specified as a DOM object, or as string (i.e. path to XML file)
         if isinstance(schemadom,basestring):
@@ -1331,7 +1334,7 @@ class TypedStore:
         self.store = None
         self.defaultstore = None
         self.root = None
-        self.setStore(valuedom,xmlroot)
+        self.setStore(valueroot)
 
         # Add store with default values if requested and available.
         if adddefault:
@@ -1357,29 +1360,32 @@ class TypedStore:
             self.store.context['container'].release()
         self.store.context['container'] = container
 
-    def setStore(self,valuedom,xmlroot=None):
+    def setStore(self,valueroot):
         if self.root!=None: self.root.destroy()
 
         templateroot = self.schemadom.documentElement
 
-        if valuedom==None:
-            if xmlroot!=None:
-                valuedom = xmlroot
-                while valuedom.parentNode!=None: valuedom = valuedom.parentNode
-            else:
-                impl = xml.dom.minidom.getDOMImplementation()
-                assert templateroot.hasAttribute('id'), 'Root of the schema does not have attribute "id".'
-                valuedom = impl.createDocument('', templateroot.getAttribute('id'), None)
-                valuedom.documentElement.setAttribute('version',self.version)
-        elif isinstance(valuedom,basestring):
-            assert xmlroot==None,'Path to XML file specified, but also a (already parsed!) root node was supplied. This combination is invalid'
-            valuedom = xml.dom.minidom.parse(valuedom)
+        valuedom = None
+        if valueroot==None:
+            impl = xml.dom.minidom.getDOMImplementation()
+            assert templateroot.hasAttribute('id'), 'Root of the schema does not have attribute "id".'
+            valuedom = impl.createDocument(None, templateroot.getAttribute('id'), None)
+            valueroot = valuedom.documentElement
+            valueroot.setAttribute('version',self.version)
+        elif isinstance(valueroot,basestring):
+            valuedom = xml.dom.minidom.parse(valueroot)
+            valueroot = valuedom.documentElement
+        elif valueroot.nodeType==valueroot.DOCUMENT_NODE:
+            valuedom = valueroot
+            valueroot = valuedom.documentElement
+        else:
+            valuedom = valueroot
+            while valuedom.parentNode!=None: valuedom = valuedom.parentNode
 
-        if xmlroot==None: xmlroot = valuedom.documentElement
-        storeversion = xmlroot.getAttribute('version')
-        assert storeversion==self.version, 'Versions of the xml template ("%s") and and the xml values ("%s") do not match.' % (self.version,storeversion)
+        storeversion = valueroot.getAttribute('version')
+        assert storeversion==self.version, 'Versions of the xml schema ("%s") and and the xml values ("%s") do not match.' % (self.version,storeversion)
                     
-        self.store = Store(valuedom,xmlroot=xmlroot)
+        self.store = Store(valuedom,xmlroot=valueroot)
         self.store.filetypes['select'] = int
         self.store.filetypes['file'] = DataFile
         self.root = TypedStore.Node(self,templateroot,self.store.xmlroot,[],None)
@@ -1717,7 +1723,7 @@ class TypedStore:
             self.originalversion = version
         else:
             # Attach the parsed scenario (XML DOM).
-            self.setStore(storedom,None)
+            self.setStore(storedom)
             self.setContainer(container)
 
         # Store source path.
@@ -1777,9 +1783,6 @@ class TypedStore:
 
     def toxml(self,enc):
         return self.store.xmldocument.toxml(enc)
-
-    def toxmldom(self):
-        return self.store.xmldocument.cloneNode(True)
 
     # ----------------------------------------------------------------------------------------
     # Event handling

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.9 2007-03-02 12:32:47 jorn Exp $
+#$Id: visualizer.py,v 1.10 2007-03-06 07:51:36 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -269,6 +269,9 @@ class PageSave(commonqt.WizardPage):
         self.pathSave.filter = 'GOTM result files (*.gotmresult);;All files (*.*)'
         self.pathSave.forcedextension = '.gotmresult'
 
+        self.checkboxAddFigures = QtGui.QCheckBox('Also save my figure settings.',self)
+        self.checkboxAddFigures.setChecked(True)
+
         self.bngroup.addButton(self.radioNoSave, 0)
         self.bngroup.addButton(self.radioSave,   1)
 
@@ -277,8 +280,9 @@ class PageSave(commonqt.WizardPage):
         layout.addWidget(self.radioNoSave,1,0,1,2)
         layout.addWidget(self.radioSave,  2,0,1,2)
         layout.addWidget(self.pathSave,   3,1,1,1)
+        layout.addWidget(self.checkboxAddFigures,4,1,1,1)
 
-        layout.setRowStretch(4,1)
+        layout.setRowStretch(5,1)
         layout.setColumnStretch(1,1)
         radiowidth = QtGui.QRadioButton().sizeHint().width()
         layout.setColumnMinimumWidth(0,radiowidth)
@@ -294,6 +298,7 @@ class PageSave(commonqt.WizardPage):
     def onSourceChange(self):
         checkedid = self.bngroup.checkedId()
         self.pathSave.setVisible(checkedid==1)
+        self.checkboxAddFigures.setVisible(checkedid==1)
         self.completeStateChanged()
 
     def isComplete(self):
@@ -308,12 +313,15 @@ class PageSave(commonqt.WizardPage):
         checkedid = self.bngroup.checkedId()
         if checkedid==1:
             try:
-                self.result.save(self.pathSave.path())
+                self.result.save(self.pathSave.path(),addfiguresettings=self.checkboxAddFigures.isChecked())
             except Exception,e:
                 print e
                 QtGui.QMessageBox.critical(self, 'Unable to save result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
         return True
+
+    def doNotShow(self):
+        return (not self.result.hasChanged())
 
 class PageFinal(commonqt.WizardPage):
     
@@ -334,6 +342,8 @@ class PageVisualize(commonqt.WizardPage):
     
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
+
+        self.varname = None
 
         self.result = parent.shared['result']
         self.treestore = self.result.getVariableTree('outputtree.xml')
@@ -363,11 +373,24 @@ class PageVisualize(commonqt.WizardPage):
         if node.hasChildren(): return
         varname = node.getId()
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
+        self.saveFigureSettings()
+        self.varname = varname
         self.figurepanel.plot(self.result,varname)
+        savedprops = self.result.getFigure(varname)
+        if savedprops!=None: self.figurepanel.plotFromProperties(savedprops)
         QtGui.QApplication.restoreOverrideCursor()
 
     def isComplete(self):
         return True
+
+    def saveData(self,mustbevalid):
+        self.saveFigureSettings()
+        return True
+
+    def saveFigureSettings(self):
+        if self.varname!=None and self.figurepanel.figure.hasChanged():
+            props = self.figurepanel.figure.getPropertiesRoot()
+            self.result.setFigure(self.varname,props)
 
 def main():
     # Debug info
@@ -396,7 +419,7 @@ def main():
         try:
             result = loadResult(sys.argv[1])
         except Exception,e:
-            QtGui.QMessageBox.critical(self, 'Unable to load result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+            QtGui.QMessageBox.critical(self, 'Unable to load result', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
         if result!=None:
             seq.pop(0)
             wiz.shared['result'] = result

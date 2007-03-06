@@ -1,6 +1,6 @@
-#$Id: common.py,v 1.20 2007-03-02 12:33:45 jorn Exp $
+#$Id: common.py,v 1.21 2007-03-06 07:51:36 jorn Exp $
 
-import datetime,time,sys
+import datetime,time,sys,xml.dom.minidom
 import matplotlib.numerix
 
 # ------------------------------------------------------------------------------------------
@@ -102,6 +102,30 @@ def setNodeText(node,text,xmldocument=None):
             ch.unlink()
     val = xmldocument.createTextNode(text)
     node.insertBefore(val,node.firstChild)
+
+def copyNode(sourcenode,newparent,targetdoc=None):
+    if newparent==None:
+        if targetdoc==None:
+            impl = xml.dom.minidom.getDOMImplementation()
+            targetdoc = impl.createDocument(None, None, None)
+        newparent = targetdoc
+    elif targetdoc==None:
+        targetdoc = newparent
+        while targetdoc.parentNode!=None: targetdoc = targetdoc.parentNode
+    cpy = None
+    if sourcenode.nodeType==sourcenode.ELEMENT_NODE:
+        cpy = targetdoc.createElement(sourcenode.localName)
+        cpy = newparent.appendChild(cpy)
+    elif sourcenode.nodeType==sourcenode.ATTRIBUTE_NODE:
+        newparent.setAttribute(sourcenode.name,sourcenode.value)
+    elif sourcenode.nodeType==sourcenode.TEXT_NODE:
+        cpy = targetdoc.createTextNode(sourcenode.data)
+        cpy = newparent.appendChild(cpy)
+    else:
+        print 'WARNING: do not know how to copy node with type %s. Skipping...' % sourcenode.nodeType
+    if cpy!=None:
+        for ch in sourcenode.childNodes: copyNode(ch,cpy,targetdoc)
+    return cpy
 
 # ------------------------------------------------------------------------------------------
 # Numerical helper utilities

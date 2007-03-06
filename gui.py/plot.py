@@ -6,7 +6,7 @@ import matplotlib.dates
 import matplotlib.pylab
 import matplotlib.backends.backend_agg
 
-import xmlstore
+import common,xmlstore
 
 class MonthFormatter(matplotlib.dates.DateFormatter):
     def __init__(self):
@@ -35,6 +35,7 @@ class Figure:
         self.sources = {}
         self.defaultsource = None
         self.updating = True
+        self.dirty = False
         self.haschanged = False
 
         self.ignorechanges = False
@@ -42,9 +43,11 @@ class Figure:
     def setUpdating(self,allowupdates):
         if self.updating != allowupdates:
             self.updating = allowupdates
-            if allowupdates and self.haschanged: self.update()
+            if allowupdates and self.dirty: self.update()
 
     def onBeforeMergedPropertyChange(self,node,value):
+        # Check if th user changed it (self.ignorechanges=False), or we are changing it (self.ignorechanges=True).
+        # In the latter case no need to redirect the change: just approve.
         if self.ignorechanges: return True
         
         # The user tried to modify a figure property; redirect this to the store
@@ -57,14 +60,16 @@ class Figure:
         return False
 
     def onExplicitPropertyChanged(self,node):
+        self.haschanged = True
         self.update()
 
     def clearSources(self):
         self.sources = {}
+        self.defaultsource = None
 
-    def clearVariables(self):
-        self.forcedproperties.root.getLocation(['Data']).removeChildren('Series')
-        self.update()
+    def addDataSource(self,name,obj):
+        self.sources[name] = obj
+        if self.defaultsource==None: self.defaultsource = name
 
     def clearProperties(self):
         self.forcedproperties.setStore(None)
@@ -74,12 +79,15 @@ class Figure:
         self.forcedproperties.setStore(props)
         self.update()
 
-    def getPropertiesCopy(self):
-        return self.forcedproperties.toxmldom()
+    def getPropertiesRoot(self):
+        return self.forcedproperties.store.xmlroot
 
-    def addDataSource(self,name,obj):
-        self.sources[name] = obj
-        if self.defaultsource==None: self.defaultsource = name
+    def getPropertiesCopy(self):
+        return common.copyNode(self.forcedproperties.store.xmlroot,None)
+
+    def clearVariables(self):
+        self.forcedproperties.root.getLocation(['Data']).removeChildren('Series')
+        self.update()
 
     def addVariable(self,varname,source=None):
         datanode = self.forcedproperties.root.getLocation(['Data'])
@@ -89,9 +97,15 @@ class Figure:
             series.getLocation(['Source']).setValue(source)
         self.update()
 
+    def hasChanged(self):
+        return self.haschanged
+
+    def resetChanged(self):
+        self.haschanged = False
+
     def update(self):
         if not self.updating:
-            self.haschanged = True
+            self.dirty = True
             return
 
         self.figure.clear()
@@ -379,4 +393,4 @@ class Figure:
         # and want to be notified if anyone else changes them.
         self.ignorechanges = False
         
-        self.haschanged = False
+        self.dirty = False

@@ -413,6 +413,12 @@ class Result(PlotVariableStore):
         self.z_stag = None
         self.z1_stag = None
 
+        impl = xml.dom.minidom.getDOMImplementation()
+        self.figuretree = impl.createDocument(None, 'FigureSettings', None)
+
+    def hasChanged(self):
+        return self.changed
+
     def getTempDir(self,empty=False):
         if self.tempdir!=None:
             if empty:
@@ -420,13 +426,19 @@ class Result(PlotVariableStore):
                     os.remove(os.path.join(self.tempdir,f))
         else:
             self.tempdir = tempfile.mkdtemp('','gotm-')
-            print 'Created temporary result directory "'+self.tempdir+'".'
+            print 'Created temporary result directory "%s".' % self.tempdir
         return self.tempdir
 
-    def save(self,path):
+    def save(self,path,addfiguresettings=True):
         assert self.datafile!=None, 'The result object was not yet attached to a result file (NetCDF).'
 
         container = xmlstore.DataContainerZip(path,'w')
+
+        if addfiguresettings:
+            df = xmlstore.DataFileXmlDocument(self.figuretree)
+            df_added = container.addItem(df,'figuresettings.xml')
+            df_added.release()
+            df.release()
 
         if self.scenario!=None:
             fscen = StringIO.StringIO()
@@ -466,6 +478,13 @@ class Result(PlotVariableStore):
         df.saveToFile(resultpath)
         df.release()
 
+        df = container.getItem('figuresettings.xml')
+        if df!=None:
+            f = df.getAsReadOnlyFile()
+            self.figuretree = xml.dom.minidom.parse(f)
+            f.close()
+            df.release()
+
         # Close the archive
         container.release()
 
@@ -475,6 +494,21 @@ class Result(PlotVariableStore):
 
         # Reset "changed" status.
         self.changed = False
+
+    def setFigure(self,name,valuetree):
+        self.changed = True
+        for ch in self.figuretree.documentElement.childNodes:
+            if ch.getAttribute('name')==name:
+                if ch.isSameNode(valuetree): return
+                self.figuretree.documentElement.removeChild(ch)
+                break
+        node = common.copyNode(valuetree,self.figuretree.documentElement)
+        node.setAttribute('name',name)
+
+    def getFigure(self,name):
+        for ch in self.figuretree.documentElement.childNodes:
+            if ch.getAttribute('name')==name: return ch
+        return None
 
     def unlink(self):
         if self.nc!=None:
