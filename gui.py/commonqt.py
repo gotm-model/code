@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.15 2007-03-06 07:51:36 jorn Exp $
+#$Id: commonqt.py,v 1.16 2007-03-13 08:11:12 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -430,7 +430,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
             options = common.findDescendantNode(templatenode,['options'])
             assert options!=None, 'Node %s is of type "select" but lacks "options" childnode.' % node
             for ch in options.childNodes:
-                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option' and not ch.hasAttribute('disabled'):
                     editor.addItem(ch.getAttribute('label'),QtCore.QVariant(int(ch.getAttribute('value'))))
         elif nodetype=='datetime':
             editor = QtGui.QDateTimeEdit(parent)
@@ -624,24 +624,25 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             else:
                 return QtCore.QVariant()
         else:
-            # We only process the 'display' and 'edit' roles.
+            # We only process the 'display', 'edit' and 'font' roles.
             if not (role==QtCore.Qt.DisplayRole or role==QtCore.Qt.EditRole or role==QtCore.Qt.FontRole): return QtCore.QVariant()
 
-            # Column 1 is nly used for variables that can have a value.
+            # Column 1 is only used for variables that can have a value.
             if not node.canHaveValue(): return QtCore.QVariant()
 
             # Return bold font if the node value is set to something different than the default.
             if role==QtCore.Qt.FontRole and self.typedstore.defaultstore!=None:
                 font = QtGui.QFont()
-                font.setBold(node.getValue() != node.getDefaultValue())
+                val = node.getValue()
+                font.setBold(val!=None and val!=node.getDefaultValue())
                 return QtCore.QVariant(font)
 
             # Now distinguish between display of value and editing of value.
             if role==QtCore.Qt.DisplayRole:
-                return QtCore.QVariant(node.getValueAsString())
+                return QtCore.QVariant(node.getValueAsString(usedefault=True))
             else:
                 fieldtype = node.getValueType()
-                value = node.getValue()
+                value = node.getValueOrDefault()
                 if value==None: return QtCore.QVariant()
                 if fieldtype=='datetime':
                     # First convert Python datetime to QDateTime, then cast to variant.
@@ -783,12 +784,13 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
 
     def resetData(self,index,recursive=False):
         node = index.internalPointer()
-        node.setToDefault(recursive)
+        node.clearValue(recursive=recursive,skipreadonly=True)
 
     def hasDefaultValue(self,index):
         node = index.internalPointer()
         if node==None or not node.canHaveValue(): return True
-        return node.getValue() == node.getDefaultValue()
+        value = node.getValue()
+        return value==None or value==node.getDefaultValue()
 
     def getCheckedNodes(self,index=None):
         if index==None: index = QtCore.QModelIndex()
@@ -853,7 +855,7 @@ class ExtendedTreeView(QtGui.QTreeView):
 
         # Check whether we can reset the current value and/or its decendants. Stop if not.
         model = self.model()
-        resetself = (model.flags(valueindex) & QtCore.Qt.ItemIsEditable)
+        resetself = (model.flags(valueindex) & QtCore.Qt.ItemIsEditable) and not model.hasDefaultValue(valueindex)
         resetchildren = model.hasChildren(nameindex)
         if not (resetself or resetchildren): return
         
@@ -1275,7 +1277,7 @@ class PropertyEditor:
 
     def setEditorData(self,editor,node):
         self.suppresschangeevent = True
-        value = node.getValue()
+        value = node.getValueOrDefault()
         nodetype = node.getValueType()
         if value==None:
             if nodetype=='string':

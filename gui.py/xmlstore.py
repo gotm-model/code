@@ -692,6 +692,7 @@ class TypedStoreInterface:
         self.showhidden = showhidden
         self.omitgroupers = omitgroupers
         self.blockNotifyOfHiddenNodes = True
+        self.notifyOnDefaultChange = True
 
         self.visibilityhandlers = []
         self.changehandlers = []
@@ -742,21 +743,19 @@ class TypedStoreInterface:
             return None
 
     def getOwnIndex(self,node):
-        par = self.getParent(node)
-        offspring = self.getChildren(par,showhidden=True)
-        irow = 0
-        if node.futureindex!=None:
-            if self.showhidden:
-                return node.futureindex
-            else:
-                for isibling in range(self.futureindex):
-                    if not offspring[isibling].isHidden(): irow += 1
-                return irow
+        ind = 0
+        par = node.parent
+        if self.omitgroupers and par.grouponly: ind = self.getOwnIndex(par)
+        for (isib,sib) in enumerate(par.children):
+            if sib is node or isib==node.futureindex: break
+            if sib.visible or self.showhidden:
+                if self.omitgroupers and sib.grouponly:
+                    ind += self.getChildCount(sib)
+                else:
+                    ind += 1
         else:
-            for child in offspring:
-                if child is node: return irow
-                if self.showhidden or not child.isHidden(): irow += 1
-        assert False, 'Cannot find %s in offspring of %s.' % (node,par)
+            assert node.futureindex==len(par.children), 'Could not find node in children of supposed parent, but future index (%i) was also not set to tailing position (%i).' % (node.futureindex,len(par.children))
+        return ind
 
     def getDepth(self,node):
         childmax = 0
@@ -785,7 +784,7 @@ class TypedStoreInterface:
 
             td2 = xmldocument.createElement('td')
             if node.canHaveValue():
-                val = node.getValueAsString()
+                val = node.getValueAsString(usedefault=True)
             else:
                 val = ' '
             td2.appendChild(xmldocument.createTextNode(val))
@@ -861,6 +860,9 @@ class TypedStoreInterface:
         if node.isHidden() and self.blockNotifyOfHiddenNodes: return
         for callback in self.changehandlers: callback(node)
 
+    def onDefaultChange(self,node):
+        if self.notifyOnDefaultChange: self.onChange(node)
+
     # ---------------------------------------------------------------------------
     # Helper functions for emitting events
     # ---------------------------------------------------------------------------
@@ -933,6 +935,22 @@ class TypedStore:
             self.valuenode = None
             self.store = None
 
+        def getValue(self):
+            if self.valuenode==None: return None
+            valuetype = self.templatenode.getAttribute('type')
+            assert valuetype!='', 'getValue was used on node without type (%s); canHaveValue should have showed that this node does not have a type.' % self
+            return self.store.getNodeProperty(self.valuenode,valuetype=valuetype)
+
+        def getDefaultValue(self):
+            defaultstore = self.controller.defaultstore
+            if defaultstore==None: return None
+            return defaultstore.mapForeignNode(self).getValue()
+
+        def getValueOrDefault(self):
+            val = self.getValue()
+            if val==None: val = self.getDefaultValue()
+            return val
+
         def setValue(self,value):
             if value==None:
                 self.clearValue()
@@ -950,11 +968,14 @@ class TypedStore:
                     return changed
             return False
 
-        def getValue(self):
-            if self.valuenode==None: return None
-            valuetype = self.templatenode.getAttribute('type')
-            assert valuetype!='', 'getValue was used on node without type (%s); canHaveValue should have showed that this node does not have a type.' % self
-            return self.store.getNodeProperty(self.valuenode,valuetype=valuetype)
+        def clearValue(self,recursive=False,skipreadonly=False):
+            if recursive:
+                for ch in self.children: ch.clearValue(recursive=recursive,skipreadonly=skipreadonly)
+            if self.valuenode==None or (skipreadonly and self.isReadOnly()): return
+            if self.controller.onBeforeChange(self,None):
+                self.store.clearNodeProperty(self.valuenode)
+                self.valuenode = None
+                self.controller.onChange(self)
 
         def preparePersist(self,recursive=True):
             valuetype = self.templatenode.getAttribute('type')
@@ -974,15 +995,13 @@ class TypedStore:
             if recursive:
                 for ch in self.children: ch.persist(recursive=True)
 
-        def getDefaultValue(self):
-            defaultstore = self.controller.defaultstore
-            if defaultstore==None: return None
-            return defaultstore.getProperty(self.location)
-
-        def getValueAsString(self,addunit = True):
+        def getValueAsString(self,addunit = True,usedefault = False):
             templatenode = self.templatenode
             fieldtype = templatenode.getAttribute('type')
-            value = self.getValue()
+            if usedefault:
+                value = self.getValueOrDefault()
+            else:
+                value = self.getValue()
             if value==None: return ''
             if fieldtype=='datetime':
                 value = value.strftime(common.datetime_displayformat)
@@ -1015,14 +1034,6 @@ class TypedStore:
                 value = value + ' ' + templatenode.getAttribute('unit')
 
             return value
-
-        def setToDefault(self,recursive=False):
-            if recursive:
-                for ch in self.children: ch.setToDefault(True)
-            if self.controller.defaultstore!=None:
-                return self.setValue(self.getDefaultValue())
-            else:
-                return self.setValue(None)
 
         def addChild(self,childname):
             index = -1
@@ -1070,9 +1081,10 @@ class TypedStore:
             child.futureindex = None
             return child
 
-        def getNumberedChild(self,childname,index):
+        def getNumberedChild(self,childname,index,create=False):
             children = self.getLocationMultiple([childname])
             if index<len(children): return children[index]
+            if not create: return None
             for ichild in range(index-len(children)+1):
                 child = self.addChild(childname)
             return child
@@ -1105,13 +1117,6 @@ class TypedStore:
                     self.controller.afterVisibilityChange(child,False,False)
                 else:
                     ipos += 1
-
-        def clearValue(self):
-            if self.valuenode==None: return
-            if self.controller.onBeforeChange(self,None):
-                self.store.clearNodeProperty(self.valuenode)
-                self.valuenode = None
-                self.controller.onChange(self)
 
         def getId(self):
             return self.location[-1]
@@ -1225,7 +1230,7 @@ class TypedStore:
                     index = 0
                     prevchildname = childname
                 if sourcechild.canHaveClones():
-                    child = self.getNumberedChild(childname,index)
+                    child = self.getNumberedChild(childname,index,create=True)
                 else:
                     child = self.getLocation([childname])
                 if child==None: continue
@@ -1333,6 +1338,7 @@ class TypedStore:
         # Set property store
         self.store = None
         self.defaultstore = None
+        self.defaultinterface = None
         self.root = None
         self.setStore(valueroot)
 
@@ -1398,6 +1404,8 @@ class TypedStore:
     def setDefaultStore(self,store):
         assert self.version==store.version
         self.defaultstore = store
+        self.defaultinterface = self.defaultstore.getInterface()
+        self.defaultinterface.addChangeHandler(self.onDefaultChange)
 
     def hasChanged(self):
         return self.changed
@@ -1407,13 +1415,37 @@ class TypedStore:
 
     def setProperty(self,location,value):
         node = self.root.getLocation(location)
-        if node==None: raise Exception('Cannot locate node at '+str(location))
+        if node==None: raise Exception('Cannot locate node at %s' % location)
         return node.setValue(value)
     
-    def getProperty(self,location):
+    def getProperty(self,location,usedefault=False):
         node = self.root.getLocation(location)
-        if node==None: raise Exception('Cannot locate node at '+str(location))
-        return node.getValue()
+        if node==None: raise Exception('Cannot locate node at %s' % location)
+        if usedefault:
+            return node.getValueOrDefault()
+        else:
+            return node.getValue()
+
+    def mapForeignNode(self,foreignnode):
+        indices = []
+        currentnode = foreignnode
+        for name in reversed(foreignnode.location):
+            if not currentnode.canHaveClones():
+                indices.insert(0,0)
+            else:
+                siblings = currentnode.parent.getLocationMultiple([name])
+                for (index,sib) in enumerate(siblings):
+                    if sib is currentnode: break
+                else:
+                    assert False, 'Cannot find foreign node "%s" in list of its own siblings.' % name
+                indices.insert(0,index)
+            currentnode = currentnode.parent
+        assert currentnode.parent==None, 'Location does not describe complete path to root. Currently at %s.' % currentnode
+        currentnode = self.root
+        for (name,index) in zip(foreignnode.location,indices):
+            currentnode = currentnode.getNumberedChild(name,index)
+            assert currentnode!=None, 'Cannot find %i node "%s" below %s.' % (index,name,currentnode)
+        return currentnode
 
     # suppressVisibilityUpdates: de-activates or re-activates dynamic re-checking of node-conditions
     #   when other nodes change (for performance gains only).
@@ -1479,7 +1511,7 @@ class TypedStore:
 
             # Get the type and current value of the variable we depend on
             valuetype = node.getValueType()
-            curvalue = node.getValue()
+            curvalue = node.getValueOrDefault()
 
             # If the node in question currently does not have a value, we cannot check the condition; just return 'valid'.
             if curvalue==None: return True
@@ -1734,11 +1766,22 @@ class TypedStore:
 
     def saveAll(self,path,targetversion=None,targetisdir = False,claim=True):
         if targetversion!=None and self.version!=targetversion:
+            # First convert to the target version
             tempstore = self.convert(targetversion)
+
+            # Now save the result of the conversion.
             tempstore.saveAll(path, targetversion = targetversion,targetisdir = targetisdir)
+
+            # Convert back: by doing this the original store will be able to reference nodes
+            # (of type "file") in the newly saved file.
             tempstore.convert(self)
+
+            # Release the conversion result.
             tempstore.unlink()
         else:
+            # First: fill nodes that are not set with the default value.
+            self.root.copyFrom(self.defaultstore.root,replace=False)
+
             # Before opening the target container, allow nodes to prepare for saving to the specified path.
             # Specifically, nodes will read all files that might be overwritten into memory.
             if isinstance(path,basestring):
@@ -1758,8 +1801,8 @@ class TypedStore:
             else:
                 assert False,'Supplied target must be a path to file or directory, or a StringIO object.'
 
-            # Allow all nodes to add custom data to the target container. This can add the values
-            # in the XML store, and must therefore be doen before the store is added to the container.
+            # Allow all nodes to add custom data to the target container. This can change the values
+            # in the XML store, and must therefore be done before the store is added to the container.
             self.store.context['targetcontainer'] = container
             self.store.context['donotclaimtarget'] = (not claim)
             self.root.persist()
@@ -1772,10 +1815,10 @@ class TypedStore:
             df.release()
 
             # Make the container save all changes and then release it.
-            # Note: even though we release it, many nodes (of type "file") may now hold references to data
-            # in the saved container; the container will likely not be completely released. On the other hand,
-            # the original sources that were locked before saving now probably will be released (the nodes
-            # do not lock them any longer).
+            # Note if claim=True: even though we release it, many nodes (of type "file") may now hold
+            # references to data in the saved container; the container will likely not be completely
+            # released. On the other hand, the original sources that were locked before saving now
+            # probably will be released (the nodes do not lock them any longer).
             container.persistChanges()
             container.release()
         
@@ -1783,6 +1826,9 @@ class TypedStore:
 
     def toxml(self,enc):
         return self.store.xmldocument.toxml(enc)
+
+    def toXmlDom(self,target=None):
+        return common.copyNode(self.store.xmlroot,target)
 
     # ----------------------------------------------------------------------------------------
     # Event handling
@@ -1793,8 +1839,19 @@ class TypedStore:
     def connectInterface(self,interface):
         self.interfaces.append(interface)
 
+    # onChange: called internally after the default value of a node has changed.
+    #   note that its argument will be a node in the DEFAULT store, not in the current store!
+    def onDefaultChange(self,defaultnode):
+        # Map node in default store to node in our own store.
+        ownnode = self.mapForeignNode(defaultnode)
+
+        # Emit change event
+        for i in self.interfaces: i.onDefaultChange(ownnode)
+
+        # If the default is being used: update (visibility of) nodes that depend on the changed node.
+        if ownnode.getValue()==None: self.updateDependantNodes(ownnode)
+
     # onChange: called internally after the value of a node has changed.
-    #   Here it is used to dynamically re-check the conditions that depend on the changed node.
     def onChange(self,node):
         # Register that we changed.
         self.changed = True
@@ -1802,6 +1859,10 @@ class TypedStore:
         # Emit change event
         for i in self.interfaces: i.onChange(node)
 
+        # Update (visibility of) nodes that depend on the changed node.
+        self.updateDependantNodes(node)
+
+    def updateDependantNodes(self,node):
         # Get nodes that depend on the changed node; if there are none, exit.
         if self.suppressConditionChecking: return
         deps = common.findDescendantNode(node.templatenode,['dependentvariables'])

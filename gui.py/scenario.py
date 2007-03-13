@@ -168,11 +168,12 @@ class Scenario(xmlstore.TypedStore):
 
                 childindex = 0
 
-                while not nmlist.isEmpty():
-                    (foundvarname,vardata) = nmlist.getNextVariable()
+                for (foundvarname,vardata) in nmlist:
 
                     if strict:
                         # Strict parsing: all variables must appear once and in predefined order.
+                        if childindex>=len(filechild.children):
+                            raise namelist.NamelistParseException('Encountered variable "%s" where end of namelist was expected.' % (foundvarname,),fullnmlfilename,listname,None)
                         listchild = filechild.children[childindex]
                         varname = listchild.getId()
                         if varname.lower()!=foundvarname.lower():
@@ -233,7 +234,7 @@ class Scenario(xmlstore.TypedStore):
                             val = xmlstore.DataFile()
 
                     listchild.setValue(val)
-                if strict and len(listchildren)>0:
+                if strict and childindex<len(filechild.children):
                     lcnames = ['"%s"' % lc.getId() for lc in listchildren]
                     raise namelist.NamelistParseException('Variables %s are missing' % ', '.join(lcnames),fullnmlfilename,listname,None)
 
@@ -303,8 +304,9 @@ class Scenario(xmlstore.TypedStore):
                             if listchild.hasChildren():
                                 raise Exception('Found a folder ("%s") below branch %s/%s, where only variables are expected.' % (listchild.getId(),nmlfilename,listname))
                             varname = listchild.getId()
-                            varval = listchild.getValue()
+                            varval = listchild.getValueOrDefault()
                             if varval==None:
+                                if listchild.isHidden(): continue
                                 raise Exception('Value for variable "%s" in namelist "%s" not set.' % (varname,listname))
                             vartype = listchild.getValueType()
                             if vartype=='string':
@@ -496,6 +498,17 @@ class Convertor_gotm_4_0_0_to_gotmgui_0_5_0(xmlstore.Convertor):
                       ('/gotmturb/turbulence',            '/gotmturb'),
                       ('/gotmturb/scnd',                  '/gotmturb/scnd/scnd_coeff'),
                       ('/kpp/kpp',                        '/gotmturb/kpp'),
+                      ('/obs/sprofile/s_prof_method',     '/obs/sprofile'),
+                      ('/obs/tprofile/t_prof_method',     '/obs/tprofile'),
+                      ('/obs/ext_pressure/ext_press_method','/obs/ext_pressure'),
+                      ('/obs/int_pressure/int_press_method','/obs/int_pressure'),
+                      ('/obs/extinct/extinct_method',     '/obs/extinct'),
+                      ('/obs/w_advspec/w_adv_method',     '/obs/w_advspec'),
+                      ('/obs/zetaspec/zeta_method',       '/obs/zetaspec'),
+                      ('/obs/wave_nml/wave_method',       '/obs/wave_nml'),
+                      ('/obs/velprofile/vel_prof_method', '/obs/velprofile'),
+                      ('/obs/eprofile/e_prof_method',     '/obs/eprofile'),
+                      ('/obs/o2_profile/o2_prof_method',  '/obs/o2_profile'),
                       ('/bio/bio_nml',                    '/bio'),
                       ('/bio_npzd/bio_npzd_nml',          '/bio/bio_model/bio_npzd'),
                       ('/bio_iow/bio_iow_nml',            '/bio/bio_model/bio_iow'),
@@ -506,6 +519,38 @@ class Convertor_gotm_4_0_0_to_gotmgui_0_5_0(xmlstore.Convertor):
         xmlstore.Convertor.convert(self,source,target)
 
         target.setProperty(['meanflow','z0s'],target.getProperty(['meanflow','z0s_min']))
+
+        target.setProperty(['meanflow','z0s'],target.getProperty(['meanflow','z0s_min']))
+        
+        target.setProperty(['obs','sprofile','s_const'],target.getProperty(['obs','sprofile','s_1']))
+        target.setProperty(['obs','sprofile','s_surf'], target.getProperty(['obs','sprofile','s_1']))
+        SRelax = 0
+        relaxbott = source.getProperty(['obs','sprofile','SRelaxTauB'])<1e+15 and source.getProperty(['obs','sprofile','SRelaxBott'])>0
+        relaxsurf = source.getProperty(['obs','sprofile','SRelaxTauS'])<1e+15 and source.getProperty(['obs','sprofile','SRelaxSurf'])>0
+        if relaxsurf and relaxbott:
+            SRelax = 4
+        elif relaxsurf:
+            SRelax = 3
+        elif relaxbott:
+            SRelax = 2
+        elif source.getProperty(['obs','sprofile','SRelaxTauM'])<1e+15:
+            SRelax = 1
+        target.setProperty(['obs','sprofile','SRelax'],SRelax)
+        
+        target.setProperty(['obs','tprofile','t_const'],target.getProperty(['obs','tprofile','t_1']))
+        target.setProperty(['obs','tprofile','t_surf'], target.getProperty(['obs','tprofile','t_1']))
+        TRelax = 0
+        relaxbott = source.getProperty(['obs','tprofile','TRelaxTauB'])<1e+15 and source.getProperty(['obs','tprofile','TRelaxBott'])>0
+        relaxsurf = source.getProperty(['obs','tprofile','TRelaxTauS'])<1e+15 and source.getProperty(['obs','tprofile','TRelaxSurf'])>0
+        if relaxsurf and relaxbott:
+            TRelax = 4
+        elif relaxsurf:
+            TRelax = 3
+        elif relaxbott:
+            TRelax = 2
+        elif source.getProperty(['obs','tprofile','TRelaxTauM'])<1e+15:
+            TRelax = 1
+        target.setProperty(['obs','tprofile','TRelax'],TRelax)
 
         dt = target.getProperty(['timeintegration','dt'])
         target.setProperty(['output','dtsave'],dt*source.getProperty(['gotmrun','output','nsave']))
@@ -526,6 +571,18 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_0_0(xmlstore.Convertor):
 
         if not source.getProperty(['meanflow','charnock']):
             target.setProperty(['gotmmean','meanflow','z0s_min'],source.getProperty(['meanflow','z0s']))
+
+        s_analyt_method = source.getProperty(['obs','sprofile','s_analyt_method'])
+        if s_analyt_method==1:
+            target.setProperty(['obs','sprofile','s_1'],source.getProperty(['obs','sprofile','s_const']))
+        elif s_analyt_method==3:
+            target.setProperty(['obs','sprofile','s_1'],source.getProperty(['obs','sprofile','s_surf']))
+
+        t_analyt_method = source.getProperty(['obs','tprofile','t_analyt_method'])
+        if t_analyt_method==1:
+            target.setProperty(['obs','tprofile','t_1'],source.getProperty(['obs','tprofile','t_const']))
+        elif t_analyt_method==3:
+            target.setProperty(['obs','tprofile','t_1'],source.getProperty(['obs','tprofile','t_surf']))
 
         dt = source.getProperty(['timeintegration','dt'])
         target.setProperty(['gotmrun','output','nsave'],int(source.getProperty(['output','dtsave'])/dt))

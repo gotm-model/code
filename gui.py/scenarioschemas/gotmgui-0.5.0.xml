@@ -178,7 +178,7 @@
 			<options>
 				<option value="0" label="none"/>
 				<option value="1" label="constant values prescribed"/>
-				<option value="2" label="custom, time-varying"/>
+				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
 		<element id="const_swr"  type="float" label="constant incoming short wave radiation" unit="W/m^2" minimum="0" maximum="1000">
@@ -211,7 +211,7 @@
 			<options>
 				<option value="0" label="none"/>
 				<option value="1" label="constant values prescribed"/>
-				<option value="2" label="custom, time-varying"/>
+				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
 		<element id="const_tx"  type="float" label="x-component of surface momentum flux" unit="N/m^2" minimum="-1000" maximum="1000">
@@ -243,7 +243,7 @@
 			<options>
 				<option value="0" label="none"/>
 				<option value="1" label="constant value prescribed"/>
-				<option value="2" label="custom, time-varying"/>
+				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
 		<element id="const_p_e" type="float" label="constant fresh water flux" description="Constant value for precipitation minus evaporation (positive if precipitation exceeds evaporation)." unit="m/s" minimum="-0.01" maximum="0.01">
@@ -258,11 +258,11 @@
 			</fileinfo>
 		</element>
 
-		<element id="sst_method" type="select" label="type of sea surface temperature (SST) observation">
+		<element id="sst_method" type="select" label="sea surface temperature (SST) observations">
 			<condition type="eq" variable="./calc_fluxes" value="False"/>
 			<options>
 				<option value="0" label="none"/>
-				<option value="2" label="custom, time-varying"/>
+				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
 		<element id="sst_file" type="file" label="custom sea surface temperatures">
@@ -277,14 +277,14 @@
 			</fileinfo>
 		</element>
 
-		<element id="sss_method" type="select" label="type of sea surface salinity (SSS) observation">
+		<element id="sss_method" type="select" label="sea surface salinity (SSS) observations">
 			<condition type="eq" variable="./calc_fluxes" value="False"/>
 			<options>
 				<option value="0" label="none"/>
-				<option value="2" label="custom, time-varying"/>
+				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
-		<element id="sss_file" type="file" label="custom sea surface salinity">
+		<element id="sss_file" type="file" label="custom sea surface salinities">
 			<condition type="and">
 				<condition type="eq" variable="./calc_fluxes" value="False"/>
 				<condition type="eq" variable="./sss_method" value="2"/>
@@ -303,7 +303,7 @@
 		<element id="turb_method" type="select" label="type of turbulence closure">
 			<options>
 				<option value="0"  label="convective adjustment"/>
-				<option value="1"  label="analytical eddy viscosity and diffusivity profiles, not coded yet"/>
+				<option value="1"  label="analytical eddy viscosity and diffusivity profiles, not coded yet" disabled="True" />
 				<option value="2"  label="turbulence model calculating TKE and length scale"/>
 				<option value="3"  label="second-order model"/>
 				<option value="99" label="KPP model"/>
@@ -382,14 +382,14 @@
 			</element>
 			<element id="ubc_type" type="select" label="type of upper boundary layer">
 				<options>
-					<option value="0" label="viscous sublayer (not yet implemented)"/>
+					<option value="0" label="viscous sublayer (not yet implemented)" disabled="True" />
 					<option value="1" label="logarithmic law of the wall"/>
 					<option value="2" label="tke-injection (breaking waves)"/>
 				</options>
 			</element>
 			<element id="lbc_type" type="select" label="type of lower boundary layer">
 				<options>
-					<option value="0" label="viscous sublayer (not yet impl.)"/>
+					<option value="0" label="viscous sublayer (not yet impl.)" disabled="True" />
 					<option value="1" label="logarithmic law of the wall"/>
 				</options>
 			</element>
@@ -616,16 +616,14 @@
 
 	<element id="obs" label="observations">
 	
-		<element id="sprofile" label="salinity profiles" description="observed or prescribed salinity profiles">
-			<element id="s_prof_method" type="select" label="type of salinity profiles">
-				<options>
-					<option value="0" label="none: salinity equation is not solved"/>
-					<option value="1" label="analytically prescribed initial profile"/>
-					<option value="2" label="custom observed profiles"/>
-				</options>
-			</element>
+		<element id="sprofile" type="select" label="salinity profiles" description="observed or prescribed salinity profiles">
+			<options>
+				<option value="0" label="none: salinity equation is not solved"/>
+				<option value="1" label="analytically prescribed initial profile"/>
+				<option value="2" label="custom observed profiles"/>
+			</options>
 			<element id="s_analyt_method" type="select" label="method to create analytically prescribed inital profile">
-				<condition type="eq" variable="./s_prof_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 				<options>
 					<option value="1" label="constant salinity across column"/>
 					<option value="2" label="two-layer stratification"/>
@@ -634,72 +632,101 @@
 			</element>
 			<element id="z_s1" type="float" label="upper layer thickness" unit="m">
 				<condition type="and">
-					<condition type="eq" variable="./s_prof_method" value="1"/>
+					<condition type="eq" variable="." value="1"/>
 					<condition type="eq" variable="./s_analyt_method" value="2"/>
 				</condition>
 			</element>
-			<element id="s_1" type="float" label="constant salinity if s_analyt_method=1, upper layer salinity if s_analyt_method=2, surface salinity if s_analyt_method=3" unit="psu">
-				<condition type="eq" variable="./s_prof_method" value="1"/>
+			<element id="s_const" type="float" label="constant salinity" unit="psu">
+				<condition type="and">
+					<condition type="eq" variable="." value="1"/>
+					<condition type="eq" variable="./s_analyt_method" value="1"/>
+				</condition>
+			</element>
+			<element id="s_1" type="float" label="upper layer salinity" unit="psu">
+				<condition type="and">
+					<condition type="eq" variable="." value="1"/>
+					<condition type="eq" variable="./s_analyt_method" value="2"/>
+				</condition>
+			</element>
+			<element id="s_surf" type="float" label="surface salinity" unit="psu">
+				<condition type="and">
+					<condition type="eq" variable="." value="1"/>
+					<condition type="eq" variable="./s_analyt_method" value="3"/>
+				</condition>
 			</element>
 			<element id="z_s2" type="float" label="lower layer thickness" unit="m">
 				<condition type="and">
-					<condition type="eq" variable="./s_prof_method" value="1"/>
+					<condition type="eq" variable="." value="1"/>
 					<condition type="eq" variable="./s_analyt_method" value="2"/>
 				</condition>
 			</element>
 			<element id="s_2" type="float" label="lower layer salinity" unit="psu">
 				<condition type="and">
-					<condition type="eq" variable="./s_prof_method" value="1"/>
+					<condition type="eq" variable="." value="1"/>
 					<condition type="eq" variable="./s_analyt_method" value="2"/>
 				</condition>
 			</element>
 			<element id="s_obs_NN" type="float" label="constant N^2">
 				<condition type="and">
-					<condition type="eq" variable="./s_prof_method" value="1"/>
+					<condition type="eq" variable="." value="1"/>
 					<condition type="eq" variable="./s_analyt_method" value="3"/>
 				</condition>
 			</element>
 			<element id="s_prof_file" type="file" label="custom salinity profiles">
-				<condition type="eq" variable="./s_prof_method" value="2"/>
+				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
 						<filevariable label="salinity" unit="psu"/>
 					</filevariables>
 				</fileinfo>
 			</element>
+			<element id="SRelax" type="select" label="relaxation towards observations">
+				<condition type="ne" variable="." value="0"/>
+				<options>
+					<option label="none" value="0"/>
+					<option label="whole column" value="1"/>
+					<option label="bottom layer and bulk"  value="2"/>
+					<option label="surface layer and bulk" value="3"/>
+					<option label="bottom layer, surface layer and bulk" value="4"/>
+				</options>
+			</element>
 			<element id="SRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
-				<condition type="ne" variable="./s_prof_method" value="0"/>
+				<condition type="ne" variable="./SRelax" value="0"/>
 			</element>
 			<element id="SRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
-				<condition type="and">
-					<condition type="ne" variable="./s_prof_method" value="0"/>
-					<condition type="ne" variable="./SRelaxBott"    value="0"/>
+				<condition type="or">
+					<condition type="eq" variable="./SRelax" value="2"/>
+					<condition type="eq" variable="./SRelax" value="4"/>
 				</condition>
 			</element>
 			<element id="SRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
-				<condition type="and">
-					<condition type="ne" variable="./s_prof_method" value="0"/>
-					<condition type="ne" variable="./SRelaxSurf"    value="0"/>
+				<condition type="or">
+					<condition type="eq" variable="./SRelax" value="3"/>
+					<condition type="eq" variable="./SRelax" value="4"/>
 				</condition>
 			</element>
-			<element id="SRelaxBott" type="float" label="height of bottom relaxation layer"  description="Height of bottom relaxation layer (set to 0 if not used)." unit="m">
-				<condition type="ne" variable="./s_prof_method" value="0"/>
+			<element id="SRelaxBott" type="float" label="height of bottom relaxation layer"  description="Height of bottom relaxation layer." unit="m">
+				<condition type="or">
+					<condition type="eq" variable="./SRelax" value="2"/>
+					<condition type="eq" variable="./SRelax" value="4"/>
+				</condition>
 			</element>
-			<element id="SRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer (set to 0. if not used)" unit="m">
-				<condition type="ne" variable="./s_prof_method" value="0"/>
+			<element id="SRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
+				<condition type="or">
+					<condition type="eq" variable="./SRelax" value="3"/>
+					<condition type="eq" variable="./SRelax" value="4"/>
+				</condition>
 			</element>
 		</element>
 
-		<element id="tprofile" label="temperature profiles" description="observed or prescribed (potential) temperature profiles">
-			<element id="t_prof_method" type="select" label="type of temperature profiles">
-				<options>
-					<option value="0" label="none: temperature equation is not solved"/>
-					<option value="1" label="analytically prescribed initial profile"/>
-					<option value="2" label="custom observed profiles"/>
-				</options>
-			</element>
+		<element id="tprofile" type="select" label="temperature profiles" description="observed or prescribed (potential) temperature profiles">
+			<options>
+				<option value="0" label="none: temperature equation is not solved"/>
+				<option value="1" label="analytically prescribed initial profile"/>
+				<option value="2" label="custom observed profiles"/>
+			</options>
 			<element id="t_analyt_method" type="select" label="method to create analytically prescribed inital profile">
-				<condition type="eq" variable="./t_prof_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 				<options>
 					<option value="1" label="constant temperature across column"/>
 					<option value="2" label="two-layer stratification"/>
@@ -708,70 +735,99 @@
 			</element>
 			<element id="z_t1" type="float" label="upper layer thickness" unit="m">
 				<condition type="and">
-					<condition type="eq" variable="./t_prof_method" value="1"/>
+					<condition type="eq" variable="." value="1"/>
 					<condition type="eq" variable="./t_analyt_method" value="2"/>
 				</condition>
 			</element>
-			<element id="t_1" type="float" label="constant temperature if t_analyt_method=1, upper layer temperature if t_analyt_method=2, surface temperature if t_analyt_method=3" unit="ºC">
-				<condition type="eq" variable="./t_prof_method" value="1"/>
+			<element id="t_const" type="float" label="constant temperature" unit="ºC">
+				<condition type="and">
+					<condition type="eq" variable="." value="1"/>
+					<condition type="eq" variable="./t_analyt_method" value="1"/>
+				</condition>
+			</element>
+			<element id="t_1" type="float" label="upper layer temperature" unit="ºC">
+				<condition type="and">
+					<condition type="eq" variable="." value="1"/>
+					<condition type="eq" variable="./t_analyt_method" value="2"/>
+				</condition>
+			</element>
+			<element id="t_surf" type="float" label="surface temperature" unit="ºC">
+				<condition type="and">
+					<condition type="eq" variable="." value="1"/>
+					<condition type="eq" variable="./t_analyt_method" value="3"/>
+				</condition>
 			</element>
 			<element id="z_t2" type="float" label="lower layer thickness" unit="m">
 				<condition type="and">
-					<condition type="eq" variable="./t_prof_method" value="1"/>
+					<condition type="eq" variable="." value="1"/>
 					<condition type="eq" variable="./t_analyt_method" value="2"/>
 				</condition>
 			</element>
 			<element id="t_2" type="float" label="lower layer temperature" unit="ºC">
 				<condition type="and">
-					<condition type="eq" variable="./t_prof_method" value="1"/>
+					<condition type="eq" variable="." value="1"/>
 					<condition type="eq" variable="./t_analyt_method" value="2"/>
 				</condition>
 			</element>
 			<element id="t_obs_NN" type="float" label="constant N^2">
 				<condition type="and">
-					<condition type="eq" variable="./t_prof_method" value="1"/>
+					<condition type="eq" variable="." value="1"/>
 					<condition type="eq" variable="./t_analyt_method" value="3"/>
 				</condition>
 			</element>
 			<element id="t_prof_file" type="file" label="custom temperature profiles">
-				<condition type="eq" variable="./t_prof_method" value="2"/>
+				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
 						<filevariable label="temperature" unit="ºC"/>
 					</filevariables>
 				</fileinfo>
 			</element>
+			<element id="TRelax" type="select" label="relaxation towards observations">
+				<condition type="ne" variable="." value="0"/>
+				<options>
+					<option label="none" value="0"/>
+					<option label="whole column" value="1"/>
+					<option label="bottom layer and bulk"  value="2"/>
+					<option label="surface layer and bulk" value="3"/>
+					<option label="bottom layer, surface layer and bulk" value="4"/>
+				</options>
+			</element>
 			<element id="TRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
-				<condition type="ne" variable="./t_prof_method" value="0"/>
+				<condition type="ne" variable="./TRelax" value="0"/>
 			</element>
 			<element id="TRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
-				<condition type="and">
-					<condition type="ne" variable="./t_prof_method" value="0"/>
-					<condition type="ne" variable="./TRelaxBott" value="0"/>
+				<condition type="or">
+					<condition type="eq" variable="./TRelax" value="2"/>
+					<condition type="eq" variable="./TRelax" value="4"/>
 				</condition>
 			</element>
 			<element id="TRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
-				<condition type="and">
-					<condition type="ne" variable="./t_prof_method" value="0"/>
-					<condition type="ne" variable="./TRelaxSurf" value="0"/>
+				<condition type="or">
+					<condition type="eq" variable="./TRelax" value="3"/>
+					<condition type="eq" variable="./TRelax" value="4"/>
 				</condition>
 			</element>
-			<element id="TRelaxBott" type="float" label="height of bottom relaxation layer" description="height of bottom relaxation layer (set to 0. if not used)" unit="m">
-				<condition type="ne" variable="./t_prof_method" value="0"/>
+			<element id="TRelaxBott" type="float" label="height of bottom relaxation layer" description="Height of bottom relaxation layer." unit="m">
+				<condition type="or">
+					<condition type="eq" variable="./TRelax" value="2"/>
+					<condition type="eq" variable="./TRelax" value="4"/>
+				</condition>
 			</element>
-			<element id="TRelaxSurf" type="float" label="height of surface relaxation layer" description="height of surface relaxation layer (set to 0. if not used)" unit="m">
-				<condition type="ne" variable="./t_prof_method" value="0"/>
+			<element id="TRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
+				<condition type="or">
+					<condition type="eq" variable="./TRelax" value="3"/>
+					<condition type="eq" variable="./TRelax" value="4"/>
+				</condition>
 			</element>
 		</element>
 		
-		<element id="ext_pressure" label="external pressure gradients">
-			<element id="ext_press_method" type="select" label="type of external pressure gradient">
-				<options>
-					<option value="0" label="constant" />
-					<option value="1" label="calculated from tidal constituents" />
-					<option value="2" label="custom observed gradients"/>
-				</options>
-			</element>
+		<element id="ext_pressure" type="select" label="external pressure gradients">
+			<options>
+				<option value="0" label="constant" />
+				<option value="1" label="calculated from tidal constituents" />
+				<option value="2" label="custom observed gradients"/>
+			</options>
 			<element id="ext_press_mode" type="select" label="measure of external pressure gradient">
 				<options>
 					<option value="0" label="surface elevation gradient" />
@@ -780,7 +836,7 @@
 				</options>
 			</element>
 			<element id="ext_press_file" type="file" label="filename of input file">
-				<condition type="eq" variable="./ext_press_method" value="2"/>
+				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
 						<filevariable label="external pressure gradient data for x-direction"/>
@@ -789,56 +845,54 @@
 				</fileinfo>
 			</element>
 			<element id="PressConstU" type="float" label="constant pressure gradient for x-direction">
-				<condition type="eq" variable="./ext_press_method" value="0"/>
+				<condition type="eq" variable="." value="0"/>
 			</element>
 			<element id="PressConstV" type="float" label="constant pressure gradient for y-direction">
-				<condition type="eq" variable="./ext_press_method" value="0"/>
+				<condition type="eq" variable="." value="0"/>
 			</element>
 			<element id="PressHeight" type="float" label="height above bottom for current meter observations" unit="m">
 				<condition type="eq" variable="./ext_press_mode"   value="1"/>
 			</element>
 			<element id="PeriodM" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
-				<condition type="eq" variable="./ext_press_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="AmpMu" type="float" label="u amplitude of 1st harmonic">
-				<condition type="eq" variable="./ext_press_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="AmpMv" type="float" label="v amplitude of 1st harmonic">
-				<condition type="eq" variable="./ext_press_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="PhaseMu" type="float" label="u phase of 1st harmonic" unit="s">
-				<condition type="eq" variable="./ext_press_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="PhaseMv" type="float" label="v phase of 1st harmonic" unit="s">
-				<condition type="eq" variable="./ext_press_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="PeriodS" type="float" label="period of 2nd harmonic (eg. S2-tide)" unit="s">
-				<condition type="eq" variable="./ext_press_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="AmpSu" type="float" label="u amplitude of 2nd harmonic">
-				<condition type="eq" variable="./ext_press_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="AmpSv" type="float" label="v amplitude of 2nd harmonic">
-				<condition type="eq" variable="./ext_press_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="PhaseSu" type="float" label="u phase of 2nd harmonic" unit="s">
-				<condition type="eq" variable="./ext_press_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="PhaseSv" type="float" label="v phase of 2nd harmonic" unit="s">
-				<condition type="eq" variable="./ext_press_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 		</element>
 		
-		<element id="int_pressure" label="internal pressure gradients">
-			<element id="int_press_method" type="select" label="type of internal pressure gradient">
-				<options>
-					<option value="0" label="no internal pressure gradient" />
-					<option value="1" label="vertically and temporally constant internal pressure gradient computed from fixed horizontal salinity and temperature gradients" />
-					<option value="2" label="vertically and temporally variable int. pressure gradient computed from data in file &quot;int_press_file&quot;"/>
-				</options>
-			</element>
-			<element id="int_press_file" type="file" label="file with profiles of dsdx,dsdy,dtdx,dtdy">
-				<condition type="eq" variable="./int_press_method" value="2"/>
+		<element id="int_pressure" type="select" label="internal pressure gradients">
+			<options>
+				<option value="0" label="none" />
+				<option value="1" label="constant" description="temporally constant internal pressure gradient computed from fixed horizontal salinity and temperature gradients" />
+				<option value="2" label="custom, temporally variable" description="custom, temporally variable internal pressure gradient computed from observations"/>
+			</options>
+			<element id="int_press_file" type="file" label="custom horizontal gradients of salinity and temperature">
+				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
 						<filevariable label="salinity gradient in x-direction" unit="psu/m"/>
@@ -848,41 +902,39 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="const_dsdx" type="float" label="x-gradient of S" unit="psu/m">
-				<condition type="eq" variable="./int_press_method" value="1"/>
+			<element id="const_dsdx" type="float" label="salinity gradient in x-direction" unit="psu/m">
+				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="const_dsdy" type="float" label="y-gradient of S" unit="psu/m">
-				<condition type="eq" variable="./int_press_method" value="1"/>
+			<element id="const_dsdy" type="float" label="salinity gradient in y-direction" unit="psu/m">
+				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="const_dtdx" type="float" label="x-gradient of T" unit="K/m">
-				<condition type="eq" variable="./int_press_method" value="1"/>
+			<element id="const_dtdx" type="float" label="temperature gradient in x-direction" unit="K/m">
+				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="const_dtdy" type="float" label="y-gradient of T" unit="K/m">
-				<condition type="eq" variable="./int_press_method" value="1"/>
+			<element id="const_dtdy" type="float" label="temperature gradient in y-direction" unit="K/m">
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="s_adv" type="bool" label="advection of salinity">
-				<condition type="ne" variable="./int_press_method" value="0"/>
+				<condition type="ne" variable="." value="0"/>
 			</element>
 			<element id="t_adv" type="bool" label="advection of temperature">
-				<condition type="ne" variable="./int_press_method" value="0"/>
+				<condition type="ne" variable="." value="0"/>
 			</element>
 		</element>
 		
-		<element id="extinct" label="light extinction">
-			<element id="extinct_method" type="select" label="which method used to compute the extinction coefficient">
-				<options>
-					<option value="0" label="from file" />
-					<option value="1" label="Jerlov type I" />
-					<option value="2" label="Jerlov type 1 (upper 50 m)"/>
-					<option value="3" label="Jerlov type IA"/>
-					<option value="4" label="Jerlov type IB"/>
-					<option value="5" label="Jerlov type II"/>
-					<option value="6" label="Jerlov type III"/>
-					<option value="7" label="Adolf Stips, Lago Maggiore"/>
-				</options>
-			</element>
-			<element id="extinct_file" type="file" label="name of file">
-				<condition type="eq" variable="./extinct_method" value="0"/>
+		<element id="extinct" type="select" label="light extinction">
+			<options>
+				<option value="0" label="custom, temporally variable" />
+				<option value="1" label="Jerlov type I" />
+				<option value="2" label="Jerlov type 1 (upper 50 m)"/>
+				<option value="3" label="Jerlov type IA"/>
+				<option value="4" label="Jerlov type IB"/>
+				<option value="5" label="Jerlov type II"/>
+				<option value="6" label="Jerlov type III"/>
+				<option value="7" label="Adolf Stips, Lago Maggiore"/>
+			</options>
+			<element id="extinct_file" type="file" label="custom light extinction coefficients">
+				<condition type="eq" variable="." value="0"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
 						<filevariable label="A"/>
@@ -893,22 +945,20 @@
 			</element>
 		</element>
 
-		<element id="w_advspec" label="vertical advection">
-			<element id="w_adv_method" type="select" label="type of vertical advection velocity">
-				<options>
-					<option value="0" label="zero vertical advection velocity" />
-					<option value="1" label="temporally constant vertical advection velocity profile" />
-					<option value="2" label="custom observed velocity"/>
-				</options>
-			</element>
+		<element id="w_advspec" type="select" label="vertical advection">
+			<options>
+				<option value="0" label="none" />
+				<option value="1" label="temporally constant vertical advection velocity profile" />
+				<option value="2" label="custom observed velocity"/>
+			</options>
 			<element id="w_adv_height0" type="float" label="constant height of maximum absolute value of vertical advection velocity" unit="m">
-				<condition type="eq" variable="./w_adv_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="w_adv0" type="float" label="constant vertical advection velocity" unit="m/s">
-				<condition type="eq" variable="./w_adv_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="w_adv_file" type="file" label="filename for file with &quot;w_height&quot; and &quot;w_adv&quot;">
-				<condition type="eq" variable="./w_adv_method" value="2"/>
+				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
 						<filevariable label="height of maximum absolute value of vertical advection velocity" unit="m"/>
@@ -917,7 +967,7 @@
 				</fileinfo>
 			</element>
 			<element id="w_adv_discr" type="select" label="method to discretize the vertical advection term">
-				<condition type="ne" variable="./w_adv_method" value="0"/>
+				<condition type="ne" variable="." value="0"/>
 				<options>
 					<option value="1" label="first-order upstream"/>
 					<option value="2" label="second-order polynomial (P2)"/>
@@ -929,16 +979,14 @@
 			</element>
 		</element>
 
-		<element id="zetaspec" label="sea surface elevations">
-			<element id="zeta_method" type="select" label="type of sea surface elevation">
-				<options>
-					<option value="0" label="constant" />
-					<option value="1" label="calculate from tidal constituents" />
-					<option value="2" label="custom observed values"/>
-				</options>
-			</element>
-			<element id="zeta_file" type="file" label="filename for file with sea surface elevations">
-				<condition type="eq" variable="./zeta_method" value="2"/>
+		<element id="zetaspec" type="select" label="sea surface elevation">
+			<options>
+				<option value="0" label="constant" />
+				<option value="1" label="calculate from tidal constituents" />
+				<option value="2" label="custom, temporally variable"/>
+			</options>
+			<element id="zeta_file" type="file" label="custom sea surface elevations">
+				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
 						<filevariable label="sea surface elevation" unit="m"/>
@@ -946,38 +994,36 @@
 				</fileinfo>
 			</element>
 			<element id="zeta_0" type="float" label="constant value for sea surface elevation" unit="m">
-				<condition type="eq" variable="./zeta_method" value="0"/>
+				<condition type="eq" variable="." value="0"/>
 			</element>
 			<element id="period_1" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
-				<condition type="eq" variable="./zeta_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="amp_1" type="float" label="amplitude of 1st harmonic" unit="m">
-				<condition type="eq" variable="./zeta_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="phase_1" type="float" label="phase of 1st harmonic" unit="s">
-				<condition type="eq" variable="./zeta_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="period_2" type="float" label="period of 2nd harmonic (eg. S2-tide)" unit="s">
-				<condition type="eq" variable="./zeta_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="amp_2" type="float" label="amplitude of 2nd harmonic" unit="m">
-				<condition type="eq" variable="./zeta_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element id="phase_2" type="float" label="phase of 2nd harmonic" unit="s">
-				<condition type="eq" variable="./zeta_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
 		</element>
 
-		<element id="wave_nml" label="wind waves" description="Wind induced waves can be specified. Used in e.g. the suspended matter module to account for wave-current interaction.">
-			<element id="wave_method" type="select" label="method to prescribe the wind waves">
-				<options>
-					<option value="0" label="nothing is done - all variables equal 0" />
-					<option value="1" label="constant values" />
-					<option value="2" label="time varying variables read from file"/>
-				</options>
-			</element>
-			<element id="wave_file" type="file" label="filename for file wind waves">
-				<condition type="eq" variable="./wave_method" value="2"/>
+		<element id="wave_nml" type="select" label="wind waves" description="Wind-induced waves can be specified. Used in e.g. the suspended matter module to account for wave-current interaction.">
+			<options>
+				<option value="0" label="none" />
+				<option value="1" label="constant" />
+				<option value="2" label="custom, temporally variable"/>
+			</options>
+			<element id="wave_file" type="file" label="custom wind waves">
+				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
 						<filevariable label="significant wave-height"/>
@@ -986,27 +1032,25 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="Hs" type="float" label="constant value for significant wave-height">
-				<condition type="eq" variable="./wave_method" value="1"/>
+			<element id="Hs" type="float" label="constant significant wave-height">
+				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="Tz" type="float" label="constant value for mean zero-crossing period">
-				<condition type="eq" variable="./wave_method" value="1"/>
+			<element id="Tz" type="float" label="constant mean zero-crossing period">
+				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="phiw" type="float" label="constant value for mean direction">
-				<condition type="eq" variable="./wave_method" value="1"/>
+			<element id="phiw" type="float" label="constant mean direction">
+				<condition type="eq" variable="." value="1"/>
 			</element>
 		</element>
 
-		<element id="velprofile" label="velocity profiles" description="observed or prescribed velocity profiles">
-			<element id="vel_prof_method" type="select" label="type of velocity profiles">
-				<options>
-					<option value="0" label="zero initial velocities" />
-					<option value="1" label="(not implemented)" />
-					<option value="2" label="read profiles at different dates from &quot;vel_prof_file&quot; and interpolate to GOTM timestep"/>
-				</options>
-			</element>
+		<element id="velprofile" type="select" label="velocity profiles" description="observed or prescribed velocity profiles">
+			<options>
+				<option value="0" label="zero initial velocities" />
+				<option value="1" label="(not implemented)" disabled="True" />
+				<option value="2" label="custom, temporally variable"/>
+			</options>
 			<element id="vel_prof_file" type="file" label="custom velocity profiles">
-				<condition type="eq" variable="./vel_prof_method" value="2"/>
+				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
 						<filevariable label="velocity in x-direction" unit="m/s"/>
@@ -1018,19 +1062,17 @@
 			<element id="vel_relax_ramp" type="float" label="duration of initial relaxation" description="duration of initial relaxation (set to 1.e15 for constant relaxation)" unit="s"/>
 		</element>
 
-		<element id="eprofile" label="turbulent dissipation rate profiles">
-			<element id="e_prof_method" type="select" label="method to create initial or observed dissipation profiles">
-				<options>
-					<option value="0" label="no observed dissipation rate profiles" />
-					<option value="1" label="(not implemented)" />
-					<option value="2" label="read profiles at different dates from &quot;e_prof_file&quot; and interpolate to GOTM timestep"/>
-				</options>
-			</element>
+		<element id="eprofile" type="select" label="turbulent dissipation rate profiles">
+			<options>
+				<option value="0" label="zero initial dissipation" />
+				<option value="1" label="(not implemented)" disabled="True" />
+				<option value="2" label="custom, temporally variable"/>
+			</options>
 			<element id="e_obs_const"  type="float" label="a constant filling value" unit="W/kg">
-				<condition type="eq" variable="./e_prof_method" value="1"/>
+				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="e_prof_file" type="file" label="filename of file with dissipation rate profiles">
-				<condition type="eq" variable="./e_prof_method" value="2"/>
+			<element id="e_prof_file" type="file" label="custom dissipation rate profiles">
+				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
 						<filevariable label="turbulent dissipation rate" unit="W/kg"/>
@@ -1039,23 +1081,21 @@
 			</element>
 		</element>
 
-		<element id="bprofile" label="prescribed initial profile and initial surface boundary conditions for the dynamic buoyancy equation">
+		<element id="bprofile" label="initial buoyancy profile and surface boundary condition" description="prescribed initial profile and initial surface boundary conditions for the dynamic buoyancy equation">
 			<condition type="eq" variable="/meanflow/buoy_method" value="2"/>
-			<element id="b_obs_surf" type="float" label="prescribed initial buoyancy at the surface"/>
-			<element id="b_obs_NN"   type="float" label="prescribed initial value of N^2 (=buoyancy gradient)"/>
-			<element id="b_obs_sbf"  type="float" label="prescribed constant surface buoyancy flux"/>
+			<element id="b_obs_surf" type="float" label="initial buoyancy at the surface"/>
+			<element id="b_obs_NN"   type="float" label="initial value of N^2 (=buoyancy gradient)"/>
+			<element id="b_obs_sbf"  type="float" label="constant surface buoyancy flux"/>
 		</element>
 		
-		<element id="o2_profile" label="observed oxygen profiles">
-			<element id="o2_prof_method" type="select" label="method to select initial observed oxygen profiles">
-				<options>
-					<option value="0" label="no observed oxygen profiles" />
-					<option value="1" label="(not used)" />
-					<option value="2" label="read profiles at different dates from &quot;o2_prof_file&quot; and interpolate to GOTM timestep"/>
-				</options>
-			</element>
-			<element id="o2_units" type="select" label="which unit are the observations reported in">
-				<condition type="ne" variable="./o2_prof_method" value="0"/>
+		<element id="o2_profile" type="select" label="oxygen profiles">
+			<options>
+				<option value="0" label="none" />
+				<option value="1" label="(not used)" disabled="True" />
+				<option value="2" label="custom, temporally variable"/>
+			</options>
+			<element id="o2_units" type="select" label="oxygen unit">
+				<condition type="ne" variable="." value="0"/>
 				<options>
 					<option value="0" label="saturation (%)" />
 					<option value="1" label="mmol/m3 ???" />
@@ -1063,7 +1103,7 @@
 				</options>
 			</element>
 			<element id="o2_prof_file" type="file" label="filename of file with oxygen profiles">
-				<condition type="eq" variable="./o2_prof_method" value="2"/>
+				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
 						<filevariable label="oxygen"/>
@@ -1258,7 +1298,7 @@
 			<condition type="eq" variable="./bio_calc" value="True"/>
 			<options>
 				<option value="1" label="first-order upstream"/>
-				<option value="2" label="not coded yet"/>
+				<option value="2" label="not coded yet" disabled="True"/>
 				<option value="3" label="third-order polynomial"/>
 				<option value="4" label="TVD with Superbee limiter"/>
 				<option value="5" label="TVD with MUSCL limiter"/>

@@ -24,7 +24,9 @@
 					<element id="Source"         type="string" label="data source" readonly="True"/>
 					<element id="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
 					<element id="Label"          type="string" label="label"/>
-					<element id="LogScale" type="bool" label="log-scale"/>
+					<element id="Minimum"        type="float"  label="minimum"/>
+					<element id="Maximum"        type="float"  label="maximum"/>
+					<element id="LogScale"       type="bool"   label="log-scale"/>
 					<element id="PlotType2D" type="select" label="plot type">
 						<condition type="eq" variable="./DimensionCount" value="1"/>
 						<options>

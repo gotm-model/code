@@ -50,7 +50,17 @@ class Namelist:
         self.data = data
         self.filepath = filepath
 
+    def __iter__(self):
+        return self
+
+    def next(self):
+        ret = self.getNextVariable()
+        if ret==None: raise StopIteration
+        return ret
+
     def getNextVariable(self):
+        if self.isEmpty(): return None
+        
         match = self.varassign_re.match(self.data);
         if match==None:
             raise NamelistParseException('Cannot find a variable assignment (variable_name = ...). Current namelist data: "%s"' % (self.data,),self.filepath,self.name,None)

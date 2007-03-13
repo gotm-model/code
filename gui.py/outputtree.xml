@@ -4,7 +4,7 @@
 		<element id="tke"/>
 		<element id="eps"/>
 		<element id="eps_obs">
-			<condition type="eq" variable="/obs/eprofile/e_prof_method" value="2" source="scenario"/>
+			<condition type="eq" variable="/obs/eprofile" value="2" source="scenario"/>
 		</element>
 		<element id="l"/>
 		<element id="num"/>
@@ -16,8 +16,8 @@
 			<element id="NN"/>
 			<element id="NN_obs">
 				<condition type="or" source="scenario">
-					<condition type="ne" variable="/obs/sprofile/s_prof_method" value="0"/>
-					<condition type="ne" variable="/obs/tprofile/t_prof_method" value="0"/>
+					<condition type="ne" variable="/obs/sprofile" value="0"/>
+					<condition type="ne" variable="/obs/tprofile" value="0"/>
 				</condition>
 			</element>
 			<element id="kb"/>
@@ -31,7 +31,7 @@
 			<element id="P"/>
 			<element id="SS"/>
 			<element id="SS_obs">
-				<condition type="ne" variable="/obs/ext_pressure/ext_press_method" value="0" source="scenario"/>
+				<condition type="ne" variable="/obs/ext_pressure" value="0" source="scenario"/>
 			</element>
 			<element id="uu"/>
 			<element id="vv"/>
@@ -41,24 +41,24 @@
 	<element id="tracers" label="tracers">
 		<element id="temp"/>
 		<element id="temp_obs">
-			<condition type="ne" variable="/obs/tprofile/t_prof_method" value="0" source="scenario"/>
+			<condition type="ne" variable="/obs/tprofile" value="0" source="scenario"/>
 		</element>
 		<element id="salt"/>
 		<element id="salt_obs">
-			<condition type="ne" variable="/obs/sprofile/s_prof_method" value="0" source="scenario"/>
+			<condition type="ne" variable="/obs/sprofile" value="0" source="scenario"/>
 		</element>
 		<element id="o2_obs">
-			<condition type="ne" variable="/obs/o2_profile/o2_prof_method" value="0" source="scenario"/>
+			<condition type="ne" variable="/obs/o2_profile" value="0" source="scenario"/>
 		</element>
 	</element>
 	<element id="velocities" label="velocities">
 		<element id="u"/>
 		<element id="u_obs">
-			<condition type="ne" variable="/obs/ext_pressure/ext_press_method" value="0" source="scenario"/>
+			<condition type="ne" variable="/obs/ext_pressure" value="0" source="scenario"/>
 		</element>
 		<element id="v"/>
 		<element id="v_obs">
-			<condition type="ne" variable="/obs/ext_pressure/ext_press_method" value="0" source="scenario"/>
+			<condition type="ne" variable="/obs/ext_pressure" value="0" source="scenario"/>
 		</element>
 	</element>
 	<element id="boundaries" label="boundaries">

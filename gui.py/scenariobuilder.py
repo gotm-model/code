@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.8 2007-03-02 12:32:47 jorn Exp $
+#$Id: scenariobuilder.py,v 1.9 2007-03-13 08:11:12 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -102,7 +102,7 @@ class ScenarioWidget(QtGui.QWidget):
                 index = self.comboTemplates.currentIndex()
                 defname = unicode(self.comboTemplates.itemData(index).toString())
                 defscenario = scenario.Scenario.getDefault(defname,scenario.guiscenarioversion)
-                xmldom = defscenario.toxmldom()
+                xmldom = defscenario.toXmlDom()
                 scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
                 scen.setStore(xmldom)
             elif checkedid==1:
@@ -148,7 +148,7 @@ class ScenarioWidget(QtGui.QWidget):
             emptycount = len(emptynodes)
             if emptycount>0:
                 QtGui.QMessageBox.information(self,'Scenario is incomplete','In this scenario %i variables do not have a value. These will be set to their default value.' % emptycount,QtGui.QMessageBox.Ok)
-                scen.root.copyFrom(scen.defaultstore.root,replace=False)
+                scen.changed = True
             
         return scen
 

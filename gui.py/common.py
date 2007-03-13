@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.21 2007-03-06 07:51:36 jorn Exp $
+#$Id: common.py,v 1.22 2007-03-13 08:11:12 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.numerix
@@ -116,8 +116,8 @@ def copyNode(sourcenode,newparent,targetdoc=None):
     if sourcenode.nodeType==sourcenode.ELEMENT_NODE:
         cpy = targetdoc.createElement(sourcenode.localName)
         cpy = newparent.appendChild(cpy)
-    elif sourcenode.nodeType==sourcenode.ATTRIBUTE_NODE:
-        newparent.setAttribute(sourcenode.name,sourcenode.value)
+        for key in sourcenode.attributes.keys():
+            cpy.setAttribute(key,sourcenode.getAttribute(key))
     elif sourcenode.nodeType==sourcenode.TEXT_NODE:
         cpy = targetdoc.createTextNode(sourcenode.data)
         cpy = newparent.appendChild(cpy)

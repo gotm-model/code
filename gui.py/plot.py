@@ -21,16 +21,20 @@ class Figure:
         self.figure = figure
         self.canvas = figure.canvas
 
-        # Create empty set of properties (these will combine the 'forced' properties, and the automatically
-        # chosen defaults for properties that were not explicitly set).
+        # Create store for the explicitly set properties
         self.properties = xmlstore.TypedStore('figuretemplate.xml',None)
         self.propertiesinterface = self.properties.getInterface()
-        self.propertiesinterface.addBeforeChangeHandler(self.onBeforeMergedPropertyChange)
+        self.propertiesinterface.notifyOnDefaultChange = False
+        self.propertiesinterface.addChangeHandler(self.onExplicitPropertyChanged)
         
-        # Create store for the explicitly set properties
-        self.forcedproperties = xmlstore.TypedStore('figuretemplate.xml',properties)
-        self.forcedpropertiesinterface = self.forcedproperties.getInterface()
-        self.forcedpropertiesinterface.addChangeHandler(self.onExplicitPropertyChanged)
+        # Create store for property defaults
+        self.defaultproperties = xmlstore.TypedStore('figuretemplate.xml',properties)
+
+        # Set some default properties.
+        self.defaultproperties.setProperty(['TimeAxis',  'Label'],'time')
+        self.defaultproperties.setProperty(['DepthAxis', 'Label'],'depth (m)')
+
+        self.properties.setDefaultStore(self.defaultproperties)
 
         self.sources = {}
         self.defaultsource = None
@@ -38,26 +42,10 @@ class Figure:
         self.dirty = False
         self.haschanged = False
 
-        self.ignorechanges = False
-
     def setUpdating(self,allowupdates):
         if self.updating != allowupdates:
             self.updating = allowupdates
             if allowupdates and self.dirty: self.update()
-
-    def onBeforeMergedPropertyChange(self,node,value):
-        # Check if th user changed it (self.ignorechanges=False), or we are changing it (self.ignorechanges=True).
-        # In the latter case no need to redirect the change: just approve.
-        if self.ignorechanges: return True
-        
-        # The user tried to modify a figure property; redirect this to the store
-        # for explicitly set properties.
-        self.forcedproperties.setProperty(node.location,value)
-
-        # Do not allow the change of the merged property store (the changed of
-        # the explicit-property-store will force a refresh of the merged properties
-        # indirectly).
-        return False
 
     def onExplicitPropertyChanged(self,node):
         self.haschanged = True
@@ -72,25 +60,25 @@ class Figure:
         if self.defaultsource==None: self.defaultsource = name
 
     def clearProperties(self):
-        self.forcedproperties.setStore(None)
+        self.properties.setStore(None)
         self.update()
 
     def setProperties(self,props):
-        self.forcedproperties.setStore(props)
+        self.properties.setStore(props)
         self.update()
 
     def getPropertiesRoot(self):
-        return self.forcedproperties.store.xmlroot
+        return self.properties.store.xmlroot
 
     def getPropertiesCopy(self):
-        return common.copyNode(self.forcedproperties.store.xmlroot,None)
+        return self.properties.getXmlDom()
 
     def clearVariables(self):
-        self.forcedproperties.root.getLocation(['Data']).removeChildren('Series')
+        self.properties.root.getLocation(['Data']).removeChildren('Series')
         self.update()
 
     def addVariable(self,varname,source=None):
-        datanode = self.forcedproperties.root.getLocation(['Data'])
+        datanode = self.properties.root.getLocation(['Data'])
         series = datanode.addChild('Series')
         series.getLocation(['Variable']).setValue(varname)
         if source!=None:
@@ -113,10 +101,10 @@ class Figure:
         axes = self.figure.add_subplot(111)
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
-        tmin = self.forcedproperties.getProperty(['TimeAxis','Minimum'])
-        tmax = self.forcedproperties.getProperty(['TimeAxis','Maximum'])
-        zmin = self.forcedproperties.getProperty(['DepthAxis','Minimum'])
-        zmax = self.forcedproperties.getProperty(['DepthAxis','Maximum'])
+        tmin = self.properties.getProperty(['TimeAxis','Minimum'])
+        tmax = self.properties.getProperty(['TimeAxis','Maximum'])
+        zmin = self.properties.getProperty(['DepthAxis','Minimum'])
+        zmax = self.properties.getProperty(['DepthAxis','Maximum'])
 
         # Variables below will store the effective dimension boundaries
         tmin_eff = None
@@ -127,24 +115,20 @@ class Figure:
         # Link between dimension name (e.g., "time", "z") and axis (e.g., "x", "y")
         dim2axis = {}
 
-        # We will now adjust the plot properties; disable use of property-change notifications,
-        # as those would otherwise call plot.update again, leading to infinite recursion.
-        self.ignorechanges = True
-
         # Shortcuts to the nodes specifying the variables to plot.
-        forceddatanode = self.forcedproperties.root.getLocation(['Data'])
+        forceddatanode = self.properties.root.getLocation(['Data'])
         forcedseries = forceddatanode.getLocationMultiple(['Series'])
 
-        # Shortcut to the node that will hold the variables effectively plotted.
-        datanode = self.properties.root.getLocation(['Data'])
+        # Shortcut to the node that will hold defaults for the plotted variables.
+        defaultdatanode = self.defaultproperties.root.getLocation(['Data'])
 
         # This variable will hold all long names of the plotted variables; will be used to create plot title.
         longnames = []
 
-        for (iseries,forcedseriesnode) in enumerate(forcedseries):
+        for (iseries,seriesnode) in enumerate(forcedseries):
             # Get the name and data source of the variable to plot.
-            varname   = forcedseriesnode.getLocation(['Variable']).getValue()
-            varsource = forcedseriesnode.getLocation(['Source']).getValue()
+            varname   = seriesnode.getLocation(['Variable']).getValue()
+            varsource = seriesnode.getLocation(['Source']).getValue()
             if varsource==None:
                 # No data source specified; take default.
                 assert self.defaultsource!=None, 'No data source set for variable "%s", but no default source available either.' % varname
@@ -155,17 +139,20 @@ class Figure:
             assert var!=None, 'Source "%s" does not contain variable with name "%s".' % (varsource,varname)
 
             # Copy series information
-            newseriesnode = datanode.getNumberedChild('Series',iseries)
-            newseriesnode.getLocation(['Variable']).setValue(varname)
-            if varsource!=None:
-                newseriesnode.getLocation(['Source']).setValue(varsource)
+            defaultseriesnode = defaultdatanode.getNumberedChild('Series',iseries,create=True)
+            defaultseriesnode.getLocation(['Variable']).setValue(varname)
+            defaultseriesnode.getLocation(['Source']).setValue(varsource)
+            defaultseriesnode.getLocation(['PlotType2D']).setValue(0)
+            defaultseriesnode.getLocation(['PlotType3D']).setValue(0)
+            defaultseriesnode.getLocation(['LineWidth']).setValue(0.5)
+            defaultseriesnode.getLocation(['LogScale']).setValue(False)
 
             # Store the variable long name (to be used for building title)
             longnames.append(var.getLongName())
 
             # Get the (number of) independent dimensions of the current variable.
             dims = var.getDimensions()
-            newseriesnode.getLocation(['DimensionCount']).setValue(len(dims))
+            seriesnode.getLocation(['DimensionCount']).setValue(len(dims))
 
             # Get the plot type, based on the number of dimensions
             if len(dims)==1:
@@ -174,14 +161,12 @@ class Figure:
                 plottypenodename = 'PlotType3D'
             else:
                 raise Exception('This variable has %i independent dimensions. Can only plot variables with 2 or 3 independent dimensions.' % len(dims))
-            plottype = forcedseriesnode.getLocation([plottypenodename]).getValue()
-            if plottype==None: plottype=0
-            newseriesnode.getLocation([plottypenodename]).setValue(plottype)
+            plottype = seriesnode.getLocation([plottypenodename]).getValueOrDefault()
 
-            staggered = False
-            if plottypenodename=='PlotType3D' and plottype==0: staggered = True
+            # We use a staggered grid (coordinates at interfaces, values at centers) for certain 3D plot types.
+            staggered = (plottypenodename=='PlotType3D' and plottype==0)
 
-            # Set forced bounds for the different dimensions
+            # Set forced bounds (if any) for each dimension of the plotted variable.
             dimbounds = []
             for dimname in dims:
                 if dimname=='time':
@@ -194,22 +179,35 @@ class Figure:
             # Get the data
             data = var.getValues(dimbounds,staggered=staggered)
 
+            # Get the minimum and maximum values; store these as default.
+            defaultseriesnode.getLocation(['Minimum']).setValue(data[-1].min())
+            defaultseriesnode.getLocation(['Maximum']).setValue(data[-1].max())
+
+            # Filter values that are not within (minimum, maximum) range.
+            minimum = seriesnode.getLocation(['Minimum']).getValue()
+            maximum = seriesnode.getLocation(['Maximum']).getValue()
+            if minimum!=None and maximum!=None:
+                data[-1] = matplotlib.numerix.ma.masked_array(data[-1],matplotlib.numerix.logical_or(data[-1]<minimum, data[-1]>maximum))
+            elif minimum!=None:
+                data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]<minimum)
+            elif maximum!=None:
+                data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]>maximum)
+
             # Transform to log-scale if needed
-            logscale = forcedseriesnode.getLocation(['LogScale']).getValue()
-            if logscale==None: logscale = False
-            newseriesnode.getLocation(['LogScale']).setValue(logscale)
+            logscale = seriesnode.getLocation(['LogScale']).getValueOrDefault()
             if logscale:
                 data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]<=0)
                 data[-1] = matplotlib.numerix.ma.log10(data[-1])
 
-            # get label
-            label = forcedseriesnode.getLocation(['Label']).getValue()
-            if label==None:
-                label = var.getLongName()+' ('+var.getUnit()+')'
-                if logscale: label = 'log10 '+label
-            newseriesnode.getLocation(['Label']).setValue(label)
+            # Get label
+            defaultlabel = '%s (%s)' % (var.getLongName(),var.getUnit())
+            if logscale: defaultlabel = 'log10 '+defaultlabel
+            defaultseriesnode.getLocation(['Label']).setValue(defaultlabel)
+            label = seriesnode.getLocation(['Label']).getValueOrDefault()
 
+            # Enumerate over the dimension of the variable.
             for idim in range(len(dims)):
+                # Get minimum and maximum coordinates.
                 if len(data[idim].shape)==1:
                     datamin = data[idim][0]
                     datamax = data[idim][-1]
@@ -221,7 +219,6 @@ class Figure:
                         datamin = min(data[idim][:,0])
                         datamax = max(data[idim][:,-1])
 
-                #print dims[idim]+' '+str(data[idim])
                 if dims[idim]=='time':
                     # Update effective time bounds
                     if tmin_eff==None or datamin<tmin_eff: tmin_eff=datamin
@@ -239,9 +236,7 @@ class Figure:
                 # One-dimensional variable; currently this implies dependent on time only.
                 xdim = 0
 
-                linewidth = forcedseriesnode.getLocation(['LineWidth']).getValue()
-                if linewidth==None: linewidth = .5
-                newseriesnode.getLocation(['LineWidth']).setValue(linewidth)
+                linewidth = seriesnode.getLocation(['LineWidth']).getValueOrDefault()
 
                 lines = axes.plot(data[xdim],data[-1],'-',linewidth=linewidth)
                 dim2axis[dims[xdim]] = 'x'
@@ -302,34 +297,29 @@ class Figure:
             iseries += 1
 
         # Remove unused series (remaining from previous plots that had more data series)
-        datanode.removeChildren('Series',first=len(forcedseries))
-
-        #axes.autoscale_view()
+        defaultdatanode.removeChildren('Series',first=len(forcedseries))
 
         # Create and store title
-        title = self.forcedproperties.getProperty(['Title'])
-        if title==None: title = ', '.join(longnames)
+        self.defaultproperties.setProperty(['Title'],', '.join(longnames))
+        title = self.properties.getProperty(['Title'],usedefault=True)
         if title!='': axes.set_title(title)
-        self.properties.setProperty(['Title'],title)
 
         # Store current axes bounds
+        self.defaultproperties.setProperty(['TimeAxis',  'Minimum'],tmin_eff)
+        self.defaultproperties.setProperty(['TimeAxis',  'Maximum'],tmax_eff)
+        self.defaultproperties.setProperty(['DepthAxis', 'Minimum'],zmin_eff)
+        self.defaultproperties.setProperty(['DepthAxis', 'Maximum'],zmax_eff)
         if tmin==None: tmin = tmin_eff
         if tmax==None: tmax = tmax_eff
         if zmin==None: zmin = zmin_eff
         if zmax==None: zmax = zmax_eff
-        self.properties.setProperty(['TimeAxis', 'Minimum'],tmin)
-        self.properties.setProperty(['TimeAxis', 'Maximum'],tmax)
-        self.properties.setProperty(['DepthAxis','Minimum'],zmin)
-        self.properties.setProperty(['DepthAxis','Maximum'],zmax)
 
-        # Configure time axis (x-axis), if any.
+        # Configure time axis (if any).
         if 'time' in dim2axis:
             timeaxis = dim2axis['time']
             
             # Obtain label for time axis.
-            tlabel = self.forcedproperties.getProperty(['TimeAxis','Label'])
-            if tlabel==None: tlabel = 'time'
-            self.properties.setProperty(['TimeAxis', 'Label'],tlabel)
+            tlabel = self.properties.getProperty(['TimeAxis','Label'],usedefault=True)
 
             # Configure limits and label of time axis.
             if timeaxis=='x':
@@ -373,9 +363,7 @@ class Figure:
             zaxis = dim2axis['z']
 
             # Obtain label for depth axis.
-            zlabel = self.forcedproperties.getProperty(['DepthAxis','Label'])
-            if zlabel==None: zlabel = 'depth (m)'
-            self.properties.setProperty(['DepthAxis', 'Label'],zlabel)
+            zlabel = self.properties.getProperty(['DepthAxis','Label'],usedefault=True)
 
             # Configure limits and label of depth axis.
             if zaxis=='x':
@@ -389,8 +377,4 @@ class Figure:
         # Draw the plot to screen.            
         self.canvas.draw()
 
-        # Re-enable property-change notifications; we are done changing plot properties,
-        # and want to be notified if anyone else changes them.
-        self.ignorechanges = False
-        
         self.dirty = False

@@ -252,7 +252,6 @@ class LinkedFileVariableStore(PlotVariableStore):
                 if callback!=None and iline%1000==0: callback('processed %i lines.' % iline)
                 line = f.readline()
                 iline += 1
-            print 'Data read; starting interpolation...'
             times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
             uniquedepths = uniquedepths.keys()
             uniquedepths.sort()
