@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.10 2006-11-17 07:13:17 kbk Exp $
+!$Id: bio_var.F90,v 1.11 2007-03-14 12:46:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,11 +58,16 @@
 !  get_bio_updates()
    REALTYPE, dimension(:), allocatable      :: bioshade_
    REALTYPE, dimension(:), allocatable      :: abioshade_
+
+   logical                                  :: init_saved_vars=.true.
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
+!  Revision 1.11  2007-03-14 12:46:07  kbk
+!  proper cleaning after simulation
+!
 !  Revision 1.10  2006-11-17 07:13:17  kbk
 !  rho amd wind-speed available via bio_var
 !

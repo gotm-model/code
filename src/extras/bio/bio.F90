@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.35 2007-01-06 11:49:15 kbk Exp $
+!$Id: bio.F90,v 1.36 2007-03-14 12:46:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,13 +47,16 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio, set_env_bio, do_bio, get_bio_updates, end_bio
+   public init_bio, set_env_bio, do_bio, get_bio_updates, clean_bio
    logical, public                     :: bio_calc=.false.
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.36  2007-03-14 12:46:07  kbk
+!  proper cleaning after simulation
+!
 !  Revision 1.35  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -232,10 +235,6 @@
             FATAL "Lagrangian simulations only tested/works with bio_model=3"
          end if
       end if
-
-      allocate(par(0:nlev),stat=rc)
-      if (rc /= 0) STOP 'init_bio: Error allocating (par)'
-
 
       select case (bio_model)
 
@@ -567,6 +566,7 @@
             
          end do
       else ! Lagrangian particle calculations
+#if 0
          if (bio_model.ne.3) then
             stop 'set bio_model=3 for Lagrangian calculations. Stop in bio.F90'
          end if
@@ -612,6 +612,7 @@
                end if
             end if
          end do
+#endif
       end if
 
       do split=1,split_factor
@@ -688,7 +689,7 @@
 ! !IROUTINE: Finish the bio calculations
 !
 ! !INTERFACE:
-   subroutine end_bio
+   subroutine clean_bio
 !
 ! !DESCRIPTION:
 !  Nothing done yet --- supplied for completeness.
@@ -702,12 +703,41 @@
 !-----------------------------------------------------------------------
 !BOC
 
+   LEVEL1 'clean_bio'
+
    if (mussels_calc) then
       call end_mussels()
    end if
 
+   if (allocated(par))            deallocate(par)
+   if (allocated(cc))             deallocate(cc)
+   if (allocated(ws))             deallocate(ws)
+   if (allocated(sfl))            deallocate(sfl)
+   if (allocated(bfl))            deallocate(bfl)
+   if (allocated(posconc))        deallocate(posconc)
+   if (allocated(mussels_inhale)) deallocate(mussels_inhale)
+   if (allocated(var_ids))        deallocate(var_ids)
+   if (allocated(var_names))      deallocate(var_names)
+   if (allocated(var_units))      deallocate(var_units)
+   if (allocated(var_long))       deallocate(var_long)
+
+!  The external provide arrays
+   if (allocated(h))              deallocate(h)
+   if (allocated(nuh))            deallocate(nuh)
+   if (allocated(t))              deallocate(t)
+   if (allocated(s))              deallocate(s)
+   if (allocated(rho))            deallocate(rho)
+   if (allocated(rad))            deallocate(rad)
+   if (allocated(w))              deallocate(w)
+   if (allocated(bioshade_))      deallocate(bioshade_)
+   if (allocated(abioshade_))     deallocate(abioshade_)
+
+   init_saved_vars=.true.
+
+   LEVEL1 'done.'
+
    return
-   end subroutine end_bio
+   end subroutine clean_bio
 !EOC
 
 !-----------------------------------------------------------------------
@@ -737,6 +767,10 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+
+   allocate(par(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_bio: Error allocating (par)'
+
    allocate(cc(1:numc,0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_bio: Error allocating (cc)'
 
