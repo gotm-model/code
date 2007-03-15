@@ -1,4 +1,4 @@
-!$Id: ode_solvers.F90,v 1.4 2007-01-06 11:49:13 kbk Exp $
+!$Id: ode_solvers.F90,v 1.5 2007-03-15 08:34:34 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -52,6 +52,18 @@
 ! stoichiometrically conservative. Patankar and Modified Patankar
 ! schemes of fourth order have not yet been developed, such that 
 ! choices 6 and 9 do not work yet.
+!
+! The call to {\tt ode\_solver()} requires a little explanation. The 
+! first argument {\tt solver} is an integer and specifies which solver 
+! to use. The arguments {\tt numc} and {\tt nlev} gives the dimensions
+! of the data structure {\tt cc} i.e. {\tt cc(1:numc,0:nlev)}. 
+! {\tt dt} is simply the time step. The last argument is the most 
+! complicated. {\tt right\_hand\_side} is a subroutine with a fixed
+! argument list. The subroutine evaluates the right hand side of the ODE
+! and may be called more than once during one time-step - for higher order
+! schemes. For an example of a correct {\tt right\_hand\_side} have a look
+! at e.g. {\tt do\_bio\_npzd()}
+! 
 !
 ! !USES:
    IMPLICIT NONE
