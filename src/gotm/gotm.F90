@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.33 2007-01-06 11:57:08 kbk Exp $
+!$Id: gotm.F90,v 1.34 2007-03-15 10:52:07 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -93,6 +93,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.34  2007-03-15 10:52:07  kbk
+!  proper cleaning after simulation
+!
 !  Revision 1.33  2007-01-06 11:57:08  kbk
 !  PressMethod --> ext_press_mode
 !
@@ -536,6 +539,10 @@
    call clean_observations()
 
    call clean_tridiagonal()
+
+#ifdef BIO
+   call clean_bio()
+#endif
 
    return
    end subroutine clean_up
