@@ -64,7 +64,7 @@ class Store:
     # =========================================================================================
     # __init__: constructor
     def __init__(self,xmldocument=None,xmlroot=None):
-        if isinstance(xmldocument,str):
+        if isinstance(xmldocument,basestring):
             assert xmlroot==None,'Path to XML file specified, but also a (already parsed!) root node was supplied. This combination is invalid'
             xmldocument = xml.dom.minidom.parse(xmldocument)
 
@@ -1200,17 +1200,17 @@ class TypedStore:
                 res += ch.getEmptyNodes()
             return res
 
-        def updateVisibility(self,recursive=False):
+        def updateVisibility(self,recursive=False,notify=True):
             templatenode = self.templatenode
             cond = common.findDescendantNode(templatenode,['condition'])
             if cond!=None:
                 shownew = self.controller.checkCondition(cond,templatenode)
                 if shownew!=self.visible:
-                    self.controller.beforeVisibilityChange(self,shownew)
+                    if notify: self.controller.beforeVisibilityChange(self,shownew)
                     self.visible = shownew
-                    self.controller.afterVisibilityChange(self,shownew)
+                    if notify: self.controller.afterVisibilityChange(self,shownew)
             if recursive:
-                for child in self.children: child.updateVisibility(recursive=True)
+                for child in self.children: child.updateVisibility(recursive=True,notify=notify)
 
         def copyFrom(self,sourcenode,replace=True):
             # Copy node value (if both source and target can have a value)
@@ -1323,7 +1323,6 @@ class TypedStore:
 
         # Events
         self.interfaces = []
-        self.suppressConditionChecking = False
 
         self.otherstores = otherstores
 
@@ -1395,10 +1394,9 @@ class TypedStore:
         self.store.filetypes['select'] = int
         self.store.filetypes['file'] = DataFile
         self.root = TypedStore.Node(self,templateroot,self.store.xmlroot,[],None)
-        if not self.suppressConditionChecking: self.updateVisibility()
         self.changed = False
-
         self.setContainer(None)
+        self.root.updateVisibility(recursive=True,notify=False)
         self.afterStoreChange()
 
     def setDefaultStore(self,store):
@@ -1447,13 +1445,6 @@ class TypedStore:
             assert currentnode!=None, 'Cannot find %i node "%s" below %s.' % (index,name,currentnode)
         return currentnode
 
-    # suppressVisibilityUpdates: de-activates or re-activates dynamic re-checking of node-conditions
-    #   when other nodes change (for performance gains only).
-    def suppressVisibilityUpdates(self,sup):
-        if self.suppressConditionChecking==sup: return
-        if not sup: self.updateVisibility()
-        self.suppressConditionChecking = sup
-
     # buildDependencies: for every variable node, this creates lists of dependent nodes
     # (i.e. folders and variables that have one or more conditions that depend on the
     # variable under investigation). Essentially we convert lists of dependencies ('servant'-centric)
@@ -1479,13 +1470,6 @@ class TypedStore:
                         node.setAttribute('path',curpath)
                         deplist.appendChild(node)
                     self.buildDependencies(root=ch,curpath=curpath,curowner=curowner)
-
-    # updateVisibility: this checks all conditions on variable and folder nodes, and adds
-    # the "hidden" attribute to those nodes if their root condition is not met.
-    # This is done only on start-up; after that, conditions are checked selectively after
-    # nodes appearing in those conditions change value.
-    def updateVisibility(self):
-        self.root.updateVisibility(recursive=True)
 
     # checkCondition: checks whether then given condition (an XML node in the template) is currently met.
     #   "nodeCondition" is the "condition" XML node to check
@@ -1864,7 +1848,6 @@ class TypedStore:
 
     def updateDependantNodes(self,node):
         # Get nodes that depend on the changed node; if there are none, exit.
-        if self.suppressConditionChecking: return
         deps = common.findDescendantNode(node.templatenode,['dependentvariables'])
         if deps==None: return
 

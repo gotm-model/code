@@ -497,8 +497,9 @@ class Result(PlotVariableStore):
     def setFigure(self,name,valuetree):
         self.changed = True
         for ch in self.figuretree.documentElement.childNodes:
-            if ch.getAttribute('name')==name:
+            if ch.nodeType==ch.ELEMENT_NODE and ch.getAttribute('name')==name:
                 if ch.isSameNode(valuetree): return
+                print 'Deleting previous figure node for "%s".' % name
                 self.figuretree.documentElement.removeChild(ch)
                 break
         node = common.copyNode(valuetree,self.figuretree.documentElement)
@@ -506,7 +507,8 @@ class Result(PlotVariableStore):
 
     def getFigure(self,name):
         for ch in self.figuretree.documentElement.childNodes:
-            if ch.getAttribute('name')==name: return ch
+            if ch.nodeType==ch.ELEMENT_NODE and ch.getAttribute('name')==name:
+                return ch
         return None
 
     def unlink(self):

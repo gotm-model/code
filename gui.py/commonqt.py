@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.16 2007-03-13 08:11:12 jorn Exp $
+#$Id: commonqt.py,v 1.17 2007-03-15 08:05:16 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -532,6 +532,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             parentnode = parent.internalPointer()
         child = self.storeinterface.getChildByIndex(parentnode,irow)
         assert child!=None, 'Cannot find child with index %i below %s.' % (irow,parentnode)
+        assert isinstance(child,xmlstore.TypedStore.Node), 'Object returned by getChildByIndex is not of type "Node" (but "%s").' % child
         return self.createIndex(irow,icolumn,child)
 
     # parent (inherited from QtCore.QAbstractItemModel)
