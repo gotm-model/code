@@ -71,7 +71,7 @@ class Figure:
         return self.properties.store.xmlroot
 
     def getPropertiesCopy(self):
-        return self.properties.getXmlDom()
+        return self.properties.toXmlDom()
 
     def clearVariables(self):
         self.properties.root.getLocation(['Data']).removeChildren('Series')

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.17 2007-03-15 08:05:16 jorn Exp $
+#$Id: commonqt.py,v 1.18 2007-03-15 08:10:12 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -1582,7 +1582,7 @@ class FigureDialog(QtGui.QDialog):
         self.panel.figure.defaultsource = sourcefigure.defaultsource
         self.panel.plotFromProperties(properties)
 
-        title = self.panel.figure.properties.getProperty(['Title'])
+        title = self.panel.figure.properties.getProperty(['Title'],usedefault=True)
         self.setWindowTitle(title)
 
         # Prevent this window from keeping the appliaction alive after the main window was closed.
