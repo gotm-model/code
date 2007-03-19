@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.22 2007-03-13 08:11:12 jorn Exp $
+#$Id: common.py,v 1.23 2007-03-19 21:51:32 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.numerix
@@ -75,16 +75,14 @@ def findDescendantNodes(root,location):
                 children.append(ch)
     return children
 
-def addDescendantNode(root,location):
-    parentloc = location[:]
-    name = parentloc.pop()
-    parent = findDescendantNode(root,parentloc,create=True)
-    assert parent!=None,'Unable to locate or create parent node for "%s".' % str(location)
-    doc = root
+def addDescendantNode(parent,location):
+    doc = parent
     while doc.parentNode!=None: doc=doc.parentNode
-    node = doc.createElementNS(parent.namespaceURI,name)
-    parent.appendChild(node)
-    return node
+    for name in location:
+        node = doc.createElementNS(parent.namespaceURI,name)
+        parent.appendChild(node)
+        parent = node
+    return parent
 
 def getNodeText(node):
     rc = ''

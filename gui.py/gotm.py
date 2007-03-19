@@ -135,7 +135,7 @@ def main():
     print 'Python version: '+str(sys.version_info)
     print 'PyQt4 version: '+QtCore.PYQT_VERSION_STR
     print 'Qt version: '+QtCore.qVersion()
-
+	
     # Create the application and enter the main message loop.
     createQApp = QtGui.QApplication.startingUp()
     if createQApp:

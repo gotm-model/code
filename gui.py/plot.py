@@ -22,13 +22,14 @@ class Figure:
         self.canvas = figure.canvas
 
         # Create store for the explicitly set properties
-        self.properties = xmlstore.TypedStore('figuretemplate.xml',None)
+        self.properties = xmlstore.TypedStore('schemas/figure/gotmgui.xml',None)
         self.propertiesinterface = self.properties.getInterface()
         self.propertiesinterface.notifyOnDefaultChange = False
-        self.propertiesinterface.addChangeHandler(self.onExplicitPropertyChanged)
+        self.propertiesinterface.addChangeHandler(self.onPropertyChanged)
+        self.propertiesinterface.addStoreChangedHandler(self.onPropertyStoreChanged)
         
         # Create store for property defaults
-        self.defaultproperties = xmlstore.TypedStore('figuretemplate.xml',properties)
+        self.defaultproperties = xmlstore.TypedStore('schemas/figure/gotmgui.xml',properties)
 
         # Set some default properties.
         self.defaultproperties.setProperty(['TimeAxis',  'Label'],'time')
@@ -41,13 +42,22 @@ class Figure:
         self.updating = True
         self.dirty = False
         self.haschanged = False
+        
+        self.callbacks = {'completeStateChange':[]}
+        
+    def registerCallback(self,eventname,callback):
+        assert eventname in self.callbacks, 'Event "%s" is unknown.' % eventname
+        self.callbacks[eventname].append(callback)
 
     def setUpdating(self,allowupdates):
         if self.updating != allowupdates:
             self.updating = allowupdates
             if allowupdates and self.dirty: self.update()
 
-    def onExplicitPropertyChanged(self,node):
+    def onPropertyChanged(self,node):
+        self.onPropertyStoreChanged()
+
+    def onPropertyStoreChanged(self):
         self.haschanged = True
         self.update()
 
@@ -60,22 +70,17 @@ class Figure:
         if self.defaultsource==None: self.defaultsource = name
 
     def clearProperties(self):
-        self.properties.setStore(None)
-        self.update()
+        self.properties.root.clearValue(recursive=True)
 
     def setProperties(self,props):
         self.properties.setStore(props)
         self.update()
-
-    def getPropertiesRoot(self):
-        return self.properties.store.xmlroot
 
     def getPropertiesCopy(self):
         return self.properties.toXmlDom()
 
     def clearVariables(self):
         self.properties.root.getLocation(['Data']).removeChildren('Series')
-        self.update()
 
     def addVariable(self,varname,source=None):
         datanode = self.properties.root.getLocation(['Data'])
@@ -294,8 +299,6 @@ class Figure:
             # Hold all plot properties so we can plot additional data series.
             axes.hold(True)
 
-            iseries += 1
-
         # Remove unused series (remaining from previous plots that had more data series)
         defaultdatanode.removeChildren('Series',first=len(forcedseries))
 
@@ -376,5 +379,7 @@ class Figure:
 
         # Draw the plot to screen.            
         self.canvas.draw()
+        
+        for cb in self.callbacks['completeStateChange']: cb(len(forcedseries)>0)
 
         self.dirty = False

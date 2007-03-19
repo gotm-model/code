@@ -3,3 +3,6 @@
 win32bin
 build
 dist
+*.sln
+*.suo
+*.pythonproj

@@ -411,9 +411,10 @@ class Result(PlotVariableStore):
         self.z1 = None
         self.z_stag = None
         self.z1_stag = None
-
-        impl = xml.dom.minidom.getDOMImplementation()
-        self.figuretree = impl.createDocument(None, 'FigureSettings', None)
+        
+        self.store = xmlstore.TypedStore('schemas/result/gotmgui.xml')
+        
+        self.path = None
 
     def hasChanged(self):
         return self.changed
@@ -431,14 +432,20 @@ class Result(PlotVariableStore):
     def save(self,path,addfiguresettings=True):
         assert self.datafile!=None, 'The result object was not yet attached to a result file (NetCDF).'
 
+        # Create a ZIP container to hold the result.
         container = xmlstore.DataContainerZip(path,'w')
 
-        if addfiguresettings:
-            df = xmlstore.DataFileXmlDocument(self.figuretree)
-            df_added = container.addItem(df,'figuresettings.xml')
-            df_added.release()
-            df.release()
+        if not addfiguresettings:
+            # First clear all figure settings.
+            self.store.root.getLocation(['FigureSettings']).clearValue(recursive=True)
 
+        # Add the XML file describing result properties.            
+        df = xmlstore.DataFileXmlNode(self.store.root.valuenode)
+        df_added = container.addItem(df,'result.xml')
+        df_added.release()
+        df.release()
+
+        # If we have a link to the scenario, add it to the result file.
         if self.scenario!=None:
             fscen = StringIO.StringIO()
             self.scenario.saveAll(fscen,claim=False)
@@ -447,11 +454,18 @@ class Result(PlotVariableStore):
             container.addItem(df)
             df.release()
         
+        # Add the result data (NetCDF)
         container.addFile(self.datafile,'result.nc')
+        
+        # Make changes to container persistent (this closes the ZIP file), and release it.
         container.persistChanges()
         container.release()
 
+        # Saved all changes; reset "changed" state
         self.changed = False
+        
+        # Store the path we saved to.
+        self.path = path
 
     def load(self,path):
         # Basic check: does the specified file exist?
@@ -477,10 +491,11 @@ class Result(PlotVariableStore):
         df.saveToFile(resultpath)
         df.release()
 
-        df = container.getItem('figuresettings.xml')
+        df = container.getItem('result.xml')
         if df!=None:
             f = df.getAsReadOnlyFile()
-            self.figuretree = xml.dom.minidom.parse(f)
+            valuedom = xml.dom.minidom.parse(f)
+            self.store.setStore(valuedom)
             f.close()
             df.release()
 
@@ -493,23 +508,31 @@ class Result(PlotVariableStore):
 
         # Reset "changed" status.
         self.changed = False
+        self.path = path
 
-    def setFigure(self,name,valuetree):
+    def setFigure(self,source):
         self.changed = True
-        for ch in self.figuretree.documentElement.childNodes:
-            if ch.nodeType==ch.ELEMENT_NODE and ch.getAttribute('name')==name:
-                if ch.isSameNode(valuetree): return
-                print 'Deleting previous figure node for "%s".' % name
-                self.figuretree.documentElement.removeChild(ch)
-                break
-        node = common.copyNode(valuetree,self.figuretree.documentElement)
-        node.setAttribute('name',name)
+        
+        name = source.root.getLocation(['Name']).getValue()
+        assert name!=None, 'Name attribute of figure is not set; cannot store figure.'
 
-    def getFigure(self,name):
-        for ch in self.figuretree.documentElement.childNodes:
-            if ch.nodeType==ch.ELEMENT_NODE and ch.getAttribute('name')==name:
-                return ch
-        return None
+        setroot = self.store.root.getLocation(['FigureSettings'])
+        for fig in setroot.getLocationMultiple(['Figure']):
+            if fig.getLocation(['Name']).getValue()==name: break
+        else:
+            figname = source.root.templatenode.getAttribute('id')
+            fig = setroot.addChild(figname)
+            assert fig!=None, 'Unable to add new node "%s".' % figname
+        fig.copyFrom(source.root,replace=True)
+        fig.getLocation(['Name']).setValue(name)
+
+    def getFigure(self,name,target):
+        setroot = self.store.root.getLocation(['FigureSettings'])
+        for fig in setroot.getLocationMultiple(['Figure']):
+            if fig.getLocation(['Name']).getValue()==name:
+                target.root.copyFrom(fig,replace=True)
+                return True
+        return False
 
     def unlink(self):
         if self.nc!=None:
@@ -537,7 +560,13 @@ class Result(PlotVariableStore):
         self.datafile = datafile
         self.getcdf()
 
+        # Attached to an existing result: we consider it unchanged.
         self.changed = False
+        
+        if self.scenario!=None and self.scenario.path!=None and self.scenario.path.endswith('.gotmscenario'):
+            self.path = self.scenario.path[:-12]+'gotmresult'
+        else:
+            self.path = None
 
     def getcdf(self):
         if self.nc!=None: return self.nc
@@ -749,8 +778,9 @@ class Result(PlotVariableStore):
                     tr = xmldocument.createElement('tr')
                     figurestable.appendChild(tr)
                 fig.setUpdating(False)
-                fig.clearProperties()
-                fig.addVariable(pv)
+                if not self.getFigure('result/'+pv,fig.properties):
+                    fig.clearProperties()
+                    fig.addVariable(pv)
                 fig.setUpdating(True)
                 filename = pv+'.png'
                 outputfile = os.path.join(outputpath,filename)

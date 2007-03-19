@@ -639,26 +639,26 @@ class DataContainerTar(DataContainer):
         if self.tfile==None: return
         self.setMode('r')
 
-class DataFileXmlDocument(DataFile):
-    def __init__(self,xmldocument,name=''):
+class DataFileXmlNode(DataFile):
+    def __init__(self,xmlnode,name=''):
         DataFile.__init__(self)
-        self.xmldocument = xmldocument
+        self.xmlnode = xmlnode
         self.name = name
 
     def __del__(self):
         self.unlink()
 
     def getData(self,textmode=True,readonly=False):
-        return self.xmldocument.toxml('utf-8')
+        return self.xmlnode.toxml('utf-8')
 
     def saveToFile(self,targetpath):
         import codecs
         f = codecs.open(targetpath,'w','utf-8')
-        self.xmldocument.writexml(f,encoding='utf-8')
+        self.xmlnode.writexml(f,encoding='utf-8')
         f.close()
 
     def unlink(self):
-        self.xmldocument = None
+        self.xmlnode = None
         self.name = None
 
 class DataFileMemory(DataFile):
@@ -907,14 +907,21 @@ class TypedStore:
                 if templatechild.nodeType==templatechild.ELEMENT_NODE and templatechild.localName=='element':
                     childloc = self.location[:] + [templatechild.getAttribute('id')]
                     ids.append(childloc[-1])
+                    
+                    start = len(self.location)
+                    root = self
+                    while root.valuenode==None:
+                        start -= 1
+                        root = root.parent
+                    
                     if templatechild.hasAttribute('maxoccurs'):
                         maxoccurs = int(templatechild.getAttribute('maxoccurs'))
-                        valuechildren = common.findDescendantNodes(self.store.xmlroot,childloc)
+                        valuechildren = common.findDescendantNodes(root.valuenode,childloc[start:])
                         assert len(valuechildren)<=maxoccurs, 'Number of children is greater than the imposed maximum (%i).' % maxoccurs
                         for valuechild in valuechildren:
                             self.children.append(TypedStore.Node(self.controller,templatechild,valuechild,childloc,parent=self))
                     else:
-                        valuechild = common.findDescendantNode(self.store.xmlroot,childloc)                            
+                        valuechild = common.findDescendantNode(root.valuenode,childloc[start:])                            
                         self.children.append(TypedStore.Node(self.controller,templatechild,valuechild,childloc,parent=self))
 
             if self.valuenode!=None:
@@ -960,19 +967,25 @@ class TypedStore:
             if curval!=value:
                 if self.controller.onBeforeChange(self,value):
                     valuetype = self.templatenode.getAttribute('type')
-                    if self.valuenode==None:
-                        self.valuenode = common.findDescendantNode(self.store.xmlroot,self.location,create=True)
-                        assert self.valuenode!=None, 'unable to create value node at %s.' % self.location
+                    if self.valuenode==None: self.createValueNode()
                     changed = self.store.setNodeProperty(self.valuenode,value,valuetype)
                     self.controller.onChange(self)
                     return changed
             return False
 
-        def clearValue(self,recursive=False,skipreadonly=False):
+        def clearValue(self,recursive=False,skipreadonly=False,deleteclones=True):
+            # First clear children.
             if recursive:
-                for ch in self.children: ch.clearValue(recursive=recursive,skipreadonly=skipreadonly)
-            if self.valuenode==None or (skipreadonly and self.isReadOnly()): return
-            if self.controller.onBeforeChange(self,None):
+                for ch in self.children:
+                    ch.clearValue(recursive=True,skipreadonly=skipreadonly,deleteclones=deleteclones)
+                if deleteclones: self.removeAllChildren()
+                
+            # Do not clear if (1) it is already cleared, (2) it is read-only and the user wants to respect that,
+            # or (3) it is the root node.
+            if self.valuenode==None or (skipreadonly and self.isReadOnly()) or self.parent==None: return
+            
+            # Clear
+            if (not self.canHaveClones()) and self.controller.onBeforeChange(self,None):
                 self.store.clearNodeProperty(self.valuenode)
                 self.valuenode = None
                 self.controller.onChange(self)
@@ -1046,6 +1059,7 @@ class TypedStore:
                     templatenode = child.templatenode
                 elif index!=-1:
                     break
+            if index!=-1: index += 1
 
             # The child is not yet in the tree; find the position where to insert the child.
             if index==-1:
@@ -1070,9 +1084,12 @@ class TypedStore:
             if templatenode==None: return None
 
             # Create child node
-            location = self.location + [childname]
-            valuenode = common.addDescendantNode(self.store.xmlroot,location)
-            child = TypedStore.Node(self.controller,templatenode,valuenode,location,parent=self)
+            self.createValueNode()
+            doc = self.valuenode
+            while doc.parentNode!=None: doc=doc.parentNode
+            node = doc.createElementNS(self.valuenode.namespaceURI,childname)
+            valuenode = self.valuenode.appendChild(node)
+            child = TypedStore.Node(self.controller,templatenode,valuenode,self.location+[childname],parent=self)
             assert child.canHaveClones(), 'Cannot add another child "%s" because there can exist only one child with this name.' % childname
             child.futureindex = index
             self.controller.beforeVisibilityChange(child,True,False)
@@ -1080,6 +1097,20 @@ class TypedStore:
             self.controller.afterVisibilityChange(child,True,False)
             child.futureindex = None
             return child
+            
+        def createValueNode(self):
+            if self.valuenode!=None: return
+            parents = []
+            root = self
+            while root.valuenode==None:
+                parents.insert(0,root)
+                root = root.parent
+            doc = root.valuenode
+            while doc.parentNode!=None: doc=doc.parentNode
+            valueroot = root.valuenode
+            for par in parents:
+                valueroot = common.findDescendantNode(valueroot,[par.getId()],create=True)
+            self.valuenode = valueroot
 
         def getNumberedChild(self,childname,index,create=False):
             children = self.getLocationMultiple([childname])
@@ -1271,6 +1302,7 @@ class TypedStore:
 
     @classmethod
     def getDefault(cls,name,version):
+        if cls==TypedStore: return None
         if name==None: name = 'default'
         if cls.defaultname2scenarios==None: cls.defaultname2scenarios = {}
         if name not in cls.defaultname2scenarios: cls.defaultname2scenarios[name] = {}
@@ -1295,6 +1327,7 @@ class TypedStore:
 
     @classmethod
     def fromSchemaName(cls,schemaname,valueroot=None,adddefault=True):
+        assert cls!=TypedStore, 'fromSchemaName cannot be called on base class "TypedStore", only on derived classes. You probably need to create a derived class with versioning support.'
         path = cls.schemaname2path(schemaname)
         if path==None:
             raise Exception('Unable to locate XML schema file for "%s".' % schemaname)
@@ -1304,6 +1337,7 @@ class TypedStore:
 
     @classmethod
     def fromXmlFile(cls,path,adddefault=True):
+        assert cls!=TypedStore, 'fromXmlFile cannot be called on base class "TypedStore", only on derived classes. Use setStore if you do not require versioning.'
         if not os.path.isfile(path):
             raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
         valuedom = xml.dom.minidom.parse(path)
@@ -1313,11 +1347,29 @@ class TypedStore:
     def __init__(self,schemadom,valueroot=None,otherstores={},adddefault=True):
 
         # The template can be specified as a DOM object, or as string (i.e. path to XML file)
+        schemapath = '.'
         if isinstance(schemadom,basestring):
-            if not os.path.isfile(schemadom):
-                raise Exception('XML schema file "%s" does not exist.' % schemadom)
-            schemadom = xml.dom.minidom.parse(schemadom)
+            schemapath = schemadom
+            if not os.path.isfile(schemapath):
+                raise Exception('XML schema file "%s" does not exist.' % schemapath)
+            schemadom = xml.dom.minidom.parse(schemapath)
         self.schemadom = schemadom
+        
+        # Resolve links to external documents
+        links = self.schemadom.getElementsByTagName('link')
+        for link in links:
+            assert link.hasAttribute('path'), 'Link node does not have "path" attribute.'
+            refpath = os.path.abspath(os.path.join(os.path.dirname(schemapath),link.getAttribute('path')))
+            if not os.path.isfile(refpath):
+                raise Exception('Linked XML schema file "%s" does not exist.' % refpath)
+            childdom = xml.dom.minidom.parse(refpath)
+            linkparent = link.parentNode
+            newnode = common.copyNode(childdom.documentElement,linkparent,targetdoc=schemadom)
+            for key in link.attributes.keys():
+                if key!='path': newnode.setAttribute(key,link.getAttribute(key))
+            linkparent.removeChild(link)
+        
+        # Get schema version
         self.version = self.schemadom.documentElement.getAttribute('version')
         self.originalversion = None
 
@@ -1743,7 +1795,10 @@ class TypedStore:
             self.setContainer(container)
 
         # Store source path.
-        if isinstance(path,basestring): self.path = path
+        if isinstance(path,basestring):
+            self.path = path
+        else:
+            self.path = None
 
     def save(self,path):
         return self.store.save(path)
@@ -1793,7 +1848,7 @@ class TypedStore:
             del self.store.context['donotclaimtarget']
 
             # Add XML store to the container
-            df = DataFileXmlDocument(self.store.xmldocument)
+            df = DataFileXmlNode(self.store.xmldocument)
             df_added = container.addItem(df,self.storefilename)
             df_added.release()
             df.release()
@@ -1805,6 +1860,11 @@ class TypedStore:
             # probably will be released (the nodes do not lock them any longer).
             container.persistChanges()
             container.release()
+
+        if isinstance(path,basestring):
+            self.path = path
+        else:
+            self.path = None
         
         self.resetChanged()
 

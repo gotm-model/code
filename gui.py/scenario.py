@@ -11,7 +11,7 @@ import os, re, datetime
 class Scenario(xmlstore.TypedStore):
 
     defaultdirname = 'defaultscenarios'
-    schemadirname = 'scenarioschemas'
+    schemadirname = 'schemas/scenario'
 
     storefilename = 'scenario.xml'
     storetitle = 'GOTM scenario'
@@ -539,6 +539,7 @@ class Convertor_gotm_4_0_0_to_gotmgui_0_5_0(xmlstore.Convertor):
         
         target.setProperty(['obs','tprofile','t_const'],target.getProperty(['obs','tprofile','t_1']))
         target.setProperty(['obs','tprofile','t_surf'], target.getProperty(['obs','tprofile','t_1']))
+
         TRelax = 0
         relaxbott = source.getProperty(['obs','tprofile','TRelaxTauB'])<1e+15 and source.getProperty(['obs','tprofile','TRelaxBott'])>0
         relaxsurf = source.getProperty(['obs','tprofile','TRelaxTauS'])<1e+15 and source.getProperty(['obs','tprofile','TRelaxSurf'])>0

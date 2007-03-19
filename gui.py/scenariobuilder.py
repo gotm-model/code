@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.9 2007-03-13 08:11:12 jorn Exp $
+#$Id: scenariobuilder.py,v 1.10 2007-03-19 21:51:32 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -345,7 +345,7 @@ class PageSave(commonqt.WizardPage):
         if checkedid==1:
             targetpath = self.pathSave.path()
             if os.path.isfile(targetpath):
-                ret = QtGui.QMessageBox.warning(self, 'Overwrite existing scenario?', 'There already exists a file at the specified location. Overwrite it?', QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+                ret = QtGui.QMessageBox.warning(self, 'Overwrite existing file?', 'There already exists a file at the specified location. Overwrite it?', QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
                 if ret==QtGui.QMessageBox.No:
                     return False
             try:

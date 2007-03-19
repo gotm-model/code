@@ -3,4 +3,7 @@
 	<element id="Paths">
 		<element id="LastScenarioDirectory" type="string"/>
 	</element>
+	<element id="FigureSettings">
+		<link path="../figure/gotmgui.xml" maxoccurs="1000"/>
+	</element>
 </element>

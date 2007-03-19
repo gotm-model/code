@@ -5,7 +5,7 @@ class SettingsStore(xmlstore.TypedStore):
     def __init__(self):
         settingspath = self.getSettingsPath()
         if not os.path.isfile(settingspath): settingspath = None
-        xmlstore.TypedStore.__init__(self,'settingsschema.xml',settingspath)
+        xmlstore.TypedStore.__init__(self,'schemas/settings/gotmgui.xml',settingspath)
 
     @staticmethod    
     def getSettingsPath():

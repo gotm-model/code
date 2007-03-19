@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.18 2007-03-15 08:10:12 jorn Exp $
+#$Id: commonqt.py,v 1.19 2007-03-19 21:51:32 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -248,7 +248,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             self.panel.clear()
         else:
             varname = unicode(self.list.itemData(index,QtCore.Qt.UserRole).toString())
-            self.panel.plot(self.varstore,varname)
+            self.panel.plot(varname,self.varstore)
 
     def reject(self):
         if self.owndatafile: self.datafile.release()
@@ -785,7 +785,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
 
     def resetData(self,index,recursive=False):
         node = index.internalPointer()
-        node.clearValue(recursive=recursive,skipreadonly=True)
+        node.clearValue(recursive=recursive,skipreadonly=True,deleteclones=False)
 
     def hasDefaultValue(self,index):
         node = index.internalPointer()
@@ -1353,6 +1353,7 @@ class FigurePanel(QtGui.QWidget):
 
         # Create our figure that encapsulates MatPlotLib figure.
         self.figure = plot.Figure(mplfigure)
+        self.figure.registerCallback('completeStateChange',self.onFigureStateChanged)
 
         self.factory = PropertyEditorFactory(self.figure.properties,live=True)
 
@@ -1441,25 +1442,29 @@ class FigurePanel(QtGui.QWidget):
         self.setEnabled(False)
 
         self.detachedfigures = []
+        
+    def onFigureStateChanged(self,complete):
+        self.setEnabled(complete)
 
-    def plot(self,varstore,varname):
-        self.figure.setUpdating(False)
+    def plot(self,varname,varstore=None):
+        ownupdating = self.figure.updating
+        if ownupdating: self.figure.setUpdating(False)
         self.figure.clearProperties()
-        self.figure.clearSources()
-        self.figure.addDataSource('main',varstore)
-        self.figure.addVariable(varname)
-        self.figure.setUpdating(True)
+        if isinstance(varstore,basestring) or varstore==None:
+            self.figure.addVariable(varname,source=varstore)
+        else:
+            self.figure.clearSources()
+            self.figure.addDataSource('main',varstore)
+            self.figure.addVariable(varname)
+        if ownupdating: self.figure.setUpdating(True)
         self.figure.resetChanged()
-        self.setEnabled(True)
 
     def plotFromProperties(self,properties):
         self.figure.setProperties(properties)    
-        self.setEnabled(True)
 
     def clear(self):
         self.figure.clearProperties()
         self.figure.clearSources()
-        self.setEnabled(False)
 
     def closeDetached(self):
         for ch in self.detachedfigures: ch.close()

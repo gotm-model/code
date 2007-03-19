@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.10 2007-03-06 07:51:36 jorn Exp $
+#$Id: visualizer.py,v 1.11 2007-03-19 21:51:32 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -112,7 +112,7 @@ class ConfigureReportWidget(QtGui.QWidget):
         self.pathOutput = commonqt.PathEditor(self,getdirectory=True)
 
         self.labVariables = QtGui.QLabel('Included variables:',self)
-        self.treestore = self.result.getVariableTree('outputtree.xml')
+        self.treestore = self.result.getVariableTree('schemas/outputtree.xml')
         self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True,checkboxes=True)
         self.treeVariables = commonqt.ExtendedTreeView(self)
         self.treeVariables.header().hide()
@@ -268,6 +268,7 @@ class PageSave(commonqt.WizardPage):
         self.pathSave = commonqt.PathEditor(self,header='File to save to: ',save=True)
         self.pathSave.filter = 'GOTM result files (*.gotmresult);;All files (*.*)'
         self.pathSave.forcedextension = '.gotmresult'
+        if self.result.path!=None: self.pathSave.setPath(self.result.path)
 
         self.checkboxAddFigures = QtGui.QCheckBox('Also save my figure settings.',self)
         self.checkboxAddFigures.setChecked(True)
@@ -312,8 +313,13 @@ class PageSave(commonqt.WizardPage):
         if not mustbevalid: return True
         checkedid = self.bngroup.checkedId()
         if checkedid==1:
+            targetpath = self.pathSave.path()
+            if os.path.isfile(targetpath):
+                ret = QtGui.QMessageBox.warning(self, 'Overwrite existing file?', 'There already exists a file at the specified location. Overwrite it?', QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+                if ret==QtGui.QMessageBox.No:
+                    return False
             try:
-                self.result.save(self.pathSave.path(),addfiguresettings=self.checkboxAddFigures.isChecked())
+                self.result.save(targetpath,addfiguresettings=self.checkboxAddFigures.isChecked())
             except Exception,e:
                 print e
                 QtGui.QMessageBox.critical(self, 'Unable to save result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
@@ -346,7 +352,7 @@ class PageVisualize(commonqt.WizardPage):
         self.varname = None
 
         self.result = parent.shared['result']
-        self.treestore = self.result.getVariableTree('outputtree.xml')
+        self.treestore = self.result.getVariableTree('schemas/outputtree.xml')
         self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True)
 
         self.treeVariables = commonqt.ExtendedTreeView(self)
@@ -366,6 +372,8 @@ class PageVisualize(commonqt.WizardPage):
         layout.addWidget(self.figurepanel,1,1)
         self.setLayout(layout)
 
+        self.figurepanel.figure.addDataSource('result',self.result)
+
     def OnVarSelected(self):
         selected = self.treeVariables.selectedIndexes()
         if len(selected)==0: return
@@ -375,9 +383,23 @@ class PageVisualize(commonqt.WizardPage):
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
         self.saveFigureSettings()
         self.varname = varname
-        self.figurepanel.plot(self.result,varname)
-        savedprops = self.result.getFigure(varname)
-        if savedprops!=None: self.figurepanel.plotFromProperties(savedprops)
+        
+        self.figurepanel.figure.setUpdating(False)
+        
+        props = self.figurepanel.figure.properties
+        
+        # Plot; first try stored figures, otherwise plot anew.
+        if not self.result.getFigure('result/'+varname,props):
+            self.figurepanel.plot(varname,'result')
+
+        # Set key properties to their required values.
+        props.root.getLocation(['Name']).setValue('result/'+varname)
+        series = props.root.getLocation(['Data','Series'])
+        series.getLocation(['Source']).setValue('result')
+        series.getLocation(['Variable']).setValue(varname)
+        
+        self.figurepanel.figure.setUpdating(True)
+        
         QtGui.QApplication.restoreOverrideCursor()
 
     def isComplete(self):
@@ -389,8 +411,7 @@ class PageVisualize(commonqt.WizardPage):
 
     def saveFigureSettings(self):
         if self.varname!=None and self.figurepanel.figure.hasChanged():
-            props = self.figurepanel.figure.getPropertiesRoot()
-            self.result.setFigure(self.varname,props)
+            self.result.setFigure(self.figurepanel.figure.properties)
 
 def main():
     # Debug info
