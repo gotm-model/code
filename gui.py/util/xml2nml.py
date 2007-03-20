@@ -2,12 +2,16 @@
 
 import sys, os, os.path
 
+gotmguiroot = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..')
+
+path = sys.path[:] 
+sys.path.append(gotmguiroot)
 try: 
-    path = sys.path[:] 
-    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..'))
-    import common
+    import scenario
 finally: 
-    sys.path = path 
+    sys.path = path
+
+scenario.Scenario.setRoot(gotmguiroot)
 
 def main():
     copydata = True
@@ -35,7 +39,7 @@ def main():
         print 'Converts the GOTM-GUI scenario file (or directory containing scenario.xml and the data files) "./seagrass.gotmscenario" to a directory "./seagrass" that contains namelist and data files suitable for GOTM version 3.2.4.'
         sys.exit(1)
     src = os.path.abspath(sys.argv[1])
-    template = sys.argv[2]
+    schemaname = sys.argv[2]
     targetdir = os.path.abspath(sys.argv[3])
 
     # Check if the source path exists.
@@ -43,10 +47,10 @@ def main():
         print 'Error! The source path "%s" does not exist.' % src
         sys.exit(1)
 
-    # Check if we have an XML template for the specified target scenario version.
-    tmpls = common.Scenario.getTemplates()
-    if template not in tmpls:
-        print 'Error! No XML template available for specified output version "%s".' % template
+    # Check if we have an XML schema for the specified target scenario version.
+    schemas = scenario.Scenario.schemaname2path()
+    if schemaname not in schemas:
+        print 'Error! No XML schema available for specified output version "%s".' % schemaname
         sys.exit(1)
 
     # Check if the target directory already exists (currently only produces warning and continues).
@@ -54,30 +58,30 @@ def main():
         print 'Warning! The target directory "%s" exists; files in it may be overwritten.' % targetdir
 
     # Create the scenario object for the specified version.
-    scenario = common.Scenario(templatename=template)
+    scen = scenario.Scenario.fromSchemaName(schemaname)
 
     # Load the scenario from the source path.
     if os.path.isfile(src):
         if   src.endswith('.gotmscenario'):
-            scenario.loadAll(src)
+            scen.loadAll(src)
         elif src.endswith('.xml'):
             if copydata:
                 print 'Error! An XML source was specified; this source contains only the scenario settings, not the data files. Therefore, you must use the -nd switch.\n'
                 if src=='scenario.xml':
                     print 'If the data files are located in the directory of the specified scenario.xml file, specify the directory rather than scenario.xml as source.'
                 sys.exit(1)
-            scenario.load(src)
+            scen.load(src)
     elif os.path.isdir(src):
-        scenario.loadAll(src)
+        scen.loadAll(src)
     else:
         print 'Error! The source path "%s" does not point to a file or directory.' % src
         sys.exit(1)
 
     # Export to namelists.
-    scenario.writeAsNamelists(targetdir,copydatafiles = copydata,addcomments = comments)
+    scen.writeAsNamelists(targetdir,copydatafiles = copydata,addcomments = comments)
 
     # Clean-up (delete temporary directories etc.)
-    scenario.unlink()
+    scen.unlink()
 
 # If the script has been run (as opposed to imported), enter the main loop.
 if (__name__=='__main__'): main()

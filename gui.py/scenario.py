@@ -4,9 +4,9 @@
 guiscenarioversion = 'gotmgui-0.5.0'
 savedscenarioversion = 'gotm-4.0.0'
 
-import xmlstore, namelist
+import common, xmlstore, namelist
 
-import os, re, datetime
+import os, shutil, re, datetime
 
 class Scenario(xmlstore.TypedStore):
 
@@ -20,6 +20,11 @@ class Scenario(xmlstore.TypedStore):
         xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
 
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
+        
+    @staticmethod
+    def setRoot(rootpath):
+        Scenario.defaultdirname = os.path.join(rootpath,Scenario.defaultdirname)
+        Scenario.schemadirname  = os.path.join(rootpath,Scenario.schemadirname)
 
     @staticmethod
     def getDefaultSchemas():
@@ -102,14 +107,17 @@ class Scenario(xmlstore.TypedStore):
                     raise Exception('Path "%s" is not a directory or a tar/gz archive. %s' % (srcpath,str(e)))
             else:
                 raise Exception('Path "%s" does not point to an existing directory or file.' % srcpath)
-        filelist = container.listFiles()
 
         globalsubs = []
         if protodir!=None:
             # Namelist are specified as .proto files plus one or more .values files.
             # Load the substitutions specified in the main .values file.
+            container.release()
+            container = xmlstore.DataContainerDirectory(protodir)
             valuespath = os.path.join(srcpath,os.path.basename(srcpath)+'.values')
             globalsubs.append(namelist.NamelistSubstitutions(valuespath))
+
+        filelist = container.listFiles()
 
         # Commonly used regular expressions (for parsing strings and datetimes).
         strre = re.compile('^([\'"])(.*?)\\1$')
@@ -280,7 +288,7 @@ class Scenario(xmlstore.TypedStore):
 
                             comments = []
                             varnamelength = 0
-                            for listchild in filechild.getChildren(showhidden=True):
+                            for listchild in filechild.children:
                                 comment = self.getNamelistVariableDescription(listchild)
                                 if len(comment[0])>varnamelength: varnamelength = len(comment[0])
                                 comments.append(comment)
@@ -348,7 +356,7 @@ class Scenario(xmlstore.TypedStore):
         
         if datatype == 'select':
             # Create list of options.
-            options = findDescendantNode(node.templatenode,['options'])
+            options = common.findDescendantNode(node.templatenode,['options'])
             assert options!=None, 'Node is of type "select" but lacks "options" childnode.'
             for ch in options.childNodes:
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
@@ -371,7 +379,7 @@ class Scenario(xmlstore.TypedStore):
             datatype += ', unit = ' + node.templatenode.getAttribute('unit')
 
         # Get description of conditions (if any).
-        condition = findDescendantNode(node.templatenode,['condition'])
+        condition = common.findDescendantNode(node.templatenode,['condition'])
         if condition!=None:
             condline = Scenario.getNamelistConditionDescription(condition)
             lines.append('This variable is used only if '+condline)
@@ -390,7 +398,7 @@ class Scenario(xmlstore.TypedStore):
             else:
                 return var+' != '+val
         elif condtype=='and' or condtype=='or':
-            conds = findDescendantNodes(node,['condition'])
+            conds = common.findDescendantNodes(node,['condition'])
             conddescs = map(Scenario.getNamelistConditionDescription,conds)
             return '('+(' '+condtype+' ').join(conddescs)+')'
         else:

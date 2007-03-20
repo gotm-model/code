@@ -2,16 +2,20 @@
 
 import sys, os, os.path
 
+gotmguiroot = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..')
+
+path = sys.path[:] 
+sys.path.append(gotmguiroot)
 try: 
-    path = sys.path[:] 
-    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..'))
-    import common
+    import scenario, common
 finally: 
-    sys.path = path 
+    sys.path = path
+
+scenario.Scenario.setRoot(gotmguiroot)
 
 def main():
     # Default values for optional arguments
-    targetversion = common.savedscenarioversion
+    targetschema = scenario.savedscenarioversion
     targetisdir = False
     protodir = None
     strict = True
@@ -19,7 +23,7 @@ def main():
     # Get optional arguments
     protodir = common.getNamedArgument('-p')
     forcedversion = common.getNamedArgument('-v')
-    if forcedversion!=None: targetversion = forcedversion
+    if forcedversion!=None: targetschema = forcedversion
     if '-d' in sys.argv:
         sys.argv.remove('-d')
         targetisdir = True
@@ -34,7 +38,7 @@ def main():
         print '- the source file (*.tar.gz) or directory containing the namelist files.'
         print '- the target path to which to save the GOTM-GUI scenario.\n'
         print 'If namelist data are present in a .values file, you must also specify the directory with the prototype namelist files (*.proto) as follows: -p protodir.\n'
-        print 'To force a particular version for the created scenario, add -v platform-version (e.g., -v gotm-3.2.4); by default the scenario is created with the version that GOTM-GUI uses to store scenarios (currently %s).\n' % common.savedscenarioversion
+        print 'To force a particular version for the created scenario, add -v platform-version (e.g., -v gotm-3.2.4); by default the scenario is created with the version that GOTM-GUI uses to store scenarios (currently %s).\n' % scenario.savedscenarioversion
         print 'To save to a directory rather than directly to a ZIP archive (which would contain all files in the directory), add the switch -d.\n'
         print 'if you are saving to ZIP archive rather than to a directory, use the file extension ".gotmscenario" to ensure the produced file is automatically recognized by GOTM-GUI.'
         print 'By default, namelists are parsed in "strict" mode: all variables must be present once, and in the right order. Add the switch -ns to enable Fortran-like loose parsing.\n'
@@ -53,10 +57,10 @@ def main():
         print 'Error! The source path "%s" does not exist.' % srcpath
         sys.exit(1)
 
-    # Check if we have an XML template for the specified target scenario version.
-    tmpls = common.Scenario.getTemplates()
-    if targetversion not in tmpls:
-        print 'Error! No XML template available for specified output version "%s".' % targetversion
+    # Check if we have an XML schema for the specified target scenario version.
+    schemas = scenario.Scenario.schemaname2path()
+    if targetschema not in schemas:
+        print 'Error! No XML schema available for specified output version "%s".' % targetschema
         sys.exit(1)
 
     # Check if the target path already exists (currently only produces warning and continues).
@@ -69,17 +73,17 @@ def main():
 
     # Try to parse the namelist files (implicitly converts to the specified target version).
     try:
-        scenario = common.Scenario.fromNamelists(srcpath,protodir=protodir,targetversion=targetversion,strict=strict)
+        scen = scenario.Scenario.fromNamelists(srcpath,protodir=protodir,targetversion=targetschema,strict=strict)
     except Exception,e:
         print '\n\nFailed to load scenario form namelists. Reason:\n'+str(e)
         print '\nYou might try adding the switch -ns. This switch disables strict namelist parsing.'
         return 1
 
     # Export to scenario.
-    scenario.saveAll(targetpath,targetversion=targetversion,targetisdir=targetisdir)
+    scen.saveAll(targetpath,targetversion=targetschema,targetisdir=targetisdir)
 
     # Clean-up (delete temporary directories etc.)
-    scenario.unlink()
+    scen.unlink()
 
 # If the script has been run (as opposed to imported), enter the main loop.
 if (__name__=='__main__'): main()

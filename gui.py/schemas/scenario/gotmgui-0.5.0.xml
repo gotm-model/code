@@ -406,7 +406,7 @@
 			<element id="cw" type="float" label="constant of the wave-breaking model" description="Constant of the wave-breaking model. Craig &amp; Banner (1994) use a value of 100."/>
 			<element id="compute_kappa" type="bool" label="compute von Karman constant from model parameters"/>
 			<element id="kappa" type="float" label="desired von Karman constant">
-				<condition type="eq" variable="./compute_kappa" value="True"/>
+				<condition type="ne" variable="./compute_kappa" value="True"/>
 			</element>
 			<element id="compute_c3" type="bool" label="compute c3 (E3 for Mellor-Yamada) from steady-state Richardson number"/>
 			<element id="Ri_st" type="float" label="desired steady-state Richardson number">
