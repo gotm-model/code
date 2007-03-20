@@ -520,9 +520,9 @@ class Result(PlotVariableStore):
         for fig in setroot.getLocationMultiple(['Figure']):
             if fig.getLocation(['Name']).getValue()==name: break
         else:
-            figname = source.root.templatenode.getAttribute('id')
-            fig = setroot.addChild(figname)
-            assert fig!=None, 'Unable to add new node "%s".' % figname
+            fignodename = source.root.templatenode.getAttribute('id')
+            fig = setroot.addChild(fignodename)
+            assert fig!=None, 'Unable to add new node "%s".' % fignodename
         fig.copyFrom(source.root,replace=True)
         fig.getLocation(['Name']).setValue(name)
 
@@ -770,19 +770,19 @@ class Result(PlotVariableStore):
             figurestable = xmldocument.createElement('table')
             icurvar = 0
             tr = None
-            for pv in plotvariables:
-                longname = self.getVariable(pv).getLongName()
+            for (varid,varpath) in plotvariables:
+                longname = self.getVariable(varid).getLongName()
                 if callback!=None: callback(istep/steps,'Creating figure for %s...' % longname)
                 
                 if icurvar % columncount == 0:
                     tr = xmldocument.createElement('tr')
                     figurestable.appendChild(tr)
                 fig.setUpdating(False)
-                if not self.getFigure('result/'+pv,fig.properties):
+                if not self.getFigure('result/'+varpath,fig.properties):
                     fig.clearProperties()
-                    fig.addVariable(pv)
+                    fig.addVariable(varid)
                 fig.setUpdating(True)
-                filename = pv+'.png'
+                filename = varid+'.png'
                 outputfile = os.path.join(outputpath,filename)
                 canvas.print_figure(outputfile,dpi=dpi)
 

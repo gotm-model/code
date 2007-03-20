@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.11 2007-03-19 21:51:32 jorn Exp $
+#$Id: visualizer.py,v 1.12 2007-03-20 07:36:28 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -172,7 +172,8 @@ class ConfigureReportWidget(QtGui.QWidget):
         outputpath = self.pathOutput.path()
         varids = []
         for node in self.model.getCheckedNodes():
-            if node.canHaveValue(): varids.append(node.location[-1])
+            if node.canHaveValue():
+                varids.append((node.location[-1],'/'.join(node.location)))
         dpiindex = self.comboDpi.currentIndex()
         dpi,ret = self.comboDpi.itemData(dpiindex).toInt()
         size = (self.spinWidth.value(),self.spinHeight.value())
@@ -379,7 +380,9 @@ class PageVisualize(commonqt.WizardPage):
         if len(selected)==0: return
         node = selected[0].internalPointer()
         if node.hasChildren(): return
+        
         varname = node.getId()
+        varpath = '/'.join(node.location)
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
         self.saveFigureSettings()
         self.varname = varname
@@ -389,11 +392,11 @@ class PageVisualize(commonqt.WizardPage):
         props = self.figurepanel.figure.properties
         
         # Plot; first try stored figures, otherwise plot anew.
-        if not self.result.getFigure('result/'+varname,props):
+        if not self.result.getFigure('result/'+varpath,props):
             self.figurepanel.plot(varname,'result')
 
         # Set key properties to their required values.
-        props.root.getLocation(['Name']).setValue('result/'+varname)
+        props.root.getLocation(['Name']).setValue('result/'+varpath)
         series = props.root.getLocation(['Data','Series'])
         series.getLocation(['Source']).setValue('result')
         series.getLocation(['Variable']).setValue(varname)

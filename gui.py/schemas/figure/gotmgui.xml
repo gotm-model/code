@@ -5,8 +5,8 @@
 			<element id="Title" type="string" label="title"/>
 
 			<element id="TimeAxis" label="time axis">
-				<element id="Minimum" type="datetime" label="minimum"/>
-				<element id="Maximum" type="datetime" label="maximum"/>
+				<element id="Minimum" type="datetime" label="minimum" nodefault="True"/>
+				<element id="Maximum" type="datetime" label="maximum" nodefault="True"/>
 				<element id="Label"   type="string" label="label"/>
 			</element>
 
@@ -14,8 +14,8 @@
 			
 			<element id="DepthAxis" label="depth axis">
 				<condition type="eq" variable="./HasDepthAxis" value="True"/>
-				<element id="Minimum" type="float" label="minimum" unit="m" minimum="-5000" maximum="50"/>
-				<element id="Maximum" type="float" label="maximum" unit="m" minimum="-5000" maximum="50"/>
+				<element id="Minimum" type="float" label="minimum" unit="m" minimum="-5000" maximum="50" nodefault="True"/>
+				<element id="Maximum" type="float" label="maximum" unit="m" minimum="-5000" maximum="50" nodefault="True"/>
 				<element id="Label"   type="string" label="label"/>
 			</element>
 
@@ -25,8 +25,8 @@
 					<element id="Source"         type="string" label="data source" readonly="True"/>
 					<element id="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
 					<element id="Label"          type="string" label="label"/>
-					<element id="Minimum"        type="float"  label="minimum"/>
-					<element id="Maximum"        type="float"  label="maximum"/>
+					<element id="Minimum"        type="float"  label="minimum" nodefault="True"/>
+					<element id="Maximum"        type="float"  label="maximum" nodefault="True"/>
 					<element id="LogScale"       type="bool"   label="log-scale"/>
 					<element id="PlotType2D" type="select" label="plot type">
 						<condition type="eq" variable="./DimensionCount" value="1"/>
