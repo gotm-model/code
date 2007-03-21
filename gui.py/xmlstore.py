@@ -419,7 +419,7 @@ class DataContainerDirectory(DataContainer):
 
         def addToZip(self,zfile,filename):
             assert self.isValid()
-            zfile.write(self.path,filename)
+            zfile.write(self.path,str(filename))
 
         def addToTar(self,tfile,filename):
             assert self.isValid()

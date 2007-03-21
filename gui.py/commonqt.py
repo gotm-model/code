@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.19 2007-03-19 21:51:32 jorn Exp $
+#$Id: commonqt.py,v 1.20 2007-03-21 06:59:45 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime
@@ -866,7 +866,6 @@ class ExtendedTreeView(QtGui.QTreeView):
         if resetchildren: actResetChildren = menu.addAction('Reset entire branch')
         actChosen = menu.exec_(e.globalPos())
         if resetself and actChosen is actReset:
-            #model.setData(index,QtCore.QVariant())
             model.resetData(nameindex)
         elif resetchildren and actChosen is actResetChildren:
             model.resetData(nameindex,recursive=True)
