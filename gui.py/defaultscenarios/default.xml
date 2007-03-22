@@ -447,4 +447,12 @@
 			<g2>20</g2>
 		</bio_fasham_nml>
 	</bio_fasham>
+	
+	<seagrass>
+		<canopy>
+			<seagrass_calc>False</seagrass_calc>
+			<grassfile>grassfile.dat</grassfile>
+			<XP_rat>1.0</XP_rat>
+		</canopy>
+	</seagrass>
 </scenario>
