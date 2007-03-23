@@ -1386,17 +1386,21 @@ class TypedStore:
         # Link to original source (if any)
         self.path = None
 
-        # Set property store
+        # Clear store variables
         self.store = None
         self.defaultstore = None
         self.defaultinterface = None
         self.root = None
-        self.setStore(valueroot)
-
+        
         # Add store with default values if requested and available.
         if adddefault:
             defscenario = self.getDefault(None,self.version)
-            if defscenario!=None: self.setDefaultStore(defscenario)
+            if defscenario!=None: self.setDefaultStore(defscenario,updatevisibility=False)
+
+        # Now set current values in the store
+        # NB: this must be done after default values are set, so that the default
+        # values can be taken into account when checking conditions (via setStore)
+        self.setStore(valueroot)
 
     def unlink(self):
         if self.root!=None: self.root.destroy()
@@ -1448,14 +1452,23 @@ class TypedStore:
         self.root = TypedStore.Node(self,templateroot,self.store.xmlroot,[],None)
         self.changed = False
         self.setContainer(None)
+        
+        # Update the visibility of all nodes (disable individual notifications
+        # because the single "storechanged" event replaces them)
         self.root.updateVisibility(recursive=True,notify=False)
+        
+        # Notify attached interface about the store change.
         self.afterStoreChange()
 
-    def setDefaultStore(self,store):
+    def setDefaultStore(self,store,updatevisibility=True):
         assert self.version==store.version
         self.defaultstore = store
         self.defaultinterface = self.defaultstore.getInterface()
         self.defaultinterface.addChangeHandler(self.onDefaultChange)
+        
+        # Default nodes are used in condition checking, so changing the default store
+        # requires updating the visibility of all nodes. Do so, unless explicitly said not to.
+        if updatevisibility: self.root.updateVisibility(recursive=True)
 
     def hasChanged(self):
         return self.changed

@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.20 2007-03-21 06:59:45 jorn Exp $
+#$Id: commonqt.py,v 1.21 2007-03-23 11:23:59 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
-import datetime
+import datetime, re
 
 import common,xmlstore,settings,plot,data
 
@@ -77,7 +77,6 @@ class PathEditor(QtGui.QWidget):
         self.save = save
 
         self.filter=''
-        self.forcedextension = ''
         self.defaultpath = None
 
         self.dlgoptions = QtGui.QFileDialog.DontConfirmOverwrite
@@ -94,16 +93,33 @@ class PathEditor(QtGui.QWidget):
         if self.getdirectory:
             path = unicode(QtGui.QFileDialog.getExistingDirectory(self,'',curpath))
         elif self.save:
-            path = unicode(QtGui.QFileDialog.getSaveFileName(self,'',curpath,self.filter,None,self.dlgoptions))
+            selfilt = QtCore.QString()
+            path = unicode(QtGui.QFileDialog.getSaveFileName(self,'',curpath,self.filter,selfilt,self.dlgoptions))
+            selfilt= unicode(selfilt)
         else:
             path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',curpath,self.filter))
-
+            
         # If the browse dialog was cancelled, just return.
         if path=='': return
+
+        # if we are saving, make sure that the extension matches the filter selected.
+        if self.save:
+            re_ext = re.compile('\*\.(.+?)[\s)]')
+            exts = []
+            pos = 0
+            match = re_ext.search(selfilt,pos)
+            goodextension = False
+            while match!=None:
+                ext = match.group(1)
+                if ext!='*':
+                    exts.append(ext)
+                    if path.endswith(ext): goodextension = True
+                pos = match.end(0)
+                match = re_ext.search(selfilt,pos)
+
+            # Append first imposed extension
+            if not goodextension and len(exts)>0: path += '.'+exts[0]
         
-        if self.forcedextension!='' and (not path.endswith(self.forcedextension)):
-            # Append imposed extension
-            path += self.forcedextension
         self.lineedit.setText(path)
 
     def hasPath(self):

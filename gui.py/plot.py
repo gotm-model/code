@@ -32,6 +32,7 @@ class Figure:
         self.defaultproperties = xmlstore.TypedStore('schemas/figure/gotmgui.xml',properties)
 
         # Set some default properties.
+        self.defaultproperties.setProperty(['FontScaling'],100)
         self.defaultproperties.setProperty(['TimeAxis',  'Label'],'time')
         self.defaultproperties.setProperty(['DepthAxis', 'Label'],'depth (m)')
 
@@ -104,6 +105,8 @@ class Figure:
         self.figure.clear()
 
         axes = self.figure.add_subplot(111)
+        
+        textscaling = self.properties.getProperty(['FontScaling'],usedefault=True)/100.
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         tmin = self.properties.getProperty(['TimeAxis','Minimum'])
@@ -305,7 +308,8 @@ class Figure:
         # Create and store title
         self.defaultproperties.setProperty(['Title'],', '.join(longnames))
         title = self.properties.getProperty(['Title'],usedefault=True)
-        if title!='': axes.set_title(title)
+        assert title!=None, 'Title must be available, either explicitly set or as default.'
+        if title!='': axes.set_title(title,size=textscaling*10)
 
         # Store current axes bounds
         self.defaultproperties.setProperty(['TimeAxis',  'Minimum'],tmin_eff)
@@ -323,6 +327,7 @@ class Figure:
             
             # Obtain label for time axis.
             tlabel = self.properties.getProperty(['TimeAxis','Label'],usedefault=True)
+            assert tlabel!=None, 'Time axis label must be available, either explicitly set or as default.'
 
             # Configure limits and label of time axis.
             if timeaxis=='x':
@@ -367,6 +372,7 @@ class Figure:
 
             # Obtain label for depth axis.
             zlabel = self.properties.getProperty(['DepthAxis','Label'],usedefault=True)
+            assert zlabel!=None, 'Depth axis label must be available, either explicitly set or as default.'
 
             # Configure limits and label of depth axis.
             if zaxis=='x':

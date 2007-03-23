@@ -3,6 +3,7 @@
 
 			<element id="Name" type="string" label="name" hidden="True"/>
 			<element id="Title" type="string" label="title"/>
+			<element id="FontScaling" type="float" label="Relative font size" unit="%"/>
 
 			<element id="TimeAxis" label="time axis">
 				<element id="Minimum" type="datetime" label="minimum" nodefault="True"/>

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.10 2007-03-19 21:51:32 jorn Exp $
+#$Id: scenariobuilder.py,v 1.11 2007-03-23 11:23:59 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -284,6 +284,30 @@ class PageAdvanced(commonqt.WizardPage):
 
     def isComplete(self):
         return True
+
+    def saveData(self,mustbevalid):
+        if mustbevalid:
+            # Find used file nodes that have not been supplied with data.
+            filenodes = []
+            for fn in self.scenario.root.getNodesByType('file'):
+                if fn.isHidden(): continue
+                value = fn.getValueOrDefault()
+                if value==None or not value.isValid(): filenodes.append(fn)
+            if len(filenodes)>0:
+                vartext = '\n'.join([fn.getText(2) for fn in filenodes])
+                QtGui.QMessageBox.critical(self,'Scenario is incomplete','The following variables will be used in the simulation, but have not been set:\n\n%s\n\nEither configure the scenario to not use these variables, or supply them with data.' % vartext,QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
+                return False
+
+            # Find used nodes that have not been set, and lack a default value.
+            errornodes = []
+            for node in self.scenario.root.getEmptyNodes():
+                if node.isHidden(): continue
+                if node.getDefaultValue()==None: errornodes.append(node)
+            if len(errornodes)>0:
+                vartext = '\n'.join([node.getText(2) for node in errornodes])
+                QtGui.QMessageBox.critical(self,'Scenario is incomplete','The following variables will be used in the simulation, but have not been set to a value:\n\n%s\n\nPlease set these variables to a value first.' % vartext,QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
+                return False
+        return True
     
 class PageSave(commonqt.WizardPage):
 
@@ -299,7 +323,6 @@ class PageSave(commonqt.WizardPage):
 
         self.pathSave = commonqt.PathEditor(self,header='File to save to: ',save=True)
         self.pathSave.filter = 'GOTM scenario files (*.gotmscenario);;All files (*.*)'
-        self.pathSave.forcedextension = '.gotmscenario'
 
         if self.scenario.path!=None:
             self.pathSave.setPath(self.scenario.path)

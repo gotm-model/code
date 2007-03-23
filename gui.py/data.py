@@ -309,27 +309,14 @@ class Result(PlotVariableStore):
 
         def getLongName(self):
             nc = self.result.getcdf()
-            #pycdf return nc.var(self.varname).long_name
             return nc.variables[self.varname].long_name
 
         def getUnit(self):
             nc = self.result.getcdf()
-            #pycdf return nc.var(self.varname).units
             return nc.variables[self.varname].units
 
         def getDimensions(self):
           nc = self.result.getcdf()
-          #pycdf vars = nc.variables()
-          #dimnames = vars[self.varname][0]
-          #dimcount = len(dimnames)
-          #if   dimcount==3:
-          #    if dimnames==('time','lat','lon'):
-          #        return ('time',)
-          #elif dimcount==4:
-          #    if (dimnames==('time','z','lat','lon')) or (dimnames==('time','z1','lat','lon')):
-          #        return ('time','z')
-          #else:
-          #  raise Exception('This variable has '+str(dimcount)+' dimensions; I do not know how to handle such variables.')
 
           dimnames = nc.variables[self.varname].dimensions
           dimcount = len(dimnames)
@@ -344,15 +331,6 @@ class Result(PlotVariableStore):
         def getValues(self,bounds,staggered=False):
           nc = self.result.getcdf()
             
-          # Get the variable and its dimensions from CDF.
-
-          #pycdf
-          #try:
-          #    v = nc.var(self.varname)
-          #    dims = v.dimensions()
-          #except pycdf.CDFError, msg:
-          #    print msg
-          #    return False
           v = nc.variables[self.varname]
           dims = v.dimensions
 
@@ -383,16 +361,22 @@ class Result(PlotVariableStore):
                   dat = v[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1,0,0]
               except Exception, e:
                   raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
-              return [t_eff,z_cur,dat]
+              res = [t_eff,z_cur,dat]
           elif dimcount==3:
               # Three-dimensional variable: longitude, latitude, time
               try:
                   dat = v[timebounds[0]:timebounds[1]+1,0,0]
               except Exception, e:
                   raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
-              return [t_eff,dat]
+              res = [t_eff,dat]
           else:
             raise Exception('This variable has dimensions %s; I do not know how to handle such variables.' % str(dimensions))
+
+          # Mask out missing data.
+          if hasattr(v,'missing_value'):
+              res[-1] = matplotlib.numerix.ma.masked_array(res[-1],res[-1]==v.missing_value)
+              
+          return res
 
     def __init__(self):
         PlotVariableStore.__init__(self)
@@ -428,6 +412,9 @@ class Result(PlotVariableStore):
             self.tempdir = tempfile.mkdtemp('','gotm-')
             print 'Created temporary result directory "%s".' % self.tempdir
         return self.tempdir
+        
+    def saveNetCDF(self,path):
+        shutil.copyfile(self.datafile,path)
 
     def save(self,path,addfiguresettings=True):
         assert self.datafile!=None, 'The result object was not yet attached to a result file (NetCDF).'

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.12 2007-03-20 07:36:28 jorn Exp $
+#$Id: visualizer.py,v 1.13 2007-03-23 11:23:59 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -267,8 +267,7 @@ class PageSave(commonqt.WizardPage):
         self.radioSave   = QtGui.QRadioButton('Yes, I want to save the result to file.', parent)
 
         self.pathSave = commonqt.PathEditor(self,header='File to save to: ',save=True)
-        self.pathSave.filter = 'GOTM result files (*.gotmresult);;All files (*.*)'
-        self.pathSave.forcedextension = '.gotmresult'
+        self.pathSave.filter = 'GOTM result files (*.gotmresult);;NetCDF files (*.nc);;All files (*.*)'
         if self.result.path!=None: self.pathSave.setPath(self.result.path)
 
         self.checkboxAddFigures = QtGui.QCheckBox('Also save my figure settings.',self)
@@ -320,7 +319,10 @@ class PageSave(commonqt.WizardPage):
                 if ret==QtGui.QMessageBox.No:
                     return False
             try:
-                self.result.save(targetpath,addfiguresettings=self.checkboxAddFigures.isChecked())
+                if targetpath.endswith('.nc'):
+                    self.result.saveNetCDF(targetpath)
+                else:
+                    self.result.save(targetpath,addfiguresettings=self.checkboxAddFigures.isChecked())
             except Exception,e:
                 print e
                 QtGui.QMessageBox.critical(self, 'Unable to save result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)

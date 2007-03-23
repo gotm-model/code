@@ -826,7 +826,7 @@
 			<options>
 				<option value="0" label="constant" />
 				<option value="1" label="calculated from tidal constituents" />
-				<option value="2" label="custom observed gradients"/>
+				<option value="2" label="custom observed values"/>
 			</options>
 			<element id="ext_press_mode" type="select" label="measure of external pressure gradient">
 				<options>
@@ -835,7 +835,7 @@
 					<option value="2" label="vertically averaged current speed"/>
 				</options>
 			</element>
-			<element id="ext_press_file" type="file" label="filename of input file">
+			<element id="ext_press_file" type="file" label="custom external pressure gradients">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -889,7 +889,7 @@
 			<options>
 				<option value="0" label="none" />
 				<option value="1" label="constant" description="temporally constant internal pressure gradient computed from fixed horizontal salinity and temperature gradients" />
-				<option value="2" label="custom, temporally variable" description="custom, temporally variable internal pressure gradient computed from observations"/>
+				<option value="2" label="custom observed profiles" description="custom, temporally variable internal pressure gradient computed from observations"/>
 			</options>
 			<element id="int_press_file" type="file" label="custom horizontal gradients of salinity and temperature">
 				<condition type="eq" variable="." value="2"/>
@@ -924,7 +924,7 @@
 		
 		<element id="extinct" type="select" label="light extinction">
 			<options>
-				<option value="0" label="custom, temporally variable" />
+				<option value="0" label="custom observed values" />
 				<option value="1" label="Jerlov type I" />
 				<option value="2" label="Jerlov type 1 (upper 50 m)"/>
 				<option value="3" label="Jerlov type IA"/>
@@ -949,7 +949,7 @@
 			<options>
 				<option value="0" label="none" />
 				<option value="1" label="temporally constant vertical advection velocity profile" />
-				<option value="2" label="custom observed velocity"/>
+				<option value="2" label="custom observed values"/>
 			</options>
 			<element id="w_adv_height0" type="float" label="constant height of maximum absolute value of vertical advection velocity" unit="m">
 				<condition type="eq" variable="." value="1"/>
@@ -957,7 +957,7 @@
 			<element id="w_adv0" type="float" label="constant vertical advection velocity" unit="m/s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="w_adv_file" type="file" label="filename for file with &quot;w_height&quot; and &quot;w_adv&quot;">
+			<element id="w_adv_file" type="file" label="custom vertical advection velocities">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -983,7 +983,7 @@
 			<options>
 				<option value="0" label="constant" />
 				<option value="1" label="calculate from tidal constituents" />
-				<option value="2" label="custom, temporally variable"/>
+				<option value="2" label="custom observed values"/>
 			</options>
 			<element id="zeta_file" type="file" label="custom sea surface elevations">
 				<condition type="eq" variable="." value="2"/>
@@ -1020,7 +1020,7 @@
 			<options>
 				<option value="0" label="none" />
 				<option value="1" label="constant" />
-				<option value="2" label="custom, temporally variable"/>
+				<option value="2" label="custom observed values"/>
 			</options>
 			<element id="wave_file" type="file" label="custom wind waves">
 				<condition type="eq" variable="." value="2"/>
@@ -1047,7 +1047,7 @@
 			<options>
 				<option value="0" label="zero initial velocities" />
 				<option value="1" label="(not implemented)" disabled="True" />
-				<option value="2" label="custom, temporally variable"/>
+				<option value="2" label="custom observed profiles"/>
 			</options>
 			<element id="vel_prof_file" type="file" label="custom velocity profiles">
 				<condition type="eq" variable="." value="2"/>
@@ -1066,7 +1066,7 @@
 			<options>
 				<option value="0" label="zero initial dissipation" />
 				<option value="1" label="(not implemented)" disabled="True" />
-				<option value="2" label="custom, temporally variable"/>
+				<option value="2" label="custom observed profiles"/>
 			</options>
 			<element id="e_obs_const"  type="float" label="a constant filling value" unit="W/kg">
 				<condition type="eq" variable="." value="1"/>
@@ -1092,7 +1092,7 @@
 			<options>
 				<option value="0" label="none" />
 				<option value="1" label="(not used)" disabled="True" />
-				<option value="2" label="custom, temporally variable"/>
+				<option value="2" label="custom observed profiles"/>
 			</options>
 			<element id="o2_units" type="select" label="oxygen unit">
 				<condition type="ne" variable="." value="0"/>
@@ -1102,7 +1102,7 @@
 					<option value="2" label="ml/m3 ???"/>
 				</options>
 			</element>
-			<element id="o2_prof_file" type="file" label="filename of file with oxygen profiles">
+			<element id="o2_prof_file" type="file" label="custom oxygen profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
