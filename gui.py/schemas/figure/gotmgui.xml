@@ -3,16 +3,17 @@
 
 			<element id="Name" type="string" label="name" hidden="True"/>
 			<element id="Title" type="string" label="title"/>
-			<element id="FontScaling" type="float" label="Relative font size" unit="%"/>
+			<element id="FontScaling" type="float" label="font scaling" unit="%"/>
 
+			<element id="HasTimeAxis" type="bool" label="time axis" hidden="True"/>
 			<element id="TimeAxis" label="time axis">
+				<condition type="eq" variable="./HasTimeAxis" value="True"/>
 				<element id="Minimum" type="datetime" label="minimum" nodefault="True"/>
 				<element id="Maximum" type="datetime" label="maximum" nodefault="True"/>
 				<element id="Label"   type="string" label="label"/>
 			</element>
 
 			<element id="HasDepthAxis" type="bool" label="depth axis" hidden="True"/>
-			
 			<element id="DepthAxis" label="depth axis">
 				<condition type="eq" variable="./HasDepthAxis" value="True"/>
 				<element id="Minimum" type="float" label="minimum" unit="m" minimum="-5000" maximum="50" nodefault="True"/>

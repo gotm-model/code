@@ -145,5 +145,10 @@
 			<element id="ldn"/>
 		</element>
 	</element>
+	<element id="seagrass">
+		<condition type="eq" variable="/seagrass/canopy/seagrass_calc" value="True" source="scenario"/>
+		<element id="x-excur"/>
+		<element id="y-excur"/>
+	</element>
 	<element id="other" label="other"/>
 </element>

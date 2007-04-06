@@ -1,12 +1,14 @@
+import datetime
+
 import matplotlib
 matplotlib.use('Qt4Agg')
 matplotlib.rcParams['numerix'] = 'numpy'
-import matplotlib.numerix,matplotlib.numerix.ma
+import matplotlib.numerix,matplotlib.numerix.ma,matplotlib.colors
 import matplotlib.dates
 import matplotlib.pylab
 import matplotlib.backends.backend_agg
 
-import common,xmlstore
+import common,xmlstore,data
 
 class MonthFormatter(matplotlib.dates.DateFormatter):
     def __init__(self):
@@ -14,6 +16,75 @@ class MonthFormatter(matplotlib.dates.DateFormatter):
 
     def __call__(self, x, pos=None):
         return matplotlib.dates.DateFormatter.__call__(self,x,pos)[0]
+        
+class VariableTransform(data.PlotVariable):
+    def __init__(self,sourcevar):
+        data.PlotVariable.__init__(self)
+        self.sourcevar = sourcevar
+
+    def getName(self):
+        return self.sourcevar.getName()
+
+    def getLongName(self):
+        return self.sourcevar.getLongName()
+
+    def getUnit(self):
+        return self.sourcevar.getLongName()
+
+    def getDimensions(self):
+        return self.sourcevar.getDimensions()
+        
+class VariableSlice(VariableTransform):
+    def __init__(self,variable,slicedimension,slicecoordinate):
+        VariableTransform.__init__(self,variable)
+        self.slicedim = slicedimension
+        self.sliceval = slicecoordinate
+
+        dims = self.sourcevar.getDimensions()
+        for (i,d) in enumerate(dims):
+            if d==self.slicedim: break
+        else:
+            assert False, 'Slice dimension "%s" is not present for this variable.' % self.slicedim
+        self.islicedim = i
+
+    def getDimensions(self):
+        dims = self.sourcevar.getDimensions()
+        return [d for d in dims if d!=self.slicedim]
+
+    def getValues(self,bounds,staggered=False,coordinatesonly=False):
+        bounds.insert(self.islicedim,(self.sliceval,self.sliceval))
+        dims = self.getDimensions()
+        data = self.sourcevar.getValues(bounds,staggered=staggered,coordinatesonly=coordinatesonly)
+        if data==None or 0 in data[-1].shape: return None
+        assert data[self.islicedim].ndim==1, 'Slicing is not (yet) supported for dimensions that have coordinates that depend on other dimensions.'
+        ipos = data[self.islicedim].searchsorted(self.sliceval)
+        if ipos==0 or ipos>=data[self.islicedim].shape[0]: return None
+        leftx  = data[self.islicedim][ipos-1]
+        rightx = data[self.islicedim][ipos]
+        deltax = rightx-leftx
+        stepx = self.sliceval-leftx
+        if isinstance(deltax,datetime.timedelta):
+            relstep = common.timedelta2float(stepx)/common.timedelta2float(deltax)
+        else:
+            relstep = stepx/deltax
+        if len(dims)==1:
+            data.pop(self.islicedim)
+            for idat in range(len(data)):
+                if data[idat].ndim==2:
+                    if ipos>0 and ipos<len(data[self.islicedim]):
+                        # centered: left and right bound available
+                        left  = data[idat].take((ipos-1,),self.islicedim).squeeze()
+                        right = data[idat].take((ipos,  ),self.islicedim).squeeze()
+                        data[idat] = left + relstep*(right-left)
+                    elif ipos==0:
+                        # left-aligned (only right bound available)
+                        data[idat]=data[idat].take((ipos,),self.islicedim).squeeze()
+                    else:
+                        # right-aligned (only left bound available)
+                        data[idat]=data[idat].take((ipos-1,),self.islicedim).squeeze()
+        else:
+            assert False,'Cannot take slice because the result does not have 1 coordinate dimension (instead it has %i: %s).' % (len(dims),dims)
+        return data
 
 class Figure:
 
@@ -107,6 +178,11 @@ class Figure:
         axes = self.figure.add_subplot(111)
         
         textscaling = self.properties.getProperty(['FontScaling'],usedefault=True)/100.
+        titlesize = matplotlib.rcParams['axes.titlesize']
+        axeslabelsize = matplotlib.rcParams['axes.labelsize']
+        xticklabelsize = matplotlib.rcParams['xtick.labelsize']
+        yticklabelsize = matplotlib.rcParams['ytick.labelsize']
+        linewidth = matplotlib.rcParams['lines.linewidth']
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         tmin = self.properties.getProperty(['TimeAxis','Minimum'])
@@ -114,14 +190,9 @@ class Figure:
         zmin = self.properties.getProperty(['DepthAxis','Minimum'])
         zmax = self.properties.getProperty(['DepthAxis','Maximum'])
 
-        # Variables below will store the effective dimension boundaries
-        tmin_eff = None
-        tmax_eff = None
-        zmin_eff = None
-        zmax_eff = None
-
         # Link between dimension name (e.g., "time", "z") and axis (e.g., "x", "y")
-        dim2axis = {}
+        dim2data = {'time':{'forcedrange':[tmin,tmax],'datarange':[None,None]},
+                    'z'   :{'forcedrange':[zmin,zmax],'datarange':[None,None]}}
 
         # Shortcuts to the nodes specifying the variables to plot.
         forceddatanode = self.properties.root.getLocation(['Data'])
@@ -145,53 +216,87 @@ class Figure:
             # Get variable object.
             var = self.sources[varsource].getVariable(varname)
             assert var!=None, 'Source "%s" does not contain variable with name "%s".' % (varsource,varname)
-
-            # Copy series information
+            
+            # Create default series information
             defaultseriesnode = defaultdatanode.getNumberedChild('Series',iseries,create=True)
             defaultseriesnode.getLocation(['Variable']).setValue(varname)
             defaultseriesnode.getLocation(['Source']).setValue(varsource)
             defaultseriesnode.getLocation(['PlotType2D']).setValue(0)
             defaultseriesnode.getLocation(['PlotType3D']).setValue(0)
-            defaultseriesnode.getLocation(['LineWidth']).setValue(0.5)
+            defaultseriesnode.getLocation(['LineWidth']).setValue(linewidth)
             defaultseriesnode.getLocation(['LogScale']).setValue(False)
 
             # Store the variable long name (to be used for building title)
             longnames.append(var.getLongName())
 
-            # Get the (number of) independent dimensions of the current variable.
+            # Build list of dimension boundaries for current variable.
+            # For dimensions that have equal lower and upper bound, take a slice.
+            dimbounds = []
+            for dimname in var.getDimensions():
+                if dimname not in dim2data: dim2data[dimname] = {}
+                dimdata = dim2data[dimname]
+                dimdata['used'] = True
+                if 'forcedrange' in dimdata:
+                    if dimdata['forcedrange'][0]==dimdata['forcedrange'][1] and (dimdata['forcedrange'][0]!=None):
+                        var = VariableSlice(var,dimname,dimdata['forcedrange'][0])
+                    else:
+                        dimbounds.append(dimdata['forcedrange'])
+                else:
+                    dimbounds.append((None,None))
+                    
+            # Get final list of dimensions (after taking slices).
             dims = var.getDimensions()
-            seriesnode.getLocation(['DimensionCount']).setValue(len(dims))
+
+            # Get the data (centered coordinates and values)
+            data = var.getValues(dimbounds,staggered=False)
+            
+            # Skip this variable if no data are available.
+            if data==None or 0 in data[-1].shape: continue
+            
+            # Find non-singleton dimensions (singleton dimension: dimension with length one)
+            # Store singleton dimensions as fixed extra coordinates.
+            gooddims = []
+            newdims = []
+            fixedcoords = []
+            for idim,dimname in enumerate(dims):
+                if data[-1].shape[idim]>1:
+                    # Normal dimension (more than one coordinate)
+                    gooddims.append(idim)
+                    newdims.append(dimname)
+                elif data[-1].shape[idim]==1:
+                    # Singleton dimension
+                    fixedcoords.append((dimname,data[idim][0]))
+                    
+            dims = newdims
+            values = data[-1].squeeze()
+
+            # Get effective number of independent dimensions (singleton dimensions removed)
+            dimcount = len(dims)
+            seriesnode.getLocation(['DimensionCount']).setValue(dimcount)
 
             # Get the plot type, based on the number of dimensions
-            if len(dims)==1:
+            if dimcount==0:
                 plottypenodename = 'PlotType2D'
-            elif len(dims)==2:
+            elif dimcount==1:
+                plottypenodename = 'PlotType2D'
+            elif dimcount==2:
                 plottypenodename = 'PlotType3D'
             else:
-                raise Exception('This variable has %i independent dimensions. Can only plot variables with 2 or 3 independent dimensions.' % len(dims))
+                raise Exception('This variable has %i independent dimensions. Can only plot variables with 0, 1 or 2 independent dimensions.' % dimcount)
             plottype = seriesnode.getLocation([plottypenodename]).getValueOrDefault()
 
             # We use a staggered grid (coordinates at interfaces, values at centers) for certain 3D plot types.
             staggered = (plottypenodename=='PlotType3D' and plottype==0)
 
-            # Set forced bounds (if any) for each dimension of the plotted variable.
-            dimbounds = []
-            for dimname in dims:
-                if dimname=='time':
-                    dimbounds.append((tmin,tmax))
-                elif dimname=='z':
-                    dimbounds.append((zmin,zmax))
-                else:
-                    raise Exception('Variable has unknown dimension "'+dimname+'".')
-
-            # Get the data
-            data = var.getValues(dimbounds,staggered=staggered)
+            # Get coordinate data (now that we know whether to use a staggered grid)
+            data = var.getValues(dimbounds,staggered=staggered,coordinatesonly=True)
+            data = [data[idim].squeeze() for idim in gooddims] + [values]
 
             # Get the minimum and maximum values; store these as default.
             defaultseriesnode.getLocation(['Minimum']).setValue(data[-1].min())
             defaultseriesnode.getLocation(['Maximum']).setValue(data[-1].max())
 
-            # Filter values that are not within (minimum, maximum) range.
+            # Mask values that are not within (minimum, maximum) range.
             minimum = seriesnode.getLocation(['Minimum']).getValue()
             maximum = seriesnode.getLocation(['Maximum']).getValue()
             if minimum!=None and maximum!=None:
@@ -201,10 +306,10 @@ class Figure:
             elif maximum!=None:
                 data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]>maximum)
 
-            # Transform to log-scale if needed
+            # Transform to log-scale if needed (first mask values <= zero)
             logscale = seriesnode.getLocation(['LogScale']).getValueOrDefault()
             if logscale:
-                data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]<=0)
+                data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]<=0.)
                 data[-1] = matplotlib.numerix.ma.log10(data[-1])
 
             # Get label
@@ -214,90 +319,112 @@ class Figure:
             label = seriesnode.getLocation(['Label']).getValueOrDefault()
 
             # Enumerate over the dimension of the variable.
-            for idim in range(len(dims)):
+            for idim,dimname in enumerate(dims):
                 # Get minimum and maximum coordinates.
-                if len(data[idim].shape)==1:
+                if data[idim].ndim==1:
+                    # Coordinates provided as vector (1D) valid over whole domain.
                     datamin = data[idim][0]
                     datamax = data[idim][-1]
                 else:
-                    if idim==0:
-                        datamin = min(data[idim][0,:])
-                        datamax = max(data[idim][-1,:])
-                    else:
-                        datamin = min(data[idim][:,0])
-                        datamax = max(data[idim][:,-1])
+                    # Coordinates are provided as multidimensional array, with a value for every
+                    # coordinate (data point) in the domain. We assume that for a given point
+                    # in the space of the other coordinates, the current cordinate increases
+                    # monotonously (i.e., position 0 holds the lowest value and position -1 the
+                    # highest)
+                    datamin = data[idim].take((0, ),idim).min()
+                    datamax = data[idim].take((-1,),idim).max()
 
-                if dims[idim]=='time':
-                    # Update effective time bounds
-                    if tmin_eff==None or datamin<tmin_eff: tmin_eff=datamin
-                    if tmax_eff==None or datamax>tmax_eff: tmax_eff=datamax
-                    
-                    # Convert time (datetime objects) to time unit used by MatPlotLib
-                    data[idim] = matplotlib.dates.date2num(data[idim])
-                elif dims[idim]=='z':
-                    # Update effective depth bounds
-                    if zmin_eff==None or datamin<zmin_eff: zmin_eff=datamin
-                    if zmax_eff==None or datamax>zmax_eff: zmax_eff=datamax
+                # Update effective dimension bounds                    
+                if 'datarange' not in dim2data[dimname]: dim2data[dimname]['datarange'] = [None,None]
+                effrange = dim2data[dimname]['datarange']
+                if effrange[0]==None or datamin<effrange[0]: effrange[0] = datamin
+                if effrange[1]==None or datamax>effrange[1]: effrange[1] = datamax
 
+                # Convert time (datetime objects) to time unit used by MatPlotLib
+                if dimname=='time': data[idim] = matplotlib.dates.date2num(data[idim])
+            
             # Plot the data series
+            if len(dims)==0:
+                # Zero-dimensional coordinate space (i.e., only a single data value is available)
+                # No plotting of coordinate-less data (yet)
+                pass
             if len(dims)==1:
-                # One-dimensional variable; currently this implies dependent on time only.
+                # One-dimensional coordinate space (x). Use x-axis for coordinates, unless the
+                # coordinate name is "z" (i.e., depth).
                 xdim = 0
-
+                datadim = 1
+                if dims[xdim]=='z':
+                    xdim = 1
+                    datadim = 0
                 linewidth = seriesnode.getLocation(['LineWidth']).getValueOrDefault()
-
-                lines = axes.plot(data[xdim],data[-1],'-',linewidth=linewidth)
-                dim2axis[dims[xdim]] = 'x'
-                axes.set_ylabel(label)
+                lines = axes.plot(data[xdim],data[datadim],'-',linewidth=linewidth)
+                if xdim==0:
+                    dim2data[dims[0]]['axis'] = 'x'
+                    axes.set_ylabel(label,size=textscaling*axeslabelsize)
+                else:
+                    dim2data[dims[0]]['axis'] = 'y'
+                    axes.set_xlabel(label,size=textscaling*axeslabelsize)
             elif len(dims)==2:
-                # Two-dimensional variable, i.e. dependent on time and depth.
+                # Two-dimensional coordinate space (x,y). Use x-axis for first coordinate dimension,
+                # and y-axis for second coordinate dimension.
                 xdim = 0
                 ydim = 1
 
-                dim2axis[dims[xdim]] = 'x'
-                dim2axis[dims[ydim]] = 'y'
+                dim2data[dims[xdim]]['axis'] = 'x'
+                dim2data[dims[ydim]]['axis'] = 'y'
 
                 X = data[xdim]
                 Y = data[ydim]
                 Z = data[-1]
-
-                # Get length of coordinate dimensions.
-                if len(X.shape)==1:
+                
+                # Get length of coordinate dimensions. Coordinates can be provided as vectors
+                # valid over the whole domain, or as n-D array that match the shape of the values.
+                if X.ndim==1:
                     xlength = X.shape[0]
                 else:
                     xlength = X.shape[xdim]
-                if len(Y.shape)==1:
+                if Y.ndim==1:
                     ylength = Y.shape[0]
                 else:
                     ylength = Y.shape[ydim]
-                
+                    
                 # Adjust X dimension.
-                if len(X.shape)==1:
-                    X = matplotlib.numerix.reshape(X,(1,-1))
-                    X = matplotlib.numerix.repeat(X, ylength, 0)
+                if X.ndim==1:
+                    X = X.reshape((1,-1)).repeat(ylength, 0)
                 elif xdim<ydim:
-                    X = matplotlib.numerix.transpose(X)
+                    X = X.transpose()
                     
                 # Adjust Y dimension.
-                if len(Y.shape)==1:
-                    Y = matplotlib.numerix.reshape(Y,(-1,1))
-                    Y = matplotlib.numerix.repeat(Y, xlength, 1)
+                if Y.ndim==1:
+                    Y = Y.reshape((-1,1)).repeat(xlength, 1)
                 elif xdim<ydim:
-                    Y = matplotlib.numerix.transpose(Y)
+                    Y = Y.transpose()
                     
                 # Adjust Z dimension.
                 if xdim<ydim:
-                    # Note: using masked array transpose because values can be masked (e.g. after log-transform)
-                    Z = matplotlib.numerix.ma.transpose(Z)
-
+                    Z = Z.transpose()
+                    
                 if plottype==1:
                   pc = axes.contourf(X,Y,Z)
                 else:
                   #pc = axes.pcolor(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
                   pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
                   #im.set_interpolation('bilinear')
-                cb = self.figure.colorbar(mappable=pc)
-                if label!='': cb.set_label(label)
+                  
+                # Create colorbar
+                if (Z.ravel()==Z[0,0]).all():
+                    # Explicitly set color range; MatPlotLib 0.90.0 chokes on identical min and max.
+                    pc.set_clim((Z[0,0]-1,Z[0,0]+1))
+                    cb = self.figure.colorbar(mappable=pc)
+                else:
+                    cb = self.figure.colorbar(mappable=pc)
+                    
+                # Text for colorbar
+                if label!='': cb.set_label(label,size=textscaling*axeslabelsize)
+                for l in cb.ax.xaxis.get_ticklabels():
+                    l.set_size(l.get_size()*textscaling)
+                for l in cb.ax.yaxis.get_ticklabels():
+                    l.set_size(l.get_size()*textscaling)
 
             # Hold all plot properties so we can plot additional data series.
             axes.hold(True)
@@ -309,21 +436,29 @@ class Figure:
         self.defaultproperties.setProperty(['Title'],', '.join(longnames))
         title = self.properties.getProperty(['Title'],usedefault=True)
         assert title!=None, 'Title must be available, either explicitly set or as default.'
-        if title!='': axes.set_title(title,size=textscaling*10)
+        if title!='': axes.set_title(title,size=textscaling*titlesize)
 
-        # Store current axes bounds
-        self.defaultproperties.setProperty(['TimeAxis',  'Minimum'],tmin_eff)
-        self.defaultproperties.setProperty(['TimeAxis',  'Maximum'],tmax_eff)
-        self.defaultproperties.setProperty(['DepthAxis', 'Minimum'],zmin_eff)
-        self.defaultproperties.setProperty(['DepthAxis', 'Maximum'],zmax_eff)
-        if tmin==None: tmin = tmin_eff
-        if tmax==None: tmax = tmax_eff
-        if zmin==None: zmin = zmin_eff
-        if zmax==None: zmax = zmax_eff
+        # Store natural axes bounds (based on data ranges).
+        self.defaultproperties.setProperty(['TimeAxis',  'Minimum'],dim2data['time']['datarange'][0])
+        self.defaultproperties.setProperty(['TimeAxis',  'Maximum'],dim2data['time']['datarange'][1])
+        self.defaultproperties.setProperty(['DepthAxis', 'Minimum'],dim2data['z']   ['datarange'][0])
+        self.defaultproperties.setProperty(['DepthAxis', 'Maximum'],dim2data['z']   ['datarange'][1])
+        
+        #if tmin_eff==tmax_eff and tmin_eff!=None:
+        #    tmin_eff -= datetime.timedelta(1)
+        #    tmax_eff += datetime.timedelta(1)
+        
+        # Get effective ranges for each dimension (based on forced limits and natural data ranges)
+        for dim,dat in dim2data.iteritems():
+            effrange = dat['forcedrange'][:]
+            if effrange[0]==None: effrange[0] = dat['datarange'][0]
+            if effrange[1]==None: effrange[1] = dat['datarange'][1]
+            dat['range'] = effrange
 
         # Configure time axis (if any).
-        if 'time' in dim2axis:
-            timeaxis = dim2axis['time']
+        if 'time' in dim2data and 'axis' in dim2data['time']:
+            timedata = dim2data['time']
+            timeaxis = timedata['axis']
             
             # Obtain label for time axis.
             tlabel = self.properties.getProperty(['TimeAxis','Label'],usedefault=True)
@@ -332,15 +467,15 @@ class Figure:
             # Configure limits and label of time axis.
             if timeaxis=='x':
                 taxis = axes.xaxis
-                if tlabel!='': axes.set_xlabel(tlabel)
-                axes.set_xlim(matplotlib.dates.date2num(tmin),matplotlib.dates.date2num(tmax))
+                if tlabel!='': axes.set_xlabel(tlabel,size=textscaling*axeslabelsize)
+                axes.set_xlim(matplotlib.dates.date2num(timedata['range'][0]),matplotlib.dates.date2num(timedata['range'][1]))
             elif timeaxis=='y':
                 taxis = axes.yaxis
-                if tlabel!='': axes.set_ylabel(tlabel)
-                axes.set_ylim(matplotlib.dates.date2num(tmin),matplotlib.dates.date2num(tmax))
+                if tlabel!='': axes.set_ylabel(tlabel,size=textscaling*axeslabelsize)
+                axes.set_ylim(matplotlib.dates.date2num(timedata['range'][0]),matplotlib.dates.date2num(timedata['range'][1]))
 
             # Select tick type and spacing based on the time span to show.
-            dayspan = (tmax-tmin).days
+            dayspan = (timedata['range'][1]-timedata['range'][0]).days
             if dayspan/365>10:
               # more than 10 years
               taxis.set_major_locator(matplotlib.dates.YearLocator(base=5))
@@ -365,10 +500,13 @@ class Figure:
               # less than 1 day
               taxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
               taxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+                      
+        self.properties.setProperty(['HasTimeAxis'],'used' in dim2data['time'])
 
         # Configure depth axis (y-axis), if any.
-        if 'z' in dim2axis:
-            zaxis = dim2axis['z']
+        if 'z' in dim2data and 'axis' in dim2data['z']:
+            zdata = dim2data['z']
+            zaxis = zdata['axis']
 
             # Obtain label for depth axis.
             zlabel = self.properties.getProperty(['DepthAxis','Label'],usedefault=True)
@@ -376,14 +514,20 @@ class Figure:
 
             # Configure limits and label of depth axis.
             if zaxis=='x':
-                axes.set_xlim(zmin,zmax)
-                if zlabel!='': axes.set_xlabel(zlabel)
+                axes.set_xlim(zdata['range'][0],zdata['range'][1])
+                if zlabel!='': axes.set_xlabel(zlabel,size=textscaling*axeslabelsize)
             elif zaxis=='y':
-                axes.set_ylim(zmin,zmax)
-                if zlabel!='': axes.set_ylabel(zlabel)
-        self.properties.setProperty(['HasDepthAxis'],'z' in dim2axis)
+                axes.set_ylim(zdata['range'][0],zdata['range'][1])
+                if zlabel!='': axes.set_ylabel(zlabel,size=textscaling*axeslabelsize)
+        self.properties.setProperty(['HasDepthAxis'],'used' in dim2data['z'])
+        
+        # Scale the text labels
+        for l in axes.get_xaxis().get_ticklabels():
+            l.set_size(l.get_size()*textscaling)
+        for l in axes.get_yaxis().get_ticklabels():
+            l.set_size(l.get_size()*textscaling)
 
-        # Draw the plot to screen.            
+        # Draw the plot to screen.
         self.canvas.draw()
         
         for cb in self.callbacks['completeStateChange']: cb(len(forcedseries)>0)

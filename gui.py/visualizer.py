@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.13 2007-03-23 11:23:59 jorn Exp $
+#$Id: visualizer.py,v 1.14 2007-04-06 13:59:27 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -134,6 +134,12 @@ class ConfigureReportWidget(QtGui.QWidget):
         for (dpi) in [72,96,100,150,300,600,1200]:
             self.comboDpi.addItem(unicode(dpi),QtCore.QVariant(dpi))
         self.comboDpi.setCurrentIndex(1)
+
+        self.labFontScaling = QtGui.QLabel('Font scaling (%):',self)
+        self.spinFontScaling = QtGui.QSpinBox(self)
+        self.spinFontScaling.setMinimum(0)
+        self.spinFontScaling.setMaximum(1000)
+        self.spinFontScaling.setValue(100)
         
         layout = QtGui.QGridLayout()
         layout.addWidget(self.labOutput,     0,0)
@@ -145,12 +151,14 @@ class ConfigureReportWidget(QtGui.QWidget):
 
         self.figbox = QtGui.QGroupBox('Figure settings',self)
         figlayout = QtGui.QGridLayout()
-        figlayout.addWidget(self.labWidth,      3,0)
-        figlayout.addWidget(self.spinWidth,     3,1)
-        figlayout.addWidget(self.labHeight,     4,0)
-        figlayout.addWidget(self.spinHeight,    4,1)
-        figlayout.addWidget(self.labDpi,        5,0)
-        figlayout.addWidget(self.comboDpi,      5,1)
+        figlayout.addWidget(self.labWidth,       3,0)
+        figlayout.addWidget(self.spinWidth,      3,1)
+        figlayout.addWidget(self.labHeight,      4,0)
+        figlayout.addWidget(self.spinHeight,     4,1)
+        figlayout.addWidget(self.labDpi,         5,0)
+        figlayout.addWidget(self.comboDpi,       5,1)
+        figlayout.addWidget(self.labFontScaling, 6,0)
+        figlayout.addWidget(self.spinFontScaling,6,1)
         figlayout.setColumnStretch(1,1)
         self.figbox.setLayout(figlayout)
         layout.addWidget(self.figbox,3,0,1,2)
@@ -177,13 +185,14 @@ class ConfigureReportWidget(QtGui.QWidget):
         dpiindex = self.comboDpi.currentIndex()
         dpi,ret = self.comboDpi.itemData(dpiindex).toInt()
         size = (self.spinWidth.value(),self.spinHeight.value())
+        fontscaling = float(self.spinFontScaling.value())
 
         if os.path.isdir(outputpath) and len(os.listdir(outputpath))>0:
             ret = QtGui.QMessageBox.warning(self,'Directory is not empty','The specified target directory ("%s") contains one or more files, which may be overwritten. Do you want to continue?' % outputpath,QtGui.QMessageBox.Yes,QtGui.QMessageBox.No)
             if ret==QtGui.QMessageBox.No: return False
 
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
-        self.result.generateReport(outputpath,templatepath,varids,dpi=dpi,figuresize=size,callback=self.onReportProgressed)
+        self.result.generateReport(outputpath,templatepath,varids,dpi=dpi,figuresize=size,fontscaling=fontscaling,callback=self.onReportProgressed)
         QtGui.QApplication.restoreOverrideCursor()
 
         return True
@@ -394,17 +403,18 @@ class PageVisualize(commonqt.WizardPage):
         props = self.figurepanel.figure.properties
         
         # Plot; first try stored figures, otherwise plot anew.
-        if not self.result.getFigure('result/'+varpath,props):
+        if self.result.getFigure('result/'+varpath,props):
+            # Set key properties to their required values.
+            series = props.root.getLocation(['Data','Series'])
+            series.getLocation(['Source']).setValue('result')
+            series.getLocation(['Variable']).setValue(varname)
+        else:
             self.figurepanel.plot(varname,'result')
 
-        # Set key properties to their required values.
+        # Name the plot (later used as index for list of stored plot properties)
         props.root.getLocation(['Name']).setValue('result/'+varpath)
-        series = props.root.getLocation(['Data','Series'])
-        series.getLocation(['Source']).setValue('result')
-        series.getLocation(['Variable']).setValue(varname)
         
         self.figurepanel.figure.setUpdating(True)
-        
         QtGui.QApplication.restoreOverrideCursor()
 
     def isComplete(self):

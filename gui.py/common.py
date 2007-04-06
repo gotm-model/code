@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.23 2007-03-19 21:51:32 jorn Exp $
+#$Id: common.py,v 1.24 2007-04-06 13:59:27 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.numerix
@@ -15,6 +15,9 @@ datetime_displayformat = '%Y-%m-%d %H:%M:%S'
 def parsedatetime(str,fmt):
     t1tmp = time.strptime(str,fmt) 
     return datetime.datetime(*t1tmp[0:6])
+    
+def timedelta2float(td):
+    return td.days*3600*24 + td.seconds + td.microseconds/1e6
 
 # ------------------------------------------------------------------------------------------
 # Command line argument utility functions
@@ -141,27 +144,63 @@ def findindices(bounds,data):
             while stop>=0         and data[stop] >bounds[1]: stop-=1
 
         # Greedy: we want take the interval that fully encompasses the specified range.
-        # (note that this also corrects for a start beyond the available range, or a stop before it)
-        if start>0:          start-=1
-        if stop<len(data)-1: stop +=1
+        if start>0 and start<len(data):  start-=1
+        if stop<len(data)-1 and stop>=0: stop +=1
+
+        # Note: a start beyond the available range, or a stop before it, will now have resulted
+        # in start index > stop index, i.e., an invalid range. The calling function must be able
+        # to handle this scenario.
         
     return (start,stop)
 
 # 1D linear inter- and extrapolation.
 def interp1(x,y,X):
-    assert len(x.shape)==1, 'Original coordinates must be supplied as 1D array.'
-    assert len(X.shape)==1, 'New coordinates must be supplied as 1D array.'
-    newshape = [X.shape[0]]
-    for i in y.shape[1:]: newshape.append(i)
-    Y = matplotlib.numerix.zeros(newshape,matplotlib.numerix.typecode(y))
-    icurx = 0
-    for i in range(X.shape[0]):
-        while icurx<x.shape[0] and x[icurx]<X[i]: icurx+=1
-        if icurx==0:
-            Y[i,:] = y[0,:]
-        elif icurx>=x.shape[0]:
-            Y[i,:] = y[-1,:]
-        else:
-            rc = (y[icurx,:]-y[icurx-1,:])/(x[icurx]-x[icurx-1])
-            Y[i,:] = y[icurx-1,:] + rc*(X[i]-x[icurx-1])
-    return Y
+    assert x.ndim==1, 'Original coordinates must be supplied as 1D array.'
+    assert X.ndim==1, 'New coordinates must be supplied as 1D array.'
+    
+    # Transpose because it is easiest in numpy to operate on last axis. (this because of
+    # upcasting rules)
+    y = y.transpose()
+    
+    # Create array to hold interpolated values
+    Y = matplotlib.numerix.empty(y.shape[0:-1]+(X.shape[0],),matplotlib.numerix.typecode(y))
+    
+    # Find indices of interpolated X in original x.
+    iX = x.searchsorted(X)
+    
+    # Get the bounds of valid indices (index<=0 means point before x-data, index>=x.shape[0]
+    # means point beyond x-data)
+    bounds = iX.searchsorted((0.5,x.shape[0]-0.5))
+    
+    # Shortcuts to indices for left and right bounds, and the left bound values.
+    iX_high = iX[bounds[0]:bounds[1]]
+    iX_low = iX_high-1
+    x_low  = x[iX_low]
+    y_low = y[...,iX_low]
+    
+    # Linear interpolation
+    Y[...,bounds[0]:bounds[1]] = y_low + ((X[bounds[0]:bounds[1]]-x_low)/(x[iX_high]-x_low))*(y[...,iX_high]-y_low)
+    
+    # Set points beyond bounds to extreme values.
+    Y[...,0:bounds[0]] = y.take((0,),-1)
+    Y[...,bounds[1]:] = y.take((-1,),-1)
+    
+    # Undo the original transpose and return
+    return Y.transpose()
+    
+    # Below: previous code for Python-based linear interpolation. Slow!!
+    
+    #newshape = [X.shape[0]]
+    #for i in y.shape[1:]: newshape.append(i)
+    #Y = matplotlib.numerix.zeros(newshape,matplotlib.numerix.typecode(y))
+    #icurx = 0
+    #for i in range(X.shape[0]):
+    #    while icurx<x.shape[0] and x[icurx]<X[i]: icurx+=1
+    #    if icurx==0:
+    #        Y[i,:] = y[0,:]
+    #    elif icurx>=x.shape[0]:
+    #        Y[i,:] = y[-1,:]
+    #    else:
+    #        rc = (y[icurx,:]-y[icurx-1,:])/(x[icurx]-x[icurx-1])
+    #        Y[i,:] = y[icurx-1,:] + rc*(X[i]-x[icurx-1])
+    #return Y

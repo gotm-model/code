@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.21 2007-03-23 11:23:59 jorn Exp $
+#$Id: commonqt.py,v 1.22 2007-04-06 13:59:27 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re
@@ -558,7 +558,9 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         assert index.isValid(), 'Asked for parent of root node (invalid index), but Qt asker knows it is the root.'
 
         current = index.internalPointer()
+        assert isinstance(current,xmlstore.TypedStore.Node), 'Node data is not a TypedStore.Node, but: %s.' % current
         parent = self.storeinterface.getParent(current)
+        assert isinstance(parent,xmlstore.TypedStore.Node), 'Object returned by getParent is not of type "Node" (but "%s").' % (parent,)
 
         assert parent!=None, 'We were asked for the parent of the actual root, but we should never have been able to get so far up the tree.'
         
@@ -771,6 +773,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         return QtCore.QVariant()
 
     def beforeNodeVisibilityChange(self,node,newvisibility,showhide):
+        assert isinstance(node,xmlstore.TypedStore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
         if self.nohide and showhide: return
         irow = self.storeinterface.getOwnIndex(node)
         index = self.createIndex(irow,1,node)
@@ -781,6 +784,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             self.beginRemoveRows(par,irow,irow)
 
     def afterNodeVisibilityChange(self,node,newvisibility,showhide):
+        assert isinstance(node,xmlstore.TypedStore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
         if self.nohide and showhide: return self.onNodeChanged(node,headertoo=True)
         if newvisibility:
             self.endInsertRows()
@@ -788,6 +792,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             self.endRemoveRows()
 
     def onNodeChanged(self,node,headertoo = False):
+        assert isinstance(node,xmlstore.TypedStore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
         irow = self.storeinterface.getOwnIndex(node)
         index = self.createIndex(irow,1,node)
         self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)

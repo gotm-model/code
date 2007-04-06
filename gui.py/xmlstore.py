@@ -391,6 +391,9 @@ class DataFile(Store.DataType):
         return False
 
     def getSize(self):
+        return None
+        # Below an expensive way to get the size. Disabled: if the user really wants this,
+        # he should do it himself.
         return len(self.getData(textmode=False,readonly=True))
 
 class DataContainerDirectory(DataContainer):
@@ -487,7 +490,7 @@ class DataContainerZip(DataContainer):
             return owndir.startswith(os.path.normcase(path))
 
         def getSize(self):
-            return self.zipcontainer.getinfo(self.name).file_size
+            return self.zipcontainer.zfile.getinfo(self.name).file_size
 
         def unlink(self):
             if self.zipcontainer==None: return
@@ -588,7 +591,7 @@ class DataContainerTar(DataContainer):
             return owndir.startswith(os.path.normcase(path))
 
         def getSize(self):
-            return self.tarcontainer.getmember(self.name).size
+            return self.tarcontainer.tfile.getmember(self.name).size
 
         def unlink(self):
             if self.tarcontainer == None: return
@@ -687,6 +690,9 @@ class DataFileMemory(DataFile):
         self.data = None
         self.name = None
 
+    def getSize(self):
+        return len(self.data)
+
 class TypedStoreInterface:
     def __init__(self,store,showhidden=True,omitgroupers=False):
         self.showhidden = showhidden
@@ -702,6 +708,8 @@ class TypedStoreInterface:
         store.connectInterface(self)
 
     def getChildCount(self,node):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         childcount = 0
         for child in node.children:
             if child.visible or self.showhidden:
@@ -712,6 +720,8 @@ class TypedStoreInterface:
         return childcount
 
     def getChildren(self,node,showhidden=None):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if showhidden==None: showhidden=self.showhidden
         res = []
         for child in node.children:
@@ -723,12 +733,16 @@ class TypedStoreInterface:
         return res
 
     def getParent(self,node):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if not self.omitgroupers: return node.parent
         par = node.parent
         while par.grouponly: par = par.parent
         return par
 
     def getChildByIndex(self,node,index,returnindex=False):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         for child in node.children:
             if child.visible or self.showhidden:
                 if self.omitgroupers and child.grouponly:
@@ -743,6 +757,8 @@ class TypedStoreInterface:
             return None
 
     def getOwnIndex(self,node):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         ind = 0
         par = node.parent
         if self.omitgroupers and par.grouponly: ind = self.getOwnIndex(par)
@@ -754,10 +770,13 @@ class TypedStoreInterface:
                 else:
                     ind += 1
         else:
-            assert node.futureindex==len(par.children), 'Could not find node in children of supposed parent, but future index (%i) was also not set to tailing position (%i).' % (node.futureindex,len(par.children))
+            assert node.futureindex!=None, 'Could not find node "%s" in children of supposed parent, but future index was also not set. Data: %s' % (node,node.valuenode.toxml('utf-8'))
+            assert node.futureindex==len(par.children), 'Could not find node "%s" in children of supposed parent, but future index (%i) was also not set to tailing position (%i).' % (node,node.futureindex,len(par.children))
         return ind
 
     def getDepth(self,node):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         childmax = 0
         for child in self.getChildren(node):
             curchilddepth = self.getDepth(child)
@@ -765,6 +784,8 @@ class TypedStoreInterface:
         return childmax+1
 
     def toHtml(self,node,xmldocument,totaldepth,level=0,hidedefaults=False):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         res = []
 
         tr = None
@@ -834,14 +855,20 @@ class TypedStoreInterface:
     # ---------------------------------------------------------------------------
 
     def beforeVisibilityChange(self,node,shownew,showhide):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if (self.getParent(node).isHidden() and self.blockNotifyOfHiddenNodes): return
+        if self.blockNotifyOfHiddenNodes and node.isHidden() and not showhide: return
         if self.omitgroupers and node.grouponly:
             for ch in self.getChildren(node): self.emitBeforeVisibilityChange(ch,shownew,showhide)
         else:
             self.emitBeforeVisibilityChange(node,shownew,showhide)
 
     def afterVisibilityChange(self,node,shownew,showhide):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if (self.getParent(node).isHidden() and self.blockNotifyOfHiddenNodes): return
+        if self.blockNotifyOfHiddenNodes and node.isHidden() and not showhide: return
         if self.omitgroupers and node.grouponly:
             for ch in self.getChildren(node): self.emitAfterVisibilityChange(ch,shownew,showhide)
         else:
@@ -851,16 +878,22 @@ class TypedStoreInterface:
         for callback in self.storechangedhandlers: callback()
 
     def onBeforeChange(self,node,newvalue):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if not (node.isHidden() and self.blockNotifyOfHiddenNodes):
             for callback in self.beforechangehandlers:
                 if not callback(node,newvalue): return False
         return True
 
     def onChange(self,node):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if node.isHidden() and self.blockNotifyOfHiddenNodes: return
         for callback in self.changehandlers: callback(node)
 
     def onDefaultChange(self,node):
+        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if self.notifyOnDefaultChange: self.onChange(node)
 
     # ---------------------------------------------------------------------------
@@ -941,6 +974,9 @@ class TypedStore:
             self.templatenode = None
             self.valuenode = None
             self.store = None
+            
+        def isValid(self):
+            return self.store != None
 
         def getValue(self):
             if self.valuenode==None: return None
@@ -951,7 +987,9 @@ class TypedStore:
         def getDefaultValue(self):
             defaultstore = self.controller.defaultstore
             if defaultstore==None: return None
-            return defaultstore.mapForeignNode(self).getValue()
+            defaultnode = defaultstore.mapForeignNode(self)
+            if defaultnode==None: return None
+            return defaultnode.getValue()
 
         def getValueOrDefault(self):
             val = self.getValue()
@@ -976,15 +1014,15 @@ class TypedStore:
         def clearValue(self,recursive=False,skipreadonly=False,deleteclones=True):
             # First clear children.
             if recursive:
+                if deleteclones: self.removeAllChildren()
                 for ch in self.children:
                     ch.clearValue(recursive=True,skipreadonly=skipreadonly,deleteclones=deleteclones)
-                if deleteclones: self.removeAllChildren()
                 
             # Do not clear if (1) it is already cleared, (2) it is read-only and the user wants to respect that,
             # or (3) it is the root node.
             if self.valuenode==None or (skipreadonly and self.isReadOnly()) or self.parent==None: return
             
-            # Clear
+            # Clear if (1) this node can have no value - it must occur, and (2) the attached interfaces approve.
             if (not self.canHaveClones()) and self.controller.onBeforeChange(self,None):
                 self.store.clearNodeProperty(self.valuenode)
                 self.valuenode = None
@@ -1134,20 +1172,20 @@ class TypedStore:
                         child = self.children.pop(ipos)
                         self.store.clearNodeProperty(child.valuenode)
                         self.controller.afterVisibilityChange(child,False,False)
+                        child.destroy()
                         ipos -= 1
                 ipos += 1
-
-        def removeAllChildren(self):
-            ipos = 0
-            while ipos<len(self.children):
+                
+        def removeAllChildren(self,optionalonly=True):
+            for ipos in range(len(self.children)-1,-1,-1):
                 child = self.children[ipos]
-                if child.canHaveClones():
+                if (not optionalonly) or child.canHaveClones():
+                    child.removeAllChildren(optionalonly=False)
                     self.controller.beforeVisibilityChange(child,False,False)
                     child = self.children.pop(ipos)
-                    self.store.clearNodeProperty(child.valuenode)
+                    if child.valuenode!=None: self.store.clearNodeProperty(child.valuenode)
                     self.controller.afterVisibilityChange(child,False,False)
-                else:
-                    ipos += 1
+                    child.destroy()
 
         def getId(self):
             return self.location[-1]
@@ -1492,10 +1530,14 @@ class TypedStore:
     def mapForeignNode(self,foreignnode):
         indices = []
         currentnode = foreignnode
+        # First we walk up the tree from the supplied foreign node, in order to find the indices
+        # of all involved ancestors.
         for name in reversed(foreignnode.location):
             if not currentnode.canHaveClones():
+                # This node must appear once; its index can only be one.
                 indices.insert(0,0)
             else:
+                # This node can appear zero or more times. Find its index in the foreign store.
                 siblings = currentnode.parent.getLocationMultiple([name])
                 for (index,sib) in enumerate(siblings):
                     if sib is currentnode: break
@@ -1504,10 +1546,12 @@ class TypedStore:
                 indices.insert(0,index)
             currentnode = currentnode.parent
         assert currentnode.parent==None, 'Location does not describe complete path to root. Currently at %s.' % currentnode
+        
+        # Now find the same location in our own store.
         currentnode = self.root
         for (name,index) in zip(foreignnode.location,indices):
             currentnode = currentnode.getNumberedChild(name,index)
-            assert currentnode!=None, 'Cannot find %i node "%s" below %s.' % (index,name,currentnode)
+            if currentnode==None: break
         return currentnode
 
     # buildDependencies: for every variable node, this creates lists of dependent nodes
@@ -1901,6 +1945,7 @@ class TypedStore:
     def onDefaultChange(self,defaultnode):
         # Map node in default store to node in our own store.
         ownnode = self.mapForeignNode(defaultnode)
+        if ownnode==None: return
 
         # Emit change event
         for i in self.interfaces: i.onDefaultChange(ownnode)

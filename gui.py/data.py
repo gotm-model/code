@@ -98,7 +98,7 @@ class PlotVariable:
     #   the same numbers of dimensions as the value array (i.e., for every value a coordinate is supplied). If staggered is True,
     #   coordinates must be given at the interfaces and values at the centers; then coordinate arrays must have one extra value in
     #   every dimension compared to the value array.
-    def getValues(self,bounds,staggered=False):
+    def getValues(self,bounds,staggered=False,coordinatesonly=False):
         return ()
 
 class LinkedFileVariableStore(PlotVariableStore):
@@ -128,14 +128,26 @@ class LinkedFileVariableStore(PlotVariableStore):
             else:
                 assert False, 'Cannot plot variables from file of unknown type "%s".' % filetype
 
-        def getValues(self,bounds,staggered=False):
+        def getValues(self,bounds,staggered=False,coordinatesonly=False):
             data = self.store.getData()
+            res = []
+
             timebounds = common.findindices(bounds[0],data[0])
+            res.append(data[0][timebounds[0]:timebounds[1]+1])
             if len(data)==2:
-                return [data[0][timebounds[0]:timebounds[1]+1],data[1][timebounds[0]:timebounds[1]+1,self.index]]
+                res.append(data[1][timebounds[0]:timebounds[1]+1,self.index])
             elif len(data)==3:
-                return [data[0][timebounds[0]:timebounds[1]+1],data[1],data[2][timebounds[0]:timebounds[1]+1,:,self.index]]
-            assert False, 'Cannot handle variables with %i dimensions; only know how to deal with 2 or 3 dimensions.' % len(data)
+                res.append(data[1])
+                res.append(data[2][timebounds[0]:timebounds[1]+1,:,self.index])
+            else:
+                assert False, 'Cannot handle variables with %i dimensions; only know how to deal with 2 or 3 dimensions.' % len(data)
+                
+            if staggered:
+                for idim in range(len(res)-1):
+                    delta = (res[idim][1:]-res[idim][:-1])/2
+                    res[idim] = matplotlib.numerix.concatenate(([res[idim][0]-delta[0]],res[idim][:-1]+delta,[res[idim][-1]+delta[-1]]),0)
+                    
+            return res
 
     def __init__(self,node,datafile=None):
         self.vardata = []
@@ -178,6 +190,10 @@ class LinkedFileVariableStore(PlotVariableStore):
         
         varcount = len(self.vardata)
         
+        # Get the size of the file (in bytes, may be None if the size is not known)
+        # This will be used in combination with the position of the file pointer to report progress.
+        filesize = self.datafile.getSize()
+        
         # Access the data through some read-only file-like object.
         f = self.datafile.getAsReadOnlyFile()
 
@@ -188,71 +204,123 @@ class LinkedFileVariableStore(PlotVariableStore):
         if filetype=='pointsintime':
             times = []
             values = []
-            line = f.readline()
-            iline = 1
-            while line!='':
+            iline = 0
+            while True:
+                # Read a line (stop if end-of-file was reached)
+                line = f.readline()
+                if line=='': break
+                iline += 1
+                
+                # Read the date + time
                 datematch = datetimere.match(line)
                 if datematch==None:
                     raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
-                refvals = map(lambda(i): int(i),datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+                refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
                 curdate = datetime.datetime(*refvals)
+                
+                # Read values.
                 data = line[datematch.end()+1:].split()
                 if len(data)<varcount:
                     raise Exception('Line %i contains only %i observations, where %i are expected.' % (iline,len(data),varcount))
-                data = map(lambda(i): float(i),data)
+                data = map(float,data)
+                
+                # Store time and values.
                 times.append(curdate)
                 values.append(data)
-                if callback!=None and iline%1000==0: callback('processed %i lines.' % iline)
-                line = f.readline()
-                iline += 1
+                
+                # Inform caller about progress
+                if callback!=None and iline%1000==0:
+                    progress = None
+                    if filesize!=None:
+                        try:
+                            progress = float(f.tell())/filesize
+                        except:
+                            progress = None
+                    callback('processed %i lines.' % iline,progress=progress)
+            
+            # Convert sequences to numpy arrays and store these.
             times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
             values = matplotlib.numerix.array(values,matplotlib.numerix.Float32)
             self.data = (times,values)
         elif filetype=='profilesintime':
-            line = f.readline()
             times = []
             depths = []
             values = []
             uniquedepths = {}
-            iline = 1
-            while line!='':
+            iline = 0
+            while True:
+                # Read a line (stop if end-of-file was reached)
+                line = f.readline()
+                if line=='': break
+                iline += 1
+                
                 # Read date & time
                 datematch = datetimere.match(line)
                 if datematch==None:
                     raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
-                refvals = map(lambda(i): int(i),datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+                refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
                 curdate = datetime.datetime(*refvals)
 
                 # Get the number of observations and the depth direction.
                 (depthcount,updown) = map(lambda(i): int(i), line[datematch.end()+1:].split())
 
                 # Create arrays that will contains depths and observed values.
-                curdepths = matplotlib.numerix.zeros((depthcount,),matplotlib.numerix.Float32)
-                curvalues = matplotlib.numerix.zeros((depthcount,varcount),matplotlib.numerix.Float32)
+                curdepths = matplotlib.numerix.empty((depthcount,),matplotlib.numerix.Float32)
+                curvalues = matplotlib.numerix.empty((depthcount,varcount),matplotlib.numerix.Float32)
                 
+                # Depths can be increasing (updown==1) or decreasing (updown!=1)
                 if updown==1:
                     depthindices = range(0,depthcount,1)
                 else:
                     depthindices = range(depthcount-1,-1,-1)
+                
+                # Now parse the specified number of observations to cretae the profiles.
+                prevdepth = None
                 for idepthline in depthindices:
-                    if callback!=None and iline%1000==0: callback('processed %i lines.' % iline)
+                    if callback!=None and iline%1000==0:
+                        pos = f.tell()
+                        callback('processed %i lines.' % iline,progress=0.5*pos/filesize)
+                        
+                    # Read line
                     line = f.readline()
                     if line=='':
                         raise Exception('Premature end-of-file after line %i; expected %i more observations.' % (iline,depthcount-depthindices.index(idepthline)))
                     iline += 1
-                    linedata = map(lambda(i): float(i),line.split())
+                    
+                    # Read values (depth followed by data) and check.
+                    linedata = map(float,line.split())
                     if len(linedata)<varcount+1:
                         raise Exception('Line %i contains only %i value(s), where %i (1 time and %i observations) are expected.' % (iline,len(linedata),varcount+1,varcount))
+                    if prevdepth!=None:
+                        if linedata[0]==prevdepth:
+                            raise Exception('Found duplicate observation for depth %.4f at line %i.' % (linedata[0],iline))
+                        if updown==1:
+                            if linedata[0]<prevdepth:
+                                raise Exception('Observation depth decreases from %.4f to %.4f at line %i, but the profile depth was set to increase from first to last observation.' % (prevdepth,linedata[0],iline))
+                        elif linedata[0]>prevdepth:
+                            raise Exception('Observation depth increases from %.4f to %.4f at line %i, but the profile depth was set to decrease from first to last observation.' % (prevdepth,linedata[0],iline))
+                    prevdepth = linedata[0]
+                    
+                    # Store current observation
                     uniquedepths[linedata[0]] = True
                     curdepths[idepthline] = linedata[0]
                     curvalues[idepthline,:] = linedata[1:varcount+1]
+                    
+                # Append the profiles for the current time to the list.
                 times.append(curdate)
                 depths.append(curdepths)
                 values.append(curvalues)
-                if callback!=None and iline%1000==0: callback('processed %i lines.' % iline)
-                line = f.readline()
-                iline += 1
+                
+                # Inform caller about progress.
+                if callback!=None and iline%1000==0:
+                    pos = f.tell()
+                    callback('processed %i lines.' % iline,progress=0.5*pos/filesize)
+                    
+            # Convert sequence with times to numpy array.
             times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
+            
+            # Create depth grid to interpolate on to. Use the observation depths if less than 200,
+            # otherwise create a equidistant 200-point grid between the minimum and maximum depth.
             uniquedepths = uniquedepths.keys()
             uniquedepths.sort()
             if len(uniquedepths)<200:
@@ -260,14 +328,23 @@ class LinkedFileVariableStore(PlotVariableStore):
             else:
                 depthstep = (uniquedepths[-1]-uniquedepths[0])/200
                 depthgrid = matplotlib.numerix.arange(uniquedepths[0],uniquedepths[-1]+depthstep,depthstep)
-            griddedvalues = matplotlib.numerix.zeros((times.shape[0],depthgrid.shape[0],varcount),matplotlib.numerix.Float32)
+                
+            # Grid observed profiles to depth grid.
+            griddedvalues = matplotlib.numerix.empty((times.shape[0],depthgrid.shape[0],varcount),matplotlib.numerix.Float32)
             for it in range(len(times)):
                 griddedvalues[it,:,:] = common.interp1(depths[it],values[it],depthgrid)
-                if callback!=None and (it+1)%20==0: callback('gridded %i profiles.' % (it+1),progress=.5+float(it+1)/len(times)/2)
+                if callback!=None and (it+1)%20==0:
+                    callback('gridded %i profiles.' % (it+1),progress=.5+float(it+1)/len(times)/2)
+                
+            # Store time grid, depth grid and observations.
             self.data = (times,depthgrid,griddedvalues)
         else:
             assert False, 'Cannot plot variables from file of unknown type "%s".' % filetype
+            
+        # Close data file
         f.close()
+        
+        # Return data
         return self.data
 
 # Class that represents a GOTM result.
@@ -328,53 +405,59 @@ class Result(PlotVariableStore):
                   return ('time','z')
           raise Exception('This variable has dimensions %s; I do not know how to handle such variables.' % str(dimnames))
 
-        def getValues(self,bounds,staggered=False):
+        def getValues(self,bounds,staggered=False,coordinatesonly=False):
           nc = self.result.getcdf()
             
           v = nc.variables[self.varname]
           dims = v.dimensions
+          dimcount = len(dims)
+          res = []
 
           # Get time coordinates and time bounds.
           (t,t_stag) = self.result.getTime()
           timebounds = common.findindices(bounds[0],t)
           if not staggered:
-              t_eff = t[timebounds[0]:timebounds[1]+1]
+              res.append(t[timebounds[0]:timebounds[1]+1])
           else:
-              t_eff = t_stag[timebounds[0]:timebounds[1]+2]
+              res.append(t_stag[timebounds[0]:timebounds[1]+2])
 
-          dimcount = len(dims)
+          # Add depth dimension (if available)
           if dimcount==4:
-              # Four-dimensional variable: longitude, latitude, depth, time
-              (z,z1,z_stag,z1_stag) = self.result.getDepth()
-              depthbounds = (0,z.shape[1])
-              if dims[1]=='z':
-                  if staggered:
-                      z_cur = z_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
-                  else:
-                      z_cur = z[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1]
-              elif dims[1]=='z1':
-                  if staggered:
-                      z_cur = z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
-                  else:
-                      z_cur = z1[timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2]
-              try:
-                  dat = v[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1,0,0]
-              except Exception, e:
-                  raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
-              res = [t_eff,z_cur,dat]
-          elif dimcount==3:
-              # Three-dimensional variable: longitude, latitude, time
-              try:
-                  dat = v[timebounds[0]:timebounds[1]+1,0,0]
-              except Exception, e:
-                  raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
-              res = [t_eff,dat]
-          else:
-            raise Exception('This variable has dimensions %s; I do not know how to handle such variables.' % str(dimensions))
+            (z,z1,z_stag,z1_stag) = self.result.getDepth()
+            depthbounds = (0,z.shape[1])
+            if dims[1]=='z':
+                if staggered:
+                    res.append(z_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2])
+                else:
+                    res.append(z[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1])
+            elif dims[1]=='z1':
+                if staggered:
+                    res.append(z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2])
+                else:
+                    res.append(z1[timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2])
 
-          # Mask out missing data.
-          if hasattr(v,'missing_value'):
-              res[-1] = matplotlib.numerix.ma.masked_array(res[-1],res[-1]==v.missing_value)
+          # Add value data, if needed.
+          if not coordinatesonly:
+            if dimcount==4:
+                # Four-dimensional variable: longitude, latitude, depth, time
+                try:
+                    dat = v[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1,0,0]
+                except Exception, e:
+                    raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
+                res.append(dat)
+            elif dimcount==3:
+                # Three-dimensional variable: longitude, latitude, time
+                try:
+                    dat = v[timebounds[0]:timebounds[1]+1,0,0]
+                except Exception, e:
+                    raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
+                res.append(dat)
+            else:
+                raise Exception('This variable has dimensions %s; I do not know how to handle such variables.' % unicode(dimensions))
+
+            # Mask missing data.
+            if hasattr(v,'missing_value'):
+                res[-1] = matplotlib.numerix.ma.masked_array(res[-1],res[-1]==v.missing_value)
               
           return res
 
@@ -620,7 +703,6 @@ class Result(PlotVariableStore):
             nc = self.getcdf()
 
             # Get time coordinate (in seconds since reference date)
-            #pycdf secs = nc.var('time').get()
             secs = nc.variables['time'][:]
             
             # Convert time-in-seconds to Python datetime objects.
@@ -629,9 +711,26 @@ class Result(PlotVariableStore):
             for it in range(t.shape[0]):
                 t[it] = dateref + datetime.timedelta(secs[it]/3600/24)
 
+            # Get time step (of output, not simulation!)
+            if secs.shape[0]==1:
+                # Only one time step saved: try to get output time step from scenario. If this
+                # does not work, assume the simulation started with MinN == 1, allowing us to
+                # use the first time (in seconds) as time step. If that does not work, default
+                # to one day.
+                dt = None
+                if self.scenario!=None:
+                    dt = self.scenario.getProperty(['output','dtsave'],usedefault=True)
+                if dt==None:
+                    if secs[0]>0:
+                        dt=secs[0]
+                    else:
+                        dt=3600*24
+            else:
+                dt = secs[1]-secs[0]
+
             # Create staggered time grid.
             t_stag = matplotlib.numerix.zeros((secs.shape[0]+1,),matplotlib.numerix.PyObject)
-            halfdt = datetime.timedelta(seconds=float(secs[1]-secs[0])/2)
+            halfdt = datetime.timedelta(seconds=dt/2.)
             t_stag[0]  = t[0]-halfdt
             t_stag[1:] = t[:]+halfdt
             
@@ -645,15 +744,14 @@ class Result(PlotVariableStore):
         if self.z==None:
             nc = self.getcdf()
 
-            # Get layers heights
-            #pycdf h = nc.var('h')[:,:,0,0]
+            # Get layer heights
             h = nc.variables['h'][:,:,0,0]
             
             # Get depths of interfaces
-            z1 = matplotlib.numerix.cumsum(h[:,:],1)
+            z1 = h.cumsum(1)
             z1 = matplotlib.numerix.concatenate((matplotlib.numerix.zeros((z1.shape[0],1),matplotlib.numerix.typecode(z1)),z1),1)
-            bottomdepth = z1[0,-1]
-            z1 = z1[:,:]-bottomdepth
+            bottomdepth = z1[0,-1]-nc.variables['zeta'][0,0,0]
+            z1 -= bottomdepth
 
             # Get depth of layer centers
             z = z1[:,1:z1.shape[1]]-0.5*h
@@ -689,7 +787,7 @@ class Result(PlotVariableStore):
         if self.scenario!=None: otherstores['scenario'] = self.scenario
         return PlotVariableStore.getVariableTree(self,path,otherstores=otherstores)
     
-    def generateReport(self,outputpath,templatepath,plotvariables,dpi=150,columncount=2,figuresize=(10,8),callback=None):
+    def generateReport(self,outputpath,templatepath,plotvariables,dpi=150,columncount=2,figuresize=(10,8),fontscaling=100.,callback=None):
         xmldocument = xml.dom.minidom.parse(os.path.join(templatepath,'index.xml'))
         scenario = self.scenario
 
@@ -768,6 +866,7 @@ class Result(PlotVariableStore):
                 if not self.getFigure('result/'+varpath,fig.properties):
                     fig.clearProperties()
                     fig.addVariable(varid)
+                fig.properties.setProperty(['FontScaling'],fontscaling)
                 fig.setUpdating(True)
                 filename = varid+'.png'
                 outputfile = os.path.join(outputpath,filename)
