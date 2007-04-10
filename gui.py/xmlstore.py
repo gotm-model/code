@@ -1086,54 +1086,82 @@ class TypedStore:
 
             return value
 
-        def addChild(self,childname):
+        def addChild(self,childname,position=None):
             index = -1
             templatenode = None
 
             # First see of already one instance of this child is in the tree; that makes finding the position easy.
+            existingcount = 0
             for curindex,child in enumerate(self.children):
                 if child.location[-1]==childname:
                     index = curindex
                     templatenode = child.templatenode
+                    existingcount += 1
                 elif index!=-1:
                     break
-            if index!=-1: index += 1
+                    
+            # If no insert position was specified, append at the end
+            if position==None: position = existingcount
+            
+            if index!=-1:
+                # Found an existing node with this name
+                assert position>=0, 'Position must be positive, but is %i. Use position=None to append to the end.' % position
+                assert position<=existingcount, 'Cannot insert child "%s" at position %i, because only %i nodes exist so far.' % (childname,position,existingcount)
+                index = index+1-existingcount+position
+            else:
+                # Node with this name not yet in tree.
+                assert position==0, 'Cannot insert child "%s" at position %i, because no node wih this name exists so far.' % (childname,position)
 
-            # The child is not yet in the tree; find the position where to insert the child.
-            if index==-1:
+                # Enumerate over all template children of the parent we want to insert below.
+                # Store a list of names of children that precede the node to be inserted.
                 predecessors = []
-                for templatechild in self.templatenode.childNodes:
-                    if templatechild.nodeType==templatechild.ELEMENT_NODE and templatechild.localName=='element':
-                        childid = templatechild.getAttribute('id')
-                        if childid==childname:
-                            templatenode = templatechild
-                            break
+                for templatenode in self.templatenode.childNodes:
+                    if templatenode.nodeType==templatenode.ELEMENT_NODE and templatenode.localName=='element':
+                        childid = templatenode.getAttribute('id')
+                        if childid==childname: break
                         predecessors.append(childid)
+                else:
+                    # Could not find the specified child in the template.
+                    return None
+
+                # Enumerate over all actual children until we reach the point where the child should be inserted.
                 index = 0
                 for child in self.children:
                     curname = child.location[-1]
                     while len(predecessors)>0 and curname!=predecessors[0]:
                         predecessors.pop(0)
-                    if len(predecessors)==0:
-                        break
-                    else:
-                        index += 1
-
-            if templatenode==None: return None
-
-            # Create child node
+                    if len(predecessors)==0: break
+                    index += 1
+                    
+            # Ensure the parent to insert below has a value node
+            # (we need to insert the value node below it to give the child life)
             self.createValueNode()
+            
+            # Find the XML document
             doc = self.valuenode
             while doc.parentNode!=None: doc=doc.parentNode
+            
+            # Create the value node for the current child
             node = doc.createElementNS(self.valuenode.namespaceURI,childname)
-            valuenode = self.valuenode.appendChild(node)
+            
+            # Insert the value node
+            if position>=existingcount:
+                valuenode = self.valuenode.appendChild(node)
+            else:
+                valuenode = self.valuenode.insertBefore(node,self.children[index].valuenode)
+                
+            # Create the child (template + value)
             child = TypedStore.Node(self.controller,templatenode,valuenode,self.location+[childname],parent=self)
             assert child.canHaveClones(), 'Cannot add another child "%s" because there can exist only one child with this name.' % childname
+            
+            # Insert the child, and notify attached interfaces.
             child.futureindex = index
             self.controller.beforeVisibilityChange(child,True,False)
             self.children.insert(index,child)
             self.controller.afterVisibilityChange(child,True,False)
             child.futureindex = None
+            
+            # Return the newly inserted child.
             return child
             
         def createValueNode(self):

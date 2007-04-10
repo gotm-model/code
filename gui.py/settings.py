@@ -6,6 +6,9 @@ class SettingsStore(xmlstore.TypedStore):
         settingspath = self.getSettingsPath()
         if not os.path.isfile(settingspath): settingspath = None
         xmlstore.TypedStore.__init__(self,'schemas/settings/gotmgui.xml',settingspath)
+        
+        self.removeNonExistent(('Paths','RecentScenarios'),'Path')
+        self.removeNonExistent(('Paths','RecentResults'),  'Path')
 
     @staticmethod    
     def getSettingsPath():
@@ -22,3 +25,28 @@ class SettingsStore(xmlstore.TypedStore):
         settingsdir = os.path.dirname(settingspath)
         if not os.path.isdir(settingsdir): os.mkdir(settingsdir)
         xmlstore.TypedStore.save(self,settingspath)
+        
+    def removeNonExistent(self,parentlocation,nodename):
+        """Removes nodes below specified location if their value is not
+        a path to an existing file. Used to filter defunct most-recently-used
+        files.
+        """
+        parent = self.root.getLocation(parentlocation)
+        currentnodes = parent.getLocationMultiple([nodename])
+        for i in range(len(currentnodes)-1,-1,-1):
+            path = currentnodes[i].getValue()
+            if not os.path.isfile(path):
+                parent.removeChildren(nodename,first=i,last=i)
+
+    def addUniqueValue(self,parentlocation,nodename,nodevalue):
+        parent = self.root.getLocation(parentlocation)
+        currentnodes = parent.getLocationMultiple([nodename])
+        if len(currentnodes)>0:
+            maxcount = int(currentnodes[0].templatenode.getAttribute('maxoccurs'))
+            for i in range(len(currentnodes)-1,-1,-1):
+                if currentnodes[i].getValue()==nodevalue:
+                    parent.removeChildren(nodename,first=i,last=i)
+                    currentnodes.pop(i)
+            parent.removeChildren(nodename,first=maxcount-1)
+        newnode = parent.addChild(nodename,position=0)
+        newnode.setValue(nodevalue)

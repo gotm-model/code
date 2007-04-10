@@ -405,7 +405,11 @@ class Figure:
                     Z = Z.transpose()
                     
                 if plottype==1:
-                  pc = axes.contourf(X,Y,Z)
+                  cc = seriesnode.getLocation(['ContourCount']).getValueOrDefault()
+                  if cc!=None:
+                    pc = axes.contourf(X,Y,Z,cc)
+                  else:
+                    pc = axes.contourf(X,Y,Z)
                 else:
                   #pc = axes.pcolor(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
                   pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)

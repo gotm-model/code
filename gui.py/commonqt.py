@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.22 2007-04-06 13:59:27 jorn Exp $
+#$Id: commonqt.py,v 1.23 2007-04-10 06:55:31 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
-import datetime, re
+import datetime, re, os.path
 
 import common,xmlstore,settings,plot,data
 
@@ -45,7 +45,7 @@ def datetime2qtdatetime(dt):
 # =======================================================================
 
 class PathEditor(QtGui.QWidget):
-    def __init__(self,parent=None,compact=False,header=None,getdirectory=False,save=False):
+    def __init__(self,parent=None,compact=False,header=None,getdirectory=False,save=False,mrupaths=[]):
         QtGui.QWidget.__init__(self, parent)
 
         if compact:
@@ -59,8 +59,21 @@ class PathEditor(QtGui.QWidget):
             self.header = QtGui.QLabel(header,self)
             lo.addWidget(self.header)
 
-        self.lineedit = QtGui.QLineEdit(self)
-        lo.addWidget(self.lineedit)
+        if len(mrupaths)>0:
+            # One or more recently used paths: use a combobox for the path.
+            self.editor = QtGui.QComboBox(self)
+            lo.addWidget(self.editor)
+            self.editor.setEditable(True)
+            self.editor.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Fixed)
+            for p in mrupaths: self.editor.addItem(p)
+            self.editor.setEditText('')
+            self.defaultpath = os.path.dirname(mrupaths[0])
+            self.lineedit = self.editor.lineEdit()
+        else:
+            # No recently used paths: use a line edit control for the path.
+            self.lineedit = QtGui.QLineEdit(self)
+            lo.addWidget(self.lineedit)
+            self.defaultpath = None
 
         self.browsebutton = QtGui.QPushButton(text,self)
         lo.addWidget(self.browsebutton)
@@ -77,15 +90,16 @@ class PathEditor(QtGui.QWidget):
         self.save = save
 
         self.filter=''
-        self.defaultpath = None
 
         self.dlgoptions = QtGui.QFileDialog.DontConfirmOverwrite
 
     def setPath(self,path):
         return self.lineedit.setText(path)
+        #return self.editor.setEditText(path)
 
     def path(self):
         return unicode(self.lineedit.text())
+        #return unicode(self.editor.currentText())
 
     def onBrowse(self):
         curpath = self.path()
@@ -120,10 +134,10 @@ class PathEditor(QtGui.QWidget):
             # Append first imposed extension
             if not goodextension and len(exts)>0: path += '.'+exts[0]
         
-        self.lineedit.setText(path)
+        self.setPath(path)
 
     def hasPath(self):
-        return (len(unicode(self.lineedit.text()))>0)
+        return (len(self.path())>0)
 
     def onChanged(self,text):
         self.emit(QtCore.SIGNAL('onChanged()'))

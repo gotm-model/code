@@ -47,18 +47,24 @@ class PageChooseAction(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
+        pathnodes = self.parent().settings.root.getLocationMultiple(['Paths','RecentScenarios','Path'])
+        mruscenarios = [p.getValue() for p in pathnodes]
+
+        pathnodes = self.parent().settings.root.getLocationMultiple(['Paths','RecentResults','Path'])
+        mruresults = [p.getValue() for p in pathnodes]
+
         self.label = QtGui.QLabel('What would you like to do?',self)
         self.radioScenario = QtGui.QRadioButton('I want to create, view or edit a scenario.',self)
         self.radioResult = QtGui.QRadioButton('I want to view or process the result of a previous simulation.',self)
-        self.scenariowidget = scenariobuilder.ScenarioWidget(self)
-        self.connect(self.scenariowidget, QtCore.SIGNAL("onCompleteStateChanged()"),self.completeStateChanged)
-        self.resultwidget = visualizer.OpenWidget(self)
-        self.connect(self.resultwidget, QtCore.SIGNAL("onCompleteStateChanged()"),self.completeStateChanged)
+        self.scenariowidget = scenariobuilder.ScenarioWidget(self,mrupaths=mruscenarios)
+        self.connect(self.scenariowidget, QtCore.SIGNAL('onCompleteStateChanged()'),self.completeStateChanged)
+        self.resultwidget = visualizer.OpenWidget(self,mrupaths=mruresults)
+        self.connect(self.resultwidget, QtCore.SIGNAL('onCompleteStateChanged()'),self.completeStateChanged)
 
         self.bngroup     = QtGui.QButtonGroup()
         self.bngroup.addButton(self.radioScenario,0)
         self.bngroup.addButton(self.radioResult,1)
-        self.connect(self.bngroup, QtCore.SIGNAL("buttonClicked(int)"), self.onSourceChange)
+        self.connect(self.bngroup, QtCore.SIGNAL('buttonClicked(int)'), self.onSourceChange)
 
         layout = QtGui.QGridLayout()
         layout.addWidget(self.label,0,0,1,2)
@@ -77,9 +83,6 @@ class PageChooseAction(commonqt.WizardPage):
 
         self.radioScenario.setChecked(True)
         self.onSourceChange()
-
-        defdir = self.parent().settings.getProperty(['Paths','LastScenarioDirectory'])
-        if defdir!=None: self.scenariowidget.setDefaultDirectory(defdir)
 
     def onSourceChange(self):
         checkedid = self.bngroup.checkedId()
@@ -108,8 +111,9 @@ class PageChooseAction(commonqt.WizardPage):
             self.owner.setProperty('result', None)
             self.owner.setProperty('scenario', newscen)
 
+            # Add to list of most-recently-used scenarios
             if newscen.path!=None:
-                self.parent().settings.setProperty(['Paths','LastScenarioDirectory'],os.path.dirname(newscen.path))
+                self.owner.settings.addUniqueValue(('Paths','RecentScenarios'),'Path',newscen.path)
             
             return True
         if checkedid==1:
@@ -121,6 +125,11 @@ class PageChooseAction(commonqt.WizardPage):
                 return False
             self.owner.setProperty('result', newresult)
             self.owner.setProperty('scenario', newresult.scenario)
+
+            # Add to list of most-recently-used results
+            if newresult.path!=None:
+                self.owner.settings.addUniqueValue(('Paths','RecentResults'),'Path',newresult.path)
+
             return True
         return False
 

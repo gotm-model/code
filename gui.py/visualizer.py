@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.14 2007-04-06 13:59:27 jorn Exp $
+#$Id: visualizer.py,v 1.15 2007-04-10 06:55:31 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -45,10 +45,10 @@ def loadResult(path):
     return result
 
 class OpenWidget(QtGui.QWidget):
-    def __init__(self,parent=None):
+    def __init__(self,parent=None,mrupaths=[]):
         QtGui.QWidget.__init__(self,parent)
 
-        self.pathOpen = commonqt.PathEditor(self,header='File to open: ')
+        self.pathOpen = commonqt.PathEditor(self,header='File to open: ',mrupaths=mrupaths)
         self.pathOpen.filter = 'GOTM result files (*.gotmresult);;NetCDF files (*.nc);;All files (*.*)'
 
         layout = QtGui.QVBoxLayout()
@@ -56,7 +56,7 @@ class OpenWidget(QtGui.QWidget):
         layout.setMargin(0)
         self.setLayout(layout)
         self.connect(self.pathOpen, QtCore.SIGNAL("onChanged()"), self.completeStateChanged)
-
+        
     def completeStateChanged(self):
         self.emit(QtCore.SIGNAL('onCompleteStateChanged()'))
 
@@ -332,6 +332,7 @@ class PageSave(commonqt.WizardPage):
                     self.result.saveNetCDF(targetpath)
                 else:
                     self.result.save(targetpath,addfiguresettings=self.checkboxAddFigures.isChecked())
+                    self.owner.settings.addUniqueValue(('Paths','RecentResults'),'Path',targetpath)
             except Exception,e:
                 print e
                 QtGui.QMessageBox.critical(self, 'Unable to save result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)

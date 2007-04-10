@@ -49,6 +49,12 @@
 							<option label="filled contours" value="1"/>
 						</options>
 					</element>
+					<element id="ContourCount" type="int" label="number of contours">
+						<condition type="and">
+							<condition type="eq" variable="./DimensionCount" value="2"/>
+							<condition type="eq" variable="./PlotType3D"     value="1"/>
+						</condition>
+					</element>
 				</element>
 			</element>
 		

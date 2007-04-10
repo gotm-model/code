@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.11 2007-03-23 11:23:59 jorn Exp $
+#$Id: scenariobuilder.py,v 1.12 2007-04-10 06:55:31 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -9,7 +9,7 @@ import sys,xml, os.path
 
 class ScenarioWidget(QtGui.QWidget):
 
-    def __init__(self,parent=None):
+    def __init__(self,parent=None,mrupaths=[]):
         QtGui.QWidget.__init__(self,parent)
 
         self.bngroup      = QtGui.QButtonGroup()
@@ -29,7 +29,7 @@ class ScenarioWidget(QtGui.QWidget):
         self.templatelayout.addWidget(self.comboTemplates,1)
         self.templatelayout.addStretch()
 
-        self.pathOpen    = commonqt.PathEditor(self,header='File to open: ')
+        self.pathOpen    = commonqt.PathEditor(self,header='File to open: ',mrupaths=mrupaths)
         self.pathImport1 = commonqt.PathEditor(self,header='Directory to import: ',getdirectory=True)
         self.pathImport2 = commonqt.PathEditor(self,header='Archive to import: ')
 
@@ -67,9 +67,6 @@ class ScenarioWidget(QtGui.QWidget):
 
         self.radioNew.setChecked(True)
         self.onSourceChange()
-
-    def setDefaultDirectory(self,path):
-        self.pathOpen.defaultpath = path
 
     def onSourceChange(self):
         self.setUpdatesEnabled(False)
@@ -376,7 +373,7 @@ class PageSave(commonqt.WizardPage):
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to save scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
-            self.owner.settings.setProperty(['Paths','LastScenarioDirectory'],os.path.dirname(targetpath))
+            self.owner.settings.addUniqueValue(('Paths','RecentScenarios'),'Path',targetpath)
         return True
 
     def doNotShow(self):
