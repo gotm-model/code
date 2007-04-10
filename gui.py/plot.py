@@ -178,11 +178,19 @@ class Figure:
         axes = self.figure.add_subplot(111)
         
         textscaling = self.properties.getProperty(['FontScaling'],usedefault=True)/100.
+        
         titlesize = matplotlib.rcParams['axes.titlesize']
         axeslabelsize = matplotlib.rcParams['axes.labelsize']
         xticklabelsize = matplotlib.rcParams['xtick.labelsize']
         yticklabelsize = matplotlib.rcParams['ytick.labelsize']
         linewidth = matplotlib.rcParams['lines.linewidth']
+        
+        # Scale font sizes with text scaling parameter if they are floats.
+        # (if they are strings, they are relative sizes already)
+        if not isinstance(titlesize,     basestring): titlesize     *=textscaling
+        if not isinstance(axeslabelsize, basestring): axeslabelsize *=textscaling
+        if not isinstance(xticklabelsize,basestring): xticklabelsize*=textscaling
+        if not isinstance(yticklabelsize,basestring): yticklabelsize*=textscaling
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         tmin = self.properties.getProperty(['TimeAxis','Minimum'])
@@ -360,10 +368,10 @@ class Figure:
                 lines = axes.plot(data[xdim],data[datadim],'-',linewidth=linewidth)
                 if xdim==0:
                     dim2data[dims[0]]['axis'] = 'x'
-                    axes.set_ylabel(label,size=textscaling*axeslabelsize)
+                    axes.set_ylabel(label,size=axeslabelsize)
                 else:
                     dim2data[dims[0]]['axis'] = 'y'
-                    axes.set_xlabel(label,size=textscaling*axeslabelsize)
+                    axes.set_xlabel(label,size=axeslabelsize)
             elif len(dims)==2:
                 # Two-dimensional coordinate space (x,y). Use x-axis for first coordinate dimension,
                 # and y-axis for second coordinate dimension.
@@ -424,7 +432,7 @@ class Figure:
                     cb = self.figure.colorbar(mappable=pc)
                     
                 # Text for colorbar
-                if label!='': cb.set_label(label,size=textscaling*axeslabelsize)
+                if label!='': cb.set_label(label,size=axeslabelsize)
                 for l in cb.ax.xaxis.get_ticklabels():
                     l.set_size(l.get_size()*textscaling)
                 for l in cb.ax.yaxis.get_ticklabels():
@@ -440,7 +448,7 @@ class Figure:
         self.defaultproperties.setProperty(['Title'],', '.join(longnames))
         title = self.properties.getProperty(['Title'],usedefault=True)
         assert title!=None, 'Title must be available, either explicitly set or as default.'
-        if title!='': axes.set_title(title,size=textscaling*titlesize)
+        if title!='': axes.set_title(title,size=titlesize)
 
         # Store natural axes bounds (based on data ranges).
         self.defaultproperties.setProperty(['TimeAxis',  'Minimum'],dim2data['time']['datarange'][0])
@@ -471,11 +479,11 @@ class Figure:
             # Configure limits and label of time axis.
             if timeaxis=='x':
                 taxis = axes.xaxis
-                if tlabel!='': axes.set_xlabel(tlabel,size=textscaling*axeslabelsize)
+                if tlabel!='': axes.set_xlabel(tlabel,size=axeslabelsize)
                 axes.set_xlim(matplotlib.dates.date2num(timedata['range'][0]),matplotlib.dates.date2num(timedata['range'][1]))
             elif timeaxis=='y':
                 taxis = axes.yaxis
-                if tlabel!='': axes.set_ylabel(tlabel,size=textscaling*axeslabelsize)
+                if tlabel!='': axes.set_ylabel(tlabel,size=axeslabelsize)
                 axes.set_ylim(matplotlib.dates.date2num(timedata['range'][0]),matplotlib.dates.date2num(timedata['range'][1]))
 
             # Select tick type and spacing based on the time span to show.
@@ -519,10 +527,10 @@ class Figure:
             # Configure limits and label of depth axis.
             if zaxis=='x':
                 axes.set_xlim(zdata['range'][0],zdata['range'][1])
-                if zlabel!='': axes.set_xlabel(zlabel,size=textscaling*axeslabelsize)
+                if zlabel!='': axes.set_xlabel(zlabel,size=axeslabelsize)
             elif zaxis=='y':
                 axes.set_ylim(zdata['range'][0],zdata['range'][1])
-                if zlabel!='': axes.set_ylabel(zlabel,size=textscaling*axeslabelsize)
+                if zlabel!='': axes.set_ylabel(zlabel,size=axeslabelsize)
         self.properties.setProperty(['HasDepthAxis'],'used' in dim2data['z'])
         
         # Scale the text labels
