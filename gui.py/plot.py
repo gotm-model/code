@@ -413,11 +413,13 @@ class Figure:
                     Z = Z.transpose()
                     
                 if plottype==1:
-                  cc = seriesnode.getLocation(['ContourCount']).getValueOrDefault()
+                  cc = seriesnode.getLocation(['ContourCount']).getValue()
                   if cc!=None:
                     pc = axes.contourf(X,Y,Z,cc)
                   else:
                     pc = axes.contourf(X,Y,Z)
+                  if cc==None:
+                      defaultseriesnode.getLocation(['ContourCount']).setValue(len(pc.levels)-2)
                 else:
                   #pc = axes.pcolor(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
                   pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)

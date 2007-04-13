@@ -112,12 +112,19 @@ class Scenario(xmlstore.TypedStore):
         if protodir!=None:
             # Namelist are specified as .proto files plus one or more .values files.
             # Load the substitutions specified in the main .values file.
-            container.release()
-            container = xmlstore.DataContainerDirectory(protodir)
-            valuespath = os.path.join(srcpath,os.path.basename(srcpath)+'.values')
-            globalsubs.append(namelist.NamelistSubstitutions(valuespath))
+            nmlcontainer = xmlstore.DataContainerDirectory(protodir)
+            df = container.getItem(os.path.basename(srcpath)+'.values')
+            df_file = df.getAsReadOnlyFile()
+            globalsubs.append(namelist.NamelistSubstitutions(df_file))
+            df_file.close()
+            df.release()
+        else:
+            nmlcontainer = container.addref()
 
+        # Build a list of files in the namelist directory and the data directory
+        # (these are the same, unless prototype namelist files are used)
         filelist = container.listFiles()
+        nmlfilelist = nmlcontainer.listFiles()
 
         # Commonly used regular expressions (for parsing strings and datetimes).
         strre = re.compile('^([\'"])(.*?)\\1$')
@@ -143,12 +150,15 @@ class Scenario(xmlstore.TypedStore):
                 fullnmlfilename = nmlfilename+'.proto'
 
                 # Load the relevant value substitutions (if any).
-                cursubspath = os.path.join(srcpath,nmlfilename+'.values')
-                if os.path.isfile(cursubspath):
-                    cursubs = [namelist.NamelistSubstitutions(cursubspath)]
+                df = container.getItem(nmlfilename+'.values')
+                if df!=None:
+                    df_file = df.getAsReadOnlyFile()
+                    cursubs = [namelist.NamelistSubstitutions(df_file)]
+                    df_file.close()
+                    df.release()
 
-            # Parse the namelist file.
-            for fn in filelist:
+            # Find and parse the namelist file.
+            for fn in nmlfilelist:
                 if fn==fullnmlfilename or fn.endswith('/'+fullnmlfilename):
                     fullnmlfilename = fn
                     break
@@ -158,11 +168,11 @@ class Scenario(xmlstore.TypedStore):
                     continue
                 else:
                     raise namelist.NamelistParseException('Namelist file "%s" is not present.' % fullnmlfilename,None,None,None)
-            df = container.getItem(fullnmlfilename)
+            df = nmlcontainer.getItem(fullnmlfilename)
             df_file = df.getAsReadOnlyFile()
             nmlfile = namelist.NamelistFile(df_file,cursubs)
             df_file.close()
-            df.unlink()
+            df.release()
 
             # Loop over all nodes below the root (each node represents a namelist file)
             for filechild in mainchild.children:
@@ -231,7 +241,7 @@ class Scenario(xmlstore.TypedStore):
                         datetimematch = datetimere.match(val)
                         if datetimematch==None:
                             raise namelist.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',fullnmlfilename,listname,varname)
-                        refvals = map(lambda(i): int(i),datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+                        refvals = map(int,datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
                         val = datetime.datetime(*refvals)
                     elif vartype=='file':
                         for fn in filelist:
@@ -243,7 +253,7 @@ class Scenario(xmlstore.TypedStore):
 
                     listchild.setValue(val)
                 if strict and childindex<len(filechild.children):
-                    lcnames = ['"%s"' % lc.getId() for lc in listchildren]
+                    lcnames = ['"%s"' % lc.getId() for lc in filechild.children[childindex:]]
                     raise namelist.NamelistParseException('Variables %s are missing' % ', '.join(lcnames),fullnmlfilename,listname,None)
 
     def writeAsNamelists(self, targetpath, copydatafiles=True, addcomments = False):

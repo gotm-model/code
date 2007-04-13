@@ -277,6 +277,7 @@ class DataContainer:
     def addref(self):
         assert self.refcount>0
         self.refcount += 1
+        return self
 
     def release(self):
         assert self.refcount>0

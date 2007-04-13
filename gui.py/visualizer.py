@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.15 2007-04-10 06:55:31 jorn Exp $
+#$Id: visualizer.py,v 1.16 2007-04-13 07:51:24 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
-import commonqt, data
+import commonqt, data, report
 
 import matplotlib
 matplotlib.use('Qt4Agg')
@@ -192,7 +192,7 @@ class ConfigureReportWidget(QtGui.QWidget):
             if ret==QtGui.QMessageBox.No: return False
 
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
-        self.result.generateReport(outputpath,templatepath,varids,dpi=dpi,figuresize=size,fontscaling=fontscaling,callback=self.onReportProgressed)
+        report.generateReport(self.result,outputpath,templatepath,varids,dpi=dpi,figuresize=size,fontscaling=fontscaling,callback=self.onReportProgressed)
         QtGui.QApplication.restoreOverrideCursor()
 
         return True

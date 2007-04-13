@@ -18,12 +18,19 @@ class NamelistSubstitutions:
     # Commonly used regular expression (for parsing substitions in the .values file)
     subs_re = re.compile('\s*s/(\w+)/(.+)/')
 
-    def __init__(self,path):
+    def __init__(self,valuesfile):
         self.subs = []
-        try:
-            valuesfile = open(path,'rU')
-        except Exception,e:
-            raise NamelistParseException('Cannot open .values file "%s". Error: %s' % (path,str(e)))
+        
+        # If the supplied argument is a string, it should be a path to a file.
+        # Try to open it. Otherwise the supplied argument should be a file-like object.
+        ownfile = False
+        if isinstance(valuesfile,basestring):
+            try:
+                valuesfile = open(valuesfile,'rU')
+            except Exception,e:
+                raise NamelistParseException('Cannot open .values file "%s". Error: %s' % (path,str(e)))
+            ownfile = True
+            
         line = valuesfile.readline()
         while line!='':
             m = self.subs_re.match(line)
@@ -32,7 +39,10 @@ class NamelistSubstitutions:
                 #self.subs.append((pat,m.group(2)))
                 self.subs.append((m.group(1),m.group(2)))
             line = valuesfile.readline()
-        valuesfile.close()
+            
+        # If we opened the file ourselves, close it.
+        if ownfile:
+            valuesfile.close()
 
     def substitute(self,text):
         for (old,new) in self.subs:
