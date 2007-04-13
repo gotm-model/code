@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.23 2007-04-10 06:55:31 jorn Exp $
+#$Id: commonqt.py,v 1.24 2007-04-13 12:40:08 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -1248,6 +1248,11 @@ class PropertyEditor:
         self.changehandlers = []
         self.suppresschangeevent = False
         self.location = node.location[:]
+        
+    def createLabel(self):
+        text = self.node.getText(detail=1,capitalize=True)+': '
+        lab = QtGui.QLabel(text,self.editor.parent())
+        return lab
 
     def updateStore(self):
         return self.setNodeData(self.editor,self.node)
@@ -1307,7 +1312,8 @@ class PropertyEditor:
             self.currenteditor = editor
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         else:
-            raise 'Unknown node type "'+str(nodetype)+'".'
+            assert False, 'Unknown node type "%s".' % nodetype
+        editor.setWhatsThis(node.getText(detail=2,capitalize=True))
         return editor
 
     def setEditorData(self,editor,node):
@@ -1542,7 +1548,7 @@ class FigurePanel(QtGui.QWidget):
         printer = QtGui.QPrinter(QtGui.QPrinter.HighResolution)
         printDialog = QtGui.QPrintDialog(printer, self)
         if printDialog.exec_() == QtGui.QDialog.Accepted:
-            print 'Printing to '+printer.printerName()
+            print 'Printing to %s' % printer.printerName()
             p = QtGui.QPainter(printer)
             
             canvas = self.canvas.switch_backends(FigureCanvasAgg)
@@ -1554,7 +1560,7 @@ class FigurePanel(QtGui.QWidget):
 
             res = printer.resolution()
             if res>600: res=600
-            print 'Using resolution of '+ str(res) + ' dpi.'
+            print 'Using resolution of %i dpi.' % res
 
             # Adjust DPI and colors for printer.
             canvas.figure.dpi.set(res)
@@ -1576,7 +1582,7 @@ class FigurePanel(QtGui.QWidget):
             else:
                 stringBuffer = canvas.renderer._renderer.tostring_argb()
                 
-            print 'Creating QImage object from in-memory data. Using width = ' + str(canvas.renderer.width) + ', height = '+ str(canvas.renderer.height)
+            print 'Creating QImage object from in-memory data. Using width = %.2f, height = %.2f' % (canvas.renderer.width,canvas.renderer.height)
             qImage = QtGui.QImage(stringBuffer, canvas.renderer.width, canvas.renderer.height, QtGui.QImage.Format_ARGB32)
             #pixmap = QtGui.QPixmap.fromImage(qImage)
             #print 'Drawing pixmap to QPainter object connected to printer.'

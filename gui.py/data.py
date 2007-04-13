@@ -484,7 +484,7 @@ class Result(PlotVariableStore):
         self.path = None
 
     def hasChanged(self):
-        return self.changed
+        return self.changed or self.store.changed
 
     def getTempDir(self,empty=False):
         if self.tempdir!=None:
@@ -514,6 +514,7 @@ class Result(PlotVariableStore):
         df_added = container.addItem(df,'result.xml')
         df_added.release()
         df.release()
+        self.store.resetChanged()
 
         # If we have a link to the scenario, add it to the result file.
         if self.scenario!=None:
@@ -581,8 +582,6 @@ class Result(PlotVariableStore):
         self.path = path
 
     def setFigure(self,source):
-        self.changed = True
-        
         name = source.root.getLocation(['Name']).getValue()
         assert name!=None, 'Name attribute of figure is not set; cannot store figure.'
 

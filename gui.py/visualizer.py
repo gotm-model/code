@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.16 2007-04-13 07:51:24 jorn Exp $
+#$Id: visualizer.py,v 1.17 2007-04-13 12:40:08 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -96,10 +96,13 @@ class PageOpen(commonqt.WizardPage):
         return True
 
 class ConfigureReportWidget(QtGui.QWidget):
-    def __init__(self,parent,result):
+    def __init__(self,parent,result,rep):
         QtGui.QWidget.__init__(self,parent)
         
         self.result = result
+        self.report = rep
+
+        self.factory = commonqt.PropertyEditorFactory(self.report.store)
 
         reportname2path = data.Result.getReportTemplates()
 
@@ -110,36 +113,37 @@ class ConfigureReportWidget(QtGui.QWidget):
         
         self.labOutput = QtGui.QLabel('Directory to save to:',self)
         self.pathOutput = commonqt.PathEditor(self,getdirectory=True)
+        
+        # Default report directory: result or scenario directory
+        if self.result.path!=None:
+            self.pathOutput.defaultpath = os.path.dirname(self.result.path)
+        elif self.result.scenario!=None and self.result.scenario.path!=None:
+            self.pathOutput.defaultpath = os.path.dirname(self.result.scenario.path)
 
         self.labVariables = QtGui.QLabel('Included variables:',self)
         self.treestore = self.result.getVariableTree('schemas/outputtree.xml')
+        
+        # Prepare selection based on report settings
+        selroot = self.report.store.root.getLocation(['Figures','Selection'])
+        for node in selroot.children:
+            targetnode = self.treestore.root.getLocation(node.getValue().split('/'))
+            if targetnode!=None: targetnode.setValue(True)
+        
         self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True,checkboxes=True)
         self.treeVariables = commonqt.ExtendedTreeView(self)
         self.treeVariables.header().hide()
         self.treeVariables.setModel(self.model)
         self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
 
-        self.labWidth = QtGui.QLabel('Width (cm):',self)
-        self.spinWidth = QtGui.QDoubleSpinBox(self)
-        self.spinWidth.setMinimum(1)
-        self.spinWidth.setValue(10)
-
-        self.labHeight = QtGui.QLabel('Height (cm):',self)
-        self.spinHeight = QtGui.QDoubleSpinBox(self)
-        self.spinHeight.setMinimum(1)
-        self.spinHeight.setValue(8)
-
-        self.labDpi = QtGui.QLabel('Image resolution (dpi):',self)
-        self.comboDpi = QtGui.QComboBox(parent)
-        for (dpi) in [72,96,100,150,300,600,1200]:
-            self.comboDpi.addItem(unicode(dpi),QtCore.QVariant(dpi))
-        self.comboDpi.setCurrentIndex(1)
-
-        self.labFontScaling = QtGui.QLabel('Font scaling (%):',self)
-        self.spinFontScaling = QtGui.QSpinBox(self)
-        self.spinFontScaling.setMinimum(0)
-        self.spinFontScaling.setMaximum(1000)
-        self.spinFontScaling.setValue(100)
+        # Create labels+editors for figure settings
+        self.editWidth = self.factory.createEditor(['Figures','Width'],self)
+        self.labWidth = self.editWidth.createLabel()
+        self.editHeight = self.factory.createEditor(['Figures','Height'],self)
+        self.labHeight = self.editHeight.createLabel()
+        self.editDpi = self.factory.createEditor(['Figures','Resolution'],self)
+        self.labDpi = self.editDpi.createLabel()
+        self.editFontScaling = self.factory.createEditor(['Figures','FontScaling'],self)
+        self.labFontScaling = self.editFontScaling.createLabel()
         
         layout = QtGui.QGridLayout()
         layout.addWidget(self.labOutput,     0,0)
@@ -151,14 +155,14 @@ class ConfigureReportWidget(QtGui.QWidget):
 
         self.figbox = QtGui.QGroupBox('Figure settings',self)
         figlayout = QtGui.QGridLayout()
-        figlayout.addWidget(self.labWidth,       3,0)
-        figlayout.addWidget(self.spinWidth,      3,1)
-        figlayout.addWidget(self.labHeight,      4,0)
-        figlayout.addWidget(self.spinHeight,     4,1)
-        figlayout.addWidget(self.labDpi,         5,0)
-        figlayout.addWidget(self.comboDpi,       5,1)
-        figlayout.addWidget(self.labFontScaling, 6,0)
-        figlayout.addWidget(self.spinFontScaling,6,1)
+        figlayout.addWidget(self.labWidth,              3,0)
+        figlayout.addWidget(self.editWidth.editor,      3,1)
+        figlayout.addWidget(self.labHeight,             4,0)
+        figlayout.addWidget(self.editHeight.editor,     4,1)
+        figlayout.addWidget(self.labDpi,                5,0)
+        figlayout.addWidget(self.editDpi.editor,        5,1)
+        figlayout.addWidget(self.labFontScaling,        6,0)
+        figlayout.addWidget(self.editFontScaling.editor,6,1)
         figlayout.setColumnStretch(1,1)
         self.figbox.setLayout(figlayout)
         layout.addWidget(self.figbox,3,0,1,2)
@@ -175,24 +179,30 @@ class ConfigureReportWidget(QtGui.QWidget):
         return self.pathOutput.hasPath()
 
     def generate(self):
+        # Get path of target directory and template.
         templateindex = self.comboTemplates.currentIndex()
         templatepath = unicode(self.comboTemplates.itemData(templateindex).toString())
         outputpath = self.pathOutput.path()
-        varids = []
-        for node in self.model.getCheckedNodes():
-            if node.canHaveValue():
-                varids.append((node.location[-1],'/'.join(node.location)))
-        dpiindex = self.comboDpi.currentIndex()
-        dpi,ret = self.comboDpi.itemData(dpiindex).toInt()
-        size = (self.spinWidth.value(),self.spinHeight.value())
-        fontscaling = float(self.spinFontScaling.value())
 
+        # Warn if the target directory is not empty.
         if os.path.isdir(outputpath) and len(os.listdir(outputpath))>0:
             ret = QtGui.QMessageBox.warning(self,'Directory is not empty','The specified target directory ("%s") contains one or more files, which may be overwritten. Do you want to continue?' % outputpath,QtGui.QMessageBox.Yes,QtGui.QMessageBox.No)
             if ret==QtGui.QMessageBox.No: return False
 
+        # Update the list of selected variables.
+        selroot = self.report.store.root.getLocation(['Figures','Selection'])
+        selroot.removeAllChildren()
+        for node in self.model.getCheckedNodes():
+            if node.canHaveValue():
+                ch = selroot.addChild('VariablePath')
+                ch.setValue('/'.join(node.location))
+
+        # Make changed report settings persistent
+        self.factory.updateStore()
+
+        # Generate the report and display the wait cursor while doing so.
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
-        report.generateReport(self.result,outputpath,templatepath,varids,dpi=dpi,figuresize=size,fontscaling=fontscaling,callback=self.onReportProgressed)
+        self.report.generate(self.result,outputpath,templatepath,callback=self.onReportProgressed)
         QtGui.QApplication.restoreOverrideCursor()
 
         return True
@@ -205,11 +215,15 @@ class PageReportGenerator(commonqt.WizardPage):
         commonqt.WizardPage.__init__(self, parent)
 
         self.result = parent.shared['result']
+        self.report = report.Report()
+        
+        # Copy report settings from result.
+        self.report.store.root.copyFrom(self.result.store.root.getLocation(['ReportSettings']),replace=True)
 
         self.label = QtGui.QLabel('You can generate a report that describes the scenario and the simulation results. A report consists of an HTML file, associated files (CSS, javascript) and image files for all figures.',self)
         self.label.setWordWrap(True)
         self.checkReport = QtGui.QCheckBox('Yes, I want to generate a report.', parent)
-        self.reportwidget = ConfigureReportWidget(self,self.result)
+        self.reportwidget = ConfigureReportWidget(self,self.result,self.report)
 
         self.progressbar = QtGui.QProgressBar(self)
         self.progressbar.setRange(0,100)
@@ -247,7 +261,10 @@ class PageReportGenerator(commonqt.WizardPage):
 
     def saveData(self,mustbevalid):
         if mustbevalid and self.checkReport.isChecked():
-            return self.reportwidget.generate()
+            ret = self.reportwidget.generate()
+            if ret:
+                self.result.store.root.getLocation(['ReportSettings']).copyFrom(self.report.store.root,replace=True)
+            return ret
         return True
 
     def reportProgressed(self,progressed,status):

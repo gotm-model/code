@@ -88,19 +88,19 @@ class VariableSlice(VariableTransform):
 
 class Figure:
 
-    def __init__(self,figure,properties=None):
+    def __init__(self,figure):
         self.figure = figure
         self.canvas = figure.canvas
 
         # Create store for the explicitly set properties
-        self.properties = xmlstore.TypedStore('schemas/figure/gotmgui.xml',None)
+        self.properties = xmlstore.TypedStore('schemas/figure/gotmgui.xml')
         self.propertiesinterface = self.properties.getInterface()
         self.propertiesinterface.notifyOnDefaultChange = False
         self.propertiesinterface.addChangeHandler(self.onPropertyChanged)
         self.propertiesinterface.addStoreChangedHandler(self.onPropertyStoreChanged)
         
         # Create store for property defaults
-        self.defaultproperties = xmlstore.TypedStore('schemas/figure/gotmgui.xml',properties)
+        self.defaultproperties = xmlstore.TypedStore('schemas/figure/gotmgui.xml')
 
         # Set some default properties.
         self.defaultproperties.setProperty(['FontScaling'],100)
@@ -179,18 +179,19 @@ class Figure:
         
         textscaling = self.properties.getProperty(['FontScaling'],usedefault=True)/100.
         
+        # First scale the default font size; this takes care of all relative font sizes (e.g. "small")
+        matplotlib.font_manager.fontManager.set_default_size(textscaling*matplotlib.rcParams['font.size'])
+        
+        # Now get some relevant font sizes.
+        # Scale font sizes with text scaling parameter if they are absolute sizes.
+        # (if they are strings, they are relative sizes already)
         titlesize = matplotlib.rcParams['axes.titlesize']
         axeslabelsize = matplotlib.rcParams['axes.labelsize']
-        xticklabelsize = matplotlib.rcParams['xtick.labelsize']
-        yticklabelsize = matplotlib.rcParams['ytick.labelsize']
-        linewidth = matplotlib.rcParams['lines.linewidth']
-        
-        # Scale font sizes with text scaling parameter if they are floats.
-        # (if they are strings, they are relative sizes already)
         if not isinstance(titlesize,     basestring): titlesize     *=textscaling
         if not isinstance(axeslabelsize, basestring): axeslabelsize *=textscaling
-        if not isinstance(xticklabelsize,basestring): xticklabelsize*=textscaling
-        if not isinstance(yticklabelsize,basestring): yticklabelsize*=textscaling
+
+        # Get the default line width
+        linewidth = matplotlib.rcParams['lines.linewidth']
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         tmin = self.properties.getProperty(['TimeAxis','Minimum'])
@@ -209,7 +210,8 @@ class Figure:
         # Shortcut to the node that will hold defaults for the plotted variables.
         defaultdatanode = self.defaultproperties.root.getLocation(['Data'])
 
-        # This variable will hold all long names of the plotted variables; will be used to create plot title.
+        # This variable will hold all long names of the plotted variables.
+        # It will be used to create the plot title.
         longnames = []
 
         for (iseries,seriesnode) in enumerate(forcedseries):
@@ -423,7 +425,6 @@ class Figure:
                 else:
                   #pc = axes.pcolor(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
                   pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
-                  #im.set_interpolation('bilinear')
                   
                 # Create colorbar
                 if (Z.ravel()==Z[0,0]).all():

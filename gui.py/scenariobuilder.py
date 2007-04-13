@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.12 2007-04-10 06:55:31 jorn Exp $
+#$Id: scenariobuilder.py,v 1.13 2007-04-13 12:40:08 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -198,14 +198,14 @@ class PageLocation(commonqt.WizardPage):
         self.factory = commonqt.PropertyEditorFactory(self.scenario)
 
         loclayout = QtGui.QGridLayout()
-        self.labName       = QtGui.QLabel('Name: ',self)
-        self.labLongitude  = QtGui.QLabel('Longitude: ',self)
-        self.labLatitude   = QtGui.QLabel('Latitude: ',self)
-        self.labDepth      = QtGui.QLabel('Water depth: ',self)
-        self.lineName      = self.factory.createEditor(['station','name'],self)
+        self.lineName = self.factory.createEditor(['station','name'],self)
+        self.labName = self.lineName.createLabel()
         self.lineLongitude = self.factory.createEditor(['station','longitude'],self)
-        self.lineLatitude  = self.factory.createEditor(['station','latitude' ],self)
-        self.lineDepth     = self.factory.createEditor(['station','depth'    ],self)
+        self.labLongitude = self.lineLongitude.createLabel()
+        self.lineLatitude = self.factory.createEditor(['station','latitude'],self)
+        self.labLatitude = self.lineLatitude.createLabel()
+        self.lineDepth = self.factory.createEditor(['station','depth'],self)
+        self.labDepth = self.lineDepth.createLabel()
         loclayout.addWidget(self.labName, 0,0)
         loclayout.addWidget(self.lineName.editor,0,1)
         loclayout.addWidget(self.labLongitude, 1,0)
@@ -219,10 +219,10 @@ class PageLocation(commonqt.WizardPage):
         groupbox2 = QtGui.QGroupBox('Simulated period',self)
 
         periodlayout = QtGui.QGridLayout()
-        self.labStart  = QtGui.QLabel('Start date: ',self)
-        self.labStop   = QtGui.QLabel('Stop date: ',self)
         self.lineStart = self.factory.createEditor(['time','start'],self)
+        self.labStart = self.lineStart.createLabel()
         self.lineStop  = self.factory.createEditor(['time','stop'] ,self)
+        self.labStop = self.lineStop.createLabel()
         periodlayout.addWidget(self.labStart, 0,0)
         periodlayout.addWidget(self.lineStart.editor,0,1)
         periodlayout.addWidget(self.labStop, 1,0)

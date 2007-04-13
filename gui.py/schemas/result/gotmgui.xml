@@ -3,4 +3,5 @@
 	<element id="FigureSettings">
 		<link path="../figure/gotmgui.xml" maxoccurs="1000"/>
 	</element>
+	<link path="../report/gotmgui.xml"/>
 </element>

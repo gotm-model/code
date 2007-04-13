@@ -1493,6 +1493,8 @@ class TypedStore:
 
         templateroot = self.schemadom.documentElement
 
+        assert valueroot==None or isinstance(valueroot,basestring) or isinstance(valueroot,xml.dom.Node), 'Supplied value root must None, a path to an XML file, or an XML node, but is %s.' % valueroot
+
         valuedom = None
         if valueroot==None:
             impl = xml.dom.minidom.getDOMImplementation()
@@ -1520,8 +1522,9 @@ class TypedStore:
         self.changed = False
         self.setContainer(None)
         
-        # Update the visibility of all nodes (disable individual notifications
-        # because the single "storechanged" event replaces them)
+        # Update the visibility of all nodes - based on conditions
+        # Disable individual notifications because the single "storechanged" event emitted
+        # below replaces them)
         self.root.updateVisibility(recursive=True,notify=False)
         
         # Notify attached interface about the store change.
@@ -1954,7 +1957,7 @@ class TypedStore:
         
         self.resetChanged()
 
-    def toxml(self,enc):
+    def toxml(self,enc='utf-8'):
         return self.store.xmldocument.toxml(enc)
 
     def toXmlDom(self,target=None):
