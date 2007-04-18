@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.37 2007-04-18 06:57:36 kbk Exp $
+!$Id: bio.F90,v 1.38 2007-04-18 07:36:47 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -36,9 +36,6 @@
    use bio_mab, only : init_bio_mab,init_var_mab,var_info_mab
    use bio_mab, only : light_mab,surface_fluxes_mab,do_bio_mab
 
-   use mussels, only : init_mussels, do_mussels, end_mussels
-   use mussels, only : mussels_calc,total_mussel_flux
-
    use output, only: out_fmt,write_results,ts
 
    use util
@@ -54,6 +51,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.38  2007-04-18 07:36:47  kbk
+!  mussels will be developed in 4.1.x
+!
 !  Revision 1.37  2007-04-18 06:57:36  kbk
 !  Lagrangian simulations disabled by default
 !
@@ -375,8 +375,6 @@
          end do
       end if
 
-!     Initialise 'mussels' module
-      call init_mussels(namlst,"mussels.nml",unit,nlev,h)
    end if
 
    return
@@ -546,10 +544,6 @@
             call surface_fluxes_mab(nlev,t(nlev),s(nlev))
       end select
 
-      if (mussels_calc) then
-         call do_mussels(numc,dt,t(1))
-      end if
-
       if (bio_eulerian) then
          do j=1,numcc
 
@@ -583,13 +577,6 @@
                           particle_active(j,:), &
                           particle_indx(j,:),   &
                           particle_pos(j,:))
-            if (mussels_calc) then
-               filter_depth=-depth+total_mussel_flux*dt
-               do i=1,bio_npar
-                  if (particle_pos(j,i) .lt. filter_depth) &
-                      particle_active(j,i)=.false.
-               end do 
-            end if 
 !           convert particle counts  into concentrations
             if( write_results .or. bio_lagrange_mean ) then
                if (set_C_zero) then
@@ -709,17 +696,12 @@
 
    LEVEL1 'clean_bio'
 
-   if (mussels_calc) then
-      call end_mussels()
-   end if
-
    if (allocated(par))            deallocate(par)
    if (allocated(cc))             deallocate(cc)
    if (allocated(ws))             deallocate(ws)
    if (allocated(sfl))            deallocate(sfl)
    if (allocated(bfl))            deallocate(bfl)
    if (allocated(posconc))        deallocate(posconc)
-   if (allocated(mussels_inhale)) deallocate(mussels_inhale)
    if (allocated(var_ids))        deallocate(var_ids)
    if (allocated(var_names))      deallocate(var_names)
    if (allocated(var_units))      deallocate(var_units)
@@ -792,10 +774,6 @@
    allocate(posconc(1:numc),stat=rc)
    if (rc /= 0) STOP 'init_bio: Error allocating (posconc)'
    posconc=1
-
-   allocate(mussels_inhale(1:numc),stat=rc)
-   if (rc /= 0) STOP 'init_bio: Error allocating (mussels_inhale)'
-   mussels_inhale=.false.
 
    allocate(var_ids(numc),stat=rc)
    if (rc /= 0) stop 'init_bio(): Error allocating var_ids)'
