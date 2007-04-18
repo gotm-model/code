@@ -191,7 +191,10 @@ class Figure:
         if not isinstance(axeslabelsize, basestring): axeslabelsize *=textscaling
 
         # Get the default line width
-        linewidth = matplotlib.rcParams['lines.linewidth']
+        deflinewidth = matplotlib.rcParams['lines.linewidth']
+        deflinecolor = matplotlib.rcParams['lines.color']
+        deflinecolor = matplotlib.colors.colorConverter.to_rgb(deflinecolor)
+        deflinecolor = xmlstore.StoreColor.fromNormalized(*deflinecolor)
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         tmin = self.properties.getProperty(['TimeAxis','Minimum'])
@@ -233,7 +236,8 @@ class Figure:
             defaultseriesnode.getLocation(['Source']).setValue(varsource)
             defaultseriesnode.getLocation(['PlotType2D']).setValue(0)
             defaultseriesnode.getLocation(['PlotType3D']).setValue(0)
-            defaultseriesnode.getLocation(['LineWidth']).setValue(linewidth)
+            defaultseriesnode.getLocation(['LineWidth']).setValue(deflinewidth)
+            defaultseriesnode.getLocation(['LineColor']).setValue(deflinecolor)
             defaultseriesnode.getLocation(['LogScale']).setValue(False)
 
             # Store the variable long name (to be used for building title)
@@ -367,7 +371,8 @@ class Figure:
                     xdim = 1
                     datadim = 0
                 linewidth = seriesnode.getLocation(['LineWidth']).getValueOrDefault()
-                lines = axes.plot(data[xdim],data[datadim],'-',linewidth=linewidth)
+                linecolor = seriesnode.getLocation(['LineColor']).getValueOrDefault()
+                lines = axes.plot(data[xdim],data[datadim],'-',linewidth=linewidth,color=linecolor.getNormalized())
                 if xdim==0:
                     dim2data[dims[0]]['axis'] = 'x'
                     axes.set_ylabel(label,size=axeslabelsize)
@@ -430,9 +435,9 @@ class Figure:
                 if (Z.ravel()==Z[0,0]).all():
                     # Explicitly set color range; MatPlotLib 0.90.0 chokes on identical min and max.
                     pc.set_clim((Z[0,0]-1,Z[0,0]+1))
-                    cb = self.figure.colorbar(mappable=pc)
+                    cb = self.figure.colorbar(pc)
                 else:
-                    cb = self.figure.colorbar(mappable=pc)
+                    cb = self.figure.colorbar(pc)
                     
                 # Text for colorbar
                 if label!='': cb.set_label(label,size=axeslabelsize)

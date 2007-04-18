@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.24 2007-04-06 13:59:27 jorn Exp $
+#$Id: common.py,v 1.25 2007-04-18 09:31:09 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.numerix
@@ -103,6 +103,11 @@ def setNodeText(node,text,xmldocument=None):
             ch.unlink()
     val = xmldocument.createTextNode(text)
     node.insertBefore(val,node.firstChild)
+    
+def removeNodeChildren(node):
+    for ch in node.childNodes:
+        node.removeChild(ch)
+        ch.unlink()
 
 def copyNode(sourcenode,newparent,targetdoc=None):
     if newparent==None:

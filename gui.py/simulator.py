@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.8 2007-03-02 12:32:47 jorn Exp $
+#$Id: simulator.py,v 1.9 2007-04-18 09:31:09 jorn Exp $
 
 import os, tempfile, sys, math, shutil
 
@@ -18,12 +18,11 @@ stacksize = 16000000
 
 class GOTMThread(QtCore.QThread):
 
-  def __init__(self, parent, scenariodir, receiver):
+  def __init__(self, parent, scenariodir):
     QtCore.QThread.__init__(self,parent)
     self.setStackSize(stacksize)
     
     self.scenariodir = scenariodir
-    self.receiver = receiver
     self.rwlock = QtCore.QReadWriteLock()
     self.stopped = False
     self.result = 0
@@ -88,12 +87,12 @@ class GOTMThread(QtCore.QThread):
         timer.start()
         while islicestart<=stop:
             # Check if we have to cancel
-            rl = QtCore.QReadLocker(self.rwlock)
+            self.rwlock.lockForRead()
             if self.stopped:
                 print 'GOTM run was cancelled; exiting thread...'
                 self.result = 2
                 break
-            rl.unlock()
+            self.rwlock.unlock()
             
             # Configure GOTM for new slice.
             gotm.time.minn = islicestart
@@ -111,7 +110,7 @@ class GOTMThread(QtCore.QThread):
 
             # Send 'progress' event
             prog = (islicestop-start+1)/float(stepcount)
-            self.emit(QtCore.SIGNAL("progressed(double)"), prog)
+            self.emit(QtCore.SIGNAL('progressed(double)'), prog)
 
             # Adjust slice size
             elapsed = timer.restart()
@@ -148,8 +147,9 @@ class GOTMThread(QtCore.QThread):
     os.chdir(olddir)
     
   def stop(self):
-    wl = QtCore.QWriteLocker(self.rwlock)
+    self.rwlock.lockForWrite()
     self.stopped = True
+    self.rwlock.unlock()
     
 class PageProgress(commonqt.WizardPage):
     def __init__(self, parent):
@@ -229,7 +229,7 @@ class PageProgress(commonqt.WizardPage):
         namelistscenario.unlink()
         self.timer = QtCore.QTime()
         self.timer.start()
-        self.gotmthread = GOTMThread(self,self.tempdir,self)
+        self.gotmthread = GOTMThread(self,self.tempdir)
         self.connect(self.gotmthread, QtCore.SIGNAL('progressed(double)'), self.progressed, QtCore.Qt.QueuedConnection)
         self.connect(self.gotmthread, QtCore.SIGNAL('finished()'), self.done, QtCore.Qt.QueuedConnection)
         self.gotmthread.rungotm()
@@ -290,18 +290,21 @@ class PageProgress(commonqt.WizardPage):
     def saveData(self,mustbevalid):
         # Stop worker thread
         if self.gotmthread!=None:
+            self.disconnect(self.gotmthread, QtCore.SIGNAL('progressed(double)'), self.progressed)
+            self.disconnect(self.gotmthread, QtCore.SIGNAL('finished()'), self.done)
             self.gotmthread.stop()
             if not self.gotmthread.isFinished(): self.gotmthread.wait()
+            self.gotmthread = None
             
         if mustbevalid:
-            if self.parent().getProperty('result')==None:
+            if self.owner.getProperty('result')==None:
                 # Store result
                 assert self.result!=None, 'Cannot move on because result is not available ("next" button should have been disabled?)'
-                self.parent().setProperty('result',self.result)
+                self.owner.setProperty('result',self.result)
         else:
             # Remove any currently stored result.
-            self.parent().setProperty('result',None)
-                    
+            self.owner.setProperty('result',None)
+
         # Remove temporary directory
         if self.tempdir!=None:
             try:

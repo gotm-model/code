@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.13 2007-04-13 12:40:08 jorn Exp $
+#$Id: scenariobuilder.py,v 1.14 2007-04-18 09:31:09 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -248,6 +248,64 @@ class PageLocation(commonqt.WizardPage):
     def isComplete(self):
         return True
 
+class PageDiscretization(commonqt.WizardPage):
+    
+    def __init__(self,parent=None):
+        commonqt.WizardPage.__init__(self, parent)
+
+        self.scenario = parent.shared['scenario']
+        assert self.scenario!=None, 'No scenario available; this page should not have been available.'
+
+        groupbox1 = QtGui.QGroupBox('Column structure',self)
+
+        self.factory = commonqt.PropertyEditorFactory(self.scenario)
+
+        gridlayout = QtGui.QGridLayout()
+        self.bngroup = QtGui.QButtonGroup()
+        self.radioEqual     = QtGui.QRadioButton('equal layers heights, optional zooming.',self)
+        self.radioSigma     = QtGui.QRadioButton('custom sigma grid (relative depth fractions).',self)
+        self.radioCartesian = QtGui.QRadioButton('custom cartesian grid (absolute layer heights).',self)
+
+        self.editZoomSurface = self.factory.createEditor(['grid','ddu'],self)      
+        self.editZoomBottom  = self.factory.createEditor(['grid','ddl'],self)      
+        
+        gridlayout.addWidget(self.radioEqual, 0,0,1,4)
+        gridlayout.addWidget(self.editZoomSurface.createLabel(), 1,1)
+        gridlayout.addWidget(self.editZoomSurface.editor, 1,2)
+        gridlayout.addWidget(self.editZoomBottom.createLabel(), 2,1)
+        gridlayout.addWidget(self.editZoomBottom.editor, 2,2)
+        gridlayout.addWidget(self.radioSigma,3,0,1,4)
+        gridlayout.addWidget(self.radioCartesian, 4,0,1,4)
+        self.bngroup.addButton(self.radioEqual,     0)
+        self.bngroup.addButton(self.radioSigma,     1)
+        self.bngroup.addButton(self.radioCartesian, 2)
+        groupbox1.setLayout(gridlayout)
+
+        gridlayout.setColumnStretch(3,1)
+        radiowidth = QtGui.QRadioButton().sizeHint().width()
+        gridlayout.setColumnMinimumWidth(0,radiowidth)
+        gridlayout.setMargin(0)
+
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(groupbox1)
+        layout.addStretch()
+        self.setLayout(layout)
+
+    def saveData(self,mustbevalid):
+        #checkedid = self.bngroup.checkedId()
+
+        #if not self.factory.hasChanged(): return True
+        
+        #if not mustbevalid:
+        #    res = QtGui.QMessageBox.question(self,'Your scenario has changed','Do you want to preserve your changes?',QtGui.QMessageBox.Yes,QtGui.QMessageBox.No,QtGui.QMessageBox.NoButton)
+        #    if res==QtGui.QMessageBox.No: return True
+
+        #self.factory.updateStore()
+        return True
+
+    def isComplete(self):
+        return True
+
 class PageAdvanced(commonqt.WizardPage):
     
     def __init__(self,parent=None):
@@ -396,6 +454,7 @@ class PageFinal(commonqt.WizardPage):
 
 class SequenceEditScenario(commonqt.WizardSequence):
     def __init__(self):
+        #commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAdvanced,PageSave])
         commonqt.WizardSequence.__init__(self,[PageLocation,PageAdvanced,PageSave])
 
 def main():

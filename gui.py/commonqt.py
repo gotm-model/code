@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.24 2007-04-13 12:40:08 jorn Exp $
+#$Id: commonqt.py,v 1.25 2007-04-18 09:31:09 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -402,6 +402,57 @@ class ScientificDoubleEditor(QtGui.QLineEdit):
             text = self.text()
             self.curvalidator.fixup(text)
             self.setText(text)
+            
+class ColorEditor(QtGui.QComboBox):
+    def __init__(self,parent=None):
+        QtGui.QComboBox.__init__(self,parent)
+        self.connect(self, QtCore.SIGNAL('activated(int)'), self.onActivated)
+        
+        #self.addColorRGB('red',255,0,0)
+        #self.addColorRGB('green',0,255,0)
+        #self.addColorRGB('blue',0,0,255)
+        
+        for cn in QtGui.QColor.colorNames():
+            self.addColor(cn,QtGui.QColor(cn))
+        
+        self.addColorRGB('custom...',255,255,255)
+        
+    def addColorRGB(self,text,r,g,b):
+        self.addColor(text,QtGui.QColor(r,g,b))
+
+    def addColor(self,text,col):
+        iconsize = self.iconSize()
+        pm = QtGui.QPixmap(iconsize.width(),iconsize.height())
+        pm.fill(col)
+        ic = QtGui.QIcon(pm)
+        self.addItem(ic,text,QtCore.QVariant(col))
+        
+    def setColor(self,color):
+        for i in range(self.count()-1):
+            if QtGui.QColor(self.itemData(i))==color:
+                self.setCurrentIndex(i)
+                break
+        else:
+            index = self.count()-1
+            self.setItemColor(index,color)
+            self.setCurrentIndex(index)
+
+    def color(self):
+        return QtGui.QColor(self.itemData(self.currentIndex()))
+        
+    def setItemColor(self,index,color):
+        iconsize = self.iconSize()
+        pm = QtGui.QPixmap(iconsize.width(),iconsize.height())
+        pm.fill(color)
+        ic = QtGui.QIcon(pm)
+        self.setItemIcon(index,ic)
+
+        self.setItemData(index,QtCore.QVariant(color))
+        
+    def onActivated(self,index):
+        if index==self.count()-1:
+            col = QtGui.QColorDialog.getColor(QtGui.QColor(self.itemData(index)),self)
+            self.setItemColor(index,col)
 
 # =======================================================================
 # PropertyDelegate: a Qt delegate used to create editors for property
@@ -467,6 +518,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
         elif nodetype=='file':
             editor = LinkedFileEditor(parent)
             self.currenteditor = editor
+        elif nodetype=='color':
+            editor = ColorEditor(parent)
         else:
             assert False, 'Unknown node type "%s".' % nodetype
 
@@ -507,6 +560,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             editor.setDateTime(value)
         elif nodetype=='file':
             editor.setNode(node)
+        elif nodetype=='color':
+            editor.setColor(QtGui.QColor(value))
 
     # setModelData (inherited from QtGui.QItemDelegate)
     #   Obtains the value from the editor widget, and set it for the model item at the given index
@@ -527,6 +582,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             model.setData(index, QtCore.QVariant(editor.dateTime()))
         elif nodetype=='file':
             node.setValue(editor.datafile)
+        elif nodetype=='color':
+            model.setData(index,QtCore.QVariant(editor.color()))
 
 # =======================================================================
 # PropertyData: a Qt item model that encapsulates our custom
@@ -663,18 +720,23 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             # Column 1 is only used for variables that can have a value.
             if not node.canHaveValue(): return QtCore.QVariant()
 
-            # Return bold font if the node value is set to something different than the default.
-            if role==QtCore.Qt.FontRole and self.typedstore.defaultstore!=None:
+            fieldtype = node.getValueType()
+            if role==QtCore.Qt.FontRole:
+                # Return bold font if the node value is set to something different than the default.
+                if self.typedstore.defaultstore==None: QtCore.QVariant()
                 font = QtGui.QFont()
                 val = node.getValue()
                 font.setBold(val!=None and val!=node.getDefaultValue())
                 return QtCore.QVariant(font)
-
-            # Now distinguish between display of value and editing of value.
-            if role==QtCore.Qt.DisplayRole:
+            elif role==QtCore.Qt.DisplayRole:
+                #if fieldtype=='color':
+                #    value = node.getValueOrDefault()
+                #    pm = QtGui.QPixmap(10,10)
+                #    pm.fill(QtGui.QColor(value.red,value.green,value.blue))
+                #    #return QtCore.QVariant(QtGui.QIcon(pm))
+                #    return QtCore.QVariant(pm)
                 return QtCore.QVariant(node.getValueAsString(usedefault=True))
-            else:
-                fieldtype = node.getValueType()
+            elif role==QtCore.Qt.EditRole:
                 value = node.getValueOrDefault()
                 if value==None: return QtCore.QVariant()
                 if fieldtype=='datetime':
@@ -683,9 +745,13 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 elif fieldtype=='file':
                     # Return full path
                     return QtCore.QVariant(unicode(value))
+                elif fieldtype=='color':
+                    return QtCore.QVariant(QtGui.QColor(value.red,value.green,value.blue))
                 else:
                     # Simply cast the current value to variant.
                     return QtCore.QVariant(value)
+            else:
+                assert False, 'Don\'t know how to handle role %s.' % role
 
     # setData (inherited from QtCore.QAbstractItemModel)
     #   Set data for the given node (specified as index), and the given role.
@@ -747,6 +813,9 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         elif fieldtype=='select':
             value,converted = value.toInt()
             if not converted: return False
+        elif fieldtype=='color':
+            col = QtGui.QColor(value)
+            value = xmlstore.StoreColor(col.red(),col.green(),col.blue())
         else:
             assert False, 'unknown variable type "%s" in XML scenario template' % fieldtype
 

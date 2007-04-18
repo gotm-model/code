@@ -12,13 +12,6 @@ class PageIntroduction(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
-        layout = QtGui.QVBoxLayout()
-
-        self.label = QtGui.QLabel('Placeholder for introduction to GOTM.',self)
-        layout.addWidget(self.label)
-
-        layout.addStretch()
-
         # For version only:
         import matplotlib,numpy,gotm,pynetcdf
         #import Numeric,pycdf
@@ -32,10 +25,48 @@ class PageIntroduction(commonqt.WizardPage):
         #versions.append(('Numeric',Numeric.__version__))
         #versions.append(('pycdf',pycdf.pycdfVersion()))
         versions.append(('gotm',gotm.gui_util.getversion().rstrip()))
+        
+        strversions = '<table cellspacing="0" cellpadding="0">'
+        for v in versions:
+            strversions += '<tr><td>%s</td><td>&nbsp;</td><td>%s</td></tr>' % v
+        strversions += '</table>'
 
-        strversions = '\n'.join(['%s %s' % v for v in versions])
-        self.labelVersions = QtGui.QLabel('Module versions:\n'+strversions,self)
+        layout = QtGui.QVBoxLayout()
+
+        self.label = QtGui.QLabel( \
+            """<p>This is the Graphical User Interface to the <a href="http://www.gotm.net">General Ocean Turbulence Model (GOTM)</a>.</p>
+
+<p>GOTM is a one-dimensional water column model for natural (marine and limnic) waters based on the Reynolds-averaged Navier-Stokes equations. Vertical mixing is  included through an extensive library of state-of-the-art turbulence closure models. The hydrodynamics may be forced by wind stresses, surface heat and buoyancy fluxes, solar radiation and prescribed external and internal pressure gradients.</p>
+
+<p>GOTM includes also a library of ecosystem models, ranging from simple settling of suspended matter to low-, medium- and high-complexity biogeochemical formulations.</p>
+
+<p>There is a number of ready-to-use scenarios available for GOTM, with coastal, shelf sea, open ocean and limnic applications, a few of them including ecosystem modelling. These can be downloaded from <a href="http://www.gotm.net/index.php?go=software&page=testcases">the GOTM web site</a>.</p>
+
+<p>This program offers a user-friendly interface to all options supported by GOTM. It allows you to run existing test cases, or to create and configure a custom scenario. The program will guide you step by step through the process of setting up a scenario, doing the calculations and displaying the results.</p>
+
+<p>For any questions, please consult <a href="http://www.gotm.net">www.gotm.net</a> or write an email to <a href="mailto:gotm-users@gotm.net">gotm-users@gotm.net</a>.<br></p>
+
+<p>This program was developed by <a href="mailto:jorn.bruggeman@xs4all.nl">Jorn Bruggeman</a> from funding by <a href="http://www.bolding-burchard.com">Bolding & Burchard Hydrodynamics</a>.<br></p>
+""",self)
+        self.label.setWordWrap(True)
+        self.label.setOpenExternalLinks(True)
+        layout.addWidget(self.label)
+
+        layout.addStretch()
+
+        #strversions = '\n'.join(['%s %s' % v for v in versions])
+        #self.labelVersions = QtGui.QLabel('Module versions:\n'+strversions,self)
+        #layout.addWidget(self.labelVersions)
+
+        layout.addStretch(1)
+
+        self.labelVersions = QtGui.QLabel('Module versions:',self)
         layout.addWidget(self.labelVersions)
+        
+        self.textVersions = QtGui.QTextEdit(strversions,self)
+        self.textVersions.setMaximumHeight(100)
+        self.textVersions.setReadOnly(True)
+        layout.addWidget(self.textVersions)
 
         self.setLayout(layout)
 

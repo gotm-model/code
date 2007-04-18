@@ -44,6 +44,9 @@ class Store:
         def save(self,node,context):
             assert False, 'This virtual method MUST be overwritten by the inheriting class.'
 
+        def preparePersist(self,node,context):
+            pass
+
         def persist(self,node,context):
             pass
 
@@ -247,6 +250,57 @@ class Store:
             return (value=='True')
         else:
             return valuetype(value)
+
+class StoreColor(Store.DataType):
+    def __init__(self,red=None,green=None,blue=None):
+        Store.DataType.__init__(self)
+        self.red = red
+        self.green = green
+        self.blue = blue
+
+    @staticmethod
+    def load(node,context):
+        strcolor = common.getNodeText(node)
+        if len(strcolor)>0:
+            assert len(strcolor)==7 and strcolor[0]=='#', 'Colors must have exactly 7 characters and start with #.'
+            strcolor = strcolor[1:]
+            return StoreColor(int(strcolor[0:2],16),int(strcolor[2:4],16),int(strcolor[4:6],16))
+        else:
+            return StoreColor()
+            
+    @staticmethod
+    def fromNormalized(r,g,b):
+        return StoreColor(int(r*255),int(g*255),int(b*255))
+
+    def save(self,node,context):
+        assert self.red  ==None or self.red  <=255, 'Color channel red values should not exceed 255.'
+        assert self.green==None or self.green<=255, 'Color channel green values should not exceed 255.'
+        assert self.blue ==None or self.blue <=255, 'Color channel blue values should not exceed 255.'
+        if self.isValid():
+            common.setNodeText(node,'#%02x%02x%02x' % (self.red,self.green,self.blue))
+        else:
+            common.removeNodeChildren(node)
+        
+    def isValid(self):
+        return self.red!=None and self.green!=None and self.blue!=None
+        
+    def getNormalized(self):
+        assert self.isValid(), 'Cannot convert color to normalized tuple because the color object is not valid.'
+        return (self.red/255.,self.green/255.,self.blue/255.)
+        
+    def __str__(self):
+        if self.isValid():
+            return '(%i, %i, %i)' % (self.red,self.green,self.blue)
+        else:
+            return 'None'
+            
+    def __eq__(self,other):
+        if not isinstance(other,StoreColor): return False
+        return self.red==other.red and self.green==other.green and self.blue==other.blue
+        
+    def __ne__(self,other):
+        return not self.__eq__(other)
+            
 
 # ------------------------------------------------------------------------------------------
 # DataFile
@@ -1518,6 +1572,7 @@ class TypedStore:
         self.store = Store(valuedom,xmlroot=valueroot)
         self.store.filetypes['select'] = int
         self.store.filetypes['file'] = DataFile
+        self.store.filetypes['color'] = StoreColor
         self.root = TypedStore.Node(self,templateroot,self.store.xmlroot,[],None)
         self.changed = False
         self.setContainer(None)
@@ -2079,8 +2134,8 @@ class Convertor:
 
         # Handle one-to-one links between source nodes and target nodes.
         for (sourcepath,targetpath) in self.links:
-            if isinstance(sourcepath,str): sourcepath = sourcepath.split('/')
-            if isinstance(targetpath,str): targetpath = targetpath.split('/')
+            if isinstance(sourcepath,basestring): sourcepath = sourcepath.split('/')
+            if isinstance(targetpath,basestring): targetpath = targetpath.split('/')
             sourcenode = source.root.getLocation(sourcepath)
             if sourcenode==None:
                 raise Exception('Cannot locate node "%s" in source.' % '/'.join(sourcepath))
@@ -2093,7 +2148,7 @@ class Convertor:
         if len(self.defaults)>0:
             defscen = target.getDefault(None,target.version)
             for path in self.defaults:
-                if isinstance(path,str): path = path.split('/')
+                if isinstance(path,basestring): path = path.split('/')
                 sourcenode = defscen.root.getLocation(path)
                 if sourcenode==None:
                     raise Exception('Cannot locate node "%s" in default.')
