@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.15 2005-12-28 12:16:00 kbk Exp $
+#$Id: Makefile,v 1.16 2007-04-18 10:29:18 kbk Exp $
 #
 # Makefile for making new release of GOTM.
 #
@@ -29,6 +29,8 @@ VERSION=3.3.0
 VERSION=3.3.1
 # 20051228
 VERSION=3.3.2
+# 20070418
+VERSION=4.0.0
 
 all: VERSION
 
@@ -40,6 +42,12 @@ VERSION: Makefile
 	@mv -f .ver include/version.h
 
 Makefile:
+
+exec: VERSION
+	make -C src
+
+gui: VERSION
+	make -C gui.py
 
 devel stable branch: VERSION
 	@echo
