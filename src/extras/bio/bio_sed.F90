@@ -1,4 +1,4 @@
-!$Id: bio_sed.F90,v 1.8 2007-01-06 11:49:15 kbk Exp $
+!$Id: bio_sed.F90,v 1.9 2007-04-18 07:35:26 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,6 +29,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_sed.F90,v $
+!  Revision 1.9  2007-04-18 07:35:26  kbk
+!  to avoid F95 warning
+!
 !  Revision 1.8  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -218,8 +221,8 @@
 !BOC
 !  no right hand sides necessary
 
-!   pp=_ZERO_
-!   dd=_ZERO_
+   pp=_ZERO_
+   dd=_ZERO_
 
    return
    end subroutine do_bio_sed
