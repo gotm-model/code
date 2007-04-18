@@ -17,10 +17,10 @@ function showHideDefaults() {
 	}
 	
 	showdefaults = (!showdefaults);
-	aShowHideDefaults = document.getElementById('aShowHideDefaults');
+	aShowHide = document.getElementById('aShowHideDefaults');
 	if (showdefaults) {
-		aShowHideDefaults.innerHTML = 'Hide default values';
+		aShowHide.innerHTML = 'Hide default values';
 	} else {
-		aShowHideDefaults.innerHTML = 'Show default values';
+		aShowHide.innerHTML = 'Show default values';
 	}
 }
