@@ -46,7 +46,7 @@ fi
 
 if [ "$release_type" = "stable" ] ; then
    cvs tag $TAG
-   CVS2CL="cvs2cl -b -F $BRANCH --no-ancestors"
+   CVS2CL="cvs2cl -b -F v4_0_0 --no-ancestors"
 fi
 
 if [ "$release_type" = "devel" ] ; then
