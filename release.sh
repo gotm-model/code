@@ -15,7 +15,8 @@
 # $Id
 #
 
-[ "$USER" = "kbk" ] || { echo "Only kbk can make new releases" ; exit 1; }
+[ "$USER" = "kbk" ]   || { echo "Only kbk can make new releases" ; exit 1; }
+[ `hostname` = gate ] || { echo "Releases should be done on gate" ; exit 1; }
 
 release_type=$1
 release_version=$2
