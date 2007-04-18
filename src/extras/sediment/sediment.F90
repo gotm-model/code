@@ -1,4 +1,4 @@
-!$Id: sediment.F90,v 1.10 2005-06-27 13:44:07 kbk Exp $
+!$Id: sediment.F90,v 1.11 2007-04-18 07:14:42 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -82,7 +82,10 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: sediment.F90,v $
-!  Revision 1.10  2005-06-27 13:44:07  kbk
+!  Revision 1.11  2007-04-18 07:14:42  kbk
+!  .inp -> .nml
+!
+!  Revision 1.10  2005/06/27 13:44:07  kbk
 !  modified + removed traling blanks
 !
 !  Revision 1.9  2004/06/29 12:56:36  lars
@@ -169,7 +172,7 @@
    subroutine init_sediment(namlst,fname,unit,nlev,g,rho_0)
 !
 ! !DESCRIPTION:
-!  This routine reads the sediment namelist from {\tt sediment.inp}
+!  This routine reads the sediment namelist from {\tt sediment.nml}
 !  and allocates memory for the sediment-related vectors.
 !  Further, depending on the sediment model, the settling velocity, $w_s$,
 ! and the critical friction velocity, $u_*^c$, are calculated here.
@@ -282,13 +285,13 @@
    end if
 
    return
-98 LEVEL2 'I could not open sediment.inp'
+98 LEVEL2 'I could not open sediment.nml'
    LEVEL2 'Ill continue but set sedi_calc to false.'
-   LEVEL2 'If thats not what you want you have to supply sediment.inp'
-   LEVEL2 'See the Rouse example on www.gotm.net for a working sediment.inp'
+   LEVEL2 'If thats not what you want you have to supply sediment.nml'
+   LEVEL2 'See the Rouse example on www.gotm.net for a working sediment.nml'
    sedi_calc = .false.
    return
-99 FATAL 'I could not read sediment.inp'
+99 FATAL 'I could not read sediment.nml'
    stop 'init_sediment'
    end subroutine init_sediment
 !EOC
@@ -363,7 +366,7 @@
 !  including turbulent diffusion and settling of suspended matter  is updated.
 !
 !  The models to compute the boundary  conditions at the lowest grid box are
-!  set by the parameter {\tt sedi\_method} in {\tt sediment.inp}.
+!  set by the parameter {\tt sedi\_method} in {\tt sediment.nml}.
 !  Currently, there are the following models available in GOTM:
 !  \begin{itemize}
 !    \item zero-flux at the lowest interface ({\tt sedi\_method = 1}).
@@ -471,7 +474,7 @@
 !  adaptive grids!!
 
    if (w_adv_method .ne. 0) then
-      FATAL 'w_adv_method=0 in obs.inp is required for sediment'
+      FATAL 'w_adv_method=0 in obs.nml is required for sediment'
       stop 'sediment.F90'
    endif
 
