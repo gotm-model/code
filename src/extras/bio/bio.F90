@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.36 2007-03-14 12:46:07 kbk Exp $
+!$Id: bio.F90,v 1.37 2007-04-18 06:57:36 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -54,6 +54,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.37  2007-04-18 06:57:36  kbk
+!  Lagrangian simulations disabled by default
+!
 !  Revision 1.36  2007-03-14 12:46:07  kbk
 !  proper cleaning after simulation
 !
@@ -566,7 +569,8 @@
             
          end do
       else ! Lagrangian particle calculations
-#if 0
+!#define LAGRANGE
+#ifdef LAGRANGE
          if (bio_model.ne.3) then
             stop 'set bio_model=3 for Lagrangian calculations. Stop in bio.F90'
          end if
