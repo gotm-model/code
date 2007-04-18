@@ -6,6 +6,7 @@ can_do_F90=true
 F90_to_f90=
 MODULES=
 MODULES=-module $(MODDIR)
+EXTRAS  = -w95
 EXTRAS  = -w95 -e95
 DEBUG_FLAGS = -g -C
 PROF_FLAGS  = -qp -p
