@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.12 2005-12-03 08:40:28 kbk Exp $
+#$Id: Makefile,v 1.13 2007-04-18 07:11:11 kbk Exp $
 #
 # Makefile for making the source code documentation. 
 #
@@ -15,7 +15,6 @@ PROTEXSRC  = gotm.tex              \
              output.tex            \
              util.tex              \
              seagrass.tex          \
-#             sediment.tex          \
              bio.tex
 
 TEXSRC     = introduction.tex      \
