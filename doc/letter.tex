@@ -1,5 +1,5 @@
 %
-%$Id: letter.tex,v 1.5 2007-04-18 07:48:42 kbk Exp $
+%$Id: letter.tex,v 1.5.2.1 2007-04-23 06:58:17 kbk Exp $
 %
 
 \documentclass[letter,twoside]{article}
@@ -130,6 +130,16 @@ Test Case Documentation
 %\include{sediment}
 \include{seagrass}
 %\include{bio}
+
+\cleardoublepage
+\include{bioIntro}
+\include{bio}
+
+\cleardoublepage
+include{extraIntro}
+\include{sediment}
+\include{seagrass}
+
 
 \cleardoublepage
 \include{guiIntro}
