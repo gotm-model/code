@@ -350,30 +350,7 @@ class LinkedFileVariableStore(PlotVariableStore):
 # Class that represents a GOTM result.
 #   Inherits from PlotVariableStore, as it contains variables that can be plotted.
 #   Contains a link to the scenario from which the result was created (if available)
-class Result(PlotVariableStore):
-    reportdirname = 'reporttemplates'
-    reportname2path = None
-
-    @staticmethod
-    def getReportTemplates():
-        if Result.reportname2path==None:
-            Result.reportname2path = {}
-            #sourcedir = os.path.join(os.path.dirname(__file__),Result.reportdirname)
-            sourcedir = Result.reportdirname
-            if os.path.isdir(sourcedir):
-                for filename in os.listdir(sourcedir):
-                    if filename=='CVS': continue
-                    fullpath = os.path.join(sourcedir,filename)
-                    if os.path.isdir(fullpath):
-                        if os.path.isfile(os.path.join(fullpath,'index.xml')):
-                            Result.reportname2path[filename] = fullpath
-                        else:
-                            print 'WARNING: template directory "%s" does not contain "index.xml"; it will be ignored.' % fullpath
-                    else:
-                        print 'WARNING: template directory "%s" contains "%s" which is not a directory; the latter will be ignored.' % (sourcedir,filename)
-            else:
-                print 'WARNING: no report templates will be available, because subdirectory "%s" is not present!' % Result.reportdirname
-        return Result.reportname2path
+class Result(PlotVariableStore,common.referencedobject):
 
     class ResultVariable(PlotVariable):
         def __init__(self,result,varname):
@@ -462,6 +439,7 @@ class Result(PlotVariableStore):
           return res
 
     def __init__(self):
+        common.referencedobject.__init__(self)
         PlotVariableStore.__init__(self)
         
         self.scenario = None
@@ -469,7 +447,11 @@ class Result(PlotVariableStore):
         self.datafile = None
         self.nc = None
         self.changed = False
-        self.gotmoutput = None
+        
+        self.stdout = None
+        self.stderr = None
+        self.returncode = 0
+        self.errormessage = None
 
         # Cached coordinates
         self.t = None
@@ -480,6 +462,7 @@ class Result(PlotVariableStore):
         self.z1_stag = None
         
         self.store = xmlstore.TypedStore('schemas/result/gotmgui.xml')
+        self.wantedscenarioversion = scenario.guiscenarioversion
         
         self.path = None
 
@@ -538,11 +521,18 @@ class Result(PlotVariableStore):
         # Store the path we saved to.
         self.path = path
 
-    def load(self,path):
-        # Basic check: does the specified file exist?
-        if not os.path.exists(path): raise Exception('File "%s" does not exist.' % path)
+    @classmethod
+    def canBeOpened(cls, container):
+        assert isinstance(container,xmlstore.DataContainer), 'Argument must be data container object.'
+        filelist = container.listFiles()
+        return ('result.nc' in filelist and 'scenario.gotmscenario' in filelist)
 
-        container = xmlstore.DataContainerZip(path,'r')
+    def load(self,path):
+        if isinstance(path,basestring):
+            container = xmlstore.DataContainer.fromPath(path)
+        elif isinstance(path,xmlstore.DataContainer):
+            container = path.addref()
+
         files = container.listFiles()
         if 'scenario.gotmscenario' not in files:
             raise Exception('The archive "%s" does not contain "scenario.gotmscenario"; it cannot be a GOTM result.' % path)
@@ -553,7 +543,7 @@ class Result(PlotVariableStore):
         tempdir = self.getTempDir()
 
         df = container.getItem('scenario.gotmscenario')
-        self.scenario = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
+        self.scenario = scenario.Scenario.fromSchemaName(self.wantedscenarioversion)
         self.scenario.loadAll(df)
         df.release()
 
@@ -579,7 +569,12 @@ class Result(PlotVariableStore):
 
         # Reset "changed" status.
         self.changed = False
-        self.path = path
+        
+        # Store path
+        if isinstance(path,basestring):
+            self.path = path
+        else:
+            self.path = None
 
     def setFigure(self,source):
         name = source.root.getLocation(['Name']).getValue()
@@ -613,9 +608,15 @@ class Result(PlotVariableStore):
             print 'Deleting temporary result directory "%s".' % self.tempdir
             shutil.rmtree(self.tempdir)
             self.tempdir = None
-
+        if self.scenario!=None:
+            self.scenario.release()
+        self.store.release()
+            
     def attach(self,srcpath,scenario=None,copy=True):
-        self.scenario = scenario
+        if scenario!=None:
+            self.scenario = scenario.convert(self.wantedscenarioversion)
+        else:
+            self.scenario = None
         
         if copy:
             # Create a copy of the result file.

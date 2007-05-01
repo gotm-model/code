@@ -74,7 +74,7 @@ class Scenario(xmlstore.TypedStore):
                 scenario.loadFromNamelists(path,strict=strict,protodir=protodir)
             except namelist.NamelistParseException,e:
                 failures += 'Path "%s" does not match template "%s".\nReason: %s\n' % (path,sourceid,e)
-                scenario.unlink()
+                scenario.release()
                 scenario = None
             if scenario!=None:
                 #print 'Path "'+path+'" matches template "'+template+'".'
@@ -83,7 +83,7 @@ class Scenario(xmlstore.TypedStore):
             raise Exception('The path "%s" does not contain a supported GOTM scenario. Details:\n%s' % (path,failures))
         if scenario.version!=targetversion:
             newscenario = scenario.convert(targetversion)
-            scenario.unlink()
+            scenario.release()
             return newscenario
         else:
             return scenario

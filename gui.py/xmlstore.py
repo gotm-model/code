@@ -33,9 +33,9 @@ dateformat = '%Y-%m-%d %H:%M:%S'
 #   types (date, int, float, bool) whenever necessary.
 class Store:
 
-    class DataType:
+    class DataType(common.referencedobject):
         def __init__(self):
-            self.refcount = 1
+            common.referencedobject.__init__(self)
         
         @staticmethod
         def load(node,context):
@@ -49,15 +49,6 @@ class Store:
 
         def persist(self,node,context):
             pass
-
-        def release(self):
-            assert self.refcount>0
-            self.refcount -= 1
-            if self.refcount==0: self.unlink()
-
-        def addref(self):
-            assert self.refcount>0
-            self.refcount += 1
 
         def unlink(self):
             pass
@@ -306,9 +297,23 @@ class StoreColor(Store.DataType):
 # DataFile
 # ------------------------------------------------------------------------------------------
 
-class DataContainer:
+class DataContainer(common.referencedobject):
     def __init__(self):
-        self.refcount = 1
+        common.referencedobject.__init__(self)
+        
+    @staticmethod
+    def fromPath(path):
+        if os.path.isdir(path):
+            return DataContainerDirectory(path)
+        elif os.path.isfile(path):
+            if zipfile.is_zipfile(path):
+                return DataContainerZip(path)
+            elif tarfile.is_tarfile(path):
+                return DataContainerTar(path)
+            else:
+                raise Exception('File "%s" is not a zip or tar archive.' % path)
+        else:
+            raise Exception('"%s" is not an existing file or directory.' % path)
     
     def listFiles(self):
         return []
@@ -326,19 +331,6 @@ class DataContainer:
         df.release()
 
     def persistChanges(self):
-        pass
-
-    def addref(self):
-        assert self.refcount>0
-        self.refcount += 1
-        return self
-
-    def release(self):
-        assert self.refcount>0
-        self.refcount -= 1
-        if self.refcount==0: self.unlink()
-
-    def unlink(self):
         pass
 
 # DataFile: class that encapsulates a data block, which can be a file on disk, an item
@@ -876,7 +868,7 @@ class TypedStoreInterface:
 
         if tr!=None and hidedefaults:
             isdefault = True
-            if node.canHaveValue() and node.getValue()!=node.getDefaultValue():
+            if node.canHaveValue() and node.getValueOrDefault()!=node.getDefaultValue():
                 isdefault = False
             else:
                 for childtr in childtrs:
@@ -973,7 +965,7 @@ class TypedStoreInterface:
 #   Any node in the original document for which conditions are not met is hidden.
 #   Nodes that are not described by the template are not allowed in the property store.
 #   Node are obtained by traversing the tree (start: TypedStore.root).
-class TypedStore:
+class TypedStore(common.referencedobject):
 
     class Node:
         def __init__(self,controller,templatenode,valuenode,location,parent):
@@ -1466,6 +1458,8 @@ class TypedStore:
         return cls.fromSchemaName(version,valuedom,adddefault=adddefault)
 
     def __init__(self,schemadom,valueroot=None,otherstores={},adddefault=True):
+        
+        common.referencedobject.__init__(self)
 
         # The template can be specified as a DOM object, or as string (i.e. path to XML file)
         schemapath = '.'
@@ -1522,12 +1516,19 @@ class TypedStore:
         # NB: this must be done after default values are set, so that the default
         # values can be taken into account when checking conditions (via setStore)
         self.setStore(valueroot)
-
+        
     def unlink(self):
         if self.root!=None: self.root.destroy()
         self.root = None
 
+        # Release container
         self.setContainer(None)
+        
+        # Release default store
+        if self.defaultstore!=None:
+            self.defaultstore.release()
+            self.defaultstore = None
+
         self.store = None
         self.interfaces = []
 
@@ -1540,6 +1541,7 @@ class TypedStore:
             del self.store.context['cache']
         if 'container' in self.store.context and self.store.context['container']!=None:
             self.store.context['container'].release()
+        if container!=None: container.addref()
         self.store.context['container'] = container
 
     def setStore(self,valueroot):
@@ -1586,8 +1588,12 @@ class TypedStore:
         self.afterStoreChange()
 
     def setDefaultStore(self,store,updatevisibility=True):
-        assert self.version==store.version
-        self.defaultstore = store
+        assert self.version==store.version,'Version of supplied default store must match version of current store.'
+        if self.defaultstore!=None:
+            self.defaultinterface = None
+            self.defaultstore.release()
+            
+        self.defaultstore = store.addref()
         self.defaultinterface = self.defaultstore.getInterface()
         self.defaultinterface.addChangeHandler(self.onDefaultChange)
         
@@ -1750,8 +1756,12 @@ class TypedStore:
 
     def convert(self,target):        
         if isinstance(target,basestring):
+            if target==self.version:
+                return self.addref()
             target = self.fromSchemaName(target)
-        
+        elif target.version==self.version:
+            return self
+
         convertor = self.getConvertor(self.version,target.version)
         if convertor==None:
             raise Exception('No convertor available to convert version "%s" to "%s".' % (self.version,target.version))
@@ -1886,27 +1896,25 @@ class TypedStore:
             tempstore = self.fromSchemaName(version)
             tempstore.setStore(valuedom)
             tempstore.convert(self)
-            tempstore.unlink()
+            tempstore.release()
             self.originalversion = version
         else:
             self.setStore(valuedom)
 
+    @classmethod
+    def canBeOpened(cls, container):
+        assert isinstance(container,DataContainer), 'Argument must be data container object.'
+        return cls.storefilename in container.listFiles()
+
     def loadAll(self,path):
         if isinstance(path,basestring):
-            # Basic check: does the specified source path exist?
-            if not os.path.exists(path):
-                raise Exception('Source path "%s" does not exist.' % path)
-
-            # The specified source file may be a ZIP archive, or a directory that contains the extracted
-            # contents of such an archive; decide which.
-            if os.path.isdir(path):
-                container = DataContainerDirectory(path)
-            else:
-                container = DataContainerZip(path)
+            container = DataContainer.fromPath(path)
+        elif isinstance(path,DataContainer):
+            container = path.addref()
         elif isinstance(path,DataFile):
             container = DataContainerZip(path)
         else:
-            assert False,'Supplied source must be a path to file or directory, or a data file object.'
+            assert False,'Supplied source must be a path, a data container object or a data file object.'
 
         # Get list of files in source container.
         files = container.listFiles()
@@ -1927,16 +1935,17 @@ class TypedStore:
         if self.version!=version:
             # The version of the saved scenario does not match the version of this scenario object; convert it.
             print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.storetitle,path,version,self.version)
-            container.release()
             tempstore = self.fromSchemaName(version)
-            tempstore.loadAll(path)
+            tempstore.loadAll(container)
             tempstore.convert(self)
-            tempstore.unlink()
+            tempstore.release()
             self.originalversion = version
         else:
             # Attach the parsed scenario (XML DOM).
             self.setStore(storedom)
             self.setContainer(container)
+
+        container.release()
 
         # Store source path.
         if isinstance(path,basestring):
@@ -1960,7 +1969,7 @@ class TypedStore:
             tempstore.convert(self)
 
             # Release the conversion result.
-            tempstore.unlink()
+            tempstore.release()
         else:
             # First: fill nodes that are not set with the default value.
             self.root.copyFrom(self.defaultstore.root,replace=False)
@@ -2182,5 +2191,5 @@ class ConvertorChain(Convertor):
         convertor = self.chain[-1]
         print 'Converting to final target "%s".' % target.version
         convertor.convert(source,target)
-        for temptarget in temptargets: temptarget.unlink()
+        for temptarget in temptargets: temptarget.release()
 

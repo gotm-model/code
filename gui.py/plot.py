@@ -86,9 +86,11 @@ class VariableSlice(VariableTransform):
             assert False,'Cannot take slice because the result does not have 1 coordinate dimension (instead it has %i: %s).' % (len(dims),dims)
         return data
 
-class Figure:
+class Figure(common.referencedobject):
 
     def __init__(self,figure):
+        common.referencedobject.__init__(self)
+        
         self.figure = figure
         self.canvas = figure.canvas
 
@@ -116,6 +118,13 @@ class Figure:
         self.haschanged = False
         
         self.callbacks = {'completeStateChange':[]}
+        
+    def unlink(self):
+        self.propertiesinterface = None
+        self.defaultproperties.release()
+        self.defaultproperties = None
+        self.properties.release()
+        self.properties = None
         
     def registerCallback(self,eventname,callback):
         assert eventname in self.callbacks, 'Event "%s" is unknown.' % eventname

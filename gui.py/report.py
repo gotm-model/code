@@ -1,9 +1,34 @@
 import os, xml.dom.minidom, shutil
 
-import xmlstore, plot, matplotlib
+import common, xmlstore, plot, matplotlib
 
-class Report:
+class Report(common.referencedobject):
+    reportdirname = 'reporttemplates'
+    reportname2path = None
+
+    @staticmethod
+    def getTemplates():
+        if Report.reportname2path==None:
+            Report.reportname2path = {}
+            sourcedir = Report.reportdirname
+            if os.path.isdir(sourcedir):
+                for filename in os.listdir(sourcedir):
+                    if filename=='CVS': continue
+                    fullpath = os.path.join(sourcedir,filename)
+                    if os.path.isdir(fullpath):
+                        if os.path.isfile(os.path.join(fullpath,'index.xml')):
+                            Report.reportname2path[filename] = fullpath
+                        else:
+                            print 'WARNING: template directory "%s" does not contain "index.xml"; it will be ignored.' % fullpath
+                    else:
+                        print 'WARNING: template directory "%s" contains "%s" which is not a directory; the latter will be ignored.' % (sourcedir,filename)
+            else:
+                print 'WARNING: no report templates will be available, because subdirectory "%s" is not present!' % Report.reportdirname
+        return Report.reportname2path
+
     def __init__(self):
+        common.referencedobject.__init__(self)
+        
         self.store = xmlstore.TypedStore('schemas/report/gotmgui.xml')
 
         self.defaultstore = xmlstore.TypedStore('schemas/report/gotmgui.xml')
@@ -15,6 +40,12 @@ class Report:
         self.defaultstore.setProperty(['Figures','FontScaling'],100)
 
         self.store.setDefaultStore(self.defaultstore)
+        
+    def unlink(self):
+        self.defaultstore.release()
+        self.defaultstore = None
+        self.store.release()
+        self.store = None
         
     def generate(self,result,outputpath,templatepath,columncount=2,callback=None):
         xmldocument = xml.dom.minidom.parse(os.path.join(templatepath,'index.xml'))

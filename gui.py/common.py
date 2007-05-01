@@ -1,7 +1,24 @@
-#$Id: common.py,v 1.25 2007-04-18 09:31:09 jorn Exp $
+#$Id: common.py,v 1.26 2007-05-01 19:46:56 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.numerix
+
+class referencedobject:
+    def __init__(self):
+        self.refcount=1
+    
+    def release(self):
+        assert self.refcount>0
+        self.refcount -= 1
+        if self.refcount==0: self.unlink()
+
+    def addref(self):
+        assert self.refcount>0
+        self.refcount += 1
+        return self
+        
+    def unlink(self):
+        pass
 
 # ------------------------------------------------------------------------------------------
 # Date-time parsing variables and functions
@@ -32,10 +49,16 @@ def getNamedArgument(name):
         iarg = sys.argv.index(name)
     except ValueError:
         return None
+    if iarg==len(sys.argv)-1: return None
     val = sys.argv[iarg+1]
     del sys.argv[iarg+1]
     del sys.argv[iarg]
     return val
+
+def getSwitchArgument(name):
+    if name not in sys.argv: return False
+    sys.argv.remove(name)
+    return True
 
 # ------------------------------------------------------------------------------------------
 # XML helper functions

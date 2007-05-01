@@ -28,18 +28,19 @@ def adddir(path,localtarget=None):
         if 'CVS' in localname: continue
         own_data_files.append((os.path.dirname(localname),[f]))
 
-own_data_files = []
+own_data_files = [matplotlib.get_py2exe_datafiles()]
 
 own_data_files.append(('',['logo.png']))
 own_data_files.append(('',['C:\Program Files\Python24\MSVCP71.dll']))
 
-adddir(matplotlib.get_data_path(),'matplotlibdata')
+#adddir(matplotlib.get_data_path(),'matplotlibdata')
 adddir('defaultscenarios')
 adddir('reporttemplates')
 adddir('schemas')
 
 setup(
-    console=['gotm.py'],
+    windows=[{'script':'gotm.py','icon_resources':[(1,'gotmgui.ico')]}],
+    console=[{'script':'batch.py'}],
     options={'py2exe': {
                 'packages' : ['matplotlib', 'pytz'],
                 'includes' : ['sip'],

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.14 2007-04-18 09:31:09 jorn Exp $
+#$Id: scenariobuilder.py,v 1.15 2007-05-01 19:46:56 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -67,6 +67,10 @@ class ScenarioWidget(QtGui.QWidget):
 
         self.radioNew.setChecked(True)
         self.onSourceChange()
+        
+    def setPath(self,path):
+        self.radioOpen.click()
+        self.pathOpen.setPath(path)
 
     def onSourceChange(self):
         self.setUpdatesEnabled(False)
@@ -110,8 +114,8 @@ class ScenarioWidget(QtGui.QWidget):
                         result.load(path)
                     except Exception,e:
                         raise Exception('An error occurred while loading the result: '+str(e))
-                    scen = result.scenario
-                    result.unlink()
+                    scen = result.scenario.addref()  # Note: the scenario version will be guiscenarioversion, set by Result
+                    result.release()
                 elif path.endswith('.xml'):
                     try:
                         scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
@@ -176,13 +180,8 @@ class PageOpen(commonqt.WizardPage):
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
             return False
-        if 'result' in self.parent().shared:
-            result = self.parent().shared.pop('result')
-            result.unlink()
-        if 'scenario' in self.parent().shared:
-            oldscen = self.parent().shared['scenario']
-            if oldscen!=None: oldscen.unlink()
-        self.parent().shared['scenario'] = newscen
+        self.owner.setProperty('result',None)
+        self.owner.setProperty('scenario',newscen)
         return True
 
 class PageLocation(commonqt.WizardPage):

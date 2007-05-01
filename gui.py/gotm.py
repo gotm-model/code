@@ -1,9 +1,18 @@
 #!/usr/bin/python
 
+# Import standard Python modules
+import os,sys
+
+# Import Qt Modules
 from PyQt4 import QtGui,QtCore
 
-import commonqt, scenario
-import sys,xml,os
+# In order to find our custom data files, make sure that we are in the directory
+# containing the executable.
+oldworkingdir = os.getcwdu()
+os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
+
+# Now import our custom modules
+import common, commonqt, xmlstore, data, scenario
 
 import scenariobuilder,simulator,visualizer
 
@@ -14,7 +23,6 @@ class PageIntroduction(commonqt.WizardPage):
 
         # For version only:
         import matplotlib,numpy,gotm,pynetcdf
-        #import Numeric,pycdf
 
         versions = []
         versions.append(('Python','%i.%i.%i %s %i' % sys.version_info))
@@ -22,8 +30,6 @@ class PageIntroduction(commonqt.WizardPage):
         versions.append(('PyQt4',QtCore.PYQT_VERSION_STR))
         versions.append(('numpy',numpy.__version__))
         versions.append(('matplotlib',matplotlib.__version__))
-        #versions.append(('Numeric',Numeric.__version__))
-        #versions.append(('pycdf',pycdf.pycdfVersion()))
         versions.append(('gotm',gotm.gui_util.getversion().rstrip()))
         
         strversions = '<table cellspacing="0" cellpadding="0">'
@@ -44,12 +50,17 @@ class PageIntroduction(commonqt.WizardPage):
 
 <p>This program offers a user-friendly interface to all options supported by GOTM. It allows you to run existing test cases, or to create and configure a custom scenario. The program will guide you step by step through the process of setting up a scenario, doing the calculations and displaying the results.</p>
 
-<p>For any questions, please consult <a href="http://www.gotm.net">www.gotm.net</a> or write an email to <a href="mailto:gotm-users@gotm.net">gotm-users@gotm.net</a>.<br></p>
+<p>For any questions, please consult <a href="http://www.gotm.net">www.gotm.net</a> or write an email to <a href="mailto:gotm-users@gotm.net">gotm-users@gotm.net</a>.</p>
 
-<p>This program was developed by <a href="mailto:jorn.bruggeman@xs4all.nl">Jorn Bruggeman</a> from funding by <a href="http://www.bolding-burchard.com">Bolding & Burchard Hydrodynamics</a>.<br></p>
+<p>GOTM-GUI was developed by <a href="mailto:jorn.bruggeman@xs4all.nl">Jorn Bruggeman</a> from funding by <a href="http://www.bolding-burchard.com">Bolding & Burchard Hydrodynamics</a>.</p>
+
+<p>This program is licensed under the <a href="http://www.gnu.org">GNU General Public License</a>.</p>
 """,self)
         self.label.setWordWrap(True)
-        self.label.setOpenExternalLinks(True)
+        try:
+            self.label.setOpenExternalLinks(True)
+        except Exception,e:
+            print 'Failed to enable links in QLabel. This may be because you are using a version of Qt prior to 4.2. Error: %s' % e
         layout.addWidget(self.label)
 
         layout.addStretch()
@@ -112,7 +123,19 @@ class PageChooseAction(commonqt.WizardPage):
         
         self.setLayout(layout)
 
-        self.radioScenario.setChecked(True)
+        if self.owner.getProperty('mainaction')=='result':
+            self.radioResult.setChecked(True)
+        else:
+            self.radioScenario.setChecked(True)
+            
+        curres = self.owner.getProperty('result')
+        if curres!=None and curres.path!=None:
+            self.resultwidget.setPath(curres.path)
+        else:
+            curscen = self.owner.getProperty('scenario')
+            if curscen!=None and curscen.path!=None:
+                self.scenariowidget.setPath(curscen.path)
+            
         self.onSourceChange()
 
     def onSourceChange(self):
@@ -138,7 +161,7 @@ class PageChooseAction(commonqt.WizardPage):
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
-            self.parent().shared['mainaction'] = 'scenario'
+            self.owner.shared['mainaction'] = 'scenario'
             self.owner.setProperty('result', None)
             self.owner.setProperty('scenario', newscen)
 
@@ -148,12 +171,12 @@ class PageChooseAction(commonqt.WizardPage):
             
             return True
         if checkedid==1:
-            self.parent().shared['mainaction'] = 'result'
             try:
                 newresult = self.resultwidget.getResult()
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to load result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
+            self.owner.shared['mainaction'] = 'result'
             self.owner.setProperty('result', newresult)
             self.owner.setProperty('scenario', newresult.scenario)
 
@@ -172,9 +195,9 @@ class ForkOnAction(commonqt.WizardFork):
             return commonqt.WizardSequence([commonqt.WizardDummyPage])
 def main():
     # Debug info
-    print 'Python version: '+str(sys.version_info)
-    print 'PyQt4 version: '+QtCore.PYQT_VERSION_STR
-    print 'Qt version: '+QtCore.qVersion()
+    print 'Python version: %s' % unicode(sys.version_info)
+    print 'PyQt4 version: %s' % QtCore.PYQT_VERSION_STR
+    print 'Qt version: %s' % QtCore.qVersion()
 	
     # Create the application and enter the main message loop.
     createQApp = QtGui.QApplication.startingUp()
@@ -189,14 +212,79 @@ def main():
     wiz.setSequence(seq)
     wiz.setWindowTitle('GOTM-GUI')
     wiz.resize(800, 600)
+
+    # Parse command line arguments
+    openpath = None
+    scen = None
+    result = None
+    if len(sys.argv)>1:
+        openpath = os.path.normpath(os.path.join(oldworkingdir, sys.argv[1]))
+        del sys.argv[1]
+        
+        try:
+            container = xmlstore.DataContainer.fromPath(openpath)
+        except Exception,e:
+            QtGui.QMessageBox.critical(wiz, 'Unable to load specified path', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+            container = None
+
+        if container==None:
+            pass
+        elif scenario.Scenario.canBeOpened(container):
+            # Try to open the file as a scenario.
+            scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
+            try:
+                scen.loadAll(container)
+            except Exception,e:
+                QtGui.QMessageBox.critical(wiz, 'Unable to load scenario', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+                scen = None
+        elif data.Result.canBeOpened(container):
+            result = data.Result()
+            # Try to open the file as a result.
+            try:
+                result.load(container)
+            except Exception,e:
+                QtGui.QMessageBox.critical(wiz, 'Unable to load result', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+                result = None
+        else:
+            QtGui.QMessageBox.critical(wiz, 'Unable to open specified path', '"%s" is not a scenario or a result.' % openpath, QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+                
+        if container!=None: container.release()
+
+    # If a file to open was specified on the command line, move some steps forward in the wizard.
+    if result!=None:
+        wiz.onNext()
+        wiz.setProperty('mainaction','result')
+        wiz.setProperty('result', result)
+        wiz.setProperty('scenario', result.scenario)
+        wiz.onNext(askoldpage=False)
+    elif scen!=None:
+        wiz.onNext()
+        wiz.setProperty('mainaction','scenario')
+        wiz.setProperty('scenario',scen)
+        wiz.onNext(askoldpage=False)
+
+    # Show wizard dialog
     wiz.show()
 
-    ret = app.exec_()
-    page = None
+    # Redirect stderr to error dialog (last action before message loop is started,
+    # because text sent to stderr will be lost if redirected to error dialog without
+    # the message loop being started.
+    commonqt.redirect_stderr()
 
+    # Enter the main message loop.
+    ret = app.exec_()
+
+    # Clean-up the wizard
     wiz.unlink()
 
-    sys.exit(ret)
+    # Return the exit code of the Qt message loop.    
+    return ret
 
 # If the script has been run (as opposed to imported), enter the main loop.
-if (__name__=='__main__'): main()
+if (__name__=='__main__'): ret = main()
+
+# Reset previous working directory (only if we had to change it)
+os.chdir(os.path.dirname(oldworkingdir))
+
+# Exit
+sys.exit(ret)

@@ -23,46 +23,71 @@ def printprogress(status,progress):
         nextprogress += progresstep
 
 def main():
-    # Default values for optional arguments
-    targetschema = scenario.savedscenarioversion
-    targetisdir = False
-    protodir = None
-    strict = True
-    check = False
-
-    # Get optional arguments
+    # Get optional command line arguments
+    targetisdir = common.getSwitchArgument('-d')
+    strict = not common.getSwitchArgument('-ns')
+    check = common.getSwitchArgument('-check')
     protodir = common.getNamedArgument('-p')
-    forcedversion = common.getNamedArgument('-v')
-    if forcedversion!=None: targetschema = forcedversion
-    if '-d' in sys.argv:
-        sys.argv.remove('-d')
-        targetisdir = True
-    if '-ns' in sys.argv:
-        sys.argv.remove('-ns')
-        strict = False
-    if '-check' in sys.argv:
-        sys.argv.remove('-check')
-        check = True
+    targetschema = common.getNamedArgument('-v')
+
+    # Default schema
+    if targetschema==None: targetschema = scenario.savedscenarioversion
 
     # Check if we have the required arguments.
     # Note: sys.argv[0] contains the path name of the script.
     if len(sys.argv)<3:
-        print '\nInvalid syntax. This script requires at least the following two arguments:\n'
-        print '- the source file (*.tar.gz) or directory containing the namelist files.'
-        print '- the target path to which to save the GOTM-GUI scenario.\n'
-        print 'If namelist data are present in a .values file, you must also specify the directory with the prototype namelist files (*.proto) as follows: -p protodir.\n'
-        print 'To force a particular version for the created scenario, add -v platform-version (e.g., -v gotm-3.2.4); by default the scenario is created with the version that GOTM-GUI uses to store scenarios (currently %s).\n' % scenario.savedscenarioversion
-        print 'To save to a directory rather than directly to a ZIP archive (which would contain all files in the directory), add the switch -d.\n'
-        print 'If you are saving to ZIP archive rather than to a directory, use the file extension ".gotmscenario" to ensure the produced file is automatically recognized by GOTM-GUI.\n'
-        print 'By default, namelists are parsed in "strict" mode: all variables must be present once, and in the right order. Add the switch -ns to enable Fortran-like loose parsing.\n'
-        print 'To check the validity of the scenario and its data files, add the switch -check. If the scenario is found to be invalid, the script returns 1 (normally 0).\n'
-        print '\nExamples:\n'
-        print 'nml2xml.py ./seagrass ./seagrass.gotmscenario\n'
-        print 'Converts the namelists (plus data files) in the directory "./seagrass" to the scenario file "./seagrass.gotmscenario" suitable for GOTM-GUI.'
-        print ''
-        print 'nml2xml.py ./v3.2/seagrass ./seagrass.gotmscenario -p ./v3.2/templates\n'
-        print 'Converts the namelist .values file (plus data files) in the directory "./v3.2/seagrass" to the scenario file "./seagrass.gotmscenario" suitable for GOTM-GUI, while using .proto files in directory "./v3.2/templates".'
+        print \
+"""
+=============================================================================
+GOTM-GUI scenario import utility
+=============================================================================
+This utility allows you to convert existing namelist-based scenarios for
+command-line GOTM to the GOTM-GUI scenario format.
+-----------------------------------------------------------------------------
+This script requires at least the following two arguments:
+
+- the source file (*.tar.gz) or directory containing the namelist files.
+- the target path to which to save the GOTM-GUI scenario.
+
+If namelist data are present in one or more .values files, you must also
+specify the directory with the prototype namelist files (*.proto) as follows:
+-p protodir.
+
+To force a particular version for the created scenario, add the switch
+-v platform-version (e.g., -v gotm-3.2.4); by default the scenario is created
+with the version that GOTM-GUI uses to store scenarios (currently %s).
+
+To save to a directory rather than directly to a ZIP archive (which would
+contain all files in the directory), add the switch -d. If you are saving to
+ZIP archive rather than to a directory, use the file extension
+".gotmscenario" to ensure the produced file is automatically recognized by
+GOTM-GUI.
+
+By default, namelists are parsed in "strict" mode: all variables must be
+present once, and in the right order. Add the switch -ns to enable
+Fortran-like loose parsing.
+
+To check the validity of the scenario and its data files, add the switch
+-check. If the scenario is found to be invalid, the script returns 1
+(normally 0).
+
+Examples:
+
+nml2xml.py ./seagrass ./seagrass.gotmscenario
+
+Converts the namelists (plus data files) in the directory "./seagrass" to the
+scenario file "./seagrass.gotmscenario" suitable for GOTM-GUI.
+
+nml2xml.py ./v3.2/seagrass ./seagrass.gotmscenario -p ./v3.2/templates
+
+Converts the namelist .values file (plus data files) in the directory
+"./v3.2/seagrass" to the scenario file "./seagrass.gotmscenario" suitable for
+GOTM-GUI, while using .proto files in directory "./v3.2/templates".
+=============================================================================
+""" % scenario.savedscenarioversion
         return 1
+        
+    # Get command line arguments
     srcpath = os.path.abspath(sys.argv[1])
     targetpath = os.path.abspath(sys.argv[2])
 
@@ -136,7 +161,7 @@ def main():
     scen.saveAll(targetpath,targetversion=targetschema,targetisdir=targetisdir)
 
     # Clean-up (delete temporary directories etc.)
-    scen.unlink()
+    scen.release()
     
     return 0
 

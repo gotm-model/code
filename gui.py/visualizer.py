@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.17 2007-04-13 12:40:08 jorn Exp $
+#$Id: visualizer.py,v 1.18 2007-05-01 19:46:56 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -38,7 +38,7 @@ def loadResult(path):
             if (not done):
                 raise Exception('The file "'+path+'" is not a GOTM result or a NetCDF file.')
     except:
-        result.unlink()
+        result.release()
         result = None
         raise
 
@@ -55,7 +55,10 @@ class OpenWidget(QtGui.QWidget):
         layout.addWidget(self.pathOpen)
         layout.setMargin(0)
         self.setLayout(layout)
-        self.connect(self.pathOpen, QtCore.SIGNAL("onChanged()"), self.completeStateChanged)
+        self.connect(self.pathOpen, QtCore.SIGNAL('onChanged()'), self.completeStateChanged)
+        
+    def setPath(self,path):
+        self.pathOpen.setPath(path)
         
     def completeStateChanged(self):
         self.emit(QtCore.SIGNAL('onCompleteStateChanged()'))
@@ -104,7 +107,7 @@ class ConfigureReportWidget(QtGui.QWidget):
 
         self.factory = commonqt.PropertyEditorFactory(self.report.store)
 
-        reportname2path = data.Result.getReportTemplates()
+        reportname2path = report.Report.getTemplates()
 
         self.labTemplates = QtGui.QLabel('Report template:',self)
         self.comboTemplates = QtGui.QComboBox(parent)
@@ -265,6 +268,7 @@ class PageReportGenerator(commonqt.WizardPage):
             if ret:
                 self.result.store.root.getLocation(['ReportSettings']).copyFrom(self.report.store.root,replace=True)
             return ret
+        self.report.release()
         return True
 
     def reportProgressed(self,progressed,status):

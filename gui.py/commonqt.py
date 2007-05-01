@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.25 2007-04-18 09:31:09 jorn Exp $
+#$Id: commonqt.py,v 1.26 2007-05-01 19:46:56 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -38,6 +38,56 @@ def qtdatetime2datetime(qtdatetime):
 # datetime2qtdatetime: Convert Python datetime object to Qt QDateTime object
 def datetime2qtdatetime(dt):
     return QtCore.QDateTime(QtCore.QDate(dt.year,dt.month,dt.day),QtCore.QTime(dt.hour,dt.minute,dt.second))
+
+# =======================================================================
+# Utilities for redirecting stderr (i.e., Python errors and tracebacks)
+# to a Qt-based dialog.
+# =======================================================================
+
+def redirect_stderr():
+    import sys
+    class Stderr(object):
+        softspace = 0
+        def write(self, text):
+            ErrorDialog.write(text)
+        def flush(self):
+            pass
+    sys.stderr = Stderr()
+
+class ErrorDialog(QtGui.QWidget):
+    errdlg = None
+    
+    @staticmethod
+    def write(string):
+        if ErrorDialog.errdlg==None:
+            ErrorDialog.errdlg = ErrorDialog()
+        ErrorDialog.errdlg.textedit.setPlainText(ErrorDialog.errdlg.textedit.toPlainText()+string)
+        ErrorDialog.errdlg.show()
+    
+    def __init__(self,parent=None):
+        if parent==None: parent = QtGui.QApplication.activeWindow()
+        QtGui.QWidget.__init__(self,parent,QtCore.Qt.Tool | QtCore.Qt.WindowTitleHint)
+        # QtCore.Qt.Dialog | QtCore.Qt.WindowStaysOnTopHint
+        self.labelStart = QtGui.QLabel('Errors occurred during execution of GOTM-GUI:',self)
+        self.labelStart.setWordWrap(True)
+        self.labelStop = QtGui.QLabel('You may be able to continue working. However, we would appreciate it if you report this error. To do so, send an e-mail to <a href="mailto:gotm-users@gotm.net">gotm-users@gotm.net</a> with the above error message, and the circumstances under which the error occurred.',self)
+        self.labelStop.setOpenExternalLinks(True)
+        self.labelStop.setWordWrap(True)
+
+        self.textedit = QtGui.QTextEdit(self)
+        self.textedit.setLineWrapMode(QtGui.QTextEdit.NoWrap)
+        self.textedit.setReadOnly(True)
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(self.labelStart)
+        layout.addWidget(self.textedit)
+        layout.addWidget(self.labelStop)
+        self.setLayout(layout)
+        
+        self.setWindowTitle('Errors occurred')
+        self.resize(600, 200)
+
+        if parent!=None:
+            self.setAttribute(QtCore.Qt.WA_QuitOnClose,False)
 
 # =======================================================================
 # PathEditor: a Qt widget for editing paths, combines line-edit widget
@@ -145,6 +195,11 @@ class PathEditor(QtGui.QWidget):
     def onEditingFinished(self):
         self.emit(QtCore.SIGNAL('editingFinished()'))
 
+# =======================================================================
+# LinkedFilePlotDialog: a Qt widget for viewing the data files linked
+# to a GOTM scenario. This widget displays series of data points or
+# profiles in time, and allows for import or export of the data.
+# =======================================================================
 
 class LinkedFilePlotDialog(QtGui.QDialog):
     def __init__(self,node,parent=None,datafile=None):
@@ -283,6 +338,11 @@ class LinkedFilePlotDialog(QtGui.QDialog):
     def reject(self):
         if self.owndatafile: self.datafile.release()
         QtGui.QDialog.reject(self)
+
+# =======================================================================
+# LinkedFileEditor: a Qt widget for "editing" a linked file. Currently
+# just displays a button that, when clicked, displays a separate dialog.
+# =======================================================================
 
 class LinkedFileEditor(QtGui.QWidget):
     def __init__(self,parent=None):
@@ -1071,12 +1131,8 @@ class Wizard(QtGui.QDialog):
         self.currentpage = None
 
     def setProperty(self,propertyname,value):
-        if propertyname in self.shared:
-            if self.shared[propertyname]!=None:
-                try:
-                    self.shared[propertyname].unlink()
-                except:
-                    pass
+        if propertyname in self.shared and isinstance(self.shared[propertyname],common.referencedobject):
+            self.shared[propertyname].release()
         self.shared[propertyname] = value
 
     def getProperty(self,propertyname):
@@ -1085,11 +1141,11 @@ class Wizard(QtGui.QDialog):
 
     def unlink(self):
         self.settings.save()
-        self.settings.unlink()
+        self.settings.release()
         self.settings = None
         for v in self.shared.values():
             try:
-                v.unlink()
+                v.release()
             except:
                 pass
 
@@ -1098,9 +1154,10 @@ class Wizard(QtGui.QDialog):
         cls = self.sequence.getNextPage()
         self.switchPage(cls(self))
 
-    def onNext(self):
-        oldpage = self.currentpage
-        if not oldpage.saveData(mustbevalid=True): return
+    def onNext(self,askoldpage=True):
+        if askoldpage:
+            oldpage = self.currentpage
+            if not oldpage.saveData(mustbevalid=True): return
         
         ready = False
         while not ready:
