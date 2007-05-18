@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.16 2007-01-07 13:21:27 kbk Exp $
+!$Id: airsea.F90,v 1.17 2007-05-18 18:05:06 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -91,6 +91,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.17  2007-05-18 18:05:06  hb
+!  Bug in short-wave radiation removed
+!
 !  Revision 1.16  2007-01-07 13:21:27  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -869,7 +872,12 @@
 !  Rosati,Miyakoda 1988 ; eq. 3.8
 !  clouds from COADS perpetual data set
 
-   qshort  = qtot*(1.0-0.62*cloud + 0.0019*sunbet)*(1.-albedo)
+   if(cloud .lt. 0.3) then
+      qshort  = qtot
+   else
+      qshort  = qtot*(1-0.62*cloud + 0.0019*sunbet)*(1.-albedo)
+   endif
+
 
    if (present(swr)) then
       swr = qshort
