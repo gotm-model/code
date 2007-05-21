@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.17 2007-05-18 18:05:06 hb Exp $
+!$Id: airsea.F90,v 1.18 2007-05-21 14:08:08 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -91,6 +91,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.18  2007-05-21 14:08:08  kbk
+!  short wave radiation limitation suggested by Adolf Stips
+!
 !  Revision 1.17  2007-05-18 18:05:06  hb
 !  Bug in short-wave radiation removed
 !
@@ -871,13 +874,19 @@
 !  calculates SHORT WAVE FLUX ( watt/m*m )
 !  Rosati,Miyakoda 1988 ; eq. 3.8
 !  clouds from COADS perpetual data set
-
+#if 1
+   qshort  = qtot*(1-0.62*cloud + .0019*sunbet)*(1.-albedo)
+   if(qshort .gt. qtot ) then
+      qshort  = qtot
+   end if
+#else
+!  original implementation
    if(cloud .lt. 0.3) then
       qshort  = qtot
    else
       qshort  = qtot*(1-0.62*cloud + 0.0019*sunbet)*(1.-albedo)
    endif
-
+#endif
 
    if (present(swr)) then
       swr = qshort
