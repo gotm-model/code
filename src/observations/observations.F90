@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.17 2007-01-06 11:57:07 kbk Exp $
+!$Id: observations.F90,v 1.18 2007-06-19 10:38:03 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -72,6 +72,11 @@
 
 !  Parameters for water classification - default Jerlov type I
    REALTYPE, public          :: A=0.58,g1=0.35,g2=23.0
+
+#ifdef BIO
+!  'observed' biological profiles
+   REALTYPE, public, dimension(:,:), allocatable :: bioprofs
+#endif
 
 !------------------------------------------------------------------------------
 !
@@ -180,6 +185,12 @@
    REALTYPE, public          :: b_obs_surf=0.,b_obs_NN=0.
    REALTYPE, public          :: b_obs_sbf=0.
 
+#ifdef BIO
+!  Buoyancy - 'bprofile' namelist
+   integer, public           :: bio_prof_method=1
+   CHARACTER(LEN=PATH_MAX)   :: bio_prof_file='bioprofs.dat'
+#endif
+
    REALTYPE,public, parameter:: pi=3.141592654
 
 ! !DEFINED PARAMETERS:
@@ -196,6 +207,9 @@
    integer, parameter        :: vel_prof_unit=38
    integer, parameter        :: e_prof_unit=39
    integer, parameter        :: o2_prof_unit=40
+#ifdef BIO
+   integer, parameter        :: bio_prof_unit=41
+#endif
 
 !  pre-defined parameters
    integer, parameter        :: READ_SUCCESS=1
@@ -213,6 +227,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.18  2007-06-19 10:38:03  kbk
+!  initialise biological profiles from external file
+!
 !  Revision 1.17  2007-01-06 11:57:07  kbk
 !  PressMethod --> ext_press_mode
 !
@@ -353,6 +370,10 @@
 
    namelist /bprofile/ b_obs_surf,b_obs_NN,b_obs_sbf
 
+#ifdef BIO
+   namelist /bioprofiles/  bio_prof_method,bio_prof_file
+#endif
+
    integer                   :: rc,i
    REALTYPE                  :: ds,db
 !
@@ -373,6 +394,10 @@
    read(namlst,nml=eprofile,err=90)
    read(namlst,nml=bprofile,err=91)
    read(namlst,nml=o2_profile,err=92)
+#ifdef BIO
+   read(namlst,nml=bioprofiles,err=93)
+   STDERR bio_prof_method,trim(bio_prof_file)
+#endif
    close(namlst)
 
    allocate(sprof(0:nlev),stat=rc)
@@ -670,6 +695,18 @@
       case default
    end select
 
+#ifdef BIO
+!  The biological profile
+   select case (bio_prof_method)
+      case (FROMFILE)
+         open(bio_prof_unit,file=bio_prof_file,status='unknown',err=112)
+         LEVEL2 'Reading biological profiles from:'
+         LEVEL3 trim(bio_prof_file)
+         call get_bio_profiles(bio_prof_unit,julday,secs,nlev,z)
+      case default
+   end select
+#endif
+
    init_saved_vars=.false.
    return
 
@@ -699,6 +736,8 @@
    stop 'init_observations'
 92 FATAL 'I could not read "o2_profile" namelist'
    stop 'init_observations'
+93 FATAL 'I could not read "bio_profile" namelist'
+   stop 'init_observations'
 
 101 FATAL 'Unable to open "',trim(s_prof_file),'" for reading'
    stop 'init_observations'
@@ -721,6 +760,8 @@
 110 FATAL 'Unable to open "',trim(e_prof_file),'" for reading'
    stop 'init_observations'
 111 FATAL 'Unable to open "',trim(o2_prof_file),'" for reading'
+   stop 'init_observations'
+112 FATAL 'Unable to open "',trim(bio_prof_file),'" for reading'
    stop 'init_observations'
 
    return
@@ -795,6 +836,11 @@
       call get_o2_profile(o2_prof_unit,julday,secs,nlev,z)
    end if
 
+#ifdef BIO
+   if(bio_prof_method .eq. 2) then
+      call get_bio_profiles(bio_prof_unit,julday,secs,nlev,z)
+   end if
+#endif
    return
    end subroutine get_all_obs
 !EOC
@@ -978,6 +1024,9 @@
    if (allocated(vprof)) deallocate(vprof)
    if (allocated(epsprof)) deallocate(epsprof)
    if (allocated(o2_prof)) deallocate(o2_prof)
+#ifdef BIO
+   if (allocated(bioprofs)) deallocate(bioprofs)
+#endif
    LEVEL2 'done.'
 
    LEVEL2 'closing any open files ...'
@@ -991,6 +1040,9 @@
    close(vel_prof_unit)
    close(e_prof_unit)
    close(o2_prof_unit)
+#ifdef BIO
+   close(bio_prof_unit)
+#endif
    LEVEL2 'done.'
 
    init_saved_vars=.true.

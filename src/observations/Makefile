@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.6 2007-01-04 12:08:12 kbk Exp $
+#$Id: Makefile,v 1.7 2007-06-19 10:38:03 kbk Exp $
 #
 # Makefile to build the the Observtions library - libobservations.a
 #
@@ -40,6 +40,7 @@ ${LIB}(get_zeta.o)		\
 ${LIB}(get_wave.o)		\
 ${LIB}(get_vel_profile.o)	\
 ${LIB}(get_eps_profile.o)	\
+${LIB}(get_bio_profiles.o)	\
 ${LIB}(analytical_profile.o)	\
 ${LIB}(const_NNT.o)             \
 ${LIB}(const_NNS.o)

@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.34 2007-03-15 10:52:07 kbk Exp $
+!$Id: gotm.F90,v 1.35 2007-06-19 10:38:02 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -66,6 +66,7 @@
 #ifdef BIO
    use bio
    use bio_fluxes
+   use bio_var, only: numc,cc
 #endif
 
    use output
@@ -93,6 +94,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.35  2007-06-19 10:38:02  kbk
+!  initialise biological profiles from external file
+!
 !  Revision 1.34  2007-03-15 10:52:07  kbk
 !  proper cleaning after simulation
 !
@@ -246,6 +250,7 @@
    namelist /time/        timefmt,MaxN,start,stop
    namelist /output/      out_fmt,out_dir,out_fn,nsave,diagnostics,     &
                           mld_method,diff_k,Ri_crit,rad_corr
+   integer         :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -285,6 +290,22 @@
    call init_tridiagonal(nlev)
    call updategrid(nlev,dt,zeta)
 
+!  initialise each of the extra features/modules
+#ifdef SEAGRASS
+   call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h)
+#endif
+#ifdef SPM
+   call init_spm(namlst,'spm.nml',unit_spm,nlev)
+#endif
+#ifdef BIO
+   call init_bio(namlst,'bio.nml',unit_bio,nlev,h)
+   if (bio_calc) then
+      call init_bio_fluxes()
+      allocate(bioprofs(1:numc,0:nlev),stat=rc)
+      if (rc /= 0) STOP 'init_gotm: Error allocating (bioprofs)'
+   end if
+#endif
+
    call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
                           depth,nlev,z,h,gravity,rho_0)
 
@@ -295,6 +316,11 @@
    t = tprof
    u = uprof
    v = vprof
+#ifdef BIO
+   if ( bio_prof_method .eq. 2 ) then
+      cc = bioprofs
+   end if
+#endif
 
 !  initalise KPP model
    if (turb_method.eq.99) then
@@ -304,17 +330,6 @@
    call init_output(title,nlev,latitude,longitude)
    call init_air_sea(namlst,latitude,longitude)
 
-!  initialise each of the extra features/modules
-#ifdef SEAGRASS
-   call init_seagrass(namlst,'seagrass.nml',unit_seagrass,nlev,h)
-#endif
-#ifdef SPM
-   call init_spm(namlst,'spm.nml',unit_spm,nlev)
-#endif
-#ifdef BIO
-   call init_bio(namlst,'bio.nml',unit_bio,nlev,h)
-   if (bio_calc) call init_bio_fluxes()
-#endif
    LEVEL2 'done.'
    STDERR LINE
 
