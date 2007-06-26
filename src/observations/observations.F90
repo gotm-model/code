@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.18 2007-06-19 10:38:03 kbk Exp $
+!$Id: observations.F90,v 1.19 2007-06-26 18:24:30 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -186,7 +186,7 @@
    REALTYPE, public          :: b_obs_sbf=0.
 
 #ifdef BIO
-!  Buoyancy - 'bprofile' namelist
+!  Observed biological profiles
    integer, public           :: bio_prof_method=1
    CHARACTER(LEN=PATH_MAX)   :: bio_prof_file='bioprofs.dat'
 #endif
@@ -227,6 +227,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.19  2007-06-26 18:24:30  jorn
+!  fixed typos related to biological profiles
+!
 !  Revision 1.18  2007-06-19 10:38:03  kbk
 !  initialise biological profiles from external file
 !
@@ -736,7 +739,7 @@
    stop 'init_observations'
 92 FATAL 'I could not read "o2_profile" namelist'
    stop 'init_observations'
-93 FATAL 'I could not read "bio_profile" namelist'
+93 FATAL 'I could not read "bioprofiles" namelist'
    stop 'init_observations'
 
 101 FATAL 'Unable to open "',trim(s_prof_file),'" for reading'
