@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.18 2007-05-21 14:08:08 kbk Exp $
+!$Id: airsea.F90,v 1.19 2007-06-26 18:24:29 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -91,6 +91,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.19  2007-06-26 18:24:29  jorn
+!  made precipitation-evaporation clean-up independent of use of meteo data
+!
 !  Revision 1.18  2007-05-21 14:08:08  kbk
 !  short wave radiation limitation suggested by Adolf Stips
 !
@@ -478,10 +481,10 @@
    else
       if (heat_method     .eq. FROMFILE) close(heat_unit)
       if (momentum_method .eq. FROMFILE) close(momentum_unit)
-      if (p_e_method      .eq. FROMFILE) close(p_e_unit)
       if (sst_method      .eq. FROMFILE) close(sst_unit)
       if (sss_method      .eq. FROMFILE) close(sss_unit)
    end if
+   if (p_e_method .eq. FROMFILE) close(p_e_unit)
    init_saved_vars=.true.
    return
    end subroutine clean_air_sea
