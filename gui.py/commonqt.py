@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.27 2007-06-28 06:53:17 jorn Exp $
+#$Id: commonqt.py,v 1.28 2007-06-28 16:59:42 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -44,41 +44,64 @@ def datetime2qtdatetime(dt):
 # to a Qt-based dialog.
 # =======================================================================
 
-def redirect_stderr():
-    import sys
-    class Stderr(object):
-        softspace = 0
-        def write(self, text):
-            #ErrorDialog.onError(text)
-            QtGui.QApplication.postEvent(ErrorDialog.errdlg,ErrorDialog.ErrorEvent(text))
-        def flush(self):
-            pass
-    ErrorDialog.create()
-    sys.stderr = Stderr()
-
-class ErrorDialog(QtGui.QWidget):
-    errdlg = None
+class ErrorReceiver(QtCore.QObject):
+    """Objects of this class accept an ErrorEvent (contained), takes the contained error message
+    and passes it to ErrorDialog for showing the error in the GUI. Errors can be posted from
+    any thread (not necessarily the GUI thread) using QtGui.QApplication.postEvent.
+    """
+    def __init__(self):
+        QtCore.QObject.__init__(self)
     
     class ErrorEvent(QtCore.QEvent):
+        """Custom class derived from QEvent, used only to contain a string (error message).
+        """
         def __init__(self,error):
             QtCore.QEvent.__init__(self,QtCore.QEvent.User)
             self.error = error
 
-    @staticmethod
-    def create():
-        if ErrorDialog.errdlg==None:
-            ErrorDialog.errdlg = ErrorDialog()
-            
     def event(self,ev):
+        """Ignores all event except those of type QtCore.QEvent.User. Events of this type must
+        be objects of class ErrorEvent. Their contained string is passed to the ErrorDialog for
+        display.
+        """
         if ev.type()==QtCore.QEvent.User:
-            self.write(ev.error)
+            ErrorDialog.write(ev.error)
             return True
         return QtGui.QWidget.event(self,ev)
-    
-    #@staticmethod
-    #def onError(string):
-    #    ErrorDialog.create()
-    #    ErrorDialog.write(string)
+        
+# The one and only errorreceiver object, responsible for receiving posted errors from all threads.
+# Posted errors will be passed to an ErrorDialog.
+errorreceiver = ErrorReceiver()
+
+def redirect_stderr():
+    """Redirects all text written to stderr to a contained class that posts the error
+    message to the one and only errorreceiver object. The posting mechanism allows the
+    error message to be passed between threads.
+    """
+    import sys
+    class Stderr(object):
+        """Customized stderr; when a string is written to this object, it is posted
+        to the one and only errorreceiver object.
+        """
+        softspace = 0   # Must be provided by file-like objects
+        def write(self, text):
+            QtGui.QApplication.postEvent(errorreceiver,ErrorReceiver.ErrorEvent(text))
+        def flush(self):
+            pass
+    sys.stderr = Stderr()
+
+class ErrorDialog(QtGui.QWidget):
+    errdlg = None
+
+    @staticmethod
+    def write(string):
+        """Creates the one and only ErrorDialog if it does not exist yet, then shows the
+        provided error message in the dialog.
+        """
+        if ErrorDialog.errdlg==None:
+            ErrorDialog.errdlg = ErrorDialog()
+        ErrorDialog.errdlg.textedit.setPlainText(ErrorDialog.errdlg.textedit.toPlainText()+string)
+        ErrorDialog.errdlg.show()
     
     def __init__(self,parent=None):
         if parent==None: parent = QtGui.QApplication.activeWindow()
@@ -104,10 +127,6 @@ class ErrorDialog(QtGui.QWidget):
 
         if parent!=None:
             self.setAttribute(QtCore.Qt.WA_QuitOnClose,False)
-            
-    def write(self,string):
-        ErrorDialog.errdlg.textedit.setPlainText(ErrorDialog.errdlg.textedit.toPlainText()+string)
-        ErrorDialog.errdlg.show()
 
 # =======================================================================
 # PathEditor: a Qt widget for editing paths, combines line-edit widget

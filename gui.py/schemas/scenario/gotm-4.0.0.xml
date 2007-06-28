@@ -794,8 +794,9 @@
 				<condition type="eq" variable="./ext_press_method" value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
-						<filevariable label="external pressure gradient data for x-direction"/>
-						<filevariable label="external pressure gradient data for y-direction"/>
+						<filevariable label="observation height" unit="m above bottom" />
+						<filevariable label="external pressure gradient x-direction" />
+						<filevariable label="external pressure gradient y-direction" />
 					</filevariables>
 				</fileinfo>
 			</element>

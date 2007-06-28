@@ -317,7 +317,7 @@ class LinkedFileVariableStore(PlotVariableStore):
                 data = line[datematch.end()+1:].split()
                 if len(data)<varcount:
                     raise Exception('Line %i contains only %i observations, where %i are expected.' % (iline,len(data),varcount))
-                data = map(float,data)
+                data = map(float,data[:varcount])
                 
                 # Store time and values.
                 times.append(curdate)
