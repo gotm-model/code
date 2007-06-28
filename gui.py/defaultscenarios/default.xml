@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<scenario version="gotm-4.0.0">
+<scenario version="gotm-4.1.0">
 	<gotmrun>
 		<model_setup>
 			<title></title>
@@ -286,6 +286,10 @@
 			<o2_units>1</o2_units>
 			<o2_prof_file>o2_prof_file.dat</o2_prof_file>
 		</o2_profile>
+		<bioprofiles>
+			<bio_prof_method>0</bio_prof_method>
+			<bio_prof_file>bio_prof_file.dat</bio_prof_file>
+		</bioprofiles>
 	</obs>
 	<bio>
 		<bio_nml>

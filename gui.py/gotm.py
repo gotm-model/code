@@ -6,6 +6,11 @@ import os,sys
 # Import Qt Modules
 from PyQt4 import QtGui,QtCore
 
+# Import MatPlotLib to configure key parameters
+import matplotlib
+matplotlib.use('Qt4Agg')
+matplotlib.rcParams['numerix'] = 'numpy'
+
 # In order to find our custom data files, make sure that we are in the directory
 # containing the executable.
 oldworkingdir = os.getcwdu()
@@ -178,7 +183,7 @@ class PageChooseAction(commonqt.WizardPage):
                 return False
             self.owner.shared['mainaction'] = 'result'
             self.owner.setProperty('result', newresult)
-            self.owner.setProperty('scenario', newresult.scenario)
+            self.owner.setProperty('scenario', newresult.scenario.addref())
 
             # Add to list of most-recently-used results
             if newresult.path!=None:

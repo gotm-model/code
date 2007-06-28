@@ -1,14 +1,10 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.18 2007-05-01 19:46:56 jorn Exp $
+#$Id: visualizer.py,v 1.19 2007-06-28 06:53:17 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
 import commonqt, data, report
-
-import matplotlib
-matplotlib.use('Qt4Agg')
-matplotlib.rcParams['numerix'] = 'numeric'
 
 import sys,datetime
 import xml.sax

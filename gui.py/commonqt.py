@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.26 2007-05-01 19:46:56 jorn Exp $
+#$Id: commonqt.py,v 1.27 2007-06-28 06:53:17 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -49,20 +49,36 @@ def redirect_stderr():
     class Stderr(object):
         softspace = 0
         def write(self, text):
-            ErrorDialog.write(text)
+            #ErrorDialog.onError(text)
+            QtGui.QApplication.postEvent(ErrorDialog.errdlg,ErrorDialog.ErrorEvent(text))
         def flush(self):
             pass
+    ErrorDialog.create()
     sys.stderr = Stderr()
 
 class ErrorDialog(QtGui.QWidget):
     errdlg = None
     
+    class ErrorEvent(QtCore.QEvent):
+        def __init__(self,error):
+            QtCore.QEvent.__init__(self,QtCore.QEvent.User)
+            self.error = error
+
     @staticmethod
-    def write(string):
+    def create():
         if ErrorDialog.errdlg==None:
             ErrorDialog.errdlg = ErrorDialog()
-        ErrorDialog.errdlg.textedit.setPlainText(ErrorDialog.errdlg.textedit.toPlainText()+string)
-        ErrorDialog.errdlg.show()
+            
+    def event(self,ev):
+        if ev.type()==QtCore.QEvent.User:
+            self.write(ev.error)
+            return True
+        return QtGui.QWidget.event(self,ev)
+    
+    #@staticmethod
+    #def onError(string):
+    #    ErrorDialog.create()
+    #    ErrorDialog.write(string)
     
     def __init__(self,parent=None):
         if parent==None: parent = QtGui.QApplication.activeWindow()
@@ -88,6 +104,10 @@ class ErrorDialog(QtGui.QWidget):
 
         if parent!=None:
             self.setAttribute(QtCore.Qt.WA_QuitOnClose,False)
+            
+    def write(self,string):
+        ErrorDialog.errdlg.textedit.setPlainText(ErrorDialog.errdlg.textedit.toPlainText()+string)
+        ErrorDialog.errdlg.show()
 
 # =======================================================================
 # PathEditor: a Qt widget for editing paths, combines line-edit widget
@@ -202,30 +222,282 @@ class PathEditor(QtGui.QWidget):
 # =======================================================================
 
 class LinkedFilePlotDialog(QtGui.QDialog):
+    class LinkedDataModel(QtCore.QAbstractItemModel):
+        def __init__(self,datastore,type=0):
+            QtCore.QAbstractItemModel.__init__(self)
+            self.datastore = datastore
+            self.type = type
+            self.pos = 0
+            
+            self.datamatrix = None
+            self.rowlabels = None
+            self.datelabels = True
+            
+            self.loadData()
+
+        def loadData(self):
+            data = self.datastore.data
+            self.rowlabels = None
+            self.datamatrix = None
+            if self.datastore.type=='pointsintime':
+                self.rowlabels = data[0]
+                self.datamatrix = data[1]
+                self.datelabels = True
+            elif self.datastore.type=='profilesintime':
+                if self.type==0:
+                    if self.pos<len(data[1]):
+                        self.rowlabels = data[1][self.pos]
+                        self.datamatrix = data[2][self.pos]
+                        self.datelabels = False
+                else:
+                    self.rowlabels = data[0]
+                    self.datelabels = True
+            else:
+                assert False, 'Unknown data file type "%s".' % self.datastore.type
+                
+        def saveData(self):
+            data = self.datastore.data
+            if self.datastore.type=='pointsintime':
+                data[0] = self.rowlabels
+                data[1] = self.datamatrix
+            elif self.datastore.type=='profilesintime':
+                if self.type==0:
+                    if self.pos<len(data[1]):
+                        data[1][self.pos] = self.rowlabels
+                        data[2][self.pos] = self.datamatrix
+                else:
+                    data[0] = self.rowlabels
+            else:
+                assert False, 'Unknown data file type "%s".' % self.datastore.type
+            
+        def reset(self):
+            self.loadData()
+            QtCore.QAbstractItemModel.reset(self)
+            
+        def index(self,irow,icolumn,parent=None):
+            if parent==None: parent=QtCore.QModelIndex()
+            assert not parent.isValid(), 'Only the root can have child nodes.'
+            return self.createIndex(irow,icolumn)
+
+        def parent(self,index):
+            return QtCore.QModelIndex()
+            
+        def rowCount(self,parent=None):
+            if parent==None: parent=QtCore.QModelIndex()
+            if parent.isValid(): return 0
+            if self.rowlabels!=None:
+                return self.rowlabels.shape[0]
+            elif self.datamatrix!=None:
+                return self.datamatrix.shape[0]
+            else:
+                return 0
+
+        def columnCount(self,parent=None):
+            if parent==None: parent=QtCore.QModelIndex()
+            colcount = 0
+            if self.rowlabels!=None:
+                colcount += 1
+            if self.datamatrix!=None:
+                colcount += self.datamatrix.shape[1]
+            return colcount
+
+        def data(self,index,role=QtCore.Qt.DisplayRole):
+            if role==QtCore.Qt.DisplayRole or role==QtCore.Qt.EditRole:
+                rowindex = index.row()
+                colindex = index.column()
+                if self.rowlabels!=None: colindex -= 1
+                if colindex==-1:
+                    val = self.rowlabels[rowindex]
+                else:
+                    val = self.datamatrix[rowindex,colindex]
+
+                if role==QtCore.Qt.DisplayRole:
+                    if isinstance(val,datetime.datetime):
+                        return QtCore.QVariant(val.strftime(common.datetime_displayformat))
+                    else:
+                        return QtCore.QVariant('%.6g' % float(val))
+                        
+                if isinstance(val,datetime.datetime):
+                    val = datetime2qtdatetime(val)
+                else:
+                    val = float(val)
+                    
+                return QtCore.QVariant(val)
+                
+            return QtCore.QVariant()
+            
+        def setData(self,index,value,role=QtCore.Qt.EditRole):
+            if role==QtCore.Qt.EditRole:
+                if value.canConvert(QtCore.QVariant.DateTime):
+                    value = qtdatetime2datetime(value.toDateTime())
+                elif value.canConvert(QtCore.QVariant.Double):
+                    (value,ok) = value.toDouble()
+                else:
+                    assert False, 'Do not know variant type %s.' % val.type()
+                rowindex = index.row()
+                colindex = index.column()
+                if self.rowlabels!=None: colindex -= 1
+                if colindex==-1:
+                    newrowindex = self.rowlabels.searchsorted(value)
+                    self.rowlabels[rowindex] = value
+                    buflab = self.rowlabels[rowindex]
+                    bufdata = self.datamatrix[rowindex,:].copy()
+                    if newrowindex>rowindex:
+                        self.rowlabels[rowindex:newrowindex-1] = self.rowlabels[rowindex+1:newrowindex]
+                        self.rowlabels[newrowindex-1] = buflab
+                        if self.datamatrix!=None:
+                            self.datamatrix[rowindex:newrowindex-1,:] = self.datamatrix[rowindex+1:newrowindex,:]
+                            self.datamatrix[newrowindex-1,:] = bufdata
+                        if self.datastore.type=='profilesintime' and self.type!=0:
+                            self.datastore.data[1].insert(newrowindex-1,self.datastore.data[1].pop(rowindex))
+                            self.datastore.data[2].insert(newrowindex-1,self.datastore.data[2].pop(rowindex))
+                        self.emitRowsChanged(rowindex,newrowindex-1)
+                    elif newrowindex<rowindex:
+                        self.rowlabels[newrowindex+1:rowindex+1] = self.rowlabels[newrowindex:rowindex]
+                        self.rowlabels[newrowindex] = buflab
+                        if self.datamatrix!=None:
+                            self.datamatrix[newrowindex+1:rowindex+1,:] = self.datamatrix[newrowindex:rowindex,:]
+                            self.datamatrix[newrowindex,:] = bufdata
+                        if self.datastore.type=='profilesintime' and self.type!=0:
+                            self.datastore.data[1].insert(newrowindex,self.datastore.data[1].pop(rowindex))
+                            self.datastore.data[2].insert(newrowindex,self.datastore.data[2].pop(rowindex))
+                        self.emitRowsChanged(newrowindex,rowindex)
+                else:
+                    self.datamatrix[rowindex,colindex] = value
+                self.datastore.dataChanged()
+                self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),index,index)
+            return True
+            
+        def addRow(self):
+            newrowindex = self.datamatrix.shape[0]
+            self.beginInsertRows(QtCore.QModelIndex(),newrowindex,newrowindex)
+            if self.datamatrix!=None:
+                newrow = matplotlib.numerix.array([[0]*self.datamatrix.shape[1]],matplotlib.numerix.typecode(self.datamatrix))
+                self.datamatrix = matplotlib.numerix.concatenate((self.datamatrix,newrow))
+            if self.rowlabels!=None:
+                if self.datelabels:
+                    if newrowindex==0:
+                        newval = datetime.datetime.today()
+                    else:
+                        newval = self.rowlabels[-1]
+                        if newrowindex>1: newval += self.rowlabels[-1]-self.rowlabels[-2]
+                else:
+                    newval = 0.
+                self.rowlabels = matplotlib.numerix.concatenate((self.rowlabels,[newval]))
+            self.saveData()
+            self.datastore.dataChanged()
+            self.endInsertRows()
+            
+        def removeRow(self,start,stop=None):
+            if stop==None: stop=start
+            self.beginRemoveRows(QtCore.QModelIndex(),start,stop)
+            if self.datamatrix!=None:
+                self.datamatrix = matplotlib.numerix.concatenate((self.datamatrix[0:start,:],self.datamatrix[stop+1:,:]))
+            if self.rowlabels!=None:
+                self.rowlabels = matplotlib.numerix.concatenate((self.rowlabels[0:start],self.rowlabels[stop+1:]))
+            self.saveData()
+            self.datastore.dataChanged()
+            self.endRemoveRows()
+            
+        def emitRowsChanged(self,start,stop):
+            startindex = self.index(start,0)
+            stopindex = self.index(stop,self.columnCount()-1)
+            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),startindex,stopindex)
+            
+        def flags(self,index):
+            return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
+            
+        def headerData(self,section, orientation, role=QtCore.Qt.DisplayRole):
+            if orientation==QtCore.Qt.Horizontal and role==QtCore.Qt.DisplayRole:
+                if self.datastore.type=='pointsintime':
+                    if section==0:
+                        val = 'time'
+                    else:
+                        val = self.datastore.getVariableNames()[section-1]
+                if self.datastore.type=='profilesintime' and self.type==0:
+                    if section==0:
+                        val = 'depth'
+                    else:
+                        val = self.datastore.getVariableNames()[section-1]
+                return QtCore.QVariant(val)
+            return QtCore.QVariant()
+    
     def __init__(self,node,parent=None,datafile=None):
         QtGui.QDialog.__init__(self,parent)
 
-        lo = QtGui.QVBoxLayout()
+        self.node = node
+        self.varstore = data.LinkedFileVariableStore(self.node)
 
-        # Top panel: import button
-        loimport = QtGui.QHBoxLayout()
+        lo = QtGui.QGridLayout()
+        
+        loLeft = QtGui.QVBoxLayout()
+
+        # Left panel: data editor
+        loDataEdit = QtGui.QHBoxLayout()
+        if self.varstore.type=='profilesintime':
+            self.listTimes = QtGui.QListView(self)
+            self.listmodel = LinkedFilePlotDialog.LinkedDataModel(self.varstore,type=1)
+            self.listTimes.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+            self.listTimes.setModel(self.listmodel)
+            loDataEdit.addWidget(self.listTimes)
+            self.connect(self.listTimes.selectionModel(), QtCore.SIGNAL('currentChanged(const QModelIndex &,const QModelIndex &)'), self.onTimeChanged)
+        self.tableData = QtGui.QTableView(self)
+        self.tablemodel = LinkedFilePlotDialog.LinkedDataModel(self.varstore)
+        self.connect(self.tablemodel, QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'), self.onDataEdited)
+        self.connect(self.tablemodel, QtCore.SIGNAL('rowsInserted(const QModelIndex &,int,int)'), self.onRowsInserted)
+        self.connect(self.tablemodel, QtCore.SIGNAL('rowsRemoved(const QModelIndex &,int,int)'), self.onRowsRemoved)
+        self.tableData.verticalHeader().hide()
+        self.tableData.verticalHeader().setDefaultSectionSize(20)
+        self.tableData.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.tableData.setModel(self.tablemodel)
+        
+        loDataEdit.addWidget(self.tableData)
+        
+        # Left panel: editor buttons
+        loEditorButtons = QtGui.QHBoxLayout()
+
+        self.addrowbutton = QtGui.QPushButton('Add row',self)
+        loEditorButtons.addWidget(self.addrowbutton)
+        self.connect(self.addrowbutton, QtCore.SIGNAL('clicked()'), self.addRow)
+
+        self.removerowbutton = QtGui.QPushButton('Remove row',self)
+        loEditorButtons.addWidget(self.removerowbutton)
+        self.connect(self.removerowbutton, QtCore.SIGNAL('clicked()'), self.removeRow)
+
         self.importbutton = QtGui.QPushButton('Import data...',self)
-        loimport.addWidget(self.importbutton)
-        self.exportbutton = QtGui.QPushButton('Export data...',self)
-        loimport.addWidget(self.exportbutton)
-        loimport.addStretch(1)
-        lo.addLayout(loimport)
+        loEditorButtons.addWidget(self.importbutton)
+        self.connect(self.importbutton, QtCore.SIGNAL('clicked()'), self.onImport)
 
-        # Middle panel: list of variables and plot panel.
+        self.exportbutton = QtGui.QPushButton('Export data...',self)
+        loEditorButtons.addWidget(self.exportbutton)
+        self.connect(self.exportbutton, QtCore.SIGNAL('clicked()'), self.onExport)
+
+        loEditorButtons.addStretch(1)
+
+        loLeft.addLayout(loDataEdit)
+        loLeft.addLayout(loEditorButtons)
+
+        lo.addLayout(loLeft,0,0)
+
+        loRight = QtGui.QVBoxLayout()
+
+        # Right panel: list of variables and plot panel.
         lolist = QtGui.QHBoxLayout()
         self.label = QtGui.QLabel('Available variables:',self)
         lolist.addWidget(self.label)
         self.list = QtGui.QComboBox(self)
+        namedict = self.varstore.getVariableLongNames()
+        for name in self.varstore.getVariableNames():
+            self.list.addItem(namedict[name],QtCore.QVariant(name))
+        self.list.setEnabled(self.list.count()>0)
+        
         lolist.addWidget(self.list,1)
-        lo.addLayout(lolist)
+        loRight.addLayout(lolist)
 
         self.panel = FigurePanel(self)
-        lo.addWidget(self.panel)
+        loRight.addWidget(self.panel)
+
+        lo.addLayout(loRight,0,1)
 
         # Bottom panel: OK and Cancel button
         lobuttons = QtGui.QHBoxLayout()
@@ -234,24 +506,23 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         lobuttons.addStretch(1)
         lobuttons.addWidget(self.okbutton)
         lobuttons.addWidget(self.cancelbutton)
-        lo.addLayout(lobuttons)
+        
+        lo.addLayout(lobuttons,1,0,1,2)
 
         self.setLayout(lo)
 
         self.connect(self.list, QtCore.SIGNAL('currentIndexChanged(int)'), self.onSelectionChanged)
-        self.connect(self.importbutton, QtCore.SIGNAL('clicked()'), self.onImport)
-        self.connect(self.exportbutton, QtCore.SIGNAL('clicked()'), self.onExport)
         self.connect(self.okbutton, QtCore.SIGNAL('clicked()'), self.accept)
         self.connect(self.cancelbutton, QtCore.SIGNAL('clicked()'), self.reject)
 
-        self.resize(450, 450)
+        self.resize(750, 450)
 
-        self.node = node
         self.datafile = datafile
-        self.varstore = None
         self.owndatafile = False
 
         self.first = True
+        
+        self.onSelectionChanged(0)
 
         self.progressdialog = QtGui.QProgressDialog('',QtCore.QString(),0,0,self,QtCore.Qt.Dialog|QtCore.Qt.WindowTitleHint)
         self.progressdialog.setModal(True)
@@ -260,6 +531,56 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         self.progressdialog.setWindowTitle('Parsing data file...')
 
         self.setWindowTitle(self.node.getText(detail=1,capitalize=True))
+        
+    def addRow(self):
+        """Event handler: called when user clicks the "Add row" button.
+        """
+        self.tablemodel.addRow()
+        self.tableData.selectRow(self.tablemodel.rowCount()-1)
+
+    def removeRow(self):
+        """Event handler: called when user clicks the "Remove row" button.
+        """
+        rows = self.tableData.selectionModel().selectedRows()
+        if len(rows)==0: return
+        bottom = rows[-1].row()
+        top = bottom
+        for index in reversed(rows[:-1]):
+            currow = index.row()
+            if currow!=top-1:
+                self.tablemodel.removeRow(top,bottom)
+                bottom = currow
+            top = currow
+        self.tablemodel.removeRow(top,bottom)
+        
+    def dataChanged(self):
+        """Event handler: called when the data in the underlying store change
+        (new data loaded from source)        
+        """
+        self.tablemodel.reset()
+        self.tableData.verticalScrollBar().setValue(0)
+        self.tableData.horizontalScrollBar().setValue(0)
+        
+    def onDataEdited(self,topleft,bottomright):
+        """Event handler: called when the user has edited the data in our data model.
+        """
+        self.panel.figure.update()
+        
+    def onRowsInserted(self,parent,start,stop):
+        """Event handler: called when the user has inserted a row in our data model.
+        """
+        self.panel.figure.update()
+
+    def onRowsRemoved(self,parent,start,stop):
+        """Event handler: called when the user has removed one or more rows in our data model.
+        """
+        self.panel.figure.update()
+        
+    def onTimeChanged(self,current,previous):
+        """Event handler: called when the user selects another date (only used for profiles in time).
+        """
+        self.tablemodel.pos = current.row()
+        self.dataChanged()
 
     def showEvent(self,ev):
         if self.first and self.datafile!=None:
@@ -267,29 +588,27 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             self.first = False
 
     def setData(self,datafile):
-        newstore = data.LinkedFileVariableStore(self.node,datafile=datafile)
 
-        if datafile.isValid():
-            try:
-                try:
-                    newstore.getData(callback=self.onParseProgress)
-                finally:
-                    self.progressdialog.reset()
-            except Exception,e:
-                QtGui.QMessageBox.critical(self, 'Invalid data file', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
-                return
-
-        self.varstore = newstore
-        self.datafile = datafile
-
+        # Close any detached figures
         self.panel.closeDetached()
 
-        self.list.clear()
-        namedict = newstore.getVariableLongNames()
-        for name in newstore.getVariableNames():
-            self.list.addItem(namedict[name],QtCore.QVariant(name))
-        self.list.setEnabled(self.list.count()>0)
+        # Try to parse the supplied data file.
+        try:
+            try:
+                self.varstore.loadDataFile(datafile,callback=self.onParseProgress)
+            finally:
+                self.progressdialog.reset()
+        except Exception,e:
+            QtGui.QMessageBox.critical(self, 'Invalid data file', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+            return
 
+        # Reset the models attached to the variable store.
+        self.dataChanged()
+        if self.varstore.type=='profilesintime': self.listmodel.reset()
+        
+        # Update figure
+        self.panel.figure.update()
+        
         self.exportbutton.setEnabled(self.datafile.isValid())
 
     def onParseProgress(self,status,progress=None):
@@ -326,7 +645,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         if path=='': return
 
         # Save data file.
-        self.datafile.saveToFile(path)
+        self.varstore.saveToFile(path)
 
     def onSelectionChanged(self,index):
         if index<0:
@@ -720,6 +1039,11 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
     #   Returns data for the given node (specified as index), and the given role.
     def data(self,index,role=QtCore.Qt.DisplayRole):
 
+        # In some cases (e.g. when using What's-this) this function is called for the root node
+        # (i.e. with an invalid index). In that case we just return the default data value.
+        if not index.isValid(): return QtCore.QVariant()
+        
+        # Shortcut to the xmlstore.TypedStore node (used below in many places)
         node = index.internalPointer()
 
         # First handle roles that are shared over the whole row.
@@ -751,11 +1075,13 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 return QtCore.QVariant(QtGui.QColor(128,128,128))
         elif self.checkboxes and role==QtCore.Qt.CheckStateRole:
             if node.canHaveValue():
+                # Node has own checkbox.
                 if node.getValue():
                     return QtCore.QVariant(QtCore.Qt.Checked)
                 else:
                     return QtCore.QVariant(QtCore.Qt.Unchecked)
             elif node.hasChildren():
+                # Node is parent of other nodes with their own checkbox; check value is derived from children.
                 state = None
                 for i in range(self.rowCount(index)):
                     chstate,ret = index.child(i,0).data(QtCore.Qt.CheckStateRole).toInt()

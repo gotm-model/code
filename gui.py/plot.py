@@ -1,8 +1,6 @@
 import datetime
 
 import matplotlib
-matplotlib.use('Qt4Agg')
-matplotlib.rcParams['numerix'] = 'numpy'
 import matplotlib.numerix,matplotlib.numerix.ma,matplotlib.colors
 import matplotlib.dates
 import matplotlib.pylab
@@ -295,7 +293,7 @@ class Figure(common.referencedobject):
 
             # Get effective number of independent dimensions (singleton dimensions removed)
             dimcount = len(dims)
-            seriesnode.getLocation(['DimensionCount']).setValue(dimcount)
+            defaultseriesnode.getLocation(['DimensionCount']).setValue(dimcount)
 
             # Get the plot type, based on the number of dimensions
             if dimcount==0:
@@ -441,7 +439,11 @@ class Figure(common.referencedobject):
                   pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet)
                   
                 # Create colorbar
-                if (Z.ravel()==Z[0,0]).all():
+                if isinstance(Z,matplotlib.numerix.ma.MaskedArray):
+                    flatZ = Z.compressed()
+                else:
+                    flatZ = Z.ravel()
+                if (flatZ==flatZ[0]).all():
                     # Explicitly set color range; MatPlotLib 0.90.0 chokes on identical min and max.
                     pc.set_clim((Z[0,0]-1,Z[0,0]+1))
                     cb = self.figure.colorbar(pc)

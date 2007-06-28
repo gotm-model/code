@@ -1111,6 +1111,19 @@
 				</fileinfo>
 			</element>
 		</element>
+		<element id="bioprofiles" type="select" label="biogeochemical profiles">
+			<condition type="eq" variable="/bio/bio_calc" value="True"/>
+			<options>
+				<option value="0" label="none" />
+				<option value="2" label="custom observed profiles"/>
+			</options>
+			<element id="bio_prof_file"   type="file"  label="custom biogeochemical profiles">
+				<condition type="eq" variable="." value="2"/>
+				<fileinfo type="profilesintime">
+					<filevariables/>
+				</fileinfo>
+			</element>
+		</element>
 	</element>
 
 	<element id="bio" label="biogeochemical model" optional="True">

@@ -1595,6 +1595,7 @@ class TypedStore(common.referencedobject):
             
         self.defaultstore = store.addref()
         self.defaultinterface = self.defaultstore.getInterface()
+        self.defaultinterface.blockNotifyOfHiddenNodes = False
         self.defaultinterface.addChangeHandler(self.onDefaultChange)
         
         # Default nodes are used in condition checking, so changing the default store
@@ -1695,14 +1696,15 @@ class TypedStore(common.referencedobject):
             node = refnode.getLocation(valuepath.split('/'))
             assert node!=None, 'Cannot locate dependency "%s" for node "%s".' % (nodeCondition.getAttribute('variable'),self.getTemplateNodePath(ownernode))
 
-            # Get the type and current value of the variable we depend on
-            valuetype = node.getValueType()
+            # Get the current value of the variable we depend on
             curvalue = node.getValueOrDefault()
 
-            # If the node in question currently does not have a value, we cannot check the condition; just return 'valid'.
+            # If the node in question currently does not have a value, we cannot check the condition;
+            # just return 'valid'.
             if curvalue==None: return True
 
             # Get the reference value we will compare against
+            valuetype = node.getValueType()
             refvalue = self.store.unpackvalue(nodeCondition.getAttribute('value'),valuetype)
 
             # Compare
@@ -1780,7 +1782,14 @@ class TypedStore(common.referencedobject):
         # Try direct route first.
         if (sourceid in cls.convertorsfrom) and (targetid in cls.convertorsfrom[sourceid]):
             convertorclass = cls.convertorsfrom[sourceid][targetid]
-            return convertorclass()
+            if convertorclass==Convertor:
+                conv = convertorclass(sourceid,targetid)
+                revconv = cls.getConvertor(targetid,sourceid,directonly=True)
+                if revconv!=None:
+                    conv.links = revconv.reverseLinks()
+                return conv
+            else:
+                return convertorclass()
 
         # Direct route not available, try indirect routes
         if not directonly:
@@ -1817,10 +1826,9 @@ class TypedStore(common.referencedobject):
         return routes
 
     # addConvertor(convertorclass)
-    #   [internal use only!]
     #   Register a convertor class.
     @classmethod
-    def addConvertor(cls,convertorclass):
+    def addConvertor(cls,convertorclass,addsimplereverse=False):
         sourceid = convertorclass.fixedsourceid
         targetid = convertorclass.fixedtargetid
         assert sourceid!=None, 'Error! Specified convertor class lacks a source identifier.'
@@ -1828,6 +1836,13 @@ class TypedStore(common.referencedobject):
         if sourceid not in cls.convertorsfrom: cls.convertorsfrom[sourceid] = {}
         assert targetid not in cls.convertorsfrom[sourceid], 'Error! A class for converting from "%s" to "%s" was already specified previously.' % (sourceid,targetid)
         cls.convertorsfrom[sourceid][targetid] = convertorclass
+        if addsimplereverse: cls.addDefaultConvertor(targetid,sourceid)
+        
+    @classmethod
+    def addDefaultConvertor(cls,sourceid,targetid):
+        if sourceid not in cls.convertorsfrom: cls.convertorsfrom[sourceid] = {}
+        assert targetid not in cls.convertorsfrom[sourceid], 'Error! A class for converting from "%s" to "%s" was already specified previously.' % (sourceid,targetid)
+        cls.convertorsfrom[sourceid][targetid] = Convertor
 
     # hasConvertor(sourceid,targetid)
     #   Checks if a conversion route between the specified versions is available.
