@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.19 2007-06-28 06:53:17 jorn Exp $
+#$Id: visualizer.py,v 1.20 2007-06-29 09:56:59 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -90,8 +90,8 @@ class PageOpen(commonqt.WizardPage):
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Unable to load result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
             return False
-        self.parent().shared['result'] = result
-        self.parent().shared['scenario'] = result.scenario
+        self.owner.setProperty('result',result)
+        self.owner.setProperty('scenario',result.scenario.addref())
         return True
 
 class ConfigureReportWidget(QtGui.QWidget):
@@ -213,7 +213,7 @@ class PageReportGenerator(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
-        self.result = parent.shared['result']
+        self.result = parent.getProperty('result')
         self.report = report.Report()
         
         # Copy report settings from result.
@@ -285,7 +285,7 @@ class PageSave(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
-        self.result = parent.shared['result']
+        self.result = parent.getProperty('result')
 
         self.label = QtGui.QLabel('Do you want to save the result of your simulation?',self)
         self.bngroup     = QtGui.QButtonGroup()
@@ -381,7 +381,8 @@ class PageVisualize(commonqt.WizardPage):
 
         self.varname = None
 
-        self.result = parent.shared['result']
+        self.result = parent.getProperty('result')
+        
         self.treestore = self.result.getVariableTree('schemas/outputtree.xml')
         self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True)
 
@@ -476,8 +477,8 @@ def main():
             QtGui.QMessageBox.critical(self, 'Unable to load result', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
         if result!=None:
             seq.pop(0)
-            wiz.shared['result'] = result
-            wiz.shared['scenario'] = result.scenario
+            wiz.setProperty('result',result)
+            wiz.setProperty('scenario',result.scenario.addref())
 
     seq = commonqt.WizardSequence(seq)
     wiz.setSequence(seq)

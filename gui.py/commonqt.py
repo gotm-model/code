@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.28 2007-06-28 16:59:42 jorn Exp $
+#$Id: commonqt.py,v 1.29 2007-06-29 09:56:59 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -65,7 +65,7 @@ class ErrorReceiver(QtCore.QObject):
         display.
         """
         if ev.type()==QtCore.QEvent.User:
-            ErrorDialog.write(ev.error)
+            ErrorDialog.postError(ev.error)
             return True
         return QtGui.QWidget.event(self,ev)
         
@@ -94,13 +94,13 @@ class ErrorDialog(QtGui.QWidget):
     errdlg = None
 
     @staticmethod
-    def write(string):
+    def postError(string):
         """Creates the one and only ErrorDialog if it does not exist yet, then shows the
         provided error message in the dialog.
         """
         if ErrorDialog.errdlg==None:
             ErrorDialog.errdlg = ErrorDialog()
-        ErrorDialog.errdlg.textedit.setPlainText(ErrorDialog.errdlg.textedit.toPlainText()+string)
+        ErrorDialog.errdlg.write(string)
         ErrorDialog.errdlg.show()
     
     def __init__(self,parent=None):
@@ -127,6 +127,49 @@ class ErrorDialog(QtGui.QWidget):
 
         if parent!=None:
             self.setAttribute(QtCore.Qt.WA_QuitOnClose,False)
+            
+    def write(self,string):
+        cur = self.textedit.textCursor()
+        cur.movePosition(QtGui.QTextCursor.End)
+        cur.insertText(string)
+
+def browseForPath(parent=None,curpath=None,getdirectory=False,save=False,filter='',dlgoptions=None):
+    """Shows browse dialog for opening/saving a file, or selecting a directory.
+    Supports automatic append of file extension based on chosen file type.
+    """
+    if curpath==None: curpath=''
+    if dlgoptions==None: dlgoptions = QtGui.QFileDialog.Option()
+    if getdirectory:
+        path = unicode(QtGui.QFileDialog.getExistingDirectory(parent,'',curpath))
+    elif save:
+        selfilt = QtCore.QString()
+        path = unicode(QtGui.QFileDialog.getSaveFileName(parent,'',curpath,filter,selfilt,dlgoptions))
+        selfilt = unicode(selfilt)
+    else:
+        path = unicode(QtGui.QFileDialog.getOpenFileName(parent,'',curpath,filter))
+        
+    # If the browse dialog was cancelled, just return.
+    if path=='': return None
+
+    # if we are saving, make sure that the extension matches the filter selected.
+    if save:
+        re_ext = re.compile('\*\.(.+?)[\s)]')
+        exts = []
+        pos = 0
+        match = re_ext.search(selfilt,pos)
+        goodextension = False
+        while match!=None:
+            ext = match.group(1)
+            if ext!='*':
+                exts.append(ext)
+                if path.endswith(ext): goodextension = True
+            pos = match.end(0)
+            match = re_ext.search(selfilt,pos)
+
+        # Append first imposed extension
+        if not goodextension and len(exts)>0: path += '.'+exts[0]
+    
+    return path
 
 # =======================================================================
 # PathEditor: a Qt widget for editing paths, combines line-edit widget
@@ -193,37 +236,8 @@ class PathEditor(QtGui.QWidget):
     def onBrowse(self):
         curpath = self.path()
         if curpath=='' and self.defaultpath != None: curpath=self.defaultpath
-        if self.getdirectory:
-            path = unicode(QtGui.QFileDialog.getExistingDirectory(self,'',curpath))
-        elif self.save:
-            selfilt = QtCore.QString()
-            path = unicode(QtGui.QFileDialog.getSaveFileName(self,'',curpath,self.filter,selfilt,self.dlgoptions))
-            selfilt= unicode(selfilt)
-        else:
-            path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',curpath,self.filter))
-            
-        # If the browse dialog was cancelled, just return.
-        if path=='': return
-
-        # if we are saving, make sure that the extension matches the filter selected.
-        if self.save:
-            re_ext = re.compile('\*\.(.+?)[\s)]')
-            exts = []
-            pos = 0
-            match = re_ext.search(selfilt,pos)
-            goodextension = False
-            while match!=None:
-                ext = match.group(1)
-                if ext!='*':
-                    exts.append(ext)
-                    if path.endswith(ext): goodextension = True
-                pos = match.end(0)
-                match = re_ext.search(selfilt,pos)
-
-            # Append first imposed extension
-            if not goodextension and len(exts)>0: path += '.'+exts[0]
-        
-        self.setPath(path)
+        path = browseForPath(self,curpath=curpath,getdirectory=self.getdirectory,save=self.save,filter=self.filter,dlgoptions=self.dlgoptions)
+        if path!=None: self.setPath(path)
 
     def hasPath(self):
         return (len(self.path())>0)
@@ -1431,40 +1445,41 @@ class PropertyEditorDialog(QtGui.QDialog):
 
 class Wizard(QtGui.QDialog):
     
-    def __init__(self,parent=None,sequence=None,closebutton=False):
+    def __init__(self,parent=None,sequence=None,closebutton=False,headerlogo=None):
         QtGui.QDialog.__init__(self, parent, QtCore.Qt.Window|QtCore.Qt.WindowContextHelpButtonHint)
 
         layout = QtGui.QVBoxLayout()
-
-        self.pm = QtGui.QPixmap('./logo.png','PNG')
-        self.piclabel = QtGui.QLabel(self)
-        self.piclabel.setPixmap(self.pm)
-        self.piclabel.setScaledContents(True)
-        layout.addWidget(self.piclabel)
         layout.setMargin(0)
 
-        bnlayout = QtGui.QHBoxLayout()
-        bnlayout.addStretch()
+        if headerlogo!=None:
+            self.pm = QtGui.QPixmap(headerlogo,'PNG')
+            self.piclabel = QtGui.QLabel(self)
+            self.piclabel.setPixmap(self.pm)
+            self.piclabel.setScaledContents(True)
+            layout.addWidget(self.piclabel)
+
+        self.bnlayout = QtGui.QHBoxLayout()
+        self.bnlayout.addStretch()
 
         self.bnHome = QtGui.QPushButton('&Home',self)
-        self.connect(self.bnHome, QtCore.SIGNAL("clicked()"), self.onHome)
-        bnlayout.addWidget(self.bnHome)
+        self.connect(self.bnHome, QtCore.SIGNAL('clicked()'), self.onHome)
+        self.bnlayout.addWidget(self.bnHome)
 
         self.bnBack = QtGui.QPushButton('< &Back',self)
-        self.connect(self.bnBack, QtCore.SIGNAL("clicked()"), self.onBack)
-        bnlayout.addWidget(self.bnBack)
+        self.connect(self.bnBack, QtCore.SIGNAL('clicked()'), self.onBack)
+        self.bnlayout.addWidget(self.bnBack)
 
         self.bnNext = QtGui.QPushButton('&Next >',self)
-        self.connect(self.bnNext, QtCore.SIGNAL("clicked()"), self.onNext)
-        bnlayout.addWidget(self.bnNext)
+        self.connect(self.bnNext, QtCore.SIGNAL('clicked()'), self.onNext)
+        self.bnlayout.addWidget(self.bnNext)
 
         if closebutton:
             self.bnClose = QtGui.QPushButton('&Close',self)
-            self.connect(self.bnClose, QtCore.SIGNAL("clicked()"), self.onClose)
-            bnlayout.addWidget(self.bnClose)
+            self.connect(self.bnClose, QtCore.SIGNAL('clicked()'), self.onClose)
+            self.bnlayout.addWidget(self.bnClose)
 
-        bnlayout.setMargin(11)
-        layout.addLayout(bnlayout)
+        self.bnlayout.setMargin(11)
+        layout.addLayout(self.bnlayout)
 
         self.setLayout(layout)
 
@@ -1479,10 +1494,14 @@ class Wizard(QtGui.QDialog):
         if propertyname in self.shared and isinstance(self.shared[propertyname],common.referencedobject):
             self.shared[propertyname].release()
         self.shared[propertyname] = value
+        self.onPropertyChange(propertyname)
 
     def getProperty(self,propertyname):
         if propertyname not in self.shared: return None
         return self.shared[propertyname]
+        
+    def onPropertyChange(self,propertyname):
+        pass
 
     def unlink(self):
         self.settings.save()

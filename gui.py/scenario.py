@@ -324,6 +324,8 @@ class Scenario(xmlstore.TypedStore):
                             varname = listchild.getId()
                             varval = listchild.getValueOrDefault()
                             if varval==None:
+                                # If the variable value is not set while its node is hidden,
+                                # the variable will not be used, and we skip it silently.
                                 if listchild.isHidden(): continue
                                 raise Exception('Value for variable "%s" in namelist "%s" not set.' % (varname,listname))
                             vartype = listchild.getValueType()

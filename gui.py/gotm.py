@@ -21,7 +21,126 @@ import common, commonqt, xmlstore, data, scenario
 
 import scenariobuilder,simulator,visualizer
 
+class GOTMWizard(commonqt.Wizard):
+    """Customized wizard dialog that show the GOTM logo at the top of the wizard window,
+    and adds a "Tools" button for various functionality such as "Save as" and export of
+    scenarios to namelists.
+    """
+    
+    def __init__(self,parent=None,sequence=None,closebutton=False):
+        """Supplies the logo path to the Wizard, and adds a "Tools" button.
+        """
+        commonqt.Wizard.__init__(self,parent,sequence,closebutton,headerlogo='./logo.png')
+        self.bnTools = QtGui.QPushButton('&Tools',self)
+        self.bnTools.setEnabled(False)
+        self.connect(self.bnTools, QtCore.SIGNAL('clicked()'), self.onTools)
+        self.bnlayout.insertWidget(1,self.bnTools)
+        
+    def onPropertyChange(self,propertyname):
+        """Called by the Wizard implementation when a property in the Wizard property store
+        changes value. Used to enable/disable the "Tools" button when the scenario/result is (un)set.
+        """
+        if propertyname=='scenario' or propertyname=='result':
+            self.bnTools.setEnabled(self.getProperty('scenario')!=None or self.getProperty('result')!=None)
+        
+    def onTools(self):
+        """Event handler, called when the "Tools" button is pressed. Shows a pop-up menu with
+        the functions supported (currently "Save scenario as", "Export scenario" and "Save result as".
+        Processes the choice by the user (e.g., saving or exporting), then returns control.
+        """
+
+        # Get currenly loaded scenario and/or result.
+        scen   = self.getProperty('scenario')
+        result = self.getProperty('result')
+
+        # Build pop-up menu
+        menu = QtGui.QMenu(self)
+        if scen!=None:
+            actSaveScenario   = menu.addAction('Save scenario as...')
+            actExportScenario = menu.addAction('Export scenario as namelists...')
+        if result!=None:
+            actSaveResult     = menu.addAction('Save result as...')
+            
+        # Show menu
+        actChosen = menu.exec_(QtGui.QCursor.pos())
+        
+        # Process chosen menu option.
+        if scen!=None:
+            if actChosen==actSaveScenario:
+                # User chose "Save scenario as..."
+                path = commonqt.browseForPath(self,curpath=scen.path,save=True,filter='GOTM scenario files (*.gotmscenario);;All files (*.*)')
+                if path!=None:
+                    scen.saveAll(path)
+                return
+            elif actChosen==actExportScenario:
+                # User chose "Export scenario as namelists..."
+                
+                class ChooseVersionDialog(QtGui.QDialog):
+                    """Dialog for choosing the version of GOTM to export namelists for.
+                    """
+                    def __init__(self,parent=None):
+                        QtGui.QDialog.__init__(self,parent,QtCore.Qt.Dialog | QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint)
+                        
+                        layout = QtGui.QVBoxLayout()
+                        
+                        # Add introductory label.
+                        self.label = QtGui.QLabel('Choose version to export to:',self)
+                        layout.addWidget(self.label)
+                        
+                        # Add combobox with versions.
+                        self.comboVersion = QtGui.QComboBox(self)
+                        versions = scen.schemaname2path().keys()
+                        versions.sort()
+                        for v in versions:
+                            # Only show schemas for namelist-supporting GOTM
+                            # (and not those for the GUI)
+                            if v.startswith('gotm-'): self.comboVersion.addItem(v)
+                        self.comboVersion.setCurrentIndex(self.comboVersion.count()-1)
+                        layout.addWidget(self.comboVersion)
+                        
+                        layoutButtons = QtGui.QHBoxLayout()
+
+                        # Add "OK" button
+                        self.bnOk = QtGui.QPushButton('&OK',self)
+                        self.connect(self.bnOk, QtCore.SIGNAL('clicked()'), self.accept)
+                        layoutButtons.addWidget(self.bnOk)
+
+                        # Add "Cancel" button
+                        self.bnCancel = QtGui.QPushButton('&Cancel',self)
+                        self.connect(self.bnCancel, QtCore.SIGNAL('clicked()'), self.reject)
+                        layoutButtons.addWidget(self.bnCancel)
+                        
+                        layout.addLayout(layoutButtons)
+
+                        self.setLayout(layout)
+                        
+                        self.setWindowTitle('Choose version')
+                        
+                dialog = ChooseVersionDialog(self)
+                res = dialog.exec_()
+                if res==QtGui.QDialog.Accepted:
+                    path = commonqt.browseForPath(self,getdirectory=True)
+                    if path!=None:
+                        exportscen = scen.convert(unicode(dialog.comboVersion.currentText()))
+                        exportscen.writeAsNamelists(path,addcomments=True)
+                        exportscen.release()
+                return
+        if result!=None:
+            if actChosen==actSaveResult:
+                # User chose "Save result as..."
+                path = commonqt.browseForPath(self,curpath=result.path,save=True,filter='GOTM result files (*.gotmresult);;NetCDF files (*.nc);;All files (*.*)')
+                if path!=None:
+                    if path.endswith('.nc'):
+                        result.saveNetCDF(path)
+                    else:
+                        result.save(path)
+                return
+
 class PageIntroduction(commonqt.WizardPage):
+    """First page in the GOTM-GUI Wizard.
+    Shows an introductory text with links to internet resources, licensing information,
+    author, commissioner, and versions of the various modules.
+    """
     
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
@@ -88,8 +207,12 @@ class PageIntroduction(commonqt.WizardPage):
 
     def isComplete(self):
         return True
-
+        
 class PageChooseAction(commonqt.WizardPage):
+    """Second page in the GOTM-GUI Wizard.
+    Allows the user to choose to between working with a scenario or a result, and to select
+    the source (e.g., path) of the scenario/result.
+    """
     
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
@@ -166,7 +289,7 @@ class PageChooseAction(commonqt.WizardPage):
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
-            self.owner.shared['mainaction'] = 'scenario'
+            self.owner.setProperty('mainaction','scenario')
             self.owner.setProperty('result', None)
             self.owner.setProperty('scenario', newscen)
 
@@ -181,7 +304,7 @@ class PageChooseAction(commonqt.WizardPage):
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to load result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
-            self.owner.shared['mainaction'] = 'result'
+            self.owner.setProperty('mainaction','result')
             self.owner.setProperty('result', newresult)
             self.owner.setProperty('scenario', newresult.scenario.addref())
 
@@ -194,7 +317,7 @@ class PageChooseAction(commonqt.WizardPage):
 
 class ForkOnAction(commonqt.WizardFork):
     def getSequence(self):
-        if self.wizard.shared['mainaction']=='scenario':
+        if self.wizard.getProperty('mainaction')=='scenario':
             return commonqt.WizardSequence([scenariobuilder.SequenceEditScenario(),simulator.PageProgress])
         else:
             return commonqt.WizardSequence([commonqt.WizardDummyPage])
@@ -212,7 +335,7 @@ def main():
         app = QtGui.qApp
 
     # Create wizard dialog
-    wiz = commonqt.Wizard(closebutton = sys.platform!='win32')
+    wiz = GOTMWizard(closebutton = sys.platform!='win32')
     seq = commonqt.WizardSequence([PageIntroduction,PageChooseAction,ForkOnAction(wiz),visualizer.PageVisualize,visualizer.PageReportGenerator,visualizer.PageSave,visualizer.PageFinal])
     wiz.setSequence(seq)
     wiz.setWindowTitle('GOTM-GUI')

@@ -1762,7 +1762,7 @@ class TypedStore(common.referencedobject):
                 return self.addref()
             target = self.fromSchemaName(target)
         elif target.version==self.version:
-            return self
+            return target
 
         convertor = self.getConvertor(self.version,target.version)
         if convertor==None:

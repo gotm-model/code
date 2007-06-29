@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.15 2007-05-01 19:46:56 jorn Exp $
+#$Id: scenariobuilder.py,v 1.16 2007-06-29 09:56:59 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -144,8 +144,10 @@ class ScenarioWidget(QtGui.QWidget):
 
         if checkedid!=0:
             # We have loaded a scenario from file. Look for empty nodes and reset these to their defaults.
-            emptynodes = scen.root.getEmptyNodes()
-            #emptynodes = [n for n in scen.root.getEmptyNodes() if not n.isHidden()]
+            #emptynodes = scen.root.getEmptyNodes()
+            emptynodes = [n for n in scen.root.getEmptyNodes() if not n.isHidden()]
+            for node in emptynodes:
+                assert node.getDefaultValue()!=None, 'No value set for "%s", but no default value is available.' % node
             emptycount = len(emptynodes)
             if emptycount>0:
                 QtGui.QMessageBox.information(self,'Scenario is incomplete','In this scenario %i variables do not have a value. These will be set to their default value.' % emptycount,QtGui.QMessageBox.Ok)
@@ -189,7 +191,7 @@ class PageLocation(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
-        self.scenario = parent.shared['scenario']
+        self.scenario = parent.getProperty('scenario')
         if self.scenario==None: raise Exception('No scenario available; this page should not have been available.')
 
         groupbox1 = QtGui.QGroupBox('Geographic location',self)
@@ -252,7 +254,7 @@ class PageDiscretization(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
-        self.scenario = parent.shared['scenario']
+        self.scenario = parent.getProperty('scenario')
         assert self.scenario!=None, 'No scenario available; this page should not have been available.'
 
         groupbox1 = QtGui.QGroupBox('Column structure',self)
@@ -310,7 +312,7 @@ class PageAdvanced(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
-        self.scenario = parent.shared['scenario']
+        self.scenario = parent.getProperty('scenario')
         if self.scenario==None: raise Exception('No scenario available; this page should not have been available.')
         
         self.model = commonqt.PropertyStoreModel(self.scenario,nohide=False)
@@ -368,7 +370,7 @@ class PageSave(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
-        self.scenario = parent.shared['scenario']
+        self.scenario = parent.getProperty('scenario')
 
         self.label = QtGui.QLabel('The scenario has been modified. Do you want to save it?',self)
         self.bngroup     = QtGui.QButtonGroup()
