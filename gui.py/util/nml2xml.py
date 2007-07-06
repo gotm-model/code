@@ -130,12 +130,12 @@ GOTM-GUI, while using .proto files in directory "./v3.2/templates".
                 print 'ERROR: variable %s points to a non-existent data file.' % '/'.join(fn.location)
                 valid = False
             else:
-                newstore = data.LinkedFileVariableStore(fn,datafile=value)
+                newstore = data.LinkedFileVariableStore.fromNode(fn)
                 global nextprogress
                 nextprogress = 0.
                 try:
                     print 'parsing data file for %s.' % '/'.join(fn.location)
-                    newstore.getData(callback=printprogress)
+                    newstore.loadDataFile(value,callback=printprogress)
                     print 'file is valid.'
                 except Exception,e:
                     print 'ERROR: could not parse data file for variable %s. Error: %s' % ('/'.join(fn.location),e)

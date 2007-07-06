@@ -253,11 +253,10 @@ class Figure(common.referencedobject):
             # Build list of dimension boundaries for current variable.
             # For dimensions that have equal lower and upper bound, take a slice.
             dimbounds = []
-            for dimname in var.getDimensions():
-                if dimname not in dim2data: dim2data[dimname] = {}
-                dimdata = dim2data[dimname]
-                dimdata['used'] = True
-                if 'forcedrange' in dimdata:
+            originaldims = var.getDimensions()
+            for dimname in originaldims:
+                if dimname in dim2data and 'forcedrange' in dim2data[dimname]:
+                    dimdata = dim2data[dimname]
                     if dimdata['forcedrange'][0]==dimdata['forcedrange'][1] and (dimdata['forcedrange'][0]!=None):
                         var = VariableSlice(var,dimname,dimdata['forcedrange'][0])
                     else:
@@ -273,6 +272,12 @@ class Figure(common.referencedobject):
             
             # Skip this variable if no data are available.
             if data==None or 0 in data[-1].shape: continue
+
+            # Check used dimensions.
+            for dimname in originaldims:
+                if dimname not in dim2data:
+                    dim2data[dimname] = {'forcedrange':[None,None],'datarange':[None,None]}
+                dim2data[dimname]['used'] = True
             
             # Find non-singleton dimensions (singleton dimension: dimension with length one)
             # Store singleton dimensions as fixed extra coordinates.
@@ -481,9 +486,10 @@ class Figure(common.referencedobject):
         
         # Get effective ranges for each dimension (based on forced limits and natural data ranges)
         for dim,dat in dim2data.iteritems():
-            effrange = dat['forcedrange'][:]
-            if effrange[0]==None: effrange[0] = dat['datarange'][0]
-            if effrange[1]==None: effrange[1] = dat['datarange'][1]
+            effrange = dat['datarange'][:]
+            if 'forcedrange' in dat:
+                if dat['forcedrange'][0]!=None: effrange[0] = dat['forcedrange'][0]
+                if dat['forcedrange'][1]!=None: effrange[1] = dat['forcedrange'][1]
             dat['range'] = effrange
 
         # Configure time axis (if any).

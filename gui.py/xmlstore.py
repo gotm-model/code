@@ -744,7 +744,7 @@ class TypedStoreInterface:
     def __init__(self,store,showhidden=True,omitgroupers=False):
         self.showhidden = showhidden
         self.omitgroupers = omitgroupers
-        self.blockNotifyOfHiddenNodes = True
+        self.blockNotifyOfHiddenNodes = (not showhidden)
         self.notifyOnDefaultChange = True
 
         self.visibilityhandlers = []
@@ -753,6 +753,12 @@ class TypedStoreInterface:
         self.storechangedhandlers = []
 
         store.connectInterface(self)
+        
+    def unlink(self):
+        self.visibilityhandlers = []
+        self.changehandlers = []
+        self.beforechangehandlers = []
+        self.storechangedhandlers = []
 
     def getChildCount(self,node):
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
@@ -904,8 +910,8 @@ class TypedStoreInterface:
     def beforeVisibilityChange(self,node,shownew,showhide):
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
-        if (self.getParent(node).isHidden() and self.blockNotifyOfHiddenNodes): return
-        if self.blockNotifyOfHiddenNodes and node.isHidden() and not showhide: return
+        if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
+        if self.blockNotifyOfHiddenNodes and (not showhide) and node.isHidden(): return
         if self.omitgroupers and node.grouponly:
             for ch in self.getChildren(node): self.emitBeforeVisibilityChange(ch,shownew,showhide)
         else:
@@ -914,8 +920,8 @@ class TypedStoreInterface:
     def afterVisibilityChange(self,node,shownew,showhide):
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
-        if (self.getParent(node).isHidden() and self.blockNotifyOfHiddenNodes): return
-        if self.blockNotifyOfHiddenNodes and node.isHidden() and not showhide: return
+        if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
+        if self.blockNotifyOfHiddenNodes and (not showhide) and node.isHidden(): return
         if self.omitgroupers and node.grouponly:
             for ch in self.getChildren(node): self.emitAfterVisibilityChange(ch,shownew,showhide)
         else:
@@ -1532,8 +1538,8 @@ class TypedStore(common.referencedobject):
         self.store = None
         self.interfaces = []
 
-    def getInterface(self,showhidden=True,omitgroupers=False):
-        return TypedStoreInterface(self,showhidden=showhidden,omitgroupers=omitgroupers)
+    def getInterface(self,**kwargs):
+        return TypedStoreInterface(self,**kwargs)
 
     def setContainer(self,container):
         if 'cache' in self.store.context:
@@ -1590,12 +1596,13 @@ class TypedStore(common.referencedobject):
     def setDefaultStore(self,store,updatevisibility=True):
         assert self.version==store.version,'Version of supplied default store must match version of current store.'
         if self.defaultstore!=None:
+            self.defaultstore.disconnectInterface(self.defaultinterface)
+            self.defaultinterface.unlink()
             self.defaultinterface = None
             self.defaultstore.release()
             
         self.defaultstore = store.addref()
         self.defaultinterface = self.defaultstore.getInterface()
-        self.defaultinterface.blockNotifyOfHiddenNodes = False
         self.defaultinterface.addChangeHandler(self.onDefaultChange)
         
         # Default nodes are used in condition checking, so changing the default store
@@ -2050,6 +2057,10 @@ class TypedStore(common.referencedobject):
     #   can hide nodes with the hidden attribute from view, amongst others.
     def connectInterface(self,interface):
         self.interfaces.append(interface)
+        
+    def disconnectInterface(self,interface):
+        for i in range(len(self.interfaces)-1,-1,-1):
+            if self.interfaces[i] is interface: self.interfaces.pop(i)
 
     # onChange: called internally after the default value of a node has changed.
     #   note that its argument will be a node in the DEFAULT store, not in the current store!

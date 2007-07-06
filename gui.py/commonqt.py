@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.29 2007-06-29 09:56:59 jorn Exp $
+#$Id: commonqt.py,v 1.30 2007-07-06 13:48:29 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -16,6 +16,13 @@ def getTopLevelWidget(child):
     if parent==None or (child.windowFlags() & QtCore.Qt.Window): return child
     return getTopLevelWidget(parent)
 
+radiowidth = None
+def getRadioWidth():
+    global radiowidth
+    if radiowidth==None:
+        radiowidth = QtGui.QRadioButton().sizeHint().width()
+    return radiowidth
+    
 # =======================================================================
 # Functions for converting between Qt date/time object and Python
 # date/time objects
@@ -132,6 +139,10 @@ class ErrorDialog(QtGui.QWidget):
         cur = self.textedit.textCursor()
         cur.movePosition(QtGui.QTextCursor.End)
         cur.insertText(string)
+
+# =======================================================================
+# Function for showing a Qt-based file/directory browse dialog
+# =======================================================================
 
 def browseForPath(parent=None,curpath=None,getdirectory=False,save=False,filter='',dlgoptions=None):
     """Shows browse dialog for opening/saving a file, or selecting a directory.
@@ -269,37 +280,39 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             self.loadData()
 
         def loadData(self):
-            data = self.datastore.data
+            rawdata = self.datastore.data
             self.rowlabels = None
             self.datamatrix = None
-            if self.datastore.type=='pointsintime':
-                self.rowlabels = data[0]
-                self.datamatrix = data[1]
-                self.datelabels = True
-            elif self.datastore.type=='profilesintime':
+            if isinstance(self.datastore,data.LinkedMatrix):
+                self.datamatrix = rawdata[-1]
+                if len(self.datastore.dimensions)==1:
+                    self.rowlabels = rawdata[0]
+                    self.datelabels = (self.datastore.dimensions[0][3]=='datetime')
+            elif isinstance(self.datastore,data.LinkedProfilesInTime):
                 if self.type==0:
-                    if self.pos<len(data[1]):
-                        self.rowlabels = data[1][self.pos]
-                        self.datamatrix = data[2][self.pos]
+                    if self.pos<len(rawdata[1]):
+                        self.rowlabels = rawdata[1][self.pos]
+                        self.datamatrix = rawdata[2][self.pos]
                         self.datelabels = False
                 else:
-                    self.rowlabels = data[0]
+                    self.rowlabels = rawdata[0]
                     self.datelabels = True
             else:
                 assert False, 'Unknown data file type "%s".' % self.datastore.type
                 
         def saveData(self):
-            data = self.datastore.data
-            if self.datastore.type=='pointsintime':
-                data[0] = self.rowlabels
-                data[1] = self.datamatrix
-            elif self.datastore.type=='profilesintime':
+            rawdata = self.datastore.data
+            if isinstance(self.datastore,data.LinkedMatrix):
+                if len(self.datastore.dimensions)==1:
+                    rawdata[0] = self.rowlabels
+                rawdata[-1] = self.datamatrix
+            elif isinstance(self.datastore,data.LinkedProfilesInTime):
                 if self.type==0:
-                    if self.pos<len(data[1]):
-                        data[1][self.pos] = self.rowlabels
-                        data[2][self.pos] = self.datamatrix
+                    if self.pos<len(rawdata[1]):
+                        rawdata[1][self.pos] = self.rowlabels
+                        rawdata[2][self.pos] = self.datamatrix
                 else:
-                    data[0] = self.rowlabels
+                    rawdata[0] = self.rowlabels
             else:
                 assert False, 'Unknown data file type "%s".' % self.datastore.type
             
@@ -371,31 +384,34 @@ class LinkedFilePlotDialog(QtGui.QDialog):
                 colindex = index.column()
                 if self.rowlabels!=None: colindex -= 1
                 if colindex==-1:
+                    if self.rowlabels[rowindex]==value: return True
                     newrowindex = self.rowlabels.searchsorted(value)
                     self.rowlabels[rowindex] = value
-                    buflab = self.rowlabels[rowindex]
-                    bufdata = self.datamatrix[rowindex,:].copy()
-                    if newrowindex>rowindex:
-                        self.rowlabels[rowindex:newrowindex-1] = self.rowlabels[rowindex+1:newrowindex]
-                        self.rowlabels[newrowindex-1] = buflab
-                        if self.datamatrix!=None:
-                            self.datamatrix[rowindex:newrowindex-1,:] = self.datamatrix[rowindex+1:newrowindex,:]
-                            self.datamatrix[newrowindex-1,:] = bufdata
-                        if self.datastore.type=='profilesintime' and self.type!=0:
-                            self.datastore.data[1].insert(newrowindex-1,self.datastore.data[1].pop(rowindex))
-                            self.datastore.data[2].insert(newrowindex-1,self.datastore.data[2].pop(rowindex))
-                        self.emitRowsChanged(rowindex,newrowindex-1)
-                    elif newrowindex<rowindex:
-                        self.rowlabels[newrowindex+1:rowindex+1] = self.rowlabels[newrowindex:rowindex]
-                        self.rowlabels[newrowindex] = buflab
-                        if self.datamatrix!=None:
-                            self.datamatrix[newrowindex+1:rowindex+1,:] = self.datamatrix[newrowindex:rowindex,:]
-                            self.datamatrix[newrowindex,:] = bufdata
-                        if self.datastore.type=='profilesintime' and self.type!=0:
-                            self.datastore.data[1].insert(newrowindex,self.datastore.data[1].pop(rowindex))
-                            self.datastore.data[2].insert(newrowindex,self.datastore.data[2].pop(rowindex))
-                        self.emitRowsChanged(newrowindex,rowindex)
+                    if newrowindex!=rowindex and newrowindex!=rowindex+1:
+                        buflab = self.rowlabels[rowindex]
+                        bufdata = self.datamatrix[rowindex,:].copy()
+                        if newrowindex>rowindex+1:
+                            self.rowlabels[rowindex:newrowindex-1] = self.rowlabels[rowindex+1:newrowindex]
+                            self.rowlabels[newrowindex-1] = buflab
+                            if self.datamatrix!=None:
+                                self.datamatrix[rowindex:newrowindex-1,:] = self.datamatrix[rowindex+1:newrowindex,:]
+                                self.datamatrix[newrowindex-1,:] = bufdata
+                            if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type!=0:
+                                self.datastore.data[1].insert(newrowindex-1,self.datastore.data[1].pop(rowindex))
+                                self.datastore.data[2].insert(newrowindex-1,self.datastore.data[2].pop(rowindex))
+                            self.emitRowsChanged(rowindex,newrowindex-1)
+                        elif newrowindex<rowindex:
+                            self.rowlabels[newrowindex+1:rowindex+1] = self.rowlabels[newrowindex:rowindex]
+                            self.rowlabels[newrowindex] = buflab
+                            if self.datamatrix!=None:
+                                self.datamatrix[newrowindex+1:rowindex+1,:] = self.datamatrix[newrowindex:rowindex,:]
+                                self.datamatrix[newrowindex,:] = bufdata
+                            if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type!=0:
+                                self.datastore.data[1].insert(newrowindex,self.datastore.data[1].pop(rowindex))
+                                self.datastore.data[2].insert(newrowindex,self.datastore.data[2].pop(rowindex))
+                            self.emitRowsChanged(newrowindex,rowindex)
                 else:
+                    if self.datamatrix[rowindex,colindex]==value: return True
                     self.datamatrix[rowindex,colindex] = value
                 self.datastore.dataChanged()
                 self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),index,index)
@@ -405,7 +421,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             newrowindex = self.datamatrix.shape[0]
             self.beginInsertRows(QtCore.QModelIndex(),newrowindex,newrowindex)
             if self.datamatrix!=None:
-                newrow = matplotlib.numerix.array([[0]*self.datamatrix.shape[1]],matplotlib.numerix.typecode(self.datamatrix))
+                newrow = matplotlib.numerix.zeros((1,self.datamatrix.shape[1]),matplotlib.numerix.typecode(self.datamatrix))
                 self.datamatrix = matplotlib.numerix.concatenate((self.datamatrix,newrow))
             if self.rowlabels!=None:
                 if self.datelabels:
@@ -442,12 +458,13 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             
         def headerData(self,section, orientation, role=QtCore.Qt.DisplayRole):
             if orientation==QtCore.Qt.Horizontal and role==QtCore.Qt.DisplayRole:
-                if self.datastore.type=='pointsintime':
-                    if section==0:
-                        val = 'time'
+                if isinstance(self.datastore,data.LinkedMatrix):
+                    if len(self.datastore.dimensions)==1: section-=1
+                    if section==-1:
+                        val = self.datastore.getDimensionNames()[0]
                     else:
-                        val = self.datastore.getVariableNames()[section-1]
-                if self.datastore.type=='profilesintime' and self.type==0:
+                        val = self.datastore.getVariableNames()[section]
+                if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type==0:
                     if section==0:
                         val = 'depth'
                     else:
@@ -455,11 +472,54 @@ class LinkedFilePlotDialog(QtGui.QDialog):
                 return QtCore.QVariant(val)
             return QtCore.QVariant()
     
+    class LinkedFileDelegate(QtGui.QItemDelegate):
+
+        def __init__(self,parent=None):
+            QtGui.QItemDelegate.__init__(self,parent)
+
+        # createEditor (inherited from QtGui.QItemDelegate)
+        #   Creates the editor widget for the model item at the given index
+        def createEditor(self, parent, option, index):
+            val = index.data(QtCore.Qt.EditRole)
+            type = val.type()
+            if type==QtCore.QVariant.Double:
+                editor = ScientificDoubleEditor(parent)
+                self.currenteditor = editor
+            elif type==QtCore.QVariant.DateTime:
+                editor = QtGui.QDateTimeEdit(parent)
+
+            # Install event filter that captures key events for view from the editor (e.g. return press).
+            editor.installEventFilter(self)
+            
+            return editor
+            
+        # setEditorData (inherited from QtGui.QItemDelegate)
+        #   Sets value in the editor widget, for the model item at the given index
+        def setEditorData(self, editor,index):
+            value = index.data(QtCore.Qt.EditRole)
+            if not value.isValid(): return
+            type = value.type()
+            if type==QtCore.QVariant.Double:
+                value,ret = value.toDouble()
+                editor.setValue(value)
+            elif type==QtCore.QVariant.DateTime:
+                value = value.toDateTime()
+                editor.setDateTime(value)
+
+        # setModelData (inherited from QtGui.QItemDelegate)
+        #   Obtains the value from the editor widget, and set it for the model item at the given index
+        def setModelData(self, editor, model, index):
+            if isinstance(editor,ScientificDoubleEditor):
+                editor.interpretText()
+                model.setData(index, QtCore.QVariant(editor.value()))
+            elif isinstance(editor,QtGui.QDateTimeEdit):
+                model.setData(index, QtCore.QVariant(editor.dateTime()))
+
     def __init__(self,node,parent=None,datafile=None):
         QtGui.QDialog.__init__(self,parent)
 
         self.node = node
-        self.varstore = data.LinkedFileVariableStore(self.node)
+        self.varstore = data.LinkedFileVariableStore.fromNode(self.node)
 
         lo = QtGui.QGridLayout()
         
@@ -467,7 +527,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
 
         # Left panel: data editor
         loDataEdit = QtGui.QHBoxLayout()
-        if self.varstore.type=='profilesintime':
+        if isinstance(self.varstore,data.LinkedProfilesInTime):
             self.listTimes = QtGui.QListView(self)
             self.listmodel = LinkedFilePlotDialog.LinkedDataModel(self.varstore,type=1)
             self.listTimes.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
@@ -483,6 +543,8 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         self.tableData.verticalHeader().setDefaultSectionSize(20)
         self.tableData.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.tableData.setModel(self.tablemodel)
+        self.tabledelegate = self.LinkedFileDelegate()
+        self.tableData.setItemDelegate(self.tabledelegate)
         
         loDataEdit.addWidget(self.tableData)
         
@@ -637,7 +699,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
 
         # Reset the models attached to the variable store.
         self.dataChanged()
-        if self.varstore.type=='profilesintime': self.listmodel.reset()
+        if isinstance(self.varstore,data.LinkedProfilesInTime): self.listmodel.reset()
         
         # Update figure
         self.panel.figure.update()
@@ -690,6 +752,10 @@ class LinkedFilePlotDialog(QtGui.QDialog):
     def reject(self):
         if self.owndatafile: self.datafile.release()
         QtGui.QDialog.reject(self)
+        
+    def accept(self):
+        self.datafile = self.varstore.getAsDataFile()
+        QtGui.QDialog.accept(self)
 
 # =======================================================================
 # LinkedFileEditor: a Qt widget for "editing" a linked file. Currently
@@ -697,13 +763,14 @@ class LinkedFilePlotDialog(QtGui.QDialog):
 # =======================================================================
 
 class LinkedFileEditor(QtGui.QWidget):
-    def __init__(self,parent=None):
+    def __init__(self,parent=None,prefix=''):
         QtGui.QWidget.__init__(self, parent)
 
         lo = QtGui.QHBoxLayout()
 
-        self.plotbutton = QtGui.QPushButton('...',self)
+        self.plotbutton = QtGui.QPushButton(prefix+'...',self)
         lo.addWidget(self.plotbutton)
+        #lo.addStretch(1)
 
         self.setLayout(lo)
 
@@ -1013,13 +1080,17 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         self.checkboxes = checkboxes
 
         self.storeinterface = self.typedstore.getInterface(showhidden=self.nohide,omitgroupers=True)
-        self.storeinterface.blockNotifyOfHiddenNodes = (not self.nohide)
 
         self.storeinterface.addVisibilityChangeHandler(self.beforeNodeVisibilityChange,self.afterNodeVisibilityChange)
         self.storeinterface.addChangeHandler(self.onNodeChanged)
         self.storeinterface.addStoreChangedHandler(self.reset)
 
         self.inheritingchecks = False
+        
+    def unlink(self):
+        self.typedstore.disconnectInterface(self.storeinterface)
+        self.storeinterface.unlink()
+        self.storeinterface = None
         
     # index (inherited from QtCore.QAbstractItemModel)
     #   Supplies unique index for the node at the given (row,column) position
@@ -1089,6 +1160,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 assert optionsroot!=None, 'Variable with "select" type lacks "options" element below.'
                 optionnodes = common.findDescendantNodes(optionsroot,['option'])
                 assert len(optionnodes)>0, 'Variable with "select" type does not have any options assigned to it.'
+                text += '\n\nAvailable options:'
                 for optionnode in optionnodes:
                     text += '\n- '
                     if optionnode.hasAttribute('description'):
@@ -1490,18 +1562,22 @@ class Wizard(QtGui.QDialog):
         self.sequence = sequence
         self.currentpage = None
 
+    def getProperty(self,propertyname):
+        if propertyname not in self.shared: return None
+        return self.shared[propertyname]
+
     def setProperty(self,propertyname,value):
         if propertyname in self.shared and isinstance(self.shared[propertyname],common.referencedobject):
             self.shared[propertyname].release()
         self.shared[propertyname] = value
         self.onPropertyChange(propertyname)
-
-    def getProperty(self,propertyname):
-        if propertyname not in self.shared: return None
-        return self.shared[propertyname]
         
     def onPropertyChange(self,propertyname):
         pass
+        
+    def clearProperties(self):
+        for propertyname in self.shared.keys():
+            self.setProperty(propertyname,None)
 
     def unlink(self):
         self.settings.save()
@@ -1679,24 +1755,46 @@ class WizardFork(WizardSequence):
 
 class PropertyEditorFactory:
 
-    def __init__(self,typedstore,live=False):
+    def __init__(self,typedstore,live=False,allowhide=False,unitinside=False):
         self.store = typedstore
         self.changed = False
         self.live = live
+        self.allowhide = allowhide
+        self.unitinside = unitinside
         self.editors = []
 
         if self.live:
-            self.storeinterface = xmlstore.TypedStoreInterface(self.store)
+            self.storeinterface = self.store.getInterface()
             self.storeinterface.addChangeHandler(self.onStoreNodeChanged)
             self.storeinterface.addVisibilityChangeHandler(None,self.onStoreVisibilityChanged)
             self.storeinterface.addStoreChangedHandler(self.onStoreChanged)
+            
+    def unlink(self):
+        if self.live:
+            self.store.disconnectInterface(self.storeinterface)
+            self.storeinterface.unlink()
+            self.storeinterface = None
 
-    def createEditor(self,location,parent):
+    def createEditor(self,location,parent,allowhide=None,**kwargs):
         node = self.store.root.getLocation(location)
         assert node!=None, 'Unable to create editor for "%s"; this node does not exist.' % location
-        editor = PropertyEditor(node,parent)
+
+        # The editor inherits some optional arguments from the responsible factory.
+        if 'allowhide' not in kwargs: kwargs['allowhide'] = self.allowhide
+        if 'unitinside' not in kwargs: kwargs['unitinside'] = self.unitinside
+
+        # Create the editor object.        
+        editor = PropertyEditor(node,parent,**kwargs)
+        
+        # If we are "live", update the enabled/disabled state or visibility of the editor.
+        if self.live: editor.updateEditorEnabled()
+        
+        # Make sure we eceive notifications when the value in the editor changes.
         editor.addChangeHandler(self.onNodeEdited)
+        
+        # Add the editor to our list of editors.
         self.editors.append(editor)
+        
         return editor
 
     def updateStore(self):
@@ -1715,7 +1813,8 @@ class PropertyEditorFactory:
     def onStoreVisibilityChanged(self,node,visible,showhide):
         if not showhide: return
         for editor in self.editors:
-            editor.updateEditorEnabled()
+            if node is editor.node:
+                editor.updateEditorEnabled()
 
     def onStoreChanged(self):
         for editor in self.editors:
@@ -1730,38 +1829,106 @@ class PropertyEditorFactory:
 
 class PropertyEditor:
 
-    def __init__(self,node,parent):
+    def __init__(self,node,parent,allowhide=False,unitinside=False,**kwargs):
         self.node = node
-        self.editor = self.createEditor(node,parent)
+        self.unit = None
+        self.label = None
+        self.allowhide = allowhide
+        self.unitinside = unitinside
+
+        self.editor = self.createEditor(node,parent,**kwargs)
         self.updateEditorValue()
-        self.updateEditorEnabled()
+        
         self.changehandlers = []
         self.suppresschangeevent = False
         self.location = node.location[:]
         
+    def addToGridLayout(self,gridlayout,irow=None,icolumn=0):
+        """Adds the editor plus label to an existing QGridLayout, in the specified row, starting at the specified column.
+        """
+        if irow==None: irow = gridlayout.rowCount()
+        if self.label==None: self.createLabel()
+        gridlayout.addWidget(self.label,irow,icolumn)
+        gridlayout.addWidget(self.editor,irow,icolumn+1)
+        if not self.unitinside:
+            if self.unit==None: self.createUnit()
+            gridlayout.addWidget(self.unit,irow,icolumn+2)
+
+    def addToBoxLayout(self,boxlayout):
+        """Adds the editor plus label to an existing QBoxLayout.
+        """
+        if self.label==None: self.createLabel()
+        layout = QtGui.QHBoxLayout()
+        layout.addWidget(self.label)
+        layout.addWidget(self.editor)
+        if not self.unitinside:
+            if self.unit==None: self.createUnit()
+            layout.addWidget(self.unit)
+        boxlayout.addLayout(layout)
+
+    def createUnit(self):
+        """Creates a label with the unit of the editor, based on the description in the source node.
+        This function can be called only once in the life time of the object.
+        """
+        assert self.unit==None, 'Cannot create unit because it has already been created.'
+        text = self.node.templatenode.getAttribute('unit')
+        self.unit = QtGui.QLabel(text,self.editor.parent())
+        if self.allowhide and self.node.isHidden(): self.unit.setVisible(False)
+        return self.unit
+        
     def createLabel(self):
+        """Creates a label for the editor, based on the description in the source node.
+        This function can be called only once in the life time of the object.
+        """
+        assert self.label==None, 'Cannot create label because it has already been created.'
         text = self.node.getText(detail=1,capitalize=True)+': '
-        lab = QtGui.QLabel(text,self.editor.parent())
-        return lab
+        self.label = QtGui.QLabel(text,self.editor.parent())
+        if self.allowhide and self.node.isHidden(): self.label.setVisible(False)
+        return self.label
+        
+    def setVisible(self,visible):
+        """Sets the visibility of the editor and label (if any).
+        """
+        if self.label!=None: self.label.setVisible(visible)
+        if self.unit !=None: self.unit.setVisible(visible)
+        self.editor.setVisible(visible)
 
     def updateStore(self):
+        """Updates the value of the source node with the current value of the editor.
+        """
         return self.setNodeData(self.editor,self.node)
 
     def updateEditorValue(self):
+        """Updates the value in the editor, so it reflects the current value of the source node.
+        """
         self.setEditorData(self.editor,self.node)
 
     def updateEditorEnabled(self):
-        self.editor.setEnabled(not self.node.isHidden())
+        """Enables/disables or shows/hides the editor (and label, if any) based on the visibility of the source node.
+        Called by the responsible factory when the "hidden" state of the source node changes.
+        """
+        if isinstance(self.editor,QtGui.QWidget):
+            hidden = self.node.isHidden()
+            if self.allowhide:
+                self.setVisible(not hidden)
+            else:
+                self.editor.setEnabled(not hidden)
 
     def addChangeHandler(self,callback):
+        """Registers an event handler to be called when the value in the editor changes.
+        Used by the responsible factory to immediately update the source node, if editing is "live".
+        """
         self.changehandlers.append(callback)
 
     def onChange(self):
+        """Called internally when the value in the editor changes. Dispatches the change
+        event to the attached event handlers (if any).
+        """
         if not self.suppresschangeevent:
             for callback in self.changehandlers:
                 callback(self)
 
-    def createEditor(self,node,parent):
+    def createEditor(self,node,parent,selectwithradio=False,boolwithcheckbox=False,fileprefix=None):
         templatenode = node.templatenode
         nodetype = node.getValueType()
         editor = None
@@ -1776,34 +1943,53 @@ class PropertyEditor:
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='float':
             editor = ScientificDoubleEditor(parent)
-            if templatenode.hasAttribute('minimum'): editor.setMinimum(float(templatenode.getAttribute('minimum')))
-            if templatenode.hasAttribute('maximum'): editor.setMaximum(float(templatenode.getAttribute('maximum')))
-            if templatenode.hasAttribute('unit'):    editor.setSuffix(' '+templatenode.getAttribute('unit'))
+            if templatenode.hasAttribute('minimum'):
+                editor.setMinimum(float(templatenode.getAttribute('minimum')))
+            if templatenode.hasAttribute('maximum'):
+                editor.setMaximum(float(templatenode.getAttribute('maximum')))
+            if self.unitinside and templatenode.hasAttribute('unit'):
+                editor.setSuffix(' '+templatenode.getAttribute('unit'))
             self.currenteditor = editor
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='bool':
-            editor = QtGui.QComboBox(parent)
-            editor.addItem('True',QtCore.QVariant(True))
-            editor.addItem('False',QtCore.QVariant(False))
-            editor.connect(editor, QtCore.SIGNAL("currentIndexChanged(int)"), self.onChange)
+            if boolwithcheckbox:
+                editor = QtGui.QCheckBox(node.getText(detail=1,capitalize=True),parent)
+                editor.connect(editor, QtCore.SIGNAL('stateChanged(int)'), self.onChange)
+            else:
+                editor = QtGui.QComboBox(parent)
+                editor.addItem('True',QtCore.QVariant(True))
+                editor.addItem('False',QtCore.QVariant(False))
+                editor.connect(editor, QtCore.SIGNAL('currentIndexChanged(int)'), self.onChange)
         elif nodetype=='select':
-            editor = QtGui.QComboBox(parent)
             options = common.findDescendantNode(templatenode,['options'])
             if options==None: raise 'Node is of type "select" but lacks "options" childnode.'
-            for ch in options.childNodes:
-                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                    editor.addItem(ch.getAttribute('label'),QtCore.QVariant(int(ch.getAttribute('value'))))
-            editor.connect(editor, QtCore.SIGNAL("currentIndexChanged(int)"), self.onChange)
+            if selectwithradio:
+                editor = QtGui.QButtonGroup()
+                for ch in options.childNodes:
+                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                        opt = QtGui.QRadioButton(ch.getAttribute('label'),parent)
+                        if ch.hasAttribute('description'):
+                            opt.setWhatsThis(ch.getAttribute('description'))
+                        editor.addButton(opt,int(ch.getAttribute('value')))
+                editor.connect(editor, QtCore.SIGNAL('buttonClicked(int)'), self.onChange)
+            else:
+                editor = QtGui.QComboBox(parent)
+                for ch in options.childNodes:
+                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                        editor.addItem(ch.getAttribute('label'),QtCore.QVariant(int(ch.getAttribute('value'))))
+                editor.connect(editor, QtCore.SIGNAL('currentIndexChanged(int)'), self.onChange)
         elif nodetype=='datetime':
             editor = QtGui.QDateTimeEdit(parent)
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='file':
-            editor = PathEditor(parent,compact=True)
+            if fileprefix==None: fileprefix = node.getText(detail=1,capitalize=True)
+            editor = LinkedFileEditor(parent,prefix=fileprefix)
             self.currenteditor = editor
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         else:
             assert False, 'Unknown node type "%s".' % nodetype
-        editor.setWhatsThis(node.getText(detail=2,capitalize=True))
+        if isinstance(editor,QtGui.QWidget):
+            editor.setWhatsThis(node.getText(detail=2,capitalize=True))
         return editor
 
     def setEditorData(self,editor,node):
@@ -1817,12 +2003,20 @@ class PropertyEditor:
                 editor.setValue(0)
             elif nodetype=='float':
                 editor.setText(editor.suffix)
-            elif nodetype=='bool' or nodetype=='select':
-                editor.setCurrentIndex(0)
+            elif nodetype=='bool':
+                if isinstance(editor,QtGui.QCheckBox):
+                    editor.setChecked(False)
+                else:
+                    editor.setCurrentIndex(0)
+            elif nodetype=='select':
+                if isinstance(editor,QtGui.QWidget):
+                    editor.setCurrentIndex(0)
+                else:
+                    editor.button(0).setChecked(True)
             elif nodetype=='datetime':
                 editor.setDateTime(QtCore.QDateTime())
             elif nodetype=='file':
-                editor.setPath('')
+                editor.setNode(node)
         else:
             if nodetype=='string':
                 editor.setText(value)
@@ -1831,21 +2025,27 @@ class PropertyEditor:
             elif nodetype=='float':
                 editor.setValue(value)
             elif nodetype=='bool':
-                for ioption in range(editor.count()):
-                    optionvalue = editor.itemData(ioption).toBool()
-                    if optionvalue==value:
-                        editor.setCurrentIndex(ioption)
-                        break
+                if isinstance(editor,QtGui.QCheckBox):
+                    editor.setChecked(value)
+                else:
+                    for ioption in range(editor.count()):
+                        optionvalue = editor.itemData(ioption).toBool()
+                        if optionvalue==value:
+                            editor.setCurrentIndex(ioption)
+                            break
             elif nodetype=='select':
-                for ioption in range(editor.count()):
-                    optionvalue,ret = editor.itemData(ioption).toInt()
-                    if optionvalue==value:
-                        editor.setCurrentIndex(ioption)
-                        break
+                if isinstance(editor,QtGui.QWidget):
+                    for ioption in range(editor.count()):
+                        optionvalue,ret = editor.itemData(ioption).toInt()
+                        if optionvalue==value:
+                            editor.setCurrentIndex(ioption)
+                            break
+                else:
+                    editor.button(value).setChecked(True)
             elif nodetype=='datetime':
                 editor.setDateTime(datetime2qtdatetime(value))
             elif nodetype=='file':
-                editor.setPath(value)
+                editor.setNode(node)
         self.suppresschangeevent = False
 
     def setNodeData(self,editor,node):
@@ -1859,13 +2059,19 @@ class PropertyEditor:
             editor.interpretText()
             return node.setValue(editor.value())
         elif nodetype=='bool':
-            return node.setValue(editor.itemData(editor.currentIndex()).toBool())
+            if isinstance(editor,QtGui.QCheckBox):
+                return node.setValue(editor.checkState()==QtCore.Qt.Checked)
+            else:
+                return node.setValue(editor.itemData(editor.currentIndex()).toBool())
         elif nodetype=='select':
-            return node.setValue(editor.itemData(editor.currentIndex()).toInt())
+            if isinstance(editor,QtGui.QWidget):
+                return node.setValue(editor.itemData(editor.currentIndex()).toInt())
+            else:
+                return node.setValue(editor.checkedId())
         elif nodetype=='datetime':
             return node.setValue(qtdatetime2datetime(editor.dateTime()))
         elif nodetype=='file':
-            return node.setValue(editor.path())
+            return node.setValue(editor.datafile)
 
 class FigurePanel(QtGui.QWidget):
     

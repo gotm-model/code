@@ -85,7 +85,7 @@ class Report(common.referencedobject):
             if callback!=None: callback(istep/steps,'Creating scenario description...')
             scenarionode = scenarionodes[0]
 
-            sceninterface = xmlstore.TypedStoreInterface(scenario,showhidden=False,omitgroupers=True)
+            sceninterface = scenario.getInterface(showhidden=False,omitgroupers=True)
 
             scentable = xmldocument.createElement('table')
             scentable.setAttribute('id','tableScenario')
@@ -105,6 +105,9 @@ class Report(common.referencedobject):
             # Create rows
             for tr in sceninterface.toHtml(scenario.root,xmldocument,totaldepth-1,level=-1,hidedefaults=True):
                 scentable.appendChild(tr)
+            
+            # Break link from scenario to interface.
+            scenario.disconnectInterface(sceninterface)
 
             scenarionode.parentNode.replaceChild(scentable,scenarionode)
 

@@ -1326,6 +1326,15 @@
 			<element id="seagrass_calc" type="bool" label="use seagrass model" />
 			<element id="grassfile" type="file" label="depth-varying maximum excursion limit and friction coefficient">
 				<condition type="eq" variable="./seagrass_calc" value="True" />
+				<fileinfo type="singleprofile">
+					<filedimensions>
+						<filedimension label="height above bottom" unit="m" />
+					</filedimensions>
+					<filevariables>
+						<filevariable label="maximum excursion limit" unit="m" />
+						<filevariable label="friction coefficient" unit="1/m" />
+					</filevariables>
+				</fileinfo>
 			</element>
 			<element id="XP_rat" type="float" label="efficiency of turbulence production by seagrass friction">
 				<condition type="eq" variable="./seagrass_calc" value="True" />

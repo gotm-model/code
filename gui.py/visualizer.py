@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.20 2007-06-29 09:56:59 jorn Exp $
+#$Id: visualizer.py,v 1.21 2007-07-06 13:48:29 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -240,8 +240,7 @@ class PageReportGenerator(commonqt.WizardPage):
 
         layout.setRowStretch(5,1)
         layout.setColumnStretch(1,1)
-        radiowidth = QtGui.QCheckBox().sizeHint().width()
-        layout.setColumnMinimumWidth(0,radiowidth)
+        layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
 
         self.setLayout(layout)
 
@@ -293,7 +292,7 @@ class PageSave(commonqt.WizardPage):
         self.radioSave   = QtGui.QRadioButton('Yes, I want to save the result to file.', parent)
 
         self.pathSave = commonqt.PathEditor(self,header='File to save to: ',save=True)
-        self.pathSave.filter = 'GOTM result files (*.gotmresult);;NetCDF files (*.nc);;All files (*.*)'
+        self.pathSave.filter = 'GOTM result files (*.gotmresult);;All files (*.*)'
         if self.result.path!=None: self.pathSave.setPath(self.result.path)
 
         self.checkboxAddFigures = QtGui.QCheckBox('Also save my figure settings.',self)
@@ -311,8 +310,7 @@ class PageSave(commonqt.WizardPage):
 
         layout.setRowStretch(5,1)
         layout.setColumnStretch(1,1)
-        radiowidth = QtGui.QRadioButton().sizeHint().width()
-        layout.setColumnMinimumWidth(0,radiowidth)
+        layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
 
         self.setLayout(layout)
 
@@ -345,11 +343,8 @@ class PageSave(commonqt.WizardPage):
                 if ret==QtGui.QMessageBox.No:
                     return False
             try:
-                if targetpath.endswith('.nc'):
-                    self.result.saveNetCDF(targetpath)
-                else:
-                    self.result.save(targetpath,addfiguresettings=self.checkboxAddFigures.isChecked())
-                    self.owner.settings.addUniqueValue(('Paths','RecentResults'),'Path',targetpath)
+                self.result.save(targetpath,addfiguresettings=self.checkboxAddFigures.isChecked())
+                self.owner.settings.addUniqueValue(('Paths','RecentResults'),'Path',targetpath)
             except Exception,e:
                 print e
                 QtGui.QMessageBox.critical(self, 'Unable to save result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
@@ -364,7 +359,7 @@ class PageFinal(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
-        self.label = QtGui.QLabel('You are now done.',self)
+        self.label = QtGui.QLabel('You are now done. Click the "Home" button below to work with another scenario or result.',self)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.label)

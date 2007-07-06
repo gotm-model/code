@@ -57,9 +57,10 @@ class GOTMWizard(commonqt.Wizard):
         menu = QtGui.QMenu(self)
         if scen!=None:
             actSaveScenario   = menu.addAction('Save scenario as...')
-            actExportScenario = menu.addAction('Export scenario as namelists...')
+            actExportScenario = menu.addAction('Export scenario to namelists...')
         if result!=None:
             actSaveResult     = menu.addAction('Save result as...')
+            actExportResult   = menu.addAction('Export result to NetCDF...')
             
         # Show menu
         actChosen = menu.exec_(QtGui.QCursor.pos())
@@ -73,7 +74,7 @@ class GOTMWizard(commonqt.Wizard):
                     scen.saveAll(path)
                 return
             elif actChosen==actExportScenario:
-                # User chose "Export scenario as namelists..."
+                # User chose "Export scenario to namelists..."
                 
                 class ChooseVersionDialog(QtGui.QDialog):
                     """Dialog for choosing the version of GOTM to export namelists for.
@@ -84,7 +85,7 @@ class GOTMWizard(commonqt.Wizard):
                         layout = QtGui.QVBoxLayout()
                         
                         # Add introductory label.
-                        self.label = QtGui.QLabel('Choose version to export to:',self)
+                        self.label = QtGui.QLabel('Choose the version of GOTM to export for:',self)
                         layout.addWidget(self.label)
                         
                         # Add combobox with versions.
@@ -114,12 +115,14 @@ class GOTMWizard(commonqt.Wizard):
 
                         self.setLayout(layout)
                         
-                        self.setWindowTitle('Choose version')
+                        self.setWindowTitle('Choose GOTM version')
                         
                 dialog = ChooseVersionDialog(self)
                 res = dialog.exec_()
                 if res==QtGui.QDialog.Accepted:
-                    path = commonqt.browseForPath(self,getdirectory=True)
+                    curpath = None
+                    if scen.path!=None: curpath = os.path.dirname(scen.path)
+                    path = commonqt.browseForPath(self,curpath=curpath,getdirectory=True)
                     if path!=None:
                         exportscen = scen.convert(unicode(dialog.comboVersion.currentText()))
                         exportscen.writeAsNamelists(path,addcomments=True)
@@ -128,12 +131,19 @@ class GOTMWizard(commonqt.Wizard):
         if result!=None:
             if actChosen==actSaveResult:
                 # User chose "Save result as..."
-                path = commonqt.browseForPath(self,curpath=result.path,save=True,filter='GOTM result files (*.gotmresult);;NetCDF files (*.nc);;All files (*.*)')
+                path = commonqt.browseForPath(self,curpath=result.path,save=True,filter='GOTM result files (*.gotmresult);;All files (*.*)')
                 if path!=None:
-                    if path.endswith('.nc'):
-                        result.saveNetCDF(path)
-                    else:
-                        result.save(path)
+                    result.save(path)
+                return
+            elif actChosen==actExportResult:
+                # User chose "Export result to NetCDF..."
+                curpath = None
+                if result.path!=None:
+                    root,ext = os.path.splitext(result.path)
+                    curpath = root+'.nc'
+                path = commonqt.browseForPath(self,curpath=curpath,save=True,filter='NetCDF files (*.nc);;All files (*.*)')
+                if path!=None:
+                    result.saveNetCDF(path)
                 return
 
 class PageIntroduction(commonqt.WizardPage):
@@ -144,6 +154,9 @@ class PageIntroduction(commonqt.WizardPage):
     
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
+
+        # Clear all non-persistent settings.
+        self.owner.clearProperties()
 
         # For version only:
         import matplotlib,numpy,gotm,pynetcdf
@@ -243,19 +256,20 @@ class PageChooseAction(commonqt.WizardPage):
         layout.addWidget(self.radioResult,3,0,1,2)
         layout.addWidget(self.resultwidget,4,1,1,1)
         
-        radiowidth = QtGui.QRadioButton().sizeHint().width()
-        layout.setColumnMinimumWidth(0,radiowidth)
+        layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
 
         layout.setRowStretch(5,1)
         layout.setColumnStretch(1,1)
         
         self.setLayout(layout)
 
+        # Pre-check result if a result object was loaded previously.
         if self.owner.getProperty('mainaction')=='result':
             self.radioResult.setChecked(True)
         else:
             self.radioScenario.setChecked(True)
             
+        # Fill in path of currently loaded result or scenario.
         curres = self.owner.getProperty('result')
         if curres!=None and curres.path!=None:
             self.resultwidget.setPath(curres.path)
@@ -263,6 +277,10 @@ class PageChooseAction(commonqt.WizardPage):
             curscen = self.owner.getProperty('scenario')
             if curscen!=None and curscen.path!=None:
                 self.scenariowidget.setPath(curscen.path)
+
+        # Clear currently loaded scenario and result.
+        self.owner.setProperty('result', None)
+        self.owner.setProperty('scenario', None)
             
         self.onSourceChange()
 
@@ -290,7 +308,6 @@ class PageChooseAction(commonqt.WizardPage):
                 QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
             self.owner.setProperty('mainaction','scenario')
-            self.owner.setProperty('result', None)
             self.owner.setProperty('scenario', newscen)
 
             # Add to list of most-recently-used scenarios
@@ -306,7 +323,8 @@ class PageChooseAction(commonqt.WizardPage):
                 return False
             self.owner.setProperty('mainaction','result')
             self.owner.setProperty('result', newresult)
-            self.owner.setProperty('scenario', newresult.scenario.addref())
+            if newresult.scenario!=None:
+                self.owner.setProperty('scenario', newresult.scenario.addref())
 
             # Add to list of most-recently-used results
             if newresult.path!=None:
@@ -383,12 +401,17 @@ def main():
         wiz.onNext()
         wiz.setProperty('mainaction','result')
         wiz.setProperty('result', result)
-        wiz.setProperty('scenario', result.scenario)
+        if openpath.endswith('.gotmresult'):
+            self.owner.settings.addUniqueValue(('Paths','RecentResults'),'Path',openpath)
+        if result.scenario!=None:
+            wiz.setProperty('scenario', result.scenario.addref())
         wiz.onNext(askoldpage=False)
     elif scen!=None:
         wiz.onNext()
         wiz.setProperty('mainaction','scenario')
         wiz.setProperty('scenario',scen)
+        if openpath.endswith('.gotmscenario'):
+            self.owner.settings.addUniqueValue(('Paths','RecentScenarios'),'Path',openpath)
         wiz.onNext(askoldpage=False)
 
     # Show wizard dialog

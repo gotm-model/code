@@ -490,6 +490,7 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
                       ('/gotmturb/scnd',                  '/gotmturb/scnd/scnd_coeff'),
                       ('/kpp/kpp',                        '/gotmturb/kpp'),
                       ('/obs/sprofile/s_prof_method',     '/obs/sprofile'),
+                      ('/obs/sprofile',                   '/obs/sprofile/SRelax'),
                       ('/obs/tprofile/t_prof_method',     '/obs/tprofile'),
                       ('/obs/ext_pressure/ext_press_method','/obs/ext_pressure'),
                       ('/obs/int_pressure/int_press_method','/obs/int_pressure'),
@@ -511,25 +512,20 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
         xmlstore.Convertor.convert(self,source,target)
 
         target.setProperty(['meanflow','z0s'],target.getProperty(['meanflow','z0s_min']))
-
-        target.setProperty(['meanflow','z0s'],target.getProperty(['meanflow','z0s_min']))
         
         target.setProperty(['obs','sprofile','s_const'],target.getProperty(['obs','sprofile','s_1']))
         target.setProperty(['obs','sprofile','s_surf'], target.getProperty(['obs','sprofile','s_1']))
+        
+        # Merge analytical salinity profile setting into main salinity settings.
+        if source.getProperty(['obs','sprofile','s_prof_method'])==1:
+            target.setProperty(['obs','sprofile'],10+source.getProperty(['obs','sprofile','s_analyt_method']))
 
         # Determine type of salinity relaxation.        
         SRelax = 0  # default: no relaxation
+        relaxbulk = source.getProperty(['obs','sprofile','SRelaxTauM'])<1e+15
         relaxbott = source.getProperty(['obs','sprofile','SRelaxTauB'])<1e+15 and source.getProperty(['obs','sprofile','SRelaxBott'])>0
         relaxsurf = source.getProperty(['obs','sprofile','SRelaxTauS'])<1e+15 and source.getProperty(['obs','sprofile','SRelaxSurf'])>0
-        if relaxsurf and relaxbott:
-            SRelax = 4  # bulk, surface, bottom
-        elif relaxsurf:
-            SRelax = 3  # bulk, surface
-        elif relaxbott:
-            SRelax = 2  # bulk, bottom
-        elif source.getProperty(['obs','sprofile','SRelaxTauM'])<1e+15:
-            SRelax = 1  # bulk
-        target.setProperty(['obs','sprofile','SRelax'],SRelax)
+        target.setProperty(['obs','sprofile','SRelax'],relaxbulk or relaxbott or relaxsurf)
         
         target.setProperty(['obs','tprofile','t_const'],target.getProperty(['obs','tprofile','t_1']))
         target.setProperty(['obs','tprofile','t_surf'], target.getProperty(['obs','tprofile','t_1']))
@@ -569,15 +565,21 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
         if not source.getProperty(['meanflow','charnock']):
             target.setProperty(['gotmmean','meanflow','z0s_min'],source.getProperty(['meanflow','z0s']))
 
+        # If an analytical salinity profile is used, extract the analytical method from the main salinity setting.
+        sprofile = source.getProperty(['obs','sprofile'])
+        if sprofile>10:
+            target.setProperty(['obs','sprofile','s_prof_method'],1)
+            target.setProperty(['obs','sprofile','s_analyt_method'],sprofile-10)
+
         # Choose between constant and surface salinity based on chosen analytical method.
-        s_analyt_method = source.getProperty(['obs','sprofile','s_analyt_method'])
+        s_analyt_method = target.getProperty(['obs','sprofile','s_analyt_method'])
         if s_analyt_method==1:
             target.setProperty(['obs','sprofile','s_1'],source.getProperty(['obs','sprofile','s_const']))
         elif s_analyt_method==3:
             target.setProperty(['obs','sprofile','s_1'],source.getProperty(['obs','sprofile','s_surf']))
 
         # Choose between constant and surface temperature based on chosen analytical method.
-        t_analyt_method = source.getProperty(['obs','tprofile','t_analyt_method'])
+        t_analyt_method = target.getProperty(['obs','tprofile','t_analyt_method'])
         if t_analyt_method==1:
             target.setProperty(['obs','tprofile','t_1'],source.getProperty(['obs','tprofile','t_const']))
         elif t_analyt_method==3:
@@ -587,11 +589,10 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
         target.setProperty(['gotmrun','output','nsave'],int(source.getProperty(['output','dtsave'])/dt))
 
         # Disable salinity relaxation where needed.
-        SRelax = source.getProperty(['obs','sprofile','SRelax'])
-        if SRelax==0: target.setProperty(['obs','sprofile','SRelaxTauM'],1.e15)
-        if SRelax!=4:
-            if SRelax!=2: target.setProperty(['obs','sprofile','SRelaxTauB'],1.e15)
-            if SRelax!=3: target.setProperty(['obs','sprofile','SRelaxTauS'],1.e15)
+        if not source.getProperty(['obs','sprofile','SRelax']):
+            target.setProperty(['obs','sprofile','SRelaxTauM'],1.e15)
+            target.setProperty(['obs','sprofile','SRelaxTauB'],1.e15)
+            target.setProperty(['obs','sprofile','SRelaxTauS'],1.e15)
 
         # Disable temperature relaxation where needed.
         TRelax = source.getProperty(['obs','tprofile','TRelax'])

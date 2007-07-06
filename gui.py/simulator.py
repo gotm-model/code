@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.10 2007-05-01 19:46:56 jorn Exp $
+#$Id: simulator.py,v 1.11 2007-07-06 13:48:29 jorn Exp $
 
 import math
 
@@ -55,35 +55,35 @@ class PageProgress(commonqt.WizardPage):
         self.scenario = parent.getProperty('scenario')
         assert self.scenario!=None, 'No scenario available.'
 
-        self.result = parent.getProperty('result')
+        oldresult = parent.getProperty('result')
         
         layout = QtGui.QVBoxLayout()
 
         # Add label that asks user to wait
         self.busylabel = QtGui.QLabel('Please wait while the simulation runs...',self)
-        self.busylabel.setVisible(self.result==None)
+        self.busylabel.setVisible(oldresult==None)
         layout.addWidget(self.busylabel)
         
         # Add progress bar
         self.bar = QtGui.QProgressBar(self)
         self.bar.setRange(0,1000)
-        self.bar.setVisible(self.result==None)
+        self.bar.setVisible(oldresult==None)
         layout.addWidget(self.bar)
         
         # Add label for time remaining.
         self.labelRemaining = QtGui.QLabel(self)
-        self.labelRemaining.setVisible(self.result==None)
+        self.labelRemaining.setVisible(oldresult==None)
         layout.addWidget(self.labelRemaining)
 
         # Add (initially hidden) label for result.
         self.resultlabel = QtGui.QLabel('The simulation is complete.',self)
-        self.resultlabel.setVisible(self.result!=None)
+        self.resultlabel.setVisible(oldresult!=None)
         layout.addWidget(self.resultlabel)
 
         # Add (initially hidden) show/hide output button.
         self.showhidebutton = QtGui.QPushButton('Show diagnostic output',self)
         self.showhidebutton.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
-        self.showhidebutton.setVisible(self.result!=None)
+        self.showhidebutton.setVisible(oldresult!=None)
         layout.addWidget(self.showhidebutton)
         self.connect(self.showhidebutton, QtCore.SIGNAL('clicked()'),self.onShowHideOutput)
 
@@ -91,7 +91,7 @@ class PageProgress(commonqt.WizardPage):
         self.text = QtGui.QTextEdit(self)
         self.text.setLineWrapMode(QtGui.QTextEdit.NoWrap)
         self.text.setReadOnly(True)
-        if self.result!=None: self.text.setPlainText(self.result.stderr)
+        if oldresult!=None: self.text.setPlainText(oldresult.stderr)
         self.text.hide()
         layout.addWidget(self.text)
         layout.setStretchFactor(self.text,1)
@@ -113,7 +113,7 @@ class PageProgress(commonqt.WizardPage):
         self.bar.setValue(0)
        
     def showEvent(self,event):
-        if self.result==None: self.startRun()
+        if self.owner.getProperty('result')==None: self.startRun()
 
     def startRun(self):
         self.gotmthread = GOTMThread(self)
@@ -157,13 +157,13 @@ class PageProgress(commonqt.WizardPage):
         
         # Save result object
         if result.returncode==0:
-            self.result = result
+            self.owner.setProperty('result',result)
             self.completeStateChanged()
         else:
             result.release()
         
     def isComplete(self):
-        return (self.result!=None)
+        return (self.owner.getProperty('result')!=None)
     
     def saveData(self,mustbevalid):
         # Stop worker thread
@@ -174,12 +174,7 @@ class PageProgress(commonqt.WizardPage):
             if not self.gotmthread.isFinished(): self.gotmthread.wait()
             self.gotmthread = None
             
-        if mustbevalid:
-            if self.owner.getProperty('result')==None:
-                # Store result
-                assert self.result!=None, 'Cannot move on because result is not available ("next" button should have been disabled?)'
-                self.owner.setProperty('result',self.result)
-        else:
+        if not mustbevalid:
             # Remove any currently stored result.
             self.owner.setProperty('result',None)
 

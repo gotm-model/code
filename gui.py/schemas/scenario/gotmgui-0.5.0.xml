@@ -44,7 +44,7 @@
 		<element id="ddl" type="float" label="bottom zooming" description="Grid zooming (bottom), 0: no zooming; > 3 strong zooming" minimum="0">
 			<condition type="eq" variable="./grid_method" value="0"/>
 		</element>
-		<element id="grid_file" type="file" label="file for sigma or cartesian grid" description="File for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
+		<element id="grid_file" type="file" label="custom grid" description="File for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
 			<condition type="ne" variable="./grid_method" value="0"/>
 			<fileinfo type="verticalgrid">
 				<filevariables>
@@ -616,61 +616,34 @@
 
 	<element id="obs" label="observations">
 	
-		<element id="sprofile" type="select" label="salinity profiles" description="observed or prescribed salinity profiles">
+		<element id="sprofile" type="select" label="salinity profiles" description="Together with temperature, salinity determines the buoyancy of the water. Vertical gradients in buoyancy affect the production and destruction of turbulence. For accurate resolution of turbulent processes, it is therefore essential that you provide information on observed or estimated salinities here.">
 			<options>
 				<option value="0" label="none: salinity equation is not solved"/>
-				<option value="1" label="analytically prescribed initial profile"/>
+				<option value="11" label="analytical: constant salinity across column"/>
+				<option value="12" label="analytical: two-layer stratification"/>
+				<option value="13" label="analytical: profile with constant N²"/>
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element id="s_analyt_method" type="select" label="method to create analytically prescribed inital profile">
-				<condition type="eq" variable="." value="1"/>
-				<options>
-					<option value="1" label="constant salinity across column"/>
-					<option value="2" label="two-layer stratification"/>
-					<option value="3" label="profile with constant N^2"/>
-				</options>
-			</element>
 			<element id="z_s1" type="float" label="upper layer thickness" unit="m">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./s_analyt_method" value="2"/>
-				</condition>
+				<condition type="eq" variable="." value="12"/>
 			</element>
 			<element id="s_const" type="float" label="constant salinity" unit="psu">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./s_analyt_method" value="1"/>
-				</condition>
+				<condition type="eq" variable="." value="11"/>
 			</element>
 			<element id="s_1" type="float" label="upper layer salinity" unit="psu">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./s_analyt_method" value="2"/>
-				</condition>
+				<condition type="eq" variable="." value="12"/>
 			</element>
 			<element id="s_surf" type="float" label="surface salinity" unit="psu">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./s_analyt_method" value="3"/>
-				</condition>
+				<condition type="eq" variable="." value="13"/>
 			</element>
 			<element id="z_s2" type="float" label="lower layer thickness" unit="m">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./s_analyt_method" value="2"/>
-				</condition>
+				<condition type="eq" variable="." value="12"/>
 			</element>
 			<element id="s_2" type="float" label="lower layer salinity" unit="psu">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./s_analyt_method" value="2"/>
-				</condition>
+				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element id="s_obs_NN" type="float" label="constant N^2">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./s_analyt_method" value="3"/>
-				</condition>
+			<element id="s_obs_NN" type="float" label="constant N²">
+				<condition type="eq" variable="." value="13"/>
 			</element>
 			<element id="s_prof_file" type="file" label="custom salinity profiles">
 				<condition type="eq" variable="." value="2"/>
@@ -680,42 +653,23 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="SRelax" type="select" label="relaxation towards observations">
+			<element id="SRelax" type="bool" label="relax model results towards observations">
 				<condition type="ne" variable="." value="0"/>
-				<options>
-					<option label="none" value="0"/>
-					<option label="whole column" value="1"/>
-					<option label="bottom layer and bulk"  value="2"/>
-					<option label="surface layer and bulk" value="3"/>
-					<option label="bottom layer, surface layer and bulk" value="4"/>
-				</options>
-			</element>
-			<element id="SRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
-				<condition type="ne" variable="./SRelax" value="0"/>
-			</element>
-			<element id="SRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
-				<condition type="or">
-					<condition type="eq" variable="./SRelax" value="2"/>
-					<condition type="eq" variable="./SRelax" value="4"/>
-				</condition>
-			</element>
-			<element id="SRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
-				<condition type="or">
-					<condition type="eq" variable="./SRelax" value="3"/>
-					<condition type="eq" variable="./SRelax" value="4"/>
-				</condition>
-			</element>
-			<element id="SRelaxBott" type="float" label="height of bottom relaxation layer"  description="Height of bottom relaxation layer." unit="m">
-				<condition type="or">
-					<condition type="eq" variable="./SRelax" value="2"/>
-					<condition type="eq" variable="./SRelax" value="4"/>
-				</condition>
-			</element>
-			<element id="SRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
-				<condition type="or">
-					<condition type="eq" variable="./SRelax" value="3"/>
-					<condition type="eq" variable="./SRelax" value="4"/>
-				</condition>
+				<element id="SRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
+					<condition type="eq" variable="." value="True"/>
+				</element>
+				<element id="SRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
+					<condition type="eq" variable="." value="True"/>
+				</element>
+				<element id="SRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
+					<condition type="eq" variable="." value="True"/>
+				</element>
+				<element id="SRelaxBott" type="float" label="height of bottom relaxation layer"  description="Height of bottom relaxation layer." unit="m">
+					<condition type="eq" variable="." value="True"/>
+				</element>
+				<element id="SRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
+					<condition type="eq" variable="." value="True"/>
+				</element>
 			</element>
 		</element>
 
@@ -730,7 +684,7 @@
 				<options>
 					<option value="1" label="constant temperature across column"/>
 					<option value="2" label="two-layer stratification"/>
-					<option value="3" label="profile with constant N^2"/>
+					<option value="3" label="profile with constant N²"/>
 				</options>
 			</element>
 			<element id="z_t1" type="float" label="upper layer thickness" unit="m">
@@ -769,7 +723,7 @@
 					<condition type="eq" variable="./t_analyt_method" value="2"/>
 				</condition>
 			</element>
-			<element id="t_obs_NN" type="float" label="constant N^2">
+			<element id="t_obs_NN" type="float" label="constant N²">
 				<condition type="and">
 					<condition type="eq" variable="." value="1"/>
 					<condition type="eq" variable="./t_analyt_method" value="3"/>
@@ -783,7 +737,7 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="TRelax" type="select" label="relaxation towards observations">
+			<element id="TRelax" type="select" label="relax model results towards observations">
 				<condition type="ne" variable="." value="0"/>
 				<options>
 					<option label="none" value="0"/>
@@ -1360,6 +1314,15 @@
 			<element id="seagrass_calc" type="bool"  label="use seagrass model"/>
 			<element id="grassfile"     type="file"  label="depth-varying maximum excursion limit and friction coefficient">
 				<condition type="eq" variable="./seagrass_calc" value="True"/>
+				<fileinfo type="singleprofile">
+					<filedimensions>
+						<filedimension label="height above bottom" unit="m" />
+					</filedimensions>
+					<filevariables>
+						<filevariable label="maximum excursion limit" unit="m" />
+						<filevariable label="friction coefficient" unit="1/m" />
+					</filevariables>
+				</fileinfo>
 			</element>
 			<element id="XP_rat"        type="float" label="efficiency of turbulence production by seagrass friction">
 				<condition type="eq" variable="./seagrass_calc" value="True"/>

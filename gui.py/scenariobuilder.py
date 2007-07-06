@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.16 2007-06-29 09:56:59 jorn Exp $
+#$Id: scenariobuilder.py,v 1.17 2007-07-06 13:48:29 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -53,8 +53,7 @@ class ScenarioWidget(QtGui.QWidget):
 
         layout.setColumnStretch(1,1)
 
-        radiowidth = QtGui.QRadioButton().sizeHint().width()
-        layout.setColumnMinimumWidth(0,radiowidth)
+        layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
 
         layout.setMargin(0)
         
@@ -157,7 +156,7 @@ class ScenarioWidget(QtGui.QWidget):
 
     def completeStateChanged(self):
         self.emit(QtCore.SIGNAL('onCompleteStateChanged()'))
-
+        
 class PageOpen(commonqt.WizardPage):
 
     def __init__(self,parent=None):
@@ -186,126 +185,184 @@ class PageOpen(commonqt.WizardPage):
         self.owner.setProperty('scenario',newscen)
         return True
 
-class PageLocation(commonqt.WizardPage):
-    
+class ScenarioPage(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
         self.scenario = parent.getProperty('scenario')
         if self.scenario==None: raise Exception('No scenario available; this page should not have been available.')
 
-        groupbox1 = QtGui.QGroupBox('Geographic location',self)
+        self.factory = commonqt.PropertyEditorFactory(self.scenario,live=True,allowhide=True)
 
-        self.factory = commonqt.PropertyEditorFactory(self.scenario)
+    def saveData(self,mustbevalid):
+        if self.factory.hasChanged():
+            if not mustbevalid:
+                res = QtGui.QMessageBox.question(self,'Your scenario has changed','Do you want to preserve your changes?',QtGui.QMessageBox.Yes,QtGui.QMessageBox.No,QtGui.QMessageBox.NoButton)
+                if res==QtGui.QMessageBox.No: return True
+
+            self.factory.updateStore()
+
+        self.factory.unlink()
+        
+        return True
+
+    def isComplete(self):
+        return True
+
+class PageLocation(ScenarioPage):
+    
+    def __init__(self,parent=None):
+        ScenarioPage.__init__(self, parent)
+
+        titlelayout = QtGui.QHBoxLayout()
+        self.lineTitle = self.factory.createEditor(['title'],self)
+        self.labTitle = self.lineTitle.createLabel()
+        titlelayout.addWidget(self.labTitle)
+        titlelayout.addWidget(self.lineTitle.editor)
+
+        groupboxLocation = QtGui.QGroupBox('Geographic location',self)
 
         loclayout = QtGui.QGridLayout()
-        self.lineName = self.factory.createEditor(['station','name'],self)
-        self.labName = self.lineName.createLabel()
+        self.lineName      = self.factory.createEditor(['station','name'],     self)
         self.lineLongitude = self.factory.createEditor(['station','longitude'],self)
-        self.labLongitude = self.lineLongitude.createLabel()
-        self.lineLatitude = self.factory.createEditor(['station','latitude'],self)
-        self.labLatitude = self.lineLatitude.createLabel()
-        self.lineDepth = self.factory.createEditor(['station','depth'],self)
-        self.labDepth = self.lineDepth.createLabel()
-        loclayout.addWidget(self.labName, 0,0)
-        loclayout.addWidget(self.lineName.editor,0,1)
-        loclayout.addWidget(self.labLongitude, 1,0)
-        loclayout.addWidget(self.lineLongitude.editor,1,1)
-        loclayout.addWidget(self.labLatitude, 2,0)
-        loclayout.addWidget(self.lineLatitude.editor,2,1)
-        loclayout.addWidget(self.labDepth, 3,0)
-        loclayout.addWidget(self.lineDepth.editor,3,1)
-        groupbox1.setLayout(loclayout)
+        self.lineLatitude  = self.factory.createEditor(['station','latitude'], self)
+        self.lineDepth     = self.factory.createEditor(['station','depth'],    self)
+        self.lineName.addToGridLayout(loclayout)
+        self.lineLongitude.addToGridLayout(loclayout)
+        self.lineLatitude.addToGridLayout(loclayout)
+        self.lineDepth.addToGridLayout(loclayout)
+        loclayout.setColumnStretch(3,1)
+        groupboxLocation.setLayout(loclayout)
 
-        groupbox2 = QtGui.QGroupBox('Simulated period',self)
+        groupboxPeriod = QtGui.QGroupBox('Simulated period',self)
 
         periodlayout = QtGui.QGridLayout()
         self.lineStart = self.factory.createEditor(['time','start'],self)
-        self.labStart = self.lineStart.createLabel()
         self.lineStop  = self.factory.createEditor(['time','stop'] ,self)
-        self.labStop = self.lineStop.createLabel()
-        periodlayout.addWidget(self.labStart, 0,0)
-        periodlayout.addWidget(self.lineStart.editor,0,1)
-        periodlayout.addWidget(self.labStop, 1,0)
-        periodlayout.addWidget(self.lineStop.editor,1,1)
-        groupbox2.setLayout(periodlayout)
+        self.lineStart.addToGridLayout(periodlayout)
+        self.lineStop.addToGridLayout(periodlayout)
+        periodlayout.setColumnStretch(3,1)
+        groupboxPeriod.setLayout(periodlayout)
 
         layout = QtGui.QVBoxLayout()
-        layout.addWidget(groupbox1)
-        layout.addWidget(groupbox2)
+        layout.setSpacing(25)
+        layout.addLayout(titlelayout)
+        layout.addWidget(groupboxLocation)
+        layout.addWidget(groupboxPeriod)
         layout.addStretch()
         self.setLayout(layout)
 
-    def saveData(self,mustbevalid):
-        if not self.factory.hasChanged(): return True
-        
-        if not mustbevalid:
-            res = QtGui.QMessageBox.question(self,'Your scenario has changed','Do you want to preserve your changes?',QtGui.QMessageBox.Yes,QtGui.QMessageBox.No,QtGui.QMessageBox.NoButton)
-            if res==QtGui.QMessageBox.No: return True
-
-        self.factory.updateStore()
-        return True
-
-    def isComplete(self):
-        return True
-
-class PageDiscretization(commonqt.WizardPage):
+class PageDiscretization(ScenarioPage):
     
     def __init__(self,parent=None):
-        commonqt.WizardPage.__init__(self, parent)
+        ScenarioPage.__init__(self, parent)
 
-        self.scenario = parent.getProperty('scenario')
-        assert self.scenario!=None, 'No scenario available; this page should not have been available.'
-
-        groupbox1 = QtGui.QGroupBox('Column structure',self)
-
-        self.factory = commonqt.PropertyEditorFactory(self.scenario)
+        groupboxGrid = QtGui.QGroupBox('Column structure',self)
 
         gridlayout = QtGui.QGridLayout()
-        self.bngroup = QtGui.QButtonGroup()
-        self.radioEqual     = QtGui.QRadioButton('equal layers heights, optional zooming.',self)
-        self.radioSigma     = QtGui.QRadioButton('custom sigma grid (relative depth fractions).',self)
-        self.radioCartesian = QtGui.QRadioButton('custom cartesian grid (absolute layer heights).',self)
 
+        # Create controls for grid layout.
+        self.bngroup = self.factory.createEditor(['grid','grid_method'],self,selectwithradio=True).editor
         self.editZoomSurface = self.factory.createEditor(['grid','ddu'],self)      
-        self.editZoomBottom  = self.factory.createEditor(['grid','ddl'],self)      
+        self.editZoomBottom  = self.factory.createEditor(['grid','ddl'],self)
+        self.editGridFile = self.factory.createEditor(['grid','grid_file'],self)
         
-        gridlayout.addWidget(self.radioEqual, 0,0,1,4)
-        gridlayout.addWidget(self.editZoomSurface.createLabel(), 1,1)
-        gridlayout.addWidget(self.editZoomSurface.editor, 1,2)
-        gridlayout.addWidget(self.editZoomBottom.createLabel(), 2,1)
-        gridlayout.addWidget(self.editZoomBottom.editor, 2,2)
-        gridlayout.addWidget(self.radioSigma,3,0,1,4)
-        gridlayout.addWidget(self.radioCartesian, 4,0,1,4)
-        self.bngroup.addButton(self.radioEqual,     0)
-        self.bngroup.addButton(self.radioSigma,     1)
-        self.bngroup.addButton(self.radioCartesian, 2)
-        groupbox1.setLayout(gridlayout)
+        # Add controls for grid layout to the widget.
+        gridlayout.addWidget(self.bngroup.button(0), 0,0,1,4)
+        self.editZoomSurface.addToGridLayout(gridlayout,1,1)
+        self.editZoomBottom.addToGridLayout(gridlayout,2,1)
+        gridlayout.addWidget(self.bngroup.button(1),3,0,1,4)
+        gridlayout.addWidget(self.bngroup.button(2), 4,0,1,4)
+        gridlayout.addWidget(self.editGridFile.editor, 5,1)
+        groupboxGrid.setLayout(gridlayout)
 
         gridlayout.setColumnStretch(3,1)
-        radiowidth = QtGui.QRadioButton().sizeHint().width()
-        gridlayout.setColumnMinimumWidth(0,radiowidth)
-        gridlayout.setMargin(0)
+        gridlayout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+
+        groupboxTime = QtGui.QGroupBox('Time discretization',self)
+        timelayout = QtGui.QGridLayout()
+        self.editTimeStep = self.factory.createEditor(['timeintegration','dt'],self)
+        self.editTimeStep.addToGridLayout(timelayout)
+        groupboxTime.setLayout(timelayout)
 
         layout = QtGui.QVBoxLayout()
-        layout.addWidget(groupbox1)
+        layout.setSpacing(25)
+        layout.addWidget(groupboxGrid)
+        layout.addWidget(groupboxTime)
         layout.addStretch()
         self.setLayout(layout)
 
-    def saveData(self,mustbevalid):
-        #checkedid = self.bngroup.checkedId()
+class PageSalinity(ScenarioPage):
+    
+    def __init__(self,parent=None):
+        ScenarioPage.__init__(self, parent)
 
-        #if not self.factory.hasChanged(): return True
+        layout = QtGui.QGridLayout()
+        self.editSalinity = self.factory.createEditor(['obs','sprofile'],self,selectwithradio=True)
+        self.bngrpSalinity = self.editSalinity.editor
+        self.labelSalinity = QtGui.QLabel(self.editSalinity.node.getText(detail=2),self)
+        self.labelSalinity.setWordWrap(True)
+
+        self.editSalinityConstant       = self.factory.createEditor(['obs','sprofile','s_const'],self)
+        self.editSalinityUpperThickness = self.factory.createEditor(['obs','sprofile','z_s1'],self)
+        self.editSalinityUpper          = self.factory.createEditor(['obs','sprofile','s_1'],self)
+        self.editSalinityLowerThickness = self.factory.createEditor(['obs','sprofile','z_s2'],self)
+        self.editSalinityLower          = self.factory.createEditor(['obs','sprofile','s_2'],self)
+        self.editSalinitySurface        = self.factory.createEditor(['obs','sprofile','s_surf'],self)
+        self.editSalinityNSquare        = self.factory.createEditor(['obs','sprofile','s_obs_NN'],self)
+        self.editSalinityFile           = self.factory.createEditor(['obs','sprofile','s_prof_file'],self)
         
-        #if not mustbevalid:
-        #    res = QtGui.QMessageBox.question(self,'Your scenario has changed','Do you want to preserve your changes?',QtGui.QMessageBox.Yes,QtGui.QMessageBox.No,QtGui.QMessageBox.NoButton)
-        #    if res==QtGui.QMessageBox.No: return True
+        self.editSalinityRelaxation     = self.factory.createEditor(['obs','sprofile','SRelax'],self,boolwithcheckbox=True)
+        self.editSalinityBulk           = self.factory.createEditor(['obs','sprofile','SRelax','SRelaxTauM'],self)
+        
+        layout.addWidget(self.labelSalinity,               0,0,1,5)
+        layout.addWidget(self.bngrpSalinity.button(0),     1,0,1,5)
+        
+        layout.addWidget(self.bngrpSalinity.button(11),    2,0,1,5)
 
-        #self.factory.updateStore()
-        return True
+        constlayout = QtGui.QGridLayout()
+        self.editSalinityConstant.addToGridLayout(constlayout)
+        constlayout.setColumnStretch(3,1)
+        layout.addLayout(constlayout,3,1)
+        
+        layout.addWidget(self.bngrpSalinity.button(12),        4,0,1,5)
+        
+        layerlayout = QtGui.QGridLayout()
+        self.editSalinityUpperThickness.addToGridLayout(layerlayout)
+        self.editSalinityUpper.addToGridLayout(layerlayout)
+        self.editSalinityLowerThickness.addToGridLayout(layerlayout)
+        self.editSalinityLower.addToGridLayout(layerlayout)
+        layerlayout.setColumnStretch(3,1)
+        layout.addLayout(layerlayout,5,1)
+        
+        layout.addWidget(self.bngrpSalinity.button(13),    6,0,1,5)
 
-    def isComplete(self):
-        return True
+        nsquarelayout = QtGui.QGridLayout()
+        self.editSalinitySurface.addToGridLayout(nsquarelayout)
+        self.editSalinityNSquare.addToGridLayout(nsquarelayout)
+        nsquarelayout.setColumnStretch(3,1)
+        layout.addLayout(nsquarelayout,7,1)
+        
+        layout.addWidget(self.bngrpSalinity.button(2),     8,0,1,5)
+        
+        filelayout = QtGui.QHBoxLayout()
+        filelayout.addWidget(self.editSalinityFile.editor)
+        filelayout.addStretch()
+        layout.addLayout(filelayout,9,1)
+
+        layout.setRowMinimumHeight(10,25)
+
+        layout.addWidget(self.editSalinityRelaxation.editor,11,0,1,5)
+
+        relaxationlayout = QtGui.QGridLayout()
+        self.editSalinityBulk.addToGridLayout(relaxationlayout)
+        layout.addLayout(relaxationlayout,12,1)
+
+        layout.setColumnStretch(2,1)
+        layout.setRowStretch(13,1)
+        layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        
+        self.setLayout(layout)
 
 class PageAdvanced(commonqt.WizardPage):
     
@@ -395,8 +452,7 @@ class PageSave(commonqt.WizardPage):
         layout.setRowStretch(4,1)
         layout.setColumnStretch(1,1)
 
-        radiowidth = QtGui.QRadioButton().sizeHint().width()
-        layout.setColumnMinimumWidth(0,radiowidth)
+        layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
 
         self.setLayout(layout)
 
@@ -455,8 +511,7 @@ class PageFinal(commonqt.WizardPage):
 
 class SequenceEditScenario(commonqt.WizardSequence):
     def __init__(self):
-        #commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAdvanced,PageSave])
-        commonqt.WizardSequence.__init__(self,[PageLocation,PageAdvanced,PageSave])
+        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageSalinity,PageAdvanced,PageSave])
 
 def main():
     # Debug info

@@ -120,40 +120,28 @@ class LinkedFileVariableStore(PlotVariableStore):
             return self.data[2]
 
         def getDimensions(self):
-            filetype = self.store.type
-            if filetype=='profilesintime':
-                return ('time','z')
-            elif filetype=='pointsintime':
-                return ('time',)
-            else:
-                assert False, 'Cannot plot variables from file of unknown type "%s".' % filetype
+            return [d[0] for d in self.store.dimensions]
 
         def getValues(self,bounds,staggered=False,coordinatesonly=False):
-            data = self.store.getGriddedData()
-            res = []
-            if data[0].shape[0]==0: return None
+            assert False, 'This function must be implemented by inheriting class.'
+            
+    @staticmethod
+    def fromNode(node):
+        finfo = common.findDescendantNode(node.templatenode,['fileinfo'])
+        assert finfo!=None, 'Node "%s" lacks "fileinfo" attribute.' % node
+        type = finfo.getAttribute('type')
+        if type=='pointsintime':
+            return LinkedMatrix(node,type=0,dimensions=[('time','time','','datetime')])
+        elif type=='profilesintime':
+            return LinkedProfilesInTime(node,dimensions=[('time','time','','datetime'),('z','depth','m','float')])
+        elif type=='singleprofile' or type=='verticalgrid':
+            return LinkedMatrix(node,type=1)
+        else:
+            assert False, 'Linked file has unknown type "%s".' % node.type
 
-            timebounds = common.findindices(bounds[0],data[0])
-            res.append(data[0][timebounds[0]:timebounds[1]+1])
-            if len(data)==2:
-                res.append(data[1][timebounds[0]:timebounds[1]+1,self.index])
-            elif len(data)==3:
-                res.append(data[1])
-                res.append(data[2][timebounds[0]:timebounds[1]+1,:,self.index])
-            else:
-                assert False, 'Cannot handle variables with %i dimensions; only know how to deal with 2 or 3 dimensions.' % len(data)
-                
-            if staggered:
-                for idim in range(len(res)-1):
-                    delta = (res[idim][1:]-res[idim][:-1])/2
-                    res[idim] = matplotlib.numerix.concatenate(([res[idim][0]-delta[0]],res[idim][:-1]+delta,[res[idim][-1]+delta[-1]]),0)
-                    
-            return res
-
-    def __init__(self,node):
+    def __init__(self,node,dimensions=[]):
 
         finfo = common.findDescendantNode(node.templatenode,['fileinfo'])
-        self.type = finfo.getAttribute('type')
         self.nodeid = node.getId()
         
         self.vardata = []
@@ -165,16 +153,26 @@ class LinkedFileVariableStore(PlotVariableStore):
                     unit = ch.getAttribute('unit')
                     name = longname
                     self.vardata.append([name,longname,unit])
+                    
+        self.dimensions = dimensions
+        fdims = common.findDescendantNode(finfo,['filedimensions'])
+        if fdims!=None:
+            for ch in fdims.childNodes:
+                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filedimension':
+                    longname = ch.getAttribute('label')
+                    unit = ch.getAttribute('unit')
+                    type = ch.getAttribute('type')
+                    name = longname
+                    self.dimensions.append((name,longname,unit,type))
 
         self.datafile = None
         self.clear()
         
     def clear(self):
-        if self.type=='pointsintime':
-            self.data = (matplotlib.numerix.array([]),matplotlib.numerix.array([[]]))
-        elif self.type=='profilesintime':
-            self.data = (matplotlib.numerix.array([]),[],[])
-            self.griddeddata = None
+        pass
+        
+    def getDimensionNames(self):
+        return [d[0] for d in self.dimensions]
         
     def getVariableNames(self):
         return [data[0] for data in self.vardata]
@@ -185,12 +183,11 @@ class LinkedFileVariableStore(PlotVariableStore):
     def getVariable(self,varname):
         for (index,data) in enumerate(self.vardata):
             if data[0]==varname:
-                return self.LinkedFileVariable(self,data,index)
+                return self.variableclass(self,data,index)
         assert False, 'Variable with name "%s" not found in store.' % varname
         
     def dataChanged(self):
         """Event handler, must be called by external actors when they change the data."""
-        self.griddeddata = None
         self.datafile = None
         
     def saveToFile(self,path):
@@ -214,67 +211,317 @@ class LinkedFileVariableStore(PlotVariableStore):
         
     def writeData(self,target):
         """Writes the current data to a file-like object."""
-        varcount = len(self.vardata)
-        if self.type=='pointsintime':
-            times = self.data[0]
-            data = self.data[1]
-            for iline in range(times.shape[0]):
-                target.write(times[iline].strftime('%Y-%m-%d %H:%M:%S'))
-                for ivar in range(varcount):
-                    target.write('\t%.9g' % data[iline,ivar])
-                target.write('\n')
-        elif self.type=='profilesintime':
-            times = self.data[0]
-            depths = self.data[1]
-            data = self.data[2]
-            for itime in range(times.shape[0]):
-                target.write(times[itime].strftime('%Y-%m-%d %H:%M:%S'))
-                curdepths = depths[itime]
-                curdata = data[itime]
-                depthcount = len(curdepths)
-                target.write('\t%i\t1\n' % depthcount)
-                for idepth in range(depthcount):
-                    target.write('%.9g' % curdepths[idepth])
-                    for ivar in range(varcount):
-                        target.write('\t%.9g' % curdata[idepth,ivar])
-                    target.write('\n')
+        assert False, 'This function must be implemented by inheriting class.'
         
     def getGriddedData(self,callback=None):
         assert self.data!=None, 'Data not set.'
-        if self.type=='pointsintime':
-            return self.data
-        elif self.type=='profilesintime':
-            if self.griddeddata==None:
-                (times,depths,values) = self.data
+        return self.data
+
+    def loadDataFile(self,datafile,callback=None):
+        assert False, 'This function must be implemented by inheriting class.'
+
+
+
+class LinkedMatrix(LinkedFileVariableStore):
+
+    class LinkedMatrixVariable(LinkedFileVariableStore.LinkedFileVariable):
+        def getValues(self,bounds,staggered=False,coordinatesonly=False):
+            # Get a reference to all data, and stop if the coordinate dimension is zero.
+            data = self.store.getGriddedData()
+            if data[0].shape[0]==0: return None
+
+            res = []
+            if len(self.store.dimensions)==1:
+                res.append(data[0][:])
+            res.append(data[-1][:,self.index])
+            
+            # Interpolate coordinates to staggered grid if requested.
+            if staggered:
+                for idim in range(len(res)-1):
+                    delta = (res[idim][1:]-res[idim][:-1])/2
+                    res[idim] = matplotlib.numerix.concatenate(([res[idim][0]-delta[0]],res[idim][:-1]+delta,[res[idim][-1]+delta[-1]]),0)
+                    
+            return res
+
+    def __init__(self,node,type=0,dimensions=[]):
+        LinkedFileVariableStore.__init__(self,node,dimensions)
+        self.variableclass = self.LinkedMatrixVariable
+        assert len(self.dimensions)<=1, 'Linkedmatrix objects can only be used with 0 or 1 coordinate dimensions, but %i are present.' % len(self.dimensions)
+        self.type = type
+        
+    def clear(self):
+        """Clears all contained data."""
+        self.data = []
+        if len(self.dimensions)==1:
+            self.data.append(matplotlib.numerix.empty((0,)))
+        self.data.append(matplotlib.numerix.empty((0,len(self.vardata))))
+        
+    def loadDataFile(self,datafile,callback=None):
+        self.datafile = datafile
+        
+        if not self.datafile.isValid():
+            # No data: empty the store and return
+            self.clear()
+            return
+
+        if self.type==0:
+            # Unknown number of rows
+            res = self.loadDataFile_UnknownCount(datafile,callback)
+        elif self.type==1:
+            # Known number of rows
+            res = self.loadDataFile_KnownCount(datafile,callback)
+        else:
+            assert False, 'unknown LinkedMatrix type %i.' % self.type
+            
+        return res
+        
+    def loadDataFile_KnownCount(self,datafile,callback):
+        """Loads data from a DataFile object."""
+        # Get number of dimensions and variables.
+        dimcount = len(self.dimensions)
+        varcount = len(self.vardata)
+
+        # Get the size of the file (in bytes, may be None if the size is not known)
+        # This will be used in combination with the position of the file pointer to report progress.
+        filesize = float(self.datafile.getSize())
+        
+        # Access the data through some read-only file-like object.
+        f = self.datafile.getAsReadOnlyFile()
+
+        # First line contains number of observations to follow.
+        line = f.readline()
+        if line=='':
+            raise Exception('File is empty. Expected number of observations on first line.')
+        obscount = int(line)
+
+        # Allocate arrays for storage of coordinates and variable values
+        values = matplotlib.numerix.empty((obscount,varcount),matplotlib.numerix.Float32)
+        if dimcount==1:
+            # One coordinate dimension present; allocate an array for its values.
+            dimtype = self.dimensions[0][3]
+            dimisdate = (dimtype=='datetime')
+            if dimisdate:
+                datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
+                dimvalues = matplotlib.numerix.empty((obscount,),matplotlib.numerix.PyObject)
+            else:
+                dimvalues = matplotlib.numerix.empty((obscount,),matplotlib.numerix.Float32)
+            self.data = [dimvalues,values]
+        else:
+            self.data = [values]
+
+        for irow in range(values.shape[0]):
+            # Read a line (stop if end-of-file was reached)
+            line = f.readline()
+            if line=='':
+                raise Exception('End-of-file reached after line %i, but expecting still %i more rows of observations.' % (irow+1,values.shape[0]-irow))
+            iline = irow+2  # One-based line index
+            
+            if dimcount==1:
+                if dimisdate:
+                    # Read the date + time
+                    datematch = datetimere.match(line)
+                    if datematch==None:
+                        raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
+                    refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+                    dimvalue = datetime.datetime(*refvals)
                 
-                varcount = len(self.vardata)
-                
-                # Find unique depth levels.
-                uniquedepths = {}
-                for ds in depths:
-                    for d in ds: uniquedepths[d] = True
-                
-                # Create depth grid to interpolate on to. Use the observation depths if less than 200,
-                # otherwise create a equidistant 200-point grid between the minimum and maximum depth.
-                uniquedepths = uniquedepths.keys()
-                uniquedepths.sort()
-                if len(uniquedepths)<200:
-                    depthgrid = matplotlib.numerix.array(uniquedepths,matplotlib.numerix.Float32)
+                    # Read variable values.
+                    data = line[datematch.end()+1:].split()
                 else:
-                    depthstep = (uniquedepths[-1]-uniquedepths[0])/200
-                    depthgrid = matplotlib.numerix.arange(uniquedepths[0],uniquedepths[-1]+depthstep,depthstep)
-                    
-                # Grid observed profiles to depth grid.
-                griddedvalues = matplotlib.numerix.empty((times.shape[0],depthgrid.shape[0],varcount),matplotlib.numerix.Float32)
-                for it in range(len(times)):
-                    griddedvalues[it,:,:] = common.interp1(depths[it],values[it],depthgrid)
-                    if callback!=None and (it+1)%20==0:
-                        callback('gridded %i profiles.' % (it+1),progress=float(it+1)/len(times))
-                    
-                # Store time grid, depth grid and observations.
-                self.griddeddata = (times,depthgrid,griddedvalues)
+                    # Split line, convert values to floats and store first as coordinate.
+                    data = map(float,line.split())
+                    dimvalue = data.pop(0)
+            else:
+                data = map(float,line.split())
+
+            if len(data)<varcount:
+                raise Exception('Line %i contains only %i observations, where %i are expected.' % (iline,len(data),varcount))
+            
+            # Store time and values.
+            if dimcount==1: dimvalues[irow] = dimvalue
+            values[irow,:] = data[:varcount]
+            
+            # Inform caller about progress
+            if callback!=None and iline%1000==0:
+                progress = None
+                if filesize!=None:
+                    try:
+                        progress = float(f.tell())/filesize
+                    except:
+                        progress = None
+                callback('processed %i lines.' % iline,progress=progress)
+            
+        # Close data file
+        f.close()
+
+    def loadDataFile_UnknownCount(self,datafile,callback):
+        varcount = len(self.vardata)
+        
+        # Get the size of the file (in bytes, may be None if the size is not known)
+        # This will be used in combination with the position of the file pointer to report progress.
+        filesize = float(self.datafile.getSize())
+        
+        # Access the data through some read-only file-like object.
+        f = self.datafile.getAsReadOnlyFile()
+
+        # Compile regular expression for reading dates.
+        datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
+
+        times = []
+        values = []
+        iline = 0
+        while True:
+            # Read a line (stop if end-of-file was reached)
+            line = f.readline()
+            if line=='': break
+            iline += 1
+            
+            # Read the date + time
+            datematch = datetimere.match(line)
+            if datematch==None:
+                raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
+            refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+            curdate = datetime.datetime(*refvals)
+            
+            # Read values.
+            data = line[datematch.end()+1:].split()
+            if len(data)<varcount:
+                raise Exception('Line %i contains only %i observations, where %i are expected.' % (iline,len(data),varcount))
+            data = map(float,data[:varcount])
+            
+            # Store time and values.
+            times.append(curdate)
+            values.append(data)
+            
+            # Inform caller about progress
+            if callback!=None and iline%1000==0:
+                progress = None
+                if filesize!=None:
+                    try:
+                        progress = float(f.tell())/filesize
+                    except:
+                        progress = None
+                callback('processed %i lines.' % iline,progress=progress)
+        
+        # Convert sequences to numpy arrays and store these.
+        times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
+        values = matplotlib.numerix.array(values,matplotlib.numerix.Float32)
+        self.data = [times,values]
+            
+        # Close data file
+        f.close()
+
+    def writeData(self,target):
+        """Writes the current data to a file-like object."""
+        # Get number of dimensions and variables, and get shortcuts to the data.
+        dimcount = len(self.dimensions)
+        if dimcount==1:
+            # One coordinate dimension present; get the data type of that dimension.
+            dimdata = self.data[0]
+            dimtype = self.dimensions[0][3]
+            dimisdate = (dimtype=='datetime')
+        varcount = len(self.vardata)
+        vardata = self.data[-1]
+        
+        if self.type==1:
+            # Write first line with number of observations.
+            target.write('%i\n' % vardata.shape[0])
+        
+        # Write lines with observations.
+        for iline in range(vardata.shape[0]):
+            if dimcount==1:
+                if dimisdate:
+                    target.write(dimdata[iline].strftime('%Y-%m-%d %H:%M:%S'))
+                else:
+                    target.write('%.9g' % dimdata[iline])
+            for ivar in range(varcount):
+                target.write('\t%.9g' % vardata[iline,ivar])
+            target.write('\n')
+
+class LinkedProfilesInTime(LinkedFileVariableStore):
+
+    class LinkedProfilesInTimeVariable(LinkedFileVariableStore.LinkedFileVariable):
+        def getValues(self,bounds,staggered=False,coordinatesonly=False):
+            data = self.store.getGriddedData()
+            res = []
+            if data[0].shape[0]==0: return None
+
+            timebounds = common.findindices(bounds[0],data[0])
+            res.append(data[0][timebounds[0]:timebounds[1]+1])
+            res.append(data[1])
+            res.append(data[2][timebounds[0]:timebounds[1]+1,:,self.index])
                 
-            return self.griddeddata
+            if staggered:
+                for idim in range(len(res)-1):
+                    delta = (res[idim][1:]-res[idim][:-1])/2
+                    res[idim] = matplotlib.numerix.concatenate(([res[idim][0]-delta[0]],res[idim][:-1]+delta,[res[idim][-1]+delta[-1]]),0)
+                    
+            return res
+
+    def __init__(self,node,dimensions=[]):
+        LinkedFileVariableStore.__init__(self,node,dimensions)
+        self.variableclass = self.LinkedProfilesInTimeVariable
+        
+    def clear(self):
+        self.data = (matplotlib.numerix.array([]),[],[])
+        self.griddeddata = None
+        
+    def dataChanged(self):
+        """Event handler, must be called by external actors when they change the data."""
+        LinkedFileVariableStore.dataChanged(self)
+        self.griddeddata = None
+        
+    def writeData(self,target):
+        """Writes the current data to a file-like object."""
+        varcount = len(self.vardata)
+        times = self.data[0]
+        depths = self.data[1]
+        data = self.data[2]
+        for itime in range(times.shape[0]):
+            target.write(times[itime].strftime('%Y-%m-%d %H:%M:%S'))
+            curdepths = depths[itime]
+            curdata = data[itime]
+            depthcount = len(curdepths)
+            target.write('\t%i\t1\n' % depthcount)
+            for idepth in range(depthcount):
+                target.write('%.9g' % curdepths[idepth])
+                for ivar in range(varcount):
+                    target.write('\t%.9g' % curdata[idepth,ivar])
+                target.write('\n')
+        
+    def getGriddedData(self,callback=None):
+        assert self.data!=None, 'Data not set.'
+        if self.griddeddata==None:
+            (times,depths,values) = self.data
+            
+            varcount = len(self.vardata)
+            
+            # Find unique depth levels.
+            uniquedepths = {}
+            for ds in depths:
+                for d in ds: uniquedepths[d] = True
+            
+            # Create depth grid to interpolate on to. Use the observation depths if less than 200,
+            # otherwise create a equidistant 200-point grid between the minimum and maximum depth.
+            uniquedepths = uniquedepths.keys()
+            uniquedepths.sort()
+            if len(uniquedepths)<200:
+                depthgrid = matplotlib.numerix.array(uniquedepths,matplotlib.numerix.Float32)
+            else:
+                depthstep = (uniquedepths[-1]-uniquedepths[0])/200
+                depthgrid = matplotlib.numerix.arange(uniquedepths[0],uniquedepths[-1]+depthstep,depthstep)
+                
+            # Grid observed profiles to depth grid.
+            griddedvalues = matplotlib.numerix.empty((times.shape[0],depthgrid.shape[0],varcount),matplotlib.numerix.Float32)
+            for it in range(len(times)):
+                griddedvalues[it,:,:] = common.interp1(depths[it],values[it],depthgrid)
+                if callback!=None and (it+1)%20==0:
+                    callback('gridded %i profiles.' % (it+1),progress=float(it+1)/len(times))
+                
+            # Store time grid, depth grid and observations.
+            self.griddeddata = (times,depthgrid,griddedvalues)
+            
+        return self.griddeddata
 
     def loadDataFile(self,datafile,callback=None):
         self.datafile = datafile
@@ -295,135 +542,85 @@ class LinkedFileVariableStore(PlotVariableStore):
         # Compile regular expression for reading dates.
         datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
 
-        filetype = self.type
-        if filetype=='pointsintime':
-            times = []
-            values = []
-            iline = 0
-            while True:
-                # Read a line (stop if end-of-file was reached)
-                line = f.readline()
-                if line=='': break
-                iline += 1
-                
-                # Read the date + time
-                datematch = datetimere.match(line)
-                if datematch==None:
-                    raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
-                refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                curdate = datetime.datetime(*refvals)
-                
-                # Read values.
-                data = line[datematch.end()+1:].split()
-                if len(data)<varcount:
-                    raise Exception('Line %i contains only %i observations, where %i are expected.' % (iline,len(data),varcount))
-                data = map(float,data[:varcount])
-                
-                # Store time and values.
-                times.append(curdate)
-                values.append(data)
-                
-                # Inform caller about progress
-                if callback!=None and iline%1000==0:
-                    progress = None
-                    if filesize!=None:
-                        try:
-                            progress = float(f.tell())/filesize
-                        except:
-                            progress = None
-                    callback('processed %i lines.' % iline,progress=progress)
+        times = []
+        depths = []
+        values = []
+        iline = 0
+        while True:
+            # Read a line (stop if end-of-file was reached)
+            line = f.readline()
+            if line=='': break
+            iline += 1
             
-            # Convert sequences to numpy arrays and store these.
-            times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
-            values = matplotlib.numerix.array(values,matplotlib.numerix.Float32)
-            self.data = [times,values]
-            self.griddeddata = None
-        elif filetype=='profilesintime':
-            times = []
-            depths = []
-            values = []
-            iline = 0
-            while True:
-                # Read a line (stop if end-of-file was reached)
-                line = f.readline()
-                if line=='': break
-                iline += 1
-                
-                # Read date & time
-                datematch = datetimere.match(line)
-                if datematch==None:
-                    raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
-                refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                curdate = datetime.datetime(*refvals)
+            # Read date & time
+            datematch = datetimere.match(line)
+            if datematch==None:
+                raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
+            refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+            curdate = datetime.datetime(*refvals)
 
-                # Get the number of observations and the depth direction.
-                (depthcount,updown) = map(int, line[datematch.end()+1:].split())
+            # Get the number of observations and the depth direction.
+            (depthcount,updown) = map(int, line[datematch.end()+1:].split())
 
-                # Create arrays that will contains depths and observed values.
-                curdepths = matplotlib.numerix.empty((depthcount,),matplotlib.numerix.Float32)
-                curvalues = matplotlib.numerix.empty((depthcount,varcount),matplotlib.numerix.Float32)
-                
-                # Depths can be increasing (updown==1) or decreasing (updown!=1)
-                if updown==1:
-                    depthindices = range(0,depthcount,1)
-                else:
-                    depthindices = range(depthcount-1,-1,-1)
-                
-                # Now parse the specified number of observations to cretae the profiles.
-                prevdepth = None
-                for idepthline in depthindices:
-                    if callback!=None and iline%1000==0:
-                        pos = f.tell()
-                        callback('processed %i lines.' % iline,progress=pos/filesize)
-                        
-                    # Read line
-                    line = f.readline()
-                    if line=='':
-                        raise Exception('Premature end-of-file after line %i; expected %i more observations.' % (iline,depthcount-depthindices.index(idepthline)))
-                    iline += 1
-                    
-                    # Read values (depth followed by data) and check.
-                    linedata = map(float,line.split())
-                    if len(linedata)<varcount+1:
-                        raise Exception('Line %i contains only %i value(s), where %i (1 time and %i observations) are expected.' % (iline,len(linedata),varcount+1,varcount))
-                    if prevdepth!=None:
-                        if linedata[0]==prevdepth:
-                            raise Exception('Found duplicate observation for depth %.4f at line %i.' % (linedata[0],iline))
-                        if updown==1:
-                            if linedata[0]<prevdepth:
-                                raise Exception('Observation depth decreases from %.4f to %.4f at line %i, but the profile depth was set to increase from first to last observation.' % (prevdepth,linedata[0],iline))
-                        elif linedata[0]>prevdepth:
-                            raise Exception('Observation depth increases from %.4f to %.4f at line %i, but the profile depth was set to decrease from first to last observation.' % (prevdepth,linedata[0],iline))
-                    prevdepth = linedata[0]
-                    
-                    # Store current observation
-                    curdepths[idepthline] = linedata[0]
-                    curvalues[idepthline,:] = linedata[1:varcount+1]
-                    
-                # Append the profiles for the current time to the list.
-                times.append(curdate)
-                depths.append(curdepths)
-                values.append(curvalues)
-                
-                # Inform caller about progress.
+            # Create arrays that will contains depths and observed values.
+            curdepths = matplotlib.numerix.empty((depthcount,),matplotlib.numerix.Float32)
+            curvalues = matplotlib.numerix.empty((depthcount,varcount),matplotlib.numerix.Float32)
+            
+            # Depths can be increasing (updown==1) or decreasing (updown!=1)
+            if updown==1:
+                depthindices = range(0,depthcount,1)
+            else:
+                depthindices = range(depthcount-1,-1,-1)
+            
+            # Now parse the specified number of observations to cretae the profiles.
+            prevdepth = None
+            for idepthline in depthindices:
                 if callback!=None and iline%1000==0:
                     pos = f.tell()
                     callback('processed %i lines.' % iline,progress=pos/filesize)
                     
-            # Convert sequence with times to numpy array.
-            times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
+                # Read line
+                line = f.readline()
+                if line=='':
+                    raise Exception('Premature end-of-file after line %i; expected %i more observations.' % (iline,depthcount-depthindices.index(idepthline)))
+                iline += 1
+                
+                # Read values (depth followed by data) and check.
+                linedata = map(float,line.split())
+                if len(linedata)<varcount+1:
+                    raise Exception('Line %i contains only %i value(s), where %i (1 time and %i observations) are expected.' % (iline,len(linedata),varcount+1,varcount))
+                if prevdepth!=None:
+                    if linedata[0]==prevdepth:
+                        raise Exception('Found duplicate observation for depth %.4f at line %i.' % (linedata[0],iline))
+                    if updown==1:
+                        if linedata[0]<prevdepth:
+                            raise Exception('Observation depth decreases from %.4f to %.4f at line %i, but the profile depth was set to increase from first to last observation.' % (prevdepth,linedata[0],iline))
+                    elif linedata[0]>prevdepth:
+                        raise Exception('Observation depth increases from %.4f to %.4f at line %i, but the profile depth was set to decrease from first to last observation.' % (prevdepth,linedata[0],iline))
+                prevdepth = linedata[0]
+                
+                # Store current observation
+                curdepths[idepthline] = linedata[0]
+                curvalues[idepthline,:] = linedata[1:varcount+1]
+                
+            # Append the profiles for the current time to the list.
+            times.append(curdate)
+            depths.append(curdepths)
+            values.append(curvalues)
             
-            self.data = [times,depths,values]
-            self.griddeddata = None
-            
-        else:
-            assert False, 'Cannot plot variables from file of unknown type "%s".' % filetype
+            # Inform caller about progress.
+            if callback!=None and iline%1000==0:
+                pos = f.tell()
+                callback('processed %i lines.' % iline,progress=pos/filesize)
+                
+        # Convert sequence with times to numpy array.
+        times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
+        
+        self.data = [times,depths,values]
+        self.griddeddata = None
             
         # Close data file
         f.close()
-        
-        # Return data
-        return self.data
 
 # Class that represents a GOTM result.
 #   Inherits from PlotVariableStore, as it contains variables that can be plotted.
