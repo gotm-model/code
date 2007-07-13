@@ -513,6 +513,11 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
 
         target.setProperty(['meanflow','z0s'],target.getProperty(['meanflow','z0s_min']))
         
+        if source.getProperty(['airsea','airsea','calc_fluxes']):
+            target.setProperty(['airsea','flux_source'],0)
+        else:
+            target.setProperty(['airsea','flux_source'],1)
+        
         target.setProperty(['obs','sprofile','s_const'],target.getProperty(['obs','sprofile','s_1']))
         target.setProperty(['obs','sprofile','s_surf'], target.getProperty(['obs','sprofile','s_1']))
         
@@ -544,7 +549,7 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
             TRelax = 1  # bulk
         target.setProperty(['obs','tprofile','TRelax'],TRelax)
 
-        dt = target.getProperty(['timeintegration','dt'])
+        dt = source.getProperty(['gotmrun','model_setup','dt'])
         target.setProperty(['output','dtsave'],dt*source.getProperty(['gotmrun','output','nsave']))
 
         # Note: we implicitly lose output settings out_fmt, out_dir and out_fn; the GUI scenario
@@ -564,6 +569,9 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
         # Choose between constant and minimum surface roughness value, based on use of Charnock adaptation.
         if not source.getProperty(['meanflow','charnock']):
             target.setProperty(['gotmmean','meanflow','z0s_min'],source.getProperty(['meanflow','z0s']))
+
+        # Convert flux source from "select" to "bool".
+        target.setProperty(['airsea','airsea','calc_fluxes'],source.getProperty(['airsea','flux_source'])==0)
 
         # If an analytical salinity profile is used, extract the analytical method from the main salinity setting.
         sprofile = source.getProperty(['obs','sprofile'])
@@ -585,8 +593,11 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
         elif t_analyt_method==3:
             target.setProperty(['obs','tprofile','t_1'],source.getProperty(['obs','tprofile','t_surf']))
 
-        dt = source.getProperty(['timeintegration','dt'])
-        target.setProperty(['gotmrun','output','nsave'],int(source.getProperty(['output','dtsave'])/dt))
+        # Move from absolute time interval between outputs to relative intervals (number of simulation steps)
+        dt = source.getProperty(['timeintegration','dt']).getAsSeconds()
+        relinterval = int(source.getProperty(['output','dtsave']).getAsSeconds()/dt)
+        if relinterval<1: relinterval=1
+        target.setProperty(['gotmrun','output','nsave'],relinterval)
 
         # Disable salinity relaxation where needed.
         if not source.getProperty(['obs','sprofile','SRelax']):

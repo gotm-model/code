@@ -64,12 +64,15 @@
 	<element id="boundaries" label="boundaries">
 		<element id="sst">
 			<condition type="or" source="scenario">
-				<condition type="eq" variable="/airsea/calc_fluxes" value="True"/>
-				<condition type="ne" variable="/airsea/sst_method" value="0"/>
+				<condition type="eq" variable="/airsea/flux_source" value="1"/>
+				<condition type="ne" variable="/airsea/sst_method"  value="0"/>
 			</condition>
 		</element>
 		<element id="sss">
-			<condition type="ne" variable="/airsea/sss_method" value="0" source="scenario"/>
+			<condition type="or" source="scenario">
+				<condition type="eq" variable="/airsea/flux_source" value="1"/>
+				<condition type="ne" variable="/airsea/sss_method"  value="0"/>
+			</condition>
 		</element>
 		<element id="p_e">
 			<condition type="ne" variable="/airsea/p_e_method" value="0" source="scenario"/>

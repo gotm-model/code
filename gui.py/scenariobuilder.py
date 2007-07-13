@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.17 2007-07-06 13:48:29 jorn Exp $
+#$Id: scenariobuilder.py,v 1.18 2007-07-13 08:57:46 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -220,29 +220,34 @@ class PageLocation(ScenarioPage):
         titlelayout.addWidget(self.labTitle)
         titlelayout.addWidget(self.lineTitle.editor)
 
-        groupboxLocation = QtGui.QGroupBox('Geographic location',self)
+        self.editStation = self.factory.createEditor(['station'],self,groupbox=True)
+        groupboxLocation = self.editStation.editor
 
-        loclayout = QtGui.QGridLayout()
+        layoutLocation = QtGui.QGridLayout()
         self.lineName      = self.factory.createEditor(['station','name'],     self)
         self.lineLongitude = self.factory.createEditor(['station','longitude'],self)
         self.lineLatitude  = self.factory.createEditor(['station','latitude'], self)
         self.lineDepth     = self.factory.createEditor(['station','depth'],    self)
-        self.lineName.addToGridLayout(loclayout)
-        self.lineLongitude.addToGridLayout(loclayout)
-        self.lineLatitude.addToGridLayout(loclayout)
-        self.lineDepth.addToGridLayout(loclayout)
-        loclayout.setColumnStretch(3,1)
-        groupboxLocation.setLayout(loclayout)
+        
+        layoutLocation.addWidget(self.editStation.createLabel(detail=2,wrap=True,addcolon=False),0,0,1,4)
+        self.lineName.addToGridLayout(layoutLocation,unit=False,colspan=3)
+        self.lineLongitude.addToGridLayout(layoutLocation)
+        self.lineLatitude.addToGridLayout(layoutLocation)
+        self.lineDepth.addToGridLayout(layoutLocation)
+        layoutLocation.setColumnStretch(3,1)
+        groupboxLocation.setLayout(layoutLocation)
 
-        groupboxPeriod = QtGui.QGroupBox('Simulated period',self)
+        self.editPeriod = self.factory.createEditor(['time'],self,groupbox=True)
+        groupboxPeriod = self.editPeriod.editor
 
-        periodlayout = QtGui.QGridLayout()
+        layoutPeriod = QtGui.QGridLayout()
+        layoutPeriod.addWidget(self.editPeriod.createLabel(detail=2,wrap=True,addcolon=False),0,0,1,4)
         self.lineStart = self.factory.createEditor(['time','start'],self)
         self.lineStop  = self.factory.createEditor(['time','stop'] ,self)
-        self.lineStart.addToGridLayout(periodlayout)
-        self.lineStop.addToGridLayout(periodlayout)
-        periodlayout.setColumnStretch(3,1)
-        groupboxPeriod.setLayout(periodlayout)
+        self.lineStart.addToGridLayout(layoutPeriod)
+        self.lineStop.addToGridLayout(layoutPeriod)
+        layoutPeriod.setColumnStretch(3,1)
+        groupboxPeriod.setLayout(layoutPeriod)
 
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(25)
@@ -257,37 +262,56 @@ class PageDiscretization(ScenarioPage):
     def __init__(self,parent=None):
         ScenarioPage.__init__(self, parent)
 
-        groupboxGrid = QtGui.QGroupBox('Column structure',self)
+        self.editColumn = self.factory.createEditor(['grid'],self,groupbox=True)
+        self.labelColumn = self.editColumn.createLabel(detail=2,wrap=True,addcolon=False)
 
-        gridlayout = QtGui.QGridLayout()
+        layoutGrid = QtGui.QGridLayout()
 
         # Create controls for grid layout.
-        self.bngroup = self.factory.createEditor(['grid','grid_method'],self,selectwithradio=True).editor
+        self.editLevelCount = self.factory.createEditor(['grid','nlev'],self)      
+        self.editGridMethod = self.factory.createEditor(['grid','grid_method'],self,selectwithradio=True)
+        self.labelGridMethod = QtGui.QLabel(self.editGridMethod.node.getText(detail=2),self)
+        self.labelGridMethod.setWordWrap(True)
+        self.bngroup = self.editGridMethod.editor
         self.editZoomSurface = self.factory.createEditor(['grid','ddu'],self)      
         self.editZoomBottom  = self.factory.createEditor(['grid','ddl'],self)
         self.editGridFile = self.factory.createEditor(['grid','grid_file'],self)
         
         # Add controls for grid layout to the widget.
-        gridlayout.addWidget(self.bngroup.button(0), 0,0,1,4)
-        self.editZoomSurface.addToGridLayout(gridlayout,1,1)
-        self.editZoomBottom.addToGridLayout(gridlayout,2,1)
-        gridlayout.addWidget(self.bngroup.button(1),3,0,1,4)
-        gridlayout.addWidget(self.bngroup.button(2), 4,0,1,4)
-        gridlayout.addWidget(self.editGridFile.editor, 5,1)
-        groupboxGrid.setLayout(gridlayout)
+        layoutGrid.addWidget(self.bngroup.button(0),    0,0,1,4)
+        self.editZoomSurface.addToGridLayout(layoutGrid,1,1)
+        self.editZoomBottom.addToGridLayout(layoutGrid, 2,1)
+        layoutGrid.addWidget(self.bngroup.button(1),    3,0,1,4)
+        layoutGrid.addWidget(self.bngroup.button(2),    4,0,1,4)
+        layoutGrid.addWidget(self.editGridFile.editor,  5,1)
+                
+        layoutColumn = QtGui.QVBoxLayout()
+        layoutColumn.addWidget(self.labelColumn)
+        self.editLevelCount.addToBoxLayout(layoutColumn)
+        layoutColumn.addSpacing(25)
+        layoutColumn.addWidget(self.labelGridMethod)
+        layoutColumn.addLayout(layoutGrid)
+        self.editColumn.editor.setLayout(layoutColumn)
 
-        gridlayout.setColumnStretch(3,1)
-        gridlayout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        layoutGrid.setColumnStretch(3,1)
+        layoutGrid.setColumnMinimumWidth(0,commonqt.getRadioWidth())
 
-        groupboxTime = QtGui.QGroupBox('Time discretization',self)
-        timelayout = QtGui.QGridLayout()
+
+        self.editTime = self.factory.createEditor(['timeintegration'],self,groupbox=True)
+        self.labelTime = self.editTime.createLabel(detail=2,wrap=True,addcolon=False)
+        
+        groupboxTime = self.editTime.editor
+
+        timelayout = QtGui.QVBoxLayout()
+        timelayout.addWidget(self.labelTime)
         self.editTimeStep = self.factory.createEditor(['timeintegration','dt'],self)
-        self.editTimeStep.addToGridLayout(timelayout)
+        self.editTimeStep.addToBoxLayout(timelayout)
+        timelayout.addStretch()
         groupboxTime.setLayout(timelayout)
 
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(25)
-        layout.addWidget(groupboxGrid)
+        layout.addWidget(self.editColumn.editor)
         layout.addWidget(groupboxTime)
         layout.addStretch()
         self.setLayout(layout)
@@ -361,6 +385,134 @@ class PageSalinity(ScenarioPage):
         layout.setColumnStretch(2,1)
         layout.setRowStretch(13,1)
         layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        
+        self.setLayout(layout)
+        
+class PageAirSeaInteraction(ScenarioPage):
+
+    def __init__(self,parent=None):
+        ScenarioPage.__init__(self, parent)
+        
+        radiowidth = commonqt.getRadioWidth()
+        
+        layout = QtGui.QGridLayout()
+        layout.setColumnMinimumWidth(0,radiowidth)
+        
+        self.editCalcFluxes = self.factory.createEditor(['airsea','flux_source'],self,selectwithradio=True)
+        
+        # Meteo file and unit
+
+        meteolayout = QtGui.QVBoxLayout()
+        self.editMeteoFile = self.factory.createEditor(['airsea','meteo_file'],self)
+        self.editWetMode   = self.factory.createEditor(['airsea','wet_mode'],  self)
+        
+        meteofilelayout = QtGui.QHBoxLayout()
+        self.editMeteoFile.addToBoxLayout(meteofilelayout,label=False,unit=False)
+        meteofilelayout.addStretch()
+        meteolayout.addLayout(meteofilelayout)
+        
+        meteowetmodelayout = QtGui.QHBoxLayout()
+        self.editWetMode.addToBoxLayout(meteowetmodelayout)
+        meteowetmodelayout.addStretch()
+        meteolayout.addLayout(meteowetmodelayout)
+
+        # Heat fluxes
+
+        groupboxHeat = self.factory.createEditor(['airsea','heat_method'],self,groupbox=True).editor
+        
+        heatlayout = QtGui.QGridLayout()
+        heatlayout.setColumnMinimumWidth(0,radiowidth)
+
+        self.editHeatMethod   = self.factory.createEditor(['airsea','heat_method'],  self,selectwithradio=True)
+        self.editConstSwr     = self.factory.createEditor(['airsea','const_swr'],    self)
+        self.editConstHeat    = self.factory.createEditor(['airsea','const_heat'],   self)
+        self.editHeatfluxFile = self.factory.createEditor(['airsea','heatflux_file'],self)
+        
+        heatlayout.addWidget(self.editHeatMethod.editor.button(0),1,0,1,2)
+
+        heatlayout.addWidget(self.editHeatMethod.editor.button(1),2,0,1,2)
+        constheatlayout = QtGui.QGridLayout()
+        self.editConstSwr.addToGridLayout(constheatlayout)
+        self.editConstHeat.addToGridLayout(constheatlayout)
+        heatlayout.addLayout(constheatlayout,3,1)
+        
+        heatlayout.addWidget(self.editHeatMethod.editor.button(2),4,0,1,2)
+        heatfilelayout = QtGui.QHBoxLayout()
+        self.editHeatfluxFile.addToBoxLayout(heatfilelayout,label=False,unit=False)
+        heatfilelayout.addStretch()
+        heatlayout.addLayout(heatfilelayout,5,1)
+        
+        heatlayout.setColumnStretch(2,1)
+        
+        groupboxHeat.setLayout(heatlayout)
+        
+        # Momentum fluxes
+
+        groupboxMomentum = self.factory.createEditor(['airsea','momentum_method'],self,groupbox=True).editor
+        
+        layoutMomentum = QtGui.QGridLayout()
+        layoutMomentum.setColumnMinimumWidth(0,radiowidth)
+
+        self.editMomentumMethod  = self.factory.createEditor(['airsea','momentum_method'],  self,selectwithradio=True)
+        self.editMomentumConstTx = self.factory.createEditor(['airsea','const_tx'],         self)
+        self.editMomentumConstTy = self.factory.createEditor(['airsea','const_ty'],         self)
+        self.editmomentumFile    = self.factory.createEditor(['airsea','momentumflux_file'],self)
+        
+        layoutMomentum.addWidget(self.editMomentumMethod.editor.button(0),1,0,1,2)
+
+        layoutMomentum.addWidget(self.editMomentumMethod.editor.button(1),2,0,1,2)
+        constmomentumlayout = QtGui.QGridLayout()
+        self.editMomentumConstTx.addToGridLayout(constmomentumlayout)
+        self.editMomentumConstTy.addToGridLayout(constmomentumlayout)
+        layoutMomentum.addLayout(constmomentumlayout,3,1)
+        
+        layoutMomentum.addWidget(self.editMomentumMethod.editor.button(2),4,0,1,2)
+        momentumfilelayout = QtGui.QHBoxLayout()
+        self.editmomentumFile.addToBoxLayout(momentumfilelayout,label=False,unit=False)
+        momentumfilelayout.addStretch()
+        layoutMomentum.addLayout(momentumfilelayout,5,1)
+        
+        layoutMomentum.setColumnStretch(2,1)
+
+        groupboxMomentum.setLayout(layoutMomentum)
+        
+        # Freshwater fluxes
+
+#        groupboxPe = QtGui.QGroupBox('fresh water flux',self)
+        
+#        layoutPe = QtGui.QGridLayout()
+#        layoutPe.setColumnMinimumWidth(0,radiowidth)
+
+#        self.editPeMethod  = self.factory.createEditor(['airsea','p_e_method'],   self,selectwithradio=True)
+#        self.editPeConst   = self.factory.createEditor(['airsea','const_p_e'],    self)
+#        self.editPeFile    = self.factory.createEditor(['airsea','p_e_flux_file'],self)
+        
+#        layoutPe.addWidget(self.editPeMethod.editor.button(0),1,0,1,2)
+
+#        layoutPe.addWidget(self.editPeMethod.editor.button(1),2,0,1,2)
+#        constpelayout = QtGui.QGridLayout()
+#        self.editPeConst.addToGridLayout(constpelayout)
+#        layoutPe.addLayout(constpelayout,3,1)
+        
+#        layoutPe.addWidget(self.editPeMethod.editor.button(2),4,0,1,2)
+#        pefilelayout = QtGui.QHBoxLayout()
+#        self.editPeFile.addToBoxLayout(pefilelayout,label=False,unit=False)
+#        pefilelayout.addStretch()
+#        layoutPe.addLayout(pefilelayout,5,1)
+        
+#        groupboxPe.setLayout(layoutPe)
+        
+        # Create final layout
+
+        label = self.editCalcFluxes.createLabel(detail=2,wrap=True,addcolon=False)
+        layout.addWidget(label,                               0,0,1,2)
+        layout.addWidget(self.editCalcFluxes.editor.button(0),1,0,1,2)
+        layout.addLayout(meteolayout,                         2,1)
+        layout.addWidget(self.editCalcFluxes.editor.button(1),3,0,1,2)
+        layout.addWidget(groupboxHeat,                        4,1)
+        layout.addWidget(groupboxMomentum,                    5,1)
+        #layout.addWidget(groupboxPe,4,0,1,2)
+        layout.setRowStretch(layout.rowCount(),1)
         
         self.setLayout(layout)
 
@@ -511,7 +663,7 @@ class PageFinal(commonqt.WizardPage):
 
 class SequenceEditScenario(commonqt.WizardSequence):
     def __init__(self):
-        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageSalinity,PageAdvanced,PageSave])
+        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageSalinity,PageAdvanced,PageSave])
 
 def main():
     # Debug info

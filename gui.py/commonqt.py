@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.30 2007-07-06 13:48:29 jorn Exp $
+#$Id: commonqt.py,v 1.31 2007-07-13 08:57:46 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -788,6 +788,71 @@ class LinkedFileEditor(QtGui.QWidget):
             self.emit(QtCore.SIGNAL('onChanged()'))
 
 # =======================================================================
+# TimeDeltaEditor
+# =======================================================================
+
+class TimeDeltaEditor(QtGui.QWidget):
+    def __init__(self,parent=None):
+        QtGui.QWidget.__init__(self, parent)
+
+        lo = QtGui.QHBoxLayout()
+        
+        self.spinValue = QtGui.QDoubleSpinBox(self)
+        self.spinValue.setMinimum(0.)
+        
+        self.comboUnits = QtGui.QComboBox(self)
+        self.comboUnits.addItems(['seconds','minutes','hours','days'])
+
+        lo.addWidget(self.spinValue)
+        lo.addWidget(self.comboUnits)
+
+        self.connect(self.spinValue,  QtCore.SIGNAL('editingFinished()'), self.onChange)
+        self.connect(self.comboUnits, QtCore.SIGNAL('currentIndexChanged(int)'),    self.onUnitChange)
+
+        self.setLayout(lo)
+
+    def setValue(self,delta=None):
+        if delta==None: delta = xmlstore.StoreTimeDelta()
+        seconds = delta.seconds + delta.milliseconds/1000.
+        if delta.days>0:
+            self.comboUnits.setCurrentIndex(3)
+            self.spinValue.setValue(delta.days+seconds/86400.)
+        elif delta.seconds>=3600:
+            self.comboUnits.setCurrentIndex(2)
+            self.spinValue.setValue(seconds/3600)
+        elif delta.seconds>=60:
+            self.comboUnits.setCurrentIndex(1)
+            self.spinValue.setValue(seconds/60)
+        else:
+            self.comboUnits.setCurrentIndex(0)
+            self.spinValue.setValue(seconds)
+
+    def value(self):
+        unit = self.comboUnits.currentIndex()
+        if   unit==0:
+            return xmlstore.StoreTimeDelta(seconds=self.spinValue.value())
+        elif unit==1:
+            return xmlstore.StoreTimeDelta(seconds=self.spinValue.value()*60)
+        elif unit==2:
+            return xmlstore.StoreTimeDelta(seconds=self.spinValue.value()*3600)
+        elif unit==3:
+            return xmlstore.StoreTimeDelta(days=self.spinValue.value())
+            
+    def onUnitChange(self,unit):
+        if   unit==0:
+            self.spinValue.setMaximum(60.)
+        elif unit==1:
+            self.spinValue.setMaximum(60.)
+        elif unit==2:
+            self.spinValue.setMaximum(24.)
+        elif unit==3:
+            self.spinValue.setMaximum(3650.)
+        self.onChange()
+            
+    def onChange(self):
+        self.emit(QtCore.SIGNAL('editingFinished()'))
+
+# =======================================================================
 # ScientificDoubleValidator: a Qt validator for floating point values
 #   Less strict than the standard QDoubleValidator, in the sense that is
 #   also accepts values in scientific format (e.g. 1.2e6)
@@ -994,6 +1059,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
                     editor.addItem(ch.getAttribute('label'),QtCore.QVariant(int(ch.getAttribute('value'))))
         elif nodetype=='datetime':
             editor = QtGui.QDateTimeEdit(parent)
+        elif nodetype=='timedelta':
+            editor = TimeDeltaEditor(parent)
         elif nodetype=='file':
             editor = LinkedFileEditor(parent)
             self.currenteditor = editor
@@ -1037,6 +1104,13 @@ class PropertyDelegate(QtGui.QItemDelegate):
         elif nodetype=='datetime':
             value = value.toDateTime()
             editor.setDateTime(value)
+        elif nodetype=='timedelta':
+            value = value.toList()
+            days,ret  = value[0].toInt()
+            secs,ret  = value[1].toInt()
+            msecs,ret = value[2].toFloat()
+            value = xmlstore.StoreTimeDelta(days=days,seconds=secs,milliseconds=msecs)
+            editor.setValue(value)
         elif nodetype=='file':
             editor.setNode(node)
         elif nodetype=='color':
@@ -1059,6 +1133,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             model.setData(index,editor.itemData(editor.currentIndex()))
         elif nodetype=='datetime':
             model.setData(index, QtCore.QVariant(editor.dateTime()))
+        elif nodetype=='timedelta':
+            node.setValue(editor.value())
         elif nodetype=='file':
             node.setValue(editor.datafile)
         elif nodetype=='color':
@@ -1233,6 +1309,8 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 if fieldtype=='datetime':
                     # First convert Python datetime to QDateTime, then cast to variant.
                     return QtCore.QVariant(datetime2qtdatetime(value))
+                elif fieldtype=='timedelta':
+                    return QtCore.QVariant([QtCore.QVariant(int(value.days)),QtCore.QVariant(int(value.seconds)),QtCore.QVariant(float(value.milliseconds))])
                 elif fieldtype=='file':
                     # Return full path
                     return QtCore.QVariant(unicode(value))
@@ -1301,6 +1379,11 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             value = value.toBool()
         elif fieldtype=='datetime':
             value = qtdatetime2datetime(value.toDateTime())
+        elif fieldtype=='timedelta':
+            value = value.toList()
+            days,converted = value[0].toInt()
+            secs,converted  = value[1].toInt()
+            value = xmlstore.StoreTimeDelta(secs,days)
         elif fieldtype=='select':
             value,converted = value.toInt()
             if not converted: return False
@@ -1843,27 +1926,42 @@ class PropertyEditor:
         self.suppresschangeevent = False
         self.location = node.location[:]
         
-    def addToGridLayout(self,gridlayout,irow=None,icolumn=0):
+    def addToGridLayout(self,gridlayout,irow=None,icolumn=0,rowspan=1,colspan=1,label=True,unit=True):
         """Adds the editor plus label to an existing QGridLayout, in the specified row, starting at the specified column.
         """
         if irow==None: irow = gridlayout.rowCount()
-        if self.label==None: self.createLabel()
-        gridlayout.addWidget(self.label,irow,icolumn)
-        gridlayout.addWidget(self.editor,irow,icolumn+1)
-        if not self.unitinside:
-            if self.unit==None: self.createUnit()
-            gridlayout.addWidget(self.unit,irow,icolumn+2)
 
-    def addToBoxLayout(self,boxlayout):
+        if label:
+            if self.label==None: self.createLabel()
+            gridlayout.addWidget(self.label,irow,icolumn)
+            icolumn += 1
+
+        gridlayout.addWidget(self.editor,irow,icolumn,rowspan,colspan)
+        icolumn += 1
+
+        if unit and not self.unitinside:
+            if self.unit==None: self.createUnit()
+            gridlayout.addWidget(self.unit,irow,icolumn)
+            icolumn += 1
+
+    def addToBoxLayout(self,boxlayout,label=True,unit=True,addstretch=True):
         """Adds the editor plus label to an existing QBoxLayout.
         """
-        if self.label==None: self.createLabel()
         layout = QtGui.QHBoxLayout()
-        layout.addWidget(self.label)
+        
+        if label:
+            if self.label==None: self.createLabel()
+            layout.addWidget(self.label)
+            
         layout.addWidget(self.editor)
-        if not self.unitinside:
+        
+        if unit and not self.unitinside:
             if self.unit==None: self.createUnit()
             layout.addWidget(self.unit)
+            
+        if addstretch:
+            layout.addStretch(1)
+            
         boxlayout.addLayout(layout)
 
     def createUnit(self):
@@ -1876,13 +1974,15 @@ class PropertyEditor:
         if self.allowhide and self.node.isHidden(): self.unit.setVisible(False)
         return self.unit
         
-    def createLabel(self):
+    def createLabel(self,detail=1,wrap=False,addcolon=True):
         """Creates a label for the editor, based on the description in the source node.
         This function can be called only once in the life time of the object.
         """
         assert self.label==None, 'Cannot create label because it has already been created.'
-        text = self.node.getText(detail=1,capitalize=True)+': '
+        text = self.node.getText(detail=detail,capitalize=True)
+        if addcolon: text += ': '
         self.label = QtGui.QLabel(text,self.editor.parent())
+        if wrap: self.label.setWordWrap(True)
         if self.allowhide and self.node.isHidden(): self.label.setVisible(False)
         return self.label
         
@@ -1907,12 +2007,18 @@ class PropertyEditor:
         """Enables/disables or shows/hides the editor (and label, if any) based on the visibility of the source node.
         Called by the responsible factory when the "hidden" state of the source node changes.
         """
+        hidden = self.node.isHidden()
         if isinstance(self.editor,QtGui.QWidget):
-            hidden = self.node.isHidden()
             if self.allowhide:
                 self.setVisible(not hidden)
             else:
                 self.editor.setEnabled(not hidden)
+        elif isinstance(self.editor,QtGui.QButtonGroup):
+            for bn in self.editor.buttons():
+                if self.allowhide:
+                    bn.setVisible(not hidden)
+                else:
+                    bn.setEnabled(not hidden)
 
     def addChangeHandler(self,callback):
         """Registers an event handler to be called when the value in the editor changes.
@@ -1928,11 +2034,16 @@ class PropertyEditor:
             for callback in self.changehandlers:
                 callback(self)
 
-    def createEditor(self,node,parent,selectwithradio=False,boolwithcheckbox=False,fileprefix=None):
+    def createEditor(self,node,parent,selectwithradio=False,boolwithcheckbox=False,fileprefix=None,groupbox=False,whatsthis=True):
         templatenode = node.templatenode
         nodetype = node.getValueType()
         editor = None
-        if nodetype=='string':
+        
+        if groupbox:
+            editor = QtGui.QGroupBox(node.getText(detail=1,capitalize=True),parent)
+            editor.setFlat(True)
+            whatsthis = False
+        elif nodetype=='string':
             editor = QtGui.QLineEdit(parent)
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='int':
@@ -1981,6 +2092,10 @@ class PropertyEditor:
         elif nodetype=='datetime':
             editor = QtGui.QDateTimeEdit(parent)
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
+        elif nodetype=='timedelta':
+            editor = TimeDeltaEditor(parent)
+            self.currenteditor = editor
+            editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='file':
             if fileprefix==None: fileprefix = node.getText(detail=1,capitalize=True)
             editor = LinkedFileEditor(parent,prefix=fileprefix)
@@ -1988,11 +2103,15 @@ class PropertyEditor:
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         else:
             assert False, 'Unknown node type "%s".' % nodetype
-        if isinstance(editor,QtGui.QWidget):
+            
+        # Add what's-this information.
+        if whatsthis and isinstance(editor,QtGui.QWidget):
             editor.setWhatsThis(node.getText(detail=2,capitalize=True))
+            
         return editor
 
     def setEditorData(self,editor,node):
+        if isinstance(editor,QtGui.QGroupBox): return
         self.suppresschangeevent = True
         value = node.getValueOrDefault()
         nodetype = node.getValueType()
@@ -2015,6 +2134,8 @@ class PropertyEditor:
                     editor.button(0).setChecked(True)
             elif nodetype=='datetime':
                 editor.setDateTime(QtCore.QDateTime())
+            elif nodetype=='timedelta':
+                editor.setValue(None)
             elif nodetype=='file':
                 editor.setNode(node)
         else:
@@ -2044,11 +2165,14 @@ class PropertyEditor:
                     editor.button(value).setChecked(True)
             elif nodetype=='datetime':
                 editor.setDateTime(datetime2qtdatetime(value))
+            elif nodetype=='timedelta':
+                editor.setValue(value)
             elif nodetype=='file':
                 editor.setNode(node)
         self.suppresschangeevent = False
 
     def setNodeData(self,editor,node):
+        if isinstance(editor,QtGui.QGroupBox): return True
         nodetype = node.getValueType()
         if nodetype=='string':
             return node.setValue(editor.text())
@@ -2065,11 +2189,14 @@ class PropertyEditor:
                 return node.setValue(editor.itemData(editor.currentIndex()).toBool())
         elif nodetype=='select':
             if isinstance(editor,QtGui.QWidget):
-                return node.setValue(editor.itemData(editor.currentIndex()).toInt())
+                optionvalue,ret = editor.itemData(editor.currentIndex()).toInt()
+                return node.setValue(optionvalue)
             else:
                 return node.setValue(editor.checkedId())
         elif nodetype=='datetime':
             return node.setValue(qtdatetime2datetime(editor.dateTime()))
+        elif nodetype=='timedelta':
+            return node.setValue(editor.value())
         elif nodetype=='file':
             return node.setValue(editor.datafile)
 

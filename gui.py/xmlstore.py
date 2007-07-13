@@ -242,6 +242,74 @@ class Store:
         else:
             return valuetype(value)
 
+class StoreTimeDelta(Store.DataType):
+    def __init__(self,seconds=0,days=0,milliseconds=0):
+        Store.DataType.__init__(self)
+        seconds += (days % 1)*86400 # Add floating point part of the day count
+        self.days = int(days)   # Take all but floating point part
+        self.milliseconds = int(milliseconds + (seconds % 1)*1000)   # Add floating point part of second count
+        self.seconds = int(seconds) # Take all but floating point part
+        if self.milliseconds>=1000:
+            # Add milliseconds above 1000 to seconds
+            self.seconds += int(self.milliseconds/1000)
+            self.milliseconds = self.milliseconds % 1000
+        if self.seconds>=86400:
+            # Add seconds above 86400 (one day) to days
+            self.days += int(self.seconds/86400)
+            self.seconds = self.seconds % 86400
+
+    @staticmethod
+    def load(node,context):
+        text = common.getNodeText(node)
+        if text:
+            #components = text.split(':')
+            #assert len(components)==3, 'timedelta objects must be stored as "days:seconds:milliseconds".'
+            #return StoreTimeDelta(milliseconds=int(components[2]),seconds=int(components[1]),days=int(components[0]))
+            return StoreTimeDelta(seconds=float(text))
+        else:
+            return StoreTimeDelta()
+
+    def save(self,node,context):
+        #common.setNodeText(node,'%i:%i:%i' % (self.days,self.seconds,self.milliseconds))
+        common.setNodeText(node,str(self.getAsSeconds()))
+        
+    def getAsSeconds(self):
+        return self.days*3600*24 + self.seconds + self.milliseconds/1000.
+        
+    def __float__(self):
+        return float(self.getAsSeconds())
+        
+    def __str__(self):
+        values = []
+        
+        # Add days
+        if self.days>0:
+            values.append([self.days,'day'])
+            
+        # Divide seconds over hours, minutes, and remaining seconds.
+        seconds = self.seconds
+        hours = int(seconds/3600)
+        if hours>0:
+            values.append([hours,'hour'])
+            seconds = (seconds % 3600)            
+        minutes = int(seconds/60)
+        if minutes>0:
+            values.append([minutes,'minute'])
+            seconds = (seconds % 60)
+        if seconds>0:
+            values.append([seconds,'second'])
+            
+        # Add milliseconds
+        if self.milliseconds>0:
+            values.append([self.milliseconds,'millisecond'])
+            
+        # Add a trailing "s" for each unit that will have value > 1
+        for v in values:
+            if v[0]>1: v[1]+='s'
+            
+        # Combine units into string.
+        return ', '.join(['%i %s' % (v[0],v[1]) for v in values])
+
 class StoreColor(Store.DataType):
     def __init__(self,red=None,green=None,blue=None):
         Store.DataType.__init__(self)
@@ -1580,6 +1648,7 @@ class TypedStore(common.referencedobject):
         self.store = Store(valuedom,xmlroot=valueroot)
         self.store.filetypes['select'] = int
         self.store.filetypes['file'] = DataFile
+        self.store.filetypes['timedelta'] = StoreTimeDelta
         self.store.filetypes['color'] = StoreColor
         self.root = TypedStore.Node(self,templateroot,self.store.xmlroot,[],None)
         self.changed = False
