@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.31 2007-07-13 08:57:46 jorn Exp $
+#$Id: commonqt.py,v 1.32 2007-07-17 07:03:02 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -1896,7 +1896,8 @@ class PropertyEditorFactory:
     def onStoreVisibilityChanged(self,node,visible,showhide):
         if not showhide: return
         for editor in self.editors:
-            if node is editor.node:
+            #if node is editor.node:
+            if ('/'.join(editor.node.location)).startswith('/'.join(node.location)):
                 editor.updateEditorEnabled()
 
     def onStoreChanged(self):
@@ -2007,18 +2008,18 @@ class PropertyEditor:
         """Enables/disables or shows/hides the editor (and label, if any) based on the visibility of the source node.
         Called by the responsible factory when the "hidden" state of the source node changes.
         """
-        hidden = self.node.isHidden()
+        visible = not self.node.isHidden()
         if isinstance(self.editor,QtGui.QWidget):
             if self.allowhide:
-                self.setVisible(not hidden)
+                self.setVisible(visible)
             else:
-                self.editor.setEnabled(not hidden)
+                self.editor.setEnabled(visible)
         elif isinstance(self.editor,QtGui.QButtonGroup):
             for bn in self.editor.buttons():
                 if self.allowhide:
-                    bn.setVisible(not hidden)
+                    bn.setVisible(visible)
                 else:
-                    bn.setEnabled(not hidden)
+                    bn.setEnabled(visible)
 
     def addChangeHandler(self,callback):
         """Registers an event handler to be called when the value in the editor changes.
@@ -2077,7 +2078,7 @@ class PropertyEditor:
             if selectwithradio:
                 editor = QtGui.QButtonGroup()
                 for ch in options.childNodes:
-                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option' and not ch.hasAttribute('disabled'):
                         opt = QtGui.QRadioButton(ch.getAttribute('label'),parent)
                         if ch.hasAttribute('description'):
                             opt.setWhatsThis(ch.getAttribute('description'))
@@ -2086,7 +2087,7 @@ class PropertyEditor:
             else:
                 editor = QtGui.QComboBox(parent)
                 for ch in options.childNodes:
-                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option' and not ch.hasAttribute('disabled'):
                         editor.addItem(ch.getAttribute('label'),QtCore.QVariant(int(ch.getAttribute('value'))))
                 editor.connect(editor, QtCore.SIGNAL('currentIndexChanged(int)'), self.onChange)
         elif nodetype=='datetime':

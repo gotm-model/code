@@ -492,6 +492,7 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
                       ('/obs/sprofile/s_prof_method',     '/obs/sprofile'),
                       ('/obs/sprofile',                   '/obs/sprofile/SRelax'),
                       ('/obs/tprofile/t_prof_method',     '/obs/tprofile'),
+                      ('/obs/tprofile',                   '/obs/tprofile/TRelax'),
                       ('/obs/ext_pressure/ext_press_method','/obs/ext_pressure'),
                       ('/obs/int_pressure/int_press_method','/obs/int_pressure'),
                       ('/obs/extinct/extinct_method',     '/obs/extinct'),
@@ -510,47 +511,66 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
     
     def convert(self,source,target):
         xmlstore.Convertor.convert(self,source,target)
+        
+        # ===============================================
+        #  gotmrun
+        # ===============================================
+
+        # Convert absolute time interval to relative time interval.
+        dt = source.getProperty(['gotmrun','model_setup','dt'])
+        target.setProperty(['output','dtsave'],dt*source.getProperty(['gotmrun','output','nsave']))
+
+        # ===============================================
+        #  meanflow
+        # ===============================================
 
         target.setProperty(['meanflow','z0s'],target.getProperty(['meanflow','z0s_min']))
         
+        # ===============================================
+        #  airsea
+        # ===============================================
+
+        # Convert calc_fluxes from boolean into integer.
         if source.getProperty(['airsea','airsea','calc_fluxes']):
             target.setProperty(['airsea','flux_source'],0)
         else:
             target.setProperty(['airsea','flux_source'],1)
         
-        target.setProperty(['obs','sprofile','s_const'],target.getProperty(['obs','sprofile','s_1']))
-        target.setProperty(['obs','sprofile','s_surf'], target.getProperty(['obs','sprofile','s_1']))
-        
+        # ===============================================
+        #  obs: salinity
+        # ===============================================
+
         # Merge analytical salinity profile setting into main salinity settings.
         if source.getProperty(['obs','sprofile','s_prof_method'])==1:
             target.setProperty(['obs','sprofile'],10+source.getProperty(['obs','sprofile','s_analyt_method']))
 
+        # Copy constant salinity, surface salinity from shared top layer salinity.
+        target.setProperty(['obs','sprofile','s_const'],target.getProperty(['obs','sprofile','s_1']))
+        target.setProperty(['obs','sprofile','s_surf'], target.getProperty(['obs','sprofile','s_1']))
+
         # Determine type of salinity relaxation.        
-        SRelax = 0  # default: no relaxation
         relaxbulk = source.getProperty(['obs','sprofile','SRelaxTauM'])<1e+15
         relaxbott = source.getProperty(['obs','sprofile','SRelaxTauB'])<1e+15 and source.getProperty(['obs','sprofile','SRelaxBott'])>0
         relaxsurf = source.getProperty(['obs','sprofile','SRelaxTauS'])<1e+15 and source.getProperty(['obs','sprofile','SRelaxSurf'])>0
         target.setProperty(['obs','sprofile','SRelax'],relaxbulk or relaxbott or relaxsurf)
         
+        # ===============================================
+        #  obs: temperature
+        # ===============================================
+
+        # Merge analytical temperature profile setting into main temperature settings.
+        if source.getProperty(['obs','tprofile','t_prof_method'])==1:
+            target.setProperty(['obs','tprofile'],10+source.getProperty(['obs','tprofile','t_analyt_method']))
+
+        # Copy constant temperature, surface temperature from shared top layer temperature.
         target.setProperty(['obs','tprofile','t_const'],target.getProperty(['obs','tprofile','t_1']))
         target.setProperty(['obs','tprofile','t_surf'], target.getProperty(['obs','tprofile','t_1']))
 
         # Determine type of temperature relaxation.        
-        TRelax = 0  # default: no relaxation
+        relaxbulk = source.getProperty(['obs','tprofile','TRelaxTauM'])<1e+15
         relaxbott = source.getProperty(['obs','tprofile','TRelaxTauB'])<1e+15 and source.getProperty(['obs','tprofile','TRelaxBott'])>0
         relaxsurf = source.getProperty(['obs','tprofile','TRelaxTauS'])<1e+15 and source.getProperty(['obs','tprofile','TRelaxSurf'])>0
-        if relaxsurf and relaxbott:
-            TRelax = 4  # bulk, surface, bottom
-        elif relaxsurf:
-            TRelax = 3  # bulk, surface
-        elif relaxbott:
-            TRelax = 2  # bulk, bottom
-        elif source.getProperty(['obs','tprofile','TRelaxTauM'])<1e+15:
-            TRelax = 1  # bulk
-        target.setProperty(['obs','tprofile','TRelax'],TRelax)
-
-        dt = source.getProperty(['gotmrun','model_setup','dt'])
-        target.setProperty(['output','dtsave'],dt*source.getProperty(['gotmrun','output','nsave']))
+        target.setProperty(['obs','tprofile','TRelax'],relaxbulk or relaxbott or relaxsurf)
 
         # Note: we implicitly lose output settings out_fmt, out_dir and out_fn; the GUI scenario
         # does not support (or need) these.
@@ -566,12 +586,39 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
     def convert(self,source,target):
         xmlstore.Convertor.convert(self,source,target)
 
+        # ===============================================
+        #  gotmrun
+        # ===============================================
+
+        # Move from absolute time interval between outputs to relative intervals (number of simulation steps)
+        dt = source.getProperty(['timeintegration','dt']).getAsSeconds()
+        relinterval = int(source.getProperty(['output','dtsave']).getAsSeconds()/dt)
+        if relinterval<1: relinterval=1
+        target.setProperty(['gotmrun','output','nsave'],relinterval)
+
+        # Add output path and type (not present in GUI scenarios)
+        target.setProperty(['gotmrun','output','out_fmt'],2)
+        target.setProperty(['gotmrun','output','out_dir'],'.')
+        target.setProperty(['gotmrun','output','out_fn'],'result')
+
+        # ===============================================
+        #  meanflow
+        # ===============================================
+
         # Choose between constant and minimum surface roughness value, based on use of Charnock adaptation.
         if not source.getProperty(['meanflow','charnock']):
             target.setProperty(['gotmmean','meanflow','z0s_min'],source.getProperty(['meanflow','z0s']))
 
+        # ===============================================
+        #  airsea
+        # ===============================================
+
         # Convert flux source from "select" to "bool".
         target.setProperty(['airsea','airsea','calc_fluxes'],source.getProperty(['airsea','flux_source'])==0)
+
+        # ===============================================
+        #  obs: salinity
+        # ===============================================
 
         # If an analytical salinity profile is used, extract the analytical method from the main salinity setting.
         sprofile = source.getProperty(['obs','sprofile'])
@@ -586,6 +633,22 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
         elif s_analyt_method==3:
             target.setProperty(['obs','sprofile','s_1'],source.getProperty(['obs','sprofile','s_surf']))
 
+        # Disable salinity relaxation where needed.
+        if not source.getProperty(['obs','sprofile','SRelax']):
+            target.setProperty(['obs','sprofile','SRelaxTauM'],1.e15)
+            target.setProperty(['obs','sprofile','SRelaxTauB'],1.e15)
+            target.setProperty(['obs','sprofile','SRelaxTauS'],1.e15)
+
+        # ===============================================
+        #  obs: temperature
+        # ===============================================
+
+        # If an analytical temperature profile is used, extract the analytical method from the main temperature setting.
+        tprofile = source.getProperty(['obs','tprofile'])
+        if tprofile>10:
+            target.setProperty(['obs','tprofile','t_prof_method'],1)
+            target.setProperty(['obs','tprofile','t_analyt_method'],tprofile-10)
+
         # Choose between constant and surface temperature based on chosen analytical method.
         t_analyt_method = target.getProperty(['obs','tprofile','t_analyt_method'])
         if t_analyt_method==1:
@@ -593,28 +656,11 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
         elif t_analyt_method==3:
             target.setProperty(['obs','tprofile','t_1'],source.getProperty(['obs','tprofile','t_surf']))
 
-        # Move from absolute time interval between outputs to relative intervals (number of simulation steps)
-        dt = source.getProperty(['timeintegration','dt']).getAsSeconds()
-        relinterval = int(source.getProperty(['output','dtsave']).getAsSeconds()/dt)
-        if relinterval<1: relinterval=1
-        target.setProperty(['gotmrun','output','nsave'],relinterval)
-
-        # Disable salinity relaxation where needed.
-        if not source.getProperty(['obs','sprofile','SRelax']):
-            target.setProperty(['obs','sprofile','SRelaxTauM'],1.e15)
-            target.setProperty(['obs','sprofile','SRelaxTauB'],1.e15)
-            target.setProperty(['obs','sprofile','SRelaxTauS'],1.e15)
-
         # Disable temperature relaxation where needed.
-        TRelax = source.getProperty(['obs','tprofile','TRelax'])
-        if TRelax==0: target.setProperty(['obs','tprofile','TRelaxTauM'],1.e15)
-        if TRelax!=4:
-            if TRelax!=2: target.setProperty(['obs','tprofile','TRelaxTauB'],1.e15)
-            if TRelax!=3: target.setProperty(['obs','tprofile','TRelaxTauS'],1.e15)
+        if not source.getProperty(['obs','tprofile','TRelax']):
+            target.setProperty(['obs','tprofile','TRelaxTauM'],1.e15)
+            target.setProperty(['obs','tprofile','TRelaxTauB'],1.e15)
+            target.setProperty(['obs','tprofile','TRelaxTauS'],1.e15)
 
-        # Add output path and type (not present in GUI scenarios)
-        target.setProperty(['gotmrun','output','out_fmt'],2)
-        target.setProperty(['gotmrun','output','out_dir'],'.')
-        target.setProperty(['gotmrun','output','out_fn'],'result')
 Scenario.addConvertor(Convertor_gotmgui_0_5_0_to_gotm_4_1_0)
 

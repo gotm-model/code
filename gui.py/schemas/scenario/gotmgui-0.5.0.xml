@@ -629,23 +629,23 @@
 				<option value="13" label="analytical: profile with constant N²"/>
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element id="z_s1" type="float" label="upper layer thickness" unit="m">
-				<condition type="eq" variable="." value="12"/>
-			</element>
 			<element id="s_const" type="float" label="constant salinity" unit="psu">
 				<condition type="eq" variable="." value="11"/>
 			</element>
-			<element id="s_1" type="float" label="upper layer salinity" unit="psu">
+			<element id="z_s1" type="float" label="upper layer thickness" unit="m">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element id="s_surf" type="float" label="surface salinity" unit="psu">
-				<condition type="eq" variable="." value="13"/>
+			<element id="s_1" type="float" label="upper layer salinity" unit="psu">
+				<condition type="eq" variable="." value="12"/>
 			</element>
 			<element id="z_s2" type="float" label="lower layer thickness" unit="m">
 				<condition type="eq" variable="." value="12"/>
 			</element>
 			<element id="s_2" type="float" label="lower layer salinity" unit="psu">
 				<condition type="eq" variable="." value="12"/>
+			</element>
+			<element id="s_surf" type="float" label="surface salinity" unit="psu">
+				<condition type="eq" variable="." value="13"/>
 			</element>
 			<element id="s_obs_NN" type="float" label="constant N²">
 				<condition type="eq" variable="." value="13"/>
@@ -681,58 +681,31 @@
 		<element id="tprofile" type="select" label="temperature profiles" description="observed or prescribed (potential) temperature profiles">
 			<options>
 				<option value="0" label="none: temperature equation is not solved"/>
-				<option value="1" label="analytically prescribed initial profile"/>
+				<option value="11" label="analytical: constant temperature across column"/>
+				<option value="12" label="analytical: two-layer stratification"/>
+				<option value="13" label="analytical: profile with constant N²"/>
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element id="t_analyt_method" type="select" label="method to create analytically prescribed inital profile">
-				<condition type="eq" variable="." value="1"/>
-				<options>
-					<option value="1" label="constant temperature across column"/>
-					<option value="2" label="two-layer stratification"/>
-					<option value="3" label="profile with constant N²"/>
-				</options>
+			<element id="t_const" type="float" label="constant temperature" unit="ºC">
+				<condition type="eq" variable="." value="11"/>
 			</element>
 			<element id="z_t1" type="float" label="upper layer thickness" unit="m">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./t_analyt_method" value="2"/>
-				</condition>
-			</element>
-			<element id="t_const" type="float" label="constant temperature" unit="ºC">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./t_analyt_method" value="1"/>
-				</condition>
+				<condition type="eq" variable="." value="12"/>
 			</element>
 			<element id="t_1" type="float" label="upper layer temperature" unit="ºC">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./t_analyt_method" value="2"/>
-				</condition>
-			</element>
-			<element id="t_surf" type="float" label="surface temperature" unit="ºC">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./t_analyt_method" value="3"/>
-				</condition>
+				<condition type="eq" variable="." value="12"/>
 			</element>
 			<element id="z_t2" type="float" label="lower layer thickness" unit="m">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./t_analyt_method" value="2"/>
-				</condition>
+				<condition type="eq" variable="." value="12"/>
 			</element>
 			<element id="t_2" type="float" label="lower layer temperature" unit="ºC">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./t_analyt_method" value="2"/>
-				</condition>
+				<condition type="eq" variable="." value="12"/>
+			</element>
+			<element id="t_surf" type="float" label="surface temperature" unit="ºC">
+				<condition type="eq" variable="." value="13"/>
 			</element>
 			<element id="t_obs_NN" type="float" label="constant N²">
-				<condition type="and">
-					<condition type="eq" variable="." value="1"/>
-					<condition type="eq" variable="./t_analyt_method" value="3"/>
-				</condition>
+				<condition type="eq" variable="." value="13"/>
 			</element>
 			<element id="t_prof_file" type="file" label="custom temperature profiles">
 				<condition type="eq" variable="." value="2"/>
@@ -742,42 +715,23 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="TRelax" type="select" label="relax model results towards observations">
+			<element id="TRelax" type="bool" label="relax model results towards observations">
 				<condition type="ne" variable="." value="0"/>
-				<options>
-					<option label="none" value="0"/>
-					<option label="whole column" value="1"/>
-					<option label="bottom layer and bulk"  value="2"/>
-					<option label="surface layer and bulk" value="3"/>
-					<option label="bottom layer, surface layer and bulk" value="4"/>
-				</options>
-			</element>
-			<element id="TRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
-				<condition type="ne" variable="./TRelax" value="0"/>
-			</element>
-			<element id="TRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
-				<condition type="or">
-					<condition type="eq" variable="./TRelax" value="2"/>
-					<condition type="eq" variable="./TRelax" value="4"/>
-				</condition>
-			</element>
-			<element id="TRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
-				<condition type="or">
-					<condition type="eq" variable="./TRelax" value="3"/>
-					<condition type="eq" variable="./TRelax" value="4"/>
-				</condition>
-			</element>
-			<element id="TRelaxBott" type="float" label="height of bottom relaxation layer" description="Height of bottom relaxation layer." unit="m">
-				<condition type="or">
-					<condition type="eq" variable="./TRelax" value="2"/>
-					<condition type="eq" variable="./TRelax" value="4"/>
-				</condition>
-			</element>
-			<element id="TRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
-				<condition type="or">
-					<condition type="eq" variable="./TRelax" value="3"/>
-					<condition type="eq" variable="./TRelax" value="4"/>
-				</condition>
+				<element id="TRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
+					<condition type="eq" variable="."  value="True"/>
+				</element>
+				<element id="TRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
+					<condition type="eq" variable="."  value="True"/>
+				</element>
+				<element id="TRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
+					<condition type="eq" variable="."  value="True"/>
+				</element>
+				<element id="TRelaxBott" type="float" label="height of bottom relaxation layer" description="Height of bottom relaxation layer." unit="m">
+					<condition type="eq" variable="."  value="True"/>
+				</element>
+				<element id="TRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
+					<condition type="eq" variable="."  value="True"/>
+				</element>
 			</element>
 		</element>
 		
@@ -790,7 +744,7 @@
 			<element id="ext_press_mode" type="select" label="measure of external pressure gradient">
 				<options>
 					<option value="0" label="surface elevation gradient" />
-					<option value="1" label="current meter measurement at a given height" />
+					<option value="1" label="current meter measurement" description="current meter measurement at a given height" />
 					<option value="2" label="vertically averaged current speed"/>
 				</options>
 			</element>
