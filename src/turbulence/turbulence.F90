@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.17 2007-01-06 11:49:15 kbk Exp $
+!$Id: turbulence.F90,v 1.18 2007-07-23 11:28:39 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -260,6 +260,9 @@
 
 !
 !  $Log: turbulence.F90,v $
+!  Revision 1.18  2007-07-23 11:28:39  hb
+!  cw for Craig-Banner wave breaking from namelist now used in fk_craig.F90
+!
 !  Revision 1.17  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -2735,7 +2738,7 @@
          ! for shear-free flows
 
          ! compute the flux of k from the wave-breaking model
-         f_k  = fk_craig(u_tau)
+         f_k  = fk_craig(u_tau,cw)
 
          K    = (-sig_k*f_k/(cmsf*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
 
@@ -2876,7 +2879,7 @@
          ! of shear-free flows and from f_k given by the wave-breaking model
 
          ! compute the flux of k from the wave-breaking model
-         f_k  = fk_craig(u_tau)
+         f_k  = fk_craig(u_tau,cw)
 
          K = ( -f_k/(sqrt(2.)*sq*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
 
@@ -3013,7 +3016,7 @@
          ! compute the capital K from the analytical solution
          ! for shear-free flows
          ! compute the flux of k from the wave-breaking model
-         f_k  = fk_craig(u_tau)
+         f_k  = fk_craig(u_tau,cw)
 
          K    = (-sig_k*f_k/(cmsf*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
 
@@ -3148,7 +3151,7 @@
          ! of shear-free flows and from f_k given by the wave-breaking model
 
          ! compute the flux of k from the wave-breaking model
-         f_k  = fk_craig(u_tau)
+         f_k  = fk_craig(u_tau,cw)
 
          K    = (-sig_k*f_k/(cmsf*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
 
@@ -3284,7 +3287,7 @@
          ! of shear-free flows and from f_k given by the wave-breaking model
 
          ! compute the flux of k from the wave-breaking model
-         f_k  = fk_craig(u_tau)
+         f_k  = fk_craig(u_tau,cw)
 
          K = ( -f_k/(sqrt(2.)*sq*gen_alpha*gen_l) )**(2./3.) / z0**gen_alpha
 

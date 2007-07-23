@@ -1,4 +1,4 @@
-!$Id: fk_craig.F90,v 1.4 2005-06-27 13:44:07 kbk Exp $
+!$Id: fk_craig.F90,v 1.5 2007-07-23 11:28:39 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,7 +6,7 @@
 ! !ROUTINE: TKE flux from wave-breaking\label{sec:fkCraig}
 !
 ! !INTERFACE:
-   REALTYPE  function fk_craig(u_tau)
+   REALTYPE  function fk_craig(u_tau,eta)
 !
 ! !DESCRIPTION:
 ! This functions returns the flux of $k$ caused by breaking surface waves
@@ -24,14 +24,15 @@
 !
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)                :: u_tau
-!
-! !DEFINED PARAMETERS:
-   REALTYPE, parameter                 :: eta=100.
+   REALTYPE, intent(in)                :: eta
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
 !  $Log: fk_craig.F90,v $
+!  Revision 1.5  2007-07-23 11:28:39  hb
+!  cw for Craig-Banner wave breaking from namelist now used in fk_craig.F90
+!
 !  Revision 1.4  2005-06-27 13:44:07  kbk
 !  modified + removed traling blanks
 !
