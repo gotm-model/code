@@ -29,8 +29,8 @@
 		</element>
 	</element>
 	
-	<element id="grid" label="column structure" description="The column structure determines the accuracy and detail with which the water column is resolved. More levels increase accuracy, result resolution, but also simulation time. You can selectively increase the detail of parts of the column by changing the grid type.">
-		<element id="nlev" type="int" label="number of levels" minimum="1" maximum="1000" description="Number of depth levels used to describe the water column"/>
+	<element id="grid" label="column structure" description="The column structure determines the accuracy and detail with which the water column is resolved. You can selectively increase the detail of parts of the column by changing the grid type.">
+		<element id="nlev" type="int" label="number of depth levels" minimum="1" maximum="1000" description="The number of depth levels used to describe the water column. More levels increase accuracy and result resolution, but also simulation time."/>
 		<element id="grid_method" type="select" label="type of vertical grid" description="By changing the grid type, you can control the detail with which different parts of the water column are resolved. A study of bottom friction benefits from a small layer height near the bottom (bottom zooming), while a study of biological process is better served by a layer height near the surface (surface zooming). Custom grids allow you to specify the height of every level individually.">
 			<options>
 				<option value="0" label="equal layers heights, optional zooming"/>
@@ -54,8 +54,8 @@
 		</element>
 	</element>
 
-	<element id="timeintegration" label="time integration" description="The time step affects the accuracy of the results: smaller time steps improve accuracy, but come at the expense of simulation speed.">
-		<element id="dt"    type="timedelta" label="time step" minimum="1" maximum="86400" description="Time step for integration"/>
+	<element id="timeintegration" label="time integration">
+		<element id="dt"    type="timedelta" label="time step" minimum="1" maximum="86400" description="Time step for integration. The time step affects the accuracy of the results: smaller time steps improve accuracy, but come at the expense of simulation speed."/>
 		<element id="cnpar" type="float"  label="&quot;explicitness&quot; of numerical scheme" minimum="0" maximum="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems."/>
 	</element>
 
@@ -150,7 +150,7 @@
 	</element>
 		
 	<element id="airsea" label="air-sea interaction">
-		<element id="flux_source" type="select" label="source of surface fluxes" description="Surface fluxes can be calculated from observed meteorological variables, or be specified explicitly as fluxes of heat and momentum.">
+		<element id="flux_source" type="select" label="surface flux specification" description="Surface fluxes can be calculated from observed meteorological variables, or be specified explicitly as fluxes of heat and momentum.">
 			<options>
 				<option value="0" label="meteorological observations"/>
 				<option value="1" label="separate heat and momentum fluxes"/>
@@ -374,12 +374,22 @@
 				</options>
 			</element>
 			<element id="psi_ubc" type="select" label="upper boundary condition for length-scale equation" description="Upper boundary condition for the length-scale equation (e.g. ε, kl, ω, GLS).">
+				<condition type="or">
+					<condition type="eq" variable="../len_scale_method" value="8"/>
+					<condition type="eq" variable="../len_scale_method" value="9"/>
+					<condition type="eq" variable="../len_scale_method" value="10"/>
+				</condition>
 				<options>
 					<option value="0" label="prescribed BC"/>
 					<option value="1" label="flux BC"/>
 				</options>
 			</element>
 			<element id="psi_lbc" type="select" label="lower boundary condition for length-scale equation" description="Lower boundary condition for the length-scale equation (e.g. ε, kl, ω, GLS).">
+				<condition type="or">
+					<condition type="eq" variable="../len_scale_method" value="8"/>
+					<condition type="eq" variable="../len_scale_method" value="9"/>
+					<condition type="eq" variable="../len_scale_method" value="10"/>
+				</condition>
 				<options>
 					<option value="0" label="prescribed BC"/>
 					<option value="1" label="flux BC"/>
@@ -403,38 +413,68 @@
 		<element id="turb_param" label="turbulence parameters">
 			<condition type="ne" variable="./turb_method" value="99"/>
 			<element id="cm0_fix" type="float" label="value of cm0">
-				<condition type="eq" variable="/gotmturb/turb_method" value="2"/>
+				<condition type="eq" variable="../turb_method" value="2"/>
 			</element>
 			<element id="Prandtl0_fix" type="float" label="turbulent Prandtl-number">
-				<condition type="eq" variable="/gotmturb/turb_method" value="2"/>
+				<condition type="eq" variable="../turb_method" value="2"/>
 			</element>
-			<element id="cw" type="float" label="constant of the wave-breaking model" description="Constant of the wave-breaking model. Craig &amp; Banner (1994) use a value of 100."/>
-			<element id="compute_kappa" type="bool" label="compute von Kármán constant from model parameters"/>
+			<element id="cw" type="float" label="constant of the wave-breaking model" description="Constant of the wave-breaking model. Craig &amp; Banner (1994) use a value of 100.">
+				<condition type="and">
+					<condition type="ne" variable="../turb_method" value="0"/>
+					<condition type="ne" variable="../tke_method" value="1"/>
+					<condition type="eq" variable="../bc/ubc_type" value="2"/>
+				</condition>
+			</element>
+			<element id="compute_kappa" type="bool" label="compute von Kármán constant from model parameters">
+				<condition type="ne" variable="../turb_method" value="0"/>
+			</element>
 			<element id="kappa" type="float" label="desired von Kármán constant">
-				<condition type="ne" variable="./compute_kappa" value="True"/>
+				<condition type="and">
+					<condition type="ne" variable="../turb_method" value="0"/>
+					<condition type="ne" variable="./compute_kappa" value="True"/>
+				</condition>
 			</element>
-			<element id="compute_c3" type="bool" label="compute c3 (E3 for Mellor-Yamada) from steady-state Richardson number"/>
+			<element id="compute_c3" type="bool" label="compute c3 (E3 for Mellor-Yamada) from steady-state Richardson number">
+				<condition type="ne" variable="../turb_method" value="0"/>
+			</element>
 			<element id="Ri_st" type="float" label="desired steady-state Richardson number">
-				<condition type="eq" variable="./compute_c3" value="True"/>
+				<condition type="and">
+					<condition type="ne" variable="../turb_method" value="0"/>
+					<condition type="eq" variable="./compute_c3" value="True"/>
+				</condition>
 			</element>
-			<element id="length_lim" type="bool" label="apply Galperin et al. (1988) length scale limitation" description="Apply length scale limitation (see Galperin et al. 1988)."/>
+			<element id="length_lim" type="bool" label="apply Galperin et al. (1988) length scale limitation" description="Apply length scale limitation (see Galperin et al. 1988).">
+				<condition type="ne" variable="../turb_method" value="0"/>
+			</element>
 			<element id="galp" type="float" label="coefficient for length scale limitation">
-				<condition type="eq" variable="./length_lim" value="True"/>
+				<condition type="and">
+					<condition type="ne" variable="../turb_method" value="0"/>
+					<condition type="eq" variable="./length_lim" value="True"/>
+				</condition>
 			</element>
-			<element id="const_num" type="float" label="minimum eddy diffusivity" unit="m²/s">
-				<condition type="eq" variable="/gotmturb/turb_method" value="0"/>
+			<element id="const_num" type="float" label="constant eddy diffusivity" unit="m²/s">
+				<condition type="eq" variable="../turb_method" value="0"/>
 			</element>
-			<element id="const_nuh" type="float" label="minimum heat diffusivity" unit="m²/s">
-				<condition type="eq" variable="/gotmturb/turb_method" value="0"/>
+			<element id="const_nuh" type="float" label="constant heat diffusivity" unit="m²/s">
+				<condition type="eq" variable="../turb_method" value="0"/>
 			</element>
-			<element id="k_min"    type="float" label="minimum TKE" unit="m²/s²"/>
-			<element id="eps_min"  type="float" label="minimum dissipation rate" unit="m²/s³"/>
-			<element id="kb_min"   type="float" label="minimum buoyancy variance" unit="m²/s^4"/>
-			<element id="epsb_min" type="float" label="minimum buoyancy variance destruction rate" unit="m²/s^5"/>
+			<element id="k_min"    type="float" label="minimum turbulent kinetic energy" unit="m²/s²">
+				<condition type="ne" variable="../turb_method" value="0"/>
+			</element>
+			<element id="eps_min"  type="float" label="minimum dissipation rate" unit="m²/s³" description="minimum dissipation rate ε of turbulent kinetic energy">
+				<condition type="ne" variable="../turb_method" value="0"/>
+			</element>
+			<element id="kb_min"   type="float" label="minimum buoyancy variance" unit="m²/s^4">
+				<condition type="eq" variable="../turb_method" value="3"/>
+			</element>
+			<element id="epsb_min" type="float" label="minimum buoyancy variance destruction rate" unit="m²/s^5">
+				<condition type="eq" variable="../turb_method" value="3"/>
+			</element>
 		</element>
 
 		<element id="generic" label="generic model" description="the generic model (Umlauf &amp; Burchard, Journal of Marine Research, 2003)">
 			<condition type="and">
+				<condition type="ne" variable="./turb_method" value="0"/>
 				<condition type="ne" variable="./turb_method" value="99"/>
 				<condition type="eq" variable="./len_scale_method" value="10"/>
 			</condition>
@@ -443,47 +483,44 @@
 			<element id="gen_n" type="float" label="exponent for l">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element id="gen_p" type="float" label="exponent for cm0">
+			<element id="gen_p" type="float" label="exponent for cm0"/>
+			<element id="cpsi1" type="float" label="empirical coefficient cpsi1 in ψ equation">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element id="cpsi1" type="float" label="empirical coefficient cpsi1 in psi equation">
-				<condition type="eq" variable="./compute_param" value="False"/>
-			</element>
-			<element id="cpsi2" type="float" label="empirical coefficient cpsi2 in psi equation">
+			<element id="cpsi2" type="float" label="empirical coefficient cpsi2 in ψ equation">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
 			<element id="cpsi3minus" type="float" label="cpsi3 for stable stratification">
-				<condition type="eq" variable="./compute_param" value="False"/>
+				<condition type="eq" variable="../turb_param/compute_c3" value="False"/>
 			</element>
-			<element id="cpsi3plus" type="float" label="cpsi3 for unstable stratification">
-				<condition type="eq" variable="./compute_param" value="False"/>
-			</element>
+			<element id="cpsi3plus" type="float" label="cpsi3 for unstable stratification"/>
 			<element id="sig_kpsi" type="float" label="Schmidt number for TKE diffusivity">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element id="sig_psi" type="float" label="Schmidt number for psi diffusivity">
+			<element id="sig_psi" type="float" label="Schmidt number for ψ diffusivity">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element id="gen_d" type="float">
-				<condition type="eq" variable="./compute_param" value="False"/>
+			<element id="gen_d" type="float" label="temporal decay rate d in homogeneous turbulence" maximum="0">
+				<condition type="eq" variable="./compute_param" value="True"/>
 			</element>
-			<element id="gen_alpha" type="float">
-				<condition type="eq" variable="./compute_param" value="False"/>
+			<element id="gen_alpha" type="float" label="decay exponent α" maximum="0">
+				<condition type="eq" variable="./compute_param" value="True"/>
 			</element>
-			<element id="gen_l" type="float">
-				<condition type="eq" variable="./compute_param" value="False"/>
+			<element id="gen_l" type="float" label="slope L of the length scale in shear-free turbulence" minimum="0">
+				<condition type="eq" variable="./compute_param" value="True"/>
 			</element>
 		</element>
 
 		<element id="keps" label="k-ε model" description="the k-ε model (Rodi 1987)">
 			<condition type="and">
+				<condition type="ne" variable="./turb_method" value="0"/>
 				<condition type="ne" variable="./turb_method" value="99"/>
 				<condition type="eq" variable="./len_scale_method" value="8"/>
 			</condition>
 			<element id="ce1" type="float" label="empirical coefficient ce1 in dissipation equation"/>
 			<element id="ce2" type="float" label="empirical coefficient ce2 in dissipation equation"/>
 			<element id="ce3minus" type="float" label="ce3 for stable stratification">
-				<condition type="ne" variable="/gotmturb/turb_param/compute_c3" value="True"/>
+				<condition type="ne" variable="../turb_param/compute_c3" value="True"/>
 			</element>
 			<element id="ce3plus"  type="float" label="ce3 for unstable stratification" description="ce3 for unstable stratification (Rodi 1987: ce3plus=1.0)"/>
 			<element id="sig_k"    type="float" label="Schmidt number for TKE diffusivity"/>
@@ -492,20 +529,26 @@
 		</element>
 
 		<element id="my" label="Mellor-Yamada model" description="the Mellor-Yamada model (Mellor &amp; Yamada 1982)">
-			<condition type="eq" variable="./len_scale_method" value="9"/>
+			<condition type="and">
+				<condition type="ne" variable="./turb_method" value="0"/>
+				<condition type="ne" variable="./turb_method" value="99"/>
+				<condition type="eq" variable="./len_scale_method" value="9"/>
+			</condition>
 			<element id="e1"        type="float"  label="coefficient e1 in MY q²l equation"/>
 			<element id="e2"        type="float"  label="coefficient e2 in MY q²l equation"/>
-			<element id="e3"        type="float"  label="coefficient e3 in MY q²l equation"/>
+			<element id="e3"        type="float"  label="coefficient e3 in MY q²l equation">
+				<condition type="ne" variable="../turb_param/compute_c3" value="True"/>
+			</element>
 			<element id="sq"        type="float"  label="turbulent diffusivities of q² (= 2k)"/>
 			<element id="sl"        type="float"  label="turbulent diffusivities of q²l"/>
-			<element id="my_length" type="select" label="prescribed barotropic lengthscale in q²l equation of MY">
+			<element id="my_length" type="select" label="prescribed barotropic length scale in q²l equation of MY">
 				<options>
 					<option value="1" label="parabolic"/>
 					<option value="2" label="triangular"/>
 					<option value="3" label="linear from surface"/>
 				</options>
 			</element>
-			<element id="new_constr" type="bool" label="stabilisation of Mellor-Yamada stability functions according to Burchard &amp; Deleersnijder (2001)"/>
+			<element id="new_constr" type="bool" label="stabilize stability functions" description="stabilize Mellor-Yamada stability functions according to Burchard &amp; Deleersnijder (2001)"/>
 		</element>
 
 		<element id="scnd" label="second-order model">
@@ -584,8 +627,8 @@
 			<element id="iw_model" type="select" label="method to compute internal wave mixing">
 				<options>
 					<option value="0" label="no internal wave mixing"/>
-					<option value="1" label="Mellor 1989 internal wave mixing"/>
-					<option value="2" label="Large et al. 1994 internal wave mixing"/>
+					<option value="1" label="Mellor (1989) internal wave mixing"/>
+					<option value="2" label="Large et al. (1994) internal wave mixing"/>
 				</options>
 			</element>
 			<element id="alpha" type="float" label="coefficient for Mellor internal wave model" description="coefficient for Mellor internal wave model (0: no IW, 0.7 Mellor 1989)" minimum="0">

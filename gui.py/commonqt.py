@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.32 2007-07-17 07:03:02 jorn Exp $
+#$Id: commonqt.py,v 1.33 2007-07-23 18:45:11 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -1605,7 +1605,7 @@ class Wizard(QtGui.QDialog):
 
         layout = QtGui.QVBoxLayout()
         layout.setMargin(0)
-
+        
         if headerlogo!=None:
             self.pm = QtGui.QPixmap(headerlogo,'PNG')
             self.piclabel = QtGui.QLabel(self)
@@ -1758,6 +1758,11 @@ class WizardPage(QtGui.QWidget):
 
     def doNotShow(self):
         return False
+
+    def createHeader(self,title,description):
+        label = QtGui.QLabel('<span style="font-size:large;font-weight:bold;">%s</span><hr>%s' % (title,description),self)
+        label.setWordWrap(True)
+        return label
 
 class WizardDummyPage(WizardPage):
     def doNotShow(self):
@@ -1917,6 +1922,7 @@ class PropertyEditor:
         self.node = node
         self.unit = None
         self.label = None
+        self.icon = None
         self.allowhide = allowhide
         self.unitinside = unitinside
 
@@ -1927,10 +1933,11 @@ class PropertyEditor:
         self.suppresschangeevent = False
         self.location = node.location[:]
         
-    def addToGridLayout(self,gridlayout,irow=None,icolumn=0,rowspan=1,colspan=1,label=True,unit=True):
+    def addToGridLayout(self,gridlayout,irow=None,icolumn=0,rowspan=1,colspan=1,label=True,unit=True,icon=None):
         """Adds the editor plus label to an existing QGridLayout, in the specified row, starting at the specified column.
         """
         if irow==None: irow = gridlayout.rowCount()
+        if icon==None: icon = (self.node.getText(detail=2,minimumdetail=2)!=None)
 
         if label:
             if self.label==None: self.createLabel()
@@ -1938,17 +1945,27 @@ class PropertyEditor:
             icolumn += 1
 
         gridlayout.addWidget(self.editor,irow,icolumn,rowspan,colspan)
-        icolumn += 1
+        icolumn += colspan
 
         if unit and not self.unitinside:
             if self.unit==None: self.createUnit()
             gridlayout.addWidget(self.unit,irow,icolumn)
             icolumn += 1
 
-    def addToBoxLayout(self,boxlayout,label=True,unit=True,addstretch=True):
+        #if icon:
+        #!    if self.icon==None: self.createIcon()
+        #    gridlayout.addWidget(self.icon,irow,icolumn)
+        #icolumn += 1
+
+    def addToBoxLayout(self,boxlayout,label=True,unit=True,addstretch=True,icon=None):
         """Adds the editor plus label to an existing QBoxLayout.
         """
-        layout = QtGui.QHBoxLayout()
+        if icon==None: icon = (self.node.getText(detail=2,minimumdetail=2)!=None)
+
+        if not isinstance(boxlayout,QtGui.QHBoxLayout):
+            layout = QtGui.QHBoxLayout()
+        else:
+            layout = boxlayout
         
         if label:
             if self.label==None: self.createLabel()
@@ -1960,10 +1977,15 @@ class PropertyEditor:
             if self.unit==None: self.createUnit()
             layout.addWidget(self.unit)
             
+        #if icon:
+        #    if self.icon==None: self.createIcon()
+        #    layout.addWidget(self.icon)
+
         if addstretch:
             layout.addStretch(1)
             
-        boxlayout.addLayout(layout)
+        if layout is not boxlayout:
+            boxlayout.addLayout(layout)
 
     def createUnit(self):
         """Creates a label with the unit of the editor, based on the description in the source node.
@@ -1987,10 +2009,16 @@ class PropertyEditor:
         if self.allowhide and self.node.isHidden(): self.label.setVisible(False)
         return self.label
         
+    def createIcon(self):
+        assert self.icon==None, 'Cannot create icon because it has already been created.'
+        self.icon = InformationIcon(self.editor.parent(),self.node.getText(detail=2,capitalize=True))
+        if self.allowhide and self.node.isHidden(): self.icon.setVisible(False)
+        
     def setVisible(self,visible):
         """Sets the visibility of the editor and label (if any).
         """
         if self.label!=None: self.label.setVisible(visible)
+        if self.icon !=None: self.icon.setVisible(visible)
         if self.unit !=None: self.unit.setVisible(visible)
         self.editor.setVisible(visible)
 
@@ -2042,7 +2070,7 @@ class PropertyEditor:
         
         if groupbox:
             editor = QtGui.QGroupBox(node.getText(detail=1,capitalize=True),parent)
-            editor.setFlat(True)
+            #editor.setFlat(True)
             whatsthis = False
         elif nodetype=='string':
             editor = QtGui.QLineEdit(parent)
@@ -2458,3 +2486,22 @@ class FigureDialog(QtGui.QDialog):
         self.setAttribute(QtCore.Qt.WA_QuitOnClose,False)
         
         self.resize(500, 500)
+
+class InformationIcon(QtGui.QLabel):
+    pixmap = None
+    def __init__(self,parent,text):
+        QtGui.QLabel.__init__(self,parent)
+        self.text = text
+        #self.setToolTip(text)
+        if InformationIcon.pixmap==None:
+            InformationIcon.pixmap = QtGui.QPixmap('./information.png')
+        self.setPixmap(InformationIcon.pixmap)
+        
+    #def enterEvent(self,ev):
+    #    QtGui.QLabel.enterEvent(self,ev)
+    #    QtGui.QWhatsThis.showText(self.mapToGlobal(QtCore.QPoint(0,0)),self.text)
+        
+    #def leaveEvent(self,ev):
+    #    QtGui.QWhatsThis.hideText()
+    #    QtGui.QLabel.leaveEvent(self,ev)
+        

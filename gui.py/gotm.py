@@ -31,120 +31,107 @@ class GOTMWizard(commonqt.Wizard):
         """Supplies the logo path to the Wizard, and adds a "Tools" button.
         """
         commonqt.Wizard.__init__(self,parent,sequence,closebutton,headerlogo='./logo.png')
+
         self.bnTools = QtGui.QPushButton('&Tools',self)
         self.bnTools.setEnabled(False)
-        self.connect(self.bnTools, QtCore.SIGNAL('clicked()'), self.onTools)
         self.bnlayout.insertWidget(1,self.bnTools)
+
+        self.menuTools = QtGui.QMenu(self)
+        self.actSaveScenario   = self.menuTools.addAction('Save scenario as...',self.onSaveScenarioAs)
+        self.actExportScenario = self.menuTools.addAction('Export scenario to namelists...',self.onExportScenario)
+        self.actSaveResult     = self.menuTools.addAction('Save result as...',self.onSaveResultAs)
+        self.actExportResult   = self.menuTools.addAction('Export result to NetCDF...',self.onExportResult)
+        
+        self.bnTools.setMenu(self.menuTools)
         
     def onPropertyChange(self,propertyname):
         """Called by the Wizard implementation when a property in the Wizard property store
         changes value. Used to enable/disable the "Tools" button when the scenario/result is (un)set.
         """
         if propertyname=='scenario' or propertyname=='result':
-            self.bnTools.setEnabled(self.getProperty('scenario')!=None or self.getProperty('result')!=None)
-        
-    def onTools(self):
-        """Event handler, called when the "Tools" button is pressed. Shows a pop-up menu with
-        the functions supported (currently "Save scenario as", "Export scenario" and "Save result as".
-        Processes the choice by the user (e.g., saving or exporting), then returns control.
-        """
-
-        # Get currenly loaded scenario and/or result.
-        scen   = self.getProperty('scenario')
-        result = self.getProperty('result')
-
-        # Build pop-up menu
-        menu = QtGui.QMenu(self)
-        if scen!=None:
-            actSaveScenario   = menu.addAction('Save scenario as...')
-            actExportScenario = menu.addAction('Export scenario to namelists...')
-        if result!=None:
-            actSaveResult     = menu.addAction('Save result as...')
-            actExportResult   = menu.addAction('Export result to NetCDF...')
+            scen   = self.getProperty('scenario')
+            result = self.getProperty('result')
+            self.bnTools.setEnabled(scen!=None or result!=None)
+            self.actSaveScenario.setVisible(scen!=None)
+            self.actExportScenario.setVisible(scen!=None)
+            self.actSaveResult.setVisible(result!=None)
+            self.actExportResult.setVisible(result!=None)
             
-        # Show menu
-        actChosen = menu.exec_(QtGui.QCursor.pos())
-        
-        # Process chosen menu option.
-        if scen!=None:
-            if actChosen==actSaveScenario:
-                # User chose "Save scenario as..."
-                path = commonqt.browseForPath(self,curpath=scen.path,save=True,filter='GOTM scenario files (*.gotmscenario);;All files (*.*)')
-                if path!=None:
-                    scen.saveAll(path)
-                return
-            elif actChosen==actExportScenario:
-                # User chose "Export scenario to namelists..."
+    def onSaveScenarioAs(self):
+        scen = self.getProperty('scenario')
+        path = commonqt.browseForPath(self,curpath=scen.path,save=True,filter='GOTM scenario files (*.gotmscenario);;All files (*.*)')
+        if path!=None:
+            scen.saveAll(path)
+
+    def onExportScenario(self):
+        class ChooseVersionDialog(QtGui.QDialog):
+            """Dialog for choosing the version of GOTM to export namelists for.
+            """
+            def __init__(self,parent=None):
+                QtGui.QDialog.__init__(self,parent,QtCore.Qt.Dialog | QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint)
                 
-                class ChooseVersionDialog(QtGui.QDialog):
-                    """Dialog for choosing the version of GOTM to export namelists for.
-                    """
-                    def __init__(self,parent=None):
-                        QtGui.QDialog.__init__(self,parent,QtCore.Qt.Dialog | QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint)
-                        
-                        layout = QtGui.QVBoxLayout()
-                        
-                        # Add introductory label.
-                        self.label = QtGui.QLabel('Choose the version of GOTM to export for:',self)
-                        layout.addWidget(self.label)
-                        
-                        # Add combobox with versions.
-                        self.comboVersion = QtGui.QComboBox(self)
-                        versions = scen.schemaname2path().keys()
-                        versions.sort()
-                        for v in versions:
-                            # Only show schemas for namelist-supporting GOTM
-                            # (and not those for the GUI)
-                            if v.startswith('gotm-'): self.comboVersion.addItem(v)
-                        self.comboVersion.setCurrentIndex(self.comboVersion.count()-1)
-                        layout.addWidget(self.comboVersion)
-                        
-                        layoutButtons = QtGui.QHBoxLayout()
+                layout = QtGui.QVBoxLayout()
+                
+                # Add introductory label.
+                self.label = QtGui.QLabel('Choose the version of GOTM to export for:',self)
+                layout.addWidget(self.label)
+                
+                # Add combobox with versions.
+                self.comboVersion = QtGui.QComboBox(self)
+                versions = scen.schemaname2path().keys()
+                versions.sort()
+                for v in versions:
+                    # Only show schemas for namelist-supporting GOTM
+                    # (and not those for the GUI)
+                    if v.startswith('gotm-'): self.comboVersion.addItem(v)
+                self.comboVersion.setCurrentIndex(self.comboVersion.count()-1)
+                layout.addWidget(self.comboVersion)
+                
+                layoutButtons = QtGui.QHBoxLayout()
 
-                        # Add "OK" button
-                        self.bnOk = QtGui.QPushButton('&OK',self)
-                        self.connect(self.bnOk, QtCore.SIGNAL('clicked()'), self.accept)
-                        layoutButtons.addWidget(self.bnOk)
+                # Add "OK" button
+                self.bnOk = QtGui.QPushButton('&OK',self)
+                self.connect(self.bnOk, QtCore.SIGNAL('clicked()'), self.accept)
+                layoutButtons.addWidget(self.bnOk)
 
-                        # Add "Cancel" button
-                        self.bnCancel = QtGui.QPushButton('&Cancel',self)
-                        self.connect(self.bnCancel, QtCore.SIGNAL('clicked()'), self.reject)
-                        layoutButtons.addWidget(self.bnCancel)
-                        
-                        layout.addLayout(layoutButtons)
+                # Add "Cancel" button
+                self.bnCancel = QtGui.QPushButton('&Cancel',self)
+                self.connect(self.bnCancel, QtCore.SIGNAL('clicked()'), self.reject)
+                layoutButtons.addWidget(self.bnCancel)
+                
+                layout.addLayout(layoutButtons)
 
-                        self.setLayout(layout)
-                        
-                        self.setWindowTitle('Choose GOTM version')
-                        
-                dialog = ChooseVersionDialog(self)
-                res = dialog.exec_()
-                if res==QtGui.QDialog.Accepted:
-                    curpath = None
-                    if scen.path!=None: curpath = os.path.dirname(scen.path)
-                    path = commonqt.browseForPath(self,curpath=curpath,getdirectory=True)
-                    if path!=None:
-                        exportscen = scen.convert(unicode(dialog.comboVersion.currentText()))
-                        exportscen.writeAsNamelists(path,addcomments=True)
-                        exportscen.release()
-                return
-        if result!=None:
-            if actChosen==actSaveResult:
-                # User chose "Save result as..."
-                path = commonqt.browseForPath(self,curpath=result.path,save=True,filter='GOTM result files (*.gotmresult);;All files (*.*)')
-                if path!=None:
-                    result.save(path)
-                return
-            elif actChosen==actExportResult:
-                # User chose "Export result to NetCDF..."
-                curpath = None
-                if result.path!=None:
-                    root,ext = os.path.splitext(result.path)
-                    curpath = root+'.nc'
-                path = commonqt.browseForPath(self,curpath=curpath,save=True,filter='NetCDF files (*.nc);;All files (*.*)')
-                if path!=None:
-                    result.saveNetCDF(path)
-                return
+                self.setLayout(layout)
+                
+                self.setWindowTitle('Choose GOTM version')
+                
+        scen = self.getProperty('scenario')
+        dialog = ChooseVersionDialog(self)
+        res = dialog.exec_()
+        if res==QtGui.QDialog.Accepted:
+            curpath = None
+            if scen.path!=None: curpath = os.path.dirname(scen.path)
+            path = commonqt.browseForPath(self,curpath=curpath,getdirectory=True)
+            if path!=None:
+                exportscen = scen.convert(unicode(dialog.comboVersion.currentText()))
+                exportscen.writeAsNamelists(path,addcomments=True)
+                exportscen.release()
+                
+    def onSaveResultAs(self):
+        result = self.getProperty('result')
+        path = commonqt.browseForPath(self,curpath=result.path,save=True,filter='GOTM result files (*.gotmresult);;All files (*.*)')
+        if path!=None:
+            result.save(path)
+            
+    def onExportResult(self):
+        result = self.getProperty('result')
+        curpath = None
+        if result.path!=None:
+            root,ext = os.path.splitext(result.path)
+            curpath = root+'.nc'
+        path = commonqt.browseForPath(self,curpath=curpath,save=True,filter='NetCDF files (*.nc);;All files (*.*)')
+        if path!=None:
+            result.saveNetCDF(path)
 
 class PageIntroduction(commonqt.WizardPage):
     """First page in the GOTM-GUI Wizard.

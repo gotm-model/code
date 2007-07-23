@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.19 2007-07-17 07:03:02 jorn Exp $
+#$Id: scenariobuilder.py,v 1.20 2007-07-23 18:45:11 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -208,52 +208,63 @@ class ScenarioPage(commonqt.WizardPage):
 
     def isComplete(self):
         return True
-
+        
 class PageLocation(ScenarioPage):
     
     def __init__(self,parent=None):
         ScenarioPage.__init__(self, parent)
 
-        titlelayout = QtGui.QHBoxLayout()
-        self.lineTitle = self.factory.createEditor(['title'],self)
-        self.labTitle = self.lineTitle.createLabel()
-        titlelayout.addWidget(self.labTitle)
-        titlelayout.addWidget(self.lineTitle.editor)
-
-        self.editStation = self.factory.createEditor(['station'],self,groupbox=True)
-        groupboxLocation = self.editStation.editor
-
-        layoutLocation = QtGui.QGridLayout()
-        self.lineName      = self.factory.createEditor(['station','name'],     self)
-        self.lineLongitude = self.factory.createEditor(['station','longitude'],self)
-        self.lineLatitude  = self.factory.createEditor(['station','latitude'], self)
-        self.lineDepth     = self.factory.createEditor(['station','depth'],    self)
-        
-        layoutLocation.addWidget(self.editStation.createLabel(detail=2,wrap=True,addcolon=False),0,0,1,4)
-        self.lineName.addToGridLayout(layoutLocation,unit=False,colspan=3)
-        self.lineLongitude.addToGridLayout(layoutLocation)
-        self.lineLatitude.addToGridLayout(layoutLocation)
-        self.lineDepth.addToGridLayout(layoutLocation)
-        layoutLocation.setColumnStretch(3,1)
-        groupboxLocation.setLayout(layoutLocation)
-
-        self.editPeriod = self.factory.createEditor(['time'],self,groupbox=True)
-        groupboxPeriod = self.editPeriod.editor
-
-        layoutPeriod = QtGui.QGridLayout()
-        layoutPeriod.addWidget(self.editPeriod.createLabel(detail=2,wrap=True,addcolon=False),0,0,1,4)
-        self.lineStart = self.factory.createEditor(['time','start'],self)
-        self.lineStop  = self.factory.createEditor(['time','stop'] ,self)
-        self.lineStart.addToGridLayout(layoutPeriod)
-        self.lineStop.addToGridLayout(layoutPeriod)
-        layoutPeriod.setColumnStretch(3,1)
-        groupboxPeriod.setLayout(layoutPeriod)
-
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(25)
-        layout.addLayout(titlelayout)
+
+        self.title = self.createHeader('Simulated location and period','Here you specify the geographic location and time period that you want to simulate. Optionally you can provide a title for the simulation and location.')
+        layout.addWidget(self.title)
+
+        # Editor for title
+
+        editGeneral = self.factory.createEditor(['title'],self,groupbox=True)
+        groupboxGeneral = editGeneral.editor
+        layoutTitle = QtGui.QHBoxLayout()
+        editTitle = self.factory.createEditor(['title'],self)
+        editTitle.addToBoxLayout(layoutTitle,addstretch=False,unit=False)
+        groupboxGeneral.setLayout(layoutTitle)
+        layout.addWidget(groupboxGeneral)
+
+        # Editors for geographic location
+
+        editStation = self.factory.createEditor(['station'],self,groupbox=True)
+        groupboxLocation = editStation.editor
+
+        layoutLocation = QtGui.QGridLayout()
+        editName      = self.factory.createEditor(['station','name'],     self)
+        editLongitude = self.factory.createEditor(['station','longitude'],self)
+        editLatitude  = self.factory.createEditor(['station','latitude'], self)
+        editDepth     = self.factory.createEditor(['station','depth'],    self)
+        
+        editName.addToGridLayout(layoutLocation,unit=False,colspan=3)
+        editLongitude.addToGridLayout(layoutLocation)
+        editLatitude.addToGridLayout(layoutLocation)
+        editDepth.addToGridLayout(layoutLocation)
+        layoutLocation.setColumnStretch(3,1)
+        groupboxLocation.setLayout(layoutLocation)
         layout.addWidget(groupboxLocation)
+
+        # Editors for simulated period
+
+        editPeriod = self.factory.createEditor(['time'],self,groupbox=True)
+        groupboxPeriod = editPeriod.editor
+
+        layoutPeriod = QtGui.QGridLayout()
+        editStart = self.factory.createEditor(['time','start'],self)
+        editStop  = self.factory.createEditor(['time','stop'] ,self)
+        editStart.addToGridLayout(layoutPeriod)
+        editStop.addToGridLayout(layoutPeriod)
+        layoutPeriod.setColumnStretch(3,1)
+        groupboxPeriod.setLayout(layoutPeriod)
         layout.addWidget(groupboxPeriod)
+        
+        # Build final layout
+
         layout.addStretch()
         self.setLayout(layout)
 
@@ -262,56 +273,54 @@ class PageDiscretization(ScenarioPage):
     def __init__(self,parent=None):
         ScenarioPage.__init__(self, parent)
 
-        self.editColumn = self.factory.createEditor(['grid'],self,groupbox=True)
-        self.labelColumn = self.editColumn.createLabel(detail=2,wrap=True,addcolon=False)
+        layout = QtGui.QVBoxLayout()
+        layout.setSpacing(25)
+
+        self.title = self.createHeader('Discretization of space and time','Here you specify how the water column and the time period are discretized. Generally this involves a balance between accuracy and simulation time.')
+        layout.addWidget(self.title)
+
+        editColumn = self.factory.createEditor(['grid'],self,groupbox=True)
 
         layoutGrid = QtGui.QGridLayout()
 
         # Create controls for grid layout.
-        self.editLevelCount = self.factory.createEditor(['grid','nlev'],self)      
-        self.editGridMethod = self.factory.createEditor(['grid','grid_method'],self,selectwithradio=True)
-        self.labelGridMethod = QtGui.QLabel(self.editGridMethod.node.getText(detail=2),self)
-        self.labelGridMethod.setWordWrap(True)
-        self.bngroup = self.editGridMethod.editor
-        self.editZoomSurface = self.factory.createEditor(['grid','ddu'],self)      
-        self.editZoomBottom  = self.factory.createEditor(['grid','ddl'],self)
-        self.editGridFile = self.factory.createEditor(['grid','grid_file'],self)
+        editLevelCount = self.factory.createEditor(['grid','nlev'],self)      
+        editGridMethod = self.factory.createEditor(['grid','grid_method'],self,selectwithradio=True)
+        self.labelGridMethod = editGridMethod.createLabel()
+        self.bngroup = editGridMethod.editor
+        editZoomSurface = self.factory.createEditor(['grid','ddu'],self)      
+        editZoomBottom  = self.factory.createEditor(['grid','ddl'],self)
+        editGridFile = self.factory.createEditor(['grid','grid_file'],self)
         
         # Add controls for grid layout to the widget.
         layoutGrid.addWidget(self.bngroup.button(0),    0,0,1,4)
-        self.editZoomSurface.addToGridLayout(layoutGrid,1,1)
-        self.editZoomBottom.addToGridLayout(layoutGrid, 2,1)
+        editZoomSurface.addToGridLayout(layoutGrid,1,1)
+        editZoomBottom.addToGridLayout(layoutGrid, 2,1)
         layoutGrid.addWidget(self.bngroup.button(1),    3,0,1,4)
         layoutGrid.addWidget(self.bngroup.button(2),    4,0,1,4)
-        layoutGrid.addWidget(self.editGridFile.editor,  5,1)
+        editGridFile.addToGridLayout(layoutGrid,   5,1,label=False,unit=False)
                 
         layoutColumn = QtGui.QVBoxLayout()
-        layoutColumn.addWidget(self.labelColumn)
-        self.editLevelCount.addToBoxLayout(layoutColumn)
+        editLevelCount.addToBoxLayout(layoutColumn)
         layoutColumn.addSpacing(25)
         layoutColumn.addWidget(self.labelGridMethod)
         layoutColumn.addLayout(layoutGrid)
-        self.editColumn.editor.setLayout(layoutColumn)
+        editColumn.editor.setLayout(layoutColumn)
 
         layoutGrid.setColumnStretch(3,1)
         layoutGrid.setColumnMinimumWidth(0,commonqt.getRadioWidth())
 
 
-        self.editTime = self.factory.createEditor(['timeintegration'],self,groupbox=True)
-        self.labelTime = self.editTime.createLabel(detail=2,wrap=True,addcolon=False)
+        editTime = self.factory.createEditor(['timeintegration'],self,groupbox=True)
         
-        groupboxTime = self.editTime.editor
+        groupboxTime = editTime.editor
 
-        timelayout = QtGui.QVBoxLayout()
-        timelayout.addWidget(self.labelTime)
-        self.editTimeStep = self.factory.createEditor(['timeintegration','dt'],self)
-        self.editTimeStep.addToBoxLayout(timelayout)
-        timelayout.addStretch()
-        groupboxTime.setLayout(timelayout)
+        layoutTime = QtGui.QHBoxLayout()
+        editTimeStep = self.factory.createEditor(['timeintegration','dt'],self)
+        editTimeStep.addToBoxLayout(layoutTime)
+        groupboxTime.setLayout(layoutTime)
 
-        layout = QtGui.QVBoxLayout()
-        layout.setSpacing(25)
-        layout.addWidget(self.editColumn.editor)
+        layout.addWidget(editColumn.editor)
         layout.addWidget(groupboxTime)
         layout.addStretch()
         self.setLayout(layout)
@@ -321,89 +330,91 @@ class PageSalinity(ScenarioPage):
     def __init__(self,parent=None):
         ScenarioPage.__init__(self, parent)
 
+        layout = QtGui.QVBoxLayout()
+
+        self.title = self.createHeader('Salinity observations','Here you can provide observations on vertical salinity profiles. These are used to initialize the column, and optionally to relax model results to.')
+        layout.addWidget(self.title)
+        layout.addSpacing(20)
+
         # Create main layout
-        layout = QtGui.QGridLayout()
+        layoutSalinity = QtGui.QGridLayout()
         
         # Create button group for the salinity option, and an explanatory label.
-        self.editSalinity = self.factory.createEditor(['obs','sprofile'],self,selectwithradio=True)
-        self.bngrpSalinity = self.editSalinity.editor
-        self.labelSalinity = self.editSalinity.createLabel(detail=2,wrap=True,addcolon=False)
+        editSalinity = self.factory.createEditor(['obs','sprofile'],self,selectwithradio=True)
 
         # Create editors for all different salinity configurations.
-        self.editSalinityConstant       = self.factory.createEditor(['obs','sprofile','s_const'],self)
-        self.editSalinityUpperThickness = self.factory.createEditor(['obs','sprofile','z_s1'],self)
-        self.editSalinityUpper          = self.factory.createEditor(['obs','sprofile','s_1'],self)
-        self.editSalinityLowerThickness = self.factory.createEditor(['obs','sprofile','z_s2'],self)
-        self.editSalinityLower          = self.factory.createEditor(['obs','sprofile','s_2'],self)
-        self.editSalinitySurface        = self.factory.createEditor(['obs','sprofile','s_surf'],self)
-        self.editSalinityNSquare        = self.factory.createEditor(['obs','sprofile','s_obs_NN'],self)
-        self.editSalinityFile           = self.factory.createEditor(['obs','sprofile','s_prof_file'],self)
+        editSalinityConstant       = self.factory.createEditor(['obs','sprofile','s_const'],self)
+        editSalinityUpperThickness = self.factory.createEditor(['obs','sprofile','z_s1'],self)
+        editSalinityUpper          = self.factory.createEditor(['obs','sprofile','s_1'],self)
+        editSalinityLowerThickness = self.factory.createEditor(['obs','sprofile','z_s2'],self)
+        editSalinityLower          = self.factory.createEditor(['obs','sprofile','s_2'],self)
+        editSalinitySurface        = self.factory.createEditor(['obs','sprofile','s_surf'],self)
+        editSalinityNSquare        = self.factory.createEditor(['obs','sprofile','s_obs_NN'],self)
+        editSalinityFile           = self.factory.createEditor(['obs','sprofile','s_prof_file'],self)
         
         # Create editors for relaxation.
-        self.editSalinityRelaxation     = self.factory.createEditor(['obs','sprofile','SRelax'],self,boolwithcheckbox=True)
-        self.editSalinityBulk           = self.factory.createEditor(['obs','sprofile','SRelax','SRelaxTauM'],self)
+        editSalinityRelaxation     = self.factory.createEditor(['obs','sprofile','SRelax'],self,boolwithcheckbox=True)
+        editSalinityBulk           = self.factory.createEditor(['obs','sprofile','SRelax','SRelaxTauM'],self)
         
         # Add explanatory label
-        layout.addWidget(self.labelSalinity,               0,0,1,5)
+        layoutSalinity.addWidget(editSalinity.createLabel(),       0,0,1,2)
         
         # Add button for no salinity
-        layout.addWidget(self.bngrpSalinity.button(0),     1,0,1,5)
+        layoutSalinity.addWidget(editSalinity.editor.button(0),     1,0,1,2)
         
         # Add button for constant salinity.
-        layout.addWidget(self.bngrpSalinity.button(11),    2,0,1,5)
+        layoutSalinity.addWidget(editSalinity.editor.button(11),    2,0,1,2)
 
         # Add controls to edit constant salinity.
         layoutConstant = QtGui.QGridLayout()
-        self.editSalinityConstant.addToGridLayout(layoutConstant)
+        editSalinityConstant.addToGridLayout(layoutConstant)
         layoutConstant.setColumnStretch(3,1)
-        layout.addLayout(layoutConstant,3,1)
+        layoutSalinity.addLayout(layoutConstant,3,1)
         
         # Add button for two-layer salinity.
-        layout.addWidget(self.bngrpSalinity.button(12),        4,0,1,5)
+        layoutSalinity.addWidget(editSalinity.editor.button(12),    4,0,1,2)
         
         # Add controls to edit two-layer salinity.
         layoutLayer = QtGui.QGridLayout()
-        self.editSalinityUpperThickness.addToGridLayout(layoutLayer)
-        self.editSalinityUpper.addToGridLayout(layoutLayer)
-        self.editSalinityLowerThickness.addToGridLayout(layoutLayer)
-        self.editSalinityLower.addToGridLayout(layoutLayer)
+        editSalinityUpperThickness.addToGridLayout(layoutLayer)
+        editSalinityUpper.addToGridLayout(layoutLayer)
+        editSalinityLowerThickness.addToGridLayout(layoutLayer)
+        editSalinityLower.addToGridLayout(layoutLayer)
         layoutLayer.setColumnStretch(3,1)
-        layout.addLayout(layoutLayer,5,1)
+        layoutSalinity.addLayout(layoutLayer,5,1)
         
         # Add button for stably stratified salinity.
-        layout.addWidget(self.bngrpSalinity.button(13),    6,0,1,5)
+        layoutSalinity.addWidget(editSalinity.editor.button(13),    6,0,1,2)
 
         # Add controls to edit stably stratified salinity.
         layoutNSquare = QtGui.QGridLayout()
-        self.editSalinitySurface.addToGridLayout(layoutNSquare)
-        self.editSalinityNSquare.addToGridLayout(layoutNSquare)
+        editSalinitySurface.addToGridLayout(layoutNSquare)
+        editSalinityNSquare.addToGridLayout(layoutNSquare)
         layoutNSquare.setColumnStretch(3,1)
-        layout.addLayout(layoutNSquare,7,1)
+        layoutSalinity.addLayout(layoutNSquare,7,1)
         
         # Add button for custom salinities.
-        layout.addWidget(self.bngrpSalinity.button(2),     8,0,1,5)
+        layoutSalinity.addWidget(editSalinity.editor.button(2),     8,0,1,2)
         
         # Add control to choose custom salinities.
         layoutFile = QtGui.QHBoxLayout()
-        layoutFile.addWidget(self.editSalinityFile.editor)
+        editSalinityFile.addToBoxLayout(layoutFile,label=False,unit=False)
         layoutFile.addStretch()
-        layout.addLayout(layoutFile,9,1)
+        layoutSalinity.addLayout(layoutFile,9,1)
 
-        # Add spacing between salinity methods and relaxtion.
-        layout.setRowMinimumHeight(10,25)
-
-        # Add checkbox for relaxation.
-        self.editSalinityRelaxation.addToGridLayout(layout,11,0,1,5,label=False,unit=False)
+        layoutSalinity.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        layout.addLayout(layoutSalinity)
 
         # Add control to configure bulk relaxation.
+        layout.addSpacing(20)
         layoutRelaxation = QtGui.QGridLayout()
-        self.editSalinityBulk.addToGridLayout(layoutRelaxation)
-        layout.addLayout(layoutRelaxation,12,1)
+        editSalinityRelaxation.addToGridLayout(layoutRelaxation,0,0,1,5,label=False,unit=False)
+        editSalinityBulk.addToGridLayout(layoutRelaxation,1,1)
+        layoutRelaxation.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        layoutRelaxation.setColumnStretch(3,1)
+        layout.addLayout(layoutRelaxation)
 
-        # Configure coumn widths, row heights.
-        layout.setColumnStretch(2,1)
-        layout.setRowStretch(13,1)
-        layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        layout.addStretch(1)
         
         # Set layout.
         self.setLayout(layout)
@@ -413,89 +424,91 @@ class PageTemperature(ScenarioPage):
     def __init__(self,parent=None):
         ScenarioPage.__init__(self, parent)
 
+        layout = QtGui.QVBoxLayout()
+
+        self.title = self.createHeader('Temperature observations','Here you can provide observations on vertical temperature profiles. These are used to initialize the column, and optionally to relax model results to.')
+        layout.addWidget(self.title)
+        layout.addSpacing(20)
+
         # Create main layout
-        layout = QtGui.QGridLayout()
+        layoutTemperature = QtGui.QGridLayout()
         
         # Create button group for the temperature option, and an explanatory label.
-        self.editTemperature = self.factory.createEditor(['obs','tprofile'],self,selectwithradio=True)
-        self.bngrpTemperature = self.editTemperature.editor
-        self.labelTemperature = self.editTemperature.createLabel(detail=2,wrap=True,addcolon=False)
+        editTemperature = self.factory.createEditor(['obs','tprofile'],self,selectwithradio=True)
 
         # Create editors for all different temperature configurations.
-        self.editTemperatureConstant       = self.factory.createEditor(['obs','tprofile','t_const'],self)
-        self.editTemperatureUpperThickness = self.factory.createEditor(['obs','tprofile','z_t1'],self)
-        self.editTemperatureUpper          = self.factory.createEditor(['obs','tprofile','t_1'],self)
-        self.editTemperatureLowerThickness = self.factory.createEditor(['obs','tprofile','z_t2'],self)
-        self.editTemperatureLower          = self.factory.createEditor(['obs','tprofile','t_2'],self)
-        self.editTemperatureSurface        = self.factory.createEditor(['obs','tprofile','t_surf'],self)
-        self.editTemperatureNSquare        = self.factory.createEditor(['obs','tprofile','t_obs_NN'],self)
-        self.editTemperatureFile           = self.factory.createEditor(['obs','tprofile','t_prof_file'],self)
+        editTemperatureConstant       = self.factory.createEditor(['obs','tprofile','t_const'],self)
+        editTemperatureUpperThickness = self.factory.createEditor(['obs','tprofile','z_t1'],self)
+        editTemperatureUpper          = self.factory.createEditor(['obs','tprofile','t_1'],self)
+        editTemperatureLowerThickness = self.factory.createEditor(['obs','tprofile','z_t2'],self)
+        editTemperatureLower          = self.factory.createEditor(['obs','tprofile','t_2'],self)
+        editTemperatureSurface        = self.factory.createEditor(['obs','tprofile','t_surf'],self)
+        editTemperatureNSquare        = self.factory.createEditor(['obs','tprofile','t_obs_NN'],self)
+        editTemperatureFile           = self.factory.createEditor(['obs','tprofile','t_prof_file'],self)
         
         # Create editors for relaxation.
-        self.editTemperatureRelaxation     = self.factory.createEditor(['obs','tprofile','TRelax'],self,boolwithcheckbox=True)
-        self.editTemperatureBulk           = self.factory.createEditor(['obs','tprofile','TRelax','TRelaxTauM'],self)
+        editTemperatureRelaxation     = self.factory.createEditor(['obs','tprofile','TRelax'],self,boolwithcheckbox=True)
+        editTemperatureBulk           = self.factory.createEditor(['obs','tprofile','TRelax','TRelaxTauM'],self)
         
         # Add explanatory label
-        layout.addWidget(self.labelTemperature,               0,0,1,5)
+        layoutTemperature.addWidget(editTemperature.createLabel(),       0,0,1,2)
         
         # Add button for no temperature
-        layout.addWidget(self.bngrpTemperature.button(0),     1,0,1,5)
+        layoutTemperature.addWidget(editTemperature.editor.button(0),     1,0,1,2)
         
         # Add button for constant temperature.
-        layout.addWidget(self.bngrpTemperature.button(11),    2,0,1,5)
+        layoutTemperature.addWidget(editTemperature.editor.button(11),    2,0,1,2)
 
         # Add controls to edit constant temperature.
         layoutConstant = QtGui.QGridLayout()
-        self.editTemperatureConstant.addToGridLayout(layoutConstant)
+        editTemperatureConstant.addToGridLayout(layoutConstant)
         layoutConstant.setColumnStretch(3,1)
-        layout.addLayout(layoutConstant,3,1)
+        layoutTemperature.addLayout(layoutConstant,3,1)
         
         # Add button for two-layer temperature.
-        layout.addWidget(self.bngrpTemperature.button(12),        4,0,1,5)
+        layoutTemperature.addWidget(editTemperature.editor.button(12),    4,0,1,2)
         
         # Add controls to edit two-layer temperature.
         layoutLayer = QtGui.QGridLayout()
-        self.editTemperatureUpperThickness.addToGridLayout(layoutLayer)
-        self.editTemperatureUpper.addToGridLayout(layoutLayer)
-        self.editTemperatureLowerThickness.addToGridLayout(layoutLayer)
-        self.editTemperatureLower.addToGridLayout(layoutLayer)
+        editTemperatureUpperThickness.addToGridLayout(layoutLayer)
+        editTemperatureUpper.addToGridLayout(layoutLayer)
+        editTemperatureLowerThickness.addToGridLayout(layoutLayer)
+        editTemperatureLower.addToGridLayout(layoutLayer)
         layoutLayer.setColumnStretch(3,1)
-        layout.addLayout(layoutLayer,5,1)
+        layoutTemperature.addLayout(layoutLayer,5,1)
         
         # Add button for stably stratified temperature.
-        layout.addWidget(self.bngrpTemperature.button(13),    6,0,1,5)
+        layoutTemperature.addWidget(editTemperature.editor.button(13),    6,0,1,2)
 
         # Add controls to edit stably stratified temperature.
         layoutNSquare = QtGui.QGridLayout()
-        self.editTemperatureSurface.addToGridLayout(layoutNSquare)
-        self.editTemperatureNSquare.addToGridLayout(layoutNSquare)
+        editTemperatureSurface.addToGridLayout(layoutNSquare)
+        editTemperatureNSquare.addToGridLayout(layoutNSquare)
         layoutNSquare.setColumnStretch(3,1)
-        layout.addLayout(layoutNSquare,7,1)
+        layoutTemperature.addLayout(layoutNSquare,7,1)
         
         # Add button for custom salinities.
-        layout.addWidget(self.bngrpTemperature.button(2),     8,0,1,5)
+        layoutTemperature.addWidget(editTemperature.editor.button(2),     8,0,1,2)
         
         # Add control to choose custom salinities.
         layoutFile = QtGui.QHBoxLayout()
-        layoutFile.addWidget(self.editTemperatureFile.editor)
+        editTemperatureFile.addToBoxLayout(layoutFile,label=False,unit=False)
         layoutFile.addStretch()
-        layout.addLayout(layoutFile,9,1)
+        layoutTemperature.addLayout(layoutFile,9,1)
 
-        # Add spacing between temperature methods and relaxtion.
-        layout.setRowMinimumHeight(10,25)
-
-        # Add checkbox for relaxation.
-        self.editTemperatureRelaxation.addToGridLayout(layout,11,0,1,5,label=False,unit=False)
+        layoutTemperature.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        layout.addLayout(layoutTemperature)
 
         # Add control to configure bulk relaxation.
+        layout.addSpacing(20)
         layoutRelaxation = QtGui.QGridLayout()
-        self.editTemperatureBulk.addToGridLayout(layoutRelaxation)
-        layout.addLayout(layoutRelaxation,12,1)
+        editTemperatureRelaxation.addToGridLayout(layoutRelaxation,0,0,1,5,label=False,unit=False)
+        editTemperatureBulk.addToGridLayout(layoutRelaxation,1,1)
+        layoutRelaxation.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        layoutRelaxation.setColumnStretch(3,1)
+        layout.addLayout(layoutRelaxation)
 
-        # Configure coumn widths, row heights.
-        layout.setColumnStretch(2,1)
-        layout.setRowStretch(13,1)
-        layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        layout.addStretch(1)
         
         # Set layout.
         self.setLayout(layout)
@@ -506,58 +519,60 @@ class PageTurbulence(ScenarioPage):
         ScenarioPage.__init__(self, parent)
 
         # Create main layout
-        layout = QtGui.QGridLayout()
+        layout = QtGui.QVBoxLayout()
+
+        self.title = self.createHeader('Turbulence model','Here you choose the turbulence model to be used.')
+        layout.addWidget(self.title)
+        layout.addSpacing(20)
+        
+        layoutTurbulence = QtGui.QGridLayout()
         
         # Create button group for the turbulence method option, and an explanatory label.
-        self.editMethod = self.factory.createEditor(['gotmturb','turb_method'],self,selectwithradio=True)
-        self.bngrpMethod = self.editMethod.editor
-        self.labelMethod = self.editMethod.createLabel(detail=2,wrap=True,addcolon=False)
+        editMethod = self.factory.createEditor(['gotmturb','turb_method'],self,selectwithradio=True)
+        bngrpMethod = editMethod.editor
 
         # Add explanatory label
-        layout.addWidget(self.labelMethod,           0,0,1,3)
+        layoutTurbulence.addWidget(editMethod.createLabel(),0,0,1,3)
         
         # Add button for convective adjustment
-        layout.addWidget(self.bngrpMethod.button(0), 1,0,1,3)
+        layoutTurbulence.addWidget(bngrpMethod.button(0), 1,0,1,3)
 
         # Add button for turbulence model calculating TKE and length scale
-        layout.addWidget(self.bngrpMethod.button(2), 2,0,1,3)
+        layoutTurbulence.addWidget(bngrpMethod.button(2), 2,0,1,3)
         
         # Add controls specific to first-order model
         layoutFirstOrder = QtGui.QGridLayout()
         editStabilityMethod = self.factory.createEditor(['gotmturb','stab_method'],self)
         editStabilityMethod.addToGridLayout(layoutFirstOrder,0,0)
-        layout.addLayout(layoutFirstOrder,           3,1)
+        layoutTurbulence.addLayout(layoutFirstOrder,      3,1)
 
         # Add button for second-order model
-        layout.addWidget(self.bngrpMethod.button(3), 4,0,1,3)
+        layoutTurbulence.addWidget(bngrpMethod.button(3), 4,0,1,3)
 
         # Add controls specific to second-order model
         layoutSecondOrder = QtGui.QGridLayout()
         editSecondCoef = self.factory.createEditor(['gotmturb','scnd','scnd_coeff'],self)
         editSecondCoef.addToGridLayout(layoutSecondOrder,0,0)
-        layout.addLayout(layoutSecondOrder,          5,1)
+        layoutTurbulence.addLayout(layoutSecondOrder,     5,1)
 
         # Add button for KPP model
-        layout.addWidget(self.bngrpMethod.button(99),6,0,1,3)
+        layoutTurbulence.addWidget(bngrpMethod.button(99),6,0,1,3)
+        
+        layoutTurbulence.setColumnStretch(3,1)
+        layoutTurbulence.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        layout.addLayout(layoutTurbulence)
 
-        # Add controls specific to KPP model
-        layoutKPP = QtGui.QGridLayout()
-        editKppRic = self.factory.createEditor(['gotmturb','kpp','Ric'],self)
-        editKppRic.addToGridLayout(layoutKPP,0,0)
-        layout.addLayout(layoutKPP,          7,1)
+        layout.addSpacing(20)
 
         layoutOther = QtGui.QGridLayout()
         editTkeMethod = self.factory.createEditor(['gotmturb','tke_method'],self)
         editLenScaleMethod = self.factory.createEditor(['gotmturb','len_scale_method'],self)
         editTkeMethod.addToGridLayout(layoutOther,0,0)
         editLenScaleMethod.addToGridLayout(layoutOther)
-        layout.setRowMinimumHeight(8,20)
-        layout.addLayout(layoutOther,9,0,1,3)
+        layoutOther.setColumnStretch(3,1)
+        layout.addLayout(layoutOther)
 
-        # Configure coumn widths, row heights.
-        layout.setColumnStretch(3,1)
-        layout.setRowStretch(10,1)
-        layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
+        layout.addStretch(1)
         
         # Set layout.
         self.setLayout(layout)
@@ -569,24 +584,31 @@ class PageAirSeaInteraction(ScenarioPage):
         
         radiowidth = commonqt.getRadioWidth()
         
-        layout = QtGui.QGridLayout()
-        layout.setColumnMinimumWidth(0,radiowidth)
+        # Create main layout
+        layout = QtGui.QVBoxLayout()
+
+        self.title = self.createHeader('Air-sea interaction','Here you specify fluxes of heat, radiation and momentum across the ocean-atmosphere interface.')
+        layout.addWidget(self.title)
+        layout.addSpacing(20)
+
+        layoutAirSea = QtGui.QGridLayout()
+        layoutAirSea.setColumnMinimumWidth(0,radiowidth)
         
-        self.editCalcFluxes = self.factory.createEditor(['airsea','flux_source'],self,selectwithradio=True)
+        editCalcFluxes = self.factory.createEditor(['airsea','flux_source'],self,selectwithradio=True)
         
         # Meteo file and unit
 
         meteolayout = QtGui.QVBoxLayout()
-        self.editMeteoFile = self.factory.createEditor(['airsea','meteo_file'],self)
-        self.editWetMode   = self.factory.createEditor(['airsea','wet_mode'],  self)
+        editMeteoFile = self.factory.createEditor(['airsea','meteo_file'],self)
+        editWetMode   = self.factory.createEditor(['airsea','wet_mode'],  self)
         
         meteofilelayout = QtGui.QHBoxLayout()
-        self.editMeteoFile.addToBoxLayout(meteofilelayout,label=False,unit=False)
+        editMeteoFile.addToBoxLayout(meteofilelayout,label=False,unit=False)
         meteofilelayout.addStretch()
         meteolayout.addLayout(meteofilelayout)
         
         meteowetmodelayout = QtGui.QHBoxLayout()
-        self.editWetMode.addToBoxLayout(meteowetmodelayout)
+        editWetMode.addToBoxLayout(meteowetmodelayout)
         meteowetmodelayout.addStretch()
         meteolayout.addLayout(meteowetmodelayout)
 
@@ -597,22 +619,22 @@ class PageAirSeaInteraction(ScenarioPage):
         heatlayout = QtGui.QGridLayout()
         heatlayout.setColumnMinimumWidth(0,radiowidth)
 
-        self.editHeatMethod   = self.factory.createEditor(['airsea','heat_method'],  self,selectwithradio=True)
-        self.editConstSwr     = self.factory.createEditor(['airsea','const_swr'],    self)
-        self.editConstHeat    = self.factory.createEditor(['airsea','const_heat'],   self)
-        self.editHeatfluxFile = self.factory.createEditor(['airsea','heatflux_file'],self)
+        editHeatMethod   = self.factory.createEditor(['airsea','heat_method'],  self,selectwithradio=True)
+        editConstSwr     = self.factory.createEditor(['airsea','const_swr'],    self)
+        editConstHeat    = self.factory.createEditor(['airsea','const_heat'],   self)
+        editHeatfluxFile = self.factory.createEditor(['airsea','heatflux_file'],self)
         
-        heatlayout.addWidget(self.editHeatMethod.editor.button(0),1,0,1,2)
+        heatlayout.addWidget(editHeatMethod.editor.button(0),1,0,1,2)
 
-        heatlayout.addWidget(self.editHeatMethod.editor.button(1),2,0,1,2)
+        heatlayout.addWidget(editHeatMethod.editor.button(1),2,0,1,2)
         constheatlayout = QtGui.QGridLayout()
-        self.editConstSwr.addToGridLayout(constheatlayout)
-        self.editConstHeat.addToGridLayout(constheatlayout)
+        editConstSwr.addToGridLayout(constheatlayout)
+        editConstHeat.addToGridLayout(constheatlayout)
         heatlayout.addLayout(constheatlayout,3,1)
         
-        heatlayout.addWidget(self.editHeatMethod.editor.button(2),4,0,1,2)
+        heatlayout.addWidget(editHeatMethod.editor.button(2),4,0,1,2)
         heatfilelayout = QtGui.QHBoxLayout()
-        self.editHeatfluxFile.addToBoxLayout(heatfilelayout,label=False,unit=False)
+        editHeatfluxFile.addToBoxLayout(heatfilelayout,label=False,unit=False)
         heatfilelayout.addStretch()
         heatlayout.addLayout(heatfilelayout,5,1)
         
@@ -627,22 +649,22 @@ class PageAirSeaInteraction(ScenarioPage):
         layoutMomentum = QtGui.QGridLayout()
         layoutMomentum.setColumnMinimumWidth(0,radiowidth)
 
-        self.editMomentumMethod  = self.factory.createEditor(['airsea','momentum_method'],  self,selectwithradio=True)
-        self.editMomentumConstTx = self.factory.createEditor(['airsea','const_tx'],         self)
-        self.editMomentumConstTy = self.factory.createEditor(['airsea','const_ty'],         self)
-        self.editmomentumFile    = self.factory.createEditor(['airsea','momentumflux_file'],self)
+        editMomentumMethod  = self.factory.createEditor(['airsea','momentum_method'],  self,selectwithradio=True)
+        editMomentumConstTx = self.factory.createEditor(['airsea','const_tx'],         self)
+        editMomentumConstTy = self.factory.createEditor(['airsea','const_ty'],         self)
+        editmomentumFile    = self.factory.createEditor(['airsea','momentumflux_file'],self)
         
-        layoutMomentum.addWidget(self.editMomentumMethod.editor.button(0),1,0,1,2)
+        layoutMomentum.addWidget(editMomentumMethod.editor.button(0),1,0,1,2)
 
-        layoutMomentum.addWidget(self.editMomentumMethod.editor.button(1),2,0,1,2)
+        layoutMomentum.addWidget(editMomentumMethod.editor.button(1),2,0,1,2)
         constmomentumlayout = QtGui.QGridLayout()
-        self.editMomentumConstTx.addToGridLayout(constmomentumlayout)
-        self.editMomentumConstTy.addToGridLayout(constmomentumlayout)
+        editMomentumConstTx.addToGridLayout(constmomentumlayout)
+        editMomentumConstTy.addToGridLayout(constmomentumlayout)
         layoutMomentum.addLayout(constmomentumlayout,3,1)
         
-        layoutMomentum.addWidget(self.editMomentumMethod.editor.button(2),4,0,1,2)
+        layoutMomentum.addWidget(editMomentumMethod.editor.button(2),4,0,1,2)
         momentumfilelayout = QtGui.QHBoxLayout()
-        self.editmomentumFile.addToBoxLayout(momentumfilelayout,label=False,unit=False)
+        editmomentumFile.addToBoxLayout(momentumfilelayout,label=False,unit=False)
         momentumfilelayout.addStretch()
         layoutMomentum.addLayout(momentumfilelayout,5,1)
         
@@ -678,16 +700,18 @@ class PageAirSeaInteraction(ScenarioPage):
         
         # Create final layout
 
-        label = self.editCalcFluxes.createLabel(detail=2,wrap=True,addcolon=False)
-        layout.addWidget(label,                               0,0,1,2)
-        layout.addWidget(self.editCalcFluxes.editor.button(0),1,0,1,2)
-        layout.addLayout(meteolayout,                         2,1)
-        layout.addWidget(self.editCalcFluxes.editor.button(1),3,0,1,2)
-        layout.addWidget(groupboxHeat,                        4,1)
-        layout.addWidget(groupboxMomentum,                    5,1)
-        #layout.addWidget(groupboxPe,4,0,1,2)
-        layout.setRowStretch(layout.rowCount(),1)
+        layoutAirSea.addWidget(editCalcFluxes.createLabel(),   0,0,1,2)
+        layoutAirSea.addWidget(editCalcFluxes.editor.button(0),1,0,1,2)
+        layoutAirSea.addLayout(meteolayout,                    2,1)
+        layoutAirSea.addWidget(editCalcFluxes.editor.button(1),3,0,1,2)
+        layoutAirSea.addWidget(groupboxHeat,                   4,1)
+        layoutAirSea.addWidget(groupboxMomentum,               5,1)
+        #layoutAirSea.addWidget(groupboxPe,4,0,1,2)
+
+        layout.addLayout(layoutAirSea)
         
+        layout.addStretch(1)
+                
         self.setLayout(layout)
 
 class PageAdvanced(commonqt.WizardPage):
@@ -708,11 +732,11 @@ class PageAdvanced(commonqt.WizardPage):
         self.tree.setExpandedAll(maxdepth=1)
         self.tree.expandNonDefaults()
 
-        lab = QtGui.QLabel('Here you can change all properties of your scenario. Values that differ from the default are shown in bold; they can be reset to their default through the context menu that opens after clicking the right mousebutton.',self)
-        lab.setWordWrap(True)
-
         layout = QtGui.QVBoxLayout()
-        layout.addWidget(lab)
+
+        self.title = self.createHeader('Advanced settings','Here you can change all properties of your scenario. Values that differ from the default are shown in bold; they can be reset to their default by clicking them with the right mousebutton and choosing "Reset value".')
+        layout.addWidget(self.title)
+        layout.addSpacing(20)
         layout.addWidget(self.tree)
         self.setLayout(layout)
 

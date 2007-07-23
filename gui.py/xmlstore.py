@@ -274,7 +274,7 @@ class StoreTimeDelta(Store.DataType):
         common.setNodeText(node,str(self.getAsSeconds()))
         
     def getAsSeconds(self):
-        return self.days*3600*24 + self.seconds + self.milliseconds/1000.
+        return self.days*86400 + self.seconds + self.milliseconds/1000.
         
     def __float__(self):
         return float(self.getAsSeconds())
@@ -309,6 +309,13 @@ class StoreTimeDelta(Store.DataType):
             
         # Combine units into string.
         return ', '.join(['%i %s' % (v[0],v[1]) for v in values])
+
+    def __eq__(self,other):
+        if not isinstance(other,StoreTimeDelta): return False
+        return self.days==other.days and self.seconds==other.seconds and self.milliseconds==other.milliseconds
+        
+    def __ne__(self,other):
+        return not self.__eq__(other)
 
 class StoreColor(Store.DataType):
     def __init__(self,red=None,green=None,blue=None):

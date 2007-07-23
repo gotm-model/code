@@ -3,7 +3,6 @@ import os, re, datetime, xml.dom.minidom, tempfile, shutil, StringIO
 import common, xmlstore, scenario
 
 # Import NetCDF file format support
-#import pycdf
 from pynetcdf import NetCDFFile
 import matplotlib.numerix
 
@@ -917,9 +916,7 @@ class Result(PlotVariableStore,common.referencedobject):
         if self.nc!=None: return self.nc
         assert self.datafile!=None, 'The result object has not yet been attached to an actual result.'
         try:
-          #pycdf self.nc = pycdf.CDF(str(self.datafile))
-          self.nc = NetCDFFile(self.datafile)
-        #pycdf except pycdf.CDFError, e:
+            self.nc = NetCDFFile(self.datafile)
         except Exception, e:
             raise Exception('An error occured while opening the NetCDF file "%s": %s' % (self.datafile,str(e)))
         return self.nc
