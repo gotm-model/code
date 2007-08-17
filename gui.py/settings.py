@@ -36,7 +36,7 @@ class SettingsStore(xmlstore.TypedStore):
         for i in range(len(currentnodes)-1,-1,-1):
             path = currentnodes[i].getValue()
             if not os.path.isfile(path):
-                parent.removeChildren(nodename,first=i,last=i)
+                parent.removeChild(nodename,i)
 
     def addUniqueValue(self,parentlocation,nodename,nodevalue):
         parent = self.root.getLocation(parentlocation)
@@ -45,7 +45,7 @@ class SettingsStore(xmlstore.TypedStore):
             maxcount = int(currentnodes[0].templatenode.getAttribute('maxoccurs'))
             for i in range(len(currentnodes)-1,-1,-1):
                 if currentnodes[i].getValue()==nodevalue:
-                    parent.removeChildren(nodename,first=i,last=i)
+                    parent.removeChild(nodename,i)
                     currentnodes.pop(i)
             parent.removeChildren(nodename,first=maxcount-1)
         newnode = parent.addChild(nodename,position=0)

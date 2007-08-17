@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.33 2007-07-23 18:45:11 jorn Exp $
+#$Id: commonqt.py,v 1.34 2007-08-17 15:24:24 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -112,8 +112,8 @@ class ErrorDialog(QtGui.QWidget):
     
     def __init__(self,parent=None):
         if parent==None: parent = QtGui.QApplication.activeWindow()
-        QtGui.QWidget.__init__(self,parent,QtCore.Qt.Tool | QtCore.Qt.WindowTitleHint)
-        # QtCore.Qt.Dialog | QtCore.Qt.WindowStaysOnTopHint
+        QtGui.QWidget.__init__(self,parent,QtCore.Qt.Tool)
+
         self.labelStart = QtGui.QLabel('Errors occurred during execution of GOTM-GUI:',self)
         self.labelStart.setWordWrap(True)
         self.labelStop = QtGui.QLabel('You may be able to continue working. However, we would appreciate it if you report this error. To do so, send an e-mail to <a href="mailto:gotm-users@gotm.net">gotm-users@gotm.net</a> with the above error message, and the circumstances under which the error occurred.',self)
@@ -180,7 +180,7 @@ def browseForPath(parent=None,curpath=None,getdirectory=False,save=False,filter=
         # Append first imposed extension
         if not goodextension and len(exts)>0: path += '.'+exts[0]
     
-    return path
+    return os.path.normpath(path)
 
 # =======================================================================
 # PathEditor: a Qt widget for editing paths, combines line-edit widget
@@ -287,7 +287,8 @@ class LinkedFilePlotDialog(QtGui.QDialog):
                 self.datamatrix = rawdata[-1]
                 if len(self.datastore.dimensions)==1:
                     self.rowlabels = rawdata[0]
-                    self.datelabels = (self.datastore.dimensions[0][3]=='datetime')
+                    dimname = self.datastore.getDimensionNames()[0]
+                    self.datelabels = (self.datastore.getDimensionInfo(dimname)['datatype']=='datetime')
             elif isinstance(self.datastore,data.LinkedProfilesInTime):
                 if self.type==0:
                     if self.pos<len(rawdata[1]):
@@ -998,6 +999,28 @@ class ColorEditor(QtGui.QComboBox):
             col = QtGui.QColorDialog.getColor(QtGui.QColor(self.itemData(index)),self)
             self.setItemColor(index,col)
 
+class FontNameEditor(QtGui.QComboBox):
+    def __init__(self,parent=None):
+        QtGui.QComboBox.__init__(self,parent)
+
+        import matplotlib.font_manager
+        fontnames = matplotlib.font_manager.fontManager.ttfdict.keys()
+        for fontname in sorted(fontnames,key=str.lower):
+            self.addItem(fontname)
+            
+    def setFontName(self,fontname):
+        if fontname==None:
+            self.setCurrentIndex(0)
+            return
+        index = self.findText(fontname)
+        if index==-1:
+            self.setCurrentIndex(0)
+        else:
+            self.setCurrentIndex(index)
+        
+    def fontName(self):
+        return self.currentText()
+
 # =======================================================================
 # PropertyDelegate: a Qt delegate used to create editors for property
 # values.
@@ -1039,12 +1062,14 @@ class PropertyDelegate(QtGui.QItemDelegate):
             editor = QtGui.QSpinBox(parent)
             if templatenode.hasAttribute('minimum'): editor.setMinimum(int(templatenode.getAttribute('minimum')))
             if templatenode.hasAttribute('maximum'): editor.setMaximum(int(templatenode.getAttribute('maximum')))
-            if templatenode.hasAttribute('unit'):    editor.setSuffix(' '+templatenode.getAttribute('unit'))
+            unit = node.getUnit()
+            if unit!=None: editor.setSuffix(' '+unit)
         elif nodetype=='float':
             editor = ScientificDoubleEditor(parent)
             if templatenode.hasAttribute('minimum'): editor.setMinimum(float(templatenode.getAttribute('minimum')))
             if templatenode.hasAttribute('maximum'): editor.setMaximum(float(templatenode.getAttribute('maximum')))
-            if templatenode.hasAttribute('unit'):    editor.setSuffix(' '+templatenode.getAttribute('unit'))
+            unit = node.getUnit()
+            if unit!=None: editor.setSuffix(' '+unit)
             self.currenteditor = editor
         elif nodetype=='bool':
             editor = QtGui.QComboBox(parent)
@@ -1066,6 +1091,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             self.currenteditor = editor
         elif nodetype=='color':
             editor = ColorEditor(parent)
+        elif nodetype=='fontname':
+            editor = FontNameEditor(parent)
         else:
             assert False, 'Unknown node type "%s".' % nodetype
 
@@ -1115,6 +1142,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             editor.setNode(node)
         elif nodetype=='color':
             editor.setColor(QtGui.QColor(value))
+        elif nodetype=='fontname':
+            editor.setFontName(value.toString())
 
     # setModelData (inherited from QtGui.QItemDelegate)
     #   Obtains the value from the editor widget, and set it for the model item at the given index
@@ -1139,6 +1168,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             node.setValue(editor.datafile)
         elif nodetype=='color':
             model.setData(index,QtCore.QVariant(editor.color()))
+        elif nodetype=='fontname':
+            node.setValue(editor.fontName())
 
 # =======================================================================
 # PropertyData: a Qt item model that encapsulates our custom
@@ -1864,8 +1895,13 @@ class PropertyEditorFactory:
             self.storeinterface = None
 
     def createEditor(self,location,parent,allowhide=None,**kwargs):
-        node = self.store.root.getLocation(location)
-        assert node!=None, 'Unable to create editor for "%s"; this node does not exist.' % location
+        assert location!=None, 'Specified node is None (non-existent?).'
+        if isinstance(location,xmlstore.TypedStore.Node):
+            node = location
+        else:
+            if isinstance(location,basestring): location = location.split('/')
+            node = self.store.root.getLocation(location)
+            assert node!=None, 'Unable to create editor for "%s"; this node does not exist.' % location
 
         # The editor inherits some optional arguments from the responsible factory.
         if 'allowhide' not in kwargs: kwargs['allowhide'] = self.allowhide
@@ -1884,6 +1920,13 @@ class PropertyEditorFactory:
         self.editors.append(editor)
         
         return editor
+        
+    def destroyEditor(self,editor,layout=None):
+        for i in range(len(self.editors)-1,-1,-1):
+            if self.editors[i] is editor:
+                del self.editors[i]
+                editor.destroy(layout)
+                break
 
     def updateStore(self):
         for editor in self.editors:
@@ -1992,18 +2035,20 @@ class PropertyEditor:
         This function can be called only once in the life time of the object.
         """
         assert self.unit==None, 'Cannot create unit because it has already been created.'
-        text = self.node.templatenode.getAttribute('unit')
-        self.unit = QtGui.QLabel(text,self.editor.parent())
+        unittext = self.node.getUnit()
+        if unittext==None: unittext=''
+        self.unit = QtGui.QLabel(unittext,self.editor.parent())
         if self.allowhide and self.node.isHidden(): self.unit.setVisible(False)
         return self.unit
         
-    def createLabel(self,detail=1,wrap=False,addcolon=True):
+    def createLabel(self,detail=1,wrap=False,addcolon=True,text=None):
         """Creates a label for the editor, based on the description in the source node.
         This function can be called only once in the life time of the object.
         """
         assert self.label==None, 'Cannot create label because it has already been created.'
-        text = self.node.getText(detail=detail,capitalize=True)
-        if addcolon: text += ': '
+        if text==None:
+            text = self.node.getText(detail=detail,capitalize=True)
+            if addcolon: text += ': '
         self.label = QtGui.QLabel(text,self.editor.parent())
         if wrap: self.label.setWordWrap(True)
         if self.allowhide and self.node.isHidden(): self.label.setVisible(False)
@@ -2022,6 +2067,27 @@ class PropertyEditor:
         if self.unit !=None: self.unit.setVisible(visible)
         self.editor.setVisible(visible)
 
+    def destroy(self,layout=None):
+        """Removes all widgets belonging to this editor from the layout.
+        """
+        if layout!=None:
+            if self.label!=None: layout.removeWidget(self.label)
+            if self.icon !=None: layout.removeWidget(self.icon)
+            if self.unit !=None: layout.removeWidget(self.unit)
+            layout.removeWidget(self.editor)
+
+        if self.label!=None:
+            self.label.destroy()
+            self.label = None
+        if self.icon!=None:
+            self.icon.destroy()
+            self.icon = None
+        if self.unit!=None:
+            self.unit.destroy()
+            self.unit = None
+        self.editor.destroy()
+        self.editor = None
+
     def updateStore(self):
         """Updates the value of the source node with the current value of the editor.
         """
@@ -2031,6 +2097,10 @@ class PropertyEditor:
         """Updates the value in the editor, so it reflects the current value of the source node.
         """
         self.setEditorData(self.editor,self.node)
+        if self.unit!=None:
+            unittext = self.node.getUnit()
+            if unittext==None: unittext=''
+            self.unit.setText(unittext)
 
     def updateEditorEnabled(self):
         """Enables/disables or shows/hides the editor (and label, if any) based on the visibility of the source node.
@@ -2079,7 +2149,9 @@ class PropertyEditor:
             editor = QtGui.QSpinBox(parent)
             if templatenode.hasAttribute('minimum'): editor.setMinimum(int(templatenode.getAttribute('minimum')))
             if templatenode.hasAttribute('maximum'): editor.setMaximum(int(templatenode.getAttribute('maximum')))
-            if templatenode.hasAttribute('unit'):    editor.setSuffix(' '+templatenode.getAttribute('unit'))
+            if self.unitinside:
+                unit = node.getUnit()
+                if unit!=None: editor.setSuffix(' '+unit)
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='float':
             editor = ScientificDoubleEditor(parent)
@@ -2087,8 +2159,9 @@ class PropertyEditor:
                 editor.setMinimum(float(templatenode.getAttribute('minimum')))
             if templatenode.hasAttribute('maximum'):
                 editor.setMaximum(float(templatenode.getAttribute('maximum')))
-            if self.unitinside and templatenode.hasAttribute('unit'):
-                editor.setSuffix(' '+templatenode.getAttribute('unit'))
+            if self.unitinside:
+                unit = node.getUnit()
+                if unit!=None: editor.setSuffix(' '+unit)
             self.currenteditor = editor
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='bool':
@@ -2229,6 +2302,32 @@ class PropertyEditor:
         elif nodetype=='file':
             return node.setValue(editor.datafile)
 
+def getFontSubstitute(fontname):
+    assert isinstance(fontname,basestring), 'Supplied argument must be a string.'
+
+    substitute = fontname
+
+    import sys
+    if sys.platform=='win32':
+        # Windows has a font substitution table in the registry, which links
+        # "virtual" fonts (e.g. the "dialog box font") to their actual TrueType
+        # name. Look up the supplied font name in this table, and return the
+        # substitute if present.
+        import _winreg
+        hkey = None
+        try:
+            hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,r'SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes')
+            value,datatype = _winreg.QueryValueEx(hkey,fontname)
+            substitute = value
+        except WindowsError:
+            pass
+        except EnvironmentError:
+            pass
+        if hkey!=None:
+            _winreg.CloseKey(hkey)
+        
+    return substitute
+
 class FigurePanel(QtGui.QWidget):
     
     def __init__(self,parent,detachbutton=True):
@@ -2236,7 +2335,7 @@ class FigurePanel(QtGui.QWidget):
 
         # Create MatPlotLib figure with background and border colors equal to our background color.
         bgcolor = self.palette().window().color()
-        mplfigure = matplotlib.figure.Figure(facecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.),edgecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.))
+        mplfigure = matplotlib.figure.Figure(facecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.),edgecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.),dpi=self.logicalDpiX())
 
         # Create MatPlotLib canvas (Qt-backend) attached to our MatPlotLib figure.
         self.canvas = FigureCanvas(mplfigure)
@@ -2244,48 +2343,27 @@ class FigurePanel(QtGui.QWidget):
         self.canvas.setMinimumSize(300,250)
 
         # Create our figure that encapsulates MatPlotLib figure.
-        self.figure = plot.Figure(mplfigure)
+        deffont = getFontSubstitute(unicode(self.fontInfo().family()))
+        self.figure = plot.Figure(mplfigure,defaultfont=deffont)
         self.figure.registerCallback('completeStateChange',self.onFigureStateChanged)
+        
+        self.figureinterface = self.figure.properties.getInterface()
+        self.figureinterface.addVisibilityChangeHandler(self.beforeFigureNodeVisibilityChange,self.afterFigureNodeVisibilityChange)
 
-        self.factory = PropertyEditorFactory(self.figure.properties,live=True)
-
-        # Controls for time range.
-        self.dateeditStart = self.factory.createEditor(['TimeAxis','Minimum'],self)
-        self.dateeditStop  = self.factory.createEditor(['TimeAxis','Maximum'],self)
-
-        # Controls for depth range.
-        self.lineeditStartDepth = self.factory.createEditor(['DepthAxis','Minimum'],self)
-        self.lineeditStopDepth = self.factory.createEditor(['DepthAxis','Maximum'],self)
+        self.factory = PropertyEditorFactory(self.figure.properties,live=True,allowhide=True)
 
         layout = QtGui.QVBoxLayout()
         
-        layoutOptions = QtGui.QGridLayout()
-
-        layoutTime = QtGui.QHBoxLayout()
-        layoutTime.addWidget(self.dateeditStart.editor)
-        self.labelDateTo = QtGui.QLabel(self.tr(' to '),self)
-        layoutTime.addWidget(self.labelDateTo)
-        layoutTime.addWidget(self.dateeditStop.editor)
-        self.labelDateRange = QtGui.QLabel(self.tr('Time range:'),self)
-        layoutOptions.addWidget(self.labelDateRange,1,0)
-        layoutOptions.addLayout(layoutTime,1,1)
+        self.layoutOptions = QtGui.QVBoxLayout()
         
-        layoutDepth = QtGui.QHBoxLayout()
-        layoutDepth.addWidget(self.lineeditStartDepth.editor)
-        self.labelDepthTo = QtGui.QLabel(self.tr(' to '),self)
-        layoutDepth.addWidget(self.labelDepthTo)
-        layoutDepth.addWidget(self.lineeditStopDepth.editor)
-        self.labelDepthRange = QtGui.QLabel(self.tr('Depth range:'),self)
-        layoutOptions.addWidget(self.labelDepthRange,2,0)
-        layoutOptions.addLayout(layoutDepth,2,1)
-
-        self.layoutOptions = layoutOptions
+        self.layoutAxesRange = QtGui.QGridLayout()
+        self.layoutOptions.addLayout(self.layoutAxesRange)
 
         self.buttonAdvanced = QtGui.QPushButton(self.tr('Advanced...'),self)
         self.buttonAdvanced.setAutoDefault(False)
         self.buttonAdvanced.setDefault(False)
         self.connect(self.buttonAdvanced, QtCore.SIGNAL('clicked()'), self.onAdvancedClicked)
-        layoutOptions.addWidget(self.buttonAdvanced,3,0,1,2)
+        self.layoutOptions.addWidget(self.buttonAdvanced)
 
         self.layoutButtons = QtGui.QHBoxLayout()
 
@@ -2319,7 +2397,7 @@ class FigurePanel(QtGui.QWidget):
             self.layoutButtons.addWidget(self.buttonDetach)
 
         self.widgetProperties = QtGui.QWidget(self)
-        self.widgetProperties.setLayout(layoutOptions)
+        self.widgetProperties.setLayout(self.layoutOptions)
         self.widgetProperties.setVisible(False)
 
         layout.addWidget(self.canvas)
@@ -2334,6 +2412,8 @@ class FigurePanel(QtGui.QWidget):
         self.setEnabled(False)
 
         self.detachedfigures = []
+        
+        self.axescontrols = []
         
     def onFigureStateChanged(self,complete):
         self.setEnabled(complete)
@@ -2350,6 +2430,41 @@ class FigurePanel(QtGui.QWidget):
             self.figure.addVariable(varname)
         if ownupdating: self.figure.setUpdating(True)
         self.figure.resetChanged()
+        
+    def beforeFigureNodeVisibilityChange(self,node,visible,showhideonly):
+        if showhideonly: return
+        if (not visible) and '/'.join(node.location) == 'Axes/Axis':
+            axisid = node.getSecondaryId()
+            for i in range(len(self.axescontrols)-1,-1,-1):
+                if self.axescontrols[i]['axis']==axisid:
+                    for ed in self.axescontrols[i]['editors']:
+                        self.factory.destroyEditor(ed,layout=self.layoutAxesRange)
+                    self.axescontrols.pop(i)
+
+    def afterFigureNodeVisibilityChange(self,node,visible,showhideonly):
+        if showhideonly: return
+        if visible and '/'.join(node.location) == 'Axes/Axis':
+            axisid = node.getSecondaryId()
+            axisname = axisid
+            irow = self.layoutAxesRange.rowCount()
+
+            editorMin = self.factory.createEditor(node.getLocation(['Minimum']),self)
+            editorMax = self.factory.createEditor(node.getLocation(['Maximum']),self)
+            editorMin.createLabel(text='%s range: ' % axisname)
+            editorMax.createLabel(text=' to ')
+            editorMin.addToGridLayout(self.layoutAxesRange,irow,0)
+            editorMax.addToGridLayout(self.layoutAxesRange,irow,3)
+            self.axescontrols.append({'axis':axisid,'editors':[editorMin,editorMax]})
+            
+            irow+=1
+
+            editorMinTime = self.factory.createEditor(node.getLocation(['MinimumTime']),self)
+            editorMaxTime = self.factory.createEditor(node.getLocation(['MaximumTime']),self)
+            editorMinTime.createLabel(text='%s range: ' % axisname)
+            editorMaxTime.createLabel(text=' to ')
+            editorMinTime.addToGridLayout(self.layoutAxesRange,irow,0)
+            editorMaxTime.addToGridLayout(self.layoutAxesRange,irow,3)
+            self.axescontrols.append({'axis':axisid,'editors':[editorMinTime,editorMaxTime]})
 
     def plotFromProperties(self,properties):
         self.figure.setProperties(properties)    

@@ -1,6 +1,21 @@
 import os, xml.dom.minidom, shutil
 
-import common, xmlstore, plot, matplotlib
+import common, xmlstore, plot, matplotlib, data
+
+def createtable(xmldocument,tds,columncount):
+    table = xmldocument.createElement('table')
+    icurvar = 0
+    tr = None
+    for td in tds:
+        if icurvar % columncount == 0:
+            tr = xmldocument.createElement('tr')
+            table.appendChild(tr)
+        tr.appendChild(td)
+        icurvar = icurvar+1
+    if tr!=None and len(table.childNodes)>1:
+        for i in range(columncount - len(tr.childNodes)):
+            tr.appendChild(xmldocument.createElement('td'))
+    return table
 
 class Report(common.referencedobject):
     reportdirname = 'reporttemplates'
@@ -26,7 +41,7 @@ class Report(common.referencedobject):
                 print 'WARNING: no report templates will be available, because subdirectory "%s" is not present!' % Report.reportdirname
         return Report.reportname2path
 
-    def __init__(self):
+    def __init__(self,defaultfont=None):
         common.referencedobject.__init__(self)
         
         self.store = xmlstore.TypedStore('schemas/report/gotmgui.xml')
@@ -38,6 +53,7 @@ class Report(common.referencedobject):
         self.defaultstore.setProperty(['Figures','Height'],8)
         self.defaultstore.setProperty(['Figures','Resolution'],96)
         self.defaultstore.setProperty(['Figures','FontScaling'],100)
+        self.defaultstore.setProperty(['Figures','FontName'],defaultfont)
 
         self.store.setDefaultStore(self.defaultstore)
         
@@ -55,6 +71,7 @@ class Report(common.referencedobject):
         figuresize = (self.store.getProperty(['Figures','Width'],usedefault=True),self.store.getProperty(['Figures','Height'],usedefault=True))
         dpi = self.store.getProperty(['Figures','Resolution'],usedefault=True)
         fontscaling = self.store.getProperty(['Figures','FontScaling'],usedefault=True)
+        fontname = self.store.getProperty(['Figures','FontName'],usedefault=True)
 
         # Get list of variables to plot
         selroot = self.store.root.getLocation(['Figures','Selection'])
@@ -63,21 +80,42 @@ class Report(common.referencedobject):
         steps = float(2+len(plotvariables))
         istep = 0
 
+        # Get a list of all input datasets.
+        inputdata = []
+        for node in scenario.root.getNodesByType('file'):
+            if node.isHidden(): continue
+            value = node.getValueOrDefault()
+            if value!=None and value.isValid():
+                store = data.LinkedFileVariableStore.fromNode(node)
+                inputdata.append((node,store,value))
+                steps += 1+len(store.getVariableNames())
+
         # Create output directory if it does not exist yet.
         if not os.path.isdir(outputpath): os.mkdir(outputpath)
 
+        # Copy auxilliary files such as CSS, JS (everything but index.xml)
         for f in os.listdir(templatepath):
             fullpath = os.path.join(templatepath,f)
-            if f.lower()!='index.xml' and os.path.isfile(fullpath): shutil.copy(fullpath,os.path.join(outputpath,f))
+            if f.lower()!='index.xml' and os.path.isfile(fullpath):
+                shutil.copy(fullpath,os.path.join(outputpath,f))
+
+        # --------------------------------------------------------------
+        # Replace "gotm:scenarioproperty" tags in index.xml by the
+        # current value of the corresponding scenario property.
+        # --------------------------------------------------------------
 
         for node in xmldocument.getElementsByTagName('gotm:scenarioproperty'):
             variablepath = node.getAttribute('variable')
-            assert variablepath!='', 'gotm:scenarioproperty node in report template lacks "variable" attribute pointing to a location in the scenario.'
+            assert variablepath!='', 'gotm:scenarioproperty node in report template lacks "variable" attribute, whcih should point to a location in the scenario.'
             variablenode = scenario.root.getLocation(variablepath.split('/'))
             assert variablenode!=None, 'Unable to locate "%s" in the scenario.' % variablepath
             val = variablenode.getValueAsString()
             node.parentNode.replaceChild(xmldocument.createTextNode(unicode(val)),node)
             node.unlink()
+
+        # --------------------------------------------------------------
+        # Build table with scenario settings.
+        # --------------------------------------------------------------
 
         scenarionodes = xmldocument.getElementsByTagName('gotm:scenario')
         assert len(scenarionodes)<=1, 'Found more than one "gotm:scenario" node in the report template.'
@@ -112,6 +150,60 @@ class Report(common.referencedobject):
             scenarionode.parentNode.replaceChild(scentable,scenarionode)
 
         istep += 1
+        
+        # Create figure to be used for plotting observations and results.
+        if len(inputdata)>0 or len(plotvariables)>0:
+            mplfigure = matplotlib.figure.Figure(figsize=(figuresize[0]/2.54,figuresize[1]/2.54))
+            canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(mplfigure)
+            fig = plot.Figure(mplfigure,defaultfont=fontname)
+        
+        # --------------------------------------------------------------
+        # Create figures for input data
+        # --------------------------------------------------------------
+
+        if len(inputdata)>0:
+            nodeParent = scentable.parentNode
+            nodePreceding = scentable.nextSibling
+            for node,store,datafile in inputdata:
+                if callback!=None:
+                    store.loadDataFile(datafile,lambda msg,progress: callback((istep+progress)/steps,'Parsing %s...' % (node.getText(1),)))
+                else:
+                    store.loadDataFile(datafile)
+                istep += 1
+                tds = []
+                fig.addDataSource('input',store)
+                vardict = store.getVariableLongNames()
+                for varid in store.getVariableNames():
+                    longname = vardict[varid]
+                    if callback!=None: callback(istep/steps,'Creating figure for %s...' % longname)
+
+                    fig.setUpdating(False)
+                    fig.clearProperties()
+                    fig.addVariable(varid)
+                    fig.properties.setProperty(['FontScaling'],fontscaling)
+                    fig.setUpdating(True)
+                    filename = 'in_'+varid+'.png'
+                    outputfile = os.path.join(outputpath,filename)
+                    canvas.print_figure(outputfile,dpi=dpi)
+
+                    img = xmldocument.createElement('img')
+                    img.setAttribute('src',filename)
+                    img.setAttribute('alt',longname)
+                    img.setAttribute('style','width:%.2fcm' % figuresize[0])
+                    td = xmldocument.createElement('td')
+                    td.appendChild(img)
+                    tds.append(td)
+
+                    istep += 1
+                header = xmldocument.createElement('h3')
+                header.appendChild(xmldocument.createTextNode(node.getText(1)))
+                figurestable = createtable(xmldocument,tds,columncount)
+                nodeParent.insertBefore(header,nodePreceding)
+                nodeParent.insertBefore(figurestable,nodePreceding)
+
+        # --------------------------------------------------------------
+        # Create figures for result variables
+        # --------------------------------------------------------------
 
         figuresnodes = xmldocument.getElementsByTagName('gotm:figures')
         assert len(figuresnodes)<=1, 'Found more than one "gotm:figures" node in the report template.'
@@ -120,29 +212,22 @@ class Report(common.referencedobject):
         else:
             figuresnode = None
         if len(plotvariables)>0 and figuresnode!=None:
-            mplfigure = matplotlib.figure.Figure(figsize=(figuresize[0]/2.54,figuresize[1]/2.54))
-            canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(mplfigure)
-            fig = plot.Figure(mplfigure)
+            fig.clearSources()
             fig.addDataSource('result',result)
-            figurestable = xmldocument.createElement('table')
-            icurvar = 0
-            tr = None
+            tds = []
             for varpath in plotvariables:
                 varid = varpath.split('/')[-1]
                 
                 longname = result.getVariable(varid).getLongName()
                 if callback!=None: callback(istep/steps,'Creating figure for %s...' % longname)
                 
-                if icurvar % columncount == 0:
-                    tr = xmldocument.createElement('tr')
-                    figurestable.appendChild(tr)
                 fig.setUpdating(False)
                 if not result.getFigure('result/'+varpath,fig.properties):
                     fig.clearProperties()
                     fig.addVariable(varid)
                 fig.properties.setProperty(['FontScaling'],fontscaling)
                 fig.setUpdating(True)
-                filename = varid+'.png'
+                filename = 'out_'+varid+'.png'
                 outputfile = os.path.join(outputpath,filename)
                 canvas.print_figure(outputfile,dpi=dpi)
 
@@ -152,12 +237,10 @@ class Report(common.referencedobject):
                 img.setAttribute('style','width:%.2fcm' % figuresize[0])
                 td = xmldocument.createElement('td')
                 td.appendChild(img)
-                tr.appendChild(td)
+                tds.append(td)
 
-                icurvar = icurvar+1
                 istep += 1
-            for i in range(columncount - len(tr.childNodes)):
-                tr.appendChild(xmldocument.createElement('td'))
+            figurestable = createtable(xmldocument,tds,columncount)
             figuresnode.parentNode.replaceChild(figurestable,figuresnode)
         elif figuresnode!=None:
             figuresnode.parentNode.removeChild(figuresnode)

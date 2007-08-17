@@ -21,6 +21,9 @@ class PlotVariableStore:
 
     def getVariable(self,varname):
         return None
+        
+    def getDimensionInfo(self,dimname):
+        return {'label':'','unit':'','preferredaxis':'x','datatype':'float','logscale':False}
 
     def getVariableTree(self,path,otherstores={}):
         xmlschema = xml.dom.minidom.parse(path)
@@ -119,7 +122,7 @@ class LinkedFileVariableStore(PlotVariableStore):
             return self.data[2]
 
         def getDimensions(self):
-            return [d[0] for d in self.store.dimensions]
+            return self.store.getDimensionNames()
 
         def getValues(self,bounds,staggered=False,coordinatesonly=False):
             assert False, 'This function must be implemented by inheriting class.'
@@ -130,15 +133,15 @@ class LinkedFileVariableStore(PlotVariableStore):
         assert finfo!=None, 'Node "%s" lacks "fileinfo" attribute.' % node
         type = finfo.getAttribute('type')
         if type=='pointsintime':
-            return LinkedMatrix(node,type=0,dimensions=[('time','time','','datetime')])
+            return LinkedMatrix(node,type=0,dimensions={'time':{'label':'time','datatype':'datetime'}})
         elif type=='profilesintime':
-            return LinkedProfilesInTime(node,dimensions=[('time','time','','datetime'),('z','depth','m','float')])
+            return LinkedProfilesInTime(node,dimensions={'time':{'label':'time','datatype':'datetime'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}})
         elif type=='singleprofile' or type=='verticalgrid':
             return LinkedMatrix(node,type=1)
         else:
             assert False, 'Linked file has unknown type "%s".' % node.type
 
-    def __init__(self,node,dimensions=[]):
+    def __init__(self,node,dimensions={}):
 
         finfo = common.findDescendantNode(node.templatenode,['fileinfo'])
         self.nodeid = node.getId()
@@ -153,16 +156,23 @@ class LinkedFileVariableStore(PlotVariableStore):
                     name = longname
                     self.vardata.append([name,longname,unit])
                     
-        self.dimensions = dimensions
+        # Copy data from supplied dimensions
+        for dimname,dimdata in dimensions.iteritems():
+            self.dimensions[dimname] = PlotVariableStore.getDimensionInfo(self,None)
+            self.dimensions[dimname].update(dimdata)
+        
         fdims = common.findDescendantNode(finfo,['filedimensions'])
         if fdims!=None:
             for ch in fdims.childNodes:
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filedimension':
-                    longname = ch.getAttribute('label')
-                    unit = ch.getAttribute('unit')
-                    type = ch.getAttribute('type')
-                    name = longname
-                    self.dimensions.append((name,longname,unit,type))
+                    dimdata = PlotVariableStore.getDimensionInfo(self,None)
+                    if ch.hasAttribute('label'):         dimdata['label']         = ch.getAttribute('label')
+                    if ch.hasAttribute('unit'):          dimdata['unit']          = ch.getAttribute('unit')
+                    if ch.hasAttribute('datatype'):      dimdata['datatype']      = ch.getAttribute('datatype')
+                    if ch.hasAttribute('preferredaxis'): dimdata['preferredaxis'] = ch.getAttribute('preferredaxis')
+                    id = ch.getAttribute('id')
+                    if id=='': id = dimdata['label']
+                    self.dimensions[id] = dimdata
 
         self.datafile = None
         self.clear()
@@ -171,7 +181,10 @@ class LinkedFileVariableStore(PlotVariableStore):
         pass
         
     def getDimensionNames(self):
-        return [d[0] for d in self.dimensions]
+        return self.dimensions.keys()
+        
+    def getDimensionInfo(self,dimname):
+        return self.dimensions[dimname]
         
     def getVariableNames(self):
         return [data[0] for data in self.vardata]
@@ -242,7 +255,7 @@ class LinkedMatrix(LinkedFileVariableStore):
                     
             return res
 
-    def __init__(self,node,type=0,dimensions=[]):
+    def __init__(self,node,type=0,dimensions={}):
         LinkedFileVariableStore.__init__(self,node,dimensions)
         self.variableclass = self.LinkedMatrixVariable
         assert len(self.dimensions)<=1, 'Linkedmatrix objects can only be used with 0 or 1 coordinate dimensions, but %i are present.' % len(self.dimensions)
@@ -297,7 +310,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         values = matplotlib.numerix.empty((obscount,varcount),matplotlib.numerix.Float32)
         if dimcount==1:
             # One coordinate dimension present; allocate an array for its values.
-            dimtype = self.dimensions[0][3]
+            dimtype = self.dimensions.values()[0]['datatype']
             dimisdate = (dimtype=='datetime')
             if dimisdate:
                 datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
@@ -417,7 +430,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         if dimcount==1:
             # One coordinate dimension present; get the data type of that dimension.
             dimdata = self.data[0]
-            dimtype = self.dimensions[0][3]
+            dimtype = self.dimensions.values()[0]['datatype']
             dimisdate = (dimtype=='datetime')
         varcount = len(self.vardata)
         vardata = self.data[-1]
@@ -666,6 +679,7 @@ class Result(PlotVariableStore,common.referencedobject):
 
           # Get time coordinates and time bounds.
           (t,t_stag) = self.result.getTime()
+          if t.shape[0]==0: return None
           timebounds = common.findindices(bounds[0],t)
           if not staggered:
               res.append(t[timebounds[0]:timebounds[1]+1])
@@ -742,6 +756,21 @@ class Result(PlotVariableStore,common.referencedobject):
 
     def hasChanged(self):
         return self.changed or self.store.changed
+        
+    def getDimensionInfo(self,dimname):
+        res = PlotVariableStore.getDimensionInfo(self,dimname)
+        varinfo = self.nc.variables[dimname]
+        if dimname=='z' or dimname=='z1':
+            res['label'] = 'depth'
+            res['unit'] = 'm'
+            res['preferredaxis'] = 'y'
+        elif dimname=='time':
+            res['label'] = 'time'
+            res['datatype'] = 'datetime'
+        else:
+            if hasattr(varinfo,'long_name'): res['label'] = varinfo.long_name
+            if hasattr(varinfo,'units'):     res['unit']  = varinfo.units
+        return res
 
     def getTempDir(self,empty=False):
         if self.tempdir!=None:
@@ -850,26 +879,19 @@ class Result(PlotVariableStore,common.referencedobject):
         else:
             self.path = None
 
-    def setFigure(self,source):
-        name = source.root.getLocation(['Name']).getValue()
-        assert name!=None, 'Name attribute of figure is not set; cannot store figure.'
-
+    def setFigure(self,name,source):
         setroot = self.store.root.getLocation(['FigureSettings'])
-        for fig in setroot.getLocationMultiple(['Figure']):
-            if fig.getLocation(['Name']).getValue()==name: break
-        else:
-            fignodename = source.root.templatenode.getAttribute('id')
-            fig = setroot.addChild(fignodename)
-            assert fig!=None, 'Unable to add new node "%s".' % fignodename
+        fignodename = source.root.templatenode.getAttribute('id')
+        fig = setroot.getChildById(fignodename,name,create=True)
         fig.copyFrom(source.root,replace=True)
-        fig.getLocation(['Name']).setValue(name)
 
     def getFigure(self,name,target):
         setroot = self.store.root.getLocation(['FigureSettings'])
-        for fig in setroot.getLocationMultiple(['Figure']):
-            if fig.getLocation(['Name']).getValue()==name:
-                target.root.copyFrom(fig,replace=True)
-                return True
+        fignodename = target.root.templatenode.getAttribute('id')
+        fig = setroot.getChildById(fignodename,name,create=False)
+        if fig!=None:
+            target.root.copyFrom(fig,replace=True)
+            return True
         return False
 
     def unlink(self):
@@ -984,7 +1006,9 @@ class Result(PlotVariableStore,common.referencedobject):
                 t[it] = dateref + datetime.timedelta(secs[it]/3600/24)
 
             # Get time step (of output, not simulation!)
-            if secs.shape[0]==1:
+            if secs.shape[0]==0:
+                dt = None
+            elif secs.shape[0]==1:
                 # Only one time step saved: try to get output time step from scenario. If this
                 # does not work, assume the simulation started with MinN == 1, allowing us to
                 # use the first time (in seconds) as time step. If that does not work, default
@@ -1001,10 +1025,13 @@ class Result(PlotVariableStore,common.referencedobject):
                 dt = secs[1]-secs[0]
 
             # Create staggered time grid.
-            t_stag = matplotlib.numerix.zeros((secs.shape[0]+1,),matplotlib.numerix.PyObject)
-            halfdt = datetime.timedelta(seconds=dt/2.)
-            t_stag[0]  = t[0]-halfdt
-            t_stag[1:] = t[:]+halfdt
+            if dt==None:
+                t_stag = None
+            else:
+                t_stag = matplotlib.numerix.zeros((secs.shape[0]+1,),matplotlib.numerix.PyObject)
+                halfdt = datetime.timedelta(seconds=dt/2.)
+                t_stag[0]  = t[0]-halfdt
+                t_stag[1:] = t[:]+halfdt
             
             # Cache time grids.
             self.t = t
@@ -1028,7 +1055,7 @@ class Result(PlotVariableStore,common.referencedobject):
             # Get depth of layer centers
             z = z1[:,1:z1.shape[1]]-0.5*h
 
-            # Interpolate in time to create staggered grid
+            # Interpolate in depth to create staggered grid
             z1_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z1,(0,),0),z1,matplotlib.numerix.take(z1,(-1,),0)),0)
             z_stag = 0.5 * (z1_med[0:z1_med.shape[0]-1,:] + z1_med[1:z1_med.shape[0],:])
             

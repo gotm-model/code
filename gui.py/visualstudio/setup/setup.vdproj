@@ -765,6 +765,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_A25428C9A92D4CAA98C5835BFD4BDFC2"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_A2CC3ED43490475C86CE4338B9953B74"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -3725,6 +3731,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{A582A373-4685-4296-BEFE-614B80A702C3}:_A25428C9A92D4CAA98C5835BFD4BDFC2"
+            {
+            "SourcePath" = "8:..\\..\\dist\\schemas\\scenario\\gotm-4.1.0.xml"
+            "TargetName" = "8:gotm-4.1.0.xml"
+            "Tag" = "8:"
+            "Folder" = "8:_5D71607C193440C1BA7E86B473AE57C1"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{A582A373-4685-4296-BEFE-614B80A702C3}:_A2CC3ED43490475C86CE4338B9953B74"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\ptmbi8a.afm"
@@ -5285,13 +5311,13 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:GOTM-GUI"
-        "ProductCode" = "8:{E2FD9804-5B29-46E6-809A-767B8FD353B0}"
-        "PackageCode" = "8:{62ACB475-A613-4699-8149-DA7FB1BB0126}"
+        "ProductCode" = "8:{198C6D87-F21C-4BAD-8162-9A598E7C958D}"
+        "PackageCode" = "8:{156D004B-7942-44ED-8741-0BD832C11781}"
         "UpgradeCode" = "8:{4B998060-7774-43AF-BC61-8E1D4FE4F2D7}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
-        "ProductVersion" = "8:0.91.0"
+        "ProductVersion" = "8:0.92.0"
         "Manufacturer" = "8:Bolding & Burchard Hydrodynamics"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:http://www.gotm.net"

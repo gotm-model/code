@@ -3,32 +3,79 @@
 
 			<element id="Name" type="string" label="name" hidden="True"/>
 			<element id="Title" type="string" label="title"/>
+			<element id="FontName" type="fontname" label="font"/>
 			<element id="FontScaling" type="float" label="font scaling" unit="%"/>
 
-			<element id="HasTimeAxis" type="bool" label="time axis" hidden="True"/>
-			<element id="TimeAxis" label="time axis">
-				<condition type="eq" variable="./HasTimeAxis" value="True"/>
-				<element id="Minimum" type="datetime" label="minimum" nodefault="True"/>
-				<element id="Maximum" type="datetime" label="maximum" nodefault="True"/>
-				<element id="Label"   type="string" label="label"/>
+			<element id="Axes" label="axes">
+				<element id="Axis" label="axis" maxoccurs="10">
+					<element id="Label"       type="string" label="label"/>
+					<element id="IsTimeAxis"  type="bool" hidden="True"/>
+					<element id="MinimumTime" type="datetime" label="minimum" nodefault="True">
+						<condition type="eq" variable="./IsTimeAxis" value="True"/>
+					</element>
+					<element id="MaximumTime" type="datetime" label="maximum" nodefault="True">
+						<condition type="eq" variable="./IsTimeAxis" value="True"/>
+					</element>
+					<element id="TickLocationTime" type="select" label="tick location">
+						<condition type="eq" variable="./IsTimeAxis" value="True"/>
+						<options>
+							<option value="0" label="year"/>
+							<option value="1" label="month"/>
+							<option value="2" label="day"/>
+							<option value="3" label="hour"/>
+							<option value="4" label="minute"/>
+						</options>
+					</element>
+					<element id="TickIntervalTime" type="int" label="tick interval" minimum="1">
+						<condition type="eq" variable="./IsTimeAxis" value="True"/>
+					</element>
+					<element id="TickFormatTime" type="select" label="tick format">
+						<condition type="eq" variable="./IsTimeAxis" value="True"/>
+						<options>
+							<option value="0" label="dd-mmm-yyyy HH:MM:SS"/>
+							<option value="1" label="dd-mmm-yyyy"/>
+							<option value="2" label="mm/dd/yy"/>
+							<option value="3" label="mmm"/>
+							<option value="4" label="m"/>
+							<option value="5" label="mm"/>
+							<option value="6" label="mm/dd"/>
+							<option value="7" label="dd"/>
+							<option value="8" label="ddd"/>
+							<option value="9" label="d"/>
+							<option value="10" label="yyyy"/>
+							<option value="11" label="yy"/>
+							<option value="12" label="mmmyy"/>
+							<option value="13" label="HH:MM:SS"/>
+							<option value="14" label="HH:MM:SS PM"/>
+							<option value="15" label="HH:MM"/>
+							<option value="16" label="HH:MM PM"/>
+							<option value="17" label="QQ-YY"/>
+							<option value="18" label="QQ"/>
+							<option value="19" label="dd/mm"/>
+							<option value="20" label="dd/mm/yy"/>
+							<option value="21" label="mmm.dd,yyyy HH:MM:SS"/>
+							<option value="22" label="mmm.dd,yyyy"/>
+							<option value="23" label="mm/dd/yyyy"/>
+							<option value="24" label="dd/mm/yyyy"/>
+							<option value="25" label="yy/mm/dd"/>
+							<option value="26" label="yyyy/mm/dd"/>
+							<option value="27" label="QQ-YYYY"/>
+							<option value="28" label="mmmyyyy"/>
+						</options>
+					</element>
+					<element id="Minimum" type="float" label="minimum" unit="[Unit]" minimum="-5000" maximum="50" nodefault="True">
+						<condition type="ne" variable="./IsTimeAxis" value="True"/>
+					</element>
+					<element id="Maximum" type="float" label="maximum" unit="[Unit]" minimum="-5000" maximum="50" nodefault="True">
+						<condition type="ne" variable="./IsTimeAxis" value="True"/>
+					</element>
+					<element id="Unit" type="string" label="unit" nodefault="True" hidden="True"/>
+				</element>
 			</element>
 
-			<element id="HasDepthAxis" type="bool" label="depth axis" hidden="True"/>
-			<element id="DepthAxis" label="depth axis">
-				<condition type="eq" variable="./HasDepthAxis" value="True"/>
-				<element id="Minimum" type="float" label="minimum" unit="m" minimum="-5000" maximum="50" nodefault="True"/>
-				<element id="Maximum" type="float" label="maximum" unit="m" minimum="-5000" maximum="50" nodefault="True"/>
-				<element id="Label"   type="string" label="label"/>
-			</element>
-
-			<element id="Data" label="data">
+			<element id="Data" label="data series">
 				<element id="Series" label="series" maxoccurs="10">
-					<element id="Variable"       type="string" label="variable"    readonly="True"/>
-					<element id="Source"         type="string" label="data source" readonly="True"/>
 					<element id="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
-					<element id="Label"          type="string" label="label"/>
-					<element id="Minimum"        type="float"  label="minimum" nodefault="True"/>
-					<element id="Maximum"        type="float"  label="maximum" nodefault="True"/>
 					<element id="LogScale"       type="bool"   label="log-scale"/>
 					<element id="PlotType2D" type="select" label="plot type">
 						<condition type="eq" variable="./DimensionCount" value="1"/>

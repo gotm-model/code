@@ -11,6 +11,11 @@ print 'Python version: %s' % unicode(sys.version_info)
 oldworkingdir = os.getcwdu()
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
+# Import MatPlotLib to configure key parameters
+import matplotlib
+matplotlib.use('Qt4Agg')
+matplotlib.rcParams['numerix'] = 'numpy'
+
 # Now import our custom modules
 import common, xmlstore, scenario, data, simulate, report
 

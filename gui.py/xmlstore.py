@@ -317,6 +317,81 @@ class StoreTimeDelta(Store.DataType):
     def __ne__(self,other):
         return not self.__eq__(other)
 
+class StoreFontName(Store.DataType):
+    def __init__(self,seconds=0,days=0,milliseconds=0):
+        Store.DataType.__init__(self)
+        seconds += (days % 1)*86400 # Add floating point part of the day count
+        self.days = int(days)   # Take all but floating point part
+        self.milliseconds = int(milliseconds + (seconds % 1)*1000)   # Add floating point part of second count
+        self.seconds = int(seconds) # Take all but floating point part
+        if self.milliseconds>=1000:
+            # Add milliseconds above 1000 to seconds
+            self.seconds += int(self.milliseconds/1000)
+            self.milliseconds = self.milliseconds % 1000
+        if self.seconds>=86400:
+            # Add seconds above 86400 (one day) to days
+            self.days += int(self.seconds/86400)
+            self.seconds = self.seconds % 86400
+
+    @staticmethod
+    def load(node,context):
+        text = common.getNodeText(node)
+        if text:
+            #components = text.split(':')
+            #assert len(components)==3, 'timedelta objects must be stored as "days:seconds:milliseconds".'
+            #return StoreTimeDelta(milliseconds=int(components[2]),seconds=int(components[1]),days=int(components[0]))
+            return StoreTimeDelta(seconds=float(text))
+        else:
+            return StoreTimeDelta()
+
+    def save(self,node,context):
+        #common.setNodeText(node,'%i:%i:%i' % (self.days,self.seconds,self.milliseconds))
+        common.setNodeText(node,str(self.getAsSeconds()))
+        
+    def getAsSeconds(self):
+        return self.days*86400 + self.seconds + self.milliseconds/1000.
+        
+    def __float__(self):
+        return float(self.getAsSeconds())
+        
+    def __str__(self):
+        values = []
+        
+        # Add days
+        if self.days>0:
+            values.append([self.days,'day'])
+            
+        # Divide seconds over hours, minutes, and remaining seconds.
+        seconds = self.seconds
+        hours = int(seconds/3600)
+        if hours>0:
+            values.append([hours,'hour'])
+            seconds = (seconds % 3600)            
+        minutes = int(seconds/60)
+        if minutes>0:
+            values.append([minutes,'minute'])
+            seconds = (seconds % 60)
+        if seconds>0:
+            values.append([seconds,'second'])
+            
+        # Add milliseconds
+        if self.milliseconds>0:
+            values.append([self.milliseconds,'millisecond'])
+            
+        # Add a trailing "s" for each unit that will have value > 1
+        for v in values:
+            if v[0]>1: v[1]+='s'
+            
+        # Combine units into string.
+        return ', '.join(['%i %s' % (v[0],v[1]) for v in values])
+
+    def __eq__(self,other):
+        if not isinstance(other,StoreTimeDelta): return False
+        return self.days==other.days and self.seconds==other.seconds and self.milliseconds==other.milliseconds
+        
+    def __ne__(self,other):
+        return not self.__eq__(other)
+
 class StoreColor(Store.DataType):
     def __init__(self,red=None,green=None,blue=None):
         Store.DataType.__init__(self)
@@ -1091,9 +1166,14 @@ class TypedStore(common.referencedobject):
                     self.valuenode.removeChild(ch)
 
         def __str__(self):
+            """Returns a string representation of the node.
+            """
             return str(self.location)
 
         def destroy(self):
+            """Deallocates all variables of the node, breaking circular
+            references.
+            """
             for ch in self.children:
                 if ch!=None: ch.destroy()
             self.location = []
@@ -1104,15 +1184,26 @@ class TypedStore(common.referencedobject):
             self.store = None
             
         def isValid(self):
+            """Determines whether the node is valid. Returns False only if
+            "destroy" has been called.
+            """
             return self.store != None
 
         def getValue(self):
+            """Returns the typed value of the node. This function returns
+            None if the node does not have a value yet, and throws an error
+            if the node cannot have a value (i.e., it is a container only).
+            """
             if self.valuenode==None: return None
             valuetype = self.templatenode.getAttribute('type')
             assert valuetype!='', 'getValue was used on node without type (%s); canHaveValue should have showed that this node does not have a type.' % self
             return self.store.getNodeProperty(self.valuenode,valuetype=valuetype)
 
         def getDefaultValue(self):
+            """Returns the default value of the node. This function returns
+            None if no default value if available, which applies also if
+            a default store has not been specified.
+            """
             defaultstore = self.controller.defaultstore
             if defaultstore==None: return None
             defaultnode = defaultstore.mapForeignNode(self)
@@ -1120,11 +1211,18 @@ class TypedStore(common.referencedobject):
             return defaultnode.getValue()
 
         def getValueOrDefault(self):
+            """Returns the typed value of the node, and if not available
+            (typed value is None), the default value.
+            """
             val = self.getValue()
             if val==None: val = self.getDefaultValue()
             return val
 
         def setValue(self,value):
+            """Sets the typed value of the node. Returns True if the value
+            of the node was changed, False if it was not changed. Changes
+            may be prevented by an attached interface disallowing the change.
+            """
             if value==None:
                 self.clearValue()
                 return
@@ -1140,6 +1238,16 @@ class TypedStore(common.referencedobject):
             return False
 
         def clearValue(self,recursive=False,skipreadonly=False,deleteclones=True):
+            """Clears the value of the node.
+            
+            If recursive=True, also clears the value of the descendant nodes; if
+            additionally deleteclones=True, all optional descendant nodes are
+            deleted completely.
+            
+            If skipreadonly is True, the read-only status of nodes if
+            respected, implying that their value is not cleared if they have
+            the read-only attribute.
+            """
             # First clear children.
             if recursive:
                 if deleteclones: self.removeAllChildren()
@@ -1156,25 +1264,13 @@ class TypedStore(common.referencedobject):
                 self.valuenode = None
                 self.controller.onChange(self)
 
-        def preparePersist(self,recursive=True):
-            valuetype = self.templatenode.getAttribute('type')
-            if valuetype!='' and self.valuenode!=None:
-                valueclass = self.store.filetypes[valuetype]
-                if issubclass(valueclass,Store.DataType):
-                    self.store.preparePersistNode(self.valuenode,valueclass)
-            if recursive:
-                for ch in self.children: ch.preparePersist(recursive=True)
-
-        def persist(self,recursive=True):
-            valuetype = self.templatenode.getAttribute('type')
-            if valuetype!='' and self.valuenode!=None:
-                valueclass = self.store.filetypes[valuetype]
-                if issubclass(valueclass,Store.DataType):
-                    self.store.persistNode(self.valuenode,valueclass)
-            if recursive:
-                for ch in self.children: ch.persist(recursive=True)
-
         def getValueAsString(self,addunit = True,usedefault = False):
+            """Returns a user-readable string representation of the value of the node.
+            
+            For built-in data types the conversion to user-readable string is
+            automatic; for custom data types their __unicode__ method is called.
+            (the default implementation of which calls __str__ in turn)
+            """
             templatenode = self.templatenode
             fieldtype = templatenode.getAttribute('type')
             if usedefault:
@@ -1209,12 +1305,46 @@ class TypedStore(common.referencedobject):
                 value = unicode(value)
 
             # Append unit specifier (if available)
-            if addunit and templatenode.hasAttribute('unit'):
-                value = value + ' ' + templatenode.getAttribute('unit')
+            if addunit:
+                unit = self.getUnit()
+                if unit!=None: value = value + ' ' + unit
 
             return value
 
-        def addChild(self,childname,position=None):
+        def preparePersist(self,recursive=True):
+            """Prepares custom nodes for being stored on disk.
+            
+            This functionality is used by DataFile objects to read all
+            data from the source archive before it is overwritten by
+            an in-place save.
+            """
+            valuetype = self.templatenode.getAttribute('type')
+            if valuetype!='' and self.valuenode!=None:
+                valueclass = self.store.filetypes[valuetype]
+                if issubclass(valueclass,Store.DataType):
+                    self.store.preparePersistNode(self.valuenode,valueclass)
+            if recursive:
+                for ch in self.children: ch.preparePersist(recursive=True)
+
+        def persist(self,recursive=True):
+            """Allows custom nodes to write their custom data to the
+            target location.
+            """
+            valuetype = self.templatenode.getAttribute('type')
+            if valuetype!='' and self.valuenode!=None:
+                valueclass = self.store.filetypes[valuetype]
+                if issubclass(valueclass,Store.DataType):
+                    self.store.persistNode(self.valuenode,valueclass)
+            if recursive:
+                for ch in self.children: ch.persist(recursive=True)
+
+        def addChild(self,childname,position=None,id=None):
+            """Adds a new child node; this child node must be optional as
+            defined in the template with minoccurs/maxoccurs attributes.
+            
+            The new child node is by default appended to the list of existing
+            nodes with the same name, or inserted at the specified "position".
+            """
             index = -1
             templatenode = None
 
@@ -1222,10 +1352,12 @@ class TypedStore(common.referencedobject):
             existingcount = 0
             for curindex,child in enumerate(self.children):
                 if child.location[-1]==childname:
+                    assert id==None or child.getSecondaryId()!=id, 'Node with the specified id already exists.'
                     index = curindex
                     templatenode = child.templatenode
                     existingcount += 1
                 elif index!=-1:
+                    # We are at the end of the list of nodes with the specified name. Stop.
                     break
                     
             # If no insert position was specified, append at the end
@@ -1271,6 +1403,7 @@ class TypedStore(common.referencedobject):
             
             # Create the value node for the current child
             node = doc.createElementNS(self.valuenode.namespaceURI,childname)
+            if id!=None: node.setAttribute('id',id)
             
             # Insert the value node
             if position>=existingcount:
@@ -1281,6 +1414,7 @@ class TypedStore(common.referencedobject):
             # Create the child (template + value)
             child = TypedStore.Node(self.controller,templatenode,valuenode,self.location+[childname],parent=self)
             assert child.canHaveClones(), 'Cannot add another child "%s" because there can exist only one child with this name.' % childname
+            child.updateVisibility(recursive=True,notify=False)
             
             # Insert the child, and notify attached interfaces.
             child.futureindex = index
@@ -1293,6 +1427,9 @@ class TypedStore(common.referencedobject):
             return child
             
         def createValueNode(self):
+            """Creates the (empty) value node, and creates value nodes for
+            all ancestors that lacks a value node as well.
+            """
             if self.valuenode!=None: return
             parents = []
             root = self
@@ -1306,15 +1443,63 @@ class TypedStore(common.referencedobject):
                 valueroot = common.findDescendantNode(valueroot,[par.getId()],create=True)
             self.valuenode = valueroot
 
-        def getNumberedChild(self,childname,index,create=False):
-            children = self.getLocationMultiple([childname])
-            if index<len(children): return children[index]
-            if not create: return None
-            for ichild in range(index-len(children)+1):
-                child = self.addChild(childname)
+        def getChildById(self,childname,id,create=False):
+            """Gets an optional node (typically a node that can occur more than once)
+            by its identifier. If the it does not exist yet, and create is True,
+            the requested node is created (and intermediate nodes as well).
+            """
+            for child in self.children:
+                if child.location[-1]==childname and child.getSecondaryId()==id:
+                    break
+            else:
+                if not create: return None
+                child = self.addChild(childname,id=id)
             return child
 
+        def getChildByNumber(self,childname,index,create=False):
+            """Gets an optional node (typically a node that can occur more than once)
+            by its number. If the it does not exist yet, and create is True,
+            the requested node is created (and intermediate nodes as well).
+            """
+            curindex = 0
+            for child in self.children:
+                if child.location[-1]==childname:
+                    if curindex==index: break
+                    curindex += 1
+            else:
+                if not create: return None
+                for ichild in range(index-curindex+1):
+                    child = self.addChild(childname)
+            return child
+            
+        def removeChild(self,childname,id):
+            """Removes an optional child node with the specified name and
+            id. An id can either be the number (int) of the child node in the list
+            with children of that name, or the id (string) set in its "id"
+            child node.
+            """
+            assert isinstance(id,int) or isinstance(id,basestring), 'Specified id must be an integer or a string.'
+            if isinstance(id,int):
+                return self.removeChildren(childname,id,id)
+            else:
+                ipos = 0
+                while ipos<len(self.children):
+                    child = self.children[ipos]
+                    if child.location[-1]==childname and child.getSecondaryId()==id:
+                        assert child.canHaveClones(),'Cannot remove child "%s" because it must occur exactly one time.' % childname
+                        self.controller.beforeVisibilityChange(child,False,False)
+                        child = self.children.pop(ipos)
+                        self.store.clearNodeProperty(child.valuenode)
+                        self.controller.afterVisibilityChange(child,False,False)
+                        child.destroy()
+                        return
+                    ipos += 1
+
         def removeChildren(self,childname,first=0,last=None):
+            """Removes a (range of) optional child nodes with the specified name.
+            If the last number to remove is not specified, nodes will be removed
+            till the end.
+            """
             ipos = 0
             ichildpos = -1
             while ipos<len(self.children):
@@ -1333,6 +1518,10 @@ class TypedStore(common.referencedobject):
                 ipos += 1
                 
         def removeAllChildren(self,optionalonly=True):
+            """Removes all optional child nodes. The "optionalonly" argument
+            is used only in recursive calls to remove every single descendant
+            of each optional node.
+            """
             for ipos in range(len(self.children)-1,-1,-1):
                 child = self.children[ipos]
                 if (not optionalonly) or child.canHaveClones():
@@ -1344,24 +1533,67 @@ class TypedStore(common.referencedobject):
                     child.destroy()
 
         def getId(self):
+            """Returns the id of the node.
+            """
             return self.location[-1]
 
+        def getSecondaryId(self):
+            """Returns the secondary id of the node. This is only present for
+            nodes that can occur multiple times, an dmust then be set on creation
+            of the node. Returns an empty string if the secondary id has not been set.
+            """
+            assert self.valuenode!=None, 'The value node has not been set; this node cannot be optional.'
+            return self.valuenode.getAttribute('id')
+
         def getValueType(self):
+            """Returns the value type of the node; an empty string is returned
+            if the node cannot have a value.
+            """
             return self.templatenode.getAttribute('type')
+            
+        def getUnit(self):
+            """Returns the unit of the node; None is returned if the node
+            does not have a unit specified.
+            """
+            if not self.templatenode.hasAttribute('unit'): return None
+            unit = self.templatenode.getAttribute('unit')
+            if unit[0]=='[' and unit[-1]==']':
+                node = self.parent.getLocation(unit[1:-1].split('/'))
+                if node==None: return None
+                unit = node.getValueAsString(addunit=False,usedefault=True)
+            return unit
 
         def getText(self,detail,minimumdetail = 0,capitalize=False):
+            """Returns a (template) text describing the node. Depending
+            on the "detail" argument, this returns the node id (detail=0),
+            the node label (detail=1), or the node description (detail=2).
+            
+            If the text within the specified detail is unavailable, text
+            with lower detail is looked for down to level "minimumdetail".
+            
+            If no text is found that meets the criteria, None is returned.
+            If "capitalize" is True, the first letter of the returned text
+            is capitalized.
+            """
             templatenode = self.templatenode
             ret = None
-            if detail==2 and templatenode.hasAttribute('description'):
-                ret = templatenode.getAttribute('description')
-            elif detail>=1 and minimumdetail<=1 and templatenode.hasAttribute('label'):
-                ret = templatenode.getAttribute('label')
-            elif minimumdetail==0:
-                ret = self.getId()
+            if self.canHaveClones():
+                ret = self.getSecondaryId()
+                if ret=='': ret = None
+            if ret==None:
+                if detail==2 and templatenode.hasAttribute('description'):
+                    ret = templatenode.getAttribute('description')
+                elif detail>=1 and minimumdetail<=1 and templatenode.hasAttribute('label'):
+                    ret = templatenode.getAttribute('label')
+                elif minimumdetail==0:
+                    ret = self.getId()
             if ret!=None and capitalize: ret = ret[0].upper() + ret[1:]
             return ret
 
         def getLocation(self,location):
+            """Returns the child node at the specified location (a list of
+            path components - strings).
+            """
             node = self
             for childname in location:
                 if childname=='..':
@@ -1375,6 +1607,9 @@ class TypedStore(common.referencedobject):
             return node
 
         def getLocationMultiple(self,location):
+            """Returns all child nodes at the specified location (a list of
+            path components - strings).
+            """
             # Get the first non-empty path term.
             path = location[:]
             target = ''
@@ -1391,6 +1626,10 @@ class TypedStore(common.referencedobject):
             return res
 
         def isHidden(self):
+            """Returns True is the node is currently hidden. Nodes can be hidden
+            because the template conditions on their visibility are not met,
+            or because they simply have the "hidden" attribute set in the template.
+            """
             node = self
             while node!=None:
                 if not node.visible: return True
@@ -1398,18 +1637,34 @@ class TypedStore(common.referencedobject):
             return False
 
         def isReadOnly(self):
+            """Returns True if the template specifies the read-only attribute
+            for the node.
+            
+            Note that settings the read-only attribute does not prevent any
+            modification of the node value through the API; it is merely a
+            sign the UI editors not to allow editing of the node.
+            """
             return self.templatenode.hasAttribute('readonly')
 
         def hasChildren(self):
+            """Returns True if the node has children.
+            """
             return len(self.children)>0
     
         def canHaveValue(self):
+            """Returns True if the node can have a value, False if not
+            (e.g. when the node is a container only).
+            """
             return self.templatenode.hasAttribute('type')
 
         def canHaveClones(self):
+            """Returns True if the node can occurs more than once.
+            """
             return self.templatenode.hasAttribute('maxoccurs')
 
         def getNodesByType(self,valuetype):
+            """Returns all descendant nodes with the specified data type.
+            """
             res = []
             if self.getValueType()==valuetype:
                 res.append(self)
@@ -1418,6 +1673,9 @@ class TypedStore(common.referencedobject):
             return res
 
         def getEmptyNodes(self):
+            """Returns all descendant nodes that do not have a value assigned
+            to them, but are capable of having a value.
+            """
             res = []
             if self.canHaveValue() and self.getValue()==None:
                 res.append(self)
@@ -1426,10 +1684,13 @@ class TypedStore(common.referencedobject):
             return res
 
         def updateVisibility(self,recursive=False,notify=True):
+            """Updates the dynamic visibility of the node by re-evaluating
+            the conditions imposed by the template on the node's visibility.
+            """
             templatenode = self.templatenode
             cond = common.findDescendantNode(templatenode,['condition'])
             if cond!=None:
-                shownew = self.controller.checkCondition(cond,templatenode)
+                shownew = self.controller.checkCondition(cond,self)
                 if shownew!=self.visible:
                     if notify: self.controller.beforeVisibilityChange(self,shownew)
                     self.visible = shownew
@@ -1438,6 +1699,13 @@ class TypedStore(common.referencedobject):
                 for child in self.children: child.updateVisibility(recursive=True,notify=notify)
 
         def copyFrom(self,sourcenode,replace=True):
+            """Recursively copies the value of the current node from the
+            specified source node.
+            
+            If "replace" is not set, values are copied only if the current
+            value has not been set, and existing optional nodes are not
+            removed first.
+            """
             # Copy node value (if both source and target can have a value)
             if self.canHaveValue() and sourcenode.canHaveValue():
                 if replace or self.getValue()==None:
@@ -1455,7 +1723,11 @@ class TypedStore(common.referencedobject):
                     index = 0
                     prevchildname = childname
                 if sourcechild.canHaveClones():
-                    child = self.getNumberedChild(childname,index,create=True)
+                    secid = sourcechild.getSecondaryId()
+                    if secid!='':
+                        child = self.getChildById(childname,secid,create=True)
+                    else:
+                        child = self.getChildByNumber(childname,index,create=True)
                 else:
                     child = self.getLocation([childname])
                 if child==None: continue
@@ -1657,6 +1929,7 @@ class TypedStore(common.referencedobject):
         self.store.filetypes['file'] = DataFile
         self.store.filetypes['timedelta'] = StoreTimeDelta
         self.store.filetypes['color'] = StoreColor
+        self.store.filetypes['fontname'] = str
         self.root = TypedStore.Node(self,templateroot,self.store.xmlroot,[],None)
         self.changed = False
         self.setContainer(None)
@@ -1707,19 +1980,23 @@ class TypedStore(common.referencedobject):
     def mapForeignNode(self,foreignnode):
         indices = []
         currentnode = foreignnode
+        
         # First we walk up the tree from the supplied foreign node, in order to find the indices
         # of all involved ancestors.
         for name in reversed(foreignnode.location):
             if not currentnode.canHaveClones():
-                # This node must appear once; its index can only be one.
+                # This node must appear once; its index can only be zero.
                 indices.insert(0,0)
             else:
-                # This node can appear zero or more times. Find its index in the foreign store.
-                siblings = currentnode.parent.getLocationMultiple([name])
-                for (index,sib) in enumerate(siblings):
-                    if sib is currentnode: break
-                else:
-                    assert False, 'Cannot find foreign node "%s" in list of its own siblings.' % name
+                # This node can appear zero or more times. It can be identified
+                # by its unique id, or if not available, by its number.
+                index = currentnode.getSecondaryId()
+                if index=='':
+                    siblings = currentnode.parent.getLocationMultiple([name])
+                    for (index,sib) in enumerate(siblings):
+                        if sib is currentnode: break
+                    else:
+                        assert False, 'Cannot find foreign node "%s" in list of its own siblings.' % name
                 indices.insert(0,index)
             currentnode = currentnode.parent
         assert currentnode.parent==None, 'Location does not describe complete path to root. Currently at %s.' % currentnode
@@ -1727,8 +2004,12 @@ class TypedStore(common.referencedobject):
         # Now find the same location in our own store.
         currentnode = self.root
         for (name,index) in zip(foreignnode.location,indices):
-            currentnode = currentnode.getNumberedChild(name,index)
-            if currentnode==None: break
+            if isinstance(index,int):
+                currentnode = currentnode.getChildByNumber(name,index)
+            else:
+                currentnode = currentnode.getChildById(name,index)
+            if currentnode==None: return None
+            
         return currentnode
 
     # buildDependencies: for every variable node, this creates lists of dependent nodes
@@ -1743,19 +2024,62 @@ class TypedStore(common.referencedobject):
             if ch.nodeType==ch.ELEMENT_NODE:
                 if ch.localName=='element':
                     self.buildDependencies(root=ch,curpath=curpath+'/'+ch.getAttribute('id'),curowner=ch)
+                    if ch.hasAttribute('unit'):
+                        unit = ch.getAttribute('unit')
+                        if unit[0]=='[' and unit[-1]==']':
+                            unitnode,relcurpath = self.getReverseTemplatePath(ch,unit[1:-1],absourcepath=curpath+'/'+ch.getAttribute('id'))
+                            self.registerTemplateDependency(unitnode,relcurpath,'unit')
                 elif ch.localName=='condition':
                     if ch.hasAttribute('source'): continue
                     if ch.hasAttribute('variable'):
-                        deppath = ch.getAttribute('variable')
-                        refnode = None
-                        if deppath[0]!='/': refnode = curowner.parentNode
-                        dep = self.getTemplateNode(deppath.split('/'),root=refnode)
-                        assert dep!=None, 'Cannot locate dependency "%s" for node "%s".' % (ch.getAttribute('variable'),curpath)
-                        deplist = common.findDescendantNode(dep,['dependentvariables'],create=True)
-                        node = self.schemadom.createElementNS(deplist.namespaceURI,'dependentvariable')
-                        node.setAttribute('path',curpath)
-                        deplist.appendChild(node)
+                        # Get the referenced node, and the relative path from there to here.
+                        depnode,relcurpath = self.getReverseTemplatePath(curowner,ch.getAttribute('variable'),absourcepath=curpath)
+
+                        # Register the current node with the referenced node,
+                        # so that a change in the referenced node can trigger
+                        # an update in the visibility of the current node.
+                        self.registerTemplateDependency(depnode,relcurpath,'visibility')
+                        
                     self.buildDependencies(root=ch,curpath=curpath,curowner=curowner)
+                    
+    def getReverseTemplatePath(self,sourcenode,targetpath,absourcepath=None):
+        """Takes an source template node, and the path of another node which
+        may be relative to the source node, and returns the referenced target
+        node plus the (potentially relative) path from the tagret node to the
+        source node.
+        
+        The absolute path to the source node may be provided; this saves
+        computational effort only.
+        """
+        if absourcepath==None: '/'.join(self.getTemplateNodePath(sourcenode))
+        
+        refnode = None
+        if targetpath[0]!='/': refnode = sourcenode.parentNode
+        splittargetpath = targetpath.split('/')
+        targetnode = self.getTemplateNode(splittargetpath,root=refnode)
+        assert targetnode!=None, 'Cannot locate target node "%s" for node "%s".' % (targetpath,absourcepath)
+        
+        abstargetpath = self.getTemplateNodePath(targetnode)
+        if '.' in splittargetpath or '..' in splittargetpath:
+            # Find a relative path from the referenced node to the current node.
+            abstargetpath.pop()    # The reference node will be the parent of the specified node
+            abscurpath = [n for n in absourcepath.split('/') if n!='']
+            istart = 0
+            while istart<len(abstargetpath) and istart<len(abscurpath) and abstargetpath[istart]==abscurpath[istart]: istart+=1
+            return targetnode,(len(abstargetpath)-istart)*'../'+'/'.join(abscurpath[istart:])
+        else:
+            # Use the absolute path of the current node.
+            return targetnode,absourcepath
+            
+    def registerTemplateDependency(self,node,dependantnodepath,type):
+        """For the given template node, registers that another node at the
+        specified (potentially relative) path depends on it.
+        """
+        deplist = common.findDescendantNode(node,['dependentvariables'],create=True)
+        depnode = self.schemadom.createElementNS(deplist.namespaceURI,'dependentvariable')
+        depnode.setAttribute('path',dependantnodepath)
+        depnode.setAttribute('type',type)
+        deplist.appendChild(depnode)
 
     # checkCondition: checks whether then given condition (an XML node in the template) is currently met.
     #   "nodeCondition" is the "condition" XML node to check
@@ -1775,9 +2099,9 @@ class TypedStore(common.referencedobject):
 
             valuepath = nodeCondition.getAttribute('variable')
             refnode = self.root
-            if valuepath[0]!='/': refnode = self.root.getLocation(self.getTemplateNodePath(ownernode)).parent
+            if valuepath[0]!='/': refnode = ownernode.parent
             node = refnode.getLocation(valuepath.split('/'))
-            assert node!=None, 'Cannot locate dependency "%s" for node "%s".' % (nodeCondition.getAttribute('variable'),self.getTemplateNodePath(ownernode))
+            assert node!=None, 'Cannot locate dependency "%s" for node "%s".' % (nodeCondition.getAttribute('variable'),ownernode)
 
             # Get the current value of the variable we depend on
             curvalue = node.getValueOrDefault()
@@ -1822,9 +2146,8 @@ class TypedStore(common.referencedobject):
                 assert not root.isSameNode(self.schemadom.documentElement)
                 root = root.parentNode
             elif childname!='' and childname!='.':
-                children = [ch for ch in root.childNodes if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='element']
-                for root in children:
-                    if root.getAttribute('id')==childname:
+                for root in root.childNodes:
+                    if root.nodeType==root.ELEMENT_NODE and root.localName=='element' and root.getAttribute('id')==childname:
                         break
                 else:
                     assert False, 'Could not find child node "%s" while locating "%s". Children: %s' % (childname,path,','.join([ch.getAttribute('id') for ch in children]))
@@ -2173,11 +2496,21 @@ class TypedStore(common.referencedobject):
         depnodes = []
         for d in common.findDescendantNodes(deps,['dependentvariable']):
             varpath = d.getAttribute('path').split('/')
-            varnode = self.root.getLocation(varpath)
-            if varnode.visible:
-                depnodes.append(varnode)
+            
+            if varpath[0]!='':
+                refnode = node.parent
             else:
-                depnodes.insert(0,varnode)
+                refnode = self.root
+            varnode = refnode.getLocation(varpath)
+            assert varnode!=None, 'Unable to locate node "%s" at %s.' % (varpath,refnode)
+            
+            if d.getAttribute('type')=='visibility':
+                if varnode.visible:
+                    depnodes.append(varnode)
+                else:
+                    depnodes.insert(0,varnode)
+            else:
+                self.onChange(varnode)
         for varnode in depnodes: varnode.updateVisibility()
 
     # onBeforeChange: called internally just before the value of a node changes.

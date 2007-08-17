@@ -89,8 +89,8 @@
 	<element id="meanflow" label="bulk flow properties">
 		<element id="h0b"         type="float" label="physical bottom roughness" description="Bottom roughness - Note: z0b=0.03*h0b+0.1*nu/ustar" unit="m"/>
 		<element id="MaxItz0b"    type="int"   label="number of iterations for hydrodynamic bottom roughness" description="Number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness." minimum="1" maximum="1000"/>
-		<element id="charnock"    type="bool"  label="use surface roughness adaptation of Charnock 1955"/>
-		<element id="charnock_val" type="float" label="empirical constant in Charnock 1955 formula" description="Empirical constant in Charnock 1955 formula (default = 1400).">
+		<element id="charnock"    type="bool"  label="use Charnock (1955) surface roughness adaptation"/>
+		<element id="charnock_val" type="float" label="empirical constant for surface roughness adaptation" description="Empirical constant in Charnock 1955 formula (default = 1400).">
 			<condition type="eq" variable="./charnock" value="True"/>
 		</element>
 		<element id="z0s_min"     type="float" label="minimum hydrodynamic surface roughness" description="Minimum hydrodynamic surface roughness" unit="m">
@@ -428,7 +428,7 @@
 			<element id="compute_kappa" type="bool" label="compute von Kármán constant from model parameters">
 				<condition type="ne" variable="../turb_method" value="0"/>
 			</element>
-			<element id="kappa" type="float" label="desired von Kármán constant">
+			<element id="kappa" type="float" label="von Kármán constant">
 				<condition type="and">
 					<condition type="ne" variable="../turb_method" value="0"/>
 					<condition type="ne" variable="./compute_kappa" value="True"/>
@@ -1318,7 +1318,7 @@
 				<condition type="eq" variable="./seagrass_calc" value="True"/>
 				<fileinfo type="singleprofile">
 					<filedimensions>
-						<filedimension label="height above bottom" unit="m" />
+						<filedimension label="height above bottom" unit="m" preferredaxis="y" />
 					</filedimensions>
 					<filevariables>
 						<filevariable label="maximum excursion limit" unit="m" />

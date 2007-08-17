@@ -387,8 +387,9 @@ class Scenario(xmlstore.TypedStore):
             datatype += ', minimum = ' + node.templatenode.getAttribute('minimum')
         if node.templatenode.hasAttribute('maximum'):
             datatype += ', maximum = ' + node.templatenode.getAttribute('maximum')
-        if node.templatenode.hasAttribute('unit'):
-            datatype += ', unit = ' + node.templatenode.getAttribute('unit')
+        unit = node.getUnit()
+        if unit!=None:
+            datatype += ', unit = ' + unit
 
         # Get description of conditions (if any).
         condition = common.findDescendantNode(node.templatenode,['condition'])

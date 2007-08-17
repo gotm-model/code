@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.21 2007-07-06 13:48:29 jorn Exp $
+#$Id: visualizer.py,v 1.22 2007-08-17 15:24:24 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -135,14 +135,10 @@ class ConfigureReportWidget(QtGui.QWidget):
         self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
 
         # Create labels+editors for figure settings
-        self.editWidth = self.factory.createEditor(['Figures','Width'],self)
-        self.labWidth = self.editWidth.createLabel()
-        self.editHeight = self.factory.createEditor(['Figures','Height'],self)
-        self.labHeight = self.editHeight.createLabel()
-        self.editDpi = self.factory.createEditor(['Figures','Resolution'],self)
-        self.labDpi = self.editDpi.createLabel()
-        self.editFontScaling = self.factory.createEditor(['Figures','FontScaling'],self)
-        self.labFontScaling = self.editFontScaling.createLabel()
+        editWidth = self.factory.createEditor(['Figures','Width'],self)
+        editHeight = self.factory.createEditor(['Figures','Height'],self)
+        editDpi = self.factory.createEditor(['Figures','Resolution'],self)
+        editFontScaling = self.factory.createEditor(['Figures','FontScaling'],self)
         
         layout = QtGui.QGridLayout()
         layout.addWidget(self.labOutput,     0,0)
@@ -154,15 +150,11 @@ class ConfigureReportWidget(QtGui.QWidget):
 
         self.figbox = QtGui.QGroupBox('Figure settings',self)
         figlayout = QtGui.QGridLayout()
-        figlayout.addWidget(self.labWidth,              3,0)
-        figlayout.addWidget(self.editWidth.editor,      3,1)
-        figlayout.addWidget(self.labHeight,             4,0)
-        figlayout.addWidget(self.editHeight.editor,     4,1)
-        figlayout.addWidget(self.labDpi,                5,0)
-        figlayout.addWidget(self.editDpi.editor,        5,1)
-        figlayout.addWidget(self.labFontScaling,        6,0)
-        figlayout.addWidget(self.editFontScaling.editor,6,1)
-        figlayout.setColumnStretch(1,1)
+        editWidth.addToGridLayout(figlayout,0,0)
+        editHeight.addToGridLayout(figlayout)
+        editDpi.addToGridLayout(figlayout)
+        editFontScaling.addToGridLayout(figlayout)
+        figlayout.setColumnStretch(3,1)
         self.figbox.setLayout(figlayout)
         layout.addWidget(self.figbox,3,0,1,2)
         
@@ -214,7 +206,8 @@ class PageReportGenerator(commonqt.WizardPage):
         commonqt.WizardPage.__init__(self, parent)
 
         self.result = parent.getProperty('result')
-        self.report = report.Report()
+        deffont = commonqt.getFontSubstitute(unicode(self.fontInfo().family()))
+        self.report = report.Report(defaultfont = deffont)
         
         # Copy report settings from result.
         self.report.store.root.copyFrom(self.result.store.root.getLocation(['ReportSettings']),replace=True)
@@ -374,7 +367,7 @@ class PageVisualize(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
-        self.varname = None
+        self.varpath = None
 
         self.result = parent.getProperty('result')
         
@@ -410,19 +403,14 @@ class PageVisualize(commonqt.WizardPage):
         varpath = '/'.join(node.location)
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
         self.saveFigureSettings()
-        self.varname = varname
+        self.varpath = varpath
         
         self.figurepanel.figure.setUpdating(False)
         
         props = self.figurepanel.figure.properties
         
         # Plot; first try stored figures, otherwise plot anew.
-        if self.result.getFigure('result/'+varpath,props):
-            # Set key properties to their required values.
-            series = props.root.getLocation(['Data','Series'])
-            series.getLocation(['Source']).setValue('result')
-            series.getLocation(['Variable']).setValue(varname)
-        else:
+        if not self.result.getFigure('result/'+varpath,props):
             self.figurepanel.plot(varname,'result')
 
         # Name the plot (later used as index for list of stored plot properties)
@@ -439,8 +427,8 @@ class PageVisualize(commonqt.WizardPage):
         return True
 
     def saveFigureSettings(self):
-        if self.varname!=None and self.figurepanel.figure.hasChanged():
-            self.result.setFigure(self.figurepanel.figure.properties)
+        if self.varpath!=None and self.figurepanel.figure.hasChanged():
+            self.result.setFigure('result/'+self.varpath,self.figurepanel.figure.properties)
 
 def main():
     # Debug info

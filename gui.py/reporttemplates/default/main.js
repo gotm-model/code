@@ -18,6 +18,7 @@ function showHideDefaults() {
 	
 	showdefaults = (!showdefaults);
 	aShowHide = document.getElementById('aShowHideDefaults');
+	document.getElementById('pDefaultInfo').style.display = newdisplaystyle;
 	if (showdefaults) {
 		aShowHide.innerHTML = 'Hide default values';
 	} else {

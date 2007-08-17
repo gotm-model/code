@@ -389,7 +389,7 @@ def main():
         wiz.setProperty('mainaction','result')
         wiz.setProperty('result', result)
         if openpath.endswith('.gotmresult'):
-            self.owner.settings.addUniqueValue(('Paths','RecentResults'),'Path',openpath)
+            wiz.settings.addUniqueValue(('Paths','RecentResults'),'Path',openpath)
         if result.scenario!=None:
             wiz.setProperty('scenario', result.scenario.addref())
         wiz.onNext(askoldpage=False)
@@ -398,7 +398,7 @@ def main():
         wiz.setProperty('mainaction','scenario')
         wiz.setProperty('scenario',scen)
         if openpath.endswith('.gotmscenario'):
-            self.owner.settings.addUniqueValue(('Paths','RecentScenarios'),'Path',openpath)
+            wiz.settings.addUniqueValue(('Paths','RecentScenarios'),'Path',openpath)
         wiz.onNext(askoldpage=False)
 
     # Show wizard dialog

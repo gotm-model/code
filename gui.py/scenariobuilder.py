@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.20 2007-07-23 18:45:11 jorn Exp $
+#$Id: scenariobuilder.py,v 1.21 2007-08-17 15:24:24 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -213,7 +213,7 @@ class PageLocation(ScenarioPage):
     
     def __init__(self,parent=None):
         ScenarioPage.__init__(self, parent)
-
+        
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(25)
 
@@ -770,6 +770,8 @@ class PageAdvanced(commonqt.WizardPage):
                 vartext = '\n'.join([node.getText(2) for node in errornodes])
                 QtGui.QMessageBox.critical(self,'Scenario is incomplete','The following variables will be used in the simulation, but have not been set to a value:\n\n%s\n\nPlease set these variables to a value first.' % vartext,QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
                 return False
+        self.tree.setModel(None)
+        self.model.unlink()
         return True
     
 class PageSave(commonqt.WizardPage):

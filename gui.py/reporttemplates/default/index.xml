@@ -10,8 +10,9 @@
 	<body>
 		<h1><gotm:scenarioproperty variable="/title"/></h1>
 
-		<h2>Scenario settings</h2>
+		<h2>Scenario</h2>
 		<p><a id="aShowHideDefaults" href="javascript:showHideDefaults()">Show default values</a></p>
+		<p id="pDefaultInfo" style="display:none">Values that deviate from the default are shown in bold.</p>
 		<gotm:scenario/>
 		
 		<h2>Results</h2>
