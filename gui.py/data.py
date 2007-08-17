@@ -122,7 +122,7 @@ class LinkedFileVariableStore(PlotVariableStore):
             return self.data[2]
 
         def getDimensions(self):
-            return self.store.getDimensionNames()
+            return self.store.dimensionorder[:]
 
         def getValues(self,bounds,staggered=False,coordinatesonly=False):
             assert False, 'This function must be implemented by inheriting class.'
@@ -133,15 +133,15 @@ class LinkedFileVariableStore(PlotVariableStore):
         assert finfo!=None, 'Node "%s" lacks "fileinfo" attribute.' % node
         type = finfo.getAttribute('type')
         if type=='pointsintime':
-            return LinkedMatrix(node,type=0,dimensions={'time':{'label':'time','datatype':'datetime'}})
+            return LinkedMatrix(node,type=0,dimensions={'time':{'label':'time','datatype':'datetime'}},dimensionorder=('time',))
         elif type=='profilesintime':
-            return LinkedProfilesInTime(node,dimensions={'time':{'label':'time','datatype':'datetime'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}})
+            return LinkedProfilesInTime(node,dimensions={'time':{'label':'time','datatype':'datetime'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}},dimensionorder=('time','z'))
         elif type=='singleprofile' or type=='verticalgrid':
             return LinkedMatrix(node,type=1)
         else:
             assert False, 'Linked file has unknown type "%s".' % node.type
 
-    def __init__(self,node,dimensions={}):
+    def __init__(self,node,dimensions={},dimensionorder=()):
 
         finfo = common.findDescendantNode(node.templatenode,['fileinfo'])
         self.nodeid = node.getId()
@@ -161,6 +161,8 @@ class LinkedFileVariableStore(PlotVariableStore):
         for dimname,dimdata in dimensions.iteritems():
             self.dimensions[dimname] = PlotVariableStore.getDimensionInfo(self,None)
             self.dimensions[dimname].update(dimdata)
+
+        self.dimensionorder = [d for d in dimensionorder]
         
         fdims = common.findDescendantNode(finfo,['filedimensions'])
         if fdims!=None:
@@ -174,6 +176,7 @@ class LinkedFileVariableStore(PlotVariableStore):
                     id = ch.getAttribute('id')
                     if id=='': id = dimdata['label']
                     self.dimensions[id] = dimdata
+                    self.dimensionorder.append(id)
 
         self.datafile = None
         self.clear()
@@ -182,7 +185,7 @@ class LinkedFileVariableStore(PlotVariableStore):
         pass
         
     def getDimensionNames(self):
-        return self.dimensions.keys()
+        return self.dimensionorder[:]
         
     def getDimensionInfo(self,dimname):
         return self.dimensions[dimname]
@@ -256,8 +259,8 @@ class LinkedMatrix(LinkedFileVariableStore):
                     
             return res
 
-    def __init__(self,node,type=0,dimensions={}):
-        LinkedFileVariableStore.__init__(self,node,dimensions)
+    def __init__(self,node,type=0,dimensions={},dimensionorder=()):
+        LinkedFileVariableStore.__init__(self,node,dimensions,dimensionorder)
         self.variableclass = self.LinkedMatrixVariable
         assert len(self.dimensions)<=1, 'Linkedmatrix objects can only be used with 0 or 1 coordinate dimensions, but %i are present.' % len(self.dimensions)
         self.type = type
@@ -471,8 +474,8 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                     
             return res
 
-    def __init__(self,node,dimensions=[]):
-        LinkedFileVariableStore.__init__(self,node,dimensions)
+    def __init__(self,node,dimensions=[],dimensionorder=()):
+        LinkedFileVariableStore.__init__(self,node,dimensions,dimensionorder)
         self.variableclass = self.LinkedProfilesInTimeVariable
         
     def clear(self):
