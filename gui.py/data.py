@@ -157,6 +157,7 @@ class LinkedFileVariableStore(PlotVariableStore):
                     self.vardata.append([name,longname,unit])
                     
         # Copy data from supplied dimensions
+        self.dimensions = {}
         for dimname,dimdata in dimensions.iteritems():
             self.dimensions[dimname] = PlotVariableStore.getDimensionInfo(self,None)
             self.dimensions[dimname].update(dimdata)
