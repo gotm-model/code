@@ -85,10 +85,7 @@ class Store:
     # =========================================================================================
     # getText: gets all text directly below an XML element; may consist of multiple text nodes.
     def getText(self,node):
-        rc = ''
-        for ch in node.childNodes:
-            if ch.nodeType == ch.TEXT_NODE: rc += ch.data
-        return rc
+        return ''.join([ch.data for ch in node.childNodes if ch.nodeType==ch.TEXT_NODE])
 
     # =========================================================================================
     # PROTECTED
@@ -163,7 +160,7 @@ class Store:
     #   autoconverts value to the type requested (otherwise value = string).
     def getNodeProperty(self,node,valuetype=str):
         if isinstance(valuetype,basestring):
-            assert valuetype in self.filetypes, 'unknown type "%s" requested.' % valuetype
+            assert valuetype in self.filetypes, 'unknown value type "%s" requested.' % valuetype
             valuetype = self.filetypes[valuetype]
         if issubclass(valuetype,Store.DataType):
             return valuetype.load(node,self.context)
@@ -232,9 +229,9 @@ class Store:
     # unpackvalue: converts string representation of a value to the desired type.
     def unpackvalue(self,value,valuetype=str):
         if isinstance(valuetype,basestring):
-            assert valuetype in self.filetypes, 'unknown type "%s" requested.' % valuetype
+            assert valuetype in self.filetypes, 'unknown value type "%s" requested.' % valuetype
             valuetype = self.filetypes[valuetype]
-        assert not issubclass(valuetype,Store.DataType)
+        assert not issubclass(valuetype,Store.DataType), 'values of type Store.DataType cannot be unpacked from string.'
         if valuetype==datetime.datetime:
             return common.parsedatetime(value,dateformat)
         elif valuetype==bool:
@@ -243,81 +240,6 @@ class Store:
             return valuetype(value)
 
 class StoreTimeDelta(Store.DataType):
-    def __init__(self,seconds=0,days=0,milliseconds=0):
-        Store.DataType.__init__(self)
-        seconds += (days % 1)*86400 # Add floating point part of the day count
-        self.days = int(days)   # Take all but floating point part
-        self.milliseconds = int(milliseconds + (seconds % 1)*1000)   # Add floating point part of second count
-        self.seconds = int(seconds) # Take all but floating point part
-        if self.milliseconds>=1000:
-            # Add milliseconds above 1000 to seconds
-            self.seconds += int(self.milliseconds/1000)
-            self.milliseconds = self.milliseconds % 1000
-        if self.seconds>=86400:
-            # Add seconds above 86400 (one day) to days
-            self.days += int(self.seconds/86400)
-            self.seconds = self.seconds % 86400
-
-    @staticmethod
-    def load(node,context):
-        text = common.getNodeText(node)
-        if text:
-            #components = text.split(':')
-            #assert len(components)==3, 'timedelta objects must be stored as "days:seconds:milliseconds".'
-            #return StoreTimeDelta(milliseconds=int(components[2]),seconds=int(components[1]),days=int(components[0]))
-            return StoreTimeDelta(seconds=float(text))
-        else:
-            return StoreTimeDelta()
-
-    def save(self,node,context):
-        #common.setNodeText(node,'%i:%i:%i' % (self.days,self.seconds,self.milliseconds))
-        common.setNodeText(node,str(self.getAsSeconds()))
-        
-    def getAsSeconds(self):
-        return self.days*86400 + self.seconds + self.milliseconds/1000.
-        
-    def __float__(self):
-        return float(self.getAsSeconds())
-        
-    def __str__(self):
-        values = []
-        
-        # Add days
-        if self.days>0:
-            values.append([self.days,'day'])
-            
-        # Divide seconds over hours, minutes, and remaining seconds.
-        seconds = self.seconds
-        hours = int(seconds/3600)
-        if hours>0:
-            values.append([hours,'hour'])
-            seconds = (seconds % 3600)            
-        minutes = int(seconds/60)
-        if minutes>0:
-            values.append([minutes,'minute'])
-            seconds = (seconds % 60)
-        if seconds>0:
-            values.append([seconds,'second'])
-            
-        # Add milliseconds
-        if self.milliseconds>0:
-            values.append([self.milliseconds,'millisecond'])
-            
-        # Add a trailing "s" for each unit that will have value > 1
-        for v in values:
-            if v[0]>1: v[1]+='s'
-            
-        # Combine units into string.
-        return ', '.join(['%i %s' % (v[0],v[1]) for v in values])
-
-    def __eq__(self,other):
-        if not isinstance(other,StoreTimeDelta): return False
-        return self.days==other.days and self.seconds==other.seconds and self.milliseconds==other.milliseconds
-        
-    def __ne__(self,other):
-        return not self.__eq__(other)
-
-class StoreFontName(Store.DataType):
     def __init__(self,seconds=0,days=0,milliseconds=0):
         Store.DataType.__init__(self)
         seconds += (days % 1)*86400 # Add floating point part of the day count
@@ -897,10 +819,7 @@ class TypedStoreInterface:
         self.blockNotifyOfHiddenNodes = (not showhidden)
         self.notifyOnDefaultChange = True
 
-        self.visibilityhandlers = []
-        self.changehandlers = []
-        self.beforechangehandlers = []
-        self.storechangedhandlers = []
+        self.eventhandlers = {}
 
         store.connectInterface(self)
         
@@ -1041,17 +960,14 @@ class TypedStoreInterface:
     # Functions for connecting to events
     # ---------------------------------------------------------------------------
 
-    def addVisibilityChangeHandler(self,beforecallback,aftercallback):
-        self.visibilityhandlers.append((beforecallback,aftercallback))
-
-    def addStoreChangedHandler(self,callback):
-        self.storechangedhandlers.append(callback)
+    def connect(self,eventname,handler):
+        assert eventname in ('beforeVisibilityChange','afterVisibilityChange','afterStoreChange','beforeChange','afterChange'), 'attempt to register for unknown event "%s".' % eventname
+        assert eventname not in self.eventhandlers, 'handler for event "%s" exists.' % eventname
+        self.eventhandlers[eventname] = handler
 
     def addChangeHandler(self,callback):
+        assert not self.changehandlers, 'change handler exists'
         self.changehandlers.append(callback)
-
-    def addBeforeChangeHandler(self,callback):
-        self.beforechangehandlers.append(callback)
 
     # ---------------------------------------------------------------------------
     # Functions called by store when events occur
@@ -1060,56 +976,47 @@ class TypedStoreInterface:
     def beforeVisibilityChange(self,node,shownew,showhide):
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
+        if 'beforeVisibilityChange' not in self.eventhandlers: return
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
         if self.blockNotifyOfHiddenNodes and (not showhide) and node.isHidden(): return
         if self.omitgroupers and node.grouponly:
-            for ch in self.getChildren(node): self.emitBeforeVisibilityChange(ch,shownew,showhide)
+            for ch in self.getChildren(node): self.eventhandlers['beforeVisibilityChange'](ch,shownew,showhide)
         else:
-            self.emitBeforeVisibilityChange(node,shownew,showhide)
+            self.eventhandlers['beforeVisibilityChange'](node,shownew,showhide)
 
     def afterVisibilityChange(self,node,shownew,showhide):
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
+        if 'afterVisibilityChange' not in self.eventhandlers: return
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
         if self.blockNotifyOfHiddenNodes and (not showhide) and node.isHidden(): return
         if self.omitgroupers and node.grouponly:
-            for ch in self.getChildren(node): self.emitAfterVisibilityChange(ch,shownew,showhide)
+            for ch in self.getChildren(node): self.eventhandlers['afterVisibilityChange'](ch,shownew,showhide)
         else:
-            self.emitAfterVisibilityChange(node,shownew,showhide)
+            self.eventhandlers['afterVisibilityChange'](node,shownew,showhide)
 
     def afterStoreChange(self):
-        for callback in self.storechangedhandlers: callback()
+        if 'afterStoreChange' not in self.eventhandlers: return
+        self.eventhandlers['afterStoreChange']()
 
     def onBeforeChange(self,node,newvalue):
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
-        if not (node.isHidden() and self.blockNotifyOfHiddenNodes):
-            for callback in self.beforechangehandlers:
-                if not callback(node,newvalue): return False
-        return True
+        if 'beforeChange' not in self.eventhandlers: return True
+        if node.isHidden() and self.blockNotifyOfHiddenNodes: return True
+        return self.eventhandlers['beforeChange'](node,newvalue)
 
     def onChange(self,node):
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
+        if 'afterChange' not in self.eventhandlers: return
         if node.isHidden() and self.blockNotifyOfHiddenNodes: return
-        for callback in self.changehandlers: callback(node)
+        self.eventhandlers['afterChange'](node)
 
     def onDefaultChange(self,node):
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if self.notifyOnDefaultChange: self.onChange(node)
-
-    # ---------------------------------------------------------------------------
-    # Helper functions for emitting events
-    # ---------------------------------------------------------------------------
-
-    def emitBeforeVisibilityChange(self,node,visible,showhide):
-        for callback in self.visibilityhandlers:
-            if callback[0]!=None: callback[0](node,visible,showhide)
-
-    def emitAfterVisibilityChange(self,node,visible,showhide):
-        for callback in self.visibilityhandlers:
-            if callback[1]!=None: callback[1](node,visible,showhide)
 
 # ------------------------------------------------------------------------------------------
 # TypedStore
@@ -1131,7 +1038,7 @@ class TypedStore(common.referencedobject):
             self.store = controller.store
             self.templatenode = templatenode
             self.valuenode = valuenode
-            self.location = location
+            self.location = tuple(location)
             self.parent = parent
             self.children = []
             self.futureindex = None
@@ -1141,25 +1048,29 @@ class TypedStore(common.referencedobject):
             ids = []
             for templatechild in self.templatenode.childNodes:
                 if templatechild.nodeType==templatechild.ELEMENT_NODE and templatechild.localName=='element':
-                    childloc = self.location[:] + [templatechild.getAttribute('id')]
-                    ids.append(childloc[-1])
+                    childid = templatechild.getAttribute('id')
+                    ids.append(childid)
                     
-                    start = len(self.location)
-                    root = self
-                    while root.valuenode==None:
-                        start -= 1
-                        root = root.parent
-                    
-                    if templatechild.hasAttribute('maxoccurs'):
+                    # Get all value nodes that correspond to the current template child.
+                    valuechildren = ()
+                    if not templatechild.hasAttribute('maxoccurs'):
+                        # The node always occurs excatly one time.
+                        if self.valuenode!=None:
+                            valuechildren = (common.findDescendantNode(self.valuenode,[childid]),)
+                        else:
+                            valuechildren = (None,)
+                    elif self.valuenode!=None:
+                        # The node may occur zero or more times.
                         maxoccurs = int(templatechild.getAttribute('maxoccurs'))
-                        valuechildren = common.findDescendantNodes(root.valuenode,childloc[start:])
+                        valuechildren = common.findDescendantNodes(self.valuenode,[childid])
                         assert len(valuechildren)<=maxoccurs, 'Number of children is greater than the imposed maximum (%i).' % maxoccurs
-                        for valuechild in valuechildren:
-                            self.children.append(TypedStore.Node(self.controller,templatechild,valuechild,childloc,parent=self))
-                    else:
-                        valuechild = common.findDescendantNode(root.valuenode,childloc[start:])                            
+
+                    # Create nodes for all value nodes found.                     
+                    childloc = list(self.location) + [childid]
+                    for valuechild in valuechildren:
                         self.children.append(TypedStore.Node(self.controller,templatechild,valuechild,childloc,parent=self))
 
+            # Check for exisitng value nodes that are not in the template.
             if self.valuenode!=None:
                 for ch in [ch for ch in self.valuenode.childNodes if ch.nodeType==ch.ELEMENT_NODE and ch.localName not in ids]:
                     print 'WARNING! Value "%s" below "%s" was unexpected and will be ignored.' % (ch.localName,self.location)
@@ -1176,7 +1087,7 @@ class TypedStore(common.referencedobject):
             """
             for ch in self.children:
                 if ch!=None: ch.destroy()
-            self.location = []
+            self.location = ()
             self.children = []
             self.parent = None
             self.templatenode = None
@@ -1412,7 +1323,7 @@ class TypedStore(common.referencedobject):
                 valuenode = self.valuenode.insertBefore(node,self.children[index].valuenode)
                 
             # Create the child (template + value)
-            child = TypedStore.Node(self.controller,templatenode,valuenode,self.location+[childname],parent=self)
+            child = TypedStore.Node(self.controller,templatenode,valuenode,list(self.location)+[childname],parent=self)
             assert child.canHaveClones(), 'Cannot add another child "%s" because there can exist only one child with this name.' % childname
             child.updateVisibility(recursive=True,notify=False)
             
@@ -1952,7 +1863,7 @@ class TypedStore(common.referencedobject):
             
         self.defaultstore = store.addref()
         self.defaultinterface = self.defaultstore.getInterface()
-        self.defaultinterface.addChangeHandler(self.onDefaultChange)
+        self.defaultinterface.connect('afterChange',self.onDefaultChange)
         
         # Default nodes are used in condition checking, so changing the default store
         # requires updating the visibility of all nodes. Do so, unless explicitly said not to.

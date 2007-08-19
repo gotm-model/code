@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.34 2007-08-17 15:24:24 jorn Exp $
+#$Id: commonqt.py,v 1.35 2007-08-19 09:54:43 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path
@@ -1188,9 +1188,10 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
 
         self.storeinterface = self.typedstore.getInterface(showhidden=self.nohide,omitgroupers=True)
 
-        self.storeinterface.addVisibilityChangeHandler(self.beforeNodeVisibilityChange,self.afterNodeVisibilityChange)
-        self.storeinterface.addChangeHandler(self.onNodeChanged)
-        self.storeinterface.addStoreChangedHandler(self.reset)
+        self.storeinterface.connect('beforeVisibilityChange',self.beforeNodeVisibilityChange)
+        self.storeinterface.connect('afterVisibilityChange', self.afterNodeVisibilityChange)
+        self.storeinterface.connect('afterChange',self.onNodeChanged)
+        self.storeinterface.connect('afterStoreChange',self.reset)
 
         self.inheritingchecks = False
         
@@ -1884,9 +1885,8 @@ class PropertyEditorFactory:
 
         if self.live:
             self.storeinterface = self.store.getInterface()
-            self.storeinterface.addChangeHandler(self.onStoreNodeChanged)
-            self.storeinterface.addVisibilityChangeHandler(None,self.onStoreVisibilityChanged)
-            self.storeinterface.addStoreChangedHandler(self.onStoreChanged)
+            self.storeinterface.connect('afterChange',self.onStoreNodeChanged)
+            self.storeinterface.connect('afterVisibilityChange',self.onStoreVisibilityChanged)
             
     def unlink(self):
         if self.live:
@@ -1913,7 +1913,7 @@ class PropertyEditorFactory:
         # If we are "live", update the enabled/disabled state or visibility of the editor.
         if self.live: editor.updateEditorEnabled()
         
-        # Make sure we eceive notifications when the value in the editor changes.
+        # Make sure we receive notifications when the value in the editor changes.
         editor.addChangeHandler(self.onNodeEdited)
         
         # Add the editor to our list of editors.
@@ -1947,12 +1947,6 @@ class PropertyEditorFactory:
             #if node is editor.node:
             if ('/'.join(editor.node.location)).startswith('/'.join(node.location)):
                 editor.updateEditorEnabled()
-
-    def onStoreChanged(self):
-        for editor in self.editors:
-            editor.node = self.store.root.getLocation(editor.location)
-            editor.updateEditorValue()
-            editor.updateEditorEnabled()
 
     def onNodeEdited(self,editor):
         self.changed = True
@@ -2348,7 +2342,9 @@ class FigurePanel(QtGui.QWidget):
         self.figure.registerCallback('completeStateChange',self.onFigureStateChanged)
         
         self.figureinterface = self.figure.properties.getInterface()
-        self.figureinterface.addVisibilityChangeHandler(self.beforeFigureNodeVisibilityChange,self.afterFigureNodeVisibilityChange)
+        self.figureinterface.connect('beforeVisibilityChange',self.beforeFigureNodeVisibilityChange)
+        self.figureinterface.connect('afterVisibilityChange', self.afterFigureNodeVisibilityChange)
+        self.figureinterface.connect('afterStoreChange', self.afterFigureStoreChange)
 
         self.factory = PropertyEditorFactory(self.figure.properties,live=True,allowhide=True)
 
@@ -2431,40 +2427,52 @@ class FigurePanel(QtGui.QWidget):
         if ownupdating: self.figure.setUpdating(True)
         self.figure.resetChanged()
         
+    def afterFigureStoreChange(self):
+        for i in range(len(self.axescontrols)-1,-1,-1):
+            self.destroyAxisControls(i)
+        for node in self.figure.properties.root.getLocation(['Axes']).getLocationMultiple(['Axis']):
+            self.createAxisControls(node)
+        
     def beforeFigureNodeVisibilityChange(self,node,visible,showhideonly):
         if showhideonly: return
         if (not visible) and '/'.join(node.location) == 'Axes/Axis':
             axisid = node.getSecondaryId()
             for i in range(len(self.axescontrols)-1,-1,-1):
                 if self.axescontrols[i]['axis']==axisid:
-                    for ed in self.axescontrols[i]['editors']:
-                        self.factory.destroyEditor(ed,layout=self.layoutAxesRange)
-                    self.axescontrols.pop(i)
+                    self.destroyAxisControls(i)
 
     def afterFigureNodeVisibilityChange(self,node,visible,showhideonly):
         if showhideonly: return
         if visible and '/'.join(node.location) == 'Axes/Axis':
-            axisid = node.getSecondaryId()
-            axisname = axisid
-            irow = self.layoutAxesRange.rowCount()
-
-            editorMin = self.factory.createEditor(node.getLocation(['Minimum']),self)
-            editorMax = self.factory.createEditor(node.getLocation(['Maximum']),self)
-            editorMin.createLabel(text='%s range: ' % axisname)
-            editorMax.createLabel(text=' to ')
-            editorMin.addToGridLayout(self.layoutAxesRange,irow,0)
-            editorMax.addToGridLayout(self.layoutAxesRange,irow,3)
-            self.axescontrols.append({'axis':axisid,'editors':[editorMin,editorMax]})
+            self.createAxisControls(node)
             
-            irow+=1
+    def destroyAxisControls(self,iaxis):
+        for ed in self.axescontrols[iaxis]['editors']:
+            self.factory.destroyEditor(ed,layout=self.layoutAxesRange)
+        self.axescontrols.pop(iaxis)
+            
+    def createAxisControls(self,node):
+        axisid = node.getSecondaryId()
+        axisname = axisid
+        irow = self.layoutAxesRange.rowCount()
 
-            editorMinTime = self.factory.createEditor(node.getLocation(['MinimumTime']),self)
-            editorMaxTime = self.factory.createEditor(node.getLocation(['MaximumTime']),self)
-            editorMinTime.createLabel(text='%s range: ' % axisname)
-            editorMaxTime.createLabel(text=' to ')
-            editorMinTime.addToGridLayout(self.layoutAxesRange,irow,0)
-            editorMaxTime.addToGridLayout(self.layoutAxesRange,irow,3)
-            self.axescontrols.append({'axis':axisid,'editors':[editorMinTime,editorMaxTime]})
+        editorMin = self.factory.createEditor(node.getLocation(['Minimum']),self)
+        editorMax = self.factory.createEditor(node.getLocation(['Maximum']),self)
+        editorMin.createLabel(text='%s range: ' % axisname)
+        editorMax.createLabel(text=' to ')
+        editorMin.addToGridLayout(self.layoutAxesRange,irow,0)
+        editorMax.addToGridLayout(self.layoutAxesRange,irow,3)
+        self.axescontrols.append({'axis':axisid,'editors':[editorMin,editorMax]})
+        
+        irow+=1
+
+        editorMinTime = self.factory.createEditor(node.getLocation(['MinimumTime']),self)
+        editorMaxTime = self.factory.createEditor(node.getLocation(['MaximumTime']),self)
+        editorMinTime.createLabel(text='%s range: ' % axisname)
+        editorMaxTime.createLabel(text=' to ')
+        editorMinTime.addToGridLayout(self.layoutAxesRange,irow,0)
+        editorMaxTime.addToGridLayout(self.layoutAxesRange,irow,3)
+        self.axescontrols.append({'axis':axisid,'editors':[editorMinTime,editorMaxTime]})
 
     def plotFromProperties(self,properties):
         self.figure.setProperties(properties)    

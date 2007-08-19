@@ -3,8 +3,6 @@ import datetime,math
 import matplotlib
 import matplotlib.numerix,matplotlib.numerix.ma,matplotlib.colors
 import matplotlib.dates
-import matplotlib.pylab
-import matplotlib.backends.backend_agg
 
 import common,xmlstore,data
 
@@ -119,8 +117,8 @@ class Figure(common.referencedobject):
         self.properties = xmlstore.TypedStore('schemas/figure/gotmgui.xml')
         self.propertiesinterface = self.properties.getInterface()
         self.propertiesinterface.notifyOnDefaultChange = False
-        self.propertiesinterface.addChangeHandler(self.onPropertyChanged)
-        self.propertiesinterface.addStoreChangedHandler(self.onPropertyStoreChanged)
+        self.propertiesinterface.connect('afterChange',self.onPropertyChanged)
+        self.propertiesinterface.connect('afterStoreChange',self.onPropertyStoreChanged)
         
         # Create store for property defaults
         self.defaultproperties = xmlstore.TypedStore('schemas/figure/gotmgui.xml')
@@ -241,10 +239,7 @@ class Figure(common.referencedobject):
             else:
                 axmin = forcedaxis.getLocation(['Minimum']).getValue()
                 axmax = forcedaxis.getLocation(['Maximum']).getValue()
-            dim2data[forcedaxis.getSecondaryId()] = {
-                 'forcedrange':[axmin,axmax],
-                 'datarange':[None,None],
-            }
+            dim2data[forcedaxis.getSecondaryId()] = {'forcedrange':[axmin,axmax]}
 
         # Shortcuts to the nodes specifying the variables to plot.
         forceddatanode = self.properties.root.getLocation(['Data'])
@@ -294,14 +289,14 @@ class Figure(common.referencedobject):
             dimbounds = []
             originaldims = var.getDimensions()
             for dimname in originaldims:
-                if dimname in dim2data and 'forcedrange' in dim2data[dimname]:
+                if dimname in dim2data:
                     # We have boundaries set on the current dimension.
-                    dimdata = dim2data[dimname]
-                    if dimdata['forcedrange'][0]==dimdata['forcedrange'][1] and (dimdata['forcedrange'][0]!=None):
-                        # Equal upper nad lower boundary: take a slice.
-                        var = VariableSlice(var,dimname,dimdata['forcedrange'][0])
+                    forcedrange = dim2data[dimname].get('forcedrange',(None,None))
+                    if forcedrange[0]==forcedrange[1] and forcedrange[0]!=None:
+                        # Equal upper and lower boundary: take a slice.
+                        var = VariableSlice(var,dimname,forcedrange[0])
                     else:
-                        dimbounds.append(dimdata['forcedrange'])
+                        dimbounds.append(forcedrange)
                 else:
                     # No boundaries set.
                     dimbounds.append((None,None))
@@ -315,24 +310,18 @@ class Figure(common.referencedobject):
             # Skip this variable if no data are available.
             if data==None or 0 in data[-1].shape: continue
 
-            # Check used dimensions.
+            # Now we are at the point where getting the data worked.
+            # Register all used dimensions (even the "sliced out" ones)
+            # as used, and get information on them.
             for dimname in originaldims:
-                if dimname not in dim2data:
-                    dim2data[dimname] = {
-                        'forcedrange':[None,None],
-                        'datarange':[None,None],
-                    }
-                dim2data[dimname]['used'] = True
+                dimdata = dim2data.setdefault(dimname,{'forcedrange':[None,None]})
+                dimdata['used'] = True
                 diminfo = varstore.getDimensionInfo(dimname)
-                dim2data[dimname].update(diminfo)
+                dimdata.update(diminfo)
 
             # Add the variable itself to the dimension list.
-            if varpath not in dim2data:
-                dim2data[varpath] = {
-                    'forcedrange':[None,None],
-                    'datarange':[None,None],
-                }
-            dim2data[varpath].update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','logscale':False})
+            dimdata = dim2data.setdefault(varpath,{'forcedrange':[None,None]})
+            dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','logscale':False})
             
             # Find non-singleton dimensions (singleton dimension: dimension with length one)
             # Store singleton dimensions as fixed extra coordinates.
@@ -416,8 +405,7 @@ class Figure(common.referencedobject):
                     datamax = data[idim].take((-1,),idim).max()
 
                 # Update effective dimension bounds                    
-                if 'datarange' not in dim2data[dimname]: dim2data[dimname]['datarange'] = [None,None]
-                effrange = dim2data[dimname]['datarange']
+                effrange = dim2data[dimname].setdefault('datarange',[None,None])
                 if effrange[0]==None or datamin<effrange[0]: effrange[0] = datamin
                 if effrange[1]==None or datamax>effrange[1]: effrange[1] = datamax
 
@@ -503,7 +491,7 @@ class Figure(common.referencedobject):
                     if cc==None:
                       defaultseriesnode.getLocation(['ContourCount']).setValue(len(pc.levels)-2)
                 else:
-                    pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.pylab.cm.jet,norm=norm)
+                    pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.cm.jet,norm=norm)
                   
                 # Create colorbar
                 assert cb==None, 'Currently only one object that needs a colorbar is supported per figure.'
@@ -512,7 +500,8 @@ class Figure(common.referencedobject):
                 else:
                     flatZ = Z.ravel()
                 if (flatZ==flatZ[0]).all():
-                    # Explicitly set color range; MatPlotLib 0.90.0 chokes on identical min and max.
+                    # All z values are equal. Explicitly set color range,
+                    # because MatPlotLib 0.90.0 chokes on identical min and max.
                     pc.set_clim((Z[0,0]-1,Z[0,0]+1))
                 else:
                     pc.set_clim(dim2data[varpath]['forcedrange'])
@@ -532,6 +521,7 @@ class Figure(common.referencedobject):
         assert title!=None, 'Title must be available, either explicitly set or as default.'
         if title!='': axes.set_title(title,size=fontsizes['axes.titlesize'],fontname=fontfamily)
 
+        # Build table linking axis to data dimension.
         axis2dim = dict([(dat['axis'],dim) for dim,dat in dim2data.iteritems() if 'axis' in dat])
 
         # Get effective ranges for each dimension (based on forced limits and natural data ranges)
@@ -542,17 +532,14 @@ class Figure(common.referencedobject):
             dat = dim2data[dim]
             
             # Get the effective range of the current dimension
-            effrange = dat['datarange'][:]
-            if 'forcedrange' in dat:
-                if dat['forcedrange'][0]!=None: effrange[0] = dat['forcedrange'][0]
-                if dat['forcedrange'][1]!=None: effrange[1] = dat['forcedrange'][1]
+            valmin,valmax = dat['datarange'][:]
+            forcedrange = dat.get('forcedrange',(None,None))
+            if forcedrange[0]!=None: valmin = forcedrange[0]
+            if forcedrange[1]!=None: valmax = forcedrange[1]
             
             # Get the explicitly set and the default properties.
             axisnode = forcedaxes.getChildById('Axis',dim,create=True)
             defaxisnode = defaultaxes.getChildById('Axis',dim,create=True)
-            
-            # Get the axis bounds that we will use.
-            valmin,valmax = effrange
 
             # Build default label for this axis
             deflab = dat['label']

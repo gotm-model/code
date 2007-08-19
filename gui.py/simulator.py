@@ -1,8 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.11 2007-07-06 13:48:29 jorn Exp $
-
-import math
+#$Id: simulator.py,v 1.12 2007-08-19 09:54:43 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -126,7 +124,7 @@ class PageProgress(commonqt.WizardPage):
         if remaining<60:
             self.labelRemaining.setText('%i seconds remaining' % round(remaining))
         else:
-            self.labelRemaining.setText('%i minutes %i seconds remaining' % (math.floor(remaining/60),math.floor(remaining % 60)))
+            self.labelRemaining.setText('%i minutes %i seconds remaining' % divmod(remaining,60))
             
     def done(self):
         result = self.gotmthread.res

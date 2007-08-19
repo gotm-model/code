@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.26 2007-05-01 19:46:56 jorn Exp $
+#$Id: common.py,v 1.27 2007-08-19 09:54:43 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.numerix
@@ -59,6 +59,18 @@ def getSwitchArgument(name):
     if name not in sys.argv: return False
     sys.argv.remove(name)
     return True
+    
+    
+def convertUnitToUnicode(unit):
+    if unit=='celsius': return unichr(176)+'C'
+    sup2 = unichr(178)
+    sup3 = unichr(179)
+    unit = unit.replace('s2','s'+sup2)
+    unit = unit.replace('s3','s'+sup3)
+    unit = unit.replace('m2','m'+sup2)
+    unit = unit.replace('m3','m'+sup3)
+    unit = unit.replace('**3',sup3)
+    return unit
 
 # ------------------------------------------------------------------------------------------
 # XML helper functions

@@ -162,7 +162,7 @@ class LinkedFileVariableStore(PlotVariableStore):
             self.dimensions[dimname] = PlotVariableStore.getDimensionInfo(self,None)
             self.dimensions[dimname].update(dimdata)
 
-        self.dimensionorder = [d for d in dimensionorder]
+        self.dimensionorder = list(dimensionorder)
         
         fdims = common.findDescendantNode(finfo,['filedimensions'])
         if fdims!=None:
@@ -642,7 +642,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
 #   Inherits from PlotVariableStore, as it contains variables that can be plotted.
 #   Contains a link to the scenario from which the result was created (if available)
 class Result(PlotVariableStore,common.referencedobject):
-
+    
     class ResultVariable(PlotVariable):
         def __init__(self,result,varname):
             PlotVariable.__init__(self)
@@ -658,8 +658,8 @@ class Result(PlotVariableStore,common.referencedobject):
 
         def getUnit(self):
             nc = self.result.getcdf()
-            return nc.variables[self.varname].units
-
+            return common.convertUnitToUnicode(nc.variables[self.varname].units)
+            
         def getDimensions(self):
           nc = self.result.getcdf()
 
@@ -1020,6 +1020,7 @@ class Result(PlotVariableStore,common.referencedobject):
                 dt = None
                 if self.scenario!=None:
                     dt = self.scenario.getProperty(['output','dtsave'],usedefault=True)
+                    if dt!=None: dt = dt.getAsSeconds()
                 if dt==None:
                     if secs[0]>0:
                         dt=secs[0]
