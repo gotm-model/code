@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.15 2006-11-27 15:13:43 kbk Exp $
+!$Id: ncdfout.F90,v 1.16 2007-08-19 08:25:54 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,6 +58,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
+!  Revision 1.16  2007-08-19 08:25:54  jorn
+!  fixed typo: celcius -> celsius
+!
 !  Revision 1.15  2006-11-27 15:13:43  kbk
 !  re-initialse first and set_no when closing .nc file
 !
@@ -421,7 +424,7 @@
    iret = set_attributes(ncid,salt_id,units='psu',long_name='salinity')
    iret = set_attributes(ncid,salt_obs_id,units='psu',long_name='obs. salinity')
    iret = set_attributes(ncid,temp_id,units='celsius',long_name='temperature')
-   iret = set_attributes(ncid,temp_obs_id,units='celcius',long_name='obs. temperature')
+   iret = set_attributes(ncid,temp_obs_id,units='celsius',long_name='obs. temperature')
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency')
    iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency')
    iret = set_attributes(ncid,sigma_t_id,units='1/s2',long_name='sigma_t')
