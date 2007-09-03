@@ -1,4 +1,4 @@
-import os, re, datetime, xml.dom.minidom, tempfile, shutil, StringIO
+import os, re, datetime, xml.dom.minidom, tempfile, shutil, StringIO, math
 
 import common, xmlstore, scenario
 
@@ -23,7 +23,7 @@ class PlotVariableStore:
         return None
         
     def getDimensionInfo(self,dimname):
-        return {'label':'','unit':'','preferredaxis':'x','datatype':'float','logscale':False}
+        return {'label':'','unit':'','preferredaxis':None,'datatype':'float','logscale':False}
 
     def getVariableTree(self,path,otherstores={}):
         xmlschema = xml.dom.minidom.parse(path)
@@ -66,8 +66,8 @@ class PlotVariableStore:
 # Classes deriving from it must support the virtual methods below.
 class PlotVariable:
 
-    def __init__(self):
-        pass
+    def __init__(self,store):
+        self.store = store
 
     # getName()
     #   Return type: string
@@ -103,6 +103,9 @@ class PlotVariable:
     def getValues(self,bounds,staggered=False,coordinatesonly=False):
         return ()
 
+    def getDimensionInfo(self,dimname):
+        return self.store.getDimensionInfo(dimname)
+
 class LinkedFileVariableStore(PlotVariableStore):
 
     class LinkedFileVariable(PlotVariable):
@@ -133,9 +136,9 @@ class LinkedFileVariableStore(PlotVariableStore):
         assert finfo!=None, 'Node "%s" lacks "fileinfo" attribute.' % node
         type = finfo.getAttribute('type')
         if type=='pointsintime':
-            return LinkedMatrix(node,type=0,dimensions={'time':{'label':'time','datatype':'datetime'}},dimensionorder=('time',))
+            return LinkedMatrix(node,type=0,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'}},dimensionorder=('time',))
         elif type=='profilesintime':
-            return LinkedProfilesInTime(node,dimensions={'time':{'label':'time','datatype':'datetime'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}},dimensionorder=('time','z'))
+            return LinkedProfilesInTime(node,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}},dimensionorder=('time','z'))
         elif type=='singleprofile' or type=='verticalgrid':
             return LinkedMatrix(node,type=1)
         else:
@@ -638,95 +641,79 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         # Close data file
         f.close()
 
-# Class that represents a GOTM result.
-#   Inherits from PlotVariableStore, as it contains variables that can be plotted.
-#   Contains a link to the scenario from which the result was created (if available)
-class Result(PlotVariableStore,common.referencedobject):
+class NetCDFStore(PlotVariableStore,common.referencedobject):
     
-    class ResultVariable(PlotVariable):
-        def __init__(self,result,varname):
-            PlotVariable.__init__(self)
-            self.result = result
+    class NetCDFVariable(PlotVariable):
+        def __init__(self,store,varname):
+            PlotVariable.__init__(self,store)
             self.varname = str(varname)
 
         def getName(self):
             return self.varname
 
         def getLongName(self):
-            nc = self.result.getcdf()
+            nc = self.store.getcdf()
             return nc.variables[self.varname].long_name
 
         def getUnit(self):
-            nc = self.result.getcdf()
+            nc = self.store.getcdf()
             return common.convertUnitToUnicode(nc.variables[self.varname].units)
             
         def getDimensions(self):
-          nc = self.result.getcdf()
-
-          dimnames = nc.variables[self.varname].dimensions
-          dimcount = len(dimnames)
-          if   dimcount==3:
-              if dimnames==('time','lat','lon'):
-                  return ('time',)
-          elif dimcount==4:
-              if (dimnames==('time','z','lat','lon')) or (dimnames==('time','z1','lat','lon')):
-                  return ('time','z')
-          raise Exception('This variable has dimensions %s; I do not know how to handle such variables.' % str(dimnames))
+          nc = self.store.getcdf()
+          return nc.variables[self.varname].dimensions
 
         def getValues(self,bounds,staggered=False,coordinatesonly=False):
-          nc = self.result.getcdf()
+          nc = self.store.getcdf()
             
           v = nc.variables[self.varname]
-          dims = v.dimensions
-          dimcount = len(dims)
+          dimnames = v.dimensions
+          boundindices = []
           res = []
-
-          # Get time coordinates and time bounds.
-          (t,t_stag) = self.result.getTime()
-          if t.shape[0]==0: return None
-          timebounds = common.findindices(bounds[0],t)
-          if not staggered:
-              res.append(t[timebounds[0]:timebounds[1]+1])
-          else:
-              res.append(t_stag[timebounds[0]:timebounds[1]+2])
-
-          # Add depth dimension (if available)
-          if dimcount==4:
-            (z,z1,z_stag,z1_stag) = self.result.getDepth()
-            depthbounds = (0,z.shape[1])
-            if dims[1]=='z':
-                if staggered:
-                    res.append(z_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2])
+          
+          for idim,dimname in enumerate(dimnames):
+            if dimname=='z' or dimname=='z1':
+                # Get depth coordinates and bounds.
+                (z,z1,z_stag,z1_stag) = self.store.getDepth()
+                depthbounds = (0,z.shape[1])
+                timebounds = boundindices[list(dimnames).index('time')]
+                if dimname=='z':
+                    if staggered:
+                        res.append(z_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2])
+                    else:
+                        res.append(z[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1])
+                elif dimname=='z1':
+                    if staggered:
+                        res.append(z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2])
+                    else:
+                        res.append(z1[timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2])
+                boundindices.append(depthbounds)
+            else:
+                # Get coordinates and bounds of this dimension.
+                (coords,coords_stag) = self.store.getCoordinates(dimname)
+                if coords==None: return None
+                curbounds = common.findindices(bounds[idim],coords)
+                if not staggered:
+                    res.append(coords[curbounds[0]:curbounds[1]+1])
                 else:
-                    res.append(z[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1])
-            elif dims[1]=='z1':
-                if staggered:
-                    res.append(z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2])
-                else:
-                    res.append(z1[timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2])
+                    res.append(coords_stag[curbounds[0]:curbounds[1]+2])
+                boundindices.append(curbounds)
 
           # Add value data, if needed.
           if not coordinatesonly:
-            if dimcount==4:
-                # Four-dimensional variable: longitude, latitude, depth, time
-                try:
-                    dat = v[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1,0,0]
-                except Exception, e:
-                    raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
-                res.append(dat)
-            elif dimcount==3:
-                # Three-dimensional variable: longitude, latitude, time
-                try:
-                    dat = v[timebounds[0]:timebounds[1]+1,0,0]
-                except Exception, e:
-                    raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
-                res.append(dat)
-            else:
-                raise Exception('This variable has dimensions %s; I do not know how to handle such variables.' % unicode(dimensions))
+            try:
+                dat = v[tuple([slice(b[0],b[1]+1) for b in boundindices])]
+            except Exception, e:
+                raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
+            res.append(dat)
 
             # Mask missing data.
             if hasattr(v,'missing_value'):
                 res[-1] = matplotlib.numerix.ma.masked_array(res[-1],res[-1]==v.missing_value)
+            if hasattr(v,'scale_factor'):
+                res[-1] *= v.scale_factor
+            if hasattr(v,'add_offset'):
+                res[-1] += v.add_offset
               
           return res
 
@@ -734,47 +721,239 @@ class Result(PlotVariableStore,common.referencedobject):
         common.referencedobject.__init__(self)
         PlotVariableStore.__init__(self)
         
-        self.scenario = None
-        self.tempdir = None
         self.datafile = None
         self.nc = None
+
+        self.cachedcoords = {}
+        
+    def getDimensionInfo(self,dimname):
+        res = PlotVariableStore.getDimensionInfo(self,dimname)
+        varinfo = self.nc.variables[dimname]
+        if hasattr(varinfo,'long_name'):
+            res['label'] = varinfo.long_name
+        else:
+            res['label'] = dimname
+        if hasattr(varinfo,'units'):     res['unit']  = varinfo.units
+        if dimname=='z' or dimname=='z1':
+            res['label'] = 'depth'
+            res['preferredaxis'] = 'y'
+            if res['unit']=='meters': res['unit']='m'
+        elif self.isTimeDimension(dimname):
+            res['datatype'] = 'datetime'
+            res['preferredaxis'] = 'x'
+            res['unit'] = ''
+        return res
+        
+    def save(self,path):
+        shutil.copyfile(self.datafile,path)
+
+    def unlink(self):
+        if self.nc!=None:
+            # Close NetCDF result file.
+            self.nc.close()
+            self.nc = None
+            
+    def load(self,path):
+        # Store link to result file, and try to open the CDF file
+        self.datafile = path
+        self.getcdf()
+
+    def getcdf(self):
+        if self.nc!=None: return self.nc
+        assert self.datafile!=None, 'The result object has not yet been attached to an actual result.'
+        try:
+            self.nc = NetCDFFile(self.datafile)
+        except Exception, e:
+            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (self.datafile,str(e)))
+        return self.nc
+
+    def getVariableNames(self):
+        nc = self.getcdf()
+
+        # Get names of NetCDF variables
+        try:
+          varNames = nc.variables.keys()
+        except Exception, e:
+            raise Exception('Unable to obtain NetCDF variable names, error: '+str(e))
+
+        return varNames
+
+    def getVariableLongNames(self):
+      varnames = self.getVariableNames()
+      nc = self.getcdf()
+      vardict = {}
+      for varname in varnames:
+          vardict[varname] = nc.variables[varname].long_name
+      return vardict
+
+    def getVariable(self,varname,check=True):
+        varname = str(varname)
+        if check:
+            nc = self.getcdf()
+            vars = nc.variables
+            if not (varname in vars): return None
+        return self.NetCDFVariable(self,varname)
+        
+    def getCoordinates(self,dimname):
+        if dimname not in self.cachedcoords:
+            nc = self.getcdf()
+            coords = nc.variables[dimname][:]
+            
+            if 0 in coords.shape:
+                coords = None
+                coords_stag = None
+            else:
+                assert len(coords.shape)==1, 'Currently only independent dimensions (coordinates of which do no vary along other dimensions) can be used.'
+                
+                istimedim = self.isTimeDimension(dimname)
+                if istimedim:
+                    timeunit,timeref = self.getTimeReference(dimname)
+                    t = matplotlib.numerix.empty((coords.shape[0],),matplotlib.numerix.PyObject)
+                    for it in range(coords.shape[0]):
+                        t[it] = timeref + datetime.timedelta(timeunit*coords[it])
+                    coords = t
+                
+                coords_stag = matplotlib.numerix.zeros((coords.shape[0]+1,),matplotlib.numerix.typecode(coords))
+                if coords.shape[0]==1:
+                    # Only one coordinate provided; use default step of one.
+                    delta = 1.
+                    if istimedim:
+                        if self.scenario!=None:
+                            delta = self.scenario.getProperty(['output','dtsave'],usedefault=True)
+                            if delta!=None: delta = delta.getAsTimeDelta()
+                        if delta==None:
+                            if coords[0]>timeref:
+                                delta=coords[0]-timeref
+                            else:
+                                delta=timedelta.timedelta(days=1.)
+                    coords_stag[0] = coords[0]-delta/2
+                    coords_stag[1] = coords[0]+delta/2
+                else:
+                    coords_stag[1:-1] = coords[0:-1] + (coords[1:]-coords[0:-1])/2
+                    coords_stag[0 ] = coords[0]  - (coords[ 1]-coords[ 0])/2
+                    coords_stag[-1] = coords[-1] + (coords[-1]-coords[-2])/2
+
+            self.cachedcoords[dimname]         = coords
+            self.cachedcoords[dimname+'_stag'] = coords_stag
+
+        return (self.cachedcoords[dimname],self.cachedcoords[dimname+'_stag'])
+
+    def getDepth(self):
+        if 'z' not in self.cachedcoords:
+            nc = self.getcdf()
+
+            # Get layer heights
+            h = nc.variables['h'][:,:,0,0]
+            
+            # Get depths of interfaces
+            z1 = h.cumsum(1)
+            z1 = matplotlib.numerix.concatenate((matplotlib.numerix.zeros((z1.shape[0],1),matplotlib.numerix.typecode(z1)),z1),1)
+            bottomdepth = z1[0,-1]-nc.variables['zeta'][0,0,0]
+            z1 -= bottomdepth
+
+            # Get depth of layer centers
+            z = z1[:,1:z1.shape[1]]-0.5*h
+
+            # Interpolate in depth to create staggered grid
+            z1_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z1,(0,),0),z1,matplotlib.numerix.take(z1,(-1,),0)),0)
+            z_stag = 0.5 * (z1_med[0:z1_med.shape[0]-1,:] + z1_med[1:z1_med.shape[0],:])
+            
+            z_med = matplotlib.numerix.concatenate((z,matplotlib.numerix.take(z1,(-1,),1)),1)
+            z_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z_med,(0,),0),z_med,matplotlib.numerix.take(z_med,(-1,),0)),0)
+            z1_stag = 0.5 * (z_med[0:z_med.shape[0]-1,:] + z_med[1:z_med.shape[0],:])
+
+            self.cachedcoords['z']       = z
+            self.cachedcoords['z1']      = z1
+            self.cachedcoords['z_stag']  = z_stag
+            self.cachedcoords['z1_stag'] = z1_stag
+
+        return (self.cachedcoords['z'],self.cachedcoords['z1'],self.cachedcoords['z_stag'],self.cachedcoords['z1_stag'])
+        
+    def isTimeDimension(self,dimname):
+        # See if specified dimension is a time dimension according to COARDS convention.
+        try:
+            timeunit,timeref = self.getTimeReference(dimname)
+        except:
+            return False
+        return True
+
+    def getTimeReference(self,dimname):
+      # Retrieve time unit (in days) and reference date/time, based on COARDS convention.
+      fullunit = self.getcdf().variables[dimname].units
+      if ' since ' not in fullunit:
+          raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: string does not contain " since ".' % fullunit
+      timeunit,reftime = fullunit.split(' since ')
+      
+      # Parse the reference date, time and timezone
+      datematch = re.match(r'(\d\d\d\d)[-\/](\d{1,2})-(\d{1,2})\s*',reftime)
+      if datematch==None:
+        raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse date in "%s".' % (fullunit,reftime)
+      year,month,day = map(int,datematch.group(1,2,3))
+      hour,min,sec = 0,0,0
+      reftime = reftime[datematch.end():]
+      if len(reftime)>0:
+        timematch = re.match(r'(\d{1,2}):(\d{1,2}):(\d{1,2}(?:\.\d*)?)\s*',reftime)
+        if timematch==None:
+            raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time in "%s".' % (fullunit,reftime)
+        hour,min,sec = map(int,timematch.group(1,2,3))
+        reftime = reftime[timematch.end():]
+      dateref = datetime.datetime(year,month,day,hour,min,sec)
+      if len(reftime)>0:
+        timezonematch = re.match(r'(-?\d{1,2})(?::?(\d\d))?$',reftime)
+        if timezonematch==None:
+            raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time zone in "%s".' % (fullunit,reftime)
+        if timezonematch.group(2)==None:
+            dhour,dmin = int(timezonematch.group(1)),0
+        else:
+            dhour,dmin = map(int,timezonematch.group(1,2))
+            if dhour<0: dmin = -dmin
+        dateref -= datetime.timedelta(hours=dhour,minutes=dmin)
+      
+      # Get time unit in number of days.
+      if timeunit in ('seconds','second','secs','sec','ss','s'):
+          timeunit = 1./86400.
+      elif timeunit in ('minutes','minute','mins','min'):
+          timeunit = 1./1440.
+      elif timeunit in ('hours','hour','hrs','hr','hs','h'):
+          timeunit = 1./24.
+      elif timeunit in ('days','day','ds','d'):
+          timeunit = 1.
+      elif timeunit in ('years','year','yrs','yr','ys','y'):
+          timeunit = 365.   # udunits convention: year=365 days
+      else:
+          raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: unknown time unit "%s".' % (fullunit,timeunit)
+      
+      return timeunit,dateref
+
+# Class that represents a GOTM result.
+#   Inherits from PlotVariableStore, as it contains variables that can be plotted.
+#   Contains a link to the scenario from which the result was created (if available)
+class Result(NetCDFStore):
+
+    schemadirname = 'schemas/result'
+    @staticmethod
+    def setRoot(rootpath):
+        Result.schemadirname = os.path.join(rootpath,'schemas/result')
+
+    def __init__(self):
+        NetCDFStore.__init__(self)
+        
+        self.scenario = None
+        self.tempdir = None
         self.changed = False
         
         self.stdout = None
         self.stderr = None
         self.returncode = 0
         self.errormessage = None
-
-        # Cached coordinates
-        self.t = None
-        self.t_stag = None
-        self.z = None
-        self.z1 = None
-        self.z_stag = None
-        self.z1_stag = None
         
-        self.store = xmlstore.TypedStore('schemas/result/gotmgui.xml')
+        self.store = xmlstore.TypedStore(os.path.join(Result.schemadirname,'gotmgui.xml'))
         self.wantedscenarioversion = scenario.guiscenarioversion
         
         self.path = None
 
     def hasChanged(self):
         return self.changed or self.store.changed
-        
-    def getDimensionInfo(self,dimname):
-        res = PlotVariableStore.getDimensionInfo(self,dimname)
-        varinfo = self.nc.variables[dimname]
-        if dimname=='z' or dimname=='z1':
-            res['label'] = 'depth'
-            res['unit'] = 'm'
-            res['preferredaxis'] = 'y'
-        elif dimname=='time':
-            res['label'] = 'time'
-            res['datatype'] = 'datetime'
-        else:
-            if hasattr(varinfo,'long_name'): res['label'] = varinfo.long_name
-            if hasattr(varinfo,'units'):     res['unit']  = varinfo.units
-        return res
 
     def getTempDir(self,empty=False):
         if self.tempdir!=None:
@@ -787,7 +966,7 @@ class Result(PlotVariableStore,common.referencedobject):
         return self.tempdir
         
     def saveNetCDF(self,path):
-        shutil.copyfile(self.datafile,path)
+        NetCDFStore.save(self,path)
 
     def save(self,path,addfiguresettings=True):
         assert self.datafile!=None, 'The result object was not yet attached to a result file (NetCDF).'
@@ -899,10 +1078,7 @@ class Result(PlotVariableStore,common.referencedobject):
         return False
 
     def unlink(self):
-        if self.nc!=None:
-            # Close NetCDF result file.
-            self.nc.close()
-            self.nc = None
+        NetCDFStore.unlink(self)
         if self.tempdir!=None:
             # Delete temporary directory.
             print 'Deleting temporary result directory "%s".' % self.tempdir
@@ -917,7 +1093,7 @@ class Result(PlotVariableStore,common.referencedobject):
             self.scenario = scenario.convert(self.wantedscenarioversion)
         else:
             self.scenario = None
-        
+            
         if copy:
             # Create a copy of the result file.
             tempdir = self.getTempDir(empty=True)
@@ -926,9 +1102,7 @@ class Result(PlotVariableStore,common.referencedobject):
         else:
             datafile = srcpath
 
-        # Store link to result file, and try to open the CDF file
-        self.datafile = datafile
-        self.getcdf()
+        NetCDFStore.load(datafile)
 
         # Attached to an existing result: we consider it unchanged.
         self.changed = False
@@ -938,18 +1112,22 @@ class Result(PlotVariableStore,common.referencedobject):
         else:
             self.path = None
 
-    def getcdf(self):
-        if self.nc!=None: return self.nc
-        assert self.datafile!=None, 'The result object has not yet been attached to an actual result.'
-        try:
-            self.nc = NetCDFFile(self.datafile)
-        except Exception, e:
-            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (self.datafile,str(e)))
-        return self.nc
-
     def getVariableNames(self,plotableonly=True):
-        nc = self.getcdf()
-
+        names = NetCDFStore.getVariableNames(self)
+        if plotableonly:
+            for i in range(len(names)-1,-1,-1):
+                dimnames = self.nc.variables[names[i]].dimensions
+                dimcount = len(dimnames)
+                good = False
+                if   dimcount==3:
+                    if dimnames==('time','lat','lon'):
+                        good = True
+                elif dimcount==4:
+                    if (dimnames==('time','z','lat','lon')) | (dimnames==('time','z1','lat','lon')):
+                        good = True
+                if not good: del names[i]
+        return names
+            
         # Get names of NetCDF variables
         try:
           #pycdf vars = nc.variables()
@@ -977,117 +1155,90 @@ class Result(PlotVariableStore,common.referencedobject):
 
         return varNames
 
-    def getVariableLongNames(self):
-      varnames = self.getVariableNames()
-      nc = self.getcdf()
-      vardict = {}
-      for varname in varnames:
-          #pycdf varname_str = str(varname)
-          #pycdf vardict[varname] = nc.var(varname_str).long_name
-          vardict[varname] = nc.variables[varname].long_name
-      return vardict
-
-    def getVariable(self,varname,check=True):
-        varname = str(varname)
-        if check:
-            nc = self.getcdf()
-            #pycdf vars = nc.variables()
-            vars = nc.variables
-            if not (varname in vars): return None
-        return self.ResultVariable(self,varname)
-
-    def getTime(self):
-        if self.t==None:
-            nc = self.getcdf()
-
-            # Get time coordinate (in seconds since reference date)
-            secs = nc.variables['time'][:]
-            
-            # Convert time-in-seconds to Python datetime objects.
-            dateref = self.getReferenceDate()
-            t = matplotlib.numerix.zeros((secs.shape[0],),matplotlib.numerix.PyObject)
-            for it in range(t.shape[0]):
-                t[it] = dateref + datetime.timedelta(secs[it]/3600/24)
-
-            # Get time step (of output, not simulation!)
-            if secs.shape[0]==0:
-                dt = None
-            elif secs.shape[0]==1:
-                # Only one time step saved: try to get output time step from scenario. If this
-                # does not work, assume the simulation started with MinN == 1, allowing us to
-                # use the first time (in seconds) as time step. If that does not work, default
-                # to one day.
-                dt = None
-                if self.scenario!=None:
-                    dt = self.scenario.getProperty(['output','dtsave'],usedefault=True)
-                    if dt!=None: dt = dt.getAsSeconds()
-                if dt==None:
-                    if secs[0]>0:
-                        dt=secs[0]
-                    else:
-                        dt=3600*24
-            else:
-                dt = secs[1]-secs[0]
-
-            # Create staggered time grid.
-            if dt==None:
-                t_stag = None
-            else:
-                t_stag = matplotlib.numerix.zeros((secs.shape[0]+1,),matplotlib.numerix.PyObject)
-                halfdt = datetime.timedelta(seconds=dt/2.)
-                t_stag[0]  = t[0]-halfdt
-                t_stag[1:] = t[:]+halfdt
-            
-            # Cache time grids.
-            self.t = t
-            self.t_stag = t_stag
-            
-        return (self.t,self.t_stag)
-
-    def getDepth(self):
-        if self.z==None:
-            nc = self.getcdf()
-
-            # Get layer heights
-            h = nc.variables['h'][:,:,0,0]
-            
-            # Get depths of interfaces
-            z1 = h.cumsum(1)
-            z1 = matplotlib.numerix.concatenate((matplotlib.numerix.zeros((z1.shape[0],1),matplotlib.numerix.typecode(z1)),z1),1)
-            bottomdepth = z1[0,-1]-nc.variables['zeta'][0,0,0]
-            z1 -= bottomdepth
-
-            # Get depth of layer centers
-            z = z1[:,1:z1.shape[1]]-0.5*h
-
-            # Interpolate in depth to create staggered grid
-            z1_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z1,(0,),0),z1,matplotlib.numerix.take(z1,(-1,),0)),0)
-            z_stag = 0.5 * (z1_med[0:z1_med.shape[0]-1,:] + z1_med[1:z1_med.shape[0],:])
-            
-            z_med = matplotlib.numerix.concatenate((z,matplotlib.numerix.take(z1,(-1,),1)),1)
-            z_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z_med,(0,),0),z_med,matplotlib.numerix.take(z_med,(-1,),0)),0)
-            z1_stag = 0.5 * (z_med[0:z_med.shape[0]-1,:] + z_med[1:z_med.shape[0],:])
-
-            self.z = z
-            self.z1 = z1
-            self.z_stag = z_stag
-            self.z1_stag = z1_stag
-
-        return (self.z,self.z1,self.z_stag,self.z1_stag)
-
-    def getReferenceDate(self):
-      # Retrieve reference date/time.
-      nc = self.getcdf()
-      #pycdf timeunit = nc.var('time').units
-      timeunit = nc.variables['time'].units
-      datematch = re.compile('(\d\d\d\d)[-\/](\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)').search(timeunit, 1)
-      assert datematch!=None, 'Unable to parse "units" attribute of "time" variable in NetCDF file!'
-      refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-      dateref = datetime.datetime(*refvals)
-      return dateref
-
     def getVariableTree(self,path):
         otherstores = {}
         if self.scenario!=None: otherstores['scenario'] = self.scenario
         return PlotVariableStore.getVariableTree(self,path,otherstores=otherstores)
+        
+class MergedPlotVariableStore(PlotVariableStore):
     
+    class MergedPlotVariable(PlotVariable):
+        def __init__(self,store,variables,mergedimid):
+            PlotVariable.__init__(self,store)
+            self.vars = variables
+            self.mergedimid = mergedimid
+
+        def getName(self):
+            return self.vars[0].getName()
+
+        def getLongName(self):
+            return self.vars[0].getLongName()
+
+        def getUnit(self):
+            return self.vars[0].getUnit()
+
+        def getDimensions(self):
+            return tuple([self.mergedimid]+list(self.vars[0].getDimensions()))
+
+        def getValues(self,bounds,staggered=False,coordinatesonly=False):
+            ifirst,ilast = 0,len(self.vars)-1
+            if bounds[0][0]!=None and bounds[0][0]>ifirst: ifirst = int(math.floor(bounds[0][0]))
+            if bounds[0][1]!=None and bounds[0][1]<ilast : ilast  = int(math.ceil (bounds[0][1]))
+
+            res = [matplotlib.numerix.arange(float(ifirst),float(ilast+1))]
+            first = True
+            for ivar,var in enumerate(self.vars[ifirst:ilast+1]):
+                curvals = var.getValues(bounds[1:],staggered=staggered,coordinatesonly=coordinatesonly)
+                if first:
+                    res += curvals[:-1]
+                    if coordinatesonly: break
+                    res.append(matplotlib.numerix.empty(tuple([ilast-ifirst+1]+list(curvals[-1].shape)),matplotlib.numerix.typecode(curvals[-1])))
+                    first = False
+                res[-1][ivar,...] = curvals[-1]
+            return res
+
+    def __init__(self,stores,mergedimid='obs',mergedimname='observation'):
+        PlotVariableStore.__init__(self)
+        self.stores = stores
+        self.mergedimid = mergedimid
+        self.mergedimname = mergedimname
+
+    def getVariableNames(self):
+        return self.stores[0].getVariableNames()
+
+    def getVariableLongNames(self):
+        return self.stores[0].getVariableLongNames()
+
+    def getDimensionInfo(self,dimname):
+        if dimname==self.mergedimid: 
+            info = PlotVariableStore.getDimensionInfo(self,dimname)
+            info['label'] = self.mergedimname
+            return info
+        return self.stores[0].getDimensionInfo(dimname)
+
+    def getVariable(self,varname):
+        return MergedPlotVariableStore.MergedPlotVariable(self,[store.getVariable(varname) for store in self.stores],self.mergedimid)
+
+class CustomPlotVariableStore(PlotVariableStore):
+
+    def __init__(self):
+        PlotVariableStore.__init__(self)
+        self.vars = []
+        
+    def addVariable(self,var):
+        self.vars.append(var)
+
+    def getVariableNames(self):
+        return [v.getName() for v in self.vars]
+
+    def getVariableLongNames(self):
+        return [v.getLongName() for v in self.vars]
+
+    def getDimensionInfo(self,dimname):
+        return PlotVariableStore.getDimensionInfo(self,dimname)
+
+    def getVariable(self,varname):
+        for v in self.vars:
+            if v.getName()==varname: return v
+        return None
+

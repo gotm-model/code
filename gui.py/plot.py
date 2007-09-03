@@ -1,4 +1,4 @@
-import datetime,math
+import datetime,math,os.path
 
 import matplotlib
 import matplotlib.numerix,matplotlib.numerix.ma,matplotlib.colors
@@ -33,21 +33,26 @@ class CustomDateFormatter(matplotlib.dates.DateFormatter):
         return matplotlib.dates.DateFormatter.strftime(self,dt,fmt)
         
 class VariableTransform(data.PlotVariable):
-    def __init__(self,sourcevar):
-        data.PlotVariable.__init__(self)
+    def __init__(self,sourcevar,idprefix='',nameprefix=''):
+        data.PlotVariable.__init__(self,None)
         self.sourcevar = sourcevar
+        self.idprefix   = idprefix
+        self.nameprefix = nameprefix
 
     def getName(self):
-        return self.sourcevar.getName()
+        return self.idprefix + self.sourcevar.getName()
 
     def getLongName(self):
-        return self.sourcevar.getLongName()
+        return self.nameprefix + self.sourcevar.getLongName()
 
     def getUnit(self):
-        return self.sourcevar.getLongName()
+        return self.sourcevar.getUnit()
 
     def getDimensions(self):
         return self.sourcevar.getDimensions()
+
+    def getDimensionInfo(self,dimname):
+        return self.sourcevar.getDimensionInfo(dimname)
         
 class VariableSlice(VariableTransform):
     def __init__(self,variable,slicedimension,slicecoordinate):
@@ -101,7 +106,35 @@ class VariableSlice(VariableTransform):
             assert False,'Cannot take slice because the result does not have 1 coordinate dimension (instead it has %i: %s).' % (len(dims),dims)
         return data
 
+class VariableAverage(VariableTransform):
+
+    def __init__(self,variable,dimname,newid=None,newname=None):
+        dimlongname = variable.getDimensionInfo(dimname)['label']
+        VariableTransform.__init__(self,variable,idprefix='ave_',nameprefix=dimlongname+'-averaged ')
+        self.dimname = dimname
+        self.newid = newid
+        self.newname = newname
+
+    def getDimensions(self):
+        dims = self.sourcevar.getDimensions()
+        return [d for d in dims if d!=self.dimname]
+
+    def getValues(self,bounds,staggered=False,coordinatesonly=False):
+        idim = list(self.sourcevar.getDimensions()).index(self.dimname)
+        newbounds = list(bounds)
+        newbounds.insert(idim,(None,None))
+        vals = self.sourcevar.getValues(newbounds,staggered=staggered,coordinatesonly=coordinatesonly)
+        del vals[idim]
+        count = vals[-1].shape[idim]
+        vals[-1] = vals[-1].sum(axis=idim)/float(count)
+        return vals
+        
 class Figure(common.referencedobject):
+
+    schemadirname = 'schemas/figure'
+    @staticmethod
+    def setRoot(rootpath):
+        Figure.schemadirname = os.path.join(rootpath,'schemas/figure')
 
     def __init__(self,figure,defaultfont=None):
         common.referencedobject.__init__(self)
@@ -114,14 +147,14 @@ class Figure(common.referencedobject):
         self.canvas = figure.canvas
 
         # Create store for the explicitly set properties
-        self.properties = xmlstore.TypedStore('schemas/figure/gotmgui.xml')
+        self.properties = xmlstore.TypedStore(os.path.join(Figure.schemadirname,'gotmgui.xml'))
         self.propertiesinterface = self.properties.getInterface()
         self.propertiesinterface.notifyOnDefaultChange = False
         self.propertiesinterface.connect('afterChange',self.onPropertyChanged)
         self.propertiesinterface.connect('afterStoreChange',self.onPropertyStoreChanged)
         
         # Create store for property defaults
-        self.defaultproperties = xmlstore.TypedStore('schemas/figure/gotmgui.xml')
+        self.defaultproperties = xmlstore.TypedStore(os.path.join(Figure.schemadirname,'gotmgui.xml'))
 
         # Set some default properties.
         self.defaultproperties.setProperty(['FontName'],defaultfont)
@@ -153,8 +186,9 @@ class Figure(common.referencedobject):
             self.updating = allowupdates
             if allowupdates and self.dirty: self.update()
 
-    def onPropertyChanged(self,node):
-        self.onPropertyStoreChanged()
+    def onPropertyChanged(self,node,feature):
+        if feature=='value':
+            self.onPropertyStoreChanged()
 
     def onPropertyStoreChanged(self):
         self.haschanged = True
@@ -316,7 +350,7 @@ class Figure(common.referencedobject):
             for dimname in originaldims:
                 dimdata = dim2data.setdefault(dimname,{'forcedrange':[None,None]})
                 dimdata['used'] = True
-                diminfo = varstore.getDimensionInfo(dimname)
+                diminfo = var.getDimensionInfo(dimname)
                 dimdata.update(diminfo)
 
             # Add the variable itself to the dimension list.
@@ -423,7 +457,7 @@ class Figure(common.referencedobject):
                 # dimension information states it is preferably uses the y-axis.
                 xdim = 0
                 datadim = 1
-                if dim2data[dims[0]]['preferredaxis']=='y':
+                if (dim2data[dims[0]]['preferredaxis']=='y'):
                     xdim = 1
                     datadim = 0
                 linewidth = seriesnode.getLocation(['LineWidth']).getValueOrDefault()
@@ -440,6 +474,10 @@ class Figure(common.referencedobject):
                 # and y-axis for second coordinate dimension.
                 xdim = 0
                 ydim = 1
+                prefaxis = [dim2data[dims[0]]['preferredaxis'],dim2data[dims[1]]['preferredaxis']]
+                if (prefaxis[0]=='y' and prefaxis[1]!='y') or (prefaxis[1]=='x' and prefaxis[0]!='x'):
+                    xdim = 1
+                    ydim = 0
 
                 dim2data[dims[xdim]]['axis'] = 'x'
                 dim2data[dims[ydim]]['axis'] = 'y'

@@ -63,10 +63,10 @@
 							<option value="28" label="mmmyyyy"/>
 						</options>
 					</element>
-					<element id="Minimum" type="float" label="minimum" unit="[Unit]" minimum="-5000" maximum="50" nodefault="True">
+					<element id="Minimum" type="float" label="minimum" unit="[Unit]" nodefault="True">
 						<condition type="ne" variable="./IsTimeAxis" value="True"/>
 					</element>
-					<element id="Maximum" type="float" label="maximum" unit="[Unit]" minimum="-5000" maximum="50" nodefault="True">
+					<element id="Maximum" type="float" label="maximum" unit="[Unit]" nodefault="True">
 						<condition type="ne" variable="./IsTimeAxis" value="True"/>
 					</element>
 					<element id="Unit" type="string" label="unit" nodefault="True" hidden="True"/>

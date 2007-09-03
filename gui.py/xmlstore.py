@@ -273,6 +273,9 @@ class StoreTimeDelta(Store.DataType):
     def getAsSeconds(self):
         return self.days*86400 + self.seconds + self.milliseconds/1000.
         
+    def getAsTimeDelta(self):
+        return datetime.timedelta(days=self.days,seconds=self.seconds,milliseconds=self.milliseconds)
+        
     def __float__(self):
         return float(self.getAsSeconds())
         
@@ -1006,17 +1009,17 @@ class TypedStoreInterface:
         if node.isHidden() and self.blockNotifyOfHiddenNodes: return True
         return self.eventhandlers['beforeChange'](node,newvalue)
 
-    def onChange(self,node):
+    def onChange(self,node,feature):
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if 'afterChange' not in self.eventhandlers: return
         if node.isHidden() and self.blockNotifyOfHiddenNodes: return
-        self.eventhandlers['afterChange'](node)
+        self.eventhandlers['afterChange'](node,feature)
 
-    def onDefaultChange(self,node):
+    def onDefaultChange(self,node,feature):
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
-        if self.notifyOnDefaultChange: self.onChange(node)
+        if self.notifyOnDefaultChange: self.onChange(node,feature)
 
 # ------------------------------------------------------------------------------------------
 # TypedStore
@@ -1144,7 +1147,7 @@ class TypedStore(common.referencedobject):
                     valuetype = self.templatenode.getAttribute('type')
                     if self.valuenode==None: self.createValueNode()
                     changed = self.store.setNodeProperty(self.valuenode,value,valuetype)
-                    self.controller.onChange(self)
+                    self.controller.onChange(self,'value')
                     return changed
             return False
 
@@ -1173,7 +1176,7 @@ class TypedStore(common.referencedobject):
             if (not self.canHaveClones()) and self.controller.onBeforeChange(self,None):
                 self.store.clearNodeProperty(self.valuenode)
                 self.valuenode = None
-                self.controller.onChange(self)
+                self.controller.onChange(self,'value')
 
         def getValueAsString(self,addunit = True,usedefault = False):
             """Returns a user-readable string representation of the value of the node.
@@ -1393,8 +1396,7 @@ class TypedStore(common.referencedobject):
             if isinstance(id,int):
                 return self.removeChildren(childname,id,id)
             else:
-                ipos = 0
-                while ipos<len(self.children):
+                for ipos in range(len(self.children)-1,-1,-1):
                     child = self.children[ipos]
                     if child.location[-1]==childname and child.getSecondaryId()==id:
                         assert child.canHaveClones(),'Cannot remove child "%s" because it must occur exactly one time.' % childname
@@ -1403,8 +1405,9 @@ class TypedStore(common.referencedobject):
                         self.store.clearNodeProperty(child.valuenode)
                         self.controller.afterVisibilityChange(child,False,False)
                         child.destroy()
-                        return
-                    ipos += 1
+                        break
+                else:
+                    assert False, 'Cannot find child "%s" with id "%s".' % (childname,id)
 
         def removeChildren(self,childname,first=0,last=None):
             """Removes a (range of) optional child nodes with the specified name.
@@ -2374,24 +2377,24 @@ class TypedStore(common.referencedobject):
 
     # onChange: called internally after the default value of a node has changed.
     #   note that its argument will be a node in the DEFAULT store, not in the current store!
-    def onDefaultChange(self,defaultnode):
+    def onDefaultChange(self,defaultnode,feature):
         # Map node in default store to node in our own store.
         ownnode = self.mapForeignNode(defaultnode)
         if ownnode==None: return
 
         # Emit change event
-        for i in self.interfaces: i.onDefaultChange(ownnode)
+        for i in self.interfaces: i.onDefaultChange(ownnode,feature)
 
         # If the default is being used: update (visibility of) nodes that depend on the changed node.
         if ownnode.getValue()==None: self.updateDependantNodes(ownnode)
 
     # onChange: called internally after the value of a node has changed.
-    def onChange(self,node):
+    def onChange(self,node,feature):
         # Register that we changed.
         self.changed = True
 
         # Emit change event
-        for i in self.interfaces: i.onChange(node)
+        for i in self.interfaces: i.onChange(node,feature)
 
         # Update (visibility of) nodes that depend on the changed node.
         self.updateDependantNodes(node)
@@ -2421,7 +2424,7 @@ class TypedStore(common.referencedobject):
                 else:
                     depnodes.insert(0,varnode)
             else:
-                self.onChange(varnode)
+                self.onChange(varnode,d.getAttribute('type'))
         for varnode in depnodes: varnode.updateVisibility()
 
     # onBeforeChange: called internally just before the value of a node changes.

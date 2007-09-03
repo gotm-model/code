@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.35 2007-08-19 09:54:43 jorn Exp $
+#$Id: commonqt.py,v 1.36 2007-09-03 06:57:31 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
-import datetime, re, os.path
+import datetime, re, os.path, sys
 
 import common,xmlstore,settings,plot,data
 
@@ -85,7 +85,6 @@ def redirect_stderr():
     message to the one and only errorreceiver object. The posting mechanism allows the
     error message to be passed between threads.
     """
-    import sys
     class Stderr(object):
         """Customized stderr; when a string is written to this object, it is posted
         to the one and only errorreceiver object.
@@ -1060,8 +1059,14 @@ class PropertyDelegate(QtGui.QItemDelegate):
             editor = QtGui.QLineEdit(parent)
         elif nodetype=='int':
             editor = QtGui.QSpinBox(parent)
-            if templatenode.hasAttribute('minimum'): editor.setMinimum(int(templatenode.getAttribute('minimum')))
-            if templatenode.hasAttribute('maximum'): editor.setMaximum(int(templatenode.getAttribute('maximum')))
+            if templatenode.hasAttribute('minimum'):
+                editor.setMinimum(int(templatenode.getAttribute('minimum')))
+            else:
+                editor.setMinimum(-sys.maxint-1)
+            if templatenode.hasAttribute('maximum'):
+                editor.setMaximum(int(templatenode.getAttribute('maximum')))
+            else:
+                editor.setMaximum(sys.maxint)
             unit = node.getUnit()
             if unit!=None: editor.setSuffix(' '+unit)
         elif nodetype=='float':
@@ -1474,13 +1479,13 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
 
     def afterNodeVisibilityChange(self,node,newvisibility,showhide):
         assert isinstance(node,xmlstore.TypedStore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
-        if self.nohide and showhide: return self.onNodeChanged(node,headertoo=True)
+        if self.nohide and showhide: return self.onNodeChanged(node,'visibility',headertoo=True)
         if newvisibility:
             self.endInsertRows()
         else:
             self.endRemoveRows()
 
-    def onNodeChanged(self,node,headertoo = False):
+    def onNodeChanged(self,node,feature,headertoo = False):
         assert isinstance(node,xmlstore.TypedStore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
         irow = self.storeinterface.getOwnIndex(node)
         index = self.createIndex(irow,1,node)
@@ -1935,7 +1940,7 @@ class PropertyEditorFactory:
     def hasChanged(self):
         return self.changed
 
-    def onStoreNodeChanged(self,node):
+    def onStoreNodeChanged(self,node,feature):
         for editor in self.editors:
             if editor.node is node:
                 editor.updateEditorValue()
@@ -2141,8 +2146,14 @@ class PropertyEditor:
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='int':
             editor = QtGui.QSpinBox(parent)
-            if templatenode.hasAttribute('minimum'): editor.setMinimum(int(templatenode.getAttribute('minimum')))
-            if templatenode.hasAttribute('maximum'): editor.setMaximum(int(templatenode.getAttribute('maximum')))
+            if templatenode.hasAttribute('minimum'):
+                editor.setMinimum(int(templatenode.getAttribute('minimum')))
+            else:
+                editor.setMinimum(-sys.maxint-1)
+            if templatenode.hasAttribute('maximum'):
+                editor.setMaximum(int(templatenode.getAttribute('maximum')))
+            else:
+                editor.setMaximum(sys.maxint)
             if self.unitinside:
                 unit = node.getUnit()
                 if unit!=None: editor.setSuffix(' '+unit)
@@ -2301,7 +2312,6 @@ def getFontSubstitute(fontname):
 
     substitute = fontname
 
-    import sys
     if sys.platform=='win32':
         # Windows has a font substitution table in the registry, which links
         # "virtual" fonts (e.g. the "dialog box font") to their actual TrueType
@@ -2589,7 +2599,7 @@ class FigurePanel(QtGui.QWidget):
 
 class FigureDialog(QtGui.QDialog):
     
-    def __init__(self,parent,sourcefigure):
+    def __init__(self,parent,varstore=None,varname=None,sourcefigure=None,quitonclose=False):
         QtGui.QDialog.__init__(self,parent,QtCore.Qt.Window | QtCore.Qt.WindowMaximizeButtonHint | QtCore.Qt.WindowSystemMenuHint )
 
         self.setSizeGripEnabled(True)
@@ -2597,16 +2607,23 @@ class FigureDialog(QtGui.QDialog):
         self.panel = FigurePanel(self,detachbutton=False)
         layout.addWidget(self.panel)
 
-        properties = sourcefigure.getPropertiesCopy()
-        self.panel.figure.sources = sourcefigure.sources
-        self.panel.figure.defaultsource = sourcefigure.defaultsource
-        self.panel.plotFromProperties(properties)
+        if sourcefigure!=None:
+            properties = sourcefigure.getPropertiesCopy()
+            self.panel.figure.sources = sourcefigure.sources
+            self.panel.figure.defaultsource = sourcefigure.defaultsource
+            self.panel.plotFromProperties(properties)
+        else:
+            assert varstore!=None and varname!=None,'Both the variable store and the variable name must be provided.'
+            self.panel.figure.setUpdating(False)
+            self.panel.figure.addDataSource('main',varstore)
+            self.panel.figure.addVariable(varname)
+            self.panel.figure.setUpdating(True)
 
         title = self.panel.figure.properties.getProperty(['Title'],usedefault=True)
         self.setWindowTitle(title)
 
         # Prevent this window from keeping the appliaction alive after the main window was closed.
-        self.setAttribute(QtCore.Qt.WA_QuitOnClose,False)
+        self.setAttribute(QtCore.Qt.WA_QuitOnClose,quitonclose)
         
         self.resize(500, 500)
 
