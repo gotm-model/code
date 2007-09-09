@@ -1,7 +1,7 @@
-#$Id: common.py,v 1.27 2007-08-19 09:54:43 jorn Exp $
+#$Id: common.py,v 1.28 2007-09-09 06:42:26 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
-import matplotlib.numerix
+import matplotlib.numerix,pytz
 
 class referencedobject:
     def __init__(self):
@@ -26,15 +26,24 @@ class referencedobject:
 
 # datetime_displayformat: date format used to display datetime objects in the GUI.
 datetime_displayformat = '%Y-%m-%d %H:%M:%S'
+utc=pytz.timezone('UTC')
+
+def datetimefromtuple(tup):
+    return datetime.datetime(tup[0],tup[1],tup[2],tup[3],tup[4],tup[5],tzinfo=utc)
 
 # parsedatetime: Convert string to Python datetime object, using specified format.
 #   Counterpart of datetime.strftime.
 def parsedatetime(str,fmt):
-    t1tmp = time.strptime(str,fmt) 
-    return datetime.datetime(*t1tmp[0:6])
+    return datetimefromtuple(time.strptime(str,fmt))
     
 def timedelta2float(td):
     return td.days*3600*24 + td.seconds + td.microseconds/1e6
+    
+def date2num(array):
+    return matplotlib.dates.date2num(array)
+
+def num2date(array):
+    return matplotlib.dates.num2date(array)
 
 # ------------------------------------------------------------------------------------------
 # Command line argument utility functions

@@ -91,22 +91,14 @@ class Scenario(xmlstore.TypedStore):
     def loadFromNamelists(self, srcpath, strict = False, protodir = None):
         print 'Importing scenario from namelist files...'
 
+        # Try to open the specified path (currently can be zip, tar/gz or a directory)
+        try:
+            container = xmlstore.DataContainer.fromPath(srcpath)
+        except Exception,e:
+            raise Exception('Unable to load specified path. ' + unicode(e))
+
         # Start with empty scenario
         self.setStore(None)
-
-        container = None
-        if os.path.isdir(srcpath):
-            container = xmlstore.DataContainerDirectory(srcpath)
-        else:
-            # The source path does not point to a directory; it may be a compressed .tar.gz file.
-            if os.path.isfile(srcpath):
-                # The source path points to a file; try to open it as .tar.gz file.
-                try:
-                    container = xmlstore.DataContainerTar(srcpath)
-                except Exception,e:
-                    raise Exception('Path "%s" is not a directory or a tar/gz archive. %s' % (srcpath,str(e)))
-            else:
-                raise Exception('Path "%s" does not point to an existing directory or file.' % srcpath)
 
         globalsubs = []
         if protodir!=None:
@@ -163,8 +155,13 @@ class Scenario(xmlstore.TypedStore):
                     fullnmlfilename = fn
                     break
             else:
-                if mainchild.templatenode.hasAttribute('optional') or mainchild.isHidden():
-                    # This namelist file is missing but not required. Thus no worries: continue
+                if mainchild.templatenode.hasAttribute('optional'):
+                    # This namelist file is missing but not required. Use default values and continue
+                    if self.defaultstore!=None:
+                        mainchild.copyFrom(self.defaultstore.mapForeignNode(mainchild))
+                    continue
+                elif mainchild.isHidden():
+                    # This namelist file is missing but will not be used. Thus no worries: continue
                     continue
                 else:
                     raise namelist.NamelistParseException('Namelist file "%s" is not present.' % fullnmlfilename,None,None,None)
@@ -242,7 +239,7 @@ class Scenario(xmlstore.TypedStore):
                         if datetimematch==None:
                             raise namelist.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',fullnmlfilename,listname,varname)
                         refvals = map(int,datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                        val = datetime.datetime(*refvals)
+                        val = common.datetimefromtuple(refvals)
                     elif vartype=='file':
                         for fn in filelist:
                             if fn==val or fn.endswith('/'+val):

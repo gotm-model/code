@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.21 2007-08-17 15:24:24 jorn Exp $
+#$Id: scenariobuilder.py,v 1.22 2007-09-09 06:42:26 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -16,7 +16,7 @@ class ScenarioWidget(QtGui.QWidget):
         self.radioNew     = QtGui.QRadioButton('Create a new scenario from a template.',self)
         self.radioOpen    = QtGui.QRadioButton('Open an existing scenario.',self)
         self.radioImport1 = QtGui.QRadioButton('Import a namelist-based scenario from an existing directory.',self)
-        self.radioImport2 = QtGui.QRadioButton('Import a namelist-based scenario from a tar/gz archive.',self)
+        self.radioImport2 = QtGui.QRadioButton('Import a namelist-based scenario from an archive.',self)
 
         self.labTemplate = QtGui.QLabel('Template:',self)
         default2path = scenario.Scenario.defaultname2path()
@@ -34,7 +34,7 @@ class ScenarioWidget(QtGui.QWidget):
         self.pathImport2 = commonqt.PathEditor(self,header='Archive to import: ')
 
         self.pathOpen.filter    = 'GOTM scenario files (*.gotmscenario);;GOTM result files (*.gotmresult);;dataless GOTM scenario files (*.xml);;All files (*.*)'
-        self.pathImport2.filter = 'tar/gz files (*.tar.gz);;All files (*.*)'
+        self.pathImport2.filter = 'tar/gz files (*.tar.gz);;zip files (*.zip);;All files (*.*)'
         
         self.bngroup.addButton(self.radioNew,    0)
         self.bngroup.addButton(self.radioOpen,   1)
@@ -149,7 +149,7 @@ class ScenarioWidget(QtGui.QWidget):
                 assert node.getDefaultValue()!=None, 'No value set for "%s", but no default value is available.' % node
             emptycount = len(emptynodes)
             if emptycount>0:
-                QtGui.QMessageBox.information(self,'Scenario is incomplete','In this scenario %i variables do not have a value. These will be set to their default value.' % emptycount,QtGui.QMessageBox.Ok)
+                QtGui.QMessageBox.information(self,'Scenario is incomplete','In this scenario the following %i variables do not have a value:\n\n%s\n\nThese variables will be set to their default value.' % (emptycount,'\n'.join(['/'.join(n.location) for n in emptynodes])),QtGui.QMessageBox.Ok)
                 scen.changed = True
             
         return scen

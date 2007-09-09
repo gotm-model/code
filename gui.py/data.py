@@ -4,7 +4,7 @@ import common, xmlstore, scenario
 
 # Import NetCDF file format support
 from pynetcdf import NetCDFFile
-import matplotlib.numerix
+import matplotlib.numerix, numpy, pytz
 
 # Abstract class that contains one or more variables that can be plotted.
 # Classes deriving from it must support the virtual methods below.
@@ -321,7 +321,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             dimisdate = (dimtype=='datetime')
             if dimisdate:
                 datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
-                dimvalues = matplotlib.numerix.empty((obscount,),matplotlib.numerix.PyObject)
+                dimvalues = matplotlib.numerix.empty((obscount,),matplotlib.numerix.Float64)
             else:
                 dimvalues = matplotlib.numerix.empty((obscount,),matplotlib.numerix.Float32)
             self.data = [dimvalues,values]
@@ -342,7 +342,8 @@ class LinkedMatrix(LinkedFileVariableStore):
                     if datematch==None:
                         raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
                     refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                    dimvalue = datetime.datetime(*refvals)
+                    dimvalue = common.datetimefromtuple(refvals)
+                    dimvalue = common.date2num(dimvalue)
                 
                     # Read variable values.
                     data = line[datematch.end()+1:].split()
@@ -400,7 +401,8 @@ class LinkedMatrix(LinkedFileVariableStore):
             if datematch==None:
                 raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-            curdate = datetime.datetime(*refvals)
+            curdate = common.datetimefromtuple(refvals)
+            curdate = common.date2num(curdate)
             
             # Read values.
             data = line[datematch.end()+1:].split()
@@ -424,7 +426,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         
         # Convert sequences to numpy arrays and store these.
         times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
-        values = matplotlib.numerix.array(values,matplotlib.numerix.Float32)
+        values = matplotlib.numerix.array(values,matplotlib.numerix.Float64)
         self.data = [times,values]
             
         # Close data file
@@ -450,7 +452,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         for iline in range(vardata.shape[0]):
             if dimcount==1:
                 if dimisdate:
-                    target.write(dimdata[iline].strftime('%Y-%m-%d %H:%M:%S'))
+                    target.write(common.num2date(dimdata[iline]).strftime('%Y-%m-%d %H:%M:%S'))
                 else:
                     target.write('%.9g' % dimdata[iline])
             for ivar in range(varcount):
@@ -497,7 +499,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         depths = self.data[1]
         data = self.data[2]
         for itime in range(times.shape[0]):
-            target.write(times[itime].strftime('%Y-%m-%d %H:%M:%S'))
+            target.write(common.num2date(times[itime]).strftime('%Y-%m-%d %H:%M:%S'))
             curdepths = depths[itime]
             curdata = data[itime]
             depthcount = len(curdepths)
@@ -527,8 +529,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             if len(uniquedepths)<200:
                 depthgrid = matplotlib.numerix.array(uniquedepths,matplotlib.numerix.Float32)
             else:
-                depthstep = (uniquedepths[-1]-uniquedepths[0])/200
-                depthgrid = matplotlib.numerix.arange(uniquedepths[0],uniquedepths[-1]+depthstep,depthstep)
+                depthgrid = numpy.linspace(uniquedepths[0],uniquedepths[-1],200)
                 
             # Grid observed profiles to depth grid.
             griddedvalues = matplotlib.numerix.empty((times.shape[0],depthgrid.shape[0],varcount),matplotlib.numerix.Float32)
@@ -576,7 +577,8 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             if datematch==None:
                 raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-            curdate = datetime.datetime(*refvals)
+            curdate = common.datetimefromtuple(refvals)
+            curdate = common.date2num(curdate)
 
             # Get the number of observations and the depth direction.
             (depthcount,updown) = map(int, line[datematch.end()+1:].split())
@@ -633,7 +635,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                 callback('processed %i lines.' % iline,progress=pos/filesize)
                 
         # Convert sequence with times to numpy array.
-        times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
+        times = matplotlib.numerix.array(times,matplotlib.numerix.Float64)
         
         self.data = [times,depths,values]
         self.griddeddata = None
@@ -705,16 +707,17 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
                 dat = v[tuple([slice(b[0],b[1]+1) for b in boundindices])]
             except Exception, e:
                 raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
-            res.append(dat)
 
-            # Mask missing data.
+            # Process COARDS variable attributes.
             if hasattr(v,'missing_value'):
-                res[-1] = matplotlib.numerix.ma.masked_array(res[-1],res[-1]==v.missing_value)
+                dat = matplotlib.numerix.ma.masked_array(dat,dat==v.missing_value)
             if hasattr(v,'scale_factor'):
-                res[-1] *= v.scale_factor
+                dat *= v.scale_factor
             if hasattr(v,'add_offset'):
-                res[-1] += v.add_offset
-              
+                dat += v.add_offset
+
+            res.append(dat)
+        
           return res
 
     def __init__(self):
@@ -808,10 +811,8 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
                 istimedim = self.isTimeDimension(dimname)
                 if istimedim:
                     timeunit,timeref = self.getTimeReference(dimname)
-                    t = matplotlib.numerix.empty((coords.shape[0],),matplotlib.numerix.PyObject)
-                    for it in range(coords.shape[0]):
-                        t[it] = timeref + datetime.timedelta(timeunit*coords[it])
-                    coords = t
+                    timeref = common.date2num(timeref)
+                    coords = timeref+timeunit*matplotlib.numerix.asarray(coords,matplotlib.numerix.Float64)
                 
                 coords_stag = matplotlib.numerix.zeros((coords.shape[0]+1,),matplotlib.numerix.typecode(coords))
                 if coords.shape[0]==1:
@@ -820,12 +821,12 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
                     if istimedim:
                         if self.scenario!=None:
                             delta = self.scenario.getProperty(['output','dtsave'],usedefault=True)
-                            if delta!=None: delta = delta.getAsTimeDelta()
+                            if delta!=None: delta = delta.getAsSeconds()/86400.
                         if delta==None:
                             if coords[0]>timeref:
                                 delta=coords[0]-timeref
                             else:
-                                delta=timedelta.timedelta(days=1.)
+                                delta=1.
                     coords_stag[0] = coords[0]-delta/2
                     coords_stag[1] = coords[0]+delta/2
                 else:
@@ -897,7 +898,7 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
             raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time in "%s".' % (fullunit,reftime)
         hour,min,sec = map(int,timematch.group(1,2,3))
         reftime = reftime[timematch.end():]
-      dateref = datetime.datetime(year,month,day,hour,min,sec)
+      dateref = datetime.datetime(year,month,day,hour,min,sec,tzinfo=common.utc)
       if len(reftime)>0:
         timezonematch = re.match(r'(-?\d{1,2})(?::?(\d\d))?$',reftime)
         if timezonematch==None:
@@ -1102,7 +1103,7 @@ class Result(NetCDFStore):
         else:
             datafile = srcpath
 
-        NetCDFStore.load(datafile)
+        NetCDFStore.load(self,datafile)
 
         # Attached to an existing result: we consider it unchanged.
         self.changed = False
@@ -1130,13 +1131,11 @@ class Result(NetCDFStore):
             
         # Get names of NetCDF variables
         try:
-          #pycdf vars = nc.variables()
           vars = nc.variables
           if plotableonly:
               # Only take variables with 3 or 4 dimensions
               varNames = []
               for v in vars.keys():
-                  #pycdf dimnames = vars[v][0]
                   dimnames = vars[v].dimensions
                   dimcount = len(dimnames)
                   if   dimcount==3:
@@ -1185,13 +1184,15 @@ class MergedPlotVariableStore(PlotVariableStore):
             if bounds[0][0]!=None and bounds[0][0]>ifirst: ifirst = int(math.floor(bounds[0][0]))
             if bounds[0][1]!=None and bounds[0][1]<ilast : ilast  = int(math.ceil (bounds[0][1]))
 
-            res = [matplotlib.numerix.arange(float(ifirst),float(ilast+1))]
+            res = [numpy.linspace(float(ifirst),float(ilast),ilast-ifirst+1)]
             first = True
             for ivar,var in enumerate(self.vars[ifirst:ilast+1]):
                 curvals = var.getValues(bounds[1:],staggered=staggered,coordinatesonly=coordinatesonly)
                 if first:
+                    if coordinatesonly:
+                        res += curvals[:]
+                        break
                     res += curvals[:-1]
-                    if coordinatesonly: break
                     res.append(matplotlib.numerix.empty(tuple([ilast-ifirst+1]+list(curvals[-1].shape)),matplotlib.numerix.typecode(curvals[-1])))
                     first = False
                 res[-1][ivar,...] = curvals[-1]

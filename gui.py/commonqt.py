@@ -1,13 +1,13 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.36 2007-09-03 06:57:31 jorn Exp $
+#$Id: commonqt.py,v 1.37 2007-09-09 06:42:26 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
 
 import common,xmlstore,settings,plot,data
 
-import matplotlib.figure
+import matplotlib.figure, pytz
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
@@ -28,23 +28,17 @@ def getRadioWidth():
 # date/time objects
 # =======================================================================
 
-# qtdate2datetime: Convert Qt QDate object to Python datetime object
-def qtdate2datetime(qtdate):
-    return datetime.datetime(qtdate.year(),qtdate.month(),qtdate.day())
-
-# datetime2qtdate: Convert Python datetime object to Qt QDate object
-def datetime2qtdate(dt):
-    return QtCore.QDate(dt.year,dt.month,dt.day)
-
 # qtdatetime2datetime: Convert Qt QDateTime object to Python datetime object
 def qtdatetime2datetime(qtdatetime):
-    d = qtdatetime.date()
-    t = qtdatetime.time()
-    return datetime.datetime(d.year(),d.month(),d.day(),t.hour(),t.minute(),t.second())
+    qdt = qtdatetime.toUTC()
+    d = qdt.date()
+    t = qdt.time()
+    return datetime.datetime(d.year(),d.month(),d.day(),t.hour(),t.minute(),t.second(),tzinfo=common.utc)
 
 # datetime2qtdatetime: Convert Python datetime object to Qt QDateTime object
 def datetime2qtdatetime(dt):
-    return QtCore.QDateTime(QtCore.QDate(dt.year,dt.month,dt.day),QtCore.QTime(dt.hour,dt.minute,dt.second))
+    tm = dt.utctimetuple()
+    return QtCore.QDateTime(QtCore.QDate(tm.tm_year,tm.tm_mon,tm.tm_mday),QtCore.QTime(tm.tm_hour,tm.tm_min,tm.tm_sec),QtCore.Qt.UTC)
 
 # =======================================================================
 # Utilities for redirecting stderr (i.e., Python errors and tracebacks)
@@ -353,7 +347,10 @@ class LinkedFilePlotDialog(QtGui.QDialog):
                 colindex = index.column()
                 if self.rowlabels!=None: colindex -= 1
                 if colindex==-1:
-                    val = self.rowlabels[rowindex]
+                    if self.datelabels:
+                        val = common.num2date(self.rowlabels[rowindex])
+                    else:
+                        val = self.rowlabels[rowindex]
                 else:
                     val = self.datamatrix[rowindex,colindex]
 
@@ -375,7 +372,9 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         def setData(self,index,value,role=QtCore.Qt.EditRole):
             if role==QtCore.Qt.EditRole:
                 if value.canConvert(QtCore.QVariant.DateTime):
-                    value = qtdatetime2datetime(value.toDateTime())
+                    value = value.toDateTime()
+                    value.setTimeSpec(QtCore.Qt.UTC)
+                    value = common.date2num(qtdatetime2datetime(value))
                 elif value.canConvert(QtCore.QVariant.Double):
                     (value,ok) = value.toDouble()
                 else:
@@ -426,7 +425,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             if self.rowlabels!=None:
                 if self.datelabels:
                     if newrowindex==0:
-                        newval = datetime.datetime.today()
+                        newval = common.date2num(datetime.datetime.today())
                     else:
                         newval = self.rowlabels[-1]
                         if newrowindex>1: newval += self.rowlabels[-1]-self.rowlabels[-2]
@@ -924,8 +923,11 @@ class ScientificDoubleEditor(QtGui.QLineEdit):
         if text=='': return 0
         return float(text)
 
-    def setValue(self,value):
-        strvalue = unicode(value)
+    def setValue(self,value,format=None):
+        if format==None:
+            strvalue = unicode(value)
+        else:
+            strvalue = format % value
         self.setText(strvalue+self.suffix)
 
     def focusInEvent(self,e):
@@ -1166,7 +1168,9 @@ class PropertyDelegate(QtGui.QItemDelegate):
         elif nodetype=='bool' or nodetype=='select':
             model.setData(index,editor.itemData(editor.currentIndex()))
         elif nodetype=='datetime':
-            model.setData(index, QtCore.QVariant(editor.dateTime()))
+            value = editor.dateTime()
+            value.setTimeSpec(QtCore.Qt.UTC)
+            model.setData(index, QtCore.QVariant(value))
         elif nodetype=='timedelta':
             node.setValue(editor.value())
         elif nodetype=='file':
@@ -2241,6 +2245,7 @@ class PropertyEditor:
                     editor.button(0).setChecked(True)
             elif nodetype=='datetime':
                 editor.setDateTime(QtCore.QDateTime())
+                #editor.setDateTime(QtCore.QDateTime.currentDateTime().toUTC())
             elif nodetype=='timedelta':
                 editor.setValue(None)
             elif nodetype=='file':
@@ -2271,7 +2276,8 @@ class PropertyEditor:
                 else:
                     editor.button(value).setChecked(True)
             elif nodetype=='datetime':
-                editor.setDateTime(datetime2qtdatetime(value))
+                value = datetime2qtdatetime(value)
+                editor.setDateTime(value)
             elif nodetype=='timedelta':
                 editor.setValue(value)
             elif nodetype=='file':
@@ -2301,7 +2307,9 @@ class PropertyEditor:
             else:
                 return node.setValue(editor.checkedId())
         elif nodetype=='datetime':
-            return node.setValue(qtdatetime2datetime(editor.dateTime()))
+            value = editor.dateTime()
+            value.setTimeSpec(QtCore.Qt.UTC)
+            return node.setValue(qtdatetime2datetime(value))
         elif nodetype=='timedelta':
             return node.setValue(editor.value())
         elif nodetype=='file':
@@ -2381,14 +2389,14 @@ class FigurePanel(QtGui.QWidget):
         self.layoutButtons.addWidget(self.buttonProperties)
 
         # Button for exporting to file
-        self.buttonExport = QtGui.QPushButton(self.tr('&Export to file'),self)
+        self.buttonExport = QtGui.QPushButton(self.tr('&Export to file...'),self)
         self.buttonExport.setAutoDefault(False)
         self.buttonExport.setDefault(False)
         self.connect(self.buttonExport, QtCore.SIGNAL('clicked()'), self.onExport)
         self.layoutButtons.addWidget(self.buttonExport)
 
         # Button for printing
-        self.buttonPrint = QtGui.QPushButton(self.tr('&Print'),self)
+        self.buttonPrint = QtGui.QPushButton(self.tr('&Print...'),self)
         self.buttonPrint.setAutoDefault(False)
         self.buttonPrint.setDefault(False)
         self.connect(self.buttonPrint, QtCore.SIGNAL('clicked()'), self.onPrint)
@@ -2518,16 +2526,77 @@ class FigurePanel(QtGui.QWidget):
         window.resize(sz)
         window.setUpdatesEnabled(True)
 
+    class ExportSettings(QtGui.QDialog):
+        """Dialog with settings for figure export
+        """
+        def __init__(self,parent=None):
+            QtGui.QDialog.__init__(self,parent,QtCore.Qt.Dialog | QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint)
+            
+            layout = QtGui.QGridLayout()
+            
+            labWidth = QtGui.QLabel('Width:',self)
+            labHeight = QtGui.QLabel('Height:',self)
+            labResolution = QtGui.QLabel('Resolution:',self)
+            layout.addWidget(labWidth,     0,0)
+            layout.addWidget(labHeight,    1,0)
+            layout.addWidget(labResolution,2,0)
+
+            self.editWidth = ScientificDoubleEditor(self)
+            self.editHeight = ScientificDoubleEditor(self)
+            self.editResolution = ScientificDoubleEditor(self)
+            layout.addWidget(self.editWidth,     0,1)
+            layout.addWidget(self.editHeight,    1,1)
+            layout.addWidget(self.editResolution,2,1)
+            
+            labWidthUnit = QtGui.QLabel('cm',self)
+            labHeightUnit = QtGui.QLabel('cm',self)
+            labResolutionUnit = QtGui.QLabel('dpi',self)
+            layout.addWidget(labWidthUnit,     0,2)
+            layout.addWidget(labHeightUnit,    1,2)
+            layout.addWidget(labResolutionUnit,2,2)
+            
+            layout.setColumnStretch(3,1)
+
+            layoutButtons = QtGui.QHBoxLayout()
+
+            # Add "OK" button
+            self.bnOk = QtGui.QPushButton('&OK',self)
+            self.connect(self.bnOk, QtCore.SIGNAL('clicked()'), self.accept)
+            layoutButtons.addWidget(self.bnOk)
+
+            # Add "Cancel" button
+            self.bnCancel = QtGui.QPushButton('&Cancel',self)
+            self.connect(self.bnCancel, QtCore.SIGNAL('clicked()'), self.reject)
+            layoutButtons.addWidget(self.bnCancel)
+            
+            layout.addLayout(layoutButtons,3,0,1,4)
+
+            self.setLayout(layout)
+            
+            self.setWindowTitle('Figure export settings')
+
     def onExport(self):
+        dialog = self.ExportSettings(self)
+        oldwidth = self.canvas.figure.get_figwidth()
+        oldheight = self.canvas.figure.get_figheight()
+        olddpi = self.canvas.figure.get_dpi()
+        dialog.editWidth.setValue(oldwidth*2.54,'%.1f')
+        dialog.editHeight.setValue(oldheight*2.54,'%.1f')
+        dialog.editResolution.setValue(olddpi,'%.0f')
+        if dialog.exec_()!=QtGui.QDialog.Accepted: return
         fname = QtGui.QFileDialog.getSaveFileName(self,'Choose location to save plot to','','Portable Network Graphics (*.png);;Encapsulated PostScript (*.eps);;Scalable Vector Graphics (*.svg);;Bitmap (*.bmp)')
         if fname:
+            width = dialog.editWidth.value()/2.54
+            height = dialog.editHeight.value()/2.54
             QtGui.qApp.setOverrideCursor(QtCore.Qt.WaitCursor)
             agg = self.canvas.switch_backends(FigureCanvasAgg)
-            agg.print_figure(str(fname.toLatin1()),dpi=150, facecolor='w', edgecolor='w', orientation='portrait')
+            self.canvas.figure.set_figwidth(width)
+            self.canvas.figure.set_figheight(height)
+            agg.print_figure(str(fname.toLatin1()),dpi=dialog.editResolution.value(), facecolor='w', edgecolor='w', orientation='portrait')
+            self.canvas.figure.set_figwidth(oldwidth)
+            self.canvas.figure.set_figheight(oldheight)
             self.canvas.figure.set_canvas(self.canvas)
             QtGui.qApp.restoreOverrideCursor()
-
-            #self.canvas.print_figure( str(fname.toLatin1()) )
         
     def onPrint(self):
         printer = QtGui.QPrinter(QtGui.QPrinter.HighResolution)
@@ -2551,7 +2620,6 @@ class FigurePanel(QtGui.QWidget):
             canvas.figure.dpi.set(res)
             canvas.figure.set_facecolor('w')
             canvas.figure.set_edgecolor('w')
-
 
             # Draw the plot (in memory)
             print 'MatPlotLib: creating Agg in-memory bitmap.'

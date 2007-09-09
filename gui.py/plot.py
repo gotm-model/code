@@ -6,19 +6,13 @@ import matplotlib.dates
 
 import common,xmlstore,data
 
-class MonthFormatter(matplotlib.dates.DateFormatter):
-    def __init__(self):
-        matplotlib.dates.DateFormatter.__init__(self,'%b')
-
-    def __call__(self, x, pos=None):
-        return matplotlib.dates.DateFormatter.__call__(self,x,pos)[0]
-
 class CustomDateFormatter(matplotlib.dates.DateFormatter):
+    """Extends the matplotlib.dates.DateFormatter class, adding support
+    for the first letter of the day name (%e), the first letter of the
+    month name (%n) and the quarter numbers Q1, Q2, Q3, Q4 (%Q).
+    """
     def __init__(self,pattern):
         matplotlib.dates.DateFormatter.__init__(self,pattern)
-        self.pattern = pattern
-        self.replmonth   = ('%n' in self.pattern)
-        self.replquarter = ('%Q' in self.pattern)
 
     def strftime(self, dt, fmt):
         if ('%e' in fmt):
@@ -33,17 +27,21 @@ class CustomDateFormatter(matplotlib.dates.DateFormatter):
         return matplotlib.dates.DateFormatter.strftime(self,dt,fmt)
         
 class VariableTransform(data.PlotVariable):
-    def __init__(self,sourcevar,idprefix='',nameprefix=''):
+    def __init__(self,sourcevar,nameprefix='',longnameprefix='',name=None,longname=None):
         data.PlotVariable.__init__(self,None)
         self.sourcevar = sourcevar
-        self.idprefix   = idprefix
-        self.nameprefix = nameprefix
+        if name==None:
+            name = nameprefix + self.sourcevar.getName()
+        if longname==None: 
+            longname = longnameprefix + self.sourcevar.getLongName()
+        self.name     = name
+        self.longname = longname
 
     def getName(self):
-        return self.idprefix + self.sourcevar.getName()
+        return self.name
 
     def getLongName(self):
-        return self.nameprefix + self.sourcevar.getLongName()
+        return self.longname
 
     def getUnit(self):
         return self.sourcevar.getUnit()
@@ -53,34 +51,38 @@ class VariableTransform(data.PlotVariable):
 
     def getDimensionInfo(self,dimname):
         return self.sourcevar.getDimensionInfo(dimname)
-        
-class VariableSlice(VariableTransform):
-    def __init__(self,variable,slicedimension,slicecoordinate):
-        VariableTransform.__init__(self,variable)
-        self.slicedim = slicedimension
-        self.sliceval = slicecoordinate
+
+class VariableReduceDimension(VariableTransform):
+    def __init__(self,variable,dimension,**kwargs):
+        VariableTransform.__init__(self,variable,**kwargs)
+        self.dimension = dimension
 
         dims = self.sourcevar.getDimensions()
         for (i,d) in enumerate(dims):
-            if d==self.slicedim: break
+            if d==self.dimension: break
         else:
-            assert False, 'Slice dimension "%s" is not present for this variable.' % self.slicedim
-        self.islicedim = i
+            assert False, 'Dimension "%s" is not present for this variable.' % self.dimension
+        self.idimension = i
 
     def getDimensions(self):
         dims = self.sourcevar.getDimensions()
-        return [d for d in dims if d!=self.slicedim]
+        return [d for d in dims if d!=self.dimension]
+        
+class VariableSlice(VariableReduceDimension):
+    def __init__(self,variable,slicedimension,slicecoordinate,**kwargs):
+        VariableReduceDimension.__init__(self,variable,slicedimension,**kwargs)
+        self.sliceval = slicecoordinate
 
     def getValues(self,bounds,staggered=False,coordinatesonly=False):
-        bounds.insert(self.islicedim,(self.sliceval,self.sliceval))
+        bounds.insert(self.idimension,(self.sliceval,self.sliceval))
         dims = self.getDimensions()
         data = self.sourcevar.getValues(bounds,staggered=staggered,coordinatesonly=coordinatesonly)
         if data==None or 0 in data[-1].shape: return None
-        assert data[self.islicedim].ndim==1, 'Slicing is not (yet) supported for dimensions that have coordinates that depend on other dimensions.'
-        ipos = data[self.islicedim].searchsorted(self.sliceval)
-        if ipos==0 or ipos>=data[self.islicedim].shape[0]: return None
-        leftx  = data[self.islicedim][ipos-1]
-        rightx = data[self.islicedim][ipos]
+        assert data[self.idimension].ndim==1, 'Slicing is not (yet) supported for dimensions that have coordinates that depend on other dimensions.'
+        ipos = data[self.idimension].searchsorted(self.sliceval)
+        if ipos==0 or ipos>=data[self.idimension].shape[0]: return None
+        leftx  = data[self.idimension][ipos-1]
+        rightx = data[self.idimension][ipos]
         deltax = rightx-leftx
         stepx = self.sliceval-leftx
         if isinstance(deltax,datetime.timedelta):
@@ -88,45 +90,93 @@ class VariableSlice(VariableTransform):
         else:
             relstep = stepx/deltax
         if len(dims)==1:
-            data.pop(self.islicedim)
+            data.pop(self.idimension)
             for idat in range(len(data)):
                 if data[idat].ndim==2:
-                    if ipos>0 and ipos<len(data[self.islicedim]):
+                    if ipos>0 and ipos<len(data[self.idimension]):
                         # centered: left and right bound available
-                        left  = data[idat].take((ipos-1,),self.islicedim).squeeze()
-                        right = data[idat].take((ipos,  ),self.islicedim).squeeze()
+                        left  = data[idat].take((ipos-1,),self.idimension).squeeze()
+                        right = data[idat].take((ipos,  ),self.idimension).squeeze()
                         data[idat] = left + relstep*(right-left)
                     elif ipos==0:
                         # left-aligned (only right bound available)
-                        data[idat]=data[idat].take((ipos,),self.islicedim).squeeze()
+                        data[idat]=data[idat].take((ipos,),self.idimension).squeeze()
                     else:
                         # right-aligned (only left bound available)
-                        data[idat]=data[idat].take((ipos-1,),self.islicedim).squeeze()
+                        data[idat]=data[idat].take((ipos-1,),self.idimension).squeeze()
         else:
             assert False,'Cannot take slice because the result does not have 1 coordinate dimension (instead it has %i: %s).' % (len(dims),dims)
         return data
 
-class VariableAverage(VariableTransform):
+class VariableAverage(VariableReduceDimension):
 
-    def __init__(self,variable,dimname,newid=None,newname=None):
+    def __init__(self,variable,dimname,**kwargs):
         dimlongname = variable.getDimensionInfo(dimname)['label']
-        VariableTransform.__init__(self,variable,idprefix='ave_',nameprefix=dimlongname+'-averaged ')
-        self.dimname = dimname
-        self.newid = newid
-        self.newname = newname
-
-    def getDimensions(self):
-        dims = self.sourcevar.getDimensions()
-        return [d for d in dims if d!=self.dimname]
+        kwargs.setdefault('nameprefix',  'avg_')
+        kwargs.setdefault('longnameprefix',dimlongname+'-averaged ')
+        VariableReduceDimension.__init__(self,variable,dimname,**kwargs)
 
     def getValues(self,bounds,staggered=False,coordinatesonly=False):
-        idim = list(self.sourcevar.getDimensions()).index(self.dimname)
         newbounds = list(bounds)
-        newbounds.insert(idim,(None,None))
+        newbounds.insert(self.idimension,(None,None))
         vals = self.sourcevar.getValues(newbounds,staggered=staggered,coordinatesonly=coordinatesonly)
-        del vals[idim]
-        count = vals[-1].shape[idim]
-        vals[-1] = vals[-1].sum(axis=idim)/float(count)
+        
+        del vals[self.idimension]
+        count = vals[-1].shape[self.idimension]
+        vals[-1] = vals[-1].sum(axis=self.idimension)/float(count)
+        return vals
+
+class VariableFlat(VariableReduceDimension):
+
+    def __init__(self,variable,dimname,targetdim,**kwargs):
+        dimlongname = variable.getDimensionInfo(dimname)['label']
+        kwargs.setdefault('nameprefix',  'flat_')
+        kwargs.setdefault('longnameprefix',dimlongname+'-combined ')
+        VariableReduceDimension.__init__(self,variable,dimname,**kwargs)
+        
+        self.targetdim = targetdim
+        self.itargetdim = list(self.sourcevar.getDimensions()).index(self.targetdim)
+        self.inewtargetdim = self.itargetdim
+        if self.idimension<self.itargetdim: self.inewtargetdim -= 1
+        
+    def getValues(self,bounds,staggered=False,coordinatesonly=False):
+        assert len(bounds)==len(self.sourcevar.getDimensions())-1, 'Invalid number of dimension specified.'
+        
+        newbounds = list(bounds)
+        newbounds.insert(self.idimension,(None,None))
+        vals = self.sourcevar.getValues(newbounds,staggered=staggered,coordinatesonly=coordinatesonly)
+        
+        assert vals[self.idimension].ndim==1,'Currently, the dimension to flatten cannot depend on other dimensions.'
+        assert vals[self.itargetdim].ndim==1,'Currently, the dimension to absorb flattened values cannot depend on other dimensions.'
+        
+        # Get length of dimension to flatten, and of dimension to take flattened values.
+        sourcecount = vals[self.idimension].shape[0]
+        targetcount = vals[self.itargetdim].shape[0]
+
+        # Create new coordinates for dimension that absorbs flattened values.
+        newtargetcoords = matplotlib.numerix.empty((targetcount*sourcecount,),matplotlib.numerix.typecode(vals[self.itargetdim]))
+        
+        # Create a new value array.
+        if not coordinatesonly:
+            newdatashape = list(vals[-1].shape)
+            newdatashape[self.itargetdim] *= sourcecount
+            del newdatashape[self.idimension]
+            newdata = matplotlib.numerix.empty(newdatashape,matplotlib.numerix.typecode(vals[-1]))
+            
+        for i in range(0,targetcount):
+            newtargetcoords[i*sourcecount:(i+1)*sourcecount] = vals[self.itargetdim][i]
+            if not coordinatesonly:
+                for j in range(0,sourcecount):
+                    sourceindices = [slice(0,None,1) for k in range(vals[-1].ndim)]
+                    sourceindices[self.itargetdim] = slice(i,i+1,1)
+                    sourceindices[self.idimension] = slice(j,j+1,1)
+                    targetindices = [slice(0,None,1) for k in range(newdata.ndim)]
+                    targetindices[self.inewtargetdim] = slice(i*sourcecount+j,i*sourcecount+j+1,1)
+                    newdata[tuple(targetindices)] = vals[-1][tuple(sourceindices)].copy()
+
+        vals[self.itargetdim] = newtargetcoords
+        del vals[self.idimension]
+        if not coordinatesonly: vals[-1] = newdata
         return vals
         
 class Figure(common.referencedobject):
@@ -255,11 +305,12 @@ class Figure(common.referencedobject):
         for k,v in fontsizes.iteritems():
             if not isinstance(v,basestring): fontsizes[k]=v*textscaling
 
-        # Get the default line width
+        # Get the default line proeprties
         deflinewidth = matplotlib.rcParams['lines.linewidth']
         deflinecolor = matplotlib.rcParams['lines.color']
         deflinecolor = matplotlib.colors.colorConverter.to_rgb(deflinecolor)
         deflinecolor = xmlstore.StoreColor.fromNormalized(*deflinecolor)
+        defmarkersize = matplotlib.rcParams['lines.markersize']
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         dim2data = {}
@@ -308,7 +359,10 @@ class Figure(common.referencedobject):
             defaultseriesnode.getLocation(['PlotType2D']).setValue(0)
             defaultseriesnode.getLocation(['PlotType3D']).setValue(0)
             defaultseriesnode.getLocation(['LineWidth']).setValue(deflinewidth)
-            defaultseriesnode.getLocation(['LineColor']).setValue(deflinecolor)
+            defaultseriesnode.getLocation(['Color']).setValue(deflinecolor)
+            defaultseriesnode.getLocation(['MarkerType']).setValue(2)
+            defaultseriesnode.getLocation(['MarkerSize']).setValue(defmarkersize)
+            defaultseriesnode.getLocation(['MarkerFaceColor']).setValue(deflinecolor)
             defaultseriesnode.getLocation(['LogScale']).setValue(False)
             
             # Old defaults will be removed after all series are plotted.
@@ -326,6 +380,9 @@ class Figure(common.referencedobject):
                 if dimname in dim2data:
                     # We have boundaries set on the current dimension.
                     forcedrange = dim2data[dimname].get('forcedrange',(None,None))
+                    if var.getDimensionInfo(dimname)['datatype']=='datetime':
+                        if forcedrange[0]!=None: forcedrange[0] = common.date2num(forcedrange[0])
+                        if forcedrange[1]!=None: forcedrange[1] = common.date2num(forcedrange[1])
                     if forcedrange[0]==forcedrange[1] and forcedrange[0]!=None:
                         # Equal upper and lower boundary: take a slice.
                         var = VariableSlice(var,dimname,forcedrange[0])
@@ -359,19 +416,19 @@ class Figure(common.referencedobject):
             
             # Find non-singleton dimensions (singleton dimension: dimension with length one)
             # Store singleton dimensions as fixed extra coordinates.
-            gooddims = []
-            newdims = []
+            gooddimindices = []
+            gooddimnames = []
             fixedcoords = []
             for idim,dimname in enumerate(dims):
                 if data[-1].shape[idim]>1:
                     # Normal dimension (more than one coordinate)
-                    gooddims.append(idim)
-                    newdims.append(dimname)
+                    gooddimindices.append(idim)
+                    gooddimnames.append(dimname)
                 elif data[-1].shape[idim]==1:
                     # Singleton dimension
                     fixedcoords.append((dimname,data[idim][0]))
                     
-            dims = newdims
+            dims = gooddimnames
             values = data[-1].squeeze()
 
             # Get effective number of independent dimensions (singleton dimensions removed)
@@ -389,12 +446,13 @@ class Figure(common.referencedobject):
                 raise Exception('This variable has %i independent dimensions. Can only plot variables with 0, 1 or 2 independent dimensions.' % dimcount)
             plottype = seriesnode.getLocation([plottypenodename]).getValueOrDefault()
 
-            # We use a staggered grid (coordinates at interfaces, values at centers) for certain 3D plot types.
+            # We use a staggered grid (coordinates at interfaces,
+            # values at centers) for certain 3D plot types.
             staggered = (plottypenodename=='PlotType3D' and plottype==0)
 
             # Get coordinate data (now that we know whether to use a staggered grid)
             data = var.getValues(dimbounds,staggered=staggered,coordinatesonly=True)
-            data = [data[idim].squeeze() for idim in gooddims] + [values]
+            data = [data[idim].squeeze() for idim in gooddimindices] + [values]
 
             # Get the minimum and maximum values; store these as default.
             dim2data[varpath]['datarange'] = [data[-1].min(),data[-1].max()]
@@ -442,10 +500,6 @@ class Figure(common.referencedobject):
                 effrange = dim2data[dimname].setdefault('datarange',[None,None])
                 if effrange[0]==None or datamin<effrange[0]: effrange[0] = datamin
                 if effrange[1]==None or datamax>effrange[1]: effrange[1] = datamax
-
-                # Convert time (datetime objects) to time unit used by MatPlotLib
-                if dim2data[dimname]['datatype']=='datetime':
-                    data[idim] = matplotlib.dates.date2num(data[idim])
             
             # Plot the data series
             if len(dims)==0:
@@ -458,11 +512,20 @@ class Figure(common.referencedobject):
                 xdim = 0
                 datadim = 1
                 if (dim2data[dims[0]]['preferredaxis']=='y'):
+                    # Independent dimension prefers to take y-axis.
                     xdim = 1
                     datadim = 0
+                style = ''
+                if plottype!=0:
+                    markertype = seriesnode.getLocation(['MarkerType']).getValueOrDefault()
+                    markertypes = {0:'.',1:',',2:'o',3:'^',4:'s',5:'+',6:'x',7:'D'}
+                    style+=markertypes[markertype]
+                if plottype!=1: style+='-'
                 linewidth = seriesnode.getLocation(['LineWidth']).getValueOrDefault()
-                linecolor = seriesnode.getLocation(['LineColor']).getValueOrDefault()
-                lines = axes.plot(data[xdim],data[datadim],'-',linewidth=linewidth,color=linecolor.getNormalized())
+                color = seriesnode.getLocation(['Color']).getValueOrDefault()
+                markersize = seriesnode.getLocation(['MarkerSize']).getValueOrDefault()
+                markerfacecolor = seriesnode.getLocation(['MarkerFaceColor']).getValueOrDefault()
+                lines = axes.plot(data[xdim],data[datadim],style,linewidth=linewidth,color=color.getNormalized(),markersize=markersize,markerfacecolor=markerfacecolor.getNormalized())
                 if xdim==0:
                     dim2data[dims[0]]['axis'] = 'x'
                     dim2data[varpath]['axis'] = 'y'
@@ -476,6 +539,8 @@ class Figure(common.referencedobject):
                 ydim = 1
                 prefaxis = [dim2data[dims[0]]['preferredaxis'],dim2data[dims[1]]['preferredaxis']]
                 if (prefaxis[0]=='y' and prefaxis[1]!='y') or (prefaxis[1]=='x' and prefaxis[0]!='x'):
+                    # One independent dimension prefers to switch axis and the
+                    # other does not disagree.
                     xdim = 1
                     ydim = 0
 
@@ -660,7 +725,6 @@ class Figure(common.referencedobject):
                 
                 # Select tick type and spacing based on the time span to show.
                 dayspan = (valmax-valmin)
-                dayspan = dayspan.days + dayspan.seconds/86400.
                 unitlengths = {0:365,1:30.5,2:1.,3:1/24.,4:1/1440.}
                 if dayspan/365>=2:
                     location = 0
@@ -714,12 +778,8 @@ class Figure(common.referencedobject):
                 mplaxis.set_major_formatter(CustomDateFormatter(tickformats[tickformat]))
 
                 # Set the "natural" axis limits based on the data ranges.
-                defaxisnode.getLocation(['MinimumTime']).setValue(dat['datarange'][0])
-                defaxisnode.getLocation(['MaximumTime']).setValue(dat['datarange'][1])
-
-                # Convert axis boundaries to MatPlotLib datetime format.
-                valmin = matplotlib.dates.date2num(valmin)
-                valmax = matplotlib.dates.date2num(valmax)
+                defaxisnode.getLocation(['MinimumTime']).setValue(common.num2date(dat['datarange'][0]))
+                defaxisnode.getLocation(['MaximumTime']).setValue(common.num2date(dat['datarange'][1]))
             else:
                 # Set the "natural" axis limits based on the data ranges.
                 defaxisnode.getLocation(['Minimum']).setValue(dat['datarange'][0])

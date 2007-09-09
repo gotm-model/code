@@ -1030,4 +1030,16 @@
 			</element>
 			
 		</element>
+
+		<element id="seagrass" label="seagrass model" optional="True">
+			<element id="canopy">
+				<element id="seagrass_calc" type="bool"  label="use seagrass model"/>
+				<element id="grassfile"     type="file"  label="depth-varying maximum excursion limit and friction coefficient">
+					<condition type="eq" variable="./seagrass_calc" value="True"/>
+				</element>
+				<element id="XP_rat"        type="float" label="efficiency of turbulence production by seagrass friction">
+					<condition type="eq" variable="./seagrass_calc" value="True"/>
+				</element>
+			</element>
+		</element>
 </element>
