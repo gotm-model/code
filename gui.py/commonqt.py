@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.37 2007-09-09 06:42:26 jorn Exp $
+#$Id: commonqt.py,v 1.38 2007-09-10 15:20:07 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -1142,7 +1142,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
             value = value.toList()
             days,ret  = value[0].toInt()
             secs,ret  = value[1].toInt()
-            msecs,ret = value[2].toFloat()
+            msecs,ret = value[2].toDouble()
             value = xmlstore.StoreTimeDelta(days=days,seconds=secs,milliseconds=msecs)
             editor.setValue(value)
         elif nodetype=='file':

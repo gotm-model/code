@@ -55,7 +55,7 @@ class Scenario(xmlstore.TypedStore):
                     if ext=='.xml':
                         defaultname2path[root] = fullpath
                     else:
-                        print 'WARNING: default directory "" contains non-XML file "%s"; this file will be ignored.' % (Scenario.defaultdirname,filename)
+                        print 'WARNING: default directory "%s" contains non-XML file "%s"; this file will be ignored.' % (Scenario.defaultdirname,filename)
         else:
             print 'WARNING: no default scenarios will be available, because subdirectory "%s" is not present!' % Scenario.defaultdirname
         return defaultname2path
