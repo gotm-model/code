@@ -1,4 +1,4 @@
-!$Id: bio_npzd.F90,v 1.11 2007-01-06 11:49:15 kbk Exp $
+!$Id: bio_npzd.F90,v 1.12 2007-09-11 11:40:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,6 +38,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_npzd.F90,v $
+!  Revision 1.12  2007-09-11 11:40:52  jorn
+!  corrected NPZD units
+!
 !  Revision 1.11  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -267,19 +270,19 @@
 !-----------------------------------------------------------------------
 !BOC
    var_names(1) = 'nut'
-   var_units(1) = 'mmol/m**2'
+   var_units(1) = 'mmol/m**3'
    var_long(1) = 'nutrients'
 
    var_names(2) = 'phy'
-   var_units(2) = 'mmol/m**2'
+   var_units(2) = 'mmol/m**3'
    var_long(2) = 'phytoplankton'
 
    var_names(3) = 'zoo'
-   var_units(3) = 'mmol/m**2'
+   var_units(3) = 'mmol/m**3'
    var_long(3) = 'zooplankton'
 
    var_names(4) = 'det'
-   var_units(4) = 'mmol/m**2'
+   var_units(4) = 'mmol/m**3'
    var_long(4) = 'detritus'
 
    return
