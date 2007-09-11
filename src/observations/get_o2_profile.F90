@@ -1,4 +1,4 @@
-!$Id: get_o2_profile.F90,v 1.5 2007-01-06 11:49:15 kbk Exp $
+!$Id: get_o2_profile.F90,v 1.6 2007-09-11 13:24:32 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_o2_profile.F90,v $
+!  Revision 1.6  2007-09-11 13:24:32  jorn
+!  added stop after fatal error reading profile
+!
 !  Revision 1.5  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -102,6 +105,7 @@
                o2_prof = prof1(:,1)
             else
                FATAL 'Error reading oxygen profile around line # ',lines
+               stop 'get_o2_profile'
             end if
             EXIT
          else

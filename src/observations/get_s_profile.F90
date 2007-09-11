@@ -1,4 +1,4 @@
-!$Id: get_s_profile.F90,v 1.5 2006-11-27 09:25:18 kbk Exp $
+!$Id: get_s_profile.F90,v 1.6 2007-09-11 13:24:32 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_s_profile.F90,v $
+!  Revision 1.6  2007-09-11 13:24:32  jorn
+!  added stop after fatal error reading profile
+!
 !  Revision 1.5  2006-11-27 09:25:18  kbk
 !  use logical var init_saved_vars to initialise saved variables
 !
@@ -99,6 +102,7 @@
                sprof = prof1(:,1)
             else
                FATAL 'Error reading salinity profile around line # ',lines
+               stop 'get_s_profile'
             end if
             EXIT
          else

@@ -1,4 +1,4 @@
-!$Id: get_bio_profiles.F90,v 1.1 2007-06-19 10:38:03 kbk Exp $
+!$Id: get_bio_profiles.F90,v 1.2 2007-09-11 13:24:32 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_bio_profiles.F90,v $
+!  Revision 1.2  2007-09-11 13:24:32  jorn
+!  added stop after fatal error reading profile
+!
 !  Revision 1.1  2007-06-19 10:38:03  kbk
 !  initialise biological profiles from external file
 !
@@ -91,6 +94,7 @@
                end do
             else
                FATAL 'Error reading biological profiles around line #',lines
+               stop 'get_bio_profiles'
             end if
             EXIT
          else
