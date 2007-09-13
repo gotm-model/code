@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.16 2007-01-07 13:21:27 kbk Exp $
+!$Id: airsea.F90,v 1.16.2.1 2007-09-13 12:12:25 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -91,6 +91,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.16.2.1  2007-09-13 12:12:25  hb
+!  fixed sign in momentum flux calculation
+!
 !  Revision 1.16  2007-01-07 13:21:27  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -715,7 +718,7 @@
      heat = -(qe+qh+qb)
    end if
 
-   tmp = -cdd*rho_air*w
+   tmp = cdd*rho_air*w
    if(present(taux)) then
      taux  = tmp*wx
    else
