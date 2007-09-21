@@ -747,11 +747,30 @@ class Figure(common.referencedobject):
             dim = axis2dim[axisname]
             dat = dim2data[dim]
             
-            # Get the effective range of the current dimension
-            valmin,valmax = dat['datarange'][:]
+            # Range selected by MatPlotLib
+            if axisname=='x':
+                naturalrange = axes.get_xlim()
+            elif axisname=='y':
+                naturalrange = axes.get_ylim()
+            else:
+                naturalrange = dat['datarange'][:]
+                
+            # Range forced by user
             forcedrange = dat.get('forcedrange',(None,None))
-            if forcedrange[0]!=None: valmin = forcedrange[0]
-            if forcedrange[1]!=None: valmax = forcedrange[1]
+            
+            # Effective range used by data, after taking forced range into account.
+            effdatarange = dat['datarange'][:]
+            if forcedrange[0]!=None: effdatarange[0] = forcedrange[0]
+            if forcedrange[1]!=None: effdatarange[1] = forcedrange[1]
+
+            # Effective forced range, combining MatPlotLib selection with user overrides.
+            effrange = list(forcedrange)
+            if effrange[0]==None: effrange[0]=naturalrange[0]
+            if effrange[1]==None: effrange[1]=naturalrange[1]
+
+            # Whether to override MatPlotLib's choice of axis limits.
+            tightaxis = True
+            if tightaxis: effrange = effdatarange
             
             # Get the explicitly set and the default properties.
             axisnode = forcedaxes.getChildById('Axis',dim,create=True)
@@ -837,7 +856,7 @@ class Figure(common.referencedobject):
                                 28:'%b%Y'}
                 
                 # Select tick type and spacing based on the time span to show.
-                dayspan = (valmax-valmin)
+                dayspan = (effdatarange[1]-effdatarange[0])
                 unitlengths = {0:365,1:30.5,2:1.,3:1/24.,4:1/1440.}
                 if dayspan/365>=2:
                     location = 0
@@ -891,12 +910,12 @@ class Figure(common.referencedobject):
                 mplaxis.set_major_formatter(CustomDateFormatter(tickformats[tickformat]))
 
                 # Set the "natural" axis limits based on the data ranges.
-                defaxisnode['MinimumTime'].setValue(common.num2date(dat['datarange'][0]))
-                defaxisnode['MaximumTime'].setValue(common.num2date(dat['datarange'][1]))
+                defaxisnode['MinimumTime'].setValue(common.num2date(naturalrange[0]))
+                defaxisnode['MaximumTime'].setValue(common.num2date(naturalrange[1]))
             else:
                 # Set the "natural" axis limits based on the data ranges.
-                defaxisnode['Minimum'].setValue(dat['datarange'][0])
-                defaxisnode['Maximum'].setValue(dat['datarange'][1])
+                defaxisnode['Minimum'].setValue(naturalrange[0])
+                defaxisnode['Maximum'].setValue(naturalrange[1])
 
             # Obtain label for axis.
             label = axisnode['Label'].getValueOrDefault()
@@ -905,11 +924,11 @@ class Figure(common.referencedobject):
             # Set axis labels and boundaries.
             if axisname=='x':
                 if label!='': axes.set_xlabel(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
-                axes.set_xlim(valmin,valmax)
+                axes.set_xlim(effrange[0],effrange[1])
                 if dat['logscale']: axes.set_xscale('log')
             elif axisname=='y':
                 if label!='': axes.set_ylabel(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
-                axes.set_ylim(valmin,valmax)
+                axes.set_ylim(effrange[0],effrange[1])
                 if dat['logscale']: axes.set_yscale('log')
             elif axisname=='colorbar':
                 assert cb!=None, 'No colorbar has been created.'

@@ -751,6 +751,9 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
 
         self.cachedcoords = {}
         
+    def __str__(self):
+        return self.datafile
+        
     def getDimensionInfo(self,dimname):
         res = PlotVariableStore.getDimensionInfo(self,dimname)
         varinfo = self.nc.variables[dimname]
@@ -1252,8 +1255,13 @@ class MergedPlotVariableStore(PlotVariableStore):
         return self.stores[0].getDimensionInfo(dimname)
 
     def getVariable(self,varname):
-        vars = [store.getVariable(varname) for store in self.stores]
-        if None in vars: return None
+        vars = []
+        for store in self.stores:
+            var = store.getVariable(varname)
+            if var==None:
+                print 'Store "%s" does not contain variable "%s".' % (store,varname)
+                return None
+            vars.append(var)
         return MergedPlotVariableStore.MergedPlotVariable(self,vars,self.mergedimid)
 
 class CustomPlotVariableStore(PlotVariableStore):
