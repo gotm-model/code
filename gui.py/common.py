@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.29 2007-09-21 08:57:04 jorn Exp $
+#$Id: common.py,v 1.30 2007-09-21 14:49:40 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.numerix,pytz
@@ -160,7 +160,8 @@ def removeNodeChildren(node):
         node.removeChild(ch)
         ch.unlink()
 
-def copyNode(sourcenode,newparent,targetdoc=None):
+def copyNode(sourcenode,newparent,targetdoc=None,name=None,before=None):
+    # Create new document or find existing one if not provided.
     if newparent==None:
         if targetdoc==None:
             impl = xml.dom.minidom.getDOMImplementation()
@@ -169,19 +170,28 @@ def copyNode(sourcenode,newparent,targetdoc=None):
     elif targetdoc==None:
         targetdoc = newparent
         while targetdoc.parentNode!=None: targetdoc = targetdoc.parentNode
+
+    # Create new node
     cpy = None
     if sourcenode.nodeType==sourcenode.ELEMENT_NODE:
-        cpy = targetdoc.createElement(sourcenode.localName)
-        cpy = newparent.appendChild(cpy)
+        if name==None: name = sourcenode.localName
+        cpy = targetdoc.createElement(name)
         for key in sourcenode.attributes.keys():
             cpy.setAttribute(key,sourcenode.getAttribute(key))
     elif sourcenode.nodeType==sourcenode.TEXT_NODE:
         cpy = targetdoc.createTextNode(sourcenode.data)
-        cpy = newparent.appendChild(cpy)
     else:
         print 'WARNING: do not know how to copy node with type %s. Skipping...' % sourcenode.nodeType
+        
+    # Insert new node
     if cpy!=None:
+        if before==None:
+            cpy = newparent.appendChild(cpy)
+        else:
+            cpy = newparent.insertBefore(cpy,before)
         for ch in sourcenode.childNodes: copyNode(ch,cpy,targetdoc)
+        
+    # Return new node
     return cpy
 
 # ------------------------------------------------------------------------------------------

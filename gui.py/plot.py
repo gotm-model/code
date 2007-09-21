@@ -296,6 +296,8 @@ class Figure(common.referencedobject):
         # Set some default properties.
         self.defaultproperties.setProperty('FontName',defaultfont)
         self.defaultproperties.setProperty('FontScaling',100)
+        self.defaultproperties.setProperty('Grid',False)
+        setLineProperties(self.defaultproperties.root['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
 
         self.properties.setDefaultStore(self.defaultproperties)
 
@@ -395,13 +397,6 @@ class Figure(common.referencedobject):
         for k,v in fontsizes.iteritems():
             if not isinstance(v,basestring): fontsizes[k]=v*textscaling
 
-        # Get the default line proeprties
-        deflinewidth = matplotlib.rcParams['lines.linewidth']
-        deflinecolor = matplotlib.rcParams['lines.color']
-        deflinecolor = matplotlib.colors.colorConverter.to_rgb(deflinecolor)
-        deflinecolor = xmlstore.StoreColor.fromNormalized(*deflinecolor)
-        defmarkersize = matplotlib.rcParams['lines.markersize']
-
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         dim2data = {}
         defaultaxes = self.defaultproperties.root['Axes']
@@ -450,14 +445,9 @@ class Figure(common.referencedobject):
             # Create default series information
             defaultseriesnode = defaultdatanode.getChildById('Series',varpath,create=True)
             defaultseriesnode['PlotType3D'].setValue(0)
-            defaultseriesnode['LineStyle'].setValue(1)
-            defaultseriesnode['LineWidth'].setValue(deflinewidth)
-            defaultseriesnode['Color'].setValue(deflinecolor)
-            defaultseriesnode['MarkerType'].setValue(0)
-            defaultseriesnode['MarkerSize'].setValue(defmarkersize)
-            defaultseriesnode['MarkerFaceColor'].setValue(deflinecolor)
             defaultseriesnode['LogScale'].setValue(False)
             defaultseriesnode['HasConfidenceLimits'].setValue(False)
+            setLineProperties(defaultseriesnode['LineProperties'])
             
             # Old defaults will be removed after all series are plotted.
             # Register that the current variable is active, ensuring its default will remain.
@@ -502,7 +492,7 @@ class Figure(common.referencedobject):
 
             # Add the variable itself to the dimension list.
             dimdata = dim2data.setdefault(varpath,{'forcedrange':(None,None)})
-            dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','logscale':False})
+            dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','logscale':False,'tight':False})
             
             # Find non-singleton dimensions (singleton dimension: dimension with length one)
             # Store singleton dimensions as fixed extra coordinates.
@@ -586,16 +576,7 @@ class Figure(common.referencedobject):
                     xname,yname = yname,xname
                 
                 # Get data series style settings
-                markertype = seriesnode['MarkerType'].getValueOrDefault()
-                markertypes = {0:'',1:'.',2:',',3:'o',4:'^',5:'s',6:'+',7:'x',8:'D'}
-                style = markertypes[markertype]
-                linestyle = seriesnode['LineStyle'].getValueOrDefault()
-                linestyles = {0:'',1:'-'}
-                style += linestyles[linestyle]
-                linewidth = seriesnode['LineWidth'].getValueOrDefault()
-                color = seriesnode['Color'].getValueOrDefault()
-                markersize = seriesnode['MarkerSize'].getValueOrDefault()
-                markerfacecolor = seriesnode['MarkerFaceColor'].getValueOrDefault()
+                style,plotargs = getLineProperties(seriesnode['LineProperties'])
                 
                 # plot confidence interval (if any)
                 hasconfidencelimits = (varslice.ubound!=None or varslice.lbound!=None)
@@ -606,24 +587,26 @@ class Figure(common.referencedobject):
                     lbound = varslice.lbound
                     if lbound==None: lbound = varslice.data
                     
-                    if markertype==0:
+                    if seriesnode['LineProperties/MarkerType'].getValueOrDefault()==0:
                         defaultseriesnode['ConfidenceLimits/Style'].setValue(2)
                     else:
                         defaultseriesnode['ConfidenceLimits/Style'].setValue(1)
                     errorbartype = seriesnode['ConfidenceLimits/Style'].getValueOrDefault()
                     
-                    if errorbartype==1:
+                    if errorbartype==0:
+                        pass
+                    elif errorbartype==1:
                         # Plot error bars
                         xerr = None
                         yerr = numpy.vstack((varslice.data-lbound,ubound-varslice.data))
                         if switchaxes: xerr,yerr = yerr,xerr
-                        (line,errbars) = axes.errorbar(X,Y,fmt=None,xerr=xerr,yerr=yerr,ecolor=color.getNormalized(), zorder=zorder)
+                        (line,errbars) = axes.errorbar(X,Y,fmt=None,xerr=xerr,yerr=yerr,ecolor=plotargs['color'],zorder=zorder)
                     elif errorbartype==2:
                         # Plot shaded confidence area (filled polygon)
                         errX = numpy.hstack((varslice.coords[0],varslice.coords[0][::-1]))
                         errY = numpy.hstack((lbound,ubound[::-1]))
                         if switchaxes: errX,errY = errY,errX
-                        areacolor = color.copy()
+                        areacolor = seriesnode['LineProperties/Color'].getValueOrDefault()
                         areacolor.brighten(.5)
                         alpha = .7
                         axes.fill(errX,errY,facecolor=areacolor.getNormalized(),linewidth=0, alpha=alpha, zorder=zorder)
@@ -633,7 +616,7 @@ class Figure(common.referencedobject):
                 
                 # Plot line and/or markers
                 if style!='':
-                    lines = axes.plot(X,Y,style,linewidth=linewidth,color=color.getNormalized(),markersize=markersize,markerfacecolor=markerfacecolor.getNormalized(),zorder=zorder)
+                    lines = axes.plot(X,Y,zorder=zorder,**plotargs)
                 
                 dim2data[xname]['axis'] = 'x'
                 dim2data[yname]['axis'] = 'y'
@@ -769,8 +752,7 @@ class Figure(common.referencedobject):
             if effrange[1]==None: effrange[1]=naturalrange[1]
 
             # Whether to override MatPlotLib's choice of axis limits.
-            tightaxis = True
-            if tightaxis: effrange = effdatarange
+            if dat.get('tight',True): effrange = effdatarange
             
             # Get the explicitly set and the default properties.
             axisnode = forcedaxes.getChildById('Axis',dim,create=True)
@@ -933,8 +915,14 @@ class Figure(common.referencedobject):
             elif axisname=='colorbar':
                 assert cb!=None, 'No colorbar has been created.'
                 if label!='': cb.set_label(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
+                
+        # Create grid
+        gridnode = self.properties.root['Grid']
+        if gridnode.getValueOrDefault():
+            style,lineargs = getLineProperties(gridnode['LineProperties'])
+            axes.grid(True,**lineargs)
         
-        # Scale the text labels
+        # Scale the text labels for x- and y-axis.
         for l in axes.get_xaxis().get_ticklabels():
             l.set_size(fontsizes['xtick.labelsize'])
             l.set_name(fontfamily)
@@ -948,6 +936,7 @@ class Figure(common.referencedobject):
         offset.set_size(fontsizes['ytick.labelsize'])
         offset.set_name(fontfamily)
         
+        # Scale text labels for color bar.
         if cb!=None:
             offset = cb.ax.yaxis.get_offset_text()
             offset.set_size(fontsizes['ytick.labelsize'])
@@ -962,3 +951,40 @@ class Figure(common.referencedobject):
         for cb in self.callbacks['completeStateChange']: cb(len(forcedseries)>0)
 
         self.dirty = False
+        
+def setLineProperties(propertynode,mplsection='lines',**kwargs):
+    deflinewidth = matplotlib.rcParams[mplsection+'.linewidth']
+    deflinecolor = matplotlib.rcParams[mplsection+'.color']
+    deflinecolor = matplotlib.colors.colorConverter.to_rgb(deflinecolor)
+    deflinecolor = xmlstore.StoreColor.fromNormalized(*deflinecolor)
+    deflinestyle = matplotlib.rcParams[mplsection+'.linestyle']
+    linestyles = {'-':1,'--':2,'-.':3,':':4}
+    if deflinestyle in linestyles:
+        deflinestyle = linestyles[deflinestyle]
+    else:
+        deflinestyle = 0
+    defmarkersize = matplotlib.rcParams.get(mplsection+'.markersize',6.)
+
+    propertynode['CanHaveMarker'].setValue(kwargs.get('CanHaveMarker',True))
+    propertynode['LineStyle'].setValue(kwargs.get('LineStyle',deflinestyle))
+    propertynode['LineWidth'].setValue(kwargs.get('LineWidth',deflinewidth))
+    propertynode['Color'].setValue(kwargs.get('Color',deflinecolor))
+    propertynode['MarkerType'].setValue(kwargs.get('MarkerType',0))
+    propertynode['MarkerSize'].setValue(kwargs.get('MarkerSize',defmarkersize))
+    propertynode['MarkerFaceColor'].setValue(kwargs.get('MarkerFaceColor',deflinecolor))
+    
+def getLineProperties(propertynode):
+    markertype = propertynode['MarkerType'].getValueOrDefault()
+    markertypes = {0:'',1:'.',2:',',3:'o',4:'^',5:'s',6:'+',7:'x',8:'D'}
+    markertype = markertypes[markertype]
+    
+    linestyle = propertynode['LineStyle'].getValueOrDefault()
+    linestyles = {0:'',1:'-',2:'--',3:'-.',4:':'}
+    linestyle = linestyles[linestyle]
+    
+    linewidth = propertynode['LineWidth'].getValueOrDefault()
+    color = propertynode['Color'].getValueOrDefault()
+    markersize = propertynode['MarkerSize'].getValueOrDefault()
+    markerfacecolor = propertynode['MarkerFaceColor'].getValueOrDefault()
+    
+    return (markertype+linestyle,{'linestyle':linestyle,'marker':markertype,'linewidth':linewidth,'color':color.getNormalized(),'markersize':markersize,'markerfacecolor':markerfacecolor.getNormalized()})

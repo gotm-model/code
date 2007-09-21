@@ -1066,7 +1066,7 @@ class TypedStore(common.referencedobject):
                     # Get all value nodes that correspond to the current template child.
                     valuechildren = ()
                     if not templatechild.hasAttribute('maxoccurs'):
-                        # The node always occurs excatly one time.
+                        # The node always occurs exactly one time.
                         if self.valuenode!=None:
                             valuechildren = (common.findDescendantNode(self.valuenode,[childid]),)
                         else:
@@ -1752,16 +1752,39 @@ class TypedStore(common.referencedobject):
         
         # Resolve links to external documents
         links = self.schemadom.getElementsByTagName('link')
+        templates = dict([(node.getAttribute('id'),node) for node in self.schemadom.getElementsByTagName('template')])
         for link in links:
-            assert link.hasAttribute('path'), 'Link node does not have "path" attribute.'
-            refpath = os.path.abspath(os.path.join(os.path.dirname(schemapath),link.getAttribute('path')))
-            if not os.path.isfile(refpath):
-                raise Exception('Linked XML schema file "%s" does not exist.' % refpath)
-            childdom = xml.dom.minidom.parse(refpath)
+            assert link.hasAttribute('path') or link.hasAttribute('template'), 'Link node does not have "path" or "template" attribute.'
+            
+            if link.hasAttribute('path'):
+                # We need to copy from an external XML document.
+                refpath = os.path.abspath(os.path.join(os.path.dirname(schemapath),link.getAttribute('path')))
+                if not os.path.isfile(refpath):
+                    raise Exception('Linked XML schema file "%s" does not exist.' % refpath)
+                childdom = xml.dom.minidom.parse(refpath)
+                templateroot = childdom.documentElement
+            else:
+                # We need to copy from an internal template.
+                templateid = link.getAttribute('template')
+                assert templateid in templates, 'Cannot find template "%s".' % templateid
+                templateroot = templates[templateid]
+                
+            # Copy nodes
             linkparent = link.parentNode
-            newnode = common.copyNode(childdom.documentElement,linkparent,targetdoc=schemadom)
-            for key in link.attributes.keys():
-                if key!='path': newnode.setAttribute(key,link.getAttribute(key))
+            if link.hasAttribute('skiproot'):
+                for ch in templateroot.childNodes:
+                    newnode = common.copyNode(ch,linkparent,targetdoc=schemadom)
+            else:
+                newnode = common.copyNode(templateroot,linkparent,targetdoc=schemadom,name='element',before=link)
+                
+                # Copy attributes and children of link node to new node.
+                for key in link.attributes.keys():
+                    if key not in ('path','template','skiproot'):
+                        newnode.setAttribute(key,link.getAttribute(key))
+                for ch in link.childNodes:
+                    common.copyNode(ch,newnode,targetdoc=schemadom)
+                    
+            # Remove link node
             linkparent.removeChild(link)
         
         # Get schema version
@@ -1987,6 +2010,7 @@ class TypedStore(common.referencedobject):
         assert targetnode!=None, 'Cannot locate target node "%s" for node "%s".' % (targetpath,absourcepath)
         
         abstargetpath = self.getTemplateNodePath(targetnode)
+        assert len(abstargetpath)!=0, 'Target node "%s" for node "%s" corresponds to the root of the DOM tree. This is not allowed.' % (targetpath,absourcepath)
         if '.' in splittargetpath or '..' in splittargetpath:
             # Find a relative path from the referenced node to the current node.
             abstargetpath.pop()    # The reference node will be the parent of the specified node
@@ -2077,7 +2101,7 @@ class TypedStore(common.referencedobject):
                     if root.nodeType==root.ELEMENT_NODE and root.localName=='element' and root.getAttribute('id')==childname:
                         break
                 else:
-                    assert False, 'Could not find child node "%s" while locating "%s". Children: %s' % (childname,path,','.join([ch.getAttribute('id') for ch in children]))
+                    return None
         return root
 
     # getNodePath: obtains path specification for given template node
