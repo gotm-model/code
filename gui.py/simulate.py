@@ -9,9 +9,9 @@ print 'GOTM library reports version %s; will use scenario template %s.xml.' % (g
 def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
     namelistscenario = scen.convert(gotmscenarioversion)
     simulationdir = tempfile.mkdtemp('','gotm-')
-    namelistscenario.setProperty(['gotmrun','output','out_fmt'],2)
-    namelistscenario.setProperty(['gotmrun','output','out_dir'],'.')
-    namelistscenario.setProperty(['gotmrun','output','out_fn'],'result')
+    namelistscenario.setProperty('gotmrun/output/out_fmt',2)
+    namelistscenario.setProperty('gotmrun/output/out_dir','.')
+    namelistscenario.setProperty('gotmrun/output/out_fn','result')
     namelistscenario.writeAsNamelists(simulationdir)
     namelistscenario.release()
 

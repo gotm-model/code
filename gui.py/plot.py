@@ -3,6 +3,7 @@ import datetime,math,os.path
 import matplotlib
 import matplotlib.numerix,matplotlib.numerix.ma,matplotlib.colors
 import matplotlib.dates
+import numpy
 
 import common,xmlstore,data
 
@@ -29,6 +30,7 @@ class CustomDateFormatter(matplotlib.dates.DateFormatter):
 class VariableTransform(data.PlotVariable):
     def __init__(self,sourcevar,nameprefix='',longnameprefix='',name=None,longname=None):
         data.PlotVariable.__init__(self,None)
+        assert sourcevar!=None, 'The source variable for a transform cannot be None.'
         self.sourcevar = sourcevar
         if name==None:
             name = nameprefix + self.sourcevar.getName()
@@ -73,22 +75,23 @@ class VariableSlice(VariableReduceDimension):
         VariableReduceDimension.__init__(self,variable,slicedimension,**kwargs)
         self.sliceval = slicecoordinate
 
-    def getValues(self,bounds,staggered=False,coordinatesonly=False):
-        bounds.insert(self.idimension,(self.sliceval,self.sliceval))
-        dims = self.getDimensions()
-        data = self.sourcevar.getValues(bounds,staggered=staggered,coordinatesonly=coordinatesonly)
-        if data==None or 0 in data[-1].shape: return None
-        assert data[self.idimension].ndim==1, 'Slicing is not (yet) supported for dimensions that have coordinates that depend on other dimensions.'
-        ipos = data[self.idimension].searchsorted(self.sliceval)
-        if ipos==0 or ipos>=data[self.idimension].shape[0]: return None
-        leftx  = data[self.idimension][ipos-1]
-        rightx = data[self.idimension][ipos]
+    def getSlice(self,bounds):
+        newslice = self.Slice(self.getDimensions())
+
+        newbounds = list(bounds)
+        newbounds.insert(self.idimension,(self.sliceval,self.sliceval))
+        sourceslice = self.sourcevar.getSlice(newbounds)
+        if not sourceslice.isValid: return newslice
+
+        assert sourceslice.coords[self.idimension].ndim==1, 'Slicing is not (yet) supported for dimensions that have coordinates that depend on other dimensions.'
+        ipos = sourceslice.coords[self.idimension].searchsorted(self.sliceval)
+        if ipos==0 or ipos>=sourceslice.coords[self.idimension].shape[0]: return newslice
+        leftx  = sourceslice.coords[self.idimension][ipos-1]
+        rightx = sourceslice.coords[self.idimension][ipos]
         deltax = rightx-leftx
         stepx = self.sliceval-leftx
-        if isinstance(deltax,datetime.timedelta):
-            relstep = common.timedelta2float(stepx)/common.timedelta2float(deltax)
-        else:
-            relstep = stepx/deltax
+        relstep = stepx/deltax
+
         if len(dims)==1:
             data.pop(self.idimension)
             for idat in range(len(data)):
@@ -106,25 +109,103 @@ class VariableSlice(VariableReduceDimension):
                         data[idat]=data[idat].take((ipos-1,),self.idimension).squeeze()
         else:
             assert False,'Cannot take slice because the result does not have 1 coordinate dimension (instead it has %i: %s).' % (len(dims),dims)
-        return data
+        return newslice
 
 class VariableAverage(VariableReduceDimension):
 
-    def __init__(self,variable,dimname,**kwargs):
+    def __init__(self,variable,dimname,centermeasure=0,boundsmeasure=0,percentilewidth=.5,**kwargs):
         dimlongname = variable.getDimensionInfo(dimname)['label']
         kwargs.setdefault('nameprefix',  'avg_')
         kwargs.setdefault('longnameprefix',dimlongname+'-averaged ')
         VariableReduceDimension.__init__(self,variable,dimname,**kwargs)
+        self.centermeasure = centermeasure
+        self.boundsmeasure = boundsmeasure
+        self.percentilewidth = percentilewidth
 
-    def getValues(self,bounds,staggered=False,coordinatesonly=False):
+    def getSlice(self,bounds):
         newbounds = list(bounds)
         newbounds.insert(self.idimension,(None,None))
-        vals = self.sourcevar.getValues(newbounds,staggered=staggered,coordinatesonly=coordinatesonly)
+        sourceslice = self.sourcevar.getSlice(newbounds)
+        if not sourceslice.isValid(): return self.Slice()
         
-        del vals[self.idimension]
-        count = vals[-1].shape[self.idimension]
-        vals[-1] = vals[-1].sum(axis=self.idimension)/float(count)
-        return vals
+        slice = self.Slice(self.getDimensions())
+        for idim in range(len(sourceslice.coords)):
+            if idim==self.idimension: continue
+            coords = sourceslice.coords[idim]
+            coords_stag = sourceslice.coords_stag[idim]
+            if sourceslice.coords[idim].ndim>1:
+                coords = coords.take((0,),self.idimension)
+                coords_stag = coords_stag.take((0,),self.idimension)
+                coords.shape = coords.shape[:self.idimension]+coords.shape[self.idimension+1:]
+                coords_stag.shape = coords_stag.shape[:self.idimension]+coords_stag.shape[self.idimension+1:]
+            itargetdim = idim
+            if idim>self.idimension: itargetdim-=1
+            slice.coords[itargetdim] = coords
+            slice.coords_stag[itargetdim] = coords_stag
+        
+        weights = sourceslice.coords_stag[self.idimension]
+        if weights.ndim==1:
+            weights = common.replicateCoordinates(numpy.diff(weights),sourceslice.data,self.idimension)
+        else:
+            print weights.shape
+            weights = numpy.diff(weights,axis=self.idimension)
+            print weights.shape
+            print sourceslice.data.shape
+        
+        # Normalize weights so their sum over the dimension to analyze equals one
+        summedweights = weights.sum(axis=self.idimension)
+        newshape = list(summedweights.shape)
+        newshape.insert(self.idimension,1)
+        weights /= summedweights.reshape(newshape).repeat(sourceslice.data.shape[self.idimension],self.idimension)
+        
+        if self.centermeasure==0 or self.boundsmeasure==0:
+            # We need the mean and/or standard deviation. Calculate the mean,
+            # which is needed for either measure.
+            mean = (sourceslice.data*weights).sum(axis=self.idimension)
+        
+        if self.centermeasure==1 or self.boundsmeasure==1:
+            # We will need percentiles. Sort the data along dimension to analyze,
+            # and calculate cumulative (weigth-based) distribution.
+            
+            # Sort the data along the dimension to analyze, and sort weights
+            # in the same order
+            sortedindices = sourceslice.data.argsort(axis=self.idimension)
+            sorteddata    = common.argtake(sourceslice.data,sortedindices,axis=self.idimension)
+            sortedweights = common.argtake(weights,sortedindices,self.idimension)
+            
+            # Calculate cumulative distribution values along dimension to analyze.
+            cumsortedweights = sortedweights.cumsum(axis=self.idimension)
+            
+            # Calculate coordinates for interfaces between data points, to be used
+            # as grid for cumulative distribution
+            sorteddata = (numpy.concatenate((sorteddata.take((0,),axis=self.idimension),sorteddata),axis=self.idimension) + numpy.concatenate((sorteddata,sorteddata.take((-1,),axis=self.idimension)),axis=self.idimension))/2.
+            cumsortedweights = numpy.concatenate((numpy.zeros(cumsortedweights.take((0,),axis=self.idimension).shape,cumsortedweights.dtype),cumsortedweights),axis=self.idimension)
+        
+        if self.centermeasure==0:
+            # Use mean for center
+            slice.data = mean
+        elif self.centermeasure==1:
+            # Use median for center
+            slice.data = common.getPercentile(sorteddata,cumsortedweights,.5,self.idimension)
+        else:
+            assert False, 'Unknown choice %i for center measure.' % self.centermeasure
+
+        if self.boundsmeasure==0:
+            # Standard deviation will be used as bounds.
+            var = (sourceslice.data**2*weights).sum(axis=self.idimension) - mean**2
+            sd = numpy.sqrt(var)
+            slice.lbound = slice.data-sd
+            slice.ubound = slice.data+sd
+        elif self.boundsmeasure==1:
+            # Percentiles will be used as bounds.
+            lowcrit = (1.-self.percentilewidth)/2.
+            highcrit = 1.-lowcrit
+            slice.lbound = common.getPercentile(sorteddata,cumsortedweights, lowcrit,self.idimension)
+            slice.ubound = common.getPercentile(sorteddata,cumsortedweights,highcrit,self.idimension)
+        else:
+            assert False, 'Unknown choice %i for bounds measure.' % self.boundsmeasure
+        
+        return slice
 
 class VariableFlat(VariableReduceDimension):
 
@@ -139,45 +220,45 @@ class VariableFlat(VariableReduceDimension):
         self.inewtargetdim = self.itargetdim
         if self.idimension<self.itargetdim: self.inewtargetdim -= 1
         
-    def getValues(self,bounds,staggered=False,coordinatesonly=False):
+    def getSlice(self,bounds):
         assert len(bounds)==len(self.sourcevar.getDimensions())-1, 'Invalid number of dimension specified.'
         
         newbounds = list(bounds)
         newbounds.insert(self.idimension,(None,None))
-        vals = self.sourcevar.getValues(newbounds,staggered=staggered,coordinatesonly=coordinatesonly)
+        sourceslice = self.sourcevar.getSlice(newbounds)
+        newslice = self.Slice(self.getDimensions())
         
-        assert vals[self.idimension].ndim==1,'Currently, the dimension to flatten cannot depend on other dimensions.'
-        assert vals[self.itargetdim].ndim==1,'Currently, the dimension to absorb flattened values cannot depend on other dimensions.'
+        assert sourceslice.coords[self.idimension].ndim==1,'Currently, the dimension to flatten cannot depend on other dimensions.'
+        assert sourceslice.coords[self.itargetdim].ndim==1,'Currently, the dimension to absorb flattened values cannot depend on other dimensions.'
         
         # Get length of dimension to flatten, and of dimension to take flattened values.
-        sourcecount = vals[self.idimension].shape[0]
-        targetcount = vals[self.itargetdim].shape[0]
+        sourcecount = sourceslice.coords[self.idimension].shape[0]
+        targetcount = sourceslice.coords[self.itargetdim].shape[0]
 
         # Create new coordinates for dimension that absorbs flattened values.
-        newtargetcoords = matplotlib.numerix.empty((targetcount*sourcecount,),matplotlib.numerix.typecode(vals[self.itargetdim]))
+        newtargetcoords = matplotlib.numerix.empty((targetcount*sourcecount,),matplotlib.numerix.typecode(sourceslice.coords[self.itargetdim]))
         
         # Create a new value array.
-        if not coordinatesonly:
-            newdatashape = list(vals[-1].shape)
-            newdatashape[self.itargetdim] *= sourcecount
-            del newdatashape[self.idimension]
-            newdata = matplotlib.numerix.empty(newdatashape,matplotlib.numerix.typecode(vals[-1]))
+        newdatashape = list(sourceslice.data.shape)
+        newdatashape[self.itargetdim] *= sourcecount
+        del newdatashape[self.idimension]
+        newdata = matplotlib.numerix.empty(newdatashape,matplotlib.numerix.typecode(sourceslice.data))
             
         for i in range(0,targetcount):
-            newtargetcoords[i*sourcecount:(i+1)*sourcecount] = vals[self.itargetdim][i]
-            if not coordinatesonly:
-                for j in range(0,sourcecount):
-                    sourceindices = [slice(0,None,1) for k in range(vals[-1].ndim)]
-                    sourceindices[self.itargetdim] = slice(i,i+1,1)
-                    sourceindices[self.idimension] = slice(j,j+1,1)
-                    targetindices = [slice(0,None,1) for k in range(newdata.ndim)]
-                    targetindices[self.inewtargetdim] = slice(i*sourcecount+j,i*sourcecount+j+1,1)
-                    newdata[tuple(targetindices)] = vals[-1][tuple(sourceindices)].copy()
+            newtargetcoords[i*sourcecount:(i+1)*sourcecount] = sourceslice.coords[self.itargetdim][i]
+            for j in range(0,sourcecount):
+                sourceindices = [slice(0,None,1) for k in range(sourceslice.ndim)]
+                sourceindices[self.itargetdim] = slice(i,i+1,1)
+                sourceindices[self.idimension] = slice(j,j+1,1)
+                targetindices = [slice(0,None,1) for k in range(newdata.ndim)]
+                targetindices[self.inewtargetdim] = slice(i*sourcecount+j,i*sourcecount+j+1,1)
+                newdata[tuple(targetindices)] = sourceslice.data[tuple(sourceindices)].copy()
 
-        vals[self.itargetdim] = newtargetcoords
-        del vals[self.idimension]
-        if not coordinatesonly: vals[-1] = newdata
-        return vals
+        newslice.coords      = [c for i,c in enumerate(sourceslice.coords     ) if i!=self.idimension]
+        newslice.coords_stag = [c for i,c in enumerate(sourceslice.coords_stag) if i!=self.idimension]
+        newslice.coords[self.inewtargetdim] = newtargetcoords
+        newslice.data = newdata
+        return newslice
         
 class Figure(common.referencedobject):
 
@@ -186,8 +267,14 @@ class Figure(common.referencedobject):
     def setRoot(rootpath):
         Figure.schemadirname = os.path.join(rootpath,'schemas/figure')
 
-    def __init__(self,figure,defaultfont=None):
+    def __init__(self,figure=None,size=(10,8),defaultfont=None):
         common.referencedobject.__init__(self)
+
+        # If not matPlotLib figure is specified, create a new one, assuming
+        # we want to export to file.        
+        if figure==None:
+            figure = matplotlib.figure.Figure(figsize=(size[0]/2.54,size[1]/2.54))
+            canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(figure)
         
         # If no default font is specified, use the MatPlotLib default.
         if defaultfont==None:
@@ -207,8 +294,8 @@ class Figure(common.referencedobject):
         self.defaultproperties = xmlstore.TypedStore(os.path.join(Figure.schemadirname,'gotmgui.xml'))
 
         # Set some default properties.
-        self.defaultproperties.setProperty(['FontName'],defaultfont)
-        self.defaultproperties.setProperty(['FontScaling'],100)
+        self.defaultproperties.setProperty('FontName',defaultfont)
+        self.defaultproperties.setProperty('FontScaling',100)
 
         self.properties.setDefaultStore(self.defaultproperties)
 
@@ -263,10 +350,10 @@ class Figure(common.referencedobject):
         return self.properties.toXmlDom()
 
     def clearVariables(self):
-        self.properties.root.getLocation(['Data']).removeChildren('Series')
+        self.properties.root['Data'].removeChildren('Series')
 
     def addVariable(self,varname,source=None):
-        datanode = self.properties.root.getLocation(['Data'])
+        datanode = self.properties.root['Data']
         varpath = '/'+varname
         if source!=None: varpath = source+varpath
         series = datanode.addChild('Series',id=varpath)
@@ -277,6 +364,9 @@ class Figure(common.referencedobject):
 
     def resetChanged(self):
         self.haschanged = False
+        
+    def exportToFile(self,path,dpi=150):
+        self.canvas.print_figure(path,dpi=dpi)
 
     def update(self):
         if not self.updating:
@@ -287,7 +377,7 @@ class Figure(common.referencedobject):
 
         axes = self.figure.add_subplot(111)
         
-        textscaling = self.properties.getProperty(['FontScaling'],usedefault=True)/100.
+        textscaling = self.properties.getProperty('FontScaling',usedefault=True)/100.
         
         # First scale the default font size; this takes care of all relative font sizes (e.g. "small")
         matplotlib.font_manager.fontManager.set_default_size(textscaling*matplotlib.rcParams['font.size'])
@@ -295,7 +385,7 @@ class Figure(common.referencedobject):
         # Now get some relevant font sizes.
         # Scale font sizes with text scaling parameter if they are absolute sizes.
         # (if they are strings, they are relative sizes already)
-        fontfamily = self.properties.getProperty(['FontName'],usedefault=True)
+        fontfamily = self.properties.getProperty('FontName',usedefault=True)
         fontsizes = {
             'axes.titlesize' :10, #matplotlib.rcParams['axes.titlesize'],
             'axes.labelsize' :8, #matplotlib.rcParams['axes.labelsize'],
@@ -314,24 +404,26 @@ class Figure(common.referencedobject):
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         dim2data = {}
-        defaultaxes = self.defaultproperties.root.getLocation(['Axes'])
-        forcedaxes = self.properties.root.getLocation(['Axes'])
+        defaultaxes = self.defaultproperties.root['Axes']
+        forcedaxes = self.properties.root['Axes']
         for forcedaxis in forcedaxes.getLocationMultiple(['Axis']):
-            istimeaxis = forcedaxis.getLocation(['IsTimeAxis']).getValueOrDefault()
+            istimeaxis = forcedaxis['IsTimeAxis'].getValueOrDefault()
             if istimeaxis:
-                axmin = forcedaxis.getLocation(['MinimumTime']).getValue()
-                axmax = forcedaxis.getLocation(['MaximumTime']).getValue()
+                axmin = forcedaxis['MinimumTime'].getValue()
+                axmax = forcedaxis['MaximumTime'].getValue()
+                if axmin!=None: axmin = common.date2num(axmin)
+                if axmax!=None: axmax = common.date2num(axmax)
             else:
-                axmin = forcedaxis.getLocation(['Minimum']).getValue()
-                axmax = forcedaxis.getLocation(['Maximum']).getValue()
+                axmin = forcedaxis['Minimum'].getValue()
+                axmax = forcedaxis['Maximum'].getValue()
             dim2data[forcedaxis.getSecondaryId()] = {'forcedrange':[axmin,axmax]}
 
         # Shortcuts to the nodes specifying the variables to plot.
-        forceddatanode = self.properties.root.getLocation(['Data'])
+        forceddatanode = self.properties.root['Data']
         forcedseries = forceddatanode.getLocationMultiple(['Series'])
 
         # Shortcut to the node that will hold defaults for the plotted variables.
-        defaultdatanode = self.defaultproperties.root.getLocation(['Data'])
+        defaultdatanode = self.defaultproperties.root['Data']
         olddefaults = [node.getSecondaryId() for node in defaultdatanode.getLocationMultiple(['Series'])]
 
         # This variable will hold all long names of the plotted variables.
@@ -340,6 +432,7 @@ class Figure(common.referencedobject):
         
         # No colorbar created (yet).
         cb = None
+        zorder = 0
 
         for (iseries,seriesnode) in enumerate(forcedseries):
             varpath = seriesnode.getSecondaryId()
@@ -356,14 +449,15 @@ class Figure(common.referencedobject):
             
             # Create default series information
             defaultseriesnode = defaultdatanode.getChildById('Series',varpath,create=True)
-            defaultseriesnode.getLocation(['PlotType2D']).setValue(0)
-            defaultseriesnode.getLocation(['PlotType3D']).setValue(0)
-            defaultseriesnode.getLocation(['LineWidth']).setValue(deflinewidth)
-            defaultseriesnode.getLocation(['Color']).setValue(deflinecolor)
-            defaultseriesnode.getLocation(['MarkerType']).setValue(2)
-            defaultseriesnode.getLocation(['MarkerSize']).setValue(defmarkersize)
-            defaultseriesnode.getLocation(['MarkerFaceColor']).setValue(deflinecolor)
-            defaultseriesnode.getLocation(['LogScale']).setValue(False)
+            defaultseriesnode['PlotType3D'].setValue(0)
+            defaultseriesnode['LineStyle'].setValue(1)
+            defaultseriesnode['LineWidth'].setValue(deflinewidth)
+            defaultseriesnode['Color'].setValue(deflinecolor)
+            defaultseriesnode['MarkerType'].setValue(0)
+            defaultseriesnode['MarkerSize'].setValue(defmarkersize)
+            defaultseriesnode['MarkerFaceColor'].setValue(deflinecolor)
+            defaultseriesnode['LogScale'].setValue(False)
+            defaultseriesnode['HasConfidenceLimits'].setValue(False)
             
             # Old defaults will be removed after all series are plotted.
             # Register that the current variable is active, ensuring its default will remain.
@@ -380,9 +474,8 @@ class Figure(common.referencedobject):
                 if dimname in dim2data:
                     # We have boundaries set on the current dimension.
                     forcedrange = dim2data[dimname].get('forcedrange',(None,None))
-                    if var.getDimensionInfo(dimname)['datatype']=='datetime':
-                        if forcedrange[0]!=None: forcedrange[0] = common.date2num(forcedrange[0])
-                        if forcedrange[1]!=None: forcedrange[1] = common.date2num(forcedrange[1])
+                    if forcedrange[0]!=None: forcedrange[0] = forcedrange[0]
+                    if forcedrange[1]!=None: forcedrange[1] = forcedrange[1]
                     if forcedrange[0]==forcedrange[1] and forcedrange[0]!=None:
                         # Equal upper and lower boundary: take a slice.
                         var = VariableSlice(var,dimname,forcedrange[0])
@@ -392,14 +485,11 @@ class Figure(common.referencedobject):
                     # No boundaries set.
                     dimbounds.append((None,None))
                     
-            # Get final list of dimensions (after taking slices).
-            dims = var.getDimensions()
-
-            # Get the data (centered coordinates and values)
-            data = var.getValues(dimbounds,staggered=False)
+            # Get the data
+            varslice = var.getSlice(dimbounds)
             
             # Skip this variable if no data are available.
-            if data==None or 0 in data[-1].shape: continue
+            if not varslice.isValid(): continue
 
             # Now we are at the point where getting the data worked.
             # Register all used dimensions (even the "sliced out" ones)
@@ -411,55 +501,34 @@ class Figure(common.referencedobject):
                 dimdata.update(diminfo)
 
             # Add the variable itself to the dimension list.
-            dimdata = dim2data.setdefault(varpath,{'forcedrange':[None,None]})
+            dimdata = dim2data.setdefault(varpath,{'forcedrange':(None,None)})
             dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','logscale':False})
             
             # Find non-singleton dimensions (singleton dimension: dimension with length one)
             # Store singleton dimensions as fixed extra coordinates.
-            gooddimindices = []
-            gooddimnames = []
-            fixedcoords = []
-            for idim,dimname in enumerate(dims):
-                if data[-1].shape[idim]>1:
-                    # Normal dimension (more than one coordinate)
-                    gooddimindices.append(idim)
-                    gooddimnames.append(dimname)
-                elif data[-1].shape[idim]==1:
-                    # Singleton dimension
-                    fixedcoords.append((dimname,data[idim][0]))
-                    
-            dims = gooddimnames
-            values = data[-1].squeeze()
+            varslice = varslice.squeeze()
 
-            # Get effective number of independent dimensions (singleton dimensions removed)
-            dimcount = len(dims)
-            defaultseriesnode.getLocation(['DimensionCount']).setValue(dimcount)
+            defaultseriesnode['DimensionCount'].setValue(varslice.ndim)
 
-            # Get the plot type, based on the number of dimensions
-            if dimcount==0:
-                plottypenodename = 'PlotType2D'
-            elif dimcount==1:
-                plottypenodename = 'PlotType2D'
-            elif dimcount==2:
-                plottypenodename = 'PlotType3D'
-            else:
-                raise Exception('This variable has %i independent dimensions. Can only plot variables with 0, 1 or 2 independent dimensions.' % dimcount)
-            plottype = seriesnode.getLocation([plottypenodename]).getValueOrDefault()
+            # Get the plot type for 3D plots.
+            plottype3d = seriesnode['PlotType3D'].getValueOrDefault()
 
             # We use a staggered grid (coordinates at interfaces,
             # values at centers) for certain 3D plot types.
-            staggered = (plottypenodename=='PlotType3D' and plottype==0)
-
-            # Get coordinate data (now that we know whether to use a staggered grid)
-            data = var.getValues(dimbounds,staggered=staggered,coordinatesonly=True)
-            data = [data[idim].squeeze() for idim in gooddimindices] + [values]
+            staggered = (varslice.ndim==2 and plottype3d==0)
+            
+            # Create shortcut to applicable coordinate set.
+            if staggered:
+                coords = varslice.coords_stag
+            else:
+                coords = varslice.coords
 
             # Get the minimum and maximum values; store these as default.
-            dim2data[varpath]['datarange'] = [data[-1].min(),data[-1].max()]
+            dim2data[varpath]['datarange'] = [varslice.data.min(),varslice.data.max()]
 
             # Mask values that are not within (minimum, maximum) range.
-            #minimum = seriesnode.getLocation(['Minimum']).getValue()
-            #maximum = seriesnode.getLocation(['Maximum']).getValue()
+            #minimum = seriesnode['Minimum'].getValue()
+            #maximum = seriesnode['Maximum'].getValue()
             #if minimum!=None and maximum!=None:
             #    data[-1] = matplotlib.numerix.ma.masked_array(data[-1],matplotlib.numerix.logical_or(data[-1]<minimum, data[-1]>maximum))
             #elif minimum!=None:
@@ -468,7 +537,7 @@ class Figure(common.referencedobject):
             #    data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]>maximum)
 
             # Transform to log-scale if needed (first mask values <= zero)
-            logscale = seriesnode.getLocation(['LogScale']).getValueOrDefault()
+            logscale = seriesnode['LogScale'].getValueOrDefault()
             if logscale:
                 #data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]<=0.)
                 #data[-1] = matplotlib.numerix.ma.log10(data[-1])
@@ -477,24 +546,24 @@ class Figure(common.referencedobject):
             # Get label
             #defaultlabel = '%s (%s)' % (var.getLongName(),var.getUnit())
             #if logscale: defaultlabel = 'log10 '+defaultlabel
-            #defaultseriesnode.getLocation(['Label']).setValue(defaultlabel)
-            #label = seriesnode.getLocation(['Label']).getValueOrDefault()
+            #defaultseriesnode['Label'].setValue(defaultlabel)
+            #label = seriesnode['Label'].getValueOrDefault()
 
             # Enumerate over the dimension of the variable.
-            for idim,dimname in enumerate(dims):
+            for idim,dimname in enumerate(varslice.dimensions):
                 # Get minimum and maximum coordinates.
-                if data[idim].ndim==1:
+                if coords[idim].ndim==1:
                     # Coordinates provided as vector (1D) valid over whole domain.
-                    datamin = data[idim][0]
-                    datamax = data[idim][-1]
+                    datamin = coords[idim][0]
+                    datamax = coords[idim][-1]
                 else:
                     # Coordinates are provided as multidimensional array, with a value for every
                     # coordinate (data point) in the domain. We assume that for a given point
                     # in the space of the other coordinates, the current cordinate increases
                     # monotonously (i.e., position 0 holds the lowest value and position -1 the
                     # highest)
-                    datamin = data[idim].take((0, ),idim).min()
-                    datamax = data[idim].take((-1,),idim).max()
+                    datamin = coords[idim].take((0, ),idim).min()
+                    datamax = coords[idim].take((-1,),idim).max()
 
                 # Update effective dimension bounds                    
                 effrange = dim2data[dimname].setdefault('datarange',[None,None])
@@ -502,55 +571,91 @@ class Figure(common.referencedobject):
                 if effrange[1]==None or datamax>effrange[1]: effrange[1] = datamax
             
             # Plot the data series
-            if len(dims)==0:
+            if varslice.ndim==0:
                 # Zero-dimensional coordinate space (i.e., only a single data value is available)
                 # No plotting of coordinate-less data (yet)
                 pass
-            if len(dims)==1:
+            if varslice.ndim==1:
                 # One-dimensional coordinate space (x). Use x-axis for coordinates, unless the
                 # dimension information states it is preferably uses the y-axis.
-                xdim = 0
-                datadim = 1
-                if (dim2data[dims[0]]['preferredaxis']=='y'):
-                    # Independent dimension prefers to take y-axis.
-                    xdim = 1
-                    datadim = 0
-                style = ''
-                if plottype!=0:
-                    markertype = seriesnode.getLocation(['MarkerType']).getValueOrDefault()
-                    markertypes = {0:'.',1:',',2:'o',3:'^',4:'s',5:'+',6:'x',7:'D'}
-                    style+=markertypes[markertype]
-                if plottype!=1: style+='-'
-                linewidth = seriesnode.getLocation(['LineWidth']).getValueOrDefault()
-                color = seriesnode.getLocation(['Color']).getValueOrDefault()
-                markersize = seriesnode.getLocation(['MarkerSize']).getValueOrDefault()
-                markerfacecolor = seriesnode.getLocation(['MarkerFaceColor']).getValueOrDefault()
-                lines = axes.plot(data[xdim],data[datadim],style,linewidth=linewidth,color=color.getNormalized(),markersize=markersize,markerfacecolor=markerfacecolor.getNormalized())
-                if xdim==0:
-                    dim2data[dims[0]]['axis'] = 'x'
-                    dim2data[varpath]['axis'] = 'y'
-                else:
-                    dim2data[varpath]['axis'] = 'x'
-                    dim2data[dims[0]]['axis'] = 'y'
-            elif len(dims)==2:
+                X,Y = varslice.coords[0], varslice.data
+                xname,yname = varslice.dimensions[0], varpath
+                switchaxes = (dim2data[varslice.dimensions[0]]['preferredaxis']=='y')
+                if switchaxes:
+                    X,Y = Y,X
+                    xname,yname = yname,xname
+                
+                # Get data series style settings
+                markertype = seriesnode['MarkerType'].getValueOrDefault()
+                markertypes = {0:'',1:'.',2:',',3:'o',4:'^',5:'s',6:'+',7:'x',8:'D'}
+                style = markertypes[markertype]
+                linestyle = seriesnode['LineStyle'].getValueOrDefault()
+                linestyles = {0:'',1:'-'}
+                style += linestyles[linestyle]
+                linewidth = seriesnode['LineWidth'].getValueOrDefault()
+                color = seriesnode['Color'].getValueOrDefault()
+                markersize = seriesnode['MarkerSize'].getValueOrDefault()
+                markerfacecolor = seriesnode['MarkerFaceColor'].getValueOrDefault()
+                
+                # plot confidence interval (if any)
+                hasconfidencelimits = (varslice.ubound!=None or varslice.lbound!=None)
+                defaultseriesnode['HasConfidenceLimits'].setValue(hasconfidencelimits)
+                if hasconfidencelimits:
+                    ubound = varslice.ubound
+                    if ubound==None: ubound = varslice.data
+                    lbound = varslice.lbound
+                    if lbound==None: lbound = varslice.data
+                    
+                    if markertype==0:
+                        defaultseriesnode['ConfidenceLimits/Style'].setValue(2)
+                    else:
+                        defaultseriesnode['ConfidenceLimits/Style'].setValue(1)
+                    errorbartype = seriesnode['ConfidenceLimits/Style'].getValueOrDefault()
+                    
+                    if errorbartype==1:
+                        # Plot error bars
+                        xerr = None
+                        yerr = numpy.vstack((varslice.data-lbound,ubound-varslice.data))
+                        if switchaxes: xerr,yerr = yerr,xerr
+                        (line,errbars) = axes.errorbar(X,Y,fmt=None,xerr=xerr,yerr=yerr,ecolor=color.getNormalized(), zorder=zorder)
+                    elif errorbartype==2:
+                        # Plot shaded confidence area (filled polygon)
+                        errX = numpy.hstack((varslice.coords[0],varslice.coords[0][::-1]))
+                        errY = numpy.hstack((lbound,ubound[::-1]))
+                        if switchaxes: errX,errY = errY,errX
+                        areacolor = color.copy()
+                        areacolor.brighten(.5)
+                        alpha = .7
+                        axes.fill(errX,errY,facecolor=areacolor.getNormalized(),linewidth=0, alpha=alpha, zorder=zorder)
+                    else:
+                        assert False, 'Unknown error bar type %i.' % errorbartype
+                    zorder += 1
+                
+                # Plot line and/or markers
+                if style!='':
+                    lines = axes.plot(X,Y,style,linewidth=linewidth,color=color.getNormalized(),markersize=markersize,markerfacecolor=markerfacecolor.getNormalized(),zorder=zorder)
+                
+                dim2data[xname]['axis'] = 'x'
+                dim2data[yname]['axis'] = 'y'
+            elif varslice.ndim==2:
                 # Two-dimensional coordinate space (x,y). Use x-axis for first coordinate dimension,
                 # and y-axis for second coordinate dimension.
                 xdim = 0
                 ydim = 1
-                prefaxis = [dim2data[dims[0]]['preferredaxis'],dim2data[dims[1]]['preferredaxis']]
+                prefaxis = (dim2data[varslice.dimensions[0]]['preferredaxis'],dim2data[varslice.dimensions[1]]['preferredaxis'])
                 if (prefaxis[0]=='y' and prefaxis[1]!='y') or (prefaxis[1]=='x' and prefaxis[0]!='x'):
                     # One independent dimension prefers to switch axis and the
                     # other does not disagree.
                     xdim = 1
                     ydim = 0
 
-                dim2data[dims[xdim]]['axis'] = 'x'
-                dim2data[dims[ydim]]['axis'] = 'y'
-                dim2data[varpath]   ['axis'] = 'colorbar'
+                dim2data[varslice.dimensions[xdim]]['axis'] = 'x'
+                dim2data[varslice.dimensions[ydim]]['axis'] = 'y'
+                dim2data[varpath                  ]['axis'] = 'colorbar'
 
-                X = data[xdim]
-                Y = data[ydim]
-                Z = data[-1]
+                X = coords[xdim]
+                Y = coords[ydim]
+                Z = varslice.data
                 
                 # Get length of coordinate dimensions. Coordinates can be provided as vectors
                 # valid over the whole domain, or as n-D array that match the shape of the values.
@@ -582,17 +687,17 @@ class Figure(common.referencedobject):
                 norm = None
                 if logscale: norm = matplotlib.colors.LogNorm()
 
-                if plottype==1:
+                if plottype3d==1:
                     loc = None
                     if logscale: loc = matplotlib.ticker.LogLocator()
 
-                    cc = seriesnode.getLocation(['ContourCount']).getValue()
+                    cc = seriesnode['ContourCount'].getValue()
                     if cc!=None:
-                        pc = axes.contourf(X,Y,Z,cc,norm=norm,locator=loc)
+                        pc = axes.contourf(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder)
                     else:
-                        pc = axes.contourf(X,Y,Z,norm=norm,locator=loc)
+                        pc = axes.contourf(X,Y,Z,norm=norm,locator=loc,zorder=zorder)
                     if cc==None:
-                      defaultseriesnode.getLocation(['ContourCount']).setValue(len(pc.levels)-2)
+                      defaultseriesnode['ContourCount'].setValue(len(pc.levels)-2)
                 else:
                     pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.cm.jet,norm=norm)
                   
@@ -609,6 +714,9 @@ class Figure(common.referencedobject):
                 else:
                     pc.set_clim(dim2data[varpath]['forcedrange'])
                 cb = self.figure.colorbar(pc)
+            
+            # Increase z-order.
+            zorder += 1
 
             # Hold all plot properties so we can plot additional data series.
             axes.hold(True)
@@ -619,8 +727,13 @@ class Figure(common.referencedobject):
             defaultdatanode.removeChild('Series',oldname)
 
         # Create and store title
-        self.defaultproperties.setProperty(['Title'],', '.join(longnames))
-        title = self.properties.getProperty(['Title'],usedefault=True)
+        title = longnames[0]
+        for ln in longnames[1:]:
+            if ln!=title:
+                title = ', '.join(longnames)
+                break
+        self.defaultproperties.setProperty('Title',title)
+        title = self.properties.getProperty('Title',usedefault=True)
         assert title!=None, 'Title must be available, either explicitly set or as default.'
         if title!='': axes.set_title(title,size=fontsizes['axes.titlesize'],fontname=fontfamily)
 
@@ -647,11 +760,11 @@ class Figure(common.referencedobject):
             # Build default label for this axis
             deflab = dat['label']
             if dat['unit']!='': deflab += ' ('+dat['unit']+')'
-            defaxisnode.getLocation(['Label']).setValue(deflab)
-            defaxisnode.getLocation(['Unit']).setValue(dat['unit'])
+            defaxisnode['Label'].setValue(deflab)
+            defaxisnode['Unit'].setValue(dat['unit'])
 
             istimeaxis = dat['datatype']=='datetime'
-            defaxisnode.getLocation(['IsTimeAxis']).setValue(istimeaxis)
+            defaxisnode['IsTimeAxis'].setValue(istimeaxis)
 
             if istimeaxis:
                 assert axisname!='colorbar', 'The color bar cannot be a time axis.'
@@ -742,10 +855,10 @@ class Figure(common.referencedobject):
                     location = 4
                     tickformat = 15
 
-                defaxisnode.getLocation(['TickLocationTime']).setValue(location)
-                defaxisnode.getLocation(['TickFormatTime']).setValue(tickformat)
-                location   = axisnode.getLocation(['TickLocationTime']).getValueOrDefault()
-                tickformat = axisnode.getLocation(['TickFormatTime']).getValueOrDefault()
+                defaxisnode['TickLocationTime'].setValue(location)
+                defaxisnode['TickFormatTime'].setValue(tickformat)
+                location   = axisnode['TickLocationTime'].getValueOrDefault()
+                tickformat = axisnode['TickFormatTime'].getValueOrDefault()
 
                 # Calculate optimal interval between ticks, aiming for max. 8 ticks total.
                 tickcount = dayspan/unitlengths[location]
@@ -753,8 +866,8 @@ class Figure(common.referencedobject):
                 if interval<1: interval = 1
                 
                 # Save default tick interval, then get effective tick interval.
-                defaxisnode.getLocation(['TickIntervalTime']).setValue(interval)
-                interval = axisnode.getLocation(['TickIntervalTime']).getValueOrDefault()
+                defaxisnode['TickIntervalTime'].setValue(interval)
+                interval = axisnode['TickIntervalTime'].getValueOrDefault()
 
                 # Make sure we do not plot more than 100 ticks: non-informative and very slow!
                 tickcount = dayspan/unitlengths[location]
@@ -778,15 +891,15 @@ class Figure(common.referencedobject):
                 mplaxis.set_major_formatter(CustomDateFormatter(tickformats[tickformat]))
 
                 # Set the "natural" axis limits based on the data ranges.
-                defaxisnode.getLocation(['MinimumTime']).setValue(common.num2date(dat['datarange'][0]))
-                defaxisnode.getLocation(['MaximumTime']).setValue(common.num2date(dat['datarange'][1]))
+                defaxisnode['MinimumTime'].setValue(common.num2date(dat['datarange'][0]))
+                defaxisnode['MaximumTime'].setValue(common.num2date(dat['datarange'][1]))
             else:
                 # Set the "natural" axis limits based on the data ranges.
-                defaxisnode.getLocation(['Minimum']).setValue(dat['datarange'][0])
-                defaxisnode.getLocation(['Maximum']).setValue(dat['datarange'][1])
+                defaxisnode['Minimum'].setValue(dat['datarange'][0])
+                defaxisnode['Maximum'].setValue(dat['datarange'][1])
 
             # Obtain label for axis.
-            label = axisnode.getLocation(['Label']).getValueOrDefault()
+            label = axisnode['Label'].getValueOrDefault()
             if label==None: label=''
 
             # Set axis labels and boundaries.

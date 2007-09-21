@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.38 2007-09-10 15:20:07 jorn Exp $
+#$Id: commonqt.py,v 1.39 2007-09-21 08:57:04 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -880,7 +880,7 @@ class ScientificDoubleValidator(QtGui.QValidator):
         # Check if we can convert it into a floating point value
         try:
             v = float(input)
-        except:
+        except ValueError:
             return (QtGui.QValidator.Intermediate,pos)
 
         # Check for minimum and maximum.
@@ -895,7 +895,7 @@ class ScientificDoubleValidator(QtGui.QValidator):
 
         try:
             v = float(input.left(vallength))
-        except:
+        except ValueError:
             return
 
         if self.minimum!=None and v<self.minimum: input.replace(0,vallength,str(self.minimum))
@@ -1908,8 +1908,7 @@ class PropertyEditorFactory:
         if isinstance(location,xmlstore.TypedStore.Node):
             node = location
         else:
-            if isinstance(location,basestring): location = location.split('/')
-            node = self.store.root.getLocation(location)
+            node = self.store.root[location]
             assert node!=None, 'Unable to create editor for "%s"; this node does not exist.' % location
 
         # The editor inherits some optional arguments from the responsible factory.
@@ -2448,7 +2447,7 @@ class FigurePanel(QtGui.QWidget):
     def afterFigureStoreChange(self):
         for i in range(len(self.axescontrols)-1,-1,-1):
             self.destroyAxisControls(i)
-        for node in self.figure.properties.root.getLocation(['Axes']).getLocationMultiple(['Axis']):
+        for node in self.figure.properties.root['Axes'].getLocationMultiple(['Axis']):
             self.createAxisControls(node)
         
     def beforeFigureNodeVisibilityChange(self,node,visible,showhideonly):
@@ -2474,8 +2473,8 @@ class FigurePanel(QtGui.QWidget):
         axisname = axisid
         irow = self.layoutAxesRange.rowCount()
 
-        editorMin = self.factory.createEditor(node.getLocation(['Minimum']),self)
-        editorMax = self.factory.createEditor(node.getLocation(['Maximum']),self)
+        editorMin = self.factory.createEditor(node['Minimum'],self)
+        editorMax = self.factory.createEditor(node['Maximum'],self)
         editorMin.createLabel(text='%s range: ' % axisname)
         editorMax.createLabel(text=' to ')
         editorMin.addToGridLayout(self.layoutAxesRange,irow,0)
@@ -2484,8 +2483,8 @@ class FigurePanel(QtGui.QWidget):
         
         irow+=1
 
-        editorMinTime = self.factory.createEditor(node.getLocation(['MinimumTime']),self)
-        editorMaxTime = self.factory.createEditor(node.getLocation(['MaximumTime']),self)
+        editorMinTime = self.factory.createEditor(node['MinimumTime'],self)
+        editorMaxTime = self.factory.createEditor(node['MaximumTime'],self)
         editorMinTime.createLabel(text='%s range: ' % axisname)
         editorMaxTime.createLabel(text=' to ')
         editorMinTime.addToGridLayout(self.layoutAxesRange,irow,0)
@@ -2667,7 +2666,7 @@ class FigurePanel(QtGui.QWidget):
 
 class FigureDialog(QtGui.QDialog):
     
-    def __init__(self,parent,varstore=None,varname=None,sourcefigure=None,quitonclose=False):
+    def __init__(self,parent,varstore=None,varname=None,sourcefigure=None,figureproperties=None,quitonclose=False):
         QtGui.QDialog.__init__(self,parent,QtCore.Qt.Window | QtCore.Qt.WindowMaximizeButtonHint | QtCore.Qt.WindowSystemMenuHint )
 
         self.setSizeGripEnabled(True)
@@ -2675,25 +2674,38 @@ class FigureDialog(QtGui.QDialog):
         self.panel = FigurePanel(self,detachbutton=False)
         layout.addWidget(self.panel)
 
+        self.panel.figure.setUpdating(False)
         if sourcefigure!=None:
+            # A figure to copy settings from is provided.
             properties = sourcefigure.getPropertiesCopy()
             self.panel.figure.sources = sourcefigure.sources
             self.panel.figure.defaultsource = sourcefigure.defaultsource
             self.panel.plotFromProperties(properties)
-        else:
-            assert varstore!=None and varname!=None,'Both the variable store and the variable name must be provided.'
-            self.panel.figure.setUpdating(False)
+        elif figureproperties!=None:
+            # An XML DOM tree with figure settings is provided
+            assert varstore!=None,'If figure properties are specified, the variable store must be given as well.'
+            self.panel.figure.addDataSource('main',varstore)
+            self.panel.plotFromProperties(figureproperties)
+        elif varstore!=None and varname!=None:
+            # A figure store and variable name are provided.
             self.panel.figure.addDataSource('main',varstore)
             self.panel.figure.addVariable(varname)
-            self.panel.figure.setUpdating(True)
+        else:
+            # Nothing provided; figure will be empty.
+            assert varstore==None and varname==None,'If a variable is to be plotted, both the variable store and the variable name must be provided.'
+        self.panel.figure.setUpdating(True)
 
-        title = self.panel.figure.properties.getProperty(['Title'],usedefault=True)
+        title = self.panel.figure.properties.getProperty('Title',usedefault=True)
+        if title==None: title = 'Figure'
         self.setWindowTitle(title)
 
         # Prevent this window from keeping the appliaction alive after the main window was closed.
         self.setAttribute(QtCore.Qt.WA_QuitOnClose,quitonclose)
         
         self.resize(500, 500)
+        
+    def getFigure(self):
+        return self.panel.figure
 
 class InformationIcon(QtGui.QLabel):
     pixmap = None

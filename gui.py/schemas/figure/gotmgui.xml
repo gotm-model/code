@@ -77,61 +77,70 @@
 				<element id="Series" label="series" maxoccurs="10">
 					<element id="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
 					<element id="LogScale"       type="bool"   label="log-scale"/>
-					<element id="PlotType2D" type="select" label="plot type">
+					<element id="LineStyle" type="select" label="line style">
 						<condition type="eq" variable="./DimensionCount" value="1"/>
 						<options>
-							<option label="line"            value="0"/>
-							<option label="marker"          value="1"/>
-							<option label="line and marker" value="2"/>
+							<option label="none"     value="0"/>
+							<option label="solid"    value="1"/>
 						</options>
 					</element>
 					<element id="LineWidth" type="float" label="line width" unit="pt">
 						<condition type="and">
 							<condition type="eq" variable="./DimensionCount" value="1"/>
-							<condition type="ne" variable="./PlotType2D"     value="1"/>
+							<condition type="ne" variable="./LineStyle"      value="0"/>
 						</condition>
 					</element>
-					<element id="Color" type="color" label="color">
+					<element id="Color" type="color" label="line color">
 						<condition type="and">
 							<condition type="eq" variable="./DimensionCount" value="1"/>
 							<condition type="or">
-								<condition type="eq" variable="./PlotType2D" value="0"/>
-								<condition type="eq" variable="./PlotType2D" value="2"/>
-								<condition type="eq" variable="./MarkerType" value="3"/>
+								<condition type="ne" variable="./LineStyle"  value="0"/>
 								<condition type="eq" variable="./MarkerType" value="4"/>
+								<condition type="eq" variable="./MarkerType" value="5"/>
 							</condition>
 						</condition>
 					</element>
 					<element id="MarkerType" type="select" label="marker type">
-						<condition type="and">
-							<condition type="eq" variable="./DimensionCount" value="1"/>
-							<condition type="ne" variable="./PlotType2D"     value="0"/>
-						</condition>
+						<condition type="eq" variable="./DimensionCount" value="1"/>
 						<options>
-							<option label="points"   value="0"/>
-							<option label="pixels"   value="1"/>
-							<option label="circle"   value="2"/>
-							<option label="triangle" value="3"/>
-							<option label="square"   value="4"/>
-							<option label="plus"     value="5"/>
-							<option label="cross"    value="6"/>
-							<option label="diamond"  value="7"/>
+							<option label="none"     value="0"/>
+							<option label="points"   value="1"/>
+							<option label="pixels"   value="2"/>
+							<option label="circle"   value="3"/>
+							<option label="triangle" value="4"/>
+							<option label="square"   value="5"/>
+							<option label="plus"     value="6"/>
+							<option label="cross"    value="7"/>
+							<option label="diamond"  value="8"/>
 						</options>
 					</element>
 					<element id="MarkerSize" type="float" label="marker size" unit="pt">
 						<condition type="and">
 							<condition type="eq" variable="./DimensionCount" value="1"/>
-							<condition type="ne" variable="./PlotType2D"     value="0"/>
+							<condition type="ne" variable="./MarkerType"     value="0"/>
 						</condition>
 					</element>
 					<element id="MarkerFaceColor" type="color" label="marker color">
 						<condition type="and">
 							<condition type="eq" variable="./DimensionCount" value="1"/>
-							<condition type="ne" variable="./PlotType2D"     value="0"/>
-							<condition type="ne" variable="./MarkerType"     value="3"/>
+							<condition type="ne" variable="./MarkerType"     value="0"/>
 							<condition type="ne" variable="./MarkerType"     value="4"/>
+							<condition type="ne" variable="./MarkerType"     value="5"/>
 						</condition>
 					</element>
+					
+					<element id="HasConfidenceLimits" type="bool" hidden="True"/>
+					<element id="ConfidenceLimits" label="confidence limits">
+						<condition type="eq" variable="./HasConfidenceLimits" value="True"/>
+						<element id="Style" type="select" label="style">
+							<options>
+								<option label="none"        value="0"/>
+								<option label="error bars"  value="1"/>
+								<option label="shaded area" value="2"/>
+							</options>
+						</element>
+					</element>
+					
 					<element id="PlotType3D" type="select" label="plot type">
 						<condition type="eq" variable="./DimensionCount" value="2"/>
 						<options>

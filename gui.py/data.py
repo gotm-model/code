@@ -65,6 +65,48 @@ class PlotVariableStore:
 # Abstract class that represents a variable that can be plotted.
 # Classes deriving from it must support the virtual methods below.
 class PlotVariable:
+    
+    class Slice:
+        def __init__(self,dimensions=()):
+            self.dimensions = dimensions
+            self.ndim = len(dimensions)
+            self.data = None
+            self.coords = self.ndim*[None]
+            self.coords_stag = self.ndim*[None]
+            self.lbound = None
+            self.ubound = None
+        
+        def isValid(self):
+            return (self.ndim>0) and (self.data!=None) and (None not in self.coords) and (None not in self.coords_stag)
+
+        def generateStaggered(self):
+            for idim in range(self.ndim):
+                assert self.coords[idim]!=None, 'Cannot generate staggered coordinates because centered coordinates have not been set.'
+                assert self.coords[idim].ndim==1, 'Currently a staggered grid can only be generated automatically for 1D coordinate vectors.'
+                self.coords_stag[idim] = common.getCenters(self.coords[idim],addends=True)
+                
+        def squeeze(self):
+            # Find non-singleton dimensions (singleton dimension: dimension with length one)
+            # Store singleton dimensions as fixed extra coordinates.
+            gooddimindices = []
+            gooddimnames = []
+            self.fixedcoords = []
+            for idim,dimname in enumerate(self.dimensions):
+                if self.data.shape[idim]>1:
+                    # Normal dimension (more than one coordinate)
+                    gooddimindices.append(idim)
+                    gooddimnames.append(dimname)
+                elif self.data.shape[idim]==1:
+                    # Singleton dimension
+                    self.fixedcoords.append((dimname,self.coords[idim][0]))
+
+            newslice = PlotVariable.Slice(gooddimnames)
+            newslice.coords      = [self.coords     [i].squeeze() for i in gooddimindices]
+            newslice.coords_stag = [self.coords_stag[i].squeeze() for i in gooddimindices]
+            newslice.data = self.data.squeeze()
+            if self.lbound!=None: newslice.lbound = self.lbound.squeeze()
+            if self.ubound!=None: newslice.ubound = self.ubound.squeeze()
+            return newslice
 
     def __init__(self,store):
         self.store = store
@@ -93,15 +135,8 @@ class PlotVariable:
     def getDimensions(self):
         return ()
 
-    # getValues(bounds, staggered=False)
-    #   Return type: tuple of (numpy/numeric) arrays
-    #   Returns the arrays with coordinates (in order of dimnesions returned by getDimensions), and the value array.
-    #   Coordinates may be given as 1D arrays (if the coordinates are constant across all other dimensions), or as arrays with
-    #   the same numbers of dimensions as the value array (i.e., for every value a coordinate is supplied). If staggered is True,
-    #   coordinates must be given at the interfaces and values at the centers; then coordinate arrays must have one extra value in
-    #   every dimension compared to the value array.
-    def getValues(self,bounds,staggered=False,coordinatesonly=False):
-        return ()
+    def getSlice(self,bounds):
+        return self.Slice()
 
     def getDimensionInfo(self,dimname):
         return self.store.getDimensionInfo(dimname)
@@ -127,7 +162,7 @@ class LinkedFileVariableStore(PlotVariableStore):
         def getDimensions(self):
             return self.store.dimensionorder[:]
 
-        def getValues(self,bounds,staggered=False,coordinatesonly=False):
+        def getSlice(self,bounds):
             assert False, 'This function must be implemented by inheriting class.'
             
     @staticmethod
@@ -244,23 +279,18 @@ class LinkedFileVariableStore(PlotVariableStore):
 class LinkedMatrix(LinkedFileVariableStore):
 
     class LinkedMatrixVariable(LinkedFileVariableStore.LinkedFileVariable):
-        def getValues(self,bounds,staggered=False,coordinatesonly=False):
-            # Get a reference to all data, and stop if the coordinate dimension is zero.
-            data = self.store.getGriddedData()
-            if data[0].shape[0]==0: return None
-
-            res = []
-            if len(self.store.dimensions)==1:
-                res.append(data[0][:])
-            res.append(data[-1][:,self.index])
+        def getSlice(self,bounds):
+            slice = self.Slice(self.getDimensions())
             
-            # Interpolate coordinates to staggered grid if requested.
-            if staggered:
-                for idim in range(len(res)-1):
-                    delta = (res[idim][1:]-res[idim][:-1])/2
-                    res[idim] = matplotlib.numerix.concatenate(([res[idim][0]-delta[0]],res[idim][:-1]+delta,[res[idim][-1]+delta[-1]]),0)
-                    
-            return res
+            # Get a reference to all data, and stop if the coordinate dimension is empty.
+            data = self.store.getGriddedData()
+            if data[0].shape[0]==0: return slice
+
+            if slice.ndim==1:
+                slice.coords[0] = data[0][:]
+            slice.data = data[-1][:,self.index]
+            slice.generateStaggered()
+            return slice
 
     def __init__(self,node,type=0,dimensions={},dimensionorder=()):
         LinkedFileVariableStore.__init__(self,node,dimensions,dimensionorder)
@@ -367,7 +397,7 @@ class LinkedMatrix(LinkedFileVariableStore):
                 if filesize!=None:
                     try:
                         progress = float(f.tell())/filesize
-                    except:
+                    except AttributeError:
                         progress = None
                 callback('processed %i lines.' % iline,progress=progress)
             
@@ -420,7 +450,7 @@ class LinkedMatrix(LinkedFileVariableStore):
                 if filesize!=None:
                     try:
                         progress = float(f.tell())/filesize
-                    except:
+                    except AttributeError:
                         progress = None
                 callback('processed %i lines.' % iline,progress=progress)
         
@@ -462,22 +492,19 @@ class LinkedMatrix(LinkedFileVariableStore):
 class LinkedProfilesInTime(LinkedFileVariableStore):
 
     class LinkedProfilesInTimeVariable(LinkedFileVariableStore.LinkedFileVariable):
-        def getValues(self,bounds,staggered=False,coordinatesonly=False):
+        def getSlice(self,bounds):
+            varslice = self.Slice(self.getDimensions())
+
             data = self.store.getGriddedData()
-            res = []
-            if data[0].shape[0]==0: return None
+            if data[0].shape[0]==0: return varslice
 
             timebounds = common.findindices(bounds[0],data[0])
-            res.append(data[0][timebounds[0]:timebounds[1]+1])
-            res.append(data[1])
-            res.append(data[2][timebounds[0]:timebounds[1]+1,:,self.index])
-                
-            if staggered:
-                for idim in range(len(res)-1):
-                    delta = (res[idim][1:]-res[idim][:-1])/2
-                    res[idim] = matplotlib.numerix.concatenate(([res[idim][0]-delta[0]],res[idim][:-1]+delta,[res[idim][-1]+delta[-1]]),0)
+            varslice.coords[0] = data[0][timebounds[0]:timebounds[1]+1]
+            varslice.coords[1] = data[1]
+            varslice.data = data[2][timebounds[0]:timebounds[1]+1,:,self.index]
+            varslice.generateStaggered()
                     
-            return res
+            return varslice
 
     def __init__(self,node,dimensions=[],dimensionorder=()):
         LinkedFileVariableStore.__init__(self,node,dimensions,dimensionorder)
@@ -665,13 +692,16 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
           nc = self.store.getcdf()
           return nc.variables[self.varname].dimensions
 
-        def getValues(self,bounds,staggered=False,coordinatesonly=False):
+        def getSlice(self,bounds):
           nc = self.store.getcdf()
             
           v = nc.variables[self.varname]
           dimnames = v.dimensions
+          assert len(bounds)==len(dimnames), 'Number of specified bounds (%i) does not match number of dimensions (%i).' % (len(bounds),len(dimnames))
+          
+          varslice = self.Slice(dimnames)
+          
           boundindices = []
-          res = []
           
           for idim,dimname in enumerate(dimnames):
             if dimname=='z' or dimname=='z1':
@@ -680,45 +710,37 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
                 depthbounds = (0,z.shape[1])
                 timebounds = boundindices[list(dimnames).index('time')]
                 if dimname=='z':
-                    if staggered:
-                        res.append(z_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2])
-                    else:
-                        res.append(z[timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1])
+                    varslice.coords     [idim] = z     [timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1]
+                    varslice.coords_stag[idim] = z_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
                 elif dimname=='z1':
-                    if staggered:
-                        res.append(z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2])
-                    else:
-                        res.append(z1[timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2])
+                    varslice.coords     [idim] = z1     [timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2]
+                    varslice.coords_stag[idim] = z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]  :depthbounds[1]+2]
                 boundindices.append(depthbounds)
             else:
                 # Get coordinates and bounds of this dimension.
                 (coords,coords_stag) = self.store.getCoordinates(dimname)
                 if coords==None: return None
                 curbounds = common.findindices(bounds[idim],coords)
-                if not staggered:
-                    res.append(coords[curbounds[0]:curbounds[1]+1])
-                else:
-                    res.append(coords_stag[curbounds[0]:curbounds[1]+2])
+                varslice.coords     [idim] = coords     [curbounds[0]:curbounds[1]+1]
+                varslice.coords_stag[idim] = coords_stag[curbounds[0]:curbounds[1]+2]
                 boundindices.append(curbounds)
 
-          # Add value data, if needed.
-          if not coordinatesonly:
-            try:
-                dat = v[tuple([slice(b[0],b[1]+1) for b in boundindices])]
-            except Exception, e:
-                raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
+          try:
+            dat = v[tuple([slice(b[0],b[1]+1) for b in boundindices])]
+          except Exception, e:
+            raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
 
-            # Process COARDS variable attributes.
-            if hasattr(v,'missing_value'):
-                dat = matplotlib.numerix.ma.masked_array(dat,dat==v.missing_value)
-            if hasattr(v,'scale_factor'):
-                dat *= v.scale_factor
-            if hasattr(v,'add_offset'):
-                dat += v.add_offset
+        # Process COARDS variable attributes.
+          if hasattr(v,'missing_value'):
+            dat = matplotlib.numerix.ma.masked_array(dat,dat==v.missing_value)
+          if hasattr(v,'scale_factor'):
+            dat *= v.scale_factor
+          if hasattr(v,'add_offset'):
+            dat += v.add_offset
 
-            res.append(dat)
+          varslice.data = dat
         
-          return res
+          return varslice
 
     def __init__(self):
         common.referencedobject.__init__(self)
@@ -820,7 +842,7 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
                     delta = 1.
                     if istimedim:
                         if self.scenario!=None:
-                            delta = self.scenario.getProperty(['output','dtsave'],usedefault=True)
+                            delta = self.scenario.getProperty('output/dtsave',usedefault=True)
                             if delta!=None: delta = delta.getAsSeconds()/86400.
                         if delta==None:
                             if coords[0]>timeref:
@@ -862,6 +884,11 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
             z_med = matplotlib.numerix.concatenate((z,matplotlib.numerix.take(z1,(-1,),1)),1)
             z_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z_med,(0,),0),z_med,matplotlib.numerix.take(z_med,(-1,),0)),0)
             z1_stag = 0.5 * (z_med[0:z_med.shape[0]-1,:] + z_med[1:z_med.shape[0],:])
+            
+            z.shape = list(z.shape)+[1,1]
+            z1.shape = list(z1.shape)+[1,1]
+            z_stag.shape = list(z_stag.shape)+[1,1]
+            z1_stag.shape = list(z1_stag.shape)+[1,1]
 
             self.cachedcoords['z']       = z
             self.cachedcoords['z1']      = z1
@@ -870,11 +897,15 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
 
         return (self.cachedcoords['z'],self.cachedcoords['z1'],self.cachedcoords['z_stag'],self.cachedcoords['z1_stag'])
         
+    class ReferenceTimeParseError(Exception):
+        def __init__(self,error):
+            Exception.__init__(self,error)
+        
     def isTimeDimension(self,dimname):
         # See if specified dimension is a time dimension according to COARDS convention.
         try:
             timeunit,timeref = self.getTimeReference(dimname)
-        except:
+        except self.ReferenceTimeParseError:
             return False
         return True
 
@@ -882,27 +913,27 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
       # Retrieve time unit (in days) and reference date/time, based on COARDS convention.
       fullunit = self.getcdf().variables[dimname].units
       if ' since ' not in fullunit:
-          raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: string does not contain " since ".' % fullunit
+          raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: string does not contain " since ".' % fullunit)
       timeunit,reftime = fullunit.split(' since ')
       
       # Parse the reference date, time and timezone
       datematch = re.match(r'(\d\d\d\d)[-\/](\d{1,2})-(\d{1,2})\s*',reftime)
       if datematch==None:
-        raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse date in "%s".' % (fullunit,reftime)
+        raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse date in "%s".' % (fullunit,reftime))
       year,month,day = map(int,datematch.group(1,2,3))
       hour,min,sec = 0,0,0
       reftime = reftime[datematch.end():]
       if len(reftime)>0:
         timematch = re.match(r'(\d{1,2}):(\d{1,2}):(\d{1,2}(?:\.\d*)?)\s*',reftime)
         if timematch==None:
-            raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time in "%s".' % (fullunit,reftime)
+            raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time in "%s".' % (fullunit,reftime))
         hour,min,sec = map(int,timematch.group(1,2,3))
         reftime = reftime[timematch.end():]
       dateref = datetime.datetime(year,month,day,hour,min,sec,tzinfo=common.utc)
       if len(reftime)>0:
         timezonematch = re.match(r'(-?\d{1,2})(?::?(\d\d))?$',reftime)
         if timezonematch==None:
-            raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time zone in "%s".' % (fullunit,reftime)
+            raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time zone in "%s".' % (fullunit,reftime))
         if timezonematch.group(2)==None:
             dhour,dmin = int(timezonematch.group(1)),0
         else:
@@ -922,7 +953,7 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
       elif timeunit in ('years','year','yrs','yr','ys','y'):
           timeunit = 365.   # udunits convention: year=365 days
       else:
-          raise '"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: unknown time unit "%s".' % (fullunit,timeunit)
+          raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: unknown time unit "%s".' % (fullunit,timeunit))
       
       return timeunit,dateref
 
@@ -977,7 +1008,7 @@ class Result(NetCDFStore):
 
         if not addfiguresettings:
             # First clear all figure settings.
-            self.store.root.getLocation(['FigureSettings']).clearValue(recursive=True)
+            self.store.root['FigureSettings'].clearValue(recursive=True)
 
         # Add the XML file describing result properties.            
         df = xmlstore.DataFileXmlNode(self.store.root.valuenode)
@@ -1064,13 +1095,13 @@ class Result(NetCDFStore):
             self.path = None
 
     def setFigure(self,name,source):
-        setroot = self.store.root.getLocation(['FigureSettings'])
+        setroot = self.store.root['FigureSettings']
         fignodename = source.root.templatenode.getAttribute('id')
         fig = setroot.getChildById(fignodename,name,create=True)
         fig.copyFrom(source.root,replace=True)
 
     def getFigure(self,name,target):
-        setroot = self.store.root.getLocation(['FigureSettings'])
+        setroot = self.store.root['FigureSettings']
         fignodename = target.root.templatenode.getAttribute('id')
         fig = setroot.getChildById(fignodename,name,create=False)
         if fig!=None:
@@ -1179,24 +1210,27 @@ class MergedPlotVariableStore(PlotVariableStore):
         def getDimensions(self):
             return tuple([self.mergedimid]+list(self.vars[0].getDimensions()))
 
-        def getValues(self,bounds,staggered=False,coordinatesonly=False):
+        def getSlice(self,bounds):
+            slice = self.Slice(self.getDimensions())
+            assert len(bounds)==slice.ndim, 'Number of specified dimensions (%i) does not equal number of data dimensions (%i).' % (len(bounds),slice.ndim)
+            
+            # Get bound indices for the merged dimension
             ifirst,ilast = 0,len(self.vars)-1
             if bounds[0][0]!=None and bounds[0][0]>ifirst: ifirst = int(math.floor(bounds[0][0]))
             if bounds[0][1]!=None and bounds[0][1]<ilast : ilast  = int(math.ceil (bounds[0][1]))
+            slice.coords[0] = numpy.linspace(float(ifirst),float(ilast),ilast-ifirst+1)
+            slice.coords_stag[0] = common.getCenters(slice.coords[0],addends=True)
 
-            res = [numpy.linspace(float(ifirst),float(ilast),ilast-ifirst+1)]
             first = True
             for ivar,var in enumerate(self.vars[ifirst:ilast+1]):
-                curvals = var.getValues(bounds[1:],staggered=staggered,coordinatesonly=coordinatesonly)
+                curslice = var.getSlice(bounds[1:])
                 if first:
-                    if coordinatesonly:
-                        res += curvals[:]
-                        break
-                    res += curvals[:-1]
-                    res.append(matplotlib.numerix.empty(tuple([ilast-ifirst+1]+list(curvals[-1].shape)),matplotlib.numerix.typecode(curvals[-1])))
+                    slice.coords[1:] = curslice.coords
+                    slice.coords_stag[1:] = curslice.coords_stag
+                    slice.data = matplotlib.numerix.empty(tuple([ilast-ifirst+1]+list(curslice.data.shape)),matplotlib.numerix.typecode(curslice.data))
                     first = False
-                res[-1][ivar,...] = curvals[-1]
-            return res
+                slice.data[ivar,...] = curslice.data
+            return slice
 
     def __init__(self,stores,mergedimid='obs',mergedimname='observation'):
         PlotVariableStore.__init__(self)
@@ -1218,7 +1252,9 @@ class MergedPlotVariableStore(PlotVariableStore):
         return self.stores[0].getDimensionInfo(dimname)
 
     def getVariable(self,varname):
-        return MergedPlotVariableStore.MergedPlotVariable(self,[store.getVariable(varname) for store in self.stores],self.mergedimid)
+        vars = [store.getVariable(varname) for store in self.stores]
+        if None in vars: return None
+        return MergedPlotVariableStore.MergedPlotVariable(self,vars,self.mergedimid)
 
 class CustomPlotVariableStore(PlotVariableStore):
 

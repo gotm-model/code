@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.28 2007-09-09 06:42:26 jorn Exp $
+#$Id: common.py,v 1.29 2007-09-21 08:57:04 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.numerix,pytz
@@ -53,15 +53,16 @@ def num2date(array):
 #   and value from the global list of command line arguments. Returns None if the command
 #   line argument was not specified. If the script was called with 'script.py -d hello',
 #   getNamedArgument('-d') will return 'hello'.
-def getNamedArgument(name):
+def getNamedArgument(name,type=None,default=None):
     try:
         iarg = sys.argv.index(name)
     except ValueError:
-        return None
-    if iarg==len(sys.argv)-1: return None
+        return default
+    if iarg==len(sys.argv)-1: return default
     val = sys.argv[iarg+1]
     del sys.argv[iarg+1]
     del sys.argv[iarg]
+    if type!=None: val = type(val)
     return val
 
 def getSwitchArgument(name):
@@ -69,6 +70,12 @@ def getSwitchArgument(name):
     sys.argv.remove(name)
     return True
     
+def getNextArgument(type=None):
+    val = None
+    if len(sys.argv)>1:
+        val = sys.argv.pop(1)
+        if type!=None: val = type(val)
+    return val
     
 def convertUnitToUnicode(unit):
     if unit=='celsius': return unichr(176)+'C'
@@ -202,7 +209,7 @@ def findindices(bounds,data):
         
     return (start,stop)
 
-# 1D linear inter- and extrapolation.
+# 1D linear inter- and extrapolation. Operates on first axis.
 def interp1(x,y,X):
     assert x.ndim==1, 'Original coordinates must be supplied as 1D array.'
     assert X.ndim==1, 'New coordinates must be supplied as 1D array.'
@@ -253,3 +260,66 @@ def interp1(x,y,X):
     #        rc = (y[icurx,:]-y[icurx-1,:])/(x[icurx]-x[icurx-1])
     #        Y[i,:] = y[icurx-1,:] + rc*(X[i]-x[icurx-1])
     #return Y
+
+def getCenters(data,addends=False):
+    delta = (data[1:]-data[:-1])/2
+    newdata = data[:-1]+delta
+    if addends: newdata = matplotlib.numerix.concatenate(([data[0]-delta[0]],newdata,[data[-1]+delta[-1]]),0)
+    return newdata
+
+def replicateCoordinates(coords,data,idim):
+    assert coords.ndim==1, 'Coordinate array must be one-dimensional.'
+    assert coords.shape[0]==data.shape[idim], 'Length of coordinate vector (%i) and specified dimension in data array (%i) must match.' % (coords.shape[0],data.shape[idim])
+    newcoords = matplotlib.numerix.empty(data.shape,matplotlib.numerix.typecode(coords))
+    tp = range(newcoords.ndim)
+    tp.append(tp.pop(idim))
+    newcoords = newcoords.transpose(tp)
+    newcoords[:] = coords
+    tp = range(newcoords.ndim)
+    tp.insert(idim,tp.pop())
+    return newcoords.transpose(tp)
+
+def argtake(data,ind,axis):
+    assert data.ndim==ind.ndim or data.ndim==ind.ndim+1, 'Number of dimensions for indices (%i) must be equal to, or one less than number of data dimensions (%i).' % (ind.ndim,data.ndim)
+    reduce = (data.ndim==ind.ndim+1)
+    allind = []
+    for i in range(data.ndim):
+        if i==axis:
+            allind.append(ind)
+        else:
+            curind = matplotlib.numerix.empty(ind.shape,matplotlib.numerix.typecode(ind))
+            idim = i
+            if reduce and i>axis: idim-=1
+            curind.swapaxes(idim,-1)[:] = range(data.shape[i])
+            allind.append(curind)
+    return data[tuple(allind)]
+
+def getPercentile(data,cumweights,value,axis):
+    assert value>=0 and value<=1., 'Percentile value must be between 0 and 1.'
+    
+    # First get indices where cumulative distribution >= critical value
+    cumweights = cumweights.copy()
+    matplotlib.numerix.putmask(cumweights,cumweights<value,2.)
+    
+    # Make sure that the cumulative distribution at the highest index still equals one.
+    ind = [slice(0,cumweights.shape[i]) for i in range(cumweights.ndim)]
+    ind[axis] = -1
+    cumweights[tuple(ind)] = 1.
+    
+    highindices = cumweights.argmin(axis=axis)
+    
+    # If the high index if the lowest possible (0), increase it with one
+    # because the lower index will be one lower.
+    matplotlib.numerix.putmask(highindices,highindices==0,1)
+    
+    # Now get indices where cumulative distribution < critical value
+    lowindices = highindices-1
+    
+    # Do linear interpolation between low and high indices
+    highval = argtake(data,highindices,axis)
+    lowval  = argtake(data,lowindices,axis)
+    highcoords = argtake(cumweights,highindices,axis)
+    lowcoords  = argtake(cumweights,lowindices, axis)
+    highweight = (value-lowcoords)/(highcoords-lowcoords)
+    return highval*highweight + lowval*(1.-highweight)
+    

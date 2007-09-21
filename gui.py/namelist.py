@@ -145,7 +145,7 @@ class NamelistFile:
                         ipos = inextquote+1
                     else:
                         # Found start of comment; only keep everything preceding the start position.
-                        line = line[:match.start(0)]
+                        line = line[:match.start(0)]+'\n'
                         break
                     match = self.commentchar_re.search(line,pos=ipos)
 

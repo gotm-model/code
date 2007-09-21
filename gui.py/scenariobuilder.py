@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.22 2007-09-09 06:42:26 jorn Exp $
+#$Id: scenariobuilder.py,v 1.23 2007-09-21 08:57:05 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -195,12 +195,6 @@ class ScenarioPage(commonqt.WizardPage):
         self.factory = commonqt.PropertyEditorFactory(self.scenario,live=True,allowhide=True)
 
     def saveData(self,mustbevalid):
-        if self.factory.hasChanged():
-            if not mustbevalid:
-                res = QtGui.QMessageBox.question(self,'Your scenario has changed','Do you want to preserve your changes?',QtGui.QMessageBox.Yes,QtGui.QMessageBox.No,QtGui.QMessageBox.NoButton)
-                if res==QtGui.QMessageBox.No: return True
-
-            self.factory.updateStore()
 
         self.factory.unlink()
         
@@ -222,24 +216,24 @@ class PageLocation(ScenarioPage):
 
         # Editor for title
 
-        editGeneral = self.factory.createEditor(['title'],self,groupbox=True)
+        editGeneral = self.factory.createEditor('title',self,groupbox=True)
         groupboxGeneral = editGeneral.editor
         layoutTitle = QtGui.QHBoxLayout()
-        editTitle = self.factory.createEditor(['title'],self)
+        editTitle = self.factory.createEditor('title',self)
         editTitle.addToBoxLayout(layoutTitle,addstretch=False,unit=False)
         groupboxGeneral.setLayout(layoutTitle)
         layout.addWidget(groupboxGeneral)
 
         # Editors for geographic location
 
-        editStation = self.factory.createEditor(['station'],self,groupbox=True)
+        editStation = self.factory.createEditor('station',self,groupbox=True)
         groupboxLocation = editStation.editor
 
         layoutLocation = QtGui.QGridLayout()
-        editName      = self.factory.createEditor(['station','name'],     self)
-        editLongitude = self.factory.createEditor(['station','longitude'],self)
-        editLatitude  = self.factory.createEditor(['station','latitude'], self)
-        editDepth     = self.factory.createEditor(['station','depth'],    self)
+        editName      = self.factory.createEditor('station/name',     self)
+        editLongitude = self.factory.createEditor('station/longitude',self)
+        editLatitude  = self.factory.createEditor('station/latitude', self)
+        editDepth     = self.factory.createEditor('station/depth',    self)
         
         editName.addToGridLayout(layoutLocation,unit=False,colspan=3)
         editLongitude.addToGridLayout(layoutLocation)
@@ -251,12 +245,12 @@ class PageLocation(ScenarioPage):
 
         # Editors for simulated period
 
-        editPeriod = self.factory.createEditor(['time'],self,groupbox=True)
+        editPeriod = self.factory.createEditor('time',self,groupbox=True)
         groupboxPeriod = editPeriod.editor
 
         layoutPeriod = QtGui.QGridLayout()
-        editStart = self.factory.createEditor(['time','start'],self)
-        editStop  = self.factory.createEditor(['time','stop'] ,self)
+        editStart = self.factory.createEditor('time/start',self)
+        editStop  = self.factory.createEditor('time/stop' ,self)
         editStart.addToGridLayout(layoutPeriod)
         editStop.addToGridLayout(layoutPeriod)
         layoutPeriod.setColumnStretch(3,1)
@@ -267,6 +261,13 @@ class PageLocation(ScenarioPage):
 
         layout.addStretch()
         self.setLayout(layout)
+        
+    def saveData(self,mustbevalid):
+        if self.scenario.hasChanged() and not mustbevalid:
+            res = QtGui.QMessageBox.warning(self,'Leaving scenario editor','All changes to your scenario will be lost. Do you want to continue?',QtGui.QMessageBox.Yes,QtGui.QMessageBox.No,QtGui.QMessageBox.NoButton)
+            if res==QtGui.QMessageBox.No: return False
+
+        return ScenarioPage.saveData(self,mustbevalid)
 
 class PageDiscretization(ScenarioPage):
     
@@ -279,18 +280,18 @@ class PageDiscretization(ScenarioPage):
         self.title = self.createHeader('Discretization of space and time','Here you specify how the water column and the time period are discretized. Generally this involves a balance between accuracy and simulation time.')
         layout.addWidget(self.title)
 
-        editColumn = self.factory.createEditor(['grid'],self,groupbox=True)
+        editColumn = self.factory.createEditor('grid',self,groupbox=True)
 
         layoutGrid = QtGui.QGridLayout()
 
         # Create controls for grid layout.
-        editLevelCount = self.factory.createEditor(['grid','nlev'],self)      
-        editGridMethod = self.factory.createEditor(['grid','grid_method'],self,selectwithradio=True)
+        editLevelCount = self.factory.createEditor('grid/nlev',self)      
+        editGridMethod = self.factory.createEditor('grid/grid_method',self,selectwithradio=True)
         self.labelGridMethod = editGridMethod.createLabel()
         self.bngroup = editGridMethod.editor
-        editZoomSurface = self.factory.createEditor(['grid','ddu'],self)      
-        editZoomBottom  = self.factory.createEditor(['grid','ddl'],self)
-        editGridFile = self.factory.createEditor(['grid','grid_file'],self)
+        editZoomSurface = self.factory.createEditor('grid/ddu',self)      
+        editZoomBottom  = self.factory.createEditor('grid/ddl',self)
+        editGridFile = self.factory.createEditor('grid/grid_file',self)
         
         # Add controls for grid layout to the widget.
         layoutGrid.addWidget(self.bngroup.button(0),    0,0,1,4)
@@ -311,12 +312,12 @@ class PageDiscretization(ScenarioPage):
         layoutGrid.setColumnMinimumWidth(0,commonqt.getRadioWidth())
 
 
-        editTime = self.factory.createEditor(['timeintegration'],self,groupbox=True)
+        editTime = self.factory.createEditor('timeintegration',self,groupbox=True)
         
         groupboxTime = editTime.editor
 
         layoutTime = QtGui.QHBoxLayout()
-        editTimeStep = self.factory.createEditor(['timeintegration','dt'],self)
+        editTimeStep = self.factory.createEditor('timeintegration/dt',self)
         editTimeStep.addToBoxLayout(layoutTime)
         groupboxTime.setLayout(layoutTime)
 
@@ -340,21 +341,21 @@ class PageSalinity(ScenarioPage):
         layoutSalinity = QtGui.QGridLayout()
         
         # Create button group for the salinity option, and an explanatory label.
-        editSalinity = self.factory.createEditor(['obs','sprofile'],self,selectwithradio=True)
+        editSalinity = self.factory.createEditor('obs/sprofile',self,selectwithradio=True)
 
         # Create editors for all different salinity configurations.
-        editSalinityConstant       = self.factory.createEditor(['obs','sprofile','s_const'],self)
-        editSalinityUpperThickness = self.factory.createEditor(['obs','sprofile','z_s1'],self)
-        editSalinityUpper          = self.factory.createEditor(['obs','sprofile','s_1'],self)
-        editSalinityLowerThickness = self.factory.createEditor(['obs','sprofile','z_s2'],self)
-        editSalinityLower          = self.factory.createEditor(['obs','sprofile','s_2'],self)
-        editSalinitySurface        = self.factory.createEditor(['obs','sprofile','s_surf'],self)
-        editSalinityNSquare        = self.factory.createEditor(['obs','sprofile','s_obs_NN'],self)
-        editSalinityFile           = self.factory.createEditor(['obs','sprofile','s_prof_file'],self)
+        editSalinityConstant       = self.factory.createEditor('obs/sprofile/s_const',self)
+        editSalinityUpperThickness = self.factory.createEditor('obs/sprofile/z_s1',self)
+        editSalinityUpper          = self.factory.createEditor('obs/sprofile/s_1',self)
+        editSalinityLowerThickness = self.factory.createEditor('obs/sprofile/z_s2',self)
+        editSalinityLower          = self.factory.createEditor('obs/sprofile/s_2',self)
+        editSalinitySurface        = self.factory.createEditor('obs/sprofile/s_surf',self)
+        editSalinityNSquare        = self.factory.createEditor('obs/sprofile/s_obs_NN',self)
+        editSalinityFile           = self.factory.createEditor('obs/sprofile/s_prof_file',self)
         
         # Create editors for relaxation.
-        editSalinityRelaxation     = self.factory.createEditor(['obs','sprofile','SRelax'],self,boolwithcheckbox=True)
-        editSalinityBulk           = self.factory.createEditor(['obs','sprofile','SRelax','SRelaxTauM'],self)
+        editSalinityRelaxation     = self.factory.createEditor('obs/sprofile/SRelax',self,boolwithcheckbox=True)
+        editSalinityBulk           = self.factory.createEditor('obs/sprofile/SRelax/SRelaxTauM',self)
         
         # Add explanatory label
         layoutSalinity.addWidget(editSalinity.createLabel(),       0,0,1,2)
@@ -434,21 +435,21 @@ class PageTemperature(ScenarioPage):
         layoutTemperature = QtGui.QGridLayout()
         
         # Create button group for the temperature option, and an explanatory label.
-        editTemperature = self.factory.createEditor(['obs','tprofile'],self,selectwithradio=True)
+        editTemperature = self.factory.createEditor('obs/tprofile',self,selectwithradio=True)
 
         # Create editors for all different temperature configurations.
-        editTemperatureConstant       = self.factory.createEditor(['obs','tprofile','t_const'],self)
-        editTemperatureUpperThickness = self.factory.createEditor(['obs','tprofile','z_t1'],self)
-        editTemperatureUpper          = self.factory.createEditor(['obs','tprofile','t_1'],self)
-        editTemperatureLowerThickness = self.factory.createEditor(['obs','tprofile','z_t2'],self)
-        editTemperatureLower          = self.factory.createEditor(['obs','tprofile','t_2'],self)
-        editTemperatureSurface        = self.factory.createEditor(['obs','tprofile','t_surf'],self)
-        editTemperatureNSquare        = self.factory.createEditor(['obs','tprofile','t_obs_NN'],self)
-        editTemperatureFile           = self.factory.createEditor(['obs','tprofile','t_prof_file'],self)
+        editTemperatureConstant       = self.factory.createEditor('obs/tprofile/t_const',self)
+        editTemperatureUpperThickness = self.factory.createEditor('obs/tprofile/z_t1',self)
+        editTemperatureUpper          = self.factory.createEditor('obs/tprofile/t_1',self)
+        editTemperatureLowerThickness = self.factory.createEditor('obs/tprofile/z_t2',self)
+        editTemperatureLower          = self.factory.createEditor('obs/tprofile/t_2',self)
+        editTemperatureSurface        = self.factory.createEditor('obs/tprofile/t_surf',self)
+        editTemperatureNSquare        = self.factory.createEditor('obs/tprofile/t_obs_NN',self)
+        editTemperatureFile           = self.factory.createEditor('obs/tprofile/t_prof_file',self)
         
         # Create editors for relaxation.
-        editTemperatureRelaxation     = self.factory.createEditor(['obs','tprofile','TRelax'],self,boolwithcheckbox=True)
-        editTemperatureBulk           = self.factory.createEditor(['obs','tprofile','TRelax','TRelaxTauM'],self)
+        editTemperatureRelaxation     = self.factory.createEditor('obs/tprofile/TRelax',self,boolwithcheckbox=True)
+        editTemperatureBulk           = self.factory.createEditor('obs/tprofile/TRelax/TRelaxTauM',self)
         
         # Add explanatory label
         layoutTemperature.addWidget(editTemperature.createLabel(),       0,0,1,2)
@@ -528,7 +529,7 @@ class PageTurbulence(ScenarioPage):
         layoutTurbulence = QtGui.QGridLayout()
         
         # Create button group for the turbulence method option, and an explanatory label.
-        editMethod = self.factory.createEditor(['gotmturb','turb_method'],self,selectwithradio=True)
+        editMethod = self.factory.createEditor('gotmturb/turb_method',self,selectwithradio=True)
         bngrpMethod = editMethod.editor
 
         # Add explanatory label
@@ -542,7 +543,7 @@ class PageTurbulence(ScenarioPage):
         
         # Add controls specific to first-order model
         layoutFirstOrder = QtGui.QGridLayout()
-        editStabilityMethod = self.factory.createEditor(['gotmturb','stab_method'],self)
+        editStabilityMethod = self.factory.createEditor('gotmturb/stab_method',self)
         editStabilityMethod.addToGridLayout(layoutFirstOrder,0,0)
         layoutTurbulence.addLayout(layoutFirstOrder,      3,1)
 
@@ -551,7 +552,7 @@ class PageTurbulence(ScenarioPage):
 
         # Add controls specific to second-order model
         layoutSecondOrder = QtGui.QGridLayout()
-        editSecondCoef = self.factory.createEditor(['gotmturb','scnd','scnd_coeff'],self)
+        editSecondCoef = self.factory.createEditor('gotmturb/scnd/scnd_coeff',self)
         editSecondCoef.addToGridLayout(layoutSecondOrder,0,0)
         layoutTurbulence.addLayout(layoutSecondOrder,     5,1)
 
@@ -565,8 +566,8 @@ class PageTurbulence(ScenarioPage):
         layout.addSpacing(20)
 
         layoutOther = QtGui.QGridLayout()
-        editTkeMethod = self.factory.createEditor(['gotmturb','tke_method'],self)
-        editLenScaleMethod = self.factory.createEditor(['gotmturb','len_scale_method'],self)
+        editTkeMethod = self.factory.createEditor('gotmturb/tke_method',self)
+        editLenScaleMethod = self.factory.createEditor('gotmturb/len_scale_method',self)
         editTkeMethod.addToGridLayout(layoutOther,0,0)
         editLenScaleMethod.addToGridLayout(layoutOther)
         layoutOther.setColumnStretch(3,1)
@@ -594,13 +595,13 @@ class PageAirSeaInteraction(ScenarioPage):
         layoutAirSea = QtGui.QGridLayout()
         layoutAirSea.setColumnMinimumWidth(0,radiowidth)
         
-        editCalcFluxes = self.factory.createEditor(['airsea','flux_source'],self,selectwithradio=True)
+        editCalcFluxes = self.factory.createEditor('airsea/flux_source',self,selectwithradio=True)
         
         # Meteo file and unit
 
         meteolayout = QtGui.QVBoxLayout()
-        editMeteoFile = self.factory.createEditor(['airsea','meteo_file'],self)
-        editWetMode   = self.factory.createEditor(['airsea','wet_mode'],  self)
+        editMeteoFile = self.factory.createEditor('airsea/meteo_file',self)
+        editWetMode   = self.factory.createEditor('airsea/wet_mode',  self)
         
         meteofilelayout = QtGui.QHBoxLayout()
         editMeteoFile.addToBoxLayout(meteofilelayout,label=False,unit=False)
@@ -614,15 +615,15 @@ class PageAirSeaInteraction(ScenarioPage):
 
         # Heat fluxes
 
-        groupboxHeat = self.factory.createEditor(['airsea','heat_method'],self,groupbox=True).editor
+        groupboxHeat = self.factory.createEditor('airsea/heat_method',self,groupbox=True).editor
         
         heatlayout = QtGui.QGridLayout()
         heatlayout.setColumnMinimumWidth(0,radiowidth)
 
-        editHeatMethod   = self.factory.createEditor(['airsea','heat_method'],  self,selectwithradio=True)
-        editConstSwr     = self.factory.createEditor(['airsea','const_swr'],    self)
-        editConstHeat    = self.factory.createEditor(['airsea','const_heat'],   self)
-        editHeatfluxFile = self.factory.createEditor(['airsea','heatflux_file'],self)
+        editHeatMethod   = self.factory.createEditor('airsea/heat_method',  self,selectwithradio=True)
+        editConstSwr     = self.factory.createEditor('airsea/const_swr',    self)
+        editConstHeat    = self.factory.createEditor('airsea/const_heat',   self)
+        editHeatfluxFile = self.factory.createEditor('airsea/heatflux_file',self)
         
         heatlayout.addWidget(editHeatMethod.editor.button(0),1,0,1,2)
 
@@ -644,15 +645,15 @@ class PageAirSeaInteraction(ScenarioPage):
         
         # Momentum fluxes
 
-        groupboxMomentum = self.factory.createEditor(['airsea','momentum_method'],self,groupbox=True).editor
+        groupboxMomentum = self.factory.createEditor('airsea/momentum_method',self,groupbox=True).editor
         
         layoutMomentum = QtGui.QGridLayout()
         layoutMomentum.setColumnMinimumWidth(0,radiowidth)
 
-        editMomentumMethod  = self.factory.createEditor(['airsea','momentum_method'],  self,selectwithradio=True)
-        editMomentumConstTx = self.factory.createEditor(['airsea','const_tx'],         self)
-        editMomentumConstTy = self.factory.createEditor(['airsea','const_ty'],         self)
-        editmomentumFile    = self.factory.createEditor(['airsea','momentumflux_file'],self)
+        editMomentumMethod  = self.factory.createEditor('airsea/momentum_method',  self,selectwithradio=True)
+        editMomentumConstTx = self.factory.createEditor('airsea/const_tx',         self)
+        editMomentumConstTy = self.factory.createEditor('airsea/const_ty',         self)
+        editmomentumFile    = self.factory.createEditor('airsea/momentumflux_file',self)
         
         layoutMomentum.addWidget(editMomentumMethod.editor.button(0),1,0,1,2)
 
@@ -840,7 +841,7 @@ class PageSave(commonqt.WizardPage):
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to save scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
-            self.owner.settings.addUniqueValue(('Paths','RecentScenarios'),'Path',targetpath)
+            self.owner.settings.addUniqueValue('Paths/RecentScenarios','Path',targetpath)
         return True
 
     def doNotShow(self):

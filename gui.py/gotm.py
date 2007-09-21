@@ -299,7 +299,7 @@ class PageChooseAction(commonqt.WizardPage):
 
             # Add to list of most-recently-used scenarios
             if newscen.path!=None:
-                self.owner.settings.addUniqueValue(('Paths','RecentScenarios'),'Path',newscen.path)
+                self.owner.settings.addUniqueValue('Paths/RecentScenarios','Path',newscen.path)
             
             return True
         if checkedid==1:
@@ -315,7 +315,7 @@ class PageChooseAction(commonqt.WizardPage):
 
             # Add to list of most-recently-used results
             if newresult.path!=None:
-                self.owner.settings.addUniqueValue(('Paths','RecentResults'),'Path',newresult.path)
+                self.owner.settings.addUniqueValue('Paths/RecentResults','Path',newresult.path)
 
             return True
         return False
@@ -389,7 +389,7 @@ def main():
         wiz.setProperty('mainaction','result')
         wiz.setProperty('result', result)
         if openpath.endswith('.gotmresult'):
-            wiz.settings.addUniqueValue(('Paths','RecentResults'),'Path',openpath)
+            wiz.settings.addUniqueValue('Paths/RecentResults','Path',openpath)
         if result.scenario!=None:
             wiz.setProperty('scenario', result.scenario.addref())
         wiz.onNext(askoldpage=False)
@@ -398,7 +398,7 @@ def main():
         wiz.setProperty('mainaction','scenario')
         wiz.setProperty('scenario',scen)
         if openpath.endswith('.gotmscenario'):
-            wiz.settings.addUniqueValue(('Paths','RecentScenarios'),'Path',openpath)
+            wiz.settings.addUniqueValue('Paths/RecentScenarios','Path',openpath)
         wiz.onNext(askoldpage=False)
 
     # Show wizard dialog

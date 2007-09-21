@@ -49,11 +49,11 @@ class Report(common.referencedobject):
         self.defaultstore = xmlstore.TypedStore('schemas/report/gotmgui.xml')
 
         # Set some default properties.
-        self.defaultstore.setProperty(['Figures','Width'],10)
-        self.defaultstore.setProperty(['Figures','Height'],8)
-        self.defaultstore.setProperty(['Figures','Resolution'],96)
-        self.defaultstore.setProperty(['Figures','FontScaling'],100)
-        self.defaultstore.setProperty(['Figures','FontName'],defaultfont)
+        self.defaultstore.setProperty('Figures/Width',10)
+        self.defaultstore.setProperty('Figures/Height',8)
+        self.defaultstore.setProperty('Figures/Resolution',96)
+        self.defaultstore.setProperty('Figures/FontScaling',100)
+        self.defaultstore.setProperty('Figures/FontName',defaultfont)
 
         self.store.setDefaultStore(self.defaultstore)
         
@@ -68,13 +68,13 @@ class Report(common.referencedobject):
         scenario = result.scenario
         
         # Get report settings
-        figuresize = (self.store.getProperty(['Figures','Width'],usedefault=True),self.store.getProperty(['Figures','Height'],usedefault=True))
-        dpi = self.store.getProperty(['Figures','Resolution'],usedefault=True)
-        fontscaling = self.store.getProperty(['Figures','FontScaling'],usedefault=True)
-        fontname = self.store.getProperty(['Figures','FontName'],usedefault=True)
+        figuresize = (self.store.getProperty('Figures/Width',usedefault=True),self.store.getProperty('Figures/Height',usedefault=True))
+        dpi = self.store.getProperty('Figures/Resolution',usedefault=True)
+        fontscaling = self.store.getProperty('Figures/FontScaling',usedefault=True)
+        fontname = self.store.getProperty('Figures/FontName',usedefault=True)
 
         # Get list of variables to plot
-        selroot = self.store.root.getLocation(['Figures','Selection'])
+        selroot = self.store.root['Figures/Selection']
         plotvariables = [node.getValue() for node in selroot.children]
 
         steps = float(2+len(plotvariables))
@@ -107,7 +107,7 @@ class Report(common.referencedobject):
         for node in xmldocument.getElementsByTagName('gotm:scenarioproperty'):
             variablepath = node.getAttribute('variable')
             assert variablepath!='', 'gotm:scenarioproperty node in report template lacks "variable" attribute, whcih should point to a location in the scenario.'
-            variablenode = scenario.root.getLocation(variablepath.split('/'))
+            variablenode = scenario.root[variablepath]
             assert variablenode!=None, 'Unable to locate "%s" in the scenario.' % variablepath
             val = variablenode.getValueAsString()
             node.parentNode.replaceChild(xmldocument.createTextNode(unicode(val)),node)
@@ -153,9 +153,9 @@ class Report(common.referencedobject):
         
         # Create figure to be used for plotting observations and results.
         if len(inputdata)>0 or len(plotvariables)>0:
-            mplfigure = matplotlib.figure.Figure(figsize=(figuresize[0]/2.54,figuresize[1]/2.54))
-            canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(mplfigure)
-            fig = plot.Figure(mplfigure,defaultfont=fontname)
+            #mplfigure = matplotlib.figure.Figure(figsize=(figuresize[0]/2.54,figuresize[1]/2.54))
+            #canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(mplfigure)
+            fig = plot.Figure(defaultfont=fontname)
         
         # --------------------------------------------------------------
         # Create figures for input data
@@ -180,11 +180,11 @@ class Report(common.referencedobject):
                     fig.setUpdating(False)
                     fig.clearProperties()
                     fig.addVariable(varid)
-                    fig.properties.setProperty(['FontScaling'],fontscaling)
+                    fig.properties.setProperty('FontScaling',fontscaling)
                     fig.setUpdating(True)
                     filename = 'in_'+varid+'.png'
                     outputfile = os.path.join(outputpath,filename)
-                    canvas.print_figure(outputfile,dpi=dpi)
+                    fig.exportToFile(outputfile,dpi=dpi)
 
                     img = xmldocument.createElement('img')
                     img.setAttribute('src',filename)
@@ -225,11 +225,11 @@ class Report(common.referencedobject):
                 if not result.getFigure('result/'+varpath,fig.properties):
                     fig.clearProperties()
                     fig.addVariable(varid)
-                fig.properties.setProperty(['FontScaling'],fontscaling)
+                fig.properties.setProperty('FontScaling',fontscaling)
                 fig.setUpdating(True)
                 filename = 'out_'+varid+'.png'
                 outputfile = os.path.join(outputpath,filename)
-                canvas.print_figure(outputfile,dpi=dpi)
+                fig.exportToFile(outputfile,dpi=dpi)
 
                 img = xmldocument.createElement('img')
                 img.setAttribute('src',filename)

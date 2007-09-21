@@ -337,6 +337,15 @@ class StoreColor(Store.DataType):
     @staticmethod
     def fromNormalized(r,g,b):
         return StoreColor(int(r*255),int(g*255),int(b*255))
+        
+    def brighten(self,value):
+        assert value>=0 and value<=1, 'Brighten value must be between 0 and 1.'
+        self.red   = int(self.red  +(255.-self.red)  *value)
+        self.green = int(self.green+(255.-self.green)*value)
+        self.blue  = int(self.blue +(255.-self.blue) *value)
+        
+    def copy(self):
+        return StoreColor(self.red,self.green,self.blue)
 
     def save(self,node,context):
         assert self.red  ==None or self.red  <=255, 'Color channel red values should not exceed 255.'
@@ -1472,7 +1481,7 @@ class TypedStore(common.referencedobject):
             if not self.templatenode.hasAttribute('unit'): return None
             unit = self.templatenode.getAttribute('unit')
             if unit[0]=='[' and unit[-1]==']':
-                node = self.parent.getLocation(unit[1:-1].split('/'))
+                node = self.parent[unit[1:-1]]
                 if node==None: return None
                 unit = node.getValueAsString(addunit=False,usedefault=True)
             return unit
@@ -1503,6 +1512,10 @@ class TypedStore(common.referencedobject):
                     ret = self.getId()
             if ret!=None and capitalize: ret = ret[0].upper() + ret[1:]
             return ret
+            
+        def __getitem__(self,path):
+            assert isinstance(path,basestring), 'Supplied node path is not a string: %s.' % path
+            return self.getLocation(path.split('/'))
 
         def getLocation(self,location):
             """Returns the child node at the specified location (a list of
@@ -1643,7 +1656,7 @@ class TypedStore(common.referencedobject):
                     else:
                         child = self.getChildByNumber(childname,index,create=True)
                 else:
-                    child = self.getLocation([childname])
+                    child = self[childname]
                 if child==None: continue
                 child.copyFrom(sourcechild,replace=replace)
                 index += 1
@@ -1879,12 +1892,12 @@ class TypedStore(common.referencedobject):
         self.changed = False
 
     def setProperty(self,location,value):
-        node = self.root.getLocation(location)
+        node = self.root[location]
         if node==None: raise Exception('Cannot locate node at %s' % location)
         return node.setValue(value)
     
     def getProperty(self,location,usedefault=False):
-        node = self.root.getLocation(location)
+        node = self.root[location]
         if node==None: raise Exception('Cannot locate node at %s' % location)
         if usedefault:
             return node.getValueOrDefault()
@@ -2014,7 +2027,7 @@ class TypedStore(common.referencedobject):
             valuepath = nodeCondition.getAttribute('variable')
             refnode = self.root
             if valuepath[0]!='/': refnode = ownernode.parent
-            node = refnode.getLocation(valuepath.split('/'))
+            node = refnode[valuepath]
             assert node!=None, 'Cannot locate dependency "%s" for node "%s".' % (nodeCondition.getAttribute('variable'),ownernode)
 
             # Get the current value of the variable we depend on
@@ -2409,13 +2422,13 @@ class TypedStore(common.referencedobject):
         # will appear, and only later some are removed (this prevents unnecessary automatic scrolling in GUI)
         depnodes = []
         for d in common.findDescendantNodes(deps,['dependentvariable']):
-            varpath = d.getAttribute('path').split('/')
+            varpath = d.getAttribute('path')
             
-            if varpath[0]!='':
+            if varpath[0]!='/':
                 refnode = node.parent
             else:
                 refnode = self.root
-            varnode = refnode.getLocation(varpath)
+            varnode = refnode[varpath]
             assert varnode!=None, 'Unable to locate node "%s" at %s.' % (varpath,refnode)
             
             if d.getAttribute('type')=='visibility':
@@ -2492,12 +2505,10 @@ class Convertor:
 
         # Handle one-to-one links between source nodes and target nodes.
         for (sourcepath,targetpath) in self.links:
-            if isinstance(sourcepath,basestring): sourcepath = sourcepath.split('/')
-            if isinstance(targetpath,basestring): targetpath = targetpath.split('/')
-            sourcenode = source.root.getLocation(sourcepath)
+            sourcenode = source.root[sourcepath]
             if sourcenode==None:
                 raise Exception('Cannot locate node "%s" in source.' % '/'.join(sourcepath))
-            targetnode = target.root.getLocation(targetpath)
+            targetnode = target.root[targetpath]
             if targetnode==None:
                 raise Exception('Cannot locate node "%s" in target.' % '/'.join(targetpath))
             targetnode.copyFrom(sourcenode)
@@ -2506,11 +2517,10 @@ class Convertor:
         if len(self.defaults)>0:
             defscen = target.getDefault(None,target.version)
             for path in self.defaults:
-                if isinstance(path,basestring): path = path.split('/')
-                sourcenode = defscen.root.getLocation(path)
+                sourcenode = defscen.root[path]
                 if sourcenode==None:
                     raise Exception('Cannot locate node "%s" in default.')
-                targetnode = target.root.getLocation(path)
+                targetnode = target.root[path]
                 targetnode.copyFrom(sourcenode)
 
     def reverseLinks(self):

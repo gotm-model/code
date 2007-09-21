@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.22 2007-08-17 15:24:24 jorn Exp $
+#$Id: visualizer.py,v 1.23 2007-09-21 08:57:05 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -123,9 +123,9 @@ class ConfigureReportWidget(QtGui.QWidget):
         self.treestore = self.result.getVariableTree('schemas/outputtree.xml')
         
         # Prepare selection based on report settings
-        selroot = self.report.store.root.getLocation(['Figures','Selection'])
+        selroot = self.report.store.root['Figures/Selection']
         for node in selroot.children:
-            targetnode = self.treestore.root.getLocation(node.getValue().split('/'))
+            targetnode = self.treestore.root[node.getValue()]
             if targetnode!=None: targetnode.setValue(True)
         
         self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True,checkboxes=True)
@@ -135,10 +135,10 @@ class ConfigureReportWidget(QtGui.QWidget):
         self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
 
         # Create labels+editors for figure settings
-        editWidth = self.factory.createEditor(['Figures','Width'],self)
-        editHeight = self.factory.createEditor(['Figures','Height'],self)
-        editDpi = self.factory.createEditor(['Figures','Resolution'],self)
-        editFontScaling = self.factory.createEditor(['Figures','FontScaling'],self)
+        editWidth = self.factory.createEditor('Figures/Width',self)
+        editHeight = self.factory.createEditor('Figures/Height',self)
+        editDpi = self.factory.createEditor('Figures/Resolution',self)
+        editFontScaling = self.factory.createEditor('Figures/FontScaling',self)
         
         layout = QtGui.QGridLayout()
         layout.addWidget(self.labOutput,     0,0)
@@ -181,7 +181,7 @@ class ConfigureReportWidget(QtGui.QWidget):
             if ret==QtGui.QMessageBox.No: return False
 
         # Update the list of selected variables.
-        selroot = self.report.store.root.getLocation(['Figures','Selection'])
+        selroot = self.report.store.root['Figures/Selection']
         selroot.removeAllChildren()
         for node in self.model.getCheckedNodes():
             if node.canHaveValue():
@@ -210,7 +210,7 @@ class PageReportGenerator(commonqt.WizardPage):
         self.report = report.Report(defaultfont = deffont)
         
         # Copy report settings from result.
-        self.report.store.root.copyFrom(self.result.store.root.getLocation(['ReportSettings']),replace=True)
+        self.report.store.root.copyFrom(self.result.store.root['ReportSettings'],replace=True)
 
         self.label = QtGui.QLabel('You can generate a report that describes the scenario and the simulation results. A report consists of an HTML file, associated files (CSS, javascript) and image files for all figures.',self)
         self.label.setWordWrap(True)
@@ -254,7 +254,7 @@ class PageReportGenerator(commonqt.WizardPage):
         if mustbevalid and self.checkReport.isChecked():
             ret = self.reportwidget.generate()
             if ret:
-                self.result.store.root.getLocation(['ReportSettings']).copyFrom(self.report.store.root,replace=True)
+                self.result.store.root['ReportSettings'].copyFrom(self.report.store.root,replace=True)
             return ret
         self.report.release()
         return True
@@ -337,7 +337,7 @@ class PageSave(commonqt.WizardPage):
                     return False
             try:
                 self.result.save(targetpath,addfiguresettings=self.checkboxAddFigures.isChecked())
-                self.owner.settings.addUniqueValue(('Paths','RecentResults'),'Path',targetpath)
+                self.owner.settings.addUniqueValue('Paths/RecentResults','Path',targetpath)
             except Exception,e:
                 print e
                 QtGui.QMessageBox.critical(self, 'Unable to save result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
@@ -414,7 +414,7 @@ class PageVisualize(commonqt.WizardPage):
             self.figurepanel.plot(varname,'result')
 
         # Name the plot (later used as index for list of stored plot properties)
-        props.root.getLocation(['Name']).setValue('result/'+varpath)
+        props.root['Name'].setValue('result/'+varpath)
         
         self.figurepanel.figure.setUpdating(True)
         QtGui.QApplication.restoreOverrideCursor()

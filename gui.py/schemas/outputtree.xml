@@ -87,12 +87,17 @@
 		<element id="int_heat"/>
 		<element id="total"/>
 		<element id="int_total"/>
-		<element id="zeta"/>
+		<element id="zeta">
+			<condition type="or" source="scenario">
+				<condition type="ne" variable="/obs/zetaspec"        value="0"/>
+				<condition type="ne" variable="/obs/zetaspec/zeta_0" value="0"/>
+			</condition>
+		</element>
 	</element>
 	<element id="column" label="column structure">
 		<element id="h"/>
 	</element>
-	<element id="nonlocal" label="non-local fluxes">
+	<element id="nonlocal" label="non-local fluxes" hidden="True">
 		<element id="gamh"/>
 		<element id="gams"/>
 		<element id="gamu"/>

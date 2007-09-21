@@ -245,7 +245,7 @@
 			<w_adv_height0>0.0</w_adv_height0>
 			<w_adv0>0.0</w_adv0>
 			<w_adv_file>w_adv_file.dat</w_adv_file>
-			<w_adv_discr>4</w_adv_discr>
+			<w_adv_discr>6</w_adv_discr>
 		</w_advspec>
 		<zetaspec>
 			<zeta_method>0</zeta_method>
@@ -393,8 +393,8 @@
 			<sr>0.0625</sr>
 			<s1>5.3</s1>
 			<s2>6.625</s2>
-			<s3>8.125</s3>
-			<s4>0.666666666667</s4>
+			<s3>8.625</s3>
+			<s4>2.0</s4>
 			<a0>31.25</a0>
 			<a1>14.603</a1>
 			<a2>0.4025</a2>
