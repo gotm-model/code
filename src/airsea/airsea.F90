@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.20 2007-09-13 12:06:44 hb Exp $
+!$Id: airsea.F90,v 1.21 2007-09-25 10:06:10 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -21,7 +21,8 @@
 !  setting have to be made in the namelist file {\tt airsea.nml}.
 !
 ! !USES:
-   use time,         only: julian_day, time_diff, calendar_date
+   use airsea_variables
+   use time,         only: julian_day, time_diff
    use observations, only: read_obs
 !
    IMPLICIT NONE
@@ -38,10 +39,10 @@
 !
 ! !PUBLIC DATA MEMBERS:
    logical,  public                    :: calc_fluxes=.false.
-
+!
 !  wind speed (m/s)
-   REALTYPE, public                    :: w
-
+   REALTYPE, public                    :: w=_ZERO_
+!
 !  surface stress components (Pa)
    REALTYPE, public                    :: tx,ty
 
@@ -52,6 +53,10 @@
 !  precipitation minus evaporation
 !  (m/s)
    REALTYPE, public                    :: p_e
+
+!  precipitation and  evaporation
+!  (m/s)
+   REALTYPE, public                    :: precip=_ZERO_,evap=_ZERO_
 
 !  sea surface temperature (degC) and
 !  sea surface salinity (psu)
@@ -72,17 +77,6 @@
    integer,  parameter                 :: p_e_unit=23
    integer,  parameter                 :: sst_unit=24
    integer,  parameter                 :: sss_unit=25
-
-   REALTYPE, parameter                 :: cpa=1008.
-   REALTYPE, parameter                 :: cp=3985.
-   REALTYPE, parameter                 :: emiss=0.97
-   REALTYPE, parameter                 :: bolz=5.67e-8
-   REALTYPE, parameter                 :: Kelvin=273.16
-   REALTYPE, parameter                 :: const06=0.62198
-   REALTYPE, parameter                 :: pi=3.14159265358979323846
-   REALTYPE, parameter                 :: deg2rad=pi/180.
-   REALTYPE, parameter                 :: rad2deg=180./pi
-
    integer,  parameter                 :: CONSTVAL=1
    integer,  parameter                 :: FROMFILE=2
 !
@@ -91,6 +85,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.21  2007-09-25 10:06:10  kbk
+!  modularized the airsea module - added Fairall method
+!
 !  Revision 1.20  2007-09-13 12:06:44  hb
 !  fixed sign in momentum flux calculation
 !
@@ -151,16 +148,18 @@
 !  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
 !  initial import into CVS
 !
-!EOP
-!
-! private data members
+! !LOCAL VARIABLES:
    logical                   :: init_saved_vars=.true.
+   integer                   :: fluxes_method=1
+   integer                   :: back_radiation_method=1
    integer                   :: heat_method
    integer                   :: momentum_method
    integer                   :: p_e_method
    integer                   :: sst_method
    integer                   :: sss_method
-   integer                   :: wet_mode
+   integer                   :: hum_method
+   logical, public           :: rain_impact=.false.
+   logical, public           :: calc_evaporation=.false.
 
    character(len=PATH_MAX)   :: meteo_file
    character(len=PATH_MAX)   :: heatflux_file
@@ -169,21 +168,23 @@
    character(len=PATH_MAX)   :: sss_file
    character(len=PATH_MAX)   :: sst_file
 
-   REALTYPE                  :: wx,wy
+   REALTYPE                  :: u10,v10
    REALTYPE                  :: airp
    REALTYPE                  :: airt,twet,tdew
    REALTYPE                  :: cloud
    REALTYPE                  :: rh
-   REALTYPE                  :: rho_air
    REALTYPE                  :: const_tx,const_ty
    REALTYPE                  :: const_swr,const_heat
    REALTYPE                  :: const_p_e
-
-   REALTYPE                  :: es,ea,qs,qa,L,S
-   REALTYPE                  :: cdd,chd,ced
-
-   REALTYPE                  :: alon,alat
+   REALTYPE                  :: dlon,dlat
 !
+! !BUGS:
+!  Wind speed - w - is not entirely correct. 
+!  No temporal interpolation is done. If the momentum fluxes tx,ty are 
+!  specified w=0. 
+!  The Fairall and Kondo methods calculate their own w internally.
+!  w is used by e.g. bio.F90
+!EOP
 !-----------------------------------------------------------------------
 
    contains
@@ -191,7 +192,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Initialise the air--sea interaction module
+! !IROUTINE: Initialise the air--sea interaction module \label{sec:init-air-sea}
 !
 ! !INTERFACE:
    subroutine init_air_sea(namlst,lat,lon)
@@ -205,7 +206,7 @@
 ! {\tt calc$\_$fluxes}     & {\tt .true.}: Surface fluxes are calculated by means of bulk formulae. \\
 !                          & Solar radiation is calculated from time, latitude,                     \\
 !                          & longitude and clouds. In this case, {\tt meteo$\_$file} must be given  \\
-!                          & and {\tt wet$\_$mode} must be specified.                               \\
+!                          & and {\tt hum\_method} must be specified.                               \\
 !                          & {\tt .false.}: Surface fluxes and solar radiation are prescribed.      \\
 ! {\tt meteo$\_$file}      & file with meteo data (for {\tt calc$\_$fluxes=.true.}) with            \\
 !                          & date: {\tt yyyy-mm-dd hh:mm:ss}                                        \\
@@ -217,7 +218,7 @@
 !                          & cloud cover in 1/10                                                    \\
 !                          & Example:                                                               \\
 !                          & {\tt 1998-01-01 00:00:00    6.87  10.95 1013.0   6.80   73.2   0.91}   \\
-! {\tt wet$\_$mode}        & 1: relative humidity given as 7.\ column in {\tt meteo$\_$file}        \\
+! {\tt hum\_method}        & 1: relative humidity given as 7.\ column in {\tt meteo$\_$file}        \\
 !                          & 2: wet bulb temperature given as 7. column in {\tt meteo$\_$file}      \\
 !                          & 3: dew point temperature given as 7. column in {\tt meteo$\_$file}     \\
 ! {\tt heat$\_$method}     & 0: heat flux not prescribed                                            \\
@@ -264,8 +265,10 @@
 !
 ! !LOCAL VARIABLES:
    namelist /airsea/ calc_fluxes, &
+                     fluxes_method, &
+                     back_radiation_method, &
                      meteo_file, &
-                     wet_mode, &
+                     hum_method, &
                      heat_method, &
                      const_swr,const_heat, &
                      heatflux_file, &
@@ -287,8 +290,29 @@
    if (calc_fluxes) then
 
       open(meteo_unit,file=meteo_file,action='read',status='old',err=92)
+      LEVEL2 'Air-sea exchanges will be calculated'
       LEVEL2 'Reading meteo data from:'
       LEVEL3 trim(meteo_file)
+      LEVEL3 'heat- and momentum-fluxes:'
+      select case (fluxes_method)
+         case(1)
+            LEVEL4 'using Kondo formulation'
+         case(2)
+            LEVEL4 'using Fairall et. all formulation'
+         case default
+      end select
+      LEVEL3 'long-wave back radiation:'
+      select case (back_radiation_method)
+         case(1)
+            LEVEL4 'using Clark formulation'
+         case(2)
+            LEVEL4 'using Hastenrath formulation'
+         case(3)
+            LEVEL4 'using Bignami formulation'
+         case(4)
+            LEVEL4 'using Berliand formulation'
+         case default
+      end select
 
    else
 
@@ -349,8 +373,8 @@
    sss=0.
    airt=0.
 
-   alon = deg2rad*lon
-   alat = deg2rad*lat
+   dlon = lon
+   dlat = lat
 
    return
 
@@ -408,7 +432,7 @@
 !BOC
    if (calc_fluxes) then
       call flux_from_meteo(jul,secs)
-      call short_wave_radiation(jul,secs,alon,alat)
+      call short_wave_radiation(jul,secs,dlon,dlat,cloud,I_0)
    else
 !     The heat fluxes
       select case (heat_method)
@@ -496,417 +520,6 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Compute the exchange coefficients \label{sec:calcCoeff}
-!
-! !INTERFACE:
-   subroutine exchange_coefficients()
-!
-! !DESCRIPTION:
-!  Based on the model sea surface temperature, the wind vector
-!  at 10 m height, the air pressure at 2 m, the dry air
-!  temperature and the air pressure at 2 m, and the relative
-!  humidity (either directly given or recalculated from the
-!  wet bulb or the dew point temperature),
-!  this routine computes the coefficients for the surface
-!  momentum flux ({\tt cdd}) and the latent ({\tt ced})
-!  and the sensible ({\tt chd}) heat flux according to the \cite{Kondo75}
-!  bulk formulae. The setting for {\tt wet\_mode} but be in
-!  agreement with the type of air humidity measure given in the
-!  {\tt meteo$\_$file} as 7.\ column, i.e.\ 1 for relative humidity,
-!  2 for wet bulb temperature and 3 for dew point temperature.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !DEFINED PARAMETERS:
-   REALTYPE, parameter                 :: a1=6.107799961
-   REALTYPE, parameter                 :: a2=4.436518521e-1
-   REALTYPE, parameter                 :: a3=1.428945805e-2
-   REALTYPE, parameter                 :: a4=2.650648471e-4
-   REALTYPE, parameter                 :: a5=3.031240396e-6
-   REALTYPE, parameter                 :: a6=2.034080948e-8
-   REALTYPE, parameter                 :: a7=6.136820929e-11
-   REALTYPE, parameter                 :: eps=1.0e-12
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for the airsea module
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   REALTYPE                  :: tvirt,s,s0
-   REALTYPE                  :: ae_d,be_d,pe_d
-   REALTYPE                  :: ae_h,be_h,ce_h,pe_h
-   REALTYPE                  :: ae_e,be_e,ce_e,pe_e
-   REALTYPE                  :: x
-!
-!-----------------------------------------------------------------------
-!BOC
-
-   w = sqrt(wx*wx+wy*wy)
-   L = (2.5-0.00234*sst)*1.e6
-   es = a1 +sst*(a2+sst*(a3+sst*(a4+sst*(a5+sst*(a6+sst*a7)))))
-   es = es * 100.0 ! Conversion millibar --> Pascal
-   qs = const06*es/(airp-0.377*es) ! specific humidity at sea surface
-
-   select case(wet_mode)
-      case(1)  ! Relative humidity is given
-         ea = a1 +airt*(a2+airt*(a3+airt*(a4+airt*(a5+airt*(a6+airt*a7)))))
-         ea = rh*ea ! millibar --> Pascal and saturation --> actual vap. press.
-         qa = const06*ea/(airp-0.377*ea) ! specific humidity at 2m
-         if (rh .lt. 20.) then
-            STDERR 'Warning: Relative humidity below 20 %,i'
-            STDERR 'is wet_mode correct ?'
-         end if
-      case(2) ! Specific humidity from wet bulb temperature
-         if (rh .gt. 50.) then
-            STDERR 'Wet bulb temperature is larger than 50 deg C.'
-            STDERR 'Probably wet_mode is set to a wrong value.'
-            STDERR 'Please correct this in airsea.F90.'
-            STDERR 'Program aborted.'
-            stop
-         end if
-         twet=rh
-         ea = a1 +twet*(a2+twet*(a3+twet*(a4+twet*(a5+twet*(a6+twet*a7)))))
-         ea = ea * 100.0 ! Conversion millibar --> Pascal
-         ea=  ea-0.00066*(1.+0.00155*twet)*airp*(airt-twet)
-         qa = const06*ea/(airp-0.377*ea) ! specific humidity at 2m
-      case(3) ! Specific humidity from dew point temperature
-         if (rh .gt. 50.) then
-            STDERR 'Dew point temperature is larger than 50 deg C.'
-            STDERR 'Probably wet_mode is set to a wrong value.'
-            STDERR 'Please correct this in airsea.F90.'
-            STDERR 'Program aborted.'
-            stop
-         end if
-         tdew=rh
-         ea = a1 +tdew*(a2+tdew*(a3+tdew*(a4+tdew*(a5+tdew*(a6+tdew*a7)))))
-         ea = ea * 100.0 ! Conversion millibar --> Pascal
-         qa = const06*ea/(airp-0.377*ea) ! specific humidity at 2m
-      case default
-   end select
-
-   tvirt = (airt+Kelvin)*(1+qa/const06)/(1+qa)
-   rho_air = airp/(287.05*Tvirt)
-
-!  Stability
-   s0=0.25*(sst-airt)/(w+1.0e-10)**2
-   s=s0*abs(s0)/(abs(s0)+0.01)
-
-!  Transfer coefficient for heat and momentum
-
-   if (w .lt. 2.2) then
-      ae_d=0.0;   be_d=1.08;                  pe_d=-0.15;
-      ae_h=0.0;   be_h=1.185;  ce_h=0.0;      pe_h=-0.157;
-      ae_e=0.0;   be_e=1.23;   ce_e=0.0;      pe_e=-0.16;
-   else if (w .lt. 5.0) then
-      ae_d=0.771; be_d=0.0858;                pe_d=1.0;
-      ae_h=0.927; be_h=0.0546; ce_h=0.0;      pe_h=1.0;
-      ae_e=0.969; be_e=0.0521; ce_e=0.0;      pe_e=1.0;
-   else if (w .lt. 8.0) then
-      ae_d=0.867; be_d=0.0667;                pe_d=1.0;
-      ae_h=1.15;  be_h=0.01;   ce_h=0.0;      pe_h=1.0;
-      ae_e=1.18;  be_e=0.01;   ce_e=0.0;      pe_e=1.0;
-   else if (w .lt. 25.0) then
-      ae_d=1.2;   be_d=0.025;                 pe_d=1.0;
-      ae_h=1.17;  be_h=0.0075; ce_h=-0.00045; pe_h=1.0;
-      ae_e=1.196; be_e=0.008;  ce_e=-0.0004;  pe_e=1.0
-   else
-      ae_d=0.0;   be_d=0.073;                 pe_d=1.0;
-      ae_h=1.652; be_h=-0.017; ce_h=0.0;      pe_h=1.0;
-      ae_e=1.68;  be_e=-0.016; ce_e=0;        pe_e=1.0;
-   end if
-
-   cdd=(ae_d+be_d*exp(pe_d*log(w+eps)))*1.0e-3
-   chd=(ae_h+be_h*exp(pe_h*log(w+eps))+ce_h*(w-8.0)**2)*1.0e-3
-   ced=(ae_e+be_e*exp(pe_e*log(w+eps))+ce_e*(w-8.0)**2)*1.0e-3
-
-   if(s .lt. 0.) then
-      if (s .gt. -3.3) then
-         x = 0.1+0.03*s+0.9*exp(4.8*s)
-      else
-         x = 0.0
-      end if
-      cdd=x*cdd
-      chd=x*chd
-      ced=x*ced
-   else
-      cdd=cdd*(1.0+0.47*sqrt(s))
-      chd=chd*(1.0+0.63*sqrt(s))
-      ced=ced*(1.0+0.63*sqrt(s))
-   end if
-
-   return
-   end subroutine exchange_coefficients
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Calculate the heat fluxes \label{sec:calcFluxes}
-!
-! !INTERFACE:
-   subroutine do_calc_fluxes(heatf,taux,tauy)
-!
-! !DESCRIPTION:
-!  The latent and the sensible heat flux, the long-wave back
-!  radiation (and thus the total net surface heat flux) and
-!  the surface momentum flux are calculated here, based on the
-!  exchange coefficients $c_{dd}$, $c_{ed}$ and $c_{hd}$,
-!  calculated in the subroutine
-!  {\tt exchange\_coefficients}:
-!
-!  \begin{equation}
-!  \begin{array}{rcl}
-!  \tau_x^s &=& c_{dd} \rho_a W_x W \\ \\
-!  \tau_y^s &=& c_{dd} \rho_a W_y W \\ \\
-!  Q_e &=& c_{ed} L \rho_a W (q_s-q_a) \\ \\
-!  Q_h &=& c_{hd} C_{pa} \rho_a W (T_w-T_a)
-!  \end{array}
-!  \end{equation}
-!
-!  with the air density $\rho_a$, the wind speed at 10 m, $W$,
-!  the $x$- and the $y$-component of the wind velocity vector,
-!  $W_x$ and $W_y$, respectively, the specific evaporation heat of sea water,
-!  $L$, the specific saturation humidity, $q_s$, the actual
-!  specific humidity $q_a$, the specific heat capacity of air at constant
-!  pressure, $C_{pa}$, the sea surface temperature, $T_w$ and the
-!  dry air temperature, $T_a$.
-!  For the
-!  long-wave back radiation, the formulae of \cite{Clarketal74}
-!  and \cite{HastenrathLamb78} may be used as alternatives, the setting for
-!  has to be made directly in the code, see the variable
-!  {\tt back\_radiation\_method}.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE, optional, intent(out)     :: heatf,taux,tauy
-!
-! !DEFINED PARAMETERS:
-   integer, parameter                  :: clark=1
-   integer, parameter                  :: hastenrath=2
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for airsea module
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   REALTYPE                  :: tmp
-   REALTYPE                  :: qe,qh,qb
-   integer                   :: back_radiation_method=clark
-!
-!-----------------------------------------------------------------------
-!BOC
-
-   qe=ced*L*rho_air*w*(qs-qa)            ! latent
-   qh=chd*cpa*rho_air*w*(sst-airt)       ! sensible
-
-   tmp=sst+Kelvin
-   select case(back_radiation_method)    ! back radiation
-      case(clark)
-         qb=(1.0-.8*cloud*cloud)                                     &
-            *emiss*bolz*(tmp**4)*(0.39-0.05*sqrt(ea/100.0))          &
-            +4.0*emiss*bolz*(tmp**3)*(sst-airt)
-      case(hastenrath)                    ! qa in g(water)/kg(wet air)
-         qb=(1.0-.8*cloud*cloud)                                     &
-            *emiss*bolz*(tmp**4)*(0.39-0.056*sqrt(1000*qa))          &
-            +4.0*emiss*bolz*(tmp**3)*(sst-airt)
-      case default
-   end select
-
-   if(present(heatf)) then
-     heatf = -(qe+qh+qb)
-   else
-     heat = -(qe+qh+qb)
-   end if
-
-   tmp = cdd*rho_air*w
-   if(present(taux)) then
-     taux  = tmp*wx
-   else
-     tx = tmp*wx
-   end if
-   if(present(tauy)) then
-     tauy  = tmp*wy
-   else
-     ty = tmp*wy
-   end if
-
-   return
-   end subroutine do_calc_fluxes
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Calculate the short--wave radiation \label{sec:swr}
-!
-! !INTERFACE:
-   subroutine short_wave_radiation(jul,secs,lon,lat,swr)
-!
-! !DESCRIPTION:
-!  This subroutine calculates the short--wave net radiation based on
-!  latitude, longitude, time, fractional cloud cover and albedo.
-!  The albedo monthly values from \cite{Payne72} are given  here
-!  as means of the values between
-!  at 30$^{\circ}$ N and 40$^{\circ}$ N for the Atlantic Ocean
-!  (hence the same latitudinal band of the Mediterranean Sea).
-!  The basic formula for the short-wave radiation at the surface, $Q_s$,
-!  has been taken from \cite{RosatiMiyacoda88}, who adapted the work
-!  of \cite{Reed77} and \cite{SimpsonPaulson99}:
-!
-!  \begin{equation}
-!  Q_s=Q_{tot} (1-0.62 C + 0.0019 \beta) (1-\alpha),
-!  \end{equation}
-!
-!  with the total radiation reaching the surface under clear skies,
-!  $Q_{tot}$, the fractional cloud cover, $C$, the solar noon altitude,
-!  $\beta$, and the albedo, $\alpha$.
-!  This piece of code has been taken the MOM-I (Modular Ocean Model)
-!  version at the INGV (Istituto Nazionale di Geofisica e Vulcanologia,
-!  see {\tt http://www.bo.ingv.it/}.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: jul,secs
-   REALTYPE, intent(in)                :: lon,lat
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE, optional, intent(out)     :: swr
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!  See log for airsea module
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-!
-   REALTYPE                  :: solar=1350.
-   REALTYPE                  :: eclips=23.439*deg2rad
-   REALTYPE                  :: tau=0.7
-   REALTYPE                  :: aozone=0.09
-
-
-   REALTYPE                  :: th0,th02,th03,sundec
-   REALTYPE                  :: thsun,coszen,zen,dzen,sunbet
-   REALTYPE                  :: qatten,qzer,qdir,qdiff,qtot,qshort
-   REALTYPE                  :: albedo
-   integer                   :: jab
-   integer                   :: yy,mm,dd
-   REALTYPE                  :: yrdays,days,hour,tjul
-
-   integer                   :: yday(12) = &
-                 (/ 0,31,59,90,120,151,181,212,243,273,304,334 /)
-
-   REALTYPE                  :: alb1(20) = &
-                 (/.719,.656,.603,.480,.385,.300,.250,.193,.164, &
-                   .131,.103,.084,.071,.061,.054,.039,.036,.032,.031,.030 /)
-
-   REALTYPE                  :: za(20) = &
-                 (/90.,88.,86.,84.,82.,80.,78.,76.,74.,70.,  &
-                   66.,62.,58.,54.,50.,40.,30.,20.,10.,0.0 /)
-
-   REALTYPE                  :: dza(19)
-   data           dza/8*2.0, 6*4.0, 5*10.0/
-!
-!-----------------------------------------------------------------------
-!BOC
-
-!  number of days in a year :
-   call calendar_date(jul,yy,mm,dd)
-   days=float(yday(mm))+float(dd)
-   hour=1.0*secs/3600.
-!kbk   if (mod(yy,4) .eq. 0 ! leap year I forgot
-   yrdays=365.
-
-   th0 = 2.*pi*days/yrdays
-   th02 = 2.*th0
-   th03 = 3.*th0
-!  sun declination :
-   sundec = 0.006918 - 0.399912*cos(th0) + 0.070257*sin(th0)         &
-           - 0.006758*cos(th02) + 0.000907*sin(th02)                 &
-           - 0.002697*cos(th03) + 0.001480*sin(th03)
-
-!  sun hour angle :
-   thsun = (hour-12.)*15.*deg2rad + alon
-
-!  cosine of the solar zenith angle :
-   coszen =sin(alat)*sin(sundec)+cos(alat)*cos(sundec)*cos(thsun)
-   if (coszen .le. 0.0) then
-      coszen = 0.0
-      qatten = 0.0
-   else
-      qatten = tau**(1./coszen)
-   end if
-   qzer  = coszen * solar
-   qdir  = qzer * qatten
-   qdiff = ((1.-aozone)*qzer - qdir) * 0.5
-   qtot  =  qdir + qdiff
-
-   tjul = (days-81.)/yrdays*2.*pi
-
-!  sin of the solar noon altitude in radians :
-   sunbet=sin(alat)*sin(eclips*sin(tjul))+cos(alat)*cos(eclips*sin(tjul))
-!  solar noon altitude in degrees :
-   sunbet = asin(sunbet)*rad2deg
-
-!  calculates the albedo as a function of the solar zenith angle :
-!  (after Payne jas 1972)
-!  solar zenith angle in degrees :
-   zen=(180./pi)*acos(coszen)
-   if(zen .ge. 74.)then
-      jab=.5*(90.-zen)+1.
-   else if (zen .ge. 50.) then
-      jab=.23*(74.-zen)+9.
-   else
-      jab=.10*(50.-zen)+15.
-   endif
-
-   dzen=(za(jab)-zen)/dza(jab)
-   albedo=alb1(jab)+dzen*(alb1(jab+1)-alb1(jab))
-
-!  radiation as from Reed(1977), Simpson and Paulson(1979)
-!  calculates SHORT WAVE FLUX ( watt/m*m )
-!  Rosati,Miyakoda 1988 ; eq. 3.8
-!  clouds from COADS perpetual data set
-#if 1
-   qshort  = qtot*(1-0.62*cloud + .0019*sunbet)*(1.-albedo)
-   if(qshort .gt. qtot ) then
-      qshort  = qtot
-   end if
-#else
-!  original implementation
-   if(cloud .lt. 0.3) then
-      qshort  = qtot
-   else
-      qshort  = qtot*(1-0.62*cloud + 0.0019*sunbet)*(1.-albedo)
-   endif
-#endif
-
-   if (present(swr)) then
-      swr = qshort
-   else
-      I_0 = qshort
-   end if
-
-   return
-   end subroutine short_wave_radiation
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
 ! !IROUTINE: Read meteo data, interpolate in time
 !
 ! !INTERFACE:
@@ -914,13 +527,18 @@
 !
 ! !DESCRIPTION:
 !  For {\tt calc\_fluxes=.true.}, this routine reads meteo data
-!  from {\tt meteo$\_$file} and calculates the
+!  from {\tt meteo$\_$file} and calculates for each time step
+!  in  {\tt meteo$\_$file} the
 !  fluxes of heat and momentum, and the
-!  short-wave radiation by calling the routines {\tt  exchange\_coefficients},
-!  {\tt do\_calc\_fluxes} and
-!  {\tt short\_wave\_radiation}, see
-!  \sect{sec:calcCoeff}, \sect{sec:calcFluxes}, and \sect{sec:swr}.
-!  Then, the results are interpolated in time to the actual time step.
+!  long-wave back radiation by calling the routines {\tt humidity},
+!  {\tt back\_radiation} and {\tt airsea\_fluxes}, see sections
+!  \sect{sec:humidity}, \sect{sec:back-rad}, and \sect{sec:airsea-fluxes},
+!  a wrapper routine for using the bulk fomulae from either \cite{Kondo75}
+!  or \cite{Fairalletal96}. Afterwards, the airsea fluxes
+!  are interpolated to the actual time step of GOTM. Finally, the
+!  incoming short-wave radiation is calculated by using the interpolated
+!  cloud cover and the actual UTC time of GOTM, see the routine
+!  {\tt short\_wave\_radiation} described in \sect{sec:swr}.
 
 !
 ! !USES:
@@ -948,6 +566,8 @@
    REALTYPE, save            :: I2=0.,h2=0.,tx2=0.,ty2=0.
    logical, save             :: first=.true.
    integer                   :: rc
+   REALTYPE                  :: ta,ta_k,tw,tw_k 
+   REALTYPE                  :: qe,qh,qb
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -970,16 +590,36 @@
          meteo_secs2 = hh*3600 + min*60 + ss
          if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .gt. 0) EXIT
       end do
-      wx    = obs(1)
-      wy    = obs(2)
+      u10    = obs(1)
+      v10    = obs(2)
       airp  = obs(3)*100. !kbk mbar/hPa --> Pa
       airt  = obs(4)
       rh    = obs(5)
       cloud = obs(6)
-      call exchange_coefficients()
+
+      if (sst .lt. 100.) then
+         tw  = sst
+         tw_k= sst+KELVIN
+      else
+         tw  = sst-KELVIN
+         tw_k= sst
+      end if
+
+      if (airt .lt. 100.) then
+         ta_k  = airt + KELVIN
+         ta = airt
+      else
+         ta  = airt - KELVIN
+         ta_k = airt
+      end if
+
       if (first) then
-         call do_calc_fluxes(heatf=h1,taux=tx1,tauy=ty1)
-         call short_wave_radiation(jul,secs,alon,alat,swr=I1)
+         call humidity(hum_method,rh,airp,tw,ta)
+         call back_radiation(back_radiation_method, &
+                             dlat,tw_k,ta_k,cloud,qb)
+         call airsea_fluxes(fluxes_method, &
+                            tw,ta,u10,v10,precip,evap,tx1,ty1,qe,qh)
+         h1=(qb+qe+qh)
          I2  = I1
          h2  = h1
          tx2 = tx1
@@ -990,8 +630,12 @@
          h1  = h2
          tx1 = tx2
          ty1 = ty2
-         call do_calc_fluxes(heatf=h2,taux=tx2,tauy=ty2)
-         call short_wave_radiation(jul,secs,alon,alat,swr=I2)
+         call humidity(hum_method,rh,airp,tw,ta)
+         call back_radiation(back_radiation_method, &
+                             dlat,tw_k,ta_k,cloud,qb)
+         call airsea_fluxes(fluxes_method, &
+                            tw,ta,u10,v10,precip,evap,tx2,ty2,qe,qh)
+         h2=(qb+qe+qh)
       end if
       dt = time_diff(meteo_jul2,meteo_secs2,meteo_jul1,meteo_secs1)
       alpha(1) = (I2-I1)/dt
@@ -1006,6 +650,8 @@
    heat = h1  + t*alpha(2)
    tx   = tx1 + t*alpha(3)
    ty   = ty1 + t*alpha(4)
+
+   w = sqrt(u10*10+v10*v10)
 
    return
    end subroutine flux_from_meteo
