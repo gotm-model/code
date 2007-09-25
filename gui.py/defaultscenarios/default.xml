@@ -56,8 +56,10 @@
 	<airsea>
 		<airsea>
 			<calc_fluxes>False</calc_fluxes>
+			<fluxes_method>1</fluxes_method>
+			<back_radiation_method>1</back_radiation_method>
 			<meteo_file>meteo_file.dat</meteo_file>
-			<wet_mode>1</wet_mode>
+			<hum_method>1</hum_method>
 			<heat_method>0</heat_method>
 			<const_swr>0.0</const_swr>
 			<const_heat>0.0</const_heat>

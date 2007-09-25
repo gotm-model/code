@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.23 2007-09-21 08:57:05 jorn Exp $
+#$Id: scenariobuilder.py,v 1.24 2007-09-25 16:56:44 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -601,7 +601,7 @@ class PageAirSeaInteraction(ScenarioPage):
 
         meteolayout = QtGui.QVBoxLayout()
         editMeteoFile = self.factory.createEditor('airsea/meteo_file',self)
-        editWetMode   = self.factory.createEditor('airsea/wet_mode',  self)
+        editWetMode   = self.factory.createEditor('airsea/hum_method',  self)
         
         meteofilelayout = QtGui.QHBoxLayout()
         editMeteoFile.addToBoxLayout(meteofilelayout,label=False,unit=False)

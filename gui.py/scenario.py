@@ -421,16 +421,16 @@ class Scenario(xmlstore.TypedStore):
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
         if self.originalversion==savedscenarioversion: self.resetChanged()
 
+    def saveAll(self,path,targetversion=None,**kwargs):
+        if targetversion==None: targetversion = savedscenarioversion
+        xmlstore.TypedStore.saveAll(self,path,targetversion=targetversion,**kwargs)
+
     def loadAll(self,path):
         xmlstore.TypedStore.loadAll(self,path)
 
         # If the scenario was stored in the official 'save' version, we should not consider it changed.
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
         if self.originalversion==savedscenarioversion: self.resetChanged()
-
-    def saveAll(self,path,targetversion=None,**kwargs):
-        if targetversion==None: targetversion = savedscenarioversion
-        xmlstore.TypedStore.saveAll(self,path,targetversion=targetversion,**kwargs)
 
 # ========================================================================================
 # Here start custom convertors!
@@ -460,7 +460,10 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
     fixedtargetid = 'gotm-4.1.0'
 
     def registerLinks(self):
-        self.defaults = ['/obs/bioprofiles']
+        self.links = [('/airsea/airsea/wet_mode','/airsea/airsea/hum_method')]
+        self.defaults = ['/obs/bioprofiles',
+                         'airsea/airsea/fluxes_method',
+                         'airsea/airsea/back_radiation_method']
 Scenario.addConvertor(Convertor_gotm_4_0_0_to_gotm_4_1_0,addsimplereverse=True)
 
 class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):

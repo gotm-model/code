@@ -156,6 +156,22 @@
 				<option value="1" label="separate heat and momentum fluxes"/>
 			</options>
 		</element>
+		<element id="fluxes_method" type="select" label="bulk formulae according to">
+			<condition type="eq" variable="./flux_source" value="0" />
+			<options>
+				<option value="1" label="Kondo (1975)" />
+				<option value="2" label="Fairall et al. (1996)" />
+			</options>
+		</element>
+		<element id="back_radiation_method" type="select" label="calculation of long-wave back radiation according to">
+			<condition type="eq" variable="./flux_source" value="0" />
+			<options>
+				<option value="1" label="Clark et al. (1974)" />
+				<option value="2" label="Hastenrath and Lamb (1978)" />
+				<option value="3" label="Bignami et al. (1995)" />
+				<option value="4" label="Berliandand Berliand (1952)" />
+			</options>
+		</element>
 		<element id="meteo_file"  type="file" label="meteorological observations">
 			<condition type="eq" variable="./flux_source" value="0"/>
 			<fileinfo type="pointsintime">
@@ -169,7 +185,7 @@
 				</filevariables>
 			</fileinfo>
 		</element>
-		<element id="wet_mode"    type="select" label="unit for air humidity">
+		<element id="hum_method"    type="select" label="unit for air humidity">
 			<condition type="eq" variable="./flux_source" value="0"/>
 			<options>
 				<option value="1" label="relative humidity"/>

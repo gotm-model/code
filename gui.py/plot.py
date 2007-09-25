@@ -576,7 +576,7 @@ class Figure(common.referencedobject):
                     xname,yname = yname,xname
                 
                 # Get data series style settings
-                style,plotargs = getLineProperties(seriesnode['LineProperties'])
+                plotargs = getLineProperties(seriesnode['LineProperties'])
                 
                 # plot confidence interval (if any)
                 hasconfidencelimits = (varslice.ubound!=None or varslice.lbound!=None)
@@ -615,7 +615,7 @@ class Figure(common.referencedobject):
                     zorder += 1
                 
                 # Plot line and/or markers
-                if style!='':
+                if plotargs['linestyle']!='' or plotargs['marker']!='':
                     lines = axes.plot(X,Y,zorder=zorder,**plotargs)
                 
                 dim2data[xname]['axis'] = 'x'
@@ -731,9 +731,9 @@ class Figure(common.referencedobject):
             dat = dim2data[dim]
             
             # Range selected by MatPlotLib
-            if axisname=='x':
+            if axisname=='x' and not dat.get('tight',True):
                 naturalrange = axes.get_xlim()
-            elif axisname=='y':
+            elif axisname=='y' and not dat.get('tight',True):
                 naturalrange = axes.get_ylim()
             else:
                 naturalrange = dat['datarange'][:]
@@ -746,13 +746,10 @@ class Figure(common.referencedobject):
             if forcedrange[0]!=None: effdatarange[0] = forcedrange[0]
             if forcedrange[1]!=None: effdatarange[1] = forcedrange[1]
 
-            # Effective forced range, combining MatPlotLib selection with user overrides.
+            # Effective forced range, combining natural range with user overrides.
             effrange = list(forcedrange)
             if effrange[0]==None: effrange[0]=naturalrange[0]
             if effrange[1]==None: effrange[1]=naturalrange[1]
-
-            # Whether to override MatPlotLib's choice of axis limits.
-            if dat.get('tight',True): effrange = effdatarange
             
             # Get the explicitly set and the default properties.
             axisnode = forcedaxes.getChildById('Axis',dim,create=True)
@@ -919,7 +916,7 @@ class Figure(common.referencedobject):
         # Create grid
         gridnode = self.properties.root['Grid']
         if gridnode.getValueOrDefault():
-            style,lineargs = getLineProperties(gridnode['LineProperties'])
+            lineargs = getLineProperties(gridnode['LineProperties'])
             axes.grid(True,**lineargs)
         
         # Scale the text labels for x- and y-axis.
@@ -987,4 +984,4 @@ def getLineProperties(propertynode):
     markersize = propertynode['MarkerSize'].getValueOrDefault()
     markerfacecolor = propertynode['MarkerFaceColor'].getValueOrDefault()
     
-    return (markertype+linestyle,{'linestyle':linestyle,'marker':markertype,'linewidth':linewidth,'color':color.getNormalized(),'markersize':markersize,'markerfacecolor':markerfacecolor.getNormalized()})
+    return {'linestyle':linestyle,'marker':markertype,'linewidth':linewidth,'color':color.getNormalized(),'markersize':markersize,'markerfacecolor':markerfacecolor.getNormalized()}

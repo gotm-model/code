@@ -6,20 +6,29 @@ gotmversion = gotm.gui_util.getversion().rstrip()
 gotmscenarioversion = 'gotm-%s' % gotmversion
 print 'GOTM library reports version %s; will use scenario template %s.xml.' % (gotmversion,gotmscenarioversion)
 
+verbose = False
+
 def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
+    if verbose: print 'enter simulate'
+    
     namelistscenario = scen.convert(gotmscenarioversion)
+    if verbose: print 'scenario converted'
     simulationdir = tempfile.mkdtemp('','gotm-')
     namelistscenario.setProperty('gotmrun/output/out_fmt',2)
     namelistscenario.setProperty('gotmrun/output/out_dir','.')
     namelistscenario.setProperty('gotmrun/output/out_fn','result')
     namelistscenario.writeAsNamelists(simulationdir)
     namelistscenario.release()
+    
+    if verbose: print 'create result'
 
     # Create result object.
     res = data.Result()
         
     # Save old working directory
     olddir = os.getcwdu()
+
+    if verbose: print 'switch working directory'
 
     # Change to directory with GOTM scenario (catch exceptions that can occur,
     # for instance, if the specified directory does not exist).
@@ -38,6 +47,8 @@ def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
         (h,errfile) = tempfile.mkstemp('.txt','gotm')
         os.close(h)
         gotm.gui_util.redirectoutput(outfile,errfile)
+
+    if verbose: print 'initializing gotm module'
 
     # Initialize GOTM
     try:
@@ -144,7 +155,7 @@ def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
         res.attach(respath,scen,copy=False)
         res.changed = True
     else:
-        # Failed: delete temporaty simulation directory
+        # Failed: delete temporary simulation directory
         try:
             shutil.rmtree(simulationdir)
         except Exception,e:

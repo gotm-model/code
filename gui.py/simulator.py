@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.12 2007-08-19 09:54:43 jorn Exp $
+#$Id: simulator.py,v 1.13 2007-09-25 16:56:45 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -38,7 +38,7 @@ class GOTMThread(QtCore.QThread):
     
   def run(self):
     assert self.scenario!=None, 'No scenario specified.'
-    
+
     self.res = simulate.simulate(self.scenario,continuecallback=self.canContinue,progresscallback=self.progressed)
     
   def stop(self):

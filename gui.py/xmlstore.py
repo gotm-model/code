@@ -32,8 +32,20 @@ dateformat = '%Y-%m-%d %H:%M:%S'
 #   strings, since XML is text-based; strings are converted to and from other
 #   types (date, int, float, bool) whenever necessary.
 class Store:
+    """Class for storing "properties" (i.e name,value pairs) in
+    hierarchical structure, using in-memory XML DOM. All values are stored as
+    strings, since XML is text-based; strings are converted to and from other
+    types (datetime, int, float, bool, etc.) whenever necessary."""
 
     class DataType(common.referencedobject):
+        """Abstract class for user data types. Methods "load" and "save" MUST be
+        implemented by inheriting classes.
+        
+        The "context" is a dictionary object that allows for data-type-specific
+        storage on store level. For instance, it is currently used by DataFile
+        objects as source of additional information (i.e., which data store to
+        obtain external data files from), and for caching of values.
+        """
         def __init__(self):
             common.referencedobject.__init__(self)
         
@@ -45,9 +57,14 @@ class Store:
             assert False, 'This virtual method MUST be overwritten by the inheriting class.'
 
         def preparePersist(self,node,context):
+            """Called just before the data store is saved, and can be used to prepare data
+            for storage (e.g., the DataFile type checks in this method its source will be
+            overwritten by the impending save, and loads it into memory if so)."""
             pass
 
         def persist(self,node,context):
+            """Called when the store is saved to file. It may be used to store additional data
+            in the saved store (see again the DataFile object)."""
             pass
 
         def unlink(self):
@@ -824,7 +841,203 @@ class DataFileMemory(DataFile):
     def getSize(self):
         return len(self.data)
 
+class Schema:
+    """Class for managing XML-based schemas, used to define TypedStore objects.
+    Supports caching of schemas (based on file path), parsing of schemas
+    (i.e., inserting linked templates, resolving dependencies), and provides
+    access to the main properties (version and root of the XML tree).
+    """
+    cache = {}
+    
+    @staticmethod
+    def create(source,cache=True):
+        """Creates a schema from file or DOM tree object. If a file path is
+        provided, the created schema is cached, and returned on subsequent
+        request for schemas with the same path.
+        """
+        if cache and isinstance(source,basestring):
+            path = os.path.abspath(source)
+            if path in Schema.cache:
+                #print 'Found schema "%s" in cache.' % path
+                schema = Schema.cache[path]
+            else:
+                schema = Schema(source)
+                Schema.cache[path] = schema
+        else:
+            schema = Schema(source)
+        return schema
+    
+    def __init__(self,source):
+        
+        # The template can be specified as a DOM object, or as string (i.e. path to XML file)
+        path = ''
+        if isinstance(source,basestring):
+            path = source
+            if not os.path.isfile(source):
+                raise Exception('XML schema file "%s" does not exist.' % source)
+            self.dom = xml.dom.minidom.parse(source)
+        elif isinstance(source,xml.dom.minidom.Document):
+            self.dom = source
+        else:
+            assert False, 'Supplied argument must either be a string or an XML DOM tree. Got %s.' % source
+            
+        # Resolve links to external documents
+        links = self.dom.getElementsByTagName('link')
+        templates = dict([(node.getAttribute('id'),node) for node in self.dom.getElementsByTagName('template')])
+        for link in links:
+            assert link.hasAttribute('path') or link.hasAttribute('template'), 'Link node does not have "path" or "template" attribute.'
+            
+            if link.hasAttribute('path'):
+                # We need to copy from an external XML document.
+                refpath = os.path.abspath(os.path.join(os.path.dirname(path),link.getAttribute('path')))
+                if not os.path.isfile(refpath):
+                    raise Exception('Linked XML schema file "%s" does not exist.' % refpath)
+                childdom = xml.dom.minidom.parse(refpath)
+                templateroot = childdom.documentElement
+            else:
+                # We need to copy from an internal template.
+                templateid = link.getAttribute('template')
+                assert templateid in templates, 'Cannot find template "%s".' % templateid
+                templateroot = templates[templateid]
+                
+            # Copy nodes
+            linkparent = link.parentNode
+            if link.hasAttribute('skiproot'):
+                for ch in templateroot.childNodes:
+                    newnode = common.copyNode(ch,linkparent,targetdoc=self.dom)
+            else:
+                newnode = common.copyNode(templateroot,linkparent,targetdoc=self.dom,name='element',before=link)
+                
+                # Copy attributes and children of link node to new node.
+                for key in link.attributes.keys():
+                    if key not in ('path','template','skiproot'):
+                        newnode.setAttribute(key,link.getAttribute(key))
+                for ch in link.childNodes:
+                    common.copyNode(ch,newnode,targetdoc=self.dom)
+                    
+            # Remove link node
+            linkparent.removeChild(link)
+        
+        # For every variable: build a list of variables/folders that depend on its value.
+        self.buildDependencies()
+        
+    def getRoot(self):
+        """Returns the root of the schema DOM tree."""
+        return self.dom.documentElement
+        
+    def getVersion(self):
+        """Returns the schema version string."""
+        return self.dom.documentElement.getAttribute('version')
+
+    # buildDependencies: for every variable node, this creates lists of dependent nodes
+    # (i.e. folders and variables that have one or more conditions that depend on the
+    # variable under investigation). Essentially we convert lists of dependencies ('servant'-centric)
+    # into lists of dependent nodes ('controller'-centric). We need the latter in order to selectively
+    # re-check conditions (and hide/show corresponding nodes) after the value of
+    # a dependency ('controller') changes.
+    def buildDependencies(self,root=None,curpath='',curowner=None):
+        if root==None: root=self.dom.documentElement
+        for ch in root.childNodes:
+            if ch.nodeType==ch.ELEMENT_NODE:
+                if ch.localName=='element':
+                    self.buildDependencies(root=ch,curpath=curpath+'/'+ch.getAttribute('id'),curowner=ch)
+                    if ch.hasAttribute('unit'):
+                        unit = ch.getAttribute('unit')
+                        if unit[0]=='[' and unit[-1]==']':
+                            unitnode,relcurpath = self.getReversePath(ch,unit[1:-1],absourcepath=curpath+'/'+ch.getAttribute('id'))
+                            self.registerDependency(unitnode,relcurpath,'unit')
+                elif ch.localName=='condition':
+                    if ch.hasAttribute('source'): continue
+                    if ch.hasAttribute('variable'):
+                        # Get the referenced node, and the relative path from there to here.
+                        depnode,relcurpath = self.getReversePath(curowner,ch.getAttribute('variable'),absourcepath=curpath)
+
+                        # Register the current node with the referenced node,
+                        # so that a change in the referenced node can trigger
+                        # an update in the visibility of the current node.
+                        self.registerDependency(depnode,relcurpath,'visibility')
+                        
+                    self.buildDependencies(root=ch,curpath=curpath,curowner=curowner)
+                    
+    # getTemplateNode: obtains template node at given path
+    # (path specification consists of array of node ids)
+    def getNodeFromPath(self,path,root=None):
+        """Obtains DOM node in schema at specified path. If a reference node
+        is provided, the path is assumed to be relative to the reference node.
+        If no reference node is provided, the path is assumed absolute, that is,
+        relative to the schema root element."""
+        if root==None: root=self.dom.documentElement
+        for childname in path:
+            if childname=='..':
+                assert not root.isSameNode(self.dom.documentElement)
+                root = root.parentNode
+            elif childname!='' and childname!='.':
+                for root in root.childNodes:
+                    if root.nodeType==root.ELEMENT_NODE and root.localName=='element' and root.getAttribute('id')==childname:
+                        break
+                else:
+                    return None
+        return root
+
+    # getNodePath: obtains path specification for given template node
+    # (path specification consists of node ids with slash separators)
+    def getPathFromNode(self,node):
+        """Gets the absolute path of the specified node, as an array of path
+        components. The absolute path is defined as the path relative to the
+        schema root element.
+        """
+        path = []
+        while node.parentNode.parentNode!=None:
+            path.insert(0,node.getAttribute('id'))
+            node = node.parentNode
+        return path
+
+    def getReversePath(self,sourcenode,targetpath,absourcepath=None):
+        """Takes a schema reference node, and the path of another node which
+        may be relative to the reference node, and returns the referenced target
+        node plus the (potentially relative) path from the target node to the
+        source node.
+        
+        The absolute path to the source node may be provided; this saves
+        computational effort only.
+        """
+        if absourcepath==None: '/'.join(self.getPathFromNode(sourcenode))
+        
+        refnode = None
+        if targetpath[0]!='/': refnode = sourcenode.parentNode
+        splittargetpath = targetpath.split('/')
+        targetnode = self.getNodeFromPath(splittargetpath,root=refnode)
+        assert targetnode!=None, 'Cannot locate target node "%s" for node "%s".' % (targetpath,absourcepath)
+        
+        abstargetpath = self.getPathFromNode(targetnode)
+        assert len(abstargetpath)!=0, 'Target node "%s" for node "%s" corresponds to the root of the DOM tree. This is not allowed.' % (targetpath,absourcepath)
+        if '.' in splittargetpath or '..' in splittargetpath:
+            # Find a relative path from the referenced node to the current node.
+            abstargetpath.pop()    # The reference node will be the parent of the specified node
+            abscurpath = [n for n in absourcepath.split('/') if n!='']
+            istart = 0
+            while istart<len(abstargetpath) and istart<len(abscurpath) and abstargetpath[istart]==abscurpath[istart]: istart+=1
+            return targetnode,(len(abstargetpath)-istart)*'../'+'/'.join(abscurpath[istart:])
+        else:
+            # Use the absolute path of the current node.
+            return targetnode,absourcepath
+            
+    def registerDependency(self,node,dependantnodepath,type):
+        """For the given template node, registers that another node at the
+        specified (potentially relative) path depends on it.
+        """
+        deplist = common.findDescendantNode(node,['dependentvariables'],create=True)
+        depnode = self.dom.createElementNS(deplist.namespaceURI,'dependentvariable')
+        depnode.setAttribute('path',dependantnodepath)
+        depnode.setAttribute('type',type)
+        deplist.appendChild(depnode)
+
 class TypedStoreInterface:
+    """This class provides an interface to a TypedStore object. The interface
+    can be configured at initialization to (1) hide nodes with the "hidden"
+    property set and (2) to omit nodes with the "grouponly" attribute set, replacing
+    them instead with the node's children.
+    """
     def __init__(self,store,showhidden=True,omitgroupers=False):
         self.showhidden = showhidden
         self.omitgroupers = omitgroupers
@@ -842,6 +1055,7 @@ class TypedStoreInterface:
         self.storechangedhandlers = []
 
     def getChildCount(self,node):
+        """Returns the number of children of the specified node."""
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         childcount = 0
@@ -853,20 +1067,21 @@ class TypedStoreInterface:
                     childcount += 1
         return childcount
 
-    def getChildren(self,node,showhidden=None):
+    def getChildren(self,node):
+        """Returns a list of children of the specified node."""
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
-        if showhidden==None: showhidden=self.showhidden
         res = []
         for child in node.children:
-            if child.visible or showhidden:
+            if child.visible or self.showhidden:
                 if self.omitgroupers and child.grouponly:
-                    res += self.getChildren(child,showhidden=showhidden)
+                    res += self.getChildren(child)
                 else:
                     res.append(child)
         return res
 
     def getParent(self,node):
+        """Returns the parent of the specified node."""
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if not self.omitgroupers: return node.parent
@@ -875,6 +1090,7 @@ class TypedStoreInterface:
         return par
 
     def getChildByIndex(self,node,index,returnindex=False):
+        """Gets the child of the specified node, at the specified index."""
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         for child in node.children:
@@ -891,6 +1107,7 @@ class TypedStoreInterface:
             return None
 
     def getOwnIndex(self,node):
+        """Returns the index of the specified node in its list of siblings."""
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         ind = 0
@@ -909,6 +1126,7 @@ class TypedStoreInterface:
         return ind
 
     def getDepth(self,node):
+        """Gets the maximum depth of the tree of descendants of the specified node."""
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         childmax = 0
@@ -918,6 +1136,8 @@ class TypedStoreInterface:
         return childmax+1
 
     def toHtml(self,node,xmldocument,totaldepth,level=0,hidedefaults=False):
+        """Returns a list of HTML "tr" nodes that describe the specified node
+        and its children."""
         assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         res = []
@@ -1678,28 +1898,21 @@ class TypedStore(common.referencedobject):
         if cls.schemas == None:
             cls.schemas = cls.getDefaultSchemas()
         if schemaname==None: return cls.schemas
-        if schemaname in cls.schemas:
-            return cls.schemas[schemaname]
-        else:
-            return None
+        return cls.schemas.get(schemaname,None)
 
     @classmethod
     def defaultname2path(cls,defaultname=None):
         if cls.defaults == None:
             cls.defaults = cls.getDefaultValues()
         if defaultname==None: return cls.defaults
-        if defaultname in cls.defaults:
-            return cls.defaults[defaultname]
-        else:
-            return None
+        return cls.defaults.get(defaultname,None)
 
     @classmethod
     def getDefault(cls,name,version):
         if cls==TypedStore: return None
         if name==None: name = 'default'
         if cls.defaultname2scenarios==None: cls.defaultname2scenarios = {}
-        if name not in cls.defaultname2scenarios: cls.defaultname2scenarios[name] = {}
-        version2store = cls.defaultname2scenarios[name]
+        version2store = cls.defaultname2scenarios.setdefault(name,{})
         if version in version2store:
             # We have the requested default with the requested version in our cache; return it.
             return version2store[version]
@@ -1719,87 +1932,38 @@ class TypedStore(common.referencedobject):
         return defstore
 
     @classmethod
-    def fromSchemaName(cls,schemaname,valueroot=None,adddefault=True):
-        assert cls!=TypedStore, 'fromSchemaName cannot be called on base class "TypedStore", only on derived classes. You probably need to create a derived class with versioning support.'
-        path = cls.schemaname2path(schemaname)
-        if path==None:
+    def fromSchemaName(cls,schemaname,*args,**kwargs):
+        assert cls!=TypedStore, 'fromSchemaName cannot be called on base class "TypedStore", only on derived classes. You need to create a derived class with versioning support.'
+        schemapath = cls.schemaname2path(schemaname)
+        if schemapath==None:
             raise Exception('Unable to locate XML schema file for "%s".' % schemaname)
-        store = cls(path, valueroot, adddefault = adddefault)
-        cls.schemas[schemaname] = store.schemadom
+        store = cls(schemapath,*args,**kwargs)
         return store
 
     @classmethod
-    def fromXmlFile(cls,path,adddefault=True):
+    def fromXmlFile(cls,path,**kwargs):
         assert cls!=TypedStore, 'fromXmlFile cannot be called on base class "TypedStore", only on derived classes. Use setStore if you do not require versioning.'
         if not os.path.isfile(path):
             raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
         valuedom = xml.dom.minidom.parse(path)
         version = valuedom.documentElement.getAttribute('version')
-        return cls.fromSchemaName(version,valuedom,adddefault=adddefault)
+        return cls.fromSchemaName(version,valuedom,**kwargs)
 
-    def __init__(self,schemadom,valueroot=None,otherstores={},adddefault=True):
+    def __init__(self,schema,valueroot=None,otherstores={},adddefault=True):
         
         common.referencedobject.__init__(self)
 
-        # The template can be specified as a DOM object, or as string (i.e. path to XML file)
-        schemapath = '.'
-        if isinstance(schemadom,basestring):
-            schemapath = schemadom
-            if not os.path.isfile(schemapath):
-                raise Exception('XML schema file "%s" does not exist.' % schemapath)
-            schemadom = xml.dom.minidom.parse(schemapath)
-        self.schemadom = schemadom
-        
-        # Resolve links to external documents
-        links = self.schemadom.getElementsByTagName('link')
-        templates = dict([(node.getAttribute('id'),node) for node in self.schemadom.getElementsByTagName('template')])
-        for link in links:
-            assert link.hasAttribute('path') or link.hasAttribute('template'), 'Link node does not have "path" or "template" attribute.'
-            
-            if link.hasAttribute('path'):
-                # We need to copy from an external XML document.
-                refpath = os.path.abspath(os.path.join(os.path.dirname(schemapath),link.getAttribute('path')))
-                if not os.path.isfile(refpath):
-                    raise Exception('Linked XML schema file "%s" does not exist.' % refpath)
-                childdom = xml.dom.minidom.parse(refpath)
-                templateroot = childdom.documentElement
-            else:
-                # We need to copy from an internal template.
-                templateid = link.getAttribute('template')
-                assert templateid in templates, 'Cannot find template "%s".' % templateid
-                templateroot = templates[templateid]
-                
-            # Copy nodes
-            linkparent = link.parentNode
-            if link.hasAttribute('skiproot'):
-                for ch in templateroot.childNodes:
-                    newnode = common.copyNode(ch,linkparent,targetdoc=schemadom)
-            else:
-                newnode = common.copyNode(templateroot,linkparent,targetdoc=schemadom,name='element',before=link)
-                
-                # Copy attributes and children of link node to new node.
-                for key in link.attributes.keys():
-                    if key not in ('path','template','skiproot'):
-                        newnode.setAttribute(key,link.getAttribute(key))
-                for ch in link.childNodes:
-                    common.copyNode(ch,newnode,targetdoc=schemadom)
-                    
-            # Remove link node
-            linkparent.removeChild(link)
-        
+        if not isinstance(schema,Schema): schema = Schema.create(schema)
+        self.schema = schema
+
         # Get schema version
-        self.version = self.schemadom.documentElement.getAttribute('version')
+        self.version = self.schema.getVersion()
         self.originalversion = None
 
         # Events
         self.interfaces = []
 
         self.otherstores = otherstores
-
-        # For every variable: build a list of variables/folders that depend on its value.
-        if not self.schemadom.documentElement.hasAttribute('dependenciesbuilt'):
-            self.buildDependencies()
-            self.schemadom.documentElement.setAttribute('dependenciesbuilt','True')
 
         # Link to original source (if any)
         self.path = None
@@ -1821,6 +1985,8 @@ class TypedStore(common.referencedobject):
         self.setStore(valueroot)
         
     def unlink(self):
+        """Destroys the store and breaks circular references. The TypedStore object
+        should not be used after this method has been called!"""
         if self.root!=None: self.root.destroy()
         self.root = None
 
@@ -1836,21 +2002,34 @@ class TypedStore(common.referencedobject):
         self.interfaces = []
 
     def getInterface(self,**kwargs):
+        """Returns an interface to the store. Interfaces offer several facilities
+        to e.g. consistently show or hide nodes with the "hidden" property, and to
+        omit schema nodes that are meant for grouping only (with the "grouponly"
+        attribute). Also, interfaces provide the *only* means of being notified by the
+        store about changes of node value, visibility, etc."""
         return TypedStoreInterface(self,**kwargs)
 
     def setContainer(self,container):
+        """Sets the container to be used by nodes that point to external data.
+        This function also clears the cache with external data objects.
+        """
         if 'cache' in self.store.context:
             for v in self.store.context['cache'].itervalues(): v.release()
             del self.store.context['cache']
-        if 'container' in self.store.context and self.store.context['container']!=None:
+        if self.store.context.get('container',None)!=None:
             self.store.context['container'].release()
         if container!=None: container.addref()
         self.store.context['container'] = container
 
     def setStore(self,valueroot):
+        """Provides an XML DOM tree with values for the TypedStore. This
+        replaces any existing values. The values can be specified as a
+        path to an XML file (i.e., a string), an XML document, or an XML
+        node. None may be specified instead to clear the store of all values.
+        """
         if self.root!=None: self.root.destroy()
 
-        templateroot = self.schemadom.documentElement
+        templateroot = self.schema.getRoot()
 
         assert valueroot==None or isinstance(valueroot,basestring) or isinstance(valueroot,xml.dom.Node), 'Supplied value root must None, a path to an XML file, or an XML node, but is %s.' % valueroot
 
@@ -1893,6 +2072,8 @@ class TypedStore(common.referencedobject):
         self.afterStoreChange()
 
     def setDefaultStore(self,store,updatevisibility=True):
+        """Attached a TypedStore object with default values. The attached
+        store MUST use the same schema as the store that is attached to."""
         assert self.version==store.version,'Version of supplied default store must match version of current store.'
         if self.defaultstore!=None:
             self.defaultstore.disconnectInterface(self.defaultinterface)
@@ -1909,17 +2090,24 @@ class TypedStore(common.referencedobject):
         if updatevisibility: self.root.updateVisibility(recursive=True)
 
     def hasChanged(self):
+        """Returns whether any value in the store has changed since the values
+        were loaded (through "setStore"), or since "resetChanged" was called."""
         return self.changed
 
     def resetChanged(self):
+        """Resets the "changed" status of the store to "unchanged". See also "hasChanged"."""
         self.changed = False
 
     def setProperty(self,location,value):
+        """Set a single store property at the specified location to the specified value."""
         node = self.root[location]
         if node==None: raise Exception('Cannot locate node at %s' % location)
         return node.setValue(value)
     
     def getProperty(self,location,usedefault=False):
+        """Gets the value of a single store property at the specified location. If the
+        property has no value and "usedefault" is specified, the default value is
+        returned."""
         node = self.root[location]
         if node==None: raise Exception('Cannot locate node at %s' % location)
         if usedefault:
@@ -1928,6 +2116,9 @@ class TypedStore(common.referencedobject):
             return node.getValue()
 
     def mapForeignNode(self,foreignnode):
+        """Takes a node from another TypedStore that uses the same XML schema,
+        and returns the equivalent node in the current store. Used for finding
+        corresponding nodes in the store with defaults, among others."""
         indices = []
         currentnode = foreignnode
         
@@ -1962,81 +2153,11 @@ class TypedStore(common.referencedobject):
             
         return currentnode
 
-    # buildDependencies: for every variable node, this creates lists of dependent nodes
-    # (i.e. folders and variables that have one or more conditions that depend on the
-    # variable under investigation). Essentially we convert lists of dependencies ('servant'-centric)
-    # into lists of dependent nodes ('controller'-centric). We need the latter in order to selectively
-    # re-check conditions (and hide/show corresponding nodes) after the value of
-    # a dependency ('controller') changes.
-    def buildDependencies(self,root=None,curpath='',curowner=None):
-        if root==None: root=self.schemadom.documentElement
-        for ch in root.childNodes:
-            if ch.nodeType==ch.ELEMENT_NODE:
-                if ch.localName=='element':
-                    self.buildDependencies(root=ch,curpath=curpath+'/'+ch.getAttribute('id'),curowner=ch)
-                    if ch.hasAttribute('unit'):
-                        unit = ch.getAttribute('unit')
-                        if unit[0]=='[' and unit[-1]==']':
-                            unitnode,relcurpath = self.getReverseTemplatePath(ch,unit[1:-1],absourcepath=curpath+'/'+ch.getAttribute('id'))
-                            self.registerTemplateDependency(unitnode,relcurpath,'unit')
-                elif ch.localName=='condition':
-                    if ch.hasAttribute('source'): continue
-                    if ch.hasAttribute('variable'):
-                        # Get the referenced node, and the relative path from there to here.
-                        depnode,relcurpath = self.getReverseTemplatePath(curowner,ch.getAttribute('variable'),absourcepath=curpath)
-
-                        # Register the current node with the referenced node,
-                        # so that a change in the referenced node can trigger
-                        # an update in the visibility of the current node.
-                        self.registerTemplateDependency(depnode,relcurpath,'visibility')
-                        
-                    self.buildDependencies(root=ch,curpath=curpath,curowner=curowner)
-                    
-    def getReverseTemplatePath(self,sourcenode,targetpath,absourcepath=None):
-        """Takes an source template node, and the path of another node which
-        may be relative to the source node, and returns the referenced target
-        node plus the (potentially relative) path from the tagret node to the
-        source node.
-        
-        The absolute path to the source node may be provided; this saves
-        computational effort only.
-        """
-        if absourcepath==None: '/'.join(self.getTemplateNodePath(sourcenode))
-        
-        refnode = None
-        if targetpath[0]!='/': refnode = sourcenode.parentNode
-        splittargetpath = targetpath.split('/')
-        targetnode = self.getTemplateNode(splittargetpath,root=refnode)
-        assert targetnode!=None, 'Cannot locate target node "%s" for node "%s".' % (targetpath,absourcepath)
-        
-        abstargetpath = self.getTemplateNodePath(targetnode)
-        assert len(abstargetpath)!=0, 'Target node "%s" for node "%s" corresponds to the root of the DOM tree. This is not allowed.' % (targetpath,absourcepath)
-        if '.' in splittargetpath or '..' in splittargetpath:
-            # Find a relative path from the referenced node to the current node.
-            abstargetpath.pop()    # The reference node will be the parent of the specified node
-            abscurpath = [n for n in absourcepath.split('/') if n!='']
-            istart = 0
-            while istart<len(abstargetpath) and istart<len(abscurpath) and abstargetpath[istart]==abscurpath[istart]: istart+=1
-            return targetnode,(len(abstargetpath)-istart)*'../'+'/'.join(abscurpath[istart:])
-        else:
-            # Use the absolute path of the current node.
-            return targetnode,absourcepath
-            
-    def registerTemplateDependency(self,node,dependantnodepath,type):
-        """For the given template node, registers that another node at the
-        specified (potentially relative) path depends on it.
-        """
-        deplist = common.findDescendantNode(node,['dependentvariables'],create=True)
-        depnode = self.schemadom.createElementNS(deplist.namespaceURI,'dependentvariable')
-        depnode.setAttribute('path',dependantnodepath)
-        depnode.setAttribute('type',type)
-        deplist.appendChild(depnode)
-
-    # checkCondition: checks whether then given condition (an XML node in the template) is currently met.
-    #   "nodeCondition" is the "condition" XML node to check
-    #   "ownernode" is the "variable" or "folder" XML node that 'owns' the condition
-    #       (= the first ancestor that is not a condition itself)
     def checkCondition(self,nodeCondition,ownernode,ownstorename=None):
+        """Checks whether the condition specified by the specified XML "conditon" node
+        from the schema is met. The specified ownernode is used to resolve references to
+        relative paths; it is the first ancestor of the condition that is of type
+        element."""
         assert nodeCondition.hasAttribute('type'), 'condition lacks "type" attribute in XML schema file.'
         src = nodeCondition.getAttribute('source')
         if src!='' and src!=ownstorename:
@@ -2088,32 +2209,10 @@ class TypedStore(common.referencedobject):
         else:
             raise Exception('unknown condition type "%s" in XML schema file.' % condtype)
 
-    # getTemplateNode: obtains template node at given path
-    # (path specification consists of array of node ids)
-    def getTemplateNode(self,path,root=None):
-        if root==None: root=self.schemadom.documentElement
-        for childname in path:
-            if childname=='..':
-                assert not root.isSameNode(self.schemadom.documentElement)
-                root = root.parentNode
-            elif childname!='' and childname!='.':
-                for root in root.childNodes:
-                    if root.nodeType==root.ELEMENT_NODE and root.localName=='element' and root.getAttribute('id')==childname:
-                        break
-                else:
-                    return None
-        return root
-
-    # getNodePath: obtains path specification for given template node
-    # (path specification consists of node ids with slash separators)
-    def getTemplateNodePath(self,node):
-        path = []
-        while node.parentNode.parentNode!=None:
-            path.insert(0,node.getAttribute('id'))
-            node = node.parentNode
-        return path
-
-    def convert(self,target):        
+    def convert(self,target):
+        """Converts the TypedStore object to the specified target. The target may be
+        a version string (a new TypedStore object with the desired version will be created)
+        or an existing TypedStore object with the different version."""
         if isinstance(target,basestring):
             if target==self.version:
                 return self.addref()
@@ -2130,12 +2229,13 @@ class TypedStore(common.referencedobject):
 
     convertorsfrom = {}
 
-    # getConvertor(sourceid,targetid,directonly=False)
-    #   Returns a convertor object, capable of converting between the specified versions.
-    #   Use directonly=True to retrieve only direct conversion routes.
-    #   Return None if no convertor is available that meets the specified criteria.
     @classmethod
     def getConvertor(cls,sourceid,targetid,directonly=False):
+        """Returns a convertor object, capable of converting between the specified versions.
+        Conversion routes may be direct (using one convertor object), or indirect (using a
+        chain of convertor objects). Specify "directonly" to retrieve only direct conversion
+        routes. Return None if no convertor is available that meets the specified criteria.
+        """
         # Try direct route first.
         if (sourceid in cls.convertorsfrom) and (targetid in cls.convertorsfrom[sourceid]):
             convertorclass = cls.convertorsfrom[sourceid][targetid]
@@ -2163,12 +2263,12 @@ class TypedStore(common.referencedobject):
         # No route available.
         return None
 
-    # findIndirectConversion(sourceid,targetid)
-    #   [internal use only!]
-    #   Return conversion routes between sourceid and targetid, avoiding versions in disallowed.
-    #   The depth argument is used for debug output only.
     @classmethod
     def findIndirectConversion(cls,sourceid,targetid,disallowed=[],depth=''):
+        """Returns all conversion routes between the specified source version and target
+        version. Use of intermediate versions specified in "disallowed" will be avoided
+        (this is used specifically for prevetion of circular conversion routes). The
+        depth argument is used for debugging output only."""
         next = cls.convertorsfrom.get(sourceid,{}).keys()
         routes = []
         curdisallowed = disallowed[:]+[sourceid]
@@ -2182,10 +2282,12 @@ class TypedStore(common.referencedobject):
                     routes.append([sourceid]+cr)
         return routes
 
-    # addConvertor(convertorclass)
-    #   Register a convertor class.
     @classmethod
     def addConvertor(cls,convertorclass,addsimplereverse=False):
+        """Registers the specified convertor class. The source and target version that
+        the convertor supports are part of the convertor class supplied, and are therefore
+        not specified explicitly. The 'addsimplereverse" option will additionally register
+        a simple class for back conversion, via addDefaultConvertor."""
         sourceid = convertorclass.fixedsourceid
         targetid = convertorclass.fixedtargetid
         assert sourceid!=None, 'Error! Specified convertor class lacks a source identifier.'
@@ -2197,15 +2299,18 @@ class TypedStore(common.referencedobject):
         
     @classmethod
     def addDefaultConvertor(cls,sourceid,targetid):
+        """Registers the "default convertor" for conversion from the specified source, to the
+        specified target. The default convertor will attempt a deep copy, copying all values
+        at locations that match between source and target."""
         if sourceid not in cls.convertorsfrom: cls.convertorsfrom[sourceid] = {}
         assert targetid not in cls.convertorsfrom[sourceid], 'Error! A class for converting from "%s" to "%s" was already specified previously.' % (sourceid,targetid)
         cls.convertorsfrom[sourceid][targetid] = Convertor
 
-    # hasConvertor(sourceid,targetid)
-    #   Checks if a conversion route between the specified versions is available.
-    #   Both direct and indirect (via another version) routes are ok.
     @classmethod
     def hasConvertor(cls,sourceid,targetid):
+        """Checks if a conversion route between the specified versions is available.
+        Both direct and indirect (via another version) routes are ok.
+        """
         # Try direct conversion
         if cls.getConvertor(sourceid,targetid)!=None:
             return True
@@ -2218,15 +2323,17 @@ class TypedStore(common.referencedobject):
 
         return len(indirectroutes)>0
 
-    # rankSources(targetid,sourceids,requireplatform=None)
-    #   Rank a set of supplied versions/identifiers according to platform (i.e. gotmgui, gotm) and version
-    #   Rank criterion is 'closeness' (in version and platform) to the reference targetid.
     @classmethod
     def rankSources(cls,targetid,sourceids,requireplatform=None):
+        """Rank a set of supplied versions/identifiers according to platform (i.e. gotmgui, gotm)
+        and version. Rank criterion is 'closeness' (in version and platform) to the reference
+        targetid.
+        """
         (targetplatform,targetversion) = targetid.split('-')
         targetversion = versionStringToInt(targetversion)
 
-        # Decompose source ids into name and (integer) version, but only take source we can actually convert to the target version.
+        # Decompose source ids into name and (integer) version, but only take
+        # source we can actually convert to the target version.
         sourceinfo = []
         for sid in sourceids:
             if sid==targetid or cls.hasConvertor(sid,targetid):
@@ -2256,14 +2363,30 @@ class TypedStore(common.referencedobject):
 
         return resultids
 
+    @classmethod
+    def canBeOpened(cls, container):
+        """Returns whether the specified path can be opened as a TypedStore object."""
+        assert isinstance(container,DataContainer), 'Argument must be data container object.'
+        return cls.storefilename in container.listFiles()
+
+    def save(self,path):
+        """Saves the values as XML, to the specified path. A file saved in this manner
+        might be loaded again through the "load" method."""
+        return self.store.save(path)
+
     def load(self,path):
+        """Loads values from an existing XML file. This file may have been saved with the
+        "save" method, or it may be taken from a container saved with the "saveAll" method.
+        
+        If the version of the XML file does not match the version of the store, conversion
+        is attempted."""
         if not os.path.isfile(path):
             raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
         valuedom = xml.dom.minidom.parse(path)
 
         version = valuedom.documentElement.getAttribute('version')
         if self.version!=version:
-            # The version of the saved scenario does not match the version of this scenario object; convert it.
+            # The version of the saved store does not match the version of this store object; convert it.
             print 'Value file "%s" has version "%s"; starting conversion to "%s".' % (path,version,self.version)
             tempstore = self.fromSchemaName(version)
             tempstore.setStore(valuedom)
@@ -2273,62 +2396,15 @@ class TypedStore(common.referencedobject):
         else:
             self.setStore(valuedom)
 
-    @classmethod
-    def canBeOpened(cls, container):
-        assert isinstance(container,DataContainer), 'Argument must be data container object.'
-        return cls.storefilename in container.listFiles()
-
-    def loadAll(self,path):
-        if isinstance(path,basestring):
-            container = DataContainer.fromPath(path)
-        elif isinstance(path,DataContainer):
-            container = path.addref()
-        elif isinstance(path,DataFile):
-            container = DataContainerZip(path)
-        else:
-            assert False,'Supplied source must be a path, a data container object or a data file object.'
-
-        # Get list of files in source container.
-        files = container.listFiles()
-
-        # Check for existence of main file.
-        if self.storefilename not in files:
-            raise Exception('The specified source does not contain "%s" and can therefore not be a %s.' % (self.storefilename,self.storetitle))
-
-        # Read and parse the store XML file.
-        datafile = container.getItem(self.storefilename)
-        f = datafile.getAsReadOnlyFile()
-        storedom = xml.dom.minidom.parse(f)
-        f.close()
-        datafile.release()
-        
-        # Get the schema version that the store values file matches.
-        version = storedom.documentElement.getAttribute('version')
-        if self.version!=version:
-            # The version of the saved scenario does not match the version of this scenario object; convert it.
-            print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.storetitle,path,version,self.version)
-            tempstore = self.fromSchemaName(version)
-            tempstore.loadAll(container)
-            tempstore.convert(self)
-            tempstore.release()
-            self.originalversion = version
-        else:
-            # Attach the parsed scenario (XML DOM).
-            self.setStore(storedom)
-            self.setContainer(container)
-
-        container.release()
-
-        # Store source path.
-        if isinstance(path,basestring):
-            self.path = path
-        else:
-            self.path = None
-
-    def save(self,path):
-        return self.store.save(path)
-
     def saveAll(self,path,targetversion=None,targetisdir = False,claim=True):
+        """Saves the values plus any associated data in a ZIP archive or directory.
+        A file or direcoty created in this manner may be loaded again through the
+        "loadAll" method.
+        
+        The "claim" argument decides whether the TypedStore object will, after the save,
+        refer to the newly saved container for external data objects. If this is not
+        set, the TypedStore will after the save still use its original container for
+        external data objects."""
         if targetversion!=None and self.version!=targetversion:
             # First convert to the target version
             tempstore = self.convert(targetversion)
@@ -2393,28 +2469,85 @@ class TypedStore(common.referencedobject):
         
         self.resetChanged()
 
+    def loadAll(self,path):
+        """Loads values plus associated data from the specified path. The path should point
+        to a valid data container, i.e., a ZIP file, TAR/GZ file, or a directory. The source
+        container typically has been saved through the "saveAll" method."""
+        if isinstance(path,basestring):
+            container = DataContainer.fromPath(path)
+        elif isinstance(path,DataContainer):
+            container = path.addref()
+        elif isinstance(path,DataFile):
+            container = DataContainerZip(path)
+        else:
+            assert False,'Supplied source must be a path, a data container object or a data file object.'
+
+        # Get list of files in source container.
+        files = container.listFiles()
+
+        # Check for existence of main file.
+        if self.storefilename not in files:
+            raise Exception('The specified source does not contain "%s" and can therefore not be a %s.' % (self.storefilename,self.storetitle))
+
+        # Read and parse the store XML file.
+        datafile = container.getItem(self.storefilename)
+        f = datafile.getAsReadOnlyFile()
+        storedom = xml.dom.minidom.parse(f)
+        f.close()
+        datafile.release()
+        
+        # Get the schema version that the store values file matches.
+        version = storedom.documentElement.getAttribute('version')
+        if self.version!=version:
+            # The version of the saved scenario does not match the version of this scenario object; convert it.
+            print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.storetitle,path,version,self.version)
+            tempstore = self.fromSchemaName(version)
+            tempstore.loadAll(container)
+            tempstore.convert(self)
+            tempstore.release()
+            self.originalversion = version
+        else:
+            # Attach the parsed scenario (XML DOM).
+            self.setStore(storedom)
+            self.setContainer(container)
+
+        container.release()
+
+        # Store source path.
+        if isinstance(path,basestring):
+            self.path = path
+        else:
+            self.path = None
+
     def toxml(self,enc='utf-8'):
+        """Returns the values as an XML string, with specified encoding."""
         return self.store.xmldocument.toxml(enc)
 
     def toXmlDom(self,target=None):
+        """Obtains a copy of the values as XML DOM tree. Values are appended to a newly
+        created XML document, or to the specified target node, if present."""
         return common.copyNode(self.store.xmlroot,target)
 
     # ----------------------------------------------------------------------------------------
     # Event handling
     # ----------------------------------------------------------------------------------------
 
-    # connectInterface: connects an interface to the store. Interfaces provide events and
-    #   can hide nodes with the hidden attribute from view, amongst others.
     def connectInterface(self,interface):
+        """Connects an interface to the store. Interfaces provide events and
+        can hide nodes with the hidden attribute from view, amongst others."""
         self.interfaces.append(interface)
         
     def disconnectInterface(self,interface):
+        """Disconnects an interface from the store. This is required to allow
+        the interface to go completely out of scope, and be cleaned-up."""
         for i in range(len(self.interfaces)-1,-1,-1):
             if self.interfaces[i] is interface: self.interfaces.pop(i)
 
-    # onChange: called internally after the default value of a node has changed.
-    #   note that its argument will be a node in the DEFAULT store, not in the current store!
     def onDefaultChange(self,defaultnode,feature):
+        """Called internally after a property of a node in the store with default
+        values has changed. Note that its argument will be a node in the DEFAULT store,
+        not in the current store! The string "feature" specifies which property has
+        changed."""
         # Map node in default store to node in our own store.
         ownnode = self.mapForeignNode(defaultnode)
         if ownnode==None: return
@@ -2425,8 +2558,9 @@ class TypedStore(common.referencedobject):
         # If the default is being used: update (visibility of) nodes that depend on the changed node.
         if ownnode.getValue()==None: self.updateDependantNodes(ownnode)
 
-    # onChange: called internally after the value of a node has changed.
     def onChange(self,node,feature):
+        """Called internally after a property (e.g., value, unit) of a node has changed.
+        The string "feature" specifies which property has changed."""
         # Register that we changed.
         self.changed = True
 
@@ -2437,6 +2571,9 @@ class TypedStore(common.referencedobject):
         self.updateDependantNodes(node)
 
     def updateDependantNodes(self,node):
+        """Called internally after the value of the specified node has changed.
+        This method then looks up all nodes that depend on the value of the specified
+        node, and emits events if their visibility/unit/... changes in turn."""
         # Get nodes that depend on the changed node; if there are none, exit.
         deps = common.findDescendantNode(node.templatenode,['dependentvariables'])
         if deps==None: return
@@ -2455,44 +2592,56 @@ class TypedStore(common.referencedobject):
             varnode = refnode[varpath]
             assert varnode!=None, 'Unable to locate node "%s" at %s.' % (varpath,refnode)
             
-            if d.getAttribute('type')=='visibility':
+            deptype = d.getAttribute('type')
+            if deptype=='visibility':
                 if varnode.visible:
                     depnodes.append(varnode)
                 else:
                     depnodes.insert(0,varnode)
             else:
-                self.onChange(varnode,d.getAttribute('type'))
+                self.onChange(varnode,deptype)
         for varnode in depnodes: varnode.updateVisibility()
 
-    # onBeforeChange: called internally just before the value of a node changes.
-    #   The return value decides if the change is allowed (return True) or denied (return False)
     def onBeforeChange(self,node,newvalue):
+        """Called internally just before the value of a node changes. The return value
+        decides if the change is allowed (return True) or denied (return False)."""
         for i in self.interfaces:
             if not i.onBeforeChange(node,newvalue): return False
         return True
 
-    # onBeforeChange: called internally after the store (i.e., all values) have changed.
     def afterStoreChange(self):
+        """Called internally after the store changes, i.e., all values have changed."""
         for i in self.interfaces: i.afterStoreChange()
 
-    # onBeforeChange: called internally before a node is hidden (showhide=True) or deleted (showhide=False).
     def beforeVisibilityChange(self,node,visible,showhide=True):
+        """Called internally before a node is hidden (showhide=True) or deleted (showhide=False)."""
         for i in self.interfaces: i.beforeVisibilityChange(node,visible,showhide)
 
-    # onBeforeChange: called internally after a node is hidden (showhide=True) or deleted (showhide=False).
     def afterVisibilityChange(self,node,visible,showhide=True):
+        """Called internally after a node is hidden (showhide=True) or deleted (showhide=False)."""
         for i in self.interfaces: i.afterVisibilityChange(node,visible,showhide)
 
-
-# versionStringToInt(versionstring)
-#   Converts a "major.minor.build" version string to a representative integer.
 def versionStringToInt(versionstring):
+    """Converts a "major.minor.build" version string to a representative integer."""
     (major,minor,build) = versionstring.split('.')
     return int(major)*256*256 + int(minor)*256 + int(build)
 
-# Convertor
-#   Base class for conversion; derive custom convertors from this class.
 class Convertor:
+    """Base class for conversion between TypedStore objects that differ
+    in version; derive custom convertors from this class.
+    
+    For the most simple conversions, you can just derive a class from
+    this generic Convertor, specify a list of links between source and
+    target nodes for those nodes that changed name and/or location between
+    versions, and a list of (newly introduced) target nodes that must be
+    set to their default. The lists of explicit links and defaults should
+    be set in the overridden method registerLinks, in lists self.links and
+    self.defaults.
+    
+    For more advanced conversions, you can in addition override the convert
+    method (which should then still call the base method) for custom
+    functionality.
+    """
     fixedsourceid = None
     fixedtargetid = None
 
@@ -2520,14 +2669,25 @@ class Convertor:
         self.registerLinks()
 
     def registerLinks(self):
+        """This method can be overridden by inheriting classes to specify
+        a list of links between source- and target nodes, and a list of target
+        nodes that must be set to their default value during conversion. Use
+        lists self.links and self.defaults for this, respectively.
+        """
         pass
 
     def convert(self,source,target):
+        """Converts source TypedStore object to target TypedStore object.
+        This method performs a simple deep copy of all values, and then
+        handles explicitly specified links between source and target nodes
+        (which can be set by inheriting classes), and sets a list of target
+        nodes to ther defaults (this list is also specified by inheriting
+        classes)."""
         # Try simple deep copy: nodes with the same name and location in both
         # source and target store will have their value copied.
         target.root.copyFrom(source.root)
 
-        # Handle one-to-one links between source nodes and target nodes.
+        # Handle explicit one-to-one links between source nodes and target nodes.
         for (sourcepath,targetpath) in self.links:
             sourcenode = source.root[sourcepath]
             if sourcenode==None:
@@ -2537,7 +2697,7 @@ class Convertor:
                 raise Exception('Cannot locate node "%s" in target.' % '/'.join(targetpath))
             targetnode.copyFrom(sourcenode)
 
-        # Reset target nodes to defaults where applicable.
+        # Reset target nodes to defaults where that was explicitly specified.
         if len(self.defaults)>0:
             defscen = target.getDefault(None,target.version)
             for path in self.defaults:
@@ -2548,15 +2708,13 @@ class Convertor:
                 targetnode.copyFrom(sourcenode)
 
     def reverseLinks(self):
-        newlinks = []
-        for (sourcepath,targetpath) in self.links:
-            newlinks.append((targetpath,sourcepath))
-        return newlinks
+        """Convert mapping from source to target nodes to mapping from target 
+        to source nodes. Used as basis for easy back-conversions."""
+        return [(targetpath,sourcepath) for (sourcepath,targetpath) in self.links]
 
-# ConvertorChain
-#   Generic class for multiple-step conversions
-#   Conversion steps are specified at initialization as a list of convertors.
 class ConvertorChain(Convertor):
+    """Generic class for multiple-step conversions.
+    Conversion steps are specified at initialization as a list of convertors."""
     def __init__(self,chain):
         Convertor.__init__(self,chain[0].sourceid,chain[-1].targetid)
         self.chain = chain
