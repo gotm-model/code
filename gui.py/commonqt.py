@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.39 2007-09-21 08:57:04 jorn Exp $
+#$Id: commonqt.py,v 1.40 2007-09-26 06:31:01 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -22,6 +22,9 @@ def getRadioWidth():
     if radiowidth==None:
         radiowidth = QtGui.QRadioButton().sizeHint().width()
     return radiowidth
+    
+def addCloseButton():
+    return sys.platform!='win32'
     
 # =======================================================================
 # Functions for converting between Qt date/time object and Python
@@ -1671,7 +1674,7 @@ class Wizard(QtGui.QDialog):
 
         if closebutton:
             self.bnClose = QtGui.QPushButton('&Close',self)
-            self.connect(self.bnClose, QtCore.SIGNAL('clicked()'), self.onClose)
+            self.connect(self.bnClose, QtCore.SIGNAL('clicked()'), self.accept)
             self.bnlayout.addWidget(self.bnClose)
 
         self.bnlayout.setMargin(11)
@@ -1752,9 +1755,6 @@ class Wizard(QtGui.QDialog):
             cls = self.sequence.getPreviousPage()
         newpage = prevcls(self)
         self.switchPage(newpage)
-
-    def onClose(self):
-        self.close()
 
     def switchPage(self,newpage):
         layout = self.layout()
@@ -2666,9 +2666,11 @@ class FigurePanel(QtGui.QWidget):
 
 class FigureDialog(QtGui.QDialog):
     
-    def __init__(self,parent,varstore=None,varname=None,sourcefigure=None,figureproperties=None,quitonclose=False):
+    def __init__(self,parent,varstore=None,varname=None,sourcefigure=None,figureproperties=None,quitonclose=False,closebutton=None):
         QtGui.QDialog.__init__(self,parent,QtCore.Qt.Window | QtCore.Qt.WindowMaximizeButtonHint | QtCore.Qt.WindowSystemMenuHint )
 
+        if closebutton==None: closebutton = addCloseButton()
+        
         self.setSizeGripEnabled(True)
         layout = QtGui.QVBoxLayout(self)
         self.panel = FigurePanel(self,detachbutton=False)
@@ -2694,6 +2696,13 @@ class FigureDialog(QtGui.QDialog):
             # Nothing provided; figure will be empty.
             assert varstore==None and varname==None,'If a variable is to be plotted, both the variable store and the variable name must be provided.'
         self.panel.figure.setUpdating(True)
+        
+        if closebutton:
+            self.buttonClose = QtGui.QPushButton('&Close',self)
+            self.buttonClose.setAutoDefault(False)
+            self.buttonClose.setDefault(False)
+            self.connect(self.buttonClose, QtCore.SIGNAL('clicked()'), self.accept)
+            self.panel.layoutButtons.addWidget(self.buttonClose)
 
         title = self.panel.figure.properties.getProperty('Title',usedefault=True)
         if title==None: title = 'Figure'

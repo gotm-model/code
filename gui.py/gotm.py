@@ -340,7 +340,7 @@ def main():
         app = QtGui.qApp
 
     # Create wizard dialog
-    wiz = GOTMWizard(closebutton = sys.platform!='win32')
+    wiz = GOTMWizard(closebutton = commonqt.addCloseButton())
     seq = commonqt.WizardSequence([PageIntroduction,PageChooseAction,ForkOnAction(wiz),visualizer.PageVisualize,visualizer.PageReportGenerator,visualizer.PageSave,visualizer.PageFinal])
     wiz.setSequence(seq)
     wiz.setWindowTitle('GOTM-GUI')
