@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.31 2007-09-26 05:51:27 jorn Exp $
+#$Id: common.py,v 1.32 2007-09-26 13:48:14 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.dates,matplotlib.numerix,pytz
@@ -77,6 +77,10 @@ def getNextArgument(type=None):
         if type!=None: val = type(val)
     return val
     
+# ------------------------------------------------------------------------------------------
+# Unit string convertor
+# ------------------------------------------------------------------------------------------
+
 def convertUnitToUnicode(unit):
     if unit=='celsius': return unichr(176)+'C'
     sup2 = unichr(178)
@@ -193,6 +197,24 @@ def copyNode(sourcenode,newparent,targetdoc=None,name=None,before=None):
         
     # Return new node
     return cpy
+    
+def stripWhitespace(node):
+    # Strip whitespace at start of element contents.
+    ch = node.firstChild
+    while ch!=None and ch.nodeType==ch.TEXT_NODE and len(ch.data.strip())==0:
+        node.removeChild(ch)
+        ch = node.firstChild
+        
+    # Strip whitespace at end of element contents.
+    ch = node.lastChild
+    while ch!=None and ch.nodeType==ch.TEXT_NODE and len(ch.data.strip())==0:
+        node.removeChild(ch)
+        ch = node.lastChild
+    
+    # Process element child nodes.
+    for ch in node.childNodes:
+        if ch.nodeType==ch.ELEMENT_NODE:
+            stripWhitespace(ch)
 
 # ------------------------------------------------------------------------------------------
 # Numerical helper utilities

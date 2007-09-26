@@ -219,7 +219,8 @@ class Store:
     # =========================================================================================
     # save: saves the current property tree to an XML document.
     def save(self,path):
-        self.xmldocument.writexml(file(path,'w'),encoding='utf-8')
+        common.stripWhitespace(self.xmlroot)
+        self.xmldocument.writexml(file(path,'w'),encoding='utf-8',addindent='  ',newl='\n')
 
     # =========================================================================================
     # PUBLIC
