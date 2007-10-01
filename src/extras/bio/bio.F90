@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.38 2007-04-18 07:36:47 kbk Exp $
+!$Id: bio.F90,v 1.39 2007-10-01 12:44:06 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -36,6 +36,12 @@
    use bio_mab, only : init_bio_mab,init_var_mab,var_info_mab
    use bio_mab, only : light_mab,surface_fluxes_mab,do_bio_mab
 
+   use bio_rolm, only : init_bio_rolm,init_var_rolm,var_info_rolm
+   use bio_rolm, only : light_rolm,surface_fluxes_rolm,do_bio_rolm
+
+   use mussels, only : init_mussels, do_mussels, end_mussels
+   use mussels, only : mussels_calc,total_mussel_flux
+
    use output, only: out_fmt,write_results,ts
 
    use util
@@ -51,6 +57,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.39  2007-10-01 12:44:06  kbk
+!  added RedOxLayer Model (ROLM)
+!
 !  Revision 1.38  2007-04-18 07:36:47  kbk
 !  mussels will be developed in 4.1.x
 !
@@ -301,6 +310,16 @@
 
          call var_info_mab()
 
+      case (6)  ! RedOxLayer Model (ROLM)
+
+         call init_bio_rolm(namlst,'bio_rolm.nml',unit)
+
+         call allocate_memory(nlev)
+
+         call init_var_rolm(nlev)
+
+         call var_info_rolm()
+
       case default
          stop "bio: no valid biomodel specified in bio.nml !"
       end select
@@ -375,6 +394,8 @@
          end do
       end if
 
+!     Initialise 'mussels' module
+      call init_mussels(namlst,"mussels.nml",unit,nlev,h)
    end if
 
    return
@@ -544,6 +565,10 @@
             call surface_fluxes_mab(nlev,t(nlev),s(nlev))
       end select
 
+      if (mussels_calc) then
+         call do_mussels(numc,dt,t(1))
+      end if
+
       if (bio_eulerian) then
          do j=1,numcc
 
@@ -629,6 +654,9 @@
             case (5)
                call light_mab(nlev,bioshade_feedback)
                call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_mab)
+            case (6)
+               call light_rolm(nlev,bioshade_feedback)
+               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_rolm)
          end select
 
       end do
@@ -717,6 +745,10 @@
    if (allocated(w))              deallocate(w)
    if (allocated(bioshade_))      deallocate(bioshade_)
    if (allocated(abioshade_))     deallocate(abioshade_)
+
+   if (mussels_calc) then
+      call end_mussels()
+   end if
 
    init_saved_vars=.true.
 

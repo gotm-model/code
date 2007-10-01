@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.11 2007-03-14 12:46:07 kbk Exp $
+!$Id: bio_var.F90,v 1.12 2007-10-01 12:44:06 kbk Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,6 +18,15 @@
 !
 ! !PUBLIC DATA MEMBERS:
    integer                               :: bio_model
+!  list over available models
+   integer, parameter                    :: TEMPLATE=-1
+   integer, parameter                    :: NPZD=0
+   integer, parameter                    :: ERGOM=2
+   integer, parameter                    :: SED=3
+   integer, parameter                    :: FASHAM=4
+   integer, parameter                    :: ERGOM_MAB=5
+   integer, parameter                    :: ROLM=6
+!
    integer                               :: numc,numcc
    REALTYPE, dimension(:), allocatable   :: zlev
    REALTYPE, dimension(:), allocatable   :: par
@@ -65,6 +74,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
+!  Revision 1.12  2007-10-01 12:44:06  kbk
+!  added RedOxLayer Model (ROLM)
+!
 !  Revision 1.11  2007-03-14 12:46:07  kbk
 !  proper cleaning after simulation
 !
