@@ -1,4 +1,4 @@
-!$Id: airsea_variables.F90,v 1.1 2007-09-25 10:06:10 kbk Exp $
+!$Id: airsea_variables.F90,v 1.2 2007-10-02 10:14:08 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,12 +25,16 @@
    REALTYPE, public, parameter         :: bolz=5.67e-8
    REALTYPE, public, parameter         :: kelvin=273.16
    REALTYPE, public, parameter         :: const06=0.62198
+   REALTYPE,public,  parameter         :: rgas = 287.1 
    REALTYPE, public                    :: es,ea,qs,qa,L,rhoa
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea_variables.F90,v $
+!  Revision 1.2  2007-10-02 10:14:08  kbk
+!  fixed rhoa calculation - rgas in airsea_variables module
+!
 !  Revision 1.1  2007-09-25 10:06:10  kbk
 !  modularized the airsea module - added Fairall method
 !

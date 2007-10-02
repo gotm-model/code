@@ -1,4 +1,4 @@
-!$Id: fairall.F90,v 1.1 2007-09-25 10:06:10 kbk Exp $
+!$Id: fairall.F90,v 1.2 2007-10-02 10:14:08 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -27,7 +27,7 @@
 !  written by David Rutgers and Frank Bradley. 
 !
 ! !USES:
-   use airsea_variables, only: kelvin,const06
+   use airsea_variables, only: kelvin,const06,rgas
    use airsea_variables, only: qs,qa,rhoa
    use airsea_variables, only: cpa,cpw
    use airsea, only: rain_impact,calc_evaporation
@@ -46,6 +46,9 @@
 !  Original author(s): Adolf Stips
 !
 !  $Log: fairall.F90,v $
+!  Revision 1.2  2007-10-02 10:14:08  kbk
+!  fixed rhoa calculation - rgas in airsea_variables module
+!
 !  Revision 1.1  2007-09-25 10:06:10  kbk
 !  modularized the airsea module - added Fairall method
 !
@@ -91,9 +94,6 @@
                  (/    0.0,  0.11,   0.825,   3.0,         &
                       10.0, 30.0,  100.0,   300.0,         &
                     1000.0 /)
-!
-! !DEFINED PARAMETERS:
-   REALTYPE, parameter       :: rgas = 287.1       ! in [J/kg/K]
 !
 !  Height (m) of surface air temperature measurement.
    REALTYPE, parameter       ::  zt= 2.0
@@ -283,9 +283,9 @@
             if ( rain_impact ) then
                tmp  = 0.85 * rainfall * Wspeed
                x=u10
-               taux  = taux + tmp * sign(1.0,x)
+               taux  = taux + tmp * sign(_ONE_,x)
                x=v10
-               tauy  = tauy + tmp * sign(1.0,x)
+               tauy  = tauy + tmp * sign(_ONE_,x)
             end if
 
          end if ! ier >0

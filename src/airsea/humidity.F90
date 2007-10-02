@@ -1,4 +1,4 @@
-!$Id: humidity.F90,v 1.1 2007-09-25 10:06:10 kbk Exp $
+!$Id: humidity.F90,v 1.2 2007-10-02 10:14:08 kbk Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,7 +18,7 @@
 !
 !
 ! !USES:
-   use airsea_variables, only: kelvin,const06
+   use airsea_variables, only: kelvin,const06,rgas
    use airsea_variables, only: es,ea,qs,qa,rhoa
    IMPLICIT NONE
 !
@@ -41,7 +41,7 @@
    REALTYPE, parameter       :: a7=6.136820929e-11
 !
 ! !LOCAL VARIABLES:
-   REALTYPE        :: rh,twet,twet_k,dew,dew_k,tvirt
+   REALTYPE        :: rh,twet,twet_k,dew,dew_k
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -107,12 +107,7 @@
          stop 'bulk_fluxes()'
    end select
 
-#if 0
-   rho_air = airp/(rgas*ta*(1.0+const06*qa))
-#else
-   tvirt = (ta+kelvin)*(1+qa/const06)/(1+qa)
-   rhoa = airp/(287.05*tvirt)
-#endif
+   rhoa = airp/(rgas*(ta+kelvin)*(1.0+const06*qa))
 
    return
    end subroutine humidity
