@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.24 2007-09-25 16:56:44 jorn Exp $
+#$Id: scenariobuilder.py,v 1.25 2007-10-03 06:14:34 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -164,7 +164,7 @@ class PageOpen(commonqt.WizardPage):
 
         self.label = QtGui.QLabel('How do you want to obtain a scenario?',self)
         self.scenariowidget = ScenarioWidget(self)
-        self.connect(self.scenariowidget, QtCore.SIGNAL("onCompleteStateChanged()"),self.completeStateChanged)
+        self.connect(self.scenariowidget, QtCore.SIGNAL('onCompleteStateChanged()'),self.completeStateChanged)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.label)

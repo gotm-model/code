@@ -102,7 +102,7 @@ class Store:
     # =========================================================================================
     # getText: gets all text directly below an XML element; may consist of multiple text nodes.
     def getText(self,node):
-        return ''.join([ch.data for ch in node.childNodes if ch.nodeType==ch.TEXT_NODE])
+        return ''.join([ch.data for ch in node.childNodes if ch.nodeType==ch.TEXT_NODE]).strip()
 
     # =========================================================================================
     # PROTECTED
@@ -220,7 +220,7 @@ class Store:
     # save: saves the current property tree to an XML document.
     def save(self,path):
         common.stripWhitespace(self.xmlroot)
-        self.xmldocument.writexml(file(path,'w'),encoding='utf-8',addindent='  ',newl='\n')
+        self.xmldocument.writexml(file(path,'w'),encoding='utf-8',addindent='\t',newl='\n')
 
     # =========================================================================================
     # PUBLIC

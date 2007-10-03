@@ -194,9 +194,10 @@
 			<element id="hum_method" type="select" label="decides what is given in 7. column in meteo_file">
 				<condition type="eq" variable="./calc_fluxes" value="True" />
 				<options>
-					<option value="1" label="relative humidity" />
+					<option value="1" label="relative humidity (%)" />
 					<option value="2" label="wet bulb temperature" />
 					<option value="3" label="dew point temperature" />
+					<option value="4" label="specific humidity (kg/kg)" />
 				</options>
 			</element>
 			<element id="heat_method" type="select" label="method to provide short wave radiation (swr) and surface heat flux (qh)">

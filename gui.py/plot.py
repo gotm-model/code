@@ -760,19 +760,25 @@ class Figure(common.referencedobject):
             if dat['unit']!='': deflab += ' ('+dat['unit']+')'
             defaxisnode['Label'].setValue(deflab)
             defaxisnode['Unit'].setValue(dat['unit'])
+            defaxisnode['TicksMajor'].setValue(True)
+            defaxisnode['TicksMajor/ShowLabels'].setValue(True)
+            defaxisnode['TicksMinor'].setValue(False)
+            defaxisnode['TicksMinor/ShowLabels'].setValue(False)
 
             istimeaxis = dat['datatype']=='datetime'
             defaxisnode['IsTimeAxis'].setValue(istimeaxis)
 
+            # Get the MatPlotLib axis object.
+            if axisname=='x':
+                mplaxis = axes.get_xaxis()
+            elif axisname=='y':
+                mplaxis = axes.get_yaxis()
+            else:
+                mplaxis = cb.ax.get_yaxis()
+
             if istimeaxis:
                 assert axisname!='colorbar', 'The color bar cannot be a time axis.'
                 
-                # Get the MatPlotLib axis object.
-                if axisname=='x':
-                    mplaxis = axes.get_xaxis()
-                else:
-                    mplaxis = axes.get_yaxis()
-                    
                 # Tick formats
                 #DATEFORM number   DATEFORM string         Example
                 #   0             'dd-mmm-yyyy HH:MM:SS'   01-Mar-2000 15:45:17 
@@ -834,59 +840,18 @@ class Figure(common.referencedobject):
                                 27:'%Q-%Y',
                                 28:'%b%Y'}
                 
-                # Select tick type and spacing based on the time span to show.
+                # Major ticks
                 dayspan = (effdatarange[1]-effdatarange[0])
-                unitlengths = {0:365,1:30.5,2:1.,3:1/24.,4:1/1440.}
-                if dayspan/365>=2:
-                    location = 0
-                    tickformat = 10
-                elif dayspan>=61:
-                    location = 1
-                    tickformat = 4
-                elif dayspan>=2:
-                    location = 2
-                    tickformat = 19
-                elif 24*dayspan>=2:
-                    location = 3
-                    tickformat = 15
-                else:
-                    location = 4
-                    tickformat = 15
-
-                defaxisnode['TickLocationTime'].setValue(location)
-                defaxisnode['TickFormatTime'].setValue(tickformat)
-                location   = axisnode['TickLocationTime'].getValueOrDefault()
-                tickformat = axisnode['TickFormatTime'].getValueOrDefault()
-
-                # Calculate optimal interval between ticks, aiming for max. 8 ticks total.
-                tickcount = dayspan/unitlengths[location]
-                interval = math.ceil(tickcount/8.)
-                if interval<1: interval = 1
-                
-                # Save default tick interval, then get effective tick interval.
-                defaxisnode['TickIntervalTime'].setValue(interval)
-                interval = axisnode['TickIntervalTime'].getValueOrDefault()
-
-                # Make sure we do not plot more than 100 ticks: non-informative and very slow!
-                tickcount = dayspan/unitlengths[location]
-                if tickcount/interval>100: interval=math.ceil(tickcount/100.)
-
-                if location==0:
-                    mplaxis.set_major_locator(matplotlib.dates.YearLocator(base=interval))
-                elif location==1:
-                    mplaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=interval))
-                elif location==2:
-                    mplaxis.set_major_locator(matplotlib.dates.DayLocator(interval=interval))
-                elif location==3:
-                    mplaxis.set_major_locator(matplotlib.dates.HourLocator(interval=interval))
-                elif location==4:
-                    mplaxis.set_major_locator(matplotlib.dates.MinuteLocator(interval=interval))
-                else:
-                    assert False, 'unknown tick location %i' % location
-
-                # Add tick format
+                location,interval,tickformat,tickspan = getTimeTickSettings(dayspan,axisnode['TicksMajor'],defaxisnode['TicksMajor'])
+                mplaxis.set_major_locator(getTimeLocator(location,interval))
                 assert tickformat in tickformats, 'Unknown tick format %i.' % tickformat
                 mplaxis.set_major_formatter(CustomDateFormatter(tickformats[tickformat]))
+
+                # Minor ticks
+                location,interval,tickformat,tickspan = getTimeTickSettings(min(tickspan,dayspan),axisnode['TicksMinor'],defaxisnode['TicksMinor'])
+                mplaxis.set_minor_locator(getTimeLocator(location,interval))
+                assert tickformat in tickformats, 'Unknown tick format %i.' % tickformat
+                #mplaxis.set_minor_formatter(CustomDateFormatter(tickformats[tickformat]))
 
                 # Set the "natural" axis limits based on the data ranges.
                 defaxisnode['MinimumTime'].setValue(common.num2date(naturalrange[0]))
@@ -895,6 +860,12 @@ class Figure(common.referencedobject):
                 # Set the "natural" axis limits based on the data ranges.
                 defaxisnode['Minimum'].setValue(naturalrange[0])
                 defaxisnode['Maximum'].setValue(naturalrange[1])
+
+            # Remove axis ticks if required.
+            if not axisnode['TicksMajor'].getValueOrDefault():
+                mplaxis.set_major_locator(matplotlib.ticker.FixedLocator([]))
+            if not axisnode['TicksMinor'].getValueOrDefault():
+                mplaxis.set_minor_locator(matplotlib.ticker.FixedLocator([]))
 
             # Obtain label for axis.
             label = axisnode['Label'].getValueOrDefault()
@@ -985,3 +956,49 @@ def getLineProperties(propertynode):
     markerfacecolor = propertynode['MarkerFaceColor'].getValueOrDefault()
     
     return {'linestyle':linestyle,'marker':markertype,'linewidth':linewidth,'color':color.getNormalized(),'markersize':markersize,'markerfacecolor':markerfacecolor.getNormalized()}
+    
+def getTimeLocator(location,interval):
+    if location==0:
+        return matplotlib.dates.YearLocator(base=interval)
+    elif location==1:
+        return matplotlib.dates.MonthLocator(interval=interval)
+    elif location==2:
+        return matplotlib.dates.DayLocator(interval=interval)
+    elif location==3:
+        return matplotlib.dates.HourLocator(interval=interval)
+    elif location==4:
+        return matplotlib.dates.MinuteLocator(interval=interval)
+    else:
+        assert False, 'unknown tick location %i' % location
+    
+def getTimeTickSettings(dayspan,settings,defsettings):
+    unitlengths = {0:365,1:30.5,2:1.,3:1/24.,4:1/1440.}
+    if dayspan/365>=2:
+        location,tickformat = 0,10
+    elif dayspan>=61:
+        location,tickformat = 1,4
+    elif dayspan>=2:
+        location,tickformat = 2,19
+    elif 24*dayspan>=2:
+        location,tickformat = 3,15
+    else:
+        location,tickformat = 4,15
+
+    defsettings['LocationTime'].setValue(location)
+    defsettings['FormatTime'].setValue(tickformat)
+    location   = settings['LocationTime'].getValueOrDefault()
+    tickformat = settings['FormatTime'].getValueOrDefault()
+
+    # Calculate optimal interval between ticks, aiming for max. 8 ticks total.
+    tickcount = dayspan/unitlengths[location]
+    interval = math.ceil(tickcount/8.)
+    if interval<1: interval = 1
+    
+    # Save default tick interval, then get effective tick interval.
+    defsettings['IntervalTime'].setValue(interval)
+    interval = settings['IntervalTime'].getValueOrDefault()
+
+    # Make sure we do not plot more than 100 ticks: non-informative and very slow!
+    if tickcount/interval>100: interval=math.ceil(tickcount/100.)
+    
+    return location,interval,tickformat,interval*unitlengths[location]

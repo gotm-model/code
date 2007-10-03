@@ -55,6 +55,67 @@
 		</element>
 	</template>
 
+	<template id="TickMarks" type="bool">
+		<element id="ShowLabels" type="bool" hidden="True"/>
+		<element id="LocationTime" type="select" label="unit">
+			<condition type="and">
+				<condition type="eq" variable="." value="True"/>
+				<condition type="eq" variable="../IsTimeAxis" value="True"/>
+			</condition>
+			<options>
+				<option value="0" label="year"/>
+				<option value="1" label="month"/>
+				<option value="2" label="day"/>
+				<option value="3" label="hour"/>
+				<option value="4" label="minute"/>
+			</options>
+		</element>
+		<element id="IntervalTime" type="int" label="interval" minimum="1">
+			<condition type="and">
+				<condition type="eq" variable="." value="True"/>
+				<condition type="eq" variable="../IsTimeAxis" value="True"/>
+			</condition>
+		</element>
+		<element id="FormatTime" type="select" label="format">
+			<condition type="and">
+				<condition type="eq" variable="." value="True"/>
+				<condition type="eq" variable="./ShowLabels" value="True"/>
+				<condition type="eq" variable="../IsTimeAxis" value="True"/>
+			</condition>
+			<options>
+				<option value="0" label="dd-mmm-yyyy HH:MM:SS"/>
+				<option value="1" label="dd-mmm-yyyy"/>
+				<option value="2" label="mm/dd/yy"/>
+				<option value="3" label="mmm"/>
+				<option value="4" label="m"/>
+				<option value="5" label="mm"/>
+				<option value="6" label="mm/dd"/>
+				<option value="7" label="dd"/>
+				<option value="8" label="ddd"/>
+				<option value="9" label="d"/>
+				<option value="10" label="yyyy"/>
+				<option value="11" label="yy"/>
+				<option value="12" label="mmmyy"/>
+				<option value="13" label="HH:MM:SS"/>
+				<option value="14" label="HH:MM:SS PM"/>
+				<option value="15" label="HH:MM"/>
+				<option value="16" label="HH:MM PM"/>
+				<option value="17" label="QQ-YY"/>
+				<option value="18" label="QQ"/>
+				<option value="19" label="dd/mm"/>
+				<option value="20" label="dd/mm/yy"/>
+				<option value="21" label="mmm.dd,yyyy HH:MM:SS"/>
+				<option value="22" label="mmm.dd,yyyy"/>
+				<option value="23" label="mm/dd/yyyy"/>
+				<option value="24" label="dd/mm/yyyy"/>
+				<option value="25" label="yy/mm/dd"/>
+				<option value="26" label="yyyy/mm/dd"/>
+				<option value="27" label="QQ-YYYY"/>
+				<option value="28" label="mmmyyyy"/>
+			</options>
+		</element>
+	</template>
+
 	<element id="Name" type="string" label="name" hidden="True"/>
 	<element id="Title" type="string" label="title"/>
 	<element id="FontName" type="fontname" label="font"/>
@@ -76,53 +137,6 @@
 			<element id="MaximumTime" type="datetime" label="maximum" nodefault="True">
 				<condition type="eq" variable="./IsTimeAxis" value="True"/>
 			</element>
-			<element id="TickLocationTime" type="select" label="tick location">
-				<condition type="eq" variable="./IsTimeAxis" value="True"/>
-				<options>
-					<option value="0" label="year"/>
-					<option value="1" label="month"/>
-					<option value="2" label="day"/>
-					<option value="3" label="hour"/>
-					<option value="4" label="minute"/>
-				</options>
-			</element>
-			<element id="TickIntervalTime" type="int" label="tick interval" minimum="1">
-				<condition type="eq" variable="./IsTimeAxis" value="True"/>
-			</element>
-			<element id="TickFormatTime" type="select" label="tick format">
-				<condition type="eq" variable="./IsTimeAxis" value="True"/>
-				<options>
-					<option value="0" label="dd-mmm-yyyy HH:MM:SS"/>
-					<option value="1" label="dd-mmm-yyyy"/>
-					<option value="2" label="mm/dd/yy"/>
-					<option value="3" label="mmm"/>
-					<option value="4" label="m"/>
-					<option value="5" label="mm"/>
-					<option value="6" label="mm/dd"/>
-					<option value="7" label="dd"/>
-					<option value="8" label="ddd"/>
-					<option value="9" label="d"/>
-					<option value="10" label="yyyy"/>
-					<option value="11" label="yy"/>
-					<option value="12" label="mmmyy"/>
-					<option value="13" label="HH:MM:SS"/>
-					<option value="14" label="HH:MM:SS PM"/>
-					<option value="15" label="HH:MM"/>
-					<option value="16" label="HH:MM PM"/>
-					<option value="17" label="QQ-YY"/>
-					<option value="18" label="QQ"/>
-					<option value="19" label="dd/mm"/>
-					<option value="20" label="dd/mm/yy"/>
-					<option value="21" label="mmm.dd,yyyy HH:MM:SS"/>
-					<option value="22" label="mmm.dd,yyyy"/>
-					<option value="23" label="mm/dd/yyyy"/>
-					<option value="24" label="dd/mm/yyyy"/>
-					<option value="25" label="yy/mm/dd"/>
-					<option value="26" label="yyyy/mm/dd"/>
-					<option value="27" label="QQ-YYYY"/>
-					<option value="28" label="mmmyyyy"/>
-				</options>
-			</element>
 			<element id="Minimum" type="float" label="minimum" unit="[Unit]" nodefault="True">
 				<condition type="ne" variable="./IsTimeAxis" value="True"/>
 			</element>
@@ -130,6 +144,8 @@
 				<condition type="ne" variable="./IsTimeAxis" value="True"/>
 			</element>
 			<element id="Unit" type="string" label="unit" nodefault="True" hidden="True"/>
+			<link template="TickMarks" id="TicksMajor" label="major ticks"/>
+			<link template="TickMarks" id="TicksMinor" label="minor ticks"/>
 		</element>
 	</element>
 
