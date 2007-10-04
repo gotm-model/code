@@ -121,6 +121,11 @@
 	<element id="FontName" type="fontname" label="font"/>
 	<element id="FontScaling" type="float" label="font scaling" unit="%"/>
 
+	<element id="CanHaveLegend" type="bool" hidden="True"/>
+	<element id="Legend" type="bool" label="legend">
+		<condition type="eq" variable="./CanHaveLegend" value="True"/>
+	</element>
+	
 	<element id="Grid" type="bool" label="grid">
 		<link template="Line2D" id="LineProperties" grouponly="True">
 			<condition type="eq" variable="." value="True"/>
@@ -151,6 +156,7 @@
 
 	<element id="Data" label="data series">
 		<element id="Series" label="series" maxoccurs="10">
+			<element id="Label" type="string" label="label"/>
 			<element id="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
 			<element id="LogScale"       type="bool"   label="log-scale"/>
 			<link template="Line2D" id="LineProperties" grouponly="True">

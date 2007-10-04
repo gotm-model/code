@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.13 2007-09-25 16:56:45 jorn Exp $
+#$Id: simulator.py,v 1.14 2007-10-04 18:35:14 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -25,6 +25,7 @@ class GOTMThread(QtCore.QThread):
     
   def rungotm(self,scen):
     self.scenario = scen
+    #self.scenario = scen.convert(simulate.gotmscenarioversion)
     self.start(QtCore.QThread.LowPriority)
     
   def canContinue(self):
@@ -45,6 +46,7 @@ class GOTMThread(QtCore.QThread):
     self.rwlock.lockForWrite()
     self.stopped = True
     self.rwlock.unlock()
+    #self.scenario.release()
     
 class PageProgress(commonqt.WizardPage):
     def __init__(self, parent):

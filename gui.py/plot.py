@@ -354,12 +354,18 @@ class Figure(common.referencedobject):
     def clearVariables(self):
         self.properties.root['Data'].removeChildren('Series')
 
-    def addVariable(self,varname,source=None):
+    def addVariable(self,varname,source=None,replace=True):
         datanode = self.properties.root['Data']
         varpath = '/'+varname
         if source!=None: varpath = source+varpath
-        series = datanode.addChild('Series',id=varpath)
+        if replace:
+            series = datanode.getChildById('Series',varpath,create=True)
+            self.defaultproperties.root['Data'].getChildById('Series',varpath,create=True)
+        else:
+            series = datanode.addChild('Series',id=varpath)
+            self.defaultproperties.root['Data'].addChild('Series',id=varpath)
         self.update()
+        return series
 
     def hasChanged(self):
         return self.haschanged
@@ -389,13 +395,17 @@ class Figure(common.referencedobject):
         # (if they are strings, they are relative sizes already)
         fontfamily = self.properties.getProperty('FontName',usedefault=True)
         fontsizes = {
-            'axes.titlesize' :10, #matplotlib.rcParams['axes.titlesize'],
+            'axes.titlesize' :10,#matplotlib.rcParams['axes.titlesize'],
             'axes.labelsize' :8, #matplotlib.rcParams['axes.labelsize'],
             'xtick.labelsize':8, #matplotlib.rcParams['xtick.labelsize'],
             'ytick.labelsize':8, #matplotlib.rcParams['ytick.labelsize']
+            'legend':8
         }
         for k,v in fontsizes.iteritems():
             if not isinstance(v,basestring): fontsizes[k]=v*textscaling
+            
+        # Line colors to cycle through
+        linecolors = ((0,0,255),(0,255,0),(255,0,0),(0,255,255),(255,0,255),(255,255,0),(0,0,0))
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         dim2data = {}
@@ -428,6 +438,7 @@ class Figure(common.referencedobject):
         # No colorbar created (yet).
         cb = None
         zorder = 0
+        plotcount = {1:0,2:0}
 
         for (iseries,seriesnode) in enumerate(forcedseries):
             varpath = seriesnode.getSecondaryId()
@@ -441,9 +452,11 @@ class Figure(common.referencedobject):
             varstore = self.sources[varsource]
             var = varstore.getVariable(varname)
             assert var!=None, 'Source "%s" does not contain variable with name "%s".' % (varsource,varname)
+            longname = var.getLongName()
             
             # Create default series information
             defaultseriesnode = defaultdatanode.getChildById('Series',varpath,create=True)
+            defaultseriesnode['Label'].setValue(longname)
             defaultseriesnode['PlotType3D'].setValue(0)
             defaultseriesnode['LogScale'].setValue(False)
             defaultseriesnode['HasConfidenceLimits'].setValue(False)
@@ -454,7 +467,7 @@ class Figure(common.referencedobject):
             if varpath in olddefaults: olddefaults.remove(varpath)
 
             # Store the variable long name (to be used for building title)
-            longnames.append(var.getLongName())
+            longnames.append(longname)
 
             # Build list of dimension boundaries for current variable.
             # For dimensions that have equal lower and upper bound, take a slice.
@@ -576,6 +589,7 @@ class Figure(common.referencedobject):
                     xname,yname = yname,xname
                 
                 # Get data series style settings
+                defaultseriesnode['LineProperties/Color'].setValue(xmlstore.StoreColor(*linecolors[plotcount[1]%len(linecolors)]))
                 plotargs = getLineProperties(seriesnode['LineProperties'])
                 
                 # plot confidence interval (if any)
@@ -616,10 +630,12 @@ class Figure(common.referencedobject):
                 
                 # Plot line and/or markers
                 if plotargs['linestyle']!='' or plotargs['marker']!='':
-                    lines = axes.plot(X,Y,zorder=zorder,**plotargs)
+                    lines = axes.plot(X,Y,zorder=zorder,label=seriesnode['Label'].getValueOrDefault(),**plotargs)
                 
                 dim2data[xname]['axis'] = 'x'
                 dim2data[yname]['axis'] = 'y'
+                
+                plotcount[1] += 1
             elif varslice.ndim==2:
                 # Two-dimensional coordinate space (x,y). Use x-axis for first coordinate dimension,
                 # and y-axis for second coordinate dimension.
@@ -697,6 +713,8 @@ class Figure(common.referencedobject):
                 else:
                     pc.set_clim(dim2data[varpath]['forcedrange'])
                 cb = self.figure.colorbar(pc)
+
+                plotcount[2] += 1
             
             # Increase z-order.
             zorder += 1
@@ -719,6 +737,14 @@ class Figure(common.referencedobject):
         title = self.properties.getProperty('Title',usedefault=True)
         assert title!=None, 'Title must be available, either explicitly set or as default.'
         if title!='': axes.set_title(title,size=fontsizes['axes.titlesize'],fontname=fontfamily)
+        
+        # Show legend
+        legend = None
+        self.defaultproperties.setProperty('CanHaveLegend',plotcount[1]>0)
+        if plotcount[1]>0:
+            self.defaultproperties.setProperty('Legend',plotcount[1]>1)
+            if self.properties.root['Legend'].getValueOrDefault():
+                legend = axes.legend(prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
 
         # Build table linking axis to data dimension.
         axis2dim = dict([(dat['axis'],dim) for dim,dat in dim2data.iteritems() if 'axis' in dat])

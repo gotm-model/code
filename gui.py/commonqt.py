@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.40 2007-09-26 06:31:01 jorn Exp $
+#$Id: commonqt.py,v 1.41 2007-10-04 18:35:14 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -1055,6 +1055,16 @@ class PropertyDelegate(QtGui.QItemDelegate):
         editor.installEventFilter(self)
         
         return editor
+        
+    def paint(self,painter,option,index):
+        node = index.internalPointer()
+        QtGui.QItemDelegate.paint(self,painter,option,index)
+        if index.column()==1 and node.getValueType()=='color':
+            dat = index.data()
+            r = option.rect.adjusted(1,1,-2,-2)
+            r.setWidth(r.height())
+            painter.fillRect(r,QtGui.QBrush(dat))
+            painter.drawRect(r)
 
     def createNodeEditor(self,node,parent):
         templatenode = node.templatenode
@@ -1340,12 +1350,11 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 font.setBold(val!=None and val!=node.getDefaultValue())
                 return QtCore.QVariant(font)
             elif role==QtCore.Qt.DisplayRole:
-                #if fieldtype=='color':
-                #    value = node.getValueOrDefault()
-                #    pm = QtGui.QPixmap(10,10)
-                #    pm.fill(QtGui.QColor(value.red,value.green,value.blue))
-                #    #return QtCore.QVariant(QtGui.QIcon(pm))
-                #    return QtCore.QVariant(pm)
+                if fieldtype=='color':
+                    value = node.getValueOrDefault()
+                    pm = QtGui.QPixmap(10,10)
+                    pm.fill(QtGui.QColor(value.red,value.green,value.blue))
+                    return QtCore.QVariant(pm)
                 return QtCore.QVariant(node.getValueAsString(usedefault=True))
             elif role==QtCore.Qt.EditRole:
                 value = node.getValueOrDefault()
