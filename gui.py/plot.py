@@ -297,6 +297,7 @@ class Figure(common.referencedobject):
         self.defaultproperties.setProperty('FontName',defaultfont)
         self.defaultproperties.setProperty('FontScaling',100)
         self.defaultproperties.setProperty('Grid',False)
+        self.defaultproperties.setProperty('Legend/Location',0)
         setLineProperties(self.defaultproperties.root['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
 
         self.properties.setDefaultStore(self.defaultproperties)
@@ -433,7 +434,7 @@ class Figure(common.referencedobject):
 
         # This variable will hold all long names of the plotted variables.
         # It will be used to create the plot title.
-        longnames = []
+        titles = []
         
         # No colorbar created (yet).
         cb = None
@@ -461,13 +462,14 @@ class Figure(common.referencedobject):
             defaultseriesnode['LogScale'].setValue(False)
             defaultseriesnode['HasConfidenceLimits'].setValue(False)
             setLineProperties(defaultseriesnode['LineProperties'])
+            label = seriesnode['Label'].getValueOrDefault()
             
             # Old defaults will be removed after all series are plotted.
             # Register that the current variable is active, ensuring its default will remain.
             if varpath in olddefaults: olddefaults.remove(varpath)
 
             # Store the variable long name (to be used for building title)
-            longnames.append(longname)
+            titles.append(label)
 
             # Build list of dimension boundaries for current variable.
             # For dimensions that have equal lower and upper bound, take a slice.
@@ -630,7 +632,7 @@ class Figure(common.referencedobject):
                 
                 # Plot line and/or markers
                 if plotargs['linestyle']!='' or plotargs['marker']!='':
-                    lines = axes.plot(X,Y,zorder=zorder,label=seriesnode['Label'].getValueOrDefault(),**plotargs)
+                    lines = axes.plot(X,Y,zorder=zorder,label=label,**plotargs)
                 
                 dim2data[xname]['axis'] = 'x'
                 dim2data[yname]['axis'] = 'y'
@@ -728,10 +730,10 @@ class Figure(common.referencedobject):
             defaultdatanode.removeChild('Series',oldname)
 
         # Create and store title
-        title = longnames[0]
-        for ln in longnames[1:]:
+        title = titles[0]
+        for ln in titles[1:]:
             if ln!=title:
-                title = ', '.join(longnames)
+                title = ', '.join(titles)
                 break
         self.defaultproperties.setProperty('Title',title)
         title = self.properties.getProperty('Title',usedefault=True)
@@ -743,8 +745,9 @@ class Figure(common.referencedobject):
         self.defaultproperties.setProperty('CanHaveLegend',plotcount[1]>0)
         if plotcount[1]>0:
             self.defaultproperties.setProperty('Legend',plotcount[1]>1)
-            if self.properties.root['Legend'].getValueOrDefault():
-                legend = axes.legend(prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
+            legprop = self.properties.root['Legend']
+            if legprop.getValueOrDefault():
+                legend = axes.legend(loc=legprop['Location'].getValueOrDefault(),prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
 
         # Build table linking axis to data dimension.
         axis2dim = dict([(dat['axis'],dim) for dim,dat in dim2data.iteritems() if 'axis' in dat])

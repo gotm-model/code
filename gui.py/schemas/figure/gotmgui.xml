@@ -124,6 +124,22 @@
 	<element id="CanHaveLegend" type="bool" hidden="True"/>
 	<element id="Legend" type="bool" label="legend">
 		<condition type="eq" variable="./CanHaveLegend" value="True"/>
+		<element id="Location" type="select" label="location">
+			<condition type="eq" variable="." value="True"/>
+			<options>
+				<option value="0"  label="best"/>
+				<option value="1"  label="upper right"/>
+				<option value="2"  label="upper left"/>
+				<option value="3"  label="lower left"/>
+				<option value="4"  label="lower right"/>
+				<option value="5"  label="right"/>
+				<option value="6"  label="center left"/>
+				<option value="7"  label="center right"/>
+				<option value="8"  label="lower center"/>
+				<option value="9"  label="upper center"/>
+				<option value="10" label="center"/>
+			</options>
+		</element>
 	</element>
 	
 	<element id="Grid" type="bool" label="grid">
