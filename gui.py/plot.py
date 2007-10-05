@@ -322,9 +322,11 @@ class Figure(common.referencedobject):
         self.callbacks[eventname].append(callback)
 
     def setUpdating(self,allowupdates):
-        if self.updating != allowupdates:
+        oldval = self.updating
+        if oldval != allowupdates:
             self.updating = allowupdates
             if allowupdates and self.dirty: self.update()
+        return oldval
 
     def onPropertyChanged(self,node,feature):
         if feature=='value':

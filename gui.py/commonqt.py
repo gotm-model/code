@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.41 2007-10-04 18:35:14 jorn Exp $
+#$Id: commonqt.py,v 1.42 2007-10-05 15:06:10 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -2348,6 +2348,42 @@ def getFontSubstitute(fontname):
         
     return substitute
 
+class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
+        
+    def __init__( self, canvas, callback=None):
+        matplotlib.backend_bases.NavigationToolbar2.__init__( self, canvas )
+        self.callback = callback
+        
+    def _init_toolbar( self ):
+        pass
+
+    def dynamic_update( self ):
+        self.canvas.draw()
+
+    def set_cursor( self, cursor ):
+        QtGui.QApplication.restoreOverrideCursor()
+        cursord = {
+            matplotlib.backend_bases.cursors.MOVE          : QtCore.Qt.PointingHandCursor,
+            matplotlib.backend_bases.cursors.HAND          : QtCore.Qt.WaitCursor,
+            matplotlib.backend_bases.cursors.POINTER       : QtCore.Qt.ArrowCursor,
+            matplotlib.backend_bases.cursors.SELECT_REGION : QtCore.Qt.CrossCursor,
+            }
+        QtGui.QApplication.setOverrideCursor( QtGui.QCursor( cursord[cursor] ) )
+                
+    def draw_rubberband( self, event, x0, y0, x1, y1 ):
+        height = self.canvas.figure.bbox.height()
+        y1 = height - y1
+        y0 = height - y0
+        
+        w = abs(x1 - x0)
+        h = abs(y1 - y0)
+
+        rect = [ int(val)for val in min(x0,x1), min(y0, y1), w, h ]
+        self.canvas.drawRectangle( rect )
+
+    def draw(self):
+        if self.callback!=None: self.callback()
+
 class FigurePanel(QtGui.QWidget):
     
     def __init__(self,parent,detachbutton=True):
@@ -2367,34 +2403,53 @@ class FigurePanel(QtGui.QWidget):
         self.figure = plot.Figure(mplfigure,defaultfont=deffont)
         self.figure.registerCallback('completeStateChange',self.onFigureStateChanged)
         
-        self.figureinterface = self.figure.properties.getInterface()
-        self.figureinterface.connect('beforeVisibilityChange',self.beforeFigureNodeVisibilityChange)
-        self.figureinterface.connect('afterVisibilityChange', self.afterFigureNodeVisibilityChange)
-        self.figureinterface.connect('afterStoreChange', self.afterFigureStoreChange)
+        #self.figureinterface = self.figure.properties.getInterface()
+        #self.figureinterface.connect('beforeVisibilityChange',self.beforeFigureNodeVisibilityChange)
+        #self.figureinterface.connect('afterVisibilityChange', self.afterFigureNodeVisibilityChange)
+        #self.figureinterface.connect('afterStoreChange', self.afterFigureStoreChange)
+        
+        self.navtoolbar = FigureToolbar(self.canvas,self.updateAxesBounds)
 
         self.factory = PropertyEditorFactory(self.figure.properties,live=True,allowhide=True)
 
         layout = QtGui.QVBoxLayout()
         
-        self.layoutOptions = QtGui.QVBoxLayout()
+#        self.layoutOptions = QtGui.QVBoxLayout()
         
-        self.layoutAxesRange = QtGui.QGridLayout()
-        self.layoutOptions.addLayout(self.layoutAxesRange)
+#        self.layoutAxesRange = QtGui.QGridLayout()
+#        self.layoutOptions.addLayout(self.layoutAxesRange)
 
-        self.buttonAdvanced = QtGui.QPushButton(self.tr('Advanced...'),self)
-        self.buttonAdvanced.setAutoDefault(False)
-        self.buttonAdvanced.setDefault(False)
-        self.connect(self.buttonAdvanced, QtCore.SIGNAL('clicked()'), self.onAdvancedClicked)
-        self.layoutOptions.addWidget(self.buttonAdvanced)
+#        self.buttonAdvanced = QtGui.QPushButton(self.tr('Advanced...'),self)
+#        self.buttonAdvanced.setAutoDefault(False)
+#        self.buttonAdvanced.setDefault(False)
+#        self.connect(self.buttonAdvanced, QtCore.SIGNAL('clicked()'), self.onAdvancedClicked)
+#        self.layoutOptions.addWidget(self.buttonAdvanced)
 
         self.layoutButtons = QtGui.QHBoxLayout()
 
         # Button for showing/hiding properties
-        self.buttonProperties = QtGui.QPushButton(self.tr('Edit plot &properties'),self)
+        #self.buttonProperties = QtGui.QPushButton(self.tr('Edit plot &properties'),self)
+        self.buttonProperties = QtGui.QPushButton(self.tr('&Properties'),self)
         self.buttonProperties.setAutoDefault(False)
         self.buttonProperties.setDefault(False)
-        self.connect(self.buttonProperties, QtCore.SIGNAL('clicked()'), self.onPropertiesClicked)
+        #self.connect(self.buttonProperties, QtCore.SIGNAL('clicked()'), self.onPropertiesClicked)
+        self.connect(self.buttonProperties, QtCore.SIGNAL('clicked()'), self.onAdvancedClicked)
         self.layoutButtons.addWidget(self.buttonProperties)
+
+        # Button for zooming
+        self.buttonZoom = QtGui.QPushButton(self.tr('Zoom'),self)
+        self.buttonZoom.setAutoDefault(False)
+        self.buttonZoom.setDefault(False)
+        self.connect(self.buttonZoom, QtCore.SIGNAL('clicked()'), self.onZoomClicked)
+        self.buttonZoom.setCheckable(True)
+        self.layoutButtons.addWidget(self.buttonZoom)
+
+        # Button for reset view
+        self.buttonResetView = QtGui.QPushButton(self.tr('Reset view'),self)
+        self.buttonResetView.setAutoDefault(False)
+        self.buttonResetView.setDefault(False)
+        self.connect(self.buttonResetView, QtCore.SIGNAL('clicked()'), self.onResetViewClicked)
+        self.layoutButtons.addWidget(self.buttonResetView)
 
         # Button for exporting to file
         self.buttonExport = QtGui.QPushButton(self.tr('&Export to file...'),self)
@@ -2418,13 +2473,13 @@ class FigurePanel(QtGui.QWidget):
             self.connect(self.buttonDetach, QtCore.SIGNAL('clicked()'), self.onDetach)
             self.layoutButtons.addWidget(self.buttonDetach)
 
-        self.widgetProperties = QtGui.QWidget(self)
-        self.widgetProperties.setLayout(self.layoutOptions)
-        self.widgetProperties.setVisible(False)
-
         layout.addWidget(self.canvas)
         layout.addLayout(self.layoutButtons)
-        layout.addWidget(self.widgetProperties)
+        
+        #self.widgetProperties = QtGui.QWidget(self)
+        #self.widgetProperties.setLayout(self.layoutOptions)
+        #self.widgetProperties.setVisible(False)
+        #layout.addWidget(self.widgetProperties)
 
         self.setLayout(layout)
 
@@ -2517,6 +2572,39 @@ class FigurePanel(QtGui.QWidget):
             self.dialogAdvanced.resizeColumns()
         self.dialogAdvanced.show()
         self.dialogAdvanced.activateWindow()
+        
+    def onZoomClicked(self,*args):
+        self.navtoolbar.zoom( self, *args )
+
+    def updateAxesBounds(self):
+        a = self.canvas.figure.gca()
+        Xmin,Xmax=a.get_xlim()
+        Ymin,Ymax=a.get_ylim()
+        axes = self.figure.properties.root['Axes']
+        xaxis = axes.getChildByNumber('Axis',0)
+        yaxis = axes.getChildByNumber('Axis',1)
+        oldupdating = self.figure.setUpdating(False)
+        for axis,minval,maxval in ((xaxis,Xmin,Xmax),(yaxis,Ymin,Ymax)):
+            if axis['IsTimeAxis'].getValueOrDefault():
+                axis['MinimumTime'].setValue(common.num2date(minval))
+                axis['MaximumTime'].setValue(common.num2date(maxval))
+            else:
+                axis['Minimum'].setValue(minval)
+                axis['Maximum'].setValue(maxval)
+        self.figure.setUpdating(oldupdating)
+
+    def onResetViewClicked(self,*args):
+        if self.buttonZoom.isChecked(): self.buttonZoom.click()
+        axes = self.figure.properties.root['Axes']
+        xaxis = axes.getChildByNumber('Axis',0)
+        yaxis = axes.getChildByNumber('Axis',1)
+        oldupdating = self.figure.setUpdating(False)
+        for axis in (xaxis,yaxis):
+            axis['MinimumTime'].clearValue()
+            axis['MaximumTime'].clearValue()
+            axis['Minimum'].clearValue()
+            axis['Maximum'].clearValue()
+        self.figure.setUpdating(oldupdating)
 
     def onPropertiesClicked(self):
         window = getTopLevelWidget(self)
@@ -2668,9 +2756,10 @@ class FigurePanel(QtGui.QWidget):
         fd = FigureDialog(self,sourcefigure=self.figure)
         fd.show()
         self.detachedfigures.append(fd)
-
+        
     def closeEvent(self,ev):
         self.closeDetached()
+        if self.dialogAdvanced!=None: self.dialogAdvanced.close()
         QtGui.QWidget.closeEvent(self,ev)
 
 class FigureDialog(QtGui.QDialog):
