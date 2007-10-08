@@ -1,50 +1,50 @@
 <?xml version="1.0"?>
-<element id="scenario" label="scenario" version="gotmgui-0.5.0">
+<element name="scenario" label="scenario" version="gotmgui-0.5.0">
 
-	<element id="title" type="string" label="title of simulation"/>
+	<element name="title" type="string" label="title of simulation"/>
 
-	<element id="station" label="geographic location" description="The details of the geographic location that you want to simulate. Note that the coordinates affect different parts of the model, e.g., Coriolis rotation and solar radiation.">
-		<element id="name"      type="string" label="station name"/>
-		<element id="latitude"  type="float"  label="latitude"    minimum="-90"  maximum="90"   unit="º North"/>
-		<element id="longitude" type="float"  label="longitude"   minimum="-360" maximum="360"  unit="º East"/>
-		<element id="depth"     type="float"  label="water depth" minimum="0"    maximum="5000" unit="m"/>
+	<element name="station" label="geographic location" description="The details of the geographic location that you want to simulate. Note that the coordinates affect different parts of the model, e.g., Coriolis rotation and solar radiation.">
+		<element name="name"      type="string" label="station name"/>
+		<element name="latitude"  type="float"  label="latitude"    minimum="-90"  maximum="90"   unit="º North"/>
+		<element name="longitude" type="float"  label="longitude"   minimum="-360" maximum="360"  unit="º East"/>
+		<element name="depth"     type="float"  label="water depth" minimum="0"    maximum="5000" unit="m"/>
 	</element>
 
-	<element id="time" label="period" description="The period that you want to simulate.">
-		<element id="timefmt" type="select" label="type of period specification" description="method to specify start and of model run">
+	<element name="time" label="period" description="The period that you want to simulate.">
+		<element name="timefmt" type="select" label="type of period specification" description="method to specify start and of model run">
 			<options>
 				<option value="1" label="number of time steps only"/>
 				<option value="2" label="start and stop dates"/>
 				<option value="3" label="start date and number of time steps"/>
 			</options>
 		</element>
-		<element id="start" type="datetime" label="start date">
+		<element name="start" type="datetime" label="start date">
 			<condition type="ne" variable="./timefmt" value="1"/>
 		</element>
-		<element id="stop"  type="datetime" label="stop date">
+		<element name="stop"  type="datetime" label="stop date">
 			<condition type="eq" variable="./timefmt" value="2"/>
 		</element>
-		<element id="MaxN"  type="int"      label="number of time steps">
+		<element name="MaxN"  type="int"      label="number of time steps">
 			<condition type="ne" variable="./timefmt" value="2"/>
 		</element>
 	</element>
 	
-	<element id="grid" label="column structure" description="The column structure determines the accuracy and detail with which the water column is resolved. You can selectively increase the detail of parts of the column by changing the grid type.">
-		<element id="nlev" type="int" label="number of depth levels" minimum="1" maximum="1000" description="The number of depth levels used to describe the water column. More levels increase accuracy and result resolution, but also simulation time."/>
-		<element id="grid_method" type="select" label="type of vertical grid" description="By changing the grid type, you can control the detail with which different parts of the water column are resolved. A study of bottom friction benefits from a small layer height near the bottom (bottom zooming), while a study of biological process is better served by a layer height near the surface (surface zooming). Custom grids allow you to specify the height of every level individually.">
+	<element name="grid" label="column structure" description="The column structure determines the accuracy and detail with which the water column is resolved. You can selectively increase the detail of parts of the column by changing the grid type.">
+		<element name="nlev" type="int" label="number of depth levels" minimum="1" maximum="1000" description="The number of depth levels used to describe the water column. More levels increase accuracy and result resolution, but also simulation time."/>
+		<element name="grid_method" type="select" label="type of vertical grid" description="By changing the grid type, you can control the detail with which different parts of the water column are resolved. A study of bottom friction benefits from a small layer height near the bottom (bottom zooming), while a study of biological process is better served by a layer height near the surface (surface zooming). Custom grids allow you to specify the height of every level individually.">
 			<options>
 				<option value="0" label="equal layers heights, optional zooming"/>
 				<option value="1" label="custom sigma grid (relative depth fractions)"/>
 				<option value="2" label="custom cartesian grid (absolute layer heights)"/>
 			</options>
 		</element>
-		<element id="ddu" type="float" label="surface zooming" description="Grid zooming (surface), 0: no zooming; > 3 strong zooming" minimum="0">
+		<element name="ddu" type="float" label="surface zooming" description="Grid zooming (surface), 0: no zooming; > 3 strong zooming" minimum="0">
 			<condition type="eq" variable="./grid_method" value="0"/>
 		</element>
-		<element id="ddl" type="float" label="bottom zooming" description="Grid zooming (bottom), 0: no zooming; > 3 strong zooming" minimum="0">
+		<element name="ddl" type="float" label="bottom zooming" description="Grid zooming (bottom), 0: no zooming; > 3 strong zooming" minimum="0">
 			<condition type="eq" variable="./grid_method" value="0"/>
 		</element>
-		<element id="grid_file" type="file" label="custom grid" description="File for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
+		<element name="grid_file" type="file" label="custom grid" description="File for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
 			<condition type="ne" variable="./grid_method" value="0"/>
 			<fileinfo type="verticalgrid">
 				<filevariables>
@@ -54,116 +54,116 @@
 		</element>
 	</element>
 
-	<element id="timeintegration" label="time integration">
-		<element id="dt"    type="timedelta" label="time step" minimum="1" maximum="86400" description="Time step for integration. The time step affects the accuracy of the results: smaller time steps improve accuracy, but come at the expense of simulation speed."/>
-		<element id="cnpar" type="float"  label="&quot;explicitness&quot; of numerical scheme" minimum="0" maximum="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems."/>
+	<element name="timeintegration" label="time integration">
+		<element name="dt"    type="duration" label="time step" minimum="1" maximum="86400" description="Time step for integration. The time step affects the accuracy of the results: smaller time steps improve accuracy, but come at the expense of simulation speed."/>
+		<element name="cnpar" type="float"  label="&quot;explicitness&quot; of numerical scheme" minimum="0" maximum="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems."/>
 	</element>
 
-	<element id="output" label="output">
-		<element id="dtsave"      type="timedelta"  label="period between saves"/>
-		<element id="diagnostics" type="bool"   label="include diagnostics" description="Write diagnostics to output."/>
-		<element id="mld_method"  type="select" label="mixed layer depth criterion">
+	<element name="output" label="output">
+		<element name="dtsave"      type="duration"  label="period between saves"/>
+		<element name="diagnostics" type="bool"   label="include diagnostics" description="Write diagnostics to output."/>
+		<element name="mld_method"  type="select" label="mixed layer depth criterion">
 			<options>
 				<option value="1" label="TKE threshold"/>
 				<option value="2" label="Ri threshold"/>
 			</options>
 			<condition type="eq" variable="./diagnostics" value="True"/>
 		</element>
-		<element id="diff_k" type="float" label="TKE threshold" minimum="0" maximum="1" unit="m²/s²">
+		<element name="diff_k" type="float" label="TKE threshold" minimum="0" maximum="1" unit="m²/s²">
 			<condition type="and">
 				<condition type="eq" variable="./diagnostics" value="True"/>
 				<condition type="eq" variable="./mld_method" value="1"/>
 			</condition>
 		</element>
-		<element id="Ri_crit" type="float" label="Ri threshold" minimum="0" maximum="1000">
+		<element name="Ri_crit" type="float" label="Ri threshold" minimum="0" maximum="1000">
 			<condition type="and">
 				<condition type="eq" variable="./diagnostics" value="True"/>
 				<condition type="eq" variable="./mld_method" value="2"/>
 			</condition>
 		</element>
-		<element id="rad_corr" type="bool" label="correct surface buoyancy flux for solar radiation">
+		<element name="rad_corr" type="bool" label="correct surface buoyancy flux for solar radiation">
 			<condition type="eq" variable="./diagnostics" value="True"/>
 		</element>
 	</element>
 
-	<element id="meanflow" label="bulk flow properties">
-		<element id="h0b"         type="float" label="physical bottom roughness" description="Bottom roughness - Note: z0b=0.03*h0b+0.1*nu/ustar" unit="m"/>
-		<element id="MaxItz0b"    type="int"   label="number of iterations for hydrodynamic bottom roughness" description="Number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness." minimum="1" maximum="1000"/>
-		<element id="charnock"    type="bool"  label="use Charnock (1955) surface roughness adaptation"/>
-		<element id="charnock_val" type="float" label="empirical constant for surface roughness adaptation" description="Empirical constant in Charnock 1955 formula (default = 1400).">
+	<element name="meanflow" label="bulk flow properties">
+		<element name="h0b"         type="float" label="physical bottom roughness" description="Bottom roughness - Note: z0b=0.03*h0b+0.1*nu/ustar" unit="m"/>
+		<element name="MaxItz0b"    type="int"   label="number of iterations for hydrodynamic bottom roughness" description="Number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness." minimum="1" maximum="1000"/>
+		<element name="charnock"    type="bool"  label="use Charnock (1955) surface roughness adaptation"/>
+		<element name="charnock_val" type="float" label="empirical constant for surface roughness adaptation" description="Empirical constant in Charnock 1955 formula (default = 1400).">
 			<condition type="eq" variable="./charnock" value="True"/>
 		</element>
-		<element id="z0s_min"     type="float" label="minimum hydrodynamic surface roughness" description="Minimum hydrodynamic surface roughness" unit="m">
+		<element name="z0s_min"     type="float" label="minimum hydrodynamic surface roughness" description="Minimum hydrodynamic surface roughness" unit="m">
 			<condition type="eq" variable="./charnock" value="True"/>
 		</element>
-		<element id="z0s"         type="float" label="hydrodynamic surface roughness" description="Hydrodynamic surface roughness" unit="m">
+		<element name="z0s"         type="float" label="hydrodynamic surface roughness" description="Hydrodynamic surface roughness" unit="m">
 			<condition type="eq" variable="./charnock" value="False"/>
 		</element>
-		<element id="gravity"     type="float" label="gravitational acceleration"          unit="m/s²"/>
-		<element id="rho_0"       type="float" label="reference density"                   unit="kg/m³"/>
-		<element id="cp"          type="float" label="specific heat of sea water"          unit="J/kg/K"/>
-		<element id="avmolu"      type="float" label="molecular viscosity for momentum"    unit="m²/s"/>
-		<element id="avmolt"      type="float" label="molecular diffusity for temperature" unit="m²/s"/>
-		<element id="avmols"      type="float" label="molecular diffusity for salinity"    unit="m²/s"/>
-		<element id="no_shear"    type="bool"  label="set shear production term to zero"/>
-		<element id="buoy_method" type="select" label="method to compute mean buoyancy">
+		<element name="gravity"     type="float" label="gravitational acceleration"          unit="m/s²"/>
+		<element name="rho_0"       type="float" label="reference density"                   unit="kg/m³"/>
+		<element name="cp"          type="float" label="specific heat of sea water"          unit="J/kg/K"/>
+		<element name="avmolu"      type="float" label="molecular viscosity for momentum"    unit="m²/s"/>
+		<element name="avmolt"      type="float" label="molecular diffusity for temperature" unit="m²/s"/>
+		<element name="avmols"      type="float" label="molecular diffusity for salinity"    unit="m²/s"/>
+		<element name="no_shear"    type="bool"  label="set shear production term to zero"/>
+		<element name="buoy_method" type="select" label="method to compute mean buoyancy">
 			<options>
 				<option value="1" label="from equation of state" description="From equation of state, i.e. from (potential) temperature and salinity."/>
 				<option value="2" label="from prognostic equation"/>
 			</options>
 		</element>
-		<element id="eq_state_mode" type="select" label="equation of state" description="choice for empirical formula for equation of state">
+		<element name="eq_state_mode" type="select" label="equation of state" description="choice for empirical formula for equation of state">
 			<options>
 				<option value="1" label="UNESCO, Fofonoff &amp; Millard (1983)" description="UNESCO equation of state by Fofonoff and Millard (1983)"/>
 				<option value="2" label="Jackett et al. (2005)" description="equation of state according Jackett et al. (2005)"/>
 			</options>
 		</element>
-		<element id="eq_state_method" type="select" label="equation of state implementation">
+		<element name="eq_state_method" type="select" label="equation of state implementation">
 			<options>
 				<option value="1" label="full equation, local pressure" description="full equation of state (i.e. with the local pressure). This implies that temperature values throughout the program are treated as in-situ temperatures rather than potential temperatures."/>
 				<option value="2" label="full equation, surface pressure" description="equation of state with pressure evaluated at the surface. This implies that temperature values throughout the program are treated as potential temperatures (as oposed to in-situ temperatures) and thus densities as potential densities."/>
 				<option value="3" label="linear, reference pressure prescribed" description="linear equation of state with reference temperature, salinity and pressure prescribed. Expansion coefficients are calculated once at the prescribed pressure; specify the surface pressure to work with potential temperature and density."/>
 				<option value="4" label="linear, expansion coefficients prescribed" description="linear equation of state with reference temperature, salinity, thermal expansion coefficient and saline expansion coefficient."/>
 			</options>
-			<element id="T0" type="float" label="reference temperature" unit="ºC">
+			<element name="T0" type="float" label="reference temperature" unit="ºC">
 				<condition type="or">
 					<condition type="eq" variable="/meanflow/eq_state_method" value="3"/>
 					<condition type="eq" variable="/meanflow/eq_state_method" value="4"/>
 				</condition>
 			</element>
-			<element id="S0" type="float" label="reference salinity" unit="psu">
+			<element name="S0" type="float" label="reference salinity" unit="psu">
 				<condition type="or">
 					<condition type="eq" variable="/meanflow/eq_state_method" value="3"/>
 					<condition type="eq" variable="/meanflow/eq_state_method" value="4"/>
 				</condition>
 			</element>
-			<element id="p0" type="float" label="reference pressure" unit="bar">
+			<element name="p0" type="float" label="reference pressure" unit="bar">
 				<condition type="eq" variable="/meanflow/eq_state_method" value="3"/>
 			</element>
-			<element id="dtr0" type="float" label="thermal expansion coefficient" unit="kg/m³/K">
+			<element name="dtr0" type="float" label="thermal expansion coefficient" unit="kg/m³/K">
 				<condition type="eq" variable="/meanflow/eq_state_method" value="4"/>
 			</element>
-			<element id="dsr0" type="float" label="saline expansion coefficient" unit="kg/m³/psu">
+			<element name="dsr0" type="float" label="saline expansion coefficient" unit="kg/m³/psu">
 				<condition type="eq" variable="/meanflow/eq_state_method" value="4"/>
 			</element>
 		</element>
 	</element>
 		
-	<element id="airsea" label="air-sea interaction">
-		<element id="flux_source" type="select" label="surface flux specification" description="Surface fluxes can be calculated from observed meteorological variables, or be specified explicitly as fluxes of heat and momentum.">
+	<element name="airsea" label="air-sea interaction">
+		<element name="flux_source" type="select" label="surface flux specification" description="Surface fluxes can be calculated from observed meteorological variables, or be specified explicitly as fluxes of heat and momentum.">
 			<options>
 				<option value="0" label="meteorological observations"/>
 				<option value="1" label="separate heat and momentum fluxes"/>
 			</options>
 		</element>
-		<element id="fluxes_method" type="select" label="bulk formulae according to">
+		<element name="fluxes_method" type="select" label="bulk formulae according to">
 			<condition type="eq" variable="./flux_source" value="0" />
 			<options>
 				<option value="1" label="Kondo (1975)" />
 				<option value="2" label="Fairall et al. (1996)" />
 			</options>
 		</element>
-		<element id="back_radiation_method" type="select" label="calculation of long-wave back radiation according to">
+		<element name="back_radiation_method" type="select" label="calculation of long-wave back radiation according to">
 			<condition type="eq" variable="./flux_source" value="0" />
 			<options>
 				<option value="1" label="Clark et al. (1974)" />
@@ -172,7 +172,7 @@
 				<option value="4" label="Berliandand Berliand (1952)" />
 			</options>
 		</element>
-		<element id="meteo_file"  type="file" label="meteorological observations">
+		<element name="meteo_file"  type="file" label="meteorological observations">
 			<condition type="eq" variable="./flux_source" value="0"/>
 			<fileinfo type="pointsintime">
 				<filevariables>
@@ -185,7 +185,7 @@
 				</filevariables>
 			</fileinfo>
 		</element>
-		<element id="hum_method"    type="select" label="unit for air humidity">
+		<element name="hum_method"    type="select" label="unit for air humidity">
 			<condition type="eq" variable="./flux_source" value="0"/>
 			<options>
 				<option value="1" label="relative humidity (%)" />
@@ -195,7 +195,7 @@
 			</options>
 		</element>
 
-		<element id="heat_method" type="select" label="type of short wave radiation and surface heat flux">
+		<element name="heat_method" type="select" label="type of short wave radiation and surface heat flux">
 			<condition type="eq" variable="./flux_source" value="1"/>
 			<options>
 				<option value="0" label="none"/>
@@ -203,19 +203,19 @@
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
-		<element id="const_swr"  type="float" label="constant incoming short wave radiation" unit="W/m²" minimum="0" maximum="1000">
+		<element name="const_swr"  type="float" label="constant incoming short wave radiation" unit="W/m²" minimum="0" maximum="1000">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./heat_method" value="1"/>
 			</condition>
 		</element>
-		<element id="const_heat" type="float" label="constant surface heat flux" unit="W/m²" minimum="-1000" maximum="1000">
+		<element name="const_heat" type="float" label="constant surface heat flux" unit="W/m²" minimum="-1000" maximum="1000">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./heat_method" value="1"/>
 			</condition>
 		</element>
-		<element id="heatflux_file" type="file" label="custom heat fluxes" description="custom heat fluxes (negative for net outgoing)">
+		<element name="heatflux_file" type="file" label="custom heat fluxes" description="custom heat fluxes (negative for net outgoing)">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./heat_method" value="2"/>
@@ -228,7 +228,7 @@
 			</fileinfo>
 		</element>
 
-		<element id="momentum_method" type="select" label="type of momentum flux">
+		<element name="momentum_method" type="select" label="type of momentum flux">
 			<condition type="eq" variable="./flux_source" value="1"/>
 			<options>
 				<option value="0" label="none"/>
@@ -236,19 +236,19 @@
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
-		<element id="const_tx"  type="float" label="x-component of surface momentum flux" unit="N/m²" minimum="-1000" maximum="1000">
+		<element name="const_tx"  type="float" label="x-component of surface momentum flux" unit="N/m²" minimum="-1000" maximum="1000">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./momentum_method" value="1"/>
 			</condition>
 		</element>
-		<element id="const_ty"  type="float" label="y-component of surface momentum flux" unit="N/m²" minimum="-1000" maximum="1000">
+		<element name="const_ty"  type="float" label="y-component of surface momentum flux" unit="N/m²" minimum="-1000" maximum="1000">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./momentum_method" value="1"/>
 			</condition>
 		</element>
-		<element id="momentumflux_file" type="file" label="custom momentum fluxes" description="file with tx and ty given in N/m²">
+		<element name="momentumflux_file" type="file" label="custom momentum fluxes" description="file with tx and ty given in N/m²">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./momentum_method" value="2"/>
@@ -261,17 +261,17 @@
 			</fileinfo>
 		</element>
 
-		<element id="p_e_method" type="select" label="type of fresh water flux" description="Type of fresh water flux (precipitation minus evaporation).">
+		<element name="p_e_method" type="select" label="type of fresh water flux" description="Type of fresh water flux (precipitation minus evaporation).">
 			<options>
 				<option value="0" label="none"/>
 				<option value="1" label="constant value prescribed"/>
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
-		<element id="const_p_e" type="float" label="constant fresh water flux" description="Constant value for precipitation minus evaporation (positive if precipitation exceeds evaporation)." unit="m/s" minimum="-0.01" maximum="0.01">
+		<element name="const_p_e" type="float" label="constant fresh water flux" description="Constant value for precipitation minus evaporation (positive if precipitation exceeds evaporation)." unit="m/s" minimum="-0.01" maximum="0.01">
 			<condition type="eq" variable="./p_e_method" value="1"/>
 		</element>
-		<element id="p_e_flux_file" type="file" label="custom fresh water flux">
+		<element name="p_e_flux_file" type="file" label="custom fresh water flux">
 			<condition type="eq" variable="./p_e_method" value="2"/>
 			<fileinfo type="pointsintime">
 				<filevariables>
@@ -280,14 +280,14 @@
 			</fileinfo>
 		</element>
 
-		<element id="sst_method" type="select" label="sea surface temperature (SST) observations">
+		<element name="sst_method" type="select" label="sea surface temperature (SST) observations">
 			<condition type="eq" variable="./flux_source" value="1"/>
 			<options>
 				<option value="0" label="none"/>
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
-		<element id="sst_file" type="file" label="custom sea surface temperatures">
+		<element name="sst_file" type="file" label="custom sea surface temperatures">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./sst_method" value="2"/>
@@ -299,14 +299,14 @@
 			</fileinfo>
 		</element>
 
-		<element id="sss_method" type="select" label="sea surface salinity (SSS) observations">
+		<element name="sss_method" type="select" label="sea surface salinity (SSS) observations">
 			<condition type="eq" variable="./flux_source" value="1"/>
 			<options>
 				<option value="0" label="none"/>
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
-		<element id="sss_file" type="file" label="custom sea surface salinities">
+		<element name="sss_file" type="file" label="custom sea surface salinities">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./sss_method" value="2"/>
@@ -320,9 +320,9 @@
 
 	</element>
 		
-	<element id="gotmturb" label="turbulence">
+	<element name="gotmturb" label="turbulence">
 
-		<element id="turb_method" type="select" label="type of turbulence closure">
+		<element name="turb_method" type="select" label="type of turbulence closure">
 			<options>
 				<option value="0"  label="convective adjustment"/>
 				<option value="1"  label="analytical eddy viscosity and diffusivity profiles, not coded yet" disabled="True" />
@@ -331,7 +331,7 @@
 				<option value="99" label="KPP model"/>
 			</options>
 		</element>
-		<element id="tke_method" type="select" label="type of equation for TKE">
+		<element name="tke_method" type="select" label="type of equation for TKE">
 			<condition type="or">
 				<condition type="eq" variable="./turb_method" value="2"/>
 				<condition type="eq" variable="./turb_method" value="3"/>
@@ -342,7 +342,7 @@
 				<option value="3" label="dynamic equation (Mellor-Yamada style)"/>
 			</options>
 		</element>
-		<element id="len_scale_method" type="select" label="type of model for dissipative length scale">
+		<element name="len_scale_method" type="select" label="type of model for dissipative length scale">
 			<condition type="or">
 				<condition type="eq" variable="./turb_method" value="2"/>
 				<condition type="eq" variable="./turb_method" value="3"/>
@@ -360,7 +360,7 @@
 				<option value="10" label="generic length scale (GLS)"/>
 			</options>
 		</element>
-		<element id="stab_method" type="select" label="type of stability function">
+		<element name="stab_method" type="select" label="type of stability function">
 			<condition type="eq" variable="./turb_method" value="2"/>
 			<options>
 				<option value="1" label="constant stability functions"/>
@@ -370,7 +370,7 @@
 			</options>
 		</element>
 
-		<element id="bc" label="boundary conditions">
+		<element name="bc" label="boundary conditions">
 			<condition type="and">
 				<condition type="ne" variable="./tke_method" value="1"/>
 				<condition type="or">
@@ -378,19 +378,19 @@
 					<condition type="eq" variable="./turb_method" value="3"/>
 				</condition>
 			</condition>
-			<element id="k_ubc" type="select" label="upper boundary condition for k-equation">
+			<element name="k_ubc" type="select" label="upper boundary condition for k-equation">
 				<options>
 					<option value="0" label="prescribed BC"/>
 					<option value="1" label="flux BC"/>
 				</options>
 			</element>
-			<element id="k_lbc" type="select" label="lower boundary condition for k-equation">
+			<element name="k_lbc" type="select" label="lower boundary condition for k-equation">
 				<options>
 					<option value="0" label="prescribed BC"/>
 					<option value="1" label="flux BC"/>
 				</options>
 			</element>
-			<element id="psi_ubc" type="select" label="upper boundary condition for length-scale equation" description="Upper boundary condition for the length-scale equation (e.g. ε, kl, ω, GLS).">
+			<element name="psi_ubc" type="select" label="upper boundary condition for length-scale equation" description="Upper boundary condition for the length-scale equation (e.g. ε, kl, ω, GLS).">
 				<condition type="or">
 					<condition type="eq" variable="../len_scale_method" value="8"/>
 					<condition type="eq" variable="../len_scale_method" value="9"/>
@@ -401,7 +401,7 @@
 					<option value="1" label="flux BC"/>
 				</options>
 			</element>
-			<element id="psi_lbc" type="select" label="lower boundary condition for length-scale equation" description="Lower boundary condition for the length-scale equation (e.g. ε, kl, ω, GLS).">
+			<element name="psi_lbc" type="select" label="lower boundary condition for length-scale equation" description="Lower boundary condition for the length-scale equation (e.g. ε, kl, ω, GLS).">
 				<condition type="or">
 					<condition type="eq" variable="../len_scale_method" value="8"/>
 					<condition type="eq" variable="../len_scale_method" value="9"/>
@@ -412,14 +412,14 @@
 					<option value="1" label="flux BC"/>
 				</options>
 			</element>
-			<element id="ubc_type" type="select" label="type of upper boundary layer">
+			<element name="ubc_type" type="select" label="type of upper boundary layer">
 				<options>
 					<option value="0" label="viscous sublayer (not yet implemented)" disabled="True" />
 					<option value="1" label="logarithmic law of the wall"/>
 					<option value="2" label="tke-injection (breaking waves)"/>
 				</options>
 			</element>
-			<element id="lbc_type" type="select" label="type of lower boundary layer">
+			<element name="lbc_type" type="select" label="type of lower boundary layer">
 				<options>
 					<option value="0" label="viscous sublayer (not yet impl.)" disabled="True" />
 					<option value="1" label="logarithmic law of the wall"/>
@@ -427,169 +427,169 @@
 			</element>
 		</element>
 
-		<element id="turb_param" label="turbulence parameters">
+		<element name="turb_param" label="turbulence parameters">
 			<condition type="ne" variable="./turb_method" value="99"/>
-			<element id="cm0_fix" type="float" label="value of cm0">
+			<element name="cm0_fix" type="float" label="value of cm0">
 				<condition type="eq" variable="../turb_method" value="2"/>
 			</element>
-			<element id="Prandtl0_fix" type="float" label="turbulent Prandtl-number">
+			<element name="Prandtl0_fix" type="float" label="turbulent Prandtl-number">
 				<condition type="eq" variable="../turb_method" value="2"/>
 			</element>
-			<element id="cw" type="float" label="constant of the wave-breaking model" description="Constant of the wave-breaking model. Craig &amp; Banner (1994) use a value of 100.">
+			<element name="cw" type="float" label="constant of the wave-breaking model" description="Constant of the wave-breaking model. Craig &amp; Banner (1994) use a value of 100.">
 				<condition type="and">
 					<condition type="ne" variable="../turb_method" value="0"/>
 					<condition type="ne" variable="../tke_method" value="1"/>
 					<condition type="eq" variable="../bc/ubc_type" value="2"/>
 				</condition>
 			</element>
-			<element id="compute_kappa" type="bool" label="compute von Kármán constant from model parameters">
+			<element name="compute_kappa" type="bool" label="compute von Kármán constant from model parameters">
 				<condition type="ne" variable="../turb_method" value="0"/>
 			</element>
-			<element id="kappa" type="float" label="von Kármán constant">
+			<element name="kappa" type="float" label="von Kármán constant">
 				<condition type="and">
 					<condition type="ne" variable="../turb_method" value="0"/>
 					<condition type="ne" variable="./compute_kappa" value="True"/>
 				</condition>
 			</element>
-			<element id="compute_c3" type="bool" label="compute c3 (E3 for Mellor-Yamada) from steady-state Richardson number">
+			<element name="compute_c3" type="bool" label="compute c3 (E3 for Mellor-Yamada) from steady-state Richardson number">
 				<condition type="ne" variable="../turb_method" value="0"/>
 			</element>
-			<element id="Ri_st" type="float" label="desired steady-state Richardson number">
+			<element name="Ri_st" type="float" label="desired steady-state Richardson number">
 				<condition type="and">
 					<condition type="ne" variable="../turb_method" value="0"/>
 					<condition type="eq" variable="./compute_c3" value="True"/>
 				</condition>
 			</element>
-			<element id="length_lim" type="bool" label="apply Galperin et al. (1988) length scale limitation" description="Apply length scale limitation (see Galperin et al. 1988).">
+			<element name="length_lim" type="bool" label="apply Galperin et al. (1988) length scale limitation" description="Apply length scale limitation (see Galperin et al. 1988).">
 				<condition type="ne" variable="../turb_method" value="0"/>
 			</element>
-			<element id="galp" type="float" label="coefficient for length scale limitation">
+			<element name="galp" type="float" label="coefficient for length scale limitation">
 				<condition type="and">
 					<condition type="ne" variable="../turb_method" value="0"/>
 					<condition type="eq" variable="./length_lim" value="True"/>
 				</condition>
 			</element>
-			<element id="const_num" type="float" label="constant eddy diffusivity" unit="m²/s">
+			<element name="const_num" type="float" label="constant eddy diffusivity" unit="m²/s">
 				<condition type="eq" variable="../turb_method" value="0"/>
 			</element>
-			<element id="const_nuh" type="float" label="constant heat diffusivity" unit="m²/s">
+			<element name="const_nuh" type="float" label="constant heat diffusivity" unit="m²/s">
 				<condition type="eq" variable="../turb_method" value="0"/>
 			</element>
-			<element id="k_min"    type="float" label="minimum turbulent kinetic energy" unit="m²/s²">
+			<element name="k_min"    type="float" label="minimum turbulent kinetic energy" unit="m²/s²">
 				<condition type="ne" variable="../turb_method" value="0"/>
 			</element>
-			<element id="eps_min"  type="float" label="minimum dissipation rate" unit="m²/s³" description="minimum dissipation rate ε of turbulent kinetic energy">
+			<element name="eps_min"  type="float" label="minimum dissipation rate" unit="m²/s³" description="minimum dissipation rate ε of turbulent kinetic energy">
 				<condition type="ne" variable="../turb_method" value="0"/>
 			</element>
-			<element id="kb_min"   type="float" label="minimum buoyancy variance" unit="m²/s^4">
+			<element name="kb_min"   type="float" label="minimum buoyancy variance" unit="m²/s^4">
 				<condition type="eq" variable="../turb_method" value="3"/>
 			</element>
-			<element id="epsb_min" type="float" label="minimum buoyancy variance destruction rate" unit="m²/s^5">
+			<element name="epsb_min" type="float" label="minimum buoyancy variance destruction rate" unit="m²/s^5">
 				<condition type="eq" variable="../turb_method" value="3"/>
 			</element>
 		</element>
 
-		<element id="generic" label="generic model" description="the generic model (Umlauf &amp; Burchard, Journal of Marine Research, 2003)">
+		<element name="generic" label="generic model" description="the generic model (Umlauf &amp; Burchard, Journal of Marine Research, 2003)">
 			<condition type="and">
 				<condition type="ne" variable="./turb_method" value="0"/>
 				<condition type="ne" variable="./turb_method" value="99"/>
 				<condition type="eq" variable="./len_scale_method" value="10"/>
 			</condition>
-			<element id="compute_param" type="bool" label="compute the model parameters"/>
-			<element id="gen_m" type="float" label="exponent for k"/>
-			<element id="gen_n" type="float" label="exponent for l">
+			<element name="compute_param" type="bool" label="compute the model parameters"/>
+			<element name="gen_m" type="float" label="exponent for k"/>
+			<element name="gen_n" type="float" label="exponent for l">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element id="gen_p" type="float" label="exponent for cm0"/>
-			<element id="cpsi1" type="float" label="empirical coefficient cpsi1 in ψ equation">
+			<element name="gen_p" type="float" label="exponent for cm0"/>
+			<element name="cpsi1" type="float" label="empirical coefficient cpsi1 in ψ equation">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element id="cpsi2" type="float" label="empirical coefficient cpsi2 in ψ equation">
+			<element name="cpsi2" type="float" label="empirical coefficient cpsi2 in ψ equation">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element id="cpsi3minus" type="float" label="cpsi3 for stable stratification">
+			<element name="cpsi3minus" type="float" label="cpsi3 for stable stratification">
 				<condition type="eq" variable="../turb_param/compute_c3" value="False"/>
 			</element>
-			<element id="cpsi3plus" type="float" label="cpsi3 for unstable stratification"/>
-			<element id="sig_kpsi" type="float" label="Schmidt number for TKE diffusivity">
+			<element name="cpsi3plus" type="float" label="cpsi3 for unstable stratification"/>
+			<element name="sig_kpsi" type="float" label="Schmidt number for TKE diffusivity">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element id="sig_psi" type="float" label="Schmidt number for ψ diffusivity">
+			<element name="sig_psi" type="float" label="Schmidt number for ψ diffusivity">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element id="gen_d" type="float" label="temporal decay rate d in homogeneous turbulence" maximum="0">
+			<element name="gen_d" type="float" label="temporal decay rate d in homogeneous turbulence" maximum="0">
 				<condition type="eq" variable="./compute_param" value="True"/>
 			</element>
-			<element id="gen_alpha" type="float" label="decay exponent α" maximum="0">
+			<element name="gen_alpha" type="float" label="decay exponent α" maximum="0">
 				<condition type="eq" variable="./compute_param" value="True"/>
 			</element>
-			<element id="gen_l" type="float" label="slope L of the length scale in shear-free turbulence" minimum="0">
+			<element name="gen_l" type="float" label="slope L of the length scale in shear-free turbulence" minimum="0">
 				<condition type="eq" variable="./compute_param" value="True"/>
 			</element>
 		</element>
 
-		<element id="keps" label="k-ε model" description="the k-ε model (Rodi 1987)">
+		<element name="keps" label="k-ε model" description="the k-ε model (Rodi 1987)">
 			<condition type="and">
 				<condition type="ne" variable="./turb_method" value="0"/>
 				<condition type="ne" variable="./turb_method" value="99"/>
 				<condition type="eq" variable="./len_scale_method" value="8"/>
 			</condition>
-			<element id="ce1" type="float" label="empirical coefficient ce1 in dissipation equation"/>
-			<element id="ce2" type="float" label="empirical coefficient ce2 in dissipation equation"/>
-			<element id="ce3minus" type="float" label="ce3 for stable stratification">
+			<element name="ce1" type="float" label="empirical coefficient ce1 in dissipation equation"/>
+			<element name="ce2" type="float" label="empirical coefficient ce2 in dissipation equation"/>
+			<element name="ce3minus" type="float" label="ce3 for stable stratification">
 				<condition type="ne" variable="../turb_param/compute_c3" value="True"/>
 			</element>
-			<element id="ce3plus"  type="float" label="ce3 for unstable stratification" description="ce3 for unstable stratification (Rodi 1987: ce3plus=1.0)"/>
-			<element id="sig_k"    type="float" label="Schmidt number for TKE diffusivity"/>
-			<element id="sig_e"    type="float" label="Schmidt number for dissipation diffusivity"/>
-			<element id="sig_peps" type="bool"  label="use Burchard (2001) wave breaking parameterisation" description="use wave breaking parameterisation suggested by Burchard (Journal of Physical Oceanography 31, 2001, 3133-3145)"/>
+			<element name="ce3plus"  type="float" label="ce3 for unstable stratification" description="ce3 for unstable stratification (Rodi 1987: ce3plus=1.0)"/>
+			<element name="sig_k"    type="float" label="Schmidt number for TKE diffusivity"/>
+			<element name="sig_e"    type="float" label="Schmidt number for dissipation diffusivity"/>
+			<element name="sig_peps" type="bool"  label="use Burchard (2001) wave breaking parameterisation" description="use wave breaking parameterisation suggested by Burchard (Journal of Physical Oceanography 31, 2001, 3133-3145)"/>
 		</element>
 
-		<element id="my" label="Mellor-Yamada model" description="the Mellor-Yamada model (Mellor &amp; Yamada 1982)">
+		<element name="my" label="Mellor-Yamada model" description="the Mellor-Yamada model (Mellor &amp; Yamada 1982)">
 			<condition type="and">
 				<condition type="ne" variable="./turb_method" value="0"/>
 				<condition type="ne" variable="./turb_method" value="99"/>
 				<condition type="eq" variable="./len_scale_method" value="9"/>
 			</condition>
-			<element id="e1"        type="float"  label="coefficient e1 in MY q²l equation"/>
-			<element id="e2"        type="float"  label="coefficient e2 in MY q²l equation"/>
-			<element id="e3"        type="float"  label="coefficient e3 in MY q²l equation">
+			<element name="e1"        type="float"  label="coefficient e1 in MY q²l equation"/>
+			<element name="e2"        type="float"  label="coefficient e2 in MY q²l equation"/>
+			<element name="e3"        type="float"  label="coefficient e3 in MY q²l equation">
 				<condition type="ne" variable="../turb_param/compute_c3" value="True"/>
 			</element>
-			<element id="sq"        type="float"  label="turbulent diffusivities of q² (= 2k)"/>
-			<element id="sl"        type="float"  label="turbulent diffusivities of q²l"/>
-			<element id="my_length" type="select" label="prescribed barotropic length scale in q²l equation of MY">
+			<element name="sq"        type="float"  label="turbulent diffusivities of q² (= 2k)"/>
+			<element name="sl"        type="float"  label="turbulent diffusivities of q²l"/>
+			<element name="my_length" type="select" label="prescribed barotropic length scale in q²l equation of MY">
 				<options>
 					<option value="1" label="parabolic"/>
 					<option value="2" label="triangular"/>
 					<option value="3" label="linear from surface"/>
 				</options>
 			</element>
-			<element id="new_constr" type="bool" label="stabilize stability functions" description="stabilize Mellor-Yamada stability functions according to Burchard &amp; Deleersnijder (2001)"/>
+			<element name="new_constr" type="bool" label="stabilize stability functions" description="stabilize Mellor-Yamada stability functions according to Burchard &amp; Deleersnijder (2001)"/>
 		</element>
 
-		<element id="scnd" label="second-order model">
+		<element name="scnd" label="second-order model">
 			<condition type="eq" variable="./turb_method" value="3"/>
-			<element id="scnd_method" type="select" label="type of second-order model">
+			<element name="scnd_method" type="select" label="type of second-order model">
 				<options>
 					<option value="1" label="EASM with quasi-equilibrium"/>
 					<option value="2" label="EASM with weak equilibrium, buoy.-variance algebraic"/>
 					<option value="3" label="EASM with weak equilibrium, buoy.-variance from PDE" disabled="True"/>
 				</options>
 			</element>
-			<element id="kb_method" type="select" label="type of equation for buoyancy variance">
+			<element name="kb_method" type="select" label="type of equation for buoyancy variance">
 				<options>
 					<option value="1" label="algebraic equation for buoyancy variance"/>
 					<option value="2" label="PDE for buoyancy variance"/>
 				</options>
 			</element>
-			<element id="epsb_method" type="select" label="type of equation for variance destruction">
+			<element name="epsb_method" type="select" label="type of equation for variance destruction">
 				<options>
 					<option value="1" label="algebraic equation for variance destruction"/>
 					<option value="2" label="PDE for variance destruction" disabled="True"/>
 				</options>
 			</element>
-			<element id="scnd_coeff" type="select" label="coefficients of second-order model">
+			<element name="scnd_coeff" type="select" label="coefficients of second-order model">
 				<options>
 					<option value="0" label="custom"/>
 					<option value="1" label="Gibson and Launder (1978)"/>
@@ -600,88 +600,88 @@
 					<option value="6" label="Canuto et al. (2001) (version B)"/>
 					<option value="7" label="Cheng et al. (2002)"/>
 				</options>
-				<element id="cc1" type="float" label="cc1">
+				<element name="cc1" type="float" label="cc1">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="cc2" type="float" label="cc2">
+				<element name="cc2" type="float" label="cc2">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="cc3" type="float" label="cc3">
+				<element name="cc3" type="float" label="cc3">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="cc4" type="float" label="cc4">
+				<element name="cc4" type="float" label="cc4">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="cc5" type="float" label="cc5">
+				<element name="cc5" type="float" label="cc5">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="cc6" type="float" label="cc6">
+				<element name="cc6" type="float" label="cc6">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="ct1" type="float" label="ct1">
+				<element name="ct1" type="float" label="ct1">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="ct2" type="float" label="ct2">
+				<element name="ct2" type="float" label="ct2">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="ct3" type="float" label="ct3">
+				<element name="ct3" type="float" label="ct3">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="ct4" type="float" label="ct4">
+				<element name="ct4" type="float" label="ct4">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="ct5" type="float" label="ct5">
+				<element name="ct5" type="float" label="ct5">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
-				<element id="ctt" type="float" label="ctt">
+				<element name="ctt" type="float" label="ctt">
 					<condition type="eq" variable="../scnd_coeff" value="0"/>
 				</element>
 			</element>
 		</element>
 
-		<element id="iw" label="internal wave model">
+		<element name="iw" label="internal wave model">
 			<condition type="ne" variable="./turb_method" value="99"/>
-			<element id="iw_model" type="select" label="method to compute internal wave mixing">
+			<element name="iw_model" type="select" label="method to compute internal wave mixing">
 				<options>
 					<option value="0" label="no internal wave mixing"/>
 					<option value="1" label="Mellor (1989) internal wave mixing"/>
 					<option value="2" label="Large et al. (1994) internal wave mixing"/>
 				</options>
 			</element>
-			<element id="alpha" type="float" label="coefficient for Mellor internal wave model" description="coefficient for Mellor internal wave model (0: no IW, 0.7 Mellor 1989)" minimum="0">
+			<element name="alpha" type="float" label="coefficient for Mellor internal wave model" description="coefficient for Mellor internal wave model (0: no IW, 0.7 Mellor 1989)" minimum="0">
 				<condition type="eq" variable="./iw_model" value="1"/>
 			</element>
-			<element id="klimiw" type="float" label="critical value of TKE" unit="m²/s²">
+			<element name="klimiw" type="float" label="critical value of TKE" unit="m²/s²">
 				<condition type="eq" variable="./iw_model" value="2"/>
 			</element>
-			<element id="rich_cr" type="float" label="critical Richardson number for shear instability">
+			<element name="rich_cr" type="float" label="critical Richardson number for shear instability">
 				<condition type="eq" variable="./iw_model" value="2"/>
 			</element>
-			<element id="numshear" type="float" label="background diffusivity for shear instability" unit="m²/s">
+			<element name="numshear" type="float" label="background diffusivity for shear instability" unit="m²/s">
 				<condition type="eq" variable="./iw_model" value="2"/>
 			</element>
-			<element id="numiw" type="float" label="background viscosity for internal wave breaking" unit="m²/s">
+			<element name="numiw" type="float" label="background viscosity for internal wave breaking" unit="m²/s">
 				<condition type="eq" variable="./iw_model" value="2"/>
 			</element>
-			<element id="nuhiw" type="float" label="background diffusivity for internal wave breaking" unit="m²/s">
+			<element name="nuhiw" type="float" label="background diffusivity for internal wave breaking" unit="m²/s">
 				<condition type="eq" variable="./iw_model" value="2"/>
 			</element>
 		</element>
 
-		<element id="kpp" label="KPP turbulence model">
+		<element name="kpp" label="KPP turbulence model">
 			<condition type="eq" variable="./turb_method" value="99"/>
-			<element id="kpp_sbl"      type="bool"  label="activate surface boundary layer module"/>
-			<element id="kpp_bbl"      type="bool"  label="activate bottom boundary layer module"/>
-			<element id="kpp_interior" type="bool"  label="activate interior mixing"/>
-			<element id="clip_mld"     type="bool"  label="clip mixed layer depth at Monin-Obukhov or Ekman scale"/>
-			<element id="Ric"          type="float" label="critical value of bulk Richardson number"/>
+			<element name="kpp_sbl"      type="bool"  label="activate surface boundary layer module"/>
+			<element name="kpp_bbl"      type="bool"  label="activate bottom boundary layer module"/>
+			<element name="kpp_interior" type="bool"  label="activate interior mixing"/>
+			<element name="clip_mld"     type="bool"  label="clip mixed layer depth at Monin-Obukhov or Ekman scale"/>
+			<element name="Ric"          type="float" label="critical value of bulk Richardson number"/>
 		</element>
 
 	</element>
 
-	<element id="obs" label="observations">
+	<element name="obs" label="observations">
 	
-		<element id="sprofile" type="select" label="salinity profiles" description="Together with temperature, salinity determines the buoyancy of the water. Vertical gradients in buoyancy affect the production and destruction of turbulence. For accurate resolution of turbulent processes, it is therefore essential that you provide information on observed or estimated salinities here.">
+		<element name="sprofile" type="select" label="salinity profiles" description="Together with temperature, salinity determines the buoyancy of the water. Vertical gradients in buoyancy affect the production and destruction of turbulence. For accurate resolution of turbulent processes, it is therefore essential that you provide information on observed or estimated salinities here.">
 			<options>
 				<option value="0" label="none: salinity equation is not solved"/>
 				<option value="11" label="analytical: constant salinity across column"/>
@@ -689,28 +689,28 @@
 				<option value="13" label="analytical: profile with constant N²"/>
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element id="s_const" type="float" label="constant salinity" unit="psu">
+			<element name="s_const" type="float" label="constant salinity" unit="psu">
 				<condition type="eq" variable="." value="11"/>
 			</element>
-			<element id="z_s1" type="float" label="upper layer thickness" unit="m">
+			<element name="z_s1" type="float" label="upper layer thickness" unit="m">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element id="s_1" type="float" label="upper layer salinity" unit="psu">
+			<element name="s_1" type="float" label="upper layer salinity" unit="psu">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element id="z_s2" type="float" label="lower layer thickness" unit="m">
+			<element name="z_s2" type="float" label="lower layer thickness" unit="m">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element id="s_2" type="float" label="lower layer salinity" unit="psu">
+			<element name="s_2" type="float" label="lower layer salinity" unit="psu">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element id="s_surf" type="float" label="surface salinity" unit="psu">
+			<element name="s_surf" type="float" label="surface salinity" unit="psu">
 				<condition type="eq" variable="." value="13"/>
 			</element>
-			<element id="s_obs_NN" type="float" label="constant N²">
+			<element name="s_obs_NN" type="float" label="constant N²">
 				<condition type="eq" variable="." value="13"/>
 			</element>
-			<element id="s_prof_file" type="file" label="custom salinity profiles">
+			<element name="s_prof_file" type="file" label="custom salinity profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -718,27 +718,27 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="SRelax" type="bool" label="relax model results towards observations">
+			<element name="SRelax" type="bool" label="relax model results towards observations">
 				<condition type="ne" variable="." value="0"/>
-				<element id="SRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
+				<element name="SRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
 					<condition type="eq" variable="." value="True"/>
 				</element>
-				<element id="SRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
+				<element name="SRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
 					<condition type="eq" variable="." value="True"/>
 				</element>
-				<element id="SRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
+				<element name="SRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
 					<condition type="eq" variable="." value="True"/>
 				</element>
-				<element id="SRelaxBott" type="float" label="height of bottom relaxation layer"  description="Height of bottom relaxation layer." unit="m">
+				<element name="SRelaxBott" type="float" label="height of bottom relaxation layer"  description="Height of bottom relaxation layer." unit="m">
 					<condition type="eq" variable="." value="True"/>
 				</element>
-				<element id="SRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
+				<element name="SRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
 					<condition type="eq" variable="." value="True"/>
 				</element>
 			</element>
 		</element>
 
-		<element id="tprofile" type="select" label="temperature profiles" description="observed or prescribed (potential) temperature profiles">
+		<element name="tprofile" type="select" label="temperature profiles" description="observed or prescribed (potential) temperature profiles">
 			<options>
 				<option value="0" label="none: temperature equation is not solved"/>
 				<option value="11" label="analytical: constant temperature across column"/>
@@ -746,28 +746,28 @@
 				<option value="13" label="analytical: profile with constant N²"/>
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element id="t_const" type="float" label="constant temperature" unit="ºC">
+			<element name="t_const" type="float" label="constant temperature" unit="ºC">
 				<condition type="eq" variable="." value="11"/>
 			</element>
-			<element id="z_t1" type="float" label="upper layer thickness" unit="m">
+			<element name="z_t1" type="float" label="upper layer thickness" unit="m">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element id="t_1" type="float" label="upper layer temperature" unit="ºC">
+			<element name="t_1" type="float" label="upper layer temperature" unit="ºC">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element id="z_t2" type="float" label="lower layer thickness" unit="m">
+			<element name="z_t2" type="float" label="lower layer thickness" unit="m">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element id="t_2" type="float" label="lower layer temperature" unit="ºC">
+			<element name="t_2" type="float" label="lower layer temperature" unit="ºC">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element id="t_surf" type="float" label="surface temperature" unit="ºC">
+			<element name="t_surf" type="float" label="surface temperature" unit="ºC">
 				<condition type="eq" variable="." value="13"/>
 			</element>
-			<element id="t_obs_NN" type="float" label="constant N²">
+			<element name="t_obs_NN" type="float" label="constant N²">
 				<condition type="eq" variable="." value="13"/>
 			</element>
-			<element id="t_prof_file" type="file" label="custom temperature profiles">
+			<element name="t_prof_file" type="file" label="custom temperature profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -775,40 +775,40 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="TRelax" type="bool" label="relax model results towards observations">
+			<element name="TRelax" type="bool" label="relax model results towards observations">
 				<condition type="ne" variable="." value="0"/>
-				<element id="TRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
+				<element name="TRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
 					<condition type="eq" variable="."  value="True"/>
 				</element>
-				<element id="TRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
+				<element name="TRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
 					<condition type="eq" variable="."  value="True"/>
 				</element>
-				<element id="TRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
+				<element name="TRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
 					<condition type="eq" variable="."  value="True"/>
 				</element>
-				<element id="TRelaxBott" type="float" label="height of bottom relaxation layer" description="Height of bottom relaxation layer." unit="m">
+				<element name="TRelaxBott" type="float" label="height of bottom relaxation layer" description="Height of bottom relaxation layer." unit="m">
 					<condition type="eq" variable="."  value="True"/>
 				</element>
-				<element id="TRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
+				<element name="TRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
 					<condition type="eq" variable="."  value="True"/>
 				</element>
 			</element>
 		</element>
 		
-		<element id="ext_pressure" type="select" label="external pressure gradients">
+		<element name="ext_pressure" type="select" label="external pressure gradients">
 			<options>
 				<option value="0" label="constant" />
 				<option value="1" label="calculated from tidal constituents" />
 				<option value="2" label="custom observed values"/>
 			</options>
-			<element id="ext_press_mode" type="select" label="measure of external pressure gradient">
+			<element name="ext_press_mode" type="select" label="measure of external pressure gradient">
 				<options>
 					<option value="0" label="surface elevation gradient" />
 					<option value="1" label="current meter measurement" description="current meter measurement at a given height" />
 					<option value="2" label="vertically averaged current speed"/>
 				</options>
 			</element>
-			<element id="ext_press_file" type="file" label="custom external pressure gradients">
+			<element name="ext_press_file" type="file" label="custom external pressure gradients">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -818,54 +818,54 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="PressConstU" type="float" label="constant pressure gradient for x-direction">
+			<element name="PressConstU" type="float" label="constant pressure gradient for x-direction">
 				<condition type="eq" variable="." value="0"/>
 			</element>
-			<element id="PressConstV" type="float" label="constant pressure gradient for y-direction">
+			<element name="PressConstV" type="float" label="constant pressure gradient for y-direction">
 				<condition type="eq" variable="." value="0"/>
 			</element>
-			<element id="PressHeight" type="float" label="height above bottom for current meter observations" unit="m">
+			<element name="PressHeight" type="float" label="height above bottom for current meter observations" unit="m">
 				<condition type="eq" variable="./ext_press_mode"   value="1"/>
 			</element>
-			<element id="PeriodM" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
+			<element name="PeriodM" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="AmpMu" type="float" label="u amplitude of 1st harmonic">
+			<element name="AmpMu" type="float" label="u amplitude of 1st harmonic">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="AmpMv" type="float" label="v amplitude of 1st harmonic">
+			<element name="AmpMv" type="float" label="v amplitude of 1st harmonic">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="PhaseMu" type="float" label="u phase of 1st harmonic" unit="s">
+			<element name="PhaseMu" type="float" label="u phase of 1st harmonic" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="PhaseMv" type="float" label="v phase of 1st harmonic" unit="s">
+			<element name="PhaseMv" type="float" label="v phase of 1st harmonic" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="PeriodS" type="float" label="period of 2nd harmonic (eg. S2-tide)" unit="s">
+			<element name="PeriodS" type="float" label="period of 2nd harmonic (eg. S2-tide)" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="AmpSu" type="float" label="u amplitude of 2nd harmonic">
+			<element name="AmpSu" type="float" label="u amplitude of 2nd harmonic">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="AmpSv" type="float" label="v amplitude of 2nd harmonic">
+			<element name="AmpSv" type="float" label="v amplitude of 2nd harmonic">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="PhaseSu" type="float" label="u phase of 2nd harmonic" unit="s">
+			<element name="PhaseSu" type="float" label="u phase of 2nd harmonic" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="PhaseSv" type="float" label="v phase of 2nd harmonic" unit="s">
+			<element name="PhaseSv" type="float" label="v phase of 2nd harmonic" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
 		</element>
 		
-		<element id="int_pressure" type="select" label="internal pressure gradients">
+		<element name="int_pressure" type="select" label="internal pressure gradients">
 			<options>
 				<option value="0" label="none" />
 				<option value="1" label="constant" description="temporally constant internal pressure gradient computed from fixed horizontal salinity and temperature gradients" />
 				<option value="2" label="custom observed profiles" description="custom, temporally variable internal pressure gradient computed from observations"/>
 			</options>
-			<element id="int_press_file" type="file" label="custom horizontal gradients of salinity and temperature">
+			<element name="int_press_file" type="file" label="custom horizontal gradients of salinity and temperature">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -876,27 +876,27 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="const_dsdx" type="float" label="salinity gradient in x-direction" unit="psu/m">
+			<element name="const_dsdx" type="float" label="salinity gradient in x-direction" unit="psu/m">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="const_dsdy" type="float" label="salinity gradient in y-direction" unit="psu/m">
+			<element name="const_dsdy" type="float" label="salinity gradient in y-direction" unit="psu/m">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="const_dtdx" type="float" label="temperature gradient in x-direction" unit="K/m">
+			<element name="const_dtdx" type="float" label="temperature gradient in x-direction" unit="K/m">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="const_dtdy" type="float" label="temperature gradient in y-direction" unit="K/m">
+			<element name="const_dtdy" type="float" label="temperature gradient in y-direction" unit="K/m">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="s_adv" type="bool" label="advection of salinity">
+			<element name="s_adv" type="bool" label="advection of salinity">
 				<condition type="ne" variable="." value="0"/>
 			</element>
-			<element id="t_adv" type="bool" label="advection of temperature">
+			<element name="t_adv" type="bool" label="advection of temperature">
 				<condition type="ne" variable="." value="0"/>
 			</element>
 		</element>
 		
-		<element id="extinct" type="select" label="light extinction">
+		<element name="extinct" type="select" label="light extinction">
 			<options>
 				<option value="0" label="custom observed values" />
 				<option value="1" label="Jerlov type I" />
@@ -907,7 +907,7 @@
 				<option value="6" label="Jerlov type III"/>
 				<option value="7" label="Adolf Stips, Lago Maggiore"/>
 			</options>
-			<element id="extinct_file" type="file" label="custom light extinction coefficients">
+			<element name="extinct_file" type="file" label="custom light extinction coefficients">
 				<condition type="eq" variable="." value="0"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -919,19 +919,19 @@
 			</element>
 		</element>
 
-		<element id="w_advspec" type="select" label="vertical advection">
+		<element name="w_advspec" type="select" label="vertical advection">
 			<options>
 				<option value="0" label="none" />
 				<option value="1" label="temporally constant vertical advection velocity profile" />
 				<option value="2" label="custom observed values"/>
 			</options>
-			<element id="w_adv_height0" type="float" label="constant height of maximum absolute value of vertical advection velocity" unit="m">
+			<element name="w_adv_height0" type="float" label="constant height of maximum absolute value of vertical advection velocity" unit="m">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="w_adv0" type="float" label="constant vertical advection velocity" unit="m/s">
+			<element name="w_adv0" type="float" label="constant vertical advection velocity" unit="m/s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="w_adv_file" type="file" label="custom vertical advection velocities">
+			<element name="w_adv_file" type="file" label="custom vertical advection velocities">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -940,7 +940,7 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="w_adv_discr" type="select" label="method to discretize the vertical advection term">
+			<element name="w_adv_discr" type="select" label="method to discretize the vertical advection term">
 				<condition type="ne" variable="." value="0"/>
 				<options>
 					<option value="1" label="first-order upstream"/>
@@ -953,13 +953,13 @@
 			</element>
 		</element>
 
-		<element id="zetaspec" type="select" label="sea surface elevation">
+		<element name="zetaspec" type="select" label="sea surface elevation">
 			<options>
 				<option value="0" label="constant" />
 				<option value="1" label="calculate from tidal constituents" />
 				<option value="2" label="custom observed values"/>
 			</options>
-			<element id="zeta_file" type="file" label="custom sea surface elevations">
+			<element name="zeta_file" type="file" label="custom sea surface elevations">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -967,36 +967,36 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="zeta_0" type="float" label="constant value for sea surface elevation" unit="m">
+			<element name="zeta_0" type="float" label="constant value for sea surface elevation" unit="m">
 				<condition type="eq" variable="." value="0"/>
 			</element>
-			<element id="period_1" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
+			<element name="period_1" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="amp_1" type="float" label="amplitude of 1st harmonic" unit="m">
+			<element name="amp_1" type="float" label="amplitude of 1st harmonic" unit="m">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="phase_1" type="float" label="phase of 1st harmonic" unit="s">
+			<element name="phase_1" type="float" label="phase of 1st harmonic" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="period_2" type="float" label="period of 2nd harmonic (eg. S2-tide)" unit="s">
+			<element name="period_2" type="float" label="period of 2nd harmonic (eg. S2-tide)" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="amp_2" type="float" label="amplitude of 2nd harmonic" unit="m">
+			<element name="amp_2" type="float" label="amplitude of 2nd harmonic" unit="m">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="phase_2" type="float" label="phase of 2nd harmonic" unit="s">
+			<element name="phase_2" type="float" label="phase of 2nd harmonic" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
 		</element>
 
-		<element id="wave_nml" type="select" label="wind waves" description="Wind-induced waves can be specified. Used in e.g. the suspended matter module to account for wave-current interaction.">
+		<element name="wave_nml" type="select" label="wind waves" description="Wind-induced waves can be specified. Used in e.g. the suspended matter module to account for wave-current interaction.">
 			<options>
 				<option value="0" label="none" />
 				<option value="1" label="constant" />
 				<option value="2" label="custom observed values"/>
 			</options>
-			<element id="wave_file" type="file" label="custom wind waves">
+			<element name="wave_file" type="file" label="custom wind waves">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -1006,24 +1006,24 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="Hs" type="float" label="constant significant wave-height">
+			<element name="Hs" type="float" label="constant significant wave-height">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="Tz" type="float" label="constant mean zero-crossing period">
+			<element name="Tz" type="float" label="constant mean zero-crossing period">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="phiw" type="float" label="constant mean direction">
+			<element name="phiw" type="float" label="constant mean direction">
 				<condition type="eq" variable="." value="1"/>
 			</element>
 		</element>
 
-		<element id="velprofile" type="select" label="velocity profiles" description="observed or prescribed velocity profiles">
+		<element name="velprofile" type="select" label="velocity profiles" description="observed or prescribed velocity profiles">
 			<options>
 				<option value="0" label="zero initial velocities" />
 				<option value="1" label="(not implemented)" disabled="True" />
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element id="vel_prof_file" type="file" label="custom velocity profiles">
+			<element name="vel_prof_file" type="file" label="custom velocity profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -1032,20 +1032,20 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="vel_relax_tau"  type="float" label="relaxation time for velocity" description="relaxation time for velocity (set to 1.e15 s for no relaxation)"         unit="s"/>
-			<element id="vel_relax_ramp" type="float" label="duration of initial relaxation" description="duration of initial relaxation (set to 1.e15 for constant relaxation)" unit="s"/>
+			<element name="vel_relax_tau"  type="float" label="relaxation time for velocity" description="relaxation time for velocity (set to 1.e15 s for no relaxation)"         unit="s"/>
+			<element name="vel_relax_ramp" type="float" label="duration of initial relaxation" description="duration of initial relaxation (set to 1.e15 for constant relaxation)" unit="s"/>
 		</element>
 
-		<element id="eprofile" type="select" label="turbulent dissipation rate profiles">
+		<element name="eprofile" type="select" label="turbulent dissipation rate profiles">
 			<options>
 				<option value="0" label="zero initial dissipation" />
 				<option value="1" label="(not implemented)" disabled="True" />
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element id="e_obs_const"  type="float" label="a constant filling value" unit="W/kg">
+			<element name="e_obs_const"  type="float" label="a constant filling value" unit="W/kg">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element id="e_prof_file" type="file" label="custom dissipation rate profiles">
+			<element name="e_prof_file" type="file" label="custom dissipation rate profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -1055,20 +1055,20 @@
 			</element>
 		</element>
 
-		<element id="bprofile" label="initial buoyancy profile and surface boundary condition" description="prescribed initial profile and initial surface boundary conditions for the dynamic buoyancy equation">
+		<element name="bprofile" label="initial buoyancy profile and surface boundary condition" description="prescribed initial profile and initial surface boundary conditions for the dynamic buoyancy equation">
 			<condition type="eq" variable="/meanflow/buoy_method" value="2"/>
-			<element id="b_obs_surf" type="float" label="initial buoyancy at the surface"/>
-			<element id="b_obs_NN"   type="float" label="initial value of N² (=buoyancy gradient)"/>
-			<element id="b_obs_sbf"  type="float" label="constant surface buoyancy flux"/>
+			<element name="b_obs_surf" type="float" label="initial buoyancy at the surface"/>
+			<element name="b_obs_NN"   type="float" label="initial value of N² (=buoyancy gradient)"/>
+			<element name="b_obs_sbf"  type="float" label="constant surface buoyancy flux"/>
 		</element>
 		
-		<element id="o2_profile" type="select" label="oxygen profiles">
+		<element name="o2_profile" type="select" label="oxygen profiles">
 			<options>
 				<option value="0" label="none" />
 				<option value="1" label="(not used)" disabled="True" />
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element id="o2_units" type="select" label="oxygen unit">
+			<element name="o2_units" type="select" label="oxygen unit">
 				<condition type="ne" variable="." value="0"/>
 				<options>
 					<option value="0" label="saturation (%)" />
@@ -1076,7 +1076,7 @@
 					<option value="2" label="ml/m3 ???"/>
 				</options>
 			</element>
-			<element id="o2_prof_file" type="file" label="custom oxygen profiles">
+			<element name="o2_prof_file" type="file" label="custom oxygen profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -1085,13 +1085,13 @@
 				</fileinfo>
 			</element>
 		</element>
-		<element id="bioprofiles" type="select" label="biogeochemical profiles">
+		<element name="bioprofiles" type="select" label="biogeochemical profiles">
 			<condition type="eq" variable="/bio/bio_calc" value="True"/>
 			<options>
 				<option value="0" label="none" />
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element id="bio_prof_file"   type="file"  label="custom biogeochemical profiles">
+			<element name="bio_prof_file"   type="file"  label="custom biogeochemical profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables/>
@@ -1100,9 +1100,9 @@
 		</element>
 	</element>
 
-	<element id="bio" label="biogeochemical model" optional="True">
-		<element id="bio_calc"  type="bool"   label="calculate biological model"/>
-		<element id="bio_model" type="select" label="biological model">
+	<element name="bio" label="biogeochemical model" optional="True">
+		<element name="bio_calc"  type="bool"   label="calculate biological model"/>
+		<element name="bio_model" type="select" label="biological model">
 			<condition type="eq" variable="./bio_calc" value="True"/>
 			<options>
 				<option label="NPZD"                  description="NPZD (4 variables)"                 value="1"/>
@@ -1110,178 +1110,178 @@
 				<option label="Suspended matter only" description="Suspended matter only (1 variable)" value="3"/>
 				<option label="Fasham et al. 1990"    description="Fasham et al. 1990 (7 variables)"   value="4"/>
 			</options>
-			<element id="bio_npzd" label="NPZD biological model" grouponly="True">
+			<element name="bio_npzd" label="NPZD biological model" grouponly="True">
 				<condition type="eq" variable="." value="1"/>
-				<element id="numc"      type="int"   label="number of compartments for geobiochemical model"/>
-				<element id="n_initial" type="float" label="initial nutrient concentration"      unit="mmol/m³"/>
-				<element id="p_initial" type="float" label="initial phytoplankton concentration" unit="mmol/m³"/>
-				<element id="z_initial" type="float" label="initial zooplankton concentration"   unit="mmol/m³"/>
-				<element id="d_initial" type="float" label="initial detritus concentration"      unit="mmol/m³"/>
-				<element id="p0"        type="float" label="minimum phytoplankton concentration" unit="mmol/m³"/>
-				<element id="z0"        type="float" label="minimum zooplankton concentration"   unit="mmol/m³"/>
-				<element id="w_p"       type="float" label="settling velocity of phytoplankton"  unit="m/d"/>
-				<element id="w_d"       type="float" label="settling velocity of detritus"       unit="m/d"/>
-				<element id="kc"        type="float" label="attenuation constant for the self shading effect"  unit="m²/mmol N"/>
-				<element id="I_min"     type="float" label="minimum photosynthetically active radiation (PAR)" unit="W/m²"/>
-				<element id="rmax"      type="float" label="maximum nutrient uptake rate"                      unit="1/d"/>
-				<element id="gmax"      type="float" label="maximum grazing rate"                              unit="1/d"/>
-				<element id="Iv"        type="float" label="Ivlev constant"                                    />
-				<element id="alpha"     type="float" label="half saturation"                                   unit="mmol N/m³"/>
-				<element id="rpn"       type="float" label="p --> n rate (p metabolism)"                       unit="1/d"/>
-				<element id="rzn"       type="float" label="z --> n rate (z metabolism)"                       unit="1/d"/>
-				<element id="rdn"       type="float" label="d --> n rate (remineralisation)"                   unit="1/d"/>
-				<element id="rpdu"      type="float" label="p --> d rate (p mortality), in euphotic zone"      unit="1/d"/>
-				<element id="rpdl"      type="float" label="p --> d rate (p mortality), below euphotic zone"   unit="1/d"/>
-				<element id="rzd"       type="float" label="z --> d rate (z mortality)"                        unit="1/d"/>
-				<element id="aa"        type="float" label="weighting factor for visible light fraction"/>
-				<element id="g2"        type="float" label="attenuation length for visible light" unit="m"/>
+				<element name="numc"      type="int"   label="number of compartments for geobiochemical model"/>
+				<element name="n_initial" type="float" label="initial nutrient concentration"      unit="mmol/m³"/>
+				<element name="p_initial" type="float" label="initial phytoplankton concentration" unit="mmol/m³"/>
+				<element name="z_initial" type="float" label="initial zooplankton concentration"   unit="mmol/m³"/>
+				<element name="d_initial" type="float" label="initial detritus concentration"      unit="mmol/m³"/>
+				<element name="p0"        type="float" label="minimum phytoplankton concentration" unit="mmol/m³"/>
+				<element name="z0"        type="float" label="minimum zooplankton concentration"   unit="mmol/m³"/>
+				<element name="w_p"       type="float" label="settling velocity of phytoplankton"  unit="m/d"/>
+				<element name="w_d"       type="float" label="settling velocity of detritus"       unit="m/d"/>
+				<element name="kc"        type="float" label="attenuation constant for the self shading effect"  unit="m²/mmol N"/>
+				<element name="I_min"     type="float" label="minimum photosynthetically active radiation (PAR)" unit="W/m²"/>
+				<element name="rmax"      type="float" label="maximum nutrient uptake rate"                      unit="1/d"/>
+				<element name="gmax"      type="float" label="maximum grazing rate"                              unit="1/d"/>
+				<element name="Iv"        type="float" label="Ivlev constant"                                    />
+				<element name="alpha"     type="float" label="half saturation"                                   unit="mmol N/m³"/>
+				<element name="rpn"       type="float" label="p --> n rate (p metabolism)"                       unit="1/d"/>
+				<element name="rzn"       type="float" label="z --> n rate (z metabolism)"                       unit="1/d"/>
+				<element name="rdn"       type="float" label="d --> n rate (remineralisation)"                   unit="1/d"/>
+				<element name="rpdu"      type="float" label="p --> d rate (p mortality), in euphotic zone"      unit="1/d"/>
+				<element name="rpdl"      type="float" label="p --> d rate (p mortality), below euphotic zone"   unit="1/d"/>
+				<element name="rzd"       type="float" label="z --> d rate (z mortality)"                        unit="1/d"/>
+				<element name="aa"        type="float" label="weighting factor for visible light fraction"/>
+				<element name="g2"        type="float" label="attenuation length for visible light" unit="m"/>
 			</element>
 
-			<element id="bio_iow" label="IOW biological model" description="IOW biological model according to Neumann et al. 2002 and Burchard et al. 2005" grouponly="True">
+			<element name="bio_iow" label="IOW biological model" description="IOW biological model according to Neumann et al. 2002 and Burchard et al. 2005" grouponly="True">
 				<condition type="eq" variable="." value="2"/>
-				<element id="numc"       type="int"   label="number of compartments for geobiochemical model"/>
+				<element name="numc"       type="int"   label="number of compartments for geobiochemical model"/>
 				
-				<element id="p1_initial" type="float" label="initial diatom concentration" unit="mmol N/m³"/>
-				<element id="p2_initial" type="float" label="initial flagellate concentration" unit="mmol N/m³"/>
-				<element id="p3_initial" type="float" label="initial cyanobacteria concentration" unit="mmol N/m³"/>
-				<element id="zo_initial" type="float" label="initial zooplankton concentration" unit="mmol N/m³"/>
-				<element id="de_initial" type="float" label="initial detritus concentration" unit="mmol N/m³"/>
-				<element id="am_initial" type="float" label="initial ammonium concentration" unit="mmol N/m³"/>
-				<element id="ni_initial" type="float" label="initial nitrate concentration" unit="mmol N/m³"/>
-				<element id="po_initial" type="float" label="initial phosphate concentration" unit="mmol P/m³"/>
-				<element id="o2_initial" type="float" label="initial oxygen concentration" unit="mmol N/m³"/>
+				<element name="p1_initial" type="float" label="initial diatom concentration" unit="mmol N/m³"/>
+				<element name="p2_initial" type="float" label="initial flagellate concentration" unit="mmol N/m³"/>
+				<element name="p3_initial" type="float" label="initial cyanobacteria concentration" unit="mmol N/m³"/>
+				<element name="zo_initial" type="float" label="initial zooplankton concentration" unit="mmol N/m³"/>
+				<element name="de_initial" type="float" label="initial detritus concentration" unit="mmol N/m³"/>
+				<element name="am_initial" type="float" label="initial ammonium concentration" unit="mmol N/m³"/>
+				<element name="ni_initial" type="float" label="initial nitrate concentration" unit="mmol N/m³"/>
+				<element name="po_initial" type="float" label="initial phosphate concentration" unit="mmol P/m³"/>
+				<element name="o2_initial" type="float" label="initial oxygen concentration" unit="mmol N/m³"/>
 				
-				<element id="sfl_po"     type="float" label="constant surface phosphate flux" unit="mmol P/m²/d"/>
-				<element id="sfl_am"     type="float" label="constant surface ammonium flux" unit="mmol N/m²/d"/>
-				<element id="sfl_ni"     type="float" label="constant surface nitrate flux" unit="mmol N/m²/d"/>
-				<element id="surface_flux_method" type="select" label="method to specify surface fluxes">
+				<element name="sfl_po"     type="float" label="constant surface phosphate flux" unit="mmol P/m²/d"/>
+				<element name="sfl_am"     type="float" label="constant surface ammonium flux" unit="mmol N/m²/d"/>
+				<element name="sfl_ni"     type="float" label="constant surface nitrate flux" unit="mmol N/m²/d"/>
+				<element name="surface_flux_method" type="select" label="method to specify surface fluxes">
 					<options>
 						<option value="0" label="constant fluxes" />
 						<option value="2" label="from file 'bio_fluxes.dat'"/>
 					</options>
 				</element>
 				
-				<element id="fluff"      type="bool"  label="calculate fluff layer"/>
-				<element id="fl_initial" type="float" label="initial fluff concentration" unit="mmol N/m²">
+				<element name="fluff"      type="bool"  label="calculate fluff layer"/>
+				<element name="fl_initial" type="float" label="initial fluff concentration" unit="mmol N/m²">
 					<condition type="eq" variable="./fluff" value="True"/>
 				</element>
 				
-				<element id="p10"        type="float" label="minimum diatom concentration" unit="mmol N/m³"/>
-				<element id="p20"        type="float" label="minimum flagellate concentration" unit="mmol N/m³"/>
-				<element id="p30"        type="float" label="minimum cyanobacteria concentration" unit="mmol N/m³"/>
-				<element id="zo0"        type="float" label="minimum zooplankton concentration" unit="mmol N/m³"/>
+				<element name="p10"        type="float" label="minimum diatom concentration" unit="mmol N/m³"/>
+				<element name="p20"        type="float" label="minimum flagellate concentration" unit="mmol N/m³"/>
+				<element name="p30"        type="float" label="minimum cyanobacteria concentration" unit="mmol N/m³"/>
+				<element name="zo0"        type="float" label="minimum zooplankton concentration" unit="mmol N/m³"/>
 				
-				<element id="w_p1"       type="float" label="sinking speed diatoms" unit="m/d"/>
-				<element id="w_p2"       type="float" label="sinking speed flagellates" unit="m/d"/>
-				<element id="w_p3"       type="float" label="sinking speed cyanobacteria" unit="m/d"/>
-				<element id="w_de"       type="float" label="sinking speed detritus" unit="m/d"/>
-				<element id="kc"         type="float" label="attenuation constant for the self shading effect" unit="m²/mmol N"/>
+				<element name="w_p1"       type="float" label="sinking speed diatoms" unit="m/d"/>
+				<element name="w_p2"       type="float" label="sinking speed flagellates" unit="m/d"/>
+				<element name="w_p3"       type="float" label="sinking speed cyanobacteria" unit="m/d"/>
+				<element name="w_de"       type="float" label="sinking speed detritus" unit="m/d"/>
+				<element name="kc"         type="float" label="attenuation constant for the self shading effect" unit="m²/mmol N"/>
 				
-				<element id="I_min"      type="float" label="minimum photosynthetically active radiation (PAR)" unit="W/m²"/>
-				<element id="r1max"      type="float" label="maximum growth rate diatoms" unit="1/d"/>
-				<element id="r2max"      type="float" label="maximum growth rate flagellates" unit="1/d"/>
-				<element id="r3max"      type="float" label="maximum growth rate cyanobacteria" unit="1/d"/>
-				<element id="alpha1"     type="float" label="half saturation diatoms" unit="mmol N/m³"/>
-				<element id="alpha2"     type="float" label="half saturation flagellates" unit="mmol N/m³"/>
-				<element id="alpha3"     type="float" label="half saturation cyanobacteria" unit="mmol N/m³"/>
-				<element id="lpa"        type="float" label="p --> a rate (p respiration)" unit="1/d"/>
-				<element id="lpd"        type="float" label="p --> d rate (p mortality)" unit="1/d"/>
-				<element id="tf"         type="float" label="temperature control flagellates" unit="°C"/>
-				<element id="tbg"        type="float" label="temperature control cyanobacteria" unit="°C"/>
-				<element id="beta_bg"    type="float" label="temperature control cyanobacteria" unit="1/°C"/>
-				<element id="g1max"      type="float" label="maximum grazing rate on diatoms" unit="1/d"/>
-				<element id="g2max"      type="float" label="maximum grazing rate on flagellates" unit="1/d"/>
-				<element id="g3max"      type="float" label="maximum grazing rate on cyanobacteria" unit="1/d"/>
-				<element id="lza"        type="float" label="z --> a rate (z exudation)" unit="m³/d/mmol N"/>
-				<element id="lzd"        type="float" label="z --> d rate (z mortality)" unit="m³/d/mmol N"/>
-				<element id="iv"         type="float" label="Ivlev constant" unit="1/(mmol N/m³)³"/>
-				<element id="topt"       type="float" label="optimum temperature" unit="°C"/>
+				<element name="I_min"      type="float" label="minimum photosynthetically active radiation (PAR)" unit="W/m²"/>
+				<element name="r1max"      type="float" label="maximum growth rate diatoms" unit="1/d"/>
+				<element name="r2max"      type="float" label="maximum growth rate flagellates" unit="1/d"/>
+				<element name="r3max"      type="float" label="maximum growth rate cyanobacteria" unit="1/d"/>
+				<element name="alpha1"     type="float" label="half saturation diatoms" unit="mmol N/m³"/>
+				<element name="alpha2"     type="float" label="half saturation flagellates" unit="mmol N/m³"/>
+				<element name="alpha3"     type="float" label="half saturation cyanobacteria" unit="mmol N/m³"/>
+				<element name="lpa"        type="float" label="p --> a rate (p respiration)" unit="1/d"/>
+				<element name="lpd"        type="float" label="p --> d rate (p mortality)" unit="1/d"/>
+				<element name="tf"         type="float" label="temperature control flagellates" unit="°C"/>
+				<element name="tbg"        type="float" label="temperature control cyanobacteria" unit="°C"/>
+				<element name="beta_bg"    type="float" label="temperature control cyanobacteria" unit="1/°C"/>
+				<element name="g1max"      type="float" label="maximum grazing rate on diatoms" unit="1/d"/>
+				<element name="g2max"      type="float" label="maximum grazing rate on flagellates" unit="1/d"/>
+				<element name="g3max"      type="float" label="maximum grazing rate on cyanobacteria" unit="1/d"/>
+				<element name="lza"        type="float" label="z --> a rate (z exudation)" unit="m³/d/mmol N"/>
+				<element name="lzd"        type="float" label="z --> d rate (z mortality)" unit="m³/d/mmol N"/>
+				<element name="iv"         type="float" label="Ivlev constant" unit="1/(mmol N/m³)³"/>
+				<element name="topt"       type="float" label="optimum temperature" unit="°C"/>
 
-				<element id="lan"        type="float" label="nitrification constant" unit="1/d"/>
-				<element id="oan"        type="float" label="oxygen parameter"/>
-				<element id="beta_an"    type="float" label="temperature control" unit="1/°C"/>
+				<element name="lan"        type="float" label="nitrification constant" unit="1/d"/>
+				<element name="oan"        type="float" label="oxygen parameter"/>
+				<element name="beta_an"    type="float" label="temperature control" unit="1/°C"/>
 
-				<element id="lda"        type="float" label="detritus mineralisation constant" unit="1/d"/>
-				<element id="tda"        type="float" label="temperature control" unit="°C"/>
-				<element id="beta_da"    type="float" label="temperature control"/>
-				<element id="lds"        type="float" label="rate of detritus sinking into sediment" unit="m/d"/>
-				<element id="lsa"        type="float" label="rate of sediment mineralisation" unit="1/d"/>
-				<element id="bsa"        type="float" label="temperature control of sediment mineralisation" unit="1/°C"/>
-				<element id="ph1"        type="float" label="release of phosphate 1"/>
-				<element id="ph2"        type="float" label="release of phosphate 2"/>
-				<element id="pvel"       type="float" label="piston velocity" unit="m/d"/>
+				<element name="lda"        type="float" label="detritus mineralisation constant" unit="1/d"/>
+				<element name="tda"        type="float" label="temperature control" unit="°C"/>
+				<element name="beta_da"    type="float" label="temperature control"/>
+				<element name="lds"        type="float" label="rate of detritus sinking into sediment" unit="m/d"/>
+				<element name="lsa"        type="float" label="rate of sediment mineralisation" unit="1/d"/>
+				<element name="bsa"        type="float" label="temperature control of sediment mineralisation" unit="1/°C"/>
+				<element name="ph1"        type="float" label="release of phosphate 1"/>
+				<element name="ph2"        type="float" label="release of phosphate 2"/>
+				<element name="pvel"       type="float" label="piston velocity" unit="m/d"/>
 
-				<element id="sr"         type="float" label="Redfield ratio" unit="mmol P/mmol N"/>
-				<element id="s1"         type="float" label="reduced nitrate/oxidized detritus"/>
-				<element id="s2"         type="float" label="oxygen production/recycled nitrogen"/>
-				<element id="s3"         type="float" label="oyxgen production related to N"/>
-				<element id="s4"         type="float" label="nitrification"/>
+				<element name="sr"         type="float" label="Redfield ratio" unit="mmol P/mmol N"/>
+				<element name="s1"         type="float" label="reduced nitrate/oxidized detritus"/>
+				<element name="s2"         type="float" label="oxygen production/recycled nitrogen"/>
+				<element name="s3"         type="float" label="oyxgen production related to N"/>
+				<element name="s4"         type="float" label="nitrification"/>
 
-				<element id="a0"         type="float" label="osat parameter" unit="mmol/m³"/>
-				<element id="a1"         type="float" label="osat parameter"/>
-				<element id="a2"         type="float" label="osat parameter" unit="1/°C"/>
+				<element name="a0"         type="float" label="osat parameter" unit="mmol/m³"/>
+				<element name="a1"         type="float" label="osat parameter"/>
+				<element name="a2"         type="float" label="osat parameter" unit="1/°C"/>
 
-				<element id="aa"         type="float" label="weighting factor for visible light fraction"/>
-				<element id="g2"         type="float" label="attenuation length for visible light" unit="m"/>
+				<element name="aa"         type="float" label="weighting factor for visible light fraction"/>
+				<element name="g2"         type="float" label="attenuation length for visible light" unit="m"/>
 			</element>
 
-			<element id="bio_sed" label="sedimentation model" grouponly="True">
+			<element name="bio_sed" label="sedimentation model" grouponly="True">
 				<condition type="eq" variable="." value="3"/>
-				<element id="numc"      type="int"   label="number of compartments for geobiochemical model"/>
-				<element id="C_initial" type="float" label="initial suspended matter concentration" unit="mmol N/m³"/>
-				<element id="w_C"       type="float" label="settling velocity of suspended matter" unit="m/d"/>
+				<element name="numc"      type="int"   label="number of compartments for geobiochemical model"/>
+				<element name="C_initial" type="float" label="initial suspended matter concentration" unit="mmol N/m³"/>
+				<element name="w_C"       type="float" label="settling velocity of suspended matter" unit="m/d"/>
 			</element>
 	
-			<element id="bio_fasham" label="Fasham et al. biological model" description="Fasham et al. biological model with modifications by Kühn and Radach" grouponly="True">
+			<element name="bio_fasham" label="Fasham et al. biological model" description="Fasham et al. biological model with modifications by Kühn and Radach" grouponly="True">
 				<condition type="eq" variable="." value="4"/>
-				<element id="numc"      type="int"   label="number of compartments for geobiochemical model"/>
-				<element id="p_initial" type="float" label="initial phytoplankton concentration" unit="mmol N/m³"/>
-				<element id="z_initial" type="float" label="initial zooplakton concentration" unit="mmol N/m³"/>
-				<element id="b_initial" type="float" label="initial bacteria concentration" unit="mmol N/m³"/>
-				<element id="d_initial" type="float" label="initial detritus concentration" unit="mmol N/m³"/>
-				<element id="n_initial" type="float" label="initial nitrate concentration" unit="mmol N/m³"/>
-				<element id="a_initial" type="float" label="initial ammonium concentration" unit="mmol N/m³"/>
-				<element id="l_initial" type="float" label="initial LDON concentration" unit="mmol N/m³"/>
-				<element id="p0"        type="float" label="minimum phytoplankton concentration" unit="mmol N/m³"/>
-				<element id="z0"        type="float" label="minimum zooplakton concentration" unit="mmol N/m³"/>
-				<element id="b0"        type="float" label="minimum bacteria concentration" unit="mmol N/m³"/>
-				<element id="vp"        type="float" label="maximum phytoplankton uptake rate" unit="1/d"/>
-				<element id="alpha"     type="float" label="slope of the PI-curve" unit="m²/(W d)"/>
-				<element id="k1"        type="float" label="half saturation constant nitrate uptake" unit="mmol N/m³"/>
-				<element id="k2"        type="float" label="half saturation constant ammonium uptake" unit="mmol N/m³"/>
-				<element id="mu1"       type="float" label="phytoplankton mortality rate" unit="1/d"/>
-				<element id="k5"        type="float" label="half saturation constant phytoplankton mortality" unit="mmol N/m³"/>
-				<element id="gamma"     type="float" label="exudation fraction"/>
-				<element id="w_p"       type="float" label="phytoplankton settling velocity" unit="m/d"/>
-				<element id="gmax"      type="float" label="maximum ingestion rate" unit="1/d"/>
-				<element id="k3"        type="float" label="half saturation constant ingestion" unit="mmol N/m³"/>
-				<element id="beta"      type="float" label="grazing efficiency"/>
-				<element id="mu2"       type="float" label="maximum zooplankton loss rate" unit="1/d"/>
-				<element id="k6"        type="float" label="half saturation zooplankton loss" unit="mmol N/m³"/>
-				<element id="delta"     type="float" label="fractional zooplankton loss to LDON"/>
-				<element id="epsi"      type="float" label="fractional zooplankton loss to ammonium"/>
-				<element id="r1"        type="float" label="grazing preference phytoplankton"/>
-				<element id="r2"        type="float" label="grazing preference bacteria"/>
-				<element id="r3"        type="float" label="grazing preference detritus"/>
-				<element id="vb"        type="float" label="maximum bacterial uptake rate" unit="1/d"/>
-				<element id="k4"        type="float" label="half saturation bacterial uptake" unit="mmol N/m³"/>
-				<element id="mu3"       type="float" label="bacteria excretion rate" unit="1/d"/>
-				<element id="eta"       type="float" label="uptake ratio ammonium:LDON"/>
-				<element id="mu4"       type="float" label="detritus breakdown rate" unit="1/d"/>
-				<element id="w_d"       type="float" label="detritus settling velocity" unit="m/d"/>
-				<element id="kc"        type="float" label="attenuation constant for the self shading effect" unit="m²/mmol N"/>
-				<element id="aa"        type="float" label="weighting factor for visible light fraction"/>
-				<element id="g2"        type="float" label="attenuation length for visible light" unit="m"/>
+				<element name="numc"      type="int"   label="number of compartments for geobiochemical model"/>
+				<element name="p_initial" type="float" label="initial phytoplankton concentration" unit="mmol N/m³"/>
+				<element name="z_initial" type="float" label="initial zooplakton concentration" unit="mmol N/m³"/>
+				<element name="b_initial" type="float" label="initial bacteria concentration" unit="mmol N/m³"/>
+				<element name="d_initial" type="float" label="initial detritus concentration" unit="mmol N/m³"/>
+				<element name="n_initial" type="float" label="initial nitrate concentration" unit="mmol N/m³"/>
+				<element name="a_initial" type="float" label="initial ammonium concentration" unit="mmol N/m³"/>
+				<element name="l_initial" type="float" label="initial LDON concentration" unit="mmol N/m³"/>
+				<element name="p0"        type="float" label="minimum phytoplankton concentration" unit="mmol N/m³"/>
+				<element name="z0"        type="float" label="minimum zooplakton concentration" unit="mmol N/m³"/>
+				<element name="b0"        type="float" label="minimum bacteria concentration" unit="mmol N/m³"/>
+				<element name="vp"        type="float" label="maximum phytoplankton uptake rate" unit="1/d"/>
+				<element name="alpha"     type="float" label="slope of the PI-curve" unit="m²/(W d)"/>
+				<element name="k1"        type="float" label="half saturation constant nitrate uptake" unit="mmol N/m³"/>
+				<element name="k2"        type="float" label="half saturation constant ammonium uptake" unit="mmol N/m³"/>
+				<element name="mu1"       type="float" label="phytoplankton mortality rate" unit="1/d"/>
+				<element name="k5"        type="float" label="half saturation constant phytoplankton mortality" unit="mmol N/m³"/>
+				<element name="gamma"     type="float" label="exudation fraction"/>
+				<element name="w_p"       type="float" label="phytoplankton settling velocity" unit="m/d"/>
+				<element name="gmax"      type="float" label="maximum ingestion rate" unit="1/d"/>
+				<element name="k3"        type="float" label="half saturation constant ingestion" unit="mmol N/m³"/>
+				<element name="beta"      type="float" label="grazing efficiency"/>
+				<element name="mu2"       type="float" label="maximum zooplankton loss rate" unit="1/d"/>
+				<element name="k6"        type="float" label="half saturation zooplankton loss" unit="mmol N/m³"/>
+				<element name="delta"     type="float" label="fractional zooplankton loss to LDON"/>
+				<element name="epsi"      type="float" label="fractional zooplankton loss to ammonium"/>
+				<element name="r1"        type="float" label="grazing preference phytoplankton"/>
+				<element name="r2"        type="float" label="grazing preference bacteria"/>
+				<element name="r3"        type="float" label="grazing preference detritus"/>
+				<element name="vb"        type="float" label="maximum bacterial uptake rate" unit="1/d"/>
+				<element name="k4"        type="float" label="half saturation bacterial uptake" unit="mmol N/m³"/>
+				<element name="mu3"       type="float" label="bacteria excretion rate" unit="1/d"/>
+				<element name="eta"       type="float" label="uptake ratio ammonium:LDON"/>
+				<element name="mu4"       type="float" label="detritus breakdown rate" unit="1/d"/>
+				<element name="w_d"       type="float" label="detritus settling velocity" unit="m/d"/>
+				<element name="kc"        type="float" label="attenuation constant for the self shading effect" unit="m²/mmol N"/>
+				<element name="aa"        type="float" label="weighting factor for visible light fraction"/>
+				<element name="g2"        type="float" label="attenuation length for visible light" unit="m"/>
 			</element>
 
 		</element>
-		<element id="bio_eulerian" type="bool" label="state variables are Eulerian">
+		<element name="bio_eulerian" type="bool" label="state variables are Eulerian">
 			<condition type="eq" variable="./bio_calc" value="True"/>
 		</element>
-		<element id="cnpar" type="float" label="Cranck-Nicholson parameter for vertical diffusion">
+		<element name="cnpar" type="float" label="Cranck-Nicholson parameter for vertical diffusion">
 			<condition type="eq" variable="./bio_calc" value="True"/>
 		</element>
-		<element id="w_adv_discr" type="select" label="advection scheme for vertical motion">
+		<element name="w_adv_discr" type="select" label="advection scheme for vertical motion">
 			<condition type="eq" variable="./bio_calc" value="True"/>
 			<options>
 				<option value="1" label="first-order upstream"/>
@@ -1292,7 +1292,7 @@
 				<option value="6" label="TVD with ULTIMATE QUICKEST"/>
 			</options>
 		</element>
-		<element id="ode_method" type="select" label="ODE scheme for source and sink dynamics">
+		<element name="ode_method" type="select" label="ODE scheme for source and sink dynamics">
 			<condition type="eq" variable="./bio_calc" value="True"/>
 			<options>
 				<option value="1"  label="Forward Euler"                   description="first-order explicit (not positive)"/>
@@ -1308,19 +1308,19 @@
 				<option value="11" label="Extended Modified Patankar-RK 2" description="Extended Modified Patankar-RK (2nd-order, conservat., posit.)"/>
 			</options>
 		</element>
-		<element id="split_factor"      type="int"  label="number of biogeochemical time steps per physical time step" minimum="1">
+		<element name="split_factor"      type="int"  label="number of biogeochemical time steps per physical time step" minimum="1">
 			<condition type="eq" variable="./bio_calc" value="True"/>
 		</element>
-		<element id="bioshade_feedback" type="bool" label="feedback of bio-turbidity to temperature equation">
+		<element name="bioshade_feedback" type="bool" label="feedback of bio-turbidity to temperature equation">
 			<condition type="eq" variable="./bio_calc" value="True"/>
 		</element>
-		<element id="bio_lagrange_mean" type="bool" label="average Lagrangian concentrations on output">
+		<element name="bio_lagrange_mean" type="bool" label="average Lagrangian concentrations on output">
 			<condition type="and">
 				<condition type="eq" variable="./bio_calc"     value="True"/>
 				<condition type="eq" variable="./bio_eulerian" value="False"/>
 			</condition>
 		</element>
-		<element id="bio_npar"          type="int"  label="total number of Lagrangian particles">
+		<element name="bio_npar"          type="int"  label="total number of Lagrangian particles">
 			<condition type="and">
 				<condition type="eq" variable="./bio_calc"     value="True"/>
 				<condition type="eq" variable="./bio_eulerian" value="False"/>
@@ -1328,10 +1328,10 @@
 		</element>
 	</element>
 
-	<element id="seagrass" label="seagrass model" optional="True">
-		<element id="canopy" grouponly="True">
-			<element id="seagrass_calc" type="bool"  label="use seagrass model"/>
-			<element id="grassfile"     type="file"  label="depth-varying maximum excursion limit and friction coefficient">
+	<element name="seagrass" label="seagrass model" optional="True">
+		<element name="canopy" grouponly="True">
+			<element name="seagrass_calc" type="bool"  label="use seagrass model"/>
+			<element name="grassfile"     type="file"  label="depth-varying maximum excursion limit and friction coefficient">
 				<condition type="eq" variable="./seagrass_calc" value="True"/>
 				<fileinfo type="singleprofile">
 					<filedimensions>
@@ -1343,7 +1343,7 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element id="XP_rat"        type="float" label="efficiency of turbulence production by seagrass friction">
+			<element name="XP_rat"        type="float" label="efficiency of turbulence production by seagrass friction">
 				<condition type="eq" variable="./seagrass_calc" value="True"/>
 			</element>
 		</element>

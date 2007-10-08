@@ -472,7 +472,6 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
 
     def registerLinks(self):
         self.links = [('/gotmrun/model_setup/title',      '/title'),
-                      ('/gotmrun/model_setup/dt',         '/timeintegration/dt'),
                       ('/gotmrun/model_setup/cnpar',      '/timeintegration/cnpar'),
                       ('/gotmrun/station',                '/station'),
                       ('/gotmrun/time',                   '/time'),
@@ -519,7 +518,8 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
 
         # Convert absolute time interval to relative time interval.
         dt = source.getProperty('gotmrun/model_setup/dt')
-        target.setProperty('output/dtsave',dt*source.getProperty('gotmrun/output/nsave'))
+        target.setProperty('timeintegration/dt',xmlstore.StoreTimeDelta(seconds=dt))
+        target.setProperty('output/dtsave',xmlstore.StoreTimeDelta(seconds=dt*source.getProperty('gotmrun/output/nsave')))
 
         # ===============================================
         #  meanflow
@@ -593,6 +593,7 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
 
         # Move from absolute time interval between outputs to relative intervals (number of simulation steps)
         dt = source.getProperty('timeintegration/dt').getAsSeconds()
+        target.setProperty('gotmrun/model_setup/dt',dt)
         relinterval = int(source.getProperty('output/dtsave').getAsSeconds()/dt)
         if relinterval<1: relinterval=1
         target.setProperty('gotmrun/output/nsave',relinterval)

@@ -74,7 +74,7 @@ class Report(common.referencedobject):
         fontname = self.store.getProperty('Figures/FontName',usedefault=True)
 
         # Get list of variables to plot
-        selroot = self.store.root['Figures/Selection']
+        selroot = self.store['Figures/Selection']
         plotvariables = [node.getValue() for node in selroot.children]
 
         steps = float(2+len(plotvariables))
@@ -107,7 +107,7 @@ class Report(common.referencedobject):
         for node in xmldocument.getElementsByTagName('gotm:scenarioproperty'):
             variablepath = node.getAttribute('variable')
             assert variablepath!='', 'gotm:scenarioproperty node in report template lacks "variable" attribute, whcih should point to a location in the scenario.'
-            variablenode = scenario.root[variablepath]
+            variablenode = scenario[variablepath]
             assert variablenode!=None, 'Unable to locate "%s" in the scenario.' % variablepath
             val = variablenode.getValueAsString()
             node.parentNode.replaceChild(xmldocument.createTextNode(unicode(val)),node)

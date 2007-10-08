@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.32 2007-09-26 13:48:14 jorn Exp $
+#$Id: common.py,v 1.33 2007-10-08 08:39:49 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.dates,matplotlib.numerix,pytz
@@ -143,10 +143,7 @@ def addDescendantNode(parent,location):
     return parent
 
 def getNodeText(node):
-    rc = ''
-    for ch in node.childNodes:
-        if ch.nodeType == ch.TEXT_NODE: rc += ch.data
-    return rc
+    return ''.join([ch.data for ch in node.childNodes if ch.nodeType==ch.TEXT_NODE]).strip()
 
 def setNodeText(node,text,xmldocument=None):
     if xmldocument==None:

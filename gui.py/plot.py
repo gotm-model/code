@@ -298,7 +298,7 @@ class Figure(common.referencedobject):
         self.defaultproperties.setProperty('FontScaling',100)
         self.defaultproperties.setProperty('Grid',False)
         self.defaultproperties.setProperty('Legend/Location',0)
-        setLineProperties(self.defaultproperties.root['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
+        setLineProperties(self.defaultproperties['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
 
         self.properties.setDefaultStore(self.defaultproperties)
 
@@ -355,18 +355,18 @@ class Figure(common.referencedobject):
         return self.properties.toXmlDom()
 
     def clearVariables(self):
-        self.properties.root['Data'].removeChildren('Series')
+        self.properties['Data'].removeChildren('Series')
 
     def addVariable(self,varname,source=None,replace=True):
-        datanode = self.properties.root['Data']
+        datanode = self.properties['Data']
         varpath = '/'+varname
         if source!=None: varpath = source+varpath
         if replace:
             series = datanode.getChildById('Series',varpath,create=True)
-            self.defaultproperties.root['Data'].getChildById('Series',varpath,create=True)
+            self.defaultproperties['Data'].getChildById('Series',varpath,create=True)
         else:
             series = datanode.addChild('Series',id=varpath)
-            self.defaultproperties.root['Data'].addChild('Series',id=varpath)
+            self.defaultproperties['Data'].addChild('Series',id=varpath)
         self.update()
         return series
 
@@ -378,12 +378,12 @@ class Figure(common.referencedobject):
         
     def exportToFile(self,path,dpi=150):
         self.canvas.print_figure(path,dpi=dpi)
-
+        
     def update(self):
         if not self.updating:
             self.dirty = True
             return
-
+            
         self.figure.clear()
 
         axes = self.figure.add_subplot(111)
@@ -412,8 +412,8 @@ class Figure(common.referencedobject):
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         dim2data = {}
-        defaultaxes = self.defaultproperties.root['Axes']
-        forcedaxes = self.properties.root['Axes']
+        defaultaxes = self.defaultproperties['Axes']
+        forcedaxes = self.properties['Axes']
         for forcedaxis in forcedaxes.getLocationMultiple(['Axis']):
             istimeaxis = forcedaxis['IsTimeAxis'].getValueOrDefault()
             if istimeaxis:
@@ -427,11 +427,11 @@ class Figure(common.referencedobject):
             dim2data[forcedaxis.getSecondaryId()] = {'forcedrange':[axmin,axmax]}
 
         # Shortcuts to the nodes specifying the variables to plot.
-        forceddatanode = self.properties.root['Data']
+        forceddatanode = self.properties['Data']
         forcedseries = forceddatanode.getLocationMultiple(['Series'])
 
         # Shortcut to the node that will hold defaults for the plotted variables.
-        defaultdatanode = self.defaultproperties.root['Data']
+        defaultdatanode = self.defaultproperties['Data']
         olddefaults = [node.getSecondaryId() for node in defaultdatanode.getLocationMultiple(['Series'])]
 
         # This variable will hold all long names of the plotted variables.
@@ -442,9 +442,14 @@ class Figure(common.referencedobject):
         cb = None
         zorder = 0
         plotcount = {1:0,2:0}
+        legenddata = {'handles':[],'labels':[]}
 
         for (iseries,seriesnode) in enumerate(forcedseries):
             varpath = seriesnode.getSecondaryId()
+            if varpath=='':
+                print 'Skipping data series %i because the secondary node id (i.e., variable source and name) is not set.'
+                continue
+                
             varsource,varname = varpath.split('/',1)
             if varsource=='':
                 # No data source specified; take default.
@@ -634,7 +639,9 @@ class Figure(common.referencedobject):
                 
                 # Plot line and/or markers
                 if plotargs['linestyle']!='' or plotargs['marker']!='':
-                    lines = axes.plot(X,Y,zorder=zorder,label=label,**plotargs)
+                    hline = axes.plot(X,Y,zorder=zorder,label=label,**plotargs)
+                    legenddata['handles'].append(hline)
+                    legenddata['labels'].append(label)
                 
                 dim2data[xname]['axis'] = 'x'
                 dim2data[yname]['axis'] = 'y'
@@ -747,9 +754,12 @@ class Figure(common.referencedobject):
         self.defaultproperties.setProperty('CanHaveLegend',plotcount[1]>0)
         if plotcount[1]>0:
             self.defaultproperties.setProperty('Legend',plotcount[1]>1)
-            legprop = self.properties.root['Legend']
+            legprop = self.properties['Legend']
             if legprop.getValueOrDefault():
-                legend = axes.legend(loc=legprop['Location'].getValueOrDefault(),prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
+                legend = axes.legend(legenddata['handles'],legenddata['labels'],loc=legprop['Location'].getValueOrDefault(),prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
+                #legend = self.figure.legend(legenddata['handles'],legenddata['labels'],1,prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
+                legend.set_zorder(zorder)
+                zorder += 1
 
         # Build table linking axis to data dimension.
         axis2dim = dict([(dat['axis'],dim) for dim,dat in dim2data.iteritems() if 'axis' in dat])
@@ -916,7 +926,7 @@ class Figure(common.referencedobject):
                 if label!='': cb.set_label(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
                 
         # Create grid
-        gridnode = self.properties.root['Grid']
+        gridnode = self.properties['Grid']
         if gridnode.getValueOrDefault():
             lineargs = getLineProperties(gridnode['LineProperties'])
             axes.grid(True,**lineargs)

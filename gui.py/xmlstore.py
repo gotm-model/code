@@ -102,7 +102,7 @@ class Store:
     # =========================================================================================
     # getText: gets all text directly below an XML element; may consist of multiple text nodes.
     def getText(self,node):
-        return ''.join([ch.data for ch in node.childNodes if ch.nodeType==ch.TEXT_NODE]).strip()
+        return common.getNodeText(node)
 
     # =========================================================================================
     # PROTECTED
@@ -257,42 +257,39 @@ class Store:
         else:
             return valuetype(value)
 
-class StoreTimeDelta(Store.DataType):
-    def __init__(self,seconds=0,days=0,milliseconds=0):
+class StoreTimeDelta(Store.DataType,datetime.timedelta):
+    """Class representing a time span, capable of being stored in/loaded from
+    an XML store."""
+    
+    def __init__(self,*args,**kwargs):
         Store.DataType.__init__(self)
-        seconds += (days % 1)*86400 # Add floating point part of the day count
-        self.days = int(days)   # Take all but floating point part
-        self.milliseconds = int(milliseconds + (seconds % 1)*1000)   # Add floating point part of second count
-        self.seconds = int(seconds) # Take all but floating point part
-        if self.milliseconds>=1000:
-            # Add milliseconds above 1000 to seconds
-            self.seconds += int(self.milliseconds/1000)
-            self.milliseconds = self.milliseconds % 1000
-        if self.seconds>=86400:
-            # Add seconds above 86400 (one day) to days
-            self.days += int(self.seconds/86400)
-            self.seconds = self.seconds % 86400
+        datetime.timedelta(*args,**kwargs)
 
     @staticmethod
     def load(node,context):
+        # Uses XSD duration data type format
         text = common.getNodeText(node)
         if text:
-            #components = text.split(':')
-            #assert len(components)==3, 'timedelta objects must be stored as "days:seconds:milliseconds".'
-            #return StoreTimeDelta(milliseconds=int(components[2]),seconds=int(components[1]),days=int(components[0]))
-            return StoreTimeDelta(seconds=float(text))
+            mult = 1
+            if text[0]=='-':
+                mult = -1
+                text = text[1:]
+            assert text[0]=='P', 'A stored duration/timedelta should always start with "P".'
+            import re
+            m = re.match('P(\d+Y)?(\d+M)?(\d+D)?(?:T(\d+H)?(\d+M)?(\d+(?:\.\d*)S)?)?',text)
+            assert m!=None, 'The string "%s" is not a valid duration/timedelta.' % text
+            grps = m.groups('0x')
+            y,m,d,hh,mm = [int(t[:-1]) for t in grps[:-1]]
+            ss = float(grps[-1][:-1])
+            return StoreTimeDelta(days=mult*(y*365+m*30+d),seconds=mult*(hh*3600+mm*60+ss))
         else:
             return StoreTimeDelta()
 
     def save(self,node,context):
-        #common.setNodeText(node,'%i:%i:%i' % (self.days,self.seconds,self.milliseconds))
-        common.setNodeText(node,str(self.getAsSeconds()))
+        common.setNodeText(node,'P%iDT%fS' % (self.days,self.seconds+self.microseconds/1000000.))
         
     def getAsSeconds(self):
-        return self.days*86400 + self.seconds + self.milliseconds/1000.
-        
-    def getAsTimeDelta(self):
-        return datetime.timedelta(days=self.days,seconds=self.seconds,milliseconds=self.milliseconds)
+        return self.days*86400 + self.seconds + self.microseconds/1000000.
         
     def __float__(self):
         return float(self.getAsSeconds())
@@ -317,9 +314,9 @@ class StoreTimeDelta(Store.DataType):
         if seconds>0:
             values.append([seconds,'second'])
             
-        # Add milliseconds
-        if self.milliseconds>0:
-            values.append([self.milliseconds,'millisecond'])
+        # Add microseconds
+        if self.microseconds>0:
+            values.append([self.microseconds,'microsecond'])
             
         # Add a trailing "s" for each unit that will have value > 1
         for v in values:
@@ -328,14 +325,10 @@ class StoreTimeDelta(Store.DataType):
         # Combine units into string.
         return ', '.join(['%i %s' % (v[0],v[1]) for v in values])
 
-    def __eq__(self,other):
-        if not isinstance(other,StoreTimeDelta): return False
-        return self.days==other.days and self.seconds==other.seconds and self.milliseconds==other.milliseconds
-        
-    def __ne__(self,other):
-        return not self.__eq__(other)
-
 class StoreColor(Store.DataType):
+    """Class representing a color (RGB), capable of being stored in/loaded from
+    an XML store."""
+
     def __init__(self,red=None,green=None,blue=None):
         Store.DataType.__init__(self)
         self.red = red
@@ -344,6 +337,7 @@ class StoreColor(Store.DataType):
 
     @staticmethod
     def load(node,context):
+        """Creates a StoreColor object with its value read from the specified XML node."""
         strcolor = common.getNodeText(node)
         if len(strcolor)>0:
             assert len(strcolor)==7 and strcolor[0]=='#', 'Colors must have exactly 7 characters and start with #.'
@@ -354,18 +348,23 @@ class StoreColor(Store.DataType):
             
     @staticmethod
     def fromNormalized(r,g,b):
+        """Creates a StoreColor object from normalized color values (between 0 and 1, as used by MatPlotLib)."""
         return StoreColor(int(r*255),int(g*255),int(b*255))
         
     def brighten(self,value):
+        """Brightens the color with the specified value (between 0 and 1)."""
         assert value>=0 and value<=1, 'Brighten value must be between 0 and 1.'
         self.red   = int(self.red  +(255.-self.red)  *value)
         self.green = int(self.green+(255.-self.green)*value)
         self.blue  = int(self.blue +(255.-self.blue) *value)
         
     def copy(self):
+        """Returns a copy of the StoreColor object."""
         return StoreColor(self.red,self.green,self.blue)
 
     def save(self,node,context):
+        """Saves the value of the StoreColor object to the specified XML node.
+        This value can be retrieved later through the static "load" method."""
         assert self.red  ==None or self.red  <=255, 'Color channel red values should not exceed 255.'
         assert self.green==None or self.green<=255, 'Color channel green values should not exceed 255.'
         assert self.blue ==None or self.blue <=255, 'Color channel blue values should not exceed 255.'
@@ -375,13 +374,16 @@ class StoreColor(Store.DataType):
             common.removeNodeChildren(node)
         
     def isValid(self):
+        """Returns whether the object currently contains a valid color."""
         return self.red!=None and self.green!=None and self.blue!=None
         
     def getNormalized(self):
+        """Returns a tuple with normalized RGB color values (between 0 and 1)."""
         assert self.isValid(), 'Cannot convert color to normalized tuple because the color object is not valid.'
         return (self.red/255.,self.green/255.,self.blue/255.)
         
     def __str__(self):
+        """Returns a string representation of the color."""
         if self.isValid():
             return '(%i, %i, %i)' % (self.red,self.green,self.blue)
         else:
@@ -941,11 +943,12 @@ class Schema:
         for ch in root.childNodes:
             if ch.nodeType==ch.ELEMENT_NODE:
                 if ch.localName=='element':
-                    self.buildDependencies(root=ch,curpath=curpath+'/'+ch.getAttribute('id'),curowner=ch)
+                    childcurpath = curpath+'/'+ch.getAttribute('name')
+                    self.buildDependencies(root=ch,curpath=childcurpath,curowner=ch)
                     if ch.hasAttribute('unit'):
                         unit = ch.getAttribute('unit')
                         if unit[0]=='[' and unit[-1]==']':
-                            unitnode,relcurpath = self.getReversePath(ch,unit[1:-1],absourcepath=curpath+'/'+ch.getAttribute('id'))
+                            unitnode,relcurpath = self.getReversePath(ch,unit[1:-1],absourcepath=childcurpath)
                             self.registerDependency(unitnode,relcurpath,'unit')
                 elif ch.localName=='condition':
                     if ch.hasAttribute('source'): continue
@@ -974,13 +977,13 @@ class Schema:
                 root = root.parentNode
             elif childname!='' and childname!='.':
                 for root in root.childNodes:
-                    if root.nodeType==root.ELEMENT_NODE and root.localName=='element' and root.getAttribute('id')==childname:
+                    if root.nodeType==root.ELEMENT_NODE and root.localName=='element' and root.getAttribute('name')==childname:
                         break
                 else:
                     return None
         return root
 
-    # getNodePath: obtains path specification for given template node
+    # getPathFromNode: obtains path specification for given template node
     # (path specification consists of node ids with slash separators)
     def getPathFromNode(self,node):
         """Gets the absolute path of the specified node, as an array of path
@@ -989,7 +992,7 @@ class Schema:
         """
         path = []
         while node.parentNode.parentNode!=None:
-            path.insert(0,node.getAttribute('id'))
+            path.insert(0,node.getAttribute('name'))
             node = node.parentNode
         return path
 
@@ -1265,7 +1268,7 @@ class TypedStore(common.referencedobject):
 
     class Node:
         def __init__(self,controller,templatenode,valuenode,location,parent):
-            assert templatenode.hasAttribute('id'),'Schema node %s lacks "id" attribute.' % location
+            assert templatenode.hasAttribute('name'),'Schema node %s lacks "name" attribute.' % location
 
             self.controller = controller
             self.store = controller.store
@@ -1281,7 +1284,7 @@ class TypedStore(common.referencedobject):
             ids = []
             for templatechild in self.templatenode.childNodes:
                 if templatechild.nodeType==templatechild.ELEMENT_NODE and templatechild.localName=='element':
-                    childid = templatechild.getAttribute('id')
+                    childid = templatechild.getAttribute('name')
                     ids.append(childid)
                     
                     # Get all value nodes that correspond to the current template child.
@@ -1521,7 +1524,7 @@ class TypedStore(common.referencedobject):
                 predecessors = []
                 for templatenode in self.templatenode.childNodes:
                     if templatenode.nodeType==templatenode.ELEMENT_NODE and templatenode.localName=='element':
-                        childid = templatenode.getAttribute('id')
+                        childid = templatenode.getAttribute('name')
                         if childid==childname: break
                         predecessors.append(childid)
                 else:
@@ -1683,7 +1686,7 @@ class TypedStore(common.referencedobject):
 
         def getSecondaryId(self):
             """Returns the secondary id of the node. This is only present for
-            nodes that can occur multiple times, an dmust then be set on creation
+            nodes that can occur multiple times, and must then be set on creation
             of the node. Returns an empty string if the secondary id has not been set.
             """
             assert self.valuenode!=None, 'The value node has not been set; this node cannot be optional.'
@@ -2037,8 +2040,8 @@ class TypedStore(common.referencedobject):
         valuedom = None
         if valueroot==None:
             impl = xml.dom.minidom.getDOMImplementation()
-            assert templateroot.hasAttribute('id'), 'Root of the schema does not have attribute "id".'
-            valuedom = impl.createDocument(None, templateroot.getAttribute('id'), None)
+            assert templateroot.hasAttribute('name'), 'Root of the schema does not have attribute "name".'
+            valuedom = impl.createDocument(None, templateroot.getAttribute('name'), None)
             valueroot = valuedom.documentElement
             valueroot.setAttribute('version',self.version)
         elif isinstance(valueroot,basestring):
@@ -2057,7 +2060,7 @@ class TypedStore(common.referencedobject):
         self.store = Store(valuedom,xmlroot=valueroot)
         self.store.filetypes['select'] = int
         self.store.filetypes['file'] = DataFile
-        self.store.filetypes['timedelta'] = StoreTimeDelta
+        self.store.filetypes['duration'] = StoreTimeDelta
         self.store.filetypes['color'] = StoreColor
         self.store.filetypes['fontname'] = str
         self.root = TypedStore.Node(self,templateroot,self.store.xmlroot,[],None)
@@ -2099,9 +2102,13 @@ class TypedStore(common.referencedobject):
         """Resets the "changed" status of the store to "unchanged". See also "hasChanged"."""
         self.changed = False
 
+    def __getitem__(self,path):
+        """Returns node at the specified path below the root of the tree."""
+        return self.root[path]
+
     def setProperty(self,location,value):
         """Set a single store property at the specified location to the specified value."""
-        node = self.root[location]
+        node = self[location]
         if node==None: raise Exception('Cannot locate node at %s' % location)
         return node.setValue(value)
     
@@ -2109,7 +2116,7 @@ class TypedStore(common.referencedobject):
         """Gets the value of a single store property at the specified location. If the
         property has no value and "usedefault" is specified, the default value is
         returned."""
-        node = self.root[location]
+        node = self[location]
         if node==None: raise Exception('Cannot locate node at %s' % location)
         if usedefault:
             return node.getValueOrDefault()
@@ -2690,10 +2697,10 @@ class Convertor:
 
         # Handle explicit one-to-one links between source nodes and target nodes.
         for (sourcepath,targetpath) in self.links:
-            sourcenode = source.root[sourcepath]
+            sourcenode = source[sourcepath]
             if sourcenode==None:
                 raise Exception('Cannot locate node "%s" in source.' % '/'.join(sourcepath))
-            targetnode = target.root[targetpath]
+            targetnode = target[targetpath]
             if targetnode==None:
                 raise Exception('Cannot locate node "%s" in target.' % '/'.join(targetpath))
             targetnode.copyFrom(sourcenode)
@@ -2702,10 +2709,10 @@ class Convertor:
         if len(self.defaults)>0:
             defscen = target.getDefault(None,target.version)
             for path in self.defaults:
-                sourcenode = defscen.root[path]
+                sourcenode = defscen[path]
                 if sourcenode==None:
                     raise Exception('Cannot locate node "%s" in default.')
-                targetnode = target.root[path]
+                targetnode = target[path]
                 targetnode.copyFrom(sourcenode)
 
     def reverseLinks(self):

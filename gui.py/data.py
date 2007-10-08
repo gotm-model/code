@@ -32,7 +32,7 @@ class PlotVariableStore:
         remaining = [nodename for nodename in vardict if nodename not in found]
         other = None
         for ch in xmlschema.getElementsByTagName('element'):
-            if ch.getAttribute('id')=='other':
+            if ch.getAttribute('name')=='other':
                 other = ch
                 break
         if other!=None:
@@ -41,15 +41,15 @@ class PlotVariableStore:
             else:
                 for varid in sorted(remaining,cmp=lambda x,y: cmp(vardict[x].lower(), vardict[y].lower())):
                     el = xmlschema.createElement('element')
-                    el.setAttribute('id',varid)
+                    el.setAttribute('name',varid)
                     el.setAttribute('label',vardict[varid])
                     el.setAttribute('type','bool')
                     other.appendChild(el)
         return xmlstore.TypedStore(xmlschema,otherstores=otherstores)
 
     def filterNodes(self,node,vardict):
-        nodeid = node.getAttribute('id')
-        assert nodeid!='', 'Node lacks "id" attribute.'
+        nodeid = node.getAttribute('name')
+        assert nodeid!='', 'Node lacks "name" attribute.'
         nodeids = []
         if nodeid in vardict:
             if not node.hasAttribute('label'):
@@ -211,7 +211,7 @@ class LinkedFileVariableStore(PlotVariableStore):
                     if ch.hasAttribute('unit'):          dimdata['unit']          = ch.getAttribute('unit')
                     if ch.hasAttribute('datatype'):      dimdata['datatype']      = ch.getAttribute('datatype')
                     if ch.hasAttribute('preferredaxis'): dimdata['preferredaxis'] = ch.getAttribute('preferredaxis')
-                    id = ch.getAttribute('id')
+                    id = ch.getAttribute('name')
                     if id=='': id = dimdata['label']
                     self.dimensions[id] = dimdata
                     self.dimensionorder.append(id)
@@ -742,7 +742,7 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
         
           return varslice
 
-    def __init__(self):
+    def __init__(self,path=None):
         common.referencedobject.__init__(self)
         PlotVariableStore.__init__(self)
         
@@ -750,6 +750,8 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
         self.nc = None
 
         self.cachedcoords = {}
+        
+        if path!=None: self.load(path)
         
     def __str__(self):
         return self.datafile
@@ -1011,7 +1013,7 @@ class Result(NetCDFStore):
 
         if not addfiguresettings:
             # First clear all figure settings.
-            self.store.root['FigureSettings'].clearValue(recursive=True)
+            self.store['FigureSettings'].clearValue(recursive=True)
 
         # Add the XML file describing result properties.            
         df = xmlstore.DataFileXmlNode(self.store.root.valuenode)
@@ -1098,14 +1100,14 @@ class Result(NetCDFStore):
             self.path = None
 
     def setFigure(self,name,source):
-        setroot = self.store.root['FigureSettings']
-        fignodename = source.root.templatenode.getAttribute('id')
+        setroot = self.store['FigureSettings']
+        fignodename = source.root.templatenode.getAttribute('name')
         fig = setroot.getChildById(fignodename,name,create=True)
         fig.copyFrom(source.root,replace=True)
 
     def getFigure(self,name,target):
-        setroot = self.store.root['FigureSettings']
-        fignodename = target.root.templatenode.getAttribute('id')
+        setroot = self.store['FigureSettings']
+        fignodename = target.root.templatenode.getAttribute('name')
         fig = setroot.getChildById(fignodename,name,create=False)
         if fig!=None:
             target.root.copyFrom(fig,replace=True)

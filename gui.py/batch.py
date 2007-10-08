@@ -143,7 +143,7 @@ if res.returncode==0:
         reportpath = os.path.normpath(os.path.join(oldworkingdir, reportpath))
         reptemplates = report.Report.getTemplates()
         rep = report.Report()
-        rep.store.root.copyFrom(res.store.root['ReportSettings'],replace=True)
+        rep.store.root.copyFrom(res.store['ReportSettings'],replace=True)
         print 'Creating report in "%s".' % reportpath
         rep.generate(res,reportpath,reptemplates['default'],callback=reportprogress)
         rep.release()

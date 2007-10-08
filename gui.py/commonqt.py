@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.42 2007-10-05 15:06:10 jorn Exp $
+#$Id: commonqt.py,v 1.43 2007-10-08 08:39:50 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -815,7 +815,7 @@ class TimeDeltaEditor(QtGui.QWidget):
 
     def setValue(self,delta=None):
         if delta==None: delta = xmlstore.StoreTimeDelta()
-        seconds = delta.seconds + delta.milliseconds/1000.
+        seconds = delta.seconds + delta.microseconds/1000000.
         if delta.days>0:
             self.comboUnits.setCurrentIndex(3)
             self.spinValue.setValue(delta.days+seconds/86400.)
@@ -1104,7 +1104,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
                     editor.addItem(ch.getAttribute('label'),QtCore.QVariant(int(ch.getAttribute('value'))))
         elif nodetype=='datetime':
             editor = QtGui.QDateTimeEdit(parent)
-        elif nodetype=='timedelta':
+        elif nodetype=='duration':
             editor = TimeDeltaEditor(parent)
         elif nodetype=='file':
             editor = LinkedFileEditor(parent)
@@ -1151,12 +1151,12 @@ class PropertyDelegate(QtGui.QItemDelegate):
         elif nodetype=='datetime':
             value = value.toDateTime()
             editor.setDateTime(value)
-        elif nodetype=='timedelta':
+        elif nodetype=='duration':
             value = value.toList()
             days,ret  = value[0].toInt()
             secs,ret  = value[1].toInt()
-            msecs,ret = value[2].toDouble()
-            value = xmlstore.StoreTimeDelta(days=days,seconds=secs,milliseconds=msecs)
+            musecs,ret = value[2].toDouble()
+            value = xmlstore.StoreTimeDelta(days=days,seconds=secs,microseconds=musecs)
             editor.setValue(value)
         elif nodetype=='file':
             editor.setNode(node)
@@ -1184,7 +1184,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
             value = editor.dateTime()
             value.setTimeSpec(QtCore.Qt.UTC)
             model.setData(index, QtCore.QVariant(value))
-        elif nodetype=='timedelta':
+        elif nodetype=='duration':
             node.setValue(editor.value())
         elif nodetype=='file':
             node.setValue(editor.datafile)
@@ -1362,8 +1362,8 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 if fieldtype=='datetime':
                     # First convert Python datetime to QDateTime, then cast to variant.
                     return QtCore.QVariant(datetime2qtdatetime(value))
-                elif fieldtype=='timedelta':
-                    return QtCore.QVariant([QtCore.QVariant(int(value.days)),QtCore.QVariant(int(value.seconds)),QtCore.QVariant(float(value.milliseconds))])
+                elif fieldtype=='duration':
+                    return QtCore.QVariant([QtCore.QVariant(int(value.days)),QtCore.QVariant(int(value.seconds)),QtCore.QVariant(float(value.microseconds))])
                 elif fieldtype=='file':
                     # Return full path
                     return QtCore.QVariant(unicode(value))
@@ -1432,11 +1432,12 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             value = value.toBool()
         elif fieldtype=='datetime':
             value = qtdatetime2datetime(value.toDateTime())
-        elif fieldtype=='timedelta':
+        elif fieldtype=='duration':
             value = value.toList()
             days,converted = value[0].toInt()
             secs,converted  = value[1].toInt()
-            value = xmlstore.StoreTimeDelta(secs,days)
+            musecs,converted  = value[2].toDouble()
+            value = xmlstore.StoreTimeDelta(days=days,seconds=secs,microseconds=musecs)
         elif fieldtype=='select':
             value,converted = value.toInt()
             if not converted: return False
@@ -1917,7 +1918,7 @@ class PropertyEditorFactory:
         if isinstance(location,xmlstore.TypedStore.Node):
             node = location
         else:
-            node = self.store.root[location]
+            node = self.store[location]
             assert node!=None, 'Unable to create editor for "%s"; this node does not exist.' % location
 
         # The editor inherits some optional arguments from the responsible factory.
@@ -2211,7 +2212,7 @@ class PropertyEditor:
         elif nodetype=='datetime':
             editor = QtGui.QDateTimeEdit(parent)
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
-        elif nodetype=='timedelta':
+        elif nodetype=='duration':
             editor = TimeDeltaEditor(parent)
             self.currenteditor = editor
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
@@ -2254,7 +2255,7 @@ class PropertyEditor:
             elif nodetype=='datetime':
                 editor.setDateTime(QtCore.QDateTime())
                 #editor.setDateTime(QtCore.QDateTime.currentDateTime().toUTC())
-            elif nodetype=='timedelta':
+            elif nodetype=='duration':
                 editor.setValue(None)
             elif nodetype=='file':
                 editor.setNode(node)
@@ -2286,7 +2287,7 @@ class PropertyEditor:
             elif nodetype=='datetime':
                 value = datetime2qtdatetime(value)
                 editor.setDateTime(value)
-            elif nodetype=='timedelta':
+            elif nodetype=='duration':
                 editor.setValue(value)
             elif nodetype=='file':
                 editor.setNode(node)
@@ -2318,7 +2319,7 @@ class PropertyEditor:
             value = editor.dateTime()
             value.setTimeSpec(QtCore.Qt.UTC)
             return node.setValue(qtdatetime2datetime(value))
-        elif nodetype=='timedelta':
+        elif nodetype=='duration':
             return node.setValue(editor.value())
         elif nodetype=='file':
             return node.setValue(editor.datafile)
@@ -2349,6 +2350,12 @@ def getFontSubstitute(fontname):
     return substitute
 
 class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
+    """Class derived from MatPlotLib NavigationToolbar2, used only for its
+    zooming code. Code for some methods (rectange drawing) has been taken from
+    the NavigationToolbar2QT from backend_qt4. The draw method that would normally
+    force a canvas redraw has been reimplemented to call a callback specified at
+    initialization. Thus the axes changes can be caught, and reflected in the
+    XML-based plot properties."""
         
     def __init__( self, canvas, callback=None):
         matplotlib.backend_bases.NavigationToolbar2.__init__( self, canvas )
@@ -2361,14 +2368,13 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
         self.canvas.draw()
 
     def set_cursor( self, cursor ):
-        QtGui.QApplication.restoreOverrideCursor()
         cursord = {
             matplotlib.backend_bases.cursors.MOVE          : QtCore.Qt.PointingHandCursor,
             matplotlib.backend_bases.cursors.HAND          : QtCore.Qt.WaitCursor,
             matplotlib.backend_bases.cursors.POINTER       : QtCore.Qt.ArrowCursor,
             matplotlib.backend_bases.cursors.SELECT_REGION : QtCore.Qt.CrossCursor,
             }
-        QtGui.QApplication.setOverrideCursor( QtGui.QCursor( cursord[cursor] ) )
+        self.canvas.setCursor(QtGui.QCursor(cursord[cursor]))
                 
     def draw_rubberband( self, event, x0, y0, x1, y1 ):
         height = self.canvas.figure.bbox.height()
@@ -2384,6 +2390,45 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
     def draw(self):
         if self.callback!=None: self.callback()
 
+    def mouse_move(self, event):
+        #print 'mouse_move', event.button
+
+        if not self._active:
+            if self._lastCursor != matplotlib.backend_bases.cursors.POINTER:
+                self.set_cursor(matplotlib.backend_bases.cursors.POINTER)
+                self._lastCursor = matplotlib.backend_bases.cursors.POINTER
+        else:
+            if self._active=='ZOOM':
+                if self._lastCursor != matplotlib.backend_bases.cursors.SELECT_REGION:
+                    self.set_cursor(matplotlib.backend_bases.cursors.SELECT_REGION)
+                    self._lastCursor = matplotlib.backend_bases.cursors.SELECT_REGION
+                if self._xypress:
+                    x, y = event.x, event.y
+                    lastx, lasty, a, ind, lim, trans= self._xypress[0]
+                    bb = a.bbox
+                    if   x<bb.xmin(): x = bb.xmin()
+                    elif x>bb.xmax(): x = bb.xmax()
+                    if   y<bb.ymin(): y = bb.ymin()
+                    elif y>bb.ymax(): y = bb.ymax()
+                    self.draw_rubberband(event, x, y, lastx, lasty)
+            elif (self._active=='PAN' and
+                  self._lastCursor != cursors.MOVE):
+                self.set_cursor(matplotlib.backend_bases.cursors.MOVE)
+
+                self._lastCursor = matplotlib.backend_bases.cursors.MOVE
+
+        if event.inaxes and event.inaxes.get_navigate():
+
+            try: s = event.inaxes.format_coord(event.xdata, event.ydata)
+            except ValueError: pass
+            except OverflowError: pass
+            else:
+                if len(self.mode):
+                    self.set_message('%s : %s' % (self.mode, s))
+                else:
+                    self.set_message(s)
+        else: self.set_message(self.mode)
+        
 class FigurePanel(QtGui.QWidget):
     
     def __init__(self,parent,detachbutton=True):
@@ -2511,7 +2556,7 @@ class FigurePanel(QtGui.QWidget):
     def afterFigureStoreChange(self):
         for i in range(len(self.axescontrols)-1,-1,-1):
             self.destroyAxisControls(i)
-        for node in self.figure.properties.root['Axes'].getLocationMultiple(['Axis']):
+        for node in self.figure.properties['Axes'].getLocationMultiple(['Axis']):
             self.createAxisControls(node)
         
     def beforeFigureNodeVisibilityChange(self,node,visible,showhideonly):
@@ -2580,7 +2625,7 @@ class FigurePanel(QtGui.QWidget):
         a = self.canvas.figure.gca()
         Xmin,Xmax=a.get_xlim()
         Ymin,Ymax=a.get_ylim()
-        axes = self.figure.properties.root['Axes']
+        axes = self.figure.properties['Axes']
         xaxis = axes.getChildByNumber('Axis',0)
         yaxis = axes.getChildByNumber('Axis',1)
         oldupdating = self.figure.setUpdating(False)
@@ -2595,7 +2640,7 @@ class FigurePanel(QtGui.QWidget):
 
     def onResetViewClicked(self,*args):
         if self.buttonZoom.isChecked(): self.buttonZoom.click()
-        axes = self.figure.properties.root['Axes']
+        axes = self.figure.properties['Axes']
         xaxis = axes.getChildByNumber('Axis',0)
         yaxis = axes.getChildByNumber('Axis',1)
         oldupdating = self.figure.setUpdating(False)
