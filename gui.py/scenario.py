@@ -423,6 +423,7 @@ class Scenario(xmlstore.TypedStore):
 
     def saveAll(self,path,targetversion=None,**kwargs):
         if targetversion==None: targetversion = savedscenarioversion
+        kwargs['fillmissing'] = True
         xmlstore.TypedStore.saveAll(self,path,targetversion=targetversion,**kwargs)
 
     def loadAll(self,path):

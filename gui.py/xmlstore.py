@@ -2216,6 +2216,15 @@ class TypedStore(common.referencedobject):
             return False
         else:
             raise Exception('unknown condition type "%s" in XML schema file.' % condtype)
+            
+    def fillMissingValues(self,skiphidden=False):
+        assert self.defaultstore!=None, 'Cannot fill missing values with defaults because no default store has been specified.'
+        if skiphidden:
+            for n in self.root.getEmptyNodes():
+                if not n.isHidden():
+                    n.setValue(n.getDefaultValue())
+        else:
+            self.root.copyFrom(self.defaultstore.root,replace=False)
 
     def convert(self,target):
         """Converts the TypedStore object to the specified target. The target may be
@@ -2404,7 +2413,7 @@ class TypedStore(common.referencedobject):
         else:
             self.setStore(valuedom)
 
-    def saveAll(self,path,targetversion=None,targetisdir = False,claim=True):
+    def saveAll(self,path,targetversion=None,targetisdir = False,claim=True,fillmissing=False):
         """Saves the values plus any associated data in a ZIP archive or directory.
         A file or direcoty created in this manner may be loaded again through the
         "loadAll" method.
@@ -2428,7 +2437,7 @@ class TypedStore(common.referencedobject):
             tempstore.release()
         else:
             # First: fill nodes that are not set with the default value.
-            self.root.copyFrom(self.defaultstore.root,replace=False)
+            if fillmissing: self.fillMissingValues()
 
             # Before opening the target container, allow nodes to prepare for saving to the specified path.
             # Specifically, nodes will read all files that might be overwritten into memory.
