@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.43 2007-10-08 08:39:50 jorn Exp $
+#$Id: commonqt.py,v 1.44 2007-10-15 06:45:09 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -2007,11 +2007,6 @@ class PropertyEditor:
             gridlayout.addWidget(self.unit,irow,icolumn)
             icolumn += 1
 
-        #if icon:
-        #!    if self.icon==None: self.createIcon()
-        #    gridlayout.addWidget(self.icon,irow,icolumn)
-        #icolumn += 1
-
     def addToBoxLayout(self,boxlayout,label=True,unit=True,addstretch=True,icon=None):
         """Adds the editor plus label to an existing QBoxLayout.
         """
@@ -2032,10 +2027,6 @@ class PropertyEditor:
             if self.unit==None: self.createUnit()
             layout.addWidget(self.unit)
             
-        #if icon:
-        #    if self.icon==None: self.createIcon()
-        #    layout.addWidget(self.icon)
-
         if addstretch:
             layout.addStretch(1)
             
@@ -2065,11 +2056,6 @@ class PropertyEditor:
         if wrap: self.label.setWordWrap(True)
         if self.allowhide and self.node.isHidden(): self.label.setVisible(False)
         return self.label
-        
-    def createIcon(self):
-        assert self.icon==None, 'Cannot create icon because it has already been created.'
-        self.icon = InformationIcon(self.editor.parent(),self.node.getText(detail=2,capitalize=True))
-        if self.allowhide and self.node.isHidden(): self.icon.setVisible(False)
         
     def setVisible(self,visible):
         """Sets the visibility of the editor and label (if any).
@@ -2543,7 +2529,8 @@ class FigurePanel(QtGui.QWidget):
     def plot(self,varname,varstore=None):
         ownupdating = self.figure.updating
         if ownupdating: self.figure.setUpdating(False)
-        self.figure.clearProperties()
+        self.figure.clearVariables()
+        self.figure.clearProperties(deleteoptional=False)
         if isinstance(varstore,basestring) or varstore==None:
             self.figure.addVariable(varname,source=varstore)
         else:
@@ -2626,8 +2613,8 @@ class FigurePanel(QtGui.QWidget):
         Xmin,Xmax=a.get_xlim()
         Ymin,Ymax=a.get_ylim()
         axes = self.figure.properties['Axes']
-        xaxis = axes.getChildByNumber('Axis',0)
-        yaxis = axes.getChildByNumber('Axis',1)
+        xaxis = axes.getChildById('Axis','x')
+        yaxis = axes.getChildById('Axis','y')
         oldupdating = self.figure.setUpdating(False)
         for axis,minval,maxval in ((xaxis,Xmin,Xmax),(yaxis,Ymin,Ymax)):
             if axis['IsTimeAxis'].getValueOrDefault():
@@ -2858,22 +2845,3 @@ class FigureDialog(QtGui.QDialog):
         
     def getFigure(self):
         return self.panel.figure
-
-class InformationIcon(QtGui.QLabel):
-    pixmap = None
-    def __init__(self,parent,text):
-        QtGui.QLabel.__init__(self,parent)
-        self.text = text
-        #self.setToolTip(text)
-        if InformationIcon.pixmap==None:
-            InformationIcon.pixmap = QtGui.QPixmap('./information.png')
-        self.setPixmap(InformationIcon.pixmap)
-        
-    #def enterEvent(self,ev):
-    #    QtGui.QLabel.enterEvent(self,ev)
-    #    QtGui.QWhatsThis.showText(self.mapToGlobal(QtCore.QPoint(0,0)),self.text)
-        
-    #def leaveEvent(self,ev):
-    #    QtGui.QWhatsThis.hideText()
-    #    QtGui.QLabel.leaveEvent(self,ev)
-        

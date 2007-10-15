@@ -372,7 +372,7 @@ class LinkedMatrix(LinkedFileVariableStore):
                     if datematch==None:
                         raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
                     refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                    dimvalue = common.datetimefromtuple(refvals)
+                    dimvalue = common.dateTimeFromTuple(refvals)
                     dimvalue = common.date2num(dimvalue)
                 
                     # Read variable values.
@@ -431,7 +431,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             if datematch==None:
                 raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-            curdate = common.datetimefromtuple(refvals)
+            curdate = common.dateTimeFromTuple(refvals)
             curdate = common.date2num(curdate)
             
             # Read values.
@@ -498,7 +498,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             data = self.store.getGriddedData()
             if data[0].shape[0]==0: return varslice
 
-            timebounds = common.findindices(bounds[0],data[0])
+            timebounds = common.findIndices(bounds[0],data[0])
             varslice.coords[0] = data[0][timebounds[0]:timebounds[1]+1]
             varslice.coords[1] = data[1]
             varslice.data = data[2][timebounds[0]:timebounds[1]+1,:,self.index]
@@ -604,7 +604,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             if datematch==None:
                 raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-            curdate = common.datetimefromtuple(refvals)
+            curdate = common.dateTimeFromTuple(refvals)
             curdate = common.date2num(curdate)
 
             # Get the number of observations and the depth direction.
@@ -720,7 +720,7 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
                 # Get coordinates and bounds of this dimension.
                 (coords,coords_stag) = self.store.getCoordinates(dimname)
                 if coords==None: return None
-                curbounds = common.findindices(bounds[idim],coords)
+                curbounds = common.findIndices(bounds[idim],coords)
                 varslice.coords     [idim] = coords     [curbounds[0]:curbounds[1]+1]
                 varslice.coords_stag[idim] = coords_stag[curbounds[0]:curbounds[1]+2]
                 boundindices.append(curbounds)

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.25 2007-10-03 06:14:34 jorn Exp $
+#$Id: scenariobuilder.py,v 1.26 2007-10-15 06:45:09 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -19,7 +19,7 @@ class ScenarioWidget(QtGui.QWidget):
         self.radioImport2 = QtGui.QRadioButton('Import a namelist-based scenario from an archive.',self)
 
         self.labTemplate = QtGui.QLabel('Template:',self)
-        default2path = scenario.Scenario.defaultname2path()
+        default2path = scenario.Scenario.defaultNameToPath()
         self.comboTemplates = QtGui.QComboBox(parent)
         for (name,path) in default2path.items():
             self.comboTemplates.addItem(name,QtCore.QVariant(name))

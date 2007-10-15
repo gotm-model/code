@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.33 2007-10-08 08:39:49 jorn Exp $
+#$Id: common.py,v 1.34 2007-10-15 06:45:09 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.dates,matplotlib.numerix,pytz
@@ -28,22 +28,16 @@ class referencedobject:
 datetime_displayformat = '%Y-%m-%d %H:%M:%S'
 utc=pytz.timezone('UTC')
 
-def datetimefromtuple(tup):
+def dateTimeFromTuple(tup):
     return datetime.datetime(tup[0],tup[1],tup[2],tup[3],tup[4],tup[5],tzinfo=utc)
 
-# parsedatetime: Convert string to Python datetime object, using specified format.
-#   Counterpart of datetime.strftime.
-def parsedatetime(str,fmt):
-    return datetimefromtuple(time.strptime(str,fmt))
-    
-def timedelta2float(td):
-    return td.days*3600*24 + td.seconds + td.microseconds/1e6
-    
-def date2num(array):
-    return matplotlib.dates.date2num(array)
+def parseDateTime(str,fmt):
+    """Convert string to Python datetime object, using specified format.
+    Counterpart of datetime.strftime."""
+    return dateTimeFromTuple(time.strptime(str,fmt))
 
-def num2date(array):
-    return matplotlib.dates.num2date(array)
+date2num = matplotlib.dates.date2num
+num2date = matplotlib.dates.num2date
 
 # ------------------------------------------------------------------------------------------
 # Command line argument utility functions
@@ -113,6 +107,7 @@ def findDescendantNode(root,location,create=False):
             if create:
                 doc = root
                 while doc.parentNode!=None: doc=doc.parentNode
+                assert doc.nodeType==doc.DOCUMENT_NODE, 'Could not find DOM document node needed to create %s. Node "%s" does not have a parent.' % (location,doc.tagName)
                 foundchild = doc.createElementNS(node.namespaceURI,childname)
                 node.appendChild(foundchild)
             else:
@@ -176,7 +171,7 @@ def copyNode(sourcenode,newparent,targetdoc=None,name=None,before=None):
     cpy = None
     if sourcenode.nodeType==sourcenode.ELEMENT_NODE:
         if name==None: name = sourcenode.localName
-        cpy = targetdoc.createElement(name)
+        cpy = targetdoc.createElementNS(newparent.namespaceURI,name)
         for key in sourcenode.attributes.keys():
             cpy.setAttribute(key,sourcenode.getAttribute(key))
     elif sourcenode.nodeType==sourcenode.TEXT_NODE:
@@ -218,7 +213,7 @@ def stripWhitespace(node):
 # ------------------------------------------------------------------------------------------
 
 # Look for boundary indices of array based on desired value range.
-def findindices(bounds,data):
+def findIndices(bounds,data):
     # Zero-based indices!
     start = 0
     stop = len(data)-1

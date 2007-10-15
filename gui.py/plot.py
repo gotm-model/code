@@ -344,8 +344,8 @@ class Figure(common.referencedobject):
         self.sources[name] = obj
         if self.defaultsource==None: self.defaultsource = name
 
-    def clearProperties(self):
-        self.properties.root.clearValue(recursive=True)
+    def clearProperties(self,deleteoptional=True):
+        self.properties.root.clearValue(recursive=True,deleteclones=deleteoptional)
 
     def setProperties(self,props):
         self.properties.setStore(props)
@@ -765,12 +765,21 @@ class Figure(common.referencedobject):
         axis2dim = dict([(dat['axis'],dim) for dim,dat in dim2data.iteritems() if 'axis' in dat])
 
         # Get effective ranges for each dimension (based on forced limits and natural data ranges)
+        oldaxes    = [node.getSecondaryId() for node in forcedaxes.getLocationMultiple(['Axis'])]
+        olddefaxes = [node.getSecondaryId() for node in defaultaxes.getLocationMultiple(['Axis'])]
         for axisname in ('x','y','z','colorbar'):
             if axisname not in axis2dim: continue
             
             dim = axis2dim[axisname]
             dat = dim2data[dim]
+            istimeaxis = dat['datatype']=='datetime'
             
+            # Get the explicitly set and the default properties.
+            axisnode = forcedaxes.getChildById('Axis',axisname,create=True)
+            defaxisnode = defaultaxes.getChildById('Axis',axisname,create=True)
+            if axisname in oldaxes: oldaxes.remove(axisname)
+            if axisname in olddefaxes: olddefaxes.remove(axisname)
+
             # Range selected by MatPlotLib
             if axisname=='x' and not dat.get('tight',True):
                 naturalrange = axes.get_xlim()
@@ -779,8 +788,14 @@ class Figure(common.referencedobject):
             else:
                 naturalrange = dat['datarange'][:]
                 
-            # Range forced by user
-            forcedrange = dat.get('forcedrange',(None,None))
+            # Get range forced by user
+            if istimeaxis:
+                mintime,maxtime = axisnode['MinimumTime'].getValue(),axisnode['MaximumTime'].getValue()
+                if mintime!=None: mintime = common.date2num(mintime)
+                if maxtime!=None: maxtime = common.date2num(maxtime)
+                forcedrange = (mintime,maxtime)
+            else:
+                forcedrange = (axisnode['Minimum'].getValue(),axisnode['Maximum'].getValue())
             
             # Effective range used by data, after taking forced range into account.
             effdatarange = dat['datarange'][:]
@@ -792,10 +807,6 @@ class Figure(common.referencedobject):
             if effrange[0]==None: effrange[0]=naturalrange[0]
             if effrange[1]==None: effrange[1]=naturalrange[1]
             
-            # Get the explicitly set and the default properties.
-            axisnode = forcedaxes.getChildById('Axis',dim,create=True)
-            defaxisnode = defaultaxes.getChildById('Axis',dim,create=True)
-
             # Build default label for this axis
             deflab = dat['label']
             if dat['unit']!='': deflab += ' ('+dat['unit']+')'
@@ -806,7 +817,6 @@ class Figure(common.referencedobject):
             defaxisnode['TicksMinor'].setValue(False)
             defaxisnode['TicksMinor/ShowLabels'].setValue(False)
 
-            istimeaxis = dat['datatype']=='datetime'
             defaxisnode['IsTimeAxis'].setValue(istimeaxis)
 
             # Get the MatPlotLib axis object.
@@ -924,7 +934,12 @@ class Figure(common.referencedobject):
             elif axisname=='colorbar':
                 assert cb!=None, 'No colorbar has been created.'
                 if label!='': cb.set_label(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
-                
+
+        for oldaxis in oldaxes:
+            forcedaxes.removeChild('Axis',oldaxis)
+        for oldaxis in olddefaxes:
+            defaultaxes.removeChild('Axis',oldaxis)
+
         # Create grid
         gridnode = self.properties['Grid']
         if gridnode.getValueOrDefault():
@@ -1012,7 +1027,7 @@ def getTimeLocator(location,interval):
     else:
         assert False, 'unknown tick location %i' % location
     
-def getTimeTickSettings(dayspan,settings,defsettings):
+def getTimeTickSettings(dayspan,settings,defsettings,preferredcount=8):
     unitlengths = {0:365,1:30.5,2:1.,3:1/24.,4:1/1440.}
     if dayspan/365>=2:
         location,tickformat = 0,10
@@ -1032,7 +1047,7 @@ def getTimeTickSettings(dayspan,settings,defsettings):
 
     # Calculate optimal interval between ticks, aiming for max. 8 ticks total.
     tickcount = dayspan/unitlengths[location]
-    interval = math.ceil(tickcount/8.)
+    interval = math.ceil(float(tickcount)/preferredcount)
     if interval<1: interval = 1
     
     # Save default tick interval, then get effective tick interval.

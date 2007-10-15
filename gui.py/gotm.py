@@ -78,7 +78,7 @@ class GOTMWizard(commonqt.Wizard):
                 
                 # Add combobox with versions.
                 self.comboVersion = QtGui.QComboBox(self)
-                versions = scen.schemaname2path().keys()
+                versions = scen.schemaNameToPath().keys()
                 versions.sort()
                 for v in versions:
                     # Only show schemas for namelist-supporting GOTM

@@ -64,7 +64,7 @@ class Scenario(xmlstore.TypedStore):
     def fromNamelists(path,protodir=None,targetversion=None,strict = True):
         if targetversion==None: targetversion=guiscenarioversion
         
-        sourceids = Scenario.rankSources(targetversion,Scenario.schemaname2path().keys(),requireplatform='gotm')
+        sourceids = Scenario.rankSources(targetversion,Scenario.schemaNameToPath().keys(),requireplatform='gotm')
         scenario = None
         failures = ''
         for sourceid in sourceids:
@@ -239,7 +239,7 @@ class Scenario(xmlstore.TypedStore):
                         if datetimematch==None:
                             raise namelist.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',fullnmlfilename,listname,varname)
                         refvals = map(int,datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                        val = common.datetimefromtuple(refvals)
+                        val = common.dateTimeFromTuple(refvals)
                     elif vartype=='file':
                         for fn in filelist:
                             if fn==val or fn.endswith('/'+val):

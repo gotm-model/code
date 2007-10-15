@@ -70,11 +70,8 @@ class Store:
         def unlink(self):
             pass
     
-    # =========================================================================================
-    # PROTECTED
-    # =========================================================================================
-    # __init__: constructor
     def __init__(self,xmldocument=None,xmlroot=None):
+        """Constructor of Store object."""
         if isinstance(xmldocument,basestring):
             assert xmlroot==None,'Path to XML file specified, but also a (already parsed!) root node was supplied. This combination is invalid'
             xmldocument = xml.dom.minidom.parse(xmldocument)
@@ -86,7 +83,8 @@ class Store:
 
         self.context = {}
 
-        # Links data type names (strings) to their respective Python classes.
+        # The "filetypes" dictionary below links data type names (strings) to
+        # their respective Python classes.
         #   This is particularly relevant for the later TypedStore, which
         #   uses these data type names in its template XML files. Note that this is extensible:
         #   one can simple add other data types to the self.filetypes dictionary; just make sure
@@ -97,19 +95,13 @@ class Store:
                           'bool'    :bool,
                           'datetime':datetime.datetime}
 
-    # =========================================================================================
-    # PROTECTED
-    # =========================================================================================
-    # getText: gets all text directly below an XML element; may consist of multiple text nodes.
     def getText(self,node):
+        """Gets all text directly below an XML element; may consist of multiple text nodes."""
         return common.getNodeText(node)
 
-    # =========================================================================================
-    # PROTECTED
-    # =========================================================================================
-    # getText: sets text directly below an XML element, using one text node
-    #   replaces any existing child text nodes.
     def setText(self,node,text):
+        """sets text directly below an XML element, using one text node.
+        Replaces any existing child text nodes."""
         for ch in node.childNodes:
             if ch.nodeType == ch.TEXT_NODE:
                 node.removeChild(ch)
@@ -117,36 +109,16 @@ class Store:
         val = self.xmldocument.createTextNode(text)
         node.insertBefore(val,node.firstChild)
 
-    # =========================================================================================
-    # PUBLIC
-    # =========================================================================================
-    # setProperty: sets specified location (list of ancestor names) to specified value.
-    #   autoconverts specified value to string format.
     def setProperty(self,location,value,valuetype=None):
+        """Sets specified location (list of ancestor names) to specified value.
+        Autoconverts specified value to string format."""
         node = common.findDescendantNode(self.xmlroot,location,create=True)
         assert node!=None, 'Unable to create new child node at "%s".' % location
         return self.setNodeProperty(node,value,valuetype)
 
-    # =========================================================================================
-    # PUBLIC
-    # =========================================================================================
-    # addProperty: adds a node at specified location (list of ancestor names) with specified
-    #   value. Autoconverts specified value to string format.
-    def addProperty(self,location,value):
-        parentloc = location[:]
-        name = parentloc.pop()
-        parent = common.findDescendantNode(self.xmlroot,parentloc,create=True)
-        assert parent!=None, 'Unable to locate or create parent node for "%s".' % location
-        node = self.xmldocument.createElementNS(parent.namespaceURI,name)
-        parent.appendChild(node)
-        self.setNodeProperty(node,value)
-
-    # =========================================================================================
-    # PUBLIC
-    # =========================================================================================
-    # setNodeProperty: sets specified node to specified value.
-    #   autoconverts specified value to string format.
     def setNodeProperty(self,node,value,valuetype=None):
+        """Sets specified node to specified value.
+        Autoconverts specified value to string format."""
         if valuetype!=None:
             if isinstance(valuetype,basestring):
                 assert valuetype in self.filetypes, 'unknown type "%s" requested.' % valuetype
@@ -155,78 +127,58 @@ class Store:
         if isinstance(value,Store.DataType):
             return value.save(node,self.context)
         else:
-            value = self.packvalue(value,valuetype)
+            value = self.packValue(value,valuetype)
             if self.getText(node)==value: return False
             self.setText(node,value)
             return True
 
-    # =========================================================================================
-    # PUBLIC
-    # =========================================================================================
-    # getProperty: gets value at specified location (list of ancestor names).
-    #   autoconverts value to the type requested (otherwise value = string).
     def getProperty(self,location,valuetype=str):
+        """Gets value at specified location (list of ancestor names).
+        Autoconverts value to the type requested (otherwise value = string)."""
         node = common.findDescendantNode(self.xmlroot,location)
         if node==None: return None
         return self.getNodeProperty(node,valuetype=valuetype)
 
-    # =========================================================================================
-    # PUBLIC
-    # =========================================================================================
-    # getNodeProperty: gets value at node.
-    #   autoconverts value to the type requested (otherwise value = string).
     def getNodeProperty(self,node,valuetype=str):
+        """Gets value at node. Autoconverts value to the type requested (otherwise value = string)."""
         if isinstance(valuetype,basestring):
             assert valuetype in self.filetypes, 'unknown value type "%s" requested.' % valuetype
             valuetype = self.filetypes[valuetype]
         if issubclass(valuetype,Store.DataType):
             return valuetype.load(node,self.context)
         else:
-            return self.unpackvalue(self.getText(node),valuetype=valuetype)
+            return self.unpackValue(self.getText(node),valuetype=valuetype)
 
     def preparePersistNode(self,node,valuetype):
+        """Prepares the node for being saved to persistent storage. Additional
+        information needed by the node should be made available through the
+        dictionary present as context attribute of the Store."""
         value = self.getNodeProperty(node,valuetype)
         assert isinstance(value,Store.DataType)
         value.preparePersist(node,self.context)
 
     def persistNode(self,node,valuetype):
+        """Saves the node to persistent storage. Additional information needed
+        by the node should be made available through the dictionary present as
+        context attribute of the Store."""
         value = self.getNodeProperty(node,valuetype)
         assert isinstance(value,Store.DataType)
         value.persist(node,self.context)
 
-    # =========================================================================================
-    # PUBLIC
-    # =========================================================================================
-    # clearProperty: removes all nodes with specified location (list of ancestor names).
-    def clearProperty(self,location):
-        parentloc = location[:]
-        name = parentloc.pop()
-        parent = common.findDescendantNode(self.xmlroot,parentloc,create=False)
-        if parent==None: return
-        for ch in parent.childNodes:
-            if ch.nodeType==ch.ELEMENT_NODE and ch.localName==name:
-                parent.removeChild(ch)
-
-    # =========================================================================================
-    # PUBLIC
-    # =========================================================================================
-    # clearNodeProperty: removes specified node.
     def clearNodeProperty(self,node):
+        """Removes specified node."""
         node.parentNode.removeChild(node)
 
-    # =========================================================================================
-    # PUBLIC
-    # =========================================================================================
-    # save: saves the current property tree to an XML document.
     def save(self,path):
+        """Saves the current property tree to a UTF-8 encoded XML document."""
         common.stripWhitespace(self.xmlroot)
         self.xmldocument.writexml(file(path,'w'),encoding='utf-8',addindent='\t',newl='\n')
 
-    # =========================================================================================
-    # PUBLIC
-    # =========================================================================================
-    # packvalue: converts a value to a string representation suitable for storing in XML.
-    def packvalue(self,value,valuetype=None):
+    def packValue(self,value,valuetype=None):
+        """Converts a value to a string representation suitable for storing in XML.
+        The data type of the value may be provided (as class object or string),
+        causing the value to be cast to the desired type before being converted
+        to string."""
         if valuetype!=None:
             if isinstance(valuetype,basestring):
                 assert valuetype in self.filetypes, 'unknown type "%s" requested.' % valuetype
@@ -241,17 +193,14 @@ class Store:
         else:
             return unicode(value)
 
-    # =========================================================================================
-    # PUBLIC
-    # =========================================================================================
-    # unpackvalue: converts string representation of a value to the desired type.
-    def unpackvalue(self,value,valuetype=str):
+    def unpackValue(self,value,valuetype=str):
+        """Converts string representation of a value to the desired type."""
         if isinstance(valuetype,basestring):
             assert valuetype in self.filetypes, 'unknown value type "%s" requested.' % valuetype
             valuetype = self.filetypes[valuetype]
         assert not issubclass(valuetype,Store.DataType), 'values of type Store.DataType cannot be unpacked from string.'
         if valuetype==datetime.datetime:
-            return common.parsedatetime(value,dateformat)
+            return common.parseDateTime(value,dateformat)
         elif valuetype==bool:
             return (value=='True')
         else:
@@ -259,7 +208,7 @@ class Store:
 
 class StoreTimeDelta(Store.DataType,datetime.timedelta):
     """Class representing a time span, capable of being stored in/loaded from
-    an XML store."""
+    an XML store. Time spans are stored using the XSD duration data type format."""
     
     def __init__(self,*args,**kwargs):
         Store.DataType.__init__(self)
@@ -267,7 +216,7 @@ class StoreTimeDelta(Store.DataType,datetime.timedelta):
 
     @staticmethod
     def load(node,context):
-        # Uses XSD duration data type format
+        """Loads the time span value from the specified XML DOM node."""
         text = common.getNodeText(node)
         if text:
             mult = 1
@@ -286,15 +235,19 @@ class StoreTimeDelta(Store.DataType,datetime.timedelta):
             return StoreTimeDelta()
 
     def save(self,node,context):
+        """Saves the time span value to the specified XML DOM node."""
         common.setNodeText(node,'P%iDT%fS' % (self.days,self.seconds+self.microseconds/1000000.))
         
     def getAsSeconds(self):
+        """Gets the number of seconds in the time span as floating point value."""
         return self.days*86400 + self.seconds + self.microseconds/1000000.
         
     def __float__(self):
+        """Returns the number of seconds in the time span as floating point value."""
         return float(self.getAsSeconds())
         
     def __str__(self):
+        """Returns a "pretty" string representation of the time span."""
         values = []
         
         # Add days
@@ -402,11 +355,15 @@ class StoreColor(Store.DataType):
 # ------------------------------------------------------------------------------------------
 
 class DataContainer(common.referencedobject):
+    """Abtract data container, e.g., a directory or compressed archive.
+    Items in the container are identified by name."""
     def __init__(self):
         common.referencedobject.__init__(self)
         
     @staticmethod
     def fromPath(path):
+        """Returns a DataContainer for the specified path. Directories, zip files
+        and tar.gz files are currently supported containers."""
         if os.path.isdir(path):
             return DataContainerDirectory(path)
         elif os.path.isfile(path):
@@ -420,33 +377,50 @@ class DataContainer(common.referencedobject):
             raise Exception('"%s" is not an existing file or directory.' % path)
     
     def listFiles(self):
+        """Returns a list of all files in the container."""
         return []
 
     def getItem(self,name):
+        """Returns the item with the given name from the container as DataFile
+        object."""
         return None
 
     def addItem(self,datafile,newname=None):
+        """Adds a DataFile object to the container. If a name for the object
+        is provided, it is used instead of the name currently associated with
+        the supplied DataFile object."""
         return None
 
     def addFile(self,path,newname=None):
+        """Adds a file at the specified path to the container. If a name for
+        the object is provided, it is used instead of the name of the source
+        file."""
         df = DataContainerDirectory.DataFileFile(path)
         df_added = self.addItem(df,newname)
         df_added.release()
         df.release()
 
     def persistChanges(self):
+        """Makes sure all changes to the container are saved to persistent
+        storage. This may involve flushing buffers etc."""
         pass
 
-# DataFile: class that encapsulates a data block, which can be a file on disk, an item
-#    in a zip or tar/gz archive, or a memory block. It can be used as data type in the
-#    xml stores.
 class DataFile(Store.DataType):
+    """Abstract Class that encapsulates a data block, which can be a file
+    on disk, an item in a zip or tar/gz archive, or a memory block. It can be
+    used as data type in the xml stores.
+    """
     def __init__(self,name=''):
         Store.DataType.__init__(self)
         self.name = None
     
     @staticmethod
     def load(node,context):
+        """Loads the data file from the specified XML node. Currently the XML node
+        should contain the name of the data object within its container, and the
+        container (DataContainer instance) should be specified through the context
+        dictionary.
+        """
         assert 'container' in context
         if 'cache' in context:
             uniquename = DataFile.getUniqueNodeName(node)
@@ -459,6 +433,11 @@ class DataFile(Store.DataType):
         return container.getItem(name)
 
     def save(self,node,context):
+        """Saves the DataFile to the specified XML node. Currently the node will
+        contain the name of the datafile within its container (DataContainer
+        instance). The container itself is then saved through the persist method
+        below.
+        """
         if 'cache' not in context: context['cache'] = {}
         cache = context['cache']
         uniquename = DataFile.getUniqueNodeName(node)
@@ -470,6 +449,10 @@ class DataFile(Store.DataType):
             common.setNodeText(node,'')
 
     def preparePersist(self,node,context):
+        """Prepares the data file object for being saved to persistent storage.
+        Currently, this method checks whether the upcoming save will overwrite
+        the current data file. If so, the data file is first read into memory.
+        """
         assert 'targetcontainerpath' in context, 'preparePersist: "targetcontainerpath" not set in XML store context.'
         if not self.isValid(): return
         targetpath = context['targetcontainerpath']
@@ -479,12 +462,17 @@ class DataFile(Store.DataType):
             memdf.save(node,context)
 
     def persist(self,node,context):
+        """Saves the data file to persistent storage. The container to save to
+        must be specified via the "targetcontainer" key in the context dictionary.
+        Additionally, the "donotclaimtarget" may be set to True to prevent future
+        use of the new container as source of the data file.
+        """
         assert 'targetcontainer' in context, 'persist: "targetcontainer" not set in XML store context.'
         if not self.isValid(): return
         targetcontainer = context['targetcontainer']
         newname = node.localName+'.dat'
         df = targetcontainer.addItem(self,newname)
-        if ('donotclaimtarget' in context) and context['donotclaimtarget']:
+        if context.get('donotclaimtarget',False):
             common.setNodeText(node,df.name)
             df.release()
         else:
@@ -492,6 +480,9 @@ class DataFile(Store.DataType):
 
     @staticmethod
     def getUniqueNodeName(node):
+        """Returns a unique name for the specified node, usable as index into
+        a container-wide cache.
+        """
         path = []
         while node.parentNode.parentNode!=None:
             path.append(node.localName)
@@ -499,22 +490,46 @@ class DataFile(Store.DataType):
         return '/'.join(path)
 
     def isValid(self):
+        """Returns True if the data file object is valid (has data associated
+        with it; False if not.
+        """
         return self.name!=None
 
-    # Default implementation of getAsReadOnlyFile: uses getData
     def getAsReadOnlyFile(self,textmode=True):
+        """Returns the data stored in the data file as a read-only, file-like
+        object.
+        
+        The default implementation reads all data into memory
+        (using DataFile.getData), then returns a StringIO object that
+        encapsulates the data block in memory.
+        
+        Deriving classes MUST implement getAsReadOnlyFile and/or getData!
+        """
         data = self.getData(textmode=textmode,readonly=True)
         return StringIO.StringIO(data)
 
-    # Default implementation of getData: uses getAsReadOnlyFile
     def getData(self,textmode=True,readonly=False):
+        """Returns the contents of the data file as a string of bytes.
+        
+        The default implementation accesses the data through a file-like object
+        (obtained through getAsReadOnlyFile), then reads and returns all its
+        data.
+        
+        Deriving classes MUST implement getAsReadOnlyFile and/or getData!
+        """
         f = self.getAsReadOnlyFile(textmode=textmode)
         data = f.read()
         f.close()
         return data
 
-    # Default implementation of saveToFile: uses the read-only file object returned by getAsReadOnlyFile
     def saveToFile(self,targetpath):
+        """Saves the contents of the data file to the specified path in the file
+        system.
+        
+        The default implementation accesses the data through a file-like object
+        (obtained through getAsReadOnlyFile), then reads from this stream while
+        writing to disk (using shutil.copyfileobj).
+        """
         assert self.isValid(), 'saveToFile: DataFile is not valid (i.e., empty).'
         fsource = self.getAsReadOnlyFile(textmode=False)
         ftarget = open(targetpath,'wb')
@@ -522,13 +537,21 @@ class DataFile(Store.DataType):
         ftarget.close()
         fsource.close()
 
-    # Default implementation of addToZip: uses the read-only file object returned by getAsReadOnlyFile
     def addToZip(self,zfile,filename):
+        """Adds the contents of the data file to a ZIP archive. (zipfile.ZipFile)
+        
+        The default implementation loads all data into memory (via
+        DataFile.getData), then writes it all to the archive.
+        """
         assert self.isValid(), 'addToZip: DataFile is not valid (i.e., empty).'
         zfile.writestr(str(filename),self.getData(textmode=False,readonly=True))
 
-    # Default implementation of addToTar: uses the read-only file object returned by getAsReadOnlyFile
     def addToTar(self,tfile,filename):
+        """Adds the contents of the data file to a tar.gz archive (tarfile.TarFile)
+        
+        The default implementation loads all data into memory (via
+        DataFile.getData), then writes it all to the archive.
+        """
         assert self.isValid(), 'addToTar: DataFile is not valid (i.e., empty).'
         data = self.getData(textmode=False,readonly=True)
         tarinfo = tarfile.TarInfo(filename)
@@ -537,18 +560,32 @@ class DataFile(Store.DataType):
         tarinfo.mtime = time.time()
         tfile.addfile(tarinfo,StringIO.StringIO(data))
 
-    # Default implementation of isBelowPath: returns False.
     def isBelowPath(self,path):
+        """Returns True if the data file is located somewhere below the specified
+        path.
+        
+        This is used in DataFile.preparePersist to check whether the data file
+        would be overwritten if the specified path is saved to.
+        """
         return False
 
     def getSize(self):
+        """Returns the size (in number of bytes) of the data file.
+        """
         return None
-        # Below an expensive way to get the size. Disabled: if the user really wants this,
-        # he should do it himself.
+        # Below an expensive way to get the size. Disabled: if the user really
+        # wants this, he should do it himself.
         return len(self.getData(textmode=False,readonly=True))
 
 class DataContainerDirectory(DataContainer):
+    """A DataContainer implementation for a directory in the file system.
+    """
+    
     class DataFileFile(DataFile):
+        """A DataFile implementation for a file in the file system. Default
+        implementations of DataFile are (implicitly) used where suitable, and
+        replaced where a custom implementation is more efficient.
+        """
         def __init__(self,path):
             DataFile.__init__(self)
             assert os.path.isfile(path), 'Specified path "%s" is not a file.' % path
@@ -562,31 +599,50 @@ class DataContainerDirectory(DataContainer):
             self.unlink()
 
         def getAsReadOnlyFile(self,textmode=True):
+            """Returns the data stored in the data file as a read-only, file-like
+            object.
+            """
             if textmode:
                 return open(self.path,'rU')
             else:
                 return open(self.path,'rb')
 
         def saveToFile(self,targetpath):
+            """Saves the contents of the data file to the specified path in the file
+            system.
+            """
             if self.path==targetpath: return
             shutil.copyfile(self.path,targetpath)
 
         def addToZip(self,zfile,filename):
+            """Adds the contents of the data file to a ZIP archive. (zipfile.ZipFile)
+            """
             assert self.isValid()
             zfile.write(self.path,str(filename))
 
         def addToTar(self,tfile,filename):
+            """Adds the contents of the data file to a tar.gz archive (tarfile.TarFile)
+            """
             assert self.isValid()
             tfile.add(self.path,filename,recursive=False)
 
         def isBelowPath(self,path):
+            """Returns True if the data file is located somewhere below the specified
+            path.
+            
+            This is used in DataFile.preparePersist to check whether the data file
+            would be overwritten if the specified path is saved to.
+            """
             owndir = os.path.normcase(os.path.dirname(self.path))
             return owndir.startswith(os.path.normcase(path))
 
         def getSize(self):
+            """Returns the size (in number of bytes) of the data file.
+            """
             return os.path.getsize(self.path)
 
         def unlink(self):
+            """Destroys the data file object. This closes open streams etc."""
             if self.file==None: return
             self.file.close()
             self.file = None
@@ -602,11 +658,17 @@ class DataContainerDirectory(DataContainer):
         self.path = path
 
     def getItem(self,name):
+        """Returns specified file from the directory as DataFile object.
+        """
         sourcepath = os.path.join(self.path,name)
         if not os.path.isfile(sourcepath): return None
         return self.DataFileFile(sourcepath)
 
     def addItem(self,datafile,newname=None):
+        """Adds a DataFile object to the directory. If a name for the object
+        is provided, it is used instead of the name currently associated with
+        the supplied DataFile object.
+        """
         assert datafile.isValid()
         if newname==None: newname = datafile.name
         targetpath = os.path.join(self.path,newname)
@@ -614,13 +676,22 @@ class DataContainerDirectory(DataContainer):
         return self.DataFileFile(targetpath)
 
     def listFiles(self):
+        """Returns a list of all files in the directory.
+        """
         res = []
         for fn in os.listdir(self.path):
             if os.path.isfile(os.path.join(self.path,fn)): res.append(fn)
         return res
 
 class DataContainerZip(DataContainer):
+    """A DataContainer implementation for zip archives.
+    """
+
     class DataFileZip(DataFile):
+        """A DataFile implementation for a file in a zip archive. Default
+        implementations of DataFile are (implicitly) used where suitable, and
+        replaced where a custom implementation is more efficient.
+        """
         def __init__(self,zipcontainer,name):
             DataFile.__init__(self)
             self.zipcontainer = zipcontainer
@@ -631,19 +702,30 @@ class DataContainerZip(DataContainer):
             self.unlink()
 
         def getData(self,textmode=True,readonly=False):
+            """Returns the contents of the data file as a string of bytes.
+            """
             assert self.zipcontainer!=None, 'DataFileZip.getData failed; ZIP file has been closed.'
             self.zipcontainer.setMode('r')
             return self.zipcontainer.zfile.read(self.name)
 
         def isBelowPath(self,path):
+            """Returns True if the data file is located somewhere below the specified
+            path.
+            
+            This is used in DataFile.preparePersist to check whether the data file
+            would be overwritten if the specified path is saved to.
+            """
             assert self.zipcontainer!=None, 'DataFileZip.isBelowPath failed; ZIP file has been closed.'
             owndir = os.path.normcase(self.zipcontainer.path)
             return owndir.startswith(os.path.normcase(path))
 
         def getSize(self):
+            """Returns the size (in number of bytes) of the data file.
+            """
             return self.zipcontainer.zfile.getinfo(self.name).file_size
 
         def unlink(self):
+            """Destroys the data file object. This closes open streams etc."""
             if self.zipcontainer==None: return
             self.zipcontainer.release()
             self.zipcontainer = None
@@ -668,6 +750,9 @@ class DataContainerZip(DataContainer):
         self.unlink()
 
     def unlink(self):
+        """Destroys the data container object. This closes open streams,
+        closes open files, cleans up, etc.
+        """
         if self.zfile==None: return
         self.zfile.close()
         self.zfile = None
@@ -676,10 +761,49 @@ class DataContainerZip(DataContainer):
         self.path = None
     
     def getItem(self,name):
+        """Returns specified file from the zip archive as DataFile object.
+        """
         if name not in self.listFiles(): return None
         return self.DataFileZip(self,name)
 
+    def addItem(self,datafile,newname=None):
+        """Adds a DataFile object to the zip archive. If a name for the object
+        is provided, it is used instead of the name currently associated with
+        the supplied DataFile object.
+        """
+        if newname==None: newname = datafile.name
+        if self.mode=='r': self.setMode('a')
+        if isinstance(self.path,StringIO.StringIO):
+            print 'Adding "%s" to in-memory archive...' % (newname,)
+        else:
+            print 'Adding "%s" to archive "%s"...' % (newname,self.path)
+        datafile.addToZip(self.zfile,newname)
+        return self.DataFileZip(self,newname)
+
+    def listFiles(self):
+        """Returns a list of all files in the zip archive.
+        """
+        return self.zfile.namelist()
+
+    def persistChanges(self):
+        """Makes sure all changes to the container are saved to persistent
+        storage. This may involve flushing buffers etc.
+        """
+        if self.zfile==None: return
+        if isinstance(self.path,basestring):
+            # Immediately re-open the ZIP file so we keep a lock on it.
+            self.setMode('r')
+        else:
+            # No way to re-open the zip file because the source path is not set.
+            # (could be a file in memory). Close it to make any changes
+            # persistent - the object will be useless after this!!
+            self.zfile.close()
+            self.zfile = None
+
     def setMode(self,mode):
+        """Switches the mode (read, write, append) in which the zip archive
+        is accessed.
+        """
         assert mode in ('r','w','a'), 'DataContainerZip.setMode: mode must be "r", "w", or "a" (not "%s").' % mode
         if self.zfile!=None:
             if mode==self.mode: return
@@ -698,30 +822,14 @@ class DataContainerZip(DataContainer):
             # Reading from/writing to file.
             self.zfile = zipfile.ZipFile(self.path,self.mode,zipfile.ZIP_DEFLATED)
 
-    def addItem(self,datafile,newname=None):
-        if newname==None: newname = datafile.name
-        if self.mode=='r': self.setMode('a')
-        if isinstance(self.path,StringIO.StringIO):
-            print 'Adding "%s" to in-memory archive...' % (newname,)
-        else:
-            print 'Adding "%s" to archive "%s"...' % (newname,self.path)
-        datafile.addToZip(self.zfile,newname)
-        return self.DataFileZip(self,newname)
-
-    def listFiles(self):
-        return self.zfile.namelist()
-
-    def persistChanges(self):
-        if self.zfile==None: return
-        if isinstance(self.path,basestring):
-            # Immediately re-open the ZIP file so we keep a lock on it.
-            self.setMode('r')
-        else:
-            self.zfile.close()
-            self.zfile = None
-
 class DataContainerTar(DataContainer):
+    """A DataContainer implementation for tar and tar.gz archives.
+    """
     class DataFileTar(DataFile):
+        """A DataFile implementation for a file in a tar archive. Default
+        implementations of DataFile are (implicitly) used where suitable, and
+        replaced where a custom implementation is more efficient.
+        """
         def __init__(self,tarcontainer,name):
             DataFile.__init__(self)
             self.tarcontainer = tarcontainer
@@ -732,19 +840,31 @@ class DataContainerTar(DataContainer):
             self.unlink()
 
         def getAsReadOnlyFile(self,textmode=True):
+            """Returns the data stored in the data file as a read-only, file-like
+            object.
+            """
             assert self.tarcontainer!=None, 'DataFileTar.getAsReadOnlyFile failed; TAR file has been closed.'
             self.tarcontainer.setMode('r')
             return self.tarcontainer.tfile.extractfile(self.name)
 
         def isBelowPath(self,path):
+            """Returns True if the data file is located somewhere below the specified
+            path.
+            
+            This is used in DataFile.preparePersist to check whether the data file
+            would be overwritten if the specified path is saved to.
+            """
             assert self.tarcontainer!=None, 'DataFileTar.isBelowPath failed; TAR file has been closed.'
             owndir = os.path.normcase(self.tarcontainer.path)
             return owndir.startswith(os.path.normcase(path))
 
         def getSize(self):
+            """Returns the size (in number of bytes) of the data file.
+            """
             return self.tarcontainer.tfile.getmember(self.name).size
 
         def unlink(self):
+            """Destroys the data file object. This closes open streams etc."""
             if self.tarcontainer == None: return
             self.tarcontainer.release()
             self.tarcontainer = None
@@ -761,16 +881,47 @@ class DataContainerTar(DataContainer):
         self.unlink()
 
     def unlink(self):
+        """Destroys the data container object. This closes open streams,
+        closes open files, cleans up, etc.
+        """
         if self.tfile==None: return
         self.tfile.close()
         self.mode = None
         self.tfile = None
     
     def getItem(self,name):
+        """Returns specified file from the zip archive as DataFile object.
+        """
         if name not in self.listFiles(): return None
         return self.DataFileTar(self,name)
 
+    def addItem(self,datafile,newname=None):
+        """Adds a DataFile object to the tar archive. If a name for the object
+        is provided, it is used instead of the name currently associated with
+        the supplied DataFile object.
+        """
+        if newname==None: newname = datafile.name
+        if self.mode=='r': self.setMode('a')
+        print 'Adding "%s" to archive "%s"...' % (newname,self.path)
+        datafile.addToTar(self.tfile,newname)
+        return self.DataFileTar(self,newname)
+
+    def listFiles(self):
+        """Returns a list of all files in the tar archive.
+        """
+        return self.tfile.getnames()
+
+    def persistChanges(self):
+        """Makes sure all changes to the container are saved to persistent
+        storage. This may involve flushing buffers etc.
+        """
+        if self.tfile==None: return
+        self.setMode('r')
+
     def setMode(self,mode):
+        """Switches the mode (read, write) in which the tar archive
+        is accessed.
+        """
         assert mode in ('r','w'), 'DataContainerZip.setMode: mode must be "r" or "w" (not "%s").' % mode
         if mode=='w': mode='w:gz'
         if self.tfile!=None:
@@ -779,21 +930,11 @@ class DataContainerTar(DataContainer):
         self.mode = mode
         self.tfile = tarfile.open(str(self.path),self.mode)
 
-    def addItem(self,datafile,newname=None):
-        if newname==None: newname = datafile.name
-        if self.mode=='r': self.setMode('a')
-        print 'Adding "%s" to archive "%s"...' % (newname,self.path)
-        datafile.addToTar(self.tfile,newname)
-        return self.DataFileTar(self,newname)
-
-    def listFiles(self):
-        return self.tfile.getnames()
-
-    def persistChanges(self):
-        if self.tfile==None: return
-        self.setMode('r')
-
 class DataFileXmlNode(DataFile):
+    """A DataFile implementation for an XML DOM node. Default
+    implementations of DataFile are (implicitly) used where suitable, and
+    replaced where a custom implementation is more efficient.
+    """
     def __init__(self,xmlnode,name=''):
         DataFile.__init__(self)
         self.xmlnode = xmlnode
@@ -803,19 +944,30 @@ class DataFileXmlNode(DataFile):
         self.unlink()
 
     def getData(self,textmode=True,readonly=False):
+        """Returns the contents of the XML node as a string of bytes (XML).
+        """
         return self.xmlnode.toxml('utf-8')
 
     def saveToFile(self,targetpath):
+        """Saves the contents of the XML node to a file at the specified path.
+        UTF-8 encoding is used.
+        """
         import codecs
         f = codecs.open(targetpath,'w','utf-8')
         self.xmlnode.writexml(f,encoding='utf-8')
         f.close()
 
     def unlink(self):
+        """Destroys the data file and performs clean up.
+        """
         self.xmlnode = None
         self.name = None
 
 class DataFileMemory(DataFile):
+    """A DataFile implementation for an in-memory data block. Default
+    implementations of DataFile are (implicitly) used where suitable, and
+    replaced where a custom implementation is more efficient.
+    """
     def __init__(self,data,name):
         DataFile.__init__(self)
         self.data = data
@@ -826,22 +978,34 @@ class DataFileMemory(DataFile):
 
     @staticmethod
     def fromDataFile(df):
+        """Creates a DataFileMemory object from another data file.
+        (this means the contents of the other file is read completely into memory)
+        """
         return DataFileMemory(df.getData(),df.name)
 
     def getAsReadOnlyFile(self,textmode=True):
+        """Returns the data stored in the data file as a read-only, file-like
+        object.
+        """
         return StringIO.StringIO(self.data)
 
     def getData(self,textmode=True,readonly=False):
+        """Returns the contents of the object as a string of bytes.
+        """
         if readonly:
             return self.data
         else:
             return self.data[:]
 
     def unlink(self):
+        """Destroys the data file and performs clean up.
+        """
         self.data = None
         self.name = None
 
     def getSize(self):
+        """Returns the size (in number of bytes) of the data file.
+        """
         return len(self.data)
 
 class Schema:
@@ -884,18 +1048,26 @@ class Schema:
         else:
             assert False, 'Supplied argument must either be a string or an XML DOM tree. Got %s.' % source
             
+        Schema.resolveLinks(self.dom,path)
+
+        # For every variable: build a list of variables/folders that depend on its value.
+        self.buildDependencies()
+
+    @staticmethod
+    def resolveLinks(dom,sourcepath):
         # Resolve links to external documents
-        links = self.dom.getElementsByTagName('link')
-        templates = dict([(node.getAttribute('id'),node) for node in self.dom.getElementsByTagName('template')])
+        links = dom.getElementsByTagName('link')
+        templates = dict([(node.getAttribute('id'),node) for node in dom.getElementsByTagName('template')])
         for link in links:
             assert link.hasAttribute('path') or link.hasAttribute('template'), 'Link node does not have "path" or "template" attribute.'
             
             if link.hasAttribute('path'):
                 # We need to copy from an external XML document.
-                refpath = os.path.abspath(os.path.join(os.path.dirname(path),link.getAttribute('path')))
-                if not os.path.isfile(refpath):
-                    raise Exception('Linked XML schema file "%s" does not exist.' % refpath)
-                childdom = xml.dom.minidom.parse(refpath)
+                linkedpath = os.path.abspath(os.path.join(os.path.dirname(sourcepath),link.getAttribute('path')))
+                if not os.path.isfile(linkedpath):
+                    raise Exception('Linked XML schema file "%s" does not exist.' % linkedpath)
+                childdom = xml.dom.minidom.parse(linkedpath)
+                Schema.resolveLinks(childdom,linkedpath)
                 templateroot = childdom.documentElement
             else:
                 # We need to copy from an internal template.
@@ -907,22 +1079,20 @@ class Schema:
             linkparent = link.parentNode
             if link.hasAttribute('skiproot'):
                 for ch in templateroot.childNodes:
-                    newnode = common.copyNode(ch,linkparent,targetdoc=self.dom)
+                    newnode = common.copyNode(ch,linkparent,targetdoc=dom)
             else:
-                newnode = common.copyNode(templateroot,linkparent,targetdoc=self.dom,name='element',before=link)
+                newnode = common.copyNode(templateroot,linkparent,targetdoc=dom,name='element',before=link)
                 
                 # Copy attributes and children of link node to new node.
                 for key in link.attributes.keys():
                     if key not in ('path','template','skiproot'):
                         newnode.setAttribute(key,link.getAttribute(key))
                 for ch in link.childNodes:
-                    common.copyNode(ch,newnode,targetdoc=self.dom)
+                    common.copyNode(ch,newnode,targetdoc=dom)
                     
             # Remove link node
             linkparent.removeChild(link)
-        
-        # For every variable: build a list of variables/folders that depend on its value.
-        self.buildDependencies()
+        return len(links)>0
         
     def getRoot(self):
         """Returns the root of the schema DOM tree."""
@@ -1306,7 +1476,7 @@ class TypedStore(common.referencedobject):
                     for valuechild in valuechildren:
                         self.children.append(TypedStore.Node(self.controller,templatechild,valuechild,childloc,parent=self))
 
-            # Check for exisitng value nodes that are not in the template.
+            # Check for existing value nodes that are not in the template.
             if self.valuenode!=None:
                 for ch in [ch for ch in self.valuenode.childNodes if ch.nodeType==ch.ELEMENT_NODE and ch.localName not in ids]:
                     print 'WARNING! Value "%s" below "%s" was unexpected and will be ignored.' % (ch.localName,self.location)
@@ -1396,20 +1566,27 @@ class TypedStore(common.referencedobject):
             the read-only attribute.
             """
             # First clear children.
+            cleared = True
             if recursive:
                 if deleteclones: self.removeAllChildren()
                 for ch in self.children:
-                    ch.clearValue(recursive=True,skipreadonly=skipreadonly,deleteclones=deleteclones)
+                    if not ch.clearValue(recursive=True,skipreadonly=skipreadonly,deleteclones=deleteclones):
+                        cleared = False
                 
-            # Do not clear if (1) it is already cleared, (2) it is read-only and the user wants to respect that,
-            # or (3) it is the root node.
-            if self.valuenode==None or (skipreadonly and self.isReadOnly()) or self.parent==None: return
+            # Do not clear if (1) it is already cleared (result: success), (2) it is
+            # read-only and the user wants to respect that (result: failure),
+            # or (3) it is the root node (result: failure).
+            if self.valuenode==None: return True
+            if (skipreadonly and self.isReadOnly()) or self.parent==None: return False
             
             # Clear if (1) this node can have no value - it must occur, and (2) the attached interfaces approve.
-            if (not self.canHaveClones()) and self.controller.onBeforeChange(self,None):
+            if cleared and (not self.canHaveClones()) and self.controller.onBeforeChange(self,None):
                 self.store.clearNodeProperty(self.valuenode)
                 self.valuenode = None
                 self.controller.onChange(self,'value')
+                return True
+            else:
+                return False
 
         def getValueAsString(self,addunit = True,usedefault = False):
             """Returns a user-readable string representation of the value of the node.
@@ -1547,7 +1724,8 @@ class TypedStore(common.referencedobject):
             # Find the XML document
             doc = self.valuenode
             while doc.parentNode!=None: doc=doc.parentNode
-            
+            assert doc.nodeType==doc.DOCUMENT_NODE, 'Could not find DOM document node. Node "%s" does not have a parent.' % doc.tagName
+
             # Create the value node for the current child
             node = doc.createElementNS(self.valuenode.namespaceURI,childname)
             if id!=None: node.setAttribute('id',id)
@@ -1583,8 +1761,6 @@ class TypedStore(common.referencedobject):
             while root.valuenode==None:
                 parents.insert(0,root)
                 root = root.parent
-            doc = root.valuenode
-            while doc.parentNode!=None: doc=doc.parentNode
             valueroot = root.valuenode
             for par in parents:
                 valueroot = common.findDescendantNode(valueroot,[par.getId()],create=True)
@@ -1629,19 +1805,13 @@ class TypedStore(common.referencedobject):
             if isinstance(id,int):
                 return self.removeChildren(childname,id,id)
             else:
-                for ipos in range(len(self.children)-1,-1,-1):
-                    child = self.children[ipos]
+                for child in reversed(self.children):
                     if child.location[-1]==childname and child.getSecondaryId()==id:
-                        assert child.canHaveClones(),'Cannot remove child "%s" because it must occur exactly one time.' % childname
-                        self.controller.beforeVisibilityChange(child,False,False)
-                        child = self.children.pop(ipos)
-                        self.store.clearNodeProperty(child.valuenode)
-                        self.controller.afterVisibilityChange(child,False,False)
-                        child.destroy()
+                        self.removeChildNode(child)
                         break
                 else:
                     assert False, 'Cannot find child "%s" with id "%s".' % (childname,id)
-
+                    
         def removeChildren(self,childname,first=0,last=None):
             """Removes a (range of) optional child nodes with the specified name.
             If the last number to remove is not specified, nodes will be removed
@@ -1656,28 +1826,30 @@ class TypedStore(common.referencedobject):
                     ichildpos += 1
                     if last!=None and ichildpos>last: return
                     if ichildpos>=first:
-                        self.controller.beforeVisibilityChange(child,False,False)
-                        child = self.children.pop(ipos)
-                        self.store.clearNodeProperty(child.valuenode)
-                        self.controller.afterVisibilityChange(child,False,False)
-                        child.destroy()
+                        self.removeChildNode(child,ipos)
                         ipos -= 1
                 ipos += 1
                 
         def removeAllChildren(self,optionalonly=True):
             """Removes all optional child nodes. The "optionalonly" argument
-            is used only in recursive calls to remove every single descendant
-            of each optional node.
+            is used internally only to remove every single descendant
+            of an optional node.
             """
             for ipos in range(len(self.children)-1,-1,-1):
                 child = self.children[ipos]
                 if (not optionalonly) or child.canHaveClones():
-                    child.removeAllChildren(optionalonly=False)
-                    self.controller.beforeVisibilityChange(child,False,False)
-                    child = self.children.pop(ipos)
-                    if child.valuenode!=None: self.store.clearNodeProperty(child.valuenode)
-                    self.controller.afterVisibilityChange(child,False,False)
-                    child.destroy()
+                    self.removeChildNode(child,ipos)
+
+        def removeChildNode(self,node,pos=None):
+            if pos==None: pos = self.children.index(node)
+            node.removeAllChildren(optionalonly=False)
+            self.controller.beforeVisibilityChange(node,False,False)
+            self.children.pop(pos)
+            if node.valuenode!=None:
+                self.store.clearNodeProperty(node.valuenode)
+                node.valuenode = None
+            self.controller.afterVisibilityChange(node,False,False)
+            node.destroy()
 
         def getId(self):
             """Returns the id of the node.
@@ -1865,9 +2037,9 @@ class TypedStore(common.referencedobject):
                     self.setValue(curval)
 
             # If replacing previous contents, remove optional nodes (with minoccurs=0)
-            if replace: self.removeAllChildren()
             prevchildname = None
             index = 0
+            oldchildren = list(self.children)
             for sourcechild in sourcenode.children:
                 childname = sourcechild.location[-1]
                 if childname!=prevchildname:
@@ -1883,7 +2055,12 @@ class TypedStore(common.referencedobject):
                     child = self[childname]
                 if child==None: continue
                 child.copyFrom(sourcechild,replace=replace)
+                if child in oldchildren:
+                    oldchildren.remove(child)
                 index += 1
+            if replace:
+                for ch in oldchildren:
+                    if ch.canHaveClones(): self.removeChildNode(ch)
             
     schemas = None
     defaults = None
@@ -1891,21 +2068,33 @@ class TypedStore(common.referencedobject):
     
     @staticmethod
     def getDefaultSchemas():
+        """Returns a dictionary that links short schema names to the full schema
+        paths (XML schema file).
+        
+        This method may be overridden by deriving classes if they need the
+        ability to refer to schemas by shortcuts rather than paths.
+        """
         return {}
 
     @staticmethod
     def getDefaultValues():
+        """Returns a dictionary that links short names of default value set
+        to the paths of the value files (XML file).
+        
+        This method may be overridden by deriving classes if they need the
+        ability to refer to default value sets by shortcuts rather than paths.
+        """
         return {}
 
     @classmethod
-    def schemaname2path(cls,schemaname=None):
+    def schemaNameToPath(cls,schemaname=None):
         if cls.schemas == None:
             cls.schemas = cls.getDefaultSchemas()
         if schemaname==None: return cls.schemas
         return cls.schemas.get(schemaname,None)
 
     @classmethod
-    def defaultname2path(cls,defaultname=None):
+    def defaultNameToPath(cls,defaultname=None):
         if cls.defaults == None:
             cls.defaults = cls.getDefaultValues()
         if defaultname==None: return cls.defaults
@@ -1913,6 +2102,11 @@ class TypedStore(common.referencedobject):
 
     @classmethod
     def getDefault(cls,name,version):
+        """Returns a TypedStore with the set of default value identified by
+        the specified name, converted to the specified version if needed.
+        
+        To use this, the deriving class MUST implement getDefaultValues!
+        """
         if cls==TypedStore: return None
         if name==None: name = 'default'
         if cls.defaultname2scenarios==None: cls.defaultname2scenarios = {}
@@ -1922,7 +2116,7 @@ class TypedStore(common.referencedobject):
             return version2store[version]
         elif 'source' not in version2store:
             # We do not have any version of the requested default; first obtain the source version.
-            path = cls.defaultname2path(name)
+            path = cls.defaultNameToPath(name)
             if path==None: return None
             sourcestore = cls.fromXmlFile(path,adddefault=False)
             version2store['source'] = sourcestore
@@ -1937,8 +2131,13 @@ class TypedStore(common.referencedobject):
 
     @classmethod
     def fromSchemaName(cls,schemaname,*args,**kwargs):
+        """Returns a TypedStore based on the schema identified by the specified
+        name.
+        
+        To use this, the deriving class MUST implement getDefaultSchemas!
+        """
         assert cls!=TypedStore, 'fromSchemaName cannot be called on base class "TypedStore", only on derived classes. You need to create a derived class with versioning support.'
-        schemapath = cls.schemaname2path(schemaname)
+        schemapath = cls.schemaNameToPath(schemaname)
         if schemapath==None:
             raise Exception('Unable to locate XML schema file for "%s".' % schemaname)
         store = cls(schemapath,*args,**kwargs)
@@ -1946,6 +2145,12 @@ class TypedStore(common.referencedobject):
 
     @classmethod
     def fromXmlFile(cls,path,**kwargs):
+        """Returns a TypedStore for the values at the specified path (XML file).
+        
+        The values file is openend, its schema identified retrieved. Then the
+        program attempt to created the required schema. For this to work,
+        the deriving class must implement getDefaultSchemas.
+        """
         assert cls!=TypedStore, 'fromXmlFile cannot be called on base class "TypedStore", only on derived classes. Use setStore if you do not require versioning.'
         if not os.path.isfile(path):
             raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
@@ -2053,6 +2258,7 @@ class TypedStore(common.referencedobject):
         else:
             valuedom = valueroot
             while valuedom.parentNode!=None: valuedom = valuedom.parentNode
+            assert valuedom.nodeType==valuedom.DOCUMENT_NODE, 'Could not find DOM document node.'
 
         storeversion = valueroot.getAttribute('version')
         assert storeversion==self.version, 'Versions of the xml schema ("%s") and and the xml values ("%s") do not match.' % (self.version,storeversion)
@@ -2192,7 +2398,7 @@ class TypedStore(common.referencedobject):
 
             # Get the reference value we will compare against
             valuetype = node.getValueType()
-            refvalue = self.store.unpackvalue(nodeCondition.getAttribute('value'),valuetype)
+            refvalue = self.store.unpackValue(nodeCondition.getAttribute('value'),valuetype)
 
             # Compare
             if condtype=='eq': return (curvalue==refvalue)
@@ -2536,7 +2742,7 @@ class TypedStore(common.referencedobject):
         else:
             self.path = None
 
-    def toxml(self,enc='utf-8'):
+    def toXml(self,enc='utf-8'):
         """Returns the values as an XML string, with specified encoding."""
         return self.store.xmldocument.toxml(enc)
 
