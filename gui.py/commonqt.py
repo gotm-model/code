@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.44 2007-10-15 06:45:09 jorn Exp $
+#$Id: commonqt.py,v 1.45 2007-10-18 06:40:14 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -1074,20 +1074,22 @@ class PropertyDelegate(QtGui.QItemDelegate):
             editor = QtGui.QLineEdit(parent)
         elif nodetype=='int':
             editor = QtGui.QSpinBox(parent)
-            if templatenode.hasAttribute('minimum'):
-                editor.setMinimum(int(templatenode.getAttribute('minimum')))
+            if templatenode.hasAttribute('minInclusive'):
+                editor.setMinimum(int(templatenode.getAttribute('minInclusive')))
             else:
                 editor.setMinimum(-sys.maxint-1)
-            if templatenode.hasAttribute('maximum'):
-                editor.setMaximum(int(templatenode.getAttribute('maximum')))
+            if templatenode.hasAttribute('maxInclusive'):
+                editor.setMaximum(int(templatenode.getAttribute('maxInclusive')))
             else:
                 editor.setMaximum(sys.maxint)
             unit = node.getUnit()
             if unit!=None: editor.setSuffix(' '+unit)
         elif nodetype=='float':
             editor = ScientificDoubleEditor(parent)
-            if templatenode.hasAttribute('minimum'): editor.setMinimum(float(templatenode.getAttribute('minimum')))
-            if templatenode.hasAttribute('maximum'): editor.setMaximum(float(templatenode.getAttribute('maximum')))
+            if templatenode.hasAttribute('minInclusive'):
+                editor.setMinimum(float(templatenode.getAttribute('minInclusive')))
+            if templatenode.hasAttribute('maxInclusive'):
+                editor.setMaximum(float(templatenode.getAttribute('maxInclusive')))
             unit = node.getUnit()
             if unit!=None: editor.setSuffix(' '+unit)
             self.currenteditor = editor
@@ -1231,8 +1233,8 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         else:
             parentnode = parent.internalPointer()
         child = self.storeinterface.getChildByIndex(parentnode,irow)
-        assert child!=None, 'Cannot find child with index %i below %s.' % (irow,parentnode)
-        assert isinstance(child,xmlstore.TypedStore.Node), 'Object returned by getChildByIndex is not of type "Node" (but "%s").' % child
+        if child==None: return QtCore.QModelIndex()
+        assert isinstance(child,xmlstore.Node), 'Object returned by getChildByIndex is not of type "Node" (but "%s").' % child
         return self.createIndex(irow,icolumn,child)
 
     # parent (inherited from QtCore.QAbstractItemModel)
@@ -1242,9 +1244,9 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         assert index.isValid(), 'Asked for parent of root node (invalid index), but Qt asker knows it is the root.'
 
         current = index.internalPointer()
-        assert isinstance(current,xmlstore.TypedStore.Node), 'Node data is not a TypedStore.Node, but: %s.' % current
+        assert isinstance(current,xmlstore.Node), 'Node data is not a Node, but: %s.' % current
         parent = self.storeinterface.getParent(current)
-        assert isinstance(parent,xmlstore.TypedStore.Node), 'Object returned by getParent is not of type "Node" (but "%s").' % (parent,)
+        assert isinstance(parent,xmlstore.Node), 'Object returned by getParent is not of type "Node" (but "%s").' % (parent,)
 
         assert parent!=None, 'We were asked for the parent of the actual root, but we should never have been able to get so far up the tree.'
         
@@ -1298,8 +1300,8 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                     else:
                         text += optionnode.getAttribute('label')
             elif nodetype=='int' or nodetype=='float':
-                if templatenode.hasAttribute('minimum'): text += '\nminimum value: '+templatenode.getAttribute('minimum')
-                if templatenode.hasAttribute('maximum'): text += '\nmaximum value: '+templatenode.getAttribute('maximum')
+                if templatenode.hasAttribute('minInclusive'): text += '\nminimum value: '+templatenode.getAttribute('minInclusive')
+                if templatenode.hasAttribute('maxInclusive'): text += '\nmaximum value: '+templatenode.getAttribute('maxInclusive')
             return QtCore.QVariant(text)
         elif role==QtCore.Qt.TextColorRole:
             if self.nohide and not node.visible:
@@ -1351,13 +1353,13 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 return QtCore.QVariant(font)
             elif role==QtCore.Qt.DisplayRole:
                 if fieldtype=='color':
-                    value = node.getValueOrDefault()
+                    value = node.getValue(usedefault=True)
                     pm = QtGui.QPixmap(10,10)
                     pm.fill(QtGui.QColor(value.red,value.green,value.blue))
                     return QtCore.QVariant(pm)
                 return QtCore.QVariant(node.getValueAsString(usedefault=True))
             elif role==QtCore.Qt.EditRole:
-                value = node.getValueOrDefault()
+                value = node.getValue(usedefault=True)
                 if value==None: return QtCore.QVariant()
                 if fieldtype=='datetime':
                     # First convert Python datetime to QDateTime, then cast to variant.
@@ -1417,17 +1419,17 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         elif fieldtype=='int':
             value,converted = value.toInt()
             if not converted: return False
-            if templatenode.hasAttribute('minimum'):
-                if value<int(templatenode.getAttribute('minimum')): return False
-            if templatenode.hasAttribute('maximum'):
-                if value>int(templatenode.getAttribute('maximum')): return False
+            if templatenode.hasAttribute('minInclusive'):
+                if value<int(templatenode.getAttribute('minInclusive')): return False
+            if templatenode.hasAttribute('maxInclusive'):
+                if value>int(templatenode.getAttribute('maxInclusive')): return False
         elif fieldtype=='float':
             value,converted = value.toDouble()
             if not converted: return False
-            if templatenode.hasAttribute('minimum'):
-                if value<float(templatenode.getAttribute('minimum')): return False
-            if templatenode.hasAttribute('maximum'):
-                if value>float(templatenode.getAttribute('maximum')): return False
+            if templatenode.hasAttribute('minInclusive'):
+                if value<float(templatenode.getAttribute('minInclusive')): return False
+            if templatenode.hasAttribute('maxInclusive'):
+                if value>float(templatenode.getAttribute('maxInclusive')): return False
         elif fieldtype=='bool':
             value = value.toBool()
         elif fieldtype=='datetime':
@@ -1484,7 +1486,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         return QtCore.QVariant()
 
     def beforeNodeVisibilityChange(self,node,newvisibility,showhide):
-        assert isinstance(node,xmlstore.TypedStore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
+        assert isinstance(node,xmlstore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
         if self.nohide and showhide: return
         irow = self.storeinterface.getOwnIndex(node)
         index = self.createIndex(irow,1,node)
@@ -1495,7 +1497,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             self.beginRemoveRows(par,irow,irow)
 
     def afterNodeVisibilityChange(self,node,newvisibility,showhide):
-        assert isinstance(node,xmlstore.TypedStore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
+        assert isinstance(node,xmlstore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
         if self.nohide and showhide: return self.onNodeChanged(node,'visibility',headertoo=True)
         if newvisibility:
             self.endInsertRows()
@@ -1503,7 +1505,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             self.endRemoveRows()
 
     def onNodeChanged(self,node,feature,headertoo = False):
-        assert isinstance(node,xmlstore.TypedStore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
+        assert isinstance(node,xmlstore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
         irow = self.storeinterface.getOwnIndex(node)
         index = self.createIndex(irow,1,node)
         self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
@@ -1915,7 +1917,7 @@ class PropertyEditorFactory:
 
     def createEditor(self,location,parent,allowhide=None,**kwargs):
         assert location!=None, 'Specified node is None (non-existent?).'
-        if isinstance(location,xmlstore.TypedStore.Node):
+        if isinstance(location,xmlstore.Node):
             node = location
         else:
             node = self.store[location]
@@ -2145,12 +2147,12 @@ class PropertyEditor:
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='int':
             editor = QtGui.QSpinBox(parent)
-            if templatenode.hasAttribute('minimum'):
-                editor.setMinimum(int(templatenode.getAttribute('minimum')))
+            if templatenode.hasAttribute('minInclusive'):
+                editor.setMinimum(int(templatenode.getAttribute('minInclusive')))
             else:
                 editor.setMinimum(-sys.maxint-1)
-            if templatenode.hasAttribute('maximum'):
-                editor.setMaximum(int(templatenode.getAttribute('maximum')))
+            if templatenode.hasAttribute('maxInclusive'):
+                editor.setMaximum(int(templatenode.getAttribute('maxInclusive')))
             else:
                 editor.setMaximum(sys.maxint)
             if self.unitinside:
@@ -2159,10 +2161,10 @@ class PropertyEditor:
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='float':
             editor = ScientificDoubleEditor(parent)
-            if templatenode.hasAttribute('minimum'):
-                editor.setMinimum(float(templatenode.getAttribute('minimum')))
-            if templatenode.hasAttribute('maximum'):
-                editor.setMaximum(float(templatenode.getAttribute('maximum')))
+            if templatenode.hasAttribute('minInclusive'):
+                editor.setMinimum(float(templatenode.getAttribute('minInclusive')))
+            if templatenode.hasAttribute('maxInclusive'):
+                editor.setMaximum(float(templatenode.getAttribute('maxInclusive')))
             if self.unitinside:
                 unit = node.getUnit()
                 if unit!=None: editor.setSuffix(' '+unit)
@@ -2219,7 +2221,7 @@ class PropertyEditor:
     def setEditorData(self,editor,node):
         if isinstance(editor,QtGui.QGroupBox): return
         self.suppresschangeevent = True
-        value = node.getValueOrDefault()
+        value = node.getValue(usedefault=True)
         nodetype = node.getValueType()
         if value==None:
             if nodetype=='string':
@@ -2617,7 +2619,7 @@ class FigurePanel(QtGui.QWidget):
         yaxis = axes.getChildById('Axis','y')
         oldupdating = self.figure.setUpdating(False)
         for axis,minval,maxval in ((xaxis,Xmin,Xmax),(yaxis,Ymin,Ymax)):
-            if axis['IsTimeAxis'].getValueOrDefault():
+            if axis['IsTimeAxis'].getValue(usedefault=True):
                 axis['MinimumTime'].setValue(common.num2date(minval))
                 axis['MaximumTime'].setValue(common.num2date(maxval))
             else:

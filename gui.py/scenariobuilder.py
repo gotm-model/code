@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.26 2007-10-15 06:45:09 jorn Exp $
+#$Id: scenariobuilder.py,v 1.27 2007-10-18 06:40:14 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -19,7 +19,7 @@ class ScenarioWidget(QtGui.QWidget):
         self.radioImport2 = QtGui.QRadioButton('Import a namelist-based scenario from an archive.',self)
 
         self.labTemplate = QtGui.QLabel('Template:',self)
-        default2path = scenario.Scenario.defaultNameToPath()
+        default2path = scenario.Scenario.getDefaultValues()
         self.comboTemplates = QtGui.QComboBox(parent)
         for (name,path) in default2path.items():
             self.comboTemplates.addItem(name,QtCore.QVariant(name))
@@ -755,7 +755,7 @@ class PageAdvanced(commonqt.WizardPage):
             filenodes = []
             for fn in self.scenario.root.getNodesByType('file'):
                 if fn.isHidden(): continue
-                value = fn.getValueOrDefault()
+                value = fn.getValue(usedefault=True)
                 if value==None or not value.isValid(): filenodes.append(fn)
             if len(filenodes)>0:
                 vartext = '\n'.join([fn.getText(2) for fn in filenodes])

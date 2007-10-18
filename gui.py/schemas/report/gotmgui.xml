@@ -4,10 +4,10 @@
 		<element name="Selection">
 			<element name="VariablePath" type="string" maxoccurs="1000"/>
 		</element>
-		<element name="Width"       label="width"        type="float"    unit="cm"  minimum="1"/>
-		<element name="Height"      label="height"       type="float"    unit="cm"  minimum="1"/>
-		<element name="Resolution"  label="resolution"   type="int"      unit="dpi" minimum="72" maximum="2400"/>
-		<element name="FontScaling" label="font scaling" type="float"    unit="%"   minimum="1" maximum="1000"/>
+		<element name="Width"       label="width"        type="float"    unit="cm"  minInclusive="1"/>
+		<element name="Height"      label="height"       type="float"    unit="cm"  minInclusive="1"/>
+		<element name="Resolution"  label="resolution"   type="int"      unit="dpi" minInclusive="72" maxInclusive="2400"/>
+		<element name="FontScaling" label="font scaling" type="float"    unit="%"   minInclusive="1" maxInclusive="1000"/>
 		<element name="FontName"    label="font"         type="fontname"/>
 	</element>
 </element>

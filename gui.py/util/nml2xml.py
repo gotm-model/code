@@ -97,7 +97,7 @@ GOTM-GUI, while using .proto files in directory "./v3.2/templates".
         return 1
 
     # Check if we have an XML schema for the specified target scenario version.
-    schemas = scenario.Scenario.schemaNameToPath()
+    schemas = scenario.Scenario.getDefaultSchemas()
     if targetschema not in schemas:
         print 'Error! No XML schema available for specified output version "%s".' % targetschema
         return 1
@@ -125,7 +125,7 @@ GOTM-GUI, while using .proto files in directory "./v3.2/templates".
         # Find used file nodes that have not been supplied with data.
         for fn in scen.root.getNodesByType('file'):
             if fn.isHidden(): continue
-            value = fn.getValueOrDefault()
+            value = fn.getValue(usedefault=True)
             if value==None or not value.isValid():
                 print 'ERROR: variable %s points to a non-existent data file.' % '/'.join(fn.location)
                 valid = False

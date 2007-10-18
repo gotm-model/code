@@ -26,45 +26,25 @@ class Scenario(xmlstore.TypedStore):
         Scenario.defaultdirname = os.path.join(rootpath,Scenario.defaultdirname)
         Scenario.schemadirname  = os.path.join(rootpath,Scenario.schemadirname)
 
+    schemadict = None
     @staticmethod
     def getDefaultSchemas():
-        templates = {}
-        templatedir = Scenario.schemadirname
-        if os.path.isdir(templatedir):
-            for templatename in os.listdir(templatedir):
-                fullpath = os.path.join(templatedir,templatename)
-                if os.path.isfile(fullpath):
-                    (root,ext) = os.path.splitext(templatename)
-                    if ext=='.xml':
-                        templates[root] = fullpath
-                    else:
-                        print 'WARNING: schema directory "" contains non-XML file "%s"; this file will be ignored.' % (Scenario.schemadirname,templatename)
-        else:
-            print 'WARNING: no templates will be available, because subdirectory "%s" is not present!' % Scenario.schemadirname
-        return templates
+        if Scenario.schemadict==None:
+            Scenario.schemadict = xmlstore.ShortcutDictionary.fromDirectory(Scenario.schemadirname)
+        return Scenario.schemadict
 
+    defaultdict = None
     @staticmethod
     def getDefaultValues():
-        defaultname2path = {}
-        defaultdir = Scenario.defaultdirname
-        if os.path.isdir(defaultdir):
-            for filename in os.listdir(defaultdir):
-                fullpath = os.path.join(defaultdir,filename)
-                if os.path.isfile(fullpath):
-                    (root,ext) = os.path.splitext(filename)
-                    if ext=='.xml':
-                        defaultname2path[root] = fullpath
-                    else:
-                        print 'WARNING: default directory "%s" contains non-XML file "%s"; this file will be ignored.' % (Scenario.defaultdirname,filename)
-        else:
-            print 'WARNING: no default scenarios will be available, because subdirectory "%s" is not present!' % Scenario.defaultdirname
-        return defaultname2path
+        if Scenario.defaultdict==None:
+            Scenario.defaultdict = xmlstore.ShortcutDictionary.fromDirectory(Scenario.defaultdirname)
+        return Scenario.defaultdict
 
     @staticmethod
     def fromNamelists(path,protodir=None,targetversion=None,strict = True):
         if targetversion==None: targetversion=guiscenarioversion
         
-        sourceids = Scenario.rankSources(targetversion,Scenario.schemaNameToPath().keys(),requireplatform='gotm')
+        sourceids = Scenario.rankSources(targetversion,Scenario.getDefaultSchemas().keys(),requireplatform='gotm')
         scenario = None
         failures = ''
         for sourceid in sourceids:
@@ -319,7 +299,7 @@ class Scenario(xmlstore.TypedStore):
                             if listchild.hasChildren():
                                 raise Exception('Found a folder ("%s") below branch %s/%s, where only variables are expected.' % (listchild.getId(),nmlfilename,listname))
                             varname = listchild.getId()
-                            varval = listchild.getValueOrDefault()
+                            varval = listchild.getValue(usedefault=True)
                             if varval==None:
                                 # If the variable value is not set while its node is hidden,
                                 # the variable will not be used, and we skip it silently.
@@ -380,10 +360,10 @@ class Scenario(xmlstore.TypedStore):
             datatype = 'integer'
         elif datatype=='datetime':
             datatype = 'string, format = "yyyy-mm-dd hh:mm:ss"'
-        if node.templatenode.hasAttribute('minimum'):
-            datatype += ', minimum = ' + node.templatenode.getAttribute('minimum')
-        if node.templatenode.hasAttribute('maximum'):
-            datatype += ', maximum = ' + node.templatenode.getAttribute('maximum')
+        if node.templatenode.hasAttribute('minInclusive'):
+            datatype += ', minimum = ' + node.templatenode.getAttribute('minInclusive')
+        if node.templatenode.hasAttribute('maxInclusive'):
+            datatype += ', maximum = ' + node.templatenode.getAttribute('maxInclusive')
         unit = node.getUnit()
         if unit!=None:
             datatype += ', unit = ' + unit
@@ -518,61 +498,61 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
         # ===============================================
 
         # Convert absolute time interval to relative time interval.
-        dt = source.getProperty('gotmrun/model_setup/dt')
-        target.setProperty('timeintegration/dt',xmlstore.StoreTimeDelta(seconds=dt))
-        target.setProperty('output/dtsave',xmlstore.StoreTimeDelta(seconds=dt*source.getProperty('gotmrun/output/nsave')))
+        dt = source['gotmrun/model_setup/dt'].getValue()
+        target['timeintegration/dt'].setValue(xmlstore.StoreTimeDelta(seconds=dt))
+        target['output/dtsave'].setValue(xmlstore.StoreTimeDelta(seconds=dt*source['gotmrun/output/nsave'].getValue()))
 
         # ===============================================
         #  meanflow
         # ===============================================
 
-        target.setProperty('meanflow/z0s',target.getProperty('meanflow/z0s_min'))
+        target['meanflow/z0s'].setValue(target['meanflow/z0s_min'].getValue())
         
         # ===============================================
         #  airsea
         # ===============================================
 
         # Convert calc_fluxes from boolean into integer.
-        if source.getProperty('airsea/airsea/calc_fluxes'):
-            target.setProperty('airsea/flux_source',0)
+        if source['airsea/airsea/calc_fluxes'].getValue():
+            target['airsea/flux_source'].setValue(0)
         else:
-            target.setProperty('airsea/flux_source',1)
+            target['airsea/flux_source'].setValue(1)
         
         # ===============================================
         #  obs: salinity
         # ===============================================
 
         # Merge analytical salinity profile setting into main salinity settings.
-        if source.getProperty('obs/sprofile/s_prof_method')==1:
-            target.setProperty('obs/sprofile',10+source.getProperty('obs/sprofile/s_analyt_method'))
+        if source['obs/sprofile/s_prof_method'].getValue()==1:
+            target['obs/sprofile'].setValue(10+source['obs/sprofile/s_analyt_method'].getValue())
 
         # Copy constant salinity, surface salinity from shared top layer salinity.
-        target.setProperty('obs/sprofile/s_const',target.getProperty('obs/sprofile/s_1'))
-        target.setProperty('obs/sprofile/s_surf', target.getProperty('obs/sprofile/s_1'))
+        target['obs/sprofile/s_const'].setValue(target['obs/sprofile/s_1'].getValue())
+        target['obs/sprofile/s_surf' ].setValue(target['obs/sprofile/s_1'].getValue())
 
         # Determine type of salinity relaxation.        
-        relaxbulk = source.getProperty('obs/sprofile/SRelaxTauM')<1e+15
-        relaxbott = source.getProperty('obs/sprofile/SRelaxTauB')<1e+15 and source.getProperty('obs/sprofile/SRelaxBott')>0
-        relaxsurf = source.getProperty('obs/sprofile/SRelaxTauS')<1e+15 and source.getProperty('obs/sprofile/SRelaxSurf')>0
-        target.setProperty('obs/sprofile/SRelax',relaxbulk or relaxbott or relaxsurf)
+        relaxbulk = source['obs/sprofile/SRelaxTauM'].getValue()<1e+15
+        relaxbott = source['obs/sprofile/SRelaxTauB'].getValue()<1e+15 and source['obs/sprofile/SRelaxBott'].getValue()>0
+        relaxsurf = source['obs/sprofile/SRelaxTauS'].getValue()<1e+15 and source['obs/sprofile/SRelaxSurf'].getValue()>0
+        target['obs/sprofile/SRelax'].setValue(relaxbulk or relaxbott or relaxsurf)
         
         # ===============================================
         #  obs: temperature
         # ===============================================
 
         # Merge analytical temperature profile setting into main temperature settings.
-        if source.getProperty('obs/tprofile/t_prof_method')==1:
-            target.setProperty('obs/tprofile',10+source.getProperty('obs/tprofile/t_analyt_method'))
+        if source['obs/tprofile/t_prof_method'].getValue()==1:
+            target['obs/tprofile'].setValue(10+source['obs/tprofile/t_analyt_method'].getValue())
 
         # Copy constant temperature, surface temperature from shared top layer temperature.
-        target.setProperty('obs/tprofile/t_const',target.getProperty('obs/tprofile/t_1'))
-        target.setProperty('obs/tprofile/t_surf', target.getProperty('obs/tprofile/t_1'))
+        target['obs/tprofile/t_const'].setValue(target['obs/tprofile/t_1'].getValue())
+        target['obs/tprofile/t_surf' ].setValue(target['obs/tprofile/t_1'].getValue())
 
         # Determine type of temperature relaxation.        
-        relaxbulk = source.getProperty('obs/tprofile/TRelaxTauM')<1e+15
-        relaxbott = source.getProperty('obs/tprofile/TRelaxTauB')<1e+15 and source.getProperty('obs/tprofile/TRelaxBott')>0
-        relaxsurf = source.getProperty('obs/tprofile/TRelaxTauS')<1e+15 and source.getProperty('obs/tprofile/TRelaxSurf')>0
-        target.setProperty('obs/tprofile/TRelax',relaxbulk or relaxbott or relaxsurf)
+        relaxbulk = source['obs/tprofile/TRelaxTauM'].getValue()<1e+15
+        relaxbott = source['obs/tprofile/TRelaxTauB'].getValue()<1e+15 and source['obs/tprofile/TRelaxBott'].getValue()>0
+        relaxsurf = source['obs/tprofile/TRelaxTauS'].getValue()<1e+15 and source['obs/tprofile/TRelaxSurf'].getValue()>0
+        target['obs/tprofile/TRelax'].setValue(relaxbulk or relaxbott or relaxsurf)
 
         # Note: we implicitly lose output settings out_fmt, out_dir and out_fn; the GUI scenario
         # does not support (or need) these.
@@ -593,77 +573,77 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
         # ===============================================
 
         # Move from absolute time interval between outputs to relative intervals (number of simulation steps)
-        dt = source.getProperty('timeintegration/dt').getAsSeconds()
-        target.setProperty('gotmrun/model_setup/dt',dt)
-        relinterval = int(source.getProperty('output/dtsave').getAsSeconds()/dt)
+        dt = source['timeintegration/dt'].getValue().getAsSeconds()
+        target['gotmrun/model_setup/dt'].setValue(dt)
+        relinterval = int(source['output/dtsave'].getValue().getAsSeconds()/dt)
         if relinterval<1: relinterval=1
-        target.setProperty('gotmrun/output/nsave',relinterval)
+        target['gotmrun/output/nsave'].setValue(relinterval)
 
         # Add output path and type (not present in GUI scenarios)
-        target.setProperty('gotmrun/output/out_fmt',2)
-        target.setProperty('gotmrun/output/out_dir','.')
-        target.setProperty('gotmrun/output/out_fn','result')
+        target['gotmrun/output/out_fmt'].setValue(2)
+        target['gotmrun/output/out_dir'].setValue('.')
+        target['gotmrun/output/out_fn' ].setValue('result')
 
         # ===============================================
         #  meanflow
         # ===============================================
 
         # Choose between constant and minimum surface roughness value, based on use of Charnock adaptation.
-        if not source.getProperty('meanflow/charnock'):
-            target.setProperty('gotmmean/meanflow/z0s_min',source.getProperty('meanflow/z0s'))
+        if not source['meanflow/charnock'].getValue():
+            target['gotmmean/meanflow/z0s_min'].setValue(source['meanflow/z0s'].getValue())
 
         # ===============================================
         #  airsea
         # ===============================================
 
         # Convert flux source from "select" to "bool".
-        target.setProperty('airsea/airsea/calc_fluxes',source.getProperty('airsea/flux_source')==0)
+        target['airsea/airsea/calc_fluxes'].setValue(source['airsea/flux_source'].getValue()==0)
 
         # ===============================================
         #  obs: salinity
         # ===============================================
 
         # If an analytical salinity profile is used, extract the analytical method from the main salinity setting.
-        sprofile = source.getProperty('obs/sprofile')
+        sprofile = source['obs/sprofile'].getValue()
         if sprofile>10:
-            target.setProperty('obs/sprofile/s_prof_method',1)
-            target.setProperty('obs/sprofile/s_analyt_method',sprofile-10)
+            target['obs/sprofile/s_prof_method'].setValue(1)
+            target['obs/sprofile/s_analyt_method'].setValue(sprofile-10)
 
         # Choose between constant and surface salinity based on chosen analytical method.
-        s_analyt_method = target.getProperty('obs/sprofile/s_analyt_method')
+        s_analyt_method = target['obs/sprofile/s_analyt_method'].getValue()
         if s_analyt_method==1:
-            target.setProperty('obs/sprofile/s_1',source.getProperty('obs/sprofile/s_const'))
+            target['obs/sprofile/s_1'].setValue(source['obs/sprofile/s_const'].getValue())
         elif s_analyt_method==3:
-            target.setProperty('obs/sprofile/s_1',source.getProperty('obs/sprofile/s_surf'))
+            target['obs/sprofile/s_1'].setValue(source['obs/sprofile/s_surf'].getValue())
 
         # Disable salinity relaxation where needed.
-        if not source.getProperty('obs/sprofile/SRelax'):
-            target.setProperty('obs/sprofile/SRelaxTauM',1.e15)
-            target.setProperty('obs/sprofile/SRelaxTauB',1.e15)
-            target.setProperty('obs/sprofile/SRelaxTauS',1.e15)
+        if not source['obs/sprofile/SRelax'].getValue():
+            target['obs/sprofile/SRelaxTauM'].setValue(1.e15)
+            target['obs/sprofile/SRelaxTauB'].setValue(1.e15)
+            target['obs/sprofile/SRelaxTauS'].setValue(1.e15)
 
         # ===============================================
         #  obs: temperature
         # ===============================================
 
         # If an analytical temperature profile is used, extract the analytical method from the main temperature setting.
-        tprofile = source.getProperty('obs/tprofile')
+        tprofile = source['obs/tprofile'].getValue()
         if tprofile>10:
-            target.setProperty('obs/tprofile/t_prof_method',1)
-            target.setProperty('obs/tprofile/t_analyt_method',tprofile-10)
+            target['obs/tprofile/t_prof_method'  ].setValue(1)
+            target['obs/tprofile/t_analyt_method'].setValue(tprofile-10)
 
         # Choose between constant and surface temperature based on chosen analytical method.
-        t_analyt_method = target.getProperty('obs/tprofile/t_analyt_method')
+        t_analyt_method = target['obs/tprofile/t_analyt_method'].getValue()
         if t_analyt_method==1:
-            target.setProperty('obs/tprofile/t_1',source.getProperty('obs/tprofile/t_const'))
+            target['obs/tprofile/t_1'].setValue(source['obs/tprofile/t_const'].getValue())
         elif t_analyt_method==3:
-            target.setProperty('obs/tprofile/t_1',source.getProperty('obs/tprofile/t_surf'))
+            target['obs/tprofile/t_1'].setValue(source['obs/tprofile/t_surf' ].getValue())
 
         # Disable temperature relaxation where needed.
-        if not source.getProperty('obs/tprofile/TRelax'):
-            target.setProperty('obs/tprofile/TRelaxTauM',1.e15)
-            target.setProperty('obs/tprofile/TRelaxTauB',1.e15)
-            target.setProperty('obs/tprofile/TRelaxTauS',1.e15)
+        if not source['obs/tprofile/TRelax'].getValue():
+            target['obs/tprofile/TRelaxTauM'].setValue(1.e15)
+            target['obs/tprofile/TRelaxTauB'].setValue(1.e15)
+            target['obs/tprofile/TRelaxTauS'].setValue(1.e15)
 
 Scenario.addConvertor(Convertor_gotmgui_0_5_0_to_gotm_4_1_0)
 

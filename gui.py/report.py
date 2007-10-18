@@ -49,11 +49,11 @@ class Report(common.referencedobject):
         self.defaultstore = xmlstore.TypedStore('schemas/report/gotmgui.xml')
 
         # Set some default properties.
-        self.defaultstore.setProperty('Figures/Width',10)
-        self.defaultstore.setProperty('Figures/Height',8)
-        self.defaultstore.setProperty('Figures/Resolution',96)
-        self.defaultstore.setProperty('Figures/FontScaling',100)
-        self.defaultstore.setProperty('Figures/FontName',defaultfont)
+        self.defaultstore['Figures/Width'      ].setValue(10)
+        self.defaultstore['Figures/Height'     ].setValue(8)
+        self.defaultstore['Figures/Resolution' ].setValue(96)
+        self.defaultstore['Figures/FontScaling'].setValue(100)
+        self.defaultstore['Figures/FontName'   ].setValue(defaultfont)
 
         self.store.setDefaultStore(self.defaultstore)
         
@@ -68,10 +68,10 @@ class Report(common.referencedobject):
         scenario = result.scenario
         
         # Get report settings
-        figuresize = (self.store.getProperty('Figures/Width',usedefault=True),self.store.getProperty('Figures/Height',usedefault=True))
-        dpi = self.store.getProperty('Figures/Resolution',usedefault=True)
-        fontscaling = self.store.getProperty('Figures/FontScaling',usedefault=True)
-        fontname = self.store.getProperty('Figures/FontName',usedefault=True)
+        figuresize  = (self.store['Figures/Width'     ].getValue(usedefault=True),self.store['Figures/Height'].getValue(usedefault=True))
+        dpi         = self.store['Figures/Resolution' ].getValue(usedefault=True)
+        fontscaling = self.store['Figures/FontScaling'].getValue(usedefault=True)
+        fontname    = self.store['Figures/FontName'   ].getValue(usedefault=True)
 
         # Get list of variables to plot
         selroot = self.store['Figures/Selection']
@@ -84,7 +84,7 @@ class Report(common.referencedobject):
         inputdata = []
         for node in scenario.root.getNodesByType('file'):
             if node.isHidden(): continue
-            value = node.getValueOrDefault()
+            value = node.getValue(usedefault=True)
             if value!=None and value.isValid():
                 store = data.LinkedFileVariableStore.fromNode(node)
                 inputdata.append((node,store,value))
@@ -180,7 +180,7 @@ class Report(common.referencedobject):
                     fig.setUpdating(False)
                     fig.clearProperties()
                     fig.addVariable(varid)
-                    fig.properties.setProperty('FontScaling',fontscaling)
+                    fig.properties['FontScaling'].setValue(fontscaling)
                     fig.setUpdating(True)
                     filename = 'in_'+varid+'.png'
                     outputfile = os.path.join(outputpath,filename)
@@ -225,7 +225,7 @@ class Report(common.referencedobject):
                 if not result.getFigure('result/'+varpath,fig.properties):
                     fig.clearProperties()
                     fig.addVariable(varid)
-                fig.properties.setProperty('FontScaling',fontscaling)
+                fig.properties['FontScaling'].setValue(fontscaling)
                 fig.setUpdating(True)
                 filename = 'out_'+varid+'.png'
                 outputfile = os.path.join(outputpath,filename)

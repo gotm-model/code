@@ -847,7 +847,7 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
                     delta = 1.
                     if istimedim:
                         if self.scenario!=None:
-                            delta = self.scenario.getProperty('output/dtsave',usedefault=True)
+                            delta = self.scenario['output/dtsave'].getValue(usedefault=True)
                             if delta!=None: delta = delta.getAsSeconds()/86400.
                         if delta==None:
                             if coords[0]>timeref:

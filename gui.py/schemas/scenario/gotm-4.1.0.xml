@@ -3,10 +3,10 @@
 	<element name="gotmrun" label="general">
 		<element name="model_setup" label="general model setup">
 			<element name="title" type="string" label="title of simulation" />
-			<element name="nlev" type="int" label="number of levels" minimum="1" maximum="1000" description="Number of depth levels used to describe the water column" />
-			<element name="dt" type="float" label="time step" minimum="1" maximum="86400" unit="s" description="Time step for integration" />
+			<element name="nlev" type="int" label="number of levels" minInclusive="1" maxInclusive="1000" description="Number of depth levels used to describe the water column" />
+			<element name="dt" type="float" label="time step" minInclusive="1" maxInclusive="86400" unit="s" description="Time step for integration" />
 			<element name="cnpar" type="float" label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)"
-				minimum="0" maximum="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems." />
+				minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems." />
 			<element name="buoy_method" type="select" label="method to compute mean buoyancy">
 				<options>
 					<option value="1" label="from equation of state (i.e. from potential temperature and salinity)" />
@@ -16,9 +16,9 @@
 		</element>
 		<element name="station" label="geographic location">
 			<element name="name" type="string" label="name of the station" />
-			<element name="latitude" type="float" label="latitude" minimum="-90" maximum="90" unit="º North" />
-			<element name="longitude" type="float" label="longitude" minimum="-360" maximum="360" unit="º East" />
-			<element name="depth" type="float" label="water depth" minimum="0" maximum="5000" unit="m" />
+			<element name="latitude" type="float" label="latitude" minInclusive="-90" maxInclusive="90" unit="º North" />
+			<element name="longitude" type="float" label="longitude" minInclusive="-360" maxInclusive="360" unit="º East" />
+			<element name="depth" type="float" label="water depth" minInclusive="0" maxInclusive="5000" unit="m" />
 		</element>
 		<element name="time" label="duration of run">
 			<element name="timefmt" type="select" label="method to specify start and duration of model run">
@@ -48,7 +48,7 @@
 			</element>
 			<element name="out_dir" type="string" label="path to output directory (set permissions)" />
 			<element name="out_fn" type="string" label="output string used to generate output file names" />
-			<element name="nsave" type="int" label="save results every 'nsave' timesteps" minimum="1" maximum="86400" />
+			<element name="nsave" type="int" label="save results every 'nsave' timesteps" minInclusive="1" maxInclusive="86400" />
 			<element name="diagnostics" type="bool" label="diagnostics are written to output (if .true.)" />
 			<element name="mld_method" type="select" label="how to diagnose mixed layer depth">
 				<options>
@@ -57,15 +57,15 @@
 				</options>
 				<condition type="eq" variable="./diagnostics" value="True" />
 			</element>
-			<element name="diff_k" type="float" label="TKE threshold for mixed layer depth" minimum="0"
-				maximum="1" unit="m^2/s^2">
+			<element name="diff_k" type="float" label="TKE threshold for mixed layer depth" minInclusive="0"
+				maxInclusive="1" unit="m^2/s^2">
 				<condition type="and">
 					<condition type="eq" variable="./diagnostics" value="True" />
 					<condition type="eq" variable="./mld_method" value="1" />
 				</condition>
 			</element>
-			<element name="Ri_crit" type="float" label="Ri threshold for mixed layer depth" minimum="0"
-				maximum="1000">
+			<element name="Ri_crit" type="float" label="Ri threshold for mixed layer depth" minInclusive="0"
+				maxInclusive="1000">
 				<condition type="and">
 					<condition type="eq" variable="./diagnostics" value="True" />
 					<condition type="eq" variable="./mld_method" value="2" />
@@ -155,7 +155,7 @@
 			<element name="avmolt" type="float" label="molecular diffusity for temperature" unit="m^2/s" />
 			<element name="avmols" type="float" label="molecular diffusity for salinity" unit="m^2/s" />
 			<element name="MaxItz0b" type="int" label="max # of iterations for z0b as function of u_taub"
-				minimum="1" maximum="1000" />
+				minInclusive="1" maxInclusive="1000" />
 			<element name="no_shear" type="bool" label=".true.: shear production term P is set to zero" />
 		</element>
 	</element>
@@ -187,7 +187,7 @@
 						<filevariable label="air pressure" unit="hPa" />
 						<filevariable label="air temperature" unit="°C" />
 						<filevariable label="air humidity" />
-						<filevariable label="cloud cover" minimum="0" maximum="1" />
+						<filevariable label="cloud cover" minInclusive="0" maxInclusive="1" />
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -209,14 +209,14 @@
 				</options>
 			</element>
 			<element name="const_swr" type="float" label="constant value of incoming short wave radiation"
-				unit="W/m^2" minimum="0" maximum="1000">
+				unit="W/m^2" minInclusive="0" maxInclusive="1000">
 				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False" />
 					<condition type="eq" variable="./heat_method" value="1" />
 				</condition>
 			</element>
 			<element name="const_heat" type="float" label="constant value of surface heat flux" unit="W/m^2"
-				minimum="-1000" maximum="1000">
+				minInclusive="-1000" maxInclusive="1000">
 				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False" />
 					<condition type="eq" variable="./heat_method" value="1" />
@@ -243,14 +243,14 @@
 				</options>
 			</element>
 			<element name="const_tx" type="float" label="x-component of surface momentum flux" unit="N/m^2"
-				minimum="-1000" maximum="1000">
+				minInclusive="-1000" maxInclusive="1000">
 				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False" />
 					<condition type="eq" variable="./momentum_method" value="1" />
 				</condition>
 			</element>
 			<element name="const_ty" type="float" label="y-component of surface momentum flux" unit="N/m^2"
-				minimum="-1000" maximum="1000">
+				minInclusive="-1000" maxInclusive="1000">
 				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False" />
 					<condition type="eq" variable="./momentum_method" value="1" />
@@ -276,7 +276,7 @@
 				</options>
 			</element>
 			<element name="const_p_e" type="float" label="constant value for P-E in (positive for P>E)"
-				unit="m/s" minimum="-0.01" maximum="0.01">
+				unit="m/s" minInclusive="-0.01" maxInclusive="0.01">
 				<condition type="eq" variable="./p_e_method" value="1" />
 			</element>
 			<element name="p_e_flux_file" type="file" label="file with value for P-E (positive for P>E)">
@@ -1147,7 +1147,7 @@
 				</options>
 			</element>
 			<element name="split_factor" type="int" label="number of biogeochemical time steps per physical time step"
-				minimum="1">
+				minInclusive="1">
 				<condition type="eq" variable="./bio_calc" value="True" />
 			</element>
 			<element name="bioshade_feedback" type="bool" label="feedback of bio-turbidity to temperature equation">

@@ -70,7 +70,7 @@
 				<option value="4" label="minute"/>
 			</options>
 		</element>
-		<element name="IntervalTime" type="int" label="interval" minimum="1">
+		<element name="IntervalTime" type="int" label="interval" minInclusive="1">
 			<condition type="and">
 				<condition type="eq" variable="." value="True"/>
 				<condition type="eq" variable="../IsTimeAxis" value="True"/>

@@ -1206,6 +1206,37 @@ class Schema:
         depnode.setAttribute('type',type)
         deplist.appendChild(depnode)
 
+import UserDict
+class ShortcutDictionary(UserDict.DictMixin):
+    @staticmethod
+    def fromDirectory(path,**kwargs):
+        cache = ShortcutDictionary()
+        cache.addDirectory(path,**kwargs)
+        return cache
+    
+    def __init__(self):
+        self.links = {}
+        
+    def __getitem__(self,item):
+        return self.links[item]
+        
+    def __setitem__(self,item,value):
+        self.links[item] = value
+        
+    def __delitem__(self,item):
+        del self.links[item]
+        
+    def keys(self):
+        return self.links.keys()
+        
+    def addDirectory(self,path,extension='.xml'):
+        for templatename in os.listdir(path):
+            fullpath = os.path.join(path,templatename)
+            if os.path.isfile(fullpath):
+                (basename,ext) = os.path.splitext(templatename)
+                if ext==extension:
+                    self.links[basename] = fullpath
+
 class TypedStoreInterface:
     """This class provides an interface to a TypedStore object. The interface
     can be configured at initialization to (1) hide nodes with the "hidden"
@@ -1230,7 +1261,7 @@ class TypedStoreInterface:
 
     def getChildCount(self,node):
         """Returns the number of children of the specified node."""
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         childcount = 0
         for child in node.children:
@@ -1243,7 +1274,7 @@ class TypedStoreInterface:
 
     def getChildren(self,node):
         """Returns a list of children of the specified node."""
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         res = []
         for child in node.children:
@@ -1256,7 +1287,7 @@ class TypedStoreInterface:
 
     def getParent(self,node):
         """Returns the parent of the specified node."""
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if not self.omitgroupers: return node.parent
         par = node.parent
@@ -1265,7 +1296,7 @@ class TypedStoreInterface:
 
     def getChildByIndex(self,node,index,returnindex=False):
         """Gets the child of the specified node, at the specified index."""
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         for child in node.children:
             if child.visible or self.showhidden:
@@ -1282,7 +1313,7 @@ class TypedStoreInterface:
 
     def getOwnIndex(self,node):
         """Returns the index of the specified node in its list of siblings."""
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         ind = 0
         par = node.parent
@@ -1301,7 +1332,7 @@ class TypedStoreInterface:
 
     def getDepth(self,node):
         """Gets the maximum depth of the tree of descendants of the specified node."""
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         childmax = 0
         for child in self.getChildren(node):
@@ -1312,7 +1343,7 @@ class TypedStoreInterface:
     def toHtml(self,node,xmldocument,totaldepth,level=0,hidedefaults=False):
         """Returns a list of HTML "tr" nodes that describe the specified node
         and its children."""
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         res = []
 
@@ -1349,7 +1380,7 @@ class TypedStoreInterface:
 
         if tr!=None and hidedefaults:
             isdefault = True
-            if node.canHaveValue() and node.getValueOrDefault()!=node.getDefaultValue():
+            if node.canHaveValue() and node.getValue(usedefault=True)!=node.getDefaultValue():
                 isdefault = False
             else:
                 for childtr in childtrs:
@@ -1380,7 +1411,7 @@ class TypedStoreInterface:
     # ---------------------------------------------------------------------------
 
     def beforeVisibilityChange(self,node,shownew,showhide):
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if 'beforeVisibilityChange' not in self.eventhandlers: return
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
@@ -1391,7 +1422,7 @@ class TypedStoreInterface:
             self.eventhandlers['beforeVisibilityChange'](node,shownew,showhide)
 
     def afterVisibilityChange(self,node,shownew,showhide):
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if 'afterVisibilityChange' not in self.eventhandlers: return
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
@@ -1406,23 +1437,641 @@ class TypedStoreInterface:
         self.eventhandlers['afterStoreChange']()
 
     def onBeforeChange(self,node,newvalue):
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if 'beforeChange' not in self.eventhandlers: return True
         if node.isHidden() and self.blockNotifyOfHiddenNodes: return True
         return self.eventhandlers['beforeChange'](node,newvalue)
 
     def onChange(self,node,feature):
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if 'afterChange' not in self.eventhandlers: return
         if node.isHidden() and self.blockNotifyOfHiddenNodes: return
         self.eventhandlers['afterChange'](node,feature)
 
     def onDefaultChange(self,node,feature):
-        assert isinstance(node,TypedStore.Node), 'Supplied object is not of type "TypedStore.Node" (but "%s").' % node
+        assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         if self.notifyOnDefaultChange: self.onChange(node,feature)
+
+class Node:
+    def __init__(self,controller,templatenode,valuenode,location,parent):
+        assert templatenode.hasAttribute('name'),'Schema node %s lacks "name" attribute.' % location
+
+        self.controller = controller
+        self.store = controller.store
+        self.templatenode = templatenode
+        self.valuenode = valuenode
+        self.location = tuple(location)
+        self.parent = parent
+        self.children = []
+        self.futureindex = None
+        self.visible = (not self.templatenode.hasAttribute('hidden'))
+        self.grouponly = self.templatenode.hasAttribute('grouponly')
+
+        ids = []
+        for templatechild in self.templatenode.childNodes:
+            if templatechild.nodeType==templatechild.ELEMENT_NODE and templatechild.localName=='element':
+                childid = templatechild.getAttribute('name')
+                ids.append(childid)
+                
+                # Get all value nodes that correspond to the current template child.
+                valuechildren = ()
+                if not templatechild.hasAttribute('maxoccurs'):
+                    # The node always occurs exactly one time.
+                    if self.valuenode!=None:
+                        valuechildren = (common.findDescendantNode(self.valuenode,[childid]),)
+                    else:
+                        valuechildren = (None,)
+                elif self.valuenode!=None:
+                    # The node may occur zero or more times.
+                    maxoccurs = int(templatechild.getAttribute('maxoccurs'))
+                    valuechildren = common.findDescendantNodes(self.valuenode,[childid])
+                    assert len(valuechildren)<=maxoccurs, 'Number of children is greater than the imposed maximum (%i).' % maxoccurs
+
+                # Create nodes for all value nodes found.                     
+                childloc = list(self.location) + [childid]
+                for valuechild in valuechildren:
+                    self.children.append(Node(self.controller,templatechild,valuechild,childloc,parent=self))
+
+        # Check for existing value nodes that are not in the template.
+        if self.valuenode!=None:
+            for ch in [ch for ch in self.valuenode.childNodes if ch.nodeType==ch.ELEMENT_NODE and ch.localName not in ids]:
+                print 'WARNING! Value "%s" below "%s" was unexpected and will be ignored.' % (ch.localName,self.location)
+                self.valuenode.removeChild(ch)
+
+    def __str__(self):
+        """Returns a string representation of the node.
+        """
+        return str(self.location)
+
+    def destroy(self):
+        """Deallocates all variables of the node, breaking circular
+        references.
+        """
+        for ch in self.children:
+            if ch!=None: ch.destroy()
+        self.location = ()
+        self.children = []
+        self.parent = None
+        self.templatenode = None
+        self.valuenode = None
+        self.store = None
+        
+    def isValid(self):
+        """Determines whether the node is valid. Returns False only if
+        "destroy" has been called.
+        """
+        return self.store != None
+
+    def getValue(self,usedefault=False):
+        """Returns the typed value of the node. This function returns
+        None if the node does not have a value yet, and throws an error
+        if the node cannot have a value (i.e., it is a container only).
+        """
+        value = None
+        if self.valuenode!=None:
+            valuetype = self.templatenode.getAttribute('type')
+            assert valuetype!='', 'getValue was used on node without type (%s); canHaveValue should have showed that this node does not have a type.' % self
+            value = self.store.getNodeProperty(self.valuenode,valuetype=valuetype)
+        if value==None and usedefault: value = self.getDefaultValue()
+        return value
+
+    def getDefaultValue(self):
+        """Returns the default value of the node. This function returns
+        None if no default value if available, which applies also if
+        a default store has not been specified.
+        """
+        defaultstore = self.controller.defaultstore
+        if defaultstore==None: return None
+        defaultnode = defaultstore.mapForeignNode(self)
+        if defaultnode==None: return None
+        return defaultnode.getValue()
+
+    def setValue(self,value):
+        """Sets the typed value of the node. Returns True if the value
+        of the node was changed, False if it was not changed. Changes
+        may be prevented by an attached interface disallowing the change.
+        """
+        if value==None:
+            self.clearValue()
+            return
+
+        curval = self.getValue()
+        if curval!=value:
+            if self.controller.onBeforeChange(self,value):
+                valuetype = self.templatenode.getAttribute('type')
+                if self.valuenode==None: self.createValueNode()
+                changed = self.store.setNodeProperty(self.valuenode,value,valuetype)
+                self.controller.onChange(self,'value')
+                return changed
+        return False
+
+    def clearValue(self,recursive=False,skipreadonly=False,deleteclones=True):
+        """Clears the value of the node.
+        
+        If recursive=True, also clears the value of the descendant nodes; if
+        additionally deleteclones=True, all optional descendant nodes are
+        deleted completely.
+        
+        If skipreadonly is True, the read-only status of nodes if
+        respected, implying that their value is not cleared if they have
+        the read-only attribute.
+        """
+        # First clear children.
+        cleared = True
+        if recursive:
+            if deleteclones: self.removeAllChildren()
+            for ch in self.children:
+                if not ch.clearValue(recursive=True,skipreadonly=skipreadonly,deleteclones=deleteclones):
+                    cleared = False
+            
+        # Do not clear if (1) it is already cleared (result: success), (2) it is
+        # read-only and the user wants to respect that (result: failure),
+        # or (3) it is the root node (result: failure).
+        if self.valuenode==None: return True
+        if (skipreadonly and self.isReadOnly()) or self.parent==None: return False
+        
+        # Clear if (1) this node can have no value - it must occur, and (2) the attached interfaces approve.
+        if cleared and (not self.canHaveClones()) and self.controller.onBeforeChange(self,None):
+            self.store.clearNodeProperty(self.valuenode)
+            self.valuenode = None
+            self.controller.onChange(self,'value')
+            return True
+        else:
+            return False
+
+    def getValueAsString(self,addunit = True,usedefault = False):
+        """Returns a user-readable string representation of the value of the node.
+        
+        For built-in data types the conversion to user-readable string is
+        automatic; for custom data types their __unicode__ method is called.
+        (the default implementation of which calls __str__ in turn)
+        """
+        templatenode = self.templatenode
+        fieldtype = templatenode.getAttribute('type')
+        value = self.getValue(usedefault=usedefault)
+        if value==None: return ''
+        if fieldtype=='datetime':
+            value = value.strftime(common.datetime_displayformat)
+        if fieldtype=='bool':
+            if value:
+                value = 'Yes'
+            else:
+                value = 'No'
+        elif fieldtype=='file':
+            # Return filename only (not the path)
+            if not value.isValid():
+                value = ''
+            else:
+                value = value.name
+        elif fieldtype=='select':
+            # Get label of currently selected option
+            optionsroot = common.findDescendantNode(templatenode,['options'])
+            if optionsroot==None: raise Exception('Variable with "select" type lacks "options" element below.')
+            for ch in optionsroot.childNodes:
+                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                    if value==int(ch.getAttribute('value')):
+                        # We found the currently selected option; its label will serve as displayed value.
+                        value = ch.getAttribute('label')
+                        break
+        else:
+            value = unicode(value)
+
+        # Append unit specifier (if available)
+        if addunit:
+            unit = self.getUnit()
+            if unit!=None: value = value + ' ' + unit
+
+        return value
+
+    def preparePersist(self,recursive=True):
+        """Prepares custom nodes for being stored on disk.
+        
+        This functionality is used by DataFile objects to read all
+        data from the source archive before it is overwritten by
+        an in-place save.
+        """
+        valuetype = self.templatenode.getAttribute('type')
+        if valuetype!='' and self.valuenode!=None:
+            valueclass = self.store.filetypes[valuetype]
+            if issubclass(valueclass,Store.DataType):
+                self.store.preparePersistNode(self.valuenode,valueclass)
+        if recursive:
+            for ch in self.children: ch.preparePersist(recursive=True)
+
+    def persist(self,recursive=True):
+        """Allows custom nodes to write their custom data to the
+        target location.
+        """
+        valuetype = self.templatenode.getAttribute('type')
+        if valuetype!='' and self.valuenode!=None:
+            valueclass = self.store.filetypes[valuetype]
+            if issubclass(valueclass,Store.DataType):
+                self.store.persistNode(self.valuenode,valueclass)
+        if recursive:
+            for ch in self.children: ch.persist(recursive=True)
+
+    def addChild(self,childname,position=None,id=None):
+        """Adds a new child node; this child node must be optional as
+        defined in the template with minoccurs/maxoccurs attributes.
+        
+        The new child node is by default appended to the list of existing
+        nodes with the same name, or inserted at the specified "position".
+        """
+        index = -1
+        templatenode = None
+
+        # First see of already one instance of this child is in the tree; that makes finding the position easy.
+        existingcount = 0
+        for curindex,child in enumerate(self.children):
+            if child.location[-1]==childname:
+                assert id==None or child.getSecondaryId()!=id, 'Node with the specified id already exists.'
+                index = curindex
+                templatenode = child.templatenode
+                existingcount += 1
+            elif index!=-1:
+                # We are at the end of the list of nodes with the specified name. Stop.
+                break
+                
+        # If no insert position was specified, append at the end
+        if position==None: position = existingcount
+        
+        if index!=-1:
+            # Found an existing node with this name
+            assert position>=0, 'Position must be positive, but is %i. Use position=None to append to the end.' % position
+            assert position<=existingcount, 'Cannot insert child "%s" at position %i, because only %i nodes exist so far.' % (childname,position,existingcount)
+            index = index+1-existingcount+position
+        else:
+            # Node with this name not yet in tree.
+            assert position==0, 'Cannot insert child "%s" at position %i, because no node wih this name exists so far.' % (childname,position)
+
+            # Enumerate over all template children of the parent we want to insert below.
+            # Store a list of names of children that precede the node to be inserted.
+            predecessors = []
+            for templatenode in self.templatenode.childNodes:
+                if templatenode.nodeType==templatenode.ELEMENT_NODE and templatenode.localName=='element':
+                    childid = templatenode.getAttribute('name')
+                    if childid==childname: break
+                    predecessors.append(childid)
+            else:
+                # Could not find the specified child in the template.
+                return None
+
+            # Enumerate over all actual children until we reach the point where the child should be inserted.
+            index = 0
+            for child in self.children:
+                curname = child.location[-1]
+                while len(predecessors)>0 and curname!=predecessors[0]:
+                    predecessors.pop(0)
+                if len(predecessors)==0: break
+                index += 1
+                
+        # Ensure the parent to insert below has a value node
+        # (we need to insert the value node below it to give the child life)
+        self.createValueNode()
+        
+        # Find the XML document
+        doc = self.valuenode
+        while doc.parentNode!=None: doc=doc.parentNode
+        assert doc.nodeType==doc.DOCUMENT_NODE, 'Could not find DOM document node. Node "%s" does not have a parent.' % doc.tagName
+
+        # Create the value node for the current child
+        node = doc.createElementNS(self.valuenode.namespaceURI,childname)
+        if id!=None: node.setAttribute('id',id)
+        
+        # Insert the value node
+        if position>=existingcount:
+            valuenode = self.valuenode.appendChild(node)
+        else:
+            valuenode = self.valuenode.insertBefore(node,self.children[index].valuenode)
+            
+        # Create the child (template + value)
+        child = Node(self.controller,templatenode,valuenode,list(self.location)+[childname],parent=self)
+        assert child.canHaveClones(), 'Cannot add another child "%s" because there can exist only one child with this name.' % childname
+        child.updateVisibility(recursive=True,notify=False)
+        
+        # Insert the child, and notify attached interfaces.
+        child.futureindex = index
+        self.controller.beforeVisibilityChange(child,True,False)
+        self.children.insert(index,child)
+        self.controller.afterVisibilityChange(child,True,False)
+        child.futureindex = None
+        
+        # Return the newly inserted child.
+        return child
+        
+    def createValueNode(self):
+        """Creates the (empty) value node, and creates value nodes for
+        all ancestors that lacks a value node as well.
+        """
+        if self.valuenode!=None: return
+        parents = []
+        root = self
+        while root.valuenode==None:
+            parents.insert(0,root)
+            root = root.parent
+        valueroot = root.valuenode
+        for par in parents:
+            valueroot = common.findDescendantNode(valueroot,[par.getId()],create=True)
+        self.valuenode = valueroot
+
+    def getChildById(self,childname,id,create=False):
+        """Gets an optional node (typically a node that can occur more than once)
+        by its identifier. If the it does not exist yet, and create is True,
+        the requested node is created (and intermediate nodes as well).
+        """
+        for child in self.children:
+            if child.location[-1]==childname and child.getSecondaryId()==id:
+                break
+        else:
+            if not create: return None
+            child = self.addChild(childname,id=id)
+        return child
+
+    def getChildByNumber(self,childname,index,create=False):
+        """Gets an optional node (typically a node that can occur more than once)
+        by its number. If the it does not exist yet, and create is True,
+        the requested node is created (and intermediate nodes as well).
+        """
+        curindex = 0
+        for child in self.children:
+            if child.location[-1]==childname:
+                if curindex==index: break
+                curindex += 1
+        else:
+            if not create: return None
+            for ichild in range(index-curindex+1):
+                child = self.addChild(childname)
+        return child
+        
+    def removeChild(self,childname,id):
+        """Removes an optional child node with the specified name and
+        id. An id can either be the number (int) of the child node in the list
+        with children of that name, or the id (string) set in its "id"
+        child node.
+        """
+        assert isinstance(id,int) or isinstance(id,basestring), 'Specified id must be an integer or a string.'
+        if isinstance(id,int):
+            return self.removeChildren(childname,id,id)
+        else:
+            for child in reversed(self.children):
+                if child.location[-1]==childname and child.getSecondaryId()==id:
+                    self.removeChildNode(child)
+                    break
+            else:
+                assert False, 'Cannot find child "%s" with id "%s".' % (childname,id)
+                
+    def removeChildren(self,childname,first=0,last=None):
+        """Removes a (range of) optional child nodes with the specified name.
+        If the last number to remove is not specified, nodes will be removed
+        till the end.
+        """
+        ipos = 0
+        ichildpos = -1
+        while ipos<len(self.children):
+            child = self.children[ipos]
+            if child.location[-1]==childname:
+                assert child.canHaveClones(),'Cannot remove child "%s" because it must occur exactly one time.' % childname
+                ichildpos += 1
+                if last!=None and ichildpos>last: return
+                if ichildpos>=first:
+                    self.removeChildNode(child,ipos)
+                    ipos -= 1
+            ipos += 1
+            
+    def removeAllChildren(self,optionalonly=True):
+        """Removes all optional child nodes. The "optionalonly" argument
+        is used internally only to remove every single descendant
+        of an optional node.
+        """
+        for ipos in range(len(self.children)-1,-1,-1):
+            child = self.children[ipos]
+            if (not optionalonly) or child.canHaveClones():
+                self.removeChildNode(child,ipos)
+
+    def removeChildNode(self,node,pos=None):
+        if pos==None: pos = self.children.index(node)
+        node.removeAllChildren(optionalonly=False)
+        self.controller.beforeVisibilityChange(node,False,False)
+        self.children.pop(pos)
+        if node.valuenode!=None:
+            self.store.clearNodeProperty(node.valuenode)
+            node.valuenode = None
+        self.controller.afterVisibilityChange(node,False,False)
+        node.destroy()
+
+    def getId(self):
+        """Returns the id of the node.
+        """
+        return self.location[-1]
+
+    def getSecondaryId(self):
+        """Returns the secondary id of the node. This is only present for
+        nodes that can occur multiple times, and must then be set on creation
+        of the node. Returns an empty string if the secondary id has not been set.
+        """
+        assert self.valuenode!=None, 'The value node has not been set; this node cannot be optional.'
+        return self.valuenode.getAttribute('id')
+
+    def getValueType(self):
+        """Returns the value type of the node; an empty string is returned
+        if the node cannot have a value.
+        """
+        return self.templatenode.getAttribute('type')
+        
+    def getUnit(self):
+        """Returns the unit of the node; None is returned if the node
+        does not have a unit specified.
+        """
+        if not self.templatenode.hasAttribute('unit'): return None
+        unit = self.templatenode.getAttribute('unit')
+        if unit[0]=='[' and unit[-1]==']':
+            node = self.parent[unit[1:-1]]
+            if node==None: return None
+            unit = node.getValueAsString(addunit=False,usedefault=True)
+        return unit
+
+    def getText(self,detail,minimumdetail = 0,capitalize=False):
+        """Returns a (template) text describing the node. Depending
+        on the "detail" argument, this returns the node id (detail=0),
+        the node label (detail=1), or the node description (detail=2).
+        
+        If the text within the specified detail is unavailable, text
+        with lower detail is looked for down to level "minimumdetail".
+        
+        If no text is found that meets the criteria, None is returned.
+        If "capitalize" is True, the first letter of the returned text
+        is capitalized.
+        """
+        templatenode = self.templatenode
+        ret = None
+        if self.canHaveClones():
+            ret = self.getSecondaryId()
+            if ret=='': ret = None
+        if ret==None:
+            if detail==2 and templatenode.hasAttribute('description'):
+                ret = templatenode.getAttribute('description')
+            elif detail>=1 and minimumdetail<=1 and templatenode.hasAttribute('label'):
+                ret = templatenode.getAttribute('label')
+            elif minimumdetail==0:
+                ret = self.getId()
+        if ret!=None and capitalize: ret = ret[0].upper() + ret[1:]
+        return ret
+        
+    def __getitem__(self,path):
+        assert isinstance(path,basestring), 'Supplied node path is not a string: %s.' % path
+        return self.getLocation(path.split('/'))
+
+    def getLocation(self,location):
+        """Returns the child node at the specified location (a list of
+        path components - strings).
+        """
+        node = self
+        for childname in location:
+            if childname=='..':
+                assert self.parent!=None,'Cannot go up one level because we are at the root.'
+                node = node.parent
+            elif childname!='' and childname!='.':
+                for node in node.children:
+                    if node.location[-1]==childname: break
+                else:
+                    return None
+        return node
+
+    def getLocationMultiple(self,location):
+        """Returns all child nodes at the specified location (a list of
+        path components - strings).
+        """
+        # Get the first non-empty path term.
+        path = location[:]
+        target = ''
+        while target=='' and len(path)>0: target = path.pop(0)
+        if target=='': return [self]
+
+        res = []
+        for child in self.children:
+            if child.location[-1]==target:
+                if len(path)==0:
+                    res.append(child)
+                else:
+                    res += child.getLocationMultiple(path)
+        return res
+
+    def isHidden(self):
+        """Returns True is the node is currently hidden. Nodes can be hidden
+        because the template conditions on their visibility are not met,
+        or because they simply have the "hidden" attribute set in the template.
+        """
+        node = self
+        while node!=None:
+            if not node.visible: return True
+            node = node.parent
+        return False
+
+    def isReadOnly(self):
+        """Returns True if the template specifies the read-only attribute
+        for the node.
+        
+        Note that settings the read-only attribute does not prevent any
+        modification of the node value through the API; it is merely a
+        sign the UI editors not to allow editing of the node.
+        """
+        return self.templatenode.hasAttribute('readonly')
+
+    def hasChildren(self):
+        """Returns True if the node has children.
+        """
+        return len(self.children)>0
+
+    def canHaveValue(self):
+        """Returns True if the node can have a value, False if not
+        (e.g. when the node is a container only).
+        """
+        return self.templatenode.hasAttribute('type')
+
+    def canHaveClones(self):
+        """Returns True if the node can occurs more than once.
+        """
+        return self.templatenode.hasAttribute('maxoccurs')
+
+    def getNodesByType(self,valuetype):
+        """Returns all descendant nodes with the specified data type.
+        """
+        res = []
+        if self.getValueType()==valuetype:
+            res.append(self)
+        for ch in self.children:
+            res += ch.getNodesByType(valuetype)
+        return res
+
+    def getEmptyNodes(self):
+        """Returns all descendant nodes that do not have a value assigned
+        to them, but are capable of having a value.
+        """
+        res = []
+        if self.canHaveValue() and self.getValue()==None:
+            res.append(self)
+        for ch in self.children:
+            res += ch.getEmptyNodes()
+        return res
+
+    def updateVisibility(self,recursive=False,notify=True):
+        """Updates the dynamic visibility of the node by re-evaluating
+        the conditions imposed by the template on the node's visibility.
+        """
+        templatenode = self.templatenode
+        cond = common.findDescendantNode(templatenode,['condition'])
+        if cond!=None:
+            shownew = self.controller.checkCondition(cond,self)
+            if shownew!=self.visible:
+                if notify: self.controller.beforeVisibilityChange(self,shownew)
+                self.visible = shownew
+                if notify: self.controller.afterVisibilityChange(self,shownew)
+        if recursive:
+            for child in self.children: child.updateVisibility(recursive=True,notify=notify)
+
+    def copyFrom(self,sourcenode,replace=True):
+        """Recursively copies the value of the current node from the
+        specified source node.
+        
+        If "replace" is not set, values are copied only if the current
+        value has not been set, and existing optional nodes are not
+        removed first.
+        """
+        # Copy node value (if both source and target can have a value)
+        if self.canHaveValue() and sourcenode.canHaveValue():
+            if replace or self.getValue()==None:
+                curval = sourcenode.getValue()
+                if isinstance(curval,Store.DataType): curval.addref()
+                self.setValue(curval)
+
+        # If replacing previous contents, remove optional nodes (with minoccurs=0)
+        prevchildname = None
+        index = 0
+        oldchildren = list(self.children)
+        for sourcechild in sourcenode.children:
+            childname = sourcechild.location[-1]
+            if childname!=prevchildname:
+                index = 0
+                prevchildname = childname
+            if sourcechild.canHaveClones():
+                secid = sourcechild.getSecondaryId()
+                if secid!='':
+                    child = self.getChildById(childname,secid,create=True)
+                else:
+                    child = self.getChildByNumber(childname,index,create=True)
+            else:
+                child = self[childname]
+            if child==None: continue
+            child.copyFrom(sourcechild,replace=replace)
+            if child in oldchildren:
+                oldchildren.remove(child)
+            index += 1
+        if replace:
+            for ch in oldchildren:
+                if ch.canHaveClones(): self.removeChildNode(ch)
 
 # ------------------------------------------------------------------------------------------
 # TypedStore
@@ -1436,634 +2085,6 @@ class TypedStoreInterface:
 #   Node are obtained by traversing the tree (start: TypedStore.root).
 class TypedStore(common.referencedobject):
 
-    class Node:
-        def __init__(self,controller,templatenode,valuenode,location,parent):
-            assert templatenode.hasAttribute('name'),'Schema node %s lacks "name" attribute.' % location
-
-            self.controller = controller
-            self.store = controller.store
-            self.templatenode = templatenode
-            self.valuenode = valuenode
-            self.location = tuple(location)
-            self.parent = parent
-            self.children = []
-            self.futureindex = None
-            self.visible = (not self.templatenode.hasAttribute('hidden'))
-            self.grouponly = self.templatenode.hasAttribute('grouponly')
-
-            ids = []
-            for templatechild in self.templatenode.childNodes:
-                if templatechild.nodeType==templatechild.ELEMENT_NODE and templatechild.localName=='element':
-                    childid = templatechild.getAttribute('name')
-                    ids.append(childid)
-                    
-                    # Get all value nodes that correspond to the current template child.
-                    valuechildren = ()
-                    if not templatechild.hasAttribute('maxoccurs'):
-                        # The node always occurs exactly one time.
-                        if self.valuenode!=None:
-                            valuechildren = (common.findDescendantNode(self.valuenode,[childid]),)
-                        else:
-                            valuechildren = (None,)
-                    elif self.valuenode!=None:
-                        # The node may occur zero or more times.
-                        maxoccurs = int(templatechild.getAttribute('maxoccurs'))
-                        valuechildren = common.findDescendantNodes(self.valuenode,[childid])
-                        assert len(valuechildren)<=maxoccurs, 'Number of children is greater than the imposed maximum (%i).' % maxoccurs
-
-                    # Create nodes for all value nodes found.                     
-                    childloc = list(self.location) + [childid]
-                    for valuechild in valuechildren:
-                        self.children.append(TypedStore.Node(self.controller,templatechild,valuechild,childloc,parent=self))
-
-            # Check for existing value nodes that are not in the template.
-            if self.valuenode!=None:
-                for ch in [ch for ch in self.valuenode.childNodes if ch.nodeType==ch.ELEMENT_NODE and ch.localName not in ids]:
-                    print 'WARNING! Value "%s" below "%s" was unexpected and will be ignored.' % (ch.localName,self.location)
-                    self.valuenode.removeChild(ch)
-
-        def __str__(self):
-            """Returns a string representation of the node.
-            """
-            return str(self.location)
-
-        def destroy(self):
-            """Deallocates all variables of the node, breaking circular
-            references.
-            """
-            for ch in self.children:
-                if ch!=None: ch.destroy()
-            self.location = ()
-            self.children = []
-            self.parent = None
-            self.templatenode = None
-            self.valuenode = None
-            self.store = None
-            
-        def isValid(self):
-            """Determines whether the node is valid. Returns False only if
-            "destroy" has been called.
-            """
-            return self.store != None
-
-        def getValue(self):
-            """Returns the typed value of the node. This function returns
-            None if the node does not have a value yet, and throws an error
-            if the node cannot have a value (i.e., it is a container only).
-            """
-            if self.valuenode==None: return None
-            valuetype = self.templatenode.getAttribute('type')
-            assert valuetype!='', 'getValue was used on node without type (%s); canHaveValue should have showed that this node does not have a type.' % self
-            return self.store.getNodeProperty(self.valuenode,valuetype=valuetype)
-
-        def getDefaultValue(self):
-            """Returns the default value of the node. This function returns
-            None if no default value if available, which applies also if
-            a default store has not been specified.
-            """
-            defaultstore = self.controller.defaultstore
-            if defaultstore==None: return None
-            defaultnode = defaultstore.mapForeignNode(self)
-            if defaultnode==None: return None
-            return defaultnode.getValue()
-
-        def getValueOrDefault(self):
-            """Returns the typed value of the node, and if not available
-            (typed value is None), the default value.
-            """
-            val = self.getValue()
-            if val==None: val = self.getDefaultValue()
-            return val
-
-        def setValue(self,value):
-            """Sets the typed value of the node. Returns True if the value
-            of the node was changed, False if it was not changed. Changes
-            may be prevented by an attached interface disallowing the change.
-            """
-            if value==None:
-                self.clearValue()
-                return
-
-            curval = self.getValue()
-            if curval!=value:
-                if self.controller.onBeforeChange(self,value):
-                    valuetype = self.templatenode.getAttribute('type')
-                    if self.valuenode==None: self.createValueNode()
-                    changed = self.store.setNodeProperty(self.valuenode,value,valuetype)
-                    self.controller.onChange(self,'value')
-                    return changed
-            return False
-
-        def clearValue(self,recursive=False,skipreadonly=False,deleteclones=True):
-            """Clears the value of the node.
-            
-            If recursive=True, also clears the value of the descendant nodes; if
-            additionally deleteclones=True, all optional descendant nodes are
-            deleted completely.
-            
-            If skipreadonly is True, the read-only status of nodes if
-            respected, implying that their value is not cleared if they have
-            the read-only attribute.
-            """
-            # First clear children.
-            cleared = True
-            if recursive:
-                if deleteclones: self.removeAllChildren()
-                for ch in self.children:
-                    if not ch.clearValue(recursive=True,skipreadonly=skipreadonly,deleteclones=deleteclones):
-                        cleared = False
-                
-            # Do not clear if (1) it is already cleared (result: success), (2) it is
-            # read-only and the user wants to respect that (result: failure),
-            # or (3) it is the root node (result: failure).
-            if self.valuenode==None: return True
-            if (skipreadonly and self.isReadOnly()) or self.parent==None: return False
-            
-            # Clear if (1) this node can have no value - it must occur, and (2) the attached interfaces approve.
-            if cleared and (not self.canHaveClones()) and self.controller.onBeforeChange(self,None):
-                self.store.clearNodeProperty(self.valuenode)
-                self.valuenode = None
-                self.controller.onChange(self,'value')
-                return True
-            else:
-                return False
-
-        def getValueAsString(self,addunit = True,usedefault = False):
-            """Returns a user-readable string representation of the value of the node.
-            
-            For built-in data types the conversion to user-readable string is
-            automatic; for custom data types their __unicode__ method is called.
-            (the default implementation of which calls __str__ in turn)
-            """
-            templatenode = self.templatenode
-            fieldtype = templatenode.getAttribute('type')
-            if usedefault:
-                value = self.getValueOrDefault()
-            else:
-                value = self.getValue()
-            if value==None: return ''
-            if fieldtype=='datetime':
-                value = value.strftime(common.datetime_displayformat)
-            if fieldtype=='bool':
-                if value:
-                    value = 'Yes'
-                else:
-                    value = 'No'
-            elif fieldtype=='file':
-                # Return filename only (not the path)
-                if not value.isValid():
-                    value = ''
-                else:
-                    value = value.name
-            elif fieldtype=='select':
-                # Get label of currently selected option
-                optionsroot = common.findDescendantNode(templatenode,['options'])
-                if optionsroot==None: raise Exception('Variable with "select" type lacks "options" element below.')
-                for ch in optionsroot.childNodes:
-                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                        if value==int(ch.getAttribute('value')):
-                            # We found the currently selected option; its label will serve as displayed value.
-                            value = ch.getAttribute('label')
-                            break
-            else:
-                value = unicode(value)
-
-            # Append unit specifier (if available)
-            if addunit:
-                unit = self.getUnit()
-                if unit!=None: value = value + ' ' + unit
-
-            return value
-
-        def preparePersist(self,recursive=True):
-            """Prepares custom nodes for being stored on disk.
-            
-            This functionality is used by DataFile objects to read all
-            data from the source archive before it is overwritten by
-            an in-place save.
-            """
-            valuetype = self.templatenode.getAttribute('type')
-            if valuetype!='' and self.valuenode!=None:
-                valueclass = self.store.filetypes[valuetype]
-                if issubclass(valueclass,Store.DataType):
-                    self.store.preparePersistNode(self.valuenode,valueclass)
-            if recursive:
-                for ch in self.children: ch.preparePersist(recursive=True)
-
-        def persist(self,recursive=True):
-            """Allows custom nodes to write their custom data to the
-            target location.
-            """
-            valuetype = self.templatenode.getAttribute('type')
-            if valuetype!='' and self.valuenode!=None:
-                valueclass = self.store.filetypes[valuetype]
-                if issubclass(valueclass,Store.DataType):
-                    self.store.persistNode(self.valuenode,valueclass)
-            if recursive:
-                for ch in self.children: ch.persist(recursive=True)
-
-        def addChild(self,childname,position=None,id=None):
-            """Adds a new child node; this child node must be optional as
-            defined in the template with minoccurs/maxoccurs attributes.
-            
-            The new child node is by default appended to the list of existing
-            nodes with the same name, or inserted at the specified "position".
-            """
-            index = -1
-            templatenode = None
-
-            # First see of already one instance of this child is in the tree; that makes finding the position easy.
-            existingcount = 0
-            for curindex,child in enumerate(self.children):
-                if child.location[-1]==childname:
-                    assert id==None or child.getSecondaryId()!=id, 'Node with the specified id already exists.'
-                    index = curindex
-                    templatenode = child.templatenode
-                    existingcount += 1
-                elif index!=-1:
-                    # We are at the end of the list of nodes with the specified name. Stop.
-                    break
-                    
-            # If no insert position was specified, append at the end
-            if position==None: position = existingcount
-            
-            if index!=-1:
-                # Found an existing node with this name
-                assert position>=0, 'Position must be positive, but is %i. Use position=None to append to the end.' % position
-                assert position<=existingcount, 'Cannot insert child "%s" at position %i, because only %i nodes exist so far.' % (childname,position,existingcount)
-                index = index+1-existingcount+position
-            else:
-                # Node with this name not yet in tree.
-                assert position==0, 'Cannot insert child "%s" at position %i, because no node wih this name exists so far.' % (childname,position)
-
-                # Enumerate over all template children of the parent we want to insert below.
-                # Store a list of names of children that precede the node to be inserted.
-                predecessors = []
-                for templatenode in self.templatenode.childNodes:
-                    if templatenode.nodeType==templatenode.ELEMENT_NODE and templatenode.localName=='element':
-                        childid = templatenode.getAttribute('name')
-                        if childid==childname: break
-                        predecessors.append(childid)
-                else:
-                    # Could not find the specified child in the template.
-                    return None
-
-                # Enumerate over all actual children until we reach the point where the child should be inserted.
-                index = 0
-                for child in self.children:
-                    curname = child.location[-1]
-                    while len(predecessors)>0 and curname!=predecessors[0]:
-                        predecessors.pop(0)
-                    if len(predecessors)==0: break
-                    index += 1
-                    
-            # Ensure the parent to insert below has a value node
-            # (we need to insert the value node below it to give the child life)
-            self.createValueNode()
-            
-            # Find the XML document
-            doc = self.valuenode
-            while doc.parentNode!=None: doc=doc.parentNode
-            assert doc.nodeType==doc.DOCUMENT_NODE, 'Could not find DOM document node. Node "%s" does not have a parent.' % doc.tagName
-
-            # Create the value node for the current child
-            node = doc.createElementNS(self.valuenode.namespaceURI,childname)
-            if id!=None: node.setAttribute('id',id)
-            
-            # Insert the value node
-            if position>=existingcount:
-                valuenode = self.valuenode.appendChild(node)
-            else:
-                valuenode = self.valuenode.insertBefore(node,self.children[index].valuenode)
-                
-            # Create the child (template + value)
-            child = TypedStore.Node(self.controller,templatenode,valuenode,list(self.location)+[childname],parent=self)
-            assert child.canHaveClones(), 'Cannot add another child "%s" because there can exist only one child with this name.' % childname
-            child.updateVisibility(recursive=True,notify=False)
-            
-            # Insert the child, and notify attached interfaces.
-            child.futureindex = index
-            self.controller.beforeVisibilityChange(child,True,False)
-            self.children.insert(index,child)
-            self.controller.afterVisibilityChange(child,True,False)
-            child.futureindex = None
-            
-            # Return the newly inserted child.
-            return child
-            
-        def createValueNode(self):
-            """Creates the (empty) value node, and creates value nodes for
-            all ancestors that lacks a value node as well.
-            """
-            if self.valuenode!=None: return
-            parents = []
-            root = self
-            while root.valuenode==None:
-                parents.insert(0,root)
-                root = root.parent
-            valueroot = root.valuenode
-            for par in parents:
-                valueroot = common.findDescendantNode(valueroot,[par.getId()],create=True)
-            self.valuenode = valueroot
-
-        def getChildById(self,childname,id,create=False):
-            """Gets an optional node (typically a node that can occur more than once)
-            by its identifier. If the it does not exist yet, and create is True,
-            the requested node is created (and intermediate nodes as well).
-            """
-            for child in self.children:
-                if child.location[-1]==childname and child.getSecondaryId()==id:
-                    break
-            else:
-                if not create: return None
-                child = self.addChild(childname,id=id)
-            return child
-
-        def getChildByNumber(self,childname,index,create=False):
-            """Gets an optional node (typically a node that can occur more than once)
-            by its number. If the it does not exist yet, and create is True,
-            the requested node is created (and intermediate nodes as well).
-            """
-            curindex = 0
-            for child in self.children:
-                if child.location[-1]==childname:
-                    if curindex==index: break
-                    curindex += 1
-            else:
-                if not create: return None
-                for ichild in range(index-curindex+1):
-                    child = self.addChild(childname)
-            return child
-            
-        def removeChild(self,childname,id):
-            """Removes an optional child node with the specified name and
-            id. An id can either be the number (int) of the child node in the list
-            with children of that name, or the id (string) set in its "id"
-            child node.
-            """
-            assert isinstance(id,int) or isinstance(id,basestring), 'Specified id must be an integer or a string.'
-            if isinstance(id,int):
-                return self.removeChildren(childname,id,id)
-            else:
-                for child in reversed(self.children):
-                    if child.location[-1]==childname and child.getSecondaryId()==id:
-                        self.removeChildNode(child)
-                        break
-                else:
-                    assert False, 'Cannot find child "%s" with id "%s".' % (childname,id)
-                    
-        def removeChildren(self,childname,first=0,last=None):
-            """Removes a (range of) optional child nodes with the specified name.
-            If the last number to remove is not specified, nodes will be removed
-            till the end.
-            """
-            ipos = 0
-            ichildpos = -1
-            while ipos<len(self.children):
-                child = self.children[ipos]
-                if child.location[-1]==childname:
-                    assert child.canHaveClones(),'Cannot remove child "%s" because it must occur exactly one time.' % childname
-                    ichildpos += 1
-                    if last!=None and ichildpos>last: return
-                    if ichildpos>=first:
-                        self.removeChildNode(child,ipos)
-                        ipos -= 1
-                ipos += 1
-                
-        def removeAllChildren(self,optionalonly=True):
-            """Removes all optional child nodes. The "optionalonly" argument
-            is used internally only to remove every single descendant
-            of an optional node.
-            """
-            for ipos in range(len(self.children)-1,-1,-1):
-                child = self.children[ipos]
-                if (not optionalonly) or child.canHaveClones():
-                    self.removeChildNode(child,ipos)
-
-        def removeChildNode(self,node,pos=None):
-            if pos==None: pos = self.children.index(node)
-            node.removeAllChildren(optionalonly=False)
-            self.controller.beforeVisibilityChange(node,False,False)
-            self.children.pop(pos)
-            if node.valuenode!=None:
-                self.store.clearNodeProperty(node.valuenode)
-                node.valuenode = None
-            self.controller.afterVisibilityChange(node,False,False)
-            node.destroy()
-
-        def getId(self):
-            """Returns the id of the node.
-            """
-            return self.location[-1]
-
-        def getSecondaryId(self):
-            """Returns the secondary id of the node. This is only present for
-            nodes that can occur multiple times, and must then be set on creation
-            of the node. Returns an empty string if the secondary id has not been set.
-            """
-            assert self.valuenode!=None, 'The value node has not been set; this node cannot be optional.'
-            return self.valuenode.getAttribute('id')
-
-        def getValueType(self):
-            """Returns the value type of the node; an empty string is returned
-            if the node cannot have a value.
-            """
-            return self.templatenode.getAttribute('type')
-            
-        def getUnit(self):
-            """Returns the unit of the node; None is returned if the node
-            does not have a unit specified.
-            """
-            if not self.templatenode.hasAttribute('unit'): return None
-            unit = self.templatenode.getAttribute('unit')
-            if unit[0]=='[' and unit[-1]==']':
-                node = self.parent[unit[1:-1]]
-                if node==None: return None
-                unit = node.getValueAsString(addunit=False,usedefault=True)
-            return unit
-
-        def getText(self,detail,minimumdetail = 0,capitalize=False):
-            """Returns a (template) text describing the node. Depending
-            on the "detail" argument, this returns the node id (detail=0),
-            the node label (detail=1), or the node description (detail=2).
-            
-            If the text within the specified detail is unavailable, text
-            with lower detail is looked for down to level "minimumdetail".
-            
-            If no text is found that meets the criteria, None is returned.
-            If "capitalize" is True, the first letter of the returned text
-            is capitalized.
-            """
-            templatenode = self.templatenode
-            ret = None
-            if self.canHaveClones():
-                ret = self.getSecondaryId()
-                if ret=='': ret = None
-            if ret==None:
-                if detail==2 and templatenode.hasAttribute('description'):
-                    ret = templatenode.getAttribute('description')
-                elif detail>=1 and minimumdetail<=1 and templatenode.hasAttribute('label'):
-                    ret = templatenode.getAttribute('label')
-                elif minimumdetail==0:
-                    ret = self.getId()
-            if ret!=None and capitalize: ret = ret[0].upper() + ret[1:]
-            return ret
-            
-        def __getitem__(self,path):
-            assert isinstance(path,basestring), 'Supplied node path is not a string: %s.' % path
-            return self.getLocation(path.split('/'))
-
-        def getLocation(self,location):
-            """Returns the child node at the specified location (a list of
-            path components - strings).
-            """
-            node = self
-            for childname in location:
-                if childname=='..':
-                    assert self.parent!=None,'Cannot go up one level because we are at the root.'
-                    node = node.parent
-                elif childname!='' and childname!='.':
-                    for node in node.children:
-                        if node.location[-1]==childname: break
-                    else:
-                        return None
-            return node
-
-        def getLocationMultiple(self,location):
-            """Returns all child nodes at the specified location (a list of
-            path components - strings).
-            """
-            # Get the first non-empty path term.
-            path = location[:]
-            target = ''
-            while target=='' and len(path)>0: target = path.pop(0)
-            if target=='': return [self]
-
-            res = []
-            for child in self.children:
-                if child.location[-1]==target:
-                    if len(path)==0:
-                        res.append(child)
-                    else:
-                        res += child.getLocationMultiple(path)
-            return res
-
-        def isHidden(self):
-            """Returns True is the node is currently hidden. Nodes can be hidden
-            because the template conditions on their visibility are not met,
-            or because they simply have the "hidden" attribute set in the template.
-            """
-            node = self
-            while node!=None:
-                if not node.visible: return True
-                node = node.parent
-            return False
-
-        def isReadOnly(self):
-            """Returns True if the template specifies the read-only attribute
-            for the node.
-            
-            Note that settings the read-only attribute does not prevent any
-            modification of the node value through the API; it is merely a
-            sign the UI editors not to allow editing of the node.
-            """
-            return self.templatenode.hasAttribute('readonly')
-
-        def hasChildren(self):
-            """Returns True if the node has children.
-            """
-            return len(self.children)>0
-    
-        def canHaveValue(self):
-            """Returns True if the node can have a value, False if not
-            (e.g. when the node is a container only).
-            """
-            return self.templatenode.hasAttribute('type')
-
-        def canHaveClones(self):
-            """Returns True if the node can occurs more than once.
-            """
-            return self.templatenode.hasAttribute('maxoccurs')
-
-        def getNodesByType(self,valuetype):
-            """Returns all descendant nodes with the specified data type.
-            """
-            res = []
-            if self.getValueType()==valuetype:
-                res.append(self)
-            for ch in self.children:
-                res += ch.getNodesByType(valuetype)
-            return res
-
-        def getEmptyNodes(self):
-            """Returns all descendant nodes that do not have a value assigned
-            to them, but are capable of having a value.
-            """
-            res = []
-            if self.canHaveValue() and self.getValue()==None:
-                res.append(self)
-            for ch in self.children:
-                res += ch.getEmptyNodes()
-            return res
-
-        def updateVisibility(self,recursive=False,notify=True):
-            """Updates the dynamic visibility of the node by re-evaluating
-            the conditions imposed by the template on the node's visibility.
-            """
-            templatenode = self.templatenode
-            cond = common.findDescendantNode(templatenode,['condition'])
-            if cond!=None:
-                shownew = self.controller.checkCondition(cond,self)
-                if shownew!=self.visible:
-                    if notify: self.controller.beforeVisibilityChange(self,shownew)
-                    self.visible = shownew
-                    if notify: self.controller.afterVisibilityChange(self,shownew)
-            if recursive:
-                for child in self.children: child.updateVisibility(recursive=True,notify=notify)
-
-        def copyFrom(self,sourcenode,replace=True):
-            """Recursively copies the value of the current node from the
-            specified source node.
-            
-            If "replace" is not set, values are copied only if the current
-            value has not been set, and existing optional nodes are not
-            removed first.
-            """
-            # Copy node value (if both source and target can have a value)
-            if self.canHaveValue() and sourcenode.canHaveValue():
-                if replace or self.getValue()==None:
-                    curval = sourcenode.getValue()
-                    if isinstance(curval,Store.DataType): curval.addref()
-                    self.setValue(curval)
-
-            # If replacing previous contents, remove optional nodes (with minoccurs=0)
-            prevchildname = None
-            index = 0
-            oldchildren = list(self.children)
-            for sourcechild in sourcenode.children:
-                childname = sourcechild.location[-1]
-                if childname!=prevchildname:
-                    index = 0
-                    prevchildname = childname
-                if sourcechild.canHaveClones():
-                    secid = sourcechild.getSecondaryId()
-                    if secid!='':
-                        child = self.getChildById(childname,secid,create=True)
-                    else:
-                        child = self.getChildByNumber(childname,index,create=True)
-                else:
-                    child = self[childname]
-                if child==None: continue
-                child.copyFrom(sourcechild,replace=replace)
-                if child in oldchildren:
-                    oldchildren.remove(child)
-                index += 1
-            if replace:
-                for ch in oldchildren:
-                    if ch.canHaveClones(): self.removeChildNode(ch)
-            
-    schemas = None
-    defaults = None
     defaultname2scenarios = None
     
     @staticmethod
@@ -2074,7 +2095,7 @@ class TypedStore(common.referencedobject):
         This method may be overridden by deriving classes if they need the
         ability to refer to schemas by shortcuts rather than paths.
         """
-        return {}
+        return ShortcutDictionary()
 
     @staticmethod
     def getDefaultValues():
@@ -2084,21 +2105,7 @@ class TypedStore(common.referencedobject):
         This method may be overridden by deriving classes if they need the
         ability to refer to default value sets by shortcuts rather than paths.
         """
-        return {}
-
-    @classmethod
-    def schemaNameToPath(cls,schemaname=None):
-        if cls.schemas == None:
-            cls.schemas = cls.getDefaultSchemas()
-        if schemaname==None: return cls.schemas
-        return cls.schemas.get(schemaname,None)
-
-    @classmethod
-    def defaultNameToPath(cls,defaultname=None):
-        if cls.defaults == None:
-            cls.defaults = cls.getDefaultValues()
-        if defaultname==None: return cls.defaults
-        return cls.defaults.get(defaultname,None)
+        return ShortcutDictionary()
 
     @classmethod
     def getDefault(cls,name,version):
@@ -2116,7 +2123,7 @@ class TypedStore(common.referencedobject):
             return version2store[version]
         elif 'source' not in version2store:
             # We do not have any version of the requested default; first obtain the source version.
-            path = cls.defaultNameToPath(name)
+            path = cls.getDefaultValues().get(name,None)
             if path==None: return None
             sourcestore = cls.fromXmlFile(path,adddefault=False)
             version2store['source'] = sourcestore
@@ -2137,7 +2144,7 @@ class TypedStore(common.referencedobject):
         To use this, the deriving class MUST implement getDefaultSchemas!
         """
         assert cls!=TypedStore, 'fromSchemaName cannot be called on base class "TypedStore", only on derived classes. You need to create a derived class with versioning support.'
-        schemapath = cls.schemaNameToPath(schemaname)
+        schemapath = cls.getDefaultSchemas().get(schemaname,None)
         if schemapath==None:
             raise Exception('Unable to locate XML schema file for "%s".' % schemaname)
         store = cls(schemapath,*args,**kwargs)
@@ -2195,7 +2202,8 @@ class TypedStore(common.referencedobject):
         
     def unlink(self):
         """Destroys the store and breaks circular references. The TypedStore object
-        should not be used after this method has been called!"""
+        should not be used after this method has been called!
+        """
         if self.root!=None: self.root.destroy()
         self.root = None
 
@@ -2215,7 +2223,8 @@ class TypedStore(common.referencedobject):
         to e.g. consistently show or hide nodes with the "hidden" property, and to
         omit schema nodes that are meant for grouping only (with the "grouponly"
         attribute). Also, interfaces provide the *only* means of being notified by the
-        store about changes of node value, visibility, etc."""
+        store about changes of node value, visibility, etc.
+        """
         return TypedStoreInterface(self,**kwargs)
 
     def setContainer(self,container):
@@ -2269,7 +2278,7 @@ class TypedStore(common.referencedobject):
         self.store.filetypes['duration'] = StoreTimeDelta
         self.store.filetypes['color'] = StoreColor
         self.store.filetypes['fontname'] = str
-        self.root = TypedStore.Node(self,templateroot,self.store.xmlroot,[],None)
+        self.root = Node(self,templateroot,self.store.xmlroot,[],None)
         self.changed = False
         self.setContainer(None)
         
@@ -2283,7 +2292,8 @@ class TypedStore(common.referencedobject):
 
     def setDefaultStore(self,store,updatevisibility=True):
         """Attached a TypedStore object with default values. The attached
-        store MUST use the same schema as the store that is attached to."""
+        store MUST use the same schema as the store that is attached to.
+        """
         assert self.version==store.version,'Version of supplied default store must match version of current store.'
         if self.defaultstore!=None:
             self.defaultstore.disconnectInterface(self.defaultinterface)
@@ -2301,38 +2311,26 @@ class TypedStore(common.referencedobject):
 
     def hasChanged(self):
         """Returns whether any value in the store has changed since the values
-        were loaded (through "setStore"), or since "resetChanged" was called."""
+        were loaded (through "setStore"), or since "resetChanged" was called.
+        """
         return self.changed
 
     def resetChanged(self):
-        """Resets the "changed" status of the store to "unchanged". See also "hasChanged"."""
+        """Resets the "changed" status of the store to "unchanged".
+        See also "hasChanged".
+        """
         self.changed = False
 
     def __getitem__(self,path):
-        """Returns node at the specified path below the root of the tree."""
+        """Returns node at the specified path below the root of the tree.
+        """
         return self.root[path]
-
-    def setProperty(self,location,value):
-        """Set a single store property at the specified location to the specified value."""
-        node = self[location]
-        if node==None: raise Exception('Cannot locate node at %s' % location)
-        return node.setValue(value)
-    
-    def getProperty(self,location,usedefault=False):
-        """Gets the value of a single store property at the specified location. If the
-        property has no value and "usedefault" is specified, the default value is
-        returned."""
-        node = self[location]
-        if node==None: raise Exception('Cannot locate node at %s' % location)
-        if usedefault:
-            return node.getValueOrDefault()
-        else:
-            return node.getValue()
 
     def mapForeignNode(self,foreignnode):
         """Takes a node from another TypedStore that uses the same XML schema,
         and returns the equivalent node in the current store. Used for finding
-        corresponding nodes in the store with defaults, among others."""
+        corresponding nodes in the store with defaults, among others.
+        """
         indices = []
         currentnode = foreignnode
         
@@ -2371,7 +2369,8 @@ class TypedStore(common.referencedobject):
         """Checks whether the condition specified by the specified XML "conditon" node
         from the schema is met. The specified ownernode is used to resolve references to
         relative paths; it is the first ancestor of the condition that is of type
-        element."""
+        element.
+        """
         assert nodeCondition.hasAttribute('type'), 'condition lacks "type" attribute in XML schema file.'
         src = nodeCondition.getAttribute('source')
         if src!='' and src!=ownstorename:
@@ -2390,7 +2389,7 @@ class TypedStore(common.referencedobject):
             assert node!=None, 'Cannot locate dependency "%s" for node "%s".' % (nodeCondition.getAttribute('variable'),ownernode)
 
             # Get the current value of the variable we depend on
-            curvalue = node.getValueOrDefault()
+            curvalue = node.getValue(usedefault=True)
 
             # If the node in question currently does not have a value, we cannot check the condition;
             # just return 'valid'.
@@ -2424,6 +2423,10 @@ class TypedStore(common.referencedobject):
             raise Exception('unknown condition type "%s" in XML schema file.' % condtype)
             
     def fillMissingValues(self,skiphidden=False):
+        """For every node that does not have a value, set its value to the default.
+        Set "skiphidden" to True to leave the value of nodes that are currently hidden
+        untouched.
+        """
         assert self.defaultstore!=None, 'Cannot fill missing values with defaults because no default store has been specified.'
         if skiphidden:
             for n in self.root.getEmptyNodes():
@@ -2435,7 +2438,8 @@ class TypedStore(common.referencedobject):
     def convert(self,target):
         """Converts the TypedStore object to the specified target. The target may be
         a version string (a new TypedStore object with the desired version will be created)
-        or an existing TypedStore object with the different version."""
+        or an existing TypedStore object with the different version.
+        """
         if isinstance(target,basestring):
             if target==self.version:
                 return self.addref()

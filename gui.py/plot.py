@@ -294,10 +294,10 @@ class Figure(common.referencedobject):
         self.defaultproperties = xmlstore.TypedStore(os.path.join(Figure.schemadirname,'gotmgui.xml'))
 
         # Set some default properties.
-        self.defaultproperties.setProperty('FontName',defaultfont)
-        self.defaultproperties.setProperty('FontScaling',100)
-        self.defaultproperties.setProperty('Grid',False)
-        self.defaultproperties.setProperty('Legend/Location',0)
+        self.defaultproperties['FontName'       ].setValue(defaultfont)
+        self.defaultproperties['FontScaling'    ].setValue(100)
+        self.defaultproperties['Grid'           ].setValue(False)
+        self.defaultproperties['Legend/Location'].setValue(0)
         setLineProperties(self.defaultproperties['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
 
         self.properties.setDefaultStore(self.defaultproperties)
@@ -388,7 +388,7 @@ class Figure(common.referencedobject):
 
         axes = self.figure.add_subplot(111)
         
-        textscaling = self.properties.getProperty('FontScaling',usedefault=True)/100.
+        textscaling = self.properties['FontScaling'].getValue(usedefault=True)/100.
         
         # First scale the default font size; this takes care of all relative font sizes (e.g. "small")
         matplotlib.font_manager.fontManager.set_default_size(textscaling*matplotlib.rcParams['font.size'])
@@ -396,7 +396,7 @@ class Figure(common.referencedobject):
         # Now get some relevant font sizes.
         # Scale font sizes with text scaling parameter if they are absolute sizes.
         # (if they are strings, they are relative sizes already)
-        fontfamily = self.properties.getProperty('FontName',usedefault=True)
+        fontfamily = self.properties['FontName'].getValue(usedefault=True)
         fontsizes = {
             'axes.titlesize' :10,#matplotlib.rcParams['axes.titlesize'],
             'axes.labelsize' :8, #matplotlib.rcParams['axes.labelsize'],
@@ -415,7 +415,7 @@ class Figure(common.referencedobject):
         defaultaxes = self.defaultproperties['Axes']
         forcedaxes = self.properties['Axes']
         for forcedaxis in forcedaxes.getLocationMultiple(['Axis']):
-            istimeaxis = forcedaxis['IsTimeAxis'].getValueOrDefault()
+            istimeaxis = forcedaxis['IsTimeAxis'].getValue(usedefault=True)
             if istimeaxis:
                 axmin = forcedaxis['MinimumTime'].getValue()
                 axmax = forcedaxis['MaximumTime'].getValue()
@@ -469,7 +469,7 @@ class Figure(common.referencedobject):
             defaultseriesnode['LogScale'].setValue(False)
             defaultseriesnode['HasConfidenceLimits'].setValue(False)
             setLineProperties(defaultseriesnode['LineProperties'])
-            label = seriesnode['Label'].getValueOrDefault()
+            label = seriesnode['Label'].getValue(usedefault=True)
             
             # Old defaults will be removed after all series are plotted.
             # Register that the current variable is active, ensuring its default will remain.
@@ -523,7 +523,7 @@ class Figure(common.referencedobject):
             defaultseriesnode['DimensionCount'].setValue(varslice.ndim)
 
             # Get the plot type for 3D plots.
-            plottype3d = seriesnode['PlotType3D'].getValueOrDefault()
+            plottype3d = seriesnode['PlotType3D'].getValue(usedefault=True)
 
             # We use a staggered grid (coordinates at interfaces,
             # values at centers) for certain 3D plot types.
@@ -549,7 +549,7 @@ class Figure(common.referencedobject):
             #    data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]>maximum)
 
             # Transform to log-scale if needed (first mask values <= zero)
-            logscale = seriesnode['LogScale'].getValueOrDefault()
+            logscale = seriesnode['LogScale'].getValue(usedefault=True)
             if logscale:
                 #data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]<=0.)
                 #data[-1] = matplotlib.numerix.ma.log10(data[-1])
@@ -559,7 +559,7 @@ class Figure(common.referencedobject):
             #defaultlabel = '%s (%s)' % (var.getLongName(),var.getUnit())
             #if logscale: defaultlabel = 'log10 '+defaultlabel
             #defaultseriesnode['Label'].setValue(defaultlabel)
-            #label = seriesnode['Label'].getValueOrDefault()
+            #label = seriesnode['Label'].getValue(usedefault=True)
 
             # Enumerate over the dimension of the variable.
             for idim,dimname in enumerate(varslice.dimensions):
@@ -610,11 +610,11 @@ class Figure(common.referencedobject):
                     lbound = varslice.lbound
                     if lbound==None: lbound = varslice.data
                     
-                    if seriesnode['LineProperties/MarkerType'].getValueOrDefault()==0:
+                    if seriesnode['LineProperties/MarkerType'].getValue(usedefault=True)==0:
                         defaultseriesnode['ConfidenceLimits/Style'].setValue(2)
                     else:
                         defaultseriesnode['ConfidenceLimits/Style'].setValue(1)
-                    errorbartype = seriesnode['ConfidenceLimits/Style'].getValueOrDefault()
+                    errorbartype = seriesnode['ConfidenceLimits/Style'].getValue(usedefault=True)
                     
                     if errorbartype==0:
                         pass
@@ -629,7 +629,7 @@ class Figure(common.referencedobject):
                         errX = numpy.hstack((varslice.coords[0],varslice.coords[0][::-1]))
                         errY = numpy.hstack((lbound,ubound[::-1]))
                         if switchaxes: errX,errY = errY,errX
-                        areacolor = seriesnode['LineProperties/Color'].getValueOrDefault()
+                        areacolor = seriesnode['LineProperties/Color'].getValue(usedefault=True)
                         areacolor.brighten(.5)
                         alpha = .7
                         axes.fill(errX,errY,facecolor=areacolor.getNormalized(),linewidth=0, alpha=alpha, zorder=zorder)
@@ -744,19 +744,19 @@ class Figure(common.referencedobject):
             if ln!=title:
                 title = ', '.join(titles)
                 break
-        self.defaultproperties.setProperty('Title',title)
-        title = self.properties.getProperty('Title',usedefault=True)
+        self.defaultproperties['Title'].setValue(title)
+        title = self.properties['Title'].getValue(usedefault=True)
         assert title!=None, 'Title must be available, either explicitly set or as default.'
         if title!='': axes.set_title(title,size=fontsizes['axes.titlesize'],fontname=fontfamily)
         
         # Show legend
         legend = None
-        self.defaultproperties.setProperty('CanHaveLegend',plotcount[1]>0)
+        self.defaultproperties['CanHaveLegend'].setValue(plotcount[1]>0)
         if plotcount[1]>0:
-            self.defaultproperties.setProperty('Legend',plotcount[1]>1)
+            self.defaultproperties['Legend'].setValue(plotcount[1]>1)
             legprop = self.properties['Legend']
-            if legprop.getValueOrDefault():
-                legend = axes.legend(legenddata['handles'],legenddata['labels'],loc=legprop['Location'].getValueOrDefault(),prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
+            if legprop.getValue(usedefault=True):
+                legend = axes.legend(legenddata['handles'],legenddata['labels'],loc=legprop['Location'].getValue(usedefault=True),prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
                 #legend = self.figure.legend(legenddata['handles'],legenddata['labels'],1,prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
                 legend.set_zorder(zorder)
                 zorder += 1
@@ -913,13 +913,13 @@ class Figure(common.referencedobject):
                 defaxisnode['Maximum'].setValue(naturalrange[1])
 
             # Remove axis ticks if required.
-            if not axisnode['TicksMajor'].getValueOrDefault():
+            if not axisnode['TicksMajor'].getValue(usedefault=True):
                 mplaxis.set_major_locator(matplotlib.ticker.FixedLocator([]))
-            if not axisnode['TicksMinor'].getValueOrDefault():
+            if not axisnode['TicksMinor'].getValue(usedefault=True):
                 mplaxis.set_minor_locator(matplotlib.ticker.FixedLocator([]))
 
             # Obtain label for axis.
-            label = axisnode['Label'].getValueOrDefault()
+            label = axisnode['Label'].getValue(usedefault=True)
             if label==None: label=''
 
             # Set axis labels and boundaries.
@@ -942,7 +942,7 @@ class Figure(common.referencedobject):
 
         # Create grid
         gridnode = self.properties['Grid']
-        if gridnode.getValueOrDefault():
+        if gridnode.getValue(usedefault=True):
             lineargs = getLineProperties(gridnode['LineProperties'])
             axes.grid(True,**lineargs)
         
@@ -998,18 +998,18 @@ def setLineProperties(propertynode,mplsection='lines',**kwargs):
     propertynode['MarkerFaceColor'].setValue(kwargs.get('MarkerFaceColor',deflinecolor))
     
 def getLineProperties(propertynode):
-    markertype = propertynode['MarkerType'].getValueOrDefault()
+    markertype = propertynode['MarkerType'].getValue(usedefault=True)
     markertypes = {0:'',1:'.',2:',',3:'o',4:'^',5:'s',6:'+',7:'x',8:'D'}
     markertype = markertypes[markertype]
     
-    linestyle = propertynode['LineStyle'].getValueOrDefault()
+    linestyle = propertynode['LineStyle'].getValue(usedefault=True)
     linestyles = {0:'',1:'-',2:'--',3:'-.',4:':'}
     linestyle = linestyles[linestyle]
     
-    linewidth = propertynode['LineWidth'].getValueOrDefault()
-    color = propertynode['Color'].getValueOrDefault()
-    markersize = propertynode['MarkerSize'].getValueOrDefault()
-    markerfacecolor = propertynode['MarkerFaceColor'].getValueOrDefault()
+    linewidth = propertynode['LineWidth'].getValue(usedefault=True)
+    color = propertynode['Color'].getValue(usedefault=True)
+    markersize = propertynode['MarkerSize'].getValue(usedefault=True)
+    markerfacecolor = propertynode['MarkerFaceColor'].getValue(usedefault=True)
     
     return {'linestyle':linestyle,'marker':markertype,'linewidth':linewidth,'color':color.getNormalized(),'markersize':markersize,'markerfacecolor':markerfacecolor.getNormalized()}
     
@@ -1042,8 +1042,8 @@ def getTimeTickSettings(dayspan,settings,defsettings,preferredcount=8):
 
     defsettings['LocationTime'].setValue(location)
     defsettings['FormatTime'].setValue(tickformat)
-    location   = settings['LocationTime'].getValueOrDefault()
-    tickformat = settings['FormatTime'].getValueOrDefault()
+    location   = settings['LocationTime'].getValue(usedefault=True)
+    tickformat = settings['FormatTime'].getValue(usedefault=True)
 
     # Calculate optimal interval between ticks, aiming for max. 8 ticks total.
     tickcount = dayspan/unitlengths[location]
@@ -1052,7 +1052,7 @@ def getTimeTickSettings(dayspan,settings,defsettings,preferredcount=8):
     
     # Save default tick interval, then get effective tick interval.
     defsettings['IntervalTime'].setValue(interval)
-    interval = settings['IntervalTime'].getValueOrDefault()
+    interval = settings['IntervalTime'].getValue(usedefault=True)
 
     # Make sure we do not plot more than 100 ticks: non-informative and very slow!
     if tickcount/interval>100: interval=math.ceil(tickcount/100.)

@@ -14,9 +14,9 @@ def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
     namelistscenario = scen.convert(gotmscenarioversion)
     if verbose: print 'scenario converted'
     simulationdir = tempfile.mkdtemp('','gotm-')
-    namelistscenario.setProperty('gotmrun/output/out_fmt',2)
-    namelistscenario.setProperty('gotmrun/output/out_dir','.')
-    namelistscenario.setProperty('gotmrun/output/out_fn','result')
+    namelistscenario['gotmrun/output/out_fmt'].setValue(2)
+    namelistscenario['gotmrun/output/out_dir'].setValue('.')
+    namelistscenario['gotmrun/output/out_fn' ].setValue('result')
     namelistscenario.writeAsNamelists(simulationdir)
     namelistscenario.release()
     
