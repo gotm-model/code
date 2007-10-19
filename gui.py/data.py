@@ -73,6 +73,8 @@ class PlotVariable:
             self.data = None
             self.coords = self.ndim*[None]
             self.coords_stag = self.ndim*[None]
+            
+            # Bounds for confidence interval (optional)
             self.lbound = None
             self.ubound = None
         
@@ -104,8 +106,11 @@ class PlotVariable:
             newslice.coords      = [self.coords     [i].squeeze() for i in gooddimindices]
             newslice.coords_stag = [self.coords_stag[i].squeeze() for i in gooddimindices]
             newslice.data = self.data.squeeze()
+
+            # Update confidence interval (if any)
             if self.lbound!=None: newslice.lbound = self.lbound.squeeze()
             if self.ubound!=None: newslice.ubound = self.ubound.squeeze()
+
             return newslice
 
     def __init__(self,store):

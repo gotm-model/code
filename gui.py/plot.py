@@ -722,7 +722,7 @@ class Figure(common.referencedobject):
                     # because MatPlotLib 0.90.0 chokes on identical min and max.
                     pc.set_clim((Z[0,0]-1,Z[0,0]+1))
                 else:
-                    pc.set_clim(dim2data[varpath]['forcedrange'])
+                    pc.set_clim(dim2data.get('colorbar',{}).get('forcedrange',(None,None)))
                 cb = self.figure.colorbar(pc)
 
                 plotcount[2] += 1
