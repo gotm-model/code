@@ -687,11 +687,17 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
 
         def getLongName(self):
             nc = self.store.getcdf()
-            return nc.variables[self.varname].long_name
+            var = nc.variables[self.varname]
+            if hasattr(var,'long_name'):
+                return var.long_name
+            else:
+                return self.getName()
 
         def getUnit(self):
             nc = self.store.getcdf()
-            return common.convertUnitToUnicode(nc.variables[self.varname].units)
+            cdfvar = nc.variables[self.varname]
+            if not hasattr(cdfvar,'units'): return None
+            return common.convertUnitToUnicode(cdfvar.units)
             
         def getDimensions(self):
           nc = self.store.getcdf()
@@ -920,10 +926,14 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
         return True
 
     def getTimeReference(self,dimname):
+      cdfvar = self.getcdf().variables[dimname]
+      if not hasattr(cdfvar,'units'):
+          raise self.ReferenceTimeParseError('variable "%s" lacks "units" attribute.' % (dimname,))
+        
       # Retrieve time unit (in days) and reference date/time, based on COARDS convention.
-      fullunit = self.getcdf().variables[dimname].units
+      fullunit = cdfvar.units
       if ' since ' not in fullunit:
-          raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: string does not contain " since ".' % fullunit)
+          raise self.ReferenceTimeParseError('"units" attribute of variable "%s" equals "%s", which does not follow COARDS convention. Problem: string does not contain " since ".' % (dimname,fullunit))
       timeunit,reftime = fullunit.split(' since ')
       
       # Parse the reference date, time and timezone

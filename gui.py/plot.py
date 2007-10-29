@@ -809,7 +809,7 @@ class Figure(common.referencedobject):
             
             # Build default label for this axis
             deflab = dat['label']
-            if dat['unit']!='': deflab += ' ('+dat['unit']+')'
+            if dat['unit']!='' and dat['unit']!=None: deflab += ' ('+dat['unit']+')'
             defaxisnode['Label'].setValue(deflab)
             defaxisnode['Unit'].setValue(dat['unit'])
             defaxisnode['TicksMajor'].setValue(True)

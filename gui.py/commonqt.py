@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.45 2007-10-18 06:40:14 jorn Exp $
+#$Id: commonqt.py,v 1.46 2007-10-29 20:03:35 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -2836,7 +2836,7 @@ class FigureDialog(QtGui.QDialog):
             self.connect(self.buttonClose, QtCore.SIGNAL('clicked()'), self.accept)
             self.panel.layoutButtons.addWidget(self.buttonClose)
 
-        title = self.panel.figure.properties.getProperty('Title',usedefault=True)
+        title = self.panel.figure.properties['Title'].getValue(usedefault=True)
         if title==None: title = 'Figure'
         self.setWindowTitle(title)
 
