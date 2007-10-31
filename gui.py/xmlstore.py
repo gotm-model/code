@@ -1247,7 +1247,7 @@ class TypedStoreInterface:
         self.showhidden = showhidden
         self.omitgroupers = omitgroupers
         self.blockNotifyOfHiddenNodes = (not showhidden)
-        self.notifyOnDefaultChange = True
+        self.processDefaultChange = 0
 
         self.eventhandlers = {}
 
@@ -1453,7 +1453,8 @@ class TypedStoreInterface:
     def onDefaultChange(self,node,feature):
         assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
-        if self.notifyOnDefaultChange: self.onChange(node,feature)
+        if self.processDefaultChange==1 or (self.processDefaultChange==0 and node.getValue()==None):
+            self.onChange(node,feature)
 
 class Node:
     def __init__(self,controller,templatenode,valuenode,location,parent):
@@ -2006,12 +2007,12 @@ class Node:
             res += ch.getNodesByType(valuetype)
         return res
 
-    def getEmptyNodes(self):
+    def getEmptyNodes(self,usedefault=False):
         """Returns all descendant nodes that do not have a value assigned
         to them, but are capable of having a value.
         """
         res = []
-        if self.canHaveValue() and self.getValue()==None:
+        if self.canHaveValue() and self.getValue(usedefault=usedefault)==None:
             res.append(self)
         for ch in self.children:
             res += ch.getEmptyNodes()
@@ -2434,6 +2435,39 @@ class TypedStore(common.referencedobject):
                     n.setValue(n.getDefaultValue())
         else:
             self.root.copyFrom(self.defaultstore.root,replace=False)
+            
+    def validate(self,nodepaths=None,usedefault=True):
+        errors = []
+
+        if nodepaths!=None:
+            filenodes = []
+            emptynodes = []
+            for nodepath in nodepaths:
+                node = self[nodepath]
+                if not node.canHaveValue(): continue
+                if node.getValueType()=='file':
+                    filenodes.append(node)
+                else:
+                    if node.getValue()==None:
+                        emptynodes.append(node)
+        else:
+            filenodes = self.root.getNodesByType('file')
+            emptynodes = self.root.getEmptyNodes(usedefault=usedefault)
+        
+        # Find used file nodes that have not been supplied with data.
+        for node in filenodes:
+            if node.isHidden(): continue
+            value = node.getValue(usedefault=True)
+            if value==None or not value.isValid():
+                errors.append('variable "%s" has not been set.' % node.getText(1))
+
+        # Find used nodes that have not been set, and lack a default value.
+        for node in emptynodes:
+            if node.isHidden(): continue
+            if node.getDefaultValue()==None:
+                errors.append('variable "%s" has not been set.' % node.getText(1))
+            
+        return errors
 
     def convert(self,target):
         """Converts the TypedStore object to the specified target. The target may be
@@ -2787,7 +2821,7 @@ class TypedStore(common.referencedobject):
 
     def onChange(self,node,feature):
         """Called internally after a property (e.g., value, unit) of a node has changed.
-        The string "feature" specifies which property has changed."""
+        The string "feature" specifies which property has changed, e.g., "value", "unit"."""
         # Register that we changed.
         self.changed = True
 

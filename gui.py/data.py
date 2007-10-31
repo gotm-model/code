@@ -233,6 +233,9 @@ class LinkedFileVariableStore(PlotVariableStore):
     def getDimensionInfo(self,dimname):
         return self.dimensions[dimname]
         
+    def getDimensionRange(self,dimname):
+        return None
+        
     def getVariableNames(self):
         return [data[0] for data in self.vardata]
 
@@ -310,6 +313,12 @@ class LinkedMatrix(LinkedFileVariableStore):
             self.data.append(matplotlib.numerix.empty((0,)))
         self.data.append(matplotlib.numerix.empty((0,len(self.vardata))))
         
+    def getDimensionRange(self,dimname):
+        ind = self.dimensionorder.index(dimname)
+        dimdata = self.data[ind]
+        if 0 in dimdata.shape: return None
+        return (dimdata.min(),dimdata.max())
+
     def loadDataFile(self,datafile,callback=None):
         self.datafile = datafile
         
@@ -516,8 +525,21 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         self.variableclass = self.LinkedProfilesInTimeVariable
         
     def clear(self):
-        self.data = (matplotlib.numerix.array([]),[],[])
+        self.data = (matplotlib.numerix.empty((0,)),[],[])
         self.griddeddata = None
+
+    def getDimensionRange(self,dimname):
+        ind = self.dimensionorder.index(dimname)
+        dimdata = self.data[ind]
+        if len(dimdata)==0: return None
+        if ind==0:
+            return (dimdata.min(),dimdata.max())
+        else:
+            dimmin,dimmax = dimdata[0].min(),dimdata[0].max()
+            for iobs in range(1,len(dimdata)):
+                dimmin = min(dimmin,dimdata[iobs].min())
+                dimmax = max(dimmin,dimdata[iobs].max())
+            return (dimmin,dimmax)
         
     def dataChanged(self):
         """Event handler, must be called by external actors when they change the data."""

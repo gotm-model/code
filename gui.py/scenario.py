@@ -4,7 +4,7 @@
 guiscenarioversion = 'gotmgui-0.5.0'
 savedscenarioversion = 'gotm-4.0.0'
 
-import common, xmlstore, namelist
+import common, xmlstore, namelist, data
 
 import os, shutil, re, datetime
 
@@ -20,6 +20,11 @@ class Scenario(xmlstore.TypedStore):
         xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
 
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
+        self.datafileinfo = {}
+        
+        self.interface = self.getInterface()
+        self.interface.connect('afterStoreChange',self.onAfterStoreChange)
+        self.interface.connect('afterChange',     self.onAfterNodeChange)
         
     @staticmethod
     def setRoot(rootpath):
@@ -412,6 +417,87 @@ class Scenario(xmlstore.TypedStore):
         # If the scenario was stored in the official 'save' version, we should not consider it changed.
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
         if self.originalversion==savedscenarioversion: self.resetChanged()
+        
+    def onAfterStoreChange(self):
+        self.datafileinfo = {}
+
+    def onAfterNodeChange(self,node,value):
+        nodepath = '/'+'/'.join(node.location)
+        if nodepath in self.datafileinfo: del self.datafileinfo[nodepath]
+        
+    def validate(self,nodepaths=None,usedefault=True,validatedatafiles=True,callback=None):
+        errors = xmlstore.TypedStore.validate(self,nodepaths,usedefault=usedefault)
+
+        if validatedatafiles:
+            # Find nodes with "file" data type.
+            if nodepaths!=None:
+                filenodes = []
+                for nodepath in nodepaths:
+                    node = self[nodepath]
+                    if not node.canHaveValue(): continue
+                    if node.getValueType()=='file': filenodes.append(node)
+            else:
+                filenodes = self.root.getNodesByType('file')
+                
+            # Remove data files without valid value from the list.
+            # (these are validated by the TypedStore implementation, and cannot be parsed)
+            parsefilenodes = []
+            for fn in filenodes:
+                nodepath = '/'+'/'.join(fn.location)
+                value = fn.getValue(usedefault=usedefault)
+                if value!=None and value.isValid() and not (nodepath in self.datafileinfo):
+                    parsefilenodes.append(fn)
+
+            filecount = len(parsefilenodes)
+            def printprogress(status,progress):
+                if callback!=None:
+                    callback(float(icurfile+progress)/filecount,'parsing %s - %s' % (fn.getText(detail=1),status))
+
+            # Parse data files
+            for icurfile,fn in enumerate(parsefilenodes):
+                value = fn.getValue(usedefault=usedefault)
+                newstore = data.LinkedFileVariableStore.fromNode(fn)
+                valid = True
+                dimranges = []
+                try:
+                    newstore.loadDataFile(value,callback=printprogress)
+                except Exception,e:
+                    errors.append('Could not parse data file for variable %s. Error: %s' % ('/'.join(fn.location),e))
+                    valid = False
+                if valid:
+                    for dimname in newstore.getDimensionNames():
+                        dimranges.append(newstore.getDimensionRange(dimname))
+                self.datafileinfo['/'+'/'.join(fn.location)] = {'valid':valid,'dimensionranges':dimranges}
+                icurfile += 1
+
+        if self.version!='gotmgui-0.5.0': return errors
+        
+        if nodepaths==None or '/time/start' in nodepaths or '/time/stop' in nodepaths:
+            start = self['/time/start'].getValue(usedefault=usedefault)
+            stop = self['/time/stop'].getValue(usedefault=usedefault)
+            if start!=None and stop!=None:
+                if start>stop:
+                    errors.append('The end of the simulated period lies before its beginning.')
+                elif start==stop:
+                    errors.append('The begin and end time of the simulated period are equal.')
+                
+            if validatedatafiles and stop!=None:
+                for fn in filenodes:
+                    nodepath = '/'+'/'.join(fn.location)
+                    value = fn.getValue(usedefault=usedefault)
+                    if value==None or not value.isValid(): continue
+                    assert nodepath in self.datafileinfo, 'Cannot find parse result of data file "%s" in datafileinfo cache.' % nodepath
+                    store = data.LinkedFileVariableStore.fromNode(fn)
+                    fileinfo = self.datafileinfo[nodepath]
+                    if not fileinfo['valid']: continue
+                    for dimname,dimrange in zip(store.getDimensionNames(),fileinfo['dimensionranges']):
+                        diminfo = store.getDimensionInfo(dimname)
+                        if diminfo['datatype']=='datetime' and dimrange!=None:
+                            dimrange = (common.num2date(dimrange[0]),common.num2date(dimrange[1]))
+                            if stop>dimrange[1]:
+                                errors.append('Input data series "%s" finishes at %s, before the simulation is done (%s).' % (fn.getText(detail=1),r[1].strftime(common.datetime_displayformat),stop.strftime(common.datetime_displayformat)))
+                
+        return errors
 
 # ========================================================================================
 # Here start custom convertors!

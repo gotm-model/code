@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.46 2007-10-29 20:03:35 jorn Exp $
+#$Id: commonqt.py,v 1.47 2007-10-31 08:04:25 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -1211,6 +1211,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         self.checkboxes = checkboxes
 
         self.storeinterface = self.typedstore.getInterface(showhidden=self.nohide,omitgroupers=True)
+        self.storeinterface.processDefaultChange = 1    # Warn always if a default changes (even if it is not used)
 
         self.storeinterface.connect('beforeVisibilityChange',self.beforeNodeVisibilityChange)
         self.storeinterface.connect('afterVisibilityChange', self.afterNodeVisibilityChange)
@@ -1972,6 +1973,9 @@ class PropertyEditorFactory:
         self.changed = True
         if self.live:
             if not editor.updateStore(): editor.updateEditorValue()
+            
+    def getEditedNodes(self):
+        return [editor.node for editor in self.editors]
 
 class PropertyEditor:
 
@@ -2436,36 +2440,18 @@ class FigurePanel(QtGui.QWidget):
         self.figure = plot.Figure(mplfigure,defaultfont=deffont)
         self.figure.registerCallback('completeStateChange',self.onFigureStateChanged)
         
-        #self.figureinterface = self.figure.properties.getInterface()
-        #self.figureinterface.connect('beforeVisibilityChange',self.beforeFigureNodeVisibilityChange)
-        #self.figureinterface.connect('afterVisibilityChange', self.afterFigureNodeVisibilityChange)
-        #self.figureinterface.connect('afterStoreChange', self.afterFigureStoreChange)
-        
         self.navtoolbar = FigureToolbar(self.canvas,self.updateAxesBounds)
 
         self.factory = PropertyEditorFactory(self.figure.properties,live=True,allowhide=True)
 
         layout = QtGui.QVBoxLayout()
-        
-#        self.layoutOptions = QtGui.QVBoxLayout()
-        
-#        self.layoutAxesRange = QtGui.QGridLayout()
-#        self.layoutOptions.addLayout(self.layoutAxesRange)
-
-#        self.buttonAdvanced = QtGui.QPushButton(self.tr('Advanced...'),self)
-#        self.buttonAdvanced.setAutoDefault(False)
-#        self.buttonAdvanced.setDefault(False)
-#        self.connect(self.buttonAdvanced, QtCore.SIGNAL('clicked()'), self.onAdvancedClicked)
-#        self.layoutOptions.addWidget(self.buttonAdvanced)
 
         self.layoutButtons = QtGui.QHBoxLayout()
 
         # Button for showing/hiding properties
-        #self.buttonProperties = QtGui.QPushButton(self.tr('Edit plot &properties'),self)
         self.buttonProperties = QtGui.QPushButton(self.tr('&Properties'),self)
         self.buttonProperties.setAutoDefault(False)
         self.buttonProperties.setDefault(False)
-        #self.connect(self.buttonProperties, QtCore.SIGNAL('clicked()'), self.onPropertiesClicked)
         self.connect(self.buttonProperties, QtCore.SIGNAL('clicked()'), self.onAdvancedClicked)
         self.layoutButtons.addWidget(self.buttonProperties)
 
@@ -2508,11 +2494,6 @@ class FigurePanel(QtGui.QWidget):
 
         layout.addWidget(self.canvas)
         layout.addLayout(self.layoutButtons)
-        
-        #self.widgetProperties = QtGui.QWidget(self)
-        #self.widgetProperties.setLayout(self.layoutOptions)
-        #self.widgetProperties.setVisible(False)
-        #layout.addWidget(self.widgetProperties)
 
         self.setLayout(layout)
 
@@ -2847,3 +2828,20 @@ class FigureDialog(QtGui.QDialog):
         
     def getFigure(self):
         return self.panel.figure
+
+class ProgressDialog(QtGui.QProgressDialog):
+    def __init__(self,parent=None,minimumduration=500,title=None):
+        QtGui.QProgressDialog.__init__(self,'',QtCore.QString(),0,0,parent,QtCore.Qt.Dialog|QtCore.Qt.WindowTitleHint|QtCore.Qt.MSWindowsFixedSizeDialogHint)
+        self.setModal(True)
+        self.setMinimumDuration(minimumduration)
+        if title!=None: self.setWindowTitle(title)
+            
+    def onProgressed(self,progress,status):
+        if progress!=None:
+            if self.maximum()==0: self.setMaximum(100)
+            self.setValue(int(100*progress))
+        elif progressdialog.maximum()!=0:
+            self.setValue(0)
+        self.setLabelText(status)
+        QtGui.qApp.processEvents()
+        

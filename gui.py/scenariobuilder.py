@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.27 2007-10-18 06:40:14 jorn Exp $
+#$Id: scenariobuilder.py,v 1.28 2007-10-31 08:04:26 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -195,6 +195,15 @@ class ScenarioPage(commonqt.WizardPage):
         self.factory = commonqt.PropertyEditorFactory(self.scenario,live=True,allowhide=True)
 
     def saveData(self,mustbevalid):
+        
+        if mustbevalid:
+            nodepaths = ['/'+'/'.join(node.location) for node in self.factory.getEditedNodes()]
+            progressdialog = commonqt.ProgressDialog(self,title='Validating settings...')
+            errors = self.scenario.validate(nodepaths,callback=progressdialog.onProgressed)
+            progressdialog.close()
+            if len(errors)>0:
+                QtGui.QMessageBox.critical(self,'Scenario has not been configured correctly','The following problems remain:\n\n%s' % '\n'.join(errors),QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
+                return False
 
         self.factory.unlink()
         
@@ -751,25 +760,11 @@ class PageAdvanced(commonqt.WizardPage):
 
     def saveData(self,mustbevalid):
         if mustbevalid:
-            # Find used file nodes that have not been supplied with data.
-            filenodes = []
-            for fn in self.scenario.root.getNodesByType('file'):
-                if fn.isHidden(): continue
-                value = fn.getValue(usedefault=True)
-                if value==None or not value.isValid(): filenodes.append(fn)
-            if len(filenodes)>0:
-                vartext = '\n'.join([fn.getText(2) for fn in filenodes])
-                QtGui.QMessageBox.critical(self,'Scenario is incomplete','The following variables will be used in the simulation, but have not been set:\n\n%s\n\nEither configure the scenario to not use these variables, or supply them with data.' % vartext,QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
-                return False
-
-            # Find used nodes that have not been set, and lack a default value.
-            errornodes = []
-            for node in self.scenario.root.getEmptyNodes():
-                if node.isHidden(): continue
-                if node.getDefaultValue()==None: errornodes.append(node)
-            if len(errornodes)>0:
-                vartext = '\n'.join([node.getText(2) for node in errornodes])
-                QtGui.QMessageBox.critical(self,'Scenario is incomplete','The following variables will be used in the simulation, but have not been set to a value:\n\n%s\n\nPlease set these variables to a value first.' % vartext,QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
+            progressdialog = commonqt.ProgressDialog(self,title='Validating settings...')
+            errors = self.scenario.validate(callback=progressdialog.onProgressed)
+            progressdialog.close()
+            if len(errors)>0:
+                QtGui.QMessageBox.critical(self,'Scenario is incomplete','The following problems remain:\n\n%s' % '\n'.join(errors),QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
                 return False
         self.tree.setModel(None)
         self.model.unlink()

@@ -286,7 +286,7 @@ class Figure(common.referencedobject):
         # Create store for the explicitly set properties
         self.properties = xmlstore.TypedStore(os.path.join(Figure.schemadirname,'gotmgui.xml'))
         self.propertiesinterface = self.properties.getInterface()
-        self.propertiesinterface.notifyOnDefaultChange = False
+        self.propertiesinterface.processDefaultChange = -1
         self.propertiesinterface.connect('afterChange',self.onPropertyChanged)
         self.propertiesinterface.connect('afterStoreChange',self.onPropertyStoreChanged)
         
