@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.19 2007-06-26 18:24:30 jorn Exp $
+!$Id: observations.F90,v 1.20 2007-11-02 09:51:17 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -227,6 +227,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.20  2007-11-02 09:51:17  jorn
+!  Fixed: error on compiling without bio support
+!
 !  Revision 1.19  2007-06-26 18:24:30  jorn
 !  fixed typos related to biological profiles
 !
@@ -764,8 +767,10 @@
    stop 'init_observations'
 111 FATAL 'Unable to open "',trim(o2_prof_file),'" for reading'
    stop 'init_observations'
+#ifdef BIO
 112 FATAL 'Unable to open "',trim(bio_prof_file),'" for reading'
    stop 'init_observations'
+#endif
 
    return
    end subroutine init_observations
