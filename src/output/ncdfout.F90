@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.16 2007-08-19 08:25:54 jorn Exp $
+!$Id: ncdfout.F90,v 1.17 2007-11-02 10:58:34 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,6 +58,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
+!  Revision 1.17  2007-11-02 10:58:34  jorn
+!  Made set_no public to allow other modules to save to NetCDF directly
+!
 !  Revision 1.16  2007-08-19 08:25:54  jorn
 !  fixed typo: celcius -> celsius
 !
@@ -107,7 +110,7 @@
 !
 ! !PRIVATE DATA MEMBERS
    logical, private          :: first=.true.
-   integer, private          :: set_no=0
+   integer, public          :: set_no=0
 !  dimension lengths
    integer, parameter        :: lon_len=1
    integer, parameter        :: lat_len=1
