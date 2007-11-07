@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.15 2007-10-01 12:44:06 kbk Exp $
+#$Id: Makefile,v 1.16 2007-11-07 11:14:24 kb Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -23,9 +23,11 @@ ${LIB}(bio_fasham.o)		\
 ${LIB}(bio_sed.o)		\
 ${LIB}(bio_rolm.o)		\
 ${LIB}(bio_save.o)		\
-${LIB}(mussels.o)		\
-${LIB}(mussel_deb.o)		\
 ${LIB}(bio.o)
+
+#${LIB}(mussels.o)		\
+#${LIB}(mussel_deb.o)		\
+
 
 all: ${OBJ}
 	$(MOVE_MODULES_COMMAND)

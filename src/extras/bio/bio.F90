@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.39 2007-10-01 12:44:06 kbk Exp $
+!$Id: bio.F90,v 1.40 2007-11-07 11:14:24 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -39,8 +39,10 @@
    use bio_rolm, only : init_bio_rolm,init_var_rolm,var_info_rolm
    use bio_rolm, only : light_rolm,surface_fluxes_rolm,do_bio_rolm
 
+#if 0
    use mussels, only : init_mussels, do_mussels, end_mussels
    use mussels, only : mussels_calc,total_mussel_flux
+#endif
 
    use output, only: out_fmt,write_results,ts
 
@@ -57,6 +59,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.40  2007-11-07 11:14:24  kb
+!  no mussesl yet
+!
 !  Revision 1.39  2007-10-01 12:44:06  kbk
 !  added RedOxLayer Model (ROLM)
 !
@@ -394,9 +399,12 @@
          end do
       end if
 
+#if 0
 !     Initialise 'mussels' module
       call init_mussels(namlst,"mussels.nml",unit,nlev,h)
+#endif
    end if
+
 
    return
 
@@ -565,9 +573,11 @@
             call surface_fluxes_mab(nlev,t(nlev),s(nlev))
       end select
 
+#if 0
       if (mussels_calc) then
          call do_mussels(numc,dt,t(1))
       end if
+#endif
 
       if (bio_eulerian) then
          do j=1,numcc
@@ -746,9 +756,11 @@
    if (allocated(bioshade_))      deallocate(bioshade_)
    if (allocated(abioshade_))     deallocate(abioshade_)
 
+#if 0
    if (mussels_calc) then
       call end_mussels()
    end if
+#endif
 
    init_saved_vars=.true.
 
