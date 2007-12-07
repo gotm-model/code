@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.20 2007-11-02 09:51:17 jorn Exp $
+!$Id: observations.F90,v 1.21 2007-12-07 10:10:51 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -227,6 +227,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.21  2007-12-07 10:10:51  kb
+!  allow longer lines in obs files
+!
 !  Revision 1.20  2007-11-02 09:51:17  jorn
 !  Fixed: error on compiling without bio support
 !
@@ -288,7 +291,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   character(len=72)         :: cbuf
+   character(len=128)         :: cbuf
 !
 !-----------------------------------------------------------------------
 
@@ -895,7 +898,7 @@
 !-----------------------------------------------------------------------
 !BOC
    ierr=0
-   read(unit,'(A72)',ERR=100,END=110) cbuf
+   read(unit,'(A128)',ERR=100,END=110) cbuf
    read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
    read(cbuf(20:),*,ERR=100,END=110) (obs(i),i=1,N)
 
