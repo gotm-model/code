@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.35 2007-06-19 10:38:02 kbk Exp $
+!$Id: gotm.F90,v 1.36 2007-12-07 10:12:20 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -41,7 +41,7 @@
    use airsea,      only: init_air_sea,do_air_sea,clean_air_sea
    use airsea,      only: set_sst,integrated_fluxes
    use airsea,      only: calc_fluxes
-   use airsea,      only: wind=>w,tx,ty,I_0,heat,p_e
+   use airsea,      only: wind=>w,tx,ty,I_0,heat,precip,evap
 
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,do_turbulence
@@ -94,6 +94,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.36  2007-12-07 10:12:20  kb
+!  replaced p_e with precip and included evap
+!
 !  Revision 1.35  2007-06-19 10:38:02  kbk
 !  initialise biological profiles from external file
 !
@@ -469,8 +472,8 @@
                                    buoy_method,gravity,rho_0)
       case (99)
 !        update KPP model
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat,p_e,rad,T,S,    &
-                            tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip-evap,    &
+                             rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
                      u_taus,u_taub,tFlux,btFlux,sFlux,bsFlux,           &

@@ -1,4 +1,4 @@
-!$Id: salinity.F90,v 1.11 2007-01-06 11:49:15 kbk Exp $
+!$Id: salinity.F90,v 1.12 2007-12-07 10:12:20 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -67,7 +67,7 @@
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: sprof,SRelaxTau
-   use airsea,       only: p_e
+   use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -94,6 +94,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: salinity.F90,v $
+!  Revision 1.12  2007-12-07 10:12:20  kb
+!  replaced p_e with precip and included evap
+!
 !  Revision 1.11  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -146,7 +149,7 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffSup        = -S(nlev)*p_e
+   DiffSup        = -S(nlev)*(precip-evap)
    DiffSdw        = _ZERO_
 
    AdvBcup       = zeroDivergence

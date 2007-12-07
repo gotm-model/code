@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.17 2007-11-02 10:58:34 jorn Exp $
+!$Id: ncdfout.F90,v 1.18 2007-12-07 10:12:20 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,6 +58,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
+!  Revision 1.18  2007-12-07 10:12:20  kb
+!  replaced p_e with precip and included evap
+!
 !  Revision 1.17  2007-11-02 10:58:34  jorn
 !  Made set_no public to allow other modules to save to NetCDF directly
 !
@@ -121,7 +124,7 @@
    integer, private          :: zeta_id
    integer, private          :: sst_id,sss_id
    integer, private          :: x_taus_id,y_taus_id
-   integer, private          :: swr_id,heat_id,total_id,p_e_id
+   integer, private          :: swr_id,heat_id,total_id,precip_id,evap_id
    integer, private          :: int_swr_id,int_heat_id,int_total_id
    integer, private          :: u_taus_id,u_taub_id
    integer, private          :: zsbl_id,zbbl_id
@@ -253,7 +256,9 @@
    call check_err(iret)
    iret = nf_def_var(ncid,'int_total',NF_REAL,3,dims, int_total_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'p_e',NF_REAL,3,dims, p_e_id)
+   iret = nf_def_var(ncid,'precip',NF_REAL,3,dims, precip_id)
+   call check_err(iret)
+   iret = nf_def_var(ncid,'evap',NF_REAL,3,dims, evap_id)
    call check_err(iret)
 
    iret = nf_def_var(ncid,'u_taus',NF_REAL,3,dims, u_taus_id)
@@ -409,7 +414,8 @@
    iret = set_attributes(ncid,int_swr_id,units='J/m2',long_name='integrated short wave radiation')
    iret = set_attributes(ncid,int_heat_id,units='J/m2',long_name='integrated surface heat flux')
    iret = set_attributes(ncid,int_total_id,units='J/m2',long_name='integrated total surface heat exchange')
-   iret = set_attributes(ncid,p_e_id,units='m/s',long_name='precipitation - evaporation')
+   iret = set_attributes(ncid,precip_id,units='m/s',long_name='precipitation')
+   iret = set_attributes(ncid,evap_id,units='m/s',long_name='evaporation')
    iret = set_attributes(ncid,u_taus_id,units='m/s',long_name='surface friction velocity')
    iret = set_attributes(ncid,u_taub_id,units='m/s',long_name='bottom friction velocity')
 
@@ -508,7 +514,7 @@
 !  Write the GOTM core variables to the NetCDF file.
 !
 ! !USES:
-   use airsea,       only: tx,ty,I_0,heat,p_e,sst,sss
+   use airsea,       only: tx,ty,I_0,heat,precip,evap,sst,sss
    use airsea,       only: int_swr,int_heat,int_total
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
    use meanflow,     only: h,u,v,z,S,T,buoy,SS,NN
@@ -585,7 +591,8 @@
    iret = store_data(ncid,int_swr_id,XYT_SHAPE,1,scalar=int_swr)
    iret = store_data(ncid,int_heat_id,XYT_SHAPE,1,scalar=int_heat)
    iret = store_data(ncid,int_total_id,XYT_SHAPE,1,scalar=int_total)
-   iret = store_data(ncid,p_e_id,XYT_SHAPE,1,scalar=p_e)
+   iret = store_data(ncid,precip_id,XYT_SHAPE,1,scalar=precip)
+   iret = store_data(ncid,evap_id,XYT_SHAPE,1,scalar=evap)
    iret = store_data(ncid,u_taub_id,XYT_SHAPE,1,scalar=u_taub)
    iret = store_data(ncid,u_taus_id,XYT_SHAPE,1,scalar=u_taus)
 

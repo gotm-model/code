@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.21 2007-09-25 10:06:10 kbk Exp $
+!$Id: airsea.F90,v 1.22 2007-12-07 10:12:20 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -50,13 +50,10 @@
 !  and surface heat flux (W/m^2)
    REALTYPE, public                    :: I_0,heat
 
-!  precipitation minus evaporation
-!  (m/s)
-   REALTYPE, public                    :: p_e
-
 !  precipitation and  evaporation
 !  (m/s)
-   REALTYPE, public                    :: precip=_ZERO_,evap=_ZERO_
+   REALTYPE, public                    :: precip=_ZERO_
+   REALTYPE, public                    :: evap=_ZERO_
 
 !  sea surface temperature (degC) and
 !  sea surface salinity (psu)
@@ -74,7 +71,7 @@
    integer,  parameter                 :: meteo_unit=20
    integer,  parameter                 :: heat_unit=21
    integer,  parameter                 :: momentum_unit=22
-   integer,  parameter                 :: p_e_unit=23
+   integer,  parameter                 :: precip_unit=23
    integer,  parameter                 :: sst_unit=24
    integer,  parameter                 :: sss_unit=25
    integer,  parameter                 :: CONSTVAL=1
@@ -85,6 +82,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.22  2007-12-07 10:12:20  kb
+!  replaced p_e with precip and included evap
+!
 !  Revision 1.21  2007-09-25 10:06:10  kbk
 !  modularized the airsea module - added Fairall method
 !
@@ -154,7 +154,7 @@
    integer                   :: back_radiation_method=1
    integer                   :: heat_method
    integer                   :: momentum_method
-   integer                   :: p_e_method
+   integer                   :: precip_method
    integer                   :: sst_method
    integer                   :: sss_method
    integer                   :: hum_method
@@ -164,7 +164,7 @@
    character(len=PATH_MAX)   :: meteo_file
    character(len=PATH_MAX)   :: heatflux_file
    character(len=PATH_MAX)   :: momentumflux_file
-   character(len=PATH_MAX)   :: p_e_flux_file
+   character(len=PATH_MAX)   :: precip_file
    character(len=PATH_MAX)   :: sss_file
    character(len=PATH_MAX)   :: sst_file
 
@@ -175,7 +175,8 @@
    REALTYPE                  :: rh
    REALTYPE                  :: const_tx,const_ty
    REALTYPE                  :: const_swr,const_heat
-   REALTYPE                  :: const_p_e
+   REALTYPE                  :: const_precip=_ZERO_
+   REALTYPE                  :: precip_factor=_ONE_
    REALTYPE                  :: dlon,dlat
 !
 ! !BUGS:
@@ -270,12 +271,14 @@
                      meteo_file, &
                      hum_method, &
                      heat_method, &
+                     rain_impact, &
+                     calc_evaporation, &
                      const_swr,const_heat, &
                      heatflux_file, &
                      momentum_method, &
                      const_tx,const_ty, &
                      momentumflux_file, &
-                     p_e_method,const_p_e,p_e_flux_file, &
+                     precip_method,const_precip,precip_file,precip_factor,&
                      sst_method, sst_file, &
                      sss_method, sss_file
 !
@@ -357,12 +360,21 @@
    end if
 
 !  The fresh water fluxes (used for calc_fluxes=.true. and calc_fluxes=.false.)
-   select case (p_e_method)
+   select case (precip_method)
+      case (1)
+         LEVEL2 'Using constant precipitation= ',const_precip
+         LEVEL2 'rain_impact=      ',rain_impact
+         LEVEL2 'calc_evaporation= ',calc_evaporation
       case (FROMFILE)
-         open(p_e_unit,file=p_e_flux_file,action='read', &
+         open(precip_unit,file=precip_file,action='read', &
               status='old',err=95)
-         LEVEL2 'Reading precipitatio/evaporation data from:'
-         LEVEL3 trim(p_e_flux_file)
+         LEVEL2 'Reading precipitation data from:'
+         LEVEL3 trim(precip_file)
+         if (precip_factor .ne. _ONE_) then
+            LEVEL3 'applying factor= ',precip_factor
+         end if
+         LEVEL2 'rain_impact=      ',rain_impact
+         LEVEL2 'calc_evaporation= ',calc_evaporation
       case default
    end select
 
@@ -388,7 +400,7 @@
    stop 'init_airsea'
 94 FATAL 'I could not open ',trim(momentumflux_file)
    stop 'init_airsea'
-95 FATAL 'I could not open ',trim(p_e_flux_file)
+95 FATAL 'I could not open ',trim(precip_file)
    stop 'init_airsea'
 96 FATAL 'I could not open ',trim(sst_file)
    stop 'init_airsea'
@@ -430,6 +442,15 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+!  The freshwater flux (used for calc_fluxes=.true. and calc_fluxes=.false.)
+   select case (precip_method)
+      case (CONSTVAL)
+         precip=const_precip
+      case (FROMFILE)
+         call read_precip(jul,secs,precip)
+      case default
+   end select
+
    if (calc_fluxes) then
       call flux_from_meteo(jul,secs)
       call short_wave_radiation(jul,secs,dlon,dlat,cloud,I_0)
@@ -465,14 +486,6 @@
          case default
       end select
    end if
-!  The freshwater flux (used for calc_fluxes=.true. and calc_fluxes=.false.)
-   select case (p_e_method)
-      case (CONSTVAL)
-         p_e=const_p_e
-      case (FROMFILE)
-         call read_p_e_flux(jul,secs,p_e)
-      case default
-   end select
 
    if (init_saved_vars) init_saved_vars=.false.
 
@@ -511,7 +524,7 @@
       if (sst_method      .eq. FROMFILE) close(sst_unit)
       if (sss_method      .eq. FROMFILE) close(sss_unit)
    end if
-   if (p_e_method .eq. FROMFILE) close(p_e_unit)
+   if (precip_method .eq. FROMFILE) close(precip_unit)
    init_saved_vars=.true.
    return
    end subroutine clean_air_sea
@@ -560,7 +573,7 @@
    REALTYPE, SAVE            :: dt
    integer, save             :: meteo_jul1,meteo_secs1
    integer, save             :: meteo_jul2=0,meteo_secs2=0
-   REALTYPE, save            :: obs(6)
+   REALTYPE, save            :: obs(7)
    REALTYPE, save            :: alpha(4)
    REALTYPE, save            :: I1,h1,tx1,ty1
    REALTYPE, save            :: I2=0.,h2=0.,tx2=0.,ty2=0.
@@ -803,7 +816,7 @@
 ! !IROUTINE: Read P-E, interpolate in time
 !
 ! !INTERFACE:
-   subroutine read_p_e_flux(jul,secs,p_e)
+   subroutine read_precip(jul,secs,precip)
 !
 ! !DESCRIPTION:
 !  This routine reads the surface freshwater flux (in m\,s$^{-1}$) from
@@ -817,7 +830,7 @@
    integer, intent(in)                 :: jul,secs
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE,intent(out)                :: p_e
+   REALTYPE,intent(out)                :: precip
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -830,39 +843,39 @@
    integer                   :: yy,mm,dd,hh,min,ss
    REALTYPE                  :: t,alpha
    REALTYPE, save            :: dt
-   integer, save             :: p_e_jul1,p_e_secs1
-   integer, save             :: p_e_jul2=0,p_e_secs2=0
+   integer, save             :: precip_jul1,precip_secs1
+   integer, save             :: precip_jul2=0,precip_secs2=0
    REALTYPE, save            :: obs1(1),obs2(1)=0.
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
    if (init_saved_vars) then
-      p_e_jul2=0
-      p_e_secs2=0
+      precip_jul2=0
+      precip_secs2=0
       obs2(1)=0.
    end if
 !  This part initialise and read in new values if necessary.
-   if(time_diff(p_e_jul2,p_e_secs2,jul,secs) .lt. 0) then
+   if(time_diff(precip_jul2,precip_secs2,jul,secs) .lt. 0) then
       do
-         p_e_jul1 = p_e_jul2
-         p_e_secs1 = p_e_secs2
+         precip_jul1 = precip_jul2
+         precip_secs1 = precip_secs2
          obs1 = obs2
-         call read_obs(p_e_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
-         call julian_day(yy,mm,dd,p_e_jul2)
-         p_e_secs2 = hh*3600 + min*60 + ss
-         if(time_diff(p_e_jul2,p_e_secs2,jul,secs) .gt. 0) EXIT
+         call read_obs(precip_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
+         call julian_day(yy,mm,dd,precip_jul2)
+         precip_secs2 = hh*3600 + min*60 + ss
+         if(time_diff(precip_jul2,precip_secs2,jul,secs) .gt. 0) EXIT
       end do
-      dt = time_diff(p_e_jul2,p_e_secs2,p_e_jul1,p_e_secs1)
+      dt = time_diff(precip_jul2,precip_secs2,precip_jul1,precip_secs1)
    end if
 
 !  Do the time interpolation
-   t  = time_diff(jul,secs,p_e_jul1,p_e_secs1)
+   t  = time_diff(jul,secs,precip_jul1,precip_secs1)
    alpha = (obs2(1)-obs1(1))/dt
-   p_e = obs1(1) + t*alpha
+   precip = obs1(1) + t*alpha
 
    return
-   end subroutine read_p_e_flux
+   end subroutine read_precip
 !-----------------------------------------------------------------------
 !BOP
 !
