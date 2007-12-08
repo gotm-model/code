@@ -156,14 +156,14 @@
 				<option value="1" label="separate heat and momentum fluxes"/>
 			</options>
 		</element>
-		<element name="fluxes_method" type="select" label="bulk formulae according to">
+		<element name="fluxes_method" type="select" label="bulk formulae formulation">
 			<condition type="eq" variable="./flux_source" value="0" />
 			<options>
 				<option value="1" label="Kondo (1975)" />
 				<option value="2" label="Fairall et al. (1996)" />
 			</options>
 		</element>
-		<element name="back_radiation_method" type="select" label="calculation of long-wave back radiation according to">
+		<element name="back_radiation_method" type="select" label="long-wave back radiation formulation">
 			<condition type="eq" variable="./flux_source" value="0" />
 			<options>
 				<option value="1" label="Clark et al. (1974)" />
@@ -194,8 +194,14 @@
 				<option value="4" label="specific humidity (kg/kg)" />
 			</options>
 		</element>
+    <element name="rain_impact" type="bool" label="include effect of rain fall in fluxes of sensible heat and moment">
+      <condition type="eq" variable="./flux_source" value="0"/>
+    </element>
+    <element name="calc_evaporation" type="bool" label="calculate evaporation from meteorological conditions">
+      <condition type="eq" variable="./flux_source" value="0"/>
+    </element>
 
-		<element name="heat_method" type="select" label="type of short wave radiation and surface heat flux">
+    <element name="heat_method" type="select" label="type of short wave radiation and surface heat flux">
 			<condition type="eq" variable="./flux_source" value="1"/>
 			<options>
 				<option value="0" label="none"/>
@@ -261,26 +267,29 @@
 			</fileinfo>
 		</element>
 
-		<element name="p_e_method" type="select" label="type of fresh water flux" description="Type of fresh water flux (precipitation minus evaporation).">
+		<element name="precip_method" type="select" label="type of precipitation">
 			<options>
 				<option value="0" label="none"/>
 				<option value="1" label="constant value prescribed"/>
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
-		<element name="const_p_e" type="float" label="constant fresh water flux" description="Constant value for precipitation minus evaporation (positive if precipitation exceeds evaporation)." unit="m/s" minInclusive="-0.01" maxInclusive="0.01">
-			<condition type="eq" variable="./p_e_method" value="1"/>
+		<element name="const_precip" type="float" label="constant precipitation" description="Constant value for precipitation." unit="m/s" minInclusive="-0.01" maxInclusive="0.01">
+			<condition type="eq" variable="./precip_method" value="1"/>
 		</element>
-		<element name="p_e_flux_file" type="file" label="custom fresh water flux">
-			<condition type="eq" variable="./p_e_method" value="2"/>
+		<element name="precip_file" type="file" label="custom precipitation">
+			<condition type="eq" variable="./precip_method" value="2"/>
 			<fileinfo type="pointsintime">
 				<filevariables>
-					<filevariable label="precipitation minus evaporation" unit="m/s"/>
+					<filevariable label="precipitation" unit="m/s"/>
 				</filevariables>
 			</fileinfo>
 		</element>
+    <element name="precip_factor" type="float" label="precipitation factor">
+      <condition type="eq" variable="./precip_method" value="2"/>
+    </element>
 
-		<element name="sst_method" type="select" label="sea surface temperature (SST) observations">
+    <element name="sst_method" type="select" label="sea surface temperature (SST) observations">
 			<condition type="eq" variable="./flux_source" value="1"/>
 			<options>
 				<option value="0" label="none"/>

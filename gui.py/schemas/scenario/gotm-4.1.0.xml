@@ -200,7 +200,13 @@
 					<option value="4" label="specific humidity (kg/kg)" />
 				</options>
 			</element>
-			<element name="heat_method" type="select" label="method to provide short wave radiation (swr) and surface heat flux (qh)">
+      <element name="rain_impact" type="bool" label="include effect of rain fall in fluxes of sensible heat and moment">
+        <condition type="eq" variable="./calc_fluxes" value="True" />
+      </element>
+      <element name="calc_evaporation" type="bool" label="calculate evaporation from meteorological conditions">
+        <condition type="eq" variable="./calc_fluxes" value="True" />
+      </element>
+      <element name="heat_method" type="select" label="method to provide short wave radiation (swr) and surface heat flux (qh)">
 				<condition type="eq" variable="./calc_fluxes" value="False" />
 				<options>
 					<option value="0" label="heat flux not prescribed" />
@@ -208,7 +214,7 @@
 					<option value="2" label="swr and qh are read from heatflux_file" />
 				</options>
 			</element>
-			<element name="const_swr" type="float" label="constant value of incoming short wave radiation"
+      <element name="const_swr" type="float" label="constant value of incoming short wave radiation"
 				unit="W/m^2" minInclusive="0" maxInclusive="1000">
 				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False" />
@@ -268,26 +274,29 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element name="p_e_method" type="select" label="method how fresh water fluxes (P-E) are given">
+			<element name="precip_method" type="select" label="method how precipitation is given">
 				<options>
-					<option value="0" label="P-E not used" />
-					<option value="1" label="constant value for P-E (in m/s) used (P-E = precipitation-evaporation)" />
-					<option value="2" label="values for P-E read from file" />
+					<option value="0" label="precipitation not used" />
+					<option value="1" label="constant value for precipitation (in m/s) used" />
+					<option value="2" label="values for precipitation read from file" />
 				</options>
 			</element>
-			<element name="const_p_e" type="float" label="constant value for P-E in (positive for P>E)"
+			<element name="const_precip" type="float" label="constant value for precipitation"
 				unit="m/s" minInclusive="-0.01" maxInclusive="0.01">
-				<condition type="eq" variable="./p_e_method" value="1" />
+				<condition type="eq" variable="./precip_method" value="1" />
 			</element>
-			<element name="p_e_flux_file" type="file" label="file with value for P-E (positive for P>E)">
-				<condition type="eq" variable="./p_e_method" value="2" />
+			<element name="precip_file" type="file" label="file with value for precipitation">
+				<condition type="eq" variable="./precip_method" value="2" />
 				<fileinfo type="pointsintime">
 					<filevariables>
-						<filevariable label="precipitation minus evaporation" unit="m/s" />
+						<filevariable label="precipitation" unit="m/s" />
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element name="sst_method" type="select" label="method how sea surface temperature (SST) is given">
+      <element name="precip_factor" type="float" label="precipitation factor">
+        <condition type="eq" variable="./precip_method" value="2" />
+      </element>
+      <element name="sst_method" type="select" label="method how sea surface temperature (SST) is given">
 				<condition type="eq" variable="./calc_fluxes" value="False" />
 				<options>
 					<option value="0" label="no independent SST observation is read from file" />

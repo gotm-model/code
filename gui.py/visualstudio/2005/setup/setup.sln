@@ -1,0 +1,16 @@
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "setup", "setup.vdproj", "{37D86322-70CD-4B4B-8FA6-757048D35399}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Local install|Default = Local install|Default
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{37D86322-70CD-4B4B-8FA6-757048D35399}.Local install|Default.ActiveCfg = Local install
+		{37D86322-70CD-4B4B-8FA6-757048D35399}.Local install|Default.Build.0 = Local install
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

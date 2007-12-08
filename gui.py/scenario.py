@@ -529,10 +529,16 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
     fixedtargetid = 'gotm-4.1.0'
 
     def registerLinks(self):
-        self.links = [('/airsea/airsea/wet_mode','/airsea/airsea/hum_method')]
+        self.links = [('/airsea/airsea/wet_mode','/airsea/airsea/hum_method'),
+                      ('/airsea/airsea/p_e_method','/airsea/airsea/precip_method'),
+                      ('/airsea/airsea/const_p_e','/airsea/airsea/const_precip'),
+                      ('/airsea/airsea/p_e_flux_file','/airsea/airsea/precip_file')]
         self.defaults = ['/obs/bioprofiles',
-                         'airsea/airsea/fluxes_method',
-                         'airsea/airsea/back_radiation_method']
+                         '/airsea/airsea/fluxes_method',
+                         '/airsea/airsea/back_radiation_method',
+                         '/airsea/airsea/rain_impact',
+                         '/airsea/airsea/calc_evaporation',
+                         '/airsea/airsea/precip_factor']
 Scenario.addConvertor(Convertor_gotm_4_0_0_to_gotm_4_1_0,addsimplereverse=True)
 
 class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):

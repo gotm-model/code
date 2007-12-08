@@ -60,7 +60,9 @@
 			<back_radiation_method>1</back_radiation_method>
 			<meteo_file>meteo_file.dat</meteo_file>
 			<hum_method>1</hum_method>
-			<heat_method>0</heat_method>
+      <rain_impact>False</rain_impact>
+      <calc_evaporation>False</calc_evaporation>
+      <heat_method>0</heat_method>
 			<const_swr>0.0</const_swr>
 			<const_heat>0.0</const_heat>
 			<heatflux_file>heatflux_file.dat</heatflux_file>
@@ -68,14 +70,16 @@
 			<const_tx>0.0</const_tx>
 			<const_ty>0.0</const_ty>
 			<momentumflux_file>momentumflux_file.dat</momentumflux_file>
-			<p_e_method>0</p_e_method>
-			<const_p_e>0.0</const_p_e>
-			<p_e_flux_file>p_e_flux_file.dat</p_e_flux_file>
-			<sst_method>0</sst_method>
+      <precip_method>0</precip_method>
+      <const_precip>0.0</const_precip>
+      <precip_file>p_e_flux_file.dat</precip_file>
+      <precip_factor>1.0</precip_factor>
+      <sst_method>0</sst_method>
 			<sst_file>sst_file.dat</sst_file>
 			<sss_method>0</sss_method>
 			<sss_file>sss_file.dat</sss_file>
-		</airsea>
+		
+  </airsea>
 	</airsea>
 	<gotmturb>
 		<turbulence>

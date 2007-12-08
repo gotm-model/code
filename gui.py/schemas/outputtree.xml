@@ -74,10 +74,17 @@
 				<condition type="ne" variable="/airsea/sss_method"  value="0"/>
 			</condition>
 		</element>
-		<element name="p_e">
-			<condition type="ne" variable="/airsea/p_e_method" value="0" source="scenario"/>
+		<element name="precip">
+			<condition type="ne" variable="/airsea/precip_method" value="0" source="scenario"/>
 		</element>
-		<element name="x-taus"/>
+    <element name="evap">
+      <condition type="and" source="scenario">
+        <condition type="eq" variable="/airsea/flux_source"      value="0"/>
+        <condition type="eq" variable="/airsea/rain_impact"      value="True"/>
+        <condition type="eq" variable="/airsea/calc_evaporation" value="True"/>
+      </condition>
+    </element>
+    <element name="x-taus"/>
 		<element name="y-taus"/>
 		<element name="u_taus"/>
 		<element name="u_taub"/>
