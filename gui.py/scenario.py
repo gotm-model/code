@@ -473,6 +473,7 @@ class Scenario(xmlstore.TypedStore):
         if self.version!='gotmgui-0.5.0': return errors
         
         if nodepaths==None or '/time/start' in nodepaths or '/time/stop' in nodepaths:
+            # First validate the time range
             start = self['/time/start'].getValue(usedefault=usedefault)
             stop = self['/time/stop'].getValue(usedefault=usedefault)
             if start!=None and stop!=None:
@@ -481,6 +482,7 @@ class Scenario(xmlstore.TypedStore):
                 elif start==stop:
                     errors.append('The begin and end time of the simulated period are equal.')
                 
+            # Now validate the time extent of input data series.
             if validatedatafiles and stop!=None:
                 for fn in filenodes:
                     nodepath = '/'+'/'.join(fn.location)
@@ -494,8 +496,8 @@ class Scenario(xmlstore.TypedStore):
                         diminfo = store.getDimensionInfo(dimname)
                         if diminfo['datatype']=='datetime' and dimrange!=None:
                             dimrange = (common.num2date(dimrange[0]),common.num2date(dimrange[1]))
-                            if stop>dimrange[1]:
-                                errors.append('Input data series "%s" finishes at %s, before the simulation is done (%s).' % (fn.getText(detail=1),r[1].strftime(common.datetime_displayformat),stop.strftime(common.datetime_displayformat)))
+                            if stop>dimrange[1] and dimrange[1]!=dimrange[0]:
+                                errors.append('Input data series "%s" finishes at %s, before the simulation is done (%s).' % (fn.getText(detail=1),dimrange[1].strftime(common.datetime_displayformat),stop.strftime(common.datetime_displayformat)))
                 
         return errors
 

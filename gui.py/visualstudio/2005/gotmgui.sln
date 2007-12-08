@@ -1,0 +1,27 @@
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Python", "Python", "{AF3430E4-6CC0-48E4-9FE3-AEE4A23CCD76}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\batch.py = ..\..\batch.py
+		..\..\common.py = ..\..\common.py
+		..\..\commonqt.py = ..\..\commonqt.py
+		..\..\data.py = ..\..\data.py
+		..\..\gotm.py = ..\..\gotm.py
+		..\..\namelist.py = ..\..\namelist.py
+		..\..\plot.py = ..\..\plot.py
+		..\..\report.py = ..\..\report.py
+		..\..\scenario.py = ..\..\scenario.py
+		..\..\scenariobuilder.py = ..\..\scenariobuilder.py
+		..\..\settings.py = ..\..\settings.py
+		..\..\setup.py = ..\..\setup.py
+		..\..\simulate.py = ..\..\simulate.py
+		..\..\simulator.py = ..\..\simulator.py
+		..\..\visualizer.py = ..\..\visualizer.py
+		..\..\xmlstore.py = ..\..\xmlstore.py
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
