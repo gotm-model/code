@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.22 2007-12-07 10:12:20 kb Exp $
+!$Id: airsea.F90,v 1.23 2007-12-09 10:25:48 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -43,12 +43,13 @@
 !  wind speed (m/s)
    REALTYPE, public                    :: w=_ZERO_
 !
-!  surface stress components (Pa)
-   REALTYPE, public                    :: tx,ty
-
 !  surface short-wave radiation
 !  and surface heat flux (W/m^2)
-   REALTYPE, public                    :: I_0,heat
+   REALTYPE, public                    :: I_0
+   REALTYPE, public                    :: heat
+
+!  surface stress components (Pa)
+   REALTYPE, public                    :: tx,ty
 
 !  precipitation and  evaporation
 !  (m/s)
@@ -57,7 +58,8 @@
 
 !  sea surface temperature (degC) and
 !  sea surface salinity (psu)
-   REALTYPE, public                    :: sst,sss
+   REALTYPE, public                    :: sst=_ZERO_
+   REALTYPE, public                    :: sss=_ZERO_
 
 !  integrated short-wave radiation,
 !  surface heat flux (J/m^2)
@@ -69,11 +71,12 @@
 !
 ! !DEFINED PARAMETERS:
    integer,  parameter                 :: meteo_unit=20
-   integer,  parameter                 :: heat_unit=21
-   integer,  parameter                 :: momentum_unit=22
-   integer,  parameter                 :: precip_unit=23
-   integer,  parameter                 :: sst_unit=24
-   integer,  parameter                 :: sss_unit=25
+   integer,  parameter                 :: swr_unit=21
+   integer,  parameter                 :: heatflux_unit=22
+   integer,  parameter                 :: momentum_unit=23
+   integer,  parameter                 :: precip_unit=24
+   integer,  parameter                 :: sst_unit=25
+   integer,  parameter                 :: sss_unit=26
    integer,  parameter                 :: CONSTVAL=1
    integer,  parameter                 :: FROMFILE=2
 !
@@ -82,6 +85,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.23  2007-12-09 10:25:48  kb
+!  introduced swr_method: 1->constant, 2->from file, 3->equation
+!
 !  Revision 1.22  2007-12-07 10:12:20  kb
 !  replaced p_e with precip and included evap
 !
@@ -150,18 +156,20 @@
 !
 ! !LOCAL VARIABLES:
    logical                   :: init_saved_vars=.true.
+   integer                   :: swr_method=0
    integer                   :: fluxes_method=1
    integer                   :: back_radiation_method=1
    integer                   :: heat_method
    integer                   :: momentum_method
-   integer                   :: precip_method
-   integer                   :: sst_method
-   integer                   :: sss_method
+   integer                   :: precip_method=0
+   integer                   :: sst_method=0
+   integer                   :: sss_method=0
    integer                   :: hum_method
    logical, public           :: rain_impact=.false.
    logical, public           :: calc_evaporation=.false.
 
    character(len=PATH_MAX)   :: meteo_file
+   character(len=PATH_MAX)   :: swr_file
    character(len=PATH_MAX)   :: heatflux_file
    character(len=PATH_MAX)   :: momentumflux_file
    character(len=PATH_MAX)   :: precip_file
@@ -173,8 +181,11 @@
    REALTYPE                  :: airt,twet,tdew
    REALTYPE                  :: cloud
    REALTYPE                  :: rh
+
+   REALTYPE                  :: const_swr=_ZERO_
+   REALTYPE                  :: swr_factor=_ONE_
+   REALTYPE                  :: const_heat
    REALTYPE                  :: const_tx,const_ty
-   REALTYPE                  :: const_swr,const_heat
    REALTYPE                  :: const_precip=_ZERO_
    REALTYPE                  :: precip_factor=_ONE_
    REALTYPE                  :: dlon,dlat
@@ -204,11 +215,18 @@
 !  These parameters are:
 !
 !  \begin{tabular}{ll}
-! {\tt calc$\_$fluxes}     & {\tt .true.}: Surface fluxes are calculated by means of bulk formulae. \\
-!                          & Solar radiation is calculated from time, latitude,                     \\
-!                          & longitude and clouds. In this case, {\tt meteo$\_$file} must be given  \\
-!                          & and {\tt hum\_method} must be specified.                               \\
+! {\tt calc$\_$fluxes}     & {\tt .true.}: Sensible, latent and back-radiation are calculated by    \\
+!                          & means of bulk formulae. In this case, {\tt meteo$\_$file} must be      \\
+!                          & given and {\tt hum\_method} must be specified.                         \\
 !                          & {\tt .false.}: Surface fluxes and solar radiation are prescribed.      \\
+! {\tt fluxes$\_$method}   & Select which parameterisation to use for latent and sensible fluxes:   \\
+!                          & 1: Kondo (1975)                                                        \\
+!                          & 2: Fairall et al. (1996)                                               \\
+! {\tt back$\_radiation$\_$method}   & Select which parameterisation to use:                        \\
+!                          & 1: Clark et al. (1974)                                                 \\
+!                          & 2: Hastenrath and Lamb (1978)                                          \\
+!                          & 3: Bignami et al. (1995)                                               \\
+!                          & 4: Berliandand Berliand (1952)                                         \\
 ! {\tt meteo$\_$file}      & file with meteo data (for {\tt calc$\_$fluxes=.true.}) with            \\
 !                          & date: {\tt yyyy-mm-dd hh:mm:ss}                                        \\
 !                          & $x$-component of wind (10 m) in m\,s$^{-1}$                            \\
@@ -226,22 +244,31 @@
 !                          & 1: constant value for short wave radiation ({\tt const$\_$swr})        \\
 !                          &    and surface heat flux ({\tt const$\_$qh})                           \\
 !                          & 2: {\tt swr}, {\tt heat} are read from {\tt heatflux$\_$file}          \\
+! {\tt rain$\_$impact}     & {\tt .true.}: include sensible- and momentum-flux from precipitation   \\
+! {\tt calc$\_$evaporation}& {\tt .true.}: calculate evaporation/condensation (m/s)                 \\
+! {\tt swr$\_$method}      & 1: constant value for short wave radiation ({\tt const$\_$swr})        \\
+!                          & 2: read short wave radiation from file                                 \\
+!                          & 3: Solar radiation is calculated from time, longitude, latitude,       \\
+!                          & and cloud cover.                                                       \\
 ! {\tt const$\_$swr}       & constant value for short wave radiation in W\,m$^{-2}$                 \\
 !                          & (always positive)                                                      \\
+! {\tt swr$\_$file}        & file with short wave radiation in W\,m$^{-2}$                          \\
+! {\tt swr$\_$factor}      & scales data read from file to  W\,m$^{-2}$ - defaults to 1             \\
 ! {\tt const$\_$heat }     & constant value for surface heat flux in  W\,m$^{-2}$                   \\
 !                          & (negative for heat loss)                                               \\
-! {\tt heatflux$\_$file}   & file with date and {\tt swr} and {\tt heat} in W\,m$^{-2}$             \\
+! {\tt heatflux$\_$file}   & file with date and {\tt heat} in W\,m$^{-2}$                           \\
 ! {\tt momentum$\_$method} & 0: momentum flux not prescribed                                        \\
 !                          & 1: constant momentum fluxes {\tt const$\_$tx}, {\tt const$\_$tx} given \\
 !                          & 2: surface momentum fluxes given from file {\tt momentumflux$\_$file}  \\
 ! {\tt const$\_$tx}        & $x$-component of constant surface momentum flux in N\,m$^{-2}$         \\
 ! {\tt const$\_$ty}        & $y$-component of constant surface momentum flux in N\,m$^{-2}$         \\
 ! {\tt momentumflux$\_$file} & File with date, {\tt tx} and {\tt ty} given                          \\
-! {\tt p$\_$e$\_$method}   & 0: surface freshwater fluxes not applied                               \\
-!                          & 1: constant value for P-E used (P-E = precipitation-evaporation)       \\
-!                          & 2: values for P-E read from file {\tt p$\_$e$\_$flux$\_$file}          \\
-! {\tt const$\_$p$\_$e}    & value for P-E in m\,s$^{-1}$                                           \\
-! {\tt p$\_$e$\_$flux$\_$file}& file with date and {\tt P-E} in m\,s$^{-1}$                         \\
+! {\tt precip$\_$method}   & 0: precipitation not included == precip=0.                             \\
+!                          & 1: constant value for precipitation in  m\,s$^{-1}$                    \\
+!                          & 2: values for precipitation read from file {\tt precip\_$file}         \\
+! {\tt const$\_$precip}    & value for precip in m\,s$^{-1}$                                        \\
+! {\tt precip$\_$file}     & file with date and {\tt precip} in m\,s$^{-1}$                         \\
+! {\tt precip$\_$factor}   & scales data read from file to  m\,s$^{-1}$ - defaults to 1             \\
 ! {\tt sst$\_$method}      & 0: no independent SST observation is read from file                    \\
 !                          & 2: independent SST observation is read from file, only for output      \\
 ! {\tt sst$\_$file}        & file with date and SST (sea surface temperature) in Celsius            \\
@@ -273,7 +300,8 @@
                      heat_method, &
                      rain_impact, &
                      calc_evaporation, &
-                     const_swr,const_heat, &
+                     swr_method,const_swr,swr_file,swr_factor, &
+                     const_heat, &
                      heatflux_file, &
                      momentum_method, &
                      const_tx,const_ty, &
@@ -290,9 +318,31 @@
    read(namlst,nml=airsea,err=91)
    close(namlst)
 
+!  The short wave radiation
+   select case (swr_method)
+      case (1)
+         LEVEL2 'Using constant short wave radiation= ',const_swr
+      case (FROMFILE)
+         open(swr_unit,file=swr_file,action='read', &
+              status='old',err=92)
+         LEVEL2 'Reading short wave radiation data from:'
+         LEVEL3 trim(swr_file)
+         if (swr_factor .ne. _ONE_) then
+            LEVEL3 'applying swr factor= ',swr_factor
+         end if
+      case (3)
+         if (.not. calc_fluxes) then
+            LEVEL2 'Not possible to calculate swr - when calc_fluxes=.false.'
+            stop 'init_airsea'
+         else
+            LEVEL2 'Calculating swr=swr(t(lon),lat,cloud)'
+         end if
+      case default
+   end select
+
    if (calc_fluxes) then
 
-      open(meteo_unit,file=meteo_file,action='read',status='old',err=92)
+      open(meteo_unit,file=meteo_file,action='read',status='old',err=93)
       LEVEL2 'Air-sea exchanges will be calculated'
       LEVEL2 'Reading meteo data from:'
       LEVEL3 trim(meteo_file)
@@ -322,8 +372,8 @@
 !     The heat fluxes
       select case (heat_method)
          case (FROMFILE)
-            open(heat_unit,file=heatflux_file,action='read', &
-                 status='old',err=93)
+            open(heatflux_unit,file=heatflux_file,action='read', &
+                 status='old',err=94)
             LEVEL2 'Reading heat fluxes from:'
             LEVEL3 trim(heatflux_file)
          case default
@@ -333,7 +383,7 @@
       select case (momentum_method)
          case (FROMFILE)
             open(momentum_unit,file=momentumflux_file,action='read', &
-                 status='old',err=94)
+                 status='old',err=95)
             LEVEL2 'Reading momentum fluxes from:'
             LEVEL3 trim(momentumflux_file)
          case default
@@ -367,7 +417,7 @@
          LEVEL2 'calc_evaporation= ',calc_evaporation
       case (FROMFILE)
          open(precip_unit,file=precip_file,action='read', &
-              status='old',err=95)
+              status='old',err=98)
          LEVEL2 'Reading precipitation data from:'
          LEVEL3 trim(precip_file)
          if (precip_factor .ne. _ONE_) then
@@ -394,17 +444,19 @@
    stop 'init_airsea'
 91 FATAL 'I could not read airsea namelist'
    stop 'init_airsea'
-92 FATAL 'I could not open ',trim(meteo_file)
+92 FATAL 'I could not open ',trim(swr_file)
    stop 'init_airsea'
-93 FATAL 'I could not open ',trim(heatflux_file)
+93 FATAL 'I could not open ',trim(meteo_file)
    stop 'init_airsea'
-94 FATAL 'I could not open ',trim(momentumflux_file)
+94 FATAL 'I could not open ',trim(heatflux_file)
    stop 'init_airsea'
-95 FATAL 'I could not open ',trim(precip_file)
+95 FATAL 'I could not open ',trim(momentumflux_file)
    stop 'init_airsea'
 96 FATAL 'I could not open ',trim(sst_file)
    stop 'init_airsea'
 97 FATAL 'I could not open ',trim(sss_file)
+   stop 'init_airsea'
+98 FATAL 'I could not open ',trim(precip_file)
    stop 'init_airsea'
 
    end subroutine init_air_sea
@@ -442,6 +494,16 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+
+!  The short wave radiation
+   select case (swr_method)
+      case (CONSTVAL)
+         I_0=const_swr
+      case (FROMFILE)
+         call read_swr(jul,secs,I_0)
+      case default
+   end select
+
 !  The freshwater flux (used for calc_fluxes=.true. and calc_fluxes=.false.)
    select case (precip_method)
       case (CONSTVAL)
@@ -453,15 +515,16 @@
 
    if (calc_fluxes) then
       call flux_from_meteo(jul,secs)
-      call short_wave_radiation(jul,secs,dlon,dlat,cloud,I_0)
+      if (swr_method .eq. 3) then
+         call short_wave_radiation(jul,secs,dlon,dlat,cloud,I_0)
+      end if
    else
 !     The heat fluxes
       select case (heat_method)
          case (CONSTVAL)
-            I_0=const_swr
             heat=const_heat
          case (FROMFILE)
-            call read_heat_flux(jul,secs,I_0,heat)
+            call read_heat_flux(jul,secs,heat)
          case default
       end select
 !     The momentum fluxes
@@ -519,8 +582,10 @@
    if (calc_fluxes) then
       close(meteo_unit)
    else
-      if (heat_method     .eq. FROMFILE) close(heat_unit)
+      if (heat_method     .eq. FROMFILE) close(heatflux_unit)
+      if (swr_method      .eq. FROMFILE) close(swr_unit)
       if (momentum_method .eq. FROMFILE) close(momentum_unit)
+      if (precip_method   .eq. FROMFILE) close(precip_unit)
       if (sst_method      .eq. FROMFILE) close(sst_unit)
       if (sss_method      .eq. FROMFILE) close(sss_unit)
    end if
@@ -673,15 +738,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Read heat flux data, interpolate in time
+! !IROUTINE: Read short wave radiation, interpolate in time
 !
 ! !INTERFACE:
-   subroutine read_heat_flux(jul,secs,I_0,heat)
+   subroutine read_swr(jul,secs,swr)
 !
 ! !DESCRIPTION:
-!   For {\tt calc\_fluxes=.false.}, this routine reads solar
-!   radiation and the surface heat flux  in W\,m$^{-2}$ from
-!   {\tt heatflux\_file} and interpolates them in time.
+!  This routine reads the short wave radiation (in W\,s$^{-2}$) from
+!  {\tt swr\_file} and interpolates in time.
 !
 ! !USES:
    IMPLICIT NONE
@@ -690,7 +754,74 @@
    integer, intent(in)                 :: jul,secs
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: I_0,heat
+   REALTYPE,intent(out)                :: swr
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding
+!
+!  See log for airsea module
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: yy,mm,dd,hh,min,ss
+   REALTYPE                  :: t,alpha
+   REALTYPE, save            :: dt
+   integer, save             :: swr_jul1,swr_secs1
+   integer, save             :: swr_jul2=0,swr_secs2=0
+   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   integer                   :: rc
+!
+!-----------------------------------------------------------------------
+!BOC
+   if (init_saved_vars) then
+      swr_jul2=0
+      swr_secs2=0
+      obs2(1)=0.
+   end if
+!  This part initialise and read in new values if necessary.
+   if(time_diff(swr_jul2,swr_secs2,jul,secs) .lt. 0) then
+      do
+         swr_jul1 = swr_jul2
+         swr_secs1 = swr_secs2
+         obs1 = obs2
+         call read_obs(swr_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
+         call julian_day(yy,mm,dd,swr_jul2)
+         swr_secs2 = hh*3600 + min*60 + ss
+         if(time_diff(swr_jul2,swr_secs2,jul,secs) .gt. 0) EXIT
+      end do
+      dt = time_diff(swr_jul2,swr_secs2,swr_jul1,swr_secs1)
+   end if
+
+!  Do the time interpolation
+   t  = time_diff(jul,secs,swr_jul1,swr_secs1)
+   alpha = (obs2(1)-obs1(1))/dt
+   swr = (obs1(1) + t*alpha)*swr_factor
+
+   return
+   end subroutine read_swr
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Read heat flux data, interpolate in time
+!
+! !INTERFACE:
+   subroutine read_heat_flux(jul,secs,heat)
+!
+! !DESCRIPTION:
+!   For {\tt calc\_fluxes=.false.}, this routine reads in
+!   the sum of sensible, latent and long-wave back-radiation flux 
+!   in W\,m$^{-2}$ from {\tt heatflux\_file} and interpolate in time.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: jul,secs
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: heat
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -705,7 +836,7 @@
    REALTYPE, SAVE            :: dt
    integer, save             :: heat_jul1,heat_secs1
    integer, save             :: heat_jul2=0,heat_secs2=0
-   REALTYPE, save            :: obs1(2),obs2(2)=0.
+   REALTYPE, save            :: obs1(1),obs2(1)=0.
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
@@ -721,7 +852,7 @@
          heat_jul1 = heat_jul2
          heat_secs1 = heat_secs2
          obs1 = obs2
-         call read_obs(heat_unit,yy,mm,dd,hh,min,ss,2,obs2,rc)
+         call read_obs(heatflux_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
          call julian_day(yy,mm,dd,heat_jul2)
          heat_secs2 = hh*3600 + min*60 + ss
          if(time_diff(heat_jul2,heat_secs2,jul,secs) .gt. 0) EXIT
@@ -733,8 +864,6 @@
    t  = time_diff(jul,secs,heat_jul1,heat_secs1)
 
    alpha = (obs2(1)-obs1(1))/dt
-   I_0 = obs1(1) + t*alpha
-   alpha = (obs2(2)-obs1(2))/dt
    heat = obs1(2) + t*alpha
 
    return
@@ -813,15 +942,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Read P-E, interpolate in time
+! !IROUTINE: Read precipitation, interpolate in time
 !
 ! !INTERFACE:
    subroutine read_precip(jul,secs,precip)
 !
 ! !DESCRIPTION:
-!  This routine reads the surface freshwater flux (in m\,s$^{-1}$) from
-!  {\tt p\_e\_flux\_file}
-!  and interpolates in time.
+!  This routine reads the precipitation (in m\,s$^{-1}$) from
+!  {\tt precip\_file} and interpolates in time.
 !
 ! !USES:
    IMPLICIT NONE
@@ -872,10 +1000,11 @@
 !  Do the time interpolation
    t  = time_diff(jul,secs,precip_jul1,precip_secs1)
    alpha = (obs2(1)-obs1(1))/dt
-   precip = obs1(1) + t*alpha
+   precip = (obs1(1) + t*alpha)*precip_factor
 
    return
    end subroutine read_precip
+
 !-----------------------------------------------------------------------
 !BOP
 !
