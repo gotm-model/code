@@ -4,6 +4,7 @@ import common, xmlstore, scenario
 
 # Import NetCDF file format support
 from pynetcdf import NetCDFFile
+#from Scientific.IO.NetCDF import NetCDFFile
 import matplotlib.numerix, numpy, pytz
 
 # Abstract class that contains one or more variables that can be plotted.

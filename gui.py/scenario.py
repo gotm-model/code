@@ -537,9 +537,46 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                          '/airsea/airsea/fluxes_method',
                          '/airsea/airsea/back_radiation_method',
                          '/airsea/airsea/rain_impact',
+                         '/airsea/airsea/swr_method',
+                         '/airsea/airsea/swr_file',
+                         '/airsea/airsea/swr_factor',
                          '/airsea/airsea/calc_evaporation',
                          '/airsea/airsea/precip_factor']
-Scenario.addConvertor(Convertor_gotm_4_0_0_to_gotm_4_1_0,addsimplereverse=True)
+
+    def convert(self,source,target):
+        xmlstore.Convertor.convert(self,source,target)
+        
+        if source['airsea/airsea/calc_fluxes'].getValue():
+            target['airsea/airsea/swr_method'].setValue(3)
+        else:
+            heatmethod = source['airsea/airsea/heat_method'].getValue()
+            if heatmethod==0:
+                target['airsea/airsea/swr_method'].setValue(1)
+                target['airsea/airsea/const_swr' ].setValue(0.)
+            elif heatmethod==1:
+                target['airsea/airsea/swr_method'].setValue(1)
+            elif heatmethod==2:
+                target['airsea/airsea/swr_method'].setValue(2)
+                datold = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'])
+                datold.loadDataFile(source['airsea/airsea/heatflux_file'].getValue())
+                swrnew  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/swr_file'])
+                swrnew.data = [datold.data[0],datold.data[1].take((0,),1)]
+                heatnew = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
+                heatnew.data = [datold.data[0],datold.data[1].take((1,),1)]
+                target['airsea/airsea/swr_file'].setValue(swrnew.getAsDataFile())
+                target['airsea/airsea/heatflux_file'].setValue(heatnew.getAsDataFile())                
+Scenario.addConvertor(Convertor_gotm_4_0_0_to_gotm_4_1_0)
+
+class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
+    fixedsourceid = 'gotm-4.1.0'
+    fixedtargetid = 'gotm-4.0.0'
+
+    def registerLinks(self):
+        self.links = Convertor_gotm_4_0_0_to_gotm_4_1_0().reverseLinks()
+    
+    def convert(self,source,target):
+        xmlstore.Convertor.convert(self,source,target)
+Scenario.addConvertor(Convertor_gotmgui_4_1_0_to_gotm_4_0_0)
 
 class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
     fixedsourceid = 'gotm-4.1.0'
@@ -611,6 +648,17 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
             target['airsea/flux_source'].setValue(0)
         else:
             target['airsea/flux_source'].setValue(1)
+        
+        # If heat fluxes were set to "none", convert this into a constant value of 0.0
+        if source['airsea/airsea/heat_method'].getValue()==0:
+            target['airsea/heat_method'].setValue(1)
+            target['airsea/const_heat'].setValue(0.)
+
+        # If momentum fluxes were set to "none", convert this into constant values of 0.0
+        if source['airsea/airsea/momentum_method'].getValue()==0:
+            target['airsea/momentum_method'].setValue(1)
+            target['airsea/const_tx'].setValue(0.)
+            target['airsea/const_ty'].setValue(0.)
         
         # ===============================================
         #  obs: salinity

@@ -436,7 +436,9 @@ class DataFile(Store.DataType):
         """Saves the DataFile to the specified XML node. Currently the node will
         contain the name of the datafile within its container (DataContainer
         instance). The container itself is then saved through the persist method
-        below.
+        below. Note: when saved, the ownership of the DataFile object is transfered
+        from the calling code to the store object. The calling code should therefore
+        not use, or call "release" on the DataFile object afterwards.
         """
         if 'cache' not in context: context['cache'] = {}
         cache = context['cache']

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.14 2007-10-04 18:35:14 jorn Exp $
+#$Id: simulator.py,v 1.15 2007-12-10 14:40:47 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -123,8 +123,9 @@ class PageProgress(commonqt.WizardPage):
         
     def progressed(self,progress,remaining):
         self.bar.setValue(int(round(self.bar.maximum()*progress)))
+        remaining = round(remaining)
         if remaining<60:
-            self.labelRemaining.setText('%i seconds remaining' % round(remaining))
+            self.labelRemaining.setText('%i seconds remaining' % remaining)
         else:
             self.labelRemaining.setText('%i minutes %i seconds remaining' % divmod(remaining,60))
             

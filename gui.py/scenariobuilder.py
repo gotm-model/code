@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.28 2007-10-31 08:04:26 jorn Exp $
+#$Id: scenariobuilder.py,v 1.29 2007-12-10 14:40:47 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -634,15 +634,13 @@ class PageAirSeaInteraction(ScenarioPage):
         editConstHeat    = self.factory.createEditor('airsea/const_heat',   self)
         editHeatfluxFile = self.factory.createEditor('airsea/heatflux_file',self)
         
-        heatlayout.addWidget(editHeatMethod.editor.button(0),1,0,1,2)
-
-        heatlayout.addWidget(editHeatMethod.editor.button(1),2,0,1,2)
+        heatlayout.addWidget(editHeatMethod.editor.button(1),1,0,1,2)
         constheatlayout = QtGui.QGridLayout()
         editConstSwr.addToGridLayout(constheatlayout)
         editConstHeat.addToGridLayout(constheatlayout)
-        heatlayout.addLayout(constheatlayout,3,1)
+        heatlayout.addLayout(constheatlayout,2,1)
         
-        heatlayout.addWidget(editHeatMethod.editor.button(2),4,0,1,2)
+        heatlayout.addWidget(editHeatMethod.editor.button(2),3,0,1,2)
         heatfilelayout = QtGui.QHBoxLayout()
         editHeatfluxFile.addToBoxLayout(heatfilelayout,label=False,unit=False)
         heatfilelayout.addStretch()
@@ -664,15 +662,13 @@ class PageAirSeaInteraction(ScenarioPage):
         editMomentumConstTy = self.factory.createEditor('airsea/const_ty',         self)
         editmomentumFile    = self.factory.createEditor('airsea/momentumflux_file',self)
         
-        layoutMomentum.addWidget(editMomentumMethod.editor.button(0),1,0,1,2)
-
-        layoutMomentum.addWidget(editMomentumMethod.editor.button(1),2,0,1,2)
+        layoutMomentum.addWidget(editMomentumMethod.editor.button(1),1,0,1,2)
         constmomentumlayout = QtGui.QGridLayout()
         editMomentumConstTx.addToGridLayout(constmomentumlayout)
         editMomentumConstTy.addToGridLayout(constmomentumlayout)
-        layoutMomentum.addLayout(constmomentumlayout,3,1)
+        layoutMomentum.addLayout(constmomentumlayout,2,1)
         
-        layoutMomentum.addWidget(editMomentumMethod.editor.button(2),4,0,1,2)
+        layoutMomentum.addWidget(editMomentumMethod.editor.button(2),3,0,1,2)
         momentumfilelayout = QtGui.QHBoxLayout()
         editmomentumFile.addToBoxLayout(momentumfilelayout,label=False,unit=False)
         momentumfilelayout.addStretch()

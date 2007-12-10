@@ -194,50 +194,63 @@
 				<option value="4" label="specific humidity (kg/kg)" />
 			</options>
 		</element>
-    <element name="rain_impact" type="bool" label="include effect of rain fall in fluxes of sensible heat and moment">
+    <element name="rain_impact" type="bool" label="include effect of rain fall on fluxes of sensible heat and momentum">
       <condition type="eq" variable="./flux_source" value="0"/>
     </element>
     <element name="calc_evaporation" type="bool" label="calculate evaporation from meteorological conditions">
       <condition type="eq" variable="./flux_source" value="0"/>
     </element>
 
-    <element name="heat_method" type="select" label="type of short wave radiation and surface heat flux">
+    <element name="heat_method" type="select" label="type of surface heat flux">
 			<condition type="eq" variable="./flux_source" value="1"/>
 			<options>
-				<option value="0" label="none"/>
-				<option value="1" label="constant values prescribed"/>
+				<option value="1" label="constant value prescribed"/>
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
-		<element name="const_swr"  type="float" label="constant incoming short wave radiation" unit="W/m²" minInclusive="0" maxInclusive="1000">
-			<condition type="and">
-				<condition type="eq" variable="./flux_source" value="1"/>
-				<condition type="eq" variable="./heat_method" value="1"/>
-			</condition>
-		</element>
-		<element name="const_heat" type="float" label="constant surface heat flux" unit="W/m²" minInclusive="-1000" maxInclusive="1000">
-			<condition type="and">
-				<condition type="eq" variable="./flux_source" value="1"/>
-				<condition type="eq" variable="./heat_method" value="1"/>
-			</condition>
-		</element>
-		<element name="heatflux_file" type="file" label="custom heat fluxes" description="custom heat fluxes (negative for net outgoing)">
-			<condition type="and">
-				<condition type="eq" variable="./flux_source" value="1"/>
-				<condition type="eq" variable="./heat_method" value="2"/>
-			</condition>
-			<fileinfo type="pointsintime">
-				<filevariables>
-					<filevariable label="solar radiation"   unit="W/m²"/>
-					<filevariable label="surface heat flux" unit="W/m²"/>
-				</filevariables>
-			</fileinfo>
-		</element>
+    <element name="const_heat" type="float" label="constant surface heat flux" unit="W/m²" minInclusive="-1000" maxInclusive="1000" description="Constant value for the surface heat flux, i.e., the sum of the sensible, latent and back-radiation fluxes (but not short wave radiation).">
+      <condition type="and">
+        <condition type="eq" variable="./flux_source" value="1"/>
+        <condition type="eq" variable="./heat_method" value="1"/>
+      </condition>
+    </element>
+    <element name="heatflux_file" type="file" label="custom heat fluxes" description="custom heat fluxes (negative for net outgoing)">
+      <condition type="and">
+        <condition type="eq" variable="./flux_source" value="1"/>
+        <condition type="eq" variable="./heat_method" value="2"/>
+      </condition>
+      <fileinfo type="pointsintime">
+        <filevariables>
+          <filevariable label="surface heat flux" unit="W/m²"/>
+        </filevariables>
+      </fileinfo>
+    </element>
+    
+    <element name="swr_method" type="select" label="type of short wave radiation">
+      <options>
+        <option value="1" label="constant value prescribed"/>
+        <option value="2" label="custom, temporally variable"/>
+        <option value="3" label="calculated from time, location and cloud cover"/>
+      </options>
+    </element>
+    <element name="const_swr"  type="float" label="constant incoming short wave radiation" unit="W/m²" minInclusive="0" maxInclusive="1000">
+      <condition type="eq" variable="./swr_method" value="1"/>
+    </element>
+    <element name="swr_file" type="file" label="custom short wave radiation">
+      <condition type="eq" variable="./swr_method" value="2"/>
+      <fileinfo type="pointsintime">
+        <filevariables>
+          <filevariable label="short wave solar radiation" unit="W/m²"/>
+        </filevariables>
+      </fileinfo>
+    </element>
+    <element name="swr_factor"  type="float" label="scale factor for short wave solar radiation" description="Scale factor for short wave solar radiation. If set to one, the original values are used. A value different from one might be applied to convert from non-GOTM units, or to test model sensitivity.">
+      <condition type="eq" variable="./swr_method" value="2"/>
+    </element>
 
-		<element name="momentum_method" type="select" label="type of momentum flux">
+    <element name="momentum_method" type="select" label="type of momentum flux">
 			<condition type="eq" variable="./flux_source" value="1"/>
 			<options>
-				<option value="0" label="none"/>
 				<option value="1" label="constant values prescribed"/>
 				<option value="2" label="custom, temporally variable"/>
 			</options>
@@ -285,7 +298,7 @@
 				</filevariables>
 			</fileinfo>
 		</element>
-    <element name="precip_factor" type="float" label="precipitation factor">
+    <element name="precip_factor" type="float" label="scale factor for precipitation" description="Scale factor for precipitation. If set to one, the original values are used. A value different from one might be applied to convert from non-GOTM units, or to test model sensitivity.">
       <condition type="eq" variable="./precip_method" value="2"/>
     </element>
 

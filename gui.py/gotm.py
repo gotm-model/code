@@ -146,7 +146,7 @@ class PageIntroduction(commonqt.WizardPage):
         self.owner.clearProperties()
 
         # For version only:
-        import matplotlib,numpy,gotm,pynetcdf
+        import matplotlib,numpy,gotm
 
         versions = []
         versions.append(('Python','%i.%i.%i %s %i' % sys.version_info))

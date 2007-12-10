@@ -62,17 +62,20 @@
 			<hum_method>1</hum_method>
       <rain_impact>False</rain_impact>
       <calc_evaporation>False</calc_evaporation>
-      <heat_method>0</heat_method>
-			<const_swr>0.0</const_swr>
-			<const_heat>0.0</const_heat>
-			<heatflux_file>heatflux_file.dat</heatflux_file>
-			<momentum_method>0</momentum_method>
+      <heat_method>1</heat_method>
+      <const_heat>0.0</const_heat>
+      <heatflux_file>heatflux_file.dat</heatflux_file>
+      <swr_method>1</swr_method>
+      <const_swr>0.0</const_swr>
+      <swr_file>swr_file.dat</swr_file>
+      <swr_factor>1.0</swr_factor>
+      <momentum_method>0</momentum_method>
 			<const_tx>0.0</const_tx>
 			<const_ty>0.0</const_ty>
 			<momentumflux_file>momentumflux_file.dat</momentumflux_file>
       <precip_method>0</precip_method>
       <const_precip>0.0</const_precip>
-      <precip_file>p_e_flux_file.dat</precip_file>
+      <precip_file>precip_file.dat</precip_file>
       <precip_factor>1.0</precip_factor>
       <sst_method>0</sst_method>
 			<sst_file>sst_file.dat</sst_file>
