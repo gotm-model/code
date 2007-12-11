@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.16 2007-11-07 11:14:24 kb Exp $
+#$Id: Makefile,v 1.17 2007-12-11 11:00:42 lars Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -10,7 +10,8 @@ LIB	= $(LIBDIR)/libbio$(buildtype).a
 DOCSRC	=  bio.F90 \
 bio_var.F90 bio_template.F90 bio_npzd.F90 bio_iow.F90 \
           bio_sed.F90 bio_fasham.F90 bio_rolm.F90 \
-          bio_save.F90 mussels.F90 mussel_deb.F90
+          bio_save.F90 \
+#         mussels.F90 mussel_deb.F90
 
 OBJ   = \
 ${LIB}(bio_var.o)		\
