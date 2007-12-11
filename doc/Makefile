@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.13 2007-04-18 07:11:11 kbk Exp $
+#$Id: Makefile,v 1.14 2007-12-11 13:21:03 kb Exp $
 #
 # Makefile for making the source code documentation. 
 #
@@ -126,11 +126,11 @@ html:   html.dvi
 	touch html
 
 pdf_scp: a4.pdf letter.pdf
-	scp -r a4.pdf letter.pdf gotm@80.198.12.199:doc/
+	scp -r a4.pdf letter.pdf gotm.net:/data/kamel/domains/gotm.net/manual/pdf/
 	touch pdf_scp
 
 html_scp: html
-	scp -r html/* gotm@80.198.12.199:html/
+	scp -r html/* gotm.net:/data/kamel/domains/gotm.net/manual/html/
 	touch html_scp
 
 
