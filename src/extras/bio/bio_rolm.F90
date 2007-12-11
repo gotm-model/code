@@ -1,4 +1,4 @@
-!$Id: bio_rolm.F90,v 1.1 2007-10-01 12:44:06 kbk Exp $
+!$Id: bio_rolm.F90,v 1.2 2007-12-11 11:22:12 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -30,15 +30,15 @@
 !  (Baa). The concentrations are in uM (for O,N,P,S species) and 
 !  mg*WetWeight*m-3 (for biological parameters). A detailed description 
 !  of the model is available at
-!  http://www.io-warnemuende.de/documents/mebe68_2007-yakushev.pdf.
+!  http://www.io-warnemuende.de/documents/mebe68\_2007-yakushev.pdf.
 !  This implemented version of ROLM model includes slight modifications 
 !  and was included into GOTM by E.Yakushev, O.Podymov and I.Kuznetsov
 !  in September 2007.
 !
 !  when WRITEFINISH is defined, results of modeling are written into 
-!  'finish' file (defined in bio_rolm.nml) every end of a modeled year.
+!  'finish' file (defined in bio\_rolm.nml) every end of a modeled year.
 !  If you want to initialize a new calculation with this file, define
-!  it as 'chem_init' in bio_rolm.nml or replace original initialization 
+!  it as 'chem\_init' in bio\_rolm.nml or replace original initialization 
 !  file with it.
 #define WRITEFINISH
 
@@ -342,7 +342,7 @@
 ! !DESCRIPTION:
 !  Here, the the initial conditions are set and the settling velocities are
 !  transferred to all vertical levels. All concentrations are declared
-!  as non-negative variables. The initial arrays are read from a file "chem_init.dat".
+!  as non-negative variables. The initial arrays are read from a file "chem\_init.dat".
 !  Furthermore, the primary production {\tt ppi} is allocated.
 !
 ! !USES:
@@ -603,8 +603,8 @@
 !
 ! !DESCRIPTION:
 !  Instead of the
-!  heavyside switches used by \cite{Neumann et al, 2002, Yakushev et al, 
-!  2007}, we apply here a smoothed {\it tangens hyperbolicus} transition 
+!  heavyside switches used by e.g.\ \cite{Neumannetal2002}, we apply here 
+!  a smoothed {\it tangens hyperbolicus} transition 
 !  with prescribed width $x_w$:
 !  \begin{equation}\label{theta}
 !  \theta (x,x_w,y_{\min},y_{\max})= y_{\min}+(y_{\max}-y_{\min})
