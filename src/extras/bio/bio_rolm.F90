@@ -1,4 +1,4 @@
-!$Id: bio_rolm.F90,v 1.2 2007-12-11 11:22:12 lars Exp $
+!$Id: bio_rolm.F90,v 1.3 2007-12-11 12:41:19 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -214,21 +214,21 @@
 
  namelist /bio_rolm_factors_nml/ &
    fluff, kc, i_min, iv, a0, a1, a2, aa, g2, pvel,  sfl_po, sfl_am,  sfl_ni,& 
-!----Phy  ----------!
+!----Phy ----------!
    KNF, k_Erlov, Io, Iopt, bm, cm, KFN, KFP, KFD,&
-!----Zoo -----------!
+!----Zoo-----------!
    KFZ, KF, FP, Phypor, KPZ, KPP, POPpor, KZN, KZP, Uz, Hz,&
-!---- OM   ---------!
+!----OM ---------!
    KPD,&
-!----�� P---------!
+!----P---------!
    KPO4,&
-!----�� N---------!
+!----N---------!
    KPSI, KNO3, KNH4, KND4, KNP4, KN42, KN23, KN32, KN24, KT, k_annamox, &
-!----�� S---------!
+!----S---------!
    K_hs_ox, K_s0_ox, K_s23_ox, K_s4_rd, K_s23_rd,&
-!----�� Mn---------!
+!----Mn---------!
    K_mn_ox, K_mn_ox2, K_mn_rd, K_mn_rd2,&
-!----�� Fe---------!
+!----Fe---------!
    K_fe_ox, K_fe_nox, K_fe_mnox, K_fe_rd,& 
 !Stoichiometric coefficients
    Sp, SpZ, Sn, Ss, Sc, OkP, NkP, OkN, SkP,&
