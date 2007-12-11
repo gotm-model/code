@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.23 2007-12-09 10:25:48 kb Exp $
+!$Id: airsea.F90,v 1.24 2007-12-11 11:05:48 lars Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.24  2007-12-11 11:05:48  lars
+!  corrected underscores in documentation
+!
 !  Revision 1.23  2007-12-09 10:25:48  kb
 !  introduced swr_method: 1->constant, 2->from file, 3->equation
 !
@@ -215,19 +218,19 @@
 !  These parameters are:
 !
 !  \begin{tabular}{ll}
-! {\tt calc$\_$fluxes}     & {\tt .true.}: Sensible, latent and back-radiation are calculated by    \\
-!                          & means of bulk formulae. In this case, {\tt meteo$\_$file} must be      \\
+! {\tt calc\_fluxes}     & {\tt .true.}: Sensible, latent and back-radiation are calculated by    \\
+!                          & means of bulk formulae. In this case, {\tt meteo\_file} must be      \\
 !                          & given and {\tt hum\_method} must be specified.                         \\
 !                          & {\tt .false.}: Surface fluxes and solar radiation are prescribed.      \\
-! {\tt fluxes$\_$method}   & Select which parameterisation to use for latent and sensible fluxes:   \\
+! {\tt fluxes\_method}   & Select which parameterisation to use for latent and sensible fluxes:   \\
 !                          & 1: Kondo (1975)                                                        \\
 !                          & 2: Fairall et al. (1996)                                               \\
-! {\tt back$\_radiation$\_$method}   & Select which parameterisation to use:                        \\
+! {\tt back\_radiation\_method}   & Select which parameterisation to use:                        \\
 !                          & 1: Clark et al. (1974)                                                 \\
 !                          & 2: Hastenrath and Lamb (1978)                                          \\
 !                          & 3: Bignami et al. (1995)                                               \\
 !                          & 4: Berliandand Berliand (1952)                                         \\
-! {\tt meteo$\_$file}      & file with meteo data (for {\tt calc$\_$fluxes=.true.}) with            \\
+! {\tt meteo\_file}      & file with meteo data (for {\tt calc\_fluxes=.true.}) with            \\
 !                          & date: {\tt yyyy-mm-dd hh:mm:ss}                                        \\
 !                          & $x$-component of wind (10 m) in m\,s$^{-1}$                            \\
 !                          & $y$-component of wind (10 m) in m\,s$^{-1}$                            \\
@@ -237,44 +240,44 @@
 !                          & cloud cover in 1/10                                                    \\
 !                          & Example:                                                               \\
 !                          & {\tt 1998-01-01 00:00:00    6.87  10.95 1013.0   6.80   73.2   0.91}   \\
-! {\tt hum\_method}        & 1: relative humidity given as 7.\ column in {\tt meteo$\_$file}        \\
-!                          & 2: wet bulb temperature given as 7. column in {\tt meteo$\_$file}      \\
-!                          & 3: dew point temperature given as 7. column in {\tt meteo$\_$file}     \\
-! {\tt heat$\_$method}     & 0: heat flux not prescribed                                            \\
-!                          & 1: constant value for short wave radiation ({\tt const$\_$swr})        \\
-!                          &    and surface heat flux ({\tt const$\_$qh})                           \\
-!                          & 2: {\tt swr}, {\tt heat} are read from {\tt heatflux$\_$file}          \\
-! {\tt rain$\_$impact}     & {\tt .true.}: include sensible- and momentum-flux from precipitation   \\
-! {\tt calc$\_$evaporation}& {\tt .true.}: calculate evaporation/condensation (m/s)                 \\
-! {\tt swr$\_$method}      & 1: constant value for short wave radiation ({\tt const$\_$swr})        \\
+! {\tt hum\_method}        & 1: relative humidity given as 7.\ column in {\tt meteo\_file}        \\
+!                          & 2: wet bulb temperature given as 7. column in {\tt meteo\_file}      \\
+!                          & 3: dew point temperature given as 7. column in {\tt meteo\_file}     \\
+! {\tt heat\_method}     & 0: heat flux not prescribed                                            \\
+!                          & 1: constant value for short wave radiation ({\tt const\_swr})        \\
+!                          &    and surface heat flux ({\tt const\_qh})                           \\
+!                          & 2: {\tt swr}, {\tt heat} are read from {\tt heatflux\_file}          \\
+! {\tt rain\_impact}     & {\tt .true.}: include sensible- and momentum-flux from precipitation   \\
+! {\tt calc\_evaporation}& {\tt .true.}: calculate evaporation/condensation (m/s)                 \\
+! {\tt swr\_method}      & 1: constant value for short wave radiation ({\tt const\_swr})        \\
 !                          & 2: read short wave radiation from file                                 \\
 !                          & 3: Solar radiation is calculated from time, longitude, latitude,       \\
 !                          & and cloud cover.                                                       \\
-! {\tt const$\_$swr}       & constant value for short wave radiation in W\,m$^{-2}$                 \\
+! {\tt const\_swr}       & constant value for short wave radiation in W\,m$^{-2}$                 \\
 !                          & (always positive)                                                      \\
-! {\tt swr$\_$file}        & file with short wave radiation in W\,m$^{-2}$                          \\
-! {\tt swr$\_$factor}      & scales data read from file to  W\,m$^{-2}$ - defaults to 1             \\
-! {\tt const$\_$heat }     & constant value for surface heat flux in  W\,m$^{-2}$                   \\
+! {\tt swr\_file}        & file with short wave radiation in W\,m$^{-2}$                          \\
+! {\tt swr\_factor}      & scales data read from file to  W\,m$^{-2}$ - defaults to 1             \\
+! {\tt const\_heat }     & constant value for surface heat flux in  W\,m$^{-2}$                   \\
 !                          & (negative for heat loss)                                               \\
-! {\tt heatflux$\_$file}   & file with date and {\tt heat} in W\,m$^{-2}$                           \\
-! {\tt momentum$\_$method} & 0: momentum flux not prescribed                                        \\
-!                          & 1: constant momentum fluxes {\tt const$\_$tx}, {\tt const$\_$tx} given \\
-!                          & 2: surface momentum fluxes given from file {\tt momentumflux$\_$file}  \\
-! {\tt const$\_$tx}        & $x$-component of constant surface momentum flux in N\,m$^{-2}$         \\
-! {\tt const$\_$ty}        & $y$-component of constant surface momentum flux in N\,m$^{-2}$         \\
-! {\tt momentumflux$\_$file} & File with date, {\tt tx} and {\tt ty} given                          \\
-! {\tt precip$\_$method}   & 0: precipitation not included == precip=0.                             \\
+! {\tt heatflux\_file}   & file with date and {\tt heat} in W\,m$^{-2}$                           \\
+! {\tt momentum\_method} & 0: momentum flux not prescribed                                        \\
+!                          & 1: constant momentum fluxes {\tt const\_tx}, {\tt const\_tx} given \\
+!                          & 2: surface momentum fluxes given from file {\tt momentumflux\_file}  \\
+! {\tt const\_tx}        & $x$-component of constant surface momentum flux in N\,m$^{-2}$         \\
+! {\tt const\_ty}        & $y$-component of constant surface momentum flux in N\,m$^{-2}$         \\
+! {\tt momentumflux\_file} & File with date, {\tt tx} and {\tt ty} given                          \\
+! {\tt precip\_method}   & 0: precipitation not included == precip=0.                             \\
 !                          & 1: constant value for precipitation in  m\,s$^{-1}$                    \\
-!                          & 2: values for precipitation read from file {\tt precip\_$file}         \\
-! {\tt const$\_$precip}    & value for precip in m\,s$^{-1}$                                        \\
-! {\tt precip$\_$file}     & file with date and {\tt precip} in m\,s$^{-1}$                         \\
-! {\tt precip$\_$factor}   & scales data read from file to  m\,s$^{-1}$ - defaults to 1             \\
-! {\tt sst$\_$method}      & 0: no independent SST observation is read from file                    \\
+!                          & 2: values for precipitation read from file {\tt precip\_file}         \\
+! {\tt const\_precip}    & value for precip in m\,s$^{-1}$                                        \\
+! {\tt precip\_file}     & file with date and {\tt precip} in m\,s$^{-1}$                         \\
+! {\tt precip\_factor}   & scales data read from file to  m\,s$^{-1}$ - defaults to 1             \\
+! {\tt sst\_method}      & 0: no independent SST observation is read from file                    \\
 !                          & 2: independent SST observation is read from file, only for output      \\
-! {\tt sst$\_$file}        & file with date and SST (sea surface temperature) in Celsius            \\
-! {\tt sss$\_$method}      & 0: no independent SSS observation is read from file                    \\
+! {\tt sst\_file}        & file with date and SST (sea surface temperature) in Celsius            \\
+! {\tt sss\_method}      & 0: no independent SSS observation is read from file                    \\
 !                          & 2: independent SSS observation is read from file, only for output      \\
-! {\tt sss$\_$file}        & file with date and SSS (sea surface salinity) in psu                   \\
+! {\tt sss\_file}        & file with date and SSS (sea surface salinity) in psu                   \\
 !  \end{tabular}
 !
 ! !USES:
@@ -605,8 +608,8 @@
 !
 ! !DESCRIPTION:
 !  For {\tt calc\_fluxes=.true.}, this routine reads meteo data
-!  from {\tt meteo$\_$file} and calculates for each time step
-!  in  {\tt meteo$\_$file} the
+!  from {\tt meteo\_file} and calculates for each time step
+!  in  {\tt meteo\_file} the
 !  fluxes of heat and momentum, and the
 !  long-wave back radiation by calling the routines {\tt humidity},
 !  {\tt back\_radiation} and {\tt airsea\_fluxes}, see sections
