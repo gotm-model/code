@@ -59,6 +59,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "defaultscenarios", "default
 		..\..\defaultscenarios\default.xml = ..\..\defaultscenarios\default.xml
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "util", "util", "{B352B739-F677-4F20-A890-51CEA0CD2086}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\util\nml2xml.py = ..\..\util\nml2xml.py
+		..\..\util\xml2nml.py = ..\..\util\xml2nml.py
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

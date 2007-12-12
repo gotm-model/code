@@ -556,15 +556,28 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
             elif heatmethod==1:
                 target['airsea/airsea/swr_method'].setValue(1)
             elif heatmethod==2:
-                target['airsea/airsea/swr_method'].setValue(2)
                 datold = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'])
                 datold.loadDataFile(source['airsea/airsea/heatflux_file'].getValue())
-                swrnew  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/swr_file'])
-                swrnew.data = [datold.data[0],datold.data[1].take((0,),1)]
-                heatnew = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
-                heatnew.data = [datold.data[0],datold.data[1].take((1,),1)]
-                target['airsea/airsea/swr_file'].setValue(swrnew.getAsDataFile())
-                target['airsea/airsea/heatflux_file'].setValue(heatnew.getAsDataFile())                
+                times = datold.data[0]
+                swr  = datold.data[1].take((0,),1)
+                heat = datold.data[1].take((1,),1)
+                if (swr==swr[0]).all():
+                    target['airsea/airsea/swr_method'].setValue(1)
+                    target['airsea/airsea/const_swr'].setValue(swr[0])
+                else:
+                    target['airsea/airsea/swr_method'].setValue(2)
+                    swrnew  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/swr_file'])
+                    swrnew.data = [times,swr]
+                    target['airsea/airsea/swr_file'].setValue(swrnew.getAsDataFile())
+                if (heat==heat[0]).all():
+                    target['airsea/airsea/heat_method'].setValue(1)
+                    target['airsea/airsea/const_heat'].setValue(heat[0])
+                    target['airsea/airsea/heatflux_file'].setValue(None)
+                else:
+                    target['airsea/airsea/heat_method'].setValue(2)
+                    heatnew = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
+                    heatnew.data = [times,heat]
+                    target['airsea/airsea/heatflux_file'].setValue(heatnew.getAsDataFile())                
 Scenario.addConvertor(Convertor_gotm_4_0_0_to_gotm_4_1_0)
 
 class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
@@ -576,6 +589,39 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
     
     def convert(self,source,target):
         xmlstore.Convertor.convert(self,source,target)
+
+        if not source['airsea/airsea/calc_fluxes'].getValue():
+            swr_method = source['airsea/airsea/swr_method'].getValue()
+            heat_method = source['airsea/airsea/heat_method'].getValue()
+            if swr_method==2 or heat_method==2:
+                import numpy
+                swrdata,heatdata = None,None
+                if swr_method==2:
+                    swrdata = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/swr_file'])
+                    swrdata.loadDataFile(source['airsea/airsea/swr_file'].getValue())
+                if heat_method==2:
+                    heatdata = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'])
+                    heatdata.loadDataFile(source['airsea/airsea/heatflux_file'].getValue())
+                mergeddata  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
+                if swrdata==None:
+                    times = heatdata.data[0]
+                    heat = heatdata.data[1]
+                    swr = numpy.empty(heat.shape)
+                    swr[:,:] = source['airsea/airsea/const_swr'].getValue()
+                elif heatdata==None:
+                    times = swrdata.data[0]
+                    swr = swrdata.data[1]
+                    heat = numpy.empty(swr.shape)
+                    heat[:,:] = source['airsea/airsea/const_heat'].getValue()
+                else:
+                    times = numpy.unique(numpy.concatenate((swrdata.data[0],heatdata.data[0]),0))
+                    times.sort()
+                    swr = common.interp1(swrdata.data[0],swrdata.data[1],times)
+                    heat = common.interp1(heatdata.data[0],heatdata.data[1],times)
+                mergeddata.data = [times,numpy.concatenate((swr,heat),1)]
+                target['airsea/airsea/heat_method'].setValue(2)
+                target['airsea/airsea/heatflux_file'].setValue(mergeddata.getAsDataFile())                
+                    
 Scenario.addConvertor(Convertor_gotmgui_4_1_0_to_gotm_4_0_0)
 
 class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
