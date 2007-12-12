@@ -431,14 +431,25 @@ class LinkedMatrix(LinkedFileVariableStore):
 
         # Compile regular expression for reading dates.
         datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
+        
+        buffersize = 1000
 
         times = []
         values = []
         iline = 0
+        ipos = 0
         while True:
             # Read a line (stop if end-of-file was reached)
             line = f.readline()
             if line=='': break
+
+            # Calculate position in current slice, create new data slice if needed.
+            ipos = iline%buffersize
+            if ipos==0:
+                times.append(matplotlib.numerix.empty((buffersize,),matplotlib.numerix.Float64))
+                values.append(matplotlib.numerix.empty((buffersize,varcount),matplotlib.numerix.Float32))
+
+            # Increment current line number
             iline += 1
             
             # Read the date + time
@@ -447,17 +458,13 @@ class LinkedMatrix(LinkedFileVariableStore):
                 raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
             curdate = common.dateTimeFromTuple(refvals)
-            curdate = common.date2num(curdate)
+            times[-1][ipos] = common.date2num(curdate)
             
             # Read values.
             data = line[datematch.end()+1:].split()
             if len(data)<varcount:
                 raise Exception('Line %i contains only %i observations, where %i are expected.' % (iline,len(data),varcount))
-            data = map(float,data[:varcount])
-            
-            # Store time and values.
-            times.append(curdate)
-            values.append(data)
+            values[-1][ipos,:] = map(float,data[:varcount])
             
             # Inform caller about progress
             if callback!=None and iline%1000==0:
@@ -468,10 +475,14 @@ class LinkedMatrix(LinkedFileVariableStore):
                     except AttributeError:
                         progress = None
                 callback('processed %i lines.' % iline,progress=progress)
+
+        # Delete unused rows in last data slice.
+        times [-1] = times [-1][0:iline%buffersize]
+        values[-1] = values[-1][0:iline%buffersize,:]
         
-        # Convert sequences to numpy arrays and store these.
-        times = matplotlib.numerix.array(times,matplotlib.numerix.PyObject)
-        values = matplotlib.numerix.array(values,matplotlib.numerix.Float64)
+        # Concatenate data slices.
+        times = matplotlib.numerix.concatenate(times,axis=0)
+        values = matplotlib.numerix.concatenate(values,axis=0)
         self.data = [times,values]
             
         # Close data file

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.29 2007-12-10 14:40:47 jorn Exp $
+#$Id: scenariobuilder.py,v 1.30 2007-12-12 15:56:11 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -622,7 +622,35 @@ class PageAirSeaInteraction(ScenarioPage):
         meteowetmodelayout.addStretch()
         meteolayout.addLayout(meteowetmodelayout)
 
-        # Heat fluxes
+        # Shortwave radiation
+
+        groupboxSwr = self.factory.createEditor('airsea/swr_method',self,groupbox=True).editor
+        
+        swrlayout = QtGui.QGridLayout()
+        swrlayout.setColumnMinimumWidth(0,radiowidth)
+
+        editSwrMethod = self.factory.createEditor('airsea/swr_method', self,selectwithradio=True)
+        editConstSwr  = self.factory.createEditor('airsea/const_swr',  self)
+        editSwrFile   = self.factory.createEditor('airsea/swr_file',   self)
+        
+        swrlayout.addWidget(editSwrMethod.editor.button(1),1,0,1,2)
+        constswrlayout = QtGui.QHBoxLayout()
+        editConstSwr.addToBoxLayout(constswrlayout)
+        swrlayout.addLayout(constswrlayout,2,1)
+        
+        swrlayout.addWidget(editSwrMethod.editor.button(2),3,0,1,2)
+        swrfilelayout = QtGui.QHBoxLayout()
+        editSwrFile.addToBoxLayout(swrfilelayout,label=False,unit=False)
+        swrfilelayout.addStretch()
+        swrlayout.addLayout(swrfilelayout,5,1)
+
+        swrlayout.addWidget(editSwrMethod.editor.button(3),6,0,1,2)
+        
+        swrlayout.setColumnStretch(2,1)
+        
+        groupboxSwr.setLayout(swrlayout)
+
+        # Heat flux
 
         groupboxHeat = self.factory.createEditor('airsea/heat_method',self,groupbox=True).editor
         
@@ -630,14 +658,12 @@ class PageAirSeaInteraction(ScenarioPage):
         heatlayout.setColumnMinimumWidth(0,radiowidth)
 
         editHeatMethod   = self.factory.createEditor('airsea/heat_method',  self,selectwithradio=True)
-        editConstSwr     = self.factory.createEditor('airsea/const_swr',    self)
         editConstHeat    = self.factory.createEditor('airsea/const_heat',   self)
         editHeatfluxFile = self.factory.createEditor('airsea/heatflux_file',self)
         
         heatlayout.addWidget(editHeatMethod.editor.button(1),1,0,1,2)
-        constheatlayout = QtGui.QGridLayout()
-        editConstSwr.addToGridLayout(constheatlayout)
-        editConstHeat.addToGridLayout(constheatlayout)
+        constheatlayout = QtGui.QHBoxLayout()
+        editConstHeat.addToBoxLayout(constheatlayout)
         heatlayout.addLayout(constheatlayout,2,1)
         
         heatlayout.addWidget(editHeatMethod.editor.button(2),3,0,1,2)
@@ -712,6 +738,7 @@ class PageAirSeaInteraction(ScenarioPage):
         layoutAirSea.addWidget(editCalcFluxes.editor.button(1),3,0,1,2)
         layoutAirSea.addWidget(groupboxHeat,                   4,1)
         layoutAirSea.addWidget(groupboxMomentum,               5,1)
+        layoutAirSea.addWidget(groupboxSwr,                    6,0,1,2)
         #layoutAirSea.addWidget(groupboxPe,4,0,1,2)
 
         layout.addLayout(layoutAirSea)

@@ -551,29 +551,40 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
         else:
             heatmethod = source['airsea/airsea/heat_method'].getValue()
             if heatmethod==0:
+                # Heat fluxes = None specified: convert to constant values of zero.
                 target['airsea/airsea/swr_method'].setValue(1)
                 target['airsea/airsea/const_swr' ].setValue(0.)
             elif heatmethod==1:
+                # Constant heat flux specified
                 target['airsea/airsea/swr_method'].setValue(1)
             elif heatmethod==2:
+                # Variable heat flux specified: split heat flux data into times, shortwave radiation values
+                # and actual heat flux values.
                 datold = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'])
                 datold.loadDataFile(source['airsea/airsea/heatflux_file'].getValue())
-                times = datold.data[0]
-                swr  = datold.data[1].take((0,),1)
-                heat = datold.data[1].take((1,),1)
+                times,swr,heat = datold.data[0],datold.data[1].take((0,),1),datold.data[1].take((1,),1)
+                
+                # Save shortwave radiation
                 if (swr==swr[0]).all():
+                    # All shortwave radiation values are equal: set shortwave radiation method to constant
                     target['airsea/airsea/swr_method'].setValue(1)
                     target['airsea/airsea/const_swr'].setValue(swr[0])
                 else:
+                    # Variable shortwave radiation: set shortwave radiation method to custom (i.e. from file)
+                    # and supply the data.
                     target['airsea/airsea/swr_method'].setValue(2)
                     swrnew  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/swr_file'])
                     swrnew.data = [times,swr]
                     target['airsea/airsea/swr_file'].setValue(swrnew.getAsDataFile())
+                    
+                # Save heat flux
                 if (heat==heat[0]).all():
+                    # All heat flux values are equal: set heat flux method to constant
                     target['airsea/airsea/heat_method'].setValue(1)
                     target['airsea/airsea/const_heat'].setValue(heat[0])
                     target['airsea/airsea/heatflux_file'].setValue(None)
                 else:
+                    # Variable heat flux: set heat flux method to custom (i.e. from file) and supply the data.
                     target['airsea/airsea/heat_method'].setValue(2)
                     heatnew = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
                     heatnew.data = [times,heat]
@@ -594,7 +605,10 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
             swr_method = source['airsea/airsea/swr_method'].getValue()
             heat_method = source['airsea/airsea/heat_method'].getValue()
             if swr_method==2 or heat_method==2:
+                # Variable shortwave radiation and/or variable heat flux was specified.
                 import numpy
+                
+                # Load all values for shortwave radiation and the heat flux.
                 swrdata,heatdata = None,None
                 if swr_method==2:
                     swrdata = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/swr_file'])
@@ -602,22 +616,30 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
                 if heat_method==2:
                     heatdata = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'])
                     heatdata.loadDataFile(source['airsea/airsea/heatflux_file'].getValue())
-                mergeddata  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
+
+                # Create vectors for time, shortwave radiation and the heat flux.
                 if swrdata==None:
+                    # No variable shortwave radiation, i.e., we only have a variable heat flux.
                     times = heatdata.data[0]
                     heat = heatdata.data[1]
                     swr = numpy.empty(heat.shape)
-                    swr[:,:] = source['airsea/airsea/const_swr'].getValue()
+                    swr.fill(source['airsea/airsea/const_swr'].getValue())
                 elif heatdata==None:
+                    # No variable heat flux, i.e., we only have a variable shortwave radiation.
                     times = swrdata.data[0]
                     swr = swrdata.data[1]
                     heat = numpy.empty(swr.shape)
-                    heat[:,:] = source['airsea/airsea/const_heat'].getValue()
+                    heat.fill(source['airsea/airsea/const_heat'].getValue())
                 else:
+                    # We have both a variable shortwave radiation and a variable heat flux.
+                    # Combine both, and interpolate where values of either variable are not available.
                     times = numpy.unique(numpy.concatenate((swrdata.data[0],heatdata.data[0]),0))
                     times.sort()
                     swr = common.interp1(swrdata.data[0],swrdata.data[1],times)
                     heat = common.interp1(heatdata.data[0],heatdata.data[1],times)
+                    
+                # Store merged shortwave radation/heat flux data.
+                mergeddata  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
                 mergeddata.data = [times,numpy.concatenate((swr,heat),1)]
                 target['airsea/airsea/heat_method'].setValue(2)
                 target['airsea/airsea/heatflux_file'].setValue(mergeddata.getAsDataFile())                
