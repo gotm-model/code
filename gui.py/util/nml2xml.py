@@ -16,7 +16,7 @@ scenario.Scenario.setRoot(gotmguiroot)
 # Small function for receiving progress messages when parsing data files.
 nextprogress = None
 progresstep = .25
-def printprogress(status,progress):
+def printprogress(progress,status):
     global nextprogress
     if progress>=nextprogress:
         print '%i %% done - %s' % (progress*100,status)

@@ -238,7 +238,7 @@ class Scenario(xmlstore.TypedStore):
                     lcnames = ['"%s"' % lc.getId() for lc in filechild.children[childindex:]]
                     raise namelist.NamelistParseException('Variables %s are missing' % ', '.join(lcnames),fullnmlfilename,listname,None)
 
-    def writeAsNamelists(self, targetpath, copydatafiles=True, addcomments = False):
+    def writeAsNamelists(self, targetpath, copydatafiles=True, addcomments = False, callback=None):
         print 'Exporting scenario to namelist files...'
 
         # If the directory to write to does not exist, create it.
@@ -257,13 +257,16 @@ class Scenario(xmlstore.TypedStore):
                 linelength = 80
                 wrapper = textwrap.TextWrapper(subsequent_indent='  ')
             
+            progslicer = common.ProgressSlicer(callback,len(self.root.children))
             for mainchild in self.root.children:
                 assert not mainchild.canHaveValue(), 'Found a variable below the root node, where only folders are expected.'
+
+                nmlfilename = mainchild.getId()
+                progslicer.nextStep(nmlfilename)
 
                 if mainchild.isHidden(): continue
 
                 # Create the namelist file.
-                nmlfilename = mainchild.getId()
                 nmlfilepath = os.path.join(targetpath, nmlfilename+self.namelistextension)
                 nmlfile = open(nmlfilepath,'w')
 

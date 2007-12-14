@@ -115,9 +115,14 @@ class GOTMWizard(commonqt.Wizard):
             if scen.path!=None: curpath = os.path.dirname(scen.path)
             path = commonqt.browseForPath(self,curpath=curpath,getdirectory=True)
             if path!=None:
-                exportscen = scen.convert(unicode(dialog.comboVersion.currentText()))
-                exportscen.writeAsNamelists(path,addcomments=True)
+                progdialog = commonqt.ProgressDialog(self,title='Exporting...',suppressstatus=True)
+                progslicer = common.ProgressSlicer(progdialog.onProgressed,2)
+                progslicer.nextStep('converting to desired version')
+                exportscen = scen.convert(unicode(dialog.comboVersion.currentText()),callback=progslicer.getStepCallback())
+                progslicer.nextStep('writing files')
+                exportscen.writeAsNamelists(path,addcomments=True,callback=progslicer.getStepCallback())
                 exportscen.release()
+                progdialog.close()
                 
     def onSaveResultAs(self):
         result = self.getProperty('result')
