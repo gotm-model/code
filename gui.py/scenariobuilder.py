@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.30 2007-12-12 15:56:11 jorn Exp $
+#$Id: scenariobuilder.py,v 1.31 2007-12-14 14:21:01 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -93,7 +93,7 @@ class ScenarioWidget(QtGui.QWidget):
         elif checkedid==3:
             return self.pathImport2.hasPath()
 
-    def getScenario(self):
+    def getScenario(self,callback=None):
         if not self.isComplete(): return None
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
         try:
@@ -124,7 +124,7 @@ class ScenarioWidget(QtGui.QWidget):
                 else:
                     try:
                         scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
-                        scen.loadAll(path)
+                        scen.loadAll(path,callback=callback)
                     except Exception,e:
                         raise Exception('An error occurred while loading the scenario: '+str(e))
             elif checkedid==2:
@@ -176,13 +176,16 @@ class PageOpen(commonqt.WizardPage):
         return self.scenariowidget.isComplete()
 
     def saveData(self,mustbevalid):
+        dialog = commonqt.ProgressDialog(self,title='Please wait...',suppressstatus=True)
         try:
-            newscen = self.scenariowidget.getScenario()
+            newscen = self.scenariowidget.getScenario(callback=dialog.onProgressed)
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+            dialog.close()
             return False
         self.owner.setProperty('result',None)
         self.owner.setProperty('scenario',newscen)
+        dialog.close()
         return True
 
 class ScenarioPage(commonqt.WizardPage):
@@ -854,11 +857,14 @@ class PageSave(commonqt.WizardPage):
                 ret = QtGui.QMessageBox.warning(self, 'Overwrite existing file?', 'There already exists a file at the specified location. Overwrite it?', QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
                 if ret==QtGui.QMessageBox.No:
                     return False
+            dialog = commonqt.ProgressDialog(self,title='Saving...',suppressstatus=True)
             try:
-                self.scenario.saveAll(targetpath)
+                self.scenario.saveAll(targetpath,callback=dialog.onProgressed)
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to save scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+                dialog.close()
                 return False
+            dialog.close()
             self.owner.settings.addUniqueValue('Paths/RecentScenarios','Path',targetpath)
         return True
 

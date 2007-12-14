@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.47 2007-10-31 08:04:25 jorn Exp $
+#$Id: commonqt.py,v 1.48 2007-12-14 14:21:01 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -708,7 +708,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         
         self.exportbutton.setEnabled(self.datafile.isValid())
 
-    def onParseProgress(self,status,progress=None):
+    def onParseProgress(self,progress,status):
         if self.progressdialog.isHidden(): self.progressdialog.show()
         if progress!=None:
             if self.progressdialog.maximum()==0: self.progressdialog.setMaximum(100)
@@ -2830,10 +2830,12 @@ class FigureDialog(QtGui.QDialog):
         return self.panel.figure
 
 class ProgressDialog(QtGui.QProgressDialog):
-    def __init__(self,parent=None,minimumduration=500,title=None):
+    def __init__(self,parent=None,minimumduration=500,title=None,suppressstatus=False):
         QtGui.QProgressDialog.__init__(self,'',QtCore.QString(),0,0,parent,QtCore.Qt.Dialog|QtCore.Qt.WindowTitleHint|QtCore.Qt.MSWindowsFixedSizeDialogHint)
         self.setModal(True)
         self.setMinimumDuration(minimumduration)
+        self.setRange(0,0)
+        self.suppressstatus = suppressstatus
         if title!=None: self.setWindowTitle(title)
             
     def onProgressed(self,progress,status):
@@ -2842,6 +2844,5 @@ class ProgressDialog(QtGui.QProgressDialog):
             self.setValue(int(100*progress))
         elif progressdialog.maximum()!=0:
             self.setValue(0)
-        self.setLabelText(status)
+        if not self.suppressstatus: self.setLabelText(status)
         QtGui.qApp.processEvents()
-        

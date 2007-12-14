@@ -406,13 +406,13 @@ class Scenario(xmlstore.TypedStore):
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
         if self.originalversion==savedscenarioversion: self.resetChanged()
 
-    def saveAll(self,path,targetversion=None,**kwargs):
+    def saveAll(self,path,targetversion=None,*args,**kwargs):
         if targetversion==None: targetversion = savedscenarioversion
         kwargs['fillmissing'] = True
-        xmlstore.TypedStore.saveAll(self,path,targetversion=targetversion,**kwargs)
+        xmlstore.TypedStore.saveAll(self,path,targetversion=targetversion,*args,**kwargs)
 
-    def loadAll(self,path):
-        xmlstore.TypedStore.loadAll(self,path)
+    def loadAll(self,path,*args,**kwargs):
+        xmlstore.TypedStore.loadAll(self,path,*args,**kwargs)
 
         # If the scenario was stored in the official 'save' version, we should not consider it changed.
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
@@ -449,7 +449,7 @@ class Scenario(xmlstore.TypedStore):
                     parsefilenodes.append(fn)
 
             filecount = len(parsefilenodes)
-            def printprogress(status,progress):
+            def printprogress(progress,status):
                 if callback!=None:
                     callback(float(icurfile+progress)/filecount,'parsing %s - %s' % (fn.getText(detail=1),status))
 
@@ -543,7 +543,7 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                          '/airsea/airsea/calc_evaporation',
                          '/airsea/airsea/precip_factor']
 
-    def convert(self,source,target):
+    def convert(self,source,target,callback=None):
         xmlstore.Convertor.convert(self,source,target)
         
         if source['airsea/airsea/calc_fluxes'].getValue():
@@ -560,11 +560,13 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
             elif heatmethod==2:
                 # Variable heat flux specified: split heat flux data into times, shortwave radiation values
                 # and actual heat flux values.
-                datold = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'])
-                datold.loadDataFile(source['airsea/airsea/heatflux_file'].getValue())
+                progslicer = common.ProgressSlicer(callback,3)
+                progslicer.nextStep('parsing %s' % source['airsea/airsea/heatflux_file'].getText(detail=1))
+                datold = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'],load=True,callback=progslicer.getStepCallback())
                 times,swr,heat = datold.data[0],datold.data[1].take((0,),1),datold.data[1].take((1,),1)
                 
                 # Save shortwave radiation
+                progslicer.nextStep('saving %s' % target['airsea/airsea/swr_file'].getText(detail=1))
                 if (swr==swr[0]).all():
                     # All shortwave radiation values are equal: set shortwave radiation method to constant
                     target['airsea/airsea/swr_method'].setValue(1)
@@ -575,9 +577,10 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                     target['airsea/airsea/swr_method'].setValue(2)
                     swrnew  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/swr_file'])
                     swrnew.data = [times,swr]
-                    target['airsea/airsea/swr_file'].setValue(swrnew.getAsDataFile())
+                    target['airsea/airsea/swr_file'].setValue(swrnew.getAsDataFile(callback=progslicer.getStepCallback()))
                     
                 # Save heat flux
+                progslicer.nextStep('saving %s' % target['airsea/airsea/heatflux_file'].getText(detail=1))
                 if (heat==heat[0]).all():
                     # All heat flux values are equal: set heat flux method to constant
                     target['airsea/airsea/heat_method'].setValue(1)
@@ -588,7 +591,7 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                     target['airsea/airsea/heat_method'].setValue(2)
                     heatnew = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
                     heatnew.data = [times,heat]
-                    target['airsea/airsea/heatflux_file'].setValue(heatnew.getAsDataFile())                
+                    target['airsea/airsea/heatflux_file'].setValue(heatnew.getAsDataFile(callback=progslicer.getStepCallback()))                
 Scenario.addConvertor(Convertor_gotm_4_0_0_to_gotm_4_1_0)
 
 class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
@@ -598,7 +601,7 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
     def registerLinks(self):
         self.links = Convertor_gotm_4_0_0_to_gotm_4_1_0().reverseLinks()
     
-    def convert(self,source,target):
+    def convert(self,source,target,callback=None):
         xmlstore.Convertor.convert(self,source,target)
 
         if not source['airsea/airsea/calc_fluxes'].getValue():
@@ -610,12 +613,15 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
                 
                 # Load all values for shortwave radiation and the heat flux.
                 swrdata,heatdata = None,None
-                if swr_method==2:
-                    swrdata = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/swr_file'])
-                    swrdata.loadDataFile(source['airsea/airsea/swr_file'].getValue())
+                nsteps = 2
+                if swr_method==2 and heat_method==2: nsteps += 1
+                progslicer = common.ProgressSlicer(callback,nsteps)
+                if swr_method ==2:
+                    progslicer.nextStep('parsing %s' % source['airsea/airsea/swr_file'].getText(detail=1))
+                    swrdata  = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/swr_file'],load=True,callback=progslicer.getStepCallback())
                 if heat_method==2:
-                    heatdata = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'])
-                    heatdata.loadDataFile(source['airsea/airsea/heatflux_file'].getValue())
+                    progslicer.nextStep('parsing %s' % source['airsea/airsea/heatflux_file'].getText(detail=1))
+                    heatdata = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'],load=True,callback=progslicer.getStepCallback())
 
                 # Create vectors for time, shortwave radiation and the heat flux.
                 if swrdata==None:
@@ -639,10 +645,11 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
                     heat = common.interp1(heatdata.data[0],heatdata.data[1],times)
                     
                 # Store merged shortwave radation/heat flux data.
+                progslicer.nextStep('writing %s' % target['airsea/airsea/heatflux_file'].getText(detail=1))
                 mergeddata  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
                 mergeddata.data = [times,numpy.concatenate((swr,heat),1)]
                 target['airsea/airsea/heat_method'].setValue(2)
-                target['airsea/airsea/heatflux_file'].setValue(mergeddata.getAsDataFile())                
+                target['airsea/airsea/heatflux_file'].setValue(mergeddata.getAsDataFile(callback=progslicer.getStepCallback()))                
                     
 Scenario.addConvertor(Convertor_gotmgui_4_1_0_to_gotm_4_0_0)
 
@@ -689,7 +696,7 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
                       ('/bio_sed/bio_sed_nml',            '/bio/bio_model/bio_sed'),
                       ('/bio_fasham/bio_fasham_nml',      '/bio/bio_model/bio_fasham')]
     
-    def convert(self,source,target):
+    def convert(self,source,target,callback=None):
         xmlstore.Convertor.convert(self,source,target)
         
         # ===============================================
@@ -775,7 +782,7 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
     def registerLinks(self):
         self.links = Convertor_gotm_4_1_0_to_gotmgui_0_5_0().reverseLinks()
     
-    def convert(self,source,target):
+    def convert(self,source,target,callback=None):
         xmlstore.Convertor.convert(self,source,target)
 
         # ===============================================

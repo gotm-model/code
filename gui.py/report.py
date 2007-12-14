@@ -166,7 +166,7 @@ class Report(common.referencedobject):
             nodePreceding = scentable.nextSibling
             for node,store,datafile in inputdata:
                 if callback!=None:
-                    store.loadDataFile(datafile,lambda msg,progress: callback((istep+progress)/steps,'Parsing %s...' % (node.getText(1),)))
+                    store.loadDataFile(datafile,lambda progress,msg: callback((istep+progress)/steps,'Parsing %s...' % (node.getText(1),)))
                 else:
                     store.loadDataFile(datafile)
                 istep += 1

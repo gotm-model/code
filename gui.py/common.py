@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.34 2007-10-15 06:45:09 jorn Exp $
+#$Id: common.py,v 1.35 2007-12-14 14:21:01 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.dates,matplotlib.numerix,pytz
@@ -346,4 +346,26 @@ def getPercentile(data,cumweights,value,axis):
     lowcoords  = argtake(cumweights,lowindices, axis)
     highweight = (value-lowcoords)/(highcoords-lowcoords)
     return highval*highweight + lowval*(1.-highweight)
-    
+
+class ProgressSlicer:
+    def __init__(self,callback,total=1):
+        self.callback = callback
+        self.step = -1
+        self.total = total
+        self.prefix = ''
+        self.currentweight = 1
+        
+    def nextStep(self,prefix='',weight=1.):
+        self.step += self.currentweight
+        if self.callback!=None: self.callback(float(self.step)/self.total,self.prefix)
+        self.prefix = prefix
+        self.currentweight = weight
+        
+    def onStepProgressed(self,progress,status):
+        text = status
+        if self.prefix!='': text = self.prefix+' - '+text
+        self.callback((self.step+progress*self.currentweight)/self.total,text)
+
+    def getStepCallback(self):
+        if self.callback==None: return None
+        return self.onStepProgressed

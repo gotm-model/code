@@ -206,7 +206,7 @@
 					<condition type="eq" variable="./heat_method" value="1"/>
 				</condition>
 			</element>
-			<element name="heatflux_file" type="file" label="file with qin and qout given in W/m^2 (negative for net outgoing)">
+			<element name="heatflux_file" type="file" label="custom heat fluxes" description="file with qin and qout given in W/m^2 (negative for net outgoing)">
 				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False"/>
 					<condition type="eq" variable="./heat_method" value="2"/>
@@ -239,7 +239,7 @@
 					<condition type="eq" variable="./momentum_method" value="1"/>
 				</condition>
 			</element>
-			<element name="momentumflux_file" type="file" label="file with tx and ty given in N/m^2">
+			<element name="momentumflux_file" type="file" label="custom momentum fluxes" description="file with tx and ty given in N/m^2">
 				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False"/>
 					<condition type="eq" variable="./momentum_method" value="2"/>

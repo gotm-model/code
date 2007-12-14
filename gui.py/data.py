@@ -172,18 +172,21 @@ class LinkedFileVariableStore(PlotVariableStore):
             assert False, 'This function must be implemented by inheriting class.'
             
     @staticmethod
-    def fromNode(node):
+    def fromNode(node,load=False,callback=None):
         finfo = common.findDescendantNode(node.templatenode,['fileinfo'])
         assert finfo!=None, 'Node "%s" lacks "fileinfo" attribute.' % node
+        store = None
         type = finfo.getAttribute('type')
         if type=='pointsintime':
-            return LinkedMatrix(node,type=0,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'}},dimensionorder=('time',))
+            store = LinkedMatrix(node,type=0,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'}},dimensionorder=('time',))
         elif type=='profilesintime':
-            return LinkedProfilesInTime(node,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}},dimensionorder=('time','z'))
+            store = LinkedProfilesInTime(node,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}},dimensionorder=('time','z'))
         elif type=='singleprofile' or type=='verticalgrid':
-            return LinkedMatrix(node,type=1)
+            store = LinkedMatrix(node,type=1)
         else:
             assert False, 'Linked file has unknown type "%s".' % node.type
+        if load: store.loadDataFile(node.getValue(),callback)
+        return store
 
     def __init__(self,node,dimensions={},dimensionorder=()):
 
@@ -253,26 +256,26 @@ class LinkedFileVariableStore(PlotVariableStore):
         """Event handler, must be called by external actors when they change the data."""
         self.datafile = None
         
-    def saveToFile(self,path):
+    def saveToFile(self,path,callback=None):
         """Saves the current data to file."""
         if self.datafile!=None:
             self.datafile.saveToFile(path)
         else:
             f = open(path,'w')
-            self.writeData(f)
+            self.writeData(f,callback=callback)
             f.close()
             
-    def getAsDataFile(self):
+    def getAsDataFile(self,callback=None):
         if self.datafile!=None:
             return self.datafile.addref()
         else:
             target = StringIO.StringIO()
-            self.writeData(target)
+            self.writeData(target,callback=callback)
             df = xmlstore.DataFileMemory(target.getvalue(),self.nodeid+'.dat')
             target.close()
             return df
         
-    def writeData(self,target):
+    def writeData(self,target,callback=None):
         """Writes the current data to a file-like object."""
         assert False, 'This function must be implemented by inheriting class.'
         
@@ -414,7 +417,7 @@ class LinkedMatrix(LinkedFileVariableStore):
                         progress = float(f.tell())/filesize
                     except AttributeError:
                         progress = None
-                callback('processed %i lines.' % iline,progress=progress)
+                callback(progress,'read %i lines.' % iline)
             
         # Close data file
         f.close()
@@ -432,18 +435,18 @@ class LinkedMatrix(LinkedFileVariableStore):
         # Compile regular expression for reading dates.
         datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
         
+        # Size of one memory slab
         buffersize = 1000
 
         times = []
         values = []
         iline = 0
-        ipos = 0
         while True:
             # Read a line (stop if end-of-file was reached)
             line = f.readline()
             if line=='': break
 
-            # Calculate position in current slice, create new data slice if needed.
+            # Calculate position in current memory slab, create new slab if needed.
             ipos = iline%buffersize
             if ipos==0:
                 times.append(matplotlib.numerix.empty((buffersize,),matplotlib.numerix.Float64))
@@ -456,7 +459,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             datematch = datetimere.match(line)
             if datematch==None:
                 raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
-            refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+            refvals = map(int,datematch.groups()) # Convert matched strings into integers
             curdate = common.dateTimeFromTuple(refvals)
             times[-1][ipos] = common.date2num(curdate)
             
@@ -474,13 +477,13 @@ class LinkedMatrix(LinkedFileVariableStore):
                         progress = float(f.tell())/filesize
                     except AttributeError:
                         progress = None
-                callback('processed %i lines.' % iline,progress=progress)
+                callback(progress,'read %i lines.' % iline)
 
-        # Delete unused rows in last data slice.
+        # Delete unused rows in last memory slab.
         times [-1] = times [-1][0:iline%buffersize]
         values[-1] = values[-1][0:iline%buffersize,:]
         
-        # Concatenate data slices.
+        # Concatenate memory slab.
         times = matplotlib.numerix.concatenate(times,axis=0)
         values = matplotlib.numerix.concatenate(values,axis=0)
         self.data = [times,values]
@@ -488,7 +491,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         # Close data file
         f.close()
 
-    def writeData(self,target):
+    def writeData(self,target,callback=None):
         """Writes the current data to a file-like object."""
         # Get number of dimensions and variables, and get shortcuts to the data.
         dimcount = len(self.dimensions)
@@ -497,6 +500,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             dimdata = self.data[0]
             dimtype = self.dimensions.values()[0]['datatype']
             dimisdate = (dimtype=='datetime')
+            if dimisdate: dimdata = common.num2date(dimdata)
         varcount = len(self.vardata)
         vardata = self.data[-1]
         
@@ -508,12 +512,14 @@ class LinkedMatrix(LinkedFileVariableStore):
         for iline in range(vardata.shape[0]):
             if dimcount==1:
                 if dimisdate:
-                    target.write(common.num2date(dimdata[iline]).strftime('%Y-%m-%d %H:%M:%S'))
+                    target.write(dimdata[iline].strftime('%Y-%m-%d %H:%M:%S'))
                 else:
                     target.write('%.9g' % dimdata[iline])
             for ivar in range(varcount):
                 target.write('\t%.9g' % vardata[iline,ivar])
             target.write('\n')
+            if callback!=None and iline%1000==0:
+                callback(float(iline)/vardata.shape[0],'wrote %i lines.' % iline)
 
 class LinkedProfilesInTime(LinkedFileVariableStore):
 
@@ -558,7 +564,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         LinkedFileVariableStore.dataChanged(self)
         self.griddeddata = None
         
-    def writeData(self,target):
+    def writeData(self,target,callback=None):
         """Writes the current data to a file-like object."""
         varcount = len(self.vardata)
         times = self.data[0]
@@ -602,7 +608,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             for it in range(len(times)):
                 griddedvalues[it,:,:] = common.interp1(depths[it],values[it],depthgrid)
                 if callback!=None and (it+1)%20==0:
-                    callback('gridded %i profiles.' % (it+1),progress=float(it+1)/len(times))
+                    callback(float(it+1)/len(times),'gridded %i profiles.' % (it+1))
                 
             # Store time grid, depth grid and observations.
             self.griddeddata = (times,depthgrid,griddedvalues)
@@ -664,7 +670,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             for idepthline in depthindices:
                 if callback!=None and iline%1000==0:
                     pos = f.tell()
-                    callback('processed %i lines.' % iline,progress=pos/filesize)
+                    callback(pos/filesize,'processed %i lines.' % iline)
                     
                 # Read line
                 line = f.readline()
@@ -698,7 +704,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             # Inform caller about progress.
             if callback!=None and iline%1000==0:
                 pos = f.tell()
-                callback('processed %i lines.' % iline,progress=pos/filesize)
+                callback(pos/filesize,'processed %i lines.' % iline)
                 
         # Convert sequence with times to numpy array.
         times = matplotlib.numerix.array(times,matplotlib.numerix.Float64)

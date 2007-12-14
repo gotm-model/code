@@ -61,7 +61,9 @@ class GOTMWizard(commonqt.Wizard):
         scen = self.getProperty('scenario')
         path = commonqt.browseForPath(self,curpath=scen.path,save=True,filter='GOTM scenario files (*.gotmscenario);;All files (*.*)')
         if path!=None:
-            scen.saveAll(path)
+            dialog = commonqt.ProgressDialog(self,title='Saving...',suppressstatus=True)
+            scen.saveAll(path,callback=dialog.onProgressed)
+            dialog.close()
 
     def onExportScenario(self):
         class ChooseVersionDialog(QtGui.QDialog):
@@ -288,11 +290,14 @@ class PageChooseAction(commonqt.WizardPage):
     def saveData(self,mustbevalid):
         if not mustbevalid: return True
         checkedid = self.bngroup.checkedId()
+        dialog = commonqt.ProgressDialog(self,title='Please wait...',suppressstatus=True)
+        result = False
         if checkedid==0:
             try:
-                newscen = self.scenariowidget.getScenario()
+                newscen = self.scenariowidget.getScenario(callback=dialog.onProgressed)
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+                dialog.close()
                 return False
             self.owner.setProperty('mainaction','scenario')
             self.owner.setProperty('scenario', newscen)
@@ -301,12 +306,13 @@ class PageChooseAction(commonqt.WizardPage):
             if newscen.path!=None:
                 self.owner.settings.addUniqueValue('Paths/RecentScenarios','Path',newscen.path)
             
-            return True
+            result =  True
         if checkedid==1:
             try:
                 newresult = self.resultwidget.getResult()
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to load result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+                dialog.close()
                 return False
             self.owner.setProperty('mainaction','result')
             self.owner.setProperty('result', newresult)
@@ -317,8 +323,9 @@ class PageChooseAction(commonqt.WizardPage):
             if newresult.path!=None:
                 self.owner.settings.addUniqueValue('Paths/RecentResults','Path',newresult.path)
 
-            return True
-        return False
+            result = True
+        dialog.close()
+        return result
 
 class ForkOnAction(commonqt.WizardFork):
     def getSequence(self):

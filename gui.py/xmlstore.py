@@ -1649,33 +1649,6 @@ class Node:
 
         return value
 
-    def preparePersist(self,recursive=True):
-        """Prepares custom nodes for being stored on disk.
-        
-        This functionality is used by DataFile objects to read all
-        data from the source archive before it is overwritten by
-        an in-place save.
-        """
-        valuetype = self.templatenode.getAttribute('type')
-        if valuetype!='' and self.valuenode!=None:
-            valueclass = self.store.filetypes[valuetype]
-            if issubclass(valueclass,Store.DataType):
-                self.store.preparePersistNode(self.valuenode,valueclass)
-        if recursive:
-            for ch in self.children: ch.preparePersist(recursive=True)
-
-    def persist(self,recursive=True):
-        """Allows custom nodes to write their custom data to the
-        target location.
-        """
-        valuetype = self.templatenode.getAttribute('type')
-        if valuetype!='' and self.valuenode!=None:
-            valueclass = self.store.filetypes[valuetype]
-            if issubclass(valueclass,Store.DataType):
-                self.store.persistNode(self.valuenode,valueclass)
-        if recursive:
-            for ch in self.children: ch.persist(recursive=True)
-
     def addChild(self,childname,position=None,id=None):
         """Adds a new child node; this child node must be optional as
         defined in the template with minoccurs/maxoccurs attributes.
@@ -1999,14 +1972,18 @@ class Node:
         """
         return self.templatenode.hasAttribute('maxoccurs')
 
-    def getNodesByType(self,valuetype):
+    def getNodesByType(self,valuetype,allowderived=False):
         """Returns all descendant nodes with the specified data type.
         """
+        if isinstance(valuetype,basestring): valuetype = self.store.filetypes.get(valuetype,None)
         res = []
-        if self.getValueType()==valuetype:
+        owntype = self.store.filetypes.get(self.getValueType(),None)
+        if allowderived and owntype!=None:
+            if issubclass(owntype,valuetype): res.append(self)
+        elif owntype==valuetype:
             res.append(self)
         for ch in self.children:
-            res += ch.getNodesByType(valuetype)
+            res += ch.getNodesByType(valuetype,allowderived)
         return res
 
     def getEmptyNodes(self,usedefault=False):
@@ -2367,6 +2344,26 @@ class TypedStore(common.referencedobject):
             if currentnode==None: return None
             
         return currentnode
+        
+    def persist(self,callback=None):
+        """Directs all custom nodes to store their custom contents in a container."""
+        nodes = [node for node in self.root.getNodesByType(Store.DataType,True) if node.valuenode!=None]
+        progslicer = common.ProgressSlicer(callback,len(nodes))
+        for node in nodes:
+            progslicer.nextStep(node.getText(1))
+            self.store.persistNode(node.valuenode,node.getValueType())
+
+    def preparePersist(self):
+        """Prepares custom nodes for being stored on disk.
+        
+        This functionality is used by DataFile objects to read all
+        data from the source archive before it is overwritten by
+        an in-place save.
+        """
+        nodes = self.root.getNodesByType(Store.DataType,True)
+        for node in nodes:
+            if node.valuenode!=None:
+                self.store.preparePersistNode(node.valuenode,node.getValueType())
 
     def checkCondition(self,nodeCondition,ownernode,ownstorename=None):
         """Checks whether the condition specified by the specified XML "conditon" node
@@ -2471,7 +2468,7 @@ class TypedStore(common.referencedobject):
             
         return errors
 
-    def convert(self,target):
+    def convert(self,target,callback=None):
         """Converts the TypedStore object to the specified target. The target may be
         a version string (a new TypedStore object with the desired version will be created)
         or an existing TypedStore object with the different version.
@@ -2486,7 +2483,7 @@ class TypedStore(common.referencedobject):
         convertor = self.getConvertor(self.version,target.version)
         if convertor==None:
             raise Exception('No convertor available to convert version "%s" to "%s".' % (self.version,target.version))
-        convertor.convert(self,target)
+        convertor.convert(self,target,callback=callback)
 
         return target
 
@@ -2659,7 +2656,7 @@ class TypedStore(common.referencedobject):
         else:
             self.setStore(valuedom)
 
-    def saveAll(self,path,targetversion=None,targetisdir = False,claim=True,fillmissing=False):
+    def saveAll(self,path,targetversion=None,targetisdir = False,claim=True,fillmissing=False,callback=None):
         """Saves the values plus any associated data in a ZIP archive or directory.
         A file or direcoty created in this manner may be loaded again through the
         "loadAll" method.
@@ -2669,19 +2666,26 @@ class TypedStore(common.referencedobject):
         set, the TypedStore will after the save still use its original container for
         external data objects."""
         if targetversion!=None and self.version!=targetversion:
+            progslicer = common.ProgressSlicer(callback,3)
+        
             # First convert to the target version
-            tempstore = self.convert(targetversion)
+            progslicer.nextStep('converting to version %s' % targetversion)
+            tempstore = self.convert(targetversion,callback=progslicer.getStepCallback())
 
             # Now save the result of the conversion.
-            tempstore.saveAll(path, targetversion = targetversion,targetisdir = targetisdir)
+            progslicer.nextStep('saving')
+            tempstore.saveAll(path, targetversion = targetversion,targetisdir = targetisdir,callback=progslicer.getStepCallback())
 
             # Convert back: by doing this the original store will be able to reference nodes
             # (of type "file") in the newly saved file.
-            tempstore.convert(self)
+            progslicer.nextStep('loading saved version')
+            tempstore.convert(self,callback=progslicer.getStepCallback())
 
             # Release the conversion result.
             tempstore.release()
         else:
+            progslicer = common.ProgressSlicer(callback,2)
+
             # First: fill nodes that are not set with the default value.
             if fillmissing: self.fillMissingValues()
 
@@ -2689,7 +2693,7 @@ class TypedStore(common.referencedobject):
             # Specifically, nodes will read all files that might be overwritten into memory.
             if isinstance(path,basestring):
                 self.store.context['targetcontainerpath'] = path
-                self.root.preparePersist()
+                self.preparePersist()
                 del self.store.context['targetcontainerpath']
 
             # Open target container
@@ -2708,10 +2712,12 @@ class TypedStore(common.referencedobject):
             # in the XML store, and must therefore be done before the store is added to the container.
             self.store.context['targetcontainer'] = container
             self.store.context['donotclaimtarget'] = (not claim)
-            self.root.persist()
+            progslicer.nextStep('adding data streams')
+            self.persist(progslicer.getStepCallback())
             del self.store.context['donotclaimtarget']
 
             # Add XML store to the container
+            progslicer.nextStep('saving configuration')
             df = DataFileXmlNode(self.store.xmldocument)
             df_added = container.addItem(df,self.storefilename)
             df_added.release()
@@ -2732,7 +2738,7 @@ class TypedStore(common.referencedobject):
         
         self.resetChanged()
 
-    def loadAll(self,path):
+    def loadAll(self,path,callback=None):
         """Loads values plus associated data from the specified path. The path should point
         to a valid data container, i.e., a ZIP file, TAR/GZ file, or a directory. The source
         container typically has been saved through the "saveAll" method."""
@@ -2751,6 +2757,8 @@ class TypedStore(common.referencedobject):
         # Check for existence of main file.
         if self.storefilename not in files:
             raise Exception('The specified source does not contain "%s" and can therefore not be a %s.' % (self.storefilename,self.storetitle))
+            
+        if callback!=None: callback(0.,'parsing XML')
 
         # Read and parse the store XML file.
         datafile = container.getItem(self.storefilename)
@@ -2764,9 +2772,13 @@ class TypedStore(common.referencedobject):
         if self.version!=version:
             # The version of the saved scenario does not match the version of this scenario object; convert it.
             print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.storetitle,path,version,self.version)
+            if callback!=None: callback(0.5,'converting scenario')
             tempstore = self.fromSchemaName(version)
             tempstore.loadAll(container)
-            tempstore.convert(self)
+            if callback==None:
+                tempstore.convert(self)
+            else:
+                tempstore.convert(self,callback=lambda p,s: callback(.5+.5*p,'converting scenario: '+s))
             tempstore.release()
             self.originalversion = version
         else:
@@ -2781,6 +2793,8 @@ class TypedStore(common.referencedobject):
             self.path = path
         else:
             self.path = None
+
+        if callback!=None: callback(1.,'done')
 
     def toXml(self,enc='utf-8'):
         """Returns the values as an XML string, with specified encoding."""
@@ -2939,7 +2953,7 @@ class Convertor:
         """
         pass
 
-    def convert(self,source,target):
+    def convert(self,source,target,callback=None):
         """Converts source TypedStore object to target TypedStore object.
         This method performs a simple deep copy of all values, and then
         handles explicitly specified links between source and target nodes
@@ -2982,18 +2996,26 @@ class ConvertorChain(Convertor):
         Convertor.__init__(self,chain[0].sourceid,chain[-1].targetid)
         self.chain = chain
 
-    def convert(self,source,target):
+    def convert(self,source,target,callback=None):
         temptargets = []
-        for istep in range(len(self.chain)-1):
+        nsteps = len(self.chain)
+        if callback!=None:
+            stepcallback = lambda p,s: callback((istep+p)/nsteps,s)
+        else:
+            stepcallback = None
+        for istep in range(nsteps-1):
             convertor = self.chain[istep]
             temptargetid = convertor.targetid
+            if callback!=None: callback(float(istep)/nsteps,'converting to version "%s".' % temptargetid)
             print 'Converting to temporary target "%s".' % temptargetid
             temptarget = source.fromSchemaName(temptargetid)
             temptargets.append(temptarget)
-            convertor.convert(source,temptarget)
+            convertor.convert(source,temptarget,callback=stepcallback)
             source = temptarget
         convertor = self.chain[-1]
+        istep = nsteps-1
+        if callback!=None: callback(float(istep)/nsteps,'converting to version "%s".' % target.version)
         print 'Converting to final target "%s".' % target.version
-        convertor.convert(source,target)
+        convertor.convert(source,target,callback=stepcallback)
         for temptarget in temptargets: temptarget.release()
 
