@@ -6,7 +6,7 @@
 		<element name="model_setup" label="general model setup">
 			<element name="title"       type="string" label="title of simulation"/>
 			<element name="nlev"        type="int"    label="number of levels" minInclusive="1" maxInclusive="1000" description="Number of depth levels used to describe the water column"/>
-			<element name="dt"          type="float"  label="time step" minInclusive="1" maxInclusive="86400" unit="s" description="Time step for integration"/>
+			<element name="dt"          type="float"  label="time step" minInclusive="0.001" maxInclusive="86400" unit="s" description="Time step for integration"/>
 			<element name="cnpar"       type="float"  label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)" minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems."/>
 			<element name="buoy_method" type="select" label="method to compute mean buoyancy">
 				<options>
@@ -1340,7 +1340,16 @@
 			<element name="seagrass_calc" type="bool"  label="use seagrass model"/>
 			<element name="grassfile"     type="file"  label="depth-varying maximum excursion limit and friction coefficient">
 				<condition type="eq" variable="./seagrass_calc" value="True"/>
-			</element>
+        <fileinfo type="singleprofile">
+          <filedimensions>
+            <filedimension label="height above bottom" unit="m" />
+          </filedimensions>
+          <filevariables>
+            <filevariable label="maximum excursion limit" unit="m" />
+            <filevariable label="friction coefficient" unit="1/m" />
+          </filevariables>
+        </fileinfo>
+      </element>
 			<element name="XP_rat"        type="float" label="efficiency of turbulence production by seagrass friction">
 				<condition type="eq" variable="./seagrass_calc" value="True"/>
 			</element>

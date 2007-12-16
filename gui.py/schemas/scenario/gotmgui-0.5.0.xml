@@ -55,7 +55,7 @@
 	</element>
 
 	<element name="timeintegration" label="time integration">
-		<element name="dt"    type="duration" label="time step" minInclusive="1" maxInclusive="86400" description="Time step for integration. The time step affects the accuracy of the results: smaller time steps improve accuracy, but come at the expense of simulation speed."/>
+		<element name="dt"    type="duration" label="time step" minInclusive="0.001" maxInclusive="86400" description="Time step for integration. The time step affects the accuracy of the results: smaller time steps improve accuracy, but come at the expense of simulation speed."/>
 		<element name="cnpar" type="float"  label="&quot;explicitness&quot; of numerical scheme" minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems."/>
 	</element>
 
@@ -204,7 +204,8 @@
     <element name="heat_method" type="select" label="type of surface heat flux">
 			<condition type="eq" variable="./flux_source" value="1"/>
 			<options>
-				<option value="1" label="constant value prescribed"/>
+        <option value="0" label="none"/>
+        <option value="1" label="constant value prescribed"/>
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
@@ -228,6 +229,7 @@
     
     <element name="swr_method" type="select" label="type of short wave radiation">
       <options>
+        <option value="0" label="none"/>
         <option value="1" label="constant value prescribed"/>
         <option value="2" label="custom, temporally variable"/>
         <option value="3" label="calculated from time, location and cloud cover"/>
@@ -251,7 +253,8 @@
     <element name="momentum_method" type="select" label="type of momentum flux">
 			<condition type="eq" variable="./flux_source" value="1"/>
 			<options>
-				<option value="1" label="constant values prescribed"/>
+        <option value="0" label="none"/>
+        <option value="1" label="constant values prescribed"/>
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>

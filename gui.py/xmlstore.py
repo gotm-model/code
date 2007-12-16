@@ -1972,16 +1972,28 @@ class Node:
         """
         return self.templatenode.hasAttribute('maxoccurs')
 
+    def getDescendants(self):
+        """Returns all descendant nodes.
+        """
+        res = [self]
+        for ch in self.children:
+            res += ch.getDescendants()
+        return res
+
     def getNodesByType(self,valuetype,allowderived=False):
         """Returns all descendant nodes with the specified data type.
         """
-        if isinstance(valuetype,basestring): valuetype = self.store.filetypes.get(valuetype,None)
         res = []
-        owntype = self.store.filetypes.get(self.getValueType(),None)
-        if allowderived and owntype!=None:
-            if issubclass(owntype,valuetype): res.append(self)
-        elif owntype==valuetype:
-            res.append(self)
+        owntype = self.getValueType()
+        if isinstance(valuetype,basestring):
+            assert not allowderived, 'Cannot looks for nodes with derived classes if original class is specified as string.'
+            if owntype==valuetype: res.append(self)
+        else:
+            owntype = self.store.filetypes.get(owntype,None)
+            if allowderived and owntype!=None:
+                if issubclass(owntype,valuetype): res.append(self)
+            elif owntype==valuetype:
+                res.append(self)
         for ch in self.children:
             res += ch.getNodesByType(valuetype,allowderived)
         return res
@@ -2438,34 +2450,71 @@ class TypedStore(common.referencedobject):
     def validate(self,nodepaths=None,usedefault=True):
         errors = []
 
-        if nodepaths!=None:
-            filenodes = []
-            emptynodes = []
-            for nodepath in nodepaths:
-                node = self[nodepath]
-                if not node.canHaveValue(): continue
-                if node.getValueType()=='file':
-                    filenodes.append(node)
-                else:
-                    if node.getValue()==None:
-                        emptynodes.append(node)
+        # Convert list of node paths into list of references to nodes.
+        if nodepaths==None:
+            nodes = self.root.getDescendants()
         else:
-            filenodes = self.root.getNodesByType('file')
-            emptynodes = self.root.getEmptyNodes(usedefault=usedefault)
+            nodes = [self[nodepath] for nodepath in nodepaths]
+            
+        # Build relevant subsets of node list.
+        filenodes,selectnodes,emptynodes,intnodes,floatnodes = [],[],[],[],[]
+        for node in nodes:
+            if not node.canHaveValue(): continue
+            type = node.getValueType()
+            if node.getValue(usedefault=usedefault)==None:
+                emptynodes.append(node)
+            elif type=='file':
+                filenodes.append(node)
+            elif type=='select':
+                selectnodes.append(node)
+            elif type=='int':
+                intnodes.append(node)
+            elif type=='float':
+                floatnodes.append(node)
         
-        # Find used file nodes that have not been supplied with data.
-        for node in filenodes:
-            if node.isHidden(): continue
-            value = node.getValue(usedefault=True)
-            if value==None or not value.isValid():
-                errors.append('variable "%s" has not been set.' % node.getText(1))
-
         # Find used nodes that have not been set, and lack a default value.
         for node in emptynodes:
             if node.isHidden(): continue
-            if node.getDefaultValue()==None:
+            errors.append('variable "%s" has not been set.' % node.getText(1))
+
+        # Find used file nodes that have not been supplied with data.
+        for node in filenodes:
+            if node.isHidden(): continue
+            value = node.getValue(usedefault=usedefault)
+            if not value.isValid():
                 errors.append('variable "%s" has not been set.' % node.getText(1))
             
+        # Find nodes of type "select" that have been set to an invalid (non-existing) option.
+        for node in selectnodes:
+            value = node.getValue(usedefault=usedefault)
+            optionsroot = common.findDescendantNode(node.templatenode,['options'])
+            assert optionsroot!=None, 'Schema node %s lacks is of type "select", but lacks the "options" child node.' % node
+            for ch in optionsroot.childNodes:
+                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                    if value==int(ch.getAttribute('value')): break
+            else:
+                errors.append('variable "%s" is set to non-existent option %i.' % (node.getText(1),value))
+
+        # Find nodes with numeric data types, and check if they respect specified ranges (if any).
+        for node in intnodes:
+            value = node.getValue(usedefault=usedefault)
+            minval,maxval = node.templatenode.getAttribute('minInclusive'),node.templatenode.getAttribute('maxInclusive')
+            if minval!='':
+                if value<int(minval):
+                    errors.append('variable "%s" is set to %i, which lies below the minimum of %i.' % (node.getText(1),value,int(minval)))
+            if maxval!='':
+                if value>int(maxval):
+                    errors.append('variable "%s" is set to %i, which lies above the maximum of %i.' % (node.getText(1),value,int(maxval)))
+        for node in floatnodes:
+            value = node.getValue(usedefault=usedefault)
+            minval,maxval = node.templatenode.getAttribute('minInclusive'),node.templatenode.getAttribute('maxInclusive')
+            if minval!='':
+                if value<float(minval):
+                    errors.append('variable "%s" is set to %.6g, which lies below the minimum of %.6g.' % (node.getText(1),value,float(minval)))
+            if maxval!='':
+                if value>float(maxval):
+                    errors.append('variable "%s" is set to %.6g, which lies above the maximum of %.6g.' % (node.getText(1),value,float(maxval)))
+
         return errors
 
     def convert(self,target,callback=None):

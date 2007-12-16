@@ -4,7 +4,7 @@
 		<element name="model_setup" label="general model setup">
 			<element name="title" type="string" label="title of simulation" />
 			<element name="nlev" type="int" label="number of levels" minInclusive="1" maxInclusive="1000" description="Number of depth levels used to describe the water column" />
-			<element name="dt" type="float" label="time step" minInclusive="1" maxInclusive="86400" unit="s" description="Time step for integration" />
+			<element name="dt" type="float" label="time step" minInclusive="0.001" maxInclusive="86400" unit="s" description="Time step for integration" />
 			<element name="cnpar" type="float" label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)"
 				minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems." />
 			<element name="buoy_method" type="select" label="method to compute mean buoyancy">
@@ -210,6 +210,7 @@
       <element name="heat_method" type="select" label="type of surface heat flux">
         <condition type="eq" variable="./calc_fluxes" value="False"/>
         <options>
+          <option value="0" label="none"/>
           <option value="1" label="constant value prescribed"/>
           <option value="2" label="custom, temporally variable"/>
         </options>
@@ -234,6 +235,7 @@
 
       <element name="swr_method" type="select" label="type of short wave radiation">
         <options>
+          <option value="0" label="none"/>
           <option value="1" label="constant value prescribed"/>
           <option value="2" label="custom, temporally variable"/>
           <option value="3" label="calculated from time, location and cloud cover"/>
@@ -254,10 +256,11 @@
         <condition type="eq" variable="./swr_method" value="2"/>
       </element>
       
-      <element name="momentum_method" type="select" label="method how momentum fluxes are given">
+      <element name="momentum_method" type="select" label="type of momentum flux">
 				<condition type="eq" variable="./calc_fluxes" value="False" />
 				<options>
-					<option value="1" label="constant surface momentum fluxes given" />
+          <option value="0" label="none"/>
+          <option value="1" label="constant surface momentum fluxes given" />
 					<option value="2" label="surface momentum fluxes given from file momentumflux_file" />
 				</options>
 			</element>
@@ -275,7 +278,7 @@
 					<condition type="eq" variable="./momentum_method" value="1" />
 				</condition>
 			</element>
-			<element name="momentumflux_file" type="file" label="file with tx and ty given in N/m^2">
+			<element name="momentumflux_file" type="file" label="custom momentum fluxes" description="file with tx and ty given in N/m^2">
 				<condition type="and">
 					<condition type="eq" variable="./calc_fluxes" value="False" />
 					<condition type="eq" variable="./momentum_method" value="2" />

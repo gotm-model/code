@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.31 2007-12-14 14:21:01 jorn Exp $
+#$Id: scenariobuilder.py,v 1.32 2007-12-16 17:00:49 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -600,7 +600,7 @@ class PageAirSeaInteraction(ScenarioPage):
         # Create main layout
         layout = QtGui.QVBoxLayout()
 
-        self.title = self.createHeader('Air-sea interaction','Here you specify fluxes of heat, radiation and momentum across the ocean-atmosphere interface.')
+        self.title = self.createHeader('Air-sea interaction: heat and momentum','Here you specify fluxes of heat and momentum across the ocean-atmosphere interface. Note that heat fluxes include latent and sensible fluxes, but not short-wave solar radiation.')
         layout.addWidget(self.title)
         layout.addSpacing(20)
 
@@ -627,32 +627,34 @@ class PageAirSeaInteraction(ScenarioPage):
 
         # Shortwave radiation
 
-        groupboxSwr = self.factory.createEditor('airsea/swr_method',self,groupbox=True).editor
-        
-        swrlayout = QtGui.QGridLayout()
-        swrlayout.setColumnMinimumWidth(0,radiowidth)
-
-        editSwrMethod = self.factory.createEditor('airsea/swr_method', self,selectwithradio=True)
-        editConstSwr  = self.factory.createEditor('airsea/const_swr',  self)
-        editSwrFile   = self.factory.createEditor('airsea/swr_file',   self)
-        
-        swrlayout.addWidget(editSwrMethod.editor.button(1),1,0,1,2)
-        constswrlayout = QtGui.QHBoxLayout()
-        editConstSwr.addToBoxLayout(constswrlayout)
-        swrlayout.addLayout(constswrlayout,2,1)
-        
-        swrlayout.addWidget(editSwrMethod.editor.button(2),3,0,1,2)
-        swrfilelayout = QtGui.QHBoxLayout()
-        editSwrFile.addToBoxLayout(swrfilelayout,label=False,unit=False)
-        swrfilelayout.addStretch()
-        swrlayout.addLayout(swrfilelayout,5,1)
-
-        swrlayout.addWidget(editSwrMethod.editor.button(3),6,0,1,2)
-        
-        swrlayout.setColumnStretch(2,1)
-        
-        groupboxSwr.setLayout(swrlayout)
-
+        #groupboxSwr = self.factory.createEditor('airsea/swr_method',self,groupbox=True).editor
+        #
+        #swrlayout = QtGui.QGridLayout()
+        #swrlayout.setColumnMinimumWidth(0,radiowidth)
+#
+        #editSwrMethod = self.factory.createEditor('airsea/swr_method', self,selectwithradio=True)
+        #editConstSwr  = self.factory.createEditor('airsea/const_swr',  self)
+        #editSwrFile   = self.factory.createEditor('airsea/swr_file',   self)
+        #
+        #swrlayout.addWidget(editSwrMethod.editor.button(0),1,0,1,2)
+#
+        #swrlayout.addWidget(editSwrMethod.editor.button(1),2,0,1,2)
+        #constswrlayout = QtGui.QHBoxLayout()
+        #editConstSwr.addToBoxLayout(constswrlayout)
+        #swrlayout.addLayout(constswrlayout,3,1)
+        #
+        #swrlayout.addWidget(editSwrMethod.editor.button(2),4,0,1,2)
+        #swrfilelayout = QtGui.QHBoxLayout()
+        #editSwrFile.addToBoxLayout(swrfilelayout,label=False,unit=False)
+        #swrfilelayout.addStretch()
+        #swrlayout.addLayout(swrfilelayout,5,1)
+#
+        #swrlayout.addWidget(editSwrMethod.editor.button(3),6,0,1,2)
+        #
+        #swrlayout.setColumnStretch(2,1)
+        #
+        #groupboxSwr.setLayout(swrlayout)
+#
         # Heat flux
 
         groupboxHeat = self.factory.createEditor('airsea/heat_method',self,groupbox=True).editor
@@ -664,12 +666,14 @@ class PageAirSeaInteraction(ScenarioPage):
         editConstHeat    = self.factory.createEditor('airsea/const_heat',   self)
         editHeatfluxFile = self.factory.createEditor('airsea/heatflux_file',self)
         
-        heatlayout.addWidget(editHeatMethod.editor.button(1),1,0,1,2)
+        heatlayout.addWidget(editHeatMethod.editor.button(0),1,0,1,2)
+
+        heatlayout.addWidget(editHeatMethod.editor.button(1),2,0,1,2)
         constheatlayout = QtGui.QHBoxLayout()
         editConstHeat.addToBoxLayout(constheatlayout)
-        heatlayout.addLayout(constheatlayout,2,1)
+        heatlayout.addLayout(constheatlayout,3,1)
         
-        heatlayout.addWidget(editHeatMethod.editor.button(2),3,0,1,2)
+        heatlayout.addWidget(editHeatMethod.editor.button(2),4,0,1,2)
         heatfilelayout = QtGui.QHBoxLayout()
         editHeatfluxFile.addToBoxLayout(heatfilelayout,label=False,unit=False)
         heatfilelayout.addStretch()
@@ -691,13 +695,15 @@ class PageAirSeaInteraction(ScenarioPage):
         editMomentumConstTy = self.factory.createEditor('airsea/const_ty',         self)
         editmomentumFile    = self.factory.createEditor('airsea/momentumflux_file',self)
         
-        layoutMomentum.addWidget(editMomentumMethod.editor.button(1),1,0,1,2)
+        layoutMomentum.addWidget(editMomentumMethod.editor.button(0),1,0,1,2)
+
+        layoutMomentum.addWidget(editMomentumMethod.editor.button(1),2,0,1,2)
         constmomentumlayout = QtGui.QGridLayout()
         editMomentumConstTx.addToGridLayout(constmomentumlayout)
         editMomentumConstTy.addToGridLayout(constmomentumlayout)
-        layoutMomentum.addLayout(constmomentumlayout,2,1)
+        layoutMomentum.addLayout(constmomentumlayout,3,1)
         
-        layoutMomentum.addWidget(editMomentumMethod.editor.button(2),3,0,1,2)
+        layoutMomentum.addWidget(editMomentumMethod.editor.button(2),4,0,1,2)
         momentumfilelayout = QtGui.QHBoxLayout()
         editmomentumFile.addToBoxLayout(momentumfilelayout,label=False,unit=False)
         momentumfilelayout.addStretch()
@@ -741,8 +747,91 @@ class PageAirSeaInteraction(ScenarioPage):
         layoutAirSea.addWidget(editCalcFluxes.editor.button(1),3,0,1,2)
         layoutAirSea.addWidget(groupboxHeat,                   4,1)
         layoutAirSea.addWidget(groupboxMomentum,               5,1)
-        layoutAirSea.addWidget(groupboxSwr,                    6,0,1,2)
+        #layoutAirSea.addWidget(groupboxSwr,                    6,0,1,2)
         #layoutAirSea.addWidget(groupboxPe,4,0,1,2)
+
+        layout.addLayout(layoutAirSea)
+        
+        layout.addStretch(1)
+                
+        self.setLayout(layout)
+
+class PageAirSeaInteraction2(ScenarioPage):
+
+    def __init__(self,parent=None):
+        ScenarioPage.__init__(self, parent)
+        
+        radiowidth = commonqt.getRadioWidth()
+        
+        # Create main layout
+        layout = QtGui.QVBoxLayout()
+
+        self.title = self.createHeader('Air-sea interaction: short-wave radiation and precipitation','Here you specify short-wave solar radiation and precipitation at the ocean-atmosphere interface.')
+        layout.addWidget(self.title)
+        layout.addSpacing(20)
+
+        layoutAirSea = QtGui.QGridLayout()
+        layoutAirSea.setColumnMinimumWidth(0,radiowidth)
+
+        # Shortwave radiation
+
+        groupboxSwr = self.factory.createEditor('airsea/swr_method',self,groupbox=True).editor
+        
+        swrlayout = QtGui.QGridLayout()
+        swrlayout.setColumnMinimumWidth(0,radiowidth)
+
+        editSwrMethod = self.factory.createEditor('airsea/swr_method', self,selectwithradio=True)
+        editConstSwr  = self.factory.createEditor('airsea/const_swr',  self)
+        editSwrFile   = self.factory.createEditor('airsea/swr_file',   self)
+        
+        swrlayout.addWidget(editSwrMethod.editor.button(0),1,0,1,2)
+
+        swrlayout.addWidget(editSwrMethod.editor.button(1),2,0,1,2)
+        constswrlayout = QtGui.QHBoxLayout()
+        editConstSwr.addToBoxLayout(constswrlayout)
+        swrlayout.addLayout(constswrlayout,3,1)
+        
+        swrlayout.addWidget(editSwrMethod.editor.button(2),4,0,1,2)
+        swrfilelayout = QtGui.QHBoxLayout()
+        editSwrFile.addToBoxLayout(swrfilelayout,label=False,unit=False)
+        swrfilelayout.addStretch()
+        swrlayout.addLayout(swrfilelayout,5,1)
+
+        swrlayout.addWidget(editSwrMethod.editor.button(3),6,0,1,2)
+        
+        swrlayout.setColumnStretch(2,1)
+        
+        groupboxSwr.setLayout(swrlayout)
+
+        # Freshwater fluxes
+
+        groupboxPe = self.factory.createEditor('airsea/precip_method',self,groupbox=True).editor
+        
+        layoutPe = QtGui.QGridLayout()
+        layoutPe.setColumnMinimumWidth(0,radiowidth)
+
+        self.editPeMethod  = self.factory.createEditor('airsea/precip_method',self,selectwithradio=True)
+        self.editPeConst   = self.factory.createEditor('airsea/const_precip', self)
+        self.editPeFile    = self.factory.createEditor('airsea/precip_file',  self)
+        
+        layoutPe.addWidget(self.editPeMethod.editor.button(0),1,0,1,2)
+
+        layoutPe.addWidget(self.editPeMethod.editor.button(1),2,0,1,2)
+        constpelayout = QtGui.QGridLayout()
+        self.editPeConst.addToGridLayout(constpelayout)
+        layoutPe.addLayout(constpelayout,3,1)
+        
+        layoutPe.addWidget(self.editPeMethod.editor.button(2),4,0,1,2)
+        pefilelayout = QtGui.QHBoxLayout()
+        self.editPeFile.addToBoxLayout(pefilelayout,label=False,unit=False)
+        pefilelayout.addStretch()
+        layoutPe.addLayout(pefilelayout,5,1)
+        
+        groupboxPe.setLayout(layoutPe)
+        
+        # Create final layout
+        layoutAirSea.addWidget(groupboxSwr,1,0,1,2)
+        layoutAirSea.addWidget(groupboxPe, 2,0,1,2)
 
         layout.addLayout(layoutAirSea)
         
@@ -888,7 +977,7 @@ class PageFinal(commonqt.WizardPage):
 
 class SequenceEditScenario(commonqt.WizardSequence):
     def __init__(self):
-        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageTurbulence,PageSalinity,PageTemperature,PageAdvanced,PageSave])
+        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageAirSeaInteraction2,PageTurbulence,PageSalinity,PageTemperature,PageAdvanced,PageSave])
 
 def main():
     # Debug info

@@ -14,12 +14,12 @@ finally:
 scenario.Scenario.setRoot(gotmguiroot)
 
 # Small function for receiving progress messages when parsing data files.
-nextprogress = None
-progresstep = .25
+nextprogress = 0.
+progresstep = .05
 def printprogress(progress,status):
     global nextprogress
     if progress>=nextprogress:
-        print '%i %% done - %s' % (progress*100,status)
+        print '%i %% done.' % (progress*100,)
         nextprogress += progresstep
 
 def main():
@@ -119,39 +119,10 @@ GOTM-GUI, while using .proto files in directory "./v3.2/templates".
         return 1
         
     if check:
-        valid = True
         print '\n============ checking scenario validity ============'
-        
-        # Find used file nodes that have not been supplied with data.
-        for fn in scen.root.getNodesByType('file'):
-            if fn.isHidden(): continue
-            value = fn.getValue(usedefault=True)
-            if value==None or not value.isValid():
-                print 'ERROR: variable %s points to a non-existent data file.' % '/'.join(fn.location)
-                valid = False
-            else:
-                newstore = data.LinkedFileVariableStore.fromNode(fn)
-                global nextprogress
-                nextprogress = 0.
-                try:
-                    print 'parsing data file for %s.' % '/'.join(fn.location)
-                    newstore.loadDataFile(value,callback=printprogress)
-                    print 'file is valid.'
-                except Exception,e:
-                    print 'ERROR: could not parse data file for variable %s. Error: %s' % ('/'.join(fn.location),e)
-                    valid = False
-
-        # Find used nodes that have not been set, and lack a default value.
-        for node in scen.root.getEmptyNodes():
-            if node.isHidden(): continue
-            defvalue = node.getDefaultValue()
-            if defvalue==None:
-                print 'ERROR: variable %s does not have a value but also does not have a default value associated with it.' % '/'.join(node.location)
-                valid = False
-            else:
-                print 'WARNING: variable %s does not have a value; the default "%s" will be used.' % ('/'.join(node.location),defvalue)
-
-        if not valid:
+        errors = scen.validate(callback=printprogress)
+        if errors:
+            for e in errors: print e
             print '============ validity check failed ============\n'
             return 1
         else:

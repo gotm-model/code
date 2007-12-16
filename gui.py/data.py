@@ -665,7 +665,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             else:
                 depthindices = range(depthcount-1,-1,-1)
             
-            # Now parse the specified number of observations to cretae the profiles.
+            # Now parse the specified number of observations to create the profiles.
             prevdepth = None
             for idepthline in depthindices:
                 if callback!=None and iline%1000==0:

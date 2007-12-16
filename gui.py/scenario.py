@@ -444,6 +444,7 @@ class Scenario(xmlstore.TypedStore):
                 
             # Remove data files without valid value from the list.
             # (these are validated by the TypedStore implementation, and cannot be parsed)
+            # Also remove the data files for which we already have information in the cache.
             parsefilenodes = []
             for fn in filenodes:
                 nodepath = '/'+'/'.join(fn.location)
@@ -451,19 +452,16 @@ class Scenario(xmlstore.TypedStore):
                 if value!=None and value.isValid() and not (nodepath in self.datafileinfo):
                     parsefilenodes.append(fn)
 
-            filecount = len(parsefilenodes)
-            def printprogress(progress,status):
-                if callback!=None:
-                    callback(float(icurfile+progress)/filecount,'parsing %s - %s' % (fn.getText(detail=1),status))
-
             # Parse data files
+            progslicer = common.ProgressSlicer(callback,len(parsefilenodes))
             for icurfile,fn in enumerate(parsefilenodes):
                 value = fn.getValue(usedefault=usedefault)
                 newstore = data.LinkedFileVariableStore.fromNode(fn)
                 valid = True
                 dimranges = []
+                progslicer.nextStep('parsing '+fn.getText(detail=1))
                 try:
-                    newstore.loadDataFile(value,callback=printprogress)
+                    newstore.loadDataFile(value,callback=progslicer.getStepCallback())
                 except Exception,e:
                     errors.append('Could not parse data file for variable %s. Error: %s' % ('/'.join(fn.location),e))
                     valid = False
