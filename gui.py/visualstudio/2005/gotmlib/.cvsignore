@@ -2,3 +2,5 @@ Release
 Debug
 *.ncb
 *.suo
+*.u2d
+*.user
