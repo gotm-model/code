@@ -1,4 +1,4 @@
-!$Id: fairall.F90,v 1.2 2007-10-02 10:14:08 kbk Exp $
+!$Id: fairall.F90,v 1.3 2007-12-19 10:41:20 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -46,6 +46,9 @@
 !  Original author(s): Adolf Stips
 !
 !  $Log: fairall.F90,v $
+!  Revision 1.3  2007-12-19 10:41:20  kb
+!  fixed m/s --> kg/m2/s conversion bug - Stips
+!
 !  Revision 1.2  2007-10-02 10:14:08  kbk
 !  fixed rhoa calculation - rgas in airsea_variables module
 !
@@ -251,7 +254,7 @@
 !           compute sensible heatflux due to rain fall
             if (rain_impact) then
 !              units of qs and qa - should be kg/kg
-               rainfall=precip / 1000. ! (convert from m/s to kg/m2/s)
+               rainfall=precip * 1000. ! (convert from m/s to kg/m2/s)
                x1 = 2.11e-5*(ta_k/kelvin)**1.94
                x2 = 0.02411*(1.0+ta*(3.309e-3-1.44e-6*ta))/(rhoa*cpa)
                x3 = qa * L /(rgas * ta_K * ta_K)
