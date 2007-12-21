@@ -1,4 +1,4 @@
-!$Id: fairall.F90,v 1.3 2007-12-19 10:41:20 kb Exp $
+!$Id: fairall.F90,v 1.4 2007-12-21 12:38:03 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -27,7 +27,7 @@
 !  written by David Rutgers and Frank Bradley. 
 !
 ! !USES:
-   use airsea_variables, only: kelvin,const06,rgas
+   use airsea_variables, only: kelvin,const06,rgas,rho_0,g,rho_0,kappa
    use airsea_variables, only: qs,qa,rhoa
    use airsea_variables, only: cpa,cpw
    use airsea, only: rain_impact,calc_evaporation
@@ -46,6 +46,9 @@
 !  Original author(s): Adolf Stips
 !
 !  $Log: fairall.F90,v $
+!  Revision 1.4  2007-12-21 12:38:03  kb
+!  added precip/evap to kondo + cleaned
+!
 !  Revision 1.3  2007-12-19 10:41:20  kb
 !  fixed m/s --> kg/m2/s conversion bug - Stips
 !
@@ -57,10 +60,6 @@
 !
 
 ! !DEFINED PARAMETERS:
-   REALTYPE, parameter       :: rho_0 = 1025.
-   REALTYPE, parameter       :: g = 9.81           ! in [m/s2]
-   REALTYPE, parameter       :: vonkar = 0.41      ! von Karman
-
 !  Fairall LKB roughness Reynolds number to Von Karman
    REALTYPE,parameter        :: fdg = 1.0          ! non-dimensional
 
@@ -191,7 +190,7 @@
          do iter=1,itermax
             if ( ier .ge. 0 ) then
 !              Compute Monin-Obukhov stability parameter, Z/L.
-               oL=g*vonkar*TVstar/(ta_k*(1.0+0.61*qa)*Wstar*Wstar)
+               oL=g*kappa*TVstar/(ta_k*(1.0+0.61*qa)*Wstar*Wstar)
                ZWoL=zw*oL
                ZToL=zt*oL
                ZQoL=zq*oL
@@ -203,7 +202,7 @@
 
 !              Compute wind scaling parameters, Wstar.
                ZoW=0.011*Wstar*Wstar/g+0.11*vis_air/Wstar
-               Wstar=delw*vonkar/(log(zw/ZoW)-wpsi)
+               Wstar=delw*kappa/(log(zw/ZoW)-wpsi)
 
 !              Computes roughness Reynolds number for wind (Rr), heat (Rt),
 !              and moisture (Rq). Use Liu et al. (1976) look-up table to
@@ -222,7 +221,7 @@
                   cff=vis_air/Wstar
                   ZoT=rt*cff
                   ZoQ=rq*cff
-                  cff=vonkar*fdg
+                  cff=kappa*fdg
                   Tstar=(delt)*cff/(log(zt/ZoT)-tpsi)
                   Qstar=(delq)*cff/(log(zq/ZoQ)-qpsi)
 

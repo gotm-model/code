@@ -1,4 +1,4 @@
-!$Id: kondo.F90,v 1.1 2007-09-25 10:06:10 kbk Exp $
+!$Id: kondo.F90,v 1.2 2007-12-21 12:38:03 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,7 +40,7 @@
 !  dry air temperature, $T_a$.
 !
 ! !USES:
-   use airsea_variables, only: kelvin
+   use airsea_variables, only: kelvin,const06,rgas,rho_0
    use airsea_variables, only: qs,qa,rhoa
    use airsea_variables, only: cpa,cpw
    use airsea, only: rain_impact,calc_evaporation
@@ -59,9 +59,11 @@
 !  Original author(s): Hans Burchard and Karsten Bolding
 !
 !  $Log: kondo.F90,v $
+!  Revision 1.2  2007-12-21 12:38:03  kb
+!  added precip/evap to kondo + cleaned
+!
 !  Revision 1.1  2007-09-25 10:06:10  kbk
 !  modularized the airsea module - added Fairall method
-!
 !
 ! !LOCAL VARIABLES:
    REALTYPE                  :: w,L
@@ -69,15 +71,32 @@
    REALTYPE                  :: ae_d,be_d,pe_d
    REALTYPE                  :: ae_h,be_h,ce_h,pe_h
    REALTYPE                  :: ae_e,be_e,ce_e,pe_e
-   REALTYPE                  :: x
+   REALTYPE                  :: x,x1,x2,x3
+   REALTYPE                  :: ta,ta_k,tw,tw_k
    REALTYPE                  :: cdd,chd,ced
-   REALTYPE                  :: tmp
+   REALTYPE                  :: tmp,rainfall,cd_rain
    REALTYPE, parameter       :: eps=1.0e-12
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    w = sqrt(u10*u10+v10*v10)
    L = (2.5-0.00234*sst)*1.e6
+
+   if (sst .lt. 100.) then
+      tw  = sst
+      tw_k= sst+kelvin
+   else
+      tw  = sst-kelvin
+      tw_k= sst
+   end if
+
+   if (airt .lt. 100.) then
+      ta_k  = airt + kelvin
+      ta = airt
+   else
+      ta  = airt - kelvin
+      ta_k = airt
+   end if
 
 !  Stability
    s0=0.25*(sst-airt)/(w+1.0e-10)**2
@@ -125,12 +144,42 @@
       ced=ced*(1.0+0.63*sqrt(s))
    end if
 
-   qe=-ced*L*rhoa*w*(qs-qa)            ! latent
-   qh=-chd*cpa*rhoa*w*(sst-airt)       ! sensible
+   qh=-ced*L*rhoa*w*(qs-qa)            ! latent
+
+   qe=-chd*cpa*rhoa*w*(sst-airt)       ! sensible
+
+!  compute sensible heatflux correction due to rain fall
+   if (rain_impact) then
+!     units of qs and qa - should be kg/kg
+      rainfall=precip * 1000. ! (convert from m/s to kg/m2/s)
+      x1 = 2.11e-5*(ta_k/kelvin)**1.94
+      x2 = 0.02411*(1.0+ta*(3.309e-3-1.44e-6*ta))/(rhoa*cpa)
+      x3 = qa * L /(rgas * ta_K * ta_K)
+      cd_rain = 1.0/(1.0+const06*(x3*L*x1)/(cpa*x2))
+      cd_rain = cd_rain*cpw*((tw-ta) + (qs-qa)*L/cpa)
+      qe = qe - rainfall * cd_rain
+   end if
+
+!  calculation of evaporation/condensation in m/s
+   if (rain_impact .and. calc_evaporation) then
+!     ced from latent heatflux for moisture flux
+      evap = rhoa/rho_0*ced*w*(qa-qs)
+   else
+      evap = _ZERO_
+   end if
 
    tmp = cdd*rhoa*w
    taux = tmp*u10
    tauy = tmp*v10
+
+!  Compute momentum flux (N/m2) due to rainfall (kg/m2/s).
+   if ( rain_impact ) then
+      tmp  = 0.85 * rainfall * w
+      x=u10
+      taux  = taux + tmp * sign(_ONE_,x)
+      x=v10
+      tauy  = tauy + tmp * sign(_ONE_,x)
+   end if
 
    return
    end subroutine kondo
