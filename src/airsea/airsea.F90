@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.25 2008-01-02 14:36:37 kb Exp $
+!$Id: airsea.F90,v 1.26 2008-01-02 15:11:48 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.26  2008-01-02 15:11:48  kb
+!  fixed w calculation - Kreuz
+!
 !  Revision 1.25  2008-01-02 14:36:37  kb
 !  fixed indexing
 !
@@ -735,7 +738,7 @@
    tx   = tx1 + t*alpha(3)
    ty   = ty1 + t*alpha(4)
 
-   w = sqrt(u10*10+v10*v10)
+   w = sqrt(u10*u10+v10*v10)
 
    return
    end subroutine flux_from_meteo
