@@ -1,4 +1,4 @@
-!$Id: fairall.F90,v 1.4 2007-12-21 12:38:03 kb Exp $
+!$Id: fairall.F90,v 1.5 2008-01-02 15:30:44 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -24,7 +24,8 @@
 !  if they are $>$ 100 - Kelvin is assumed. 
 !  
 !  This piece of code has been adapted from the COARE code originally 
-!  written by David Rutgers and Frank Bradley. 
+!  written by David Rutgers and Frank Bradley - see
+!  http://www.coaps.fsu.edu/COARE/flux_algor/flux.html.
 !
 ! !USES:
    use airsea_variables, only: kelvin,const06,rgas,rho_0,g,rho_0,kappa
@@ -46,6 +47,9 @@
 !  Original author(s): Adolf Stips
 !
 !  $Log: fairall.F90,v $
+!  Revision 1.5  2008-01-02 15:30:44  kb
+!  added link to Fairall page
+!
 !  Revision 1.4  2007-12-21 12:38:03  kb
 !  added precip/evap to kondo + cleaned
 !
