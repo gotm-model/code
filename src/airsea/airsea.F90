@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.24 2007-12-11 11:05:48 lars Exp $
+!$Id: airsea.F90,v 1.25 2008-01-02 14:36:37 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.25  2008-01-02 14:36:37  kb
+!  fixed indexing
+!
 !  Revision 1.24  2007-12-11 11:05:48  lars
 !  corrected underscores in documentation
 !
@@ -847,7 +850,7 @@
    if (init_saved_vars) then
       heat_jul2=0
       heat_secs2=0
-      obs2(2)=0.
+      obs2(1)=0.
    end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(heat_jul2,heat_secs2,jul,secs) .lt. 0) then
@@ -867,7 +870,7 @@
    t  = time_diff(jul,secs,heat_jul1,heat_secs1)
 
    alpha = (obs2(1)-obs1(1))/dt
-   heat = obs1(2) + t*alpha
+   heat = obs1(1) + t*alpha
 
    return
    end subroutine read_heat_flux
