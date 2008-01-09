@@ -2447,7 +2447,7 @@ class TypedStore(common.referencedobject):
         else:
             self.root.copyFrom(self.defaultstore.root,replace=False)
             
-    def validate(self,nodepaths=None,usedefault=True):
+    def validate(self,nodepaths=None,usedefault=True,repair=0):
         errors = []
 
         # Convert list of node paths into list of references to nodes.
@@ -2493,7 +2493,10 @@ class TypedStore(common.referencedobject):
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
                     if value==int(ch.getAttribute('value')): break
             else:
-                errors.append('variable "%s" is set to non-existent option %i.' % (node.getText(1),value))
+                if repair==2 or (repair==1 and node.isHidden()):
+                    node.setValue(node.getDefaultValue())
+                else:
+                    errors.append('variable "%s" is set to non-existent option %i.' % (node.getText(1),value))
 
         # Find nodes with numeric data types, and check if they respect specified ranges (if any).
         for node in intnodes:
@@ -2501,19 +2504,32 @@ class TypedStore(common.referencedobject):
             minval,maxval = node.templatenode.getAttribute('minInclusive'),node.templatenode.getAttribute('maxInclusive')
             if minval!='':
                 if value<int(minval):
-                    errors.append('variable "%s" is set to %i, which lies below the minimum of %i.' % (node.getText(1),value,int(minval)))
+                    if repair==2 or (repair==1 and node.isHidden()):
+                        node.setValue(minval)
+                    else:
+                        errors.append('variable "%s" is set to %i, which lies below the minimum of %i.' % (node.getText(1),value,int(minval)))
             if maxval!='':
                 if value>int(maxval):
-                    errors.append('variable "%s" is set to %i, which lies above the maximum of %i.' % (node.getText(1),value,int(maxval)))
+                    if repair==2 or (repair==1 and node.isHidden()):
+                        node.setValue(maxval)
+                    else:
+                        errors.append('variable "%s" is set to %i, which lies above the maximum of %i.' % (node.getText(1),value,int(maxval)))
+                        
         for node in floatnodes:
             value = node.getValue(usedefault=usedefault)
             minval,maxval = node.templatenode.getAttribute('minInclusive'),node.templatenode.getAttribute('maxInclusive')
             if minval!='':
                 if value<float(minval):
-                    errors.append('variable "%s" is set to %.6g, which lies below the minimum of %.6g.' % (node.getText(1),value,float(minval)))
+                    if repair==2 or (repair==1 and node.isHidden()):
+                        node.setValue(minval)
+                    else:
+                        errors.append('variable "%s" is set to %.6g, which lies below the minimum of %.6g.' % (node.getText(1),value,float(minval)))
             if maxval!='':
                 if value>float(maxval):
-                    errors.append('variable "%s" is set to %.6g, which lies above the maximum of %.6g.' % (node.getText(1),value,float(maxval)))
+                    if repair==2 or (repair==1 and node.isHidden()):
+                        node.setValue(maxval)
+                    else:
+                        errors.append('variable "%s" is set to %.6g, which lies above the maximum of %.6g.' % (node.getText(1),value,float(maxval)))
 
         return errors
 

@@ -428,8 +428,8 @@ class Scenario(xmlstore.TypedStore):
         nodepath = '/'+'/'.join(node.location)
         if nodepath in self.datafileinfo: del self.datafileinfo[nodepath]
         
-    def validate(self,nodepaths=None,usedefault=True,validatedatafiles=True,callback=None):
-        errors = xmlstore.TypedStore.validate(self,nodepaths,usedefault=usedefault)
+    def validate(self,nodepaths=None,usedefault=True,validatedatafiles=True,callback=None,repair=0):
+        errors = xmlstore.TypedStore.validate(self,nodepaths,usedefault=usedefault,repair=repair)
 
         if validatedatafiles:
             # Find nodes with "file" data type.
@@ -437,7 +437,6 @@ class Scenario(xmlstore.TypedStore):
                 filenodes = []
                 for nodepath in nodepaths:
                     node = self[nodepath]
-                    if not node.canHaveValue(): continue
                     if node.getValueType()=='file': filenodes.append(node)
             else:
                 filenodes = self.root.getNodesByType('file')
@@ -551,11 +550,7 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
             target['airsea/airsea/swr_method'].setValue(3)
         else:
             heatmethod = source['airsea/airsea/heat_method'].getValue()
-            if heatmethod==0:
-                # Heat fluxes = None specified: convert to constant values of zero.
-                target['airsea/airsea/swr_method'].setValue(1)
-                target['airsea/airsea/const_swr' ].setValue(0.)
-            elif heatmethod==1:
+            if heatmethod==1:
                 # Constant heat flux specified
                 target['airsea/airsea/swr_method'].setValue(1)
             elif heatmethod==2:

@@ -238,11 +238,11 @@
     <element name="const_swr"  type="float" label="constant incoming short wave radiation" unit="W/m²" minInclusive="0" maxInclusive="1000">
       <condition type="eq" variable="./swr_method" value="1"/>
     </element>
-    <element name="swr_file" type="file" label="custom short wave radiation">
+    <element name="swr_file" type="file" label="custom short-wave radiation">
       <condition type="eq" variable="./swr_method" value="2"/>
       <fileinfo type="pointsintime">
         <filevariables>
-          <filevariable label="short wave solar radiation" unit="W/m²"/>
+          <filevariable label="short-wave solar radiation" unit="W/m²"/>
         </filevariables>
       </fileinfo>
     </element>

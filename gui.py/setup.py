@@ -28,10 +28,10 @@ def adddir(path,localtarget=None):
         if 'CVS' in localname: continue
         own_data_files.append((os.path.dirname(localname),[f]))
 
-own_data_files = [matplotlib.get_py2exe_datafiles()]
+own_data_files = matplotlib.get_py2exe_datafiles()
 
 own_data_files.append(('',['logo.png']))
-own_data_files.append(('',['C:\Program Files\Python24\MSVCP71.dll']))
+#own_data_files.append(('',['C:\Program Files\Python24\MSVCP71.dll']))
 
 #adddir(matplotlib.get_data_path(),'matplotlibdata')
 adddir('defaultscenarios')

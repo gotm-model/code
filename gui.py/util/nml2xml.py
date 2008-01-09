@@ -114,7 +114,7 @@ GOTM-GUI, while using .proto files in directory "./v3.2/templates".
     try:
         scen = scenario.Scenario.fromNamelists(srcpath,protodir=protodir,targetversion=targetschema,strict=strict)
     except Exception,e:
-        print '\n\nFailed to load scenario form namelists. Reason:\n'+str(e)
+        print '\n\nFailed to load scenario from namelists. Reason:\n'+str(e)
         print '\nYou might try adding the switch -ns. This switch disables strict namelist parsing.'
         return 1
         

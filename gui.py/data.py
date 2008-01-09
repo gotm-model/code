@@ -3,8 +3,11 @@ import os, re, datetime, xml.dom.minidom, tempfile, shutil, StringIO, math
 import common, xmlstore, scenario
 
 # Import NetCDF file format support
-from pynetcdf import NetCDFFile
-#from Scientific.IO.NetCDF import NetCDFFile
+try:
+    from Scientific.IO.NetCDF import NetCDFFile
+except:
+    from pynetcdf import NetCDFFile
+
 import matplotlib.numerix, numpy, pytz
 
 # Abstract class that contains one or more variables that can be plotted.

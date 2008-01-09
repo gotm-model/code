@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.48 2007-12-14 14:21:01 jorn Exp $
+#$Id: commonqt.py,v 1.49 2008-01-09 08:04:43 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -2449,7 +2449,7 @@ class FigurePanel(QtGui.QWidget):
         self.layoutButtons = QtGui.QHBoxLayout()
 
         # Button for showing/hiding properties
-        self.buttonProperties = QtGui.QPushButton(self.tr('&Properties'),self)
+        self.buttonProperties = QtGui.QPushButton(self.tr('&Properties...'),self)
         self.buttonProperties.setAutoDefault(False)
         self.buttonProperties.setDefault(False)
         self.connect(self.buttonProperties, QtCore.SIGNAL('clicked()'), self.onAdvancedClicked)
