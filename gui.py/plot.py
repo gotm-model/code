@@ -814,6 +814,11 @@ class Figure(common.referencedobject):
             if axisnode['LogScale'].getValue(usedefault=True):
                 if forcedrange[0]<=0: forcedrange[0] = None
                 if forcedrange[1]<=0: forcedrange[1] = None
+                if naturalrange[0]<=0:
+                    if axisname=='x':
+                        naturalrange[0] = axes.get_xlim()[0]
+                    elif axisname=='y':
+                        naturalrange[0] = axes.get_ylim()[0]
             
             # Effective range used by data, after taking forced range into account.
             effdatarange = dat['datarange'][:]

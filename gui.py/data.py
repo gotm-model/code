@@ -6,8 +6,9 @@ import common, xmlstore, scenario
 # We prefer ScientificPython 2.7 or higher, but resort to pynetcdf if that is not found.
 try:
     import Scientific
-    [maj,min,build] = map(int,Scientific.__version__.split('.'))
-    if maj<2 or (maj==2 and min<7): raise Exception('Installed ScientificPython has version < 2.7.1')
+    [vermaj,vermin,verbuild] = map(int,Scientific.__version__.split('.'))
+    if vermaj<2 or (vermaj==2 and vermin<7):
+        raise Exception('Installed ScientificPython has version < 2.7.1')
     from Scientific.IO.NetCDF import NetCDFFile
 except Exception,e:
     print 'Unable to load Scientific.IO.NetCDF. Reason: %s. Trying pynetcdf.' % e
