@@ -416,6 +416,7 @@ class Figure(common.referencedobject):
         forcedaxes = self.properties['Axes']
         for forcedaxis in forcedaxes.getLocationMultiple(['Axis']):
             istimeaxis = forcedaxis['IsTimeAxis'].getValue(usedefault=True)
+            logscale = False
             if istimeaxis:
                 axmin = forcedaxis['MinimumTime'].getValue()
                 axmax = forcedaxis['MaximumTime'].getValue()
@@ -424,7 +425,8 @@ class Figure(common.referencedobject):
             else:
                 axmin = forcedaxis['Minimum'].getValue()
                 axmax = forcedaxis['Maximum'].getValue()
-            dim2data[forcedaxis.getSecondaryId()] = {'forcedrange':[axmin,axmax]}
+                logscale = forcedaxis['LogScale'].getValue()
+            dim2data[forcedaxis.getSecondaryId()] = {'forcedrange':[axmin,axmax],'logscale':logscale}
 
         # Shortcuts to the nodes specifying the variables to plot.
         forceddatanode = self.properties['Data']
@@ -435,21 +437,30 @@ class Figure(common.referencedobject):
         olddefaults = [node.getSecondaryId() for node in defaultdatanode.getLocationMultiple(['Series'])]
 
         # This variable will hold all long names of the plotted variables.
-        # It will be used to create the plot title.
+        # These will later be joined to create the plot title.
         titles = []
         
         # No colorbar created (yet).
         cb = None
+        
+        # Start with z order index 0 (incrementing it with every item added)
         zorder = 0
+        
+        # Dictionary holding number of data series per number of independent dimensions.
         plotcount = {1:0,2:0}
+        
+        # Dictionary with legend information (handles to drawn data series and the series
+        # label) to be filled while adding data series.
         legenddata = {'handles':[],'labels':[]}
 
         for (iseries,seriesnode) in enumerate(forcedseries):
+            # Get the path of the data source (data source identifier + variable id)
             varpath = seriesnode.getSecondaryId()
             if varpath=='':
                 print 'Skipping data series %i because the secondary node id (i.e., variable source and name) is not set.'
                 continue
                 
+            # Extract variable source name and the variable identifier.
             varsource,varname = varpath.split('/',1)
             if varsource=='':
                 # No data source specified; take default.
@@ -466,7 +477,6 @@ class Figure(common.referencedobject):
             defaultseriesnode = defaultdatanode.getChildById('Series',varpath,create=True)
             defaultseriesnode['Label'].setValue(longname)
             defaultseriesnode['PlotType3D'].setValue(0)
-            defaultseriesnode['LogScale'].setValue(False)
             defaultseriesnode['HasConfidenceLimits'].setValue(False)
             setLineProperties(defaultseriesnode['LineProperties'])
             label = seriesnode['Label'].getValue(usedefault=True)
@@ -514,7 +524,7 @@ class Figure(common.referencedobject):
 
             # Add the variable itself to the dimension list.
             dimdata = dim2data.setdefault(varpath,{'forcedrange':(None,None)})
-            dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','logscale':False,'tight':False})
+            dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','tight':False,'logscale':False})
             
             # Find non-singleton dimensions (singleton dimension: dimension with length one)
             # Store singleton dimensions as fixed extra coordinates.
@@ -537,29 +547,6 @@ class Figure(common.referencedobject):
 
             # Get the minimum and maximum values; store these as default.
             dim2data[varpath]['datarange'] = [varslice.data.min(),varslice.data.max()]
-
-            # Mask values that are not within (minimum, maximum) range.
-            #minimum = seriesnode['Minimum'].getValue()
-            #maximum = seriesnode['Maximum'].getValue()
-            #if minimum!=None and maximum!=None:
-            #    data[-1] = matplotlib.numerix.ma.masked_array(data[-1],matplotlib.numerix.logical_or(data[-1]<minimum, data[-1]>maximum))
-            #elif minimum!=None:
-            #    data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]<minimum)
-            #elif maximum!=None:
-            #    data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]>maximum)
-
-            # Transform to log-scale if needed (first mask values <= zero)
-            logscale = seriesnode['LogScale'].getValue(usedefault=True)
-            if logscale:
-                #data[-1] = matplotlib.numerix.ma.masked_array(data[-1],data[-1]<=0.)
-                #data[-1] = matplotlib.numerix.ma.log10(data[-1])
-                dim2data[varpath]['logscale'] = True
-
-            # Get label
-            #defaultlabel = '%s (%s)' % (var.getLongName(),var.getUnit())
-            #if logscale: defaultlabel = 'log10 '+defaultlabel
-            #defaultseriesnode['Label'].setValue(defaultlabel)
-            #label = seriesnode['Label'].getValue(usedefault=True)
 
             # Enumerate over the dimension of the variable.
             for idim,dimname in enumerate(varslice.dimensions):
@@ -695,6 +682,7 @@ class Figure(common.referencedobject):
                     Z = Z.transpose()
                 
                 norm = None
+                logscale = dim2data.get('colorbar',{}).get('logscale',False)
                 if logscale: norm = matplotlib.colors.LogNorm()
 
                 if plottype3d==1:
@@ -764,6 +752,31 @@ class Figure(common.referencedobject):
         # Build table linking axis to data dimension.
         axis2dim = dict([(dat['axis'],dim) for dim,dat in dim2data.iteritems() if 'axis' in dat])
 
+        # Transform axes to log-scale where specified.
+        for axisname in ('x','y'):
+            if axisname not in axis2dim: continue
+            
+            # Get default and forced axis properties
+            axisnode = forcedaxes.getChildById('Axis',axisname,create=True)
+            defaxisnode = defaultaxes.getChildById('Axis',axisname,create=True)
+            
+            # Determine whether the axis can be log-transformed.
+            dimdata = dim2data[axis2dim[axisname]]
+            datarange = dimdata['datarange']
+            canhavelogscale = dimdata['datatype']!='datetime' and (datarange[0]>0 or datarange[1]>0)
+            
+            # Set log transformation defaults.
+            defaxisnode['LogScale'].setValue(False)
+            defaxisnode['CanHaveLogScale'].setValue(canhavelogscale)
+            
+            # Log transform axis if needed.
+            if not (canhavelogscale and axisnode['LogScale'].getValue(usedefault=True)):
+                continue
+            if axisname=='x':
+                axes.set_xscale('log')
+            else:
+                axes.set_yscale('log')
+
         # Get effective ranges for each dimension (based on forced limits and natural data ranges)
         oldaxes    = [node.getSecondaryId() for node in forcedaxes.getLocationMultiple(['Axis'])]
         olddefaxes = [node.getSecondaryId() for node in defaultaxes.getLocationMultiple(['Axis'])]
@@ -793,9 +806,14 @@ class Figure(common.referencedobject):
                 mintime,maxtime = axisnode['MinimumTime'].getValue(),axisnode['MaximumTime'].getValue()
                 if mintime!=None: mintime = common.date2num(mintime)
                 if maxtime!=None: maxtime = common.date2num(maxtime)
-                forcedrange = (mintime,maxtime)
+                forcedrange = [mintime,maxtime]
             else:
-                forcedrange = (axisnode['Minimum'].getValue(),axisnode['Maximum'].getValue())
+                forcedrange = [axisnode['Minimum'].getValue(),axisnode['Maximum'].getValue()]
+                
+            # Make sure forced ranges are valid if log transform is applied.
+            if axisnode['LogScale'].getValue(usedefault=True):
+                if forcedrange[0]<=0: forcedrange[0] = None
+                if forcedrange[1]<=0: forcedrange[1] = None
             
             # Effective range used by data, after taking forced range into account.
             effdatarange = dat['datarange'][:]
@@ -810,13 +828,14 @@ class Figure(common.referencedobject):
             # Build default label for this axis
             deflab = dat['label']
             if dat['unit']!='' and dat['unit']!=None: deflab += ' ('+dat['unit']+')'
+            
+            # Set default axis properties.
             defaxisnode['Label'].setValue(deflab)
             defaxisnode['Unit'].setValue(dat['unit'])
             defaxisnode['TicksMajor'].setValue(True)
             defaxisnode['TicksMajor/ShowLabels'].setValue(True)
             defaxisnode['TicksMinor'].setValue(False)
             defaxisnode['TicksMinor/ShowLabels'].setValue(False)
-
             defaxisnode['IsTimeAxis'].setValue(istimeaxis)
 
             # Get the MatPlotLib axis object.
@@ -926,11 +945,9 @@ class Figure(common.referencedobject):
             if axisname=='x':
                 if label!='': axes.set_xlabel(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
                 axes.set_xlim(effrange[0],effrange[1])
-                if dat['logscale']: axes.set_xscale('log')
             elif axisname=='y':
                 if label!='': axes.set_ylabel(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
                 axes.set_ylim(effrange[0],effrange[1])
-                if dat['logscale']: axes.set_yscale('log')
             elif axisname=='colorbar':
                 assert cb!=None, 'No colorbar has been created.'
                 if label!='': cb.set_label(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)

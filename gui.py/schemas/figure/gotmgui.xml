@@ -165,7 +165,14 @@
 				<condition type="ne" variable="./IsTimeAxis" value="True"/>
 			</element>
 			<element name="Unit" type="string" label="unit" nodefault="True" hidden="True"/>
-			<link template="TickMarks" name="TicksMajor" label="major ticks"/>
+      <element name="CanHaveLogScale" type="bool" label="axis can be log-transformed" hidden="True"/>
+      <element name="LogScale" type="bool" label="log-scale">
+        <condition type="and">
+          <condition type="eq" variable="./CanHaveLogScale" value="True"/>
+          <condition type="ne" variable="./IsTimeAxis" value="True"/>
+        </condition>
+      </element>
+      <link template="TickMarks" name="TicksMajor" label="major ticks"/>
 			<link template="TickMarks" name="TicksMinor" label="minor ticks"/>
 		</element>
 	</element>
@@ -174,7 +181,6 @@
 		<element name="Series" label="series" maxoccurs="10">
 			<element name="Label" type="string" label="label"/>
 			<element name="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
-			<element name="LogScale"       type="bool"   label="log-scale"/>
 			<link template="Line2D" name="LineProperties" grouponly="True">
 				<condition type="eq" variable="./DimensionCount" value="1"/>
 			</link>

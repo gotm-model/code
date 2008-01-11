@@ -1059,6 +1059,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_CFBA11CBF1BF445383F18AD5C4B7EC69"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_D0A496FB1B524EB59EC1926905C9CD40"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -4829,6 +4835,26 @@
             {
             "SourcePath" = "8:..\\..\\..\\dist\\umath.pyd"
             "TargetName" = "8:umath.pyd"
+            "Tag" = "8:"
+            "Folder" = "8:_FD247DB2DB31429BB880118E6AD632D3"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CFBA11CBF1BF445383F18AD5C4B7EC69"
+            {
+            "SourcePath" = "8:C:\\Program Files\\Microsoft Visual Studio 8\\VC\\redist\\x86\\Microsoft.VC80.CRT\\Microsoft.VC80.CRT.manifest"
+            "TargetName" = "8:Microsoft.VC80.CRT.manifest"
             "Tag" = "8:"
             "Folder" = "8:_FD247DB2DB31429BB880118E6AD632D3"
             "Condition" = "8:"

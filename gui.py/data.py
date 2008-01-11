@@ -2,10 +2,15 @@ import os, re, datetime, xml.dom.minidom, tempfile, shutil, StringIO, math
 
 import common, xmlstore, scenario
 
-# Import NetCDF file format support
+# Import NetCDF file format support.
+# We prefer ScientificPython 2.7 or higher, but resort to pynetcdf if that is not found.
 try:
+    import Scientific
+    [maj,min,build] = map(int,Scientific.__version__.split('.'))
+    if maj<2 or (maj==2 and min<7): raise Exception('Installed ScientificPython has version < 2.7.1')
     from Scientific.IO.NetCDF import NetCDFFile
-except:
+except Exception,e:
+    print 'Unable to load Scientific.IO.NetCDF. Reason: %s. Trying pynetcdf.' % e
     from pynetcdf import NetCDFFile
 
 import matplotlib.numerix, numpy, pytz

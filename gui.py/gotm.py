@@ -161,6 +161,10 @@ class PageIntroduction(commonqt.WizardPage):
         versions.append(('PyQt4',QtCore.PYQT_VERSION_STR))
         versions.append(('numpy',numpy.__version__))
         versions.append(('matplotlib',matplotlib.__version__))
+        try:
+            import Scientific
+            versions.append(('Scientific',Scientific.__version__))
+        except: pass
         versions.append(('gotm',gotm.gui_util.getversion().rstrip()))
         
         strversions = '<table cellspacing="0" cellpadding="0">'
@@ -196,17 +200,13 @@ class PageIntroduction(commonqt.WizardPage):
 
         layout.addStretch()
 
-        #strversions = '\n'.join(['%s %s' % v for v in versions])
-        #self.labelVersions = QtGui.QLabel('Module versions:\n'+strversions,self)
-        #layout.addWidget(self.labelVersions)
-
         layout.addStretch(1)
 
         self.labelVersions = QtGui.QLabel('Module versions:',self)
         layout.addWidget(self.labelVersions)
         
         self.textVersions = QtGui.QTextEdit(strversions,self)
-        self.textVersions.setMaximumHeight(100)
+        self.textVersions.setMaximumHeight(120)
         self.textVersions.setReadOnly(True)
         layout.addWidget(self.textVersions)
 
