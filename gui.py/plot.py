@@ -298,6 +298,8 @@ class Figure(common.referencedobject):
         self.defaultproperties['FontScaling'    ].setValue(100)
         self.defaultproperties['Grid'           ].setValue(False)
         self.defaultproperties['Legend/Location'].setValue(0)
+        self.defaultproperties['HasColorMap'    ].setValue(False)
+        self.defaultproperties['ColorMap'       ].setValue(0)
         setLineProperties(self.defaultproperties['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
 
         self.properties.setDefaultStore(self.defaultproperties)
@@ -440,8 +442,23 @@ class Figure(common.referencedobject):
         # These will later be joined to create the plot title.
         titles = []
         
-        # No colorbar created (yet).
+        # No colorbar created, and no colormap used (yet).
         cb = None
+        hascolormap = False
+        
+        colormaps = {0:'jet',
+                     1:'hsv',
+                     2:'hot',
+                     3:'cool',
+                     4:'spring',
+                     5:'summer',
+                     6:'autumn',
+                     7:'winter',
+                     8:'gray',
+                     9:'bone',
+                     10:'copper',
+                     11:'pink'}
+        cm = getattr(matplotlib.cm,colormaps[self.properties['ColorMap'].getValue(usedefault=True)])
         
         # Start with z order index 0 (incrementing it with every item added)
         zorder = 0
@@ -479,6 +496,10 @@ class Figure(common.referencedobject):
             defaultseriesnode['PlotType3D'].setValue(0)
             defaultseriesnode['HasConfidenceLimits'].setValue(False)
             setLineProperties(defaultseriesnode['LineProperties'])
+            defaultseriesnode['ShowEdges'].setValue(False)
+            defaultseriesnode['UseColorMap'].setValue(True)
+            defaultseriesnode['EdgeColor'].setValue(xmlstore.StoreColor(0,0,0))
+            defaultseriesnode['EdgeWidth'].setValue(1.)
             label = seriesnode['Label'].getValue(usedefault=True)
             
             # Old defaults will be removed after all series are plotted.
@@ -648,7 +669,9 @@ class Figure(common.referencedobject):
 
                 dim2data[varslice.dimensions[xdim]]['axis'] = 'x'
                 dim2data[varslice.dimensions[ydim]]['axis'] = 'y'
-                dim2data[varpath                  ]['axis'] = 'colorbar'
+                
+                if plottype3d!=2:
+                    dim2data[varpath]['axis'] = 'colorbar'
 
                 X = coords[xdim]
                 Y = coords[ydim]
@@ -681,37 +704,65 @@ class Figure(common.referencedobject):
                 if xdim<ydim:
                     Z = Z.transpose()
                 
+                pc = None
                 norm = None
                 logscale = dim2data.get('colorbar',{}).get('logscale',False)
                 if logscale: norm = matplotlib.colors.LogNorm()
 
-                if plottype3d==1:
+                if plottype3d==1 or plottype3d==2:
                     loc = None
                     if logscale: loc = matplotlib.ticker.LogLocator()
 
                     cc = seriesnode['ContourCount'].getValue()
+                    showedges = seriesnode['ShowEdges'].getValue(usedefault=True)
+                    edgecolor = (seriesnode['EdgeColor'].getValue(usedefault=True).getNormalized(),)
+                    if plottype3d==2 and seriesnode['UseColorMap'].getValue(usedefault=True): edgecolor = None
+                    edgewidth = seriesnode['EdgeWidth'].getValue(usedefault=True)
+                    borders,fill = (showedges or plottype3d==2),plottype3d==1
+                    cset,csetf = None,None
                     if cc!=None:
-                        pc = axes.contourf(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder)
+                        if fill:
+                            csetf = axes.contourf(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,cmap=cm)
+                        if borders:
+                            if fill: zorder += 1
+                            contourcm = cm
+                            if edgecolor!=None: contourcm = None
+                            cset = axes.contour(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
                     else:
-                        pc = axes.contourf(X,Y,Z,norm=norm,locator=loc,zorder=zorder)
+                        if fill:
+                            csetf = axes.contourf(X,Y,Z,norm=norm,locator=loc,zorder=zorder,cmap=cm)
+                        if borders:
+                            if fill: zorder += 1
+                            contourcm = cm
+                            if edgecolor!=None: contourcm = None
+                            cset = axes.contour(X,Y,Z,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+                    #if not fill: axes.clabel(cset)
                     if cc==None:
-                      defaultseriesnode['ContourCount'].setValue(len(pc.levels)-2)
+                      constset = csetf
+                      if constset==None: constset = cset
+                      defaultseriesnode['ContourCount'].setValue(len(constset.levels)-2)
+                    pc = csetf
+                    hascolormap = True
                 else:
-                    pc = axes.pcolormesh(X,Y,Z,shading='flat', cmap=matplotlib.cm.jet,norm=norm)
+                    edgecolors = 'None'
+                    if seriesnode['ShowEdges'].getValue(usedefault=True): edgecolors = 'k'
+                    pc = axes.pcolormesh(X,Y,Z,cmap=cm,norm=norm,edgecolors=edgecolors)
+                    hascolormap = True
                   
-                # Create colorbar
-                assert cb==None, 'Currently only one object that needs a colorbar is supported per figure.'
-                if isinstance(Z,matplotlib.numerix.ma.MaskedArray):
-                    flatZ = Z.compressed()
-                else:
-                    flatZ = Z.ravel()
-                if (flatZ==flatZ[0]).all():
-                    # All z values are equal. Explicitly set color range,
-                    # because MatPlotLib 0.90.0 chokes on identical min and max.
-                    pc.set_clim((Z[0,0]-1,Z[0,0]+1))
-                else:
-                    pc.set_clim(dim2data.get('colorbar',{}).get('forcedrange',(None,None)))
-                cb = self.figure.colorbar(pc)
+                if pc!=None:
+                    # Create colorbar
+                    assert cb==None, 'Currently only one object that needs a colorbar is supported per figure.'
+                    if isinstance(Z,matplotlib.numerix.ma.MaskedArray):
+                        flatZ = Z.compressed()
+                    else:
+                        flatZ = Z.ravel()
+                    if (flatZ==flatZ[0]).all():
+                        # All z values are equal. Explicitly set color range,
+                        # because MatPlotLib 0.90.0 chokes on identical min and max.
+                        pc.set_clim((Z[0,0]-1,Z[0,0]+1))
+                    else:
+                        pc.set_clim(dim2data.get('colorbar',{}).get('forcedrange',(None,None)))
+                    cb = self.figure.colorbar(pc)
 
                 plotcount[2] += 1
             
@@ -749,11 +800,14 @@ class Figure(common.referencedobject):
                 legend.set_zorder(zorder)
                 zorder += 1
 
+        # Set whether the figure uses a colormap
+        self.defaultproperties['HasColorMap'].setValue(hascolormap)
+
         # Build table linking axis to data dimension.
         axis2dim = dict([(dat['axis'],dim) for dim,dat in dim2data.iteritems() if 'axis' in dat])
 
         # Transform axes to log-scale where specified.
-        for axisname in ('x','y'):
+        for axisname in ('x','y','z','colorbar'):
             if axisname not in axis2dim: continue
             
             # Get default and forced axis properties
@@ -774,7 +828,7 @@ class Figure(common.referencedobject):
                 continue
             if axisname=='x':
                 axes.set_xscale('log')
-            else:
+            elif axisname=='y':
                 axes.set_yscale('log')
 
         # Get effective ranges for each dimension (based on forced limits and natural data ranges)

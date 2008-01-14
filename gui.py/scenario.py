@@ -720,16 +720,17 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
         else:
             target['airsea/flux_source'].setValue(1)
         
-        # If heat fluxes were set to "none", convert this into a constant value of 0.0
-        if source['airsea/airsea/heat_method'].getValue()==0:
-            target['airsea/heat_method'].setValue(1)
-            target['airsea/const_heat'].setValue(0.)
+        # If heat fluxes are effectively disabled, set the heat flux method to "none"
+        if source['airsea/airsea/heat_method'].getValue()==1 and target['airsea/const_heat'].getValue()==0.:
+            target['airsea/heat_method'].setValue(0)
 
-        # If momentum fluxes were set to "none", convert this into constant values of 0.0
-        if source['airsea/airsea/momentum_method'].getValue()==0:
-            target['airsea/momentum_method'].setValue(1)
-            target['airsea/const_tx'].setValue(0.)
-            target['airsea/const_ty'].setValue(0.)
+        # If short-wave radiation is effectively disabled, set the swr method to "none"
+        if source['airsea/airsea/swr_method'].getValue()==1 and target['airsea/const_swr'].getValue()==0.:
+            target['airsea/swr_method'].setValue(0)
+
+        # If momentum fluxes are effectively disabled, set the momentum flux method to "none"
+        if source['airsea/airsea/momentum_method'].getValue()==1 and target['airsea/const_tx'].getValue()==0. and target['airsea/const_ty'].getValue()==0.:
+            target['airsea/momentum_method'].setValue(0)
         
         # ===============================================
         #  obs: salinity

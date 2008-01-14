@@ -148,7 +148,26 @@
 		</link>
 	</element>
 
-	<element name="Axes" label="axes">
+  <element name="HasColorMap" type="bool" hidden="True"/>
+  <element name="ColorMap" type="select" label="colormap">
+    <condition type="eq" variable="./HasColorMap" value="True"/>
+    <options>
+      <option value="0"  label="jet"/>
+      <option value="1"  label="HSV"/>
+      <option value="2"  label="hot"/>
+      <option value="3"  label="cool"/>
+      <option value="4"  label="spring"/>
+      <option value="5"  label="summer"/>
+      <option value="6"  label="autumn"/>
+      <option value="7"  label="winter"/>
+      <option value="8"  label="gray"/>
+      <option value="9"  label="bone"/>
+      <option value="10" label="copper"/>
+      <option value="11" label="pink"/>
+    </options>
+  </element>
+
+  <element name="Axes" label="axes">
 		<element name="Axis" label="axis" maxoccurs="10">
 			<element name="Label"       type="string" label="label"/>
 			<element name="IsTimeAxis"  type="bool" hidden="True"/>
@@ -202,15 +221,55 @@
 				<options>
 					<option label="grid"            value="0"/>
 					<option label="filled contours" value="1"/>
-				</options>
+          <option label="contours"        value="2"/>
+        </options>
 			</element>
 			<element name="ContourCount" type="int" label="number of contours">
 				<condition type="and">
 					<condition type="eq" variable="./DimensionCount" value="2"/>
-					<condition type="eq" variable="./PlotType3D"     value="1"/>
+					<condition type="ne" variable="./PlotType3D"     value="0"/>
 				</condition>
 			</element>
-		</element>
+      <element name="ShowEdges" type="bool" label="show edges">
+        <condition type="and">
+          <condition type="eq" variable="./DimensionCount" value="2"/>
+          <condition type="ne" variable="./PlotType3D"     value="2"/>
+        </condition>
+      </element>
+      <element name="UseColorMap" type="bool" label="use colormap">
+        <condition type="and">
+          <condition type="eq" variable="./DimensionCount" value="2"/>
+          <condition type="eq" variable="./PlotType3D"     value="2"/>
+        </condition>
+      </element>
+      <element name="EdgeColor" type="color" label="edge color">
+        <condition type="and">
+          <condition type="eq" variable="./DimensionCount" value="2"/>
+          <condition type="or">
+            <condition type="and">
+              <condition type="eq" variable="./PlotType3D" value="1"/>
+              <condition type="eq" variable="./ShowEdges"  value="True"/>
+            </condition>
+            <condition type="and">
+              <condition type="eq" variable="./PlotType3D"   value="2"/>
+              <condition type="ne" variable="./UseColorMap"  value="True"/>
+            </condition>
+          </condition>
+        </condition>
+      </element>
+      <element name="EdgeWidth" type="float" label="edge width">
+        <condition type="and">
+          <condition type="eq" variable="./DimensionCount" value="2"/>
+          <condition type="or">
+            <condition type="and">
+              <condition type="eq" variable="./PlotType3D" value="1"/>
+              <condition type="eq" variable="./ShowEdges"  value="True"/>
+            </condition>
+            <condition type="eq" variable="./PlotType3D"   value="2"/>
+          </condition>
+        </condition>
+      </element>
+    </element>
 	</element>
 		
 </element>
