@@ -744,9 +744,11 @@ class Figure(common.referencedobject):
                     pc = csetf
                     hascolormap = True
                 else:
-                    edgecolors = 'None'
-                    if seriesnode['ShowEdges'].getValue(usedefault=True): edgecolors = 'k'
-                    pc = axes.pcolormesh(X,Y,Z,cmap=cm,norm=norm,edgecolors=edgecolors)
+                    #edgecolors = 'None'
+                    #if seriesnode['ShowEdges'].getValue(usedefault=True): edgecolors = 'k'
+                    shading = 'flat'
+                    if seriesnode['ShowEdges'].getValue(usedefault=True): shading = 'faceted'
+                    pc = axes.pcolormesh(X,Y,Z,cmap=cm,norm=norm,shading=shading)
                     hascolormap = True
                   
                 if pc!=None:
