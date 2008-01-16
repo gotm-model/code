@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.3 2007-08-30 08:59:40 jorn Exp $
+#$Id: Makefile,v 1.4 2008-01-16 15:58:42 jorn Exp $
 
 # -----------------------------------------------------------
 # Makefile for creating the Python-based GUI for GOTM
@@ -76,7 +76,7 @@ all: gotm gotmmodule.o fortranobject.o gotm-f2pywrappers2.o
 	$(FC) ./gotm-f2pywrappers2.o ./gotmmodule.o ./fortranobject.o ./gui_util.o $(LDFLAGS) -o gotm.so
 
 gotm:
-	$(MAKE) EXTRA_FFLAGS=$(EXTRA_FFLAGS) -C ../src all
+	$(MAKE) EXTRA_FFLAGS="$(EXTRA_FFLAGS)" -C ../src all
 
 gotmmodule.o:
 	$(CXX) -c gotmmodule.cpp $(CXXFLAGS) $(CPPFLAGS)
