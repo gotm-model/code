@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.18 2008-01-16 16:01:30 jorn Exp $
+#$Id: Rules.make,v 1.19 2008-01-18 08:46:51 jorn Exp $
 
 SHELL   = /bin/sh
 
@@ -135,7 +135,7 @@ PROTEX	= protex -b -n -s
 
 LINKDIR	= -L$(LIBDIR)
 
-CPPFLAGS	+= $(DEFINES) $(INCDIRS)
+CPPFLAGS	= $(DEFINES) $(INCDIRS)
 FFLAGS  	= $(DEFINES) $(FLAGS) $(MODULES) $(INCDIRS) $(EXTRAS)
 F90FLAGS  	= $(FFLAGS)
 LDFLAGS		+= $(FFLAGS) $(LINKDIR)
