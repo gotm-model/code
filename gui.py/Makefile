@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.4 2008-01-16 15:58:42 jorn Exp $
+#$Id: Makefile,v 1.5 2008-01-18 08:48:27 jorn Exp $
 
 # -----------------------------------------------------------
 # Makefile for creating the Python-based GUI for GOTM
@@ -44,9 +44,12 @@ F2PYDIR = $(NUMPYDIR)/f2py
 # Include the rules for GOTM compilation.
 include ../src/Rules.make
 
-# The flag -fexceptions is needed to generate FORTRAN code capable of 
-# passing C++ exceptions
-EXTRA_FFLAGS+=-fexceptions
+# The flag -fexceptions is needed to generate assembly from FORTRAN that is
+# capable of passing C++ exceptions. The flag -fPIC creates position-independent
+# code, which is good practice for shared libraries and required on some
+# architectures (AMD64)
+EXTRA_FFLAGS+=-fexceptions -fPIC
+CXXFLAGS+=-fPIC
 
 CORE_LIBS	=	\
 		-lairsea$(buildtype)		\
