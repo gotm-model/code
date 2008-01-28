@@ -7,11 +7,12 @@ gotmguiroot = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..')
 path = sys.path[:] 
 sys.path.append(gotmguiroot)
 try: 
-    import common,scenario
+    import common,scenario,data
 finally: 
     sys.path = path
 
 scenario.Scenario.setRoot(gotmguiroot)
+data.Result.setRoot(gotmguiroot)
 
 def main():
     copydata = not common.getSwitchArgument('-nd')

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.49 2008-01-09 08:04:43 jorn Exp $
+#$Id: commonqt.py,v 1.50 2008-01-28 07:50:47 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -273,10 +273,10 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             self.rowlabels = None
             self.datelabels = True
             
-            self.loadData()
+            #self.loadData()
 
         def loadData(self):
-            rawdata = self.datastore.data
+            rawdata = self.datastore.getData()
             self.rowlabels = None
             self.datamatrix = None
             if isinstance(self.datastore,data.LinkedMatrix):
@@ -298,7 +298,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
                 assert False, 'Unknown data file type "%s".' % self.datastore.type
                 
         def saveData(self):
-            rawdata = self.datastore.data
+            rawdata = self.datastore.getData()
             if isinstance(self.datastore,data.LinkedMatrix):
                 if len(self.datastore.dimensions)==1:
                     rawdata[0] = self.rowlabels
@@ -517,11 +517,10 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             elif isinstance(editor,QtGui.QDateTimeEdit):
                 model.setData(index, QtCore.QVariant(editor.dateTime()))
 
-    def __init__(self,node,parent=None,datafile=None):
+    def __init__(self,linkedfile,parent=None,title=None):
         QtGui.QDialog.__init__(self,parent)
 
-        self.node = node
-        self.varstore = data.LinkedFileVariableStore.fromNode(self.node)
+        self.linkedfile = linkedfile
 
         lo = QtGui.QGridLayout()
         
@@ -529,15 +528,15 @@ class LinkedFilePlotDialog(QtGui.QDialog):
 
         # Left panel: data editor
         loDataEdit = QtGui.QHBoxLayout()
-        if isinstance(self.varstore,data.LinkedProfilesInTime):
+        if isinstance(self.linkedfile,data.LinkedProfilesInTime):
             self.listTimes = QtGui.QListView(self)
-            self.listmodel = LinkedFilePlotDialog.LinkedDataModel(self.varstore,type=1)
+            self.listmodel = LinkedFilePlotDialog.LinkedDataModel(self.linkedfile,type=1)
             self.listTimes.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
             self.listTimes.setModel(self.listmodel)
             loDataEdit.addWidget(self.listTimes)
             self.connect(self.listTimes.selectionModel(), QtCore.SIGNAL('currentChanged(const QModelIndex &,const QModelIndex &)'), self.onTimeChanged)
         self.tableData = QtGui.QTableView(self)
-        self.tablemodel = LinkedFilePlotDialog.LinkedDataModel(self.varstore)
+        self.tablemodel = LinkedFilePlotDialog.LinkedDataModel(self.linkedfile)
         self.connect(self.tablemodel, QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'), self.onDataEdited)
         self.connect(self.tablemodel, QtCore.SIGNAL('rowsInserted(const QModelIndex &,int,int)'), self.onRowsInserted)
         self.connect(self.tablemodel, QtCore.SIGNAL('rowsRemoved(const QModelIndex &,int,int)'), self.onRowsRemoved)
@@ -583,8 +582,8 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         self.label = QtGui.QLabel('Available variables:',self)
         lolist.addWidget(self.label)
         self.list = QtGui.QComboBox(self)
-        namedict = self.varstore.getVariableLongNames()
-        for name in self.varstore.getVariableNames():
+        namedict = self.linkedfile.getVariableLongNames()
+        for name in self.linkedfile.getVariableNames():
             self.list.addItem(namedict[name],QtCore.QVariant(name))
         self.list.setEnabled(self.list.count()>0)
         
@@ -614,9 +613,6 @@ class LinkedFilePlotDialog(QtGui.QDialog):
 
         self.resize(750, 450)
 
-        self.datafile = datafile
-        self.owndatafile = False
-
         self.first = True
         
         self.onSelectionChanged(0)
@@ -627,7 +623,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         self.progressdialog.setAutoReset(False)
         self.progressdialog.setWindowTitle('Parsing data file...')
 
-        self.setWindowTitle(self.node.getText(detail=1,capitalize=True))
+        if title!=None: self.setWindowTitle(title)
         
     def addRow(self):
         """Event handler: called when user clicks the "Add row" button.
@@ -680,33 +676,44 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         self.dataChanged()
 
     def showEvent(self,ev):
-        if self.first and self.datafile!=None:
-            self.setData(self.datafile)
+        if self.first:
+            self.setData()
             self.first = False
+            self.onSelectionChanged(0)
 
-    def setData(self,datafile):
+    def setData(self,datafile=None):
 
         # Close any detached figures
         self.panel.closeDetached()
+        
+        if datafile!=None:
+            self.linkedfile.setDataFile(datafile)
 
         # Try to parse the supplied data file.
         try:
             try:
-                self.varstore.loadDataFile(datafile,callback=self.onParseProgress)
+                self.linkedfile.getData(callback=self.onParseProgress)
             finally:
                 self.progressdialog.reset()
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Invalid data file', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+            if datafile==None: self.linkedfile.clear()
             return
+            
+        # The data may be None, meaning that the data file is empty.
+        # In that case, explicitly create an empty table.
+        if self.linkedfile.data==None:
+            self.linkedfile.clear()
 
         # Reset the models attached to the variable store.
         self.dataChanged()
-        if isinstance(self.varstore,data.LinkedProfilesInTime): self.listmodel.reset()
+        if isinstance(self.linkedfile,data.LinkedProfilesInTime):
+            self.listmodel.reset()
         
         # Update figure
         self.panel.figure.update()
         
-        self.exportbutton.setEnabled(self.datafile.isValid())
+        self.exportbutton.setEnabled(self.linkedfile.validate())
 
     def onParseProgress(self,progress,status):
         if self.progressdialog.isHidden(): self.progressdialog.show()
@@ -730,7 +737,6 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         df = xmlstore.DataContainerDirectory.DataFileFile(path)
         memdf = xmlstore.DataFileMemory.fromDataFile(df)
         df.release()
-        self.owndatafile = True
 
         # Use the in-memory data file.
         self.setData(memdf)
@@ -742,21 +748,19 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         if path=='': return
 
         # Save data file.
-        self.varstore.saveToFile(path)
+        self.linkedfile.saveToFile(path)
 
     def onSelectionChanged(self,index):
-        if index<0:
+        if index<0 or self.first:
             self.panel.clear()
         else:
             varname = unicode(self.list.itemData(index,QtCore.Qt.UserRole).toString())
-            self.panel.plot(varname,self.varstore)
+            self.panel.plot(varname,self.linkedfile)
 
     def reject(self):
-        if self.owndatafile: self.datafile.release()
         QtGui.QDialog.reject(self)
         
     def accept(self):
-        self.datafile = self.varstore.getAsDataFile()
         QtGui.QDialog.accept(self)
 
 # =======================================================================
@@ -769,6 +773,8 @@ class LinkedFileEditor(QtGui.QWidget):
         QtGui.QWidget.__init__(self, parent)
 
         lo = QtGui.QHBoxLayout()
+        
+        self.prefix = prefix
 
         self.plotbutton = QtGui.QPushButton(prefix+'...',self)
         lo.addWidget(self.plotbutton)
@@ -778,15 +784,17 @@ class LinkedFileEditor(QtGui.QWidget):
 
         self.connect(self.plotbutton, QtCore.SIGNAL('clicked()'), self.onPlot)
 
-    def setNode(self,node):
-        self.node = node
-        self.datafile = self.node.getValue()
+    def setValue(self,value):
+        self.linkedfile = value
+        
+    def value(self):
+        return self.linkedfile
 
     def onPlot(self):
-        dialog = LinkedFilePlotDialog(self.node,self,datafile=self.datafile)
+        dialog = LinkedFilePlotDialog(self.linkedfile,title=self.prefix)
         ret = dialog.exec_()
         if ret == QtGui.QDialog.Accepted:
-            self.datafile = dialog.datafile
+            self.linkedfile = dialog.linkedfile
             self.emit(QtCore.SIGNAL('onChanged()'))
 
 # =======================================================================
@@ -1108,7 +1116,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
             editor = QtGui.QDateTimeEdit(parent)
         elif nodetype=='duration':
             editor = TimeDeltaEditor(parent)
-        elif nodetype=='file':
+        elif nodetype=='gotmdatafile':
             editor = LinkedFileEditor(parent)
             self.currenteditor = editor
         elif nodetype=='color':
@@ -1160,8 +1168,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             musecs,ret = value[2].toDouble()
             value = xmlstore.StoreTimeDelta(days=days,seconds=secs,microseconds=musecs)
             editor.setValue(value)
-        elif nodetype=='file':
-            editor.setNode(node)
+        elif nodetype=='gotmdatafile':
+            editor.setValue(node.getValue(usedefault=True))
         elif nodetype=='color':
             editor.setColor(QtGui.QColor(value))
         elif nodetype=='fontname':
@@ -1188,8 +1196,8 @@ class PropertyDelegate(QtGui.QItemDelegate):
             model.setData(index, QtCore.QVariant(value))
         elif nodetype=='duration':
             node.setValue(editor.value())
-        elif nodetype=='file':
-            node.setValue(editor.datafile)
+        elif nodetype=='gotmdatafile':
+            node.setValue(editor.value())
         elif nodetype=='color':
             model.setData(index,QtCore.QVariant(editor.color()))
         elif nodetype=='fontname':
@@ -1367,7 +1375,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                     return QtCore.QVariant(datetime2qtdatetime(value))
                 elif fieldtype=='duration':
                     return QtCore.QVariant([QtCore.QVariant(int(value.days)),QtCore.QVariant(int(value.seconds)),QtCore.QVariant(float(value.microseconds))])
-                elif fieldtype=='file':
+                elif isinstance(value,xmlstore.DataFile) or isinstance(value,xmlstore.DataFileEx):
                     # Return full path
                     return QtCore.QVariant(unicode(value))
                 elif fieldtype=='color':
@@ -1415,8 +1423,9 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         # Convert given variant to the type we need.
         if fieldtype=='string':
             value = value.toString()
-        elif fieldtype=='file':
-            value = xmlstore.DataContainerDirectory.DataFileFile(unicode(value.toString()))
+        elif fieldtype=='gotmdatafile':
+            #value = xmlstore.DataContainerDirectory.DataFileFile(unicode(value.toString()))
+            assert False, 'Not implemented. GOTM data file should have been set before.'
         elif fieldtype=='int':
             value,converted = value.toInt()
             if not converted: return False
@@ -1710,6 +1719,9 @@ class Wizard(QtGui.QDialog):
         if propertyname in self.shared and isinstance(self.shared[propertyname],common.referencedobject):
             self.shared[propertyname].release()
         self.shared[propertyname] = value
+        #if propertyname=='scenario' and value!=None:
+        #    self.propdiag = PropertyEditorDialog(self,value.datafileinfo)
+        #   self.propdiag.show()
         self.onPropertyChange(propertyname)
         
     def onPropertyChange(self,propertyname):
@@ -2208,7 +2220,7 @@ class PropertyEditor:
             editor = TimeDeltaEditor(parent)
             self.currenteditor = editor
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
-        elif nodetype=='file':
+        elif nodetype=='gotmdatafile':
             if fileprefix==None: fileprefix = node.getText(detail=1,capitalize=True)
             editor = LinkedFileEditor(parent,prefix=fileprefix)
             self.currenteditor = editor
@@ -2249,8 +2261,8 @@ class PropertyEditor:
                 #editor.setDateTime(QtCore.QDateTime.currentDateTime().toUTC())
             elif nodetype=='duration':
                 editor.setValue(None)
-            elif nodetype=='file':
-                editor.setNode(node)
+            elif nodetype=='gotmdatafile':
+                editor.setValue(None)
         else:
             if nodetype=='string':
                 editor.setText(value)
@@ -2281,8 +2293,8 @@ class PropertyEditor:
                 editor.setDateTime(value)
             elif nodetype=='duration':
                 editor.setValue(value)
-            elif nodetype=='file':
-                editor.setNode(node)
+            elif nodetype=='gotmdatafile':
+                editor.setValue(value)
         self.suppresschangeevent = False
 
     def setNodeData(self,editor,node):
@@ -2313,8 +2325,8 @@ class PropertyEditor:
             return node.setValue(qtdatetime2datetime(value))
         elif nodetype=='duration':
             return node.setValue(editor.value())
-        elif nodetype=='file':
-            return node.setValue(editor.datafile)
+        elif nodetype=='gotmdatafile':
+            return node.setValue(editor.value())
 
 def getFontSubstitute(fontname):
     assert isinstance(fontname,basestring), 'Supplied argument must be a string.'

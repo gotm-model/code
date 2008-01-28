@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.35 2007-12-14 14:21:01 jorn Exp $
+#$Id: common.py,v 1.36 2008-01-28 07:50:47 jorn Exp $
 
 import datetime,time,sys,xml.dom.minidom
 import matplotlib.dates,matplotlib.numerix,pytz
@@ -8,12 +8,12 @@ class referencedobject:
         self.refcount=1
     
     def release(self):
-        assert self.refcount>0
+        assert self.refcount>0, 'Reference count of object has already decreased to zero, but release is being called.'
         self.refcount -= 1
         if self.refcount==0: self.unlink()
 
     def addref(self):
-        assert self.refcount>0
+        assert self.refcount>0, 'Reference count of object has decreased to zero, but addref is being called.'
         self.refcount += 1
         return self
         

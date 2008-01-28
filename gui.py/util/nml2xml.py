@@ -12,6 +12,7 @@ finally:
     sys.path = path
 
 scenario.Scenario.setRoot(gotmguiroot)
+data.Result.setRoot(gotmguiroot)
 
 # Small function for receiving progress messages when parsing data files.
 nextprogress = 0.

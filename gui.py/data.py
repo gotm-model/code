@@ -3,7 +3,8 @@ import os, re, datetime, xml.dom.minidom, tempfile, shutil, StringIO, math
 import common, xmlstore, scenario
 
 # Import NetCDF file format support.
-# We prefer ScientificPython 2.7 or higher, but resort to pynetcdf if that is not found.
+# We prefer ScientificPython 2.7 or higher, but resort to pynetcdf if ScientificPython
+# is not found.
 try:
     import Scientific
     [vermaj,vermin,verbuild] = map(int,Scientific.__version__.split('.'))
@@ -156,7 +157,7 @@ class PlotVariable:
     def getDimensionInfo(self,dimname):
         return self.store.getDimensionInfo(dimname)
 
-class LinkedFileVariableStore(PlotVariableStore):
+class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
 
     class LinkedFileVariable(PlotVariable):
 
@@ -180,27 +181,36 @@ class LinkedFileVariableStore(PlotVariableStore):
         def getSlice(self,bounds):
             assert False, 'This function must be implemented by inheriting class.'
             
-    @staticmethod
-    def fromNode(node,load=False,callback=None):
-        finfo = common.findDescendantNode(node.templatenode,['fileinfo'])
+    @classmethod
+    def createTypedStore(ownclass):
+        return xmlstore.TypedStore(os.path.join(Result.schemadirname,'../datafilecache/gotmgui.xml'))
+
+    linkedfilename = 'linkedfile_metadata.xml'
+    rootnodename = 'DataFile'
+
+    @classmethod
+    def createObject(ownclass,datafile,valuenode,context,infonode):
+        finfo = common.findDescendantNode(infonode,['fileinfo'])
         assert finfo!=None, 'Node "%s" lacks "fileinfo" attribute.' % node
         store = None
         type = finfo.getAttribute('type')
         if type=='pointsintime':
-            store = LinkedMatrix(node,type=0,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'}},dimensionorder=('time',))
+            store = LinkedMatrix(datafile,valuenode,context,infonode,type=0,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'}},dimensionorder=('time',))
         elif type=='profilesintime':
-            store = LinkedProfilesInTime(node,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}},dimensionorder=('time','z'))
+            store = LinkedProfilesInTime(datafile,valuenode,context,infonode,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}},dimensionorder=('time','z'))
         elif type=='singleprofile' or type=='verticalgrid':
-            store = LinkedMatrix(node,type=1)
+            store = LinkedMatrix(datafile,valuenode,context,infonode,type=1)
         else:
             assert False, 'Linked file has unknown type "%s".' % node.type
-        if load: store.loadDataFile(node.getValue(),callback)
         return store
 
-    def __init__(self,node,dimensions={},dimensionorder=()):
+    def __init__(self,datafile,valuenode,context,infonode,dimensions={},dimensionorder=()):
+    
+        PlotVariableStore.__init__(self)
+        xmlstore.DataFileEx.__init__(self,datafile,valuenode,context,infonode)
 
-        finfo = common.findDescendantNode(node.templatenode,['fileinfo'])
-        self.nodeid = node.getId()
+        finfo = common.findDescendantNode(infonode,['fileinfo'])
+        self.nodeid = infonode.getAttribute('name')
         
         self.vardata = []
         fvars = common.findDescendantNode(finfo,['filevariables'])
@@ -234,36 +244,124 @@ class LinkedFileVariableStore(PlotVariableStore):
                     self.dimensions[id] = dimdata
                     self.dimensionorder.append(id)
 
-        self.datafile = None
-        self.clear()
+        self.data = None
         
-    def clear(self):
-        pass
+    def clear(self,clearfile=True):
+        """Clears all data, and by default also clears the original datafile
+        (if any). The metadata set on the object will be updated accordingly.
+        """
+        self.dataChanged(clearfile=clearfile)
         
+    def setDataFile(self,datafile=None,cleardata=True):
+        """Attaches a new data file as source of data. This will clear all
+        metadata set on the object, and by default it will also clear any
+        parsed data.
+        """ 
+        xmlstore.DataFileEx.setDataFile(self,datafile)
+        if cleardata: self.data = None
+        
+    def setData(self,data,clearfile=True):
+        """Sets a new data block, automatically updating the metadata set on
+        the object. By default it will clear the original datafile (if any).
+        """
+        self.data = data
+        self.dataChanged(clearfile=clearfile)
+        
+    def dataChanged(self,clearfile=True):
+        """Event handler, to be called just after the data has changed.
+        """
+        if clearfile: self.setDataFile(None,cleardata=False)
+        if self.data==None: return
+        
+        print '%s - caching validation result and dimension boundaries.' % self.nodeid
+        metadata = self.getMetaData()
+        for dimname in self.getDimensionNames():
+            dimnode = metadata['Dimensions'].getChildById('Dimension',id=dimname,create=True)
+            assert dimnode!=None, 'Failed to create Dimension node for %s.' % dimname
+            dimrange = self.calculateDimensionRange(dimname)
+            if dimrange==None: continue
+            minval,maxval = dimrange
+            if self.getDimensionInfo(dimname)['datatype']=='datetime':
+                dimnode['IsTimeDimension'].setValue(True)
+                dimnode['MinimumTime'].setValue(common.num2date(minval))
+                dimnode['MaximumTime'].setValue(common.num2date(maxval))
+            else:
+                dimnode['IsTimeDimension'].setValue(False)
+                dimnode['Minimum'].setValue(minval)
+                dimnode['Maximum'].setValue(maxval)
+        metadata['Valid'].setValue(True)
+
     def getDimensionNames(self):
+        """Returns the names of data dimensions.
+        """
         return self.dimensionorder[:]
         
     def getDimensionInfo(self,dimname):
+        """Returns information on the specified data dimension.
+        see PlotVariableStore.getDimensionInfo for the type of
+        information returned.
+        """
         return self.dimensions[dimname]
         
     def getDimensionRange(self,dimname):
-        return None
+        """Returns the range, i.e., the tuple (minimum, maximum) of the
+        specified dimension.
+        """
+        if self.data==None and (self.datafile==None or not self.datafile.isValid()): return None
         
+        metadata = self.getMetaData()
+        dimnode = metadata['Dimensions'].getChildById('Dimension',dimname)
+        if dimnode==None:
+            try:
+                self.getData()
+            except Exception,e:
+                pass
+            dimnode = metadata['Dimensions'].getChildById('Dimension',dimname)
+            assert dimnode!=None, 'Cannot locate node for dimension %s in data file cache.' % dimname
+            
+        if metadata['Valid'].getValue()==False: return None
+
+        print '%s - using cached bounds for %s.' % (self.nodeid,dimname)
+        if dimnode['IsTimeDimension'].getValue():
+            minval = dimnode['MinimumTime'].getValue()
+            maxval = dimnode['MaximumTime'].getValue()
+        else:
+            minval = dimnode['Minimum'].getValue()
+            maxval = dimnode['Maximum'].getValue()
+        if minval==None and maxval==None: return None
+        return (minval,maxval)
+            
+    def validate(self,callback=None):
+        if self.data==None and (self.datafile==None or not self.datafile.isValid()): return False
+        metadata = self.getMetaData()
+        valid = metadata['Valid'].getValue()
+        if valid==None:
+            try:
+                self.getData(callback=callback)
+            except Exception,e:
+                pass
+            valid = metadata['Valid'].getValue()
+            assert valid!=None, 'Information on validity of data file %s not in data file cache.' % self.nodeid
+        print '%s - using cached validation result.' % self.nodeid
+        return valid
+    
     def getVariableNames(self):
+        """Returns the names of all variables in the store.
+        """
         return [data[0] for data in self.vardata]
 
     def getVariableLongNames(self):
+        """Returns the long name of the specified variable.
+        """
         return dict([(data[0],data[1]) for data in self.vardata])
 
     def getVariable(self,varname):
+        """Returns the specified variable as LinkedFileVariable object.
+        """
         for (index,data) in enumerate(self.vardata):
             if data[0]==varname:
                 return self.variableclass(self,data,index)
         assert False, 'Variable with name "%s" not found in store.' % varname
-        
-    def dataChanged(self):
-        """Event handler, must be called by external actors when they change the data."""
-        self.datafile = None
         
     def saveToFile(self,path,callback=None):
         """Saves the current data to file."""
@@ -274,28 +372,33 @@ class LinkedFileVariableStore(PlotVariableStore):
             self.writeData(f,callback=callback)
             f.close()
             
-    def getAsDataFile(self,callback=None):
-        if self.datafile!=None:
-            return self.datafile.addref()
-        else:
+    def getDataFile(self,callback=None):
+        if self.datafile==None:
+            assert self.data!=None, 'getDataFile called with both the data file and the data in memory are not set.'
+        
+            # Data not present as data file object. Create one in memory on the spot.
             target = StringIO.StringIO()
             self.writeData(target,callback=callback)
-            df = xmlstore.DataFileMemory(target.getvalue(),self.nodeid+'.dat')
+            self.datafile = xmlstore.DataFileMemory(target.getvalue(),self.nodeid+'.dat')
             target.close()
-            return df
+        return self.datafile
         
     def writeData(self,target,callback=None):
         """Writes the current data to a file-like object."""
-        assert False, 'This function must be implemented by inheriting class.'
+        assert False, 'writeData must be implemented by derived class.'
         
-    def getGriddedData(self,callback=None):
-        assert self.data!=None, 'Data not set.'
+    def getData(self,callback=None):
+        if self.data==None and self.datafile!=None:
+            try:
+                data = self.parseDataFile(callback)
+            except Exception,e:
+                self.getMetaData()['Valid'].setValue(False)
+                raise
+            self.setData(data,clearfile=False)
         return self.data
-
-    def loadDataFile(self,datafile,callback=None):
-        assert False, 'This function must be implemented by inheriting class.'
-
-
+        
+    def parseDataFile(self,callback=None):
+        assert False, 'parseDataFile must be implemented by derived class.'
 
 class LinkedMatrix(LinkedFileVariableStore):
 
@@ -304,7 +407,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             slice = self.Slice(self.getDimensions())
             
             # Get a reference to all data, and stop if the coordinate dimension is empty.
-            data = self.store.getGriddedData()
+            data = self.store.getData()
             if data[0].shape[0]==0: return slice
 
             if slice.ndim==1:
@@ -313,45 +416,41 @@ class LinkedMatrix(LinkedFileVariableStore):
             slice.generateStaggered()
             return slice
 
-    def __init__(self,node,type=0,dimensions={},dimensionorder=()):
-        LinkedFileVariableStore.__init__(self,node,dimensions,dimensionorder)
+    def __init__(self,datafile,valuenode,context,infonode,type=0,dimensions={},dimensionorder=()):
+        LinkedFileVariableStore.__init__(self,datafile,valuenode,context,infonode,dimensions,dimensionorder)
         self.variableclass = self.LinkedMatrixVariable
         assert len(self.dimensions)<=1, 'Linkedmatrix objects can only be used with 0 or 1 coordinate dimensions, but %i are present.' % len(self.dimensions)
         self.type = type
         
-    def clear(self):
+    def clear(self,clearfile=True):
         """Clears all contained data."""
         self.data = []
         if len(self.dimensions)==1:
             self.data.append(matplotlib.numerix.empty((0,)))
         self.data.append(matplotlib.numerix.empty((0,len(self.vardata))))
+        LinkedFileVariableStore.clear(self,clearfile=clearfile)
         
-    def getDimensionRange(self,dimname):
+    def calculateDimensionRange(self,dimname):
         ind = self.dimensionorder.index(dimname)
-        dimdata = self.data[ind]
+        dimdata = self.getData()[ind]
         if 0 in dimdata.shape: return None
         return (dimdata.min(),dimdata.max())
 
-    def loadDataFile(self,datafile,callback=None):
-        self.datafile = datafile
-        
-        if not self.datafile.isValid():
-            # No data: empty the store and return
-            self.clear()
-            return
+    def parseDataFile(self,callback=None):
+        if self.datafile==None or not self.datafile.isValid(): return None
 
         if self.type==0:
             # Unknown number of rows
-            res = self.loadDataFile_UnknownCount(datafile,callback)
+            res = self.loadDataFile_UnknownCount(callback)
         elif self.type==1:
             # Known number of rows
-            res = self.loadDataFile_KnownCount(datafile,callback)
+            res = self.loadDataFile_KnownCount(callback)
         else:
             assert False, 'unknown LinkedMatrix type %i.' % self.type
-            
+
         return res
         
-    def loadDataFile_KnownCount(self,datafile,callback):
+    def loadDataFile_KnownCount(self,callback):
         """Loads data from a DataFile object."""
         # Get number of dimensions and variables.
         dimcount = len(self.dimensions)
@@ -379,11 +478,9 @@ class LinkedMatrix(LinkedFileVariableStore):
             if dimisdate:
                 datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
                 dimvalues = matplotlib.numerix.empty((obscount,),matplotlib.numerix.Float64)
+                prevdate = None
             else:
                 dimvalues = matplotlib.numerix.empty((obscount,),matplotlib.numerix.Float32)
-            self.data = [dimvalues,values]
-        else:
-            self.data = [values]
 
         for irow in range(values.shape[0]):
             # Read a line (stop if end-of-file was reached)
@@ -400,6 +497,9 @@ class LinkedMatrix(LinkedFileVariableStore):
                         raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
                     refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
                     dimvalue = common.dateTimeFromTuple(refvals)
+                    if prevdate!=None and dimvalue<prevdate:
+                        raise Exception('Line %i: observation time %s lies before previous observation time %s. Times should be increasing.' % (iline,dimvalue.strftime(common.datetime_displayformat),prevdate.strftime(common.datetime_displayformat)))
+                    prevdate = dimvalue
                     dimvalue = common.date2num(dimvalue)
                 
                     # Read variable values.
@@ -431,7 +531,13 @@ class LinkedMatrix(LinkedFileVariableStore):
         # Close data file
         f.close()
 
-    def loadDataFile_UnknownCount(self,datafile,callback):
+        # Succeeded in reading the data: store them internally.
+        if dimcount==1:
+            return [dimvalues,values]
+        else:
+            return [values]
+
+    def loadDataFile_UnknownCount(self,callback):
         varcount = len(self.vardata)
         
         # Get the size of the file (in bytes, may be None if the size is not known)
@@ -495,23 +601,26 @@ class LinkedMatrix(LinkedFileVariableStore):
         # Concatenate memory slab.
         times = matplotlib.numerix.concatenate(times,axis=0)
         values = matplotlib.numerix.concatenate(values,axis=0)
-        self.data = [times,values]
             
         # Close data file
         f.close()
+
+        # Succeeded in reading the data: store them internally.
+        return [times,values]
 
     def writeData(self,target,callback=None):
         """Writes the current data to a file-like object."""
         # Get number of dimensions and variables, and get shortcuts to the data.
         dimcount = len(self.dimensions)
+        data = self.getData()
         if dimcount==1:
             # One coordinate dimension present; get the data type of that dimension.
-            dimdata = self.data[0]
+            dimdata = data[0]
             dimtype = self.dimensions.values()[0]['datatype']
             dimisdate = (dimtype=='datetime')
             if dimisdate: dimdata = common.num2date(dimdata)
         varcount = len(self.vardata)
-        vardata = self.data[-1]
+        vardata = data[-1]
         
         if self.type==1:
             # Write first line with number of observations.
@@ -547,17 +656,26 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                     
             return varslice
 
-    def __init__(self,node,dimensions=[],dimensionorder=()):
-        LinkedFileVariableStore.__init__(self,node,dimensions,dimensionorder)
+    def __init__(self,datafile,valuenode,context,infonode,dimensions=[],dimensionorder=()):
+        LinkedFileVariableStore.__init__(self,datafile,valuenode,context,infonode,dimensions,dimensionorder)
         self.variableclass = self.LinkedProfilesInTimeVariable
         
-    def clear(self):
-        self.data = (matplotlib.numerix.empty((0,)),[],[])
-        self.griddeddata = None
+    def setDataFile(self,datafile=None,cleardata=True):
+        LinkedFileVariableStore.setDataFile(self,datafile,cleardata=cleardata)
+        if cleardata: self.griddeddata = None
 
-    def getDimensionRange(self,dimname):
+    def clear(self,clearfile=True):
+        self.data = (matplotlib.numerix.empty((0,)),[],[])
+        LinkedFileVariableStore.clear(self,clearfile=clearfile)
+
+    def dataChanged(self,clearfile=True):
+        """Event handler, must be called by external actors when they change the data."""
+        self.griddeddata = None
+        LinkedFileVariableStore.dataChanged(self,clearfile=clearfile)
+
+    def calculateDimensionRange(self,dimname):
         ind = self.dimensionorder.index(dimname)
-        dimdata = self.data[ind]
+        dimdata = self.getData()[ind]
         if len(dimdata)==0: return None
         if ind==0:
             return (dimdata.min(),dimdata.max())
@@ -567,22 +685,17 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                 dimmin = min(dimmin,dimdata[iobs].min())
                 dimmax = max(dimmin,dimdata[iobs].max())
             return (dimmin,dimmax)
-        
-    def dataChanged(self):
-        """Event handler, must be called by external actors when they change the data."""
-        LinkedFileVariableStore.dataChanged(self)
-        self.griddeddata = None
-        
+                
     def writeData(self,target,callback=None):
         """Writes the current data to a file-like object."""
         varcount = len(self.vardata)
-        times = self.data[0]
-        depths = self.data[1]
-        data = self.data[2]
+        data = self.getData()
+        assert data!=None, 'Cannot write data to file, because data is set to None.'
+        times,depths,values = data
         for itime in range(times.shape[0]):
             target.write(common.num2date(times[itime]).strftime('%Y-%m-%d %H:%M:%S'))
             curdepths = depths[itime]
-            curdata = data[itime]
+            curdata = values[itime]
             depthcount = len(curdepths)
             target.write('\t%i\t1\n' % depthcount)
             for idepth in range(depthcount):
@@ -592,9 +705,9 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                 target.write('\n')
         
     def getGriddedData(self,callback=None):
-        assert self.data!=None, 'Data not set.'
+        data = self.getData()
         if self.griddeddata==None:
-            (times,depths,values) = self.data
+            times,depths,values = data
             
             varcount = len(self.vardata)
             
@@ -624,12 +737,8 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             
         return self.griddeddata
 
-    def loadDataFile(self,datafile,callback=None):
-        self.datafile = datafile
-        
-        if not self.datafile.isValid():
-            self.clear()
-            return
+    def parseDataFile(self,callback=None):
+        if self.datafile==None or not self.datafile.isValid(): return None
         
         varcount = len(self.vardata)
         
@@ -718,11 +827,11 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         # Convert sequence with times to numpy array.
         times = matplotlib.numerix.array(times,matplotlib.numerix.Float64)
         
-        self.data = [times,depths,values]
-        self.griddeddata = None
-            
         # Close data file
         f.close()
+
+        # Succeeded in reading the data: store them internally.
+        return [times,depths,values]
 
 class NetCDFStore(PlotVariableStore,common.referencedobject):
     

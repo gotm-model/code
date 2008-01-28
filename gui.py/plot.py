@@ -379,7 +379,7 @@ class Figure(common.referencedobject):
         self.haschanged = False
         
     def exportToFile(self,path,dpi=150):
-        self.canvas.print_figure(path,dpi=dpi)
+        self.canvas.print_figure(str(path),dpi=dpi)
         
     def update(self):
         if not self.updating:
@@ -780,11 +780,13 @@ class Figure(common.referencedobject):
             defaultdatanode.removeChild('Series',oldname)
 
         # Create and store title
-        title = titles[0]
-        for ln in titles[1:]:
-            if ln!=title:
-                title = ', '.join(titles)
-                break
+        title = ''
+        if titles:
+            title = titles[0]
+            for ln in titles[1:]:
+                if ln!=title:
+                    title = ', '.join(titles)
+                    break
         self.defaultproperties['Title'].setValue(title)
         title = self.properties['Title'].getValue(usedefault=True)
         assert title!=None, 'Title must be available, either explicitly set or as default.'

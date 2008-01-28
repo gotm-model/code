@@ -65,6 +65,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "util", "util", "{B352B739-F
 		..\..\util\xml2nml.py = ..\..\util\xml2nml.py
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "datafilecache", "datafilecache", "{FF7114ED-E773-45AB-AE76-E6C4748020DC}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\schemas\datafilecache\gotmgui.xml = ..\..\schemas\datafilecache\gotmgui.xml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -75,5 +80,6 @@ Global
 		{CDBA7004-02BA-40A3-9F2A-D7A10F701220} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{4481907A-5850-4BAC-94F2-23E2FC5BB33B} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{C9C26D7C-F213-41C1-91AC-0313D612391E} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
+		{FF7114ED-E773-45AB-AE76-E6C4748020DC} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 	EndGlobalSection
 EndGlobal

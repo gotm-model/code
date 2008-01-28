@@ -20,11 +20,6 @@ class Scenario(xmlstore.TypedStore):
         xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
 
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
-        self.datafileinfo = {}
-        
-        self.interface = self.getInterface()
-        self.interface.connect('afterStoreChange',self.onAfterStoreChange)
-        self.interface.connect('afterChange',     self.onAfterNodeChange)
         
     @staticmethod
     def setRoot(rootpath):
@@ -72,6 +67,10 @@ class Scenario(xmlstore.TypedStore):
             return newscenario
         else:
             return scenario
+
+    @classmethod
+    def getCustomTypes(ownclass):
+        return {'gotmdatafile':data.LinkedFileVariableStore}
 
     def loadFromNamelists(self, srcpath, strict = False, protodir = None):
         print 'Importing scenario from namelist files...'
@@ -189,7 +188,7 @@ class Scenario(xmlstore.TypedStore):
 
                     vartype = listchild.getValueType()
 
-                    if vartype=='string' or vartype=='datetime' or vartype=='file':
+                    if vartype=='string' or vartype=='datetime' or vartype=='gotmdatafile':
                         strmatch = strre.match(vardata)
                         if strmatch==None:
                             raise namelist.NamelistParseException('Variable is not a string. Data: %s' % vardata,fullnmlfilename,listname,varname)
@@ -225,7 +224,7 @@ class Scenario(xmlstore.TypedStore):
                             raise namelist.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',fullnmlfilename,listname,varname)
                         refvals = map(int,datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
                         val = common.dateTimeFromTuple(refvals)
-                    elif vartype=='file':
+                    elif vartype=='gotmdatafile':
                         for fn in filelist:
                             if fn==val or fn.endswith('/'+val):
                                 val = container.getItem(fn)
@@ -316,11 +315,11 @@ class Scenario(xmlstore.TypedStore):
                             vartype = listchild.getValueType()
                             if vartype=='string':
                                 varval = '\''+varval+'\''
-                            elif vartype=='file':
+                            elif vartype=='gotmdatafile':
                                 filename = listchild.getId()+'.dat'
                                 if not listchild.isHidden() and copydatafiles:
-                                    if not varval.isValid():
-                                        raise Exception('No custom data set for variable "%s" in namelist "%s".' % (varname,listname))
+                                    if not varval.validate():
+                                        raise Exception('No valid custom data set for variable "%s" in namelist "%s".' % (varname,listname))
                                     varval.saveToFile(os.path.join(targetpath,filename))
                                 varval = '\''+filename+'\''
                             elif vartype=='int' or vartype=='select':
@@ -362,7 +361,7 @@ class Scenario(xmlstore.TypedStore):
                     lines.append(ch.getAttribute('value') + ': ' + lab)
 
         # Create description of data type and range.
-        if datatype=='file':
+        if datatype=='gotmdatafile':
             datatype = 'file path'
         elif datatype=='int' or datatype=='select':
             datatype = 'integer'
@@ -421,15 +420,8 @@ class Scenario(xmlstore.TypedStore):
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
         if self.originalversion==savedscenarioversion: self.resetChanged()
         
-    def onAfterStoreChange(self):
-        self.datafileinfo = {}
-
-    def onAfterNodeChange(self,node,value):
-        nodepath = '/'+'/'.join(node.location)
-        if nodepath in self.datafileinfo: del self.datafileinfo[nodepath]
-        
     def validate(self,nodepaths=None,usedefault=True,validatedatafiles=True,callback=None,repair=0):
-        errors = xmlstore.TypedStore.validate(self,nodepaths,usedefault=usedefault,repair=repair)
+        errors = xmlstore.TypedStore.validate(self,nodepaths,usedefault=usedefault,repair=repair,callback=callback)
 
         if validatedatafiles:
             # Find nodes with "file" data type.
@@ -437,38 +429,9 @@ class Scenario(xmlstore.TypedStore):
                 filenodes = []
                 for nodepath in nodepaths:
                     node = self[nodepath]
-                    if node.getValueType()=='file': filenodes.append(node)
+                    if node.getValueType()=='gotmdatafile': filenodes.append(node)
             else:
-                filenodes = self.root.getNodesByType('file')
-                
-            # Remove data files without valid value from the list.
-            # (these are validated by the TypedStore implementation, and cannot be parsed)
-            # Also remove the data files for which we already have information in the cache.
-            parsefilenodes = []
-            for fn in filenodes:
-                nodepath = '/'+'/'.join(fn.location)
-                value = fn.getValue(usedefault=usedefault)
-                if value!=None and value.isValid() and not (nodepath in self.datafileinfo):
-                    parsefilenodes.append(fn)
-
-            # Parse data files
-            progslicer = common.ProgressSlicer(callback,len(parsefilenodes))
-            for icurfile,fn in enumerate(parsefilenodes):
-                value = fn.getValue(usedefault=usedefault)
-                newstore = data.LinkedFileVariableStore.fromNode(fn)
-                valid = True
-                dimranges = []
-                progslicer.nextStep('parsing '+fn.getText(detail=1))
-                try:
-                    newstore.loadDataFile(value,callback=progslicer.getStepCallback())
-                except Exception,e:
-                    errors.append('Could not parse data file for variable %s. Error: %s' % ('/'.join(fn.location),e))
-                    valid = False
-                if valid:
-                    for dimname in newstore.getDimensionNames():
-                        dimranges.append(newstore.getDimensionRange(dimname))
-                self.datafileinfo['/'+'/'.join(fn.location)] = {'valid':valid,'dimensionranges':dimranges}
-                icurfile += 1
+                filenodes = self.root.getNodesByType('gotmdatafile')
 
         if self.version!='gotmgui-0.5.0': return errors
         
@@ -485,19 +448,15 @@ class Scenario(xmlstore.TypedStore):
             # Now validate the time extent of input data series.
             if validatedatafiles and stop!=None:
                 for fn in filenodes:
-                    nodepath = '/'+'/'.join(fn.location)
                     value = fn.getValue(usedefault=usedefault)
-                    if value==None or not value.isValid(): continue
-                    assert nodepath in self.datafileinfo, 'Cannot find parse result of data file "%s" in datafileinfo cache.' % nodepath
-                    store = data.LinkedFileVariableStore.fromNode(fn)
-                    fileinfo = self.datafileinfo[nodepath]
-                    if not fileinfo['valid']: continue
-                    for dimname,dimrange in zip(store.getDimensionNames(),fileinfo['dimensionranges']):
-                        diminfo = store.getDimensionInfo(dimname)
-                        if diminfo['datatype']=='datetime' and dimrange!=None:
-                            dimrange = (common.num2date(dimrange[0]),common.num2date(dimrange[1]))
-                            if stop>dimrange[1] and dimrange[1]!=dimrange[0]:
-                                errors.append('Input data series "%s" finishes at %s, before the simulation is done (%s).' % (fn.getText(detail=1),dimrange[1].strftime(common.datetime_displayformat),stop.strftime(common.datetime_displayformat)))
+                    if not value.validate(): continue
+                    for dimname in value.getDimensionNames():
+                        if value.getDimensionInfo(dimname)['datatype']=='datetime':
+                            dimrange = value.getDimensionRange(dimname)
+                            if dimrange==None: continue
+                            mintime,maxtime = dimrange
+                            if stop>maxtime and maxtime!=mintime:
+                                errors.append('Input data series "%s" finishes at %s, before the simulation is set to end (%s).' % (fn.getText(detail=1),maxtime.strftime(common.datetime_displayformat),stop.strftime(common.datetime_displayformat)))
                 
         return errors
 
@@ -558,8 +517,9 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                 # and actual heat flux values.
                 progslicer = common.ProgressSlicer(callback,3)
                 progslicer.nextStep('parsing %s' % source['airsea/airsea/heatflux_file'].getText(detail=1))
-                datold = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'],load=True,callback=progslicer.getStepCallback())
-                times,swr,heat = datold.data[0],datold.data[1].take((0,),1),datold.data[1].take((1,),1)
+                oldfile = source['airsea/airsea/heatflux_file'].getValue()
+                datold = oldfile.getData(progslicer.getStepCallback())
+                times,swr,heat = datold[0],datold[1].take((0,),1),datold[1].take((1,),1)
                 
                 # Save shortwave radiation
                 progslicer.nextStep('saving %s' % target['airsea/airsea/swr_file'].getText(detail=1))
@@ -571,9 +531,9 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                     # Variable shortwave radiation: set shortwave radiation method to custom (i.e. from file)
                     # and supply the data.
                     target['airsea/airsea/swr_method'].setValue(2)
-                    swrnew  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/swr_file'])
-                    swrnew.data = [times,swr]
-                    target['airsea/airsea/swr_file'].setValue(swrnew.getAsDataFile(callback=progslicer.getStepCallback()))
+                    swrnew = target['airsea/airsea/swr_file'].getValue()
+                    swrnew.setData([times,swr])
+                    target['airsea/airsea/swr_file'].setValue(swrnew)
                     
                 # Save heat flux
                 progslicer.nextStep('saving %s' % target['airsea/airsea/heatflux_file'].getText(detail=1))
@@ -585,9 +545,9 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                 else:
                     # Variable heat flux: set heat flux method to custom (i.e. from file) and supply the data.
                     target['airsea/airsea/heat_method'].setValue(2)
-                    heatnew = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
-                    heatnew.data = [times,heat]
-                    target['airsea/airsea/heatflux_file'].setValue(heatnew.getAsDataFile(callback=progslicer.getStepCallback()))                
+                    heatnew = target['airsea/airsea/heatflux_file'].getValue()
+                    heatnew.setData([times,heat])
+                    target['airsea/airsea/heatflux_file'].setValue(heatnew)
 Scenario.addConvertor(Convertor_gotm_4_0_0_to_gotm_4_1_0)
 
 class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
@@ -614,10 +574,12 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
                 progslicer = common.ProgressSlicer(callback,nsteps)
                 if swr_method ==2:
                     progslicer.nextStep('parsing %s' % source['airsea/airsea/swr_file'].getText(detail=1))
-                    swrdata  = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/swr_file'],load=True,callback=progslicer.getStepCallback())
+                    swrdata  = source['airsea/airsea/swr_file'].getValue()
+                    swrdata.getData(callback=progslicer.getStepCallback())
                 if heat_method==2:
                     progslicer.nextStep('parsing %s' % source['airsea/airsea/heatflux_file'].getText(detail=1))
-                    heatdata = data.LinkedFileVariableStore.fromNode(source['airsea/airsea/heatflux_file'],load=True,callback=progslicer.getStepCallback())
+                    heatdata = source['airsea/airsea/heatflux_file'].getValue()
+                    heatdata.getData(callback=progslicer.getStepCallback())
 
                 # Create vectors for time, shortwave radiation and the heat flux.
                 if swrdata==None:
@@ -642,10 +604,10 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
                     
                 # Store merged shortwave radation/heat flux data.
                 progslicer.nextStep('writing %s' % target['airsea/airsea/heatflux_file'].getText(detail=1))
-                mergeddata  = data.LinkedFileVariableStore.fromNode(target['airsea/airsea/heatflux_file'])
-                mergeddata.data = [times,numpy.concatenate((swr,heat),1)]
+                mergeddata  = target['airsea/airsea/heatflux_file'].getValue()
+                mergeddata.setData([times,numpy.concatenate((swr,heat),1)])
                 target['airsea/airsea/heat_method'].setValue(2)
-                target['airsea/airsea/heatflux_file'].setValue(mergeddata.getAsDataFile(callback=progslicer.getStepCallback()))                
+                target['airsea/airsea/heatflux_file'].setValue(mergeddata)
                     
 Scenario.addConvertor(Convertor_gotmgui_4_1_0_to_gotm_4_0_0)
 

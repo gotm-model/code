@@ -82,13 +82,12 @@ class Report(common.referencedobject):
 
         # Get a list of all input datasets.
         inputdata = []
-        for node in scenario.root.getNodesByType('file'):
+        for node in scenario.root.getNodesByType('gotmdatafile'):
             if node.isHidden(): continue
             value = node.getValue(usedefault=True)
-            if value!=None and value.isValid():
-                store = data.LinkedFileVariableStore.fromNode(node)
-                inputdata.append((node,store,value))
-                steps += 1+len(store.getVariableNames())
+            if value!=None and value.validate():
+                inputdata.append((node,value))
+                steps += 1+len(value.getVariableNames())
 
         # Create output directory if it does not exist yet.
         if not os.path.isdir(outputpath): os.mkdir(outputpath)
@@ -164,11 +163,11 @@ class Report(common.referencedobject):
         if len(inputdata)>0:
             nodeParent = scentable.parentNode
             nodePreceding = scentable.nextSibling
-            for node,store,datafile in inputdata:
+            for node,store in inputdata:
                 if callback!=None:
-                    store.loadDataFile(datafile,lambda progress,msg: callback((istep+progress)/steps,'Parsing %s...' % (node.getText(1),)))
+                    store.getData(callback=lambda progress,msg: callback((istep+progress)/steps,'Parsing %s...' % (node.getText(1),)))
                 else:
-                    store.loadDataFile(datafile)
+                    store.getData()
                 istep += 1
                 tds = []
                 fig.addDataSource('input',store)

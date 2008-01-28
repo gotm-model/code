@@ -44,7 +44,7 @@
 		<element name="ddl" type="float" label="bottom zooming" description="Grid zooming (bottom), 0: no zooming; > 3 strong zooming" minInclusive="0">
 			<condition type="eq" variable="./grid_method" value="0"/>
 		</element>
-		<element name="grid_file" type="file" label="custom grid" description="File for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
+		<element name="grid_file" type="gotmdatafile" label="custom grid" description="File for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
 			<condition type="ne" variable="./grid_method" value="0"/>
 			<fileinfo type="verticalgrid">
 				<filevariables>
@@ -172,7 +172,7 @@
 				<option value="4" label="Berliandand Berliand (1952)" />
 			</options>
 		</element>
-		<element name="meteo_file"  type="file" label="meteorological observations">
+		<element name="meteo_file"  type="gotmdatafile" label="meteorological observations">
 			<condition type="eq" variable="./flux_source" value="0"/>
 			<fileinfo type="pointsintime">
 				<filevariables>
@@ -215,7 +215,7 @@
         <condition type="eq" variable="./heat_method" value="1"/>
       </condition>
     </element>
-    <element name="heatflux_file" type="file" label="custom heat fluxes" description="custom heat fluxes (negative for net outgoing)">
+    <element name="heatflux_file" type="gotmdatafile" label="custom heat fluxes" description="custom heat fluxes (negative for net outgoing)">
       <condition type="and">
         <condition type="eq" variable="./flux_source" value="1"/>
         <condition type="eq" variable="./heat_method" value="2"/>
@@ -238,7 +238,7 @@
     <element name="const_swr"  type="float" label="constant incoming short wave radiation" unit="W/m²" minInclusive="0" maxInclusive="1000">
       <condition type="eq" variable="./swr_method" value="1"/>
     </element>
-    <element name="swr_file" type="file" label="custom short-wave radiation">
+    <element name="swr_file" type="gotmdatafile" label="custom short-wave radiation">
       <condition type="eq" variable="./swr_method" value="2"/>
       <fileinfo type="pointsintime">
         <filevariables>
@@ -270,7 +270,7 @@
 				<condition type="eq" variable="./momentum_method" value="1"/>
 			</condition>
 		</element>
-		<element name="momentumflux_file" type="file" label="custom momentum fluxes" description="file with tx and ty given in N/m²">
+		<element name="momentumflux_file" type="gotmdatafile" label="custom momentum fluxes" description="file with tx and ty given in N/m²">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./momentum_method" value="2"/>
@@ -293,7 +293,7 @@
 		<element name="const_precip" type="float" label="constant precipitation" description="Constant value for precipitation." unit="m/s" minInclusive="-0.01" maxInclusive="0.01">
 			<condition type="eq" variable="./precip_method" value="1"/>
 		</element>
-		<element name="precip_file" type="file" label="custom precipitation">
+		<element name="precip_file" type="gotmdatafile" label="custom precipitation">
 			<condition type="eq" variable="./precip_method" value="2"/>
 			<fileinfo type="pointsintime">
 				<filevariables>
@@ -312,7 +312,7 @@
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
-		<element name="sst_file" type="file" label="custom sea surface temperatures">
+		<element name="sst_file" type="gotmdatafile" label="custom sea surface temperatures">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./sst_method" value="2"/>
@@ -331,7 +331,7 @@
 				<option value="2" label="custom, temporally variable"/>
 			</options>
 		</element>
-		<element name="sss_file" type="file" label="custom sea surface salinities">
+		<element name="sss_file" type="gotmdatafile" label="custom sea surface salinities">
 			<condition type="and">
 				<condition type="eq" variable="./flux_source" value="1"/>
 				<condition type="eq" variable="./sss_method" value="2"/>
@@ -735,7 +735,7 @@
 			<element name="s_obs_NN" type="float" label="constant N²">
 				<condition type="eq" variable="." value="13"/>
 			</element>
-			<element name="s_prof_file" type="file" label="custom salinity profiles">
+			<element name="s_prof_file" type="gotmdatafile" label="custom salinity profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -792,7 +792,7 @@
 			<element name="t_obs_NN" type="float" label="constant N²">
 				<condition type="eq" variable="." value="13"/>
 			</element>
-			<element name="t_prof_file" type="file" label="custom temperature profiles">
+			<element name="t_prof_file" type="gotmdatafile" label="custom temperature profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -833,7 +833,7 @@
 					<option value="2" label="vertically averaged current speed"/>
 				</options>
 			</element>
-			<element name="ext_press_file" type="file" label="custom external pressure gradients">
+			<element name="ext_press_file" type="gotmdatafile" label="custom external pressure gradients">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -890,7 +890,7 @@
 				<option value="1" label="constant" description="temporally constant internal pressure gradient computed from fixed horizontal salinity and temperature gradients" />
 				<option value="2" label="custom observed profiles" description="custom, temporally variable internal pressure gradient computed from observations"/>
 			</options>
-			<element name="int_press_file" type="file" label="custom horizontal gradients of salinity and temperature">
+			<element name="int_press_file" type="gotmdatafile" label="custom horizontal gradients of salinity and temperature">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -932,7 +932,7 @@
 				<option value="6" label="Jerlov type III"/>
 				<option value="7" label="Adolf Stips, Lago Maggiore"/>
 			</options>
-			<element name="extinct_file" type="file" label="custom light extinction coefficients">
+			<element name="extinct_file" type="gotmdatafile" label="custom light extinction coefficients">
 				<condition type="eq" variable="." value="0"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -956,7 +956,7 @@
 			<element name="w_adv0" type="float" label="constant vertical advection velocity" unit="m/s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element name="w_adv_file" type="file" label="custom vertical advection velocities">
+			<element name="w_adv_file" type="gotmdatafile" label="custom vertical advection velocities">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -984,7 +984,7 @@
 				<option value="1" label="calculate from tidal constituents" />
 				<option value="2" label="custom observed values"/>
 			</options>
-			<element name="zeta_file" type="file" label="custom sea surface elevations">
+			<element name="zeta_file" type="gotmdatafile" label="custom sea surface elevations">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -1021,7 +1021,7 @@
 				<option value="1" label="constant" />
 				<option value="2" label="custom observed values"/>
 			</options>
-			<element name="wave_file" type="file" label="custom wind waves">
+			<element name="wave_file" type="gotmdatafile" label="custom wind waves">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
@@ -1048,7 +1048,7 @@
 				<option value="1" label="(not implemented)" disabled="True" />
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element name="vel_prof_file" type="file" label="custom velocity profiles">
+			<element name="vel_prof_file" type="gotmdatafile" label="custom velocity profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -1070,7 +1070,7 @@
 			<element name="e_obs_const"  type="float" label="a constant filling value" unit="W/kg">
 				<condition type="eq" variable="." value="1"/>
 			</element>
-			<element name="e_prof_file" type="file" label="custom dissipation rate profiles">
+			<element name="e_prof_file" type="gotmdatafile" label="custom dissipation rate profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -1101,7 +1101,7 @@
 					<option value="2" label="ml/m3 ???"/>
 				</options>
 			</element>
-			<element name="o2_prof_file" type="file" label="custom oxygen profiles">
+			<element name="o2_prof_file" type="gotmdatafile" label="custom oxygen profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
@@ -1116,7 +1116,7 @@
 				<option value="0" label="none" />
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element name="bio_prof_file"   type="file"  label="custom biogeochemical profiles">
+			<element name="bio_prof_file"   type="gotmdatafile"  label="custom biogeochemical profiles">
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables/>
@@ -1356,7 +1356,7 @@
 	<element name="seagrass" label="seagrass model" optional="True">
 		<element name="canopy" grouponly="True">
 			<element name="seagrass_calc" type="bool"  label="use seagrass model"/>
-			<element name="grassfile"     type="file"  label="depth-varying maximum excursion limit and friction coefficient">
+			<element name="grassfile"     type="gotmdatafile"  label="depth-varying maximum excursion limit and friction coefficient">
 				<condition type="eq" variable="./seagrass_calc" value="True"/>
 				<fileinfo type="singleprofile">
 					<filedimensions>

@@ -50,7 +50,7 @@ class Store:
             common.referencedobject.__init__(self)
         
         @staticmethod
-        def load(node,context):
+        def load(node,context,template=None):
             assert False, 'This virtual method MUST be overwritten by the inheriting class.'
 
         def save(self,node,context):
@@ -69,6 +69,9 @@ class Store:
 
         def unlink(self):
             pass
+            
+        def validate(self,callback=None):
+            return True
     
     def __init__(self,xmldocument=None,xmlroot=None):
         """Constructor of Store object."""
@@ -132,36 +135,36 @@ class Store:
             self.setText(node,value)
             return True
 
-    def getProperty(self,location,valuetype=str):
+    def getProperty(self,location,valuetype=str,infonode=None):
         """Gets value at specified location (list of ancestor names).
         Autoconverts value to the type requested (otherwise value = string)."""
         node = common.findDescendantNode(self.xmlroot,location)
         if node==None: return None
-        return self.getNodeProperty(node,valuetype=valuetype)
+        return self.getNodeProperty(node,valuetype=valuetype,infonode=infonode)
 
-    def getNodeProperty(self,node,valuetype=str):
+    def getNodeProperty(self,node,valuetype=str,infonode=None):
         """Gets value at node. Autoconverts value to the type requested (otherwise value = string)."""
         if isinstance(valuetype,basestring):
             assert valuetype in self.filetypes, 'unknown value type "%s" requested.' % valuetype
             valuetype = self.filetypes[valuetype]
         if issubclass(valuetype,Store.DataType):
-            return valuetype.load(node,self.context)
+            return valuetype.load(node,self.context,infonode)
         else:
             return self.unpackValue(self.getText(node),valuetype=valuetype)
 
-    def preparePersistNode(self,node,valuetype):
+    def preparePersistNode(self,node,valuetype,infonode=None):
         """Prepares the node for being saved to persistent storage. Additional
         information needed by the node should be made available through the
         dictionary present as context attribute of the Store."""
-        value = self.getNodeProperty(node,valuetype)
+        value = self.getNodeProperty(node,valuetype,infonode=infonode)
         assert isinstance(value,Store.DataType)
         value.preparePersist(node,self.context)
 
-    def persistNode(self,node,valuetype):
+    def persistNode(self,node,valuetype,infonode=None):
         """Saves the node to persistent storage. Additional information needed
         by the node should be made available through the dictionary present as
         context attribute of the Store."""
-        value = self.getNodeProperty(node,valuetype)
+        value = self.getNodeProperty(node,valuetype,infonode=infonode)
         assert isinstance(value,Store.DataType)
         value.persist(node,self.context)
 
@@ -215,7 +218,7 @@ class StoreTimeDelta(Store.DataType,datetime.timedelta):
         datetime.timedelta(*args,**kwargs)
 
     @staticmethod
-    def load(node,context):
+    def load(node,context,template):
         """Loads the time span value from the specified XML DOM node."""
         text = common.getNodeText(node)
         if text:
@@ -289,7 +292,7 @@ class StoreColor(Store.DataType):
         self.blue = blue
 
     @staticmethod
-    def load(node,context):
+    def load(node,context,template):
         """Creates a StoreColor object with its value read from the specified XML node."""
         strcolor = common.getNodeText(node)
         if len(strcolor)>0:
@@ -415,7 +418,7 @@ class DataFile(Store.DataType):
         self.name = None
     
     @staticmethod
-    def load(node,context):
+    def load(node,context,template):
         """Loads the data file from the specified XML node. Currently the XML node
         should contain the name of the data object within its container, and the
         container (DataContainer instance) should be specified through the context
@@ -440,8 +443,7 @@ class DataFile(Store.DataType):
         from the calling code to the store object. The calling code should therefore
         not use, or call "release" on the DataFile object afterwards.
         """
-        if 'cache' not in context: context['cache'] = {}
-        cache = context['cache']
+        cache = context.setdefault('cache',{})
         uniquename = DataFile.getUniqueNodeName(node)
         if uniquename in cache: cache[uniquename].release()
         cache[uniquename] = self
@@ -578,6 +580,146 @@ class DataFile(Store.DataType):
         # Below an expensive way to get the size. Disabled: if the user really
         # wants this, he should do it himself.
         return len(self.getData(textmode=False,readonly=True))
+
+class DataFileEx(Store.DataType):
+    @classmethod
+    def load(ownclass,valuenode,context,infonode):
+        """Creates a DataFileEx object from the data in the specified XML
+        node, and the associated data stream located in the container object
+        specified in the context dictionary.
+        """
+        datafile = DataFile.load(valuenode,context,infonode)
+        return ownclass.createObject(datafile,valuenode,context,infonode)
+        
+    @classmethod
+    def createObject(ownclass,datafile,valuenode,context,infonode):
+        """Returns a DataFileEx object from a data file, XML node with
+        metadata and (optionally) a node in an XML schema, specified
+        additional information on the data file.
+        """
+        return ownclass(datafile,valuenode,context,infonode)
+    
+    @classmethod    
+    def createTypedStore(ownclass):
+        """Returns a TypedStore object to be used for the metadata belonging to
+        the data file object. Must be overridden by derived classes.
+        """
+        assert False, 'createTypedStore must be overridden by inheriting class.'
+        
+    linkedfilename = None
+    rootnodename = None
+
+    def __init__(self,datafile=None,valuenode=None,context=None,infonode=None):
+        Store.DataType.__init__(self)
+        
+        self.nodename = valuenode.localName
+        
+        # Create a global store for metadata if it does not exist yet.
+        linkedfiles = context.setdefault('linkedobjects',{})
+        if self.linkedfilename not in linkedfiles:
+            # Store for metadata does not exist yet: create it.
+            store = self.createTypedStore()
+            assert store!=None, 'No typed store returned by createTypedStore.'
+            linkedfiles[self.linkedfilename] = store
+            
+            # If the source container already contains metadata, load them.
+            container = context.get('container',None)
+            if container!=None:
+                if self.linkedfilename in container.listFiles():
+                    metadatafile = container.getItem(self.linkedfilename)
+                    store.load(metadatafile)
+                    metadatafile.release()
+        else:
+            # Store for metadata exists
+            store = linkedfiles[self.linkedfilename]
+
+        # Reference the metadata store (because we will keep a link to it)
+        self.store = store.addref()
+
+        self.datafile = None
+        self.metadata = None
+        
+        # Attach the data file object
+        # (but make sure any existing meta data is not erased)
+        self.keepmetadata = True
+        self.setDataFile(datafile)
+        self.keepmetadata = False
+        
+    def setDataFile(self,datafile=None):
+        """Attach to the specified data file object, and simultaneously
+        erase all currently stored metadata (because it belonged to the
+        previous data file.
+        """
+        # Release previous data file (if any)
+        if self.datafile!=None:
+            self.datafile.release()
+            self.datafile = None
+            
+        # Set new data file (if any)
+        if datafile!=None:
+            self.datafile = datafile.addref()
+
+        # Clear meta data (unless we are initializing: then keepmetadata is set).
+        if not self.keepmetadata:
+            self.store.release()
+            self.metadata = None
+            self.store = self.createTypedStore()
+            
+    def getMetaData(self,create=True):
+        """Get the node in the TypedStore that stores the metadata for this
+        object. Note that the metadata node is cached for further use.
+        """
+        if self.metadata!=None: return self.metadata
+        self.metadata = self.store.root.getChildById(self.rootnodename,self.nodename,create=create)
+        return self.metadata
+
+    def getDataFile(self,callback=None):
+        """Returns the current data as data file object. This does nothing
+        interesting in this implementation, but might be used in derived
+        classes to build the data file "lazily", i.e., only when needed.
+        """
+        return self.datafile
+
+    def save(self,node,context):
+        """Stores current data to the specified XML node. The data stream
+        (DataFile object) is stored by name in the container that is
+        specified in the context dictionary.
+        """
+        self.getDataFile().save(node,context)
+
+        self.nodename = node.localName
+        
+        # Get the global store for metadata in the target container.
+        # Create the metadata store if it does not exist yet.
+        linkedfiles = context.setdefault('linkedobjects',{})
+        if self.linkedfilename not in linkedfiles:
+            newstore = self.createTypedStore()
+            assert newstore!=None, 'No typed store returned by createTypedStore.'
+            linkedfiles[self.linkedfilename] = newstore
+        else:
+            newstore = linkedfiles[self.linkedfilename]
+            
+        # Copy old metadata to the target store, and connect to the target
+        # store for future reference.
+        if newstore is not self.store:
+            oldmetadata = self.getMetaData(create=False)
+            if oldmetadata!=None:
+                newmetadata = newstore.root.getChildById(self.rootnodename,self.nodename,create=True)
+                newmetadata.copyFrom(oldmetadata)
+            self.store.release()
+            self.metadata = None
+            self.store = newstore.addref()
+
+    def preparePersist(self,node,context):
+        self.getDataFile().preparePersist(node,context)
+
+    def persist(self,node,context):
+        self.getDataFile().persist(node,context)
+        
+    def unlink(self):
+        self.metadata = None
+        if self.datafile!=None: self.datafile.release()
+        if self.store   !=None: self.store.release()
 
 class DataContainerDirectory(DataContainer):
     """A DataContainer implementation for a directory in the file system.
@@ -1123,6 +1265,7 @@ class Schema:
                             unitnode,relcurpath = self.getReversePath(ch,unit[1:-1],absourcepath=childcurpath)
                             self.registerDependency(unitnode,relcurpath,'unit')
                 elif ch.localName=='condition':
+                    assert not curowner.hasAttribute('maxoccurs'), 'Currently conditions on optional nodes are not supported.'
                     if ch.hasAttribute('source'): continue
                     if ch.hasAttribute('variable'):
                         # Get the referenced node, and the relative path from there to here.
@@ -1500,7 +1643,7 @@ class Node:
 
         # Check for existing value nodes that are not in the template.
         if self.valuenode!=None:
-            for ch in [ch for ch in self.valuenode.childNodes if ch.nodeType==ch.ELEMENT_NODE and ch.localName not in ids]:
+            for ch in [ch for ch in self.valuenode.childNodes if ch.nodeType==ch.ELEMENT_NODE and ch.localName not in ids and not ch.hasAttribute('metadata')]:
                 print 'WARNING! Value "%s" below "%s" was unexpected and will be ignored.' % (ch.localName,self.location)
                 self.valuenode.removeChild(ch)
 
@@ -1537,7 +1680,7 @@ class Node:
         if self.valuenode!=None:
             valuetype = self.templatenode.getAttribute('type')
             assert valuetype!='', 'getValue was used on node without type (%s); canHaveValue should have showed that this node does not have a type.' % self
-            value = self.store.getNodeProperty(self.valuenode,valuetype=valuetype)
+            value = self.store.getNodeProperty(self.valuenode,valuetype=valuetype,infonode=self.templatenode)
         if value==None and usedefault: value = self.getDefaultValue()
         return value
 
@@ -1629,6 +1772,12 @@ class Node:
                 value = ''
             else:
                 value = value.name
+        elif fieldtype=='gotmdatafile':
+            # Return filename only (not the path)
+            if value.datafile==None or not value.datafile.isValid():
+                value = ''
+            else:
+                value = value.datafile.name
         elif fieldtype=='select':
             # Get label of currently selected option
             optionsroot = common.findDescendantNode(templatenode,['options'])
@@ -2239,6 +2388,12 @@ class TypedStore(common.referencedobject):
         """
         if self.root!=None: self.root.destroy()
 
+        if self.store!=None and 'linkedobjects' in self.store.context:
+            for n,v in self.store.context['linkedobjects'].iteritems():
+                assert isinstance(v,common.referencedobject), 'Linked file %s is not of type common.referencedobject.' % n
+                v.release()
+            del self.store.context['linkedobjects']
+
         templateroot = self.schema.getRoot()
 
         assert valueroot==None or isinstance(valueroot,basestring) or isinstance(valueroot,xml.dom.Node), 'Supplied value root must None, a path to an XML file, or an XML node, but is %s.' % valueroot
@@ -2265,11 +2420,12 @@ class TypedStore(common.referencedobject):
         assert storeversion==self.version, 'Versions of the xml schema ("%s") and and the xml values ("%s") do not match.' % (self.version,storeversion)
                     
         self.store = Store(valuedom,xmlroot=valueroot)
-        self.store.filetypes['select'] = int
-        self.store.filetypes['file'] = DataFile
-        self.store.filetypes['duration'] = StoreTimeDelta
-        self.store.filetypes['color'] = StoreColor
-        self.store.filetypes['fontname'] = str
+        self.store.filetypes.update({'select'  :int,
+                                     'file'    :DataFile,
+                                     'duration':StoreTimeDelta,
+                                     'color'   :StoreColor,
+                                     'fontname':str})
+        self.store.filetypes.update(self.getCustomTypes())
         self.root = Node(self,templateroot,self.store.xmlroot,[],None)
         self.changed = False
         self.setContainer(None)
@@ -2281,6 +2437,10 @@ class TypedStore(common.referencedobject):
         
         # Notify attached interface about the store change.
         self.afterStoreChange()
+    
+    @classmethod
+    def getCustomTypes(ownclass):
+        return {}
 
     def setDefaultStore(self,store,updatevisibility=True):
         """Attached a TypedStore object with default values. The attached
@@ -2305,13 +2465,18 @@ class TypedStore(common.referencedobject):
         """Returns whether any value in the store has changed since the values
         were loaded (through "setStore"), or since "resetChanged" was called.
         """
-        return self.changed
+        if self.changed: return True
+        for v in self.store.context.get('linkedobjects',{}).itervalues():
+            if isinstance(v,TypedStore) and v.hasChanged(): return True
+        return False
 
     def resetChanged(self):
         """Resets the "changed" status of the store to "unchanged".
         See also "hasChanged".
         """
         self.changed = False
+        for v in self.store.context.get('linkedobjects',{}).itervalues():
+            if isinstance(v,TypedStore): v.resetChanged()
 
     def __getitem__(self,path):
         """Returns node at the specified path below the root of the tree.
@@ -2363,7 +2528,7 @@ class TypedStore(common.referencedobject):
         progslicer = common.ProgressSlicer(callback,len(nodes))
         for node in nodes:
             progslicer.nextStep(node.getText(1))
-            self.store.persistNode(node.valuenode,node.getValueType())
+            self.store.persistNode(node.valuenode,node.getValueType(),node.templatenode)
 
     def preparePersist(self):
         """Prepares custom nodes for being stored on disk.
@@ -2375,7 +2540,7 @@ class TypedStore(common.referencedobject):
         nodes = self.root.getNodesByType(Store.DataType,True)
         for node in nodes:
             if node.valuenode!=None:
-                self.store.preparePersistNode(node.valuenode,node.getValueType())
+                self.store.preparePersistNode(node.valuenode,node.getValueType(),node.templatenode)
 
     def checkCondition(self,nodeCondition,ownernode,ownstorename=None):
         """Checks whether the condition specified by the specified XML "conditon" node
@@ -2447,7 +2612,7 @@ class TypedStore(common.referencedobject):
         else:
             self.root.copyFrom(self.defaultstore.root,replace=False)
             
-    def validate(self,nodepaths=None,usedefault=True,repair=0):
+    def validate(self,nodepaths=None,usedefault=True,repair=0,callback=None):
         errors = []
 
         # Convert list of node paths into list of references to nodes.
@@ -2457,14 +2622,15 @@ class TypedStore(common.referencedobject):
             nodes = [self[nodepath] for nodepath in nodepaths]
             
         # Build relevant subsets of node list.
-        filenodes,selectnodes,emptynodes,intnodes,floatnodes = [],[],[],[],[]
+        customnodes,selectnodes,emptynodes,intnodes,floatnodes = [],[],[],[],[]
         for node in nodes:
             if not node.canHaveValue(): continue
             type = node.getValueType()
-            if node.getValue(usedefault=usedefault)==None:
+            value = node.getValue(usedefault=usedefault)
+            if value==None:
                 emptynodes.append(node)
-            elif type=='file':
-                filenodes.append(node)
+            elif isinstance(value,Store.DataType):
+                customnodes.append(node)
             elif type=='select':
                 selectnodes.append(node)
             elif type=='int':
@@ -2478,12 +2644,14 @@ class TypedStore(common.referencedobject):
             errors.append('variable "%s" has not been set.' % node.getText(1))
 
         # Find used file nodes that have not been supplied with data.
-        for node in filenodes:
-            if node.isHidden(): continue
+        visiblecustomnodes = [node for node in customnodes if not node.isHidden()]
+        progslicer = common.ProgressSlicer(callback,len(visiblecustomnodes))
+        for node in visiblecustomnodes:
+            progslicer.nextStep('validating '+node.getText(detail=1))
             value = node.getValue(usedefault=usedefault)
-            if not value.isValid():
-                errors.append('variable "%s" has not been set.' % node.getText(1))
-            
+            if not value.validate(callback=progslicer.getStepCallback()):
+                errors.append('variable "%s" is invalid.' % node.getText(1))
+
         # Find nodes of type "select" that have been set to an invalid (non-existing) option.
         for node in selectnodes:
             value = node.getValue(usedefault=usedefault)
@@ -2705,9 +2873,14 @@ class TypedStore(common.referencedobject):
         
         If the version of the XML file does not match the version of the store, conversion
         is attempted."""
-        if not os.path.isfile(path):
-            raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
-        valuedom = xml.dom.minidom.parse(path)
+        if isinstance(path,DataFile):
+            f = path.getAsReadOnlyFile()
+            valuedom = xml.dom.minidom.parse(f)
+            f.close()
+        else:
+            if not os.path.isfile(path):
+                raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
+            valuedom = xml.dom.minidom.parse(path)
 
         version = valuedom.documentElement.getAttribute('version')
         if self.version!=version:
@@ -2780,6 +2953,15 @@ class TypedStore(common.referencedobject):
             progslicer.nextStep('adding data streams')
             self.persist(progslicer.getStepCallback())
             del self.store.context['donotclaimtarget']
+            
+            # Add any other objects that were linked to the store by a node
+            # of custom type (e.g. DataFileEx)
+            for name,linkedfile in self.store.context.get('linkedobjects',{}).iteritems():
+                assert isinstance(linkedfile,TypedStore), 'Do not know how to add linked file %s of type %s to container.' % (name,str(type(linkedfile)))
+                df = DataFileXmlNode(linkedfile.store.xmldocument)
+                df_added = container.addItem(df,name)
+                df_added.release()
+                df.release()
 
             # Add XML store to the container
             progslicer.nextStep('saving configuration')
