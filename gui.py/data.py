@@ -183,31 +183,31 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
             
     @classmethod
     def createTypedStore(ownclass):
-        return xmlstore.TypedStore(os.path.join(Result.schemadirname,'../datafilecache/gotmgui.xml'))
+        return xmlstore.TypedStore(os.path.join(common.getDataRoot(),'schemas/datafilecache/gotmgui.xml'))
 
     linkedfilename = 'linkedfile_metadata.xml'
     rootnodename = 'DataFile'
 
     @classmethod
-    def createObject(ownclass,datafile,valuenode,context,infonode):
+    def createObject(ownclass,datafile,context,infonode,nodename):
         finfo = common.findDescendantNode(infonode,['fileinfo'])
         assert finfo!=None, 'Node "%s" lacks "fileinfo" attribute.' % node
         store = None
         type = finfo.getAttribute('type')
         if type=='pointsintime':
-            store = LinkedMatrix(datafile,valuenode,context,infonode,type=0,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'}},dimensionorder=('time',))
+            store = LinkedMatrix(datafile,context,infonode,nodename,type=0,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'}},dimensionorder=('time',))
         elif type=='profilesintime':
-            store = LinkedProfilesInTime(datafile,valuenode,context,infonode,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}},dimensionorder=('time','z'))
+            store = LinkedProfilesInTime(datafile,context,infonode,nodename,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}},dimensionorder=('time','z'))
         elif type=='singleprofile' or type=='verticalgrid':
-            store = LinkedMatrix(datafile,valuenode,context,infonode,type=1)
+            store = LinkedMatrix(datafile,context,infonode,nodename,type=1)
         else:
             assert False, 'Linked file has unknown type "%s".' % node.type
         return store
-
-    def __init__(self,datafile,valuenode,context,infonode,dimensions={},dimensionorder=()):
+        
+    def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=()):
     
         PlotVariableStore.__init__(self)
-        xmlstore.DataFileEx.__init__(self,datafile,valuenode,context,infonode)
+        xmlstore.DataFileEx.__init__(self,datafile,context,infonode,nodename)
 
         finfo = common.findDescendantNode(infonode,['fileinfo'])
         self.nodeid = infonode.getAttribute('name')
@@ -220,7 +220,7 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
                     longname = ch.getAttribute('label')
                     unit = ch.getAttribute('unit')
                     name = longname
-                    self.vardata.append([name,longname,unit])
+                    self.vardata.append((name,longname,unit))
                     
         # Copy data from supplied dimensions
         self.dimensions = {}
@@ -273,7 +273,7 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
         if clearfile: self.setDataFile(None,cleardata=False)
         if self.data==None: return
         
-        print '%s - caching validation result and dimension boundaries.' % self.nodeid
+        #print '%s - caching validation result and dimension boundaries.' % self.nodeid
         metadata = self.getMetaData()
         for dimname in self.getDimensionNames():
             dimnode = metadata['Dimensions'].getChildById('Dimension',id=dimname,create=True)
@@ -321,7 +321,7 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
             
         if metadata['Valid'].getValue()==False: return None
 
-        print '%s - using cached bounds for %s.' % (self.nodeid,dimname)
+        #print '%s - using cached bounds for %s.' % (self.nodeid,dimname)
         if dimnode['IsTimeDimension'].getValue():
             minval = dimnode['MinimumTime'].getValue()
             maxval = dimnode['MaximumTime'].getValue()
@@ -342,7 +342,7 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
                 pass
             valid = metadata['Valid'].getValue()
             assert valid!=None, 'Information on validity of data file %s not in data file cache.' % self.nodeid
-        print '%s - using cached validation result.' % self.nodeid
+        #print '%s - using cached validation result.' % self.nodeid
         return valid
     
     def getVariableNames(self):
@@ -416,8 +416,8 @@ class LinkedMatrix(LinkedFileVariableStore):
             slice.generateStaggered()
             return slice
 
-    def __init__(self,datafile,valuenode,context,infonode,type=0,dimensions={},dimensionorder=()):
-        LinkedFileVariableStore.__init__(self,datafile,valuenode,context,infonode,dimensions,dimensionorder)
+    def __init__(self,datafile,context,infonode,nodename,type=0,dimensions={},dimensionorder=()):
+        LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder)
         self.variableclass = self.LinkedMatrixVariable
         assert len(self.dimensions)<=1, 'Linkedmatrix objects can only be used with 0 or 1 coordinate dimensions, but %i are present.' % len(self.dimensions)
         self.type = type
@@ -656,8 +656,8 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                     
             return varslice
 
-    def __init__(self,datafile,valuenode,context,infonode,dimensions=[],dimensionorder=()):
-        LinkedFileVariableStore.__init__(self,datafile,valuenode,context,infonode,dimensions,dimensionorder)
+    def __init__(self,datafile,context,infonode,nodename,dimensions=[],dimensionorder=()):
+        LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder)
         self.variableclass = self.LinkedProfilesInTimeVariable
         
     def setDataFile(self,datafile=None,cleardata=True):
@@ -1140,11 +1140,6 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
 #   Contains a link to the scenario from which the result was created (if available)
 class Result(NetCDFStore):
 
-    schemadirname = 'schemas/result'
-    @staticmethod
-    def setRoot(rootpath):
-        Result.schemadirname = os.path.join(rootpath,'schemas/result')
-
     def __init__(self):
         NetCDFStore.__init__(self)
         
@@ -1157,7 +1152,7 @@ class Result(NetCDFStore):
         self.returncode = 0
         self.errormessage = None
         
-        self.store = xmlstore.TypedStore(os.path.join(Result.schemadirname,'gotmgui.xml'))
+        self.store = xmlstore.TypedStore(os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml'))
         self.wantedscenarioversion = scenario.guiscenarioversion
         
         self.path = None

@@ -589,16 +589,20 @@ class DataFileEx(Store.DataType):
         specified in the context dictionary.
         """
         datafile = DataFile.load(valuenode,context,infonode)
-        return ownclass.createObject(datafile,valuenode,context,infonode)
+        return ownclass.createObject(datafile,context,infonode,valuenode.localName)
         
     @classmethod
-    def createObject(ownclass,datafile,valuenode,context,infonode):
+    def createObject(ownclass,datafile,context,infonode,nodename):
         """Returns a DataFileEx object from a data file, XML node with
         metadata and (optionally) a node in an XML schema, specified
         additional information on the data file.
         """
-        return ownclass(datafile,valuenode,context,infonode)
+        return ownclass(datafile,context,infonode,nodename)
     
+    @classmethod
+    def fromNode(ownclass,node,datafile=None,context=None):
+        return ownclass.createObject(datafile,context,node.templatenode,node.getId())
+
     @classmethod    
     def createTypedStore(ownclass):
         """Returns a TypedStore object to be used for the metadata belonging to
@@ -609,12 +613,13 @@ class DataFileEx(Store.DataType):
     linkedfilename = None
     rootnodename = None
 
-    def __init__(self,datafile=None,valuenode=None,context=None,infonode=None):
+    def __init__(self,datafile=None,context=None,infonode=None,nodename=None):
         Store.DataType.__init__(self)
         
-        self.nodename = valuenode.localName
+        self.nodename = nodename
         
         # Create a global store for metadata if it does not exist yet.
+        if context==None: context = {}
         linkedfiles = context.setdefault('linkedobjects',{})
         if self.linkedfilename not in linkedfiles:
             # Store for metadata does not exist yet: create it.

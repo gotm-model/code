@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.24 2007-10-08 08:39:50 jorn Exp $
+#$Id: visualizer.py,v 1.25 2008-01-29 07:44:42 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
-import commonqt, data, report
+import common, commonqt, data, report
 
 import sys,datetime
 import xml.sax
@@ -371,7 +371,7 @@ class PageVisualize(commonqt.WizardPage):
 
         self.result = parent.getProperty('result')
         
-        self.treestore = self.result.getVariableTree('schemas/outputtree.xml')
+        self.treestore = self.result.getVariableTree(os.path.join(common.getDataRoot(),'schemas/outputtree.xml'))
         self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True)
 
         self.treeVariables = commonqt.ExtendedTreeView(self)

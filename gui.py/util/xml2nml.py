@@ -11,9 +11,6 @@ try:
 finally: 
     sys.path = path
 
-scenario.Scenario.setRoot(gotmguiroot)
-data.Result.setRoot(gotmguiroot)
-
 def main():
     copydata = not common.getSwitchArgument('-nd')
     comments = not common.getSwitchArgument('-nc')

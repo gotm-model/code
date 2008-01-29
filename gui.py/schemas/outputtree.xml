@@ -12,14 +12,13 @@
 		<element name="nus"/>
 		
 		<element name="buoyancy" label="buoyancy">
-			<element name="G"/>
+      <condition type="or" source="scenario">
+        <condition type="ne" variable="/obs/sprofile" value="0"/>
+        <condition type="ne" variable="/obs/tprofile" value="0"/>
+      </condition>
+      <element name="G"/>
 			<element name="NN"/>
-			<element name="NN_obs">
-				<condition type="or" source="scenario">
-					<condition type="ne" variable="/obs/sprofile" value="0"/>
-					<condition type="ne" variable="/obs/tprofile" value="0"/>
-				</condition>
-			</element>
+			<element name="NN_obs"/>
 			<element name="kb"/>
 			<element name="Pb"/>
 			<element name="epsb"/>
@@ -39,12 +38,21 @@
 		</element>
 	</element>
 	<element name="tracers" label="tracers">
-		<element name="temp"/>
-		<element name="temp_obs">
+    <condition type="or" source="scenario">
+      <condition type="ne" variable="/obs/sprofile"   value="0"/>
+      <condition type="ne" variable="/obs/tprofile"   value="0"/>
+      <condition type="ne" variable="/obs/o2_profile" value="0"/>
+    </condition>
+    <element name="temp">
+      <condition type="ne" variable="/obs/tprofile" value="0" source="scenario"/>
+    </element>
+    <element name="temp_obs">
 			<condition type="ne" variable="/obs/tprofile" value="0" source="scenario"/>
 		</element>
-		<element name="salt"/>
-		<element name="salt_obs">
+		<element name="salt">
+      <condition type="ne" variable="/obs/sprofile" value="0" source="scenario"/>
+    </element>
+    <element name="salt_obs">
 			<condition type="ne" variable="/obs/sprofile" value="0" source="scenario"/>
 		</element>
 		<element name="o2_obs">

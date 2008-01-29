@@ -259,13 +259,14 @@ class VariableFlat(VariableReduceDimension):
         newslice.coords[self.inewtargetdim] = newtargetcoords
         newslice.data = newdata
         return newslice
+
+class FigureProperties(xmlstore.TypedStore):
+
+    def __init__(self,valueroot=None,adddefault = True):
+        schemadom = os.path.join(common.getDataRoot(),'schemas/figure/gotmgui.xml')
+        xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
         
 class Figure(common.referencedobject):
-
-    schemadirname = 'schemas/figure'
-    @staticmethod
-    def setRoot(rootpath):
-        Figure.schemadirname = os.path.join(rootpath,'schemas/figure')
 
     def __init__(self,figure=None,size=(10,8),defaultfont=None):
         common.referencedobject.__init__(self)
@@ -284,14 +285,14 @@ class Figure(common.referencedobject):
         self.canvas = figure.canvas
 
         # Create store for the explicitly set properties
-        self.properties = xmlstore.TypedStore(os.path.join(Figure.schemadirname,'gotmgui.xml'))
+        self.properties = FigureProperties()
         self.propertiesinterface = self.properties.getInterface()
         self.propertiesinterface.processDefaultChange = -1
         self.propertiesinterface.connect('afterChange',self.onPropertyChanged)
         self.propertiesinterface.connect('afterStoreChange',self.onPropertyStoreChanged)
         
         # Create store for property defaults
-        self.defaultproperties = xmlstore.TypedStore(os.path.join(Figure.schemadirname,'gotmgui.xml'))
+        self.defaultproperties = FigureProperties()
 
         # Set some default properties.
         self.defaultproperties['FontName'       ].setValue(defaultfont)

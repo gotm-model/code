@@ -10,9 +10,6 @@ import os, shutil, re, datetime
 
 class Scenario(xmlstore.TypedStore):
 
-    defaultdirname = 'defaultscenarios'
-    schemadirname = 'schemas/scenario'
-
     storefilename = 'scenario.xml'
     storetitle = 'GOTM scenario'
 
@@ -20,24 +17,19 @@ class Scenario(xmlstore.TypedStore):
         xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
 
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
-        
-    @staticmethod
-    def setRoot(rootpath):
-        Scenario.defaultdirname = os.path.join(rootpath,Scenario.defaultdirname)
-        Scenario.schemadirname  = os.path.join(rootpath,Scenario.schemadirname)
 
     schemadict = None
     @staticmethod
     def getDefaultSchemas():
         if Scenario.schemadict==None:
-            Scenario.schemadict = xmlstore.ShortcutDictionary.fromDirectory(Scenario.schemadirname)
+            Scenario.schemadict = xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario'))
         return Scenario.schemadict
 
     defaultdict = None
     @staticmethod
     def getDefaultValues():
         if Scenario.defaultdict==None:
-            Scenario.defaultdict = xmlstore.ShortcutDictionary.fromDirectory(Scenario.defaultdirname)
+            Scenario.defaultdict = xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios'))
         return Scenario.defaultdict
 
     @staticmethod
@@ -101,6 +93,7 @@ class Scenario(xmlstore.TypedStore):
         # (these are the same, unless prototype namelist files are used)
         filelist = container.listFiles()
         nmlfilelist = nmlcontainer.listFiles()
+        datafilecontext = {'container':container}
 
         # Commonly used regular expressions (for parsing strings and datetimes).
         strre = re.compile('^([\'"])(.*?)\\1$')
@@ -227,10 +220,11 @@ class Scenario(xmlstore.TypedStore):
                     elif vartype=='gotmdatafile':
                         for fn in filelist:
                             if fn==val or fn.endswith('/'+val):
-                                val = container.getItem(fn)
+                                df = container.getItem(fn)
                                 break
                         else:
-                            val = xmlstore.DataFile()
+                            df = xmlstore.DataFile()
+                        val = data.LinkedFileVariableStore.fromNode(listchild,datafile=df,context=datafilecontext)
 
                     listchild.setValue(val)
                 if strict and childindex<len(filechild.children):

@@ -1,6 +1,6 @@
-#$Id: common.py,v 1.36 2008-01-28 07:50:47 jorn Exp $
+#$Id: common.py,v 1.37 2008-01-29 07:44:42 jorn Exp $
 
-import datetime,time,sys,xml.dom.minidom
+import datetime,time,sys,os.path,xml.dom.minidom
 import matplotlib.dates,matplotlib.numerix,pytz
 
 class referencedobject:
@@ -19,6 +19,16 @@ class referencedobject:
         
     def unlink(self):
         pass
+        
+dataroot = None
+def setDataRoot(path):
+    global dataroot
+    dataroot = path
+def getDataRoot():
+    global dataroot
+    if dataroot==None:
+        dataroot = os.path.dirname(os.path.realpath(__file__))
+    return dataroot
 
 # ------------------------------------------------------------------------------------------
 # Date-time parsing variables and functions
