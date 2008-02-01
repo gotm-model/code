@@ -99,137 +99,147 @@ class Scenario(xmlstore.TypedStore):
         strre = re.compile('^([\'"])(.*?)\\1$')
         datetimere = re.compile('(\d\d\d\d)[/\-](\d\d)[/\-](\d\d) (\d\d):(\d\d):(\d\d)')
 
-        for mainchild in self.root.children:
-            # If we are using prototypes, all namelist files are available, but not all contain
-            # values; then, just skip namelist files that are disabled by settings in the preceding
-            # namelists.
-            if protodir!=None and mainchild.isHidden(): continue
-            
-            # Get name (excl. extension) for the namelist file.
-            nmlfilename = mainchild.getId()
+        try:
+            for mainchild in self.root.children:
+                # If we are using prototypes, all namelist files are available, but not all contain
+                # values; then, just skip namelist files that are disabled by settings in the preceding
+                # namelists.
+                if protodir!=None and mainchild.isHidden(): continue
+                
+                # Get name (excl. extension) for the namelist file.
+                nmlfilename = mainchild.getId()
 
-            assert not mainchild.canHaveValue(), 'Found non-folder node with id %s below root, where only folders are expected.' % nmlfilename
+                assert not mainchild.canHaveValue(), 'Found non-folder node with id %s below root, where only folders are expected.' % nmlfilename
 
-            cursubs = globalsubs
-            if protodir==None:
-                # Normal namelist file
-                fullnmlfilename = nmlfilename+self.namelistextension
-            else:
-                # Prototype namelist in which values will be substituted.
-                fullnmlfilename = nmlfilename+'.proto'
-
-                # Load the relevant value substitutions (if any).
-                df = container.getItem(nmlfilename+'.values')
-                if df!=None:
-                    df_file = df.getAsReadOnlyFile()
-                    cursubs = [namelist.NamelistSubstitutions(df_file)]
-                    df_file.close()
-                    df.release()
-
-            # Find and parse the namelist file.
-            for fn in nmlfilelist:
-                if fn==fullnmlfilename or fn.endswith('/'+fullnmlfilename):
-                    fullnmlfilename = fn
-                    break
-            else:
-                if mainchild.templatenode.hasAttribute('optional'):
-                    # This namelist file is missing but not required. Use default values and continue
-                    if self.defaultstore!=None:
-                        mainchild.copyFrom(self.defaultstore.mapForeignNode(mainchild))
-                    continue
-                elif mainchild.isHidden():
-                    # This namelist file is missing but will not be used. Thus no worries: continue
-                    continue
+                cursubs = globalsubs
+                if protodir==None:
+                    # Normal namelist file
+                    fullnmlfilename = nmlfilename+self.namelistextension
                 else:
-                    raise namelist.NamelistParseException('Namelist file "%s" is not present.' % fullnmlfilename,None,None,None)
-            df = nmlcontainer.getItem(fullnmlfilename)
-            df_file = df.getAsReadOnlyFile()
-            nmlfile = namelist.NamelistFile(df_file,cursubs)
-            df_file.close()
-            df.release()
+                    # Prototype namelist in which values will be substituted.
+                    fullnmlfilename = nmlfilename+'.proto'
 
-            # Loop over all nodes below the root (each node represents a namelist file)
-            for filechild in mainchild.children:
-                # Get name of the expected namelist.
-                listname = filechild.getId()
+                    # Load the relevant value substitutions (if any).
+                    df = container.getItem(nmlfilename+'.values')
+                    if df!=None:
+                        df_file = df.getAsReadOnlyFile()
+                        cursubs = [namelist.NamelistSubstitutions(df_file)]
+                        df_file.close()
+                        df.release()
 
-                assert not filechild.canHaveValue(), 'Found non-folder node with id %s below branch %s, where only folders are expected.' % (listname,nmlfilename)
-
-                # Parse the next namelist.
-                nmlist = nmlfile.parseNextNamelist(expectedlist=listname)
-
-                childindex = 0
-
-                for (foundvarname,vardata) in nmlist:
-
-                    if strict:
-                        # Strict parsing: all variables must appear once and in predefined order.
-                        if childindex>=len(filechild.children):
-                            raise namelist.NamelistParseException('Encountered variable "%s" where end of namelist was expected.' % (foundvarname,),fullnmlfilename,listname,None)
-                        listchild = filechild.children[childindex]
-                        varname = listchild.getId()
-                        if varname.lower()!=foundvarname.lower():
-                            raise namelist.NamelistParseException('Found variable "%s" where "%s" was expected.' % (foundvarname,varname),fullnmlfilename,listname,varname)
-                        childindex += 1
+                # Find and parse the namelist file.
+                for fn in nmlfilelist:
+                    if fn==fullnmlfilename or fn.endswith('/'+fullnmlfilename):
+                        fullnmlfilename = fn
+                        break
+                else:
+                    if mainchild.templatenode.hasAttribute('optional'):
+                        # This namelist file is missing but not required. Use default values and continue
+                        if self.defaultstore!=None:
+                            mainchild.copyFrom(self.defaultstore.mapForeignNode(mainchild))
+                        continue
+                    elif mainchild.isHidden():
+                        # This namelist file is missing but will not be used. Thus no worries: continue
+                        continue
                     else:
-                        # Loose parsing: variables can appear multiple times or not at all, and do not need to appear in order.
-                        for listchild in filechild.children:
+                        raise namelist.NamelistParseException('Namelist file "%s" is not present.' % fullnmlfilename,None,None,None)
+                df = nmlcontainer.getItem(fullnmlfilename)
+                df_file = df.getAsReadOnlyFile()
+                nmlfile = namelist.NamelistFile(df_file,cursubs)
+                df_file.close()
+                df.release()
+
+                # Loop over all nodes below the root (each node represents a namelist file)
+                for filechild in mainchild.children:
+                    # Get name of the expected namelist.
+                    listname = filechild.getId()
+
+                    assert not filechild.canHaveValue(), 'Found non-folder node with id %s below branch %s, where only folders are expected.' % (listname,nmlfilename)
+
+                    # Parse the next namelist.
+                    nmlist = nmlfile.parseNextNamelist(expectedlist=listname)
+
+                    childindex = 0
+
+                    for (foundvarname,vardata) in nmlist:
+
+                        if strict:
+                            # Strict parsing: all variables must appear once and in predefined order.
+                            if childindex>=len(filechild.children):
+                                raise namelist.NamelistParseException('Encountered variable "%s" where end of namelist was expected.' % (foundvarname,),fullnmlfilename,listname,None)
+                            listchild = filechild.children[childindex]
                             varname = listchild.getId()
-                            if varname.lower()==foundvarname.lower(): break
+                            if varname.lower()!=foundvarname.lower():
+                                raise namelist.NamelistParseException('Found variable "%s" where "%s" was expected.' % (foundvarname,varname),fullnmlfilename,listname,varname)
+                            childindex += 1
                         else:
-                            raise namelist.NamelistParseException('Encountered variable "%s", which should not be present in this namelist.' % (foundvarname,),fullnmlfilename,listname,varname)
+                            # Loose parsing: variables can appear multiple times or not at all, and do not need to appear in order.
+                            for listchild in filechild.children:
+                                varname = listchild.getId()
+                                if varname.lower()==foundvarname.lower(): break
+                            else:
+                                raise namelist.NamelistParseException('Encountered variable "%s", which should not be present in this namelist.' % (foundvarname,),fullnmlfilename,listname,varname)
 
-                    vartype = listchild.getValueType()
+                        vartype = listchild.getValueType()
 
-                    if vartype=='string' or vartype=='datetime' or vartype=='gotmdatafile':
-                        strmatch = strre.match(vardata)
-                        if strmatch==None:
-                            raise namelist.NamelistParseException('Variable is not a string. Data: %s' % vardata,fullnmlfilename,listname,varname)
-                        val = strmatch.group(2)
-                    elif vartype=='int':
-                        try:
-                            val = int(vardata)
-                        except ValueError:
-                            raise namelist.NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
-                    elif vartype=='float':
-                        try:
-                            val = float(vardata)
-                        except ValueError:
-                            raise namelist.NamelistParseException('Variable is not a floating point value. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
-                    elif vartype=='bool':
-                        if   vardata[0].lower()=='f' or vardata[0:2].lower()=='.f':
-                            val = False
-                        elif vardata[0].lower()=='t' or vardata[0:2].lower()=='.t':
-                            val = True
+                        if vartype=='string' or vartype=='datetime' or vartype=='gotmdatafile':
+                            strmatch = strre.match(vardata)
+                            if strmatch==None:
+                                raise namelist.NamelistParseException('Variable is not a string. Data: %s' % vardata,fullnmlfilename,listname,varname)
+                            val = strmatch.group(2)
+                        elif vartype=='int':
+                            try:
+                                val = int(vardata)
+                            except ValueError:
+                                raise namelist.NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
+                        elif vartype=='float':
+                            try:
+                                val = float(vardata)
+                            except ValueError:
+                                raise namelist.NamelistParseException('Variable is not a floating point value. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
+                        elif vartype=='bool':
+                            if   vardata[0].lower()=='f' or vardata[0:2].lower()=='.f':
+                                val = False
+                            elif vardata[0].lower()=='t' or vardata[0:2].lower()=='.t':
+                                val = True
+                            else:
+                                raise namelist.NamelistParseException('Variable is not a boolean. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
+                        elif vartype=='select':
+                            try:
+                                val = int(vardata)
+                            except ValueError:
+                                raise namelist.NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
                         else:
-                            raise namelist.NamelistParseException('Variable is not a boolean. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
-                    elif vartype=='select':
-                        try:
-                            val = int(vardata)
-                        except ValueError:
-                            raise namelist.NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
-                    else:
-                        raise Exception('Unknown variable type. I do not know how to parse a variable with type "%s" from namelists.' % vartype)
-                    
-                    if vartype=='datetime':
-                        datetimematch = datetimere.match(val)
-                        if datetimematch==None:
-                            raise namelist.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',fullnmlfilename,listname,varname)
-                        refvals = map(int,datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                        val = common.dateTimeFromTuple(refvals)
-                    elif vartype=='gotmdatafile':
-                        for fn in filelist:
-                            if fn==val or fn.endswith('/'+val):
-                                df = container.getItem(fn)
-                                break
-                        else:
-                            df = xmlstore.DataFile()
-                        val = data.LinkedFileVariableStore.fromNode(listchild,datafile=df,context=datafilecontext)
+                            raise Exception('Unknown variable type. I do not know how to parse a variable with type "%s" from namelists.' % vartype)
+                        
+                        if vartype=='datetime':
+                            datetimematch = datetimere.match(val)
+                            if datetimematch==None:
+                                raise namelist.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',fullnmlfilename,listname,varname)
+                            refvals = map(int,datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+                            val = common.dateTimeFromTuple(refvals)
+                        elif vartype=='gotmdatafile':
+                            for fn in filelist:
+                                if fn==val or fn.endswith('/'+val):
+                                    df = container.getItem(fn)
+                                    break
+                            else:
+                                df = xmlstore.DataFile()
+                            val = data.LinkedFileVariableStore.fromNode(listchild,datafile=df,context=datafilecontext)
+                            df.release()
 
-                    listchild.setValue(val)
-                if strict and childindex<len(filechild.children):
-                    lcnames = ['"%s"' % lc.getId() for lc in filechild.children[childindex:]]
-                    raise namelist.NamelistParseException('Variables %s are missing' % ', '.join(lcnames),fullnmlfilename,listname,None)
+                        listchild.setValue(val)
+                        if isinstance(val,common.referencedobject): val.release()
+                        
+                    if strict and childindex<len(filechild.children):
+                        lcnames = ['"%s"' % lc.getId() for lc in filechild.children[childindex:]]
+                        raise namelist.NamelistParseException('Variables %s are missing' % ', '.join(lcnames),fullnmlfilename,listname,None)
+        finally:
+            container.release()
+            nmlcontainer.release()
+            if 'linkedobjects' in datafilecontext:
+                for v in datafilecontext['linkedobjects'].itervalues():
+                    v.release()
 
     def writeAsNamelists(self, targetpath, copydatafiles=True, addcomments = False, callback=None):
         print 'Exporting scenario to namelist files...'
@@ -315,6 +325,7 @@ class Scenario(xmlstore.TypedStore):
                                     if not varval.validate():
                                         raise Exception('No valid custom data set for variable "%s" in namelist "%s".' % (varname,listname))
                                     varval.saveToFile(os.path.join(targetpath,filename))
+                                varval.release()
                                 varval = '\''+filename+'\''
                             elif vartype=='int' or vartype=='select':
                                 varval = str(varval)
@@ -443,14 +454,15 @@ class Scenario(xmlstore.TypedStore):
             if validatedatafiles and stop!=None:
                 for fn in filenodes:
                     value = fn.getValue(usedefault=usedefault)
-                    if not value.validate(): continue
-                    for dimname in value.getDimensionNames():
-                        if value.getDimensionInfo(dimname)['datatype']=='datetime':
-                            dimrange = value.getDimensionRange(dimname)
-                            if dimrange==None: continue
-                            mintime,maxtime = dimrange
-                            if stop>maxtime and maxtime!=mintime:
-                                errors.append('Input data series "%s" finishes at %s, before the simulation is set to end (%s).' % (fn.getText(detail=1),maxtime.strftime(common.datetime_displayformat),stop.strftime(common.datetime_displayformat)))
+                    if value.validate():
+                        for dimname in value.getDimensionNames():
+                            if value.getDimensionInfo(dimname)['datatype']=='datetime':
+                                dimrange = value.getDimensionRange(dimname)
+                                if dimrange==None: continue
+                                mintime,maxtime = dimrange
+                                if stop>maxtime and maxtime!=mintime:
+                                    errors.append('Input data series "%s" finishes at %s, before the simulation is set to end (%s).' % (fn.getText(detail=1),maxtime.strftime(common.datetime_displayformat),stop.strftime(common.datetime_displayformat)))
+                    value.release()
                 
         return errors
 
@@ -514,6 +526,7 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                 oldfile = source['airsea/airsea/heatflux_file'].getValue()
                 datold = oldfile.getData(progslicer.getStepCallback())
                 times,swr,heat = datold[0],datold[1].take((0,),1),datold[1].take((1,),1)
+                oldfile.release()
                 
                 # Save shortwave radiation
                 progslicer.nextStep('saving %s' % target['airsea/airsea/swr_file'].getText(detail=1))
@@ -528,6 +541,7 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                     swrnew = target['airsea/airsea/swr_file'].getValue()
                     swrnew.setData([times,swr])
                     target['airsea/airsea/swr_file'].setValue(swrnew)
+                    swrnew.release()
                     
                 # Save heat flux
                 progslicer.nextStep('saving %s' % target['airsea/airsea/heatflux_file'].getText(detail=1))
@@ -542,6 +556,7 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                     heatnew = target['airsea/airsea/heatflux_file'].getValue()
                     heatnew.setData([times,heat])
                     target['airsea/airsea/heatflux_file'].setValue(heatnew)
+                    heatnew.release()
 Scenario.addConvertor(Convertor_gotm_4_0_0_to_gotm_4_1_0)
 
 class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
@@ -602,6 +617,11 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
                 mergeddata.setData([times,numpy.concatenate((swr,heat),1)])
                 target['airsea/airsea/heat_method'].setValue(2)
                 target['airsea/airsea/heatflux_file'].setValue(mergeddata)
+
+                # Release data files.
+                mergeddata.release()
+                if swrdata !=None: swrdata.release()
+                if heatdata!=None: heatdata.release()
                     
 Scenario.addConvertor(Convertor_gotmgui_4_1_0_to_gotm_4_0_0)
 

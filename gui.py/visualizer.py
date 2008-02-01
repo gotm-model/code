@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.25 2008-01-29 07:44:42 jorn Exp $
+#$Id: visualizer.py,v 1.26 2008-02-01 16:57:41 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -200,6 +200,12 @@ class ConfigureReportWidget(QtGui.QWidget):
 
     def onReportProgressed(self,progressed,status):
         self.emit(QtCore.SIGNAL('onReportProgressed'),progressed,status)
+
+    def destroy(self,destroyWindow = True,destroySubWindows = True):
+        self.factory.unlink()
+        self.model.unlink()
+        self.treestore.release()
+        QtGui.QWidget.destroy(self,destroyWindow,destroySubWindows)
         
 class PageReportGenerator(commonqt.WizardPage):
     def __init__(self,parent=None):
@@ -256,7 +262,6 @@ class PageReportGenerator(commonqt.WizardPage):
             if ret:
                 self.result.store['ReportSettings'].copyFrom(self.report.store.root,replace=True)
             return ret
-        self.report.release()
         return True
 
     def reportProgressed(self,progressed,status):
@@ -271,6 +276,11 @@ class PageReportGenerator(commonqt.WizardPage):
         self.progressbar.setValue(round(progressed*100))
         self.labStatus.setText(status)
         QtGui.qApp.processEvents()
+
+    def destroy(self,destroyWindow = True,destroySubWindows = True):
+        self.report.release()
+        self.reportwidget.destroy(destroyWindow,destroySubWindows)
+        commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
 
 class PageSave(commonqt.WizardPage):
 
@@ -429,6 +439,13 @@ class PageVisualize(commonqt.WizardPage):
     def saveFigureSettings(self):
         if self.varpath!=None and self.figurepanel.figure.hasChanged():
             self.result.setFigure('result/'+self.varpath,self.figurepanel.figure.properties)
+
+    def destroy(self,destroyWindow = True,destroySubWindows = True):
+        self.figurepanel.destroy()
+        self.figurepanel = None
+        self.treestore.release()
+        self.treestore = None
+        commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
 
 def main():
     # Debug info

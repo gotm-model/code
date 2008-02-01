@@ -152,9 +152,9 @@ class Report(common.referencedobject):
         
         # Create figure to be used for plotting observations and results.
         if len(inputdata)>0 or len(plotvariables)>0:
-            #mplfigure = matplotlib.figure.Figure(figsize=(figuresize[0]/2.54,figuresize[1]/2.54))
-            #canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(mplfigure)
             fig = plot.Figure(defaultfont=fontname)
+        else:
+            fig = None
         
         # --------------------------------------------------------------
         # Create figures for input data
@@ -199,6 +199,9 @@ class Report(common.referencedobject):
                 figurestable = createtable(xmldocument,tds,columncount)
                 nodeParent.insertBefore(header,nodePreceding)
                 nodeParent.insertBefore(figurestable,nodePreceding)
+                
+                store.release()
+        inputdata = None
 
         # --------------------------------------------------------------
         # Create figures for result variables
@@ -243,6 +246,9 @@ class Report(common.referencedobject):
             figuresnode.parentNode.replaceChild(figurestable,figuresnode)
         elif figuresnode!=None:
             figuresnode.parentNode.removeChild(figuresnode)
+            
+        # Clean-up figure
+        if fig!=None: fig.release()
         
         if callback!=None: callback(istep/steps,'Writing HTML...')
 

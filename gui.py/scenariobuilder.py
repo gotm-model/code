@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.33 2008-01-09 08:04:44 jorn Exp $
+#$Id: scenariobuilder.py,v 1.34 2008-02-01 16:57:41 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -146,7 +146,9 @@ class ScenarioWidget(QtGui.QWidget):
             #emptynodes = scen.root.getEmptyNodes()
             emptynodes = [n for n in scen.root.getEmptyNodes() if not n.isHidden()]
             for node in emptynodes:
-                assert node.getDefaultValue()!=None, 'No value set for "%s", but no default value is available.' % node
+                defval = node.getDefaultValue()
+                assert defval!=None, 'No value set for "%s", but no default value is available.' % node
+                if isinstance(defval,common.referencedobject): defval.release()
             emptycount = len(emptynodes)
             if emptycount>0:
                 QtGui.QMessageBox.information(self,'Scenario is incomplete','In this scenario the following %i variables do not have a value:\n\n%s\n\nThese variables will be set to their default value.' % (emptycount,'\n'.join(['/'.join(n.location) for n in emptynodes])),QtGui.QMessageBox.Ok)
@@ -208,12 +210,14 @@ class ScenarioPage(commonqt.WizardPage):
                 QtGui.QMessageBox.critical(self,'Scenario has not been configured correctly','The following problems remain:\n\n%s' % '\n'.join(errors),QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
                 return False
 
-        self.factory.unlink()
-        
         return True
 
     def isComplete(self):
         return True
+        
+    def destroy(self,destroyWindow = True,destroySubWindows = True):
+        self.factory.unlink()
+        commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
         
 class PageLocation(ScenarioPage):
     

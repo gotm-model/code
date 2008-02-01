@@ -37,7 +37,7 @@ class Store:
     strings, since XML is text-based; strings are converted to and from other
     types (datetime, int, float, bool, etc.) whenever necessary."""
 
-    class DataType(common.referencedobject):
+    class DataType():
         """Abstract class for user data types. Methods "load" and "save" MUST be
         implemented by inheriting classes.
         
@@ -47,7 +47,7 @@ class Store:
         obtain external data files from), and for caching of values.
         """
         def __init__(self):
-            common.referencedobject.__init__(self)
+            pass
         
         @staticmethod
         def load(node,context,template=None):
@@ -65,9 +65,6 @@ class Store:
         def persist(self,node,context):
             """Called when the store is saved to file. It may be used to store additional data
             in the saved store (see again the DataFile object)."""
-            pass
-
-        def unlink(self):
             pass
             
         def validate(self,callback=None):
@@ -157,16 +154,18 @@ class Store:
         information needed by the node should be made available through the
         dictionary present as context attribute of the Store."""
         value = self.getNodeProperty(node,valuetype,infonode=infonode)
-        assert isinstance(value,Store.DataType)
+        assert isinstance(value,Store.DataType), 'preparePersistNode should on be called for nodes of type Store.DataType.'
         value.preparePersist(node,self.context)
+        if isinstance(value,common.referencedobject): value.release()
 
     def persistNode(self,node,valuetype,infonode=None):
         """Saves the node to persistent storage. Additional information needed
         by the node should be made available through the dictionary present as
         context attribute of the Store."""
         value = self.getNodeProperty(node,valuetype,infonode=infonode)
-        assert isinstance(value,Store.DataType)
+        assert isinstance(value,Store.DataType), 'persistNode should only be called for nodes of type Store.DataType.'
         value.persist(node,self.context)
+        if isinstance(value,common.referencedobject): value.release()
 
     def clearNodeProperty(self,node):
         """Removes specified node."""
@@ -187,7 +186,7 @@ class Store:
                 assert valuetype in self.filetypes, 'unknown type "%s" requested.' % valuetype
                 valuetype = self.filetypes[valuetype]
             if not isinstance(value,valuetype): value = valuetype(value)
-        assert not isinstance(value,Store.DataType)
+        assert not isinstance(value,Store.DataType), 'packValue should not be called for values of type Store.DataType.'
         if isinstance(value,datetime.datetime):
             return value.strftime(dateformat)
         elif isinstance(value,bool):
@@ -408,12 +407,13 @@ class DataContainer(common.referencedobject):
         storage. This may involve flushing buffers etc."""
         pass
 
-class DataFile(Store.DataType):
+class DataFile(Store.DataType,common.referencedobject):
     """Abstract Class that encapsulates a data block, which can be a file
     on disk, an item in a zip or tar/gz archive, or a memory block. It can be
     used as data type in the xml stores.
     """
     def __init__(self,name=''):
+        common.referencedobject.__init__(self)
         Store.DataType.__init__(self)
         self.name = None
     
@@ -424,11 +424,11 @@ class DataFile(Store.DataType):
         container (DataContainer instance) should be specified through the context
         dictionary.
         """
-        assert 'container' in context
+        assert 'container' in context, 'container key not present in context dictionary.'
         if 'cache' in context:
             uniquename = DataFile.getUniqueNodeName(node)
             cache = context['cache']
-            if uniquename in cache: return cache[uniquename]
+            if uniquename in cache: return cache[uniquename].addref()
         container = context['container']
         if container==None: return DataFile()
         name = common.getNodeText(node)
@@ -446,7 +446,7 @@ class DataFile(Store.DataType):
         cache = context.setdefault('cache',{})
         uniquename = DataFile.getUniqueNodeName(node)
         if uniquename in cache: cache[uniquename].release()
-        cache[uniquename] = self
+        cache[uniquename] = self.addref()
         if self.name!=None:
             common.setNodeText(node,self.name)
         else:
@@ -464,6 +464,7 @@ class DataFile(Store.DataType):
             print 'Reading "%s" into memory to prevent it from being overwritten.' % self.name
             memdf = DataFileMemory.fromDataFile(self)
             memdf.save(node,context)
+            memdf.release()
 
     def persist(self,node,context):
         """Saves the data file to persistent storage. The container to save to
@@ -478,9 +479,9 @@ class DataFile(Store.DataType):
         df = targetcontainer.addItem(self,newname)
         if context.get('donotclaimtarget',False):
             common.setNodeText(node,df.name)
-            df.release()
         else:
             df.save(node,context)
+        df.release()
 
     @staticmethod
     def getUniqueNodeName(node):
@@ -581,7 +582,7 @@ class DataFile(Store.DataType):
         # wants this, he should do it himself.
         return len(self.getData(textmode=False,readonly=True))
 
-class DataFileEx(Store.DataType):
+class DataFileEx(Store.DataType,common.referencedobject):
     @classmethod
     def load(ownclass,valuenode,context,infonode):
         """Creates a DataFileEx object from the data in the specified XML
@@ -589,7 +590,9 @@ class DataFileEx(Store.DataType):
         specified in the context dictionary.
         """
         datafile = DataFile.load(valuenode,context,infonode)
-        return ownclass.createObject(datafile,context,infonode,valuenode.localName)
+        res = ownclass.createObject(datafile,context,infonode,valuenode.localName)
+        datafile.release()
+        return res
         
     @classmethod
     def createObject(ownclass,datafile,context,infonode,nodename):
@@ -614,6 +617,7 @@ class DataFileEx(Store.DataType):
     rootnodename = None
 
     def __init__(self,datafile=None,context=None,infonode=None,nodename=None):
+        common.referencedobject.__init__(self)
         Store.DataType.__init__(self)
         
         self.nodename = nodename
@@ -683,14 +687,16 @@ class DataFileEx(Store.DataType):
         interesting in this implementation, but might be used in derived
         classes to build the data file "lazily", i.e., only when needed.
         """
-        return self.datafile
+        return self.datafile.addref()
 
     def save(self,node,context):
         """Stores current data to the specified XML node. The data stream
         (DataFile object) is stored by name in the container that is
         specified in the context dictionary.
         """
-        self.getDataFile().save(node,context)
+        df = self.getDataFile()
+        df.save(node,context)
+        df.release()
 
         self.nodename = node.localName
         
@@ -716,10 +722,20 @@ class DataFileEx(Store.DataType):
             self.store = newstore.addref()
 
     def preparePersist(self,node,context):
-        self.getDataFile().preparePersist(node,context)
+        df = self.getDataFile()
+        df.preparePersist(node,context)
+        df.release()
 
     def persist(self,node,context):
-        self.getDataFile().persist(node,context)
+        df = self.getDataFile()
+        df.persist(node,context)
+        df.release()
+        
+    def __str__(self):
+        if self.datafile==None or not self.datafile.isValid():
+            return ''
+        else:
+            return self.datafile.name
         
     def unlink(self):
         self.metadata = None
@@ -1530,7 +1546,7 @@ class TypedStoreInterface:
 
         if tr!=None and hidedefaults:
             isdefault = True
-            if node.canHaveValue() and node.getValue(usedefault=True)!=node.getDefaultValue():
+            if node.canHaveValue() and not node.hasDefaultValue():
                 isdefault = False
             else:
                 for childtr in childtrs:
@@ -1603,7 +1619,7 @@ class TypedStoreInterface:
     def onDefaultChange(self,node,feature):
         assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
-        if self.processDefaultChange==1 or (self.processDefaultChange==0 and node.getValue()==None):
+        if self.processDefaultChange==1 or (self.processDefaultChange==0 and not node.hasValue()):
             self.onChange(node,feature)
 
 class Node:
@@ -1688,6 +1704,13 @@ class Node:
             value = self.store.getNodeProperty(self.valuenode,valuetype=valuetype,infonode=self.templatenode)
         if value==None and usedefault: value = self.getDefaultValue()
         return value
+        
+    def hasValue(self):
+        if self.valuenode==None: return False
+        value = self.getValue()
+        if value==None: return False
+        if isinstance(value,common.referencedobject): value.release()
+        return True
 
     def getDefaultValue(self):
         """Returns the default value of the node. This function returns
@@ -1699,6 +1722,14 @@ class Node:
         defaultnode = defaultstore.mapForeignNode(self)
         if defaultnode==None: return None
         return defaultnode.getValue()
+        
+    def hasDefaultValue(self):
+        value = self.getValue()
+        defvalue = self.getDefaultValue()
+        hasdef = (value==defvalue)
+        if isinstance(value,   common.referencedobject): value.release()
+        if isinstance(defvalue,common.referencedobject): defvalue.release()
+        return hasdef
 
     def setValue(self,value):
         """Sets the typed value of the node. Returns True if the value
@@ -1710,14 +1741,15 @@ class Node:
             return
 
         curval = self.getValue()
+        changed = False
         if curval!=value:
             if self.controller.onBeforeChange(self,value):
                 valuetype = self.templatenode.getAttribute('type')
                 if self.valuenode==None: self.createValueNode()
                 changed = self.store.setNodeProperty(self.valuenode,value,valuetype)
                 self.controller.onChange(self,'value')
-                return changed
-        return False
+        if isinstance(curval,common.referencedobject): curval.release()
+        return changed
 
     def clearValue(self,recursive=False,skipreadonly=False,deleteclones=True):
         """Clears the value of the node.
@@ -1771,18 +1803,6 @@ class Node:
                 value = 'Yes'
             else:
                 value = 'No'
-        elif fieldtype=='file':
-            # Return filename only (not the path)
-            if not value.isValid():
-                value = ''
-            else:
-                value = value.name
-        elif fieldtype=='gotmdatafile':
-            # Return filename only (not the path)
-            if value.datafile==None or not value.datafile.isValid():
-                value = ''
-            else:
-                value = value.datafile.name
         elif fieldtype=='select':
             # Get label of currently selected option
             optionsroot = common.findDescendantNode(templatenode,['options'])
@@ -1794,7 +1814,9 @@ class Node:
                         value = ch.getAttribute('label')
                         break
         else:
-            value = unicode(value)
+            strvalue = unicode(value)
+            if isinstance(value,common.referencedobject): value.release()
+            value = strvalue
 
         # Append unit specifier (if available)
         if addunit:
@@ -2157,8 +2179,10 @@ class Node:
         to them, but are capable of having a value.
         """
         res = []
-        if self.canHaveValue() and self.getValue(usedefault=usedefault)==None:
-            res.append(self)
+        if self.canHaveValue():
+            value = self.getValue(usedefault=usedefault)
+            if value==None: res.append(self)
+            if isinstance(value,common.referencedobject): value.release()
         for ch in self.children:
             res += ch.getEmptyNodes()
         return res
@@ -2188,10 +2212,10 @@ class Node:
         """
         # Copy node value (if both source and target can have a value)
         if self.canHaveValue() and sourcenode.canHaveValue():
-            if replace or self.getValue()==None:
+            if replace or not self.hasValue():
                 curval = sourcenode.getValue()
-                if isinstance(curval,Store.DataType): curval.addref()
                 self.setValue(curval)
+                if isinstance(curval,common.referencedobject): curval.release()
 
         # If replacing previous contents, remove optional nodes (with minoccurs=0)
         prevchildname = None
@@ -2260,6 +2284,7 @@ class TypedStore(common.referencedobject):
         
         To use this, the deriving class MUST implement getDefaultValues!
         """
+        import atexit
         if cls==TypedStore: return None
         if name==None: name = 'default'
         if cls.defaultname2scenarios==None: cls.defaultname2scenarios = {}
@@ -2272,6 +2297,7 @@ class TypedStore(common.referencedobject):
             path = cls.getDefaultValues().get(name,None)
             if path==None: return None
             sourcestore = cls.fromXmlFile(path,adddefault=False)
+            atexit.register(TypedStore.release,sourcestore)
             version2store['source'] = sourcestore
             version2store[sourcestore.version] = sourcestore
             if sourcestore.version==version: return sourcestore
@@ -2279,6 +2305,7 @@ class TypedStore(common.referencedobject):
         sourcestore = version2store['source']
         defstore = cls.fromSchemaName(version,adddefault=False)
         sourcestore.convert(defstore)
+        atexit.register(TypedStore.release,defstore)
         version2store[version] = defstore
         return defstore
 
@@ -2326,6 +2353,7 @@ class TypedStore(common.referencedobject):
         self.interfaces = []
 
         self.otherstores = otherstores
+        for v in self.otherstores.itervalues(): v.addref()
 
         # Link to original source (if any)
         self.path = None
@@ -2360,6 +2388,14 @@ class TypedStore(common.referencedobject):
         if self.defaultstore!=None:
             self.defaultstore.release()
             self.defaultstore = None
+
+        # Release any linked objects
+        if self.store!=None and 'linkedobjects' in self.store.context:
+            for v in self.store.context['linkedobjects'].itervalues(): v.release()
+            del self.store.context['linkedobjects']
+            
+        # Release any linked stores
+        for v in self.otherstores.itervalues(): v.release()
 
         self.store = None
         self.interfaces = []
@@ -2582,8 +2618,14 @@ class TypedStore(common.referencedobject):
             refvalue = self.store.unpackValue(nodeCondition.getAttribute('value'),valuetype)
 
             # Compare
-            if condtype=='eq': return (curvalue==refvalue)
-            if condtype=='ne': return (curvalue!=refvalue)
+            if condtype=='eq':
+                result = (curvalue==refvalue)
+            else:
+                result = (curvalue!=refvalue)
+                
+            if isinstance(curvalue,common.referencedobject): curvalue.release()
+            
+            return result
             
         elif condtype=='and' or condtype=='or':
             # Check every child condition.
@@ -2613,7 +2655,9 @@ class TypedStore(common.referencedobject):
         if skiphidden:
             for n in self.root.getEmptyNodes():
                 if not n.isHidden():
-                    n.setValue(n.getDefaultValue())
+                    defvalue = n.getDefaultValue()
+                    n.setValue(defvalue)
+                    if isinstance(defvalue,common.referencedobject): defvalue.release()
         else:
             self.root.copyFrom(self.defaultstore.root,replace=False)
             
@@ -2642,6 +2686,7 @@ class TypedStore(common.referencedobject):
                 intnodes.append(node)
             elif type=='float':
                 floatnodes.append(node)
+            if isinstance(value,common.referencedobject): value.release()
         
         # Find used nodes that have not been set, and lack a default value.
         for node in emptynodes:
@@ -2656,6 +2701,7 @@ class TypedStore(common.referencedobject):
             value = node.getValue(usedefault=usedefault)
             if not value.validate(callback=progslicer.getStepCallback()):
                 errors.append('variable "%s" is invalid.' % node.getText(1))
+            if isinstance(value,common.referencedobject): value.release()
 
         # Find nodes of type "select" that have been set to an invalid (non-existing) option.
         for node in selectnodes:
@@ -2919,10 +2965,11 @@ class TypedStore(common.referencedobject):
             progslicer.nextStep('saving')
             tempstore.saveAll(path, targetversion = targetversion,targetisdir = targetisdir,callback=progslicer.getStepCallback())
 
-            # Convert back: by doing this the original store will be able to reference nodes
-            # (of type "file") in the newly saved file.
-            progslicer.nextStep('loading saved version')
-            tempstore.convert(self,callback=progslicer.getStepCallback())
+            if claim:
+                # Convert back: by doing this the original store will be able to reference nodes
+                # (of type "file") in the newly saved file.
+                progslicer.nextStep('loading saved version')
+                tempstore.convert(self,callback=progslicer.getStepCallback())
 
             # Release the conversion result.
             tempstore.release()
@@ -3085,7 +3132,7 @@ class TypedStore(common.referencedobject):
         for i in self.interfaces: i.onDefaultChange(ownnode,feature)
 
         # If the default is being used: update (visibility of) nodes that depend on the changed node.
-        if ownnode.getValue()==None: self.updateDependantNodes(ownnode)
+        if not ownnode.hasValue(): self.updateDependantNodes(ownnode)
 
     def onChange(self,node,feature):
         """Called internally after a property (e.g., value, unit) of a node has changed.

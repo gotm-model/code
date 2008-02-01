@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.50 2008-01-28 07:50:47 jorn Exp $
+#$Id: commonqt.py,v 1.51 2008-02-01 16:57:41 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -756,12 +756,10 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         else:
             varname = unicode(self.list.itemData(index,QtCore.Qt.UserRole).toString())
             self.panel.plot(varname,self.linkedfile)
-
-    def reject(self):
-        QtGui.QDialog.reject(self)
-        
-    def accept(self):
-        QtGui.QDialog.accept(self)
+            
+    def destroy(self):
+        self.panel.destroy()
+        QtGui.QDialog.destroy(self)
 
 # =======================================================================
 # LinkedFileEditor: a Qt widget for "editing" a linked file. Currently
@@ -775,6 +773,7 @@ class LinkedFileEditor(QtGui.QWidget):
         lo = QtGui.QHBoxLayout()
         
         self.prefix = prefix
+        self.linkedfile = None
 
         self.plotbutton = QtGui.QPushButton(prefix+'...',self)
         lo.addWidget(self.plotbutton)
@@ -785,10 +784,11 @@ class LinkedFileEditor(QtGui.QWidget):
         self.connect(self.plotbutton, QtCore.SIGNAL('clicked()'), self.onPlot)
 
     def setValue(self,value):
-        self.linkedfile = value
+        if self.linkedfile!=None: self.linkedfile.release()
+        self.linkedfile = value.addref()
         
     def value(self):
-        return self.linkedfile
+        return self.linkedfile.addref()
 
     def onPlot(self):
         dialog = LinkedFilePlotDialog(self.linkedfile,title=self.prefix)
@@ -796,6 +796,11 @@ class LinkedFileEditor(QtGui.QWidget):
         if ret == QtGui.QDialog.Accepted:
             self.linkedfile = dialog.linkedfile
             self.emit(QtCore.SIGNAL('onChanged()'))
+        dialog.destroy()
+            
+    def destroy(self):
+        if self.linkedfile!=None: self.linkedfile.release()
+        QtGui.QWidget.destroy(self)
 
 # =======================================================================
 # TimeDeltaEditor
@@ -1169,7 +1174,9 @@ class PropertyDelegate(QtGui.QItemDelegate):
             value = xmlstore.StoreTimeDelta(days=days,seconds=secs,microseconds=musecs)
             editor.setValue(value)
         elif nodetype=='gotmdatafile':
-            editor.setValue(node.getValue(usedefault=True))
+            df = node.getValue(usedefault=True)
+            editor.setValue(df)
+            df.release()
         elif nodetype=='color':
             editor.setColor(QtGui.QColor(value))
         elif nodetype=='fontname':
@@ -1197,7 +1204,9 @@ class PropertyDelegate(QtGui.QItemDelegate):
         elif nodetype=='duration':
             node.setValue(editor.value())
         elif nodetype=='gotmdatafile':
-            node.setValue(editor.value())
+            df = editor.value()
+            node.setValue(df)
+            df.release()
         elif nodetype=='color':
             model.setData(index,QtCore.QVariant(editor.color()))
         elif nodetype=='fontname':
@@ -1357,8 +1366,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 # Return bold font if the node value is set to something different than the default.
                 if self.typedstore.defaultstore==None: QtCore.QVariant()
                 font = QtGui.QFont()
-                val = node.getValue()
-                font.setBold(val!=None and val!=node.getDefaultValue())
+                font.setBold(not node.hasDefaultValue())
                 return QtCore.QVariant(font)
             elif role==QtCore.Qt.DisplayRole:
                 if fieldtype=='color':
@@ -1372,17 +1380,19 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
                 if value==None: return QtCore.QVariant()
                 if fieldtype=='datetime':
                     # First convert Python datetime to QDateTime, then cast to variant.
-                    return QtCore.QVariant(datetime2qtdatetime(value))
+                    result = QtCore.QVariant(datetime2qtdatetime(value))
                 elif fieldtype=='duration':
-                    return QtCore.QVariant([QtCore.QVariant(int(value.days)),QtCore.QVariant(int(value.seconds)),QtCore.QVariant(float(value.microseconds))])
+                    result = QtCore.QVariant([QtCore.QVariant(int(value.days)),QtCore.QVariant(int(value.seconds)),QtCore.QVariant(float(value.microseconds))])
                 elif isinstance(value,xmlstore.DataFile) or isinstance(value,xmlstore.DataFileEx):
                     # Return full path
-                    return QtCore.QVariant(unicode(value))
+                    result = QtCore.QVariant(unicode(value))
                 elif fieldtype=='color':
-                    return QtCore.QVariant(QtGui.QColor(value.red,value.green,value.blue))
+                    result = QtCore.QVariant(QtGui.QColor(value.red,value.green,value.blue))
                 else:
                     # Simply cast the current value to variant.
-                    return QtCore.QVariant(value)
+                    result = QtCore.QVariant(value)
+                if isinstance(value,common.referencedobject): value.release()
+                return result
             else:
                 assert False, 'Don\'t know how to handle role %s.' % role
 
@@ -1524,9 +1534,6 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
             index = self.createIndex(irow,0,node)
             self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
 
-        # For debugging purposes only: write current scenario values to XML
-        # self.typedstore.save('./scenario.xml')
-
     def resetData(self,index,recursive=False):
         node = index.internalPointer()
         node.clearValue(recursive=recursive,skipreadonly=True,deleteclones=False)
@@ -1534,8 +1541,7 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
     def hasDefaultValue(self,index):
         node = index.internalPointer()
         if node==None or not node.canHaveValue(): return True
-        value = node.getValue()
-        return value==None or value==node.getDefaultValue()
+        return node.hasDefaultValue()
 
     def getCheckedNodes(self,index=None):
         if index==None: index = QtCore.QModelIndex()
@@ -1731,7 +1737,7 @@ class Wizard(QtGui.QDialog):
         for propertyname in self.shared.keys():
             self.setProperty(propertyname,None)
 
-    def unlink(self):
+    def destroy(self, destroyWindow = True, destroySubWindows = True):
         self.settings.save()
         self.settings.release()
         self.settings = None
@@ -1740,6 +1746,9 @@ class Wizard(QtGui.QDialog):
                 v.release()
             except:
                 pass
+        if self.currentpage!=None:
+            self.currentpage.destroy()
+        QtGui.QDialog.destroy(self,destroyWindow,destroySubWindows)
 
     def setSequence(self,sequence):
         self.sequence = sequence
@@ -1787,6 +1796,7 @@ class Wizard(QtGui.QDialog):
             self.currentpage.hide()
             layout.removeWidget(self.currentpage)
             self.disconnect(self.currentpage, QtCore.SIGNAL('onCompleteStateChanged()'),self.onCompleteStateChanged)
+            self.currentpage.destroy()
         self.currentpage = newpage
         layout.insertWidget(1,self.currentpage)
         self.currentpage.show()
@@ -1829,6 +1839,9 @@ class WizardPage(QtGui.QWidget):
         label = QtGui.QLabel('<span style="font-size:large;font-weight:bold;">%s</span><hr>%s' % (title,description),self)
         label.setWordWrap(True)
         return label
+        
+    def destroy(self,destroyWindow = True,destroySubWindows = True):
+        QtGui.QWidget.destroy(self,destroyWindow,destroySubWindows)
 
 class WizardDummyPage(WizardPage):
     def doNotShow(self):
@@ -1927,6 +1940,8 @@ class PropertyEditorFactory:
             self.store.disconnectInterface(self.storeinterface)
             self.storeinterface.unlink()
             self.storeinterface = None
+        for editor in self.editors:
+            editor.destroy()
 
     def createEditor(self,location,parent,allowhide=None,**kwargs):
         assert location!=None, 'Specified node is None (non-existent?).'
@@ -2101,7 +2116,8 @@ class PropertyEditor:
         if self.unit!=None:
             self.unit.destroy()
             self.unit = None
-        self.editor.destroy()
+        if isinstance(self.editor,QtGui.QWidget):
+            self.editor.destroy()
         self.editor = None
 
     def updateStore(self):
@@ -2295,6 +2311,7 @@ class PropertyEditor:
                 editor.setValue(value)
             elif nodetype=='gotmdatafile':
                 editor.setValue(value)
+        if isinstance(value,common.referencedobject): value.release()
         self.suppresschangeevent = False
 
     def setNodeData(self,editor,node):
@@ -2326,7 +2343,10 @@ class PropertyEditor:
         elif nodetype=='duration':
             return node.setValue(editor.value())
         elif nodetype=='gotmdatafile':
-            return node.setValue(editor.value())
+            df = editor.value()
+            res = node.setValue(df)
+            df.release()
+            return res
 
 def getFontSubstitute(fontname):
     assert isinstance(fontname,basestring), 'Supplied argument must be a string.'
@@ -2516,8 +2536,6 @@ class FigurePanel(QtGui.QWidget):
 
         self.detachedfigures = []
         
-        self.axescontrols = []
-        
     def onFigureStateChanged(self,complete):
         self.setEnabled(complete)
 
@@ -2534,53 +2552,6 @@ class FigurePanel(QtGui.QWidget):
             self.figure.addVariable(varname)
         if ownupdating: self.figure.setUpdating(True)
         self.figure.resetChanged()
-        
-    def afterFigureStoreChange(self):
-        for i in range(len(self.axescontrols)-1,-1,-1):
-            self.destroyAxisControls(i)
-        for node in self.figure.properties['Axes'].getLocationMultiple(['Axis']):
-            self.createAxisControls(node)
-        
-    def beforeFigureNodeVisibilityChange(self,node,visible,showhideonly):
-        if showhideonly: return
-        if (not visible) and '/'.join(node.location) == 'Axes/Axis':
-            axisid = node.getSecondaryId()
-            for i in range(len(self.axescontrols)-1,-1,-1):
-                if self.axescontrols[i]['axis']==axisid:
-                    self.destroyAxisControls(i)
-
-    def afterFigureNodeVisibilityChange(self,node,visible,showhideonly):
-        if showhideonly: return
-        if visible and '/'.join(node.location) == 'Axes/Axis':
-            self.createAxisControls(node)
-            
-    def destroyAxisControls(self,iaxis):
-        for ed in self.axescontrols[iaxis]['editors']:
-            self.factory.destroyEditor(ed,layout=self.layoutAxesRange)
-        self.axescontrols.pop(iaxis)
-            
-    def createAxisControls(self,node):
-        axisid = node.getSecondaryId()
-        axisname = axisid
-        irow = self.layoutAxesRange.rowCount()
-
-        editorMin = self.factory.createEditor(node['Minimum'],self)
-        editorMax = self.factory.createEditor(node['Maximum'],self)
-        editorMin.createLabel(text='%s range: ' % axisname)
-        editorMax.createLabel(text=' to ')
-        editorMin.addToGridLayout(self.layoutAxesRange,irow,0)
-        editorMax.addToGridLayout(self.layoutAxesRange,irow,3)
-        self.axescontrols.append({'axis':axisid,'editors':[editorMin,editorMax]})
-        
-        irow+=1
-
-        editorMinTime = self.factory.createEditor(node['MinimumTime'],self)
-        editorMaxTime = self.factory.createEditor(node['MaximumTime'],self)
-        editorMinTime.createLabel(text='%s range: ' % axisname)
-        editorMaxTime.createLabel(text=' to ')
-        editorMinTime.addToGridLayout(self.layoutAxesRange,irow,0)
-        editorMaxTime.addToGridLayout(self.layoutAxesRange,irow,3)
-        self.axescontrols.append({'axis':axisid,'editors':[editorMinTime,editorMaxTime]})
 
     def plotFromProperties(self,properties):
         self.figure.setProperties(properties)    
@@ -2590,7 +2561,9 @@ class FigurePanel(QtGui.QWidget):
         self.figure.clearSources()
 
     def closeDetached(self):
-        for ch in self.detachedfigures: ch.close()
+        for ch in self.detachedfigures:
+            self.disconnect(ch, QtCore.SIGNAL('beforeDestroy'), self.beforeDetachedDestroy)
+            ch.close()
 
     def onAdvancedClicked(self):
         if self.dialogAdvanced==None:
@@ -2783,11 +2756,19 @@ class FigurePanel(QtGui.QWidget):
         fd = FigureDialog(self,sourcefigure=self.figure)
         fd.show()
         self.detachedfigures.append(fd)
+        self.connect(fd, QtCore.SIGNAL('beforeDestroy'), self.beforeDetachedDestroy)
         
-    def closeEvent(self,ev):
+    def beforeDetachedDestroy(self,dialog):
+        #print 'detached figure was closed.'
+        self.detachedfigures.remove(dialog)
+        
+    def destroy(self,destroyWindow=True,destroySubWindows=True):
         self.closeDetached()
         if self.dialogAdvanced!=None: self.dialogAdvanced.close()
-        QtGui.QWidget.closeEvent(self,ev)
+        if self.figure!=None:
+            self.figure.release()
+            self.figure = None
+        QtGui.QWidget.destroy(self,destroyWindow,destroySubWindows)
 
 class FigureDialog(QtGui.QDialog):
     
@@ -2833,13 +2814,24 @@ class FigureDialog(QtGui.QDialog):
         if title==None: title = 'Figure'
         self.setWindowTitle(title)
 
-        # Prevent this window from keeping the appliaction alive after the main window was closed.
+        # Prevent this window from keeping the application alive after the main window was closed.
         self.setAttribute(QtCore.Qt.WA_QuitOnClose,quitonclose)
-        
+
         self.resize(500, 500)
         
     def getFigure(self):
         return self.panel.figure
+        
+    def closeEvent(self,event):
+        QtGui.QDialog.closeEvent(self,event)
+        self.destroy()
+        
+    def destroy(self,destroyWindow = True, destroySubWindows = True):
+        self.emit(QtCore.SIGNAL('beforeDestroy'),self)
+        assert self.panel!=None, 'FigurePanel is None. This means FigureDialog.destroy() is now called for the second time.'
+        self.panel.destroy()
+        self.panel = None
+        QtGui.QDialog.destroy(self,destroyWindow,destroySubWindows)
 
 class ProgressDialog(QtGui.QProgressDialog):
     def __init__(self,parent=None,minimumduration=500,title=None,suppressstatus=False):

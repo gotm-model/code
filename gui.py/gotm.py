@@ -425,7 +425,7 @@ def main():
     ret = app.exec_()
 
     # Clean-up the wizard
-    wiz.unlink()
+    wiz.destroy()
 
     # Return the exit code of the Qt message loop.    
     return ret

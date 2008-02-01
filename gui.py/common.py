@@ -1,19 +1,51 @@
-#$Id: common.py,v 1.37 2008-01-29 07:44:42 jorn Exp $
+#$Id: common.py,v 1.38 2008-02-01 16:57:41 jorn Exp $
 
 import datetime,time,sys,os.path,xml.dom.minidom
 import matplotlib.dates,matplotlib.numerix,pytz
 
+checkreferences = True
+
 class referencedobject:
+    objs,tracebacks = None,None
+    
+    @staticmethod
+    def onNewObject(obj):
+        if referencedobject.objs==None:
+            referencedobject.objs = []
+            referencedobject.tracebacks = []
+            import atexit
+            atexit.register(referencedobject.cleanup)
+        referencedobject.objs.append(obj)
+        import traceback
+        referencedobject.tracebacks.append(traceback.format_list(traceback.extract_stack(limit=10)[:-3]))
+    
+    @staticmethod
+    def cleanup():
+        nrefs,nobjs = 0,0
+        type2count = {}
+        for obj,tb in zip(referencedobject.objs,referencedobject.tracebacks):
+            if obj.refcount!=0:
+                print '%i references for %s.' % (obj.refcount,object.__str__(obj))
+                print ''.join(tb)
+                nrefs += obj.refcount
+                nobjs += 1
+                type2count[obj.__class__.__name__] = type2count.get(obj.__class__.__name__,0) + 1
+        if nrefs==0: return
+        print '%i objects have a total of %i references.' % (nobjs,nrefs)
+        for t,c in type2count.iteritems():
+            if c>0: print '%s: %i references.' % (t,c)
+
     def __init__(self):
         self.refcount=1
+        if checkreferences: referencedobject.onNewObject(self)
     
     def release(self):
-        assert self.refcount>0, 'Reference count of object has already decreased to zero, but release is being called.'
+        assert self.refcount>0, 'Reference count of object has already decreased to zero, but release is being called. Object: %s' % str(self)
         self.refcount -= 1
         if self.refcount==0: self.unlink()
 
     def addref(self):
-        assert self.refcount>0, 'Reference count of object has decreased to zero, but addref is being called.'
+        assert self.refcount>0, 'Reference count of object has decreased to zero, but addref is being called. Object: %s' % str(self)
         self.refcount += 1
         return self
         

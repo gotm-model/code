@@ -381,7 +381,7 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
             self.writeData(target,callback=callback)
             self.datafile = xmlstore.DataFileMemory(target.getvalue(),self.nodeid+'.dat')
             target.close()
-        return self.datafile
+        return self.datafile.addref()
         
     def writeData(self,target,callback=None):
         """Writes the current data to a file-like object."""
@@ -1196,7 +1196,8 @@ class Result(NetCDFStore):
             self.scenario.saveAll(fscen,claim=False)
             df = xmlstore.DataFileMemory(fscen.getvalue(),'scenario.gotmscenario')
             fscen.close()
-            container.addItem(df)
+            added = container.addItem(df)
+            added.release()
             df.release()
         
         # Add the result data (NetCDF)
@@ -1283,7 +1284,10 @@ class Result(NetCDFStore):
         return False
 
     def unlink(self):
+        # First unlink NetCDf store, because that releases the .nc file,
+        # allowing us to delete the temporary directory.
         NetCDFStore.unlink(self)
+
         if self.tempdir!=None:
             # Delete temporary directory.
             print 'Deleting temporary result directory "%s".' % self.tempdir
