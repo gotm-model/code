@@ -1726,7 +1726,7 @@ class Node:
     def hasDefaultValue(self):
         value = self.getValue()
         defvalue = self.getDefaultValue()
-        hasdef = (value==defvalue)
+        hasdef = (value==None or value==defvalue)
         if isinstance(value,   common.referencedobject): value.release()
         if isinstance(defvalue,common.referencedobject): defvalue.release()
         return hasdef
