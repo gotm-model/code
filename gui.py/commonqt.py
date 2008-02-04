@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.51 2008-02-01 16:57:41 jorn Exp $
+#$Id: commonqt.py,v 1.52 2008-02-04 07:38:55 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -713,6 +713,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         # Update figure
         self.panel.figure.update()
         
+        # Enable the "Export" button if the data file is valid.
         self.exportbutton.setEnabled(self.linkedfile.validate())
 
     def onParseProgress(self,progress,status):
@@ -795,7 +796,7 @@ class LinkedFileEditor(QtGui.QWidget):
         ret = dialog.exec_()
         if ret == QtGui.QDialog.Accepted:
             self.linkedfile = dialog.linkedfile
-            self.emit(QtCore.SIGNAL('onChanged()'))
+            self.emit(QtCore.SIGNAL('editingFinished()'))
         dialog.destroy()
             
     def destroy(self):
@@ -1105,7 +1106,6 @@ class PropertyDelegate(QtGui.QItemDelegate):
                 editor.setMaximum(float(templatenode.getAttribute('maxInclusive')))
             unit = node.getUnit()
             if unit!=None: editor.setSuffix(' '+unit)
-            self.currenteditor = editor
         elif nodetype=='bool':
             editor = QtGui.QComboBox(parent)
             editor.addItem('Yes',QtCore.QVariant(True))
@@ -1123,7 +1123,6 @@ class PropertyDelegate(QtGui.QItemDelegate):
             editor = TimeDeltaEditor(parent)
         elif nodetype=='gotmdatafile':
             editor = LinkedFileEditor(parent)
-            self.currenteditor = editor
         elif nodetype=='color':
             editor = ColorEditor(parent)
         elif nodetype=='fontname':
@@ -1211,6 +1210,13 @@ class PropertyDelegate(QtGui.QItemDelegate):
             model.setData(index,QtCore.QVariant(editor.color()))
         elif nodetype=='fontname':
             node.setValue(editor.fontName())
+            
+        # Below we clean up the editor ourselves. Qt would normally take
+        # care of that, but for our own editors that live partially in
+        # Python the PyQt destructor fails to call the Python destroy.
+        # That would disable clean-up, so we do it here explicitly.
+        editor.hide()
+        editor.destroy()
 
 # =======================================================================
 # PropertyData: a Qt item model that encapsulates our custom
@@ -1239,7 +1245,6 @@ class PropertyStoreModel(QtCore.QAbstractItemModel):
         
     def unlink(self):
         self.typedstore.disconnectInterface(self.storeinterface)
-        self.storeinterface.unlink()
         self.storeinterface = None
         
     # index (inherited from QtCore.QAbstractItemModel)
@@ -1938,7 +1943,6 @@ class PropertyEditorFactory:
     def unlink(self):
         if self.live:
             self.store.disconnectInterface(self.storeinterface)
-            self.storeinterface.unlink()
             self.storeinterface = None
         for editor in self.editors:
             editor.destroy()
@@ -2375,11 +2379,20 @@ def getFontSubstitute(fontname):
 
 class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
     """Class derived from MatPlotLib NavigationToolbar2, used only for its
-    zooming code. Code for some methods (rectange drawing) has been taken from
-    the NavigationToolbar2QT from backend_qt4. The draw method that would normally
-    force a canvas redraw has been reimplemented to call a callback specified at
-    initialization. Thus the axes changes can be caught, and reflected in the
-    XML-based plot properties."""
+    zooming code: no toolbar its created/shown/used in any way!.
+    
+    Code for some methods (rectange drawing by draw_rubberband, cursor selection
+    by set_cursor) has been taken from the NavigationToolbar2QT from backend_qt4.
+    
+    mouse_move has been copied from the base implementation (NavigationToolbar2),
+    and changed such that selection rectangle cannot extent beyond the axes
+    rectangle. Dangerous! Every time MatPlotLib changes this might require an
+    update...
+    
+    The draw method that would normally force a canvas redraw has been
+    reimplemented to call a callback specified at initialization. Thus the axes
+    changes can be caught, and reflected in the XML-based plot properties.
+    """
         
     def __init__( self, canvas, callback=None):
         matplotlib.backend_bases.NavigationToolbar2.__init__( self, canvas )
@@ -2392,6 +2405,9 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
         self.canvas.draw()
 
     def set_cursor( self, cursor ):
+        """Called by the base implementation to change the mouse cursor.
+        The code has been taken from NavigationToolbar2QT.
+        """
         cursord = {
             matplotlib.backend_bases.cursors.MOVE          : QtCore.Qt.PointingHandCursor,
             matplotlib.backend_bases.cursors.HAND          : QtCore.Qt.WaitCursor,
@@ -2401,6 +2417,9 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
         self.canvas.setCursor(QtGui.QCursor(cursord[cursor]))
                 
     def draw_rubberband( self, event, x0, y0, x1, y1 ):
+        """Called by the base implementation to draw the zooming rectangle.
+        The code has been taken from NavigationToolbar2QT.
+        """
         height = self.canvas.figure.bbox.height()
         y1 = height - y1
         y0 = height - y0
@@ -2412,10 +2431,20 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
         self.canvas.drawRectangle( rect )
 
     def draw(self):
+        """Called by the base implementation (NavigationToolbar2) when axes
+        boundaries change because of zooming/panning. This would force a
+        canvas redraw in the base implementation, but has been reimplemented
+        here to call a user defined callback instead. This allows the host
+        to catch the changed figure boundaries and process it at a higher
+        level, before returning control to MatPlotLib.
+        """
         if self.callback!=None: self.callback()
 
     def mouse_move(self, event):
-        #print 'mouse_move', event.button
+        """Called by the backend when the mouse cursor moves.
+        The code has been taken from the base implementation (NavigationToolbar2),
+        and adapted to respect the bounds of the axes rectangle.
+        """
 
         if not self._active:
             if self._lastCursor != matplotlib.backend_bases.cursors.POINTER:
@@ -2429,14 +2458,19 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
                 if self._xypress:
                     x, y = event.x, event.y
                     lastx, lasty, a, ind, lim, trans= self._xypress[0]
+                    
+                    # The bit below is the only change from the base implementation.
+                    # it guarantees that the selection rectangle cannot extend outside
+                    # the axes rectangle.
                     bb = a.bbox
                     if   x<bb.xmin(): x = bb.xmin()
                     elif x>bb.xmax(): x = bb.xmax()
                     if   y<bb.ymin(): y = bb.ymin()
                     elif y>bb.ymax(): y = bb.ymax()
+                    
                     self.draw_rubberband(event, x, y, lastx, lasty)
             elif (self._active=='PAN' and
-                  self._lastCursor != cursors.MOVE):
+                  self._lastCursor != matplotlib.backend_bases.cursors.MOVE):
                 self.set_cursor(matplotlib.backend_bases.cursors.MOVE)
 
                 self._lastCursor = matplotlib.backend_bases.cursors.MOVE
@@ -2471,6 +2505,12 @@ class FigurePanel(QtGui.QWidget):
         deffont = getFontSubstitute(unicode(self.fontInfo().family()))
         self.figure = plot.Figure(mplfigure,defaultfont=deffont)
         self.figure.registerCallback('completeStateChange',self.onFigureStateChanged)
+
+        # Make sure we are notified when figure properties change
+        # (used to detect when the "Reset view" button should be enabled)
+        self.propertiesinterface = self.figure.properties.getInterface()
+        self.propertiesinterface.connect('afterChange',     self.onFigurePropertyChanged)
+        self.propertiesinterface.connect('afterStoreChange',self.onFigurePropertyStoreChanged)
         
         self.navtoolbar = FigureToolbar(self.canvas,self.updateAxesBounds)
 
@@ -2495,10 +2535,21 @@ class FigurePanel(QtGui.QWidget):
         self.buttonZoom.setCheckable(True)
         self.layoutButtons.addWidget(self.buttonZoom)
 
+        # Button for panning
+        self.buttonPan = QtGui.QPushButton(self.tr('Pan'),self)
+        self.buttonPan.setAutoDefault(False)
+        self.buttonPan.setDefault(False)
+        self.connect(self.buttonPan, QtCore.SIGNAL('clicked()'), self.onPanClicked)
+        self.buttonPan.setCheckable(True)
+        self.buttonPan.setEnabled(False)
+        self.layoutButtons.addWidget(self.buttonPan)
+        self.buttonPan.hide()
+
         # Button for reset view
         self.buttonResetView = QtGui.QPushButton(self.tr('Reset view'),self)
         self.buttonResetView.setAutoDefault(False)
         self.buttonResetView.setDefault(False)
+        self.buttonResetView.setEnabled(False)
         self.connect(self.buttonResetView, QtCore.SIGNAL('clicked()'), self.onResetViewClicked)
         self.layoutButtons.addWidget(self.buttonResetView)
 
@@ -2537,7 +2588,40 @@ class FigurePanel(QtGui.QWidget):
         self.detachedfigures = []
         
     def onFigureStateChanged(self,complete):
+        """Called when the figure state (figure shown/no figure shown) changes.
+        """
         self.setEnabled(complete)
+
+    def onFigurePropertyStoreChanged(self):
+        """Called when one customized figure property changes.
+        Currently used to enable/disable the "Reset view" button.
+        """
+        self.onAxesRangeChanged()
+
+    def onFigurePropertyChanged(self,node,feature):
+        """Called when all customized figure properties change at once
+        (the data store is changed). Currently used to enable/disable
+        the "Reset view" button.
+        """
+        if feature=='value': self.onAxesRangeChanged()
+        
+    def onAxesRangeChanged(self):
+        """Enables/disables the "Reset View" button, based on whether the
+        current axes bounds have been customized by the user.
+        """
+        defaultrange = True
+        axes = self.figure.properties['Axes']
+        if axes!=None:
+            xaxis = axes.getChildById('Axis','x')
+            yaxis = axes.getChildById('Axis','y')
+            for axis in (xaxis,yaxis):
+                if axis==None: continue
+                if axis['IsTimeAxis'].getValue(usedefault=True):
+                    defaultrange = (defaultrange and axis['MinimumTime'].hasDefaultValue() and axis['MaximumTime'].hasDefaultValue())
+                else:
+                    defaultrange = (defaultrange and axis['Minimum'].hasDefaultValue() and axis['Maximum'].hasDefaultValue())
+        self.buttonResetView.setEnabled(not defaultrange)
+        self.buttonPan.setEnabled(not defaultrange)
 
     def plot(self,varname,varstore=None):
         ownupdating = self.figure.updating
@@ -2557,15 +2641,23 @@ class FigurePanel(QtGui.QWidget):
         self.figure.setProperties(properties)    
 
     def clear(self):
+        """Clears the figure, by disconnecting its links to data stores
+        (if any) and erasing any data series.
+        """
         self.figure.clearProperties()
         self.figure.clearSources()
 
     def closeDetached(self):
+        """Closes all detached figures.
+        """
         for ch in self.detachedfigures:
             self.disconnect(ch, QtCore.SIGNAL('beforeDestroy'), self.beforeDetachedDestroy)
             ch.close()
 
     def onAdvancedClicked(self):
+        """Called when the user clicks the "Properties..." button.
+        Currently this shows the figure properties dialog box.
+        """
         if self.dialogAdvanced==None:
             self.dialogAdvanced = PropertyEditorDialog(self,self.figure.properties,title='Figure properties',flags=QtCore.Qt.Tool)
             self.dialogAdvanced.resize(350, 300)
@@ -2574,9 +2666,25 @@ class FigurePanel(QtGui.QWidget):
         self.dialogAdvanced.activateWindow()
         
     def onZoomClicked(self,*args):
+        """Called when the user clicks the "Zoom" button.
+        """
         self.navtoolbar.zoom( self, *args )
 
+    def onPanClicked(self,*args):
+        """Called when the user clicks the "Zoom" button.
+        """
+        self.navtoolbar.pan( self, *args )
+
     def updateAxesBounds(self):
+        """Called by the attached FigureToolbar object just after the
+        bounds of the figure axes have been changed with the zoom
+        functionality, but [supposedly] before the MatPlotLib figue has
+        been redrawn.
+        
+        The new axes bounds are taken from the MatPltoLib figure, and
+        used to change the explicit axes bounds in our attached Figure.
+        This implicitly forces a redraw of the figure.
+        """
         a = self.canvas.figure.gca()
         Xmin,Xmax=a.get_xlim()
         Ymin,Ymax=a.get_ylim()
@@ -2592,8 +2700,15 @@ class FigurePanel(QtGui.QWidget):
                 axis['Minimum'].setValue(minval)
                 axis['Maximum'].setValue(maxval)
         self.figure.setUpdating(oldupdating)
+        
+        # We do not want the zoom function to stay active after the
+        # zooming is done (although that is matPlotLib's default behavior)
+        # Pretend the user clicks the zoom button again to disable zooming.
+        if self.buttonZoom.isChecked(): self.buttonZoom.click()
 
     def onResetViewClicked(self,*args):
+        """Called when the user clicks the "Reset view" button.
+        """
         if self.buttonZoom.isChecked(): self.buttonZoom.click()
         axes = self.figure.properties['Axes']
         xaxis = axes.getChildByNumber('Axis',0)
@@ -2606,73 +2721,58 @@ class FigurePanel(QtGui.QWidget):
             axis['Maximum'].clearValue()
         self.figure.setUpdating(oldupdating)
 
-    def onPropertiesClicked(self):
-        window = getTopLevelWidget(self)
-        window.setUpdatesEnabled(False)
-        sz = window.size()
-        if not self.widgetProperties.isVisible():
-            self.widgetProperties.setVisible(True)
-            self.buttonProperties.setText('Hide plot &properties')
-            self.propheight = self.widgetProperties.height()+self.layout().spacing()
-            sz.setHeight(sz.height() + self.propheight)
-        else:
-            self.widgetProperties.setVisible(False)
-            self.buttonProperties.setText('Edit plot &properties')
-            sz.setHeight(sz.height() - self.propheight)
-        window.resize(sz)
-        window.setUpdatesEnabled(True)
-
-    class ExportSettings(QtGui.QDialog):
-        """Dialog with settings for figure export
-        """
-        def __init__(self,parent=None):
-            QtGui.QDialog.__init__(self,parent,QtCore.Qt.Dialog | QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint)
-            
-            layout = QtGui.QGridLayout()
-            
-            labWidth = QtGui.QLabel('Width:',self)
-            labHeight = QtGui.QLabel('Height:',self)
-            labResolution = QtGui.QLabel('Resolution:',self)
-            layout.addWidget(labWidth,     0,0)
-            layout.addWidget(labHeight,    1,0)
-            layout.addWidget(labResolution,2,0)
-
-            self.editWidth = ScientificDoubleEditor(self)
-            self.editHeight = ScientificDoubleEditor(self)
-            self.editResolution = ScientificDoubleEditor(self)
-            layout.addWidget(self.editWidth,     0,1)
-            layout.addWidget(self.editHeight,    1,1)
-            layout.addWidget(self.editResolution,2,1)
-            
-            labWidthUnit = QtGui.QLabel('cm',self)
-            labHeightUnit = QtGui.QLabel('cm',self)
-            labResolutionUnit = QtGui.QLabel('dpi',self)
-            layout.addWidget(labWidthUnit,     0,2)
-            layout.addWidget(labHeightUnit,    1,2)
-            layout.addWidget(labResolutionUnit,2,2)
-            
-            layout.setColumnStretch(3,1)
-
-            layoutButtons = QtGui.QHBoxLayout()
-
-            # Add "OK" button
-            self.bnOk = QtGui.QPushButton('&OK',self)
-            self.connect(self.bnOk, QtCore.SIGNAL('clicked()'), self.accept)
-            layoutButtons.addWidget(self.bnOk)
-
-            # Add "Cancel" button
-            self.bnCancel = QtGui.QPushButton('&Cancel',self)
-            self.connect(self.bnCancel, QtCore.SIGNAL('clicked()'), self.reject)
-            layoutButtons.addWidget(self.bnCancel)
-            
-            layout.addLayout(layoutButtons,3,0,1,4)
-
-            self.setLayout(layout)
-            
-            self.setWindowTitle('Figure export settings')
-
     def onExport(self):
-        dialog = self.ExportSettings(self)
+        """Called when the user clicks the "Export to file..." button.
+        """
+        
+        class ExportSettings(QtGui.QDialog):
+            def __init__(self,parent=None):
+                QtGui.QDialog.__init__(self,parent,QtCore.Qt.Dialog | QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint)
+                
+                layout = QtGui.QGridLayout()
+                
+                labWidth = QtGui.QLabel('Width:',self)
+                labHeight = QtGui.QLabel('Height:',self)
+                labResolution = QtGui.QLabel('Resolution:',self)
+                layout.addWidget(labWidth,     0,0)
+                layout.addWidget(labHeight,    1,0)
+                layout.addWidget(labResolution,2,0)
+
+                self.editWidth = ScientificDoubleEditor(self)
+                self.editHeight = ScientificDoubleEditor(self)
+                self.editResolution = ScientificDoubleEditor(self)
+                layout.addWidget(self.editWidth,     0,1)
+                layout.addWidget(self.editHeight,    1,1)
+                layout.addWidget(self.editResolution,2,1)
+                
+                labWidthUnit = QtGui.QLabel('cm',self)
+                labHeightUnit = QtGui.QLabel('cm',self)
+                labResolutionUnit = QtGui.QLabel('dpi',self)
+                layout.addWidget(labWidthUnit,     0,2)
+                layout.addWidget(labHeightUnit,    1,2)
+                layout.addWidget(labResolutionUnit,2,2)
+                
+                layout.setColumnStretch(3,1)
+
+                layoutButtons = QtGui.QHBoxLayout()
+
+                # Add "OK" button
+                self.bnOk = QtGui.QPushButton('&OK',self)
+                self.connect(self.bnOk, QtCore.SIGNAL('clicked()'), self.accept)
+                layoutButtons.addWidget(self.bnOk)
+
+                # Add "Cancel" button
+                self.bnCancel = QtGui.QPushButton('&Cancel',self)
+                self.connect(self.bnCancel, QtCore.SIGNAL('clicked()'), self.reject)
+                layoutButtons.addWidget(self.bnCancel)
+                
+                layout.addLayout(layoutButtons,3,0,1,4)
+
+                self.setLayout(layout)
+                
+                self.setWindowTitle('Figure export settings')
+
+        dialog = ExportSettings(self)
         oldwidth = self.canvas.figure.get_figwidth()
         oldheight = self.canvas.figure.get_figheight()
         olddpi = self.canvas.figure.get_dpi()
@@ -2680,21 +2780,43 @@ class FigurePanel(QtGui.QWidget):
         dialog.editHeight.setValue(oldheight*2.54,'%.1f')
         dialog.editResolution.setValue(olddpi,'%.0f')
         if dialog.exec_()!=QtGui.QDialog.Accepted: return
-        fname = QtGui.QFileDialog.getSaveFileName(self,'Choose location to save plot to','','Portable Network Graphics (*.png);;Encapsulated PostScript (*.eps);;Scalable Vector Graphics (*.svg);;Bitmap (*.bmp)')
+
+        # Routine to get list of possible file types and extensions
+        # taken from NavigationToolbar2QT.save_figure (backend_qt4.py)
+        filetypes = self.canvas.get_supported_filetypes_grouped()
+        sorted_filetypes = filetypes.items()
+        sorted_filetypes.sort()
+        default_filetype = 'png'
+        filters = []
+        selectedFilter = None
+        for name, exts in sorted_filetypes:
+            exts_list = " ".join(['*.%s' % ext for ext in exts])
+            filter = '%s (%s)' % (name, exts_list)
+            if default_filetype in exts:
+                selectedFilter = filter
+            filters.append(filter)
+        filters = ';;'.join(filters)
+
+        fname = QtGui.QFileDialog.getSaveFileName(self,'Choose location to save plot to','',filters,selectedFilter)
         if fname:
+            # Calculate desired width and height in inches
             width = dialog.editWidth.value()/2.54
             height = dialog.editHeight.value()/2.54
             QtGui.qApp.setOverrideCursor(QtCore.Qt.WaitCursor)
-            agg = self.canvas.switch_backends(FigureCanvasAgg)
-            self.canvas.figure.set_figwidth(width)
-            self.canvas.figure.set_figheight(height)
-            agg.print_figure(str(fname.toLatin1()),dpi=dialog.editResolution.value(), facecolor='w', edgecolor='w', orientation='portrait')
-            self.canvas.figure.set_figwidth(oldwidth)
-            self.canvas.figure.set_figheight(oldheight)
-            self.canvas.figure.set_canvas(self.canvas)
-            QtGui.qApp.restoreOverrideCursor()
+            try:
+                agg = self.canvas.switch_backends(FigureCanvasAgg)
+                self.canvas.figure.set_figwidth(width)
+                self.canvas.figure.set_figheight(height)
+                agg.print_figure(str(fname.toLatin1()),dpi=dialog.editResolution.value(), facecolor='w', edgecolor='w', orientation='portrait')
+                self.canvas.figure.set_figwidth(oldwidth)
+                self.canvas.figure.set_figheight(oldheight)
+                self.canvas.figure.set_canvas(self.canvas)
+            finally:
+                QtGui.qApp.restoreOverrideCursor()
         
     def onPrint(self):
+        """Called when the user clicks the "Print..." button.
+        """
         printer = QtGui.QPrinter(QtGui.QPrinter.HighResolution)
         printDialog = QtGui.QPrintDialog(printer, self)
         if printDialog.exec_() == QtGui.QDialog.Accepted:
@@ -2753,16 +2875,29 @@ class FigurePanel(QtGui.QWidget):
             self.figure.figure.set_canvas(self.canvas)
 
     def onDetach(self):
+        """Called when the user clicks the "Detach" button. This opens
+        a new dialog with the currently shown figure, with all figure
+        settings copied form the existing one.
+        """
         fd = FigureDialog(self,sourcefigure=self.figure)
         fd.show()
         self.detachedfigures.append(fd)
         self.connect(fd, QtCore.SIGNAL('beforeDestroy'), self.beforeDetachedDestroy)
         
     def beforeDetachedDestroy(self,dialog):
-        #print 'detached figure was closed.'
+        """Called just before a detached figure is destroyed (e.g., when it
+        is closed by the user. This is used to remove all references to the
+        figure about to be destroyed, so we will not try to close/destroy it
+        ourselves later.
+        """
         self.detachedfigures.remove(dialog)
         
     def destroy(self,destroyWindow=True,destroySubWindows=True):
+        """This must be called by the parent object (i.e., the widget hosting
+        the FigurePanel), to ensure that the figure + its settings are cleaned
+        up nicely, and any child dialogs (detached figures, figre properties)
+        are closed.
+        """
         self.closeDetached()
         if self.dialogAdvanced!=None: self.dialogAdvanced.close()
         if self.figure!=None:

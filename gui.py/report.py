@@ -145,6 +145,7 @@ class Report(common.referencedobject):
             
             # Break link from scenario to interface.
             scenario.disconnectInterface(sceninterface)
+            sceninterface = None
 
             scenarionode.parentNode.replaceChild(scentable,scenarionode)
 

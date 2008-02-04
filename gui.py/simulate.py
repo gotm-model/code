@@ -1,6 +1,6 @@
 import tempfile,os,time,shutil
 
-import data,gotm
+import common,data,gotm
 
 gotmversion = gotm.gui_util.getversion().rstrip()
 gotmscenarioversion = 'gotm-%s' % gotmversion
@@ -13,7 +13,7 @@ def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
     
     namelistscenario = scen.convert(gotmscenarioversion)
     if verbose: print 'scenario converted'
-    simulationdir = tempfile.mkdtemp('','gotm-')
+    simulationdir = common.TempDirManager.create('gotm-')
     namelistscenario['gotmrun/output/out_fmt'].setValue(2)
     namelistscenario['gotmrun/output/out_dir'].setValue('.')
     namelistscenario['gotmrun/output/out_fn' ].setValue('result')
@@ -157,7 +157,7 @@ def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
     else:
         # Failed: delete temporary simulation directory
         try:
-            shutil.rmtree(simulationdir)
+            common.TempDirManager.delete(simulationdir)
         except Exception,e:
             print 'Unable to completely remove GOTM temporary directory "%s".\nError: %s' % (simulationdir,e)
             

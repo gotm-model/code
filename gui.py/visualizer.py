@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.26 2008-02-01 16:57:41 jorn Exp $
+#$Id: visualizer.py,v 1.27 2008-02-04 07:38:55 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -203,6 +203,7 @@ class ConfigureReportWidget(QtGui.QWidget):
 
     def destroy(self,destroyWindow = True,destroySubWindows = True):
         self.factory.unlink()
+        self.treeVariables.setModel(None)
         self.model.unlink()
         self.treestore.release()
         QtGui.QWidget.destroy(self,destroyWindow,destroySubWindows)

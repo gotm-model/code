@@ -314,7 +314,9 @@ class Figure(common.referencedobject):
         self.callbacks = {'completeStateChange':[]}
         
     def unlink(self):
+        self.properties.disconnectInterface(self.propertiesinterface)
         self.propertiesinterface = None
+        
         self.defaultproperties.release()
         self.defaultproperties = None
         self.properties.release()

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.34 2008-02-01 16:57:41 jorn Exp $
+#$Id: scenariobuilder.py,v 1.35 2008-02-04 07:38:55 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -201,14 +201,16 @@ class ScenarioPage(commonqt.WizardPage):
 
     def saveData(self,mustbevalid):
         
+        editednodes = self.factory.getEditedNodes()
         if mustbevalid:
-            nodepaths = ['/'+'/'.join(node.location) for node in self.factory.getEditedNodes()]
             progressdialog = commonqt.ProgressDialog(self,title='Validating settings...')
-            errors = self.scenario.validate(nodepaths,callback=progressdialog.onProgressed,repair=1)
+            errors = self.scenario.validate(editednodes,callback=progressdialog.onProgressed,repair=1)
             progressdialog.close()
             if len(errors)>0:
                 QtGui.QMessageBox.critical(self,'Scenario has not been configured correctly','The following problems remain:\n\n%s' % '\n'.join(errors),QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
                 return False
+        else:
+            self.scenario.clearValidationHistory(editednodes)
 
         return True
 
@@ -885,9 +887,12 @@ class PageAdvanced(commonqt.WizardPage):
             if len(errors)>0:
                 QtGui.QMessageBox.critical(self,'Scenario is incomplete','The following problems remain:\n\n%s' % '\n'.join(errors),QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
                 return False
+        return True
+
+    def destroy(self,destroyWindow = True,destroySubWindows = True):
         self.tree.setModel(None)
         self.model.unlink()
-        return True
+        commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
     
 class PageSave(commonqt.WizardPage):
 

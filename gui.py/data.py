@@ -1163,11 +1163,9 @@ class Result(NetCDFStore):
     def getTempDir(self,empty=False):
         if self.tempdir!=None:
             if empty:
-                for f in os.listdir(self.tempdir): 
-                    os.remove(os.path.join(self.tempdir,f))
+                common.TempDirManager.empty(self.tempdir)
         else:
-            self.tempdir = tempfile.mkdtemp('','gotm-')
-            print 'Created temporary result directory "%s".' % self.tempdir
+            self.tempdir = common.TempDirManager.create(prefix='gotm-')
         return self.tempdir
         
     def saveNetCDF(self,path):
@@ -1290,8 +1288,7 @@ class Result(NetCDFStore):
 
         if self.tempdir!=None:
             # Delete temporary directory.
-            print 'Deleting temporary result directory "%s".' % self.tempdir
-            shutil.rmtree(self.tempdir)
+            common.TempDirManager.delete(self.tempdir)
             self.tempdir = None
         if self.scenario!=None:
             self.scenario.release()

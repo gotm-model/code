@@ -1420,10 +1420,8 @@ class TypedStoreInterface:
         store.connectInterface(self)
         
     def unlink(self):
-        self.visibilityhandlers = []
-        self.changehandlers = []
-        self.beforechangehandlers = []
-        self.storechangedhandlers = []
+        assert self.eventhandlers!=None, 'unlink called on TypedStoreInterface for the second time.'
+        self.eventhandlers = None
 
     def getChildCount(self,node):
         """Returns the number of children of the specified node."""
@@ -2373,6 +2371,9 @@ class TypedStore(common.referencedobject):
         # NB: this must be done after default values are set, so that the default
         # values can be taken into account when checking conditions (via setStore)
         self.setStore(valueroot)
+
+        # Validation history: list of valid nodes
+        self.validnodes = set()
         
     def unlink(self):
         """Destroys the store and breaks circular references. The TypedStore object
@@ -2386,6 +2387,8 @@ class TypedStore(common.referencedobject):
         
         # Release default store
         if self.defaultstore!=None:
+            self.defaultstore.disconnectInterface(self.defaultinterface)
+            self.defaultinterface = None
             self.defaultstore.release()
             self.defaultstore = None
 
@@ -2398,6 +2401,9 @@ class TypedStore(common.referencedobject):
         for v in self.otherstores.itervalues(): v.release()
 
         self.store = None
+        
+        # Release all interfaces
+        for i in self.interfaces: i.unlink()
         self.interfaces = []
 
     def getInterface(self,**kwargs):
@@ -2490,7 +2496,6 @@ class TypedStore(common.referencedobject):
         assert self.version==store.version,'Version of supplied default store must match version of current store.'
         if self.defaultstore!=None:
             self.defaultstore.disconnectInterface(self.defaultinterface)
-            self.defaultinterface.unlink()
             self.defaultinterface = None
             self.defaultstore.release()
             
@@ -2660,15 +2665,38 @@ class TypedStore(common.referencedobject):
                     if isinstance(defvalue,common.referencedobject): defvalue.release()
         else:
             self.root.copyFrom(self.defaultstore.root,replace=False)
-            
-    def validate(self,nodepaths=None,usedefault=True,repair=0,callback=None):
-        errors = []
 
-        # Convert list of node paths into list of references to nodes.
-        if nodepaths==None:
-            nodes = self.root.getDescendants()
+    def clearValidationHistory(self,nodes=None):
+        if nodes==None:
+            self.validnodes.clear()
         else:
-            nodes = [self[nodepath] for nodepath in nodepaths]
+            self.validnodes -= set(nodes)
+        
+    def updateValidationHistory(self,validity):
+        for node,valid in validity.iteritems():
+            if valid:
+                self.validnodes.add(node)
+            else:
+                self.validnodes.discard(node)
+            
+    def validate(self,nodes=None,usedefault=True,repair=0,callback=None,usehistory=True):
+
+        # If no nodes were specified explicitly, we must validate all.
+        if nodes==None: nodes = self.root.getDescendants()
+            
+        # Call base implementation
+        errors, validity = self._validate(nodes,usedefault=usedefault,repair=repair,callback=callback,usehistory=usehistory)
+
+        # Update validation history (if required)
+        if usehistory: self.updateValidationHistory(validity)
+        
+        # Returns list of validation errors (strings)
+        return errors
+        
+    def _validate(self,nodes,usedefault=True,repair=0,callback=None,usehistory=True):
+
+        errors = []
+        validity = dict([(node,True) for node in nodes])
             
         # Build relevant subsets of node list.
         customnodes,selectnodes,emptynodes,intnodes,floatnodes = [],[],[],[],[]
@@ -2691,6 +2719,7 @@ class TypedStore(common.referencedobject):
         # Find used nodes that have not been set, and lack a default value.
         for node in emptynodes:
             if node.isHidden(): continue
+            validity[node] = False
             errors.append('variable "%s" has not been set.' % node.getText(1))
 
         # Find used file nodes that have not been supplied with data.
@@ -2700,21 +2729,29 @@ class TypedStore(common.referencedobject):
             progslicer.nextStep('validating '+node.getText(detail=1))
             value = node.getValue(usedefault=usedefault)
             if not value.validate(callback=progslicer.getStepCallback()):
-                errors.append('variable "%s" is invalid.' % node.getText(1))
+                validity[node] = False
+                errors.append('variable "%s" is set to an invalid value.' % node.getText(1))
             if isinstance(value,common.referencedobject): value.release()
 
         # Find nodes of type "select" that have been set to an invalid (non-existing) option.
         for node in selectnodes:
             value = node.getValue(usedefault=usedefault)
             optionsroot = common.findDescendantNode(node.templatenode,['options'])
-            assert optionsroot!=None, 'Schema node %s lacks is of type "select", but lacks the "options" child node.' % node
+            assert optionsroot!=None, 'Schema node %s is of type "select", but lacks the "options" child node.' % node
+            opt = 0
             for ch in optionsroot.childNodes:
-                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                    if value==int(ch.getAttribute('value')): break
-            else:
+                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option' and value==int(ch.getAttribute('value')):
+                    opt = 1
+                    if not ch.hasAttribute('disabled'): opt = 2
+                    break
+            if opt!=2:
                 if repair==2 or (repair==1 and node.isHidden()):
                     node.setValue(node.getDefaultValue())
+                elif opt==1:
+                    validity[node] = False
+                    errors.append('variable "%s" is set to option "%s", which is currently disabled (perhaps not yet implemented).' % (node.getText(1),ch.getAttribute('label')))
                 else:
+                    validity[node] = False
                     errors.append('variable "%s" is set to non-existent option %i.' % (node.getText(1),value))
 
         # Find nodes with numeric data types, and check if they respect specified ranges (if any).
@@ -2726,12 +2763,14 @@ class TypedStore(common.referencedobject):
                     if repair==2 or (repair==1 and node.isHidden()):
                         node.setValue(minval)
                     else:
+                        validity[node] = False
                         errors.append('variable "%s" is set to %i, which lies below the minimum of %i.' % (node.getText(1),value,int(minval)))
             if maxval!='':
                 if value>int(maxval):
                     if repair==2 or (repair==1 and node.isHidden()):
                         node.setValue(maxval)
                     else:
+                        validity[node] = False
                         errors.append('variable "%s" is set to %i, which lies above the maximum of %i.' % (node.getText(1),value,int(maxval)))
                         
         for node in floatnodes:
@@ -2742,15 +2781,17 @@ class TypedStore(common.referencedobject):
                     if repair==2 or (repair==1 and node.isHidden()):
                         node.setValue(minval)
                     else:
+                        validity[node] = False
                         errors.append('variable "%s" is set to %.6g, which lies below the minimum of %.6g.' % (node.getText(1),value,float(minval)))
             if maxval!='':
                 if value>float(maxval):
                     if repair==2 or (repair==1 and node.isHidden()):
                         node.setValue(maxval)
                     else:
+                        validity[node] = False
                         errors.append('variable "%s" is set to %.6g, which lies above the maximum of %.6g.' % (node.getText(1),value,float(maxval)))
-
-        return errors
+        
+        return errors,validity
 
     def convert(self,target,callback=None):
         """Converts the TypedStore object to the specified target. The target may be
@@ -3117,7 +3158,8 @@ class TypedStore(common.referencedobject):
         """Disconnects an interface from the store. This is required to allow
         the interface to go completely out of scope, and be cleaned-up."""
         for i in range(len(self.interfaces)-1,-1,-1):
-            if self.interfaces[i] is interface: self.interfaces.pop(i)
+            if self.interfaces[i] is interface:
+                self.interfaces.pop(i).unlink()
 
     def onDefaultChange(self,defaultnode,feature):
         """Called internally after a property of a node in the store with default

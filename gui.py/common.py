@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.38 2008-02-01 16:57:41 jorn Exp $
+#$Id: common.py,v 1.39 2008-02-04 07:38:55 jorn Exp $
 
 import datetime,time,sys,os.path,xml.dom.minidom
 import matplotlib.dates,matplotlib.numerix,pytz
@@ -61,6 +61,38 @@ def getDataRoot():
     if dataroot==None:
         dataroot = os.path.dirname(os.path.realpath(__file__))
     return dataroot
+
+class TempDirManager:
+    tempdirs = None
+
+    @staticmethod
+    def create(prefix=''):
+        import tempfile
+        path = tempfile.mkdtemp('',prefix)
+        if TempDirManager.tempdirs==None:
+            TempDirManager.tempdirs = []
+            import atexit
+            atexit.register(TempDirManager.cleanup)
+        TempDirManager.tempdirs.append(path)
+        return path
+        
+    @staticmethod
+    def empty(path):
+        for f in os.listdir(path): 
+            os.remove(os.path.join(path,f))
+
+    @staticmethod
+    def delete(path,unregister=True):
+        assert path in TempDirManager.tempdirs, 'Attempt to delete temporary directory "%s" that is not in list of registered tempdirs.' % path
+        print 'Deleting temporary directory "%s".' % path
+        import shutil
+        shutil.rmtree(path)
+        if unregister: TempDirManager.tempdirs.remove(path)
+    
+    @staticmethod
+    def cleanup():
+        for path in TempDirManager.tempdirs:
+            TempDirManager.deleteTempDir(path,unregister=False)
 
 # ------------------------------------------------------------------------------------------
 # Date-time parsing variables and functions

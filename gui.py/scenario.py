@@ -425,35 +425,54 @@ class Scenario(xmlstore.TypedStore):
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
         if self.originalversion==savedscenarioversion: self.resetChanged()
         
-    def validate(self,nodepaths=None,usedefault=True,validatedatafiles=True,callback=None,repair=0):
-        errors = xmlstore.TypedStore.validate(self,nodepaths,usedefault=usedefault,repair=repair,callback=callback)
-
-        if validatedatafiles:
-            # Find nodes with "file" data type.
-            if nodepaths!=None:
-                filenodes = []
-                for nodepath in nodepaths:
-                    node = self[nodepath]
-                    if node.getValueType()=='gotmdatafile': filenodes.append(node)
-            else:
-                filenodes = self.root.getNodesByType('gotmdatafile')
-
-        if self.version!='gotmgui-0.5.0': return errors
+    def _validate(self,nodes,usedefault=True,validatedatafiles=True,callback=None,repair=0,usehistory=True):
+        # Call base implementation of validate.
+        errors,validity = xmlstore.TypedStore._validate(self,nodes,usedefault=usedefault,repair=repair,callback=callback,usehistory=usehistory)
         
-        if nodepaths==None or '/time/start' in nodepaths or '/time/stop' in nodepaths:
-            # First validate the time range
-            start = self['/time/start'].getValue(usedefault=usedefault)
-            stop = self['/time/stop'].getValue(usedefault=usedefault)
-            if start!=None and stop!=None:
+        # We only know how to validate one scenario version;
+        # return base result if version does not match.
+        if self.version!='gotmgui-0.5.0': return errors,validity
+
+        # Retrieve validation history
+        if usehistory:
+            oldvalids = self.validnodes
+        else:
+            oldvalids = set()
+
+        # Validate the time range
+        startnode,stopnode = self['/time/start'],self['/time/stop']
+        if validity.get(startnode,False) and validity.get(stopnode,False):
+            start = startnode.getValue(usedefault=usedefault)
+            stop = stopnode.getValue(usedefault=usedefault)
+            if start!=None and stop!=None and start>=stop:
+                validity[startnode] = False
+                validity[stopnode ] = False
                 if start>stop:
                     errors.append('The end of the simulated period lies before its beginning.')
                 elif start==stop:
                     errors.append('The begin and end time of the simulated period are equal.')
+
+        # Check whether number of custom layer thicknesses matches the number
+        # of depth levels.
+        if self['/grid/grid_method'].getValue(usedefault=usedefault)>0:
+            gridfilenode,nlevnode = self['/grid/grid_file'],self['/grid/nlev']
+            if ((gridfilenode in oldvalids and validity.get(nlevnode,    False)) or
+                (nlevnode     in oldvalids and validity.get(gridfilenode,False)) or
+                (validity.get(gridfilenode,False) and validity.get(nlevnode,False))):
+                val = gridfilenode.getValue(usedefault=usedefault)
+                if len(val.getData()[0])!=nlevnode.getValue(usedefault=usedefault):
+                    errors.append('The specified number of layers does not match the number of custom layer thicknesses.')
+                val.release()
                 
-            # Now validate the time extent of input data series.
-            if validatedatafiles and stop!=None:
-                for fn in filenodes:
-                    value = fn.getValue(usedefault=usedefault)
+        # Validate the time extent of input data series, provided
+        # the end of the simulation has been set.
+        if validatedatafiles and (stopnode in oldvalids or validity.get(stopnode,False)):
+            stop = stopnode.getValue(usedefault=usedefault)
+            if stop!=None:
+                for node in nodes:
+                    if node.getValueType()!='gotmdatafile' or node.isHidden() or not validity[node]:
+                        continue
+                    value = node.getValue(usedefault=usedefault)
                     if value.validate():
                         for dimname in value.getDimensionNames():
                             if value.getDimensionInfo(dimname)['datatype']=='datetime':
@@ -461,10 +480,11 @@ class Scenario(xmlstore.TypedStore):
                                 if dimrange==None: continue
                                 mintime,maxtime = dimrange
                                 if stop>maxtime and maxtime!=mintime:
-                                    errors.append('Input data series "%s" finishes at %s, before the simulation is set to end (%s).' % (fn.getText(detail=1),maxtime.strftime(common.datetime_displayformat),stop.strftime(common.datetime_displayformat)))
+                                    validity[node] = False
+                                    errors.append('Data series "%s" finishes at %s, before the simulation is set to end (%s).' % (node.getText(detail=1),maxtime.strftime(common.datetime_displayformat),stop.strftime(common.datetime_displayformat)))
                     value.release()
                 
-        return errors
+        return errors,validity
 
 # ========================================================================================
 # Here start custom convertors!
