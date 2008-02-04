@@ -37,7 +37,7 @@ class Store:
     strings, since XML is text-based; strings are converted to and from other
     types (datetime, int, float, bool, etc.) whenever necessary."""
 
-    class DataType():
+    class DataType:
         """Abstract class for user data types. Methods "load" and "save" MUST be
         implemented by inheriting classes.
         
