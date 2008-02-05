@@ -27,6 +27,14 @@ class GOTMWizard(commonqt.Wizard):
     scenarios to namelists.
     """
     
+    class DataSourceDir:
+        def __init__(self,dictionary):
+            self.dictionary = dictionary
+        def get(self,default=None):
+            return self.dictionary.get('datasourcedir_value',default)
+        def set(self,value):
+            self.dictionary['datasourcedir_value'] = value
+    
     def __init__(self,parent=None,sequence=None,closebutton=False):
         """Supplies the logo path to the Wizard, and adds a "Tools" button.
         """
@@ -43,6 +51,8 @@ class GOTMWizard(commonqt.Wizard):
         self.actExportResult   = self.menuTools.addAction('Export result to NetCDF...',self.onExportResult)
         
         self.bnTools.setMenu(self.menuTools)
+        
+        self.setProperty('datasourcedir',self.DataSourceDir(self.shared))
         
     def onPropertyChange(self,propertyname):
         """Called by the Wizard implementation when a property in the Wizard property store
@@ -64,6 +74,7 @@ class GOTMWizard(commonqt.Wizard):
             dialog = commonqt.ProgressDialog(self,title='Saving...',suppressstatus=True)
             scen.saveAll(path,callback=dialog.onProgressed)
             dialog.close()
+            self.settings.addUniqueValue('Paths/RecentScenarios','Path',path)
 
     def onExportScenario(self):
         class ChooseVersionDialog(QtGui.QDialog):
@@ -128,7 +139,10 @@ class GOTMWizard(commonqt.Wizard):
         result = self.getProperty('result')
         path = commonqt.browseForPath(self,curpath=result.path,save=True,filter='GOTM result files (*.gotmresult);;All files (*.*)')
         if path!=None:
-            result.save(path)
+            dialog = commonqt.ProgressDialog(self,title='Saving...',suppressstatus=True)
+            result.save(path,callback=dialog.onProgressed)
+            dialog.close()
+            self.settings.addUniqueValue('Paths/RecentResults','Path',path)
             
     def onExportResult(self):
         result = self.getProperty('result')
@@ -138,7 +152,9 @@ class GOTMWizard(commonqt.Wizard):
             curpath = root+'.nc'
         path = commonqt.browseForPath(self,curpath=curpath,save=True,filter='NetCDF files (*.nc);;All files (*.*)')
         if path!=None:
+            QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
             result.saveNetCDF(path)
+            QtGui.QApplication.restoreOverrideCursor()
 
 class PageIntroduction(commonqt.WizardPage):
     """First page in the GOTM-GUI Wizard.
@@ -149,8 +165,9 @@ class PageIntroduction(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
 
-        # Clear all non-persistent settings.
-        self.owner.clearProperties()
+        # Clear some non-persistent settings.
+        self.owner.setProperty('scenario',None)
+        self.owner.setProperty('result',None)
 
         # For version only:
         import matplotlib,numpy,gotm

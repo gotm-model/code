@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.35 2008-02-04 07:38:55 jorn Exp $
+#$Id: scenariobuilder.py,v 1.36 2008-02-05 07:42:31 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -197,7 +197,7 @@ class ScenarioPage(commonqt.WizardPage):
         self.scenario = parent.getProperty('scenario')
         if self.scenario==None: raise Exception('No scenario available; this page should not have been available.')
 
-        self.factory = commonqt.PropertyEditorFactory(self.scenario,live=True,allowhide=True)
+        self.factory = commonqt.PropertyEditorFactory(self.scenario,live=True,allowhide=True,datasourcedir=parent.getProperty('datasourcedir'))
 
     def saveData(self,mustbevalid):
         
@@ -857,7 +857,7 @@ class PageAdvanced(commonqt.WizardPage):
 
         self.tree = commonqt.ExtendedTreeView(self)
         #self.tree.header().hide()
-        self.delegate = commonqt.PropertyDelegate()
+        self.delegate = commonqt.PropertyDelegate(datasourcedir=parent.getProperty('datasourcedir'))
         self.tree.setItemDelegate(self.delegate)
         self.tree.setModel(self.model)
         self.tree.setExpandedAll(maxdepth=1)

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.52 2008-02-04 07:38:55 jorn Exp $
+#$Id: commonqt.py,v 1.53 2008-02-05 07:42:30 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -517,10 +517,11 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             elif isinstance(editor,QtGui.QDateTimeEdit):
                 model.setData(index, QtCore.QVariant(editor.dateTime()))
 
-    def __init__(self,linkedfile,parent=None,title=None):
+    def __init__(self,linkedfile,parent=None,title=None,datasourcedir=None):
         QtGui.QDialog.__init__(self,parent)
 
         self.linkedfile = linkedfile
+        self.datasourcedir = datasourcedir
 
         lo = QtGui.QGridLayout()
         
@@ -729,10 +730,16 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         QtGui.qApp.processEvents()
 
     def onImport(self):
-        path = unicode(QtGui.QFileDialog.getOpenFileName(self,'','',''))
+        dir = ''
+        if self.datasourcedir!=None: dir = self.datasourcedir.get('')
+        path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',dir,''))
 
         # If the browse dialog was cancelled, just return.
         if path=='': return
+        
+        # Store the data source directory
+        if self.datasourcedir!=None:
+            self.datasourcedir.set(os.path.dirname(path))
 
         # Create data file for file-on-disk, copy it to memory, and release the data file.
         df = xmlstore.DataContainerDirectory.DataFileFile(path)
@@ -741,6 +748,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
 
         # Use the in-memory data file.
         self.setData(memdf)
+        memdf.release()
 
     def onExport(self):
         path = unicode(QtGui.QFileDialog.getSaveFileName(self,'','',''))
@@ -768,13 +776,14 @@ class LinkedFilePlotDialog(QtGui.QDialog):
 # =======================================================================
 
 class LinkedFileEditor(QtGui.QWidget):
-    def __init__(self,parent=None,prefix=''):
+    def __init__(self,parent=None,prefix='',datasourcedir=None):
         QtGui.QWidget.__init__(self, parent)
 
         lo = QtGui.QHBoxLayout()
         
         self.prefix = prefix
         self.linkedfile = None
+        self.datasourcedir = datasourcedir
 
         self.plotbutton = QtGui.QPushButton(prefix+'...',self)
         lo.addWidget(self.plotbutton)
@@ -792,7 +801,7 @@ class LinkedFileEditor(QtGui.QWidget):
         return self.linkedfile.addref()
 
     def onPlot(self):
-        dialog = LinkedFilePlotDialog(self.linkedfile,title=self.prefix)
+        dialog = LinkedFilePlotDialog(self.linkedfile,title=self.prefix,datasourcedir=self.datasourcedir)
         ret = dialog.exec_()
         if ret == QtGui.QDialog.Accepted:
             self.linkedfile = dialog.linkedfile
@@ -1050,8 +1059,9 @@ class FontNameEditor(QtGui.QComboBox):
 
 class PropertyDelegate(QtGui.QItemDelegate):
 
-    def __init__(self,parent=None):
+    def __init__(self,parent=None,datasourcedir=None):
         QtGui.QItemDelegate.__init__(self,parent)
+        self.datasourcedir = datasourcedir
 
     # createEditor (inherited from QtGui.QItemDelegate)
     #   Creates the editor widget for the model item at the given index
@@ -1122,7 +1132,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
         elif nodetype=='duration':
             editor = TimeDeltaEditor(parent)
         elif nodetype=='gotmdatafile':
-            editor = LinkedFileEditor(parent)
+            editor = LinkedFileEditor(parent,datasourcedir=self.datasourcedir)
         elif nodetype=='color':
             editor = ColorEditor(parent)
         elif nodetype=='fontname':
@@ -1927,12 +1937,13 @@ class WizardFork(WizardSequence):
 
 class PropertyEditorFactory:
 
-    def __init__(self,typedstore,live=False,allowhide=False,unitinside=False):
+    def __init__(self,typedstore,live=False,allowhide=False,unitinside=False,datasourcedir=None):
         self.store = typedstore
         self.changed = False
         self.live = live
         self.allowhide = allowhide
         self.unitinside = unitinside
+        self.datasourcedir = datasourcedir
         self.editors = []
 
         if self.live:
@@ -1956,11 +1967,13 @@ class PropertyEditorFactory:
             assert node!=None, 'Unable to create editor for "%s"; this node does not exist.' % location
 
         # The editor inherits some optional arguments from the responsible factory.
-        if 'allowhide' not in kwargs: kwargs['allowhide'] = self.allowhide
-        if 'unitinside' not in kwargs: kwargs['unitinside'] = self.unitinside
+        editorargs = {'allowhide':self.allowhide,
+                      'unitinside':self.unitinside,
+                      'datasourcedir':self.datasourcedir}
+        editorargs.update(kwargs)
 
         # Create the editor object.        
-        editor = PropertyEditor(node,parent,**kwargs)
+        editor = PropertyEditor(node,parent,**editorargs)
         
         # If we are "live", update the enabled/disabled state or visibility of the editor.
         if self.live: editor.updateEditorEnabled()
@@ -2169,7 +2182,7 @@ class PropertyEditor:
             for callback in self.changehandlers:
                 callback(self)
 
-    def createEditor(self,node,parent,selectwithradio=False,boolwithcheckbox=False,fileprefix=None,groupbox=False,whatsthis=True):
+    def createEditor(self,node,parent,selectwithradio=False,boolwithcheckbox=False,fileprefix=None,groupbox=False,whatsthis=True,datasourcedir=None):
         templatenode = node.templatenode
         nodetype = node.getValueType()
         editor = None
@@ -2242,7 +2255,7 @@ class PropertyEditor:
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         elif nodetype=='gotmdatafile':
             if fileprefix==None: fileprefix = node.getText(detail=1,capitalize=True)
-            editor = LinkedFileEditor(parent,prefix=fileprefix)
+            editor = LinkedFileEditor(parent,prefix=fileprefix,datasourcedir=datasourcedir)
             self.currenteditor = editor
             editor.connect(editor, QtCore.SIGNAL('editingFinished()'), self.onChange)
         else:
@@ -2976,6 +2989,7 @@ class ProgressDialog(QtGui.QProgressDialog):
         self.setRange(0,0)
         self.suppressstatus = suppressstatus
         if title!=None: self.setWindowTitle(title)
+        QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
             
     def onProgressed(self,progress,status):
         if progress!=None:
@@ -2985,3 +2999,8 @@ class ProgressDialog(QtGui.QProgressDialog):
             self.setValue(0)
         if not self.suppressstatus: self.setLabelText(status)
         QtGui.qApp.processEvents()
+
+    def close(self):
+        QtGui.QApplication.restoreOverrideCursor()
+        QtGui.QProgressDialog.close(self)
+        

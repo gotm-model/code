@@ -1171,8 +1171,10 @@ class Result(NetCDFStore):
     def saveNetCDF(self,path):
         NetCDFStore.save(self,path)
 
-    def save(self,path,addfiguresettings=True):
+    def save(self,path,addfiguresettings=True,callback=None):
         assert self.datafile!=None, 'The result object was not yet attached to a result file (NetCDF).'
+
+        progslicer = common.ProgressSlicer(callback,2)
 
         # Create a ZIP container to hold the result.
         container = xmlstore.DataContainerZip(path,'w')
@@ -1189,9 +1191,10 @@ class Result(NetCDFStore):
         self.store.resetChanged()
 
         # If we have a link to the scenario, add it to the result file.
+        progslicer.nextStep('saving scenario')
         if self.scenario!=None:
             fscen = StringIO.StringIO()
-            self.scenario.saveAll(fscen,claim=False)
+            self.scenario.saveAll(fscen,claim=False,callback=progslicer.getStepCallback())
             df = xmlstore.DataFileMemory(fscen.getvalue(),'scenario.gotmscenario')
             fscen.close()
             added = container.addItem(df)
@@ -1199,6 +1202,7 @@ class Result(NetCDFStore):
             df.release()
         
         # Add the result data (NetCDF)
+        progslicer.nextStep('saving result data')
         container.addFile(self.datafile,'result.nc')
         
         # Make changes to container persistent (this closes the ZIP file), and release it.
