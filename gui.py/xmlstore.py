@@ -619,11 +619,13 @@ class DataFileEx(Store.DataType,common.referencedobject):
     def __init__(self,datafile=None,context=None,infonode=None,nodename=None):
         common.referencedobject.__init__(self)
         Store.DataType.__init__(self)
-        
+
+        assert nodename!=None or context==None, 'If a context is provided you must also specify a node name. That name will be used to uniquely identify the node in the context.'
+
         self.nodename = nodename
         
         # Create a global store for metadata if it does not exist yet.
-        if context==None: context = {}
+        if context==None: context = {'fake':True}
         linkedfiles = context.setdefault('linkedobjects',{})
         if self.linkedfilename not in linkedfiles:
             # Store for metadata does not exist yet: create it.
@@ -644,7 +646,13 @@ class DataFileEx(Store.DataType,common.referencedobject):
 
         # Reference the metadata store (because we will keep a link to it)
         self.store = store.addref()
+        
+        # If we created a fake context on the spot, it is now keeping a
+        # reference to the data store. Undo this, because the context will go
+        # out of scope.
+        if context.get('fake',False): self.store.release()
 
+        # Initialize data file and meta data.
         self.datafile = None
         self.metadata = None
         

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.53 2008-02-05 07:42:30 jorn Exp $
+#$Id: commonqt.py,v 1.54 2008-02-07 13:37:20 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 import datetime, re, os.path, sys
@@ -741,7 +741,9 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         if self.datasourcedir!=None:
             self.datasourcedir.set(os.path.dirname(path))
 
-        # Create data file for file-on-disk, copy it to memory, and release the data file.
+        # Create data file for file-on-disk, copy it to memory,
+        # and release the data file. We do not want to lock the
+        # file on disk while working with the scenario.
         df = xmlstore.DataContainerDirectory.DataFileFile(path)
         memdf = xmlstore.DataFileMemory.fromDataFile(df)
         df.release()

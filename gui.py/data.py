@@ -204,45 +204,49 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
             assert False, 'Linked file has unknown type "%s".' % node.type
         return store
         
-    def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=()):
+    def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=(),variables=[]):
     
         PlotVariableStore.__init__(self)
         xmlstore.DataFileEx.__init__(self,datafile,context,infonode,nodename)
 
-        finfo = common.findDescendantNode(infonode,['fileinfo'])
-        self.nodeid = infonode.getAttribute('name')
-        
-        self.vardata = []
-        fvars = common.findDescendantNode(finfo,['filevariables'])
-        if fvars!=None:
-            for ch in fvars.childNodes:
-                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filevariable':
-                    longname = ch.getAttribute('label')
-                    unit = ch.getAttribute('unit')
-                    name = longname
-                    self.vardata.append((name,longname,unit))
-                    
-        # Copy data from supplied dimensions
+        # Copy data from supplied dimensions and variables
         self.dimensions = {}
         for dimname,dimdata in dimensions.iteritems():
             self.dimensions[dimname] = PlotVariableStore.getDimensionInfo(self,None)
             self.dimensions[dimname].update(dimdata)
-
+        self.vardata = list(variables)
         self.dimensionorder = list(dimensionorder)
         
-        fdims = common.findDescendantNode(finfo,['filedimensions'])
-        if fdims!=None:
-            for ch in fdims.childNodes:
-                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filedimension':
-                    dimdata = PlotVariableStore.getDimensionInfo(self,None)
-                    if ch.hasAttribute('label'):         dimdata['label']         = ch.getAttribute('label')
-                    if ch.hasAttribute('unit'):          dimdata['unit']          = ch.getAttribute('unit')
-                    if ch.hasAttribute('datatype'):      dimdata['datatype']      = ch.getAttribute('datatype')
-                    if ch.hasAttribute('preferredaxis'): dimdata['preferredaxis'] = ch.getAttribute('preferredaxis')
-                    id = ch.getAttribute('name')
-                    if id=='': id = dimdata['label']
-                    self.dimensions[id] = dimdata
-                    self.dimensionorder.append(id)
+        # Supplement dimensions and variables with information in
+        # supplied XML node (if any)
+        if infonode!=None:
+            finfo = common.findDescendantNode(infonode,['fileinfo'])
+            self.nodeid = infonode.getAttribute('name')
+
+            # Get variables
+            fvars = common.findDescendantNode(finfo,['filevariables'])
+            if fvars!=None:
+                for ch in fvars.childNodes:
+                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filevariable':
+                        longname = ch.getAttribute('label')
+                        unit = ch.getAttribute('unit')
+                        name = longname
+                        self.vardata.append((name,longname,unit))
+
+            # Get dimensions
+            fdims = common.findDescendantNode(finfo,['filedimensions'])
+            if fdims!=None:
+                for ch in fdims.childNodes:
+                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filedimension':
+                        dimdata = PlotVariableStore.getDimensionInfo(self,None)
+                        if ch.hasAttribute('label'):         dimdata['label']         = ch.getAttribute('label')
+                        if ch.hasAttribute('unit'):          dimdata['unit']          = ch.getAttribute('unit')
+                        if ch.hasAttribute('datatype'):      dimdata['datatype']      = ch.getAttribute('datatype')
+                        if ch.hasAttribute('preferredaxis'): dimdata['preferredaxis'] = ch.getAttribute('preferredaxis')
+                        id = ch.getAttribute('name')
+                        if id=='': id = dimdata['label']
+                        self.dimensions[id] = dimdata
+                        self.dimensionorder.append(id)
 
         self.data = None
         
@@ -416,8 +420,8 @@ class LinkedMatrix(LinkedFileVariableStore):
             slice.generateStaggered()
             return slice
 
-    def __init__(self,datafile,context,infonode,nodename,type=0,dimensions={},dimensionorder=()):
-        LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder)
+    def __init__(self,datafile=None,context=None,infonode=None,nodename=None,type=0,dimensions={},dimensionorder=(),variables=[]):
+        LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder,variables)
         self.variableclass = self.LinkedMatrixVariable
         assert len(self.dimensions)<=1, 'Linkedmatrix objects can only be used with 0 or 1 coordinate dimensions, but %i are present.' % len(self.dimensions)
         self.type = type
@@ -656,8 +660,8 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                     
             return varslice
 
-    def __init__(self,datafile,context,infonode,nodename,dimensions=[],dimensionorder=()):
-        LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder)
+    def __init__(self,datafile,context,infonode,nodename,dimensions=[],dimensionorder=(),variables=[]):
+        LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder,variables)
         self.variableclass = self.LinkedProfilesInTimeVariable
         
     def setDataFile(self,datafile=None,cleardata=True):
