@@ -16,11 +16,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schemas", "schemas", "{9B09
 		..\..\schemas\outputtree.xml = ..\..\schemas\outputtree.xml
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "figure", "figure", "{15C701CC-A00E-45E6-A7F7-F78AAF6F16A4}"
-	ProjectSection(SolutionItems) = preProject
-		..\..\schemas\figure\gotmgui.xml = ..\..\schemas\figure\gotmgui.xml
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "report", "report", "{1B98823E-819F-46B0-950F-A1F2993538AD}"
 	ProjectSection(SolutionItems) = preProject
 		..\..\schemas\report\gotmgui.xml = ..\..\schemas\report\gotmgui.xml
@@ -56,11 +51,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "util", "util", "{B352B739-F
 		..\..\util\xml2nml.py = ..\..\util\xml2nml.py
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "datafilecache", "datafilecache", "{FF7114ED-E773-45AB-AE76-E6C4748020DC}"
-	ProjectSection(SolutionItems) = preProject
-		..\..\schemas\datafilecache\gotmgui.xml = ..\..\schemas\datafilecache\gotmgui.xml
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{7221ADCA-A60F-4FD6-B21D-09D4DE228ACF}"
 	ProjectSection(SolutionItems) = preProject
 		..\..\core\common.py = ..\..\core\common.py
@@ -87,6 +77,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlstore", "xmlstore", "{F9
 		..\..\xmlstore\xmlstore.py = ..\..\xmlstore\xmlstore.py
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schemas", "schemas", "{2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "figure", "figure", "{E25CD9E2-4661-4402-9E28-33ED4336CEFA}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\xmlplot\schemas\figure\0001.xml = ..\..\xmlplot\schemas\figure\0001.xml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "datafilecache", "datafilecache", "{10A4F0A0-9287-4C21-93F1-22BA1F540459}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\xmlplot\schemas\datafilecache\0001.xml = ..\..\xmlplot\schemas\datafilecache\0001.xml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -95,11 +97,12 @@ Global
 		{7221ADCA-A60F-4FD6-B21D-09D4DE228ACF} = {AF3430E4-6CC0-48E4-9FE3-AEE4A23CCD76}
 		{ED14B761-93AA-4FA8-8E62-2EAD150852E8} = {AF3430E4-6CC0-48E4-9FE3-AEE4A23CCD76}
 		{F98996AE-260D-42D5-9E95-C3181A2D7C8E} = {AF3430E4-6CC0-48E4-9FE3-AEE4A23CCD76}
-		{15C701CC-A00E-45E6-A7F7-F78AAF6F16A4} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{1B98823E-819F-46B0-950F-A1F2993538AD} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{CDBA7004-02BA-40A3-9F2A-D7A10F701220} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{4481907A-5850-4BAC-94F2-23E2FC5BB33B} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{C9C26D7C-F213-41C1-91AC-0313D612391E} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
-		{FF7114ED-E773-45AB-AE76-E6C4748020DC} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
+		{2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2} = {ED14B761-93AA-4FA8-8E62-2EAD150852E8}
+		{E25CD9E2-4661-4402-9E28-33ED4336CEFA} = {2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2}
+		{10A4F0A0-9287-4C21-93F1-22BA1F540459} = {2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2}
 	EndGlobalSection
 EndGlobal

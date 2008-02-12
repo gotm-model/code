@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <element name="Result">
 	<element name="FigureSettings">
-		<link path="../figure/gotmgui.xml" maxoccurs="1000"/>
+		<link path="[xmlplot]/schemas/figure/0001.xml" maxoccurs="1000"/>
 	</element>
 	<link path="../report/gotmgui.xml"/>
 </element>

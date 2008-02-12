@@ -1,10 +1,12 @@
-#$Id: common.py,v 1.2 2008-02-12 11:59:57 jorn Exp $
+#$Id: common.py,v 1.3 2008-02-12 12:43:46 jorn Exp $
 
 # Import modules from standard Python library
 import os.path
 
 # Import additional third party modules
 import matplotlib.dates,matplotlib.numerix
+
+import xmlstore.xmlstore
 
 # ------------------------------------------------------------------------------------------
 # Functions for getting/settings the path to data files
@@ -19,6 +21,7 @@ def getDataRoot():
     if dataroot==None:
         dataroot = os.path.realpath(os.path.dirname(__file__))
     return dataroot
+xmlstore.xmlstore.Schema.knownpaths['xmlplot'] = getDataRoot()
 
 # ------------------------------------------------------------------------------------------
 # Date-time functions

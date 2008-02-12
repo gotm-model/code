@@ -14,7 +14,7 @@
 #   tree, encapsulating containers such as ZIP, and many other features.
 
 # Import modules from standard Python library
-import datetime
+import datetime, re
 import xml.dom.minidom, os
 import zipfile, tarfile, tempfile, shutil, StringIO
 
@@ -1190,6 +1190,7 @@ class Schema:
     access to the main properties (version and root of the XML tree).
     """
     cache = {}
+    knownpaths = {}
     
     @staticmethod
     def create(source,cache=True):
@@ -1238,7 +1239,14 @@ class Schema:
             
             if link.hasAttribute('path'):
                 # We need to copy from an external XML document.
-                linkedpath = os.path.abspath(os.path.join(os.path.dirname(sourcepath),link.getAttribute('path')))
+                linkedpath = link.getAttribute('path')
+                while True:
+                    match = re.match('\[(\w+)]',linkedpath)
+                    if match==None: break
+                    exp = match.group(1)
+                    assert exp in Schema.knownpaths, 'Do not know the location of "%s" in linked path "%s".' % (exp,linkedpath)
+                    linkedpath = os.path.join(linkedpath[:match.start(0)],Schema.knownpaths[exp],linkedpath[match.end(0)+1:])
+                linkedpath = os.path.abspath(os.path.join(os.path.dirname(sourcepath),linkedpath))
                 if not os.path.isfile(linkedpath):
                     raise Exception('Linked XML schema file "%s" does not exist.' % linkedpath)
                 childdom = xml.dom.minidom.parse(linkedpath)
