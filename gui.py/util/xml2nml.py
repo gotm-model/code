@@ -7,13 +7,13 @@ gotmguiroot = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..')
 path = sys.path[:] 
 sys.path.append(gotmguiroot)
 try: 
-    import common,scenario,data
+    import core.common,core.scenario
 finally: 
     sys.path = path
 
 def main():
-    copydata = not common.getSwitchArgument('-nd')
-    comments = not common.getSwitchArgument('-nc')
+    copydata = not core.common.getSwitchArgument('-nd')
+    comments = not core.common.getSwitchArgument('-nc')
 
     # Check if we have the required arguments.
     # Note: sys.argv[0] contains the path name of the script.
@@ -62,7 +62,7 @@ contains namelist and data files suitable for GOTM version 3.2.4.
         return 1
 
     # Check if we have an XML schema for the specified target scenario version.
-    schemas = scenario.Scenario.getDefaultSchemas()
+    schemas = core.scenario.Scenario.getDefaultSchemas()
     if schemaname not in schemas:
         print 'Error! No XML schema available for specified output version "%s".' % schemaname
         return 1
@@ -72,7 +72,7 @@ contains namelist and data files suitable for GOTM version 3.2.4.
         print 'Warning! The target directory "%s" exists; files in it may be overwritten.' % targetdir
 
     # Create the scenario object for the specified version.
-    scen = scenario.Scenario.fromSchemaName(schemaname)
+    scen = core.scenario.Scenario.fromSchemaName(schemaname)
 
     # Load the scenario from the source path.
     if os.path.isfile(src):

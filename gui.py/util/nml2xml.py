@@ -7,7 +7,7 @@ gotmguiroot = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..')
 path = sys.path[:] 
 sys.path.append(gotmguiroot)
 try: 
-    import scenario, common, data
+    import core.common, core.scenario
 finally: 
     sys.path = path
 
@@ -22,14 +22,14 @@ def printprogress(progress,status):
 
 def main():
     # Get optional command line arguments
-    targetisdir = common.getSwitchArgument('-d')
-    strict = not common.getSwitchArgument('-ns')
-    check = common.getSwitchArgument('-check')
-    protodir = common.getNamedArgument('-p')
-    targetschema = common.getNamedArgument('-v')
+    targetisdir = core.common.getSwitchArgument('-d')
+    strict = not core.common.getSwitchArgument('-ns')
+    check = core.common.getSwitchArgument('-check')
+    protodir = core.common.getNamedArgument('-p')
+    targetschema = core.common.getNamedArgument('-v')
 
     # Default schema
-    if targetschema==None: targetschema = scenario.savedscenarioversion
+    if targetschema==None: targetschema = core.scenario.savedscenarioversion
 
     # Check if we have the required arguments.
     # Note: sys.argv[0] contains the path name of the script.
@@ -82,7 +82,7 @@ Converts the namelist .values file (plus data files) in the directory
 "./v3.2/seagrass" to the scenario file "./seagrass.gotmscenario" suitable for
 GOTM-GUI, while using .proto files in directory "./v3.2/templates".
 =============================================================================
-""" % scenario.savedscenarioversion
+""" % core.scenario.savedscenarioversion
         return 1
         
     # Get command line arguments
@@ -95,7 +95,7 @@ GOTM-GUI, while using .proto files in directory "./v3.2/templates".
         return 1
 
     # Check if we have an XML schema for the specified target scenario version.
-    schemas = scenario.Scenario.getDefaultSchemas()
+    schemas = core.scenario.Scenario.getDefaultSchemas()
     if targetschema not in schemas:
         print 'Error! No XML schema available for specified output version "%s".' % targetschema
         return 1
@@ -110,7 +110,7 @@ GOTM-GUI, while using .proto files in directory "./v3.2/templates".
 
     # Try to parse the namelist files (implicitly converts to the specified target version).
     try:
-        scen = scenario.Scenario.fromNamelists(srcpath,protodir=protodir,targetversion=targetschema,strict=strict)
+        scen = core.scenario.Scenario.fromNamelists(srcpath,protodir=protodir,targetversion=targetschema,strict=strict)
     except Exception,e:
         print '\n\nFailed to load scenario from namelists. Reason:\n'+str(e)
         print '\nYou might try adding the switch -ns. This switch disables strict namelist parsing.'
