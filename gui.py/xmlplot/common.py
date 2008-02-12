@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.1 2008-02-12 10:41:57 jorn Exp $
+#$Id: common.py,v 1.2 2008-02-12 11:59:57 jorn Exp $
 
 # Import modules from standard Python library
 import os.path

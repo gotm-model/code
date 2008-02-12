@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<element name="DataFileCache" version="0001">
+
+  <element name="DataFile" maxoccurs="10000">
+    <element name="Valid" type="bool" label="valid"/>
+    <element name="Dimensions">
+      <condition type="eq" variable="./Valid" value="True"/>
+      <element name="Dimension" maxoccurs="10">
+        <element name="IsTimeDimension" type="bool" hidden="True"/>
+        <element name="MinimumTime" type="datetime" label="minimum">
+          <condition type="eq" variable="./IsTimeDimension" value="True"/>
+        </element>
+        <element name="MaximumTime" type="datetime" label="maximum">
+          <condition type="eq" variable="./IsTimeDimension" value="True"/>
+        </element>
+        <element name="Minimum" type="float" label="minimum">
+          <condition type="ne" variable="./IsTimeDimension" value="True"/>
+        </element>
+        <element name="Maximum" type="float" label="maximum">
+          <condition type="ne" variable="./IsTimeDimension" value="True"/>
+        </element>
+      </element>
+    </element>
+  </element>
+		
+</element>
