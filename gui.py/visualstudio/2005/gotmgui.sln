@@ -3,21 +3,12 @@ Microsoft Visual Studio Solution File, Format Version 9.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Python", "Python", "{AF3430E4-6CC0-48E4-9FE3-AEE4A23CCD76}"
 	ProjectSection(SolutionItems) = preProject
 		..\..\batch.py = ..\..\batch.py
-		..\..\common.py = ..\..\common.py
 		..\..\commonqt.py = ..\..\commonqt.py
-		..\..\data.py = ..\..\data.py
 		..\..\gotm.py = ..\..\gotm.py
-		..\..\namelist.py = ..\..\namelist.py
-		..\..\plot.py = ..\..\plot.py
-		..\..\report.py = ..\..\report.py
-		..\..\scenario.py = ..\..\scenario.py
 		..\..\scenariobuilder.py = ..\..\scenariobuilder.py
-		..\..\settings.py = ..\..\settings.py
 		..\..\setup.py = ..\..\setup.py
-		..\..\simulate.py = ..\..\simulate.py
 		..\..\simulator.py = ..\..\simulator.py
 		..\..\visualizer.py = ..\..\visualizer.py
-		..\..\xmlstore.py = ..\..\xmlstore.py
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schemas", "schemas", "{9B09D41F-5FB8-4FAD-8E03-F5E53103748D}"
@@ -70,11 +61,40 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "datafilecache", "datafileca
 		..\..\schemas\datafilecache\gotmgui.xml = ..\..\schemas\datafilecache\gotmgui.xml
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{7221ADCA-A60F-4FD6-B21D-09D4DE228ACF}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\core\common.py = ..\..\core\common.py
+		..\..\core\namelist.py = ..\..\core\namelist.py
+		..\..\core\report.py = ..\..\core\report.py
+		..\..\core\result.py = ..\..\core\result.py
+		..\..\core\scenario.py = ..\..\core\scenario.py
+		..\..\core\settings.py = ..\..\core\settings.py
+		..\..\core\simulator.py = ..\..\core\simulator.py
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlplot", "xmlplot", "{ED14B761-93AA-4FA8-8E62-2EAD150852E8}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\xmlplot\common.py = ..\..\xmlplot\common.py
+		..\..\xmlplot\data.py = ..\..\xmlplot\data.py
+		..\..\xmlplot\gui_qt4.py = ..\..\xmlplot\gui_qt4.py
+		..\..\xmlplot\plot.py = ..\..\xmlplot\plot.py
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlstore", "xmlstore", "{F98996AE-260D-42D5-9E95-C3181A2D7C8E}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\xmlstore\gui_qt4.py = ..\..\xmlstore\gui_qt4.py
+		..\..\xmlstore\util.py = ..\..\xmlstore\util.py
+		..\..\xmlstore\xmlstore.py = ..\..\xmlstore\xmlstore.py
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{7221ADCA-A60F-4FD6-B21D-09D4DE228ACF} = {AF3430E4-6CC0-48E4-9FE3-AEE4A23CCD76}
+		{ED14B761-93AA-4FA8-8E62-2EAD150852E8} = {AF3430E4-6CC0-48E4-9FE3-AEE4A23CCD76}
+		{F98996AE-260D-42D5-9E95-C3181A2D7C8E} = {AF3430E4-6CC0-48E4-9FE3-AEE4A23CCD76}
 		{15C701CC-A00E-45E6-A7F7-F78AAF6F16A4} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{1B98823E-819F-46B0-950F-A1F2993538AD} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{CDBA7004-02BA-40A3-9F2A-D7A10F701220} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}

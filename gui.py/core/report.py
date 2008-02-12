@@ -1,6 +1,8 @@
+# Import modules from standard Python library
 import os, xml.dom.minidom, shutil
 
-import common, xmlstore, plot, matplotlib, data
+# Import own custom modules
+import xmlstore.util, xmlstore.xmlstore, xmlplot.plot
 
 def createtable(xmldocument,tds,columncount):
     table = xmldocument.createElement('table')
@@ -17,7 +19,7 @@ def createtable(xmldocument,tds,columncount):
             tr.appendChild(xmldocument.createElement('td'))
     return table
 
-class Report(common.referencedobject):
+class Report(xmlstore.util.referencedobject):
     reportdirname = 'reporttemplates'
     reportname2path = None
 
@@ -42,11 +44,11 @@ class Report(common.referencedobject):
         return Report.reportname2path
 
     def __init__(self,defaultfont=None):
-        common.referencedobject.__init__(self)
+        xmlstore.util.referencedobject.__init__(self)
         
-        self.store = xmlstore.TypedStore('schemas/report/gotmgui.xml')
+        self.store = xmlstore.xmlstore.TypedStore('schemas/report/gotmgui.xml')
 
-        self.defaultstore = xmlstore.TypedStore('schemas/report/gotmgui.xml')
+        self.defaultstore = xmlstore.xmlstore.TypedStore('schemas/report/gotmgui.xml')
 
         # Set some default properties.
         self.defaultstore['Figures/Width'      ].setValue(10)
@@ -153,7 +155,7 @@ class Report(common.referencedobject):
         
         # Create figure to be used for plotting observations and results.
         if len(inputdata)>0 or len(plotvariables)>0:
-            fig = plot.Figure(defaultfont=fontname)
+            fig = xmlplot.plot.Figure(defaultfont=fontname)
         else:
             fig = None
         
@@ -164,6 +166,7 @@ class Report(common.referencedobject):
         if len(inputdata)>0:
             nodeParent = scentable.parentNode
             nodePreceding = scentable.nextSibling
+            mintime,maxtime = scenario['/time/start'].getValue(usedefault=True),scenario['/time/stop'].getValue(usedefault=True)
             for node,store in inputdata:
                 if callback!=None:
                     store.getData(callback=lambda progress,msg: callback((istep+progress)/steps,'Parsing %s...' % (node.getText(1),)))
@@ -182,6 +185,14 @@ class Report(common.referencedobject):
                     fig.addVariable(varid)
                     fig.properties['FontScaling'].setValue(fontscaling)
                     fig.setUpdating(True)
+                    
+                    fig.setUpdating(False)
+                    for axisnode in fig.properties['Axes'].getLocationMultiple(['Axis']):
+                        if axisnode['IsTimeAxis'].getValue(usedefault=True):
+                            axisnode['MinimumTime'].setValue(mintime)
+                            axisnode['MaximumTime'].setValue(maxtime)
+                    fig.setUpdating(True)
+                    
                     filename = 'in_'+varid+'.png'
                     outputfile = os.path.join(outputpath,filename)
                     fig.exportToFile(outputfile,dpi=dpi)

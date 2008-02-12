@@ -1,6 +1,6 @@
-import tempfile,os,time,shutil
+import tempfile,os,time
 
-import common,data,gotm
+import common,result,gotm
 
 gotmversion = gotm.gui_util.getversion().rstrip()
 gotmscenarioversion = 'gotm-%s' % gotmversion
@@ -23,7 +23,7 @@ def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
     if verbose: print 'create result'
 
     # Create result object.
-    res = data.Result()
+    res = result.Result()
         
     # Save old working directory
     olddir = os.getcwdu()

@@ -1,165 +1,62 @@
-import os, re, datetime, xml.dom.minidom, tempfile, shutil, StringIO, math
+# Import modules from standard Python library
+import os, re, datetime, shutil, StringIO
 
-import common, xmlstore, scenario
+# Import additional third party modules
+import matplotlib.numerix, numpy
 
-# Import NetCDF file format support.
-# We prefer ScientificPython 2.7 or higher, but resort to pynetcdf if ScientificPython
-# is not found.
-try:
-    import Scientific
-    [vermaj,vermin,verbuild] = map(int,Scientific.__version__.split('.'))
-    if vermaj<2 or (vermaj==2 and vermin<7):
-        raise Exception('Installed ScientificPython has version < 2.7.1')
-    from Scientific.IO.NetCDF import NetCDFFile
-except Exception,e:
-    print 'Unable to load Scientific.IO.NetCDF. Reason: %s. Trying pynetcdf.' % e
-    from pynetcdf import NetCDFFile
+# Import our custom modules
+import common, xmlstore.util, xmlstore.xmlstore, plot
 
-import matplotlib.numerix, numpy, pytz
-
-# Abstract class that contains one or more variables that can be plotted.
-# Classes deriving from it must support the virtual methods below.
-class PlotVariableStore:
-
-    def __init__(self):
-        pass
-
-    def getVariableNames(self):
-        return []
-
-    def getVariableLongNames(self):
-        return dict([(name,self.getVariable(name).getLongName()) for name in self.getVariableNames()])
-
-    def getVariable(self,varname):
-        return None
-        
-    def getDimensionInfo(self,dimname):
-        return {'label':'','unit':'','preferredaxis':None,'datatype':'float','logscale':False}
-
-    def getVariableTree(self,path,otherstores={}):
-        xmlschema = xml.dom.minidom.parse(path)
-        vardict = self.getVariableLongNames()
-        found = set(self.filterNodes(xmlschema.documentElement,vardict))
-        remaining = [nodename for nodename in vardict if nodename not in found]
-        other = None
-        for ch in xmlschema.getElementsByTagName('element'):
-            if ch.getAttribute('name')=='other':
-                other = ch
-                break
-        if other!=None:
-            if len(remaining)==0:
-                other.parentNode.removeChild(other)
-            else:
-                for varid in sorted(remaining,cmp=lambda x,y: cmp(vardict[x].lower(), vardict[y].lower())):
-                    el = xmlschema.createElement('element')
-                    el.setAttribute('name',varid)
-                    el.setAttribute('label',vardict[varid])
-                    el.setAttribute('type','bool')
-                    other.appendChild(el)
-        return xmlstore.TypedStore(xmlschema,otherstores=otherstores)
-
-    def filterNodes(self,node,vardict):
-        nodeid = node.getAttribute('name')
-        assert nodeid!='', 'Node lacks "name" attribute.'
-        nodeids = []
-        if nodeid in vardict:
-            if not node.hasAttribute('label'):
-                node.setAttribute('label',vardict[nodeid])
-            node.setAttribute('type','bool')
-            nodeids.append(nodeid)
-        for ch in common.findDescendantNodes(node,['element']):
-            nodeids += self.filterNodes(ch,vardict)
-        if len(nodeids)==0 and nodeid!='other':
-            node.parentNode.removeChild(node)
-        return nodeids
-
-# Abstract class that represents a variable that can be plotted.
-# Classes deriving from it must support the virtual methods below.
-class PlotVariable:
+def getNetCDFFile(path):
+    """Returns a NetCDFFile file object representing the NetCDF file
+    at the specified path. The returned object follows
+    Scientific.IO.NetCDFFile conventions.
     
-    class Slice:
-        def __init__(self,dimensions=()):
-            self.dimensions = dimensions
-            self.ndim = len(dimensions)
-            self.data = None
-            self.coords = self.ndim*[None]
-            self.coords_stag = self.ndim*[None]
-            
-            # Bounds for confidence interval (optional)
-            self.lbound = None
-            self.ubound = None
-        
-        def isValid(self):
-            return (self.ndim>0) and (self.data!=None) and (None not in self.coords) and (None not in self.coords_stag)
+    Note: this is the *only* function that needs to know which NetCDF
+    module to use. All other functions just operate on an object
+    returned by this function, and expect this object to follow
+    Scientific.IO.NetCDFFile conventions. Thus adding/replacing a module
+    for NetCDF support should only require a chnage in this function.
+    """
 
-        def generateStaggered(self):
-            for idim in range(self.ndim):
-                assert self.coords[idim]!=None, 'Cannot generate staggered coordinates because centered coordinates have not been set.'
-                assert self.coords[idim].ndim==1, 'Currently a staggered grid can only be generated automatically for 1D coordinate vectors.'
-                self.coords_stag[idim] = common.getCenters(self.coords[idim],addends=True)
-                
-        def squeeze(self):
-            # Find non-singleton dimensions (singleton dimension: dimension with length one)
-            # Store singleton dimensions as fixed extra coordinates.
-            gooddimindices = []
-            gooddimnames = []
-            self.fixedcoords = []
-            for idim,dimname in enumerate(self.dimensions):
-                if self.data.shape[idim]>1:
-                    # Normal dimension (more than one coordinate)
-                    gooddimindices.append(idim)
-                    gooddimnames.append(dimname)
-                elif self.data.shape[idim]==1:
-                    # Singleton dimension
-                    self.fixedcoords.append((dimname,self.coords[idim][0]))
+    # First import NetCDF file format support (we do this here rather
+    # than on import, because this module can be useful without NetCDF
+    # support as well).
+    
+    # We prefer ScientificPython 2.7 or higher, but resort to pynetcdf
+    # if ScientificPython is not found, or its version is < 2.7.
+    try:
+        import Scientific
+        [vermaj,vermin,verbuild] = map(int,Scientific.__version__.split('.'))
+        if vermaj<2 or (vermaj==2 and vermin<7):
+            raise Exception('Installed ScientificPython has version < 2.7.1')
+        from Scientific.IO.NetCDF import NetCDFFile
+    except Exception,e:
+        print 'Unable to load Scientific.IO.NetCDF. Reason: %s. Trying pynetcdf.' % e
+        from pynetcdf import NetCDFFile
 
-            newslice = PlotVariable.Slice(gooddimnames)
-            newslice.coords      = [self.coords     [i].squeeze() for i in gooddimindices]
-            newslice.coords_stag = [self.coords_stag[i].squeeze() for i in gooddimindices]
-            newslice.data = self.data.squeeze()
+    try:
+        nc = NetCDFFile(path)
+    except Exception, e:
+        raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
 
-            # Update confidence interval (if any)
-            if self.lbound!=None: newslice.lbound = self.lbound.squeeze()
-            if self.ubound!=None: newslice.ubound = self.ubound.squeeze()
+    return nc
 
-            return newslice
+class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
 
-    def __init__(self,store):
-        self.store = store
+    class DataFileCache(xmlstore.xmlstore.TypedStore):
+        def __init__(self,valueroot=None,adddefault = True):
+            schemadom = os.path.join(common.getDataRoot(),'schemas/datafilecache/0001.xml')
+            xmlstore.xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
 
-    # getName()
-    #   Return type: string
-    #   Returns the short name (or identifier) of the variable.
-    def getName(self):
-        return ''
+        schemadict = None
+        @staticmethod
+        def getDefaultSchemas():
+            if LinkedFileVariableStore.DataFileCache.schemadict==None:
+                LinkedFileVariableStore.DataFileCache.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/datafilecache'))
+            return LinkedFileVariableStore.DataFileCache.schemadict
 
-    # getLongName()
-    #   Return type: string
-    #   Returns the pretty name for the variable.
-    def getLongName(self):
-        return ''
-
-    # getUnit()
-    #   Return type: string
-    #   Returns the unit of the variable.
-    def getUnit(self):
-        return ''
-
-    # getDimensions()
-    #   Return type: tuple of strings
-    #   Returns the names of the dimensions of the variable; currently supported dimensions: "time", "z".
-    def getDimensions(self):
-        return ()
-
-    def getSlice(self,bounds):
-        return self.Slice()
-
-    def getDimensionInfo(self,dimname):
-        return self.store.getDimensionInfo(dimname)
-
-class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
-
-    class LinkedFileVariable(PlotVariable):
+    class LinkedFileVariable(plot.Variable):
 
         def __init__(self,store,data,index):
             self.store = store
@@ -183,14 +80,14 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
             
     @classmethod
     def createTypedStore(ownclass):
-        return xmlstore.TypedStore(os.path.join(common.getDataRoot(),'schemas/datafilecache/gotmgui.xml'))
+        return LinkedFileVariableStore.DataFileCache()
 
     linkedfilename = 'linkedfile_metadata.xml'
     rootnodename = 'DataFile'
 
     @classmethod
     def createObject(ownclass,datafile,context,infonode,nodename):
-        finfo = common.findDescendantNode(infonode,['fileinfo'])
+        finfo = xmlstore.util.findDescendantNode(infonode,['fileinfo'])
         assert finfo!=None, 'Node "%s" lacks "fileinfo" attribute.' % node
         store = None
         type = finfo.getAttribute('type')
@@ -206,13 +103,13 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
         
     def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=(),variables=[]):
     
-        PlotVariableStore.__init__(self)
-        xmlstore.DataFileEx.__init__(self,datafile,context,infonode,nodename)
+        plot.VariableStore.__init__(self)
+        xmlstore.xmlstore.DataFileEx.__init__(self,datafile,context,infonode,nodename)
 
         # Copy data from supplied dimensions and variables
         self.dimensions = {}
         for dimname,dimdata in dimensions.iteritems():
-            self.dimensions[dimname] = PlotVariableStore.getDimensionInfo(self,None)
+            self.dimensions[dimname] = plot.VariableStore.getDimensionInfo(self,None)
             self.dimensions[dimname].update(dimdata)
         self.vardata = list(variables)
         self.dimensionorder = list(dimensionorder)
@@ -220,11 +117,11 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
         # Supplement dimensions and variables with information in
         # supplied XML node (if any)
         if infonode!=None:
-            finfo = common.findDescendantNode(infonode,['fileinfo'])
+            finfo = xmlstore.util.findDescendantNode(infonode,['fileinfo'])
             self.nodeid = infonode.getAttribute('name')
 
             # Get variables
-            fvars = common.findDescendantNode(finfo,['filevariables'])
+            fvars = xmlstore.util.findDescendantNode(finfo,['filevariables'])
             if fvars!=None:
                 for ch in fvars.childNodes:
                     if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filevariable':
@@ -234,11 +131,11 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
                         self.vardata.append((name,longname,unit))
 
             # Get dimensions
-            fdims = common.findDescendantNode(finfo,['filedimensions'])
+            fdims = xmlstore.util.findDescendantNode(finfo,['filedimensions'])
             if fdims!=None:
                 for ch in fdims.childNodes:
                     if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filedimension':
-                        dimdata = PlotVariableStore.getDimensionInfo(self,None)
+                        dimdata = plot.VariableStore.getDimensionInfo(self,None)
                         if ch.hasAttribute('label'):         dimdata['label']         = ch.getAttribute('label')
                         if ch.hasAttribute('unit'):          dimdata['unit']          = ch.getAttribute('unit')
                         if ch.hasAttribute('datatype'):      dimdata['datatype']      = ch.getAttribute('datatype')
@@ -261,7 +158,7 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
         metadata set on the object, and by default it will also clear any
         parsed data.
         """ 
-        xmlstore.DataFileEx.setDataFile(self,datafile)
+        xmlstore.xmlstore.DataFileEx.setDataFile(self,datafile)
         if cleardata: self.data = None
         
     def setData(self,data,clearfile=True):
@@ -302,7 +199,7 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
         
     def getDimensionInfo(self,dimname):
         """Returns information on the specified data dimension.
-        see PlotVariableStore.getDimensionInfo for the type of
+        see VariableStore.getDimensionInfo for the type of
         information returned.
         """
         return self.dimensions[dimname]
@@ -383,7 +280,7 @@ class LinkedFileVariableStore(PlotVariableStore,xmlstore.DataFileEx):
             # Data not present as data file object. Create one in memory on the spot.
             target = StringIO.StringIO()
             self.writeData(target,callback=callback)
-            self.datafile = xmlstore.DataFileMemory(target.getvalue(),self.nodeid+'.dat')
+            self.datafile = xmlstore.xmlstore.DataFileMemory(target.getvalue(),self.nodeid+'.dat')
             target.close()
         return self.datafile.addref()
         
@@ -500,9 +397,9 @@ class LinkedMatrix(LinkedFileVariableStore):
                     if datematch==None:
                         raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
                     refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                    dimvalue = common.dateTimeFromTuple(refvals)
+                    dimvalue = xmlstore.util.dateTimeFromTuple(refvals)
                     if prevdate!=None and dimvalue<prevdate:
-                        raise Exception('Line %i: observation time %s lies before previous observation time %s. Times should be increasing.' % (iline,dimvalue.strftime(common.datetime_displayformat),prevdate.strftime(common.datetime_displayformat)))
+                        raise Exception('Line %i: observation time %s lies before previous observation time %s. Times should be increasing.' % (iline,dimvalue.strftime(xmlstore.util.datetime_displayformat),prevdate.strftime(common.datetime_displayformat)))
                     prevdate = dimvalue
                     dimvalue = common.date2num(dimvalue)
                 
@@ -579,7 +476,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             if datematch==None:
                 raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             refvals = map(int,datematch.groups()) # Convert matched strings into integers
-            curdate = common.dateTimeFromTuple(refvals)
+            curdate = xmlstore.util.dateTimeFromTuple(refvals)
             times[-1][ipos] = common.date2num(curdate)
             
             # Read values.
@@ -771,7 +668,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             if datematch==None:
                 raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-            curdate = common.dateTimeFromTuple(refvals)
+            curdate = xmlstore.util.dateTimeFromTuple(refvals)
             curdate = common.date2num(curdate)
 
             # Get the number of observations and the depth direction.
@@ -837,11 +734,15 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         # Succeeded in reading the data: store them internally.
         return [times,depths,values]
 
-class NetCDFStore(PlotVariableStore,common.referencedobject):
+class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
+    """Class encapsulating a NetCDF file.
     
-    class NetCDFVariable(PlotVariable):
+    The file is expected to follow the COARDS convention.
+    """
+    
+    class NetCDFVariable(plot.Variable):
         def __init__(self,store,varname):
-            PlotVariable.__init__(self,store)
+            plot.Variable.__init__(self,store)
             self.varname = str(varname)
 
         def getName(self):
@@ -916,8 +817,8 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
           return varslice
 
     def __init__(self,path=None):
-        common.referencedobject.__init__(self)
-        PlotVariableStore.__init__(self)
+        xmlstore.util.referencedobject.__init__(self)
+        plot.VariableStore.__init__(self)
         
         self.datafile = None
         self.nc = None
@@ -930,7 +831,7 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
         return self.datafile
         
     def getDimensionInfo(self,dimname):
-        res = PlotVariableStore.getDimensionInfo(self,dimname)
+        res = plot.VariableStore.getDimensionInfo(self,dimname)
         varinfo = self.nc.variables[dimname]
         if hasattr(varinfo,'long_name'):
             res['label'] = varinfo.long_name
@@ -962,12 +863,13 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
         self.getcdf()
 
     def getcdf(self):
+        """Returns a NetCDFFile file object representing the NetCDF file
+        at the path in self.datafile. The returned object should follow
+        Scientific.IO.NetCDFFile conventions.
+        """
         if self.nc!=None: return self.nc
         assert self.datafile!=None, 'The result object has not yet been attached to an actual result.'
-        try:
-            self.nc = NetCDFFile(self.datafile)
-        except Exception, e:
-            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (self.datafile,str(e)))
+        self.nc = getNetCDFFile(self.datafile)
         return self.nc
 
     def getVariableNames(self):
@@ -1111,7 +1013,7 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
             raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time in "%s".' % (fullunit,reftime))
         hour,min,sec = map(int,timematch.group(1,2,3))
         reftime = reftime[timematch.end():]
-      dateref = datetime.datetime(year,month,day,hour,min,sec,tzinfo=common.utc)
+      dateref = datetime.datetime(year,month,day,hour,min,sec,tzinfo=xmlstore.util.utc)
       if len(reftime)>0:
         timezonematch = re.match(r'(-?\d{1,2})(?::?(\d\d))?$',reftime)
         if timezonematch==None:
@@ -1138,331 +1040,3 @@ class NetCDFStore(PlotVariableStore,common.referencedobject):
           raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: unknown time unit "%s".' % (fullunit,timeunit))
       
       return timeunit,dateref
-
-# Class that represents a GOTM result.
-#   Inherits from PlotVariableStore, as it contains variables that can be plotted.
-#   Contains a link to the scenario from which the result was created (if available)
-class Result(NetCDFStore):
-
-    def __init__(self):
-        NetCDFStore.__init__(self)
-        
-        self.scenario = None
-        self.tempdir = None
-        self.changed = False
-        
-        self.stdout = None
-        self.stderr = None
-        self.returncode = 0
-        self.errormessage = None
-        
-        self.store = xmlstore.TypedStore(os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml'))
-        self.wantedscenarioversion = scenario.guiscenarioversion
-        
-        self.path = None
-
-    def hasChanged(self):
-        return self.changed or self.store.changed
-
-    def getTempDir(self,empty=False):
-        if self.tempdir!=None:
-            if empty:
-                common.TempDirManager.empty(self.tempdir)
-        else:
-            self.tempdir = common.TempDirManager.create(prefix='gotm-')
-        return self.tempdir
-        
-    def saveNetCDF(self,path):
-        NetCDFStore.save(self,path)
-
-    def save(self,path,addfiguresettings=True,callback=None):
-        assert self.datafile!=None, 'The result object was not yet attached to a result file (NetCDF).'
-
-        progslicer = common.ProgressSlicer(callback,2)
-
-        # Create a ZIP container to hold the result.
-        container = xmlstore.DataContainerZip(path,'w')
-
-        if not addfiguresettings:
-            # First clear all figure settings.
-            self.store['FigureSettings'].clearValue(recursive=True)
-
-        # Add the XML file describing result properties.            
-        df = xmlstore.DataFileXmlNode(self.store.root.valuenode)
-        df_added = container.addItem(df,'result.xml')
-        df_added.release()
-        df.release()
-        self.store.resetChanged()
-
-        # If we have a link to the scenario, add it to the result file.
-        progslicer.nextStep('saving scenario')
-        if self.scenario!=None:
-            fscen = StringIO.StringIO()
-            self.scenario.saveAll(fscen,claim=False,callback=progslicer.getStepCallback())
-            df = xmlstore.DataFileMemory(fscen.getvalue(),'scenario.gotmscenario')
-            fscen.close()
-            added = container.addItem(df)
-            added.release()
-            df.release()
-        
-        # Add the result data (NetCDF)
-        progslicer.nextStep('saving result data')
-        container.addFile(self.datafile,'result.nc')
-        
-        # Make changes to container persistent (this closes the ZIP file), and release it.
-        container.persistChanges()
-        container.release()
-
-        # Saved all changes; reset "changed" state
-        self.changed = False
-        
-        # Store the path we saved to.
-        self.path = path
-
-    @classmethod
-    def canBeOpened(cls, container):
-        assert isinstance(container,xmlstore.DataContainer), 'Argument must be data container object.'
-        filelist = container.listFiles()
-        return ('result.nc' in filelist and 'scenario.gotmscenario' in filelist)
-
-    def load(self,path):
-        if isinstance(path,basestring):
-            container = xmlstore.DataContainer.fromPath(path)
-        elif isinstance(path,xmlstore.DataContainer):
-            container = path.addref()
-
-        files = container.listFiles()
-        if 'scenario.gotmscenario' not in files:
-            raise Exception('The archive "%s" does not contain "scenario.gotmscenario"; it cannot be a GOTM result.' % path)
-        if 'result.nc' not in files:
-            raise Exception('The archive "%s" does not contain "result.nc"; it cannot be a GOTM result.' % path)
-
-        # Create a temporary directory to which we can unpack the archive.
-        tempdir = self.getTempDir()
-
-        df = container.getItem('scenario.gotmscenario')
-        self.scenario = scenario.Scenario.fromSchemaName(self.wantedscenarioversion)
-        self.scenario.loadAll(df)
-        df.release()
-
-        df = container.getItem('result.nc')
-        resultpath = os.path.join(tempdir,'result.nc')
-        df.saveToFile(resultpath)
-        df.release()
-
-        df = container.getItem('result.xml')
-        if df!=None:
-            f = df.getAsReadOnlyFile()
-            valuedom = xml.dom.minidom.parse(f)
-            self.store.setStore(valuedom)
-            f.close()
-            df.release()
-
-        # Close the archive
-        container.release()
-
-        # Attach the result, try to open the CDF file
-        self.datafile = resultpath
-        self.getcdf()
-
-        # Reset "changed" status.
-        self.changed = False
-        
-        # Store path
-        if isinstance(path,basestring):
-            self.path = path
-        else:
-            self.path = None
-
-    def setFigure(self,name,source):
-        setroot = self.store['FigureSettings']
-        fignodename = source.root.templatenode.getAttribute('name')
-        fig = setroot.getChildById(fignodename,name,create=True)
-        fig.copyFrom(source.root,replace=True)
-
-    def getFigure(self,name,target):
-        setroot = self.store['FigureSettings']
-        fignodename = target.root.templatenode.getAttribute('name')
-        fig = setroot.getChildById(fignodename,name,create=False)
-        if fig!=None:
-            target.root.copyFrom(fig,replace=True)
-            return True
-        return False
-
-    def unlink(self):
-        # First unlink NetCDf store, because that releases the .nc file,
-        # allowing us to delete the temporary directory.
-        NetCDFStore.unlink(self)
-
-        if self.tempdir!=None:
-            # Delete temporary directory.
-            common.TempDirManager.delete(self.tempdir)
-            self.tempdir = None
-        if self.scenario!=None:
-            self.scenario.release()
-        self.store.release()
-            
-    def attach(self,srcpath,scenario=None,copy=True):
-        if scenario!=None:
-            self.scenario = scenario.convert(self.wantedscenarioversion)
-        else:
-            self.scenario = None
-            
-        if copy:
-            # Create a copy of the result file.
-            tempdir = self.getTempDir(empty=True)
-            datafile = os.path.join(tempdir,'result.nc')
-            shutil.copyfile(srcpath,datafile)
-        else:
-            datafile = srcpath
-
-        NetCDFStore.load(self,datafile)
-
-        # Attached to an existing result: we consider it unchanged.
-        self.changed = False
-        
-        if self.scenario!=None and self.scenario.path!=None and self.scenario.path.endswith('.gotmscenario'):
-            self.path = self.scenario.path[:-12]+'gotmresult'
-        else:
-            self.path = None
-
-    def getVariableNames(self,plotableonly=True):
-        names = NetCDFStore.getVariableNames(self)
-        if plotableonly:
-            for i in range(len(names)-1,-1,-1):
-                dimnames = self.nc.variables[names[i]].dimensions
-                dimcount = len(dimnames)
-                good = False
-                if   dimcount==3:
-                    if dimnames==('time','lat','lon'):
-                        good = True
-                elif dimcount==4:
-                    if (dimnames==('time','z','lat','lon')) | (dimnames==('time','z1','lat','lon')):
-                        good = True
-                if not good: del names[i]
-        return names
-            
-        # Get names of NetCDF variables
-        try:
-          vars = nc.variables
-          if plotableonly:
-              # Only take variables with 3 or 4 dimensions
-              varNames = []
-              for v in vars.keys():
-                  dimnames = vars[v].dimensions
-                  dimcount = len(dimnames)
-                  if   dimcount==3:
-                      if dimnames==('time','lat','lon'):
-                          varNames += [v]
-                  elif dimcount==4:
-                      if (dimnames==('time','z','lat','lon')) | (dimnames==('time','z1','lat','lon')):
-                          varNames += [v]
-          else:
-              # Take all variables
-              varNames = vars.keys()
-
-        #pycdf except pycdf.CDFError, msg:
-        except Exception, e:
-            raise Exception('CDFError: '+str(e))
-
-        return varNames
-
-    def getVariableTree(self,path):
-        otherstores = {}
-        if self.scenario!=None: otherstores['scenario'] = self.scenario
-        return PlotVariableStore.getVariableTree(self,path,otherstores=otherstores)
-        
-class MergedPlotVariableStore(PlotVariableStore):
-    
-    class MergedPlotVariable(PlotVariable):
-        def __init__(self,store,variables,mergedimid):
-            PlotVariable.__init__(self,store)
-            self.vars = variables
-            self.mergedimid = mergedimid
-
-        def getName(self):
-            return self.vars[0].getName()
-
-        def getLongName(self):
-            return self.vars[0].getLongName()
-
-        def getUnit(self):
-            return self.vars[0].getUnit()
-
-        def getDimensions(self):
-            return tuple([self.mergedimid]+list(self.vars[0].getDimensions()))
-
-        def getSlice(self,bounds):
-            slice = self.Slice(self.getDimensions())
-            assert len(bounds)==slice.ndim, 'Number of specified dimensions (%i) does not equal number of data dimensions (%i).' % (len(bounds),slice.ndim)
-            
-            # Get bound indices for the merged dimension
-            ifirst,ilast = 0,len(self.vars)-1
-            if bounds[0][0]!=None and bounds[0][0]>ifirst: ifirst = int(math.floor(bounds[0][0]))
-            if bounds[0][1]!=None and bounds[0][1]<ilast : ilast  = int(math.ceil (bounds[0][1]))
-            slice.coords[0] = numpy.linspace(float(ifirst),float(ilast),ilast-ifirst+1)
-            slice.coords_stag[0] = common.getCenters(slice.coords[0],addends=True)
-
-            first = True
-            for ivar,var in enumerate(self.vars[ifirst:ilast+1]):
-                curslice = var.getSlice(bounds[1:])
-                if first:
-                    slice.coords[1:] = curslice.coords
-                    slice.coords_stag[1:] = curslice.coords_stag
-                    slice.data = matplotlib.numerix.empty(tuple([ilast-ifirst+1]+list(curslice.data.shape)),matplotlib.numerix.typecode(curslice.data))
-                    first = False
-                slice.data[ivar,...] = curslice.data
-            return slice
-
-    def __init__(self,stores,mergedimid='obs',mergedimname='observation'):
-        PlotVariableStore.__init__(self)
-        self.stores = stores
-        self.mergedimid = mergedimid
-        self.mergedimname = mergedimname
-
-    def getVariableNames(self):
-        return self.stores[0].getVariableNames()
-
-    def getVariableLongNames(self):
-        return self.stores[0].getVariableLongNames()
-
-    def getDimensionInfo(self,dimname):
-        if dimname==self.mergedimid: 
-            info = PlotVariableStore.getDimensionInfo(self,dimname)
-            info['label'] = self.mergedimname
-            return info
-        return self.stores[0].getDimensionInfo(dimname)
-
-    def getVariable(self,varname):
-        vars = []
-        for store in self.stores:
-            var = store.getVariable(varname)
-            if var==None:
-                print 'Store "%s" does not contain variable "%s".' % (store,varname)
-                return None
-            vars.append(var)
-        return MergedPlotVariableStore.MergedPlotVariable(self,vars,self.mergedimid)
-
-class CustomPlotVariableStore(PlotVariableStore):
-
-    def __init__(self):
-        PlotVariableStore.__init__(self)
-        self.vars = []
-        
-    def addVariable(self,var):
-        self.vars.append(var)
-
-    def getVariableNames(self):
-        return [v.getName() for v in self.vars]
-
-    def getVariableLongNames(self):
-        return [v.getLongName() for v in self.vars]
-
-    def getDimensionInfo(self,dimname):
-        return PlotVariableStore.getDimensionInfo(self,dimname)
-
-    def getVariable(self,varname):
-        for v in self.vars:
-            if v.getName()==varname: return v
-        return None
-

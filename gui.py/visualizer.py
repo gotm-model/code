@@ -1,44 +1,45 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.27 2008-02-04 07:38:55 jorn Exp $
+#$Id: visualizer.py,v 1.28 2008-02-12 10:41:53 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
-import common, commonqt, data, report
+import xmlstore.gui_qt4, xmlplot.gui_qt4
+import core.common, core.result, core.report, commonqt
 
 import sys,datetime
 import xml.sax
 import os.path
 
 def loadResult(path):
-    result = data.Result()
+    res = core.result.Result()
 
     try:
         if path.endswith('.gotmresult'):
-            result.load(path)
+            res.load(path)
         elif path.endswith('.nc'):
-            result.attach(path)
+            res.attach(path)
         else:
             # We do not recognize this file type; try both GOTM result and NetCDF
             done = True
             try:
-                result.attach(path)
+                res.attach(path)
             except Exception,e:
                 done = False
             if not done:
                 done = True
                 try:
-                    result.load(path)
+                    res.load(path)
                 except Exception,e:
                     done = False
             if (not done):
-                raise Exception('The file "'+path+'" is not a GOTM result or a NetCDF file.')
+                raise Exception('The file "%s" is not a GOTM result or a NetCDF file.' % path)
     except:
-        result.release()
-        result = None
+        res.release()
+        res = None
         raise
 
-    return result
+    return res
 
 class OpenWidget(QtGui.QWidget):
     def __init__(self,parent=None,mrupaths=[]):
@@ -86,12 +87,12 @@ class PageOpen(commonqt.WizardPage):
     def saveData(self,mustbevalid):
         if not mustbevalid: return True
         try:
-            result = self.openwidget.getResult()
+            res = self.openwidget.getResult()
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Unable to load result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
             return False
-        self.owner.setProperty('result',result)
-        self.owner.setProperty('scenario',result.scenario.addref())
+        self.owner.setProperty('result',res)
+        self.owner.setProperty('scenario',res.scenario.addref())
         return True
 
 class ConfigureReportWidget(QtGui.QWidget):
@@ -101,9 +102,9 @@ class ConfigureReportWidget(QtGui.QWidget):
         self.result = result
         self.report = rep
 
-        self.factory = commonqt.PropertyEditorFactory(self.report.store)
+        self.factory = xmlstore.gui_qt4.PropertyEditorFactory(self.report.store)
 
-        reportname2path = report.Report.getTemplates()
+        reportname2path = core.report.Report.getTemplates()
 
         self.labTemplates = QtGui.QLabel('Report template:',self)
         self.comboTemplates = QtGui.QComboBox(parent)
@@ -128,8 +129,8 @@ class ConfigureReportWidget(QtGui.QWidget):
             targetnode = self.treestore[node.getValue()]
             if targetnode!=None: targetnode.setValue(True)
         
-        self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True,checkboxes=True)
-        self.treeVariables = commonqt.ExtendedTreeView(self)
+        self.model = xmlstore.gui_qt4.TypedStoreModel(self.treestore,nohide=False,novalues=True,checkboxes=True)
+        self.treeVariables = xmlstore.gui_qt4.ExtendedTreeView(self)
         self.treeVariables.header().hide()
         self.treeVariables.setModel(self.model)
         self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
@@ -213,8 +214,8 @@ class PageReportGenerator(commonqt.WizardPage):
         commonqt.WizardPage.__init__(self, parent)
 
         self.result = parent.getProperty('result')
-        deffont = commonqt.getFontSubstitute(unicode(self.fontInfo().family()))
-        self.report = report.Report(defaultfont = deffont)
+        deffont = xmlplot.gui_qt4.getFontSubstitute(unicode(self.fontInfo().family()))
+        self.report = core.report.Report(defaultfont = deffont)
         
         # Copy report settings from result.
         self.report.store.root.copyFrom(self.result.store['ReportSettings'],replace=True)
@@ -382,17 +383,17 @@ class PageVisualize(commonqt.WizardPage):
 
         self.result = parent.getProperty('result')
         
-        self.treestore = self.result.getVariableTree(os.path.join(common.getDataRoot(),'schemas/outputtree.xml'))
-        self.model = commonqt.PropertyStoreModel(self.treestore,nohide=False,novalues=True)
+        self.treestore = self.result.getVariableTree(os.path.join(core.common.getDataRoot(),'schemas/outputtree.xml'))
+        self.model = xmlstore.gui_qt4.TypedStoreModel(self.treestore,nohide=False,novalues=True)
 
-        self.treeVariables = commonqt.ExtendedTreeView(self)
+        self.treeVariables = xmlstore.gui_qt4.ExtendedTreeView(self)
         self.treeVariables.header().hide()
         self.connect(self.treeVariables, QtCore.SIGNAL('onSelectionChanged()'), self.OnVarSelected)
         self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Expanding)
         self.treeVariables.setMaximumWidth(250)
         self.treeVariables.setModel(self.model)
 
-        self.figurepanel = commonqt.FigurePanel(self)
+        self.figurepanel = xmlplot.gui_qt4.FigurePanel(self)
 
         self.label = QtGui.QLabel('Here you can view the results of the simulation. Please choose a variable to be plotted from the menu.',self)
 
@@ -471,15 +472,15 @@ def main():
 
     # Get NetCDF file to open from command line or from FileOpen dialog.
     if len(sys.argv)>1:
-        result = None
+        res = None
         try:
-            result = loadResult(sys.argv[1])
+            res = loadResult(sys.argv[1])
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Unable to load result', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
-        if result!=None:
+        if res!=None:
             seq.pop(0)
-            wiz.setProperty('result',result)
-            wiz.setProperty('scenario',result.scenario.addref())
+            wiz.setProperty('result',res)
+            wiz.setProperty('scenario',res.scenario.addref())
 
     seq = commonqt.WizardSequence(seq)
     wiz.setSequence(seq)

@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.15 2007-12-10 14:40:47 jorn Exp $
+#$Id: simulator.py,v 1.16 2008-02-12 10:41:53 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
-import commonqt, data, simulate
+import commonqt, core.simulator
 
 # Here we can set the stack size for GOTM (in bytes). Note: bio modules sometimes
 # need a very high stack size (in particular if Lagrangian variables are used)
@@ -25,7 +25,7 @@ class GOTMThread(QtCore.QThread):
     
   def rungotm(self,scen):
     self.scenario = scen
-    #self.scenario = scen.convert(simulate.gotmscenarioversion)
+    #self.scenario = scen.convert(core.simulator.gotmscenarioversion)
     self.start(QtCore.QThread.LowPriority)
     
   def canContinue(self):
@@ -40,7 +40,7 @@ class GOTMThread(QtCore.QThread):
   def run(self):
     assert self.scenario!=None, 'No scenario specified.'
 
-    self.res = simulate.simulate(self.scenario,continuecallback=self.canContinue,progresscallback=self.progressed)
+    self.res = core.simulator.simulate(self.scenario,continuecallback=self.canContinue,progresscallback=self.progressed)
     
   def stop(self):
     self.rwlock.lockForWrite()
@@ -130,8 +130,8 @@ class PageProgress(commonqt.WizardPage):
             self.labelRemaining.setText('%i minutes %i seconds remaining' % divmod(remaining,60))
             
     def done(self):
-        result = self.gotmthread.res
-        print 'GOTM thread shut-down; return code = %i' % result.returncode
+        res = self.gotmthread.res
+        print 'GOTM thread shut-down; return code = %i' % res.returncode
 
         layout = self.layout()
 
@@ -141,27 +141,27 @@ class PageProgress(commonqt.WizardPage):
         self.labelRemaining.hide()
 
         # Show label for result; change text if not successfull.
-        if result.returncode==1:
-            self.resultlabel.setText('The simulation failed: %s' % result.errormessage)
-        elif result.returncode==2:
+        if res.returncode==1:
+            self.resultlabel.setText('The simulation failed: %s' % res.errormessage)
+        elif res.returncode==2:
             self.resultlabel.setText('The simulation was cancelled')
         self.resultlabel.show()
 
-        if result.returncode!=1:
+        if res.returncode!=1:
             self.showhidebutton.show()
         else:
             self.text.show()
             self.savebutton.show()
 
         # Set text with GOTM output
-        self.text.setPlainText(result.stderr)
+        self.text.setPlainText(res.stderr)
         
         # Save result object
-        if result.returncode==0:
-            self.owner.setProperty('result',result)
+        if res.returncode==0:
+            self.owner.setProperty('result',res)
             self.completeStateChanged()
         else:
-            result.release()
+            res.release()
         
     def isComplete(self):
         return (self.owner.getProperty('result')!=None)

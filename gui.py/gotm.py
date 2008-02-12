@@ -17,7 +17,8 @@ oldworkingdir = os.getcwdu()
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
 # Now import our custom modules
-import common, commonqt, xmlstore, data, scenario
+import xmlplot.common, xmlstore.xmlstore, xmlstore.util, xmlstore.gui_qt4
+import core.common, core.scenario, core.result, commonqt
 
 import scenariobuilder,simulator,visualizer
 
@@ -59,13 +60,13 @@ class GOTMWizard(commonqt.Wizard):
         changes value. Used to enable/disable the "Tools" button when the scenario/result is (un)set.
         """
         if propertyname=='scenario' or propertyname=='result':
-            scen   = self.getProperty('scenario')
-            result = self.getProperty('result')
-            self.bnTools.setEnabled(scen!=None or result!=None)
+            scen = self.getProperty('scenario')
+            res  = self.getProperty('result')
+            self.bnTools.setEnabled(scen!=None or res!=None)
             self.actSaveScenario.setVisible(scen!=None)
             self.actExportScenario.setVisible(scen!=None)
-            self.actSaveResult.setVisible(result!=None)
-            self.actExportResult.setVisible(result!=None)
+            self.actSaveResult.setVisible(res!=None)
+            self.actExportResult.setVisible(res!=None)
             
     def onSaveScenarioAs(self):
         scen = self.getProperty('scenario')
@@ -127,7 +128,7 @@ class GOTMWizard(commonqt.Wizard):
             path = commonqt.browseForPath(self,curpath=curpath,getdirectory=True)
             if path!=None:
                 progdialog = commonqt.ProgressDialog(self,title='Exporting...',suppressstatus=True)
-                progslicer = common.ProgressSlicer(progdialog.onProgressed,2)
+                progslicer = xmlstore.util.ProgressSlicer(progdialog.onProgressed,2)
                 progslicer.nextStep('converting to desired version')
                 exportscen = scen.convert(unicode(dialog.comboVersion.currentText()),callback=progslicer.getStepCallback())
                 progslicer.nextStep('writing files')
@@ -136,24 +137,24 @@ class GOTMWizard(commonqt.Wizard):
                 progdialog.close()
                 
     def onSaveResultAs(self):
-        result = self.getProperty('result')
-        path = commonqt.browseForPath(self,curpath=result.path,save=True,filter='GOTM result files (*.gotmresult);;All files (*.*)')
+        res = self.getProperty('result')
+        path = commonqt.browseForPath(self,curpath=res.path,save=True,filter='GOTM result files (*.gotmresult);;All files (*.*)')
         if path!=None:
             dialog = commonqt.ProgressDialog(self,title='Saving...',suppressstatus=True)
-            result.save(path,callback=dialog.onProgressed)
+            res.save(path,callback=dialog.onProgressed)
             dialog.close()
             self.settings.addUniqueValue('Paths/RecentResults','Path',path)
             
     def onExportResult(self):
-        result = self.getProperty('result')
+        res = self.getProperty('result')
         curpath = None
-        if result.path!=None:
-            root,ext = os.path.splitext(result.path)
+        if res.path!=None:
+            root,ext = os.path.splitext(res.path)
             curpath = root+'.nc'
         path = commonqt.browseForPath(self,curpath=curpath,save=True,filter='NetCDF files (*.nc);;All files (*.*)')
         if path!=None:
             QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
-            result.saveNetCDF(path)
+            res.saveNetCDF(path)
             QtGui.QApplication.restoreOverrideCursor()
 
 class PageIntroduction(commonqt.WizardPage):
@@ -313,7 +314,7 @@ class PageChooseAction(commonqt.WizardPage):
         if not mustbevalid: return True
         checkedid = self.bngroup.checkedId()
         dialog = commonqt.ProgressDialog(self,title='Please wait...',suppressstatus=True)
-        result = False
+        res = False
         if checkedid==0:
             try:
                 newscen = self.scenariowidget.getScenario(callback=dialog.onProgressed)
@@ -328,7 +329,7 @@ class PageChooseAction(commonqt.WizardPage):
             if newscen.path!=None:
                 self.owner.settings.addUniqueValue('Paths/RecentScenarios','Path',newscen.path)
             
-            result =  True
+            res =  True
         if checkedid==1:
             try:
                 newresult = self.resultwidget.getResult()
@@ -345,9 +346,9 @@ class PageChooseAction(commonqt.WizardPage):
             if newresult.path!=None:
                 self.owner.settings.addUniqueValue('Paths/RecentResults','Path',newresult.path)
 
-            result = True
+            res = True
         dialog.close()
-        return result
+        return res
 
 class ForkOnAction(commonqt.WizardFork):
     def getSequence(self):
@@ -369,7 +370,7 @@ def main():
         app = QtGui.qApp
 
     # Create wizard dialog
-    wiz = GOTMWizard(closebutton = commonqt.addCloseButton())
+    wiz = GOTMWizard(closebutton = xmlstore.gui_qt4.needCloseButton())
     seq = commonqt.WizardSequence([PageIntroduction,PageChooseAction,ForkOnAction(wiz),visualizer.PageVisualize,visualizer.PageReportGenerator,visualizer.PageSave,visualizer.PageFinal])
     wiz.setSequence(seq)
     wiz.setWindowTitle('GOTM-GUI')
@@ -378,49 +379,49 @@ def main():
     # Parse command line arguments
     openpath = None
     scen = None
-    result = None
+    res = None
     if len(sys.argv)>1:
         openpath = os.path.normpath(os.path.join(oldworkingdir, sys.argv[1]))
         del sys.argv[1]
         
         try:
-            container = xmlstore.DataContainer.fromPath(openpath)
+            container = xmlstore.xmlstore.DataContainer.fromPath(openpath)
         except Exception,e:
             QtGui.QMessageBox.critical(wiz, 'Unable to load specified path', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
             container = None
 
         if container==None:
             pass
-        elif scenario.Scenario.canBeOpened(container):
+        elif core.scenario.Scenario.canBeOpened(container):
             # Try to open the file as a scenario.
-            scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
+            scen = core.scenario.Scenario.fromSchemaName(core.scenario.guiscenarioversion)
             try:
                 scen.loadAll(container)
             except Exception,e:
                 QtGui.QMessageBox.critical(wiz, 'Unable to load scenario', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 scen = None
-        elif data.Result.canBeOpened(container):
-            result = data.Result()
+        elif core.result.Result.canBeOpened(container):
+            res = core.result.Result()
             # Try to open the file as a result.
             try:
-                result.load(container)
+                res.load(container)
             except Exception,e:
                 QtGui.QMessageBox.critical(wiz, 'Unable to load result', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
-                result = None
+                res = None
         else:
             QtGui.QMessageBox.critical(wiz, 'Unable to open specified path', '"%s" is not a scenario or a result.' % openpath, QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 
         if container!=None: container.release()
 
     # If a file to open was specified on the command line, move some steps forward in the wizard.
-    if result!=None:
+    if res!=None:
         wiz.onNext()
         wiz.setProperty('mainaction','result')
-        wiz.setProperty('result', result)
+        wiz.setProperty('result', res)
         if openpath.endswith('.gotmresult'):
             wiz.settings.addUniqueValue('Paths/RecentResults','Path',openpath)
-        if result.scenario!=None:
-            wiz.setProperty('scenario', result.scenario.addref())
+        if res.scenario!=None:
+            wiz.setProperty('scenario', res.scenario.addref())
         wiz.onNext(askoldpage=False)
     elif scen!=None:
         wiz.onNext()

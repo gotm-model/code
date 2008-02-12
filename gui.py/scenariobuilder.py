@@ -1,11 +1,13 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.36 2008-02-05 07:42:31 jorn Exp $
+#$Id: scenariobuilder.py,v 1.37 2008-02-12 10:41:53 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
-import scenario, data, commonqt
+# Import modules from standard Python library
 import sys,xml, os.path
+
+import core.scenario, core.result, xmlstore.util, xmlstore.gui_qt4, commonqt
 
 class ScenarioWidget(QtGui.QWidget):
 
@@ -19,7 +21,7 @@ class ScenarioWidget(QtGui.QWidget):
         self.radioImport2 = QtGui.QRadioButton('Import a namelist-based scenario from an archive.',self)
 
         self.labTemplate = QtGui.QLabel('Template:',self)
-        default2path = scenario.Scenario.getDefaultValues()
+        default2path = core.scenario.Scenario.getDefaultValues()
         self.comboTemplates = QtGui.QComboBox(parent)
         for (name,path) in default2path.items():
             self.comboTemplates.addItem(name,QtCore.QVariant(name))
@@ -101,40 +103,40 @@ class ScenarioWidget(QtGui.QWidget):
             if   checkedid==0:
                 index = self.comboTemplates.currentIndex()
                 defname = unicode(self.comboTemplates.itemData(index).toString())
-                defscenario = scenario.Scenario.getDefault(defname,scenario.guiscenarioversion)
+                defscenario = core.scenario.Scenario.getDefault(defname,core.scenario.guiscenarioversion)
                 xmldom = defscenario.toXmlDom()
-                scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
+                scen = core.scenario.Scenario.fromSchemaName(core.scenario.guiscenarioversion)
                 scen.setStore(xmldom)
             elif checkedid==1:
                 path = self.pathOpen.path()
                 if path.endswith('.gotmresult'):
                     try:
-                        result = data.Result()
-                        result.load(path)
+                        res = core.result.Result()
+                        res.load(path)
                     except Exception,e:
                         raise Exception('An error occurred while loading the result: '+str(e))
-                    scen = result.scenario.addref()  # Note: the scenario version will be guiscenarioversion, set by Result
-                    result.release()
+                    scen = res.scenario.addref()  # Note: the scenario version will be guiscenarioversion, set by Result
+                    res.release()
                 elif path.endswith('.xml'):
                     try:
-                        scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
+                        scen = core.scenario.Scenario.fromSchemaName(core.scenario.guiscenarioversion)
                         scen.load(path)
                     except Exception,e:
                         raise Exception('An error occurred while loading the scenario: '+str(e))
                 else:
                     try:
-                        scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
+                        scen = core.scenario.Scenario.fromSchemaName(core.scenario.guiscenarioversion)
                         scen.loadAll(path,callback=callback)
                     except Exception,e:
                         raise Exception('An error occurred while loading the scenario: '+str(e))
             elif checkedid==2:
                 try:
-                    scen = scenario.Scenario.fromNamelists(self.pathImport1.path(),strict = False)
+                    scen = core.scenario.Scenario.fromNamelists(self.pathImport1.path(),strict = False)
                 except Exception,e:
                     raise Exception('Cannot parse namelist files. Error: '+str(e))
             elif checkedid==3:
                 try:
-                    scen = scenario.Scenario.fromNamelists(self.pathImport2.path(),strict = False)
+                    scen = core.scenario.Scenario.fromNamelists(self.pathImport2.path(),strict = False)
                 except Exception,e:
                     raise Exception('Cannot parse namelist files. Error: '+str(e))
 
@@ -148,7 +150,7 @@ class ScenarioWidget(QtGui.QWidget):
             for node in emptynodes:
                 defval = node.getDefaultValue()
                 assert defval!=None, 'No value set for "%s", but no default value is available.' % node
-                if isinstance(defval,common.referencedobject): defval.release()
+                if isinstance(defval,xmlstore.util.referencedobject): defval.release()
             emptycount = len(emptynodes)
             if emptycount>0:
                 QtGui.QMessageBox.information(self,'Scenario is incomplete','In this scenario the following %i variables do not have a value:\n\n%s\n\nThese variables will be set to their default value.' % (emptycount,'\n'.join(['/'.join(n.location) for n in emptynodes])),QtGui.QMessageBox.Ok)
@@ -197,7 +199,7 @@ class ScenarioPage(commonqt.WizardPage):
         self.scenario = parent.getProperty('scenario')
         if self.scenario==None: raise Exception('No scenario available; this page should not have been available.')
 
-        self.factory = commonqt.PropertyEditorFactory(self.scenario,live=True,allowhide=True,datasourcedir=parent.getProperty('datasourcedir'))
+        self.factory = xmlstore.gui_qt4.PropertyEditorFactory(self.scenario,live=True,allowhide=True,datasourcedir=parent.getProperty('datasourcedir'))
 
     def saveData(self,mustbevalid):
         
@@ -853,11 +855,11 @@ class PageAdvanced(commonqt.WizardPage):
         self.scenario = parent.getProperty('scenario')
         if self.scenario==None: raise Exception('No scenario available; this page should not have been available.')
         
-        self.model = commonqt.PropertyStoreModel(self.scenario,nohide=False)
+        self.model = xmlstore.gui_qt4.TypedStoreModel(self.scenario,nohide=False)
 
-        self.tree = commonqt.ExtendedTreeView(self)
+        self.tree = xmlstore.gui_qt4.ExtendedTreeView(self)
         #self.tree.header().hide()
-        self.delegate = commonqt.PropertyDelegate(datasourcedir=parent.getProperty('datasourcedir'))
+        self.delegate = xmlstore.gui_qt4.PropertyDelegate(self,datasourcedir=parent.getProperty('datasourcedir'))
         self.tree.setItemDelegate(self.delegate)
         self.tree.setModel(self.model)
         self.tree.setExpandedAll(maxdepth=1)

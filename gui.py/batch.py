@@ -17,7 +17,7 @@ matplotlib.use('Qt4Agg')
 matplotlib.rcParams['numerix'] = 'numpy'
 
 # Now import our custom modules
-import common, xmlstore, scenario, data, simulate, report
+import common, xmlstore, scenario, result, simulate, report
 
 if len(sys.argv)==1:
     print \
@@ -90,9 +90,9 @@ try:
             scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
             scen.loadAll(container)
             res = None
-        elif data.Result.canBeOpened(container):
+        elif result.Result.canBeOpened(container):
             # Try to load result.
-            res = data.Result()
+            res = result.Result()
             res.load(container)
             scen = res.scenario.addref()
         else:

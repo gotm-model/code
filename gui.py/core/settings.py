@@ -1,11 +1,11 @@
-import xmlstore
+import xmlstore.xmlstore
 import sys, os.path
 
-class SettingsStore(xmlstore.TypedStore):
+class SettingsStore(xmlstore.xmlstore.TypedStore):
     def __init__(self):
         settingspath = self.getSettingsPath()
         if not os.path.isfile(settingspath): settingspath = None
-        xmlstore.TypedStore.__init__(self,'schemas/settings/gotmgui.xml',settingspath)
+        xmlstore.xmlstore.TypedStore.__init__(self,'schemas/settings/gotmgui.xml',settingspath)
         
         self.removeNonExistent('Paths/RecentScenarios','Path')
         self.removeNonExistent('Paths/RecentResults',  'Path')
@@ -24,7 +24,7 @@ class SettingsStore(xmlstore.TypedStore):
         settingspath = self.getSettingsPath()
         settingsdir = os.path.dirname(settingspath)
         if not os.path.isdir(settingsdir): os.mkdir(settingsdir)
-        xmlstore.TypedStore.save(self,settingspath)
+        xmlstore.xmlstore.TypedStore.save(self,settingspath)
         
     def removeNonExistent(self,parentlocation,nodename):
         """Removes nodes below specified location if their value is not

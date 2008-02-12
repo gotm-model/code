@@ -4,17 +4,23 @@
 guiscenarioversion = 'gotmgui-0.5.0'
 savedscenarioversion = 'gotm-4.0.0'
 
-import common, xmlstore, namelist, data
-
+# Import modules from standard Python library
 import os, shutil, re, datetime
 
-class Scenario(xmlstore.TypedStore):
+# Import our own custom modules
+import xmlstore.xmlstore, xmlstore.util, xmlplot.data, xmlplot.common
+import common, namelist
 
+class Scenario(xmlstore.xmlstore.TypedStore):
+
+    # Name to be used for the main XML file if the store is saved to an archive.
     storefilename = 'scenario.xml'
+    
+    # Descriptive name for the store to be used when communicating with the user.
     storetitle = 'GOTM scenario'
 
     def __init__(self,schemadom,valueroot=None,adddefault = True):
-        xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
+        xmlstore.xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
 
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
 
@@ -22,14 +28,14 @@ class Scenario(xmlstore.TypedStore):
     @staticmethod
     def getDefaultSchemas():
         if Scenario.schemadict==None:
-            Scenario.schemadict = xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario'))
+            Scenario.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario'))
         return Scenario.schemadict
 
     defaultdict = None
     @staticmethod
     def getDefaultValues():
         if Scenario.defaultdict==None:
-            Scenario.defaultdict = xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios'))
+            Scenario.defaultdict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios'))
         return Scenario.defaultdict
 
     @staticmethod
@@ -62,14 +68,14 @@ class Scenario(xmlstore.TypedStore):
 
     @classmethod
     def getCustomTypes(ownclass):
-        return {'gotmdatafile':data.LinkedFileVariableStore}
+        return {'gotmdatafile':xmlplot.data.LinkedFileVariableStore}
 
     def loadFromNamelists(self, srcpath, strict = False, protodir = None):
         print 'Importing scenario from namelist files...'
 
         # Try to open the specified path (currently can be zip, tar/gz or a directory)
         try:
-            container = xmlstore.DataContainer.fromPath(srcpath)
+            container = xmlstore.xmlstore.DataContainer.fromPath(srcpath)
         except Exception,e:
             raise Exception('Unable to load specified path. ' + unicode(e))
 
@@ -80,7 +86,7 @@ class Scenario(xmlstore.TypedStore):
         if protodir!=None:
             # Namelist are specified as .proto files plus one or more .values files.
             # Load the substitutions specified in the main .values file.
-            nmlcontainer = xmlstore.DataContainerDirectory(protodir)
+            nmlcontainer = xmlstore.xmlstore.DataContainerDirectory(protodir)
             df = container.getItem(os.path.basename(srcpath)+'.values')
             df_file = df.getAsReadOnlyFile()
             globalsubs.append(namelist.NamelistSubstitutions(df_file))
@@ -217,19 +223,19 @@ class Scenario(xmlstore.TypedStore):
                             if datetimematch==None:
                                 raise namelist.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',fullnmlfilename,listname,varname)
                             refvals = map(int,datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                            val = common.dateTimeFromTuple(refvals)
+                            val = xmlstore.util.dateTimeFromTuple(refvals)
                         elif vartype=='gotmdatafile':
                             for fn in filelist:
                                 if fn==val or fn.endswith('/'+val):
                                     df = container.getItem(fn)
                                     break
                             else:
-                                df = xmlstore.DataFile()
-                            val = data.LinkedFileVariableStore.fromNode(listchild,datafile=df,context=datafilecontext)
+                                df = xmlstore.xmlstore.DataFile()
+                            val = xmlplot.data.LinkedFileVariableStore.fromNode(listchild,datafile=df,context=datafilecontext)
                             df.release()
 
                         listchild.setValue(val)
-                        if isinstance(val,common.referencedobject): val.release()
+                        if isinstance(val,xmlstore.util.referencedobject): val.release()
                         
                     if strict and childindex<len(filechild.children):
                         lcnames = ['"%s"' % lc.getId() for lc in filechild.children[childindex:]]
@@ -260,7 +266,7 @@ class Scenario(xmlstore.TypedStore):
                 linelength = 80
                 wrapper = textwrap.TextWrapper(subsequent_indent='  ')
             
-            progslicer = common.ProgressSlicer(callback,len(self.root.children))
+            progslicer = xmlstore.util.ProgressSlicer(callback,len(self.root.children))
             for mainchild in self.root.children:
                 assert not mainchild.canHaveValue(), 'Found a variable below the root node, where only folders are expected.'
 
@@ -357,7 +363,7 @@ class Scenario(xmlstore.TypedStore):
         
         if datatype == 'select':
             # Create list of options.
-            options = common.findDescendantNode(node.templatenode,['options'])
+            options = xmlstore.util.findDescendantNode(node.templatenode,['options'])
             assert options!=None, 'Node is of type "select" but lacks "options" childnode.'
             for ch in options.childNodes:
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
@@ -381,7 +387,7 @@ class Scenario(xmlstore.TypedStore):
             datatype += ', unit = ' + unit
 
         # Get description of conditions (if any).
-        condition = common.findDescendantNode(node.templatenode,['condition'])
+        condition = xmlstore.util.findDescendantNode(node.templatenode,['condition'])
         if condition!=None:
             condline = Scenario.getNamelistConditionDescription(condition)
             lines.append('This variable is used only if '+condline)
@@ -400,14 +406,14 @@ class Scenario(xmlstore.TypedStore):
             else:
                 return var+' != '+val
         elif condtype=='and' or condtype=='or':
-            conds = common.findDescendantNodes(node,['condition'])
+            conds = xmlstore.util.findDescendantNodes(node,['condition'])
             conddescs = map(Scenario.getNamelistConditionDescription,conds)
             return '('+(' '+condtype+' ').join(conddescs)+')'
         else:
             raise Exception('Unknown condition type "%s".' % condtype)
 
     def load(self,path):
-        xmlstore.TypedStore.load(self,path)
+        xmlstore.xmlstore.TypedStore.load(self,path)
 
         # If the scenario was stored in the official 'save' version, we should not consider it changed.
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
@@ -416,10 +422,10 @@ class Scenario(xmlstore.TypedStore):
     def saveAll(self,path,targetversion=None,*args,**kwargs):
         if targetversion==None: targetversion = savedscenarioversion
         kwargs['fillmissing'] = True
-        xmlstore.TypedStore.saveAll(self,path,targetversion=targetversion,*args,**kwargs)
+        xmlstore.xmlstore.TypedStore.saveAll(self,path,targetversion=targetversion,*args,**kwargs)
 
     def loadAll(self,path,*args,**kwargs):
-        xmlstore.TypedStore.loadAll(self,path,*args,**kwargs)
+        xmlstore.xmlstore.TypedStore.loadAll(self,path,*args,**kwargs)
 
         # If the scenario was stored in the official 'save' version, we should not consider it changed.
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
@@ -427,7 +433,7 @@ class Scenario(xmlstore.TypedStore):
         
     def _validate(self,nodes,usedefault=True,validatedatafiles=True,callback=None,repair=0,usehistory=True):
         # Call base implementation of validate.
-        errors,validity = xmlstore.TypedStore._validate(self,nodes,usedefault=usedefault,repair=repair,callback=callback,usehistory=usehistory)
+        errors,validity = xmlstore.xmlstore.TypedStore._validate(self,nodes,usedefault=usedefault,repair=repair,callback=callback,usehistory=usehistory)
         
         # We only know how to validate one scenario version;
         # return base result if version does not match.
@@ -481,7 +487,7 @@ class Scenario(xmlstore.TypedStore):
                                 mintime,maxtime = dimrange
                                 if stop>maxtime and maxtime!=mintime:
                                     validity[node] = False
-                                    errors.append('Data series "%s" finishes at %s, before the simulation is set to end (%s).' % (node.getText(detail=1),maxtime.strftime(common.datetime_displayformat),stop.strftime(common.datetime_displayformat)))
+                                    errors.append('Data series "%s" finishes at %s, before the simulation is set to end (%s).' % (node.getText(detail=1),maxtime.strftime(xmlstore.util.datetime_displayformat),stop.strftime(xmlstore.util.datetime_displayformat)))
                     value.release()
                 
         return errors,validity
@@ -490,7 +496,7 @@ class Scenario(xmlstore.TypedStore):
 # Here start custom convertors!
 # ========================================================================================
 
-class Convertor_gotm_3_2_4_to_gotm_3_3_2(xmlstore.Convertor):
+class Convertor_gotm_3_2_4_to_gotm_3_3_2(xmlstore.xmlstore.Convertor):
     fixedsourceid = 'gotm-3.2.4'
     fixedtargetid = 'gotm-3.3.2'
     
@@ -500,7 +506,7 @@ class Convertor_gotm_3_2_4_to_gotm_3_3_2(xmlstore.Convertor):
         self.defaults = ['/obs/o2_profile']
 Scenario.addConvertor(Convertor_gotm_3_2_4_to_gotm_3_3_2,addsimplereverse=True)
 
-class Convertor_gotm_3_3_2_to_gotm_4_0_0(xmlstore.Convertor):
+class Convertor_gotm_3_3_2_to_gotm_4_0_0(xmlstore.xmlstore.Convertor):
     fixedsourceid = 'gotm-3.3.2'
     fixedtargetid = 'gotm-4.0.0'
 
@@ -509,7 +515,7 @@ class Convertor_gotm_3_3_2_to_gotm_4_0_0(xmlstore.Convertor):
         self.defaults = ['/obs/wave_nml','/bio','/bio_npzd','/bio_iow','/bio_sed','/bio_fasham']
 Scenario.addConvertor(Convertor_gotm_3_3_2_to_gotm_4_0_0,addsimplereverse=True)
 
-class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
+class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
     fixedsourceid = 'gotm-4.0.0'
     fixedtargetid = 'gotm-4.1.0'
 
@@ -529,7 +535,7 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                          '/airsea/airsea/precip_factor']
 
     def convert(self,source,target,callback=None):
-        xmlstore.Convertor.convert(self,source,target)
+        xmlstore.xmlstore.Convertor.convert(self,source,target)
         
         if source['airsea/airsea/calc_fluxes'].getValue():
             target['airsea/airsea/swr_method'].setValue(3)
@@ -541,7 +547,7 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
             elif heatmethod==2:
                 # Variable heat flux specified: split heat flux data into times, shortwave radiation values
                 # and actual heat flux values.
-                progslicer = common.ProgressSlicer(callback,3)
+                progslicer = xmlstore.util.ProgressSlicer(callback,3)
                 progslicer.nextStep('parsing %s' % source['airsea/airsea/heatflux_file'].getText(detail=1))
                 oldfile = source['airsea/airsea/heatflux_file'].getValue()
                 datold = oldfile.getData(progslicer.getStepCallback())
@@ -579,7 +585,7 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.Convertor):
                     heatnew.release()
 Scenario.addConvertor(Convertor_gotm_4_0_0_to_gotm_4_1_0)
 
-class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
+class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.xmlstore.Convertor):
     fixedsourceid = 'gotm-4.1.0'
     fixedtargetid = 'gotm-4.0.0'
 
@@ -587,7 +593,7 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
         self.links = Convertor_gotm_4_0_0_to_gotm_4_1_0().reverseLinks()
     
     def convert(self,source,target,callback=None):
-        xmlstore.Convertor.convert(self,source,target)
+        xmlstore.xmlstore.Convertor.convert(self,source,target)
 
         if not source['airsea/airsea/calc_fluxes'].getValue():
             swr_method = source['airsea/airsea/swr_method'].getValue()
@@ -600,7 +606,7 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
                 swrdata,heatdata = None,None
                 nsteps = 2
                 if swr_method==2 and heat_method==2: nsteps += 1
-                progslicer = common.ProgressSlicer(callback,nsteps)
+                progslicer = xmlstore.util.ProgressSlicer(callback,nsteps)
                 if swr_method ==2:
                     progslicer.nextStep('parsing %s' % source['airsea/airsea/swr_file'].getText(detail=1))
                     swrdata  = source['airsea/airsea/swr_file'].getValue()
@@ -628,8 +634,8 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
                     # Combine both, and interpolate where values of either variable are not available.
                     times = numpy.unique(numpy.concatenate((swrdata.data[0],heatdata.data[0]),0))
                     times.sort()
-                    swr = common.interp1(swrdata.data[0],swrdata.data[1],times)
-                    heat = common.interp1(heatdata.data[0],heatdata.data[1],times)
+                    swr = xmlplot.common.interp1(swrdata.data[0],swrdata.data[1],times)
+                    heat = xmlplot.common.interp1(heatdata.data[0],heatdata.data[1],times)
                     
                 # Store merged shortwave radation/heat flux data.
                 progslicer.nextStep('writing %s' % target['airsea/airsea/heatflux_file'].getText(detail=1))
@@ -645,7 +651,7 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.Convertor):
                     
 Scenario.addConvertor(Convertor_gotmgui_4_1_0_to_gotm_4_0_0)
 
-class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
+class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.xmlstore.Convertor):
     fixedsourceid = 'gotm-4.1.0'
     fixedtargetid = 'gotmgui-0.5.0'
 
@@ -689,7 +695,7 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
                       ('/bio_fasham/bio_fasham_nml',      '/bio/bio_model/bio_fasham')]
     
     def convert(self,source,target,callback=None):
-        xmlstore.Convertor.convert(self,source,target)
+        xmlstore.xmlstore.Convertor.convert(self,source,target)
         
         # ===============================================
         #  gotmrun
@@ -697,8 +703,8 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
 
         # Convert absolute time interval to relative time interval.
         dt = source['gotmrun/model_setup/dt'].getValue()
-        target['timeintegration/dt'].setValue(xmlstore.StoreTimeDelta(seconds=dt))
-        target['output/dtsave'].setValue(xmlstore.StoreTimeDelta(seconds=dt*source['gotmrun/output/nsave'].getValue()))
+        target['timeintegration/dt'].setValue(xmlstore.xmlstore.StoreTimeDelta(seconds=dt))
+        target['output/dtsave'].setValue(xmlstore.xmlstore.StoreTimeDelta(seconds=dt*source['gotmrun/output/nsave'].getValue()))
 
         # ===============================================
         #  meanflow
@@ -768,7 +774,7 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.Convertor):
         # does not support (or need) these.
 Scenario.addConvertor(Convertor_gotm_4_1_0_to_gotmgui_0_5_0)
 
-class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
+class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
     fixedsourceid = 'gotmgui-0.5.0'
     fixedtargetid = 'gotm-4.1.0'
 
@@ -776,7 +782,7 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.Convertor):
         self.links = Convertor_gotm_4_1_0_to_gotmgui_0_5_0().reverseLinks()
     
     def convert(self,source,target,callback=None):
-        xmlstore.Convertor.convert(self,source,target)
+        xmlstore.xmlstore.Convertor.convert(self,source,target)
 
         # ===============================================
         #  gotmrun

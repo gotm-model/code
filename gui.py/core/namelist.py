@@ -15,11 +15,14 @@ class NamelistParseException(Exception):
         return Exception.__str__(self)+'.\nFile: '+str(self.filename)+', namelist: '+str(self.namelistname)+', variable: '+str(self.variablename)
 
 class NamelistSubstitutions:
-    # Commonly used regular expression (for parsing substitions in the .values file)
-    subs_re = re.compile('\s*s/(\w+)/(.+)/')
+    subs_re = None
 
     def __init__(self,valuesfile):
         self.subs = []
+        
+        # Commonly used regular expression (for parsing substitions in the .values file)
+        if NamelistSubstitutions.subs_re==None:
+            NamelistSubstitutions.subs_re = re.compile('\s*s/(\w+)/(.+)/')
         
         # If the supplied argument is a string, it should be a path to a file.
         # Try to open it. Otherwise the supplied argument should be a file-like object.
@@ -52,13 +55,17 @@ class NamelistSubstitutions:
 
 class Namelist:
 
-    varassign_re = re.compile('\s*(\w+)\s*=\s*')
-    varstopchar_re = re.compile('[/,\n"\']')
+    varassign_re   = None
+    varstopchar_re = None
 
     def __init__(self,name,data,filepath=None):
         self.name = name
         self.data = data
         self.filepath = filepath
+        
+        if Namelist.varassign_re==None:
+            Namelist.varassign_re = re.compile('\s*(\w+)\s*=\s*')
+            Namelist.varstopchar_re = re.compile('[/,\n"\']')
 
     def __iter__(self):
         return self
@@ -101,16 +108,20 @@ class Namelist:
         return len(self.data)==0
 
 class NamelistFile:
-    
-    # Commonly used regular expressions, for:
-    #   - locating the start of comments, or opening quotes.
-    #   - locating the start of namelist (ampersand followed by list name).
-    #   - locating the end of a namelist, i.e. a slash, or opening quotes.
-    commentchar_re = re.compile('[!#"\']')
-    namelistname_re = re.compile('\s*&\s*(\w+)\s*')
-    stopchar_re = re.compile('[/"\']')
+    commentchar_re  = None
+    namelistname_re = None
+    stopchar_re     = None
 
     def __init__(self,nmlfile,subs=[]):
+        # Commonly used regular expressions, for:
+        #   - locating the start of comments, or opening quotes.
+        #   - locating the start of namelist (ampersand followed by list name).
+        #   - locating the end of a namelist, i.e. a slash, or opening quotes.
+        if NamelistFile.commentchar_re==None:
+            NamelistFile.commentchar_re  = re.compile('[!#"\']')
+            NamelistFile.namelistname_re = re.compile('\s*&\s*(\w+)\s*')
+            NamelistFile.stopchar_re     = re.compile('[/"\']')
+    
         ownfile = False
         if isinstance(nmlfile,basestring):
             ownfile = True
