@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.1 2008-02-12 10:41:55 jorn Exp $
+#$Id: common.py,v 1.2 2008-02-12 11:42:43 jorn Exp $
 
 import sys, os.path, tempfile, shutil, atexit
 

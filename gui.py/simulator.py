@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.16 2008-02-12 10:41:53 jorn Exp $
+#$Id: simulator.py,v 1.17 2008-02-12 11:42:43 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 

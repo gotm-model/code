@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.28 2008-02-12 10:41:53 jorn Exp $
+#$Id: visualizer.py,v 1.29 2008-02-12 11:42:43 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
