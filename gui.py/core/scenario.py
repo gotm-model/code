@@ -46,7 +46,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         scenario = None
         failures = ''
         for sourceid in sourceids:
-            print 'Trying scenario format "%s"...' % sourceid
+            if common.verbose: print 'Trying scenario format "%s"...' % sourceid
             scenario = Scenario.fromSchemaName(sourceid)
             try:
                 scenario.loadFromNamelists(path,strict=strict,protodir=protodir)
@@ -71,7 +71,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         return {'gotmdatafile':xmlplot.data.LinkedFileVariableStore}
 
     def loadFromNamelists(self, srcpath, strict = False, protodir = None):
-        print 'Importing scenario from namelist files...'
+        if common.verbose: print 'Importing scenario from namelist files...'
 
         # Try to open the specified path (currently can be zip, tar/gz or a directory)
         try:
@@ -248,7 +248,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                     v.release()
 
     def writeAsNamelists(self, targetpath, copydatafiles=True, addcomments = False, callback=None):
-        print 'Exporting scenario to namelist files...'
+        if common.verbose: print 'Exporting scenario to namelist files...'
 
         # If the directory to write to does not exist, create it.
         createddir = False
@@ -770,6 +770,21 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.xmlstore.Convertor):
         relaxsurf = source['obs/tprofile/TRelaxTauS'].getValue()<1e+15 and source['obs/tprofile/TRelaxSurf'].getValue()>0
         target['obs/tprofile/TRelax'].setValue(relaxbulk or relaxbott or relaxsurf)
 
+        # ===============================================
+        #  obs: external pressure
+        # ===============================================
+
+        target['obs/ext_pressure/PressUOffset' ].setValue(source['obs/ext_pressure/PressConstU'].getValue())
+        target['obs/ext_pressure/PressVOffset' ].setValue(source['obs/ext_pressure/PressConstV'].getValue())
+
+        # ===============================================
+        #  obs: sea surface elevation
+        # ===============================================
+
+        ref = source['obs/zetaspec/zeta_0'].getValue()
+        target['obs/zetaspec/zeta_const' ].setValue(ref)
+        target['obs/zetaspec/zeta_offset'].setValue(ref)
+
         # Note: we implicitly lose output settings out_fmt, out_dir and out_fn; the GUI scenario
         # does not support (or need) these.
 Scenario.addConvertor(Convertor_gotm_4_1_0_to_gotmgui_0_5_0)
@@ -860,6 +875,23 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
             target['obs/tprofile/TRelaxTauM'].setValue(1.e15)
             target['obs/tprofile/TRelaxTauB'].setValue(1.e15)
             target['obs/tprofile/TRelaxTauS'].setValue(1.e15)
+
+        # ===============================================
+        #  obs: external pressure
+        # ===============================================
+
+        if source['obs/ext_pressure'].getValue()==1:
+            target['obs/ext_pressure/PressConstU'].setValue(source['obs/ext_pressure/PressUOffset'].getValue())
+            target['obs/ext_pressure/PressConstV'].setValue(source['obs/ext_pressure/PressVOffset'].getValue())
+
+        # ===============================================
+        #  obs: sea surface elevation
+        # ===============================================
+
+        if source['obs/zetaspec'].getValue()==1:
+            target['obs/zetaspec/zeta_0' ].setValue(source['obs/zetaspec/zeta_offset'].getValue())
+        else:
+            target['obs/zetaspec/zeta_0' ].setValue(source['obs/zetaspec/zeta_const' ].getValue())
 
 Scenario.addConvertor(Convertor_gotmgui_0_5_0_to_gotm_4_1_0)
 

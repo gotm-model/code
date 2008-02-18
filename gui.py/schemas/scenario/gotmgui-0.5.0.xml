@@ -849,7 +849,13 @@
 			<element name="PressConstV" type="float" label="constant pressure gradient for y-direction">
 				<condition type="eq" variable="." value="0"/>
 			</element>
-			<element name="PressHeight" type="float" label="height above bottom for current meter observations" unit="m">
+      <element name="PressUOffset" type="float" label="pressure gradient offset for x-direction">
+        <condition type="eq" variable="." value="1"/>
+      </element>
+      <element name="PressVOffset" type="float" label="pressure gradient offset for y-direction">
+        <condition type="eq" variable="." value="1"/>
+      </element>
+      <element name="PressHeight" type="float" label="height above bottom for current meter observations" unit="m">
 				<condition type="eq" variable="./ext_press_mode"   value="1"/>
 			</element>
 			<element name="PeriodM" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
@@ -992,10 +998,13 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element name="zeta_0" type="float" label="constant value for sea surface elevation" unit="m">
+			<element name="zeta_const" type="float" label="constant sea surface elevation" unit="m">
 				<condition type="eq" variable="." value="0"/>
 			</element>
-			<element name="period_1" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
+      <element name="zeta_offset" type="float" label="offset value" unit="m">
+        <condition type="eq" variable="." value="1"/>
+      </element>
+      <element name="period_1" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
 			<element name="amp_1" type="float" label="amplitude of 1st harmonic" unit="m">

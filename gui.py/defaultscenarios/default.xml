@@ -261,10 +261,10 @@
 			<zeta_file>zeta_file.dat</zeta_file>
 			<zeta_0>0.0</zeta_0>
 			<period_1>44714.0</period_1>
-			<amp_1>1.0</amp_1>
+			<amp_1>0.0</amp_1>
 			<phase_1>0.0</phase_1>
 			<period_2>43200.0</period_2>
-			<amp_2>0.5</amp_2>
+			<amp_2>0.0</amp_2>
 			<phase_2>0.0</phase_2>
 		</zetaspec>
 		<wave_nml>

@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.17 2008-02-12 11:42:43 jorn Exp $
+#$Id: simulator.py,v 1.18 2008-02-18 20:33:49 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
-import commonqt, core.simulator
+import commonqt, core.common, core.simulator
 
 # Here we can set the stack size for GOTM (in bytes). Note: bio modules sometimes
 # need a very high stack size (in particular if Lagrangian variables are used)
@@ -131,7 +131,7 @@ class PageProgress(commonqt.WizardPage):
             
     def done(self):
         res = self.gotmthread.res
-        print 'GOTM thread shut-down; return code = %i' % res.returncode
+        if core.common.verbose: print 'GOTM thread shut-down; return code = %i' % res.returncode
 
         layout = self.layout()
 

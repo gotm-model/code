@@ -25,6 +25,8 @@ import util
 #   Used in conversion of (XML) string to datetime, and vice versa.
 dateformat = '%Y-%m-%d %H:%M:%S'
 
+verbose = False
+
 # ------------------------------------------------------------------------------------------
 # Store
 # ------------------------------------------------------------------------------------------
@@ -427,15 +429,16 @@ class DataFile(Store.DataType,util.referencedobject):
         dictionary.
         """
         assert 'container' in context, 'container key not present in context dictionary.'
-        if 'cache' in context:
-            uniquename = DataFile.getUniqueNodeName(node)
-            cache = context['cache']
-            if uniquename in cache: return cache[uniquename].addref()
+        cache = context.setdefault('cache',{})
+        uniquename = DataFile.getUniqueNodeName(node)
+        if uniquename in cache: return cache[uniquename].addref()
         container = context['container']
         if container==None: return DataFile()
         name = util.getNodeText(node)
         if name not in container.listFiles(): return DataFile()
-        return container.getItem(name)
+        df = container.getItem(name)
+        cache[uniquename] = df.addref()
+        return df
 
     def save(self,node,context):
         """Saves the DataFile to the specified XML node. Currently the node will
@@ -447,8 +450,9 @@ class DataFile(Store.DataType,util.referencedobject):
         """
         cache = context.setdefault('cache',{})
         uniquename = DataFile.getUniqueNodeName(node)
+        self.addref()
         if uniquename in cache: cache[uniquename].release()
-        cache[uniquename] = self.addref()
+        cache[uniquename] = self
         if self.name!=None:
             util.setNodeText(node,self.name)
         else:
@@ -1814,7 +1818,7 @@ class Node:
         if value==None: return ''
         if fieldtype=='datetime':
             value = value.strftime(util.datetime_displayformat)
-        if fieldtype=='bool':
+        elif fieldtype=='bool':
             if value:
                 value = 'Yes'
             else:
@@ -2997,7 +3001,7 @@ class TypedStore(util.referencedobject):
         version = valuedom.documentElement.getAttribute('version')
         if self.version!=version and version!='':
             # The version of the saved store does not match the version of this store object; convert it.
-            print 'Value file "%s" has version "%s"; starting conversion to "%s".' % (path,version,self.version)
+            if verbose: print 'Value file "%s" has version "%s"; starting conversion to "%s".' % (path,version,self.version)
             tempstore = self.fromSchemaName(version)
             tempstore.setStore(valuedom)
             tempstore.convert(self)
@@ -3131,7 +3135,7 @@ class TypedStore(util.referencedobject):
         version = storedom.documentElement.getAttribute('version')
         if self.version!=version and version!='':
             # The version of the saved scenario does not match the version of this scenario object; convert it.
-            print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.storetitle,path,version,self.version)
+            if verbose: print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.storetitle,path,version,self.version)
             if callback!=None: callback(0.5,'converting scenario')
             tempstore = self.fromSchemaName(version)
             tempstore.loadAll(container)
@@ -3371,7 +3375,7 @@ class ConvertorChain(Convertor):
             convertor = self.chain[istep]
             temptargetid = convertor.targetid
             if callback!=None: callback(float(istep)/nsteps,'converting to version "%s".' % temptargetid)
-            print 'Converting to temporary target "%s".' % temptargetid
+            if verbose: print 'Converting to temporary target "%s".' % temptargetid
             temptarget = source.fromSchemaName(temptargetid)
             temptargets.append(temptarget)
             convertor.convert(source,temptarget,callback=stepcallback)
@@ -3379,7 +3383,7 @@ class ConvertorChain(Convertor):
         convertor = self.chain[-1]
         istep = nsteps-1
         if callback!=None: callback(float(istep)/nsteps,'converting to version "%s".' % target.version)
-        print 'Converting to final target "%s".' % target.version
+        if verbose: print 'Converting to final target "%s".' % target.version
         convertor.convert(source,target,callback=stepcallback)
         for temptarget in temptargets: temptarget.release()
 

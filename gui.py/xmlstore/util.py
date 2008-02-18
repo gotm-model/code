@@ -27,7 +27,8 @@ class referencedobject:
     """
     
     # Debug switch: it determines whether at exit we check for unreleased objects.
-    checkreferences = True
+    # WARNING! Enabling this has been found to be very expensive!
+    checkreferences = False
 
     # Debug objects: list of created objects, and list of tracebacks at creation.
     objs,tracebacks = None,None

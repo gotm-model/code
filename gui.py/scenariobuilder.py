@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.38 2008-02-12 11:42:43 jorn Exp $
+#$Id: scenariobuilder.py,v 1.39 2008-02-18 20:33:49 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -859,7 +859,7 @@ class PageAdvanced(commonqt.WizardPage):
 
         self.tree = xmlstore.gui_qt4.ExtendedTreeView(self)
         #self.tree.header().hide()
-        self.delegate = xmlstore.gui_qt4.PropertyDelegate(self,datasourcedir=parent.getProperty('datasourcedir'))
+        self.delegate = xmlstore.gui_qt4.PropertyDelegate(self,datasourcedir=parent.getProperty('datasourcedir'),fileprefix='')
         self.tree.setItemDelegate(self.delegate)
         self.tree.setModel(self.model)
         self.tree.setExpandedAll(maxdepth=1)

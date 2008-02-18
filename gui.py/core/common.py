@@ -1,6 +1,8 @@
-#$Id: common.py,v 1.2 2008-02-12 11:42:43 jorn Exp $
+#$Id: common.py,v 1.3 2008-02-18 20:33:48 jorn Exp $
 
 import sys, os.path, tempfile, shutil, atexit
+
+verbose = False
 
 dataroot = None
 def setDataRoot(path):
@@ -32,7 +34,7 @@ class TempDirManager:
     @staticmethod
     def delete(path,unregister=True):
         assert path in TempDirManager.tempdirs, 'Attempt to delete temporary directory "%s" that is not in list of registered tempdirs.' % path
-        print 'Deleting temporary directory "%s".' % path
+        if verbose: print 'Deleting temporary directory "%s".' % path
         shutil.rmtree(path)
         if unregister: TempDirManager.tempdirs.remove(path)
     

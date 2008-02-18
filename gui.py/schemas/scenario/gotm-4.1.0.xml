@@ -833,10 +833,10 @@
 				</fileinfo>
 			</element>
 			<element name="PressConstU" type="float" label="constant pressure gradient data for x-direction">
-				<condition type="eq" variable="./ext_press_method" value="0" />
+				<condition type="ne" variable="./ext_press_method" value="2" />
 			</element>
 			<element name="PressConstV" type="float" label="constant pressure gradient data for y-direction">
-				<condition type="eq" variable="./ext_press_method" value="0" />
+				<condition type="ne" variable="./ext_press_method" value="2" />
 			</element>
 			<element name="PressHeight" type="float" label="height above bottom for current meter observations"
 				unit="m">
@@ -988,7 +988,7 @@
 				</fileinfo>
 			</element>
 			<element name="zeta_0" type="float" label="constant value for sea surface elevation" unit="m">
-				<condition type="eq" variable="./zeta_method" value="0" />
+				<condition type="ne" variable="./zeta_method" value="2" />
 			</element>
 			<element name="period_1" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
 				<condition type="eq" variable="./zeta_method" value="1" />
