@@ -885,6 +885,18 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
             target['obs/ext_pressure/PressConstV'].setValue(source['obs/ext_pressure/PressVOffset'].getValue())
 
         # ===============================================
+        #  obs: internal pressure
+        # ===============================================
+
+        if source['obs/int_pressure'].getValue()==1:
+            if source['obs/sprofile'].getValue()==0:
+                target['obs/int_pressure/const_dsdx'].setValue(0.0)
+                target['obs/int_pressure/const_dsdy'].setValue(0.0)
+            if source['obs/tprofile'].getValue()==0:
+                target['obs/int_pressure/const_dtdx'].setValue(0.0)
+                target['obs/int_pressure/const_dtdy'].setValue(0.0)
+        
+        # ===============================================
         #  obs: sea surface elevation
         # ===============================================
 

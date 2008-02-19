@@ -843,7 +843,10 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element name="PressConstU" type="float" label="constant pressure gradient for x-direction">
+      <element name="PressHeight" type="float" label="height above bottom for current meter observations" unit="m">
+        <condition type="eq" variable="./ext_press_mode" value="1"/>
+      </element>
+      <element name="PressConstU" type="float" label="constant pressure gradient for x-direction">
 				<condition type="eq" variable="." value="0"/>
 			</element>
 			<element name="PressConstV" type="float" label="constant pressure gradient for y-direction">
@@ -855,9 +858,6 @@
       <element name="PressVOffset" type="float" label="pressure gradient offset for y-direction">
         <condition type="eq" variable="." value="1"/>
       </element>
-      <element name="PressHeight" type="float" label="height above bottom for current meter observations" unit="m">
-				<condition type="eq" variable="./ext_press_mode"   value="1"/>
-			</element>
 			<element name="PeriodM" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
 				<condition type="eq" variable="." value="1"/>
 			</element>
@@ -908,23 +908,41 @@
 				</fileinfo>
 			</element>
 			<element name="const_dsdx" type="float" label="salinity gradient in x-direction" unit="psu/m">
-				<condition type="eq" variable="." value="1"/>
-			</element>
+        <condition type="and">
+          <condition type="ne" variable="../sprofile" value="0"/>
+          <condition type="eq" variable="." value="1"/>
+        </condition>
+      </element>
 			<element name="const_dsdy" type="float" label="salinity gradient in y-direction" unit="psu/m">
-				<condition type="eq" variable="." value="1"/>
-			</element>
-			<element name="const_dtdx" type="float" label="temperature gradient in x-direction" unit="K/m">
-				<condition type="eq" variable="." value="1"/>
-			</element>
+        <condition type="and">
+          <condition type="ne" variable="../sprofile" value="0"/>
+          <condition type="eq" variable="." value="1"/>
+        </condition>
+      </element>
+      <element name="const_dtdx" type="float" label="temperature gradient in x-direction" unit="K/m">
+        <condition type="and">
+          <condition type="ne" variable="../tprofile" value="0"/>
+          <condition type="eq" variable="." value="1"/>
+        </condition>
+      </element>
 			<element name="const_dtdy" type="float" label="temperature gradient in y-direction" unit="K/m">
-				<condition type="eq" variable="." value="1"/>
-			</element>
+        <condition type="and">
+          <condition type="ne" variable="../tprofile" value="0"/>
+          <condition type="eq" variable="." value="1"/>
+        </condition>
+      </element>
 			<element name="s_adv" type="bool" label="advection of salinity">
-				<condition type="ne" variable="." value="0"/>
-			</element>
+        <condition type="and">
+          <condition type="ne" variable="../sprofile" value="0"/>
+          <condition type="ne" variable="." value="0"/>
+        </condition>
+      </element>
 			<element name="t_adv" type="bool" label="advection of temperature">
-				<condition type="ne" variable="." value="0"/>
-			</element>
+        <condition type="and">
+          <condition type="ne" variable="../tprofile" value="0"/>
+          <condition type="ne" variable="." value="0"/>
+        </condition>
+      </element>
 		</element>
 		
 		<element name="extinct" type="select" label="light extinction">

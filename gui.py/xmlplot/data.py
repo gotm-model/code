@@ -1,5 +1,5 @@
 # Import modules from standard Python library
-import os, re, datetime, shutil, StringIO
+import os, sys, re, datetime, shutil, StringIO
 
 # Import additional third party modules
 import matplotlib.numerix, numpy
@@ -23,17 +23,20 @@ def getNetCDFFile(path):
     # than on import, because this module can be useful without NetCDF
     # support as well).
     
-    # We prefer ScientificPython 2.7 or higher, but resort to pynetcdf
-    # if ScientificPython is not found, or its version is < 2.7.
+    # We prefer ScientificPython, but resort to pynetcdf if ScientificPython is not found.
     try:
-        import Scientific
-        [vermaj,vermin,verbuild] = map(int,Scientific.__version__.split('.'))
-        if vermaj<2 or (vermaj==2 and vermin<7):
-            raise Exception('Installed ScientificPython has version < 2.7.1')
         from Scientific.IO.NetCDF import NetCDFFile
-    except Exception,e:
-        print 'Unable to load Scientific.IO.NetCDF. Reason: %s. Trying pynetcdf.' % e
-        from pynetcdf import NetCDFFile
+    except Exception,e1:
+        try:
+            from pynetcdf import NetCDFFile
+        except Exception,e2:
+            print 'Cannot load Scientific.IO.NetCDF. Reason: %s.' % e1
+            print 'Cannot load pynetcdf. Reason: %s.' % e2
+            print 'Cannot load a module for NetCDF reading. Please install either ScientificPython or pynetcdf.'
+            sys.exit(1)
+        pyver = sys.version_info
+        if (pyver[0]==2 and pyver[1]>=5) or pyver[0]>2:
+            print 'Unable to load Scientific.IO.NetCDF. We will use pynetcdf for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % pyver[0:3]
 
     try:
         nc = NetCDFFile(path)
@@ -799,8 +802,9 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
                 varslice.coords_stag[idim] = coords_stag[curbounds[0]:curbounds[1]+2]
                 boundindices.append(curbounds)
 
+          slices = tuple([slice(b[0],b[1]+1) for b in boundindices])
           try:
-            dat = v[tuple([slice(b[0],b[1]+1) for b in boundindices])]
+            dat = matplotlib.numerix.asarray(v[slices])
           except Exception, e:
             raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
 
@@ -902,7 +906,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
     def getCoordinates(self,dimname):
         if dimname not in self.cachedcoords:
             nc = self.getcdf()
-            coords = nc.variables[dimname][:]
+            coords = matplotlib.numerix.asarray(nc.variables[dimname][:])
             
             if 0 in coords.shape:
                 coords = None
@@ -946,7 +950,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             nc = self.getcdf()
 
             # Get layer heights
-            h = nc.variables['h'][:,:,0,0]
+            h = matplotlib.numerix.asarray(nc.variables['h'][:,:,0,0])
             
             # Get depths of interfaces
             z1 = h.cumsum(1)

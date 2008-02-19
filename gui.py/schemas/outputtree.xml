@@ -104,8 +104,8 @@
 		<element name="int_total"/>
 		<element name="zeta">
 			<condition type="or" source="scenario">
-				<condition type="ne" variable="/obs/zetaspec"        value="0"/>
-				<condition type="ne" variable="/obs/zetaspec/zeta_0" value="0"/>
+				<condition type="ne" variable="/obs/zetaspec"            value="0"/>
+				<condition type="ne" variable="/obs/zetaspec/zeta_const" value="0"/>
 			</condition>
 		</element>
 	</element>
