@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.41 2008-02-20 09:35:43 kb Exp $
+!$Id: bio.F90,v 1.42 2008-02-20 11:29:59 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -39,6 +39,9 @@
    use bio_rolm, only : init_bio_rolm,init_var_rolm,var_info_rolm
    use bio_rolm, only : light_rolm,surface_fluxes_rolm,do_bio_rolm
 
+   use bio_npzd_fe, only : init_bio_npzd_fe,init_var_npzd_fe,var_info_npzd_fe
+   use bio_npzd_fe, only : light_npzd_fe,surface_fluxes_npzd_fe,do_bio_npzd_fe
+
 #if 0
    use mussels, only : init_mussels, do_mussels, end_mussels
    use mussels, only : mussels_calc,total_mussel_flux
@@ -59,8 +62,8 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.41  2008-02-20 09:35:43  kb
-!  added surface fluxes - Yakushev
+!  Revision 1.42  2008-02-20 11:29:59  kb
+!  added NPZD iron model - Weber et. all + Inga Hense
 !
 !  Revision 1.40  2007-11-07 11:14:24  kb
 !  no mussesl yet
@@ -328,6 +331,16 @@
 
          call var_info_rolm()
 
+      case (7)  ! FeNPZD (Weber_etal2007)
+
+         call init_bio_npzd_fe(namlst,'bio_npzd_fe.nml',unit)
+
+         call allocate_memory(nlev)
+
+         call init_var_npzd_fe(nlev)
+
+         call var_info_npzd_fe()
+
       case default
          stop "bio: no valid biomodel specified in bio.nml !"
       end select
@@ -576,6 +589,8 @@
             call surface_fluxes_mab(nlev,t(nlev),s(nlev))
          case (6)
             call surface_fluxes_rolm(nlev,t(nlev))
+         case (7)
+            call surface_fluxes_npzd_fe(nlev)
       end select
 
 #if 0
@@ -672,6 +687,9 @@
             case (6)
                call light_rolm(nlev,bioshade_feedback)
                call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_rolm)
+            case (7)
+               call light_npzd_fe(nlev,bioshade_feedback)
+               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd_fe)
          end select
 
       end do
