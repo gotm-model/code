@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.40 2007-11-07 11:14:24 kb Exp $
+!$Id: bio.F90,v 1.41 2008-02-20 09:35:43 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -59,6 +59,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.41  2008-02-20 09:35:43  kb
+!  added surface fluxes - Yakushev
+!
 !  Revision 1.40  2007-11-07 11:14:24  kb
 !  no mussesl yet
 !
@@ -571,6 +574,8 @@
          case (4)
          case (5)
             call surface_fluxes_mab(nlev,t(nlev),s(nlev))
+         case (6)
+            call surface_fluxes_rolm(nlev,t(nlev))
       end select
 
 #if 0

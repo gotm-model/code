@@ -1,4 +1,4 @@
-!$Id: bio_rolm.F90,v 1.3 2007-12-11 12:41:19 lars Exp $
+!$Id: bio_rolm.F90,v 1.4 2008-02-20 09:35:43 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -210,10 +210,11 @@
                                  don=17, pon=18, bae=19, bhe=20, baa=21, bha=22,&
                                  fe3=23, fe2=24, temp=25, salt=26
 
+
 !------------------------------ namelists ------------------------
 
  namelist /bio_rolm_factors_nml/ &
-   fluff, kc, i_min, iv, a0, a1, a2, aa, g2, pvel,  sfl_po, sfl_am,  sfl_ni,& 
+   fluff, kc, i_min, iv,&
 !----Phy ----------!
    KNF, k_Erlov, Io, Iopt, bm, cm, KFN, KFP, KFD,&
 !----Zoo-----------!
@@ -242,7 +243,7 @@
  namelist /bio_rolm_nml/ &
    numc,&
    w_phy,w_zoo,w_bae,w_bhe,w_baa,w_bha,w_mn4,w_fe3,w_pon,w_pop,w_s0,&
-   surface_flux_method,a0,a1,a2,g2,aa, pvel,sfl_po,sfl_am,sfl_ni, chem_init, finish
+   surface_flux_method,a0,a1,a2,g2,aa,pvel,sfl_po,sfl_am,sfl_ni, chem_init, finish
 
  namelist /bio_rolm_switches_nml/ &
    s_pho_po4, s_pho_noX, s_pho_nh4, s_anm_o2, s_nf1_O2, s_nf2_O2, s_omox_o2, &
@@ -703,14 +704,22 @@
 !-----------------------------------------------------------------------
 !BOC
 
+!  Surface fluxes are constant for now.
+!  In the near future we plan make them depend on seasonal variability.
+
    select case (surface_flux_method)
       case (-1)! absolutely nothing
       case (0) ! constant
- !        sfl(po4)= sfl_po / secs_pr_day
- !        sfl(nh4)= sfl_am / secs_pr_day
- !        sfl(no2)= sfl_ni / secs_pr_day
+         sfl(po4)= -sfl_po / secs_pr_day
+         sfl(nh4)= -sfl_am / secs_pr_day
+         sfl(no2)= -sfl_ni / secs_pr_day
 
-      case (2) ! from file via sfl_read
+!     case (1) ! from file via sfl_read
+!        sfl(po4)= sfl_po / secs_pr_day
+!        sfl(nh4)= sfl_am / secs_pr_day
+!        sfl(no2)= sfl_ni / secs_pr_day
+
+!     case (2) ! from file via sfl_read
 !         sfl(ni) = -sfl_read(1)/secs_pr_day
 !         sfl(am) = -sfl_read(2)/secs_pr_day
 !         sfl(po) = -sfl_read(3)/secs_pr_day 
@@ -719,7 +728,6 @@
    end select
 
 ! surface oxygen flux
-
        sfl(o2) = pvel*(a0*(a1-a2*t)-cc(o2,nlev))
    return
    end subroutine surface_fluxes_rolm
@@ -1294,7 +1302,7 @@
 !----------------------------------------------------
 ! Mn3 reduction: 2Mn3+ + HS- -> 2Mn2+ + S0 + H+ :
 
-       mn_rd2      =th(cc(mn3, ci),s_mnrd_mn3,_ZERO_,_ONE_)&
+     mn_rd2        =th(cc(mn3, ci),s_mnrd_mn3,_ZERO_,_ONE_)&
                     *K_mn_rd2*cc(mn3, ci)*cc(h2s, ci)/(cc(h2s, ci)+k_mnrdHS)
 
      pp(mn2,mn3,ci)=mn_rd2
@@ -1416,10 +1424,6 @@
      dd(pop,dop,ci)=pp(dop,pop,ci)
      pp(po4,po4,ci)=th(cc(po4, ci),s_po4_srp,_ZERO_,_ONE_)*fe_rd/2.7+(mn_ox2 + mn_rd2)/0.67
      dd(po4,po4,ci)=th(cc(po4, ci),s_po4_srp,_ZERO_,_ONE_)*(fe_ox+fe_mnox)/2.7+(mn_ox+mn_rd)/0.67
- !    if(cc(po4, ci).lt.0.01) then
- !      dd(po4,po4,ci)=0.
- !      pp(po4,po4,ci)=0.
- !    endif
 
      do i=1,numc
        do j=1,numc
@@ -1430,14 +1434,7 @@
 
    end do
 !---------------------------------------- end of main loop
-!----T E M P O R A L--------------- Boundary conditions, upper boundary
 
-
-!sfl_po / secs_pr_day
-!         sfl(nh4)= sfl_am / secs_pr_day
-!         sfl(no2)= sfl_ni
-
-   pp(po4,po4,nlev-1)=sfl(po4)
 !---------------------------------------- Boundary conditions, low boundary
 ! we use here the relaxation conditiond with relaxation time Trel
 !---------------------------------------- burial into the sediments
@@ -1445,7 +1442,6 @@
    dd(pop,pop,1)=(-1)*w_pop*cc(pop,1)/h(1)*Bu/Trel
    dd(s0,s0,1)  =(-1)*w_s0*cc(s0,1)/h(1)*Bu/Trel
    dd(mn4,mn4,1)=(-1)*w_mn4*cc(mn4,1)/h(1)*Bu/Trel
-   
 
 !---------------------------------------- upward fluxes of dissolved parameters
 !---------------------------------------- independent on redox conditions
