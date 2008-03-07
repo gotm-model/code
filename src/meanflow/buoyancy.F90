@@ -1,4 +1,4 @@
-!$Id: buoyancy.F90,v 1.8 2006-11-06 13:36:45 hb Exp $
+!$Id: buoyancy.F90,v 1.9 2008-03-07 17:57:49 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -82,6 +82,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: buoyancy.F90,v $
+!  Revision 1.9  2008-03-07 17:57:49  hb
+!  AdvBcup changed to oneSided
+!
 !  Revision 1.8  2006-11-06 13:36:45  hb
 !  Option for conservative vertical advection added to adv_center
 !
@@ -129,7 +132,7 @@
    DiffBup       = _ZERO_
    DiffBdw       = _ZERO_
 
-   AdvBcup       = zeroDivergence
+   AdvBcup       = oneSided
    AdvBcdw       = oneSided
    AdvBup        = _ZERO_
    AdvBdw        = _ZERO_

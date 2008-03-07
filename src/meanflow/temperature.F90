@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.18 2007-01-06 11:49:16 kbk Exp $
+!$Id: temperature.F90,v 1.19 2008-03-07 17:57:49 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -110,6 +110,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
+!  Revision 1.19  2008-03-07 17:57:49  hb
+!  AdvBcup changed to oneSided
+!
 !  Revision 1.18  2007-01-06 11:49:16  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -186,7 +189,7 @@
    DiffTup        = heat/(rho_0*cp)
    DiffTdw        = _ZERO_
 
-   AdvBcup        = zeroDivergence
+   AdvBcup        = oneSided
    AdvBcdw        = oneSided
    AdvTup         = _ZERO_
    AdvTdw         = _ZERO_

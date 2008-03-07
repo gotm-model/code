@@ -1,4 +1,4 @@
-!$Id: salinity.F90,v 1.12 2007-12-07 10:12:20 kb Exp $
+!$Id: salinity.F90,v 1.13 2008-03-07 17:57:49 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -94,6 +94,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: salinity.F90,v $
+!  Revision 1.13  2008-03-07 17:57:49  hb
+!  AdvBcup changed to oneSided
+!
 !  Revision 1.12  2007-12-07 10:12:20  kb
 !  replaced p_e with precip and included evap
 !
@@ -152,7 +155,7 @@
    DiffSup        = -S(nlev)*(precip-evap)
    DiffSdw        = _ZERO_
 
-   AdvBcup       = zeroDivergence
+   AdvBcup       = oneSided
    AdvBcdw       = oneSided
    AdvSup        = _ZERO_
    AdvSdw        = _ZERO_

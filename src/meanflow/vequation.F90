@@ -1,4 +1,4 @@
-!$Id: vequation.F90,v 1.10 2006-11-06 13:36:45 hb Exp $
+!$Id: vequation.F90,v 1.11 2008-03-07 17:57:49 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -88,6 +88,9 @@
 !                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: vequation.F90,v $
+!  Revision 1.11  2008-03-07 17:57:49  hb
+!  AdvBcup changed to oneSided
+!
 !  Revision 1.10  2006-11-06 13:36:45  hb
 !  Option for conservative vertical advection added to adv_center
 !
@@ -144,7 +147,7 @@
    DiffVup        = ty
    DiffVdw        = _ZERO_   ! bottom friction treated as a source term
 
-   AdvBcup        = zeroDivergence
+   AdvBcup        = oneSided
    AdvBcdw        = oneSided
    AdvVup         = _ZERO_
    AdvVdw         = _ZERO_
