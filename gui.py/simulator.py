@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.18 2008-02-18 20:33:49 jorn Exp $
+#$Id: simulator.py,v 1.19 2008-03-07 13:48:34 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -8,7 +8,7 @@ import commonqt, core.common, core.simulator
 
 # Here we can set the stack size for GOTM (in bytes). Note: bio modules sometimes
 # need a very high stack size (in particular if Lagrangian variables are used)
-stacksize = 16000000
+stacksize = 16*1024*1024
 
 class GOTMThread(QtCore.QThread):
 
