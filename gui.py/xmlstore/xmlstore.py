@@ -365,6 +365,7 @@ class DataContainer(util.referencedobject):
     Items in the container are identified by name."""
     def __init__(self):
         util.referencedobject.__init__(self)
+        self.path = None
         
     @staticmethod
     def fromPath(path):
@@ -828,7 +829,7 @@ class DataContainerDirectory(DataContainer):
    
     def __init__(self,path,create=False):
         DataContainer.__init__(self)
-        assert os.path.isdir(path) or create
+        assert os.path.isdir(path) or create, 'Supplied path is not an existing directory and we are not allowed to create a new directory.'
         if not os.path.isdir(path):
             try:
                 os.mkdir(path)
@@ -895,6 +896,7 @@ class DataContainerZip(DataContainer):
             would be overwritten if the specified path is saved to.
             """
             assert self.zipcontainer!=None, 'DataFileZip.isBelowPath failed; ZIP file has been closed.'
+            if self.zipcontainer.path==None: return False
             owndir = os.path.normcase(self.zipcontainer.path)
             return owndir.startswith(os.path.normcase(path))
 
@@ -909,20 +911,23 @@ class DataContainerZip(DataContainer):
             self.zipcontainer.release()
             self.zipcontainer = None
     
-    def __init__(self,path,mode='r'):
+    def __init__(self,source,mode='r'):
         DataContainer.__init__(self)
-        if isinstance(path,basestring):
-            assert os.path.isfile(path) or mode=='w', 'Cannot initialize DataContainerZip with supplied path; it does not point to an existing file, but is also not opened for writing.'
-        elif isinstance(path,StringIO.StringIO):
+        if isinstance(source,basestring):
+            assert os.path.isfile(source) or mode=='w', 'Cannot initialize DataContainerZip with supplied path; it does not point to an existing file, but is also not opened for writing.'
+        elif isinstance(source,StringIO.StringIO):
             assert mode=='w', 'Can initialize DataContainerZip with StringIO object only in write-only mode.'
-        elif isinstance(path,DataFile):
+        elif isinstance(source,DataFile):
             assert mode=='r', 'Can initialize DataContainerZip with file-like object only in read-only mode.'
         else:
-            assert False, 'Cannot initialize DataContainerZip with %s.' % path
+            assert False, 'Cannot initialize DataContainerZip with %s.' % source
         self.mode = None
         self.zfile = None
-        self.path = path
-        if isinstance(self.path,DataFile): self.path.addref()
+        self.source = source
+        if isinstance(self.source,DataFile):
+            self.source.addref()
+        elif isinstance(self.source,basestring):
+            self.path = self.source
         self.setMode(mode)
 
     def __del__(self):
@@ -936,7 +941,8 @@ class DataContainerZip(DataContainer):
         self.zfile.close()
         self.zfile = None
         self.mode = None
-        if isinstance(self.path,DataFile): self.path.release()
+        if isinstance(self.source,DataFile): self.source.release()
+        self.source = None
         self.path = None
     
     def getItem(self,name):
@@ -952,7 +958,7 @@ class DataContainerZip(DataContainer):
         """
         if newname==None: newname = datafile.name
         if self.mode=='r': self.setMode('a')
-        if isinstance(self.path,StringIO.StringIO):
+        if isinstance(self.source,StringIO.StringIO):
             print 'Adding "%s" to in-memory archive...' % (newname,)
         else:
             print 'Adding "%s" to archive "%s"...' % (newname,self.path)
@@ -969,7 +975,7 @@ class DataContainerZip(DataContainer):
         storage. This may involve flushing buffers etc.
         """
         if self.zfile==None: return
-        if isinstance(self.path,basestring):
+        if isinstance(self.source,basestring):
             # Immediately re-open the ZIP file so we keep a lock on it.
             self.setMode('r')
         else:
@@ -988,18 +994,18 @@ class DataContainerZip(DataContainer):
             if mode==self.mode: return
             self.zfile.close()
         self.mode = mode
-        if isinstance(self.path,StringIO.StringIO):
+        if isinstance(self.source,StringIO.StringIO):
             # Writing to in-memory data block.
             assert self.mode=='w', 'In-memory data blocks can only be written to, not read from.'
-            self.zfile = zipfile.ZipFile(self.path,self.mode,zipfile.ZIP_DEFLATED)
-        if isinstance(self.path,DataFile):
+            self.zfile = zipfile.ZipFile(self.source,self.mode,zipfile.ZIP_DEFLATED)
+        if isinstance(self.source,DataFile):
             # Reading from generic DataFile object.
             assert self.mode=='r', 'Data file objects can only be accessed as read-only zip file.'
-            f = self.path.getAsReadOnlyFile()
+            f = self.source.getAsReadOnlyFile()
             self.zfile = zipfile.ZipFile(f,self.mode,zipfile.ZIP_DEFLATED)
         else:
             # Reading from/writing to file.
-            self.zfile = zipfile.ZipFile(self.path,self.mode,zipfile.ZIP_DEFLATED)
+            self.zfile = zipfile.ZipFile(self.source,self.mode,zipfile.ZIP_DEFLATED)
 
 class DataContainerTar(DataContainer):
     """A DataContainer implementation for tar and tar.gz archives.
@@ -1050,7 +1056,8 @@ class DataContainerTar(DataContainer):
 
     def __init__(self,path,mode='r'):
         DataContainer.__init__(self)
-        assert os.path.isfile(path) or mode=='w', 'Cannot initialize DataContainerTar with supplied path; it does not point to an existing file, but is also not opened for writing.'
+        assert isinstance(path,basestring), 'DataContainerTar must be initialized with a path to a exisitng/to-be-created tar/gz file.'
+        assert os.path.isfile(path) or mode=='w', 'The path supplied to DataContainerTar does exist, and can therefore not be opened for reading.'
         self.mode = None
         self.tfile = None
         self.path = path
@@ -1067,6 +1074,7 @@ class DataContainerTar(DataContainer):
         self.tfile.close()
         self.mode = None
         self.tfile = None
+        self.path = None
     
     def getItem(self,name):
         """Returns specified file from the zip archive as DataFile object.
@@ -3105,7 +3113,8 @@ class TypedStore(util.referencedobject):
     def loadAll(self,path,callback=None):
         """Loads values plus associated data from the specified path. The path should point
         to a valid data container, i.e., a ZIP file, TAR/GZ file, or a directory. The source
-        container typically has been saved through the "saveAll" method."""
+        container typically has been saved through the "saveAll" method.
+        """
         if isinstance(path,basestring):
             container = DataContainer.fromPath(path)
         elif isinstance(path,DataContainer):
@@ -3119,9 +3128,12 @@ class TypedStore(util.referencedobject):
         files = container.listFiles()
 
         # Check for existence of main file.
+        # Note: the name of the main file (self.storefilename) and its description
+        # (self.storetitle) must be set by inheriting classes.
         if self.storefilename not in files:
             raise Exception('The specified source does not contain "%s" and can therefore not be a %s.' % (self.storefilename,self.storetitle))
-            
+
+        # Report that we are beginning to load.            
         if callback!=None: callback(0.,'parsing XML')
 
         # Read and parse the store XML file.
@@ -3149,15 +3161,14 @@ class TypedStore(util.referencedobject):
             # Attach the parsed scenario (XML DOM).
             self.setStore(storedom)
             self.setContainer(container)
+            
+        # Store source path.
+        self.path = container.path
 
+        # Release reference to container.
         container.release()
 
-        # Store source path.
-        if isinstance(path,basestring):
-            self.path = path
-        else:
-            self.path = None
-
+        # Report that we have finished loading.            
         if callback!=None: callback(1.,'done')
 
     def toXml(self,enc='utf-8'):
