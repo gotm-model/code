@@ -458,16 +458,26 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                 elif start==stop:
                     errors.append('The begin and end time of the simulated period are equal.')
 
-        # Check whether number of custom layer thicknesses matches the number
-        # of depth levels.
-        if self['/grid/grid_method'].getValue(usedefault=usedefault)>0:
-            gridfilenode,nlevnode = self['/grid/grid_file'],self['/grid/nlev']
-            if ((gridfilenode in oldvalids and validity.get(nlevnode,    False)) or
-                (nlevnode     in oldvalids and validity.get(gridfilenode,False)) or
-                (validity.get(gridfilenode,False) and validity.get(nlevnode,False))):
+        # Validate the sum of custom layer thicknesses.
+        gridmethod = self['/grid/grid_method'].getValue(usedefault=usedefault)
+        if gridmethod==1:
+            # Sigma grid: validate sum of thciknesses only.
+            gridfilenode = self['/grid/grid_file']
+            if validity.get(gridfilenode,False):
                 val = gridfilenode.getValue(usedefault=usedefault)
-                if len(val.getData()[0])!=nlevnode.getValue(usedefault=usedefault):
-                    errors.append('The specified number of layers does not match the number of custom layer thicknesses.')
+                depth = val.getData()[0].sum()
+                if abs(depth-1.)>1.e-8:
+                    errors.append('The sum of the relative layer thicknesses must equal 1, but it currently equals %.6g.' % depth)
+                val.release()
+        elif gridmethod==2:
+            # Cartesian grid: validate sum of thciknesses in combination with column depth.
+            gridfilenode,depthnode = self['/grid/grid_file'],self['/station/depth']
+            if ((gridfilenode in oldvalids and validity.get(depthnode,   False)) or
+                (depthnode    in oldvalids and validity.get(gridfilenode,False)) or
+                (validity.get(gridfilenode,False) and validity.get(depthnode,False))):
+                val = gridfilenode.getValue(usedefault=usedefault)
+                if abs(val.getData()[0].sum()-depthnode.getValue(usedefault=usedefault))>1.e-5:
+                    errors.append('The sum of the custom layer thicknesses does not match the specified column depth.')
                 val.release()
                 
         # Validate the time extent of input data series, provided
@@ -809,6 +819,12 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
         relinterval = int(source['output/dtsave'].getValue().getAsSeconds()/dt)
         if relinterval<1: relinterval=1
         target['gotmrun/output/nsave'].setValue(relinterval)
+
+        # If we use a custom grid, take the number of layers from the grid file.
+        if source['/grid/grid_method'].getValue()>0:
+            val = source['/grid/grid_file'].getValue()
+            nlev = len(val.getData()[0])
+            target['gotmrun/model_setup/nlev'].setValue(nlev)
 
         # Add output path and type (not present in GUI scenarios)
         target['gotmrun/output/out_fmt'].setValue(2)

@@ -829,10 +829,14 @@ class LinkedFilePlotDialog(QtGui.QDialog):
                 colindex = index.column()
                 if self.rowlabels!=None: colindex -= 1
                 if colindex==-1:
+                    # We have edited a row label. The table is kep sorted according
+                    # to row labels, so this means the position of the current row
+                    # may have change.
                     if self.rowlabels[rowindex]==value: return True
                     newrowindex = self.rowlabels.searchsorted(value)
                     self.rowlabels[rowindex] = value
                     if newrowindex!=rowindex and newrowindex!=rowindex+1:
+                        # Row position should change
                         buflab = self.rowlabels[rowindex]
                         bufdata = self.datamatrix[rowindex,:].copy()
                         if newrowindex>rowindex+1:
@@ -956,6 +960,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         def setModelData(self, editor, model, index):
             if isinstance(editor,xmlstore.gui_qt4.ScientificDoubleEditor):
                 editor.interpretText()
+                if not editor.hasAcceptableInput(): return
                 model.setData(index, QtCore.QVariant(editor.value()))
             elif isinstance(editor,QtGui.QDateTimeEdit):
                 model.setData(index, QtCore.QVariant(editor.dateTime()))

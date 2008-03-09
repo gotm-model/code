@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.39 2008-02-18 20:33:49 jorn Exp $
+#$Id: scenariobuilder.py,v 1.40 2008-03-09 15:42:27 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -305,28 +305,23 @@ class PageDiscretization(ScenarioPage):
         layoutGrid = QtGui.QGridLayout()
 
         # Create controls for grid layout.
-        editLevelCount = self.factory.createEditor('grid/nlev',self)      
         editGridMethod = self.factory.createEditor('grid/grid_method',self,selectwithradio=True)
-        self.labelGridMethod = editGridMethod.createLabel()
         self.bngroup = editGridMethod.editor
-        editZoomSurface = self.factory.createEditor('grid/ddu',self)      
-        editZoomBottom  = self.factory.createEditor('grid/ddl',self)
+        editLevelCount  = self.factory.createEditor('grid/nlev',self)      
+        editZoomSurface = self.factory.createEditor('grid/ddu', self)      
+        editZoomBottom  = self.factory.createEditor('grid/ddl', self)
         editGridFile = self.factory.createEditor('grid/grid_file',self)
         
         # Add controls for grid layout to the widget.
         layoutGrid.addWidget(self.bngroup.button(0),    0,0,1,4)
-        editZoomSurface.addToGridLayout(layoutGrid,1,1)
-        editZoomBottom.addToGridLayout(layoutGrid, 2,1)
-        layoutGrid.addWidget(self.bngroup.button(1),    3,0,1,4)
-        layoutGrid.addWidget(self.bngroup.button(2),    4,0,1,4)
-        editGridFile.addToGridLayout(layoutGrid,   5,1,label=False,unit=False)
+        editLevelCount.addToGridLayout (layoutGrid,1,1)
+        editZoomSurface.addToGridLayout(layoutGrid,2,1)
+        editZoomBottom.addToGridLayout (layoutGrid,3,1)
+        layoutGrid.addWidget(self.bngroup.button(1),    4,0,1,4)
+        layoutGrid.addWidget(self.bngroup.button(2),    5,0,1,4)
+        editGridFile.addToGridLayout(layoutGrid,   6,1,label=False,unit=False)
                 
-        layoutColumn = QtGui.QVBoxLayout()
-        editLevelCount.addToBoxLayout(layoutColumn)
-        layoutColumn.addSpacing(25)
-        layoutColumn.addWidget(self.labelGridMethod)
-        layoutColumn.addLayout(layoutGrid)
-        editColumn.editor.setLayout(layoutColumn)
+        editColumn.editor.setLayout(layoutGrid)
 
         layoutGrid.setColumnStretch(3,1)
         layoutGrid.setColumnMinimumWidth(0,commonqt.getRadioWidth())
@@ -334,15 +329,16 @@ class PageDiscretization(ScenarioPage):
 
         editTime = self.factory.createEditor('timeintegration',self,groupbox=True)
         
-        groupboxTime = editTime.editor
-
-        layoutTime = QtGui.QHBoxLayout()
+        layoutTime = QtGui.QGridLayout()
         editTimeStep = self.factory.createEditor('timeintegration/dt',self)
-        editTimeStep.addToBoxLayout(layoutTime)
-        groupboxTime.setLayout(layoutTime)
+        editOutputStep = self.factory.createEditor('output/dtsave',self)
+        editTimeStep.addToGridLayout(layoutTime)
+        editOutputStep.addToGridLayout(layoutTime)
+        layoutTime.setColumnStretch(3,1)
+        editTime.editor.setLayout(layoutTime)
 
         layout.addWidget(editColumn.editor)
-        layout.addWidget(groupboxTime)
+        layout.addWidget(editTime.editor)
         layout.addStretch()
         self.setLayout(layout)
 

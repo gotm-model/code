@@ -101,7 +101,14 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
             assert False, 'Linked file has unknown type "%s".' % node.type
         return store
         
-    def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=(),variables=[]):
+    # Dictionary linking our data type names to MatPlotLib data types.
+    # Note that times are stored as numeric values (via matplotlib.dates.date2num)
+    mpldatatypes = {'datetime':matplotlib.numerix.Float64,
+                    'float':   matplotlib.numerix.Float32,
+                    'float32': matplotlib.numerix.Float32,
+                    'float64': matplotlib.numerix.Float64}
+
+    def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=(),variables=[],datatype='float'):
     
         plot.VariableStore.__init__(self)
         xmlstore.xmlstore.DataFileEx.__init__(self,datafile,context,infonode,nodename)
@@ -119,6 +126,7 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
         if infonode!=None:
             finfo = xmlstore.util.findDescendantNode(infonode,['fileinfo'])
             self.nodeid = infonode.getAttribute('name')
+            if finfo.hasAttribute('datatype'): datatype = finfo.getAttribute('datatype')
 
             # Get variables
             fvars = xmlstore.util.findDescendantNode(finfo,['filevariables'])
@@ -146,6 +154,7 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
                         self.dimensionorder.append(id)
 
         self.data = None
+        self.datatype = datatype
         
     def clear(self,clearfile=True):
         """Clears all data, and by default also clears the original datafile
@@ -327,8 +336,9 @@ class LinkedMatrix(LinkedFileVariableStore):
         """Clears all contained data."""
         self.data = []
         if len(self.dimensions)==1:
-            self.data.append(matplotlib.numerix.empty((0,)))
-        self.data.append(matplotlib.numerix.empty((0,len(self.vardata))))
+            dimdatatype = self.dimensions[self.dimensionorder[0]]['datatype']
+            self.data.append(matplotlib.numerix.empty((0,),self.mpldatatypes[dimdatatype]))
+        self.data.append(matplotlib.numerix.empty((0,len(self.vardata)),self.mpldatatypes[self.datatype]))
         LinkedFileVariableStore.clear(self,clearfile=clearfile)
         
     def calculateDimensionRange(self,dimname):
@@ -371,17 +381,15 @@ class LinkedMatrix(LinkedFileVariableStore):
         obscount = int(line)
 
         # Allocate arrays for storage of coordinates and variable values
-        values = matplotlib.numerix.empty((obscount,varcount),matplotlib.numerix.Float32)
+        values = matplotlib.numerix.empty((obscount,varcount),self.mpldatatypes[self.datatype])
         if dimcount==1:
             # One coordinate dimension present; allocate an array for its values.
-            dimtype = self.dimensions.values()[0]['datatype']
+            dimtype = self.dimensions[self.dimensionorder[0]]['datatype']
             dimisdate = (dimtype=='datetime')
             if dimisdate:
                 datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
-                dimvalues = matplotlib.numerix.empty((obscount,),matplotlib.numerix.Float64)
                 prevdate = None
-            else:
-                dimvalues = matplotlib.numerix.empty((obscount,),matplotlib.numerix.Float32)
+            dimvalues = matplotlib.numerix.empty((obscount,),self.mpldatatypes[dimtype])
 
         for irow in range(values.shape[0]):
             # Read a line (stop if end-of-file was reached)
@@ -451,6 +459,9 @@ class LinkedMatrix(LinkedFileVariableStore):
         # Compile regular expression for reading dates.
         datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
         
+        # Get the data type to use for the dimension
+        dimdatatype = self.dimensions[self.dimensionorder[0]]['datatype']
+        
         # Size of one memory slab
         buffersize = 1000
 
@@ -465,8 +476,8 @@ class LinkedMatrix(LinkedFileVariableStore):
             # Calculate position in current memory slab, create new slab if needed.
             ipos = iline%buffersize
             if ipos==0:
-                times.append(matplotlib.numerix.empty((buffersize,),matplotlib.numerix.Float64))
-                values.append(matplotlib.numerix.empty((buffersize,varcount),matplotlib.numerix.Float32))
+                times.append(matplotlib.numerix.empty((buffersize,),         self.mpldatatypes[dimdatatype]))
+                values.append(matplotlib.numerix.empty((buffersize,varcount),self.mpldatatypes[self.datatype]))
 
             # Increment current line number
             iline += 1
@@ -533,9 +544,9 @@ class LinkedMatrix(LinkedFileVariableStore):
                 if dimisdate:
                     target.write(dimdata[iline].strftime('%Y-%m-%d %H:%M:%S'))
                 else:
-                    target.write('%.9g' % dimdata[iline])
+                    target.write('%.12g' % dimdata[iline])
             for ivar in range(varcount):
-                target.write('\t%.9g' % vardata[iline,ivar])
+                target.write('\t%.12g' % vardata[iline,ivar])
             target.write('\n')
             if callback!=None and iline%1000==0:
                 callback(float(iline)/vardata.shape[0],'wrote %i lines.' % iline)
@@ -622,12 +633,13 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             uniquedepths = uniquedepths.keys()
             uniquedepths.sort()
             if len(uniquedepths)<200:
-                depthgrid = matplotlib.numerix.array(uniquedepths,matplotlib.numerix.Float32)
+                depthdatatype = self.dimensions[self.dimensionorder[1]]['datatype']
+                depthgrid = matplotlib.numerix.array(uniquedepths,self.mpldatatypes[depthdatatype])
             else:
                 depthgrid = numpy.linspace(uniquedepths[0],uniquedepths[-1],200)
                 
             # Grid observed profiles to depth grid.
-            griddedvalues = matplotlib.numerix.empty((times.shape[0],depthgrid.shape[0],varcount),matplotlib.numerix.Float32)
+            griddedvalues = matplotlib.numerix.empty((times.shape[0],depthgrid.shape[0],varcount),self.mpldatatypes[self.datatype])
             for it in range(len(times)):
                 griddedvalues[it,:,:] = common.interp1(depths[it],values[it],depthgrid)
                 if callback!=None and (it+1)%20==0:
@@ -675,8 +687,9 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             (depthcount,updown) = map(int, line[datematch.end()+1:].split())
 
             # Create arrays that will contains depths and observed values.
-            curdepths = matplotlib.numerix.empty((depthcount,),matplotlib.numerix.Float32)
-            curvalues = matplotlib.numerix.empty((depthcount,varcount),matplotlib.numerix.Float32)
+            depthdatatype = self.dimensions[self.dimensionorder[1]]['datatype']
+            curdepths = matplotlib.numerix.empty((depthcount,),self.mpldatatypes[depthdatatype])
+            curvalues = matplotlib.numerix.empty((depthcount,varcount),self.mpldatatypes[self.datatype])
             
             # Depths can be increasing (updown==1) or decreasing (updown!=1)
             if updown==1:
@@ -726,7 +739,8 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                 callback(pos/filesize,'processed %i lines.' % iline)
                 
         # Convert sequence with times to numpy array.
-        times = matplotlib.numerix.array(times,matplotlib.numerix.Float64)
+        timedatatype = self.dimensions[self.dimensionorder[0]]['datatype']
+        times = matplotlib.numerix.array(times,self.mpldatatypes[timedatatype])
         
         # Close data file
         f.close()

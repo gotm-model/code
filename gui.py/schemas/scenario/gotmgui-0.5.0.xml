@@ -30,15 +30,17 @@
 	</element>
 	
 	<element name="grid" label="column structure" description="The column structure determines the accuracy and detail with which the water column is resolved. You can selectively increase the detail of parts of the column by changing the grid type.">
-		<element name="nlev" type="int" label="number of depth levels" minInclusive="1" maxInclusive="1000" description="The number of depth levels used to describe the water column. More levels increase accuracy and result resolution, but also simulation time."/>
-		<element name="grid_method" type="select" label="type of vertical grid" description="By changing the grid type, you can control the detail with which different parts of the water column are resolved. A study of bottom friction benefits from a small layer height near the bottom (bottom zooming), while a study of biological process is better served by a layer height near the surface (surface zooming). Custom grids allow you to specify the height of every level individually.">
-			<options>
-				<option value="0" label="equal layers heights, optional zooming"/>
-				<option value="1" label="custom sigma grid (relative depth fractions)"/>
-				<option value="2" label="custom cartesian grid (absolute layer heights)"/>
-			</options>
-		</element>
-		<element name="ddu" type="float" label="surface zooming" description="Grid zooming (surface), 0: no zooming; > 3 strong zooming" minInclusive="0">
+    <element name="grid_method" type="select" label="type of vertical grid" description="By changing the grid type, you can control the detail with which different parts of the water column are resolved. A study of bottom friction benefits from a small layer height near the bottom (bottom zooming), while a study of biological process is better served by a layer height near the surface (surface zooming). Custom grids allow you to specify the height of every level individually.">
+      <options>
+        <option value="0" label="equal layers heights, optional zooming"/>
+        <option value="1" label="custom sigma grid (relative depth fractions)"/>
+        <option value="2" label="custom cartesian grid (absolute layer heights)"/>
+      </options>
+    </element>
+    <element name="nlev" type="int" label="number of depth levels" minInclusive="1" maxInclusive="1000" description="The number of depth levels used to describe the water column. More levels increase accuracy and result resolution, but also simulation time.">
+      <condition type="eq" variable="./grid_method" value="0"/>
+    </element>
+    <element name="ddu" type="float" label="surface zooming" description="Grid zooming (surface), 0: no zooming; > 3 strong zooming" minInclusive="0">
 			<condition type="eq" variable="./grid_method" value="0"/>
 		</element>
 		<element name="ddl" type="float" label="bottom zooming" description="Grid zooming (bottom), 0: no zooming; > 3 strong zooming" minInclusive="0">
@@ -46,7 +48,7 @@
 		</element>
 		<element name="grid_file" type="gotmdatafile" label="custom grid" description="File for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
 			<condition type="ne" variable="./grid_method" value="0"/>
-			<fileinfo type="verticalgrid">
+			<fileinfo type="verticalgrid" datatype="float64">
 				<filevariables>
 					<filevariable label="height"/>
 				</filevariables>
@@ -60,7 +62,7 @@
 	</element>
 
 	<element name="output" label="output">
-		<element name="dtsave"      type="duration"  label="period between saves"/>
+		<element name="dtsave"      type="duration"  label="output resolution"/>
 		<element name="diagnostics" type="bool"   label="include diagnostics" description="Write diagnostics to output."/>
 		<element name="mld_method"  type="select" label="mixed layer depth criterion">
 			<options>
