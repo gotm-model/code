@@ -122,6 +122,9 @@ class Result(xmlplot.data.NetCDFStore):
             f.close()
             df.release()
 
+        # Store path from where the result was loaded
+        self.path = container.path
+
         # Close the archive
         container.release()
 
@@ -131,12 +134,6 @@ class Result(xmlplot.data.NetCDFStore):
 
         # Reset "changed" status.
         self.changed = False
-        
-        # Store path
-        if isinstance(path,basestring):
-            self.path = path
-        else:
-            self.path = None
 
     def setFigure(self,name,source):
         setroot = self.store['FigureSettings']
