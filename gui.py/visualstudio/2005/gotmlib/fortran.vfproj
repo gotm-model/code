@@ -45,6 +45,7 @@
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_iow.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_mab.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_npzd.F90"/>
+		<File RelativePath="..\..\..\..\src\extras\bio\bio_npzd_fe.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_rolm.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_save.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_sed.F90"/>

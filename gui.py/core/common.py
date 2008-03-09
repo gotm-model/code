@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.3 2008-02-18 20:33:48 jorn Exp $
+#$Id: common.py,v 1.4 2008-03-09 11:30:37 jorn Exp $
 
 import sys, os.path, tempfile, shutil, atexit
 
@@ -11,7 +11,10 @@ def setDataRoot(path):
 def getDataRoot():
     global dataroot
     if dataroot==None:
-        dataroot = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
+        if hasattr(sys,'frozen'):
+            dataroot = os.path.dirname(unicode(sys.executable, sys.getfilesystemencoding()))
+        else:
+            dataroot = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
     return dataroot
 
 class TempDirManager:

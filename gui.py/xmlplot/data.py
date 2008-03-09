@@ -30,13 +30,10 @@ def getNetCDFFile(path):
         try:
             from pynetcdf import NetCDFFile
         except Exception,e2:
-            print 'Cannot load Scientific.IO.NetCDF. Reason: %s.' % e1
-            print 'Cannot load pynetcdf. Reason: %s.' % e2
-            print 'Cannot load a module for NetCDF reading. Please install either ScientificPython or pynetcdf.'
-            sys.exit(1)
+            raise Exception('Cannot load Scientific.IO.NetCDF. Reason: %s.\nCannot load pynetcdf. Reason: %s.\nCannot load a module for NetCDF reading. Please install either ScientificPython or pynetcdf.' % (e1,e2))
         pyver = sys.version_info
         if (pyver[0]==2 and pyver[1]>=5) or pyver[0]>2:
-            print 'Unable to load Scientific.IO.NetCDF. We will use pynetcdf for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % pyver[0:3]
+            print 'Unable to load Scientific.IO.NetCDF (%s). We will use pynetcdf for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (e1,pyver[0],pyver[1],pyver[2])
 
     try:
         nc = NetCDFFile(path)

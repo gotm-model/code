@@ -1,7 +1,7 @@
-#$Id: common.py,v 1.3 2008-02-12 12:43:46 jorn Exp $
+#$Id: common.py,v 1.4 2008-03-09 11:30:38 jorn Exp $
 
 # Import modules from standard Python library
-import os.path
+import sys,os.path
 
 # Import additional third party modules
 import matplotlib.dates,matplotlib.numerix
@@ -19,7 +19,10 @@ def setDataRoot(path):
 def getDataRoot():
     global dataroot
     if dataroot==None:
-        dataroot = os.path.realpath(os.path.dirname(__file__))
+        if hasattr(sys,'frozen'):
+            dataroot = os.path.join(os.path.dirname(unicode(sys.executable, sys.getfilesystemencoding())),'xmlplot')
+        else:
+            dataroot = os.path.realpath(os.path.dirname(__file__))
     return dataroot
 xmlstore.xmlstore.Schema.knownpaths['xmlplot'] = getDataRoot()
 
