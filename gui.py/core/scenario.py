@@ -458,6 +458,16 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                 elif start==stop:
                     errors.append('The begin and end time of the simulated period are equal.')
 
+        # Validate the time step for calculations and output
+        dtnode,dtsavenode = self['/timeintegration/dt'],self['/output/dtsave']
+        if validity.get(dtnode,False) and validity.get(dtsavenode,False):
+            dt = dtnode.getValue(usedefault=usedefault)
+            dtsave = dtsavenode.getValue(usedefault=usedefault)
+            if dt>dtsave:
+                validity[dtnode]     = False
+                validity[dtsavenode] = False
+                errors.append('The time step for calculations must be smaller than the output resolution.')
+
         # Validate the sum of custom layer thicknesses.
         gridmethod = self['/grid/grid_method'].getValue(usedefault=usedefault)
         if gridmethod==1:

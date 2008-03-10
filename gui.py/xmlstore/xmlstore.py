@@ -252,6 +252,9 @@ class StoreTimeDelta(Store.DataType,datetime.timedelta):
         """Returns the number of seconds in the time span as floating point value."""
         return float(self.getAsSeconds())
         
+    def __cmp__(self,other):
+        return cmp(self.getAsSeconds(),other.getAsSeconds())
+        
     def __str__(self):
         """Returns a "pretty" string representation of the time span."""
         values = []
