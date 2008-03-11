@@ -439,7 +439,8 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         # return base result if version does not match.
         if self.version!='gotmgui-0.5.0': return errors,validity
 
-        # Retrieve validation history
+        # Retrieve validation history (this is a set containing the nodes that
+        # have been found valid in previous calls to "validate")
         if usehistory:
             oldvalids = self.validnodes
         else:
@@ -471,7 +472,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         # Validate the sum of custom layer thicknesses.
         gridmethod = self['/grid/grid_method'].getValue(usedefault=usedefault)
         if gridmethod==1:
-            # Sigma grid: validate sum of thciknesses only.
+            # Sigma grid: validate sum of thicknesses only.
             gridfilenode = self['/grid/grid_file']
             if validity.get(gridfilenode,False):
                 val = gridfilenode.getValue(usedefault=usedefault)
@@ -480,7 +481,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                     errors.append('The sum of the relative layer thicknesses must equal 1, but it currently equals %.6g.' % depth)
                 val.release()
         elif gridmethod==2:
-            # Cartesian grid: validate sum of thciknesses in combination with column depth.
+            # Cartesian grid: validate sum of thicknesses in combination with column depth.
             gridfilenode,depthnode = self['/grid/grid_file'],self['/station/depth']
             if ((gridfilenode in oldvalids and validity.get(depthnode,   False)) or
                 (depthnode    in oldvalids and validity.get(gridfilenode,False)) or
@@ -490,6 +491,19 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                     errors.append('The sum of the custom layer thicknesses does not match the specified column depth.')
                 val.release()
                 
+        # Validate the short-wave radiation method, given the (lack of) use of
+        # meteorological data
+        fluxsourcenode,swrmethodnode = self['/airsea/flux_source'],self['/airsea/swr_method']
+        if ((fluxsourcenode in oldvalids and validity.get(swrmethodnode,False)) or
+            (swrmethodnode  in oldvalids and validity.get(fluxsourcenode,False)) or
+            (validity.get(fluxsourcenode,False) and validity.get(swrmethodnode,False))):
+            fluxsource = fluxsourcenode.getValue(usedefault=usedefault)
+            swrmethod = swrmethodnode.getValue(usedefault=usedefault)
+            if fluxsource!=0 and swrmethod==3:
+                if fluxsourcenode in validity: validity[fluxsourcenode] = False
+                if swrmethodnode  in validity: validity[swrmethodnode]  = False
+                errors.append('The short-wave radiation cannot be calculated from location, time and cloud cover because you do not provide meteorological observations.')
+
         # Validate the time extent of input data series, provided
         # the end of the simulation has been set.
         if validatedatafiles and (stopnode in oldvalids or validity.get(stopnode,False)):

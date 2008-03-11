@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.40 2008-03-09 15:42:27 jorn Exp $
+#$Id: scenariobuilder.py,v 1.41 2008-03-11 10:16:00 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -44,16 +44,16 @@ class ScenarioWidget(QtGui.QWidget):
         self.bngroup.addButton(self.radioImport2,3)
 
         layout = QtGui.QGridLayout()
-        layout.addWidget(self.radioNew,       0,0,1,2)
+        layout.addWidget(self.radioNew,       0,0,1,3)
         layout.addLayout(self.templatelayout, 1,1)
-        layout.addWidget(self.radioOpen,      2,0,1,2)
-        layout.addWidget(self.pathOpen,       3,1)
-        layout.addWidget(self.radioImport1,   4,0,1,2)
-        layout.addWidget(self.pathImport1,    5,1)
-        layout.addWidget(self.radioImport2,   6,0,1,2)
-        layout.addWidget(self.pathImport2,    7,1)
+        layout.addWidget(self.radioOpen,      2,0,1,3)
+        layout.addWidget(self.pathOpen,       3,1,1,2)
+        layout.addWidget(self.radioImport1,   4,0,1,3)
+        layout.addWidget(self.pathImport1,    5,1,1,2)
+        layout.addWidget(self.radioImport2,   6,0,1,3)
+        layout.addWidget(self.pathImport2,    7,1,1,2)
 
-        layout.setColumnStretch(1,1)
+        layout.setColumnStretch(2,1)
 
         layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
 
@@ -831,6 +831,8 @@ class PageAirSeaInteraction2(ScenarioPage):
         pefilelayout.addStretch()
         layoutPe.addLayout(pefilelayout,5,1)
         
+        layoutPe.setColumnStretch(2,1)
+
         groupboxPe.setLayout(layoutPe)
         
         # Create final layout

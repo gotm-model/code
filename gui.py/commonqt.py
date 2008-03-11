@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.55 2008-02-12 10:41:53 jorn Exp $
+#$Id: commonqt.py,v 1.56 2008-03-11 10:16:00 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -18,13 +18,13 @@ import core.common,core.settings
 
 radiowidth = None
 def getRadioWidth():
-    """Get the width of a radia button without text.
+    """Get the width of a radio button without text.
     Used to left align object below radio buttons to the position of the
     text associated with the radio button.
     """
     global radiowidth
     if radiowidth==None:
-        radiowidth = QtGui.QRadioButton().sizeHint().width()
+        radiowidth = QtGui.qApp.style().pixelMetric(QtGui.QStyle.PM_ExclusiveIndicatorWidth)
     return radiowidth
         
 # =======================================================================

@@ -277,7 +277,7 @@ class DurationEditor(QtGui.QWidget,AbstractPropertyEditor):
         lo.addWidget(self.spinValue)
         lo.addWidget(self.comboUnits)
         
-        lo.setContentsMargins(0,0,0,0)
+        lo.setMargin(0)
 
         self.connect(self.spinValue,  QtCore.SIGNAL('editingFinished()'),       self.editingFinished)
         self.connect(self.comboUnits, QtCore.SIGNAL('currentIndexChanged(int)'),self.onUnitChange)
