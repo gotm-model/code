@@ -377,11 +377,11 @@
 			<options>
 				<option value="1"  label="parabolic shape"/>
 				<option value="2"  label="triangle shape"/>
-				<option value="3"  label="Xing and Davies [1995]"/>
-				<option value="4"  label="Robert and Ouellet [1987]"/>
-				<option value="5"  label="Blackadar (two boundaries) [1962]"/>
-				<option value="6"  label="Bougeault and Andre [1986]"/>
-				<option value="7"  label="Eifler and Schrimpf (ISPRAMIX) [1992]"/>
+				<option value="3"  label="Xing and Davies (1995)"/>
+				<option value="4"  label="Robert and Ouellet (1987)"/>
+				<option value="5"  label="Blackadar (two boundaries) (1962)"/>
+				<option value="6"  label="Bougeault and Andre (1986)"/>
+				<option value="7"  label="Eifler and Schrimpf (ISPRAMIX) (1992)"/>
 				<option value="8"  label="dynamic dissipation rate equation"/>
 				<option value="9"  label="dynamic Mellor-Yamada q²l-equation"/>
 				<option value="10" label="generic length scale (GLS)"/>
@@ -391,9 +391,9 @@
 			<condition type="eq" variable="./turb_method" value="2"/>
 			<options>
 				<option value="1" label="constant stability functions"/>
-				<option value="2" label="Munk and Anderson [1954]"/>
-				<option value="3" label="Schumann and Gerz [1995]"/>
-				<option value="4" label="Eifler and Schrimpf [1992]"/>
+				<option value="2" label="Munk and Anderson (1954)"/>
+				<option value="3" label="Schumann and Gerz (1995)"/>
+				<option value="4" label="Eifler and Schrimpf (1992)"/>
 			</options>
 		</element>
 
@@ -528,16 +528,16 @@
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
 			<element name="gen_p" type="float" label="exponent for cm0"/>
-			<element name="cpsi1" type="float" label="empirical coefficient cpsi1 in ψ equation">
+			<element name="cpsi1" type="float" label="empirical coefficient cψ1 in ψ equation">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element name="cpsi2" type="float" label="empirical coefficient cpsi2 in ψ equation">
+			<element name="cpsi2" type="float" label="empirical coefficient cψ2 in ψ equation">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
-			<element name="cpsi3minus" type="float" label="cpsi3 for stable stratification">
+			<element name="cpsi3minus" type="float" label="cψ3 for stable stratification">
 				<condition type="eq" variable="../turb_param/compute_c3" value="False"/>
 			</element>
-			<element name="cpsi3plus" type="float" label="cpsi3 for unstable stratification"/>
+			<element name="cpsi3plus" type="float" label="cψ3 for unstable stratification"/>
 			<element name="sig_kpsi" type="float" label="Schmidt number for TKE diffusivity">
 				<condition type="eq" variable="./compute_param" value="False"/>
 			</element>
@@ -1163,7 +1163,8 @@
 				<option label="IOW-ERGOM"             description="IOW-ERGOM (4 variables)"            value="2"/>
 				<option label="Suspended matter only" description="Suspended matter only (1 variable)" value="3"/>
 				<option label="Fasham et al. 1990"    description="Fasham et al. 1990 (7 variables)"   value="4"/>
-			</options>
+        <option label="NPZD_Fe"               description="NPZD_Fe biological model"           value="7"/>
+      </options>
 			<element name="bio_npzd" label="NPZD biological model" grouponly="True">
 				<condition type="eq" variable="." value="1"/>
 				<element name="numc"      type="int"   label="number of compartments for geobiochemical model"/>
@@ -1208,12 +1209,12 @@
 				<element name="sfl_po"     type="float" label="constant surface phosphate flux" unit="mmol P/m²/d"/>
 				<element name="sfl_am"     type="float" label="constant surface ammonium flux" unit="mmol N/m²/d"/>
 				<element name="sfl_ni"     type="float" label="constant surface nitrate flux" unit="mmol N/m²/d"/>
-				<element name="surface_flux_method" type="select" label="method to specify surface fluxes">
-					<options>
-						<option value="0" label="constant fluxes" />
-						<option value="2" label="from file 'bio_fluxes.dat'"/>
-					</options>
-				</element>
+        <element name="surface_flux_method" type="select" label="surface flux specification">
+          <options>
+            <option value="0" label="constant fluxes" />
+            <option value="2" label="custom, temporally variable" />
+          </options>
+        </element>
 				
 				<element name="fluff"      type="bool"  label="calculate fluff layer"/>
 				<element name="fl_initial" type="float" label="initial fluff concentration" unit="mmol N/m²">
@@ -1328,7 +1329,88 @@
 				<element name="g2"        type="float" label="attenuation length for visible light" unit="m"/>
 			</element>
 
-		</element>
+      <element name="bio_npzd_fe" label="NPZD_Fe biological model" grouponly="True">
+        <condition type="eq" variable="." value="7" />
+        <element name="numc" type="int" label="number of compartments for biogeochemical model" />
+        <element name="N_initial"  type="float" label="initial nutrient concentration" unit="mmol N/m³" />
+        <element name="P_initial"  type="float" label="initial phytoplankton concentration" unit="mmol N/m³" />
+        <element name="Z_initial"  type="float" label="initial zooplankton concentration" unit="mmol N/m³" />
+        <element name="D_initial"  type="float" label="initial detritus concentration" unit="mmol N/m³" />
+        <element name="f3_initial" type="float" label="initial Fe(III)' concentration" unit="µmol/m³" />
+        <element name="f2_initial" type="float" label="initial Fe(II)' concentration" unit="µmol/m³" />
+        <element name="fc_initial" type="float" label="initial colloidal Fe concentration" unit="µmol/m³" />
+        <element name="fl_initial" type="float" label="initial organically complexed Fe concentration" unit="µmol/m³" />
+        <element name="fp_initial" type="float" label="initial adsorbed Fe concentration" unit="µmol/m³" />
+        <element name="li_initial" type="float" label="initial free ligand concentration" unit="µmol/m³" />
+        <element name="pt_initial" type="float" label="initial inorganic particle concentration" unit="t/m³" />
+        <element name="ho_initial" type="float" label="initial hydrogen peroxide concentration" unit="µmol/m³" />
+        <element name="om_initial" type="float" label="initial superoxide concentration" unit="µmol/m³" />
+        <element name="pf_initial" type="float" label="initial phytoplankton-Fe concentration" unit="µmol/m³" />
+        <element name="zf_initial" type="float" label="initial zooplankton-Fe concentration" unit="µmol/m³" />
+        <element name="df_initial" type="float" label="initial detritus-Fe concentration" unit="µmol/m³" />
+        <element name="sfl_pt"     type="float" label="constant surface particle flux" unit="kg/m²/d" />
+        <element name="sfl_f3"     type="float" label="constant surface Fe(III)' flux" unit="µmol/m²/d" />
+        <element name="sfl_ho"     type="float" label="constant surface hydrogen peroxide flux (rain)" unit="µmol/m²/d" />
+        <element name="surface_flux_method" type="select" label="surface flux specification">
+          <options>
+            <option value="0" label="constant fluxes" />
+            <option value="2" label="custom, temporally variable" />
+          </options>
+        </element>
+        <element name="P0"        type="float" label="minimum phytoplankton concentration" unit="mmol/m³" />
+        <element name="Z0"        type="float" label="minimum zooplankton concentration" unit="mmol/m³" />
+        <element name="I_min"     type="float" label="minimum photosynthetically active radiation (PAR)" unit="W/m²" />
+        <element name="Iv"        type="float" label="Ivlev constant" unit="-" />
+        <element name="alpha"     type="float" label="initial slope of the PI curve" unit="m²/W/d" />
+        <element name="rkw"       type="float" label="light attenuation coefficient (water)" unit="1/m" />
+        <element name="rkc"       type="float" label="light attenuation coefficient (phytoplankton)" unit="m2/mmol N" />
+        <element name="aa"        type="float" label="weighting factor for visible light fraction" unit="-" />
+        <element name="k_n"       type="float" label="half saturation constant" unit="mmol N/m³" />
+        <element name="mue_m"     type="float" label="maximum phytoplankton growth rate" unit="1/d" />
+        <element name="mp"        type="float" label="specific phytoplankton mortality rate" unit="1/d" />
+        <element name="mpq"       type="float" label="quadratic phytoplankton mortality rate" unit="m³/mmol N/d" />
+        <element name="slopf"     type="float" label="sloppy feeding (assimilation efficiency)" unit="-" />
+        <element name="gmax"      type="float" label="maximum grazing rate" unit="1/d" />
+        <element name="pcr"       type="float" label="prey capture rate" unit="m³/mmol N/d" />
+        <element name="mzq"       type="float" label="quadratic zooplankton mortality rate" unit="m³/mmol N/d" />
+        <element name="exf"       type="float" label="excretion rate" unit="1/d" />
+        <element name="rem"       type="float" label="remineralization rate" unit="1/d" />
+        <element name="w_d"       type="float" label="settling velocity of detritus" unit="m/d" />
+        <element name="fe_d"      type="float" label="maximum photoreduction rate" unit="1/d" />
+        <element name="fe_ro2m"   type="float" label="maximum oxidation rate of Fe(II)'by O2" unit="1/d" />
+        <element name="fe_col"    type="float" label="maximum colloidal photoreduction rate" unit="1/d" />
+        <element name="fe_o2"     type="float" label="efficient oxidation rate by O2" unit="m/d" />
+        <element name="fe_oo2m"   type="float" label="oxidation rate by O2-" unit="1/d" />
+        <element name="fe_h2o2"   type="float" label="oxidation rate by H2O2 per µmol/m3 H2O2" unit="m³/µmol/d" />
+        <element name="fe_diss"   type="float" label="H2O2 decay rate" unit="1/d" />
+        <element name="fe_dismt"  type="float" label="dismutation rate" unit="m/d" />
+        <element name="fe_lf"     type="float" label="formation rate of organic complex" unit="m³/µmol/d" />
+        <element name="fe_ligand" type="float" label="organic complex stability constant" unit="m³/µmol" />
+        <element name="fe_c"      type="float" label="colloidal formation rate" unit="m/d" />
+        <element name="fe_cd"     type="float" label="disaggregation rate of colloidal Fe" unit="1/d" />
+        <element name="fe_pd"     type="float" label="disaggregation rate of adsorbed Fe" unit="1/d" />
+        <element name="fe_colag"  type="float" label="colloidal aggregation rate per particle" unit="m³/t/d" />
+        <element name="fe_star"   type="float" label="adsorption rate" unit="m³/t/d" />
+        <element name="fe_n2cp"   type="float" label="N:particulate matter-ratio" unit="g/mol" />
+        <element name="fe_phdet"  type="float" label="fp-photoreduction rate" unit="m/d" />
+        <element name="fe_solub"  type="float" label="solubility od atmospheric Fe" unit="rel." />
+        <element name="fe_rh2o2"  type="float" label="H2O2 concentration in rain" unit="µmol/m³" />
+        <element name="fe2n"      type="float" label="Fe:N-ratio in organic matter" unit="nmol/µmol" />
+        <element name="fe2n_min"  type="float" label="minimum Fe:N-ratio in organic matter" unit="nmol/µmol" />
+        <element name="fe_irmax"  type="float" label="maximum irradiance" unit="m/d" />
+        <element name="ta_f"      type="float" label="temperature dependent growth coefficient" unit="-" />
+        <element name="fe_lrm"    type="float" label="maximum photoreduction rate of organically complexed Fe" unit="1/d" />
+        <element name="fe_so2m"   type="float" label="photoreduction rate of superoxide" unit="m³/µmol/d" />
+        <element name="fe_cuox"   type="float" label="oxidation rate of copper by O2-" unit="m³/µmol/d" />
+        <element name="fe_cured"  type="float" label="reduction rate of copper by O2-" unit="m³/µmol/d" />
+        <element name="fe_cutot"  type="float" label="total copper concentration" unit="µmol/m³" />
+        <element name="w_fp"      type="float" label="settling velocity of detritus" unit="m/d" />
+        <element name="w_pt"      type="float" label="settling velocity of particles" unit="m/d" />
+        <element name="smallm"    type="float" label="small number" unit="-" />
+        <element name="k_fe"      type="float" label="iron half saturation constant" unit="µmol/m³" />
+      </element>
+
+    </element>
 		<element name="bio_eulerian" type="bool" label="state variables are Eulerian">
 			<condition type="eq" variable="./bio_calc" value="True"/>
 		</element>

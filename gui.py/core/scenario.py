@@ -726,7 +726,8 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.xmlstore.Convertor):
                       ('/bio_npzd/bio_npzd_nml',          '/bio/bio_model/bio_npzd'),
                       ('/bio_iow/bio_iow_nml',            '/bio/bio_model/bio_iow'),
                       ('/bio_sed/bio_sed_nml',            '/bio/bio_model/bio_sed'),
-                      ('/bio_fasham/bio_fasham_nml',      '/bio/bio_model/bio_fasham')]
+                      ('/bio_fasham/bio_fasham_nml',      '/bio/bio_model/bio_fasham'),
+                      ('/bio_npzd_fe/bio_npzd_fe_nml',    '/bio/bio_model/bio_npzd_fe')]
     
     def convert(self,source,target,callback=None):
         xmlstore.xmlstore.Convertor.convert(self,source,target)
