@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.19 2008-03-26 08:56:52 kb Exp $
+#$Id: Makefile,v 1.20 2008-03-26 09:09:24 kb Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -19,6 +19,15 @@ ${LIB}(bio_save.o)
 
 OBJ2   = \
 ${LIB}(bio.o)
+
+#BIO_TEMPLATE=false
+#BIO_NPZD=false
+#BIO_IOW=false
+#BIO_SED=false
+#BIO_FASHAM=false
+BIO_MAB=false
+#BIO_ROLM=false
+#BIO_NPZD_FE=false
 
 ifneq ($(BIO_TEMPLATE),false)
 SUBDIRS += template
@@ -60,15 +69,13 @@ SUBDIRS += npzd_fe
 DEFINES += -DBIO_NPZD_FE
 endif
 
-all: configure $(OBJ1) OBJS $(OBJ2)
+all: $(OBJ1) OBJS $(OBJ2)
 	$(MOVE_MODULES_COMMAND)
-
-configure: BIO_MODELS.sh
-	./BIO_MODELS.sh
-	touch bio.F90
 
 OBJS: $(SUBDIRS)
 	set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i ; done
+
+$(OBJ2): OBJS
 
 doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../../doc/bio.tex 
