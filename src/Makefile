@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.9 2005-08-16 14:38:37 kbk Exp $
+#$Id: Makefile,v 1.10 2008-03-26 09:16:19 kb Exp $
 #
 # Master Makefile for making the GOTM executable.
 #
@@ -7,7 +7,7 @@ include Rules.make
 
 DOCSRC	= main.F90 gotm.F90
 
-SUBDIRS	= util observations airsea meanflow turbulence output $(FEATURES)
+SUBDIRS	= util observations airsea meanflow turbulence output
 
 CORE_LIBS	=	\
 		-lairsea$(buildtype)		\
