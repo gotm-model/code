@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.42 2008-02-20 11:29:59 kb Exp $
+!$Id: bio.F90,v 1.43 2008-03-26 08:56:53 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,28 +19,44 @@
 ! !USES:
    use bio_var
 
+#ifdef BIO_TEMPLATE
    use bio_template, only : init_bio_template,init_var_template
    use bio_template, only : var_info_template,light_template
+#endif
 
+#ifdef BIO_NPZD
    use bio_npzd, only : init_bio_npzd,init_var_npzd,var_info_npzd
    use bio_npzd, only : light_npzd, do_bio_npzd
+#endif
 
+#ifdef BIO_IOW
    use bio_iow, only : init_bio_iow,init_var_iow,var_info_iow
    use bio_iow, only : light_iow,surface_fluxes_iow,do_bio_iow
+#endif
 
+#ifdef BIO_FASHAM
    use bio_fasham, only : init_bio_fasham,init_var_fasham,var_info_fasham
    use bio_fasham, only : light_fasham,do_bio_fasham
+#endif
 
+#ifdef BIO_SED
    use bio_sed, only : init_bio_sed,init_var_sed,var_info_sed
+#endif
 
+#ifdef BIO_MAB
    use bio_mab, only : init_bio_mab,init_var_mab,var_info_mab
    use bio_mab, only : light_mab,surface_fluxes_mab,do_bio_mab
+#endif
 
+#ifdef BIO_ROLM
    use bio_rolm, only : init_bio_rolm,init_var_rolm,var_info_rolm
    use bio_rolm, only : light_rolm,surface_fluxes_rolm,do_bio_rolm
+#endif
 
+#ifdef BIO_NPZD_FE
    use bio_npzd_fe, only : init_bio_npzd_fe,init_var_npzd_fe,var_info_npzd_fe
    use bio_npzd_fe, only : light_npzd_fe,surface_fluxes_npzd_fe,do_bio_npzd_fe
+#endif
 
 #if 0
    use mussels, only : init_mussels, do_mussels, end_mussels
@@ -62,6 +78,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.43  2008-03-26 08:56:53  kb
+!  new directory based bio structure
+!
 !  Revision 1.42  2008-02-20 11:29:59  kb
 !  added NPZD iron model - Weber et. all + Inga Hense
 !
@@ -262,7 +281,7 @@
       select case (bio_model)
 
       case (-1)
-
+#ifdef BIO_TEMPLATE
          call init_bio_template(namlst,'bio_template.nml',unit)
 
          call allocate_memory(nlev)
@@ -270,9 +289,14 @@
          call init_var_template(nlev)
 
          call var_info_template()
-
+#else
+         FATAL "bio_template not compiled!!"
+         FATAL "set environment variable BIO_TEMPLATE different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
       case (1)  ! The NPZD model
-
+#ifdef BIO_NPZD
          call init_bio_npzd(namlst,'bio_npzd.nml',unit)
 
          call allocate_memory(nlev)
@@ -280,9 +304,14 @@
          call init_var_npzd(nlev)
 
          call var_info_npzd()
-
+#else
+         FATAL "bio_npzd not compiled!!"
+         FATAL "set environment variable BIO_NPZD different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
       case (2)  ! The IOW model
-
+#ifdef BIO_IOW
          call init_bio_iow(namlst,'bio_iow.nml',unit)
 
          call allocate_memory(nlev)
@@ -290,9 +319,14 @@
          call init_var_iow(nlev)
 
          call var_info_iow()
-
+#else
+         FATAL "bio_iow not compiled!!"
+         FATAL "set environment variable BIO_IOW different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
       case (3)  ! The simple sedimentation model
-
+#ifdef BIO_SED
          call init_bio_sed(namlst,'bio_sed.nml',unit)
 
          call allocate_memory(nlev)
@@ -300,9 +334,14 @@
          call init_var_sed(nlev)
 
          call var_info_sed()
-
+#else
+         FATAL "bio_sed not compiled!!"
+         FATAL "set environment variable BIO_SED different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
       case (4)  ! The FASHAM model
-
+#ifdef BIO_FASHAM
          call init_bio_fasham(namlst,'bio_fasham.nml',unit)
 
          call allocate_memory(nlev)
@@ -310,9 +349,14 @@
          call init_var_fasham(nlev)
 
          call var_info_fasham()
-
+#else
+         FATAL "bio_fasham not compiled!!"
+         FATAL "set environment variable BIO_FASHAM different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
       case (5)  ! The IOW model, modified for MaBenE
-
+#ifdef BIO_MAB
          call init_bio_mab(namlst,'bio_mab.nml',unit)
 
          call allocate_memory(nlev)
@@ -320,9 +364,14 @@
          call init_var_mab(nlev)
 
          call var_info_mab()
-
+#else
+         FATAL "bio_mab not compiled!!"
+         FATAL "set environment variable BIO_MAB different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
       case (6)  ! RedOxLayer Model (ROLM)
-
+#ifdef BIO_ROLM
          call init_bio_rolm(namlst,'bio_rolm.nml',unit)
 
          call allocate_memory(nlev)
@@ -330,9 +379,14 @@
          call init_var_rolm(nlev)
 
          call var_info_rolm()
-
-      case (7)  ! FeNPZD (Weber_etal2007)
-
+#else
+         FATAL "bio_rolm not compiled!!"
+         FATAL "set environment variable BIO_ROLM different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      case (7)  ! NPZD_FE (Weber_etal2007)
+#ifdef BIO_NPZD_FE
          call init_bio_npzd_fe(namlst,'bio_npzd_fe.nml',unit)
 
          call allocate_memory(nlev)
@@ -340,7 +394,12 @@
          call init_var_npzd_fe(nlev)
 
          call var_info_npzd_fe()
-
+#else
+         FATAL "bio_bio_npzd_fe not compiled!!"
+         FATAL "set environment variable BIO_NPZD_FE different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
       case default
          stop "bio: no valid biomodel specified in bio.nml !"
       end select
@@ -582,15 +641,23 @@
          case (-1)
          case (1)
          case (2)
+#ifdef BIO_IOW
             call surface_fluxes_iow(nlev,t(nlev))
+#endif
          case (3)
          case (4)
          case (5)
+#ifdef BIO_MAB
             call surface_fluxes_mab(nlev,t(nlev),s(nlev))
+#endif
          case (6)
+#ifdef BIO_ROLM
             call surface_fluxes_rolm(nlev,t(nlev))
+#endif
          case (7)
+#ifdef BIO_NPZD_FE
             call surface_fluxes_npzd_fe(nlev)
+#endif
       end select
 
 #if 0
@@ -669,27 +736,41 @@
 
          select case (bio_model)
             case (-1)
+#ifdef BIO_TEMPLATE
                call light_template(nlev,bioshade_feedback)
 !               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_template)
+#endif
             case (1)
+#ifdef BIO_NPZD
                call light_npzd(nlev,bioshade_feedback)
                call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd)
+#endif
             case (2)
+#ifdef BIO_IOW
                call light_iow(nlev,bioshade_feedback)
                call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_iow)
+#endif
             case (3)
             case (4)
+#ifdef BIO_FASHAM
                call light_fasham(nlev,bioshade_feedback)
                call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_fasham)
+#endif
             case (5)
+#ifdef BIO_MAB
                call light_mab(nlev,bioshade_feedback)
                call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_mab)
+#endif
             case (6)
+#ifdef BIO_ROLM
                call light_rolm(nlev,bioshade_feedback)
                call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_rolm)
+#endif
             case (7)
+#ifdef BIO_NPZD_FE
                call light_npzd_fe(nlev,bioshade_feedback)
                call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd_fe)
+#endif
          end select
 
       end do
