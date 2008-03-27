@@ -1,4 +1,4 @@
-!$Id: updategrid.F90,v 1.19 2007-01-06 11:49:16 kbk Exp $
+!$Id: updategrid.F90,v 1.20 2008-03-27 09:30:05 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -66,6 +66,9 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: updategrid.F90,v $
+!  Revision 1.20  2008-03-27 09:30:05  hb
+!  bug fix for w_height correction, bug found by Jorn Bruggeman
+!
 !  Revision 1.19  2007-01-06 11:49:16  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -124,7 +127,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,rc,j,nlayers
-   REALTYPE                  :: zi(0:nlev)
+   REALTYPE                  :: zi(0:nlev),z_crit
    integer, parameter        :: grid_unit = 101
 !-----------------------------------------------------------------------
 !BOC
@@ -256,7 +259,10 @@
          do i=1,nlev
             zi(i)=zi(i-1)+h(i)
          end do
-         if (w_height.lt.0.01*(zi(nlev)-zi(0))) w_height=0.5*(zi(0)-zi(nlev))
+         z_crit=zi(nlev)-0.01*(zi(nlev)-zi(0))
+         if (w_height.gt.z_crit) w_height=z_crit
+         z_crit=zi(0)+0.01*(zi(nlev)-zi(0))
+         if (w_height.lt.z_crit) w_height=z_crit
          do i=1,nlev-1
             if (zi(i).gt.w_height) then
                w(i)=(zi(nlev)-zi(i))/(zi(nlev)-w_height)*w_adv
