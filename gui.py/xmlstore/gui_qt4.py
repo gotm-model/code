@@ -1086,7 +1086,6 @@ class TypedStoreTreeView(ExtendedTreeView):
         self.storedelegate = PropertyDelegate(self,fileprefix='',unitinside=True,**kwargs)
         self.setItemDelegate(self.storedelegate)
         self.setUniformRowHeights(True)
-        self.setRootIsDecorated(False)
 
         if self.rootnode!=None:
             # Get interface to scenario that allows us to find out when
