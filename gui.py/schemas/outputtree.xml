@@ -120,45 +120,33 @@
 	</element>
 	<element name="biogeochemistry">
 		<element name="npzd" grouponly="True">
-			<condition type="and" source="scenario">
-				<condition type="eq" variable="/bio/bio_calc"  value="True"/>
-				<condition type="eq" variable="/bio/bio_model" value="1"/>
-			</condition>
-			<element name="nut"/>
-			<element name="phy"/>
-			<element name="zoo"/>
-			<element name="det"/>
-		</element>
-		<element name="iow" grouponly="True">
-			<condition type="and" source="scenario">
-				<condition type="eq" variable="/bio/bio_calc"  value="True"/>
-				<condition type="eq" variable="/bio/bio_model" value="2"/>
-			</condition>
-			<element name="dia"/>
-			<element name="fla"/>
-			<element name="cya"/>
-			<element name="zoo"/>
-			<element name="det"/>
-			<element name="amm"/>
-			<element name="nit"/>
-			<element name="pho"/>
-			<element name="oxy"/>
-			<element name="flf">
-				<condition type="eq" variable="/bio/bio_model/bio_iow/fluff" value="True" source="scenario"/>
-			</element>
-		</element>
-		<element name="sed" grouponly="True">
-			<condition type="and" source="scenario">
-				<condition type="eq" variable="/bio/bio_calc"  value="True"/>
-				<condition type="eq" variable="/bio/bio_model" value="3"/>
-			</condition>
+      <condition type="eq" variable="/bio/bio_model" source="scenario" value="1"/>
+      <element name="nut"/>
+      <element name="phy"/>
+      <element name="zoo"/>
+      <element name="det"/>
+    </element>
+    <element name="iow" grouponly="True">
+      <condition type="eq" variable="/bio/bio_model" source="scenario" value="2"/>
+      <element name="dia"/>
+      <element name="fla"/>
+      <element name="cya"/>
+      <element name="zoo"/>
+      <element name="det"/>
+      <element name="amm"/>
+      <element name="nit"/>
+      <element name="pho"/>
+      <element name="oxy"/>
+      <element name="flf">
+        <condition type="eq" variable="/bio/bio_model/bio_iow/fluff" value="True" source="scenario"/>
+      </element>
+    </element>
+    <element name="sed" grouponly="True">
+      <condition type="eq" variable="/bio/bio_model" source="scenario" value="3"/>
 			<element name="conc"/>
 		</element>
 		<element name="fasham" grouponly="True">
-			<condition type="and" source="scenario">
-				<condition type="eq" variable="/bio/bio_calc"  value="True"/>
-				<condition type="eq" variable="/bio/bio_model" value="4"/>
-			</condition>
+      <condition type="eq" variable="/bio/bio_model" source="scenario" value="4"/>
 			<element name="phy"/>
 			<element name="zoo"/>
 			<element name="bac"/>

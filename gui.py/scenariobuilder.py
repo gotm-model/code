@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.41 2008-03-11 10:16:00 jorn Exp $
+#$Id: scenariobuilder.py,v 1.42 2008-03-31 05:44:30 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -845,6 +845,33 @@ class PageAirSeaInteraction2(ScenarioPage):
                 
         self.setLayout(layout)
 
+class PageBio(ScenarioPage):
+    
+    def __init__(self,parent=None):
+        ScenarioPage.__init__(self, parent)
+
+        layout = QtGui.QVBoxLayout()
+        layout.setSpacing(25)
+
+        self.title = self.createHeader('Biogeochemistry','Here you can specify a biogeochemical model to use, and configure this model.')
+        layout.addWidget(self.title)
+
+        # Set up model/treeview for bio section of scenario
+        self.tree = xmlstore.gui_qt4.TypedStoreTreeView(self,self.scenario,self.scenario['/bio/bio_model'],datasourcedir=parent.getProperty('datasourcedir'))
+        self.tree.setRootIsDecorated(False)
+
+        editBioModel = self.factory.createEditor('bio/bio_model',self)
+        self.factory.attachExternalEditor(self.tree,'bio/bio_model',conditiontype='ne',conditionvalue=0)
+        editBioModel.addToBoxLayout(layout)
+        layout.addWidget(self.tree,10000)
+        layout.addStretch(1)
+
+        self.setLayout(layout)
+
+    def destroy(self,destroyWindow = True,destroySubWindows = True):
+        self.tree.destroy(destroyWindow,destroySubWindows)
+        commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
+        
 class PageAdvanced(commonqt.WizardPage):
     
     def __init__(self,parent=None):
@@ -853,15 +880,7 @@ class PageAdvanced(commonqt.WizardPage):
         self.scenario = parent.getProperty('scenario')
         if self.scenario==None: raise Exception('No scenario available; this page should not have been available.')
         
-        self.model = xmlstore.gui_qt4.TypedStoreModel(self.scenario,nohide=False)
-
-        self.tree = xmlstore.gui_qt4.ExtendedTreeView(self)
-        #self.tree.header().hide()
-        self.delegate = xmlstore.gui_qt4.PropertyDelegate(self,datasourcedir=parent.getProperty('datasourcedir'),fileprefix='')
-        self.tree.setItemDelegate(self.delegate)
-        self.tree.setModel(self.model)
-        self.tree.setExpandedAll(maxdepth=1)
-        self.tree.expandNonDefaults()
+        self.tree = xmlstore.gui_qt4.TypedStoreTreeView(self,self.scenario,datasourcedir=parent.getProperty('datasourcedir'))
 
         layout = QtGui.QVBoxLayout()
 
@@ -870,11 +889,6 @@ class PageAdvanced(commonqt.WizardPage):
         layout.addSpacing(20)
         layout.addWidget(self.tree)
         self.setLayout(layout)
-
-        self.connect(self.model, QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),self.completeStateChanged)
-
-    def showEvent(self,event):
-        self.tree.header().resizeSection(0,.65*self.tree.width())
 
     def isComplete(self):
         return True
@@ -890,8 +904,7 @@ class PageAdvanced(commonqt.WizardPage):
         return True
 
     def destroy(self,destroyWindow = True,destroySubWindows = True):
-        self.tree.setModel(None)
-        self.model.unlink()
+        self.tree.destroy(destroyWindow,destroySubWindows)
         commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
     
 class PageSave(commonqt.WizardPage):
@@ -986,7 +999,7 @@ class PageFinal(commonqt.WizardPage):
 
 class SequenceEditScenario(commonqt.WizardSequence):
     def __init__(self):
-        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageAirSeaInteraction2,PageTurbulence,PageSalinity,PageTemperature,PageAdvanced,PageSave])
+        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageAirSeaInteraction2,PageTurbulence,PageSalinity,PageTemperature,PageBio,PageAdvanced,PageSave])
 
 def main():
     # Debug info

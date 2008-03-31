@@ -1140,7 +1140,7 @@
 			</element>
 		</element>
 		<element name="bioprofiles" type="select" label="biogeochemical profiles">
-			<condition type="eq" variable="/bio/bio_calc" value="True"/>
+			<condition type="ne" variable="/bio/bio_model" value="0"/>
 			<options>
 				<option value="0" label="none" />
 				<option value="2" label="custom observed profiles"/>
@@ -1154,15 +1154,14 @@
 		</element>
 	</element>
 
-	<element name="bio" label="biogeochemical model" optional="True">
-		<element name="bio_calc"  type="bool"   label="calculate biological model"/>
-		<element name="bio_model" type="select" label="biological model">
-			<condition type="eq" variable="./bio_calc" value="True"/>
+	<element name="bio" label="biogeochemistry" optional="True">
+		<element name="bio_model" type="select" label="biogeochemical model">
 			<options>
-				<option label="NPZD"                  description="NPZD (4 variables)"                 value="1"/>
+        <option label="none"                  description="no biogeochemical model"            value="0"/>
+        <option label="NPZD"                  description="NPZD (4 variables)"                 value="1"/>
 				<option label="IOW-ERGOM"             description="IOW-ERGOM (4 variables)"            value="2"/>
 				<option label="Suspended matter only" description="Suspended matter only (1 variable)" value="3"/>
-				<option label="Fasham et al. 1990"    description="Fasham et al. 1990 (7 variables)"   value="4"/>
+				<option label="Fasham et al. (1990)"  description="Fasham et al. (1990) (7 variables)" value="4"/>
         <option label="NPZD_Fe"               description="NPZD_Fe biological model"           value="7"/>
       </options>
 			<element name="bio_npzd" label="NPZD biological model" grouponly="True">
@@ -1363,7 +1362,7 @@
         <element name="Iv"        type="float" label="Ivlev constant" unit="-" />
         <element name="alpha"     type="float" label="initial slope of the PI curve" unit="m²/W/d" />
         <element name="rkw"       type="float" label="light attenuation coefficient (water)" unit="1/m" />
-        <element name="rkc"       type="float" label="light attenuation coefficient (phytoplankton)" unit="m2/mmol N" />
+        <element name="rkc"       type="float" label="light attenuation coefficient (phytoplankton)" unit="m²/mmol N" />
         <element name="aa"        type="float" label="weighting factor for visible light fraction" unit="-" />
         <element name="k_n"       type="float" label="half saturation constant" unit="mmol N/m³" />
         <element name="mue_m"     type="float" label="maximum phytoplankton growth rate" unit="1/d" />
@@ -1412,13 +1411,13 @@
 
     </element>
 		<element name="bio_eulerian" type="bool" label="state variables are Eulerian">
-			<condition type="eq" variable="./bio_calc" value="True"/>
+			<condition type="ne" variable="./bio_model" value="0"/>
 		</element>
 		<element name="cnpar" type="float" label="Cranck-Nicholson parameter for vertical diffusion">
-			<condition type="eq" variable="./bio_calc" value="True"/>
+			<condition type="ne" variable="./bio_model" value="0"/>
 		</element>
 		<element name="w_adv_discr" type="select" label="advection scheme for vertical motion">
-			<condition type="eq" variable="./bio_calc" value="True"/>
+			<condition type="ne" variable="./bio_model" value="0"/>
 			<options>
 				<option value="1" label="first-order upstream"/>
 				<option value="2" label="not coded yet" disabled="True"/>
@@ -1429,7 +1428,7 @@
 			</options>
 		</element>
 		<element name="ode_method" type="select" label="ODE scheme for source and sink dynamics">
-			<condition type="eq" variable="./bio_calc" value="True"/>
+			<condition type="ne" variable="./bio_model" value="0"/>
 			<options>
 				<option value="1"  label="Forward Euler"                   description="first-order explicit (not positive)"/>
 				<option value="2"  label="Runge-Kutta 2"                   description="second-order explicit Runge-Kutta (not positive)"/>
@@ -1445,20 +1444,20 @@
 			</options>
 		</element>
 		<element name="split_factor"      type="int"  label="number of biogeochemical time steps per physical time step" minInclusive="1">
-			<condition type="eq" variable="./bio_calc" value="True"/>
+			<condition type="ne" variable="./bio_model" value="0"/>
 		</element>
 		<element name="bioshade_feedback" type="bool" label="feedback of bio-turbidity to temperature equation">
-			<condition type="eq" variable="./bio_calc" value="True"/>
+			<condition type="ne" variable="./bio_model" value="0"/>
 		</element>
 		<element name="bio_lagrange_mean" type="bool" label="average Lagrangian concentrations on output">
 			<condition type="and">
-				<condition type="eq" variable="./bio_calc"     value="True"/>
+				<condition type="ne" variable="./bio_model"    value="0"/>
 				<condition type="eq" variable="./bio_eulerian" value="False"/>
 			</condition>
 		</element>
 		<element name="bio_npar"          type="int"  label="total number of Lagrangian particles">
 			<condition type="and">
-				<condition type="eq" variable="./bio_calc"     value="True"/>
+				<condition type="ne" variable="./bio_model"    value="0"/>
 				<condition type="eq" variable="./bio_eulerian" value="False"/>
 			</condition>
 		</element>

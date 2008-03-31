@@ -1610,24 +1610,27 @@ class TypedStoreInterface:
     def beforeVisibilityChange(self,node,shownew,showhide):
         assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
+        self.upcomingvizchange = node
         if 'beforeVisibilityChange' not in self.eventhandlers: return
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
         if self.blockNotifyOfHiddenNodes and (not showhide) and node.isHidden(): return
         if self.omitgroupers and node.grouponly:
-            for ch in self.getChildren(node): self.eventhandlers['beforeVisibilityChange'](ch,shownew,showhide)
+            self.eventhandlers['beforeVisibilityChange'](self.getChildren(node),shownew,showhide)
         else:
-            self.eventhandlers['beforeVisibilityChange'](node,shownew,showhide)
+            self.eventhandlers['beforeVisibilityChange']((node,),shownew,showhide)
 
     def afterVisibilityChange(self,node,shownew,showhide):
         assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
+        assert node==self.upcomingvizchange, 'The node supplied to afterVisibilityChange (%s) was not the last one supplied to beforeVisibilityChange (%s).' % (node,self.upcomingvizchange)
+        self.upcomingvizchange = None
         if 'afterVisibilityChange' not in self.eventhandlers: return
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
         if self.blockNotifyOfHiddenNodes and (not showhide) and node.isHidden(): return
         if self.omitgroupers and node.grouponly:
-            for ch in self.getChildren(node): self.eventhandlers['afterVisibilityChange'](ch,shownew,showhide)
+            self.eventhandlers['afterVisibilityChange'](self.getChildren(node),shownew,showhide)
         else:
-            self.eventhandlers['afterVisibilityChange'](node,shownew,showhide)
+            self.eventhandlers['afterVisibilityChange']((node,),shownew,showhide)
 
     def afterStoreChange(self):
         if 'afterStoreChange' not in self.eventhandlers: return

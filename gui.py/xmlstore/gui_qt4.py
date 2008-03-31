@@ -614,6 +614,10 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
 
         self.inheritingchecks = False
         
+        # For debugging: model test functionality
+        #import modeltest
+        #self.mt = modeltest.ModelTest(self,self)
+        
     def unlink(self):
         self.typedstore.disconnectInterface(self.storeinterface)
         self.storeinterface = None
@@ -623,31 +627,45 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
         below the given parent (specified as index).
         inherited from QtCore.QAbstractItemModel
         """
+        # Check whether row and column indices are valid.
+        if irow<0 or icolumn<0 or icolumn>1: return QtCore.QModelIndex()
+
+        # Obtain the parent node        
         if not parent.isValid():
             parentnode = self.typedstore.root
         else:
             parentnode = parent.internalPointer()
+            
+        # Get the child at the specified row index
         child = self.storeinterface.getChildByIndex(parentnode,irow)
         if child==None: return QtCore.QModelIndex()
         assert isinstance(child,xmlstore.Node), 'Object returned by getChildByIndex is not of type "Node" (but "%s").' % child
+
+        # Return a newly created index for the child node.
         return self.createIndex(irow,icolumn,child)
 
     def parent(self,index):
         """Supplies unique index for the parent of the given node (specified as index).
         inherited from QtCore.QAbstractItemModel
         """
-        # We must have a valid index
-        assert index.isValid(), 'Asked for parent of root node (invalid index), but Qt asker knows it is the root.'
+        # We must have a valid index.
+        if not index.isValid(): return QtCore.QModelIndex()
 
+        # Get the node belonging to the provided index.
         current = index.internalPointer()
         assert isinstance(current,xmlstore.Node), 'Node data is not a Node, but: %s.' % current
+        
+        # Get the parent node.
         parent = self.storeinterface.getParent(current)
         assert isinstance(parent,xmlstore.Node), 'Object returned by getParent is not of type "Node" (but "%s").' % (parent,)
 
-        assert parent!=None, 'We were asked for the parent of the actual root, but we should never have been able to get so far up the tree.'
-        
+        # If we reached the root, return an invalid index signifying the root.        
         if parent.parent==None: return QtCore.QModelIndex()
+
+        # Get the row index of the parent.
         iparentrow = self.storeinterface.getOwnIndex(parent)
+        
+        # Return a newly created index for the parent.
         return self.createIndex(iparentrow,0,parent)
 
     def rowCount(self,parent=QtCore.QModelIndex()):
@@ -657,6 +675,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
         if not parent.isValid():
             parentnode = self.typedstore.root
         else:
+            if parent.column()!=0: return 0
             parentnode = parent.internalPointer()
         return self.storeinterface.getChildCount(parentnode)
 
@@ -774,6 +793,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
         # Get node (XML element) from given node index (QtCore.QModelIndex)
         node = index.internalPointer()
 
+        # Handle the case where nodes have checkboxes, and the check state changed.
         if self.checkboxes and role==QtCore.Qt.CheckStateRole:
             if node.canHaveValue():
                 node.setValue(value.toBool())
@@ -791,22 +811,27 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
                     self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),par,par)
                     par = par.parent()
             return True
-        
-        assert index.column()==1, 'Column %i is being set, but should not be editable (only column 1 should)' % index.column()
+
+        # From this point on, we only process the EditRole for column 1.
+        if role!=QtCore.Qt.EditRole or index.column()!=1: return False
 
         if not value.isValid():
+            # An invalid QVariant was passed: clear the node value.
             node.clearValue()
-            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
-            return True
-        
-        templatenode = node.templatenode
-        fieldtype = node.getValueType()
-        dt = getDataTypes()
-        assert fieldtype in dt, 'No editor class defined for data type "%s".' % fieldtype
-        value = dt[fieldtype].convertFromQVariant(value)
-        node.setValue(value)
-        if isinstance(value,util.referencedobject): value.release()
+        else:
+            # Convert the supplied QVariant to the node data type,
+            # set the node value, and release the value object if applicable.
+            fieldtype = node.getValueType()
+            dt = getDataTypes()
+            assert fieldtype in dt, 'No editor class defined for data type "%s".' % fieldtype
+            value = dt[fieldtype].convertFromQVariant(value)
+            node.setValue(value)
+            if isinstance(value,util.referencedobject): value.release()
+
+        # Emit the data-changed signal.
         self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+
+        # Return True: setData succeeded.
         return True
 
     def flags(self,index):
@@ -841,33 +866,61 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             elif section==1:
                 return QtCore.QVariant('value')
         return QtCore.QVariant()
+        
+    def indexFromNode(self,node,column=0):
+        irow = self.storeinterface.getOwnIndex(node)
+        return self.createIndex(irow,column,node)
 
-    def beforeNodeVisibilityChange(self,node,newvisibility,showhide):
+    def beforeNodeVisibilityChange(self,nodes,newvisibility,showhide):
         """Event handler. Called by the TypedStore just before a node is hidden/deleted
         or shown/added.
         If the change is in visibility, showhide will be True. If a node is removed or
         added showhide will be False. If the node is shown or added, newvisibility will
         be True; if the node is hidden or deleted, newvisibility will be False.
         """
-        assert isinstance(node,xmlstore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
-        if self.nohide and showhide: return
-        irow = self.storeinterface.getOwnIndex(node)
-        index = self.createIndex(irow,1,node)
-        par = self.parent(index)
-        if newvisibility:
-            self.beginInsertRows(par,irow,irow)
-        else:
-            self.beginRemoveRows(par,irow,irow)
+        # Debug check of function arguments (must be a list of nodes)
+        for node in nodes:
+            assert isinstance(node,xmlstore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
 
-    def afterNodeVisibilityChange(self,node,newvisibility,showhide):
+        # If we will show hidden nodes and the change refers to visibility, do nothing.
+        if self.nohide and showhide: return
+        
+        # Get row number and parent index of the first node.
+        ifirstrow = self.storeinterface.getOwnIndex(nodes[0])
+        par = self.parent(self.createIndex(ifirstrow,1,nodes[0]))
+        
+        # Get row number of last node, and make sure the nodes are contiguous.
+        if len(nodes)>1:
+            ilastrow = self.storeinterface.getOwnIndex(nodes[-1])
+            assert par==self.parent(self.createIndex(ilastrow,1,nodes[-1])), 'Nodes supplied to beforeNodeVisibilityChange do not share the same parent.'
+            assert ilastrow-ifirstrow+1==len(nodes), 'Node block supplied to beforeNodeVisibilityChange is not contiguous.'
+        else:
+            ilastrow = ifirstrow
+
+        # Notify Qt4 about impending visibility change.
+        if newvisibility:
+            self.beginInsertRows(par,ifirstrow,ilastrow)
+        else:
+            self.beginRemoveRows(par,ifirstrow,ilastrow)
+
+    def afterNodeVisibilityChange(self,nodes,newvisibility,showhide):
         """Event handler. Called by the TypedStore just after a node is hidden/deleted
         or shown/added.
         If the change is in visibility, showhide will be True. If a node is removed or
         added showhide will be False. If the node is shown or added, newvisibility will
         be True; if the node is hidden or deleted, newvisibility will be False.
         """
-        assert isinstance(node,xmlstore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
-        if self.nohide and showhide: return self.onNodeChanged(node,'visibility',headertoo=True)
+        # Debug check of function arguments (must be a list of nodes)
+        for node in nodes:
+            assert isinstance(node,xmlstore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
+        
+        # If we show hidden nodes and the change refers to visibility,
+        # only the color of the node will change: make Qt4 update the node display.
+        if self.nohide and showhide:
+            for node in nodes: self.onNodeChanged(node,'visibility',headertoo=True)
+            return
+        
+        # Notify Qt4 about visibility change.
         if newvisibility:
             self.endInsertRows()
         else:
@@ -1019,7 +1072,56 @@ class ExtendedTreeView(QtGui.QTreeView):
         """
         QtGui.QTreeView.selectionChanged(self,selected,deselected)
         self.emit(QtCore.SIGNAL('onSelectionChanged()'))
+
+class TypedStoreTreeView(ExtendedTreeView):
     
+    def __init__(self,parent,store,rootnode=None,**kwargs):
+        ExtendedTreeView.__init__(self, parent)
+
+        self.store = store
+        self.rootnode = rootnode
+
+        # Set up model/treeview
+        self.storemodel = TypedStoreModel(self.store,nohide=False)
+        self.storedelegate = PropertyDelegate(self,fileprefix='',unitinside=True,**kwargs)
+        self.setItemDelegate(self.storedelegate)
+        self.setUniformRowHeights(True)
+        self.setRootIsDecorated(False)
+
+        if self.rootnode!=None:
+            # Get interface to scenario that allows us to find out when
+            # the root node becomes visible/hidden.
+            self.storeinterface = store.getInterface()
+            self.storeinterface.connect('afterVisibilityChange', self.afterNodeVisibilityChange)
+
+        self.configure(resizeheader=False)
+        
+    def showEvent(self,event):
+        if self.model()!=None:
+            self.header().resizeSection(0,.65*self.width())
+            
+    def configure(self,resizeheader=True):
+        if self.rootnode==None or not self.rootnode.isHidden():
+            self.setModel(self.storemodel)
+            if self.rootnode!=None: self.setRootIndex(self.storemodel.indexFromNode(self.rootnode))
+            self.setExpandedAll(maxdepth=1)
+            self.expandNonDefaults()
+            if resizeheader: self.header().resizeSection(0,.65*self.width())
+        else:
+            self.setModel(None)
+
+    def afterNodeVisibilityChange(self,nodes,newvisibility,showhide):
+        if self.rootnode in nodes: self.configure()
+
+    def destroy(self,destroyWindow = True,destroySubWindows = True):
+        self.setModel(None)
+        self.storemodel.unlink()
+        if self.rootnode!=None:
+            self.store.disconnectInterface(self.storeinterface)
+            self.storeinterface = None
+        ExtendedTreeView.destroy(self,destroyWindow,destroySubWindows)
+        
+            
 class PropertyEditorDialog(QtGui.QDialog):
     """Minimal dialog that can be used to edit the values of a TypedStore.
     Incoporates the ExtendedTreeView attached to a TypedStoreModel.
@@ -1073,6 +1175,7 @@ class PropertyEditorFactory:
         self.properties['allowhide' ] = allowhide
         self.properties['unitinside'] = unitinside
         self.editors = []
+        self.externaleditors = []
 
         if self.live:
             self.storeinterface = self.store.getInterface()
@@ -1151,8 +1254,13 @@ class PropertyEditorFactory:
             if editor.node is node:
                 editor.updateEditorValue()
                 break
+        for (editor,conditionnode,conditiontype,conditionvalue) in self.externaleditors:
+            if conditionnode==node and conditiontype!='visibility':
+                valuematch = node.getValue(usedefault=True)==conditionvalue
+                newviz = (conditiontype=='eq' and valuematch) or (conditiontype=='ne' and not valuematch)
+                editor.setVisible(newviz)
 
-    def onStoreVisibilityChanged(self,node,visible,showhide):
+    def onStoreVisibilityChanged(self,nodes,visible,showhide):
         """Event handler, called directly after the visibility of a node in the TypedStore
         has changed (because it is removed/hidden/added/shown). Currently we only process
         show/hide events (node addition/removal is ignored); when we recieve such events,
@@ -1160,10 +1268,15 @@ class PropertyEditorFactory:
         state from enabled to disabled, or vice versa.
         """
         if not showhide: return
-        for editor in self.editors:
-            #if node is editor.node:
-            if ('/'.join(editor.node.location)).startswith('/'.join(node.location)):
-                editor.updateEditorEnabled()
+        for node in nodes:
+            nodeloc = '/'.join(node.location)
+            for editor in self.editors:
+                #if node is editor.node:
+                if ('/'.join(editor.node.location)).startswith(nodeloc):
+                    editor.updateEditorEnabled()
+            for (editor,conditionnode,conditiontype,conditionvalue) in self.externaleditors:
+                if conditionnode==node and conditiontype=='visibility':
+                    editor.setVisible(visible)
 
     def onNodeEdited(self,editor):
         """Called by attached editors after their value has changed.
@@ -1176,6 +1289,16 @@ class PropertyEditorFactory:
         """Returns a list of all nodes associated with this PropertyEditorFactory.
         """
         return [editor.node for editor in self.editors]
+        
+    def attachExternalEditor(self,editor,node,conditiontype='visibility',conditionvalue=None):
+        if isinstance(node,basestring): node = self.store[node]
+        self.externaleditors.append((editor,node,conditiontype,conditionvalue))
+        if conditiontype=='visibility':
+            newviz = not node.isHidden()
+        else:
+            valuematch = node.getValue(usedefault=True)==conditionvalue
+            newviz = (conditiontype=='eq' and valuematch) or (conditiontype=='ne' and not valuematch)
+        editor.setVisible(newviz)
 
 class PropertyEditor:
     """Class representing an editor of a node in the TypedStore, plus some associated
@@ -1196,8 +1319,11 @@ class PropertyEditor:
         self.allowhide = allowhide
         self.unitinside = unitinside
 
-        self.editor = self.createEditor(node,parent,**kwargs)
-        self.updateEditorValue()
+        if 'editor' in kwargs:
+            self.editor = kwargs['editor']
+        else:
+            self.editor = self.createEditor(node,parent,**kwargs)
+            self.updateEditorValue()
         
         self.changehandlers = []
         self.suppresschangeevent = False
@@ -1278,7 +1404,10 @@ class PropertyEditor:
         if self.label!=None: self.label.setVisible(visible)
         if self.icon !=None: self.icon.setVisible(visible)
         if self.unit !=None: self.unit.setVisible(visible)
-        self.editor.setVisible(visible)
+        if isinstance(self.editor,QtGui.QWidget):
+            self.editor.setVisible(visible)
+        elif isinstance(self.editor,QtGui.QButtonGroup):
+            for bn in self.editor.buttons(): bn.setVisible(visible)
 
     def destroy(self,layout=None):
         """Removes all widgets belonging to this editor from the layout.
@@ -1321,17 +1450,11 @@ class PropertyEditor:
         Called by the responsible factory when the "hidden" state of the source node changes.
         """
         visible = not self.node.isHidden()
+        if self.allowhide: return self.setVisible(visible)
         if isinstance(self.editor,QtGui.QWidget):
-            if self.allowhide:
-                self.setVisible(visible)
-            else:
-                self.editor.setEnabled(visible)
+            self.editor.setEnabled(visible)
         elif isinstance(self.editor,QtGui.QButtonGroup):
-            for bn in self.editor.buttons():
-                if self.allowhide:
-                    bn.setVisible(visible)
-                else:
-                    bn.setEnabled(visible)
+            for bn in self.editor.buttons(): bn.setEnabled(visible)
 
     def addChangeHandler(self,callback):
         """Registers an event handler to be called when the value in the editor changes.
@@ -1392,7 +1515,7 @@ class PropertyEditor:
     def setEditorData(self,editor,node):
         """Set the value of the editor to the current value of the underlying node.
         """
-        if isinstance(editor,QtGui.QGroupBox): return
+        if not isinstance(editor,(AbstractPropertyEditor,QtGui.QCheckBox,QtGui.QButtonGroup)): return
         self.suppresschangeevent = True
         value = node.getValue(usedefault=True)
         if value==None: return
@@ -1412,7 +1535,7 @@ class PropertyEditor:
     def setNodeData(self,editor,node):
         """Set the value of the underlying node to the current value of the editor.
         """
-        if isinstance(editor,QtGui.QGroupBox): return True
+        if not isinstance(editor,(AbstractPropertyEditor,QtGui.QCheckBox,QtGui.QButtonGroup)): return True
         nodetype = node.getValueType()
         if isinstance(editor,AbstractPropertyEditor):
             value = editor.value()

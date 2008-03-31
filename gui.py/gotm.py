@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # Import standard Python modules
-import os,sys
+import os,sys,optparse
 
 # Import Qt Modules
 from PyQt4 import QtGui,QtCore
@@ -356,7 +356,7 @@ class ForkOnAction(commonqt.WizardFork):
             return commonqt.WizardSequence([scenariobuilder.SequenceEditScenario(),simulator.PageProgress])
         else:
             return commonqt.WizardSequence([commonqt.WizardDummyPage])
-def main():
+def main(args):
     # Debug info
     print 'Python version: %s' % unicode(sys.version_info)
     print 'PyQt4 version: %s' % QtCore.PYQT_VERSION_STR
@@ -380,9 +380,9 @@ def main():
     openpath = None
     scen = None
     res = None
-    if len(sys.argv)>1:
-        openpath = os.path.normpath(os.path.join(oldworkingdir, sys.argv[1]))
-        del sys.argv[1]
+    if len(args)>0:
+        openpath = os.path.normpath(os.path.join(oldworkingdir, args[0]))
+        del args[0]
         
         try:
             container = xmlstore.xmlstore.DataContainer.fromPath(openpath)
@@ -449,7 +449,22 @@ def main():
     return ret
 
 # If the script has been run (as opposed to imported), enter the main loop.
-if (__name__=='__main__'): ret = main()
+if (__name__=='__main__'):
+    # Parse command line options for profiling
+    parser = optparse.OptionParser()
+    parser.add_option('-p','--profile',action='store_true')
+    parser.set_defaults(profile=False)
+    (options, args) = parser.parse_args()
+    
+    if options.profile:
+        # We will do profiling
+        import cProfile,pstats
+        cProfile.run('main(args)', 'gotmprof')
+        p = pstats.Stats('gotmprof')
+        p.strip_dirs().sort_stats('cumulative').print_stats()
+    else:
+        # Just enter the main loop
+        ret = main(args)
 
 # Reset previous working directory (only if we had to change it)
 os.chdir(os.path.dirname(oldworkingdir))

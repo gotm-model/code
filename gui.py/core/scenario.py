@@ -820,6 +820,12 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.xmlstore.Convertor):
         target['obs/zetaspec/zeta_const' ].setValue(ref)
         target['obs/zetaspec/zeta_offset'].setValue(ref)
 
+        # ===============================================
+        #  bio
+        # ===============================================
+        if not source['bio/bio_nml/bio_calc'].getValue():
+            target['bio/bio_model'].setValue(0)
+
         # Note: we implicitly lose output settings out_fmt, out_dir and out_fn; the GUI scenario
         # does not support (or need) these.
 Scenario.addConvertor(Convertor_gotm_4_1_0_to_gotmgui_0_5_0)
@@ -945,6 +951,13 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
             target['obs/zetaspec/zeta_0' ].setValue(source['obs/zetaspec/zeta_offset'].getValue())
         else:
             target['obs/zetaspec/zeta_0' ].setValue(source['obs/zetaspec/zeta_const' ].getValue())
+
+        # ===============================================
+        #  bio
+        # ===============================================
+        usebio = source['bio/bio_model'].getValue()!=0
+        target['bio/bio_nml/bio_calc'].setValue(usebio)
+        if not usebio: target['bio/bio_nml/bio_model'].setValue(1)
 
 Scenario.addConvertor(Convertor_gotmgui_0_5_0_to_gotm_4_1_0)
 
