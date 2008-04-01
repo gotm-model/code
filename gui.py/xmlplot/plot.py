@@ -899,6 +899,7 @@ class Figure(xmlstore.util.referencedobject):
                      10:'copper',
                      11:'pink'}
         cm = getattr(matplotlib.cm,colormaps[self.properties['ColorMap'].getValue(usedefault=True)])
+        cm.set_bad('w')
         
         # Start with z order index 0 (incrementing it with every item added)
         zorder = 0
@@ -990,6 +991,12 @@ class Figure(xmlstore.util.referencedobject):
             # Find non-singleton dimensions (singleton dimension: dimension with length one)
             # Store singleton dimensions as fixed extra coordinates.
             varslice = varslice.squeeze()
+            
+            # Mask infinite/nan values, if any
+            invalid = numpy.logical_not(numpy.isfinite(varslice.data))
+            if invalid.any():
+                print 'WARNING: masking %i invalid values (inf or nan) out of %i.' % (invalid.sum(),invalid.size)
+                varslice.data = matplotlib.numerix.ma.array(varslice.data,mask=invalid)
 
             defaultseriesnode['DimensionCount'].setValue(varslice.ndim)
 
