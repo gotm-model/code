@@ -85,7 +85,19 @@ class AbstractPropertyEditor:
     @staticmethod
     def convertToQVariant(value):
         raise Exception('Class does not support conversions from QVariant.')
-
+    @staticmethod
+    def displayValue(painter,option,value):
+        pass
+    @staticmethod
+    def supplementOption(option):
+        return option
+    @staticmethod
+    def getValueAsString(node):
+        return QtCore.QVariant(node.getValueAsString(usedefault=True))
+    @staticmethod
+    def decoration(value):
+        return QtCore.QVariant()
+        
 # =======================================================================
 # Functions for converting between Qt date/time object and Python
 # datetime objects
@@ -176,15 +188,15 @@ class SelectEditor(AbstractPropertyEditor,QtGui.QComboBox):
     def __init__(self,parent,node,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
         AbstractPropertyEditor.__init__(self,parent,node)
-
-        # Populate combobox
+        self.populate(node)
+        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
+        
+    def populate(self,node):
         options = util.findDescendantNode(node.templatenode,['options'])
         assert options!=None, 'Node %s lacks "options" childnode.' % node
         for ch in options.childNodes:
             if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option' and not ch.hasAttribute('disabled'):
                 self.addItem(ch.getAttribute('label'),QtCore.QVariant(int(ch.getAttribute('value'))))
-
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
         
     def value(self):
         value,ret = self.itemData(self.currentIndex()).toInt()
@@ -512,6 +524,14 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
     @staticmethod
     def convertToQVariant(value):
         return QtCore.QVariant(QtGui.QColor(value.red,value.green,value.blue))
+
+    @staticmethod
+    def displayValue(painter,option,value):
+        color = QtGui.QColor(value.red,value.green,value.blue)
+        r = option.rect.adjusted(1,1,-2,-2)
+        r.setWidth(r.height())
+        painter.fillRect(r,QtGui.QBrush(color))
+        painter.drawRect(r)
         
 # =======================================================================
 # PropertyDelegate: a Qt delegate used to create editors for property
@@ -552,15 +572,21 @@ class PropertyDelegate(QtGui.QItemDelegate):
         """Paints the current value for display (not editing!)
         Inherited from QtGui.QItemDelegate.
         """
+        
         node = index.internalPointer()
-        QtGui.QItemDelegate.paint(self,painter,option,index)
-        if index.column()==1 and node.getValueType()=='color':
-            dat = index.data()
-            r = option.rect.adjusted(1,1,-2,-2)
-            r.setWidth(r.height())
-            painter.fillRect(r,QtGui.QBrush(dat))
-            painter.drawRect(r)
 
+        if index.column()==1 and node.canHaveValue():
+            fieldtype = node.getValueType()
+            dt = getDataTypes()
+            assert fieldtype in dt, 'No editor class defined for data type "%s".' % fieldtype
+            option = dt[fieldtype].supplementOption(option)
+
+        QtGui.QItemDelegate.paint(self,painter,option,index)
+
+        if index.column()==1 and node.canHaveValue():
+            value = node.getValue(usedefault=True)
+            dt[fieldtype].displayValue(painter,option,value)
+            
     def setEditorData(self, editor,index):
         """Sets value in the editor widget, for the model item at the given index.
         Inherited from QtGui.QItemDelegate.
@@ -756,13 +782,16 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
                 return QtCore.QVariant()
         else:
             # We only process the 'display', 'edit' and 'font' roles.
-            if not (role==QtCore.Qt.DisplayRole or role==QtCore.Qt.EditRole or role==QtCore.Qt.FontRole): return QtCore.QVariant()
+            if role not in (QtCore.Qt.DisplayRole,QtCore.Qt.EditRole,QtCore.Qt.FontRole,QtCore.Qt.DecorationRole): return QtCore.QVariant()
 
             # Column 1 is only used for variables that can have a value.
             if not node.canHaveValue(): return QtCore.QVariant()
 
             fieldtype = node.getValueType()
-            if role==QtCore.Qt.FontRole:
+            editorclass = getDataTypes().get(fieldtype,AbstractPropertyEditor)
+            if role==QtCore.Qt.DecorationRole:
+                return editorclass.decoration(node.getValue(usedefault=True))
+            elif role==QtCore.Qt.FontRole:
                 # Return bold font if the node value is set to something different than the default.
                 if self.typedstore.defaultstore==None: QtCore.QVariant()
                 font = QtGui.QFont()
@@ -774,7 +803,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
                     pm = QtGui.QPixmap(10,10)
                     pm.fill(QtGui.QColor(value.red,value.green,value.blue))
                     return QtCore.QVariant(pm)
-                return QtCore.QVariant(node.getValueAsString(usedefault=True))
+                return QtCore.QVariant(editorclass.getValueAsString(node))
             elif role==QtCore.Qt.EditRole:
                 value = node.getValue(usedefault=True)
                 if value==None: return QtCore.QVariant()
@@ -1075,11 +1104,13 @@ class ExtendedTreeView(QtGui.QTreeView):
 
 class TypedStoreTreeView(ExtendedTreeView):
     
-    def __init__(self,parent,store,rootnode=None,**kwargs):
+    def __init__(self,parent,store,rootnode=None,expanddepth=1,resizecolumns=True,**kwargs):
         ExtendedTreeView.__init__(self, parent)
 
         self.store = store
         self.rootnode = rootnode
+        self.expanddepth = expanddepth
+        self.resizecolumns = resizecolumns
 
         # Set up model/treeview
         self.storemodel = TypedStoreModel(self.store,nohide=False)
@@ -1094,16 +1125,18 @@ class TypedStoreTreeView(ExtendedTreeView):
             self.storeinterface.connect('afterVisibilityChange', self.afterNodeVisibilityChange)
 
         self.configure(resizeheader=False)
+
+        self.setIconSize(QtCore.QSize(0,0))
         
     def showEvent(self,event):
-        if self.model()!=None:
+        if self.model()!=None and self.resizecolumns:
             self.header().resizeSection(0,.65*self.width())
             
     def configure(self,resizeheader=True):
         if self.rootnode==None or not self.rootnode.isHidden():
             self.setModel(self.storemodel)
             if self.rootnode!=None: self.setRootIndex(self.storemodel.indexFromNode(self.rootnode))
-            self.setExpandedAll(maxdepth=1)
+            self.setExpandedAll(maxdepth=self.expanddepth)
             self.expandNonDefaults()
             if resizeheader: self.header().resizeSection(0,.65*self.width())
         else:
@@ -1129,13 +1162,7 @@ class PropertyEditorDialog(QtGui.QDialog):
     def __init__(self,parent,store,title='',instructions='',flags=QtCore.Qt.Dialog):
         QtGui.QDialog.__init__(self, parent, flags)
 
-        self.model = TypedStoreModel(store,nohide=False)
-
-        self.tree = ExtendedTreeView(self)
-        self.delegate = PropertyDelegate(self)
-        self.tree.setItemDelegate(self.delegate)
-        self.tree.setModel(self.model)
-        self.tree.setExpandedAll(maxdepth=3)
+        self.tree = TypedStoreTreeView(self,store,expanddepth=3,resizecolumns=False)
 
         self.grip = QtGui.QSizeGrip(self)
 

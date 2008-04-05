@@ -149,7 +149,7 @@
 	</element>
 
   <element name="HasColorMap" type="bool" hidden="True"/>
-  <element name="ColorMap" type="select" label="colormap">
+  <element name="ColorMap" type="colormap" label="colormap">
     <condition type="eq" variable="./HasColorMap" value="True"/>
     <options>
       <option value="0"  label="jet"/>

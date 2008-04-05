@@ -3,6 +3,7 @@ import datetime, os.path, sys
 
 # Import third-party modules
 from PyQt4 import QtGui,QtCore
+import numpy
 import matplotlib.figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_agg import FigureCanvasAgg
@@ -36,6 +37,71 @@ class FontNameEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
         return self.currentText()
 
 xmlstore.gui_qt4.registerDataType('fontname',FontNameEditor)
+
+class ColorMapEditor(xmlstore.gui_qt4.SelectEditor):
+    cache = {}
+
+    def __init__(self,parent,node,**kwargs):
+        xmlstore.gui_qt4.SelectEditor.__init__(self,parent,node,**kwargs)
+        self.setIconSize(QtCore.QSize(100.,10.))
+        
+    def populate(self,node):
+        options = xmlstore.util.findDescendantNode(node.templatenode,['options'])
+        assert options!=None, 'Node %s lacks "options" childnode.' % node
+        for ch in options.childNodes:
+            if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option' and not ch.hasAttribute('disabled'):
+                value = int(ch.getAttribute('value'))
+                qPixMap = ColorMapEditor.getPixMap(value,100.,10.)
+                self.addItem(QtGui.QIcon(qPixMap),plot.colormaps[value],QtCore.QVariant(value))
+
+    @staticmethod
+    def getPixMap(value,width,height):
+        qPixMap = ColorMapEditor.cache.get(value,None)
+        if qPixMap==None or qPixMap.width()!=width or qPixMap.height()!=height:
+            cm = getattr(matplotlib.cm,plot.colormaps[value])
+
+            figure = matplotlib.figure.Figure(figsize=(width,height),dpi=1)
+            canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(figure)
+            figure.subplots_adjust(top=1.,bottom=0.,left=0.,right=1.)
+            axes = figure.add_subplot(111)
+            
+            a = numpy.outer(numpy.ones(10),numpy.arange(0,1,1./width))
+            axes.axis('off')
+            axes.imshow(a,aspect='auto',cmap=cm,origin='lower')
+            canvas.draw()
+            if QtCore.QSysInfo.ByteOrder == QtCore.QSysInfo.LittleEndian:
+                stringBuffer = canvas.get_renderer()._renderer.tostring_bgra()
+            else:
+                stringBuffer = canvas.get_renderer()._renderer.tostring_argb()
+            qImage = QtGui.QImage(stringBuffer, width, height, QtGui.QImage.Format_ARGB32)
+            qPixMap = QtGui.QPixmap.fromImage(qImage)
+            
+            # Add border
+            p = QtGui.QPainter(qPixMap)
+            penwidth = p.pen().width()
+            if penwidth==0: penwidth=1
+            p.drawRect(QtCore.QRectF(0,0,width-penwidth,height-penwidth))
+            
+            # Store in cache
+            ColorMapEditor.cache[value] = qPixMap
+        return qPixMap
+
+    @staticmethod
+    def decoration(value):
+        qPixMap = ColorMapEditor.getPixMap(value,100.,10.)
+        return QtCore.QVariant(QtGui.QIcon(qPixMap))
+
+    @staticmethod
+    def getValueAsString(node):
+        value = node.getValue(usedefault=True)
+        return plot.colormaps[value]
+        
+    @staticmethod
+    def supplementOption(option):
+        option.decorationSize = QtCore.QSize(100,10)
+        return option
+
+xmlstore.gui_qt4.registerDataType('colormap',ColorMapEditor)
 
 def getFontSubstitute(fontname):
     assert isinstance(fontname,basestring), 'Supplied argument must be a string.'

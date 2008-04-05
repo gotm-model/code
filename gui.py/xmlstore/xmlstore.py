@@ -2509,7 +2509,8 @@ class TypedStore(util.referencedobject):
                                      'file'    :DataFile,
                                      'duration':StoreTimeDelta,
                                      'color'   :StoreColor,
-                                     'fontname':str})
+                                     'fontname':str,
+                                     'colormap':int})
         self.store.filetypes.update(self.getCustomTypes())
         self.root = Node(self,templateroot,self.store.xmlroot,[],None)
         self.changed = False

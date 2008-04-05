@@ -7,6 +7,19 @@ import numpy
 
 import common,xmlstore.xmlstore,xmlstore.util
 
+colormaps = {0:'jet',
+             1:'hsv',
+             2:'hot',
+             3:'cool',
+             4:'spring',
+             5:'summer',
+             6:'autumn',
+             7:'winter',
+             8:'gray',
+             9:'bone',
+             10:'copper',
+             11:'pink'}
+
 class VariableStore:
     """Abstract base class for objects containing one or more variables that
     can be plotted. It contains functionality for retrieving variable
@@ -886,18 +899,6 @@ class Figure(xmlstore.util.referencedobject):
         cb = None
         hascolormap = False
         
-        colormaps = {0:'jet',
-                     1:'hsv',
-                     2:'hot',
-                     3:'cool',
-                     4:'spring',
-                     5:'summer',
-                     6:'autumn',
-                     7:'winter',
-                     8:'gray',
-                     9:'bone',
-                     10:'copper',
-                     11:'pink'}
         cm = getattr(matplotlib.cm,colormaps[self.properties['ColorMap'].getValue(usedefault=True)])
         cm.set_bad('w')
         
