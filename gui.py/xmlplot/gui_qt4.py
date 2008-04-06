@@ -40,6 +40,7 @@ xmlstore.gui_qt4.registerDataType('fontname',FontNameEditor)
 
 class ColorMapEditor(xmlstore.gui_qt4.SelectEditor):
     cache = {}
+    canvas,figure = None,None
 
     def __init__(self,parent,node,**kwargs):
         xmlstore.gui_qt4.SelectEditor.__init__(self,parent,node,**kwargs)
@@ -59,20 +60,23 @@ class ColorMapEditor(xmlstore.gui_qt4.SelectEditor):
         qPixMap = ColorMapEditor.cache.get(value,None)
         if qPixMap==None or qPixMap.width()!=width or qPixMap.height()!=height:
             cm = getattr(matplotlib.cm,plot.colormaps[value])
-
-            figure = matplotlib.figure.Figure(figsize=(width,height),dpi=1)
-            canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(figure)
-            figure.subplots_adjust(top=1.,bottom=0.,left=0.,right=1.)
-            axes = figure.add_subplot(111)
+            if ColorMapEditor.figure==None:
+                ColorMapEditor.figure = matplotlib.figure.Figure(figsize=(width,height),dpi=1)
+                ColorMapEditor.canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(ColorMapEditor.figure)
+                ColorMapEditor.figure.subplots_adjust(top=1.,bottom=0.,left=0.,right=1.)
+            else:
+                ColorMapEditor.figure.clear()
+                ColorMapEditor.figure.set_size_inches(width,height)
+            axes = ColorMapEditor.figure.add_subplot(111)
             
             a = numpy.outer(numpy.ones(10),numpy.arange(0,1,1./width))
             axes.axis('off')
             axes.imshow(a,aspect='auto',cmap=cm,origin='lower')
-            canvas.draw()
+            ColorMapEditor.canvas.draw()
             if QtCore.QSysInfo.ByteOrder == QtCore.QSysInfo.LittleEndian:
-                stringBuffer = canvas.get_renderer()._renderer.tostring_bgra()
+                stringBuffer = ColorMapEditor.canvas.get_renderer()._renderer.tostring_bgra()
             else:
-                stringBuffer = canvas.get_renderer()._renderer.tostring_argb()
+                stringBuffer = ColorMapEditor.canvas.get_renderer()._renderer.tostring_argb()
             qImage = QtGui.QImage(stringBuffer, width, height, QtGui.QImage.Format_ARGB32)
             qPixMap = QtGui.QPixmap.fromImage(qImage)
             
@@ -87,19 +91,14 @@ class ColorMapEditor(xmlstore.gui_qt4.SelectEditor):
         return qPixMap
 
     @staticmethod
-    def decoration(value):
+    def displayValue(delegate,painter,option,index):
+        value = ColorMapEditor.convertFromQVariant(index.data(QtCore.Qt.EditRole))
         qPixMap = ColorMapEditor.getPixMap(value,100.,10.)
-        return QtCore.QVariant(QtGui.QIcon(qPixMap))
-
-    @staticmethod
-    def getValueAsString(node):
-        value = node.getValue(usedefault=True)
-        return plot.colormaps[value]
-        
-    @staticmethod
-    def supplementOption(option):
-        option.decorationSize = QtCore.QSize(100,10)
-        return option
+        option.decorationAlignment = QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter
+        delegate.drawBackground(painter,option,index)
+        xOffset = QtGui.qApp.style().pixelMetric(QtGui.QStyle.PM_FocusFrameHMargin,option)
+        delegate.drawDecoration(painter,option,option.rect.adjusted(xOffset,0,0,0),qPixMap)
+        delegate.drawFocus(painter,option,option.rect)
 
 xmlstore.gui_qt4.registerDataType('colormap',ColorMapEditor)
 

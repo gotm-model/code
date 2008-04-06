@@ -86,17 +86,8 @@ class AbstractPropertyEditor:
     def convertToQVariant(value):
         raise Exception('Class does not support conversions from QVariant.')
     @staticmethod
-    def displayValue(painter,option,value):
-        pass
-    @staticmethod
-    def supplementOption(option):
-        return option
-    @staticmethod
-    def getValueAsString(node):
-        return QtCore.QVariant(node.getValueAsString(usedefault=True))
-    @staticmethod
-    def decoration(value):
-        return QtCore.QVariant()
+    def displayValue(delegate,painter,option,index):
+        QtGui.QItemDelegate.paint(delegate,painter,option,index)
         
 # =======================================================================
 # Functions for converting between Qt date/time object and Python
@@ -473,19 +464,11 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
         QtGui.QComboBox.__init__(self,parent)
         self.connect(self, QtCore.SIGNAL('activated(int)'), self.onActivated)
         for cn in QtGui.QColor.colorNames():
-            self.addColor(cn,QtGui.QColor(cn))
-        self.addColorRGB('custom...',255,255,255)
+            c = QtGui.QColor(cn)
+            if c.alpha()<255: continue
+            self.addColor(cn,c)
+        self.addColor('custom...',QtGui.QColor(255,255,255))
         self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
-        
-    def addColorRGB(self,text,r,g,b):
-        self.addColor(text,QtGui.QColor(r,g,b))
-
-    def addColor(self,text,col):
-        iconsize = self.iconSize()
-        pm = QtGui.QPixmap(iconsize.width(),iconsize.height())
-        pm.fill(col)
-        ic = QtGui.QIcon(pm)
-        self.addItem(ic,text,QtCore.QVariant(col))
         
     def setValue(self,value):
         qcolor = QtGui.QColor(value.red,value.green,value.blue)
@@ -501,20 +484,35 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
     def value(self):
         return self.convertFromQVariant(self.itemData(self.currentIndex()))
         
-    def setItemColor(self,index,color):
-        iconsize = self.iconSize()
-        pm = QtGui.QPixmap(iconsize.width(),iconsize.height())
-        pm.fill(color)
-        ic = QtGui.QIcon(pm)
-        self.setItemIcon(index,ic)
-
-        self.setItemData(index,QtCore.QVariant(color))
-        
     def onActivated(self,index):
         if index==self.count()-1:
             col = QtGui.QColorDialog.getColor(QtGui.QColor(self.itemData(index)),self)
             self.setItemColor(index,col)
             self.editingFinished()
+
+    def addColor(self,text,color):
+        iconsize = self.iconSize()
+        qPixMap = ColorEditor.createPixmap(color,iconsize.width()-2,iconsize.height()-2)
+        self.addItem(QtGui.QIcon(qPixMap),text,QtCore.QVariant(color))
+        
+    def setItemColor(self,index,color):
+        iconsize = self.iconSize()
+        qPixMap = ColorEditor.createPixmap(color,iconsize.width()-2,iconsize.height()-2)
+        self.setItemIcon(index,QtGui.QIcon(qPixMap))
+        self.setItemData(index,QtCore.QVariant(color))
+
+    @staticmethod
+    def createPixmap(color,width,height):
+        qPixMap = QtGui.QPixmap(width,height)
+        qPixMap.fill(color)
+
+        # Add border
+        p = QtGui.QPainter(qPixMap)
+        penwidth = p.pen().width()
+        if penwidth==0: penwidth=1
+        p.drawRect(QtCore.QRectF(0,0,width-penwidth,height-penwidth))
+        
+        return qPixMap
 
     @staticmethod
     def convertFromQVariant(value):
@@ -526,12 +524,33 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
         return QtCore.QVariant(QtGui.QColor(value.red,value.green,value.blue))
 
     @staticmethod
-    def displayValue(painter,option,value):
-        color = QtGui.QColor(value.red,value.green,value.blue)
-        r = option.rect.adjusted(1,1,-2,-2)
-        r.setWidth(r.height())
-        painter.fillRect(r,QtGui.QBrush(color))
-        painter.drawRect(r)
+    def displayValue(delegate,painter,option,index):
+        value = QtGui.QColor(index.data(QtCore.Qt.EditRole))
+        
+        # Get the rectangle to fill
+        style = QtGui.qApp.style()
+        xOffset = style.pixelMetric(QtGui.QStyle.PM_FocusFrameHMargin,option)
+        yOffset = style.pixelMetric(QtGui.QStyle.PM_FocusFrameVMargin,option)
+        rect = option.rect.adjusted(xOffset,yOffset,-xOffset,-yOffset)
+        rect.setWidth(rect.height())
+        
+        qPixMap = ColorEditor.createPixmap(value,rect.width(),rect.height())
+        option.decorationAlignment = QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter
+        delegate.drawBackground(painter,option,index)
+        delegate.drawDecoration(painter,option,rect,qPixMap)
+        delegate.drawFocus(painter,option,option.rect)
+
+    color2name = None
+    @staticmethod
+    def valueToString(value):
+        if ColorEditor.color2name==None:
+            ColorEditor.color2name = {}
+            for cn in reversed(QtGui.QColor.colorNames()):
+                c = QtGui.QColor(cn)
+                if c.alpha()<255: continue
+                ColorEditor.color2name[(c.red(),c.green(),c.blue())] = cn
+        coltup = (value.red,value.green,value.blue)
+        return ColorEditor.color2name.get(coltup,'custom')
         
 # =======================================================================
 # PropertyDelegate: a Qt delegate used to create editors for property
@@ -572,20 +591,13 @@ class PropertyDelegate(QtGui.QItemDelegate):
         """Paints the current value for display (not editing!)
         Inherited from QtGui.QItemDelegate.
         """
-        
         node = index.internalPointer()
-
         if index.column()==1 and node.canHaveValue():
             fieldtype = node.getValueType()
             dt = getDataTypes()
-            assert fieldtype in dt, 'No editor class defined for data type "%s".' % fieldtype
-            option = dt[fieldtype].supplementOption(option)
-
-        QtGui.QItemDelegate.paint(self,painter,option,index)
-
-        if index.column()==1 and node.canHaveValue():
-            value = node.getValue(usedefault=True)
-            dt[fieldtype].displayValue(painter,option,value)
+            dt.get(fieldtype,AbstractPropertyEditor).displayValue(self,painter,option,index)
+        else:
+            QtGui.QItemDelegate.paint(self,painter,option,index)
             
     def setEditorData(self, editor,index):
         """Sets value in the editor widget, for the model item at the given index.
@@ -781,29 +793,21 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             else:
                 return QtCore.QVariant()
         else:
-            # We only process the 'display', 'edit' and 'font' roles.
-            if role not in (QtCore.Qt.DisplayRole,QtCore.Qt.EditRole,QtCore.Qt.FontRole,QtCore.Qt.DecorationRole): return QtCore.QVariant()
+            # We only process the 'display', 'decoration', 'edit' and 'font' roles.
+            if role not in (QtCore.Qt.DisplayRole,QtCore.Qt.EditRole,QtCore.Qt.FontRole): return QtCore.QVariant()
 
             # Column 1 is only used for variables that can have a value.
             if not node.canHaveValue(): return QtCore.QVariant()
 
             fieldtype = node.getValueType()
-            editorclass = getDataTypes().get(fieldtype,AbstractPropertyEditor)
-            if role==QtCore.Qt.DecorationRole:
-                return editorclass.decoration(node.getValue(usedefault=True))
-            elif role==QtCore.Qt.FontRole:
+            if role==QtCore.Qt.FontRole:
                 # Return bold font if the node value is set to something different than the default.
                 if self.typedstore.defaultstore==None: QtCore.QVariant()
                 font = QtGui.QFont()
                 font.setBold(not node.hasDefaultValue())
                 return QtCore.QVariant(font)
             elif role==QtCore.Qt.DisplayRole:
-                if fieldtype=='color':
-                    value = node.getValue(usedefault=True)
-                    pm = QtGui.QPixmap(10,10)
-                    pm.fill(QtGui.QColor(value.red,value.green,value.blue))
-                    return QtCore.QVariant(pm)
-                return QtCore.QVariant(editorclass.getValueAsString(node))
+                return QtCore.QVariant(node.getValueAsString(usedefault=True))
             elif role==QtCore.Qt.EditRole:
                 value = node.getValue(usedefault=True)
                 if value==None: return QtCore.QVariant()
