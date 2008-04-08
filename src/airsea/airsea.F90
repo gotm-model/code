@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.26 2008-01-02 15:11:48 kb Exp $
+!$Id: airsea.F90,v 1.27 2008-04-08 16:09:00 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.27  2008-04-08 16:09:00  kb
+!  assure valid qh and qe under all circumstance - Bruggeman, Stips
+!
 !  Revision 1.26  2008-01-02 15:11:48  kb
 !  fixed w calculation - Kreuz
 !
@@ -654,7 +657,7 @@
    logical, save             :: first=.true.
    integer                   :: rc
    REALTYPE                  :: ta,ta_k,tw,tw_k 
-   REALTYPE                  :: qe,qh,qb
+   REALTYPE                  :: qe=_ZERO_,qh=_ZERO_,qb=_ZERO_
 !
 !-----------------------------------------------------------------------
 !BOC

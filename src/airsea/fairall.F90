@@ -1,4 +1,4 @@
-!$Id: fairall.F90,v 1.5 2008-01-02 15:30:44 kb Exp $
+!$Id: fairall.F90,v 1.6 2008-04-08 16:09:00 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,6 +47,9 @@
 !  Original author(s): Adolf Stips
 !
 !  $Log: fairall.F90,v $
+!  Revision 1.6  2008-04-08 16:09:00  kb
+!  assure valid qh and qe under all circumstance - Bruggeman, Stips
+!
 !  Revision 1.5  2008-01-02 15:30:44  kb
 !  added link to Fairall page
 !
@@ -156,6 +159,8 @@
 !
 !  Initialize.
 !
+   qe=_ZERO_
+   qh=_ZERO_
    delw=sqrt(w*w+wgust*wgust)
    if (delw .ne. 0.0) then
 !-----------------------------------------------------------------------
