@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.27 2008-04-08 16:09:00 kb Exp $
+!$Id: airsea.F90,v 1.28 2008-04-09 12:01:05 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -45,11 +45,11 @@
 !
 !  surface short-wave radiation
 !  and surface heat flux (W/m^2)
-   REALTYPE, public                    :: I_0
-   REALTYPE, public                    :: heat
+   REALTYPE, public                    :: I_0=_ZERO_
+   REALTYPE, public                    :: heat=_ZERO_
 
 !  surface stress components (Pa)
-   REALTYPE, public                    :: tx,ty
+   REALTYPE, public                    :: tx=_ZERO_,ty=_ZERO_
 
 !  precipitation and  evaporation
 !  (m/s)
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.28  2008-04-09 12:01:05  kb
+!  initialise public variables to 0
+!
 !  Revision 1.27  2008-04-08 16:09:00  kb
 !  assure valid qh and qe under all circumstance - Bruggeman, Stips
 !
