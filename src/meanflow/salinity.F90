@@ -1,4 +1,4 @@
-!$Id: salinity.F90,v 1.13 2008-03-07 17:57:49 hb Exp $
+!$Id: salinity.F90,v 1.14 2008-04-09 11:56:31 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -94,6 +94,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: salinity.F90,v $
+!  Revision 1.14  2008-04-09 11:56:31  kb
+!  GOTM/GETM concensus on signs for precip and evap - both positive into the ocean
+!
 !  Revision 1.13  2008-03-07 17:57:49  hb
 !  AdvBcup changed to oneSided
 !
@@ -152,7 +155,7 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffSup        = -S(nlev)*(precip-evap)
+   DiffSup        = -S(nlev)*(precip+evap)
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided

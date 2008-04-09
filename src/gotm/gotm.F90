@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.36 2007-12-07 10:12:20 kb Exp $
+!$Id: gotm.F90,v 1.37 2008-04-09 11:56:28 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -94,6 +94,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.37  2008-04-09 11:56:28  kb
+!  GOTM/GETM concensus on signs for precip and evap - both positive into the ocean
+!
 !  Revision 1.36  2007-12-07 10:12:20  kb
 !  replaced p_e with precip and included evap
 !
@@ -472,7 +475,7 @@
                                    buoy_method,gravity,rho_0)
       case (99)
 !        update KPP model
-         call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip-evap,    &
+         call convert_fluxes(nlev,gravity,cp,rho_0,heat,precip+evap,    &
                              rad,T,S,tFlux,sFlux,btFlux,bsFlux,tRad,bRad)
 
          call do_kpp(nlev,depth,h,rho,u,v,NN,NNT,NNS,SS,                &
