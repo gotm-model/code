@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.57 2008-04-11 09:13:38 jorn Exp $
+#$Id: commonqt.py,v 1.58 2008-04-11 09:34:56 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -329,42 +329,42 @@ class Wizard(QtGui.QDialog):
 
     def onNext(self,askoldpage=True):
         self.disconnect(self.bnNext, QtCore.SIGNAL('clicked()'), self.onNext)
+        cancelled = False
         if askoldpage:
-            oldpage = self.currentpage
-            if not oldpage.saveData(mustbevalid=True): return
-        
-        ready = False
-        while not ready:
-            cls = self.sequence.getNextPage()
-            assert cls!=None, 'No next page available to show; the next button should have been disabled.'
-            newpage = cls(self)
-            ready = (not newpage.doNotShow())
-        self.switchPage(newpage)
+            cancelled = not self.currentpage.saveData(mustbevalid=True)
+        if not cancelled:
+            ready = False
+            while not ready:
+                cls = self.sequence.getNextPage()
+                assert cls!=None, 'No next page available to show; the next button should have been disabled.'
+                newpage = cls(self)
+                ready = (not newpage.doNotShow())
+            self.switchPage(newpage)
         self.connect(self.bnNext, QtCore.SIGNAL('clicked()'), self.onNext)
 
     def onBack(self):
         self.disconnect(self.bnBack, QtCore.SIGNAL('clicked()'), self.onBack)
-        oldpage = self.currentpage
-        if not oldpage.saveData(mustbevalid=False): return
-        ready = False
-        while not ready:
-            cls = self.sequence.getPreviousPage()
-            assert cls!=None, 'No previous page available to show; the back button should have been disabled.'
-            newpage = cls(self)
-            ready = (not newpage.doNotShow())
-        self.switchPage(newpage)
+        if self.currentpage.saveData(mustbevalid=False):
+            ready = False
+            while not ready:
+                cls = self.sequence.getPreviousPage()
+                assert cls!=None, 'No previous page available to show; the back button should have been disabled.'
+                newpage = cls(self)
+                ready = (not newpage.doNotShow())
+            self.switchPage(newpage)
         self.connect(self.bnBack, QtCore.SIGNAL('clicked()'), self.onBack)
 
     def onHome(self):
-        oldpage = self.currentpage
-        if not oldpage.saveData(mustbevalid=False): return
-        cls = self.sequence.getPreviousPage()
-        assert cls!=None, 'No previous page available to show; the home button should have been disabled.'
-        while cls!=None:
-            prevcls = cls
+        self.disconnect(self.bnHome, QtCore.SIGNAL('clicked()'), self.onHome)
+        if self.currentpage.saveData(mustbevalid=False):
             cls = self.sequence.getPreviousPage()
-        newpage = prevcls(self)
-        self.switchPage(newpage)
+            assert cls!=None, 'No previous page available to show; the home button should have been disabled.'
+            while cls!=None:
+                prevcls = cls
+                cls = self.sequence.getPreviousPage()
+            newpage = prevcls(self)
+            self.switchPage(newpage)
+        self.connect(self.bnHome, QtCore.SIGNAL('clicked()'), self.onHome)
 
     def switchPage(self,newpage):
         layout = self.layout()
