@@ -1615,7 +1615,9 @@ class TypedStoreInterface:
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
         if self.blockNotifyOfHiddenNodes and (not showhide) and node.isHidden(): return
         if self.omitgroupers and node.grouponly:
-            self.eventhandlers['beforeVisibilityChange'](self.getChildren(node),shownew,showhide)
+            children = self.getChildren(node)
+            if len(children)==0: return
+            self.eventhandlers['beforeVisibilityChange'](children,shownew,showhide)
         else:
             self.eventhandlers['beforeVisibilityChange']((node,),shownew,showhide)
 
@@ -1628,7 +1630,9 @@ class TypedStoreInterface:
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
         if self.blockNotifyOfHiddenNodes and (not showhide) and node.isHidden(): return
         if self.omitgroupers and node.grouponly:
-            self.eventhandlers['afterVisibilityChange'](self.getChildren(node),shownew,showhide)
+            children = self.getChildren(node)
+            if len(children)==0: return
+            self.eventhandlers['afterVisibilityChange'](children,shownew,showhide)
         else:
             self.eventhandlers['afterVisibilityChange']((node,),shownew,showhide)
 
