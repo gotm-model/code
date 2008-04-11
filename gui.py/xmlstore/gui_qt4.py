@@ -1168,7 +1168,7 @@ class PropertyEditorDialog(QtGui.QDialog):
 
         self.tree = TypedStoreTreeView(self,store,expanddepth=3,resizecolumns=False)
 
-        self.grip = QtGui.QSizeGrip(self)
+        self.setSizeGripEnabled(True)
 
         layout = QtGui.QVBoxLayout()
         layout.setMargin(0)
@@ -1179,7 +1179,6 @@ class PropertyEditorDialog(QtGui.QDialog):
             layout.addWidget(lab)
 
         layout.addWidget(self.tree)
-        layout.addWidget(self.grip)
         self.setLayout(layout)
 
         if title!='':

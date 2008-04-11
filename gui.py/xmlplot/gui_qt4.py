@@ -213,10 +213,15 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
                     # it guarantees that the selection rectangle cannot extend outside
                     # the axes rectangle.
                     bb = a.bbox
-                    if   x<bb.xmin(): x = bb.xmin()
-                    elif x>bb.xmax(): x = bb.xmax()
-                    if   y<bb.ymin(): y = bb.ymin()
-                    elif y>bb.ymax(): y = bb.ymax()
+                    if not bb.contains(x,y):
+                        if callable(bb.xmin):
+                            xmin,xmax,ymin,ymax = bb.xmin(),bb.xmax(),bb.ymin(),bb.ymax()
+                        else:
+                            xmin,xmax,ymin,ymax = bb.xmin,  bb.xmax,  bb.ymin,  bb.ymax
+                        if   x<xmin: x = xmin
+                        elif x>xmax: x = xmax
+                        if   y<ymin: y = ymin
+                        elif y>ymax: y = ymax
                     
                     self.draw_rubberband(event, x, y, lastx, lasty)
             elif (self._active=='PAN' and

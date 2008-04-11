@@ -116,7 +116,6 @@
 		</element>
 	</template>
 
-	<element name="Name" type="string" label="name" hidden="True"/>
 	<element name="Title" type="string" label="title"/>
 	<element name="FontName" type="fontname" label="font"/>
 	<element name="FontScaling" type="float" label="font scaling" unit="%"/>
@@ -183,7 +182,7 @@
 			<element name="Maximum" type="float" label="maximum" unit="[Unit]" nodefault="True">
 				<condition type="ne" variable="./IsTimeAxis" value="True"/>
 			</element>
-			<element name="Unit" type="string" label="unit" nodefault="True" hidden="True"/>
+			<element name="Unit" type="string" label="unit" hidden="True"/>
       <element name="CanHaveLogScale" type="bool" label="axis can be log-transformed" hidden="True"/>
       <element name="LogScale" type="bool" label="log-scale">
         <condition type="and">

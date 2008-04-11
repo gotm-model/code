@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.29 2008-02-12 11:42:43 jorn Exp $
+#$Id: visualizer.py,v 1.30 2008-04-11 07:55:06 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -402,6 +402,8 @@ class PageVisualize(commonqt.WizardPage):
         layout.addWidget(self.treeVariables,1,0)
         layout.addWidget(self.figurepanel,1,1)
         self.setLayout(layout)
+        
+        self.defaultfigures = parent.settings.root['FigureSettings']
 
         self.figurepanel.figure.addDataSource('result',self.result)
 
@@ -419,14 +421,10 @@ class PageVisualize(commonqt.WizardPage):
         
         self.figurepanel.figure.setUpdating(False)
         
-        props = self.figurepanel.figure.properties
-        
         # Plot; first try stored figures, otherwise plot anew.
+        props = self.figurepanel.figure.properties
         if not self.result.getFigure('result/'+varpath,props):
             self.figurepanel.plot(varname,'result')
-
-        # Name the plot (later used as index for list of stored plot properties)
-        props['Name'].setValue('result/'+varpath)
         
         self.figurepanel.figure.setUpdating(True)
         QtGui.QApplication.restoreOverrideCursor()
