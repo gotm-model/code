@@ -202,53 +202,29 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
         and adapted to respect the bounds of the axes rectangle.
         """
 
-        if not self._active:
-            if self._lastCursor != matplotlib.backend_bases.cursors.POINTER:
-                self.set_cursor(matplotlib.backend_bases.cursors.POINTER)
-                self._lastCursor = matplotlib.backend_bases.cursors.POINTER
-        else:
-            if self._active=='ZOOM':
-                if self._lastCursor != matplotlib.backend_bases.cursors.SELECT_REGION:
-                    self.set_cursor(matplotlib.backend_bases.cursors.SELECT_REGION)
-                    self._lastCursor = matplotlib.backend_bases.cursors.SELECT_REGION
-                if self._xypress:
-                    x, y = event.x, event.y
-                    lastx, lasty, a, ind, lim, trans= self._xypress[0]
-                    
-                    # The bit below is the only change from the base implementation.
-                    # it guarantees that the selection rectangle cannot extend outside
-                    # the axes rectangle.
-                    bb = a.bbox
-                    if not bb.contains(x,y):
-                        if callable(bb.xmin):
-                            # MatPlotLib <= 0.91.2
-                            xmin,xmax,ymin,ymax = bb.xmin(),bb.xmax(),bb.ymin(),bb.ymax()
-                        else:
-                            # MatPlotLib > 0.91.2
-                            xmin,xmax,ymin,ymax = bb.xmin,  bb.xmax,  bb.ymin,  bb.ymax
-                        if   x<xmin: x = xmin
-                        elif x>xmax: x = xmax
-                        if   y<ymin: y = ymin
-                        elif y>ymax: y = ymax
-                    
-                    self.draw_rubberband(event, x, y, lastx, lasty)
-            elif (self._active=='PAN' and
-                  self._lastCursor != matplotlib.backend_bases.cursors.MOVE):
-                self.set_cursor(matplotlib.backend_bases.cursors.MOVE)
-
-                self._lastCursor = matplotlib.backend_bases.cursors.MOVE
-
-        if event.inaxes and event.inaxes.get_navigate():
-
-            try: s = event.inaxes.format_coord(event.xdata, event.ydata)
-            except ValueError: pass
-            except OverflowError: pass
-            else:
-                if len(self.mode):
-                    self.set_message('%s : %s' % (self.mode, s))
+        if self._active=='ZOOM' and self._xypress:
+            x, y = event.x, event.y
+            lastx, lasty, a, ind, lim, trans= self._xypress[0]
+            
+            # The bit below is the only change from the base implementation.
+            # it guarantees that the selection rectangle cannot extend outside
+            # the axes rectangle.
+            bb = a.bbox
+            if not bb.contains(x,y):
+                if callable(bb.xmin):
+                    # MatPlotLib <= 0.91.2
+                    xmin,xmax,ymin,ymax = bb.xmin(),bb.xmax(),bb.ymin(),bb.ymax()
                 else:
-                    self.set_message(s)
-        else: self.set_message(self.mode)
+                    # MatPlotLib > 0.91.2
+                    xmin,xmax,ymin,ymax = bb.xmin,  bb.xmax,  bb.ymin,  bb.ymax
+                if   x<xmin: x = xmin
+                elif x>xmax: x = xmax
+                if   y<ymin: y = ymin
+                elif y>ymax: y = ymax
+                event = matplotlib.backend_bases.MouseEvent(event.name, event.canvas, x, y,
+                                   event.button, event.key,
+                                   guiEvent=event.guiEvent)
+        return matplotlib.backend_bases.NavigationToolbar2.mouse_move(self,event)
 
 class FigurePanel(QtGui.QWidget):
     
