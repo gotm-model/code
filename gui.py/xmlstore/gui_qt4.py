@@ -1099,13 +1099,6 @@ class ExtendedTreeView(QtGui.QTreeView):
         if model.rowCount(parent)==end-start+1:
             self.expand(parent)
 
-    def selectionChanged(self,selected,deselected):
-        """Called internally after the currently selected node changes.
-        This signals connected external parties through the onSelectionChanged signal.
-        """
-        QtGui.QTreeView.selectionChanged(self,selected,deselected)
-        self.emit(QtCore.SIGNAL('onSelectionChanged()'))
-
 class TypedStoreTreeView(ExtendedTreeView):
     
     def __init__(self,parent,store,rootnode=None,expanddepth=1,resizecolumns=True,**kwargs):
