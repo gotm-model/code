@@ -205,7 +205,7 @@ class PageIntroduction(commonqt.WizardPage):
 
 <p>For any questions, please consult <a href="http://www.gotm.net">www.gotm.net</a> or write an email to <a href="mailto:gotm-users@gotm.net">gotm-users@gotm.net</a>.</p>
 
-<p>GOTM-GUI was developed by <a href="mailto:jorn.bruggeman@xs4all.nl">Jorn Bruggeman</a> from funding by <a href="http://www.bolding-burchard.com">Bolding & Burchard Hydrodynamics</a>.</p>
+<p>GOTM-GUI was developed by <a href="mailto:jorn.bruggeman@xs4all.nl">Jorn Bruggeman</a> from funding by <a href="http://www.bolding-burchard.com">Bolding & Burchard</a>.</p>
 
 <p>This program is licensed under the <a href="http://www.gnu.org">GNU General Public License</a>.</p>
 """,self)
