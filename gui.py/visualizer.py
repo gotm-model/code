@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.32 2008-04-11 09:00:14 jorn Exp $
+#$Id: visualizer.py,v 1.33 2008-04-11 10:05:50 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -408,6 +408,7 @@ class PageVisualize(commonqt.WizardPage):
         self.figurepanel.figure.addDataSource('result',self.result)
 
     def OnVarSelected(self,*args):
+        print 'variable selection changed'
         selected = self.treeVariables.selectionModel().selectedIndexes()
         if len(selected)==0: return
         node = selected[0].internalPointer()
