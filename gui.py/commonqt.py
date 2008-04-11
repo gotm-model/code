@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.56 2008-03-11 10:16:00 jorn Exp $
+#$Id: commonqt.py,v 1.57 2008-04-11 09:13:38 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -328,6 +328,7 @@ class Wizard(QtGui.QDialog):
         self.switchPage(cls(self))
 
     def onNext(self,askoldpage=True):
+        self.disconnect(self.bnNext, QtCore.SIGNAL('clicked()'), self.onNext)
         if askoldpage:
             oldpage = self.currentpage
             if not oldpage.saveData(mustbevalid=True): return
@@ -339,8 +340,10 @@ class Wizard(QtGui.QDialog):
             newpage = cls(self)
             ready = (not newpage.doNotShow())
         self.switchPage(newpage)
+        self.connect(self.bnNext, QtCore.SIGNAL('clicked()'), self.onNext)
 
     def onBack(self):
+        self.disconnect(self.bnBack, QtCore.SIGNAL('clicked()'), self.onBack)
         oldpage = self.currentpage
         if not oldpage.saveData(mustbevalid=False): return
         ready = False
@@ -350,6 +353,7 @@ class Wizard(QtGui.QDialog):
             newpage = cls(self)
             ready = (not newpage.doNotShow())
         self.switchPage(newpage)
+        self.connect(self.bnBack, QtCore.SIGNAL('clicked()'), self.onBack)
 
     def onHome(self):
         oldpage = self.currentpage
