@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.33 2008-04-11 10:05:50 jorn Exp $
+#$Id: visualizer.py,v 1.34 2008-04-11 10:59:15 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -410,8 +410,10 @@ class PageVisualize(commonqt.WizardPage):
     def OnVarSelected(self,*args):
         print 'variable selection changed'
         selected = self.treeVariables.selectionModel().selectedIndexes()
+        print '%i nodes selected' % len(selected)
         if len(selected)==0: return
         node = selected[0].internalPointer()
+        print 'selected node: %s' % node
         if node.hasChildren(): return
         
         varname = node.getId()
@@ -428,6 +430,7 @@ class PageVisualize(commonqt.WizardPage):
             self.figurepanel.plot(varname,'result')
         
         self.figurepanel.figure.setUpdating(True)
+        print 'plot update completed'
         QtGui.QApplication.restoreOverrideCursor()
 
     def isComplete(self):
