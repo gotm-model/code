@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.42 2008-03-31 05:44:30 jorn Exp $
+#$Id: scenariobuilder.py,v 1.43 2008-04-11 14:03:20 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -53,6 +53,9 @@ class ScenarioWidget(QtGui.QWidget):
         layout.addWidget(self.radioImport2,   6,0,1,3)
         layout.addWidget(self.pathImport2,    7,1,1,2)
 
+        self.checkSkipToSimulation = QtGui.QCheckBox('Simulate the scenario without further configuration.',self)
+        layout.addWidget(self.checkSkipToSimulation,8,0,1,3)
+
         layout.setColumnStretch(2,1)
 
         layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
@@ -81,6 +84,7 @@ class ScenarioWidget(QtGui.QWidget):
         self.pathOpen.setVisible(checkedid==1)
         self.pathImport1.setVisible(checkedid==2)
         self.pathImport2.setVisible(checkedid==3)
+        self.checkSkipToSimulation.setVisible(checkedid!=0)
         self.completeStateChanged()
         self.setUpdatesEnabled(True)
 
@@ -157,6 +161,12 @@ class ScenarioWidget(QtGui.QWidget):
                 scen.changed = True
             
         return scen
+        
+    def setSkipToSimulation(self,value):
+        self.checkSkipToSimulation.setChecked(value)
+
+    def skipToSimulation(self):
+        return self.bngroup.checkedId()!=0 and self.checkSkipToSimulation.isChecked()
 
     def completeStateChanged(self):
         self.emit(QtCore.SIGNAL('onCompleteStateChanged()'))

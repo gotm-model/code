@@ -260,7 +260,7 @@ class PageChooseAction(commonqt.WizardPage):
         self.bngroup.addButton(self.radioScenario,0)
         self.bngroup.addButton(self.radioResult,1)
         self.connect(self.bngroup, QtCore.SIGNAL('buttonClicked(int)'), self.onSourceChange)
-
+        
         layout = QtGui.QGridLayout()
         layout.addWidget(self.label,0,0,1,2)
         layout.addWidget(self.radioScenario,1,0,1,2)
@@ -289,6 +289,9 @@ class PageChooseAction(commonqt.WizardPage):
             curscen = self.owner.getProperty('scenario')
             if curscen!=None and curscen.path!=None:
                 self.scenariowidget.setPath(curscen.path)
+
+        if self.owner.getProperty('skipscenariobuilder'):
+            self.scenariowidget.setSkipToSimulation(True)
 
         # Clear currently loaded scenario and result.
         self.owner.setProperty('result', None)
@@ -323,6 +326,7 @@ class PageChooseAction(commonqt.WizardPage):
                 dialog.close()
                 return False
             self.owner.setProperty('mainaction','scenario')
+            self.owner.setProperty('skipscenariobuilder',self.scenariowidget.skipToSimulation())
             self.owner.setProperty('scenario', newscen)
 
             # Add to list of most-recently-used scenarios
@@ -353,7 +357,10 @@ class PageChooseAction(commonqt.WizardPage):
 class ForkOnAction(commonqt.WizardFork):
     def getSequence(self):
         if self.wizard.getProperty('mainaction')=='scenario':
-            return commonqt.WizardSequence([scenariobuilder.SequenceEditScenario(),simulator.PageProgress])
+            if self.wizard.getProperty('skipscenariobuilder'):
+                return commonqt.WizardSequence([simulator.PageProgress])
+            else:
+                return commonqt.WizardSequence([scenariobuilder.SequenceEditScenario(),simulator.PageProgress])
         else:
             return commonqt.WizardSequence([commonqt.WizardDummyPage])
 def main(args):
