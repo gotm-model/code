@@ -170,7 +170,13 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
         """Called by the base implementation to draw the zooming rectangle.
         The code has been taken from NavigationToolbar2QT.
         """
-        height = self.canvas.figure.bbox.height()
+        if callable(self.canvas.figure.bbox.height):
+            # MatPlotLib <= 0.91.2
+            height = self.canvas.figure.bbox.height()
+        else:
+            # MatPlotLib > 0.91.2
+            height = self.canvas.figure.bbox.height
+            
         y1 = height - y1
         y0 = height - y0
         
@@ -215,8 +221,10 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
                     bb = a.bbox
                     if not bb.contains(x,y):
                         if callable(bb.xmin):
+                            # MatPlotLib <= 0.91.2
                             xmin,xmax,ymin,ymax = bb.xmin(),bb.xmax(),bb.ymin(),bb.ymax()
                         else:
+                            # MatPlotLib > 0.91.2
                             xmin,xmax,ymin,ymax = bb.xmin,  bb.xmax,  bb.ymin,  bb.ymax
                         if   x<xmin: x = xmin
                         elif x>xmax: x = xmax

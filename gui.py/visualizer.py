@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.30 2008-04-11 07:55:06 jorn Exp $
+#$Id: visualizer.py,v 1.31 2008-04-11 08:37:42 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -388,6 +388,8 @@ class PageVisualize(commonqt.WizardPage):
 
         self.treeVariables = xmlstore.gui_qt4.ExtendedTreeView(self)
         self.treeVariables.header().hide()
+        #print self.treeVariables.selectionModel()
+        #self.connect(self.treeVariables.selectionModel(), QtCore.SIGNAL('selectionChanged(const QItemSelection &, const QItemSelection &)'), self.OnVarSelected)
         self.connect(self.treeVariables, QtCore.SIGNAL('onSelectionChanged()'), self.OnVarSelected)
         self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Expanding)
         self.treeVariables.setMaximumWidth(250)
@@ -407,7 +409,7 @@ class PageVisualize(commonqt.WizardPage):
 
         self.figurepanel.figure.addDataSource('result',self.result)
 
-    def OnVarSelected(self):
+    def OnVarSelected(self,*args):
         selected = self.treeVariables.selectedIndexes()
         if len(selected)==0: return
         node = selected[0].internalPointer()
