@@ -281,24 +281,27 @@ class ProgressSlicer:
         self.prefix = ''
         self.currentweight = 1.
         
-    def nextStep(self,prefix='',weight=1.):
+    def nextStep(self,prefix='',weight=1.,nodetailedmessage=False):
         """Registers that the previous subprocess has completed, and a new
         subprocess will begin. The prefix is a string that will be used to
         prefix the progress messages of the upcoming subprocess when global
         progress messages are built. The weight equals the relative weight of
         subprocess about to start.
         """
+        assert not (prefix=='' and nodetailedmessage), 'If nodetailedmessage is set, the prefix must be specified.'
         self.step += self.currentweight
         if self.callback!=None: self.callback(float(self.step)/self.total,self.prefix)
         self.prefix = prefix
         self.currentweight = weight
+        self.nodetailedmessage = nodetailedmessage
         
     def onStepProgressed(self,progress,status):
         """Called by subprocesses when they have progressed.
         """
-        text = status
-        if self.prefix!='': text = self.prefix+' - '+text
-        self.callback((self.step+progress*self.currentweight)/self.total,text)
+        strings = []
+        if self.prefix!='':            strings.append(self.prefix)
+        if not self.nodetailedmessage: strings.append(status)
+        self.callback((self.step+progress*self.currentweight)/self.total,' - '.join(strings))
 
     def getStepCallback(self):
         """Returns the callback function that the subprocess should use for

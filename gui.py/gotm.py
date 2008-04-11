@@ -316,17 +316,35 @@ class PageChooseAction(commonqt.WizardPage):
     def saveData(self,mustbevalid):
         if not mustbevalid: return True
         checkedid = self.bngroup.checkedId()
-        dialog = commonqt.ProgressDialog(self,title='Please wait...',suppressstatus=True)
+        dialog = commonqt.ProgressDialog(self,title='Please wait')
         res = False
         if checkedid==0:
+            simulate = self.scenariowidget.skipToSimulation()
+            totweight = 1
+            if simulate: totweight+=1
+            progslicer = xmlstore.util.ProgressSlicer(dialog.onProgressed,totweight)
+
+            progslicer.nextStep('Loading scenario...',nodetailedmessage=True)
             try:
-                newscen = self.scenariowidget.getScenario(callback=dialog.onProgressed)
+                newscen = self.scenariowidget.getScenario(callback=progslicer.getStepCallback())
             except Exception,e:
                 QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 dialog.close()
                 return False
+
+            if simulate:
+                progslicer.nextStep('Validating scenario...',nodetailedmessage=True)
+                errors = newscen.validate(callback=progslicer.getStepCallback(),repair=1)
+                dialog.close()
+                if len(errors)>0:
+                    res = QtGui.QMessageBox.warning(self,'Scenario is incomplete','The scenario cannot be simulated because of the following problems:\n\n%s\n\nDo you want to open the scenario for editing instead?' % '\n'.join(errors),QtGui.QMessageBox.Yes|QtGui.QMessageBox.No,QtGui.QMessageBox.Yes)
+                    if res==QtGui.QMessageBox.No: return False
+                    simulate = False
+            else:
+                dialog.close()
+
             self.owner.setProperty('mainaction','scenario')
-            self.owner.setProperty('skipscenariobuilder',self.scenariowidget.skipToSimulation())
+            self.owner.setProperty('skipscenariobuilder',simulate)
             self.owner.setProperty('scenario', newscen)
 
             # Add to list of most-recently-used scenarios
@@ -335,6 +353,7 @@ class PageChooseAction(commonqt.WizardPage):
             
             res =  True
         if checkedid==1:
+            dialog.suppressstatus = True
             try:
                 newresult = self.resultwidget.getResult()
             except Exception,e:
@@ -351,7 +370,9 @@ class PageChooseAction(commonqt.WizardPage):
                 self.owner.settings.addUniqueValue('Paths/RecentResults','Path',newresult.path)
 
             res = True
-        dialog.close()
+
+            # Close progress dialog
+            dialog.close()
         return res
 
 class ForkOnAction(commonqt.WizardFork):
