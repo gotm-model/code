@@ -349,7 +349,7 @@ class FigurePanel(QtGui.QWidget):
         current axes bounds have been customized by the user.
         """
         defaultrange = True
-        axes = self.figure.properties['Axes']
+        axes = self.figure['Axes']
         if axes!=None:
             xaxis = axes.getChildById('Axis','x')
             yaxis = axes.getChildById('Axis','y')
@@ -427,7 +427,7 @@ class FigurePanel(QtGui.QWidget):
         a = self.canvas.figure.gca()
         Xmin,Xmax=a.get_xlim()
         Ymin,Ymax=a.get_ylim()
-        axes = self.figure.properties['Axes']
+        axes = self.figure['Axes']
         xaxis = axes.getChildById('Axis','x')
         yaxis = axes.getChildById('Axis','y')
         oldupdating = self.figure.setUpdating(False)
@@ -449,7 +449,7 @@ class FigurePanel(QtGui.QWidget):
         """Called when the user clicks the "Reset view" button.
         """
         if self.buttonZoom.isChecked(): self.buttonZoom.click()
-        axes = self.figure.properties['Axes']
+        axes = self.figure['Axes']
         xaxis = axes.getChildByNumber('Axis',0)
         yaxis = axes.getChildByNumber('Axis',1)
         oldupdating = self.figure.setUpdating(False)
@@ -684,7 +684,7 @@ class FigureDialog(QtGui.QDialog):
             self.connect(self.buttonClose, QtCore.SIGNAL('clicked()'), self.accept)
             self.panel.layoutButtons.addWidget(self.buttonClose)
 
-        title = self.panel.figure.properties['Title'].getValue(usedefault=True)
+        title = self.panel.figure['Title'].getValue(usedefault=True)
         if title==None: title = 'Figure'
         self.setWindowTitle(title)
 
@@ -966,12 +966,12 @@ class LinkedFilePlotDialog(QtGui.QDialog):
                     if section==-1:
                         val = self.datastore.getDimensionNames()[0]
                     else:
-                        val = self.datastore.getVariableNames()[section]
+                        val = self.datastore.keys()[section]
                 if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type==0:
                     if section==0:
                         val = 'depth'
                     else:
-                        val = self.datastore.getVariableNames()[section-1]
+                        val = self.datastore.keys()[section-1]
                 return QtCore.QVariant(val)
             return QtCore.QVariant()
     
@@ -1086,7 +1086,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         lolist.addWidget(self.label)
         self.list = QtGui.QComboBox(self)
         namedict = self.linkedfile.getVariableLongNames()
-        for name in self.linkedfile.getVariableNames():
+        for name in self.linkedfile.keys():
             self.list.addItem(namedict[name],QtCore.QVariant(name))
         self.list.setEnabled(self.list.count()>0)
         

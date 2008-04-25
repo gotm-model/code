@@ -255,7 +255,7 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
         #print '%s - using cached validation result.' % self.nodeid
         return valid
     
-    def getVariableNames(self):
+    def keys(self):
         """Returns the names of all variables in the store.
         """
         return [data[0] for data in self.vardata]
@@ -265,13 +265,13 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
         """
         return dict([(data[0],data[1]) for data in self.vardata])
 
-    def getVariable(self,varname):
+    def __getitem__(self,varname):
         """Returns the specified variable as LinkedFileVariable object.
         """
         for (index,data) in enumerate(self.vardata):
             if data[0]==varname:
                 return self.variableclass(self,data,index)
-        assert False, 'Variable with name "%s" not found in store.' % varname
+        raise KeyError()
         
     def saveToFile(self,path,callback=None):
         """Saves the current data to file."""
@@ -887,7 +887,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         self.nc = getNetCDFFile(self.datafile)
         return self.nc
 
-    def getVariableNames(self):
+    def keys(self):
         nc = self.getcdf()
 
         # Get names of NetCDF variables
@@ -899,20 +899,20 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         return varNames
 
     def getVariableLongNames(self):
-      varnames = self.getVariableNames()
+      varnames = self.keys()
       nc = self.getcdf()
       vardict = {}
       for varname in varnames:
           vardict[varname] = nc.variables[varname].long_name
       return vardict
 
-    def getVariable(self,varname,check=True):
+    def __getitem__(self,varname):
         varname = str(varname)
-        if check:
-            nc = self.getcdf()
-            vars = nc.variables
-            if not (varname in vars): return None
+        if varname not in self.getcdf().variables: raise KeyError()
         return self.NetCDFVariable(self,varname)
+        
+    def __contains__(self,varname):
+        return str(varname) in self.getcdf().variables
         
     def getCoordinates(self,dimname):
         if dimname not in self.cachedcoords:

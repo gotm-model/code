@@ -1,4 +1,4 @@
-import math,os.path,xml.dom.minidom
+import math,os.path,xml.dom.minidom,UserDict
 
 import matplotlib
 import matplotlib.colors
@@ -20,7 +20,7 @@ colormaps = {0:'jet',
              10:'copper',
              11:'pink'}
 
-class VariableStore:
+class VariableStore(UserDict.DictMixin):
     """Abstract base class for objects containing one or more variables that
     can be plotted. It contains functionality for retrieving variable
     short/long names, information on dimensions, and a function that returns
@@ -29,8 +29,13 @@ class VariableStore:
 
     def __init__(self):
         pass
-
-    def getVariableNames(self):
+        
+    def __getitem__(self,varname):
+        """Returns a Variable object for the given short variable name.
+        """
+        raise KeyError()
+        
+    def keys(self):
         """Returns a list of short names for all variables present in the store.
         """
         return []
@@ -40,12 +45,7 @@ class VariableStore:
         variable names as values. This base implementation should be overridden
         by derived classes if it can be done more efficiently.
         """
-        return dict([(name,self.getVariable(name).getLongName()) for name in self.getVariableNames()])
-
-    def getVariable(self,varname):
-        """Returns a Variable object for the given short variable name.
-        """
-        return None
+        return dict([(name,self[name].getLongName()) for name in self.keys()])
         
     def getDimensionInfo(self,dimname):
         """Returns the a dictionary with properties of the specified dimension.
@@ -311,8 +311,8 @@ class MergedVariableStore(VariableStore):
         self.mergedimid = mergedimid
         self.mergedimname = mergedimname
 
-    def getVariableNames(self):
-        return self.stores[0].getVariableNames()
+    def keys(self):
+        return self.stores[0].keys()
 
     def getVariableLongNames(self):
         return self.stores[0].getVariableLongNames()
@@ -324,14 +324,15 @@ class MergedVariableStore(VariableStore):
             return info
         return self.stores[0].getDimensionInfo(dimname)
 
-    def getVariable(self,varname):
-        vars = []
+    def __getitem__(self,varname):
+        vars,missing = [],[]
         for store in self.stores:
-            var = store.getVariable(varname)
-            if var==None:
-                print 'Store "%s" does not contain variable "%s".' % (store,varname)
-                return None
-            vars.append(var)
+            if varname in store:
+                vars.append(store[varname])
+            else:
+                missing.append(store)
+        if len(vars)==0: raise KeyError()
+        assert len(missing)==0, 'The following stores do not contain variable "%s": %s.' % (varname,', '.join(missing))
         return MergedVariableStore.MergedVariable(self,vars,self.mergedimid)
 
 class CustomVariableStore(VariableStore):
@@ -342,24 +343,30 @@ class CustomVariableStore(VariableStore):
 
     def __init__(self):
         VariableStore.__init__(self)
-        self.vars = []
+        self.vars = {}
         
-    def addVariable(self,var):
-        self.vars.append(var)
-
-    def getVariableNames(self):
+    def keys(self):
         return [v.getName() for v in self.vars]
 
+    def __getitem__(self,varname):
+        if varname not in self.vars: raise KeyError()
+        return self.vars[varname]
+
+    def __contains__(self,varname):
+        return varname in self.vars
+
+    def __setitem__(self,varname,value):
+        self.vars[varname] = value
+
+    def __delitem__(self,varname):
+        if varname not in self.vars: raise KeyError()
+        del self.vars[varname]
+        
+    def addVariable(self,var):
+        self.__setitem__(var.getName(),var)
+
     def getVariableLongNames(self):
-        return [v.getLongName() for v in self.vars]
-
-    def getDimensionInfo(self,dimname):
-        return VariableStore.getDimensionInfo(self,dimname)
-
-    def getVariable(self,varname):
-        for v in self.vars:
-            if v.getName()==varname: return v
-        return None
+        return [v.getLongName() for v in self.vars.values()]
         
 class CustomDateFormatter(matplotlib.dates.DateFormatter):
     """Extends the matplotlib.dates.DateFormatter class, adding support
@@ -716,6 +723,9 @@ class Figure(xmlstore.util.referencedobject):
         
         self.callbacks = {'completeStateChange':[]}
         
+    def __getitem__(self,key):
+        return self.properties[key]
+        
     def unlink(self):
         """Cleans up the figure, releasing the embedded TypedStore objects.
         """
@@ -928,8 +938,8 @@ class Figure(xmlstore.util.referencedobject):
                 
             # Get variable object.
             varstore = self.sources[varsource]
-            var = varstore.getVariable(varname)
-            assert var!=None, 'Source "%s" does not contain variable with name "%s".' % (varsource,varname)
+            assert varname in varstore, 'Source "%s" does not contain variable with name "%s".' % (varsource,varname)
+            var = varstore[varname]
             longname = var.getLongName()
             
             # Create default series information

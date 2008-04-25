@@ -187,46 +187,20 @@ class Result(xmlplot.data.NetCDFStore):
         else:
             self.path = None
 
-    def getVariableNames(self,plotableonly=True):
-        names = xmlplot.data.NetCDFStore.getVariableNames(self)
-        if plotableonly:
-            for i in range(len(names)-1,-1,-1):
-                dimnames = self.nc.variables[names[i]].dimensions
-                dimcount = len(dimnames)
-                good = False
-                if   dimcount==3:
-                    if dimnames==('time','lat','lon'):
-                        good = True
-                elif dimcount==4:
-                    if (dimnames==('time','z','lat','lon')) | (dimnames==('time','z1','lat','lon')):
-                        good = True
-                if not good: del names[i]
+    def keys(self):
+        names = xmlplot.data.NetCDFStore.keys(self)
+        for i in range(len(names)-1,-1,-1):
+            dimnames = self.nc.variables[names[i]].dimensions
+            dimcount = len(dimnames)
+            good = False
+            if   dimcount==3:
+                if dimnames==('time','lat','lon'):
+                    good = True
+            elif dimcount==4:
+                if (dimnames==('time','z','lat','lon')) | (dimnames==('time','z1','lat','lon')):
+                    good = True
+            if not good: del names[i]
         return names
-            
-        # Get names of NetCDF variables
-        try:
-          vars = nc.variables
-          if plotableonly:
-              # Only take variables with 3 or 4 dimensions
-              varNames = []
-              for v in vars.keys():
-                  dimnames = vars[v].dimensions
-                  dimcount = len(dimnames)
-                  if   dimcount==3:
-                      if dimnames==('time','lat','lon'):
-                          varNames += [v]
-                  elif dimcount==4:
-                      if (dimnames==('time','z','lat','lon')) | (dimnames==('time','z1','lat','lon')):
-                          varNames += [v]
-          else:
-              # Take all variables
-              varNames = vars.keys()
-
-        #pycdf except pycdf.CDFError, msg:
-        except Exception, e:
-            raise Exception('CDFError: '+str(e))
-
-        return varNames
 
     def getVariableTree(self,path):
         otherstores = {}

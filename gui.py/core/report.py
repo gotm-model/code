@@ -89,7 +89,7 @@ class Report(xmlstore.util.referencedobject):
             value = node.getValue(usedefault=True)
             if value!=None and value.validate():
                 inputdata.append((node,value))
-                steps += 1+len(value.getVariableNames())
+                steps += 1+len(value.keys())
 
         # Create output directory if it does not exist yet.
         if not os.path.isdir(outputpath): os.mkdir(outputpath)
@@ -176,18 +176,18 @@ class Report(xmlstore.util.referencedobject):
                 tds = []
                 fig.addDataSource('input',store)
                 vardict = store.getVariableLongNames()
-                for varid in store.getVariableNames():
+                for varid in store.keys():
                     longname = vardict[varid]
                     if callback!=None: callback(istep/steps,'Creating figure for %s...' % longname)
 
                     fig.setUpdating(False)
                     fig.clearProperties()
                     fig.addVariable(varid)
-                    fig.properties['FontScaling'].setValue(fontscaling)
+                    fig['FontScaling'].setValue(fontscaling)
                     fig.setUpdating(True)
                     
                     fig.setUpdating(False)
-                    for axisnode in fig.properties['Axes'].getLocationMultiple(['Axis']):
+                    for axisnode in fig['Axes'].getLocationMultiple(['Axis']):
                         if axisnode['IsTimeAxis'].getValue(usedefault=True):
                             axisnode['MinimumTime'].setValue(mintime)
                             axisnode['MaximumTime'].setValue(maxtime)
@@ -232,14 +232,14 @@ class Report(xmlstore.util.referencedobject):
             for varpath in plotvariables:
                 varid = varpath.split('/')[-1]
                 
-                longname = result.getVariable(varid).getLongName()
+                longname = result[varid].getLongName()
                 if callback!=None: callback(istep/steps,'Creating figure for %s...' % longname)
                 
                 fig.setUpdating(False)
                 if not result.getFigure('result/'+varpath,fig.properties):
                     fig.clearProperties()
                     fig.addVariable(varid)
-                fig.properties['FontScaling'].setValue(fontscaling)
+                fig['FontScaling'].setValue(fontscaling)
                 fig.setUpdating(True)
                 filename = 'out_'+varid+'.png'
                 outputfile = os.path.join(outputpath,filename)
