@@ -1,10 +1,10 @@
-#$Id: common.py,v 1.4 2008-03-09 11:30:38 jorn Exp $
+#$Id: common.py,v 1.5 2008-04-25 06:55:13 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path
 
 # Import additional third party modules
-import matplotlib.dates,matplotlib.numerix
+import matplotlib.dates,numpy
 
 import xmlstore.xmlstore
 
@@ -88,7 +88,7 @@ def interp1(x,y,X):
     y = y.transpose()
     
     # Create array to hold interpolated values
-    Y = matplotlib.numerix.empty(y.shape[0:-1]+(X.shape[0],),matplotlib.numerix.typecode(y))
+    Y = numpy.empty(y.shape[0:-1]+(X.shape[0],),y.dtype)
     
     # Find indices of interpolated X in original x.
     iX = x.searchsorted(X)
@@ -116,13 +116,13 @@ def interp1(x,y,X):
 def getCenters(data,addends=False):
     delta = (data[1:]-data[:-1])/2
     newdata = data[:-1]+delta
-    if addends: newdata = matplotlib.numerix.concatenate(([data[0]-delta[0]],newdata,[data[-1]+delta[-1]]),0)
+    if addends: newdata = numpy.concatenate(([data[0]-delta[0]],newdata,[data[-1]+delta[-1]]),0)
     return newdata
 
 def replicateCoordinates(coords,data,idim):
     assert coords.ndim==1, 'Coordinate array must be one-dimensional.'
     assert coords.shape[0]==data.shape[idim], 'Length of coordinate vector (%i) and specified dimension in data array (%i) must match.' % (coords.shape[0],data.shape[idim])
-    newcoords = matplotlib.numerix.empty(data.shape,matplotlib.numerix.typecode(coords))
+    newcoords = numpy.empty(data.shape,coords.dtype)
     tp = range(newcoords.ndim)
     tp.append(tp.pop(idim))
     newcoords = newcoords.transpose(tp)
@@ -139,7 +139,7 @@ def argtake(data,ind,axis):
         if i==axis:
             allind.append(ind)
         else:
-            curind = matplotlib.numerix.empty(ind.shape,matplotlib.numerix.typecode(ind))
+            curind = numpy.empty(ind.shape,ind.dtype)
             idim = i
             if reduce and i>axis: idim-=1
             curind.swapaxes(idim,-1)[:] = range(data.shape[i])
@@ -151,7 +151,7 @@ def getPercentile(data,cumweights,value,axis):
     
     # First get indices where cumulative distribution >= critical value
     cumweights = cumweights.copy()
-    matplotlib.numerix.putmask(cumweights,cumweights<value,2.)
+    numpy.putmask(cumweights,cumweights<value,2.)
     
     # Make sure that the cumulative distribution at the highest index still equals one.
     ind = [slice(0,cumweights.shape[i]) for i in range(cumweights.ndim)]
@@ -162,7 +162,7 @@ def getPercentile(data,cumweights,value,axis):
     
     # If the high index if the lowest possible (0), increase it with one
     # because the lower index will be one lower.
-    matplotlib.numerix.putmask(highindices,highindices==0,1)
+    numpy.putmask(highindices,highindices==0,1)
     
     # Now get indices where cumulative distribution < critical value
     lowindices = highindices-1

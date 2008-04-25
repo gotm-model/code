@@ -4,7 +4,6 @@ import common,result,gotm
 
 gotmversion = gotm.gui_util.getversion().rstrip()
 gotmscenarioversion = 'gotm-%s' % gotmversion
-print 'GOTM library reports version %s; will use scenario template %s.xml.' % (gotmversion,gotmscenarioversion)
 
 verbose = False
 

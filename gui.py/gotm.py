@@ -36,7 +36,7 @@ class GOTMWizard(commonqt.Wizard):
         def set(self,value):
             self.dictionary['datasourcedir_value'] = value
     
-    def __init__(self,parent=None,sequence=None,closebutton=False):
+    def __init__(self,parent=None,sequence=None,closebutton=False,showoptions=False):
         """Supplies the logo path to the Wizard, and adds a "Tools" button.
         """
         commonqt.Wizard.__init__(self,parent,sequence,closebutton,headerlogo='./logo.png')
@@ -51,6 +51,11 @@ class GOTMWizard(commonqt.Wizard):
         self.actSaveResult     = self.menuTools.addAction('Save result as...',self.onSaveResultAs)
         self.actExportResult   = self.menuTools.addAction('Export result to NetCDF...',self.onExportResult)
         
+        if showoptions:
+            self.actShowSettings = self.menuTools.addAction('Options...',self.onShowSettings)
+        else:
+            self.actShowSettings = None
+            
         self.bnTools.setMenu(self.menuTools)
         
         self.setProperty('datasourcedir',self.DataSourceDir(self.shared))
@@ -62,11 +67,15 @@ class GOTMWizard(commonqt.Wizard):
         if propertyname=='scenario' or propertyname=='result':
             scen = self.getProperty('scenario')
             res  = self.getProperty('result')
-            self.bnTools.setEnabled(scen!=None or res!=None)
+            self.bnTools.setEnabled(scen!=None or res!=None or self.actShowSettings!=None)
             self.actSaveScenario.setVisible(scen!=None)
             self.actExportScenario.setVisible(scen!=None)
             self.actSaveResult.setVisible(res!=None)
             self.actExportResult.setVisible(res!=None)
+
+    def onShowSettings(self):
+        dialog = xmlstore.gui_qt4.PropertyEditorDialog(self,self.settings,'Options',flags=QtCore.Qt.Tool)
+        dialog.show()
             
     def onSaveScenarioAs(self):
         scen = self.getProperty('scenario')
@@ -328,8 +337,8 @@ class PageChooseAction(commonqt.WizardPage):
             try:
                 newscen = self.scenariowidget.getScenario(callback=progslicer.getStepCallback())
             except Exception,e:
-                QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 dialog.close()
+                QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
 
             if simulate:
@@ -357,8 +366,8 @@ class PageChooseAction(commonqt.WizardPage):
             try:
                 newresult = self.resultwidget.getResult()
             except Exception,e:
-                QtGui.QMessageBox.critical(self, 'Unable to load result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 dialog.close()
+                QtGui.QMessageBox.critical(self, 'Unable to load result', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
             self.owner.setProperty('mainaction','result')
             self.owner.setProperty('result', newresult)
@@ -384,11 +393,12 @@ class ForkOnAction(commonqt.WizardFork):
                 return commonqt.WizardSequence([scenariobuilder.SequenceEditScenario(),simulator.PageProgress])
         else:
             return commonqt.WizardSequence([commonqt.WizardDummyPage])
-def main(args):
-    # Debug info
-    print 'Python version: %s' % unicode(sys.version_info)
-    print 'PyQt4 version: %s' % QtCore.PYQT_VERSION_STR
-    print 'Qt version: %s' % QtCore.qVersion()
+def main(options,args):
+    if options.verbose:
+        print 'Python version: %s' % unicode(sys.version_info)
+        print 'PyQt4 version: %s' % QtCore.PYQT_VERSION_STR
+        print 'Qt version: %s' % QtCore.qVersion()
+        core.common.verbose = True
 	
     # Create the application and enter the main message loop.
     createQApp = QtGui.QApplication.startingUp()
@@ -398,7 +408,7 @@ def main(args):
         app = QtGui.qApp
 
     # Create wizard dialog
-    wiz = GOTMWizard(closebutton = xmlstore.gui_qt4.needCloseButton())
+    wiz = GOTMWizard(closebutton = xmlstore.gui_qt4.needCloseButton(), showoptions=options.showoptions)
     seq = commonqt.WizardSequence([PageIntroduction,PageChooseAction,ForkOnAction(wiz),visualizer.PageVisualize,visualizer.PageReportGenerator,visualizer.PageSave,visualizer.PageFinal])
     wiz.setSequence(seq)
     wiz.setWindowTitle('GOTM-GUI')
@@ -480,19 +490,21 @@ def main(args):
 if (__name__=='__main__'):
     # Parse command line options for profiling
     parser = optparse.OptionParser()
-    parser.add_option('-p','--profile',action='store_true')
-    parser.set_defaults(profile=False)
+    parser.add_option('--showoptions',action='store_true',help='provides access to persistent program settings via the Tools menu.')
+    parser.add_option('-v','--verbose',action='store_true',help='writes debug strings to standard output.')
+    parser.add_option('-p','--profile',action='store_true',help='activates profiling.')
+    parser.set_defaults(profile=False,showoptions=False,verbose=False)
     (options, args) = parser.parse_args()
     
     if options.profile:
         # We will do profiling
         import cProfile,pstats
-        cProfile.run('main(args)', 'gotmprof')
+        cProfile.run('main(options,args)', 'gotmprof')
         p = pstats.Stats('gotmprof')
         p.strip_dirs().sort_stats('cumulative').print_stats()
     else:
         # Just enter the main loop
-        ret = main(args)
+        ret = main(options,args)
 
 # Reset previous working directory (only if we had to change it)
 os.chdir(os.path.dirname(oldworkingdir))

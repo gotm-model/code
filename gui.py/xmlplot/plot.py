@@ -1,7 +1,7 @@
 import math,os.path,xml.dom.minidom
 
 import matplotlib
-import matplotlib.numerix,matplotlib.numerix.ma,matplotlib.colors
+import matplotlib.colors
 import matplotlib.dates
 import numpy
 
@@ -300,7 +300,7 @@ class MergedVariableStore(VariableStore):
                 if first:
                     slice.coords[1:] = curslice.coords
                     slice.coords_stag[1:] = curslice.coords_stag
-                    slice.data = matplotlib.numerix.empty(tuple([ilast-ifirst+1]+list(curslice.data.shape)),matplotlib.numerix.typecode(curslice.data))
+                    slice.data = numpy.empty(tuple([ilast-ifirst+1]+list(curslice.data.shape)),curslice.data.dtype)
                     first = False
                 slice.data[ivar,...] = curslice.data
             return slice
@@ -619,13 +619,13 @@ class VariableFlat(VariableReduceDimension):
         targetcount = sourceslice.coords[self.itargetdim].shape[0]
 
         # Create new coordinates for dimension that absorbs flattened values.
-        newtargetcoords = matplotlib.numerix.empty((targetcount*sourcecount,),matplotlib.numerix.typecode(sourceslice.coords[self.itargetdim]))
+        newtargetcoords = numpy.empty((targetcount*sourcecount,),sourceslice.coords[self.itargetdim].dtype)
         
         # Create a new value array.
         newdatashape = list(sourceslice.data.shape)
         newdatashape[self.itargetdim] *= sourcecount
         del newdatashape[self.idimension]
-        newdata = matplotlib.numerix.empty(newdatashape,matplotlib.numerix.typecode(sourceslice.data))
+        newdata = numpy.empty(newdatashape,sourceslice.data.dtype)
             
         for i in range(0,targetcount):
             newtargetcoords[i*sourcecount:(i+1)*sourcecount] = sourceslice.coords[self.itargetdim][i]
@@ -993,11 +993,13 @@ class Figure(xmlstore.util.referencedobject):
             # Store singleton dimensions as fixed extra coordinates.
             varslice = varslice.squeeze()
             
-            # Mask infinite/nan values, if any
-            invalid = numpy.logical_not(numpy.isfinite(varslice.data))
-            if invalid.any():
-                print 'WARNING: masking %i invalid values (inf or nan) out of %i.' % (invalid.sum(),invalid.size)
-                varslice.data = matplotlib.numerix.ma.array(varslice.data,mask=invalid)
+            # Mask infinite/nan values, if any - only do this if the array is not masked
+            # already, because it seems isfinite is not supported on mased arrays.
+            if not isinstance(varslice.data,numpy.ma.array):
+                invalid = numpy.logical_not(numpy.isfinite(varslice.data))
+                if invalid.any():
+                    print 'WARNING: masking %i invalid values (inf or nan) out of %i.' % (invalid.sum(),invalid.size)
+                    varslice.data = numpy.ma.array(varslice.data,mask=invalid)
 
             defaultseriesnode['DimensionCount'].setValue(varslice.ndim)
 
@@ -1079,7 +1081,7 @@ class Figure(xmlstore.util.referencedobject):
                         xerr = None
                         yerr = numpy.vstack((varslice.data-lbound,ubound-varslice.data))
                         if switchaxes: xerr,yerr = yerr,xerr
-                        (line,errbars) = axes.errorbar(X,Y,fmt=None,xerr=xerr,yerr=yerr,ecolor=plotargs['color'],zorder=zorder)
+                        axes.errorbar(X,Y,fmt=None,xerr=xerr,yerr=yerr,ecolor=plotargs['color'],zorder=zorder)
                     elif errorbartype==2:
                         # Plot shaded confidence area (filled polygon)
                         errX = numpy.hstack((varslice.coords[0],varslice.coords[0][::-1]))
@@ -1202,7 +1204,7 @@ class Figure(xmlstore.util.referencedobject):
                 if pc!=None:
                     # Create colorbar
                     assert cb==None, 'Currently only one object that needs a colorbar is supported per figure.'
-                    if isinstance(Z,matplotlib.numerix.ma.MaskedArray):
+                    if isinstance(Z,numpy.ma.MaskedArray):
                         flatZ = Z.compressed()
                     else:
                         flatZ = Z.ravel()

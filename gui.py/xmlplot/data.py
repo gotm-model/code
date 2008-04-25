@@ -2,7 +2,7 @@
 import os, sys, re, datetime, shutil, StringIO
 
 # Import additional third party modules
-import matplotlib.numerix, numpy
+import numpy
 
 # Import our custom modules
 import common, xmlstore.util, xmlstore.xmlstore, plot
@@ -103,10 +103,10 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
         
     # Dictionary linking our data type names to MatPlotLib data types.
     # Note that times are stored as numeric values (via matplotlib.dates.date2num)
-    mpldatatypes = {'datetime':matplotlib.numerix.Float64,
-                    'float':   matplotlib.numerix.Float32,
-                    'float32': matplotlib.numerix.Float32,
-                    'float64': matplotlib.numerix.Float64}
+    mpldatatypes = {'datetime':numpy.float64,
+                    'float':   numpy.float32,
+                    'float32': numpy.float32,
+                    'float64': numpy.float64}
 
     def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=(),variables=[],datatype='float'):
     
@@ -337,8 +337,8 @@ class LinkedMatrix(LinkedFileVariableStore):
         self.data = []
         if len(self.dimensions)==1:
             dimdatatype = self.dimensions[self.dimensionorder[0]]['datatype']
-            self.data.append(matplotlib.numerix.empty((0,),self.mpldatatypes[dimdatatype]))
-        self.data.append(matplotlib.numerix.empty((0,len(self.vardata)),self.mpldatatypes[self.datatype]))
+            self.data.append(numpy.empty((0,),self.mpldatatypes[dimdatatype]))
+        self.data.append(numpy.empty((0,len(self.vardata)),self.mpldatatypes[self.datatype]))
         LinkedFileVariableStore.clear(self,clearfile=clearfile)
         
     def calculateDimensionRange(self,dimname):
@@ -381,7 +381,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         obscount = int(line)
 
         # Allocate arrays for storage of coordinates and variable values
-        values = matplotlib.numerix.empty((obscount,varcount),self.mpldatatypes[self.datatype])
+        values = numpy.empty((obscount,varcount),self.mpldatatypes[self.datatype])
         if dimcount==1:
             # One coordinate dimension present; allocate an array for its values.
             dimtype = self.dimensions[self.dimensionorder[0]]['datatype']
@@ -389,7 +389,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             if dimisdate:
                 datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
                 prevdate = None
-            dimvalues = matplotlib.numerix.empty((obscount,),self.mpldatatypes[dimtype])
+            dimvalues = numpy.empty((obscount,),self.mpldatatypes[dimtype])
 
         for irow in range(values.shape[0]):
             # Read a line (stop if end-of-file was reached)
@@ -476,8 +476,8 @@ class LinkedMatrix(LinkedFileVariableStore):
             # Calculate position in current memory slab, create new slab if needed.
             ipos = iline%buffersize
             if ipos==0:
-                times.append(matplotlib.numerix.empty((buffersize,),         self.mpldatatypes[dimdatatype]))
-                values.append(matplotlib.numerix.empty((buffersize,varcount),self.mpldatatypes[self.datatype]))
+                times.append(numpy.empty((buffersize,),         self.mpldatatypes[dimdatatype]))
+                values.append(numpy.empty((buffersize,varcount),self.mpldatatypes[self.datatype]))
 
             # Increment current line number
             iline += 1
@@ -511,8 +511,8 @@ class LinkedMatrix(LinkedFileVariableStore):
         values[-1] = values[-1][0:iline%buffersize,:]
         
         # Concatenate memory slab.
-        times = matplotlib.numerix.concatenate(times,axis=0)
-        values = matplotlib.numerix.concatenate(values,axis=0)
+        times = numpy.concatenate(times,axis=0)
+        values = numpy.concatenate(values,axis=0)
             
         # Close data file
         f.close()
@@ -577,7 +577,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         if cleardata: self.griddeddata = None
 
     def clear(self,clearfile=True):
-        self.data = (matplotlib.numerix.empty((0,)),[],[])
+        self.data = (numpy.empty((0,)),[],[])
         LinkedFileVariableStore.clear(self,clearfile=clearfile)
 
     def dataChanged(self,clearfile=True):
@@ -634,12 +634,12 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             uniquedepths.sort()
             if len(uniquedepths)<200:
                 depthdatatype = self.dimensions[self.dimensionorder[1]]['datatype']
-                depthgrid = matplotlib.numerix.array(uniquedepths,self.mpldatatypes[depthdatatype])
+                depthgrid = numpy.array(uniquedepths,self.mpldatatypes[depthdatatype])
             else:
                 depthgrid = numpy.linspace(uniquedepths[0],uniquedepths[-1],200)
                 
             # Grid observed profiles to depth grid.
-            griddedvalues = matplotlib.numerix.empty((times.shape[0],depthgrid.shape[0],varcount),self.mpldatatypes[self.datatype])
+            griddedvalues = numpy.empty((times.shape[0],depthgrid.shape[0],varcount),self.mpldatatypes[self.datatype])
             for it in range(len(times)):
                 griddedvalues[it,:,:] = common.interp1(depths[it],values[it],depthgrid)
                 if callback!=None and (it+1)%20==0:
@@ -688,8 +688,8 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
 
             # Create arrays that will contains depths and observed values.
             depthdatatype = self.dimensions[self.dimensionorder[1]]['datatype']
-            curdepths = matplotlib.numerix.empty((depthcount,),self.mpldatatypes[depthdatatype])
-            curvalues = matplotlib.numerix.empty((depthcount,varcount),self.mpldatatypes[self.datatype])
+            curdepths = numpy.empty((depthcount,),self.mpldatatypes[depthdatatype])
+            curvalues = numpy.empty((depthcount,varcount),self.mpldatatypes[self.datatype])
             
             # Depths can be increasing (updown==1) or decreasing (updown!=1)
             if updown==1:
@@ -740,7 +740,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                 
         # Convert sequence with times to numpy array.
         timedatatype = self.dimensions[self.dimensionorder[0]]['datatype']
-        times = matplotlib.numerix.array(times,self.mpldatatypes[timedatatype])
+        times = numpy.array(times,self.mpldatatypes[timedatatype])
         
         # Close data file
         f.close()
@@ -815,13 +815,13 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
 
           slices = tuple([slice(b[0],b[1]+1) for b in boundindices])
           try:
-            dat = matplotlib.numerix.asarray(v[slices])
+            dat = numpy.asarray(v[slices])
           except Exception, e:
             raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
 
         # Process COARDS variable attributes.
           if hasattr(v,'missing_value'):
-            dat = matplotlib.numerix.ma.masked_array(dat,dat==v.missing_value)
+            dat = numpy.ma.array(dat,mask=dat==v.missing_value)
           if hasattr(v,'scale_factor'):
             dat *= v.scale_factor
           if hasattr(v,'add_offset'):
@@ -917,7 +917,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
     def getCoordinates(self,dimname):
         if dimname not in self.cachedcoords:
             nc = self.getcdf()
-            coords = matplotlib.numerix.asarray(nc.variables[dimname][:])
+            coords = numpy.asarray(nc.variables[dimname][:])
             
             if 0 in coords.shape:
                 coords = None
@@ -929,9 +929,9 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
                 if istimedim:
                     timeunit,timeref = self.getTimeReference(dimname)
                     timeref = common.date2num(timeref)
-                    coords = timeref+timeunit*matplotlib.numerix.asarray(coords,matplotlib.numerix.Float64)
+                    coords = timeref+timeunit*numpy.asarray(coords,numpy.float64)
                 
-                coords_stag = matplotlib.numerix.zeros((coords.shape[0]+1,),matplotlib.numerix.typecode(coords))
+                coords_stag = numpy.zeros((coords.shape[0]+1,),coords.dtype)
                 if coords.shape[0]==1:
                     # Only one coordinate provided; use default step of one.
                     delta = 1.
@@ -961,11 +961,11 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             nc = self.getcdf()
 
             # Get layer heights
-            h = matplotlib.numerix.asarray(nc.variables['h'][:,:,0,0])
+            h = numpy.asarray(nc.variables['h'][:,:,0,0])
             
             # Get depths of interfaces
             z1 = h.cumsum(1)
-            z1 = matplotlib.numerix.concatenate((matplotlib.numerix.zeros((z1.shape[0],1),matplotlib.numerix.typecode(z1)),z1),1)
+            z1 = numpy.concatenate((numpy.zeros((z1.shape[0],1),z1.dtype),z1),1)
             bottomdepth = z1[0,-1]-nc.variables['zeta'][0,0,0]
             z1 -= bottomdepth
 
@@ -973,11 +973,11 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             z = z1[:,1:z1.shape[1]]-0.5*h
 
             # Interpolate in depth to create staggered grid
-            z1_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z1,(0,),0),z1,matplotlib.numerix.take(z1,(-1,),0)),0)
+            z1_med = numpy.concatenate((numpy.take(z1,(0,),0),z1,numpy.take(z1,(-1,),0)),0)
             z_stag = 0.5 * (z1_med[0:z1_med.shape[0]-1,:] + z1_med[1:z1_med.shape[0],:])
             
-            z_med = matplotlib.numerix.concatenate((z,matplotlib.numerix.take(z1,(-1,),1)),1)
-            z_med = matplotlib.numerix.concatenate((matplotlib.numerix.take(z_med,(0,),0),z_med,matplotlib.numerix.take(z_med,(-1,),0)),0)
+            z_med = numpy.concatenate((z,numpy.take(z1,(-1,),1)),1)
+            z_med = numpy.concatenate((numpy.take(z_med,(0,),0),z_med,numpy.take(z_med,(-1,),0)),0)
             z1_stag = 0.5 * (z_med[0:z_med.shape[0]-1,:] + z_med[1:z_med.shape[0],:])
             
             z.shape = list(z.shape)+[1,1]

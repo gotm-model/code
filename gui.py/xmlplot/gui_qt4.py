@@ -924,8 +924,8 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             newrowindex = self.datamatrix.shape[0]
             self.beginInsertRows(QtCore.QModelIndex(),newrowindex,newrowindex)
             if self.datamatrix!=None:
-                newrow = matplotlib.numerix.zeros((1,self.datamatrix.shape[1]),matplotlib.numerix.typecode(self.datamatrix))
-                self.datamatrix = matplotlib.numerix.concatenate((self.datamatrix,newrow))
+                newrow = numpy.zeros((1,self.datamatrix.shape[1]),self.datamatrix.dtype)
+                self.datamatrix = numpy.concatenate((self.datamatrix,newrow))
             if self.rowlabels!=None:
                 if self.datelabels:
                     if newrowindex==0:
@@ -935,7 +935,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
                         if newrowindex>1: newval += self.rowlabels[-1]-self.rowlabels[-2]
                 else:
                     newval = 0.
-                self.rowlabels = matplotlib.numerix.concatenate((self.rowlabels,[newval]))
+                self.rowlabels = numpy.concatenate((self.rowlabels,[newval]))
             self.saveData()
             self.datastore.dataChanged()
             self.endInsertRows()
@@ -944,9 +944,9 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             if stop==None: stop=start
             self.beginRemoveRows(QtCore.QModelIndex(),start,stop)
             if self.datamatrix!=None:
-                self.datamatrix = matplotlib.numerix.concatenate((self.datamatrix[0:start,:],self.datamatrix[stop+1:,:]))
+                self.datamatrix = numpy.concatenate((self.datamatrix[0:start,:],self.datamatrix[stop+1:,:]))
             if self.rowlabels!=None:
-                self.rowlabels = matplotlib.numerix.concatenate((self.rowlabels[0:start],self.rowlabels[stop+1:]))
+                self.rowlabels = numpy.concatenate((self.rowlabels[0:start],self.rowlabels[stop+1:]))
             self.saveData()
             self.datastore.dataChanged()
             self.endRemoveRows()
