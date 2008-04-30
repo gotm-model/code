@@ -35,6 +35,9 @@ def getNetCDFFile(path):
         if (pyver[0]==2 and pyver[1]>=5) or pyver[0]>2:
             print 'Unable to load Scientific.IO.NetCDF (%s). We will use pynetcdf for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (e1,pyver[0],pyver[1],pyver[2])
 
+    if not os.path.isfile(path):
+        raise Exception('"%s" is not an existing file.' % path)
+
     try:
         nc = NetCDFFile(path)
     except Exception, e:
@@ -760,6 +763,9 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             self.varname = str(varname)
             if fixedcoords==None: fixedcoords = {}
             self.fixedcoords = fixedcoords
+            
+        def __str__(self):
+            return self.store.datafile+'/'+self.varname
 
         def getName(self):
             return self.varname
@@ -798,8 +804,10 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             if dimname=='z' or dimname=='z1':
                 # Get depth coordinates and bounds.
                 (z,z1,z_stag,z1_stag) = self.store.getDepth()
-                depthbounds = (0,z.shape[1])
-                if fc!=None: depthbounds = (fc,fc)
+                depthbounds = (0,z.shape[1]-1)
+                if fc!=None:
+                    assert fc<=depthbounds[1], 'Slice index %i exceeds dimension upper boundary (%i).' % (fc,depthbounds[1])
+                    depthbounds = (fc,fc)
                 timebounds = boundindices[list(dimnames).index('time')]
                 if dimname=='z':
                     varslice.coords     [idim] = z     [timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1]
@@ -812,8 +820,11 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
                 # Get coordinates and bounds of this dimension.
                 (coords,coords_stag) = self.store.getCoordinates(dimname)
                 if coords==None: return None
-                curbounds = common.findIndices(bounds[idim],coords)
-                if fc!=None: curbounds = (fc,fc)
+                if fc!=None:
+                    assert fc<len(coords), 'Slice index %i exceeds dimension upper boundary (%i).' % (fc,len(coords)-1)
+                    curbounds = (fc,fc)
+                else:
+                    curbounds = common.findIndices(bounds[idim],coords)
                 varslice.coords     [idim] = coords     [curbounds[0]:curbounds[1]+1]
                 varslice.coords_stag[idim] = coords_stag[curbounds[0]:curbounds[1]+2]
                 boundindices.append(curbounds)
@@ -902,7 +913,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         Scientific.IO.NetCDFFile conventions.
         """
         if self.nc!=None: return self.nc
-        assert self.datafile!=None, 'The result object has not yet been attached to an actual result.'
+        assert self.datafile!=None, 'The path to the NetCDF file has not yet been set.'
         self.nc = getNetCDFFile(self.datafile)
         return self.nc
 
@@ -967,7 +978,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
                     timeref = common.date2num(timeref)
                     coords = timeref+timeunit*numpy.asarray(coords,numpy.float64)
                 
-                coords_stag = numpy.zeros((coords.shape[0]+1,),coords.dtype)
+                coords_stag = numpy.empty((coords.shape[0]+1,),coords.dtype)
                 if coords.shape[0]==1:
                     # Only one coordinate provided; use default step of one.
                     delta = 1.

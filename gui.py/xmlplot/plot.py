@@ -297,12 +297,14 @@ class MergedVariableStore(VariableStore):
             first = True
             for ivar,var in enumerate(self.vars[ifirst:ilast+1]):
                 curslice = var.getSlice(bounds[1:])
+                assert curslice!=None, 'Unable to obtain valid slice from variable %s.' % var
                 if first:
                     slice.coords[1:] = curslice.coords
                     slice.coords_stag[1:] = curslice.coords_stag
                     slice.data = numpy.empty(tuple([ilast-ifirst+1]+list(curslice.data.shape)),curslice.data.dtype)
                     first = False
                 slice.data[ivar,...] = curslice.data
+                
             return slice
 
     def __init__(self,stores,mergedimid='obs',mergedimname='observation'):
