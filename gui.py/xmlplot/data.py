@@ -755,9 +755,11 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
     """
     
     class NetCDFVariable(plot.Variable):
-        def __init__(self,store,varname):
+        def __init__(self,store,varname,fixedcoords=None):
             plot.Variable.__init__(self,store)
             self.varname = str(varname)
+            if fixedcoords==None: fixedcoords = {}
+            self.fixedcoords = fixedcoords
 
         def getName(self):
             return self.varname
@@ -792,10 +794,12 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
           boundindices = []
           
           for idim,dimname in enumerate(dimnames):
+            fc = self.fixedcoords.get(dimname,None)
             if dimname=='z' or dimname=='z1':
                 # Get depth coordinates and bounds.
                 (z,z1,z_stag,z1_stag) = self.store.getDepth()
                 depthbounds = (0,z.shape[1])
+                if fc!=None: depthbounds = (fc,fc)
                 timebounds = boundindices[list(dimnames).index('time')]
                 if dimname=='z':
                     varslice.coords     [idim] = z     [timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1]
@@ -809,6 +813,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
                 (coords,coords_stag) = self.store.getCoordinates(dimname)
                 if coords==None: return None
                 curbounds = common.findIndices(bounds[idim],coords)
+                if fc!=None: curbounds = (fc,fc)
                 varslice.coords     [idim] = coords     [curbounds[0]:curbounds[1]+1]
                 varslice.coords_stag[idim] = coords_stag[curbounds[0]:curbounds[1]+2]
                 boundindices.append(curbounds)
@@ -831,16 +836,17 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         
           return varslice
 
-    def __init__(self,path=None):
+    def __init__(self,path=None,*args,**kwargs):
         xmlstore.util.referencedobject.__init__(self)
         plot.VariableStore.__init__(self)
         
         self.datafile = None
         self.nc = None
+        self.fixedcoords = {}
 
         self.cachedcoords = {}
         
-        if path!=None: self.load(path)
+        if path!=None: self.load(path,*args,**kwargs)
         
     def __str__(self):
         return self.datafile
@@ -872,11 +878,24 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             self.nc.close()
             self.nc = None
             
-    def load(self,path):
+    def load(self,path,fixedcoords=None):
         # Store link to result file, and try to open the CDF file
         self.datafile = path
-        self.getcdf()
+        nc = self.getcdf()
+        self.fixedcoords = {}
+        if isinstance(fixedcoords,basestring):
+            self.fixedcoords = self.getCoordinateSpec(fixedcoords,nc.dimensions.keys())
 
+    @staticmethod
+    def getCoordinateSpec(spec,dimnames):
+        coords = {}
+        if spec.startswith('(') and spec.endswith(')'): spec = spec[1:-1]
+        parts = spec.split(',')
+        assert len(parts)==len(dimnames), 'Number of coordinate constraints (%i) does not match number of dimensions (%i).' % (len(parts),len(dimnames))
+        for i in range(len(parts)):
+            if parts[i]!=':': coords[dimnames[i]] = int(parts[i])
+        return coords
+    
     def getcdf(self):
         """Returns a NetCDFFile file object representing the NetCDF file
         at the path in self.datafile. The returned object should follow
@@ -907,11 +926,28 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
       return vardict
 
     def __getitem__(self,varname):
+        coords = {}
+        if varname.endswith(')'):
+            i = varname.rfind('(')
+            assert i!=-1, 'End parenthesis in %s is not matched by beginning parenthesis.' % (varname,)
+            coords = varname[i:]
+            varname = varname[:i]
+            
         varname = str(varname)
-        if varname not in self.getcdf().variables: raise KeyError()
-        return self.NetCDFVariable(self,varname)
+        nc = self.getcdf()
+        if varname not in nc.variables: raise KeyError()
+
+        if isinstance(coords,basestring):
+            coords = self.getCoordinateSpec(coords,nc.variables[varname].dimensions)
+        coords.update(self.fixedcoords)
+
+        return self.NetCDFVariable(self,varname,fixedcoords=coords)
         
     def __contains__(self,varname):
+        if varname.endswith(')'):
+            i = varname.rfind('(')
+            assert i!=-1, 'End parenthesis in %s is not matched by beginning parenthesis.' % (varname,)
+            varname = varname[:i]
         return str(varname) in self.getcdf().variables
         
     def getCoordinates(self,dimname):

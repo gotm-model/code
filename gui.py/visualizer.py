@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.35 2008-04-11 12:16:35 jorn Exp $
+#$Id: visualizer.py,v 1.36 2008-04-30 09:46:22 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -94,6 +94,91 @@ class PageOpen(commonqt.WizardPage):
         self.owner.setProperty('result',res)
         self.owner.setProperty('scenario',res.scenario.addref())
         return True
+
+class PageVisualize(commonqt.WizardPage):
+    
+    def __init__(self,parent=None):
+        commonqt.WizardPage.__init__(self, parent)
+
+        self.varpath = None
+        self.varname = None
+
+        self.result = parent.getProperty('result')
+        
+        self.treestore = self.result.getVariableTree(os.path.join(core.common.getDataRoot(),'schemas/outputtree.xml'))
+        self.model = xmlstore.gui_qt4.TypedStoreModel(self.treestore,nohide=False,novalues=True)
+
+        self.treeVariables = xmlstore.gui_qt4.ExtendedTreeView(self)
+        self.treeVariables.header().hide()
+        self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Expanding)
+        self.treeVariables.setMaximumWidth(250)
+        self.treeVariables.setModel(self.model)
+        self.connect(self.treeVariables.selectionModel(), QtCore.SIGNAL('selectionChanged(const QItemSelection &, const QItemSelection &)'), self.OnVarSelected)
+
+        self.figurepanel = xmlplot.gui_qt4.FigurePanel(self)
+
+        self.label = QtGui.QLabel('Here you can view the results of the simulation. Please choose a variable to be plotted from the menu.',self)
+
+        layout = QtGui.QGridLayout()
+        layout.addWidget(self.label,0,0,1,2)
+        layout.addWidget(self.treeVariables,1,0)
+        layout.addWidget(self.figurepanel,1,1)
+        self.setLayout(layout)
+        
+        self.defaultfigures = parent.settings.root['FigureSettings']
+
+        self.figurepanel.figure.addDataSource('result',self.result)
+
+    def OnVarSelected(self,*args):
+        selected = self.treeVariables.selectionModel().selectedIndexes()
+        if len(selected)==0: return
+        node = selected[0].internalPointer()
+        if node.hasChildren(): return
+        
+        # Show wait cursor
+        QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
+        
+        # Save settings for currently shown figure
+        self.saveFigureSettings()
+
+        # Get name and path of variable about to be shown.
+        self.varname = node.getId()
+        self.varpath = '/'.join(node.location)
+        
+        # Disable figure updating while we make changes.
+        self.figurepanel.figure.setUpdating(False)
+        
+        # Plot; first try stored figures, otherwise plot anew.
+        props = self.figurepanel.figure.properties
+        if not self.result.getFigure('result/'+self.varpath,props):
+            self.figurepanel.plot(self.varname,'result')
+        
+        # Re-enable figure updating (this will force a redraw because things changed)
+        self.figurepanel.figure.setUpdating(True)
+
+        # Restore original cursor
+        QtGui.QApplication.restoreOverrideCursor()
+
+    def isComplete(self):
+        return True
+
+    def saveData(self,mustbevalid):
+        self.saveFigureSettings()
+        return True
+
+    def destroy(self,destroyWindow = True,destroySubWindows = True):
+        self.figurepanel.destroy()
+        self.figurepanel = None
+        self.treestore.release()
+        self.treestore = None
+        commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
+
+    def saveFigureSettings(self):
+        if self.varpath!=None and self.figurepanel.figure.hasChanged():
+            self.result.setFigure('result/'+self.varpath,self.figurepanel.figure.properties)
+            
+    def onSaveAsDefault(self):
+        pass
 
 class ConfigureReportWidget(QtGui.QWidget):
     def __init__(self,parent,result,rep):
@@ -373,79 +458,6 @@ class PageFinal(commonqt.WizardPage):
 
     def isComplete(self):
         return True
-
-class PageVisualize(commonqt.WizardPage):
-    
-    def __init__(self,parent=None):
-        commonqt.WizardPage.__init__(self, parent)
-
-        self.varpath = None
-
-        self.result = parent.getProperty('result')
-        
-        self.treestore = self.result.getVariableTree(os.path.join(core.common.getDataRoot(),'schemas/outputtree.xml'))
-        self.model = xmlstore.gui_qt4.TypedStoreModel(self.treestore,nohide=False,novalues=True)
-
-        self.treeVariables = xmlstore.gui_qt4.ExtendedTreeView(self)
-        self.treeVariables.header().hide()
-        self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Expanding)
-        self.treeVariables.setMaximumWidth(250)
-        self.treeVariables.setModel(self.model)
-        self.connect(self.treeVariables.selectionModel(), QtCore.SIGNAL('selectionChanged(const QItemSelection &, const QItemSelection &)'), self.OnVarSelected)
-
-        self.figurepanel = xmlplot.gui_qt4.FigurePanel(self)
-
-        self.label = QtGui.QLabel('Here you can view the results of the simulation. Please choose a variable to be plotted from the menu.',self)
-
-        layout = QtGui.QGridLayout()
-        layout.addWidget(self.label,0,0,1,2)
-        layout.addWidget(self.treeVariables,1,0)
-        layout.addWidget(self.figurepanel,1,1)
-        self.setLayout(layout)
-        
-        self.defaultfigures = parent.settings.root['FigureSettings']
-
-        self.figurepanel.figure.addDataSource('result',self.result)
-
-    def OnVarSelected(self,*args):
-        selected = self.treeVariables.selectionModel().selectedIndexes()
-        if len(selected)==0: return
-        node = selected[0].internalPointer()
-        if node.hasChildren(): return
-        
-        varname = node.getId()
-        varpath = '/'.join(node.location)
-        QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
-        self.saveFigureSettings()
-        self.varpath = varpath
-        
-        self.figurepanel.figure.setUpdating(False)
-        
-        # Plot; first try stored figures, otherwise plot anew.
-        props = self.figurepanel.figure.properties
-        if not self.result.getFigure('result/'+varpath,props):
-            self.figurepanel.plot(varname,'result')
-        
-        self.figurepanel.figure.setUpdating(True)
-        QtGui.QApplication.restoreOverrideCursor()
-
-    def isComplete(self):
-        return True
-
-    def saveData(self,mustbevalid):
-        self.saveFigureSettings()
-        return True
-
-    def saveFigureSettings(self):
-        if self.varpath!=None and self.figurepanel.figure.hasChanged():
-            self.result.setFigure('result/'+self.varpath,self.figurepanel.figure.properties)
-
-    def destroy(self,destroyWindow = True,destroySubWindows = True):
-        self.figurepanel.destroy()
-        self.figurepanel = None
-        self.treestore.release()
-        self.treestore = None
-        commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
 
 def main():
     # Debug info
