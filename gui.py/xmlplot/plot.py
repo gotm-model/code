@@ -301,7 +301,7 @@ class MergedVariableStore(VariableStore):
                 if first:
                     slice.coords[1:] = curslice.coords
                     slice.coords_stag[1:] = curslice.coords_stag
-                    slice.data = numpy.empty(tuple([ilast-ifirst+1]+list(curslice.data.shape)),curslice.data.dtype)
+                    slice.data = numpy.core.ma.array(numpy.empty(tuple([ilast-ifirst+1]+list(curslice.data.shape)),curslice.data.dtype),copy=False)
                     first = False
                 slice.data[ivar,...] = curslice.data
                 
@@ -634,7 +634,7 @@ class VariableFlat(VariableReduceDimension):
         newdatashape = list(sourceslice.data.shape)
         newdatashape[self.itargetdim] *= sourcecount
         del newdatashape[self.idimension]
-        newdata = numpy.empty(newdatashape,sourceslice.data.dtype)
+        newdata = numpy.core.ma.array(numpy.empty(newdatashape,sourceslice.data.dtype),copy=False)
             
         for i in range(0,targetcount):
             newtargetcoords[i*sourcecount:(i+1)*sourcecount] = sourceslice.coords[self.itargetdim][i]
@@ -644,7 +644,7 @@ class VariableFlat(VariableReduceDimension):
                 sourceindices[self.idimension] = slice(j,j+1,1)
                 targetindices = [slice(0,None,1) for k in range(newdata.ndim)]
                 targetindices[self.inewtargetdim] = slice(i*sourcecount+j,i*sourcecount+j+1,1)
-                newdata[tuple(targetindices)] = sourceslice.data[tuple(sourceindices)].copy()
+                newdata[tuple(targetindices)] = sourceslice.data[tuple(sourceindices)]
 
         newslice.coords      = [c for i,c in enumerate(sourceslice.coords     ) if i!=self.idimension]
         newslice.coords_stag = [c for i,c in enumerate(sourceslice.coords_stag) if i!=self.idimension]

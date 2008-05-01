@@ -869,7 +869,8 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             res['label'] = varinfo.long_name
         else:
             res['label'] = dimname
-        if hasattr(varinfo,'units'):     res['unit']  = varinfo.units
+        if hasattr(varinfo,'units'):
+            res['unit']  = varinfo.units
         if dimname=='z' or dimname=='z1':
             res['label'] = 'depth'
             res['preferredaxis'] = 'y'
@@ -878,6 +879,8 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             res['datatype'] = 'datetime'
             res['preferredaxis'] = 'x'
             res['unit'] = ''
+        elif res.get('unit','')=='degrees_north':
+            res['preferredaxis'] = 'y'
         return res
         
     def save(self,path):
