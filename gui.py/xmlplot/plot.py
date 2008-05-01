@@ -581,7 +581,7 @@ class VariableAverage(VariableReduceDimension):
 
         if self.boundsmeasure==0:
             # Standard deviation will be used as bounds.
-            var = (sourceslice.data**2*weights).sum(axis=self.idimension) - mean**2
+            var = ((sourceslice.data-mean)**2*weights).sum(axis=self.idimension)
             sd = numpy.sqrt(var)
             slice.lbound = slice.data-sd
             slice.ubound = slice.data+sd
