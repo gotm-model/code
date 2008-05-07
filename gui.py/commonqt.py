@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.58 2008-04-11 09:34:56 jorn Exp $
+#$Id: commonqt.py,v 1.59 2008-05-07 06:03:35 kb Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -96,7 +96,7 @@ class ErrorDialog(QtGui.QWidget):
 
         self.labelStart = QtGui.QLabel('Errors occurred during execution of GOTM-GUI:',self)
         self.labelStart.setWordWrap(True)
-        self.labelStop = QtGui.QLabel('You may be able to continue working. However, we would appreciate it if you report this error. To do so, send an e-mail to <a href="mailto:gotm-users@gotm.net">gotm-users@gotm.net</a> with the above error message, and the circumstances under which the error occurred.',self)
+        self.labelStop = QtGui.QLabel('You may be able to continue working. However, we would appreciate it if you report this error. To do so, send an e-mail to <a href="mailto:gotm-users@googlegroups.com">gotm-users@googlegroups.com</a> with the above error message, and the circumstances under which the error occurred.',self)
         self.labelStop.setOpenExternalLinks(True)
         self.labelStop.setWordWrap(True)
 
