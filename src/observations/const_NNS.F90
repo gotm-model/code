@@ -1,4 +1,4 @@
-!$Id: const_NNS.F90,v 1.1 2005-06-27 10:54:33 kbk Exp $
+!$Id: const_NNS.F90,v 1.2 2008-05-15 10:08:49 lars Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,9 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: const_NNS.F90,v $
+!  Revision 1.2  2008-05-15 10:08:49  lars
+!  fixed wrong sign
+!
 !  Revision 1.1  2005-06-27 10:54:33  kbk
 !  new files needed
 !
@@ -52,7 +55,7 @@
       pFace    = 0.5/gravity*(z(i+1)+z(i));
       beta     = eos_beta(S(i+1),T_const,pFace,gravity,rho_0)
 
-      S(i) = S(i+1) - _ONE_/(gravity*beta)*NN*(z(i+1)-z(i))
+      S(i) = S(i+1) + _ONE_/(gravity*beta)*NN*(z(i+1)-z(i))
 
    enddo
 
