@@ -563,7 +563,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             data = self.store.getGriddedData()
             if data[0].shape[0]==0: return varslice
 
-            timebounds = common.findIndices(bounds[0],data[0])
+            timebounds = common.findIndices((bounds[0].start,bounds[0].stop),data[0])
             varslice.coords[0] = data[0][timebounds[0]:timebounds[1]+1]
             varslice.coords[1] = data[1]
             varslice.data = data[2][timebounds[0]:timebounds[1]+1,:,self.index]
@@ -787,55 +787,67 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         def getDimensions(self):
           nc = self.store.getcdf()
           return nc.variables[self.varname].dimensions
-
+          
         def getSlice(self,bounds):
           nc = self.store.getcdf()
             
           v = nc.variables[self.varname]
-          dimnames = v.dimensions
+          dimnames = list(v.dimensions)
           assert len(bounds)==len(dimnames), 'Number of specified bounds (%i) does not match number of dimensions (%i).' % (len(bounds),len(dimnames))
           
           varslice = self.Slice(dimnames)
           
-          boundindices = []
-          
+          # Get initial slices, taking into acount specified integer slices and fixed
+          # coordinates, but not float-based slices.
+          boundindices,isfloatslice = [],[]
           for idim,dimname in enumerate(dimnames):
+            assert bounds[idim].step==None,'Step argument is not yet supported.'
             fc = self.fixedcoords.get(dimname,None)
-            if dimname=='z' or dimname=='z1':
-                # Get depth coordinates and bounds.
-                (z,z1,z_stag,z1_stag) = self.store.getDepth()
-                depthbounds = (0,z.shape[1]-1)
-                if fc!=None:
-                    assert fc<=depthbounds[1], 'Slice index %i exceeds dimension upper boundary (%i).' % (fc,depthbounds[1])
-                    depthbounds = (fc,fc)
-                timebounds = boundindices[list(dimnames).index('time')]
-                if dimname=='z':
-                    varslice.coords     [idim] = z     [timebounds[0]:timebounds[1]+1,depthbounds[0]:depthbounds[1]+1]
-                    varslice.coords_stag[idim] = z_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]:depthbounds[1]+2]
-                elif dimname=='z1':
-                    varslice.coords     [idim] = z1     [timebounds[0]:timebounds[1]+1,depthbounds[0]+1:depthbounds[1]+2]
-                    varslice.coords_stag[idim] = z1_stag[timebounds[0]:timebounds[1]+2,depthbounds[0]  :depthbounds[1]+2]
-                boundindices.append(depthbounds)
+            isfloatslice.append(False)
+            if fc!=None:
+                assert fc<v.shape[idim], 'Slice index %i exceeds dimension upper boundary (%i).' % (fc,v.shape[idim]-1)
+                boundindices.append(slice(fc,fc+1))
+            elif isinstance(bounds[idim].start,float) or isinstance(bounds[idim].stop,float):
+                boundindices.append(slice(0,v.shape[idim]))
+                isfloatslice[-1] = True
             else:
-                # Get coordinates and bounds of this dimension.
-                (coords,coords_stag) = self.store.getCoordinates(dimname)
-                if coords==None: return None
-                if fc!=None:
-                    assert fc<len(coords), 'Slice index %i exceeds dimension upper boundary (%i).' % (fc,len(coords)-1)
-                    curbounds = (fc,fc)
-                else:
-                    curbounds = common.findIndices(bounds[idim],coords)
-                varslice.coords     [idim] = coords     [curbounds[0]:curbounds[1]+1]
-                varslice.coords_stag[idim] = coords_stag[curbounds[0]:curbounds[1]+2]
-                boundindices.append(curbounds)
+                start,stop,step = bounds[idim].indices(v.shape[idim])
+                boundindices.append(slice(start,stop))
+                
+          # Translate slices based on floating point values to slices based on integers.
+          for idim,dimname in enumerate(dimnames):
+            if not isfloatslice[idim]: continue
+            (coords,coords_stag) = self.store.getCoordinates(dimname)
+            if coords==None: return None
+            flstart,flstop = bounds[idim].start,bounds[idim].stop
+            if coords.ndim==1:
+                istart,istop = coords.searchsorted((flstart,flstop))
+                if istart>0:          istart-=1
+                if istop<len(coords): istop +=1
+                boundindices[idim] = slice(istart,istop)
+                
+          # Retrieve coordinate values
+          for idim,dimname in enumerate(dimnames):
+            (coords,coords_stag) = self.store.getCoordinates(dimname)
+            if coords==None: return None
+            if coords.ndim==1:
+                start,stop,step = boundindices[idim].indices(v.shape[idim])
+                varslice.coords     [idim] = coords     [boundindices[idim]]
+                varslice.coords_stag[idim] = coords_stag[slice(start,stop+1)]
+            else:
+                coorddims = self.store.getCoordinateDimensions(dimname)
+                coordslices = [boundindices[dimnames.index(cd)] for cd in coorddims]
+                coordslices_stag = [slice(s.start,s.stop+1) for s in coordslices]
+                varslice.coords     [idim] = coords[tuple(coordslices)]
+                varslice.coords_stag[idim] = coords_stag[tuple(coordslices_stag)]
 
-          slices = tuple([slice(b[0],b[1]+1) for b in boundindices])
+          # Retrieve the data values
           try:
-            dat = numpy.asarray(v[slices])
+            dat = numpy.asarray(v[tuple(boundindices)])
           except Exception, e:
             raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
 
-        # Process COARDS variable attributes.
+          # Process COARDS variable attributes.
           if hasattr(v,'missing_value'):
             dat = numpy.ma.array(dat,mask=dat==v.missing_value)
           if hasattr(v,'scale_factor'):
@@ -870,7 +882,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         else:
             res['label'] = dimname
         if hasattr(varinfo,'units'):
-            res['unit']  = varinfo.units
+            res['unit']  = common.convertUnitToUnicode(varinfo.units)
         if dimname=='z' or dimname=='z1':
             res['label'] = 'depth'
             res['preferredaxis'] = 'y'
@@ -879,7 +891,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             res['datatype'] = 'datetime'
             res['preferredaxis'] = 'x'
             res['unit'] = ''
-        elif res.get('unit','')=='degrees_north':
+        elif hasattr(varinfo,'units') and varinfo.units=='degrees_north':
             res['preferredaxis'] = 'y'
         return res
         
@@ -965,89 +977,52 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         return str(varname) in self.getcdf().variables
         
     def getCoordinates(self,dimname):
-        if dimname not in self.cachedcoords:
-            nc = self.getcdf()
-            coords = numpy.asarray(nc.variables[dimname][:])
-            
-            if 0 in coords.shape:
-                coords = None
-                coords_stag = None
-            else:
-                assert len(coords.shape)==1, 'Currently only independent dimensions (coordinates of which do no vary along other dimensions) can be used.'
-                
-                istimedim = self.isTimeDimension(dimname)
-                if istimedim:
-                    timeunit,timeref = self.getTimeReference(dimname)
-                    timeref = common.date2num(timeref)
-                    coords = timeref+timeunit*numpy.asarray(coords,numpy.float64)
-                
-                coords_stag = numpy.empty((coords.shape[0]+1,),coords.dtype)
-                if coords.shape[0]==1:
-                    # Only one coordinate provided; use default step of one.
-                    delta = 1.
-                    if istimedim:
-                        if self.scenario!=None:
-                            delta = self.scenario['output/dtsave'].getValue(usedefault=True)
-                            if delta!=None: delta = delta.getAsSeconds()/86400.
-                        if delta==None:
-                            if coords[0]>timeref:
-                                delta=coords[0]-timeref
-                            else:
-                                delta=1.
-                    coords_stag[0] = coords[0]-delta/2
-                    coords_stag[1] = coords[0]+delta/2
-                else:
-                    coords_stag[1:-1] = coords[0:-1] + (coords[1:]-coords[0:-1])/2
-                    coords_stag[0 ] = coords[0]  - (coords[ 1]-coords[ 0])/2
-                    coords_stag[-1] = coords[-1] + (coords[-1]-coords[-2])/2
-
-            self.cachedcoords[dimname]         = coords
-            self.cachedcoords[dimname+'_stag'] = coords_stag
-
+        if dimname not in self.cachedcoords: self.calculateCoordinates(dimname)
         return (self.cachedcoords[dimname],self.cachedcoords[dimname+'_stag'])
+        
+    def getCoordinateDimensions(self,dimname):
+        assert False,'getCoordinateDimensions should have been implemented for %s by derived class.' % dimname
 
-    def getDepth(self):
-        if 'z' not in self.cachedcoords:
-            nc = self.getcdf()
+    def getDefaultCoordinateDelta(self,dimname,coord):
+        return 1.
 
-            # Get layer heights
-            h = numpy.asarray(nc.variables['h'][:,:,0,0])
+    def calculateCoordinates(self,dimname):
+        nc = self.getcdf()
+        coords = numpy.asarray(nc.variables[dimname][:])
+        
+        if 0 in coords.shape:
+            coords = None
+            coords_stag = None
+        else:
+            assert len(coords.shape)==1, 'Currently only independent dimensions (coordinates of which do no vary along other dimensions) can be used.'
             
-            # Get depths of interfaces
-            z1 = h.cumsum(1)
-            z1 = numpy.concatenate((numpy.zeros((z1.shape[0],1),z1.dtype),z1),1)
-            bottomdepth = z1[0,-1]-nc.variables['zeta'][0,0,0]
-            z1 -= bottomdepth
-
-            # Get depth of layer centers
-            z = z1[:,1:z1.shape[1]]-0.5*h
-
-            # Interpolate in depth to create staggered grid
-            z1_med = numpy.concatenate((numpy.take(z1,(0,),0),z1,numpy.take(z1,(-1,),0)),0)
-            z_stag = 0.5 * (z1_med[0:z1_med.shape[0]-1,:] + z1_med[1:z1_med.shape[0],:])
+            istimedim = self.isTimeDimension(dimname)
+            if istimedim:
+                timeunit,timeref = self.getTimeReference(dimname)
+                timeref = common.date2num(timeref)
+                coords = timeref+timeunit*numpy.asarray(coords,numpy.float64)
             
-            z_med = numpy.concatenate((z,numpy.take(z1,(-1,),1)),1)
-            z_med = numpy.concatenate((numpy.take(z_med,(0,),0),z_med,numpy.take(z_med,(-1,),0)),0)
-            z1_stag = 0.5 * (z_med[0:z_med.shape[0]-1,:] + z_med[1:z_med.shape[0],:])
-            
-            z.shape = list(z.shape)+[1,1]
-            z1.shape = list(z1.shape)+[1,1]
-            z_stag.shape = list(z_stag.shape)+[1,1]
-            z1_stag.shape = list(z1_stag.shape)+[1,1]
+            coords_stag = numpy.empty((coords.shape[0]+1,),coords.dtype)
+            if coords.shape[0]==1:
+                # Only one coordinate provided; use default step.
+                delta = self.getDefaultCoordinateDelta(dimname,coords[0])
+                coords_stag[0] = coords[0]-delta/2
+                coords_stag[1] = coords[0]+delta/2
+            else:
+                coords_stag[1:-1] = coords[0:-1] + (coords[1:]-coords[0:-1])/2
+                coords_stag[0 ] = coords[0]  - (coords[ 1]-coords[ 0])/2
+                coords_stag[-1] = coords[-1] + (coords[-1]-coords[-2])/2
 
-            self.cachedcoords['z']       = z
-            self.cachedcoords['z1']      = z1
-            self.cachedcoords['z_stag']  = z_stag
-            self.cachedcoords['z1_stag'] = z1_stag
-
-        return (self.cachedcoords['z'],self.cachedcoords['z1'],self.cachedcoords['z_stag'],self.cachedcoords['z1_stag'])
+        self.cachedcoords[dimname]         = coords
+        self.cachedcoords[dimname+'_stag'] = coords_stag
         
     class ReferenceTimeParseError(Exception):
         def __init__(self,error):
             Exception.__init__(self,error)
         
     def isTimeDimension(self,dimname):
-        # See if specified dimension is a time dimension according to COARDS convention.
+        """See if specified dimension is a time dimension according to COARDS convention.
+        """
         try:
             timeunit,timeref = self.getTimeReference(dimname)
         except self.ReferenceTimeParseError:
@@ -1055,6 +1030,13 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         return True
 
     def getTimeReference(self,dimname):
+      """Parses the "units" attribute of the NetCDF variable, and returns the time unit
+      (in days) and the reference date. Throws an exception if the "units" attribute does
+      not match the COARDS/udunits convention for specifying time offsets.
+      
+      Supposedly the udunits package could do this, but so far I have not found a minimal
+      udunits module for Python.
+      """
       cdfvar = self.getcdf().variables[dimname]
       if not hasattr(cdfvar,'units'):
           raise self.ReferenceTimeParseError('variable "%s" lacks "units" attribute.' % (dimname,))
@@ -1105,3 +1087,62 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
           raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: unknown time unit "%s".' % (fullunit,timeunit))
       
       return timeunit,dateref
+
+class NetCDFStore_GOTM(NetCDFStore):
+    """Class encapsulating a GOTM-produced NetCDF file.
+    
+    The file is expected to follow the COARDS convention, and in addition
+    assumes the GOTM convention for storing time-variable depth/leyer heights.
+    """
+
+    def __init__(self,path=None,*args,**kwargs):
+        NetCDFStore.__init__(self,path,*args,**kwargs)
+        
+    def getCoordinateDimensions(self,dimname):
+        if dimname!='z' and dimname!='z1':
+            return NetCDFStore.getCoordinateDimensions(self,dimname)
+        return ('time',dimname,'lat','lon')
+            
+    def calculateCoordinates(self,dimname):
+        if dimname!='z' and dimname!='z1':
+            return NetCDFStore.calculateCoordinates(self,dimname)
+    
+        nc = self.getcdf()
+
+        # Get layer heights
+        h = numpy.asarray(nc.variables['h'][:,:,0,0])
+        
+        # Get depths of interfaces
+        z1 = h.cumsum(1)
+        z1 = numpy.concatenate((numpy.zeros((z1.shape[0],1),z1.dtype),z1),1)
+        bottomdepth = z1[0,-1]-nc.variables['zeta'][0,0,0]
+        z1 -= bottomdepth
+
+        # Get depth of layer centers
+        z = z1[:,1:z1.shape[1]]-0.5*h
+
+        # Interpolate in depth to create staggered grid
+        z1_med = numpy.concatenate((numpy.take(z1,(0,),0),z1,numpy.take(z1,(-1,),0)),0)
+        z_stag = 0.5 * (z1_med[0:z1_med.shape[0]-1,:] + z1_med[1:z1_med.shape[0],:])
+        
+        z_med = numpy.concatenate((z,numpy.take(z1,(-1,),1)),1)
+        z_med = numpy.concatenate((numpy.take(z_med,(0,),0),z_med,numpy.take(z_med,(-1,),0)),0)
+        z1_stag = 0.5 * (z_med[0:z_med.shape[0]-1,:] + z_med[1:z_med.shape[0],:])
+        
+        z.shape = list(z.shape)+[1,1]
+        z1.shape = list(z1.shape)+[1,1]
+        z_stag.shape = list(z_stag.shape)+[1,1]
+        z1_stag.shape = list(z1_stag.shape)+[1,1]
+
+        self.cachedcoords['z']       = z
+        self.cachedcoords['z1']      = z1[:,1:,:,:]
+        self.cachedcoords['z_stag']  = z_stag
+        self.cachedcoords['z1_stag'] = z1_stag[:,1:,:,:]
+
+    def getDefaultCoordinateDelta(self,dimname,coord):
+        try:
+            timeunit,timeref = self.getTimeReference(dimname)
+        except self.ReferenceTimeParseError:
+            return NetCDFStore.getDefaultCoordinateDelta(self,dimname,coord)
+        if coord>timeref: return coord-timeref
+        return 1.

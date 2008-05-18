@@ -646,7 +646,7 @@ class FigurePanel(QtGui.QWidget):
 
 class FigureDialog(QtGui.QDialog):
     
-    def __init__(self,parent,varstore=None,varname=None,sourcefigure=None,figureproperties=None,quitonclose=False,closebutton=None):
+    def __init__(self,parent,varstore=None,varname=None,sourcefigure=None,figureproperties=None,quitonclose=False,closebutton=None,destroyonclose=True):
         QtGui.QDialog.__init__(self,parent,QtCore.Qt.Window | QtCore.Qt.WindowMaximizeButtonHint | QtCore.Qt.WindowSystemMenuHint )
 
         if closebutton==None: closebutton = xmlstore.gui_qt4.needCloseButton()
@@ -690,6 +690,8 @@ class FigureDialog(QtGui.QDialog):
 
         # Prevent this window from keeping the application alive after the main window was closed.
         self.setAttribute(QtCore.Qt.WA_QuitOnClose,quitonclose)
+        
+        self.destroyonclose = destroyonclose
 
         self.resize(500, 500)
         
@@ -698,7 +700,7 @@ class FigureDialog(QtGui.QDialog):
         
     def closeEvent(self,event):
         QtGui.QDialog.closeEvent(self,event)
-        self.destroy()
+        if self.destroyonclose: self.destroy()
         
     def destroy(self,destroyWindow = True, destroySubWindows = True):
         self.emit(QtCore.SIGNAL('beforeDestroy'),self)

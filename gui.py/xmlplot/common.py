@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.5 2008-04-25 06:55:13 jorn Exp $
+#$Id: common.py,v 1.6 2008-05-18 20:46:57 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path
@@ -39,9 +39,12 @@ num2date = matplotlib.dates.num2date
 
 def convertUnitToUnicode(unit):
     """Uses unicode to replace some common ASCII representations of
-    subscript/superscript.
+    degrees/subscript/superscript.
     """
-    if unit=='celsius': return unichr(176)+'C'
+    deg  = unichr(176)
+    if unit=='celsius' or unit=='degC': return deg+'C'
+    if unit=='degrees_north': return deg+'North'
+    if unit=='degrees_east':  return deg+'East'
     sup2 = unichr(178)
     sup3 = unichr(179)
     unit = unit.replace('s2','s'+sup2)
@@ -142,7 +145,7 @@ def argtake(data,ind,axis):
             curind = numpy.empty(ind.shape,ind.dtype)
             idim = i
             if reduce and i>axis: idim-=1
-            curind.swapaxes(idim,-1)[:] = range(data.shape[i])
+            curind.swapaxes(idim,-1)[:] = numpy.arange(data.shape[i])
             allind.append(curind)
     return data[tuple(allind)]
 
@@ -150,8 +153,9 @@ def getPercentile(data,cumweights,value,axis):
     assert value>=0 and value<=1., 'Percentile value must be between 0 and 1.'
     
     # First get indices where cumulative distribution >= critical value
+    #cumweights = numpy.ma.masked_less(cumweights,value)
     cumweights = cumweights.copy()
-    numpy.putmask(cumweights,cumweights<value,2.)
+    cumweights[cumweights<value] = 2.
     
     # Make sure that the cumulative distribution at the highest index still equals one.
     ind = [slice(0,cumweights.shape[i]) for i in range(cumweights.ndim)]

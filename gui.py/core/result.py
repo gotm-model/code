@@ -6,10 +6,10 @@ import common, scenario
 # Class that represents a GOTM result.
 #   Inherits from VariableStore, as it contains variables that can be plotted.
 #   Contains a link to the scenario from which the result was created (if available)
-class Result(xmlplot.data.NetCDFStore):
+class Result(xmlplot.data.NetCDFStore_GOTM):
 
     def __init__(self):
-        xmlplot.data.NetCDFStore.__init__(self)
+        xmlplot.data.NetCDFStore_GOTM.__init__(self)
         
         self.scenario = None
         self.tempdir = None
@@ -37,7 +37,7 @@ class Result(xmlplot.data.NetCDFStore):
         return self.tempdir
         
     def saveNetCDF(self,path):
-        xmlplot.data.NetCDFStore.save(self,path)
+        xmlplot.data.NetCDFStore_GOTM.save(self,path)
 
     def save(self,path,addfiguresettings=True,callback=None):
         assert self.datafile!=None, 'The result object was not yet attached to a result file (NetCDF).'
@@ -153,7 +153,7 @@ class Result(xmlplot.data.NetCDFStore):
     def unlink(self):
         # First unlink NetCDf store, because that releases the .nc file,
         # allowing us to delete the temporary directory.
-        xmlplot.data.NetCDFStore.unlink(self)
+        xmlplot.data.NetCDFStore_GOTM.unlink(self)
 
         if self.tempdir!=None:
             # Delete temporary directory.
@@ -177,7 +177,7 @@ class Result(xmlplot.data.NetCDFStore):
         else:
             datafile = srcpath
 
-        xmlplot.data.NetCDFStore.load(self,datafile)
+        xmlplot.data.NetCDFStore_GOTM.load(self,datafile)
 
         # Attached to an existing result: we consider it unchanged.
         self.changed = False
@@ -188,7 +188,7 @@ class Result(xmlplot.data.NetCDFStore):
             self.path = None
 
     def keys(self):
-        names = xmlplot.data.NetCDFStore.keys(self)
+        names = xmlplot.data.NetCDFStore_GOTM.keys(self)
         for i in range(len(names)-1,-1,-1):
             dimnames = self.nc.variables[names[i]].dimensions
             dimcount = len(dimnames)
@@ -206,3 +206,9 @@ class Result(xmlplot.data.NetCDFStore):
         otherstores = {}
         if self.scenario!=None: otherstores['scenario'] = self.scenario
         return xmlplot.plot.VariableStore.getVariableTree(self,path,otherstores=otherstores)
+
+    def getDefaultCoordinateDelta(self,dimname,coord):
+        if self.scenario!=None and self.isTimeDimension(dimname):
+            delta = self.scenario['output/dtsave'].getValue(usedefault=True)
+            if delta!=None: return delta.getAsSeconds()/86400.
+        return xmlplot.data.NetCDFStore_GOTM.getDefaultCoordinateDelta(self,dimname,coord)

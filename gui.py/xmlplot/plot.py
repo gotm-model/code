@@ -180,7 +180,7 @@ class Variable:
 
         def generateStaggered(self):
             """Creates a vector of interface coordinates from the vector of center
-            coordinates, for the specified slice dimension.
+            coordinates.
             """
             for idim in range(self.ndim):
                 assert self.coords[idim]!=None, 'Cannot generate staggered coordinates because centered coordinates have not been set.'
@@ -219,6 +219,19 @@ class Variable:
 
     def __init__(self,store):
         self.store = store
+        
+    def __getattr__(self,name):
+        """Attribute-based access to some variable properties,
+        mimicking the Scientific.IO.NetCDF interface.
+        """
+        if name=='dimensions':
+            return self.getDimensions()
+        elif name=='unit':
+            return self.getUnit()
+        elif name=='long_name':
+            return self.getLongName()
+        else:
+            raise AttributeError()
 
     def getName(self):
         """Returns the short name (or identifier) of the variable.
@@ -289,8 +302,8 @@ class MergedVariableStore(VariableStore):
             
             # Get bound indices for the merged dimension
             ifirst,ilast = 0,len(self.vars)-1
-            if bounds[0][0]!=None and bounds[0][0]>ifirst: ifirst = int(math.floor(bounds[0][0]))
-            if bounds[0][1]!=None and bounds[0][1]<ilast : ilast  = int(math.ceil (bounds[0][1]))
+            if bounds[0].start!=None and bounds[0].start>ifirst: ifirst = int(math.floor(bounds[0].start))
+            if bounds[0].stop !=None and bounds[0].stop <ilast : ilast  = int(math.ceil (bounds[0].stop))
             slice.coords[0] = numpy.linspace(float(ifirst),float(ilast),ilast-ifirst+1)
             slice.coords_stag[0] = common.getCenters(slice.coords[0],addends=True)
 
@@ -301,7 +314,7 @@ class MergedVariableStore(VariableStore):
                 if first:
                     slice.coords[1:] = curslice.coords
                     slice.coords_stag[1:] = curslice.coords_stag
-                    slice.data = numpy.core.ma.array(numpy.empty(tuple([ilast-ifirst+1]+list(curslice.data.shape)),curslice.data.dtype),copy=False)
+                    slice.data = numpy.ma.array(numpy.empty(tuple([ilast-ifirst+1]+list(curslice.data.shape)),curslice.data.dtype),copy=False)
                     first = False
                 slice.data[ivar,...] = curslice.data
                 
@@ -499,10 +512,17 @@ class VariableSlice(VariableReduceDimension):
             assert False,'Cannot take slice because the result does not have 1 coordinate dimension (instead it has %i: %s).' % (len(dims),dims)
         return newslice
 
-class VariableAverage(VariableReduceDimension):
+class VariableStatistics(VariableReduceDimension):
     """Transformation that takes the average of the variable across one dimension.
+    
+    Initialization arguments:
+    centermeasure:   0 for the mean, 1 for the median.
+    boundsmeasure:   0 for mean-sd and mean+sd, 1 for percentiles.
+    percentilewidth: distance between lower and upper percentile (fraction), e.g., 0.95 to get
+                     2.5 % and 97.5 % percentiles.
+    output:          0 for center+bounds, 1 for center only, 2 for lower bound, 3 for upper bound
     """
-    def __init__(self,variable,dimname,centermeasure=0,boundsmeasure=0,percentilewidth=.5,**kwargs):
+    def __init__(self,variable,dimname,centermeasure=0,boundsmeasure=0,percentilewidth=.5,output=0,**kwargs):
         dimlongname = variable.getDimensionInfo(dimname)['label']
         kwargs.setdefault('nameprefix',  'avg_')
         kwargs.setdefault('longnameprefix',dimlongname+'-averaged ')
@@ -510,29 +530,36 @@ class VariableAverage(VariableReduceDimension):
         self.centermeasure = centermeasure
         self.boundsmeasure = boundsmeasure
         self.percentilewidth = percentilewidth
+        self.output = output
 
     def getSlice(self,bounds):
+        # Obtain the source data, and exit if these are invalid.
         newbounds = list(bounds)
-        newbounds.insert(self.idimension,(None,None))
+        newbounds.insert(self.idimension,slice(None))
         sourceslice = self.sourcevar.getSlice(newbounds)
         if not sourceslice.isValid(): return self.Slice()
         
-        slice = self.Slice(self.getDimensions())
+        # Create coordinates from source data.
+        slc = self.Slice(self.getDimensions())
         for idim in range(len(sourceslice.coords)):
             if idim==self.idimension: continue
             coords = sourceslice.coords[idim]
             coords_stag = sourceslice.coords_stag[idim]
             if sourceslice.coords[idim].ndim>1:
+                # Coordinate array has more than 1 dimensions.
+                # Squeeze out the dimension for which we are calculating statistics.
                 coords = coords.take((0,),self.idimension)
                 coords_stag = coords_stag.take((0,),self.idimension)
                 coords.shape = coords.shape[:self.idimension]+coords.shape[self.idimension+1:]
                 coords_stag.shape = coords_stag.shape[:self.idimension]+coords_stag.shape[self.idimension+1:]
             itargetdim = idim
             if idim>self.idimension: itargetdim-=1
-            slice.coords[itargetdim] = coords
-            slice.coords_stag[itargetdim] = coords_stag
+            slc.coords[itargetdim] = coords
+            slc.coords_stag[itargetdim] = coords_stag
         
+        # Calculate weights from the mesh widths of the dimension to calculate statistics for.
         weights = sourceslice.coords_stag[self.idimension]
+        sourceslice.data = numpy.ma.asarray(sourceslice.data)
         if weights.ndim==1:
             weights = common.replicateCoordinates(numpy.diff(weights),sourceslice.data,self.idimension)
         else:
@@ -542,23 +569,23 @@ class VariableAverage(VariableReduceDimension):
             print sourceslice.data.shape
         
         # Normalize weights so their sum over the dimension to analyze equals one
-        summedweights = weights.sum(axis=self.idimension)
+        summedweights = numpy.ma.array(weights,mask=sourceslice.data.mask,copy=False).sum(axis=self.idimension)
         newshape = list(summedweights.shape)
         newshape.insert(self.idimension,1)
         weights /= summedweights.reshape(newshape).repeat(sourceslice.data.shape[self.idimension],self.idimension)
         
-        if self.centermeasure==0 or self.boundsmeasure==0:
+        if (self.output<2 and self.centermeasure==0) or (self.output!=1 and self.boundsmeasure==0):
             # We need the mean and/or standard deviation. Calculate the mean,
             # which is needed for either measure.
             mean = (sourceslice.data*weights).sum(axis=self.idimension)
         
-        if self.centermeasure==1 or self.boundsmeasure==1:
+        if (self.output<2 and self.centermeasure==1) or (self.output!=1 and self.boundsmeasure==1) or (self.output>1 and self.centermeasure==1 and self.boundsmeasure==0):
             # We will need percentiles. Sort the data along dimension to analyze,
             # and calculate cumulative (weigth-based) distribution.
             
             # Sort the data along the dimension to analyze, and sort weights
             # in the same order
-            sortedindices = sourceslice.data.argsort(axis=self.idimension)
+            sortedindices = sourceslice.data.argsort(axis=self.idimension,fill_value=numpy.Inf)
             sorteddata    = common.argtake(sourceslice.data,sortedindices,axis=self.idimension)
             sortedweights = common.argtake(weights,sortedindices,self.idimension)
             
@@ -567,34 +594,47 @@ class VariableAverage(VariableReduceDimension):
             
             # Calculate coordinates for interfaces between data points, to be used
             # as grid for cumulative distribution
-            sorteddata = (numpy.concatenate((sorteddata.take((0,),axis=self.idimension),sorteddata),axis=self.idimension) + numpy.concatenate((sorteddata,sorteddata.take((-1,),axis=self.idimension)),axis=self.idimension))/2.
+            sorteddata = (numpy.ma.concatenate((sorteddata.take((0,),axis=self.idimension),sorteddata),axis=self.idimension) + numpy.ma.concatenate((sorteddata,sorteddata.take((-1,),axis=self.idimension)),axis=self.idimension))/2.
             cumsortedweights = numpy.concatenate((numpy.zeros(cumsortedweights.take((0,),axis=self.idimension).shape,cumsortedweights.dtype),cumsortedweights),axis=self.idimension)
         
-        if self.centermeasure==0:
-            # Use mean for center
-            slice.data = mean
-        elif self.centermeasure==1:
-            # Use median for center
-            slice.data = common.getPercentile(sorteddata,cumsortedweights,.5,self.idimension)
-        else:
-            assert False, 'Unknown choice %i for center measure.' % self.centermeasure
+        if self.output<2 or self.boundsmeasure==0:
+            # We need the center measure
+            if self.centermeasure==0:
+                # Use mean for center
+                center = mean
+            elif self.centermeasure==1:
+                # Use median for center
+                center = common.getPercentile(sorteddata,cumsortedweights,.5,self.idimension)
+            else:
+                assert False, 'Unknown choice %i for center measure.' % self.centermeasure
 
-        if self.boundsmeasure==0:
-            # Standard deviation will be used as bounds.
-            var = ((sourceslice.data-mean)**2*weights).sum(axis=self.idimension)
-            sd = numpy.sqrt(var)
-            slice.lbound = slice.data-sd
-            slice.ubound = slice.data+sd
-        elif self.boundsmeasure==1:
-            # Percentiles will be used as bounds.
-            lowcrit = (1.-self.percentilewidth)/2.
-            highcrit = 1.-lowcrit
-            slice.lbound = common.getPercentile(sorteddata,cumsortedweights, lowcrit,self.idimension)
-            slice.ubound = common.getPercentile(sorteddata,cumsortedweights,highcrit,self.idimension)
+        if self.output!=1:
+            # We need the lower and upper boundary
+            if self.boundsmeasure==0:
+                # Standard deviation will be used as bounds.
+                sd = numpy.sqrt(((sourceslice.data-mean)**2*weights).sum(axis=self.idimension))
+                lbound = center-sd
+                ubound = center+sd
+            elif self.boundsmeasure==1:
+                # Percentiles will be used as bounds.
+                lowcrit = (1.-self.percentilewidth)/2.
+                highcrit = 1.-lowcrit
+                lbound = common.getPercentile(sorteddata,cumsortedweights, lowcrit,self.idimension)
+                ubound = common.getPercentile(sorteddata,cumsortedweights,highcrit,self.idimension)
+            else:
+                assert False, 'Unknown choice %i for bounds measure.' % self.boundsmeasure
+
+        if self.output<2:
+            slc.data = center
+            if self.output==0: slc.lbound,slc.ubound = lbound,ubound
+        elif self.output==2:
+            slc.data = lbound
+        elif self.output==3:
+            slc.data = ubound
         else:
-            assert False, 'Unknown choice %i for bounds measure.' % self.boundsmeasure
-        
-        return slice
+            assert False, 'Unknown choice %i for output variable.' % self.boundsmeasure
+            
+        return slc
 
 class VariableFlat(VariableReduceDimension):
     """Transformation that flattens one dimension of the variable, creating
@@ -616,7 +656,7 @@ class VariableFlat(VariableReduceDimension):
         assert len(bounds)==len(self.sourcevar.getDimensions())-1, 'Invalid number of dimension specified.'
         
         newbounds = list(bounds)
-        newbounds.insert(self.idimension,(None,None))
+        newbounds.insert(self.idimension,slice(None))
         sourceslice = self.sourcevar.getSlice(newbounds)
         newslice = self.Slice(self.getDimensions())
         
@@ -634,7 +674,7 @@ class VariableFlat(VariableReduceDimension):
         newdatashape = list(sourceslice.data.shape)
         newdatashape[self.itargetdim] *= sourcecount
         del newdatashape[self.idimension]
-        newdata = numpy.core.ma.array(numpy.empty(newdatashape,sourceslice.data.dtype),copy=False)
+        newdata = numpy.ma.array(numpy.empty(newdatashape,sourceslice.data.dtype),copy=False)
             
         for i in range(0,targetcount):
             newtargetcoords[i*sourcecount:(i+1)*sourcecount] = sourceslice.coords[self.itargetdim][i]
@@ -977,13 +1017,13 @@ class Figure(xmlstore.util.referencedobject):
                         # Equal upper and lower boundary: take a slice.
                         var = VariableSlice(var,dimname,forcedrange[0])
                     else:
-                        dimbounds.append(forcedrange)
+                        dimbounds.append(slice(forcedrange[0],forcedrange[1]))
                 else:
                     # No boundaries set.
-                    dimbounds.append((None,None))
+                    dimbounds.append(slice(None))
                     
             # Get the data
-            varslice = var.getSlice(dimbounds)
+            varslice = var.getSlice(tuple(dimbounds))
             
             # Skip this variable if no data are available.
             if not varslice.isValid(): continue
@@ -1006,8 +1046,8 @@ class Figure(xmlstore.util.referencedobject):
             varslice = varslice.squeeze()
             
             # Mask infinite/nan values, if any - only do this if the array is not masked
-            # already, because it seems isfinite is not supported on mased arrays.
-            if not isinstance(varslice.data,numpy.ma.array):
+            # already, because it seems isfinite is not supported on masked arrays.
+            if not hasattr(varslice.data,'_mask'):
                 invalid = numpy.logical_not(numpy.isfinite(varslice.data))
                 if invalid.any():
                     print 'WARNING: masking %i invalid values (inf or nan) out of %i.' % (invalid.sum(),invalid.size)
