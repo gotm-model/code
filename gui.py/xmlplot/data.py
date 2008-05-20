@@ -1121,11 +1121,11 @@ class NetCDFStore_GOTM(NetCDFStore):
         # Get depth of layer centers
         z = z1[:,1:z1.shape[1]]-0.5*h
 
-        # Interpolate in depth to create staggered grid
+        # Interpolate in time to create staggered grid
         z1_med = numpy.concatenate((numpy.take(z1,(0,),0),z1,numpy.take(z1,(-1,),0)),0)
         z_stag = 0.5 * (z1_med[0:z1_med.shape[0]-1,:] + z1_med[1:z1_med.shape[0],:])
         
-        z_med = numpy.concatenate((z,numpy.take(z1,(-1,),1)),1)
+        z_med = numpy.concatenate((numpy.take(z1,(0,),1),z[:,1:],numpy.take(z1,(-1,),1)),1)
         z_med = numpy.concatenate((numpy.take(z_med,(0,),0),z_med,numpy.take(z_med,(-1,),0)),0)
         z1_stag = 0.5 * (z_med[0:z_med.shape[0]-1,:] + z_med[1:z_med.shape[0],:])
         
@@ -1137,7 +1137,7 @@ class NetCDFStore_GOTM(NetCDFStore):
         self.cachedcoords['z']       = z
         self.cachedcoords['z1']      = z1[:,1:,:,:]
         self.cachedcoords['z_stag']  = z_stag
-        self.cachedcoords['z1_stag'] = z1_stag[:,1:,:,:]
+        self.cachedcoords['z1_stag'] = z1_stag[:,:,:,:]
 
     def getDefaultCoordinateDelta(self,dimname,coord):
         try:
