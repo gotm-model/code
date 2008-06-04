@@ -805,8 +805,8 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             fc = self.fixedcoords.get(dimname,None)
             isfloatslice.append(False)
             if fc!=None:
-                assert fc<v.shape[idim], 'Slice index %i exceeds dimension upper boundary (%i).' % (fc,v.shape[idim]-1)
-                boundindices.append(slice(fc,fc+1))
+                assert fc[0]>=0 and fc[1]<v.shape[idim], 'Slice index %i exceeds dimension upper boundary (%i).' % (fc,v.shape[idim]-1)
+                boundindices.append(slice(fc[0],fc[1]))
             elif isinstance(bounds[idim].start,float) or isinstance(bounds[idim].stop,float):
                 boundindices.append(slice(0,v.shape[idim]))
                 isfloatslice[-1] = True
@@ -876,6 +876,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         
     def getDimensionInfo(self,dimname):
         res = plot.VariableStore.getDimensionInfo(self,dimname)
+        if dimname not in self.nc.variables: return res
         varinfo = self.nc.variables[dimname]
         if hasattr(varinfo,'long_name'):
             res['label'] = varinfo.long_name
@@ -919,7 +920,13 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         parts = spec.split(',')
         assert len(parts)==len(dimnames), 'Number of coordinate constraints (%i) does not match number of dimensions (%i).' % (len(parts),len(dimnames))
         for i in range(len(parts)):
-            if parts[i]!=':': coords[dimnames[i]] = int(parts[i])
+            if parts[i]!=':':
+                cur = parts[i].split(':')
+                if len(cur)==1:
+                    coords[dimnames[i]] = (int(cur[0]),int(cur[0])+1)
+                else:
+                    assert len(cur)==2, 'Only one colon can appear in slice.'
+                    coords[dimnames[i]] = (int(cur[0]),int(cur[1]))
         return coords
     
     def getcdf(self):
@@ -988,7 +995,12 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
 
     def calculateCoordinates(self,dimname):
         nc = self.getcdf()
-        coords = numpy.asarray(nc.variables[dimname][:])
+        assert dimname in nc.dimensions, '"%s" is not a dimension in the NetCDF file.' % dimname
+        
+        if dimname not in nc.variables:
+            coords = numpy.arange(nc.dimensions[dimname],dtype=numpy.float)
+        else:
+            coords = numpy.asarray(nc.variables[dimname][:])
         
         if 0 in coords.shape:
             coords = None
@@ -1037,6 +1049,10 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
       Supposedly the udunits package could do this, but so far I have not found a minimal
       udunits module for Python.
       """
+      nc = self.getcdf()
+      if dimname not in nc.variables:
+          raise self.ReferenceTimeParseError('dimensions "%s" does not have an associated variable.' % (dimname,))
+
       cdfvar = self.getcdf().variables[dimname]
       if not hasattr(cdfvar,'units'):
           raise self.ReferenceTimeParseError('variable "%s" lacks "units" attribute.' % (dimname,))
