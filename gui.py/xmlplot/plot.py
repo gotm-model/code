@@ -446,6 +446,42 @@ class VariableTransform(Variable):
         """
         return self.sourcevar.getDimensionInfo(dimname)
 
+class VariableCombine(Variable):
+    def __init__(self,sourcevars):
+        Variable.__init__(self,None)
+        self.sourcevars = sourcevars
+
+    def getName(self):
+        """Return short name for the variable.
+        """
+        return '_'.join([v.getName() for v in self.sourcevars])
+
+    def getLongName(self):
+        """Return long name for the variable.
+        """
+        return ', '.join([v.getLongName() for v in self.sourcevars])
+
+    def getUnit(self):
+        """Return variable unit, copied form source variable.
+        """
+        units = [v.getUnit() for v in self.sourcevars]
+        if len(set(units))==1: return units[0]
+        return ', '.join(units)
+
+    def getDimensions(self):
+        """Return list of variable dimensions, copied form source variable.
+        """
+        return self.sourcevars[0].getDimensions()
+
+    def getDimensionInfo(self,dimname):
+        """Return information on specified dimension, copied form source
+        variable.
+        """
+        return self.sourcevars[0].getDimensionInfo(dimname) 
+
+    def getSlice(self,bounds):
+        return [v.getSlice(bounds) for v in self.sourcevars]
+
 class VariableReduceDimension(VariableTransform):
     """Abstract base class for a variable transform that reduces the number
     of variable dimensions by one (e.g. average, integral, slice).
@@ -879,6 +915,40 @@ class Figure(xmlstore.util.referencedobject):
         """
         self.canvas.print_figure(str(path),dpi=dpi)
         
+    def parseExpression(self,expression):
+        """Parses an expression that can contain one or more variables specified as
+        datasource/variablename, and (in the future) mathematical operators and functions.
+        """
+        #varsource,expression = expression.split('/',1)
+        if expression[0]=='(':
+            i,depth = 1,1
+            commapos = []
+            while depth>0:
+                assert i<len(expression), 'Missing closing parenthesis in "%s".' % expression
+                ch = expression[i]
+                if   ch=='(': depth+=1
+                elif ch==')': depth-=1
+                elif depth==1 and ch==',': commapos.append(i)
+                i+=1
+            istart = 1
+            parts = []
+            for cp in commapos:
+                parts.append(expression[istart:cp])
+                istart = cp+1
+            parts.append(expression[istart:i-1])
+            print parts
+        
+        varsource,varname = expression.split('/',1)
+        if varsource=='':
+            # No data source specified; take default.
+            assert self.defaultsource!=None, 'No data source set for variable "%s", but no default source available either.' % varname
+            varsource = self.defaultsource
+            
+        # Get variable object.
+        varstore = self.sources[varsource]
+        assert varname in varstore, 'Source "%s" does not contain variable with name "%s".' % (varsource,varname)
+        return varstore[varname]
+        
     def update(self):
         """Update the figure.
         
@@ -887,14 +957,19 @@ class Figure(xmlstore.util.referencedobject):
         figure properties are set based on properties of the obtained data,
         and the figure is built and shown.
         """
+        # We are called whenever figure properties change. If we do not want to update now,
+        # just register that an update is needed and exit.
         if not self.updating:
             self.dirty = True
             return
             
+        # Clear the current MatPlotLib figure.
         self.figure.clear()
 
+        # Create one subplot only.
         axes = self.figure.add_subplot(111)
         
+        # Obtain text scaling property (from % to fraction)
         textscaling = self.properties['FontScaling'].getValue(usedefault=True)/100.
         
         # First scale the default font size; this takes care of all relative font sizes (e.g. "small")
@@ -918,6 +993,8 @@ class Figure(xmlstore.util.referencedobject):
         linecolors = ((0,0,255),(0,255,0),(255,0,0),(0,255,255),(255,0,255),(255,255,0),(0,0,0))
 
         # Get forced axes boundaries (will be None if not set; then we autoscale)
+        # These boundaries are retrieved before data are obtained, in order to be able
+        # to skip reading out unnecessary data (which currently does not work!).
         dim2data = {}
         defaultaxes = self.defaultproperties['Axes']
         forcedaxes = self.properties['Axes']
@@ -935,11 +1012,11 @@ class Figure(xmlstore.util.referencedobject):
                 logscale = forcedaxis['LogScale'].getValue()
             dim2data[forcedaxis.getSecondaryId()] = {'forcedrange':[axmin,axmax],'logscale':logscale}
 
-        # Shortcuts to the nodes specifying the variables to plot.
+        # Shortcuts to the nodes specifying the series to plot.
         forceddatanode = self.properties['Data']
         forcedseries = forceddatanode.getLocationMultiple(['Series'])
 
-        # Shortcut to the node that will hold defaults for the plotted variables.
+        # Shortcut to the node that will hold defaults for the plotted series.
         defaultdatanode = self.defaultproperties['Data']
         olddefaults = [node.getSecondaryId() for node in defaultdatanode.getLocationMultiple(['Series'])]
 
@@ -951,6 +1028,7 @@ class Figure(xmlstore.util.referencedobject):
         cb = None
         hascolormap = False
         
+        # Obtain the currently selected colormap, and make sure NaNs are plotted as white.
         cm = getattr(matplotlib.cm,colormaps[self.properties['ColorMap'].getValue(usedefault=True)])
         cm.set_bad('w')
         
@@ -971,17 +1049,7 @@ class Figure(xmlstore.util.referencedobject):
                 print 'Skipping data series %i because the secondary node id (i.e., variable source and name) is not set.'
                 continue
                 
-            # Extract variable source name and the variable identifier.
-            varsource,varname = varpath.split('/',1)
-            if varsource=='':
-                # No data source specified; take default.
-                assert self.defaultsource!=None, 'No data source set for variable "%s", but no default source available either.' % varname
-                varsource = self.defaultsource
-                
-            # Get variable object.
-            varstore = self.sources[varsource]
-            assert varname in varstore, 'Source "%s" does not contain variable with name "%s".' % (varsource,varname)
-            var = varstore[varname]
+            var = self.parseExpression(varpath)
             longname = var.getLongName()
             
             # Create default series information
