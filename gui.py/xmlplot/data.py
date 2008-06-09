@@ -805,8 +805,8 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             fc = self.fixedcoords.get(dimname,None)
             isfloatslice.append(False)
             if fc!=None:
-                assert fc[0]>=0,            'Slice index %i lies below dimension lower boundary (0).' % (fc[0],)
-                assert fc[1]<v.shape[idim], 'Slice index %i exceeds dimension upper boundary (%i).' % (fc[1],v.shape[idim]-1)
+                assert fc[0]>=0,             'Slice index %i lies below lower boundary of dimension %s (0).' % (fc[0],dimname)
+                assert fc[1]<=v.shape[idim], 'Slice index %i exceeds upper boundary of dimension %s (%i).' % (fc[1],dimname,v.shape[idim])
                 boundindices.append(slice(fc[0],fc[1]))
             elif isinstance(bounds[idim].start,float) or isinstance(bounds[idim].stop,float):
                 boundindices.append(slice(0,v.shape[idim]))
