@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.28 2008-04-09 12:01:05 kb Exp $
+!$Id: airsea.F90,v 1.29 2008-06-10 16:51:26 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.29  2008-06-10 16:51:26  hb
+!  bug concerning I_0 removed
+!
 !  Revision 1.28  2008-04-09 12:01:05  kb
 !  initialise public variables to 0
 !
@@ -655,8 +658,8 @@
    integer, save             :: meteo_jul2=0,meteo_secs2=0
    REALTYPE, save            :: obs(7)
    REALTYPE, save            :: alpha(4)
-   REALTYPE, save            :: I1,h1,tx1,ty1
-   REALTYPE, save            :: I2=0.,h2=0.,tx2=0.,ty2=0.
+   REALTYPE, save            :: h1,tx1,ty1
+   REALTYPE, save            :: h2=0.,tx2=0.,ty2=0.
    logical, save             :: first=.true.
    integer                   :: rc
    REALTYPE                  :: ta,ta_k,tw,tw_k 
@@ -667,7 +670,6 @@
    if (init_saved_vars) then
       meteo_jul2=0
       meteo_secs2=0
-      I2=0.
       h2=0.
       tx2=0.
       ty2=0.
@@ -713,13 +715,11 @@
          call airsea_fluxes(fluxes_method, &
                             tw,ta,u10,v10,precip,evap,tx1,ty1,qe,qh)
          h1=(qb+qe+qh)
-         I2  = I1
          h2  = h1
          tx2 = tx1
          ty2 = ty1
          first = .false.
       else
-         I1  = I2
          h1  = h2
          tx1 = tx2
          ty1 = ty2
@@ -731,7 +731,6 @@
          h2=(qb+qe+qh)
       end if
       dt = time_diff(meteo_jul2,meteo_secs2,meteo_jul1,meteo_secs1)
-      alpha(1) = (I2-I1)/dt
       alpha(2) = (h2-h1)/dt
       alpha(3) = (tx2-tx1)/dt
       alpha(4) = (ty2-ty1)/dt
@@ -739,7 +738,6 @@
 
 !  Do the time interpolation
    t  = time_diff(jul,secs,meteo_jul1,meteo_secs1)
-   I_0  = I1  + t*alpha(1)
    heat = h1  + t*alpha(2)
    tx   = tx1 + t*alpha(3)
    ty   = ty1 + t*alpha(4)
