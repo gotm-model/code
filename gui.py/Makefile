@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.5 2008-01-18 08:48:27 jorn Exp $
+#$Id: Makefile,v 1.6 2008-06-12 11:10:08 jorn Exp $
 
 # -----------------------------------------------------------
 # Makefile for creating the Python-based GUI for GOTM
@@ -12,42 +12,76 @@
 # PYTHONINCDIR, PYTHONLIBDIR, PYTHONLIBNAME and NUMPYDIR,
 # respectively. If any of these is missing, a default value
 # is used that works at least on some systems.
+#
+# If the NumPy include files and F2Py are not located in the
+# default subdirectories under the NumPy root (/core/include
+# and /f2py, respectively), you will also need to specify
+# these paths in environment variables NUMPYINC and F2PYDIR,
+# respectively. This should rarely be necessary.
 # -----------------------------------------------------------
 # Currently, only compilation with ifort/g++ is supported.
+# Compilation with GFORTRAN/g++ has been reported to work;
+# however, the Python code will then likely not be able to
+# catch Fortran stop statements.
 # -----------------------------------------------------------
 
 # The directory that contains Python header files.
+# Below a quick default for our development systems - normal
+# users will need to set the PYTHONINCDIR environment variable before
+# running make!
 ifndef PYTHONINCDIR
 PYTHONINCDIR = /usr/include/python2.4
 endif
 
 # The directory that contains the Python library.
+# Below a quick default for our development systems - normal
+# users will need to set the PYTHONLIBDIR environment variable before
+# running make!
 ifndef PYTHONLIBDIR
 PYTHONLIBDIR = /usr/lib
 endif
 
 # The name of the Python library to link against.
+# Below a quick default for our development systems - normal
+# users will need to set the PYTHONLIBNAME environment variable before
+# running make!
 ifndef PYTHONLIBNAME
 PYTHONLIBNAME = python2.4
 endif
 
 # The directory that contains NumPy; it must contain directories
 # core/include (NumPy header files) and f2py (Fortran to Python)
+# Below some quick defaults for our development systems - normal
+# users will need to set the NUMPYDIR environment variable before
+# running make!
 ifndef NUMPYDIR
 NUMPYDIR = /usr/local/lib/python2.4/site-packages/numpy
 NUMPYDIR = /usr/lib/python2.4/site-packages/numpy
 endif
 
+# The directory that contains NumPy include files. Normally this can be
+# inferred from the NumPy root directory set above (NUMPYDIR). In most
+# cases users will therefore not have to set the NUMPYINC environment
+# variable. It is possible though.
+ifndef NUMPYINC
 NUMPYINC = $(NUMPYDIR)/core/include
+endif
+
+# The directory that contains F2Py (Fortran-to-Python interface generator.
+# Normally this path can be# inferred from the NumPy root directory set
+# above (NUMPYDIR). In most cases users will therefore not have to set the
+# NUMPYINC environment variable. It is possible though.
+ifndef NUMPYINC
 F2PYDIR = $(NUMPYDIR)/f2py
+endif
 
 # Include the rules for GOTM compilation.
 include ../src/Rules.make
 
 # The flag -fexceptions is needed to generate assembly from FORTRAN that is
-# capable of passing C++ exceptions. The flag -fPIC creates position-independent
-# code, which is good practice for shared libraries and required on some
-# architectures (AMD64)
+# capable of passing C++ exceptions (used to catch FORTRAN stop statements).
+# The flag -fPIC creates position-independent code, which is good practice
+# for shared libraries and required on some architectures (AMD64)
 EXTRA_FFLAGS+=-fexceptions -fPIC
 CXXFLAGS+=-fPIC
 
@@ -68,10 +102,10 @@ CPPFLAGS += -I$(PYTHONINCDIR) -I$(F2PYDIR)/src -I$(NUMPYINC)
 #   -shared: for building a shared library (*.so) rather than an executable
 #   -lgotm$(buildtype): the GOTM library built from gotm.F90
 #   $(ALL_LIBS): libaries built from GOTM modules (defined above)
+#   -L$(PYTHONLIBDIR): directory that contains the Python library
 #   -l$(PYTHONLIBNAME): the Python library
-#   -L$(PYTHONLIB): directory that contains the Python library
 #   -lstdc++: the C++ standard library, needed because the Fortran compiler will do the linking.
-LDFLAGS += -shared -lgotm$(buildtype) $(ALL_LIBS) -l$(PYTHONLIBNAME) -L$(PYTHONLIBDIR) -lstdc++
+LDFLAGS += -shared -lgotm$(buildtype) $(ALL_LIBS) -L$(PYTHONLIBDIR) -l$(PYTHONLIBNAME) -lstdc++
 
 .PHONY: clean gotm all
 
