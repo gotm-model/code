@@ -1,4 +1,4 @@
-!$Id: bio_fluxes.F90,v 1.2 2005-12-02 20:57:27 hb Exp $
+!$Id: bio_fluxes.F90,v 1.2.2.1 2008-06-20 12:17:01 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -20,13 +20,16 @@
    public init_bio_fluxes, do_bio_fluxes
 !
 ! !PRIVATE DATA MEMBERS:
-   integer                              :: sfl_unit=40
+   integer                              :: sfl_unit=61
    REALTYPE, allocatable                :: obs1(:),obs2(:),alpha(:)
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Karsten Bolding and Hans Burchard
 !
 !  $Log: bio_fluxes.F90,v $
+!  Revision 1.2.2.1  2008-06-20 12:17:01  kb
+!  avoid unit conflic with observed O2
+!
 !  Revision 1.2  2005-12-02 20:57:27  hb
 !  Documentation updated and some bugs fixed
 !
