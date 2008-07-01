@@ -148,7 +148,7 @@ def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
 
     if res.returncode==0:    
         # Succeeded: get the result. Note: the result "inherits" the temporary directory,
-        # so we so not have to delete it here.
+        # so we do not have to delete it here.
         respath = os.path.join(simulationdir,'result.nc')
         res.tempdir = simulationdir
         res.attach(respath,scen,copy=False)
