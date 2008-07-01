@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.36 2008-04-30 09:46:22 jorn Exp $
+#$Id: visualizer.py,v 1.37 2008-07-01 15:54:02 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -18,12 +18,12 @@ def loadResult(path):
         if path.endswith('.gotmresult'):
             res.load(path)
         elif path.endswith('.nc'):
-            res.attach(path)
+            res.attach(path,copy=False)
         else:
             # We do not recognize this file type; try both GOTM result and NetCDF
             done = True
             try:
-                res.attach(path)
+                res.attach(path,copy=False)
             except Exception,e:
                 done = False
             if not done:

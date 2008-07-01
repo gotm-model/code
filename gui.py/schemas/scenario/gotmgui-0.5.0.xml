@@ -50,7 +50,7 @@
 			<condition type="ne" variable="./grid_method" value="0"/>
 			<fileinfo type="verticalgrid" datatype="float64">
 				<filevariables>
-					<filevariable label="height"/>
+					<filevariable name="h" label="height"/>
 				</filevariables>
 			</fileinfo>
 		</element>
@@ -178,12 +178,12 @@
 			<condition type="eq" variable="./flux_source" value="0"/>
 			<fileinfo type="pointsintime">
 				<filevariables>
-					<filevariable label="wind speed in x-direction" unit="m/s"/>
-					<filevariable label="wind speed in y-direction" unit="m/s"/>
-					<filevariable label="air pressure" unit="hPa"/>
-					<filevariable label="air temperature" unit="°C"/>
-					<filevariable label="air humidity"/>
-					<filevariable label="cloud cover" minInclusive="0" maxInclusive="1"/>
+					<filevariable name="u10"   label="wind speed in x-direction" unit="m/s"/>
+          <filevariable name="v10"   label="wind speed in y-direction" unit="m/s"/>
+          <filevariable name="airp"  label="air pressure" unit="hPa"/>
+          <filevariable name="airt"  label="air temperature" unit="°C"/>
+          <filevariable name="rh"    label="air humidity"/>
+          <filevariable name="cloud" label="cloud cover" minInclusive="0" maxInclusive="1"/>
 				</filevariables>
 			</fileinfo>
 		</element>
@@ -224,7 +224,7 @@
       </condition>
       <fileinfo type="pointsintime">
         <filevariables>
-          <filevariable label="surface heat flux" unit="W/m²"/>
+          <filevariable name="heat" label="surface heat flux" unit="W/m²"/>
         </filevariables>
       </fileinfo>
     </element>
@@ -244,7 +244,7 @@
       <condition type="eq" variable="./swr_method" value="2"/>
       <fileinfo type="pointsintime">
         <filevariables>
-          <filevariable label="short-wave solar radiation" unit="W/m²"/>
+          <filevariable name="swr" label="short-wave solar radiation" unit="W/m²"/>
         </filevariables>
       </fileinfo>
     </element>
@@ -279,8 +279,8 @@
 			</condition>
 			<fileinfo type="pointsintime">
 				<filevariables>
-					<filevariable label="x-component of surface momentum flux" unit="N/m²"/>
-					<filevariable label="y-component of surface momentum flux" unit="N/m²"/>
+					<filevariable name="tx" label="x-component of surface momentum flux" unit="N/m²"/>
+					<filevariable name="ty" label="y-component of surface momentum flux" unit="N/m²"/>
 				</filevariables>
 			</fileinfo>
 		</element>
@@ -299,7 +299,7 @@
 			<condition type="eq" variable="./precip_method" value="2"/>
 			<fileinfo type="pointsintime">
 				<filevariables>
-					<filevariable label="precipitation" unit="m/s"/>
+					<filevariable name="precip" label="precipitation" unit="m/s"/>
 				</filevariables>
 			</fileinfo>
 		</element>
@@ -321,7 +321,7 @@
 			</condition>
 			<fileinfo type="pointsintime">
 				<filevariables>
-					<filevariable label="sea surface temperature" unit="°C"/>
+					<filevariable name="sst" label="sea surface temperature" unit="°C"/>
 				</filevariables>
 			</fileinfo>
 		</element>
@@ -340,7 +340,7 @@
 			</condition>
 			<fileinfo type="pointsintime">
 				<filevariables>
-					<filevariable label="sea surface salinity" unit="psu"/>
+					<filevariable name="sss" label="sea surface salinity" unit="psu"/>
 				</filevariables>
 			</fileinfo>
 		</element>
@@ -741,7 +741,7 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
-						<filevariable label="salinity" unit="psu"/>
+						<filevariable name="salt" label="salinity" unit="psu"/>
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -798,7 +798,7 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
-						<filevariable label="temperature" unit="ºC"/>
+						<filevariable name="temp" label="temperature" unit="ºC"/>
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -839,9 +839,9 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
-						<filevariable label="observation height" unit="m above bottom" />
-						<filevariable label="external pressure gradient x-direction" />
-						<filevariable label="external pressure gradient y-direction" />
+						<filevariable name="hpress" label="observation height" unit="m above bottom" />
+						<filevariable name="dpdx"   label="external pressure gradient x-direction" />
+						<filevariable name="dpdy"   label="external pressure gradient y-direction" />
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -902,10 +902,10 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
-						<filevariable label="salinity gradient in x-direction" unit="psu/m"/>
-						<filevariable label="salinity gradient in y-direction" unit="psu/m"/>
-						<filevariable label="temperature gradient in x-direction" unit="K/m"/>
-						<filevariable label="temperature gradient in y-direction" unit="K/m"/>
+						<filevariable name="dsdx" label="salinity gradient in x-direction" unit="psu/m"/>
+            <filevariable name="dsdy" label="salinity gradient in y-direction" unit="psu/m"/>
+            <filevariable name="dtdx" label="temperature gradient in x-direction" unit="K/m"/>
+            <filevariable name="dtdy" label="temperature gradient in y-direction" unit="K/m"/>
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -962,9 +962,9 @@
 				<condition type="eq" variable="." value="0"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
-						<filevariable label="A"/>
-						<filevariable label="g1" unit="m"/>
-						<filevariable label="g2" unit="m"/>
+						<filevariable name="A" label="A"/>
+						<filevariable name="g1" label="g1" unit="m"/>
+						<filevariable name="g2" label="g2" unit="m"/>
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -986,8 +986,8 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
-						<filevariable label="height of maximum absolute value of vertical advection velocity" unit="m"/>
-						<filevariable label="vertical advection velocity" unit="m/s"/>
+						<filevariable name="w_height" label="height of maximum absolute value of vertical advection velocity" unit="m"/>
+						<filevariable name="w_adv"    label="vertical advection velocity" unit="m/s"/>
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -1014,7 +1014,7 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
-						<filevariable label="sea surface elevation" unit="m"/>
+						<filevariable name="zeta" label="sea surface elevation" unit="m"/>
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -1054,9 +1054,9 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
-						<filevariable label="significant wave-height"/>
-						<filevariable label="mean zero-crossing period"/>
-						<filevariable label="mean direction"/>
+						<filevariable name="Hs"   label="significant wave-height"/>
+						<filevariable name="Tz"   label="mean zero-crossing period"/>
+						<filevariable name="phiw" label="mean direction"/>
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -1081,8 +1081,8 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
-						<filevariable label="velocity in x-direction" unit="m/s"/>
-						<filevariable label="velocity in y-direction" unit="m/s"/>
+						<filevariable name="u" label="velocity in x-direction" unit="m/s"/>
+						<filevariable name="v" label="velocity in y-direction" unit="m/s"/>
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -1103,7 +1103,7 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
-						<filevariable label="turbulent dissipation rate" unit="W/kg"/>
+						<filevariable name="eps" label="turbulent dissipation rate" unit="W/kg"/>
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -1134,7 +1134,7 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
-						<filevariable label="oxygen"/>
+						<filevariable name="o2" label="oxygen"/>
 					</filevariables>
 				</fileinfo>
 			</element>
@@ -1473,8 +1473,8 @@
 						<filedimension label="height above bottom" unit="m" preferredaxis="y" />
 					</filedimensions>
 					<filevariables>
-						<filevariable label="maximum excursion limit" unit="m" />
-						<filevariable label="friction coefficient" unit="1/m" />
+						<filevariable name="exc"   label="maximum excursion limit" unit="m" />
+						<filevariable name="vfric" label="friction coefficient"    unit="1/m" />
 					</filevariables>
 				</fileinfo>
 			</element>

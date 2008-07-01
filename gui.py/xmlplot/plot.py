@@ -267,7 +267,7 @@ class Variable:
 
     def getDimensionInfo(self,dimname):
         """Gets information on the specified dimension of the variable.
-        See also VariabelStore.getDimensionInfo.
+        See also VariableStore.getDimensionInfo.
         """
         return self.store.getDimensionInfo(dimname)
 
@@ -727,7 +727,245 @@ class VariableFlat(VariableReduceDimension):
         newslice.coords[self.inewtargetdim] = newtargetcoords
         newslice.data = newdata
         return newslice
+        
+class VariableExpression(Variable):
+    @staticmethod
+    def slice2string(slices):
+        """This function takes a slice object and converts it to a Python slice
+        specification string.
+        """
+        slicestrings = []
+        for slic in slices:
+            if isinstance(slic,slice):
+                start = slic.start
+                if start==None: start = ''
+                stop = slic.stop
+                if stop==None: stop = ''
+                step = slic.step
+                if step==None: step = ''
+                res = ':'.join((str(start),str(stop),str(step)))
+                if res=='::': res = ':'
+                slicestrings.append(res)
+            else:
+                slicestrings.append(str(slic))
+        return '[%s]' % ','.join(slicestrings)
 
+    class LazyExpression:
+        def __init__(self,operator=None,*args):
+            assert not (operator==None and len(args)>1), 'A lazy expression without operator must be initialized with one argument.'
+            self.operator = operator
+            self.args = args
+            self.slice = None
+            
+        def __call__(self,role='value',addparentheses=True):
+            assert role in ('value','name','long_name','variables','raw'), 'Unknown role "%s" specified.' % str(role)
+            
+            if self.operator==None:
+                # This object encapsulates a Variable object
+                assert len(self.args)==1,'LazyExpression without operator should encapsulate exactly 1 object, not %i.' % len(self.args)
+                item = self.args[0]
+                if role=='name' or role=='raw':
+                    # Return the short name of the object (optionally with slice specification).
+                    res = item.getName()
+                    if self.slice!=None: res+=VariableExpression.slice2string(self.slice)
+                    return res
+                elif role=='long_name':
+                    # Return the long name of the object (optionally with slice specification).
+                    res = item.getLongName()
+                    if self.slice!=None: res+=VariableExpression.slice2string(self.slice)
+                    return res
+                elif role=='variables':
+                    # Return the encapsulated object.
+                    return [item]
+                else:
+                    # Return the data slice of the encaptulated object.
+                    slic = self.slice
+                    if slic==None: slic = len(item.getDimensions())*[slice(None)]
+                    return item.getSlice(slic)
+            else:
+                # This object represents an operation on one or more nested objects.
+                if role=='variables':
+                    # Retrieve lists of all nested variables, and combine & return them
+                    res = []
+                    for arg in self.args:
+                        if isinstance(arg,VariableExpression.LazyExpression):
+                            res += arg(role)
+                    return res
+
+                # Retrieve the data returned by the nested objects. Choose one of the
+                # nested objects as the target for storing new data values (this allows
+                # for direct inheritance of the coordinate vectors.
+                usedslice = None
+                resolvedargs = []
+                for arg in self.args:
+                    if isinstance(arg,VariableExpression.LazyExpression):
+                        resolvedargs.append(arg(role))
+                        if usedslice==None: usedslice = resolvedargs[-1]
+                        if isinstance(resolvedargs[-1],Variable.Slice): resolvedargs[-1] = resolvedargs[-1].data
+                    else:
+                        resolvedargs.append(arg)
+                        if role in ('name','long_name','raw'): resolvedargs[-1] = str(resolvedargs[-1])
+                    
+                if self.operator=='add':
+                    # Addition operator
+                    assert len(resolvedargs)==2,'Need 2 arguments for addition, not %i.' % len(v)
+                    if role in ('name','long_name','raw'):
+                        result = '+'.join(resolvedargs)
+                    else:
+                        usedslice.data = resolvedargs[0]+resolvedargs[1]
+                elif self.operator=='sub':
+                    # Subtraction operator
+                    assert len(resolvedargs)==2,'Need 2 arguments for subtraction, not %i.' % len(resolvedargs)
+                    if role in ('name','long_name','raw'):
+                        result = '-'.join(resolvedargs)
+                    else:
+                        usedslice.data = resolvedargs[0]-resolvedargs[1]
+                elif self.operator=='mul':
+                    # Multiplication operator
+                    assert len(resolvedargs)==2,'Need 2 arguments for multiplication, not %i.' % len(resolvedargs)
+                    if role in ('name','long_name','raw'):
+                        result = '*'.join(resolvedargs)
+                    else:
+                        usedslice.data = resolvedargs[0]*resolvedargs[1]
+                elif self.operator=='div':
+                    # Division operator
+                    assert len(resolvedargs)==2,'Need 2 arguments for division, not %i.' % len(resolvedargs)
+                    if role in ('name','long_name','raw'):
+                        result = '/'.join(resolvedargs)
+                    else:
+                        usedslice.data = resolvedargs[0]/resolvedargs[1]
+                elif self.operator=='pow':
+                    # Power operator
+                    assert len(resolvedargs)==2,'Need 2 arguments for pow, not %i.' % len(resolvedargs)
+                    if role in ('name','long_name','raw'):
+                        result = '**'.join(resolvedargs)
+                    else:
+                        usedslice.data = resolvedargs[0]**resolvedargs[1]
+                elif self.operator=='neg':
+                    # Negation operator
+                    assert len(resslices)==1,'Need 1 argument for neg, not %i.' % len(resolvedargs)
+                    if role in ('name','long_name','raw'):
+                        result = '-' + resolvedargs[0]
+                    else:
+                        usedslice.data = -resolvedargs[0]
+                elif self.operator=='pos':
+                    # Positive operator
+                    assert len(resolvedargs)==1,'Need 1 argument for pos, not %i.' % len(resolvedargs)
+                    if role in ('name','long_name','raw'):
+                        result = '+' + resolvedargs[0]
+                    else:
+                        usedslice.data = +resolvedargs[0]
+                elif self.operator=='sqrt':
+                    # Square root function
+                    assert len(resolvedargs)==1,'Need 1 argument for sqrt, not %i.' % len(resolvedargs)
+                    if role in ('name','long_name','raw'):
+                        result = 'sqrt(%s)' % resolvedargs[0]
+                    else:
+                        usedslice.data = numpy.sqrt(resolvedargs[0])
+                        
+                # Return the result
+                if role in ('name','long_name','raw'):
+                    if addparentheses: result = '(%s)' % result
+                    return result
+                else:
+                    return usedslice
+                    
+        @staticmethod
+        def getFunctions():
+            return {'sqrt':VariableExpression.LazyExpression.__sqrt__}
+                    
+        @staticmethod
+        def __sqrt__(var):
+            return VariableExpression.LazyExpression('sqrt',var)
+                
+        def __add__(self,other):
+            return VariableExpression.LazyExpression('add',self,other)
+
+        def __sub__(self,other):
+            return VariableExpression.LazyExpression('sub',self,other)
+
+        def __mul__(self,other):
+            return VariableExpression.LazyExpression('mul',self,other)
+
+        def __div__(self,other):
+            return VariableExpression.LazyExpression('div',self,other)
+
+        def __truediv__(self,other):
+            return self.__div__(other)
+            
+        def __pow__(self,other):
+            return VariableExpression.LazyExpression('pow',self,other)
+
+        def __neg__(self):
+            return VariableExpression.LazyExpression('neg',self,other)
+
+        def __pos__(self):
+            return VariableExpression.LazyExpression('pos',self,other)
+            
+        def __getitem__(self,slices):
+            assert self.operator==None, 'Currently only slices of original variables are supported (and not slices of compound variables).'
+            self.slice = slices
+            return self
+            
+        def __len__(self):
+            return 1
+
+    def __init__(self,expression,sources,defaultsource):
+        self.expression = expression
+        self.stack = []
+        self.i = 0
+        self.sources = sources
+        self.defaultsource = defaultsource
+        self.parse()
+        
+    def buildExpression(self):
+        res = self.execute('raw')
+        if not isinstance(res,basestring): res = '['+','.join(res)+',]'
+        return res
+
+    def getName(self):
+        res = self.execute('name')
+        if not isinstance(res,basestring): res = ', '.join(res)
+        return res
+        
+    def getLongName(self):
+        res = self.execute('long_name')
+        if not isinstance(res,basestring): res = ', '.join(res)
+        return res
+
+    def getDimensions(self):
+        var = self.execute('variables')
+        if self.getItemCount()>1: var=var[0]
+        return var[0].getDimensions()
+        
+    def getItemCount(self):
+        return len(self.root)
+        
+    def getSlice(self,bounds):
+        varslice = self.execute('value')
+        if isinstance(varslice,Variable.Slice): varslice = [varslice]
+        return varslice
+
+    def getDimensionInfo(self,dimname):
+        var = self.execute('variables')
+        if self.getItemCount()>1: var=var[0]
+        return var[0].getDimensionInfo(dimname)
+        
+    def parse(self):
+        globs = VariableExpression.LazyExpression.getFunctions()
+        for sourcename,source in self.sources.iteritems():
+            for varname,var in source.iteritems():
+                globs['.'.join((sourcename,varname))] = VariableExpression.LazyExpression(None,var)
+                if sourcename==self.defaultsource:
+                    globs[varname] = VariableExpression.LazyExpression(None,var)
+        self.root = eval(self.expression,globs)
+    
+    def execute(self,role):
+        if len(self.root)>1:
+            return [node(role,addparentheses=False) for node in self.root]
+        else:
+            return self.root(role,addparentheses=False)
+            
 class FigureProperties(xmlstore.xmlstore.TypedStore):
     """Class for figure properties, based on xmlstore.TypedStore.
     
@@ -885,11 +1123,12 @@ class Figure(xmlstore.util.referencedobject):
     def addVariable(self,varname,source=None,replace=True):
         """Add a variable to the figure. If no data source name if specified,
         the first registered source will be used. The specified variable must
-        match the name of a vairbale in the data source to be used.
+        match the name of a variable in the data source to be used.
         """
         datanode = self.properties['Data']
-        varpath = '/'+varname
-        if source!=None: varpath = source+varpath
+        if source==None: source = self.defaultsource
+        parser = VariableExpression(varname,self.sources,source)
+        varpath = parser.buildExpression()
         if replace:
             series = datanode.getChildById('Series',varpath,create=True)
             self.defaultproperties['Data'].getChildById('Series',varpath,create=True)
@@ -914,41 +1153,7 @@ class Figure(xmlstore.util.referencedobject):
         """Export the contents of the figure to file.
         """
         self.canvas.print_figure(str(path),dpi=dpi)
-        
-    def parseExpression(self,expression):
-        """Parses an expression that can contain one or more variables specified as
-        datasource/variablename, and (in the future) mathematical operators and functions.
-        """
-        #varsource,expression = expression.split('/',1)
-        if expression[0]=='(':
-            i,depth = 1,1
-            commapos = []
-            while depth>0:
-                assert i<len(expression), 'Missing closing parenthesis in "%s".' % expression
-                ch = expression[i]
-                if   ch=='(': depth+=1
-                elif ch==')': depth-=1
-                elif depth==1 and ch==',': commapos.append(i)
-                i+=1
-            istart = 1
-            parts = []
-            for cp in commapos:
-                parts.append(expression[istart:cp])
-                istart = cp+1
-            parts.append(expression[istart:i-1])
-            print parts
-        
-        varsource,varname = expression.split('/',1)
-        if varsource=='':
-            # No data source specified; take default.
-            assert self.defaultsource!=None, 'No data source set for variable "%s", but no default source available either.' % varname
-            varsource = self.defaultsource
-            
-        # Get variable object.
-        varstore = self.sources[varsource]
-        assert varname in varstore, 'Source "%s" does not contain variable with name "%s".' % (varsource,varname)
-        return varstore[varname]
-        
+                
     def update(self):
         """Update the figure.
         
@@ -1049,7 +1254,10 @@ class Figure(xmlstore.util.referencedobject):
                 print 'Skipping data series %i because the secondary node id (i.e., variable source and name) is not set.'
                 continue
                 
-            var = self.parseExpression(varpath)
+            var = VariableExpression(varpath,self.sources,self.defaultsource)
+            itemcount = var.getItemCount()
+            assert itemcount>0, 'No variable expression recognized in "%s".' % varpath
+            assert itemcount<=2, 'Plots with more than two dependent variables are not supported yet.'
             longname = var.getLongName()
             
             # Create default series information
@@ -1062,13 +1270,13 @@ class Figure(xmlstore.util.referencedobject):
             defaultseriesnode['UseColorMap'].setValue(True)
             defaultseriesnode['EdgeColor'].setValue(xmlstore.xmlstore.StoreColor(0,0,0))
             defaultseriesnode['EdgeWidth'].setValue(1.)
-            label = seriesnode['Label'].getValue(usedefault=True)
             
             # Old defaults will be removed after all series are plotted.
             # Register that the current variable is active, ensuring its default will remain.
             if varpath in olddefaults: olddefaults.remove(varpath)
 
-            # Store the variable long name (to be used for building title)
+            # Store the [default or custom] variable long name; it will be used for building the plot title.
+            label = seriesnode['Label'].getValue(usedefault=True)
             titles.append(label)
 
             # Build list of dimension boundaries for current variable.
@@ -1091,10 +1299,11 @@ class Figure(xmlstore.util.referencedobject):
                     dimbounds.append(slice(None))
                     
             # Get the data
-            varslice = var.getSlice(tuple(dimbounds))
+            varslices = var.getSlice(tuple(dimbounds))
+            assert len(varslices)>0, 'Unable to retrieve any variable slices.'
             
             # Skip this variable if no data are available.
-            if not varslice.isValid(): continue
+            if not all([varslice.isValid() for varslice in varslices]): continue
 
             # Now we are at the point where getting the data worked.
             # Register all used dimensions (even the "sliced out" ones)
@@ -1109,38 +1318,40 @@ class Figure(xmlstore.util.referencedobject):
             dimdata = dim2data.setdefault(varpath,{'forcedrange':(None,None)})
             dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','tight':False,'logscale':False})
             
-            # Find non-singleton dimensions (singleton dimension: dimension with length one)
-            # Store singleton dimensions as fixed extra coordinates.
-            varslice = varslice.squeeze()
-            
-            # Mask infinite/nan values, if any - only do this if the array is not masked
-            # already, because it seems isfinite is not supported on masked arrays.
-            if not hasattr(varslice.data,'_mask'):
-                invalid = numpy.logical_not(numpy.isfinite(varslice.data))
-                if invalid.any():
-                    print 'WARNING: masking %i invalid values (inf or nan) out of %i.' % (invalid.sum(),invalid.size)
-                    varslice.data = numpy.ma.array(varslice.data,mask=invalid)
+            for i in range(len(varslices)):
+                # Eliminate singleton dimensions (singleton dimension: dimension with length one)
+                # Store singleton dimensions as fixed extra coordinates.
+                varslices[i] = varslices[i].squeeze()
+                
+                # Mask infinite/nan values, if any - only do this if the array is not masked
+                # already, because it seems isfinite is not supported on masked arrays.
+                if not hasattr(varslices[i].data,'_mask'):
+                    invalid = numpy.logical_not(numpy.isfinite(varslices[i].data))
+                    if invalid.any():
+                        print 'WARNING: masking %i invalid values (inf or nan) out of %i.' % (invalid.sum(),invalid.size)
+                        varslices[i].data = numpy.ma.array(varslices[i].data,mask=invalid)
 
-            defaultseriesnode['DimensionCount'].setValue(varslice.ndim)
+            # Get the number of dimensions from the data slice, and add it to the plot properties.
+            defaultseriesnode['DimensionCount'].setValue(varslices[0].ndim)
 
             # Get the plot type for 3D plots.
             plottype3d = seriesnode['PlotType3D'].getValue(usedefault=True)
 
             # We use a staggered grid (coordinates at interfaces,
             # values at centers) for certain 3D plot types.
-            staggered = (varslice.ndim==2 and plottype3d==0)
+            staggered = (len(varslices)==1 and varslices[0].ndim==2 and plottype3d==0)
             
             # Create shortcut to applicable coordinate set.
             if staggered:
-                coords = varslice.coords_stag
+                coords = varslices[0].coords_stag
             else:
-                coords = varslice.coords
+                coords = varslices[0].coords
 
             # Get the minimum and maximum values; store these as default.
-            dim2data[varpath]['datarange'] = [varslice.data.min(),varslice.data.max()]
+            dim2data[varpath]['datarange'] = [varslices[0].data.min(),varslices[0].data.max()]
 
             # Enumerate over the dimension of the variable.
-            for idim,dimname in enumerate(varslice.dimensions):
+            for idim,dimname in enumerate(varslices[0].dimensions):
                 # Get minimum and maximum coordinates.
                 if coords[idim].ndim==1:
                     # Coordinates provided as vector (1D) valid over whole domain.
@@ -1159,6 +1370,8 @@ class Figure(xmlstore.util.referencedobject):
                 effrange = dim2data[dimname].setdefault('datarange',[None,None])
                 if effrange[0]==None or datamin<effrange[0]: effrange[0] = datamin
                 if effrange[1]==None or datamax>effrange[1]: effrange[1] = datamax
+                
+            varslice = varslices[0]
             
             # Plot the data series
             if varslice.ndim==0:
@@ -1240,12 +1453,8 @@ class Figure(xmlstore.util.referencedobject):
                 dim2data[varslice.dimensions[xdim]]['axis'] = 'x'
                 dim2data[varslice.dimensions[ydim]]['axis'] = 'y'
                 
-                if plottype3d!=2:
-                    dim2data[varpath]['axis'] = 'colorbar'
-
                 X = coords[xdim]
                 Y = coords[ydim]
-                Z = varslice.data
                 
                 # Get length of coordinate dimensions. Coordinates can be provided as vectors
                 # valid over the whole domain, or as n-D array that match the shape of the values.
@@ -1270,66 +1479,92 @@ class Figure(xmlstore.util.referencedobject):
                 elif xdim<ydim:
                     Y = Y.transpose()
                     
-                # Adjust Z dimension.
-                if xdim<ydim:
-                    Z = Z.transpose()
-                
-                pc = None
-                norm = None
+                pc = None       # object using colormap
+                norm = None     # color normalization object
+                hascolormap = True
                 logscale = dim2data.get('colorbar',{}).get('logscale',False)
                 if logscale: norm = matplotlib.colors.LogNorm()
 
-                if plottype3d==1 or plottype3d==2:
-                    loc = None
-                    if logscale: loc = matplotlib.ticker.LogLocator()
+                if len(varslices)==1:
+                    # Only one dependent variable
+                    Z = varslices[0].data
+                    if xdim<ydim: Z = Z.transpose()
+                    C = Z
 
-                    cc = seriesnode['ContourCount'].getValue()
-                    showedges = seriesnode['ShowEdges'].getValue(usedefault=True)
-                    edgecolor = (seriesnode['EdgeColor'].getValue(usedefault=True).getNormalized(),)
-                    if plottype3d==2 and seriesnode['UseColorMap'].getValue(usedefault=True): edgecolor = None
-                    edgewidth = seriesnode['EdgeWidth'].getValue(usedefault=True)
-                    borders,fill = (showedges or plottype3d==2),plottype3d==1
-                    cset,csetf = None,None
-                    if cc!=None:
-                        if fill:
-                            csetf = axes.contourf(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,cmap=cm)
-                        if borders:
-                            if fill: zorder += 1
-                            contourcm = cm
-                            if edgecolor!=None: contourcm = None
-                            cset = axes.contour(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+                    # Allocate colorbar axis to Z variable.
+                    if plottype3d!=2: dim2data[varpath]['axis'] = 'colorbar'
+
+                    if plottype3d==1 or plottype3d==2:
+                        # We have to make a contour plot (filled or empty)
+                        
+                        loc = None
+                        if logscale: loc = matplotlib.ticker.LogLocator()
+
+                        cc = seriesnode['ContourCount'].getValue()
+                        showedges = seriesnode['ShowEdges'].getValue(usedefault=True)
+                        edgecolor = (seriesnode['EdgeColor'].getValue(usedefault=True).getNormalized(),)
+                        if plottype3d==2 and seriesnode['UseColorMap'].getValue(usedefault=True): edgecolor = None
+                        edgewidth = seriesnode['EdgeWidth'].getValue(usedefault=True)
+                        borders,fill = (showedges or plottype3d==2),plottype3d==1
+                        cset,csetf = None,None
+                        if cc!=None:
+                            # Contour count was specified
+                            if fill:
+                                csetf = axes.contourf(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,cmap=cm)
+                            if borders:
+                                if fill: zorder += 1
+                                contourcm = cm
+                                if edgecolor!=None: contourcm = None
+                                cset = axes.contour(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+                        else:
+                            # Automatically determine contour count
+                            if fill:
+                                csetf = axes.contourf(X,Y,Z,norm=norm,locator=loc,zorder=zorder,cmap=cm)
+                            if borders:
+                                if fill: zorder += 1
+                                contourcm = cm
+                                if edgecolor!=None: contourcm = None
+                                cset = axes.contour(X,Y,Z,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+
+                            # Retrieve the number of contours chosen by MatPlotLib
+                            constset = csetf
+                            if constset==None: constset = cset
+                            defaultseriesnode['ContourCount'].setValue(len(constset.levels)-2)
+                        pc = csetf
+                        if plottype3d==2 and edgecolor!=None: hascolormap = False
                     else:
-                        if fill:
-                            csetf = axes.contourf(X,Y,Z,norm=norm,locator=loc,zorder=zorder,cmap=cm)
-                        if borders:
-                            if fill: zorder += 1
-                            contourcm = cm
-                            if edgecolor!=None: contourcm = None
-                            cset = axes.contour(X,Y,Z,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
-                    #if not fill: axes.clabel(cset)
-                    if cc==None:
-                      constset = csetf
-                      if constset==None: constset = cset
-                      defaultseriesnode['ContourCount'].setValue(len(constset.levels)-2)
-                    pc = csetf
-                    hascolormap = True
+                        # We have to plot a colored quadrilinear mesh
+                        
+                        #edgecolors = 'None'
+                        #if seriesnode['ShowEdges'].getValue(usedefault=True): edgecolors = 'k'
+                        shading = 'flat'
+                        if seriesnode['ShowEdges'].getValue(usedefault=True): shading = 'faceted'
+                        pc = axes.pcolormesh(X,Y,Z,cmap=cm,norm=norm,shading=shading)
+                      
                 else:
-                    #edgecolors = 'None'
-                    #if seriesnode['ShowEdges'].getValue(usedefault=True): edgecolors = 'k'
-                    shading = 'flat'
-                    if seriesnode['ShowEdges'].getValue(usedefault=True): shading = 'faceted'
-                    pc = axes.pcolormesh(X,Y,Z,cmap=cm,norm=norm,shading=shading)
-                    hascolormap = True
-                  
+                    # More than one dependent variable
+                    assert len(varslices)==2,'Only plots with one or two dependent variables are currently supported.'
+                    
+                    U,V = varslices[0].data,varslices[1].data
+                    if xdim<ydim: U,V = U.transpose(),V.transpose()
+
+                    C = numpy.sqrt(U**2+V**2)
+                    pc = axes.quiver(X,Y,U,V,C,cmap=cm,norm=norm)
+
+                    # Allocate colorbar axis to arrow length.
+                    dimdata = dim2data.setdefault('arrowlength',{'forcedrange':(None,None)})
+                    dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','tight':False,'logscale':False,'axis':'colorbar'})
+                    dimdata['datarange'] = [C.min(),C.max()]
+                
                 if pc!=None:
                     # Create colorbar
                     assert cb==None, 'Currently only one object that needs a colorbar is supported per figure.'
-                    if isinstance(Z,numpy.ma.MaskedArray):
-                        flatZ = Z.compressed()
+                    if isinstance(C,numpy.ma.MaskedArray):
+                        flatC = C.compressed()
                     else:
-                        flatZ = Z.ravel()
-                    if (flatZ==flatZ[0]).all():
-                        # All z values are equal. Explicitly set color range,
+                        flatC = C.ravel()
+                    if (flatC==flatC[0]).all():
+                        # All color values are equal. Explicitly set color range,
                         # because MatPlotLib 0.90.0 chokes on identical min and max.
                         pc.set_clim((Z[0,0]-1,Z[0,0]+1))
                     else:

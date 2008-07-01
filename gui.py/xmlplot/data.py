@@ -138,7 +138,8 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
                     if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filevariable':
                         longname = ch.getAttribute('label')
                         unit = ch.getAttribute('unit')
-                        name = longname
+                        assert ch.hasAttribute('name'), '"name" attribute of filevariable is missing, label = %s.' % longname
+                        name = ch.getAttribute('name')
                         self.vardata.append((name,longname,unit))
 
             # Get dimensions
@@ -801,13 +802,15 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
           # coordinates, but not float-based slices.
           boundindices,isfloatslice = [],[]
           for idim,dimname in enumerate(dimnames):
-            assert bounds[idim].step==None,'Step argument is not yet supported.'
+            assert isinstance(bounds[idim],int) or bounds[idim].step==None,'Step argument is not yet supported.'
             fc = self.fixedcoords.get(dimname,None)
             isfloatslice.append(False)
             if fc!=None:
                 assert fc[0]>=0,             'Slice index %i lies below lower boundary of dimension %s (0).' % (fc[0],dimname)
                 assert fc[1]<=v.shape[idim], 'Slice index %i exceeds upper boundary of dimension %s (%i).' % (fc[1],dimname,v.shape[idim])
                 boundindices.append(slice(fc[0],fc[1]))
+            elif isinstance(bounds[idim],int):
+                boundindices.append(slice(bounds[idim],bounds[idim]+1))
             elif isinstance(bounds[idim].start,float) or isinstance(bounds[idim].stop,float):
                 boundindices.append(slice(0,v.shape[idim]))
                 isfloatslice[-1] = True
