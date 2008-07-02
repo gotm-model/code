@@ -4,7 +4,7 @@ import xmlplot.common, xmlstore.xmlstore, xmlplot.plot, xmlplot.data
 import common, scenario
 
 # Class that represents a GOTM result.
-#   Inherits from VariableStore, as it contains variables that can be plotted.
+#   Inherits from xmlplot.data.NetCDFStore_GOTM, as it encapsulates a GOTM-created NetCDF file.
 #   Contains a link to the scenario from which the result was created (if available)
 class Result(xmlplot.data.NetCDFStore_GOTM):
 

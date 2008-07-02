@@ -28,12 +28,40 @@ class VariableStore(UserDict.DictMixin):
     """
 
     def __init__(self):
-        pass
+        self.defaultchild = None
+        self.childsources = {}
         
-    def __getitem__(self,varname):
+    def addChild(self,name,child):
+        if self.defaultchild==None: self.defaultchild = name
+        self.childsources[name] = child
+
+    def deleteAllChildren(self):
+        self.childsources = {}
+        self.defaultchild = None
+        
+    def __getitem__(self,expression):
+        return self.getExpression(expression)
+        
+    def getVariable(self,varname):
         """Returns a Variable object for the given short variable name.
         """
-        raise KeyError()
+        assert False,'Method "getVariable" must be implemented by derived class.'
+
+    def getExpression(self,expression):
+        globs = {}
+        for varname in self.keys():
+            var = self.getVariable(varname)
+            globs[varname] = VariableExpression.LazyExpression(None,var)
+        if len(self.keys())==0 and self.defaultchild!=None:
+            defaultsource = self.childsources[self.defaultchild]
+            for varname in defaultsource.keys():
+                var = defaultsource.getVariable(varname)
+                globs[varname] = VariableExpression.LazyExpression(None,var)
+        try:
+            result = VariableExpression(expression,globs)
+        except Exception,e:
+            raise Exception('Resolve expression "%s" to a valid data object. Global table: %s. Error: %s' % (expression,globs,e))
+        return result
         
     def keys(self):
         """Returns a list of short names for all variables present in the store.
@@ -339,7 +367,7 @@ class MergedVariableStore(VariableStore):
             return info
         return self.stores[0].getDimensionInfo(dimname)
 
-    def __getitem__(self,varname):
+    def getVariable(self,varname):
         vars,missing = [],[]
         for store in self.stores:
             if varname in store:
@@ -363,7 +391,7 @@ class CustomVariableStore(VariableStore):
     def keys(self):
         return [v.getName() for v in self.vars]
 
-    def __getitem__(self,varname):
+    def getVariable(self,varname):
         if varname not in self.vars: raise KeyError()
         return self.vars[varname]
 
@@ -752,7 +780,8 @@ class VariableExpression(Variable):
 
     class LazyExpression:
         def __init__(self,operator=None,*args):
-            assert not (operator==None and len(args)>1), 'A lazy expression without operator must be initialized with one argument.'
+            assert operator!=None or len(args)==1, 'A lazy expression without operator must be initialized with one argument.'
+            assert operator!=None or isinstance(args[0],(Variable,VariableStore)), 'A lazy expression without operator must be initialized with a Variable or VariableStore object.'
             self.operator = operator
             self.args = args
             self.slice = None
@@ -910,13 +939,10 @@ class VariableExpression(Variable):
         def __len__(self):
             return 1
 
-    def __init__(self,expression,sources,defaultsource):
-        self.expression = expression
-        self.stack = []
-        self.i = 0
-        self.sources = sources
-        self.defaultsource = defaultsource
-        self.parse()
+    def __init__(self,expression,objects):
+        globs = VariableExpression.LazyExpression.getFunctions()
+        globs.update(objects)
+        self.root = eval(expression,globs)
         
     def buildExpression(self):
         res = self.execute('raw')
@@ -950,15 +976,6 @@ class VariableExpression(Variable):
         var = self.execute('variables')
         if self.getItemCount()>1: var=var[0]
         return var[0].getDimensionInfo(dimname)
-        
-    def parse(self):
-        globs = VariableExpression.LazyExpression.getFunctions()
-        for sourcename,source in self.sources.iteritems():
-            for varname,var in source.iteritems():
-                globs['.'.join((sourcename,varname))] = VariableExpression.LazyExpression(None,var)
-                if sourcename==self.defaultsource:
-                    globs[varname] = VariableExpression.LazyExpression(None,var)
-        self.root = eval(self.expression,globs)
     
     def execute(self,role):
         if len(self.root)>1:
@@ -1031,8 +1048,7 @@ class Figure(xmlstore.util.referencedobject):
         # Attach the store with figure defaults to the customized store.
         self.properties.setDefaultStore(self.defaultproperties)
 
-        self.sources = {}
-        self.defaultsource = None
+        self.source = VariableStore()
         self.updating = True
         self.dirty = False
         self.haschanged = False
@@ -1084,15 +1100,13 @@ class Figure(xmlstore.util.referencedobject):
         """Clears the list of VariableStore data sources currently registered
         with the figure.
         """
-        self.sources = {}
-        self.defaultsource = None
+        self.source.deleteAllChildren()
 
     def addDataSource(self,name,obj):
         """Adds a VariableStore data source to the figure, using the specified
         name.
         """
-        self.sources[name] = obj
-        if self.defaultsource==None: self.defaultsource = name
+        self.source.addChild(name,obj)
 
     def clearProperties(self,deleteoptional=True):
         """Clear all customized figure properties (which means defaults will be used).
@@ -1126,9 +1140,7 @@ class Figure(xmlstore.util.referencedobject):
         match the name of a variable in the data source to be used.
         """
         datanode = self.properties['Data']
-        if source==None: source = self.defaultsource
-        parser = VariableExpression(varname,self.sources,source)
-        varpath = parser.buildExpression()
+        varpath = self.source[varname].buildExpression()
         if replace:
             series = datanode.getChildById('Series',varpath,create=True)
             self.defaultproperties['Data'].getChildById('Series',varpath,create=True)
@@ -1254,7 +1266,7 @@ class Figure(xmlstore.util.referencedobject):
                 print 'Skipping data series %i because the secondary node id (i.e., variable source and name) is not set.'
                 continue
                 
-            var = VariableExpression(varpath,self.sources,self.defaultsource)
+            var = self.source[varpath]
             itemcount = var.getItemCount()
             assert itemcount>0, 'No variable expression recognized in "%s".' % varpath
             assert itemcount<=2, 'Plots with more than two dependent variables are not supported yet.'

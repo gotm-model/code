@@ -269,13 +269,13 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
         """
         return dict([(data[0],data[1]) for data in self.vardata])
 
-    def __getitem__(self,varname):
+    def getVariable(self,varname):
         """Returns the specified variable as LinkedFileVariable object.
         """
         for (index,data) in enumerate(self.vardata):
             if data[0]==varname:
                 return self.variableclass(self,data,index)
-        raise KeyError()
+        return None
         
     def saveToFile(self,path,callback=None):
         """Saves the current data to file."""
@@ -962,7 +962,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
           vardict[varname] = nc.variables[varname].long_name
       return vardict
 
-    def __getitem__(self,varname):
+    def getVariable(self,varname):
         coords = {}
         if varname.endswith(')'):
             i = varname.rfind('(')
