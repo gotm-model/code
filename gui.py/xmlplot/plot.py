@@ -1,4 +1,4 @@
-import math,os.path,xml.dom.minidom,UserDict
+import math,re,os.path,xml.dom.minidom,UserDict
 
 import matplotlib
 import matplotlib.colors
@@ -30,6 +30,16 @@ class VariableStore(UserDict.DictMixin):
     def __init__(self):
         self.defaultchild = None
         self.childsources = {}
+        self.rawlabels = None
+        self.newlabels = None
+        
+    def relabelVariables(self):
+        self.rawlabels,self.newlabels = {},{}
+        regexp = re.compile('\W')
+        for varname in self.getVariableNames_raw():
+            newname = regexp.sub('_',varname)
+            self.rawlabels[newname] = varname
+            self.newlabels[varname] = newname
         
     def addChild(self,name,child):
         if self.defaultchild==None: self.defaultchild = name
@@ -39,41 +49,60 @@ class VariableStore(UserDict.DictMixin):
         self.childsources = {}
         self.defaultchild = None
         
+    def keys(self):
+        """Returns a list of short names for all variables present in the store.
+        """
+        return self.getVariableNames()
+
     def __getitem__(self,expression):
         return self.getExpression(expression)
         
+    def __contains__(self,varname):
+        if self.rawlabels!=None: return varname in self.rawlabels
+        return UserDict.DictMixin.__contains__(self,varname)
+
     def getVariable(self,varname):
         """Returns a Variable object for the given short variable name.
         """
-        assert False,'Method "getVariable" must be implemented by derived class.'
+        if self.rawlabels!=None: varname = self.rawlabels[varname]
+        return self.getVariable_raw(varname)
 
     def getExpression(self,expression):
         globs = {}
-        for varname in self.keys():
+        for varname in self.getVariableNames():
             var = self.getVariable(varname)
             globs[varname] = VariableExpression.LazyExpression(None,var)
-        if len(self.keys())==0 and self.defaultchild!=None:
+        if len(self.getVariableNames())==0 and self.defaultchild!=None:
             defaultsource = self.childsources[self.defaultchild]
-            for varname in defaultsource.keys():
+            for varname in defaultsource.getVariableNames():
                 var = defaultsource.getVariable(varname)
                 globs[varname] = VariableExpression.LazyExpression(None,var)
         try:
             result = VariableExpression(expression,globs)
         except Exception,e:
-            raise Exception('Resolve expression "%s" to a valid data object. Global table: %s. Error: %s' % (expression,globs,e))
+            raise Exception('Unable to resolve expression "%s" to a valid data object. Global table contains: %s. Error: %s' % (expression,globs.keys(),e))
         return result
-        
-    def keys(self):
+                
+    def getVariableNames(self):
         """Returns a list of short names for all variables present in the store.
         """
-        return []
+        if self.rawlabels!=None: return self.rawlabels.keys()
+        return self.getVariableNames_raw()
+
+    def getPlottableVariableNames(self):
+        """Returns a list of short names for all variables that can be plotted.
+        Derived classes should implement this method if they want to exclude certain
+        variables from being plotted.
+        """
+        return self.getVariableNames()
 
     def getVariableLongNames(self):
-        """Returns a dictionary with short variable names as keys, long
-        variable names as values. This base implementation should be overridden
-        by derived classes if it can be done more efficiently.
+        """Returns a dictionary linking variable short names to long names.
         """
-        return dict([(name,self[name].getLongName()) for name in self.keys()])
+        longnames = self.getVariableLongNames_raw()
+        if self.rawlabels!=None:
+            longnames = dict([(self.newlabels[varname],longname) for (varname,longname) in longnames.iteritems()])
+        return longnames
         
     def getDimensionInfo(self,dimname):
         """Returns the a dictionary with properties of the specified dimension.
@@ -82,7 +111,7 @@ class VariableStore(UserDict.DictMixin):
         """
         return {'label':'','unit':'','preferredaxis':None,'datatype':'float'}
 
-    def getVariableTree(self,path,otherstores={}):
+    def getVariableTree(self,path,otherstores={},plottableonly=True):
         """Returns a tree representation of the variables in the data store,
         represented by an xmlstore.TypedStore object that uses the short names
         of variables as node names.
@@ -106,6 +135,12 @@ class VariableStore(UserDict.DictMixin):
         # it will be used to check whether a node name matches a variable name,
         # and if so also to fill in the node label with the variable long name.
         vardict = self.getVariableLongNames()
+        
+        # Remove non-plottable variables
+        if plottableonly:
+            plottable = self.getPlottableVariableNames()
+            for varname in vardict.keys():
+                if varname not in plottable: del vardict[varname]
         
         # Prune the tree and fill in node labels where needed.
         found = VariableStore.filterNodes(xmlschema.documentElement,vardict)
@@ -174,6 +209,26 @@ class VariableStore(UserDict.DictMixin):
 
         # Return a list of dictionary keys that matched.
         return nodeids
+
+    def getVariable_raw(self,varname):
+        """Returns a Variable object for the given original short variable name.
+        The method must be implemented by derived classes.
+        """
+        assert False,'Method "getVariable" must be implemented by derived class.'
+        return None
+
+    def getVariableNames_raw(self):
+        """Returns a list of short names for all variables present in the store.
+        The method must be implemented by derived classes.
+        """
+        return []
+                
+    def getVariableLongNames_raw(self):
+        """Returns a dictionary with short variable names as keys, long
+        variable names as values. This base implementation should be overridden
+        by derived classes if it can be done more efficiently.
+        """
+        return dict([(name,self.getVariable_raw(name).getLongName()) for name in self.getVariableNames_raw()])
 
 class Variable:
     """Abstract class that represents a variable that can be plotted.
@@ -354,10 +409,10 @@ class MergedVariableStore(VariableStore):
         self.mergedimid = mergedimid
         self.mergedimname = mergedimname
 
-    def keys(self):
-        return self.stores[0].keys()
+    def getVariableNames_raw(self):
+        return self.stores[0].getVariableNames_raw()
 
-    def getVariableLongNames(self):
+    def getVariableLongNames_raw(self):
         return self.stores[0].getVariableLongNames()
 
     def getDimensionInfo(self,dimname):
@@ -367,7 +422,7 @@ class MergedVariableStore(VariableStore):
             return info
         return self.stores[0].getDimensionInfo(dimname)
 
-    def getVariable(self,varname):
+    def getVariable_raw(self,varname):
         vars,missing = [],[]
         for store in self.stores:
             if varname in store:
@@ -388,10 +443,10 @@ class CustomVariableStore(VariableStore):
         VariableStore.__init__(self)
         self.vars = {}
         
-    def keys(self):
+    def getVariableNames_raw(self):
         return [v.getName() for v in self.vars]
 
-    def getVariable(self,varname):
+    def getVariable_raw(self,varname):
         if varname not in self.vars: raise KeyError()
         return self.vars[varname]
 
@@ -407,9 +462,6 @@ class CustomVariableStore(VariableStore):
         
     def addVariable(self,var):
         self.__setitem__(var.getName(),var)
-
-    def getVariableLongNames(self):
-        return [v.getLongName() for v in self.vars.values()]
         
 class CustomDateFormatter(matplotlib.dates.DateFormatter):
     """Extends the matplotlib.dates.DateFormatter class, adding support

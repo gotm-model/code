@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.37 2008-07-01 15:54:02 jorn Exp $
+#$Id: visualizer.py,v 1.38 2008-07-03 10:12:32 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -105,7 +105,7 @@ class PageVisualize(commonqt.WizardPage):
 
         self.result = parent.getProperty('result')
         
-        self.treestore = self.result.getVariableTree(os.path.join(core.common.getDataRoot(),'schemas/outputtree.xml'))
+        self.treestore = self.result.getVariableTree(os.path.join(core.common.getDataRoot(),'schemas/outputtree.xml'),plottableonly=True)
         self.model = xmlstore.gui_qt4.TypedStoreModel(self.treestore,nohide=False,novalues=True)
 
         self.treeVariables = xmlstore.gui_qt4.ExtendedTreeView(self)
@@ -206,7 +206,7 @@ class ConfigureReportWidget(QtGui.QWidget):
             self.pathOutput.defaultpath = os.path.dirname(self.result.scenario.path)
 
         self.labVariables = QtGui.QLabel('Included variables:',self)
-        self.treestore = self.result.getVariableTree('schemas/outputtree.xml')
+        self.treestore = self.result.getVariableTree(os.path.join(core.common.getDataRoot(),'schemas/outputtree.xml'),plottableonly=True)
         
         # Prepare selection based on report settings
         selroot = self.report.store['Figures/Selection']

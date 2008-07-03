@@ -187,10 +187,10 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         else:
             self.path = None
 
-    def keys(self):
-        names = xmlplot.data.NetCDFStore_GOTM.keys(self)
+    def getPlottableVariableNames(self):
+        names = self.getVariableNames()
         for i in range(len(names)-1,-1,-1):
-            dimnames = self.nc.variables[names[i]].dimensions
+            dimnames = self.nc.variables[self.rawlabels[names[i]]].dimensions
             dimcount = len(dimnames)
             good = False
             if   dimcount==3:
@@ -202,10 +202,10 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
             if not good: del names[i]
         return names
 
-    def getVariableTree(self,path):
+    def getVariableTree(self,path,plottableonly=True):
         otherstores = {}
         if self.scenario!=None: otherstores['scenario'] = self.scenario
-        return xmlplot.plot.VariableStore.getVariableTree(self,path,otherstores=otherstores)
+        return xmlplot.plot.VariableStore.getVariableTree(self,path,otherstores=otherstores,plottableonly=plottableonly)
 
     def getDefaultCoordinateDelta(self,dimname,coord):
         if self.scenario!=None and self.isTimeDimension(dimname):

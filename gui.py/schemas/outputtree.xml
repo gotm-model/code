@@ -92,8 +92,8 @@
         <condition type="eq" variable="/airsea/calc_evaporation" value="True"/>
       </condition>
     </element>
-    <element name="x-taus"/>
-		<element name="y-taus"/>
+    <element name="x_taus"/>
+		<element name="y_taus"/>
 		<element name="u_taus"/>
 		<element name="u_taub"/>
 		<element name="swr"/>
@@ -158,8 +158,8 @@
 	</element>
 	<element name="seagrass">
 		<condition type="eq" variable="/seagrass/canopy/seagrass_calc" value="True" source="scenario"/>
-		<element name="x-excur"/>
-		<element name="y-excur"/>
+		<element name="x_excur"/>
+		<element name="y_excur"/>
 	</element>
 	<element name="other" label="other"/>
 </element>

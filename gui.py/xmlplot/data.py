@@ -259,17 +259,17 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
         #print '%s - using cached validation result.' % self.nodeid
         return valid
     
-    def keys(self):
+    def getVariableNames_raw(self):
         """Returns the names of all variables in the store.
         """
         return [data[0] for data in self.vardata]
 
-    def getVariableLongNames(self):
+    def getVariableLongNames_raw(self):
         """Returns the long name of the specified variable.
         """
         return dict([(data[0],data[1]) for data in self.vardata])
 
-    def getVariable(self,varname):
+    def getVariable_raw(self,varname):
         """Returns the specified variable as LinkedFileVariable object.
         """
         for (index,data) in enumerate(self.vardata):
@@ -759,11 +759,10 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
     """
     
     class NetCDFVariable(plot.Variable):
-        def __init__(self,store,varname,fixedcoords=None):
+        def __init__(self,store,varname,ncvarname):
             plot.Variable.__init__(self,store)
-            self.varname = str(varname)
-            if fixedcoords==None: fixedcoords = {}
-            self.fixedcoords = fixedcoords
+            self.varname   = varname
+            self.ncvarname = str(ncvarname)
             
         def __str__(self):
             return self.store.datafile+'/'+self.varname
@@ -773,27 +772,27 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
 
         def getLongName(self):
             nc = self.store.getcdf()
-            var = nc.variables[self.varname]
-            if hasattr(var,'long_name'):
-                return var.long_name
+            ncvar = nc.variables[self.ncvarname]
+            if hasattr(ncvar,'long_name'):
+                return ncvar.long_name
             else:
                 return self.getName()
 
         def getUnit(self):
             nc = self.store.getcdf()
-            cdfvar = nc.variables[self.varname]
-            if not hasattr(cdfvar,'units'): return None
-            return common.convertUnitToUnicode(cdfvar.units)
+            ncvar = nc.variables[self.ncvarname]
+            if not hasattr(ncvar,'units'): return None
+            return common.convertUnitToUnicode(ncvar.units)
             
         def getDimensions(self):
           nc = self.store.getcdf()
-          return nc.variables[self.varname].dimensions
+          return [self.store.newlabels[dimname] for dimname in nc.variables[self.ncvarname].dimensions]
           
         def getSlice(self,bounds):
           nc = self.store.getcdf()
             
-          v = nc.variables[self.varname]
-          dimnames = list(v.dimensions)
+          ncvar = nc.variables[self.ncvarname]
+          dimnames = list(ncvar.dimensions)
           assert len(bounds)==len(dimnames), 'Number of specified bounds (%i) does not match number of dimensions (%i).' % (len(bounds),len(dimnames))
           
           varslice = self.Slice(dimnames)
@@ -803,19 +802,16 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
           boundindices,isfloatslice = [],[]
           for idim,dimname in enumerate(dimnames):
             assert isinstance(bounds[idim],int) or bounds[idim].step==None,'Step argument is not yet supported.'
-            fc = self.fixedcoords.get(dimname,None)
             isfloatslice.append(False)
-            if fc!=None:
-                assert fc[0]>=0,             'Slice index %i lies below lower boundary of dimension %s (0).' % (fc[0],dimname)
-                assert fc[1]<=v.shape[idim], 'Slice index %i exceeds upper boundary of dimension %s (%i).' % (fc[1],dimname,v.shape[idim])
-                boundindices.append(slice(fc[0],fc[1]))
-            elif isinstance(bounds[idim],int):
+            if isinstance(bounds[idim],int):
+                assert bounds[idim]>=0,                'Slice index %i lies below lower boundary of dimension %s (0).' % (bounds[idim],dimname)
+                assert bounds[idim]<ncvar.shape[idim], 'Slice index %i exceeds upper boundary of dimension %s (%i).' % (bounds[idim],dimname,ncvar.shape[idim]-1)
                 boundindices.append(slice(bounds[idim],bounds[idim]+1))
             elif isinstance(bounds[idim].start,float) or isinstance(bounds[idim].stop,float):
-                boundindices.append(slice(0,v.shape[idim]))
+                boundindices.append(slice(0,ncvar.shape[idim]))
                 isfloatslice[-1] = True
             else:
-                start,stop,step = bounds[idim].indices(v.shape[idim])
+                start,stop,step = bounds[idim].indices(ncvar.shape[idim])
                 boundindices.append(slice(start,stop))
                 
           # Translate slices based on floating point values to slices based on integers.
@@ -835,7 +831,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             (coords,coords_stag) = self.store.getCoordinates(dimname)
             if coords==None: return None
             if coords.ndim==1:
-                start,stop,step = boundindices[idim].indices(v.shape[idim])
+                start,stop,step = boundindices[idim].indices(ncvar.shape[idim])
                 varslice.coords     [idim] = coords     [boundindices[idim]]
                 varslice.coords_stag[idim] = coords_stag[slice(start,stop+1)]
             else:
@@ -847,17 +843,17 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
 
           # Retrieve the data values
           try:
-            dat = numpy.asarray(v[tuple(boundindices)])
+            dat = numpy.asarray(ncvar[tuple(boundindices)])
           except Exception, e:
             raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
 
           # Process COARDS variable attributes.
-          if hasattr(v,'missing_value'):
-            dat = numpy.ma.array(dat,mask=dat==v.missing_value)
-          if hasattr(v,'scale_factor'):
-            dat *= v.scale_factor
-          if hasattr(v,'add_offset'):
-            dat += v.add_offset
+          if hasattr(ncvar,'missing_value'):
+            dat = numpy.ma.array(dat,mask=dat==ncvar.missing_value)
+          if hasattr(ncvar,'scale_factor'):
+            dat *= ncvar.scale_factor
+          if hasattr(ncvar,'add_offset'):
+            dat += ncvar.add_offset
 
           varslice.data = dat
         
@@ -869,16 +865,16 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         
         self.datafile = None
         self.nc = None
-        self.fixedcoords = {}
 
         self.cachedcoords = {}
         
         if path!=None: self.load(path,*args,**kwargs)
-        
+                
     def __str__(self):
         return self.datafile
         
     def getDimensionInfo(self,dimname):
+        dimname = self.rawlabels[dimname]
         res = plot.VariableStore.getDimensionInfo(self,dimname)
         if dimname not in self.nc.variables: return res
         varinfo = self.nc.variables[dimname]
@@ -909,29 +905,11 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             self.nc.close()
             self.nc = None
             
-    def load(self,path,fixedcoords=None):
+    def load(self,path):
         # Store link to result file, and try to open the CDF file
         self.datafile = path
         nc = self.getcdf()
-        self.fixedcoords = {}
-        if isinstance(fixedcoords,basestring):
-            self.fixedcoords = self.getCoordinateSpec(fixedcoords,nc.dimensions.keys())
-
-    @staticmethod
-    def getCoordinateSpec(spec,dimnames):
-        coords = {}
-        if spec.startswith('(') and spec.endswith(')'): spec = spec[1:-1]
-        parts = spec.split(',')
-        assert len(parts)==len(dimnames), 'Number of coordinate constraints (%i) does not match number of dimensions (%i).' % (len(parts),len(dimnames))
-        for i in range(len(parts)):
-            if parts[i]!=':':
-                cur = parts[i].split(':')
-                if len(cur)==1:
-                    coords[dimnames[i]] = (int(cur[0]),int(cur[0])+1)
-                else:
-                    assert len(cur)==2, 'Only one colon can appear in slice.'
-                    coords[dimnames[i]] = (int(cur[0]),int(cur[1]))
-        return coords
+        self.relabelVariables()
     
     def getcdf(self):
         """Returns a NetCDFFile file object representing the NetCDF file
@@ -943,50 +921,27 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         self.nc = getNetCDFFile(self.datafile)
         return self.nc
 
-    def keys(self):
-        nc = self.getcdf()
+    def getVariableNames_raw(self):
+        return map(str,self.getcdf().variables.keys())
 
-        # Get names of NetCDF variables
-        try:
-          varNames = nc.variables.keys()
-        except Exception, e:
-            raise Exception('Unable to obtain NetCDF variable names, error: '+str(e))
-
-        return varNames
-
-    def getVariableLongNames(self):
-      varnames = self.keys()
+    def getVariableLongNames_raw(self):
+      varnames = self.getVariableNames_raw()
       nc = self.getcdf()
       vardict = {}
       for varname in varnames:
-          vardict[varname] = nc.variables[varname].long_name
+          ncvar = nc.variables[varname]
+          if hasattr(ncvar,'long_name'):
+            vardict[varname] = ncvar.long_name
+          else:
+            vardict[varname] = varname
       return vardict
 
-    def getVariable(self,varname):
-        coords = {}
-        if varname.endswith(')'):
-            i = varname.rfind('(')
-            assert i!=-1, 'End parenthesis in %s is not matched by beginning parenthesis.' % (varname,)
-            coords = varname[i:]
-            varname = varname[:i]
-            
-        varname = str(varname)
+    def getVariable_raw(self,varname):
+        ncvarname = str(varname)
         nc = self.getcdf()
-        if varname not in nc.variables: raise KeyError()
-
-        if isinstance(coords,basestring):
-            coords = self.getCoordinateSpec(coords,nc.variables[varname].dimensions)
-        coords.update(self.fixedcoords)
-
-        return self.NetCDFVariable(self,varname,fixedcoords=coords)
-        
-    def __contains__(self,varname):
-        if varname.endswith(')'):
-            i = varname.rfind('(')
-            assert i!=-1, 'End parenthesis in %s is not matched by beginning parenthesis.' % (varname,)
-            varname = varname[:i]
-        return str(varname) in self.getcdf().variables
-        
+        if ncvarname not in nc.variables: return None
+        return self.NetCDFVariable(self,self.newlabels[varname],ncvarname)
+                
     def getCoordinates(self,dimname):
         if dimname not in self.cachedcoords: self.calculateCoordinates(dimname)
         return (self.cachedcoords[dimname],self.cachedcoords[dimname+'_stag'])
