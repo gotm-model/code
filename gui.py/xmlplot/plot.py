@@ -71,12 +71,12 @@ class VariableStore(UserDict.DictMixin):
         globs = {}
         for varname in self.getVariableNames():
             var = self.getVariable(varname)
-            globs[varname] = VariableExpression.LazyExpression(None,var)
+            globs[varname] = LazyVariable(var)
         if len(self.getVariableNames())==0 and self.defaultchild!=None:
             defaultsource = self.childsources[self.defaultchild]
             for varname in defaultsource.getVariableNames():
                 var = defaultsource.getVariable(varname)
-                globs[varname] = VariableExpression.LazyExpression(None,var)
+                globs[varname] = LazyVariable(var)
         try:
             result = VariableExpression(expression,globs)
         except Exception,e:
@@ -354,6 +354,189 @@ class Variable:
         """
         return self.store.getDimensionInfo(dimname)
 
+class LazyExpression:
+    class NamedFunction:
+        def __init__(self,name,func):
+            self.name = name
+            self.func = func
+            
+        def __call__(self,*args):
+            return LazyFunction(self.name,self.func,*args)
+
+    globalfuncs = None
+
+    @staticmethod
+    def getFunctions():
+        if LazyExpression.globalfuncs==None:
+            LazyExpression.globalfuncs = {}
+            for name in dir(numpy):
+                LazyExpression.globalfuncs[name] = LazyExpression.NamedFunction(name,getattr(numpy,name))
+        return LazyExpression.globalfuncs
+
+    def __init__(self,*args):
+        self.args = args
+
+    def getVariables(self):
+        vars = []
+        for arg in self.args:
+            if isinstance(arg,LazyExpression): vars += arg.getVariables()
+        return vars
+        
+    def getText(self,type=0,addparentheses=True):
+        assert False, 'Method "getText" must be implemented by derived class.'
+
+    def getValue(self):
+        assert False, 'Method "getValue" must be implemented by derived class.'
+            
+    def __add__(self,other):
+        return LazyAddition(self,other)
+
+    def __sub__(self,other):
+        return LazySubtraction(self,other)
+
+    def __mul__(self,other):
+        return LazyMultiplication(self,other)
+
+    def __div__(self,other):
+        return LazyDivision(self,other)
+
+    def __truediv__(self,other):
+        return self.__div__(other)
+        
+    def __pow__(self,other):
+        return LazyPower(self,other)
+
+    def __abs__(self):
+        return LazyAbs(self)
+
+    def __neg__(self):
+        return LazyNeg(self)
+
+    def __pos__(self):
+        return LazyPos(self)
+                
+    def __len__(self):
+        return 1
+        
+class LazyVariable(LazyExpression):
+    def __init__(self,*args):
+        LazyExpression.__init__(self,*args)
+        self.slice = None
+
+    def getVariables(self):
+        return [self.args[0]]
+        
+    def getValue(self):
+        # Return the data slice of the encaptulated object.
+        slic = self.slice
+        if slic==None: slic = len(self.args[0].getDimensions())*[slice(None)]
+        return self.args[0].getSlice(slic)
+        
+    def getText(self,type=0,addparentheses=True):
+        assert type>=0 and type<=2, 'Argument "type" must be 0, 1 or 2.'
+        if type==0 or type==1:
+            # Return the short name of the object (optionally with slice specification).
+            res = self.args[0].getName()
+            if self.slice!=None: res+=VariableExpression.slice2string(self.slice)
+            return res
+        else:
+            # Return the long name of the object (optionally with slice specification).
+            res = self.args[0].getLongName()
+            if self.slice!=None: res+=VariableExpression.slice2string(self.slice)
+            return res
+        
+    def __getitem__(self,slices):
+        self.slice = slices
+        return self
+
+class LazyOperator(LazyExpression):
+    def getValue(self):
+        usedslice = None
+        resolvedargs = []
+        for arg in self.args:
+            if isinstance(arg,LazyExpression):
+                resolvedargs.append(arg.getValue())
+                if usedslice==None: usedslice = resolvedargs[-1]
+                if isinstance(resolvedargs[-1],Variable.Slice): resolvedargs[-1] = resolvedargs[-1].data
+            else:
+                resolvedargs.append(arg)
+        self._getValue(resolvedargs,usedslice)
+        return usedslice
+
+    def getText(self,type=0,addparentheses=True):
+        resolvedargs = []
+        for arg in self.args:
+            if isinstance(arg,LazyExpression):
+                resolvedargs.append(arg.getText(type))
+            else:
+                resolvedargs.append(str(arg))
+        result = self._getText(resolvedargs)
+        if addparentheses: result = '(%s)' % result
+        return result
+
+    def _getValue(self,resolvedargs,targetslice):
+        assert False, 'Method "_getValue" must be implemented by derived class.'
+
+    def _getText(self,type=0):
+        assert False, 'Method "_getText" must be implemented by derived class.'
+
+class LazyFunction(LazyOperator):
+    def __init__(self,name,func,*args):
+        self.name = name
+        self.func = func
+        LazyOperator.__init__(self,*args)
+    def _getValue(self,resolvedargs,targetslice):
+        targetslice.data = self.func(*resolvedargs)
+    def _getText(self,resolvedargs,type=0):
+        return '%s(%s)' % (self.name,','.join(resolvedargs))
+
+class LazyAddition(LazyOperator):
+    def _getValue(self,resolvedargs,targetslice):
+        targetslice.data = resolvedargs[0]+resolvedargs[1]
+    def _getText(self,resolvedargs,type=0):
+        return '+'.join(resolvedargs)
+
+class LazySubtraction(LazyOperator):
+    def _getValue(self,resolvedargs,targetslice):
+        targetslice.data = resolvedargs[0]-resolvedargs[1]
+    def _getText(self,resolvedargs,type=0):
+        return '-'.join(resolvedargs)
+
+class LazyMultiplication(LazyOperator):
+    def _getValue(self,resolvedargs,targetslice):
+        targetslice.data = resolvedargs[0]*resolvedargs[1]
+    def _getText(self,resolvedargs,type=0):
+        return '*'.join(resolvedargs)
+
+class LazyDivision(LazyOperator):
+    def _getValue(self,resolvedargs,targetslice):
+        targetslice.data = resolvedargs[0]/resolvedargs[1]
+    def _getText(self,resolvedargs,type=0):
+        return '/'.join(resolvedargs)
+
+class LazyPower(LazyOperator):
+    def _getValue(self,resolvedargs,targetslice):
+        targetslice.data = resolvedargs[0]**resolvedargs[1]
+    def _getText(self,resolvedargs,type=0):
+        return '**'.join(resolvedargs)
+
+class LazyNeg(LazyOperator):
+    def _getValue(self,resolvedargs,targetslice):
+        targetslice.data = -resolvedargs[0]
+    def _getText(self,resolvedargs,type=0):
+        return '-'+resolvedargs[0]
+
+class LazyPos(LazyOperator):
+    def _getValue(self,resolvedargs,targetslice):
+        targetslice.data = +resolvedargs[0]
+    def _getText(self,resolvedargs,type=0):
+        return '+'+resolvedargs[0]
+
+class LazyAbs(LazyOperator):
+    def _getValue(self,resolvedargs,targetslice):
+        targetslice.data = numpy.abs(resolvedargs[0])
+    def _getText(self,resolvedargs,type=0):
+        return 'abs(%s)' % resolvedargs[0]
         
 class MergedVariableStore(VariableStore):
     """Class that merges multiple data sources (VariableStore objects) with
@@ -830,210 +1013,34 @@ class VariableExpression(Variable):
                 slicestrings.append(str(slic))
         return '[%s]' % ','.join(slicestrings)
 
-    class LazyExpression:
-        def __init__(self,operator=None,*args):
-            assert operator!=None or len(args)==1, 'A lazy expression without operator must be initialized with one argument.'
-            assert operator!=None or isinstance(args[0],(Variable,VariableStore)), 'A lazy expression without operator must be initialized with a Variable or VariableStore object.'
-            self.operator = operator
-            self.args = args
-            self.slice = None
-            
-        def __call__(self,role='value',addparentheses=True):
-            assert role in ('value','name','long_name','variables','raw'), 'Unknown role "%s" specified.' % str(role)
-            
-            if self.operator==None:
-                # This object encapsulates a Variable object
-                assert len(self.args)==1,'LazyExpression without operator should encapsulate exactly 1 object, not %i.' % len(self.args)
-                item = self.args[0]
-                if role=='name' or role=='raw':
-                    # Return the short name of the object (optionally with slice specification).
-                    res = item.getName()
-                    if self.slice!=None: res+=VariableExpression.slice2string(self.slice)
-                    return res
-                elif role=='long_name':
-                    # Return the long name of the object (optionally with slice specification).
-                    res = item.getLongName()
-                    if self.slice!=None: res+=VariableExpression.slice2string(self.slice)
-                    return res
-                elif role=='variables':
-                    # Return the encapsulated object.
-                    return [item]
-                else:
-                    # Return the data slice of the encaptulated object.
-                    slic = self.slice
-                    if slic==None: slic = len(item.getDimensions())*[slice(None)]
-                    return item.getSlice(slic)
-            else:
-                # This object represents an operation on one or more nested objects.
-                if role=='variables':
-                    # Retrieve lists of all nested variables, and combine & return them
-                    res = []
-                    for arg in self.args:
-                        if isinstance(arg,VariableExpression.LazyExpression):
-                            res += arg(role)
-                    return res
-
-                # Retrieve the data returned by the nested objects. Choose one of the
-                # nested objects as the target for storing new data values (this allows
-                # for direct inheritance of the coordinate vectors.
-                usedslice = None
-                resolvedargs = []
-                for arg in self.args:
-                    if isinstance(arg,VariableExpression.LazyExpression):
-                        resolvedargs.append(arg(role))
-                        if usedslice==None: usedslice = resolvedargs[-1]
-                        if isinstance(resolvedargs[-1],Variable.Slice): resolvedargs[-1] = resolvedargs[-1].data
-                    else:
-                        resolvedargs.append(arg)
-                        if role in ('name','long_name','raw'): resolvedargs[-1] = str(resolvedargs[-1])
-                    
-                if self.operator=='add':
-                    # Addition operator
-                    assert len(resolvedargs)==2,'Need 2 arguments for addition, not %i.' % len(v)
-                    if role in ('name','long_name','raw'):
-                        result = '+'.join(resolvedargs)
-                    else:
-                        usedslice.data = resolvedargs[0]+resolvedargs[1]
-                elif self.operator=='sub':
-                    # Subtraction operator
-                    assert len(resolvedargs)==2,'Need 2 arguments for subtraction, not %i.' % len(resolvedargs)
-                    if role in ('name','long_name','raw'):
-                        result = '-'.join(resolvedargs)
-                    else:
-                        usedslice.data = resolvedargs[0]-resolvedargs[1]
-                elif self.operator=='mul':
-                    # Multiplication operator
-                    assert len(resolvedargs)==2,'Need 2 arguments for multiplication, not %i.' % len(resolvedargs)
-                    if role in ('name','long_name','raw'):
-                        result = '*'.join(resolvedargs)
-                    else:
-                        usedslice.data = resolvedargs[0]*resolvedargs[1]
-                elif self.operator=='div':
-                    # Division operator
-                    assert len(resolvedargs)==2,'Need 2 arguments for division, not %i.' % len(resolvedargs)
-                    if role in ('name','long_name','raw'):
-                        result = '/'.join(resolvedargs)
-                    else:
-                        usedslice.data = resolvedargs[0]/resolvedargs[1]
-                elif self.operator=='pow':
-                    # Power operator
-                    assert len(resolvedargs)==2,'Need 2 arguments for pow, not %i.' % len(resolvedargs)
-                    if role in ('name','long_name','raw'):
-                        result = '**'.join(resolvedargs)
-                    else:
-                        usedslice.data = resolvedargs[0]**resolvedargs[1]
-                elif self.operator=='neg':
-                    # Negation operator
-                    assert len(resslices)==1,'Need 1 argument for neg, not %i.' % len(resolvedargs)
-                    if role in ('name','long_name','raw'):
-                        result = '-' + resolvedargs[0]
-                    else:
-                        usedslice.data = -resolvedargs[0]
-                elif self.operator=='pos':
-                    # Positive operator
-                    assert len(resolvedargs)==1,'Need 1 argument for pos, not %i.' % len(resolvedargs)
-                    if role in ('name','long_name','raw'):
-                        result = '+' + resolvedargs[0]
-                    else:
-                        usedslice.data = +resolvedargs[0]
-                elif self.operator=='sqrt':
-                    # Square root function
-                    assert len(resolvedargs)==1,'Need 1 argument for sqrt, not %i.' % len(resolvedargs)
-                    if role in ('name','long_name','raw'):
-                        result = 'sqrt(%s)' % resolvedargs[0]
-                    else:
-                        usedslice.data = numpy.sqrt(resolvedargs[0])
-                        
-                # Return the result
-                if role in ('name','long_name','raw'):
-                    if addparentheses: result = '(%s)' % result
-                    return result
-                else:
-                    return usedslice
-                    
-        @staticmethod
-        def getFunctions():
-            return {'sqrt':VariableExpression.LazyExpression.__sqrt__}
-                    
-        @staticmethod
-        def __sqrt__(var):
-            return VariableExpression.LazyExpression('sqrt',var)
-                
-        def __add__(self,other):
-            return VariableExpression.LazyExpression('add',self,other)
-
-        def __sub__(self,other):
-            return VariableExpression.LazyExpression('sub',self,other)
-
-        def __mul__(self,other):
-            return VariableExpression.LazyExpression('mul',self,other)
-
-        def __div__(self,other):
-            return VariableExpression.LazyExpression('div',self,other)
-
-        def __truediv__(self,other):
-            return self.__div__(other)
-            
-        def __pow__(self,other):
-            return VariableExpression.LazyExpression('pow',self,other)
-
-        def __neg__(self):
-            return VariableExpression.LazyExpression('neg',self,other)
-
-        def __pos__(self):
-            return VariableExpression.LazyExpression('pos',self,other)
-            
-        def __getitem__(self,slices):
-            assert self.operator==None, 'Currently only slices of original variables are supported (and not slices of compound variables).'
-            self.slice = slices
-            return self
-            
-        def __len__(self):
-            return 1
-
     def __init__(self,expression,objects):
-        globs = VariableExpression.LazyExpression.getFunctions()
+        globs = LazyExpression.getFunctions()
         globs.update(objects)
         self.root = eval(expression,globs)
+        if not isinstance(self.root,(list,tuple)): self.root = [self.root]
         
     def buildExpression(self):
-        res = self.execute('raw')
-        if not isinstance(res,basestring): res = '['+','.join(res)+',]'
-        return res
+        return '['+','.join([node.getText(type=0,addparentheses=False) for node in self.root])+']'
 
     def getName(self):
-        res = self.execute('name')
-        if not isinstance(res,basestring): res = ', '.join(res)
-        return res
+        return ', '.join([node.getText(type=1,addparentheses=False) for node in self.root])
         
     def getLongName(self):
-        res = self.execute('long_name')
-        if not isinstance(res,basestring): res = ', '.join(res)
-        return res
+        return ', '.join([node.getText(type=2,addparentheses=False) for node in self.root])
 
     def getDimensions(self):
-        var = self.execute('variables')
-        if self.getItemCount()>1: var=var[0]
-        return var[0].getDimensions()
+        vars = self.root[0].getVariables()
+        return vars[0].getDimensions()
         
     def getItemCount(self):
         return len(self.root)
         
     def getSlice(self,bounds):
-        varslice = self.execute('value')
-        if isinstance(varslice,Variable.Slice): varslice = [varslice]
-        return varslice
+        return [node.getValue() for node in self.root]
 
     def getDimensionInfo(self,dimname):
-        var = self.execute('variables')
-        if self.getItemCount()>1: var=var[0]
-        return var[0].getDimensionInfo(dimname)
-    
-    def execute(self,role):
-        if len(self.root)>1:
-            return [node(role,addparentheses=False) for node in self.root]
-        else:
-            return self.root(role,addparentheses=False)
+        vars = self.root[0].getVariables()
+        return vars[0].getDimensionInfo(dimname)
             
 class FigureProperties(xmlstore.xmlstore.TypedStore):
     """Class for figure properties, based on xmlstore.TypedStore.
