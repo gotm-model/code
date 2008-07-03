@@ -389,31 +389,28 @@ class LazyExpression:
         assert False, 'Method "getValue" must be implemented by derived class.'
             
     def __add__(self,other):
-        return LazyAddition(self,other)
+        return LazyOperator('__add__','+',self,other)
 
     def __sub__(self,other):
-        return LazySubtraction(self,other)
+        return LazyOperator('__sub__','-',self,other)
 
     def __mul__(self,other):
-        return LazyMultiplication(self,other)
+        return LazyOperator('__mul__','*',self,other)
 
     def __div__(self,other):
-        return LazyDivision(self,other)
+        return LazyOperator('__div__','/',self,other)
 
     def __truediv__(self,other):
-        return self.__div__(other)
+        return LazyOperator('__truediv__','/',self,other)
         
     def __pow__(self,other):
-        return LazyPower(self,other)
-
-    def __abs__(self):
-        return LazyAbs(self)
+        return LazyOperator('__pow__','**',self,other)
 
     def __neg__(self):
-        return LazyNeg(self)
+        return LazyOperator('__neg__','-',self)
 
     def __pos__(self):
-        return LazyPos(self)
+        return LazyOperator('__pos__','+',self)
                 
     def __len__(self):
         return 1
@@ -449,7 +446,7 @@ class LazyVariable(LazyExpression):
         self.slice = slices
         return self
 
-class LazyOperator(LazyExpression):
+class LazyOperation(LazyExpression):
     def getValue(self):
         usedslice = None
         resolvedargs = []
@@ -480,63 +477,31 @@ class LazyOperator(LazyExpression):
     def _getText(self,type=0):
         assert False, 'Method "_getText" must be implemented by derived class.'
 
-class LazyFunction(LazyOperator):
+class LazyFunction(LazyOperation):
     def __init__(self,name,func,*args):
         self.name = name
         self.func = func
-        LazyOperator.__init__(self,*args)
+        LazyOperation.__init__(self,*args)
     def _getValue(self,resolvedargs,targetslice):
         targetslice.data = self.func(*resolvedargs)
     def _getText(self,resolvedargs,type=0):
         return '%s(%s)' % (self.name,','.join(resolvedargs))
 
-class LazyAddition(LazyOperator):
+class LazyOperator(LazyOperation):
+    def __init__(self,name,symbol,*args):
+        self.name = name
+        self.symbol = symbol
+        LazyOperation.__init__(self,*args)
     def _getValue(self,resolvedargs,targetslice):
-        targetslice.data = resolvedargs[0]+resolvedargs[1]
+        if len(resolvedargs)==1:
+            targetslice.data = getattr(resolvedargs[0],self.name)()
+        else:
+            targetslice.data = getattr(resolvedargs[0],self.name)(*resolvedargs[1:])
     def _getText(self,resolvedargs,type=0):
-        return '+'.join(resolvedargs)
-
-class LazySubtraction(LazyOperator):
-    def _getValue(self,resolvedargs,targetslice):
-        targetslice.data = resolvedargs[0]-resolvedargs[1]
-    def _getText(self,resolvedargs,type=0):
-        return '-'.join(resolvedargs)
-
-class LazyMultiplication(LazyOperator):
-    def _getValue(self,resolvedargs,targetslice):
-        targetslice.data = resolvedargs[0]*resolvedargs[1]
-    def _getText(self,resolvedargs,type=0):
-        return '*'.join(resolvedargs)
-
-class LazyDivision(LazyOperator):
-    def _getValue(self,resolvedargs,targetslice):
-        targetslice.data = resolvedargs[0]/resolvedargs[1]
-    def _getText(self,resolvedargs,type=0):
-        return '/'.join(resolvedargs)
-
-class LazyPower(LazyOperator):
-    def _getValue(self,resolvedargs,targetslice):
-        targetslice.data = resolvedargs[0]**resolvedargs[1]
-    def _getText(self,resolvedargs,type=0):
-        return '**'.join(resolvedargs)
-
-class LazyNeg(LazyOperator):
-    def _getValue(self,resolvedargs,targetslice):
-        targetslice.data = -resolvedargs[0]
-    def _getText(self,resolvedargs,type=0):
-        return '-'+resolvedargs[0]
-
-class LazyPos(LazyOperator):
-    def _getValue(self,resolvedargs,targetslice):
-        targetslice.data = +resolvedargs[0]
-    def _getText(self,resolvedargs,type=0):
-        return '+'+resolvedargs[0]
-
-class LazyAbs(LazyOperator):
-    def _getValue(self,resolvedargs,targetslice):
-        targetslice.data = numpy.abs(resolvedargs[0])
-    def _getText(self,resolvedargs,type=0):
-        return 'abs(%s)' % resolvedargs[0]
+        if len(resolvedargs)==1:
+            return self.symbol+resolvedargs[0]
+        else:
+            return self.symbol.join(resolvedargs)
         
 class MergedVariableStore(VariableStore):
     """Class that merges multiple data sources (VariableStore objects) with
@@ -1020,7 +985,9 @@ class VariableExpression(Variable):
         if not isinstance(self.root,(list,tuple)): self.root = [self.root]
         
     def buildExpression(self):
-        return '['+','.join([node.getText(type=0,addparentheses=False) for node in self.root])+']'
+        result = ','.join([node.getText(type=0,addparentheses=False) for node in self.root])
+        if len(self.root)>1: result = '['+result+']'
+        return result
 
     def getName(self):
         return ', '.join([node.getText(type=1,addparentheses=False) for node in self.root])
@@ -1644,6 +1611,9 @@ class Figure(xmlstore.util.referencedobject):
 
                 plotcount[2] += 1
             
+            else:
+                print 'We can only plot variables with 1 or 2 dimensions, but "%s" has %i dimensions. Skipping it.' % (varpath,varslice.ndim)
+
             # Increase z-order.
             zorder += 1
 
