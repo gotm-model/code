@@ -1,9 +1,9 @@
-!$Id: lagrange.F90,v 1.5 2005-12-02 21:06:09 hb Exp $
+!$Id: lagrange.F90,v 1.6 2008-07-07 09:05:51 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Lagrangian particle random walk
+! !ROUTINE: Lagrangian particle random walk \label{sec:lagrange}
 ! 
 ! !INTERFACE:
    subroutine lagrange(nlev,dt,zlev,nuh,w,npar,active,zi,zp)
@@ -51,6 +51,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: lagrange.F90,v $
+!  Revision 1.6  2008-07-07 09:05:51  lars
+!  added LaTeX label
+!
 !  Revision 1.5  2005-12-02 21:06:09  hb
 !  Lagrangian routine included into source code documentation
 !
