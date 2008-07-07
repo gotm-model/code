@@ -1,4 +1,4 @@
-!$Id: fairall.F90,v 1.6 2008-04-08 16:09:00 kb Exp $
+!$Id: fairall.F90,v 1.7 2008-07-07 09:05:08 lars Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,7 +25,7 @@
 !  
 !  This piece of code has been adapted from the COARE code originally 
 !  written by David Rutgers and Frank Bradley - see
-!  http://www.coaps.fsu.edu/COARE/flux_algor/flux.html.
+!  http://www.coaps.fsu.edu/COARE/flux\_algor/flux.html.
 !
 ! !USES:
    use airsea_variables, only: kelvin,const06,rgas,rho_0,g,rho_0,kappa
@@ -47,6 +47,9 @@
 !  Original author(s): Adolf Stips
 !
 !  $Log: fairall.F90,v $
+!  Revision 1.7  2008-07-07 09:05:08  lars
+!  corrected typo in documentation
+!
 !  Revision 1.6  2008-04-08 16:09:00  kb
 !  assure valid qh and qe under all circumstance - Bruggeman, Stips
 !
