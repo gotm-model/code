@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.20 2008-03-26 09:09:24 kb Exp $
+#$Id: Makefile,v 1.21 2008-07-08 10:03:15 lars Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -7,13 +7,19 @@ include ../../Rules.make
 
 LIB	= $(LIBDIR)/libbio$(buildtype).a
 
-DOCSRC	=  bio.F90 \
-           bio_var.F90 \
-           bio_fluxes.F90 \
-           bio_save.F90
+DOCSRC	=  bio.F90                   \
+           bio_var.F90               \
+           npzd/bio_npzd.F90         \
+           fasham/bio_fasham.F90     \
+           iow/bio_iow.F90           \
+           photo/bio_photo.F90       \
+           bio_fluxes.F90            \
+           bio_alloc_info.F90        \
+           bio_save.F90   
 
 OBJ1   = \
 ${LIB}(bio_var.o)		\
+${LIB}(bio_alloc_info.o)        \
 ${LIB}(bio_fluxes.o)		\
 ${LIB}(bio_save.o)
 
@@ -28,6 +34,7 @@ ${LIB}(bio.o)
 BIO_MAB=false
 #BIO_ROLM=false
 #BIO_NPZD_FE=false
+#BIO_PHOTO=false
 
 ifneq ($(BIO_TEMPLATE),false)
 SUBDIRS += template
@@ -35,39 +42,56 @@ DEFINES += -DBIO_TEMPLATE
 endif
 
 ifneq ($(BIO_NPZD),false)
+DOCSRC  += npzd/bio_npzd.F90
 SUBDIRS += npzd
 DEFINES += -DBIO_NPZD
 endif
 
 ifneq ($(BIO_IOW),false)
+DOCSRC  += iow/bio_iow.F90  
 SUBDIRS += iow
 DEFINES += -DBIO_IOW
 endif
 
 ifneq ($(BIO_SED),false)
+DOCSRC  += sed/bio_sed.F90 
 SUBDIRS += sed
 DEFINES += -DBIO_SED
 endif
 
 ifneq ($(BIO_FASHAM),false)
+DOCSRC  += fasham/bio_fasham.F90 
 SUBDIRS += fasham
 DEFINES += -DBIO_FASHAM
 endif
 
 ifneq ($(BIO_MAB),false)
+DOCSRC  += 
 SUBDIRS += mab
 DEFINES += -DBIO_MAB
 endif
 
 ifneq ($(BIO_ROLM),false)
+DOCSRC  += 
 SUBDIRS += rolm
 DEFINES += -DBIO_ROLM
 endif
 
 ifneq ($(BIO_NPZD_FE),false)
+DOCSRC  += 
 SUBDIRS += npzd_fe
 DEFINES += -DBIO_NPZD_FE
 endif
+
+ifneq ($(BIO_PHOTO),false)
+DOCSRC  += photo/bio_photo.F90  
+SUBDIRS += photo
+DEFINES += -DBIO_PHOTO
+endif
+
+
+
+
 
 all: $(OBJ1) OBJS $(OBJ2)
 	$(MOVE_MODULES_COMMAND)
