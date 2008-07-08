@@ -1,4 +1,4 @@
-!$Id: bio_sed.F90,v 1.1 2008-03-26 08:51:44 kb Exp $
+!$Id: bio_sed.F90,v 1.2 2008-07-08 10:04:23 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -14,7 +14,11 @@
 !  to a constant settling velocity, has no surface fluxes of suspended matter,
 !  but the suspended matter may be taken out at the bed, if the mussel
 !  module of GOTM is activated. No right-hand side process terms are 
-!  involved here.
+!  involved here. Note that this module has an Eulerian version, 
+!  corresponding to a simple advection-diffusion equation with constant
+!  settling velocity, and a Langrangian particle version, in which
+!  particle diffusion is performed by random-walking the particles 
+!  as described in \sect{sec:lagrangian}.
 !
 ! !USES:
 !  default: all is private.
@@ -22,13 +26,16 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio_sed, init_var_sed, var_info_sed, &
-          do_bio_sed, end_bio_sed
+   public init_bio_sed, init_var_sed, end_bio_sed
+   public do_bio_sed_eul, do_bio_sed_par
 !
 ! !REVISION HISTORY:!
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
 !  $Log: bio_sed.F90,v $
+!  Revision 1.2  2008-07-08 10:04:23  lars
+!  changed initialization and particle support
+!
 !  Revision 1.1  2008-03-26 08:51:44  kb
 !  new directory based bio structure
 !
@@ -59,13 +66,17 @@
 !  Revision 1.1  2003/10/28 10:22:45  hb
 !  added support for sedimentation only 1 compartment bio model
 !
+!EOP
+!-----------------------------------------------------------------------!
 !
 ! !LOCAL VARIABLES:
 !  from a namelist
    REALTYPE                  :: C_initial=4.5
    REALTYPE                  :: w_C=-5.787037e-05
-!EOP
-!-----------------------------------------------------------------------
+
+! field IDs 
+  integer, parameter                          ::  LoadInd=1
+
 
    contains
 
@@ -93,9 +104,12 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-! !LOCAL VARIABLES:
-   namelist /bio_sed_nml/ numc,C_initial,w_C
 !EOP
+!-----------------------------------------------------------------------
+
+! !LOCAL VARIABLES:
+   namelist /bio_sed_nml/ numc,ntype,nprop,c_initial,w_C
+
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'init_bio_sed'
@@ -104,11 +118,22 @@
    read(namlst,nml=bio_sed_nml,err=99)
    close(namlst)
 
-   LEVEL3 'Sedimentation bio module initialised ...'
+   LEVEL3 'namelist "', fname, '" read'
 
-   numcc=numc
+!  conversion from day to second
+   w_C = w_C/secs_pr_day
 
-   w_C = w_C/86400.
+!  initialize variable descriptions
+
+   call bio_alloc_info
+
+!  initialize field descriptions
+   var_names(1) = 'conc'
+   var_units(1) = '-'
+   var_long(1)  = 'sediment concentration'
+
+
+   LEVEL3 'module initialized'
 
    return
 
@@ -127,70 +152,126 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_sed(nlev)
+   subroutine init_var_sed
 !
 ! !DESCRIPTION:
-!  Here, the initial concentrations are set and the settling velocity is
-!  transferred to all vertical levels.
+!  Here, fields names for the output variables are assigned
+!  (in this case only one variable describing the sediment
+!  concentration {\tt conc} exisits), and the concentration
+!  field is initialized with a uniform concentration as 
+!  specified in the namelist file {\tt bio\_sed.nml}. If the 
+!  particle solver is used, all particles are distributed 
+!  homogeneously over the water column.
 !
 ! !USES:
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
-!
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
-
+!  Original author(s): Lars Umlauf,  Karsten Bolding
+!
 !EOP
-!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------!
+! !LOCAL VARIABLES:
+
+   integer                    :: nt
+
+!-----------------------------------------------------------------------!
 !BOC
-   cc(1,:)=C_initial
 
-   ws(1,:) = w_C
+! fill-in concentration arays and sinking speed
+  if (bio_eulerian) then
 
-   posconc(1) = 1
+     cc(1,:)    = C_initial
+     
+     ws(1,:)    = w_C
+     
+     posconc(1) = 1
+
+  else
+     
+     !  all fields empty
+     cc = _ZERO_
+     
+     !  constant sinking
+     ws(1,:)    = w_C
+
+     ! initalize particle positions
+     call init_par_sed
+
+     ! constant particle load
+     nt = 1
+
+     par_prop(:,LoadInd,nt) = (ztop-zbot)*C_initial/npar
+     
+  endif
+  
 
 #if 0
    mussels_inhale(1) = .true.
 #endif
 
-   LEVEL3 'Sedimentation variables initialised ...'
+   LEVEL3 'variables initalized'
 
    return
 
    end subroutine init_var_sed
 !EOC
 
+
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Providing info on variable names
+! !IROUTINE: Fill initial particle distribution
 !
 ! !INTERFACE:
-   subroutine var_info_sed()
+   subroutine init_par_sed()
 !
 ! !DESCRIPTION:
-!  This subroutine provides information about the variable names as they
-!  will be used when storing data in NetCDF files.
+! Particles are distributed homogeneously over the whole water column. 
+! Indices of vertical grid cells are assigend to all particles, and the
+! particles are marked active.  
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Lars Umlauf, Hans Burchard, Karsten Bolding
 !
-! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
+!
+! !LOCAL VARIABLES:
+   integer                   :: i,j,n
+
+!-----------------------------------------------------------------------
 !BOC
-   var_names(1) = 'conc'
-   var_units(1) = 'fractions'
-   var_long(1)  = 'concentration'
+
+
+!  create homogeneous particle distribution
+   do j=1,ntype
+      do n=1,npar
+         par_z(n,j) = zbot + n/float(npar+1)*(ztop-zbot)
+      end do
+   end do
+
+!  assign cell indices to particles
+   do j=1,ntype
+      do n=1,npar
+         do i=1,nlev
+            if (zlev(i) .gt. par_z(n,j)) exit
+         end do
+         par_ind(n,j) = i
+         par_act(n,j)  = .true.
+      end do
+   end do
+
 
    return
-   end subroutine var_info_sed
+   end subroutine init_par_sed
 !EOC
+!-----------------------------------------------------------------------
+
+
 
 !-----------------------------------------------------------------------
 !BOP
@@ -198,11 +279,12 @@
 ! !IROUTINE: Right hand sides of geobiochemical model
 !
 ! !INTERFACE:
-   subroutine do_bio_sed(first,numc,nlev,cc,pp,dd)
+   subroutine do_bio_sed_eul(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION:
 ! This routine sets the sinks and sources of this simple suspended
-! matter module to zero.
+! matter module to zero, since sediment is considered as a passive
+! tracer here.
 !
 ! !USES:
    IMPLICIT NONE
@@ -228,8 +310,97 @@
    dd=_ZERO_
 
    return
-   end subroutine do_bio_sed
+   end subroutine do_bio_sed_eul
 !EOC
+
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Update particle model
+!
+! !INTERFACE:
+   subroutine do_bio_sed_par
+!
+! !DESCRIPTION:
+!  Only provided for completeness since particle properties are 
+! assumed passive here and do not change. 
+!
+! !USES:
+   IMPLICIT NONE
+!
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf, Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   call do_statistics
+   
+   return
+   end subroutine do_bio_sed_par
+!EOC
+
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Compute bin statistics
+!
+! !INTERFACE:
+   subroutine do_statistics
+!
+! !DESCRIPTION:
+!  Computes some statistical properties of particles
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf & Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+! !LOCAL VARIABLES:
+   integer                    :: ind,np,nt,i
+!
+!-----------------------------------------------------------------------
+!BOC
+
+   cc(1,:) = _ZERO_
+
+   nt = 1;   ! only one particle type here
+
+   do np=1,npar
+      if (par_act(np,nt)) then
+
+         ind = par_ind(np,nt) 
+
+         ! add load concentrations
+         cc(1,ind) = cc(1,ind) + par_prop(np,LoadInd,nt)
+
+      end if
+
+   end do
+
+   ! compute volume averages
+   do i=1,nlev
+      if (cc(1,i) /= 0) then
+         cc(1,i) = cc(1,i)/h(i)
+      else
+         cc(:,i) = _ZERO_
+      end if
+   end do
+      
+   return
+   end subroutine do_statistics
+!EOC
+
+
 
 !-----------------------------------------------------------------------
 !BOP
@@ -240,13 +411,13 @@
    subroutine end_bio_sed
 !
 ! !DESCRIPTION:
-!  Nothing done yet --- supplied for completeness.
+!  Nothing done at the moment
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Karsten Bolding
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -254,8 +425,8 @@
 
    return
    end subroutine end_bio_sed
-!EOC
 
+!EOC
 !-----------------------------------------------------------------------
 
    end module bio_sed
