@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.38 2008-07-08 10:09:06 lars Exp $
+!$Id: gotm.F90,v 1.39 2008-07-08 10:46:16 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -94,6 +94,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.39  2008-07-08 10:46:16  lars
+!  bug fix in BIO calling sequence
+!
 !  Revision 1.38  2008-07-08 10:09:06  lars
 !  new structure with general particle support
 !
@@ -329,10 +332,10 @@
 !  initalize BIO module
 #ifdef BIO
 
+   call init_bio(namlst,'bio.nml',unit_bio,nlev)
+
    if (bio_calc) then
 
-      call init_bio(namlst,'bio.nml',unit_bio,nlev)
-      
       call set_env_bio(nlev,dt,-depth0,h,t,s,rho,nuh,rad,wind,I_0, &
            secondsofday,w,w_adv_discr,npar)
       
