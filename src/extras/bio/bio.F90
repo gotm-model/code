@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.43 2008-03-26 08:56:53 kb Exp $
+!$Id: bio.F90,v 1.44 2008-07-08 10:09:05 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -21,41 +21,47 @@
 
 #ifdef BIO_TEMPLATE
    use bio_template, only : init_bio_template,init_var_template
-   use bio_template, only : var_info_template,light_template
+   use bio_template, only : light_template
 #endif
 
 #ifdef BIO_NPZD
-   use bio_npzd, only : init_bio_npzd,init_var_npzd,var_info_npzd
+   use bio_npzd, only : init_bio_npzd,init_var_npzd
    use bio_npzd, only : light_npzd, do_bio_npzd
 #endif
 
 #ifdef BIO_IOW
-   use bio_iow, only : init_bio_iow,init_var_iow,var_info_iow
+   use bio_iow, only : init_bio_iow,init_var_iow
    use bio_iow, only : light_iow,surface_fluxes_iow,do_bio_iow
 #endif
 
 #ifdef BIO_FASHAM
-   use bio_fasham, only : init_bio_fasham,init_var_fasham,var_info_fasham
+   use bio_fasham, only : init_bio_fasham,init_var_fasham
    use bio_fasham, only : light_fasham,do_bio_fasham
 #endif
 
 #ifdef BIO_SED
-   use bio_sed, only : init_bio_sed,init_var_sed,var_info_sed
+   use bio_sed, only : init_bio_sed,init_var_sed
+   use bio_sed, only : do_bio_sed_eul,do_bio_sed_par
 #endif
 
 #ifdef BIO_MAB
-   use bio_mab, only : init_bio_mab,init_var_mab,var_info_mab
+   use bio_mab, only : init_bio_mab,init_var_mab
    use bio_mab, only : light_mab,surface_fluxes_mab,do_bio_mab
 #endif
 
 #ifdef BIO_ROLM
-   use bio_rolm, only : init_bio_rolm,init_var_rolm,var_info_rolm
+   use bio_rolm, only : init_bio_rolm,init_var_rolm
    use bio_rolm, only : light_rolm,surface_fluxes_rolm,do_bio_rolm
 #endif
 
 #ifdef BIO_NPZD_FE
-   use bio_npzd_fe, only : init_bio_npzd_fe,init_var_npzd_fe,var_info_npzd_fe
+   use bio_npzd_fe, only : init_bio_npzd_fe,init_var_npzd_fe
    use bio_npzd_fe, only : light_npzd_fe,surface_fluxes_npzd_fe,do_bio_npzd_fe
+#endif
+
+#ifdef BIO_PHOTO
+   use bio_photo, only : init_bio_photo,init_var_photo
+   use bio_photo, only : do_bio_photo_eul,do_bio_photo_par
 #endif
 
 #if 0
@@ -71,13 +77,20 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio, set_env_bio, do_bio, get_bio_updates, clean_bio
+   public init_bio,init_var_bio
+   public set_env_bio,do_bio,get_bio_updates
+   public clean_bio
+
+
    logical, public                     :: bio_calc=.false.
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.44  2008-07-08 10:09:05  lars
+!  new structure with general particle support
+!
 !  Revision 1.43  2008-03-26 08:56:53  kb
 !  new directory based bio structure
 !
@@ -204,19 +217,17 @@
 !  Revision 1.1  2003/04/01 17:01:00  hb
 !  Added infrastructure for geobiochemical model
 !
+!EOP
+!-----------------------------------------------------------------------
+!
 ! !PRIVATE DATA MEMBERS:
 !  from a namelist
-   logical                   :: bio_eulerian=.true.
    REALTYPE                  :: cnpar=0.5
    integer                   :: w_adv_discr=6
    integer                   :: ode_method=1
    integer                   :: split_factor=1
    logical                   :: bioshade_feedback=.true.
-   logical                   :: bio_lagrange_mean=.true.
-   integer                   :: bio_npar=10000
-   REALTYPE                  :: depth
-!EOP
-!-----------------------------------------------------------------------
+
 
    contains
 
@@ -226,17 +237,28 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_bio(namlst,fname,unit,nlev,h)
+   subroutine init_bio(namlst,fname,unit,nmax_)
 !
-! !DESCRIPTION:
-! Here, the bio namelist {\tt bio.nml} is read and memory for the
-! Lagrangian part of the model is allocated (note that the
-! Lagrangian model up to now only works for the simple suspended matter model).
-! If a Lagrangian particle method is chosen, particles are 
-! equidistantly distributed. 
-! The initial  Furthermore, information on the specific settings are
-! written to standard output.
-! Finally, the mussel module is called for initialisation.
+! !DESCRIPTION: 
+! Here, all initialization procedures are triggered that
+! are independent of the use of the BIO module from inside GOTM, or
+! from an external calling program, i.e.\ from a 3D model. The
+! following steps are subsequently performed.
+!
+! \begin{enumerate}
+!  \item Memory for {\tt nmax} vertical layers is allocated for all 
+!  Eulerian fields. If called from an external 3D model, {\tt nmax} 
+!  corresponds to the maximum number of layers in \emph{any} of the
+!  water columns.
+!  \item The namelist {\tt bio.nml} is read. 
+!  \item The initialization routine for the selected ecosystem model 
+!  is called. In most cases this amounts to not much more than reading 
+!  the corresponding namelist, e.g.\ {\tt bio\_npzd.nml}, and assigning
+!  the description tags to the ecosystem variables.
+! \end{enumerate}
+!
+! After the initialization is finished, some information about
+! the selected ODE-solver is written to the screen.
 !
 ! !USES:
    IMPLICIT NONE
@@ -245,65 +267,50 @@
    integer, intent(in)                 :: namlst
    character(len=*), intent(in)        :: fname
    integer, intent(in)                 :: unit
-   integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: h(0:nlev)
+   integer, intent(in)                 :: nmax_
+
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Lars Umlauf, Hans Burchard, Karsten Bolding
 !
-! !LOCAL VARIABLES:
-   integer                   :: rc,i,j,n
-   namelist /bio_nml/ bio_calc,bio_model,bio_eulerian, &
-                      cnpar,w_adv_discr,ode_method,split_factor, &
-                      bioshade_feedback,bio_lagrange_mean,bio_npar
 !EOP
+!-----------------------------------------------------------------------
+!  local variables
+   integer                   :: rc,i,j,n
+   namelist /bio_nml/ bio_calc,bio_model,bio_eulerian,                  &
+                      cnpar,w_adv_discr,ode_method,split_factor,        &
+                      bioshade_feedback,npar
 !-----------------------------------------------------------------------
 !BOC
 
    LEVEL1 'init_bio'
 
-   depth=sum(h)
-
-!  Open and read the namelist
+!  open and read the namelist
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_nml,err=99)
    close(namlst)
 
    if (bio_calc) then
 
-!     a sanity check (only temporarely)
-      if (.not. bio_eulerian) then
-         if (bio_model .ne. 3) then
-            FATAL "Lagrangian simulations only tested/works with bio_model=3"
-         end if
-      end if
-
+!     read individual model namelists
       select case (bio_model)
-
+         
       case (-1)
 #ifdef BIO_TEMPLATE
+
          call init_bio_template(namlst,'bio_template.nml',unit)
-
-         call allocate_memory(nlev)
-
-         call init_var_template(nlev)
-
-         call var_info_template()
+         
 #else
          FATAL "bio_template not compiled!!"
          FATAL "set environment variable BIO_TEMPLATE different from false"
          FATAL "and re-compile"
          stop "init_bio()"
 #endif
-      case (1)  ! The NPZD model
+      case (1) ! The NPZD model
 #ifdef BIO_NPZD
+
          call init_bio_npzd(namlst,'bio_npzd.nml',unit)
 
-         call allocate_memory(nlev)
-
-         call init_var_npzd(nlev)
-
-         call var_info_npzd()
 #else
          FATAL "bio_npzd not compiled!!"
          FATAL "set environment variable BIO_NPZD different from false"
@@ -312,13 +319,9 @@
 #endif
       case (2)  ! The IOW model
 #ifdef BIO_IOW
+
          call init_bio_iow(namlst,'bio_iow.nml',unit)
 
-         call allocate_memory(nlev)
-
-         call init_var_iow(nlev)
-
-         call var_info_iow()
 #else
          FATAL "bio_iow not compiled!!"
          FATAL "set environment variable BIO_IOW different from false"
@@ -327,13 +330,9 @@
 #endif
       case (3)  ! The simple sedimentation model
 #ifdef BIO_SED
+
          call init_bio_sed(namlst,'bio_sed.nml',unit)
 
-         call allocate_memory(nlev)
-
-         call init_var_sed(nlev)
-
-         call var_info_sed()
 #else
          FATAL "bio_sed not compiled!!"
          FATAL "set environment variable BIO_SED different from false"
@@ -342,13 +341,9 @@
 #endif
       case (4)  ! The FASHAM model
 #ifdef BIO_FASHAM
+
          call init_bio_fasham(namlst,'bio_fasham.nml',unit)
 
-         call allocate_memory(nlev)
-
-         call init_var_fasham(nlev)
-
-         call var_info_fasham()
 #else
          FATAL "bio_fasham not compiled!!"
          FATAL "set environment variable BIO_FASHAM different from false"
@@ -357,13 +352,9 @@
 #endif
       case (5)  ! The IOW model, modified for MaBenE
 #ifdef BIO_MAB
+
          call init_bio_mab(namlst,'bio_mab.nml',unit)
 
-         call allocate_memory(nlev)
-
-         call init_var_mab(nlev)
-
-         call var_info_mab()
 #else
          FATAL "bio_mab not compiled!!"
          FATAL "set environment variable BIO_MAB different from false"
@@ -372,13 +363,9 @@
 #endif
       case (6)  ! RedOxLayer Model (ROLM)
 #ifdef BIO_ROLM
+
          call init_bio_rolm(namlst,'bio_rolm.nml',unit)
 
-         call allocate_memory(nlev)
-
-         call init_var_rolm(nlev)
-
-         call var_info_rolm()
 #else
          FATAL "bio_rolm not compiled!!"
          FATAL "set environment variable BIO_ROLM different from false"
@@ -387,30 +374,55 @@
 #endif
       case (7)  ! NPZD_FE (Weber_etal2007)
 #ifdef BIO_NPZD_FE
+
          call init_bio_npzd_fe(namlst,'bio_npzd_fe.nml',unit)
 
-         call allocate_memory(nlev)
-
-         call init_var_npzd_fe(nlev)
-
-         call var_info_npzd_fe()
 #else
          FATAL "bio_bio_npzd_fe not compiled!!"
          FATAL "set environment variable BIO_NPZD_FE different from false"
          FATAL "and re-compile"
          stop "init_bio()"
 #endif
+      case (20)  ! PHOTO (adaption model according to Nagai et al. (2003)
+#ifdef BIO_PHOTO
+
+         call init_bio_photo(namlst,'bio_photo.nml',unit)
+
+#else
+         FATAL "bio_bio_photo not compiled!!"
+         FATAL "set environment variable BIO_PHOTO different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      
+   
       case default
          stop "bio: no valid biomodel specified in bio.nml !"
       end select
 
+
+!     report variable descriptions
+      LEVEL2 'updated fields will be:'
       do n=1,numc
-         LEVEL4 trim(var_names(n)),'  ',trim(var_units(n)), &
+         LEVEL3 trim(var_names(n)),'  ',trim(var_units(n)), &
                 '  ',trim(var_long(n))
       end do
 
+
+
+
+!     allocate memory for Eulerian fields
+      if (nmax_ .gt. 0) then
+         nmax = nmax_
+         call alloc_eul
+      else
+         FATAL 'nmax>0 for successful memory allocation'
+         stop 'init_bio()'
+      endif
+
+!     report type of solver 
       if ( bio_eulerian ) then
-         LEVEL3 "Using Eulerian solver"
+         LEVEL2 "Using Eulerian solver"
          select case (ode_method)
             case (1)
                LEVEL2 'Using euler_forward()'
@@ -438,40 +450,7 @@
                stop "bio: no valid ode_method specified in bio.nml!"
          end select
       else
-         LEVEL3 "Using Lagrangian solver"
-         allocate(zlev(0:nlev),stat=rc)
-         if (rc /= 0) &
-         STOP 'init_bio: Error allocating (zlev)'
-
-         allocate(particle_active(numc,bio_npar),stat=rc)
-         if (rc /= 0) &
-         STOP 'init_bio: Error allocating (particle_active)'
-
-         allocate(particle_indx(numc,bio_npar),stat=rc)
-         if (rc /= 0) &
-         STOP 'init_bio: Error allocating (particle_indx)'
-
-         allocate(particle_pos(numc,bio_npar),stat=rc)
-         if (rc /= 0) &
-         STOP 'init_bio: Error allocating (particle_pos)'
-
-         zlev(0)=-depth
-         do n=1,nlev
-            zlev(n)=zlev(n-1)+h(n)
-         end do
-!Equidist. particle distribution
-         do n=1,bio_npar
-            particle_pos(:,n)=-depth+n/float(bio_npar+1)*depth
-         end do
-         do j=1,numc
-            do n=1,bio_npar
-               do i=1,nlev
-                  if (zlev(i) .gt. particle_pos(j,n)) EXIT
-               end do
-               particle_indx(j,n)=i
-               particle_active(j,n)=.true.
-            end do
-         end do
+         LEVEL2 "Using particle solver"
       end if
 
 #if 0
@@ -493,23 +472,227 @@
    end subroutine init_bio
 !EOC
 
+
+
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Set external variables used by the BIO
-! modules
+! !IROUTINE: Initialise bio variables
 !
-! !INTERFACE: 
-   subroutine set_env_bio(nlev,h_,t_,s_,rho_,nuh_,rad_,wind_,I_0_, &
-                          w_,w_adv_ctr_)
+! !INTERFACE:
+   subroutine init_var_bio
 !
 ! !DESCRIPTION:
+! A call to this routine  initializes the variables of the bio module
+! with meaningful values, depending on the water column properties set
+! by a previous call to {\tt set\_env\_bio()}. The steps taken here
+! include
+! \begin{enumerate}
+!  \item Allocating memory for the particle properties (if a particle
+!  solver has been chosen),
+!  \item Computing the position of the grid interfaces (needed for 
+!  averaging particle properties over grid cells)
+!  \item Calling the initialization routines for the respective 
+!  bio modules
+! \end{enumerate}
+!  
+! If the bio module is used from a 3D code outside GOTM this routine 
+! should not be called. In this case, all initialization should be 
+! done inside the external calling program. Note in particular that 
+! the numbe of particles may change during the run, and variable memory
+! needs to be allocated.
+!
+! !USES:
+   IMPLICIT NONE
+!
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!  local variables
+   integer                   :: rc,i,j,n
+
+!-----------------------------------------------------------------------
+!BOC
+
+!  allocate initial memory for particles
+   if (.not. bio_eulerian) then
+
+      call alloc_par()
+
+   end if
+
+
+!  update grid
+   zlev(0)= zbot
+
+   do n=1,nlev
+      zlev(n)=zlev(n-1)+h(n)
+   end do
+
+   ztop         = zlev(nlev)
+
+
+!  initialize individual models
+   if (bio_calc) then
+
+      select case (bio_model)
+         
+      case (-1)
+#ifdef BIO_TEMPLATE
+         
+         call init_var_template
+
+#else
+         FATAL "bio_template not compiled!!"
+         FATAL "set environment variable BIO_TEMPLATE different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      case (1) ! The NPZD model
+#ifdef BIO_NPZD
+
+         call init_var_npzd
+
+#else
+         FATAL "bio_npzd not compiled!!"
+         FATAL "set environment variable BIO_NPZD different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      case (2)  ! The IOW model
+#ifdef BIO_IOW
+
+         call init_var_iow
+
+#else
+         FATAL "bio_iow not compiled!!"
+         FATAL "set environment variable BIO_IOW different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      case (3)  ! The simple sedimentation model
+#ifdef BIO_SED
+
+         call init_var_sed
+
+#else
+         FATAL "bio_sed not compiled!!"
+         FATAL "set environment variable BIO_SED different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      case (4)  ! The FASHAM model
+#ifdef BIO_FASHAM
+
+         call init_var_fasham
+
+#else
+         FATAL "bio_fasham not compiled!!"
+         FATAL "set environment variable BIO_FASHAM different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      case (5)  ! The IOW model, modified for MaBenE
+#ifdef BIO_MAB
+
+         call init_var_mab
+
+#else
+         FATAL "bio_mab not compiled!!"
+         FATAL "set environment variable BIO_MAB different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      case (6)  ! RedOxLayer Model (ROLM)
+#ifdef BIO_ROLM
+
+         call init_var_rolm
+
+#else
+         FATAL "bio_rolm not compiled!!"
+         FATAL "set environment variable BIO_ROLM different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      case (7)  ! NPZD_FE (Weber_etal2007)
+#ifdef BIO_NPZD_FE
+
+         call init_var_npzd_fe
+
+#else
+         FATAL "bio_bio_npzd_fe not compiled!!"
+         FATAL "set environment variable BIO_NPZD_FE different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      case (20)  ! PHOTO (adaption model according to Nagai et al. (2003)
+#ifdef BIO_PHOTO
+
+         call init_var_photo
+
+#else
+         FATAL "bio_bio_photo not compiled!!"
+         FATAL "set environment variable BIO_PHOTO different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      
+   
+      case default
+         stop "bio: no valid biomodel specified in bio.nml !"
+      end select
+
+   end if
+
+
+   return
+
+98 LEVEL2 'I could not open bio.nml'
+   LEVEL2 'If thats not what you want you have to supply bio.nml'
+   LEVEL2 'See the bio example on www.gotm.net for a working bio.nml'
+   bio_calc = .false.
+   return
+99 FATAL 'I could not read bio.nml'
+   stop 'init_bio'
+   end subroutine init_var_bio
+!EOC
+
+
+
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Set bio module environment 
+!
+! !INTERFACE: 
+   subroutine set_env_bio(nlev_,dt_,zbot_,h_,t_,s_,rho_,nuh_,rad_,       &
+                          wind_,I_0_,secondsofday_,w_,w_adv_ctr_,npar_)
+!
+! !DESCRIPTION:
+! This routine prepares the environment for the bio module, and keeps 
+! track of the memory. Every time this routine is called 
+! the module's variables related to meteorology, mixing, grid parameters, 
+! etc. are updated with the values supplied as arguments. These updated
+! values are then accessible to all module routines if required.
+!
+! Note that if the bio-module is called from outside GOTM,
+! e.g.\ from a 3-D model,
+! this routine has to be called every time the environment parameters,
+! the number of vertical grid points, or the number of particles in the 
+! local water column has changed.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
+   integer , intent(in)                :: nlev_
+   REALTYPE, intent(in)                :: dt_
+   REALTYPE, intent(in)                :: zbot_
    REALTYPE, intent(in)                :: h_(0:nlev)
    REALTYPE, intent(in)                :: nuh_(0:nlev)
    REALTYPE, intent(in)                :: t_(0:nlev)
@@ -518,27 +701,68 @@
    REALTYPE, intent(in)                :: rad_(0:nlev)
    REALTYPE, intent(in)                :: wind_
    REALTYPE, intent(in)                :: I_0_
+   integer , intent(in)                :: secondsofday_
    REALTYPE, optional, intent(in)      :: w_(0:nlev)
-   integer, optional, intent(in)       :: w_adv_ctr_
+   integer , optional, intent(in)      :: w_adv_ctr_
+   integer , optional, intent(in)      :: npar_
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
-! !LOCAL VARIABLES
 !EOP
-!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------!
+
+
+!-----------------------------------------------------------------------!
 !BOC
 
-   h         = h_
-   t         = t_
-   s         = s_
-   rho       = rho_
-   nuh       = nuh_
-   rad       = rad_
-   wind      = wind_
-   I_0       = I_0_
-   if (present(w_)) w = w_
-   if (present(w_adv_ctr_)) w_adv_ctr = w_adv_ctr_
+!  assign mandatory arguments
+   nlev         = nlev_
+   dt           = dt_
+   zbot         = zbot_
+   h            = h_
+   t            = t_
+   s            = s_
+   rho          = rho_
+   nuh          = nuh_
+   rad          = rad_
+   wind         = wind_
+   I_0          = I_0_
+   secondsofday = secondsofday_
+
+
+!  assign optional arguments
+
+   if (present(w_)        )  w         = w_
+   if (present(w_adv_ctr_))  w_adv_ctr = w_adv_ctr_
+
+!  check for sufficient memory
+   if (nlev > nmax) then
+      FATAL 'nlev=', nlev, ' but memory is allocated only for nmax=', nmax
+      FATAL 'call "init\_bio()" with nmax >= nlev'
+      stop 'set_env_bio()'
+   end if
+
+
+!  keep track of particle memory
+   if (present(npar_) ) then
+
+      if (npar /= npar_) then
+         
+         npar      = npar_
+         par_allocation = .true.
+         
+      else
+         par_allocation = .false.
+      end if
+
+   elseif (.not. bio_eulerian) then
+
+      FATAL 'npar not specified'
+      stop 'set_env_bio('
+
+   endif
+      
 
    return
    end subroutine set_env_bio
@@ -547,13 +771,79 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Update the bio model \label{sec:do-bio}
+! !IROUTINE: Update the bio model 
 !
 ! !INTERFACE:
-   subroutine do_bio(nlev,dt)
+   subroutine do_bio()
 !
 ! !DESCRIPTION:
-! This is the main loop for the biogeochemical model. Basically 
+! This routine is a simple wrapper selecting between calls to the
+! Eulerian and Lagrangian (particle) routines used to update the 
+! bio model. 
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf & Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+! !LOCAL VARIABLES
+   integer                             :: n
+
+!-----------------------------------------------------------------------
+!BOC
+
+!  update grid
+   zlev(0)= zbot
+
+   do n=1,nlev
+      zlev(n)=zlev(n-1)+h(n)
+   end do
+
+   ztop         = zlev(nlev)
+
+!  update model fields
+   if (bio_calc) then
+      
+
+      ! Eulerian model
+      if (bio_eulerian) then
+         
+         call do_bio_eul
+         
+
+      ! particle model
+      else 
+         
+         if (npar /= 0) call do_bio_par
+         
+      end if
+      
+#if 0
+      if (mussels_calc) then
+         call do_mussels(numc,dt,t(1))
+      end if
+#endif
+      
+   end if
+
+   return
+   end subroutine do_bio
+!EOC
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Update the Eulerian bio model \label{sec:do-bio}
+!
+! !INTERFACE:
+   subroutine do_bio_eul()
+!
+! !DESCRIPTION:
+! This is the main loop for the Eulerian biogeochemical model. Basically 
 ! an operational split method is used, with first calculating the
 ! transport part, and than the reaction part.
 ! During the transport part, all sinks and sources are set to zero,
@@ -594,25 +884,16 @@
 ! (1-a)\exp\left(\frac{z}{\tilde\eta_2}\right)
 !   B(z).
 ! \end{equation}
-! 
-! For Lagrangian particle calculations, 
-! the Lagrangian advection-diffusion routine {\tt lagrange} is called,
-! and afterwards, if chosen, the removal of particles due to benthic
-! filter feeders (mussels) is done.
-! Finally, the calculation of Eulerian concentrations are calculated
-! from Lagrangian counts per grid cell for output.
-! 
 !
 ! !USES:
-   use bio_var, only: I_0_local => I_0
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS:
-   integer,  intent(in)                :: nlev
-   REALTYPE, intent(in)                :: dt
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Hans Burchard, Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
 !
 ! !LOCAL VARIABLES:
    integer, parameter        :: adv_mode_0=0
@@ -622,174 +903,193 @@
    REALTYPE                  :: dt_eff
    integer                   :: j,n
    integer                   :: split
-   integer                   :: i,np
-   REALTYPE                  :: filter_depth
+   integer                   :: i,np,nc
    integer, save             :: count=0
    logical, save             :: set_C_zero=.true.
-!EOP
+
 !-----------------------------------------------------------------------
 !BOC
-   if (bio_calc) then
 
-      I_0_local = I_0
+   Qsour    = _ZERO_
+   Lsour    = _ZERO_
+   RelaxTau = 1.e15
+   
+   select case (bio_model)
+   case (-1)
+   case (1)
+   case (2)
+#ifdef BIO_IOW
+      call surface_fluxes_iow(nlev,t(nlev))
+#endif
+   case (3)
+   case (4)
+   case (5)
+#ifdef BIO_MAB
+      call surface_fluxes_mab(nlev,t(nlev),s(nlev))
+#endif
+   case (6)
+#ifdef BIO_ROLM
+      call surface_fluxes_rolm(nlev,t(nlev))
+#endif
+   case (7)
+#ifdef BIO_NPZD_FE
+      call surface_fluxes_npzd_fe(nlev)
+#endif
+   end select
+   
+   do j=1,numc
+         
+!     do advection step due to settling or rising
+      call adv_center(nlev,dt,h,h,ws(j,:),flux,                   &
+           flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(j,:))
+         
+!     do advection step due to vertical velocity
+      if(w_adv_ctr .ne. 0) then
+         call adv_center(nlev,dt,h,h,w,flux,                   &
+              flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(j,:))
+      end if
+      
+!     do diffusion step
+      call diff_center(nlev,dt,cnpar,posconc(j),h,Neumann,Neumann,&
+           sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
+      
+   end do
 
-      Qsour    = _ZERO_
-      Lsour    = _ZERO_
-      RelaxTau = 1.e15
+   do split=1,split_factor
+      dt_eff=dt/float(split_factor)
+
+!     very important for 3D models to save extra 3D field:
+      bioshade_=_ONE_
 
       select case (bio_model)
-         case (-1)
-         case (1)
-         case (2)
+      case (-1)
+#ifdef BIO_TEMPLATE
+         call light_template(nlev,bioshade_feedback)
+         !               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_template)
+#endif
+      case (1)
+#ifdef BIO_NPZD
+         call light_npzd(nlev,bioshade_feedback)
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd)
+#endif
+      case (2)
 #ifdef BIO_IOW
-            call surface_fluxes_iow(nlev,t(nlev))
+         call light_iow(nlev,bioshade_feedback)
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_iow)
 #endif
-         case (3)
-         case (4)
-         case (5)
+      case (3)
+      case (4)
+#ifdef BIO_FASHAM
+         call light_fasham(nlev,bioshade_feedback)
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_fasham)
+#endif
+      case (5)
 #ifdef BIO_MAB
-            call surface_fluxes_mab(nlev,t(nlev),s(nlev))
+         call light_mab(nlev,bioshade_feedback)
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_mab)
 #endif
-         case (6)
+      case (6)
 #ifdef BIO_ROLM
-            call surface_fluxes_rolm(nlev,t(nlev))
+         call light_rolm(nlev,bioshade_feedback)
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_rolm)
 #endif
-         case (7)
+      case (7)
 #ifdef BIO_NPZD_FE
-            call surface_fluxes_npzd_fe(nlev)
+         call light_npzd_fe(nlev,bioshade_feedback)
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd_fe)
 #endif
       end select
+      
+   end do
 
-#if 0
-      if (mussels_calc) then
-         call do_mussels(numc,dt,t(1))
-      end if
-#endif
-
-      if (bio_eulerian) then
-         do j=1,numcc
-
-!           do advection step due to settling or rising
-            call adv_center(nlev,dt,h,h,ws(j,:),flux,                   &
-                 flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(j,:))
-
-!           do advection step due to vertical velocity
-            if(w_adv_ctr .ne. 0) then
-               call adv_center(nlev,dt,h,h,w,flux,                   &
-                    flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(j,:))
-            end if
-            
-!           do diffusion step
-            call diff_center(nlev,dt,cnpar,posconc(j),h,Neumann,Neumann,&
-                sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
-            
-         end do
-      else ! Lagrangian particle calculations
-!#define LAGRANGE
-#ifdef LAGRANGE
-         if (bio_model.ne.3) then
-            stop 'set bio_model=3 for Lagrangian calculations. Stop in bio.F90'
-         end if
-         zlev(0)=-depth
-         do n=1,nlev
-            zlev(n)=zlev(n-1)+h(n)
-         end do
-         do j=1,numc
-            call lagrange(nlev,dt,zlev,nuh,ws(j,1),bio_npar, &
-                          particle_active(j,:), &
-                          particle_indx(j,:),   &
-                          particle_pos(j,:))
-!           convert particle counts  into concentrations
-            if( write_results .or. bio_lagrange_mean ) then
-               if (set_C_zero) then
-                  cc(j,:)=_ZERO_
-                  set_C_zero=.false.
-               end if
-               do np=1,bio_npar
-                  if (particle_active(j,np)) then
-                    n=particle_indx(j,np)
-                    cc(j,n)=cc(j,n)+_ONE_
-                  end if
-               end do
-               if (bio_lagrange_mean) then
-                  count=count+1
-               else
-                  count=1
-               end if
-               if (write_results) then
-                  do n=1,nlev
-                     cc(j,n) = cc(j,n)/bio_npar*depth/h(n)/count
-                  end do
-                  count=0
-                  set_C_zero=.true.
-               end if
-            end if
-         end do
-#endif
-      end if
-
-      do split=1,split_factor
-         dt_eff=dt/float(split_factor)
-
-!        Very important for 3D models to save extra 3D field:
-         bioshade_=_ONE_
-
-         select case (bio_model)
-            case (-1)
-#ifdef BIO_TEMPLATE
-               call light_template(nlev,bioshade_feedback)
-!               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_template)
-#endif
-            case (1)
-#ifdef BIO_NPZD
-               call light_npzd(nlev,bioshade_feedback)
-               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd)
-#endif
-            case (2)
-#ifdef BIO_IOW
-               call light_iow(nlev,bioshade_feedback)
-               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_iow)
-#endif
-            case (3)
-            case (4)
-#ifdef BIO_FASHAM
-               call light_fasham(nlev,bioshade_feedback)
-               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_fasham)
-#endif
-            case (5)
-#ifdef BIO_MAB
-               call light_mab(nlev,bioshade_feedback)
-               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_mab)
-#endif
-            case (6)
-#ifdef BIO_ROLM
-               call light_rolm(nlev,bioshade_feedback)
-               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_rolm)
-#endif
-            case (7)
-#ifdef BIO_NPZD_FE
-               call light_npzd_fe(nlev,bioshade_feedback)
-               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd_fe)
-#endif
-         end select
-
-      end do
-
-   end if
    return
-   end subroutine do_bio
+   end subroutine do_bio_eul
 !EOC
+
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: return updated variables in the bio modules
-! modules
+! !IROUTINE: Update the bio model for particles
+!
+! !INTERFACE:
+   subroutine do_bio_par()
+!
+! !DESCRIPTION:
+! Here, all particle properties are updated. This includes a
+! random-walk step in order to update the particle positions, 
+! as well as a modification of bio-geochemical properties 
+! according to the particle model. 
+!
+! At the moment, only two particle models are available: model 3 for
+! simple sedimentation and model 20 corresponding to a simple
+! photo-adaption model.
+!
+! !USES:
+   IMPLICIT NONE
+!
+!
+! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf & Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!
+! !LOCAL VARIABLES:
+   integer                        :: nt
+
+!-----------------------------------------------------------------------
+!BOC
+
+   
+   if (par_allocation) then 
+      call dealloc_par
+      call alloc_par
+   endif
+
+
+
+   ! stochastic dispersion of all particle types
+   do nt=1,ntype
+
+      call lagrange(nlev,dt,zlev,nuh,ws(1,1),npar,                      &
+           par_act(:,nt),                                               &
+           par_ind(:,nt),                                               &
+           par_z  (:,nt)  )
+
+
+   end do
+
+
+   ! update particle properties according to model
+   select case (bio_model)
+   case (3)
+      call do_bio_sed_par
+   case (20)
+      call do_bio_photo_par
+   case default
+      FATAL 'bio_model=', bio_model, ' is not a valid particle model.'
+      stop 'do_bio_par()'
+   end select
+
+
+   return
+   end subroutine do_bio_par
+!EOC
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Return updated bio variable
 !
 ! !INTERFACE: 
    subroutine get_bio_updates(nlev,bioshade)
 !
 ! !DESCRIPTION:
+! Return variables that have been updated by the bio module. At the 
+! moment, only the variable bioshade is returned in order to re-use
+! it in the calling code for self-shading effects.
 !
 ! !USES:
    IMPLICIT NONE
@@ -803,7 +1103,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-! !LOCAL VARIABLES
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -819,25 +1118,163 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Finish the bio calculations
+! !IROUTINE: Allocate memory (Eulerian arrays)
 !
 ! !INTERFACE:
-   subroutine clean_bio
+   subroutine alloc_eul
 !
 ! !DESCRIPTION:
-!  Nothing done yet --- supplied for completeness.
+!  Allocates memory for the arrays related to the Eulerian model. This
+!  routine is only called once during the initialization procedure, 
+!  with {\tt nmax} being the maximum number of layers that is expected
+!  for the run. 
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:!
+!  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding!
+!EOP
+!-----------------------------------------------------------------------
+!
+! !LOCAL VARIABLES:
+   integer                   :: rc
+!
+!-----------------------------------------------------------------------
+!BOC
+
+!  internal arrays
+   allocate(par(0:nmax),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
+
+   allocate(cc(1:numc,0:nmax),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc)'
+
+   allocate(ws(1:numc,0:nmax),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (ws)'
+
+   allocate(sfl(1:numc),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (sfl)'
+   sfl=_ZERO_
+
+   allocate(bfl(1:numc),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (bfl)'
+   bfl=_ZERO_
+
+   allocate(posconc(1:numc),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (posconc)'
+   posconc=1
+
+   allocate(zlev(0:nmax),stat=rc)
+   if (rc /= 0) stop 'allocate_memory_l: Error allocating (zlev)'
+
+!  externally provided arrays
+   allocate(h(0:nmax),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (h)'
+
+   allocate(nuh(0:nmax),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (nuh)'
+
+   allocate(t(0:nmax),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (t)'
+
+   allocate(s(0:nmax),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (s)'
+
+   allocate(rho(0:nmax),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (rho)'
+
+   allocate(rad(0:nmax),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (rad)'
+
+   allocate(w(0:nmax),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (w)'
+
+   allocate(bioshade_(0:nmax),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (bioshade)'
+
+   allocate(abioshade_(0:nmax),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (abioshade)'
+
+
+   return
+   end subroutine alloc_eul
+!EOC
+!-----------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Allocate memory (particles)
+!
+! !INTERFACE:
+   subroutine alloc_par
+!
+! !DESCRIPTION:
+!  Allocates memory for the arrays related to the particle model.
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !REVISION HISTORY:
+!  Original author(s): Lars Umlauf, Karsten Bolding
+!EOP
+!-----------------------------------------------------------------------!
+! !LOCAL VARIABLES:
+   integer                   :: rc
+
+!-----------------------------------------------------------------------!
+!BOC
+
+
+   allocate(par_act(npar,ntype),stat=rc)
+   if (rc /= 0) &
+        STOP 'allocate_memory_par(): Error allocating (par_act)'
+
+   allocate(par_ind(npar,ntype),stat=rc)
+   if (rc /= 0) &
+        STOP 'allocate_memory_par(): Error allocating (par_ind)'
+
+   allocate(par_z(npar,ntype),stat=rc)
+   if (rc /= 0) &
+        STOP 'allocate_memory_par(): Error allocating (par_z)'
+
+   allocate(par_prop(npar,nprop,ntype),stat=rc)
+   if (rc /= 0) &
+        STOP 'allocate_memory_par(): Error allocating (par_prop)'
+
+
+
+   return
+   end subroutine alloc_par
+!EOC
+!-----------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Deallocate memory (Eulerian arrays)
+!
+! !INTERFACE:
+   subroutine dealloc_eul()
+!  Deallocates arrays related to the Eulerian model.
+!
+! !DESCRIPTION:
+!  Deallocates arrays related to the Eulerian model.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
-   LEVEL1 'clean_bio'
-
+!  internal arrays
    if (allocated(par))            deallocate(par)
    if (allocated(cc))             deallocate(cc)
    if (allocated(ws))             deallocate(ws)
@@ -848,8 +1285,9 @@
    if (allocated(var_names))      deallocate(var_names)
    if (allocated(var_units))      deallocate(var_units)
    if (allocated(var_long))       deallocate(var_long)
+   if (allocated(zlev))           deallocate(zlev)
 
-!  The external provide arrays
+!  externally provided arrays
    if (allocated(h))              deallocate(h)
    if (allocated(nuh))            deallocate(nuh)
    if (allocated(t))              deallocate(t)
@@ -860,116 +1298,93 @@
    if (allocated(bioshade_))      deallocate(bioshade_)
    if (allocated(abioshade_))     deallocate(abioshade_)
 
+   return
+   end subroutine dealloc_eul
+!EOC
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Deallocate memory (particles)
+!
+! !INTERFACE:
+   subroutine dealloc_par
+!
+! !DESCRIPTION:
+!  Deallocates arrays related to the particle model.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY: Lars Umlauf, Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   if (allocated(par_act))        deallocate(par_act)
+   if (allocated(par_ind))        deallocate(par_ind)
+   if (allocated(par_z))          deallocate(par_z)
+   if (allocated(par_prop))       deallocate(par_prop)
+
+
+   return
+   end subroutine dealloc_par
+!EOC
+
+
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Finish the bio calculations
+!
+! !INTERFACE:
+   subroutine clean_bio
+!
+! !DESCRIPTION:
+!  Deallocate memory and clean up some thins.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   LEVEL1 'clean_bio'
+
+   ! clean up memory
+   call dealloc_eul()
+
+   if (.not. bio_eulerian) then
+
+      call dealloc_par()
+
+   end if
+
+   ! clean up mussles
 #if 0
    if (mussels_calc) then
       call end_mussels()
    end if
 #endif
 
-   init_saved_vars=.true.
-
+   
    LEVEL1 'done.'
 
    return
    end subroutine clean_bio
 !EOC
 
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Allocate memory for biological variables
-!
-! !INTERFACE:
-   subroutine allocate_memory(nlev)
-!
-! !DESCRIPTION:
-! Here, the memory for the global biogeochemical parameters
-! such as concentrations, settling velocities, surface and bottom
-! boundary fluxes, and various other parameters is allocated.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer,  intent(in)                :: nlev
-!
-! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
-!
-! !LOCAL VARIABLES:
-   integer                   :: rc
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-
-   allocate(par(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_bio: Error allocating (par)'
-
-   allocate(cc(1:numc,0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_bio: Error allocating (cc)'
-
-   allocate(ws(1:numc,0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_bio: Error allocating (ws)'
-
-   allocate(sfl(1:numc),stat=rc)
-   if (rc /= 0) STOP 'init_bio: Error allocating (sfl)'
-   sfl=_ZERO_
-
-   allocate(bfl(1:numc),stat=rc)
-   if (rc /= 0) STOP 'init_bio: Error allocating (bfl)'
-   bfl=_ZERO_
-
-   allocate(posconc(1:numc),stat=rc)
-   if (rc /= 0) STOP 'init_bio: Error allocating (posconc)'
-   posconc=1
-
-   allocate(var_ids(numc),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating var_ids)'
-
-   allocate(var_names(numc),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating var_names)'
-
-   allocate(var_units(numc),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating var_units)'
-
-   allocate(var_long(numc),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating var_long)'
-
-!  The external provide arrays
-   allocate(h(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating (h)'
-
-   allocate(nuh(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating (nuh)'
-
-   allocate(t(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating (t)'
-
-   allocate(s(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating (s)'
-
-   allocate(rho(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating (rho)'
-
-   allocate(rad(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating (rad)'
-
-   allocate(w(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating (w)'
-
-   allocate(bioshade_(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating (bioshade)'
-
-   allocate(abioshade_(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_bio(): Error allocating (abioshade)'
-
-   return
-   end subroutine allocate_memory
-!EOC
-!-----------------------------------------------------------------------
 
    end module bio
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
 !----------------------------------------------------------------------
+

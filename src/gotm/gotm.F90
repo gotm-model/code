@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.37 2008-04-09 11:56:28 kb Exp $
+!$Id: gotm.F90,v 1.38 2008-07-08 10:09:06 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -66,7 +66,7 @@
 #ifdef BIO
    use bio
    use bio_fluxes
-   use bio_var, only: numc,cc
+   use bio_var, only: npar,numc,cc
 #endif
 
    use output
@@ -94,6 +94,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.38  2008-07-08 10:09:06  lars
+!  new structure with general particle support
+!
 !  Revision 1.37  2008-04-09 11:56:28  kb
 !  GOTM/GETM concensus on signs for precip and evap - both positive into the ocean
 !
@@ -303,15 +306,6 @@
 #ifdef SPM
    call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
-#ifdef BIO
-   call init_bio(namlst,'bio.nml',unit_bio,nlev,h)
-   if (bio_calc) then
-      call init_bio_fluxes()
-      allocate(bioprofs(1:numc,0:nlev),stat=rc)
-      if (rc /= 0) STOP 'init_gotm: Error allocating (bioprofs)'
-   end if
-#endif
-
    call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
                           depth,nlev,z,h,gravity,rho_0)
 
@@ -322,19 +316,40 @@
    t = tprof
    u = uprof
    v = vprof
-#ifdef BIO
-   if ( bio_prof_method .eq. 2 ) then
-      cc = bioprofs
-   end if
-#endif
 
-!  initalise KPP model
+!  initalize KPP model
    if (turb_method.eq.99) then
       call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
    endif
 
    call init_output(title,nlev,latitude,longitude)
    call init_air_sea(namlst,latitude,longitude)
+
+
+!  initalize BIO module
+#ifdef BIO
+
+   if (bio_calc) then
+
+      call init_bio(namlst,'bio.nml',unit_bio,nlev)
+      
+      call set_env_bio(nlev,dt,-depth0,h,t,s,rho,nuh,rad,wind,I_0, &
+           secondsofday,w,w_adv_discr,npar)
+      
+      call init_var_bio()
+      
+      call init_bio_fluxes()
+
+      allocate(bioprofs(1:numc,0:nlev),stat=rc)
+      if (rc /= 0) STOP 'init_gotm: Error allocating (bioprofs)'
+
+      if ( bio_prof_method .eq. 2 ) then
+         cc = bioprofs
+      end if
+
+   end if
+
+#endif
 
    LEVEL2 'done.'
    STDERR LINE
@@ -459,10 +474,10 @@
 #endif
 #ifdef BIO
       if (bio_calc) then
-         call set_env_bio(nlev,h,t,s,rho,nuh,rad,wind,I_0, &
-                          w,w_adv_discr)
+         call set_env_bio(nlev,dt,-depth0,h,t,s,rho,nuh,rad,wind,I_0,   &
+                          secondsofday,w,w_adv_discr,npar)
          call do_bio_fluxes(julianday,secondsofday)
-         call do_bio(nlev,dt)
+         call do_bio()
          call get_bio_updates(nlev,bioshade)
       end if
 #endif
@@ -506,7 +521,7 @@
          if (spm_calc) call spm_save(nlev)
 #endif
 #ifdef BIO
-         if (bio_calc) call bio_save(nlev,_ZERO_)
+         if (bio_calc) call bio_save(_ZERO_)
 #endif
       end if
 

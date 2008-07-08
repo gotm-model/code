@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.12 2007-10-01 12:44:06 kbk Exp $
+!$Id: bio_var.F90,v 1.13 2008-07-08 10:09:05 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -17,63 +17,94 @@
    public
 !
 ! !PUBLIC DATA MEMBERS:
-   integer                               :: bio_model
-!  list over available models
-   integer, parameter                    :: TEMPLATE=-1
-   integer, parameter                    :: NPZD=0
-   integer, parameter                    :: ERGOM=2
-   integer, parameter                    :: SED=3
-   integer, parameter                    :: FASHAM=4
-   integer, parameter                    :: ERGOM_MAB=5
-   integer, parameter                    :: ROLM=6
-!
-   integer                               :: numc,numcc
-   REALTYPE, dimension(:), allocatable   :: zlev
-   REALTYPE, dimension(:), allocatable   :: par
-   REALTYPE, dimension(:,:), allocatable :: cc,ws
-   integer                               :: surface_flux_method=-1
-   integer                               :: n_surface_fluxes=-1
-   REALTYPE, dimension(:), allocatable   :: sfl_read
-   REALTYPE, dimension(:), allocatable   :: sfl,bfl
-   integer, dimension(:), allocatable    :: posconc
-   logical, dimension(:), allocatable    :: mussels_inhale
-   logical, dimension(:,:), allocatable  :: particle_active
-   integer, dimension(:,:), allocatable  :: particle_indx
-   REALTYPE, dimension(:,:), allocatable :: particle_pos
 
-   integer, dimension(:), allocatable    :: var_ids
+!  model types
+   integer                                      :: bio_model
+   logical                                      :: bio_eulerian
+
+!  available models
+   integer, parameter                           :: TEMPLATE=-1
+   integer, parameter                           :: NPZD=0
+   integer, parameter                           :: ERGOM=2
+   integer, parameter                           :: SED=3
+   integer, parameter                           :: FASHAM=4
+   integer, parameter                           :: ERGOM_MAB=5
+   integer, parameter                           :: ROLM=6
+   integer, parameter                           :: PHOTO=20
+
+!  time parameters
+   REALTYPE, parameter                          :: secs_pr_day =86400.
+   REALTYPE, parameter                          :: secs_pr_hour=3600.
+
+!  general model variables
+   integer                                      :: numc
+   REALTYPE, dimension(:)         , allocatable :: zlev
+   REALTYPE, dimension(:)         , allocatable :: par
+   REALTYPE, dimension(:,:)       , allocatable :: cc,ws
+
+!  surface fluxes
+   integer                                      :: surface_flux_method=-1
+   integer                                      :: n_surface_fluxes=-1
+   REALTYPE, dimension(:)         , allocatable :: sfl_read
+   REALTYPE, dimension(:)         , allocatable :: sfl,bfl
+   integer , dimension(:)         , allocatable :: posconc
+   logical , dimension(:)         , allocatable :: mussels_inhale
+
+!  decription of variables in cc array
+   integer          , dimension(:), allocatable :: var_ids
    character(len=64), dimension(:), allocatable :: var_names
    character(len=64), dimension(:), allocatable :: var_units
    character(len=64), dimension(:), allocatable :: var_long
 
-   REALTYPE, parameter                   :: secs_pr_day=86400.
 
 !  external variables - i.e. provided by the calling program but
 !  made available via this module to the different biological models
 !  the variables are copied via set_env_spm() in bio.F90
-   REALTYPE, dimension(:), allocatable      :: h
-   REALTYPE, dimension(:), allocatable      :: t
-   REALTYPE, dimension(:), allocatable      :: s
-   REALTYPE, dimension(:), allocatable      :: rho
-   REALTYPE, dimension(:), allocatable      :: nuh
-   REALTYPE, dimension(:), allocatable      :: w
-   REALTYPE, dimension(:), allocatable      :: rad
-   REALTYPE                                 :: wind
-   REALTYPE                                 :: I_0
-   integer                                  :: w_adv_ctr=0
+   integer                                      :: nmax=0
+   integer                                      :: nlev
+   REALTYPE                                     :: dt
+   REALTYPE                                     :: zbot
+   REALTYPE                                     :: ztop
+   REALTYPE, dimension(:)         , allocatable :: h
+   REALTYPE, dimension(:)         , allocatable :: t
+   REALTYPE, dimension(:)         , allocatable :: s
+   REALTYPE, dimension(:)         , allocatable :: rho
+   REALTYPE, dimension(:)         , allocatable :: nuh
+   REALTYPE, dimension(:)         , allocatable :: w
+   REALTYPE, dimension(:)         , allocatable :: rad
+   REALTYPE                                     :: wind
+   REALTYPE                                     :: I_0
+   REALTYPE                                     :: secondsofday
+   integer                                      :: w_adv_ctr=0
+
 
 !  external variables updated by the biological models
 !  the variables are copied back to the calling program using
 !  get_bio_updates()
-   REALTYPE, dimension(:), allocatable      :: bioshade_
-   REALTYPE, dimension(:), allocatable      :: abioshade_
+   REALTYPE, dimension(:)         , allocatable :: bioshade_
+   REALTYPE, dimension(:)         , allocatable :: abioshade_
 
-   logical                                  :: init_saved_vars=.true.
+
+!  Lagrangian particles
+!  (also passed over to and from external routines)
+   integer                                      :: npar=0
+   integer                                      :: ntype=0   
+   integer                                      :: nprop=0   
+   logical                                      :: par_allocation=.false.   
+   logical , dimension(:,:)       , allocatable :: par_act  
+   integer , dimension(:,:)       , allocatable :: par_ind
+   REALTYPE, dimension(:,:)       , allocatable :: par_z
+   REALTYPE, dimension(:,:,:)     , allocatable :: par_prop
+
+   logical                                      :: init_saved_vars=.true.
 !
 ! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
+!  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
+!  Revision 1.13  2008-07-08 10:09:05  lars
+!  new structure with general particle support
+!
 !  Revision 1.12  2007-10-01 12:44:06  kbk
 !  added RedOxLayer Model (ROLM)
 !
