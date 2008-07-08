@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.1 2008-03-26 08:51:43 kb Exp $
+!$Id: bio_fasham.F90,v 1.2 2008-07-08 09:58:39 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -50,6 +50,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
+!  Revision 1.2  2008-07-08 09:58:39  lars
+!  adapted to changed BIO initialization algorithm
+!
 !  Revision 1.1  2008-03-26 08:51:43  kb
 !  new directory based bio structure
 !
@@ -189,7 +192,7 @@
    read(namlst,nml=bio_fasham_nml,err=99)
    close(namlst)
 
-   numcc=numc
+   LEVEL3 'namelist "', fname, '" read'
 
 !  Conversion from day to second
    vp   = vp   /secs_pr_day
@@ -203,9 +206,42 @@
    w_d  = w_d  /secs_pr_day
    alpha= alpha/secs_pr_day
 
+
+!  initialize variable descriptions
+
+   call bio_alloc_info
+
+   var_names(1) = 'phy'
+   var_units(1) = 'mmol/m**3'
+   var_long(1)  =  'phytoplankton'
+
+   var_names(2) = 'zoo'
+   var_units(2) = 'mmol/m**3'
+   var_long(2)  =  'zooplankton'
+
+   var_names(3) = 'bac'
+   var_units(3) = 'mmol/m**3'
+   var_long(3)  = 'bacteria'
+
+   var_names(4) = 'det'
+   var_units(4) = 'mmol/m**3'
+   var_long(4)  = 'detritus'
+
+   var_names(5) = 'nit'
+   var_units(5) = 'mmol/m**3'
+   var_long(5)  = 'nitrate'
+
+   var_names(6) = 'amm'
+   var_units(6) = 'mmol/m**3'
+   var_long(6)  = 'ammonium'
+
+   var_names(7) = 'ldn'
+   var_units(7) = 'mmol/m**3'
+   var_long(7)  = 'labile_dissolved_organic_nitrogen'
+
    out_unit=unit
 
-   LEVEL3 'FASHAM bio module initialised ...'
+   LEVEL3 'module initialised'
 
    return
 
@@ -224,7 +260,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_fasham(nlev)
+   subroutine init_var_fasham
 !
 ! !DESCRIPTION:
 !  Here, the the initial conditions are set and the settling velocities are
@@ -234,10 +270,7 @@
 !
 ! !USES:
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
-!
+
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 
@@ -289,60 +322,6 @@
    return
 
    end subroutine init_var_fasham
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Providing info on variables
-!
-! !INTERFACE:
-   subroutine var_info_fasham()
-!
-! !DESCRIPTION:
-!  This subroutine provides information about the variable names as they
-!  will be used when storing data in NetCDF files.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
-!
-! !LOCAL VARIABLES:
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   var_names(1) = 'phy'
-   var_units(1) = 'mmol/m**3'
-   var_long(1)  =  'phytoplankton'
-
-   var_names(2) = 'zoo'
-   var_units(2) = 'mmol/m**3'
-   var_long(2)  =  'zooplankton'
-
-   var_names(3) = 'bac'
-   var_units(3) = 'mmol/m**3'
-   var_long(3)  = 'bacteria'
-
-   var_names(4) = 'det'
-   var_units(4) = 'mmol/m**3'
-   var_long(4)  = 'detritus'
-
-   var_names(5) = 'nit'
-   var_units(5) = 'mmol/m**3'
-   var_long(5)  = 'nitrate'
-
-   var_names(6) = 'amm'
-   var_units(6) = 'mmol/m**3'
-   var_long(6)  = 'ammonium'
-
-   var_names(7) = 'ldn'
-   var_units(7) = 'mmol/m**3'
-   var_long(7)  = 'labile_dissolved_organic_nitrogen'
-
-   return
-   end subroutine var_info_fasham
 !EOC
 
 !-----------------------------------------------------------------------

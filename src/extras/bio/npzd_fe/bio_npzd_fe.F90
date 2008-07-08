@@ -1,4 +1,4 @@
-!$Id: bio_npzd_fe.F90,v 1.1 2008-03-26 08:51:44 kb Exp $
+!$Id: bio_npzd_fe.F90,v 1.2 2008-07-08 09:58:38 lars Exp $
 #include"cppdefs.h"
 #define IRON_QUOTA_LIMITATION
 
@@ -33,7 +33,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio_npzd_fe, init_var_npzd_fe, var_info_npzd_fe, &
+   public init_bio_npzd_fe, init_var_npzd_fe,                   &
           surface_fluxes_npzd_fe,light_npzd_fe, do_bio_npzd_fe, &
           clean_bio_npzd_fe
 !
@@ -43,6 +43,9 @@
 !  Original author(s): Weber et al. 2007
 !
 !  $Log: bio_npzd_fe.F90,v $
+!  Revision 1.2  2008-07-08 09:58:38  lars
+!  adapted to changed BIO initialization algorithm
+!
 !  Revision 1.1  2008-03-26 08:51:44  kb
 !  new directory based bio structure
 !
@@ -190,9 +193,9 @@
    read(namlst,nml=bio_npzd_fe_nml,err=99)
    close(namlst)
 
-   n_surface_fluxes=3
+   LEVEL3 'namelist "', fname, '" read'
 
-   numcc=numc
+   n_surface_fluxes=3
 
 !  Conversion from day to second
 
@@ -241,9 +244,80 @@
 !   pcrf = pcr/fe2n
 ! ---
 
+!  initialize variable descriptions
+
+   call bio_alloc_info
+
+
+   var_names(1) = 'nut'
+   var_units(1) = 'mmol/m**3'
+   var_long(1)  = 'dissolved inorganic nitrogen'
+
+   var_names(2) = 'phy'
+   var_units(2) = 'mmol/m**3'
+   var_long(2)  = 'phytoplankton'
+
+   var_names(3) = 'zoo'
+   var_units(3) = 'mmol/m**3'
+   var_long(3)  = 'zooplankton'
+
+   var_names(4) = 'det'
+   var_units(4) = 'mmol/m**3'
+   var_long(4)  = 'detritus'
+
+!  --- Fe ---
+   var_names(5) = 'fe3'
+   var_units(5) = 'nM'
+   var_long(5)  = 'Fe(III)'
+
+   var_names(6) = 'fe2'
+   var_units(6) = 'nM'
+   var_long(6)  = 'Fe(II)'
+
+   var_names(7) = 'fec'
+   var_units(7) = 'nM'
+   var_long(7)  = 'colloidal Fe'
+
+   var_names(8) = 'fel'
+   var_units(8) = 'nM'
+   var_long(8)  = 'organically complexed Fe'
+
+   var_names(9) = 'fep'
+   var_units(9) = 'nM'
+   var_long(9)  = 'adsorbed Fe'
+
+   var_names(10) = 'lig'
+   var_units(10) = 'nM'
+   var_long(10)  = 'free ligands'
+
+   var_names(11) = 'part'
+   var_units(11) = 'kg/l'
+   var_long(11)  = 'inorganic particles'
+
+   var_names(12) = 'h2o2'
+   var_units(12) = 'nM'
+   var_long(12)  = 'hydrogen peroxide'
+
+   var_names(13) = 'o2m'
+   var_units(13) = 'nM'
+   var_long(13)  = 'superoxide'
+
+   var_names(14) = 'fphy'
+   var_units(14) = 'nM'
+   var_long(14)  = 'phytoplankton fe'
+
+   var_names(15) = 'fzoo'
+   var_units(15) = 'nM'
+   var_long(15)  = 'zooplankton fe'
+
+   var_names(16) = 'fdet'
+   var_units(16) = 'nM'
+   var_long(16)  = 'detritus fe'
+
+
    out_unit=unit
 
-   LEVEL3 'NPZD_Fe bio module initialised ...'
+   LEVEL3 'module initialized'
 #ifdef IRON_QUOTA_LIMITATION
    LEVEL3 '  (using Droop Fe quota limitation)'
 #endif
@@ -265,17 +339,14 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_npzd_fe(nlev)
+   subroutine init_var_npzd_fe
 !
 ! !DESCRIPTION:
 !  Here, the cc and ws varibles are filled with initial conditions
 !
 ! !USES:
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
-!
+
 ! !REVISION HISTORY:
 !  Original author(s): Weber et al. 2007 
 
@@ -365,95 +436,6 @@
    end subroutine init_var_npzd_fe
 !EOC
 
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Providing info on variables
-!
-! !INTERFACE:
-   subroutine var_info_npzd_fe()
-!
-! !DESCRIPTION:
-!  This subroutine provides information on the variables. To be used
-!  when storing data in NetCDF files.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !REVISION HISTORY:
-!  Original author(s): Weber et al. 2007
-!
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   var_names(1) = 'nut'
-   var_units(1) = 'mmol/m**3'
-   var_long(1)  = 'dissolved inorganic nitrogen'
-
-   var_names(2) = 'phy'
-   var_units(2) = 'mmol/m**3'
-   var_long(2)  = 'phytoplankton'
-
-   var_names(3) = 'zoo'
-   var_units(3) = 'mmol/m**3'
-   var_long(3)  = 'zooplankton'
-
-   var_names(4) = 'det'
-   var_units(4) = 'mmol/m**3'
-   var_long(4)  = 'detritus'
-
-!  --- Fe ---
-   var_names(5) = 'fe3'
-   var_units(5) = 'nM'
-   var_long(5)  = 'Fe(III)'
-
-   var_names(6) = 'fe2'
-   var_units(6) = 'nM'
-   var_long(6)  = 'Fe(II)'
-
-   var_names(7) = 'fec'
-   var_units(7) = 'nM'
-   var_long(7)  = 'colloidal Fe'
-
-   var_names(8) = 'fel'
-   var_units(8) = 'nM'
-   var_long(8)  = 'organically complexed Fe'
-
-   var_names(9) = 'fep'
-   var_units(9) = 'nM'
-   var_long(9)  = 'adsorbed Fe'
-
-   var_names(10) = 'lig'
-   var_units(10) = 'nM'
-   var_long(10)  = 'free ligands'
-
-   var_names(11) = 'part'
-   var_units(11) = 'kg/l'
-   var_long(11)  = 'inorganic particles'
-
-   var_names(12) = 'h2o2'
-   var_units(12) = 'nM'
-   var_long(12)  = 'hydrogen peroxide'
-
-   var_names(13) = 'o2m'
-   var_units(13) = 'nM'
-   var_long(13)  = 'superoxide'
-
-   var_names(14) = 'fphy'
-   var_units(14) = 'nM'
-   var_long(14)  = 'phytoplankton fe'
-
-   var_names(15) = 'fzoo'
-   var_units(15) = 'nM'
-   var_long(15)  = 'zooplankton fe'
-
-   var_names(16) = 'fdet'
-   var_units(16) = 'nM'
-   var_long(16)  = 'detritus fe'
-
-   return
-   end subroutine var_info_npzd_fe
-!EOC
 
 !----------------------------------------------------------------
 !BOP

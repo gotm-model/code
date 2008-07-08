@@ -18,7 +18,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio_mab, init_var_mab, var_info_mab, &
+   public init_bio_mab, init_var_mab,            &
           surface_fluxes_mab,light_mab, do_bio_mab, end_bio_mab
 !
 ! !PRIVATE DATA MEMBERS:
@@ -149,9 +149,10 @@
    read(namlst,nml=bio_mab_nml,err=99)
    close(namlst)
 
+   LEVEL3 'namelist "', fname, '" read'
+
    n_surface_fluxes=3
 
-   numcc=numc
    if (fluff) numc=numc+1
 
 !  Conversion from day to second
@@ -176,9 +177,61 @@
    lsa    = lsa     /secs_pr_day
    pvel   = pvel    /secs_pr_day
 
+
+!  initialize variable descriptions
+
+   call bio_alloc_info
+
+
+   var_names(1) = 'dia'
+   var_units(1) = 'mmol n/m**3'
+   var_long(1)  = 'diatoms'
+
+   var_names(2) = 'fla'
+   var_units(2) = 'mmol n/m**3'
+   var_long(2)  = 'flagellates'
+
+   var_names(3) = 'cya'
+   var_units(3) = 'mmol n/m**3'
+   var_long(3)  = 'cyanobacteria'
+
+   var_names(4) = 'zoo'
+   var_units(4) = 'mmol n/m**3'
+   var_long(4)  = 'zooplankton'
+
+   var_names(5) = 'det'
+   var_units(5) = 'mmol n/m**3'
+   var_long(5)  = 'detritus'
+
+   var_names(6) = 'amm'
+   var_units(6) = 'mmol n/m**3'
+   var_long(6)  = 'ammonium'
+
+   var_names(7) = 'nit'
+   var_units(7) = 'mmol n/m**3'
+   var_long(7)  = 'nitrate'
+
+   var_names(8) = 'pho'
+   var_units(8) = 'mmol p/m**3'
+   var_long(8)  = 'phosphate'
+
+   var_names(9) = 'oxy'
+   var_units(9) = 'mmol o2/m**3'
+   var_long(9)  = 'oxygen'   
+
+   var_names(10) = 'slt'
+   var_units(10) = 'g/m**3'
+   var_long(10)  = 'silt'   
+
+   if (fluff) then
+      var_names(11) = 'flf'
+      var_units(11) = 'mmol n/m**2'
+      var_long(11)  = 'fluff'
+   end if
+
    out_unit=unit
 
-   LEVEL3 'IOW bio module initialised ...'
+   LEVEL3 'module initialized'
 
    return
 
@@ -197,7 +250,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_mab(nlev)
+   subroutine init_var_mab
 !
 ! !DESCRIPTION:
 !  Here, the the initial conditions are set and the settling velocities are
@@ -209,10 +262,7 @@
 !
 ! !USES:
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
-!
+
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 
@@ -300,77 +350,6 @@
    end subroutine init_var_mab
 !EOC
 
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Providing info on variables
-!
-! !INTERFACE:
-   subroutine var_info_mab()
-!
-! !DESCRIPTION:
-!  This subroutine provides information about the variable names as they
-!  will be used when storing data in NetCDF files.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
-!
-! !LOCAL VARIABLES:
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   var_names(1) = 'dia'
-   var_units(1) = 'mmol n/m**3'
-   var_long(1)  = 'diatoms'
-
-   var_names(2) = 'fla'
-   var_units(2) = 'mmol n/m**3'
-   var_long(2)  = 'flagellates'
-
-   var_names(3) = 'cya'
-   var_units(3) = 'mmol n/m**3'
-   var_long(3)  = 'cyanobacteria'
-
-   var_names(4) = 'zoo'
-   var_units(4) = 'mmol n/m**3'
-   var_long(4)  = 'zooplankton'
-
-   var_names(5) = 'det'
-   var_units(5) = 'mmol n/m**3'
-   var_long(5)  = 'detritus'
-
-   var_names(6) = 'amm'
-   var_units(6) = 'mmol n/m**3'
-   var_long(6)  = 'ammonium'
-
-   var_names(7) = 'nit'
-   var_units(7) = 'mmol n/m**3'
-   var_long(7)  = 'nitrate'
-
-   var_names(8) = 'pho'
-   var_units(8) = 'mmol p/m**3'
-   var_long(8)  = 'phosphate'
-
-   var_names(9) = 'oxy'
-   var_units(9) = 'mmol o2/m**3'
-   var_long(9)  = 'oxygen'   
-
-   var_names(10) = 'slt'
-   var_units(10) = 'g/m**3'
-   var_long(10)  = 'silt'   
-
-   if (fluff) then
-      var_names(11) = 'flf'
-      var_units(11) = 'mmol n/m**2'
-      var_long(11)  = 'fluff'
-   end if
-
-   return
-   end subroutine var_info_mab
-!EOC
 
 !-----------------------------------------------------------------------
 !BOP

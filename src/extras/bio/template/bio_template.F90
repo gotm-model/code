@@ -1,4 +1,4 @@
-!$Id: bio_template.F90,v 1.1 2008-03-26 08:51:44 kb Exp $
+!$Id: bio_template.F90,v 1.2 2008-07-08 09:58:38 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -20,7 +20,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio_template, init_var_template, var_info_template, &
+   public init_bio_template, init_var_template,                &
           light_template, do_bio_template, end_bio_template
 !
 ! !PRIVATE DATA MEMBERS:
@@ -29,6 +29,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_template.F90,v $
+!  Revision 1.2  2008-07-08 09:58:38  lars
+!  adapted to changed BIO initialization algorithm
+!
 !  Revision 1.1  2008-03-26 08:51:44  kb
 !  new directory based bio structure
 !
@@ -82,9 +85,43 @@
 !BOC
    LEVEL2 'init_bio_template'
 
+!  Here, the namelist of the module should be read
+
+   LEVEL3 'namelist "', fname, '" read'
+
+
    numc=5
 
-   LEVEL3 'TEMPLATE bio module initialised ...'
+
+!  initialize variable descriptions
+
+   call bio_alloc_info
+
+
+   var_names(1) = 'name_1'
+   var_units(1) = 'units_1'
+   var_long(1)  = 'long_1'
+
+   var_names(2) = 'name_2'
+   var_units(2) = 'units_2'
+   var_long(2)  = 'long_2'
+
+   var_names(3) = 'name_3'
+   var_units(3) = 'units_3'
+   var_long(3)  = 'long_3'
+
+   var_names(4) = 'name_4'
+   var_units(4) = 'units_4'
+   var_long(4)  = 'long_4'
+
+   var_names(5) = 'name_5'
+   var_units(5) = 'units_5'
+   var_long(5)  = 'long_5'
+
+
+
+
+   LEVEL3 'module initialized.'
 
    return
 
@@ -97,7 +134,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_template(nlev)
+   subroutine init_var_template
 !
 ! !DESCRIPTION:
 !  Here, the the initial conditions should be set and the settling 
@@ -109,10 +146,7 @@
 !
 ! !USES:
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
-!
+
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 
@@ -148,25 +182,6 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   var_names(1) = 'name_1'
-   var_units(1) = 'units_1'
-   var_long(1)  = 'long_1'
-
-   var_names(2) = 'name_2'
-   var_units(2) = 'units_2'
-   var_long(2)  = 'long_2'
-
-   var_names(3) = 'name_3'
-   var_units(3) = 'units_3'
-   var_long(3)  = 'long_3'
-
-   var_names(4) = 'name_4'
-   var_units(4) = 'units_4'
-   var_long(4)  = 'long_4'
-
-   var_names(5) = 'name_5'
-   var_units(5) = 'units_5'
-   var_long(5)  = 'long_5'
 
    return
    end subroutine var_info_template

@@ -1,4 +1,4 @@
-!$Id: bio_rolm.F90,v 1.1 2008-03-26 08:51:44 kb Exp $
+!$Id: bio_rolm.F90,v 1.2 2008-07-08 09:58:38 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -50,7 +50,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio_rolm, init_var_rolm, var_info_rolm, &
+   public init_bio_rolm, init_var_rolm,       &
           surface_fluxes_rolm, light_rolm, do_bio_rolm, end_bio_rolm
 !
 ! !PRIVATE DATA MEMBERS:
@@ -300,7 +300,9 @@
 #ifdef WRITEFINISH 
    writeFinish = .false.
 #endif
-   numcc = numc
+
+   LEVEL3 'namelist "', fname, '" read'
+
 
 !  Conversion from day to second
    w_phy = w_phy / secs_pr_day
@@ -316,9 +318,111 @@
    w_s0  = w_s0 / secs_pr_day
    pvel  = pvel / secs_pr_day
 
+!  initialize variable descriptions
+
+   call bio_alloc_info
+
+
+   var_names(1) = 'o2'
+   var_units(1) = 'mmol o/m**3'
+   var_long(1)  = 'dissolved_oxygen'
+
+   var_names(2) = 'no3'
+   var_units(2) = 'mmol n/m**3'
+   var_long(2)  = 'nitrate'
+
+   var_names(3) = 'no2'
+   var_units(3) = 'mmol n/m**3'
+   var_long(3)  = 'nitrite'
+
+   var_names(4) = 'nh4'
+   var_units(4) = 'mmol n/m**3'
+   var_long(4)  = 'ammonia'
+   var_names(5) = 'so4'
+   var_units(5) = 'mmol s/m**3'
+   var_long(5)  = 'sulfate'
+
+   var_names(6) = 's2o3'
+   var_units(6) = 'mmol s/m**3'
+   var_long(6)  = 'thiosulfate'
+
+   var_names(7) = 's0'
+   var_units(7) = 'mmol s/m**3'
+   var_long(7)  = 'elemental_sulfur'
+
+   var_names(8) = 'h2s'
+   var_units(8) = 'mmol s/m**3'
+   var_long(8)  = 'hydrogen_sulfide'
+
+   var_names(9) = 'mn4'
+   var_units(9) = 'mmol mn/m**3'
+   var_long(9)  = 'quadrivalent_manganese'
+
+   var_names(10) = 'mn2'
+   var_units(10) = 'mmol mn/m**3'
+   var_long(10)  = 'bivalent_manganese'
+
+   var_names(11) = 'phy'
+   var_units(11) = 'mgWW m**-3'
+   var_long(11)  = 'phytoplankton'
+
+   var_names(12) = 'zoo'
+   var_units(12) = 'mgWW m**-3'
+   var_long(12)  = 'zooplankton'
+
+   var_names(13) = 'mn3'
+   var_units(13) = 'mmol mn/m**3'
+   var_long(13)  = 'trivalent_manganese'
+
+   var_names(14) = 'po4'
+   var_units(14) = 'mmol p/m**3'
+   var_long(14)  = 'phosphate'
+
+   var_names(15) = 'dop'
+   var_units(15) = 'mmol p/m**3'
+   var_long(15)  = 'dissolved_organic_phosphorus'
+
+   var_names(16) = 'pop'
+   var_units(16) = 'mmol p/m**3'
+   var_long(16)  = 'particulate_organic_phosphorus'
+
+   var_names(17) = 'don'
+   var_units(17) = 'mmol n/m**3'
+   var_long(17)  = 'dissolved_organic_nitrogen'
+
+   var_names(18) = 'pon'
+   var_units(18) = 'mmol n/m**3'
+   var_long(18)  = 'particulate_organic_nitrogen'
+
+   var_names(19) = 'bae'
+   var_units(19) = 'mgWW m**-3'
+   var_long(19)  = 'aerobic_autotrophic_bacteria'
+
+   var_names(20) = 'bhe'
+   var_units(20) = 'mgWW m**-3'
+   var_long(20)  = 'aerobic_heterotrophic_bacteria'
+
+   var_names(21) = 'baa'
+   var_units(21) = 'mgWW m**-3'
+   var_long(21)  = 'anaerobic_autotrophic_bacteria'
+
+   var_names(22) = 'bha'
+   var_units(22) = 'mgWW m**-3'
+   var_long(22)  = 'anaerobic_heterotrophic_bacteria'
+
+   var_names(23) = 'fe3'
+   var_units(23) = 'mmol fe/m**3'
+   var_long(23)  = 'trivalent_iron'
+
+   var_names(24) = 'fe2'
+   var_units(24) = 'mmol fe/m**3'
+   var_long(24)  = 'bivalent_iron'
+
+
+
    out_unit=unit
 
-   LEVEL3 'ROLM bio module initialised.'
+   LEVEL3 'module initialized'
 
    return
 
@@ -338,7 +442,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_rolm(nlev)
+   subroutine init_var_rolm
 !
 ! !DESCRIPTION:
 !  Here, the the initial conditions are set and the settling velocities are
@@ -348,9 +452,7 @@
 !
 ! !USES:
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)   :: nlev
+
 !
 ! !REVISION HISTORY:
 !  Original author(s): E.Yakushev, O.Podymov & I.Kuznetsov
@@ -472,127 +574,6 @@
    end subroutine init_var_rolm
 !EOC
 
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Providing info on variables
-!
-! !INTERFACE:
-   subroutine var_info_rolm()
-!
-! !DESCRIPTION:
-!  This subroutine provides information about the variable names as they
-!  will be used when storing data in NetCDF files.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !REVISION HISTORY:
-!  Original author(s): E.Yakushev, O.Podymov & I.Kuznetsov
-!
-! !LOCAL VARIABLES:
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-
-   var_names(1) = 'o2'
-   var_units(1) = 'mmol o/m**3'
-   var_long(1)  = 'dissolved_oxygen'
-
-   var_names(2) = 'no3'
-   var_units(2) = 'mmol n/m**3'
-   var_long(2)  = 'nitrate'
-
-   var_names(3) = 'no2'
-   var_units(3) = 'mmol n/m**3'
-   var_long(3)  = 'nitrite'
-
-   var_names(4) = 'nh4'
-   var_units(4) = 'mmol n/m**3'
-   var_long(4)  = 'ammonia'
-   var_names(5) = 'so4'
-   var_units(5) = 'mmol s/m**3'
-   var_long(5)  = 'sulfate'
-
-   var_names(6) = 's2o3'
-   var_units(6) = 'mmol s/m**3'
-   var_long(6)  = 'thiosulfate'
-
-   var_names(7) = 's0'
-   var_units(7) = 'mmol s/m**3'
-   var_long(7)  = 'elemental_sulfur'
-
-   var_names(8) = 'h2s'
-   var_units(8) = 'mmol s/m**3'
-   var_long(8)  = 'hydrogen_sulfide'
-
-   var_names(9) = 'mn4'
-   var_units(9) = 'mmol mn/m**3'
-   var_long(9)  = 'quadrivalent_manganese'
-
-   var_names(10) = 'mn2'
-   var_units(10) = 'mmol mn/m**3'
-   var_long(10)  = 'bivalent_manganese'
-
-   var_names(11) = 'phy'
-   var_units(11) = 'mgWW m**-3'
-   var_long(11)  = 'phytoplankton'
-
-   var_names(12) = 'zoo'
-   var_units(12) = 'mgWW m**-3'
-   var_long(12)  = 'zooplankton'
-
-   var_names(13) = 'mn3'
-   var_units(13) = 'mmol mn/m**3'
-   var_long(13)  = 'trivalent_manganese'
-
-   var_names(14) = 'po4'
-   var_units(14) = 'mmol p/m**3'
-   var_long(14)  = 'phosphate'
-
-   var_names(15) = 'dop'
-   var_units(15) = 'mmol p/m**3'
-   var_long(15)  = 'dissolved_organic_phosphorus'
-
-   var_names(16) = 'pop'
-   var_units(16) = 'mmol p/m**3'
-   var_long(16)  = 'particulate_organic_phosphorus'
-
-   var_names(17) = 'don'
-   var_units(17) = 'mmol n/m**3'
-   var_long(17)  = 'dissolved_organic_nitrogen'
-
-   var_names(18) = 'pon'
-   var_units(18) = 'mmol n/m**3'
-   var_long(18)  = 'particulate_organic_nitrogen'
-
-   var_names(19) = 'bae'
-   var_units(19) = 'mgWW m**-3'
-   var_long(19)  = 'aerobic_autotrophic_bacteria'
-
-   var_names(20) = 'bhe'
-   var_units(20) = 'mgWW m**-3'
-   var_long(20)  = 'aerobic_heterotrophic_bacteria'
-
-   var_names(21) = 'baa'
-   var_units(21) = 'mgWW m**-3'
-   var_long(21)  = 'anaerobic_autotrophic_bacteria'
-
-   var_names(22) = 'bha'
-   var_units(22) = 'mgWW m**-3'
-   var_long(22)  = 'anaerobic_heterotrophic_bacteria'
-
-   var_names(23) = 'fe3'
-   var_units(23) = 'mmol fe/m**3'
-   var_long(23)  = 'trivalent_iron'
-
-   var_names(24) = 'fe2'
-   var_units(24) = 'mmol fe/m**3'
-   var_long(24)  = 'bivalent_iron'
-
-   return
-   end subroutine var_info_rolm
-!EOC
 
 !-----------------------------------------------------------------------
 !BOP

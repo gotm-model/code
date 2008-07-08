@@ -1,4 +1,4 @@
-!$Id: bio_npzd.F90,v 1.1 2008-03-26 08:51:43 kb Exp $
+!$Id: bio_npzd.F90,v 1.2 2008-07-08 09:58:38 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,7 +29,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio_npzd, init_var_npzd, var_info_npzd, &
+   public init_bio_npzd, init_var_npzd,                 &
           light_npzd, do_bio_npzd, end_bio_npzd
 !
 ! !PRIVATE DATA MEMBERS:
@@ -38,6 +38,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_npzd.F90,v $
+!  Revision 1.2  2008-07-08 09:58:38  lars
+!  adapted to changed BIO initialization algorithm
+!
 !  Revision 1.1  2008-03-26 08:51:43  kb
 !  new directory based bio structure
 !
@@ -161,7 +164,7 @@
    read(namlst,nml=bio_npzd_nml,err=99)
    close(namlst)
 
-   numcc=numc
+   LEVEL3 'namelist "', fname, '" read'
 
 !  Conversion from day to second
    rpn  = rpn  /secs_pr_day
@@ -175,9 +178,31 @@
    w_p  = w_p  /secs_pr_day
    w_d  = w_d  /secs_pr_day
 
+
+!  initialize variable descriptions
+
+   call bio_alloc_info
+
+
+   var_names(1) = 'nut'
+   var_units(1) = 'mmol/m**3'
+   var_long(1) = 'nutrients'
+
+   var_names(2) = 'phy'
+   var_units(2) = 'mmol/m**3'
+   var_long(2) = 'phytoplankton'
+
+   var_names(3) = 'zoo'
+   var_units(3) = 'mmol/m**3'
+   var_long(3) = 'zooplankton'
+
+   var_names(4) = 'det'
+   var_units(4) = 'mmol/m**3'
+   var_long(4) = 'detritus'
+
    out_unit=unit
 
-   LEVEL3 'NPZD bio module initialised ...'
+   LEVEL3 'module initialized'
 
    return
 
@@ -196,7 +221,7 @@
 ! !IROUTINE: Initialise the concentration variables
 !
 ! !INTERFACE:
-   subroutine init_var_npzd(nlev)
+   subroutine init_var_npzd
 !
 ! !DESCRIPTION:
 !  Here, the the initial conditions are set and the settling velocities are
@@ -206,10 +231,7 @@
 !
 ! !USES:
    IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
-!
+
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 
@@ -251,46 +273,6 @@
    end subroutine init_var_npzd
 !EOC
 
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Providing info on variable names
-!
-! !INTERFACE:
-   subroutine var_info_npzd()
-!
-! !DESCRIPTION:
-!  This subroutine provides information about the variable names as they
-!  will be used when storing data in NetCDF files.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !REVISION HISTORY:
-!  Original author(s): Hans Burchard & Karsten Bolding
-!
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   var_names(1) = 'nut'
-   var_units(1) = 'mmol/m**3'
-   var_long(1) = 'nutrients'
-
-   var_names(2) = 'phy'
-   var_units(2) = 'mmol/m**3'
-   var_long(2) = 'phytoplankton'
-
-   var_names(3) = 'zoo'
-   var_units(3) = 'mmol/m**3'
-   var_long(3) = 'zooplankton'
-
-   var_names(4) = 'det'
-   var_units(4) = 'mmol/m**3'
-   var_long(4) = 'detritus'
-
-   return
-   end subroutine var_info_npzd
-!EOC
 
 !-----------------------------------------------------------------------
 !BOP
