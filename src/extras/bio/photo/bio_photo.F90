@@ -1,4 +1,4 @@
-!$Id: bio_photo.F90,v 1.1 2008-07-08 10:17:25 lars Exp $
+!$Id: bio_photo.F90,v 1.2 2008-07-08 10:40:28 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -99,6 +99,9 @@
 !  Original author(s): Lars Umlauf, Hans Burchard, Karsten Bolding
 !
 !  $Log: bio_photo.F90,v $
+!  Revision 1.2  2008-07-08 10:40:28  lars
+!  added external info string allocation
+!
 !  Revision 1.1  2008-07-08 10:17:25  lars
 !  first version of particle model for photo response
 !
@@ -207,6 +210,9 @@
    plm  = plm  /secs_pr_hour
    mu   = mu   /secs_pr_hour
 
+!  initialize variable descriptions
+
+   call bio_alloc_info
 
 
    var_names(1) = 'Np'
