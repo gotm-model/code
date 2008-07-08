@@ -1,11 +1,11 @@
-!$Id: bio_save.F90,v 1.8 2007-03-14 12:46:07 kbk Exp $
+!$Id: bio_save.F90,v 1.9 2008-07-08 10:08:07 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 ! !ROUTINE: Storing the results
 !
 ! !INTERFACE:
-   subroutine bio_save(nlev,totn)
+   subroutine bio_save(totn)
 !
 ! !DESCRIPTION:
 ! Here, the output of biogeochemical parameters either as ascii or as
@@ -25,7 +25,6 @@
 #endif
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: totn
 !
 ! !REVISION HISTORY:
