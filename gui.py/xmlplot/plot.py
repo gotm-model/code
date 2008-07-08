@@ -64,10 +64,17 @@ class VariableStore(UserDict.DictMixin):
     def getVariable(self,varname):
         """Returns a Variable object for the given short variable name.
         """
-        if self.rawlabels!=None: varname = self.rawlabels[varname]
-        return self.getVariable_raw(varname)
+        rawname = varname
+        if self.rawlabels!=None: rawname = self.rawlabels[varname]
+        var = self.getVariable_raw(rawname)
+        var.forcedname = varname
+        return var
 
     def getExpression(self,expression):
+        """Returns a Variable object for the given expression, which may contain
+        (short) variable names, the normal mathematical operators, and any function
+        supported by NumPy.
+        """
         globs = {}
         for varname in self.getVariableNames():
             var = self.getVariable(varname)
@@ -90,11 +97,16 @@ class VariableStore(UserDict.DictMixin):
         return self.getVariableNames_raw()
 
     def getPlottableVariableNames(self):
-        """Returns a list of short names for all variables that can be plotted.
+        varnames = self.getPlottableVariableNames_raw()
+        if self.rawlabels!=None: varnames = [self.newlabels[varname] for varname in varnames]
+        return varnames
+        
+    def getPlottableVariableNames_raw(self):
+        """Returns a list of original short names for all variables that can be plotted.
         Derived classes should implement this method if they want to exclude certain
         variables from being plotted.
         """
-        return self.getVariableNames()
+        return self.getVariableNames_raw()
 
     def getVariableLongNames(self):
         """Returns a dictionary linking variable short names to long names.
@@ -105,6 +117,10 @@ class VariableStore(UserDict.DictMixin):
         return longnames
         
     def getDimensionInfo(self,dimname):
+        if self.rawlabels!=None: dimname = self.rawlabels.get(dimname,dimname)
+        return self.getDimensionInfo_raw(dimname)
+
+    def getDimensionInfo_raw(self,dimname):
         """Returns the a dictionary with properties of the specified dimension.
         This includes the label (long name), unit, data type, the preferred axis
         (x or y).
@@ -218,13 +234,13 @@ class VariableStore(UserDict.DictMixin):
         return None
 
     def getVariableNames_raw(self):
-        """Returns a list of short names for all variables present in the store.
+        """Returns a list of original short names for all variables present in the store.
         The method must be implemented by derived classes.
         """
         return []
                 
     def getVariableLongNames_raw(self):
-        """Returns a dictionary with short variable names as keys, long
+        """Returns a dictionary with original short variable names as keys, long
         variable names as values. This base implementation should be overridden
         by derived classes if it can be done more efficiently.
         """
@@ -302,6 +318,7 @@ class Variable:
 
     def __init__(self,store):
         self.store = store
+        self.forcedname = None
         
     def __getattr__(self,name):
         """Attribute-based access to some variable properties,
@@ -314,9 +331,13 @@ class Variable:
         elif name=='long_name':
             return self.getLongName()
         else:
-            raise AttributeError()
+            raise AttributeError(name)
 
     def getName(self):
+        if self.forcedname!=None: return self.forcedname
+        return self.getName_raw()
+
+    def getName_raw(self):
         """Returns the short name (or identifier) of the variable.
         This name must be unique within the data store, as it is the key
         that will be used to retrieve data.
@@ -334,6 +355,12 @@ class Variable:
         return ''
 
     def getDimensions(self):
+        dims = self.getDimensions_raw()
+        if self.store!=None and self.store.newlabels!=None:
+            dims = tuple([self.store.newlabels.get(dim,dim) for dim in dims])
+        return dims
+
+    def getDimensions_raw(self):
         """Returns the names of the dimensions of the variable as tuple of strings.
         """
         return ()
@@ -349,10 +376,13 @@ class Variable:
         return self.Slice()
 
     def getDimensionInfo(self,dimname):
+        return self.getDimensionInfo_raw(dimname)
+
+    def getDimensionInfo_raw(self,dimname):
         """Gets information on the specified dimension of the variable.
         See also VariableStore.getDimensionInfo.
         """
-        return self.store.getDimensionInfo(dimname)
+        return self.store.getDimensionInfo_raw(dimname)
 
 class LazyExpression:
     class NamedFunction:
@@ -515,8 +545,8 @@ class MergedVariableStore(VariableStore):
             self.vars = variables
             self.mergedimid = mergedimid
 
-        def getName(self):
-            return self.vars[0].getName()
+        def getName_raw(self):
+            return self.vars[0].getName_raw()
 
         def getLongName(self):
             return self.vars[0].getLongName()
@@ -524,8 +554,8 @@ class MergedVariableStore(VariableStore):
         def getUnit(self):
             return self.vars[0].getUnit()
 
-        def getDimensions(self):
-            return tuple([self.mergedimid]+list(self.vars[0].getDimensions()))
+        def getDimensions_raw(self):
+            return tuple([self.mergedimid]+list(self.vars[0].getDimensions_raw()))
 
         def getSlice(self,bounds):
             slice = self.Slice(self.getDimensions())
@@ -563,12 +593,12 @@ class MergedVariableStore(VariableStore):
     def getVariableLongNames_raw(self):
         return self.stores[0].getVariableLongNames()
 
-    def getDimensionInfo(self,dimname):
+    def getDimensionInfo_raw(self,dimname):
         if dimname==self.mergedimid: 
-            info = VariableStore.getDimensionInfo(self,dimname)
+            info = VariableStore.getDimensionInfo_raw(self,dimname)
             info['label'] = self.mergedimname
             return info
-        return self.stores[0].getDimensionInfo(dimname)
+        return self.stores[0].getDimensionInfo_raw(dimname)
 
     def getVariable_raw(self,varname):
         vars,missing = [],[]
@@ -648,7 +678,7 @@ class VariableTransform(Variable):
         self.name     = name
         self.longname = longname
 
-    def getName(self):
+    def getName_raw(self):
         """Return short name for the variable.
         """
         return self.name
@@ -663,26 +693,26 @@ class VariableTransform(Variable):
         """
         return self.sourcevar.getUnit()
 
-    def getDimensions(self):
+    def getDimensions_raw(self):
         """Return list of variable dimensions, copied form source variable.
         """
-        return self.sourcevar.getDimensions()
+        return self.sourcevar.getDimensions_raw()
 
-    def getDimensionInfo(self,dimname):
+    def getDimensionInfo_raw(self,dimname):
         """Return information on specified dimension, copied form source
         variable.
         """
-        return self.sourcevar.getDimensionInfo(dimname)
+        return self.sourcevar.getDimensionInfo_raw(dimname)
 
 class VariableCombine(Variable):
     def __init__(self,sourcevars):
         Variable.__init__(self,None)
         self.sourcevars = sourcevars
 
-    def getName(self):
+    def getName_raw(self):
         """Return short name for the variable.
         """
-        return '_'.join([v.getName() for v in self.sourcevars])
+        return '_'.join([v.getName_raw() for v in self.sourcevars])
 
     def getLongName(self):
         """Return long name for the variable.
@@ -696,16 +726,16 @@ class VariableCombine(Variable):
         if len(set(units))==1: return units[0]
         return ', '.join(units)
 
-    def getDimensions(self):
+    def getDimensions_raw(self):
         """Return list of variable dimensions, copied form source variable.
         """
-        return self.sourcevars[0].getDimensions()
+        return self.sourcevars[0].getDimensions_raw()
 
-    def getDimensionInfo(self,dimname):
+    def getDimensionInfo_raw(self,dimname):
         """Return information on specified dimension, copied form source
         variable.
         """
-        return self.sourcevars[0].getDimensionInfo(dimname) 
+        return self.sourcevars[0].getDimensionInfo_raw(dimname) 
 
     def getSlice(self,bounds):
         return [v.getSlice(bounds) for v in self.sourcevars]
@@ -726,11 +756,11 @@ class VariableReduceDimension(VariableTransform):
             assert False, 'Dimension "%s" is not present for this variable.' % self.dimension
         self.idimension = i
 
-    def getDimensions(self):
+    def getDimensions_raw(self):
         """Return the variable dimensions, taken from the source variable but
         with one dimension taken out.
         """
-        dims = self.sourcevar.getDimensions()
+        dims = self.sourcevar.getDimensions_raw()
         return [d for d in dims if d!=self.dimension]
         
 class VariableSlice(VariableReduceDimension):
@@ -979,6 +1009,7 @@ class VariableExpression(Variable):
         return '[%s]' % ','.join(slicestrings)
 
     def __init__(self,expression,objects):
+        Variable.__init__(self,None)
         globs = LazyExpression.getFunctions()
         globs.update(objects)
         self.root = eval(expression,globs)
@@ -989,7 +1020,7 @@ class VariableExpression(Variable):
         if len(self.root)>1: result = '['+result+']'
         return result
 
-    def getName(self):
+    def getName_raw(self):
         return ', '.join([node.getText(type=1,addparentheses=False) for node in self.root])
         
     def getLongName(self):
@@ -998,6 +1029,10 @@ class VariableExpression(Variable):
     def getDimensions(self):
         vars = self.root[0].getVariables()
         return vars[0].getDimensions()
+
+    def getDimensions_raw(self):
+        vars = self.root[0].getVariables()
+        return vars[0].getDimensions_raw()
         
     def getItemCount(self):
         return len(self.root)
@@ -1005,9 +1040,9 @@ class VariableExpression(Variable):
     def getSlice(self,bounds):
         return [node.getValue() for node in self.root]
 
-    def getDimensionInfo(self,dimname):
+    def getDimensionInfo_raw(self,dimname):
         vars = self.root[0].getVariables()
-        return vars[0].getDimensionInfo(dimname)
+        return vars[0].getDimensionInfo_raw(dimname)
             
 class FigureProperties(xmlstore.xmlstore.TypedStore):
     """Class for figure properties, based on xmlstore.TypedStore.
@@ -1200,11 +1235,18 @@ class Figure(xmlstore.util.referencedobject):
         figure properties are set based on properties of the obtained data,
         and the figure is built and shown.
         """
+                
         # We are called whenever figure properties change. If we do not want to update now,
         # just register that an update is needed and exit.
         if not self.updating:
             self.dirty = True
             return
+
+        # Below: code for debugging superfluous plot updates (sends stack trace to stdout)
+        #import traceback
+        #print '--- stack for call to update ---'   
+        #trace = traceback.format_list(traceback.extract_stack(limit=10))    
+        #for l in trace: print l,
             
         # Clear the current MatPlotLib figure.
         self.figure.clear()

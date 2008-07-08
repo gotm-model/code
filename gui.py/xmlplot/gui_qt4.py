@@ -783,7 +783,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
                 if len(self.datastore.dimensions)==1:
                     self.rowlabels = rawdata[0]
                     dimname = self.datastore.getDimensionNames()[0]
-                    self.datelabels = (self.datastore.getDimensionInfo(dimname)['datatype']=='datetime')
+                    self.datelabels = (self.datastore.getDimensionInfo_raw(dimname)['datatype']=='datetime')
             elif isinstance(self.datastore,data.LinkedProfilesInTime):
                 if self.type==0:
                     if self.pos<len(rawdata[1]):

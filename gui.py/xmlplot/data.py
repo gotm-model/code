@@ -62,11 +62,12 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
     class LinkedFileVariable(plot.Variable):
 
         def __init__(self,store,data,index):
+            plot.Variable.__init__(self,store)
             self.store = store
             self.data = data
             self.index = index
 
-        def getName(self):
+        def getName_raw(self):
             return self.data[0]
 
         def getLongName(self):
@@ -75,7 +76,7 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
         def getUnit(self):
             return self.data[2]
 
-        def getDimensions(self):
+        def getDimensions_raw(self):
             return self.store.dimensionorder[:]
 
         def getSlice(self,bounds):
@@ -119,7 +120,7 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
         # Copy data from supplied dimensions and variables
         self.dimensions = {}
         for dimname,dimdata in dimensions.iteritems():
-            self.dimensions[dimname] = plot.VariableStore.getDimensionInfo(self,None)
+            self.dimensions[dimname] = plot.VariableStore.getDimensionInfo_raw(self,None)
             self.dimensions[dimname].update(dimdata)
         self.vardata = list(variables)
         self.dimensionorder = list(dimensionorder)
@@ -147,7 +148,7 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
             if fdims!=None:
                 for ch in fdims.childNodes:
                     if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filedimension':
-                        dimdata = plot.VariableStore.getDimensionInfo(self,None)
+                        dimdata = plot.VariableStore.getDimensionInfo_raw(self,None)
                         if ch.hasAttribute('label'):         dimdata['label']         = ch.getAttribute('label')
                         if ch.hasAttribute('unit'):          dimdata['unit']          = ch.getAttribute('unit')
                         if ch.hasAttribute('datatype'):      dimdata['datatype']      = ch.getAttribute('datatype')
@@ -195,7 +196,7 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
             dimrange = self.calculateDimensionRange(dimname)
             if dimrange==None: continue
             minval,maxval = dimrange
-            if self.getDimensionInfo(dimname)['datatype']=='datetime':
+            if self.getDimensionInfo_raw(dimname)['datatype']=='datetime':
                 dimnode['IsTimeDimension'].setValue(True)
                 dimnode['MinimumTime'].setValue(common.num2date(minval))
                 dimnode['MaximumTime'].setValue(common.num2date(maxval))
@@ -210,7 +211,7 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
         """
         return self.dimensionorder[:]
         
-    def getDimensionInfo(self,dimname):
+    def getDimensionInfo_raw(self,dimname):
         """Returns information on the specified data dimension.
         see VariableStore.getDimensionInfo for the type of
         information returned.
@@ -759,16 +760,15 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
     """
     
     class NetCDFVariable(plot.Variable):
-        def __init__(self,store,varname,ncvarname):
+        def __init__(self,store,ncvarname):
             plot.Variable.__init__(self,store)
-            self.varname   = varname
             self.ncvarname = str(ncvarname)
             
         def __str__(self):
             return self.store.datafile+'/'+self.varname
 
-        def getName(self):
-            return self.varname
+        def getName_raw(self):
+            return self.ncvarname
 
         def getLongName(self):
             nc = self.store.getcdf()
@@ -784,9 +784,9 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             if not hasattr(ncvar,'units'): return None
             return common.convertUnitToUnicode(ncvar.units)
             
-        def getDimensions(self):
+        def getDimensions_raw(self):
           nc = self.store.getcdf()
-          return [self.store.newlabels[dimname] for dimname in nc.variables[self.ncvarname].dimensions]
+          return nc.variables[self.ncvarname].dimensions
           
         def getSlice(self,bounds):
           nc = self.store.getcdf()
@@ -848,7 +848,9 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
 
           # Process COARDS variable attributes.
-          if hasattr(ncvar,'missing_value'):
+          if hasattr(ncvar,'_FillValue'):
+            dat = numpy.ma.array(dat,mask=dat==ncvar._FillValue)
+          elif hasattr(ncvar,'missing_value'):
             dat = numpy.ma.array(dat,mask=dat==ncvar.missing_value)
           if hasattr(ncvar,'scale_factor'):
             dat *= ncvar.scale_factor
@@ -873,9 +875,8 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
     def __str__(self):
         return self.datafile
         
-    def getDimensionInfo(self,dimname):
-        dimname = self.rawlabels[dimname]
-        res = plot.VariableStore.getDimensionInfo(self,dimname)
+    def getDimensionInfo_raw(self,dimname):
+        res = plot.VariableStore.getDimensionInfo_raw(self,dimname)
         if dimname not in self.nc.variables: return res
         varinfo = self.nc.variables[dimname]
         if hasattr(varinfo,'long_name'):
@@ -940,7 +941,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         ncvarname = str(varname)
         nc = self.getcdf()
         if ncvarname not in nc.variables: return None
-        return self.NetCDFVariable(self,self.newlabels[varname],ncvarname)
+        return self.NetCDFVariable(self,ncvarname)
                 
     def getCoordinates(self,dimname):
         if dimname not in self.cachedcoords: self.calculateCoordinates(dimname)

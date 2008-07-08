@@ -187,10 +187,10 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         else:
             self.path = None
 
-    def getPlottableVariableNames(self):
-        names = self.getVariableNames()
+    def getPlottableVariableNames_raw(self):
+        names = self.getVariableNames_raw()
         for i in range(len(names)-1,-1,-1):
-            dimnames = self.nc.variables[self.rawlabels[names[i]]].dimensions
+            dimnames = self.nc.variables[names[i]].dimensions
             dimcount = len(dimnames)
             good = False
             if   dimcount==3:
