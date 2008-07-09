@@ -75,7 +75,7 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
 
         def getUnit(self):
             return self.data[2]
-
+            
         def getDimensions_raw(self):
             return self.store.dimensionorder[:]
 
@@ -331,6 +331,11 @@ class LinkedMatrix(LinkedFileVariableStore):
             slice.generateStaggered()
             return slice
 
+        def getShape(self):
+            data = self.store.getData()
+            if data[0].shape[0]==0: return tuple()
+            return data[-1][:,self.index].shape
+
     def __init__(self,datafile=None,context=None,infonode=None,nodename=None,type=0,dimensions={},dimensionorder=(),variables=[]):
         LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder,variables)
         self.variableclass = self.LinkedMatrixVariable
@@ -573,6 +578,11 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                     
             return varslice
 
+        def getShape(self):
+            data = self.store.getGriddedData()
+            if data[0].shape[0]==0: return tuple()
+            return data[-1][:,:,self.index].shape
+
     def __init__(self,datafile,context,infonode,nodename,dimensions=[],dimensionorder=(),variables=[]):
         LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder,variables)
         self.variableclass = self.LinkedProfilesInTimeVariable
@@ -787,6 +797,11 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         def getDimensions_raw(self):
           nc = self.store.getcdf()
           return nc.variables[self.ncvarname].dimensions
+          
+        def getShape(self):
+            nc = self.store.getcdf()
+            ncvar = nc.variables[self.ncvarname]
+            return ncvar.shape
           
         def getSlice(self,bounds):
           nc = self.store.getcdf()

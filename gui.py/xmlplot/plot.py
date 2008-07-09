@@ -75,6 +75,8 @@ class VariableStore(UserDict.DictMixin):
         (short) variable names, the normal mathematical operators, and any function
         supported by NumPy.
         """
+        if expression in self.getVariableNames(): return self.getVariable(expression)
+        
         globs = {}
         for varname in self.getVariableNames():
             var = self.getVariable(varname)
@@ -330,6 +332,8 @@ class Variable:
             return self.getUnit()
         elif name=='long_name':
             return self.getLongName()
+        elif name=='shape':
+            return self.getShape()
         else:
             raise AttributeError(name)
 
@@ -343,6 +347,11 @@ class Variable:
         that will be used to retrieve data.
         """
         return ''
+
+    def getShape(self):
+        """Returns the shape of the data array.
+        """
+        assert False, 'Method "getShape" must be implemented by derived class.'
 
     def getLongName(self):
         """Returns a long (pretty) name for the variable.
@@ -1030,6 +1039,10 @@ class VariableExpression(Variable):
         vars = self.root[0].getVariables()
         return vars[0].getDimensions()
 
+    def getShape(self):
+        vars = self.root[0].getVariables()
+        return vars[0].getShape()
+
     def getDimensions_raw(self):
         vars = self.root[0].getVariables()
         return vars[0].getDimensions_raw()
@@ -1643,7 +1656,7 @@ class Figure(xmlstore.util.referencedobject):
                         flatC = C.compressed()
                     else:
                         flatC = C.ravel()
-                    if (flatC==flatC[0]).all():
+                    if len(flatC)>0 and (flatC==flatC[0]).all():
                         # All color values are equal. Explicitly set color range,
                         # because MatPlotLib 0.90.0 chokes on identical min and max.
                         pc.set_clim((Z[0,0]-1,Z[0,0]+1))
