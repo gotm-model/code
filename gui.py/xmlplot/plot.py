@@ -611,6 +611,7 @@ class LazyVariable(LazyExpression):
 
     def __getitem__(self,slices):
         if self.slice!=None: return LazyExpression.__getitem__(self,slices)
+        if not isinstance(slices,(list,tuple)): slices = (slices,)
         self.slice = slices
         return self
 
@@ -696,6 +697,7 @@ class LazySlice(LazyOperation):
     def __init__(self,variable,slic):
         assert isinstance(variable,LazyExpression),'LazySlice must be initialized with a LazyExpression object to take the slice from.'
         LazyOperation.__init__(self,variable)
+        if not isinstance(slic,(list,tuple)): slic = (slic,)
         self.slice = slic
     def _getValue(self,resolvedargs):
         return resolvedargs[0].__getitem__(self.slice)
