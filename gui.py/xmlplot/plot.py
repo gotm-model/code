@@ -127,7 +127,7 @@ class VariableStore(UserDict.DictMixin):
         This includes the label (long name), unit, data type, the preferred axis
         (x or y).
         """
-        return {'label':'','unit':'','preferredaxis':None,'datatype':'float'}
+        return {'label':'','unit':'','preferredaxis':None,'datatype':'float','reversed':False}
 
     def getVariableTree(self,path,otherstores={},plottableonly=True):
         """Returns a tree representation of the variables in the data store,
@@ -1557,7 +1557,7 @@ class Figure(xmlstore.util.referencedobject):
 
             # Add the variable itself to the dimension list.
             dimdata = dim2data.setdefault(varpath,{'forcedrange':(None,None)})
-            dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','tight':False,'logscale':False})
+            dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','tight':False,'logscale':False,'reversed':False})
             
             for i in range(len(varslices)):
                 # Eliminate singleton dimensions (singleton dimension: dimension with length one)
@@ -2051,6 +2051,9 @@ class Figure(xmlstore.util.referencedobject):
             # Obtain label for axis.
             label = axisnode['Label'].getValue(usedefault=True)
             if label==None: label=''
+
+            # Reverse axis if needed
+            if dat['reversed']: effrange[1],effrange[0] = effrange[0],effrange[1]
 
             # Set axis labels and boundaries.
             if axisname=='x':

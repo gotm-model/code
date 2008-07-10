@@ -920,6 +920,8 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             res['unit'] = ''
         #elif hasattr(varinfo,'units') and varinfo.units=='degrees_north':
         #    res['preferredaxis'] = 'y'
+        if hasattr(varinfo,'positive') and varinfo.positive=='down':
+            res['reversed'] = True
         return res
         
     def save(self,path):
