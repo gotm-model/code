@@ -1053,15 +1053,19 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
       if datematch==None:
         raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse date in "%s".' % (fullunit,reftime))
       year,month,day = map(int,datematch.group(1,2,3))
-      hour,min,sec = 0,0,0
+      year = max(year,datetime.MINYEAR)
+      hours,minutes,seconds,mseconds = 0,0,0,0
       reftime = reftime[datematch.end():]
       if len(reftime)>0:
         timematch = re.match(r'(\d{1,2}):(\d{1,2}):(\d{1,2}(?:\.\d*)?)\s*',reftime)
         if timematch==None:
             raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time in "%s".' % (fullunit,reftime))
-        hour,min,sec = map(int,timematch.group(1,2,3))
+        hours,minutes = map(int,timematch.group(1,2))
+        seconds = float(timematch.group(3))
+        mseconds = 1e6*(seconds % 1.)
+        seconds = int(seconds)
         reftime = reftime[timematch.end():]
-      dateref = datetime.datetime(year,month,day,hour,min,sec,tzinfo=xmlstore.util.utc)
+      dateref = datetime.datetime(year,month,day,hours,minutes,seconds,tzinfo=xmlstore.util.utc)
       if len(reftime)>0:
         timezonematch = re.match(r'(-?\d{1,2})(?::?(\d\d))?$',reftime)
         if timezonematch==None:
