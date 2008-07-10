@@ -465,6 +465,53 @@ class LazyExpression:
                 assert step==1, 'Slices with step>1 are not yet supported.'
                 baseshape[i] = stop-start
         return baseshape
+        
+    @staticmethod
+    def adjustDimensions(dimnames,slic):
+        dimnames = list(dimnames)
+        for i in range(len(dimnames)-1,-1,-1):
+            if isinstance(slic[i],(int,float)): del dimnames[i]
+        return dimnames
+
+    @staticmethod
+    def slice2string(slic):
+        """This function takes a single slice object and converts it to a Python slice
+        specification string.
+        """
+        result = ''
+        start,stop,step = slic.start,slic.stop,slic.step
+        if start!=None: result += str(start)
+        result += ':'
+        if stop!=None: result += str(stop)
+        if step!=None: result += ':'+str(step)
+        return result
+
+    @staticmethod
+    def slices2string(slices):
+        """This function takes a slice object and converts it to a Python slice
+        specification string.
+        """
+        slicestrings = []
+        for slic in slices:
+            if isinstance(slic,slice):
+                slicestrings.append(LazyExpression.slice2string(slic))
+            else:
+                slicestrings.append(str(slic))
+        return '[%s]' % ','.join(slicestrings)
+
+    @staticmethod
+    def slices2prettystring(slices,dimnames):
+        """This function takes a slice object and converts it to a descriptive slice
+        specification string.
+        """
+        slicestrings = []
+        for dimname,slic in zip(dimnames,slices):
+            if isinstance(slic,slice):
+                res = LazyExpression.slice2string(slic)
+            else:
+                res = str(slic)
+            if res!=':': slicestrings.append('%s=%s' % (dimname,res))
+        return '[%s]' % ','.join(slicestrings)
 
     def __init__(self,*args):
         self.args = args
@@ -483,6 +530,9 @@ class LazyExpression:
 
     def getShape(self):
         assert False, 'Method "getShape" must be implemented by derived class.'
+
+    def getDimensions(self):
+        assert False, 'Method "getDimensions" must be implemented by derived class.'
             
     def __add__(self,other):
         return LazyOperator('__add__','+',self,other)
@@ -533,12 +583,20 @@ class LazyVariable(LazyExpression):
         if type==0 or type==1:
             # Return the short name of the object (optionally with slice specification).
             res = self.args[0].getName()
-            if self.slice!=None: res+=VariableExpression.slice2string(self.slice)
+            if self.slice!=None:
+                if type==2:
+                    res += LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
+                else:
+                    res += LazyExpression.slices2string(self.slice)
             return res
         else:
             # Return the long name of the object (optionally with slice specification).
             res = self.args[0].getLongName()
-            if self.slice!=None: res+=VariableExpression.slice2string(self.slice)
+            if self.slice!=None:
+                if type==2:
+                    res += LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
+                else:
+                    res += LazyExpression.slices2string(self.slice)
             return res
         
     def getShape(self):
@@ -546,7 +604,13 @@ class LazyVariable(LazyExpression):
         if self.slice!=None: baseshape = LazyExpression.adjustShape(baseshape,self.slice)
         return baseshape
 
+    def getDimensions(self):
+        basedims = self.args[0].getDimensions()
+        if self.slice!=None: basedims = LazyExpression.adjustDimensions(basedims,self.slice)
+        return basedims
+
     def __getitem__(self,slices):
+        if self.slice!=None: return LazyExpression.__getitem__(self,slices)
         self.slice = slices
         return self
 
@@ -576,7 +640,7 @@ class LazyOperation(LazyExpression):
                 resolvedargs.append(arg.getText(type))
             else:
                 resolvedargs.append(str(arg))
-        result = self._getText(resolvedargs)
+        result = self._getText(resolvedargs,type=type)
         if addparentheses: result = '(%s)' % result
         return result
 
@@ -584,6 +648,12 @@ class LazyOperation(LazyExpression):
         for arg in self.args:
             if isinstance(arg,LazyExpression):
                 return arg.getShape()
+        return ()
+
+    def getDimensions(self):
+        for arg in self.args:
+            if isinstance(arg,LazyExpression):
+                return arg.getDimensions()
         return ()
 
     def _getValue(self,resolvedargs,targetslice):
@@ -630,9 +700,14 @@ class LazySlice(LazyOperation):
     def _getValue(self,resolvedargs):
         return resolvedargs[0].__getitem__(self.slice)
     def _getText(self,resolvedargs,type=0):
-        return resolvedargs[0]+VariableExpression.slice2string(self.slice)
+        if type==2:
+            return resolvedargs[0] + LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
+        else:
+            return resolvedargs[0] + LazyExpression.slices2string(self.slice)
     def getShape(self):
         return LazyExpression.adjustShape(self.args[0].getShape(),self.slice)
+    def getDimensions(self):
+        return LazyExpression.adjustDimensions(self.args[0].getDimensions(),self.slice)
       
 class MergedVariableStore(VariableStore):
     """Class that merges multiple data sources (VariableStore objects) with
@@ -1088,27 +1163,6 @@ class VariableFlat(VariableReduceDimension):
         return newslice
         
 class VariableExpression(Variable):
-    @staticmethod
-    def slice2string(slices):
-        """This function takes a slice object and converts it to a Python slice
-        specification string.
-        """
-        slicestrings = []
-        for slic in slices:
-            if isinstance(slic,slice):
-                start = slic.start
-                if start==None: start = ''
-                stop = slic.stop
-                if stop==None: stop = ''
-                step = slic.step
-                if step==None: step = ''
-                res = ':'.join((str(start),str(stop),str(step)))
-                if res=='::': res = ':'
-                slicestrings.append(res)
-            else:
-                slicestrings.append(str(slic))
-        return '[%s]' % ','.join(slicestrings)
-
     def __init__(self,expression,objects):
         Variable.__init__(self,None)
         globs = LazyExpression.getFunctions()
@@ -1137,10 +1191,10 @@ class VariableExpression(Variable):
         return [node.getValue() for node in self.root]
 
     def getShape(self):
-        return [node.getShape() for node in self.root]
-
+        return self.root[0].getShape()
+        
     def getDimensions(self):
-        return self.variables[0].getDimensions()
+        return self.root[0].getDimensions()
 
     def hasReversedDimensions(self):
         return self.variables[0].hasReversedDimensions()

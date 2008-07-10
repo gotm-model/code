@@ -812,9 +812,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
           ncvar = nc.variables[self.ncvarname]
           dimnames = list(ncvar.dimensions)
           assert len(bounds)==len(dimnames), 'Number of specified bounds (%i) does not match number of dimensions (%i).' % (len(bounds),len(dimnames))
-          
-          varslice = self.Slice(dimnames)
-          
+                    
           # Get initial slices, taking into acount specified integer slices and fixed
           # coordinates, but not float-based slices.
           boundindices,isfloatslice = [],[]
@@ -824,8 +822,10 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             if isinstance(bounds[idim],int):
                 assert bounds[idim]>=0,                'Slice index %i lies below lower boundary of dimension %s (0).' % (bounds[idim],dimname)
                 assert bounds[idim]<ncvar.shape[idim], 'Slice index %i exceeds upper boundary of dimension %s (%i).' % (bounds[idim],dimname,ncvar.shape[idim]-1)
-                boundindices.append(slice(bounds[idim],bounds[idim]+1))
+                boundindices.append(bounds[idim])
             elif isinstance(bounds[idim].start,float) or isinstance(bounds[idim].stop,float):
+                # Floating point boundaries. By default these are not used.
+                # If possible, we use them below, and override the full range imposed here.
                 boundindices.append(slice(0,ncvar.shape[idim]))
                 isfloatslice[-1] = True
             else:
@@ -843,21 +843,28 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
                 if istart>0:          istart-=1
                 if istop<len(coords): istop +=1
                 boundindices[idim] = slice(istart,istop)
+
+          # Create Variable.Slice object to hold coordinates and data.
+          newdimnames = [dimnames[idim] for idim in range(len(dimnames)) if not isinstance(bounds[idim],int)]
+          varslice = self.Slice(newdimnames)
                 
           # Retrieve coordinate values
+          inewdim = 0
           for idim,dimname in enumerate(dimnames):
+            if isinstance(bounds[idim],int): continue
             (coords,coords_stag) = self.store.getCoordinates(dimname)
             if coords==None: return None
             if coords.ndim==1:
                 start,stop,step = boundindices[idim].indices(ncvar.shape[idim])
-                varslice.coords     [idim] = coords     [boundindices[idim]]
-                varslice.coords_stag[idim] = coords_stag[slice(start,stop+1)]
+                varslice.coords     [inewdim] = coords     [boundindices[idim]]
+                varslice.coords_stag[inewdim] = coords_stag[slice(start,stop+1)]
             else:
                 coorddims = self.store.getCoordinateDimensions(dimname)
                 coordslices = [boundindices[dimnames.index(cd)] for cd in coorddims]
                 coordslices_stag = [slice(s.start,s.stop+1) for s in coordslices]
-                varslice.coords     [idim] = coords[tuple(coordslices)]
-                varslice.coords_stag[idim] = coords_stag[tuple(coordslices_stag)]
+                varslice.coords     [inewdim] = coords[tuple(coordslices)]
+                varslice.coords_stag[inewdim] = coords_stag[tuple(coordslices_stag)]
+            inewdim += 1
 
           # Retrieve the data values
           try:
