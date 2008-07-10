@@ -803,6 +803,9 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             ncvar = nc.variables[self.ncvarname]
             return ncvar.shape
           
+        def hasReversedDimensions(self):
+            return True
+
         def getSlice(self,bounds):
           nc = self.store.getcdf()
             

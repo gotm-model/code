@@ -352,6 +352,13 @@ class Variable:
         """Returns the shape of the data array.
         """
         assert False, 'Method "getShape" must be implemented by derived class.'
+        
+    def hasReversedDimensions(self):
+        """Returns whether the order of the variable dimensions is reversed, i.e.,
+        the dimension that should be used for the y- axis appears before the dimension
+        to be used on the x-axis.
+        """
+        return False
 
     def getLongName(self):
         """Returns a long (pretty) name for the variable.
@@ -1043,6 +1050,10 @@ class VariableExpression(Variable):
         vars = self.root[0].getVariables()
         return vars[0].getShape()
 
+    def hasReversedDimensions(self):
+        vars = self.root[0].getVariables()
+        return vars[0].hasReversedDimensions()
+
     def getDimensions_raw(self):
         vars = self.root[0].getVariables()
         return vars[0].getDimensions_raw()
@@ -1395,7 +1406,7 @@ class Figure(xmlstore.util.referencedobject):
             varslices = var.getSlice(tuple(dimbounds))
             assert len(varslices)>0, 'Unable to retrieve any variable slices.'
             
-            # Skip this variable if no data are available.
+            # Skip this variable if (parts of) its data are unavailable.
             if not all([varslice.isValid() for varslice in varslices]): continue
 
             # Now we are at the point where getting the data worked.
@@ -1534,14 +1545,13 @@ class Figure(xmlstore.util.referencedobject):
             elif varslice.ndim==2:
                 # Two-dimensional coordinate space (x,y). Use x-axis for first coordinate dimension,
                 # and y-axis for second coordinate dimension.
-                xdim = 0
-                ydim = 1
+                xdim,ydim = 0,1
+                if var.hasReversedDimensions(): xdim,ydim = 1,0
                 prefaxis = (dim2data[varslice.dimensions[0]]['preferredaxis'],dim2data[varslice.dimensions[1]]['preferredaxis'])
-                if (prefaxis[0]=='y' and prefaxis[1]!='y') or (prefaxis[1]=='x' and prefaxis[0]!='x'):
+                if (prefaxis[xdim]=='y' and prefaxis[ydim]!='y') or (prefaxis[ydim]=='x' and prefaxis[xdim]!='x'):
                     # One independent dimension prefers to switch axis and the
                     # other does not disagree.
-                    xdim = 1
-                    ydim = 0
+                    xdim,ydim = ydim,xdim
 
                 dim2data[varslice.dimensions[xdim]]['axis'] = 'x'
                 dim2data[varslice.dimensions[ydim]]['axis'] = 'y'
