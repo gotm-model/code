@@ -660,8 +660,9 @@ class FigureDialog(QtGui.QDialog):
         if sourcefigure!=None:
             # A figure to copy settings from is provided.
             properties = sourcefigure.getPropertiesCopy()
-            self.panel.figure.sources = sourcefigure.sources
-            self.panel.figure.defaultsource = sourcefigure.defaultsource
+            for name,source in sourcefigure.source.childsources.iteritems():
+                self.panel.figure.addDataSource(name,source)
+            self.panel.figure.source.defaultchild = sourcefigure.source.defaultchild
             self.panel.plotFromProperties(properties)
         elif figureproperties!=None:
             # An XML DOM tree with figure settings is provided
