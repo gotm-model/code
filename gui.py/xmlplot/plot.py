@@ -261,12 +261,14 @@ class Variable:
         for the data values. These objects have the same dimension as the data
         array. Note that this functionality may be relocated in the future.
         """
-        def __init__(self,dimensions=()):
-            self.dimensions = dimensions
+        def __init__(self,dimensions=(),coords=None,coords_stag=None,data=None):
             self.ndim = len(dimensions)
-            self.data = None
-            self.coords = self.ndim*[None]
-            self.coords_stag = self.ndim*[None]
+            if coords     ==None: coords      = self.ndim*[None]
+            if coords_stag==None: coords_stag = self.ndim*[None]
+            self.dimensions = dimensions
+            self.data = data
+            self.coords = coords
+            self.coords_stag = coords_stag
             
             # Bounds for confidence interval (optional)
             self.lbound = None
@@ -316,6 +318,38 @@ class Variable:
             if self.lbound!=None: newslice.lbound = self.lbound.squeeze()
             if self.ubound!=None: newslice.ubound = self.ubound.squeeze()
 
+            return newslice
+            
+        def __getitem__(self,slic):
+            # Check whether the slice argument contains only integers and slice objects,
+            # and build an array with slices for staggered coordinates.
+            cslice_stag = []
+            for i,s in enumerate(slic):
+                assert isinstance(s,(int,slice)),'The slice argument for dimension %s is not an integer or slice object. Fancy indexing with arrays of integers or booleans is not yet supported.' % self.dimensions[i]
+                if isinstance(s,slice):
+                    start,stop,step = s.indices(self.data.shape[i])
+                    assert step==1,'The step argument for slicing dimension %s equals %i. Slices with a step other than 1 are not yet supported.' % (self.dimensions[i],step)
+                    cslice_stag.append(slice(start,stop+1))
+                else:
+                    cslice_stag.append(s)
+        
+            # Obtain sliced dimensions and coordinates
+            dims,coords,coords_stag = [],[],[]
+            for i in range(len(self.dimensions)):
+                if not isinstance(slic[i],(int,float)):
+                    dims.append(self.dimensions[i])
+                    if self.coords[i].ndim>1:
+                        cur_cslice = slic
+                        cur_cslice_stag = cslice_stag
+                    else:
+                        cur_cslice = slic[i]
+                        cur_cslice_stag = cslice_stag[i]
+                    coords.append(self.coords[i].__getitem__(cur_cslice))
+                    coords_stag.append(self.coords_stag[i].__getitem__(cur_cslice_stag))
+            
+            # Build and return the new Variable.Slice object
+            newslice = Variable.Slice(dims,coords=coords,coords_stag=coords_stag)
+            newslice.data = self.data.__getitem__(slic)
             return newslice
 
     def __init__(self,store):
@@ -419,6 +453,19 @@ class LazyExpression:
                 LazyExpression.globalfuncs[name] = LazyExpression.NamedFunction(name,getattr(numpy,name))
         return LazyExpression.globalfuncs
 
+    @staticmethod
+    def adjustShape(shape,slic):
+        baseshape = list(shape)
+        for i in range(len(baseshape)-1,-1,-1):
+            if isinstance(slic[i],(int,float)):
+                del baseshape[i]
+            else:
+                assert isinstance(slic[i],slice), 'Fancy indexing is not yet supported.'
+                start,stop,step = slic[i].indices(baseshape[i])
+                assert step==1, 'Slices with step>1 are not yet supported.'
+                baseshape[i] = stop-start
+        return baseshape
+
     def __init__(self,*args):
         self.args = args
 
@@ -433,6 +480,9 @@ class LazyExpression:
 
     def getValue(self):
         assert False, 'Method "getValue" must be implemented by derived class.'
+
+    def getShape(self):
+        assert False, 'Method "getShape" must be implemented by derived class.'
             
     def __add__(self,other):
         return LazyOperator('__add__','+',self,other)
@@ -460,6 +510,9 @@ class LazyExpression:
                 
     def __len__(self):
         return 1
+
+    def __getitem__(self,slices):
+        return LazySlice(self,slices)
         
 class LazyVariable(LazyExpression):
     def __init__(self,*args):
@@ -488,23 +541,33 @@ class LazyVariable(LazyExpression):
             if self.slice!=None: res+=VariableExpression.slice2string(self.slice)
             return res
         
+    def getShape(self):
+        baseshape = self.args[0].getShape()
+        if self.slice!=None: baseshape = LazyExpression.adjustShape(baseshape,self.slice)
+        return baseshape
+
     def __getitem__(self,slices):
         self.slice = slices
         return self
 
 class LazyOperation(LazyExpression):
     def getValue(self):
-        usedslice = None
         resolvedargs = []
         for arg in self.args:
             if isinstance(arg,LazyExpression):
                 resolvedargs.append(arg.getValue())
-                if usedslice==None: usedslice = resolvedargs[-1]
-                if isinstance(resolvedargs[-1],Variable.Slice): resolvedargs[-1] = resolvedargs[-1].data
             else:
                 resolvedargs.append(arg)
-        self._getValue(resolvedargs,usedslice)
-        return usedslice
+        return self._getValue(resolvedargs)
+        
+    @staticmethod
+    def getData(args):
+        firstslice = None
+        for i in range(len(args)):
+            if isinstance(args[i],Variable.Slice):
+                if firstslice==None: firstslice = args[i]
+                args[i] = args[i].data
+        return args,firstslice
 
     def getText(self,type=0,addparentheses=True):
         resolvedargs = []
@@ -517,6 +580,12 @@ class LazyOperation(LazyExpression):
         if addparentheses: result = '(%s)' % result
         return result
 
+    def getShape(self):
+        for arg in self.args:
+            if isinstance(arg,LazyExpression):
+                return arg.getShape()
+        return ()
+
     def _getValue(self,resolvedargs,targetslice):
         assert False, 'Method "_getValue" must be implemented by derived class.'
 
@@ -528,8 +597,10 @@ class LazyFunction(LazyOperation):
         self.name = name
         self.func = func
         LazyOperation.__init__(self,*args)
-    def _getValue(self,resolvedargs,targetslice):
+    def _getValue(self,resolvedargs):
+        resolvedargs,targetslice = LazyOperation.getData(resolvedargs)
         targetslice.data = self.func(*resolvedargs)
+        return targetslice
     def _getText(self,resolvedargs,type=0):
         return '%s(%s)' % (self.name,','.join(resolvedargs))
 
@@ -538,17 +609,31 @@ class LazyOperator(LazyOperation):
         self.name = name
         self.symbol = symbol
         LazyOperation.__init__(self,*args)
-    def _getValue(self,resolvedargs,targetslice):
+    def _getValue(self,resolvedargs):
+        resolvedargs,targetslice = LazyOperation.getData(resolvedargs)
         if len(resolvedargs)==1:
             targetslice.data = getattr(resolvedargs[0],self.name)()
         else:
             targetslice.data = getattr(resolvedargs[0],self.name)(*resolvedargs[1:])
+        return targetslice
     def _getText(self,resolvedargs,type=0):
         if len(resolvedargs)==1:
             return self.symbol+resolvedargs[0]
         else:
             return self.symbol.join(resolvedargs)
-        
+
+class LazySlice(LazyOperation):
+    def __init__(self,variable,slic):
+        assert isinstance(variable,LazyExpression),'LazySlice must be initialized with a LazyExpression object to take the slice from.'
+        LazyOperation.__init__(self,variable)
+        self.slice = slic
+    def _getValue(self,resolvedargs):
+        return resolvedargs[0].__getitem__(self.slice)
+    def _getText(self,resolvedargs,type=0):
+        return resolvedargs[0]+VariableExpression.slice2string(self.slice)
+    def getShape(self):
+        return LazyExpression.adjustShape(self.args[0].getShape(),self.slice)
+      
 class MergedVariableStore(VariableStore):
     """Class that merges multiple data sources (VariableStore objects) with
     the same variables, thus creating a new dimension corresponding to the
@@ -1030,11 +1115,17 @@ class VariableExpression(Variable):
         globs.update(objects)
         self.root = eval(expression,globs)
         if not isinstance(self.root,(list,tuple)): self.root = [self.root]
+        self.variables = []
+        for entry in self.root:
+            self.variables += entry.getVariables()
         
     def buildExpression(self):
         result = ','.join([node.getText(type=0,addparentheses=False) for node in self.root])
         if len(self.root)>1: result = '['+result+']'
         return result
+
+    def getItemCount(self):
+        return len(self.root)
 
     def getName_raw(self):
         return ', '.join([node.getText(type=1,addparentheses=False) for node in self.root])
@@ -1042,31 +1133,23 @@ class VariableExpression(Variable):
     def getLongName(self):
         return ', '.join([node.getText(type=2,addparentheses=False) for node in self.root])
 
-    def getDimensions(self):
-        vars = self.root[0].getVariables()
-        return vars[0].getDimensions()
-
-    def getShape(self):
-        vars = self.root[0].getVariables()
-        return vars[0].getShape()
-
-    def hasReversedDimensions(self):
-        vars = self.root[0].getVariables()
-        return vars[0].hasReversedDimensions()
-
-    def getDimensions_raw(self):
-        vars = self.root[0].getVariables()
-        return vars[0].getDimensions_raw()
-        
-    def getItemCount(self):
-        return len(self.root)
-        
     def getSlice(self,bounds):
         return [node.getValue() for node in self.root]
 
+    def getShape(self):
+        return [node.getShape() for node in self.root]
+
+    def getDimensions(self):
+        return self.variables[0].getDimensions()
+
+    def hasReversedDimensions(self):
+        return self.variables[0].hasReversedDimensions()
+
+    def getDimensions_raw(self):
+        return self.variables[0].getDimensions_raw()
+                
     def getDimensionInfo_raw(self,dimname):
-        vars = self.root[0].getVariables()
-        return vars[0].getDimensionInfo_raw(dimname)
+        return self.variables[0].getDimensionInfo_raw(dimname)
             
 class FigureProperties(xmlstore.xmlstore.TypedStore):
     """Class for figure properties, based on xmlstore.TypedStore.
