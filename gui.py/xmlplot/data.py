@@ -918,8 +918,8 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
             res['datatype'] = 'datetime'
             res['preferredaxis'] = 'x'
             res['unit'] = ''
-        elif hasattr(varinfo,'units') and varinfo.units=='degrees_north':
-            res['preferredaxis'] = 'y'
+        #elif hasattr(varinfo,'units') and varinfo.units=='degrees_north':
+        #    res['preferredaxis'] = 'y'
         return res
         
     def save(self,path):
