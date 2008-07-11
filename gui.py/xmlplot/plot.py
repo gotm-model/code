@@ -1234,13 +1234,16 @@ class Figure(xmlstore.util.referencedobject):
     xmlstore.TypedStore object.
     """
 
-    def __init__(self,figure=None,size=(10,8),defaultfont=None):
+    def __init__(self,figure=None,size=(10,8),defaultfont=None,unit='cm'):
         xmlstore.util.referencedobject.__init__(self)
+        
+        assert unit in ('in','cm'), 'Argument "unit" must equal "cm" or "in".'
 
         # If no MatPlotLib figure is specified, create a new one, assuming
         # we want to export to file.        
         if figure==None:
-            figure = matplotlib.figure.Figure(figsize=(size[0]/2.54,size[1]/2.54))
+            if unit=='cm': size = (size[0]/2.54,size[1]/2.54)
+            figure = matplotlib.figure.Figure(figsize=size)
             canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(figure)
         
         # If no default font is specified, use the MatPlotLib default.
@@ -1364,13 +1367,13 @@ class Figure(xmlstore.util.referencedobject):
         match the name of a variable in the data source to be used.
         """
         datanode = self.properties['Data']
-        varpath = self.source[varname].buildExpression()
+        varpath = self.source[varname]
         if replace:
-            series = datanode.getChildById('Series',varpath,create=True)
-            self.defaultproperties['Data'].getChildById('Series',varpath,create=True)
+            series = datanode.getChildById('Series',varname,create=True)
+            self.defaultproperties['Data'].getChildById('Series',varname,create=True)
         else:
-            series = datanode.addChild('Series',id=varpath)
-            self.defaultproperties['Data'].addChild('Series',id=varpath)
+            series = datanode.addChild('Series',id=varname)
+            self.defaultproperties['Data'].addChild('Series',id=varname)
         self.update()
         return series
 
@@ -1389,6 +1392,15 @@ class Figure(xmlstore.util.referencedobject):
         """Export the contents of the figure to file.
         """
         self.canvas.print_figure(str(path),dpi=dpi)
+        
+    def copyFrom(self,sourcefigure):
+        """Copies all plot properties and data sources from the supplied source figure.
+        """
+        properties = sourcefigure.getPropertiesCopy()
+        for name,source in sourcefigure.source.childsources.iteritems():
+            self.addDataSource(name,source)
+        self.source.defaultchild = sourcefigure.source.defaultchild
+        self.setProperties(properties)
                 
     def update(self):
         """Update the figure.
