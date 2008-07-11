@@ -170,6 +170,7 @@
 		<element name="Axis" label="axis" maxoccurs="10">
 			<element name="Label"       type="string" label="label"/>
 			<element name="IsTimeAxis"  type="bool" hidden="True"/>
+			<element name="Dimensions"  type="string" hidden="True"/>
 			<element name="MinimumTime" type="datetime" label="minimum" nodefault="True">
 				<condition type="eq" variable="./IsTimeAxis" value="True"/>
 			</element>

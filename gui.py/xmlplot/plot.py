@@ -1858,7 +1858,9 @@ class Figure(xmlstore.util.referencedobject):
         self.defaultproperties['HasColorMap'].setValue(hascolormap)
 
         # Build table linking axis to data dimension.
-        axis2dim = dict([(dat['axis'],dim) for dim,dat in dim2data.iteritems() if 'axis' in dat])
+        axis2dim = {}
+        for dim,dat in dim2data.iteritems():
+            if 'axis' in dat: axis2dim.setdefault(dat['axis'],[]).append(dim)
 
         # Transform axes to log-scale where specified.
         for axisname in ('x','y','z','colorbar'):
@@ -1869,7 +1871,7 @@ class Figure(xmlstore.util.referencedobject):
             defaxisnode = defaultaxes.getChildById('Axis',axisname,create=True)
             
             # Determine whether the axis can be log-transformed.
-            dimdata = dim2data[axis2dim[axisname]]
+            dimdata = dim2data[axis2dim[axisname][0]]
             datarange = dimdata['datarange']
             canhavelogscale = dimdata['datatype']!='datetime' and (datarange[0]>0 or datarange[1]>0)
             
@@ -1891,7 +1893,7 @@ class Figure(xmlstore.util.referencedobject):
         for axisname in ('x','y','z','colorbar'):
             if axisname not in axis2dim: continue
             
-            dim = axis2dim[axisname]
+            dim = axis2dim[axisname][0]
             dat = dim2data[dim]
             istimeaxis = dat['datatype']=='datetime'
             
@@ -1902,11 +1904,15 @@ class Figure(xmlstore.util.referencedobject):
             if axisname in olddefaxes: olddefaxes.remove(axisname)
 
             # Range selected by MatPlotLib
-            if axisname=='x' and not dat.get('tight',True):
+            if dat.get('tight',True):
+                naturalrange = dat['datarange'][:]
+            elif axisname=='x':
                 naturalrange = axes.get_xlim()
-            elif axisname=='y' and not dat.get('tight',True):
+            elif axisname=='y':
                 naturalrange = axes.get_ylim()
             else:
+                # Color range has been enforced before if needed (via pc.set_clim).
+                # Thus we can no longer ask MatPlotLib for "natural" bounds - just use data limits.
                 naturalrange = dat['datarange'][:]
                 
             # Get range forced by user
@@ -1922,27 +1928,29 @@ class Figure(xmlstore.util.referencedobject):
             if axisnode['LogScale'].getValue(usedefault=True):
                 if forcedrange[0]<=0: forcedrange[0] = None
                 if forcedrange[1]<=0: forcedrange[1] = None
-                if naturalrange[0]<=0:
-                    if axisname=='x':
-                        naturalrange[0] = axes.get_xlim()[0]
-                    elif axisname=='y':
-                        naturalrange[0] = axes.get_ylim()[0]
             
             # Effective range used by data, after taking forced range into account.
             effdatarange = dat['datarange'][:]
             if forcedrange[0]!=None: effdatarange[0] = forcedrange[0]
             if forcedrange[1]!=None: effdatarange[1] = forcedrange[1]
 
-            # Effective forced range, combining natural range with user overrides.
+            # Effective range, combining natural range with user overrides.
             effrange = list(forcedrange)
             if effrange[0]==None: effrange[0]=naturalrange[0]
             if effrange[1]==None: effrange[1]=naturalrange[1]
+            
+            # The natural range will now only be used to set default axes bounds.
+            # Filter out infinite values (valid in MatPlotLib but not in xmlstore)
+            naturalrange = list(naturalrange)
+            if not numpy.isfinite(naturalrange[0]): naturalrange[0] = None
+            if not numpy.isfinite(naturalrange[1]): naturalrange[1] = None
             
             # Build default label for this axis
             deflab = dat['label']
             if dat['unit']!='' and dat['unit']!=None: deflab += ' ('+dat['unit']+')'
             
             # Set default axis properties.
+            defaxisnode['Dimensions'].setValue(','.join(axis2dim[axisname]))
             defaxisnode['Label'].setValue(deflab)
             defaxisnode['Unit'].setValue(dat['unit'])
             defaxisnode['TicksMajor'].setValue(True)
