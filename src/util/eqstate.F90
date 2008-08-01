@@ -1,4 +1,4 @@
-!$Id: eqstate.F90,v 1.7 2007-01-06 11:49:13 kbk Exp $
+!$Id: eqstate.F90,v 1.8 2008-08-01 07:33:14 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -9,17 +9,31 @@
    MODULE eqstate
 !
 ! !DESCRIPTION:
-!  Computes in-situ density, $\rho_{is}$, and buoyancy from the
-!  salinity, $s$, the potential temperature, $\theta$,
-!  and thermodynamic pressure, $p$, according to a specified
-!  \emph{equation of state},
+!  Computes the density, $\mean{\rho}$, and buoyancy from the
+!  salinity, $S$, the temperature, $\Theta$, and the thermodynamic 
+!  pressure, $P$, according to an \emph{equation of state},
 !  \begin{equation}
 !    \label{DefEOS}
-!     \rho_{is} = \hat{\rho} (s,\theta,p)
+!     \mean{\rho} = \hat{\rho} (S,\Theta,P)
 !     \point
 !  \end{equation}
-!   At present, two different modes and four different methods
+!
+!  The following remark on the thermodynamic interpretation of
+!  density, temperature, and pressure is useful here.  If $\Theta$ is
+!  identified with the in-situ temperature, and $P$ with the in-situ
+!  pressure, then $\mean{\rho}$ will be the in-situ density.  On the
+!  other hand, if $P$ is identified with the surface pressure, and
+!  $\Theta$ with the potential temperature, the same equation of
+!  state, \eq{DefEOS}, will yield $\mean{\rho}$ as the potential 
+!  density. Note that the quantity {\tt sigma\_t} found in the GOTM output
+!  is simply computed from  $\mean{\rho}$ - 1000 kg m$^{-3}$, and may
+!  therefore adopt different meanings.
+!
+!
+!  At present, two different models for the equation of state ("modes"),
+!  and four different "methods" how to evalute the equation of state
 !  are implemented.
+!
 !  Modes:
 !  \begin{enumerate}
 !     \item The UNESCO equation of state according to \cite{FofonoffMillard83}
@@ -32,8 +46,8 @@
 !     \item the linearised equation of state
 !     \item a general linear form of the equation of state
 !  \end{enumerate}
-!
-! !USES:
+
+ !USES:
    IMPLICIT NONE
 
 !  default: all is private.
@@ -46,6 +60,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: eqstate.F90,v $
+!  Revision 1.8  2008-08-01 07:33:14  lars
+!  modified documentation
+!
 !  Revision 1.7  2007-01-06 11:49:13  kbk
 !  namelist file extension changed .inp --> .nml
 !
