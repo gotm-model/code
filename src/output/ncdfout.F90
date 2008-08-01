@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.18 2007-12-07 10:12:20 kb Exp $
+!$Id: ncdfout.F90,v 1.19 2008-08-01 07:32:25 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -58,6 +58,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
+!  Revision 1.19  2008-08-01 07:32:25  lars
+!  updated unit description
+!
 !  Revision 1.18  2007-12-07 10:12:20  kb
 !  replaced p_e with precip and included evap
 !
@@ -405,7 +408,7 @@
 !  x,y,t
    iret = set_attributes(ncid,zeta_id,units='m',long_name='sea surface elevation')
    iret = set_attributes(ncid,sst_id,units='celsius',long_name='sea surface temperature')
-   iret = set_attributes(ncid,sss_id,units='psu',long_name='sea surface salinity')
+   iret = set_attributes(ncid,sss_id,units='g/kg',long_name='sea surface salinity')
    iret = set_attributes(ncid,x_taus_id,units='Pa',long_name='x-wind stress')
    iret = set_attributes(ncid,y_taus_id,units='Pa',long_name='y-wind stress')
    iret = set_attributes(ncid,swr_id,units='W/m2',long_name='short wave radiation')
@@ -430,13 +433,13 @@
    iret = set_attributes(ncid,u_obs_id,units='m/s',long_name='obs. x-velocity')
    iret = set_attributes(ncid,v_id,units='m/s',long_name='y-velocity')
    iret = set_attributes(ncid,v_obs_id,units='m/s',long_name='obs. y-velocity')
-   iret = set_attributes(ncid,salt_id,units='psu',long_name='salinity')
-   iret = set_attributes(ncid,salt_obs_id,units='psu',long_name='obs. salinity')
+   iret = set_attributes(ncid,salt_id,units='g/kg',long_name='salinity')
+   iret = set_attributes(ncid,salt_obs_id,units='g/kg',long_name='obs. salinity')
    iret = set_attributes(ncid,temp_id,units='celsius',long_name='temperature')
    iret = set_attributes(ncid,temp_obs_id,units='celsius',long_name='obs. temperature')
-   iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency')
-   iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency')
-   iret = set_attributes(ncid,sigma_t_id,units='1/s2',long_name='sigma_t')
+   iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
+   iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency squared')
+   iret = set_attributes(ncid,sigma_t_id,units='kg/m3',long_name='sigma_t')
    iret = set_attributes(ncid,SS_obs_id,units='1/s2',long_name='observed shear frequency')
    iret = set_attributes(ncid,NN_obs_id,units='1/s2',long_name='observed buoyancy frequency')
    iret = set_attributes(ncid,sigma_t_obs_id,units='kg/m3',long_name='observed sigma_t')
@@ -448,7 +451,7 @@
    iret = set_attributes(ncid,gamu_id,units='m2/s2',long_name='non-local x-momentum flux')
    iret = set_attributes(ncid,gamv_id,units='m2/s2',long_name='non-local y-momentum flux')
    iret = set_attributes(ncid,gamh_id,units='K m/s',long_name='non-local heat flux')
-   iret = set_attributes(ncid,gams_id,units='psu m/s',long_name='non-local salinity flux')
+   iret = set_attributes(ncid,gams_id,units='g/kg m/s',long_name='non-local salinity flux')
 
    if (turb_method.ne.99) then
       iret = set_attributes(ncid,tke_id,units='m2/s2',long_name='turbulent kinetic energy')
