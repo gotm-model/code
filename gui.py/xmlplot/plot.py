@@ -323,6 +323,8 @@ class Variable:
         def __getitem__(self,slic):
             # Check whether the slice argument contains only integers and slice objects,
             # and build an array with slices for staggered coordinates.
+            assert len(slic)==self.data.ndim, 'Number of slices (%i) does not match number of variable dimensions (%i).' % (len(slic),self.data.ndim)
+            
             cslice_stag = []
             for i,s in enumerate(slic):
                 assert isinstance(s,(int,slice)),'The slice argument for dimension %s is not an integer or slice object. Fancy indexing with arrays of integers or booleans is not yet supported.' % self.dimensions[i]
@@ -468,6 +470,7 @@ class LazyExpression:
         
     @staticmethod
     def adjustDimensions(dimnames,slic):
+        assert len(dimnames)==len(slic), 'Number of slices (%i) does not match number of dimensions (%i).' % (len(slic),len(dimnames))
         dimnames = list(dimnames)
         for i in range(len(dimnames)-1,-1,-1):
             if isinstance(slic[i],(int,float)): del dimnames[i]
@@ -568,12 +571,12 @@ class LazyVariable(LazyExpression):
     def __init__(self,*args):
         LazyExpression.__init__(self,*args)
         self.slice = None
-
+        
     def getVariables(self):
         return [self.args[0]]
         
     def getValue(self):
-        # Return the data slice of the encaptulated object.
+        # Return the data slice of the encapsulated object.
         slic = self.slice
         if slic==None: slic = len(self.args[0].getDimensions())*[slice(None)]
         return self.args[0].getSlice(slic)
@@ -584,19 +587,13 @@ class LazyVariable(LazyExpression):
             # Return the short name of the object (optionally with slice specification).
             res = self.args[0].getName()
             if self.slice!=None:
-                if type==2:
-                    res += LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
-                else:
-                    res += LazyExpression.slices2string(self.slice)
+                res += LazyExpression.slices2string(self.slice)
             return res
         else:
             # Return the long name of the object (optionally with slice specification).
             res = self.args[0].getLongName()
             if self.slice!=None:
-                if type==2:
-                    res += LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
-                else:
-                    res += LazyExpression.slices2string(self.slice)
+                res += LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
             return res
         
     def getShape(self):
@@ -612,8 +609,9 @@ class LazyVariable(LazyExpression):
     def __getitem__(self,slices):
         if self.slice!=None: return LazyExpression.__getitem__(self,slices)
         if not isinstance(slices,(list,tuple)): slices = (slices,)
-        self.slice = slices
-        return self
+        newvar = LazyVariable(*self.args)
+        newvar.slice = slices
+        return newvar
 
 class LazyOperation(LazyExpression):
     def getValue(self):
