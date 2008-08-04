@@ -28,8 +28,7 @@ class VariableStore(UserDict.DictMixin):
     """
 
     def __init__(self):
-        self.defaultchild = None
-        self.childsources = {}
+        self.children = {}
         self.rawlabels = None
         self.newlabels = None
         
@@ -42,12 +41,10 @@ class VariableStore(UserDict.DictMixin):
             self.newlabels[varname] = newname
         
     def addChild(self,name,child):
-        if self.defaultchild==None: self.defaultchild = name
-        self.childsources[name] = child
+        self.children[name] = child
 
     def deleteAllChildren(self):
-        self.childsources = {}
-        self.defaultchild = None
+        self.children = {}
         
     def keys(self):
         """Returns a list of short names for all variables present in the store.
@@ -67,29 +64,31 @@ class VariableStore(UserDict.DictMixin):
         rawname = varname
         if self.rawlabels!=None: rawname = self.rawlabels[varname]
         var = self.getVariable_raw(rawname)
-        var.forcedname = varname
+        if var!=None: var.forcedname = varname
         return var
 
-    def getExpression(self,expression):
+    def getExpression(self,expression,defaultchild=None):
         """Returns a Variable object for the given expression, which may contain
         (short) variable names, the normal mathematical operators, and any function
         supported by NumPy.
         """
         if expression in self.getVariableNames(): return self.getVariable(expression)
-        
-        globs = {}
-        for varname in self.getVariableNames():
-            var = self.getVariable(varname)
-            globs[varname] = LazyVariable(var)
-        if len(self.getVariableNames())==0 and self.defaultchild!=None:
-            defaultsource = self.childsources[self.defaultchild]
+        namespace = ExpressionNamespace(LazyStore(self))
+        if defaultchild!=None:
+            defaultvars = {}
+            defaultsource = self.children[defaultchild]
+            assert isinstance(defaultsource,VariableStore), 'Default variable source must be of type VariableStore.'
             for varname in defaultsource.getVariableNames():
                 var = defaultsource.getVariable(varname)
-                globs[varname] = LazyVariable(var)
+                lazyvar = LazyVariable(var)
+                lazyvar.name = '%s[\'%s\']' % (defaultchild,varname)
+                defaultvars[varname] = lazyvar
+            namespace.append(defaultvars)
+            
         try:
-            result = VariableExpression(expression,globs)
+            result = VariableExpression(expression,namespace)
         except Exception,e:
-            raise Exception('Unable to resolve expression "%s" to a valid data object. Global table contains: %s. Error: %s' % (expression,globs.keys(),e))
+            raise Exception('Unable to resolve expression "%s" to a valid data object. Global table contains: %s. Error: %s' % (expression,', '.join(sorted(namespace.keys())),e))
         return result
                 
     def getVariableNames(self):
@@ -232,7 +231,6 @@ class VariableStore(UserDict.DictMixin):
         """Returns a Variable object for the given original short variable name.
         The method must be implemented by derived classes.
         """
-        assert False,'Method "getVariable" must be implemented by derived class.'
         return None
 
     def getVariableNames_raw(self):
@@ -436,6 +434,36 @@ class Variable:
         """
         return self.store.getDimensionInfo_raw(dimname)
 
+class LazyStore(UserDict.DictMixin):
+    def __init__(self,store,name=None):
+        assert isinstance(store,VariableStore),'First argument must be of type Store.'
+        self.store = store
+        self.name = name
+        
+    def __getattr__(self,name):
+        try:
+            return self.__getitem__(name)
+        except KeyError:
+            raise AttributeError(name)
+
+    def __getitem__(self,name):
+        result = self.store.getVariable(name)
+        if result==None: result = self.store.children.get(name,None)
+        if result==None: raise KeyError(name)
+        if isinstance(result,VariableStore):
+            result = LazyStore(result,name)
+            if self.name!=None: result.name = '%s[\'%s\']' % (self.name,name)
+        else:
+            result = LazyVariable(result)
+            if self.name!=None: result.name = '%s[\'%s\']' % (self.name,name)
+        return result
+        
+    def keys(self):
+        res = set()
+        res |= set(self.store.getVariableNames())
+        res |= set(self.store.children.keys())
+        return list(res)
+
 class LazyExpression:
     class NamedFunction:
         def __init__(self,name,func):
@@ -571,6 +599,7 @@ class LazyVariable(LazyExpression):
     def __init__(self,*args):
         LazyExpression.__init__(self,*args)
         self.slice = None
+        self.name = None
         
     def getVariables(self):
         return [self.args[0]]
@@ -582,10 +611,13 @@ class LazyVariable(LazyExpression):
         return self.args[0].getSlice(slic)
         
     def getText(self,type=0,addparentheses=True):
-        assert type>=0 and type<=2, 'Argument "type" must be 0, 1 or 2.'
+        assert type>=0 and type<=2, 'Argument "type" must be 0 (identifier), 1 (short name) or 2 (long name).'
         if type==0 or type==1:
             # Return the short name of the object (optionally with slice specification).
-            res = self.args[0].getName()
+            if type==0 and self.name!=None:
+                res = self.name
+            else:
+                res = self.args[0].getName()
             if self.slice!=None:
                 res += LazyExpression.slices2string(self.slice)
             return res
@@ -611,6 +643,7 @@ class LazyVariable(LazyExpression):
         if not isinstance(slices,(list,tuple)): slices = (slices,)
         newvar = LazyVariable(*self.args)
         newvar.slice = slices
+        newvar.name = self.name
         return newvar
 
 class LazyOperation(LazyExpression):
@@ -1161,13 +1194,31 @@ class VariableFlat(VariableReduceDimension):
         newslice.coords[self.inewtargetdim] = newtargetcoords
         newslice.data = newdata
         return newslice
+
+class ExpressionNamespace:
+    def __init__(self,firsttable=None):
+        self.tables = []
+        if firsttable!=None: self.append(firsttable)
         
+    def append(self,object):
+        self.tables.append(object)
+        
+    def keys(self):
+        res = set()
+        for table in self.tables: res |= set(table.keys())
+        return list(res)
+    
+    def __getitem__(self,name):
+        for table in self.tables:
+            if name in table: return table[name]
+        raise KeyError('"%s" does not exist in namespace' % name)
+
 class VariableExpression(Variable):
-    def __init__(self,expression,objects):
+    def __init__(self,expression,namespace):
+        assert isinstance(namespace,ExpressionNamespace),'The namespace must be provided as ExpressionNamespace object.'
         Variable.__init__(self,None)
-        globs = LazyExpression.getFunctions()
-        globs.update(objects)
-        self.root = eval(expression,globs)
+        namespace.append(LazyExpression.getFunctions())
+        self.root = eval(expression,{},namespace)
         if not isinstance(self.root,(list,tuple)): self.root = [self.root]
         self.variables = []
         for entry in self.root:
@@ -1274,6 +1325,7 @@ class Figure(xmlstore.util.referencedobject):
         self.properties.setDefaultStore(self.defaultproperties)
 
         self.source = VariableStore()
+        self.defaultsource = None
         self.updating = True
         self.dirty = False
         self.haschanged = False
@@ -1326,12 +1378,14 @@ class Figure(xmlstore.util.referencedobject):
         with the figure.
         """
         self.source.deleteAllChildren()
+        self.defaultsource = None
 
     def addDataSource(self,name,obj):
         """Adds a VariableStore data source to the figure, using the specified
         name.
         """
         self.source.addChild(name,obj)
+        if self.defaultsource==None: self.defaultsource = name
 
     def clearProperties(self,deleteoptional=True):
         """Clear all customized figure properties (which means defaults will be used).
@@ -1364,8 +1418,10 @@ class Figure(xmlstore.util.referencedobject):
         the first registered source will be used. The specified variable must
         match the name of a variable in the data source to be used.
         """
+        assert source==None or isinstance(source,basestring), 'If the "source" option is specified, it must be a string.'
+        if source==None: source = self.defaultsource
         datanode = self.properties['Data']
-        varpath = self.source[varname]
+        varname = self.source.getExpression(varname,defaultchild=source).buildExpression()
         if replace:
             series = datanode.getChildById('Series',varname,create=True)
             self.defaultproperties['Data'].getChildById('Series',varname,create=True)
@@ -1395,9 +1451,9 @@ class Figure(xmlstore.util.referencedobject):
         """Copies all plot properties and data sources from the supplied source figure.
         """
         properties = sourcefigure.getPropertiesCopy()
-        for name,source in sourcefigure.source.childsources.iteritems():
-            self.addDataSource(name,source)
-        self.source.defaultchild = sourcefigure.source.defaultchild
+        for name,child in sourcefigure.source.children.iteritems():
+            self.source.addChild(name,child)
+        self.defaultsource = sourcefigure.defaultsource
         self.setProperties(properties)
                 
     def update(self):
