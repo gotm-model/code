@@ -1,7 +1,7 @@
-#$Id: common.py,v 1.6 2008-05-18 20:46:57 jorn Exp $
+#$Id: common.py,v 1.7 2008-08-08 15:29:21 jorn Exp $
 
 # Import modules from standard Python library
-import sys,os.path
+import sys,os.path,UserDict,re
 
 # Import additional third party modules
 import matplotlib.dates,numpy
@@ -179,3 +179,452 @@ def getPercentile(data,cumweights,value,axis):
     highweight = (value-lowcoords)/(highcoords-lowcoords)
     return highval*highweight + lowval*(1.-highweight)
 
+
+class VariableStore(UserDict.DictMixin):
+    """Abstract base class for objects containing one or more variables that
+    can be plotted. It contains functionality for retrieving variable
+    short/long names, information on dimensions, and a function that returns
+    a hierarchical representation of the variables based on an XML schema.
+    """
+
+    def __init__(self):
+        self.children = {}
+        self.rawlabels = None
+        self.newlabels = None
+        
+    def relabelVariables(self):
+        self.rawlabels,self.newlabels = {},{}
+        regexp = re.compile('\W')
+        for varname in self.getVariableNames_raw():
+            newname = regexp.sub('_',varname)
+            self.rawlabels[newname] = varname
+            self.newlabels[varname] = newname
+        
+    def addChild(self,name,child):
+        self.children[name] = child
+
+    def deleteAllChildren(self):
+        self.children = {}
+        
+    def keys(self):
+        """Returns a list of short names for all variables present in the store.
+        """
+        return self.getVariableNames()
+
+    def __getitem__(self,expression):
+        return self.getExpression(expression)
+        
+    def __contains__(self,varname):
+        if self.rawlabels!=None: return varname in self.rawlabels
+        return UserDict.DictMixin.__contains__(self,varname)
+
+    def getVariable(self,varname):
+        """Returns a Variable object for the given short variable name.
+        """
+        rawname = varname
+        if self.rawlabels!=None: rawname = self.rawlabels[varname]
+        var = self.getVariable_raw(rawname)
+        if var!=None: var.forcedname = varname
+        return var
+
+    def getExpression(self,expression,defaultchild=None):
+        """Returns a Variable object for the given expression, which may contain
+        (short) variable names, the normal mathematical operators, and any function
+        supported by NumPy.
+        """
+        import expressions
+        if expression in self.getVariableNames(): return self.getVariable(expression)
+        namespace = expressions.ExpressionNamespace(expressions.LazyStore(self))
+        if defaultchild!=None:
+            defaultvars = {}
+            defaultsource = self.children[defaultchild]
+            assert isinstance(defaultsource,VariableStore), 'Default variable source must be of type VariableStore.'
+            for varname in defaultsource.getVariableNames():
+                var = defaultsource.getVariable(varname)
+                lazyvar = expressions.LazyVariable(var)
+                lazyvar.name = '%s[\'%s\']' % (defaultchild,varname)
+                defaultvars[varname] = lazyvar
+            namespace.append(defaultvars)
+            
+        try:
+            result = expressions.VariableExpression(expression,namespace)
+        except Exception,e:
+            raise Exception('Unable to resolve expression "%s" to a valid data object. Global table contains: %s. Error: %s' % (expression,', '.join(sorted(namespace.keys())),e))
+        return result
+                
+    def getVariableNames(self):
+        """Returns a list of short names for all variables present in the store.
+        """
+        if self.rawlabels!=None: return self.rawlabels.keys()
+        return self.getVariableNames_raw()
+
+    def getPlottableVariableNames(self):
+        varnames = self.getPlottableVariableNames_raw()
+        if self.rawlabels!=None: varnames = [self.newlabels[varname] for varname in varnames]
+        return varnames
+        
+    def getPlottableVariableNames_raw(self):
+        """Returns a list of original short names for all variables that can be plotted.
+        Derived classes should implement this method if they want to exclude certain
+        variables from being plotted.
+        """
+        return self.getVariableNames_raw()
+
+    def getVariableLongNames(self):
+        """Returns a dictionary linking variable short names to long names.
+        """
+        longnames = self.getVariableLongNames_raw()
+        if self.rawlabels!=None:
+            longnames = dict([(self.newlabels[varname],longname) for (varname,longname) in longnames.iteritems()])
+        return longnames
+        
+    def getDimensionInfo(self,dimname):
+        if self.rawlabels!=None: dimname = self.rawlabels.get(dimname,dimname)
+        return self.getDimensionInfo_raw(dimname)
+
+    def getDimensionInfo_raw(self,dimname):
+        """Returns the a dictionary with properties of the specified dimension.
+        This includes the label (long name), unit, data type, the preferred axis
+        (x or y).
+        """
+        return {'label':'','unit':'','preferredaxis':None,'datatype':'float','reversed':False}
+
+    def getVariableTree(self,path,otherstores={},plottableonly=True):
+        """Returns a tree representation of the variables in the data store,
+        represented by an xmlstore.TypedStore object that uses the short names
+        of variables as node names.
+        
+        The data type of each variable node is boolean, which allows the use of
+        the returned object as a basis for a tree with checkboxes for each
+        variable (e.g. for selecting variables to include in GOTM-GUI reports).
+        
+        All variables that are present in the store but not represented by a node
+        in the store schema will be added to the node named "other" in the tree,
+        if that node is present. Nodes that are present in the schema, but whose
+        names does not match the name of a variable, while they also do not contain
+        any valid variables will be removed from the tree. The label (= long name)
+        of nodes representing a variable will set to the long name of the variable
+        as it is known in the variable store if it was not yet set.
+        """
+        # Get the schema as XML DOM object.
+        xmlschema = xml.dom.minidom.parse(path)
+        
+        # Get dictionary linking variable short names to variable long names.
+        # it will be used to check whether a node name matches a variable name,
+        # and if so also to fill in the node label with the variable long name.
+        vardict = self.getVariableLongNames()
+        
+        # Remove non-plottable variables
+        if plottableonly:
+            plottable = self.getPlottableVariableNames()
+            for varname in vardict.keys():
+                if varname not in plottable: del vardict[varname]
+        
+        # Prune the tree and fill in node labels where needed.
+        found = VariableStore.filterNodes(xmlschema.documentElement,vardict)
+        
+        # Get a list of variables (short names) that were not present in the schema.
+        # We will add these to the schema node "other", if that is present.
+        remaining = set(vardict.keys()) - found
+        
+        # Find the "other" node.
+        for other in xmlschema.getElementsByTagName('element'):
+            if other.getAttribute('name')=='other': break
+        else:
+            other = None
+
+        # If the "other" node is present, add the remaining variable if there
+        # are any; if there are none, remove the "other" node form the tree.
+        if other!=None:
+            if len(remaining)==0:
+                other.parentNode.removeChild(other)
+            else:
+                # Sort remaining variables alphabetically on their long names
+                for varid in sorted(remaining,cmp=lambda x,y: cmp(vardict[x].lower(), vardict[y].lower())):
+                    el = xmlschema.createElement('element')
+                    el.setAttribute('name',varid)
+                    el.setAttribute('label',vardict[varid])
+                    el.setAttribute('type','bool')
+                    other.appendChild(el)
+                    
+        # The XML schema has been pruned and overriden where needed.
+        # Return an TypedStore based on it.
+        return xmlstore.xmlstore.TypedStore(xmlschema,otherstores=otherstores)
+
+    @staticmethod
+    def filterNodes(node,vardict):
+        """Takes a node in the schema, and checks whether it and its children
+        are present in the supplied dictionary. Nodes not present in the
+        dictionary are removed unless they have children that are present in
+        the dictionary. This function returns a list of dictionary keys that
+        we found in/below the node.
+        
+        This function is called recursively, and will be used internally only
+        by getVariableTree.
+        """
+        nodeids = set()
+
+        # Get the name of the node.
+        nodeid = node.getAttribute('name')
+        assert nodeid!='', 'Node lacks "name" attribute.'
+        
+        # If the name of the node matches a key in the dictionary,
+        # fill in its label and data type, and add it to the result.
+        if nodeid in vardict:
+            if not node.hasAttribute('label'):
+                node.setAttribute('label',vardict[nodeid])
+            node.setAttribute('type','bool')
+            nodeids.add(nodeid)
+            
+        # Test child nodes and append their results as well.
+        for ch in xmlstore.util.findDescendantNodes(node,['element']):
+            nodeids |= VariableStore.filterNodes(ch,vardict)
+            
+        # If the current node and its children did not match a key in the
+        # dictionary, remove the current node.
+        if len(nodeids)==0 and nodeid!='other':
+            node.parentNode.removeChild(node)
+
+        # Return a list of dictionary keys that matched.
+        return nodeids
+
+    def getVariable_raw(self,varname):
+        """Returns a Variable object for the given original short variable name.
+        The method must be implemented by derived classes.
+        """
+        return None
+
+    def getVariableNames_raw(self):
+        """Returns a list of original short names for all variables present in the store.
+        The method must be implemented by derived classes.
+        """
+        return []
+                
+    def getVariableLongNames_raw(self):
+        """Returns a dictionary with original short variable names as keys, long
+        variable names as values. This base implementation should be overridden
+        by derived classes if it can be done more efficiently.
+        """
+        return dict([(name,self.getVariable_raw(name).getLongName()) for name in self.getVariableNames_raw()])
+
+class Variable:
+    """Abstract class that represents a variable that can be plotted.
+    """
+    
+    class Slice:
+        """Object representing a slice of data. It stores the names of
+        coordinate dimensions internally, and is also maintains two versions
+        of coordinates: one for grid centers and one for grid interfaces.
+        
+        Currently it can also contain upper and lower confidence boundaries
+        for the data values. These objects have the same dimension as the data
+        array. Note that this functionality may be relocated in the future.
+        """
+        def __init__(self,dimensions=(),coords=None,coords_stag=None,data=None):
+            self.ndim = len(dimensions)
+            if coords     ==None: coords      = self.ndim*[None]
+            if coords_stag==None: coords_stag = self.ndim*[None]
+            self.dimensions = dimensions
+            self.data = data
+            self.coords = coords
+            self.coords_stag = coords_stag
+            
+            # Bounds for confidence interval (optional)
+            self.lbound = None
+            self.ubound = None
+        
+        def isValid(self):
+            """Returns true if the slice if valid, i.e., if dimensions and
+            coordinates are properly specified. Note that if a slice is valid,
+            it might still be empty.
+            """
+            return (self.data!=None) and (None not in self.coords) and (None not in self.coords_stag)
+            
+        def debugCheck(self,context=''):
+            if context!='': context += ': '
+            assert self.data.ndim==self.ndim, '%snumber of data dimensions (%i) does not match internal number of dimensions (%i).' % (context,self.data.ndim,self.ndim)
+            assert len(self.dimensions)==self.ndim, '%snumber of dimension names (%i) does not match internal number of dimensions (%i).' % (context,len(self.dimensions),self.ndim)
+            assert self.ndim==len(self.coords), '%snumber of centered coordinate dimensions (%i) does not match internal number of dimensions (%i).' % (context,len(self.coords),self.ndim)
+            assert self.ndim==len(self.coords_stag), '%snumber of staggered coordinate dimensions (%i) does not match internal number of dimensions (%i).' % (context,len(self.coords_stag),self.ndim)
+
+        def generateStaggered(self):
+            """Creates a vector of interface coordinates from the vector of center
+            coordinates.
+            """
+            for idim in range(self.ndim):
+                assert self.coords[idim]!=None, 'Cannot generate staggered coordinates because centered coordinates have not been set.'
+                assert self.coords[idim].ndim==1, 'Currently a staggered grid can only be generated automatically for 1D coordinate vectors.'
+                self.coords_stag[idim] = common.getCenters(self.coords[idim],addends=True)
+                
+        def squeeze(self):
+            """Returns the slice with singleton dimensions removed. The singeton
+            dimensions are stored as an array of fixed coordinates (with tuples dimension name,
+            coordinate value) in the new slice.
+            """
+            # Find non-singleton dimensions, and store them as fixed extra coordinates.
+            gooddimindices = []
+            gooddimnames = []
+            fixedcoords = []
+            for idim,dimname in enumerate(self.dimensions):
+                if self.data.shape[idim]>1:
+                    # Normal dimension (more than one coordinate)
+                    gooddimindices.append(idim)
+                    gooddimnames.append(dimname)
+                elif self.data.shape[idim]==1:
+                    # Singleton dimension
+                    fixedcoords.append((dimname,self.coords[idim][0]))
+
+            newslice = Variable.Slice(gooddimnames)
+            newslice.coords      = [self.coords     [i].squeeze() for i in gooddimindices]
+            newslice.coords_stag = [self.coords_stag[i].squeeze() for i in gooddimindices]
+            newslice.data = self.data.squeeze()
+            newslice.fixedcoords =fixedcoords
+
+            # Update confidence interval (if any)
+            if self.lbound!=None: newslice.lbound = self.lbound.squeeze()
+            if self.ubound!=None: newslice.ubound = self.ubound.squeeze()
+
+            return newslice
+            
+        def removeDimension(self,idimension,inplace=True):
+            if inplace:
+                target = self
+            else:
+                target = Variable.Slice()
+            newcoords,newcoords_stag = [],[]
+            for idim in range(len(self.coords)):
+                if idim==idimension: continue
+                coords = self.coords[idim]
+                coords_stag = self.coords_stag[idim]
+                if self.coords[idim].ndim>1:
+                    # Coordinate array has more than 1 dimensions.
+                    # Squeeze out the dimension for which we are calculating statistics.
+                    coords = coords.take((0,),idimension)
+                    coords_stag = coords_stag.take((0,),idimension)
+                    coords.shape = coords.shape[:idimension]+coords.shape[idimension+1:]
+                    coords_stag.shape = coords_stag.shape[:idimension]+coords_stag.shape[idimension+1:]
+                newcoords.append(coords)
+                newcoords_stag.append(coords_stag)
+            target.coords = newcoords
+            target.coords_stag = newcoords_stag
+            target.ndim = self.ndim-1
+            newdims = list(self.dimensions)
+            del newdims[idimension]
+            target.dimensions = tuple(newdims)
+            return target
+            
+        def __getitem__(self,slic):
+            # Check whether the slice argument contains only integers and slice objects,
+            # and build an array with slices for staggered coordinates.
+            assert len(slic)==self.data.ndim, 'Number of slices (%i) does not match number of variable dimensions (%i).' % (len(slic),self.data.ndim)
+            
+            cslice_stag = []
+            for i,s in enumerate(slic):
+                assert isinstance(s,(int,slice)),'The slice argument for dimension %s is not an integer or slice object. Fancy indexing with arrays of integers or booleans is not yet supported.' % self.dimensions[i]
+                if isinstance(s,slice):
+                    start,stop,step = s.indices(self.data.shape[i])
+                    assert step==1,'The step argument for slicing dimension %s equals %i. Slices with a step other than 1 are not yet supported.' % (self.dimensions[i],step)
+                    cslice_stag.append(slice(start,stop+1))
+                else:
+                    cslice_stag.append(s)
+        
+            # Obtain sliced dimensions and coordinates
+            dims,coords,coords_stag = [],[],[]
+            for i in range(len(self.dimensions)):
+                if not isinstance(slic[i],(int,float)):
+                    dims.append(self.dimensions[i])
+                    if self.coords[i].ndim>1:
+                        cur_cslice = slic
+                        cur_cslice_stag = cslice_stag
+                    else:
+                        cur_cslice = slic[i]
+                        cur_cslice_stag = cslice_stag[i]
+                    coords.append(self.coords[i].__getitem__(cur_cslice))
+                    coords_stag.append(self.coords_stag[i].__getitem__(cur_cslice_stag))
+            
+            # Build and return the new Variable.Slice object
+            newslice = Variable.Slice(dims,coords=coords,coords_stag=coords_stag)
+            newslice.data = self.data.__getitem__(slic)
+            return newslice
+
+    def __init__(self,store):
+        self.store = store
+        self.forcedname = None
+        
+    def __getattr__(self,name):
+        """Attribute-based access to some variable properties,
+        mimicking the Scientific.IO.NetCDF interface.
+        """
+        if name=='dimensions':
+            return self.getDimensions()
+        elif name=='unit':
+            return self.getUnit()
+        elif name=='long_name':
+            return self.getLongName()
+        elif name=='shape':
+            return self.getShape()
+        else:
+            raise AttributeError(name)
+
+    def getName(self):
+        if self.forcedname!=None: return self.forcedname
+        return self.getName_raw()
+
+    def getName_raw(self):
+        """Returns the short name (or identifier) of the variable.
+        This name must be unique within the data store, as it is the key
+        that will be used to retrieve data.
+        """
+        return ''
+
+    def getShape(self):
+        """Returns the shape of the data array.
+        """
+        assert False, 'Method "getShape" must be implemented by derived class.'
+        
+    def hasReversedDimensions(self):
+        """Returns whether the order of the variable dimensions is reversed, i.e.,
+        the dimension that should be used for the y- axis appears before the dimension
+        to be used on the x-axis.
+        """
+        return False
+
+    def getLongName(self):
+        """Returns a long (pretty) name for the variable.
+        """
+        return ''
+
+    def getUnit(self):
+        """Returns the unit of the variable.
+        """
+        return ''
+
+    def getDimensions(self):
+        dims = self.getDimensions_raw()
+        if self.store!=None and self.store.newlabels!=None:
+            dims = tuple([self.store.newlabels.get(dim,dim) for dim in dims])
+        return dims
+
+    def getDimensions_raw(self):
+        """Returns the names of the dimensions of the variable as tuple of strings.
+        """
+        return ()
+
+    def getSlice(self,bounds):
+        """Returns a slice from the data. The bounds argument must be a
+        list of n tuples, with n being the number of dimensions of the variable
+        (as returned by getDimensions). Each tuple must contain a lower- and upper
+        boundary of the corresponding dimension. These bounds may be used to
+        retrieve a subset of data more efficiently - the Variable is *not*
+        required to return only data from within the specified range!
+        """
+        return self.Slice()
+
+    def getDimensionInfo(self,dimname):
+        return self.getDimensionInfo_raw(dimname)
+
+    def getDimensionInfo_raw(self,dimname):
+        """Gets information on the specified dimension of the variable.
+        See also VariableStore.getDimensionInfo.
+        """
+        return self.store.getDimensionInfo_raw(dimname)

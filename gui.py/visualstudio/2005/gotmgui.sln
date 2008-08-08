@@ -66,6 +66,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlplot", "xmlplot", "{ED14
 	ProjectSection(SolutionItems) = preProject
 		..\..\xmlplot\common.py = ..\..\xmlplot\common.py
 		..\..\xmlplot\data.py = ..\..\xmlplot\data.py
+		..\..\xmlplot\expressions.py = ..\..\xmlplot\expressions.py
+		..\..\xmlplot\functions.py = ..\..\xmlplot\functions.py
 		..\..\xmlplot\gui_qt4.py = ..\..\xmlplot\gui_qt4.py
 		..\..\xmlplot\plot.py = ..\..\xmlplot\plot.py
 	EndProjectSection

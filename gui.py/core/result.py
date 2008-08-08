@@ -205,7 +205,7 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
     def getVariableTree(self,path,plottableonly=True):
         otherstores = {}
         if self.scenario!=None: otherstores['scenario'] = self.scenario
-        return xmlplot.plot.VariableStore.getVariableTree(self,path,otherstores=otherstores,plottableonly=plottableonly)
+        return xmlplot.common.VariableStore.getVariableTree(self,path,otherstores=otherstores,plottableonly=plottableonly)
 
     def getDefaultCoordinateDelta(self,dimname,coord):
         if self.scenario!=None and self.isTimeDimension(dimname):

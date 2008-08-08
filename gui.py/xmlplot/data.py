@@ -5,7 +5,7 @@ import os, sys, re, datetime, shutil, StringIO
 import numpy
 
 # Import our custom modules
-import common, xmlstore.util, xmlstore.xmlstore, plot
+import common, xmlstore.util, xmlstore.xmlstore
 
 def getNetCDFFile(path):
     """Returns a NetCDFFile file object representing the NetCDF file
@@ -45,7 +45,7 @@ def getNetCDFFile(path):
 
     return nc
 
-class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
+class LinkedFileVariableStore(common.VariableStore,xmlstore.xmlstore.DataFileEx):
 
     class DataFileCache(xmlstore.xmlstore.TypedStore):
         def __init__(self,valueroot=None,adddefault = True):
@@ -59,10 +59,10 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
                 LinkedFileVariableStore.DataFileCache.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/datafilecache'))
             return LinkedFileVariableStore.DataFileCache.schemadict
 
-    class LinkedFileVariable(plot.Variable):
+    class LinkedFileVariable(common.Variable):
 
         def __init__(self,store,data,index):
-            plot.Variable.__init__(self,store)
+            common.Variable.__init__(self,store)
             self.store = store
             self.data = data
             self.index = index
@@ -114,13 +114,13 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
 
     def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=(),variables=[],datatype='float'):
     
-        plot.VariableStore.__init__(self)
+        common.VariableStore.__init__(self)
         xmlstore.xmlstore.DataFileEx.__init__(self,datafile,context,infonode,nodename)
 
         # Copy data from supplied dimensions and variables
         self.dimensions = {}
         for dimname,dimdata in dimensions.iteritems():
-            self.dimensions[dimname] = plot.VariableStore.getDimensionInfo_raw(self,None)
+            self.dimensions[dimname] = common.VariableStore.getDimensionInfo_raw(self,None)
             self.dimensions[dimname].update(dimdata)
         self.vardata = list(variables)
         self.dimensionorder = list(dimensionorder)
@@ -148,7 +148,7 @@ class LinkedFileVariableStore(plot.VariableStore,xmlstore.xmlstore.DataFileEx):
             if fdims!=None:
                 for ch in fdims.childNodes:
                     if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filedimension':
-                        dimdata = plot.VariableStore.getDimensionInfo_raw(self,None)
+                        dimdata = common.VariableStore.getDimensionInfo_raw(self,None)
                         if ch.hasAttribute('label'):         dimdata['label']         = ch.getAttribute('label')
                         if ch.hasAttribute('unit'):          dimdata['unit']          = ch.getAttribute('unit')
                         if ch.hasAttribute('datatype'):      dimdata['datatype']      = ch.getAttribute('datatype')
@@ -763,15 +763,15 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         # Succeeded in reading the data: store them internally.
         return [times,depths,values]
 
-class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
+class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
     """Class encapsulating a NetCDF file.
     
     The file is expected to follow the COARDS convention.
     """
     
-    class NetCDFVariable(plot.Variable):
+    class NetCDFVariable(common.Variable):
         def __init__(self,store,ncvarname):
-            plot.Variable.__init__(self,store)
+            common.Variable.__init__(self,store)
             self.ncvarname = str(ncvarname)
             
         def __str__(self):
@@ -888,7 +888,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
 
     def __init__(self,path=None,*args,**kwargs):
         xmlstore.util.referencedobject.__init__(self)
-        plot.VariableStore.__init__(self)
+        common.VariableStore.__init__(self)
         
         self.datafile = None
         self.nc = None
@@ -901,7 +901,7 @@ class NetCDFStore(plot.VariableStore,xmlstore.util.referencedobject):
         return self.datafile
         
     def getDimensionInfo_raw(self,dimname):
-        res = plot.VariableStore.getDimensionInfo_raw(self,dimname)
+        res = common.VariableStore.getDimensionInfo_raw(self,dimname)
         if dimname not in self.nc.variables: return res
         varinfo = self.nc.variables[dimname]
         if hasattr(varinfo,'long_name'):
