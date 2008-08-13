@@ -1,7 +1,7 @@
-#$Id: common.py,v 1.7 2008-08-08 15:29:21 jorn Exp $
+#$Id: common.py,v 1.8 2008-08-13 13:01:59 jorn Exp $
 
 # Import modules from standard Python library
-import sys,os.path,UserDict,re
+import sys,os.path,UserDict,re,xml.dom.minidom
 
 # Import additional third party modules
 import matplotlib.dates,numpy
@@ -454,7 +454,7 @@ class Variable:
             for idim in range(self.ndim):
                 assert self.coords[idim]!=None, 'Cannot generate staggered coordinates because centered coordinates have not been set.'
                 assert self.coords[idim].ndim==1, 'Currently a staggered grid can only be generated automatically for 1D coordinate vectors.'
-                self.coords_stag[idim] = common.getCenters(self.coords[idim],addends=True)
+                self.coords_stag[idim] = getCenters(self.coords[idim],addends=True)
                 
         def squeeze(self):
             """Returns the slice with singleton dimensions removed. The singeton
