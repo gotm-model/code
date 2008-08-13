@@ -1225,20 +1225,35 @@ class Schema:
             schema = Schema(source)
         return schema
     
-    def __init__(self,source):
+    def __init__(self,source,sourceisxml=False):
+        """Initializes a new Schema from the specified source.
+        A source can be a path to an XML file, a string containing XML or a xml.dom.minidom DOM object
+        If it is a a string containing XML, argument "sourceisxml" must be set to True;
+        otherwise the source is interpreted as a path to an XML file.
+        """
         
         # The template can be specified as a DOM object, or as string (i.e. path to XML file)
         path = ''
         if isinstance(source,basestring):
-            path = source
-            if not os.path.isfile(source):
-                raise Exception('XML schema file "%s" does not exist.' % source)
-            self.dom = xml.dom.minidom.parse(source)
+            # The provided schema source is a string. It can be a path to a file or plain XML.
+            if not sourceisxml:
+                # The provided source is a path.
+                path = source
+                if not os.path.isfile(source):
+                    raise Exception('XML schema file "%s" does not exist.' % source)
+                self.dom = xml.dom.minidom.parse(source)
+            else:
+                # The provided source is a string containing XML.
+                self.dom = xml.dom.minidom.parseString(source)
         elif isinstance(source,xml.dom.minidom.Document):
+            # The provided source is a DOM object
             self.dom = source
         else:
-            assert False, 'Supplied argument must either be a string or an XML DOM tree. Got %s.' % source
+            assert False, 'First argument (the schema source) must either be a string or an XML DOM tree. Received argument: %s.' % str(source)
             
+        # In addition to "element" nodes, a Schema can contains "link" nodes that either reference an
+        # "template" node within the same schema, or a the root node of another XML file.
+        # Below all link nodes are replaced by the their target.
         Schema.resolveLinks(self.dom,path)
 
         # For every variable: build a list of variables/folders that depend on its value.
