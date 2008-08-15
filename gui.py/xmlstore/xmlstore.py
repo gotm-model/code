@@ -1457,11 +1457,16 @@ class TypedStoreInterface:
     property set and (2) to omit nodes with the "grouponly" attribute set, replacing
     them instead with the node's children.
     """
-    def __init__(self,store,showhidden=True,omitgroupers=False):
+    def __init__(self,store,showhidden=True,omitgroupers=False,processDefaultChange=0):
         self.showhidden = showhidden
         self.omitgroupers = omitgroupers
         self.blockNotifyOfHiddenNodes = (not showhidden)
-        self.processDefaultChange = 0
+        
+        # How to process changes in the default node value
+        # -1: never report
+        #  0: report only if no explicit value is set (i.e., the default is used)
+        #  1: always report
+        self.processDefaultChange = processDefaultChange
 
         self.eventhandlers = {}
 

@@ -290,16 +290,13 @@ class Figure(xmlstore.util.referencedobject):
     xmlstore.TypedStore object.
     """
 
-    def __init__(self,figure=None,size=(10,8),defaultfont=None,unit='cm'):
+    def __init__(self,figure=None,defaultfont=None):
         xmlstore.util.referencedobject.__init__(self)
-        
-        assert unit in ('in','cm'), 'Argument "unit" must equal "cm" or "in".'
 
         # If no MatPlotLib figure is specified, create a new one, assuming
         # we want to export to file.        
         if figure==None:
-            if unit=='cm': size = (size[0]/2.54,size[1]/2.54)
-            figure = matplotlib.figure.Figure(figsize=size)
+            figure = matplotlib.figure.Figure(figsize=(10/2.54,8/2.54))
             canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(figure)
         
         # If no default font is specified, use the MatPlotLib default.
@@ -327,6 +324,11 @@ class Figure(xmlstore.util.referencedobject):
         self.defaultproperties['HasColorMap'    ].setValue(False)
         self.defaultproperties['ColorMap'       ].setValue(0)
         setLineProperties(self.defaultproperties['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
+
+        # Take default figure size from value at initialization
+        w,h = self.figure.get_size_inches()
+        self.defaultproperties['Width'          ].setValue(w*2.54)
+        self.defaultproperties['Height'         ].setValue(h*2.54)
 
         # Attach the store with figure defaults to the customized store.
         self.properties.setDefaultStore(self.defaultproperties)
@@ -452,6 +454,9 @@ class Figure(xmlstore.util.referencedobject):
     def exportToFile(self,path,dpi=150):
         """Export the contents of the figure to file.
         """
+        w = self['Width'].getValue(usedefault=True)
+        h = self['Height'].getValue(usedefault=True)
+        self.figure.set_size_inches(w/2.54,h/2.54)
         self.canvas.print_figure(str(path),dpi=dpi)
         
     def copyFrom(self,sourcefigure):

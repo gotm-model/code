@@ -119,8 +119,10 @@
 	<element name="Title" type="string" label="title"/>
 	<element name="FontName" type="fontname" label="font"/>
 	<element name="FontScaling" type="float" label="font scaling" unit="%"/>
+  <element name="Width" type="float" label="width" unit="cm"/>
+  <element name="Height" type="float" label="height" unit="cm"/>
 
-	<element name="CanHaveLegend" type="bool" hidden="True"/>
+  <element name="CanHaveLegend" type="bool" hidden="True"/>
 	<element name="Legend" type="bool" label="legend">
 		<condition type="eq" variable="./CanHaveLegend" value="True"/>
 		<element name="Location" type="select" label="location">

@@ -5,7 +5,7 @@ import datetime, os.path, sys
 from PyQt4 import QtGui,QtCore
 import numpy
 import matplotlib.figure
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 # Import our own custom modules
@@ -226,6 +226,11 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
                                    guiEvent=event.guiEvent)
         return matplotlib.backend_bases.NavigationToolbar2.mouse_move(self,event)
 
+class FigureCanvas(FigureCanvasQTAgg):
+    def resizeEvent( self, e ):
+        FigureCanvasQTAgg.resizeEvent( self, e )
+        self.emit(QtCore.SIGNAL('afterResize()'))
+
 class FigurePanel(QtGui.QWidget):
     
     def __init__(self,parent,detachbutton=True):
@@ -239,6 +244,7 @@ class FigurePanel(QtGui.QWidget):
         self.canvas = FigureCanvas(mplfigure)
         self.canvas.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
         self.canvas.setMinimumSize(300,250)
+        self.connect(self.canvas, QtCore.SIGNAL('afterResize()'), self.afterCanvasResize)
 
         # Create our figure that encapsulates MatPlotLib figure.
         deffont = getFontSubstitute(unicode(self.fontInfo().family()))
@@ -325,6 +331,14 @@ class FigurePanel(QtGui.QWidget):
         self.setEnabled(False)
 
         self.detachedfigures = []
+        self.blockevents = False
+
+    def afterCanvasResize(self):
+        w,h = self.canvas.figure.get_size_inches()
+        self.blockevents = True
+        self.figure.defaultproperties['Width'].setValue(w*2.54)
+        self.figure.defaultproperties['Height'].setValue(h*2.54)
+        self.blockevents = False
         
     def onFigureStateChanged(self,complete):
         """Called when the figure state (figure shown/no figure shown) changes.
@@ -332,17 +346,27 @@ class FigurePanel(QtGui.QWidget):
         self.setEnabled(complete)
 
     def onFigurePropertyStoreChanged(self):
-        """Called when one customized figure property changes.
-        Currently used to enable/disable the "Reset view" button.
-        """
-        self.onAxesRangeChanged()
-
-    def onFigurePropertyChanged(self,node,feature):
         """Called when all customized figure properties change at once
         (the data store is changed). Currently used to enable/disable
         the "Reset view" button.
         """
-        if feature=='value': self.onAxesRangeChanged()
+        self.onAxesRangeChanged()
+        self.updateWidthFromProperties()
+        self.updateHeightFromProperties()
+        
+    def onFigurePropertyChanged(self,node,feature):
+        """Called when one customized figure property changes.
+        Currently used to enable/disable the "Reset view" button.
+        """
+        if self.blockevents: return
+        self.blockevents = True
+        if feature=='value':
+            if node is self.figure['Width']:
+                self.updateWidthFromProperties()
+            elif node is self.figure['Height']:
+                self.updateHeightFromProperties()
+            self.onAxesRangeChanged()
+        self.blockevents = False
         
     def onAxesRangeChanged(self):
         """Enables/disables the "Reset View" button, based on whether the
@@ -361,6 +385,32 @@ class FigurePanel(QtGui.QWidget):
                     defaultrange = (defaultrange and axis['Minimum'].hasDefaultValue() and axis['Maximum'].hasDefaultValue())
         self.buttonResetView.setEnabled(not defaultrange)
         self.buttonPan.setEnabled(not defaultrange)
+
+    def updateWidthFromProperties(self):
+        """Adjusts the canvas/figure width on screen based on the width set in the figure properties store. 
+        """
+        w = self.figure['Width'].getValue()
+        dpi = float(self.logicalDpiX())
+        if w!=None:
+            self.canvas.setMinimumWidth(w/2.54*dpi)
+            self.canvas.setMaximumWidth(w/2.54*dpi)
+        else:
+            self.canvas.setMinimumWidth(300)
+            self.canvas.setMaximumWidth(16777215)
+            self.figure.defaultproperties['Width'].setValue(self.canvas.width()/dpi*2.54)
+
+    def updateHeightFromProperties(self):
+        """Adjusts the canvas/figure height on screen based on the height set in the figure properties store. 
+        """
+        h = self.figure['Height'].getValue()
+        dpi = float(self.logicalDpiX())
+        if h!=None:
+            self.canvas.setMinimumHeight(h/2.54*dpi)
+            self.canvas.setMaximumHeight(h/2.54*dpi)
+        else:
+            self.canvas.setMinimumHeight(250)
+            self.canvas.setMaximumHeight(16777215)
+            self.figure.defaultproperties['Height'].setValue(self.canvas.height()/dpi*2.54)
 
     def plot(self,varname,varstore=None):
         ownupdating = self.figure.updating
@@ -515,8 +565,8 @@ class FigurePanel(QtGui.QWidget):
         oldwidth = self.canvas.figure.get_figwidth()
         oldheight = self.canvas.figure.get_figheight()
         olddpi = self.canvas.figure.get_dpi()
-        dialog.editWidth.setValue(oldwidth*2.54,'%.1f')
-        dialog.editHeight.setValue(oldheight*2.54,'%.1f')
+        dialog.editWidth.setValue (self.figure['Width' ].getValue(usedefault=True),'%.1f')
+        dialog.editHeight.setValue(self.figure['Height'].getValue(usedefault=True),'%.1f')
         dialog.editResolution.setValue(olddpi,'%.0f')
         if dialog.exec_()!=QtGui.QDialog.Accepted: return
 
