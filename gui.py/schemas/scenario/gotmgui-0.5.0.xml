@@ -1449,13 +1449,7 @@
 		<element name="bioshade_feedback" type="bool" label="feedback of bio-turbidity to temperature equation">
 			<condition type="ne" variable="./bio_model" value="0"/>
 		</element>
-		<element name="bio_lagrange_mean" type="bool" label="average Lagrangian concentrations on output">
-			<condition type="and">
-				<condition type="ne" variable="./bio_model"    value="0"/>
-				<condition type="eq" variable="./bio_eulerian" value="False"/>
-			</condition>
-		</element>
-		<element name="bio_npar"          type="int"  label="total number of Lagrangian particles">
+		<element name="npar" type="int"  label="total number of Lagrangian particles">
 			<condition type="and">
 				<condition type="ne" variable="./bio_model"    value="0"/>
 				<condition type="eq" variable="./bio_eulerian" value="False"/>

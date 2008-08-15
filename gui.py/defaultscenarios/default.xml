@@ -310,8 +310,7 @@
 			<ode_method>3</ode_method>
 			<split_factor>1</split_factor>
 			<bioshade_feedback>True</bioshade_feedback>
-			<bio_lagrange_mean>False</bio_lagrange_mean>
-			<bio_npar>100000</bio_npar>
+			<npar>100000</npar>
 		</bio_nml>
 	</bio>
 	<bio_npzd>

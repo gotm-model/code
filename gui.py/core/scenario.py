@@ -557,7 +557,8 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
         self.links = [('/airsea/airsea/wet_mode','/airsea/airsea/hum_method'),
                       ('/airsea/airsea/p_e_method','/airsea/airsea/precip_method'),
                       ('/airsea/airsea/const_p_e','/airsea/airsea/const_precip'),
-                      ('/airsea/airsea/p_e_flux_file','/airsea/airsea/precip_file')]
+                      ('/airsea/airsea/p_e_flux_file','/airsea/airsea/precip_file'),
+                      ('/bio/bio_nml/bio_npar','/bio/bio_nml/npar')]
         self.defaults = ['/obs/bioprofiles',
                          '/airsea/airsea/fluxes_method',
                          '/airsea/airsea/back_radiation_method',
