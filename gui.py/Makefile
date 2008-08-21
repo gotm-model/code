@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.6 2008-06-12 11:10:08 jorn Exp $
+#$Id: Makefile,v 1.7 2008-08-21 14:44:29 jorn Exp $
 
 # -----------------------------------------------------------
 # Makefile for creating the Python-based GUI for GOTM
@@ -25,12 +25,22 @@
 # catch Fortran stop statements.
 # -----------------------------------------------------------
 
+# If Pyhton and NumPy are installed at default locations, you may get
+# away by just setting PYTHONVERSION to your version of Python, e.g.,
+# python2.4, python2.5, etc. Other variables such as PYTHONINCDIR,
+# PYTHONLIBNAME and NUMPYDIR will then be derived from PYTHONVERSION.
+# If this does not work, you will have to set these three variables
+# explicitly (see below).
+ifndef PYTHONVERSION
+PYTHONVERSION = python2.5
+endif
+
 # The directory that contains Python header files.
 # Below a quick default for our development systems - normal
 # users will need to set the PYTHONINCDIR environment variable before
 # running make!
 ifndef PYTHONINCDIR
-PYTHONINCDIR = /usr/include/python2.4
+PYTHONINCDIR = /usr/include/$(PYTHONVERSION)
 endif
 
 # The directory that contains the Python library.
@@ -46,7 +56,7 @@ endif
 # users will need to set the PYTHONLIBNAME environment variable before
 # running make!
 ifndef PYTHONLIBNAME
-PYTHONLIBNAME = python2.4
+PYTHONLIBNAME = $(PYTHONVERSION)
 endif
 
 # The directory that contains NumPy; it must contain directories
@@ -55,8 +65,8 @@ endif
 # users will need to set the NUMPYDIR environment variable before
 # running make!
 ifndef NUMPYDIR
-NUMPYDIR = /usr/local/lib/python2.4/site-packages/numpy
-NUMPYDIR = /usr/lib/python2.4/site-packages/numpy
+NUMPYDIR = /usr/local/lib/$(PYTHONVERSION)/site-packages/numpy
+NUMPYDIR = /usr/lib/$(PYTHONVERSION)/site-packages/numpy
 endif
 
 # The directory that contains NumPy include files. Normally this can be
