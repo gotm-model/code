@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.59 2008-05-07 06:03:35 kb Exp $
+#$Id: commonqt.py,v 1.60 2008-08-21 09:42:36 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -26,6 +26,10 @@ def getRadioWidth():
     if radiowidth==None:
         radiowidth = QtGui.qApp.style().pixelMetric(QtGui.QStyle.PM_ExclusiveIndicatorWidth)
     return radiowidth
+    
+def getIcon(name):
+    path = os.path.join(core.common.getDataRoot(),'icons',name)
+    return QtGui.QIcon(path)
         
 # =======================================================================
 # Utilities for redirecting stderr (i.e., Python errors and tracebacks)
@@ -263,20 +267,20 @@ class Wizard(QtGui.QDialog):
         self.bnlayout = QtGui.QHBoxLayout()
         self.bnlayout.addStretch()
 
-        self.bnHome = QtGui.QPushButton('&Home',self)
+        self.bnHome = QtGui.QPushButton(getIcon('gohome.png'),'&Home',self)
         self.connect(self.bnHome, QtCore.SIGNAL('clicked()'), self.onHome)
         self.bnlayout.addWidget(self.bnHome)
 
-        self.bnBack = QtGui.QPushButton('< &Back',self)
+        self.bnBack = QtGui.QPushButton(getIcon('back.png'),'&Back',self)
         self.connect(self.bnBack, QtCore.SIGNAL('clicked()'), self.onBack)
         self.bnlayout.addWidget(self.bnBack)
 
-        self.bnNext = QtGui.QPushButton('&Next >',self)
+        self.bnNext = QtGui.QPushButton(getIcon('next.png'),'&Next',self)
         self.connect(self.bnNext, QtCore.SIGNAL('clicked()'), self.onNext)
         self.bnlayout.addWidget(self.bnNext)
 
         if closebutton:
-            self.bnClose = QtGui.QPushButton('&Close',self)
+            self.bnClose = QtGui.QPushButton(getIcon('exit.png'),'&Close',self)
             self.connect(self.bnClose, QtCore.SIGNAL('clicked()'), self.accept)
             self.bnlayout.addWidget(self.bnClose)
 

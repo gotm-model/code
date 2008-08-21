@@ -200,7 +200,7 @@
 
 	<element name="Data" label="data series">
 		<element name="Series" label="series" maxoccurs="10">
-			<element name="Label" type="string" label="label"/>
+      <element name="Label" type="string" label="label"/>
 			<element name="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
 			<link template="Line2D" name="LineProperties" grouponly="True">
 				<condition type="eq" variable="./DimensionCount" value="1"/>

@@ -41,7 +41,7 @@ class GOTMWizard(commonqt.Wizard):
         """
         commonqt.Wizard.__init__(self,parent,sequence,closebutton,headerlogo='./logo.png')
 
-        self.bnTools = QtGui.QPushButton('&Tools',self)
+        self.bnTools = QtGui.QPushButton(commonqt.getIcon('advanced.png'),'&Tools',self)
         self.bnTools.setEnabled(False)
         self.bnlayout.insertWidget(1,self.bnTools)
 
@@ -126,7 +126,7 @@ class GOTMWizard(commonqt.Wizard):
 
                 self.setLayout(layout)
                 
-                self.setWindowTitle('Choose GOTM version')
+                self.setWindowTitle('Export scenario to namelists')
                 
         scen = self.getProperty('scenario')
         dialog = ChooseVersionDialog(self)
