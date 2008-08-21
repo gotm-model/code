@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.9 2008-08-21 15:11:09 jorn Exp $
+#$Id: Makefile,v 1.10 2008-08-21 15:43:39 jorn Exp $
 
 # -----------------------------------------------------------
 # Makefile for creating the Python-based GUI for GOTM
@@ -80,7 +80,7 @@ endif
 # The directory that contains F2Py (Fortran-to-Python interface generator.
 # Normally this path can be# inferred from the NumPy root directory set
 # above (NUMPYDIR). In most cases users will therefore not have to set the
-# NUMPYINC environment variable. It is possible though.
+# F2PYDIR environment variable. It is possible though.
 ifndef F2PYDIR
 F2PYDIR = $(NUMPYDIR)/f2py
 endif
