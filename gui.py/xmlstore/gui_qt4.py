@@ -1156,7 +1156,8 @@ class PropertyEditorDialog(QtGui.QDialog):
     Incoporates the ExtendedTreeView attached to a TypedStoreModel.
     """
     
-    def __init__(self,parent,store,title='',instructions='',flags=QtCore.Qt.Dialog):
+    def __init__(self,parent,store,title='',instructions='',flags=QtCore.Qt.Dialog,icon=None):
+        if icon!=None: flags |= QtCore.Qt.WindowSystemMenuHint
         QtGui.QDialog.__init__(self, parent, flags)
 
         self.tree = TypedStoreTreeView(self,store,expanddepth=3,resizecolumns=False)
@@ -1176,6 +1177,8 @@ class PropertyEditorDialog(QtGui.QDialog):
 
         if title!='':
             self.setWindowTitle(title)
+        if icon!=None:
+            self.setWindowIcon(icon)
 
     def resizeColumns(self):
         """Intelligently resize the column widths.

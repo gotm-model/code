@@ -12,6 +12,10 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 import xmlstore.xmlstore,xmlstore.util,xmlstore.gui_qt4
 import plot,data,common
 
+def getIcon(name):
+    path = os.path.join(common.getDataRoot(),'icons',name)
+    return QtGui.QIcon(path)
+
 class FontNameEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
     def __init__(self,parent,node,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
@@ -266,14 +270,15 @@ class FigurePanel(QtGui.QWidget):
         self.layoutButtons = QtGui.QHBoxLayout()
 
         # Button for showing/hiding properties
-        self.buttonProperties = QtGui.QPushButton(self.tr('&Properties...'),self)
+        #self.buttonProperties = QtGui.QPushButton(self.tr('&Properties...'),self)
+        self.buttonProperties = QtGui.QPushButton(getIcon('configure.png'),'&Properties...',self)
         self.buttonProperties.setAutoDefault(False)
         self.buttonProperties.setDefault(False)
         self.connect(self.buttonProperties, QtCore.SIGNAL('clicked()'), self.onAdvancedClicked)
         self.layoutButtons.addWidget(self.buttonProperties)
 
         # Button for zooming
-        self.buttonZoom = QtGui.QPushButton(self.tr('Zoom'),self)
+        self.buttonZoom = QtGui.QPushButton(getIcon('viewmag.png'),self.tr('Zoom'),self)
         self.buttonZoom.setAutoDefault(False)
         self.buttonZoom.setDefault(False)
         self.connect(self.buttonZoom, QtCore.SIGNAL('clicked()'), self.onZoomClicked)
@@ -291,7 +296,7 @@ class FigurePanel(QtGui.QWidget):
         self.buttonPan.hide()
 
         # Button for reset view
-        self.buttonResetView = QtGui.QPushButton(self.tr('Reset view'),self)
+        self.buttonResetView = QtGui.QPushButton(getIcon('viewmagfit.png'),self.tr('Reset view'),self)
         self.buttonResetView.setAutoDefault(False)
         self.buttonResetView.setDefault(False)
         self.buttonResetView.setEnabled(False)
@@ -299,14 +304,14 @@ class FigurePanel(QtGui.QWidget):
         self.layoutButtons.addWidget(self.buttonResetView)
 
         # Button for exporting to file
-        self.buttonExport = QtGui.QPushButton(self.tr('&Export to file...'),self)
+        self.buttonExport = QtGui.QPushButton(getIcon('filesaveas.png'),self.tr('&Export to file...'),self)
         self.buttonExport.setAutoDefault(False)
         self.buttonExport.setDefault(False)
         self.connect(self.buttonExport, QtCore.SIGNAL('clicked()'), self.onExport)
         self.layoutButtons.addWidget(self.buttonExport)
 
         # Button for printing
-        self.buttonPrint = QtGui.QPushButton(self.tr('&Print...'),self)
+        self.buttonPrint = QtGui.QPushButton(getIcon('fileprint.png'),self.tr('&Print...'),self)
         self.buttonPrint.setAutoDefault(False)
         self.buttonPrint.setDefault(False)
         self.connect(self.buttonPrint, QtCore.SIGNAL('clicked()'), self.onPrint)
@@ -314,7 +319,7 @@ class FigurePanel(QtGui.QWidget):
 
         # Detach button
         if detachbutton:
-            self.buttonDetach = QtGui.QPushButton('&Detach figure',self)
+            self.buttonDetach = QtGui.QPushButton(getIcon('new_window.png'),'&Detach figure',self)
             self.buttonDetach.setAutoDefault(False)
             self.buttonDetach.setDefault(False)
             self.connect(self.buttonDetach, QtCore.SIGNAL('clicked()'), self.onDetach)
@@ -516,7 +521,7 @@ class FigurePanel(QtGui.QWidget):
         
         class ExportSettings(QtGui.QDialog):
             def __init__(self,parent=None):
-                QtGui.QDialog.__init__(self,parent,QtCore.Qt.Dialog | QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint)
+                QtGui.QDialog.__init__(self,parent,QtCore.Qt.Dialog | QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowSystemMenuHint)
                 
                 layout = QtGui.QGridLayout()
                 
@@ -559,6 +564,7 @@ class FigurePanel(QtGui.QWidget):
 
                 self.setLayout(layout)
                 
+                self.setWindowIcon(getIcon('filesaveas.png'))
                 self.setWindowTitle('Figure export settings')
 
         dialog = ExportSettings(self)
