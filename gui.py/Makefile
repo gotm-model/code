@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.7 2008-08-21 14:44:29 jorn Exp $
+#$Id: Makefile,v 1.8 2008-08-21 14:46:28 jorn Exp $
 
 # -----------------------------------------------------------
 # Makefile for creating the Python-based GUI for GOTM
@@ -25,7 +25,7 @@
 # catch Fortran stop statements.
 # -----------------------------------------------------------
 
-# If Pyhton and NumPy are installed at default locations, you may get
+# If Python and NumPy are installed at default locations, you may get
 # away by just setting PYTHONVERSION to your version of Python, e.g.,
 # python2.4, python2.5, etc. Other variables such as PYTHONINCDIR,
 # PYTHONLIBNAME and NUMPYDIR will then be derived from PYTHONVERSION.
