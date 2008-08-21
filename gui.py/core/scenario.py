@@ -343,7 +343,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                                 else:
                                     varval = '.false.'
                             elif vartype=='datetime':
-                                varval = '\''+varval.strftime('%Y-%m-%d %H:%M:%S')+'\''
+                                varval = '\''+xmlstore.util.formatDateTime(varval,iso=True)+'\''
                             else:
                                 raise Exception('Unknown variable type %s in scenario template.' % str(vartype))
                             nmlfile.write('   '+varname+' = '+varval+',\n')
@@ -521,7 +521,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                                 mintime,maxtime = dimrange
                                 if stop>maxtime and maxtime!=mintime:
                                     validity[node] = False
-                                    errors.append('Data series "%s" finishes at %s, before the simulation is set to end (%s).' % (node.getText(detail=1),maxtime.strftime(xmlstore.util.datetime_displayformat),stop.strftime(xmlstore.util.datetime_displayformat)))
+                                    errors.append('Data series "%s" finishes at %s, before the simulation is set to end (%s).' % (node.getText(detail=1),xmlstore.util.formatDateTime(maxtime),xmlstore.util.formatDateTime(stop)))
                     value.release()
                 
         return errors,validity

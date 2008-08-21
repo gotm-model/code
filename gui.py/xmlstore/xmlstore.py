@@ -21,9 +21,8 @@ import zipfile, tarfile, tempfile, shutil, StringIO
 # Import own custom modules
 import util
 
-# dateformat: date format used for storing datetime objects in XML.
-#   Used in conversion of (XML) string to datetime, and vice versa.
-dateformat = '%Y-%m-%d %H:%M:%S'
+# reDateTime: regular expression for parsing datetime strings in XML.
+reDateTime = re.compile('(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)')
 
 verbose = False
 
@@ -192,7 +191,7 @@ class Store:
             if not isinstance(value,valuetype): value = valuetype(value)
         assert not isinstance(value,Store.DataType), 'packValue should not be called for values of type Store.DataType.'
         if isinstance(value,datetime.datetime):
-            return value.strftime(dateformat)
+            return '%04i-%02i-%02i %02i:%02i:%02i' % (value.year,value.month,value.day,value.hour,value.minute,value.second)
         elif isinstance(value,bool):
             if value: return 'True'
             else:     return 'False'
@@ -206,7 +205,10 @@ class Store:
             valuetype = self.filetypes[valuetype]
         assert not issubclass(valuetype,Store.DataType), 'values of type Store.DataType cannot be unpacked from string.'
         if valuetype==datetime.datetime:
-            return util.parseDateTime(value,dateformat)
+            match = reDateTime.match(value)
+            if match==None: raise Exception('Cannot parse "%s" as datetime object.')
+            c = map(int,match.groups())
+            return datetime.datetime(c[0],c[1],c[2],c[3],c[4],c[5],tzinfo=util.utc)
         elif valuetype==bool:
             return (value=='True')
         else:
@@ -1855,7 +1857,7 @@ class Node:
         value = self.getValue(usedefault=usedefault)
         if value==None: return ''
         if fieldtype=='datetime':
-            value = value.strftime(util.datetime_displayformat)
+            value = util.formatDateTime(value)
         elif fieldtype=='bool':
             if value:
                 value = 'Yes'

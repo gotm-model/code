@@ -97,7 +97,6 @@ class referencedobject:
 # ------------------------------------------------------------------------------------------
 
 # Date format used for datetime strings visible to the user.
-datetime_displayformat = '%Y-%m-%d %H:%M:%S'
 utc = pytz.timezone('UTC')
 
 def dateTimeFromTuple(tup):
@@ -112,6 +111,17 @@ def parseDateTime(str,fmt):
     Counterpart of datetime.strftime.
     """
     return dateTimeFromTuple(time.strptime(str,fmt))
+    
+def formatDateTime(dt,iso=False):
+    """Converts a datetime object into a string.
+    Uses ISO format (%Y-%m-%d %H:%M:%S) if "iso" is set to True; otherwise
+    uses a pretty output format. NB currently the pretty output format is
+    ISO as well...
+    """
+    return '%04i-%02i-%02i %02i:%02i:%02i' % (dt.year,dt.month,dt.day,dt.hour,dt.minute,dt.second)
+
+    # strftime below cannot handle year<1900
+    #return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 # ------------------------------------------------------------------------------------------
 # XML helper functions

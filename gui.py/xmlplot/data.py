@@ -417,7 +417,7 @@ class LinkedMatrix(LinkedFileVariableStore):
                     refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
                     dimvalue = xmlstore.util.dateTimeFromTuple(refvals)
                     if prevdate!=None and dimvalue<prevdate:
-                        raise Exception('Line %i: observation time %s lies before previous observation time %s. Times should be increasing.' % (iline,dimvalue.strftime(xmlstore.util.datetime_displayformat),prevdate.strftime(common.datetime_displayformat)))
+                        raise Exception('Line %i: observation time %s lies before previous observation time %s. Times should be increasing.' % (iline,xmlstore.util.formatDateTime(dimvalue),xmlstore.util.formatDateTime(prevdate)))
                     prevdate = dimvalue
                     dimvalue = common.date2num(dimvalue)
                 
@@ -552,7 +552,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         for iline in range(vardata.shape[0]):
             if dimcount==1:
                 if dimisdate:
-                    target.write(dimdata[iline].strftime('%Y-%m-%d %H:%M:%S'))
+                    target.write(xmlstore.util.formatDateTime(dimdata[iline],iso=True))
                 else:
                     target.write('%.12g' % dimdata[iline])
             for ivar in range(varcount):
@@ -620,7 +620,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         assert data!=None, 'Cannot write data to file, because data is set to None.'
         times,depths,values = data
         for itime in range(times.shape[0]):
-            target.write(common.num2date(times[itime]).strftime('%Y-%m-%d %H:%M:%S'))
+            target.write(xmlstore.util.formatDateTime(common.num2date(times[itime]),iso=True))
             curdepths = depths[itime]
             curdata = values[itime]
             depthcount = len(curdepths)
@@ -1055,7 +1055,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
       if datematch==None:
         raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse date in "%s".' % (fullunit,reftime))
       year,month,day = map(int,datematch.group(1,2,3))
-      year = max(year,datetime.MINYEAR)
+      year = max(year,1900) # datetime year>=datetime.MINYEAR, but strftime needs year>=1900
       hours,minutes,seconds,mseconds = 0,0,0,0
       reftime = reftime[datematch.end():]
       if len(reftime)>0:
@@ -1080,6 +1080,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         dateref -= datetime.timedelta(hours=dhour,minutes=dmin)
       
       # Get time unit in number of days.
+      timeunit = timeunit.lower()
       if timeunit in ('seconds','second','secs','sec','ss','s'):
           timeunit = 1./86400.
       elif timeunit in ('minutes','minute','mins','min'):

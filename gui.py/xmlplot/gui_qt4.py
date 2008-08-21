@@ -266,67 +266,27 @@ class FigurePanel(QtGui.QWidget):
         self.factory = xmlstore.gui_qt4.PropertyEditorFactory(self.figure.properties,live=True,allowhide=True)
 
         layout = QtGui.QVBoxLayout()
-
-        self.layoutButtons = QtGui.QHBoxLayout()
-
-        # Button for showing/hiding properties
-        #self.buttonProperties = QtGui.QPushButton(self.tr('&Properties...'),self)
-        self.buttonProperties = QtGui.QPushButton(getIcon('configure.png'),'&Properties...',self)
-        self.buttonProperties.setAutoDefault(False)
-        self.buttonProperties.setDefault(False)
-        self.connect(self.buttonProperties, QtCore.SIGNAL('clicked()'), self.onAdvancedClicked)
-        self.layoutButtons.addWidget(self.buttonProperties)
-
-        # Button for zooming
-        self.buttonZoom = QtGui.QPushButton(getIcon('viewmag.png'),self.tr('Zoom'),self)
-        self.buttonZoom.setAutoDefault(False)
-        self.buttonZoom.setDefault(False)
-        self.connect(self.buttonZoom, QtCore.SIGNAL('clicked()'), self.onZoomClicked)
-        self.buttonZoom.setCheckable(True)
-        self.layoutButtons.addWidget(self.buttonZoom)
-
-        # Button for panning
-        self.buttonPan = QtGui.QPushButton(self.tr('Pan'),self)
-        self.buttonPan.setAutoDefault(False)
-        self.buttonPan.setDefault(False)
-        self.connect(self.buttonPan, QtCore.SIGNAL('clicked()'), self.onPanClicked)
-        self.buttonPan.setCheckable(True)
-        self.buttonPan.setEnabled(False)
-        self.layoutButtons.addWidget(self.buttonPan)
-        self.buttonPan.hide()
-
-        # Button for reset view
-        self.buttonResetView = QtGui.QPushButton(getIcon('viewmagfit.png'),self.tr('Reset view'),self)
-        self.buttonResetView.setAutoDefault(False)
-        self.buttonResetView.setDefault(False)
-        self.buttonResetView.setEnabled(False)
-        self.connect(self.buttonResetView, QtCore.SIGNAL('clicked()'), self.onResetViewClicked)
-        self.layoutButtons.addWidget(self.buttonResetView)
-
-        # Button for exporting to file
-        self.buttonExport = QtGui.QPushButton(getIcon('filesaveas.png'),self.tr('&Export to file...'),self)
-        self.buttonExport.setAutoDefault(False)
-        self.buttonExport.setDefault(False)
-        self.connect(self.buttonExport, QtCore.SIGNAL('clicked()'), self.onExport)
-        self.layoutButtons.addWidget(self.buttonExport)
-
-        # Button for printing
-        self.buttonPrint = QtGui.QPushButton(getIcon('fileprint.png'),self.tr('&Print...'),self)
-        self.buttonPrint.setAutoDefault(False)
-        self.buttonPrint.setDefault(False)
-        self.connect(self.buttonPrint, QtCore.SIGNAL('clicked()'), self.onPrint)
-        self.layoutButtons.addWidget(self.buttonPrint)
-
-        # Detach button
+        layout.setContentsMargins(0,0,0,0)
+        
+        self.toolbar = QtGui.QToolBar(self)
+        self.toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        self.toolbar.addAction(getIcon('configure.png'),'Properties...',self.onAdvancedClicked)
+        self.toolbar.addSeparator()
+        self.actZoom = self.toolbar.addAction(getIcon('viewmag.png'),'Zoom',self.onZoomClicked)
+        self.actPan = self.toolbar.addAction('Pan',self.onPanClicked)
+        self.actResetView = self.toolbar.addAction(getIcon('viewmagfit.png'),'Reset view',self.onResetViewClicked)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(getIcon('filesaveas.png'),'Save as',self.onExport)
+        self.toolbar.addAction(getIcon('fileprint.png'),'Print',self.onPrint)
         if detachbutton:
-            self.buttonDetach = QtGui.QPushButton(getIcon('new_window.png'),'&Detach figure',self)
-            self.buttonDetach.setAutoDefault(False)
-            self.buttonDetach.setDefault(False)
-            self.connect(self.buttonDetach, QtCore.SIGNAL('clicked()'), self.onDetach)
-            self.layoutButtons.addWidget(self.buttonDetach)
+            self.toolbar.addSeparator()
+            self.toolbar.addAction(getIcon('new_window.png'),'Detach figure',self.onDetach)
+
+        self.actZoom.setCheckable(True)
+        self.actPan.setCheckable(True)
 
         layout.addWidget(self.canvas)
-        layout.addLayout(self.layoutButtons)
+        layout.addWidget(self.toolbar)
 
         self.setLayout(layout)
 
@@ -388,8 +348,8 @@ class FigurePanel(QtGui.QWidget):
                     defaultrange = (defaultrange and axis['MinimumTime'].hasDefaultValue() and axis['MaximumTime'].hasDefaultValue())
                 else:
                     defaultrange = (defaultrange and axis['Minimum'].hasDefaultValue() and axis['Maximum'].hasDefaultValue())
-        self.buttonResetView.setEnabled(not defaultrange)
-        self.buttonPan.setEnabled(not defaultrange)
+        self.actResetView.setEnabled(not defaultrange)
+        self.actPan.setEnabled(not defaultrange)
 
     def updateWidthFromProperties(self):
         """Adjusts the canvas/figure width on screen based on the width set in the figure properties store. 
@@ -498,12 +458,13 @@ class FigurePanel(QtGui.QWidget):
         # We do not want the zoom function to stay active after the
         # zooming is done (although that is matPlotLib's default behavior)
         # Pretend the user clicks the zoom button again to disable zooming.
-        if self.buttonZoom.isChecked(): self.buttonZoom.click()
+        if self.actZoom.isChecked(): self.actZoom.trigger()
 
     def onResetViewClicked(self,*args):
         """Called when the user clicks the "Reset view" button.
         """
-        if self.buttonZoom.isChecked(): self.buttonZoom.click()
+        if self.actZoom.isChecked(): self.actZoom.trigger()
+        if self.actPan.isChecked(): self.actPan.trigger()
         axes = self.figure['Axes']
         xaxis = axes.getChildByNumber('Axis',0)
         yaxis = axes.getChildByNumber('Axis',1)
@@ -730,12 +691,7 @@ class FigureDialog(QtGui.QDialog):
             assert varstore==None and varname==None,'If a variable is to be plotted, both the variable store and the variable name must be provided.'
         self.panel.figure.setUpdating(True)
         
-        if closebutton:
-            self.buttonClose = QtGui.QPushButton('&Close',self)
-            self.buttonClose.setAutoDefault(False)
-            self.buttonClose.setDefault(False)
-            self.connect(self.buttonClose, QtCore.SIGNAL('clicked()'), self.accept)
-            self.panel.layoutButtons.addWidget(self.buttonClose)
+        if closebutton: self.panel.toolbar.addAction('Close',self.accept)
 
         title = self.panel.figure['Title'].getValue(usedefault=True)
         if title==None: title = 'Figure'
@@ -911,7 +867,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
 
                 if role==QtCore.Qt.DisplayRole:
                     if isinstance(val,datetime.datetime):
-                        return QtCore.QVariant(val.strftime(xmlstore.util.datetime_displayformat))
+                        return QtCore.QVariant(xmlstore.util.formatDateTime(val))
                     else:
                         return QtCore.QVariant('%.6g' % float(val))
                         
