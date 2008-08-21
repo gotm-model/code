@@ -691,7 +691,7 @@ class FigureDialog(QtGui.QDialog):
             assert varstore==None and varname==None,'If a variable is to be plotted, both the variable store and the variable name must be provided.'
         self.panel.figure.setUpdating(True)
         
-        if closebutton: self.panel.toolbar.addAction('Close',self.accept)
+        if closebutton: self.panel.toolbar.addAction(getIcon('exit.png'),'Close',self.accept)
 
         title = self.panel.figure['Title'].getValue(usedefault=True)
         if title==None: title = 'Figure'

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.60 2008-08-21 09:42:36 jorn Exp $
+#$Id: commonqt.py,v 1.61 2008-08-21 12:37:26 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -100,7 +100,7 @@ class ErrorDialog(QtGui.QWidget):
 
         self.labelStart = QtGui.QLabel('Errors occurred during execution of GOTM-GUI:',self)
         self.labelStart.setWordWrap(True)
-        self.labelStop = QtGui.QLabel('You may be able to continue working. However, we would appreciate it if you report this error. To do so, send an e-mail to <a href="mailto:gotm-users@googlegroups.com">gotm-users@googlegroups.com</a> with the above error message, and the circumstances under which the error occurred.',self)
+        self.labelStop = QtGui.QLabel('You may be able to continue working. However, we would appreciate it if you report this error. To do so, send an e-mail to <a href="mailto:gotm-users@gotm.net">gotm-users@gotm.net</a> with the above error message, and the circumstances under which the error occurred.',self)
         self.labelStop.setOpenExternalLinks(True)
         self.labelStop.setWordWrap(True)
 
@@ -280,7 +280,7 @@ class Wizard(QtGui.QDialog):
         self.bnlayout.addWidget(self.bnNext)
 
         if closebutton:
-            self.bnClose = QtGui.QPushButton(getIcon('exit.png'),'&Close',self)
+            self.bnClose = QtGui.QPushButton(xmlplot.gui_qt4.getIcon('exit.png'),'&Close',self)
             self.connect(self.bnClose, QtCore.SIGNAL('clicked()'), self.accept)
             self.bnlayout.addWidget(self.bnClose)
 

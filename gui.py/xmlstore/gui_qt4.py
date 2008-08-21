@@ -12,7 +12,7 @@ def needCloseButton():
     On some platforms the window manager does not provide facilities for
     closing windows, so we have to add a close button to the dialogs.
     """
-    return sys.platform!='win32'
+    return sys.platform!='win32a'
 
 # =======================================================================
 # Functionality for linking data types to editor classes, and adding
