@@ -19,8 +19,8 @@
 			<condition type="or">
 				<condition type="ne" variable="./LineStyle"  value="0"/>
 				<condition type="eq" variable="./MarkerType" value="2"/>
-				<condition type="eq" variable="./MarkerType" value="4"/>
-				<condition type="eq" variable="./MarkerType" value="5"/>
+				<condition type="eq" variable="./MarkerType" value="6"/>
+				<condition type="eq" variable="./MarkerType" value="7"/>
 			</condition>
 		</element>
 		<element name="MarkerType" type="select" label="marker type">
@@ -49,8 +49,8 @@
 				<condition type="eq" variable="./CanHaveMarker"  value="True"/>
 				<condition type="ne" variable="./MarkerType"     value="0"/>
 				<condition type="ne" variable="./MarkerType"     value="2"/>
-				<condition type="ne" variable="./MarkerType"     value="4"/>
-				<condition type="ne" variable="./MarkerType"     value="5"/>
+				<condition type="ne" variable="./MarkerType"     value="6"/>
+				<condition type="ne" variable="./MarkerType"     value="7"/>
 			</condition>
 		</element>
 	</template>
