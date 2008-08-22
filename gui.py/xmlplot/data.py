@@ -82,6 +82,9 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.xmlstore.DataFileEx)
         def getSlice(self,bounds):
             assert False, 'This function must be implemented by inheriting class.'
             
+        #def copy(self):
+        #    return LinkedFileVariableStore.LinkedFileVariable(None,data)
+            
     @classmethod
     def createTypedStore(ownclass):
         return LinkedFileVariableStore.DataFileCache()

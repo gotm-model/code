@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.8 2008-08-13 13:01:59 jorn Exp $
+#$Id: common.py,v 1.9 2008-08-22 12:40:51 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom
@@ -179,6 +179,7 @@ def getPercentile(data,cumweights,value,axis):
     highweight = (value-lowcoords)/(highcoords-lowcoords)
     return highval*highweight + lowval*(1.-highweight)
 
+defaultdimensioninfo = {'label':'','unit':'','preferredaxis':None,'datatype':'float','reversed':False}
 
 class VariableStore(UserDict.DictMixin):
     """Abstract base class for objects containing one or more variables that
@@ -200,7 +201,9 @@ class VariableStore(UserDict.DictMixin):
             self.rawlabels[newname] = varname
             self.newlabels[varname] = newname
         
-    def addChild(self,name,child):
+    def addChild(self,child,name=None):
+        if name==None and isinstance(child,Variable): name=child.getName_raw()
+        assert name!=None,'No name specified, but the child object does not have an internal name either.'
         self.children[name] = child
 
     def deleteAllChildren(self):
@@ -221,8 +224,11 @@ class VariableStore(UserDict.DictMixin):
     def getVariable(self,varname):
         """Returns a Variable object for the given short variable name.
         """
+        if varname in self.children:
+            child = self.children[varname]
+            if isinstance(child,Variable): return child
         rawname = varname
-        if self.rawlabels!=None: rawname = self.rawlabels[varname]
+        if self.rawlabels!=None: rawname = self.rawlabels.get(varname,None)
         var = self.getVariable_raw(rawname)
         if var!=None: var.forcedname = varname
         return var
@@ -232,8 +238,13 @@ class VariableStore(UserDict.DictMixin):
         (short) variable names, the normal mathematical operators, and any function
         supported by NumPy.
         """
+        # First see if the expression is just a variable name; if so, just
+        # return the associated variable.
+        result = self.getVariable(expression)
+        if result!=None: return result
+
+        # Create the namespace that must be used when then expression is evaluated.
         import expressions
-        if expression in self.getVariableNames(): return self.getVariable(expression)
         namespace = expressions.ExpressionNamespace(expressions.LazyStore(self))
         if defaultchild!=None:
             defaultvars = {}
@@ -246,6 +257,7 @@ class VariableStore(UserDict.DictMixin):
                 defaultvars[varname] = lazyvar
             namespace.append(defaultvars)
             
+        # Evaluate the expression
         try:
             result = expressions.VariableExpression(expression,namespace)
         except Exception,e:
@@ -255,12 +267,19 @@ class VariableStore(UserDict.DictMixin):
     def getVariableNames(self):
         """Returns a list of short names for all variables present in the store.
         """
-        if self.rawlabels!=None: return self.rawlabels.keys()
-        return self.getVariableNames_raw()
+        if self.rawlabels!=None:
+            varnames = self.rawlabels.keys()
+        else:
+            varnames = self.getVariableNames_raw()
+        for childname,child in self.children.iteritems():
+            if isinstance(child,Variable): varnames.append(childname)
+        return varnames
 
     def getPlottableVariableNames(self):
         varnames = self.getPlottableVariableNames_raw()
         if self.rawlabels!=None: varnames = [self.newlabels[varname] for varname in varnames]
+        for childname,child in self.children.iteritems():
+            if isinstance(child,Variable): varnames.append(childname)
         return varnames
         
     def getPlottableVariableNames_raw(self):
@@ -276,6 +295,8 @@ class VariableStore(UserDict.DictMixin):
         longnames = self.getVariableLongNames_raw()
         if self.rawlabels!=None:
             longnames = dict([(self.newlabels[varname],longname) for (varname,longname) in longnames.iteritems()])
+        for childname,child in self.children.iteritems():
+            if isinstance(child,Variable): longnames[childname] = child.getLongName()
         return longnames
         
     def getDimensionInfo(self,dimname):
@@ -287,7 +308,7 @@ class VariableStore(UserDict.DictMixin):
         This includes the label (long name), unit, data type, the preferred axis
         (x or y).
         """
-        return {'label':'','unit':'','preferredaxis':None,'datatype':'float','reversed':False}
+        return dict(defaultdimensioninfo)
 
     def getVariableTree(self,path,otherstores={},plottableonly=True):
         """Returns a tree representation of the variables in the data store,
@@ -628,3 +649,52 @@ class Variable:
         See also VariableStore.getDimensionInfo.
         """
         return self.store.getDimensionInfo_raw(dimname)
+        
+    def copy(self):
+        dims = self.getDimensions_raw()
+        data = self.getSlice([slice(None)]*len(dims))
+        return CustomVariable(data,
+                              self.getName_raw(),
+                              self.getLongName(),
+                              self.getUnit(),
+                              dims,
+                              dict([(d,self.getDimensionInfo_raw(d)) for d in dims]),
+                              self.hasReversedDimensions())
+        
+class CustomVariable(Variable):
+    def __init__(self,slice,name,longname=None,unit='',dimensions=(),dimensioninfo=None,hasreverseddimensions=False):
+        Variable.__init__(self,None)
+        self.name = name
+        self.longname = longname
+        self.unit = unit
+        self.dimensions = dimensions
+        self.dimensioninfo = {}
+        if dimensioninfo!=None:
+            for d in dimensions: self.dimensioninfo[d] = dimensioninfo[d]
+        self.hasreverseddimensions = hasreverseddimensions
+        self.slice = slice
+        
+    def getName_raw(self):
+        return self.name
+        
+    def getLongName(self):
+        return self.longname
+
+    def getUnit(self):
+        return self.unit
+
+    def getDimensions_raw(self):
+        return tuple(self.dimensions)
+
+    def getDimensionInfo_raw(self,dimname):
+        if dimname in self.dimensioninfo: return self.dimensioninfo[dimname]
+        return dict(defaultdimensioninfo)
+
+    def hasReversedDimensions(self):
+        return self.hasreverseddimensions
+
+    def getShape(self):
+        return tuple(self.slice.data.shape)
+
+    def getSlice(self,bounds):
+        return self.slice

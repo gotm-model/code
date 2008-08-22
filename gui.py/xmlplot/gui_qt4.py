@@ -12,11 +12,53 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 import xmlstore.xmlstore,xmlstore.util,xmlstore.gui_qt4
 import plot,data,common
 
+# ====================================================================================
+# Utility functions
+# ====================================================================================
+
 def getIcon(name):
+    """Returns an icon object (QtGui.QIcon) for the specified icon name.
+    """
     path = os.path.join(common.getDataRoot(),'icons',name)
     return QtGui.QIcon(path)
 
+def getFontSubstitute(fontname):
+    """Returns the name of the actual font that is linked on OS level to the
+    supplied font name. This is needed for MS Windows, which maintains a font
+    substitution table.
+    """
+    assert isinstance(fontname,basestring), 'Supplied argument must be a string.'
+
+    substitute = fontname
+
+    if sys.platform=='win32':
+        # Windows has a font substitution table in the registry, which links
+        # "virtual" fonts (e.g. the "dialog box font") to their actual TrueType
+        # name. Look up the supplied font name in this table, and return the
+        # substitute if present.
+        import _winreg
+        hkey = None
+        try:
+            hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,r'SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes')
+            value,datatype = _winreg.QueryValueEx(hkey,fontname)
+            substitute = value
+        except WindowsError:
+            pass
+        except EnvironmentError:
+            pass
+        if hkey!=None:
+            _winreg.CloseKey(hkey)
+        
+    return substitute
+    
+# ====================================================================================
+# Editors of custom data types that may be used in xmlstore.TypedStore objects
+# ====================================================================================
+
 class FontNameEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
+    """Widget for choosing a font, suitable for use in MatPlotLib figures.
+    Uses the font manager of MatPlotLib to obtain a list of available fonts.
+    """
     def __init__(self,parent,node,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
 
@@ -43,6 +85,8 @@ class FontNameEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
 xmlstore.gui_qt4.registerDataType('fontname',FontNameEditor)
 
 class ColorMapEditor(xmlstore.gui_qt4.SelectEditor):
+    """Widget for choosing a colormap, suitable for use in MatPlotLib figures.
+    """
     cache = {}
     canvas,figure = None,None
 
@@ -106,30 +150,52 @@ class ColorMapEditor(xmlstore.gui_qt4.SelectEditor):
 
 xmlstore.gui_qt4.registerDataType('colormap',ColorMapEditor)
 
-def getFontSubstitute(fontname):
-    assert isinstance(fontname,basestring), 'Supplied argument must be a string.'
+class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
+    """Widget for "editing" a linked file. Currently just displays a button that,
+    when clicked, displays a separate dialog.
+    """
+    def __init__(self,parent,node,fileprefix=None,datasourcedir=None, **kwargs):
+        QtGui.QWidget.__init__(self, parent)
 
-    substitute = fontname
-
-    if sys.platform=='win32':
-        # Windows has a font substitution table in the registry, which links
-        # "virtual" fonts (e.g. the "dialog box font") to their actual TrueType
-        # name. Look up the supplied font name in this table, and return the
-        # substitute if present.
-        import _winreg
-        hkey = None
-        try:
-            hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,r'SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes')
-            value,datatype = _winreg.QueryValueEx(hkey,fontname)
-            substitute = value
-        except WindowsError:
-            pass
-        except EnvironmentError:
-            pass
-        if hkey!=None:
-            _winreg.CloseKey(hkey)
+        lo = QtGui.QHBoxLayout()
         
-    return substitute
+        if fileprefix==None: fileprefix = node.getText(detail=1,capitalize=True)
+        self.prefix = fileprefix
+        self.linkedfile = None
+        self.datasourcedir = datasourcedir
+
+        self.plotbutton = QtGui.QPushButton(fileprefix+'...',self)
+        lo.addWidget(self.plotbutton)
+        #lo.addStretch(1)
+
+        self.setLayout(lo)
+
+        self.connect(self.plotbutton, QtCore.SIGNAL('clicked()'), self.onPlot)
+
+    def setValue(self,value):
+        if self.linkedfile!=None: self.linkedfile.release()
+        self.linkedfile = value.addref()
+        
+    def value(self):
+        return self.linkedfile.addref()
+
+    def onPlot(self):
+        dialog = LinkedFileEditorDialog(self.linkedfile,self,title=self.prefix,datasourcedir=self.datasourcedir)
+        ret = dialog.exec_()
+        if ret == QtGui.QDialog.Accepted:
+            self.linkedfile = dialog.linkedfile
+            self.editingFinished()
+        dialog.destroy()
+            
+    def destroy(self):
+        if self.linkedfile!=None: self.linkedfile.release()
+        QtGui.QWidget.destroy(self)
+
+xmlstore.gui_qt4.registerDataType('gotmdatafile',LinkedFileEditor)
+
+# ====================================================================================
+# Figure classes (toolbar, canvas, panel, dialog)
+# ====================================================================================
 
 class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
     """Class derived from MatPlotLib NavigationToolbar2, used only for its
@@ -231,28 +297,46 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
         return matplotlib.backend_bases.NavigationToolbar2.mouse_move(self,event)
 
 class FigureCanvas(FigureCanvasQTAgg):
+    """Canvas for Qt4, inheriting from FigureCanvasQTAgg. This class exposes the
+    canvas resize event to external subscribers. This is used to automatically
+    update the figure size when the user resize (the container of) the canvas.
+    """
+    def __init__(self, figure):
+        FigureCanvasQTAgg.__init__(self, figure)
+        self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent,False)
+
     def resizeEvent( self, e ):
         FigureCanvasQTAgg.resizeEvent( self, e )
         self.emit(QtCore.SIGNAL('afterResize()'))
 
+    def draw(self):
+        self.replot = True
+        self.get_renderer().clear()
+        self.update()
+
 class FigurePanel(QtGui.QWidget):
+    """This widget contains a MatPlotLib canvas that hosts a figure, plus a toolbar
+    that allows for figure zooming, panning, printing, exporting, etc.
+    """
     
     def __init__(self,parent,detachbutton=True):
         QtGui.QWidget.__init__(self,parent)
 
         # Create MatPlotLib figure with background and border colors equal to our background color.
-        bgcolor = self.palette().window().color()
-        mplfigure = matplotlib.figure.Figure(facecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.),edgecolor=(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255.),dpi=self.logicalDpiX())
+        #backgroundcolor = self.palette().color(self.backgroundRole())
+        #mplcolor = (backgroundcolor.red()/255., backgroundcolor.green()/255., backgroundcolor.blue()/255.)
+        #self.mplfigure = matplotlib.figure.Figure(facecolor=mplcolor,edgecolor=mplcolor,dpi=self.logicalDpiX())
+        self.mplfigure = matplotlib.figure.Figure(facecolor='none',frameon=False,dpi=self.logicalDpiX())
 
         # Create MatPlotLib canvas (Qt-backend) attached to our MatPlotLib figure.
-        self.canvas = FigureCanvas(mplfigure)
+        self.canvas = FigureCanvas(self.mplfigure)
         self.canvas.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
         self.canvas.setMinimumSize(300,250)
         self.connect(self.canvas, QtCore.SIGNAL('afterResize()'), self.afterCanvasResize)
 
         # Create our figure that encapsulates MatPlotLib figure.
         deffont = getFontSubstitute(unicode(self.fontInfo().family()))
-        self.figure = plot.Figure(mplfigure,defaultfont=deffont)
+        self.figure = plot.Figure(self.mplfigure,defaultfont=deffont)
         self.figure.registerCallback('completeStateChange',self.onFigureStateChanged)
 
         # Make sure we are notified when figure properties change
@@ -297,7 +381,7 @@ class FigurePanel(QtGui.QWidget):
 
         self.detachedfigures = []
         self.blockevents = False
-
+        
     def afterCanvasResize(self):
         w,h = self.canvas.figure.get_size_inches()
         self.blockevents = True
@@ -662,6 +746,8 @@ class FigurePanel(QtGui.QWidget):
         QtGui.QWidget.destroy(self,destroyWindow,destroySubWindows)
 
 class FigureDialog(QtGui.QDialog):
+    """Dialog that contains a single figure panel.
+    """
     
     def __init__(self,parent,varstore=None,varname=None,sourcefigure=None,figureproperties=None,quitonclose=False,closebutton=None,destroyonclose=True):
         QtGui.QDialog.__init__(self,parent,QtCore.Qt.Window | QtCore.Qt.WindowMaximizeButtonHint | QtCore.Qt.WindowSystemMenuHint )
@@ -719,59 +805,218 @@ class FigureDialog(QtGui.QDialog):
         QtGui.QDialog.destroy(self,destroyWindow,destroySubWindows)
 
 # =======================================================================
-# LinkedFileEditor: a Qt widget for "editing" a linked file. Currently
-# just displays a button that, when clicked, displays a separate dialog.
+# Classes for editing a GOTM data file
 # =======================================================================
 
-class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
-    def __init__(self,parent,node,fileprefix=None,datasourcedir=None, **kwargs):
-        QtGui.QWidget.__init__(self, parent)
+class LinkedFileEditorDialog(QtGui.QDialog):
 
-        lo = QtGui.QHBoxLayout()
-        
-        if fileprefix==None: fileprefix = node.getText(detail=1,capitalize=True)
-        self.prefix = fileprefix
-        self.linkedfile = None
+    def __init__(self,linkedfile,parent=None,title=None,datasourcedir=None):
+        QtGui.QDialog.__init__(self,parent,QtCore.Qt.Dialog)
+
+        self.privatestore = common.VariableStore()
+
+        self.linkedfile = linkedfile
         self.datasourcedir = datasourcedir
-
-        self.plotbutton = QtGui.QPushButton(fileprefix+'...',self)
-        lo.addWidget(self.plotbutton)
-        #lo.addStretch(1)
-
-        self.setLayout(lo)
-
-        self.connect(self.plotbutton, QtCore.SIGNAL('clicked()'), self.onPlot)
-
-    def setValue(self,value):
-        if self.linkedfile!=None: self.linkedfile.release()
-        self.linkedfile = value.addref()
         
-    def value(self):
-        return self.linkedfile.addref()
+        loRight = QtGui.QVBoxLayout()
 
-    def onPlot(self):
-        dialog = LinkedFilePlotDialog(self.linkedfile,title=self.prefix,datasourcedir=self.datasourcedir)
-        ret = dialog.exec_()
-        if ret == QtGui.QDialog.Accepted:
-            self.linkedfile = dialog.linkedfile
-            self.editingFinished()
-        dialog.destroy()
+        # Right panel: list of variables and plot panel.
+        #lolist = QtGui.QHBoxLayout()
+        #self.label = QtGui.QLabel('Variables:',self)
+        #lolist.addWidget(self.label)
+        #self.list = QtGui.QComboBox(self)
+        #namedict = self.linkedfile.getVariableLongNames()
+        #for name in self.linkedfile.keys():
+        #    self.list.addItem(namedict[name],QtCore.QVariant(name))
+        #self.list.setEnabled(self.list.count()>0)
+        #lolist.addWidget(self.list,1)
+        #loRight.addLayout(lolist)
+        
+        self.panels = []
+        namedict = self.linkedfile.getVariableLongNames()
+        if len(namedict)==1:
+            panel = FigurePanel(self)
+            self.panels.append(panel)
+            loRight.addWidget(panel)
+        else:
+            self.tabs = QtGui.QTabWidget(self)
+            for name in self.linkedfile.getVariableNames():
+                panel = FigurePanel(self.tabs)
+                self.tabs.addTab(panel,namedict[name])
+                self.panels.append(panel)
+            loRight.addWidget(self.tabs)
+
+        #self.panel = FigurePanel(self)
+        #firstaction = self.panel.toolbar.actions()[0]
+        #self.insertAction(firstaction,'Import data...',self.onImport)
+        #self.actExport = self.insertAction(firstaction,'Export data...',self.onExport)
+        #self.insertAction(firstaction,'Edit data...',self.onEditData)
+        #loRight.addWidget(self.panel)
+
+        # Bottom panel: OK and Cancel buttons
+        lobuttons = QtGui.QHBoxLayout()
+        lobuttons.addStretch(1)
+
+        self.buttonImport = QtGui.QPushButton('Import data...',self)
+        self.buttonExport = QtGui.QPushButton('Export data...',self)
+        self.buttonEdit   = QtGui.QPushButton('Edit data...',self)
+        self.buttonOk = QtGui.QPushButton('OK',self)
+        self.buttonCancel = QtGui.QPushButton('Cancel',self)
+        
+        self.buttonOk.setDefault(True)
+        self.buttonOk.setFocus()
+        
+        lobuttons.addWidget(self.buttonImport)
+        lobuttons.addWidget(self.buttonExport)
+        lobuttons.addWidget(self.buttonEdit)
+        lobuttons.addWidget(self.buttonOk)
+        lobuttons.addWidget(self.buttonCancel)
+        
+        loRight.addLayout(lobuttons)
+
+        self.setLayout(loRight)
+
+        #self.connect(self.list, QtCore.SIGNAL('currentIndexChanged(int)'), self.onSelectionChanged)
+        self.connect(self.buttonImport, QtCore.SIGNAL('clicked()'), self.onImport)
+        self.connect(self.buttonExport, QtCore.SIGNAL('clicked()'), self.onExport)
+        self.connect(self.buttonEdit,   QtCore.SIGNAL('clicked()'), self.onEditData)
+        self.connect(self.buttonOk,     QtCore.SIGNAL('clicked()'), self.accept)
+        self.connect(self.buttonCancel, QtCore.SIGNAL('clicked()'), self.reject)
+
+        self.resize(750, 450)
+
+        self.first = True
+        
+        #self.onSelectionChanged(0)
+
+        self.progressdialog = QtGui.QProgressDialog('',QtCore.QString(),0,0,self,QtCore.Qt.Dialog|QtCore.Qt.WindowTitleHint)
+        self.progressdialog.setModal(True)
+        self.progressdialog.setMinimumDuration(0)
+        self.progressdialog.setAutoReset(False)
+        self.progressdialog.setWindowTitle('Parsing data file...')
+
+        if title!=None: self.setWindowTitle(title)
+        
+    def insertAction(self,before,string,icon=None,target=None):
+        if target==None:
+            target = icon
+            icon = None
+        act = QtGui.QAction(string,self.panel.toolbar)
+        self.connect(act,QtCore.SIGNAL('triggered()'),target)
+        self.panel.toolbar.insertAction(before,act)
+        return act
+        
+    def onEditData(self):
+        dialog = LinkedFileDataEditor(self.linkedfile,self)
+        if dialog.exec_()!=QtGui.QDialog.Accepted: return
+        #self.panel.figure.update()
+        for panel in self.panels: panel.figure.update()
+        
+    def showEvent(self,ev):
+        if self.first:
+            self.setData()
+            self.first = False
+            for name,panel in zip(self.linkedfile.getVariableNames(),self.panels):
+                panel.plot(name,self.privatestore)
+            #self.onSelectionChanged(0)
+
+    def setData(self,datafile=None):
+
+        # Close any detached figures
+        #self.panel.closeDetached()
+        for panel in self.panels: panel.closeDetached()
+        
+        if datafile!=None:
+            self.linkedfile.setDataFile(datafile)
+
+        # Try to parse the supplied data file.
+        try:
+            try:
+                self.linkedfile.getData(callback=self.onParseProgress)
+            finally:
+                self.progressdialog.reset()
+        except Exception,e:
+            QtGui.QMessageBox.critical(self, 'Invalid data file', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+            if datafile==None: self.linkedfile.clear()
+            return
+            
+        # The data may be None, meaning that the data file is empty.
+        # In that case, explicitly create an empty table.
+        if self.linkedfile.data==None:
+            self.linkedfile.clear()
+        
+        # Add copies of the individual variables to our private store.
+        for varname in self.linkedfile.getVariableNames():
+            v = self.linkedfile.getVariable(varname)
+            self.privatestore.addChild(v.copy())
+
+        # Update figure
+        #self.panel.figure.update()
+        for panel in self.panels: panel.figure.update()
+        
+        # Enable the "Export" button if the data file is valid.
+        self.buttonExport.setEnabled(self.linkedfile.validate())
+
+    def onParseProgress(self,progress,status):
+        if self.progressdialog.isHidden(): self.progressdialog.show()
+        if progress!=None:
+            if self.progressdialog.maximum()==0: self.progressdialog.setMaximum(100)
+            self.progressdialog.setValue(int(100*progress))
+        elif self.progressdialog.maximum()!=0:
+            self.progressdialog.setMaximum(0)
+            self.progressdialog.setValue(0)
+            
+        self.progressdialog.setLabelText(status)
+        QtGui.qApp.processEvents()
+
+    def onImport(self):
+        dir = ''
+        if self.datasourcedir!=None: dir = self.datasourcedir.get('')
+        path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',dir,''))
+
+        # If the browse dialog was cancelled, just return.
+        if path=='': return
+        
+        # Store the data source directory
+        if self.datasourcedir!=None:
+            self.datasourcedir.set(os.path.dirname(path))
+
+        # Create data file for file-on-disk, copy it to memory,
+        # and release the data file. We do not want to lock the
+        # file on disk while working with the scenario.
+        df = xmlstore.xmlstore.DataContainerDirectory.DataFileFile(path)
+        memdf = xmlstore.xmlstore.DataFileMemory.fromDataFile(df)
+        df.release()
+
+        # Use the in-memory data file.
+        self.setData(memdf)
+        memdf.release()
+
+    def onExport(self):
+        path = unicode(QtGui.QFileDialog.getSaveFileName(self,'','',''))
+        
+        # If the browse dialog was cancelled, just return.
+        if path=='': return
+
+        # Save data file.
+        self.linkedfile.saveToFile(path)
+
+    def onSelectionChanged(self,index):
+        if index<0 or self.first:
+            self.panel.clear()
+        else:
+            varname = unicode(self.list.itemData(index,QtCore.Qt.UserRole).toString())
+            self.panel.plot(varname,self.privatestore)
             
     def destroy(self):
-        if self.linkedfile!=None: self.linkedfile.release()
-        QtGui.QWidget.destroy(self)
+        #self.panel.destroy()
+        for panel in self.panels: panel.destroy()
+        QtGui.QDialog.destroy(self)
 
-xmlstore.gui_qt4.registerDataType('gotmdatafile',LinkedFileEditor)
+class LinkedFileDataEditor(QtGui.QDialog):
 
-# =======================================================================
-# LinkedFilePlotDialog: a Qt widget for viewing the data files linked
-# to a GOTM scenario. This widget displays series of data points or
-# profiles in time, and allows for import or export of the data.
-# =======================================================================
-
-class LinkedFilePlotDialog(QtGui.QDialog):
     class LinkedDataModel(QtCore.QAbstractItemModel):
-        def __init__(self,datastore,type=0):
+        def __init__(self,datastore,type=0,autoload=True):
             QtCore.QAbstractItemModel.__init__(self)
             self.datastore = datastore
             self.type = type
@@ -781,7 +1026,7 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             self.rowlabels = None
             self.datelabels = True
             
-            #self.loadData()
+            if autoload: self.loadData()
 
         def loadData(self):
             rawdata = self.datastore.getData()
@@ -1029,12 +1274,11 @@ class LinkedFilePlotDialog(QtGui.QDialog):
                 model.setData(index, QtCore.QVariant(editor.value()))
             elif isinstance(editor,QtGui.QDateTimeEdit):
                 model.setData(index, QtCore.QVariant(editor.dateTime()))
-
-    def __init__(self,linkedfile,parent=None,title=None,datasourcedir=None):
+                
+    def __init__(self,linkedfile,parent=None,title=None):
         QtGui.QDialog.__init__(self,parent)
 
         self.linkedfile = linkedfile
-        self.datasourcedir = datasourcedir
 
         lo = QtGui.QGridLayout()
         
@@ -1044,16 +1288,13 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         loDataEdit = QtGui.QHBoxLayout()
         if isinstance(self.linkedfile,data.LinkedProfilesInTime):
             self.listTimes = QtGui.QListView(self)
-            self.listmodel = LinkedFilePlotDialog.LinkedDataModel(self.linkedfile,type=1)
+            self.listmodel = LinkedFileDataEditor.LinkedDataModel(self.linkedfile,type=1)
             self.listTimes.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
             self.listTimes.setModel(self.listmodel)
             loDataEdit.addWidget(self.listTimes)
             self.connect(self.listTimes.selectionModel(), QtCore.SIGNAL('currentChanged(const QModelIndex &,const QModelIndex &)'), self.onTimeChanged)
         self.tableData = QtGui.QTableView(self)
-        self.tablemodel = LinkedFilePlotDialog.LinkedDataModel(self.linkedfile)
-        self.connect(self.tablemodel, QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'), self.onDataEdited)
-        self.connect(self.tablemodel, QtCore.SIGNAL('rowsInserted(const QModelIndex &,int,int)'), self.onRowsInserted)
-        self.connect(self.tablemodel, QtCore.SIGNAL('rowsRemoved(const QModelIndex &,int,int)'), self.onRowsRemoved)
+        self.tablemodel = LinkedFileDataEditor.LinkedDataModel(self.linkedfile)
         self.tableData.verticalHeader().hide()
         self.tableData.verticalHeader().setDefaultSectionSize(20)
         self.tableData.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
@@ -1074,68 +1315,30 @@ class LinkedFilePlotDialog(QtGui.QDialog):
         loEditorButtons.addWidget(self.removerowbutton)
         self.connect(self.removerowbutton, QtCore.SIGNAL('clicked()'), self.removeRow)
 
-        self.importbutton = QtGui.QPushButton('Import data...',self)
-        loEditorButtons.addWidget(self.importbutton)
-        self.connect(self.importbutton, QtCore.SIGNAL('clicked()'), self.onImport)
-
-        self.exportbutton = QtGui.QPushButton('Export data...',self)
-        loEditorButtons.addWidget(self.exportbutton)
-        self.connect(self.exportbutton, QtCore.SIGNAL('clicked()'), self.onExport)
-
         loEditorButtons.addStretch(1)
 
         loLeft.addLayout(loDataEdit)
         loLeft.addLayout(loEditorButtons)
 
-        lo.addLayout(loLeft,0,0)
-
-        loRight = QtGui.QVBoxLayout()
-
-        # Right panel: list of variables and plot panel.
-        lolist = QtGui.QHBoxLayout()
-        self.label = QtGui.QLabel('Available variables:',self)
-        lolist.addWidget(self.label)
-        self.list = QtGui.QComboBox(self)
-        namedict = self.linkedfile.getVariableLongNames()
-        for name in self.linkedfile.keys():
-            self.list.addItem(namedict[name],QtCore.QVariant(name))
-        self.list.setEnabled(self.list.count()>0)
-        
-        lolist.addWidget(self.list,1)
-        loRight.addLayout(lolist)
-
-        self.panel = FigurePanel(self)
-        loRight.addWidget(self.panel)
-
-        lo.addLayout(loRight,0,1)
-
         # Bottom panel: OK and Cancel button
         lobuttons = QtGui.QHBoxLayout()
-        self.okbutton = QtGui.QPushButton('OK',self)
-        self.cancelbutton = QtGui.QPushButton('Cancel',self)
+        self.buttonOk     = QtGui.QPushButton('OK',    self)
+        self.buttonCancel = QtGui.QPushButton('Cancel',self)
         lobuttons.addStretch(1)
-        lobuttons.addWidget(self.okbutton)
-        lobuttons.addWidget(self.cancelbutton)
+        lobuttons.addWidget(self.buttonOk)
+        lobuttons.addWidget(self.buttonCancel)
         
-        lo.addLayout(lobuttons,1,0,1,2)
+        loLeft.addLayout(lobuttons)
 
-        self.setLayout(lo)
+        self.setLayout(loLeft)
 
-        self.connect(self.list, QtCore.SIGNAL('currentIndexChanged(int)'), self.onSelectionChanged)
-        self.connect(self.okbutton, QtCore.SIGNAL('clicked()'), self.accept)
-        self.connect(self.cancelbutton, QtCore.SIGNAL('clicked()'), self.reject)
+        self.connect(self.buttonOk,     QtCore.SIGNAL('clicked()'), self.accept)
+        self.connect(self.buttonCancel, QtCore.SIGNAL('clicked()'), self.reject)
+
+        self.buttonOk.setDefault(True)
+        self.buttonOk.setFocus()
 
         self.resize(750, 450)
-
-        self.first = True
-        
-        self.onSelectionChanged(0)
-
-        self.progressdialog = QtGui.QProgressDialog('',QtCore.QString(),0,0,self,QtCore.Qt.Dialog|QtCore.Qt.WindowTitleHint)
-        self.progressdialog.setModal(True)
-        self.progressdialog.setMinimumDuration(0)
-        self.progressdialog.setAutoReset(False)
-        self.progressdialog.setWindowTitle('Parsing data file...')
 
         if title!=None: self.setWindowTitle(title)
         
@@ -1160,127 +1363,10 @@ class LinkedFilePlotDialog(QtGui.QDialog):
             top = currow
         self.tablemodel.removeRow(top,bottom)
         
-    def dataChanged(self):
-        """Event handler: called when the data in the underlying store change
-        (new data loaded from source)        
-        """
-        self.tablemodel.reset()
-        self.tableData.verticalScrollBar().setValue(0)
-        self.tableData.horizontalScrollBar().setValue(0)
-        
-    def onDataEdited(self,topleft,bottomright):
-        """Event handler: called when the user has edited the data in our data model.
-        """
-        self.panel.figure.update()
-        
-    def onRowsInserted(self,parent,start,stop):
-        """Event handler: called when the user has inserted a row in our data model.
-        """
-        self.panel.figure.update()
-
-    def onRowsRemoved(self,parent,start,stop):
-        """Event handler: called when the user has removed one or more rows in our data model.
-        """
-        self.panel.figure.update()
-        
     def onTimeChanged(self,current,previous):
         """Event handler: called when the user selects another date (only used for profiles in time).
         """
         self.tablemodel.pos = current.row()
-        self.dataChanged()
-
-    def showEvent(self,ev):
-        if self.first:
-            self.setData()
-            self.first = False
-            self.onSelectionChanged(0)
-
-    def setData(self,datafile=None):
-
-        # Close any detached figures
-        self.panel.closeDetached()
-        
-        if datafile!=None:
-            self.linkedfile.setDataFile(datafile)
-
-        # Try to parse the supplied data file.
-        try:
-            try:
-                self.linkedfile.getData(callback=self.onParseProgress)
-            finally:
-                self.progressdialog.reset()
-        except Exception,e:
-            QtGui.QMessageBox.critical(self, 'Invalid data file', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
-            if datafile==None: self.linkedfile.clear()
-            return
-            
-        # The data may be None, meaning that the data file is empty.
-        # In that case, explicitly create an empty table.
-        if self.linkedfile.data==None:
-            self.linkedfile.clear()
-
-        # Reset the models attached to the variable store.
-        self.dataChanged()
-        if isinstance(self.linkedfile,data.LinkedProfilesInTime):
-            self.listmodel.reset()
-        
-        # Update figure
-        self.panel.figure.update()
-        
-        # Enable the "Export" button if the data file is valid.
-        self.exportbutton.setEnabled(self.linkedfile.validate())
-
-    def onParseProgress(self,progress,status):
-        if self.progressdialog.isHidden(): self.progressdialog.show()
-        if progress!=None:
-            if self.progressdialog.maximum()==0: self.progressdialog.setMaximum(100)
-            self.progressdialog.setValue(int(100*progress))
-        elif self.progressdialog.maximum()!=0:
-            self.progressdialog.setMaximum(0)
-            self.progressdialog.setValue(0)
-            
-        self.progressdialog.setLabelText(status)
-        QtGui.qApp.processEvents()
-
-    def onImport(self):
-        dir = ''
-        if self.datasourcedir!=None: dir = self.datasourcedir.get('')
-        path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',dir,''))
-
-        # If the browse dialog was cancelled, just return.
-        if path=='': return
-        
-        # Store the data source directory
-        if self.datasourcedir!=None:
-            self.datasourcedir.set(os.path.dirname(path))
-
-        # Create data file for file-on-disk, copy it to memory,
-        # and release the data file. We do not want to lock the
-        # file on disk while working with the scenario.
-        df = xmlstore.xmlstore.DataContainerDirectory.DataFileFile(path)
-        memdf = xmlstore.xmlstore.DataFileMemory.fromDataFile(df)
-        df.release()
-
-        # Use the in-memory data file.
-        self.setData(memdf)
-        memdf.release()
-
-    def onExport(self):
-        path = unicode(QtGui.QFileDialog.getSaveFileName(self,'','',''))
-        
-        # If the browse dialog was cancelled, just return.
-        if path=='': return
-
-        # Save data file.
-        self.linkedfile.saveToFile(path)
-
-    def onSelectionChanged(self,index):
-        if index<0 or self.first:
-            self.panel.clear()
-        else:
-            varname = unicode(self.list.itemData(index,QtCore.Qt.UserRole).toString())
-            self.panel.plot(varname,self.linkedfile)
-            
-    def destroy(self):
-        self.panel.destroy()
-        QtGui.QDialog.destroy(self)
+        self.tablemodel.reset()
+        self.tableData.horizontalScrollBar().setValue(0)
+        self.tableData.verticalScrollBar().setValue(0)

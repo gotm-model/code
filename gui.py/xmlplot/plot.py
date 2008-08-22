@@ -393,7 +393,7 @@ class Figure(xmlstore.util.referencedobject):
         """Adds a VariableStore data source to the figure, using the specified
         name.
         """
-        self.source.addChild(name,obj)
+        self.source.addChild(obj,name)
         if self.defaultsource==None: self.defaultsource = name
 
     def clearProperties(self,deleteoptional=True):
@@ -467,7 +467,7 @@ class Figure(xmlstore.util.referencedobject):
         """
         properties = sourcefigure.getPropertiesCopy()
         for name,child in sourcefigure.source.children.iteritems():
-            self.source.addChild(name,child)
+            self.source.addChild(child,name)
         self.defaultsource = sourcefigure.defaultsource
         self.setProperties(properties)
                 
