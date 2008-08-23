@@ -1689,6 +1689,7 @@ class Node:
         self.controller = controller
         self.store = controller.store
         self.templatenode = templatenode
+        self.valueroot = valuenode
         self.valuenode = valuenode
         self.location = tuple(location)
         self.parent = parent
@@ -1697,36 +1698,46 @@ class Node:
         self.visible = (not self.templatenode.hasAttribute('hidden'))
         self.grouponly = self.templatenode.hasAttribute('grouponly')
 
-        ids = []
+        # Build a dictionary with all child value nodes
+        valuechildren = {}
+        if self.valueroot!=None:
+            for ch in self.valueroot.childNodes:
+                if ch.nodeType==ch.ELEMENT_NODE:
+                    valuechildren.setdefault(ch.localName,[]).append(ch)
+
+        canhavechildren = False
         for templatechild in self.templatenode.childNodes:
             if templatechild.nodeType==templatechild.ELEMENT_NODE and templatechild.localName=='element':
                 childid = templatechild.getAttribute('name')
-                ids.append(childid)
+                canhavechildren = True
                 
                 # Get all value nodes that correspond to the current template child.
-                valuechildren = ()
+                curvaluechildren = valuechildren.pop(childid,())
                 if not templatechild.hasAttribute('maxoccurs'):
                     # The node always occurs exactly one time.
-                    if self.valuenode!=None:
-                        valuechildren = (util.findDescendantNode(self.valuenode,[childid]),)
-                    else:
-                        valuechildren = (None,)
-                elif self.valuenode!=None:
+                    assert len(curvaluechildren)<=1, 'Node "%s" can at most occur 1 time, but it occurs %i times.' % (childid,len(curvaluechildren))
+                    if len(curvaluechildren)==0: curvaluechildren = (None,)
+                else:
                     # The node may occur zero or more times.
                     maxoccurs = int(templatechild.getAttribute('maxoccurs'))
-                    valuechildren = util.findDescendantNodes(self.valuenode,[childid])
-                    assert len(valuechildren)<=maxoccurs, 'Number of children is greater than the imposed maximum (%i).' % maxoccurs
+                    assert len(curvaluechildren)<=maxoccurs, 'Node "%s": number of children (%i) is greater than the imposed maximum (%i).' % (childid,len(curvaluechildren),maxoccurs)
 
                 # Create nodes for all value nodes found.                     
                 childloc = list(self.location) + [childid]
-                for valuechild in valuechildren:
+                for valuechild in curvaluechildren:
                     self.children.append(Node(self.controller,templatechild,valuechild,childloc,parent=self))
 
+        # For nodes that can have children as well as a value, the value is stored in a
+        # child node. This child node carries the same name as the parent.
+        if canhavechildren and self.canHaveValue():
+            curvaluechildren = valuechildren.pop(self.location[-1],(None,))
+            assert len(curvaluechildren)<=1, 'Value node (%s) can at most occur 1 time below %s, but it occurs %i times.' % (self.location[-1],self.location,len(curvaluechildren))
+            self.valuenode = curvaluechildren[0]
+
         # Check for existing value nodes that are not in the template.
-        if self.valuenode!=None:
-            for ch in [ch for ch in self.valuenode.childNodes if ch.nodeType==ch.ELEMENT_NODE and ch.localName not in ids and not ch.hasAttribute('metadata')]:
-                print 'WARNING! Value "%s" below "%s" was unexpected and will be ignored.' % (ch.localName,self.location)
-                self.valuenode.removeChild(ch)
+        for childid,childnodes in valuechildren.iteritems():
+            print 'WARNING! Value "%s" below "%s" was unexpected and will be ignored.' % (childid,self.location)
+            for ch in childnodes: self.valueroot.removeChild(ch)
 
     def __str__(self):
         """Returns a string representation of the node.
@@ -1743,6 +1754,7 @@ class Node:
         self.children = []
         self.parent = None
         self.templatenode = None
+        self.valueroot = None
         self.valuenode = None
         self.store = None
         
@@ -1760,7 +1772,7 @@ class Node:
         value = None
         if self.valuenode!=None:
             valuetype = self.templatenode.getAttribute('type')
-            assert valuetype!='', 'getValue was used on node without type (%s); canHaveValue should have showed that this node does not have a type.' % self
+            assert valuetype!='', 'getValue was used on node without type (%s); canHaveValue should have showed that this node does not have a type.' % (str(self),)
             value = self.store.getNodeProperty(self.valuenode,valuetype=valuetype,infonode=self.templatenode)
         if value==None and usedefault: value = self.getDefaultValue()
         return value
@@ -1781,12 +1793,13 @@ class Node:
         if defaultstore==None: return None
         defaultnode = defaultstore.mapForeignNode(self)
         if defaultnode==None: return None
-        return defaultnode.getValue()
+        return defaultnode.getValue(usedefault=True)
         
     def hasDefaultValue(self):
         value = self.getValue()
+        if value==None: return True
         defvalue = self.getDefaultValue()
-        hasdef = (value==None or value==defvalue)
+        hasdef = value==defvalue
         if isinstance(value,   util.referencedobject): value.release()
         if isinstance(defvalue,util.referencedobject): defvalue.release()
         return hasdef
@@ -1825,20 +1838,21 @@ class Node:
         # First clear children.
         cleared = True
         if recursive:
-            if deleteclones: self.removeAllChildren()
+            if deleteclones: self.removeAllChildren(optionalonly=True)
             for ch in self.children:
                 if not ch.clearValue(recursive=True,skipreadonly=skipreadonly,deleteclones=deleteclones):
                     cleared = False
             
         # Do not clear if (1) it is already cleared (result: success), (2) it is
         # read-only and the user wants to respect that (result: failure),
-        # or (3) it is the root node (result: failure).
+        # (3) it is the root node (result: failure), or (4) clearing the child nodes failed.
         if self.valuenode==None: return True
-        if (skipreadonly and self.isReadOnly()) or self.parent==None: return False
+        if (skipreadonly and self.isReadOnly()) or self.parent==None or not cleared: return False
         
         # Clear if (1) this node can have no value - it must occur, and (2) the attached interfaces approve.
-        if cleared and (not self.canHaveClones()) and self.controller.onBeforeChange(self,None):
+        if (not self.canHaveClones()) and self.controller.onBeforeChange(self,None):
             self.store.clearNodeProperty(self.valuenode)
+            if (self.valueroot==self.valuenode): self.valueroot = None
             self.valuenode = None
             self.controller.onChange(self,'value')
             return True
@@ -1899,7 +1913,7 @@ class Node:
         existingcount = 0
         for curindex,child in enumerate(self.children):
             if child.location[-1]==childname:
-                assert id==None or child.getSecondaryId()!=id, 'Node with the specified id already exists.'
+                assert id==None or child.getSecondaryId()!=id, 'Child node with the id "%s" already exists below %s.' % (id,str(self.location))
                 index = curindex
                 templatenode = child.templatenode
                 existingcount += 1
@@ -1942,25 +1956,25 @@ class Node:
                 
         # Ensure the parent to insert below has a value node
         # (we need to insert the value node below it to give the child life)
-        self.createValueNode()
+        self.createValueNode(rootonly=True)
         
         # Find the XML document
-        doc = self.valuenode
+        doc = self.valueroot
         while doc.parentNode!=None: doc=doc.parentNode
         assert doc.nodeType==doc.DOCUMENT_NODE, 'Could not find DOM document node. Node "%s" does not have a parent.' % doc.tagName
 
         # Create the value node for the current child
-        node = doc.createElementNS(self.valuenode.namespaceURI,childname)
+        node = doc.createElementNS(self.valueroot.namespaceURI,childname)
         if id!=None: node.setAttribute('id',id)
         
         # Insert the value node
         if position>=existingcount:
-            valuenode = self.valuenode.appendChild(node)
+            valueroot = self.valueroot.appendChild(node)
         else:
-            valuenode = self.valuenode.insertBefore(node,self.children[index].valuenode)
+            valueroot = self.valueroot.insertBefore(node,self.children[index].valueroot)
             
         # Create the child (template + value)
-        child = Node(self.controller,templatenode,valuenode,list(self.location)+[childname],parent=self)
+        child = Node(self.controller,templatenode,valueroot,list(self.location)+[childname],parent=self)
         assert child.canHaveClones(), 'Cannot add another child "%s" because there can exist only one child with this name.' % childname
         child.updateVisibility(recursive=True,notify=False)
         
@@ -1974,21 +1988,46 @@ class Node:
         # Return the newly inserted child.
         return child
         
-    def createValueNode(self):
+    def createValueNode(self,rootonly=False):
         """Creates the (empty) value node, and creates value nodes for
         all ancestors that lacks a value node as well.
         """
-        if self.valuenode!=None: return
+        if self.valuenode!=None or (rootonly and self.valueroot!=None): return
+        assert rootonly or self.canHaveValue(),'Asked to create value node for %s, but this node cannot have a value.' % (str(self.location),)
+
+        # Build a list of all ancestors that do not have a value root yet.
         parents = []
         root = self
-        while root.valuenode==None:
+        while root.valueroot==None:
             parents.insert(0,root)
             root = root.parent
-        valueroot = root.valuenode
-        for par in parents:
-            valueroot = util.findDescendantNode(valueroot,[par.getId()],create=True)
-        self.valuenode = valueroot
+        valueroot = root.valueroot
+        
+        # Find the XML document for values.
+        doc = valueroot
+        while doc.parentNode!=None: doc=doc.parentNode
+        assert doc.nodeType==doc.DOCUMENT_NODE, 'Could not find DOM document node needed to create %s. Node "%s" does not have a parent.' % (location,doc.tagName)
 
+        # Create value roots for all ancestors that lack one.
+        for par in parents:
+            par.valueroot = doc.createElementNS(valueroot.namespaceURI,par.getId())
+            valueroot.appendChild(par.valueroot)
+            valueroot = par.valueroot
+
+        if self.canHaveValue() and self.canHaveChildren():
+            # This node can have a value as well as children, and therefore needs a
+            # separate value node.
+            if rootonly: return
+            self.valuenode = doc.createElementNS(self.valueroot.namespaceURI,self.getId())
+            self.valueroot.appendChild(self.valuenode)
+        else:
+            # This node uses the value root for storing its value.
+            self.valuenode = self.valueroot
+            
+        import xml.dom
+        assert isinstance(self.valueroot,xml.dom.Node),'Value root is not of type xml.dom.Node. Value = %s' % (str(self.valueroot),)
+        assert isinstance(self.valuenode,xml.dom.Node),'Value node is not of type xml.dom.Node. Value = %s' % (str(self.valuenode),)
+        
     def getChildById(self,childname,id,create=False):
         """Gets an optional node (typically a node that can occur more than once)
         by its identifier. If the it does not exist yet, and create is True,
@@ -2068,8 +2107,10 @@ class Node:
         node.removeAllChildren(optionalonly=False)
         self.controller.beforeVisibilityChange(node,False,False)
         self.children.pop(pos)
-        if node.valuenode!=None:
-            self.store.clearNodeProperty(node.valuenode)
+        if node.valueroot!=None:
+            assert self.valueroot!=None,'Child has a value root but the parent does not.'
+            self.valueroot.removeChild(node.valueroot)
+            node.valueroot = None
             node.valuenode = None
         self.controller.afterVisibilityChange(node,False,False)
         node.destroy()
@@ -2084,8 +2125,8 @@ class Node:
         nodes that can occur multiple times, and must then be set on creation
         of the node. Returns an empty string if the secondary id has not been set.
         """
-        assert self.valuenode!=None, 'The value node has not been set; this node cannot be optional.'
-        return self.valuenode.getAttribute('id')
+        assert self.valueroot!=None, 'The value node has not been set; this node cannot be optional.'
+        return self.valueroot.getAttribute('id')
 
     def getValueType(self):
         """Returns the value type of the node; an empty string is returned
@@ -2202,6 +2243,12 @@ class Node:
         (e.g. when the node is a container only).
         """
         return self.templatenode.hasAttribute('type')
+
+    def canHaveChildren(self):
+        if len(self.children)>0: return True
+        for templatechild in self.templatenode.childNodes:
+            if templatechild.nodeType==templatechild.ELEMENT_NODE and templatechild.localName=='element': return True
+        return False
 
     def canHaveClones(self):
         """Returns True if the node can occurs more than once.
@@ -2529,7 +2576,12 @@ class TypedStore(util.referencedobject):
 
         storeversion = valueroot.getAttribute('version')
         assert storeversion==self.version or storeversion=='', 'Versions of the xml schema ("%s") and and the xml values ("%s") do not match.' % (self.version,storeversion)
-                    
+
+        if not valueroot.hasAttribute('syntax'):
+            syntax = (1,0)
+        else:
+            syntax = tuple(map(int,valueroot.getAttribute('syntax').split('.')))
+
         self.store = Store(valuedom,xmlroot=valueroot)
         self.store.filetypes.update({'select'  :int,
                                      'file'    :DataFile,
@@ -2857,7 +2909,7 @@ class TypedStore(util.referencedobject):
                         errors.append('variable "%s" is set to %.6g, which lies above the maximum of %.6g.' % (node.getText(1),value,float(maxval)))
         
         return errors,validity
-
+        
     def convert(self,target,callback=None):
         """Converts the TypedStore object to the specified target. The target may be
         a version string (a new TypedStore object with the desired version will be created)
