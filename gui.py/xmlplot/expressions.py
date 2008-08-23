@@ -249,7 +249,7 @@ class LazyVariable(LazyExpression):
         return self.args[0].getSlice(slic)
         
     def getText(self,type=0,addparentheses=True):
-        assert type>=0 and type<=2, 'Argument "type" must be 0 (identifier), 1 (short name) or 2 (long name).'
+        assert type>=0 and type<=3, 'Argument "type" must be 0 (identifier), 1 (short name) 2 (long name), or 3 (unit).'
         if type==0 or type==1:
             # Return the short name of the object (optionally with slice specification).
             if type==0 and self.name!=None:
@@ -259,12 +259,14 @@ class LazyVariable(LazyExpression):
             if self.slice!=None:
                 res += LazyExpression.slices2string(self.slice)
             return res
-        else:
+        elif type==2:
             # Return the long name of the object (optionally with slice specification).
             res = self.args[0].getLongName()
             if self.slice!=None:
                 res += LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
             return res
+        else:
+            return self.args[0].getUnit()
         
     def getShape(self):
         baseshape = self.args[0].getShape()
@@ -483,6 +485,9 @@ class VariableExpression(common.Variable):
         
     def getLongName(self):
         return ', '.join([node.getText(type=2,addparentheses=False) for node in self.root])
+
+    def getUnit(self):
+        return ', '.join([node.getText(type=3,addparentheses=False) for node in self.root])
 
     def getSlice(self,bounds):
         return [node.getValue() for node in self.root]
