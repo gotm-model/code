@@ -319,7 +319,6 @@ class Figure(xmlstore.util.referencedobject):
         # Set some default properties.
         self.defaultproperties['FontName'       ].setValue(defaultfont)
         self.defaultproperties['FontScaling'    ].setValue(100)
-        self.defaultproperties['Grid'           ].setValue(False)
         self.defaultproperties['Legend/Location'].setValue(0)
         self.defaultproperties['HasColorMap'    ].setValue(False)
         self.defaultproperties['ColorMap'       ].setValue(0)
@@ -934,6 +933,9 @@ class Figure(xmlstore.util.referencedobject):
                 #legend = self.figure.legend(legenddata['handles'],legenddata['labels'],1,prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
                 legend.set_zorder(zorder)
                 zorder += 1
+
+        # Auto-show grid if we use 1 independent dimensions
+        self.defaultproperties['Grid'].setValue(plotcount[2]==0)
 
         # Set whether the figure uses a colormap
         self.defaultproperties['HasColorMap'].setValue(hascolormap)
