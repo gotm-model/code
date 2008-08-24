@@ -9,6 +9,6 @@
 		</element>
 	</element>
 	<element name="FigureSettings">
-		<link path="[xmlplot]/schemas/figure/0001.xml" maxoccurs="1000"/>
+		<link path="[xmlplot]/schemas/figure/0002.xml" maxoccurs="1000"/>
 	</element>
 </element>

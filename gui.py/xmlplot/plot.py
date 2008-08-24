@@ -272,7 +272,7 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
     """
 
     def __init__(self,valueroot=None,adddefault = True):
-        schemadom = os.path.join(common.getDataRoot(),'schemas/figure/0001.xml')
+        schemadom = os.path.join(common.getDataRoot(),'schemas/figure/0002.xml')
         xmlstore.xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
 
     schemadict = None
@@ -319,6 +319,9 @@ class Figure(xmlstore.util.referencedobject):
         # Set some default properties.
         self.defaultproperties['FontName'       ].setValue(defaultfont)
         self.defaultproperties['FontScaling'    ].setValue(100)
+        self.defaultproperties['Map'            ].setValue(False)
+        self.defaultproperties['Map/Resolution' ].setValue(1)
+        self.defaultproperties['Map/DrawCoastlines'].setValue(True)
         self.defaultproperties['Legend/Location'].setValue(0)
         self.defaultproperties['HasColorMap'    ].setValue(False)
         self.defaultproperties['ColorMap'       ].setValue(0)
@@ -559,7 +562,7 @@ class Figure(xmlstore.util.referencedobject):
         # Obtain the currently selected colormap, and make sure NaNs are plotted as white.
         cm = getattr(matplotlib.cm,colormaps[self.properties['ColorMap'].getValue(usedefault=True)])
         cm.set_bad('w')
-        
+                
         # Start with z order index 0 (incrementing it with every item added)
         zorder = 0
         
@@ -570,7 +573,8 @@ class Figure(xmlstore.util.referencedobject):
         # label) to be filled while adding data series.
         legenddata = {'handles':[],'labels':[]}
 
-        for (iseries,seriesnode) in enumerate(forcedseries):
+        seriesslices,seriesvariables,seriesinfo = [],[],[]
+        for seriesnode in forcedseries:
             # Get the path of the data source (data source identifier + variable id)
             varpath = seriesnode.getSecondaryId()
             if varpath=='':
@@ -694,6 +698,68 @@ class Figure(xmlstore.util.referencedobject):
                 if effrange[0]==None or datamin<effrange[0]: effrange[0] = datamin
                 if effrange[1]==None or datamax>effrange[1]: effrange[1] = datamax
                 
+            # Now determine the axes ranges
+            varslice = varslices[0]
+            info = {}
+            X,Y = None,None
+            if varslice.ndim==1:
+                X,Y = varslice.coords[0], varslice.data
+                switchaxes = (dim2data[varslice.dimensions[0]]['preferredaxis']=='y')
+                xname,yname = varslice.dimensions[0], varpath
+                if switchaxes:
+                    X,Y = Y,X
+                    xname,yname = yname,xname
+                info.update({'x':X,'y':Y,'switchaxes':switchaxes})
+                dim2data[xname]['axis'] = 'x'
+                dim2data[yname]['axis'] = 'y'
+            elif varslice.ndim==2:
+                xdim,ydim = 0,1
+                if var.hasReversedDimensions(): xdim,ydim = 1,0
+                prefaxis = (dim2data[varslice.dimensions[0]]['preferredaxis'],dim2data[varslice.dimensions[1]]['preferredaxis'])
+                if (prefaxis[xdim]=='y' and prefaxis[ydim]!='y') or (prefaxis[ydim]=='x' and prefaxis[xdim]!='x'):
+                    # One independent dimension prefers to switch axis and the
+                    # other does not disagree.
+                    xdim,ydim = ydim,xdim
+                X = coords[xdim]
+                Y = coords[ydim]
+                info.update({'x':X,'y':Y,'xdim':xdim,'ydim':ydim})
+                dim2data[varslice.dimensions[xdim]]['axis'] = 'x'
+                dim2data[varslice.dimensions[ydim]]['axis'] = 'y'
+                    
+            seriesvariables.append(var)
+            seriesslices.append(varslices)
+            seriesinfo.append(info)
+                
+        ismap = self.properties['Map'].getValue(usedefault=True)
+        drawaxes = axes
+        if ismap:
+            # Find longitude and latitude ranges
+            xrange,yrange = [None,None],[None,None]
+            for info in seriesinfo:
+                X,Y = info.get('x',None),info.get('y',None)
+                if X!=None:
+                    curmin,curmax = X.min(),X.max()
+                    if xrange[0]==None or curmin<xrange[0]: xrange[0] = curmin
+                    if xrange[1]==None or curmax>xrange[1]: xrange[1] = curmax
+                if Y!=None:
+                    curmin,curmax = Y.min(),Y.max()
+                    if yrange[0]==None or curmin<yrange[0]: yrange[0] = curmin
+                    if yrange[1]==None or curmax>yrange[1]: yrange[1] = curmax
+
+            # Create the basemap object
+            import mpl_toolkits.basemap
+            res = self.properties['Map/Resolution'].getValue(usedefault=True)
+            res = {1:'c',2:'l',3:'i',4:'h',5:'f'}[res]
+            basemap = mpl_toolkits.basemap.Basemap(llcrnrlon=xrange[0],llcrnrlat=yrange[0],urcrnrlon=xrange[1],urcrnrlat=yrange[1],resolution=res,ax=axes)
+            drawaxes = basemap
+
+            # Transform x,y coordinates
+            for info in seriesinfo:
+                if 'x' in info and 'y' in info:
+                    info['x'],info['y'] = basemap(info['x'],info['y'])
+
+        for seriesnode,var,varslices,info in zip(forcedseries,seriesvariables,seriesslices,seriesinfo):
+
             varslice = varslices[0]
             
             # Plot the data series
@@ -702,17 +768,13 @@ class Figure(xmlstore.util.referencedobject):
                 # No plotting of coordinate-less data (yet)
                 pass
             if varslice.ndim==1:
-                # One-dimensional coordinate space (x). Use x-axis for coordinates, unless the
-                # dimension information states it is preferably uses the y-axis.
-                X,Y = varslice.coords[0], varslice.data
-                xname,yname = varslice.dimensions[0], varpath
-                switchaxes = (dim2data[varslice.dimensions[0]]['preferredaxis']=='y')
-                if switchaxes:
-                    X,Y = Y,X
-                    xname,yname = yname,xname
+                # One-dimensional coordinate space (x).
+                
+                # Retrieve cached coordinates
+                X,Y,switchaxes = info['x'],info['y'],info['switchaxes']
                 
                 # Get data series style settings
-                defaultseriesnode['LineProperties/Color'].setValue(xmlstore.xmlstore.StoreColor(*linecolors[plotcount[1]%len(linecolors)]))
+                defaultseriesnode['LineProperties/Line/Color'].setValue(xmlstore.xmlstore.StoreColor(*linecolors[plotcount[1]%len(linecolors)]))
                 plotargs = getLineProperties(seriesnode['LineProperties'])
                 
                 # plot confidence interval (if any)
@@ -724,7 +786,7 @@ class Figure(xmlstore.util.referencedobject):
                     lbound = varslice.lbound
                     if lbound==None: lbound = varslice.data
                     
-                    if seriesnode['LineProperties/MarkerType'].getValue(usedefault=True)==0:
+                    if seriesnode['LineProperties/Marker'].getValue(usedefault=True)==0:
                         defaultseriesnode['ConfidenceLimits/Style'].setValue(2)
                     else:
                         defaultseriesnode['ConfidenceLimits/Style'].setValue(1)
@@ -743,7 +805,7 @@ class Figure(xmlstore.util.referencedobject):
                         errX = numpy.hstack((varslice.coords[0],varslice.coords[0][::-1]))
                         errY = numpy.hstack((lbound,ubound[::-1]))
                         if switchaxes: errX,errY = errY,errX
-                        areacolor = seriesnode['LineProperties/Color'].getValue(usedefault=True)
+                        areacolor = seriesnode['LineProperties/Line/Color'].getValue(usedefault=True)
                         areacolor.brighten(.5)
                         alpha = .7
                         axes.fill(errX,errY,facecolor=areacolor.getNormalized(),linewidth=0, alpha=alpha, zorder=zorder)
@@ -756,27 +818,12 @@ class Figure(xmlstore.util.referencedobject):
                     hline = axes.plot(X,Y,zorder=zorder,label=label,**plotargs)
                     legenddata['handles'].append(hline)
                     legenddata['labels'].append(label)
-                
-                dim2data[xname]['axis'] = 'x'
-                dim2data[yname]['axis'] = 'y'
-                
+                                
                 plotcount[1] += 1
             elif varslice.ndim==2:
-                # Two-dimensional coordinate space (x,y). Use x-axis for first coordinate dimension,
-                # and y-axis for second coordinate dimension.
-                xdim,ydim = 0,1
-                if var.hasReversedDimensions(): xdim,ydim = 1,0
-                prefaxis = (dim2data[varslice.dimensions[0]]['preferredaxis'],dim2data[varslice.dimensions[1]]['preferredaxis'])
-                if (prefaxis[xdim]=='y' and prefaxis[ydim]!='y') or (prefaxis[ydim]=='x' and prefaxis[xdim]!='x'):
-                    # One independent dimension prefers to switch axis and the
-                    # other does not disagree.
-                    xdim,ydim = ydim,xdim
-
-                dim2data[varslice.dimensions[xdim]]['axis'] = 'x'
-                dim2data[varslice.dimensions[ydim]]['axis'] = 'y'
-                
-                X = coords[xdim]
-                Y = coords[ydim]
+                # Retrieve cached coordinates
+                X,Y = info['x'],info['y']
+                xdim,ydim = info['xdim'],info['ydim']
                 
                 # Get length of coordinate dimensions. Coordinates can be provided as vectors
                 # valid over the whole domain, or as n-D array that match the shape of the values.
@@ -832,21 +879,21 @@ class Figure(xmlstore.util.referencedobject):
                         if cc!=None:
                             # Contour count was specified
                             if fill:
-                                csetf = axes.contourf(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,cmap=cm)
+                                csetf = drawaxes.contourf(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,cmap=cm)
                             if borders:
                                 if fill: zorder += 1
                                 contourcm = cm
                                 if edgecolor!=None: contourcm = None
-                                cset = axes.contour(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+                                cset = drawaxes.contour(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
                         else:
                             # Automatically determine contour count
                             if fill:
-                                csetf = axes.contourf(X,Y,Z,norm=norm,locator=loc,zorder=zorder,cmap=cm)
+                                csetf = drawaxes.contourf(X,Y,Z,norm=norm,locator=loc,zorder=zorder,cmap=cm)
                             if borders:
                                 if fill: zorder += 1
                                 contourcm = cm
                                 if edgecolor!=None: contourcm = None
-                                cset = axes.contour(X,Y,Z,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+                                cset = drawaxes.contour(X,Y,Z,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
 
                             # Retrieve the number of contours chosen by MatPlotLib
                             constset = csetf
@@ -856,12 +903,9 @@ class Figure(xmlstore.util.referencedobject):
                         if plottype3d==2 and edgecolor!=None: hascolormap = False
                     else:
                         # We have to plot a colored quadrilinear mesh
-                        
-                        #edgecolors = 'None'
-                        #if seriesnode['ShowEdges'].getValue(usedefault=True): edgecolors = 'k'
                         shading = 'flat'
                         if seriesnode['ShowEdges'].getValue(usedefault=True): shading = 'faceted'
-                        pc = axes.pcolormesh(X,Y,Z,cmap=cm,norm=norm,shading=shading)
+                        pc = drawaxes.pcolormesh(X,Y,Z,cmap=cm,norm=norm,shading=shading)
                       
                 else:
                     # More than one dependent variable
@@ -871,7 +915,7 @@ class Figure(xmlstore.util.referencedobject):
                     if xdim<ydim: U,V = U.transpose(),V.transpose()
 
                     C = numpy.sqrt(U**2+V**2)
-                    pc = axes.quiver(X,Y,U,V,C,cmap=cm,norm=norm)
+                    pc = drawaxes.quiver(X,Y,U,V,C,cmap=cm,norm=norm)
 
                     # Allocate colorbar axis to arrow length.
                     dimdata = dim2data.setdefault('arrowlength',{'forcedrange':(None,None)})
@@ -908,6 +952,11 @@ class Figure(xmlstore.util.referencedobject):
         # (remaining from previous plots that had these other data series)
         for oldname in olddefaults:
             defaultdatanode.removeChild('Series',oldname)
+            
+        # Add map objects if needed
+        if ismap:
+            if self.properties['Map/DrawCoastlines'].getValue(usedefault=True):
+                basemap.drawcoastlines(ax=axes)
 
         # Create and store title
         title = ''
@@ -1216,15 +1265,26 @@ def setLineProperties(propertynode,mplsection='lines',**kwargs):
         deflinestyle = linestyles[deflinestyle]
     else:
         deflinestyle = 0
+
     defmarkersize = matplotlib.rcParams.get(mplsection+'.markersize',6.)
+    defedgewidth = matplotlib.rcParams.get(mplsection+'.markeredgewidth',0.5)
+    defedgecolor = matplotlib.rcParams.get(mplsection+'.markeredgecolor','black')
+    defedgecolor = matplotlib.colors.colorConverter.to_rgb(defedgecolor)
+    defedgecolor = xmlstore.xmlstore.StoreColor.fromNormalized(*defedgecolor)
 
     propertynode['CanHaveMarker'].setValue(kwargs.get('CanHaveMarker',True))
-    propertynode['LineStyle'].setValue(kwargs.get('LineStyle',deflinestyle))
-    propertynode['LineWidth'].setValue(kwargs.get('LineWidth',deflinewidth))
-    propertynode['Color'].setValue(kwargs.get('Color',deflinecolor))
-    propertynode['MarkerType'].setValue(kwargs.get('MarkerType',0))
-    propertynode['MarkerSize'].setValue(kwargs.get('MarkerSize',defmarkersize))
-    propertynode['MarkerFaceColor'].setValue(kwargs.get('MarkerFaceColor',deflinecolor))
+    
+    line = propertynode['Line']
+    line.setValue(kwargs.get('LineStyle',deflinestyle))
+    line['Width'].setValue(kwargs.get('LineWidth',deflinewidth))
+    line['Color'].setValue(kwargs.get('Color',deflinecolor))
+    
+    marker = propertynode['Marker']
+    marker.setValue(kwargs.get('MarkerType',0))
+    marker['Size'].setValue(kwargs.get('MarkerSize',defmarkersize))
+    marker['FaceColor'].setValue(kwargs.get('MarkerFaceColor',deflinecolor))
+    marker['EdgeColor'].setValue(kwargs.get('MarkerEdgeColor',defedgecolor))
+    marker['EdgeWidth'].setValue(kwargs.get('MarkerEdgeWidth',defedgewidth))
     
 def getLineProperties(propertynode):
     """Returns a dictionary with line properties based on the specified
@@ -1232,20 +1292,31 @@ def getLineProperties(propertynode):
     
     Internal use only.
     """
-    markertype = propertynode['MarkerType'].getValue(usedefault=True)
+    marker = propertynode['Marker']
+    markertype = marker.getValue(usedefault=True)
     markertypes = {0:'',1:'.',2:',',3:'o',4:'^',5:'s',6:'+',7:'x',8:'D'}
     markertype = markertypes[markertype]
     
-    linestyle = propertynode['LineStyle'].getValue(usedefault=True)
+    line = propertynode['Line']
+    linestyle = line.getValue(usedefault=True)
     linestyles = {0:'',1:'-',2:'--',3:'-.',4:':'}
     linestyle = linestyles[linestyle]
     
-    linewidth = propertynode['LineWidth'].getValue(usedefault=True)
-    color = propertynode['Color'].getValue(usedefault=True)
-    markersize = propertynode['MarkerSize'].getValue(usedefault=True)
-    markerfacecolor = propertynode['MarkerFaceColor'].getValue(usedefault=True)
+    linewidth = line['Width'].getValue(usedefault=True)
+    color = line['Color'].getValue(usedefault=True)
+    markersize = marker['Size'].getValue(usedefault=True)
+    markerfacecolor = marker['FaceColor'].getValue(usedefault=True)
+    markeredgecolor = marker['EdgeColor'].getValue(usedefault=True)
+    markeredgewidth = marker['EdgeWidth'].getValue(usedefault=True)
     
-    return {'linestyle':linestyle,'marker':markertype,'linewidth':linewidth,'color':color.getNormalized(),'markersize':markersize,'markerfacecolor':markerfacecolor.getNormalized()}
+    return {'linestyle':linestyle,
+            'marker':markertype,
+            'linewidth':linewidth,
+            'color':color.getNormalized(),
+            'markersize':markersize,
+            'markerfacecolor':markerfacecolor.getNormalized(),
+            'markeredgecolor':markeredgecolor.getNormalized(),
+            'markeredgewidth':markeredgewidth}
     
 def getTimeLocator(location,interval):
     """Creates a time locator based on the unit ("location") and interval
