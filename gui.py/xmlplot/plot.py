@@ -574,6 +574,7 @@ class Figure(xmlstore.util.referencedobject):
         legenddata = {'handles':[],'labels':[]}
 
         seriesslices,seriesvariables,seriesinfo = [],[],[]
+        xrange,yrange = [None,None],[None,None]
         for seriesnode in forcedseries:
             # Get the path of the data source (data source identifier + variable id)
             varpath = seriesnode.getSecondaryId()
@@ -725,27 +726,25 @@ class Figure(xmlstore.util.referencedobject):
                 info.update({'x':X,'y':Y,'xdim':xdim,'ydim':ydim})
                 dim2data[varslice.dimensions[xdim]]['axis'] = 'x'
                 dim2data[varslice.dimensions[ydim]]['axis'] = 'y'
+            if X!=None:
+                curmin,curmax = X.min(),X.max()
+                if xrange[0]==None or curmin<xrange[0]: xrange[0] = curmin
+                if xrange[1]==None or curmax>xrange[1]: xrange[1] = curmax
+            if Y!=None:
+                curmin,curmax = Y.min(),Y.max()
+                if yrange[0]==None or curmin<yrange[0]: yrange[0] = curmin
+                if yrange[1]==None or curmax>yrange[1]: yrange[1] = curmax
                     
             seriesvariables.append(var)
             seriesslices.append(varslices)
             seriesinfo.append(info)
                 
+        xcanbelon = xrange[0]!=None and xrange[0]>=-360 and xrange[1]<=360
+        ycanbelat = yrange[0]!=None and yrange[0]>=-360 and yrange[1]<=360
+        self.defaultproperties['CanBeMap'].setValue(xcanbelon and ycanbelat)
         ismap = self.properties['Map'].getValue(usedefault=True)
         drawaxes = axes
         if ismap:
-            # Find longitude and latitude ranges
-            xrange,yrange = [None,None],[None,None]
-            for info in seriesinfo:
-                X,Y = info.get('x',None),info.get('y',None)
-                if X!=None:
-                    curmin,curmax = X.min(),X.max()
-                    if xrange[0]==None or curmin<xrange[0]: xrange[0] = curmin
-                    if xrange[1]==None or curmax>xrange[1]: xrange[1] = curmax
-                if Y!=None:
-                    curmin,curmax = Y.min(),Y.max()
-                    if yrange[0]==None or curmin<yrange[0]: yrange[0] = curmin
-                    if yrange[1]==None or curmax>yrange[1]: yrange[1] = curmax
-
             # Create the basemap object
             import mpl_toolkits.basemap
             res = self.properties['Map/Resolution'].getValue(usedefault=True)

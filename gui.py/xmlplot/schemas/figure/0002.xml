@@ -120,7 +120,9 @@
   <element name="Width" type="float" label="width" unit="cm"/>
   <element name="Height" type="float" label="height" unit="cm"/>
 
+  <element name="CanBeMap" type="bool" hidden="True"/>
   <element name="Map" type="bool" label="plot as map">
+    <condition type="eq" variable="./CanBeMap" value="True"/>
     <element name="Resolution" type="select" label="resolution">
       <condition type="eq" variable="." value="True"/>
       <options>
