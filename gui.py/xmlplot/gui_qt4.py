@@ -659,60 +659,65 @@ class FigurePanel(QtGui.QWidget):
         """
         printer = QtGui.QPrinter(QtGui.QPrinter.HighResolution)
         printDialog = QtGui.QPrintDialog(printer, self)
-        if printDialog.exec_() == QtGui.QDialog.Accepted:
-            print 'Printing to %s' % printer.printerName()
-            p = QtGui.QPainter(printer)
-            
-            canvas = self.canvas.switch_backends(FigureCanvasAgg)
+        if printDialog.exec_()!=QtGui.QDialog.Accepted: return
+        
+        QtGui.qApp.setOverrideCursor(QtCore.Qt.WaitCursor)
 
-            # Store current DPI and colors.
-            origDPI       = canvas.figure.dpi.get()
-            origfacecolor = canvas.figure.get_facecolor()
-            origedgecolor = canvas.figure.get_edgecolor()
+        canvas = self.canvas.switch_backends(FigureCanvasAgg)
 
+        # Store current DPI and colors.
+        origDPI       = canvas.figure.get_dpi()
+        origfacecolor = canvas.figure.get_facecolor()
+        origedgecolor = canvas.figure.get_edgecolor()
+
+        try:
+            # Set the document name
+            printer.setDocName(self.figure['Title'].getValue(usedefault=True))
+        
+            # Get the printer's resolution
             res = printer.resolution()
-            if res>600: res=600
-            print 'Using resolution of %i dpi.' % res
 
-            # Adjust DPI and colors for printer.
-            canvas.figure.dpi.set(res)
+            # Adjust figure/canvas DPI and colors for printer.
+            canvas.figure.set_dpi(res)
             canvas.figure.set_facecolor('w')
             canvas.figure.set_edgecolor('w')
 
             # Draw the plot (in memory)
-            print 'MatPlotLib: creating Agg in-memory bitmap.'
             canvas.draw()
 
             # matplotlib is in rgba byte order.
             # qImage wants to put the bytes into argb format and
             # is in a 4 byte unsigned int.  little endian system is LSB first
             # and expects the bytes in reverse order (bgra).
-            print 'Converting in-memory bitmap to format suitable for Qt.'
             if (QtCore.QSysInfo.ByteOrder == QtCore.QSysInfo.LittleEndian):
                 stringBuffer = canvas.renderer._renderer.tostring_bgra()
             else:
                 stringBuffer = canvas.renderer._renderer.tostring_argb()
-                
-            print 'Creating QImage object from in-memory data. Using width = %.2f, height = %.2f' % (canvas.renderer.width,canvas.renderer.height)
             qImage = QtGui.QImage(stringBuffer, canvas.renderer.width, canvas.renderer.height, QtGui.QImage.Format_ARGB32)
-            #pixmap = QtGui.QPixmap.fromImage(qImage)
-            #print 'Drawing pixmap to QPainter object connected to printer.'
-            #p.drawPixmap(QtCore.QPoint(0, 0), pixmap )
-            print 'Drawing bitmap to QPainter object connected to printer.'
-            p.drawImage(QtCore.QPoint(0, 0), qImage)
-            #p.drawImage(QtCore.QPoint(0, 0), qImage, QtCore.QRect(0,0,1000,1000))
-            print 'Done drawing; closing painter.'
-            p.end()
 
-            print 'printing done; restoring original figure resolution and color.'
+            # Find the position where to start drawing (in order to center the figure on page)
+            pagerect = printer.pageRect()
+            paperrect = printer.paperRect()
+            top  = (paperrect.height()-qImage.height())/2. - pagerect.top()
+            left = (paperrect.width() -qImage.width() )/2. - pagerect.left()
 
+            # Draw the image with the printer's painter
+            p = QtGui.QPainter(printer)
+            try:
+                p.drawImage(QtCore.QPoint(left, top), qImage)
+            finally:
+                p.end()
+                
+        finally:
             # Restore original DPI and colors.
-            canvas.figure.dpi.set(origDPI)
+            canvas.figure.set_dpi(origDPI)
             canvas.figure.set_facecolor(origfacecolor)
             canvas.figure.set_edgecolor(origedgecolor)
 
             # Restore original canvas.
             self.figure.figure.set_canvas(self.canvas)
+
+            QtGui.qApp.restoreOverrideCursor()
 
     def onDetach(self):
         """Called when the user clicks the "Detach" button. This opens
