@@ -140,13 +140,13 @@ class ColorMapEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
                 ColorMapEditor.figure = matplotlib.figure.Figure(figsize=(width,height),dpi=1)
                 ColorMapEditor.canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(ColorMapEditor.figure)
                 ColorMapEditor.figure.subplots_adjust(top=1.,bottom=0.,left=0.,right=1.)
+                axes = ColorMapEditor.figure.add_subplot(111)
+                axes.axis('off')
             else:
-                ColorMapEditor.figure.clear()
                 ColorMapEditor.figure.set_size_inches(width,height)
-            axes = ColorMapEditor.figure.add_subplot(111)
+                axes = ColorMapEditor.figure.gca()
             
-            a = numpy.outer(numpy.ones(10),numpy.arange(0,1,1./width))
-            axes.axis('off')
+            a = numpy.outer(numpy.ones(2),numpy.arange(0,1,1./width))
             axes.imshow(a,aspect='auto',cmap=cm,origin='lower')
             ColorMapEditor.canvas.draw()
             if QtCore.QSysInfo.ByteOrder == QtCore.QSysInfo.LittleEndian:
