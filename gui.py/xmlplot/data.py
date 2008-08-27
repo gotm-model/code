@@ -45,7 +45,7 @@ def getNetCDFFile(path):
 
     return nc
 
-class LinkedFileVariableStore(common.VariableStore,xmlstore.xmlstore.DataFileEx):
+class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx):
 
     class DataFileCache(xmlstore.xmlstore.TypedStore):
         def __init__(self,valueroot=None,adddefault = True):
@@ -118,7 +118,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.xmlstore.DataFileEx)
     def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=(),variables=[],datatype='float'):
     
         common.VariableStore.__init__(self)
-        xmlstore.xmlstore.DataFileEx.__init__(self,datafile,context,infonode,nodename)
+        xmlstore.datatypes.DataFileEx.__init__(self,datafile,context,infonode,nodename)
 
         # Copy data from supplied dimensions and variables
         self.dimensions = {}
@@ -175,7 +175,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.xmlstore.DataFileEx)
         metadata set on the object, and by default it will also clear any
         parsed data.
         """ 
-        xmlstore.xmlstore.DataFileEx.setDataFile(self,datafile)
+        xmlstore.datatypes.DataFileEx.setDataFile(self,datafile)
         if cleardata: self.data = None
         
     def setData(self,data,clearfile=True):
@@ -297,7 +297,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.xmlstore.DataFileEx)
             # Data not present as data file object. Create one in memory on the spot.
             target = StringIO.StringIO()
             self.writeData(target,callback=callback)
-            self.datafile = xmlstore.xmlstore.DataFileMemory(target.getvalue(),self.nodeid+'.dat')
+            self.datafile = xmlstore.datatypes.DataFileMemory(target.getvalue(),self.nodeid+'.dat')
             target.close()
         return self.datafile.addref()
         

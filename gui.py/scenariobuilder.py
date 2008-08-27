@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.43 2008-04-11 14:03:20 jorn Exp $
+#$Id: scenariobuilder.py,v 1.44 2008-08-27 09:38:09 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -323,12 +323,12 @@ class PageDiscretization(ScenarioPage):
         editGridFile = self.factory.createEditor('grid/grid_file',self)
         
         # Add controls for grid layout to the widget.
-        layoutGrid.addWidget(self.bngroup.button(0),    0,0,1,4)
+        layoutGrid.addWidget(self.bngroup.buttonFromValue(0),    0,0,1,4)
         editLevelCount.addToGridLayout (layoutGrid,1,1)
         editZoomSurface.addToGridLayout(layoutGrid,2,1)
         editZoomBottom.addToGridLayout (layoutGrid,3,1)
-        layoutGrid.addWidget(self.bngroup.button(1),    4,0,1,4)
-        layoutGrid.addWidget(self.bngroup.button(2),    5,0,1,4)
+        layoutGrid.addWidget(self.bngroup.buttonFromValue(1),    4,0,1,4)
+        layoutGrid.addWidget(self.bngroup.buttonFromValue(2),    5,0,1,4)
         editGridFile.addToGridLayout(layoutGrid,   6,1,label=False,unit=False)
                 
         editColumn.editor.setLayout(layoutGrid)
@@ -387,10 +387,10 @@ class PageSalinity(ScenarioPage):
         layoutSalinity.addWidget(editSalinity.createLabel(),       0,0,1,2)
         
         # Add button for no salinity
-        layoutSalinity.addWidget(editSalinity.editor.button(0),     1,0,1,2)
+        layoutSalinity.addWidget(editSalinity.editor.buttonFromValue(0),     1,0,1,2)
         
         # Add button for constant salinity.
-        layoutSalinity.addWidget(editSalinity.editor.button(11),    2,0,1,2)
+        layoutSalinity.addWidget(editSalinity.editor.buttonFromValue(11),    2,0,1,2)
 
         # Add controls to edit constant salinity.
         layoutConstant = QtGui.QGridLayout()
@@ -399,7 +399,7 @@ class PageSalinity(ScenarioPage):
         layoutSalinity.addLayout(layoutConstant,3,1)
         
         # Add button for two-layer salinity.
-        layoutSalinity.addWidget(editSalinity.editor.button(12),    4,0,1,2)
+        layoutSalinity.addWidget(editSalinity.editor.buttonFromValue(12),    4,0,1,2)
         
         # Add controls to edit two-layer salinity.
         layoutLayer = QtGui.QGridLayout()
@@ -411,7 +411,7 @@ class PageSalinity(ScenarioPage):
         layoutSalinity.addLayout(layoutLayer,5,1)
         
         # Add button for stably stratified salinity.
-        layoutSalinity.addWidget(editSalinity.editor.button(13),    6,0,1,2)
+        layoutSalinity.addWidget(editSalinity.editor.buttonFromValue(13),    6,0,1,2)
 
         # Add controls to edit stably stratified salinity.
         layoutNSquare = QtGui.QGridLayout()
@@ -421,7 +421,7 @@ class PageSalinity(ScenarioPage):
         layoutSalinity.addLayout(layoutNSquare,7,1)
         
         # Add button for custom salinities.
-        layoutSalinity.addWidget(editSalinity.editor.button(2),     8,0,1,2)
+        layoutSalinity.addWidget(editSalinity.editor.buttonFromValue(2),     8,0,1,2)
         
         # Add control to choose custom salinities.
         layoutFile = QtGui.QHBoxLayout()
@@ -481,10 +481,10 @@ class PageTemperature(ScenarioPage):
         layoutTemperature.addWidget(editTemperature.createLabel(),       0,0,1,2)
         
         # Add button for no temperature
-        layoutTemperature.addWidget(editTemperature.editor.button(0),     1,0,1,2)
+        layoutTemperature.addWidget(editTemperature.editor.buttonFromValue(0),     1,0,1,2)
         
         # Add button for constant temperature.
-        layoutTemperature.addWidget(editTemperature.editor.button(11),    2,0,1,2)
+        layoutTemperature.addWidget(editTemperature.editor.buttonFromValue(11),    2,0,1,2)
 
         # Add controls to edit constant temperature.
         layoutConstant = QtGui.QGridLayout()
@@ -493,7 +493,7 @@ class PageTemperature(ScenarioPage):
         layoutTemperature.addLayout(layoutConstant,3,1)
         
         # Add button for two-layer temperature.
-        layoutTemperature.addWidget(editTemperature.editor.button(12),    4,0,1,2)
+        layoutTemperature.addWidget(editTemperature.editor.buttonFromValue(12),    4,0,1,2)
         
         # Add controls to edit two-layer temperature.
         layoutLayer = QtGui.QGridLayout()
@@ -505,7 +505,7 @@ class PageTemperature(ScenarioPage):
         layoutTemperature.addLayout(layoutLayer,5,1)
         
         # Add button for stably stratified temperature.
-        layoutTemperature.addWidget(editTemperature.editor.button(13),    6,0,1,2)
+        layoutTemperature.addWidget(editTemperature.editor.buttonFromValue(13),    6,0,1,2)
 
         # Add controls to edit stably stratified temperature.
         layoutNSquare = QtGui.QGridLayout()
@@ -515,7 +515,7 @@ class PageTemperature(ScenarioPage):
         layoutTemperature.addLayout(layoutNSquare,7,1)
         
         # Add button for custom salinities.
-        layoutTemperature.addWidget(editTemperature.editor.button(2),     8,0,1,2)
+        layoutTemperature.addWidget(editTemperature.editor.buttonFromValue(2),     8,0,1,2)
         
         # Add control to choose custom salinities.
         layoutFile = QtGui.QHBoxLayout()
@@ -562,10 +562,10 @@ class PageTurbulence(ScenarioPage):
         layoutTurbulence.addWidget(editMethod.createLabel(),0,0,1,3)
         
         # Add button for convective adjustment
-        layoutTurbulence.addWidget(bngrpMethod.button(0), 1,0,1,3)
+        layoutTurbulence.addWidget(bngrpMethod.buttonFromValue(0), 1,0,1,3)
 
         # Add button for turbulence model calculating TKE and length scale
-        layoutTurbulence.addWidget(bngrpMethod.button(2), 2,0,1,3)
+        layoutTurbulence.addWidget(bngrpMethod.buttonFromValue(2), 2,0,1,3)
         
         # Add controls specific to first-order model
         layoutFirstOrder = QtGui.QGridLayout()
@@ -574,7 +574,7 @@ class PageTurbulence(ScenarioPage):
         layoutTurbulence.addLayout(layoutFirstOrder,      3,1)
 
         # Add button for second-order model
-        layoutTurbulence.addWidget(bngrpMethod.button(3), 4,0,1,3)
+        layoutTurbulence.addWidget(bngrpMethod.buttonFromValue(3), 4,0,1,3)
 
         # Add controls specific to second-order model
         layoutSecondOrder = QtGui.QGridLayout()
@@ -583,7 +583,7 @@ class PageTurbulence(ScenarioPage):
         layoutTurbulence.addLayout(layoutSecondOrder,     5,1)
 
         # Add button for KPP model
-        layoutTurbulence.addWidget(bngrpMethod.button(99),6,0,1,3)
+        layoutTurbulence.addWidget(bngrpMethod.buttonFromValue(99),6,0,1,3)
         
         layoutTurbulence.setColumnStretch(3,1)
         layoutTurbulence.setColumnMinimumWidth(0,commonqt.getRadioWidth())
@@ -650,20 +650,20 @@ class PageAirSeaInteraction(ScenarioPage):
         #editConstSwr  = self.factory.createEditor('airsea/const_swr',  self)
         #editSwrFile   = self.factory.createEditor('airsea/swr_file',   self)
         #
-        #swrlayout.addWidget(editSwrMethod.editor.button(0),1,0,1,2)
+        #swrlayout.addWidget(editSwrMethod.editor.buttonFromValue(0),1,0,1,2)
 #
-        #swrlayout.addWidget(editSwrMethod.editor.button(1),2,0,1,2)
+        #swrlayout.addWidget(editSwrMethod.editor.buttonFromValue(1),2,0,1,2)
         #constswrlayout = QtGui.QHBoxLayout()
         #editConstSwr.addToBoxLayout(constswrlayout)
         #swrlayout.addLayout(constswrlayout,3,1)
         #
-        #swrlayout.addWidget(editSwrMethod.editor.button(2),4,0,1,2)
+        #swrlayout.addWidget(editSwrMethod.editor.buttonFromValue(2),4,0,1,2)
         #swrfilelayout = QtGui.QHBoxLayout()
         #editSwrFile.addToBoxLayout(swrfilelayout,label=False,unit=False)
         #swrfilelayout.addStretch()
         #swrlayout.addLayout(swrfilelayout,5,1)
 #
-        #swrlayout.addWidget(editSwrMethod.editor.button(3),6,0,1,2)
+        #swrlayout.addWidget(editSwrMethod.editor.buttonFromValue(3),6,0,1,2)
         #
         #swrlayout.setColumnStretch(2,1)
         #
@@ -680,14 +680,14 @@ class PageAirSeaInteraction(ScenarioPage):
         editConstHeat    = self.factory.createEditor('airsea/const_heat',   self)
         editHeatfluxFile = self.factory.createEditor('airsea/heatflux_file',self)
         
-        heatlayout.addWidget(editHeatMethod.editor.button(0),1,0,1,2)
+        heatlayout.addWidget(editHeatMethod.editor.buttonFromValue(0),1,0,1,2)
 
-        heatlayout.addWidget(editHeatMethod.editor.button(1),2,0,1,2)
+        heatlayout.addWidget(editHeatMethod.editor.buttonFromValue(1),2,0,1,2)
         constheatlayout = QtGui.QHBoxLayout()
         editConstHeat.addToBoxLayout(constheatlayout)
         heatlayout.addLayout(constheatlayout,3,1)
         
-        heatlayout.addWidget(editHeatMethod.editor.button(2),4,0,1,2)
+        heatlayout.addWidget(editHeatMethod.editor.buttonFromValue(2),4,0,1,2)
         heatfilelayout = QtGui.QHBoxLayout()
         editHeatfluxFile.addToBoxLayout(heatfilelayout,label=False,unit=False)
         heatfilelayout.addStretch()
@@ -709,15 +709,15 @@ class PageAirSeaInteraction(ScenarioPage):
         editMomentumConstTy = self.factory.createEditor('airsea/const_ty',         self)
         editmomentumFile    = self.factory.createEditor('airsea/momentumflux_file',self)
         
-        layoutMomentum.addWidget(editMomentumMethod.editor.button(0),1,0,1,2)
+        layoutMomentum.addWidget(editMomentumMethod.editor.buttonFromValue(0),1,0,1,2)
 
-        layoutMomentum.addWidget(editMomentumMethod.editor.button(1),2,0,1,2)
+        layoutMomentum.addWidget(editMomentumMethod.editor.buttonFromValue(1),2,0,1,2)
         constmomentumlayout = QtGui.QGridLayout()
         editMomentumConstTx.addToGridLayout(constmomentumlayout)
         editMomentumConstTy.addToGridLayout(constmomentumlayout)
         layoutMomentum.addLayout(constmomentumlayout,3,1)
         
-        layoutMomentum.addWidget(editMomentumMethod.editor.button(2),4,0,1,2)
+        layoutMomentum.addWidget(editMomentumMethod.editor.buttonFromValue(2),4,0,1,2)
         momentumfilelayout = QtGui.QHBoxLayout()
         editmomentumFile.addToBoxLayout(momentumfilelayout,label=False,unit=False)
         momentumfilelayout.addStretch()
@@ -738,14 +738,14 @@ class PageAirSeaInteraction(ScenarioPage):
 #        self.editPeConst   = self.factory.createEditor(['airsea','const_p_e'],    self)
 #        self.editPeFile    = self.factory.createEditor(['airsea','p_e_flux_file'],self)
         
-#        layoutPe.addWidget(self.editPeMethod.editor.button(0),1,0,1,2)
+#        layoutPe.addWidget(self.editPeMethod.editor.buttonFromValue(0),1,0,1,2)
 
-#        layoutPe.addWidget(self.editPeMethod.editor.button(1),2,0,1,2)
+#        layoutPe.addWidget(self.editPeMethod.editor.buttonFromValue(1),2,0,1,2)
 #        constpelayout = QtGui.QGridLayout()
 #        self.editPeConst.addToGridLayout(constpelayout)
 #        layoutPe.addLayout(constpelayout,3,1)
         
-#        layoutPe.addWidget(self.editPeMethod.editor.button(2),4,0,1,2)
+#        layoutPe.addWidget(self.editPeMethod.editor.buttonFromValue(2),4,0,1,2)
 #        pefilelayout = QtGui.QHBoxLayout()
 #        self.editPeFile.addToBoxLayout(pefilelayout,label=False,unit=False)
 #        pefilelayout.addStretch()
@@ -756,9 +756,9 @@ class PageAirSeaInteraction(ScenarioPage):
         # Create final layout
 
         layoutAirSea.addWidget(editCalcFluxes.createLabel(),   0,0,1,2)
-        layoutAirSea.addWidget(editCalcFluxes.editor.button(0),1,0,1,2)
+        layoutAirSea.addWidget(editCalcFluxes.editor.buttonFromValue(0),1,0,1,2)
         layoutAirSea.addLayout(meteolayout,                    2,1)
-        layoutAirSea.addWidget(editCalcFluxes.editor.button(1),3,0,1,2)
+        layoutAirSea.addWidget(editCalcFluxes.editor.buttonFromValue(1),3,0,1,2)
         layoutAirSea.addWidget(groupboxHeat,                   4,1)
         layoutAirSea.addWidget(groupboxMomentum,               5,1)
         #layoutAirSea.addWidget(groupboxSwr,                    6,0,1,2)
@@ -798,20 +798,20 @@ class PageAirSeaInteraction2(ScenarioPage):
         editConstSwr  = self.factory.createEditor('airsea/const_swr',  self)
         editSwrFile   = self.factory.createEditor('airsea/swr_file',   self)
         
-        swrlayout.addWidget(editSwrMethod.editor.button(0),1,0,1,2)
+        swrlayout.addWidget(editSwrMethod.editor.buttonFromValue(0),1,0,1,2)
 
-        swrlayout.addWidget(editSwrMethod.editor.button(1),2,0,1,2)
+        swrlayout.addWidget(editSwrMethod.editor.buttonFromValue(1),2,0,1,2)
         constswrlayout = QtGui.QHBoxLayout()
         editConstSwr.addToBoxLayout(constswrlayout)
         swrlayout.addLayout(constswrlayout,3,1)
         
-        swrlayout.addWidget(editSwrMethod.editor.button(2),4,0,1,2)
+        swrlayout.addWidget(editSwrMethod.editor.buttonFromValue(2),4,0,1,2)
         swrfilelayout = QtGui.QHBoxLayout()
         editSwrFile.addToBoxLayout(swrfilelayout,label=False,unit=False)
         swrfilelayout.addStretch()
         swrlayout.addLayout(swrfilelayout,5,1)
 
-        swrlayout.addWidget(editSwrMethod.editor.button(3),6,0,1,2)
+        swrlayout.addWidget(editSwrMethod.editor.buttonFromValue(3),6,0,1,2)
         
         swrlayout.setColumnStretch(2,1)
         
@@ -828,14 +828,14 @@ class PageAirSeaInteraction2(ScenarioPage):
         self.editPeConst   = self.factory.createEditor('airsea/const_precip', self)
         self.editPeFile    = self.factory.createEditor('airsea/precip_file',  self)
         
-        layoutPe.addWidget(self.editPeMethod.editor.button(0),1,0,1,2)
+        layoutPe.addWidget(self.editPeMethod.editor.buttonFromValue(0),1,0,1,2)
 
-        layoutPe.addWidget(self.editPeMethod.editor.button(1),2,0,1,2)
+        layoutPe.addWidget(self.editPeMethod.editor.buttonFromValue(1),2,0,1,2)
         constpelayout = QtGui.QGridLayout()
         self.editPeConst.addToGridLayout(constpelayout)
         layoutPe.addLayout(constpelayout,3,1)
         
-        layoutPe.addWidget(self.editPeMethod.editor.button(2),4,0,1,2)
+        layoutPe.addWidget(self.editPeMethod.editor.buttonFromValue(2),4,0,1,2)
         pefilelayout = QtGui.QHBoxLayout()
         self.editPeFile.addToBoxLayout(pefilelayout,label=False,unit=False)
         pefilelayout.addStretch()

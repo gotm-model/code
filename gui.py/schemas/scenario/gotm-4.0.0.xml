@@ -8,7 +8,7 @@
 			<element name="nlev"        type="int"    label="number of levels" minInclusive="1" maxInclusive="1000" description="Number of depth levels used to describe the water column"/>
 			<element name="dt"          type="float"  label="time step" minInclusive="0.001" maxInclusive="86400" unit="s" description="Time step for integration"/>
 			<element name="cnpar"       type="float"  label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)" minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems."/>
-			<element name="buoy_method" type="select" label="method to compute mean buoyancy">
+			<element name="buoy_method" type="int" label="method to compute mean buoyancy">
 				<options>
 					<option value="1" label="from equation of state (i.e. from potential temperature and salinity)"/>
 					<option value="2" label="from prognostic equation"/>
@@ -24,7 +24,7 @@
 		</element>
 		
 		<element name="time" label="duration of run">
-			<element name="timefmt" type="select" label="method to specify start and duration of model run">
+			<element name="timefmt" type="int" label="method to specify start and duration of model run">
 				<options>
 					<option value="1" label="duration computed from number of time steps, MaxN (bogus start date used)"/>
 					<option value="2" label="duration computed from given start and stop dates (number of time steps MaxN computed)"/>
@@ -43,7 +43,7 @@
 		</element>
 		
 		<element name="output" label="format for output and filename(s)">
-			<element name="out_fmt" type="select" label="format for GOTM output">
+			<element name="out_fmt" type="int" label="format for GOTM output">
 				<options>
 					<option value="1" label="ASCII"/>
 					<option value="2" label="NetCDF"/>
@@ -54,7 +54,7 @@
 			<element name="out_fn"      type="string" label="output string used to generate output file names"/>
 			<element name="nsave"       type="int"    label="save results every 'nsave' timesteps" minInclusive="1" maxInclusive="86400"/>
 			<element name="diagnostics" type="bool"   label="diagnostics are written to output (if .true.)"/>
-			<element name="mld_method"  type="select" label="how to diagnose mixed layer depth">
+			<element name="mld_method"  type="int" label="how to diagnose mixed layer depth">
 				<options>
 					<option value="1" label="mixed layer depth computed from TKE threshold"/>
 					<option value="2" label="mixed layer depth from Ri threshold"/>
@@ -79,13 +79,13 @@
 		</element>
 
  		<element name="eqstate" label="equation of state">
-			<element name="eq_state_mode" type="select" label="choice for empirical formula for equation of state">
+			<element name="eq_state_mode" type="int" label="choice for empirical formula for equation of state">
 				<options>
 					<option value="1" label="UNESCO equation of state by Fofonoff and Millard (1983)"/>
 					<option value="2" label="equation of state according Jackett et al. (2005)"/>
 				</options>
 			</element>
-			<element name="eq_state_method" type="select" label="method to compute density and buoyancy from salinity, potential temperature and pressure">
+			<element name="eq_state_method" type="int" label="method to compute density and buoyancy from salinity, potential temperature and pressure">
 				<options>
 					<option value="1" label="full equation of state (i.e. with the LOCAL pressure). This implies that T is NOT treated as the potential temperature but rather as the in-situ temperature!"/>
 					<option value="2" label="equation of state with pressure evaluated at the surface. This implies that T is treated as the potential temperature and thus rho as the potential density."/>
@@ -135,7 +135,7 @@
 			<element name="ddl"         type="float" label="grid zooming (bottom), 0: no zooming; > 3 strong zooming">
 				<condition type="eq" variable="./grid_method" value="0"/>
 			</element>
-			<element name="grid_method" type="select" label="type of vertical grid">
+			<element name="grid_method" type="int" label="type of vertical grid">
 				<options>
 					<option value="0" label="zooming of grid with ddl, ddu >= 0"/>
 					<option value="1" label="sigma grid (relative depth fractions) read from file"/>
@@ -177,7 +177,7 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element name="wet_mode"    type="select" label="decides what is given in 7. column in meteo_file">
+			<element name="wet_mode"    type="int" label="decides what is given in 7. column in meteo_file">
 				<condition type="eq" variable="./calc_fluxes" value="True"/>
 				<options>
 					<option value="1" label="relative humidity"/>
@@ -186,7 +186,7 @@
 				</options>
 			</element>
 
-			<element name="heat_method" type="select" label="method to provide short wave radiation (swr) and surface heat flux (qh)">
+			<element name="heat_method" type="int" label="method to provide short wave radiation (swr) and surface heat flux (qh)">
 				<condition type="eq" variable="./calc_fluxes" value="False"/>
 				<options>
 					<option value="0" label="heat flux not prescribed"/>
@@ -219,7 +219,7 @@
 				</fileinfo>
 			</element>
 
-			<element name="momentum_method" type="select" label="method how momentum fluxes are given">
+			<element name="momentum_method" type="int" label="method how momentum fluxes are given">
 				<condition type="eq" variable="./calc_fluxes" value="False"/>
 				<options>
 					<option value="0" label="momentum flux not prescribed"/>
@@ -252,7 +252,7 @@
 				</fileinfo>
 			</element>
 
-			<element name="p_e_method" type="select" label="method how fresh water fluxes (P-E) are given">
+			<element name="p_e_method" type="int" label="method how fresh water fluxes (P-E) are given">
 				<options>
 					<option value="0" label="P-E not used"/>
 					<option value="1" label="constant value for P-E (in m/s) used (P-E = precipitation-evaporation)"/>
@@ -271,7 +271,7 @@
 				</fileinfo>
 			</element>
 
-			<element name="sst_method" type="select" label="method how sea surface temperature (SST) is given">
+			<element name="sst_method" type="int" label="method how sea surface temperature (SST) is given">
 				<condition type="eq" variable="./calc_fluxes" value="False"/>
 				<options>
 					<option value="0" label="no independent SST observation is read from file"/>
@@ -290,7 +290,7 @@
 				</fileinfo>
 			</element>
 
-			<element name="sss_method" type="select" label="method how sea surface salinity (SSS) is given">
+			<element name="sss_method" type="int" label="method how sea surface salinity (SSS) is given">
 				<condition type="eq" variable="./calc_fluxes" value="False"/>
 				<options>
 					<option value="0" label="no independent SSS observation is read from file"/>
@@ -316,7 +316,7 @@
 	<element name="gotmturb" label="turbulence">
 
 		<element name="turbulence" label="general">
-			<element name="turb_method" type="select" label="type of turbulence closure">
+			<element name="turb_method" type="int" label="type of turbulence closure">
 				<options>
 					<option value="0"  label="convective adjustment"/>
 					<option value="1"  label="analytical eddy visc. and diff. profiles, not coded yet"/>
@@ -325,7 +325,7 @@
 					<option value="99" label="KPP model"/>
 				</options>
 			</element>
-			<element name="tke_method" type="select" label="type of equation for TKE">
+			<element name="tke_method" type="int" label="type of equation for TKE">
 				<condition type="or">
 					<condition type="eq" variable="./turb_method" value="2"/>
 					<condition type="eq" variable="./turb_method" value="3"/>
@@ -336,7 +336,7 @@
 					<option value="3" label="dynamic equation (Mellor-Yamada style)"/>
 				</options>
 			</element>
-			<element name="len_scale_method" type="select" label="type of model for dissipative length scale">
+			<element name="len_scale_method" type="int" label="type of model for dissipative length scale">
 				<condition type="or">
 					<condition type="eq" variable="./turb_method" value="2"/>
 					<condition type="eq" variable="./turb_method" value="3"/>
@@ -354,7 +354,7 @@
 					<option value="10" label="generic length scale (GLS)"/>
 				</options>
 			</element>
-			<element name="stab_method" type="select" label="type of stability function">
+			<element name="stab_method" type="int" label="type of stability function">
 				<condition type="eq" variable="./turb_method" value="2"/>
 				<options>
 					<option value="1" label="constant stability functions"/>
@@ -373,38 +373,38 @@
 					<condition type="eq" variable="./turbulence/turb_method" value="3"/>
 				</condition>
 			</condition>
-			<element name="k_ubc" type="select" label="upper boundary condition for k-equation">
+			<element name="k_ubc" type="int" label="upper boundary condition for k-equation">
 				<options>
 					<option value="0" label="prescribed BC"/>
 					<option value="1" label="flux BC"/>
 				</options>
 			</element>
-			<element name="k_lbc" type="select" label="lower boundary condition for k-equation">
+			<element name="k_lbc" type="int" label="lower boundary condition for k-equation">
 				<options>
 					<option value="0" label="prescribed BC"/>
 					<option value="1" label="flux BC"/>
 				</options>
 			</element>
-			<element name="psi_ubc" type="select" label="upper boundary condition for the length-scale equation (e.g. epsilon, kl, omega, GLS)">
+			<element name="psi_ubc" type="int" label="upper boundary condition for the length-scale equation (e.g. epsilon, kl, omega, GLS)">
 				<options>
 					<option value="0" label="prescribed BC"/>
 					<option value="1" label="flux BC"/>
 				</options>
 			</element>
-			<element name="psi_lbc" type="select" label="lower boundary condition for the length-scale equation (e.g. epsilon, kl, omega, GLS)">
+			<element name="psi_lbc" type="int" label="lower boundary condition for the length-scale equation (e.g. epsilon, kl, omega, GLS)">
 				<options>
 					<option value="0" label="prescribed BC"/>
 					<option value="1" label="flux BC"/>
 				</options>
 			</element>
-			<element name="ubc_type" type="select" label="type of upper boundary layer">
+			<element name="ubc_type" type="int" label="type of upper boundary layer">
 				<options>
 					<option value="0" label="viscous sublayer (not yet impl.)"/>
 					<option value="1" label="logarithmic law of the wall"/>
 					<option value="2" label="tke-injection (breaking waves)"/>
 				</options>
 			</element>
-			<element name="lbc_type" type="select" label="type of lower boundary layer">
+			<element name="lbc_type" type="int" label="type of lower boundary layer">
 				<options>
 					<option value="0" label="viscous sublayer (not yet impl.)"/>
 					<option value="1" label="logarithmic law of the wall"/>
@@ -503,7 +503,7 @@
 			<element name="e3"        type="float"  label="coef. e3 in MY q**2 l equation"/>
 			<element name="sq"        type="float"  label="turbulent diffusivities of q**2 (= 2k)"/>
 			<element name="sl"        type="float"  label="turbulent diffusivities of q**2 l"/>
-			<element name="my_length" type="select" label="prescribed barotropic lengthscale in q**2 l equation of MY">
+			<element name="my_length" type="int" label="prescribed barotropic lengthscale in q**2 l equation of MY">
 				<options>
 					<option value="1" label="parabolic"/>
 					<option value="2" label="triangular"/>
@@ -515,26 +515,26 @@
 
 		<element name="scnd" label="the second-order model">
 			<condition type="eq" variable="./turbulence/turb_method" value="3"/>
-			<element name="scnd_method" type="select" label="type of second-order model">
+			<element name="scnd_method" type="int" label="type of second-order model">
 				<options>
 					<option value="1" label="EASM with quasi-equilibrium"/>
 					<option value="2" label="EASM with weak equilibrium, buoy.-variance algebraic"/>
 					<option value="3" label="EASM with weak equilibrium, buoy.-variance from PDE"/>
 				</options>
 			</element>
-			<element name="kb_method" type="select" label="type of equation for buoyancy variance">
+			<element name="kb_method" type="int" label="type of equation for buoyancy variance">
 				<options>
 					<option value="1" label="algebraic equation for buoyancy variance"/>
 					<option value="2" label="PDE for buoyancy variance"/>
 				</options>
 			</element>
-			<element name="epsb_method" type="select" label="type of equation for variance destruction">
+			<element name="epsb_method" type="int" label="type of equation for variance destruction">
 				<options>
 					<option value="1" label="algebraic equation for variance destruction"/>
 					<option value="2" label="PDE for variance destruction"/>
 				</options>
 			</element>
-			<element name="scnd_coeff" type="select" label="coefficients of second-order model">
+			<element name="scnd_coeff" type="int" label="coefficients of second-order model">
 				<options>
 					<option value="0" label="read the coefficients from this file"/>
 					<option value="1" label="coefficients of Gibson and Launder (1978)"/>
@@ -585,7 +585,7 @@
 		</element>
 
 		<element name="iw" label="internal wave model">
-			<element name="iw_model" type="select" label="method to compute internal wave mixing">
+			<element name="iw_model" type="int" label="method to compute internal wave mixing">
 				<options>
 					<option value="0" label="no internal wave mixing parameterisation"/>
 					<option value="1" label="Mellor 1989 internal wave mixing"/>
@@ -628,14 +628,14 @@
 	<element name="obs" label="observations">
 	
 		<element name="sprofile" label="observed or prescribed salinity profiles">
-			<element name="s_prof_method" type="select" label="method to create initial or observed salinity profiles">
+			<element name="s_prof_method" type="int" label="method to create initial or observed salinity profiles">
 				<options>
 					<option value="0" label="no initial values, S-equation is not solved"/>
 					<option value="1" label="use analytically prescribed initial profile"/>
 					<option value="2" label="read profiles at different dates from &quot;s_prof_file&quot; and interpolate to GOTM timestep"/>
 				</options>
 			</element>
-			<element name="s_analyt_method" type="select" label="method to create analytically precribed inital profile">
+			<element name="s_analyt_method" type="int" label="method to create analytically precribed inital profile">
 				<condition type="eq" variable="./s_prof_method" value="1"/>
 				<options>
 					<option value="1" label="set profile to constant value s_1"/>
@@ -702,14 +702,14 @@
 		</element>
 
 		<element name="tprofile" label="observed or prescribed potential temperature profiles">
-			<element name="t_prof_method" type="select" label="observed or prescribed temperature profiles">
+			<element name="t_prof_method" type="int" label="observed or prescribed temperature profiles">
 				<options>
 					<option value="0" label="no initial values, T-equation is not solved"/>
 					<option value="1" label="use analytically prescribed initial profile"/>
 					<option value="2" label="read profiles at different dates from &quot;t_prof_file&quot; and interpolate to GOTM timestep"/>
 				</options>
 			</element>
-			<element name="t_analyt_method" type="select" label="method to create analytically precribed inital profile">
+			<element name="t_analyt_method" type="int" label="method to create analytically precribed inital profile">
 				<condition type="eq" variable="./t_prof_method" value="1"/>
 				<options>
 					<option value="1" label="set profile to constant value s_1"/>
@@ -776,14 +776,14 @@
 		</element>
 		
 		<element name="ext_pressure" label="external pressure gradients">
-			<element name="ext_press_method" type="select" label="method to compute external pressure gradient from data">
+			<element name="ext_press_method" type="int" label="method to compute external pressure gradient from data">
 				<options>
 					<option value="0" label="constant external pressure gradient" />
 					<option value="1" label="external pressure gradient from tidal constituents" />
 					<option value="2" label="external pressure gradient from data found in &quot;ext_press_file&quot;"/>
 				</options>
 			</element>
-			<element name="ext_press_mode" type="select" label="how to interprete ANY prescribed data for the computation of the external pressure gradient">
+			<element name="ext_press_mode" type="int" label="how to interprete ANY prescribed data for the computation of the external pressure gradient">
 				<options>
 					<option value="0" label="interprete all data as surface elevation gradients" />
 					<option value="1" label="interprete all data as current meter measurements at a given height &quot;PressHeight&quot; (see documentation)" />
@@ -842,7 +842,7 @@
 		</element>
 		
 		<element name="int_pressure" label="internal pressure gradients">
-			<element name="int_press_method" type="select" label="method to compute internal pressure gradient from data">
+			<element name="int_press_method" type="int" label="method to compute internal pressure gradient from data">
 				<options>
 					<option value="0" label="no internal pressure gradient" />
 					<option value="1" label="vertically and temporally constant internal pressure gradient computed from fixed horizontal salinity and temperature gradients" />
@@ -881,7 +881,7 @@
 		</element>
 		
 		<element name="extinct" label="light extinction">
-			<element name="extinct_method" type="select" label="which method used to compute the extinction coefficient">
+			<element name="extinct_method" type="int" label="which method used to compute the extinction coefficient">
 				<options>
 					<option value="0" label="from file" />
 					<option value="1" label="Jerlov type I" />
@@ -906,7 +906,7 @@
 		</element>
 
 		<element name="w_advspec" label="vertical advection">
-			<element name="w_adv_method" type="select" label="method to specify the vertical advection velocity">
+			<element name="w_adv_method" type="int" label="method to specify the vertical advection velocity">
 				<options>
 					<option value="0" label="zero vertical advection velocity" />
 					<option value="1" label="temporally constant vertical advection velocity profile" />
@@ -928,7 +928,7 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-			<element name="w_adv_discr" type="select" label="method to discretize the vertical advection term">
+			<element name="w_adv_discr" type="int" label="method to discretize the vertical advection term">
 				<condition type="ne" variable="./w_adv_method" value="0"/>
 				<options>
 					<option value="1" label="first-order upstream"/>
@@ -942,7 +942,7 @@
 		</element>
 
 		<element name="zetaspec" label="sea surface elevations">
-			<element name="zeta_method" type="select" label="method to prescribe the sea surface elevation">
+			<element name="zeta_method" type="int" label="method to prescribe the sea surface elevation">
 				<options>
 					<option value="0" label="constant sea surface elevation" />
 					<option value="1" label="sea surface elevation from tidal constituents" />
@@ -981,7 +981,7 @@
 		</element>
 
 		<element name="wave_nml" label="wind waves" description="Wind induced waves can be specified. Used in e.g. the spm module to account for wave-current interaction.">
-			<element name="wave_method" type="select" label="method to prescribe the wind waves">
+			<element name="wave_method" type="int" label="method to prescribe the wind waves">
 				<options>
 					<option value="0" label="nothing is done - all variables equal 0" />
 					<option value="1" label="constant values" />
@@ -1010,7 +1010,7 @@
 		</element>
 
 		<element name="velprofile" label="observed or prescribed velocity profiles">
-			<element name="vel_prof_method" type="select" label="method to create initial or observed velocity profiles">
+			<element name="vel_prof_method" type="int" label="method to create initial or observed velocity profiles">
 				<options>
 					<option value="0" label="start from zero inital velocities" />
 					<option value="1" label="(not implemented)" />
@@ -1031,7 +1031,7 @@
 		</element>
 
 		<element name="eprofile" label="turbulent dissipation rate profiles">
-			<element name="e_prof_method" type="select" label="method to create initial or observed dissipation profiles">
+			<element name="e_prof_method" type="int" label="method to create initial or observed dissipation profiles">
 				<options>
 					<option value="0" label="no observed dissipation rate profiles" />
 					<option value="1" label="(not implemented)" />
@@ -1059,14 +1059,14 @@
 		</element>
 		
 		<element name="o2_profile" label="observed oxygen profiles">
-			<element name="o2_prof_method" type="select" label="method to select initial observed oxygen profiles">
+			<element name="o2_prof_method" type="int" label="method to select initial observed oxygen profiles">
 				<options>
 					<option value="0" label="no observed oxygen profiles" />
 					<option value="1" label="(not used)" />
 					<option value="2" label="read profiles at different dates from &quot;o2_prof_file&quot; and interpolate to GOTM timestep"/>
 				</options>
 			</element>
-			<element name="o2_units" type="select" label="which unit are the observations reported in">
+			<element name="o2_units" type="int" label="which unit are the observations reported in">
 				<condition type="ne" variable="./o2_prof_method" value="0"/>
 				<options>
 					<option value="0" label="saturation (%)" />
@@ -1088,7 +1088,7 @@
 	<element name="bio" label="basic settings for biogeochemical model" optional="True">
 		<element name="bio_nml">
 			<element name="bio_calc"  type="bool"   label="calculate biological model"/>
-			<element name="bio_model" type="select" label="biological model">
+			<element name="bio_model" type="int" label="biological model">
 				<condition type="eq" variable="./bio_calc" value="True"/>
 				<options>
 					<option label="NPZD"                  description="NPZD (4 variables)"                 value="1"/>
@@ -1103,7 +1103,7 @@
 			<element name="cnpar" type="float" label="Cranck-Nicholson parameter for vertical diffusion">
 				<condition type="eq" variable="./bio_calc" value="True"/>
 			</element>
-			<element name="w_adv_discr" type="select" label="advection scheme for vertical motion">
+			<element name="w_adv_discr" type="int" label="advection scheme for vertical motion">
 				<condition type="eq" variable="./bio_calc" value="True"/>
 				<options>
 					<option value="1" label="first-order upstream"/>
@@ -1114,7 +1114,7 @@
 					<option value="6" label="TVD with ULTIMATE QUICKEST"/>
 				</options>
 			</element>
-			<element name="ode_method" type="select" label="ODE scheme for source and sink dynamics">
+			<element name="ode_method" type="int" label="ODE scheme for source and sink dynamics">
 				<condition type="eq" variable="./bio_calc" value="True"/>
 				<options>
 					<option value="1"  label="Forward Euler"                   description="first-order explicit (not positive)"/>
@@ -1204,7 +1204,7 @@
 			<element name="sfl_po"     type="float" label="constant surface phosphate flux" unit="mmol P/m**2/d"/>
 			<element name="sfl_am"     type="float" label="constant surface ammonium flux" unit="mmol N/m**2/d"/>
 			<element name="sfl_ni"     type="float" label="constant surface nitrate flux" unit="mmol N/m**2/d"/>
-			<element name="surface_flux_method" type="select" label="method to specify surface fluxes">
+			<element name="surface_flux_method" type="int" label="method to specify surface fluxes">
 				<options>
 					<option value="0" label="constant fluxes" />
 					<option value="2" label="from file 'bio_fluxes.dat'"/>

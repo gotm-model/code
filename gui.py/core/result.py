@@ -45,14 +45,14 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         progslicer = xmlstore.util.ProgressSlicer(callback,2)
 
         # Create a ZIP container to hold the result.
-        container = xmlstore.xmlstore.DataContainerZip(path,'w')
+        container = xmlstore.datatypes.DataContainerZip(path,'w')
 
         if not addfiguresettings:
             # First clear all figure settings.
             self.store['FigureSettings'].clearValue(recursive=True)
 
         # Add the XML file describing result properties.            
-        df = xmlstore.xmlstore.DataFileXmlNode(self.store.root.valuenode)
+        df = xmlstore.datatypes.DataFileXmlNode(self.store.root.valuenode)
         df_added = container.addItem(df,'result.xml')
         df_added.release()
         df.release()
@@ -63,7 +63,7 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         if self.scenario!=None:
             fscen = StringIO.StringIO()
             self.scenario.saveAll(fscen,claim=False,callback=progslicer.getStepCallback())
-            df = xmlstore.xmlstore.DataFileMemory(fscen.getvalue(),'scenario.gotmscenario')
+            df = xmlstore.datatypes.DataFileMemory(fscen.getvalue(),'scenario.gotmscenario')
             fscen.close()
             added = container.addItem(df)
             added.release()
@@ -85,14 +85,14 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
 
     @classmethod
     def canBeOpened(cls, container):
-        assert isinstance(container,xmlstore.xmlstore.DataContainer), 'Argument must be data container object.'
+        assert isinstance(container,xmlstore.datatypes.DataContainer), 'Argument must be data container object.'
         filelist = container.listFiles()
         return ('result.nc' in filelist and 'scenario.gotmscenario' in filelist)
 
     def load(self,path):
         if isinstance(path,basestring):
-            container = xmlstore.xmlstore.DataContainer.fromPath(path)
-        elif isinstance(path,xmlstore.xmlstore.DataContainer):
+            container = xmlstore.datatypes.DataContainer.fromPath(path)
+        elif isinstance(path,xmlstore.datatypes.DataContainer):
             container = path.addref()
 
         files = container.listFiles()

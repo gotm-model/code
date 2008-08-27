@@ -74,6 +74,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlplot", "xmlplot", "{ED14
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlstore", "xmlstore", "{F98996AE-260D-42D5-9E95-C3181A2D7C8E}"
 	ProjectSection(SolutionItems) = preProject
+		..\..\xmlstore\datatypes.py = ..\..\xmlstore\datatypes.py
 		..\..\xmlstore\gui_qt4.py = ..\..\xmlstore\gui_qt4.py
 		..\..\xmlstore\util.py = ..\..\xmlstore\util.py
 		..\..\xmlstore\xmlstore.py = ..\..\xmlstore\xmlstore.py
@@ -84,6 +85,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "figure", "figure", "{E25CD9E2-4661-4402-9E28-33ED4336CEFA}"
 	ProjectSection(SolutionItems) = preProject
 		..\..\xmlplot\schemas\figure\0001.xml = ..\..\xmlplot\schemas\figure\0001.xml
+		..\..\xmlplot\schemas\figure\0002.xml = ..\..\xmlplot\schemas\figure\0002.xml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "datafilecache", "datafilecache", "{10A4F0A0-9287-4C21-93F1-22BA1F540459}"

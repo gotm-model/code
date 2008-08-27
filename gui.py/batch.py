@@ -82,7 +82,7 @@ container = None
 
 try:
     # Open specified path as data container.
-    container = xmlstore.DataContainer.fromPath(path)
+    container = xmlstore.datatypes.DataContainer.fromPath(path)
     
     try:
         if scenario.Scenario.canBeOpened(container):

@@ -82,32 +82,60 @@ class FontNameEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
     def value(self):
         return self.currentText()
 
-xmlstore.gui_qt4.registerDataType('fontname',FontNameEditor)
+xmlstore.gui_qt4.registerEditor('fontname',FontNameEditor)
 
-class ColorMapEditor(xmlstore.gui_qt4.SelectEditor):
+class ColorMapEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
     """Widget for choosing a colormap, suitable for use in MatPlotLib figures.
     """
     cache = {}
     canvas,figure = None,None
+    
+    class Model(QtCore.QAbstractListModel):
+        def __init__(self,items,parent):
+            QtCore.QAbstractListModel.__init__(self,parent)
+            self.items = items
+            
+        def rowCount(self,parent):
+            if parent.isValid(): return 0
+            return len(self.items)
+
+        def data(self,index,role):
+            irow = index.row()
+            name = self.items[irow]
+            if role==QtCore.Qt.DecorationRole:
+                pixmap = ColorMapEditor.getPixMap(name,100.,10.)
+                return QtCore.QVariant(QtGui.QIcon(pixmap))
+            elif role==QtCore.Qt.DisplayRole:
+                return QtCore.QVariant(name)
+            else:
+                return QtCore.QVariant()
 
     def __init__(self,parent,node,**kwargs):
-        xmlstore.gui_qt4.SelectEditor.__init__(self,parent,node,**kwargs)
+        QtGui.QComboBox.__init__(self,parent)
+        xmlstore.gui_qt4.AbstractPropertyEditor.__init__(self,parent,node)
+
+        colormaps,self.items = plot.getColorMaps()
+        self.model = ColorMapEditor.Model(self.items,self)
+        self.setModel(self.model)
+        self.view().setUniformItemSizes(True)
+        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
         self.setIconSize(QtCore.QSize(100.,10.))
+                
+    def value(self):
+        return self.items[self.currentIndex()]
         
-    def populate(self,node):
-        options = xmlstore.util.findDescendantNode(node.templatenode,['options'])
-        assert options!=None, 'Node %s lacks "options" childnode.' % node
-        for ch in options.childNodes:
-            if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option' and not ch.hasAttribute('disabled'):
-                value = int(ch.getAttribute('value'))
-                qPixMap = ColorMapEditor.getPixMap(value,100.,10.)
-                self.addItem(QtGui.QIcon(qPixMap),plot.colormaps[value],QtCore.QVariant(value))
+    def setValue(self,value):
+        for i in range(self.count()):
+            if self.items[i]==value:
+                self.setCurrentIndex(i)
+                break
 
     @staticmethod
     def getPixMap(value,width,height):
         qPixMap = ColorMapEditor.cache.get(value,None)
         if qPixMap==None or qPixMap.width()!=width or qPixMap.height()!=height:
-            cm = getattr(matplotlib.cm,plot.colormaps[value])
+            colormaps,cmlist = plot.getColorMaps()
+            cm = colormaps[value]
             if ColorMapEditor.figure==None:
                 ColorMapEditor.figure = matplotlib.figure.Figure(figsize=(width,height),dpi=1)
                 ColorMapEditor.canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(ColorMapEditor.figure)
@@ -148,7 +176,15 @@ class ColorMapEditor(xmlstore.gui_qt4.SelectEditor):
         delegate.drawDecoration(painter,option,option.rect.adjusted(xOffset,0,0,0),qPixMap)
         delegate.drawFocus(painter,option,option.rect)
 
-xmlstore.gui_qt4.registerDataType('colormap',ColorMapEditor)
+    @staticmethod
+    def convertFromQVariant(value):
+        return xmlstore.gui_qt4.StringEditor.convertFromQVariant(value)
+
+    @staticmethod
+    def convertToQVariant(value):
+        return xmlstore.gui_qt4.StringEditor.convertToQVariant(value)
+
+xmlstore.gui_qt4.registerEditor('colormap',ColorMapEditor)
 
 class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
     """Widget for "editing" a linked file. Currently just displays a button that,
@@ -191,7 +227,7 @@ class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
         if self.linkedfile!=None: self.linkedfile.release()
         QtGui.QWidget.destroy(self)
 
-xmlstore.gui_qt4.registerDataType('gotmdatafile',LinkedFileEditor)
+xmlstore.gui_qt4.registerEditor('gotmdatafile',LinkedFileEditor)
 
 # ====================================================================================
 # Figure classes (toolbar, canvas, panel, dialog)
@@ -377,7 +413,7 @@ class FigurePanel(QtGui.QWidget):
         self.dialogAdvanced = None
 
         # Initially disable all controls; we have no plot to configure yet...
-        self.setEnabled(False)
+        self.onFigureStateChanged(False)
 
         self.detachedfigures = []
         self.blockevents = False
@@ -392,6 +428,7 @@ class FigurePanel(QtGui.QWidget):
     def onFigureStateChanged(self,complete):
         """Called when the figure state (figure shown/no figure shown) changes.
         """
+        self.toolbar.setVisible(complete)
         self.setEnabled(complete)
 
     def onFigurePropertyStoreChanged(self):
@@ -989,8 +1026,8 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         # Create data file for file-on-disk, copy it to memory,
         # and release the data file. We do not want to lock the
         # file on disk while working with the scenario.
-        df = xmlstore.xmlstore.DataContainerDirectory.DataFileFile(path)
-        memdf = xmlstore.xmlstore.DataFileMemory.fromDataFile(df)
+        df = xmlstore.datatypes.DataContainerDirectory.DataFileFile(path)
+        memdf = xmlstore.datatypes.DataFileMemory.fromDataFile(df)
         df.release()
 
         # Use the in-memory data file.

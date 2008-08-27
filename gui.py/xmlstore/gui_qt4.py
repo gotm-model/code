@@ -5,7 +5,7 @@ import datetime, sys
 from PyQt4 import QtGui,QtCore
 
 # Import our own custom modules
-import xmlstore,util
+import xmlstore,util,datatypes
 
 def needCloseButton():
     """Whether to add a close button to Qt4 windows.
@@ -21,40 +21,43 @@ def needCloseButton():
 
 # This will hold the dictionary linking data type names to editor classes.
 # It is populated lazily, i.e., when the dictionary is first requested.
-datatypes = None
+editors = None
 
-def getDataTypes():
+def getEditors():
     """Returns a dictionary linking data type names to editor classes.
     """
-    global datatypes
-    if datatypes==None:
-        datatypes = {'string'  :StringEditor,
-                     'int'     :IntEditor,
-                     'float'   :ScientificDoubleEditor,
-                     'bool'    :BoolEditor,
-                     'select'  :SelectEditor,
-                     'datetime':DateTimeEditor,
-                     'duration':DurationEditor,
-                     'color'   :ColorEditor}
-    return datatypes
+    global editors
+    if editors==None:
+        editors = {'string'  :StringEditor,
+                   'int'     :IntEditor,
+                   'float'   :ScientificDoubleEditor,
+                   'bool'    :BoolEditor,
+                   'datetime':DateTimeEditor,
+                   'duration':DurationEditor,
+                   'color'   :ColorEditor}
+    return editors
              
-def createEditor(node,parent=None,**kwargs):
+def createEditor(node,parent=None,selectwithradio=False,**kwargs):
     """Returns an editor for the specified TypedStore node, as child of the supplied
     parent QWidget.
     """
     assert isinstance(node,xmlstore.Node), 'First argument to createEditor must be of type node.'
     assert parent==None or isinstance(parent,QtGui.QWidget), 'If a parent is supplied to createEditor, it must derive from QWidget.'
-    datatypes = getDataTypes()
-    editorclass = datatypes.get(node.getValueType(),None)
+    editorclass = getEditors().get(node.getValueType(),None)
     assert editorclass!=None, 'No editor available for node of type "%s".' % node.getValueType()
-    return editorclass(parent,node,**kwargs)
+    if issubclass(editorclass,AbstractSelectEditor) or not node.templatenode.hasAttribute('hasoptions'):
+        return editorclass(parent,node,**kwargs)
+    else:
+        if selectwithradio:
+            return SelectEditorRadio(parent,node,**kwargs)
+        else:
+            return SelectEditor(parent,node,**kwargs)
              
-def registerDataType(typename,editorclass):
+def registerEditor(typename,editorclass):
     """Registers an editor class for a user-defined data type.
     """
     assert issubclass(editorclass,AbstractPropertyEditor), 'Custom data editors must derive from xmlstore.AbstractPropertyEditor.'
-    datatypes = getDataTypes()
-    datatypes[typename] = editorclass
+    getEditors()[typename] = editorclass
 
 class AbstractPropertyEditor:
     """Abstract class for editing the value of a node in the TypedStore.
@@ -173,41 +176,91 @@ class IntEditor(AbstractPropertyEditor,QtGui.QSpinBox):
     def convertToQVariant(value):
         return QtCore.QVariant(int(value))
 
-class SelectEditor(AbstractPropertyEditor,QtGui.QComboBox):
+class AbstractSelectEditor(AbstractPropertyEditor):
+    def __init__(self,parent,node):
+        AbstractPropertyEditor.__init__(self,parent,node)
+        self.node = node
+        
+    def getOptions(self):
+        options = util.findDescendantNode(self.node.templatenode,['options'])
+        assert options!=None, 'Node %s lacks "options" childnode.' % node
+        children = []
+        ichild = 0
+        for ch in options.childNodes:
+            if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                if not ch.hasAttribute('disabled'):
+                    children.append((ichild,ch.getAttribute('label'),ch.getAttribute('description')))
+                ichild += 1
+        return children
+        
+    def valueFromIndex(self,index):
+        ichild = 0
+        options = util.findDescendantNode(self.node.templatenode,['options'])
+        for ch in options.childNodes:
+            if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                if not ch.hasAttribute('disabled') and ichild==index:
+                    return self.node.getValueType(returnclass=True).fromXmlString(ch.getAttribute('value'),{},self.node.templatenode)
+                ichild += 1
+        return None
+        assert False, 'Cannot find option number %i in list of options.' % value
+
+    def indexFromValue(self,value):
+        ichild = 0
+        options = util.findDescendantNode(self.node.templatenode,['options'])
+        for ch in options.childNodes:
+            if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                if not ch.hasAttribute('disabled'):
+                    chvalue = self.node.getValueType(returnclass=True).fromXmlString(ch.getAttribute('value'),{},self.node.templatenode)
+                    if value==chvalue: return ichild
+                ichild += 1
+        return None
+
+class SelectEditor(AbstractSelectEditor,QtGui.QComboBox):
     """Editor for a selection from a list, represented by an integer.
     """
     def __init__(self,parent,node,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
-        AbstractPropertyEditor.__init__(self,parent,node)
+        AbstractSelectEditor.__init__(self,parent,node)
         self.populate(node)
         self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
         
     def populate(self,node):
-        options = util.findDescendantNode(node.templatenode,['options'])
-        assert options!=None, 'Node %s lacks "options" childnode.' % node
-        for ch in options.childNodes:
-            if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option' and not ch.hasAttribute('disabled'):
-                self.addItem(ch.getAttribute('label'),QtCore.QVariant(int(ch.getAttribute('value'))))
+        for ichild,label,description in self.getOptions():
+            self.addItem(label,QtCore.QVariant(ichild))
         
     def value(self):
-        value,ret = self.itemData(self.currentIndex()).toInt()
+        ichild,ret = self.itemData(self.currentIndex()).toInt()
+        value = self.valueFromIndex(ichild)
+        assert value!=None, 'Cannot obtain value for index %i.' % ichild
         return value
 
     def setValue(self,value):
-        for ioption in range(self.count()):
-            optionvalue,ret = self.itemData(ioption).toInt()
-            if optionvalue==value:
-                self.setCurrentIndex(ioption)
-                break
+        ichild = self.indexFromValue(value)
+        assert ichild!=None, 'Cannot find child index for value %s.' % str(value)
+        self.setCurrentIndex(ichild)
 
-    @staticmethod
-    def convertFromQVariant(value):
-        val,ret = value.toInt()
-        return int(val)
+class SelectEditorRadio(AbstractSelectEditor,QtGui.QButtonGroup):
+    def __init__(self,parent,node,**kwargs):
+        QtGui.QButtonGroup.__init__(self,parent)
+        AbstractSelectEditor.__init__(self,parent,node)
 
-    @staticmethod
-    def convertToQVariant(value):
-        return QtCore.QVariant(int(value))
+        for ichild,label,description in self.getOptions():
+            opt = QtGui.QRadioButton(label,parent)
+            if description!='':
+                opt.setWhatsThis(description)
+            self.addButton(opt,ichild)
+        self.connect(self, QtCore.SIGNAL('buttonClicked(int)'), self.editingFinished)
+
+    def value(self):
+        return self.valueFromIndex(self.checkedId())
+
+    def setValue(self,value):
+        ichild = self.indexFromValue(value)
+        if ichild==None: ichild=0
+        self.button(ichild).setChecked(True)
+        
+    def buttonFromValue(self,value):
+        return self.button(self.indexFromValue(value))
 
 class BoolEditor(AbstractPropertyEditor,QtGui.QComboBox):
     """Editor for a boolean value.
@@ -288,7 +341,7 @@ class DurationEditor(QtGui.QWidget,AbstractPropertyEditor):
         self.setLayout(lo)
 
     def setValue(self,delta=None):
-        if delta==None: delta = xmlstore.StoreTimeDelta()
+        if delta==None: delta = datatypes.TimeDelta()
         seconds = delta.seconds + delta.microseconds/1000000.
         if delta.days>0:
             self.comboUnits.setCurrentIndex(3)
@@ -306,13 +359,13 @@ class DurationEditor(QtGui.QWidget,AbstractPropertyEditor):
     def value(self):
         unit = self.comboUnits.currentIndex()
         if   unit==0:
-            return xmlstore.StoreTimeDelta(seconds=self.spinValue.value())
+            return datatypes.TimeDelta(seconds=self.spinValue.value())
         elif unit==1:
-            return xmlstore.StoreTimeDelta(seconds=self.spinValue.value()*60)
+            return datatypes.TimeDelta(seconds=self.spinValue.value()*60)
         elif unit==2:
-            return xmlstore.StoreTimeDelta(seconds=self.spinValue.value()*3600)
+            return datatypes.TimeDelta(seconds=self.spinValue.value()*3600)
         elif unit==3:
-            return xmlstore.StoreTimeDelta(days=self.spinValue.value())
+            return datatypes.TimeDelta(days=self.spinValue.value())
             
     def onUnitChange(self,unit):
         if   unit==0:
@@ -331,7 +384,7 @@ class DurationEditor(QtGui.QWidget,AbstractPropertyEditor):
         days,  converted = value[0].toInt()
         secs,  converted = value[1].toInt()
         musecs,converted = value[2].toDouble()
-        return xmlstore.StoreTimeDelta(days=days,seconds=secs,microseconds=musecs)
+        return datatypes.TimeDelta(days=days,seconds=secs,microseconds=musecs)
 
     @staticmethod
     def convertToQVariant(value):
@@ -517,7 +570,7 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
     @staticmethod
     def convertFromQVariant(value):
         col = QtGui.QColor(value)
-        return xmlstore.StoreColor(col.red(),col.green(),col.blue())
+        return datatypes.Color(col.red(),col.green(),col.blue())
 
     @staticmethod
     def convertToQVariant(value):
@@ -594,7 +647,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
         node = index.internalPointer()
         if index.column()==1 and node.canHaveValue():
             fieldtype = node.getValueType()
-            dt = getDataTypes()
+            dt = getEditors()
             dt.get(fieldtype,AbstractPropertyEditor).displayValue(self,painter,option,index)
         else:
             QtGui.QItemDelegate.paint(self,painter,option,index)
@@ -743,7 +796,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             templatenode = node.templatenode
             text = node.getText(detail=2)
             nodetype = node.getValueType()
-            if nodetype=='select':
+            if templatenode.hasAttribute('hasoptions'):
                 optionsroot = util.findDescendantNode(templatenode,['options'])
                 assert optionsroot!=None, 'Variable with "select" type lacks "options" element below.'
                 optionnodes = util.findDescendantNodes(optionsroot,['option'])
@@ -811,7 +864,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             elif role==QtCore.Qt.EditRole:
                 value = node.getValue(usedefault=True)
                 if value==None: return QtCore.QVariant()
-                dt = getDataTypes()
+                dt = getEditors()
                 assert fieldtype in dt, 'No editor class defined for data type "%s".' % fieldtype
                 result = dt[fieldtype].convertToQVariant(value)
                 if isinstance(value,util.referencedobject): value.release()
@@ -855,7 +908,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             # Convert the supplied QVariant to the node data type,
             # set the node value, and release the value object if applicable.
             fieldtype = node.getValueType()
-            dt = getDataTypes()
+            dt = getEditors()
             assert fieldtype in dt, 'No editor class defined for data type "%s".' % fieldtype
             value = dt[fieldtype].convertFromQVariant(value)
             node.setValue(value)
@@ -1495,7 +1548,7 @@ class PropertyEditor:
             for callback in self.changehandlers:
                 callback(self)
 
-    def createEditor(self,node,parent,selectwithradio=False,boolwithcheckbox=False,groupbox=False,whatsthis=True,**kwargs):
+    def createEditor(self,node,parent,boolwithcheckbox=False,groupbox=False,whatsthis=True,**kwargs):
         """Creates an editor for the specified node, below the specified parent.
         Any additional named arguments are sent unmodified to the editor.
         """
@@ -1513,19 +1566,6 @@ class PropertyEditor:
             # than the default editor (combobox-like)
             editor = QtGui.QCheckBox(node.getText(detail=1,capitalize=True),parent)
             editor.connect(editor, QtCore.SIGNAL('stateChanged(int)'), self.onChange)
-        elif nodetype=='select' and selectwithradio:
-            # We have to create an editor for a selection from a list, and use
-            # radiobuttons rather than the default editor (combobox-like)
-            options = util.findDescendantNode(templatenode,['options'])
-            if options==None: raise 'Node is of type "select" but lacks "options" childnode.'
-            editor = QtGui.QButtonGroup()
-            for ch in options.childNodes:
-                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option' and not ch.hasAttribute('disabled'):
-                    opt = QtGui.QRadioButton(ch.getAttribute('label'),parent)
-                    if ch.hasAttribute('description'):
-                        opt.setWhatsThis(ch.getAttribute('description'))
-                    editor.addButton(opt,int(ch.getAttribute('value')))
-            editor.connect(editor, QtCore.SIGNAL('buttonClicked(int)'), self.onChange)
         else:
             # Create a normal editor that derives from AbstractPropertyEditor
             editor = createEditor(node,parent,**kwargs)
@@ -1550,10 +1590,6 @@ class PropertyEditor:
         elif nodetype=='bool':
             # Checkbox for boolean
             editor.setChecked(value!=None and value)
-        elif nodetype=='select':
-            # Radiobuttons for select
-            if value==None: value=0
-            editor.button(value).setChecked(True)
         if isinstance(value,util.referencedobject): value.release()
         self.suppresschangeevent = False
 
@@ -1570,7 +1606,4 @@ class PropertyEditor:
         elif nodetype=='bool':
             # Checkbox for boolean
             return node.setValue(editor.checkState()==QtCore.Qt.Checked)
-        elif nodetype=='select':
-            # Radiobuttons for select
-            return node.setValue(editor.checkedId())
             

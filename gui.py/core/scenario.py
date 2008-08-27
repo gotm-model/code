@@ -67,15 +67,16 @@ class Scenario(xmlstore.xmlstore.TypedStore):
             return scenario
 
     @classmethod
-    def getCustomTypes(ownclass):
-        return {'gotmdatafile':xmlplot.data.LinkedFileVariableStore}
+    def getDataType(ownclass,name):
+        if name=='gotmdatafile': return xmlplot.data.LinkedFileVariableStore
+        return xmlstore.xmlstore.TypedStore.getDataType(name)
 
     def loadFromNamelists(self, srcpath, strict = False, protodir = None):
         if common.verbose: print 'Importing scenario from namelist files...'
 
         # Try to open the specified path (currently can be zip, tar/gz or a directory)
         try:
-            container = xmlstore.xmlstore.DataContainer.fromPath(srcpath)
+            container = xmlstore.datatypes.DataContainer.fromPath(srcpath)
         except Exception,e:
             raise Exception('Unable to load specified path. ' + unicode(e))
 
@@ -86,7 +87,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         if protodir!=None:
             # Namelist are specified as .proto files plus one or more .values files.
             # Load the substitutions specified in the main .values file.
-            nmlcontainer = xmlstore.xmlstore.DataContainerDirectory(protodir)
+            nmlcontainer = xmlstore.datatypes.DataContainerDirectory(protodir)
             df = container.getItem(os.path.basename(srcpath)+'.values')
             df_file = df.getAsReadOnlyFile()
             globalsubs.append(namelist.NamelistSubstitutions(df_file))
@@ -210,11 +211,6 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                                 val = True
                             else:
                                 raise namelist.NamelistParseException('Variable is not a boolean. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
-                        elif vartype=='select':
-                            try:
-                                val = int(vardata)
-                            except ValueError:
-                                raise namelist.NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
                         else:
                             raise Exception('Unknown variable type. I do not know how to parse a variable with type "%s" from namelists.' % vartype)
                         
@@ -230,7 +226,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                                     df = container.getItem(fn)
                                     break
                             else:
-                                df = xmlstore.xmlstore.DataFile()
+                                df = xmlstore.datatypes.DataFile()
                             val = xmlplot.data.LinkedFileVariableStore.fromNode(listchild,datafile=df,context=datafilecontext)
                             df.release()
 
@@ -333,7 +329,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                                     varval.saveToFile(os.path.join(targetpath,filename))
                                 varval.release()
                                 varval = '\''+filename+'\''
-                            elif vartype=='int' or vartype=='select':
+                            elif vartype=='int':
                                 varval = str(varval)
                             elif vartype=='float':
                                 varval = str(varval)
@@ -361,7 +357,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         description = node.getText(detail=2)
         lines = [description]
         
-        if datatype == 'select':
+        if node.templatenode.hasAttribute('hasoptions'):
             # Create list of options.
             options = xmlstore.util.findDescendantNode(node.templatenode,['options'])
             assert options!=None, 'Node is of type "select" but lacks "options" childnode.'
@@ -374,7 +370,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         # Create description of data type and range.
         if datatype=='gotmdatafile':
             datatype = 'file path'
-        elif datatype=='int' or datatype=='select':
+        elif datatype=='int':
             datatype = 'integer'
         elif datatype=='datetime':
             datatype = 'string, format = "yyyy-mm-dd hh:mm:ss"'
@@ -739,8 +735,8 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.xmlstore.Convertor):
 
         # Convert absolute time interval to relative time interval.
         dt = source['gotmrun/model_setup/dt'].getValue()
-        target['timeintegration/dt'].setValue(xmlstore.xmlstore.StoreTimeDelta(seconds=dt))
-        target['output/dtsave'].setValue(xmlstore.xmlstore.StoreTimeDelta(seconds=dt*source['gotmrun/output/nsave'].getValue()))
+        target['timeintegration/dt'].setValue(xmlstore.datatypes.TimeDelta(seconds=dt))
+        target['output/dtsave'].setValue(xmlstore.datatypes.TimeDelta(seconds=dt*source['gotmrun/output/nsave'].getValue()))
 
         # ===============================================
         #  meanflow

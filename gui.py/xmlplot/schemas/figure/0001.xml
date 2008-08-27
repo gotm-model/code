@@ -3,7 +3,7 @@
 
 	<template id="Line2D">
 		<element name="CanHaveMarker" type="bool" hidden="True"/>
-		<element name="LineStyle" type="select" label="line style">
+		<element name="LineStyle" type="int" label="line style">
 			<options>
 				<option label="none"     value="0"/>
 				<option label="solid"    value="1"/>
@@ -23,7 +23,7 @@
 				<condition type="eq" variable="./MarkerType" value="7"/>
 			</condition>
 		</element>
-		<element name="MarkerType" type="select" label="marker type">
+		<element name="MarkerType" type="int" label="marker type">
 			<condition type="eq" variable="./CanHaveMarker" value="True"/>
 			<options>
 				<option label="none"     value="0"/>
@@ -57,7 +57,7 @@
 
 	<template id="TickMarks" type="bool">
 		<element name="ShowLabels" type="bool" hidden="True"/>
-		<element name="LocationTime" type="select" label="unit">
+		<element name="LocationTime" type="int" label="unit">
 			<condition type="and">
 				<condition type="eq" variable="." value="True"/>
 				<condition type="eq" variable="../IsTimeAxis" value="True"/>
@@ -76,7 +76,7 @@
 				<condition type="eq" variable="../IsTimeAxis" value="True"/>
 			</condition>
 		</element>
-		<element name="FormatTime" type="select" label="format">
+		<element name="FormatTime" type="int" label="format">
 			<condition type="and">
 				<condition type="eq" variable="." value="True"/>
 				<condition type="eq" variable="./ShowLabels" value="True"/>
@@ -125,7 +125,7 @@
   <element name="CanHaveLegend" type="bool" hidden="True"/>
 	<element name="Legend" type="bool" label="legend">
 		<condition type="eq" variable="./CanHaveLegend" value="True"/>
-		<element name="Location" type="select" label="location">
+		<element name="Location" type="int" label="location">
 			<condition type="eq" variable="." value="True"/>
 			<options>
 				<option value="0"  label="best"/>
@@ -209,7 +209,7 @@
 			<element name="HasConfidenceLimits" type="bool" hidden="True"/>
 			<element name="ConfidenceLimits" label="confidence limits">
 				<condition type="eq" variable="./HasConfidenceLimits" value="True"/>
-				<element name="Style" type="select" label="style">
+				<element name="Style" type="int" label="style">
 					<options>
 						<option label="none"        value="0"/>
 						<option label="error bars"  value="1"/>
@@ -218,7 +218,7 @@
 				</element>
 			</element>
 			
-			<element name="PlotType3D" type="select" label="plot type">
+			<element name="PlotType3D" type="int" label="plot type">
 				<condition type="eq" variable="./DimensionCount" value="2"/>
 				<options>
 					<option label="grid"            value="0"/>

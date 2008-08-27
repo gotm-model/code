@@ -338,6 +338,7 @@ class PageChooseAction(commonqt.WizardPage):
                 newscen = self.scenariowidget.getScenario(callback=progslicer.getStepCallback())
             except Exception,e:
                 dialog.close()
+                if isinstance(e,AssertionError): raise
                 QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 return False
 
@@ -423,7 +424,7 @@ def main(options,args):
         del args[0]
         
         try:
-            container = xmlstore.xmlstore.DataContainer.fromPath(openpath)
+            container = xmlstore.datatypes.DataContainer.fromPath(openpath)
         except Exception,e:
             QtGui.QMessageBox.critical(wiz, 'Unable to load specified path', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
             container = None

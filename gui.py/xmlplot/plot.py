@@ -7,18 +7,31 @@ import numpy
 
 import common,xmlstore.xmlstore,xmlstore.util
 
-colormaps = {0:'jet',
-             1:'hsv',
-             2:'hot',
-             3:'cool',
-             4:'spring',
-             5:'summer',
-             6:'autumn',
-             7:'winter',
-             8:'gray',
-             9:'bone',
-             10:'copper',
-             11:'pink'}
+colormaps,colormaplist = None,None
+def getColorMaps():
+    global colormaps,colormaplist
+    if colormaps==None:
+        colormaps,colormaplist = {},[]
+        
+        def fromModule(mod,prefix=''):
+            for strchild in dir(mod):
+                member = getattr(mod,strchild)
+                if isinstance(member,matplotlib.colors.Colormap):
+                    colormaplist.append(prefix+strchild)
+                    colormaps[prefix+strchild] = member
+
+        fromModule(matplotlib.cm)
+        
+        # Try adding additional colormaps from basemap
+        basemapcm = None
+        try:
+            from mpl_toolkits.basemap import cm as basemapcm
+        except:
+            pass
+        if basemapcm!=None: fromModule(basemapcm,prefix='basemap.')
+    return colormaps,colormaplist
+
+xmlstore.datatypes.register('fontname',xmlstore.datatypes.String)
       
 class MergedVariableStore(common.VariableStore):
     """Class that merges multiple data sources (VariableStore objects) with
@@ -282,6 +295,11 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
             FigureProperties.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/figure'))
         return FigureProperties.schemadict
         
+    @classmethod
+    def getDataType(ownclass,name):
+        if name=='colormap': return xmlstore.datatypes.String
+        return xmlstore.xmlstore.TypedStore.getDataType(name)
+        
 class Figure(xmlstore.util.referencedobject):
     """Class encapsulating a MatPlotLib figure. The data for the figure is
     provided as one or more VariableStore objects, with data series being
@@ -320,11 +338,11 @@ class Figure(xmlstore.util.referencedobject):
         self.defaultproperties['FontName'       ].setValue(defaultfont)
         self.defaultproperties['FontScaling'    ].setValue(100)
         self.defaultproperties['Map'            ].setValue(False)
-        self.defaultproperties['Map/Resolution' ].setValue(1)
+        self.defaultproperties['Map/Resolution' ].setValue('c')
         self.defaultproperties['Map/DrawCoastlines'].setValue(True)
         self.defaultproperties['Legend/Location'].setValue(0)
         self.defaultproperties['HasColorMap'    ].setValue(False)
-        self.defaultproperties['ColorMap'       ].setValue(0)
+        self.defaultproperties['ColorMap'       ].setValue('jet')
         setLineProperties(self.defaultproperties['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
 
         # Take default figure size from value at initialization
@@ -342,7 +360,7 @@ class Figure(xmlstore.util.referencedobject):
         self.haschanged = False
         
         self.callbacks = {'completeStateChange':[]}
-        
+
     def __getitem__(self,key):
         return self.properties[key]
         
@@ -477,7 +495,7 @@ class Figure(xmlstore.util.referencedobject):
         """Update the figure.
         
         Everything happens here. The current set of customized properties is
-        interpreted, data slice are obtained from the data sources, default
+        interpreted, data slices are obtained from the data sources, default
         figure properties are set based on properties of the obtained data,
         and the figure is built and shown.
         """
@@ -560,7 +578,8 @@ class Figure(xmlstore.util.referencedobject):
         hascolormap = False
         
         # Obtain the currently selected colormap, and make sure NaNs are plotted as white.
-        cm = getattr(matplotlib.cm,colormaps[self.properties['ColorMap'].getValue(usedefault=True)])
+        cmdict,cmlist = getColorMaps()
+        cm = cmdict[self.properties['ColorMap'].getValue(usedefault=True)]
         cm.set_bad('w')
                 
         # Start with z order index 0 (incrementing it with every item added)
@@ -596,7 +615,7 @@ class Figure(xmlstore.util.referencedobject):
             setLineProperties(defaultseriesnode['LineProperties'])
             defaultseriesnode['ShowEdges'].setValue(False)
             defaultseriesnode['UseColorMap'].setValue(True)
-            defaultseriesnode['EdgeColor'].setValue(xmlstore.xmlstore.StoreColor(0,0,0))
+            defaultseriesnode['EdgeColor'].setValue(xmlstore.datatypes.Color(0,0,0))
             defaultseriesnode['EdgeWidth'].setValue(1.)
             
             # Old defaults will be removed after all series are plotted.
@@ -740,16 +759,15 @@ class Figure(xmlstore.util.referencedobject):
             seriesinfo.append(info)
                 
         xcanbelon = xrange[0]!=None and xrange[0]>=-360 and xrange[1]<=360
-        ycanbelat = yrange[0]!=None and yrange[0]>=-360 and yrange[1]<=360
+        ycanbelat = yrange[0]!=None and yrange[0]>=-90 and yrange[1]<=90
         self.defaultproperties['CanBeMap'].setValue(xcanbelon and ycanbelat)
-        ismap = self.properties['Map'].getValue(usedefault=True)
+        ismap = xcanbelon and ycanbelat and self.properties['Map'].getValue(usedefault=True)
         drawaxes = axes
         if ismap:
             # Create the basemap object
             import mpl_toolkits.basemap
             res = self.properties['Map/Resolution'].getValue(usedefault=True)
-            res = {1:'c',2:'l',3:'i',4:'h',5:'f'}[res]
-            basemap = mpl_toolkits.basemap.Basemap(llcrnrlon=xrange[0],llcrnrlat=yrange[0],urcrnrlon=xrange[1],urcrnrlat=yrange[1],resolution=res,ax=axes)
+            basemap = mpl_toolkits.basemap.Basemap(llcrnrlon=xrange[0],llcrnrlat=yrange[0],urcrnrlon=xrange[1],urcrnrlat=yrange[1],resolution=res,ax=axes,suppress_ticks=False)
             drawaxes = basemap
 
             # Transform x,y coordinates
@@ -773,7 +791,7 @@ class Figure(xmlstore.util.referencedobject):
                 X,Y,switchaxes = info['x'],info['y'],info['switchaxes']
                 
                 # Get data series style settings
-                defaultseriesnode['LineProperties/Line/Color'].setValue(xmlstore.xmlstore.StoreColor(*linecolors[plotcount[1]%len(linecolors)]))
+                defaultseriesnode['LineProperties/Line/Color'].setValue(xmlstore.datatypes.Color(*linecolors[plotcount[1]%len(linecolors)]))
                 plotargs = getLineProperties(seriesnode['LineProperties'])
                 
                 # plot confidence interval (if any)
@@ -934,7 +952,7 @@ class Figure(xmlstore.util.referencedobject):
                         pc.set_clim((Z[0,0]-1,Z[0,0]+1))
                     else:
                         pc.set_clim(dim2data.get('colorbar',{}).get('forcedrange',(None,None)))
-                    cb = self.figure.colorbar(pc)
+                    cb = self.figure.colorbar(pc,ax=axes)
 
                 plotcount[2] += 1
             
@@ -955,7 +973,7 @@ class Figure(xmlstore.util.referencedobject):
         # Add map objects if needed
         if ismap:
             if self.properties['Map/DrawCoastlines'].getValue(usedefault=True):
-                basemap.drawcoastlines(ax=axes)
+                basemap.drawcoastlines()
 
         # Create and store title
         title = ''
@@ -1241,6 +1259,13 @@ class Figure(xmlstore.util.referencedobject):
                 l.set_size(fontsizes['ytick.labelsize'])
                 l.set_name(fontfamily)
 
+            if ismap:
+                # Adjust colorbar top and height based on basemap-modified axes
+                p = axes.get_position(original=False)
+                cbp = cb.ax.get_position(original=False)
+                cbp = cbp.from_bounds(cbp.x0,p.y0,cbp.width,p.height)
+                cb.ax.set_position(cbp)
+
         # Draw the plot to screen.
         self.canvas.draw()
         
@@ -1257,7 +1282,7 @@ def setLineProperties(propertynode,mplsection='lines',**kwargs):
     deflinewidth = matplotlib.rcParams[mplsection+'.linewidth']
     deflinecolor = matplotlib.rcParams[mplsection+'.color']
     deflinecolor = matplotlib.colors.colorConverter.to_rgb(deflinecolor)
-    deflinecolor = xmlstore.xmlstore.StoreColor.fromNormalized(*deflinecolor)
+    deflinecolor = xmlstore.datatypes.Color.fromNormalized(*deflinecolor)
     deflinestyle = matplotlib.rcParams[mplsection+'.linestyle']
     linestyles = {'-':1,'--':2,'-.':3,':':4}
     if deflinestyle in linestyles:
@@ -1269,7 +1294,7 @@ def setLineProperties(propertynode,mplsection='lines',**kwargs):
     defedgewidth = matplotlib.rcParams.get(mplsection+'.markeredgewidth',0.5)
     defedgecolor = matplotlib.rcParams.get(mplsection+'.markeredgecolor','black')
     defedgecolor = matplotlib.colors.colorConverter.to_rgb(defedgecolor)
-    defedgecolor = xmlstore.xmlstore.StoreColor.fromNormalized(*defedgecolor)
+    defedgecolor = xmlstore.datatypes.Color.fromNormalized(*defedgecolor)
 
     propertynode['CanHaveMarker'].setValue(kwargs.get('CanHaveMarker',True))
     

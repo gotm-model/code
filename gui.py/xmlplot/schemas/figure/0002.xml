@@ -3,7 +3,7 @@
 
 	<template id="Line2D">
 		<element name="CanHaveMarker" type="bool" hidden="True"/>
-    <element name="Line" type="select" label="line">
+    <element name="Line" type="int" label="line">
 			<options>
 				<option label="none"     value="0"/>
 				<option label="solid"    value="1"/>
@@ -18,7 +18,7 @@
         <condition type="ne" variable="." value="0"/>
       </element>
     </element>
-    <element name="Marker" type="select" label="marker">
+    <element name="Marker" type="int" label="marker">
 			<condition type="eq" variable="./CanHaveMarker" value="True"/>
 			<options>
 				<option label="none"     value="0"/>
@@ -55,7 +55,7 @@
 
 	<template id="TickMarks" type="bool">
 		<element name="ShowLabels" type="bool" hidden="True"/>
-		<element name="LocationTime" type="select" label="unit">
+		<element name="LocationTime" type="int" label="unit">
 			<condition type="and">
 				<condition type="eq" variable="." value="True"/>
 				<condition type="eq" variable="../IsTimeAxis" value="True"/>
@@ -74,7 +74,7 @@
 				<condition type="eq" variable="../IsTimeAxis" value="True"/>
 			</condition>
 		</element>
-		<element name="FormatTime" type="select" label="format">
+		<element name="FormatTime" type="int" label="format">
 			<condition type="and">
 				<condition type="eq" variable="." value="True"/>
 				<condition type="eq" variable="./ShowLabels" value="True"/>
@@ -123,14 +123,14 @@
   <element name="CanBeMap" type="bool" hidden="True"/>
   <element name="Map" type="bool" label="plot as map">
     <condition type="eq" variable="./CanBeMap" value="True"/>
-    <element name="Resolution" type="select" label="resolution">
+    <element name="Resolution" type="string" label="resolution">
       <condition type="eq" variable="." value="True"/>
       <options>
-        <option value="1" label="crude"/>
-        <option value="2" label="low"/>
-        <option value="3" label="intermediate"/>
-        <option value="4" label="high"/>
-        <option value="5" label="full"/>
+        <option value="c" label="crude"/>
+        <option value="l" label="low"/>
+        <option value="i" label="intermediate"/>
+        <option value="h" label="high"/>
+        <option value="f" label="full"/>
       </options>
     </element>
     <element name="DrawCoastlines" type="bool" label="draw coastlines">
@@ -141,7 +141,7 @@
   <element name="CanHaveLegend" type="bool" hidden="True"/>
   <element name="Legend" type="bool" label="legend">
     <condition type="eq" variable="./CanHaveLegend" value="True"/>
-    <element name="Location" type="select" label="location">
+    <element name="Location" type="int" label="location">
       <condition type="eq" variable="." value="True"/>
       <options>
         <option value="0"  label="best"/>
@@ -168,20 +168,6 @@
   <element name="HasColorMap" type="bool" hidden="True"/>
   <element name="ColorMap" type="colormap" label="colormap">
     <condition type="eq" variable="./HasColorMap" value="True"/>
-    <options>
-      <option value="0"  label="jet"/>
-      <option value="1"  label="HSV"/>
-      <option value="2"  label="hot"/>
-      <option value="3"  label="cool"/>
-      <option value="4"  label="spring"/>
-      <option value="5"  label="summer"/>
-      <option value="6"  label="autumn"/>
-      <option value="7"  label="winter"/>
-      <option value="8"  label="gray"/>
-      <option value="9"  label="bone"/>
-      <option value="10" label="copper"/>
-      <option value="11" label="pink"/>
-    </options>
   </element>
 
   <element name="Axes" label="axes">
@@ -225,7 +211,7 @@
 			<element name="HasConfidenceLimits" type="bool" hidden="True"/>
 			<element name="ConfidenceLimits" label="confidence limits">
 				<condition type="eq" variable="./HasConfidenceLimits" value="True"/>
-				<element name="Style" type="select" label="style">
+				<element name="Style" type="int" label="style">
 					<options>
 						<option label="none"        value="0"/>
 						<option label="error bars"  value="1"/>
@@ -234,7 +220,7 @@
 				</element>
 			</element>
 			
-			<element name="PlotType3D" type="select" label="plot type">
+			<element name="PlotType3D" type="int" label="plot type">
 				<condition type="eq" variable="./DimensionCount" value="2"/>
 				<options>
 					<option label="grid"            value="0"/>
