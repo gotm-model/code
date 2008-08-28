@@ -877,9 +877,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
 
           # Process COARDS variable attributes.
           if hasattr(ncvar,'_FillValue'):
-            dat = numpy.ma.array(dat,mask=dat==ncvar._FillValue)
+            dat = numpy.ma.masked_where(dat==ncvar._FillValue,dat,copy=False)
           elif hasattr(ncvar,'missing_value'):
-            dat = numpy.ma.array(dat,mask=dat==ncvar.missing_value)
+            dat = numpy.ma.masked_where(dat==ncvar.missing_value,dat,copy=False)
           if hasattr(ncvar,'scale_factor'):
             dat *= ncvar.scale_factor
           if hasattr(ncvar,'add_offset'):
