@@ -838,6 +838,8 @@ class Figure(xmlstore.util.referencedobject):
             for info,varslices in zip(seriesinfo,seriesslices):
                 if 'x' in info and 'y' in info:
                     info['x'],info['y'] = basemap(info['x'],info['y'])
+            axis2data['x'].update({'unit':'','label':'','hideticks':True})
+            axis2data['y'].update({'unit':'','label':'','hideticks':True})
 
         for seriesnode,var,varslices,info in zip(forcedseries,seriesvariables,seriesslices,seriesinfo):
 
@@ -1156,7 +1158,7 @@ class Figure(xmlstore.util.referencedobject):
             defaxisnode['Label'].setValue(deflab)
             defaxisnode['Dimensions'].setValue(','.join(axisdata['dimensions']))    # Note! Used by pyncview!
             defaxisnode['Unit'].setValue(axisdata['unit'])
-            defaxisnode['TicksMajor'].setValue(True)
+            defaxisnode['TicksMajor'].setValue(not axisdata.get('hideticks',False))
             defaxisnode['TicksMajor/ShowLabels'].setValue(True)
             defaxisnode['TicksMinor'].setValue(False)
             defaxisnode['TicksMinor/ShowLabels'].setValue(False)
