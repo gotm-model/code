@@ -962,9 +962,9 @@
 				<condition type="eq" variable="." value="0"/>
 				<fileinfo type="pointsintime">
 					<filevariables>
-						<filevariable name="A" label="A"/>
-						<filevariable name="g1" label="g1" unit="m"/>
-						<filevariable name="g2" label="g2" unit="m"/>
+						<filevariable name="A"  label="longwave fraction of visible light"/>
+						<filevariable name="g1" label="efolding depth of longwave fraction"  unit="m"/>
+						<filevariable name="g2" label="efolding depth of shortwave fraction" unit="m"/>
 					</filevariables>
 				</fileinfo>
 			</element>
