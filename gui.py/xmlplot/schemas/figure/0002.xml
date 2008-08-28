@@ -123,6 +123,36 @@
   <element name="CanBeMap" type="bool" hidden="True"/>
   <element name="Map" type="bool" label="plot as map">
     <condition type="eq" variable="./CanBeMap" value="True"/>
+    <element name="Projection" type="string" label="projection">
+      <condition type="eq" variable="." value="True"/>
+      <options>
+        <option value="aeqd" label="Azimuthal Equidistant"/>
+        <option value="poly" label="Polyconic"/>
+        <option value="gnom" label="Gnomonic"/>
+        <option value="moll" label="Mollweide"/>
+        <option value="tmerc" label="Transverse Mercator"/>
+        <option value="nplaea" label="North-Polar Lambert Azimuthal"/>
+        <option value="mill" label="Miller Cylindrical"/>
+        <option value="merc" label="Mercator"/>
+        <option value="stere" label="Stereographic"/>
+        <option value="npstere" label="North-Polar Stereographic"/>
+        <option value="geos" label="Geostationary"/>
+        <option value="laea" label="Lambert Azimuthal Equal Area"/>
+        <option value="sinu" label="Sinusoidal"/>
+        <option value="spstere" label="South-Polar Stereographic"/>
+        <option value="lcc" label="Lambert Conformal"/>
+        <option value="npaeqd" label="North-Polar Azimuthal Equidistant"/>
+        <option value="eqdc" label="Equidistant Conic"/>
+        <option value="cyl" label="Cylindrical Equidistant"/>
+        <option value="omerc" label="Oblique Mercator"/>
+        <option value="aea" label="Albers Equal Area"/>
+        <option value="spaeqd" label="South-Polar Azimuthal Equidistant"/>
+        <option value="ortho" label="Orthographic"/>
+        <option value="cass" label="Cassini-Soldner"/>
+        <option value="splaea" label="South-Polar Lambert Azimuthal"/>
+        <option value="robin" label="Robinson"/>
+      </options>
+    </element>
     <element name="Resolution" type="string" label="resolution">
       <condition type="eq" variable="." value="True"/>
       <options>
@@ -135,6 +165,13 @@
     </element>
     <element name="DrawCoastlines" type="bool" label="draw coastlines">
       <condition type="eq" variable="." value="True"/>
+    </element>
+    <element name="Range" label="range">
+      <condition type="eq" variable="." value="True"/>
+      <element name="LowerLeftLatitude"   type="float" label="lower left latitude"/>
+      <element name="LowerLeftLongitude"  type="float" label="lower left longitude"/>
+      <element name="UpperRightLatitude"  type="float" label="upper right latitude"/>
+      <element name="UpperRightLongitude" type="float" label="upper right longitude"/>
     </element>
   </element>
 

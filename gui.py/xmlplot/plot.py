@@ -337,13 +337,16 @@ class Figure(xmlstore.util.referencedobject):
         # Set some default properties.
         self.defaultproperties['FontName'       ].setValue(defaultfont)
         self.defaultproperties['FontScaling'    ].setValue(100)
-        self.defaultproperties['Map'            ].setValue(False)
-        self.defaultproperties['Map/Resolution' ].setValue('c')
-        self.defaultproperties['Map/DrawCoastlines'].setValue(True)
         self.defaultproperties['Legend/Location'].setValue(0)
         self.defaultproperties['HasColorMap'    ].setValue(False)
         self.defaultproperties['ColorMap'       ].setValue('jet')
         setLineProperties(self.defaultproperties['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
+
+        nodemap = self.defaultproperties['Map']
+        nodemap.setValue(False)
+        nodemap['Projection' ].setValue('cyl')
+        nodemap['Resolution' ].setValue('c')
+        nodemap['DrawCoastlines'].setValue(True)
 
         # Take default figure size from value at initialization
         w,h = self.figure.get_size_inches()
@@ -544,7 +547,7 @@ class Figure(xmlstore.util.referencedobject):
         # Get forced axes boundaries (will be None if not set; then we autoscale)
         # These boundaries are retrieved before data are obtained, in order to be able
         # to skip reading out unnecessary data (which currently does not work!).
-        dim2data = {}
+        axis2data = {}
         defaultaxes = self.defaultproperties['Axes']
         forcedaxes = self.properties['Axes']
         for forcedaxis in forcedaxes.getLocationMultiple(['Axis']):
@@ -559,7 +562,7 @@ class Figure(xmlstore.util.referencedobject):
                 axmin = forcedaxis['Minimum'].getValue()
                 axmax = forcedaxis['Maximum'].getValue()
                 logscale = forcedaxis['LogScale'].getValue()
-            dim2data[forcedaxis.getSecondaryId()] = {'forcedrange':[axmin,axmax],'logscale':logscale}
+            axis2data[forcedaxis.getSecondaryId()] = {'forcedrange':[axmin,axmax],'logscale':logscale}
 
         # Shortcuts to the nodes specifying the series to plot.
         forceddatanode = self.properties['Data']
@@ -627,23 +630,22 @@ class Figure(xmlstore.util.referencedobject):
             titles.append(label)
 
             # Build list of dimension boundaries for current variable.
-            # For dimensions that have equal lower and upper bound, take a slice.
-            dimbounds = []
             originaldims = var.getDimensions()
-            for dimname in originaldims:
-                if dimname in dim2data:
-                    # We have boundaries set on the current dimension.
-                    forcedrange = dim2data[dimname].get('forcedrange',(None,None))
-                    if forcedrange[0]!=None: forcedrange[0] = forcedrange[0]
-                    if forcedrange[1]!=None: forcedrange[1] = forcedrange[1]
-                    if forcedrange[0]==forcedrange[1] and forcedrange[0]!=None:
-                        # Equal upper and lower boundary: take a slice.
-                        var = VariableSlice(var,dimname,forcedrange[0])
-                    else:
-                        dimbounds.append(slice(forcedrange[0],forcedrange[1]))
-                else:
-                    # No boundaries set.
-                    dimbounds.append(slice(None))
+            dimbounds = [slice(None)]*len(originaldims)
+            #for dimname in originaldims:
+            #    if dimname in dim2data:
+            #        # We have boundaries set on the current dimension.
+            #        forcedrange = dim2data[dimname].get('forcedrange',(None,None))
+            #        if forcedrange[0]!=None: forcedrange[0] = forcedrange[0]
+            #        if forcedrange[1]!=None: forcedrange[1] = forcedrange[1]
+            #        if forcedrange[0]==forcedrange[1] and forcedrange[0]!=None:
+            #            # Equal upper and lower boundary: take a slice.
+            #            var = VariableSlice(var,dimname,forcedrange[0])
+            #        else:
+            #            dimbounds.append(slice(forcedrange[0],forcedrange[1]))
+            #    else:
+            #        # No boundaries set.
+            #        dimbounds.append(slice(None))
                     
             # Get the data
             varslices = var.getSlice(tuple(dimbounds))
@@ -652,19 +654,7 @@ class Figure(xmlstore.util.referencedobject):
             # Skip this variable if (parts of) its data are unavailable.
             if not all([varslice.isValid() for varslice in varslices]): continue
 
-            # Now we are at the point where getting the data worked.
-            # Register all used dimensions (even the "sliced out" ones)
-            # as used, and get information on them.
-            for dimname in originaldims:
-                dimdata = dim2data.setdefault(dimname,{'forcedrange':[None,None]})
-                dimdata['used'] = True
-                diminfo = var.getDimensionInfo(dimname)
-                dimdata.update(diminfo)
-
-            # Add the variable itself to the dimension list.
-            dimdata = dim2data.setdefault(varpath,{'forcedrange':(None,None)})
-            dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','tight':False,'logscale':False,'reversed':False})
-            
+            # Basic checks: eliminate singleton dimensions and mask invalid values.
             for i in range(len(varslices)):
                 # Eliminate singleton dimensions (singleton dimension: dimension with length one)
                 # Store singleton dimensions as fixed extra coordinates.
@@ -676,7 +666,7 @@ class Figure(xmlstore.util.referencedobject):
                     invalid = numpy.logical_not(numpy.isfinite(varslices[i].data))
                     if invalid.any():
                         print 'WARNING: masking %i invalid values (inf or nan) out of %i.' % (invalid.sum(),invalid.size)
-                        varslices[i].data = numpy.ma.array(varslices[i].data,mask=invalid)
+                        varslices[i].data = numpy.ma.masked_where(invalid,varslices[i].data,copy=False)
 
             # Get the number of dimensions from the data slice, and add it to the plot properties.
             defaultseriesnode['DimensionCount'].setValue(varslices[0].ndim)
@@ -695,69 +685,127 @@ class Figure(xmlstore.util.referencedobject):
                 coords = varslices[0].coords
 
             # Get the minimum and maximum values; store these as default.
-            dim2data[varpath]['datarange'] = [varslices[0].data.min(),varslices[0].data.max()]
-
-            # Enumerate over the dimension of the variable.
-            for idim,dimname in enumerate(varslices[0].dimensions):
-                # Get minimum and maximum coordinates.
-                if coords[idim].ndim==1:
-                    # Coordinates provided as vector (1D) valid over whole domain.
-                    datamin = coords[idim][0]
-                    datamax = coords[idim][-1]
-                else:
-                    # Coordinates are provided as multidimensional array, with a value for every
-                    # coordinate (data point) in the domain. We assume that for a given point
-                    # in the space of the other coordinates, the current cordinate increases
-                    # monotonously (i.e., position 0 holds the lowest value and position -1 the
-                    # highest)
-                    datamin = coords[idim].take((0, ),idim).min()
-                    datamax = coords[idim].take((-1,),idim).max()
-
-                # Update effective dimension bounds                    
-                effrange = dim2data[dimname].setdefault('datarange',[None,None])
-                if effrange[0]==None or datamin<effrange[0]: effrange[0] = datamin
-                if effrange[1]==None or datamax>effrange[1]: effrange[1] = datamax
+            vardata = {'label':var.getLongName(),
+                       'unit':var.getUnit(),
+                       'datatype':'float',
+                       'tight':False,
+                       'reversed':False,
+                       'datarange':[varslices[0].data.min(),varslices[0].data.max()]}
                 
             # Now determine the axes ranges
             varslice = varslices[0]
             info = {}
-            X,Y = None,None
+            X,Y,U,V,C = None,None,None,None,None
+            xinfo,yinfo,cinfo = None,None,None
             if varslice.ndim==1:
+                # One coordinate dimension
                 X,Y = varslice.coords[0], varslice.data
-                switchaxes = (dim2data[varslice.dimensions[0]]['preferredaxis']=='y')
+                xinfo = var.getDimensionInfo(varslice.dimensions[0])
+                yinfo = vardata
+                switchaxes = xinfo['preferredaxis']=='y'
                 xname,yname = varslice.dimensions[0], varpath
                 if switchaxes:
                     X,Y = Y,X
+                    xinfo,yinfo = yinfo,xinfo
                     xname,yname = yname,xname
-                info.update({'x':X,'y':Y,'switchaxes':switchaxes})
-                dim2data[xname]['axis'] = 'x'
-                dim2data[yname]['axis'] = 'y'
+                info['switchaxes'] = switchaxes
             elif varslice.ndim==2:
+                # Two coordinate dimensions
+                
+                # Determine which independent dimension to allocate to which axis.
                 xdim,ydim = 0,1
                 if var.hasReversedDimensions(): xdim,ydim = 1,0
-                prefaxis = (dim2data[varslice.dimensions[0]]['preferredaxis'],dim2data[varslice.dimensions[1]]['preferredaxis'])
-                if (prefaxis[xdim]=='y' and prefaxis[ydim]!='y') or (prefaxis[ydim]=='x' and prefaxis[xdim]!='x'):
-                    # One independent dimension prefers to switch axis and the
-                    # other does not disagree.
+                xname,yname = varslice.dimensions[xdim],varslice.dimensions[ydim]
+                xinfo,yinfo = var.getDimensionInfo(xname),var.getDimensionInfo(yname)
+                xpref,ypref = xinfo['preferredaxis'],yinfo['preferredaxis']
+                if (xpref=='y' and ypref!='y') or (ypref=='x' and xpref!='x'):
+                    # One independent dimension prefers to switch axis and the other does not disagree.
                     xdim,ydim = ydim,xdim
-                X = coords[xdim]
-                Y = coords[ydim]
-                info.update({'x':X,'y':Y,'xdim':xdim,'ydim':ydim})
-                dim2data[varslice.dimensions[xdim]]['axis'] = 'x'
-                dim2data[varslice.dimensions[ydim]]['axis'] = 'y'
+                    xname,yname = yname,xname
+                    xinfo,yinfo = yinfo,xinfo
+                    
+                # Get the coordinates
+                X,Y = coords[xdim],coords[ydim]
+
+                # Get length of coordinate dimensions. Coordinates can be provided as vectors
+                # valid over the whole domain, or as n-D array that match the shape of the values.
+                if X.ndim==1:
+                    xlength = X.shape[0]
+                else:
+                    xlength = X.shape[xdim]
+                if Y.ndim==1:
+                    ylength = Y.shape[0]
+                else:
+                    ylength = Y.shape[ydim]
+                    
+                # Adjust X dimension (make sure it is 2D)
+                if X.ndim==1:
+                    X = X.reshape((1,-1)).repeat(ylength, 0)
+                elif xdim<ydim:
+                    X = X.transpose()
+                    
+                # Adjust Y dimension (make sure it is 2D)
+                if Y.ndim==1:
+                    Y = Y.reshape((-1,1)).repeat(xlength, 1)
+                elif xdim<ydim:
+                    Y = Y.transpose()
+
+                # Get the values to plot
+                if len(varslices)==1:
+                    if plottype3d!=2:
+                        cinfo = vardata
+                        cname = varpath
+                        C = varslice.data
+                else:
+                    assert len(varslices)==2,'Only plots with one or two dependent variables are currently supported.'
+                    U = varslices[0].data
+                    V = varslices[1].data
+                    C = numpy.sqrt(U**2+V**2)
+                    cname = 'arrowlength'
+                    cinfo = {'label':'arrow length',
+                             'unit':'',
+                               'datatype':'float',
+                               'tight':False,
+                               'reversed':False,
+                               'datarange':[C.min(),C.max()]}
+                    
+                # Transpose values if needed
+                if xdim<ydim:
+                    C = C.transpose()
+                    if U!=None: U,V = U.transpose(),V.transpose()
+                
             if X!=None:
                 curmin,curmax = X.min(),X.max()
                 if xrange[0]==None or curmin<xrange[0]: xrange[0] = curmin
                 if xrange[1]==None or curmax>xrange[1]: xrange[1] = curmax
+                info['x'] = X
             if Y!=None:
                 curmin,curmax = Y.min(),Y.max()
                 if yrange[0]==None or curmin<yrange[0]: yrange[0] = curmin
                 if yrange[1]==None or curmax>yrange[1]: yrange[1] = curmax
+                info['y'] = Y
+            if C!=None: info['C'] = C
+            if U!=None: info['U'] = U
+            if V!=None: info['V'] = V
+            if xinfo!=None:
+                axis2data.setdefault('x',{'forcedrange':[None,None]}).update(xinfo)
+                axis2data['x'].setdefault('dimensions',[]).append(xname)
+            if yinfo!=None:
+                axis2data.setdefault('y',{'forcedrange':[None,None]}).update(yinfo)
+                axis2data['y'].setdefault('dimensions',[]).append(yname)
+            if cinfo!=None:
+                axis2data.setdefault('colorbar',{'forcedrange':[None,None]}).update(cinfo)
+                axis2data['colorbar'].setdefault('dimensions',[]).append(cname)
                     
             seriesvariables.append(var)
             seriesslices.append(varslices)
             seriesinfo.append(info)
+            
+        # Remove unused dimensions (recognizable by the lack of attributes such as "datatype")
+        for axisname in axis2data.keys():
+            if 'datatype' not in axis2data[axisname]: del axis2data[axisname]
                 
+        # Handle transformations due to map projection (if any)
         xcanbelon = xrange[0]!=None and xrange[0]>=-360 and xrange[1]<=360
         ycanbelat = yrange[0]!=None and yrange[0]>=-90 and yrange[1]<=90
         self.defaultproperties['CanBeMap'].setValue(xcanbelon and ycanbelat)
@@ -766,16 +814,59 @@ class Figure(xmlstore.util.referencedobject):
         if ismap:
             # Create the basemap object
             import mpl_toolkits.basemap
-            res = self.properties['Map/Resolution'].getValue(usedefault=True)
-            basemap = mpl_toolkits.basemap.Basemap(llcrnrlon=xrange[0],llcrnrlat=yrange[0],urcrnrlon=xrange[1],urcrnrlat=yrange[1],resolution=res,ax=axes,suppress_ticks=False)
+            nodemap = self.properties['Map']
+            res  = nodemap['Resolution'].getValue(usedefault=True)
+            proj = nodemap['Projection'].getValue(usedefault=True)
+            defnodemap = self.defaultproperties['Map']
+            defnodemap['Range/LowerLeftLatitude'].setValue(yrange[0])
+            defnodemap['Range/LowerLeftLongitude'].setValue(xrange[0])
+            defnodemap['Range/UpperRightLatitude'].setValue(yrange[1])
+            defnodemap['Range/UpperRightLongitude'].setValue(xrange[1])
+            basemap = mpl_toolkits.basemap.Basemap(llcrnrlon=nodemap['Range/LowerLeftLongitude' ].getValue(usedefault=True),
+                                                   llcrnrlat=nodemap['Range/LowerLeftLatitude'  ].getValue(usedefault=True),
+                                                   urcrnrlon=nodemap['Range/UpperRightLongitude'].getValue(usedefault=True),
+                                                   urcrnrlat=nodemap['Range/UpperRightLatitude' ].getValue(usedefault=True),
+                                                   projection=proj,
+                                                   resolution=res,
+                                                   ax=axes,
+                                                   suppress_ticks=False,
+                                                   lon_0=(xrange[0]+xrange[1])/2.,
+                                                   lat_0=(yrange[0]+yrange[1])/2.)
             drawaxes = basemap
 
             # Transform x,y coordinates
-            for info in seriesinfo:
+            for info,varslices in zip(seriesinfo,seriesslices):
                 if 'x' in info and 'y' in info:
                     info['x'],info['y'] = basemap(info['x'],info['y'])
 
         for seriesnode,var,varslices,info in zip(forcedseries,seriesvariables,seriesslices,seriesinfo):
+
+            # Find axes ranges
+            for axisname in ('x','y'):
+                if axisname not in info: continue
+                curcoords = info[axisname]
+                
+                # Get minimum and maximum coordinates.
+                if curcoords.ndim==1:
+                    # Coordinates provided as vector (1D) valid over whole domain.
+                    datamin = curcoords[0]
+                    datamax = curcoords[-1]
+                else:
+                    # Coordinates are provided as multidimensional array, with a value for every
+                    # coordinate (data point) in the domain. We assume that for a given point
+                    # in the space of the other coordinates, the current cordinate increases
+                    # monotonously (i.e., position 0 holds the lowest value and position -1 the
+                    # highest)
+                    #datamin = curcoords.take((0, ),idim).min()
+                    #datamax = curcoords.take((-1,),idim).max()
+
+                    datamin = curcoords.min()
+                    datamax = curcoords.max()
+
+                # Update effective dimension bounds                    
+                effrange = axis2data.setdefault(axisname,{}).setdefault('datarange',[None,None])
+                if effrange[0]==None or datamin<effrange[0]: effrange[0] = datamin
+                if effrange[1]==None or datamax>effrange[1]: effrange[1] = datamax
 
             varslice = varslices[0]
             
@@ -839,105 +930,74 @@ class Figure(xmlstore.util.referencedobject):
                 plotcount[1] += 1
             elif varslice.ndim==2:
                 # Retrieve cached coordinates
-                X,Y = info['x'],info['y']
-                xdim,ydim = info['xdim'],info['ydim']
+                X,Y,C = info['x'],info['y'],info['C']
                 
-                # Get length of coordinate dimensions. Coordinates can be provided as vectors
-                # valid over the whole domain, or as n-D array that match the shape of the values.
-                if X.ndim==1:
-                    xlength = X.shape[0]
-                else:
-                    xlength = X.shape[xdim]
-                if Y.ndim==1:
-                    ylength = Y.shape[0]
-                else:
-                    ylength = Y.shape[ydim]
-                    
-                # Adjust X dimension.
-                if X.ndim==1:
-                    X = X.reshape((1,-1)).repeat(ylength, 0)
-                elif xdim<ydim:
-                    X = X.transpose()
-                    
-                # Adjust Y dimension.
-                if Y.ndim==1:
-                    Y = Y.reshape((-1,1)).repeat(xlength, 1)
-                elif xdim<ydim:
-                    Y = Y.transpose()
-                    
                 pc = None       # object using colormap
                 norm = None     # color normalization object
                 hascolormap = True
-                logscale = dim2data.get('colorbar',{}).get('logscale',False)
-                if logscale: norm = matplotlib.colors.LogNorm()
+                logscale = axis2data.get('colorbar',{}).get('logscale',False)
+                if logscale:
+                    norm = matplotlib.colors.LogNorm()
+                    
+                    # Mask values <= 0 manually, because color bar locators choke on them.
+                    invalid = C<=0
+                    if invalid.any(): C = numpy.ma.masked_where(invalid,C,copy=False)
+                    
+                    if 'U' in info:
+                        info['U'] = numpy.ma.masked_where(C._mask,info['U'],copy=False)
+                        info['V'] = numpy.ma.masked_where(C._mask,info['V'],copy=False)
 
                 if len(varslices)==1:
-                    # Only one dependent variable
-                    Z = varslices[0].data
-                    if xdim<ydim: Z = Z.transpose()
-                    C = Z
-
-                    # Allocate colorbar axis to Z variable.
-                    if plottype3d!=2: dim2data[varpath]['axis'] = 'colorbar'
-
+                    # Only one dependent variable: X,Y,C plot using contour, contourf and/or pcolormesh
+                    
                     if plottype3d==1 or plottype3d==2:
                         # We have to make a contour plot (filled or empty)
                         
-                        loc = None
-                        if logscale: loc = matplotlib.ticker.LogLocator()
+                        explicitcc = seriesnode['ContourCount'].getValue()
+                        cc = explicitcc
+                        if cc==None: cc=7
 
-                        cc = seriesnode['ContourCount'].getValue()
+                        # Choose a contour locator
+                        if logscale:
+                            loc = matplotlib.ticker.LogLocator()
+                        else:
+                            loc = matplotlib.ticker.MaxNLocator(cc+1)
+
+                        # Get contour properties
                         showedges = seriesnode['ShowEdges'].getValue(usedefault=True)
                         edgecolor = (seriesnode['EdgeColor'].getValue(usedefault=True).getNormalized(),)
                         if plottype3d==2 and seriesnode['UseColorMap'].getValue(usedefault=True): edgecolor = None
                         edgewidth = seriesnode['EdgeWidth'].getValue(usedefault=True)
                         borders,fill = (showedges or plottype3d==2),plottype3d==1
                         cset,csetf = None,None
-                        if cc!=None:
-                            # Contour count was specified
-                            if fill:
-                                csetf = drawaxes.contourf(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,cmap=cm)
-                            if borders:
-                                if fill: zorder += 1
-                                contourcm = cm
-                                if edgecolor!=None: contourcm = None
-                                cset = drawaxes.contour(X,Y,Z,cc,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
-                        else:
-                            # Automatically determine contour count
-                            if fill:
-                                csetf = drawaxes.contourf(X,Y,Z,norm=norm,locator=loc,zorder=zorder,cmap=cm)
-                            if borders:
-                                if fill: zorder += 1
-                                contourcm = cm
-                                if edgecolor!=None: contourcm = None
-                                cset = drawaxes.contour(X,Y,Z,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+                        
+                        # Contour count was specified
+                        if fill:
+                            csetf = drawaxes.contourf(X,Y,C,cc,norm=norm,locator=loc,zorder=zorder,cmap=cm)
+                        if borders:
+                            if fill: zorder += 1
+                            contourcm = cm
+                            if edgecolor!=None: contourcm = None
+                            cset = drawaxes.contour(X,Y,C,cc,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
 
+                        if explicitcc==None:
                             # Retrieve the number of contours chosen by MatPlotLib
                             constset = csetf
                             if constset==None: constset = cset
                             defaultseriesnode['ContourCount'].setValue(len(constset.levels)-2)
+                            
                         pc = csetf
                         if plottype3d==2 and edgecolor!=None: hascolormap = False
                     else:
                         # We have to plot a colored quadrilinear mesh
                         shading = 'flat'
                         if seriesnode['ShowEdges'].getValue(usedefault=True): shading = 'faceted'
-                        pc = drawaxes.pcolormesh(X,Y,Z,cmap=cm,norm=norm,shading=shading)
+                        pc = drawaxes.pcolormesh(X,Y,C,cmap=cm,norm=norm,shading=shading)
                       
                 else:
-                    # More than one dependent variable
-                    assert len(varslices)==2,'Only plots with one or two dependent variables are currently supported.'
-                    
-                    U,V = varslices[0].data,varslices[1].data
-                    if xdim<ydim: U,V = U.transpose(),V.transpose()
-
-                    C = numpy.sqrt(U**2+V**2)
+                    # Two dependent variables: X,Y,U,V,C plot using quiver or barbs
+                    U,V = info['U'],info['V']
                     pc = drawaxes.quiver(X,Y,U,V,C,cmap=cm,norm=norm)
-
-                    # Allocate colorbar axis to arrow length.
-                    dimdata = dim2data.setdefault('arrowlength',{'forcedrange':(None,None)})
-                    dimdata.update({'label':var.getLongName(),'unit':var.getUnit(),'datatype':'float','tight':False,'logscale':False,'axis':'colorbar'})
-                    dimdata['datarange'] = [C.min(),C.max()]
                 
                 if pc!=None:
                     # Create colorbar
@@ -949,9 +1009,9 @@ class Figure(xmlstore.util.referencedobject):
                     if len(flatC)>0 and (flatC==flatC[0]).all():
                         # All color values are equal. Explicitly set color range,
                         # because MatPlotLib 0.90.0 chokes on identical min and max.
-                        pc.set_clim((Z[0,0]-1,Z[0,0]+1))
+                        pc.set_clim((C[0,0]-1,C[0,0]+1))
                     else:
-                        pc.set_clim(dim2data.get('colorbar',{}).get('forcedrange',(None,None)))
+                        pc.set_clim(axis2data.get('colorbar',{}).get('forcedrange',(None,None)))
                     cb = self.figure.colorbar(pc,ax=axes)
 
                 plotcount[2] += 1
@@ -1006,23 +1066,18 @@ class Figure(xmlstore.util.referencedobject):
         # Set whether the figure uses a colormap
         self.defaultproperties['HasColorMap'].setValue(hascolormap)
 
-        # Build table linking axis to data dimension.
-        axis2dim = {}
-        for dim,dat in dim2data.iteritems():
-            if 'axis' in dat: axis2dim.setdefault(dat['axis'],[]).append(dim)
-
         # Transform axes to log-scale where specified.
         for axisname in ('x','y','z','colorbar'):
-            if axisname not in axis2dim: continue
+            if axisname not in axis2data: continue
             
             # Get default and forced axis properties
             axisnode = forcedaxes.getChildById('Axis',axisname,create=True)
             defaxisnode = defaultaxes.getChildById('Axis',axisname,create=True)
             
             # Determine whether the axis can be log-transformed.
-            dimdata = dim2data[axis2dim[axisname][0]]
-            datarange = dimdata['datarange']
-            canhavelogscale = dimdata['datatype']!='datetime' and (datarange[0]>0 or datarange[1]>0)
+            axisdata = axis2data.get(axisname,{})
+            datarange = axisdata.get('datarange',[None,None])
+            canhavelogscale = axisdata['datatype']!='datetime' and (datarange[0]>0 or datarange[1]>0)
             
             # Set log transformation defaults.
             defaxisnode['LogScale'].setValue(False)
@@ -1040,11 +1095,10 @@ class Figure(xmlstore.util.referencedobject):
         oldaxes    = [node.getSecondaryId() for node in forcedaxes.getLocationMultiple(['Axis'])]
         olddefaxes = [node.getSecondaryId() for node in defaultaxes.getLocationMultiple(['Axis'])]
         for axisname in ('x','y','z','colorbar'):
-            if axisname not in axis2dim: continue
-            
-            dim = axis2dim[axisname][0]
-            dat = dim2data[dim]
-            istimeaxis = dat['datatype']=='datetime'
+            if axisname not in axis2data: continue
+
+            axisdata = axis2data[axisname]
+            istimeaxis = axisdata['datatype']=='datetime'
             
             # Get the explicitly set and the default properties.
             axisnode = forcedaxes.getChildById('Axis',axisname,create=True)
@@ -1053,8 +1107,8 @@ class Figure(xmlstore.util.referencedobject):
             if axisname in olddefaxes: olddefaxes.remove(axisname)
 
             # Range selected by MatPlotLib
-            if dat.get('tight',True):
-                naturalrange = dat['datarange'][:]
+            if axisdata.get('tight',True):
+                naturalrange = axisdata['datarange'][:]
             elif axisname=='x':
                 naturalrange = axes.get_xlim()
             elif axisname=='y':
@@ -1062,7 +1116,7 @@ class Figure(xmlstore.util.referencedobject):
             else:
                 # Color range has been enforced before if needed (via pc.set_clim).
                 # Thus we can no longer ask MatPlotLib for "natural" bounds - just use data limits.
-                naturalrange = dat['datarange'][:]
+                naturalrange = axisdata['datarange'][:]
                 
             # Get range forced by user
             if istimeaxis:
@@ -1079,7 +1133,7 @@ class Figure(xmlstore.util.referencedobject):
                 if forcedrange[1]<=0: forcedrange[1] = None
             
             # Effective range used by data, after taking forced range into account.
-            effdatarange = dat['datarange'][:]
+            effdatarange = axisdata['datarange'][:]
             if forcedrange[0]!=None: effdatarange[0] = forcedrange[0]
             if forcedrange[1]!=None: effdatarange[1] = forcedrange[1]
 
@@ -1095,13 +1149,13 @@ class Figure(xmlstore.util.referencedobject):
             if not numpy.isfinite(naturalrange[1]): naturalrange[1] = None
             
             # Build default label for this axis
-            deflab = dat['label']
-            if dat['unit']!='' and dat['unit']!=None: deflab += ' ('+dat['unit']+')'
+            deflab = axisdata['label']
+            if axisdata['unit']!='' and axisdata['unit']!=None: deflab += ' ('+axisdata['unit']+')'
             
             # Set default axis properties.
-            defaxisnode['Dimensions'].setValue(','.join(axis2dim[axisname]))
             defaxisnode['Label'].setValue(deflab)
-            defaxisnode['Unit'].setValue(dat['unit'])
+            defaxisnode['Dimensions'].setValue(','.join(axisdata['dimensions']))    # Note! Used by pyncview!
+            defaxisnode['Unit'].setValue(axisdata['unit'])
             defaxisnode['TicksMajor'].setValue(True)
             defaxisnode['TicksMajor/ShowLabels'].setValue(True)
             defaxisnode['TicksMinor'].setValue(False)
@@ -1212,7 +1266,7 @@ class Figure(xmlstore.util.referencedobject):
             if label==None: label=''
 
             # Reverse axis if needed
-            if dat['reversed']: effrange[1],effrange[0] = effrange[0],effrange[1]
+            if axisdata['reversed']: effrange[1],effrange[0] = effrange[0],effrange[1]
 
             # Set axis labels and boundaries.
             if axisname=='x':

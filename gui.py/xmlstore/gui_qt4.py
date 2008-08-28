@@ -803,6 +803,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
                 assert len(optionnodes)>0, 'Variable with "select" type does not have any options assigned to it.'
                 text += '\n\nAvailable options:'
                 for optionnode in optionnodes:
+                    if optionnode.hasAttribute('disabled'): continue
                     text += '\n- '
                     if optionnode.hasAttribute('description'):
                         text += optionnode.getAttribute('description')
