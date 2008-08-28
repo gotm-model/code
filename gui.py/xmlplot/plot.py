@@ -755,7 +755,7 @@ class Figure(xmlstore.util.referencedobject):
                     if plottype3d!=2:
                         cinfo = vardata
                         cname = varpath
-                        C = varslice.data
+                    C = varslice.data
                 else:
                     assert len(varslices)==2,'Only plots with one or two dependent variables are currently supported.'
                     U = varslices[0].data
