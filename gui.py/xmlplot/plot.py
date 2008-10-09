@@ -665,7 +665,6 @@ class Figure(xmlstore.util.referencedobject):
                 if not hasattr(varslices[i].data,'_mask'):
                     invalid = numpy.logical_not(numpy.isfinite(varslices[i].data))
                     if invalid.any():
-                        print 'WARNING: masking %i invalid values (inf or nan) out of %i.' % (invalid.sum(),invalid.size)
                         varslices[i].data = numpy.ma.masked_where(invalid,varslices[i].data,copy=False)
 
             # Get the number of dimensions from the data slice, and add it to the plot properties.

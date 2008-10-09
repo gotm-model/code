@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.61 2008-08-21 12:37:26 jorn Exp $
+#$Id: commonqt.py,v 1.62 2008-10-09 15:42:25 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -252,7 +252,7 @@ class PathEditor(QtGui.QWidget):
 class Wizard(QtGui.QDialog):
     
     def __init__(self,parent=None,sequence=None,closebutton=False,headerlogo=None):
-        QtGui.QDialog.__init__(self, parent, QtCore.Qt.Window|QtCore.Qt.WindowContextHelpButtonHint)
+        QtGui.QDialog.__init__(self, parent, QtCore.Qt.Window|QtCore.Qt.WindowContextHelpButtonHint|QtCore.Qt.WindowMinMaxButtonsHint)
 
         layout = QtGui.QVBoxLayout()
         layout.setMargin(0)
@@ -261,7 +261,8 @@ class Wizard(QtGui.QDialog):
             self.pm = QtGui.QPixmap(headerlogo,'PNG')
             self.piclabel = QtGui.QLabel(self)
             self.piclabel.setPixmap(self.pm)
-            self.piclabel.setScaledContents(True)
+            #self.piclabel.setScaledContents(True)
+            self.piclabel.setMinimumWidth(20)
             layout.addWidget(self.piclabel)
 
         self.bnlayout = QtGui.QHBoxLayout()

@@ -418,6 +418,9 @@ class FigurePanel(QtGui.QWidget):
         self.detachedfigures = []
         self.blockevents = False
         
+    def hideEvent(self,event):
+        if self.dialogAdvanced!=None: self.dialogAdvanced.hide()
+        
     def afterCanvasResize(self):
         w,h = self.canvas.figure.get_size_inches()
         self.blockevents = True
@@ -860,6 +863,8 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         self.linkedfile = linkedfile
         self.datasourcedir = datasourcedir
         
+        #self.dlgEditFunction = None
+        
         loRight = QtGui.QVBoxLayout()
 
         # Right panel: list of variables and plot panel.
@@ -874,26 +879,43 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         #lolist.addWidget(self.list,1)
         #loRight.addLayout(lolist)
         
-        self.panels = []
+        self.panels,self.dataeditors = [],[]
+        def createPanel():
+            widget = QtGui.QWidget(self)
+            panel = FigurePanel(widget)
+            tw = QtGui.QTabWidget(widget)
+            de = FunctionVariableEditor(tw)
+            tw.addTab(de,'Provide data')
+            
+            l = QtGui.QHBoxLayout()
+            l.addWidget(tw)
+            l.addWidget(panel)
+            widget.setLayout(l)
+            
+            self.connect(de.bnApply, QtCore.SIGNAL('clicked()'), self.onApplyFunction)
+            
+            self.panels.append(panel)
+            self.dataeditors.append(de)
+            
+            return panel,widget
+        
         namedict = self.linkedfile.getVariableLongNames()
         if len(namedict)==1:
-            panel = FigurePanel(self)
-            self.panels.append(panel)
-            loRight.addWidget(panel)
+            panel,widget = createPanel()
+            loRight.addWidget(widget)
         else:
             self.tabs = QtGui.QTabWidget(self)
             for name in self.linkedfile.getVariableNames():
-                panel = FigurePanel(self.tabs)
-                self.tabs.addTab(panel,namedict[name])
-                self.panels.append(panel)
+                panel,widget = createPanel()
+                self.tabs.addTab(widget,namedict[name])
             loRight.addWidget(self.tabs)
+            self.connect(self.tabs, QtCore.SIGNAL('currentChanged(int)'), self.onTabChanged)
 
-        #self.panel = FigurePanel(self)
-        #firstaction = self.panel.toolbar.actions()[0]
-        #self.insertAction(firstaction,'Import data...',self.onImport)
-        #self.actExport = self.insertAction(firstaction,'Export data...',self.onExport)
-        #self.insertAction(firstaction,'Edit data...',self.onEditData)
-        #loRight.addWidget(self.panel)
+        for panel in self.panels:
+            firstaction = panel.toolbar.actions()[0]
+            #self.insertAction(panel,firstaction,'Specify function',self.onEditFunction)
+            #self.actExport = self.insertAction(firstaction,'Export data...',self.onExport)
+            #self.insertAction(firstaction,'Edit data...',self.onEditData)
 
         # Bottom panel: OK and Cancel buttons
         lobuttons = QtGui.QHBoxLayout()
@@ -918,7 +940,6 @@ class LinkedFileEditorDialog(QtGui.QDialog):
 
         self.setLayout(loRight)
 
-        #self.connect(self.list, QtCore.SIGNAL('currentIndexChanged(int)'), self.onSelectionChanged)
         self.connect(self.buttonImport, QtCore.SIGNAL('clicked()'), self.onImport)
         self.connect(self.buttonExport, QtCore.SIGNAL('clicked()'), self.onExport)
         self.connect(self.buttonEdit,   QtCore.SIGNAL('clicked()'), self.onEditData)
@@ -929,8 +950,6 @@ class LinkedFileEditorDialog(QtGui.QDialog):
 
         self.first = True
         
-        #self.onSelectionChanged(0)
-
         self.progressdialog = QtGui.QProgressDialog('',QtCore.QString(),0,0,self,QtCore.Qt.Dialog|QtCore.Qt.WindowTitleHint)
         self.progressdialog.setModal(True)
         self.progressdialog.setMinimumDuration(0)
@@ -939,33 +958,74 @@ class LinkedFileEditorDialog(QtGui.QDialog):
 
         if title!=None: self.setWindowTitle(title)
         
-    def insertAction(self,before,string,icon=None,target=None):
+    def insertAction(self,panel,before,string,icon=None,target=None):
         if target==None:
             target = icon
             icon = None
-        act = QtGui.QAction(string,self.panel.toolbar)
+        act = QtGui.QAction(string,panel.toolbar)
         self.connect(act,QtCore.SIGNAL('triggered()'),target)
-        self.panel.toolbar.insertAction(before,act)
+        panel.toolbar.insertAction(before,act)
         return act
+        
+    def onTabChanged(self,newtab):
+        pass
+        #if self.dlgEditFunction!=None: self.dlgEditFunction.hide()
         
     def onEditData(self):
         dialog = LinkedFileDataEditor(self.linkedfile,self)
         if dialog.exec_()!=QtGui.QDialog.Accepted: return
-        #self.panel.figure.update()
         for panel in self.panels: panel.figure.update()
         
+    def getCurrentVariable(self):
+        """Returns the currently selected (visible) variable.
+        """
+        i = 0
+        varnames = self.linkedfile.getVariableNames()
+        if len(varnames)>1: i = self.tabs.currentIndex()
+        return self.privatestore.getVariable(varnames[i])
+        
+    def onEditFunction(self):
+        if self.dlgEditFunction==None:
+            self.dlgEditFunction = FunctionVariableEditor(self,QtCore.Qt.Tool)
+            self.connect(self.dlgEditFunction.bnApply, QtCore.SIGNAL('clicked()'), self.onApplyFunction)
+        variable = self.getCurrentVariable()
+        if not isinstance(variable,common.FunctionVariable): variable = None
+        self.dlgEditFunction.setVariable(variable)
+        self.dlgEditFunction.show()
+        self.dlgEditFunction.activateWindow()
+        
+    def onApplyFunction(self):
+        variable = self.getCurrentVariable()
+        if not isinstance(variable,common.FunctionVariable):
+            newvariable = common.FunctionVariable(variable,resolution=500)
+            for d in variable.getDimensions():
+                minv,maxv = self.linkedfile.getDimensionRange(d)
+                if isinstance(minv,datetime.datetime):
+                    minv,maxv = common.date2num(minv),common.date2num(maxv)
+                    newvariable.addDimensionTransform(d,offset=minv)
+                newvariable.setDimensionBounds(d,minv,maxv)
+            variable = newvariable
+            self.privatestore.addChild(variable)
+
+        i = 0
+        if len(self.panels)>1: i = self.tabs.currentIndex()
+        #self.dlgEditFunction.apply(variable)
+        self.dataeditors[i].apply(variable)
+        self.panels[i].figure.update()
+        
     def showEvent(self,ev):
+        """Called when the window is shown. This allows us to perform
+        lengthy initialization with a progress indicator as child of this window.
+        """
         if self.first:
             self.setData()
             self.first = False
             for name,panel in zip(self.linkedfile.getVariableNames(),self.panels):
                 panel.plot(name,self.privatestore)
-            #self.onSelectionChanged(0)
 
     def setData(self,datafile=None):
 
         # Close any detached figures
-        #self.panel.closeDetached()
         for panel in self.panels: panel.closeDetached()
         
         if datafile!=None:
@@ -988,13 +1048,12 @@ class LinkedFileEditorDialog(QtGui.QDialog):
             self.linkedfile.clear()
         
         # Add copies of the individual variables to our private store.
-        for varname in self.linkedfile.getVariableNames():
+        for varname,panel,dataeditor in zip(self.linkedfile.getVariableNames(),self.panels,self.dataeditors):
             v = self.linkedfile.getVariable(varname)
             self.privatestore.addChild(v.copy())
-
-        # Update figure
-        #self.panel.figure.update()
-        for panel in self.panels: panel.figure.update()
+            panel.figure.update()
+            if not isinstance(v,common.FunctionVariable): v=None
+            dataeditor.setVariable(v)
         
         # Enable the "Export" button if the data file is valid.
         self.buttonExport.setEnabled(self.linkedfile.validate())
@@ -1042,18 +1101,49 @@ class LinkedFileEditorDialog(QtGui.QDialog):
 
         # Save data file.
         self.linkedfile.saveToFile(path)
-
-    def onSelectionChanged(self,index):
-        if index<0 or self.first:
-            self.panel.clear()
-        else:
-            varname = unicode(self.list.itemData(index,QtCore.Qt.UserRole).toString())
-            self.panel.plot(varname,self.privatestore)
             
     def destroy(self):
-        #self.panel.destroy()
         for panel in self.panels: panel.destroy()
         QtGui.QDialog.destroy(self)
+
+class FunctionVariableEditor(QtGui.QWidget):
+    def __init__(self,parent=None,flags=QtCore.Qt.Widget):
+        QtGui.QWidget.__init__(self,parent,flags)
+        self.variable = None
+        
+        self.label = QtGui.QLabel('Expression:',self)
+        self.edit = QtGui.QLineEdit(self)
+        self.checkVectorized = QtGui.QCheckBox('Supports vectorized evaluation',self)
+        
+        self.bnApply = QtGui.QPushButton('Apply',self)
+        layoutButtons = QtGui.QHBoxLayout()
+        layoutButtons.addWidget(self.bnApply)
+        layoutButtons.addStretch(1)
+        
+        layout = QtGui.QGridLayout()
+        layout.addWidget(self.label,0,0)
+        layout.addWidget(self.edit,0,1)
+        layout.addWidget(self.checkVectorized,1,0,1,2)
+        layout.addLayout(layoutButtons,2,0)
+        layout.setRowStretch(3,1)
+        
+        self.setLayout(layout)
+        
+        self.setWindowTitle('Specify function')
+        
+    def setVariable(self,variable):
+        if variable==None:
+            self.checkVectorized.setChecked(True)
+            self.edit.setText('')
+        else:
+            self.checkVectorized.setChecked(variable.vectorized)
+            if variable.functions:
+                self.edit.setText(variable.functions[0][1])
+            
+    def apply(self,target):
+        target.clearFunctions()
+        target.addFunction(unicode(self.edit.text()))
+        target.setVectorized(bool(self.checkVectorized.isChecked()))
 
 class LinkedFileDataEditor(QtGui.QDialog):
 

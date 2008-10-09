@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.9 2008-08-22 12:40:51 jorn Exp $
+#$Id: common.py,v 1.10 2008-10-09 15:42:26 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom
@@ -43,8 +43,8 @@ def convertUnitToUnicode(unit):
     """
     deg  = unichr(176)
     if unit=='celsius' or unit=='degC': return deg+'C'
-    if unit=='degrees_north': return deg+'North'
-    if unit=='degrees_east':  return deg+'East'
+    if unit in ('degrees_north','degree_north','degree_N','degrees_N','degreeN','degreesN'): return deg+'North'
+    if unit in ('degrees_east', 'degree_east' ,'degree_E','degrees_E','degreeE','degreesE'): return deg+'East'
     sup2 = unichr(178)
     sup3 = unichr(179)
     unit = unit.replace('s2','s'+sup2)
@@ -116,6 +116,18 @@ def interp1(x,y,X):
     # Undo the original transpose and return
     return Y.transpose()
 
+def ndgrid(*coords):
+    lens = [len(c) for c in coords]
+    #ind = numpy.mgrid[tuple([slice(n) for n in lens])]
+    #return [g[i] for g,i in zip(coords,ind)]
+    newcoords = []
+    for i,c in enumerate(coords):
+        newc = numpy.empty(lens,dtype=c.dtype)
+        newc_view = newc.swapaxes(i,0)
+        newc_view[...] = c
+        newcoords.append(newc)
+    return newcoords
+
 def getCenters(data,addends=False):
     delta = (data[1:]-data[:-1])/2
     newdata = data[:-1]+delta
@@ -180,6 +192,58 @@ def getPercentile(data,cumweights,value,axis):
     return highval*highweight + lowval*(1.-highweight)
 
 defaultdimensioninfo = {'label':'','unit':'','preferredaxis':None,'datatype':'float','reversed':False}
+
+def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
+    if dimindices==None: dimindices = range(coords.ndim)
+
+    # Calculate the shape of the to-be-created staggered array.
+    stagshape = list(coords.shape)
+    for i in dimindices: stagshape[i] += 1
+
+    # Create one array to hold center values with one index before,
+    # and one one index beyong original center coordinates.
+    # (interfaces will ultimately be the average of these two)    
+    coords_stag  = numpy.zeros(stagshape,coords.dtype)
+    coords_stag2 = numpy.zeros(stagshape,coords.dtype)
+    
+    # Copy center values
+    slc1,slc2 = [slice(None)]*coords.ndim,[slice(None)]*coords.ndim
+    for i in dimindices:
+        slc1[i] = slice(0,-1,  1)
+        slc2[i] = slice(1,None,1)
+    coords_stag [tuple(slc1)] = coords
+    coords_stag2[tuple(slc2)] = coords
+    
+    # Linearly interpolate center values to get values to append to the
+    # front and back
+    for idim in dimindices:
+        targetslc = [slice(None)]*coords.ndim
+    
+        # Get values at one index beyond original data
+        for inextdim in range(idim+1,coords.ndim):
+            if inextdim in dimindices: targetslc[inextdim] = slice(0,-1,1)
+        sourceslc1,sourceslc2 = list(targetslc),list(targetslc)
+        targetslc[idim],sourceslc1[idim],sourceslc2[idim] = -1,-3,-2
+        if coords.shape[idim]==1:
+            if defaultdeltafunction==None:
+                delta = 1
+            else:
+                assert dimnames!=None,'If a function supplying default delta is given, the dimension names must be given as well.'
+                delta = defaultdeltafunction(dimnames[idim],coords)
+        else:
+            delta = (coords_stag[tuple(sourceslc2)]-coords_stag[tuple(sourceslc1)])
+        coords_stag[tuple(targetslc)] = coords_stag[tuple(sourceslc2)]+delta
+        
+        # Get values at one index before original data
+        for inextdim in range(idim+1,coords.ndim):
+            if inextdim in dimindices: targetslc[inextdim] = slice(1,None,1)
+        sourceslc1,sourceslc2 = list(targetslc),list(targetslc)
+        targetslc[idim],sourceslc1[idim],sourceslc2[idim] = 0,1,2
+        if coords.shape[idim]>1:
+            delta = (coords_stag2[tuple(sourceslc2)]-coords_stag2[tuple(sourceslc1)])
+        coords_stag2[tuple(targetslc)] = coords_stag2[tuple(sourceslc1)]-delta
+
+    return 0.5*(coords_stag+coords_stag2)
 
 class VariableStore(UserDict.DictMixin):
     """Abstract base class for objects containing one or more variables that
@@ -483,7 +547,7 @@ class Variable:
             coordinate value) in the new slice.
             """
             # Find non-singleton dimensions, and store them as fixed extra coordinates.
-            gooddimindices = []
+            gooddimindices,baddimindices = [],[]
             gooddimnames = []
             fixedcoords = []
             for idim,dimname in enumerate(self.dimensions):
@@ -493,11 +557,18 @@ class Variable:
                     gooddimnames.append(dimname)
                 elif self.data.shape[idim]==1:
                     # Singleton dimension
+                    baddimindices.append(idim)
                     fixedcoords.append((dimname,self.coords[idim][0]))
 
             newslice = Variable.Slice(gooddimnames)
-            newslice.coords      = [self.coords     [i].squeeze() for i in gooddimindices]
-            newslice.coords_stag = [self.coords_stag[i].squeeze() for i in gooddimindices]
+            newslice.coords,newslice.coords_stag = [],[]
+            for i in gooddimindices:
+                coord,coord_stag = self.coords[i],self.coords_stag[i]
+                if coord.ndim>1:
+                    for j in reversed(baddimindices):
+                        coord,coord_stag = coord.mean(axis=j),coord_stag.mean(axis=j)
+                newslice.coords.append(coord)
+                newslice.coords_stag.append(coord_stag)
             newslice.data = self.data.squeeze()
             newslice.fixedcoords =fixedcoords
 
@@ -698,3 +769,128 @@ class CustomVariable(Variable):
 
     def getSlice(self,bounds):
         return self.slice
+        
+class DeferredVariable(Variable):
+    def __init__(self,sourcevariable):
+        Variable.__init__(self,None)
+        self.source = sourcevariable
+
+    def getName_raw(self):
+        return self.source.getName_raw()
+        
+    def getLongName(self):
+        return self.source.getLongName()
+
+    def getUnit(self):
+        return self.source.getUnit()
+
+    def getDimensions_raw(self):
+        return self.source.getDimensions_raw()
+
+    def getDimensionInfo_raw(self,dimname):
+        return self.source.getDimensionInfo_raw(dimname)
+
+    def hasReversedDimensions(self):
+        return self.source.hasReversedDimensions()
+
+    def getShape(self):
+        return self.source.getShape()
+
+    def getSlice(self,bounds):
+        return self.source.getSlice(bounds)
+
+class FunctionVariable(DeferredVariable):
+    def __init__(self,sourcevariable,dimbounds=None,resolution=100):
+        DeferredVariable.__init__(self,sourcevariable)
+        if dimbounds==None: dimbounds = {}
+        self.dimbounds = dimbounds
+        self.resolution = resolution
+        self.functions = []
+        self.dimtransforms = {}
+        self.vectorized = False
+        
+    def clearFunctions(self):
+        self.functions = []
+
+    def addFunction(self,function,condition=None):
+        self.functions.append((condition,function))
+        
+    def setDimensionBounds(self,dimname,minval,maxval):
+        self.dimbounds[dimname] = (minval,maxval)
+        
+    def addDimensionTransform(self,dimname,offset=0.,scale=1.):
+        self.dimtransforms[dimname] = (offset,scale)
+        
+    #def setGrid(self,grid,grid_stag=None):
+    #    if grid[0].ndim==1:
+    #        if grid_stag==None:
+    #            grid_stag = [getCenters(c,addends=True) for c in grid]
+    #            grid_stag = ndgrid(*grid_stag)
+    #        grid = ndgrid(*grid)
+    #    assert grid_stag!=None, 'If grid coordinates are provided as multidimensional arrays, staggered coordinates must be provided explicitly.'
+    #    self.grid,self.grid_stag = grid,grid_stag
+        
+    def setVectorized(self,vectorized=True):
+        self.vectorized = vectorized
+
+    def hasReversedDimensions(self):
+        return False
+        
+    def getShape(self):
+        assert False, 'getShape is not supported on FunctionVariable objects, because the shape will adapt to requested data ranges.'
+        
+    def getSlice(self,bounds):
+        dimnames = self.getDimensions()
+        
+        # Build grid
+        grid = []
+        for d,curbounds in zip(dimnames,bounds):
+            curbounds = self.dimbounds.get(d,None)
+            assert curbounds!=None, 'Dimension boundaries for %s were not set upon initialization.' % d
+            c = numpy.linspace(curbounds[0],curbounds[1],self.resolution)
+            grid.append(c)
+        grid_stag = [getCenters(c,addends=True) for c in grid]
+        grid_stag = ndgrid(*grid_stag)
+        grid = ndgrid(*grid)
+        
+        # Get coordinates with offset+scale transformations applied.
+        grid_tf = []
+        for d,c in zip(dimnames,grid):
+            if d in self.dimtransforms:
+                offset,scale = self.dimtransforms[d]
+                c = (c-offset)/scale
+            grid_tf.append(c)
+            
+        # Compile conditions and functions
+        functions = []
+        for condition,function in self.functions:
+            function = compile(function,'<string>','eval')
+            if condition!=None: condition = compile(condition,'<string>','eval')
+            functions.append((condition,function))
+            
+        # Create empty array for holding data
+        data = numpy.empty(grid[0].shape,numpy.float)
+        
+        # Build base namespace with NumPy functions.
+        namespace = dict([(m,getattr(numpy,m)) for m in dir(numpy)])
+        
+        if self.vectorized:
+            # Functions and conditions are vectorized: one evaluation per function/condition
+            for d,c in zip(dimnames,grid_tf): namespace[d] = c
+            for condition,function in reversed(functions):
+                vals = eval(function,namespace)
+                if condition==None:
+                    data[...] = vals
+                else:
+                    index = eval(condition,namespace)
+                    data[index] = vals[index]
+        else:
+            # Functions and conditions are not vectorized: one evaluation per grid point, per function
+            for index in numpy.ndindex(data.shape):
+                for d,c in zip(dimnames,grid_tf): namespace[d] = c[index]
+                for condition,function in functions:
+                    if condition==None or eval(condition,namespace):
+                        data[index] = eval(function,namespace)
+                        break
+                        
+        return Variable.Slice(dimensions=dimnames,coords=grid,coords_stag=grid_stag,data=data)
