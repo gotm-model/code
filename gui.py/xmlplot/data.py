@@ -1061,6 +1061,19 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         if ncvarname not in nc.variables: return None
         return self.NetCDFVariable(self,ncvarname)
                 
+    def getDimensions(self):
+        nc = self.getcdf()
+        ncdims = list(nc.dimensions)
+        def cmpdims(x,y):
+            for vn in nc.variables.keys():
+                v = nc.variables[vn]
+                if x in v.dimensions and y in v.dimensions:
+                    curdims = list(v.dimensions)
+                    return cmp(curdims.index(x),curdims.index(y))
+            return 0
+        ncdims.sort(cmp=cmpdims)
+        return ncdims
+
     def getCoordinates(self,dimname):
         if dimname not in self.cachedcoords: self.calculateCoordinates(dimname)
         return (self.cachedcoords[dimname],self.cachedcoords[dimname+'_stag'])
