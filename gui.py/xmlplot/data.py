@@ -888,46 +888,52 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             (fullcoords,fullcoords_stag) = self.store.getCoordinates(dimname)
             if fullcoords==None: return None
 
-            if fullcoords.ndim==1:
-                # One-dimensional coordinate
-                start,stop,step = boundindices[idim].indices(ncvar.shape[idim])
-                varslice.coords     [inewdim] = fullcoords     [boundindices[idim]]
-                varslice.coords_stag[inewdim] = fullcoords_stag[slice(start,stop+1)]
-            else:
-                # Multi-dimensional coordinate
-                coorddims = list(self.store.getCoordinateDimensions(dimname))
-                rawdims = list(ncvar.dimensions)
-                
-                # Get coordinate values for selected domain only.
-                coordslices = [boundindices[rawdims.index(cd)] for cd in coorddims]
-                coordslices_stag = [slice(s.start,s.stop+1) for s in coordslices]
-                coords      = fullcoords     [tuple(coordslices)     ]
-                coords_stag = fullcoords_stag[tuple(coordslices_stag)]
-                
-                # Allocate arrays for coordinates with all data dimensions
-                varslice.coords     [inewdim] = numpy.empty(dat.shape,               dtype=coords.dtype)
-                varslice.coords_stag[inewdim] = numpy.empty([l+1 for l in dat.shape],dtype=coords.dtype)
-                
-                # Insert data dimensions where they are lacking in coordinate
-                newshape,newshape_stag = [],[]
-                for irawdim,rawdimname in enumerate(rawdims):
-                    # If we take a slice through this dimension, it will not be included in the output.
-                    if isinstance(bounds[irawdim],int): continue
+            # Get the actual dimensions (without re-assignments) of the coordinate
+            # variable and the actual variable.
+            coorddims = list(self.store.getCoordinateDimensions(dimname))
+            rawdims = list(ncvar.dimensions)
+            
+            # Get coordinate values for selected domain only.
+            coordslices = [boundindices[rawdims.index(cd)] for cd in coorddims]
+            coordslices_stag = []
+            for s in coordslices:
+                # If the slice is an integer, the dimension will be taken out;
+                # then just use the same single index for the staggered coordinate
+                # so it is taken out as well.
+                if not isinstance(s,int): s = slice(s.start,s.stop+1)
+                coordslices_stag.append(s)
+            coords      = fullcoords     [tuple(coordslices)     ]
+            coords_stag = fullcoords_stag[tuple(coordslices_stag)]
+            
+            # Allocate arrays for coordinates with all data dimensions
+            varslice.coords     [inewdim] = numpy.empty(dat.shape,               dtype=coords.dtype)
+            varslice.coords_stag[inewdim] = numpy.empty([l+1 for l in dat.shape],dtype=coords.dtype)
+            
+            # Insert data dimensions where they are lacking in coordinate
+            newshape,newshape_stag = [],[]
+            for irawdim,rawdimname in enumerate(rawdims):
+                # If we take a slice through this dimension, it will not be included in the output.
+                if isinstance(bounds[irawdim],int): continue
 
-                    if rawdimname in coorddims:
-                        # This dimension is also used by the coordinate; use its current length.
-                        l = dat.shape[len(newshape)]
-                        newshape.append(l)
-                        newshape_stag.append(l+1)
-                    else:
-                        # This dimension is not used by the coordinate; use a length of 1,
-                        # which will be broadcasted by NumPy to the length needed.
-                        newshape.append(1)
-                        newshape_stag.append(1)
-                
-                # Assign coordinate values
-                varslice.coords     [inewdim][:] = coords.reshape(newshape)
-                varslice.coords_stag[inewdim][:] = coords_stag.reshape(newshape_stag)
+                if rawdimname in coorddims:
+                    # This dimension is also used by the coordinate; use its current length.
+                    l = dat.shape[len(newshape)]
+                    newshape.append(l)
+                    newshape_stag.append(l+1)
+                else:
+                    # This dimension is not used by the coordinate; use a length of 1,
+                    # which will be broadcasted by NumPy to the length needed.
+                    newshape.append(1)
+                    newshape_stag.append(1)
+
+            # Broadcast coordinate arrays to match size of data array.
+            coords.shape = newshape
+            coords_stag.shape = newshape_stag
+                            
+            # Assign coordinate values
+            varslice.coords     [inewdim][:] = coords
+            varslice.coords_stag[inewdim][:] = coords_stag
+            
             inewdim += 1
 
           # Start without mask, and define function for creating/updating mask
@@ -1184,8 +1190,9 @@ class NetCDFStore_GOTM(NetCDFStore):
         NetCDFStore.load(self,path)
         
         # Re-assign x,y coordinate dimensions if using GETM with curvilinear coordinates
-        ncvars = self.getcdf().variables
-        if ('xic'  in ncvars and 'etac' in ncvars and
+        nc = self.getcdf()
+        ncvars,ncdims = nc.variables,nc.dimensions
+        if ('xic'  in ncdims and 'etac' in ncdims and
             'lonc' in ncvars and 'latc' in ncvars):
             self.reassigneddims['xic' ] = 'lonc'
             self.reassigneddims['etac'] = 'latc'
@@ -1212,15 +1219,15 @@ class NetCDFStore_GOTM(NetCDFStore):
         bottomdepth = z_stag[0,-1,...]-nc.variables['zeta'][0,...]
         z_stag -= bottomdepth
 
-        # Get depth of layer centers
+        # Get depths of layer centers
         z = z_stag[:,1:z_stag.shape[1],...]-0.5*h[:,:,...]
         
-        # The actual interface coordinate lacks the bottom interface
+        # The actual interface coordinate z1 lacks the bottom interface
         z1 = z_stag[:,1:,...]
         
         # Use the actual top and bottom of the column as boundary interfaces for the
         # grid of the interface coordinate.
-        z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),1),z[:,1:],numpy.take(z_stag,(-1,),1)),1)
+        z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),1),z[:,1:,...],numpy.take(z_stag,(-1,),1)),1)
         
         # Use normal staggering for the time, longitude and latitude dimension.
         z_stag  = common.stagger(z_stag, (0,2,3),defaultdeltafunction=self.getDefaultCoordinateDelta,dimnames=self.getCoordinateDimensions(dimname))
@@ -1233,7 +1240,7 @@ class NetCDFStore_GOTM(NetCDFStore):
 
     def getDefaultCoordinateDelta(self,dimname,coords):
         # Only operate on 1D coordinates
-        if coord.ndim>1: return NetCDFStore.getDefaultCoordinateDelta(self,dimname,coords)
+        if coords.ndim>1: return NetCDFStore.getDefaultCoordinateDelta(self,dimname,coords)
 
         # Only operate on time dimension
         try:
