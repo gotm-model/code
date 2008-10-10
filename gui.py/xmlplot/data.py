@@ -1027,7 +1027,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         self.datafile = path
         nc = self.getcdf()
         self.relabelVariables()
-        
+        self.autoReassignCoordinates()
+
+    def autoReassignCoordinates(self):
         self.reassigneddims = {}
     
     def getcdf(self):
@@ -1206,8 +1208,8 @@ class NetCDFStore_GOTM(NetCDFStore):
     def __init__(self,path=None,*args,**kwargs):
         NetCDFStore.__init__(self,path,*args,**kwargs)
 
-    def load(self,path):
-        NetCDFStore.load(self,path)
+    def autoReassignCoordinates(self):
+        NetCDFStore.autoReassignCoordinates(self)
         
         # Re-assign x,y coordinate dimensions if using GETM with curvilinear coordinates
         nc = self.getcdf()
