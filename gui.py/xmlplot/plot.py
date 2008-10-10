@@ -1155,7 +1155,7 @@ class Figure(xmlstore.util.referencedobject):
             
             # Set default axis properties.
             defaxisnode['Label'].setValue(deflab)
-            defaxisnode['Dimensions'].setValue(','.join(axisdata['dimensions']))    # Note! Used by pyncview!
+            defaxisnode['Dimensions'].setValue(';'.join(axisdata['dimensions']))    # Note! Used by pyncview!
             defaxisnode['Unit'].setValue(axisdata['unit'])
             defaxisnode['TicksMajor'].setValue(not axisdata.get('hideticks',False))
             defaxisnode['TicksMajor/ShowLabels'].setValue(True)
