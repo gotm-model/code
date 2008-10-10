@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.10 2008-10-09 15:42:26 jorn Exp $
+#$Id: common.py,v 1.11 2008-10-10 11:20:22 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom
@@ -325,7 +325,8 @@ class VariableStore(UserDict.DictMixin):
         try:
             result = expressions.VariableExpression(expression,namespace)
         except Exception,e:
-            raise Exception('Unable to resolve expression "%s" to a valid data object. Global table contains: %s. Error: %s' % (expression,', '.join(sorted(namespace.keys())),e))
+            #raise Exception('Unable to resolve expression "%s" to a valid data object. Global table contains: %s. Error: %s' % (expression,', '.join(sorted(namespace.keys())),e))
+            raise Exception('Unable to resolve expression "%s" to a valid data object. Error: %s' % (expression,e))
         return result
                 
     def getVariableNames(self):

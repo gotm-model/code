@@ -297,8 +297,9 @@ class LazyOperation(LazyExpression):
     actions by the normal mathethematical operators as well as NumPy functions.
     """
 
-    def __init__(self,*args):
+    def __init__(self,*args,**kwargs):
         LazyExpression.__init__(self,*args)
+        self.outsourceslices = kwargs.get('outsourceslices',False)
 
     def getValue(self):
         resolvedargs = []
@@ -352,6 +353,21 @@ class LazyOperation(LazyExpression):
     def _getText(self,type=0):
         assert False, 'Method "_getText" must be implemented by derived class.'
 
+    def __getitem__(self,slices):
+        if self.outsourceslices:
+            # We are allowed to outsource the slicing to the arguments of the expression.
+            # This takes away the need of first getting all data to operate on, and then
+            # take a slice, which is time-consuming and memory-intensive.
+            newargs = []
+            for arg in self.args:
+                if isinstance(arg,LazyExpression): arg = arg.__getitem__(slices)
+                newargs.append(arg)
+            self.args = tuple(newargs)
+            return self
+        else:
+            # No outsourcing of slicing: apply the slice only after this expression is done.
+            return LazyExpression.__getitem__(self,slices)
+
 class LazyFunction(LazyOperation):
     """The light-weight class encapsulates a NumPy function.
     """
@@ -362,9 +378,16 @@ class LazyFunction(LazyOperation):
         self.kwargs = kwargs
         self.removedim = None
         self.useslices = False
-        LazyOperation.__init__(self,*args)
+        kw = {'outsourceslices':True}
+        LazyOperation.__init__(self,*args,**kw)
     
     def setRemovedDimension(self,argindex,argname):
+        """Called by derived classes to specify through which function arguments (index
+        and name) the dimension that will be removed is specified. Only used if the function
+        actually removes a dimension (e.g., mean,min,max,...).
+        
+        For numpy fucntions, the name of the argument is typically "axis".
+        """
         self.removedim = None
         if argname in self.kwargs:
             self.removedim = self.kwargs[argname]
@@ -372,6 +395,8 @@ class LazyFunction(LazyOperation):
             self.args = list(self.args)
             self.removedim = self.args[argindex]
         if self.removedim==None: return
+        
+        self.outsourceslices = False
             
         if isinstance(self.removedim,basestring):
             dims = self.getVariables()[0].getDimensions()
@@ -423,7 +448,8 @@ class LazyOperator(LazyOperation):
     def __init__(self,name,symbol,*args):
         self.name = name
         self.symbol = symbol
-        LazyOperation.__init__(self,*args)
+        kw = {'outsourceslices':True}
+        LazyOperation.__init__(self,*args,**kw)
 
     def _getValue(self,resolvedargs):
         resolvedargs,targetslice = LazyOperation.getData(resolvedargs)
