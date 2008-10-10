@@ -811,6 +811,8 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           nc = self.store.getcdf()
           ncvar = nc.variables[self.ncvarname]
           rawdims = list(ncvar.dimensions)
+          
+          # Re-assign dimensions based on the "coordinates" attribute of the variable.
           if hasattr(ncvar,'coordinates'):
             coords = reversed(ncvar.coordinates.split())
             coordsdims = nc.variables[coords[0]].dimensions
@@ -819,7 +821,12 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 if rdim in coordsdims:
                     rawdims[irdim] = coordsdims[inextcoorddim]
                     inextcoorddim += 1
-          rawdims = [self.store.reassigneddims.get(d,d) for d in rawdims]
+                    
+          # Re-assign dimensions based on globally specified re-assignments
+          for idim,dim in enumerate(rawdims):
+            if dim==self.ncvarname: continue
+            rawdims[idim] = self.store.reassigneddims.get(dim,dim)
+            
           return tuple(rawdims)
           
         def getShape(self):
