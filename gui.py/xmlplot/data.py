@@ -960,12 +960,13 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             return numpy.logical_or(mask,newmask)
           
           # Process the various COARDS/CF variable attributes for missing data.
-          if hasattr(ncvar,'valid_min'):     mask = addmask(mask,dat<ncvar.valid_min)
-          if hasattr(ncvar,'valid_max'):     mask = addmask(mask,dat>ncvar.valid_max)
-          if hasattr(ncvar,'valid_range'):
-            assert len(ncvar.valid_range)==2,'NetCDF attribute "valid_range" must consist of two values, but contains %i.' % len(ncvar.valid_range)
-            minv,maxv = ncvar.valid_range
-            mask = addmask(mask,numpy.logical_or(dat<minv,dat>maxv))
+          if self.store.maskoutsiderange:
+              if hasattr(ncvar,'valid_min'):     mask = addmask(mask,dat<ncvar.valid_min)
+              if hasattr(ncvar,'valid_max'):     mask = addmask(mask,dat>ncvar.valid_max)
+              if hasattr(ncvar,'valid_range'):
+                assert len(ncvar.valid_range)==2,'NetCDF attribute "valid_range" must consist of two values, but contains %i.' % len(ncvar.valid_range)
+                minv,maxv = ncvar.valid_range
+                mask = addmask(mask,numpy.logical_or(dat<minv,dat>maxv))
           if hasattr(ncvar,'_FillValue'):    mask = addmask(mask,dat==ncvar._FillValue)
           if hasattr(ncvar,'missing_value'): mask = addmask(mask,dat==ncvar.missing_value)
 
@@ -979,7 +980,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             dat += ncvar.add_offset
 
           varslice.data = dat
-        
+                  
           return varslice
 
     def __init__(self,path=None,*args,**kwargs):
@@ -991,6 +992,10 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
 
         self.cachedcoords = {}
         self.reassigneddims = {}
+        
+        # Whether to mask values outside the range specified by valid_min,valid_max,valid_range
+        # NetCDF variable attributes (as specified by CF convention)
+        self.maskoutsiderange = True
         
         if path!=None: self.load(path,*args,**kwargs)
                 
