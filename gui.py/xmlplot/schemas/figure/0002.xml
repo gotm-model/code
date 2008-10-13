@@ -120,7 +120,7 @@
   <element name="Width" type="float" label="width" unit="cm"/>
   <element name="Height" type="float" label="height" unit="cm"/>
 
-  <element name="padding">
+  <element name="Padding" label="padding">
     <element name="Left"   type="float" label="left"/>
     <element name="Right"  type="float" label="right"/>
     <element name="Top"    type="float" label="top"/>
