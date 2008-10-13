@@ -1,16 +1,16 @@
 <?xml version="1.0"?>
 <element name="Figure" label="figure" version="0002">
 
-	<template id="Line2D">
-		<element name="CanHaveMarker" type="bool" hidden="True"/>
+  <template id="Line2D">
+    <element name="CanHaveMarker" type="bool" hidden="True"/>
     <element name="Line" type="int" label="line">
-			<options>
-				<option label="none"     value="0"/>
-				<option label="solid"    value="1"/>
-				<option label="dashed"   value="2"/>
-				<option label="dash-dot" value="3"/>
-				<option label="dotted"   value="4"/>
-			</options>
+      <options>
+        <option label="none"     value="0"/>
+        <option label="solid"    value="1"/>
+        <option label="dashed"   value="2"/>
+        <option label="dash-dot" value="3"/>
+        <option label="dotted"   value="4"/>
+      </options>
       <element name="Color" type="color" label="color">
         <condition type="ne" variable="." value="0"/>
       </element>
@@ -19,31 +19,31 @@
       </element>
     </element>
     <element name="Marker" type="int" label="marker">
-			<condition type="eq" variable="./CanHaveMarker" value="True"/>
-			<options>
-				<option label="none"     value="0"/>
-				<option label="points"   value="1"/>
-				<option label="pixels"   value="2"/>
-				<option label="circle"   value="3"/>
-				<option label="triangle" value="4"/>
-				<option label="square"   value="5"/>
-				<option label="plus"     value="6"/>
-				<option label="cross"    value="7"/>
-				<option label="diamond"  value="8"/>
-			</options>
-		  <element name="Size" type="float" label="size" unit="pt">
-			  <condition type="and">
-				  <condition type="ne" variable="." value="0"/>
-				  <condition type="ne" variable="." value="2"/>
-			  </condition>
-		  </element>
-		  <element name="FaceColor" type="color" label="color">
+      <condition type="eq" variable="./CanHaveMarker" value="True"/>
+      <options>
+        <option label="none"     value="0"/>
+        <option label="points"   value="1"/>
+        <option label="pixels"   value="2"/>
+        <option label="circle"   value="3"/>
+        <option label="triangle" value="4"/>
+        <option label="square"   value="5"/>
+        <option label="plus"     value="6"/>
+        <option label="cross"    value="7"/>
+        <option label="diamond"  value="8"/>
+      </options>
+      <element name="Size" type="float" label="size" unit="pt">
+        <condition type="and">
+          <condition type="ne" variable="." value="0"/>
+          <condition type="ne" variable="." value="2"/>
+        </condition>
+      </element>
+      <element name="FaceColor" type="color" label="color">
         <condition type="and">
           <condition type="ne" variable="." value="0"/>
           <condition type="ne" variable="." value="6"/>
           <condition type="ne" variable="." value="7"/>
         </condition>
-		  </element>
+      </element>
       <element name="EdgeColor" type="color" label="edge color">
         <condition type="ne" variable="." value="0"/>
       </element>
@@ -53,72 +53,79 @@
     </element>
   </template>
 
-	<template id="TickMarks" type="bool">
-		<element name="ShowLabels" type="bool" hidden="True"/>
-		<element name="LocationTime" type="int" label="unit">
-			<condition type="and">
-				<condition type="eq" variable="." value="True"/>
-				<condition type="eq" variable="../IsTimeAxis" value="True"/>
-			</condition>
-			<options>
-				<option value="0" label="year"/>
-				<option value="1" label="month"/>
-				<option value="2" label="day"/>
-				<option value="3" label="hour"/>
-				<option value="4" label="minute"/>
-			</options>
-		</element>
-		<element name="IntervalTime" type="int" label="interval" minInclusive="1">
-			<condition type="and">
-				<condition type="eq" variable="." value="True"/>
-				<condition type="eq" variable="../IsTimeAxis" value="True"/>
-			</condition>
-		</element>
-		<element name="FormatTime" type="int" label="format">
-			<condition type="and">
-				<condition type="eq" variable="." value="True"/>
-				<condition type="eq" variable="./ShowLabels" value="True"/>
-				<condition type="eq" variable="../IsTimeAxis" value="True"/>
-			</condition>
-			<options>
-				<option value="0" label="dd-mmm-yyyy HH:MM:SS"/>
-				<option value="1" label="dd-mmm-yyyy"/>
-				<option value="2" label="mm/dd/yy"/>
-				<option value="3" label="mmm"/>
-				<option value="4" label="m"/>
-				<option value="5" label="mm"/>
-				<option value="6" label="mm/dd"/>
-				<option value="7" label="dd"/>
-				<option value="8" label="ddd"/>
-				<option value="9" label="d"/>
-				<option value="10" label="yyyy"/>
-				<option value="11" label="yy"/>
-				<option value="12" label="mmmyy"/>
-				<option value="13" label="HH:MM:SS"/>
-				<option value="14" label="HH:MM:SS PM"/>
-				<option value="15" label="HH:MM"/>
-				<option value="16" label="HH:MM PM"/>
-				<option value="17" label="QQ-YY"/>
-				<option value="18" label="QQ"/>
-				<option value="19" label="dd/mm"/>
-				<option value="20" label="dd/mm/yy"/>
-				<option value="21" label="mmm.dd,yyyy HH:MM:SS"/>
-				<option value="22" label="mmm.dd,yyyy"/>
-				<option value="23" label="mm/dd/yyyy"/>
-				<option value="24" label="dd/mm/yyyy"/>
-				<option value="25" label="yy/mm/dd"/>
-				<option value="26" label="yyyy/mm/dd"/>
-				<option value="27" label="QQ-YYYY"/>
-				<option value="28" label="mmmyyyy"/>
-			</options>
-		</element>
-	</template>
+  <template id="TickMarks" type="bool">
+    <element name="ShowLabels" type="bool" hidden="True"/>
+    <element name="LocationTime" type="int" label="unit">
+      <condition type="and">
+        <condition type="eq" variable="." value="True"/>
+        <condition type="eq" variable="../IsTimeAxis" value="True"/>
+      </condition>
+      <options>
+        <option value="0" label="year"/>
+        <option value="1" label="month"/>
+        <option value="2" label="day"/>
+        <option value="3" label="hour"/>
+        <option value="4" label="minute"/>
+      </options>
+    </element>
+    <element name="IntervalTime" type="int" label="interval" minInclusive="1">
+      <condition type="and">
+        <condition type="eq" variable="." value="True"/>
+        <condition type="eq" variable="../IsTimeAxis" value="True"/>
+      </condition>
+    </element>
+    <element name="FormatTime" type="int" label="format">
+      <condition type="and">
+        <condition type="eq" variable="." value="True"/>
+        <condition type="eq" variable="./ShowLabels" value="True"/>
+        <condition type="eq" variable="../IsTimeAxis" value="True"/>
+      </condition>
+      <options>
+        <option value="0" label="dd-mmm-yyyy HH:MM:SS"/>
+        <option value="1" label="dd-mmm-yyyy"/>
+        <option value="2" label="mm/dd/yy"/>
+        <option value="3" label="mmm"/>
+        <option value="4" label="m"/>
+        <option value="5" label="mm"/>
+        <option value="6" label="mm/dd"/>
+        <option value="7" label="dd"/>
+        <option value="8" label="ddd"/>
+        <option value="9" label="d"/>
+        <option value="10" label="yyyy"/>
+        <option value="11" label="yy"/>
+        <option value="12" label="mmmyy"/>
+        <option value="13" label="HH:MM:SS"/>
+        <option value="14" label="HH:MM:SS PM"/>
+        <option value="15" label="HH:MM"/>
+        <option value="16" label="HH:MM PM"/>
+        <option value="17" label="QQ-YY"/>
+        <option value="18" label="QQ"/>
+        <option value="19" label="dd/mm"/>
+        <option value="20" label="dd/mm/yy"/>
+        <option value="21" label="mmm.dd,yyyy HH:MM:SS"/>
+        <option value="22" label="mmm.dd,yyyy"/>
+        <option value="23" label="mm/dd/yyyy"/>
+        <option value="24" label="dd/mm/yyyy"/>
+        <option value="25" label="yy/mm/dd"/>
+        <option value="26" label="yyyy/mm/dd"/>
+        <option value="27" label="QQ-YYYY"/>
+        <option value="28" label="mmmyyyy"/>
+      </options>
+    </element>
+  </template>
 
-	<element name="Title" type="string" label="title"/>
-	<element name="FontName" type="fontname" label="font"/>
-	<element name="FontScaling" type="float" label="font scaling" unit="%"/>
+  <element name="Title" type="string" label="title"/>
+  <element name="FontName" type="fontname" label="font"/>
+  <element name="FontScaling" type="float" label="font scaling" unit="%"/>
   <element name="Width" type="float" label="width" unit="cm"/>
   <element name="Height" type="float" label="height" unit="cm"/>
+
+  <element name="padding">
+    <element name="Left"   type="float" label="left"/>
+    <element name="Right"  type="float" label="right"/>
+    <element name="Top"    type="float" label="top"/>
+    <element name="Bottom" type="float" label="bottom"/>
+  </element>
 
   <element name="CanBeMap" type="bool" hidden="True"/>
   <element name="Map" type="bool" label="plot as map">
