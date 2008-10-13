@@ -769,9 +769,17 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
     The file is expected to follow the COARDS convention.
     """
     
+    conventions = []
+    
+    @staticmethod
+    def registerConvention(convention):
+        NetCDFStore.conventions.append(convention)
+    
     @staticmethod
     def loadUnknownConvention(path):
-        return NetCDFStore_GOTM(path)
+        for convention in NetCDFStore.conventions:
+            if convention.testFile(path): return convention(path)
+        return NetCDFStore(path)
     
     class NetCDFVariable(common.Variable):
         def __init__(self,store,ncvarname):
@@ -1082,9 +1090,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         
     def getCoordinateDimensions(self,dimname):
         ncvarname = str(dimname)
-        nc = self.getcdf()
-        ncvar = nc.variables[dimname]
-        return ncvar.dimensions
+        ncvar = self.getcdf().variables
+        if dimname not in ncvar: return (dimname,)
+        return ncvar[dimname].dimensions
 
     def getDefaultCoordinateDelta(self,dimname,coord):
         return 1.
@@ -1204,6 +1212,18 @@ class NetCDFStore_GOTM(NetCDFStore):
     - the GOTM/GETM convention for storing time-variable depth/leyer heights (h + elev).
     - the GETM convention for curvilinear grids (xic, etac -> lonc, latc)
     """
+    
+    @staticmethod
+    def testFile(path):
+        match = False
+        nc = getNetCDFFile(path)
+        ncvars,ncdims = nc.variables,nc.dimensions
+        if ('xic'  in ncdims and 'etac' in ncdims and
+            'lonc' in ncvars and 'latc' in ncvars): match = True
+        if ('z' in ncdims and 'z1' in ncdims and
+            'h' in ncvars and 'elev' in ncvars): match = True
+        nc.close()
+        return match
 
     def __init__(self,path=None,*args,**kwargs):
         NetCDFStore.__init__(self,path,*args,**kwargs)
@@ -1274,3 +1294,31 @@ class NetCDFStore_GOTM(NetCDFStore):
         if coords[0]>timeref: return coords[0]-timeref
         
         return 1.
+
+class NetCDFStore_MOM4(NetCDFStore):
+    @staticmethod
+    def testFile(path):
+        match = False
+        nc = getNetCDFFile(path)
+        ncvars,ncdims = nc.variables,nc.dimensions
+        if ('xt_ocean' in ncdims and 'yt_ocean' in ncdims and
+            'geolon_t' in ncvars and 'geolat_t' in ncvars): match = True
+        nc.close()
+        return match
+
+    def __init__(self,path=None,*args,**kwargs):
+        NetCDFStore.__init__(self,path,*args,**kwargs)
+
+    def autoReassignCoordinates(self):
+        NetCDFStore.autoReassignCoordinates(self)
+        
+        # Re-assign x,y coordinate dimensions to longitude, latitude
+        nc = self.getcdf()
+        ncvars,ncdims = nc.variables,nc.dimensions
+        if ('xt_ocean'  in ncdims and 'yt_ocean' in ncdims and
+            'geolon_t' in ncvars and 'geolat_t' in ncvars):
+            self.reassigneddims['xt_ocean' ] = 'geolon_t'
+            self.reassigneddims['yt_ocean'] = 'geolat_t'
+
+NetCDFStore.registerConvention(NetCDFStore_GOTM)
+NetCDFStore.registerConvention(NetCDFStore_MOM4)

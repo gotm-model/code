@@ -806,7 +806,7 @@ class Figure(xmlstore.util.referencedobject):
                 
         # Handle transformations due to map projection (if any)
         xcanbelon = xrange[0]!=None and xrange[0]>=-360 and xrange[1]<=360
-        ycanbelat = yrange[0]!=None and yrange[0]>=-90 and yrange[1]<=90
+        ycanbelat = yrange[0]!=None and yrange[0]>=-90  and yrange[1]<=90
         self.defaultproperties['CanBeMap'].setValue(xcanbelon and ycanbelat)
         ismap = xcanbelon and ycanbelat and self.properties['Map'].getValue(usedefault=True)
         drawaxes = axes
