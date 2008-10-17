@@ -1,9 +1,9 @@
-!$Id: bio_fluxes.F90,v 1.3 2008-06-20 12:19:37 kb Exp $
+!$Id: bio_fluxes.F90,v 1.4 2008-10-17 08:50:47 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: bio_fluxes --- handling bio fluxes \label{sec:bio_fluxes}
+! !MODULE: bio_fluxes --- handling bio fluxes \label{sec:biofluxes}
 !
 ! !INTERFACE:
    module bio_fluxes
@@ -27,6 +27,9 @@
 !  Original author(s): Karsten Bolding and Hans Burchard
 !
 !  $Log: bio_fluxes.F90,v $
+!  Revision 1.4  2008-10-17 08:50:47  lars
+!  changed documentation label
+!
 !  Revision 1.3  2008-06-20 12:19:37  kb
 !  avoid unit conflict with observed O2
 !
