@@ -1,4 +1,4 @@
-!$Id: bio_photo.F90,v 1.2 2008-07-08 10:40:28 lars Exp $
+!$Id: bio_photo.F90,v 1.3 2008-10-17 08:48:29 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -99,6 +99,9 @@
 !  Original author(s): Lars Umlauf, Hans Burchard, Karsten Bolding
 !
 !  $Log: bio_photo.F90,v $
+!  Revision 1.3  2008-10-17 08:48:29  lars
+!  fixed bug in carbon time stepping
+!
 !  Revision 1.2  2008-07-08 10:40:28  lars
 !  added external info string allocation
 !
@@ -228,11 +231,11 @@
    var_long(3)  = 'inhibition factor'
 
    var_names(4) = 'Prod'
-   var_units(4) = 'pmol C/hour/vol'
+   var_units(4) = 'pg C/hour/vol'
    var_long(4)  = 'production'
 
    var_names(5) = 'Carb'
-   var_units(5) = 'pmol C/vol'
+   var_units(5) = 'pg C/vol'
    var_long(5)  = 'carbon concentration'
 
 
@@ -533,7 +536,7 @@
 
 !     update carbon content
       c     = par_prop(np,CarbInd,nt)     
-      c     = c + p*dt - mu*dt 
+      c     = c + (p - mu*c)*dt 
 
 !     copy back to property array
       par_prop(np,XInd   ,nt)     = x      
