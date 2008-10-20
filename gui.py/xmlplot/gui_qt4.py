@@ -537,11 +537,25 @@ class FigurePanel(QtGui.QWidget):
         Currently this shows the figure properties dialog box.
         """
         if self.dialogAdvanced==None:
-            self.dialogAdvanced = xmlstore.gui_qt4.PropertyEditorDialog(self,self.figure.properties,title='Figure properties',flags=QtCore.Qt.Tool)
+            self.dialogAdvanced = xmlstore.gui_qt4.PropertyEditorDialog(self,self.figure.properties,title='Figure properties',loadsave=True,flags=QtCore.Qt.Tool,loadhook=self.loadProperties)
             self.dialogAdvanced.resize(350, 300)
             self.dialogAdvanced.resizeColumns()
         self.dialogAdvanced.show()
         self.dialogAdvanced.activateWindow()
+        
+    def loadProperties(self,path):
+        oldroot = self.figure.properties.root
+        data = plot.FigureProperties(path)
+        newroot = data.root
+        for child in oldroot.children:
+            id = child.getId()
+            newchild = newroot[id]
+            if id=='Data':
+                n = min(len(child.children),len(newchild.children))
+                for i in range(n): child.children[i].copyFrom(newchild.children[i])
+            else:
+                child.copyFrom(newchild)
+        data.unlink()
         
     def onZoomClicked(self,*args):
         """Called when the user clicks the "Zoom" button.
@@ -687,7 +701,7 @@ class FigurePanel(QtGui.QWidget):
                 agg = self.canvas.switch_backends(FigureCanvasAgg)
                 self.canvas.figure.set_figwidth(width)
                 self.canvas.figure.set_figheight(height)
-                agg.print_figure(str(fname.toLatin1()),dpi=dialog.editResolution.value(), facecolor='w', edgecolor='w', orientation='portrait')
+                agg.print_figure(unicode(fname),dpi=dialog.editResolution.value(), facecolor='w', edgecolor='w', orientation='portrait')
                 self.canvas.figure.set_figwidth(oldwidth)
                 self.canvas.figure.set_figheight(oldheight)
                 self.canvas.figure.set_canvas(self.canvas)
