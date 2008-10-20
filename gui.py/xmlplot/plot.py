@@ -235,6 +235,7 @@ class VariableReduceDimension(VariableTransform):
         
 class VariableSlice(VariableReduceDimension):
     """Transformation that takes a slice through the variable in one dimension.
+    Uses linear interpolation to get the values at the sliced position.
     """
     def __init__(self,variable,slicedimension,slicecoordinate,**kwargs):
         VariableReduceDimension.__init__(self,variable,slicedimension,**kwargs)
@@ -489,7 +490,7 @@ class Figure(xmlstore.util.referencedobject):
         w = self['Width'].getValue(usedefault=True)
         h = self['Height'].getValue(usedefault=True)
         self.figure.set_size_inches(w/2.54,h/2.54)
-        self.canvas.print_figure(str(path),dpi=dpi)
+        self.canvas.print_figure(str(path),dpi=dpi,facecolor='w')
         
     def copyFrom(self,sourcefigure):
         """Copies all plot properties and data sources from the supplied source figure.
@@ -948,13 +949,16 @@ class Figure(xmlstore.util.referencedobject):
                 pc = None       # object using colormap
                 norm = None     # color normalization object
                 hascolormap = True
-                logscale = axis2data.get('colorbar',{}).get('logscale',False)
+                axisdata = axis2data.get('colorbar',{})
+                canhavelogscale = axisdata['datatype']!='datetime' and (axisdata['datarange'][0]>0 or axisdata['datarange'][1]>0)
+                logscale = canhavelogscale and axis2data.get('colorbar',{}).get('logscale',False)
                 if logscale:
                     norm = matplotlib.colors.LogNorm()
                     
                     # Mask values <= 0 manually, because color bar locators choke on them.
                     invalid = C<=0
                     if invalid.any(): C = numpy.ma.masked_where(invalid,C,copy=False)
+                    axisdata['datarange'] = [C.min(),C.max()]
                     
                     if 'U' in info:
                         info['U'] = numpy.ma.masked_where(C._mask,info['U'],copy=False)
@@ -1024,7 +1028,10 @@ class Figure(xmlstore.util.referencedobject):
                         # because MatPlotLib 0.90.0 chokes on identical min and max.
                         pc.set_clim((C[0,0]-1,C[0,0]+1))
                     else:
-                        pc.set_clim(axis2data.get('colorbar',{}).get('forcedrange',(None,None)))
+                        forced = list(axis2data.get('colorbar',{}).get('forcedrange',(None,None)))
+                        if forced[0]!=None and logscale and forced[0]<=0.: forced[0] = None
+                        if forced[1]!=None and logscale and forced[1]<=0.: forced[1] = None
+                        pc.set_clim(forced)
                     cb = self.figure.colorbar(pc,ax=axes)
 
                 plotcount[2] += 1
@@ -1278,8 +1285,11 @@ class Figure(xmlstore.util.referencedobject):
             label = axisnode['Label'].getValue(usedefault=True)
             if label==None: label=''
 
-            # Reverse axis if needed
-            if axisdata['reversed']: effrange[1],effrange[0] = effrange[0],effrange[1]
+            # Reverse axis if needed. Do this if at least one bound has been left free,
+            # because if both bounds are prescribed, they must be used as is (reversal should be
+            # set already)
+            if axisdata['reversed'] and (forcedrange[0]==None or forcedrange[1]==None):
+                effrange[1],effrange[0] = effrange[0],effrange[1]
 
             # Set axis labels and boundaries.
             if axisname=='x':
