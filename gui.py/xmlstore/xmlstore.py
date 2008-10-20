@@ -449,6 +449,7 @@ class TypedStoreInterface:
     def beforeVisibilityChange(self,node,shownew,showhide):
         assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
+        #print 'beforeVisibilityChange'
         self.upcomingvizchange = node
         if 'beforeVisibilityChange' not in self.eventhandlers: return
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
@@ -464,6 +465,7 @@ class TypedStoreInterface:
         assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         assert node==self.upcomingvizchange, 'The node supplied to afterVisibilityChange (%s) was not the last one supplied to beforeVisibilityChange (%s).' % (node,self.upcomingvizchange)
+        #print 'afterVisibilityChange'
         self.upcomingvizchange = None
         if 'afterVisibilityChange' not in self.eventhandlers: return
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
@@ -476,12 +478,14 @@ class TypedStoreInterface:
             self.eventhandlers['afterVisibilityChange']((node,),shownew,showhide)
 
     def afterStoreChange(self):
+        #print 'afterStoreChange'
         if 'afterStoreChange' not in self.eventhandlers: return
         self.eventhandlers['afterStoreChange']()
 
     def onBeforeChange(self,node,newvalue):
         assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
+        #print 'onBeforeChange'
         if 'beforeChange' not in self.eventhandlers: return True
         if node.isHidden() and self.blockNotifyOfHiddenNodes: return True
         return self.eventhandlers['beforeChange'](node,newvalue)
@@ -489,6 +493,7 @@ class TypedStoreInterface:
     def onChange(self,node,feature):
         assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
+        #print 'onChange'
         if 'afterChange' not in self.eventhandlers: return
         if node.isHidden() and self.blockNotifyOfHiddenNodes: return
         self.eventhandlers['afterChange'](node,feature)
@@ -496,6 +501,7 @@ class TypedStoreInterface:
     def onDefaultChange(self,node,feature):
         assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
+        #print 'onDefaultChange'
         if self.processDefaultChange==1 or (self.processDefaultChange==0 and not node.hasValue()):
             self.onChange(node,feature)
 
@@ -1275,6 +1281,7 @@ class TypedStore(util.referencedobject):
 
         # Events
         self.interfaces = []
+        self.blockedinterfaces = set()
 
         self.otherstores = otherstores
         for v in self.otherstores.itervalues(): v.addref()
@@ -1392,8 +1399,8 @@ class TypedStore(util.referencedobject):
             while valuedom.parentNode!=None: valuedom = valuedom.parentNode
             assert valuedom.nodeType==valuedom.DOCUMENT_NODE, 'Could not find DOM document node.'
 
-        storeversion = valueroot.getAttribute('version')
-        assert storeversion==self.version or storeversion=='', 'Versions of the xml schema ("%s") and and the xml values ("%s") do not match.' % (self.version,storeversion)
+        valuesversion = valueroot.getAttribute('version')
+        assert valuesversion==self.version or valuesversion=='', 'Versions of the xml schema ("%s") and and the xml values ("%s") do not match.' % (self.version,valuesversion)
 
         if not valueroot.hasAttribute('syntax'):
             syntax = (1,0)
@@ -1904,12 +1911,22 @@ class TypedStore(util.referencedobject):
         is attempted."""
         if isinstance(path,datatypes.DataFile):
             f = path.getAsReadOnlyFile()
-            valuedom = xml.dom.minidom.parse(f)
+            try:
+                valuedom = xml.dom.minidom.parse(f)
+            except Exception,e:
+                raise Exception('Unable to parse as XML: '+unicode(e))
             f.close()
         else:
             if not os.path.isfile(path):
                 raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
-            valuedom = xml.dom.minidom.parse(path)
+            try:
+                valuedom = xml.dom.minidom.parse(path)
+            except Exception,e:
+                raise Exception('"%s" does not contain valid XML: %s' % (path,unicode(e)))
+            
+        schemarootname = self.schema.getRoot().getAttribute('name')
+        if valuedom.documentElement.localName!=schemarootname:
+            raise Exception('Name of XML root node (%s) does not match root identifier in schema specification (%s).' % (valuedom.documentElement.localName,schemarootname))
 
         version = valuedom.documentElement.getAttribute('version')
         if self.version!=version and version!='':
@@ -2112,7 +2129,8 @@ class TypedStore(util.referencedobject):
         if ownnode==None: return
 
         # Emit change event
-        for i in self.interfaces: i.onDefaultChange(ownnode,feature)
+        for i in self.interfaces:
+            if i not in self.blockedinterfaces: i.onDefaultChange(ownnode,feature)
 
         # If the default is being used: update (visibility of) nodes that depend on the changed node.
         if not ownnode.hasValue(): self.updateDependantNodes(ownnode)
@@ -2125,7 +2143,8 @@ class TypedStore(util.referencedobject):
         self.changed = True
 
         # Emit change event
-        for i in self.interfaces: i.onChange(node,feature)
+        for i in self.interfaces:
+            if i not in self.blockedinterfaces: i.onChange(node,feature)
 
         # Update (visibility of) nodes that depend on the changed node.
         self.updateDependantNodes(node)
@@ -2167,20 +2186,26 @@ class TypedStore(util.referencedobject):
         """Called internally just before the value of a node changes. The return value
         decides if the change is allowed (return True) or denied (return False)."""
         for i in self.interfaces:
+            if i in self.blockedinterfaces: continue
             if not i.onBeforeChange(node,newvalue): return False
         return True
 
     def afterStoreChange(self):
         """Called internally after the store changes, i.e., all values have changed."""
-        for i in self.interfaces: i.afterStoreChange()
+        self.blockedinterfaces = set(self.interfaces)
+        for i in self.interfaces:
+            i.afterStoreChange()
+            self.blockedinterfaces.remove(i)
 
     def beforeVisibilityChange(self,node,visible,showhide=True):
         """Called internally before a node is hidden (showhide=True) or deleted (showhide=False)."""
-        for i in self.interfaces: i.beforeVisibilityChange(node,visible,showhide)
+        for i in self.interfaces:
+            if i not in self.blockedinterfaces: i.beforeVisibilityChange(node,visible,showhide)
 
     def afterVisibilityChange(self,node,visible,showhide=True):
         """Called internally after a node is hidden (showhide=True) or deleted (showhide=False)."""
-        for i in self.interfaces: i.afterVisibilityChange(node,visible,showhide)
+        for i in self.interfaces:
+            if i not in self.blockedinterfaces: i.afterVisibilityChange(node,visible,showhide)
 
 def versionStringToInt(versionstring):
     """Converts a "major.minor.build" version string to a representative integer."""
