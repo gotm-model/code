@@ -955,6 +955,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
         return QtCore.QVariant()
         
     def indexFromNode(self,node,column=0):
+        assert isinstance(node,xmlstore.Node), 'indexFromNode: supplied object is not of type "Node" (but "%s").' % (node,)
         irow = self.storeinterface.getOwnIndex(node)
         return self.createIndex(irow,column,node)
 
@@ -1210,11 +1211,12 @@ class PropertyEditorDialog(QtGui.QDialog):
     Incoporates the ExtendedTreeView attached to a TypedStoreModel.
     """
     
-    def __init__(self,parent,store,title='',instructions='',flags=QtCore.Qt.Dialog,icon=None):
+    def __init__(self,parent,store,title='',instructions='',loadsave=False,flags=QtCore.Qt.Dialog,icon=None,loadhook=None):
         if icon!=None: flags |= QtCore.Qt.WindowSystemMenuHint
         QtGui.QDialog.__init__(self, parent, flags)
 
-        self.tree = TypedStoreTreeView(self,store,expanddepth=3,resizecolumns=False)
+        self.store = store
+        self.tree = TypedStoreTreeView(self,self.store,expanddepth=3,resizecolumns=False)
 
         self.setSizeGripEnabled(True)
 
@@ -1227,6 +1229,21 @@ class PropertyEditorDialog(QtGui.QDialog):
             layout.addWidget(lab)
 
         layout.addWidget(self.tree)
+        
+        if loadsave:
+            bnLoad = QtGui.QPushButton('Load...')
+            bnSave = QtGui.QPushButton('Save...')
+            bnReset = QtGui.QPushButton('Reset')
+            layoutButtons = QtGui.QHBoxLayout()
+            layoutButtons.addWidget(bnLoad)
+            layoutButtons.addWidget(bnSave)
+            layoutButtons.addWidget(bnReset)
+            layoutButtons.addStretch(1)
+            layout.addLayout(layoutButtons)
+            self.connect(bnLoad,  QtCore.SIGNAL('clicked()'), self.onLoad)
+            self.connect(bnSave,  QtCore.SIGNAL('clicked()'), self.onSave)
+            self.connect(bnReset, QtCore.SIGNAL('clicked()'), self.onReset)
+        
         self.setLayout(layout)
 
         if title!='':
@@ -1234,11 +1251,35 @@ class PropertyEditorDialog(QtGui.QDialog):
         if icon!=None:
             self.setWindowIcon(icon)
 
+        self.lastpath = ''
+        self.loadhook = loadhook
+        
     def resizeColumns(self):
         """Intelligently resize the column widths.
         """
         self.tree.header().resizeSections(QtGui.QHeaderView.Stretch)
         self.tree.resizeColumnToContents(0)
+        
+    def onLoad(self):
+        path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',self.lastpath,'XML files (*.xml);;All files (*.*)'))
+        if path=='': return
+        try:
+            if self.loadhook:
+                self.loadhook(path)
+            else:
+                self.store.load(path)
+        except Exception,e:
+            QtGui.QMessageBox.critical(self, 'Unable to load settings from file', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
+        self.lastpath = path
+    
+    def onSave(self):
+        path = unicode(QtGui.QFileDialog.getSaveFileName(self,'',self.lastpath,'XML files (*.xml);;All files (*.*)'))
+        if path=='': return
+        self.store.save(path)
+        self.lastpath = path
+        
+    def onReset(self):
+        self.store.root.clearValue(recursive=True,deleteclones=False)
 
 class PropertyEditorFactory:
     """Class that provides editors for nodes in a TypedStore. Multiple editors
