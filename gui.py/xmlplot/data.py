@@ -1,5 +1,5 @@
 # Import modules from standard Python library
-import os, sys, re, datetime, shutil, StringIO
+import os, sys, re, datetime, shutil, StringIO, types
 
 # Import additional third party modules
 import numpy
@@ -851,6 +851,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           ncvar = nc.variables[self.ncvarname]
           dimnames = self.getDimensions_raw()
           assert len(bounds)==len(dimnames), 'Number of specified bounds (%i) does not match number of dimensions (%i).' % (len(bounds),len(dimnames))
+          rawdims = list(ncvar.dimensions)
                     
           # Get initial slices, taking into account specified integer slices and fixed
           # coordinates, but not float-based slices.
@@ -862,29 +863,27 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 assert bounds[idim]>=0,                'Slice index %i lies below lower boundary of dimension %s (0).' % (bounds[idim],dimname)
                 assert bounds[idim]<ncvar.shape[idim], 'Slice index %i exceeds upper boundary of dimension %s (%i).' % (bounds[idim],dimname,ncvar.shape[idim]-1)
                 boundindices.append(bounds[idim])
-            elif isinstance(bounds[idim].start,float) or isinstance(bounds[idim].stop,float):
-                # Floating point boundaries. By default these are not used.
-                # If possible, we use them below, and override the full range imposed here.
+            elif not (isinstance(bounds[idim].start,(int,types.NoneType)) and isinstance(bounds[idim].stop,(int,types.NoneType))):
+                # Non-integer boundaries (e.g., floating point numbers).
+                # If possible, we use them below, and override with the full range imposed here.
                 boundindices.append(slice(0,ncvar.shape[idim]))
                 isfloatslice[-1] = True
             else:
                 start,stop,step = bounds[idim].indices(ncvar.shape[idim])
                 boundindices.append(slice(start,stop))
                 
-          # Translate slices based on floating point values to slices based on integers.
+          # Translate slices based on non-integer values (e.g. floating point values, dates)
+          # to slices based on integers.
           for idim,dimname in enumerate(dimnames):
             if not isfloatslice[idim]: continue
             (coords,coords_stag) = self.store.getCoordinates(dimname)
             if coords==None: return None
-            flstart,flstop = bounds[idim].start,bounds[idim].stop
-            if coords.ndim==1:
-                istart,istop = coords.searchsorted((flstart,flstop))
-                if istart>0:          istart-=1
-                if istop<len(coords): istop +=1
-                boundindices[idim] = slice(istart,istop)
+            coorddims = list(self.store.getCoordinateDimensions(dimname))
+            istart,istop = common.getboundindices(coords_stag,coorddims.index(rawdims[idim]),bounds[idim].start,bounds[idim].stop)
+            boundindices[idim] = slice(istart,istop)
 
           # Create Variable.Slice object to hold coordinates and data.
-          newdimnames = [dimnames[idim] for idim in range(len(dimnames)) if not isinstance(bounds[idim],int)]
+          newdimnames = [dimnames[idim] for idim in range(len(dimnames)) if isinstance(bounds[idim],slice)]
           varslice = self.Slice(newdimnames)
                 
           # Retrieve the data values
@@ -906,7 +905,6 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             # Get the actual dimensions (without re-assignments) of the coordinate
             # variable and the actual variable.
             coorddims = list(self.store.getCoordinateDimensions(dimname))
-            rawdims = list(ncvar.dimensions)
             
             # Get coordinate values for selected domain only.
             coordslices = [boundindices[rawdims.index(cd)] for cd in coorddims]
@@ -961,8 +959,8 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           
           # Process the various COARDS/CF variable attributes for missing data.
           if self.store.maskoutsiderange:
-              if hasattr(ncvar,'valid_min'):     mask = addmask(mask,dat<ncvar.valid_min)
-              if hasattr(ncvar,'valid_max'):     mask = addmask(mask,dat>ncvar.valid_max)
+              if hasattr(ncvar,'valid_min'):   mask = addmask(mask,dat<ncvar.valid_min)
+              if hasattr(ncvar,'valid_max'):   mask = addmask(mask,dat>ncvar.valid_max)
               if hasattr(ncvar,'valid_range'):
                 assert len(ncvar.valid_range)==2,'NetCDF attribute "valid_range" must consist of two values, but contains %i.' % len(ncvar.valid_range)
                 minv,maxv = ncvar.valid_range

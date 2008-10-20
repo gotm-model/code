@@ -1,7 +1,7 @@
-#$Id: common.py,v 1.11 2008-10-10 11:20:22 jorn Exp $
+#$Id: common.py,v 1.12 2008-10-20 18:49:46 jorn Exp $
 
 # Import modules from standard Python library
-import sys,os.path,UserDict,re,xml.dom.minidom
+import sys,os.path,UserDict,re,xml.dom.minidom,datetime
 
 # Import additional third party modules
 import matplotlib.dates,numpy
@@ -51,7 +51,10 @@ def convertUnitToUnicode(unit):
     unit = unit.replace('s3','s'+sup3)
     unit = unit.replace('m2','m'+sup2)
     unit = unit.replace('m3','m'+sup3)
+    unit = unit.replace('**2',sup2)
+    unit = unit.replace('^2',sup2)
     unit = unit.replace('**3',sup3)
+    unit = unit.replace('^3',sup3)
     return unit
 
 # ------------------------------------------------------------------------------------------
@@ -244,6 +247,21 @@ def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
         coords_stag2[tuple(targetslc)] = coords_stag2[tuple(sourceslc1)]-delta
 
     return 0.5*(coords_stag+coords_stag2)
+
+def getboundindices(data,axis,minval=None,maxval=None):
+    if isinstance(minval,datetime.datetime): minval = date2num(minval)
+    if isinstance(maxval,datetime.datetime): maxval = date2num(maxval)
+    if data.ndim>1:
+        n = data.shape[axis]
+        data = data.swapaxes(0,axis).reshape((n,-1))
+        if minval!=None: lc = data.max(axis=1)
+        if maxval!=None: uc = data.min(axis=1)
+    else:
+        n,uc,lc = len(data),data,data
+    imin,imax = 0,n
+    if minval!=None: imin = min(n-1,max(0,lc.searchsorted(minval)))
+    if maxval!=None: imax = max(1  ,min(n,uc.searchsorted(maxval)))
+    return imin,imax
 
 class VariableStore(UserDict.DictMixin):
     """Abstract base class for objects containing one or more variables that

@@ -1,4 +1,4 @@
-import UserDict
+import UserDict,datetime,types
 import numpy
 import common
 
@@ -116,6 +116,8 @@ class LazyExpression:
             import functions
             for name in dir(functions):
                 LazyExpression.globalfuncs[name] = LazyExpression.NamedFunction(name,getattr(functions,name),useslices=True)
+                
+            LazyExpression.globalfuncs['datetime'] = LazyExpression.NamedFunction('datetime',datetime.datetime)
         return LazyExpression.globalfuncs
 
     @staticmethod
@@ -126,8 +128,13 @@ class LazyExpression:
                 del baseshape[i]
             else:
                 assert isinstance(slic[i],slice), 'Fancy indexing is not yet supported.'
+
+                # For non-integer slices we do not know the resulting shape
+                if not (isinstance(slic[i].start,(int,types.NoneType)) and isinstance(slic[i].stop,(int,types.NoneType))): return None
+
                 start,stop,step = slic[i].indices(baseshape[i])
                 assert step==1, 'Slices with step>1 are not yet supported.'
+                
                 baseshape[i] = stop-start
         return baseshape
         
@@ -138,7 +145,7 @@ class LazyExpression:
         for i in range(len(dimnames)-1,-1,-1):
             if isinstance(slic[i],(int,float)): del dimnames[i]
         return dimnames
-
+        
     @staticmethod
     def slice2string(slic):
         """This function takes a single slice object and converts it to a Python slice
@@ -146,10 +153,10 @@ class LazyExpression:
         """
         result = ''
         start,stop,step = slic.start,slic.stop,slic.step
-        if start!=None: result += str(start)
+        if start!=None: result += LazyExpression.argument2text(start)
         result += ':'
-        if stop!=None: result += str(stop)
-        if step!=None: result += ':'+str(step)
+        if stop!=None: result += LazyExpression.argument2text(stop)
+        if step!=None: result += ':'+LazyExpression.argument2text(step)
         return result
 
     @staticmethod
@@ -179,20 +186,69 @@ class LazyExpression:
             if res!=':': slicestrings.append('%s=%s' % (dimname,res))
         return '[%s]' % ','.join(slicestrings)
 
-    def __init__(self,*args):
+    @staticmethod
+    def argument2value(arg):
+        if isinstance(arg,LazyExpression):
+            return arg.getValue()
+        elif isinstance(arg,tuple):
+            return tuple([LazyExpression.argument2value(subarg) for subarg in arg])
+        elif isinstance(arg,list):
+            return [LazyExpression.argument2value(subarg) for subarg in arg]
+        elif isinstance(arg,slice):
+            start,stop,step = map(LazyExpression.argument2value,(arg.start,arg.stop,arg.step))
+            return slice(start,stop,step)
+        else:
+            return arg
+
+    @staticmethod
+    def argument2text(arg,type=0):
+        if isinstance(arg,LazyExpression):
+            return arg.getText(type)
+        elif isinstance(arg,basestring):
+            return '\'%s\'' % arg
+        elif isinstance(arg,(tuple,list)):
+            subargs = [LazyExpression.argument2text(subarg,type) for subarg in arg]
+            if isinstance(arg,list):
+                # list
+                return '[%s]' % ','.join(subargs)
+            else:
+                # tuple
+                if len(subargs)==1:
+                    return '(%s,)' % subargs[0]
+                else:
+                    return '(%s)' % ','.join(subargs)
+        else:
+            return str(arg)
+
+    def __init__(self,*args,**kwargs):
         self.args = args
+        self.kwargs = kwargs
 
     def getVariables(self):
         vars = []
         for arg in self.args:
             if isinstance(arg,LazyExpression): vars += arg.getVariables()
+        for arg in self.kwargs.itervalues():
+            if isinstance(arg,LazyExpression): vars += arg.getVariables()
         return vars
         
     def getText(self,type=0,addparentheses=True):
-        assert False, 'Method "getText" must be implemented by derived class.'
+        resolvedargs = [LazyExpression.argument2text(arg,type) for arg in self.args]
+        resolvedkwargs = dict([(name,LazyExpression.argument2text(arg,type)) for name,arg in self.kwargs.iteritems()])
+        result = self._getText(resolvedargs,resolvedkwargs,type=type,addparentheses=addparentheses)
+        if addparentheses: result = '(%s)' % result
+        return result
+
+    def _getText(self,type=0,addparentheses=True):
+        assert False, 'Method "getText" or "_getText" must be implemented by derived class.'
 
     def getValue(self):
-        assert False, 'Method "getValue" must be implemented by derived class.'
+        resolvedargs = [LazyExpression.argument2value(arg) for arg in self.args]
+        resolvedkwargs = dict([(name,LazyExpression.argument2value(arg)) for name,arg in self.kwargs.iteritems()])
+        return self._getValue(resolvedargs,resolvedkwargs)
+
+    def _getValue(self,args,kwargs):
+        assert False, 'Method "getValue" or "_getValue" must be implemented by derived class.'
 
     def getShape(self):
         assert False, 'Method "getShape" must be implemented by derived class.'
@@ -245,7 +301,10 @@ class LazyVariable(LazyExpression):
     def getValue(self):
         # Return the data slice of the encapsulated object.
         slic = self.slice
-        if slic==None: slic = len(self.args[0].getDimensions())*[slice(None)]
+        if slic==None:
+            slic = len(self.args[0].getDimensions())*[slice(None)]
+        else:
+            slic = LazyExpression.argument2value(slic)
         return self.args[0].getSlice(slic)
         
     def getText(self,type=0,addparentheses=True):
@@ -294,24 +353,22 @@ class LazyVariable(LazyExpression):
 
 class LazyOperation(LazyExpression):
     """The light-weight class serves as base for any mathematical operation, which includes
-    actions by the normal mathethematical operators as well as NumPy functions.
+    actions by the normal mathematical operators as well as NumPy functions.
     """
 
     def __init__(self,*args,**kwargs):
-        LazyExpression.__init__(self,*args)
-        self.outsourceslices = kwargs.get('outsourceslices',False)
-
-    def getValue(self):
-        resolvedargs = []
-        for arg in self.args:
-            if isinstance(arg,LazyExpression):
-                resolvedargs.append(arg.getValue())
-            else:
-                resolvedargs.append(arg)
-        return self._getValue(resolvedargs)
-        
+        kw = kwargs.copy()
+        self.outsourceslices = kw.pop('outsourceslices',False)
+        LazyExpression.__init__(self,*args,**kw)
+                
     @staticmethod
     def getData(args,useslices=False):
+        """Takes a list of arguments, finds the first contained Variable.Slice object,
+        and converts each Variable.Slice to a NumPy array if specified. The former allows
+        the caller to find an exisitng array to store the return value in, and the latter
+        serves for functions that operate on NumPy arrays and do not know about
+        Variable.Slice.
+        """
         firstslice = None
         for i in range(len(args)):
             if isinstance(args[i],common.Variable.Slice):
@@ -322,36 +379,21 @@ class LazyOperation(LazyExpression):
                 if not useslices: args[i] = args[i].data
         return args,firstslice
 
-    def getText(self,type=0,addparentheses=True):
-        resolvedargs = []
-        for arg in self.args:
-            if isinstance(arg,LazyExpression):
-                resolvedargs.append(arg.getText(type))
-            elif isinstance(arg,basestring):
-                resolvedargs.append('\'%s\'' % arg)
-            else:
-                resolvedargs.append(str(arg))
-        result = self._getText(resolvedargs,type=type)
-        if addparentheses: result = '(%s)' % result
-        return result
-
     def getShape(self):
+        # Just return the shape of the first LazyExpression object.
+        # This assumes but does not check that any other LazyExpression objects have the same shape.
         for arg in self.args:
             if isinstance(arg,LazyExpression):
                 return arg.getShape()
         return ()
 
     def getDimensions(self):
+        # Just return the dimensions of the first LazyExpression object.
+        # This assumes but does not check that any other LazyExpression objects have the same dimensions.
         for arg in self.args:
             if isinstance(arg,LazyExpression):
                 return arg.getDimensions()
         return ()
-
-    def _getValue(self,resolvedargs,targetslice):
-        assert False, 'Method "_getValue" must be implemented by derived class.'
-
-    def _getText(self,type=0):
-        assert False, 'Method "_getText" must be implemented by derived class.'
 
     def __getitem__(self,slices):
         if self.outsourceslices:
@@ -375,11 +417,10 @@ class LazyFunction(LazyOperation):
     def __init__(self,name,func,*args,**kwargs):
         self.name = name
         self.func = func
-        self.kwargs = kwargs
         self.removedim = None
         self.useslices = False
-        kw = {'outsourceslices':True}
-        LazyOperation.__init__(self,*args,**kw)
+        kwargs['outsourceslices'] = True
+        LazyOperation.__init__(self,*args,**kwargs)
     
     def setRemovedDimension(self,argindex,argname):
         """Called by derived classes to specify through which function arguments (index
@@ -407,13 +448,13 @@ class LazyFunction(LazyOperation):
             else:
                 self.args[argindex] = self.removedim
         
-    def _getValue(self,resolvedargs):
+    def _getValue(self,resolvedargs,resolvedkwargs):
         resolvedargs,targetslice = LazyOperation.getData(resolvedargs,useslices=self.useslices)
 
-        data = self.func(*resolvedargs,**self.kwargs)
+        data = self.func(*resolvedargs,**resolvedkwargs)
         
-        # If a slice or single value is returned, pass it directly.
-        if isinstance(data,(int,float,common.Variable.Slice)): return data
+        # If no NumPy array is returned, do nothing
+        if not isinstance(data,numpy.ndarray): return data
 
         # If the function has removed a dimension, make sure it is removed from the coordinate array as well.
         if self.removedim!=None: targetslice.removeDimension(self.removedim)
@@ -423,22 +464,25 @@ class LazyFunction(LazyOperation):
         return targetslice
         
     def getShape(self):
-        s = list(LazyOperation.getShape(self))
+        # Get the shape with the default implementation, but
+        # slice out the dimension that this function will remove (if any)
+        startshape = LazyOperation.getShape(self)
+        if startshape==None: return None
+        s = list(startshape)
         if self.removedim!=None: del s[self.removedim]
         return s
 
     def getDimensions(self):
+        # Get the dimensions with the default implementation, but
+        # slice out the dimension that this function will remove (if any)
         dims = list(LazyOperation.getDimensions(self))
         if self.removedim!=None: del dims[self.removedim]
         return dims
 
-    def _getText(self,resolvedargs,type=0):
-        strkw = []
-        for k,v in self.kwargs.iteritems():
-            if isinstance(v,basestring): v = '\'%s\'' % v
-            strkw.append('='.join((k,str(v))))
-        resolvedargs += strkw
-        return '%s(%s)' % (self.name,','.join(resolvedargs))
+    def _getText(self,resolvedargs,resolvedkwargs,type=0,addparentheses=False):
+        strargs = list(resolvedargs)
+        for k,v in resolvedkwargs.iteritems(): strargs.append('='.join((k,v)))
+        return '%s(%s)' % (self.name,','.join(strargs))
 
 class LazyOperator(LazyOperation):
     """The light-weight class encapsulates a unary of binary mathematical operator, as
@@ -451,12 +495,12 @@ class LazyOperator(LazyOperation):
         kw = {'outsourceslices':True}
         LazyOperation.__init__(self,*args,**kw)
 
-    def _getValue(self,resolvedargs):
+    def _getValue(self,resolvedargs,resolvedkwargs):
         resolvedargs,targetslice = LazyOperation.getData(resolvedargs)
         targetslice.data = getattr(resolvedargs[0],self.name)(*resolvedargs[1:])
         return targetslice
 
-    def _getText(self,resolvedargs,type=0):
+    def _getText(self,resolvedargs,resolvedkwargs,type=0,addparentheses=False):
         if len(resolvedargs)==1:
             # Unary operator: just prepend the symbol.
             return self.symbol+resolvedargs[0]
@@ -473,9 +517,10 @@ class LazySlice(LazyOperation):
         LazyOperation.__init__(self,variable)
         if not isinstance(slic,(list,tuple)): slic = (slic,)
         self.slice = slic
-    def _getValue(self,resolvedargs):
-        return resolvedargs[0].__getitem__(self.slice)
-    def _getText(self,resolvedargs,type=0):
+    def _getValue(self,resolvedargs,resolvedkwargs):
+        slices = LazyExpression.argument2value(self.slice)
+        return resolvedargs[0].__getitem__(slices)
+    def _getText(self,resolvedargs,resolvedkwargs,type=0,addparentheses=False):
         if type==2:
             return resolvedargs[0] + LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
         else:

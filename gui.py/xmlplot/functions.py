@@ -1,4 +1,4 @@
-import common,expressions
+import common,expressions,datetime
 import numpy
 
 class statistics(expressions.LazyFunction):
@@ -15,13 +15,13 @@ class statistics(expressions.LazyFunction):
         expressions.LazyFunction.__init__(self,'statistics',None,sourceslice,axis,centermeasure=centermeasure,boundsmeasure=boundsmeasure,percentilewidth=percentilewidth,output=output)
         self.setRemovedDimension(1,'axis')
     
-    def _getValue(self,resolvedargs):
+    def _getValue(self,resolvedargs,resolvedkwargs):
         sourceslice,axis = resolvedargs[0],resolvedargs[1]
     
-        centermeasure = self.kwargs['centermeasure']
-        boundsmeasure = self.kwargs['boundsmeasure']
-        percentilewidth = self.kwargs['percentilewidth']
-        output = self.kwargs['output']
+        centermeasure = resolvedkwargs['centermeasure']
+        boundsmeasure = resolvedkwargs['boundsmeasure']
+        percentilewidth = resolvedkwargs['percentilewidth']
+        output = resolvedkwargs['output']
     
         if isinstance(axis,basestring):
             dims = sourceslice.dimensions
@@ -118,9 +118,9 @@ class flatten(expressions.LazyFunction):
         expressions.LazyFunction.__init__(self,'flatten',None,sourceslice,axis,targetaxis=targetaxis)
         self.setRemovedDimension(1,'axis')
 
-    def _getValue(self,resolvedargs):
+    def _getValue(self,resolvedargs,resolvedkwargs):
         sourceslice,axis = resolvedargs[0],resolvedargs[1]
-        targetaxis = self.kwargs['targetaxis']
+        targetaxis = resolvedkwargs['targetaxis']
             
         dims = list(sourceslice.dimensions)
         if isinstance(axis,basestring):
@@ -177,3 +177,27 @@ class flatten(expressions.LazyFunction):
         s[self.targetaxis] *= s[self.removedim]
         del s[self.removedim]
         return s
+
+class subsection(expressions.LazyFunction):
+    def __init__(self,sourceslice,**kwargs):
+        expressions.LazyFunction.__init__(self,'subsection',None,sourceslice,**kwargs)
+
+    def _getValue(self,resolvedargs,resolvedkwargs):
+        sourceslice = resolvedargs[0]
+        dimlist = list(sourceslice.dimensions)
+        slcs = []
+        for idim,dimname in enumerate(dimlist):
+            if dimname not in resolvedkwargs:
+                slcs.append(slice(None))
+                continue
+            minval,maxval = resolvedkwargs[dimname]
+            if isinstance(minval,datetime.datetime): minval = common.date2num(minval)
+            if isinstance(maxval,datetime.datetime): maxval = common.date2num(maxval)
+            if minval>maxval: minval,maxval = maxval,minval
+            c = sourceslice.coords_stag[idim]
+            imin,imax = common.getboundindices(c,idim,minval,maxval)
+            slcs.append(slice(imin,imax,1))
+        return sourceslice[tuple(slcs)]
+
+    def getShape(self):
+        return None
