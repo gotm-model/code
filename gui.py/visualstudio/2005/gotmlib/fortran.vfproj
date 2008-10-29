@@ -45,12 +45,14 @@
 		<File RelativePath="..\..\..\..\src\extras\bio\iow\bio_iow.F90"/></Filter>
 		<Filter Name="mab">
 		<File RelativePath="..\..\..\..\src\extras\bio\mab\bio_mab.F90"/></Filter>
-		<Filter Name="photo">
-		<File RelativePath="..\..\..\..\src\extras\bio\photo\bio_photo.F90"/></Filter>
+		<Filter Name="npzd_0d">
+		<File RelativePath="..\..\..\..\src\extras\bio\npzd_0d\bio_npzd_0d.F90"/></Filter>
 		<Filter Name="npzd">
 		<File RelativePath="..\..\..\..\src\extras\bio\npzd\bio_npzd.F90"/></Filter>
 		<Filter Name="npzd_fe">
 		<File RelativePath="..\..\..\..\src\extras\bio\npzd_fe\bio_npzd_fe.F90"/></Filter>
+		<Filter Name="photo">
+		<File RelativePath="..\..\..\..\src\extras\bio\photo\bio_photo.F90"/></Filter>
 		<Filter Name="rolm">
 		<File RelativePath="..\..\..\..\src\extras\bio\rolm\bio_rolm.F90"/></Filter>
 		<Filter Name="sed">
@@ -58,6 +60,8 @@
 		<Filter Name="template">
 		<File RelativePath="..\..\..\..\src\extras\bio\template\bio_template.F90"/></Filter>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio.F90"/>
+		<File RelativePath="..\..\..\..\src\extras\bio\bio_0d.F90"/>
+		<File RelativePath="..\..\..\..\src\extras\bio\bio_0d_base.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_alloc_info.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_fluxes.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_save.F90"/>

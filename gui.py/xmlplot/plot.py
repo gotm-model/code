@@ -416,7 +416,7 @@ class Figure(xmlstore.util.referencedobject):
         """Clears the list of VariableStore data sources currently registered
         with the figure.
         """
-        self.source.deleteAllChildren()
+        self.source.removeAllChildren()
         self.defaultsource = None
 
     def addDataSource(self,name,obj):
@@ -459,7 +459,7 @@ class Figure(xmlstore.util.referencedobject):
         """
         assert source==None or isinstance(source,basestring), 'If the "source" option is specified, it must be a string.'
         datanode = self.properties['Data']
-        varname = self.normalizeExpression(varname,source)
+        varname = self.source.normalizeExpression(varname,source)
         if replace:
             series = datanode.getChildById('Series',varname,create=True)
             self.defaultproperties['Data'].getChildById('Series',varname,create=True)
@@ -468,10 +468,6 @@ class Figure(xmlstore.util.referencedobject):
             self.defaultproperties['Data'].addChild('Series',id=varname)
         self.update()
         return series
-        
-    def normalizeExpression(self,expression,source=None):
-        if source==None: source = self.defaultsource
-        return self.source.getExpression(expression,defaultchild=source).buildExpression()
 
     def hasChanged(self):
         """Returns True if the figure properties have changed since the store
@@ -662,6 +658,7 @@ class Figure(xmlstore.util.referencedobject):
                     
             # Get the data
             varslices = var.getSlice(tuple(dimbounds))
+            if not isinstance(varslices,(list,tuple)): varslices = [varslices]
             assert len(varslices)>0, 'Unable to retrieve any variable slices.'
             
             # Skip this variable if (parts of) its data are unavailable.
@@ -1053,7 +1050,9 @@ class Figure(xmlstore.util.referencedobject):
         # Add map objects if needed
         if ismap:
             if self.properties['Map/DrawCoastlines'].getValue(usedefault=True):
+                basemap.fillcontinents('w','0.8')
                 basemap.drawcoastlines()
+                basemap.drawmapboundary('k')
 
         # Create and store title
         title = ''

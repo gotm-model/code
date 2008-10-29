@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.12 2008-10-20 18:49:46 jorn Exp $
+#$Id: common.py,v 1.13 2008-10-29 14:27:51 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -288,7 +288,11 @@ class VariableStore(UserDict.DictMixin):
         assert name!=None,'No name specified, but the child object does not have an internal name either.'
         self.children[name] = child
 
-    def deleteAllChildren(self):
+    def removeChild(self,name):
+        assert name in self.children, 'Child %s does not exist in this VariableStore object.' % name
+        return self.children.pop(name)
+
+    def removeAllChildren(self):
         self.children = {}
         
     def keys(self):
@@ -314,17 +318,18 @@ class VariableStore(UserDict.DictMixin):
         var = self.getVariable_raw(rawname)
         if var!=None: var.forcedname = varname
         return var
+        
+    def normalizeExpression(self,expression,defaultchild=None):
+        import expressions
+        exp = self.getExpression(expression,defaultchild)
+        if isinstance(exp,expressions.VariableExpression): return exp.buildExpression()
+        return exp.namespacename
 
     def getExpression(self,expression,defaultchild=None):
         """Returns a Variable object for the given expression, which may contain
         (short) variable names, the normal mathematical operators, and any function
         supported by NumPy.
         """
-        # First see if the expression is just a variable name; if so, just
-        # return the associated variable.
-        result = self.getVariable(expression)
-        if result!=None: return result
-
         # Create the namespace that must be used when then expression is evaluated.
         import expressions
         namespace = expressions.ExpressionNamespace(expressions.LazyStore(self))
@@ -341,13 +346,13 @@ class VariableStore(UserDict.DictMixin):
             
         # Evaluate the expression
         try:
-            result = expressions.VariableExpression(expression,namespace)
+            result = expressions.VariableExpression.resolve(expression,namespace)
         except Exception,e:
             #raise Exception('Unable to resolve expression "%s" to a valid data object. Global table contains: %s. Error: %s' % (expression,', '.join(sorted(namespace.keys())),e))
             raise Exception('Unable to resolve expression "%s" to a valid data object. Error: %s' % (expression,e))
         return result
                 
-    def getVariableNames(self):
+    def getVariableNames(self,alllevels=False):
         """Returns a list of short names for all variables present in the store.
         """
         if self.rawlabels!=None:
@@ -355,7 +360,11 @@ class VariableStore(UserDict.DictMixin):
         else:
             varnames = self.getVariableNames_raw()
         for childname,child in self.children.iteritems():
-            if isinstance(child,Variable): varnames.append(childname)
+            if isinstance(child,Variable):
+                varnames.append(childname)
+            elif alllevels and isinstance(child,VariableStore):
+                for vn in child.getVariableNames(alllevels=alllevels):
+                    varnames.append('%s[\'%s\']' % (childname,vn))
         return varnames
 
     def getPlottableVariableNames(self):
@@ -372,14 +381,18 @@ class VariableStore(UserDict.DictMixin):
         """
         return self.getVariableNames_raw()
 
-    def getVariableLongNames(self):
+    def getVariableLongNames(self,alllevels=False):
         """Returns a dictionary linking variable short names to long names.
         """
         longnames = self.getVariableLongNames_raw()
         if self.rawlabels!=None:
             longnames = dict([(self.newlabels[varname],longname) for (varname,longname) in longnames.iteritems()])
         for childname,child in self.children.iteritems():
-            if isinstance(child,Variable): longnames[childname] = child.getLongName()
+            if isinstance(child,Variable):
+                longnames[childname] = child.getLongName()
+            elif alllevels and isinstance(child,VariableStore):
+                for vn,ln in child.getVariableLongNames(alllevels=alllevels).iteritems():
+                    longnames['%s[\'%s\']' % (childname,vn)] = ln
         return longnames
         
     def getDimensionInfo(self,dimname):
@@ -687,6 +700,12 @@ class Variable:
         that will be used to retrieve data.
         """
         return ''
+
+    def getItemCount(self):
+        """Returns the number of data objects within the variable (e.g., when it represents
+        a tuple or list.
+        """
+        return 1
 
     def getShape(self):
         """Returns the shape of the data array.

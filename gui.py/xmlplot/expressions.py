@@ -531,11 +531,22 @@ class LazySlice(LazyOperation):
         return LazyExpression.adjustDimensions(self.args[0].getDimensions(),self.slice)
 
 class VariableExpression(common.Variable):
-    def __init__(self,expression,namespace):
+    @staticmethod
+    def resolve(expression,namespace):
         assert isinstance(namespace,ExpressionNamespace),'The namespace must be provided as ExpressionNamespace object.'
-        common.Variable.__init__(self,None)
         namespace.append(LazyExpression.getFunctions())
-        self.root = eval(expression,{},namespace)
+        root = eval(expression,{},namespace)
+        if isinstance(root,LazyStore):
+            root.store.namespacename = root.name
+            return root.store
+        elif isinstance(root,LazyVariable) and root.slice==None:
+            root.args[0].namespacename = root.name
+            return root.args[0]
+        return VariableExpression(root)
+
+    def __init__(self,root):
+        common.Variable.__init__(self,None)
+        self.root = root
         if not isinstance(self.root,(list,tuple)): self.root = [self.root]
         assert self.root, 'Expression "%s" returns an empty list.'
         self.variables = []

@@ -1026,12 +1026,13 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         
     def save(self,path):
         shutil.copyfile(self.datafile,path)
-
+        
     def unlink(self):
         if self.nc!=None:
             # Close NetCDF result file.
             self.nc.close()
             self.nc = None
+            self.datafile = None
             
     def load(self,path):
         # Store link to result file, and try to open the CDF file
@@ -1049,7 +1050,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         Scientific.IO.NetCDFFile conventions.
         """
         if self.nc!=None: return self.nc
-        assert self.datafile!=None, 'The path to the NetCDF file has not yet been set.'
+        assert self.datafile!=None, 'The path to the NetCDF file has not yet been set. This may imply that the object has been unlinked.'
         self.nc = getNetCDFFile(self.datafile)
         return self.nc
 
