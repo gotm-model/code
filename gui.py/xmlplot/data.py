@@ -1225,7 +1225,7 @@ class NetCDFStore_GOTM(NetCDFStore):
         if ('xic'  in ncdims and 'etac' in ncdims and
             'lonc' in ncvars and 'latc' in ncvars): match = True
         if ('z' in ncdims and 'z1' in ncdims and
-            'h' in ncvars and 'elev' in ncvars): match = True
+            'h' in ncvars and 'zeta' in ncvars): match = True
         nc.close()
         return match
 
