@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.44 2008-07-08 10:09:05 lars Exp $
+!$Id: bio.F90,v 1.45 2008-10-31 11:10:32 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,6 +18,8 @@
 ! 
 ! !USES:
    use bio_var
+   
+   use bio_0d, only: init_bio_0d, init_var_0d, surface_fluxes_0d, light_0d, do_bio_0d
 
 #ifdef BIO_TEMPLATE
    use bio_template, only : init_bio_template,init_var_template
@@ -88,6 +90,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.45  2008-10-31 11:10:32  jorn
+!  first version of bio framework for 0D models and 0D NPZD test case
+!
 !  Revision 1.44  2008-07-08 10:09:05  lars
 !  new structure with general particle support
 !
@@ -291,7 +296,7 @@
    close(namlst)
 
    if (bio_calc) then
-
+   
 !     read individual model namelists
       select case (bio_model)
          
@@ -395,6 +400,8 @@
          stop "init_bio()"
 #endif
       
+      case (1000:)
+         call init_bio_0d(namlst,unit)
    
       case default
          stop "bio: no valid biomodel specified in bio.nml !"
@@ -640,7 +647,9 @@
          stop "init_bio()"
 #endif
       
-   
+      case (1000:)
+         call init_var_0d
+         
       case default
          stop "bio: no valid biomodel specified in bio.nml !"
       end select
@@ -935,6 +944,8 @@
 #ifdef BIO_NPZD_FE
       call surface_fluxes_npzd_fe(nlev)
 #endif
+   case (1000:)
+      call surface_fluxes_0d(nlev,t(nlev),s(nlev))
    end select
    
    do j=1,numc
@@ -998,6 +1009,9 @@
          call light_npzd_fe(nlev,bioshade_feedback)
          call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd_fe)
 #endif
+      case (1000:)
+         call light_0d(nlev,bioshade_feedback)
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_0d)
       end select
       
    end do

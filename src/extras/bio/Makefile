@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.21 2008-07-08 10:03:15 lars Exp $
+#$Id: Makefile,v 1.22 2008-10-31 11:10:31 jorn Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -21,7 +21,9 @@ OBJ1   = \
 ${LIB}(bio_var.o)		\
 ${LIB}(bio_alloc_info.o)        \
 ${LIB}(bio_fluxes.o)		\
-${LIB}(bio_save.o)
+${LIB}(bio_save.o)		\
+${LIB}(bio_0d.o)		\
+${LIB}(bio_0d_base.o)
 
 OBJ2   = \
 ${LIB}(bio.o)
@@ -44,6 +46,7 @@ endif
 ifneq ($(BIO_NPZD),false)
 DOCSRC  += npzd/bio_npzd.F90
 SUBDIRS += npzd
+SUBDIRS += npzd_0d
 DEFINES += -DBIO_NPZD
 endif
 
