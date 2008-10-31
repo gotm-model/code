@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.13 2008-10-29 14:27:51 jorn Exp $
+#$Id: common.py,v 1.14 2008-10-31 09:54:50 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -41,6 +41,7 @@ def convertUnitToUnicode(unit):
     """Uses unicode to replace some common ASCII representations of
     degrees/subscript/superscript.
     """
+    unit = unicode(unit)
     deg  = unichr(176)
     if unit=='celsius' or unit=='degC': return deg+'C'
     if unit in ('degrees_north','degree_north','degree_N','degrees_N','degreeN','degreesN'): return deg+'North'
