@@ -458,6 +458,7 @@ class Figure(xmlstore.util.referencedobject):
         match the name of a variable in the data source to be used.
         """
         assert source==None or isinstance(source,basestring), 'If the "source" option is specified, it must be a string.'
+        if source==None: source = self.defaultsource
         datanode = self.properties['Data']
         varname = self.source.normalizeExpression(varname,source)
         if replace:
