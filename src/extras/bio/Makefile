@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.22 2008-10-31 11:10:31 jorn Exp $
+#$Id: Makefile,v 1.23 2008-10-31 13:22:11 kb Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -22,10 +22,10 @@ ${LIB}(bio_var.o)		\
 ${LIB}(bio_alloc_info.o)        \
 ${LIB}(bio_fluxes.o)		\
 ${LIB}(bio_save.o)		\
-${LIB}(bio_0d.o)		\
 ${LIB}(bio_0d_base.o)
 
 OBJ2   = \
+${LIB}(bio_0d.o)		\
 ${LIB}(bio.o)
 
 #BIO_TEMPLATE=false
