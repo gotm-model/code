@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.45 2008-10-31 11:10:32 jorn Exp $
+!$Id: bio.F90,v 1.46 2008-11-03 12:57:34 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,7 +19,7 @@
 ! !USES:
    use bio_var
    
-   use bio_0d, only: init_bio_0d, init_var_0d, surface_fluxes_0d, light_0d, do_bio_0d
+   use bio_0d, only: init_bio_0d, init_var_0d, surface_fluxes_0d, light_0d, do_bio_0d_eul, do_bio_0d_par
 
 #ifdef BIO_TEMPLATE
    use bio_template, only : init_bio_template,init_var_template
@@ -90,6 +90,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.46  2008-11-03 12:57:34  jorn
+!  added support for 0D biogeochemical models in Lagrangian mode
+!
 !  Revision 1.45  2008-10-31 11:10:32  jorn
 !  first version of bio framework for 0D models and 0D NPZD test case
 !
@@ -1011,7 +1014,7 @@
 #endif
       case (1000:)
          call light_0d(nlev,bioshade_feedback)
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_0d)
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_0d_eul)
       end select
       
    end do
@@ -1081,6 +1084,8 @@
       call do_bio_sed_par
    case (20)
       call do_bio_photo_par
+   case (1000:)
+      call do_bio_0d_par(ode_method,dt)
    case default
       FATAL 'bio_model=', bio_model, ' is not a valid particle model.'
       stop 'do_bio_par()'

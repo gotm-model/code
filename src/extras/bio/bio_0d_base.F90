@@ -15,6 +15,7 @@
 !  default: all is private.
    private
    public type_model_info,type_variable_info,type_environment
+   public init_model_info, init_variable_info
 !
 ! !PUBLIC DERIVED TYPES:
 
@@ -51,6 +52,32 @@
     end type type_environment
 
 !-----------------------------------------------------------------------
+
+   contains
+   
+   subroutine init_model_info(modelinfo)
+      type (type_model_info), intent(inout) :: modelinfo
+   
+      modelinfo%numc = 0
+      modelinfo%par_fraction = _ONE_
+      modelinfo%par_background_extinction = _ZERO_
+      modelinfo%par_bio_background_extinction = _ZERO_
+   end subroutine init_model_info
+
+   subroutine init_variable_info(varinfo)
+      type (type_variable_info), intent(inout) :: varinfo
+   
+      varinfo%name = ''
+      varinfo%unit = ''
+      varinfo%longname = ''
+      varinfo%initial_value = _ZERO_
+      varinfo%light_extinction = _ZERO_
+      varinfo%sinking_rate = _ZERO_
+      varinfo%positive_definite = .false.
+#if 0
+      varinfo%mussels_inhale = .false.
+#endif
+   end subroutine init_variable_info
 
    end module bio_0d_base
 
