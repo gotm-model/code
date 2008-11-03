@@ -1,4 +1,4 @@
-!$Id: lagrange.F90,v 1.6 2008-07-07 09:05:51 lars Exp $
+!$Id: lagrange.F90,v 1.7 2008-11-03 12:56:39 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -51,6 +51,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: lagrange.F90,v $
+!  Revision 1.7  2008-11-03 12:56:39  jorn
+!  fixed: particles are now reflected multiple times if needed
+!
 !  Revision 1.6  2008-07-07 09:05:51  lars
 !  added LaTeX label
 !
@@ -96,8 +99,13 @@
 !     local viscosity calculation
       if (visc_corr) then ! correction suggested by Visser [1997]
          zloc=zp(n)+0.5*(dzn(zi(n))+w)*dt
-         if (zloc .lt. -depth) zloc=-depth+(-depth-zloc)
-         if (zloc .gt. _ZERO_) zloc=-zloc
+         do while (zloc .lt. -depth .or. zloc .gt. _ZERO_)
+            if (zloc .lt. -depth) then
+               zloc=-depth+(-depth-zloc)
+            else
+               zloc=-zloc
+            end if
+         end do
          step=zloc-zp(n)
          if (step.gt.0) then ! search new index above old index
             do i=zi(n),nlev
@@ -118,8 +126,13 @@
       zp_old=zp(n)
       step=dt*(sqrt(2.*rnd_var_inv*dt_inv*visc)*rnd(n)+w+dzn(i))
       zp(n)=zp(n)+step
-      if (zp(n) .lt. -depth) zp(n)=-depth+(-depth-zp(n))
-      if (zp(n) .gt. _ZERO_) zp(n)=-zp(n)
+      do while (zp(n) .lt. -depth .or. zp(n) .gt. _ZERO_)
+         if (zp(n) .lt. -depth) then
+            zp(n)=-depth+(-depth-zp(n))
+         else
+            zp(n)=-zp(n)
+         end if
+      end do
       step=zp(n)-zp_old
       if (step.gt.0) then ! search new index above old index
          do i=zi(n),nlev
