@@ -2267,7 +2267,7 @@ class Convertor:
         This method performs a simple deep copy of all values, and then
         handles explicitly specified links between source and target nodes
         (which can be set by inheriting classes), and sets a list of target
-        nodes to ther defaults (this list is also specified by inheriting
+        nodes to their defaults (this list is also specified by inheriting
         classes)."""
         # Try simple deep copy: nodes with the same name and location in both
         # source and target store will have their value copied.
@@ -2277,10 +2277,10 @@ class Convertor:
         for (sourcepath,targetpath) in self.links:
             sourcenode = source[sourcepath]
             if sourcenode==None:
-                raise Exception('Cannot locate node "%s" in source.' % '/'.join(sourcepath))
+                raise Exception('Cannot locate node "%s" in source.' % sourcepath)
             targetnode = target[targetpath]
             if targetnode==None:
-                raise Exception('Cannot locate node "%s" in target.' % '/'.join(targetpath))
+                raise Exception('Cannot locate node "%s" in target.' % targetpath)
             targetnode.copyFrom(sourcenode)
 
         # Reset target nodes to defaults where that was explicitly specified.
@@ -2289,7 +2289,7 @@ class Convertor:
             for path in self.defaults:
                 sourcenode = defscen[path]
                 if sourcenode==None:
-                    raise Exception('Cannot locate node "%s" in default.')
+                    raise Exception('Cannot locate node "%s" in default.' % path)
                 targetnode = target[path]
                 targetnode.copyFrom(sourcenode)
 
