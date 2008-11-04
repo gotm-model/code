@@ -563,7 +563,9 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
                          '/airsea/airsea/swr_file',
                          '/airsea/airsea/swr_factor',
                          '/airsea/airsea/calc_evaporation',
-                         '/airsea/airsea/precip_factor']
+                         '/airsea/airsea/precip_factor',
+                         '/bio_sed/bio_sed_nml/ntype',
+                         '/bio_sed/bio_sed_nml/nprop']
 
     def convert(self,source,target,callback=None):
         xmlstore.xmlstore.Convertor.convert(self,source,target)

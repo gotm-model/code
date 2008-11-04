@@ -1307,7 +1307,9 @@
 		</condition>
 		<element name="bio_sed_nml">
 			<element name="numc" type="int" label="number of compartments for geobiochemical model" />
-			<element name="C_initial" type="float" label="initial suspended matter concentration" unit="mmol N/m**3" />
+      <element name="ntype" type="int" label="number of particle types" />
+      <element name="nprop" type="int" label="number of particle properties" />
+      <element name="C_initial" type="float" label="initial suspended matter concentration" unit="mmol N/m**3" />
 			<element name="w_C" type="float" label="settling velocity of suspended matter" unit="m/d" />
 		</element>
 	</element>
