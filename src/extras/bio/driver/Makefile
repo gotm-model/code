@@ -1,21 +1,30 @@
-#$Id: Makefile,v 1.1 2008-11-05 12:39:26 jorn Exp $
+#$Id: Makefile,v 1.2 2008-11-05 13:08:00 jorn Exp $
 
 include ../../../Rules.make
 
+CORE_LIBS	=	\
+		-lairsea$(buildtype)		\
+		-lmeanflow$(buildtype) 		\
+		-lturbulence$(buildtype) 	\
+		-lobservations$(buildtype)	\
+		-loutput$(buildtype)		\
+		-lutil$(buildtype)
+
+ALL_LIBS	= $(FEATURE_LIBS) $(CORE_LIBS) $(EXTRA_LIBS)
+
 EXEC = driver_0d$(buildtype)_$(FORTRAN_COMPILER)
 
-SUBDIRS  = \
-	../../../airsea		\
-	../../../util		\
-	..
+SUBDIRS  = ../../..
 
 all: $(EXEC)
 
 $(EXEC): $(SUBDIRS)
-	$(FC) -o $@ ./driver_0d.o ./main.o $(LDFLAGS)
+	$(FC) -o $@ ./driver_0d.F90 ./main.F90 $(LDFLAGS) $(ALL_LIBS)
 
 $(SUBDIRS):
 	$(MAKE) -C $@
+
+.PHONY: $(SUBDIRS)
 
 #-----------------------------------------------------------------------
 # Copyright (C) 2008 - Hans Burchard and Karsten Bolding (BBH)         !
