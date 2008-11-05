@@ -1,8 +1,9 @@
+!$Id: driver_0d.F90,v 1.2 2008-11-05 13:12:49 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: 0D driver for GOTM biogeochemical modules
+! !MODULE: 0D independent driver for GOTM biogeochemical modules
 !
 ! !INTERFACE:
    module driver_0d
@@ -185,7 +186,7 @@
 
    return
 
-90 FATAL 'I could not open gotmrun.nml for reading'
+90 FATAL 'I could not open run.nml for reading'
    stop 'init_run0d'
 91 FATAL 'I could not read the "model_setup" namelist'
    stop 'init_run0d'
