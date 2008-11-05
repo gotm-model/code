@@ -21,7 +21,8 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_bio_0d, init_var_0d,                 &
-          light_0d, surface_fluxes_0d, do_bio_0d_eul, do_bio_0d_par, end_bio_0d
+          light_0d, surface_fluxes_0d, do_bio_0d_eul, &
+          light_0d_par, do_bio_0d_par, end_bio_0d
 !
 ! !PRIVATE DATA MEMBERS:
    type (type_model_info) :: modelinfo
@@ -30,7 +31,8 @@
    
    ! Lagrangian model
    integer :: np,nt
-   REALTYPE, allocatable :: dz(:),cc_loc(:,:)
+   REALTYPE, allocatable :: shade(:),extinction(:),cc_loc(:,:)
+   type (type_environment) :: env_par
 
 !
 ! !REVISION HISTORY:!
@@ -239,7 +241,9 @@
       end do
    end if
 
-   allocate(dz(nlev))
+   ! Arrays for particle model
+   allocate(shade(0:nlev))
+   allocate(extinction(1:nlev))
 
    end subroutine init_var_0d
 !EOC
@@ -334,6 +338,65 @@
 !-----------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: Light properties for particle version of the 0d biological framework
+!
+! !INTERFACE:
+   subroutine light_0d_par(nlev,bioshade_feedback)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: nlev
+   logical, intent(in)                 :: bioshade_feedback
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer :: ind,i,j
+   REALTYPE :: bioext
+
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   nt = 1
+
+   ! Get bio-related extinction in each grid box
+   extinction = _ZERO_
+   do np=1,npar
+      if (par_act(np,nt)) then
+
+         ! Get depth index of the current particle
+         ind = par_ind(np,nt)
+
+         ! Get the light extinction coefficient combined over all state variables.
+         do j=1,modelinfo%numc
+            extinction(ind) = extinction(ind) + varinfo(j)%light_extinction*par_prop(np,j,nt)
+         end do
+      end if
+   end do
+   extinction(1:nlev) = extinction(1:nlev)/h(1:nlev) + modelinfo%par_bio_background_extinction
+
+   ! Calculate shade factor at each depth
+   bioext = _ZERO_
+   shade(nlev) = _ZERO_
+   do i=nlev,1,-1
+      bioext = bioext+extinction(i)*h(i)
+      shade(i-1) = exp(-bioext) ! Note: this is the shade factor at the top of the grid box
+   end do
+   
+   ! Set feedback of bioturbidity to physics if needed
+   if (bioshade_feedback) bioshade_(1:nlev)=shade(0:nlev-1)
+   end subroutine light_0d_par
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: Right hand sides of eulerian 0D biogeochemical model
 !
 ! !INTERFACE:
@@ -367,10 +430,16 @@
 !KBK - is it necessary to initialise every time - expensive in a 3D model
    pp = _ZERO_
    dd = _ZERO_
+   
+   ! Set up abiotic environment
+   call init_environment(env)
 
+   ! Set non-local properties of the environment
    env%I_0 = I_0
    env%wind = wind
+
    do ci=1,nlev
+      env%z    = zlev(ci-1)+0.5*h(ci)
       env%par  = par(ci)
       env%t    = t(ci)
       env%s    = s(ci)
@@ -409,35 +478,45 @@
 !
 ! !LOCAL VARIABLES:
    integer                    :: i,j,ind
+   REALTYPE                   :: bioext
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
    nt = 1
-
-   do i=1,nlev 
-      dz(i)=zlev(i)-zlev(i-1)
-   end do
    
+   ! First column of state variable array is not used by ode solvers.
    cc_loc(1:modelinfo%numc,0) = _ZERO_
    
+   ! Set up abiotic environment
+   call init_environment(env_par)
+   
+   ! Set non-local properties of the environment
+   env_par%I_0  = I_0
+   env_par%wind = wind
+
    ! For each particle: integrate over the time step
    do np=1,npar
-      !write (*,*) par_prop(np,1:modelinfo%numc,nt)
+      ! Get the current state
       cc_loc(1:modelinfo%numc,1) = par_prop(np,1:modelinfo%numc,nt)
+      
+      ! Call ode solver to get updated state
       call ode_solver(ode_method,modelinfo%numc,1,dt,cc_loc,get_bio_0d_par_rhs)
+      
+      ! Store updated state as particle properties
       par_prop(np,1:modelinfo%numc,nt) = cc_loc(1:modelinfo%numc,1)
-      !write (*,*) par_prop(np,1:modelinfo%numc,nt)
    end do
    
+   ! Initialize array with [Eulerian] summary statistics
    cc = _ZERO_
 
    do np=1,npar
       if (par_act(np,nt)) then
 
+         ! Get depth index of the current particle
          ind = par_ind(np,nt) 
 
-         ! count particles per grid volume
+         ! Count particles per grid volume
          cc(1,ind) = cc(1,ind) + _ONE_
          do j=1,modelinfo%numc
             cc(j+1,ind) = cc(j+1,ind) + par_prop(np,j,nt)
@@ -447,15 +526,9 @@
 
    end do
 
-   ! compute volume averages
+   ! Compute volume averages
    do i=1,nlev
-      if (cc(1,i) /= 0) then
-         do j=1,modelinfo%numc
-            cc(j+1,i) = cc(j+1,i)/cc(1,i)
-         end do
-      else
-         cc(:,i) = _ZERO_
-      end if
+      cc(:,i) = cc(:,i)/h(i)
    end do
    
    end subroutine do_bio_0d_par
@@ -487,27 +560,28 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   type (type_environment)    :: env
-   REALTYPE                   :: rat
+   REALTYPE                   :: rat, localshade
    integer                    :: i
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
    i=par_ind(np,nt)
-   rat=(par_z(np,nt)-zlev(i-1))/dz(i)
+   rat=(par_z(np,nt)-zlev(i-1))/h(i)
 
-   env%I_0  = I_0
-   env%wind = wind
-   env%par  = rad(nlev)*modelinfo%par_fraction*exp(par_z(np,nt)*(modelinfo%par_background_extinction+modelinfo%par_bio_background_extinction))  
-   env%t    = rat*  t(i)+(1.-rat)*  t(i-1)
-   env%s    = rat*  s(i)+(1.-rat)*  s(i-1)
-   env%nuh  = rat*nuh(i)+(1.-rat)*nuh(i-1)
-   env%rho  = rat*rho(i)+(1.-rat)*rho(i-1)
+   localshade = rat*shade(i)+(1.-rat)*shade(i-1)
+   env_par%par  = rad(nlev)*modelinfo%par_fraction*exp(par_z(np,nt)*modelinfo%par_background_extinction)*localshade
+
+   ! Linearly interpolate environmental conditions
+   env_par%z    = par_z(np,nt)
+   env_par%t    = rat*  t(i)+(1.-rat)*  t(i-1)
+   env_par%s    = rat*  s(i)+(1.-rat)*  s(i-1)
+   env_par%nuh  = rat*nuh(i)+(1.-rat)*nuh(i-1)
+   env_par%rho  = rat*rho(i)+(1.-rat)*rho(i-1)
    
    select case (bio_model)
       case (npzd_0d_id)
-         call do_bio_npzd_0d(first,numc,par_prop(np,1:modelinfo%numc,nt),env,pp(:,:,1),dd(:,:,1))
+         call do_bio_npzd_0d(first,numc,par_prop(np,1:modelinfo%numc,nt),env_par,pp(:,:,1),dd(:,:,1))
    end select
    
    end subroutine get_bio_0d_par_rhs
