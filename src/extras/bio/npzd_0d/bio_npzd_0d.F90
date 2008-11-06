@@ -1,4 +1,4 @@
-!$Id: bio_npzd_0d.F90,v 1.2 2008-11-06 13:42:44 jorn Exp $
+!$Id: bio_npzd_0d.F90,v 1.3 2008-11-06 15:04:32 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -24,7 +24,7 @@
 ! see \cite{Burchardetal2005b}.
 !
 ! !USES:
-   use bio_0d_base
+   use bio_types
 
 !  default: all is private.
    private

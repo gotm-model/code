@@ -1,4 +1,4 @@
-!$Id: bio_0d.F90,v 1.4 2008-11-06 13:42:44 jorn Exp $
+!$Id: bio_0d.F90,v 1.5 2008-11-06 15:04:32 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -17,7 +17,7 @@
 !
 ! !USES:
    use bio_var
-   use bio_0d_base
+   use bio_types
    use bio_0d_gen
    use observations, only: A,g2
 

@@ -1,4 +1,4 @@
-!$Id: bio_0d_gen.F90,v 1.1 2008-11-06 13:41:37 jorn Exp $
+!$Id: bio_0d_gen.F90,v 1.2 2008-11-06 15:04:32 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -30,7 +30,8 @@
 ! - If the sinking rate of any of the model variables varies in time and/or space, a subroutine
 !   that provides the sinking rates (m/s) must be added as option to the "select" statement in
 !   get_sinking_rates_bio_0d_generic.
-!   Otherwise sinking rates are assumed to be constant in time and space.
+!   Otherwise sinking rates are assumed to be constant in time and space; they will be taken from
+!   the sinking_rate member of the respective type_variable_info derived types (see bio_types.F90).
 !
 ! - If any of the model variables attentuate light, a function that provides the light
 !   extinction coefficient due to biota (/m) must be added as option to the "select" statement
@@ -39,7 +40,7 @@
 !   attenuation (but background attentuation due to water still occurs)
 !
 ! !USES:
-   use bio_0d_base
+   use bio_types
 !   
 !  Reference specific biogeochemical models:
    use bio_npzd_0d

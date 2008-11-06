@@ -1,4 +1,4 @@
-!$Id: driver_0d.F90,v 1.3 2008-11-06 13:42:44 jorn Exp $
+!$Id: driver_0d.F90,v 1.4 2008-11-06 15:04:32 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -13,7 +13,7 @@
 !
 ! !USES:
    use time
-   use bio_0d_base
+   use bio_types
    use bio_0d_gen
 
    IMPLICIT NONE

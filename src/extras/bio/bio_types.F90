@@ -1,13 +1,13 @@
-!$Id: bio_0d_base.F90,v 1.4 2008-11-06 13:42:44 jorn Exp $
+!$Id: bio_types.F90,v 1.1 2008-11-06 15:04:32 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: bio_0d_base --- Base functionality needed by 0D biogeochemical modules
+! !MODULE: bio_types --- Derived types used by 0D biogeochemical modules
 !
 ! !INTERFACE:
-   module bio_0d_base
+   module bio_types
 !
 ! !DESCRIPTION:
 ! This module contains the derived types that are used for communication between
@@ -122,7 +122,7 @@
       env%wind = _ZERO_
    end subroutine init_environment
 
-   end module bio_0d_base
+   end module bio_types
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
