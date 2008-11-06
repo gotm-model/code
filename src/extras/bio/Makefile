@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.23 2008-10-31 13:22:11 kb Exp $
+#$Id: Makefile,v 1.24 2008-11-06 13:41:37 jorn Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -25,6 +25,7 @@ ${LIB}(bio_save.o)		\
 ${LIB}(bio_0d_base.o)
 
 OBJ2   = \
+${LIB}(bio_0d_gen.o)		\
 ${LIB}(bio_0d.o)		\
 ${LIB}(bio.o)
 
