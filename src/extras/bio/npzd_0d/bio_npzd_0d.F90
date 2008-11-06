@@ -1,4 +1,4 @@
-!$Id: bio_npzd_0d.F90,v 1.1 2008-10-31 11:10:32 jorn Exp $
+!$Id: bio_npzd_0d.F90,v 1.2 2008-11-06 13:42:44 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -30,7 +30,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio_npzd_0d, get_var_info_npzd_0d, do_bio_npzd_0d
+   public init_bio_npzd_0d, get_var_info_npzd_0d, do_bio_npzd_0d, get_bio_extinction_npzd_0d
 !
 ! !PRIVATE DATA MEMBERS:
 !
@@ -75,7 +75,7 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_bio_npzd_0d(namlst,fname,unit,modelinfo)
+   subroutine init_bio_npzd_0d(namlst,fname,modelinfo)
 !
 ! !DESCRIPTION:
 !  Here, the bio namelist {\tt bio\_npzd.nml} is read and 
@@ -88,7 +88,6 @@
 ! !INPUT PARAMETERS:
    integer,          intent(in)   :: namlst
    character(len=*), intent(in)   :: fname
-   integer,          intent(in)   :: unit
    
    type (type_model_info), intent(inout)  :: modelinfo
 !
@@ -131,7 +130,6 @@
    modelinfo%numc = numc
    modelinfo%par_fraction = _ONE_-aa
    modelinfo%par_background_extinction = _ONE_/g2
-   modelinfo%par_bio_background_extinction = kc*p0
 
    LEVEL3 'module initialized'
 
@@ -184,7 +182,6 @@
    varinfo(2)%initial_value = p_initial
    varinfo(2)%sinking_rate = -w_p
    varinfo(2)%positive_definite = .true.
-   varinfo(2)%light_extinction = kc
 
    varinfo(3)%name = 'zoo'
    varinfo(3)%unit = 'mmol/m**3'
@@ -198,7 +195,6 @@
    varinfo(4)%initial_value = d_initial
    varinfo(4)%sinking_rate = -w_d
    varinfo(4)%positive_definite = .true.
-   varinfo(4)%light_extinction = kc
 
 #if 0
    varinfo(2)%mussels_inhale = .true.
@@ -209,6 +205,29 @@
    end subroutine get_var_info_npzd_0d
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Get the light extinction coefficient due to biogeochemical
+! variables
+!
+! !INTERFACE:
+   function get_bio_extinction_npzd_0d(numc,cc) result(extinction)
+!
+! !INPUT PARAMETERS:
+   integer,  intent(in)  :: numc
+   REALTYPE, intent(in)  :: cc(1:numc)
+   REALTYPE              :: extinction
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   extinction = kc*(p0+cc(2)+cc(4))
+
+   end function get_bio_extinction_npzd_0d
+!EOC
 
 !-----------------------------------------------------------------------
 !BOP

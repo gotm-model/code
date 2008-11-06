@@ -1,4 +1,4 @@
-!$Id: bio_0d_base.F90,v 1.3 2008-11-05 12:51:38 jorn Exp $
+!$Id: bio_0d_base.F90,v 1.4 2008-11-06 13:42:44 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -10,7 +10,16 @@
    module bio_0d_base
 !
 ! !DESCRIPTION:
-! TODO
+! This module contains the derived types that are used for communication between
+! the 0D biogeochemical models and a hosting physical environment (e.g. GOTM).
+! Types are used to describe the 0d model, its state variables, and the local
+! environment.
+!
+! Subroutines for intialization of the derived types are also provided. It is
+! recommended that you always call these subroutines to initialize such types
+! before use. This ensures that if new members are added to the types, they will
+! be set to a reasonable default even if your program is not aware the member
+! has been added.
 !
 ! !USES:
 !  default: all is private.
@@ -19,32 +28,39 @@
    public init_model_info, init_variable_info, init_environment
 !
 ! !PUBLIC DERIVED TYPES:
-
-    ! Global 0D model properties
-    type type_model_info
+!
+   ! Global 0D model properties
+   type type_model_info
+      ! Number of state variables
       integer  :: numc
-      
-      ! For calculation of Photosynthetically Active Radiation (PAR) from the incoming surfcae radiation:
-      REALTYPE :: par_fraction                  ! Fraction of incoming short-wave radiation that is PAR (-)
-      REALTYPE :: par_background_extinction     ! PAR extinction coefficient for water (1/m)
-      REALTYPE :: par_bio_background_extinction ! PAR extinction coefficient for background biological components (1/m)
-    end type type_model_info
 
-    ! Properties of a single state variable
-    type type_variable_info
+      ! Photosynthetically Active Radiation (PAR):
+      ! par_fraction:              fraction of incoming short-wave radiation that is PAR (-)
+      ! par_background_extinction: PAR extinction coefficient for water (1/m)
+      REALTYPE :: par_fraction
+      REALTYPE :: par_background_extinction
+
+      ! Sinking rate type
+      ! 0: variable-specific sinking rates are constant in time and space
+      ! 2: variable-specific sinking rates depend on time and space
+      !    (optionally including the current state and local enviroment)
+      integer  :: dynamic_sinking_rates
+   end type type_model_info
+
+   ! Properties of a single state variable
+   type type_variable_info
       character(len=64) :: name, longname, unit
 
       REALTYPE :: initial_value
-      REALTYPE :: light_extinction
       REALTYPE :: sinking_rate
 #if 0
       REALTYPE :: mussels_inhale
 #endif
       logical  :: positive_definite
-    end type type_variable_info
+   end type type_variable_info
 
-    ! Properties of the abiotic environment
-    type type_environment
+   ! Properties of the abiotic environment
+   type type_environment
       ! Local variables
       REALTYPE :: par    ! Photosynthetically Active Radiation (W/m2)
       REALTYPE :: t      ! Temperature (degrees Celsius)
@@ -60,7 +76,7 @@
       ! not [well] defined.
       REALTYPE :: I_0    ! Incoming short-wave radiation (W/m2)
       REALTYPE :: wind   ! Wind speed (m/s)
-    end type type_environment
+   end type type_environment
 
 !-----------------------------------------------------------------------
 
@@ -72,7 +88,8 @@
       modelinfo%numc = 0
       modelinfo%par_fraction = _ONE_
       modelinfo%par_background_extinction = _ZERO_
-      modelinfo%par_bio_background_extinction = _ZERO_
+      
+      modelinfo%dynamic_sinking_rates = 0
    end subroutine init_model_info
 
    subroutine init_variable_info(varinfo)
@@ -82,7 +99,6 @@
       varinfo%unit = ''
       varinfo%longname = ''
       varinfo%initial_value = _ZERO_
-      varinfo%light_extinction = _ZERO_
       varinfo%sinking_rate = _ZERO_
       varinfo%positive_definite = .false.
 #if 0

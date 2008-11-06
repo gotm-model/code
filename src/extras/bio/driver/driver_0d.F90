@@ -1,4 +1,4 @@
-!$Id: driver_0d.F90,v 1.2 2008-11-05 13:12:49 jorn Exp $
+!$Id: driver_0d.F90,v 1.3 2008-11-06 13:42:44 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -14,7 +14,7 @@
 ! !USES:
    use time
    use bio_0d_base
-   use bio_npzd_0d
+   use bio_0d_gen
 
    IMPLICIT NONE
    private
@@ -29,7 +29,6 @@
    integer, parameter        :: END_OF_FILE=-1
    integer, parameter        :: READ_ERROR=-2
    character, parameter      :: separator = char(9)
-   integer, parameter        :: npzd_0d_id = 1001
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -127,7 +126,7 @@
    ! Initialize the time module.
    call init_time(MinN,MaxN)
 
-   ! Open the file with observation son the local environment.
+   ! Open the file with observations of the local environment.
    open(env_unit,file=env_file,action='read', &
         status='old',err=95)
    LEVEL2 'Reading local environment data from:'
@@ -135,10 +134,7 @@
    
    ! Get info on the selected biogeochemical model.
    call init_model_info(modelinfo)
-   select case (bio_model)
-      case (npzd_0d_id)
-         call init_bio_npzd_0d(namlst,'bio_npzd.nml',bio_unit,modelinfo)
-   end select
+   call init_bio_0d_generic(bio_model,namlst,modelinfo)
    
    ! Initialize biogeochemical variable information with defaults
    allocate(varinfo(modelinfo%numc))
@@ -147,10 +143,7 @@
    end do
 
    ! Get actual variable info from the selected biogeochemical model
-   select case (bio_model)
-      case (npzd_0d_id)  ! NPZD
-         call get_var_info_npzd_0d(modelinfo%numc,varinfo)
-   end select
+   call get_var_info_bio_0d_generic(bio_model,modelinfo%numc,varinfo)
 
    ! Create state variable vector, using the initial values specified by the model.
    allocate(cc(modelinfo%numc,0:1))
@@ -235,10 +228,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   select case (bio_model)
-      case (npzd_0d_id)
-         call do_bio_npzd_0d(first,numc,cc(:,1),environment,pp(:,:,1),dd(:,:,1))
-   end select
+   call do_bio_0d_generic(bio_model,first,numc,cc(:,1),environment,pp(:,:,1),dd(:,:,1))
    
    end subroutine get_rhs
 !EOC
@@ -284,10 +274,7 @@
          ! Calculate photosynthetically active radiation from geographic location, time, cloud cover
          ! par fraction, extinction coefficient, and depth.
          call short_wave_radiation(julianday,secondsofday,longitude,latitude,cloud,swr)
-         extinction = modelinfo%par_background_extinction + modelinfo%par_bio_background_extinction
-         do i=1,modelinfo%numc
-            extinction = extinction + varinfo(i)%light_extinction*cc(i,1)
-         end do
+         extinction = get_bio_extinction_bio_0d_generic(bio_model,modelinfo%numc,cc(:,1))
          environment%par = modelinfo%par_fraction*swr*exp(environment%z*extinction)
       end if
 

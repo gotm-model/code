@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.47 2008-11-05 12:51:38 jorn Exp $
+!$Id: bio.F90,v 1.48 2008-11-06 13:42:44 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,7 +19,10 @@
 ! !USES:
    use bio_var
    
-   use bio_0d, only: init_bio_0d, init_var_0d, surface_fluxes_0d, light_0d, do_bio_0d_eul, do_bio_0d_par, light_0d_par
+   use bio_0d, only: init_bio_0d, init_var_0d, &
+                     light_0d, light_0d_par, &
+                     surface_fluxes_0d, update_sinking_rates_0d, &
+                     do_bio_0d_eul, do_bio_0d_par
 
 #ifdef BIO_TEMPLATE
    use bio_template, only : init_bio_template,init_var_template
@@ -90,6 +93,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.48  2008-11-06 13:42:44  jorn
+!  several changes to 0d framework for biogeochemical models; added explicit support for time- and space-varying sinking and light extinction
+!
 !  Revision 1.47  2008-11-05 12:51:38  jorn
 !  restructured 0d biogeochemical framework; added experimental support for self-shading in 0d-based particle models
 !
@@ -952,6 +958,7 @@
 #endif
    case (1000:)
       call surface_fluxes_0d(nlev,t(nlev),s(nlev))
+      call update_sinking_rates_0d(numc,nlev,cc)
    end select
    
    do j=1,numc

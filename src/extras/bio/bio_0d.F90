@@ -1,33 +1,38 @@
+!$Id: bio_0d.F90,v 1.4 2008-11-06 13:42:44 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: bio_0d --- Interface between 1D GOTM and 0D biogeochemical models
+! !MODULE: bio_0d --- Interface between 1D GOTM and 0D bio models
 !
 ! !INTERFACE:
    module bio_0d
 !
 ! !DESCRIPTION:
-! TODO
+! This module is the interface between GOTM and the library of 0d
+! biogeochemical models. Note that this model library is accessed via
+! the bio_0d_gen module: new 0d models should be registered there,
+! and not in the present bio_0d module.
 !
 ! !USES:
-!  default: all is private.
    use bio_var
    use bio_0d_base
-   use bio_npzd_0d
+   use bio_0d_gen
    use observations, only: A,g2
+
+!  default: all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_bio_0d, init_var_0d,                 &
-          light_0d, surface_fluxes_0d, do_bio_0d_eul, &
-          light_0d_par, do_bio_0d_par, end_bio_0d
+          light_0d, light_0d_par, &
+          surface_fluxes_0d, update_sinking_rates_0d, &
+          do_bio_0d_eul, do_bio_0d_par, end_bio_0d
 !
 ! !PRIVATE DATA MEMBERS:
    type (type_model_info) :: modelinfo
    type (type_variable_info), allocatable :: varinfo(:)
-   integer, parameter :: npzd_0d_id = 1001
    
    ! Lagrangian model
    integer :: np,nt
@@ -38,8 +43,6 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Jorn Bruggeman
 !
-!
-! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
    
@@ -80,12 +83,7 @@
    modelinfo%par_background_extinction = _ONE_/g2
    
    ! Get actual model info based on the model selected.
-   select case (bio_model)
-      case (npzd_0d_id)  ! NPZD
-         call init_bio_npzd_0d(namlst,'bio_npzd.nml',unit,modelinfo)
-      case default
-         stop "bio_0d: no valid biomodel specified in bio.nml !"
-   end select
+   call init_bio_0d_generic(bio_model,namlst,modelinfo)
    
    ! Initialize variable information with defaults
    allocate(varinfo(modelinfo%numc))
@@ -94,10 +92,7 @@
    end do
 
    ! Get actual variable info from the selected biogeochemical model
-   select case (bio_model)
-      case (npzd_0d_id)  ! NPZD
-         call get_var_info_npzd_0d(modelinfo%numc,varinfo)
-   end select
+   call get_var_info_bio_0d_generic(bio_model,modelinfo%numc,varinfo)
    
    ! Allocate global arrays for info on biogeochemical model
    ! Add a variable for particle densities if using Lagragian model
@@ -275,12 +270,61 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   select case (bio_model)
-   end select
-
    end subroutine surface_fluxes_0d
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Sinking rates
+!
+! !INTERFACE:
+   subroutine update_sinking_rates_0d(numc,nlev,cc)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+  integer                              :: numc,nlev
+  REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer                    :: ci 
+   type (type_environment)    :: env
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   if (modelinfo%dynamic_sinking_rates.eq.0) return
+   
+   ! Update PAR - this will be used in the local environment, on which sinking can depend.
+   call light_0d(nlev,.false.)
+
+   ! Initialize the environment
+   call init_environment(env)
+
+   ! Set non-local properties of the environment
+   env%I_0 = I_0
+   env%wind = wind
+
+   do ci=1,nlev
+      env%z    = zlev(ci-1)+0.5*h(ci)
+      env%par  = par(ci)
+      env%t    = t(ci)
+      env%s    = s(ci)
+      env%nuh  = nuh(ci)
+      env%rho  = rho(ci)
+      call get_sinking_rates_bio_0d_generic(bio_model,modelinfo,varinfo,env,cc(:,ci),ws(:,ci))
+   end do
+
+   end subroutine update_sinking_rates_0d
+!EOC
 
 !-----------------------------------------------------------------------
 !BOP
@@ -314,19 +358,13 @@
    bioext = _ZERO_
    do i=nlev,1,-1
       ! Add the extinction of the first half of the grid box.
-      bioext = bioext+modelinfo%par_bio_background_extinction*0.5*h(i)
-      do j=1,numc
-         bioext = bioext+varinfo(j)%light_extinction*cc(j,i)*0.5*h(i)
-      end do
+      bioext = bioext+get_bio_extinction_bio_0d_generic(bio_model,numc,cc(:,i))*0.5*h(i)
 
       zz=zz+0.5*h(i)
       par(i)=rad(nlev)*modelinfo%par_fraction*exp(-zz*modelinfo%par_background_extinction-bioext)
 
       ! Add the extinction of the second half of the grid box.
-      bioext = bioext+modelinfo%par_bio_background_extinction*0.5*h(i)
-      do j=1,numc
-         bioext = bioext+varinfo(j)%light_extinction*cc(j,i)*0.5*h(i)
-      end do
+      bioext = bioext+get_bio_extinction_bio_0d_generic(bio_model,numc,cc(:,i))*0.5*h(i)
       
       zz=zz+0.5*h(i)
       if (bioshade_feedback) bioshade_(i)=exp(-bioext)
@@ -375,11 +413,10 @@
 
          ! Get the light extinction coefficient combined over all state variables.
          do j=1,modelinfo%numc
-            extinction(ind) = extinction(ind) + varinfo(j)%light_extinction*par_prop(np,j,nt)
+            extinction(ind) = extinction(ind) + get_bio_extinction_bio_0d_generic(bio_model,modelinfo%numc,par_prop(np,j,nt)/h(ind))
          end do
       end if
    end do
-   extinction(1:nlev) = extinction(1:nlev)/h(1:nlev) + modelinfo%par_bio_background_extinction
 
    ! Calculate shade factor at each depth
    bioext = _ZERO_
@@ -445,10 +482,7 @@
       env%s    = s(ci)
       env%nuh  = nuh(ci)
       env%rho  = rho(ci)
-      select case (bio_model)
-         case (npzd_0d_id)
-            call do_bio_npzd_0d(first,numc,cc(1:numc,ci),env,pp(1:numc,1:numc,ci),dd(1:numc,1:numc,ci))
-      end select
+      call do_bio_0d_generic(bio_model,first,numc,cc(1:numc,ci),env,pp(1:numc,1:numc,ci),dd(1:numc,1:numc,ci))
    end do
    
    end subroutine do_bio_0d_eul
@@ -578,11 +612,7 @@
    env_par%s    = rat*  s(i)+(1.-rat)*  s(i-1)
    env_par%nuh  = rat*nuh(i)+(1.-rat)*nuh(i-1)
    env_par%rho  = rat*rho(i)+(1.-rat)*rho(i-1)
-   
-   select case (bio_model)
-      case (npzd_0d_id)
-         call do_bio_npzd_0d(first,numc,par_prop(np,1:modelinfo%numc,nt),env_par,pp(:,:,1),dd(:,:,1))
-   end select
+   call do_bio_0d_generic(bio_model,first,numc,par_prop(np,1:modelinfo%numc,nt),env_par,pp(:,:,1),dd(:,:,1))
    
    end subroutine get_bio_0d_par_rhs
 !EOC
@@ -607,9 +637,6 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
-   select case (bio_model)
-   end select
 
    end subroutine end_bio_0d
 !EOC
