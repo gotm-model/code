@@ -1,4 +1,4 @@
-!$Id: bio_types.F90,v 1.1 2008-11-06 15:04:32 jorn Exp $
+!$Id: bio_types.F90,v 1.2 2008-11-11 13:40:33 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -24,15 +24,34 @@
 ! !USES:
 !  default: all is private.
    private
-   public type_model_info,type_variable_info,type_environment
-   public init_model_info, init_variable_info, init_environment
+   public type_model_info,type_environment
+   public create_model_info, init_environment
 !
 ! !PUBLIC DERIVED TYPES:
 !
+   ! Properties of a single state variable
+   type type_variable_info
+      character(len=64) :: name, longname, unit
+
+      REALTYPE :: initial_value              ! Initial state variable value
+      REALTYPE :: sinking_rate               ! Sinking rate (m/s)
+      REALTYPE :: specific_light_extinction  ! Specific light extinction (/m/state variable unit)
+#if 0
+      REALTYPE :: mussels_inhale
+#endif
+      logical  :: positive_definite          ! Whether this variable is positive definite (negative values are invalid)
+   end type type_variable_info
+
+   ! Properties of a conserved quantity
+   type type_conserved_quantity_info
+      character(len=64) :: name, longname, unit
+      integer           :: id
+   end type type_conserved_quantity_info
+
    ! Global 0D model properties
    type type_model_info
       ! Number of state variables
-      integer  :: numc
+      integer  :: state_variable_count, conserved_quantity_count
 
       ! Photosynthetically Active Radiation (PAR):
       ! par_fraction:              fraction of incoming short-wave radiation that is PAR (-)
@@ -45,19 +64,10 @@
       ! 2: variable-specific sinking rates depend on time and space
       !    (optionally including the current state and local enviroment)
       integer  :: dynamic_sinking_rates
+      
+      type (type_variable_info),           allocatable :: variables(:)
+      type (type_conserved_quantity_info), allocatable :: conserved_quantities(:)
    end type type_model_info
-
-   ! Properties of a single state variable
-   type type_variable_info
-      character(len=64) :: name, longname, unit
-
-      REALTYPE :: initial_value
-      REALTYPE :: sinking_rate
-#if 0
-      REALTYPE :: mussels_inhale
-#endif
-      logical  :: positive_definite
-   end type type_variable_info
 
    ! Properties of the abiotic environment
    type type_environment
@@ -82,15 +92,30 @@
 
    contains
    
-   subroutine init_model_info(modelinfo)
-      type (type_model_info), intent(inout) :: modelinfo
+   function create_model_info(variable_count,conserved_quantity_count) result(modelinfo)
+      integer, intent(in) :: variable_count,conserved_quantity_count
+      type (type_model_info) :: modelinfo
    
-      modelinfo%numc = 0
+      modelinfo%state_variable_count = variable_count
+      modelinfo%conserved_quantity_count = conserved_quantity_count
+
       modelinfo%par_fraction = _ONE_
       modelinfo%par_background_extinction = _ZERO_
       
       modelinfo%dynamic_sinking_rates = 0
-   end subroutine init_model_info
+      
+      ! Allocate and initialize memory for state variable information
+      allocate(modelinfo%variables           (1:modelinfo%state_variable_count))
+      do i=1,modelinfo%state_variable_count
+         call init_variable_info(modelinfo%variables(i))
+      end do
+
+      ! Allocate and initialize memory for conserved quantity information
+      allocate(modelinfo%conserved_quantities(1:modelinfo%conserved_quantity_count))
+      do i=1,modelinfo%conserved_quantity_count
+         call init_conserved_quantity_info(modelinfo%conserved_quantities(i))
+      end do
+   end function create_model_info
 
    subroutine init_variable_info(varinfo)
       type (type_variable_info), intent(inout) :: varinfo
@@ -100,11 +125,21 @@
       varinfo%longname = ''
       varinfo%initial_value = _ZERO_
       varinfo%sinking_rate = _ZERO_
+      varinfo%specific_light_extinction = _ZERO_
       varinfo%positive_definite = .false.
 #if 0
       varinfo%mussels_inhale = .false.
 #endif
    end subroutine init_variable_info
+
+   subroutine init_conserved_quantity_info(conservedinfo)
+      type (type_conserved_quantity_info), intent(inout) :: conservedinfo
+   
+      conservedinfo%name = ''
+      conservedinfo%unit = ''
+      conservedinfo%longname = ''
+      conservedinfo%id = -1
+   end subroutine init_conserved_quantity_info
 
    subroutine init_environment(env)
       type (type_environment), intent(inout) :: env

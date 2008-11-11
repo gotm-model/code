@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.48 2008-11-06 13:42:44 jorn Exp $
+!$Id: bio.F90,v 1.49 2008-11-11 13:40:32 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,7 +19,7 @@
 ! !USES:
    use bio_var
    
-   use bio_0d, only: init_bio_0d, init_var_0d, &
+   use bio_0d, only: model,init_bio_0d, init_var_0d, &
                      light_0d, light_0d_par, &
                      surface_fluxes_0d, update_sinking_rates_0d, &
                      do_bio_0d_eul, do_bio_0d_par
@@ -93,6 +93,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.49  2008-11-11 13:40:32  jorn
+!  major revision of 0d biogeochemical framework; added output of depth-integrated conserved BGC quantities; added support for running multiple BGC models side-by-side
+!
 !  Revision 1.48  2008-11-06 13:42:44  jorn
 !  several changes to 0d framework for biogeochemical models; added explicit support for time- and space-varying sinking and light extinction
 !
@@ -1023,7 +1026,7 @@
          call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd_fe)
 #endif
       case (1000:)
-         call light_0d(nlev,bioshade_feedback)
+         call light_0d(model%models(1),nlev,bioshade_feedback)
          call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_0d_eul)
       end select
       
@@ -1095,7 +1098,7 @@
    case (20)
       call do_bio_photo_par
    case (1000:)
-      call light_0d_par(nlev,bioshade_feedback)
+      call light_0d_par(model%models(1),nlev,bioshade_feedback)
       call do_bio_0d_par(ode_method,dt)
    case default
       FATAL 'bio_model=', bio_model, ' is not a valid particle model.'

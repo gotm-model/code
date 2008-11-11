@@ -1,4 +1,4 @@
-!$Id: bio_npzd_0d.F90,v 1.3 2008-11-06 15:04:32 jorn Exp $
+!$Id: bio_npzd_0d.F90,v 1.4 2008-11-11 13:40:33 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -30,7 +30,8 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio_npzd_0d, get_var_info_npzd_0d, do_bio_npzd_0d, get_bio_extinction_npzd_0d
+   public type_npzd,init_bio_npzd_0d, get_var_info_npzd_0d, do_bio_npzd_0d, &
+          get_bio_extinction_npzd_0d, get_conserved_quantities_npzd_0d
 !
 ! !PRIVATE DATA MEMBERS:
 !
@@ -40,29 +41,9 @@
 !
 ! !LOCAL VARIABLES:
 !  from a namelist
-   REALTYPE                  :: n_initial=4.5
-   REALTYPE                  :: p_initial=0.
-   REALTYPE                  :: z_initial=0.
-   REALTYPE                  :: d_initial=4.5
-   REALTYPE, public          :: p0=0.0225
-   REALTYPE                  :: z0=0.0225
-   REALTYPE                  :: w_p=-1.157407e-05
-   REALTYPE                  :: w_d=-5.787037e-05
-   REALTYPE, public          :: kc=0.03
-   REALTYPE                  :: i_min=25.
-   REALTYPE                  :: rmax=1.157407e-05
-   REALTYPE                  :: gmax=5.787037e-06
-   REALTYPE                  :: iv=1.1
-   REALTYPE                  :: alpha=0.3
-   REALTYPE                  :: rpn=1.157407e-07
-   REALTYPE                  :: rzn=1.157407e-07
-   REALTYPE                  :: rdn=3.472222e-08
-   REALTYPE                  :: rpdu=2.314814e-07
-   REALTYPE                  :: rpdl=1.157407e-06
-   REALTYPE                  :: rpd
-   REALTYPE                  :: rzd=2.314814e-07
-   REALTYPE                  :: aa=0.62
-   REALTYPE                  :: g2=20.0
+   type type_npzd
+      REALTYPE :: p0,z0,kc,i_min,rmax,gmax,iv,alpha,rpn,rzn,rdn,rpdu,rpdl,rzd
+   end type
    integer, parameter        :: n=1,p=2,z=3,d=4
 !EOP
 !-----------------------------------------------------------------------
@@ -75,7 +56,7 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_bio_npzd_0d(namlst,fname,modelinfo)
+   function init_bio_npzd_0d(self,namlst,fname) result(modelinfo)
 !
 ! !DESCRIPTION:
 !  Here, the bio namelist {\tt bio\_npzd.nml} is read and 
@@ -86,15 +67,39 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer,          intent(in)   :: namlst
-   character(len=*), intent(in)   :: fname
+   type (type_npzd), intent(out)   :: self
+   integer,          intent(in )   :: namlst
+   character(len=*), intent(in )   :: fname
    
-   type (type_model_info), intent(inout)  :: modelinfo
+   type (type_model_info) :: modelinfo
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
+   REALTYPE                  :: n_initial=4.5
+   REALTYPE                  :: p_initial=0.
+   REALTYPE                  :: z_initial=0.
+   REALTYPE                  :: d_initial=4.5
+   REALTYPE                  :: p0=0.0225
+   REALTYPE                  :: z0=0.0225
+   REALTYPE                  :: w_p=-1.157407e-05
+   REALTYPE                  :: w_d=-5.787037e-05
+   REALTYPE                  :: kc=0.03
+   REALTYPE                  :: i_min=25.
+   REALTYPE                  :: rmax=1.157407e-05
+   REALTYPE                  :: gmax=5.787037e-06
+   REALTYPE                  :: iv=1.1
+   REALTYPE                  :: alpha=0.3
+   REALTYPE                  :: rpn=1.157407e-07
+   REALTYPE                  :: rzn=1.157407e-07
+   REALTYPE                  :: rdn=3.472222e-08
+   REALTYPE                  :: rpdu=2.314814e-07
+   REALTYPE                  :: rpdl=1.157407e-06
+   REALTYPE                  :: rzd=2.314814e-07
+   REALTYPE                  :: aa=0.62
+   REALTYPE                  :: g2=20.0
+
    REALTYPE, parameter :: secs_pr_day = 86400.
    integer :: numc
    namelist /bio_npzd_nml/ numc, &
@@ -106,103 +111,81 @@
 !BOC
    LEVEL2 'init_bio_npzd'
 
-   numc=4
-
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_npzd_nml,err=99)
    close(namlst)
 
    LEVEL3 'namelist "', fname, '" read'
 
-!  Conversion from day to second
-   rpn  = rpn  /secs_pr_day
-   rzn  = rzn  /secs_pr_day
-   rdn  = rdn  /secs_pr_day
-   rpdu = rpdu /secs_pr_day
-   rpdl = rpdl /secs_pr_day
-   rzd  = rzd  /secs_pr_day
-   gmax = gmax /secs_pr_day
-   rmax = rmax /secs_pr_day
-   w_p  = w_p  /secs_pr_day
-   w_d  = w_d  /secs_pr_day
+   ! Store parameter values
+   self%p0    = p0
+   self%z0    = z0
+   self%kc    = kc
+   self%i_min = i_min
+   self%rmax  = rmax/secs_pr_day
+   self%gmax  = gmax/secs_pr_day
+   self%iv    = iv
+   self%alpha = alpha
+   self%rpn  = rpn /secs_pr_day
+   self%rzn  = rzn /secs_pr_day
+   self%rdn  = rdn /secs_pr_day
+   self%rpdu = rpdu/secs_pr_day
+   self%rpdl = rpdl/secs_pr_day
+   self%rzd  = rzd /secs_pr_day
    
-   ! Transfer some model properties to the framework we are embedded in.
-   modelinfo%numc = numc
+   modelinfo = create_model_info(4,1)
+   
+   ! Define model properties.
    modelinfo%par_fraction = _ONE_-aa
    modelinfo%par_background_extinction = _ONE_/g2
+
+   modelinfo%variables(1)%name = 'nut'
+   modelinfo%variables(1)%unit = 'mmol/m**3'
+   modelinfo%variables(1)%longname = 'nutrients'
+   modelinfo%variables(1)%initial_value = n_initial
+   modelinfo%variables(1)%positive_definite = .true.
+
+   modelinfo%variables(2)%name = 'phy'
+   modelinfo%variables(2)%unit = 'mmol/m**3'
+   modelinfo%variables(2)%longname = 'phytoplankton'
+   modelinfo%variables(2)%initial_value = p_initial
+   modelinfo%variables(2)%sinking_rate = -w_p/secs_pr_day
+   modelinfo%variables(2)%positive_definite = .true.
+
+   modelinfo%variables(3)%name = 'zoo'
+   modelinfo%variables(3)%unit = 'mmol/m**3'
+   modelinfo%variables(3)%longname = 'zooplankton'
+   modelinfo%variables(3)%initial_value = z_initial
+   modelinfo%variables(3)%positive_definite = .true.
+
+   modelinfo%variables(4)%name = 'det'
+   modelinfo%variables(4)%unit = 'mmol/m**3'
+   modelinfo%variables(4)%longname = 'detritus'
+   modelinfo%variables(4)%initial_value = d_initial
+   modelinfo%variables(4)%sinking_rate = -w_d/secs_pr_day
+   modelinfo%variables(4)%positive_definite = .true.
+
+#if 0
+   modelinfo%variables(2)%mussels_inhale = .true.
+   modelinfo%variables(3)%mussels_inhale = .true.
+   modelinfo%variables(4)%mussels_inhale = .true.
+#endif
+
+   modelinfo%conserved_quantities(1)%name = 'N'
+   modelinfo%conserved_quantities(1)%unit = 'mmol/m**3'
+   modelinfo%conserved_quantities(1)%longname = 'nitrogen'
 
    LEVEL3 'module initialized'
 
    return
 
-98 LEVEL2 'I could not open bio_npzd.nml'
-   LEVEL2 'If thats not what you want you have to supply bio_npzd.nml'
-   LEVEL2 'See the bio example on www.gotm.net for a working bio_npzd.nml'
+98 LEVEL2 'I could not open '//trim(fname)
+   LEVEL2 'If thats not what you want you have to supply '//trim(fname)
+   LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
    return
 99 FATAL 'I could not read bio_npzd.nml'
    stop 'init_bio_npzd_0d'
-   end subroutine init_bio_npzd_0d
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Get information on the concentration variables
-!
-! !INTERFACE:
-   subroutine get_var_info_npzd_0d(numc,varinfo)
-!
-! !DESCRIPTION:
-!  The subroutine provides all properties of the state variables,
-!  including the name, unit, initial value, sinking rate, etc.
-!
-! !USES:
-   IMPLICIT NONE
-
-! !INPUT PARAMETERS:
-   integer,                   intent(in)    :: numc
-   type (type_variable_info), intent(inout) :: varinfo(numc)
-
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-
-! !LOCAL VARIABLES:
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   varinfo(1)%name = 'nut'
-   varinfo(1)%unit = 'mmol/m**3'
-   varinfo(1)%longname = 'nutrients'
-   varinfo(1)%initial_value = n_initial
-   varinfo(1)%positive_definite = .true.
-
-   varinfo(2)%name = 'phy'
-   varinfo(2)%unit = 'mmol/m**3'
-   varinfo(2)%longname = 'phytoplankton'
-   varinfo(2)%initial_value = p_initial
-   varinfo(2)%sinking_rate = -w_p
-   varinfo(2)%positive_definite = .true.
-
-   varinfo(3)%name = 'zoo'
-   varinfo(3)%unit = 'mmol/m**3'
-   varinfo(3)%longname = 'zooplankton'
-   varinfo(3)%initial_value = z_initial
-   varinfo(3)%positive_definite = .true.
-
-   varinfo(4)%name = 'det'
-   varinfo(4)%unit = 'mmol/m**3'
-   varinfo(4)%longname = 'detritus'
-   varinfo(4)%initial_value = d_initial
-   varinfo(4)%sinking_rate = -w_d
-   varinfo(4)%positive_definite = .true.
-
-#if 0
-   varinfo(2)%mussels_inhale = .true.
-   varinfo(3)%mussels_inhale = .true.
-   varinfo(4)%mussels_inhale = .true.
-#endif
-
-   end subroutine get_var_info_npzd_0d
+   end function init_bio_npzd_0d
 !EOC
 
 !-----------------------------------------------------------------------
@@ -212,9 +195,10 @@
 ! variables
 !
 ! !INTERFACE:
-   function get_bio_extinction_npzd_0d(numc,cc) result(extinction)
+   function get_bio_extinction_npzd_0d(self,numc,cc) result(extinction)
 !
 ! !INPUT PARAMETERS:
+   type (type_npzd), intent(in) :: self
    integer,  intent(in)  :: numc
    REALTYPE, intent(in)  :: cc(1:numc)
    REALTYPE              :: extinction
@@ -224,9 +208,33 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   extinction = kc*(p0+cc(2)+cc(4))
+   extinction = self%kc*(self%p0+cc(2)+cc(4))
 
    end function get_bio_extinction_npzd_0d
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Get the total of conserved quantities (currently only nitrogen)
+!
+! !INTERFACE:
+   function get_conserved_quantities_npzd_0d(self,numc,cc,count) result(sums)
+!
+! !INPUT PARAMETERS:
+   type (type_npzd), intent(in) :: self
+   integer,  intent(in)  :: numc,count
+   REALTYPE, intent(in)  :: cc(1:numc)
+   REALTYPE              :: sums(1:count)
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   sums(1) = sum(cc)
+
+   end function get_conserved_quantities_npzd_0d
 !EOC
 
 !-----------------------------------------------------------------------
@@ -235,7 +243,7 @@
 ! !IROUTINE: Michaelis-Menten formulation for nutrient uptake
 !
 ! !INTERFACE:
-   REALTYPE function fnp(n,p,par,iopt)
+   REALTYPE function fnp(self,n,p,par,iopt)
 !
 ! !DESCRIPTION:
 ! Here, the classical Michaelis-Menten formulation for nutrient uptake
@@ -245,7 +253,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: n,p,par,iopt
+   type (type_npzd), intent(in) :: self
+   REALTYPE, intent(in)         :: n,p,par,iopt
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -253,7 +262,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   fnp=rmax*par/iopt*exp(1.-par/iopt)*n/(alpha+n)*(p+p0)
+   fnp=self%rmax*par/iopt*exp(1.-par/iopt)*n/(self%alpha+n)*(p+self%p0)
    return
    end function fnp
 !EOC
@@ -264,7 +273,7 @@
 ! !IROUTINE: Ivlev formulation for zooplankton grazing on phytoplankton
 !
 ! !INTERFACE:
-   REALTYPE function fpz(p,z)
+   REALTYPE function fpz(self,p,z)
 !
 ! !DESCRIPTION:
 ! Here, the classical Ivlev formulation for zooplankton grazing on 
@@ -274,7 +283,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: p,z
+   type (type_npzd), intent(in) :: self
+   REALTYPE, intent(in)         :: p,z
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -282,7 +292,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   fpz=gmax*(1.-exp(-iv**2*p**2))*(z+z0)
+   fpz=self%gmax*(1.-exp(-self%iv**2*p**2))*(z+self%z0)
    return
    end function fpz
 !EOC
@@ -294,7 +304,7 @@
 ! !IROUTINE: Right hand sides of NPZD model
 !
 ! !INTERFACE:
-   subroutine do_bio_npzd_0d(first,numc,cc,env,pp,dd)
+   subroutine do_bio_npzd_0d(self,first,numc,cc,env,pp,dd)
 !
 ! !DESCRIPTION:
 ! Seven processes expressed as sink terms are included in this
@@ -347,6 +357,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+   type (type_npzd), intent(in)         :: self
    logical, intent(in)                  :: first
    integer, intent(in)                  :: numc
    REALTYPE, intent(in)                 :: cc(1:numc)
@@ -361,28 +372,29 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE, save             :: iopt
+   REALTYPE                   :: rpd
    integer                    :: i,j
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
    if (first) then
-      iopt=max(0.25*env%I_0,I_min)
+      iopt=max(0.25*env%I_0,self%I_min)
    end if
 
-   if (env%par .ge. i_min) then
-      rpd=rpdu
+   if (env%par .ge. self%I_min) then
+      rpd=self%rpdu
    else
-      rpd=rpdl
+      rpd=self%rpdl
    end if
 
-   dd(n,p)=fnp(cc(n),cc(p),env%par,iopt)  ! snp
-   dd(p,z)=fpz(cc(p),cc(z))               ! spz
-   dd(p,n)=rpn*cc(p)                      ! spn
-   dd(z,n)=rzn*cc(z)                      ! szn
-   dd(d,n)=rdn*cc(d)                      ! sdn
-   dd(p,d)=rpd*cc(p)                      ! spd
-   dd(z,d)=rzd*cc(z)                      ! szd
+   dd(n,p)=fnp(self,cc(n),cc(p),env%par,iopt)  ! snp
+   dd(p,z)=fpz(self,cc(p),cc(z))               ! spz
+   dd(p,n)=self%rpn*cc(p)                      ! spn
+   dd(z,n)=self%rzn*cc(z)                      ! szn
+   dd(d,n)=self%rdn*cc(d)                      ! sdn
+   dd(p,d)=     rpd*cc(p)                      ! spd
+   dd(z,d)=self%rzd*cc(z)                      ! szd
 
    do i=1,numc
       do j=1,numc

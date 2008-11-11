@@ -1,4 +1,4 @@
-!$Id: bio_0d.F90,v 1.5 2008-11-06 15:04:32 jorn Exp $
+!$Id: bio_0d.F90,v 1.6 2008-11-11 13:40:32 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -19,20 +19,18 @@
    use bio_var
    use bio_types
    use bio_0d_gen
-   use observations, only: A,g2
 
 !  default: all is private.
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio_0d, init_var_0d,                 &
+   public model,init_bio_0d, init_var_0d,                 &
           light_0d, light_0d_par, &
           surface_fluxes_0d, update_sinking_rates_0d, &
-          do_bio_0d_eul, do_bio_0d_par, end_bio_0d
+          do_bio_0d_eul, do_bio_0d_par, save_bio_0d, end_bio_0d
 !
 ! !PRIVATE DATA MEMBERS:
-   type (type_model_info) :: modelinfo
-   type (type_variable_info), allocatable :: varinfo(:)
+   type (type_model_collection) :: model
    
    ! Lagrangian model
    integer :: np,nt
@@ -60,6 +58,8 @@
 !  TODO
 !
 ! !USES:
+   use observations, only: A,g2
+!
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -71,32 +71,30 @@
 !
 ! !LOCAL VARIABLES:
    integer :: i,ioffset
+   character(len=64) :: model_name
 
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'init_bio_0d'
    
-   ! Initialize model information with defaults
-   call init_model_info(modelinfo)
-   modelinfo%par_fraction = _ONE_-A
-   modelinfo%par_background_extinction = _ONE_/g2
-   
    ! Get actual model info based on the model selected.
-   call init_bio_0d_generic(bio_model,namlst,modelinfo)
+   model_name = get_model_name(bio_model)
    
-   ! Initialize variable information with defaults
-   allocate(varinfo(modelinfo%numc))
-   do i=1,modelinfo%numc
-      call init_variable_info(varinfo(i))
-   end do
-
-   ! Get actual variable info from the selected biogeochemical model
-   call get_var_info_bio_0d_generic(bio_model,modelinfo%numc,varinfo)
+   ! Use single instance
+   model = init_bio_0d_generic(1,(/bio_model/),namlst,(/'bio_'//trim(model_name)//'.nml'/))
+   
+   ! Use two instances
+   !model = init_bio_0d_generic(2,(/bio_model,bio_model/),namlst,(/'bio_'//trim(model_name)//'.nml ','bio_'//trim(model_name)//'1.nml'/))
+   
+   if (model%info%par_fraction.eq._ZERO_) then
+      model%info%par_fraction = _ONE_-A
+      model%info%par_background_extinction = _ONE_/g2
+   end if
    
    ! Allocate global arrays for info on biogeochemical model
    ! Add a variable for particle densities if using Lagragian model
-   numc = modelinfo%numc
+   numc = model%info%state_variable_count
    if (.not. bio_eulerian) numc = numc+1
    call bio_alloc_info
 
@@ -109,16 +107,16 @@
       ioffset = 1
       
       ntype = 1
-      nprop = modelinfo%numc
+      nprop = model%info%state_variable_count
    else
       ioffset = 0
    end if
 
    ! Register the variables used by the biogeochemical model in the global arrays.
-   do i=1,modelinfo%numc
-      var_names(i+ioffset) = varinfo(i)%name
-      var_units(i+ioffset) = varinfo(i)%unit
-      var_long (i+ioffset) = varinfo(i)%longname
+   do i=1,model%info%state_variable_count
+      var_names(i+ioffset) = model%info%variables(i)%name
+      var_units(i+ioffset) = model%info%variables(i)%unit
+      var_long (i+ioffset) = model%info%variables(i)%longname
    end do
 
    end subroutine init_bio_0d
@@ -204,19 +202,19 @@
    ioffset = 0
    if (.not. bio_eulerian) ioffset = 1
    
-   do j=1,modelinfo%numc
-      ws(j+ioffset,0:nlev) = -varinfo(j)%sinking_rate
-      posconc(j+ioffset) = varinfo(j)%positive_definite
+   do j=1,model%info%state_variable_count
+      ws(j+ioffset,0:nlev) = -model%info%variables(j)%sinking_rate
+      posconc(j+ioffset) = model%info%variables(j)%positive_definite
 #if 0
-      mussels_inhale(j+ioffset) = varinfo(j)%mussels_inhale
+      mussels_inhale(j+ioffset) = model%info%variables(j)%mussels_inhale
 #endif
    end do
 
    if (.not. bio_eulerian) then
       nt = 1
 
-      do j=1,modelinfo%numc
-         par_prop(:,j,nt) = (ztop-zbot)*varinfo(j)%initial_value/npar
+      do j=1,model%info%state_variable_count
+         par_prop(:,j,nt) = (ztop-zbot)*model%info%variables(j)%initial_value/npar
       end do
       
       ! Configure particle variable
@@ -229,10 +227,10 @@
 
       call init_par_bio_0d
 
-      allocate(cc_loc(1:modelinfo%numc,0:1))
+      allocate(cc_loc(1:model%info%state_variable_count,0:1))
    else
       do j=1,numc
-         cc(j,1:nlev) = varinfo(j)%initial_value
+         cc(j,1:nlev) = model%info%variables(j)%initial_value
       end do
    end if
 
@@ -295,17 +293,15 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer                    :: ci 
+   integer                    :: ci, imodel, ifirst, ilast
    type (type_environment)    :: env
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
-   if (modelinfo%dynamic_sinking_rates.eq.0) return
+   ! If sinking rates are constant (time- and space-independent, just return.
+   if (model%info%dynamic_sinking_rates.eq.0) return
    
-   ! Update PAR - this will be used in the local environment, on which sinking can depend.
-   call light_0d(nlev,.false.)
-
    ! Initialize the environment
    call init_environment(env)
 
@@ -313,14 +309,32 @@
    env%I_0 = I_0
    env%wind = wind
 
-   do ci=1,nlev
-      env%z    = zlev(ci-1)+0.5*h(ci)
-      env%par  = par(ci)
-      env%t    = t(ci)
-      env%s    = s(ci)
-      env%nuh  = nuh(ci)
-      env%rho  = rho(ci)
-      call get_sinking_rates_bio_0d_generic(bio_model,modelinfo,varinfo,env,cc(:,ci),ws(:,ci))
+   ! The index of the first state variable
+   ifirst = 1
+
+   ! Iterate over all individual models, because for each separate model we have to adjust
+   ! the local light climate based on the model's self-shading properties
+   ! (because of self-shading, the local environment is model-dependent)
+   do imodel=1,model%count
+      ! Update PAR - this will be used in the local environment, on which sinking can depend.
+      call light_0d(model%models(imodel),nlev,.false.)
+      
+      ! Find the index of the last state variable for the current model
+      ilast = ifirst+model%models(imodel)%info%state_variable_count-1
+
+      ! Iterate over all depth levels
+      do ci=1,nlev
+         env%z    = zlev(ci-1)+0.5*h(ci)
+         env%par  = par(ci)
+         env%t    = t(ci)
+         env%s    = s(ci)
+         env%nuh  = nuh(ci)
+         env%rho  = rho(ci)
+         call get_sinking_rates_bio_0d_generic(model,env,cc(ifirst:ilast,ci),ws(ifirst:ilast,ci))
+      end do
+      
+      ! The variables of the next model begin after the last variable of the current model.
+      ifirst = ilast+1
    end do
 
    end subroutine update_sinking_rates_0d
@@ -332,7 +346,7 @@
 ! !IROUTINE: Light properties for the 0d biological framework
 !
 ! !INTERFACE:
-   subroutine light_0d(nlev,bioshade_feedback)
+   subroutine light_0d(model,nlev,bioshade_feedback)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -341,6 +355,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+   type (type_model),intent(in)        :: model
    integer, intent(in)                 :: nlev
    logical, intent(in)                 :: bioshade_feedback
 !
@@ -358,13 +373,13 @@
    bioext = _ZERO_
    do i=nlev,1,-1
       ! Add the extinction of the first half of the grid box.
-      bioext = bioext+get_bio_extinction_bio_0d_generic(bio_model,numc,cc(:,i))*0.5*h(i)
+      bioext = bioext+get_bio_extinction_bio_0d_generic(model,cc(:,i))*0.5*h(i)
 
       zz=zz+0.5*h(i)
-      par(i)=rad(nlev)*modelinfo%par_fraction*exp(-zz*modelinfo%par_background_extinction-bioext)
+      par(i)=rad(nlev)*model%info%par_fraction*exp(-zz*model%info%par_background_extinction-bioext)
 
       ! Add the extinction of the second half of the grid box.
-      bioext = bioext+get_bio_extinction_bio_0d_generic(bio_model,numc,cc(:,i))*0.5*h(i)
+      bioext = bioext+get_bio_extinction_bio_0d_generic(model,cc(:,i))*0.5*h(i)
       
       zz=zz+0.5*h(i)
       if (bioshade_feedback) bioshade_(i)=exp(-bioext)
@@ -379,7 +394,7 @@
 ! !IROUTINE: Light properties for particle version of the 0d biological framework
 !
 ! !INTERFACE:
-   subroutine light_0d_par(nlev,bioshade_feedback)
+   subroutine light_0d_par(model,nlev,bioshade_feedback)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -388,6 +403,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+   type (type_model),intent(in)        :: model
    integer, intent(in)                 :: nlev
    logical, intent(in)                 :: bioshade_feedback
 !
@@ -412,9 +428,7 @@
          ind = par_ind(np,nt)
 
          ! Get the light extinction coefficient combined over all state variables.
-         do j=1,modelinfo%numc
-            extinction(ind) = extinction(ind) + get_bio_extinction_bio_0d_generic(bio_model,modelinfo%numc,par_prop(np,j,nt)/h(ind))
-         end do
+         extinction(ind) = extinction(ind) + get_bio_extinction_bio_0d_generic(model,par_prop(np,:,nt)/h(ind))
       end if
    end do
 
@@ -458,7 +472,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer                    :: ci
+   integer                    :: ci,imodel,ifirst,ilast
    type (type_environment)    :: env
 !EOP
 !-----------------------------------------------------------------------
@@ -475,14 +489,32 @@
    env%I_0 = I_0
    env%wind = wind
 
-   do ci=1,nlev
-      env%z    = zlev(ci-1)+0.5*h(ci)
-      env%par  = par(ci)
-      env%t    = t(ci)
-      env%s    = s(ci)
-      env%nuh  = nuh(ci)
-      env%rho  = rho(ci)
-      call do_bio_0d_generic(bio_model,first,numc,cc(1:numc,ci),env,pp(1:numc,1:numc,ci),dd(1:numc,1:numc,ci))
+   ! The index of the first state variable
+   ifirst = 1
+
+   ! Iterate over all individual models, because for each separate model we have to adjust
+   ! the local light climate based on the model's self-shading properties
+   ! (because of self-shading, the local environment is model-dependent)
+   do imodel=1,model%count
+      ! Find the index of the last state variable for the current model
+      ilast = ifirst + model%models(imodel)%info%state_variable_count - 1
+
+      ! Iterate over all depth levels
+      do ci=1,nlev
+         env%z    = zlev(ci-1)+0.5*h(ci)
+         env%par  = par(ci)
+         env%t    = t(ci)
+         env%s    = s(ci)
+         env%nuh  = nuh(ci)
+         env%rho  = rho(ci)
+         call do_bio_0d_generic(model%models(imodel),first,cc(ifirst:ilast,ci),env,pp(ifirst:ilast,ifirst:ilast,ci),dd(ifirst:ilast,ifirst:ilast,ci))
+      end do
+      
+      ! Update PAR based on extinction values of the next model (if any)
+      if (imodel.lt.model%count) call light_0d(model%models(imodel+1),nlev,.false.)
+      
+      ! The variables of the next model begin after the last variable of the current model.
+      ifirst = ilast+1
    end do
    
    end subroutine do_bio_0d_eul
@@ -520,7 +552,7 @@
    nt = 1
    
    ! First column of state variable array is not used by ode solvers.
-   cc_loc(1:modelinfo%numc,0) = _ZERO_
+   cc_loc(1:model%info%state_variable_count,0) = _ZERO_
    
    ! Set up abiotic environment
    call init_environment(env_par)
@@ -532,13 +564,13 @@
    ! For each particle: integrate over the time step
    do np=1,npar
       ! Get the current state
-      cc_loc(1:modelinfo%numc,1) = par_prop(np,1:modelinfo%numc,nt)
+      cc_loc(1:model%info%state_variable_count,1) = par_prop(np,1:model%info%state_variable_count,nt)
       
       ! Call ode solver to get updated state
-      call ode_solver(ode_method,modelinfo%numc,1,dt,cc_loc,get_bio_0d_par_rhs)
+      call ode_solver(ode_method,model%info%state_variable_count,1,dt,cc_loc,get_bio_0d_par_rhs)
       
       ! Store updated state as particle properties
-      par_prop(np,1:modelinfo%numc,nt) = cc_loc(1:modelinfo%numc,1)
+      par_prop(np,1:model%info%state_variable_count,nt) = cc_loc(1:model%info%state_variable_count,1)
    end do
    
    ! Initialize array with [Eulerian] summary statistics
@@ -552,7 +584,7 @@
 
          ! Count particles per grid volume
          cc(1,ind) = cc(1,ind) + _ONE_
-         do j=1,modelinfo%numc
+         do j=1,model%info%state_variable_count
             cc(j+1,ind) = cc(j+1,ind) + par_prop(np,j,nt)
          end do
 
@@ -604,7 +636,7 @@
    rat=(par_z(np,nt)-zlev(i-1))/h(i)
 
    localshade = rat*shade(i)+(1.-rat)*shade(i-1)
-   env_par%par  = rad(nlev)*modelinfo%par_fraction*exp(par_z(np,nt)*modelinfo%par_background_extinction)*localshade
+   env_par%par  = rad(nlev)*model%info%par_fraction*exp(par_z(np,nt)*model%info%par_background_extinction)*localshade
 
    ! Linearly interpolate environmental conditions
    env_par%z    = par_z(np,nt)
@@ -612,11 +644,82 @@
    env_par%s    = rat*  s(i)+(1.-rat)*  s(i-1)
    env_par%nuh  = rat*nuh(i)+(1.-rat)*nuh(i-1)
    env_par%rho  = rat*rho(i)+(1.-rat)*rho(i-1)
-   call do_bio_0d_generic(bio_model,first,numc,par_prop(np,1:modelinfo%numc,nt),env_par,pp(:,:,1),dd(:,:,1))
+   call do_bio_0d_generic(model,first,par_prop(np,1:model%info%state_variable_count,nt),env_par,pp(:,:,1),dd(:,:,1))
    
    end subroutine get_bio_0d_par_rhs
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Finish the bio calculations
+!
+! !INTERFACE:
+   subroutine save_bio_0d(first,out_fmt,out_unit,ncid)
+!
+! !DESCRIPTION:
+!  Save additional properties of 0d biogeochemical model
+!
+! !USES:
+   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dims
+   use ncdfout, only: define_mode,new_nc_variable,set_attributes,store_data
+
+   IMPLICIT NONE
+
+#ifdef NETCDF_FMT
+#include "netcdf.inc"
+#endif
+!
+! !INPUT PARAMETERS:
+   logical, intent(in)                  :: first
+   integer, intent(in)                  :: out_fmt,out_unit,ncid
+!
+! !LOCAL VARIABLES:
+   integer :: n,iret,ilev
+   REALTYPE :: total(1:model%info%conserved_quantity_count)
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   select case (out_fmt)
+      case (NETCDF)
+#ifdef NETCDF_FMT
+         if(first) then
+            dims(1) = time_dim
+
+            iret = define_mode(ncid,.true.)
+
+            ! Add a variable for each conserved quantity
+            do n=1,model%info%conserved_quantity_count
+               iret = new_nc_variable(ncid,'tot_'//model%info%conserved_quantities(n)%name,NF_REAL, &
+                                      1,dims,model%info%conserved_quantities(n)%id)
+               iret = set_attributes(ncid,model%info%conserved_quantities(n)%id,       &
+                                     units='m*'//model%info%conserved_quantities(n)%unit,    &
+                                     long_name='depth-integrated '//model%info%conserved_quantities(n)%longname)
+            end do
+
+            iret = define_mode(ncid,.false.)
+         end if
+
+         ! Integrate conserved quantities over depth
+         total = _ZERO_
+         do ilev=1,nlev
+            total = total + h(ilev)*get_conserved_quantities_bio_0d_generic(model,cc(:,ilev))
+         end do
+
+         do n=1,model%info%conserved_quantity_count
+            iret = store_data(ncid,model%info%conserved_quantities(n)%id,T_SHAPE,1,scalar=total(n))
+         end do
+#endif
+   end select
+
+   end subroutine save_bio_0d
+!EOC
+   
+   
 !-----------------------------------------------------------------------
 !BOP
 !

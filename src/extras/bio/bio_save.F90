@@ -1,4 +1,4 @@
-!$Id: bio_save.F90,v 1.9 2008-07-08 10:08:07 lars Exp $
+!$Id: bio_save.F90,v 1.10 2008-11-11 13:40:33 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -13,6 +13,7 @@
 !
 ! !USES:
    use bio_var
+   use bio_0d,only: save_bio_0d
    use output, only: out_fmt,ts
 #ifdef NETCDF_FMT
    use ncdfout, only: ncid
@@ -45,6 +46,12 @@
       init_saved_vars=.false.
       first=.true.
    end if
+
+   select case (bio_model)
+      case (1000:)
+         call save_bio_0d(first,out_fmt,out_unit,ncid)
+   end select
+
    select case (out_fmt)
       case (ASCII)
          if(first) then

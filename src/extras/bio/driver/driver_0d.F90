@@ -1,4 +1,4 @@
-!$Id: driver_0d.F90,v 1.4 2008-11-06 15:04:32 jorn Exp $
+!$Id: driver_0d.F90,v 1.5 2008-11-11 13:40:33 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -43,14 +43,13 @@
    REALTYPE                  :: latitude,longitude
 
    ! Bio model info
-   integer  :: bio_model, ode_method, nsave = 1
+   integer  :: ode_method, nsave = 1
    logical  :: calculate_par = .true.
    REALTYPE :: cloud = _ZERO_, depth = _ZERO_
-   logical  :: add_environment_to_output = .false.
+   logical  :: add_environment = .false., add_conserved_quantities = .false.
    
-   REALTYPE,allocatable                   :: cc(:,:)
-   type (type_model_info)                 :: modelinfo
-   type (type_variable_info), allocatable :: varinfo(:)
+   REALTYPE,allocatable                   :: cc(:,:),totals(:)
+   type (type_model)                      :: model
    type (type_environment)                :: environment
    character(len=128)                     :: cbuf
 
@@ -83,14 +82,16 @@
 !
 ! !LOCAL VARIABLES:
    character(len=PATH_MAX)   :: env_file,output_file
-   integer                   :: i
+   character(len=64)         :: model_name
+   integer                   :: bio_model,i
 
    namelist /model_setup/ title,dt
    namelist /station/     name,latitude,longitude
    namelist /time/        timefmt,MaxN,start,stop
    namelist /bio/         bio_model,ode_method, &
-                          env_file,calculate_par,cloud,depth, &
-                          output_file,nsave,add_environment_to_output
+                          env_file,calculate_par,cloud,depth
+   namelist /output/      output_file,nsave,add_environment, &
+                          add_conserved_quantities
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -133,22 +134,15 @@
    LEVEL3 trim(env_file)
    
    ! Get info on the selected biogeochemical model.
-   call init_model_info(modelinfo)
-   call init_bio_0d_generic(bio_model,namlst,modelinfo)
+   model_name = get_model_name(bio_model)
+   model = init_bio_0d_generic(bio_model,namlst,'bio_'//trim(model_name)//'.nml')
    
-   ! Initialize biogeochemical variable information with defaults
-   allocate(varinfo(modelinfo%numc))
-   do i=1,modelinfo%numc
-      call init_variable_info(varinfo(i))
-   end do
-
-   ! Get actual variable info from the selected biogeochemical model
-   call get_var_info_bio_0d_generic(bio_model,modelinfo%numc,varinfo)
+   allocate(totals(1:model%info%conserved_quantity_count))
 
    ! Create state variable vector, using the initial values specified by the model.
-   allocate(cc(modelinfo%numc,0:1))
-   do i=1,modelinfo%numc
-      cc(i,1) = varinfo(i)%initial_value
+   allocate(cc(model%info%state_variable_count,0:1))
+   do i=1,model%info%state_variable_count
+      cc(i,1) = model%info%variables(i)%initial_value
    end do
 
    ! Initialize the abiotic environment (this sets all unused variables to a reasonable default)
@@ -164,14 +158,19 @@
    ! Write header to the output file.
    write(out_unit,FMT='(''# '',A)') title
    write(out_unit,FMT='(''# '',A)',ADVANCE='NO') 'time'
-   if (add_environment_to_output) then
+   if (add_environment) then
       write(out_unit,FMT=100,ADVANCE='NO') separator,'par',        'W/m2'
       write(out_unit,FMT=100,ADVANCE='NO') separator,'temperature','degrees C'
       write(out_unit,FMT=100,ADVANCE='NO') separator,'salinity',   'kg/m3'
    end if
-   do i=1,modelinfo%numc
-      write(out_unit,FMT=100,ADVANCE='NO') separator,trim(varinfo(i)%longname),trim(varinfo(i)%unit)
+   do i=1,model%info%state_variable_count
+      write(out_unit,FMT=100,ADVANCE='NO') separator,trim(model%info%variables(i)%longname),trim(model%info%variables(i)%unit)
    end do
+   if (add_conserved_quantities) then
+      do i=1,model%info%conserved_quantity_count
+         write(out_unit,FMT=100,ADVANCE='NO') separator,trim(model%info%conserved_quantities(i)%longname),trim(model%info%conserved_quantities(i)%unit)
+      end do
+   end if
    write(out_unit,*)
 
    LEVEL2 'done.'
@@ -228,7 +227,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call do_bio_0d_generic(bio_model,first,numc,cc(:,1),environment,pp(:,:,1),dd(:,:,1))
+   call do_bio_0d_generic(model,first,cc(:,1),environment,pp(:,:,1),dd(:,:,1))
    
    end subroutine get_rhs
 !EOC
@@ -274,25 +273,31 @@
          ! Calculate photosynthetically active radiation from geographic location, time, cloud cover
          ! par fraction, extinction coefficient, and depth.
          call short_wave_radiation(julianday,secondsofday,longitude,latitude,cloud,swr)
-         extinction = get_bio_extinction_bio_0d_generic(bio_model,modelinfo%numc,cc(:,1))
-         environment%par = modelinfo%par_fraction*swr*exp(environment%z*extinction)
+         extinction = get_bio_extinction_bio_0d_generic(model,cc(:,1))
+         environment%par = model%info%par_fraction*swr*exp(environment%z*extinction)
       end if
 
       ! Integrate one time step
-      call ode_solver(ode_method,modelinfo%numc,1,dt,cc,get_rhs)
+      call ode_solver(ode_method,model%info%state_variable_count,1,dt,cc,get_rhs)
       
       ! Do output
       if (mod(n,nsave).eq.0) then
          call write_time_string(julianday,secondsofday,timestr)
          write (out_unit,FMT='(A)',ADVANCE='NO') timestr
-         if (add_environment_to_output) then
+         if (add_environment) then
             write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,environment%par
             write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,environment%t
             write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,environment%s
          end if
-         do i=1,modelinfo%numc
+         do i=1,model%info%state_variable_count
             write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,cc(i,1)
          end do
+         if (add_conserved_quantities) then
+            totals = get_conserved_quantities_bio_0d_generic(model,cc(:,1))
+            do i=1,model%info%conserved_quantity_count
+               write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,totals(i)
+            end do
+         end if
          write (out_unit,*)
       end if
 
