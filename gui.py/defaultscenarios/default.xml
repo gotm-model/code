@@ -413,9 +413,9 @@
 	<bio_sed>
 		<bio_sed_nml>
 			<numc>1</numc>
-      <ntype>1</ntype>
-      <nprop>1</nprop>
-      <C_initial>1.0</C_initial>
+			<ntype>1</ntype>
+			<nprop>1</nprop>
+			<C_initial>1.0</C_initial>
 			<w_C>-86.4</w_C>
 		</bio_sed_nml>
 	</bio_sed>
