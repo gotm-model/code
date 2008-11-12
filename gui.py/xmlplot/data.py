@@ -845,137 +845,181 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         def hasReversedDimensions(self):
             return True
 
-        def getSlice(self,bounds):
-          nc = self.store.getcdf()
-            
-          ncvar = nc.variables[self.ncvarname]
-          dimnames = self.getDimensions_raw()
-          assert len(bounds)==len(dimnames), 'Number of specified bounds (%i) does not match number of dimensions (%i).' % (len(bounds),len(dimnames))
-          rawdims = list(ncvar.dimensions)
+        def translateSliceSpecification(self,bounds):
+          dimnames = list(self.getDimensions_raw())
+          shape = self.getShape()
+
+          # Process Ellipsis (if present) and check whether the number of boundaries matches the number of dimensions.
+          bounds = common.processEllipsis(bounds,len(dimnames))
+          assert len(bounds)==len(dimnames), 'Number of boundaries (%i) does not match number of dimensions (%i).' % (len(bounds),len(dimnames))
                     
-          # Get initial slices, taking into account specified integer slices and fixed
-          # coordinates, but not float-based slices.
-          boundindices,isfloatslice = [],[]
-          for idim,dimname in enumerate(dimnames):
-            assert isinstance(bounds[idim],int) or bounds[idim].step==None,'Step argument is not yet supported.'
-            isfloatslice.append(False)
-            if isinstance(bounds[idim],int):
-                assert bounds[idim]>=0,                'Slice index %i lies below lower boundary of dimension %s (0).' % (bounds[idim],dimname)
-                assert bounds[idim]<ncvar.shape[idim], 'Slice index %i exceeds upper boundary of dimension %s (%i).' % (bounds[idim],dimname,ncvar.shape[idim]-1)
-                boundindices.append(bounds[idim])
-            elif not (isinstance(bounds[idim].start,(int,types.NoneType)) and isinstance(bounds[idim].stop,(int,types.NoneType))):
-                # Non-integer boundaries (e.g., floating point numbers).
-                # If possible, we use them below, and override with the full range imposed here.
-                boundindices.append(slice(0,ncvar.shape[idim]))
-                isfloatslice[-1] = True
+          # Convert bounds to list of slice objects.
+          # Non-integer bounds are initially ignored; after retrieving the coordinate arrays, these are filled in.
+          boundindices,floatslices,floatindices = [],[],[]
+          for idim,bound in enumerate(bounds):
+            assert not (isinstance(bound,slice) and bound.step!=None),'Step argument is not yet supported.'
+            if isinstance(bound,int):
+                # Integer value provided as index
+                assert bound>=0,          'Slice index %i lies below lower boundary of dimension %s (0).' % (bound,dimnames[idim])
+                assert bound<shape[idim], 'Slice index %i exceeds upper boundary of dimension %s (%i).' % (bound,dimnames[idim],shape[idim]-1)
+                boundindices.append(bound)
+            elif not isinstance(bound,slice):
+                # Floating point value provided as index
+                boundindices.append(slice(0,shape[idim]))
+                floatindices.append(idim)
+            elif not (isinstance(bound.start,(int,types.NoneType)) and isinstance(bound.stop,(int,types.NoneType))):
+                # Non-integer slice specification (e.g., using floating point numbers or datetime objects).
+                boundindices.append(slice(0,shape[idim]))
+                floatslices.append(idim)
             else:
-                start,stop,step = bounds[idim].indices(ncvar.shape[idim])
+                # Normal (integer-based) slice specification
+                start,stop,step = bound.indices(shape[idim])
                 boundindices.append(slice(start,stop))
-                
+
           # Translate slices based on non-integer values (e.g. floating point values, dates)
           # to slices based on integers.
-          for idim,dimname in enumerate(dimnames):
-            if not isfloatslice[idim]: continue
-            (coords,coords_stag) = self.store.getCoordinates(dimname)
-            if coords==None: return None
-            coorddims = list(self.store.getCoordinateDimensions(dimname))
-            istart,istop = common.getboundindices(coords_stag,coorddims.index(rawdims[idim]),bounds[idim].start,bounds[idim].stop)
+          for idim in floatslices:
+            dimname = dimnames[idim]
+            
+            # Get the entire coordinate array
+            coordvar = self.store.getVariable_raw(dimname)
+            coorddims = list(coordvar.getDimensions())
+            coords = coordvar.getSlice([boundindices[dimnames.index(cd)] for cd in coorddims], dataonly=True, cache=True)
+            istart,istop = common.getboundindices(coords,coorddims.index(dimname),bounds[idim].start,bounds[idim].stop)
             boundindices[idim] = slice(istart,istop)
 
-          # Create Variable.Slice object to hold coordinates and data.
-          newdimnames = [dimnames[idim] for idim in range(len(dimnames)) if isinstance(bounds[idim],slice)]
-          varslice = self.Slice(newdimnames)
+          # Translate indices based on non-integer values (e.g. floating point values, dates)
+          # to integer indices.
+          floatdimnames = [dimnames[idim] for idim in floatindices]
+          newshape = [shape[idim] for idim in floatindices]
+          summeddistance = numpy.zeros(newshape,dtype=numpy.float)
+          for idim in floatindices:
+            dimname = dimnames[idim]
+            coordvar = self.store.getVariable_raw(dimname)
+            coorddims = list(coordvar.getDimensions())
+            for cd in coorddims:
+                assert cd in dimnames,'Coordinate %s depends on %s, but the variable %s itself does not depend on %s.' % (dimname,cd,self.getName(),cd)
+                assert cd in floatdimnames,'A float index is provided for dimension %s, but not for dimension %s on which %s depends.' % (dimname,cd,dimname)
+            coords = coordvar.getSlice([boundindices[dimnames.index(cd)] for cd in coorddims], dataonly=True, cache=True)
+            coords = common.broadcastSelective(coords,coorddims,newshape,floatdimnames)
+            summeddistance += numpy.abs(coords-bounds[idim])
+          indices = numpy.unravel_index(summeddistance.argmin(), newshape)
+          for idim,index in zip(floatindices,indices): boundindices[idim] = index
+          
+          return tuple(boundindices)
+          
+        def getSlice(self,bounds,dataonly=False,cache=False):
+          # Translate the slice specification so only slice objects an integer indices remain.
+          bounds = self.translateSliceSpecification(bounds)
+        
+          # Get NetCDF file and variable objects.
+          nc = self.store.getcdf()
+          ncvar = nc.variables[self.ncvarname]
                 
           # Retrieve the data values
-          try:
-            dat = numpy.asarray(ncvar[tuple(boundindices)])
-          except Exception, e:
-            raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.varname,str(e)))
-
-          # Retrieve coordinate values
-          inewdim = 0
-          for idim,dimname in enumerate(dimnames):
-            # If we take a slice through this dimension, it will not be included in the output.
-            if isinstance(bounds[idim],int): continue
-
-            # Get coordinate values for the current dimension over entire domain            
-            (fullcoords,fullcoords_stag) = self.store.getCoordinates(dimname)
-            if fullcoords==None: return None
-
-            # Get the actual dimensions (without re-assignments) of the coordinate
-            # variable and the actual variable.
-            coorddims = list(self.store.getCoordinateDimensions(dimname))
-            
-            # Get coordinate values for selected domain only.
-            coordslices = [boundindices[rawdims.index(cd)] for cd in coorddims]
-            coordslices_stag = []
-            for s in coordslices:
-                # If the slice is an integer, the dimension will be taken out;
-                # then just use the same single index for the staggered coordinate
-                # so it is taken out as well.
-                if not isinstance(s,int): s = slice(s.start,s.stop+1)
-                coordslices_stag.append(s)
-            coords      = fullcoords     [tuple(coordslices)     ]
-            coords_stag = fullcoords_stag[tuple(coordslices_stag)]
-            
-            # Allocate arrays for coordinates with all data dimensions
-            varslice.coords     [inewdim] = numpy.empty(dat.shape,               dtype=coords.dtype)
-            varslice.coords_stag[inewdim] = numpy.empty([l+1 for l in dat.shape],dtype=coords.dtype)
-            
-            # Insert data dimensions where they are lacking in coordinate
-            newshape,newshape_stag = [],[]
-            for irawdim,rawdimname in enumerate(rawdims):
-                # If we take a slice through this dimension, it will not be included in the output.
-                if isinstance(bounds[irawdim],int): continue
-
-                if rawdimname in coorddims:
-                    # This dimension is also used by the coordinate; use its current length.
-                    l = dat.shape[len(newshape)]
-                    newshape.append(l)
-                    newshape_stag.append(l+1)
+          if cache:
+              # Take all data from cache if present, otherwise read all data from NetCDF and store it in cache first.
+              if self.ncvarname not in self.store.cachedcoords:
+                  self.store.cachedcoords[self.ncvarname] = ncvar.getValue()
+              dat = self.store.cachedcoords[self.ncvarname]
+              if bounds: dat = dat[bounds]
+          else:
+              # Read the data slab directly from the NetCDF file.
+              try:
+                if bounds:
+                    dat = numpy.asarray(ncvar[bounds])
                 else:
-                    # This dimension is not used by the coordinate; use a length of 1,
-                    # which will be broadcasted by NumPy to the length needed.
-                    newshape.append(1)
-                    newshape_stag.append(1)
-
-            # Broadcast coordinate arrays to match size of data array.
-            coords.shape = newshape
-            coords_stag.shape = newshape_stag
-                            
-            # Assign coordinate values
-            varslice.coords     [inewdim][:] = coords
-            varslice.coords_stag[inewdim][:] = coords_stag
-            
-            inewdim += 1
+                    dat = numpy.asarray(ncvar.getValue())
+              except Exception, e:
+                raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.getName(),str(e)))
 
           # Start without mask, and define function for creating/updating mask
           mask = None
           def addmask(mask,newmask):
-            if mask==None:
-                mask = numpy.empty(dat.shape,dtype=numpy.bool)
-                mask[:] = False
-            return numpy.logical_or(mask,newmask)
-          
+              if mask==None:
+                  mask = numpy.empty(dat.shape,dtype=numpy.bool)
+                  mask.fill(False)
+              return numpy.logical_or(mask,newmask)
+
           # Process the various COARDS/CF variable attributes for missing data.
           if self.store.maskoutsiderange:
-              if hasattr(ncvar,'valid_min'):   mask = addmask(mask,dat<ncvar.valid_min)
-              if hasattr(ncvar,'valid_max'):   mask = addmask(mask,dat>ncvar.valid_max)
+              if hasattr(ncvar,'valid_min'): mask = addmask(mask,dat<ncvar.valid_min)
+              if hasattr(ncvar,'valid_max'): mask = addmask(mask,dat>ncvar.valid_max)
               if hasattr(ncvar,'valid_range'):
-                assert len(ncvar.valid_range)==2,'NetCDF attribute "valid_range" must consist of two values, but contains %i.' % len(ncvar.valid_range)
-                minv,maxv = ncvar.valid_range
-                mask = addmask(mask,numpy.logical_or(dat<minv,dat>maxv))
-          if hasattr(ncvar,'_FillValue'):    mask = addmask(mask,dat==ncvar._FillValue)
-          if hasattr(ncvar,'missing_value'): mask = addmask(mask,dat==ncvar.missing_value)
+                  assert len(ncvar.valid_range)==2,'NetCDF attribute "valid_range" must consist of two values, but contains %i.' % len(ncvar.valid_range)
+                  minv,maxv = ncvar.valid_range
+                  mask = addmask(mask,numpy.logical_or(dat<minv,dat>maxv))
+          if hasattr(ncvar,'_FillValue'):    mask = addmask(mask,dat==float(ncvar._FillValue))
+          if hasattr(ncvar,'missing_value'): mask = addmask(mask,dat==float(ncvar.missing_value))
 
           # Apply the combined mask (if any)
           if mask!=None: dat = numpy.ma.masked_where(mask,dat,copy=False)
+
+          # Apply transformation to data based on nc variable attributes.
+          if hasattr(ncvar,'scale_factor'): dat *= float(ncvar.scale_factor)
+          if hasattr(ncvar,'add_offset'):   dat += float(ncvar.add_offset)
+          
+          # If the unit is time, convert to internal time unit
+          if self.store.isTimeDimension(self.ncvarname):
+              timeunit,timeref = self.store.getTimeReference(self.ncvarname)
+              timeref = common.date2num(timeref)
+              dat = timeref+timeunit*numpy.asarray(dat,numpy.float64)
+
+          # If the caller wants the data values only, we are done: return the value array.
+          if dataonly: return dat
+
+          # Get dimension names
+          dimnames = list(self.getDimensions_raw())
+
+          # Create Variable.Slice object to hold coordinates and data.
+          newdimnames = [d for d,b in zip(dimnames,bounds) if isinstance(b,slice)]
+          varslice = self.Slice(newdimnames)
+
+          # Retrieve coordinate values
+          inewdim = 0
+          for idim,dimname in enumerate(dimnames):
+            # If we take a single index for this dimension, it will not be included in the output.
+            if not isinstance(bounds[idim],slice): continue
+
+            # Get the coordinate variable          
+            coordvar = self.store.getVariable_raw(dimname)
             
-          # Apply transformation if needed
-          if hasattr(ncvar,'scale_factor'):
-            dat *= ncvar.scale_factor
-          if hasattr(ncvar,'add_offset'):
-            dat += ncvar.add_offset
+            if coordvar==None:
+                # No coordinate variable available: use indices
+                coorddims = [dimname]
+                coords = numpy.arange(ncvar.shape[idim],dtype=numpy.float)[tuple(bounds[idim])]
+            else:
+                # Coordinate variable present: use it.
+                coorddims = list(coordvar.getDimensions())
+
+                # Debug check: see if all coordinate dimensions are also used by the variable.
+                for cd in coorddims:
+                    assert cd in dimnames, 'Coordinate dimension %s is not used by this variable (it uses %s).' % (cd,', '.join(dimnames))
+
+                # Get coordinate values
+                coordslice = [bounds[dimnames.index(cd)] for cd in coorddims]
+                coords = coordvar.getSlice(coordslice, dataonly=True, cache=True)
+
+            # Get staggered coordinates over entire domain
+            if coordvar!=None and dimname in self.store.staggeredcoordinates:
+                stagcoordvar = self.store.getVariable_raw(self.store.staggeredcoordinates[dimname])
+                assert stagcoordvar!=None, 'Staggered coordinate for %s registered in store as %s, but not present as variable.' % (dimname,self.store.staggeredcoordinates[dimname])
+                for i in range(len(coordslice)):
+                    if isinstance(coordslice[i],slice): coordslice[i] = slice(coordslice[i].start,coordslice[i].stop+1)
+                coords_stag = stagcoordvar.getSlice(coordslice, dataonly=True, cache=True)
+            else:
+                coords_stag = common.stagger(coords)
+            
+            # Insert data dimensions where they are lacking in coordinate
+            newcoorddims = [cd for cd in coorddims if isinstance(bounds[dimnames.index(cd)],slice)]
+            coords      = common.broadcastSelective(coords,     newcoorddims,dat.shape,               newdimnames)
+            coords_stag = common.broadcastSelective(coords_stag,newcoorddims,[l+1 for l in dat.shape],newdimnames)
+
+            # Assign coordinate values
+            varslice.coords     [inewdim] = coords
+            varslice.coords_stag[inewdim] = coords_stag
+            
+            inewdim += 1
 
           varslice.data = dat
                   
@@ -990,6 +1034,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
 
         self.cachedcoords = {}
         self.reassigneddims = {}
+        self.staggeredcoordinates = {}
         
         # Whether to mask values outside the range specified by valid_min,valid_max,valid_range
         # NetCDF variable attributes (as specified by CF convention)
@@ -999,7 +1044,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 
     def __str__(self):
         return self.datafile
-        
+
     def getDimensionInfo_raw(self,dimname):
         res = common.VariableStore.getDimensionInfo_raw(self,dimname)
         if dimname not in self.nc.variables: return res
@@ -1088,44 +1133,8 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         ncdims.sort(cmp=cmpdims)
         return ncdims
 
-    def getCoordinates(self,dimname):
-        if dimname not in self.cachedcoords: self.calculateCoordinates(dimname)
-        return (self.cachedcoords[dimname],self.cachedcoords[dimname+'_stag'])
-        
-    def getCoordinateDimensions(self,dimname):
-        ncvarname = str(dimname)
-        ncvar = self.getcdf().variables
-        if dimname not in ncvar: return (dimname,)
-        return ncvar[dimname].dimensions
-
     def getDefaultCoordinateDelta(self,dimname,coord):
         return 1.
-
-    def calculateCoordinates(self,dimname):
-        nc = self.getcdf()
-        
-        if dimname not in nc.variables:
-            assert dimname in nc.dimensions, '"%s" is not a dimension or variable in the NetCDF file.' % dimname
-            coords = numpy.arange(nc.dimensions[dimname],dtype=numpy.float)
-        else:
-            coords = numpy.asarray(nc.variables[dimname][:])
-        
-        # If the dimension is time, convert to internal time unit
-        istimedim = self.isTimeDimension(dimname)
-        if istimedim:
-            timeunit,timeref = self.getTimeReference(dimname)
-            timeref = common.date2num(timeref)
-            coords = timeref+timeunit*numpy.asarray(coords,numpy.float64)
-
-        if 0 in coords.shape:
-            # One or more of the coordinate dimensions are of zero length: the data are not valid.
-            coords = None
-            coords_stag = None
-        else:
-            coords_stag = common.stagger(coords)
-
-        self.cachedcoords[dimname]         = coords
-        self.cachedcoords[dimname+'_stag'] = coords_stag
         
     class ReferenceTimeParseError(Exception):
         def __init__(self,error):
@@ -1222,67 +1231,140 @@ class NetCDFStore_GOTM(NetCDFStore):
         match = False
         nc = getNetCDFFile(path)
         ncvars,ncdims = nc.variables,nc.dimensions
+        
+        # Test for GETM with curvilinear coordinates
         if ('xic'  in ncdims and 'etac' in ncdims and
             'lonc' in ncvars and 'latc' in ncvars): match = True
+
+        # Test for GETM with cartesian coordinates
+        if ('xc'  in ncdims and 'yc' in ncdims and
+            'lonc' in ncvars and 'latc' in ncvars): match = True
+
+        # Test for GOTM with variable layer heights and sea surface elevation
         if ('z' in ncdims and 'z1' in ncdims and
             'h' in ncvars and 'zeta' in ncvars): match = True
+
+        # Test for GETM with variable heights and sea surface elevation
+        if ('level' in ncdims and
+            'h' in ncvars and 'elev' in ncvars): match = True
+
         nc.close()
         return match
 
     def __init__(self,path=None,*args,**kwargs):
+        self.xname,self.yname,self.hname,self.elevname = 'lon','lat','h','zeta'
         NetCDFStore.__init__(self,path,*args,**kwargs)
+        
+        # Link centered and staggered coordinates
+        self.staggeredcoordinates['z' ] = 'z_stag'
+        self.staggeredcoordinates['z1'] = 'z1_stag'
 
     def autoReassignCoordinates(self):
         NetCDFStore.autoReassignCoordinates(self)
         
-        # Re-assign x,y coordinate dimensions if using GETM with curvilinear coordinates
+        # Get reference to NetCDF file and its variables and dimensions.
         nc = self.getcdf()
         ncvars,ncdims = nc.variables,nc.dimensions
+
+        # Re-assign x,y coordinate dimensions if using GETM with curvilinear coordinates
         if ('xic'  in ncdims and 'etac' in ncdims and
             'lonc' in ncvars and 'latc' in ncvars):
             self.reassigneddims['xic' ] = 'lonc'
             self.reassigneddims['etac'] = 'latc'
+            self.xname,self.yname = 'xic','etac'
+
+        # Re-assign x,y coordinate dimensions if using GETM with cartesian coordinates
+        if ('xc'   in ncdims and 'yc'   in ncdims and
+            'lonc' in ncvars and 'latc' in ncvars):
+            self.reassigneddims['xc' ] = 'lonc'
+            self.reassigneddims['yc'] = 'latc'
+            self.xname,self.yname = 'xc','yc'
+
+        # Re-assign depth coordinate dimension if using GETM
+        if ('level' in ncdims and 'h' in ncvars and 'elev' in ncvars):
+            # GETM: "level" reassigned to "z"
+            self.reassigneddims['level' ] = 'z'
+            self.hname,self.elevname = 'h','elev'
                 
-    def getCoordinateDimensions(self,dimname):
-        if dimname!='z' and dimname!='z1':
-            return NetCDFStore.getCoordinateDimensions(self,dimname)
-        return ('time',dimname,'lat','lon')
-            
-    def calculateCoordinates(self,dimname):
-        if dimname!='z' and dimname!='z1':
-            return NetCDFStore.calculateCoordinates(self,dimname)
-    
-        nc = self.getcdf()
+    def getVariable_raw(self,varname):
+        if varname not in ('z','z1','z_stag','z1_stag'):
+            return NetCDFStore.getVariable_raw(self,varname)
 
-        # Get layer heights
-        h = numpy.asarray(nc.variables['h'][:,:,...])
+        class DepthVariable(NetCDFStore.NetCDFVariable):
+            def __init__(self,store,ncvarname,dimname):
+                NetCDFStore.NetCDFVariable.__init__(self,store,ncvarname)
+                self.dimname = dimname
         
-        # Get depths of interfaces
-        z_stag = h.cumsum(axis=1)
-        sliceshape = list(z_stag.shape)
-        sliceshape[1] = 1
-        z_stag = numpy.concatenate((numpy.zeros(sliceshape,z_stag.dtype),z_stag),axis=1)
-        bottomdepth = z_stag[0,-1,...]-nc.variables['zeta'][0,...]
-        z_stag -= bottomdepth
+            def getName_raw(self):
+                return self.dimname
 
-        # Get depths of layer centers
-        z = z_stag[:,1:z_stag.shape[1],...]-0.5*h[:,:,...]
-        
-        # The actual interface coordinate z1 lacks the bottom interface
-        z1 = z_stag[:,1:,...]
-        
-        # Use the actual top and bottom of the column as boundary interfaces for the
-        # grid of the interface coordinate.
-        z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),1),z[:,1:,...],numpy.take(z_stag,(-1,),1)),1)
-        
-        # Use normal staggering for the time, longitude and latitude dimension.
-        z_stag  = common.stagger(z_stag, (0,2,3),defaultdeltafunction=self.getDefaultCoordinateDelta,dimnames=self.getCoordinateDimensions(dimname))
-        z1_stag = common.stagger(z1_stag,(0,2,3),defaultdeltafunction=self.getDefaultCoordinateDelta,dimnames=self.getCoordinateDimensions(dimname))
+            def getLongName(self):
+                return 'depth'
 
-        self.cachedcoords['z']       = z
-        self.cachedcoords['z1']      = z1
-        self.cachedcoords['z_stag']  = z_stag
-        self.cachedcoords['z1_stag'] = z1_stag
+            def getUnit(self):
+                nc = self.store.getcdf()
+                ncvar = nc.variables[self.store.hname]
+                if not hasattr(ncvar,'units'): return ''
+                return common.convertUnitToUnicode(ncvar.units)
+
+            def getDimensions_raw(self):
+                return [self.store.reassigneddims.get(d,d) for d in ('time',self.dimname,self.store.yname,self.store.xname)]
+                
+            def getShape(self):
+                return self.getSlice((Ellipsis,),dataonly=True).shape
+                
+            def getSlice(self,bounds,dataonly=False,cache=True):
+                # Translate the slice specification so only slice objects an integer indices remain.
+                if bounds!=(Ellipsis,): bounds = self.translateSliceSpecification(bounds)
+
+                # First try cache, if allowed.
+                if cache and self.dimname in self.store.cachedcoords:
+                    return self.store.cachedcoords[self.dimname][bounds]
+
+                # Get layer heights (dimension 0: time, dimension 1: depth, dimension 2: y coordinate, dimension 3: x coordinate)
+                h = self.store[self.store.hname].getSlice((Ellipsis,),dataonly=True)
+                
+                # Get initial elevation
+                elev = self.store[self.store.elevname].getSlice((0,Ellipsis,),dataonly=True)
+                
+                # Fill masked values (we do not want coordinate arrays with masked values)
+                # This should not have any effect, as the value arrays should also be masked at
+                # these locations.
+                if hasattr(h,   'filled'): h = h.filled(0.)
+                if hasattr(elev,'filled'): elev = elev.filled(0.)
+                
+                # Get depths of interfaces
+                z_stag = h.cumsum(axis=1)
+                sliceshape = list(z_stag.shape)
+                sliceshape[1] = 1
+                z_stag = numpy.concatenate((numpy.zeros(sliceshape,z_stag.dtype),z_stag),axis=1)
+                bottomdepth = z_stag[0,-1,...]-elev
+                z_stag -= bottomdepth
+
+                # Get depths of layer centers
+                z = z_stag[:,1:z_stag.shape[1],...]-0.5*h[:,:,...]
+                
+                # The actual interface coordinate z1 lacks the bottom interface
+                z1 = z_stag[:,1:,...]
+                
+                # Use the actual top and bottom of the column as boundary interfaces for the
+                # grid of the interface coordinate.
+                z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),1),z[:,1:,...],numpy.take(z_stag,(-1,),1)),1)
+                
+                # Use normal staggering for the time, longitude and latitude dimension.
+                z_stag  = common.stagger(z_stag, (0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+                z1_stag = common.stagger(z1_stag,(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+
+                # Store all coordinates in cache
+                if cache:
+                    self.store.cachedcoords['z']       = z
+                    self.store.cachedcoords['z1']      = z1
+                    self.store.cachedcoords['z_stag']  = z_stag
+                    self.store.cachedcoords['z1_stag'] = z1_stag
+                
+                return self.store.cachedcoords[self.dimname][bounds]
+
+        return DepthVariable(self,'z',varname)
 
     def getDefaultCoordinateDelta(self,dimname,coords):
         # Only operate on 1D coordinates

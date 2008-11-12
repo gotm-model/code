@@ -122,6 +122,8 @@ class LazyExpression:
 
     @staticmethod
     def adjustShape(shape,slic):
+        slic = common.processEllipsis(slic,len(shape))
+        assert len(shape)==len(slic), 'Number of slices (%i) does not match number of dimensions (%i).' % (len(slic),len(shape))
         baseshape = list(shape)
         for i in range(len(baseshape)-1,-1,-1):
             if isinstance(slic[i],(int,float)):
@@ -140,6 +142,7 @@ class LazyExpression:
         
     @staticmethod
     def adjustDimensions(dimnames,slic):
+        slic = common.processEllipsis(slic,len(dimnames))
         assert len(dimnames)==len(slic), 'Number of slices (%i) does not match number of dimensions (%i).' % (len(slic),len(dimnames))
         dimnames = list(dimnames)
         for i in range(len(dimnames)-1,-1,-1):
@@ -151,6 +154,10 @@ class LazyExpression:
         """This function takes a single slice object and converts it to a Python slice
         specification string.
         """
+        if slic is Ellipsis:
+            return '...'
+        elif not isinstance(slic,slice):
+            return str(slic)
         result = ''
         start,stop,step = slic.start,slic.stop,slic.step
         if start!=None: result += LazyExpression.argument2text(start)
@@ -164,12 +171,7 @@ class LazyExpression:
         """This function takes a slice object and converts it to a Python slice
         specification string.
         """
-        slicestrings = []
-        for slic in slices:
-            if isinstance(slic,slice):
-                slicestrings.append(LazyExpression.slice2string(slic))
-            else:
-                slicestrings.append(str(slic))
+        slicestrings = [LazyExpression.slice2string(slic) for slic in slices]
         return '[%s]' % ','.join(slicestrings)
 
     @staticmethod
@@ -179,11 +181,8 @@ class LazyExpression:
         """
         slicestrings = []
         for dimname,slic in zip(dimnames,slices):
-            if isinstance(slic,slice):
-                res = LazyExpression.slice2string(slic)
-            else:
-                res = str(slic)
-            if res!=':': slicestrings.append('%s=%s' % (dimname,res))
+            res = LazyExpression.slice2string(slic)
+            if res!=':' and res!='...': slicestrings.append('%s=%s' % (dimname,res))
         return '[%s]' % ','.join(slicestrings)
 
     @staticmethod

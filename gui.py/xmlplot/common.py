@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.14 2008-10-31 09:54:50 jorn Exp $
+#$Id: common.py,v 1.15 2008-11-12 14:37:14 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -250,6 +250,11 @@ def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
     return 0.5*(coords_stag+coords_stag2)
 
 def getboundindices(data,axis,minval=None,maxval=None):
+    """Returns the indices for the specified axis that envelope (i.e., lie just outside)
+    the specfied value range.
+    Note that as usual in Python slices, the last index is 1 higher than the index of the
+    last value we want actually included.
+    """
     if isinstance(minval,datetime.datetime): minval = date2num(minval)
     if isinstance(maxval,datetime.datetime): maxval = date2num(maxval)
     if data.ndim>1:
@@ -260,9 +265,39 @@ def getboundindices(data,axis,minval=None,maxval=None):
     else:
         n,uc,lc = len(data),data,data
     imin,imax = 0,n
-    if minval!=None: imin = min(n-1,max(0,lc.searchsorted(minval)))
-    if maxval!=None: imax = max(1  ,min(n,uc.searchsorted(maxval)))
+    if minval!=None: imin = min(n-1,max(0,lc.searchsorted(minval)-1))
+    if maxval!=None: imax = max(1  ,min(n,uc.searchsorted(maxval)+1))
     return imin,imax
+    
+def broadcastSelective(source,sourcedims,targetshape,targetdims):
+    assert len(targetshape)==len(targetdims), 'Target dimensions and length of target shape mismatch.'
+    assert source.ndim==len(sourcedims), 'Number of source dimensions (%i) and source shape (%i) mismatch.' % (len(sourcedims),source.ndim)
+    assert len(sourcedims) <=len(targetdims), 'The source array has more dimensions then the target.'
+    newshape = []
+    for itargetdim,dimname in enumerate(targetdims):
+        if dimname in sourcedims:
+            # This dimension is also used by the source; use its current length.
+            l = targetshape[itargetdim]
+        else:
+            # This dimension is not used by the source; use a length of 1,
+            # which will be broadcasted by NumPy to the length needed.
+            l = 1
+        newshape.append(l)
+    source.shape = newshape
+
+    # Create array with the desired shape, and let numpy broadcast the array now that we have inserted
+    # dimensions with length 1 at the right places.
+    res = numpy.empty(targetshape,dtype=source.dtype)
+    res[:] = source
+    return res
+
+def processEllipsis(slics,ndims):
+    newslics = list(slics)
+    for i in range(len(slics)):
+        if slics[i] is Ellipsis:
+            del newslics[i]
+            for j in range(ndims-len(newslics)): newslics.insert(i,slice(None))
+    return newslics
 
 class VariableStore(UserDict.DictMixin):
     """Abstract base class for objects containing one or more variables that
