@@ -369,6 +369,9 @@ class Figure(xmlstore.util.referencedobject):
         self.dirty = False
         self.haschanged = False
         
+        # Whether to automatically squeeze out singleton dimensions in the data to plot.
+        self.autosqueeze = True
+        
         self.callbacks = {'completeStateChange':[]}
 
     def __getitem__(self,key):
@@ -669,7 +672,7 @@ class Figure(xmlstore.util.referencedobject):
             for i in range(len(varslices)):
                 # Eliminate singleton dimensions (singleton dimension: dimension with length one)
                 # Store singleton dimensions as fixed extra coordinates.
-                varslices[i] = varslices[i].squeeze()
+                if self.autosqueeze: varslices[i] = varslices[i].squeeze()
                 
                 # Mask infinite/nan values, if any - only do this if the array is not masked
                 # already, because it seems isfinite is not supported on masked arrays.
