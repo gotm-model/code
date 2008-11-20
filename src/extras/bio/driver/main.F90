@@ -1,9 +1,9 @@
-!$Id: main.F90,v 1.2 2008-11-05 13:12:49 jorn Exp $
+!$Id: main.F90,v 1.3 2008-11-20 10:57:18 jorn Exp $
 #include<cppdefs.h>
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: 0D shell based on GOTM --- the main program  \label{sec:main}
+! !ROUTINE: 0D biogeochemical driver --- the main program  \label{sec:main}
 !
 ! !INTERFACE:
    program main
@@ -33,7 +33,7 @@
 #endif
    call Date_And_Time(datestr,timestr)
    STDERR LINE
-   STDERR '0D shell based on GOTM ver. ',RELEASE,': Started on  ',datestr,' ',timestr
+   STDERR '0D biogeochemical driver based on GOTM ver. ',RELEASE,': Started on  ',datestr,' ',timestr
    STDERR LINE
 
    call init_run()
@@ -45,7 +45,7 @@
 #endif
    call Date_And_Time(datestr,timestr)
    STDERR LINE
-   STDERR '0D shell based on GOTM ver. ',RELEASE,': Finished on ',datestr,' ',timestr
+   STDERR '0D biogeochemical driver based on GOTM ver. ',RELEASE,': Finished on ',datestr,' ',timestr
 #ifdef FORTRAN95
    STDERR 'CPU-time was in loop:  ',t2-t1,' seconds'
    STDERR 'Sim-time/CPU-time:     ',simtime/(t2-t1)

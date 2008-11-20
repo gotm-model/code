@@ -1,9 +1,9 @@
-!$Id: driver_0d.F90,v 1.5 2008-11-11 13:40:33 jorn Exp $
+!$Id: driver_0d.F90,v 1.6 2008-11-20 10:57:18 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: 0D independent driver for GOTM biogeochemical modules
+! !MODULE: 0D independent biogeochemical driver based on GOTM
 !
 ! !INTERFACE:
    module driver_0d
@@ -39,18 +39,17 @@
    character(len=80)         :: title
    REALTYPE                  :: dt
 !  station description
-   character(len=80)         :: name
    REALTYPE                  :: latitude,longitude
 
    ! Bio model info
    integer  :: ode_method, nsave = 1
-   logical  :: calculate_par = .true.
-   REALTYPE :: cloud = _ZERO_, depth = _ZERO_
-   logical  :: add_environment = .false., add_conserved_quantities = .false.
+   integer  :: swr_method = 0
+   REALTYPE :: cloud = _ZERO_, depth = _ZERO_, par_fraction = _ONE_, par_background_extinction = _ZERO_
+   logical  :: apply_self_shading = .true., add_environment = .false., add_conserved_quantities = .false.
    
    REALTYPE,allocatable                   :: cc(:,:),totals(:)
    type (type_model)                      :: model
-   type (type_environment)                :: environment
+   type (type_environment)                :: env
    character(len=128)                     :: cbuf
 
 !
@@ -85,11 +84,10 @@
    character(len=64)         :: model_name
    integer                   :: bio_model,i
 
-   namelist /model_setup/ title,dt
-   namelist /station/     name,latitude,longitude
-   namelist /time/        timefmt,MaxN,start,stop
-   namelist /bio/         bio_model,ode_method, &
-                          env_file,calculate_par,cloud,depth
+   namelist /model_setup/ title,bio_model,start,stop,dt,ode_method
+   namelist /environment/ env_file,swr_method, &
+                          latitude,longitude,cloud,par_fraction, &
+                          depth,par_background_extinction,apply_self_shading
    namelist /output/      output_file,nsave,add_environment, &
                           add_conserved_quantities
 !
@@ -104,23 +102,24 @@
 
    ! Read all namelists
    read(namlst,nml=model_setup,err=91)
-   read(namlst,nml=station,err=92)
-   read(namlst,nml=time,err=93)
-   read(namlst,nml=bio,err=97)
-
+   read(namlst,nml=environment,err=92)
+   read(namlst,nml=output     ,err=93)
+   
    ! Close the namelist file.
    close (namlst)
 
    LEVEL2 'done.'
 
+   ! Configure the time module to use actual start and stop dates.
+   timefmt = 2
+
    ! Transfer the time step to the time module.
-   timestep   = dt
+   timestep = dt
 
    ! Write information for this run to the console.
    LEVEL2 trim(title)
-   LEVEL2 'The station ',trim(name),' is situated at (lat,long) ',      &
+   LEVEL2 'The simulated location is situated at (lat,long) ',      &
            latitude,longitude
-   LEVEL2 trim(name)
 
    LEVEL2 'initializing modules....'
 
@@ -146,8 +145,8 @@
    end do
 
    ! Initialize the abiotic environment (this sets all unused variables to a reasonable default)
-   call init_environment(environment)
-   environment%z = -depth
+   call init_environment(env)
+   env%z = -depth
 
    ! Open the output file.
    open(out_unit,file=output_file,action='write', &
@@ -159,9 +158,9 @@
    write(out_unit,FMT='(''# '',A)') title
    write(out_unit,FMT='(''# '',A)',ADVANCE='NO') 'time'
    if (add_environment) then
-      write(out_unit,FMT=100,ADVANCE='NO') separator,'par',        'W/m2'
-      write(out_unit,FMT=100,ADVANCE='NO') separator,'temperature','degrees C'
-      write(out_unit,FMT=100,ADVANCE='NO') separator,'salinity',   'kg/m3'
+      write(out_unit,FMT=100,ADVANCE='NO') separator,'photosynthetically active radiation','W/m2'
+      write(out_unit,FMT=100,ADVANCE='NO') separator,'temperature',                        'degrees C'
+      write(out_unit,FMT=100,ADVANCE='NO') separator,'salinity',                           'kg/m3'
    end if
    do i=1,model%info%state_variable_count
       write(out_unit,FMT=100,ADVANCE='NO') separator,trim(model%info%variables(i)%longname),trim(model%info%variables(i)%unit)
@@ -182,13 +181,9 @@
    stop 'init_run0d'
 91 FATAL 'I could not read the "model_setup" namelist'
    stop 'init_run0d'
-92 FATAL 'I could not read the "station" namelist'
+92 FATAL 'I could not read the "environment" namelist'
    stop 'init_run0d'
-93 FATAL 'I could not read the "time" namelist'
-   stop 'init_run0d'
-97 FATAL 'I could not read the "bio" namelist'
-   stop 'init_run0d'
-94 FATAL 'I could not read the "output" namelist'
+93 FATAL 'I could not read the "output" namelist'
    stop 'init_run0d'
 95 FATAL 'I could not open ',trim(env_file)
    stop 'init_run0d'
@@ -227,7 +222,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call do_bio_0d_generic(model,first,cc(:,1),environment,pp(:,:,1),dd(:,:,1))
+   call do_bio_0d_generic(model,first,cc(:,1),env,pp(:,:,1),dd(:,:,1))
    
    end subroutine get_rhs
 !EOC
@@ -254,7 +249,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,n
-   REALTYPE                  :: swr, extinction
+   REALTYPE                  :: extinction
    character(len=19)         :: ts
 !
 !-----------------------------------------------------------------------
@@ -267,15 +262,25 @@
       call update_time(n)
       
       ! Update environment
-      call read_environment(julianday,secondsofday,environment)
+      call read_environment(julianday,secondsofday,env)
       
-      if (calculate_par) then
-         ! Calculate photosynthetically active radiation from geographic location, time, cloud cover
-         ! par fraction, extinction coefficient, and depth.
-         call short_wave_radiation(julianday,secondsofday,longitude,latitude,cloud,swr)
-         extinction = get_bio_extinction_bio_0d_generic(model,cc(:,1))
-         environment%par = model%info%par_fraction*swr*exp(environment%z*extinction)
+      ! Calculate photosynthetically active radiation if it is not provided in the input file.
+      if (swr_method.eq.0) then
+         ! Calculate photosynthetically active radiation from geographic location, time, cloud cover.
+         call short_wave_radiation(julianday,secondsofday,longitude,latitude,cloud,env%par)
       end if
+      
+      ! Apply light attentuation with depth, unless local light is provided in the input file.
+      if (swr_method.ne.2) then
+         ! Either we calculate surface PAR, or surface PAR is provided.
+         ! Calculate the local PAR at the given depth from par fraction, extinction coefficient, and depth.
+         extinction = par_background_extinction
+         if (apply_self_shading) extinction = extinction + get_bio_extinction_bio_0d_generic(model,cc(:,1))
+         env%par = env%par*exp(env%z*extinction)
+      end if
+      
+      ! Multiply by fraction of short-wave radiation that is photosynthetically active.
+      env%par = par_fraction*env%par
 
       ! Integrate one time step
       call ode_solver(ode_method,model%info%state_variable_count,1,dt,cc,get_rhs)
@@ -285,9 +290,9 @@
          call write_time_string(julianday,secondsofday,timestr)
          write (out_unit,FMT='(A)',ADVANCE='NO') timestr
          if (add_environment) then
-            write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,environment%par
-            write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,environment%t
-            write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,environment%s
+            write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,env%par
+            write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,env%t
+            write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,env%s
          end if
          do i=1,model%info%state_variable_count
             write (out_unit,FMT='(A,E14.8E2)',ADVANCE='NO') separator,cc(i,1)
