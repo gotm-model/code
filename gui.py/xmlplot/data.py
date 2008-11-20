@@ -278,6 +278,11 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
                 return self.variableclass(self,data,index)
         return None
         
+    def loadFromFile(self,path):
+        datafile = xmlstore.datatypes.DataContainerDirectory.DataFileFile(path)
+        self.setDataFile(datafile)
+        datafile.release()
+        
     def saveToFile(self,path,callback=None):
         """Saves the current data to file."""
         if self.datafile!=None:
