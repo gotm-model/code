@@ -799,7 +799,12 @@ class Node:
         # Create the child (template + value)
         child = Node(self.controller,templatenode,valueroot,list(self.location)+[childname],parent=self)
         assert child.canHaveClones(), 'Cannot add another child "%s" because there can exist only one child with this name.' % childname
+
+        # Set the node visibility before notifying anyone of its presence.
+        # For this to work under all circumstances, we need to [temporarily] add the new child.
+        self.children.insert(index,child)
         child.updateVisibility(recursive=True,notify=False)
+        self.children.pop(index)
         
         # Insert the child, and notify attached interfaces.
         child.futureindex = index
