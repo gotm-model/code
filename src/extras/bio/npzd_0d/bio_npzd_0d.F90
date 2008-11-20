@@ -1,4 +1,4 @@
-!$Id: bio_npzd_0d.F90,v 1.4 2008-11-11 13:40:33 jorn Exp $
+!$Id: bio_npzd_0d.F90,v 1.5 2008-11-20 11:00:37 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -39,11 +39,12 @@
 !  Original author(s): Jorn Bruggeman
 !
 !
-! !LOCAL VARIABLES:
-!  from a namelist
+! !PUBLIC DERIVED TYPES:
    type type_npzd
       REALTYPE :: p0,z0,kc,i_min,rmax,gmax,iv,alpha,rpn,rzn,rdn,rpdu,rpdl,rzd
    end type
+!
+! !PRIVATE PARAMETERS:
    integer, parameter        :: n=1,p=2,z=3,d=4
 !EOP
 !-----------------------------------------------------------------------
@@ -56,7 +57,7 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   function init_bio_npzd_0d(self,namlst,fname) result(modelinfo)
+   function init_bio_npzd_0d(self,namlst) result(modelinfo)
 !
 ! !DESCRIPTION:
 !  Here, the bio namelist {\tt bio\_npzd.nml} is read and 
@@ -69,7 +70,6 @@
 ! !INPUT PARAMETERS:
    type (type_npzd), intent(out)   :: self
    integer,          intent(in )   :: namlst
-   character(len=*), intent(in )   :: fname
    
    type (type_model_info) :: modelinfo
 !
@@ -97,27 +97,19 @@
    REALTYPE                  :: rpdu=2.314814e-07
    REALTYPE                  :: rpdl=1.157407e-06
    REALTYPE                  :: rzd=2.314814e-07
-   REALTYPE                  :: aa=0.62
-   REALTYPE                  :: g2=20.0
 
    REALTYPE, parameter :: secs_pr_day = 86400.
-   integer :: numc
-   namelist /bio_npzd_nml/ numc, &
-                      n_initial,p_initial,z_initial,d_initial,   &
-                      p0,z0,w_p,w_d,kc,i_min,rmax,gmax,iv,alpha,rpn,  &
-                      rzn,rdn,rpdu,rpdl,rzd,aa,g2
+   namelist /bio_npzd_nml/ n_initial,p_initial,z_initial,d_initial,   &
+                           p0,z0,w_p,w_d,kc,i_min,rmax,gmax,iv,alpha,rpn,  &
+                           rzn,rdn,rpdu,rpdl,rzd
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL2 'init_bio_npzd'
-
-   open(namlst,file=fname,action='read',status='old',err=98)
+   ! Read the namelist
    read(namlst,nml=bio_npzd_nml,err=99)
-   close(namlst)
 
-   LEVEL3 'namelist "', fname, '" read'
-
-   ! Store parameter values
+   ! Store parameter values in our own derived type
+   ! NB: all rates must be provided in values per day, and are converted here to values per second.
    self%p0    = p0
    self%z0    = z0
    self%kc    = kc
@@ -133,18 +125,18 @@
    self%rpdl = rpdl/secs_pr_day
    self%rzd  = rzd /secs_pr_day
    
+   ! Create container for model information, specifying the number of state variables (4: NPZD)
+   ! and the number of conserved quantities (1: nitrogen)
    modelinfo = create_model_info(4,1)
-   
-   ! Define model properties.
-   modelinfo%par_fraction = _ONE_-aa
-   modelinfo%par_background_extinction = _ONE_/g2
 
+   ! Properties for the nutrient
    modelinfo%variables(1)%name = 'nut'
    modelinfo%variables(1)%unit = 'mmol/m**3'
    modelinfo%variables(1)%longname = 'nutrients'
    modelinfo%variables(1)%initial_value = n_initial
    modelinfo%variables(1)%positive_definite = .true.
 
+   ! Properties for phytoplankton
    modelinfo%variables(2)%name = 'phy'
    modelinfo%variables(2)%unit = 'mmol/m**3'
    modelinfo%variables(2)%longname = 'phytoplankton'
@@ -152,12 +144,14 @@
    modelinfo%variables(2)%sinking_rate = -w_p/secs_pr_day
    modelinfo%variables(2)%positive_definite = .true.
 
+   ! Properties for zooplankton
    modelinfo%variables(3)%name = 'zoo'
    modelinfo%variables(3)%unit = 'mmol/m**3'
    modelinfo%variables(3)%longname = 'zooplankton'
    modelinfo%variables(3)%initial_value = z_initial
    modelinfo%variables(3)%positive_definite = .true.
 
+   ! Properties for detritus
    modelinfo%variables(4)%name = 'det'
    modelinfo%variables(4)%unit = 'mmol/m**3'
    modelinfo%variables(4)%longname = 'detritus'
@@ -165,26 +159,23 @@
    modelinfo%variables(4)%sinking_rate = -w_d/secs_pr_day
    modelinfo%variables(4)%positive_definite = .true.
 
+   ! For mussels support, which is under development.
 #if 0
    modelinfo%variables(2)%mussels_inhale = .true.
    modelinfo%variables(3)%mussels_inhale = .true.
    modelinfo%variables(4)%mussels_inhale = .true.
 #endif
 
+   ! One conserved quantity: nitrogen
    modelinfo%conserved_quantities(1)%name = 'N'
    modelinfo%conserved_quantities(1)%unit = 'mmol/m**3'
    modelinfo%conserved_quantities(1)%longname = 'nitrogen'
 
-   LEVEL3 'module initialized'
-
    return
 
-98 LEVEL2 'I could not open '//trim(fname)
-   LEVEL2 'If thats not what you want you have to supply '//trim(fname)
-   LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
-   return
-99 FATAL 'I could not read bio_npzd.nml'
+99 FATAL 'I could not read namelist bio_npzd_nml'
    stop 'init_bio_npzd_0d'
+   
    end function init_bio_npzd_0d
 !EOC
 

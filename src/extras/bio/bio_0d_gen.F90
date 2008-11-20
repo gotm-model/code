@@ -1,4 +1,4 @@
-!$Id: bio_0d_gen.F90,v 1.3 2008-11-11 13:40:33 jorn Exp $
+!$Id: bio_0d_gen.F90,v 1.4 2008-11-20 11:00:36 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -29,7 +29,7 @@
 !    defined below.
 !
 ! 4) Add the model as option to the "select" statements in the following subroutines:
-!    "init_bio_single", "do_bio_single".
+!    "get_model_name", "init_bio_single", "do_bio_single".
 !
 ! The following steps are optional:
 !
@@ -206,17 +206,24 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-  integer :: i
+  integer           :: i
+  character(len=64) :: modelname
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+   modelname = get_model_name(bio_model)
+   LEVEL2 'Initializing biogeochemical model '//trim(modelname)
+
    ! Allow the selected model to initialize
+   open(nmlunit,file=nmlfilename,action='read',status='old',err=98)
    select case (bio_model)
       case (npzd_0d_id)
-         model%info = init_bio_npzd_0d(model%npzd,nmlunit,trim(nmlfilename))
+         model%info = init_bio_npzd_0d(model%npzd,nmlunit)
       case default
          stop 'bio_0d_gen::init_bio_single: no valid biogeochemical model specified!'
    end select
+   close(nmlunit)
+   LEVEL3 'model '//trim(modelname)//' initialized successfully from '//trim(nmlfilename)
    
    ! Apply prefix to variable names
    if (present(nameprefix)) then
@@ -241,6 +248,13 @@
    ! Store the identifier for the selected model.
    model%id = bio_model
    
+   return
+   
+98 LEVEL2 'I could not open '//trim(nmlfilename)
+   LEVEL2 'If thats not what you want you have to supply '//trim(nmlfilename)
+   LEVEL2 'See the bio example on www.gotm.net for a working '//trim(nmlfilename)
+   return
+
    end function init_bio_single
 !EOC
 

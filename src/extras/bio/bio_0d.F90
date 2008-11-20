@@ -1,4 +1,4 @@
-!$Id: bio_0d.F90,v 1.6 2008-11-11 13:40:32 jorn Exp $
+!$Id: bio_0d.F90,v 1.7 2008-11-20 11:00:36 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -86,11 +86,6 @@
    
    ! Use two instances
    !model = init_bio_0d_generic(2,(/bio_model,bio_model/),namlst,(/'bio_'//trim(model_name)//'.nml ','bio_'//trim(model_name)//'1.nml'/))
-   
-   if (model%info%par_fraction.eq._ZERO_) then
-      model%info%par_fraction = _ONE_-A
-      model%info%par_background_extinction = _ONE_/g2
-   end if
    
    ! Allocate global arrays for info on biogeochemical model
    ! Add a variable for particle densities if using Lagragian model
@@ -352,6 +347,8 @@
 ! TODO
 !
 ! !USES:
+   use observations, only:A,g2
+   
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -376,7 +373,7 @@
       bioext = bioext+get_bio_extinction_bio_0d_generic(model,cc(:,i))*0.5*h(i)
 
       zz=zz+0.5*h(i)
-      par(i)=rad(nlev)*model%info%par_fraction*exp(-zz*model%info%par_background_extinction-bioext)
+      par(i)=rad(nlev)*(_ONE_-A)*exp(-zz/g2-bioext)
 
       ! Add the extinction of the second half of the grid box.
       bioext = bioext+get_bio_extinction_bio_0d_generic(model,cc(:,i))*0.5*h(i)
@@ -611,6 +608,8 @@
 ! TODO
 !
 ! !USES:
+   use observations,only:A,g2
+
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -636,7 +635,7 @@
    rat=(par_z(np,nt)-zlev(i-1))/h(i)
 
    localshade = rat*shade(i)+(1.-rat)*shade(i-1)
-   env_par%par  = rad(nlev)*model%info%par_fraction*exp(par_z(np,nt)*model%info%par_background_extinction)*localshade
+   env_par%par  = rad(nlev)*(_ONE_-A)*exp(par_z(np,nt)/g2)*localshade
 
    ! Linearly interpolate environmental conditions
    env_par%z    = par_z(np,nt)

@@ -1,4 +1,4 @@
-!$Id: bio_types.F90,v 1.2 2008-11-11 13:40:33 jorn Exp $
+!$Id: bio_types.F90,v 1.3 2008-11-20 11:00:36 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -53,12 +53,6 @@
       ! Number of state variables
       integer  :: state_variable_count, conserved_quantity_count
 
-      ! Photosynthetically Active Radiation (PAR):
-      ! par_fraction:              fraction of incoming short-wave radiation that is PAR (-)
-      ! par_background_extinction: PAR extinction coefficient for water (1/m)
-      REALTYPE :: par_fraction
-      REALTYPE :: par_background_extinction
-
       ! Sinking rate type
       ! 0: variable-specific sinking rates are constant in time and space
       ! 2: variable-specific sinking rates depend on time and space
@@ -98,9 +92,6 @@
    
       modelinfo%state_variable_count = variable_count
       modelinfo%conserved_quantity_count = conserved_quantity_count
-
-      modelinfo%par_fraction = _ONE_
-      modelinfo%par_background_extinction = _ZERO_
       
       modelinfo%dynamic_sinking_rates = 0
       
