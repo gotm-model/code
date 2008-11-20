@@ -465,11 +465,11 @@ class Figure(xmlstore.util.referencedobject):
         datanode = self.properties['Data']
         varname = self.source.normalizeExpression(varname,source)
         if replace:
-            series = datanode.getChildById('Series',varname,create=True)
             self.defaultproperties['Data'].getChildById('Series',varname,create=True)
+            series = datanode.getChildById('Series',varname,create=True)
         else:
-            series = datanode.addChild('Series',id=varname)
             self.defaultproperties['Data'].addChild('Series',id=varname)
+            series = datanode.addChild('Series',id=varname)
         self.update()
         return series
 
