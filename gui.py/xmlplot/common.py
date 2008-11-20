@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.15 2008-11-12 14:37:14 jorn Exp $
+#$Id: common.py,v 1.16 2008-11-20 10:51:23 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -84,14 +84,14 @@ def findIndices(bounds,data):
         
     return (start,stop)
 
-def interp1(x,y,X):
-    """1D linear inter- and extrapolation. Operates on first axis.
+def interp1_old(x,y,X):
+    """1D linear inter- and extrapolation. Operates on first axis of y-coordinate.
     """
     assert x.ndim==1, 'Original coordinates must be supplied as 1D array.'
     assert X.ndim==1, 'New coordinates must be supplied as 1D array.'
     
     # Transpose because it is easiest in numpy to operate on last axis. (this because of
-    # upcasting rules)
+    # broadcasting rules)
     y = y.transpose()
     
     # Create array to hold interpolated values
@@ -119,6 +119,69 @@ def interp1(x,y,X):
     
     # Undo the original transpose and return
     return Y.transpose()
+
+def interp1_get_weights(allx,X,axis=0):
+    X = numpy.atleast_1d(X)
+    assert X.ndim==1, 'New coordinates must be supplied as 1D array.'
+    
+    # Make sure the axis to operate on comes last.
+    allx = numpy.rollaxis(allx,axis,allx.ndim)
+
+    # Create arrays to hold upper indices and weights for linear interpolation.
+    newxshape = list(allx.shape[:-1])+[X.shape[0]]
+    alliX     = numpy.empty(newxshape,numpy.int)
+    allw_high = numpy.ones (newxshape,numpy.float)
+    
+    for ind in numpy.ndindex(*allx.shape[:-1]):
+        xind = tuple(list(ind)+[slice(None)])
+        
+        # Get the current x values (1D array).
+        x = allx[xind]
+                
+        # Find indices of interpolated X in original x.
+        iX = x.searchsorted(X)
+        
+        # Get the bounds of valid indices
+        # These are upper indices for linear interpolation (the actual value lies below),
+        # so valid indices are >=1 and <dimension length
+        bounds = iX.searchsorted((0.5,x.shape[0]-0.5))
+        v = slice(bounds[0],bounds[1])
+        
+        # Store upper indices for linear interpolation
+        alliX[xind] = iX
+
+        # Store weights for upper values for linear interpolation
+        x_low = x[iX[v]-1]
+        allw_high[tuple(list(ind)+[v])] = (X[v]-x_low)/(x[iX[v]]-x_low)
+
+    # Limit upper indices to valid range
+    iX_high = numpy.minimum(alliX,allx.shape[-1]-1)
+    iX_low = numpy.maximum(alliX-1,0)
+    
+    return iX_low,iX_high,allw_high
+
+def interp1_from_weights(ind_low,ind_high,w_high,ally,axis=0):
+    ally = numpy.rollaxis(ally,axis,ally.ndim)
+    
+    newyshape = list(ally.shape[:-1])+[ind_low.shape[-1]]
+    
+    # Do linear interpolation
+    yind = numpy.indices(newyshape)
+    yind = [yind[k,...] for k in range(yind.shape[0]-1)]
+    yind_low  = tuple(yind + [ind_low])
+    yind_high = tuple(yind + [ind_high])
+    allY = (1.-w_high)*ally[yind_low] + w_high*ally[yind_high]
+        
+    return numpy.rollaxis(allY,-1,axis)
+
+def interp1(allx,ally,X,axis=0):
+    """1D linear inter- and extrapolation. Operates on first axis of x- and y-coordinate.
+    """
+    assert ally.ndim>=allx.ndim, 'Original y coordinates must have the same number of dimensions, or more, than the x coordinates.'
+    assert ally.shape[:allx.ndim] == allx.shape[:], 'The first dimensions of the y coordinate must be identical to all dimensions of the x coordinate.'
+
+    iX_low,iX_high,w_high = interp1_get_weights(allx,X,axis)
+    return interp1_from_weights(iX_low,iX_high,w_high,ally,axis)
 
 def ndgrid(*coords):
     lens = [len(c) for c in coords]
@@ -198,6 +261,16 @@ def getPercentile(data,cumweights,value,axis):
 defaultdimensioninfo = {'label':'','unit':'','preferredaxis':None,'datatype':'float','reversed':False}
 
 def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
+    """Creates coordinate arrays for interfaces from coordinates arrays for centers.
+    A subset of dimensions for which to operate on may be selected through argument dimindices;
+    if not provided, all axes are operated upon.
+    
+    If a dimension has length 1, the distance between centers and interfaces is undefined.
+    By default, a distance of 1.0 is then used; alternatively, one may specify a function that,
+    given the name of a dimension, returns the desired distance. In that case the function
+    should be specified in argument defaultdeltafunction, and the dimension names should be
+    provided in argument dimnames.
+    """
     if dimindices==None: dimindices = range(coords.ndim)
 
     # Calculate the shape of the to-be-created staggered array.
@@ -646,6 +719,44 @@ class Variable:
 
             return newslice
             
+        def interp(self,**kwargs):
+            # Create a new slice object to hold the interpolated data.
+            newslice = Variable.Slice(self.dimensions,self.coords,self.coords_stag,self.data)
+            
+            # Get a searchable list of dimensions.
+            oridims = list(self.dimensions)
+            
+            # Iterate over all dimensions that we have to interpolate.
+            for dimname,section in kwargs.iteritems():
+                assert dimname in oridims,'Dimension %s is not used by this variable slice. Used dimensions: %s.' % (dimname,', '.join(oridims))
+                idim = oridims.index(dimname)
+                section = numpy.atleast_1d(section)
+                section_stag = stagger(section)
+                
+                # Calculate the indices and weights to be used for interpolation.
+                # These are calculated here once, and then used for interpolation of all coordinates and data.
+                axis = idim
+                if newslice.coords[idim].ndim==1: axis = 0
+                ilow,     ihigh,     whigh      = interp1_get_weights(newslice.coords     [idim],section,     axis)
+                ilow_stag,ihigh_stag,whigh_stag = interp1_get_weights(newslice.coords_stag[idim],section_stag,axis)
+                
+                # Interpolate the coordinates of all dimensions.
+                for icoord in range(self.ndim):
+                    if newslice.coords[icoord].ndim>1:
+                        # These coordinates depend on the dimension that we interpolate, so they need interpolation as well.
+                        newslice.coords     [icoord] = interp1_from_weights(ilow,     ihigh,     whigh,     newslice.coords     [icoord],axis=idim)
+                        newslice.coords_stag[icoord] = interp1_from_weights(ilow_stag,ihigh_stag,whigh_stag,newslice.coords_stag[icoord],axis=idim)
+                    elif icoord==idim:
+                        # This are the coordinates of the dimension to interpolate: set the new coordinates.
+                        newslice.coords[icoord] = section
+                        newslice.coords_stag[icoord] = section_stag
+                        
+                # Interpolate the data.
+                newslice.data = interp1_from_weights(ilow,ihigh,whigh,newslice.data,axis=idim)
+                
+            # Return the new slice with inteprolated data
+            return newslice
+
         def removeDimension(self,idimension,inplace=True):
             if inplace:
                 target = self
@@ -807,15 +918,14 @@ class Variable:
                               self.hasReversedDimensions())
         
 class CustomVariable(Variable):
-    def __init__(self,slice,name,longname=None,unit='',dimensions=(),dimensioninfo=None,hasreverseddimensions=False):
+    def __init__(self,slice,name,longname=None,unit='',dimensioninfo=None,hasreverseddimensions=False):
         Variable.__init__(self,None)
         self.name = name
         self.longname = longname
         self.unit = unit
-        self.dimensions = dimensions
         self.dimensioninfo = {}
         if dimensioninfo!=None:
-            for d in dimensions: self.dimensioninfo[d] = dimensioninfo[d]
+            for d in slice.dimensions: self.dimensioninfo[d] = dimensioninfo[d]
         self.hasreverseddimensions = hasreverseddimensions
         self.slice = slice
         
@@ -823,13 +933,14 @@ class CustomVariable(Variable):
         return self.name
         
     def getLongName(self):
+        if self.longname==None: return self.name
         return self.longname
 
     def getUnit(self):
         return self.unit
 
     def getDimensions_raw(self):
-        return tuple(self.dimensions)
+        return tuple(self.slice.dimensions)
 
     def getDimensionInfo_raw(self,dimname):
         if dimname in self.dimensioninfo: return self.dimensioninfo[dimname]
