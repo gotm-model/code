@@ -59,7 +59,8 @@ class LazyStore(UserDict.DictMixin):
             if self.name!=None: result.name = '%s[\'%s\']' % (self.name,name)
         else:
             result = LazyVariable(result)
-            if self.name!=None: result.name = '%s[\'%s\']' % (self.name,name)
+            if self.name!=None: name = '%s[\'%s\']' % (self.name,name)
+            result.name = name
         return result
         
     def keys(self):
@@ -418,7 +419,7 @@ class LazyFunction(LazyOperation):
         self.func = func
         self.removedim = None
         self.useslices = False
-        kwargs['outsourceslices'] = True
+        kwargs.setdefault('outsourceslices',True)
         LazyOperation.__init__(self,*args,**kwargs)
     
     def setRemovedDimension(self,argindex,argname):
