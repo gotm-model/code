@@ -808,7 +808,7 @@ class FigureDialog(QtGui.QDialog):
     """Dialog that contains a single figure panel.
     """
     
-    def __init__(self,parent,varstore=None,varname=None,sourcefigure=None,figureproperties=None,quitonclose=False,closebutton=None,destroyonclose=True):
+    def __init__(self,parent=None,varstore=None,varname=None,sourcefigure=None,figureproperties=None,quitonclose=False,closebutton=None,destroyonclose=True):
         QtGui.QDialog.__init__(self,parent,QtCore.Qt.Window | QtCore.Qt.WindowMaximizeButtonHint | QtCore.Qt.WindowSystemMenuHint )
 
         if closebutton==None: closebutton = xmlstore.gui_qt4.needCloseButton()
