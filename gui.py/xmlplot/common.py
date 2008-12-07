@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.16 2008-11-20 10:51:23 jorn Exp $
+#$Id: common.py,v 1.17 2008-12-07 16:14:38 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -913,7 +913,6 @@ class Variable:
                               self.getName_raw(),
                               self.getLongName(),
                               self.getUnit(),
-                              dims,
                               dict([(d,self.getDimensionInfo_raw(d)) for d in dims]),
                               self.hasReversedDimensions())
         
