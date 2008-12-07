@@ -281,8 +281,9 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
     """Class for figure properties, based on xmlstore.TypedStore.
     
     Currently this does nothing specific except automatically selecting the
-    correct XML schema. In the future this class can host convertors that
-    convert between different versions of the XML schema for figures.
+    correct XML schema, and allowing access to schemas based on their short names.
+    In the future this class can host convertors that convert between different
+    versions of the XML schema for figures.
     """
 
     def __init__(self,valueroot=None,adddefault = True):
@@ -297,9 +298,10 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
         return FigureProperties.schemadict
         
     @classmethod
-    def getDataType(ownclass,name):
-        if name=='colormap': return xmlstore.datatypes.String
-        return xmlstore.xmlstore.TypedStore.getDataType(name)
+    def getCustomDataTypes(ownclass):
+        dt = xmlstore.xmlstore.TypedStore.getCustomDataTypes()
+        dt['colormap'] = xmlstore.datatypes.String
+        return dt
         
 class Figure(xmlstore.util.referencedobject):
     """Class encapsulating a MatPlotLib figure. The data for the figure is

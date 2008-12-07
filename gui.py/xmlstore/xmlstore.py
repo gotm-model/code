@@ -1284,6 +1284,9 @@ class TypedStore(util.referencedobject):
         self.version = self.schema.getVersion()
         self.originalversion = None
 
+        # Allow subclasses to provide custom data types
+        self.customdatatypes = self.getCustomDataTypes()
+
         # Events
         self.interfaces = []
         self.blockedinterfaces = set()
@@ -1342,10 +1345,14 @@ class TypedStore(util.referencedobject):
         for i in self.interfaces: i.unlink()
         self.interfaces = []
 
-    @classmethod
-    def getDataType(ownclass,name):
+    def getDataType(self,name):
+        if name in self.customdatatypes: return self.customdatatypes[name]
         assert name in datatypes.types,'Unknown data type "%s" requested.' % name
         return datatypes.types[name]
+       
+    @classmethod 
+    def getCustomDataTypes(cls):
+        return {}
 
     def getInterface(self,**kwargs):
         """Returns an interface to the store. Interfaces offer several facilities

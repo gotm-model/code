@@ -67,9 +67,10 @@ class Scenario(xmlstore.xmlstore.TypedStore):
             return scenario
 
     @classmethod
-    def getDataType(ownclass,name):
-        if name=='gotmdatafile': return xmlplot.data.LinkedFileVariableStore
-        return xmlstore.xmlstore.TypedStore.getDataType(name)
+    def getCustomDataTypes(ownclass):
+        dt = xmlstore.xmlstore.TypedStore.getCustomDataTypes()
+        dt['gotmdatafile'] = xmlplot.data.LinkedFileVariableStore
+        return dt
 
     def loadFromNamelists(self, srcpath, strict = False, protodir = None):
         if common.verbose: print 'Importing scenario from namelist files...'

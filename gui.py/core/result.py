@@ -3,6 +3,31 @@ import os.path, xml.dom.minidom, shutil, StringIO
 import xmlplot.common, xmlstore.xmlstore, xmlplot.plot, xmlplot.data
 import common, scenario
 
+class ResultProperties(xmlstore.xmlstore.TypedStore):
+    """Class for result properties, based on xmlstore.TypedStore.
+    
+    Currently this does nothing specific except automatically selecting the
+    correct XML schema, and allowing access to schemas based on their short names.
+    In the future this class can host convertors that convert between different
+    versions of the XML schema for results.
+    """
+
+    def __init__(self,valueroot=None,adddefault = True):
+        schemadom = os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml')
+        xmlstore.xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
+
+    schemadict = None
+    @staticmethod
+    def getDefaultSchemas():
+        if FigureProperties.schemadict==None:
+            FigureProperties.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/result'))
+        return FigureProperties.schemadict
+        
+    @classmethod
+    def getCustomDataTypes(ownclass):
+        dt = xmlplot.plot.FigureProperties.getCustomDataTypes()
+        return dt
+
 # Class that represents a GOTM result.
 #   Inherits from xmlplot.data.NetCDFStore_GOTM, as it encapsulates a GOTM-created NetCDF file.
 #   Contains a link to the scenario from which the result was created (if available)
@@ -20,7 +45,7 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         self.returncode = 0
         self.errormessage = None
         
-        self.store = xmlstore.xmlstore.TypedStore(os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml'))
+        self.store = ResultProperties()
         self.wantedscenarioversion = scenario.guiscenarioversion
         
         self.path = None
