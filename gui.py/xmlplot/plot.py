@@ -1,8 +1,6 @@
 import math,os.path,xml.dom.minidom
 
-import matplotlib
-import matplotlib.colors
-import matplotlib.dates
+import matplotlib, matplotlib.colors, matplotlib.dates
 import numpy
 
 import common,xmlstore.xmlstore,xmlstore.util
@@ -317,6 +315,7 @@ class Figure(xmlstore.util.referencedobject):
         # If no MatPlotLib figure is specified, create a new one, assuming
         # we want to export to file.        
         if figure==None:
+            import matplotlib.figure, matplotlib.backends.backend_agg
             figure = matplotlib.figure.Figure(figsize=(10/2.54,8/2.54))
             canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(figure)
         
