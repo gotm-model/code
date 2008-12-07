@@ -914,6 +914,9 @@ class LinkedFileEditorDialog(QtGui.QDialog):
             self.panels.append(panel)
             self.dataeditors.append(de)
             
+            # Hide experimental function editor for now
+            tw.hide()
+            
             return panel,widget
         
         namedict = self.linkedfile.getVariableLongNames()
