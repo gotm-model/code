@@ -386,7 +386,10 @@ class FigurePanel(QtGui.QWidget):
         self.factory = xmlstore.gui_qt4.PropertyEditorFactory(self.figure.properties,live=True,allowhide=True)
 
         layout = QtGui.QVBoxLayout()
-        layout.setContentsMargins(0,0,0,0)
+        try:
+            layout.setContentsMargins(0,0,0,0)
+        except AttributeError:
+            pass
         
         self.toolbar = QtGui.QToolBar(self)
         self.toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
