@@ -1,12 +1,20 @@
 import xmlstore.xmlstore
 import sys, os.path
+import common
+
+class LoadException(Exception): pass
 
 class SettingsStore(xmlstore.xmlstore.TypedStore):
     def __init__(self):
-        settingspath = self.getSettingsPath()
-        if not os.path.isfile(settingspath): settingspath = None
-        xmlstore.xmlstore.TypedStore.__init__(self,'schemas/settings/gotmgui.xml',settingspath)
+        xmlstore.xmlstore.TypedStore.__init__(self,os.path.join(common.getDataRoot(),'schemas/settings/gotmgui.xml'))
         
+    def load(self):
+        settingspath = self.getSettingsPath()
+        if not os.path.isfile(settingspath): return
+        try:
+            xmlstore.xmlstore.TypedStore.load(self,settingspath)
+        except Exception,e:
+            raise LoadException('Failed to load settings from "%s".\nReason: %s.\nAll settings will be reset.' % (settingspath,e))
         self.removeNonExistent('Paths/RecentScenarios','Path')
         self.removeNonExistent('Paths/RecentResults',  'Path')
 

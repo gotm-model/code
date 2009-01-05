@@ -55,10 +55,10 @@ class Schema:
             # The provided schema source is a string. It can be a path to a file or plain XML.
             if not sourceisxml:
                 # The provided source is a path.
-                path = source
-                if not os.path.isfile(source):
-                    raise Exception('XML schema file "%s" does not exist.' % source)
-                self.dom = xml.dom.minidom.parse(source)
+                path = os.path.abspath(source)
+                if not os.path.isfile(path):
+                    raise Exception('XML schema file "%s" does not exist.' % path)
+                self.dom = xml.dom.minidom.parse(path)
             else:
                 # The provided source is a string containing XML.
                 self.dom = xml.dom.minidom.parseString(source)
@@ -238,6 +238,70 @@ class Schema:
         depnode.setAttribute('path',dependantnodepath)
         depnode.setAttribute('type',type)
         deplist.appendChild(depnode)
+        
+    def createDocumentation(self,fout=None,showhidden=False):
+        # Get maximum depth of the tree
+        def getmaxdepth(node):
+            maxdepth = 1
+            for ch in node.childNodes:
+                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='element':
+                    maxdepth = max(maxdepth,1+getmaxdepth(ch))
+            return maxdepth
+        maxdepth = getmaxdepth(self.dom.documentElement)
+
+        # Function for printing a node and its children
+        def printnode(fout,node,maxdepth,nextid,depth=0,showhidden=False):
+            # Print info on the node itself
+            if showhidden or not node.hasAttribute('hidden'):
+                fout.write('\t<tr valign="top">')
+                for i in range(depth): fout.write('<td>&nbsp;</td>')
+                fout.write('<td colspan="%i">%s</td>' % (maxdepth-depth,node.getAttribute('name')))
+                if node.hasAttribute('type'):
+                    fout.write('<td>%s</td>' % node.getAttribute('type'))
+                else:
+                    fout.write('<td>&nbsp;</td>')
+
+                if node.hasAttribute('description'):
+                    text = node.getAttribute('description')
+                elif node.hasAttribute('label'):
+                    text = node.getAttribute('label')
+                else:
+                    text = '&nbsp;'
+
+                opts = []
+                for ch in node.childNodes:
+                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='options':
+                        for optch in ch.childNodes:
+                            if optch.nodeType==ch.ELEMENT_NODE and optch.localName=='option':
+                                if optch.hasAttribute('description'):
+                                    label = optch.getAttribute('description')
+                                else:
+                                    label = optch.getAttribute('label')
+                                opts.append((optch.getAttribute('value'),label))
+                if opts:
+                    text += ', <a href="javascript:showhide(\'table%i\')">supported values</a>\n' % nextid
+                    text += '<table id="table%i" cellspacing="0" style="display:none">\n' % nextid
+                    text += '<tr><th>value</th><th>description</th></tr>\n'
+                    text += ''.join(['<tr><td>%s</td><td>%s</td></tr>\n' % o for o in opts])
+                    text += '</table>\n'
+
+                fout.write('<td>%s</td></tr>\n' % text)
+                nextid += 1
+                
+            # Print info on the children.
+            for ch in node.childNodes:
+                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='element':
+                    nextid = printnode(fout,ch,maxdepth,nextid,depth=depth+1,showhidden=showhidden)
+                    
+            return nextid
+                        
+        # Print all information.
+        if fout==None: fout = sys.stdout
+        fout.write('<table cellspacing="0">\n')
+        for i in range(maxdepth-1): fout.write('<col width="20">')
+        fout.write('\t<tr><th colspan="%i">node name</th><th>data type</th><th>description</th></tr>\n' % maxdepth)
+        printnode(fout,self.dom.documentElement,maxdepth,0,showhidden)
+        fout.write('</table>\n')
 
 import UserDict
 class ShortcutDictionary(UserDict.DictMixin):
@@ -1821,6 +1885,10 @@ class TypedStore(util.referencedobject):
                 for cr in childroutes:
                     routes.append([sourceid]+cr)
         return routes
+
+    @classmethod
+    def clearConvertors(cls):
+        cls.convertorsfrom = {}
 
     @classmethod
     def addConvertor(cls,convertorclass,addsimplereverse=False):

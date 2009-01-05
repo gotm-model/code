@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.62 2008-10-09 15:42:25 jorn Exp $
+#$Id: commonqt.py,v 1.63 2009-01-05 10:55:12 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -293,6 +293,10 @@ class Wizard(QtGui.QDialog):
         self.shared = {}
 
         self.settings = core.settings.SettingsStore()
+        try:
+            self.settings.load()
+        except core.settings.LoadException,e:
+            QtGui.QMessageBox.warning(self, 'Unable to load settings', str(e))
 
         self.sequence = sequence
         self.currentpage = None

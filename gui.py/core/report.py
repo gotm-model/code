@@ -4,6 +4,8 @@ import os, xml.dom.minidom, shutil
 # Import own custom modules
 import xmlstore.util, xmlstore.xmlstore, xmlplot.plot
 
+import common
+
 def createtable(xmldocument,tds,columncount):
     table = xmldocument.createElement('table')
     icurvar = 0
@@ -46,9 +48,10 @@ class Report(xmlstore.util.referencedobject):
     def __init__(self,defaultfont=None):
         xmlstore.util.referencedobject.__init__(self)
         
-        self.store = xmlstore.xmlstore.TypedStore('schemas/report/gotmgui.xml')
+        reportschema = os.path.join(common.getDataRoot(),'schemas/report/gotmgui.xml')
+        self.store = xmlstore.xmlstore.TypedStore(reportschema)
 
-        self.defaultstore = xmlstore.xmlstore.TypedStore('schemas/report/gotmgui.xml')
+        self.defaultstore = xmlstore.xmlstore.TypedStore(reportschema)
 
         # Set some default properties.
         self.defaultstore['Figures/Width'      ].setValue(10)

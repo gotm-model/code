@@ -527,6 +527,8 @@ class Scenario(xmlstore.xmlstore.TypedStore):
 # Here start custom convertors!
 # ========================================================================================
 
+Scenario.clearConvertors()
+
 class Convertor_gotm_3_2_4_to_gotm_3_3_2(xmlstore.xmlstore.Convertor):
     fixedsourceid = 'gotm-3.2.4'
     fixedtargetid = 'gotm-3.3.2'
