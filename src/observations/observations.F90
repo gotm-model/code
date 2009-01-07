@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.21 2007-12-07 10:10:51 kb Exp $
+!$Id: observations.F90,v 1.22 2009-01-07 07:25:38 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -227,6 +227,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.22  2009-01-07 07:25:38  kb
+!  fixed various compilation warnings found by gfortran
+!
 !  Revision 1.21  2007-12-07 10:10:51  kb
 !  allow longer lines in obs files
 !
@@ -745,8 +748,10 @@
    stop 'init_observations'
 92 FATAL 'I could not read "o2_profile" namelist'
    stop 'init_observations'
+#ifdef BIO
 93 FATAL 'I could not read "bioprofiles" namelist'
    stop 'init_observations'
+#endif
 
 101 FATAL 'Unable to open "',trim(s_prof_file),'" for reading'
    stop 'init_observations'

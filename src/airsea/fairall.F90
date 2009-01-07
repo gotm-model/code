@@ -1,4 +1,4 @@
-!$Id: fairall.F90,v 1.7 2008-07-07 09:05:08 lars Exp $
+!$Id: fairall.F90,v 1.8 2009-01-07 07:25:38 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,6 +47,9 @@
 !  Original author(s): Adolf Stips
 !
 !  $Log: fairall.F90,v $
+!  Revision 1.8  2009-01-07 07:25:38  kb
+!  fixed various compilation warnings found by gfortran
+!
 !  Revision 1.7  2008-07-07 09:05:08  lars
 !  corrected typo in documentation
 !
@@ -125,9 +128,9 @@
 ! !LOCAL VARIABLES:
    REALTYPE                  :: tmp,cff,wgus
    REALTYPE                  :: L
-   REALTYPE                  :: Ce,Ch,Cd
+   REALTYPE                  :: Cd
    REALTYPE                  :: ta,ta_k,tw,tw_k
-   integer                   :: ier,iter,j,k
+   integer                   :: ier,iter,k
    REALTYPE                  :: vis_air
    REALTYPE                  :: tpsi,qpsi,wpsi,ZWoL,oL,ZToL,ZQoL,ZoW,ZoT, ZoQ
    REALTYPE                  :: Wstar,Tstar, Qstar, delQ, delT, rr,rt,rq

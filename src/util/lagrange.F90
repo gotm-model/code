@@ -1,4 +1,4 @@
-!$Id: lagrange.F90,v 1.7 2008-11-03 12:56:39 jorn Exp $
+!$Id: lagrange.F90,v 1.8 2009-01-07 07:25:37 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -51,6 +51,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: lagrange.F90,v $
+!  Revision 1.8  2009-01-07 07:25:37  kb
+!  fixed various compilation warnings found by gfortran
+!
 !  Revision 1.7  2008-11-03 12:56:39  jorn
 !  fixed: particles are now reflected multiple times if needed
 !
@@ -73,7 +76,7 @@
 !  general lagrangian 1D solver
 !
 ! !LOCAL VARIABLES:
-   integer         :: i,n,ni
+   integer         :: i,n
    REALTYPE        :: rnd(npar),rnd_var=0.333333333,rnd_var_inv
    REALTYPE        :: visc_back=0.e-6
    REALTYPE        :: depth,dz(nlev),dzn(nlev),step,zp_old
