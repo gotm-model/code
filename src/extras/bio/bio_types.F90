@@ -1,4 +1,4 @@
-!$Id: bio_types.F90,v 1.3 2008-11-20 11:00:36 jorn Exp $
+!$Id: bio_types.F90,v 1.4 2009-01-07 08:34:18 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -24,7 +24,7 @@
 ! !USES:
 !  default: all is private.
    private
-   public type_model_info,type_environment
+   public type_model_info,type_variable_info,type_conserved_quantity_info,type_environment
    public create_model_info, init_environment
 !
 ! !PUBLIC DERIVED TYPES:
