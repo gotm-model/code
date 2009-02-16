@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.40 2009-01-07 07:25:38 kb Exp $
+!$Id: gotm.F90,v 1.41 2009-02-16 11:16:38 lars Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -94,6 +94,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.41  2009-02-16 11:16:38  lars
+!  bug fix in bioprofs allocation
+!
 !  Revision 1.40  2009-01-07 07:25:38  kb
 !  fixed various compilation warnings found by gfortran
 !
@@ -265,6 +268,7 @@
    namelist /time/        timefmt,MaxN,start,stop
    namelist /output/      out_fmt,out_dir,out_fn,nsave,diagnostics,     &
                           mld_method,diff_k,Ri_crit,rad_corr
+   integer          ::    rc
 !
 !-----------------------------------------------------------------------
 !BOC
