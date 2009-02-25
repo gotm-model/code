@@ -28,6 +28,14 @@ def getFontSubstitute(fontname):
     substitution table.
     """
     assert isinstance(fontname,basestring), 'Supplied argument must be a string.'
+    
+    # Currently font substitution is only supported if the fontname is ASCII,
+    # because QueryValueEx does not accept a unicode string as name of the subkey.
+    # Not sure if this is only a _winreg issue, or a real Windows limitation...
+    try:
+        fontname = str(fontname)
+    except UnicodeError:
+        return fontname
 
     substitute = fontname
 
