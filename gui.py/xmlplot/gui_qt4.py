@@ -1061,6 +1061,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         for panel in self.panels: panel.closeDetached()
         
         if datafile!=None:
+            self.linkedfile = self.linkedfile.copy()
             self.linkedfile.setDataFile(datafile)
 
         # Try to parse the supplied data file.

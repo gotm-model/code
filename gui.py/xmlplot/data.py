@@ -47,6 +47,10 @@ def getNetCDFFile(path):
 
 class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx):
 
+    # XML store-derived class for storing (cached) metadata of a data file,
+    # such as coordinate ranges.
+    # This is implemented as XML store (rather than Python object) because it
+    # needs to be saved in a descriptive form along with the data files themselves.
     class DataFileCache(xmlstore.xmlstore.TypedStore):
         def __init__(self,valueroot=None,adddefault = True):
             schemadom = os.path.join(common.getDataRoot(),'schemas/datafilecache/0001.xml')
@@ -160,6 +164,12 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
 
         self.data = None
         self.datatype = datatype
+    
+    def copy(self):
+        """Returns a copy of the LinkedFileVariableStore object.
+        Currently this copies descriptive metadata, but no actual values.
+        """
+        return LinkedFileVariableStore(None,None,None,None,self.dimensions,self.dimensionorder,self.vardata,self.datatype)
         
     def clear(self,clearfile=True):
         """Clears all data, and by default also clears the original datafile
@@ -347,6 +357,12 @@ class LinkedMatrix(LinkedFileVariableStore):
         assert len(self.dimensions)<=1, 'Linkedmatrix objects can only be used with 0 or 1 coordinate dimensions, but %i are present.' % len(self.dimensions)
         self.type = type
         
+    def copy(self):
+        """Returns a copy of the LinkedMatrix object.
+        Currently this copies descriptive metadata, but no actual values.
+        """
+        return LinkedMatrix(dimensions=self.dimensions,dimensionorder=self.dimensionorder,variables=self.vardata,type=self.type)
+
     def clear(self,clearfile=True):
         """Clears all contained data."""
         self.data = []
@@ -592,6 +608,12 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder,variables)
         self.variableclass = self.LinkedProfilesInTimeVariable
         
+    def copy(self):
+        """Returns a copy of the LinkedProfilesInTime object.
+        Currently this copies descriptive metadata, but no actual values.
+        """
+        return LinkedProfilesInTime(None,None,None,None,dimensions=self.dimensions,dimensionorder=self.dimensionorder,variables=self.vardata)
+
     def setDataFile(self,datafile=None,cleardata=True):
         LinkedFileVariableStore.setDataFile(self,datafile,cleardata=cleardata)
         if cleardata: self.griddeddata = None
