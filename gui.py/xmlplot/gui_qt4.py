@@ -1056,15 +1056,23 @@ class LinkedFileEditorDialog(QtGui.QDialog):
                 panel.plot(name,self.privatestore)
 
     def setData(self,datafile=None):
+        """This function loads a new data file and parses it to check for errors.
+        When the dialog is shown for the very first time, this function is called
+        without the datafile argument. At that point, no new data file is set.
+        Instead, only the currently loaded datafile is parsed.
+        """
 
         # Close any detached figures
         for panel in self.panels: panel.closeDetached()
         
+        # If a new datafile is provided, load it as new current data file.
+        # (but backup the old data file before doing so)
         if datafile!=None:
+            oldlinkedfile = self.linkedfile
             self.linkedfile = self.linkedfile.copy()
             self.linkedfile.setDataFile(datafile)
 
-        # Try to parse the supplied data file.
+        # Try to parse the current data file.
         try:
             try:
                 self.linkedfile.getData(callback=self.onParseProgress)
@@ -1072,8 +1080,14 @@ class LinkedFileEditorDialog(QtGui.QDialog):
                 self.progressdialog.reset()
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Invalid data file', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
-            if datafile==None: self.linkedfile.clear()
-            return
+            if datafile==None:
+                # No old file available - clear all data as if we read an empty file,
+                # and continue.
+                self.linkedfile.clear()
+            else:
+                # Just keep the old file - ignore the invalid data and return
+                self.linkedfile = oldlinkedfile
+                return
             
         # The data may be None, meaning that the data file is empty.
         # In that case, explicitly create an empty table.
