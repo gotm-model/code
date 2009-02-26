@@ -116,7 +116,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
                     'float32': numpy.float32,
                     'float64': numpy.float64}
 
-    def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=(),variables=[],datatype='float'):
+    def __init__(self,datafile,context,infonode,nodename,dimensions={},dimensionorder=(),variables=[],datatype='float',defaultfilename='data'):
     
         common.VariableStore.__init__(self)
         xmlstore.datatypes.DataFileEx.__init__(self,datafile,context,infonode,nodename)
@@ -131,9 +131,10 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
         
         # Supplement dimensions and variables with information in
         # supplied XML node (if any)
+        self.filename = defaultfilename
         if infonode!=None:
             finfo = xmlstore.util.findDescendantNode(infonode,['fileinfo'])
-            self.nodeid = infonode.getAttribute('name')
+            self.filename = infonode.getAttribute('name')
             if finfo.hasAttribute('datatype'): datatype = finfo.getAttribute('datatype')
 
             # Get variables
@@ -169,7 +170,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
         """Returns a copy of the LinkedFileVariableStore object.
         Currently this copies descriptive metadata, but no actual values.
         """
-        return LinkedFileVariableStore(None,None,None,None,self.dimensions,self.dimensionorder,self.vardata,self.datatype)
+        return LinkedFileVariableStore(None,None,None,None,self.dimensions,self.dimensionorder,self.vardata,self.datatype,defaultfilename=self.filename)
         
     def clear(self,clearfile=True):
         """Clears all data, and by default also clears the original datafile
@@ -198,7 +199,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
         if clearfile: self.setDataFile(None,cleardata=False)
         if self.data==None: return
         
-        #print '%s - caching validation result and dimension boundaries.' % self.nodeid
+        #print '%s - caching validation result and dimension boundaries.' % self.filename
         metadata = self.getMetaData()
         for dimname in self.getDimensionNames():
             dimnode = metadata['Dimensions'].getChildById('Dimension',id=dimname,create=True)
@@ -246,7 +247,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
             
         if metadata['Valid'].getValue()==False: return None
 
-        #print '%s - using cached bounds for %s.' % (self.nodeid,dimname)
+        #print '%s - using cached bounds for %s.' % (self.filename,dimname)
         if dimnode['IsTimeDimension'].getValue():
             minval = dimnode['MinimumTime'].getValue()
             maxval = dimnode['MaximumTime'].getValue()
@@ -266,8 +267,8 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
             except Exception,e:
                 pass
             valid = metadata['Valid'].getValue()
-            assert valid!=None, 'Information on validity of data file %s not in data file cache.' % self.nodeid
-        #print '%s - using cached validation result.' % self.nodeid
+            assert valid!=None, 'Information on validity of data file %s not in data file cache.' % self.filename
+        #print '%s - using cached validation result.' % self.filename
         return valid
     
     def getVariableNames_raw(self):
@@ -309,7 +310,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
             # Data not present as data file object. Create one in memory on the spot.
             target = StringIO.StringIO()
             self.writeData(target,callback=callback)
-            self.datafile = xmlstore.datatypes.DataFileMemory(target.getvalue(),self.nodeid+'.dat')
+            self.datafile = xmlstore.datatypes.DataFileMemory(target.getvalue(),self.filename+'.dat')
             target.close()
         return self.datafile.addref()
         
@@ -351,8 +352,8 @@ class LinkedMatrix(LinkedFileVariableStore):
             if data[0].shape[0]==0: return tuple()
             return data[-1][:,self.index].shape
 
-    def __init__(self,datafile=None,context=None,infonode=None,nodename=None,type=0,dimensions={},dimensionorder=(),variables=[]):
-        LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder,variables)
+    def __init__(self,datafile=None,context=None,infonode=None,nodename=None,type=0,dimensions={},dimensionorder=(),variables=[],defaultfilename='data'):
+        LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder,variables,defaultfilename=defaultfilename)
         self.variableclass = self.LinkedMatrixVariable
         assert len(self.dimensions)<=1, 'Linkedmatrix objects can only be used with 0 or 1 coordinate dimensions, but %i are present.' % len(self.dimensions)
         self.type = type
@@ -361,7 +362,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         """Returns a copy of the LinkedMatrix object.
         Currently this copies descriptive metadata, but no actual values.
         """
-        return LinkedMatrix(dimensions=self.dimensions,dimensionorder=self.dimensionorder,variables=self.vardata,type=self.type)
+        return LinkedMatrix(dimensions=self.dimensions,dimensionorder=self.dimensionorder,variables=self.vardata,type=self.type,defaultfilename=self.filename)
 
     def clear(self,clearfile=True):
         """Clears all contained data."""
@@ -537,13 +538,18 @@ class LinkedMatrix(LinkedFileVariableStore):
                         progress = None
                 callback(progress,'read %i lines.' % iline)
 
-        # Delete unused rows in last memory slab.
-        times [-1] = times [-1][0:iline%buffersize]
-        values[-1] = values[-1][0:iline%buffersize,:]
+        if len(times)>0:
+            # Delete unused rows in last memory slab.
+            times [-1] = times [-1][0:iline%buffersize]
+            values[-1] = values[-1][0:iline%buffersize,:]
         
-        # Concatenate memory slab.
-        times = numpy.concatenate(times,axis=0)
-        values = numpy.concatenate(values,axis=0)
+            # Concatenate memory slab.
+            times = numpy.concatenate(times,axis=0)
+            values = numpy.concatenate(values,axis=0)
+        else:
+            # No data read: create empty time and value arrays
+            times = numpy.zeros((0,),self.mpldatatypes[dimdatatype])
+            values = numpy.zeros((0,varcount),self.mpldatatypes[self.datatype])
             
         # Close data file
         f.close()
@@ -604,15 +610,15 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             if data[0].shape[0]==0: return tuple()
             return data[-1][:,:,self.index].shape
 
-    def __init__(self,datafile,context,infonode,nodename,dimensions=[],dimensionorder=(),variables=[]):
-        LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder,variables)
+    def __init__(self,datafile,context,infonode,nodename,dimensions=[],dimensionorder=(),variables=[],defaultfilename='data'):
+        LinkedFileVariableStore.__init__(self,datafile,context,infonode,nodename,dimensions,dimensionorder,variables,defaultfilename=defaultfilename)
         self.variableclass = self.LinkedProfilesInTimeVariable
         
     def copy(self):
         """Returns a copy of the LinkedProfilesInTime object.
         Currently this copies descriptive metadata, but no actual values.
         """
-        return LinkedProfilesInTime(None,None,None,None,dimensions=self.dimensions,dimensionorder=self.dimensionorder,variables=self.vardata)
+        return LinkedProfilesInTime(None,None,None,None,dimensions=self.dimensions,dimensionorder=self.dimensionorder,variables=self.vardata,defaultfilename=self.filename)
 
     def setDataFile(self,datafile=None,cleardata=True):
         LinkedFileVariableStore.setDataFile(self,datafile,cleardata=cleardata)

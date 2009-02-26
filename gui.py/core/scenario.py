@@ -514,7 +514,10 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                         for dimname in value.getDimensionNames():
                             if value.getDimensionInfo(dimname)['datatype']=='datetime':
                                 dimrange = value.getDimensionRange(dimname)
-                                if dimrange==None: continue
+                                if dimrange==None:
+                                    validity[node] = False
+                                    errors.append('Data series "%s" does not contain any value.' % (node.getText(detail=1),))
+                                    continue
                                 mintime,maxtime = dimrange
                                 if stop>maxtime and maxtime!=mintime:
                                     validity[node] = False

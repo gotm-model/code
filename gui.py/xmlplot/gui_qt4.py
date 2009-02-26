@@ -1081,9 +1081,9 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Invalid data file', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
             if datafile==None:
-                # No old file available - clear all data as if we read an empty file,
-                # and continue.
-                self.linkedfile.clear()
+                # No old file available - provide an empty file because we need
+                # something to work with.
+                self.linkedfile = self.linkedfile.copy()
             else:
                 # Just keep the old file - ignore the invalid data and return
                 self.linkedfile = oldlinkedfile
