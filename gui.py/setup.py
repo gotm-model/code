@@ -24,7 +24,6 @@ import py2exe
 
 from distutils.filelist import findall
 import os, os.path
-import matplotlib
 
 def adddir(path,localtarget=None):
     if localtarget==None: localtarget = path
@@ -33,23 +32,32 @@ def adddir(path,localtarget=None):
         if 'CVS' in localname: continue
         own_data_files.append((os.path.dirname(localname),[f]))
 
-own_data_files = matplotlib.get_py2exe_datafiles()
+own_data_files = []
 
-own_data_files.append(('',['logo.png']))
-#own_data_files.append(('',['C:\Program Files\Python24\MSVCP71.dll']))
+# Let MatPlotLib add its own data files.
+import matplotlib
+own_data_files += matplotlib.get_py2exe_datafiles()
 
+# Let our xmlplot module add its own data files.
+import xmlplot.common
+own_data_files += xmlplot.common.get_py2exe_datafiles()
+
+# Add GOTM-GUI data files.
 adddir('defaultscenarios')
 adddir('reporttemplates')
 adddir('schemas')
-adddir('xmlplot/schemas')
+adddir('icons')
+own_data_files.append(('',['logo.png']))
+#own_data_files.append(('',['C:\Program Files\Python24\MSVCP71.dll']))
 
 setup(
     windows=[{'script':'gotm.py','icon_resources':[(1,'gotmgui.ico')]}],
     console=[{'script':'batch.py'}],
     options={'py2exe': {
                 'packages' : ['matplotlib', 'pytz'],
-                'includes' : ['sip','PyQt4._qt'],
-                'excludes' : ['_gtkagg', '_tkagg', '_wxagg','Tkconstants','Tkinter','tcl','wx','pynetcdf','cProfile','pstats','modeltest'],
+#                'includes' : ['sip','PyQt4._qt'],
+                'includes' : ['sip'],
+                'excludes' : ['_gtkagg', '_tkagg', '_wxagg','Tkconstants','Tkinter','tcl','wx','pynetcdf','cProfile','pstats','modeltest','mpl_toolkits.basemap'],
                 'dll_excludes': ['libgdk-win32-2.0-0.dll', 'libgobject-2.0-0.dll', 'libgdk_pixbuf-2.0-0.dll','wxmsw26uh_vc.dll','tcl84.dll','tk84.dll'],
             }},
     data_files=own_data_files

@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.17 2008-12-07 16:14:38 jorn Exp $
+#$Id: common.py,v 1.18 2009-02-26 09:54:44 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -7,6 +7,22 @@ import sys,os.path,UserDict,re,xml.dom.minidom,datetime
 import matplotlib.dates,numpy
 
 import xmlstore.xmlstore
+
+def get_py2exe_datafiles():
+    from distutils.filelist import findall
+    def adddir(path,localtarget=None):
+        files = []
+        if localtarget==None: localtarget = path
+        for f in findall(path):
+            localname = os.path.join(localtarget, f[len(path)+1:])
+            if 'CVS' in localname: continue
+            files.append((os.path.dirname(localname),[f]))
+        return files
+    root = getDataRoot()
+    datafiles = []
+    datafiles += adddir(os.path.join(root,'schemas'),'xmlplot/schemas/')
+    datafiles += adddir(os.path.join(root,'icons'),'xmlplot/icons/')
+    return datafiles
 
 # ------------------------------------------------------------------------------------------
 # Functions for getting/settings the path to data files
