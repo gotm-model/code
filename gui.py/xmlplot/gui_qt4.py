@@ -71,7 +71,11 @@ class FontNameEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
         QtGui.QComboBox.__init__(self,parent)
 
         import matplotlib.font_manager
-        fontnames = matplotlib.font_manager.fontManager.ttfdict.keys()
+        fm = matplotlib.font_manager.fontManager
+        if hasattr(fm,'ttflist'):
+            fontnames = list(set([font.name for font in fm.ttflist]))
+        else:
+            fontnames = fm.ttfdict.keys()
         for fontname in sorted(fontnames,key=str.lower):
             self.addItem(fontname)
 
