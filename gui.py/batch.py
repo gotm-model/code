@@ -17,7 +17,8 @@ matplotlib.use('Qt4Agg')
 matplotlib.rcParams['numerix'] = 'numpy'
 
 # Now import our custom modules
-import common, xmlstore, scenario, result, simulate, report
+import xmlstore
+import core.common, core.scenario, core.result, core.simulator, core.report
 
 if len(sys.argv)==1:
     print \
@@ -64,10 +65,10 @@ batch <path> [-writeresult <resultfile> [-cdf]] [-writereport <reportdir>]
     sys.exit(1)
 
 # Parse command line arguments
-cdf = common.getSwitchArgument('-cdf')
-gotmoutput = common.getSwitchArgument('-gotmoutput')
-resultpath = common.getNamedArgument('-writeresult')
-reportpath = common.getNamedArgument('-writereport')
+cdf = core.common.getSwitchArgument('-cdf')
+gotmoutput = core.common.getSwitchArgument('-gotmoutput')
+resultpath = core.common.getNamedArgument('-writeresult')
+reportpath = core.common.getNamedArgument('-writereport')
 path = os.path.normpath(os.path.join(oldworkingdir, sys.argv[1]))
 del sys.argv[1]
 
@@ -85,14 +86,14 @@ try:
     container = xmlstore.datatypes.DataContainer.fromPath(path)
     
     try:
-        if scenario.Scenario.canBeOpened(container):
+        if core.scenario.Scenario.canBeOpened(container):
             # Try to load scenario.
-            scen = scenario.Scenario.fromSchemaName(scenario.guiscenarioversion)
+            scen = core.scenario.Scenario.fromSchemaName(core.scenario.guiscenarioversion)
             scen.loadAll(container)
             res = None
-        elif result.Result.canBeOpened(container):
+        elif core.result.Result.canBeOpened(container):
             # Try to load result.
-            res = result.Result()
+            res = core.result.Result()
             res.load(container)
             scen = res.scenario.addref()
         else:
@@ -114,7 +115,7 @@ if res==None:
         progcallback = None
     else:
         progcallback = printprogress
-    res = simulate.simulate(scen,progresscallback=progcallback,redirect=not gotmoutput)
+    res = core.simulator.simulate(scen,progresscallback=progcallback,redirect=not gotmoutput)
     if res.returncode==0:
         print 'Simulation completed successfully.'
     elif res.returncode==1:
@@ -141,9 +142,21 @@ if res.returncode==0:
             print '%5.1f %% done, %s' % (progress*100,description)
 
         reportpath = os.path.normpath(os.path.join(oldworkingdir, reportpath))
-        reptemplates = report.Report.getTemplates()
-        rep = report.Report()
+        reptemplates = core.report.Report.getTemplates()
+        rep = core.report.Report()
+        
+        # Use report settings stored within the result (if any)
         rep.store.root.copyFrom(res.store['ReportSettings'],replace=True)
+
+        # Add all possible output variables
+        treestore = res.getVariableTree(os.path.join(core.common.getDataRoot(),'schemas/outputtree.xml'),plottableonly=True)
+        selroot = rep.store['Figures/Selection']
+        for node in treestore.root.getDescendants():
+            if node.canHaveValue() and not node.isHidden():
+                ch = selroot.addChild('VariablePath')
+                ch.setValue('/'.join(node.location))
+        treestore.unlink()
+        
         print 'Creating report in "%s".' % reportpath
         rep.generate(res,reportpath,reptemplates['default'],callback=reportprogress)
         rep.release()
