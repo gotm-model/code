@@ -202,16 +202,19 @@ class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
     """Widget for "editing" a linked file. Currently just displays a button that,
     when clicked, displays a separate dialog.
     """
-    def __init__(self,parent,node,fileprefix=None,datasourcedir=None, **kwargs):
+    def __init__(self,parent,node,fileprefix=None,datasourcedir=None,autoopen=False,**kwargs):
         QtGui.QWidget.__init__(self, parent)
 
         lo = QtGui.QHBoxLayout()
         
-        if fileprefix==None: fileprefix = node.getText(detail=1,capitalize=True)
-        self.prefix = fileprefix
+        self.title = node.getText(detail=1,capitalize=True)
         self.linkedfile = None
         self.datasourcedir = datasourcedir
+        self.autoopen = autoopen
+        
+        if autoopen: return
 
+        if fileprefix==None: fileprefix = self.title
         self.plotbutton = QtGui.QPushButton(fileprefix+'...',self)
         lo.addWidget(self.plotbutton)
         #lo.addStretch(1)
@@ -219,6 +222,9 @@ class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
         self.setLayout(lo)
 
         self.connect(self.plotbutton, QtCore.SIGNAL('clicked()'), self.onPlot)
+        
+    def showEvent(self,ev):
+        if self.autoopen: self.onPlot()
 
     def setValue(self,value):
         if self.linkedfile!=None: self.linkedfile.release()
@@ -228,7 +234,7 @@ class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
         return self.linkedfile.addref()
 
     def onPlot(self):
-        dialog = LinkedFileEditorDialog(self.linkedfile,self,title=self.prefix,datasourcedir=self.datasourcedir)
+        dialog = LinkedFileEditorDialog(self.linkedfile,self,title=self.title,datasourcedir=self.datasourcedir)
         ret = dialog.exec_()
         if ret == QtGui.QDialog.Accepted:
             self.linkedfile = dialog.linkedfile
