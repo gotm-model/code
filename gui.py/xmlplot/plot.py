@@ -1,6 +1,6 @@
 import math,os.path,xml.dom.minidom
 
-import matplotlib, matplotlib.colors, matplotlib.dates
+import matplotlib, matplotlib.colors, matplotlib.dates, matplotlib.font_manager
 import numpy
 
 import common,xmlstore.xmlstore,xmlstore.util
@@ -310,6 +310,8 @@ class Figure(xmlstore.util.referencedobject):
     """
 
     def __init__(self,figure=None,defaultfont=None):
+        global matplotlib
+    
         xmlstore.util.referencedobject.__init__(self)
 
         # If no MatPlotLib figure is specified, create a new one, assuming
@@ -319,17 +321,16 @@ class Figure(xmlstore.util.referencedobject):
             figure = matplotlib.figure.Figure(figsize=(10/2.54,8/2.54))
             canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(figure)
         
-        # Test if the name of the default font is ASCII
-        # (MatPlotLib 0.98.5 does not appear to like unicode font names)
+        # Test if the specified default font is known to MatPlotLib.
+        # If not, reset the default font to the MatPlotLib default.
         if defaultfont!=None:
             try:
-                defaultfont = str(defaultfont)
-            except UnicodeError:
+                if matplotlib.font_manager.findfont(defaultfont)==matplotlib.font_manager.findfont(None): defaultfont = None
+            except:
                 defaultfont = None
 
         # If no default font is specified, use the MatPlotLib default.
         if defaultfont==None:
-            import matplotlib.font_manager
             defaultfont = matplotlib.font_manager.FontProperties().get_name()
         
         self.figure = figure
