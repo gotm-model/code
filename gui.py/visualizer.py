@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.38 2008-07-03 10:12:32 jorn Exp $
+#$Id: visualizer.py,v 1.39 2009-03-02 14:55:37 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -432,8 +432,12 @@ class PageSave(commonqt.WizardPage):
                 ret = QtGui.QMessageBox.warning(self, 'Overwrite existing file?', 'There already exists a file at the specified location. Overwrite it?', QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
                 if ret==QtGui.QMessageBox.No:
                     return False
+            dialog = commonqt.ProgressDialog(self,title='Saving...',suppressstatus=True)
             try:
-                self.result.save(targetpath,addfiguresettings=self.checkboxAddFigures.isChecked())
+                try:
+                    self.result.save(targetpath,addfiguresettings=self.checkboxAddFigures.isChecked(),callback=dialog.onProgressed)
+                finally:
+                    dialog.close()
                 self.owner.settings.addUniqueValue('Paths/RecentResults','Path',targetpath)
             except Exception,e:
                 print e
