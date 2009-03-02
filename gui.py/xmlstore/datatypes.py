@@ -901,10 +901,10 @@ class DataContainerZip(DataContainer):
         """
         if newname==None: newname = datafile.name
         if self.mode=='r': self.setMode('a')
-        if isinstance(self.source,StringIO.StringIO):
-            print 'Adding "%s" to in-memory archive...' % (newname,)
-        else:
-            print 'Adding "%s" to archive "%s"...' % (newname,self.path)
+        #if isinstance(self.source,StringIO.StringIO):
+        #    print 'Adding "%s" to in-memory archive...' % (newname,)
+        #else:
+        #    print 'Adding "%s" to archive "%s"...' % (newname,self.path)
         datafile.addToZip(self.zfile,newname)
         return self.DataFileZip(self,newname)
 
@@ -1032,7 +1032,7 @@ class DataContainerTar(DataContainer):
         """
         if newname==None: newname = datafile.name
         if self.mode=='r': self.setMode('a')
-        print 'Adding "%s" to archive "%s"...' % (newname,self.path)
+        #print 'Adding "%s" to archive "%s"...' % (newname,self.path)
         datafile.addToTar(self.tfile,newname)
         return self.DataFileTar(self,newname)
 
