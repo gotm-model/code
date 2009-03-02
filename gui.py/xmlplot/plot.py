@@ -319,8 +319,17 @@ class Figure(xmlstore.util.referencedobject):
             figure = matplotlib.figure.Figure(figsize=(10/2.54,8/2.54))
             canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(figure)
         
+        # Test if the name of the default font is ASCII
+        # (MatPlotLib 0.98.5 does not appear to like unicode font names)
+        if defaultfont!=None:
+            try:
+                defaultfont = str(defaultfont)
+            except UnicodeError:
+                defaultfont = None
+
         # If no default font is specified, use the MatPlotLib default.
         if defaultfont==None:
+            import matplotlib.font_manager
             defaultfont = matplotlib.font_manager.FontProperties().get_name()
         
         self.figure = figure
