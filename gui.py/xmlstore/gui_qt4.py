@@ -51,7 +51,10 @@ def createEditor(node,parent=None,selectwithradio=False,**kwargs):
         if selectwithradio:
             return SelectEditorRadio(parent,node,**kwargs)
         else:
-            return SelectEditor(parent,node,**kwargs)
+            lineedit = None
+            if node.templatenode.hasAttribute('editable'): lineedit = editorclass(parent,node,**kwargs)
+            assert lineedit==None or isinstance(lineedit,QtGui.QLineEdit), 'Editor class must derive from QLineEdit.'
+            return SelectEditor(parent,node,lineedit=lineedit,**kwargs)
              
 def registerEditor(typename,editorclass):
     """Registers an editor class for a user-defined data type.
@@ -218,9 +221,13 @@ class AbstractSelectEditor(AbstractPropertyEditor):
 class SelectEditor(AbstractSelectEditor,QtGui.QComboBox):
     """Editor for a selection from a list, represented by an integer.
     """
-    def __init__(self,parent,node,**kwargs):
+    def __init__(self,parent,node,lineedit=None,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
         AbstractSelectEditor.__init__(self,parent,node)
+        self.lineedit = lineedit
+        if lineedit!=None:
+            self.setEditable(True)
+            self.setLineEdit(lineedit)
         self.populate(node)
         self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
         
@@ -229,15 +236,22 @@ class SelectEditor(AbstractSelectEditor,QtGui.QComboBox):
             self.addItem(label,QtCore.QVariant(ichild))
         
     def value(self):
-        ichild,ret = self.itemData(self.currentIndex()).toInt()
-        value = self.valueFromIndex(ichild)
-        assert value!=None, 'Cannot obtain value for index %i.' % ichild
+        icurrentindex = self.currentIndex()
+        if self.isEditable() and self.currentText()!=self.itemText(icurrentindex):
+            value = self.lineedit.value()
+        else:
+            ichild,ret = self.itemData(icurrentindex).toInt()
+            value = self.valueFromIndex(ichild)
+            assert value!=None, 'Cannot obtain value for index %i.' % ichild
         return value
 
     def setValue(self,value):
         ichild = self.indexFromValue(value)
-        assert ichild!=None, 'Cannot find child index for value %s.' % str(value)
-        self.setCurrentIndex(ichild)
+        assert ichild!=None or self.isEditable(), 'Cannot find child index for value %s.' % str(value)
+        if ichild==None and self.isEditable():
+            self.lineedit.setValue(value)
+        else:
+            self.setCurrentIndex(ichild)
 
 class SelectEditorRadio(AbstractSelectEditor,QtGui.QButtonGroup):
     def __init__(self,parent,node,**kwargs):
@@ -1166,7 +1180,7 @@ class TypedStoreTreeView(ExtendedTreeView):
 
         # Set up model/treeview
         self.storemodel = TypedStoreModel(self.store,nohide=False)
-        self.storedelegate = PropertyDelegate(self,fileprefix='',unitinside=True,**kwargs)
+        self.storedelegate = PropertyDelegate(self,fileprefix='',unitinside=True,autoopen=True,**kwargs)
         self.setItemDelegate(self.storedelegate)
         self.setUniformRowHeights(True)
 
