@@ -974,28 +974,33 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           # Get NetCDF file and variable objects.
           nc = self.store.getcdf()
           ncvar = nc.variables[self.ncvarname]
+          
+          # Function for reading NetCDF data.
+          # Automatically handles scalar-valued variables.
+          def readncdata(bounds=None):
+              try:
+                if bounds:
+                    # Bounds provided - read a slice.
+                    return numpy.asarray(ncvar[bounds])
+                elif len(ncvar.shape)>0:
+                    # Variable is non-scalar - read all data.
+                    return numpy.asarray(ncvar[(slice(None),)*len(ncvar.shape)])
+                else:
+                    # Variable is a scalar - read all data.
+                    return numpy.asarray(ncvar.getValue())
+              except Exception, e:
+                raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.getName(),str(e)))
                 
           # Retrieve the data values
           if cache:
               # Take all data from cache if present, otherwise read all data from NetCDF and store it in cache first.
               if self.ncvarname not in self.store.cachedcoords:
-                  if len(ncvar.shape)==0:
-                      self.store.cachedcoords[self.ncvarname] = numpy.asarray(ncvar.getValue())
-                  else:
-                      self.store.cachedcoords[self.ncvarname] = numpy.asarray(ncvar[tuple([slice(None)]*len(ncvar.shape))])
+                  self.store.cachedcoords[self.ncvarname] = readncdata()
               dat = self.store.cachedcoords[self.ncvarname]
               if bounds: dat = dat[bounds]
           else:
               # Read the data slab directly from the NetCDF file.
-              try:
-                if bounds:
-                    dat = numpy.asarray(ncvar[bounds])
-                elif len(ncvar.shape)>0:
-                    dat = numpy.asarray(ncvar[tuple([slice(None)]*len(ncvar.shape))])
-                else:
-                    dat = numpy.asarray(ncvar.getValue())
-              except Exception, e:
-                raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.getName(),str(e)))
+              dat = readncdata(bounds)
 
           # Start without mask, and define function for creating/updating mask
           mask = None
