@@ -979,7 +979,10 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           if cache:
               # Take all data from cache if present, otherwise read all data from NetCDF and store it in cache first.
               if self.ncvarname not in self.store.cachedcoords:
-                  self.store.cachedcoords[self.ncvarname] = numpy.asarray(ncvar.getValue())
+                  if len(ncvar.shape)==0:
+                      self.store.cachedcoords[self.ncvarname] = numpy.asarray(ncvar.getValue())
+                  else:
+                      self.store.cachedcoords[self.ncvarname] = numpy.asarray(ncvar[tuple([slice(None)]*len(ncvar.shape))])
               dat = self.store.cachedcoords[self.ncvarname]
               if bounds: dat = dat[bounds]
           else:
@@ -987,6 +990,8 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
               try:
                 if bounds:
                     dat = numpy.asarray(ncvar[bounds])
+                elif len(ncvar.shape)>0:
+                    dat = numpy.asarray(ncvar[tuple([slice(None)]*len(ncvar.shape))])
                 else:
                     dat = numpy.asarray(ncvar.getValue())
               except Exception, e:
