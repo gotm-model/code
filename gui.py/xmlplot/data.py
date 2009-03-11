@@ -1010,12 +1010,16 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                   assert len(ncvar.valid_range)==2,'NetCDF attribute "valid_range" must consist of two values, but contains %i.' % len(ncvar.valid_range)
                   minv,maxv = ncvar.valid_range
                   mask = addmask(mask,numpy.logical_or(dat<minv,dat>maxv))
-          if hasattr(ncvar,'_FillValue'):    mask = addmask(mask,dat==float(ncvar._FillValue))
-          if hasattr(ncvar,'missing_value'): mask = addmask(mask,dat==float(ncvar.missing_value))
+          if hasattr(ncvar,'_FillValue'):    mask = addmask(mask,dat==numpy.asarray(ncvar._FillValue,dtype=dat.dtype))
+          if hasattr(ncvar,'missing_value'): mask = addmask(mask,dat==numpy.asarray(ncvar.missing_value,dtype=dat.dtype))
 
           # Apply the combined mask (if any)
           if mask!=None: dat = numpy.ma.masked_where(mask,dat,copy=False)
 
+          # If we have to apply a transformation to the data, make sure that the data type can accommodate it.
+          # Cast to the most detailed type available (64-bit float)
+          if hasattr(ncvar,'scale_factor') or hasattr(ncvar,'add_offset') and dat.dtype!=numpy.float: dat = numpy.asarray(dat,dtype=numpy.float)
+          
           # Apply transformation to data based on nc variable attributes.
           if hasattr(ncvar,'scale_factor'): dat *= float(ncvar.scale_factor)
           if hasattr(ncvar,'add_offset'):   dat += float(ncvar.add_offset)
