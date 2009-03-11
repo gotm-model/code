@@ -440,6 +440,13 @@ class Figure(xmlstore.util.referencedobject):
         self.source.addChild(obj,name)
         if self.defaultsource==None: self.defaultsource = name
 
+    def removeDataSource(self,name):
+        """Removes a VariableStore data source from the figure, using the specified
+        name.
+        """
+        if self.defaultsource==name: self.defaultsource = None
+        return self.source.removeChild(name)
+
     def clearProperties(self,deleteoptional=True):
         """Clear all customized figure properties (which means defaults will be used).
         If deleteoptional is set to True, optional nodes such as data series will be
