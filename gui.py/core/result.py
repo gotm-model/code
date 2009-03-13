@@ -154,8 +154,7 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         container.release()
 
         # Attach the result, try to open the CDF file
-        self.datafile = resultpath
-        self.getcdf()
+        xmlplot.data.NetCDFStore_GOTM.load(self,resultpath)
 
         # Reset "changed" status.
         self.changed = False
