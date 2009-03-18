@@ -1,16 +1,6 @@
 <?xml version="1.0"?>
 <element name="root">
-	<element name="turbulence" label="turbulent quantities">
-		<element name="tke"/>
-		<element name="eps"/>
-		<element name="eps_obs">
-			<condition type="eq" variable="/obs/eprofile" value="2" source="scenario"/>
-		</element>
-		<element name="l"/>
-		<element name="num"/>
-		<element name="nuh"/>
-		<element name="nus"/>
-		
+	<element name="turbulence" label="turbulence">
 		<element name="buoyancy" label="buoyancy">
       <condition type="or" source="scenario">
         <condition type="ne" variable="/obs/sprofile" value="0"/>
@@ -36,6 +26,16 @@
 			<element name="vv"/>
 			<element name="ww"/>
 		</element>
+
+		<element name="tke"/>
+		<element name="eps"/>
+		<element name="eps_obs">
+			<condition type="eq" variable="/obs/eprofile" value="2" source="scenario"/>
+		</element>
+		<element name="l"/>
+		<element name="num"/>
+		<element name="nuh"/>
+		<element name="nus"/>
 	</element>
 	<element name="tracers" label="tracers">
     <condition type="or" source="scenario">
