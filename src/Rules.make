@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.19 2008-01-18 08:46:51 jorn Exp $
+#$Id: Rules.make,v 1.20 2009-03-18 09:24:01 kb Exp $
 
 SHELL   = /bin/sh
 
@@ -30,17 +30,45 @@ INCDIRS		=
 LDFLAGS		=
 
 # If we want NetCDF - where are the include files and the library
+
+ifeq ($(NetCDF),true)
+
+DEFINES += -DNETCDF_FMT
+
 ifdef NETCDFINC
-INCDIRS		+= -I$(NETCDFINC)
+INCDIRS         += -I$(NETCDFINC)
 endif
-ifdef NETCDFLIBNAME
-NETCDFLIB	= $(NETCDFLIBNAME)
-else
-NETCDFLIB	= -lnetcdf
+
 ifdef NETCDFLIBDIR
-LDFLAGS		+= -L$(NETCDFLIBDIR)
+LINKDIRS        += -L$(NETCDFLIBDIR)
 endif
+
+ifdef NETCDFLIBNAME
+NETCDFLIB       = $(NETCDFLIBNAME)
+else
+NETCDFLIB       = -lnetcdf
 endif
+
+ifeq ($(NETCDF_VERSION),NETCDF4)
+
+DEFINES         += -DNETCDF4
+ifdef HDF5_DIR
+INCDIRS         += -I$(HDF5_DIR)/include
+LINKDIRS        += -L$(HDF5_DIR)/lib
+endif
+HDF5LIB         = -lhdf5_hl -lhdf5 -lz
+
+else  # NetCDF3 is default
+
+DEFINES         += -DNETCDF3
+HDF5LIB         =
+
+endif
+
+EXTRA_LIBS      += $(NETCDFLIB) $(HDF5LIB)
+
+endif
+# NetCDF/HDF configuration done
 
 #
 # phony targets
@@ -56,10 +84,6 @@ CPP	= /lib/cpp
 
 # Here you can put defines for the [c|f]pp - some will also be set depending
 # on compilation mode.
-ifeq ($(NetCDF),true)
-DEFINES += -DNETCDF_FMT
-EXTRA_LIBS += $(NETCDFLIB)
-endif
 ifeq ($(SEDIMENT),true)
 DEFINES += -DSEDIMENT
 FEATURES += extras/sediment
@@ -87,7 +111,6 @@ LIBDIR	= $(GOTMDIR)/lib/$(FORTRAN_COMPILER)
 endif
 
 ifndef MODDIR
-MODDIR	= $(GOTMDIR)/modules
 MODDIR	= $(GOTMDIR)/modules/$(FORTRAN_COMPILER)
 endif
 INCDIRS	+= -I/usr/local/include -I$(GOTMDIR)/include -I$(MODDIR)
@@ -121,24 +144,18 @@ endif
 
 include $(GOTMDIR)/compilers/compiler.$(FORTRAN_COMPILER)
 
-#DEFINES += -DREAL_4B=$(REAL_4B)
-#ifeq ($(FORTRAN_COMPILER),XLF)
-#DEFINES:=-WF,"$(DEFINES)"
-#DEFINES=-WF,"-DXLF -DNETCDF_FMT -DSEAGRASS -DFORTRAN95 -DPRODUCTION -DREAL_4B=real\(4\)"
-#endif
-
 # For making the source code documentation.
 PROTEX	= protex -b -n -s
 
 .SUFFIXES:
 .SUFFIXES: .F90
 
-LINKDIR	= -L$(LIBDIR)
+LINKDIRS	+= -L$(LIBDIR)
 
 CPPFLAGS	= $(DEFINES) $(INCDIRS)
 FFLAGS  	= $(DEFINES) $(FLAGS) $(MODULES) $(INCDIRS) $(EXTRAS)
 F90FLAGS  	= $(FFLAGS)
-LDFLAGS		+= $(FFLAGS) $(LINKDIR)
+LDFLAGS		+= $(FFLAGS) $(LINKDIRS)
 
 #
 # Common rules
