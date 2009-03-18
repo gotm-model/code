@@ -1165,8 +1165,15 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         # Store link to result file, and try to open the CDF file
         self.datafile = path
         nc = self.getcdf()
-        self.relabelVariables()
+        
+        # Auto-reassign coordinates
         self.autoReassignCoordinates()
+        
+        # Re-label variables - this must be done after reassignments because relabel requests
+        # the variable names, which are then cached and never requested again. Variable names can
+        # depend on dimension reassignments, e.g., if some reassignments apply, extra coordinate
+        # variables may be added.
+        self.relabelVariables()
 
     def autoReassignCoordinates(self):
         self.reassigneddims = {}
@@ -1384,11 +1391,14 @@ class NetCDFStore_GOTM(NetCDFStore):
             
     def getVariableNames_raw(self):
         names = list(NetCDFStore.getVariableNames_raw(self))
-        names.append('z')
         
-        # Only add alternative depth coordinate if it is actually used in the NetCDF file.
-        # (note: GETM does not use it, but GOTM does)
-        if 'z1' in self.getcdf().variables: names.append('z1')
+        ncvars = self.getcdf().variables
+        if self.hname in ncvars and self.elevname in ncvars:
+            names.append('z')
+        
+            # Only add alternative depth coordinate if it is actually used in the NetCDF file.
+            # (note: GETM does not use it, but GOTM does)
+            if 'z1' in self.getcdf().variables: names.append('z1')
         
         return names
 
