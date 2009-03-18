@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.39 2009-03-02 14:55:37 jorn Exp $
+#$Id: visualizer.py,v 1.40 2009-03-18 09:54:26 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -138,26 +138,27 @@ class PageVisualize(commonqt.WizardPage):
         # Show wait cursor
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
         
-        # Save settings for currently shown figure
-        self.saveFigureSettings()
+        try:
+            # Save settings for currently shown figure
+            self.saveFigureSettings()
 
-        # Get name and path of variable about to be shown.
-        self.varname = node.getId()
-        self.varpath = '/'.join(node.location)
-        
-        # Disable figure updating while we make changes.
-        self.figurepanel.figure.setUpdating(False)
-        
-        # Plot; first try stored figures, otherwise plot anew.
-        props = self.figurepanel.figure.properties
-        if not self.result.getFigure('result/'+self.varpath,props):
-            self.figurepanel.plot(self.varname,'result')
-        
-        # Re-enable figure updating (this will force a redraw because things changed)
-        self.figurepanel.figure.setUpdating(True)
-
-        # Restore original cursor
-        QtGui.QApplication.restoreOverrideCursor()
+            # Get name and path of variable about to be shown.
+            self.varname = node.getId()
+            self.varpath = '/'.join(node.location)
+            
+            # Disable figure updating while we make changes.
+            self.figurepanel.figure.setUpdating(False)
+            
+            # Plot; first try stored figures, otherwise plot anew.
+            props = self.figurepanel.figure.properties
+            if not self.result.getFigure('result/'+self.varpath,props):
+                self.figurepanel.plot(self.varname,'result')
+            
+            # Re-enable figure updating (this will force a redraw because things changed)
+            self.figurepanel.figure.setUpdating(True)
+        finally:
+            # Restore original cursor
+            QtGui.QApplication.restoreOverrideCursor()
 
     def isComplete(self):
         return True
@@ -279,8 +280,10 @@ class ConfigureReportWidget(QtGui.QWidget):
 
         # Generate the report and display the wait cursor while doing so.
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
-        self.report.generate(self.result,outputpath,templatepath,callback=self.onReportProgressed)
-        QtGui.QApplication.restoreOverrideCursor()
+        try:
+            self.report.generate(self.result,outputpath,templatepath,callback=self.onReportProgressed)
+        finally:
+            QtGui.QApplication.restoreOverrideCursor()
 
         return True
 

@@ -82,8 +82,10 @@ class GOTMWizard(commonqt.Wizard):
         path = commonqt.browseForPath(self,curpath=scen.path,save=True,filter='GOTM scenario files (*.gotmscenario);;All files (*.*)')
         if path!=None:
             dialog = commonqt.ProgressDialog(self,title='Saving...',suppressstatus=True)
-            scen.saveAll(path,callback=dialog.onProgressed)
-            dialog.close()
+            try:
+                scen.saveAll(path,callback=dialog.onProgressed)
+            finally:
+                dialog.close()
             self.settings.addUniqueValue('Paths/RecentScenarios','Path',path)
 
     def onExportScenario(self):
@@ -137,21 +139,25 @@ class GOTMWizard(commonqt.Wizard):
             path = commonqt.browseForPath(self,curpath=curpath,getdirectory=True)
             if path!=None:
                 progdialog = commonqt.ProgressDialog(self,title='Exporting...',suppressstatus=True)
-                progslicer = xmlstore.util.ProgressSlicer(progdialog.onProgressed,2)
-                progslicer.nextStep('converting to desired version')
-                exportscen = scen.convert(unicode(dialog.comboVersion.currentText()),callback=progslicer.getStepCallback())
-                progslicer.nextStep('writing files')
-                exportscen.writeAsNamelists(path,addcomments=True,callback=progslicer.getStepCallback())
-                exportscen.release()
-                progdialog.close()
+                try:
+                    progslicer = xmlstore.util.ProgressSlicer(progdialog.onProgressed,2)
+                    progslicer.nextStep('converting to desired version')
+                    exportscen = scen.convert(unicode(dialog.comboVersion.currentText()),callback=progslicer.getStepCallback())
+                    progslicer.nextStep('writing files')
+                    exportscen.writeAsNamelists(path,addcomments=True,callback=progslicer.getStepCallback())
+                    exportscen.release()
+                finally:
+                    progdialog.close()
                 
     def onSaveResultAs(self):
         res = self.getProperty('result')
         path = commonqt.browseForPath(self,curpath=res.path,save=True,filter='GOTM result files (*.gotmresult);;All files (*.*)')
         if path!=None:
             dialog = commonqt.ProgressDialog(self,title='Saving...',suppressstatus=True)
-            res.save(path,callback=dialog.onProgressed)
-            dialog.close()
+            try:
+                res.save(path,callback=dialog.onProgressed)
+            finally:
+                dialog.close()
             self.settings.addUniqueValue('Paths/RecentResults','Path',path)
             
     def onExportResult(self):
@@ -163,8 +169,10 @@ class GOTMWizard(commonqt.Wizard):
         path = commonqt.browseForPath(self,curpath=curpath,save=True,filter='NetCDF files (*.nc);;All files (*.*)')
         if path!=None:
             QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
-            res.saveNetCDF(path)
-            QtGui.QApplication.restoreOverrideCursor()
+            try:
+                res.saveNetCDF(path)
+            finally:
+                QtGui.QApplication.restoreOverrideCursor()
 
 class PageIntroduction(commonqt.WizardPage):
     """First page in the GOTM-GUI Wizard.

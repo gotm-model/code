@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.44 2008-08-27 09:38:09 jorn Exp $
+#$Id: scenariobuilder.py,v 1.45 2009-03-18 09:54:26 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -216,8 +216,10 @@ class ScenarioPage(commonqt.WizardPage):
         editednodes = self.factory.getEditedNodes()
         if mustbevalid:
             progressdialog = commonqt.ProgressDialog(self,title='Validating settings...')
-            errors = self.scenario.validate(editednodes,callback=progressdialog.onProgressed,repair=1)
-            progressdialog.close()
+            try:
+                errors = self.scenario.validate(editednodes,callback=progressdialog.onProgressed,repair=1)
+            finally:
+                progressdialog.close()
             if len(errors)>0:
                 QtGui.QMessageBox.critical(self,'Scenario has not been configured correctly','The following problems remain:\n\n%s' % '\n'.join(errors),QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
                 return False
@@ -906,8 +908,10 @@ class PageAdvanced(commonqt.WizardPage):
     def saveData(self,mustbevalid):
         if mustbevalid:
             progressdialog = commonqt.ProgressDialog(self,title='Validating settings...')
-            errors = self.scenario.validate(callback=progressdialog.onProgressed,repair=1)
-            progressdialog.close()
+            try:
+                errors = self.scenario.validate(callback=progressdialog.onProgressed,repair=1)
+            finally:
+                progressdialog.close()
             if len(errors)>0:
                 QtGui.QMessageBox.critical(self,'Scenario is incomplete','The following problems remain:\n\n%s' % '\n'.join(errors),QtGui.QMessageBox.Ok,QtGui.QMessageBox.NoButton)
                 return False
