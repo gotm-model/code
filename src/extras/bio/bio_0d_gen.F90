@@ -1,4 +1,4 @@
-!$Id: bio_0d_gen.F90,v 1.5 2009-03-19 09:38:23 kb Exp $
+!$Id: bio_0d_gen.F90,v 1.6 2009-03-19 10:27:28 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -287,7 +287,8 @@
       case (npzd_0d_id)
          call do_bio_npzd_0d(model%npzd,first,model%info%state_variable_count,cc,env,pp,dd)
       case default
-!JORN         stop 'bio_0d_gen::do_bio_single: the selected biogeochemical model does not yet provide a function that returns the local temporal derivatives.'
+         stop 'bio_0d_gen::do_bio_single: the selected biogeochemical model does not yet provide &
+              &a function that returns the local temporal derivatives.'
    end select
 
    end subroutine do_bio_single
@@ -320,7 +321,8 @@
       case default
          ! Default: use the constant sinking rates specified in state variable properties.
          if (model%info%dynamic_sinking_rates.ne.0) &
-!JORN            stop 'get_sinking_rates_single: the 0d model specifies that sinking rates are time- and/or space-dependent, but a function that provides these sinking rates has not been specified.'
+            stop 'get_sinking_rates_single: the 0d model specifies that sinking rates are time- and/or &
+                 &space-dependent, but a function that provides these sinking rates has not been specified.'
          sinking_rate = model%info%variables%sinking_rate
    end select
 
@@ -384,8 +386,9 @@
                 state_variable_count,cc,model%info%conserved_quantity_count)
       case default
          ! Default: the model does not describe any conserved quantities.
-!JORN         if (model%info%conserved_quantity_count.gt.0) &
-!JORN            stop 'get_conserved_quantities_single: the model specifies that it describes one or more conserved quantities, but a function that provides sums of these quantities has not been specified.'
+         if (model%info%conserved_quantity_count.gt.0) &
+            stop 'get_conserved_quantities_single: the model specifies that it describes one or more conserved &
+                 &quantities, but a function that provides sums of these quantities has not been specified.'
    end select
 
    end function get_conserved_quantities_single
