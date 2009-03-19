@@ -1,4 +1,5 @@
-!$Id: get_bio_profiles.F90,v 1.2 2007-09-11 13:24:32 jorn Exp $
+!$Id: get_bio_profiles.F90,v 1.3 2009-03-19 09:36:32 kb Exp $
+#ifdef BIO
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +32,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_bio_profiles.F90,v $
+!  Revision 1.3  2009-03-19 09:36:32  kb
+!  also work with BIO=false
+!
 !  Revision 1.2  2007-09-11 13:24:32  jorn
 !  added stop after fatal error reading profile
 !
@@ -121,6 +125,7 @@
    return
    end subroutine get_bio_profiles
 !EOC
+#endif
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
