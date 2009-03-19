@@ -1,4 +1,4 @@
-!$Id: bio_0d_gen.F90,v 1.4 2008-11-20 11:00:36 jorn Exp $
+!$Id: bio_0d_gen.F90,v 1.5 2009-03-19 09:38:23 kb Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -287,7 +287,7 @@
       case (npzd_0d_id)
          call do_bio_npzd_0d(model%npzd,first,model%info%state_variable_count,cc,env,pp,dd)
       case default
-         stop 'bio_0d_gen::do_bio_single: the selected biogeochemical model does not yet provide a function that returns the local temporal derivatives.'
+!JORN         stop 'bio_0d_gen::do_bio_single: the selected biogeochemical model does not yet provide a function that returns the local temporal derivatives.'
    end select
 
    end subroutine do_bio_single
@@ -320,7 +320,7 @@
       case default
          ! Default: use the constant sinking rates specified in state variable properties.
          if (model%info%dynamic_sinking_rates.ne.0) &
-            stop 'get_sinking_rates_single: the 0d model specifies that sinking rates are time- and/or space-dependent, but a function that provides these sinking rates has not been specified.'
+!JORN            stop 'get_sinking_rates_single: the 0d model specifies that sinking rates are time- and/or space-dependent, but a function that provides these sinking rates has not been specified.'
          sinking_rate = model%info%variables%sinking_rate
    end select
 
@@ -380,11 +380,12 @@
 !BOC
    select case (model%id)
       case (npzd_0d_id)
-         sums = get_conserved_quantities_npzd_0d(model%npzd,model%info%state_variable_count,cc,model%info%conserved_quantity_count)
+         sums = get_conserved_quantities_npzd_0d(model%npzd,model%info% &
+                state_variable_count,cc,model%info%conserved_quantity_count)
       case default
          ! Default: the model does not describe any conserved quantities.
-         if (model%info%conserved_quantity_count.gt.0) &
-            stop 'get_conserved_quantities_single: the model specifies that it describes one or more conserved quantities, but a function that provides sums of these quantities has not been specified.'
+!JORN         if (model%info%conserved_quantity_count.gt.0) &
+!JORN            stop 'get_conserved_quantities_single: the model specifies that it describes one or more conserved quantities, but a function that provides sums of these quantities has not been specified.'
    end select
 
    end function get_conserved_quantities_single
@@ -457,8 +458,12 @@
    nstate = 1
    ncons = 1
    do i = 1,count
-      collection%info%variables           (nstate:nstate+collection%models(i)%info%state_variable_count    -1) = collection%models(i)%info%variables
-      collection%info%conserved_quantities(ncons :ncons +collection%models(i)%info%conserved_quantity_count-1) = collection%models(i)%info%conserved_quantities
+      collection%info%variables(nstate:nstate+collection%models(i)%info% &
+       state_variable_count    -1)&
+                        = collection%models(i)%info%variables
+      collection%info%conserved_quantities(ncons :ncons +collection &
+        %models(i)%info%conserved_quantity_count-1)&
+                        = collection%models(i)%info%conserved_quantities
       nstate = nstate + collection%models(i)%info%state_variable_count
       ncons  = ncons  + collection%models(i)%info%conserved_quantity_count
    end do
@@ -482,8 +487,12 @@
    logical,                      intent(in)    :: first
    REALTYPE,                     intent(in)    :: cc(1:collection%info%state_variable_count)
    type (type_environment),      intent(in)    :: env
-   REALTYPE,                     intent(inout) :: pp(1:collection%info%state_variable_count,1:collection%info%state_variable_count)
-   REALTYPE,                     intent(inout) :: dd(1:collection%info%state_variable_count,1:collection%info%state_variable_count)
+   REALTYPE,                     intent(inout) :: &
+                                 pp(1:collection%info%state_variable_count, &
+                                 1:collection%info%state_variable_count)
+   REALTYPE,                     intent(inout) :: &
+                                 dd(1:collection%info%state_variable_count, &
+                                 1:collection%info%state_variable_count)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -496,7 +505,8 @@
    ifirst = 1
    do i = 1,collection%count
       ilast = ifirst + collection%models(i)%info%state_variable_count - 1
-      call do_bio_single(collection%models(i),first,cc(ifirst:ilast),env,pp(ifirst:ilast,ifirst:ilast),dd(ifirst:ilast,ifirst:ilast))
+      call do_bio_single(collection%models(i),first,cc(ifirst:ilast),env,&
+               pp(ifirst:ilast,ifirst:ilast),dd(ifirst:ilast,ifirst:ilast))
       ifirst = ilast+1
    end do
 

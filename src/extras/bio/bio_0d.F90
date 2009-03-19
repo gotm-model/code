@@ -1,4 +1,4 @@
-!$Id: bio_0d.F90,v 1.7 2008-11-20 11:00:36 jorn Exp $
+!$Id: bio_0d.F90,v 1.8 2009-03-19 09:38:23 kb Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -504,7 +504,9 @@
          env%s    = s(ci)
          env%nuh  = nuh(ci)
          env%rho  = rho(ci)
-         call do_bio_0d_generic(model%models(imodel),first,cc(ifirst:ilast,ci),env,pp(ifirst:ilast,ifirst:ilast,ci),dd(ifirst:ilast,ifirst:ilast,ci))
+         call do_bio_0d_generic(model%models(imodel),first, &
+                  cc(ifirst:ilast,ci),env,pp(ifirst:ilast,ifirst:ilast,ci),&
+                  dd(ifirst:ilast,ifirst:ilast,ci))
       end do
       
       ! Update PAR based on extinction values of the next model (if any)
