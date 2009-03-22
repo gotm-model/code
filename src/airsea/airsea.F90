@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.29 2008-06-10 16:51:26 hb Exp $
+!$Id: airsea.F90,v 1.30 2009-03-22 07:32:39 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,6 +85,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.30  2009-03-22 07:32:39  jorn
+!  made swr clean-up independent of use of meteo data
+!
 !  Revision 1.29  2008-06-10 16:51:26  hb
 !  bug concerning I_0 removed
 !
@@ -601,12 +604,12 @@
       close(meteo_unit)
    else
       if (heat_method     .eq. FROMFILE) close(heatflux_unit)
-      if (swr_method      .eq. FROMFILE) close(swr_unit)
       if (momentum_method .eq. FROMFILE) close(momentum_unit)
       if (precip_method   .eq. FROMFILE) close(precip_unit)
       if (sst_method      .eq. FROMFILE) close(sst_unit)
       if (sss_method      .eq. FROMFILE) close(sss_unit)
    end if
+   if (swr_method    .eq. FROMFILE) close(swr_unit)
    if (precip_method .eq. FROMFILE) close(precip_unit)
    init_saved_vars=.true.
    return
