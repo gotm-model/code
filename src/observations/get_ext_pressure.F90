@@ -1,4 +1,4 @@
-!$Id: get_ext_pressure.F90,v 1.9 2006-12-07 16:47:50 hb Exp $
+!$Id: get_ext_pressure.F90,v 1.10 2009-03-23 10:00:28 lars Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -33,6 +33,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_ext_pressure.F90,v $
+!  Revision 1.10  2009-03-23 10:00:28  lars
+!  compute h_press also for method=1
+!
 !  Revision 1.9  2006-12-07 16:47:50  hb
 !  Bug removed for PressMethod=1
 !
@@ -88,6 +91,8 @@
          dpdx    = PressConstU
          dpdy    = PressConstV
       case(1)                                    ! tides
+         h_press = PressHeight
+
          dpdx = AmpMu*sin(2*pi*(fsecs-PhaseMu)/PeriodM)    &
                 + AmpSu*sin(2*pi*(fsecs-PhaseSu)/PeriodS)    &
                 + PressConstU
