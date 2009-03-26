@@ -420,7 +420,8 @@ class LinkedMatrix(LinkedFileVariableStore):
         return res
         
     def loadDataFile_KnownCount(self,callback):
-        """Loads data from a DataFile object."""
+        """Load a data from a DataFile object with the number of lines listed on the first line.
+        """
         # Get number of dimensions and variables.
         dimcount = len(self.dimensions)
         varcount = len(self.vardata)
@@ -479,7 +480,7 @@ class LinkedMatrix(LinkedFileVariableStore):
                 data = map(float,line.split())
 
             if len(data)<varcount:
-                raise Exception('Line %i contains only %i observations, where %i are expected.' % (iline,len(data),varcount))
+                raise Exception('Line %i contains only %i observations, where %i are expected (%s).' % (iline,len(data),varcount,', '.join([d[1] for d in self.vardata])))
             
             # Store time and values.
             if dimcount==1: dimvalues[irow] = dimvalue
@@ -505,6 +506,8 @@ class LinkedMatrix(LinkedFileVariableStore):
             return [values]
 
     def loadDataFile_UnknownCount(self,callback):
+        """Load a data file with the number of lines not known in advance.
+        """
         varcount = len(self.vardata)
         
         # Get the size of the file (in bytes, may be None if the size is not known)
@@ -551,7 +554,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             # Read values.
             data = line[datematch.end()+1:].split()
             if len(data)<varcount:
-                raise Exception('Line %i contains only %i observations, where %i are expected.' % (iline,len(data),varcount))
+                raise Exception('Line %i contains only %i observations, where %i are expected (%s).' % (iline,len(data),varcount,', '.join([d[1] for d in self.vardata])))
             values[-1][ipos,:] = map(float,data[:varcount])
             
             # Inform caller about progress
