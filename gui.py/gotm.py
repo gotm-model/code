@@ -421,7 +421,7 @@ def main(options,args):
     seq = commonqt.WizardSequence([PageIntroduction,PageChooseAction,ForkOnAction(wiz),visualizer.PageVisualize,visualizer.PageReportGenerator,visualizer.PageSave,visualizer.PageFinal])
     wiz.setSequence(seq)
     wiz.setWindowTitle('GOTM-GUI')
-    wiz.resize(800, 600)
+    wiz.resize(850, 600)
 
     # Parse command line arguments
     openpath = None
