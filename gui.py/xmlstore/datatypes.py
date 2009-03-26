@@ -411,7 +411,7 @@ class DataFile(DataType,util.referencedobject):
         if not self.isValid(): return
         targetpath = context['targetcontainerpath']
         if self.isBelowPath(targetpath):
-            print 'Reading "%s" into memory to prevent it from being overwritten.' % self.name
+            #print 'Reading "%s" into memory to prevent it from being overwritten.' % self.name
             memdf = DataFileMemory.fromDataFile(self)
             memdf.save(node,context)
             memdf.release()
