@@ -177,27 +177,33 @@ class flatten(expressions.LazyFunction):
         s[self.targetaxis] *= s[self.removedim]
         del s[self.removedim]
         return s
+        
+class interp(expressions.LazyFunction):
+    """Function for multidimensional linear interpolation.
+    """
 
-class subsection(expressions.LazyFunction):
     def __init__(self,sourceslice,**kwargs):
-        expressions.LazyFunction.__init__(self,'subsection',None,sourceslice,**kwargs)
+        expressions.LazyFunction.__init__(self,'interp',None,sourceslice,outsourceslices=False,**kwargs)
+        dims = self.getDimensions()
+        for d in kwargs.iterkeys():
+            assert d in dims, 'Dimension %s does not exist in original slice. Available dimensions: %s' % (d,', '.join(dims))
 
     def _getValue(self,resolvedargs,resolvedkwargs):
-        sourceslice = resolvedargs[0]
-        dimlist = list(sourceslice.dimensions)
-        slcs = []
-        for idim,dimname in enumerate(dimlist):
-            if dimname not in resolvedkwargs:
-                slcs.append(slice(None))
-                continue
-            minval,maxval = resolvedkwargs[dimname]
-            if isinstance(minval,datetime.datetime): minval = common.date2num(minval)
-            if isinstance(maxval,datetime.datetime): maxval = common.date2num(maxval)
-            if minval>maxval: minval,maxval = maxval,minval
-            c = sourceslice.coords_stag[idim]
-            imin,imax = common.getboundindices(c,idim,minval,maxval)
-            slcs.append(slice(imin,imax,1))
-        return sourceslice[tuple(slcs)]
-
+        assert isinstance(resolvedargs[0],common.Variable.Slice),'The first argument to interpn must be a variable slice.'
+        dataslice = resolvedargs[0]
+        return dataslice.interp(**resolvedkwargs)
+                    
     def getShape(self):
-        return None
+        s = expressions.LazyOperation.getShape(self)
+        if s==None: return None
+        newshape = []
+        for n,l in zip(self.getDimensions(),s):
+            if n not in self.kwargs:
+                newshape.append(l)
+            else:
+                section = self.kwargs[n]
+                if isinstance(section,(float,int)):
+                    newshape.append(1)
+                else:
+                    newshape.append(len(section))
+            
