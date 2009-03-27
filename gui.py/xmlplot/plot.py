@@ -779,9 +779,9 @@ class Figure(xmlstore.util.referencedobject):
 
                 # Get the values to plot
                 if len(varslices)==1:
-                    if plottype3d!=2:
-                        cinfo = vardata
-                        cname = varpath
+                    #if plottype3d!=2:
+                    cinfo = vardata
+                    cname = varpath
                     C = varslice.data
                 else:
                     assert len(varslices)==2,'Only plots with one or two dependent variables are currently supported.'
@@ -974,6 +974,7 @@ class Figure(xmlstore.util.referencedobject):
                 axisdata = axis2data.get('colorbar',{})
                 canhavelogscale = axisdata['datatype']!='datetime' and (axisdata['datarange'][0]>0 or axisdata['datarange'][1]>0)
                 logscale = canhavelogscale and axis2data.get('colorbar',{}).get('logscale',False)
+                crange = list(axis2data.get('colorbar',{}).get('forcedrange',[None,None]))
                 if logscale:
                     norm = matplotlib.colors.LogNorm()
                     
@@ -982,19 +983,38 @@ class Figure(xmlstore.util.referencedobject):
                     if invalid.any(): C = numpy.ma.masked_where(invalid,C,copy=False)
                     axisdata['datarange'] = [C.min(),C.max()]
                     
+                    # If we will make a vector plot: use color mask for u,v data as well.
                     if 'U' in info:
                         info['U'] = numpy.ma.masked_where(C._mask,info['U'],copy=False)
                         info['V'] = numpy.ma.masked_where(C._mask,info['V'],copy=False)
-
+                
+                    # Ignore nonpositive color limits since a log scale is to be used.
+                    if crange[0]!=None and crange[0]<=0.: crange[0] = None
+                    if crange[1]!=None and crange[1]<=0.: crange[1] = None
+                
+                if crange[0]==None and crange[1]==None:
+                    # Automatic color bounds: first check if we are not dealing with data with all the same value.
+                    # if so, explicitly set the color range because MatPlotLib 0.90.0 chokes on identical min and max.
+                    if isinstance(C,numpy.ma.MaskedArray):
+                        flatC = C.compressed()
+                    else:
+                        flatC = C.ravel()
+                    if len(flatC)>0 and (flatC==flatC[0]).all(): crange = (C[0,0]-1.,C[0,0]+1.)
+                    
                 if len(varslices)==1:
                     # Only one dependent variable: X,Y,C plot using contour, contourf and/or pcolormesh
                     
                     if plottype3d==1 or plottype3d==2:
                         # We have to make a contour plot (filled or empty)
                         
-                        explicitcc = seriesnode['ContourCount'].getValue()
-                        cc = explicitcc
-                        if cc==None: cc=7
+                        # Get contour properties
+                        showedges = seriesnode['ShowEdges'].getValue(usedefault=True)
+                        edgecolor = (seriesnode['EdgeColor'].getValue(usedefault=True).getNormalized(),)
+                        if plottype3d==2 and seriesnode['UseColorMap'].getValue(usedefault=True): edgecolor = None
+                        edgewidth = seriesnode['EdgeWidth'].getValue(usedefault=True)
+                        borders,fill = (showedges or plottype3d==2),plottype3d==1
+                        cc = seriesnode['ContourCount'].getValue()
+                        if cc==None: cc = 7
 
                         # Choose a contour locator
                         if logscale:
@@ -1002,30 +1022,33 @@ class Figure(xmlstore.util.referencedobject):
                         else:
                             loc = matplotlib.ticker.MaxNLocator(cc+1)
 
-                        # Get contour properties
-                        showedges = seriesnode['ShowEdges'].getValue(usedefault=True)
-                        edgecolor = (seriesnode['EdgeColor'].getValue(usedefault=True).getNormalized(),)
-                        if plottype3d==2 and seriesnode['UseColorMap'].getValue(usedefault=True): edgecolor = None
-                        edgewidth = seriesnode['EdgeWidth'].getValue(usedefault=True)
-                        borders,fill = (showedges or plottype3d==2),plottype3d==1
-                        cset,csetf = None,None
+                        # Choose contours (code taken from matplotlib.contour.py, _autolev function)
+                        loc.create_dummy_axis()
+                        zmin,zmax = crange
+                        if zmin==None: zmin = C.min()
+                        if zmax==None: zmax = C.max()
+                        loc.set_bounds(zmin, zmax)
+                        lev = loc()
+                        zmargin = (zmax - zmin) * 0.000001 # so z < (zmax + zmargin)
+                        if zmax >= lev[-1]:
+                            lev[-1] += zmargin
+                        if zmin <= lev[0]:
+                            if logscale:
+                                lev[0] = 0.99 * zmin
+                            else:
+                                lev[0] -= zmargin
+                        if not fill: lev = lev[1:-1]
+                        defaultseriesnode['ContourCount'].setValue(len(lev)-2)
                         
                         # Contour count was specified
                         if fill:
-                            csetf = drawaxes.contourf(X,Y,C,cc,norm=norm,locator=loc,zorder=zorder,cmap=cm)
+                            pc = drawaxes.contourf(X,Y,C,lev,norm=norm,zorder=zorder,cmap=cm)
                         if borders:
                             if fill: zorder += 1
                             contourcm = cm
                             if edgecolor!=None: contourcm = None
-                            cset = drawaxes.contour(X,Y,C,cc,norm=norm,locator=loc,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
-
-                        if explicitcc==None:
-                            # Retrieve the number of contours chosen by MatPlotLib
-                            constset = csetf
-                            if constset==None: constset = cset
-                            defaultseriesnode['ContourCount'].setValue(len(constset.levels)-2)
+                            drawaxes.contour(X,Y,C,lev[1:-1],norm=norm,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
                             
-                        pc = csetf
                         if plottype3d==2 and edgecolor!=None: hascolormap = False
                     else:
                         # We have to plot a colored quadrilinear mesh
@@ -1041,18 +1064,7 @@ class Figure(xmlstore.util.referencedobject):
                 if pc!=None:
                     # Create colorbar
                     assert cb==None, 'Currently only one object that needs a colorbar is supported per figure.'
-                    forced = list(axis2data.get('colorbar',{}).get('forcedrange',[None,None]))
-                    if forced[0]!=None and logscale and forced[0]<=0.: forced[0] = None
-                    if forced[1]!=None and logscale and forced[1]<=0.: forced[1] = None
-                    if forced[0]==None and forced[1]==None:
-                        # Automatic color bounds: first check if we are not dealing with data with all the same value.
-                        # if so, explicitly set the color range because MatPlotLib 0.90.0 chokes on identical min and max.
-                        if isinstance(C,numpy.ma.MaskedArray):
-                            flatC = C.compressed()
-                        else:
-                            flatC = C.ravel()
-                        if len(flatC)>0 and (flatC==flatC[0]).all(): forced = (C[0,0]-1.,C[0,0]+1.)
-                    pc.set_clim(forced)
+                    pc.set_clim(crange)
                     cb = self.figure.colorbar(pc,ax=axes)
 
                 plotcount[2] += 1
@@ -1206,11 +1218,12 @@ class Figure(xmlstore.util.referencedobject):
             defaxisnode['IsTimeAxis'].setValue(istimeaxis)
 
             # Get the MatPlotLib axis object.
+            mplaxis = None
             if axisname=='x':
                 mplaxis = axes.get_xaxis()
             elif axisname=='y':
                 mplaxis = axes.get_yaxis()
-            else:
+            elif cb!=None:
                 mplaxis = cb.ax.get_yaxis()
 
             if istimeaxis:
@@ -1280,15 +1293,15 @@ class Figure(xmlstore.util.referencedobject):
                 # Major ticks
                 dayspan = (effdatarange[1]-effdatarange[0])
                 location,interval,tickformat,tickspan = getTimeTickSettings(dayspan,axisnode['TicksMajor'],defaxisnode['TicksMajor'])
-                mplaxis.set_major_locator(getTimeLocator(location,interval))
+                if mplaxis: mplaxis.set_major_locator(getTimeLocator(location,interval))
                 assert tickformat in tickformats, 'Unknown tick format %i.' % tickformat
-                mplaxis.set_major_formatter(CustomDateFormatter(tickformats[tickformat]))
+                if mplaxis: mplaxis.set_major_formatter(CustomDateFormatter(tickformats[tickformat]))
 
                 # Minor ticks
                 location,interval,tickformat,tickspan = getTimeTickSettings(min(tickspan,dayspan),axisnode['TicksMinor'],defaxisnode['TicksMinor'])
-                mplaxis.set_minor_locator(getTimeLocator(location,interval))
+                if mplaxis:  mplaxis.set_minor_locator(getTimeLocator(location,interval))
                 assert tickformat in tickformats, 'Unknown tick format %i.' % tickformat
-                #mplaxis.set_minor_formatter(CustomDateFormatter(tickformats[tickformat]))
+                #if mplaxis: mplaxis.set_minor_formatter(CustomDateFormatter(tickformats[tickformat]))
 
                 # Set the "natural" axis limits based on the data ranges.
                 defaxisnode['MinimumTime'].setValue(common.num2date(naturalrange[0]))
@@ -1299,10 +1312,11 @@ class Figure(xmlstore.util.referencedobject):
                 defaxisnode['Maximum'].setValue(naturalrange[1])
 
             # Remove axis ticks if required.
-            if not axisnode['TicksMajor'].getValue(usedefault=True):
-                mplaxis.set_major_locator(matplotlib.ticker.FixedLocator([]))
-            if not axisnode['TicksMinor'].getValue(usedefault=True):
-                mplaxis.set_minor_locator(matplotlib.ticker.FixedLocator([]))
+            if mplaxis:
+                if not axisnode['TicksMajor'].getValue(usedefault=True):
+                    mplaxis.set_major_locator(matplotlib.ticker.FixedLocator([]))
+                if not axisnode['TicksMinor'].getValue(usedefault=True):
+                    mplaxis.set_minor_locator(matplotlib.ticker.FixedLocator([]))
 
             # Obtain label for axis.
             label = axisnode['Label'].getValue(usedefault=True)
@@ -1321,8 +1335,7 @@ class Figure(xmlstore.util.referencedobject):
             elif axisname=='y':
                 if label!='': axes.set_ylabel(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
                 axes.set_ylim(effrange[0],effrange[1])
-            elif axisname=='colorbar':
-                assert cb!=None, 'No colorbar has been created.'
+            elif axisname=='colorbar' and cb!=None:
                 if label!='': cb.set_label(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
 
         for oldaxis in oldaxes:
