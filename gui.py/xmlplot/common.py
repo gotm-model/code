@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.18 2009-02-26 09:54:44 jorn Exp $
+#$Id: common.py,v 1.19 2009-03-27 14:41:14 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -142,6 +142,12 @@ def interp1_get_weights(allx,X,axis=0):
     
     # Make sure the axis to operate on comes last.
     allx = numpy.rollaxis(allx,axis,allx.ndim)
+    
+    # Input array is sorted in descending order:
+    # Switch the sign of the input array and target coordinates to get values in ascending order
+    if allx[tuple([0]*allx.ndim)]>allx[tuple([0]*(allx.ndim-1)+[1])]:
+        allx = -allx
+        X = -X
 
     # Create arrays to hold upper indices and weights for linear interpolation.
     newxshape = list(allx.shape[:-1])+[X.shape[0]]
@@ -353,6 +359,15 @@ def getboundindices(data,axis,minval=None,maxval=None):
         if maxval!=None: uc = data.min(axis=1)
     else:
         n,uc,lc = len(data),data,data
+        
+    if n>1 and uc[0]>uc[1] and lc[0]>lc[1]:
+        # Values are sorted in descending order: switch the sign to get ascending order
+        minval,maxval = maxval,minval
+        if minval!=None: minval = -minval
+        if maxval!=None: maxval = -maxval
+        uc = -uc
+        lc = -lc
+        
     imin,imax = 0,n
     if minval!=None: imin = min(n-1,max(0,lc.searchsorted(minval)-1))
     if maxval!=None: imax = max(1  ,min(n,uc.searchsorted(maxval)+1))
