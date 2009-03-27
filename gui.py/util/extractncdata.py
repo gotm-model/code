@@ -76,7 +76,7 @@ def extractncdata(path,varname,pathout=None,fix='',plot=False,verbose=True,debug
     if debug:
         for d,c in zip(varslice.dimensions,varslice.coords_stag):
             print '%s min=%.8g, max=%.8g' % (d,c.min(),c.max())
-        print 'mean data value=%.8g' % (varslice.data.mean())
+        print 'mean data value=%.8g' % (varslice.data.mean(),)
     
     # Linearly interpolate
     if verbose: print 'Linearly interpolating %s...' % longname

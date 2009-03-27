@@ -779,7 +779,6 @@ class Figure(xmlstore.util.referencedobject):
 
                 # Get the values to plot
                 if len(varslices)==1:
-                    #if plottype3d!=2:
                     cinfo = vardata
                     cname = varpath
                     C = varslice.data
