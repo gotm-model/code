@@ -1041,19 +1041,18 @@ class Figure(xmlstore.util.referencedobject):
                 if pc!=None:
                     # Create colorbar
                     assert cb==None, 'Currently only one object that needs a colorbar is supported per figure.'
-                    if isinstance(C,numpy.ma.MaskedArray):
-                        flatC = C.compressed()
-                    else:
-                        flatC = C.ravel()
-                    if len(flatC)>0 and (flatC==flatC[0]).all():
-                        # All color values are equal. Explicitly set color range,
-                        # because MatPlotLib 0.90.0 chokes on identical min and max.
-                        pc.set_clim((C[0,0]-1,C[0,0]+1))
-                    else:
-                        forced = list(axis2data.get('colorbar',{}).get('forcedrange',(None,None)))
-                        if forced[0]!=None and logscale and forced[0]<=0.: forced[0] = None
-                        if forced[1]!=None and logscale and forced[1]<=0.: forced[1] = None
-                        pc.set_clim(forced)
+                    forced = list(axis2data.get('colorbar',{}).get('forcedrange',[None,None]))
+                    if forced[0]!=None and logscale and forced[0]<=0.: forced[0] = None
+                    if forced[1]!=None and logscale and forced[1]<=0.: forced[1] = None
+                    if forced[0]==None and forced[1]==None:
+                        # Automatic color bounds: first check if we are not dealing with data with all the same value.
+                        # if so, explicitly set the color range because MatPlotLib 0.90.0 chokes on identical min and max.
+                        if isinstance(C,numpy.ma.MaskedArray):
+                            flatC = C.compressed()
+                        else:
+                            flatC = C.ravel()
+                        if len(flatC)>0 and (flatC==flatC[0]).all(): forced = (C[0,0]-1.,C[0,0]+1.)
+                    pc.set_clim(forced)
                     cb = self.figure.colorbar(pc,ax=axes)
 
                 plotcount[2] += 1
