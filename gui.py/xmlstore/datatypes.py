@@ -47,6 +47,9 @@ class DataTypeSimple(DataType):
     This string will be used to store the value as a single text node in XML.
     Also, because a single string representation exists, it can be used in
     conditions and as the base data type of a "select" element.
+    
+    Derived classes must implement fromXmlString and toXmlString, rather
+    than load and save.
     """
 
     @classmethod
@@ -73,6 +76,9 @@ class DataTypePrimitive(DataTypeSimple):
     """Primitive data type that can be represented by a single Python object
     (the value), as well as a single string. The value must be specified upon
     initialization.
+    
+    Default conversion to an XML string is provided by a simple method that
+    calls "unicode" with the Python object as argument.
     """
     def __init__(self,value):
         self.value = value
@@ -147,17 +153,19 @@ class TimeDelta(DataTypeSimple,datetime.timedelta):
     
     def __init__(self,*args,**kwargs):
         DataTypeSimple.__init__(self)
-        datetime.timedelta(*args,**kwargs)
+        datetime.timedelta.__init__(self,*args,**kwargs)
 
     @staticmethod
     def fromXmlString(text,context,template):
         """Loads the time span value from the specified string.
         """
         if text:
+            # Handle negative timedeltas: process optional leading minus sign
             mult = 1
             if text[0]=='-':
                 mult = -1
                 text = text[1:]
+                
             assert text[0]=='P', 'A stored duration/timedelta should always start with "P".'
             import re
             m = re.match('P(\d+Y)?(\d+M)?(\d+D)?(?:T(\d+H)?(\d+M)?(\d+(?:\.\d*)S)?)?',text)
@@ -198,17 +206,11 @@ class TimeDelta(DataTypeSimple,datetime.timedelta):
             values.append([self.days,'day'])
             
         # Divide seconds over hours, minutes, and remaining seconds.
-        seconds = self.seconds
-        hours = int(seconds/3600)
-        if hours>0:
-            values.append([hours,'hour'])
-            seconds = (seconds % 3600)            
-        minutes = int(seconds/60)
-        if minutes>0:
-            values.append([minutes,'minute'])
-            seconds = (seconds % 60)
-        if seconds>0:
-            values.append([seconds,'second'])
+        hours,seconds = divmod(self.seconds,3600)
+        if hours>0: values.append([hours,'hour'])
+        minutes,seconds = divmod(seconds,60)
+        if minutes>0: values.append([minutes,'minute'])
+        if seconds>0: values.append([seconds,'second'])
             
         # Add microseconds
         if self.microseconds>0:
@@ -304,7 +306,7 @@ class Color(DataTypeSimple):
 register('color',Color)
 
 class DataContainer(util.referencedobject):
-    """Abtract data container, e.g., a directory or compressed archive.
+    """Abstract data container, e.g., a directory or compressed archive.
     Items in the container are identified by name."""
     def __init__(self):
         util.referencedobject.__init__(self)
