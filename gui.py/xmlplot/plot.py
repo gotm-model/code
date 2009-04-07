@@ -1058,6 +1058,23 @@ class Figure(xmlstore.util.referencedobject):
                 else:
                     # Two dependent variables: X,Y,U,V,C plot using quiver or barbs
                     U,V = info['U'],info['V']
+                    
+                    # Quiver with masked arrays has bugs in MatPlotlib 0.98.5
+                    # Therefore we mask here only the color array, making sure that its mask combines
+                    # the masks of U,V,C.
+                    mask = None
+                    def addmask(mask,newmask):
+                        if mask==None:
+                            mask = numpy.empty(U.shape,dtype=numpy.bool)
+                            mask.fill(False)
+                        return numpy.logical_or(mask,newmask)
+                    if hasattr(U,'_mask'): mask = addmask(mask,U._mask)
+                    if hasattr(V,'_mask'): mask = addmask(mask,V._mask)
+                    if hasattr(C,'_mask'): mask = addmask(mask,C._mask)
+                    if mask!=None:
+                        C = numpy.ma.masked_where(mask,C,copy=False)
+                        U,V = U.filled(0.),V.filled(0.)
+                        
                     pc = drawaxes.quiver(X,Y,U,V,C,cmap=cm,norm=norm)
                 
                 if pc!=None:
