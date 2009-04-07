@@ -928,7 +928,6 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           # Non-integer bounds are initially ignored; after retrieving the coordinate arrays, these are filled in.
           boundindices,floatslices,floatindices = [],[],[]
           for idim,bound in enumerate(bounds):
-            assert not (isinstance(bound,slice) and bound.step!=None),'Step argument is not yet supported.'
             if isinstance(bound,int):
                 # Integer value provided as index
                 assert bound>=0,          'Slice index %i lies below lower boundary of dimension %s (0).' % (bound,dimnames[idim])
@@ -940,12 +939,13 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 floatindices.append(idim)
             elif not (isinstance(bound.start,(int,types.NoneType)) and isinstance(bound.stop,(int,types.NoneType))):
                 # Non-integer slice specification (e.g., using floating point numbers or datetime objects).
+                assert bound.step==None,'Non-integer slices with explicitly specified step are not supported.'
                 boundindices.append(slice(0,shape[idim]))
                 floatslices.append(idim)
             else:
                 # Normal (integer-based) slice specification
                 start,stop,step = bound.indices(shape[idim])
-                boundindices.append(slice(start,stop))
+                boundindices.append(slice(start,stop,step))
 
           # Translate slices based on non-integer values (e.g. floating point values, dates)
           # to slices based on integers.

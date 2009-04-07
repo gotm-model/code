@@ -136,9 +136,7 @@ class LazyExpression:
                 if not (isinstance(slic[i].start,(int,types.NoneType)) and isinstance(slic[i].stop,(int,types.NoneType))): return None
 
                 start,stop,step = slic[i].indices(baseshape[i])
-                assert step==1, 'Slices with step>1 are not yet supported.'
-                
-                baseshape[i] = stop-start
+                baseshape[i] = (stop-start-1)/step+1
         return baseshape
         
     @staticmethod
@@ -553,6 +551,14 @@ class VariableExpression(common.Variable):
         for entry in self.root:
             if isinstance(entry,LazyExpression): self.variables += entry.getVariables()
         assert self.variables, 'Expression "%s" does not reference any variable.' % expression
+        
+    def __getitem__(self,slices):
+        newroot = []
+        for entry in self.root:
+            newentry = entry
+            if isinstance(entry,LazyExpression): newentry = entry[slices]
+            newroot.append(newentry)
+        return VariableExpression(newroot)
         
     def buildExpression(self):
         result = ','.join([node.getText(type=0,addparentheses=False) for node in self.root])
