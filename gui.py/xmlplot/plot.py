@@ -1080,7 +1080,7 @@ class Figure(xmlstore.util.referencedobject):
                             flatC = C.compressed()
                         else:
                             flatC = C.ravel()
-                        if len(flatC)>0 and (flatC==flatC[0]).all(): crange = (C[0,0]-1.,C[0,0]+1.)
+                        if len(flatC)>0 and (flatC==flatC[0]).all(): crange = (flatC[0]-1.,flatC[0]+1.)
                     
                 if len(varslices)==1:
                     # Only one dependent variable: X,Y,C plot using contour, contourf and/or pcolormesh
