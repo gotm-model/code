@@ -530,7 +530,12 @@ class Figure(xmlstore.util.referencedobject):
         The properties can be specified as path to an XML file, an in-memory
         XML node, among others.
         """
-        self.properties.setStore(props)
+        if isinstance(props,(basestring,xmlstore.datatypes.DataFile)):
+            # Load properties from file - versions may differ and will be converted automatically
+            self.properties.load(props)
+        else:
+            # Load from XML node or document - versions must be identical
+            self.properties.setStore(props)
         self.update()
 
     def getPropertiesCopy(self):
@@ -699,11 +704,11 @@ class Figure(xmlstore.util.referencedobject):
 
         seriesslices,seriesvariables,seriesinfo = [],[],[]
         xrange,yrange = [None,None],[None,None]
-        for seriesnode in forcedseries:
+        for iseries,seriesnode in enumerate(forcedseries):
             # Get the path of the data source (data source identifier + variable id)
             varpath = seriesnode.getSecondaryId()
             if varpath=='':
-                print 'Skipping data series %i because the secondary node id (i.e., variable source and name) is not set.'
+                print 'Skipping data series %i because the secondary node id (i.e., variable source and name) is not set.' % iseries
                 continue
                 
             var = self.source[varpath]
