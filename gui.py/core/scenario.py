@@ -19,8 +19,8 @@ class Scenario(xmlstore.xmlstore.TypedStore):
     # Descriptive name for the store to be used when communicating with the user.
     storetitle = 'GOTM scenario'
 
-    def __init__(self,schemadom,valueroot=None,adddefault = True):
-        xmlstore.xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
+    def __init__(self,schema,valueroot=None,adddefault = True):
+        xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
 

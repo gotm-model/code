@@ -1,0 +1,303 @@
+<?xml version="1.0"?>
+<element name="Figure" label="figure" version="0003">
+
+  <template id="Line2D">
+    <element name="CanHaveMarker" type="bool" hidden="True"/>
+    <element name="Line" type="string" label="line">
+      <options>
+        <option label="none"     value=""  />
+        <option label="solid"    value="-" />
+        <option label="dashed"   value="--"/>
+        <option label="dash-dot" value="-."/>
+        <option label="dotted"   value=":" />
+      </options>
+      <element name="Color" type="color" label="color">
+        <condition type="ne" variable="." value=""/>
+      </element>
+      <element name="Width" type="float" label="width" unit="pt">
+        <condition type="ne" variable="." value=""/>
+      </element>
+    </element>
+    <element name="Marker" type="string" label="marker">
+      <condition type="eq" variable="./CanHaveMarker" value="True"/>
+      <options>
+        <option label="none"     value="" />
+        <option label="point"    value="."/>
+        <option label="pixel"    value=","/>
+        <option label="circle"   value="o"/>
+        <option label="triangle" value="^"/>
+        <option label="square"   value="s"/>
+        <option label="plus"     value="+"/>
+        <option label="cross"    value="x"/>
+        <option label="diamond"  value="D"/>
+      </options>
+      <element name="Size" type="float" label="size" unit="pt">
+        <condition type="and">
+          <condition type="ne" variable="." value=""/>
+          <condition type="ne" variable="." value="."/>
+        </condition>
+      </element>
+      <element name="FaceColor" type="color" label="color">
+        <condition type="and">
+          <condition type="ne" variable="." value=""/>
+          <condition type="ne" variable="." value="+"/>
+          <condition type="ne" variable="." value="x"/>
+        </condition>
+      </element>
+      <element name="EdgeColor" type="color" label="edge color">
+        <condition type="ne" variable="." value=""/>
+      </element>
+      <element name="EdgeWidth" type="float" label="edge width" unit="pt">
+        <condition type="ne" variable="." value=""/>
+      </element>
+    </element>
+  </template>
+
+  <template id="TickMarks" type="bool">
+    <element name="ShowLabels"   type="bool" hidden="True"/>
+    <element name="LocationTime" type="int" label="unit">
+      <condition type="and">
+        <condition type="eq" variable="." value="True"/>
+        <condition type="eq" variable="../IsTimeAxis" value="True"/>
+      </condition>
+      <options>
+        <option value="0" label="year"/>
+        <option value="1" label="month"/>
+        <option value="2" label="day"/>
+        <option value="3" label="hour"/>
+        <option value="4" label="minute"/>
+      </options>
+    </element>
+    <element name="IntervalTime" type="int" label="interval" minInclusive="1">
+      <condition type="and">
+        <condition type="eq" variable="."             value="True"/>
+        <condition type="eq" variable="../IsTimeAxis" value="True"/>
+      </condition>
+    </element>
+    <element name="FormatTime" type="string" label="format" editable="True">
+      <condition type="and">
+        <condition type="eq" variable="."             value="True"/>
+        <condition type="eq" variable="./ShowLabels"  value="True"/>
+        <condition type="eq" variable="../IsTimeAxis" value="True"/>
+      </condition>
+      <options>
+        <option value="dd-mmm-yyyy HH:MM:SS"/>
+        <option value="dd-mmm-yyyy"/>
+        <option value="mm/dd/yy"/>
+        <option value="mmm"/>
+        <option value="m"/>
+        <option value="mm"/>
+        <option value="mm/dd"/>
+        <option value="dd"/>
+        <option value="ddd"/>
+        <option value="d"/>
+        <option value="yyyy"/>
+        <option value="yy"/>
+        <option value="mmmyy"/>
+        <option value="HH:MM:SS"/>
+        <option value="HH:MM:SS PM"/>
+        <option value="HH:MM"/>
+        <option value="HH:MM PM"/>
+        <option value="QQ-yy"/>
+        <option value="QQ"/>
+        <option value="dd/mm"/>
+        <option value="dd/mm/yy"/>
+        <option value="mmm.dd,yyyy HH:MM:SS"/>
+        <option value="mmm.dd,yyyy"/>
+        <option value="mm/dd/yyyy"/>
+        <option value="dd/mm/yyyy"/>
+        <option value="yy/mm/dd"/>
+        <option value="yyyy/mm/dd"/>
+        <option value="QQ-yyyy"/>
+        <option value="mmmyyyy"/>
+      </options>
+    </element>
+  </template>
+
+  <element name="Title"       type="string"   label="title"/>
+  <element name="FontName"    type="fontname" label="font"/>
+  <element name="FontScaling" type="float"    label="font scaling" unit="%"/>
+  <element name="Width"       type="float"    label="width"        unit="cm"/>
+  <element name="Height"      type="float"    label="height"       unit="cm"/>
+
+  <element name="Padding" label="padding">
+    <element name="Left"   type="float" label="left"/>
+    <element name="Right"  type="float" label="right"/>
+    <element name="Top"    type="float" label="top"/>
+    <element name="Bottom" type="float" label="bottom"/>
+  </element>
+
+  <element name="CanBeMap" type="bool" hidden="True"/>
+  <element name="Map" type="bool" label="plot as map">
+    <condition type="eq" variable="./CanBeMap" value="True"/>
+    <element name="Projection" type="mapprojection" label="projection">
+      <condition type="eq" variable="." value="True"/>
+    </element>
+    <element name="Resolution" type="string" label="resolution">
+      <condition type="eq" variable="." value="True"/>
+      <options>
+        <option value="c" label="crude"/>
+        <option value="l" label="low"/>
+        <option value="i" label="intermediate"/>
+        <option value="h" label="high"/>
+        <option value="f" label="full"/>
+      </options>
+    </element>
+    <element name="DrawCoastlines" type="bool" label="draw coastlines">
+      <condition type="eq" variable="." value="True"/>
+    </element>
+    <element name="Range" label="range">
+      <condition type="eq" variable="." value="True"/>
+      <element name="LowerLeftLatitude"   type="float" label="lower left latitude"/>
+      <element name="LowerLeftLongitude"  type="float" label="lower left longitude"/>
+      <element name="UpperRightLatitude"  type="float" label="upper right latitude"/>
+      <element name="UpperRightLongitude" type="float" label="upper right longitude"/>
+    </element>
+  </element>
+
+  <element name="CanHaveLegend" type="bool" hidden="True"/>
+  <element name="Legend" type="bool" label="legend">
+    <condition type="eq" variable="./CanHaveLegend" value="True"/>
+    <element name="Location" type="string" label="location">
+      <condition type="eq" variable="." value="True"/>
+      <options>
+        <option value="best"/>
+        <option value="upper right"/>
+        <option value="upper left"/>
+        <option value="lower left"/>
+        <option value="lower right"/>
+        <option value="right"/>
+        <option value="center left"/>
+        <option value="center right"/>
+        <option value="lower center"/>
+        <option value="upper center"/>
+        <option value="center"/>
+      </options>
+    </element>
+	</element>
+	
+	<element name="Grid" type="bool" label="grid">
+		<link template="Line2D" name="LineProperties" grouponly="True">
+			<condition type="eq" variable="." value="True"/>
+		</link>
+	</element>
+
+  <element name="HasColorMap" type="bool" hidden="True"/>
+  <element name="ColorMap" type="colormap" label="colormap">
+    <condition type="eq" variable="./HasColorMap" value="True"/>
+  </element>
+
+  <element name="Axes" label="axes">
+		<element name="Axis" label="axis" maxoccurs="10">
+			<element name="Label"       type="string" label="label"/>
+			<element name="IsTimeAxis"  type="bool" hidden="True"/>
+			<element name="Dimensions"  type="string" hidden="True"/>
+			<element name="MinimumTime" type="datetime" label="minimum" nodefault="True">
+				<condition type="eq" variable="./IsTimeAxis" value="True"/>
+			</element>
+			<element name="MaximumTime" type="datetime" label="maximum" nodefault="True">
+				<condition type="eq" variable="./IsTimeAxis" value="True"/>
+			</element>
+			<element name="Minimum" type="float" label="minimum" unit="[Unit]" nodefault="True">
+				<condition type="ne" variable="./IsTimeAxis" value="True"/>
+			</element>
+			<element name="Maximum" type="float" label="maximum" unit="[Unit]" nodefault="True">
+				<condition type="ne" variable="./IsTimeAxis" value="True"/>
+			</element>
+			<element name="Unit" type="string" label="unit" hidden="True"/>
+      <element name="CanHaveLogScale" type="bool" label="axis can be log-transformed" hidden="True"/>
+      <element name="LogScale" type="bool" label="log-scale">
+        <condition type="and">
+          <condition type="eq" variable="./CanHaveLogScale" value="True"/>
+          <condition type="ne" variable="./IsTimeAxis" value="True"/>
+        </condition>
+      </element>
+      <link template="TickMarks" name="TicksMajor" label="major ticks"/>
+			<link template="TickMarks" name="TicksMinor" label="minor ticks"/>
+		</element>
+	</element>
+
+	<element name="Data" label="data series">
+		<element name="Series" label="series" maxoccurs="10">
+      <element name="Label" type="string" label="label"/>
+			<element name="Type" type="int" label="type" hidden="True"/>
+			<link template="Line2D" name="LineProperties" grouponly="True">
+				<condition type="eq" variable="./Type" value="1"/>
+			</link>
+
+			<element name="HasConfidenceLimits" type="bool" hidden="True"/>
+			<element name="ConfidenceLimits" label="confidence limits">
+				<condition type="eq" variable="./HasConfidenceLimits" value="True"/>
+				<element name="Style" type="int" label="style">
+					<options>
+						<option label="none"        value="0"/>
+						<option label="error bars"  value="1"/>
+						<option label="shaded area" value="2"/>
+					</options>
+				</element>
+			</element>
+			
+			<element name="PlotType3D" type="int" label="plot type">
+				<condition type="eq" variable="./Type" value="2"/>
+				<options>
+					<option label="grid"            value="0"/>
+					<option label="filled contours" value="1"/>
+          <option label="contours"        value="2"/>
+        </options>
+			</element>
+			<element name="ContourCount" type="int" label="number of contours">
+				<condition type="and">
+					<condition type="eq" variable="./Type"       value="2"/>
+					<condition type="ne" variable="./PlotType3D" value="0"/>
+				</condition>
+			</element>
+      <element name="ShowEdges" type="bool" label="show edges">
+        <condition type="and">
+          <condition type="eq" variable="./Type"       value="2"/>
+          <condition type="ne" variable="./PlotType3D" value="2"/>
+        </condition>
+      </element>
+      <element name="UseColorMap" type="bool" label="use colormap">
+				<condition type="or">
+					<condition type="and">
+						<condition type="eq" variable="./Type"       value="2"/>
+						<condition type="eq" variable="./PlotType3D" value="2"/>
+					</condition>
+					<condition type="eq" variable="./Type"         value="3"/>
+				</condition>
+			</element>
+			<element name="EdgeColor" type="color" label="edge color">
+				<condition type="and">
+					<condition type="eq" variable="./Type" value="2"/>
+          <condition type="or">
+            <condition type="and">
+              <condition type="eq" variable="./PlotType3D" value="1"/>
+              <condition type="eq" variable="./ShowEdges"  value="True"/>
+            </condition>
+            <condition type="and">
+              <condition type="eq" variable="./PlotType3D"   value="2"/>
+              <condition type="ne" variable="./UseColorMap"  value="True"/>
+            </condition>
+          </condition>
+        </condition>
+      </element>
+      <element name="EdgeWidth" type="float" label="edge width">
+        <condition type="and">
+          <condition type="eq" variable="./Type" value="2"/>
+          <condition type="or">
+            <condition type="and">
+              <condition type="eq" variable="./PlotType3D" value="1"/>
+              <condition type="eq" variable="./ShowEdges"  value="True"/>
+            </condition>
+            <condition type="eq" variable="./PlotType3D"   value="2"/>
+          </condition>
+        </condition>
+      </element>
+
+			<element name="ArrowScale" type="float" label="arrow scaling">
+				<condition type="eq" variable="./Type" value="3"/>
+			</element>
+		</element>
+	</element>
+		
+</element>

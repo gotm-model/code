@@ -41,6 +41,10 @@ class DataType:
         
     def validate(self,callback=None):
         return True
+        
+    def toPrettyString(self):
+        """Returns a pretty string representation of the object."""
+        return unicode(self)
 
 class DataTypeSimple(DataType):
     """Data type that can be completely represented by a single string.
@@ -58,6 +62,15 @@ class DataTypeSimple(DataType):
 
     @staticmethod
     def fromXmlString(string,context,template=None):
+        """Loads the object from an XML string.
+        
+        The object returned by this static method will normally be a member of the class
+        to which the static method belongs. However, this is not enforced: an object of
+        another class may be returned (e.g., a Python primitive object such as int, float,
+        str). This will work provided that the class can be initialized from this object
+        alone. For an eample of this approach see the primitive data types Int, Float, String
+        below.
+        """
         assert False, 'Method "fromXmlString" MUST be implemented by the inheriting class.'
 
     def save(self,node,context):
@@ -84,6 +97,14 @@ class DataTypePrimitive(DataTypeSimple):
         self.value = value
     def toXmlString(self,context):
         return unicode(self.value)
+    def toPrettyString(self):
+        return unicode(self.value)
+    def __cmp__(self,other):
+        if isinstance(other,DataTypePrimitive):
+            othervalue = other.value
+        else:
+            othervalue = other
+        return cmp(self.value,othervalue)
 
 class Int(DataTypePrimitive):
     """Integer data type.
@@ -116,6 +137,9 @@ class Bool(DataTypePrimitive):
     def toXmlString(self,context):
         if self.value: return 'True'
         else:          return 'False'
+    def toPrettyString(self):
+        if self.value: return 'Yes'
+        else:          return 'No'
 register('bool',Bool)
 
 class String(DataTypePrimitive):
@@ -144,6 +168,8 @@ class DateTime(DataTypePrimitive):
     def toXmlString(self,context):
         dt = self.value
         return '%04i-%02i-%02i %02i:%02i:%02i' % (dt.year,dt.month,dt.day,dt.hour,dt.minute,dt.second)
+    def toPrettyString(self):
+        return util.formatDateTime(self.value)
 register('datetime',DateTime)
 
 class TimeDelta(DataTypeSimple,datetime.timedelta):
@@ -196,7 +222,7 @@ class TimeDelta(DataTypeSimple,datetime.timedelta):
     def __cmp__(self,other):
         return cmp(self.getAsSeconds(),other.getAsSeconds())
         
-    def __str__(self):
+    def toPrettyString(self):
         """Returns a "pretty" string representation of the time span.
         """
         values = []
@@ -289,7 +315,7 @@ class Color(DataTypeSimple):
         assert self.isValid(), 'Cannot convert color to normalized tuple because the color object is not valid.'
         return (self.red/255.,self.green/255.,self.blue/255.)
         
-    def __str__(self):
+    def toPrettyString(self):
         """Returns a pretty string representation of the color.
         """
         if self.isValid():

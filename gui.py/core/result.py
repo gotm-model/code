@@ -12,9 +12,9 @@ class ResultProperties(xmlstore.xmlstore.TypedStore):
     versions of the XML schema for results.
     """
 
-    def __init__(self,valueroot=None,adddefault = True):
-        schemadom = os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml')
-        xmlstore.xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
+    def __init__(self,valueroot=None,adddefault = True,schema=None):
+        if schema==None: schema = os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml')
+        xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
     schemadict = None
     @staticmethod

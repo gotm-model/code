@@ -192,7 +192,9 @@ class AbstractSelectEditor(AbstractPropertyEditor):
         for ch in options.childNodes:
             if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
                 if not ch.hasAttribute('disabled'):
-                    children.append((ichild,ch.getAttribute('label'),ch.getAttribute('description')))
+                    label = ch.getAttribute('label')
+                    if label=='': label = ch.getAttribute('value')
+                    children.append((ichild,label,ch.getAttribute('description')))
                 ichild += 1
         return children
         
@@ -205,7 +207,6 @@ class AbstractSelectEditor(AbstractPropertyEditor):
                     return self.node.getValueType(returnclass=True).fromXmlString(ch.getAttribute('value'),{},self.node.templatenode)
                 ichild += 1
         return None
-        assert False, 'Cannot find option number %i in list of options.' % value
 
     def indexFromValue(self,value):
         ichild = 0
@@ -252,6 +253,30 @@ class SelectEditor(AbstractSelectEditor,QtGui.QComboBox):
             self.lineedit.setValue(value)
         else:
             self.setCurrentIndex(ichild)
+
+class SimpleSelectEditor(SelectEditor):
+    def getOptionList(self):
+        return ()
+
+    def getOptions(self):
+        info = self.getOptionInfo()
+        if isinstance(info,dict):
+            # A dictionary linking values to descriptions was returned
+            self.list = list(sorted(info.keys(),key=str.lower))
+            return [(i,info[opt],'') for i,opt in enumerate(self.list)]
+        else:
+            # A list of values was returned
+            self.list = info
+            return [(i,opt,'') for i,opt in enumerate(self.list)]
+
+    def valueFromIndex(self,index):
+        if index<0 or index>=len(self.list): return None
+        return self.list[index]
+
+    def indexFromValue(self,value):
+        for i,opt in enumerate(self.list):
+            if opt==value: return i
+        return None
 
 class SelectEditorRadio(AbstractSelectEditor,QtGui.QButtonGroup):
     def __init__(self,parent,node,**kwargs):

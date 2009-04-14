@@ -30,6 +30,15 @@ def getColorMaps():
     return colormaps,colormaplist
 
 xmlstore.datatypes.register('fontname',xmlstore.datatypes.String)
+
+class MapProjectionChoice(xmlstore.datatypes.String):
+    def toPrettyString(self):
+        try:
+            import mpl_toolkits.basemap
+        except:
+            return self.value
+        return mpl_toolkits.basemap._projnames[self.value]
+xmlstore.datatypes.register('mapprojection',MapProjectionChoice)
       
 class MergedVariableStore(common.VariableStore):
     """Class that merges multiple data sources (VariableStore objects) with
@@ -284,9 +293,9 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
     versions of the XML schema for figures.
     """
 
-    def __init__(self,valueroot=None,adddefault = True):
-        schemadom = os.path.join(common.getDataRoot(),'schemas/figure/0002.xml')
-        xmlstore.xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
+    def __init__(self,valueroot=None,adddefault = True,schema=None):
+        if schema==None: schema = os.path.join(common.getDataRoot(),'schemas/figure/0003.xml')
+        xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
     schemadict = None
     @staticmethod
@@ -300,7 +309,69 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
         dt = xmlstore.xmlstore.TypedStore.getCustomDataTypes()
         dt['colormap'] = xmlstore.datatypes.String
         return dt
-        
+
+    class Convertor_0002_0003(xmlstore.xmlstore.Convertor):
+        fixedsourceid = '0002'
+        fixedtargetid = '0003'
+
+        def convert(self,source,target,callback=None):
+            xmlstore.xmlstore.Convertor.convert(self,source,target)
+            markertypes = {0:'',1:'.',2:',',3:'o',4:'^',5:'s',6:'+',7:'x',8:'D'}
+            linestyles = {0:'',1:'-',2:'--',3:'-.',4:':'}
+            tickformats = {0:'dd-mmm-yyyy HH:MM:SS',
+                            1:'dd-mmm-yyyy',
+                            2:'mm/dd/yy',
+                            3:'mmm',
+                            4:'m',
+                            5:'mm',
+                            6:'mm/dd',
+                            7:'dd',
+                            8:'ddd',
+                            9:'d',
+                            10:'yyyy',
+                            11:'yy',
+                            12:'mmmyy',
+                            13:'HH:MM:SS',
+                            14:'HH:MM:SS PM',
+                            15:'HH:MM',
+                            16:'HH:MM PM',
+                            17:'QQ-yy',
+                            18:'QQ',
+                            19:'dd/mm',
+                            20:'dd/mm/yy',
+                            21:'mmm.dd,yyyy HH:MM:SS',
+                            22:'mmm.dd,yyyy',
+                            23:'mm/dd/yyyy',
+                            24:'dd/mm/yyyy',
+                            25:'yy/mm/dd',
+                            26:'yyyy/mm/dd',
+                            27:'QQ-yyyy',
+                            28:'mmmyyyy'}
+                            
+            def updateLine2D(sourcenode):
+                line = sourcenode['Line'].getValue(usedefault=False)
+                marker = sourcenode['Marker'].getValue(usedefault=False)
+                if line==None and marker==None: return
+                targetnode = target.mapForeignNode(sourcenode)
+                if line!=None:   targetnode['Line'].setValue(linestyles[line])
+                if marker!=None: targetnode['Marker'].setValue(markertypes[marker])
+                            
+            # Update line and marker styles in grid and data series.
+            updateLine2D(source['Grid/LineProperties'])
+            for seriesnode in source['Data'].getLocationMultiple(['Series']):
+                updateLine2D(seriesnode['LineProperties'])
+                
+            # Update time formats
+            for sourcenode in source['Axes'].getLocationMultiple(['Axis']):
+                minfmt = sourcenode['TicksMinor/FormatTime'].getValue(usedefault=False)
+                majfmt = sourcenode['TicksMajor/FormatTime'].getValue(usedefault=False)
+                if minfmt==None and majfmt==None: continue
+                targetnode = target.mapForeignNode(sourcenode)
+                if minfmt!=None: targetnode['TicksMinor/FormatTime'].setValue(tickformats[minfmt])
+                if majfmt!=None: targetnode['TicksMajor/FormatTime'].setValue(tickformats[majfmt])
+
+FigureProperties.addConvertor(FigureProperties.Convertor_0002_0003)
+                        
 class Figure(xmlstore.util.referencedobject):
     """Class encapsulating a MatPlotLib figure. The data for the figure is
     provided as one or more VariableStore objects, with data series being
@@ -349,7 +420,7 @@ class Figure(xmlstore.util.referencedobject):
         # Set some default properties.
         self.defaultproperties['FontName'       ].setValue(defaultfont)
         self.defaultproperties['FontScaling'    ].setValue(100)
-        self.defaultproperties['Legend/Location'].setValue(0)
+        self.defaultproperties['Legend/Location'].setValue('best')
         self.defaultproperties['HasColorMap'    ].setValue(False)
         self.defaultproperties['ColorMap'       ].setValue('jet')
         setLineProperties(self.defaultproperties['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
@@ -696,7 +767,9 @@ class Figure(xmlstore.util.referencedobject):
                         varslices[i].data = numpy.ma.masked_where(invalid,varslices[i].data,copy=False)
 
             # Get the number of dimensions from the data slice, and add it to the plot properties.
-            defaultseriesnode['DimensionCount'].setValue(varslices[0].ndim)
+            typ = varslices[0].ndim
+            if typ==2 and len(varslices)>1: typ=3
+            defaultseriesnode['Type'].setValue(typ)
 
             # Get the plot type for 3D plots.
             plottype3d = seriesnode['PlotType3D'].getValue(usedefault=True)
@@ -786,18 +859,19 @@ class Figure(xmlstore.util.referencedobject):
                     assert len(varslices)==2,'Only plots with one or two dependent variables are currently supported.'
                     U = varslices[0].data
                     V = varslices[1].data
-                    C = numpy.sqrt(U**2+V**2)
-                    cname = 'arrowlength'
-                    cinfo = {'label':'arrow length',
-                             'unit':'',
-                               'datatype':'float',
-                               'tight':False,
-                               'reversed':False,
-                               'datarange':[C.min(),C.max()]}
+                    if seriesnode['UseColorMap'].getValue(usedefault=True):
+                        C = numpy.ma.absolute(U+V*1j)
+                        cname = 'arrowlength'
+                        cinfo = {'label':'arrow length',
+                                 'unit':'',
+                                   'datatype':'float',
+                                   'tight':False,
+                                   'reversed':False,
+                                   'datarange':[C.min(),C.max()]}
                     
                 # Transpose values if needed
                 if xdim<ydim:
-                    C = C.transpose()
+                    if C!=None: C = C.transpose()
                     if U!=None: U,V = U.transpose(),V.transpose()
                 
             if X!=None:
@@ -965,40 +1039,43 @@ class Figure(xmlstore.util.referencedobject):
                 plotcount[1] += 1
             elif varslice.ndim==2:
                 # Retrieve cached coordinates
-                X,Y,C = info['x'],info['y'],info['C']
+                X,Y,C = info['x'],info['y'],None
+                if 'C' in info: C = info['C']
                 
                 pc = None       # object using colormap
                 norm = None     # color normalization object
-                hascolormap = True
-                axisdata = axis2data.get('colorbar',{})
-                canhavelogscale = axisdata['datatype']!='datetime' and (axisdata['datarange'][0]>0 or axisdata['datarange'][1]>0)
-                logscale = canhavelogscale and axis2data.get('colorbar',{}).get('logscale',False)
-                crange = list(axis2data.get('colorbar',{}).get('forcedrange',[None,None]))
-                if logscale:
-                    norm = matplotlib.colors.LogNorm()
-                    
-                    # Mask values <= 0 manually, because color bar locators choke on them.
-                    invalid = C<=0
-                    if invalid.any(): C = numpy.ma.masked_where(invalid,C,copy=False)
-                    axisdata['datarange'] = [C.min(),C.max()]
-                    
-                    # If we will make a vector plot: use color mask for u,v data as well.
-                    if 'U' in info:
-                        info['U'] = numpy.ma.masked_where(C._mask,info['U'],copy=False)
-                        info['V'] = numpy.ma.masked_where(C._mask,info['V'],copy=False)
+                hascolormap = (C!=None)
                 
-                    # Ignore nonpositive color limits since a log scale is to be used.
-                    if crange[0]!=None and crange[0]<=0.: crange[0] = None
-                    if crange[1]!=None and crange[1]<=0.: crange[1] = None
-                
-                if crange[0]==None and crange[1]==None:
-                    # Automatic color bounds: first check if we are not dealing with data with all the same value.
-                    # if so, explicitly set the color range because MatPlotLib 0.90.0 chokes on identical min and max.
-                    if isinstance(C,numpy.ma.MaskedArray):
-                        flatC = C.compressed()
-                    else:
-                        flatC = C.ravel()
-                    if len(flatC)>0 and (flatC==flatC[0]).all(): crange = (C[0,0]-1.,C[0,0]+1.)
+                if C!=None:
+                    axisdata = axis2data.get('colorbar',{})
+                    canhavelogscale = axisdata['datatype']!='datetime' and (axisdata['datarange'][0]>0 or axisdata['datarange'][1]>0)
+                    logscale = canhavelogscale and axis2data.get('colorbar',{}).get('logscale',False)
+                    crange = list(axis2data.get('colorbar',{}).get('forcedrange',[None,None]))
+                    if logscale:
+                        norm = matplotlib.colors.LogNorm()
+                        
+                        # Mask values <= 0 manually, because color bar locators choke on them.
+                        invalid = C<=0
+                        if invalid.any(): C = numpy.ma.masked_where(invalid,C,copy=False)
+                        axisdata['datarange'] = [C.min(),C.max()]
+                        
+                        # If we will make a vector plot: use color mask for u,v data as well.
+                        if 'U' in info:
+                            info['U'] = numpy.ma.masked_where(C._mask,info['U'],copy=False)
+                            info['V'] = numpy.ma.masked_where(C._mask,info['V'],copy=False)
+                    
+                        # Ignore nonpositive color limits since a log scale is to be used.
+                        if crange[0]!=None and crange[0]<=0.: crange[0] = None
+                        if crange[1]!=None and crange[1]<=0.: crange[1] = None
+                    
+                    if crange[0]==None and crange[1]==None:
+                        # Automatic color bounds: first check if we are not dealing with data with all the same value.
+                        # if so, explicitly set the color range because MatPlotLib 0.90.0 chokes on identical min and max.
+                        if isinstance(C,numpy.ma.MaskedArray):
+                            flatC = C.compressed()
+                        else:
+                            flatC = C.ravel()
+                        if len(flatC)>0 and (flatC==flatC[0]).all(): crange = (C[0,0]-1.,C[0,0]+1.)
                     
                 if len(varslices)==1:
                     # Only one dependent variable: X,Y,C plot using contour, contourf and/or pcolormesh
@@ -1046,7 +1123,8 @@ class Figure(xmlstore.util.referencedobject):
                             if fill: zorder += 1
                             contourcm = cm
                             if edgecolor!=None: contourcm = None
-                            drawaxes.contour(X,Y,C,lev[1:-1],norm=norm,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+                            cpc = drawaxes.contour(X,Y,C,lev[1:-1],norm=norm,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+                            if not fill: pc = cpc
                             
                         if plottype3d==2 and edgecolor!=None: hascolormap = False
                     else:
@@ -1059,9 +1137,11 @@ class Figure(xmlstore.util.referencedobject):
                     # Two dependent variables: X,Y,U,V,C plot using quiver or barbs
                     U,V = info['U'],info['V']
                     
-                    # Quiver with masked arrays has bugs in MatPlotlib 0.98.5
-                    # Therefore we mask here only the color array, making sure that its mask combines
-                    # the masks of U,V,C.
+                    # Calculate velocities (needed for arrow auto-scaling)
+                    vel = C
+                    if vel==None: vel = numpy.ma.absolute(U+V*1j)
+
+                    # Get combined mask of U,V and (optionally) C
                     mask = None
                     def addmask(mask,newmask):
                         if mask==None:
@@ -1070,12 +1150,31 @@ class Figure(xmlstore.util.referencedobject):
                         return numpy.logical_or(mask,newmask)
                     if hasattr(U,'_mask'): mask = addmask(mask,U._mask)
                     if hasattr(V,'_mask'): mask = addmask(mask,V._mask)
-                    if hasattr(C,'_mask'): mask = addmask(mask,C._mask)
+                    if C!=None and hasattr(C,'_mask'): mask = addmask(mask,C._mask)
+                    
+                    # Quiver with masked arrays has bugs in MatPlotlib 0.98.5
+                    # Therefore we mask here only the color array, making sure that its mask combines
+                    # the masks of U,V,C.
                     if mask!=None:
-                        C = numpy.ma.masked_where(mask,C,copy=False)
+                        if C!=None: C = numpy.ma.masked_where(mask,C,copy=False)
                         U,V = U.filled(0.),V.filled(0.)
+                            
+                    scale = seriesnode['ArrowScale'].getValue(usedefault=True)
+                    if C==None:
+                        # Quiver without color values
+                        pc = drawaxes.quiver(X,Y,U,V,cmap=cm,norm=norm,scale=scale)
+                    else:
+                        # Quiver with color values
+                        pc = drawaxes.quiver(X,Y,U,V,C,cmap=cm,norm=norm,scale=scale)
+
+                    # Auto-scale code taken from matplotlib.quiver
+                    pc._init()
+                    sn = max(10, math.sqrt(pc.N))
+                    scale = 1.8 * vel.mean() * sn / pc.span # crude auto-scaling
+                    defaultseriesnode['ArrowScale'].setValue(scale)  
+                    if pc.scale==None: pc.scale = scale                  
                         
-                    pc = drawaxes.quiver(X,Y,U,V,C,cmap=cm,norm=norm)
+                    if C==None: pc = None
                 
                 if pc!=None:
                     # Create colorbar
@@ -1197,6 +1296,9 @@ class Figure(xmlstore.util.referencedobject):
                 forcedrange = [mintime,maxtime]
             else:
                 forcedrange = [axisnode['Minimum'].getValue(),axisnode['Maximum'].getValue()]
+            bothforced = (forcedrange[0]!=None and forcedrange[1]!=None)
+            reverse = (bothforced and forcedrange[0]>forcedrange[1]) or (axisdata['reversed'] and not bothforced)
+            if reverse: forcedrange[0],forcedrange[1] = forcedrange[1],forcedrange[0]
                 
             # Make sure forced ranges are valid if log transform is applied.
             if axisnode['LogScale'].getValue(usedefault=True):
@@ -1219,6 +1321,10 @@ class Figure(xmlstore.util.referencedobject):
             if not numpy.isfinite(naturalrange[0]): naturalrange[0] = None
             if not numpy.isfinite(naturalrange[1]): naturalrange[1] = None
             
+            # Reverse bpunds where needed
+            if axisdata['reversed']: naturalrange[0],naturalrange[1] = naturalrange[1],naturalrange[0]
+            if reverse: effrange[1],effrange[0] = effrange[0],effrange[1]
+
             # Build default label for this axis
             deflab = axisdata['label']
             if axisdata['unit']!='' and axisdata['unit']!=None: deflab += ' ('+axisdata['unit']+')'
@@ -1245,79 +1351,16 @@ class Figure(xmlstore.util.referencedobject):
             if istimeaxis:
                 assert axisname!='colorbar', 'The color bar cannot be a time axis.'
                 
-                # Tick formats
-                #DATEFORM number   DATEFORM string         Example
-                #   0             'dd-mmm-yyyy HH:MM:SS'   01-Mar-2000 15:45:17 
-                #   1             'dd-mmm-yyyy'            01-Mar-2000  
-                #   2             'mm/dd/yy'               03/01/00     
-                #   3             'mmm'                    Mar          
-                #   4             'm'                      M            
-                #   5             'mm'                     3            
-                #   6             'mm/dd'                  03/01        
-                #   7             'dd'                     1            
-                #   8             'ddd'                    Wed          
-                #   9             'd'                      W            
-                #  10             'yyyy'                   2000         
-                #  11             'yy'                     00           
-                #  12             'mmmyy'                  Mar00        
-                #  13             'HH:MM:SS'               15:45:17     
-                #  14             'HH:MM:SS PM'             3:45:17 PM  
-                #  15             'HH:MM'                  15:45        
-                #  16             'HH:MM PM'                3:45 PM     
-                #  17             'QQ-YY'                  Q1-01        
-                #  18             'QQ'                     Q1        
-                #  19             'dd/mm'                  01/03        
-                #  20             'dd/mm/yy'               01/03/00     
-                #  21             'mmm.dd,yyyy HH:MM:SS'   Mar.01,2000 15:45:17 
-                #  22             'mmm.dd,yyyy'            Mar.01,2000  
-                #  23             'mm/dd/yyyy'             03/01/2000 
-                #  24             'dd/mm/yyyy'             01/03/2000 
-                #  25             'yy/mm/dd'               00/03/01 
-                #  26             'yyyy/mm/dd'             2000/03/01 
-                #  27             'QQ-YYYY'                Q1-2001        
-                #  28             'mmmyyyy'                Mar2000                               
-                tickformats = {0:'%d-%b-%Y %H:%M:%S',
-                                1:'%d-%b-%Y',
-                                2:'%m/%d/%y',
-                                3:'%b',
-                                4:'%n',
-                                5:'%m',
-                                6:'%m/%d',
-                                7:'%d',
-                                8:'%a',
-                                9:'%e',
-                                10:'%Y',
-                                11:'%y',
-                                12:'%b%y',
-                                13:'%H:%M:%S',
-                                14:'%I:%M:%S %p',
-                                15:'%H:%M',
-                                16:'%I:%M %p',
-                                17:'%Q-%y',
-                                18:'%Q',
-                                19:'%d/%m',
-                                20:'%d/%m/%y',
-                                21:'%b.%d,%Y %H:%M:%S',
-                                22:'%b.%d,%Y',
-                                23:'%m/%d/%Y',
-                                24:'%d/%m/%Y',
-                                25:'%y/%m/%d',
-                                26:'%Y/%m/%d',
-                                27:'%Q-%Y',
-                                28:'%b%Y'}
-                
-                # Major ticks
-                dayspan = (effdatarange[1]-effdatarange[0])
-                location,interval,tickformat,tickspan = getTimeTickSettings(dayspan,axisnode['TicksMajor'],defaxisnode['TicksMajor'])
-                if mplaxis: mplaxis.set_major_locator(getTimeLocator(location,interval))
-                assert tickformat in tickformats, 'Unknown tick format %i.' % tickformat
-                if mplaxis: mplaxis.set_major_formatter(CustomDateFormatter(tickformats[tickformat]))
+                if mplaxis:
+                    # Major ticks
+                    dayspan = (effdatarange[1]-effdatarange[0])
+                    location,interval,tickformat,tickspan = getTimeTickSettings(dayspan,axisnode['TicksMajor'],defaxisnode['TicksMajor'])
+                    mplaxis.set_major_locator(getTimeLocator(location,interval))
+                    mplaxis.set_major_formatter(CustomDateFormatter(tickformat))
 
-                # Minor ticks
-                location,interval,tickformat,tickspan = getTimeTickSettings(min(tickspan,dayspan),axisnode['TicksMinor'],defaxisnode['TicksMinor'])
-                if mplaxis:  mplaxis.set_minor_locator(getTimeLocator(location,interval))
-                assert tickformat in tickformats, 'Unknown tick format %i.' % tickformat
-                #if mplaxis: mplaxis.set_minor_formatter(CustomDateFormatter(tickformats[tickformat]))
+                    # Minor ticks
+                    location,interval,tickformat,tickspan = getTimeTickSettings(min(tickspan,dayspan),axisnode['TicksMinor'],defaxisnode['TicksMinor'])
+                    mplaxis.set_minor_locator(getTimeLocator(location,interval))
 
                 # Set the "natural" axis limits based on the data ranges.
                 defaxisnode['MinimumTime'].setValue(common.num2date(naturalrange[0]))
@@ -1337,12 +1380,6 @@ class Figure(xmlstore.util.referencedobject):
             # Obtain label for axis.
             label = axisnode['Label'].getValue(usedefault=True)
             if label==None: label=''
-
-            # Reverse axis if needed. Do this if at least one bound has been left free,
-            # because if both bounds are prescribed, they must be used as is (reversal should be
-            # set already)
-            if axisdata['reversed'] and (forcedrange[0]==None or forcedrange[1]==None):
-                effrange[1],effrange[0] = effrange[0],effrange[1]
 
             # Set axis labels and boundaries.
             if axisname=='x':
@@ -1413,11 +1450,6 @@ def setLineProperties(propertynode,mplsection='lines',**kwargs):
     deflinecolor = matplotlib.colors.colorConverter.to_rgb(deflinecolor)
     deflinecolor = xmlstore.datatypes.Color.fromNormalized(*deflinecolor)
     deflinestyle = matplotlib.rcParams[mplsection+'.linestyle']
-    linestyles = {'-':1,'--':2,'-.':3,':':4}
-    if deflinestyle in linestyles:
-        deflinestyle = linestyles[deflinestyle]
-    else:
-        deflinestyle = 0
 
     defmarkersize = matplotlib.rcParams.get(mplsection+'.markersize',6.)
     defedgewidth = matplotlib.rcParams.get(mplsection+'.markeredgewidth',0.5)
@@ -1433,7 +1465,7 @@ def setLineProperties(propertynode,mplsection='lines',**kwargs):
     line['Color'].setValue(kwargs.get('Color',deflinecolor))
     
     marker = propertynode['Marker']
-    marker.setValue(kwargs.get('MarkerType',0))
+    marker.setValue(kwargs.get('MarkerType',''))
     marker['Size'].setValue(kwargs.get('MarkerSize',defmarkersize))
     marker['FaceColor'].setValue(kwargs.get('MarkerFaceColor',deflinecolor))
     marker['EdgeColor'].setValue(kwargs.get('MarkerEdgeColor',defedgecolor))
@@ -1447,13 +1479,9 @@ def getLineProperties(propertynode):
     """
     marker = propertynode['Marker']
     markertype = marker.getValue(usedefault=True)
-    markertypes = {0:'',1:'.',2:',',3:'o',4:'^',5:'s',6:'+',7:'x',8:'D'}
-    markertype = markertypes[markertype]
     
     line = propertynode['Line']
     linestyle = line.getValue(usedefault=True)
-    linestyles = {0:'',1:'-',2:'--',3:'-.',4:':'}
-    linestyle = linestyles[linestyle]
     
     linewidth = line['Width'].getValue(usedefault=True)
     color = line['Color'].getValue(usedefault=True)
@@ -1497,15 +1525,15 @@ def getTimeTickSettings(dayspan,settings,defsettings,preferredcount=8):
     """
     unitlengths = {0:365,1:30.5,2:1.,3:1/24.,4:1/1440.}
     if dayspan/365>=2:
-        location,tickformat = 0,10
+        location,tickformat = 0,'yyyy'
     elif dayspan>=61:
-        location,tickformat = 1,4
+        location,tickformat = 1,'m'
     elif dayspan>=2:
-        location,tickformat = 2,19
+        location,tickformat = 2,'dd/mm'
     elif 24*dayspan>=2:
-        location,tickformat = 3,15
+        location,tickformat = 3,'HH:MM'
     else:
-        location,tickformat = 4,15
+        location,tickformat = 4,'HH:MM'
 
     defsettings['LocationTime'].setValue(location)
     defsettings['FormatTime'].setValue(tickformat)
@@ -1524,4 +1552,4 @@ def getTimeTickSettings(dayspan,settings,defsettings,preferredcount=8):
     # Make sure we do not plot more than 100 ticks: non-informative and very slow!
     if tickcount/interval>100: interval=math.ceil(tickcount/100.)
     
-    return location,interval,tickformat,interval*unitlengths[location]
+    return location,interval,str(common.convertMatlabDateFormat(tickformat)),interval*unitlengths[location]

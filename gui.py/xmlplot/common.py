@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.19 2009-03-27 14:41:14 jorn Exp $
+#$Id: common.py,v 1.20 2009-04-14 09:45:42 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -73,6 +73,36 @@ def convertUnitToUnicode(unit):
     unit = unit.replace('**3',sup3)
     unit = unit.replace('^3',sup3)
     return unit
+
+# ------------------------------------------------------------------------------------------
+# Date format convertor
+# ------------------------------------------------------------------------------------------
+
+def convertMatlabDateFormat(fmt):
+    python2matlab = {'%e':'d','%d':'dd','%a':'ddd','%A':'dddd',
+                     '%n':'m','%m':'mm','%b':'mmm','%B':'mmmm',
+                     '%y':'yy','%Y':'yyyy',
+                     '%H':'HH','%I':'HH',
+                     '%M':'MM',
+                     '%S':'SS',
+                     '%p':'PM',
+                     '%Q':'QQ',
+                     '%%':'%'}
+    if 'PM' in fmt:
+        del python2matlab['%H']
+    else:
+        del python2matlab['%I']
+    matlab2python = dict((v,k) for k,v in python2matlab.iteritems())
+    query = re.compile('|'.join(sorted(matlab2python.keys(),cmp=lambda x,y: cmp(len(y),len(x)))))
+    newfmt,ipos = '',0
+    while True:
+        match = query.search(fmt,ipos)
+        if match==None:
+            newfmt += fmt[ipos:]
+            break
+        newfmt += fmt[ipos:match.start()]+matlab2python[match.group()]
+        ipos = match.end()
+    return newfmt
 
 # ------------------------------------------------------------------------------------------
 # Numerical helper utilities

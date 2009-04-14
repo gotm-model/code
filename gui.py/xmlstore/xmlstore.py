@@ -8,7 +8,7 @@
 #   stored aside the XML value tree, encapsulating containers such as ZIP, and many other features.
 
 # Import modules from standard Python library
-import datetime, re, xml.dom.minidom, os, StringIO
+import re, xml.dom.minidom, os, StringIO
 
 # Import own custom modules
 import util, datatypes
@@ -275,8 +275,10 @@ class Schema:
                             if optch.nodeType==ch.ELEMENT_NODE and optch.localName=='option':
                                 if optch.hasAttribute('description'):
                                     label = optch.getAttribute('description')
-                                else:
+                                elif optch.hasAttribute('label'):
                                     label = optch.getAttribute('label')
+                                else:
+                                    label = optch.getAttribute('value')
                                 opts.append((optch.getAttribute('value'),label))
                 if opts:
                     text += ', <a href="javascript:showhide(\'table%i\')">supported values</a>\n' % nextid
@@ -747,44 +749,48 @@ class Node:
 
     def getValueAsString(self,addunit = True,usedefault = False):
         """Returns a user-readable string representation of the value of the node.
-        
-        For built-in data types the conversion to user-readable string is
-        automatic; for custom data types their __unicode__ method is called.
-        (the default implementation of which calls __str__ in turn)
         """
-        templatenode = self.templatenode
-        fieldtype = templatenode.getAttribute('type')
+        # Get the value -  return an empty string if no value is set.
         value = self.getValue(usedefault=usedefault)
         if value==None: return ''
+
+        # Get the XML template node describing the data type, and the Python class representing the type.
+        templatenode = self.templatenode
+        valuetype = self.getValueType(returnclass=True)
+        
+        # Initially we do not have a string representation
+        strvalue = None
+
+        # First look if the value was chosen from a list of predefined options.
         if templatenode.hasAttribute('hasoptions'):
             # Get label of currently selected option
             optionsroot = util.findDescendantNode(templatenode,['options'])
-            if optionsroot==None: raise Exception('Variable with "select" type lacks "options" element below.')
             for ch in optionsroot.childNodes:
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                    chvalue = self.getValueType(returnclass=True).fromXmlString(ch.getAttribute('value'),{},templatenode)
+                    chvalue = valuetype.fromXmlString(ch.getAttribute('value'),{},templatenode)
                     if value==chvalue:
                         # We found the currently selected option; its label will serve as displayed value.
-                        value = ch.getAttribute('label')
+                        if ch.hasAttribute('label'):
+                            strvalue = ch.getAttribute('label')
+                        else:
+                            strvalue = ch.getAttribute('value')
                         break
-        elif fieldtype=='datetime':
-            value = util.formatDateTime(value)
-        elif fieldtype=='bool':
-            if value:
-                value = 'Yes'
-            else:
-                value = 'No'
-        else:
-            strvalue = unicode(value)
-            if isinstance(value,util.referencedobject): value.release()
-            value = strvalue
+
+        # If we do not have a string representation yet, then cast the data to the internally
+        # registered type, and let that figure out the best pretty string.
+        if strvalue==None:
+            if not isinstance(value,valuetype): value = valuetype(value)
+            strvalue = value.toPrettyString()
+            
+        # Release the reference to the value if needed.
+        if isinstance(value,util.referencedobject): value.release()
 
         # Append unit specifier (if available)
         if addunit:
             unit = self.getUnit()
-            if unit!=None: value = value + ' ' + unit
+            if unit!=None: strvalue += ' ' + unit
 
-        return value
+        return strvalue
 
     def addChild(self,childname,position=None,id=None):
         """Adds a new child node; this child node must be optional as
@@ -1317,7 +1323,8 @@ class TypedStore(util.referencedobject):
         schemapath = cls.getDefaultSchemas().get(schemaname,None)
         if schemapath==None: 
             raise Exception('Unable to locate XML schema file for "%s".' % schemaname)
-        store = cls(schemapath,*args,**kwargs)
+        kwargs['schema'] = schemapath
+        store = cls(*args,**kwargs)
         return store
 
     @classmethod
@@ -1335,7 +1342,9 @@ class TypedStore(util.referencedobject):
         version = valuedom.documentElement.getAttribute('version')
         if version=='':
             raise Exception('XML file "%s" does not have the version attribute. Therefore we cannot automatically select the XML schema to use.' % path)
-        return cls.fromSchemaName(version,valuedom,**kwargs)
+        store = cls.fromSchemaName(version,**kwargs)
+        store.setStore(valuedom)
+        return store
 
     def __init__(self,schema,valueroot=None,otherstores={},adddefault=True):
         
@@ -1768,7 +1777,7 @@ class TypedStore(util.referencedobject):
                     node.setValue(node.getDefaultValue())
                 elif opt==1:
                     validity[node] = False
-                    errors.append('variable "%s" is set to option "%s", which is currently disabled (perhaps not yet implemented).' % (node.getText(1),ch.getAttribute('label')))
+                    errors.append('variable "%s" is set to option "%s", which is currently disabled (perhaps not yet implemented).' % (node.getText(1),ch.getAttribute('value')))
                 else:
                     validity[node] = False
                     errors.append('variable "%s" is set to non-existent option %s.' % (node.getText(1),str(value)))
@@ -2288,10 +2297,17 @@ class TypedStore(util.referencedobject):
             if i not in self.blockedinterfaces: i.afterVisibilityChange(node,visible,showhide)
 
 def versionStringToInt(versionstring):
-    """Converts a "major.minor.build" version string to a representative integer."""
-    (major,minor,build) = versionstring.split('.')
-    return int(major)*256*256 + int(minor)*256 + int(build)
-
+    """Converts a version string to a representative integer.
+    Versions may consist of components separated by a dot, e.g., "major.minor.build"
+    In that case, individual components cannot exceed 255.
+    """
+    comps = versionstring.split('.')
+    version,base = 0,1
+    for c in comps[::-1]:
+        version += int(c)*base
+        base *= 256
+    return version
+    
 class Convertor:
     """Base class for conversion between TypedStore objects that differ
     in version; derive custom convertors from this class.
@@ -2324,8 +2340,8 @@ class Convertor:
         self.sourceid = sourceid
         self.targetid = targetid
 
-        (self.sourcename,self.sourceversion) = sourceid.split('-')
-        (self.targetname,self.targetversion) = targetid.split('-')
+        self.sourceversion = sourceid.split('-')[-1]
+        self.targetversion = targetid.split('-')[-1]
 
         self.sourceversionint = versionStringToInt(self.sourceversion)
         self.targetversionint = versionStringToInt(self.targetversion)

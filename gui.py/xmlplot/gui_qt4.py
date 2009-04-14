@@ -63,38 +63,35 @@ def getFontSubstitute(fontname):
 # Editors of custom data types that may be used in xmlstore.TypedStore objects
 # ====================================================================================
 
-class FontNameEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
+class FontNameEditor(xmlstore.gui_qt4.SimpleSelectEditor):
     """Widget for choosing a font, suitable for use in MatPlotLib figures.
     Uses the font manager of MatPlotLib to obtain a list of available fonts.
     """
-    def __init__(self,parent,node,**kwargs):
-        QtGui.QComboBox.__init__(self,parent)
-
+    def getOptionInfo(self):
+        self.fontlist = []
         import matplotlib.font_manager
         fm = matplotlib.font_manager.fontManager
         if hasattr(fm,'ttflist'):
             fontnames = list(set([font.name for font in fm.ttflist]))
         else:
             fontnames = fm.ttfdict.keys()
-        for fontname in sorted(fontnames,key=str.lower):
-            self.addItem(fontname)
-
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
-            
-    def setValue(self,fontname):
-        if fontname==None:
-            self.setCurrentIndex(0)
-            return
-        index = self.findText(fontname)
-        if index==-1:
-            self.setCurrentIndex(0)
-        else:
-            self.setCurrentIndex(index)
-        
-    def value(self):
-        return self.currentText()
+        return sorted(fontnames,key=str.lower)
 
 xmlstore.gui_qt4.registerEditor('fontname',FontNameEditor)
+
+class MapProjectionEditor(xmlstore.gui_qt4.SimpleSelectEditor):
+    """Widget for choosing a basemap map projection.
+    Queries basemap to obtain a list of available projections.
+    """
+    def getOptionInfo(self):
+        self.projlist = []
+        try:
+            import mpl_toolkits.basemap
+            return mpl_toolkits.basemap._projnames
+        except:
+            return ()
+
+xmlstore.gui_qt4.registerEditor('mapprojection',MapProjectionEditor)
 
 class ColorMapEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
     """Widget for choosing a colormap, suitable for use in MatPlotLib figures.
@@ -566,7 +563,8 @@ class FigurePanel(QtGui.QWidget):
         
     def loadProperties(self,path):
         oldroot = self.figure.properties.root
-        data = plot.FigureProperties(path)
+        data = plot.FigureProperties()
+        data.load(path)
         newroot = data.root
         for child in oldroot.children:
             id = child.getId()

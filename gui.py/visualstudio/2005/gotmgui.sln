@@ -108,6 +108,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlplot", "xmlplot", "{ED14
 	ProjectSection(SolutionItems) = preProject
 		..\..\xmlplot\common.py = ..\..\xmlplot\common.py
 		..\..\xmlplot\data.py = ..\..\xmlplot\data.py
+		..\..\xmlplot\expressions.py = ..\..\xmlplot\expressions.py
 		..\..\xmlplot\functions.py = ..\..\xmlplot\functions.py
 		..\..\xmlplot\gui_qt4.py = ..\..\xmlplot\gui_qt4.py
 		..\..\xmlplot\plot.py = ..\..\xmlplot\plot.py
@@ -139,6 +140,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "figure", "figure", "{E25CD9
 	ProjectSection(SolutionItems) = preProject
 		..\..\xmlplot\schemas\figure\0001.xml = ..\..\xmlplot\schemas\figure\0001.xml
 		..\..\xmlplot\schemas\figure\0002.xml = ..\..\xmlplot\schemas\figure\0002.xml
+		..\..\xmlplot\schemas\figure\0003.xml = ..\..\xmlplot\schemas\figure\0003.xml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "datafilecache", "datafilecache", "{10A4F0A0-9287-4C21-93F1-22BA1F540459}"

@@ -78,9 +78,9 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
     # This is implemented as XML store (rather than Python object) because it
     # needs to be saved in a descriptive form along with the data files themselves.
     class DataFileCache(xmlstore.xmlstore.TypedStore):
-        def __init__(self,valueroot=None,adddefault = True):
-            schemadom = os.path.join(common.getDataRoot(),'schemas/datafilecache/0001.xml')
-            xmlstore.xmlstore.TypedStore.__init__(self,schemadom,valueroot,adddefault=adddefault)
+        def __init__(self,valueroot=None,adddefault = True,schema=None):
+            if schema==None: schema = os.path.join(common.getDataRoot(),'schemas/datafilecache/0001.xml')
+            xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
         schemadict = None
         @staticmethod
@@ -1072,7 +1072,8 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             if coordvar==None:
                 # No coordinate variable available: use indices
                 coorddims = [dimname]
-                coords = numpy.arange(self.getShape()[idim],dtype=numpy.float)[tuple(bounds[idim])]
+                start,stop,step = bounds[idim].indices(self.getShape()[idim])
+                coords = numpy.arange(start,stop,step,dtype=numpy.float)
             else:
                 # Coordinate variable present: use it.
                 coorddims = list(coordvar.getDimensions())
