@@ -192,6 +192,9 @@ class interp(expressions.LazyFunction):
         assert isinstance(resolvedargs[0],common.Variable.Slice),'The first argument to interpn must be a variable slice.'
         dataslice = resolvedargs[0]
         return dataslice.interp(**resolvedkwargs)
+
+    def getDimensions(self):
+        return [d for d in expressions.LazyFunction.getDimensions(self) if d not in self.kwargs]
                     
     def getShape(self):
         s = expressions.LazyOperation.getShape(self)
