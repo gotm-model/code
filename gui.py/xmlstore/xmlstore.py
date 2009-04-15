@@ -8,7 +8,7 @@
 #   stored aside the XML value tree, encapsulating containers such as ZIP, and many other features.
 
 # Import modules from standard Python library
-import re, xml.dom.minidom, os, StringIO
+import re, xml.dom.minidom, os, StringIO, codecs
 
 # Import own custom modules
 import util, datatypes
@@ -1990,7 +1990,9 @@ class TypedStore(util.referencedobject):
         """Saves the values as XML, to the specified path. A file saved in this manner
         might be loaded again through the "load" method."""
         util.stripWhitespace(self.xmlroot)
-        self.xmldocument.writexml(file(path,'w'),encoding='utf-8',addindent='\t',newl='\n')            
+        f = codecs.open(path,'w','utf-8')
+        self.xmldocument.writexml(f,encoding='utf-8',addindent='\t',newl='\n')            
+        f.close()
 
     def load(self,path):
         """Loads values from an existing XML file. This file may have been saved with the
