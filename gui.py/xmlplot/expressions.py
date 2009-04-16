@@ -130,7 +130,7 @@ class LazyExpression:
             if isinstance(slic[i],(int,float)):
                 del baseshape[i]
             else:
-                assert isinstance(slic[i],slice), 'Fancy indexing is not yet supported.'
+                assert isinstance(slic[i],slice), 'Fancy indexing is not yet supported. Slice type = %s, value = %s' % (type(slic[i]),slic[i])
 
                 # For non-integer slices we do not know the resulting shape
                 if not (isinstance(slic[i].start,(int,types.NoneType)) and isinstance(slic[i].stop,(int,types.NoneType))): return None
@@ -376,34 +376,103 @@ class LazyOperation(LazyExpression):
                 if firstslice==None: firstslice = args[i]
                 if not useslices: args[i] = args[i].data
         return args,firstslice
+        
+    def checkArgumentShapeSimilarity(self):
+        """Check whether all arguments to this operation have the same shape.
+        """
+        shape = None
+        for arg in self.args:
+            if isinstance(arg,LazyExpression):
+                curshape = tuple(arg.getShape())
+                if shape==None:
+                    shape = curshape
+                elif curshape!=shape:
+                    return False
+        return True
 
     def getShape(self):
-        # Just return the shape of the first LazyExpression object.
-        # This assumes but does not check that any other LazyExpression objects have the same shape.
+        shape = None
         for arg in self.args:
-            if isinstance(arg,LazyExpression):
-                return arg.getShape()
-        return ()
+            if not isinstance(arg,LazyExpression): continue
+
+            # Retrieve the argument's shape
+            curshape = arg.getShape()
+            
+            # If the argument's shape is unknown, the final shape will be unknown too.
+            if curshape==None: return None
+            
+            # If this is the first argument, just store its shape and continue.
+            if shape==None:
+                shape = list(curshape)
+                continue
+
+            # Check whether the number of dimensions of arguments match.
+            # If not, apply NumPy broadcasting rule.
+            if len(curshape)!=len(shape):
+                if len(curshape)<len(shape):
+                    curshape = [1]*(len(shape)-len(curshape))+list(curshape)
+                else:
+                    shape = [1]*(len(curshape)-len(shape))+shape
+                
+            # Compare dimension lengths one by one.
+            for idim in range(len(curshape)):
+                if shape[idim]!=curshape[idim]:
+                    # Dimension lengths do not match
+                    if shape[idim]==1:
+                        # Broadcasting will be applied: no problem.
+                        shape[idim] = curshape[idim]
+                    elif curshape[idim]!=1:
+                        # Dimensions lengths of the arguments do not match, and broadcasting cannot fix it.
+                        # (neither has length 1). This will often cause a fatal error, but it may be ok.
+                        # However, the final shape will be unknown.
+                        return None
+                        
+        return shape
 
     def getDimensions(self):
-        # Just return the dimensions of the first LazyExpression object.
-        # This assumes but does not check that any other LazyExpression objects have the same dimensions.
+        dims = ()
         for arg in self.args:
             if isinstance(arg,LazyExpression):
-                return arg.getDimensions()
-        return ()
+                curdims = arg.getDimensions()
+                if len(dims)<len(curdims): dims = curdims
+        return dims
 
     def __getitem__(self,slices):
-        if self.outsourceslices:
+        shape = self.getShape()
+        if self.outsourceslices and shape!=None:
             # We are allowed to outsource the slicing to the arguments of the expression.
             # This takes away the need of first getting all data to operate on, and then
             # take a slice, which is time-consuming and memory-intensive.
+            slices = common.processEllipsis(slices,len(shape))
             newargs = []
             for arg in self.args:
-                if isinstance(arg,LazyExpression): arg = arg.__getitem__(slices)
+                if isinstance(arg,LazyExpression):
+                    # Argument is an expression: outsource the slicing
+                    argshape = arg.getShape()
+                    nmissing = len(shape)-len(argshape)
+                    if nmissing: argshape = [1]*nmissing+list(argshape)
+                    curslices = []
+                    for i,s in enumerate(slices):
+                        if argshape[i]==1 and shape[i]>1:
+                            # Argument dimension length = 1, but target dimension length > 1
+                            # NumPy will perform broadcasting: intelligently adjust the slice for the argument.
+                            if isinstance(s,slice):
+                                curslices.append(slice(0,1))
+                            else:
+                                curslices.append(0)
+                        else:
+                            # Argument and target dimension lengths match: use the slice as given.
+                            curslices.append(s)
+                            
+                    # Slice the argument
+                    arg = arg.__getitem__(tuple(curslices[nmissing:]))
+                    
                 newargs.append(arg)
-            self.args = tuple(newargs)
-            return self
+
+            import copy
+            copy = copy.copy(self)
+            copy.args = tuple(newargs)
+            return copy
         else:
             # No outsourcing of slicing: apply the slice only after this expression is done.
             return LazyExpression.__getitem__(self,slices)
