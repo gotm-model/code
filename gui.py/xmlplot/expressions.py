@@ -376,19 +376,6 @@ class LazyOperation(LazyExpression):
                 if firstslice==None: firstslice = args[i]
                 if not useslices: args[i] = args[i].data
         return args,firstslice
-        
-    def checkArgumentShapeSimilarity(self):
-        """Check whether all arguments to this operation have the same shape.
-        """
-        shape = None
-        for arg in self.args:
-            if isinstance(arg,LazyExpression):
-                curshape = tuple(arg.getShape())
-                if shape==None:
-                    shape = curshape
-                elif curshape!=shape:
-                    return False
-        return True
 
     def getShape(self):
         shape = None
@@ -430,6 +417,7 @@ class LazyOperation(LazyExpression):
         return shape
 
     def getDimensions(self):
+        # Return the largest set of dimensions from any of the arguments.
         dims = ()
         for arg in self.args:
             if isinstance(arg,LazyExpression):
@@ -494,7 +482,7 @@ class LazyFunction(LazyOperation):
         and name) the dimension that will be removed is specified. Only used if the function
         actually removes a dimension (e.g., mean,min,max,...).
         
-        For numpy fucntions, the name of the argument is typically "axis".
+        For numpy functions, the name of the argument is typically "axis".
         """
         self.removedim = None
         if argname in self.kwargs:
