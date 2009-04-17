@@ -729,6 +729,7 @@ class Figure(xmlstore.util.referencedobject):
             defaultseriesnode['UseColorMap'].setValue(True)
             defaultseriesnode['EdgeColor'].setValue(xmlstore.datatypes.Color(0,0,0))
             defaultseriesnode['EdgeWidth'].setValue(1.)
+            defaultseriesnode['ArrowPivot'].setValue('tail')
             defaultseriesnode['ArrowKey'].setValue(True)
             defaultseriesnode['ArrowKey/Label'].setValue('arrow')
             defaultseriesnode['ArrowKey/LabelPosition'].setValue('N')
@@ -960,7 +961,6 @@ class Figure(xmlstore.util.referencedobject):
             axis2data['y'].update({'unit':'','label':'','hideticks':True})
 
         for seriesnode,var,varslices,info in zip(forcedseries,seriesvariables,seriesslices,seriesinfo):
-
             defaultseriesnode = defaultdatanode.getChildById('Series',seriesnode.getSecondaryId(),create=False)
 
             # Store the [default or custom] variable long name; it will be used for building the plot title.
@@ -1056,6 +1056,8 @@ class Figure(xmlstore.util.referencedobject):
                                 
                 plotcount[1] += 1
             elif varslice.ndim==2:
+                plottype3d = seriesnode['PlotType3D'].getValue(usedefault=True)
+
                 # Retrieve cached coordinates
                 X,Y,C = info['x'],info['y'],None
                 if 'C' in info: C = info['C']
@@ -1179,12 +1181,13 @@ class Figure(xmlstore.util.referencedobject):
                         U,V = U.filled(0.),V.filled(0.)
                             
                     scale = seriesnode['ArrowScale'].getValue(usedefault=True)
+                    pivot = seriesnode['ArrowPivot'].getValue(usedefault=True)
                     if C==None:
                         # Quiver without color values
-                        pc = drawaxes.quiver(X,Y,U,V,cmap=cm,norm=norm,scale=scale)
+                        pc = drawaxes.quiver(X,Y,U,V,cmap=cm,norm=norm,scale=scale,pivot=pivot)
                     else:
                         # Quiver with color values
-                        pc = drawaxes.quiver(X,Y,U,V,C,cmap=cm,norm=norm,scale=scale)
+                        pc = drawaxes.quiver(X,Y,U,V,C,cmap=cm,norm=norm,scale=scale,pivot=pivot)
 
                     # Auto-scale code taken from matplotlib.quiver
                     pc._init()

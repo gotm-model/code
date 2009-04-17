@@ -298,6 +298,14 @@
 			<element name="ArrowScale" type="float" label="arrow scaling">
 				<condition type="eq" variable="./Type" value="3"/>
 			</element>
+			<element name="ArrowPivot" type="string" label="arrow pivot">
+				<condition type="eq" variable="./Type" value="3"/>
+				<options>
+					<option value="tail"  />
+					<option value="middle"/>
+					<option value="tip"   />
+				</options>
+			</element>
 			<element name="ArrowKey" type="bool" label="arrow key">
 				<condition type="eq" variable="./Type" value="3"/>
 				<element name="X" type="float" label="x-coordinate">
