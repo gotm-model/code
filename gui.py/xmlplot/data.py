@@ -965,6 +965,8 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           newshape = [shape[idim] for idim in floatindices]
           summeddistance = numpy.zeros(newshape,dtype=numpy.float)
           for idim in floatindices:
+            bound = bounds[idim]
+            if isinstance(bound,datetime.datetime): bound = common.date2num(bound)
             dimname = dimnames[idim]
             coordvar = self.store.getVariable_raw(dimname)
             coorddims = list(coordvar.getDimensions())
@@ -973,7 +975,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 assert cd in floatdimnames,'A float index is provided for dimension %s, but not for dimension %s on which %s depends.' % (dimname,cd,dimname)
             coords = coordvar.getSlice([boundindices[dimnames.index(cd)] for cd in coorddims], dataonly=True, cache=True)
             coords = common.broadcastSelective(coords,coorddims,newshape,floatdimnames)
-            summeddistance += numpy.abs(coords-bounds[idim])
+            summeddistance += numpy.abs(coords-bound)
           indices = numpy.unravel_index(summeddistance.argmin(), newshape)
           for idim,index in zip(floatindices,indices): boundindices[idim] = index
           
