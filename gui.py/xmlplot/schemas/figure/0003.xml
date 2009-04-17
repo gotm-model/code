@@ -298,6 +298,30 @@
 			<element name="ArrowScale" type="float" label="arrow scaling">
 				<condition type="eq" variable="./Type" value="3"/>
 			</element>
+			<element name="ArrowKey" type="bool" label="arrow key">
+				<condition type="eq" variable="./Type" value="3"/>
+				<element name="X" type="float" label="x-coordinate">
+					<condition type="eq" variable="." value="True"/>
+				</element>
+				<element name="Y" type="float" label="y-coordinate">
+					<condition type="eq" variable="." value="True"/>
+				</element>
+				<element name="Length" type="float" label="arrow length">
+					<condition type="eq" variable="." value="True"/>
+				</element>
+				<element name="Label" type="string" label="label">
+					<condition type="eq" variable="." value="True"/>
+				</element>
+				<element name="LabelPosition" type="string" label="label alignment" description="position of the label relative to the arrow">
+					<condition type="eq" variable="." value="True"/>
+					<options>
+						<option label="top"    value="N"/>
+						<option label="bottom" value="S"/>
+						<option label="left"   value="E"/>
+						<option label="right"  value="W"/>
+					</options>
+				</element>
+			</element>
 		</element>
 	</element>
 		

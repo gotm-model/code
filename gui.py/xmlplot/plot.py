@@ -729,6 +729,11 @@ class Figure(xmlstore.util.referencedobject):
             defaultseriesnode['UseColorMap'].setValue(True)
             defaultseriesnode['EdgeColor'].setValue(xmlstore.datatypes.Color(0,0,0))
             defaultseriesnode['EdgeWidth'].setValue(1.)
+            defaultseriesnode['ArrowKey'].setValue(True)
+            defaultseriesnode['ArrowKey/Label'].setValue('arrow')
+            defaultseriesnode['ArrowKey/LabelPosition'].setValue('N')
+            defaultseriesnode['ArrowKey/X'].setValue(.9)
+            defaultseriesnode['ArrowKey/Y'].setValue(.1)
             
             # Old defaults will be removed after all series are plotted.
             # Register that the current variable is active, ensuring its default will remain.
@@ -758,7 +763,12 @@ class Figure(xmlstore.util.referencedobject):
             assert len(varslices)>0, 'Unable to retrieve any variable slices.'
             
             # Skip this variable if (parts of) its data are unavailable.
-            if not all([varslice.isValid() for varslice in varslices]): continue
+            valid = True
+            for varslice in varslices:
+                if (not varslice.isValid()) or 0 in varslice.data.shape:
+                    valid = False
+                    break
+            if not valid: continue
 
             # Basic checks: eliminate singleton dimensions and mask invalid values.
             for i in range(len(varslices)):
@@ -866,6 +876,7 @@ class Figure(xmlstore.util.referencedobject):
                     assert len(varslices)==2,'Only plots with one or two dependent variables are currently supported.'
                     U = varslices[0].data
                     V = varslices[1].data
+                    defaultseriesnode['UseColorMap'].setValue(False)
                     if seriesnode['UseColorMap'].getValue(usedefault=True):
                         C = numpy.ma.absolute(U+V*1j)
                         cname = 'arrowlength'
@@ -1147,6 +1158,7 @@ class Figure(xmlstore.util.referencedobject):
                     # Calculate velocities (needed for arrow auto-scaling)
                     vel = C
                     if vel==None: vel = numpy.ma.absolute(U+V*1j)
+                    keylength = numpy.abs(U).max()
 
                     # Get combined mask of U,V and (optionally) C
                     mask = None
@@ -1179,7 +1191,17 @@ class Figure(xmlstore.util.referencedobject):
                     sn = max(10, math.sqrt(pc.N))
                     scale = 1.8 * vel.mean() * sn / pc.span # crude auto-scaling
                     defaultseriesnode['ArrowScale'].setValue(scale)  
-                    if pc.scale==None: pc.scale = scale                  
+                    if pc.scale==None: pc.scale = scale
+                    
+                    defaultseriesnode['ArrowKey/Length'].setValue(keylength)
+                    defaultseriesnode['ArrowKey/Label'].setValue(str(keylength))
+                    keynode = seriesnode['ArrowKey']
+                    if keynode.getValue(usedefault=True):
+                        keyx,keyy = keynode['X'].getValue(usedefault=True),keynode['Y'].getValue(usedefault=True)
+                        keyu = keynode['Length'].getValue(usedefault=True)
+                        keylabel = keynode['Label'].getValue(usedefault=True)
+                        keylabelpos = keynode['LabelPosition'].getValue(usedefault=True)
+                        axes.quiverkey(pc,keyx,keyy,keyu,label=keylabel,labelpos=keylabelpos,coordinates='axes',fontproperties={'family':fontfamily,'size':fontsizes['legend']})
                         
                     if C==None: pc = None
                 
