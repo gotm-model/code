@@ -175,7 +175,8 @@
       </options>
     </element>
 	</element>
-	
+
+	<element name="BackgroundColor" type="color" label="background color"/>
 	<element name="Grid" type="bool" label="grid">
 		<link template="Line2D" name="LineProperties" grouponly="True">
 			<condition type="eq" variable="." value="True"/>

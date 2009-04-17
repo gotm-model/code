@@ -423,6 +423,7 @@ class Figure(xmlstore.util.referencedobject):
         self.defaultproperties['Legend/Location'].setValue('best')
         self.defaultproperties['HasColorMap'    ].setValue(False)
         self.defaultproperties['ColorMap'       ].setValue('jet')
+        self.defaultproperties['BackgroundColor'].setValue(xmlstore.datatypes.Color(255,255,255))
         setLineProperties(self.defaultproperties['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
         
         nodePadding = self.defaultproperties['Padding']
@@ -620,13 +621,14 @@ class Figure(xmlstore.util.referencedobject):
         self.figure.clear()
 
         # Create one subplot only.
+        bg = self.properties['BackgroundColor'].getValue(usedefault=True)
         nodePadding = self.properties['Padding']
         padLeft   = nodePadding['Left'  ].getValue(usedefault=True)
         padRight  = nodePadding['Right' ].getValue(usedefault=True)
         padTop    = nodePadding['Top'   ].getValue(usedefault=True)
         padBottom = nodePadding['Bottom'].getValue(usedefault=True)
         self.figure.subplots_adjust(left=padLeft,right=1.-padRight,top=1.-padTop,bottom=padBottom)
-        axes = self.figure.add_subplot(111)
+        axes = self.figure.add_subplot(111,axis_bgcolor=bg.getNormalized())
         
         # Obtain text scaling property (from % to fraction)
         textscaling = self.properties['FontScaling'].getValue(usedefault=True)/100.
