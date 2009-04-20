@@ -168,7 +168,7 @@ class IntEditor(AbstractPropertyEditor,QtGui.QSpinBox):
         return QtGui.QSpinBox.value(self)
 
     def setValue(self,value):
-        QtGui.QSpinBox.setValue(self,value)
+        if value!=None: QtGui.QSpinBox.setValue(self,value)
 
     @staticmethod
     def convertFromQVariant(value):
@@ -209,6 +209,7 @@ class AbstractSelectEditor(AbstractPropertyEditor):
         return None
 
     def indexFromValue(self,value):
+        if value==None: return 0
         ichild = 0
         options = util.findDescendantNode(self.node.templatenode,['options'])
         for ch in options.childNodes:
@@ -274,6 +275,7 @@ class SimpleSelectEditor(SelectEditor):
         return self.list[index]
 
     def indexFromValue(self,value):
+        if value==None: return 0
         for i,opt in enumerate(self.list):
             if opt==value: return i
         return None
@@ -315,6 +317,7 @@ class BoolEditor(AbstractPropertyEditor,QtGui.QComboBox):
         return self.itemData(self.currentIndex()).toBool()
 
     def setValue(self,value):
+        if value==None: value = True
         for ioption in range(self.count()):
             optionvalue = self.itemData(ioption).toBool()
             if optionvalue==value:
@@ -514,10 +517,13 @@ class ScientificDoubleEditor(QtGui.QLineEdit,AbstractPropertyEditor):
         return float(text)
 
     def setValue(self,value,format=None):
-        if format==None:
-            strvalue = unicode(value)
-        else:
-            strvalue = format % value
+        if value==None:
+            strvalue = ''
+        else:  
+            if format==None:
+                strvalue = unicode(value)
+            else:
+                strvalue = format % value
         self.setText(strvalue+self.suffix)
 
     def focusInEvent(self,e):
@@ -555,6 +561,10 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
     def __init__(self,parent,node=None,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
         self.connect(self, QtCore.SIGNAL('activated(int)'), self.onActivated)
+        self.allownone = (node!=None and node.templatenode.getAttribute('allownone')) or (node==None and kwargs.get('allownone',False))
+        if self.allownone:
+            # add none option
+            self.addColor('none')
         for cn in QtGui.QColor.colorNames():
             c = QtGui.QColor(cn)
             if c.alpha()<255: continue
@@ -563,6 +573,14 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
         self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
         
     def setValue(self,value):
+        if not value.isValid():
+            assert self.allownone, 'An value of none was specified, but this color must have a value.'
+            self.setCurrentIndex(0)
+            return
+            
+        # If the value is missing, default to white
+        if value==None: value = datatypes.Color(255,255,255)
+        
         qcolor = QtGui.QColor(value.red,value.green,value.blue)
         for i in range(self.count()-1):
             if QtGui.QColor(self.itemData(i))==qcolor:
@@ -582,10 +600,13 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
             self.setItemColor(index,col)
             self.editingFinished()
 
-    def addColor(self,text,color):
-        iconsize = self.iconSize()
-        qPixMap = ColorEditor.createPixmap(color,iconsize.width()-2,iconsize.height()-2)
-        self.addItem(QtGui.QIcon(qPixMap),text,QtCore.QVariant(color))
+    def addColor(self,text,color=None):
+        if color==None:
+            self.addItem(text)
+        else:
+            iconsize = self.iconSize()
+            qPixMap = ColorEditor.createPixmap(color,iconsize.width()-2,iconsize.height()-2)
+            self.addItem(QtGui.QIcon(qPixMap),text,QtCore.QVariant(color))
         
     def setItemColor(self,index,color):
         iconsize = self.iconSize()
@@ -608,16 +629,20 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
 
     @staticmethod
     def convertFromQVariant(value):
+        if not value.isValid(): return datatypes.Color()
         col = QtGui.QColor(value)
         return datatypes.Color(col.red(),col.green(),col.blue())
 
     @staticmethod
     def convertToQVariant(value):
+        if value.red==None or value.green==None or value.blue==None: return QtCore.QVariant()
         return QtCore.QVariant(QtGui.QColor(value.red,value.green,value.blue))
 
     @staticmethod
     def displayValue(delegate,painter,option,index):
-        value = QtGui.QColor(index.data(QtCore.Qt.EditRole))
+        value = index.data(QtCore.Qt.EditRole)
+        if not value.isValid(): return QtGui.QItemDelegate.paint(delegate,painter,option,index)
+        value = QtGui.QColor(value)
         
         # Get the rectangle to fill
         style = QtGui.qApp.style()
@@ -635,6 +660,7 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
     color2name = None
     @staticmethod
     def valueToString(value):
+        if value.red==None or value.green==None or value.blue==None: return 'none'
         if ColorEditor.color2name==None:
             ColorEditor.color2name = {}
             for cn in reversed(QtGui.QColor.colorNames()):
@@ -1298,6 +1324,8 @@ class PropertyEditorDialog(QtGui.QDialog):
         """
         self.tree.header().resizeSections(QtGui.QHeaderView.Stretch)
         self.tree.resizeColumnToContents(0)
+        maxwidth = .65*self.width()
+        if self.tree.columnWidth(0)>maxwidth: self.tree.setColumnWidth(0,maxwidth)
         
     def onLoad(self):
         path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',self.lastpath,'XML files (*.xml);;All files (*.*)'))

@@ -302,17 +302,17 @@ class Color(DataTypeSimple):
         if self.isValid():
             return '#%02x%02x%02x' % (self.red,self.green,self.blue)
         else:
-            return None
+            return ''
         
     def isValid(self):
         """Returns whether the object currently contains a valid color.
         """
         return self.red!=None and self.green!=None and self.blue!=None
         
-    def getNormalized(self):
+    def getNormalized(self,nocolor='none'):
         """Returns a tuple with normalized RGB color values (between 0 and 1).
         """
-        assert self.isValid(), 'Cannot convert color to normalized tuple because the color object is not valid.'
+        if not self.isValid(): return nocolor
         return (self.red/255.,self.green/255.,self.blue/255.)
         
     def toPrettyString(self):
@@ -321,7 +321,7 @@ class Color(DataTypeSimple):
         if self.isValid():
             return '(%i, %i, %i)' % (self.red,self.green,self.blue)
         else:
-            return 'None'
+            return 'none'
             
     def __eq__(self,other):
         if not isinstance(other,Color): return False
