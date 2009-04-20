@@ -155,6 +155,8 @@ class LazyExpression:
         """
         if slic is Ellipsis:
             return '...'
+        elif isinstance(slic,LazyExpression):
+            return slic.getText(addparentheses=False)
         elif not isinstance(slic,slice):
             return str(slic)
         result = ''
