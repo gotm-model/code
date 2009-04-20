@@ -444,6 +444,7 @@ class FigurePanel(QtGui.QWidget):
         self.blockevents = True
         self.figure.defaultproperties['Width'].setValue(w*2.54)
         self.figure.defaultproperties['Height'].setValue(h*2.54)
+        self.figure.onAspectChange()
         self.blockevents = False
         
     def onFigureStateChanged(self,complete):

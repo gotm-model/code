@@ -474,6 +474,11 @@ class Figure(xmlstore.util.referencedobject):
         self.autosqueeze = True
         
         self.callbacks = {'completeStateChange':[]}
+        
+        # Cache for subset of figure objects
+        self.basemap = None
+        self.colorbar = None
+        self.ismap = False
 
     def __getitem__(self,key):
         return self.properties[key]
@@ -958,16 +963,27 @@ class Figure(xmlstore.util.referencedobject):
             defnodemap['Range/LowerLeftLongitude'].setValue(xrange[0])
             defnodemap['Range/UpperRightLatitude'].setValue(yrange[1])
             defnodemap['Range/UpperRightLongitude'].setValue(xrange[1])
-            basemap = mpl_toolkits.basemap.Basemap(llcrnrlon=nodemap['Range/LowerLeftLongitude' ].getValue(usedefault=True),
-                                                   llcrnrlat=nodemap['Range/LowerLeftLatitude'  ].getValue(usedefault=True),
-                                                   urcrnrlon=nodemap['Range/UpperRightLongitude'].getValue(usedefault=True),
-                                                   urcrnrlat=nodemap['Range/UpperRightLatitude' ].getValue(usedefault=True),
-                                                   projection=proj,
-                                                   resolution=res,
-                                                   ax=axes,
-                                                   suppress_ticks=False,
-                                                   lon_0=(xrange[0]+xrange[1])/2.,
-                                                   lat_0=(yrange[0]+yrange[1])/2.)
+            llcrnrlon=nodemap['Range/LowerLeftLongitude' ].getValue(usedefault=True)
+            llcrnrlat=nodemap['Range/LowerLeftLatitude'  ].getValue(usedefault=True)
+            urcrnrlon=nodemap['Range/UpperRightLongitude'].getValue(usedefault=True)
+            urcrnrlat=nodemap['Range/UpperRightLatitude' ].getValue(usedefault=True)
+            if (self.basemap==None or self.basemap.projection!=proj or self.basemap.resolution!=res or 
+               self.basemap.llcrnrlon!=llcrnrlon or self.basemap.llcrnrlat!=llcrnrlat or self.basemap.urcrnrlon!=urcrnrlon or self.basemap.urcrnrlat!=urcrnrlat):
+                # Basemap object does not exist yet or has different settings than needed - create a new basemap.
+                self.basemap = mpl_toolkits.basemap.Basemap(llcrnrlon=llcrnrlon,
+                                                       llcrnrlat=llcrnrlat,
+                                                       urcrnrlon=urcrnrlon,
+                                                       urcrnrlat=urcrnrlat,
+                                                       projection=proj,
+                                                       resolution=res,
+                                                       ax=axes,
+                                                       suppress_ticks=False,
+                                                       lon_0=(xrange[0]+xrange[1])/2.,
+                                                       lat_0=(yrange[0]+yrange[1])/2.)
+            else:
+                # A matching basemap object exists: just set its axes and continue.
+                self.basemap.ax = axes
+            basemap = self.basemap
             drawaxes = basemap
 
             # Transform x,y coordinates
@@ -1489,13 +1505,8 @@ class Figure(xmlstore.util.referencedobject):
         if cb!=None:
             cb.ax.yaxis.get_offset_text().set_fontproperties(fontprops)
             for l in cb.ax.yaxis.get_ticklabels(): l.set_fontproperties(fontprops)
-
-            if ismap:
-                # Adjust colorbar top and height based on basemap-modified axes
-                p = axes.get_position(original=False)
-                cbp = cb.ax.get_position(original=False)
-                cbp = cbp.from_bounds(cbp.x0,p.y0,cbp.width,p.height)
-                cb.ax.set_position(cbp)
+        self.colorbar,self.ismap = cb,ismap
+        self.onAspectChange(redraw=False)
 
         # Draw the plot to screen.
         self.canvas.draw()
@@ -1503,6 +1514,17 @@ class Figure(xmlstore.util.referencedobject):
         for cb in self.callbacks['completeStateChange']: cb(len(forcedseries)>0)
 
         self.dirty = False
+
+    def onAspectChange(self,redraw=True):
+        if self.colorbar!=None and self.ismap:
+            # Adjust colorbar top and height based on basemap-modified axes
+            axes = self.figure.gca()
+            axes.apply_aspect()
+            p = axes.get_position(original=False)
+            cbp = self.colorbar.ax.get_position(original=False)
+            cbp = cbp.from_bounds(cbp.x0,p.y0,cbp.width,p.height)
+            self.colorbar.ax.set_position(cbp)
+            if redraw: self.canvas.draw()
         
 def setLineProperties(propertynode,mplsection='lines',**kwargs):
     """Sets the values under a xmlstore.TypedStore node describing line
