@@ -418,13 +418,14 @@ class Figure(xmlstore.util.referencedobject):
         self.defaultproperties = FigureProperties()
 
         # Set some default properties.
-        self.defaultproperties['FontName'       ].setValue(defaultfont)
+        setFontProperties(self.defaultproperties['Font'],family=defaultfont,size=8)
         self.defaultproperties['FontScaling'    ].setValue(100)
         self.defaultproperties['Legend/Location'].setValue('best')
         self.defaultproperties['HasColorMap'    ].setValue(False)
         self.defaultproperties['ColorMap'       ].setValue('jet')
         self.defaultproperties['BackgroundColor'].setValue(xmlstore.datatypes.Color(255,255,255))
         setLineProperties(self.defaultproperties['Grid/LineProperties'],CanHaveMarker=False,mplsection='grid')
+        setFontProperties(self.defaultproperties['Title/Font'],family=defaultfont,size=10)
         
         nodePadding = self.defaultproperties['Padding']
         nodePadding['Left'  ].setValue(.125)
@@ -437,6 +438,23 @@ class Figure(xmlstore.util.referencedobject):
         nodemap['Projection' ].setValue('cyl')
         nodemap['Resolution' ].setValue('c')
         nodemap['DrawCoastlines'].setValue(True)
+        nodemap['DrawCoastlines/Color'].setValue(xmlstore.datatypes.Color(0,0,0))
+        nodemap['DrawCoastlines/LineWidth'].setValue(1.)
+        nodemap['FillContinents'].setValue(True)
+        nodemap['FillContinents/Color'].setValue(xmlstore.datatypes.Color(255,255,255))
+        nodemap['FillContinents/LakeColor'].setValue(xmlstore.datatypes.Color(255,255,255))
+        nodemap['DrawMapBoundary'].setValue(True)
+        nodemap['DrawMapBoundary/Color'].setValue(xmlstore.datatypes.Color(0,0,0))
+        nodemap['DrawMapBoundary/LineWidth'].setValue(1.)
+        nodemap['DrawRivers'].setValue(False)
+        nodemap['DrawRivers/Color'].setValue(xmlstore.datatypes.Color(0,0,0))
+        nodemap['DrawRivers/LineWidth'].setValue(.5)
+        nodemap['DrawCountries'].setValue(False)
+        nodemap['DrawCountries/Color'].setValue(xmlstore.datatypes.Color(0,0,0))
+        nodemap['DrawCountries/LineWidth'].setValue(.5)
+        nodemap['DrawStates'].setValue(False)
+        nodemap['DrawStates/Color'].setValue(xmlstore.datatypes.Color(0,0,0))
+        nodemap['DrawStates/LineWidth'].setValue(.5)
 
         # Take default figure size from value at initialization
         w,h = self.figure.get_size_inches()
@@ -619,6 +637,10 @@ class Figure(xmlstore.util.referencedobject):
             
         # Clear the current MatPlotLib figure.
         self.figure.clear()
+        
+        w = self.properties['Width'].getValue(usedefault=True)
+        h = self.properties['Height'].getValue(usedefault=True)
+        self.figure.set_size_inches(w/2.54,h/2.54)
 
         # Create one subplot only.
         bg = self.properties['BackgroundColor'].getValue(usedefault=True)
@@ -636,19 +658,14 @@ class Figure(xmlstore.util.referencedobject):
         # First scale the default font size; this takes care of all relative font sizes (e.g. "small")
         matplotlib.font_manager.fontManager.set_default_size(textscaling*matplotlib.rcParams['font.size'])
         
-        # Now get some relevant font sizes.
-        # Scale font sizes with text scaling parameter if they are absolute sizes.
-        # (if they are strings, they are relative sizes already)
-        fontfamily = self.properties['FontName'].getValue(usedefault=True)
-        fontsizes = {
-            'axes.titlesize' :10,#matplotlib.rcParams['axes.titlesize'],
-            'axes.labelsize' :8, #matplotlib.rcParams['axes.labelsize'],
-            'xtick.labelsize':8, #matplotlib.rcParams['xtick.labelsize'],
-            'ytick.labelsize':8, #matplotlib.rcParams['ytick.labelsize']
-            'legend':8
-        }
-        for k,v in fontsizes.iteritems():
-            if not isinstance(v,basestring): fontsizes[k]=v*textscaling
+        # Get default font properties
+        fontpropsdict = getFontProperties(self.properties['Font'])
+        fontpropsdict['size'] *= textscaling
+        fontprops = matplotlib.font_manager.FontProperties(**fontpropsdict)
+
+        fontpropsdict_title = dict(fontpropsdict)
+        fontpropsdict_title['size'] = round(1.25*fontpropsdict_title['size'])
+        setFontProperties(self.defaultproperties['Title/Font'],**fontpropsdict_title)
             
         # Line colors to cycle through
         linecolors = ((0,0,255),(0,255,0),(255,0,0),(0,255,255),(255,0,255),(255,255,0),(0,0,0))
@@ -956,7 +973,10 @@ class Figure(xmlstore.util.referencedobject):
             # Transform x,y coordinates
             for info,varslices in zip(seriesinfo,seriesslices):
                 if 'x' in info and 'y' in info:
-                    info['x'],info['y'] = basemap(info['x'],info['y'])
+                    if 'U' in info and 'V' in info:
+                        info['U'],info['V'],info['x'],info['y'] = basemap.rotate_vector(info['U'],info['V'],info['x'],info['y'],returnxy=True)
+                    else:
+                        info['x'],info['y'] = basemap(info['x'],info['y'])
             axis2data['x'].update({'unit':'','label':'','hideticks':True})
             axis2data['y'].update({'unit':'','label':'','hideticks':True})
 
@@ -1204,7 +1224,7 @@ class Figure(xmlstore.util.referencedobject):
                         keyu = keynode['Length'].getValue(usedefault=True)
                         keylabel = keynode['Label'].getValue(usedefault=True)
                         keylabelpos = keynode['LabelPosition'].getValue(usedefault=True)
-                        axes.quiverkey(pc,keyx,keyy,keyu,label=keylabel,labelpos=keylabelpos,coordinates='axes',fontproperties={'family':fontfamily,'size':fontsizes['legend']})
+                        axes.quiverkey(pc,keyx,keyy,keyu,label=keylabel,labelpos=keylabelpos,coordinates='axes',fontproperties=fontpropsdict)
                         
                     if C==None: pc = None
                 
@@ -1232,10 +1252,31 @@ class Figure(xmlstore.util.referencedobject):
             
         # Add map objects if needed
         if ismap:
-            if self.properties['Map/DrawCoastlines'].getValue(usedefault=True):
-                basemap.fillcontinents('w','0.8')
-                basemap.drawcoastlines()
-                basemap.drawmapboundary('k')
+            nodemap = self.properties['Map']
+            if nodemap['FillContinents'].getValue(usedefault=True):
+                contcolor = nodemap['FillContinents/Color'].getValue(usedefault=True)
+                lakecolor = nodemap['FillContinents/LakeColor'].getValue(usedefault=True)
+                basemap.fillcontinents(contcolor.getNormalized(),lakecolor.getNormalized())
+            if nodemap['DrawCoastlines'].getValue(usedefault=True):
+                color = nodemap['DrawCoastlines/Color'].getValue(usedefault=True)
+                linewidth = nodemap['DrawCoastlines/LineWidth'].getValue(usedefault=True)
+                basemap.drawcoastlines(color=color.getNormalized(),linewidth=linewidth)
+            if nodemap['DrawMapBoundary'].getValue(usedefault=True):
+                color = nodemap['DrawMapBoundary/Color'].getValue(usedefault=True)
+                linewidth = nodemap['DrawMapBoundary/LineWidth'].getValue(usedefault=True)
+                basemap.drawmapboundary(color=color.getNormalized(),linewidth=linewidth)
+            if nodemap['DrawRivers'].getValue(usedefault=True):
+                color = nodemap['DrawRivers/Color'].getValue(usedefault=True)
+                linewidth = nodemap['DrawRivers/LineWidth'].getValue(usedefault=True)
+                basemap.drawrivers(color=color.getNormalized(),linewidth=linewidth)
+            if nodemap['DrawCountries'].getValue(usedefault=True):
+                color = nodemap['DrawCountries/Color'].getValue(usedefault=True)
+                linewidth = nodemap['DrawCountries/LineWidth'].getValue(usedefault=True)
+                basemap.drawcountries(color=color.getNormalized(),linewidth=linewidth)
+            if nodemap['DrawStates'].getValue(usedefault=True):
+                color = nodemap['DrawStates/Color'].getValue(usedefault=True)
+                linewidth = nodemap['DrawStates/LineWidth'].getValue(usedefault=True)
+                basemap.drawstates(color=color.getNormalized(),linewidth=linewidth)
 
         # Create and store title
         title = ''
@@ -1246,9 +1287,13 @@ class Figure(xmlstore.util.referencedobject):
                     title = ', '.join(titles)
                     break
         self.defaultproperties['Title'].setValue(title)
-        title = self.properties['Title'].getValue(usedefault=True)
+        nodetitle = self.properties['Title']
+        title = nodetitle.getValue(usedefault=True)
         assert title!=None, 'Title must be available, either explicitly set or as default.'
-        if title!='': axes.set_title(title,size=fontsizes['axes.titlesize'],fontname=fontfamily)
+        if title!='':
+            curfontprops = getFontProperties(nodetitle['Font'])
+            curfontprops['size'] *= textscaling
+            axes.set_title(title,verticalalignment='baseline',**curfontprops)
         
         # Show legend
         legend = None
@@ -1257,8 +1302,8 @@ class Figure(xmlstore.util.referencedobject):
             self.defaultproperties['Legend'].setValue(plotcount[1]>1)
             legprop = self.properties['Legend']
             if legprop.getValue(usedefault=True):
-                legend = axes.legend(legenddata['handles'],legenddata['labels'],loc=legprop['Location'].getValue(usedefault=True),prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
-                #legend = self.figure.legend(legenddata['handles'],legenddata['labels'],1,prop=matplotlib.font_manager.FontProperties(size=fontsizes['legend'],family=fontfamily))
+                legend = axes.legend(legenddata['handles'],legenddata['labels'],loc=legprop['Location'].getValue(usedefault=True),prop=fontprops)
+                #legend = self.figure.legend(legenddata['handles'],legenddata['labels'],1,prop=fontprops)
                 legend.set_zorder(zorder)
                 zorder += 1
 
@@ -1415,13 +1460,13 @@ class Figure(xmlstore.util.referencedobject):
 
             # Set axis labels and boundaries.
             if axisname=='x':
-                if label!='': axes.set_xlabel(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
+                if label!='': axes.set_xlabel(label,fontproperties=fontprops)
                 axes.set_xlim(effrange[0],effrange[1])
             elif axisname=='y':
-                if label!='': axes.set_ylabel(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
+                if label!='': axes.set_ylabel(label,fontproperties=fontprops)
                 axes.set_ylim(effrange[0],effrange[1])
             elif axisname=='colorbar' and cb!=None:
-                if label!='': cb.set_label(label,size=fontsizes['axes.labelsize'],fontname=fontfamily)
+                if label!='': cb.set_label(label,fontproperties=fontprops)
 
         for oldaxis in oldaxes:
             forcedaxes.removeChild('Axis',oldaxis)
@@ -1435,27 +1480,15 @@ class Figure(xmlstore.util.referencedobject):
             axes.grid(True,**lineargs)
         
         # Scale the text labels for x- and y-axis.
-        for l in axes.get_xaxis().get_ticklabels():
-            l.set_size(fontsizes['xtick.labelsize'])
-            l.set_name(fontfamily)
-        for l in axes.get_yaxis().get_ticklabels():
-            l.set_size(fontsizes['ytick.labelsize'])
-            l.set_name(fontfamily)
-        offset = axes.get_xaxis().get_offset_text()
-        offset.set_size(fontsizes['xtick.labelsize'])
-        offset.set_name(fontfamily)
-        offset = axes.get_yaxis().get_offset_text()
-        offset.set_size(fontsizes['ytick.labelsize'])
-        offset.set_name(fontfamily)
+        for l in axes.get_xaxis().get_ticklabels(): l.set_fontproperties(fontprops)
+        for l in axes.get_yaxis().get_ticklabels(): l.set_fontproperties(fontprops)
+        axes.get_xaxis().get_offset_text().set_fontproperties(fontprops)
+        axes.get_yaxis().get_offset_text().set_fontproperties(fontprops)
         
         # Scale text labels for color bar.
         if cb!=None:
-            offset = cb.ax.yaxis.get_offset_text()
-            offset.set_size(fontsizes['ytick.labelsize'])
-            offset.set_name(fontfamily)
-            for l in cb.ax.yaxis.get_ticklabels():
-                l.set_size(fontsizes['ytick.labelsize'])
-                l.set_name(fontfamily)
+            cb.ax.yaxis.get_offset_text().set_fontproperties(fontprops)
+            for l in cb.ax.yaxis.get_ticklabels(): l.set_fontproperties(fontprops)
 
             if ismap:
                 # Adjust colorbar top and height based on basemap-modified axes
@@ -1530,6 +1563,18 @@ def getLineProperties(propertynode):
             'markerfacecolor':markerfacecolor.getNormalized(),
             'markeredgecolor':markeredgecolor.getNormalized(),
             'markeredgewidth':markeredgewidth}
+
+def setFontProperties(node,family=None,size=8,style='normal',weight='normal'):
+    node['Family'].setValue(family)
+    node['Size'].setValue(size)
+    node['Style'].setValue(style)
+    node['Weight'].setValue(weight)
+    
+def getFontProperties(node):
+    return {'family':node['Family'].getValue(usedefault=True),
+            'size':node['Size'].getValue(usedefault=True),
+            'style':node['Style'].getValue(usedefault=True),
+            'weight':node['Weight'].getValue(usedefault=True)}
     
 def getTimeLocator(location,interval):
     """Creates a time locator based on the unit ("location") and interval

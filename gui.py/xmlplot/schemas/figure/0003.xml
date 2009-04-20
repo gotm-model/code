@@ -1,6 +1,23 @@
 <?xml version="1.0"?>
 <element name="Figure" label="figure" version="0003">
 
+	<template id="FontProperties">
+		<element name="Family" type="fontname" label="font name"/>
+		<element name="Size"   type="int" label="font size" unit="pt"/>
+		<element name="Weight" type="string" label="font weight">
+			<options>
+				<option value="normal"/>
+				<option value="bold"  />
+			</options>
+		</element>
+		<element name="Style" type="string" label="font style">
+			<options>
+				<option value="normal"/>
+				<option value="italic"  />
+			</options>
+		</element>
+	</template>
+	
   <template id="Line2D">
     <element name="CanHaveMarker" type="bool" hidden="True"/>
     <element name="Line" type="string" label="line">
@@ -114,13 +131,15 @@
     </element>
   </template>
 
-  <element name="Title"       type="string"   label="title"/>
-  <element name="FontName"    type="fontname" label="font"/>
-  <element name="FontScaling" type="float"    label="font scaling" unit="%"/>
-  <element name="Width"       type="float"    label="width"        unit="cm"/>
-  <element name="Height"      type="float"    label="height"       unit="cm"/>
+	<link template="FontProperties" name="Font" label="default font"/>
+	<element name="FontScaling" type="float"    label="font scaling" unit="%" hidden="True"/>
+	<element name="Width"       type="float"    label="width"        unit="cm"/>
+	<element name="Height"      type="float"    label="height"       unit="cm"/>
+	<element name="Title"       type="string"   label="title">
+		<link template="FontProperties" name="Font" grouponly="True"/>
+	</element>
 
-  <element name="Padding" label="padding">
+	<element name="Padding" label="padding">
     <element name="Left"   type="float" label="left"/>
     <element name="Right"  type="float" label="right"/>
     <element name="Top"    type="float" label="top"/>
@@ -130,7 +149,7 @@
   <element name="CanBeMap" type="bool" hidden="True"/>
   <element name="Map" type="bool" label="plot as map">
     <condition type="eq" variable="./CanBeMap" value="True"/>
-    <element name="Projection" type="mapprojection" label="projection">
+		<element name="Projection" type="mapprojection" label="projection">
       <condition type="eq" variable="." value="True"/>
     </element>
     <element name="Resolution" type="string" label="resolution">
@@ -143,16 +162,67 @@
         <option value="f" label="full"/>
       </options>
     </element>
-    <element name="DrawCoastlines" type="bool" label="draw coastlines">
+		<element name="Range" label="range">
+			<condition type="eq" variable="." value="True"/>
+			<element name="LowerLeftLatitude"   type="float" label="lower left latitude"/>
+			<element name="LowerLeftLongitude"  type="float" label="lower left longitude"/>
+			<element name="UpperRightLatitude"  type="float" label="upper right latitude"/>
+			<element name="UpperRightLongitude" type="float" label="upper right longitude"/>
+		</element>
+		<element name="FillContinents" type="bool" label="fill continents">
+			<condition type="eq" variable="." value="True"/>
+			<element name="Color" type="color" label="continent color">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+			<element name="LakeColor" type="color" label="lake color">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+		</element>
+		<element name="DrawCoastlines" type="bool" label="draw coastlines">
       <condition type="eq" variable="." value="True"/>
-    </element>
-    <element name="Range" label="range">
-      <condition type="eq" variable="." value="True"/>
-      <element name="LowerLeftLatitude"   type="float" label="lower left latitude"/>
-      <element name="LowerLeftLongitude"  type="float" label="lower left longitude"/>
-      <element name="UpperRightLatitude"  type="float" label="upper right latitude"/>
-      <element name="UpperRightLongitude" type="float" label="upper right longitude"/>
-    </element>
+			<element name="Color" type="color" label="line color">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+			<element name="LineWidth" type="float" label="line width">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+		</element>
+		<element name="DrawMapBoundary" type="bool" label="draw map boundary">
+			<condition type="eq" variable="." value="True"/>
+			<element name="Color" type="color" label="line color">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+			<element name="LineWidth" type="float" label="line width">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+		</element>
+		<element name="DrawRivers" type="bool" label="draw rivers">
+			<condition type="eq" variable="." value="True"/>
+			<element name="Color" type="color" label="line color">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+			<element name="LineWidth" type="float" label="line width">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+		</element>
+		<element name="DrawCountries" type="bool" label="draw countries">
+			<condition type="eq" variable="." value="True"/>
+			<element name="Color" type="color" label="line color">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+			<element name="LineWidth" type="float" label="line width">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+		</element>
+		<element name="DrawStates" type="bool" label="draw states">
+			<condition type="eq" variable="." value="True"/>
+			<element name="Color" type="color" label="line color">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+			<element name="LineWidth" type="float" label="line width">
+				<condition type="eq" variable="." value="True"/>
+			</element>
+		</element>
   </element>
 
   <element name="CanHaveLegend" type="bool" hidden="True"/>
