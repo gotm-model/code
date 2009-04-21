@@ -949,12 +949,17 @@ class Figure(xmlstore.util.referencedobject):
         # Handle transformations due to map projection (if any)
         xcanbelon = xrange[0]!=None and xrange[0]>=-360 and xrange[1]<=360
         ycanbelat = yrange[0]!=None and yrange[0]>=-90  and yrange[1]<=90
+        if xcanbelon and ycanbelat:
+            # Try importing basemap
+            try:
+                import mpl_toolkits.basemap
+            except ImportError:
+                xcanbelon,ycanbelat = False,False
         self.defaultproperties['CanBeMap'].setValue(xcanbelon and ycanbelat)
         ismap = xcanbelon and ycanbelat and self.properties['Map'].getValue(usedefault=True)
         drawaxes = axes
         if ismap:
             # Create the basemap object
-            import mpl_toolkits.basemap
             nodemap = self.properties['Map']
             res  = nodemap['Resolution'].getValue(usedefault=True)
             proj = nodemap['Projection'].getValue(usedefault=True)
