@@ -60,7 +60,7 @@ def getNetCDFFile(path):
         import pynetcdf
     except Exception,e:
         error += 'Cannot load pynetcdf. Reason: %s.\n' % str(e)
-        raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, netCDF4 or pynetcdf.' % (error,))
+        raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, netCDF4 or pynetcdf.')
     pyver = sys.version_info
     if (pyver[0]==2 and pyver[1]>=5) or pyver[0]>2:
         print '%sWe will use pynetcdf for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (error,pyver[0],pyver[1],pyver[2])
