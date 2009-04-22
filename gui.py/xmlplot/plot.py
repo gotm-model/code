@@ -1591,7 +1591,7 @@ def getLineProperties(propertynode):
             'markeredgecolor':markeredgecolor.getNormalized(),
             'markeredgewidth':markeredgewidth}
 
-def setFontProperties(node,family=None,size=8,style='normal',weight='normal'):
+def setFontProperties(node,family=None,size=8,style='normal',weight=400):
     node['Family'].setValue(family)
     node['Size'].setValue(size)
     node['Style'].setValue(style)
