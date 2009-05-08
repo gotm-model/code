@@ -840,7 +840,10 @@
 			</element>
 			<element name="PressHeight" type="float" label="height above bottom for current meter observations"
 				unit="m">
-				<condition type="eq" variable="./ext_press_mode" value="1" />
+				<condition type="and">
+					<condition type="ne" variable="./ext_press_method" value="2" />
+					<condition type="eq" variable="./ext_press_mode"   value="1" />
+				</condition>
 			</element>
 			<element name="PeriodM" type="float" label="period of 1st harmonic (eg. M2-tide)" unit="s">
 				<condition type="eq" variable="./ext_press_method" value="1" />
