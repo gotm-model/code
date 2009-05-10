@@ -1,4 +1,4 @@
-!$Id: bio_types.F90,v 1.4 2009-01-07 08:34:18 jorn Exp $
+!$Id: bio_types.F90,v 1.5 2009-05-10 18:34:50 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -24,13 +24,13 @@
 ! !USES:
 !  default: all is private.
    private
-   public type_model_info,type_variable_info,type_conserved_quantity_info,type_environment
+   public type_model_info,type_state_variable_info,type_conserved_quantity_info,type_environment
    public create_model_info, init_environment
 !
 ! !PUBLIC DERIVED TYPES:
 !
    ! Properties of a single state variable
-   type type_variable_info
+   type type_state_variable_info
       character(len=64) :: name, longname, unit
 
       REALTYPE :: initial_value              ! Initial state variable value
@@ -40,7 +40,20 @@
       REALTYPE :: mussels_inhale
 #endif
       logical  :: positive_definite          ! Whether this variable is positive definite (negative values are invalid)
-   end type type_variable_info
+   end type type_state_variable_info
+
+   ! Properties of a diagnostic variable
+   type type_diagnostic_variable_info
+      character(len=64) :: name, longname, unit
+      integer           :: id
+      
+      ! Time treatment:
+      ! 0: last value
+      ! 1: time-integrated
+      ! 2: time step-averaged
+      ! 3: time step-integrated
+      integer           :: time_treatment
+   end type type_diagnostic_variable_info
 
    ! Properties of a conserved quantity
    type type_conserved_quantity_info
@@ -51,7 +64,7 @@
    ! Global 0D model properties
    type type_model_info
       ! Number of state variables
-      integer  :: state_variable_count, conserved_quantity_count
+      integer  :: state_variable_count, diagnostic_variable_count, conserved_quantity_count
 
       ! Sinking rate type
       ! 0: variable-specific sinking rates are constant in time and space
@@ -59,7 +72,8 @@
       !    (optionally including the current state and local enviroment)
       integer  :: dynamic_sinking_rates
       
-      type (type_variable_info),           allocatable :: variables(:)
+      type (type_state_variable_info),     allocatable :: variables(:)
+      type (type_diagnostic_variable_info),allocatable :: diagnostic_variables(:)
       type (type_conserved_quantity_info), allocatable :: conserved_quantities(:)
    end type type_model_info
 
@@ -86,19 +100,26 @@
 
    contains
    
-   function create_model_info(variable_count,conserved_quantity_count) result(modelinfo)
-      integer, intent(in) :: variable_count,conserved_quantity_count
+   function create_model_info(variable_count,diagnostic_variable_count,conserved_quantity_count) result(modelinfo)
+      integer, intent(in) :: variable_count,diagnostic_variable_count,conserved_quantity_count
       type (type_model_info) :: modelinfo
    
-      modelinfo%state_variable_count = variable_count
-      modelinfo%conserved_quantity_count = conserved_quantity_count
+      modelinfo%state_variable_count      = variable_count
+      modelinfo%diagnostic_variable_count = diagnostic_variable_count
+      modelinfo%conserved_quantity_count  = conserved_quantity_count
       
       modelinfo%dynamic_sinking_rates = 0
       
       ! Allocate and initialize memory for state variable information
-      allocate(modelinfo%variables           (1:modelinfo%state_variable_count))
+      allocate(modelinfo%variables(1:modelinfo%state_variable_count))
       do i=1,modelinfo%state_variable_count
-         call init_variable_info(modelinfo%variables(i))
+         call init_state_variable_info(modelinfo%variables(i))
+      end do
+
+      ! Allocate and initialize memory for diagnostic variable information
+      allocate(modelinfo%diagnostic_variables(1:modelinfo%diagnostic_variable_count))
+      do i=1,modelinfo%diagnostic_variable_count
+         call init_diagnostic_variable_info(modelinfo%diagnostic_variables(i))
       end do
 
       ! Allocate and initialize memory for conserved quantity information
@@ -108,8 +129,8 @@
       end do
    end function create_model_info
 
-   subroutine init_variable_info(varinfo)
-      type (type_variable_info), intent(inout) :: varinfo
+   subroutine init_state_variable_info(varinfo)
+      type (type_state_variable_info), intent(inout) :: varinfo
    
       varinfo%name = ''
       varinfo%unit = ''
@@ -121,7 +142,17 @@
 #if 0
       varinfo%mussels_inhale = .false.
 #endif
-   end subroutine init_variable_info
+   end subroutine init_state_variable_info
+
+   subroutine init_diagnostic_variable_info(varinfo)
+      type (type_diagnostic_variable_info), intent(inout) :: varinfo
+   
+      varinfo%name = ''
+      varinfo%unit = ''
+      varinfo%longname = ''
+      varinfo%id = -1
+      varinfo%time_treatment = 0
+   end subroutine init_diagnostic_variable_info
 
    subroutine init_conserved_quantity_info(conservedinfo)
       type (type_conserved_quantity_info), intent(inout) :: conservedinfo

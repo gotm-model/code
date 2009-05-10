@@ -1,4 +1,4 @@
-!$Id: bio_0d.F90,v 1.8 2009-03-19 09:38:23 kb Exp $
+!$Id: bio_0d.F90,v 1.9 2009-05-10 18:34:50 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -19,6 +19,7 @@
    use bio_var
    use bio_types
    use bio_0d_gen
+   use time,    only: timestep
 
 !  default: all is private.
    private
@@ -36,6 +37,8 @@
    integer :: np,nt
    REALTYPE, allocatable :: shade(:),extinction(:),cc_loc(:,:)
    type (type_environment) :: env_par
+   
+   REALTYPE, allocatable :: cc_diag(:,:)
 
 !
 ! !REVISION HISTORY:!
@@ -228,6 +231,12 @@
          cc(j,1:nlev) = model%info%variables(j)%initial_value
       end do
    end if
+   
+   ! Array for diagnostic variables
+   ! NB it needs to have lower bound 0 for the second dimension (depth),
+   ! even though the values at index 0 will never be used.
+   ! Reason: store_data expects a lower bound of zero.
+   allocate(cc_diag(1:model%info%diagnostic_variable_count,0:nlev))
 
    ! Arrays for particle model
    allocate(shade(0:nlev))
@@ -469,8 +478,9 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer                    :: ci,imodel,ifirst,ilast
+   integer                    :: ci,imodel,ifirst,ilast,ifirst_diag,ilast_diag
    type (type_environment)    :: env
+   REALTYPE                   :: diag(1:model%info%diagnostic_variable_count,nlev)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -488,13 +498,15 @@
 
    ! The index of the first state variable
    ifirst = 1
+   ifirst_diag = 1
 
    ! Iterate over all individual models, because for each separate model we have to adjust
    ! the local light climate based on the model's self-shading properties
    ! (because of self-shading, the local environment is model-dependent)
    do imodel=1,model%count
       ! Find the index of the last state variable for the current model
-      ilast = ifirst + model%models(imodel)%info%state_variable_count - 1
+      ilast      = ifirst      + model%models(imodel)%info%state_variable_count - 1
+      ilast_diag = ifirst_diag + model%models(imodel)%info%diagnostic_variable_count - 1
 
       ! Iterate over all depth levels
       do ci=1,nlev
@@ -506,15 +518,28 @@
          env%rho  = rho(ci)
          call do_bio_0d_generic(model%models(imodel),first, &
                   cc(ifirst:ilast,ci),env,pp(ifirst:ilast,ifirst:ilast,ci),&
-                  dd(ifirst:ilast,ifirst:ilast,ci))
+                  dd(ifirst:ilast,ifirst:ilast,ci),diag(ifirst_diag:ilast_diag,ci))
       end do
       
       ! Update PAR based on extinction values of the next model (if any)
       if (imodel.lt.model%count) call light_0d(model%models(imodel+1),nlev,.false.)
       
       ! The variables of the next model begin after the last variable of the current model.
-      ifirst = ilast+1
+      ifirst      = ilast     +1
+      ifirst_diag = ilast_diag+1
    end do
+   
+   if (first) then
+      do ci=1,model%info%diagnostic_variable_count
+         if (model%info%diagnostic_variables(ci)%time_treatment.eq.0) then
+            ! Simply use last value
+            cc_diag(ci,1:nlev) = diag(ci,1:nlev)
+         else
+            ! Integration or averaging in time needed: for now do simple Forward Euler integration.
+            cc_diag(ci,1:nlev) = cc_diag(ci,1:nlev) + diag(ci,1:nlev)*timestep
+         end if
+      end do
+   end if
    
    end subroutine do_bio_0d_eul
 !EOC
@@ -627,7 +652,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   REALTYPE                   :: rat, localshade
+   REALTYPE                   :: rat, localshade, diag(model%info%diagnostic_variable_count)
    integer                    :: i
 !EOP
 !-----------------------------------------------------------------------
@@ -645,7 +670,7 @@
    env_par%s    = rat*  s(i)+(1.-rat)*  s(i-1)
    env_par%nuh  = rat*nuh(i)+(1.-rat)*nuh(i-1)
    env_par%rho  = rat*rho(i)+(1.-rat)*rho(i-1)
-   call do_bio_0d_generic(model,first,par_prop(np,1:model%info%state_variable_count,nt),env_par,pp(:,:,1),dd(:,:,1))
+   call do_bio_0d_generic(model,first,par_prop(np,1:model%info%state_variable_count,nt),env_par,pp(:,:,1),dd(:,:,1),diag)
    
    end subroutine get_bio_0d_par_rhs
 !EOC
@@ -662,6 +687,7 @@
 !  Save additional properties of 0d biogeochemical model
 !
 ! !USES:
+   use output,  only: nsave
    use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dims
    use ncdfout, only: define_mode,new_nc_variable,set_attributes,store_data
 
@@ -689,14 +715,28 @@
       case (NETCDF)
 #ifdef NETCDF_FMT
          if(first) then
-            dims(1) = time_dim
-
             iret = define_mode(ncid,.true.)
+
+            dims(1) = lon_dim
+            dims(2) = lat_dim
+            dims(3) = z_dim
+            dims(4) = time_dim
+
+            ! Add a variable for each diagnostic variable
+            do n=1,model%info%diagnostic_variable_count
+               iret = new_nc_variable(ncid,model%info%diagnostic_variables(n)%name,NF_REAL, &
+                                      4,dims,model%info%diagnostic_variables(n)%id)
+               iret = set_attributes(ncid,model%info%diagnostic_variables(n)%id,       &
+                                     units=model%info%diagnostic_variables(n)%unit,    &
+                                     long_name=model%info%diagnostic_variables(n)%longname)
+            end do
+
+            dims(3) = time_dim
 
             ! Add a variable for each conserved quantity
             do n=1,model%info%conserved_quantity_count
                iret = new_nc_variable(ncid,'tot_'//model%info%conserved_quantities(n)%name,NF_REAL, &
-                                      1,dims,model%info%conserved_quantities(n)%id)
+                                      3,dims,model%info%conserved_quantities(n)%id)
                iret = set_attributes(ncid,model%info%conserved_quantities(n)%id,       &
                                      units='m*'//model%info%conserved_quantities(n)%unit,    &
                                      long_name='depth-integrated '//model%info%conserved_quantities(n)%longname)
@@ -705,6 +745,15 @@
             iret = define_mode(ncid,.false.)
          end if
 
+         do n=1,model%info%diagnostic_variable_count
+            if (model%info%diagnostic_variables(n)%time_treatment==2) &
+               cc_diag(n,1:nlev) = cc_diag(n,1:nlev)/(nsave*timestep)
+            iret = store_data(ncid,model%info%diagnostic_variables(n)%id,XYZT_SHAPE,nlev,array=cc_diag(n,0:nlev))
+            if (model%info%diagnostic_variables(n)%time_treatment==2 .or. &
+                model%info%diagnostic_variables(n)%time_treatment==3) &
+               cc_diag(n,1:nlev) = _ZERO_
+         end do
+
          ! Integrate conserved quantities over depth
          total = _ZERO_
          do ilev=1,nlev
@@ -712,7 +761,7 @@
          end do
 
          do n=1,model%info%conserved_quantity_count
-            iret = store_data(ncid,model%info%conserved_quantities(n)%id,T_SHAPE,1,scalar=total(n))
+            iret = store_data(ncid,model%info%conserved_quantities(n)%id,XYT_SHAPE,1,scalar=total(n))
          end do
 #endif
    end select

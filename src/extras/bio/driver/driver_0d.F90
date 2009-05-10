@@ -1,4 +1,4 @@
-!$Id: driver_0d.F90,v 1.6 2008-11-20 10:57:18 jorn Exp $
+!$Id: driver_0d.F90,v 1.7 2009-05-10 18:34:51 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -219,10 +219,11 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
+   REALTYPE :: diag(1:model%info%diagnostic_variable_count)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call do_bio_0d_generic(model,first,cc(:,1),env,pp(:,:,1),dd(:,:,1))
+   call do_bio_0d_generic(model,first,cc(:,1),env,pp(:,:,1),dd(:,:,1),diag)
    
    end subroutine get_rhs
 !EOC

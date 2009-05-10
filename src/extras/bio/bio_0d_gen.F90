@@ -1,4 +1,4 @@
-!$Id: bio_0d_gen.F90,v 1.6 2009-03-19 10:27:28 jorn Exp $
+!$Id: bio_0d_gen.F90,v 1.7 2009-05-10 18:34:50 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -40,7 +40,7 @@
 !    not be called).
 !    If a function is not provided (dynamic_sinking_rates=0), sinking rates are assumed to be constant
 !    in time and space; they will be taken from the sinking_rate member of the respective
-!    type_variable_info derived types (see bio_types.F90).
+!    type_state_variable_info derived type (see bio_types.F90).
 !
 ! 6) If any of the model variables attentuate light, a function that calculate the light
 !    extinction coefficient (/m) from the current model state may be added as option to the "select"
@@ -230,6 +230,9 @@
       do i=1,model%info%state_variable_count
          model%info%variables(i)%name = trim(nameprefix)//trim(model%info%variables(i)%name)
       end do
+      do i=1,model%info%diagnostic_variable_count
+         model%info%diagnostic_variables(i)%name = trim(nameprefix)//trim(model%info%diagnostic_variables(i)%name)
+      end do
       do i=1,model%info%conserved_quantity_count
          model%info%conserved_quantities(i)%name = trim(nameprefix)//trim(model%info%conserved_quantities(i)%name)
       end do
@@ -239,6 +242,9 @@
    if (present(longnameprefix)) then
       do i=1,model%info%state_variable_count
          model%info%variables(i)%longname = trim(longnameprefix)//' '//trim(model%info%variables(i)%longname)
+      end do
+      do i=1,model%info%diagnostic_variable_count
+         model%info%diagnostic_variables(i)%longname = trim(longnameprefix)//' '//trim(model%info%diagnostic_variables(i)%longname)
       end do
       do i=1,model%info%conserved_quantity_count
          model%info%conserved_quantities(i)%longname = trim(longnameprefix)//' '//trim(model%info%conserved_quantities(i)%longname)
@@ -265,7 +271,7 @@
 ! biogeochemical model
 !
 ! !INTERFACE:
-   subroutine do_bio_single(model,first,cc,env,pp,dd)
+   subroutine do_bio_single(model,first,cc,env,pp,dd,diag)
 !
 ! !USES:
    IMPLICIT NONE
@@ -277,6 +283,7 @@
    type (type_environment),intent(in)    :: env
    REALTYPE,               intent(inout) :: pp(1:model%info%state_variable_count,1:model%info%state_variable_count)
    REALTYPE,               intent(inout) :: dd(1:model%info%state_variable_count,1:model%info%state_variable_count)
+   REALTYPE,               intent(out)   :: diag(1:model%info%diagnostic_variable_count)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -285,7 +292,7 @@
 !BOC
    select case (model%id)
       case (npzd_0d_id)
-         call do_bio_npzd_0d(model%npzd,first,model%info%state_variable_count,cc,env,pp,dd)
+         call do_bio_npzd_0d(model%npzd,first,model%info%state_variable_count,cc,model%info%diagnostic_variable_count,env,pp,dd,diag)
       case default
          stop 'bio_0d_gen::do_bio_single: the selected biogeochemical model does not yet provide &
               &a function that returns the local temporal derivatives.'
@@ -416,7 +423,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-  integer :: i,nstate,ncons
+  integer :: i,nstate,ndiag,ncons
   character(len=64) :: nameprefix,longnameprefix,modelname
 !EOP
 !-----------------------------------------------------------------------
@@ -427,6 +434,7 @@
    
    ! Initial number of state variables and conserved quantities.
    nstate = 0
+   ndiag = 0
    ncons = 0
    
    ! Allow each biogeochemical model to initialize.
@@ -449,25 +457,28 @@
       
       ! Update the total number of state variables and conserved quantities.
       nstate = nstate + collection%models(i)%info%state_variable_count
+      ndiag  = ndiag  + collection%models(i)%info%diagnostic_variable_count
       ncons  = ncons  + collection%models(i)%info%conserved_quantity_count
    end do
 
    ! Create table for information on the entire collection of models.
-   collection%info = create_model_info(nstate,ncons)
+   collection%info = create_model_info(nstate,ndiag,ncons)
    collection%info%dynamic_sinking_rates = maxval(collection%models%info%dynamic_sinking_rates)
 
    ! Copy the information on all individual biogeochemical models to the global table with
    ! information on the entire model collection.
    nstate = 1
+   ndiag = 1
    ncons = 1
    do i = 1,count
-      collection%info%variables(nstate:nstate+collection%models(i)%info% &
-       state_variable_count    -1)&
+      collection%info%variables(nstate:nstate+collection%models(i)%info%state_variable_count-1)&
                         = collection%models(i)%info%variables
-      collection%info%conserved_quantities(ncons :ncons +collection &
-        %models(i)%info%conserved_quantity_count-1)&
+      collection%info%diagnostic_variables(ndiag:ndiag+collection%models(i)%info%diagnostic_variable_count-1)&
+                        = collection%models(i)%info%diagnostic_variables
+      collection%info%conserved_quantities(ncons:ncons+collection%models(i)%info%conserved_quantity_count-1)&
                         = collection%models(i)%info%conserved_quantities
       nstate = nstate + collection%models(i)%info%state_variable_count
+      ndiag  = ndiag  + collection%models(i)%info%diagnostic_variable_count
       ncons  = ncons  + collection%models(i)%info%conserved_quantity_count
    end do
    
@@ -480,7 +491,7 @@
 ! !IROUTINE: Get the local temporal derivatives for the collection of biogeochemical models.
 !
 ! !INTERFACE:
-   subroutine do_bio_collection(collection,first,cc,env,pp,dd)
+   subroutine do_bio_collection(collection,first,cc,env,pp,dd,diag)
 !
 ! !USES:
    IMPLICIT NONE
@@ -496,21 +507,25 @@
    REALTYPE,                     intent(inout) :: &
                                  dd(1:collection%info%state_variable_count, &
                                  1:collection%info%state_variable_count)
+   REALTYPE,                     intent(out) :: diag(1:collection%info%diagnostic_variable_count)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-  integer :: i,ifirst,ilast
+  integer :: i,ifirst,ilast,ifirst_diag,ilast_diag
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    ifirst = 1
+   ifirst_diag = 1
    do i = 1,collection%count
       ilast = ifirst + collection%models(i)%info%state_variable_count - 1
+      ilast_diag = ifirst_diag + collection%models(i)%info%diagnostic_variable_count - 1
       call do_bio_single(collection%models(i),first,cc(ifirst:ilast),env,&
-               pp(ifirst:ilast,ifirst:ilast),dd(ifirst:ilast,ifirst:ilast))
+               pp(ifirst:ilast,ifirst:ilast),dd(ifirst:ilast,ifirst:ilast),diag(ifirst_diag:ilast_diag))
       ifirst = ilast+1
+      ifirst_diag = ilast_diag+1
    end do
 
    end subroutine do_bio_collection
