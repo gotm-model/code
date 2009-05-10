@@ -1,4 +1,4 @@
-!$Id: bio_npzd_0d.F90,v 1.5 2008-11-20 11:00:37 jorn Exp $
+!$Id: bio_npzd_0d.F90,v 1.6 2009-05-10 18:36:38 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -45,7 +45,8 @@
    end type
 !
 ! !PRIVATE PARAMETERS:
-   integer, parameter        :: n=1,p=2,z=3,d=4
+   integer, parameter        :: n=1,p=2,z=3,d=4 ! state variable indices
+   integer, parameter        :: GPP=1, NCP=2, PPR=3, NPR=4, iPAR=5 ! diagnostic variable indices
 !EOP
 !-----------------------------------------------------------------------
 
@@ -126,8 +127,8 @@
    self%rzd  = rzd /secs_pr_day
    
    ! Create container for model information, specifying the number of state variables (4: NPZD)
-   ! and the number of conserved quantities (1: nitrogen)
-   modelinfo = create_model_info(4,1)
+   ! the number of diagnostic variables (5), and the number of conserved quantities (1: nitrogen)
+   modelinfo = create_model_info(4,5,1)
 
    ! Properties for the nutrient
    modelinfo%variables(1)%name = 'nut'
@@ -166,6 +167,32 @@
    modelinfo%variables(4)%mussels_inhale = .true.
 #endif
 
+   ! Diagnostic variables
+   modelinfo%diagnostic_variables(GPP)%name = 'GPP'
+   modelinfo%diagnostic_variables(GPP)%unit = 'mmolN/m**3'
+   modelinfo%diagnostic_variables(GPP)%longname  = 'gross primary production'
+   modelinfo%diagnostic_variables(GPP)%time_treatment = 3   ! time step-integrated
+
+   modelinfo%diagnostic_variables(NCP)%name = 'NCP'
+   modelinfo%diagnostic_variables(NCP)%unit = 'mmolN/m**3'
+   modelinfo%diagnostic_variables(NCP)%longname  = 'net community production'
+   modelinfo%diagnostic_variables(NCP)%time_treatment = 3   ! time step-integrated
+
+   modelinfo%diagnostic_variables(PPR)%name = 'PPR'
+   modelinfo%diagnostic_variables(PPR)%unit = 'mmolN/m**3/d'
+   modelinfo%diagnostic_variables(PPR)%longname  = 'gross primary production rate'
+   modelinfo%diagnostic_variables(PPR)%time_treatment = 2   ! time step-averaged
+
+   modelinfo%diagnostic_variables(NPR)%name = 'NPR'
+   modelinfo%diagnostic_variables(NPR)%unit = 'mmolN/m**3/d'
+   modelinfo%diagnostic_variables(NPR)%longname  = 'net community production rate'
+   modelinfo%diagnostic_variables(NPR)%time_treatment = 2   ! time step-averaged
+
+   modelinfo%diagnostic_variables(iPAR)%name = 'PAR'
+   modelinfo%diagnostic_variables(iPAR)%unit = 'W/m**2'
+   modelinfo%diagnostic_variables(iPAR)%longname  = 'photosynthetic active radiation'
+   modelinfo%diagnostic_variables(iPAR)%time_treatment = 0   ! last value (default for time_treatment)
+
    ! One conserved quantity: nitrogen
    modelinfo%conserved_quantities(1)%name = 'N'
    modelinfo%conserved_quantities(1)%unit = 'mmol/m**3'
@@ -199,7 +226,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   extinction = self%kc*(self%p0+cc(2)+cc(4))
+   extinction = self%kc*(self%p0+cc(p)+cc(d))
 
    end function get_bio_extinction_npzd_0d
 !EOC
@@ -295,7 +322,7 @@
 ! !IROUTINE: Right hand sides of NPZD model
 !
 ! !INTERFACE:
-   subroutine do_bio_npzd_0d(self,first,numc,cc,env,pp,dd)
+   subroutine do_bio_npzd_0d(self,first,numc,cc,num_diag,env,pp,dd,diag)
 !
 ! !DESCRIPTION:
 ! Seven processes expressed as sink terms are included in this
@@ -350,13 +377,14 @@
 ! !INPUT PARAMETERS:
    type (type_npzd), intent(in)         :: self
    logical, intent(in)                  :: first
-   integer, intent(in)                  :: numc
+   integer, intent(in)                  :: numc,num_diag
    REALTYPE, intent(in)                 :: cc(1:numc)
    type (type_environment), intent(in)  :: env
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(inout)              :: pp(1:numc,1:numc)
    REALTYPE, intent(inout)              :: dd(1:numc,1:numc)
+   REALTYPE, intent(out)                :: diag(1:num_diag)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -365,6 +393,7 @@
    REALTYPE, save             :: iopt
    REALTYPE                   :: rpd
    integer                    :: i,j
+   REALTYPE, parameter :: secs_pr_day = 86400.
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -386,12 +415,18 @@
    dd(d,n)=self%rdn*cc(d)                      ! sdn
    dd(p,d)=     rpd*cc(p)                      ! spd
    dd(z,d)=self%rzd*cc(z)                      ! szd
-
+   
    do i=1,numc
       do j=1,numc
          pp(i,j)=dd(j,i)
       end do
    end do
+
+   diag(iPAR) = env%par
+   diag(GPP) = dd(n,p)
+   diag(NCP) = (dd(n,p)-pp(n,p))
+   diag(PPR) = dd(n,p)*secs_pr_day
+   diag(NPR) = (dd(n,p)-pp(n,p))*secs_pr_day
 
    end subroutine do_bio_npzd_0d
 !EOC
