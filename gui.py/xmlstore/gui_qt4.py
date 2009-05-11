@@ -27,7 +27,7 @@ def getEditors():
     """Returns a dictionary linking data type names to editor classes.
     """
     global editors
-    if editors==None:
+    if editors is None:
         editors = {'string'  :StringEditor,
                    'int'     :IntEditor,
                    'float'   :ScientificDoubleEditor,
@@ -42,9 +42,9 @@ def createEditor(node,parent=None,selectwithradio=False,**kwargs):
     parent QWidget.
     """
     assert isinstance(node,xmlstore.Node), 'First argument to createEditor must be of type node.'
-    assert parent==None or isinstance(parent,QtGui.QWidget), 'If a parent is supplied to createEditor, it must derive from QWidget.'
+    assert parent is None or isinstance(parent,QtGui.QWidget), 'If a parent is supplied to createEditor, it must derive from QWidget.'
     editorclass = getEditors().get(node.getValueType(),None)
-    assert editorclass!=None, 'No editor available for node of type "%s".' % node.getValueType()
+    assert editorclass is not None, 'No editor available for node of type "%s".' % node.getValueType()
     if issubclass(editorclass,AbstractSelectEditor) or not node.templatenode.hasAttribute('hasoptions'):
         return editorclass(parent,node,**kwargs)
     else:
@@ -53,7 +53,7 @@ def createEditor(node,parent=None,selectwithradio=False,**kwargs):
         else:
             lineedit = None
             if node.templatenode.hasAttribute('editable'): lineedit = editorclass(parent,node,**kwargs)
-            assert lineedit==None or isinstance(lineedit,QtGui.QLineEdit), 'Editor class must derive from QLineEdit.'
+            assert lineedit is None or isinstance(lineedit,QtGui.QLineEdit), 'Editor class must derive from QLineEdit.'
             return SelectEditor(parent,node,lineedit=lineedit,**kwargs)
              
 def registerEditor(typename,editorclass):
@@ -130,7 +130,7 @@ class StringEditor(AbstractPropertyEditor,QtGui.QLineEdit):
         return QtGui.QLineEdit.text(self)
 
     def setValue(self,value):
-        if value==None: value = ''
+        if value is None: value = ''
         QtGui.QLineEdit.setText(self,value)
         
     @staticmethod
@@ -159,7 +159,7 @@ class IntEditor(AbstractPropertyEditor,QtGui.QSpinBox):
             self.setMaximum(sys.maxint)
         if kwargs.get('unitinside',False):
             unit = node.getUnit()
-            if unit!=None: self.setSuffix(' '+unit)
+            if unit is not None: self.setSuffix(' '+unit)
 
         self.connect(self, QtCore.SIGNAL('editingFinished()'), self.editingFinished)
         
@@ -168,7 +168,7 @@ class IntEditor(AbstractPropertyEditor,QtGui.QSpinBox):
         return QtGui.QSpinBox.value(self)
 
     def setValue(self,value):
-        if value!=None: QtGui.QSpinBox.setValue(self,value)
+        if value is not None: QtGui.QSpinBox.setValue(self,value)
 
     @staticmethod
     def convertFromQVariant(value):
@@ -186,7 +186,7 @@ class AbstractSelectEditor(AbstractPropertyEditor):
         
     def getOptions(self):
         options = util.findDescendantNode(self.node.templatenode,['options'])
-        assert options!=None, 'Node %s lacks "options" childnode.' % node
+        assert options is not None, 'Node %s lacks "options" childnode.' % node
         children = []
         ichild = 0
         for ch in options.childNodes:
@@ -209,7 +209,7 @@ class AbstractSelectEditor(AbstractPropertyEditor):
         return None
 
     def indexFromValue(self,value):
-        if value==None: return 0
+        if value is None: return 0
         ichild = 0
         options = util.findDescendantNode(self.node.templatenode,['options'])
         for ch in options.childNodes:
@@ -227,7 +227,7 @@ class SelectEditor(AbstractSelectEditor,QtGui.QComboBox):
         QtGui.QComboBox.__init__(self,parent)
         AbstractSelectEditor.__init__(self,parent,node)
         self.lineedit = lineedit
-        if lineedit!=None:
+        if lineedit is not None:
             self.setEditable(True)
             self.setLineEdit(lineedit)
         self.populate(node)
@@ -244,13 +244,13 @@ class SelectEditor(AbstractSelectEditor,QtGui.QComboBox):
         else:
             ichild,ret = self.itemData(icurrentindex).toInt()
             value = self.valueFromIndex(ichild)
-            assert value!=None, 'Cannot obtain value for index %i.' % ichild
+            assert value is not None, 'Cannot obtain value for index %i.' % ichild
         return value
 
     def setValue(self,value):
         ichild = self.indexFromValue(value)
-        assert ichild!=None or self.isEditable(), 'Cannot find child index for value %s.' % str(value)
-        if ichild==None and self.isEditable():
+        assert ichild is not None or self.isEditable(), 'Cannot find child index for value %s.' % str(value)
+        if ichild is None and self.isEditable():
             self.lineedit.setValue(value)
         else:
             self.setCurrentIndex(ichild)
@@ -275,7 +275,7 @@ class SimpleSelectEditor(SelectEditor):
         return self.list[index]
 
     def indexFromValue(self,value):
-        if value==None: return 0
+        if value is None: return 0
         for i,opt in enumerate(self.list):
             if opt==value: return i
         return None
@@ -297,7 +297,7 @@ class SelectEditorRadio(AbstractSelectEditor,QtGui.QButtonGroup):
 
     def setValue(self,value):
         ichild = self.indexFromValue(value)
-        if ichild==None: ichild=0
+        if ichild is None: ichild=0
         self.button(ichild).setChecked(True)
         
     def buttonFromValue(self,value):
@@ -317,7 +317,7 @@ class BoolEditor(AbstractPropertyEditor,QtGui.QComboBox):
         return self.itemData(self.currentIndex()).toBool()
 
     def setValue(self,value):
-        if value==None: value = True
+        if value is None: value = True
         for ioption in range(self.count()):
             optionvalue = self.itemData(ioption).toBool()
             if optionvalue==value:
@@ -346,7 +346,7 @@ class DateTimeEditor(AbstractPropertyEditor,QtGui.QDateTimeEdit):
         return qtdatetime2datetime(value)
 
     def setValue(self,value):
-        if value==None: value = QtCore.QDateTime()
+        if value is None: value = QtCore.QDateTime()
         self.setDateTime(datetime2qtdatetime(value))
 
     @staticmethod
@@ -383,7 +383,7 @@ class DurationEditor(QtGui.QWidget,AbstractPropertyEditor):
         self.setLayout(lo)
 
     def setValue(self,delta=None):
-        if delta==None: delta = datatypes.TimeDelta()
+        if delta is None: delta = datatypes.TimeDelta()
         seconds = delta.seconds + delta.microseconds/1000000.
         if delta.days>0:
             self.comboUnits.setCurrentIndex(3)
@@ -463,8 +463,8 @@ class ScientificDoubleValidator(QtGui.QValidator):
             return (QtGui.QValidator.Intermediate,pos)
 
         # Check for minimum and maximum.
-        if self.minimum!=None and v<self.minimum: return (QtGui.QValidator.Intermediate,pos)
-        if self.maximum!=None and v>self.maximum: return (QtGui.QValidator.Intermediate,pos)
+        if self.minimum is not None and v<self.minimum: return (QtGui.QValidator.Intermediate,pos)
+        if self.maximum is not None and v>self.maximum: return (QtGui.QValidator.Intermediate,pos)
         
         return (QtGui.QValidator.Acceptable,pos)
 
@@ -477,8 +477,8 @@ class ScientificDoubleValidator(QtGui.QValidator):
         except ValueError:
             return
 
-        if self.minimum!=None and v<self.minimum: input.replace(0,vallength,str(self.minimum))
-        if self.maximum!=None and v>self.maximum: input.replace(0,vallength,str(self.maximum))
+        if self.minimum is not None and v<self.minimum: input.replace(0,vallength,str(self.minimum))
+        if self.maximum is not None and v>self.maximum: input.replace(0,vallength,str(self.maximum))
 
     def setSuffix(self,suffix):
         self.suffix = suffix
@@ -494,7 +494,7 @@ class ScientificDoubleEditor(QtGui.QLineEdit,AbstractPropertyEditor):
         self.suffix = ''
         self.connect(self, QtCore.SIGNAL('editingFinished()'), self.editingFinished)
 
-        if node!=None:
+        if node is not None:
             templatenode = node.templatenode        
             if templatenode.hasAttribute('minInclusive'):
                 self.setMinimum(float(templatenode.getAttribute('minInclusive')))
@@ -502,7 +502,7 @@ class ScientificDoubleEditor(QtGui.QLineEdit,AbstractPropertyEditor):
                 self.setMaximum(float(templatenode.getAttribute('maxInclusive')))
             if kwargs.get('unitinside',False):
                 unit = node.getUnit()
-                if unit!=None: self.setSuffix(' '+unit)
+                if unit is not None: self.setSuffix(' '+unit)
 
     def setSuffix(self,suffix):
         value = self.value()
@@ -517,10 +517,10 @@ class ScientificDoubleEditor(QtGui.QLineEdit,AbstractPropertyEditor):
         return float(text)
 
     def setValue(self,value,format=None):
-        if value==None:
+        if value is None:
             strvalue = ''
         else:  
-            if format==None:
+            if format is None:
                 strvalue = unicode(value)
             else:
                 strvalue = format % value
@@ -561,7 +561,7 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
     def __init__(self,parent,node=None,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
         self.connect(self, QtCore.SIGNAL('activated(int)'), self.onActivated)
-        self.allownone = (node!=None and node.templatenode.getAttribute('allownone')) or (node==None and kwargs.get('allownone',False))
+        self.allownone = (node is not None and node.templatenode.getAttribute('allownone')) or (node is None and kwargs.get('allownone',False))
         if self.allownone:
             # add none option
             self.addColor('none')
@@ -579,7 +579,7 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
             return
             
         # If the value is missing, default to white
-        if value==None: value = datatypes.Color(255,255,255)
+        if value is None: value = datatypes.Color(255,255,255)
         
         qcolor = QtGui.QColor(value.red,value.green,value.blue)
         for i in range(self.count()-1):
@@ -601,7 +601,7 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
             self.editingFinished()
 
     def addColor(self,text,color=None):
-        if color==None:
+        if color is None:
             self.addItem(text)
         else:
             iconsize = self.iconSize()
@@ -635,7 +635,7 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
 
     @staticmethod
     def convertToQVariant(value):
-        if value.red==None or value.green==None or value.blue==None: return QtCore.QVariant()
+        if value.red is None or value.green is None or value.blue is None: return QtCore.QVariant()
         return QtCore.QVariant(QtGui.QColor(value.red,value.green,value.blue))
 
     @staticmethod
@@ -660,8 +660,8 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
     color2name = None
     @staticmethod
     def valueToString(value):
-        if value.red==None or value.green==None or value.blue==None: return 'none'
-        if ColorEditor.color2name==None:
+        if value.red is None or value.green is None or value.blue is None: return 'none'
+        if ColorEditor.color2name is None:
             ColorEditor.color2name = {}
             for cn in reversed(QtGui.QColor.colorNames()):
                 c = QtGui.QColor(cn)
@@ -696,7 +696,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
         editor = createEditor(node,parent,**self.properties)
 
         lo = editor.layout()
-        if lo!=None:
+        if lo is not None:
             lo.setMargin(0)
             lo.setSpacing(0)
 
@@ -794,7 +794,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             
         # Get the child at the specified row index
         child = self.storeinterface.getChildByIndex(parentnode,irow)
-        if child==None: return QtCore.QModelIndex()
+        if child is None: return QtCore.QModelIndex()
         assert isinstance(child,xmlstore.Node), 'Object returned by getChildByIndex is not of type "Node" (but "%s").' % child
 
         # Return a newly created index for the child node.
@@ -816,7 +816,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
         assert isinstance(parent,xmlstore.Node), 'Object returned by getParent is not of type "Node" (but "%s").' % (parent,)
 
         # If we reached the root, return an invalid index signifying the root.        
-        if parent.parent==None: return QtCore.QModelIndex()
+        if parent.parent is None: return QtCore.QModelIndex()
 
         # Get the row index of the parent.
         iparentrow = self.storeinterface.getOwnIndex(parent)
@@ -863,7 +863,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             nodetype = node.getValueType()
             if templatenode.hasAttribute('hasoptions'):
                 optionsroot = util.findDescendantNode(templatenode,['options'])
-                assert optionsroot!=None, 'Variable with "select" type lacks "options" element below.'
+                assert optionsroot is not None, 'Variable with "select" type lacks "options" element below.'
                 optionnodes = util.findDescendantNodes(optionsroot,['option'])
                 assert len(optionnodes)>0, 'Variable with "select" type does not have any options assigned to it.'
                 text += '\n\nAvailable options:'
@@ -899,7 +899,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
                     chstate,ret = index.child(i,0).data(QtCore.Qt.CheckStateRole).toInt()
                     if chstate==QtCore.Qt.PartiallyChecked:
                         return QtCore.QVariant(QtCore.Qt.PartiallyChecked)
-                    elif state==None:
+                    elif state is None:
                         state = chstate
                     elif chstate!=state:
                         return QtCore.QVariant(QtCore.Qt.PartiallyChecked)
@@ -921,7 +921,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             fieldtype = node.getValueType()
             if role==QtCore.Qt.FontRole:
                 # Return bold font if the node value is set to something different than the default.
-                if self.typedstore.defaultstore==None: QtCore.QVariant()
+                if self.typedstore.defaultstore is None: QtCore.QVariant()
                 font = QtGui.QFont()
                 font.setBold(not node.hasDefaultValue())
                 return QtCore.QVariant(font)
@@ -929,7 +929,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
                 return QtCore.QVariant(node.getValueAsString(usedefault=True))
             elif role==QtCore.Qt.EditRole:
                 value = node.getValue(usedefault=True)
-                if value==None: return QtCore.QVariant()
+                if value is None: return QtCore.QVariant()
                 dt = getEditors()
                 assert fieldtype in dt, 'No editor class defined for data type "%s".' % fieldtype
                 result = dt[fieldtype].convertToQVariant(value)
@@ -1108,14 +1108,14 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
         set to its default value.
         """
         node = index.internalPointer()
-        if node==None or not node.canHaveValue(): return True
+        if node is None or not node.canHaveValue(): return True
         return node.hasDefaultValue()
 
     def getCheckedNodes(self,index=None):
         """Returns a list of all nodes that have been checked. Applies only if the
         model has checkboxes in from of each node.
         """
-        if index==None: index = QtCore.QModelIndex()
+        if index is None: index = QtCore.QModelIndex()
         res = []
         for irow in range(self.rowCount(index)):
             child = self.index(irow,0,index)
@@ -1148,7 +1148,7 @@ class ExtendedTreeView(QtGui.QTreeView):
         (value==True, default) or collapse them (value==False).
         """
         model = self.model()
-        if root==None: root=QtCore.QModelIndex()
+        if root is None: root=QtCore.QModelIndex()
         rc = model.rowCount(root)
         if rc>0:
             self.setExpanded(root,value)
@@ -1162,7 +1162,7 @@ class ExtendedTreeView(QtGui.QTreeView):
         set to a value other than the default are visible.
         """
         model = self.model()
-        if root==None: root=QtCore.QModelIndex()
+        if root is None: root=QtCore.QModelIndex()
         exp = False
         rc = model.rowCount(root)
         if rc>0:
@@ -1235,7 +1235,7 @@ class TypedStoreTreeView(ExtendedTreeView):
         self.setItemDelegate(self.storedelegate)
         self.setUniformRowHeights(True)
 
-        if self.rootnode!=None:
+        if self.rootnode is not None:
             # Get interface to scenario that allows us to find out when
             # the root node becomes visible/hidden.
             self.storeinterface = store.getInterface()
@@ -1246,13 +1246,13 @@ class TypedStoreTreeView(ExtendedTreeView):
         self.setIconSize(QtCore.QSize(0,0))
         
     def showEvent(self,event):
-        if self.model()!=None and self.resizecolumns:
+        if self.model() is not None and self.resizecolumns:
             self.header().resizeSection(0,.65*self.width())
             
     def configure(self,resizeheader=True):
-        if self.rootnode==None or not self.rootnode.isHidden():
+        if self.rootnode is None or not self.rootnode.isHidden():
             self.setModel(self.storemodel)
-            if self.rootnode!=None: self.setRootIndex(self.storemodel.indexFromNode(self.rootnode))
+            if self.rootnode is not None: self.setRootIndex(self.storemodel.indexFromNode(self.rootnode))
             self.setExpandedAll(maxdepth=self.expanddepth)
             self.expandNonDefaults()
             if resizeheader: self.header().resizeSection(0,.65*self.width())
@@ -1265,7 +1265,7 @@ class TypedStoreTreeView(ExtendedTreeView):
     def destroy(self,destroyWindow = True,destroySubWindows = True):
         self.setModel(None)
         self.storemodel.unlink()
-        if self.rootnode!=None:
+        if self.rootnode is not None:
             self.store.disconnectInterface(self.storeinterface)
             self.storeinterface = None
         ExtendedTreeView.destroy(self,destroyWindow,destroySubWindows)
@@ -1277,7 +1277,7 @@ class PropertyEditorDialog(QtGui.QDialog):
     """
     
     def __init__(self,parent,store,title='',instructions='',loadsave=False,flags=QtCore.Qt.Dialog,icon=None,loadhook=None):
-        if icon!=None: flags |= QtCore.Qt.WindowSystemMenuHint
+        if icon is not None: flags |= QtCore.Qt.WindowSystemMenuHint
         QtGui.QDialog.__init__(self, parent, flags)
 
         self.store = store
@@ -1313,7 +1313,7 @@ class PropertyEditorDialog(QtGui.QDialog):
 
         if title!='':
             self.setWindowTitle(title)
-        if icon!=None:
+        if icon is not None:
             self.setWindowIcon(icon)
 
         self.lastpath = ''
@@ -1384,12 +1384,12 @@ class PropertyEditorFactory:
         override any arguments with the same name that were specified upon creation of
         the PropertyEditorFactory.
         """
-        assert location!=None, 'Specified node is None (non-existent?).'
+        assert location is not None, 'Specified node is None (non-existent?).'
         if isinstance(location,xmlstore.Node):
             node = location
         else:
             node = self.store[location]
-            assert node!=None, 'Unable to create editor for "%s"; this node does not exist.' % location
+            assert node is not None, 'Unable to create editor for "%s"; this node does not exist.' % location
 
         # The editor inherits some optional arguments from the responsible factory.
         editorargs = dict(self.properties.items())
@@ -1519,11 +1519,11 @@ class PropertyEditor:
     def addToGridLayout(self,gridlayout,irow=None,icolumn=0,rowspan=1,colspan=1,label=True,unit=True,icon=None):
         """Adds the editor plus label to an existing QGridLayout, in the specified row, starting at the specified column.
         """
-        if irow==None: irow = gridlayout.rowCount()
-        if icon==None: icon = (self.node.getText(detail=2,minimumdetail=2)!=None)
+        if irow is None: irow = gridlayout.rowCount()
+        if icon is None: icon = (self.node.getText(detail=2,minimumdetail=2) is not None)
 
         if label:
-            if self.label==None: self.createLabel()
+            if self.label is None: self.createLabel()
             gridlayout.addWidget(self.label,irow,icolumn)
             icolumn += 1
 
@@ -1531,14 +1531,14 @@ class PropertyEditor:
         icolumn += colspan
 
         if unit and not self.unitinside:
-            if self.unit==None: self.createUnit()
+            if self.unit is None: self.createUnit()
             gridlayout.addWidget(self.unit,irow,icolumn)
             icolumn += 1
 
     def addToBoxLayout(self,boxlayout,label=True,unit=True,addstretch=True,icon=None):
         """Adds the editor plus label to an existing QBoxLayout.
         """
-        if icon==None: icon = (self.node.getText(detail=2,minimumdetail=2)!=None)
+        if icon is None: icon = (self.node.getText(detail=2,minimumdetail=2) is not None)
 
         if not isinstance(boxlayout,QtGui.QHBoxLayout):
             layout = QtGui.QHBoxLayout()
@@ -1546,13 +1546,13 @@ class PropertyEditor:
             layout = boxlayout
         
         if label:
-            if self.label==None: self.createLabel()
+            if self.label is None: self.createLabel()
             layout.addWidget(self.label)
             
         layout.addWidget(self.editor)
         
         if unit and not self.unitinside:
-            if self.unit==None: self.createUnit()
+            if self.unit is None: self.createUnit()
             layout.addWidget(self.unit)
             
         if addstretch:
@@ -1565,9 +1565,9 @@ class PropertyEditor:
         """Creates a label with the unit of the editor, based on the description in the source node.
         This function can be called only once in the life time of the object.
         """
-        assert self.unit==None, 'Cannot create unit because it has already been created.'
+        assert self.unit is None, 'Cannot create unit because it has already been created.'
         unittext = self.node.getUnit()
-        if unittext==None: unittext=''
+        if unittext is None: unittext=''
         self.unit = QtGui.QLabel(unittext,self.editor.parent())
         if self.allowhide and self.node.isHidden(): self.unit.setVisible(False)
         return self.unit
@@ -1576,8 +1576,8 @@ class PropertyEditor:
         """Creates a label for the editor, based on the description in the source node.
         This function can be called only once in the life time of the object.
         """
-        assert self.label==None, 'Cannot create label because it has already been created.'
-        if text==None:
+        assert self.label is None, 'Cannot create label because it has already been created.'
+        if text is None:
             text = self.node.getText(detail=detail,capitalize=True)
             if addcolon: text += ': '
         self.label = QtGui.QLabel(text,self.editor.parent())
@@ -1588,9 +1588,9 @@ class PropertyEditor:
     def setVisible(self,visible):
         """Sets the visibility of the editor and label (if any).
         """
-        if self.label!=None: self.label.setVisible(visible)
-        if self.icon !=None: self.icon.setVisible(visible)
-        if self.unit !=None: self.unit.setVisible(visible)
+        if self.label is not None: self.label.setVisible(visible)
+        if self.icon  is not None: self.icon.setVisible(visible)
+        if self.unit  is not None: self.unit.setVisible(visible)
         if isinstance(self.editor,QtGui.QWidget):
             self.editor.setVisible(visible)
         elif isinstance(self.editor,QtGui.QButtonGroup):
@@ -1599,19 +1599,19 @@ class PropertyEditor:
     def destroy(self,layout=None):
         """Removes all widgets belonging to this editor from the layout.
         """
-        if layout!=None:
-            if self.label!=None: layout.removeWidget(self.label)
-            if self.icon !=None: layout.removeWidget(self.icon)
-            if self.unit !=None: layout.removeWidget(self.unit)
+        if layout is not None:
+            if self.label is not None: layout.removeWidget(self.label)
+            if self.icon  is not None: layout.removeWidget(self.icon)
+            if self.unit  is not None: layout.removeWidget(self.unit)
             layout.removeWidget(self.editor)
 
-        if self.label!=None:
+        if self.label is not None:
             self.label.destroy()
             self.label = None
-        if self.icon!=None:
+        if self.icon is not None:
             self.icon.destroy()
             self.icon = None
-        if self.unit!=None:
+        if self.unit is not None:
             self.unit.destroy()
             self.unit = None
         if isinstance(self.editor,QtGui.QWidget):
@@ -1627,9 +1627,9 @@ class PropertyEditor:
         """Updates the value in the editor, so it reflects the current value of the source node.
         """
         self.setEditorData(self.editor,self.node)
-        if self.unit!=None:
+        if self.unit is not None:
             unittext = self.node.getUnit()
-            if unittext==None: unittext=''
+            if unittext is None: unittext=''
             self.unit.setText(unittext)
 
     def updateEditorEnabled(self):
@@ -1692,13 +1692,13 @@ class PropertyEditor:
         if not isinstance(editor,(AbstractPropertyEditor,QtGui.QCheckBox,QtGui.QButtonGroup)): return
         self.suppresschangeevent = True
         value = node.getValue(usedefault=True)
-        if value==None: return
+        if value is None: return
         nodetype = node.getValueType()
         if isinstance(editor,AbstractPropertyEditor):
             editor.setValue(value)
         elif nodetype=='bool':
             # Checkbox for boolean
-            editor.setChecked(value!=None and value)
+            editor.setChecked(value is not None and value)
         if isinstance(value,util.referencedobject): value.release()
         self.suppresschangeevent = False
 

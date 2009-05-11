@@ -79,13 +79,13 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
     # needs to be saved in a descriptive form along with the data files themselves.
     class DataFileCache(xmlstore.xmlstore.TypedStore):
         def __init__(self,valueroot=None,adddefault = True,schema=None):
-            if schema==None: schema = os.path.join(common.getDataRoot(),'schemas/datafilecache/0001.xml')
+            if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/datafilecache/0001.xml')
             xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
         schemadict = None
         @staticmethod
         def getDefaultSchemas():
-            if LinkedFileVariableStore.DataFileCache.schemadict==None:
+            if LinkedFileVariableStore.DataFileCache.schemadict is None:
                 LinkedFileVariableStore.DataFileCache.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/datafilecache'))
             return LinkedFileVariableStore.DataFileCache.schemadict
 
@@ -122,7 +122,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
     @classmethod
     def createObject(ownclass,datafile,context,infonode,nodename):
         finfo = xmlstore.util.findDescendantNode(infonode,['fileinfo'])
-        assert finfo!=None, 'Node "%s" lacks "fileinfo" attribute.' % node
+        assert finfo is not None, 'Node "%s" lacks "fileinfo" attribute.' % node
         store = None
         type = finfo.getAttribute('type')
         if type=='pointsintime':
@@ -158,14 +158,14 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
         # Supplement dimensions and variables with information in
         # supplied XML node (if any)
         self.filename = defaultfilename
-        if infonode!=None:
+        if infonode is not None:
             finfo = xmlstore.util.findDescendantNode(infonode,['fileinfo'])
             self.filename = infonode.getAttribute('name')
             if finfo.hasAttribute('datatype'): datatype = finfo.getAttribute('datatype')
 
             # Get variables
             fvars = xmlstore.util.findDescendantNode(finfo,['filevariables'])
-            if fvars!=None:
+            if fvars is not None:
                 for ch in fvars.childNodes:
                     if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filevariable':
                         longname = ch.getAttribute('label')
@@ -176,7 +176,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
 
             # Get dimensions
             fdims = xmlstore.util.findDescendantNode(finfo,['filedimensions'])
-            if fdims!=None:
+            if fdims is not None:
                 for ch in fdims.childNodes:
                     if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filedimension':
                         dimdata = common.VariableStore.getDimensionInfo_raw(self,None)
@@ -223,15 +223,15 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
         """Event handler, to be called just after the data has changed.
         """
         if clearfile: self.setDataFile(None,cleardata=False)
-        if self.data==None: return
+        if self.data is None: return
         
         #print '%s - caching validation result and dimension boundaries.' % self.filename
         metadata = self.getMetaData()
         for dimname in self.getDimensionNames():
             dimnode = metadata['Dimensions'].getChildById('Dimension',id=dimname,create=True)
-            assert dimnode!=None, 'Failed to create Dimension node for %s.' % dimname
+            assert dimnode is not None, 'Failed to create Dimension node for %s.' % dimname
             dimrange = self.calculateDimensionRange(dimname)
-            if dimrange==None: continue
+            if dimrange is None: continue
             minval,maxval = dimrange
             if self.getDimensionInfo_raw(dimname)['datatype']=='datetime':
                 dimnode['IsTimeDimension'].setValue(True)
@@ -259,17 +259,17 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
         """Returns the range, i.e., the tuple (minimum, maximum) of the
         specified dimension.
         """
-        if self.data==None and (self.datafile==None or not self.datafile.isValid()): return None
+        if self.data is None and (self.datafile is None or not self.datafile.isValid()): return None
         
         metadata = self.getMetaData()
         dimnode = metadata['Dimensions'].getChildById('Dimension',dimname)
-        if dimnode==None:
+        if dimnode is None:
             try:
                 self.getData()
             except Exception,e:
                 pass
             dimnode = metadata['Dimensions'].getChildById('Dimension',dimname)
-            assert dimnode!=None, 'Cannot locate node for dimension %s in data file cache.' % dimname
+            assert dimnode is not None, 'Cannot locate node for dimension %s in data file cache.' % dimname
             
         if metadata['Valid'].getValue()==False: return None
 
@@ -280,20 +280,20 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
         else:
             minval = dimnode['Minimum'].getValue()
             maxval = dimnode['Maximum'].getValue()
-        if minval==None and maxval==None: return None
+        if minval is None and maxval is None: return None
         return (minval,maxval)
             
     def validate(self,callback=None):
-        if self.data==None and (self.datafile==None or not self.datafile.isValid()): return False
+        if self.data is None and (self.datafile is None or not self.datafile.isValid()): return False
         metadata = self.getMetaData()
         valid = metadata['Valid'].getValue()
-        if valid==None:
+        if valid is None:
             try:
                 self.getData(callback=callback)
             except Exception,e:
                 pass
             valid = metadata['Valid'].getValue()
-            assert valid!=None, 'Information on validity of data file %s not in data file cache.' % self.filename
+            assert valid is not None, 'Information on validity of data file %s not in data file cache.' % self.filename
         #print '%s - using cached validation result.' % self.filename
         return valid
     
@@ -322,7 +322,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
         
     def saveToFile(self,path,callback=None):
         """Saves the current data to file."""
-        if self.datafile!=None:
+        if self.datafile is not None:
             self.datafile.saveToFile(path)
         else:
             f = open(path,'w')
@@ -330,8 +330,8 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
             f.close()
             
     def getDataFile(self,callback=None):
-        if self.datafile==None:
-            assert self.data!=None, 'getDataFile called with both the data file and the data in memory are not set.'
+        if self.datafile is None:
+            assert self.data is not None, 'getDataFile called with both the data file and the data in memory are not set.'
         
             # Data not present as data file object. Create one in memory on the spot.
             target = StringIO.StringIO()
@@ -345,7 +345,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
         assert False, 'writeData must be implemented by derived class.'
         
     def getData(self,callback=None):
-        if self.data==None and self.datafile!=None:
+        if self.data is None and self.datafile is not None:
             try:
                 data = self.parseDataFile(callback)
             except Exception,e:
@@ -406,7 +406,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         return (dimdata.min(),dimdata.max())
 
     def parseDataFile(self,callback=None):
-        if self.datafile==None or not self.datafile.isValid(): return None
+        if self.datafile is None or not self.datafile.isValid(): return None
 
         if self.type==0:
             # Unknown number of rows
@@ -461,11 +461,11 @@ class LinkedMatrix(LinkedFileVariableStore):
                 if dimisdate:
                     # Read the date + time
                     datematch = datetimere.match(line)
-                    if datematch==None:
+                    if datematch is None:
                         raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
                     refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
                     dimvalue = xmlstore.util.dateTimeFromTuple(refvals)
-                    if prevdate!=None and dimvalue<prevdate:
+                    if prevdate is not None and dimvalue<prevdate:
                         raise Exception('Line %i: observation time %s lies before previous observation time %s. Times should be increasing.' % (iline,xmlstore.util.formatDateTime(dimvalue),xmlstore.util.formatDateTime(prevdate)))
                     prevdate = dimvalue
                     dimvalue = common.date2num(dimvalue)
@@ -487,9 +487,9 @@ class LinkedMatrix(LinkedFileVariableStore):
             values[irow,:] = data[:varcount]
             
             # Inform caller about progress
-            if callback!=None and iline%1000==0:
+            if callback is not None and iline%1000==0:
                 progress = None
-                if filesize!=None:
+                if filesize is not None:
                     try:
                         progress = float(f.tell())/filesize
                     except AttributeError:
@@ -545,7 +545,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             
             # Read the date + time
             datematch = datetimere.match(line)
-            if datematch==None:
+            if datematch is None:
                 raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             refvals = map(int,datematch.groups()) # Convert matched strings into integers
             curdate = xmlstore.util.dateTimeFromTuple(refvals)
@@ -558,9 +558,9 @@ class LinkedMatrix(LinkedFileVariableStore):
             values[-1][ipos,:] = map(float,data[:varcount])
             
             # Inform caller about progress
-            if callback!=None and iline%1000==0:
+            if callback is not None and iline%1000==0:
                 progress = None
-                if filesize!=None:
+                if filesize is not None:
                     try:
                         progress = float(f.tell())/filesize
                     except AttributeError:
@@ -614,7 +614,7 @@ class LinkedMatrix(LinkedFileVariableStore):
             for ivar in range(varcount):
                 target.write('\t%.12g' % vardata[iline,ivar])
             target.write('\n')
-            if callback!=None and iline%1000==0:
+            if callback is not None and iline%1000==0:
                 callback(float(iline)/vardata.shape[0],'wrote %i lines.' % iline)
 
 class LinkedProfilesInTime(LinkedFileVariableStore):
@@ -679,7 +679,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         """Writes the current data to a file-like object."""
         varcount = len(self.vardata)
         data = self.getData()
-        assert data!=None, 'Cannot write data to file, because data is set to None.'
+        assert data is not None, 'Cannot write data to file, because data is set to None.'
         times,depths,values = data
         for itime in range(times.shape[0]):
             target.write(xmlstore.util.formatDateTime(common.num2date(times[itime]),iso=True))
@@ -695,7 +695,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         
     def getGriddedData(self,callback=None):
         data = self.getData()
-        if self.griddeddata==None:
+        if self.griddeddata is None:
             times,depths,values = data
             
             varcount = len(self.vardata)
@@ -719,7 +719,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             griddedvalues = numpy.empty((times.shape[0],depthgrid.shape[0],varcount),self.mpldatatypes[self.datatype])
             for it in range(len(times)):
                 griddedvalues[it,:,:] = common.interp1(depths[it],values[it],depthgrid)
-                if callback!=None and (it+1)%20==0:
+                if callback is not None and (it+1)%20==0:
                     callback(float(it+1)/len(times),'gridded %i profiles.' % (it+1))
                 
             # Store time grid, depth grid and observations.
@@ -728,7 +728,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         return self.griddeddata
 
     def parseDataFile(self,callback=None):
-        if self.datafile==None or not self.datafile.isValid(): return None
+        if self.datafile is None or not self.datafile.isValid(): return None
         
         varcount = len(self.vardata)
         
@@ -754,7 +754,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             
             # Read date & time
             datematch = datetimere.match(line)
-            if datematch==None:
+            if datematch is None:
                 raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
             curdate = xmlstore.util.dateTimeFromTuple(refvals)
@@ -777,7 +777,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             # Now parse the specified number of observations to create the profiles.
             prevdepth = None
             for idepthline in depthindices:
-                if callback!=None and iline%1000==0:
+                if callback is not None and iline%1000==0:
                     pos = f.tell()
                     callback(pos/filesize,'processed %i lines.' % iline)
                     
@@ -791,7 +791,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                 linedata = map(float,line.split())
                 if len(linedata)<varcount+1:
                     raise Exception('Line %i contains only %i value(s), where %i (1 time and %i observations) are expected.' % (iline,len(linedata),varcount+1,varcount))
-                if prevdepth!=None:
+                if prevdepth is not None:
                     if linedata[0]==prevdepth:
                         raise Exception('Found duplicate observation for depth %.4f at line %i.' % (linedata[0],iline))
                     if updown==1:
@@ -811,7 +811,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             values.append(curvalues)
             
             # Inform caller about progress.
-            if callback!=None and iline%1000==0:
+            if callback is not None and iline%1000==0:
                 pos = f.tell()
                 callback(pos/filesize,'processed %i lines.' % iline)
                 
@@ -939,7 +939,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 floatindices.append(idim)
             elif not (isinstance(bound.start,(int,types.NoneType)) and isinstance(bound.stop,(int,types.NoneType))):
                 # Non-integer slice specification (e.g., using floating point numbers or datetime objects).
-                assert bound.step==None,'Non-integer slices with explicitly specified step are not supported.'
+                assert bound.step is None,'Non-integer slices with explicitly specified step are not supported.'
                 boundindices.append(slice(0,shape[idim]))
                 floatslices.append(idim)
             else:
@@ -1002,7 +1002,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           # Start without mask, and define function for creating/updating mask
           mask = None
           def addmask(mask,newmask):
-              if mask==None:
+              if mask is None:
                   mask = numpy.empty(dat.shape,dtype=numpy.bool)
                   mask.fill(False)
               return numpy.logical_or(mask,newmask)
@@ -1019,7 +1019,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           if hasattr(ncvar,'missing_value'): mask = addmask(mask,dat==numpy.asarray(ncvar.missing_value,dtype=dat.dtype))
 
           # Apply the combined mask (if any)
-          if mask!=None: dat = numpy.ma.masked_where(mask,dat,copy=False)
+          if mask is not None: dat = numpy.ma.masked_where(mask,dat,copy=False)
 
           # If we have to apply a transformation to the data, make sure that the data type can accommodate it.
           # Cast to the most detailed type available (64-bit float)
@@ -1071,7 +1071,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             # Get the coordinate variable          
             coordvar = self.store.getVariable_raw(dimname)
             
-            if coordvar==None:
+            if coordvar is None:
                 # No coordinate variable available: use indices
                 coorddims = [dimname]
                 start,stop,step = bounds[idim].indices(self.getShape()[idim])
@@ -1089,9 +1089,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 coords = coordvar.getSlice(coordslice, dataonly=True, cache=True)
 
             # Get staggered coordinates over entire domain
-            if coordvar!=None and dimname in self.store.staggeredcoordinates:
+            if coordvar is not None and dimname in self.store.staggeredcoordinates:
                 stagcoordvar = self.store.getVariable_raw(self.store.staggeredcoordinates[dimname])
-                assert stagcoordvar!=None, 'Staggered coordinate for %s registered in store as %s, but not present as variable.' % (dimname,self.store.staggeredcoordinates[dimname])
+                assert stagcoordvar is not None, 'Staggered coordinate for %s registered in store as %s, but not present as variable.' % (dimname,self.store.staggeredcoordinates[dimname])
                 for i in range(len(coordslice)):
                     if isinstance(coordslice[i],slice): coordslice[i] = slice(coordslice[i].start,coordslice[i].stop+1)
                 coords_stag = stagcoordvar.getSlice(coordslice, dataonly=True, cache=True)
@@ -1128,7 +1128,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         # NetCDF variable attributes (as specified by CF convention)
         self.maskoutsiderange = True
         
-        if path!=None: self.load(path,*args,**kwargs)
+        if path is not None: self.load(path,*args,**kwargs)
                 
     def __str__(self):
         return self.datafile
@@ -1161,7 +1161,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         shutil.copyfile(self.datafile,path)
         
     def unlink(self):
-        if self.nc!=None:
+        if self.nc is not None:
             # Close NetCDF result file.
             self.nc.close()
             self.nc = None
@@ -1189,8 +1189,8 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         at the path in self.datafile. The returned object should follow
         Scientific.IO.NetCDFFile conventions.
         """
-        if self.nc!=None: return self.nc
-        assert self.datafile!=None, 'The path to the NetCDF file has not yet been set. This may imply that the object has been unlinked.'
+        if self.nc is not None: return self.nc
+        assert self.datafile is not None, 'The path to the NetCDF file has not yet been set. This may imply that the object has been unlinked.'
         self.nc = getNetCDFFile(self.datafile)
         return self.nc
 
@@ -1271,7 +1271,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
       
       # Parse the reference date, time and timezone
       datematch = re.match(r'(\d\d\d\d)[-\/](\d{1,2})-(\d{1,2})\s*',reftime)
-      if datematch==None:
+      if datematch is None:
         raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse date in "%s".' % (fullunit,reftime))
       year,month,day = map(int,datematch.group(1,2,3))
       year = max(year,1900) # datetime year>=datetime.MINYEAR, but strftime needs year>=1900
@@ -1279,7 +1279,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
       reftime = reftime[datematch.end():]
       if len(reftime)>0:
         timematch = re.match(r'(\d{1,2}):(\d{1,2}):(\d{1,2}(?:\.\d*)?)\s*',reftime)
-        if timematch==None:
+        if timematch is None:
             raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time in "%s".' % (fullunit,reftime))
         hours,minutes = map(int,timematch.group(1,2))
         seconds = float(timematch.group(3))
@@ -1289,9 +1289,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
       dateref = datetime.datetime(year,month,day,hours,minutes,seconds,tzinfo=xmlstore.util.utc)
       if len(reftime)>0:
         timezonematch = re.match(r'(-?\d{1,2})(?::?(\d\d))?$',reftime)
-        if timezonematch==None:
+        if timezonematch is None:
             raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time zone in "%s".' % (fullunit,reftime))
-        if timezonematch.group(2)==None:
+        if timezonematch.group(2) is None:
             dhour,dmin = int(timezonematch.group(1)),0
         else:
             dhour,dmin = map(int,timezonematch.group(1,2))
@@ -1483,7 +1483,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     self.store.cachedcoords['z_stag']  = z_stag
                     self.store.cachedcoords['z1_stag'] = z1_stag
 
-                if bounds==None:
+                if bounds is None:
                     return self.store.cachedcoords[self.dimname]
                 else:                        
                     return self.store.cachedcoords[self.dimname][bounds]

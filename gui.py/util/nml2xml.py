@@ -29,7 +29,7 @@ def main():
     targetschema = core.common.getNamedArgument('-v')
 
     # Default schema
-    if targetschema==None: targetschema = core.scenario.savedscenarioversion
+    if targetschema is None: targetschema = core.scenario.savedscenarioversion
 
     # Check if we have the required arguments.
     # Note: sys.argv[0] contains the path name of the script.

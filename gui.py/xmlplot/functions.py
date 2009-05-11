@@ -130,7 +130,7 @@ class flatten(expressions.LazyFunction):
             assert targetaxis in dims,'Specified axis "%s" does not exist. Available: %s.' % (targetaxis,', '.join(dims))
             targetaxis = dims.index(targetaxis)
 
-        if targetaxis==None:
+        if targetaxis is None:
             targetaxis = 0
             if axis==0: targetaxis+=1
         assert axis!=targetaxis,'Source axis and target axis cannot be the same (%i).' % axis
@@ -198,7 +198,7 @@ class interp(expressions.LazyFunction):
                     
     def getShape(self):
         s = expressions.LazyOperation.getShape(self)
-        if s==None: return None
+        if s is None: return None
         newshape = []
         for n,l in zip(self.getDimensions(),s):
             if n not in self.kwargs:

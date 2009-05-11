@@ -8,7 +8,7 @@ import common,xmlstore.xmlstore,xmlstore.util
 colormaps,colormaplist = None,None
 def getColorMaps():
     global colormaps,colormaplist
-    if colormaps==None:
+    if colormaps is None:
         colormaps,colormaplist = {},[]
         
         def fromModule(mod,prefix=''):
@@ -26,7 +26,7 @@ def getColorMaps():
             from mpl_toolkits.basemap import cm as basemapcm
         except:
             pass
-        if basemapcm!=None: fromModule(basemapcm,prefix='basemap.')
+        if basemapcm is not None: fromModule(basemapcm,prefix='basemap.')
     return colormaps,colormaplist
 
 xmlstore.datatypes.register('fontname',xmlstore.datatypes.String)
@@ -70,15 +70,15 @@ class MergedVariableStore(common.VariableStore):
             
             # Get bound indices for the merged dimension
             ifirst,ilast = 0,len(self.vars)-1
-            if bounds[0].start!=None and bounds[0].start>ifirst: ifirst = int(math.floor(bounds[0].start))
-            if bounds[0].stop !=None and bounds[0].stop <ilast : ilast  = int(math.ceil (bounds[0].stop))
+            if bounds[0].start is not None and bounds[0].start>ifirst: ifirst = int(math.floor(bounds[0].start))
+            if bounds[0].stop  is not None and bounds[0].stop <ilast : ilast  = int(math.ceil (bounds[0].stop))
             slice.coords[0] = numpy.linspace(float(ifirst),float(ilast),ilast-ifirst+1)
             slice.coords_stag[0] = common.getCenters(slice.coords[0],addends=True)
 
             first = True
             for ivar,var in enumerate(self.vars[ifirst:ilast+1]):
                 curslice = var.getSlice(bounds[1:])
-                assert curslice!=None, 'Unable to obtain valid slice from variable %s.' % var
+                assert curslice is not None, 'Unable to obtain valid slice from variable %s.' % var
                 if first:
                     slice.coords[1:] = curslice.coords
                     slice.coords_stag[1:] = curslice.coords_stag
@@ -146,11 +146,11 @@ class VariableTransform(common.Variable):
     """
     def __init__(self,sourcevar,nameprefix='',longnameprefix='',name=None,longname=None):
         common.Variable.__init__(self,None)
-        assert sourcevar!=None, 'The source variable for a transform cannot be None.'
+        assert sourcevar is not None, 'The source variable for a transform cannot be None.'
         self.sourcevar = sourcevar
-        if name==None:
+        if name is None:
             name = nameprefix + self.sourcevar.getName()
-        if longname==None: 
+        if longname is None: 
             longname = longnameprefix + self.sourcevar.getLongName()
         self.name     = name
         self.longname = longname
@@ -294,13 +294,13 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
     """
 
     def __init__(self,valueroot=None,adddefault = True,schema=None):
-        if schema==None: schema = os.path.join(common.getDataRoot(),'schemas/figure/0003.xml')
+        if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/figure/0003.xml')
         xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
     schemadict = None
     @staticmethod
     def getDefaultSchemas():
-        if FigureProperties.schemadict==None:
+        if FigureProperties.schemadict is None:
             FigureProperties.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/figure'))
         return FigureProperties.schemadict
         
@@ -351,10 +351,10 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
             def updateLine2D(sourcenode):
                 line = sourcenode['Line'].getValue(usedefault=False)
                 marker = sourcenode['Marker'].getValue(usedefault=False)
-                if line==None and marker==None: return
+                if line is None and marker is None: return
                 targetnode = target.mapForeignNode(sourcenode)
-                if line!=None:   targetnode['Line'].setValue(linestyles[line])
-                if marker!=None: targetnode['Marker'].setValue(markertypes[marker])
+                if line   is not None: targetnode['Line'].setValue(linestyles[line])
+                if marker is not None: targetnode['Marker'].setValue(markertypes[marker])
                             
             # Update line and marker styles in grid and data series.
             updateLine2D(source['Grid/LineProperties'])
@@ -365,10 +365,10 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
             for sourcenode in source['Axes'].getLocationMultiple(['Axis']):
                 minfmt = sourcenode['TicksMinor/FormatTime'].getValue(usedefault=False)
                 majfmt = sourcenode['TicksMajor/FormatTime'].getValue(usedefault=False)
-                if minfmt==None and majfmt==None: continue
+                if minfmt is None and majfmt is None: continue
                 targetnode = target.mapForeignNode(sourcenode)
-                if minfmt!=None: targetnode['TicksMinor/FormatTime'].setValue(tickformats[minfmt])
-                if majfmt!=None: targetnode['TicksMajor/FormatTime'].setValue(tickformats[majfmt])
+                if minfmt is not None: targetnode['TicksMinor/FormatTime'].setValue(tickformats[minfmt])
+                if majfmt is not None: targetnode['TicksMajor/FormatTime'].setValue(tickformats[majfmt])
 
 FigureProperties.addConvertor(FigureProperties.Convertor_0002_0003)
                         
@@ -387,21 +387,21 @@ class Figure(xmlstore.util.referencedobject):
 
         # If no MatPlotLib figure is specified, create a new one, assuming
         # we want to export to file.        
-        if figure==None:
+        if figure is None:
             import matplotlib.figure, matplotlib.backends.backend_agg
             figure = matplotlib.figure.Figure(figsize=(10/2.54,8/2.54))
             canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(figure)
         
         # Test if the specified default font is known to MatPlotLib.
         # If not, reset the default font to the MatPlotLib default.
-        if defaultfont!=None:
+        if defaultfont is not None:
             try:
                 if matplotlib.font_manager.findfont(defaultfont)==matplotlib.font_manager.findfont(None): defaultfont = None
             except:
                 defaultfont = None
 
         # If no default font is specified, use the MatPlotLib default.
-        if defaultfont==None:
+        if defaultfont is None:
             defaultfont = matplotlib.font_manager.FontProperties().get_name()
         
         self.figure = figure
@@ -533,7 +533,7 @@ class Figure(xmlstore.util.referencedobject):
         name.
         """
         self.source.addChild(obj,name)
-        if self.defaultsource==None: self.defaultsource = name
+        if self.defaultsource is None: self.defaultsource = name
 
     def removeDataSource(self,name):
         """Removes a VariableStore data source from the figure, using the specified
@@ -578,8 +578,8 @@ class Figure(xmlstore.util.referencedobject):
         the first registered source will be used. The specified variable must
         match the name of a variable in the data source to be used.
         """
-        assert source==None or isinstance(source,basestring), 'If the "source" option is specified, it must be a string.'
-        if source==None: source = self.defaultsource
+        assert source is None or isinstance(source,basestring), 'If the "source" option is specified, it must be a string.'
+        if source is None: source = self.defaultsource
         datanode = self.properties['Data']
         varname = self.source.normalizeExpression(varname,source)
         if replace:
@@ -687,8 +687,8 @@ class Figure(xmlstore.util.referencedobject):
             if istimeaxis:
                 axmin = forcedaxis['MinimumTime'].getValue()
                 axmax = forcedaxis['MaximumTime'].getValue()
-                if axmin!=None: axmin = common.date2num(axmin)
-                if axmax!=None: axmax = common.date2num(axmax)
+                if axmin is not None: axmin = common.date2num(axmin)
+                if axmax is not None: axmax = common.date2num(axmax)
             else:
                 axmin = forcedaxis['Minimum'].getValue()
                 axmax = forcedaxis['Maximum'].getValue()
@@ -769,9 +769,9 @@ class Figure(xmlstore.util.referencedobject):
             #    if dimname in dim2data:
             #        # We have boundaries set on the current dimension.
             #        forcedrange = dim2data[dimname].get('forcedrange',(None,None))
-            #        if forcedrange[0]!=None: forcedrange[0] = forcedrange[0]
-            #        if forcedrange[1]!=None: forcedrange[1] = forcedrange[1]
-            #        if forcedrange[0]==forcedrange[1] and forcedrange[0]!=None:
+            #        if forcedrange[0] is not None: forcedrange[0] = forcedrange[0]
+            #        if forcedrange[1] is not None: forcedrange[1] = forcedrange[1]
+            #        if forcedrange[0]==forcedrange[1] and forcedrange[0] is not None:
             #            # Equal upper and lower boundary: take a slice.
             #            var = VariableSlice(var,dimname,forcedrange[0])
             #        else:
@@ -912,29 +912,29 @@ class Figure(xmlstore.util.referencedobject):
                     
                 # Transpose values if needed
                 if xdim<ydim:
-                    if C!=None: C = C.transpose()
-                    if U!=None: U,V = U.transpose(),V.transpose()
+                    if C is not None: C = C.transpose()
+                    if U is not None: U,V = U.transpose(),V.transpose()
                 
-            if X!=None:
+            if X is not None:
                 curmin,curmax = X.min(),X.max()
-                if xrange[0]==None or curmin<xrange[0]: xrange[0] = curmin
-                if xrange[1]==None or curmax>xrange[1]: xrange[1] = curmax
+                if xrange[0] is None or curmin<xrange[0]: xrange[0] = curmin
+                if xrange[1] is None or curmax>xrange[1]: xrange[1] = curmax
                 info['x'] = X
-            if Y!=None:
+            if Y is not None:
                 curmin,curmax = Y.min(),Y.max()
-                if yrange[0]==None or curmin<yrange[0]: yrange[0] = curmin
-                if yrange[1]==None or curmax>yrange[1]: yrange[1] = curmax
+                if yrange[0] is None or curmin<yrange[0]: yrange[0] = curmin
+                if yrange[1] is None or curmax>yrange[1]: yrange[1] = curmax
                 info['y'] = Y
-            if C!=None: info['C'] = C
-            if U!=None: info['U'] = U
-            if V!=None: info['V'] = V
-            if xinfo!=None:
+            if C is not None: info['C'] = C
+            if U is not None: info['U'] = U
+            if V is not None: info['V'] = V
+            if xinfo is not None:
                 axis2data.setdefault('x',{'forcedrange':[None,None]}).update(xinfo)
                 axis2data['x'].setdefault('dimensions',[]).append(xname)
-            if yinfo!=None:
+            if yinfo is not None:
                 axis2data.setdefault('y',{'forcedrange':[None,None]}).update(yinfo)
                 axis2data['y'].setdefault('dimensions',[]).append(yname)
-            if cinfo!=None:
+            if cinfo is not None:
                 axis2data.setdefault('colorbar',{'forcedrange':[None,None]}).update(cinfo)
                 axis2data['colorbar'].setdefault('dimensions',[]).append(cname)
                     
@@ -947,8 +947,8 @@ class Figure(xmlstore.util.referencedobject):
             if 'datatype' not in axis2data[axisname]: del axis2data[axisname]
                 
         # Handle transformations due to map projection (if any)
-        xcanbelon = xrange[0]!=None and xrange[0]>=-360 and xrange[1]<=360
-        ycanbelat = yrange[0]!=None and yrange[0]>=-90  and yrange[1]<=90
+        xcanbelon = xrange[0] is not None and xrange[0]>=-360 and xrange[1]<=360
+        ycanbelat = yrange[0] is not None and yrange[0]>=-90  and yrange[1]<=90
         if xcanbelon and ycanbelat:
             # Try importing basemap
             try:
@@ -972,7 +972,7 @@ class Figure(xmlstore.util.referencedobject):
             llcrnrlat=nodemap['Range/LowerLeftLatitude'  ].getValue(usedefault=True)
             urcrnrlon=nodemap['Range/UpperRightLongitude'].getValue(usedefault=True)
             urcrnrlat=nodemap['Range/UpperRightLatitude' ].getValue(usedefault=True)
-            if (self.basemap==None or self.basemap.projection!=proj or self.basemap.resolution!=res or 
+            if (self.basemap is None or self.basemap.projection!=proj or self.basemap.resolution!=res or 
                self.basemap.llcrnrlon!=llcrnrlon or self.basemap.llcrnrlat!=llcrnrlat or self.basemap.urcrnrlon!=urcrnrlon or self.basemap.urcrnrlat!=urcrnrlat):
                 # Basemap object does not exist yet or has different settings than needed - create a new basemap.
                 self.basemap = mpl_toolkits.basemap.Basemap(llcrnrlon=llcrnrlon,
@@ -1032,8 +1032,8 @@ class Figure(xmlstore.util.referencedobject):
 
                 # Update effective dimension bounds                    
                 effrange = axis2data.setdefault(axisname,{}).setdefault('datarange',[None,None])
-                if effrange[0]==None or datamin<effrange[0]: effrange[0] = datamin
-                if effrange[1]==None or datamax>effrange[1]: effrange[1] = datamax
+                if effrange[0] is None or datamin<effrange[0]: effrange[0] = datamin
+                if effrange[1] is None or datamax>effrange[1]: effrange[1] = datamax
 
             varslice = varslices[0]
             
@@ -1054,13 +1054,13 @@ class Figure(xmlstore.util.referencedobject):
                 plotargs = getLineProperties(seriesnode['LineProperties'])
                 
                 # plot confidence interval (if any)
-                hasconfidencelimits = (varslice.ubound!=None or varslice.lbound!=None)
+                hasconfidencelimits = (varslice.ubound is not None or varslice.lbound is not None)
                 defaultseriesnode['HasConfidenceLimits'].setValue(hasconfidencelimits)
                 if hasconfidencelimits:
                     ubound = varslice.ubound
-                    if ubound==None: ubound = varslice.data
+                    if ubound is None: ubound = varslice.data
                     lbound = varslice.lbound
-                    if lbound==None: lbound = varslice.data
+                    if lbound is None: lbound = varslice.data
                     
                     if seriesnode['LineProperties/Marker'].getValue(usedefault=True)==0:
                         defaultseriesnode['ConfidenceLimits/Style'].setValue(2)
@@ -1105,9 +1105,9 @@ class Figure(xmlstore.util.referencedobject):
                 
                 pc = None       # object using colormap
                 norm = None     # color normalization object
-                hascolormap = (C!=None)
+                hascolormap = C is not None
                 
-                if C!=None:
+                if C is not None:
                     axisdata = axis2data.get('colorbar',{})
                     canhavelogscale = axisdata['datatype']!='datetime' and (axisdata['datarange'][0]>0 or axisdata['datarange'][1]>0)
                     logscale = canhavelogscale and axis2data.get('colorbar',{}).get('logscale',False)
@@ -1126,10 +1126,10 @@ class Figure(xmlstore.util.referencedobject):
                             info['V'] = numpy.ma.masked_where(C._mask,info['V'],copy=False)
                     
                         # Ignore nonpositive color limits since a log scale is to be used.
-                        if crange[0]!=None and crange[0]<=0.: crange[0] = None
-                        if crange[1]!=None and crange[1]<=0.: crange[1] = None
+                        if crange[0] is not None and crange[0]<=0.: crange[0] = None
+                        if crange[1] is not None and crange[1]<=0.: crange[1] = None
                     
-                    if crange[0]==None and crange[1]==None:
+                    if crange[0] is None and crange[1] is None:
                         # Automatic color bounds: first check if we are not dealing with data with all the same value.
                         # if so, explicitly set the color range because MatPlotLib 0.90.0 chokes on identical min and max.
                         if isinstance(C,numpy.ma.MaskedArray):
@@ -1151,7 +1151,7 @@ class Figure(xmlstore.util.referencedobject):
                         edgewidth = seriesnode['EdgeWidth'].getValue(usedefault=True)
                         borders,fill = (showedges or plottype3d==2),plottype3d==1
                         cc = seriesnode['ContourCount'].getValue()
-                        if cc==None: cc = 7
+                        if cc is None: cc = 7
 
                         # Choose a contour locator
                         if logscale:
@@ -1162,8 +1162,8 @@ class Figure(xmlstore.util.referencedobject):
                         # Choose contours (code taken from matplotlib.contour.py, _autolev function)
                         loc.create_dummy_axis()
                         zmin,zmax = crange
-                        if zmin==None: zmin = C.min()
-                        if zmax==None: zmax = C.max()
+                        if zmin is None: zmin = C.min()
+                        if zmax is None: zmax = C.max()
                         loc.set_bounds(zmin, zmax)
                         lev = loc()
                         zmargin = (zmax - zmin) * 0.000001 # so z < (zmax + zmargin)
@@ -1183,11 +1183,11 @@ class Figure(xmlstore.util.referencedobject):
                         if borders:
                             if fill: zorder += 1
                             contourcm = cm
-                            if edgecolor!=None: contourcm = None
+                            if edgecolor is not None: contourcm = None
                             cpc = drawaxes.contour(X,Y,C,lev[1:-1],norm=norm,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
                             if not fill: pc = cpc
                             
-                        if plottype3d==2 and edgecolor!=None: hascolormap = False
+                        if plottype3d==2 and edgecolor is not None: hascolormap = False
                     else:
                         # We have to plot a colored quadrilinear mesh
                         shading = 'flat'
@@ -1200,30 +1200,30 @@ class Figure(xmlstore.util.referencedobject):
                     
                     # Calculate velocities (needed for arrow auto-scaling)
                     vel = C
-                    if vel==None: vel = numpy.ma.absolute(U+V*1j)
+                    if vel is None: vel = numpy.ma.absolute(U+V*1j)
                     keylength = numpy.abs(U).max()
 
                     # Get combined mask of U,V and (optionally) C
                     mask = None
                     def addmask(mask,newmask):
-                        if mask==None:
+                        if mask is None:
                             mask = numpy.empty(U.shape,dtype=numpy.bool)
                             mask.fill(False)
                         return numpy.logical_or(mask,newmask)
                     if hasattr(U,'_mask'): mask = addmask(mask,U._mask)
                     if hasattr(V,'_mask'): mask = addmask(mask,V._mask)
-                    if C!=None and hasattr(C,'_mask'): mask = addmask(mask,C._mask)
+                    if C is not None and hasattr(C,'_mask'): mask = addmask(mask,C._mask)
                     
                     # Quiver with masked arrays has bugs in MatPlotlib 0.98.5
                     # Therefore we mask here only the color array, making sure that its mask combines
                     # the masks of U,V,C.
-                    if mask!=None:
-                        if C!=None: C = numpy.ma.masked_where(mask,C,copy=False)
+                    if mask is not None:
+                        if C is not None: C = numpy.ma.masked_where(mask,C,copy=False)
                         U,V = U.filled(0.),V.filled(0.)
                             
                     scale = seriesnode['ArrowScale'].getValue(usedefault=True)
                     pivot = seriesnode['ArrowPivot'].getValue(usedefault=True)
-                    if C==None:
+                    if C is None:
                         # Quiver without color values
                         pc = drawaxes.quiver(X,Y,U,V,cmap=cm,norm=norm,scale=scale,pivot=pivot)
                     else:
@@ -1235,7 +1235,7 @@ class Figure(xmlstore.util.referencedobject):
                     sn = max(10, math.sqrt(pc.N))
                     scale = 1.8 * vel.mean() * sn / pc.span # crude auto-scaling
                     defaultseriesnode['ArrowScale'].setValue(scale)  
-                    if pc.scale==None: pc.scale = scale
+                    if pc.scale is None: pc.scale = scale
                     
                     defaultseriesnode['ArrowKey/Length'].setValue(keylength)
                     defaultseriesnode['ArrowKey/Label'].setValue(str(keylength))
@@ -1247,11 +1247,11 @@ class Figure(xmlstore.util.referencedobject):
                         keylabelpos = keynode['LabelPosition'].getValue(usedefault=True)
                         axes.quiverkey(pc,keyx,keyy,keyu,label=keylabel,labelpos=keylabelpos,coordinates='axes',fontproperties=fontpropsdict)
                         
-                    if C==None: pc = None
+                    if C is None: pc = None
                 
-                if pc!=None:
+                if pc is not None:
                     # Create colorbar
-                    assert cb==None, 'Currently only one object that needs a colorbar is supported per figure.'
+                    assert cb is None, 'Currently only one object that needs a colorbar is supported per figure.'
                     pc.set_clim(crange)
                     cb = self.figure.colorbar(pc,ax=axes)
 
@@ -1310,7 +1310,7 @@ class Figure(xmlstore.util.referencedobject):
         self.defaultproperties['Title'].setValue(title)
         nodetitle = self.properties['Title']
         title = nodetitle.getValue(usedefault=True)
-        assert title!=None, 'Title must be available, either explicitly set or as default.'
+        assert title is not None, 'Title must be available, either explicitly set or as default.'
         if title!='':
             curfontprops = getFontProperties(nodetitle['Font'])
             curfontprops['size'] *= textscaling
@@ -1389,12 +1389,12 @@ class Figure(xmlstore.util.referencedobject):
             # Get range forced by user
             if istimeaxis:
                 mintime,maxtime = axisnode['MinimumTime'].getValue(),axisnode['MaximumTime'].getValue()
-                if mintime!=None: mintime = common.date2num(mintime)
-                if maxtime!=None: maxtime = common.date2num(maxtime)
+                if mintime is not None: mintime = common.date2num(mintime)
+                if maxtime is not None: maxtime = common.date2num(maxtime)
                 forcedrange = [mintime,maxtime]
             else:
                 forcedrange = [axisnode['Minimum'].getValue(),axisnode['Maximum'].getValue()]
-            bothforced = (forcedrange[0]!=None and forcedrange[1]!=None)
+            bothforced = (forcedrange[0] is not None and forcedrange[1] is not None)
             reverse = (bothforced and forcedrange[0]>forcedrange[1]) or (axisdata['reversed'] and not bothforced)
             if reverse: forcedrange[0],forcedrange[1] = forcedrange[1],forcedrange[0]
                 
@@ -1405,13 +1405,13 @@ class Figure(xmlstore.util.referencedobject):
             
             # Effective range used by data, after taking forced range into account.
             effdatarange = axisdata['datarange'][:]
-            if forcedrange[0]!=None: effdatarange[0] = forcedrange[0]
-            if forcedrange[1]!=None: effdatarange[1] = forcedrange[1]
+            if forcedrange[0] is not None: effdatarange[0] = forcedrange[0]
+            if forcedrange[1] is not None: effdatarange[1] = forcedrange[1]
 
             # Effective range, combining natural range with user overrides.
             effrange = list(forcedrange)
-            if effrange[0]==None: effrange[0]=naturalrange[0]
-            if effrange[1]==None: effrange[1]=naturalrange[1]
+            if effrange[0] is None: effrange[0]=naturalrange[0]
+            if effrange[1] is None: effrange[1]=naturalrange[1]
             
             # The natural range will now only be used to set default axes bounds.
             # Filter out infinite values (valid in MatPlotLib but not in xmlstore)
@@ -1425,7 +1425,7 @@ class Figure(xmlstore.util.referencedobject):
 
             # Build default label for this axis
             deflab = axisdata['label']
-            if axisdata['unit']!='' and axisdata['unit']!=None: deflab += ' ('+axisdata['unit']+')'
+            if axisdata['unit']!='' and axisdata['unit'] is not None: deflab += ' ('+axisdata['unit']+')'
             
             # Set default axis properties.
             defaxisnode['Label'].setValue(deflab)
@@ -1443,7 +1443,7 @@ class Figure(xmlstore.util.referencedobject):
                 mplaxis = axes.get_xaxis()
             elif axisname=='y':
                 mplaxis = axes.get_yaxis()
-            elif cb!=None:
+            elif cb is not None:
                 mplaxis = cb.ax.get_yaxis()
 
             if istimeaxis:
@@ -1477,7 +1477,7 @@ class Figure(xmlstore.util.referencedobject):
 
             # Obtain label for axis.
             label = axisnode['Label'].getValue(usedefault=True)
-            if label==None: label=''
+            if label is None: label=''
 
             # Set axis labels and boundaries.
             if axisname=='x':
@@ -1486,7 +1486,7 @@ class Figure(xmlstore.util.referencedobject):
             elif axisname=='y':
                 if label!='': axes.set_ylabel(label,fontproperties=fontprops)
                 axes.set_ylim(effrange[0],effrange[1])
-            elif axisname=='colorbar' and cb!=None:
+            elif axisname=='colorbar' and cb is not None:
                 if label!='': cb.set_label(label,fontproperties=fontprops)
 
         for oldaxis in oldaxes:
@@ -1507,7 +1507,7 @@ class Figure(xmlstore.util.referencedobject):
         axes.get_yaxis().get_offset_text().set_fontproperties(fontprops)
         
         # Scale text labels for color bar.
-        if cb!=None:
+        if cb is not None:
             cb.ax.yaxis.get_offset_text().set_fontproperties(fontprops)
             for l in cb.ax.yaxis.get_ticklabels(): l.set_fontproperties(fontprops)
         self.colorbar,self.ismap = cb,ismap
@@ -1521,7 +1521,7 @@ class Figure(xmlstore.util.referencedobject):
         self.dirty = False
 
     def onAspectChange(self,redraw=True):
-        if self.colorbar!=None and self.ismap:
+        if self.colorbar is not None and self.ismap:
             # Adjust colorbar top and height based on basemap-modified axes
             axes = self.figure.gca()
             axes.apply_aspect()

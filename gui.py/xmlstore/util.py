@@ -38,7 +38,7 @@ class referencedobject:
         """If reference checking is enabled, this method is called on creation
         of a referenced object.
         """
-        if referencedobject.objs==None:
+        if referencedobject.objs is None:
             referencedobject.objs = []
             referencedobject.tracebacks = []
             import atexit
@@ -133,7 +133,7 @@ def findDescendantNode(root,location,create=False):
     (root). If create = True, the node will be created if it does not exist
     yet.
     """
-    assert root!=None,'findDescendantNode called on non-existent parent node (parent = None).'
+    assert root is not None,'findDescendantNode called on non-existent parent node (parent = None).'
     node = root
     for childname in location:
         if childname=='': continue
@@ -145,7 +145,7 @@ def findDescendantNode(root,location,create=False):
         else:
             if create:
                 doc = root
-                while doc.parentNode!=None: doc=doc.parentNode
+                while doc.parentNode is not None: doc=doc.parentNode
                 assert doc.nodeType==doc.DOCUMENT_NODE, 'Could not find DOM document node needed to create %s. Node "%s" does not have a parent.' % (location,doc.tagName)
                 foundchild = doc.createElementNS(node.namespaceURI,childname)
                 node.appendChild(foundchild)
@@ -163,7 +163,7 @@ def findDescendantNodes(root,location):
     name = parentloc.pop()
     parent = findDescendantNode(root,parentloc,create=False)
     children = []
-    if parent!=None:
+    if parent is not None:
         for ch in parent.childNodes:
             if ch.nodeType==ch.ELEMENT_NODE and ch.localName==name:
                 children.append(ch)
@@ -176,9 +176,9 @@ def getNodeText(node):
     return ''.join([ch.data for ch in node.childNodes if ch.nodeType==ch.TEXT_NODE]).strip()
 
 def setNodeText(node,text,xmldocument=None):
-    if xmldocument==None:
+    if xmldocument is None:
         xmldocument = node
-        while xmldocument.parentNode!=None: xmldocument=xmldocument.parentNode
+        while xmldocument.parentNode is not None: xmldocument=xmldocument.parentNode
     for ch in node.childNodes:
         if ch.nodeType == ch.TEXT_NODE:
             node.removeChild(ch)
@@ -210,19 +210,19 @@ def copyNode(sourcenode,newparent,targetdoc=None,name=None,before=None):
     """
 
     # Create new document or find existing one if not provided.
-    if newparent==None:
-        if targetdoc==None:
+    if newparent is None:
+        if targetdoc is None:
             impl = xml.dom.minidom.getDOMImplementation()
             targetdoc = impl.createDocument(None, None, None)
         newparent = targetdoc
-    elif targetdoc==None:
+    elif targetdoc is None:
         targetdoc = newparent
-        while targetdoc.parentNode!=None: targetdoc = targetdoc.parentNode
+        while targetdoc.parentNode is not None: targetdoc = targetdoc.parentNode
 
     # Create new node
     cpy = None
     if sourcenode.nodeType==sourcenode.ELEMENT_NODE:
-        if name==None: name = sourcenode.localName
+        if name is None: name = sourcenode.localName
         cpy = targetdoc.createElementNS(newparent.namespaceURI,name)
         for key in sourcenode.attributes.keys():
             cpy.setAttribute(key,sourcenode.getAttribute(key))
@@ -232,8 +232,8 @@ def copyNode(sourcenode,newparent,targetdoc=None,name=None,before=None):
         print 'WARNING: do not know how to copy node with type %s. Skipping...' % sourcenode.nodeType
         
     # Insert new node
-    if cpy!=None:
-        if before==None:
+    if cpy is not None:
+        if before is None:
             cpy = newparent.appendChild(cpy)
         else:
             cpy = newparent.insertBefore(cpy,before)
@@ -249,13 +249,13 @@ def stripWhitespace(node):
 
     # Strip whitespace at start of element contents.
     ch = node.firstChild
-    while ch!=None and ch.nodeType==ch.TEXT_NODE and len(ch.data.strip())==0:
+    while ch is not None and ch.nodeType==ch.TEXT_NODE and len(ch.data.strip())==0:
         node.removeChild(ch)
         ch = node.firstChild
         
     # Strip whitespace at end of element contents.
     ch = node.lastChild
-    while ch!=None and ch.nodeType==ch.TEXT_NODE and len(ch.data.strip())==0:
+    while ch is not None and ch.nodeType==ch.TEXT_NODE and len(ch.data.strip())==0:
         node.removeChild(ch)
         ch = node.lastChild
     
@@ -300,7 +300,7 @@ class ProgressSlicer:
         """
         assert not (prefix=='' and nodetailedmessage), 'If nodetailedmessage is set, the prefix must be specified.'
         self.step += self.currentweight
-        if self.callback!=None: self.callback(float(self.step)/self.total,self.prefix)
+        if self.callback is not None: self.callback(float(self.step)/self.total,self.prefix)
         self.prefix = prefix
         self.currentweight = weight
         self.nodetailedmessage = nodetailedmessage
@@ -317,5 +317,5 @@ class ProgressSlicer:
         """Returns the callback function that the subprocess should use for
         reporting progress.
         """
-        if self.callback==None: return None
+        if self.callback is None: return None
         return self.onStepProgressed

@@ -76,7 +76,7 @@ class DataTypeSimple(DataType):
     def save(self,node,context):
         string = self.toXmlString(context)
         if util.getNodeText(node)==string: return False
-        if string!=None:
+        if string is not None:
             util.setNodeText(node,string)
         else:
             util.removeNodeChildren(node)
@@ -162,7 +162,7 @@ class DateTime(DataTypePrimitive):
     @staticmethod
     def fromXmlString(string,context,template=None):
         match = DateTime.reDateTime.match(string)
-        if match==None: raise Exception('Cannot parse "%s" as datetime object.' % string)
+        if match is None: raise Exception('Cannot parse "%s" as datetime object.' % string)
         c = map(int,match.groups())
         return datetime.datetime(c[0],c[1],c[2],c[3],c[4],c[5],tzinfo=util.utc)
     def toXmlString(self,context):
@@ -195,7 +195,7 @@ class TimeDelta(DataTypeSimple,datetime.timedelta):
             assert text[0]=='P', 'A stored duration/timedelta should always start with "P".'
             import re
             m = re.match('P(\d+Y)?(\d+M)?(\d+D)?(?:T(\d+H)?(\d+M)?(\d+(?:\.\d*)S)?)?',text)
-            assert m!=None, 'The string "%s" is not a valid duration/timedelta.' % text
+            assert m is not None, 'The string "%s" is not a valid duration/timedelta.' % text
             grps = m.groups('0x')
             y,m,d,hh,mm = [int(t[:-1]) for t in grps[:-1]]
             ss = float(grps[-1][:-1])
@@ -296,9 +296,9 @@ class Color(DataTypeSimple):
         suitable from saving to XML.
         This string can be parsed through the static "fromXmlString" method.
         """
-        assert self.red  ==None or self.red  <=255, 'Color channel red values should not exceed 255.'
-        assert self.green==None or self.green<=255, 'Color channel green values should not exceed 255.'
-        assert self.blue ==None or self.blue <=255, 'Color channel blue values should not exceed 255.'
+        assert self.red   is None or self.red  <=255, 'Color channel red values should not exceed 255.'
+        assert self.green is None or self.green<=255, 'Color channel green values should not exceed 255.'
+        assert self.blue  is None or self.blue <=255, 'Color channel blue values should not exceed 255.'
         if self.isValid():
             return '#%02x%02x%02x' % (self.red,self.green,self.blue)
         else:
@@ -307,7 +307,7 @@ class Color(DataTypeSimple):
     def isValid(self):
         """Returns whether the object currently contains a valid color.
         """
-        return self.red!=None and self.green!=None and self.blue!=None
+        return self.red is not None and self.green is not None and self.blue is not None
         
     def getNormalized(self,nocolor='none'):
         """Returns a tuple with normalized RGB color values (between 0 and 1).
@@ -405,7 +405,7 @@ class DataFile(DataType,util.referencedobject):
         uniquename = DataFile.getUniqueNodeName(node)
         if uniquename in cache: return cache[uniquename].addref()
         container = context['container']
-        if container==None: return DataFile()
+        if container is None: return DataFile()
         name = util.getNodeText(node)
         if name not in container.listFiles(): return DataFile()
         df = container.getItem(name)
@@ -425,7 +425,7 @@ class DataFile(DataType,util.referencedobject):
         self.addref()
         if uniquename in cache: cache[uniquename].release()
         cache[uniquename] = self
-        if self.name!=None:
+        if self.name is not None:
             util.setNodeText(node,self.name)
         else:
             util.setNodeText(node,'')
@@ -467,7 +467,7 @@ class DataFile(DataType,util.referencedobject):
         a container-wide cache.
         """
         path = []
-        while node.parentNode.parentNode!=None:
+        while node.parentNode.parentNode is not None:
             path.append(node.localName)
             node = node.parentNode
         return '/'.join(path)
@@ -476,7 +476,7 @@ class DataFile(DataType,util.referencedobject):
         """Returns True if the data file object is valid (has data associated
         with it; False if not.
         """
-        return self.name!=None
+        return self.name is not None
 
     def getAsReadOnlyFile(self,textmode=True):
         """Returns the data stored in the data file as a read-only, file-like
@@ -598,22 +598,22 @@ class DataFileEx(DataType,util.referencedobject):
         util.referencedobject.__init__(self)
         DataType.__init__(self)
 
-        assert nodename!=None or context==None, 'If a context is provided you must also specify a node name. That name will be used to uniquely identify the node in the context.'
+        assert nodename is not None or context is None, 'If a context is provided you must also specify a node name. That name will be used to uniquely identify the node in the context.'
 
         self.nodename = nodename
         
         # Create a global store for metadata if it does not exist yet.
-        if context==None: context = {'fake':True}
+        if context is None: context = {'fake':True}
         linkedfiles = context.setdefault('linkedobjects',{})
         if self.linkedfilename not in linkedfiles:
             # Store for metadata does not exist yet: create it.
             store = self.createTypedStore()
-            assert store!=None, 'No typed store returned by createTypedStore.'
+            assert store is not None, 'No typed store returned by createTypedStore.'
             linkedfiles[self.linkedfilename] = store
             
             # If the source container already contains metadata, load them.
             container = context.get('container',None)
-            if container!=None:
+            if container is not None:
                 if self.linkedfilename in container.listFiles():
                     metadatafile = container.getItem(self.linkedfilename)
                     store.load(metadatafile)
@@ -646,12 +646,12 @@ class DataFileEx(DataType,util.referencedobject):
         previous data file.
         """
         # Release previous data file (if any)
-        if self.datafile!=None:
+        if self.datafile is not None:
             self.datafile.release()
             self.datafile = None
             
         # Set new data file (if any)
-        if datafile!=None:
+        if datafile is not None:
             self.datafile = datafile.addref()
 
         # Clear meta data (unless we are initializing: then keepmetadata is set).
@@ -664,7 +664,7 @@ class DataFileEx(DataType,util.referencedobject):
         """Get the node in the TypedStore that stores the metadata for this
         object. Note that the metadata node is cached for further use.
         """
-        if self.metadata!=None: return self.metadata
+        if self.metadata is not None: return self.metadata
         self.metadata = self.store.root.getChildById(self.rootnodename,self.nodename,create=create)
         return self.metadata
 
@@ -691,7 +691,7 @@ class DataFileEx(DataType,util.referencedobject):
         linkedfiles = context.setdefault('linkedobjects',{})
         if self.linkedfilename not in linkedfiles:
             newstore = self.createTypedStore()
-            assert newstore!=None, 'No typed store returned by createTypedStore.'
+            assert newstore is not None, 'No typed store returned by createTypedStore.'
             linkedfiles[self.linkedfilename] = newstore
         else:
             newstore = linkedfiles[self.linkedfilename]
@@ -700,7 +700,7 @@ class DataFileEx(DataType,util.referencedobject):
         # store for future reference.
         if newstore is not self.store:
             oldmetadata = self.getMetaData(create=False)
-            if oldmetadata!=None:
+            if oldmetadata is not None:
                 newmetadata = newstore.root.getChildById(self.rootnodename,self.nodename,create=True)
                 newmetadata.copyFrom(oldmetadata)
             self.store.release()
@@ -718,15 +718,15 @@ class DataFileEx(DataType,util.referencedobject):
         df.release()
         
     def __str__(self):
-        if self.datafile==None or not self.datafile.isValid():
+        if self.datafile is None or not self.datafile.isValid():
             return ''
         else:
             return self.datafile.name
         
     def unlink(self):
         self.metadata = None
-        if self.datafile!=None: self.datafile.release()
-        if self.store   !=None: self.store.release()
+        if self.datafile is not None: self.datafile.release()
+        if self.store    is not None: self.store.release()
 
 class DataContainerDirectory(DataContainer):
     """A DataContainer implementation for a directory in the file system.
@@ -794,7 +794,7 @@ class DataContainerDirectory(DataContainer):
 
         def unlink(self):
             """Destroys the data file object. This closes open streams etc."""
-            if self.file==None: return
+            if self.file is None: return
             self.file.close()
             self.file = None
    
@@ -821,7 +821,7 @@ class DataContainerDirectory(DataContainer):
         the supplied DataFile object.
         """
         assert datafile.isValid()
-        if newname==None: newname = datafile.name
+        if newname is None: newname = datafile.name
         targetpath = os.path.join(self.path,newname)
         datafile.saveToFile(targetpath)
         return self.DataFileFile(targetpath)
@@ -855,7 +855,7 @@ class DataContainerZip(DataContainer):
         def getData(self,textmode=True,readonly=False):
             """Returns the contents of the data file as a string of bytes.
             """
-            assert self.zipcontainer!=None, 'DataFileZip.getData failed; ZIP file has been closed.'
+            assert self.zipcontainer is not None, 'DataFileZip.getData failed; ZIP file has been closed.'
             self.zipcontainer.setMode('r')
             return self.zipcontainer.zfile.read(self.name)
 
@@ -866,8 +866,8 @@ class DataContainerZip(DataContainer):
             This is used in DataFile.preparePersist to check whether the data file
             would be overwritten if the specified path is saved to.
             """
-            assert self.zipcontainer!=None, 'DataFileZip.isBelowPath failed; ZIP file has been closed.'
-            if self.zipcontainer.path==None: return False
+            assert self.zipcontainer is not None, 'DataFileZip.isBelowPath failed; ZIP file has been closed.'
+            if self.zipcontainer.path is None: return False
             owndir = os.path.normcase(self.zipcontainer.path)
             return owndir.startswith(os.path.normcase(path))
 
@@ -878,7 +878,7 @@ class DataContainerZip(DataContainer):
 
         def unlink(self):
             """Destroys the data file object. This closes open streams etc."""
-            if self.zipcontainer==None: return
+            if self.zipcontainer is None: return
             self.zipcontainer.release()
             self.zipcontainer = None
     
@@ -908,7 +908,7 @@ class DataContainerZip(DataContainer):
         """Destroys the data container object. This closes open streams,
         closes open files, cleans up, etc.
         """
-        if self.zfile==None: return
+        if self.zfile is None: return
         self.zfile.close()
         self.zfile = None
         self.mode = None
@@ -927,7 +927,7 @@ class DataContainerZip(DataContainer):
         is provided, it is used instead of the name currently associated with
         the supplied DataFile object.
         """
-        if newname==None: newname = datafile.name
+        if newname is None: newname = datafile.name
         if self.mode=='r': self.setMode('a')
         #if isinstance(self.source,StringIO.StringIO):
         #    print 'Adding "%s" to in-memory archive...' % (newname,)
@@ -945,7 +945,7 @@ class DataContainerZip(DataContainer):
         """Makes sure all changes to the container are saved to persistent
         storage. This may involve flushing buffers etc.
         """
-        if self.zfile==None: return
+        if self.zfile is None: return
         if isinstance(self.source,basestring):
             # Immediately re-open the ZIP file so we keep a lock on it.
             self.setMode('r')
@@ -961,7 +961,7 @@ class DataContainerZip(DataContainer):
         is accessed.
         """
         assert mode in ('r','w','a'), 'DataContainerZip.setMode: mode must be "r", "w", or "a" (not "%s").' % mode
-        if self.zfile!=None:
+        if self.zfile is not None:
             if mode==self.mode: return
             self.zfile.close()
         self.mode = mode
@@ -999,7 +999,7 @@ class DataContainerTar(DataContainer):
             """Returns the data stored in the data file as a read-only, file-like
             object.
             """
-            assert self.tarcontainer!=None, 'DataFileTar.getAsReadOnlyFile failed; TAR file has been closed.'
+            assert self.tarcontainer is not None, 'DataFileTar.getAsReadOnlyFile failed; TAR file has been closed.'
             self.tarcontainer.setMode('r')
             return self.tarcontainer.tfile.extractfile(self.name)
 
@@ -1010,7 +1010,7 @@ class DataContainerTar(DataContainer):
             This is used in DataFile.preparePersist to check whether the data file
             would be overwritten if the specified path is saved to.
             """
-            assert self.tarcontainer!=None, 'DataFileTar.isBelowPath failed; TAR file has been closed.'
+            assert self.tarcontainer is not None, 'DataFileTar.isBelowPath failed; TAR file has been closed.'
             owndir = os.path.normcase(self.tarcontainer.path)
             return owndir.startswith(os.path.normcase(path))
 
@@ -1041,7 +1041,7 @@ class DataContainerTar(DataContainer):
         """Destroys the data container object. This closes open streams,
         closes open files, cleans up, etc.
         """
-        if self.tfile==None: return
+        if self.tfile is None: return
         self.tfile.close()
         self.mode = None
         self.tfile = None
@@ -1058,7 +1058,7 @@ class DataContainerTar(DataContainer):
         is provided, it is used instead of the name currently associated with
         the supplied DataFile object.
         """
-        if newname==None: newname = datafile.name
+        if newname is None: newname = datafile.name
         if self.mode=='r': self.setMode('a')
         #print 'Adding "%s" to archive "%s"...' % (newname,self.path)
         datafile.addToTar(self.tfile,newname)
@@ -1073,7 +1073,7 @@ class DataContainerTar(DataContainer):
         """Makes sure all changes to the container are saved to persistent
         storage. This may involve flushing buffers etc.
         """
-        if self.tfile==None: return
+        if self.tfile is None: return
         self.setMode('r')
 
     def setMode(self,mode):
@@ -1082,7 +1082,7 @@ class DataContainerTar(DataContainer):
         """
         assert mode in ('r','w'), 'DataContainerZip.setMode: mode must be "r" or "w" (not "%s").' % mode
         if mode=='w': mode='w:gz'
-        if self.tfile!=None:
+        if self.tfile is not None:
             if mode==self.mode: return
             self.tfile.close()
         self.mode = mode

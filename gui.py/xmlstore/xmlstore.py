@@ -89,7 +89,7 @@ class Schema:
                 linkedpath = link.getAttribute('path')
                 while True:
                     match = re.match('\[(\w+)]',linkedpath)
-                    if match==None: break
+                    if match is None: break
                     exp = match.group(1)
                     assert exp in Schema.knownpaths, 'Do not know the location of "%s" in linked path "%s".' % (exp,linkedpath)
                     linkedpath = os.path.join(linkedpath[:match.start(0)],Schema.knownpaths[exp],linkedpath[match.end(0)+1:])
@@ -139,7 +139,7 @@ class Schema:
     # re-check conditions (and hide/show corresponding nodes) after the value of
     # a dependency ('controller') changes.
     def buildDependencies(self,root=None,curpath='',curowner=None):
-        if root==None: root=self.dom.documentElement
+        if root is None: root=self.dom.documentElement
         for ch in root.childNodes:
             if ch.nodeType==ch.ELEMENT_NODE:
                 if ch.localName=='element':
@@ -173,7 +173,7 @@ class Schema:
         is provided, the path is assumed to be relative to the reference node.
         If no reference node is provided, the path is assumed absolute, that is,
         relative to the schema root element."""
-        if root==None: root=self.dom.documentElement
+        if root is None: root=self.dom.documentElement
         for childname in path:
             if childname=='..':
                 assert not root.isSameNode(self.dom.documentElement)
@@ -194,7 +194,7 @@ class Schema:
         schema root element.
         """
         path = []
-        while node.parentNode.parentNode!=None:
+        while node.parentNode.parentNode is not None:
             path.insert(0,node.getAttribute('name'))
             node = node.parentNode
         return path
@@ -208,13 +208,13 @@ class Schema:
         The absolute path to the source node may be provided; this saves
         computational effort only.
         """
-        if absourcepath==None: '/'.join(self.getPathFromNode(sourcenode))
+        if absourcepath is None: '/'.join(self.getPathFromNode(sourcenode))
         
         refnode = None
         if targetpath[0]!='/': refnode = sourcenode.parentNode
         splittargetpath = targetpath.split('/')
         targetnode = self.getNodeFromPath(splittargetpath,root=refnode)
-        assert targetnode!=None, 'Cannot locate target node "%s" for node "%s".' % (targetpath,absourcepath)
+        assert targetnode is not None, 'Cannot locate target node "%s" for node "%s".' % (targetpath,absourcepath)
         
         abstargetpath = self.getPathFromNode(targetnode)
         assert len(abstargetpath)!=0, 'Target node "%s" for node "%s" corresponds to the root of the DOM tree. This is not allowed.' % (targetpath,absourcepath)
@@ -298,7 +298,7 @@ class Schema:
             return nextid
                         
         # Print all information.
-        if fout==None: fout = sys.stdout
+        if fout is None: fout = sys.stdout
         fout.write('<table cellspacing="0">\n')
         for i in range(maxdepth-1): fout.write('<col width="20">')
         fout.write('\t<tr><th colspan="%i">node name</th><th>data type</th><th>description</th></tr>\n' % maxdepth)
@@ -358,7 +358,7 @@ class TypedStoreInterface:
         store.connectInterface(self)
         
     def unlink(self):
-        assert self.eventhandlers!=None, 'unlink called on TypedStoreInterface for the second time.'
+        assert self.eventhandlers is not None, 'unlink called on TypedStoreInterface for the second time.'
         self.eventhandlers = None
 
     def getChildCount(self,node):
@@ -428,7 +428,7 @@ class TypedStoreInterface:
                 else:
                     ind += 1
         else:
-            assert node.futureindex!=None, 'Could not find node "%s" in children of supposed parent, but future index was also not set. Data: %s' % (node,node.valuenode.toxml('utf-8'))
+            assert node.futureindex is not None, 'Could not find node "%s" in children of supposed parent, but future index was also not set. Data: %s' % (node,node.valuenode.toxml('utf-8'))
             assert node.futureindex==len(par.children), 'Could not find node "%s" in children of supposed parent, but future index (%i) was also not set to tailing position (%i).' % (node,node.futureindex,len(par.children))
         return ind
 
@@ -480,7 +480,7 @@ class TypedStoreInterface:
             childtrs += childnodes
         res += childtrs
 
-        if tr!=None and hidedefaults:
+        if tr is not None and hidedefaults:
             isdefault = True
             if node.canHaveValue() and not node.hasDefaultValue():
                 isdefault = False
@@ -588,7 +588,7 @@ class Node:
 
         # Build a dictionary with all child value nodes
         valuechildren = {}
-        if self.valueroot!=None:
+        if self.valueroot is not None:
             for ch in self.valueroot.childNodes:
                 if ch.nodeType==ch.ELEMENT_NODE:
                     valuechildren.setdefault(ch.localName,[]).append(ch)
@@ -637,7 +637,7 @@ class Node:
         references.
         """
         for ch in self.children:
-            if ch!=None: ch.destroy()
+            if ch is not None: ch.destroy()
         self.location = ()
         self.children = []
         self.parent = None
@@ -658,16 +658,16 @@ class Node:
         if the node cannot have a value (i.e., it is a container only).
         """
         value = None
-        if self.valuenode!=None:
+        if self.valuenode is not None:
             valuetype = self.getValueType(returnclass=True)
             value = valuetype.load(self.valuenode,self.controller.context,self.templatenode)
-        if value==None and usedefault: value = self.getDefaultValue()
+        if value is None and usedefault: value = self.getDefaultValue()
         return value
         
     def hasValue(self):
-        if self.valuenode==None: return False
+        if self.valuenode is None: return False
         value = self.getValue()
-        if value==None: return False
+        if value is None: return False
         if isinstance(value,util.referencedobject): value.release()
         return True
 
@@ -677,14 +677,14 @@ class Node:
         a default store has not been specified.
         """
         defaultstore = self.controller.defaultstore
-        if defaultstore==None: return None
+        if defaultstore is None: return None
         defaultnode = defaultstore.mapForeignNode(self)
-        if defaultnode==None: return None
+        if defaultnode is None: return None
         return defaultnode.getValue(usedefault=True)
         
     def hasDefaultValue(self):
         value = self.getValue()
-        if value==None: return True
+        if value is None: return True
         defvalue = self.getDefaultValue()
         hasdef = value==defvalue
         if isinstance(value,   util.referencedobject): value.release()
@@ -696,7 +696,7 @@ class Node:
         of the node was changed, False if it was not changed. Changes
         may be prevented by an attached interface disallowing the change.
         """
-        if value==None:
+        if value is None:
             self.clearValue()
             return
 
@@ -706,7 +706,7 @@ class Node:
             if self.controller.onBeforeChange(self,value):
                 valuetype = self.getValueType(returnclass=True)
                 if not isinstance(value,valuetype): value = valuetype(value)
-                if self.valuenode==None: self.createValueNode()
+                if self.valuenode is None: self.createValueNode()
                 changed = value.save(self.valuenode,self.controller.context)
                 self.controller.onChange(self,'value')
         if isinstance(curval,util.referencedobject): curval.release()
@@ -734,8 +734,8 @@ class Node:
         # Do not clear if (1) it is already cleared (result: success), (2) it is
         # read-only and the user wants to respect that (result: failure),
         # (3) it is the root node (result: failure), or (4) clearing the child nodes failed.
-        if self.valuenode==None: return True
-        if (skipreadonly and self.isReadOnly()) or self.parent==None or not cleared: return False
+        if self.valuenode is None: return True
+        if (skipreadonly and self.isReadOnly()) or self.parent is None or not cleared: return False
         
         # Clear if (1) this node can have no value - it must occur, and (2) the attached interfaces approve.
         if (not self.canHaveClones()) and self.controller.onBeforeChange(self,None):
@@ -752,7 +752,7 @@ class Node:
         """
         # Get the value -  return an empty string if no value is set.
         value = self.getValue(usedefault=usedefault)
-        if value==None: return ''
+        if value is None: return ''
 
         # Get the XML template node describing the data type, and the Python class representing the type.
         templatenode = self.templatenode
@@ -778,7 +778,7 @@ class Node:
 
         # If we do not have a string representation yet, then cast the data to the internally
         # registered type, and let that figure out the best pretty string.
-        if strvalue==None:
+        if strvalue is None:
             if not isinstance(value,valuetype): value = valuetype(value)
             strvalue = value.toPrettyString()
             
@@ -788,7 +788,7 @@ class Node:
         # Append unit specifier (if available)
         if addunit:
             unit = self.getUnit()
-            if unit!=None: strvalue += ' ' + unit
+            if unit is not None: strvalue += ' ' + unit
 
         return strvalue
 
@@ -806,7 +806,7 @@ class Node:
         existingcount = 0
         for curindex,child in enumerate(self.children):
             if child.location[-1]==childname:
-                assert id==None or child.getSecondaryId()!=id, 'Child node with the id "%s" already exists below %s.' % (id,str(self.location))
+                assert id is None or child.getSecondaryId()!=id, 'Child node with the id "%s" already exists below %s.' % (id,str(self.location))
                 index = curindex
                 templatenode = child.templatenode
                 existingcount += 1
@@ -815,7 +815,7 @@ class Node:
                 break
                 
         # If no insert position was specified, append at the end
-        if position==None: position = existingcount
+        if position is None: position = existingcount
         
         if index!=-1:
             # Found an existing node with this name
@@ -853,12 +853,12 @@ class Node:
         
         # Find the XML document
         doc = self.valueroot
-        while doc.parentNode!=None: doc=doc.parentNode
+        while doc.parentNode is not None: doc=doc.parentNode
         assert doc.nodeType==doc.DOCUMENT_NODE, 'Could not find DOM document node. Node "%s" does not have a parent.' % doc.tagName
 
         # Create the value node for the current child
         node = doc.createElementNS(self.valueroot.namespaceURI,childname)
-        if id!=None: node.setAttribute('id',id)
+        if id is not None: node.setAttribute('id',id)
         
         # Insert the value node
         if position>=existingcount:
@@ -890,20 +890,20 @@ class Node:
         """Creates the (empty) value node, and creates value nodes for
         all ancestors that lacks a value node as well.
         """
-        if self.valuenode!=None or (rootonly and self.valueroot!=None): return
+        if self.valuenode is not None or (rootonly and self.valueroot is not None): return
         assert rootonly or self.canHaveValue(),'Asked to create value node for %s, but this node cannot have a value.' % (str(self.location),)
 
         # Build a list of all ancestors that do not have a value root yet.
         parents = []
         root = self
-        while root.valueroot==None:
+        while root.valueroot is None:
             parents.insert(0,root)
             root = root.parent
         valueroot = root.valueroot
         
         # Find the XML document for values.
         doc = valueroot
-        while doc.parentNode!=None: doc=doc.parentNode
+        while doc.parentNode is not None: doc=doc.parentNode
         assert doc.nodeType==doc.DOCUMENT_NODE, 'Could not find DOM document node needed to create %s. Node "%s" does not have a parent.' % (location,doc.tagName)
 
         # Create value roots for all ancestors that lack one.
@@ -984,7 +984,7 @@ class Node:
             if child.location[-1]==childname:
                 assert child.canHaveClones(),'Cannot remove child "%s" because it must occur exactly one time.' % childname
                 ichildpos += 1
-                if last!=None and ichildpos>last: return
+                if last is not None and ichildpos>last: return
                 if ichildpos>=first:
                     self.removeChildNode(child,ipos)
                     ipos -= 1
@@ -1001,12 +1001,12 @@ class Node:
                 self.removeChildNode(child,ipos)
 
     def removeChildNode(self,node,pos=None):
-        if pos==None: pos = self.children.index(node)
+        if pos is None: pos = self.children.index(node)
         node.removeAllChildren(optionalonly=False)
         self.controller.beforeVisibilityChange(node,False,False)
         self.children.pop(pos)
-        if node.valueroot!=None:
-            assert self.valueroot!=None,'Child has a value root but the parent does not.'
+        if node.valueroot is not None:
+            assert self.valueroot is not None,'Child has a value root but the parent does not.'
             self.valueroot.removeChild(node.valueroot)
             node.valueroot = None
             node.valuenode = None
@@ -1023,7 +1023,7 @@ class Node:
         nodes that can occur multiple times, and must then be set on creation
         of the node. Returns an empty string if the secondary id has not been set.
         """
-        assert self.valueroot!=None, 'The value node has not been set; this node cannot be optional.'
+        assert self.valueroot is not None, 'The value node has not been set; this node cannot be optional.'
         return self.valueroot.getAttribute('id')
 
     def getValueType(self,returnclass=False):
@@ -1044,7 +1044,7 @@ class Node:
         unit = self.templatenode.getAttribute('unit')
         if unit[0]=='[' and unit[-1]==']':
             node = self.parent[unit[1:-1]]
-            if node==None: return None
+            if node is None: return None
             unit = node.getValueAsString(addunit=False,usedefault=True)
         return unit
 
@@ -1065,14 +1065,14 @@ class Node:
         if self.canHaveClones():
             ret = self.getSecondaryId()
             if ret=='': ret = None
-        if ret==None:
+        if ret is None:
             if detail==2 and templatenode.hasAttribute('description'):
                 ret = templatenode.getAttribute('description')
             elif detail>=1 and minimumdetail<=1 and templatenode.hasAttribute('label'):
                 ret = templatenode.getAttribute('label')
             elif minimumdetail==0:
                 ret = self.getId()
-        if ret!=None and capitalize: ret = ret[0].upper() + ret[1:]
+        if ret is not None and capitalize: ret = ret[0].upper() + ret[1:]
         return ret
         
     def __getitem__(self,path):
@@ -1086,7 +1086,7 @@ class Node:
         node = self
         for childname in location:
             if childname=='..':
-                assert self.parent!=None,'Cannot go up one level because we are at the root.'
+                assert self.parent is not None,'Cannot go up one level because we are at the root.'
                 node = node.parent
             elif childname!='' and childname!='.':
                 for node in node.children:
@@ -1120,7 +1120,7 @@ class Node:
         or because they simply have the "hidden" attribute set in the template.
         """
         node = self
-        while node!=None:
+        while node is not None:
             if not node.visible: return True
             node = node.parent
         return False
@@ -1171,7 +1171,7 @@ class Node:
         res = []
         owntype = self.getValueType(returnclass=True)
         if isinstance(valuetype,basestring): valuetype = self.controller.getDataType(valuetype)
-        if (allowderived and owntype!=None and issubclass(owntype,valuetype)) or owntype==valuetype:
+        if (allowderived and owntype is not None and issubclass(owntype,valuetype)) or owntype==valuetype:
             res.append(self)
         for ch in self.children:
             res += ch.getNodesByType(valuetype,allowderived)
@@ -1184,7 +1184,7 @@ class Node:
         res = []
         if self.canHaveValue():
             value = self.getValue(usedefault=usedefault)
-            if value==None: res.append(self)
+            if value is None: res.append(self)
             if isinstance(value,util.referencedobject): value.release()
         for ch in self.children:
             res += ch.getEmptyNodes()
@@ -1196,7 +1196,7 @@ class Node:
         """
         templatenode = self.templatenode
         cond = util.findDescendantNode(templatenode,['condition'])
-        if cond!=None:
+        if cond is not None:
             shownew = self.controller.checkCondition(cond,self)
             if shownew!=self.visible:
                 if notify: self.controller.beforeVisibilityChange(self,shownew)
@@ -1237,7 +1237,7 @@ class Node:
                     child = self.getChildByNumber(childname,index,create=True)
             else:
                 child = self[childname]
-            if child==None: continue
+            if child is None: continue
             child.copyFrom(sourcechild,replace=replace)
             if child in oldchildren:
                 oldchildren.remove(child)
@@ -1289,8 +1289,8 @@ class TypedStore(util.referencedobject):
         """
         import atexit
         if cls==TypedStore: return None
-        if name==None: name = 'default'
-        if cls.defaultname2scenarios==None: cls.defaultname2scenarios = {}
+        if name is None: name = 'default'
+        if cls.defaultname2scenarios is None: cls.defaultname2scenarios = {}
         version2store = cls.defaultname2scenarios.setdefault(name,{})
         if version in version2store:
             # We have the requested default with the requested version in our cache; return it.
@@ -1298,7 +1298,7 @@ class TypedStore(util.referencedobject):
         elif 'source' not in version2store:
             # We do not have any version of the requested default; first obtain the source version.
             path = cls.getDefaultValues().get(name,None)
-            if path==None: return None
+            if path is None: return None
             sourcestore = cls.fromXmlFile(path,adddefault=False)
             atexit.register(TypedStore.release,sourcestore)
             version2store['source'] = sourcestore
@@ -1321,7 +1321,7 @@ class TypedStore(util.referencedobject):
         """
         assert cls!=TypedStore, 'fromSchemaName cannot be called on base class "TypedStore", only on derived classes. You need to create a derived class with versioning support.'
         schemapath = cls.getDefaultSchemas().get(schemaname,None)
-        if schemapath==None: 
+        if schemapath is None: 
             raise Exception('Unable to locate XML schema file for "%s".' % schemaname)
         kwargs['schema'] = schemapath
         store = cls(*args,**kwargs)
@@ -1379,7 +1379,7 @@ class TypedStore(util.referencedobject):
         # Add store with default values if requested and available.
         if adddefault:
             defscenario = self.getDefault(None,self.version)
-            if defscenario!=None: self.setDefaultStore(defscenario,updatevisibility=False)
+            if defscenario is not None: self.setDefaultStore(defscenario,updatevisibility=False)
 
         # Now set current values in the store
         # NB: this must be done after default values are set, so that the default
@@ -1393,14 +1393,14 @@ class TypedStore(util.referencedobject):
         """Destroys the store and breaks circular references. The TypedStore object
         should not be used after this method has been called!
         """
-        if self.root!=None: self.root.destroy()
+        if self.root is not None: self.root.destroy()
         self.root = None
 
         # Release container
         self.setContainer(None)
         
         # Release default store
-        if self.defaultstore!=None:
+        if self.defaultstore is not None:
             self.defaultstore.disconnectInterface(self.defaultinterface)
             self.defaultinterface = None
             self.defaultstore.release()
@@ -1443,9 +1443,9 @@ class TypedStore(util.referencedobject):
         if 'cache' in self.context:
             for v in self.context['cache'].itervalues(): v.release()
             del self.context['cache']
-        if self.context.get('container',None)!=None:
+        if self.context.get('container',None) is not None:
             self.context['container'].release()
-        if container!=None: container.addref()
+        if container is not None: container.addref()
         self.context['container'] = container
 
     def setStore(self,valueroot):
@@ -1454,7 +1454,7 @@ class TypedStore(util.referencedobject):
         path to an XML file (i.e., a string), an XML document, or an XML
         node. None may be specified instead to clear the store of all values.
         """
-        if self.root!=None: self.root.destroy()
+        if self.root is not None: self.root.destroy()
 
         if 'linkedobjects' in self.context:
             for n,v in self.context['linkedobjects'].iteritems():
@@ -1464,10 +1464,10 @@ class TypedStore(util.referencedobject):
 
         templateroot = self.schema.getRoot()
 
-        assert valueroot==None or isinstance(valueroot,basestring) or isinstance(valueroot,xml.dom.Node), 'Supplied value root must None, a path to an XML file, or an XML node, but is %s.' % valueroot
+        assert valueroot is None or isinstance(valueroot,basestring) or isinstance(valueroot,xml.dom.Node), 'Supplied value root must None, a path to an XML file, or an XML node, but is %s.' % valueroot
 
         valuedom = None
-        if valueroot==None:
+        if valueroot is None:
             impl = xml.dom.minidom.getDOMImplementation()
             assert templateroot.hasAttribute('name'), 'Root of the schema does not have attribute "name".'
             valuedom = impl.createDocument(None, templateroot.getAttribute('name'), None)
@@ -1481,7 +1481,7 @@ class TypedStore(util.referencedobject):
             valueroot = valuedom.documentElement
         else:
             valuedom = valueroot
-            while valuedom.parentNode!=None: valuedom = valuedom.parentNode
+            while valuedom.parentNode is not None: valuedom = valuedom.parentNode
             assert valuedom.nodeType==valuedom.DOCUMENT_NODE, 'Could not find DOM document node.'
 
         valuesversion = valueroot.getAttribute('version')
@@ -1514,7 +1514,7 @@ class TypedStore(util.referencedobject):
         store MUST use the same schema as the store that is attached to.
         """
         assert self.version==store.version,'Version of supplied default store must match version of current store.'
-        if self.defaultstore!=None:
+        if self.defaultstore is not None:
             self.defaultstore.disconnectInterface(self.defaultinterface)
             self.defaultinterface = None
             self.defaultstore.release()
@@ -1575,7 +1575,7 @@ class TypedStore(util.referencedobject):
                         assert False, 'Cannot find foreign node "%s" in list of its own siblings.' % name
                 indices.insert(0,index)
             currentnode = currentnode.parent
-        assert currentnode.parent==None, 'Location does not describe complete path to root. Currently at %s.' % currentnode
+        assert currentnode.parent is None, 'Location does not describe complete path to root. Currently at %s.' % currentnode
         
         # Now find the same location in our own store.
         currentnode = self.root
@@ -1584,13 +1584,13 @@ class TypedStore(util.referencedobject):
                 currentnode = currentnode.getChildByNumber(name,index)
             else:
                 currentnode = currentnode.getChildById(name,index)
-            if currentnode==None: return None
+            if currentnode is None: return None
             
         return currentnode
         
     def persist(self,callback=None):
         """Directs all custom nodes to store their custom contents in a container."""
-        nodes = [node for node in self.root.getNodesByType(datatypes.DataType,True) if node.valuenode!=None]
+        nodes = [node for node in self.root.getNodesByType(datatypes.DataType,True) if node.valuenode is not None]
         progslicer = util.ProgressSlicer(callback,len(nodes))
         for node in nodes:
             progslicer.nextStep(node.getText(1))
@@ -1634,14 +1634,14 @@ class TypedStore(util.referencedobject):
             refnode = self.root
             if valuepath[0]!='/': refnode = ownernode.parent
             node = refnode[valuepath]
-            assert node!=None, 'Cannot locate dependency "%s" for node "%s".' % (nodeCondition.getAttribute('variable'),ownernode)
+            assert node is not None, 'Cannot locate dependency "%s" for node "%s".' % (nodeCondition.getAttribute('variable'),ownernode)
 
             # Get the current value of the variable we depend on
             curvalue = node.getValue(usedefault=True)
 
             # If the node in question currently does not have a value, we cannot check the condition;
             # just return 'valid'.
-            if curvalue==None: return True
+            if curvalue is None: return True
 
             # Get the reference value we will compare against
             valuetype = node.getValueType(returnclass=True)
@@ -1682,7 +1682,7 @@ class TypedStore(util.referencedobject):
         Set "skiphidden" to True to leave the value of nodes that are currently hidden
         untouched.
         """
-        assert self.defaultstore!=None, 'Cannot fill missing values with defaults because no default store has been specified.'
+        assert self.defaultstore is not None, 'Cannot fill missing values with defaults because no default store has been specified.'
         if skiphidden:
             for n in self.root.getEmptyNodes():
                 if not n.isHidden():
@@ -1693,7 +1693,7 @@ class TypedStore(util.referencedobject):
             self.root.copyFrom(self.defaultstore.root,replace=False)
 
     def clearValidationHistory(self,nodes=None):
-        if nodes==None:
+        if nodes is None:
             self.validnodes.clear()
         else:
             self.validnodes -= set(nodes)
@@ -1708,7 +1708,7 @@ class TypedStore(util.referencedobject):
     def validate(self,nodes=None,usedefault=True,repair=0,callback=None,usehistory=True):
 
         # If no nodes were specified explicitly, we must validate all.
-        if nodes==None: nodes = self.root.getDescendants()
+        if nodes is None: nodes = self.root.getDescendants()
             
         # Call base implementation
         errors, validity = self._validate(nodes,usedefault=usedefault,repair=repair,callback=callback,usehistory=usehistory)
@@ -1730,7 +1730,7 @@ class TypedStore(util.referencedobject):
             if not node.canHaveValue(): continue
             type = node.getValueType()
             value = node.getValue(usedefault=usedefault)
-            if value==None:
+            if value is None:
                 emptynodes.append(node)
             elif isinstance(value,datatypes.DataType):
                 customnodes.append(node)
@@ -1763,7 +1763,7 @@ class TypedStore(util.referencedobject):
         for node in selectnodes:
             value = node.getValue(usedefault=usedefault)
             optionsroot = util.findDescendantNode(node.templatenode,['options'])
-            assert optionsroot!=None, 'Schema node %s is of type "select", but lacks the "options" child node.' % node
+            assert optionsroot is not None, 'Schema node %s is of type "select", but lacks the "options" child node.' % node
             opt = 0
             for ch in optionsroot.childNodes:
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
@@ -1834,7 +1834,7 @@ class TypedStore(util.referencedobject):
             return target
 
         convertor = self.getConvertor(self.version,target.version)
-        if convertor==None:
+        if convertor is None:
             raise Exception('No convertor available to convert version "%s" to "%s".' % (self.version,target.version))
         convertor.convert(self,target,callback=callback)
 
@@ -1855,7 +1855,7 @@ class TypedStore(util.referencedobject):
             if convertorclass==Convertor:
                 conv = convertorclass(sourceid,targetid)
                 revconv = cls.getConvertor(targetid,sourceid,directonly=True)
-                if revconv!=None:
+                if revconv is not None:
                     conv.links = revconv.reverseLinks()
                 return conv
             else:
@@ -1907,8 +1907,8 @@ class TypedStore(util.referencedobject):
         a simple class for back conversion, via addDefaultConvertor."""
         sourceid = convertorclass.fixedsourceid
         targetid = convertorclass.fixedtargetid
-        assert sourceid!=None, 'Error! Specified convertor class lacks a source identifier.'
-        assert targetid!=None, 'Error! Specified convertor class lacks a target identifier.'
+        assert sourceid is not None, 'Error! Specified convertor class lacks a source identifier.'
+        assert targetid is not None, 'Error! Specified convertor class lacks a target identifier.'
         if sourceid not in cls.convertorsfrom: cls.convertorsfrom[sourceid] = {}
         assert targetid not in cls.convertorsfrom[sourceid], 'Error! A class for converting from "%s" to "%s" was already specified previously.' % (sourceid,targetid)
         cls.convertorsfrom[sourceid][targetid] = convertorclass
@@ -1929,7 +1929,7 @@ class TypedStore(util.referencedobject):
         Both direct and indirect (via another version) routes are ok.
         """
         # Try direct conversion
-        if cls.getConvertor(sourceid,targetid)!=None:
+        if cls.getConvertor(sourceid,targetid) is not None:
             return True
 
         print 'Searching for indirect conversion routes from '+sourceid+' to '+targetid+'.'
@@ -1955,7 +1955,7 @@ class TypedStore(util.referencedobject):
         for sid in sourceids:
             if sid==targetid or cls.hasConvertor(sid,targetid):
                 (platform,version) = sid.split('-')
-                if requireplatform==None or requireplatform==platform:
+                if requireplatform is None or requireplatform==platform:
                     version = versionStringToInt(version)
                     sourceinfo.append((platform,version,sid))
 
@@ -2040,7 +2040,7 @@ class TypedStore(util.referencedobject):
         refer to the newly saved container for external data objects. If this is not
         set, the TypedStore will after the save still use its original container for
         external data objects."""
-        if targetversion!=None and self.version!=targetversion:
+        if targetversion is not None and self.version!=targetversion:
             progslicer = util.ProgressSlicer(callback,3)
         
             # First convert to the target version
@@ -2147,7 +2147,7 @@ class TypedStore(util.referencedobject):
             raise Exception('The specified source does not contain "%s" and can therefore not be a %s.' % (self.storefilename,self.storetitle))
 
         # Report that we are beginning to load.            
-        if callback!=None: callback(0.,'parsing XML')
+        if callback is not None: callback(0.,'parsing XML')
 
         # Read and parse the store XML file.
         datafile = container.getItem(self.storefilename)
@@ -2161,10 +2161,10 @@ class TypedStore(util.referencedobject):
         if self.version!=version and version!='':
             # The version of the saved scenario does not match the version of this scenario object; convert it.
             if verbose: print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.storetitle,path,version,self.version)
-            if callback!=None: callback(0.5,'converting scenario')
+            if callback is not None: callback(0.5,'converting scenario')
             tempstore = self.fromSchemaName(version)
             tempstore.loadAll(container)
-            if callback==None:
+            if callback is None:
                 tempstore.convert(self)
             else:
                 tempstore.convert(self,callback=lambda p,s: callback(.5+.5*p,'converting scenario: '+s))
@@ -2182,7 +2182,7 @@ class TypedStore(util.referencedobject):
         container.release()
 
         # Report that we have finished loading.            
-        if callback!=None: callback(1.,'done')
+        if callback is not None: callback(1.,'done')
 
     def toXml(self,enc='utf-8'):
         """Returns the values as an XML string, with specified encoding."""
@@ -2217,7 +2217,7 @@ class TypedStore(util.referencedobject):
         """
         # Map node in default store to node in our own store.
         ownnode = self.mapForeignNode(defaultnode)
-        if ownnode==None: return
+        if ownnode is None: return
 
         # Emit change event
         for i in self.interfaces:
@@ -2247,7 +2247,7 @@ class TypedStore(util.referencedobject):
         """
         # Get nodes that depend on the changed node; if there are none, exit.
         deps = util.findDescendantNode(node.templatenode,['dependentvariables'])
-        if deps==None: return
+        if deps is None: return
 
         # Now build a list of the dependant nodes; currently hidden nodes first, currently visible
         # nodes last, so that when we iterate over the list and switch visibilities first extra nodes
@@ -2261,7 +2261,7 @@ class TypedStore(util.referencedobject):
             else:
                 refnode = self.root
             varnode = refnode[varpath]
-            assert varnode!=None, 'Unable to locate node "%s" at %s.' % (varpath,refnode)
+            assert varnode is not None, 'Unable to locate node "%s" at %s.' % (varpath,refnode)
             
             deptype = d.getAttribute('type')
             if deptype=='visibility':
@@ -2330,13 +2330,13 @@ class Convertor:
     fixedtargetid = None
 
     def __init__(self,sourceid=None,targetid=None):
-        if sourceid==None:
-            if self.fixedsourceid==None:
+        if sourceid is None:
+            if self.fixedsourceid is None:
                 raise Exception('Convertor class was created without explicit version identifiers, but also lacks default identifiers.')
             sourceid = self.fixedsourceid
             targetid = self.fixedtargetid
         else:
-            if self.fixedsourceid!=None:
+            if self.fixedsourceid is not None:
                 raise Exception('Convertor class was created with explicit version identifiers, but also has default identifiers.')
         
         self.sourceid = sourceid
@@ -2374,10 +2374,10 @@ class Convertor:
         # Handle explicit one-to-one links between source nodes and target nodes.
         for (sourcepath,targetpath) in self.links:
             sourcenode = source[sourcepath]
-            if sourcenode==None:
+            if sourcenode is None:
                 raise Exception('Cannot locate node "%s" in source.' % sourcepath)
             targetnode = target[targetpath]
-            if targetnode==None:
+            if targetnode is None:
                 raise Exception('Cannot locate node "%s" in target.' % targetpath)
             targetnode.copyFrom(sourcenode)
 
@@ -2386,7 +2386,7 @@ class Convertor:
             defscen = target.getDefault(None,target.version)
             for path in self.defaults:
                 sourcenode = defscen[path]
-                if sourcenode==None:
+                if sourcenode is None:
                     raise Exception('Cannot locate node "%s" in default.' % path)
                 targetnode = target[path]
                 targetnode.copyFrom(sourcenode)
@@ -2406,14 +2406,14 @@ class ConvertorChain(Convertor):
     def convert(self,source,target,callback=None):
         temptargets = []
         nsteps = len(self.chain)
-        if callback!=None:
+        if callback is not None:
             stepcallback = lambda p,s: callback((istep+p)/nsteps,s)
         else:
             stepcallback = None
         for istep in range(nsteps-1):
             convertor = self.chain[istep]
             temptargetid = convertor.targetid
-            if callback!=None: callback(float(istep)/nsteps,'converting to version "%s".' % temptargetid)
+            if callback is not None: callback(float(istep)/nsteps,'converting to version "%s".' % temptargetid)
             if verbose: print 'Converting to temporary target "%s".' % temptargetid
             temptarget = source.fromSchemaName(temptargetid)
             temptargets.append(temptarget)
@@ -2421,7 +2421,7 @@ class ConvertorChain(Convertor):
             source = temptarget
         convertor = self.chain[-1]
         istep = nsteps-1
-        if callback!=None: callback(float(istep)/nsteps,'converting to version "%s".' % target.version)
+        if callback is not None: callback(float(istep)/nsteps,'converting to version "%s".' % target.version)
         if verbose: print 'Converting to final target "%s".' % target.version
         convertor.convert(source,target,callback=stepcallback)
         for temptarget in temptargets: temptarget.release()

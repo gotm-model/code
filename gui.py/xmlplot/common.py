@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.20 2009-04-14 09:45:42 jorn Exp $
+#$Id: common.py,v 1.21 2009-05-11 14:54:26 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -12,7 +12,7 @@ def get_py2exe_datafiles():
     from distutils.filelist import findall
     def adddir(path,localtarget=None):
         files = []
-        if localtarget==None: localtarget = path
+        if localtarget is None: localtarget = path
         for f in findall(path):
             localname = os.path.join(localtarget, f[len(path)+1:])
             if 'CVS' in localname: continue
@@ -34,7 +34,7 @@ def setDataRoot(path):
     dataroot = path
 def getDataRoot():
     global dataroot
-    if dataroot==None:
+    if dataroot is None:
         if hasattr(sys,'frozen'):
             dataroot = os.path.join(os.path.dirname(unicode(sys.executable, sys.getfilesystemencoding())),'xmlplot')
         else:
@@ -97,7 +97,7 @@ def convertMatlabDateFormat(fmt):
     newfmt,ipos = '',0
     while True:
         match = query.search(fmt,ipos)
-        if match==None:
+        if match is None:
             newfmt += fmt[ipos:]
             break
         newfmt += fmt[ipos:match.start()]+matlab2python[match.group()]
@@ -114,10 +114,10 @@ def findIndices(bounds,data):
     # Zero-based indices!
     start = 0
     stop = len(data)-1
-    if bounds!=None:
-        if bounds[0]!=None:
+    if bounds is not None:
+        if bounds[0] is not None:
             while start<len(data) and data[start]<bounds[0]: start+=1
-        if bounds[1]!=None:
+        if bounds[1] is not None:
             while stop>=0         and data[stop] >bounds[1]: stop-=1
 
         # Greedy: we want take the interval that fully encompasses the specified range.
@@ -323,7 +323,7 @@ def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
     should be specified in argument defaultdeltafunction, and the dimension names should be
     provided in argument dimnames.
     """
-    if dimindices==None: dimindices = range(coords.ndim)
+    if dimindices is None: dimindices = range(coords.ndim)
 
     # Calculate the shape of the to-be-created staggered array.
     stagshape = list(coords.shape)
@@ -354,10 +354,10 @@ def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
         sourceslc1,sourceslc2 = list(targetslc),list(targetslc)
         targetslc[idim],sourceslc1[idim],sourceslc2[idim] = -1,-3,-2
         if coords.shape[idim]==1:
-            if defaultdeltafunction==None:
+            if defaultdeltafunction is None:
                 delta = 1
             else:
-                assert dimnames!=None,'If a function supplying default delta is given, the dimension names must be given as well.'
+                assert dimnames is not None,'If a function supplying default delta is given, the dimension names must be given as well.'
                 delta = defaultdeltafunction(dimnames[idim],coords)
         else:
             delta = (coords_stag[tuple(sourceslc2)]-coords_stag[tuple(sourceslc1)])
@@ -385,22 +385,22 @@ def getboundindices(data,axis,minval=None,maxval=None):
     if data.ndim>1:
         n = data.shape[axis]
         data = data.swapaxes(0,axis).reshape((n,-1))
-        if minval!=None: lc = data.max(axis=1)
-        if maxval!=None: uc = data.min(axis=1)
+        if minval is not None: lc = data.max(axis=1)
+        if maxval is not None: uc = data.min(axis=1)
     else:
         n,uc,lc = len(data),data,data
         
     if n>1 and uc[0]>uc[1] and lc[0]>lc[1]:
         # Values are sorted in descending order: switch the sign to get ascending order
         minval,maxval = maxval,minval
-        if minval!=None: minval = -minval
-        if maxval!=None: maxval = -maxval
+        if minval is not None: minval = -minval
+        if maxval is not None: maxval = -maxval
         uc = -uc
         lc = -lc
         
     imin,imax = 0,n
-    if minval!=None: imin = min(n-1,max(0,lc.searchsorted(minval)-1))
-    if maxval!=None: imax = max(1  ,min(n,uc.searchsorted(maxval)+1))
+    if minval is not None: imin = min(n-1,max(0,lc.searchsorted(minval)-1))
+    if maxval is not None: imax = max(1  ,min(n,uc.searchsorted(maxval)+1))
     return imin,imax
     
 def broadcastSelective(source,sourcedims,targetshape,targetdims):
@@ -454,8 +454,8 @@ class VariableStore(UserDict.DictMixin):
             self.newlabels[varname] = newname
         
     def addChild(self,child,name=None):
-        if name==None and isinstance(child,Variable): name=child.getName_raw()
-        assert name!=None,'No name specified, but the child object does not have an internal name either.'
+        if name is None and isinstance(child,Variable): name=child.getName_raw()
+        assert name is not None,'No name specified, but the child object does not have an internal name either.'
         self.children[name] = child
 
     def removeChild(self,name):
@@ -474,7 +474,7 @@ class VariableStore(UserDict.DictMixin):
         return self.getExpression(expression)
         
     def __contains__(self,varname):
-        if self.rawlabels!=None: return varname in self.rawlabels
+        if self.rawlabels is not None: return varname in self.rawlabels
         return UserDict.DictMixin.__contains__(self,varname)
 
     def getVariable(self,varname):
@@ -484,9 +484,9 @@ class VariableStore(UserDict.DictMixin):
             child = self.children[varname]
             if isinstance(child,Variable): return child
         rawname = varname
-        if self.rawlabels!=None: rawname = self.rawlabels.get(varname,None)
+        if self.rawlabels is not None: rawname = self.rawlabels.get(varname,None)
         var = self.getVariable_raw(rawname)
-        if var!=None: var.forcedname = varname
+        if var is not None: var.forcedname = varname
         return var
         
     def normalizeExpression(self,expression,defaultchild=None):
@@ -503,7 +503,7 @@ class VariableStore(UserDict.DictMixin):
         # Create the namespace that must be used when then expression is evaluated.
         import expressions
         namespace = expressions.ExpressionNamespace(expressions.LazyStore(self))
-        if defaultchild!=None:
+        if defaultchild is not None:
             defaultvars = {}
             defaultsource = self.children[defaultchild]
             assert isinstance(defaultsource,VariableStore), 'Default variable source must be of type VariableStore.'
@@ -525,7 +525,7 @@ class VariableStore(UserDict.DictMixin):
     def getVariableNames(self,alllevels=False):
         """Returns a list of short names for all variables present in the store.
         """
-        if self.rawlabels!=None:
+        if self.rawlabels is not None:
             varnames = self.rawlabels.keys()
         else:
             varnames = self.getVariableNames_raw()
@@ -539,7 +539,7 @@ class VariableStore(UserDict.DictMixin):
 
     def getPlottableVariableNames(self):
         varnames = self.getPlottableVariableNames_raw()
-        if self.rawlabels!=None: varnames = [self.newlabels[varname] for varname in varnames]
+        if self.rawlabels is not None: varnames = [self.newlabels[varname] for varname in varnames]
         for childname,child in self.children.iteritems():
             if isinstance(child,Variable): varnames.append(childname)
         return varnames
@@ -555,7 +555,7 @@ class VariableStore(UserDict.DictMixin):
         """Returns a dictionary linking variable short names to long names.
         """
         longnames = self.getVariableLongNames_raw()
-        if self.rawlabels!=None:
+        if self.rawlabels is not None:
             longnames = dict([(self.newlabels[varname],longname) for (varname,longname) in longnames.iteritems()])
         for childname,child in self.children.iteritems():
             if isinstance(child,Variable):
@@ -566,7 +566,7 @@ class VariableStore(UserDict.DictMixin):
         return longnames
         
     def getDimensionInfo(self,dimname):
-        if self.rawlabels!=None: dimname = self.rawlabels.get(dimname,dimname)
+        if self.rawlabels is not None: dimname = self.rawlabels.get(dimname,dimname)
         return self.getDimensionInfo_raw(dimname)
 
     def getDimensionInfo_raw(self,dimname):
@@ -622,7 +622,7 @@ class VariableStore(UserDict.DictMixin):
 
         # If the "other" node is present, add the remaining variable if there
         # are any; if there are none, remove the "other" node form the tree.
-        if other!=None:
+        if other is not None:
             if len(remaining)==0:
                 other.parentNode.removeChild(other)
             else:
@@ -709,8 +709,8 @@ class Variable:
         """
         def __init__(self,dimensions=(),coords=None,coords_stag=None,data=None):
             self.ndim = len(dimensions)
-            if coords     ==None: coords      = self.ndim*[None]
-            if coords_stag==None: coords_stag = self.ndim*[None]
+            if coords      is None: coords      = self.ndim*[None]
+            if coords_stag is None: coords_stag = self.ndim*[None]
             self.dimensions = dimensions
             self.data = data
             self.coords = coords
@@ -725,7 +725,7 @@ class Variable:
             coordinates are properly specified. Note that if a slice is valid,
             it might still be empty.
             """
-            return (self.data!=None) and (None not in self.coords) and (None not in self.coords_stag)
+            return self.data is not None and (None not in self.coords) and (None not in self.coords_stag)
             
         def debugCheck(self,context=''):
             if context!='': context += ': '
@@ -739,7 +739,7 @@ class Variable:
             coordinates.
             """
             for idim in range(self.ndim):
-                assert self.coords[idim]!=None, 'Cannot generate staggered coordinates because centered coordinates have not been set.'
+                assert self.coords[idim] is not None, 'Cannot generate staggered coordinates because centered coordinates have not been set.'
                 assert self.coords[idim].ndim==1, 'Currently a staggered grid can only be generated automatically for 1D coordinate vectors.'
                 self.coords_stag[idim] = getCenters(self.coords[idim],addends=True)
                 
@@ -775,8 +775,8 @@ class Variable:
             newslice.fixedcoords =fixedcoords
 
             # Update confidence interval (if any)
-            if self.lbound!=None: newslice.lbound = self.lbound.squeeze()
-            if self.ubound!=None: newslice.ubound = self.ubound.squeeze()
+            if self.lbound is not None: newslice.lbound = self.lbound.squeeze()
+            if self.ubound is not None: newslice.ubound = self.ubound.squeeze()
 
             return newslice
             
@@ -899,7 +899,7 @@ class Variable:
             raise AttributeError(name)
 
     def getName(self):
-        if self.forcedname!=None: return self.forcedname
+        if self.forcedname is not None: return self.forcedname
         return self.getName_raw()
 
     def getName_raw(self):
@@ -939,7 +939,7 @@ class Variable:
 
     def getDimensions(self):
         dims = self.getDimensions_raw()
-        if self.store!=None and self.store.newlabels!=None:
+        if self.store is not None and self.store.newlabels is not None:
             dims = tuple([self.store.newlabels.get(dim,dim) for dim in dims])
         return dims
 
@@ -984,7 +984,7 @@ class CustomVariable(Variable):
         self.longname = longname
         self.unit = unit
         self.dimensioninfo = {}
-        if dimensioninfo!=None:
+        if dimensioninfo is not None:
             for d in slice.dimensions: self.dimensioninfo[d] = dimensioninfo[d]
         self.hasreverseddimensions = hasreverseddimensions
         self.slice = slice
@@ -993,7 +993,7 @@ class CustomVariable(Variable):
         return self.name
         
     def getLongName(self):
-        if self.longname==None: return self.name
+        if self.longname is None: return self.name
         return self.longname
 
     def getUnit(self):
@@ -1047,7 +1047,7 @@ class DeferredVariable(Variable):
 class FunctionVariable(DeferredVariable):
     def __init__(self,sourcevariable,dimbounds=None,resolution=100):
         DeferredVariable.__init__(self,sourcevariable)
-        if dimbounds==None: dimbounds = {}
+        if dimbounds is None: dimbounds = {}
         self.dimbounds = dimbounds
         self.resolution = resolution
         self.functions = []
@@ -1068,11 +1068,11 @@ class FunctionVariable(DeferredVariable):
         
     #def setGrid(self,grid,grid_stag=None):
     #    if grid[0].ndim==1:
-    #        if grid_stag==None:
+    #        if grid_stag is None:
     #            grid_stag = [getCenters(c,addends=True) for c in grid]
     #            grid_stag = ndgrid(*grid_stag)
     #        grid = ndgrid(*grid)
-    #    assert grid_stag!=None, 'If grid coordinates are provided as multidimensional arrays, staggered coordinates must be provided explicitly.'
+    #    assert grid_stag is not None, 'If grid coordinates are provided as multidimensional arrays, staggered coordinates must be provided explicitly.'
     #    self.grid,self.grid_stag = grid,grid_stag
         
     def setVectorized(self,vectorized=True):
@@ -1091,7 +1091,7 @@ class FunctionVariable(DeferredVariable):
         grid = []
         for d,curbounds in zip(dimnames,bounds):
             curbounds = self.dimbounds.get(d,None)
-            assert curbounds!=None, 'Dimension boundaries for %s were not set upon initialization.' % d
+            assert curbounds is not None, 'Dimension boundaries for %s were not set upon initialization.' % d
             c = numpy.linspace(curbounds[0],curbounds[1],self.resolution)
             grid.append(c)
         grid_stag = [getCenters(c,addends=True) for c in grid]
@@ -1110,7 +1110,7 @@ class FunctionVariable(DeferredVariable):
         functions = []
         for condition,function in self.functions:
             function = compile(function,'<string>','eval')
-            if condition!=None: condition = compile(condition,'<string>','eval')
+            if condition is not None: condition = compile(condition,'<string>','eval')
             functions.append((condition,function))
             
         # Create empty array for holding data
@@ -1124,7 +1124,7 @@ class FunctionVariable(DeferredVariable):
             for d,c in zip(dimnames,grid_tf): namespace[d] = c
             for condition,function in reversed(functions):
                 vals = eval(function,namespace)
-                if condition==None:
+                if condition is None:
                     data[...] = vals
                 else:
                     index = eval(condition,namespace)
@@ -1134,7 +1134,7 @@ class FunctionVariable(DeferredVariable):
             for index in numpy.ndindex(data.shape):
                 for d,c in zip(dimnames,grid_tf): namespace[d] = c[index]
                 for condition,function in functions:
-                    if condition==None or eval(condition,namespace):
+                    if condition is None or eval(condition,namespace):
                         data[index] = eval(function,namespace)
                         break
                         

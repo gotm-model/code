@@ -54,7 +54,7 @@ def getFontSubstitute(fontname):
             pass
         except EnvironmentError:
             pass
-        if hkey!=None:
+        if hkey is not None:
             _winreg.CloseKey(hkey)
         
     return substitute
@@ -142,10 +142,10 @@ class ColorMapEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
     @staticmethod
     def getPixMap(value,width,height):
         qPixMap = ColorMapEditor.cache.get(value,None)
-        if qPixMap==None or qPixMap.width()!=width or qPixMap.height()!=height:
+        if qPixMap is None or qPixMap.width()!=width or qPixMap.height()!=height:
             colormaps,cmlist = plot.getColorMaps()
             cm = colormaps[value]
-            if ColorMapEditor.figure==None:
+            if ColorMapEditor.figure is None:
                 ColorMapEditor.figure = matplotlib.figure.Figure(figsize=(width,height),dpi=1)
                 ColorMapEditor.canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(ColorMapEditor.figure)
                 ColorMapEditor.figure.subplots_adjust(top=1.,bottom=0.,left=0.,right=1.)
@@ -211,7 +211,7 @@ class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
         
         if autoopen: return
 
-        if fileprefix==None: fileprefix = self.title
+        if fileprefix is None: fileprefix = self.title
         self.plotbutton = QtGui.QPushButton(fileprefix+'...',self)
         lo.addWidget(self.plotbutton)
         #lo.addStretch(1)
@@ -224,7 +224,7 @@ class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
         if self.autoopen: self.onPlot()
 
     def setValue(self,value):
-        if self.linkedfile!=None: self.linkedfile.release()
+        if self.linkedfile is not None: self.linkedfile.release()
         self.linkedfile = value.addref()
         
     def value(self):
@@ -239,7 +239,7 @@ class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
         dialog.destroy()
             
     def destroy(self):
-        if self.linkedfile!=None: self.linkedfile.release()
+        if self.linkedfile is not None: self.linkedfile.release()
         QtGui.QWidget.destroy(self)
 
 xmlstore.gui_qt4.registerEditor('gotmdatafile',LinkedFileEditor)
@@ -315,7 +315,7 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
         to catch the changed figure boundaries and process it at a higher
         level, before returning control to MatPlotLib.
         """
-        if self.callback!=None: self.callback()
+        if self.callback is not None: self.callback()
 
     def mouse_move(self, event):
         """Called by the backend when the mouse cursor moves.
@@ -437,7 +437,7 @@ class FigurePanel(QtGui.QWidget):
         self.blockevents = False
         
     def hideEvent(self,event):
-        if self.dialogAdvanced!=None: self.dialogAdvanced.hide()
+        if self.dialogAdvanced is not None: self.dialogAdvanced.hide()
         
     def afterCanvasResize(self):
         w,h = self.canvas.figure.get_size_inches()
@@ -482,11 +482,11 @@ class FigurePanel(QtGui.QWidget):
         """
         defaultrange = True
         axes = self.figure['Axes']
-        if axes!=None:
+        if axes is not None:
             xaxis = axes.getChildById('Axis','x')
             yaxis = axes.getChildById('Axis','y')
             for axis in (xaxis,yaxis):
-                if axis==None: continue
+                if axis is None: continue
                 if axis['IsTimeAxis'].getValue(usedefault=True):
                     defaultrange = (defaultrange and axis['MinimumTime'].hasDefaultValue() and axis['MaximumTime'].hasDefaultValue())
                 else:
@@ -499,7 +499,7 @@ class FigurePanel(QtGui.QWidget):
         """
         w = self.figure['Width'].getValue()
         dpi = float(self.logicalDpiX())
-        if w!=None:
+        if w is not None:
             self.canvas.setMinimumWidth(w/2.54*dpi)
             self.canvas.setMaximumWidth(w/2.54*dpi)
         else:
@@ -512,7 +512,7 @@ class FigurePanel(QtGui.QWidget):
         """
         h = self.figure['Height'].getValue()
         dpi = float(self.logicalDpiX())
-        if h!=None:
+        if h is not None:
             self.canvas.setMinimumHeight(h/2.54*dpi)
             self.canvas.setMaximumHeight(h/2.54*dpi)
         else:
@@ -525,7 +525,7 @@ class FigurePanel(QtGui.QWidget):
         if ownupdating: self.figure.setUpdating(False)
         self.figure.clearVariables()
         self.figure.clearProperties(deleteoptional=False)
-        if isinstance(varstore,basestring) or varstore==None:
+        if isinstance(varstore,basestring) or varstore is None:
             self.figure.addVariable(varname,source=varstore)
         else:
             self.figure.clearSources()
@@ -555,7 +555,7 @@ class FigurePanel(QtGui.QWidget):
         """Called when the user clicks the "Properties..." button.
         Currently this shows the figure properties dialog box.
         """
-        if self.dialogAdvanced==None:
+        if self.dialogAdvanced is None:
             self.dialogAdvanced = xmlstore.gui_qt4.PropertyEditorDialog(self,self.figure.properties,title='Figure properties',loadsave=True,flags=QtCore.Qt.Tool,loadhook=self.loadProperties)
             self.dialogAdvanced.resize(350, 300)
             self.dialogAdvanced.resizeColumns()
@@ -818,8 +818,8 @@ class FigurePanel(QtGui.QWidget):
         are closed.
         """
         self.closeDetached()
-        if self.dialogAdvanced!=None: self.dialogAdvanced.close()
-        if self.figure!=None:
+        if self.dialogAdvanced is not None: self.dialogAdvanced.close()
+        if self.figure is not None:
             self.figure.release()
             self.figure = None
         QtGui.QWidget.destroy(self,destroyWindow,destroySubWindows)
@@ -831,7 +831,7 @@ class FigureDialog(QtGui.QDialog):
     def __init__(self,parent=None,varstore=None,varname=None,sourcefigure=None,figureproperties=None,quitonclose=False,closebutton=None,destroyonclose=True):
         QtGui.QDialog.__init__(self,parent,QtCore.Qt.Window | QtCore.Qt.WindowMaximizeButtonHint | QtCore.Qt.WindowSystemMenuHint )
 
-        if closebutton==None: closebutton = xmlstore.gui_qt4.needCloseButton()
+        if closebutton is None: closebutton = xmlstore.gui_qt4.needCloseButton()
         
         self.setSizeGripEnabled(True)
         layout = QtGui.QVBoxLayout(self)
@@ -839,27 +839,27 @@ class FigureDialog(QtGui.QDialog):
         layout.addWidget(self.panel)
 
         self.panel.figure.setUpdating(False)
-        if sourcefigure!=None:
+        if sourcefigure is not None:
             # A figure to copy settings from is provided.
             self.panel.figure.copyFrom(sourcefigure)
-        elif figureproperties!=None:
+        elif figureproperties is not None:
             # An XML DOM tree with figure settings is provided
-            assert varstore!=None,'If figure properties are specified, the variable store must be given as well.'
+            assert varstore is not None,'If figure properties are specified, the variable store must be given as well.'
             self.panel.figure.addDataSource('main',varstore)
             self.panel.plotFromProperties(figureproperties)
-        elif varstore!=None and varname!=None:
+        elif varstore is not None and varname is not None:
             # A figure store and variable name are provided.
             self.panel.figure.addDataSource('main',varstore)
             self.panel.figure.addVariable(varname)
         else:
             # Nothing provided; figure will be empty.
-            assert varstore==None and varname==None,'If a variable is to be plotted, both the variable store and the variable name must be provided.'
+            assert varstore is None and varname is None,'If a variable is to be plotted, both the variable store and the variable name must be provided.'
         self.panel.figure.setUpdating(True)
         
         if closebutton: self.panel.toolbar.addAction(getIcon('exit.png'),'Close',self.accept)
 
         title = self.panel.figure['Title'].getValue(usedefault=True)
-        if title==None: title = 'Figure'
+        if title is None: title = 'Figure'
         self.setWindowTitle(title)
 
         # Prevent this window from keeping the application alive after the main window was closed.
@@ -878,7 +878,7 @@ class FigureDialog(QtGui.QDialog):
         
     def destroy(self,destroyWindow = True, destroySubWindows = True):
         self.emit(QtCore.SIGNAL('beforeDestroy'),self)
-        assert self.panel!=None, 'FigurePanel is None. This means FigureDialog.destroy() is now called for the second time.'
+        assert self.panel is not None, 'FigurePanel is None. This means FigureDialog.destroy() is now called for the second time.'
         self.panel.destroy()
         self.panel = None
         QtGui.QDialog.destroy(self,destroyWindow,destroySubWindows)
@@ -993,10 +993,10 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         self.progressdialog.setAutoReset(False)
         self.progressdialog.setWindowTitle('Parsing data file...')
 
-        if title!=None: self.setWindowTitle(title)
+        if title is not None: self.setWindowTitle(title)
         
     def insertAction(self,panel,before,string,icon=None,target=None):
-        if target==None:
+        if target is None:
             target = icon
             icon = None
         act = QtGui.QAction(string,panel.toolbar)
@@ -1006,7 +1006,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         
     def onTabChanged(self,newtab):
         pass
-        #if self.dlgEditFunction!=None: self.dlgEditFunction.hide()
+        #if self.dlgEditFunction is not None: self.dlgEditFunction.hide()
         
     def onEditData(self):
         dialog = LinkedFileDataEditor(self.linkedfile,self)
@@ -1022,7 +1022,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         return self.privatestore.getVariable(varnames[i])
         
     def onEditFunction(self):
-        if self.dlgEditFunction==None:
+        if self.dlgEditFunction is None:
             self.dlgEditFunction = FunctionVariableEditor(self,QtCore.Qt.Tool)
             self.connect(self.dlgEditFunction.bnApply, QtCore.SIGNAL('clicked()'), self.onApplyFunction)
         variable = self.getCurrentVariable()
@@ -1072,7 +1072,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         
         # If a new datafile is provided, load it as new current data file.
         # (but backup the old data file before doing so)
-        if datafile!=None:
+        if datafile is not None:
             oldlinkedfile = self.linkedfile
             self.linkedfile = self.linkedfile.copy()
             self.linkedfile.setDataFile(datafile)
@@ -1085,7 +1085,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
                 self.progressdialog.reset()
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Invalid data file', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
-            if datafile==None:
+            if datafile is None:
                 # No old file available - provide an empty file because we need
                 # something to work with.
                 self.linkedfile = self.linkedfile.copy()
@@ -1096,7 +1096,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
             
         # The data may be None, meaning that the data file is empty.
         # In that case, explicitly create an empty table.
-        if self.linkedfile.data==None:
+        if self.linkedfile.data is None:
             self.linkedfile.clear()
         
         # Add copies of the individual variables to our private store.
@@ -1112,7 +1112,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
 
     def onParseProgress(self,progress,status):
         if self.progressdialog.isHidden(): self.progressdialog.show()
-        if progress!=None:
+        if progress is not None:
             if self.progressdialog.maximum()==0: self.progressdialog.setMaximum(100)
             self.progressdialog.setValue(int(100*progress))
         elif self.progressdialog.maximum()!=0:
@@ -1124,14 +1124,14 @@ class LinkedFileEditorDialog(QtGui.QDialog):
 
     def onImport(self):
         dir = ''
-        if self.datasourcedir!=None: dir = self.datasourcedir.get('')
+        if self.datasourcedir is not None: dir = self.datasourcedir.get('')
         path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',dir,''))
 
         # If the browse dialog was cancelled, just return.
         if path=='': return
         
         # Store the data source directory
-        if self.datasourcedir!=None:
+        if self.datasourcedir is not None:
             self.datasourcedir.set(os.path.dirname(path))
 
         # Create data file for file-on-disk, copy it to memory,
@@ -1184,7 +1184,7 @@ class FunctionVariableEditor(QtGui.QWidget):
         self.setWindowTitle('Specify function')
         
     def setVariable(self,variable):
-        if variable==None:
+        if variable is None:
             self.checkVectorized.setChecked(True)
             self.edit.setText('')
         else:
@@ -1255,7 +1255,7 @@ class LinkedFileDataEditor(QtGui.QDialog):
             QtCore.QAbstractItemModel.reset(self)
             
         def index(self,irow,icolumn,parent=None):
-            if parent==None: parent=QtCore.QModelIndex()
+            if parent is None: parent=QtCore.QModelIndex()
             assert not parent.isValid(), 'Only the root can have child nodes.'
             return self.createIndex(irow,icolumn)
 
@@ -1263,21 +1263,21 @@ class LinkedFileDataEditor(QtGui.QDialog):
             return QtCore.QModelIndex()
             
         def rowCount(self,parent=None):
-            if parent==None: parent=QtCore.QModelIndex()
+            if parent is None: parent=QtCore.QModelIndex()
             if parent.isValid(): return 0
-            if self.rowlabels!=None:
+            if self.rowlabels is not None:
                 return self.rowlabels.shape[0]
-            elif self.datamatrix!=None:
+            elif self.datamatrix is not None:
                 return self.datamatrix.shape[0]
             else:
                 return 0
 
         def columnCount(self,parent=None):
-            if parent==None: parent=QtCore.QModelIndex()
+            if parent is None: parent=QtCore.QModelIndex()
             colcount = 0
-            if self.rowlabels!=None:
+            if self.rowlabels is not None:
                 colcount += 1
-            if self.datamatrix!=None:
+            if self.datamatrix is not None:
                 colcount += self.datamatrix.shape[1]
             return colcount
 
@@ -1285,7 +1285,7 @@ class LinkedFileDataEditor(QtGui.QDialog):
             if role==QtCore.Qt.DisplayRole or role==QtCore.Qt.EditRole:
                 rowindex = index.row()
                 colindex = index.column()
-                if self.rowlabels!=None: colindex -= 1
+                if self.rowlabels is not None: colindex -= 1
                 if colindex==-1:
                     if self.datelabels:
                         val = common.num2date(self.rowlabels[rowindex])
@@ -1321,7 +1321,7 @@ class LinkedFileDataEditor(QtGui.QDialog):
                     assert False, 'Do not know variant type %s.' % val.type()
                 rowindex = index.row()
                 colindex = index.column()
-                if self.rowlabels!=None: colindex -= 1
+                if self.rowlabels is not None: colindex -= 1
                 if colindex==-1:
                     # We have edited a row label. The table is kep sorted according
                     # to row labels, so this means the position of the current row
@@ -1336,7 +1336,7 @@ class LinkedFileDataEditor(QtGui.QDialog):
                         if newrowindex>rowindex+1:
                             self.rowlabels[rowindex:newrowindex-1] = self.rowlabels[rowindex+1:newrowindex]
                             self.rowlabels[newrowindex-1] = buflab
-                            if self.datamatrix!=None:
+                            if self.datamatrix is not None:
                                 self.datamatrix[rowindex:newrowindex-1,:] = self.datamatrix[rowindex+1:newrowindex,:]
                                 self.datamatrix[newrowindex-1,:] = bufdata
                             if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type!=0:
@@ -1346,7 +1346,7 @@ class LinkedFileDataEditor(QtGui.QDialog):
                         elif newrowindex<rowindex:
                             self.rowlabels[newrowindex+1:rowindex+1] = self.rowlabels[newrowindex:rowindex]
                             self.rowlabels[newrowindex] = buflab
-                            if self.datamatrix!=None:
+                            if self.datamatrix is not None:
                                 self.datamatrix[newrowindex+1:rowindex+1,:] = self.datamatrix[newrowindex:rowindex,:]
                                 self.datamatrix[newrowindex,:] = bufdata
                             if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type!=0:
@@ -1363,10 +1363,10 @@ class LinkedFileDataEditor(QtGui.QDialog):
         def addRow(self):
             newrowindex = self.datamatrix.shape[0]
             self.beginInsertRows(QtCore.QModelIndex(),newrowindex,newrowindex)
-            if self.datamatrix!=None:
+            if self.datamatrix is not None:
                 newrow = numpy.zeros((1,self.datamatrix.shape[1]),self.datamatrix.dtype)
                 self.datamatrix = numpy.concatenate((self.datamatrix,newrow))
-            if self.rowlabels!=None:
+            if self.rowlabels is not None:
                 if self.datelabels:
                     if newrowindex==0:
                         newval = common.date2num(datetime.datetime.today())
@@ -1381,11 +1381,11 @@ class LinkedFileDataEditor(QtGui.QDialog):
             self.endInsertRows()
             
         def removeRow(self,start,stop=None):
-            if stop==None: stop=start
+            if stop is None: stop=start
             self.beginRemoveRows(QtCore.QModelIndex(),start,stop)
-            if self.datamatrix!=None:
+            if self.datamatrix is not None:
                 self.datamatrix = numpy.concatenate((self.datamatrix[0:start,:],self.datamatrix[stop+1:,:]))
-            if self.rowlabels!=None:
+            if self.rowlabels is not None:
                 self.rowlabels = numpy.concatenate((self.rowlabels[0:start],self.rowlabels[stop+1:]))
             self.saveData()
             self.datastore.dataChanged()
@@ -1524,7 +1524,7 @@ class LinkedFileDataEditor(QtGui.QDialog):
 
         self.resize(750, 450)
 
-        if title!=None: self.setWindowTitle(title)
+        if title is not None: self.setWindowTitle(title)
         
     def addRow(self):
         """Event handler: called when user clicks the "Add row" button.

@@ -10,7 +10,7 @@ class ExpressionNamespace(UserDict.DictMixin):
 
     def __init__(self,firsttable=None):
         self.tables = []
-        if firsttable!=None: self.append(firsttable)
+        if firsttable is not None: self.append(firsttable)
         
     def append(self,object):
         self.tables.append(object)
@@ -52,14 +52,14 @@ class LazyStore(UserDict.DictMixin):
 
     def __getitem__(self,name):
         result = self.store.getVariable(name)
-        if result==None: result = self.store.children.get(name,None)
-        if result==None: raise KeyError(name)
+        if result is None: result = self.store.children.get(name,None)
+        if result is None: raise KeyError(name)
         if isinstance(result,common.VariableStore):
             result = LazyStore(result,name)
-            if self.name!=None: result.name = '%s[\'%s\']' % (self.name,name)
+            if self.name is not None: result.name = '%s[\'%s\']' % (self.name,name)
         else:
             result = LazyVariable(result)
-            if self.name!=None: name = '%s[\'%s\']' % (self.name,name)
+            if self.name is not None: name = '%s[\'%s\']' % (self.name,name)
             result.name = name
         return result
         
@@ -91,9 +91,9 @@ class LazyExpression:
             try:
                 if issubclass(self.func,LazyFunction): f = self.func(*args,**kwargs)
             except Exception,e: pass
-            if f==None:
+            if f is None:
                 f = LazyFunction(self.name,self.func,*args,**kwargs)
-            if self.removedim!=None: f.setRemovedDimension(argindex=self.removedim[0],argname=self.removedim[1])
+            if self.removedim is not None: f.setRemovedDimension(argindex=self.removedim[0],argname=self.removedim[1])
             f.useslices = self.useslices
             return f
 
@@ -101,7 +101,7 @@ class LazyExpression:
 
     @staticmethod
     def getFunctions():
-        if LazyExpression.globalfuncs==None:
+        if LazyExpression.globalfuncs is None:
             LazyExpression.globalfuncs = {}
             for name in dir(numpy):
                 LazyExpression.globalfuncs[name] = LazyExpression.NamedFunction(name,getattr(numpy,name))
@@ -161,10 +161,10 @@ class LazyExpression:
             return str(slic)
         result = ''
         start,stop,step = slic.start,slic.stop,slic.step
-        if start!=None: result += LazyExpression.argument2text(start)
+        if start is not None: result += LazyExpression.argument2text(start)
         result += ':'
-        if stop!=None: result += LazyExpression.argument2text(stop)
-        if step!=None: result += ':'+LazyExpression.argument2text(step)
+        if stop is not None: result += LazyExpression.argument2text(stop)
+        if step is not None: result += ':'+LazyExpression.argument2text(step)
         return result
 
     @staticmethod
@@ -301,7 +301,7 @@ class LazyVariable(LazyExpression):
     def getValue(self):
         # Return the data slice of the encapsulated object.
         slic = self.slice
-        if slic==None:
+        if slic is None:
             slic = len(self.args[0].getDimensions())*[slice(None)]
         else:
             slic = LazyExpression.argument2value(slic)
@@ -311,17 +311,17 @@ class LazyVariable(LazyExpression):
         assert type>=0 and type<=3, 'Argument "type" must be 0 (identifier), 1 (short name) 2 (long name), or 3 (unit).'
         if type==0 or type==1:
             # Return the short name of the object (optionally with slice specification).
-            if type==0 and self.name!=None:
+            if type==0 and self.name is not None:
                 res = self.name
             else:
                 res = self.args[0].getName()
-            if self.slice!=None:
+            if self.slice is not None:
                 res += LazyExpression.slices2string(self.slice)
             return res
         elif type==2:
             # Return the long name of the object (optionally with slice specification).
             res = self.args[0].getLongName()
-            if self.slice!=None:
+            if self.slice is not None:
                 res += LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
             return res
         else:
@@ -329,12 +329,12 @@ class LazyVariable(LazyExpression):
         
     def getShape(self):
         baseshape = self.args[0].getShape()
-        if self.slice!=None: baseshape = LazyExpression.adjustShape(baseshape,self.slice)
+        if self.slice is not None: baseshape = LazyExpression.adjustShape(baseshape,self.slice)
         return baseshape
 
     def getDimensions(self):
         basedims = self.args[0].getDimensions()
-        if self.slice!=None: basedims = LazyExpression.adjustDimensions(basedims,self.slice)
+        if self.slice is not None: basedims = LazyExpression.adjustDimensions(basedims,self.slice)
         return basedims
 
     def __getitem__(self,slices):
@@ -343,7 +343,7 @@ class LazyVariable(LazyExpression):
         # If the variable already has a slice specification, this is an additional slice
         # operation that can only be handled by the default class, which does create a
         # slice object.
-        if self.slice!=None: return LazyExpression.__getitem__(self,slices)
+        if self.slice is not None: return LazyExpression.__getitem__(self,slices)
         
         if not isinstance(slices,(list,tuple)): slices = (slices,)
         newvar = LazyVariable(*self.args)
@@ -375,7 +375,7 @@ class LazyOperation(LazyExpression):
                 # This argument is a Slice object; just take the values from it and use that.
                 # Coordinates will still be available in the returned firstslice object, which
                 # can be used to save the result of the expression to.
-                if firstslice==None: firstslice = args[i]
+                if firstslice is None: firstslice = args[i]
                 if not useslices: args[i] = args[i].data
         return args,firstslice
 
@@ -388,10 +388,10 @@ class LazyOperation(LazyExpression):
             curshape = arg.getShape()
             
             # If the argument's shape is unknown, the final shape will be unknown too.
-            if curshape==None: return None
+            if curshape is None: return None
             
             # If this is the first argument, just store its shape and continue.
-            if shape==None:
+            if shape is None:
                 shape = list(curshape)
                 continue
 
@@ -429,7 +429,7 @@ class LazyOperation(LazyExpression):
 
     def __getitem__(self,slices):
         shape = self.getShape()
-        if self.outsourceslices and shape!=None:
+        if self.outsourceslices and shape is not None:
             # We are allowed to outsource the slicing to the arguments of the expression.
             # This takes away the need of first getting all data to operate on, and then
             # take a slice, which is time-consuming and memory-intensive.
@@ -492,7 +492,7 @@ class LazyFunction(LazyOperation):
         elif argindex<len(self.args):
             self.args = list(self.args)
             self.removedim = self.args[argindex]
-        if self.removedim==None: return
+        if self.removedim is None: return
         
         self.outsourceslices = False
             
@@ -514,7 +514,7 @@ class LazyFunction(LazyOperation):
         if not isinstance(data,numpy.ndarray): return data
 
         # If the function has removed a dimension, make sure it is removed from the coordinate array as well.
-        if self.removedim!=None: targetslice.removeDimension(self.removedim)
+        if self.removedim is not None: targetslice.removeDimension(self.removedim)
 
         targetslice.data = data
         targetslice.debugCheck('Invalid result of function "%s"' % self.name)
@@ -524,16 +524,16 @@ class LazyFunction(LazyOperation):
         # Get the shape with the default implementation, but
         # slice out the dimension that this function will remove (if any)
         startshape = LazyOperation.getShape(self)
-        if startshape==None: return None
+        if startshape is None: return None
         s = list(startshape)
-        if self.removedim!=None: del s[self.removedim]
+        if self.removedim is not None: del s[self.removedim]
         return s
 
     def getDimensions(self):
         # Get the dimensions with the default implementation, but
         # slice out the dimension that this function will remove (if any)
         dims = list(LazyOperation.getDimensions(self))
-        if self.removedim!=None: del dims[self.removedim]
+        if self.removedim is not None: del dims[self.removedim]
         return dims
 
     def _getText(self,resolvedargs,resolvedkwargs,type=0,addparentheses=False):
@@ -596,7 +596,7 @@ class VariableExpression(common.Variable):
         if isinstance(root,LazyStore):
             root.store.namespacename = root.name
             return root.store
-        elif isinstance(root,LazyVariable) and root.slice==None:
+        elif isinstance(root,LazyVariable) and root.slice is None:
             root.args[0].namespacename = root.name
             return root.args[0]
         return VariableExpression(root)
