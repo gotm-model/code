@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.19 2008-03-07 13:48:34 jorn Exp $
+#$Id: simulator.py,v 1.20 2009-05-11 13:52:21 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -38,7 +38,7 @@ class GOTMThread(QtCore.QThread):
     self.emit(QtCore.SIGNAL('progressed(double,double)'),progress,remaining)
     
   def run(self):
-    assert self.scenario!=None, 'No scenario specified.'
+    assert self.scenario is not None, 'No scenario specified.'
 
     self.res = core.simulator.simulate(self.scenario,continuecallback=self.canContinue,progresscallback=self.progressed)
     
@@ -53,7 +53,7 @@ class PageProgress(commonqt.WizardPage):
         commonqt.WizardPage.__init__(self, parent)
         
         self.scenario = parent.getProperty('scenario')
-        assert self.scenario!=None, 'No scenario available.'
+        assert self.scenario is not None, 'No scenario available.'
 
         oldresult = parent.getProperty('result')
         
@@ -61,29 +61,29 @@ class PageProgress(commonqt.WizardPage):
 
         # Add label that asks user to wait
         self.busylabel = QtGui.QLabel('Please wait while the simulation runs...',self)
-        self.busylabel.setVisible(oldresult==None)
+        self.busylabel.setVisible(oldresult is None)
         layout.addWidget(self.busylabel)
         
         # Add progress bar
         self.bar = QtGui.QProgressBar(self)
         self.bar.setRange(0,1000)
-        self.bar.setVisible(oldresult==None)
+        self.bar.setVisible(oldresult is None)
         layout.addWidget(self.bar)
         
         # Add label for time remaining.
         self.labelRemaining = QtGui.QLabel(self)
-        self.labelRemaining.setVisible(oldresult==None)
+        self.labelRemaining.setVisible(oldresult is None)
         layout.addWidget(self.labelRemaining)
 
         # Add (initially hidden) label for result.
         self.resultlabel = QtGui.QLabel('The simulation is complete.',self)
-        self.resultlabel.setVisible(oldresult!=None)
+        self.resultlabel.setVisible(oldresult is not None)
         layout.addWidget(self.resultlabel)
 
         # Add (initially hidden) show/hide output button.
         self.showhidebutton = QtGui.QPushButton('Show diagnostic output',self)
         self.showhidebutton.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
-        self.showhidebutton.setVisible(oldresult!=None)
+        self.showhidebutton.setVisible(oldresult is not None)
         layout.addWidget(self.showhidebutton)
         self.connect(self.showhidebutton, QtCore.SIGNAL('clicked()'),self.onShowHideOutput)
 
@@ -91,7 +91,7 @@ class PageProgress(commonqt.WizardPage):
         self.text = QtGui.QTextEdit(self)
         self.text.setLineWrapMode(QtGui.QTextEdit.NoWrap)
         self.text.setReadOnly(True)
-        if oldresult!=None: self.text.setPlainText(oldresult.stderr)
+        if oldresult is not None: self.text.setPlainText(oldresult.stderr)
         self.text.hide()
         layout.addWidget(self.text)
         layout.setStretchFactor(self.text,1)
@@ -113,7 +113,7 @@ class PageProgress(commonqt.WizardPage):
         self.bar.setValue(0)
        
     def showEvent(self,event):
-        if self.owner.getProperty('result')==None: self.startRun()
+        if self.owner.getProperty('result') is None: self.startRun()
 
     def startRun(self):
         self.gotmthread = GOTMThread(self)
@@ -164,11 +164,11 @@ class PageProgress(commonqt.WizardPage):
             res.release()
         
     def isComplete(self):
-        return (self.owner.getProperty('result')!=None)
+        return (self.owner.getProperty('result') is not None)
     
     def saveData(self,mustbevalid):
         # Stop worker thread
-        if self.gotmthread!=None:
+        if self.gotmthread is not None:
             self.disconnect(self.gotmthread, QtCore.SIGNAL('progressed(double)'), self.progressed)
             self.disconnect(self.gotmthread, QtCore.SIGNAL('finished()'), self.done)
             self.gotmthread.stop()

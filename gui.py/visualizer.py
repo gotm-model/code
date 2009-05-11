@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.40 2009-03-18 09:54:26 jorn Exp $
+#$Id: visualizer.py,v 1.41 2009-05-11 13:52:21 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -175,7 +175,7 @@ class PageVisualize(commonqt.WizardPage):
         commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
 
     def saveFigureSettings(self):
-        if self.varpath!=None and self.figurepanel.figure.hasChanged():
+        if self.varpath is not None and self.figurepanel.figure.hasChanged():
             self.result.setFigure('result/'+self.varpath,self.figurepanel.figure.properties)
             
     def onSaveAsDefault(self):
@@ -201,9 +201,9 @@ class ConfigureReportWidget(QtGui.QWidget):
         self.pathOutput = commonqt.PathEditor(self,getdirectory=True)
         
         # Default report directory: result or scenario directory
-        if self.result.path!=None:
+        if self.result.path is not None:
             self.pathOutput.defaultpath = os.path.dirname(self.result.path)
-        elif self.result.scenario!=None and self.result.scenario.path!=None:
+        elif self.result.scenario is not None and self.result.scenario.path is not None:
             self.pathOutput.defaultpath = os.path.dirname(self.result.scenario.path)
 
         self.labVariables = QtGui.QLabel('Included variables:',self)
@@ -213,7 +213,7 @@ class ConfigureReportWidget(QtGui.QWidget):
         selroot = self.report.store['Figures/Selection']
         for node in selroot.children:
             targetnode = self.treestore[node.getValue()]
-            if targetnode!=None: targetnode.setValue(True)
+            if targetnode is not None: targetnode.setValue(True)
         
         self.model = xmlstore.gui_qt4.TypedStoreModel(self.treestore,nohide=False,novalues=True,checkboxes=True)
         self.treeVariables = xmlstore.gui_qt4.ExtendedTreeView(self)
@@ -386,7 +386,7 @@ class PageSave(commonqt.WizardPage):
 
         self.pathSave = commonqt.PathEditor(self,header='File to save to: ',save=True)
         self.pathSave.filter = 'GOTM result files (*.gotmresult);;All files (*.*)'
-        if self.result.path!=None: self.pathSave.setPath(self.result.path)
+        if self.result.path is not None: self.pathSave.setPath(self.result.path)
 
         self.checkboxAddFigures = QtGui.QCheckBox('Also save my figure settings.',self)
         self.checkboxAddFigures.setChecked(True)
@@ -494,7 +494,7 @@ def main():
             res = loadResult(sys.argv[1])
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Unable to load result', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
-        if res!=None:
+        if res is not None:
             seq.pop(0)
             wiz.setProperty('result',res)
             wiz.setProperty('scenario',res.scenario.addref())

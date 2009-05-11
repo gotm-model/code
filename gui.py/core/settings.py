@@ -6,7 +6,7 @@ class LoadException(Exception): pass
 
 class SettingsStore(xmlstore.xmlstore.TypedStore):
     def __init__(self,schema=None):
-        if schema==None: schema = os.path.join(common.getDataRoot(),'schemas/settings/gotmgui.xml')
+        if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/settings/gotmgui.xml')
         xmlstore.xmlstore.TypedStore.__init__(self,schema)
         
     def load(self):

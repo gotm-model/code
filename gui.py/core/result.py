@@ -13,13 +13,13 @@ class ResultProperties(xmlstore.xmlstore.TypedStore):
     """
 
     def __init__(self,valueroot=None,adddefault = True,schema=None):
-        if schema==None: schema = os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml')
+        if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml')
         xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
     schemadict = None
     @staticmethod
     def getDefaultSchemas():
-        if FigureProperties.schemadict==None:
+        if FigureProperties.schemadict is None:
             FigureProperties.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/result'))
         return FigureProperties.schemadict
         
@@ -54,7 +54,7 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         return self.changed or self.store.changed
 
     def getTempDir(self,empty=False):
-        if self.tempdir!=None:
+        if self.tempdir is not None:
             if empty:
                 common.TempDirManager.empty(self.tempdir)
         else:
@@ -65,7 +65,7 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         xmlplot.data.NetCDFStore_GOTM.save(self,path)
 
     def save(self,path,addfiguresettings=True,callback=None):
-        assert self.datafile!=None, 'The result object was not yet attached to a result file (NetCDF).'
+        assert self.datafile is not None, 'The result object was not yet attached to a result file (NetCDF).'
 
         progslicer = xmlstore.util.ProgressSlicer(callback,2)
 
@@ -85,7 +85,7 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
 
         # If we have a link to the scenario, add it to the result file.
         progslicer.nextStep('saving scenario')
-        if self.scenario!=None:
+        if self.scenario is not None:
             fscen = StringIO.StringIO()
             self.scenario.saveAll(fscen,claim=False,callback=progslicer.getStepCallback())
             df = xmlstore.datatypes.DataFileMemory(fscen.getvalue(),'scenario.gotmscenario')
@@ -140,7 +140,7 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         df.release()
 
         df = container.getItem('result.xml')
-        if df!=None:
+        if df is not None:
             f = df.getAsReadOnlyFile()
             valuedom = xml.dom.minidom.parse(f)
             self.store.setStore(valuedom)
@@ -169,7 +169,7 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         setroot = self.store['FigureSettings']
         fignodename = target.root.templatenode.getAttribute('name')
         fig = setroot.getChildById(fignodename,name,create=False)
-        if fig!=None:
+        if fig is not None:
             target.root.copyFrom(fig,replace=True)
             return True
         return False
@@ -179,16 +179,16 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         # allowing us to delete the temporary directory.
         xmlplot.data.NetCDFStore_GOTM.unlink(self)
 
-        if self.tempdir!=None:
+        if self.tempdir is not None:
             # Delete temporary directory.
             common.TempDirManager.delete(self.tempdir)
             self.tempdir = None
-        if self.scenario!=None:
+        if self.scenario is not None:
             self.scenario.release()
         self.store.release()
             
     def attach(self,srcpath,scenario=None,copy=True):
-        if scenario!=None:
+        if scenario is not None:
             self.scenario = scenario.convert(self.wantedscenarioversion)
         else:
             self.scenario = None
@@ -206,7 +206,7 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         # Attached to an existing result: we consider it unchanged.
         self.changed = False
         
-        if self.scenario!=None and self.scenario.path!=None and self.scenario.path.endswith('.gotmscenario'):
+        if self.scenario is not None and self.scenario.path is not None and self.scenario.path.endswith('.gotmscenario'):
             self.path = self.scenario.path[:-12]+'gotmresult'
         else:
             self.path = None
@@ -228,11 +228,11 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
 
     def getVariableTree(self,path,plottableonly=True):
         otherstores = {}
-        if self.scenario!=None: otherstores['scenario'] = self.scenario
+        if self.scenario is not None: otherstores['scenario'] = self.scenario
         return xmlplot.common.VariableStore.getVariableTree(self,path,otherstores=otherstores,plottableonly=plottableonly)
 
     def getDefaultCoordinateDelta(self,dimname,coord):
-        if self.scenario!=None and self.isTimeDimension(dimname):
+        if self.scenario is not None and self.isTimeDimension(dimname):
             delta = self.scenario['output/dtsave'].getValue(usedefault=True)
-            if delta!=None: return delta.getAsSeconds()/86400.
+            if delta is not None: return delta.getAsSeconds()/86400.
         return xmlplot.data.NetCDFStore_GOTM.getDefaultCoordinateDelta(self,dimname,coord)

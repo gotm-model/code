@@ -110,7 +110,7 @@ def printprogress(progress,remaining):
     print '%5.1f %% done, %.0f seconds remaining...' % (progress*100,remaining)
 
 # Simulate
-if res==None:
+if res is None:
     if gotmoutput:
         progcallback = None
     else:
@@ -127,7 +127,7 @@ if res==None:
 
 if res.returncode==0:
     # Write result to file, if requested.
-    if resultpath!=None:
+    if resultpath is not None:
         resultpath = os.path.normpath(os.path.join(oldworkingdir, resultpath))
         if cdf:
             print 'Writing NetCDF result to "%s".' % resultpath
@@ -137,7 +137,7 @@ if res.returncode==0:
             res.save(resultpath)
 
     # Generate report, if requested.
-    if reportpath!=None:
+    if reportpath is not None:
         def reportprogress(progress,description):
             print '%5.1f %% done, %s' % (progress*100,description)
 
@@ -162,8 +162,8 @@ if res.returncode==0:
         rep.release()
 
 # Clean-up        
-if scen!=None: scen.release()
-if res!=None: res.release()
+if scen is not None: scen.release()
+if res is not None: res.release()
 
 # Reset previous working directory
 os.chdir(os.path.dirname(oldworkingdir))

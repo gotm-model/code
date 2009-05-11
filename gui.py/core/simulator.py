@@ -77,14 +77,14 @@ def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
         
         # if no progress notifications are desired and the simulation cannot be cancelled,
         # simply run the complete simulation at once (slice size = entire simulation)
-        if progresscallback==None and continuecallback==None: islicesize=stepcount
+        if progresscallback is None and continuecallback is None: islicesize=stepcount
         
         time_runstart = time.clock()
         while islicestart<=stop:
             time_slicestart = time.clock()
 
             # Check if we have to cancel
-            if continuecallback!=None and not continuecallback():
+            if continuecallback is not None and not continuecallback():
                 print 'GOTM run was cancelled; exiting thread...'
                 res.returncode = 2
                 break
@@ -105,7 +105,7 @@ def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
                 
             time_slicestop = time.clock()
 
-            if progresscallback!=None:
+            if progresscallback is not None:
                 # Send 'progress' event
                 prog = (islicestop-start+1)/float(stepcount)
                 remaining = (1-prog)*(time_slicestop-time_runstart)/prog

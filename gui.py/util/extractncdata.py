@@ -35,7 +35,7 @@ def extractncdata(path,varname,pathout=None,fix='',plot=False,verbose=True,debug
     
     # Get the variable and its dimensions
     var = store.getVariable(varname)
-    if var==None:
+    if var is None:
         print 'Variable %s was not found in NetCDF file. Available: %s.' % (varname,', '.join(store.getVariableNames()))
         return None
     dims = list(var.getDimensions())
@@ -100,7 +100,7 @@ def extractncdata(path,varname,pathout=None,fix='',plot=False,verbose=True,debug
         d.show()
         dialogs.append(d)
         
-    if pathout!=None:
+    if pathout is not None:
         # Create observations file
         mat = xmlplot.data.LinkedMatrix(dimensions=diminfo,dimensionorder=varslice.dimensions,variables=[(varname,longname,var.getUnit())])
         mat.setData([varslice.coords[0],varslice.data.reshape((-1,1))])
@@ -135,7 +135,7 @@ if (__name__=='__main__'):
     if len(args)>3: pathout = args[2]
 
     ret = extractncdata(path,varname,pathout,fix=options.fix,plot=options.plot,verbose=options.verbose,debug=options.debug)
-    if ret==None: sys.exit(1)
+    if ret is None: sys.exit(1)
     sys.exit(0)
 
 def extractncdata_parts(paths,*args,**kwargs):
@@ -143,7 +143,7 @@ def extractncdata_parts(paths,*args,**kwargs):
     basepath = kwargs.pop('basepath','')
     for i,path in enumerate(paths):
         res = extractncdata(os.path.join(basepath,path),*args,**kwargs)
-        if res==None: return None
+        if res is None: return None
         c,d = res
         c.shape = (-1,)
         d.shape = (-1,)

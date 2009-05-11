@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.45 2009-03-18 09:54:26 jorn Exp $
+#$Id: scenariobuilder.py,v 1.46 2009-05-11 13:52:21 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -153,7 +153,7 @@ class ScenarioWidget(QtGui.QWidget):
             emptynodes = [n for n in scen.root.getEmptyNodes() if not n.isHidden()]
             for node in emptynodes:
                 defval = node.getDefaultValue()
-                assert defval!=None, 'No value set for "%s", but no default value is available.' % node
+                assert defval is not None, 'No value set for "%s", but no default value is available.' % node
                 if isinstance(defval,xmlstore.util.referencedobject): defval.release()
             emptycount = len(emptynodes)
             if emptycount>0:
@@ -207,7 +207,7 @@ class ScenarioPage(commonqt.WizardPage):
         commonqt.WizardPage.__init__(self, parent)
 
         self.scenario = parent.getProperty('scenario')
-        if self.scenario==None: raise Exception('No scenario available; this page should not have been available.')
+        if self.scenario is None: raise Exception('No scenario available; this page should not have been available.')
 
         self.factory = xmlstore.gui_qt4.PropertyEditorFactory(self.scenario,live=True,allowhide=True,datasourcedir=parent.getProperty('datasourcedir'))
 
@@ -890,7 +890,7 @@ class PageAdvanced(commonqt.WizardPage):
         commonqt.WizardPage.__init__(self, parent)
 
         self.scenario = parent.getProperty('scenario')
-        if self.scenario==None: raise Exception('No scenario available; this page should not have been available.')
+        if self.scenario is None: raise Exception('No scenario available; this page should not have been available.')
         
         self.tree = xmlstore.gui_qt4.TypedStoreTreeView(self,self.scenario,datasourcedir=parent.getProperty('datasourcedir'))
 
@@ -936,7 +936,7 @@ class PageSave(commonqt.WizardPage):
         self.pathSave = commonqt.PathEditor(self,header='File to save to: ',save=True)
         self.pathSave.filter = 'GOTM scenario files (*.gotmscenario);;All files (*.*)'
 
-        if self.scenario.path!=None:
+        if self.scenario.path is not None:
             self.pathSave.setPath(self.scenario.path)
 
         self.bngroup.addButton(self.radioNoSave, 0)

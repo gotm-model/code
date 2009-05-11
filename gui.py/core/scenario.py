@@ -27,20 +27,20 @@ class Scenario(xmlstore.xmlstore.TypedStore):
     schemadict = None
     @staticmethod
     def getDefaultSchemas():
-        if Scenario.schemadict==None:
+        if Scenario.schemadict is None:
             Scenario.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario'))
         return Scenario.schemadict
 
     defaultdict = None
     @staticmethod
     def getDefaultValues():
-        if Scenario.defaultdict==None:
+        if Scenario.defaultdict is None:
             Scenario.defaultdict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios'))
         return Scenario.defaultdict
 
     @staticmethod
     def fromNamelists(path,protodir=None,targetversion=None,strict = True):
-        if targetversion==None: targetversion=guiscenarioversion
+        if targetversion is None: targetversion=guiscenarioversion
         
         sourceids = Scenario.rankSources(targetversion,Scenario.getDefaultSchemas().keys(),requireplatform='gotm')
         scenario = None
@@ -54,10 +54,10 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                 failures += 'Path "%s" does not match template "%s".\nReason: %s\n' % (path,sourceid,e)
                 scenario.release()
                 scenario = None
-            if scenario!=None:
+            if scenario is not None:
                 #print 'Path "'+path+'" matches template "'+template+'".'
                 break
-        if scenario==None:
+        if scenario is None:
             raise Exception('The path "%s" does not contain a supported GOTM scenario. Details:\n%s' % (path,failures))
         if scenario.version!=targetversion:
             newscenario = scenario.convert(targetversion)
@@ -85,7 +85,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         self.setStore(None)
 
         globalsubs = []
-        if protodir!=None:
+        if protodir is not None:
             # Namelist are specified as .proto files plus one or more .values files.
             # Load the substitutions specified in the main .values file.
             nmlcontainer = xmlstore.datatypes.DataContainerDirectory(protodir)
@@ -112,7 +112,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                 # If we are using prototypes, all namelist files are available, but not all contain
                 # values; then, just skip namelist files that are disabled by settings in the preceding
                 # namelists.
-                if protodir!=None and mainchild.isHidden(): continue
+                if protodir is not None and mainchild.isHidden(): continue
                 
                 # Get name (excl. extension) for the namelist file.
                 nmlfilename = mainchild.getId()
@@ -120,7 +120,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                 assert not mainchild.canHaveValue(), 'Found non-folder node with id %s below root, where only folders are expected.' % nmlfilename
 
                 cursubs = globalsubs
-                if protodir==None:
+                if protodir is None:
                     # Normal namelist file
                     fullnmlfilename = nmlfilename+self.namelistextension
                 else:
@@ -129,7 +129,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
 
                     # Load the relevant value substitutions (if any).
                     df = container.getItem(nmlfilename+'.values')
-                    if df!=None:
+                    if df is not None:
                         df_file = df.getAsReadOnlyFile()
                         cursubs = [namelist.NamelistSubstitutions(df_file)]
                         df_file.close()
@@ -143,7 +143,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                 else:
                     if mainchild.templatenode.hasAttribute('optional'):
                         # This namelist file is missing but not required. Use default values and continue
-                        if self.defaultstore!=None:
+                        if self.defaultstore is not None:
                             mainchild.copyFrom(self.defaultstore.mapForeignNode(mainchild))
                         continue
                     elif mainchild.isHidden():
@@ -192,7 +192,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
 
                         if vartype=='string' or vartype=='datetime' or vartype=='gotmdatafile':
                             strmatch = strre.match(vardata)
-                            if strmatch==None:
+                            if strmatch is None:
                                 raise namelist.NamelistParseException('Variable is not a string. Data: %s' % vardata,fullnmlfilename,listname,varname)
                             val = strmatch.group(2)
                         elif vartype=='int':
@@ -217,7 +217,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                         
                         if vartype=='datetime':
                             datetimematch = datetimere.match(val)
-                            if datetimematch==None:
+                            if datetimematch is None:
                                 raise namelist.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',fullnmlfilename,listname,varname)
                             refvals = map(int,datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
                             val = xmlstore.util.dateTimeFromTuple(refvals)
@@ -314,7 +314,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                                 raise Exception('Found a folder ("%s") below branch %s/%s, where only variables are expected.' % (listchild.getId(),nmlfilename,listname))
                             varname = listchild.getId()
                             varval = listchild.getValue(usedefault=True)
-                            if varval==None:
+                            if varval is None:
                                 # If the variable value is not set while its node is hidden,
                                 # the variable will not be used, and we skip it silently.
                                 if listchild.isHidden(): continue
@@ -361,7 +361,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         if node.templatenode.hasAttribute('hasoptions'):
             # Create list of options.
             options = xmlstore.util.findDescendantNode(node.templatenode,['options'])
-            assert options!=None, 'Node is of type "select" but lacks "options" childnode.'
+            assert options is not None, 'Node is of type "select" but lacks "options" childnode.'
             for ch in options.childNodes:
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
                     lab = ch.getAttribute('description')
@@ -380,12 +380,12 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         if node.templatenode.hasAttribute('maxInclusive'):
             datatype += ', maximum = ' + node.templatenode.getAttribute('maxInclusive')
         unit = node.getUnit()
-        if unit!=None:
+        if unit is not None:
             datatype += ', unit = ' + unit
 
         # Get description of conditions (if any).
         condition = xmlstore.util.findDescendantNode(node.templatenode,['condition'])
-        if condition!=None:
+        if condition is not None:
             condline = Scenario.getNamelistConditionDescription(condition)
             lines.append('This variable is used only if '+condline)
 
@@ -417,7 +417,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         if self.originalversion==savedscenarioversion: self.resetChanged()
 
     def saveAll(self,path,targetversion=None,*args,**kwargs):
-        if targetversion==None: targetversion = savedscenarioversion
+        if targetversion is None: targetversion = savedscenarioversion
         kwargs['fillmissing'] = True
         xmlstore.xmlstore.TypedStore.saveAll(self,path,targetversion=targetversion,*args,**kwargs)
 
@@ -448,7 +448,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         if validity.get(startnode,False) and validity.get(stopnode,False):
             start = startnode.getValue(usedefault=usedefault)
             stop = stopnode.getValue(usedefault=usedefault)
-            if start!=None and stop!=None and start>=stop:
+            if start is not None and stop is not None and start>=stop:
                 validity[startnode] = False
                 validity[stopnode ] = False
                 if start>stop:
@@ -505,7 +505,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
         # the end of the simulation has been set.
         if validatedatafiles and (stopnode in oldvalids or validity.get(stopnode,False)):
             stop = stopnode.getValue(usedefault=usedefault)
-            if stop!=None:
+            if stop is not None:
                 for node in nodes:
                     if node.getValueType()!='gotmdatafile' or node.isHidden() or not validity[node]:
                         continue
@@ -514,7 +514,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                         for dimname in value.getDimensionNames():
                             if value.getDimensionInfo(dimname)['datatype']=='datetime':
                                 dimrange = value.getDimensionRange(dimname)
-                                if dimrange==None:
+                                if dimrange is None:
                                     validity[node] = False
                                     errors.append('Data series "%s" does not contain any value.' % (node.getText(detail=1),))
                                     continue
@@ -656,13 +656,13 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.xmlstore.Convertor):
                     heatdata.getData(callback=progslicer.getStepCallback())
 
                 # Create vectors for time, shortwave radiation and the heat flux.
-                if swrdata==None:
+                if swrdata is None:
                     # No variable shortwave radiation, i.e., we only have a variable heat flux.
                     times = heatdata.data[0]
                     heat = heatdata.data[1]
                     swr = numpy.empty(heat.shape)
                     swr.fill(source['airsea/airsea/const_swr'].getValue())
-                elif heatdata==None:
+                elif heatdata is None:
                     # No variable heat flux, i.e., we only have a variable shortwave radiation.
                     times = swrdata.data[0]
                     swr = swrdata.data[1]
@@ -685,8 +685,8 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.xmlstore.Convertor):
 
                 # Release data files.
                 mergeddata.release()
-                if swrdata !=None: swrdata.release()
-                if heatdata!=None: heatdata.release()
+                if swrdata  is not None: swrdata.release()
+                if heatdata is not None: heatdata.release()
                     
 Scenario.addConvertor(Convertor_gotmgui_4_1_0_to_gotm_4_0_0)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.63 2009-01-05 10:55:12 jorn Exp $
+#$Id: commonqt.py,v 1.64 2009-05-11 13:52:21 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -23,7 +23,7 @@ def getRadioWidth():
     text associated with the radio button.
     """
     global radiowidth
-    if radiowidth==None:
+    if radiowidth is None:
         radiowidth = QtGui.qApp.style().pixelMetric(QtGui.QStyle.PM_ExclusiveIndicatorWidth)
     return radiowidth
     
@@ -89,13 +89,13 @@ class ErrorDialog(QtGui.QWidget):
         """Creates the one and only ErrorDialog if it does not exist yet, then shows the
         provided error message in the dialog.
         """
-        if ErrorDialog.errdlg==None:
+        if ErrorDialog.errdlg is None:
             ErrorDialog.errdlg = ErrorDialog()
         ErrorDialog.errdlg.write(string)
         ErrorDialog.errdlg.show()
     
     def __init__(self,parent=None):
-        if parent==None: parent = QtGui.QApplication.activeWindow()
+        if parent is None: parent = QtGui.QApplication.activeWindow()
         QtGui.QWidget.__init__(self,parent,QtCore.Qt.Tool)
 
         self.labelStart = QtGui.QLabel('Errors occurred during execution of GOTM-GUI:',self)
@@ -116,7 +116,7 @@ class ErrorDialog(QtGui.QWidget):
         self.setWindowTitle('Errors occurred')
         self.resize(600, 200)
 
-        if parent!=None:
+        if parent is not None:
             self.setAttribute(QtCore.Qt.WA_QuitOnClose,False)
             
     def write(self,string):
@@ -132,8 +132,8 @@ def browseForPath(parent=None,curpath=None,getdirectory=False,save=False,filter=
     """Shows browse dialog for opening/saving a file, or selecting a directory.
     Supports automatic append of file extension based on chosen file type.
     """
-    if curpath==None: curpath=''
-    if dlgoptions==None: dlgoptions = QtGui.QFileDialog.Option()
+    if curpath is None: curpath=''
+    if dlgoptions is None: dlgoptions = QtGui.QFileDialog.Option()
     if getdirectory:
         path = unicode(QtGui.QFileDialog.getExistingDirectory(parent,'',curpath))
     elif save:
@@ -153,7 +153,7 @@ def browseForPath(parent=None,curpath=None,getdirectory=False,save=False,filter=
         pos = 0
         match = re_ext.search(selfilt,pos)
         goodextension = False
-        while match!=None:
+        while match is not None:
             ext = match.group(1)
             if ext!='*':
                 exts.append(ext)
@@ -182,7 +182,7 @@ class PathEditor(QtGui.QWidget):
 
         lo = QtGui.QHBoxLayout()
 
-        if header!=None:
+        if header is not None:
             self.header = QtGui.QLabel(header,self)
             lo.addWidget(self.header)
 
@@ -232,7 +232,7 @@ class PathEditor(QtGui.QWidget):
         curpath = self.path()
         if curpath=='' and self.defaultpath != None: curpath=self.defaultpath
         path = browseForPath(self,curpath=curpath,getdirectory=self.getdirectory,save=self.save,filter=self.filter,dlgoptions=self.dlgoptions)
-        if path!=None: self.setPath(path)
+        if path is not None: self.setPath(path)
 
     def hasPath(self):
         return (len(self.path())>0)
@@ -257,7 +257,7 @@ class Wizard(QtGui.QDialog):
         layout = QtGui.QVBoxLayout()
         layout.setMargin(0)
         
-        if headerlogo!=None:
+        if headerlogo is not None:
             self.pm = QtGui.QPixmap(headerlogo,'PNG')
             self.piclabel = QtGui.QLabel(self)
             self.piclabel.setPixmap(self.pm)
@@ -327,7 +327,7 @@ class Wizard(QtGui.QDialog):
                 v.release()
             except:
                 pass
-        if self.currentpage!=None:
+        if self.currentpage is not None:
             self.currentpage.destroy()
         QtGui.QDialog.destroy(self,destroyWindow,destroySubWindows)
 
@@ -345,7 +345,7 @@ class Wizard(QtGui.QDialog):
             ready = False
             while not ready:
                 cls = self.sequence.getNextPage()
-                assert cls!=None, 'No next page available to show; the next button should have been disabled.'
+                assert cls is not None, 'No next page available to show; the next button should have been disabled.'
                 newpage = cls(self)
                 ready = (not newpage.doNotShow())
             self.switchPage(newpage)
@@ -357,7 +357,7 @@ class Wizard(QtGui.QDialog):
             ready = False
             while not ready:
                 cls = self.sequence.getPreviousPage()
-                assert cls!=None, 'No previous page available to show; the back button should have been disabled.'
+                assert cls is not None, 'No previous page available to show; the back button should have been disabled.'
                 newpage = cls(self)
                 ready = (not newpage.doNotShow())
             self.switchPage(newpage)
@@ -367,8 +367,8 @@ class Wizard(QtGui.QDialog):
         self.disconnect(self.bnHome, QtCore.SIGNAL('clicked()'), self.onHome)
         if self.currentpage.saveData(mustbevalid=False):
             cls = self.sequence.getPreviousPage()
-            assert cls!=None, 'No previous page available to show; the home button should have been disabled.'
-            while cls!=None:
+            assert cls is not None, 'No previous page available to show; the home button should have been disabled.'
+            while cls is not None:
                 prevcls = cls
                 cls = self.sequence.getPreviousPage()
             newpage = prevcls(self)
@@ -377,7 +377,7 @@ class Wizard(QtGui.QDialog):
 
     def switchPage(self,newpage):
         layout = self.layout()
-        if self.currentpage!=None:
+        if self.currentpage is not None:
             self.currentpage.hide()
             layout.removeWidget(self.currentpage)
             self.disconnect(self.currentpage, QtCore.SIGNAL('onCompleteStateChanged()'),self.onCompleteStateChanged)
@@ -386,14 +386,14 @@ class Wizard(QtGui.QDialog):
         layout.insertWidget(1,self.currentpage)
         self.currentpage.show()
         self.connect(self.currentpage, QtCore.SIGNAL('onCompleteStateChanged()'),self.onCompleteStateChanged)
-        cangoback = (self.sequence.getPreviousPage(stay=True)!=None)
+        cangoback = (self.sequence.getPreviousPage(stay=True) is not None)
         self.bnHome.setEnabled(cangoback)
         self.bnBack.setEnabled(cangoback)
         self.onCompleteStateChanged()
 
     def onCompleteStateChanged(self):
         curpage = self.currentpage
-        enable = (curpage.isComplete() and self.sequence.getNextPage(stay=True)!=None)
+        enable = (curpage.isComplete() and self.sequence.getNextPage(stay=True) is not None)
         self.bnNext.setEnabled(enable)
 
 # =======================================================================
@@ -451,7 +451,7 @@ class WizardSequence:
             if len(self.items)==0: raise Exception('WizardSequence contains no items')
         elif isinstance(self.items[self.index],WizardSequence):
             new = self.items[self.index].getNextPage(stay=stay)
-            if new!=None:
+            if new is not None:
                 return new
             elif not stay:
                 self.items[self.index].reset()
@@ -469,7 +469,7 @@ class WizardSequence:
             if len(self.items)==0: raise Exception('WizardSequence contains no items')
         elif isinstance(self.items[self.index],WizardSequence):
             new = self.items[self.index].getPreviousPage(stay=stay)
-            if new!=None:
+            if new is not None:
                 return new
             elif not stay:
                 self.items[self.index].reset()
@@ -498,7 +498,7 @@ class WizardFork(WizardSequence):
         if stay: return WizardSequence()
         if self.index==-1:
             seq = self.getSequence()
-            assert seq!=None, 'Fork did not return a new sequence'
+            assert seq is not None, 'Fork did not return a new sequence'
             self.items = [seq]
         return WizardSequence.getNextPage(self,stay=False)
 
@@ -518,11 +518,11 @@ class ProgressDialog(QtGui.QProgressDialog):
         self.setMinimumDuration(minimumduration)
         self.setRange(0,0)
         self.suppressstatus = suppressstatus
-        if title!=None: self.setWindowTitle(title)
+        if title is not None: self.setWindowTitle(title)
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
             
     def onProgressed(self,progress,status):
-        if progress!=None:
+        if progress is not None:
             if self.maximum()==0: self.setMaximum(100)
             self.setValue(int(100*progress))
         elif progressdialog.maximum()!=0:

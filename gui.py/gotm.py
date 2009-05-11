@@ -67,11 +67,11 @@ class GOTMWizard(commonqt.Wizard):
         if propertyname=='scenario' or propertyname=='result':
             scen = self.getProperty('scenario')
             res  = self.getProperty('result')
-            self.bnTools.setEnabled(scen!=None or res!=None or self.actShowSettings!=None)
-            self.actSaveScenario.setVisible(scen!=None)
-            self.actExportScenario.setVisible(scen!=None)
-            self.actSaveResult.setVisible(res!=None)
-            self.actExportResult.setVisible(res!=None)
+            self.bnTools.setEnabled(scen is not None or res is not None or self.actShowSettings is not None)
+            self.actSaveScenario.setVisible(scen is not None)
+            self.actExportScenario.setVisible(scen is not None)
+            self.actSaveResult.setVisible(res is not None)
+            self.actExportResult.setVisible(res is not None)
 
     def onShowSettings(self):
         dialog = xmlstore.gui_qt4.PropertyEditorDialog(self,self.settings,'Options',flags=QtCore.Qt.Tool)
@@ -80,7 +80,7 @@ class GOTMWizard(commonqt.Wizard):
     def onSaveScenarioAs(self):
         scen = self.getProperty('scenario')
         path = commonqt.browseForPath(self,curpath=scen.path,save=True,filter='GOTM scenario files (*.gotmscenario);;All files (*.*)')
-        if path!=None:
+        if path is not None:
             dialog = commonqt.ProgressDialog(self,title='Saving...',suppressstatus=True)
             try:
                 scen.saveAll(path,callback=dialog.onProgressed)
@@ -135,9 +135,9 @@ class GOTMWizard(commonqt.Wizard):
         res = dialog.exec_()
         if res==QtGui.QDialog.Accepted:
             curpath = None
-            if scen.path!=None: curpath = os.path.dirname(scen.path)
+            if scen.path is not None: curpath = os.path.dirname(scen.path)
             path = commonqt.browseForPath(self,curpath=curpath,getdirectory=True)
-            if path!=None:
+            if path is not None:
                 progdialog = commonqt.ProgressDialog(self,title='Exporting...',suppressstatus=True)
                 try:
                     progslicer = xmlstore.util.ProgressSlicer(progdialog.onProgressed,2)
@@ -152,7 +152,7 @@ class GOTMWizard(commonqt.Wizard):
     def onSaveResultAs(self):
         res = self.getProperty('result')
         path = commonqt.browseForPath(self,curpath=res.path,save=True,filter='GOTM result files (*.gotmresult);;All files (*.*)')
-        if path!=None:
+        if path is not None:
             dialog = commonqt.ProgressDialog(self,title='Saving...',suppressstatus=True)
             try:
                 res.save(path,callback=dialog.onProgressed)
@@ -163,11 +163,11 @@ class GOTMWizard(commonqt.Wizard):
     def onExportResult(self):
         res = self.getProperty('result')
         curpath = None
-        if res.path!=None:
+        if res.path is not None:
             root,ext = os.path.splitext(res.path)
             curpath = root+'.nc'
         path = commonqt.browseForPath(self,curpath=curpath,save=True,filter='NetCDF files (*.nc);;All files (*.*)')
-        if path!=None:
+        if path is not None:
             QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
             try:
                 res.saveNetCDF(path)
@@ -300,11 +300,11 @@ class PageChooseAction(commonqt.WizardPage):
             
         # Fill in path of currently loaded result or scenario.
         curres = self.owner.getProperty('result')
-        if curres!=None and curres.path!=None:
+        if curres is not None and curres.path is not None:
             self.resultwidget.setPath(curres.path)
         else:
             curscen = self.owner.getProperty('scenario')
-            if curscen!=None and curscen.path!=None:
+            if curscen is not None and curscen.path is not None:
                 self.scenariowidget.setPath(curscen.path)
 
         if self.owner.getProperty('skipscenariobuilder'):
@@ -366,7 +366,7 @@ class PageChooseAction(commonqt.WizardPage):
             self.owner.setProperty('scenario', newscen)
 
             # Add to list of most-recently-used scenarios
-            if newscen.path!=None:
+            if newscen.path is not None:
                 self.owner.settings.addUniqueValue('Paths/RecentScenarios','Path',newscen.path)
             
             res =  True
@@ -380,11 +380,11 @@ class PageChooseAction(commonqt.WizardPage):
                 return False
             self.owner.setProperty('mainaction','result')
             self.owner.setProperty('result', newresult)
-            if newresult.scenario!=None:
+            if newresult.scenario is not None:
                 self.owner.setProperty('scenario', newresult.scenario.addref())
 
             # Add to list of most-recently-used results
-            if newresult.path!=None:
+            if newresult.path is not None:
                 self.owner.settings.addUniqueValue('Paths/RecentResults','Path',newresult.path)
 
             res = True
@@ -437,7 +437,7 @@ def main(options,args):
             QtGui.QMessageBox.critical(wiz, 'Unable to load specified path', unicode(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
             container = None
 
-        if container==None:
+        if container is None:
             pass
         elif core.scenario.Scenario.canBeOpened(container):
             # Try to open the file as a scenario.
@@ -458,19 +458,19 @@ def main(options,args):
         else:
             QtGui.QMessageBox.critical(wiz, 'Unable to open specified path', '"%s" is not a scenario or a result.' % openpath, QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
                 
-        if container!=None: container.release()
+        if container is not None: container.release()
 
     # If a file to open was specified on the command line, move some steps forward in the wizard.
-    if res!=None:
+    if res is not None:
         wiz.onNext()
         wiz.setProperty('mainaction','result')
         wiz.setProperty('result', res)
         if openpath.endswith('.gotmresult'):
             wiz.settings.addUniqueValue('Paths/RecentResults','Path',openpath)
-        if res.scenario!=None:
+        if res.scenario is not None:
             wiz.setProperty('scenario', res.scenario.addref())
         wiz.onNext(askoldpage=False)
-    elif scen!=None:
+    elif scen is not None:
         wiz.onNext()
         wiz.setProperty('mainaction','scenario')
         wiz.setProperty('scenario',scen)

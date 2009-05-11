@@ -21,7 +21,7 @@ class NamelistSubstitutions:
         self.subs = []
         
         # Commonly used regular expression (for parsing substitions in the .values file)
-        if NamelistSubstitutions.subs_re==None:
+        if NamelistSubstitutions.subs_re is None:
             NamelistSubstitutions.subs_re = re.compile('\s*s/(\w+)/(.+)/')
         
         # If the supplied argument is a string, it should be a path to a file.
@@ -37,7 +37,7 @@ class NamelistSubstitutions:
         line = valuesfile.readline()
         while line!='':
             m = self.subs_re.match(line)
-            if m!=None:
+            if m is not None:
                 #pat = re.compile(m.group(1),re.IGNORECASE)
                 #self.subs.append((pat,m.group(2)))
                 self.subs.append((m.group(1),m.group(2)))
@@ -63,7 +63,7 @@ class Namelist:
         self.data = data
         self.filepath = filepath
         
-        if Namelist.varassign_re==None:
+        if Namelist.varassign_re is None:
             Namelist.varassign_re = re.compile('\s*(\w+)\s*=\s*')
             Namelist.varstopchar_re = re.compile('[/,\n"\']')
 
@@ -72,14 +72,14 @@ class Namelist:
 
     def next(self):
         ret = self.getNextVariable()
-        if ret==None: raise StopIteration
+        if ret is None: raise StopIteration
         return ret
 
     def getNextVariable(self):
         if self.isEmpty(): return None
         
         match = self.varassign_re.match(self.data);
-        if match==None:
+        if match is None:
             raise NamelistParseException('Cannot find a variable assignment (variable_name = ...). Current namelist data: "%s"' % (self.data,),self.filepath,self.name,None)
         foundvarname = match.group(1)
         
@@ -87,7 +87,7 @@ class Namelist:
         ipos = 0
         while True:
             match = self.varstopchar_re.search(self.data,pos=ipos)
-            if match==None:
+            if match is None:
                 raise NamelistParseException('End of variable value not found. Current namelist data: "%s"' % (self.data,),self.filepath,self.name,foundvarname)
             ch = match.group(0)
             if ch=='\'' or ch=='"':
@@ -117,7 +117,7 @@ class NamelistFile:
         #   - locating the start of comments, or opening quotes.
         #   - locating the start of namelist (ampersand followed by list name).
         #   - locating the end of a namelist, i.e. a slash, or opening quotes.
-        if NamelistFile.commentchar_re==None:
+        if NamelistFile.commentchar_re is None:
             NamelistFile.commentchar_re  = re.compile('[!#"\']')
             NamelistFile.namelistname_re = re.compile('\s*&\s*(\w+)\s*')
             NamelistFile.stopchar_re     = re.compile('[/"\']')
@@ -146,7 +146,7 @@ class NamelistFile:
                 # mark; ignore text between single and double quotes.
                 ipos = 0
                 match = self.commentchar_re.search(line,pos=ipos)
-                while match!=None:
+                while match is not None:
                     ch = match.group(0)
                     if ch=='\'' or ch=='"':
                         ipos = match.end(0)
@@ -172,16 +172,16 @@ class NamelistFile:
 
     def parseNextNamelist(self,expectedlist=None):
         match = self.namelistname_re.match(self.data)
-        if match==None:
+        if match is None:
             raise NamelistParseException('No namelist found; expected ampersand followed by namelist name.',self.path)
         name = match.group(1)
-        if expectedlist!=None and name!=expectedlist:
+        if expectedlist is not None and name!=expectedlist:
             raise NamelistParseException('Expected namelist "%s", but found "%s".' % (expectedlist,name),self.path,expectedlist)
         istart = match.end(0)
         ipos = istart
         while True:
             match = self.stopchar_re.search(self.data,pos=ipos)
-            if match==None:
+            if match is None:
                 raise NamelistParseException('End of namelist (slash) not found.',self.path,name)
             ch = match.group(0)
             ipos = match.end(0)

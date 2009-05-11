@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.4 2008-03-09 11:30:37 jorn Exp $
+#$Id: common.py,v 1.5 2009-05-11 13:52:21 jorn Exp $
 
 import sys, os.path, tempfile, shutil, atexit
 
@@ -10,7 +10,7 @@ def setDataRoot(path):
     dataroot = path
 def getDataRoot():
     global dataroot
-    if dataroot==None:
+    if dataroot is None:
         if hasattr(sys,'frozen'):
             dataroot = os.path.dirname(unicode(sys.executable, sys.getfilesystemencoding()))
         else:
@@ -23,7 +23,7 @@ class TempDirManager:
     @staticmethod
     def create(prefix=''):
         path = tempfile.mkdtemp('',prefix)
-        if TempDirManager.tempdirs==None:
+        if TempDirManager.tempdirs is None:
             TempDirManager.tempdirs = []
             atexit.register(TempDirManager.cleanup)
         TempDirManager.tempdirs.append(path)
@@ -63,7 +63,7 @@ def getNamedArgument(name,type=None,default=None):
     val = sys.argv[iarg+1]
     del sys.argv[iarg+1]
     del sys.argv[iarg]
-    if type!=None: val = type(val)
+    if type is not None: val = type(val)
     return val
 
 def getSwitchArgument(name):
@@ -75,5 +75,5 @@ def getNextArgument(type=None):
     val = None
     if len(sys.argv)>1:
         val = sys.argv.pop(1)
-        if type!=None: val = type(val)
+        if type is not None: val = type(val)
     return val

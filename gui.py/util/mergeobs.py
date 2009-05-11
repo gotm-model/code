@@ -40,8 +40,8 @@ def main():
         data.append(curdata)
         
         curmin,curmax = curdata[0].min(),curdata[0].max()
-        if minc==None or curmin>minc: minc = curmin
-        if maxc==None or curmax<maxc: maxc = curmax
+        if minc is None or curmin>minc: minc = curmin
+        if maxc is None or curmax<maxc: maxc = curmax
         
         if options.verbose:
             if diminfo[dimname]['datatype']=='datetime':

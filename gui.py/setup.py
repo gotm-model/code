@@ -26,7 +26,7 @@ from distutils.filelist import findall
 import os, os.path
 
 def adddir(path,localtarget=None):
-    if localtarget==None: localtarget = path
+    if localtarget is None: localtarget = path
     for f in findall(path):
         localname = os.path.join(localtarget, f[len(path)+1:])
         if 'CVS' in localname: continue

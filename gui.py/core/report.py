@@ -16,7 +16,7 @@ def createtable(xmldocument,tds,columncount):
             table.appendChild(tr)
         tr.appendChild(td)
         icurvar = icurvar+1
-    if tr!=None and len(table.childNodes)>1:
+    if tr is not None and len(table.childNodes)>1:
         for i in range(columncount - len(tr.childNodes)):
             tr.appendChild(xmldocument.createElement('td'))
     return table
@@ -27,7 +27,7 @@ class Report(xmlstore.util.referencedobject):
 
     @staticmethod
     def getTemplates():
-        if Report.reportname2path==None:
+        if Report.reportname2path is None:
             Report.reportname2path = {}
             sourcedir = Report.reportdirname
             if os.path.isdir(sourcedir):
@@ -90,7 +90,7 @@ class Report(xmlstore.util.referencedobject):
         for node in scenario.root.getNodesByType('gotmdatafile'):
             if node.isHidden(): continue
             value = node.getValue(usedefault=True)
-            if value!=None and value.validate():
+            if value is not None and value.validate():
                 inputdata.append((node,value))
                 steps += 1+len(value.keys())
 
@@ -112,7 +112,7 @@ class Report(xmlstore.util.referencedobject):
             variablepath = node.getAttribute('variable')
             assert variablepath!='', 'gotm:scenarioproperty node in report template lacks "variable" attribute, whcih should point to a location in the scenario.'
             variablenode = scenario[variablepath]
-            assert variablenode!=None, 'Unable to locate "%s" in the scenario.' % variablepath
+            assert variablenode is not None, 'Unable to locate "%s" in the scenario.' % variablepath
             val = variablenode.getValueAsString()
             node.parentNode.replaceChild(xmldocument.createTextNode(unicode(val)),node)
             node.unlink()
@@ -124,7 +124,7 @@ class Report(xmlstore.util.referencedobject):
         scenarionodes = xmldocument.getElementsByTagName('gotm:scenario')
         assert len(scenarionodes)<=1, 'Found more than one "gotm:scenario" node in the report template.'
         if len(scenarionodes)>0:
-            if callback!=None: callback(istep/steps,'Creating scenario description...')
+            if callback is not None: callback(istep/steps,'Creating scenario description...')
             scenarionode = scenarionodes[0]
 
             sceninterface = scenario.getInterface(showhidden=False,omitgroupers=True)
@@ -171,7 +171,7 @@ class Report(xmlstore.util.referencedobject):
             nodePreceding = scentable.nextSibling
             mintime,maxtime = scenario['/time/start'].getValue(usedefault=True),scenario['/time/stop'].getValue(usedefault=True)
             for node,store in inputdata:
-                if callback!=None:
+                if callback is not None:
                     store.getData(callback=lambda progress,msg: callback((istep+progress)/steps,'Parsing %s...' % (node.getText(1),)))
                 else:
                     store.getData()
@@ -181,7 +181,7 @@ class Report(xmlstore.util.referencedobject):
                 vardict = store.getVariableLongNames()
                 for varid in store.keys():
                     longname = vardict[varid]
-                    if callback!=None: callback(istep/steps,'Creating figure for %s...' % longname)
+                    if callback is not None: callback(istep/steps,'Creating figure for %s...' % longname)
 
                     fig.setUpdating(False)
                     fig.clearProperties()
@@ -228,7 +228,7 @@ class Report(xmlstore.util.referencedobject):
             figuresnode = figuresnodes[0]
         else:
             figuresnode = None
-        if len(plotvariables)>0 and figuresnode!=None:
+        if len(plotvariables)>0 and figuresnode is not None:
             fig.clearSources()
             fig.addDataSource('result',result)
             tds = []
@@ -236,7 +236,7 @@ class Report(xmlstore.util.referencedobject):
                 varid = varpath.split('/')[-1]
                 
                 longname = result[varid].getLongName()
-                if callback!=None: callback(istep/steps,'Creating figure for %s...' % longname)
+                if callback is not None: callback(istep/steps,'Creating figure for %s...' % longname)
                 
                 fig.setUpdating(False)
                 if not result.getFigure('result/'+varpath,fig.properties):
@@ -259,13 +259,13 @@ class Report(xmlstore.util.referencedobject):
                 istep += 1
             figurestable = createtable(xmldocument,tds,columncount)
             figuresnode.parentNode.replaceChild(figurestable,figuresnode)
-        elif figuresnode!=None:
+        elif figuresnode is not None:
             figuresnode.parentNode.removeChild(figuresnode)
             
         # Clean-up figure
-        if fig!=None: fig.release()
+        if fig is not None: fig.release()
         
-        if callback!=None: callback(istep/steps,'Writing HTML...')
+        if callback is not None: callback(istep/steps,'Writing HTML...')
 
         if outputpath!='':
             import codecs
@@ -276,5 +276,5 @@ class Report(xmlstore.util.referencedobject):
             print xmldocument.toxml('utf-8')
         istep += 1
 
-        if callback!=None: callback(istep/steps,'Done.')
+        if callback is not None: callback(istep/steps,'Done.')
 
