@@ -1,4 +1,4 @@
-!$Id: bio_0d_gen.F90,v 1.7 2009-05-10 18:34:50 jorn Exp $
+!$Id: bio_0d_gen.F90,v 1.8 2009-05-11 13:57:31 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -26,7 +26,8 @@
 !
 ! 3) If your model uses model-specific data (e.g. parameter values) that are grouped in a
 !    (model-specific) derived type, add an instance of this type as member to "type_model"
-!    defined below.
+!    defined below. Note: if you want to be able to run multiple instances of your model
+!    side-by-side, grouping the model parameters in a derived type is a *requirement*.
 !
 ! 4) Add the model as option to the "select" statements in the following subroutines:
 !    "get_model_name", "init_bio_single", "do_bio_single".
@@ -48,7 +49,7 @@
 !    extinction.
 !    If this function is not provided, the bio extinction will be calculated from the specific
 !    extinction coefficients for each state variable as specified in the model information,
-!    specfifically member "specific_light_extinction" of the state variable information.
+!    specifically member "specific_light_extinction" of the state variable information.
 !    (note: specific extinction coefficients default to 0: no attenuation due to biogeochemical components) 
 !
 ! 7) If (part of) the model state variable are composed of conserved quantities (energy and/or
@@ -292,7 +293,8 @@
 !BOC
    select case (model%id)
       case (npzd_0d_id)
-         call do_bio_npzd_0d(model%npzd,first,model%info%state_variable_count,cc,model%info%diagnostic_variable_count,env,pp,dd,diag)
+         call do_bio_npzd_0d(model%npzd,first,model%info%state_variable_count,cc,model%info%diagnostic_variable_count, &
+                             env,pp,dd,diag)
       case default
          stop 'bio_0d_gen::do_bio_single: the selected biogeochemical model does not yet provide &
               &a function that returns the local temporal derivatives.'
