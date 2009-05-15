@@ -964,10 +964,10 @@ class Figure(xmlstore.util.referencedobject):
             res  = nodemap['Resolution'].getValue(usedefault=True)
             proj = nodemap['Projection'].getValue(usedefault=True)
             defnodemap = self.defaultproperties['Map']
-            defnodemap['Range/LowerLeftLatitude'].setValue(yrange[0])
-            defnodemap['Range/LowerLeftLongitude'].setValue(xrange[0])
-            defnodemap['Range/UpperRightLatitude'].setValue(yrange[1])
-            defnodemap['Range/UpperRightLongitude'].setValue(xrange[1])
+            defnodemap['Range/LowerLeftLatitude'].setValue(max(-90,yrange[0]-0.5))
+            defnodemap['Range/LowerLeftLongitude'].setValue(max(-360,xrange[0]-0.5))
+            defnodemap['Range/UpperRightLatitude'].setValue(min(90,yrange[1]+0.5))
+            defnodemap['Range/UpperRightLongitude'].setValue(min(720,xrange[1]+0.5))
             llcrnrlon=nodemap['Range/LowerLeftLongitude' ].getValue(usedefault=True)
             llcrnrlat=nodemap['Range/LowerLeftLatitude'  ].getValue(usedefault=True)
             urcrnrlon=nodemap['Range/UpperRightLongitude'].getValue(usedefault=True)
@@ -1237,12 +1237,12 @@ class Figure(xmlstore.util.referencedobject):
                     defaultseriesnode['ArrowScale'].setValue(scale)  
                     if pc.scale is None: pc.scale = scale
                     
-                    defaultseriesnode['ArrowKey/Length'].setValue(keylength)
-                    defaultseriesnode['ArrowKey/Label'].setValue(str(keylength))
                     keynode = seriesnode['ArrowKey']
+                    defaultseriesnode['ArrowKey/Length'].setValue(keylength)
+                    keyu = keynode['Length'].getValue(usedefault=True)
+                    defaultseriesnode['ArrowKey/Label'].setValue(str(keyu))
                     if keynode.getValue(usedefault=True):
                         keyx,keyy = keynode['X'].getValue(usedefault=True),keynode['Y'].getValue(usedefault=True)
-                        keyu = keynode['Length'].getValue(usedefault=True)
                         keylabel = keynode['Label'].getValue(usedefault=True)
                         keylabelpos = keynode['LabelPosition'].getValue(usedefault=True)
                         axes.quiverkey(pc,keyx,keyy,keyu,label=keylabel,labelpos=keylabelpos,coordinates='axes',fontproperties=fontpropsdict)
