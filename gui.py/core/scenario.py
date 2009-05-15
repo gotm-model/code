@@ -11,38 +11,16 @@ import os, shutil, re, datetime
 import xmlstore.xmlstore, xmlstore.util, xmlplot.data, xmlplot.common
 import common, namelist
 
-class Scenario(xmlstore.xmlstore.TypedStore):
+class NamelistStore(xmlstore.xmlstore.TypedStore):
 
-    # Name to be used for the main XML file if the store is saved to an archive.
-    storefilename = 'scenario.xml'
-    
-    # Descriptive name for the store to be used when communicating with the user.
-    storetitle = 'GOTM scenario'
-
-    def __init__(self,schema,valueroot=None,adddefault = True):
-        xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
+    def __init__(self,*args,**kwargs):
+        xmlstore.xmlstore.TypedStore.__init__(self,*args,**kwargs)
 
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
 
-    schemadict = None
-    @staticmethod
-    def getDefaultSchemas():
-        if Scenario.schemadict is None:
-            Scenario.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario'))
-        return Scenario.schemadict
-
-    defaultdict = None
-    @staticmethod
-    def getDefaultValues():
-        if Scenario.defaultdict is None:
-            Scenario.defaultdict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios'))
-        return Scenario.defaultdict
-
-    @staticmethod
-    def fromNamelists(path,protodir=None,targetversion=None,strict = True):
-        if targetversion is None: targetversion=guiscenarioversion
-        
-        sourceids = Scenario.rankSources(targetversion,Scenario.getDefaultSchemas().keys(),requireplatform='gotm')
+    @classmethod
+    def fromNamelists(cls,path,protodir=None,targetversion=None,strict = True,requireplatform=None):
+        sourceids = cls.rankSources(targetversion,Scenario.getDefaultSchemas().keys(),requireplatform=requireplatform)
         scenario = None
         failures = ''
         for sourceid in sourceids:
@@ -58,19 +36,13 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                 #print 'Path "'+path+'" matches template "'+template+'".'
                 break
         if scenario is None:
-            raise Exception('The path "%s" does not contain a supported GOTM scenario. Details:\n%s' % (path,failures))
+            raise Exception('The path "%s" does not contain a supported scenario. Details:\n%s' % (path,failures))
         if scenario.version!=targetversion:
             newscenario = scenario.convert(targetversion)
             scenario.release()
             return newscenario
         else:
             return scenario
-
-    @classmethod
-    def getCustomDataTypes(ownclass):
-        dt = xmlstore.xmlstore.TypedStore.getCustomDataTypes()
-        dt['gotmdatafile'] = xmlplot.data.LinkedFileVariableStore
-        return dt
 
     def loadFromNamelists(self, srcpath, strict = False, protodir = None):
         if common.verbose: print 'Importing scenario from namelist files...'
@@ -366,7 +338,7 @@ class Scenario(xmlstore.xmlstore.TypedStore):
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
                     lab = ch.getAttribute('description')
                     if lab=='': lab = ch.getAttribute('label')
-                    lines.append(ch.getAttribute('value') + ': ' + lab)
+                    lines.append(lab + ': ' + ch.getAttribute('value'))
 
         # Create description of data type and range.
         if datatype=='gotmdatafile':
@@ -408,6 +380,37 @@ class Scenario(xmlstore.xmlstore.TypedStore):
             return '('+(' '+condtype+' ').join(conddescs)+')'
         else:
             raise Exception('Unknown condition type "%s".' % condtype)
+            
+class Scenario(NamelistStore):
+
+    # Name to be used for the main XML file if the store is saved to an archive.
+    storefilename = 'scenario.xml'
+    
+    # Descriptive name for the store to be used when communicating with the user.
+    storetitle = 'GOTM scenario'
+
+    def __init__(self,schema,valueroot=None,adddefault = True):
+        NamelistStore.__init__(self,schema,valueroot,adddefault=adddefault)
+
+    schemadict = None
+    @staticmethod
+    def getDefaultSchemas():
+        if Scenario.schemadict is None:
+            Scenario.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario'))
+        return Scenario.schemadict
+
+    defaultdict = None
+    @staticmethod
+    def getDefaultValues():
+        if Scenario.defaultdict is None:
+            Scenario.defaultdict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios'))
+        return Scenario.defaultdict
+
+    @classmethod
+    def getCustomDataTypes(ownclass):
+        dt = xmlstore.xmlstore.TypedStore.getCustomDataTypes()
+        dt['gotmdatafile'] = xmlplot.data.LinkedFileVariableStore
+        return dt
 
     def load(self,path):
         xmlstore.xmlstore.TypedStore.load(self,path)
