@@ -216,7 +216,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                 for v in datafilecontext['linkedobjects'].itervalues():
                     v.release()
 
-    def writeAsNamelists(self, targetpath, copydatafiles=True, addcomments = False, callback=None):
+    def writeAsNamelists(self, targetpath, copydatafiles=True, addcomments=False, allowmissingvalues=False, callback=None):
         if common.verbose: print 'Exporting scenario to namelist files...'
 
         # If the directory to write to does not exist, create it.
@@ -289,7 +289,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                             if varval is None:
                                 # If the variable value is not set while its node is hidden,
                                 # the variable will not be used, and we skip it silently.
-                                if listchild.isHidden(): continue
+                                if listchild.isHidden() or allowmissingvalues: continue
                                 raise Exception('Value for variable "%s" in namelist "%s" not set.' % (varname,listname))
                             vartype = listchild.getValueType()
                             if vartype=='string':
