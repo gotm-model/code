@@ -20,7 +20,7 @@ class referencedobject:
     Moreover, Python implementations are not even required to implement
     garbage collection. Hence the existence of this class.
     
-    It supports some rudimentary fucntionality for checking if all references
+    It supports some rudimentary functionality for checking if all references
     were cleanly released at exit (i.e., if no objects exist that have one or
     more references. For this to work the user has to take care to release
     all references to objects of this type explicitly at exit.
@@ -62,7 +62,9 @@ class referencedobject:
                 nrefs += obj.refcount
                 nobjs += 1
                 type2count[obj.__class__.__name__] = type2count.get(obj.__class__.__name__,0) + 1
-        if nrefs==0: return
+        if nrefs==0:
+            print 'No remaining references.'
+            return
         print '%i objects have a total of %i references.' % (nobjs,nrefs)
         for t,c in type2count.iteritems():
             if c>0: print '%s: %i references.' % (t,c)

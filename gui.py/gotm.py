@@ -502,8 +502,11 @@ if (__name__=='__main__'):
     parser.add_option('--showoptions',action='store_true',help='provides access to persistent program settings via the Tools menu.')
     parser.add_option('-v','--verbose',action='store_true',help='writes debug strings to standard output.')
     parser.add_option('-p','--profile',action='store_true',help='activates profiling.')
-    parser.set_defaults(profile=False,showoptions=False,verbose=False)
+    parser.add_option('-d','--debug',action='store_true',help='activates debugging (e.g., reference counting).')
+    parser.set_defaults(profile=False,showoptions=False,verbose=False,debug=False)
     (options, args) = parser.parse_args()
+    
+    if options.debug: xmlstore.util.referencedobject.checkreferences = True
     
     if options.profile:
         # We will do profiling

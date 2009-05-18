@@ -1794,10 +1794,11 @@ class TypedStore(util.referencedobject):
                     node.setValue(node.getDefaultValue())
                 elif opt==1:
                     validity[node] = False
-                    errors.append('variable "%s" is set to option "%s", which is currently disabled (perhaps not yet implemented).' % (node.getText(1),ch.getAttribute('value')))
+                    errors.append('variable "%s" is set to option "%s" (%s), which is currently disabled (perhaps not yet implemented).' % (node.getText(1),ch.getAttribute('label'),value.toPrettyString()))
                 else:
                     validity[node] = False
-                    errors.append('variable "%s" is set to non-existent option %s.' % (node.getText(1),str(value)))
+                    errors.append('variable "%s" is set to non-existent option %s.' % (node.getText(1),value.toPrettyString()))
+            if isinstance(value,util.referencedobject): value.release()
 
         # Find nodes with numeric data types, and check if they respect specified ranges (if any).
         for node in lboundnodes:
@@ -1809,6 +1810,7 @@ class TypedStore(util.referencedobject):
                 else:
                     validity[node] = False
                     errors.append('variable "%s" is set to %s, which lies below the minimum of %s.' % (node.getText(1),value.toPrettyString(),minval.toPrettyString()))
+            if isinstance(value,util.referencedobject): value.release()
         for node in uboundnodes:
             value = node.getValue(usedefault=usedefault)
             maxval = value.fromXmlString(node.templatenode.getAttribute('maxInclusive'),{},node.templatenode)
@@ -1818,6 +1820,7 @@ class TypedStore(util.referencedobject):
                 else:
                     validity[node] = False
                     errors.append('variable "%s" is set to %s, which lies above the maximum of %s.' % (node.getText(1),value.toPrettyString(),maxval.toPrettyString()))
+            if isinstance(value,util.referencedobject): value.release()
         
         return errors,validity
         

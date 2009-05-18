@@ -198,76 +198,80 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
             context['targetcontainer'] = xmlstore.datatypes.DataContainerDirectory(targetpath)
 
         try:
-            if addcomments:
-                # Import and configure text wrapping utility.
-                import textwrap
-                linelength = 80
-                wrapper = textwrap.TextWrapper(subsequent_indent='  ')
-            
-            progslicer = xmlstore.util.ProgressSlicer(callback,len(self.root.children))
-            for mainchild in self.root.children:
-                assert not mainchild.canHaveValue(), 'Found a variable below the root node, where only folders are expected.'
+            try:
+                if addcomments:
+                    # Import and configure text wrapping utility.
+                    import textwrap
+                    linelength = 80
+                    wrapper = textwrap.TextWrapper(subsequent_indent='  ')
+                
+                progslicer = xmlstore.util.ProgressSlicer(callback,len(self.root.children))
+                for mainchild in self.root.children:
+                    assert not mainchild.canHaveValue(), 'Found a variable below the root node, where only folders are expected.'
 
-                nmlfilename = mainchild.getId()
-                progslicer.nextStep(nmlfilename)
+                    nmlfilename = mainchild.getId()
+                    progslicer.nextStep(nmlfilename)
 
-                if mainchild.isHidden(): continue
+                    if mainchild.isHidden(): continue
 
-                # Create the namelist file.
-                nmlfilepath = os.path.join(targetpath, nmlfilename+self.namelistextension)
-                nmlfile = open(nmlfilepath,'w')
+                    # Create the namelist file.
+                    nmlfilepath = os.path.join(targetpath, nmlfilename+self.namelistextension)
+                    nmlfile = open(nmlfilepath,'w')
 
-                try:
-                    for filechild in mainchild.children:
-                        assert not filechild.canHaveValue(), 'Found a variable directly below branch "%s", where only folders are expected.' % nmlfilename
-                        listname = filechild.getId()
+                    try:
+                        for filechild in mainchild.children:
+                            assert not filechild.canHaveValue(), 'Found a variable directly below branch "%s", where only folders are expected.' % nmlfilename
+                            listname = filechild.getId()
 
-                        if addcomments:
-                            nmlfile.write('!'+(linelength-1)*'-'+'\n')
-                            title = filechild.getText(detail=2).encode('ascii','xmlcharrefreplace')
-                            nmlfile.write(textwrap.fill(title,linelength-2,initial_indent='! ',subsequent_indent='! '))
-                            nmlfile.write('\n!'+(linelength-1)*'-'+'\n')
-
-                            comments = []
-                            varnamelength = 0
-                            for listchild in filechild.children:
-                                comment = self.getNamelistVariableDescription(listchild)
-                                if len(comment[0])>varnamelength: varnamelength = len(comment[0])
-                                comments.append(comment)
-                            wrapper.width = linelength-varnamelength-5
-                            for (varid,vartype,lines) in comments:
-                                wrappedlines = []
-                                lines.insert(0,'['+vartype+']')
-                                for line in lines:
-                                    line = line.encode('ascii','xmlcharrefreplace')
-                                    wrappedlines += wrapper.wrap(line)
-                                firstline = wrappedlines.pop(0)
-                                nmlfile.write('! %-*s %s\n' % (varnamelength,varid,firstline))
-                                for line in wrappedlines:
-                                    nmlfile.write('! '+varnamelength*' '+'   '+line+'\n')
-                            if len(comments)>0:
+                            if addcomments:
                                 nmlfile.write('!'+(linelength-1)*'-'+'\n')
-                            nmlfile.write('\n')
+                                title = filechild.getText(detail=2).encode('ascii','xmlcharrefreplace')
+                                nmlfile.write(textwrap.fill(title,linelength-2,initial_indent='! ',subsequent_indent='! '))
+                                nmlfile.write('\n!'+(linelength-1)*'-'+'\n')
 
-                        nmlfile.write('&'+listname+'\n')
-                        for listchild in filechild.children:
-                            if listchild.hasChildren():
-                                raise Exception('Found a folder ("%s") below branch %s/%s, where only variables are expected.' % (listchild.getId(),nmlfilename,listname))
-                            varname = listchild.getId()
-                            varval = listchild.getValue(usedefault=True)
-                            if varval is None:
-                                # If the variable value is not set while its node is hidden,
-                                # the variable will not be used, and we skip it silently.
-                                if allowmissingvalues or listchild.isHidden(): continue
-                                raise Exception('Value for variable "%s" in namelist "%s" not set.' % (varname,listname))
-                            varval = varval.toNamelistString(context,listchild.templatenode)
-                            nmlfile.write('   '+varname+' = '+varval+',\n')
-                        nmlfile.write('/\n\n')
-                finally:
-                    nmlfile.close()
-        except:
-            if createddir: shutil.rmtree(targetpath)
-            raise
+                                comments = []
+                                varnamelength = 0
+                                for listchild in filechild.children:
+                                    comment = self.getNamelistVariableDescription(listchild)
+                                    if len(comment[0])>varnamelength: varnamelength = len(comment[0])
+                                    comments.append(comment)
+                                wrapper.width = linelength-varnamelength-5
+                                for (varid,vartype,lines) in comments:
+                                    wrappedlines = []
+                                    lines.insert(0,'['+vartype+']')
+                                    for line in lines:
+                                        line = line.encode('ascii','xmlcharrefreplace')
+                                        wrappedlines += wrapper.wrap(line)
+                                    firstline = wrappedlines.pop(0)
+                                    nmlfile.write('! %-*s %s\n' % (varnamelength,varid,firstline))
+                                    for line in wrappedlines:
+                                        nmlfile.write('! '+varnamelength*' '+'   '+line+'\n')
+                                if len(comments)>0:
+                                    nmlfile.write('!'+(linelength-1)*'-'+'\n')
+                                nmlfile.write('\n')
+
+                            nmlfile.write('&'+listname+'\n')
+                            for listchild in filechild.children:
+                                if listchild.hasChildren():
+                                    raise Exception('Found a folder ("%s") below branch %s/%s, where only variables are expected.' % (listchild.getId(),nmlfilename,listname))
+                                varname = listchild.getId()
+                                varval = listchild.getValue(usedefault=True)
+                                if varval is None:
+                                    # If the variable value is not set while its node is hidden,
+                                    # the variable will not be used, and we skip it silently.
+                                    if allowmissingvalues or listchild.isHidden(): continue
+                                    raise Exception('Value for variable "%s" in namelist "%s" not set.' % (varname,listname))
+                                varstring = varval.toNamelistString(context,listchild.templatenode)
+                                nmlfile.write('   '+varname+' = '+varstring+',\n')
+                                if isinstance(varval,xmlstore.util.referencedobject): varval.release()
+                            nmlfile.write('/\n\n')
+                    finally:
+                        nmlfile.close()
+            except:
+                if createddir: shutil.rmtree(targetpath)
+                raise
+        finally:
+            if 'targetcontainer' in context: context['targetcontainer'].release()
 
     @staticmethod
     def getNamelistVariableDescription(node):
