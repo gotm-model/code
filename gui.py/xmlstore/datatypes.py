@@ -248,7 +248,6 @@ class Int(DataTypeSimple,int):
     """
     def __init__(self,value):
         DataTypeSimple.__init__(self)
-        int.__init__(self,value)
 register('int',Int)
 
 class Float(DataTypeSimple,float):
@@ -256,7 +255,6 @@ class Float(DataTypeSimple,float):
     """
     def __init__(self,value):
         DataTypeSimple.__init__(self)
-        float.__init__(self,value)
 register('float',Float)
 
 class Bool(DataTypeSimple,int):
@@ -264,7 +262,6 @@ class Bool(DataTypeSimple,int):
     """
     def __init__(self,value):
         DataTypeSimple.__init__(self)
-        int.__init__(value)
         
     @classmethod
     def fromXmlString(cls,string,context,template=None):
@@ -299,7 +296,6 @@ class String(DataTypeSimple,unicode):
     """
     def __init__(self,value):
         DataTypeSimple.__init__(self)
-        unicode.__init__(self,value)
 
     @classmethod
     def fromNamelistString(cls,string,context,template=None):
