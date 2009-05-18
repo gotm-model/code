@@ -1074,23 +1074,30 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         # (but backup the old data file before doing so)
         if datafile is not None:
             oldlinkedfile = self.linkedfile
-            self.linkedfile = self.linkedfile.copy()
+            self.linkedfile = self.linkedfile.copy()  # Copies only the metadata, not the actual data!
             self.linkedfile.setDataFile(datafile)
 
         # Try to parse the current data file.
         try:
             try:
                 self.linkedfile.getData(callback=self.onParseProgress)
+                
+                # Release the old datafile that we have in backup.
+                if datafile is not None: oldlinkedfile.release()
             finally:
                 self.progressdialog.reset()
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Invalid data file', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
             if datafile is None:
-                # No old file available - provide an empty file because we need
-                # something to work with.
-                self.linkedfile = self.linkedfile.copy()
+                # No backup file available (this is the initialization call with the original data file)
+                # Create a new empty data file by copying only the metadata from the original file.
+                # Thus we do have something to work with in the editor.
+                oldlinkedfile = self.linkedfile
+                self.linkedfile = oldlinkedfile.copy()  # Copies only the metadata, not the actual data!
+                oldlinkedfile.release()
             else:
-                # Just keep the old file - ignore the invalid data and return
+                # Release the partially loaded data file, and revert to the backup file.
+                self.linkedfile.release()
                 self.linkedfile = oldlinkedfile
                 return
             
