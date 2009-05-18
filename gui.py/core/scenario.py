@@ -44,7 +44,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         else:
             return scenario
 
-    def loadFromNamelists(self, srcpath, strict = False, protodir = None):
+    def loadFromNamelists(self, srcpath, strict=False, protodir=None):
         if common.verbose: print 'Importing scenario from namelist files...'
 
         # Try to open the specified path (currently can be zip, tar/gz or a directory)
@@ -69,15 +69,10 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         else:
             nmlcontainer = container.addref()
 
-        # Build a list of files in the namelist directory and the data directory
+        # Build a list of files in the namelist directory
         # (these are the same, unless prototype namelist files are used)
-        filelist = container.listFiles()
         nmlfilelist = nmlcontainer.listFiles()
         datafilecontext = {'container':container}
-
-        # Commonly used regular expressions (for parsing strings and datetimes).
-        strre = re.compile('^([\'"])(.*?)\\1$')
-        datetimere = re.compile('(\d\d\d\d)[/\-](\d\d)[/\-](\d\d) (\d\d):(\d\d):(\d\d)')
 
         try:
             for mainchild in self.root.children:
@@ -159,52 +154,22 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                                 if varname.lower()==foundvarname.lower(): break
                             else:
                                 raise namelist.NamelistParseException('Encountered variable "%s", which should not be present in this namelist.' % (foundvarname,),fullnmlfilename,listname,varname)
+                                
+                        if vardata is None: continue
 
-                        vartype = listchild.getValueType()
+                        # Retrieve the value (in the correct data type) from the namelist string.
+                        vartype = listchild.getValueType(returnclass=True)
+                        try:
+                            val = vartype.fromNamelistString(vardata,datafilecontext,listchild.templatenode)
+                        except Exception,e:
+                            raise namelist.NamelistParseException('%s' % e,fullnmlfilename,listname,varname)
 
-                        if vartype=='string' or vartype=='datetime' or vartype=='gotmdatafile':
-                            strmatch = strre.match(vardata)
-                            if strmatch is None:
-                                raise namelist.NamelistParseException('Variable is not a string. Data: %s' % vardata,fullnmlfilename,listname,varname)
-                            val = strmatch.group(2)
-                        elif vartype=='int':
-                            try:
-                                val = int(vardata)
-                            except ValueError:
-                                raise namelist.NamelistParseException('Variable is not an integer. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
-                        elif vartype=='float':
-                            try:
-                                val = float(vardata)
-                            except ValueError:
-                                raise namelist.NamelistParseException('Variable is not a floating point value. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
-                        elif vartype=='bool':
-                            if   vardata[0].lower()=='f' or vardata[0:2].lower()=='.f':
-                                val = False
-                            elif vardata[0].lower()=='t' or vardata[0:2].lower()=='.t':
-                                val = True
-                            else:
-                                raise namelist.NamelistParseException('Variable is not a boolean. Data: "%s"' % vardata,fullnmlfilename,listname,varname)
-                        else:
-                            raise Exception('Unknown variable type. I do not know how to parse a variable with type "%s" from namelists.' % vartype)
-                        
-                        if vartype=='datetime':
-                            datetimematch = datetimere.match(val)
-                            if datetimematch is None:
-                                raise namelist.NamelistParseException('Variable is not a date + time. String contents: "'+val+'"',fullnmlfilename,listname,varname)
-                            refvals = map(int,datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
-                            val = xmlstore.util.dateTimeFromTuple(refvals)
-                        elif vartype=='gotmdatafile':
-                            for fn in filelist:
-                                if fn==val or fn.endswith('/'+val):
-                                    df = container.getItem(fn)
-                                    break
-                            else:
-                                df = xmlstore.datatypes.DataFile()
-                            val = xmlplot.data.LinkedFileVariableStore.fromNode(listchild,datafile=df,context=datafilecontext)
-                            df.release()
-
+                        # Transfer the value to the store.
                         listchild.setValue(val)
-                        if isinstance(val,xmlstore.util.referencedobject): val.release()
+                        
+                        # Release the value object.
+                        if isinstance(val,xmlstore.util.referencedobject):
+                            val.release()
                         
                     if strict and childindex<len(filechild.children):
                         lcnames = ['"%s"' % lc.getId() for lc in filechild.children[childindex:]]
@@ -227,6 +192,10 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                 createddir = True
             except Exception,e:
                 raise Exception('Unable to create target directory "%s". Error: %s' %(targetpath,str(e)))
+                
+        context = {}
+        if copydatafiles:
+            context['targetcontainer'] = xmlstore.datatypes.DataContainerDirectory(targetpath)
 
         try:
             if addcomments:
@@ -289,32 +258,9 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                             if varval is None:
                                 # If the variable value is not set while its node is hidden,
                                 # the variable will not be used, and we skip it silently.
-                                if listchild.isHidden() or allowmissingvalues: continue
+                                if allowmissingvalues or listchild.isHidden(): continue
                                 raise Exception('Value for variable "%s" in namelist "%s" not set.' % (varname,listname))
-                            vartype = listchild.getValueType()
-                            if vartype=='string':
-                                varval = '\''+varval+'\''
-                            elif vartype=='gotmdatafile':
-                                filename = listchild.getId()+'.dat'
-                                if not listchild.isHidden() and copydatafiles:
-                                    if not varval.validate():
-                                        raise Exception('No valid custom data set for variable "%s" in namelist "%s".' % (varname,listname))
-                                    varval.saveToFile(os.path.join(targetpath,filename))
-                                varval.release()
-                                varval = '\''+filename+'\''
-                            elif vartype=='int':
-                                varval = str(varval)
-                            elif vartype=='float':
-                                varval = str(varval)
-                            elif vartype=='bool':
-                                if varval:
-                                    varval = '.true.'
-                                else:
-                                    varval = '.false.'
-                            elif vartype=='datetime':
-                                varval = '\''+xmlstore.util.formatDateTime(varval,iso=True)+'\''
-                            else:
-                                raise Exception('Unknown variable type %s in scenario template.' % str(vartype))
+                            varval = varval.toNamelistString(context,listchild.templatenode)
                             nmlfile.write('   '+varname+' = '+varval+',\n')
                         nmlfile.write('/\n\n')
                 finally:
@@ -338,15 +284,21 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
                     lab = ch.getAttribute('description')
                     if lab=='': lab = ch.getAttribute('label')
-                    lines.append(lab + ': ' + ch.getAttribute('value'))
+                    lines.append(ch.getAttribute('value')+': '+lab)
 
         # Create description of data type and range.
+        isarray = datatype.startswith('array(') and datatype.endswith(')')
+        if isarray: datatype = datatype[6:-1]
         if datatype=='gotmdatafile':
             datatype = 'file path'
         elif datatype=='int':
             datatype = 'integer'
         elif datatype=='datetime':
             datatype = 'string, format = "yyyy-mm-dd hh:mm:ss"'
+        if isarray:
+            datatype += ' array'
+            if node.templatenode.hasAttribute('shape'):
+                datatype += ' with shape (%s)' % node.templatenode.getAttribute('shape')
         if node.templatenode.hasAttribute('minInclusive'):
             datatype += ', minimum = ' + node.templatenode.getAttribute('minInclusive')
         if node.templatenode.hasAttribute('maxInclusive'):
@@ -513,7 +465,7 @@ class Scenario(NamelistStore):
                     if node.getValueType()!='gotmdatafile' or node.isHidden() or not validity[node]:
                         continue
                     value = node.getValue(usedefault=usedefault)
-                    if value.validate():
+                    if value.validate(node.templatenode):
                         for dimname in value.getDimensionNames():
                             if value.getDimensionInfo(dimname)['datatype']=='datetime':
                                 dimrange = value.getDimensionRange(dimname)
@@ -542,7 +494,6 @@ class Convertor_gotm_3_2_4_to_gotm_3_3_2(xmlstore.xmlstore.Convertor):
     def registerLinks(self):
         self.links = [('/gotmmean/meanflow/charnok',    '/gotmmean/meanflow/charnock'),
                       ('/gotmmean/meanflow/charnok_val','/gotmmean/meanflow/charnock_val')]
-        self.defaults = ['/obs/o2_profile']
 Scenario.addConvertor(Convertor_gotm_3_2_4_to_gotm_3_3_2,addsimplereverse=True)
 
 class Convertor_gotm_3_3_2_to_gotm_4_0_0(xmlstore.xmlstore.Convertor):
@@ -551,7 +502,6 @@ class Convertor_gotm_3_3_2_to_gotm_4_0_0(xmlstore.xmlstore.Convertor):
 
     def registerLinks(self):
         self.links = [('/obs/ext_pressure/PressMethod','/obs/ext_pressure/ext_press_mode')]
-        self.defaults = ['/obs/wave_nml','/bio','/bio_npzd','/bio_iow','/bio_sed','/bio_fasham']
 Scenario.addConvertor(Convertor_gotm_3_3_2_to_gotm_4_0_0,addsimplereverse=True)
 
 class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
@@ -564,21 +514,8 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
                       ('/airsea/airsea/const_p_e','/airsea/airsea/const_precip'),
                       ('/airsea/airsea/p_e_flux_file','/airsea/airsea/precip_file'),
                       ('/bio/bio_nml/bio_npar','/bio/bio_nml/npar')]
-        self.defaults = ['/obs/bioprofiles',
-                         '/airsea/airsea/fluxes_method',
-                         '/airsea/airsea/back_radiation_method',
-                         '/airsea/airsea/rain_impact',
-                         '/airsea/airsea/swr_method',
-                         '/airsea/airsea/swr_file',
-                         '/airsea/airsea/swr_factor',
-                         '/airsea/airsea/calc_evaporation',
-                         '/airsea/airsea/precip_factor',
-                         '/bio_sed/bio_sed_nml/ntype',
-                         '/bio_sed/bio_sed_nml/nprop']
 
-    def convert(self,source,target,callback=None):
-        xmlstore.xmlstore.Convertor.convert(self,source,target)
-        
+    def convertCustom(self,source,target,callback=None):
         if source['airsea/airsea/calc_fluxes'].getValue():
             target['airsea/airsea/swr_method'].setValue(3)
         else:
@@ -593,8 +530,12 @@ class Convertor_gotm_4_0_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
                 progslicer.nextStep('parsing %s' % source['airsea/airsea/heatflux_file'].getText(detail=1))
                 oldfile = source['airsea/airsea/heatflux_file'].getValue()
                 datold = oldfile.getData(progslicer.getStepCallback())
-                times,swr,heat = datold[0],datold[1].take((0,),1),datold[1].take((1,),1)
+                if datold is not None: 
+                    times,swr,heat = datold[0],datold[1].take((0,),1),datold[1].take((1,),1)
                 oldfile.release()
+                if datold is None:
+                    target['airsea/airsea/swr_method'].setValue(2)
+                    return
                 
                 # Save shortwave radiation
                 progslicer.nextStep('saving %s' % target['airsea/airsea/swr_file'].getText(detail=1))
@@ -634,9 +575,7 @@ class Convertor_gotmgui_4_1_0_to_gotm_4_0_0(xmlstore.xmlstore.Convertor):
     def registerLinks(self):
         self.links = Convertor_gotm_4_0_0_to_gotm_4_1_0().reverseLinks()
     
-    def convert(self,source,target,callback=None):
-        xmlstore.xmlstore.Convertor.convert(self,source,target)
-
+    def convertCustom(self,source,target,callback=None):
         if not source['airsea/airsea/calc_fluxes'].getValue():
             swr_method = source['airsea/airsea/swr_method'].getValue()
             heat_method = source['airsea/airsea/heat_method'].getValue()
@@ -737,9 +676,7 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.xmlstore.Convertor):
                       ('/bio_fasham/bio_fasham_nml',      '/bio/bio_model/bio_fasham'),
                       ('/bio_npzd_fe/bio_npzd_fe_nml',    '/bio/bio_model/bio_npzd_fe')]
     
-    def convert(self,source,target,callback=None):
-        xmlstore.xmlstore.Convertor.convert(self,source,target)
-        
+    def convertCustom(self,source,target,callback=None):
         # ===============================================
         #  gotmrun
         # ===============================================
@@ -845,9 +782,7 @@ class Convertor_gotmgui_0_5_0_to_gotm_4_1_0(xmlstore.xmlstore.Convertor):
     def registerLinks(self):
         self.links = Convertor_gotm_4_1_0_to_gotmgui_0_5_0().reverseLinks()
     
-    def convert(self,source,target,callback=None):
-        xmlstore.xmlstore.Convertor.convert(self,source,target)
-
+    def convertCustom(self,source,target,callback=None):
         # ===============================================
         #  gotmrun
         # ===============================================

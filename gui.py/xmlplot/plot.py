@@ -36,8 +36,8 @@ class MapProjectionChoice(xmlstore.datatypes.String):
         try:
             import mpl_toolkits.basemap
         except:
-            return self.value
-        return mpl_toolkits.basemap._projnames[self.value]
+            return self
+        return mpl_toolkits.basemap._projnames[self]
 xmlstore.datatypes.register('mapprojection',MapProjectionChoice)
       
 class MergedVariableStore(common.VariableStore):
@@ -314,8 +314,7 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
         fixedsourceid = '0002'
         fixedtargetid = '0003'
 
-        def convert(self,source,target,callback=None):
-            xmlstore.xmlstore.Convertor.convert(self,source,target)
+        def convertCustom(self,source,target,callback=None):
             markertypes = {0:'',1:'.',2:',',3:'o',4:'^',5:'s',6:'+',7:'x',8:'D'}
             linestyles = {0:'',1:'-',2:'--',3:'-.',4:':'}
             tickformats = {0:'dd-mmm-yyyy HH:MM:SS',

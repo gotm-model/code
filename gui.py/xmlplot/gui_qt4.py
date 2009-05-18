@@ -1108,7 +1108,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
             dataeditor.setVariable(v)
         
         # Enable the "Export" button if the data file is valid.
-        self.buttonExport.setEnabled(self.linkedfile.validate())
+        self.buttonExport.setEnabled(self.linkedfile.validate(None))
 
     def onParseProgress(self,progress,status):
         if self.progressdialog.isHidden(): self.progressdialog.show()

@@ -283,7 +283,10 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
         if minval is None and maxval is None: return None
         return (minval,maxval)
             
-    def validate(self,callback=None):
+    def hasExpensiveValidate(self):
+        return True
+
+    def validate(self,templatenode,callback=None):
         if self.data is None and (self.datafile is None or not self.datafile.isValid()): return False
         metadata = self.getMetaData()
         valid = metadata['Valid'].getValue()

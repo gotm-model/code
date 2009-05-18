@@ -624,6 +624,10 @@ class Node:
 
         # Check for existing value nodes that are not in the template.
         for childid,childnodes in valuechildren.iteritems():
+            # If this data type builds its own XML structure to store its data, it may
+            # use child nodes, so do not complain about the children we do not know about.
+            if not isinstance(self.getValueType(returnclass=True),datatypes.DataTypeSimple): break
+            
             print 'WARNING! Value "%s" below "%s" was unexpected and will be ignored.' % (childid,self.location)
             for ch in childnodes: self.valueroot.removeChild(ch)
 
@@ -776,11 +780,8 @@ class Node:
                             strvalue = ch.getAttribute('value')
                         break
 
-        # If we do not have a string representation yet, then cast the data to the internally
-        # registered type, and let that figure out the best pretty string.
-        if strvalue is None:
-            if not isinstance(value,valuetype): value = valuetype(value)
-            strvalue = value.toPrettyString()
+        # If we do not have a string representation yet, then let the value itself out the best pretty string.
+        if strvalue is None: strvalue = value.toPrettyString()
             
         # Release the reference to the value if needed.
         if isinstance(value,util.referencedobject): value.release()
@@ -1205,7 +1206,7 @@ class Node:
         if recursive:
             for child in self.children: child.updateVisibility(recursive=True,notify=notify)
 
-    def copyFrom(self,sourcenode,replace=True):
+    def copyFrom(self,sourcenode,replace=True,matchednodes=None):
         """Recursively copies the value of the current node from the
         specified source node.
         
@@ -1215,6 +1216,7 @@ class Node:
         """
         # Copy node value (if both source and target can have a value)
         if self.canHaveValue() and sourcenode.canHaveValue():
+            if matchednodes is not None: matchednodes.append(self)
             if replace or not self.hasValue():
                 curval = sourcenode.getValue()
                 self.setValue(curval)
@@ -1226,9 +1228,14 @@ class Node:
         oldchildren = list(self.children)
         for sourcechild in sourcenode.children:
             childname = sourcechild.location[-1]
+            
+            # Update the index of this particular child (among others with the same name)
             if childname!=prevchildname:
                 index = 0
                 prevchildname = childname
+                
+            # For the found source node, locate the corresponding node in our own store.
+            # For optional nodes, the corresponding node is created if it did not exist yet.
             if sourcechild.canHaveClones():
                 secid = sourcechild.getSecondaryId()
                 if secid!='':
@@ -1237,12 +1244,22 @@ class Node:
                     child = self.getChildByNumber(childname,index,create=True)
             else:
                 child = self[childname]
+            
+            # If we do not have this node, ignore it and continue with the next source node.    
             if child is None: continue
-            child.copyFrom(sourcechild,replace=replace)
+            
+            # Copy data from the source node.
+            child.copyFrom(sourcechild,replace=replace,matchednodes=matchednodes)
+            
+            # If this child existed previously, remove it from the list of "orphans"
+            # (those nodes that were not present in the source node)
             if child in oldchildren:
                 oldchildren.remove(child)
+                
             index += 1
+            
         if replace:
+            # Remove all optional child nodes that were not matched by a child of the source node.
             for ch in oldchildren:
                 if ch.canHaveClones(): self.removeChildNode(ch)
 
@@ -1307,7 +1324,7 @@ class TypedStore(util.referencedobject):
         # We now have the source version of the requested default, but we need another version. Convert.
         sourcestore = version2store['source']
         defstore = cls.fromSchemaName(version,adddefault=False)
-        sourcestore.convert(defstore)
+        sourcestore.convert(defstore,usedefaults=False)
         atexit.register(TypedStore.release,defstore)
         version2store[version] = defstore
         return defstore
@@ -1420,8 +1437,9 @@ class TypedStore(util.referencedobject):
 
     def getDataType(self,name):
         if name in self.customdatatypes: return self.customdatatypes[name]
-        assert name in datatypes.types,'Unknown data type "%s" requested.' % name
-        return datatypes.types[name]
+        datatype = datatypes.get(name)
+        assert datatype is not None,'Unknown data type "%s" requested.' % name
+        return datatype
        
     @classmethod 
     def getCustomDataTypes(cls):
@@ -1644,9 +1662,8 @@ class TypedStore(util.referencedobject):
             if curvalue is None: return True
 
             # Get the reference value we will compare against
-            valuetype = node.getValueType(returnclass=True)
-            assert issubclass(valuetype,datatypes.DataTypeSimple), 'Data type of target node of condition must be DataTypeSimple, but is %s.' % (str(valuetype),)
-            refvalue = valuetype.fromXmlString(nodeCondition.getAttribute('value'),{},node)
+            assert isinstance(curvalue,datatypes.DataTypeSimple), 'Data type of target node of condition must be DataTypeSimple, but is %s.' % (curvalue.__class__,)
+            refvalue = curvalue.fromXmlString(nodeCondition.getAttribute('value'),{},node.templatenode)
 
             # Compare
             if condtype=='eq':
@@ -1725,21 +1742,21 @@ class TypedStore(util.referencedobject):
         validity = dict([(node,True) for node in nodes])
             
         # Build relevant subsets of node list.
-        customnodes,selectnodes,emptynodes,intnodes,floatnodes = [],[],[],[],[]
+        customnodes,selectnodes,emptynodes,lboundnodes,uboundnodes = [],[],[],[],[]
         for node in nodes:
             if not node.canHaveValue(): continue
             type = node.getValueType()
             value = node.getValue(usedefault=usedefault)
             if value is None:
                 emptynodes.append(node)
-            elif isinstance(value,datatypes.DataType):
+            elif value.hasExpensiveValidate():
                 customnodes.append(node)
-            elif node.templatenode.hasAttribute('hasoptions'):
+            if node.templatenode.hasAttribute('hasoptions'):
                 selectnodes.append(node)
-            elif type=='int':
-                intnodes.append(node)
-            elif type=='float':
-                floatnodes.append(node)
+            if node.templatenode.hasAttribute('minInclusive'):
+                lboundnodes.append(node)
+            if node.templatenode.hasAttribute('maxInclusive'):
+                uboundnodes.append(node)
             if isinstance(value,util.referencedobject): value.release()
         
         # Find used nodes that have not been set, and lack a default value.
@@ -1754,7 +1771,7 @@ class TypedStore(util.referencedobject):
         for node in visiblecustomnodes:
             progslicer.nextStep('validating '+node.getText(detail=1))
             value = node.getValue(usedefault=usedefault)
-            if not value.validate(callback=progslicer.getStepCallback()):
+            if not value.validate(node.templatenode,callback=progslicer.getStepCallback()):
                 validity[node] = False
                 errors.append('variable "%s" is set to an invalid value.' % node.getText(1))
             if isinstance(value,util.referencedobject): value.release()
@@ -1767,7 +1784,7 @@ class TypedStore(util.referencedobject):
             opt = 0
             for ch in optionsroot.childNodes:
                 if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                    chvalue = node.getValueType(returnclass=True).fromXmlString(ch.getAttribute('value'),{},node.templatenode)
+                    chvalue = value.fromXmlString(ch.getAttribute('value'),{},node.templatenode)
                     if value==chvalue:
                         opt = 1
                         if not ch.hasAttribute('disabled'): opt = 2
@@ -1783,45 +1800,28 @@ class TypedStore(util.referencedobject):
                     errors.append('variable "%s" is set to non-existent option %s.' % (node.getText(1),str(value)))
 
         # Find nodes with numeric data types, and check if they respect specified ranges (if any).
-        for node in intnodes:
+        for node in lboundnodes:
             value = node.getValue(usedefault=usedefault)
-            minval,maxval = node.templatenode.getAttribute('minInclusive'),node.templatenode.getAttribute('maxInclusive')
-            if minval!='':
-                if value<int(minval):
-                    if repair==2 or (repair==1 and node.isHidden()):
-                        node.setValue(minval)
-                    else:
-                        validity[node] = False
-                        errors.append('variable "%s" is set to %i, which lies below the minimum of %i.' % (node.getText(1),value,int(minval)))
-            if maxval!='':
-                if value>int(maxval):
-                    if repair==2 or (repair==1 and node.isHidden()):
-                        node.setValue(maxval)
-                    else:
-                        validity[node] = False
-                        errors.append('variable "%s" is set to %i, which lies above the maximum of %i.' % (node.getText(1),value,int(maxval)))
-                        
-        for node in floatnodes:
+            minval = value.fromXmlString(node.templatenode.getAttribute('minInclusive'),{},node.templatenode)
+            if value<minval:
+                if repair==2 or (repair==1 and node.isHidden()):
+                    node.setValue(minval)
+                else:
+                    validity[node] = False
+                    errors.append('variable "%s" is set to %s, which lies below the minimum of %s.' % (node.getText(1),value.toPrettyString(),minval.toPrettyString()))
+        for node in uboundnodes:
             value = node.getValue(usedefault=usedefault)
-            minval,maxval = node.templatenode.getAttribute('minInclusive'),node.templatenode.getAttribute('maxInclusive')
-            if minval!='':
-                if value<float(minval):
-                    if repair==2 or (repair==1 and node.isHidden()):
-                        node.setValue(minval)
-                    else:
-                        validity[node] = False
-                        errors.append('variable "%s" is set to %.6g, which lies below the minimum of %.6g.' % (node.getText(1),value,float(minval)))
-            if maxval!='':
-                if value>float(maxval):
-                    if repair==2 or (repair==1 and node.isHidden()):
-                        node.setValue(maxval)
-                    else:
-                        validity[node] = False
-                        errors.append('variable "%s" is set to %.6g, which lies above the maximum of %.6g.' % (node.getText(1),value,float(maxval)))
+            maxval = value.fromXmlString(node.templatenode.getAttribute('maxInclusive'),{},node.templatenode)
+            if value>maxval:
+                if repair==2 or (repair==1 and node.isHidden()):
+                    node.setValue(maxval)
+                else:
+                    validity[node] = False
+                    errors.append('variable "%s" is set to %s, which lies above the maximum of %s.' % (node.getText(1),value.toPrettyString(),maxval.toPrettyString()))
         
         return errors,validity
         
-    def convert(self,target,callback=None):
+    def convert(self,target,callback=None,usedefaults=True):
         """Converts the TypedStore object to the specified target. The target may be
         a version string (a new TypedStore object with the desired version will be created)
         or an existing TypedStore object with the different version.
@@ -1836,7 +1836,7 @@ class TypedStore(util.referencedobject):
         convertor = self.getConvertor(self.version,target.version)
         if convertor is None:
             raise Exception('No convertor available to convert version "%s" to "%s".' % (self.version,target.version))
-        convertor.convert(self,target,callback=callback)
+        convertor.convert(self,target,callback=callback,usedefaults=usedefaults)
 
         return target
 
@@ -1852,8 +1852,8 @@ class TypedStore(util.referencedobject):
         # Try direct route first.
         if (sourceid in cls.convertorsfrom) and (targetid in cls.convertorsfrom[sourceid]):
             convertorclass = cls.convertorsfrom[sourceid][targetid]
-            if convertorclass==Convertor:
-                conv = convertorclass(sourceid,targetid)
+            if convertorclass.defaultconvertor:
+                conv = convertorclass()
                 revconv = cls.getConvertor(targetid,sourceid,directonly=True)
                 if revconv is not None:
                     conv.links = revconv.reverseLinks()
@@ -1921,7 +1921,8 @@ class TypedStore(util.referencedobject):
         at locations that match between source and target."""
         if sourceid not in cls.convertorsfrom: cls.convertorsfrom[sourceid] = {}
         assert targetid not in cls.convertorsfrom[sourceid], 'Error! A class for converting from "%s" to "%s" was already specified previously.' % (sourceid,targetid)
-        cls.convertorsfrom[sourceid][targetid] = Convertor
+        defaultname = re.sub('\W','_','Default_Convertor_%s_%s' % (sourceid,targetid))
+        cls.convertorsfrom[sourceid][targetid] = type(defaultname,(Convertor,),{'fixedsourceid':sourceid,'fixedtargetid':targetid,'defaultconvertor':True})
 
     @classmethod
     def hasConvertor(cls,sourceid,targetid):
@@ -2310,7 +2311,7 @@ def versionStringToInt(versionstring):
         base *= 256
     return version
     
-class Convertor:
+class Convertor(object):
     """Base class for conversion between TypedStore objects that differ
     in version; derive custom convertors from this class.
     
@@ -2328,6 +2329,9 @@ class Convertor:
     """
     fixedsourceid = None
     fixedtargetid = None
+    defaultconvertor = False
+    
+    defaults = None
 
     def __init__(self,sourceid=None,targetid=None):
         if sourceid is None:
@@ -2349,7 +2353,7 @@ class Convertor:
         self.targetversionint = versionStringToInt(self.targetversion)
 
         self.links = []
-        self.defaults = []
+        #self.defaults = None
         self.registerLinks()
 
     def registerLinks(self):
@@ -2360,16 +2364,20 @@ class Convertor:
         """
         pass
 
-    def convert(self,source,target,callback=None):
+    def convert(self,source,target,callback=None,usedefaults=True):
         """Converts source TypedStore object to target TypedStore object.
         This method performs a simple deep copy of all values, and then
         handles explicitly specified links between source and target nodes
         (which can be set by inheriting classes), and sets a list of target
         nodes to their defaults (this list is also specified by inheriting
         classes)."""
+        matchednodes = None
+        if usedefaults and self.__class__.defaults is None:
+            matchednodes = []
+        
         # Try simple deep copy: nodes with the same name and location in both
         # source and target store will have their value copied.
-        target.root.copyFrom(source.root)
+        target.root.copyFrom(source.root,matchednodes=matchednodes)
 
         # Handle explicit one-to-one links between source nodes and target nodes.
         for (sourcepath,targetpath) in self.links:
@@ -2379,17 +2387,33 @@ class Convertor:
             targetnode = target[targetpath]
             if targetnode is None:
                 raise Exception('Cannot locate node "%s" in target.' % targetpath)
-            targetnode.copyFrom(sourcenode)
-
-        # Reset target nodes to defaults where that was explicitly specified.
-        if len(self.defaults)>0:
+            targetnode.copyFrom(sourcenode,matchednodes=matchednodes)
+            
+        if matchednodes is not None:
+            defaults = []
+            for node in target.root.getDescendants():
+                if node.canHaveValue() and node not in matchednodes:
+                    #print '%s in version %s did not get a value from version %s' % (node,self.targetid,self.sourceid)
+                    defaults.append('/'.join(node.location))
+            self.__class__.defaults = defaults
+            
+        # Reset target nodes to defaults where required.
+        if self.defaults and usedefaults:
             defscen = target.getDefault(None,target.version)
             for path in self.defaults:
-                sourcenode = defscen[path]
-                if sourcenode is None:
-                    raise Exception('Cannot locate node "%s" in default.' % path)
                 targetnode = target[path]
-                targetnode.copyFrom(sourcenode)
+                if targetnode.getValue(usedefault=False) is not None: continue
+                #print 'Using default value for %s/%s' % (self.targetid,path)
+                sourcevalue = defscen[path].getValue(usedefault=False)
+                if sourcevalue is None: continue
+                targetnode.setValue(sourcevalue)
+                if isinstance(sourcevalue,util.referencedobject): sourcevalue.release()
+
+        # Do custom conversions
+        self.convertCustom(source,target,callback)
+
+    def convertCustom(self,source,target,callback=None):
+        pass
 
     def reverseLinks(self):
         """Convert mapping from source to target nodes to mapping from target 
@@ -2403,7 +2427,7 @@ class ConvertorChain(Convertor):
         Convertor.__init__(self,chain[0].sourceid,chain[-1].targetid)
         self.chain = chain
 
-    def convert(self,source,target,callback=None):
+    def convert(self,source,target,callback=None,usedefaults=True):
         temptargets = []
         nsteps = len(self.chain)
         if callback is not None:

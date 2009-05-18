@@ -90,7 +90,7 @@ class Report(xmlstore.util.referencedobject):
         for node in scenario.root.getNodesByType('gotmdatafile'):
             if node.isHidden(): continue
             value = node.getValue(usedefault=True)
-            if value is not None and value.validate():
+            if value is not None and value.validate(node.templatenode):
                 inputdata.append((node,value))
                 steps += 1+len(value.keys())
 

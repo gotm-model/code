@@ -37,7 +37,7 @@
         <option value="2" label="custom cartesian grid (absolute layer heights)"/>
       </options>
     </element>
-    <element name="nlev" type="int" label="number of depth levels" minInclusive="1" maxInclusive="1000" description="The number of depth levels used to describe the water column. More levels increase accuracy and result resolution, but also simulation time.">
+    <element name="nlev" type="int" label="number of layers" minInclusive="1" maxInclusive="1000" description="The number of depth levels used to describe the water column. More levels increase accuracy and result resolution, but also simulation time.">
       <condition type="eq" variable="./grid_method" value="0"/>
     </element>
     <element name="ddu" type="float" label="surface zooming" description="Grid zooming (surface), 0: no zooming; > 3 strong zooming" minInclusive="0">
@@ -57,7 +57,7 @@
 	</element>
 
 	<element name="timeintegration" label="time integration">
-		<element name="dt"    type="duration" label="time step" minInclusive="0.001" maxInclusive="86400" description="Time step for integration. The time step affects the accuracy of the results: smaller time steps improve accuracy, but come at the expense of simulation speed."/>
+		<element name="dt"    type="duration" label="time step" minInclusive="PT0.001S" maxInclusive="P1D" description="Time step for integration. The time step affects the accuracy of the results: smaller time steps improve accuracy, but come at the expense of simulation speed."/>
 		<element name="cnpar" type="float"  label="&quot;explicitness&quot; of numerical scheme" minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems."/>
 	</element>
 

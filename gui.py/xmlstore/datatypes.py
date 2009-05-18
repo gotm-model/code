@@ -8,8 +8,18 @@ def register(name,datatype):
     assert name not in types, 'Data type %s has already been registered.' % datatype
     types[name] = datatype
 
+def get(name):
+    if name in types:
+        return types[name]
+    elif name.startswith('array(') and name.endswith(')'):
+        # This is an array data type. Build a suitable class on the spot.
+        base = get(name[6:-1])
+        if base is None: return None
+        types[name] = type('Array'+base.__name__,(DataTypeArray,),{'elementclass':base})
+        return types[name]
+    return None
 
-class DataType:
+class DataType(object):
     """Abstract class for user data types. Derived classes must implement
     virtual methods "load" and "save".
     
@@ -39,20 +49,158 @@ class DataType:
         in the saved store (see again the DataFile object)."""
         pass
         
-    def validate(self,callback=None):
+    def hasExpensiveValidate(self):
+        return False
+        
+    def validate(self,templatenode,callback=None):
         return True
         
     def toPrettyString(self):
         """Returns a pretty string representation of the object."""
         return unicode(self)
 
+    @classmethod
+    def fromNamelistString(cls,string,context,template=None):
+        raise Exception('This data type cannot be loaded from a Fortran namelist.')
+
+    def toNamelistString(self,context,template=None):
+        raise Exception('Objects of type %s cannot be saved to a Fortran namelist.' % (self.__class__,))
+
+class DataTypeArray(DataType,list):
+    """Abstract class for arrays of user data types.
+    """
+    class EmptyDataType(DataType):
+        """Empty data type used internally to represent missing array elements.
+        """
+        def save(self,node,context):
+            pass
+        def toPrettyString(self):
+            return ''
+        def toNamelistString(self,context,template=None):
+            return ''
+
+    def __init__(self,data):
+        DataType.__init__(self)
+        list.__init__(self)
+        def convert(arr):
+            newdat = []
+            for e in arr:
+                if e is None:
+                    newdat.append(DataTypeArray.EmptyDataType())
+                elif isinstance(e,(list,tuple)):
+                    newdat.append(convert(e))
+                elif not isinstance(e,self.elementclass):
+                    newdat.append(self.elementclass(e))
+                else:
+                    newdat.append(e)
+            return newdat
+        self += convert(data)
+    
+    @classmethod
+    def load(ownclass,node,context,template=None):
+        def getElements(n):
+            childvals = []
+            if not n.childNodes: return None
+            for child in n.childNodes:
+                if child.nodeType==child.ELEMENT_NODE and child.localName=='e':
+                    childvals.append(getElements(child))
+            if not childvals: childvals = ownclass.elementclass.load(n,context,template)
+            return childvals
+            
+        return ownclass(getElements(node))
+
+    def save(self,node,context):
+        xmldocument = node
+        while xmldocument.parentNode is not None: xmldocument = xmldocument.parentNode
+        assert xmldocument.nodeType==xmldocument.DOCUMENT_NODE, 'Could not find DOM document node. Node "%s" does not have a parent.' % xmldocument.tagName
+
+        for ch in node.childNodes:
+            node.removeChild(ch)
+            ch.unlink()
+        def storeElements(elements,targetnode):
+            for e in elements:
+                ch = xmldocument.createElement('e')
+                targetnode.appendChild(ch)
+                if isinstance(e,(list,tuple)):
+                    storeElements(e,ch)
+                else:
+                    e.save(ch,context)
+        storeElements(self,node)
+
+    def preparePersist(self,node,context):
+        def preparePersistElements(elements,targetnode):
+            for e in elements:
+                if isinstance(e,(list,tuple)):
+                    preparePersistElements(e,ch)
+                else:
+                    e.preparePersist(ch,context)
+        preparePersistElements(self,node)
+
+    def persist(self,node,context):
+        def persistElements(elements,targetnode):
+            for e in elements:
+                if isinstance(e,(list,tuple)):
+                    persistElements(e,ch)
+                else:
+                    e.persist(ch,context)
+        persistElements(self,node)
+        
+    def validate(self,templatenode,callback=None):
+        def validateElements(elements):
+            for e in elements:
+                if isinstance(e,(list,tuple)):
+                    if not validateElements(e,ch): return False
+                else:
+                    if not e.validate(templatenode,callback): return False
+            return True
+        return validateElements(self)
+        
+    def toPrettyString(self):
+        def toPrettyStringElements(elements):
+            strings = []
+            for e in elements:
+                if isinstance(e,(list,tuple)):
+                    strings.append(toPrettyStringElements(e))
+                else:
+                    strings.append(e.toPrettyString())
+            return '['+','.join(strings)+']'
+        return toPrettyStringElements(self)
+
+    def toNamelistString(self,context,template=None):
+        # First try to get the intended shape of the array (if specified)
+        # We will make sure not to write out more values that the array should contain.
+        n = None
+        if template is not None and template.hasAttribute('shape'):
+            n = int(template.getAttribute('shape'))
+            
+        strings = []
+        for e in self:
+            assert not isinstance(e,(list,tuple)), 'Only 1D arrays can be saved to FORTRAN namelists.'
+            strings.append(e.toNamelistString(context,template))
+            if n is not None and len(strings)==n: break
+        return ','.join(strings)
+
+    @classmethod
+    def fromNamelistString(ownclass,strings,context,template=None):
+        if not isinstance(strings,(list,tuple)): strings = [strings]
+        if template is not None and template.hasAttribute('shape'):
+            n = int(template.getAttribute('shape'))
+            if len(strings)<n: strings += [None]*(n-len(strings))
+            strings = strings[:n]
+        data = []
+        for item in strings:
+            if item is not None: item = ownclass.elementclass.fromNamelistString(item,context,template)
+            data.append(item)
+        return ownclass(data)
+        
 class DataTypeSimple(DataType):
     """Data type that can be completely represented by a single string.
     This string will be used to store the value as a single text node in XML.
     Also, because a single string representation exists, it can be used in
-    conditions and as the base data type of a "select" element.
+    conditions, in predefined options, and can have minimum and maximum
+    values assigned.
     
-    Derived classes must implement fromXmlString and toXmlString, rather
+    Derived classes typically implement fromXmlString and toXmlString, rather
     than load and save.
     """
 
@@ -60,18 +208,25 @@ class DataTypeSimple(DataType):
     def load(ownclass,node,context,template=None):
         return ownclass.fromXmlString(util.getNodeText(node),context,template)
 
-    @staticmethod
-    def fromXmlString(string,context,template=None):
+    @classmethod
+    def fromXmlString(cls,string,context,template=None):
         """Loads the object from an XML string.
         
-        The object returned by this static method will normally be a member of the class
-        to which the static method belongs. However, this is not enforced: an object of
-        another class may be returned (e.g., a Python primitive object such as int, float,
-        str). This will work provided that the class can be initialized from this object
-        alone. For an eample of this approach see the primitive data types Int, Float, String
-        below.
+        By default it assumes the derived class can be initialized from a string
+        argument. If this is not the case, fromXmlString should be implemented.
         """
-        assert False, 'Method "fromXmlString" MUST be implemented by the inheriting class.'
+        value = cls(string)
+        assert isinstance(value,cls), 'Value returned by fromXmlString is not of required type %s' % str(cls)
+        return value
+
+    @classmethod
+    def fromNamelistString(cls,string,context,template=None):
+        """Loads the object from an FORTRAN namelist string.
+        
+        By default it assumes the derived class can be initialized from a string
+        argument. If this is not the case, fromNamelistString should be implemented.
+        """
+        return cls(string)
 
     def save(self,node,context):
         string = self.toXmlString(context)
@@ -83,106 +238,136 @@ class DataTypeSimple(DataType):
         return True
 
     def toXmlString(self,context):
-        assert False, 'Method "toXmlString" MUST be implemented by the inheriting class.'
+        return unicode(self)
+        
+    def toNamelistString(self,context,template=None):
+        return unicode(self)
 
-class DataTypePrimitive(DataTypeSimple):
-    """Primitive data type that can be represented by a single Python object
-    (the value), as well as a single string. The value must be specified upon
-    initialization.
-    
-    Default conversion to an XML string is provided by a simple method that
-    calls "unicode" with the Python object as argument.
-    """
-    def __init__(self,value):
-        self.value = value
-    def toXmlString(self,context):
-        return unicode(self.value)
-    def toPrettyString(self):
-        return unicode(self.value)
-    def __cmp__(self,other):
-        if isinstance(other,DataTypePrimitive):
-            othervalue = other.value
-        else:
-            othervalue = other
-        return cmp(self.value,othervalue)
-
-class Int(DataTypePrimitive):
+class Int(DataTypeSimple,int):
     """Integer data type.
     """
     def __init__(self,value):
-        DataTypePrimitive.__init__(self,int(value))
-    @staticmethod
-    def fromXmlString(string,context,template=None):
-        return int(string)
+        DataTypeSimple.__init__(self)
+        int.__init__(self,value)
 register('int',Int)
 
-class Float(DataTypePrimitive):
+class Float(DataTypeSimple,float):
     """Floating point data type.
     """
     def __init__(self,value):
-        DataTypePrimitive.__init__(self,float(value))
-    @staticmethod
-    def fromXmlString(string,context,template=None):
-        return float(string)
+        DataTypeSimple.__init__(self)
+        float.__init__(self,value)
 register('float',Float)
 
-class Bool(DataTypePrimitive):
+class Bool(DataTypeSimple,int):
     """Boolean data type.
     """
     def __init__(self,value):
-        DataTypePrimitive.__init__(self,bool(value))
-    @staticmethod
-    def fromXmlString(string,context,template=None):
-        return (string=='True')
+        DataTypeSimple.__init__(self)
+        int.__init__(value)
+        
+    @classmethod
+    def fromXmlString(cls,string,context,template=None):
+        assert string in ('True','False'), 'Cannot convert XML string "%s" to a Boolean value (Booleans can only be True or False).' % string
+        return Bool(string=='True')
+        
+    @classmethod
+    def fromNamelistString(cls,string,context,template=None):
+        string = string.lower()
+        if   string.startswith('f') or string.startswith('.f'):
+            return Bool(False)
+        elif string.startswith('t') or string.startswith('.t'):
+            return Bool(True)
+        raise Exception('Cannot convert namelist string "%s" to a Boolean value.' % string)
+        
+    def toNamelistString(self,context,template=None):
+        if self: return '.true.'
+        else:    return '.false.'
+        
     def toXmlString(self,context):
-        if self.value: return 'True'
-        else:          return 'False'
+        if self: return 'True'
+        else:    return 'False'
+        
     def toPrettyString(self):
-        if self.value: return 'Yes'
-        else:          return 'No'
+        if self: return 'Yes'
+        else:    return 'No'
+        
 register('bool',Bool)
 
-class String(DataTypePrimitive):
+class String(DataTypeSimple,unicode):
     """String data type.
     """
     def __init__(self,value):
-        DataTypePrimitive.__init__(self,unicode(value))
-    @staticmethod
-    def fromXmlString(string,context,template=None):
+        DataTypeSimple.__init__(self)
+        unicode.__init__(self,value)
+
+    @classmethod
+    def fromNamelistString(cls,string,context,template=None):
+        if string[0] in '"\'':
+            if string[0]!=string[-1]:
+                raise Exception('Closing quote missing in namelist string %s.' % string)
+            return string[1:-1]
         return string
+        
+    def toNamelistString(self,context,template=None):
+        return '\''+str(self)+'\''
+        
 register('string',String)
 
-class DateTime(DataTypePrimitive):
+class DateTime(DataTypeSimple,datetime.datetime):
     """Date + time data type.
     """
-    reDateTime = re.compile('(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)')
-    def __init__(self,value):
-        assert isinstance(value,datetime.datetime),'Value is not of type datetime.datetime.'
-        DataTypePrimitive.__init__(self,value)
-    @staticmethod
-    def fromXmlString(string,context,template=None):
-        match = DateTime.reDateTime.match(string)
-        if match is None: raise Exception('Cannot parse "%s" as datetime object.' % string)
-        c = map(int,match.groups())
-        return datetime.datetime(c[0],c[1],c[2],c[3],c[4],c[5],tzinfo=util.utc)
+    reDateTime  = re.compile('(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)')
+    reDateTime2 = re.compile('(\d{4})[/\-](\d\d)[/\-](\d\d) (\d\d):(\d\d):(\d\d)')
+    
+    def __new__(cls,*args,**kwargs):
+        if len(args)==1 and not kwargs:
+            if isinstance(args[0],datetime.datetime):
+                # Initialize from datetime object.
+                dt = args[0]
+                args = [dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond, dt.tzinfo]
+            elif isinstance(args[0],basestring):
+                # Initialize from a single string (assume ISO date format).
+                match = DateTime.reDateTime.match(args[0])
+                if match is None: raise Exception('Cannot parse "%s" as datetime object.' % args[0])
+                args = map(int,match.groups())
+                kwargs['tzinfo'] = util.utc
+        return super(DateTime,cls).__new__(cls,*args,**kwargs)
+
+    def __init__(self,*args,**kwargs):
+        DataTypeSimple.__init__(self)
+        
+    @classmethod
+    def fromNamelistString(cls,string,context,template=None):
+        string = String.fromNamelistString(string,context,template)
+        datetimematch = DateTime.reDateTime2.match(string)
+        if datetimematch is None:
+            raise Exception('Cannot convert namelist string "%s" to a datetime object.' % string)
+        refvals = map(int,datetimematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+        return util.dateTimeFromTuple(refvals)
+        
     def toXmlString(self,context):
-        dt = self.value
-        return '%04i-%02i-%02i %02i:%02i:%02i' % (dt.year,dt.month,dt.day,dt.hour,dt.minute,dt.second)
+        return util.formatDateTime(self,iso=True)
+        
+    def toNamelistString(self,context,template=None):
+        return String(util.formatDateTime(self,iso=True)).toNamelistString(context,template)
+
     def toPrettyString(self):
-        return util.formatDateTime(self.value)
+        return util.formatDateTime(self)
+        
 register('datetime',DateTime)
 
 class TimeDelta(DataTypeSimple,datetime.timedelta):
     """Class representing a time span, capable of being stored in/loaded from
-    an XML store. Time spans are stored using the XSD duration data type format.
+    an XML store. Time spans are stored using the ISO 8601 duration data type format.
     """
     
     def __init__(self,*args,**kwargs):
         DataTypeSimple.__init__(self)
         datetime.timedelta.__init__(self,*args,**kwargs)
 
-    @staticmethod
-    def fromXmlString(text,context,template):
+    @classmethod
+    def fromXmlString(cls,text,context,template):
         """Loads the time span value from the specified string.
         """
         if text:
@@ -192,7 +377,7 @@ class TimeDelta(DataTypeSimple,datetime.timedelta):
                 mult = -1
                 text = text[1:]
                 
-            assert text[0]=='P', 'A stored duration/timedelta should always start with "P".'
+            assert text[0]=='P', 'A stored duration/timedelta should always start with "P". String: %s' % text
             import re
             m = re.match('P(\d+Y)?(\d+M)?(\d+D)?(?:T(\d+H)?(\d+M)?(\d+(?:\.\d*)S)?)?',text)
             assert m is not None, 'The string "%s" is not a valid duration/timedelta.' % text
@@ -219,9 +404,6 @@ class TimeDelta(DataTypeSimple,datetime.timedelta):
         """
         return float(self.getAsSeconds())
         
-    def __cmp__(self,other):
-        return cmp(self.getAsSeconds(),other.getAsSeconds())
-        
     def toPrettyString(self):
         """Returns a "pretty" string representation of the time span.
         """
@@ -242,6 +424,10 @@ class TimeDelta(DataTypeSimple,datetime.timedelta):
         if self.microseconds>0:
             values.append([self.microseconds,'microsecond'])
             
+        # If the duration is zero, return 0 without a unit, as we do not know
+        # which unit would be appropriate.
+        if not values: return '0'
+            
         # Add a trailing "s" for each unit that will have value > 1
         for v in values:
             if v[0]>1: v[1]+='s'
@@ -261,8 +447,8 @@ class Color(DataTypeSimple):
         self.green = green
         self.blue = blue
 
-    @staticmethod
-    def fromXmlString(strcolor,context,template):
+    @classmethod
+    def fromXmlString(cls,strcolor,context,template):
         """Creates a Color object with its value read from the specified string.
         """
         if len(strcolor)>0:
@@ -412,6 +598,19 @@ class DataFile(DataType,util.referencedobject):
         cache[uniquename] = df.addref()
         return df
 
+    @classmethod
+    def fromNamelistString(ownclass,string,context,infonode):
+        string = String.fromNamelistString(string,context,infonode)
+        container = context['container']
+        if container is None: return DataFile()
+        filelist = container.listFiles()
+        if string in filelist:
+            return container.getItem(string)
+        for fn in filelist:
+            if fn.endswith('/'+string):
+                return container.getItem(fn)
+        return DataFile()
+
     def save(self,node,context):
         """Saves the DataFile to the specified XML node. Currently the node will
         contain the name of the datafile within its container (DataContainer
@@ -429,6 +628,17 @@ class DataFile(DataType,util.referencedobject):
             util.setNodeText(node,self.name)
         else:
             util.setNodeText(node,'')
+
+    def toNamelistString(self,context,template=None):
+        assert 'targetcontainer' in context, 'persist: "targetcontainer" not set in XML store context.'
+        if 'targetcontainer' not in context or not self.isValid():
+            text = self.name
+            if text is None: text=''
+            return String(text).toNamelistString(context,template)
+        newname = template.getAttribute('name')+'.dat'
+        df = context['targetcontainer'].addItem(self,newname)
+        df.release()
+        return String(newname).toNamelistString(context,template)
 
     def preparePersist(self,node,context):
         """Prepares the data file object for being saved to persistent storage.
@@ -571,6 +781,13 @@ class DataFileEx(DataType,util.referencedobject):
         res = ownclass.createObject(datafile,context,infonode,valuenode.localName)
         datafile.release()
         return res
+
+    @classmethod
+    def fromNamelistString(ownclass,string,context,infonode):
+        datafile = DataFile.fromNamelistString(string,context,infonode)
+        res = ownclass.createObject(datafile,context,infonode,infonode.getAttribute('name'))
+        datafile.release()
+        return res
         
     @classmethod
     def createObject(ownclass,datafile,context,infonode,nodename):
@@ -706,6 +923,12 @@ class DataFileEx(DataType,util.referencedobject):
             self.store.release()
             self.metadata = None
             self.store = newstore.addref()
+
+    def toNamelistString(self,context,template=None):
+        df = self.getDataFile()
+        text = df.toNamelistString(context,template)
+        df.release()
+        return text
 
     def preparePersist(self,node,context):
         df = self.getDataFile()

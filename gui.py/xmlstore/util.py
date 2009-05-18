@@ -170,7 +170,7 @@ def findDescendantNodes(root,location):
     return children
 
 def getNodeText(node):
-    """Gets all text directly below the specified node. I fthe node contains
+    """Gets all text directly below the specified node. If the node contains
     multiple text nodes, their contents will be concatenated and returned.
     """
     return ''.join([ch.data for ch in node.childNodes if ch.nodeType==ch.TEXT_NODE]).strip()

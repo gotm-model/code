@@ -63,9 +63,61 @@ class Namelist:
         self.data = data
         self.filepath = filepath
         
-        if Namelist.varassign_re is None:
-            Namelist.varassign_re = re.compile('\s*(\w+)\s*=\s*')
-            Namelist.varstopchar_re = re.compile('[/,\n"\']')
+        # Identify the different items in the namelist
+        ipos = 0
+        items = []
+        while ipos<len(self.data):
+            ch = self.data[ipos]
+            if ch.isspace():
+                ipos += 1
+            elif ch in '"\'(':
+                closer = ch
+                if ch=='(': closer = ')'
+                iend = self.data.find(ch,ipos+1)
+                if iend==-1: raise Exception('Opening %s is not matched by closing %s.' % (ch,closer))
+                items.append(self.data[ipos:iend+1])
+                ipos = iend+1
+            elif ch in '*=,':
+                items.append(ch)
+                ipos += 1
+            elif ch.isalnum() or ch in '._-+':
+                iend = ipos+1
+                while iend<len(self.data) and (self.data[iend].isalnum() or self.data[iend] in '._-+'): iend+=1
+                items.append(self.data[ipos:iend])
+                ipos = iend
+            elif ch=='/':
+                break
+            else:
+                print self.data
+                raise Exception('Unknown character %s found in namelist.' % ch)
+                ipos += 1
+                
+        i = 0
+        self.assignments = []
+        while items:
+            varname = items.pop(0)
+            equals = items.pop(0)
+            if equals!='=': raise Exception('Equals sign (=) excepted after variable name %s.' % varname)
+            values,valuerequired = [],True
+            while items and (len(items)==1 or items[1]!='='):
+                value = items.pop(0)
+                if value==',':
+                    # Field separator - ignore if a value preceded it, otherwise interpret it as null value.
+                    if valuerequired:
+                        values.append(None)
+                    else:
+                        valuerequired = True
+                elif value.isdigit() and len(items)>=2 and items[0]=='*':
+                    # Multiplication: n*value
+                    items.pop(0)
+                    values += [items.pop(0)]*int(value)
+                    valuerequired = False
+                else:
+                    # Normal value
+                    values.append(value)
+                    valuerequired = False
+            if len(values)==1: values = values[0]
+            self.assignments.append((varname,values))
 
     def __iter__(self):
         return self
@@ -76,36 +128,11 @@ class Namelist:
         return ret
 
     def getNextVariable(self):
-        if self.isEmpty(): return None
-        
-        match = self.varassign_re.match(self.data);
-        if match is None:
-            raise NamelistParseException('Cannot find a variable assignment (variable_name = ...). Current namelist data: "%s"' % (self.data,),self.filepath,self.name,None)
-        foundvarname = match.group(1)
-        
-        self.data = self.data[match.end():]
-        ipos = 0
-        while True:
-            match = self.varstopchar_re.search(self.data,pos=ipos)
-            if match is None:
-                raise NamelistParseException('End of variable value not found. Current namelist data: "%s"' % (self.data,),self.filepath,self.name,foundvarname)
-            ch = match.group(0)
-            if ch=='\'' or ch=='"':
-                ipos = match.end(0)
-                inextquote = self.data.find(ch,ipos)
-                if inextquote==-1:
-                    raise NamelistParseException('Opening quote %s was not matched by end quote.' % (ch,),self.filepath,self.name,foundvarname)
-                ipos = inextquote+1
-            else:
-                # Found end of variable value.
-                vardata = self.data[0:match.start()].rstrip()
-                self.data = self.data[match.end():].lstrip()
-                break
-
-        return (foundvarname,vardata)
+        if not self.assignments: return None
+        return self.assignments.pop(0)
 
     def isEmpty(self):
-        return len(self.data)==0
+        return not self.assignments
 
 class NamelistFile:
     commentchar_re  = None
