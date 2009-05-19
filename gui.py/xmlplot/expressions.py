@@ -22,7 +22,8 @@ class ExpressionNamespace(UserDict.DictMixin):
     
     def __getitem__(self,name):
         for table in self.tables:
-            if name in table: return table[name]
+            if name in table:
+                return table[name]
         raise KeyError('"%s" does not exist in namespace' % name)
         
 class LazyStore(UserDict.DictMixin):
@@ -69,7 +70,7 @@ class LazyStore(UserDict.DictMixin):
         res |= set(self.store.children.keys())
         return list(res)
 
-class LazyExpression:
+class LazyExpression(object):
     """The light-weight class is the base class for objects that are meant to be used in
     expressions. It supports all mathematical operators, as well as slicing.
     
