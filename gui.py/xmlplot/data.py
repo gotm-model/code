@@ -29,17 +29,23 @@ def getNetCDFFile(path):
     
     # We prefer ScientificPython. Try that first.
     ready = True
+    oldscientific = False
     try:
         import Scientific.IO.NetCDF
     except Exception,e:
         error = 'Cannot load Scientific.IO.NetCDF. Reason: %s.\n' % str(e)
         ready = False
-    if ready:    
+    if ready:
         try:
-            nc = Scientific.IO.NetCDF.NetCDFFile(path)
-        except Exception, e:
-            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
-        return nc
+            version = map(int,Scientific.__version__.split('.')[:2])
+            oldscientific = version[0]<2 or (version[0]==2 and version[1]<7)
+        except: pass
+        if not oldscientific:
+            try:
+                nc = Scientific.IO.NetCDF.NetCDFFile(path)
+            except Exception, e:
+                raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
+            return nc
 
     # ScientificPython failed. Try netCDF4 instead.
     ready = True
@@ -56,20 +62,31 @@ def getNetCDFFile(path):
         return nc
     
     # ScientificPython and netCDF4 failed. Try pynetcdf instead.
+    ready = True
     try:
         import pynetcdf
     except Exception,e:
         error += 'Cannot load pynetcdf. Reason: %s.\n' % str(e)
-        raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, netCDF4 or pynetcdf.')
-    pyver = sys.version_info
-    if (pyver[0]==2 and pyver[1]>=5) or pyver[0]>2:
-        print '%sWe will use pynetcdf for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (error,pyver[0],pyver[1],pyver[2])
-    try:
-        nc = pynetcdf.NetCDFFile(path)
-    except Exception, e:
-        raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
-    return nc
+        ready = False
+    if ready:
+        pyver = sys.version_info
+        if (pyver[0]==2 and pyver[1]>=5) or pyver[0]>2:
+            print '%sWe will use pynetcdf for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (error,pyver[0],pyver[1],pyver[2])
+        try:
+            nc = pynetcdf.NetCDFFile(path)
+        except Exception, e:
+            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
+        return nc
 
+    if oldscientific:
+        try:
+            nc = Scientific.IO.NetCDF.NetCDFFile(path)
+        except Exception, e:
+            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
+        return nc
+        
+    # No NetCDF module found - raise exception.
+    raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, netCDF4 or pynetcdf.')
 
 class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx):
 
@@ -932,12 +949,13 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           boundindices,floatslices,floatindices = [],[],[]
           for idim,bound in enumerate(bounds):
             if isinstance(bound,int):
-                # Integer value provided as index
-                assert bound>=0,          'Slice index %i lies below lower boundary of dimension %s (0).' % (bound,dimnames[idim])
-                assert bound<shape[idim], 'Slice index %i exceeds upper boundary of dimension %s (%i).' % (bound,dimnames[idim],shape[idim]-1)
+                # Integer value provided as index.
+                assert bound>=-shape[idim], 'Slice index %i lies below the lowest possible index for dimension %s (%i).' % (bound,dimnames[idim],-shape[idim]  )
+                assert bound<  shape[idim], 'Slice index %i exceeds the highest possible index for dimension %s (%i).'   % (bound,dimnames[idim], shape[idim]-1)
+                if bound<0: bound += shape[idim]
                 boundindices.append(bound)
             elif not isinstance(bound,slice):
-                # Floating point value provided as index
+                # Floating point value or other non-integer object provided as index.
                 boundindices.append(slice(0,shape[idim]))
                 floatindices.append(idim)
             elif not (isinstance(bound.start,(int,types.NoneType)) and isinstance(bound.stop,(int,types.NoneType))):
@@ -1041,7 +1059,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           return dat
               
         def getSlice(self,bounds,dataonly=False,cache=False):
-          # Translate the slice specification so only slice objects an integer indices remain.
+          # Translate the slice specification so only slice objects and integer indices remain.
           bounds = self.translateSliceSpecification(bounds)
           
           # Retrieve the data values
@@ -1077,8 +1095,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             if coordvar is None:
                 # No coordinate variable available: use indices
                 coorddims = [dimname]
-                start,stop,step = bounds[idim].indices(self.getShape()[idim])
-                coords = numpy.arange(start,stop,step,dtype=numpy.float)
+                coords = numpy.arange(bounds[idim].start,bounds[idim].stop,bounds[idim].step,dtype=numpy.float)
             else:
                 # Coordinate variable present: use it.
                 coorddims = list(coordvar.getDimensions())
