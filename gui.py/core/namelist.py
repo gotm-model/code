@@ -14,7 +14,7 @@ class NamelistParseException(Exception):
     def __str__(self):
         return Exception.__str__(self)+'.\nFile: '+str(self.filename)+', namelist: '+str(self.namelistname)+', variable: '+str(self.variablename)
 
-class NamelistSubstitutions:
+class NamelistSubstitutions(object):
     subs_re = None
 
     def __init__(self,valuesfile):
@@ -53,7 +53,7 @@ class NamelistSubstitutions:
             text = text.replace(old,new)
         return text
 
-class Namelist:
+class Namelist(object):
 
     varassign_re   = None
     varstopchar_re = None
@@ -134,7 +134,7 @@ class Namelist:
     def isEmpty(self):
         return not self.assignments
 
-class NamelistFile:
+class NamelistFile(object):
     commentchar_re  = None
     namelistname_re = None
     stopchar_re     = None

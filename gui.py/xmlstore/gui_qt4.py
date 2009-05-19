@@ -62,7 +62,7 @@ def registerEditor(typename,editorclass):
     assert issubclass(editorclass,AbstractPropertyEditor), 'Custom data editors must derive from xmlstore.AbstractPropertyEditor.'
     getEditors()[typename] = editorclass
 
-class AbstractPropertyEditor:
+class AbstractPropertyEditor(object):
     """Abstract class for editing the value of a node in the TypedStore.
     Methods value and setValue must be implemented by inheriting classes.
 
@@ -1348,7 +1348,7 @@ class PropertyEditorDialog(QtGui.QDialog):
     def onReset(self):
         self.store.root.clearValue(recursive=True,deleteclones=False)
 
-class PropertyEditorFactory:
+class PropertyEditorFactory(object):
     """Class that provides editors for nodes in a TypedStore. Multiple editors
     can be active at once (cf. QItemDelegate). If nodes in the TypedStore are
     hidden, any associated editors are disabled or hidden as well.
@@ -1487,7 +1487,7 @@ class PropertyEditorFactory:
             newviz = (conditiontype=='eq' and valuematch) or (conditiontype=='ne' and not valuematch)
         editor.setVisible(newviz)
 
-class PropertyEditor:
+class PropertyEditor(object):
     """Class representing an editor of a node in the TypedStore, plus some associated
     widgets such as a label and unit specifier (cf. AbstractPropertyEditor). Contains
     some convenience functions that add all widgets that are part of the editor to

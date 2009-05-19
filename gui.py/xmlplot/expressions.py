@@ -79,8 +79,7 @@ class LazyExpression(object):
     retrieve several properties, such as name, long name, unit, shape, and the actual data.
     These secondary operation may be expensive (particularly data retrieval).
     """
-
-    class NamedFunction:
+    class NamedFunction(object):
         def __init__(self,name,func,useslices=False):
             self.name = name
             self.func = func

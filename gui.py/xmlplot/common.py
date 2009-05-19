@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.22 2009-05-19 11:10:22 jorn Exp $
+#$Id: common.py,v 1.23 2009-05-19 11:36:01 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -697,11 +697,11 @@ class VariableStore(UserDict.DictMixin):
         """
         return dict([(name,self.getVariable_raw(name).getLongName()) for name in self.getVariableNames_raw()])
 
-class Variable:
+class Variable(object):
     """Abstract class that represents a variable that can be plotted.
     """
     
-    class Slice:
+    class Slice(object):
         """Object representing a slice of data. It stores the names of
         coordinate dimensions internally, and is also maintains two versions
         of coordinates: one for grid centers and one for grid interfaces.

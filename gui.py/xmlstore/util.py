@@ -8,7 +8,7 @@ import pytz
 # Base class that supports reference counting
 # ------------------------------------------------------------------------------------------
 
-class referencedobject:
+class referencedobject(object):
     """Abstract base class for an object that supports reference counting,
     and cleans up after the last reference has been released.
     
@@ -270,7 +270,7 @@ def stripWhitespace(node):
 # Progress report merging class
 # ------------------------------------------------------------------------------------------
 
-class ProgressSlicer:
+class ProgressSlicer(object):
     """Progress reporting class that merges the progress of multiple steps
     that each report their individual progress.
     

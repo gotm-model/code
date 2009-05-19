@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.64 2009-05-11 13:52:21 jorn Exp $
+#$Id: commonqt.py,v 1.65 2009-05-19 11:36:01 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -432,7 +432,7 @@ class WizardDummyPage(WizardPage):
     def doNotShow(self):
         return True
 
-class WizardSequence:
+class WizardSequence(object):
 
     def __init__(self,items=[]):
         self.items = items

@@ -28,7 +28,7 @@ class GOTMWizard(commonqt.Wizard):
     scenarios to namelists.
     """
     
-    class DataSourceDir:
+    class DataSourceDir(object):
         def __init__(self,dictionary):
             self.dictionary = dictionary
         def get(self,default=None):

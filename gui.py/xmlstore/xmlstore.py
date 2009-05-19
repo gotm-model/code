@@ -15,7 +15,7 @@ import util, datatypes
 
 verbose = False
 
-class Schema:
+class Schema(object):
     """Class for managing XML-based schemas, used to define TypedStore objects.
     Supports caching of schemas (based on file path), parsing of schemas
     (i.e., inserting linked templates, resolving dependencies), and provides
@@ -336,7 +336,7 @@ class ShortcutDictionary(UserDict.DictMixin):
                 if ext==extension:
                     self.links[basename] = fullpath
 
-class TypedStoreInterface:
+class TypedStoreInterface(object):
     """This class provides an interface to a TypedStore object. The interface
     can be configured at initialization to (1) hide nodes with the "hidden"
     property set and (2) to omit nodes with the "grouponly" attribute set, replacing
@@ -571,7 +571,7 @@ class TypedStoreInterface:
         if self.processDefaultChange==1 or (self.processDefaultChange==0 and not node.hasValue()):
             self.onChange(node,feature)
 
-class Node:
+class Node(object):
     def __init__(self,controller,templatenode,valuenode,location,parent):
         assert templatenode.hasAttribute('name'),'Schema node %s lacks "name" attribute.' % location
 
@@ -1566,6 +1566,16 @@ class TypedStore(util.referencedobject):
         """Returns node at the specified path below the root of the tree.
         """
         return self.root[path]
+        
+    def findNode(self,path):
+        def find(root):
+            node = root[path]
+            if node is None:
+                for child in root.children:
+                    node = find(child)
+                    if node is not None: break
+            return node
+        return find(self.root)
 
     def mapForeignNode(self,foreignnode):
         """Takes a node from another TypedStore that uses the same XML schema,

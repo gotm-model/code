@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.5 2009-05-11 13:52:21 jorn Exp $
+#$Id: common.py,v 1.6 2009-05-19 11:36:01 jorn Exp $
 
 import sys, os.path, tempfile, shutil, atexit
 
@@ -17,7 +17,7 @@ def getDataRoot():
             dataroot = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
     return dataroot
 
-class TempDirManager:
+class TempDirManager(object):
     tempdirs = None
 
     @staticmethod
