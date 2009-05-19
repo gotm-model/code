@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.21 2009-05-11 14:54:26 jorn Exp $
+#$Id: common.py,v 1.22 2009-05-19 11:10:22 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -407,6 +407,9 @@ def broadcastSelective(source,sourcedims,targetshape,targetdims):
     assert len(targetshape)==len(targetdims), 'Target dimensions and length of target shape mismatch.'
     assert source.ndim==len(sourcedims), 'Number of source dimensions (%i) and source shape (%i) mismatch.' % (len(sourcedims),source.ndim)
     assert len(sourcedims) <=len(targetdims), 'The source array has more dimensions then the target.'
+    for dimname in sourcedims:
+        assert dimname in targetdims, 'Dimension "%s" is present in source array, but not in target array (containing %s).' % (dimname,','.join(targetdims))
+        
     newshape = []
     for itargetdim,dimname in enumerate(targetdims):
         if dimname in sourcedims:
