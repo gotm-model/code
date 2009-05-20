@@ -1147,7 +1147,7 @@ class Figure(xmlstore.util.referencedobject):
                         showedges = seriesnode['ShowEdges'].getValue(usedefault=True)
                         edgecolor = (seriesnode['EdgeColor'].getValue(usedefault=True).getNormalized(),)
                         if plottype3d==2 and seriesnode['UseColorMap'].getValue(usedefault=True): edgecolor = None
-                        edgewidth = seriesnode['EdgeWidth'].getValue(usedefault=True)
+                        edgewidth = float(seriesnode['EdgeWidth'].getValue(usedefault=True))
                         borders,fill = (showedges or plottype3d==2),plottype3d==1
                         cc = seriesnode['ContourCount'].getValue()
                         if cc is None: cc = 7
