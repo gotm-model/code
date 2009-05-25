@@ -567,7 +567,7 @@ class Figure(xmlstore.util.referencedobject):
         return self.properties.toXmlDom()
 
     def clearVariables(self):
-        """Clears all data series. Thsi does not automatically clear the
+        """Clears all data series. This does not automatically clear the
         list of registered data sources (VariableStore objects).
         """
         self.properties['Data'].removeChildren('Series')
@@ -830,6 +830,7 @@ class Figure(xmlstore.util.referencedobject):
                        'tight':False,
                        'reversed':False,
                        'datarange':[varslices[0].data.min(),varslices[0].data.max()]}
+            if hasattr(vardata['datarange'][0],'_mask') and vardata['datarange'][0]._mask: vardata['datarange'] = [None,None]
                 
             # Now determine the axes ranges
             varslice = varslices[0]
@@ -908,6 +909,7 @@ class Figure(xmlstore.util.referencedobject):
                                    'tight':False,
                                    'reversed':False,
                                    'datarange':[C.min(),C.max()]}
+                        if hasattr(cinfo['datarange'][0],'_mask') and cinfo['datarange'][0]._mask: cinfo['datarange'] = [None,None]
                     
                 # Transpose values if needed
                 if xdim<ydim:
@@ -1028,6 +1030,8 @@ class Figure(xmlstore.util.referencedobject):
 
                     datamin = curcoords.min()
                     datamax = curcoords.max()
+                    
+                if hasattr(datamin,'_mask'): datamin,datamax = None,None
 
                 # Update effective dimension bounds                    
                 effrange = axis2data.setdefault(axisname,{}).setdefault('datarange',[None,None])
@@ -1108,7 +1112,8 @@ class Figure(xmlstore.util.referencedobject):
                 
                 if C is not None:
                     axisdata = axis2data.get('colorbar',{})
-                    canhavelogscale = axisdata['datatype']!='datetime' and (axisdata['datarange'][0]>0 or axisdata['datarange'][1]>0)
+                    canhavelogscale = axisdata['datatype']!='datetime' and axisdata['datarange'][0] is not None
+                    if canhavelogscale: canhavelogscale = axisdata['datarange'][0]>0 or axisdata['datarange'][1]>0
                     logscale = canhavelogscale and axis2data.get('colorbar',{}).get('logscale',False)
                     crange = list(axis2data.get('colorbar',{}).get('forcedrange',[None,None]))
                     if logscale:
@@ -1131,11 +1136,16 @@ class Figure(xmlstore.util.referencedobject):
                     if crange[0] is None and crange[1] is None:
                         # Automatic color bounds: first check if we are not dealing with data with all the same value.
                         # if so, explicitly set the color range because MatPlotLib 0.90.0 chokes on identical min and max.
-                        if isinstance(C,numpy.ma.MaskedArray):
+                        if hasattr(C,'_mask'):
                             flatC = C.compressed()
                         else:
                             flatC = C.ravel()
-                        if len(flatC)>0 and (flatC==flatC[0]).all(): crange = (flatC[0]-1.,flatC[0]+1.)
+                        if len(flatC)>0:
+                            # One or more unmasked values
+                            if (flatC==flatC[0]).all(): crange = (flatC[0]-1.,flatC[0]+1.)
+                        else:
+                            # All values are masked
+                            crange = (0.,1.)
                     
                 if len(varslices)==1:
                     # Only one dependent variable: X,Y,C plot using contour, contourf and/or pcolormesh
@@ -1344,7 +1354,8 @@ class Figure(xmlstore.util.referencedobject):
             # Determine whether the axis can be log-transformed.
             axisdata = axis2data.get(axisname,{})
             datarange = axisdata.get('datarange',[None,None])
-            canhavelogscale = axisdata['datatype']!='datetime' and (datarange[0]>0 or datarange[1]>0)
+            canhavelogscale = axisdata['datatype']!='datetime' and datarange[0] is not None
+            if canhavelogscale: canhavelogscale = datarange[0]>0 or datarange[1]>0
             
             # Set log transformation defaults.
             defaxisnode['LogScale'].setValue(False)
@@ -1376,6 +1387,7 @@ class Figure(xmlstore.util.referencedobject):
             # Range selected by MatPlotLib
             if axisdata.get('tight',True):
                 naturalrange = axisdata['datarange'][:]
+                if axisdata['datarange'][0] is None: naturalrange = [0.,1.]
             elif axisname=='x':
                 naturalrange = axes.get_xlim()
             elif axisname=='y':
@@ -1384,6 +1396,7 @@ class Figure(xmlstore.util.referencedobject):
                 # Color range has been enforced before if needed (via pc.set_clim).
                 # Thus we can no longer ask MatPlotLib for "natural" bounds - just use data limits.
                 naturalrange = axisdata['datarange'][:]
+                if axisdata['datarange'][0] is None: naturalrange = [0.,1.]
                 
             # Get range forced by user
             if istimeaxis:
