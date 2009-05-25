@@ -95,6 +95,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{7221ADCA-A
 		..\..\core\namelist.py = ..\..\core\namelist.py
 		..\..\core\report.py = ..\..\core\report.py
 		..\..\core\result.py = ..\..\core\result.py
+		..\..\core\scenario-1.0.xsd = ..\..\core\scenario-1.0.xsd
 		..\..\core\scenario.py = ..\..\core\scenario.py
 		..\..\core\settings.py = ..\..\core\settings.py
 		..\..\core\simulator.py = ..\..\core\simulator.py
@@ -123,6 +124,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlstore", "xmlstore", "{F9
 		..\..\xmlstore\datatypes.py = ..\..\xmlstore\datatypes.py
 		..\..\xmlstore\gui_qt4.py = ..\..\xmlstore\gui_qt4.py
 		..\..\xmlstore\util.py = ..\..\xmlstore\util.py
+		..\..\xmlstore\xmlstore-1.0.xsd = ..\..\xmlstore\xmlstore-1.0.xsd
+		..\..\xmlstore\xmlstore-base-1.0.xsd = ..\..\xmlstore\xmlstore-base-1.0.xsd
 		..\..\xmlstore\xmlstore.py = ..\..\xmlstore\xmlstore.py
 	EndProjectSection
 EndProject

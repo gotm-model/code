@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<element name="scenario" label="scenario" version="gotm-4.1.0" namelistextension=".nml">
+<element name="scenario" label="scenario" version="gotm-4.1.0" namelistextension=".nml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../core/scenario-1.0.xsd">
 	<element name="gotmrun" label="general">
 		<element name="model_setup" label="general model setup">
 			<element name="title" type="string" label="title of simulation" />
@@ -51,11 +51,11 @@
 			<element name="nsave" type="int" label="save results every 'nsave' timesteps" minInclusive="1" maxInclusive="86400" />
 			<element name="diagnostics" type="bool" label="diagnostics are written to output (if .true.)" />
 			<element name="mld_method" type="int" label="how to diagnose mixed layer depth">
+				<condition type="eq" variable="./diagnostics" value="True" />
 				<options>
 					<option value="1" label="mixed layer depth computed from TKE threshold" />
 					<option value="2" label="mixed layer depth from Ri threshold" />
 				</options>
-				<condition type="eq" variable="./diagnostics" value="True" />
 			</element>
 			<element name="diff_k" type="float" label="TKE threshold for mixed layer depth" minInclusive="0"
 				maxInclusive="1" unit="m^2/s^2">
@@ -1454,7 +1454,7 @@
 				<condition type="eq" variable="./seagrass_calc" value="True" />
 				<fileinfo type="singleprofile">
 					<filedimensions>
-						<filedimension label="height above bottom" unit="m" />
+						<filedimension name="z" label="height above bottom" unit="m" />
 					</filedimensions>
 					<filevariables>
 						<filevariable name="exc"   label="maximum excursion limit" unit="m" />

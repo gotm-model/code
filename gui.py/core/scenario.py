@@ -108,7 +108,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                         fullnmlfilename = fn
                         break
                 else:
-                    if mainchild.templatenode.hasAttribute('optional'):
+                    if mainchild.templatenode.getAttribute('optional')=='True':
                         # This namelist file is missing but not required. Use default values and continue
                         if self.defaultstore is not None:
                             mainchild.copyFrom(self.defaultstore.mapForeignNode(mainchild))

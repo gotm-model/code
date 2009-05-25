@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:include schemaLocation="../xmlstore/xmlstore-base-1.0.xsd"/>
+
+	<xs:redefine schemaLocation="../xmlstore/xmlstore-base-1.0.xsd">
+		<xs:complexType name="elementtype">
+			<xs:complexContent>
+				<xs:extension base="elementtype">
+					<xs:sequence>
+						<xs:element ref="fileinfo" minOccurs="0" />
+					</xs:sequence>
+					<xs:attribute name="optional" type="xs:string" use="optional" fixed="True">
+						<xs:annotation>
+							<xs:documentation>Whether this element is optional in a FORTRAN namelist-based scenario. If set to True, lack of the element will not trigger an error; instead default values for itself and its children will be used.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="namelistextension" type="extension" use="optional">
+						<xs:annotation>
+							<xs:documentation>Extension used for FORTRAN namelist files representing this scenario. This attribute should only be set on the root element.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+		
+		<xs:simpleType name="datatype">
+			<xs:restriction base="datatype">
+				<xs:enumeration value="string"/>
+				<xs:enumeration value="int"/>
+				<xs:enumeration value="float"/>
+				<xs:enumeration value="bool"/>
+				<xs:enumeration value="datetime"/>
+				<xs:enumeration value="duration"/>
+				<xs:enumeration value="gotmdatafile"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:redefine>
+
+	<xs:simpleType name="extension">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="\.\w+"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:element name="filedimension">
+		<xs:complexType>
+			<xs:attribute name="name"          type="nametype"  use="required" />
+			<xs:attribute name="label"         type="xs:string" use="optional" />
+			<xs:attribute name="unit"          type="xs:string" use="optional" />
+			<xs:attribute name="preferredaxis" type="axis"      use="optional" />
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="filevariable">
+		<xs:complexType>
+			<xs:attribute name="name"  type="nametype"  use="required" />
+			<xs:attribute name="label" type="xs:string" use="optional" />
+			<xs:attribute name="unit"  type="xs:string" use="optional" />
+			<xs:attribute name="minInclusive"  type="xs:string" use="optional" />
+			<xs:attribute name="maxInclusive"  type="xs:string" use="optional" />
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="fileinfo">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="filedimensions" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="filedimension" minOccurs="1" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="filevariables">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="filevariable" minOccurs="0" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute name="type" type="datafiletype" use="required" />
+			<xs:attribute name="datatype" type="datafiledatatype" />
+		</xs:complexType>
+	</xs:element>
+
+</xs:schema>

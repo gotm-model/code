@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<element name="scenario" label="scenario" version="gotmgui-0.5.0">
+<element name="scenario" label="scenario" version="gotmgui-0.5.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../core/scenario-1.0.xsd">
 
 	<element name="title" type="string" label="title of simulation"/>
 
@@ -24,7 +24,7 @@
 		<element name="stop"  type="datetime" label="stop date">
 			<condition type="eq" variable="./timefmt" value="2"/>
 		</element>
-		<element name="MaxN"  type="int"      label="number of time steps">
+		<element name="MaxN"  type="int"      label="number of time steps" >
 			<condition type="ne" variable="./timefmt" value="2"/>
 		</element>
 	</element>
@@ -65,11 +65,11 @@
 		<element name="dtsave"      type="duration"  label="output resolution"/>
 		<element name="diagnostics" type="bool"   label="include diagnostics" description="Write diagnostics to output."/>
 		<element name="mld_method"  type="int" label="mixed layer depth criterion">
+			<condition type="eq" variable="./diagnostics" value="True"/>
 			<options>
 				<option value="1" label="TKE threshold"/>
 				<option value="2" label="Ri threshold"/>
 			</options>
-			<condition type="eq" variable="./diagnostics" value="True"/>
 		</element>
 		<element name="diff_k" type="float" label="TKE threshold" minInclusive="0" maxInclusive="1" unit="m²/s²">
 			<condition type="and">
@@ -1469,7 +1469,7 @@
 				<condition type="eq" variable="./seagrass_calc" value="True"/>
 				<fileinfo type="singleprofile">
 					<filedimensions>
-						<filedimension label="height above bottom" unit="m" preferredaxis="y" />
+						<filedimension name="z" label="height above bottom" unit="m" preferredaxis="y" />
 					</filedimensions>
 					<filevariables>
 						<filevariable name="exc"   label="maximum excursion limit" unit="m" />

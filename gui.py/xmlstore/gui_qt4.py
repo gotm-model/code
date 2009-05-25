@@ -191,7 +191,7 @@ class AbstractSelectEditor(AbstractPropertyEditor):
         ichild = 0
         for ch in options.childNodes:
             if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                if not ch.hasAttribute('disabled'):
+                if not ch.getAttribute('disabled')=='True':
                     label = ch.getAttribute('label')
                     if label=='': label = ch.getAttribute('value')
                     children.append((ichild,label,ch.getAttribute('description')))
@@ -203,7 +203,7 @@ class AbstractSelectEditor(AbstractPropertyEditor):
         options = util.findDescendantNode(self.node.templatenode,['options'])
         for ch in options.childNodes:
             if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                if not ch.hasAttribute('disabled') and ichild==index:
+                if ch.getAttribute('disabled')!='True' and ichild==index:
                     return self.node.getValueType(returnclass=True).fromXmlString(ch.getAttribute('value'),{},self.node.templatenode)
                 ichild += 1
         return None
@@ -214,7 +214,7 @@ class AbstractSelectEditor(AbstractPropertyEditor):
         options = util.findDescendantNode(self.node.templatenode,['options'])
         for ch in options.childNodes:
             if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                if not ch.hasAttribute('disabled'):
+                if ch.getAttribute('disabled')!='True':
                     chvalue = self.node.getValueType(returnclass=True).fromXmlString(ch.getAttribute('value'),{},self.node.templatenode)
                     if value==chvalue: return ichild
                 ichild += 1
@@ -868,7 +868,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
                 assert len(optionnodes)>0, 'Variable with "select" type does not have any options assigned to it.'
                 text += '\n\nAvailable options:'
                 for optionnode in optionnodes:
-                    if optionnode.hasAttribute('disabled'): continue
+                    if optionnode.getAttribute('disabled')=='True': continue
                     text += '\n- '
                     if optionnode.hasAttribute('description'):
                         text += optionnode.getAttribute('description')

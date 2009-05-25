@@ -583,8 +583,8 @@ class Node(object):
         self.parent = parent
         self.children = []
         self.futureindex = None
-        self.visible = (not self.templatenode.hasAttribute('hidden'))
-        self.grouponly = self.templatenode.hasAttribute('grouponly')
+        self.visible = self.templatenode.getAttribute('hidden')!='True'
+        self.grouponly = self.templatenode.getAttribute('grouponly')=='True'
 
         # Build a dictionary with all child value nodes
         valuechildren = {}
@@ -1797,7 +1797,7 @@ class TypedStore(util.referencedobject):
                     chvalue = value.fromXmlString(ch.getAttribute('value'),{},node.templatenode)
                     if value==chvalue:
                         opt = 1
-                        if not ch.hasAttribute('disabled'): opt = 2
+                        if ch.getAttribute('disabled')=='True': opt = 2
                         break
             if opt!=2:
                 if repair==2 or (repair==1 and node.isHidden()):
