@@ -146,7 +146,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
             store = LinkedMatrix(datafile,context,infonode,nodename,type=0,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'}},dimensionorder=('time',))
         elif type=='profilesintime':
             store = LinkedProfilesInTime(datafile,context,infonode,nodename,dimensions={'time':{'label':'time','datatype':'datetime','preferredaxis':'x'},'z':{'label':'depth','unit':'m','preferredaxis':'y'}},dimensionorder=('time','z'))
-        elif type=='singleprofile' or type=='verticalgrid':
+        elif type=='singleprofile':
             store = LinkedMatrix(datafile,context,infonode,nodename,type=1)
         else:
             assert False, 'Linked file has unknown type "%s".' % node.type
@@ -185,10 +185,13 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
             if fvars is not None:
                 for ch in fvars.childNodes:
                     if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filevariable':
-                        longname = ch.getAttribute('label')
-                        unit = ch.getAttribute('unit')
                         assert ch.hasAttribute('name'), '"name" attribute of filevariable is missing, label = %s.' % longname
                         name = ch.getAttribute('name')
+                        unit = ch.getAttribute('unit')
+                        if ch.hasAttribute('label'):
+                            longname = ch.getAttribute('label')
+                        else:
+                            longname = name
                         self.vardata.append((name,longname,unit))
 
             # Get dimensions
@@ -197,12 +200,15 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
                 for ch in fdims.childNodes:
                     if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='filedimension':
                         dimdata = common.VariableStore.getDimensionInfo_raw(self,None)
-                        if ch.hasAttribute('label'):         dimdata['label']         = ch.getAttribute('label')
+                        assert ch.hasAttribute('name'), '"name" attribute of filedimension is missing, label = "%s".' % ch.getAttribute('label')
+                        id = ch.getAttribute('name')
+                        if ch.hasAttribute('label'):
+                            dimdata['label'] = ch.getAttribute('label')
+                        else:
+                            dimdata['label'] = id
                         if ch.hasAttribute('unit'):          dimdata['unit']          = ch.getAttribute('unit')
                         if ch.hasAttribute('datatype'):      dimdata['datatype']      = ch.getAttribute('datatype')
                         if ch.hasAttribute('preferredaxis'): dimdata['preferredaxis'] = ch.getAttribute('preferredaxis')
-                        id = ch.getAttribute('name')
-                        if id=='': id = dimdata['label']
                         self.dimensions[id] = dimdata
                         self.dimensionorder.append(id)
 
@@ -923,6 +929,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 cdims = self.store.getVariable_raw(rawdims[idim]).getDimensions_raw(reassign=False)
                 for cdim in cdims:
                     if cdim not in ncvar.dimensions:
+                        #print 'undoing reassignment to %s because %s is not in variable dimensions %s' % (rawdims[idim],cdim,','.join(ncvar.dimensions))
                         rawdims[idim] = ncvar.dimensions[idim]
                         break
             
@@ -1389,18 +1396,18 @@ class NetCDFStore_GOTM(NetCDFStore):
         ncvars,ncdims = nc.variables,nc.dimensions
 
         # Re-assign x,y coordinate dimensions if using GETM with curvilinear coordinates
-        if ('xic'  in ncdims and 'etac' in ncdims and
-            'lonc' in ncvars and 'latc' in ncvars):
-            self.reassigneddims['xic' ] = 'lonc'
-            self.reassigneddims['etac'] = 'latc'
+        if 'xic'  in ncdims and 'etac' in ncdims:
             self.xname,self.yname = 'xic','etac'
+            if 'lonc' in ncvars and 'latc' in ncvars:
+                self.reassigneddims['xic' ] = 'lonc'
+                self.reassigneddims['etac'] = 'latc'
 
         # Re-assign x,y coordinate dimensions if using GETM with cartesian coordinates
-        if ('xc'   in ncdims and 'yc'   in ncdims and
-            'lonc' in ncvars and 'latc' in ncvars):
-            self.reassigneddims['xc' ] = 'lonc'
-            self.reassigneddims['yc'] = 'latc'
+        if 'xc'   in ncdims and 'yc'   in ncdims:
             self.xname,self.yname = 'xc','yc'
+            if 'lonc' in ncvars and 'latc' in ncvars:
+                self.reassigneddims['xc' ] = 'lonc'
+                self.reassigneddims['yc'] = 'latc'
 
         # Check for GETM convention for longitude,latitude names (default is GOTM convention)
         # This will be relevant for GETM with spherical coordinates only, since curvilinear/cartesian
@@ -1466,7 +1473,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     h = self.store[self.store.hname].getSlice((Ellipsis,),dataonly=True)
                     
                     # Get initial elevation
-                    elev = self.store[self.store.elevname].getSlice((0,Ellipsis,),dataonly=True)
+                    elev = self.store[self.store.elevname].getSlice((Ellipsis,),dataonly=True)
                     
                     # Fill masked values (we do not want coordinate arrays with masked values)
                     # This should not have any effect, as the value arrays should also be masked at
@@ -1480,9 +1487,9 @@ class NetCDFStore_GOTM(NetCDFStore):
                     sliceshape = list(z_stag.shape)
                     sliceshape[1] = 1
                     z_stag = numpy.concatenate((numpy.zeros(sliceshape,z_stag.dtype),z_stag),axis=1)
-                    bottomdepth = z_stag[0,-1,...]-elev
-                    z_stag -= bottomdepth
-
+                    bottomdepth = z_stag[:,-1,...]-elev
+                    z_stag -= bottomdepth[:,numpy.newaxis,...]
+                    
                     # Get depths of layer centers
                     z = z_stag[:,1:z_stag.shape[1],...]-0.5*h[:,:,...]
                     

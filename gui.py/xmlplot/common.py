@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.24 2009-05-19 11:44:25 jorn Exp $
+#$Id: common.py,v 1.25 2009-05-26 09:29:56 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -323,34 +323,28 @@ def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
     should be specified in argument defaultdeltafunction, and the dimension names should be
     provided in argument dimnames.
     """
+    # By default, stagger all dimensions.
     if dimindices is None: dimindices = range(coords.ndim)
 
-    # Calculate the shape of the to-be-created staggered array.
+    # Create an array to hold the original coordinates, linearly interpolated
+    # to one index before and one index beyond the original domain.   
     stagshape = list(coords.shape)
-    for i in dimindices: stagshape[i] += 1
-
-    # Create one array to hold center values with one index before,
-    # and one one index beyong original center coordinates.
-    # (interfaces will ultimately be the average of these two)    
-    coords_stag  = numpy.zeros(stagshape,coords.dtype)
-    coords_stag2 = numpy.zeros(stagshape,coords.dtype)
+    for i in dimindices: stagshape[i] += 2
+    coords_ext = numpy.empty(stagshape,coords.dtype)
     
     # Copy center values
-    slc1,slc2 = [slice(None)]*coords.ndim,[slice(None)]*coords.ndim
-    for i in dimindices:
-        slc1[i] = slice(0,-1,  1)
-        slc2[i] = slice(1,None,1)
-    coords_stag [tuple(slc1)] = coords
-    coords_stag2[tuple(slc2)] = coords
+    slc = [slice(None)]*coords.ndim
+    for i in dimindices: slc[i] = slice(1,-1)
+    coords_ext [tuple(slc)] = coords
     
     # Linearly interpolate center values to get values to append to the
     # front and back
-    for idim in dimindices:
+    for i,idim in enumerate(dimindices):
         targetslc = [slice(None)]*coords.ndim
     
         # Get values at one index beyond original data
-        for inextdim in range(idim+1,coords.ndim):
-            if inextdim in dimindices: targetslc[inextdim] = slice(0,-1,1)
+        for inextdim in dimindices[i+1:]:
+            targetslc[inextdim] = slice(0,-1)
         sourceslc1,sourceslc2 = list(targetslc),list(targetslc)
         targetslc[idim],sourceslc1[idim],sourceslc2[idim] = -1,-3,-2
         if coords.shape[idim]==1:
@@ -360,20 +354,44 @@ def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
                 assert dimnames is not None,'If a function supplying default delta is given, the dimension names must be given as well.'
                 delta = defaultdeltafunction(dimnames[idim],coords)
         else:
-            delta = (coords_stag[tuple(sourceslc2)]-coords_stag[tuple(sourceslc1)])
-        coords_stag[tuple(targetslc)] = coords_stag[tuple(sourceslc2)]+delta
+            delta = (coords_ext[tuple(sourceslc2)]-coords_ext[tuple(sourceslc1)])
+        coords_ext[tuple(targetslc)] = coords_ext[tuple(sourceslc2)]+delta
         
         # Get values at one index before original data
-        for inextdim in range(idim+1,coords.ndim):
-            if inextdim in dimindices: targetslc[inextdim] = slice(1,None,1)
+        for inextdim in dimindices[i+1:]:
+            targetslc[inextdim] = slice(1,None)
         sourceslc1,sourceslc2 = list(targetslc),list(targetslc)
         targetslc[idim],sourceslc1[idim],sourceslc2[idim] = 0,1,2
         if coords.shape[idim]>1:
-            delta = (coords_stag2[tuple(sourceslc2)]-coords_stag2[tuple(sourceslc1)])
-        coords_stag2[tuple(targetslc)] = coords_stag2[tuple(sourceslc1)]-delta
+            delta = (coords_ext[tuple(sourceslc2)]-coords_ext[tuple(sourceslc1)])
+        coords_ext[tuple(targetslc)] = coords_ext[tuple(sourceslc1)]-delta
 
-    return 0.5*(coords_stag+coords_stag2)
+    # Create an array to hold the result.
+    stagshape = list(coords.shape)
+    for i in dimindices: stagshape[i] += 1
+    coords_stag = numpy.zeros(stagshape,coords.dtype)
 
+    def adddims(result,dims,slc):
+        """Adds the lower and upper corner points for the next staggered dimension.
+        Called recursively to add the corners of the next staggered dimension, if any.
+        """
+        n = 0
+        for cur in ((0,-1),(1,None)):
+            slc[dims[0]] = slice(*cur)
+            if len(dims)>1:
+                n += adddims(result,dims[1:],slc)
+            else:
+                result += coords_ext[tuple(slc)]
+                n += 1
+        return n
+         
+    # Sum all corner points
+    sumcount = adddims(coords_stag,dimindices,[slice(None)]*coords.ndim)
+    assert sumcount==2**len(dimindices), 'Number of corner points used does not equal 2^(number of dimensions).'
+    
+    # Return the average of the corner points
+    return coords_stag/sumcount
+    
 def getboundindices(data,axis,minval=None,maxval=None):
     """Returns the indices for the specified axis that envelope (i.e., lie just outside)
     the specfied value range.
