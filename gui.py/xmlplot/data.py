@@ -1128,12 +1128,12 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                         # We take a single [centered] index from this dimension:
                         # Get the left and right bounds, so we can average them later.
                         coordslice_stag.append(slice(slc,slc+2))
-                coords_stag = stagcoordvar.getSlice(coordslice, dataonly=True, cache=True)
+                coords_stag = stagcoordvar.getSlice(coordslice_stag, dataonly=True, cache=True)
 
                 # Undo the staggering of the dimensions that we take a single slice through
                 # by averaging the left- and right bounds.
-                for i,slc in reversed(enumerate(coordslice)):
-                    if isinstance(slc,int): coords_stag = coords_stag.mean(axis=i)
+                for i in range(len(coordslice)-1,-1,-1):
+                    if isinstance(coordslice[i],int): coords_stag = coords_stag.mean(axis=i)
             else:
                 coords_stag = common.stagger(coords)
             
