@@ -113,6 +113,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlplot", "xmlplot", "{ED14
 		..\..\xmlplot\functions.py = ..\..\xmlplot\functions.py
 		..\..\xmlplot\gui_qt4.py = ..\..\xmlplot\gui_qt4.py
 		..\..\xmlplot\plot.py = ..\..\xmlplot\plot.py
+		..\..\xmlplot\xmlplot-1.0.xsd = ..\..\xmlplot\xmlplot-1.0.xsd
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlstore", "xmlstore", "{F98996AE-260D-42D5-9E95-C3181A2D7C8E}"

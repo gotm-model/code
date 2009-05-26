@@ -50,12 +50,14 @@ class SettingsStore(xmlstore.xmlstore.TypedStore):
     def addUniqueValue(self,parentlocation,nodename,nodevalue):
         parent = self[parentlocation]
         currentnodes = parent.getLocationMultiple([nodename])
-        if len(currentnodes)>0:
-            maxcount = int(currentnodes[0].templatenode.getAttribute('maxoccurs'))
+        if currentnodes:
+            maxcount = currentnodes[0].templatenode.getAttribute('maxOccurs')
             for i in range(len(currentnodes)-1,-1,-1):
                 if currentnodes[i].getValue()==nodevalue:
                     parent.removeChild(nodename,i)
                     currentnodes.pop(i)
-            parent.removeChildren(nodename,first=maxcount-1)
+            if maxcount!='unbounded':
+                if maxcount=='': maxcount = 1
+                parent.removeChildren(nodename,first=int(maxcount)-1)
         newnode = parent.addChild(nodename,position=0)
         newnode.setValue(nodevalue)

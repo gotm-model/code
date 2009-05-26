@@ -48,7 +48,7 @@
 		</element>
 		<element name="grid_file" type="gotmdatafile" label="custom grid" description="File for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
 			<condition type="ne" variable="./grid_method" value="0"/>
-			<fileinfo type="verticalgrid" datatype="float64">
+			<fileinfo type="singleprofile" datatype="float64">
 				<filevariables>
 					<filevariable name="h" label="height"/>
 				</filevariables>

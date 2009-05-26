@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
-<element name="ReportSettings">
+<element name="ReportSettings" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xmlplot/xmlplot-1.0.xsd">
 	<element name="Figures">
 		<element name="Selection">
-			<element name="VariablePath" type="string" maxoccurs="1000"/>
+			<element name="VariablePath" type="string" minOccurs="0" maxOccurs="unbounded"/>
 		</element>
 		<element name="Width"       label="width"        type="float"    unit="cm"  minInclusive="1"/>
 		<element name="Height"      label="height"       type="float"    unit="cm"  minInclusive="1"/>

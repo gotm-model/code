@@ -27,7 +27,6 @@
 	</xs:simpleType>
 	<xs:simpleType name="datafiletype">
 			<xs:restriction base="xs:string">
-			<xs:enumeration value="verticalgrid"/>
 			<xs:enumeration value="pointsintime"/>
 			<xs:enumeration value="profilesintime"/>
 			<xs:enumeration value="singleprofile"/>
@@ -90,13 +89,34 @@
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
-			<xs:element ref="element" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="template" minOccurs="0" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:complexContent>
+						<xs:extension base="elementtype">
+							<xs:attribute name="id" type="xs:string" use="required"/>
+						</xs:extension>
+					</xs:complexContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="element" />
+				<xs:element name="link">
+					<xs:complexType>
+						<xs:complexContent>
+							<xs:extension base="elementtype">
+								<xs:attribute name="name" type="nametype" use="optional">
+									<xs:annotation>
+										<xs:documentation>Name used to identify the element. It must be unique among its siblings, and cannot contain whitespace, slashes and square brackets.</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+								<xs:attribute name="template" type="xs:string"/>
+								<xs:attribute name="path" type="xs:string"/>
+							</xs:extension>
+						</xs:complexContent>
+					</xs:complexType>
+				</xs:element>
+			</xs:choice>
 		</xs:sequence>
-		<xs:attribute name="name" type="nametype" use="required">
-			<xs:annotation>
-				<xs:documentation>Name used to identify the element. It must be unique among its siblings, and cannot contain whitespace, slashes and square brackets.</xs:documentation>
-			</xs:annotation>
-		</xs:attribute>
 		<xs:attribute name="label" type="xs:string" use="optional">
 			<xs:annotation>
 				<xs:documentation>Descriptive short label.</xs:documentation>
@@ -127,9 +147,34 @@
 				<xs:documentation>Maximum allowed value.</xs:documentation>
 			</xs:annotation>
 		</xs:attribute>
+		<xs:attribute name="minOccurs" use="optional" type="xs:nonNegativeInteger">
+			<xs:annotation>
+				<xs:documentation>Minimum number of times that the node must be present.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="maxOccurs" use="optional">
+			<xs:annotation>
+				<xs:documentation>Maximum number of times that the node can be present.</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:pattern value="(\d+)|unbounded"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
 		<xs:attribute name="grouponly" type="xs:string" use="optional" fixed="True">
 			<xs:annotation>
 				<xs:documentation>Whether to prevent display of this element as a separate level in the hierarchy. If set to True, children of this element will appear as children of this element's parent, and the element itself will be invisible.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="hidden" type="xs:string" use="optional" fixed="True">
+			<xs:annotation>
+				<xs:documentation>Whether to always hide this element from view.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="editable" type="xs:string" use="optional" fixed="True">
+			<xs:annotation>
+				<xs:documentation>Whether the element can take custom values, that is, values other than the prespecified list of options.</xs:documentation>
 			</xs:annotation>
 		</xs:attribute>
 		<xs:attribute name="version" type="versiontype" use="optional">
@@ -139,5 +184,17 @@
 		</xs:attribute>
 	</xs:complexType>
 
-	<xs:element name="element" type="elementtype"/>
+	<xs:element name="element">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="elementtype">
+					<xs:attribute name="name" type="nametype" use="required">
+						<xs:annotation>
+							<xs:documentation>Name used to identify the element. It must be unique among its siblings, and cannot contain whitespace, slashes and square brackets.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:extension>
+		</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
 </xs:schema>

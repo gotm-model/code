@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-<element name="Result">
+<element name="Result" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xmlstore/xmlstore-1.0.xsd">
 	<element name="FigureSettings">
-		<link path="[xmlplot]/schemas/figure/0002.xml" maxoccurs="1000"/>
+		<link path="[xmlplot]/schemas/figure/0002.xml" minOccurs="0" maxOccurs="unbounded"/>
 	</element>
 	<link path="../report/gotmgui.xml"/>
 </element>

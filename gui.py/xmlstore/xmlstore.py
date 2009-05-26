@@ -105,20 +105,17 @@ class Schema(object):
                 assert templateid in templates, 'Cannot find template "%s".' % templateid
                 templateroot = templates[templateid]
                 
-            # Copy nodes
             linkparent = link.parentNode
-            if link.hasAttribute('skiproot'):
-                for ch in templateroot.childNodes:
-                    newnode = util.copyNode(ch,linkparent,targetdoc=dom)
-            else:
-                newnode = util.copyNode(templateroot,linkparent,targetdoc=dom,name='element',before=link)
-                
-                # Copy attributes and children of link node to new node.
-                for key in link.attributes.keys():
-                    if key not in ('path','template','skiproot'):
-                        newnode.setAttribute(key,link.getAttribute(key))
-                for ch in link.childNodes:
-                    util.copyNode(ch,newnode,targetdoc=dom)
+
+            # Copy node
+            newnode = util.copyNode(templateroot,linkparent,targetdoc=dom,name='element',before=link)
+            
+            # Copy attributes and children of link node to new node.
+            for key in link.attributes.keys():
+                if key not in ('path','template'):
+                    newnode.setAttribute(key,link.getAttribute(key))
+            for ch in link.childNodes:
+                util.copyNode(ch,newnode,targetdoc=dom)
                     
             # Remove link node
             linkparent.removeChild(link)
@@ -151,7 +148,7 @@ class Schema(object):
                             unitnode,relcurpath = self.getReversePath(ch,unit[1:-1],absourcepath=childcurpath)
                             self.registerDependency(unitnode,relcurpath,'unit')
                 elif ch.localName=='condition':
-                    assert not curowner.hasAttribute('maxoccurs'), 'Currently conditions on optional nodes are not supported.'
+                    assert curowner.getAttribute('maxOccurs') in ('','1'), 'Currently conditions on optional nodes are not supported.'
                     if ch.hasAttribute('source'): continue
                     if ch.hasAttribute('variable'):
                         # Get the referenced node, and the relative path from there to here.
@@ -600,18 +597,23 @@ class Node(object):
                 canhavechildren = True
                 
                 # Get all value nodes that correspond to the current template child.
-                curvaluechildren = valuechildren.pop(childid,())
-                if not templatechild.hasAttribute('maxoccurs'):
-                    # The node always occurs exactly one time.
-                    assert len(curvaluechildren)<=1, 'Node "%s" can at most occur 1 time, but it occurs %i times.' % (childid,len(curvaluechildren))
-                    if len(curvaluechildren)==0: curvaluechildren = (None,)
-                else:
-                    # The node may occur zero or more times.
-                    maxoccurs = int(templatechild.getAttribute('maxoccurs'))
-                    assert len(curvaluechildren)<=maxoccurs, 'Node "%s": number of children (%i) is greater than the imposed maximum (%i).' % (childid,len(curvaluechildren),maxoccurs)
+                childloc = list(self.location) + [childid]
+                curvaluechildren = valuechildren.pop(childid,[])
+                
+                # Check minimum and maximum occurrences of the node.
+                minoccurs = templatechild.getAttribute('minOccurs')
+                if minoccurs=='': minoccurs = 1
+                maxoccurs = templatechild.getAttribute('maxOccurs')
+                if maxoccurs=='': maxoccurs = 1
+                minoccurs = int(minoccurs)
+                if maxoccurs!='unbounded': maxoccurs = int(maxoccurs)
+                assert maxoccurs==1 or minoccurs==0,'Node %s: for maxOccurs %s > 1, minOccurs must currently equal 0, but it is %i.' % (','.join(childloc),maxoccurs,minoccurs)
+                assert maxoccurs=='unbounded' or maxoccurs>=minoccurs, 'Node %s: the value of the "maxOccurs" (%i) attribute must be greater than or equal to that of "minOccurs" (%i).' % (','.join(childloc),maxoccurs,minoccurs)
+                assert maxoccurs=='unbounded' or len(curvaluechildren)<=maxoccurs, 'Node "%s": number of children (%i) is greater than the imposed maximum (%i).' % (','.join(childloc),len(curvaluechildren),maxoccurs)
+                for i in range(len(curvaluechildren),minoccurs):
+                    curvaluechildren.append(None)
 
                 # Create nodes for all value nodes found.                     
-                childloc = list(self.location) + [childid]
                 for valuechild in curvaluechildren:
                     self.children.append(Node(self.controller,templatechild,valuechild,childloc,parent=self))
 
@@ -795,7 +797,7 @@ class Node(object):
 
     def addChild(self,childname,position=None,id=None):
         """Adds a new child node; this child node must be optional as
-        defined in the template with minoccurs/maxoccurs attributes.
+        defined in the template with minOccurs/maxOccurs attributes.
         
         The new child node is by default appended to the list of existing
         nodes with the same name, or inserted at the specified "position".
@@ -1156,7 +1158,7 @@ class Node(object):
     def canHaveClones(self):
         """Returns True if the node can occurs more than once.
         """
-        return self.templatenode.hasAttribute('maxoccurs')
+        return self.templatenode.getAttribute('maxOccurs') not in ('','1')
 
     def getDescendants(self):
         """Returns all descendant nodes.
@@ -1797,7 +1799,7 @@ class TypedStore(util.referencedobject):
                     chvalue = value.fromXmlString(ch.getAttribute('value'),{},node.templatenode)
                     if value==chvalue:
                         opt = 1
-                        if ch.getAttribute('disabled')=='True': opt = 2
+                        if ch.getAttribute('disabled')!='True': opt = 2
                         break
             if opt!=2:
                 if repair==2 or (repair==1 and node.isHidden()):

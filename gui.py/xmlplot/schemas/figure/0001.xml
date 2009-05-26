@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<element name="Figure" label="figure" version="0001">
+<element name="Figure" label="figure" version="0001" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../xmlplot/xmlplot-1.0.xsd">
 
 	<template id="Line2D">
 		<element name="CanHaveMarker" type="bool" hidden="True"/>
@@ -169,20 +169,20 @@
   </element>
 
   <element name="Axes" label="axes">
-		<element name="Axis" label="axis" maxoccurs="10">
+		<element name="Axis" label="axis" minOccurs="0" maxOccurs="3">
 			<element name="Label"       type="string" label="label"/>
 			<element name="IsTimeAxis"  type="bool" hidden="True"/>
 			<element name="Dimensions"  type="string" hidden="True"/>
-			<element name="MinimumTime" type="datetime" label="minimum" nodefault="True">
+			<element name="MinimumTime" type="datetime" label="minimum">
 				<condition type="eq" variable="./IsTimeAxis" value="True"/>
 			</element>
-			<element name="MaximumTime" type="datetime" label="maximum" nodefault="True">
+			<element name="MaximumTime" type="datetime" label="maximum">
 				<condition type="eq" variable="./IsTimeAxis" value="True"/>
 			</element>
-			<element name="Minimum" type="float" label="minimum" unit="[Unit]" nodefault="True">
+			<element name="Minimum" type="float" label="minimum" unit="[Unit]">
 				<condition type="ne" variable="./IsTimeAxis" value="True"/>
 			</element>
-			<element name="Maximum" type="float" label="maximum" unit="[Unit]" nodefault="True">
+			<element name="Maximum" type="float" label="maximum" unit="[Unit]">
 				<condition type="ne" variable="./IsTimeAxis" value="True"/>
 			</element>
 			<element name="Unit" type="string" label="unit" hidden="True"/>
@@ -199,7 +199,7 @@
 	</element>
 
 	<element name="Data" label="data series">
-		<element name="Series" label="series" maxoccurs="10">
+		<element name="Series" label="series" minOccurs="0" maxOccurs="unbounded">
       <element name="Label" type="string" label="label"/>
 			<element name="DimensionCount" type="int"    label="dimensions"  hidden="True"/>
 			<link template="Line2D" name="LineProperties" grouponly="True">

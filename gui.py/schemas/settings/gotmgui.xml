@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
-<element name="Settings">
+<element name="Settings" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xmlstore/xmlstore-1.0.xsd">
 	<element name="Paths">
 		<element name="RecentScenarios">
-			<element name="Path" type="string" maxoccurs="4"/>
+			<element name="Path" type="string" minOccurs="0" maxOccurs="4"/>
 		</element>
 		<element name="RecentResults">
-			<element name="Path" type="string" maxoccurs="4"/>
+			<element name="Path" type="string" minOccurs="0" maxOccurs="4"/>
 		</element>
 	</element>
 	<element name="FigureSettings">
-		<link path="[xmlplot]/schemas/figure/0002.xml" maxoccurs="1000"/>
+		<link path="[xmlplot]/schemas/figure/0002.xml" minOccurs="0" maxOccurs="unbounded"/>
 	</element>
 </element>
