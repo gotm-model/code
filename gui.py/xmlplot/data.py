@@ -1119,9 +1119,21 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             if coordvar is not None and dimname in self.store.staggeredcoordinates:
                 stagcoordvar = self.store.getVariable_raw(self.store.staggeredcoordinates[dimname])
                 assert stagcoordvar is not None, 'Staggered coordinate for %s registered in store as %s, but not present as variable.' % (dimname,self.store.staggeredcoordinates[dimname])
-                for i in range(len(coordslice)):
-                    if isinstance(coordslice[i],slice): coordslice[i] = slice(coordslice[i].start,coordslice[i].stop+1)
+                coordslice_stag = []
+                for slc in coordslice:
+                    if isinstance(slc,slice):
+                        # We take a subset of this dimension: extent the slice with 1.
+                        coordslice_stag.append(slice(slc.start,slc.stop+1))
+                    else:
+                        # We take a single [centered] index from this dimension:
+                        # Get the left and right bounds, so we can average them later.
+                        coordslice_stag.append(slice(slc,slc+2))
                 coords_stag = stagcoordvar.getSlice(coordslice, dataonly=True, cache=True)
+
+                # Undo the staggering of the dimensions that we take a single slice through
+                # by averaging the left- and right bounds.
+                for i,slc in reversed(enumerate(coordslice)):
+                    if isinstance(slc,int): coords_stag = coords_stag.mean(axis=i)
             else:
                 coords_stag = common.stagger(coords)
             
