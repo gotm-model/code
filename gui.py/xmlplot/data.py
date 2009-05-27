@@ -1117,8 +1117,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
 
             # Get staggered coordinates over entire domain
             if coordvar is not None and dimname in self.store.staggeredcoordinates:
+                # A variable exists that contains the staggered coordinates.
                 stagcoordvar = self.store.getVariable_raw(self.store.staggeredcoordinates[dimname])
-                assert stagcoordvar is not None, 'Staggered coordinate for %s registered in store as %s, but not present as variable.' % (dimname,self.store.staggeredcoordinates[dimname])
+                assert stagcoordvar is not None, 'Staggered coordinate for dimension %s registered in store as variable %s, but not present as variable.' % (dimname,self.store.staggeredcoordinates[dimname])
                 coordslice_stag = []
                 for slc in coordslice:
                     if isinstance(slc,slice):
@@ -1135,6 +1136,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 for i in range(len(coordslice)-1,-1,-1):
                     if isinstance(coordslice[i],int): coords_stag = coords_stag.mean(axis=i)
             else:
+                # Auto-generate the staggered coordinates.
                 coords_stag = common.stagger(coords)
             
             # Insert data dimensions where they are lacking in coordinate
@@ -1385,11 +1387,15 @@ class NetCDFStore_GOTM(NetCDFStore):
         if ('level' in ncdims and
             'h' in ncvars and 'elev' in ncvars): match = True
 
+        if ('sigma' in ncdims and
+            'bathymetry' in ncvars and 'elev' in ncvars): match = True
+
         nc.close()
         return match
 
     def __init__(self,path=None,*args,**kwargs):
         self.xname,self.yname,self.hname,self.elevname = 'lon','lat','h','zeta'
+        self.bathymetryname = None
 
         # Link new depth coordinates to an existing NetCDF dimension
         self.depth2coord = {}
@@ -1407,32 +1413,46 @@ class NetCDFStore_GOTM(NetCDFStore):
         nc = self.getcdf()
         ncvars,ncdims = nc.variables,nc.dimensions
 
-        # Re-assign x,y coordinate dimensions if using GETM with curvilinear coordinates
+        # --------------------------------------------------------------
+        # Re-assign x,y coordinate dimensions
+        # --------------------------------------------------------------
+
+        # Re-assign for GETM with curvilinear coordinates
         if 'xic'  in ncdims and 'etac' in ncdims:
             self.xname,self.yname = 'xic','etac'
             if 'lonc' in ncvars and 'latc' in ncvars:
                 self.reassigneddims['xic' ] = 'lonc'
                 self.reassigneddims['etac'] = 'latc'
 
-        # Re-assign x,y coordinate dimensions if using GETM with cartesian coordinates
+        # Re-assign for GETM with cartesian coordinates
         if 'xc'   in ncdims and 'yc'   in ncdims:
             self.xname,self.yname = 'xc','yc'
             if 'lonc' in ncvars and 'latc' in ncvars:
                 self.reassigneddims['xc' ] = 'lonc'
                 self.reassigneddims['yc'] = 'latc'
 
-        # Check for GETM convention for longitude,latitude names (default is GOTM convention)
-        # This will be relevant for GETM with spherical coordinates only, since curvilinear/cartesian
-        # was handled above.
+        # For GETM with spherical coordinates, we just need to remember the latitude,longitude
+        # names for when we return the dimensions of the new vertical coordinates.
         if self.xname=='lon' and ('lon' not in ncvars) and 'lonc' in ncvars: self.xname = 'lonc'
         if self.yname=='lat' and ('lat' not in ncvars) and 'latc' in ncvars: self.yname = 'latc'
 
-        # Re-assign depth coordinate dimension if using GETM
+        # --------------------------------------------------------------
+        # Re-assign vertical dimension
+        # NB the is done automatically for GOTM, because the original
+        # z and z1 variables are overwritten.
+        # --------------------------------------------------------------
+
+        # Re-assign depth coordinate dimension if using GETM with elevation,layer heights
         if ('level' in ncdims and 'h' in ncvars and 'elev' in ncvars):
             # GETM: "level" reassigned to "z"
             self.reassigneddims['level' ] = 'z'
             self.hname,self.elevname = 'h','elev'
             self.depth2coord['z'] = 'level'
+        elif ('sigma' in ncdims and 'bathymetry' in ncvars and 'elev' in ncvars):
+            # GETM: "sigma" reassigned to "z"
+            self.reassigneddims['sigma' ] = 'z'
+            self.bathymetryname,self.elevname = 'bathymetry','elev'
+            self.depth2coord['z'] = 'sigma'
             
     def getVariableNames_raw(self):
         names = list(NetCDFStore.getVariableNames_raw(self))
@@ -1481,46 +1501,75 @@ class NetCDFStore_GOTM(NetCDFStore):
                 
             def getNcData(self,bounds=None):
                 if 'z' not in self.store.cachedcoords:
-                    # Get layer heights (dimension 0: time, dimension 1: depth, dimension 2: y coordinate, dimension 3: x coordinate)
-                    h = self.store[self.store.hname].getSlice((Ellipsis,),dataonly=True)
-                    
-                    # Get initial elevation
+                    # Get elevations
                     elev = self.store[self.store.elevname].getSlice((Ellipsis,),dataonly=True)
-                    
-                    # Fill masked values (we do not want coordinate arrays with masked values)
-                    # This should not have any effect, as the value arrays should also be masked at
-                    # these locations.
-                    # Check for the "filled" attribute to see if these are masked arrays.
-                    if hasattr(h,   'filled'): h = h.filled(0.)
                     if hasattr(elev,'filled'): elev = elev.filled(0.)
-                    
-                    # Get depths of interfaces
-                    z_stag = h.cumsum(axis=1)
-                    sliceshape = list(z_stag.shape)
-                    sliceshape[1] = 1
-                    z_stag = numpy.concatenate((numpy.zeros(sliceshape,z_stag.dtype),z_stag),axis=1)
-                    bottomdepth = z_stag[:,-1,...]-elev
-                    z_stag -= bottomdepth[:,numpy.newaxis,...]
-                    
-                    # Get depths of layer centers
-                    z = z_stag[:,1:z_stag.shape[1],...]-0.5*h[:,:,...]
-                    
-                    # The actual interface coordinate z1 lacks the bottom interface
-                    z1 = z_stag[:,1:,...]
-                    
-                    # Use the actual top and bottom of the column as boundary interfaces for the
-                    # grid of the interface coordinate.
-                    z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),1),z[:,1:,...],numpy.take(z_stag,(-1,),1)),1)
-                    
-                    # Use normal staggering for the time, longitude and latitude dimension.
-                    z_stag  = common.stagger(z_stag, (0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
-                    z1_stag = common.stagger(z1_stag,(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
 
-                    # Store all coordinates in cache
-                    self.store.cachedcoords['z']       = z
-                    self.store.cachedcoords['z1']      = z1
-                    self.store.cachedcoords['z_stag']  = z_stag
-                    self.store.cachedcoords['z1_stag'] = z1_stag
+                    if self.store.bathymetryname is None:
+                        # Get layer heights (dimension 0: time, dimension 1: depth, dimension 2: y coordinate, dimension 3: x coordinate)
+                        h = self.store[self.store.hname].getSlice((Ellipsis,),dataonly=True)
+                                            
+                        # Fill masked values (we do not want coordinate arrays with masked values)
+                        # This should not have any effect, as the value arrays should also be masked at
+                        # these locations.
+                        # Check for the "filled" attribute to see if these are masked arrays.
+                        if hasattr(h,   'filled'): h = h.filled(0.)
+                        
+                        # Get depths of interfaces
+                        z_stag = h.cumsum(axis=1)
+                        sliceshape = list(z_stag.shape)
+                        sliceshape[1] = 1
+                        z_stag = numpy.concatenate((numpy.zeros(sliceshape,z_stag.dtype),z_stag),axis=1)
+                        bottomdepth = z_stag[:,-1,...]-elev
+                        z_stag -= bottomdepth[:,numpy.newaxis,...]
+                        
+                        # Get depths of layer centers
+                        z = z_stag[:,1:z_stag.shape[1],...]-0.5*h[:,:,...]
+                        
+                        # The actual interface coordinate z1 lacks the bottom interface
+                        z1 = z_stag[:,1:,...]
+                        
+                        # Use the actual top and bottom of the column as boundary interfaces for the
+                        # grid of the interface coordinate.
+                        z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),1),z[:,1:,...],numpy.take(z_stag,(-1,),1)),1)
+                        
+                        # Use normal staggering for the time, longitude and latitude dimension.
+                        z_stag  = common.stagger(z_stag, (0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+                        z1_stag = common.stagger(z1_stag,(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+
+                        # Store all coordinates in cache
+                        self.store.cachedcoords['z']       = z
+                        self.store.cachedcoords['z1']      = z1
+                        self.store.cachedcoords['z_stag']  = z_stag
+                        self.store.cachedcoords['z1_stag'] = z1_stag
+                    else:
+                        # Get bathymetry (dimension 0: y coordinate, dimension 1: x coordinate)
+                        bath = self.store[self.store.bathymetryname].getSlice((Ellipsis,),dataonly=True)
+                                                
+                        # Calculate water depth at each point in time
+                        depth = bath[numpy.newaxis,:,:]+elev
+                        
+                        # Get sigma levels (constant across time and space)
+                        sigma = self.store['sigma'].getSlice((Ellipsis,),dataonly=True)
+                        sigma_stag = numpy.empty((sigma.shape[0]+1,),dtype=sigma.dtype)
+                        sigma_stag[0] = -1.
+                        sigma_stag[1:-1] = (sigma[:-1]+sigma[1:])/2.
+                        sigma_stag[-1] = 0.
+                        
+                        # Add dimensions to sigma so it covers time (prepend 1) and space (append 2).
+                        sigma.shape = (1,-1,1,1)
+                        sigma_stag.shape = (1,-1,1,1)
+                        
+                        # From sigma levels and water depth, calculate the z coordinates.
+                        z = sigma*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
+                        z_stag = sigma_stag*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
+                        
+                        # Use default staggering for remaining dimensions of staggered z.
+                        z_stag  = common.stagger(z_stag,dimindices=(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+
+                        # Store all coordinates in cache
+                        self.store.cachedcoords['z']       = z
+                        self.store.cachedcoords['z_stag']  = z_stag
 
                 if bounds is None:
                     return self.store.cachedcoords[self.dimname]
