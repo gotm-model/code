@@ -609,7 +609,9 @@ class Node(object):
                 if maxoccurs!='unbounded': maxoccurs = int(maxoccurs)
                 assert maxoccurs==1 or minoccurs==0,'Node %s: for maxOccurs %s > 1, minOccurs must currently equal 0, but it is %i.' % (','.join(childloc),maxoccurs,minoccurs)
                 assert maxoccurs=='unbounded' or maxoccurs>=minoccurs, 'Node %s: the value of the "maxOccurs" (%i) attribute must be greater than or equal to that of "minOccurs" (%i).' % (','.join(childloc),maxoccurs,minoccurs)
-                assert maxoccurs=='unbounded' or len(curvaluechildren)<=maxoccurs, 'Node "%s": number of children (%i) is greater than the imposed maximum (%i).' % (','.join(childloc),len(curvaluechildren),maxoccurs)
+                if maxoccurs!='unbounded' and len(curvaluechildren)>maxoccurs:
+                    print 'Node "%s": number of children (%i) is greater than the imposed maximum (%i). Redundant child nodes will be deleted.' % (','.join(childloc),len(curvaluechildren),maxoccurs)
+                    for vch in curvaluechildren[maxoccurs:]: self.valueroot.removeChild(vch)
                 for i in range(len(curvaluechildren),minoccurs):
                     curvaluechildren.append(None)
 
