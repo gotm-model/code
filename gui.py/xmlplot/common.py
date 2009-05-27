@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.25 2009-05-26 09:29:56 jorn Exp $
+#$Id: common.py,v 1.26 2009-05-27 10:31:50 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -313,7 +313,7 @@ def getPercentile(data,cumweights,value,axis):
 defaultdimensioninfo = {'label':'','unit':'','preferredaxis':None,'datatype':'float','reversed':False}
 
 def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
-    """Creates coordinate arrays for interfaces from coordinates arrays for centers.
+    """Creates value arrays for interfaces from value arrays for centers.
     A subset of dimensions for which to operate on may be selected through argument dimindices;
     if not provided, all axes are operated upon.
     
@@ -333,19 +333,18 @@ def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
     coords_ext = numpy.empty(stagshape,coords.dtype)
     
     # Copy center values
-    slc = [slice(None)]*coords.ndim
-    for i in dimindices: slc[i] = slice(1,-1)
-    coords_ext [tuple(slc)] = coords
+    targetslc = [slice(None)]*coords.ndim
+    for i in dimindices: targetslc[i] = slice(1,-1)
+    coords_ext[tuple(targetslc)] = coords
     
     # Linearly interpolate center values to get values to append to the
     # front and back
     for i,idim in enumerate(dimindices):
-        targetslc = [slice(None)]*coords.ndim
     
-        # Get values at one index beyond original data
-        for inextdim in dimindices[i+1:]:
-            targetslc[inextdim] = slice(0,-1)
+        # Build the slices to copy from.
         sourceslc1,sourceslc2 = list(targetslc),list(targetslc)
+
+        # Get values at one index beyond original data
         targetslc[idim],sourceslc1[idim],sourceslc2[idim] = -1,-3,-2
         if coords.shape[idim]==1:
             if defaultdeltafunction is None:
@@ -358,39 +357,46 @@ def stagger(coords,dimindices=None,defaultdeltafunction=None,dimnames=None):
         coords_ext[tuple(targetslc)] = coords_ext[tuple(sourceslc2)]+delta
         
         # Get values at one index before original data
-        for inextdim in dimindices[i+1:]:
-            targetslc[inextdim] = slice(1,None)
-        sourceslc1,sourceslc2 = list(targetslc),list(targetslc)
         targetslc[idim],sourceslc1[idim],sourceslc2[idim] = 0,1,2
         if coords.shape[idim]>1:
             delta = (coords_ext[tuple(sourceslc2)]-coords_ext[tuple(sourceslc1)])
         coords_ext[tuple(targetslc)] = coords_ext[tuple(sourceslc1)]-delta
+        
+        # For the next staggering, we can use the full range of the current dimension.
+        targetslc[idim] = slice(None)
 
-    # Create an array to hold the result.
-    stagshape = list(coords.shape)
-    for i in dimindices: stagshape[i] += 1
-    coords_stag = numpy.zeros(stagshape,coords.dtype)
+    return center(coords_ext,dimindices)
+
+def center(coords,dimindices=None):
+    """Creates value arrays for interfaces from value arrays for centers.
+    A subset of dimensions for which to operate on may be selected through argument dimindices;
+    if not provided, all axes are operated upon.
+    """
+
+    # By default, center in all dimensions.
+    if dimindices is None: dimindices = range(coords.ndim)
+
+    # Create an array to hold the center coordinates.   
+    centershape = list(coords.shape)
+    for i in dimindices: centershape[i] -= 1
+    coords_center = numpy.zeros(centershape,coords.dtype)
 
     def adddims(result,dims,slc):
         """Adds the lower and upper corner points for the next staggered dimension.
         Called recursively to add the corners of the next staggered dimension, if any.
         """
-        n = 0
         for cur in ((0,-1),(1,None)):
             slc[dims[0]] = slice(*cur)
             if len(dims)>1:
-                n += adddims(result,dims[1:],slc)
+                adddims(result,dims[1:],slc)
             else:
-                result += coords_ext[tuple(slc)]
-                n += 1
-        return n
+                result += coords[tuple(slc)]
          
     # Sum all corner points
-    sumcount = adddims(coords_stag,dimindices,[slice(None)]*coords.ndim)
-    assert sumcount==2**len(dimindices), 'Number of corner points used does not equal 2^(number of dimensions).'
+    adddims(coords_center,dimindices,[slice(None)]*coords.ndim)
     
     # Return the average of the corner points
-    return coords_stag/sumcount
+    return coords_center/(2**len(dimindices))
     
 def getboundindices(data,axis,minval=None,maxval=None):
     """Returns the indices for the specified axis that envelope (i.e., lie just outside)
