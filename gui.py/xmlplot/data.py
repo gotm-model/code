@@ -1065,7 +1065,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
               
           return dat
               
-        def getSlice(self,bounds,dataonly=False,cache=False):
+        def getSlice(self,bounds,dataonly=False,cache=False,transfercoordinatemask=True):
           # Translate the slice specification so only slice objects and integer indices remain.
           bounds = self.translateSliceSpecification(bounds)
           
@@ -1092,9 +1092,11 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
 
           # Retrieve coordinate values
           inewdim = 0
+          datamask = None
+          if hasattr(dat,'_mask'): datamask = dat._mask
           for idim,dimname in enumerate(dimnames):
             # If we take a single index for this dimension, it will not be included in the output.
-            if not isinstance(bounds[idim],slice): continue
+            if (not transfercoordinatemask) and not isinstance(bounds[idim],slice): continue
 
             # Get the coordinate variable          
             coordvar = self.store.getVariable_raw(dimname)
@@ -1114,6 +1116,21 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 # Get coordinate values
                 coordslice = [bounds[dimnames.index(cd)] for cd in coorddims]
                 coords = coordvar.getSlice(coordslice, dataonly=True, cache=True)
+                
+            # Get the list of coordinate dimensions after the ones with single index have been sliced out.
+            newcoorddims = [cd for cd in coorddims if isinstance(bounds[dimnames.index(cd)],slice)]
+
+            # Transfer the coordinate mask to the data if desired.
+            if transfercoordinatemask and hasattr(coords,'_mask') and isinstance(coords._mask,numpy.ndarray):
+                newmask = common.broadcastSelective(coords._mask,newcoorddims,dat.shape,newdimnames)
+                if datamask is None:
+                    datamask = newmask
+                else:
+                    datamask = numpy.logical_or(datamask,newmask)
+                dat = numpy.ma.masked_where(datamask,dat,copy=False)
+
+            # If we take a single index for this dimension, it will not be included in the output.
+            if not isinstance(bounds[idim],slice): continue
 
             # Get staggered coordinates over entire domain
             if coordvar is not None and dimname in self.store.staggeredcoordinates:
@@ -1140,7 +1157,6 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 coords_stag = common.stagger(coords)
             
             # Insert data dimensions where they are lacking in coordinate
-            newcoorddims = [cd for cd in coorddims if isinstance(bounds[dimnames.index(cd)],slice)]
             coords      = common.broadcastSelective(coords,     newcoorddims,dat.shape,               newdimnames)
             coords_stag = common.broadcastSelective(coords_stag,newcoorddims,[l+1 for l in dat.shape],newdimnames)
 
@@ -1499,11 +1515,17 @@ class NetCDFStore_GOTM(NetCDFStore):
             def getShape(self):
                 return self.getNcData().shape
                 
-            def getNcData(self,bounds=None):
+            def getNcData(self,bounds=None,allowmask=True):
                 if 'z' not in self.store.cachedcoords:
+                    np = numpy
+                
                     # Get elevations
                     elev = self.store[self.store.elevname].getSlice((Ellipsis,),dataonly=True)
-                    if hasattr(elev,'filled'): elev = elev.filled(0.)
+                    if hasattr(elev,'filled'):
+                        if allowmask:
+                            np = numpy.ma
+                        else:
+                            elev = elev.filled(0.)
 
                     if self.store.bathymetryname is None:
                         # Get layer heights (dimension 0: time, dimension 1: depth, dimension 2: y coordinate, dimension 3: x coordinate)
@@ -1513,13 +1535,17 @@ class NetCDFStore_GOTM(NetCDFStore):
                         # This should not have any effect, as the value arrays should also be masked at
                         # these locations.
                         # Check for the "filled" attribute to see if these are masked arrays.
-                        if hasattr(h,   'filled'): h = h.filled(0.)
+                        if hasattr(h,'filled'):
+                            if allowmask:
+                                np = numpy.ma
+                            else:
+                                h = h.filled(0.)
                         
                         # Get depths of interfaces
                         z_stag = h.cumsum(axis=1)
                         sliceshape = list(z_stag.shape)
                         sliceshape[1] = 1
-                        z_stag = numpy.concatenate((numpy.zeros(sliceshape,z_stag.dtype),z_stag),axis=1)
+                        z_stag = np.concatenate((numpy.zeros(sliceshape,z_stag.dtype),z_stag),axis=1)
                         bottomdepth = z_stag[:,-1,...]-elev
                         z_stag -= bottomdepth[:,numpy.newaxis,...]
                         
@@ -1531,7 +1557,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                         
                         # Use the actual top and bottom of the column as boundary interfaces for the
                         # grid of the interface coordinate.
-                        z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),1),z[:,1:,...],numpy.take(z_stag,(-1,),1)),1)
+                        z1_stag = np.concatenate((numpy.take(z_stag,(0,),1),z[:,1:,...],numpy.take(z_stag,(-1,),1)),1)
                         
                         # Use normal staggering for the time, longitude and latitude dimension.
                         z_stag  = common.stagger(z_stag, (0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
