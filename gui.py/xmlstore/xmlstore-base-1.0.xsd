@@ -10,6 +10,11 @@
 			<xs:pattern value="[^/\s[\]]+"/>
 		</xs:restriction>
 	</xs:simpleType>
+	<xs:simpleType name="labeltype">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="80"/>
+		</xs:restriction>
+	</xs:simpleType>
 	<xs:simpleType name="datatype">
 		<xs:restriction base="xs:string">
 			<xs:pattern value="\w+"/>
@@ -51,7 +56,7 @@
 			<xs:enumeration value="ne"/>
 		</xs:restriction>
 	</xs:simpleType>
-
+	
 	<xs:element name="condition">
 		<xs:complexType>
 			<xs:sequence>
@@ -66,7 +71,7 @@
 	<xs:element name="option">
 		<xs:complexType>
 			<xs:attribute name="value"       type="xs:string" use="required" />
-			<xs:attribute name="label"       type="xs:string" use="optional" />
+			<xs:attribute name="label"       type="labeltype" use="optional" />
 			<xs:attribute name="description" type="xs:string" use="optional" />
 			<xs:attribute name="disabled"    type="xs:string" use="optional" fixed="True"/>
 		</xs:complexType>
@@ -117,7 +122,7 @@
 				</xs:element>
 			</xs:choice>
 		</xs:sequence>
-		<xs:attribute name="label" type="xs:string" use="optional">
+		<xs:attribute name="label" type="labeltype" use="optional">
 			<xs:annotation>
 				<xs:documentation>Descriptive short label.</xs:documentation>
 			</xs:annotation>
@@ -157,9 +162,13 @@
 				<xs:documentation>Maximum number of times that the node can be present.</xs:documentation>
 			</xs:annotation>
 			<xs:simpleType>
-				<xs:restriction base="xs:string">
-					<xs:pattern value="(\d+)|unbounded"/>
-				</xs:restriction>
+				<xs:union memberTypes="xs:nonNegativeInteger">
+					<xs:simpleType>
+						<xs:restriction base="xs:NMTOKEN">
+							<xs:enumeration value="unbounded"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:union>
 			</xs:simpleType>
 		</xs:attribute>
 		<xs:attribute name="grouponly" type="xs:string" use="optional" fixed="True">
@@ -174,7 +183,7 @@
 		</xs:attribute>
 		<xs:attribute name="editable" type="xs:string" use="optional" fixed="True">
 			<xs:annotation>
-				<xs:documentation>Whether the element can take custom values, that is, values other than the prespecified list of options.</xs:documentation>
+				<xs:documentation>Whether the element can take custom values in addition to a prespecified list of options. Only used if the "options" node is present.</xs:documentation>
 			</xs:annotation>
 		</xs:attribute>
 		<xs:attribute name="version" type="versiontype" use="optional">
