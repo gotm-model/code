@@ -16,6 +16,7 @@ class SettingsStore(xmlstore.xmlstore.TypedStore):
             xmlstore.xmlstore.TypedStore.load(self,settingspath)
         except Exception,e:
             raise LoadException('Failed to load settings from "%s".\nReason: %s.\nAll settings will be reset.' % (settingspath,e))
+            self.setStore(None)
         self.removeNonExistent('Paths/RecentScenarios','Path')
         self.removeNonExistent('Paths/RecentResults',  'Path')
 
