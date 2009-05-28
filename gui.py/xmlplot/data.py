@@ -1529,22 +1529,6 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return baseshape
                 
             def getNcData(self,bounds=None,allowmask=True):
-                # Get the bounds to use for the different variables used  to calculate depth.
-                elevbounds,hbounds,bathbounds,sigmabounds = (Ellipsis,),(Ellipsis,),(Ellipsis,),(Ellipsis,)
-                if bounds is not None:
-                    newbounds = []
-                    for l in bounds:
-                        if isinstance(l,int): l = slice(l,l+1)
-                        newbounds.append(l)
-                    if self.dimname.endswith('_stag'):
-                        newbounds = [slice(s.start,s.stop-1) for s in newbounds]
-                    newbounds[1] = slice(None)
-                    
-                    elevbounds = (newbounds[0],newbounds[2],newbounds[3])
-                    hbounds = newbounds
-                    bathbounds = newbounds[-2:]
-                    sigmabounds = (newbounds[1],)
-            
                 # Return values from cache if available.
                 if 'z' in self.store.cachedcoords:
                     if bounds is None:
@@ -1552,11 +1536,35 @@ class NetCDFStore_GOTM(NetCDFStore):
                     else:                        
                         return self.store.cachedcoords[self.dimname][bounds]
 
+                # Get the bounds to use for the different variables used  to calculate depth.
+                cachebasedata = bounds is not None
+                elevbounds,hbounds,bathbounds,sigmabounds = (Ellipsis,),(Ellipsis,),(Ellipsis,),(Ellipsis,)
+                if bounds is not None:
+                    # First translate integer indices into slice objects with length 1.
+                    # This ensures all 4 dimensions will be present during the calculations.
+                    newbounds = []
+                    for l in bounds:
+                        if isinstance(l,int): l = slice(l,l+1)
+                        newbounds.append(l)
+                        
+                    # If we need staggered coordinates, all dimensions will expand by 1
+                    # in the end. Therefore, subtract 1 from their length here.
+                    if self.dimname.endswith('_stag'):
+                        newbounds = [slice(s.start,s.stop-1) for s in newbounds]
+                        
+                    # Make sure calculations operate on entire depth range
+                    newbounds[1] = slice(None)
+                    
+                    elevbounds = (newbounds[0],newbounds[2],newbounds[3])
+                    hbounds = newbounds
+                    bathbounds = newbounds[-2:]
+                    sigmabounds = (newbounds[1],)
+            
                 np = numpy
                 data = {}
             
                 # Get elevations
-                elev = self.store[self.store.elevname].getSlice(elevbounds,dataonly=True)
+                elev = self.store[self.store.elevname].getSlice(elevbounds,dataonly=True,cache=cachebasedata)
                 if hasattr(elev,'filled'):
                     if allowmask:
                         np = numpy.ma
@@ -1565,7 +1573,7 @@ class NetCDFStore_GOTM(NetCDFStore):
 
                 if self.store.bathymetryname is None:
                     # Get layer heights (dimension 0: time, dimension 1: depth, dimension 2: y coordinate, dimension 3: x coordinate)
-                    h = self.store[self.store.hname].getSlice(hbounds,dataonly=True)
+                    h = self.store[self.store.hname].getSlice(hbounds,dataonly=True,cache=cachebasedata)
                                         
                     # Fill masked values (we do not want coordinate arrays with masked values)
                     # This should not have any effect, as the value arrays should also be masked at
@@ -1591,27 +1599,27 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # The actual interface coordinate z1 lacks the bottom interface
                     z1 = z_stag[:,1:,...]
                     
-                    # Use the actual top and bottom of the column as boundary interfaces for the
-                    # grid of the interface coordinate.
-                    z1_stag = np.concatenate((np.take(z_stag,(0,),1),z[:,1:,...],np.take(z_stag,(-1,),1)),1)
-                    
-                    # Use normal staggering for the time, longitude and latitude dimension.
-                    z_stag  = common.stagger(z_stag, (0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
-                    z1_stag = common.stagger(z1_stag,(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+                    # Store depth dimension
+                    data['z']  = z
+                    data['z1'] = z1
 
-                    data['z']       = z
-                    data['z1']      = z1
-                    data['z_stag']  = z_stag
-                    data['z1_stag'] = z1_stag
+                    if bounds is None or self.dimname in ('z_stag','z1_stag'):
+                        # Use the actual top and bottom of the column as boundary interfaces for the
+                        # grid of the interface coordinate.
+                        z1_stag = np.concatenate((np.take(z_stag,(0,),1),z[:,1:,...],np.take(z_stag,(-1,),1)),1)
+                        
+                        # Use normal staggering for the time, longitude and latitude dimension.
+                        data['z_stag']  = common.stagger(z_stag, (0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+                        data['z1_stag'] = common.stagger(z1_stag,(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
                 else:
                     # Get bathymetry (dimension 0: y coordinate, dimension 1: x coordinate)
-                    bath = self.store[self.store.bathymetryname].getSlice(bathbounds,dataonly=True)
+                    bath = self.store[self.store.bathymetryname].getSlice(bathbounds,dataonly=True,cache=cachebasedata)
                                             
                     # Calculate water depth at each point in time
                     depth = bath[numpy.newaxis,:,:]+elev
                     
                     # Get sigma levels (constant across time and space)
-                    sigma = self.store['sigma'].getSlice(sigmabounds,dataonly=True)
+                    sigma = self.store['sigma'].getSlice(sigmabounds,dataonly=True,cache=cachebasedata)
                     sigma_stag = numpy.empty((sigma.shape[0]+1,),dtype=sigma.dtype)
                     sigma_stag[0] = -1.
                     sigma_stag[1:-1] = (sigma[:-1]+sigma[1:])/2.
@@ -1622,21 +1630,22 @@ class NetCDFStore_GOTM(NetCDFStore):
                     sigma_stag.shape = (1,-1,1,1)
                     
                     # From sigma levels and water depth, calculate the z coordinates.
-                    z = sigma*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
-                    z_stag = sigma_stag*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
-                    
-                    # Use default staggering for remaining dimensions of staggered z.
-                    z_stag  = common.stagger(z_stag,dimindices=(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+                    data['z'] = sigma*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
 
-                    # Store all coordinates in cache
-                    data['z']      = z
-                    data['z_stag'] = z_stag
+                    if bounds is None or self.dimname=='z_stag':
+                        # First stagger in deth dimension.
+                        z_stag = sigma_stag*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
+                        
+                        # Use default staggering for remaining dimensions of staggered z.
+                        data['z_stag'] = common.stagger(z_stag,dimindices=(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
 
-                # Store all coordinates in cache
+                # If we retrieve the entire range, store all coordinates in cache
+                # and return the slice we need.
                 if bounds is None:
                     self.store.cachedcoords.update(data)
                     return data[self.dimname]
                 
+                # Retrieve the desired coordinates.
                 res = data[self.dimname]
                 
                 # Now finally take the depth range that we need
