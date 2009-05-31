@@ -3,7 +3,7 @@ import math,os.path,xml.dom.minidom
 import matplotlib, matplotlib.colors, matplotlib.dates, matplotlib.font_manager
 import numpy
 
-import common,xmlstore.xmlstore,xmlstore.util
+import xmlstore.xmlstore,xmlstore.util,common,expressions
 
 colormaps,colormaplist = None,None
 def getColorMaps():
@@ -370,7 +370,103 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
                 if majfmt is not None: targetnode['TicksMajor/FormatTime'].setValue(tickformats[majfmt])
 
 FigureProperties.addConvertor(FigureProperties.Convertor_0002_0003)
-                        
+
+class FigureAnimator(object):
+    def __init__(self,figure,dimension):
+        self.figure = figure
+        self.dimension = dimension
+        
+        useddims = set()
+        icount = 0
+        length = None
+        for v in self.getPlottedVariables():
+            curdims = list(v.getDimensions())
+            if self.dimension in curdims:
+                shape = v.getShape()
+                idim = curdims.index(self.dimension)
+                if length is None:
+                    length = shape[idim]
+                else:
+                    assert length==shape[idim],'Animated dimension %s has different lengths %i and %i for the different plotted variables.' % (self.dimension,length,shape[idim])
+                icount+=1
+            useddims.update(curdims)
+        assert icount>0,'None of the plotted variables uses animated dimension %s (used: %s).' % (self.dimension,', '.join(useddims))
+        self.length = length
+        
+        self.index = -1
+        
+    def getPlottedVariables(self):
+        vars = []
+        for seriesnode in self.figure.properties['Data'].getLocationMultiple(['Series']):
+            varpath = seriesnode.getSecondaryId()
+            if varpath=='': continue
+            var = self.figure.source[varpath]
+            vars.append(var)
+        return vars
+        
+    def nextFrame(self):
+        self.index += 1
+        self.figure.slices[self.dimension] = self.index
+        self.figure.update()
+        return self.index<(self.length-1)
+
+    def getDynamicTitle(self,fmt):
+        for var in self.getPlottedVariables():
+            if self.dimension in var.getDimensions(): break
+        if isinstance(var,expressions.VariableExpression):
+            store = var.variables[0].store
+        else:
+            store = var.store
+        coordvariable = store.getVariable(self.dimension)
+        if coordvariable is not None:
+            coorddims = list(coordvariable.getDimensions())
+            assert len(coorddims)==1,'Only animations through 1D dimensions are currently supported.'
+            assert self.dimension in coorddims, 'Coordinate variable %s does not use its own dimension (dimensions: %s).' % (dim,', '.join(coorddims))
+            coordslice = [slice(None)]*len(coorddims)
+            coordslice[coorddims.index(self.dimension)] = self.index
+            meanval = coordvariable.getSlice(coordslice,dataonly=True).mean()
+            
+            diminfo = var.getDimensionInfo(self.dimension)
+            
+            # Convert the coordinate value to a string
+            if fmt is None:
+                if diminfo.get('datatype','float')=='datetime':
+                    fmt = diminfo['label']+': %Y-%m-%d %H:%M:%S'
+                else:
+                    fmt = diminfo['label']+': %.4f'
+            try:
+                if diminfo.get('datatype','float')=='datetime':
+                    return common.num2date(meanval).strftime(fmt)
+                else:
+                    return fmt % meanval
+            except:
+                #raise Exception('Unable to apply format string "%s" to value %s.' % (fmt,meanval))
+                return fmt
+        
+    def animateAndExport(self,path,title=None,dpi=75,verbose=True):
+        if os.path.isdir(path):
+            nametemplate = '%%0%ii.png' % (1+math.floor(math.log10(self.length-1)))
+            targetdir = path
+        else:
+            try:
+                path % (1,)
+            except:
+                raise Exception('The provided path should either be a directory, or a file name template that accepts a single integer as formatting argument.')
+            nametemplate = path
+            targetdir = '.'
+                
+        while True:            
+            self.figure.setUpdating(False)
+            hasmore = self.nextFrame()
+            self.figure['Title'].setValue(self.getDynamicTitle(title))
+            if verbose: print 'Creating frame %i of %s...' % (self.index+1,self.length)
+            self.figure.setUpdating(True)
+            
+            path = os.path.join(targetdir,nametemplate % self.index)
+            self.figure.exportToFile(path,dpi=dpi)
+            
+            if not hasmore: break
+
 class Figure(xmlstore.util.referencedobject):
     """Class encapsulating a MatPlotLib figure. The data for the figure is
     provided as one or more VariableStore objects, with data series being
@@ -478,6 +574,9 @@ class Figure(xmlstore.util.referencedobject):
         self.basemap = None
         self.colorbar = None
         self.ismap = False
+        
+        # Slices to take through the plotted data (dimension name -> index)
+        self.slices = {}
 
     def __getitem__(self,key):
         return self.properties[key]
@@ -762,8 +861,14 @@ class Figure(xmlstore.util.referencedobject):
             if varpath in olddefaults: olddefaults.remove(varpath)
 
             # Build list of dimension boundaries for current variable.
-            originaldims = var.getDimensions()
+            originaldims = list(var.getDimensions())
             dimbounds = [slice(None)]*len(originaldims)
+            
+            # Apply slices (if any)
+            for dim,index in self.slices.iteritems():
+                if dim in originaldims:
+                    dimbounds[originaldims.index(dim)] = index
+                    
             #for dimname in originaldims:
             #    if dimname in dim2data:
             #        # We have boundaries set on the current dimension.
