@@ -123,6 +123,7 @@ class LazyExpression(object):
 
     @staticmethod
     def adjustShape(shape,slic):
+        if shape is None: return None
         slic = common.processEllipsis(slic,len(shape))
         assert len(shape)==len(slic), 'Number of slices (%i) does not match number of dimensions (%i).' % (len(slic),len(shape))
         baseshape = list(shape)
@@ -130,6 +131,7 @@ class LazyExpression(object):
             if isinstance(slic[i],(int,float)):
                 del baseshape[i]
             else:
+                if not isinstance(slic[i],slice): return None
                 assert isinstance(slic[i],slice), 'Fancy indexing is not yet supported. Slice type = %s, value = %s' % (type(slic[i]),slic[i])
 
                 # For non-integer slices we do not know the resulting shape
@@ -187,15 +189,39 @@ class LazyExpression(object):
         return '[%s]' % ','.join(slicestrings)
 
     @staticmethod
-    def argument2value(arg):
+    def combineSlices(baseslices,extraslices):
+        newslices = []
+        iextra = 0
+        for sl in baseslices:
+            if isinstance(sl,slice):
+                start,stop,step = sl.start,sl.stop,sl.step
+                if isinstance(extraslices[iextra],slice):
+                    start = start + extraslices[iextra].start*step
+                    stop  = start + extraslices[iextra].stop*step
+                    step *= extraslices[iextra].step
+                    sl = slice(start,stop,step)
+                else:
+                    sl = start + extraslices[iextra]*step
+                iextra += 1
+            newslices.append(sl)
+        return tuple(newslices)
+
+    @staticmethod
+    def argument2value(arg,slic=None):
         if isinstance(arg,LazyExpression):
-            return arg.getValue()
+            if arg.canprocessslice:
+                #if slic is not None: print 'Integrating %s in %s' % (slic,arg)
+                return arg.getValue(slic)
+            else:
+                res = arg.getValue()
+                if slic is not None: res = res.__getitem__(slic)
+                return res
         elif isinstance(arg,tuple):
-            return tuple([LazyExpression.argument2value(subarg) for subarg in arg])
+            return tuple([LazyExpression.argument2value(subarg,slic) for subarg in arg])
         elif isinstance(arg,list):
-            return [LazyExpression.argument2value(subarg) for subarg in arg]
+            return [LazyExpression.argument2value(subarg,slic) for subarg in arg]
         elif isinstance(arg,slice):
-            start,stop,step = map(LazyExpression.argument2value,(arg.start,arg.stop,arg.step))
+            start,stop,step = [LazyExpression.argument2value(obj,slic) for obj in (arg.start,arg.stop,arg.step)]
             return slice(start,stop,step)
         else:
             return arg
@@ -221,6 +247,7 @@ class LazyExpression(object):
             return str(arg)
 
     def __init__(self,*args,**kwargs):
+        self.canprocessslice = False
         self.args = args
         self.kwargs = kwargs
 
@@ -292,15 +319,14 @@ class LazyVariable(LazyExpression):
 
     def __init__(self,*args):
         LazyExpression.__init__(self,*args)
-        self.slice = None
         self.name = None
+        self.canprocessslice = True
         
     def getVariables(self):
         return [self.args[0]]
 
-    def getValue(self):
+    def getValue(self,slic=None):
         # Return the data slice of the encapsulated object.
-        slic = self.slice
         if slic is None:
             slic = len(self.args[0].getDimensions())*[slice(None)]
         else:
@@ -315,41 +341,19 @@ class LazyVariable(LazyExpression):
                 res = self.name
             else:
                 res = self.args[0].getName()
-            if self.slice is not None:
-                res += LazyExpression.slices2string(self.slice)
             return res
         elif type==2:
             # Return the long name of the object (optionally with slice specification).
-            res = self.args[0].getLongName()
-            if self.slice is not None:
-                res += LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
-            return res
+            return self.args[0].getLongName()
         else:
+            # Return the unit of the object.
             return self.args[0].getUnit()
         
     def getShape(self):
-        baseshape = self.args[0].getShape()
-        if self.slice is not None: baseshape = LazyExpression.adjustShape(baseshape,self.slice)
-        return baseshape
+        return self.args[0].getShape()
 
     def getDimensions(self):
-        basedims = self.args[0].getDimensions()
-        if self.slice is not None: basedims = LazyExpression.adjustDimensions(basedims,self.slice)
-        return basedims
-
-    def __getitem__(self,slices):
-        # The first slice operation can be transferred to the Variable class directly,
-        # so we do not need to create a separate slice object.
-        # If the variable already has a slice specification, this is an additional slice
-        # operation that can only be handled by the default class, which does create a
-        # slice object.
-        if self.slice is not None: return LazyExpression.__getitem__(self,slices)
-        
-        if not isinstance(slices,(list,tuple)): slices = (slices,)
-        newvar = LazyVariable(*self.args)
-        newvar.slice = slices
-        newvar.name = self.name
-        return newvar
+        return self.args[0].getDimensions()
 
 class LazyOperation(LazyExpression):
     """The light-weight class serves as base for any mathematical operation, which includes
@@ -574,9 +578,33 @@ class LazySlice(LazyOperation):
         LazyOperation.__init__(self,variable)
         if not isinstance(slic,(list,tuple)): slic = (slic,)
         self.slice = slic
-    def _getValue(self,resolvedargs,resolvedkwargs):
+        self.simpleslices = True
+        for sl in self.slice:
+            if not (sl is Ellipsis or isinstance(sl,int) or (isinstance(sl,slice) and isinstance(sl.start,(int,types.NoneType)) and isinstance(sl.stop,(int,types.NoneType)) and isinstance(sl.step,(int,types.NoneType)))):
+                self.simpleslices = False
+                break
+        self.canprocessslice = self.simpleslices and variable.getShape() is not None
+
+    def getValue(self,extraslices=None):
         slices = LazyExpression.argument2value(self.slice)
-        return resolvedargs[0].__getitem__(slices)
+        
+        if self.simpleslices:
+            shape = self.args[0].getShape()
+            if shape is not None:
+                newslices = []
+                for sl,l in zip(common.processEllipsis(slices,len(shape)),shape):
+                    if isinstance(sl,slice):
+                        start,stop,step = sl.indices(l)
+                        sl = slice(start,stop,step)
+                    newslices.append(sl)
+                slices = tuple(newslices)
+                
+        if extraslices is not None:
+            assert self.simpleslices,'Slice variable receives additional slice, but does not support slice combination.'
+            slices = LazyExpression.combineSlices(slices,extraslices)
+            
+        return LazyExpression.argument2value(self.args[0],slices)
+        
     def _getText(self,resolvedargs,resolvedkwargs,type=0,addparentheses=False):
         if type==2:
             return resolvedargs[0] + LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
@@ -596,7 +624,7 @@ class VariableExpression(common.Variable):
         if isinstance(root,LazyStore):
             root.store.namespacename = root.name
             return root.store
-        elif isinstance(root,LazyVariable) and root.slice is None:
+        elif isinstance(root,LazyVariable):
             root.args[0].namespacename = root.name
             return root.args[0]
         return VariableExpression(root)
@@ -637,7 +665,7 @@ class VariableExpression(common.Variable):
         return ', '.join([node.getText(type=3,addparentheses=False) for node in self.root])
 
     def getSlice(self,bounds):
-        return [node.getValue() for node in self.root]
+        return [node[bounds].getValue() for node in self.root]
 
     def getShape(self):
         return self.root[0].getShape()
