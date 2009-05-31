@@ -1496,6 +1496,7 @@ class NetCDFStore_GOTM(NetCDFStore):
             def __init__(self,store,ncvarname,dimname):
                 NetCDFStore.NetCDFVariable.__init__(self,store,ncvarname)
                 self.dimname = dimname
+                self.cachedshape = None
         
             def getName_raw(self):
                 return self.dimname
@@ -1518,15 +1519,16 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return dims
                 
             def getShape(self):
-                if self.store.bathymetryname is None:
-                    baseshape = self.store[self.store.hname].getShape()
-                else:
-                    elevshape = self.store[self.store.elevname].getShape()
-                    sigmashape = self.store['sigma'].getShape()
-                    baseshape = (elevshape[0],sigmashape[0],elevshape[1],elevshape[2])
-                if self.dimname.endswith('_stag'):
-                    return tuple([l+1 for l in baseshape])
-                return baseshape
+                if self.cachedshape is None:
+                    if self.store.bathymetryname is None:
+                        self.cachedshape = self.store[self.store.hname].getShape()
+                    else:
+                        elevshape = self.store[self.store.elevname].getShape()
+                        sigmashape = self.store['sigma'].getShape()
+                        self.cachedshape = (elevshape[0],sigmashape[0],elevshape[1],elevshape[2])
+                    if self.dimname.endswith('_stag'):
+                        self.cachedshape = tuple([l+1 for l in self.cachedshape])
+                return self.cachedshape
                 
             def getNcData(self,bounds=None,allowmask=True):
                 # Return values from cache if available.
@@ -1620,21 +1622,19 @@ class NetCDFStore_GOTM(NetCDFStore):
                     
                     # Get sigma levels (constant across time and space)
                     sigma = self.store['sigma'].getSlice(sigmabounds,dataonly=True,cache=cachebasedata)
-                    sigma_stag = numpy.empty((sigma.shape[0]+1,),dtype=sigma.dtype)
-                    sigma_stag[0] = -1.
-                    sigma_stag[1:-1] = (sigma[:-1]+sigma[1:])/2.
-                    sigma_stag[-1] = 0.
-                    
-                    # Add dimensions to sigma so it covers time (prepend 1) and space (append 2).
-                    sigma.shape = (1,-1,1,1)
-                    sigma_stag.shape = (1,-1,1,1)
                     
                     # From sigma levels and water depth, calculate the z coordinates.
-                    data['z'] = sigma*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
+                    data['z'] = sigma.reshape((1,-1,1,1))*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
 
                     if bounds is None or self.dimname=='z_stag':
+                        # Calculate staggered sigma coordinates
+                        sigma_stag = numpy.empty((sigma.shape[0]+1,),dtype=sigma.dtype)
+                        sigma_stag[0] = -1.
+                        sigma_stag[1:-1] = (sigma[:-1]+sigma[1:])/2.
+                        sigma_stag[-1] = 0.
+
                         # First stagger in deth dimension.
-                        z_stag = sigma_stag*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
+                        z_stag = sigma_stag.reshape((1,-1,1,1))*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
                         
                         # Use default staggering for remaining dimensions of staggered z.
                         data['z_stag'] = common.stagger(z_stag,dimindices=(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
