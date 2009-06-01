@@ -1082,7 +1082,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
               expectedshape = []
               for i in range(len(bounds)):
                 if isinstance(bounds[i],slice):
-                    expectedshape.append(bounds[i].stop-bounds[i].start)
+                    expectedshape.append((bounds[i].stop-bounds[i].start-1)/bounds[i].step+1)
               assert tuple(dat.shape)==tuple(expectedshape),'getNcData returned data with shape %s, while shape %s was requested.' % (dat.shape,expectedshape)
 
           # If the caller wants the data values only, we are done: return the value array.
