@@ -128,17 +128,25 @@ class LazyExpression(object):
         assert len(shape)==len(slic), 'Number of slices (%i) does not match number of dimensions (%i).' % (len(slic),len(shape))
         baseshape = list(shape)
         for i in range(len(baseshape)-1,-1,-1):
-            if isinstance(slic[i],(int,float)):
-                del baseshape[i]
-            else:
-                if not isinstance(slic[i],slice): return None
-                assert isinstance(slic[i],slice), 'Fancy indexing is not yet supported. Slice type = %s, value = %s' % (type(slic[i]),slic[i])
-
+            if isinstance(slic[i],slice):
                 # For non-integer slices we do not know the resulting shape
                 if not (isinstance(slic[i].start,(int,types.NoneType)) and isinstance(slic[i].stop,(int,types.NoneType))): return None
 
                 start,stop,step = slic[i].indices(baseshape[i])
                 baseshape[i] = (stop-start-1)/step+1
+            elif isinstance(slic[i],(int,float)):
+                del baseshape[i]
+            elif isinstance(slic[i],LazyExpression):
+                argshape = slic[i].getShape()
+                if argshape is not None and not argshape:
+                    # Slice object will be a scalar, so this dimension drops out.
+                    del baseshape[i]
+                else:
+                    # Slice object will be an array or has unknown shape - final shape is unknown
+                    return None
+            else:
+                return None
+
         return baseshape
         
     @staticmethod
@@ -147,7 +155,11 @@ class LazyExpression(object):
         assert len(dimnames)==len(slic), 'Number of slices (%i) does not match number of dimensions (%i).' % (len(slic),len(dimnames))
         dimnames = list(dimnames)
         for i in range(len(dimnames)-1,-1,-1):
-            if isinstance(slic[i],(int,float)): del dimnames[i]
+            if isinstance(slic[i],(int,float)):
+                del dimnames[i]
+            elif isinstance(slic[i],LazyExpression):
+                argshape = slic[i].getShape()
+                if argshape is not None and not argshape: del dimnames[i]
         return dimnames
         
     @staticmethod
@@ -384,7 +396,7 @@ class LazyOperation(LazyExpression):
         return args,firstslice
 
     def getShape(self):
-        shape = None
+        shape = []
         for arg in self.args:
             if not isinstance(arg,LazyExpression): continue
 
@@ -395,7 +407,7 @@ class LazyOperation(LazyExpression):
             if curshape is None: return None
             
             # If this is the first argument, just store its shape and continue.
-            if shape is None:
+            if not shape:
                 shape = list(curshape)
                 continue
 
@@ -416,8 +428,8 @@ class LazyOperation(LazyExpression):
                         shape[idim] = curshape[idim]
                     elif curshape[idim]!=1:
                         # Dimensions lengths of the arguments do not match, and broadcasting cannot fix it.
-                        # (neither has length 1). This will often cause a fatal error, but it may be ok.
-                        # However, the final shape will be unknown.
+                        # (neither has length 1). This will often cause a fatal error, but it may be for some
+                        # operations (e.g., certain NumPy functions). However, the final shape will be unknown.
                         return None
                         
         return shape

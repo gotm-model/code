@@ -985,7 +985,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             coorddims = list(coordvar.getDimensions())
             coords = coordvar.getSlice([boundindices[dimnames.index(cd)] for cd in coorddims], dataonly=True, cache=True)
             istart,istop = common.getboundindices(coords,coorddims.index(dimname),bounds[idim].start,bounds[idim].stop)
-            boundindices[idim] = slice(istart,istop)
+            boundindices[idim] = slice(istart,istop,1)
 
           # Translate indices based on non-integer values (e.g. floating point values, dates)
           # to integer indices.
