@@ -1136,6 +1136,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
 
             # If we take a single index for this dimension, it will not be included in the output.
             if not isinstance(bounds[idim],slice): continue
+            
+            # Coordinates should not have a mask - undo the masking.
+            if hasattr(coords,'_mask'): coords = numpy.array(coords,copy=False)
 
             # Get staggered coordinates over entire domain
             if coordvar is not None and dimname in self.store.staggeredcoordinates:
@@ -1157,6 +1160,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 # by averaging the left- and right bounds.
                 for i in range(len(coordslice)-1,-1,-1):
                     if isinstance(coordslice[i],int): coords_stag = coords_stag.mean(axis=i)
+
+                # Coordinates should not have a mask - undo the masking.
+                if hasattr(coords_stag,'_mask'): coords_stag = numpy.array(coords_stag,copy=False)
             else:
                 # Auto-generate the staggered coordinates.
                 coords_stag = common.stagger(coords)
@@ -1563,15 +1569,14 @@ class NetCDFStore_GOTM(NetCDFStore):
                     sigmabounds = (newbounds[1],)
             
                 np = numpy
+                mask = None
                 data = {}
             
                 # Get elevations
                 elev = self.store[self.store.elevname].getSlice(elevbounds,dataonly=True,cache=cachebasedata)
-                if hasattr(elev,'filled'):
-                    if allowmask:
-                        np = numpy.ma
-                    else:
-                        elev = elev.filled(0.)
+                if hasattr(elev,'_mask'):
+                    mask = elev._mask[:,numpy.newaxis,...]
+                    elev = elev.filled(0.)
 
                 if self.store.bathymetryname is None:
                     # Get layer heights (dimension 0: time, dimension 1: depth, dimension 2: y coordinate, dimension 3: x coordinate)
@@ -1581,11 +1586,12 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # This should not have any effect, as the value arrays should also be masked at
                     # these locations.
                     # Check for the "filled" attribute to see if these are masked arrays.
-                    if hasattr(h,'filled'):
-                        if allowmask:
-                            np = numpy.ma
+                    if hasattr(h,'_mask'):
+                        if mask is None:
+                            mask = h._mask
                         else:
-                            h = h.filled(0.)
+                            mask = numpy.logical_or(mask,h._mask)
+                        h = h.filled(0.)
                     
                     # Get depths of interfaces
                     z_stag = h.cumsum(axis=1)
@@ -1604,7 +1610,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # Store depth dimension
                     data['z']  = z
                     data['z1'] = z1
-
+                    
                     if bounds is None or self.dimname in ('z_stag','z1_stag'):
                         # Use the actual top and bottom of the column as boundary interfaces for the
                         # grid of the interface coordinate.
@@ -1625,7 +1631,6 @@ class NetCDFStore_GOTM(NetCDFStore):
                     
                     # From sigma levels and water depth, calculate the z coordinates.
                     data['z'] = sigma.reshape((1,-1,1,1))*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
-
                     if bounds is None or self.dimname=='z_stag':
                         # Calculate staggered sigma coordinates
                         sigma_stag = numpy.empty((sigma.shape[0]+1,),dtype=sigma.dtype)
@@ -1638,6 +1643,10 @@ class NetCDFStore_GOTM(NetCDFStore):
                         
                         # Use default staggering for remaining dimensions of staggered z.
                         data['z_stag'] = common.stagger(z_stag,dimindices=(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+
+                # Apply the mask to the center coordinates (if any)
+                if mask is not None:
+                    data['z'] = numpy.ma.masked_where(mask,data['z'])
 
                 # If we retrieve the entire range, store all coordinates in cache
                 # and return the slice we need.
