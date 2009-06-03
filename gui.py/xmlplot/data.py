@@ -875,7 +875,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             self.ncvarname = str(ncvarname)
             
         def __str__(self):
-            return self.store.datafile+'/'+self.varname
+            return self.store.datafile+'/'+self.ncvarname
 
         def getName_raw(self):
             return self.ncvarname

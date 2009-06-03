@@ -2,6 +2,16 @@ import UserDict,datetime,types
 import numpy
 import common
 
+def getShape(obj):
+    if isinstance(obj,(int,float)):
+        return ()
+    elif isinstance(obj,LazyExpression):
+        return obj.getShape()
+    elif isinstance(obj,numpy.ndarray):
+        return obj.shape
+    else:
+        return None
+
 class ExpressionNamespace(UserDict.DictMixin):
     """Encapsulates a list of dictionary-like objects, that are query from start
     to finish when an item is requested from the containing object. The first match is
@@ -87,11 +97,9 @@ class LazyExpression(object):
             self.removedim = None
             
         def __call__(self,*args,**kwargs):
-            f = None
-            try:
-                if issubclass(self.func,LazyFunction): f = self.func(*args,**kwargs)
-            except Exception,e: pass
-            if f is None:
+            if issubclass(self.func,LazyFunction):
+                f = self.func(*args,**kwargs)
+            else:
                 f = LazyFunction(self.name,self.func,*args,**kwargs)
             if self.removedim is not None: f.setRemovedDimension(argindex=self.removedim[0],argname=self.removedim[1])
             f.useslices = self.useslices
@@ -134,18 +142,12 @@ class LazyExpression(object):
 
                 start,stop,step = slic[i].indices(baseshape[i])
                 baseshape[i] = (stop-start-1)/step+1
-            elif isinstance(slic[i],(int,float)):
-                del baseshape[i]
-            elif isinstance(slic[i],LazyExpression):
-                argshape = slic[i].getShape()
-                if argshape is not None and not argshape:
-                    # Slice object will be a scalar, so this dimension drops out.
-                    del baseshape[i]
-                else:
+            else:
+                curshape = getShape(slic[i])
+                if curshape is None or len(curshape)>0:
                     # Slice object will be an array or has unknown shape - final shape is unknown
                     return None
-            else:
-                return None
+                del baseshape[i]
 
         return baseshape
         
@@ -155,11 +157,9 @@ class LazyExpression(object):
         assert len(dimnames)==len(slic), 'Number of slices (%i) does not match number of dimensions (%i).' % (len(slic),len(dimnames))
         dimnames = list(dimnames)
         for i in range(len(dimnames)-1,-1,-1):
-            if isinstance(slic[i],(int,float)):
-                del dimnames[i]
-            elif isinstance(slic[i],LazyExpression):
-                argshape = slic[i].getShape()
-                if argshape is not None and not argshape: del dimnames[i]
+            if not isinstance(slic[i],slice):
+                curshape = getShape(slic[i])
+                if curshape is not None and len(curshape)==0: del dimnames[i]
         return dimnames
         
     @staticmethod
@@ -262,6 +262,19 @@ class LazyExpression(object):
         self.canprocessslice = False
         self.args = args
         self.kwargs = kwargs
+        
+    def debugPrint(self,indent=''):
+        print indent+'%s, dims=(%s), shape=%s' % (str(self),','.join(self.getDimensions()),str(self.getShape()))
+        for arg in self.args:
+            if isinstance(arg,LazyExpression):
+                arg.debugPrint(indent+'  ')
+            else:
+                print indent+'  '+str(arg)
+        for name,arg in self.kwargs.iteritems():
+            if isinstance(arg,LazyExpression):
+                arg.debugPrint(indent+'  '+name+'=')
+            else:
+                print indent+'  '+name+'='+str(arg)
 
     def getVariables(self):
         vars = []
@@ -312,6 +325,24 @@ class LazyExpression(object):
         
     def __pow__(self,other):
         return LazyOperator('__pow__','**',self,other)
+
+    def __radd__(self,other):
+        return LazyOperator('__radd__','+',self,other)
+
+    def __rsub__(self,other):
+        return LazyOperator('__rsub__','-',self,other)
+
+    def __rmul__(self,other):
+        return LazyOperator('__rmul__','*',self,other)
+
+    def __rdiv__(self,other):
+        return LazyOperator('__rdiv__','/',self,other)
+
+    def __rtruediv__(self,other):
+        return LazyOperator('__rtruediv__','/',self,other)
+        
+    def __rpow__(self,other):
+        return LazyOperator('__rpow__','**',self,other)
 
     def __neg__(self):
         return LazyOperator('__neg__','-',self)
@@ -645,6 +676,9 @@ class VariableExpression(common.Variable):
         common.Variable.__init__(self,None)
         self.root = root
         if not isinstance(self.root,(list,tuple)): self.root = [self.root]
+        
+        #for v in self.root: v.debugPrint()
+        
         assert self.root, 'Expression "%s" returns an empty list.'
         self.variables = []
         for entry in self.root:

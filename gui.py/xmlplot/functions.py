@@ -184,7 +184,7 @@ class interp(expressions.LazyFunction):
 
     def __init__(self,sourceslice,**kwargs):
         expressions.LazyFunction.__init__(self,'interp',None,sourceslice,outsourceslices=False,**kwargs)
-        dims = self.getDimensions()
+        dims = expressions.LazyFunction.getDimensions(self)
         for d in kwargs.iterkeys():
             assert d in dims, 'Dimension %s does not exist in original slice. Available dimensions: %s' % (d,', '.join(dims))
 
@@ -192,21 +192,20 @@ class interp(expressions.LazyFunction):
         assert isinstance(resolvedargs[0],common.Variable.Slice),'The first argument to interpn must be a variable slice.'
         dataslice = resolvedargs[0]
         return dataslice.interp(**resolvedkwargs)
-
-    def getDimensions(self):
-        return [d for d in expressions.LazyFunction.getDimensions(self) if d not in self.kwargs]
                     
     def getShape(self):
-        s = expressions.LazyOperation.getShape(self)
+        s = expressions.LazyFunction.getShape(self)
         if s is None: return None
         newshape = []
-        for n,l in zip(self.getDimensions(),s):
+        for n,l in zip(expressions.LazyFunction.getDimensions(self),s):
             if n not in self.kwargs:
                 newshape.append(l)
             else:
-                section = self.kwargs[n]
-                if isinstance(section,(float,int)):
+                argshape = expressions.getShape(self.kwargs[n])
+                assert argshape is not None and len(argshape)<=1,'Interpolation locations must be 0d scalars or 1d arrays'
+                if not argshape:
                     newshape.append(1)
                 else:
-                    newshape.append(len(section))
+                    newshape.append(argshape[0])
+        return newshape
             
