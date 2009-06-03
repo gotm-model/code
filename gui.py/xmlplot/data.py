@@ -1146,7 +1146,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 for slc in coordslice:
                     if isinstance(slc,slice):
                         # We take a subset of this dimension: extent the slice with 1.
-                        coordslice_stag.append(slice(slc.start,slc.stop+1))
+                        coordslice_stag.append(slice(slc.start,slc.stop+slc.step,slc.step))
                     else:
                         # We take a single [centered] index from this dimension:
                         # Get the left and right bounds, so we can average them later.
