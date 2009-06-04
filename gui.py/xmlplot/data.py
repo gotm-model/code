@@ -1578,8 +1578,8 @@ class NetCDFStore_GOTM(NetCDFStore):
             
                 # Get elevations
                 elev = self.store[self.store.elevname].getSlice(elevbounds,dataonly=True,cache=cachebasedata)
-                if hasattr(elev,'_mask') and isinstance(elev._mask,numpy.ndarray):
-                    mask = elev._mask[:,numpy.newaxis,...]
+                if hasattr(elev,'_mask'):
+                    if isinstance(elev._mask,numpy.ndarray): mask = elev._mask[:,numpy.newaxis,...]
                     elev = elev.filled(0.)
 
                 if self.store.bathymetryname is None:
@@ -1590,11 +1590,12 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # This should not have any effect, as the value arrays should also be masked at
                     # these locations.
                     # Check for the "filled" attribute to see if these are masked arrays.
-                    if hasattr(h,'_mask') and isinstance(h._mask,numpy.ndarray):
-                        if mask is None:
-                            mask = h._mask
-                        else:
-                            mask = numpy.logical_or(mask,h._mask)
+                    if hasattr(h,'_mask'):
+                        if isinstance(h._mask,numpy.ndarray):
+                            if mask is None:
+                                mask = h._mask
+                            else:
+                                mask = numpy.logical_or(mask,h._mask)
                         h = h.filled(0.)
                     
                     # Get depths of interfaces
