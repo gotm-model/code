@@ -1512,7 +1512,7 @@ class NetCDFStore_GOTM(NetCDFStore):
 
             def getUnit(self):
                 nc = self.store.getcdf()
-                ncvar = nc.variables[self.store.hname]
+                ncvar = nc.variables[self.store.elevname]
                 if not hasattr(ncvar,'units'): return ''
                 return common.convertUnitToUnicode(ncvar.units)
 
@@ -1520,7 +1520,8 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return {}
 
             def getDimensions_raw(self,reassign=True):
-                dims = ['time',self.store.depth2coord.get(self.dimname,self.dimname),self.store.yname,self.store.xname]
+                dims = list(self.store[self.store.elevname].getDimensions_raw(reassign=False))
+                dims.insert(1,self.store.depth2coord.get(self.dimname,self.dimname))
                 if reassign: dims = [self.store.reassigneddims.get(d,d) for d in dims]
                 return dims
                 
@@ -1531,7 +1532,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     else:
                         elevshape = self.store[self.store.elevname].getShape()
                         sigmashape = self.store['sigma'].getShape()
-                        self.cachedshape = (elevshape[0],sigmashape[0],elevshape[1],elevshape[2])
+                        self.cachedshape = [elevshape[0],sigmashape[0]] + list(elevshape[1:])
                     if self.dimname.endswith('_stag'):
                         self.cachedshape = tuple([l+1 for l in self.cachedshape])
                 return self.cachedshape
