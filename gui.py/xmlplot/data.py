@@ -1575,11 +1575,19 @@ class NetCDFStore_GOTM(NetCDFStore):
                 np = numpy
                 mask = None
                 data = {}
+                
+                def setmask(mask,newmask):
+                    if mask is None:
+                        mask = numpy.empty(self.getShape(),dtype=numpy.bool)
+                        mask[...] = newmask
+                    else:
+                        mask = numpy.logical_or(mask,newmask)
+                    return mask
             
                 # Get elevations
                 elev = self.store[self.store.elevname].getSlice(elevbounds,dataonly=True,cache=cachebasedata)
                 if hasattr(elev,'_mask'):
-                    if isinstance(elev._mask,numpy.ndarray): mask = elev._mask[:,numpy.newaxis,...]
+                    if isinstance(elev._mask,numpy.ndarray): mask = setmask(mask,elev._mask[:,numpy.newaxis,...])
                     elev = elev.filled(0.)
 
                 if self.store.bathymetryname is None:
@@ -1591,11 +1599,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # these locations.
                     # Check for the "filled" attribute to see if these are masked arrays.
                     if hasattr(h,'_mask'):
-                        if isinstance(h._mask,numpy.ndarray):
-                            if mask is None:
-                                mask = h._mask
-                            else:
-                                mask = numpy.logical_or(mask,h._mask)
+                        mask = setmask(mask,h._mask)
                         h = h.filled(0.)
                     
                     # Get depths of interfaces
