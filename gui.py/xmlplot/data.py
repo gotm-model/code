@@ -1017,6 +1017,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           try:
             if bounds:
                 # Bounds provided - read a slice.
+                assert len(ncvar.shape)==len(bounds),'Number of provided slices (%i) does not match number of dimensions of NetCDF variable (%i).' % (len(bounds),len(ncvar.shape))
                 dat = numpy.asarray(ncvar[bounds])
             elif len(ncvar.shape)>0:
                 # Variable is non-scalar - read all data.
