@@ -1488,7 +1488,7 @@ class NetCDFStore_GOTM(NetCDFStore):
         names = list(NetCDFStore.getVariableNames_raw(self))
         
         ncvars = self.getcdf().variables
-        if self.hname in ncvars and self.elevname in ncvars:
+        if self.elevname in ncvars and (self.hname in ncvars or ('sigma' in ncvars and 'bathymetry' in ncvars)):
             names.append('z')
         
             # Only add alternative depth coordinate if it is actually used in the NetCDF file.
@@ -1575,17 +1575,22 @@ class NetCDFStore_GOTM(NetCDFStore):
                 np = numpy
                 mask = None
                 data = {}
-                
+                            
+                # Get elevations
+                elev = self.store[self.store.elevname].getSlice(elevbounds,dataonly=True,cache=cachebasedata)
+
+                # Subroutine for creating and updating the depth mask.
                 def setmask(mask,newmask):
                     if mask is None:
-                        mask = numpy.empty(self.getShape(),dtype=numpy.bool)
+                        zshape = list(elev.shape)
+                        zshape.insert(1,self.store['z'].getShape()[1])
+                        mask = numpy.empty(zshape,dtype=numpy.bool)
                         mask[...] = newmask
                     else:
                         mask = numpy.logical_or(mask,newmask)
                     return mask
-            
-                # Get elevations
-                elev = self.store[self.store.elevname].getSlice(elevbounds,dataonly=True,cache=cachebasedata)
+
+                # If elevations are (partially) masked, save the mask so we can reapply it later.
                 if hasattr(elev,'_mask'):
                     if isinstance(elev._mask,numpy.ndarray): mask = setmask(mask,elev._mask[:,numpy.newaxis,...])
                     elev = elev.filled(0.)
@@ -1631,6 +1636,9 @@ class NetCDFStore_GOTM(NetCDFStore):
                 else:
                     # Get bathymetry (dimension 0: y coordinate, dimension 1: x coordinate)
                     bath = self.store[self.store.bathymetryname].getSlice(bathbounds,dataonly=True,cache=cachebasedata)
+                    if hasattr(bath,'_mask'):
+                        mask = setmask(mask,bath._mask)
+                        bath = bath.filled(0.)
                                             
                     # Calculate water depth at each point in time
                     depth = bath[numpy.newaxis,:,:]+elev
