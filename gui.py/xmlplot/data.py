@@ -1075,7 +1075,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
               if self.ncvarname not in self.store.cachedcoords:
                   self.store.cachedcoords[self.ncvarname] = self.getNcData()
               dat = self.store.cachedcoords[self.ncvarname]
-              if bounds: dat = dat[bounds]
+              if bounds:
+                assert len(bounds)==dat.ndim,'Number of data dimensions (%i) does not match number of provided slices (%i).' % (dat.ndim,len(bounds))
+                dat = dat[bounds]
           else:
               # Read the data slab directly from the NetCDF file.
               dat = self.getNcData(bounds)
