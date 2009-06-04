@@ -97,7 +97,11 @@ class LazyExpression(object):
             self.removedim = None
             
         def __call__(self,*args,**kwargs):
-            if issubclass(self.func,LazyFunction):
+            aware = False
+            try:
+                if issubclass(self.func,LazyFunction): aware = True
+            except TypeError: pass
+            if aware:
                 f = self.func(*args,**kwargs)
             else:
                 f = LazyFunction(self.name,self.func,*args,**kwargs)
