@@ -650,7 +650,11 @@ class LazySlice(LazyOperation):
         
     def _getText(self,resolvedargs,resolvedkwargs,type=0,addparentheses=False):
         if type==2:
+            # Long variable name
             return resolvedargs[0] + LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
+        elif type==3:
+            # Variable unit -  sling does not affect the unit.
+            return resolvedargs[0]
         else:
             return resolvedargs[0] + LazyExpression.slices2string(self.slice)
     def getShape(self):
