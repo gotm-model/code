@@ -1575,7 +1575,7 @@ class NetCDFStore_GOTM(NetCDFStore):
             
                 # Get elevations
                 elev = self.store[self.store.elevname].getSlice(elevbounds,dataonly=True,cache=cachebasedata)
-                if hasattr(elev,'_mask') and elev._mask:
+                if hasattr(elev,'_mask') and isinstance(elev._mask,numpy.ndarray):
                     mask = elev._mask[:,numpy.newaxis,...]
                     elev = elev.filled(0.)
 
@@ -1587,7 +1587,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # This should not have any effect, as the value arrays should also be masked at
                     # these locations.
                     # Check for the "filled" attribute to see if these are masked arrays.
-                    if hasattr(h,'_mask') and h._mask:
+                    if hasattr(h,'_mask') and isinstance(h._mask,numpy.ndarray):
                         if mask is None:
                             mask = h._mask
                         else:
