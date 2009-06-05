@@ -1086,7 +1086,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
               for i in range(len(bounds)):
                 if isinstance(bounds[i],slice):
                     expectedshape.append((bounds[i].stop-bounds[i].start-1)/bounds[i].step+1)
-              assert tuple(dat.shape)==tuple(expectedshape),'getNcData returned data with shape %s, while shape %s was requested.' % (dat.shape,expectedshape)
+              assert tuple(dat.shape)==tuple(expectedshape),'%s: getNcData returned data with shape %s, while shape %s was requested.' % (self.getName(),dat.shape,expectedshape)
 
           # If the caller wants the data values only, we are done: return the value array.
           if dataonly: return dat
@@ -1556,13 +1556,13 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # This ensures all 4 dimensions will be present during the calculations.
                     newbounds = []
                     for l in bounds:
-                        if isinstance(l,int): l = slice(l,l+1)
+                        if isinstance(l,int):
+                            l = slice(l,l+1)
+                        elif self.dimname.endswith('_stag'):
+                            # If we need staggered coordinates, all dimensions will expand by 1
+                            # in the end. Therefore, subtract 1 from their length here.
+                            l = slice(l.start,l.stop-l.step,l.step)
                         newbounds.append(l)
-                        
-                    # If we need staggered coordinates, all dimensions will expand by 1
-                    # in the end. Therefore, subtract 1 from their length here.
-                    if self.dimname.endswith('_stag'):
-                        newbounds = [slice(s.start,s.stop-1) for s in newbounds]
                         
                     # Make sure calculations operate on entire depth range
                     newbounds[1] = slice(None)
