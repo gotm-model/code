@@ -1144,6 +1144,7 @@ class Figure(xmlstore.util.referencedobject):
                 if effrange[1] is None or datamax>effrange[1]: effrange[1] = datamax
 
             varslice = varslices[0]
+            curhascolormap = False
             
             # Plot the data series
             if varslice.ndim==0:
@@ -1213,7 +1214,7 @@ class Figure(xmlstore.util.referencedobject):
                 
                 pc = None       # object using colormap
                 norm = None     # color normalization object
-                hascolormap = C is not None
+                curhascolormap = C is not None
                 
                 if C is not None:
                     axisdata = axis2data.get('colorbar',{})
@@ -1301,7 +1302,7 @@ class Figure(xmlstore.util.referencedobject):
                             cpc = drawaxes.contour(X,Y,C,lev[1:-1],norm=norm,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
                             if not fill: pc = cpc
                             
-                        if plottype3d==2 and edgecolor is not None: hascolormap = False
+                        if plottype3d==2 and edgecolor is not None: curhascolormap = False
                     else:
                         # We have to plot a colored quadrilinear mesh
                         shading = 'flat'
@@ -1373,6 +1374,8 @@ class Figure(xmlstore.util.referencedobject):
             
             else:
                 print 'We can only plot variables with 1 or 2 dimensions, but "%s" has %i dimensions. Skipping it.' % (varpath,varslice.ndim)
+
+            hascolormap |= curhascolormap
 
             # Increase z-order.
             zorder += 1
