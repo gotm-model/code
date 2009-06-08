@@ -567,15 +567,17 @@ class FigurePanel(QtGui.QWidget):
         data = plot.FigureProperties()
         data.load(path)
         newroot = data.root
+        oldupdating = self.figure.setUpdating(False)
         for child in oldroot.children:
             id = child.getId()
             newchild = newroot[id]
             if id=='Data':
-                n = min(len(child.children),len(newchild.children))
-                for i in range(n): child.children[i].copyFrom(newchild.children[i])
+                for grandchild,newgrandchild in zip(child.children,newchild.children):
+                    grandchild.copyFrom(newgrandchild)
             else:
                 child.copyFrom(newchild)
         data.unlink()
+        self.figure.setUpdating(oldupdating)
         
     def onZoomClicked(self,*args):
         """Called when the user clicks the "Zoom" button.
