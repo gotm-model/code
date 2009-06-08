@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.26 2009-05-27 10:31:50 jorn Exp $
+#$Id: common.py,v 1.27 2009-06-08 08:19:05 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -397,6 +397,32 @@ def center(coords,dimindices=None):
     
     # Return the average of the corner points
     return coords_center/(2**len(dimindices))
+
+def interpolateEdges(data,dims=None):
+    """Use nearest neighbor interpolation to provide values for masked cells
+    that lie adjacent to non-mask cells.
+    """
+    if not hasattr(data,'_mask'): return data
+    if dims is None: dims = range(data.ndim)
+    oldmask = data._mask
+    oldnonmask = numpy.logical_not(oldmask)
+    data = data.filled(0.)
+    maskcount = numpy.array(oldnonmask,dtype=numpy.int)
+    newdata = data.copy()
+    baseslice = [slice(None)]*data.ndim
+    for i in dims:
+        sl1,sl2 = list(baseslice),list(baseslice)
+        sl1[i] = slice(1,None)
+        sl2[i] = slice(0,-1)
+        newdata  [sl1] += data[sl2]
+        maskcount[sl1] += oldnonmask[sl2]
+        newdata  [sl2] += data[sl1]
+        maskcount[sl2] += oldnonmask[sl1]
+    newmask = maskcount==0
+    maskcount[newmask] = 1
+    newdata /= maskcount
+    data[oldmask] = newdata[oldmask]
+    return numpy.ma.masked_where(newmask,data)
     
 def getboundindices(data,axis,minval=None,maxval=None):
     """Returns the indices for the specified axis that envelope (i.e., lie just outside)

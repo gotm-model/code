@@ -1595,20 +1595,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                 # Then save the mask so we can reapply it later.
                 if hasattr(elev,'_mask'):
                     if isinstance(elev._mask,numpy.ndarray): mask = setmask(mask,elev._mask[:,numpy.newaxis,...])
-                    oldvals = numpy.logical_not(elev._mask)
-                    elev = elev.filled(0.)
-                    maskcount = numpy.array(oldvals,dtype=numpy.int)
-                    newelev = elev.copy()
-                    newelev[:,1:,:]  += elev[:,:-1,:]
-                    newelev[:,:,1:]  += elev[:,:,:-1]
-                    newelev[:,:-1,:] += elev[:,1:,:]
-                    newelev[:,:,:-1] += elev[:,:,1:]
-                    maskcount[:,1:,:]  += oldvals[:,:-1,:]
-                    maskcount[:,:,1:]  += oldvals[:,:,:-1]
-                    maskcount[:,:-1,:] += oldvals[:,1:,:]
-                    maskcount[:,:,:-1] += oldvals[:,:,1:]
-                    maskcount[maskcount==0] = 1
-                    elev = newelev/maskcount
+                    elev = common.interpolateEdges(elev,dims=(1,2)).filled(0.)
 
                 if self.store.bathymetryname is None:
                     # Get layer heights (dimension 0: time, dimension 1: depth, dimension 2: y coordinate, dimension 3: x coordinate)
@@ -1653,7 +1640,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     bath = self.store[self.store.bathymetryname].getSlice(bathbounds,dataonly=True,cache=cachebasedata)
                     if hasattr(bath,'_mask'):
                         mask = setmask(mask,bath._mask)
-                        bath = bath.filled(0.)
+                        bath = common.interpolateEdges(bath).filled(0.)
                                             
                     # Calculate water depth at each point in time
                     depth = bath[numpy.newaxis,:,:]+elev
