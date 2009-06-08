@@ -15,7 +15,7 @@ class statistics(expressions.LazyFunction):
         expressions.LazyFunction.__init__(self,'statistics',None,sourceslice,axis,centermeasure=centermeasure,boundsmeasure=boundsmeasure,percentilewidth=percentilewidth,output=output)
         self.setRemovedDimension(1,'axis')
     
-    def _getValue(self,resolvedargs,resolvedkwargs):
+    def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         sourceslice,axis = resolvedargs[0],resolvedargs[1]
     
         centermeasure = resolvedkwargs['centermeasure']
@@ -111,6 +111,7 @@ class statistics(expressions.LazyFunction):
         else:
             assert False, 'Unknown choice %i for output variable.' % boundsmeasure
             
+        if dataonly: return slc.data
         return slc
 
 class flatten(expressions.LazyFunction):
@@ -118,7 +119,7 @@ class flatten(expressions.LazyFunction):
         expressions.LazyFunction.__init__(self,'flatten',None,sourceslice,axis,targetaxis=targetaxis)
         self.setRemovedDimension(1,'axis')
 
-    def _getValue(self,resolvedargs,resolvedkwargs):
+    def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         sourceslice,axis = resolvedargs[0],resolvedargs[1]
         targetaxis = resolvedkwargs['targetaxis']
             
@@ -170,6 +171,8 @@ class flatten(expressions.LazyFunction):
         newslice.coords_stag = [c for i,c in enumerate(sourceslice.coords_stag) if i!=axis]
         newslice.coords[inewtargetaxis] = newtargetcoords
         newslice.data = newdata
+        
+        if dataonly: return newslice.data
         return newslice
 
     def getShape(self):
@@ -188,10 +191,12 @@ class interp(expressions.LazyFunction):
         for d in kwargs.iterkeys():
             assert d in dims, 'Dimension %s does not exist in original slice. Available dimensions: %s' % (d,', '.join(dims))
 
-    def _getValue(self,resolvedargs,resolvedkwargs):
+    def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         assert isinstance(resolvedargs[0],common.Variable.Slice),'The first argument to interpn must be a variable slice.'
         dataslice = resolvedargs[0]
-        return dataslice.interp(**resolvedkwargs)
+        newslice = dataslice.interp(**resolvedkwargs)
+        if dataonly: return newslice.data
+        return newslice
                     
     def getShape(self):
         s = expressions.LazyFunction.getShape(self)
