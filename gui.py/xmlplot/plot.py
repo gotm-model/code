@@ -394,6 +394,7 @@ class FigureAnimator(object):
         self.length = length
         
         self.index = -1
+        self.titletemplate = None
         
     def getPlottedVariables(self):
         vars = []
@@ -406,8 +407,11 @@ class FigureAnimator(object):
         
     def nextFrame(self):
         self.index += 1
+        oldupdating = self.figure.setUpdating(False)
         self.figure.slices[self.dimension] = self.index
-        self.figure.update()
+        if self.titletemplate is None: self.titletemplate = str(self.figure['Title'].getValue(usedefault=True))
+        self.figure['Title'].setValue(self.getDynamicTitle(self.titletemplate))
+        self.figure.setUpdating(oldupdating)
         return self.index<(self.length-1)
 
     def getDynamicTitle(self,fmt):
@@ -427,7 +431,7 @@ class FigureAnimator(object):
             meanval = coordvariable.getSlice(coordslice,dataonly=True).mean()
             
             diminfo = var.getDimensionInfo(self.dimension)
-            
+
             # Convert the coordinate value to a string
             if fmt is None:
                 if diminfo.get('datatype','float')=='datetime':
@@ -443,7 +447,7 @@ class FigureAnimator(object):
                 #raise Exception('Unable to apply format string "%s" to value %s.' % (fmt,meanval))
                 return fmt
         
-    def animateAndExport(self,path,title=None,dpi=75,verbose=True):
+    def animateAndExport(self,path,dpi=75,verbose=True):
         if os.path.isdir(path):
             nametemplate = '%%0%ii.png' % (1+math.floor(math.log10(self.length-1)))
             targetdir = path
@@ -456,15 +460,10 @@ class FigureAnimator(object):
             targetdir = '.'
                 
         while True:            
-            self.figure.setUpdating(False)
             hasmore = self.nextFrame()
-            self.figure['Title'].setValue(self.getDynamicTitle(title))
             if verbose: print 'Creating frame %i of %s...' % (self.index+1,self.length)
-            self.figure.setUpdating(True)
-            
             path = os.path.join(targetdir,nametemplate % self.index)
             self.figure.exportToFile(path,dpi=dpi)
-            
             if not hasmore: break
 
 class Figure(xmlstore.util.referencedobject):
@@ -725,7 +724,7 @@ class Figure(xmlstore.util.referencedobject):
         figure properties are set based on properties of the obtained data,
         and the figure is built and shown.
         """
-                
+
         # We are called whenever figure properties change. If we do not want to update now,
         # just register that an update is needed and exit.
         if not self.updating:
