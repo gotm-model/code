@@ -1111,7 +1111,7 @@ class Node(object):
                 ich = 0
                 for chnode in node.children:
                     if chnode.location[-1]==childname:
-                        if secid is None or (isinstance(secid,int) and secid==ich) or (isinstance(secid,basestring) and secid==node.getSecondaryId()):
+                        if secid is None or (isinstance(secid,int) and secid==ich) or (isinstance(secid,basestring) and secid==chnode.getSecondaryId()):
                             node = chnode
                             break
                         ich += 1
