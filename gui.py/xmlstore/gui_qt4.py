@@ -249,10 +249,10 @@ class SelectEditor(AbstractSelectEditor,QtGui.QComboBox):
 
     def setValue(self,value):
         ichild = self.indexFromValue(value)
-        assert ichild is not None or self.isEditable(), 'Cannot find child index for value %s.' % str(value)
         if ichild is None and self.isEditable():
             self.lineedit.setValue(value)
         else:
+            if ichild is None: ichild = 0
             self.setCurrentIndex(ichild)
 
 class SimpleSelectEditor(SelectEditor):

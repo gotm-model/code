@@ -451,7 +451,7 @@ class FigureAnimator(object):
             try:
                 path % (1,)
             except:
-                raise Exception('The provided path should either be a directory, or a file name template that accepts a single integer as formatting argument.')
+                raise Exception('The provided path should either be an existing directory, or a file name template that accepts a single integer as formatting argument.')
             nametemplate = path
             targetdir = '.'
                 
