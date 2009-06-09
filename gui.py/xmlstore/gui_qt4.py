@@ -127,7 +127,7 @@ class StringEditor(AbstractPropertyEditor,QtGui.QLineEdit):
         self.connect(self, QtCore.SIGNAL('editingFinished()'), self.editingFinished)
         
     def value(self):
-        return QtGui.QLineEdit.text(self)
+        return unicode(QtGui.QLineEdit.text(self))
 
     def setValue(self,value):
         if value is None: value = ''
