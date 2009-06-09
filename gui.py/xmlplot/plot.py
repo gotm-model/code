@@ -461,6 +461,7 @@ class FigureAnimator(object):
                 
         while True:            
             hasmore = self.nextFrame()
+            self.figure.setUpdating(True)
             if verbose: print 'Creating frame %i of %s...' % (self.index+1,self.length)
             path = os.path.join(targetdir,nametemplate % self.index)
             self.figure.exportToFile(path,dpi=dpi)
