@@ -368,6 +368,9 @@
 			<element name="ArrowScale" type="float" label="arrow scaling">
 				<condition type="eq" variable="./Type" value="3"/>
 			</element>
+			<element name="ArrowWidth" type="float" label="arrow shaft width">
+				<condition type="eq" variable="./Type" value="3"/>
+			</element>
 			<element name="ArrowPivot" type="string" label="arrow pivot">
 				<condition type="eq" variable="./Type" value="3"/>
 				<options>

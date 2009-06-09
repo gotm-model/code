@@ -1336,19 +1336,23 @@ class Figure(xmlstore.util.referencedobject):
                         U,V = U.filled(0.),V.filled(0.)
                             
                     scale = seriesnode['ArrowScale'].getValue(usedefault=True)
+                    width = seriesnode['ArrowWidth'].getValue(usedefault=True)
                     pivot = seriesnode['ArrowPivot'].getValue(usedefault=True)
                     if C is None:
                         # Quiver without color values
-                        pc = drawaxes.quiver(X,Y,U,V,cmap=cm,norm=norm,scale=scale,pivot=pivot)
+                        pc = drawaxes.quiver(X,Y,U,V,cmap=cm,norm=norm,scale=scale,pivot=pivot,width=width)
                     else:
                         # Quiver with color values
-                        pc = drawaxes.quiver(X,Y,U,V,C,cmap=cm,norm=norm,scale=scale,pivot=pivot)
+                        pc = drawaxes.quiver(X,Y,U,V,C,cmap=cm,norm=norm,scale=scale,pivot=pivot,width=width)
 
                     # Auto-scale code taken from matplotlib.quiver
                     pc._init()
                     sn = max(10, math.sqrt(pc.N))
                     scale = 1.8 * vel.mean() * sn / pc.span # crude auto-scaling
+                    sn = max(8, min(25, math.sqrt(pc.N)))
+                    shaftwidth = 0.06 * pc.span / sn
                     defaultseriesnode['ArrowScale'].setValue(scale)  
+                    defaultseriesnode['ArrowWidth'].setValue(shaftwidth)  
                     if pc.scale is None: pc.scale = scale
                     
                     keynode = seriesnode['ArrowKey']
