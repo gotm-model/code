@@ -1084,20 +1084,47 @@ class Node(object):
         assert isinstance(path,basestring), 'Supplied node path is not a string: %s.' % path
         return self.getLocation(path.split('/'))
 
-    def getLocation(self,location):
+    def getLocation(self,location,createoptional=False):
         """Returns the child node at the specified location (a list of
         path components - strings).
         """
         node = self
         for childname in location:
+        
+            # Read secondary id between square brackets [if any]
+            secid = None
+            if childname.endswith(']') and '[' in childname:
+                istart = childname.rfind('[')
+                secid = childname[istart+1:-1]
+                childname = childname[:istart]
+                if secid.startswith('\'') and secid.endswith('\''):
+                    secid = secid[1:-1]
+                elif secid.isdigit():
+                    secid = int(secid)
+                
             if childname=='..':
+                # Move one level up
                 assert self.parent is not None,'Cannot go up one level because we are at the root.'
                 node = node.parent
             elif childname!='' and childname!='.':
-                for node in node.children:
-                    if node.location[-1]==childname: break
+                # Try to find the requested child node.
+                ich = 0
+                for chnode in node.children:
+                    if chnode.location[-1]==childname:
+                        if secid is None or (isinstance(secid,int) and secid==ich) or (isinstance(secid,basestring) and secid==node.getSecondaryId()):
+                            node = chnode
+                            break
+                        ich += 1
                 else:
-                    return None
+                    # Child was not found, but if it is optional it can be created on request.
+                    if createoptional and secid is not None:
+                        if isinstance(secid,basestring):
+                            node = node.addChild(childname,id=secid)
+                        else:
+                            node = node.getChildByNumber(childname,secid,create=True)
+                        if node is None: return None
+                    else:
+                        return None
         return node
 
     def getLocationMultiple(self,location):
@@ -1571,15 +1598,20 @@ class TypedStore(util.referencedobject):
         """
         return self.root[path]
         
-    def findNode(self,path):
-        def find(root):
-            node = root[path]
-            if node is None:
-                for child in root.children:
-                    node = find(child)
-                    if node is not None: break
-            return node
-        return find(self.root)
+    def findNode(self,path,create=False):
+        pathcomps = path.split('/')
+        node = self.root.getLocation(pathcomps,createoptional=create)
+        if node is None and not path.startswith('/'):
+            curparents = [self.root]
+            while curparents:
+                nextparents = []
+                for par in curparents:
+                    for ch in par.children:
+                        node = ch.getLocation(pathcomps,createoptional=create)
+                        if node is not None: return node
+                    nextparents += par.children
+                curparents = nextparents
+        return node
 
     def mapForeignNode(self,foreignnode):
         """Takes a node from another TypedStore that uses the same XML schema,
