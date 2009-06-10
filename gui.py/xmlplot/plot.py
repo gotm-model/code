@@ -1108,7 +1108,8 @@ class Figure(xmlstore.util.referencedobject):
             axis2data['y'].update({'unit':'','label':'','hideticks':True})
 
         for seriesnode,var,varslices,info in zip(forcedseries,seriesvariables,seriesslices,seriesinfo):
-            defaultseriesnode = defaultdatanode.getChildById('Series',seriesnode.getSecondaryId(),create=False)
+            varpath = seriesnode.getSecondaryId()
+            defaultseriesnode = defaultdatanode.getChildById('Series',varpath,create=False)
 
             # Store the [default or custom] variable long name; it will be used for building the plot title.
             label = seriesnode['Label'].getValue(usedefault=True)
