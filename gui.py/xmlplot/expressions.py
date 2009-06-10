@@ -233,10 +233,12 @@ class LazyExpression(object):
         if isinstance(arg,LazyExpression):
             if arg.canprocessslice:
                 #if slic is not None: print 'Integrating %s in %s' % (slic,arg)
-                return arg.getValue(slic,dataonly=dataonly)
+                return arg.getValue(extraslices=slic,dataonly=dataonly)
             else:
                 res = arg.getValue(dataonly=dataonly)
-                if slic is not None: res = res.__getitem__(slic)
+                if slic is not None:
+                    slic = [slic.get(dim,slice(None)) for dim in arg.getDimensions()]
+                    res = res.__getitem__(slic)
                 return res
         elif isinstance(arg,tuple):
             return tuple([LazyExpression.argument2value(subarg,slic,dataonly) for subarg in arg])
@@ -305,9 +307,13 @@ class LazyExpression(object):
     def _getText(self,type=0,addparentheses=True):
         assert False, 'Method "getText" or "_getText" must be implemented by derived class.'
 
-    def getValue(self,dataonly=False):
-        resolvedargs = [LazyExpression.argument2value(arg,dataonly=(dataonly and not self.useslices)) for arg in self.args]
-        resolvedkwargs = dict([(name,LazyExpression.argument2value(arg,dataonly=(dataonly and not self.useslices))) for name,arg in self.kwargs.iteritems()])
+    def getValue(self,extraslices=None,dataonly=False):
+        if extraslices is not None:
+            # Filter out slices for dimensions that we do not support.
+            dims = self.getDimensions()
+            extraslices = dict([(k,v) for k,v in extraslices.iteritems() if k in dims])
+        resolvedargs = [LazyExpression.argument2value(arg,extraslices,dataonly=(dataonly and not self.useslices)) for arg in self.args]
+        resolvedkwargs = dict([(name,LazyExpression.argument2value(arg,extraslices,dataonly=(dataonly and not self.useslices))) for name,arg in self.kwargs.iteritems()])
         return self._getValue(resolvedargs,resolvedkwargs,dataonly=dataonly)
 
     def _getValue(self,args,kwargs):
@@ -406,13 +412,16 @@ class LazyVariable(LazyExpression):
     def getVariables(self):
         return [self.args[0]]
 
-    def getValue(self,slic=None,dataonly=False):
+    def getValue(self,extraslices=None,dataonly=False):
         # Return the data slice of the encapsulated object.
-        if slic is None:
-            slic = len(self.args[0].getDimensions())*[slice(None)]
+        if extraslices is None:
+            extraslices = {}
         else:
-            slic = LazyExpression.argument2value(slic,dataonly=True)
-        return self.args[0].getSlice(slic,dataonly=dataonly)
+            # Make sure any lazy objects in the slice specification are resolved
+            for k in extraslices.keys():
+                extraslices[k] = LazyExpression.argument2value(extraslices[k],dataonly=True)
+        slics = [extraslices.get(dim,slice(None)) for dim in self.args[0].getDimensions()]
+        return self.args[0].getSlice(slics,dataonly=dataonly)
         
     def getText(self,type=0,addparentheses=True):
         assert type>=0 and type<=3, 'Argument "type" must be 0 (identifier), 1 (short name) 2 (long name), or 3 (unit).'
@@ -445,6 +454,7 @@ class LazyOperation(LazyExpression):
         kw = kwargs.copy()
         self.outsourceslices = kw.pop('outsourceslices',False)
         LazyExpression.__init__(self,*args,**kw)
+        self.canprocessslice = True
                 
     @staticmethod
     def getData(args,useslices=False):
@@ -562,6 +572,7 @@ class LazyFunction(LazyOperation):
         self.removedim = None
         kwargs.setdefault('outsourceslices',True)
         LazyOperation.__init__(self,*args,**kwargs)
+        self.canprocessslice = True
     
     def setRemovedDimension(self,argindex,argname):
         """Called by derived classes to specify through which function arguments (index
@@ -668,9 +679,12 @@ class LazySlice(LazyOperation):
         self.canprocessslice = self.simpleslices and variable.getShape() is not None
 
     def getValue(self,extraslices=None,dataonly=False):
+        # Resolve any lazy objects in our slice specification.
         slices = LazyExpression.argument2value(self.slice,dataonly=True)
         
         if self.simpleslices:
+            # Slice specification is integer-based - determine the final indices based on the shape of the data.
+            # This is *required* if this slice is to be combined with a higher level slice (extraslices argument).
             shape = self.args[0].getShape()
             if shape is not None:
                 newslices = []
@@ -682,8 +696,13 @@ class LazySlice(LazyOperation):
                 slices = tuple(newslices)
                 
         if extraslices is not None:
-            assert self.simpleslices,'Slice variable receives additional slice, but does not support slice combination.'
+            # Add the additional slices
+            assert self.simpleslices,'LazySlice variable receives additional slice, but does not support slice combination.'
+            extraslices = [extraslices.get(d,slice(i,shape[i],1)) for i,d in enumerate(self.getDimensions())]
             slices = LazyExpression.combineSlices(slices,extraslices)
+            
+        # Convert list of slices to dictionary linking dimension name to corresponding slice.
+        slices = dict(zip(self.args[0].getDimensions(),slices))
             
         return LazyExpression.argument2value(self.args[0],slices,dataonly=dataonly)
         

@@ -213,4 +213,46 @@ class interp(expressions.LazyFunction):
                 else:
                     newshape.append(argshape[0])
         return newshape
-            
+
+class iter(expressions.LazyFunction):
+    def __init__(self,target,dimension,**kwargs):
+        expressions.LazyFunction.__init__(self,'iter',None,target,dimension,outsourceslices=False,**kwargs)
+        self.dimension = dimension
+        self.stride = kwargs.get('stride',1)
+        dims = expressions.LazyFunction.getDimensions(self)
+        assert dimension in dims,'Dimension to iterate over (%s) is not used by underlying variable, which uses %s.' % (dimension,', '.join(dims))
+        self.idimension = list(dims).index(dimension)
+        self.canprocessslice = False
+
+    def getValue(self,extraslices=None,dataonly=False):
+        if extraslices is None: extraslices = {}
+        shape = expressions.LazyFunction.getShape(self)
+        slcs = [extraslices.get(dim,slice(None)) for dim in expressions.LazyFunction.getDimensions(self)]
+        stagslcs = list(slcs)
+        assert shape is not None, 'Unable to iterate over dimension %s because final shape is unknown.' % self.dimension
+        data = numpy.ma.empty(shape,dtype=numpy.float)
+        if not dataonly:
+            result = common.Variable.Slice(expressions.LazyFunction.getDimensions(self))
+            for j in range(len(shape)):
+                result.coords[j] = numpy.empty(shape,dtype=numpy.float)
+                result.coords_stag[j] = numpy.empty([l+1 for l in shape],dtype=numpy.float)
+            result.data = data
+        i = 0
+        while i<shape[self.idimension]:
+            ihigh = min(i+self.stride,shape[self.idimension])
+            print 'Reading slab %i-%i...' % (i,ihigh-1)
+            extraslices[self.dimension] = slice(i,ihigh)
+            resolvedtarget = expressions.LazyExpression.argument2value(self.args[0],extraslices,dataonly=dataonly)
+
+            slcs[self.idimension] = slice(i,ihigh)
+            curdata = resolvedtarget
+            if not dataonly:
+                curdata = resolvedtarget.data
+                stagslcs[self.idimension] = slice(i,ihigh+1)
+                for j in range(len(shape)):
+                    result.coords[j][slcs] = resolvedtarget.coords[j]
+                    result.coords_stag[j][stagslcs] = resolvedtarget.coords_stag[j]
+            data[slcs] = curdata
+            i = ihigh
+        if dataonly: return data
+        return result
