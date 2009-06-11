@@ -12,7 +12,7 @@ class statistics(expressions.LazyFunction):
     output:          0 for center+bounds, 1 for center only, 2 for lower bound, 3 for upper bound
     """
     def __init__(self,sourceslice,axis,centermeasure=0,boundsmeasure=0,percentilewidth=.5,output=0):
-        expressions.LazyFunction.__init__(self,'statistics',None,sourceslice,axis,centermeasure=centermeasure,boundsmeasure=boundsmeasure,percentilewidth=percentilewidth,output=output)
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,None,sourceslice,axis,centermeasure=centermeasure,boundsmeasure=boundsmeasure,percentilewidth=percentilewidth,output=output)
         self.setRemovedDimension(1,'axis')
     
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
@@ -116,7 +116,7 @@ class statistics(expressions.LazyFunction):
 
 class flatten(expressions.LazyFunction):
     def __init__(self,sourceslice,axis,targetaxis=None):
-        expressions.LazyFunction.__init__(self,'flatten',None,sourceslice,axis,targetaxis=targetaxis)
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,None,sourceslice,axis,targetaxis=targetaxis)
         self.setRemovedDimension(1,'axis')
 
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
@@ -186,7 +186,7 @@ class interp(expressions.LazyFunction):
     """
 
     def __init__(self,sourceslice,**kwargs):
-        expressions.LazyFunction.__init__(self,'interp',None,sourceslice,outsourceslices=False,**kwargs)
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,None,sourceslice,outsourceslices=False,**kwargs)
         dims = expressions.LazyFunction.getDimensions(self)
         for d in kwargs.iterkeys():
             assert d in dims, 'Dimension %s does not exist in original slice. Available dimensions: %s' % (d,', '.join(dims))
@@ -215,44 +215,81 @@ class interp(expressions.LazyFunction):
         return newshape
 
 class iter(expressions.LazyFunction):
-    def __init__(self,target,dimension,**kwargs):
-        expressions.LazyFunction.__init__(self,'iter',None,target,dimension,outsourceslices=False,**kwargs)
+    def __init__(self,target,dimension,stride=1):
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,None,target,dimension,stride,outsourceslices=False)
         self.dimension = dimension
-        self.stride = kwargs.get('stride',1)
+        self.stride = stride
         dims = expressions.LazyFunction.getDimensions(self)
         assert dimension in dims,'Dimension to iterate over (%s) is not used by underlying variable, which uses %s.' % (dimension,', '.join(dims))
         self.idimension = list(dims).index(dimension)
-        self.canprocessslice = False
 
     def getValue(self,extraslices=None,dataonly=False):
         if extraslices is None: extraslices = {}
-        shape = expressions.LazyFunction.getShape(self)
-        slcs = [extraslices.get(dim,slice(None)) for dim in expressions.LazyFunction.getDimensions(self)]
-        stagslcs = list(slcs)
-        assert shape is not None, 'Unable to iterate over dimension %s because final shape is unknown.' % self.dimension
-        data = numpy.ma.empty(shape,dtype=numpy.float)
+        
+        shape = self.getShape()
+        dims = self.getDimensions()
+        assert shape is not None, 'Unable to iterate over dimension %s because final shape is unknown.' % self.dimension        
+        slcs = [extraslices.get(dim,slice(None)) for dim in dims]
+        newshape = expressions.LazyExpression.adjustShape(shape,slcs)
+        newdims = expressions.LazyExpression.adjustDimensions(dims,slcs)
+        
+        targetslcs = [slice(None)]*len(newdims)
+        targetslcs_stag = list(targetslcs)
+        
+        if isinstance(slcs[self.idimension],slice):
+            start,stop,step = slcs[self.idimension].indices(shape[self.idimension])
+            inewdim = list(newdims).index(self.dimension)
+        else:
+            assert isinstance(slcs[self.idimension],int),'Slice of dimensions to iterate over should be a slice object or an integer (not %s).' % str(slcs[self.idimension])
+            start,stop,step = slcs[self.idimension],slcs[self.idimension]+1,1
+            inewdim = None
+        
+        data = numpy.ma.empty(newshape,dtype=numpy.float)
         if not dataonly:
-            result = common.Variable.Slice(expressions.LazyFunction.getDimensions(self))
-            for j in range(len(shape)):
-                result.coords[j] = numpy.empty(shape,dtype=numpy.float)
-                result.coords_stag[j] = numpy.empty([l+1 for l in shape],dtype=numpy.float)
+            result = common.Variable.Slice(newdims)
+            for j in range(len(newshape)):
+                result.coords[j] = numpy.empty(newshape,dtype=numpy.float)
+                result.coords_stag[j] = numpy.empty([l+1 for l in newshape],dtype=numpy.float)
             result.data = data
-        i = 0
-        while i<shape[self.idimension]:
-            ihigh = min(i+self.stride,shape[self.idimension])
-            print 'Reading slab %i-%i...' % (i,ihigh-1)
-            extraslices[self.dimension] = slice(i,ihigh)
+        i = start
+        while i<stop:
+            ihigh = min(i+self.stride*step,stop)
+            print 'Reading %s range %i-%i...' % (self.dimension,i,ihigh-1)
+            if inewdim is None:
+                extraslices[self.dimension] = i
+            else:
+                extraslices[self.dimension] = slice(i,ihigh,step)
             resolvedtarget = expressions.LazyExpression.argument2value(self.args[0],extraslices,dataonly=dataonly)
 
-            slcs[self.idimension] = slice(i,ihigh)
+            if inewdim is not None: targetslcs[inewdim] = slice(i,i+(ihigh-i-1)/step+1)
             curdata = resolvedtarget
             if not dataonly:
                 curdata = resolvedtarget.data
-                stagslcs[self.idimension] = slice(i,ihigh+1)
-                for j in range(len(shape)):
-                    result.coords[j][slcs] = resolvedtarget.coords[j]
-                    result.coords_stag[j][stagslcs] = resolvedtarget.coords_stag[j]
-            data[slcs] = curdata
+                if inewdim is not None: targetslcs_stag[inewdim] = slice(targetslcs[inewdim].start,targetslcs[inewdim].stop+1)
+                for j in range(len(newshape)):
+                    result.coords[j][targetslcs] = resolvedtarget.coords[j]
+                    result.coords_stag[j][targetslcs_stag] = resolvedtarget.coords_stag[j]
+            data[targetslcs] = curdata
             i = ihigh
         if dataonly: return data
         return result
+
+class coorddelta(expressions.LazyFunction):
+    def __init__(self,target,dimension):
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,None,target,dimension,outsourceslices=False)
+        alldims = self.getDimensions()
+        assert dimension in alldims,'Dimension "%s" does not appear in source data (available: %s).' % (dimension,', '.join(alldims))
+        self.dimension = dimension
+
+    def getValue(self,extraslices=None,dataonly=False):
+        resolvedtarget = expressions.LazyExpression.argument2value(self.args[0],extraslices,dataonly=False)
+        dims = list(resolvedtarget.dimensions)
+        assert self.dimension in dims,'Dimension "%s" does not appear in source data after slices are applied (remaining: %s).' % (self.dimension,', '.join(dims))
+        idimension = dims.index(self.dimension)
+        vals = numpy.diff(resolvedtarget.coords_stag[idimension],axis=idimension)
+        destagdims = range(len(dims))
+        destagdims.pop(idimension)
+        resolvedtarget.data = common.center(vals,destagdims)
+        if dataonly: return resolvedtarget.data
+        return resolvedtarget
+        
