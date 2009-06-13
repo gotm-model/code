@@ -94,6 +94,8 @@ class LazyExpression(object):
             self.name = name
             self.func = func
             self.useslices = useslices
+            self.preserveunit = False
+            self.usefirstunit = False
             self.removedim = None
             
         def __call__(self,*args,**kwargs):
@@ -105,6 +107,8 @@ class LazyExpression(object):
                 f = self.func(*args,**kwargs)
             else:
                 f = LazyFunction(self.name,self.func,*args,**kwargs)
+                f.preserveunit = self.preserveunit
+                f.usefirstunit = self.usefirstunit
             if self.removedim is not None: f.setRemovedDimension(argindex=self.removedim[0],argname=self.removedim[1])
             f.useslices = self.useslices
             return f
@@ -130,6 +134,12 @@ class LazyExpression(object):
             LazyExpression.globalfuncs['max' ].removedim = (1,'axis')
             LazyExpression.globalfuncs['sum' ].removedim = (1,'axis')
             LazyExpression.globalfuncs['prod'].removedim = (1,'axis')
+
+            LazyExpression.globalfuncs['average'].usefirstunit = True
+            LazyExpression.globalfuncs['mean'].usefirstunit = True
+            LazyExpression.globalfuncs['min' ].usefirstunit = True
+            LazyExpression.globalfuncs['max' ].usefirstunit = True
+            LazyExpression.globalfuncs['sum' ].usefirstunit = True
             
             import functions
             for name in dir(functions):
@@ -273,6 +283,8 @@ class LazyExpression(object):
     def __init__(self,*args,**kwargs):
         self.canprocessslice = False
         self.useslices = False
+        self.preserveunit = False
+        self.usefirstunit = False
         self.args = args
         self.kwargs = kwargs
         
@@ -300,6 +312,13 @@ class LazyExpression(object):
     def getText(self,type=0,addparentheses=True):
         resolvedargs = [LazyExpression.argument2text(arg,type) for arg in self.args]
         resolvedkwargs = dict([(name,LazyExpression.argument2text(arg,type)) for name,arg in self.kwargs.iteritems()])
+        if type==3:
+            if self.usefirstunit:
+                return resolvedargs[0]
+            elif self.preserveunit:
+                units = [arg for arg in resolvedargs if arg!='']
+                units.sort()
+                if units[0]==units[-1]: return units[0]
         result = self._getText(resolvedargs,resolvedkwargs,type=type,addparentheses=addparentheses)
         if addparentheses: result = '(%s)' % result
         return result
@@ -326,10 +345,10 @@ class LazyExpression(object):
         assert False, 'Method "getDimensions" must be implemented by derived class.'
             
     def __add__(self,other):
-        return LazyOperator('__add__','+',self,other)
+        return LazyOperator('__add__','+',self,other,preserveunit=True)
 
     def __sub__(self,other):
-        return LazyOperator('__sub__','-',self,other)
+        return LazyOperator('__sub__','-',self,other,preserveunit=True)
 
     def __mul__(self,other):
         return LazyOperator('__mul__','*',self,other)
@@ -338,7 +357,7 @@ class LazyExpression(object):
         return LazyOperator('__div__','/',self,other)
 
     def __mod__(self,other):
-        return LazyOperator('__mod__','%',self,other)
+        return LazyOperator('__mod__','%',self,other,preserveunit=True)
 
     def __truediv__(self,other):
         return LazyOperator('__truediv__','/',self,other)
@@ -347,10 +366,10 @@ class LazyExpression(object):
         return LazyOperator('__pow__','**',self,other)
 
     def __radd__(self,other):
-        return LazyOperator('__radd__','+',self,other)
+        return LazyOperator('__radd__','+',self,other,preserveunit=True)
 
     def __rsub__(self,other):
-        return LazyOperator('__rsub__','-',self,other)
+        return LazyOperator('__rsub__','-',self,other,preserveunit=True)
 
     def __rmul__(self,other):
         return LazyOperator('__rmul__','*',self,other)
@@ -359,7 +378,7 @@ class LazyExpression(object):
         return LazyOperator('__rdiv__','/',self,other)
 
     def __rmod__(self,other):
-        return LazyOperator('__rmod__','%',self,other)
+        return LazyOperator('__rmod__','%',self,other,preserveunit=True)
 
     def __rtruediv__(self,other):
         return LazyOperator('__rtruediv__','/',self,other)
@@ -368,13 +387,10 @@ class LazyExpression(object):
         return LazyOperator('__rpow__','**',self,other)
 
     def __neg__(self):
-        return LazyOperator('__neg__','-',self)
+        return LazyOperator('__neg__','-',self,preserveunit=True)
 
     def __pos__(self):
-        return LazyOperator('__pos__','+',self)
-
-    def __sub__(self,other):
-        return LazyOperator('__sub__','-',self,other)
+        return LazyOperator('__pos__','+',self,preserveunit=True)
 
     def __gt__(self,other):
         return LazyOperator('__gt__','>',self,other)
@@ -641,11 +657,13 @@ class LazyOperator(LazyOperation):
     recognized by Python.
     """
 
-    def __init__(self,name,symbol,*args):
+    def __init__(self,name,symbol,*args,**kwargs):
         self.name = name
         self.symbol = symbol
-        kw = {'outsourceslices':True}
-        LazyOperation.__init__(self,*args,**kw)
+        preserveunit = kwargs.pop('preserveunit',False)
+        kwargs['outsourceslices'] = True
+        LazyOperation.__init__(self,*args,**kwargs)
+        self.preserveunit = preserveunit
 
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         resolvedargs,targetslice = LazyOperation.getData(resolvedargs)
