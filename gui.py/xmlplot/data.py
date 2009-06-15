@@ -612,7 +612,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         # Succeeded in reading the data: store them internally.
         return [times,values]
 
-    def writeData(self,target,callback=None):
+    def writeData(self,target,callback=None,missing=''):
         """Writes the current data to a file-like object."""
         # Get number of dimensions and variables, and get shortcuts to the data.
         dimcount = len(self.dimensions)
@@ -626,6 +626,8 @@ class LinkedMatrix(LinkedFileVariableStore):
         varcount = len(self.vardata)
         vardata = data[-1]
         
+        mask = hasattr(vardata,'_mask')
+        
         if self.type==1:
             # Write first line with number of observations.
             target.write('%i\n' % vardata.shape[0])
@@ -638,7 +640,10 @@ class LinkedMatrix(LinkedFileVariableStore):
                 else:
                     target.write('%.12g' % dimdata[iline])
             for ivar in range(varcount):
-                target.write('\t%.12g' % vardata[iline,ivar])
+                if mask and vardata._mask[iline,ivar]:
+                    target.write('\t%s' % missing)
+                else:
+                    target.write('\t%.12g' % vardata[iline,ivar])
             target.write('\n')
             if callback is not None and iline%1000==0:
                 callback(float(iline)/vardata.shape[0],'wrote %i lines.' % iline)
@@ -1012,7 +1017,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         def getData(self,bounds=None,stagger=False):
         
             # Discover effective boundaries
-            effbounds = []
+            effbounds,newshape = [],[]
             for b in self.translateSliceSpecification(bounds):
                 if isinstance(b,slice):
                     # Set the upper bound to 1 + the index of the last element that will be taken
@@ -1044,7 +1049,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 b = effbounds[i]
                 addleft,addright,addcenter = False,False,True
                 if i in stagger:
-                    centers = b.step%2==0
+                    centers = b.step%2==0   # Use centers for interface coordinates if the stride is an even number.
                     start = b.start - b.step/2
                     stop = b.stop + b.step/2 + 1
                     if start<0:
