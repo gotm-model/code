@@ -1009,6 +1009,87 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           
           return tuple(boundindices)
           
+        def getData(self,bounds=None,stagger=False):
+        
+            # Discover effective boundaries
+            effbounds = []
+            for b in self.translateSliceSpecification(bounds):
+                if isinstance(b,slice):
+                    # Set the upper bound to 1 + the index of the last element that will be taken
+                    b = slice(b.start,b.stop-(b.stop-b.start-1)%b.step,b.step)
+                effbounds.append(b)
+
+            # Convert stagger argument to list with dimension indices to stagger.
+            if not stagger:
+                stagger = ()
+            elif not isinstance(stagger,(list,tuple,set)):
+                stagger = range(len(effbounds))
+            stagger = [s for s in stagger if not isinstance(effbounds[s],int)]
+
+            shape = self.getShape()
+                                
+            newshape = []
+            for i,b in enumerate(effbounds):
+                if isinstance(b,slice):
+                    l = 1+(b.stop-b.start-1)/b.step
+                    if i in stagger: l+=1
+                else:
+                    l = 1
+                newshape.append(l)
+            data = numpy.empty(newshape,dtype=numpy.float)
+            data = numpy.ma.array(data,mask=True,copy=False)
+                
+            addborders = []
+            for i in range(len(effbounds)):
+                b = effbounds[i]
+                addleft,addright,addcenter = False,False,True
+                if i in stagger:
+                    centers = b.step%2==0
+                    start = b.start - b.step/2
+                    stop = b.stop + b.step/2 + 1
+                    if start<0:
+                        start += b.step
+                        addleft = True
+                    if stop>shape[i]+1:
+                        stop -= b.step
+                        addright = True
+                    if centers: stagger.remove(i)
+                    addcenter = stop>start
+                    effbounds[i] = slice(start,stop,b.step)
+                addborders.append((addleft,addcenter,addright))
+                
+            def getdata(bounds,stag):
+                print 'Request for:'
+                for i,b in enumerate(bounds):
+                    print '   ',b,(i in stag)
+                return 0.
+
+            def processdim(bounds,addborders,curslice,curstagger,curtarget):
+                if not bounds:
+                    data[curtarget] = getdata(curslice,curstagger)
+                    return
+                    
+                curbound = bounds[0]
+                if isinstance(curbound,int):
+                    return processdim(bounds[1:],addborders[1:],curslice+[curbound],curstagger,curtarget)
+                
+                addleft,addcenter,addright = addborders[0]
+                idim = len(curslice)
+                start,stop = None,None
+                if addleft:
+                    start = 1
+                    processdim(bounds[1:],addborders[1:],curslice+[0],curstagger+[idim],curtarget+[0])
+                if addright:
+                    stop = -1
+                    processdim(bounds[1:],addborders[1:],curslice+[-1],curstagger+[idim],curtarget+[-1])
+                if addcenter:
+                    if idim in stagger: curstagger += [idim]
+                    processdim(bounds[1:],addborders[1:],curslice+[curbound],curstagger,curtarget+[slice(start,stop)])
+
+            processdim(effbounds,addborders,[],[],[])
+            
+            assert data._mask.sum()==0,'%i entries are still masked.' % data._mask.sum()
+          
         def getNcData(self,bounds=None):
           # Get NetCDF file and variable objects.
           nc = self.store.getcdf()
@@ -1206,25 +1287,18 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
 
     def getDimensionInfo_raw(self,dimname):
         res = common.VariableStore.getDimensionInfo_raw(self,dimname)
-        if dimname not in self.nc.variables: return res
-        varinfo = self.nc.variables[dimname]
-        if hasattr(varinfo,'long_name'):
-            res['label'] = varinfo.long_name
-        else:
-            res['label'] = dimname
-        if hasattr(varinfo,'units'):
-            res['unit']  = common.convertUnitToUnicode(varinfo.units)
-        if dimname=='z' or dimname=='z1':
-            res['label'] = 'depth'
+        var = self.getVariable_raw(dimname)
+        if var is None: return res
+        res['label'] = var.getLongName()
+        res['unit']  = var.getUnit()
+        if dimname in ('z','z1'):
             res['preferredaxis'] = 'y'
-            if res['unit']=='meters': res['unit']='m'
         elif self.isTimeDimension(dimname):
             res['datatype'] = 'datetime'
             res['preferredaxis'] = 'x'
             res['unit'] = ''
-        #elif hasattr(varinfo,'units') and varinfo.units=='degrees_north':
-        #    res['preferredaxis'] = 'y'
-        if hasattr(varinfo,'positive') and varinfo.positive=='down':
+        props = var.getProperties()
+        if props.get('positive','up')=='down':
             res['reversed'] = True
         return res
         
@@ -1514,10 +1588,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return 'depth'
 
             def getUnit(self):
-                nc = self.store.getcdf()
-                ncvar = nc.variables[self.store.elevname]
-                if not hasattr(ncvar,'units'): return ''
-                return common.convertUnitToUnicode(ncvar.units)
+                return self.store[self.store.elevname].getUnit()
 
             def getProperties(self):
                 return {}
@@ -1573,7 +1644,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     sigmabounds = (newbounds[1],)
             
                 np = numpy
-                mask = None
+                mask,elevmask = None,None
                 data = {}
                             
                 # Get elevations
@@ -1597,6 +1668,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     if isinstance(elev._mask,numpy.ndarray):
                         mask = setmask(mask,elev._mask[:,numpy.newaxis,...])
                         elev = common.interpolateEdges(elev,dims=(1,2))
+                        elevmask = elev._mask
                     elev = elev.filled(0.)
 
                 if self.store.bathymetryname is None:
@@ -1644,10 +1716,19 @@ class NetCDFStore_GOTM(NetCDFStore):
                         mask = setmask(mask,bath._mask)
                         if isinstance(bath._mask,numpy.ndarray):
                             bath = common.interpolateEdges(bath)
-                        bath = bath.filled(0.)
+                        # Fill the bathymetry with the shallowest value in the domain.
+                        bath = bath.filled(min(bath.min(),-elev.max()))
                                             
+                    # Let elevation follow bathymetry whereever it was originally masked.
+                    if elevmask is not None:
+                        bigbath = numpy.empty_like(elev)
+                        bigbath[:] = bath
+                        elev[elevmask] = -bigbath[elevmask]
+
                     # Calculate water depth at each point in time
-                    depth = bath[numpy.newaxis,:,:]+elev
+                    # Clip it at zero: nearest neighbor interpolation of elevations may have
+                    # caused water levels below the bottom.
+                    depth = numpy.maximum(bath[numpy.newaxis,:,:]+elev,0.)
                     
                     # Get sigma levels (constant across time and space)
                     sigma = self.store['sigma'].getSlice(sigmabounds,dataonly=True,cache=cachebasedata)
@@ -1685,7 +1766,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                 if isinstance(depthslice,int): depthslice = slice(depthslice,depthslice+1)
                 res = res[(slice(None),depthslice,Ellipsis)]
                 
-                # Undo the staggering for dimension we take a single slice through.
+                # Undo the staggering for the dimension that we take a single slice through.
                 if self.dimname.endswith('_stag'):
                     # This is a staggered variable - average left and right bounds.
                     for i in range(len(bounds)-1,-1,-1):
