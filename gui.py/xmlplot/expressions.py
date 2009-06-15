@@ -442,17 +442,14 @@ class LazyVariable(LazyExpression):
     def getText(self,type=0,addparentheses=True):
         assert type>=0 and type<=3, 'Argument "type" must be 0 (identifier), 1 (short name) 2 (long name), or 3 (unit).'
         if type==0 or type==1:
-            # Return the short name of the object (optionally with slice specification).
-            if type==0 and self.name is not None:
-                res = self.name
-            else:
-                res = self.args[0].getName()
-            return res
+            # Return the short name of the variable.
+            if type==0 and self.name is not None: return self.name
+            return self.args[0].getName()
         elif type==2:
-            # Return the long name of the object (optionally with slice specification).
+            # Return the long name of the variable.
             return self.args[0].getLongName()
         else:
-            # Return the unit of the object.
+            # Return the unit of the variable.
             return self.args[0].getUnit()
         
     def getShape(self):
@@ -729,7 +726,7 @@ class LazySlice(LazyOperation):
             # Long variable name
             return resolvedargs[0] + LazyExpression.slices2prettystring(self.slice,self.args[0].getDimensions())
         elif type==3:
-            # Variable unit -  sling does not affect the unit.
+            # Variable unit -  slicing does not affect the unit.
             return resolvedargs[0]
         else:
             return resolvedargs[0] + LazyExpression.slices2string(self.slice)

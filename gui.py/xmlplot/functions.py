@@ -14,6 +14,7 @@ class statistics(expressions.LazyFunction):
     def __init__(self,sourceslice,axis,centermeasure=0,boundsmeasure=0,percentilewidth=.5,output=0):
         expressions.LazyFunction.__init__(self,self.__class__.__name__,None,sourceslice,axis,centermeasure=centermeasure,boundsmeasure=boundsmeasure,percentilewidth=percentilewidth,output=output)
         self.setRemovedDimension(1,'axis')
+        self.usefirstunit = True
     
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         sourceslice,axis = resolvedargs[0],resolvedargs[1]
@@ -118,6 +119,7 @@ class flatten(expressions.LazyFunction):
     def __init__(self,sourceslice,axis,targetaxis=None):
         expressions.LazyFunction.__init__(self,self.__class__.__name__,None,sourceslice,axis,targetaxis=targetaxis)
         self.setRemovedDimension(1,'axis')
+        self.usefirstunit = True
 
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         sourceslice,axis = resolvedargs[0],resolvedargs[1]
@@ -190,6 +192,7 @@ class interp(expressions.LazyFunction):
         dims = expressions.LazyFunction.getDimensions(self)
         for d in kwargs.iterkeys():
             assert d in dims, 'Dimension %s does not exist in original slice. Available dimensions: %s' % (d,', '.join(dims))
+        self.usefirstunit = True
 
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         assert isinstance(resolvedargs[0],common.Variable.Slice),'The first argument to interpn must be a variable slice.'
@@ -222,6 +225,7 @@ class iter(expressions.LazyFunction):
         dims = expressions.LazyFunction.getDimensions(self)
         assert dimension in dims,'Dimension to iterate over (%s) is not used by underlying variable, which uses %s.' % (dimension,', '.join(dims))
         self.idimension = list(dims).index(dimension)
+        self.usefirstunit = True
 
     def getValue(self,extraslices=None,dataonly=False):
         if extraslices is None: extraslices = {}
