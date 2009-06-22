@@ -1,10 +1,10 @@
-#$Id: common.py,v 1.27 2009-06-08 08:19:05 jorn Exp $
+#$Id: common.py,v 1.28 2009-06-22 15:50:32 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
 
 # Import additional third party modules
-import matplotlib.dates,numpy
+import numpy
 
 import xmlstore.xmlstore
 
@@ -46,8 +46,12 @@ xmlstore.xmlstore.Schema.knownpaths['xmlplot'] = getDataRoot()
 # Date-time functions
 # ------------------------------------------------------------------------------------------
 
-date2num = matplotlib.dates.date2num
-num2date = matplotlib.dates.num2date
+def date2num(obj):
+    import matplotlib.dates
+    return matplotlib.dates.date2num(obj)
+def num2date(obj):
+    import matplotlib.dates
+    return matplotlib.dates.num2date(obj)
     
 # ------------------------------------------------------------------------------------------
 # Unit string convertor
