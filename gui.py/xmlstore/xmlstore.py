@@ -1849,24 +1849,26 @@ class TypedStore(util.referencedobject):
         # Find nodes with numeric data types, and check if they respect specified ranges (if any).
         for node in lboundnodes:
             value = node.getValue(usedefault=usedefault)
-            minval = value.fromXmlString(node.templatenode.getAttribute('minInclusive'),{},node.templatenode)
-            if value<minval:
-                if repair==2 or (repair==1 and node.isHidden()):
-                    node.setValue(minval)
-                else:
-                    validity[node] = False
-                    errors.append('variable "%s" is set to %s, which lies below the minimum of %s.' % (node.getText(1),value.toPrettyString(),minval.toPrettyString()))
-            if isinstance(value,util.referencedobject): value.release()
+            if value is not None:
+                minval = value.fromXmlString(node.templatenode.getAttribute('minInclusive'),{},node.templatenode)
+                if value<minval:
+                    if repair==2 or (repair==1 and node.isHidden()):
+                        node.setValue(minval)
+                    else:
+                        validity[node] = False
+                        errors.append('variable "%s" is set to %s, which lies below the minimum of %s.' % (node.getText(1),value.toPrettyString(),minval.toPrettyString()))
+                if isinstance(value,util.referencedobject): value.release()
         for node in uboundnodes:
             value = node.getValue(usedefault=usedefault)
-            maxval = value.fromXmlString(node.templatenode.getAttribute('maxInclusive'),{},node.templatenode)
-            if value>maxval:
-                if repair==2 or (repair==1 and node.isHidden()):
-                    node.setValue(maxval)
-                else:
-                    validity[node] = False
-                    errors.append('variable "%s" is set to %s, which lies above the maximum of %s.' % (node.getText(1),value.toPrettyString(),maxval.toPrettyString()))
-            if isinstance(value,util.referencedobject): value.release()
+            if value is not None:
+                maxval = value.fromXmlString(node.templatenode.getAttribute('maxInclusive'),{},node.templatenode)
+                if value>maxval:
+                    if repair==2 or (repair==1 and node.isHidden()):
+                        node.setValue(maxval)
+                    else:
+                        validity[node] = False
+                        errors.append('variable "%s" is set to %s, which lies above the maximum of %s.' % (node.getText(1),value.toPrettyString(),maxval.toPrettyString()))
+                if isinstance(value,util.referencedobject): value.release()
         
         return errors,validity
         
