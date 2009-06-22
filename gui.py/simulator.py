@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.20 2009-05-11 13:52:21 jorn Exp $
+#$Id: simulator.py,v 1.21 2009-06-22 15:44:56 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
-import commonqt, core.common, core.simulator
+import commonqt, core.common
 
 # Here we can set the stack size for GOTM (in bytes). Note: bio modules sometimes
 # need a very high stack size (in particular if Lagrangian variables are used)
@@ -25,7 +25,6 @@ class GOTMThread(QtCore.QThread):
     
   def rungotm(self,scen):
     self.scenario = scen
-    #self.scenario = scen.convert(core.simulator.gotmscenarioversion)
     self.start(QtCore.QThread.LowPriority)
     
   def canContinue(self):
@@ -39,7 +38,7 @@ class GOTMThread(QtCore.QThread):
     
   def run(self):
     assert self.scenario is not None, 'No scenario specified.'
-
+    import core.simulator
     self.res = core.simulator.simulate(self.scenario,continuecallback=self.canContinue,progresscallback=self.progressed)
     
   def stop(self):

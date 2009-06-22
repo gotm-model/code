@@ -18,7 +18,7 @@ matplotlib.rcParams['numerix'] = 'numpy'
 
 # Now import our custom modules
 import xmlstore
-import core.common, core.scenario, core.result, core.simulator, core.report
+import core.common, core.scenario, core.result, core.report
 
 if len(sys.argv)==1:
     print \
@@ -115,6 +115,7 @@ if res is None:
         progcallback = None
     else:
         progcallback = printprogress
+    import core.simulator
     res = core.simulator.simulate(scen,progresscallback=progcallback,redirect=not gotmoutput)
     if res.returncode==0:
         print 'Simulation completed successfully.'

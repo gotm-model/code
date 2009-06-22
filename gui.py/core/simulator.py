@@ -1,4 +1,5 @@
 import tempfile,os,time
+import numpy
 
 import common,result,gotm
 
@@ -7,107 +8,148 @@ gotmscenarioversion = 'gotm-%s' % gotmversion
 
 verbose = False
 
-def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
-    if verbose: print 'enter simulate'
-    
-    namelistscenario = scen.convert(gotmscenarioversion)
-    if verbose: print 'scenario converted'
-    simulationdir = common.TempDirManager.create('gotm-')
-    namelistscenario['gotmrun/output/out_fmt'].setValue(2)
-    namelistscenario['gotmrun/output/out_dir'].setValue('.')
-    namelistscenario['gotmrun/output/out_fn' ].setValue('result')
-    namelistscenario.writeAsNamelists(simulationdir)
-    namelistscenario.release()
-    
-    if verbose: print 'create result'
-
-    # Create result object.
-    res = result.Result()
+class Simulator(object):
+    def __init__(self,scenario,redirect=True):
+        self.scenario = scenario
+        self.redirect = redirect
         
-    # Save old working directory
-    olddir = os.getcwdu()
+        # Create result object.
+        if verbose: print 'creating result'
+        self.result = result.Result()
 
-    if verbose: print 'switch working directory'
-
-    # Change to directory with GOTM scenario (catch exceptions that can occur,
-    # for instance, if the specified directory does not exist).
-    try:
-        os.chdir(simulationdir)
-    except Exception,e:
-        res.errormessage = 'Failed to enter temporary simulation directory "%s". %s' % (simulationdir,e)
-        res.returncode = 1
-        os.chdir(olddir)
-        return res
-
-    # Redirect FORTRAN output to (temporary) files.
-    if redirect:
-        (h,outfile) = tempfile.mkstemp('.txt','gotm')
-        os.close(h)
-        (h,errfile) = tempfile.mkstemp('.txt','gotm')
-        os.close(h)
-        gotm.gui_util.redirectoutput(outfile,errfile)
-
-    if verbose: print 'initializing gotm module'
-
-    # Initialize GOTM
-    try:
-        gotm.gotm.init_gotm()
-    except Exception,e:
-        res.errormessage = 'Exception thrown while initializing GOTM: %s' % e
-        res.returncode = 1
+        try:
+            self.initialize()
+        except Exception,e:
+            self.result.errormessage = str(e)
+            self.result.returncode = 1
+    
+    def initialize(self):
+        if verbose: print 'initializing simulation'
         
-    # Only enter the time loop if we succeeded so far.
-    if res.returncode==0:
+        namelistscenario = self.scenario.convert(gotmscenarioversion)
+        if verbose: print 'scenario converted'
+        self.simulationdir = common.TempDirManager.create('gotm-')
+        namelistscenario['gotmrun/output/out_fmt'].setValue(2)
+        namelistscenario['gotmrun/output/out_dir'].setValue('.')
+        namelistscenario['gotmrun/output/out_fn' ].setValue('result')
+        namelistscenario.writeAsNamelists(self.simulationdir)
+        namelistscenario.release()
+                    
+        # Save old working directory
+        self.olddir = os.getcwdu()
+
+        if verbose: print 'switch working directory'
+
+        # Change to directory with GOTM scenario (catch exceptions that can occur,
+        # for instance, if the specified directory does not exist).
+        try:
+            os.chdir(self.simulationdir)
+        except Exception,e:
+            os.chdir(self.olddir)
+            raise Exception('Failed to enter temporary simulation directory "%s". %s' % (self.simulationdir,e))
+
+        # Redirect FORTRAN output to (temporary) files.
+        if self.redirect:
+            (h,self.outfile) = tempfile.mkstemp('.txt','gotm')
+            os.close(h)
+            (h,self.errfile) = tempfile.mkstemp('.txt','gotm')
+            os.close(h)
+            gotm.gui_util.redirectoutput(self.outfile,self.errfile)
+
+        if verbose: print 'initializing gotm module'
+
+        # Initialize GOTM
+        try:
+            gotm.gotm.init_gotm()
+        except Exception,e:
+            os.chdir(self.olddir)
+            raise Exception('Exception thrown while initializing GOTM: %s' % str(e))
+
+        # Get # of first step, last step, number of steps for whole GOTM run.
+        self.start = gotm.time.minn*1    # Multiply by 1 to ensure we have the integer value, not a reference to the attribute
+        self.stop  = gotm.time.maxn*1    # Multiply by 1 to ensure we have the integer value, not a reference to the attribute
+        self.stepcount = self.stop-self.start+1
+        
+        self.currentpos = self.start
+
+    def finalize(self):
+        # GOTM clean-up
+        try:
+            gotm.gotm.clean_up()
+        except Exception,e:
+            self.result.errormessage = 'Error during GOTM clean-up: %s' % e
+            if self.result.returncode==0: self.result.returncode = 1
+            
+        if self.redirect:
+            # Reset FORTRAN output
+            gotm.gui_util.resetoutput()
+
+            def readoutput(path):
+                f = open(path,'r')
+                data = f.read()
+                f.close()
+                os.remove(path)
+                return data
+                
+            # Read GOTM output from temporary files, then delete these files.
+            self.result.stderr = readoutput(self.errfile)
+            self.result.stdout = readoutput(self.outfile)
+
+        # Return to previous working directory.
+        os.chdir(self.olddir)
+
+        if self.result.returncode==0:    
+            # Succeeded: get the result. Note: the result "inherits" the temporary directory,
+            # so we do not have to delete it here.
+            respath = os.path.join(self.simulationdir,'result.nc')
+            self.result.tempdir = self.simulationdir
+            self.result.attach(respath,self.scenario,copy=False)
+            self.result.changed = True
+        else:
+            # Failed: delete temporary simulation directory
+            try:
+                common.TempDirManager.delete(self.simulationdir)
+            except Exception,e:
+                print 'Unable to completely remove GOTM temporary directory "%s".\nError: %s' % (self.simulationdir,e)
+                
+        return self.result
+    
+    def run(self,progresscallback=None,continuecallback=None):
+        assert self.result.returncode==0, 'Run did not initialize successfully. %s' % self.result.errormessage
+        
         # Calculate the size of time batches (small enough to respond rapidly to requests
         # for cancellation, and to show sufficiently detailed progress - e.g. in % -
         # but not so small that GUI slows down due to the avalanche of progress notifications)
         visualres = 0.01
 
-        # Get # of first step, last step, number of steps for whole GOTM run.
-        start = gotm.time.minn*1    # Multiply by 1 to ensure we have the integer value, not a reference to the attribute
-        stop  = gotm.time.maxn*1    # Multiply by 1 to ensure we have the integer value, not a reference to the attribute
-        stepcount = stop-start+1
-
         minslicesize = 2
-        maxslicesize = int(round(stepcount/20.))    # Maximum slice: 5 % of complete simulation
+        maxslicesize = int(round(self.stepcount/20.))    # Maximum slice: 5 % of complete simulation
         if maxslicesize<minslicesize: maxslicesize = minslicesize
-        
-        islicestart = start
-        islicesize = 100
         
         # if no progress notifications are desired and the simulation cannot be cancelled,
         # simply run the complete simulation at once (slice size = entire simulation)
-        if progresscallback is None and continuecallback is None: islicesize=stepcount
+        islicesize = 100
+        if progresscallback is None and continuecallback is None: islicesize = stepcount
+
+        hasmore = True
         
         time_runstart = time.clock()
-        while islicestart<=stop:
+        while hasmore:
             time_slicestart = time.clock()
-
+            
             # Check if we have to cancel
             if continuecallback is not None and not continuecallback():
-                print 'GOTM run was cancelled; exiting thread...'
-                res.returncode = 2
+                print 'GOTM run was cancelled; stopping simulation.'
+                self.result.returncode = 2
                 break
-            
-            # Configure GOTM for new slice.
-            gotm.time.minn = islicestart
-            islicestop = islicestart + islicesize - 1
-            if islicestop>stop: islicestop = stop
-            gotm.time.maxn = islicestop
-            
-            # Process time batch
-            try:
-                gotm.gotm.time_loop()
-            except Exception,e:
-                res.errormessage = 'Exception thrown in GOTM time loop: %s' % e
-                res.returncode = 1
-                break
-                
+
+            hasmore = self.runSlab(slicesize=islicesize)
+
             time_slicestop = time.clock()
 
             if progresscallback is not None:
                 # Send 'progress' event
-                prog = (islicestop-start+1)/float(stepcount)
+                prog = self.getProgress()
                 remaining = (1-prog)*(time_slicestop-time_runstart)/prog
                 progresscallback(prog,remaining)
 
@@ -119,45 +161,50 @@ def simulate(scen,continuecallback=None,progresscallback=None,redirect=True):
                 islicesize = int(round(islicesize * 0.4/elapsed))
                 if islicesize<minslicesize: islicesize = minslicesize
                 if islicesize>maxslicesize: islicesize = maxslicesize
+          
+    def getProgress(self):
+        return (self.currentpos-self.start+1)/float(self.stepcount)
 
-            islicestart = islicestop + 1
-            
-    # GOTM clean-up
-    try:
-        gotm.gotm.clean_up()
-    except Exception,e:
-        res.errormessage = 'Exception thrown during GOTM clean-up: %s' % e
-        if res.returncode==0: res.returncode = 1
+    def runSlab(self,slicesize=100):
+        assert self.result.returncode==0, 'Run did not initialize successfully, or failed. %s' % self.result.errormessage
+        assert self.currentpos<=self.stop,'Run has already completed'
         
-    if redirect:
-        # Reset FORTRAN output
-        gotm.gui_util.resetoutput()
-
-        # Read GOTM output from temporary files, then delete these files.
-        f = open(errfile,'r')
-        res.stderr = f.read()
-        f.close()
-        os.remove(errfile)
-        f = open(outfile,'r')
-        res.stdout = f.read()
-        f.close()
-        os.remove(outfile)
-
-    # Return to previous working directory.
-    os.chdir(olddir)
-
-    if res.returncode==0:    
-        # Succeeded: get the result. Note: the result "inherits" the temporary directory,
-        # so we do not have to delete it here.
-        respath = os.path.join(simulationdir,'result.nc')
-        res.tempdir = simulationdir
-        res.attach(respath,scen,copy=False)
-        res.changed = True
-    else:
-        # Failed: delete temporary simulation directory
+        # Configure GOTM for new slice.
+        gotm.time.minn = self.currentpos
+        islicestop = self.currentpos + slicesize - 1
+        if islicestop>self.stop: islicestop = self.stop
+        gotm.time.maxn = islicestop
+        
+        # Process time batch
         try:
-            common.TempDirManager.delete(simulationdir)
+            gotm.gotm.time_loop()
         except Exception,e:
-            print 'Unable to completely remove GOTM temporary directory "%s".\nError: %s' % (simulationdir,e)
+            self.result.errormessage = 'Exception thrown in GOTM time loop: %s' % e
+            self.result.returncode = 1
+            return
             
-    return res
+        self.currentpos = islicestop + 1
+        
+        return self.currentpos<=self.stop
+            
+    def getBioVariableInfo(self):
+        def readstringarray(stringdata):
+            if stringdata is None: return ()
+            stringdata = stringdata.T.reshape(stringdata.shape)
+            return [''.join(stringdata[i,:]).strip() for i in range(stringdata.shape[0])]
+        names = readstringarray(gotm.bio_var.var_names)
+        longnames = readstringarray(gotm.bio_var.var_long)
+        units = readstringarray(gotm.bio_var.var_units)
+        return names,longnames,units
+        
+    def getBioValues(self):
+        if gotm.bio_var.cc is None: return ()
+        return list((gotm.bio_var.cc*gotm.meanflow.h).sum(axis=1)/gotm.meanflow.h.sum())
+
+def simulate(scenario,progresscallback=None,continuecallback=None,redirect=True):
+    simulator = Simulator(scenario,redirect=redirect)
+    result = simulator.result
+    if result.returncode==0:
+        simulator.run(progresscallback=progresscallback,continuecallback=continuecallback)
+    simulator.finalize()
+    return result
