@@ -1221,7 +1221,6 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                     datamask = newmask
                 else:
                     datamask = numpy.logical_or(datamask,newmask)
-                dat = numpy.ma.masked_where(datamask,dat,copy=False)
 
             # If we take a single index for this dimension, it will not be included in the output.
             if not isinstance(bounds[idim],slice): continue
@@ -1265,6 +1264,10 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             varslice.coords_stag[inewdim] = coords_stag
             
             inewdim += 1
+
+          # If center coordinates came with a mask, apply that same mask to the data.
+          if datamask is not None:
+            dat = numpy.ma.masked_where(datamask,dat,copy=False)
 
           varslice.data = dat
                   
