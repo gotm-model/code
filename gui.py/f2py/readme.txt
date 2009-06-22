@@ -6,7 +6,7 @@ How to generate source code for the GOTM extension for Python using F2PY
 
 1. generate signature file gotm.pyf from GOTM's gotm.F90, time.F90 and our custom gui_util.f90
 
-f2py.py -h gotm.pyf ../../src/gotm/gotm.F90 only: init_gotm time_loop clean_up : ../../src/util/time.F90 only: minn maxn : ../gui_util.f90 only: redirectoutput resetoutput getversion : -m gotm
+f2py.py -h gotm.pyf ../../src/gotm/gotm.F90 only: init_gotm time_loop clean_up : ../../src/util/time.F90 only: minn maxn : ../gui_util.f90 only: redirectoutput resetoutput getversion : ../../src/extras/bio/bio_var.F90 only: var_names,var_units,var_long,cc : ../../src/meanflow/meanflow.F90 only: h : -m gotm
 
 (on Windows this is combined in f2py1.bat)
 
@@ -16,12 +16,30 @@ f2py.py -h gotm.pyf ../../src/gotm/gotm.F90 only: init_gotm time_loop clean_up :
 
   time/minn
   time/maxn
+  bio_var/var_names
+  bio_var/var_long
+  bio_var/var_units
 
 Solve by removing all other variables from gotm.pyf. Also, use statements are obsolete and might be removed.
+
+Additionally, F2PY has skipped lines with preprocessor directives in the original code. These include specifications
+for the following needed variables:
+
+  bio_var/cc
+  meanflow/h
+
+Add these by inserting entries such as
+
+  double precision public,allocatable,dimension(:) :: h
+  double precision public,allocatable,dimension(:,:) :: cc
+
+in the appriopriate module sections.
 
 -------------------------------------------------------------------------------------------
 
 3. in gotm.pyf, f2py currently chooses the wrong scope for time/minn, time/maxn; gotm.pyf lists 'private,public', but we need 'public'. Solve by removing 'private,' in gotm.pyf.
+
+NB as of 2009/6/22, everything does compile without this change in place. However, an access violation then occurs as soon as the resulting module is imported in Python.
 
 -------------------------------------------------------------------------------------------
 
@@ -35,7 +53,9 @@ Rename *.f90 to *.F90 (this is GOTM convention, which allows us to use GOTM's im
 
 -------------------------------------------------------------------------------------------
 
-5. before we enter 'blocking' (i.e. time-consuming) FORTRAN code from Python, we must release the python Global Interpreter Lock (GIL). Releasing the GIL allows other Python threads to execute while the FORTRAN routine is running. To implement this:
+5. *OBSOLETE* GOTM F90 source now includes F2PY "threadsafe" statements in those subroutines that should be able to run parallel to Python
+
+before we enter 'blocking' (i.e. time-consuming) FORTRAN code from Python, we must release the python Global Interpreter Lock (GIL). Releasing the GIL allows other Python threads to execute while the FORTRAN routine is running. To implement this:
 
 In the auto-generated gotmmodule.cpp, look-up calls to FORTRAN code; these typically look like (*f2py_func)();
 
@@ -126,3 +146,24 @@ below lines
 static FortranDataDef ...
 
 replace all (void *) by (f2py_init_func)
+
+12. If support for debugging of the Fortran-based GOTM module is required on systems that do not have the debug version of Python installed, the preprocessor statements that include Python (#include "Python.h", #include "fortranobject.h") in gotmmodule.cpp can be replaced with:
+
+// Below we temporarily undefine _DEBUG, in order to use the production version of 
+// the Python library. The debug version that otherwise would be used is not
+// available in the default Python installation on Windows (then linking fails).
+// After the Python headers are included, we redefine _DEBUG.
+// This is only relevant when building a debug version of the GOTM library.
+#ifdef _DEBUG
+	#define _SAVE_DEBUG
+	#undef _DEBUG
+#endif
+
+#include "Python.h"
+#include "fortranobject.h"
+
+// Below we redefine _DEBUG (see above)
+#ifdef _SAVE_DEBUG
+	#define _DEBUG
+	#undef _SAVE_DEBUG
+#endif
