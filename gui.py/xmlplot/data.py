@@ -916,6 +916,11 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             else:
                 propnames = [p for p in dir(ncvar) if p not in ('assignValue','getValue','typecode')]
             return dict([(key,getattr(ncvar,key)) for key in propnames])
+
+        def setProperty(self,name,value):
+            nc = self.store.getcdf()
+            ncvar = nc.variables[self.ncvarname]
+            setattr(ncvar,name,value)
             
         def getDimensions_raw(self,reassign=True):
           nc = self.store.getcdf()
