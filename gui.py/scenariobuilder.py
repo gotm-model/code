@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.47 2009-05-15 08:02:51 jorn Exp $
+#$Id: scenariobuilder.py,v 1.48 2009-06-23 08:13:53 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -1015,6 +1015,58 @@ class SequenceEditScenario(commonqt.WizardSequence):
     def __init__(self):
         commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageAirSeaInteraction2,PageTurbulence,PageSalinity,PageTemperature,PageBio,PageAdvanced,PageSave])
 
+def loadScenario():
+    # Create the application and enter the main message loop.
+    createQApp = QtGui.QApplication.startingUp()
+    if createQApp:
+        app = QtGui.QApplication([" "])
+    else:
+        app = QtGui.qApp
+
+    # Create wizard dialog
+    wiz = commonqt.Wizard(headerlogo=os.path.join(core.common.getDataRoot(),'logo.png'),allowfinish=True)
+    wiz.setWindowTitle('Load scenario')
+    wiz.resize(800, 600)
+    seq = commonqt.WizardSequence([PageOpen])
+    wiz.setSequence(seq)
+    wiz.show()
+
+    ret = app.exec_()
+
+    scenario = wiz.getProperty('scenario')
+    if scenario is not None: scenario.addref()
+
+    wiz.destroy()
+    
+    return scenario
+
+def editScenario(scenario):
+    # Create the application and enter the main message loop.
+    createQApp = QtGui.QApplication.startingUp()
+    if createQApp:
+        app = QtGui.QApplication([" "])
+    else:
+        app = QtGui.qApp
+
+    import xmlplot.gui_qt4
+
+    # Create wizard dialog
+    wiz = commonqt.Wizard(headerlogo=os.path.join(core.common.getDataRoot(),'logo.png'),allowfinish=True)
+    wiz.setWindowTitle('Scenario builder')
+    wiz.resize(800, 600)
+    
+    wiz.setProperty('scenario',scenario.addref())
+    wiz.setSequence(SequenceEditScenario())
+
+    wiz.show()
+
+    ret = app.exec_()
+
+    scenario = wiz.getProperty('scenario')
+    if scenario is not None: scenario.addref()
+
+    wiz.destroy()
+    
 def main():
     # Debug info
     print 'Python version: '+str(sys.version_info)
@@ -1029,21 +1081,28 @@ def main():
     else:
         app = QtGui.qApp
 
+    import xmlplot.gui_qt4
+
     # Create wizard dialog
-    wiz = commonqt.Wizard()
+    wiz = commonqt.Wizard(headerlogo='./logo.png')
     wiz.setWindowTitle('Scenario builder')
     wiz.resize(800, 600)
 
     seq = commonqt.WizardSequence([PageOpen,SequenceEditScenario(),PageFinal])
     wiz.setSequence(seq)
+
     wiz.show()
 
     ret = app.exec_()
-    page = None
+    
+    scenario = wiz.getProperty('scenario')
+    if scenario is not None: scenario.addref()
 
-    wiz.unlink()
+    wiz.destroy()
 
-    sys.exit(ret)
+    return scenario
 
 # If the script has been run (as opposed to imported), enter the main loop.
-if (__name__=='__main__'): main()
+if (__name__=='__main__'):
+    ret = main()
+    sys.exit(0)

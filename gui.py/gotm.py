@@ -39,7 +39,7 @@ class GOTMWizard(commonqt.Wizard):
     def __init__(self,parent=None,sequence=None,closebutton=False,showoptions=False):
         """Supplies the logo path to the Wizard, and adds a "Tools" button.
         """
-        commonqt.Wizard.__init__(self,parent,sequence,closebutton,headerlogo='./logo.png')
+        commonqt.Wizard.__init__(self,parent,sequence,closebutton,headerlogo=os.path.join(core.common.getDataRoot(),'logo.png'))
 
         self.bnTools = QtGui.QPushButton(commonqt.getIcon('advanced.png'),'&Tools',self)
         self.bnTools.setEnabled(False)
@@ -518,8 +518,8 @@ if (__name__=='__main__'):
         # Just enter the main loop
         ret = main(options,args)
 
+    # Exit
+    sys.exit(ret)
+
 # Reset previous working directory (only if we had to change it)
 os.chdir(os.path.dirname(oldworkingdir))
-
-# Exit
-sys.exit(ret)

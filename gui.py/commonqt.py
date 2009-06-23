@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.65 2009-05-19 11:36:01 jorn Exp $
+#$Id: commonqt.py,v 1.66 2009-06-23 08:13:53 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -251,7 +251,7 @@ class PathEditor(QtGui.QWidget):
 
 class Wizard(QtGui.QDialog):
     
-    def __init__(self,parent=None,sequence=None,closebutton=False,headerlogo=None):
+    def __init__(self,parent=None,sequence=None,closebutton=False,headerlogo=None,allowfinish=False):
         QtGui.QDialog.__init__(self, parent, QtCore.Qt.Window|QtCore.Qt.WindowContextHelpButtonHint|QtCore.Qt.WindowMinMaxButtonsHint)
 
         layout = QtGui.QVBoxLayout()
@@ -300,6 +300,8 @@ class Wizard(QtGui.QDialog):
 
         self.sequence = sequence
         self.currentpage = None
+        
+        self.allowfinish = allowfinish
 
     def getProperty(self,propertyname):
         if propertyname not in self.shared: return None
@@ -345,6 +347,9 @@ class Wizard(QtGui.QDialog):
             ready = False
             while not ready:
                 cls = self.sequence.getNextPage()
+                if self.allowfinish and cls is None:
+                    self.close()
+                    return
                 assert cls is not None, 'No next page available to show; the next button should have been disabled.'
                 newpage = cls(self)
                 ready = (not newpage.doNotShow())
@@ -393,7 +398,7 @@ class Wizard(QtGui.QDialog):
 
     def onCompleteStateChanged(self):
         curpage = self.currentpage
-        enable = (curpage.isComplete() and self.sequence.getNextPage(stay=True) is not None)
+        enable = curpage.isComplete() and (self.allowfinish or self.sequence.getNextPage(stay=True) is not None)
         self.bnNext.setEnabled(enable)
 
 # =======================================================================

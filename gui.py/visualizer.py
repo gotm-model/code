@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.41 2009-05-11 13:52:21 jorn Exp $
+#$Id: visualizer.py,v 1.42 2009-06-23 08:13:54 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -95,16 +95,14 @@ class PageOpen(commonqt.WizardPage):
         self.owner.setProperty('scenario',res.scenario.addref())
         return True
 
-class PageVisualize(commonqt.WizardPage):
-    
-    def __init__(self,parent=None):
-        commonqt.WizardPage.__init__(self, parent)
+class VisualizeWidget(QtGui.QWidget):
+    def __init__(self,result,parent=None):
+        QtGui.QWidget.__init__(self,parent)
 
         self.varpath = None
         self.varname = None
+        self.result = result
 
-        self.result = parent.getProperty('result')
-        
         self.treestore = self.result.getVariableTree(os.path.join(core.common.getDataRoot(),'schemas/outputtree.xml'),plottableonly=True)
         self.model = xmlstore.gui_qt4.TypedStoreModel(self.treestore,nohide=False,novalues=True)
 
@@ -124,10 +122,12 @@ class PageVisualize(commonqt.WizardPage):
         layout.addWidget(self.treeVariables,1,0)
         layout.addWidget(self.figurepanel,1,1)
         self.setLayout(layout)
-        
-        self.defaultfigures = parent.settings.root['FigureSettings']
 
         self.figurepanel.figure.addDataSource('result',self.result)
+
+    def saveFigureSettings(self):
+        if self.varpath is not None and self.figurepanel.figure.hasChanged():
+            self.result.setFigure('result/'+self.varpath,self.figurepanel.figure.properties)
 
     def OnVarSelected(self,*args):
         selected = self.treeVariables.selectionModel().selectedIndexes()
@@ -160,26 +160,42 @@ class PageVisualize(commonqt.WizardPage):
             # Restore original cursor
             QtGui.QApplication.restoreOverrideCursor()
 
-    def isComplete(self):
-        return True
-
-    def saveData(self,mustbevalid):
-        self.saveFigureSettings()
-        return True
-
     def destroy(self,destroyWindow = True,destroySubWindows = True):
         self.figurepanel.destroy()
         self.figurepanel = None
         self.treestore.release()
         self.treestore = None
-        commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
+            
+class PageVisualize(commonqt.WizardPage):
+    
+    def __init__(self,parent=None):
+        commonqt.WizardPage.__init__(self, parent)
+        
+        self.result = parent.getProperty('result')
+        self.vizwidget = VisualizeWidget(self.result,parent=self)
+        
+        layout = QtGui.QHBoxLayout()
+        try:
+            # Try-except because versions of Qt4 < 4.3 did not support this attribute
+            layout.setContentsMargins(0,0,0,0)
+        except AttributeError:
+            pass
+        layout.addWidget(self.vizwidget)
+        self.setLayout(layout)
 
-    def saveFigureSettings(self):
-        if self.varpath is not None and self.figurepanel.figure.hasChanged():
-            self.result.setFigure('result/'+self.varpath,self.figurepanel.figure.properties)
+    def isComplete(self):
+        return True
+
+    def saveData(self,mustbevalid):
+        self.vizwidget.saveFigureSettings()
+        return True
             
     def onSaveAsDefault(self):
         pass
+
+    def destroy(self,destroyWindow = True,destroySubWindows = True):
+        self.vizwidget.destroy()
+        commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
 
 class ConfigureReportWidget(QtGui.QWidget):
     def __init__(self,parent,result,rep):
@@ -465,6 +481,39 @@ class PageFinal(commonqt.WizardPage):
 
     def isComplete(self):
         return True
+
+def visualizeResult(result):
+    # Create the application and enter the main message loop.
+    createQApp = QtGui.QApplication.startingUp()
+    if createQApp:
+        app = QtGui.QApplication([' '])
+    else:
+        app = QtGui.qApp
+
+    dialog = QtGui.QDialog()
+
+    visualizer = VisualizeWidget(result,parent=dialog)
+
+    pm = QtGui.QPixmap(os.path.join(core.common.getDataRoot(),'logo.png'),'PNG')
+    piclabel = QtGui.QLabel(dialog)
+    piclabel.setPixmap(pm)
+    piclabel.setMinimumWidth(20)
+
+    layout = QtGui.QVBoxLayout()
+    layout.addWidget(piclabel)
+    layout.addWidget(visualizer)
+    layout.setSpacing(0)
+    try:
+        # Try-except because versions of Qt4 < 4.3 did not support this attribute
+        layout.setContentsMargins(0,0,0,0)
+    except AttributeError:
+        pass
+    dialog.setLayout(layout)
+
+    dialog.setWindowTitle('Visualize results')
+    dialog.show()
+    
+    ret = app.exec_()
 
 def main():
     # Debug info

@@ -402,6 +402,7 @@ class FigurePanel(QtGui.QWidget):
 
         layout = QtGui.QVBoxLayout()
         try:
+            # Try-except because versions of Qt4 < 4.3 did not support this attribute
             layout.setContentsMargins(0,0,0,0)
         except AttributeError:
             pass
