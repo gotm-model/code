@@ -888,7 +888,11 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         def setData(self,data,slic=(Ellipsis,)):
             assert self.store.mode=='w','NetCDF file has not been opened for writing.'
             nc = self.store.getcdf()
-            nc.variables[self.ncvarname][slic] = data
+            ncvar = nc.variables[self.ncvarname]
+            if hasattr(data,'filled') and hasattr(ncvar,'_FillValue'):
+                ncvar[slic] = data.filled(ncvar._FillValue)
+            else:
+                ncvar[slic] = data
 
         def getLongName(self):
             nc = self.store.getcdf()
@@ -1378,10 +1382,13 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         if ncvarname not in nc.variables: return None
         return self.NetCDFVariable(self,ncvarname)
         
-    def addVariable(self,varName,dimensions,datatype='d'):
+    def addVariable(self,varName,dimensions,datatype='d',missingvalue=None):
         assert self.mode=='w','NetCDF file has not been opened for writing.'
         nc = self.getcdf()
         ncvar = nc.createVariable(varName,datatype,dimensions)
+        if missingvalue is not None:
+            setattr(ncvar,'missing_value',missingvalue)
+            setattr(ncvar,'_FillValue',missingvalue)
         return self.getVariable_raw(varName)
                 
     def copyVariable(self,variable):
