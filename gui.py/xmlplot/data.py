@@ -7,7 +7,7 @@ import numpy
 # Import our custom modules
 import common, xmlstore.util, xmlstore.xmlstore
 
-def getNetCDFFile(path):
+def getNetCDFFile(path,mode='r'):
     """Returns a NetCDFFile file object representing the NetCDF file
     at the specified path. The returned object follows
     Scientific.IO.NetCDFFile conventions.
@@ -24,7 +24,7 @@ def getNetCDFFile(path):
     # support as well).
 
     # First check if the file exists in the first place.
-    if not os.path.isfile(path):
+    if mode=='r' and not os.path.isfile(path):
         raise Exception('"%s" is not an existing file.' % path)
     
     # We prefer ScientificPython. Try that first.
@@ -42,7 +42,7 @@ def getNetCDFFile(path):
         except: pass
         if not oldscientific:
             try:
-                nc = Scientific.IO.NetCDF.NetCDFFile(path)
+                nc = Scientific.IO.NetCDF.NetCDFFile(path,mode=mode)
             except Exception, e:
                 raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
             return nc
@@ -56,7 +56,7 @@ def getNetCDFFile(path):
         ready = False
     if ready:
         try:
-            nc = netCDF4.Dataset(path)
+            nc = netCDF4.Dataset(path,mode=mode,format='NETCDF3_CLASSIC')
         except Exception, e:
             raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
         return nc
@@ -73,14 +73,14 @@ def getNetCDFFile(path):
         if (pyver[0]==2 and pyver[1]>=5) or pyver[0]>2:
             print '%sWe will use pynetcdf for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (error,pyver[0],pyver[1],pyver[2])
         try:
-            nc = pynetcdf.NetCDFFile(path)
+            nc = pynetcdf.NetCDFFile(path,mode=mode)
         except Exception, e:
             raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
         return nc
 
     if oldscientific:
         try:
-            nc = Scientific.IO.NetCDF.NetCDFFile(path)
+            nc = Scientific.IO.NetCDF.NetCDFFile(path,mode=mode)
         except Exception, e:
             raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
         return nc
@@ -885,6 +885,11 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         def getName_raw(self):
             return self.ncvarname
 
+        def setData(self,data,slic=(Ellipsis,)):
+            assert self.store.mode=='w','NetCDF file has not been opened for writing.'
+            nc = self.store.getcdf()
+            nc.variables[self.ncvarname][slic] = data
+
         def getLongName(self):
             nc = self.store.getcdf()
             ncvar = nc.variables[self.ncvarname]
@@ -1279,6 +1284,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         
         self.datafile = None
         self.nc = None
+        self.mode = 'r'
 
         self.cachedcoords = {}
         self.reassigneddims = {}
@@ -1309,7 +1315,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         if props.get('positive','up')=='down':
             res['reversed'] = True
         return res
-        
+                
     def save(self,path):
         shutil.copyfile(self.datafile,path)
         
@@ -1320,9 +1326,10 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             self.nc = None
             self.datafile = None
             
-    def load(self,path):
+    def load(self,path,mode='r'):
         # Store link to result file, and try to open the CDF file
         self.datafile = path
+        self.mode = mode
         nc = self.getcdf()
         
         # Auto-reassign coordinates
@@ -1344,7 +1351,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         """
         if self.nc is not None: return self.nc
         assert self.datafile is not None, 'The path to the NetCDF file has not yet been set. This may imply that the object has been unlinked.'
-        self.nc = getNetCDFFile(self.datafile)
+        self.nc = getNetCDFFile(self.datafile,self.mode)
         return self.nc
 
     def getVariableNames_raw(self):
@@ -1370,7 +1377,28 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         nc = self.getcdf()
         if ncvarname not in nc.variables: return None
         return self.NetCDFVariable(self,ncvarname)
+        
+    def addVariable(self,varName,dimensions,datatype='d'):
+        assert self.mode=='w','NetCDF file has not been opened for writing.'
+        nc = self.getcdf()
+        ncvar = nc.createVariable(varName,datatype,dimensions)
+        return self.getVariable_raw(varName)
                 
+    def copyVariable(self,variable):
+        assert self.mode=='w','NetCDF file has not been opened for writing.'
+        assert isinstance(variable,NetCDFStore.NetCDFVariable),'Added variable must be an existing NetCDF variable object, not %s.' % str(variable)
+        nc = self.getcdf()
+        dims = variable.getDimensions_raw(reassign=False)
+        shape = variable.getShape()
+        for dim,length in zip(dims,shape):
+            if dim not in nc.dimensions: nc.createDimension(dim, length)
+        data = variable.getSlice((Ellipsis,),dataonly=True)
+        nctype = {'float32':'f','float64':'d'}[str(data.dtype)]
+        ncvar = nc.createVariable(variable.getName(),nctype,dims)
+        for key,value in variable.getProperties().iteritems():
+            setattr(ncvar,key,value)
+        ncvar[(slice(None),)*len(shape)] = data
+
     def getDimensions(self):
         nc = self.getcdf()
         ncdims = list(nc.dimensions)
