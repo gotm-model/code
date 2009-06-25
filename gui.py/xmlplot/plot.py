@@ -762,8 +762,7 @@ class Figure(xmlstore.util.referencedobject):
         matplotlib.font_manager.fontManager.set_default_size(textscaling*matplotlib.rcParams['font.size'])
         
         # Get default font properties
-        fontpropsdict = getFontProperties(self.properties['Font'])
-        fontpropsdict['size'] *= textscaling
+        fontpropsdict = getFontProperties(self.properties['Font'],textscaling=textscaling)
         fontprops = matplotlib.font_manager.FontProperties(**fontpropsdict)
 
         fontpropsdict_title = dict(fontpropsdict)
@@ -1434,8 +1433,7 @@ class Figure(xmlstore.util.referencedobject):
         title = nodetitle.getValue(usedefault=True)
         assert title is not None, 'Title must be available, either explicitly set or as default.'
         if title!='':
-            curfontprops = getFontProperties(nodetitle['Font'])
-            curfontprops['size'] *= textscaling
+            curfontprops = getFontProperties(nodetitle['Font'],textscaling=textscaling)
             axes.set_title(title,verticalalignment='baseline',**curfontprops)
         
         # Show legend
@@ -1638,6 +1636,20 @@ class Figure(xmlstore.util.referencedobject):
         self.colorbar,self.ismap = cb,ismap
         self.onAspectChange(redraw=False)
 
+        defaulttextsnode = self.defaultproperties['FigureTexts']
+        for i,textnode in enumerate(self.properties['FigureTexts'].children):
+            defaulttextnode = defaulttextsnode.getChildByNumber('Text',i,create=True)
+            defaulttextnode['HorizontalAlignment'].setValue('center')
+            defaulttextnode['VerticalAlignment'].setValue('center')
+            defaulttextnode['X'].setValue(.5)
+            defaulttextnode['Y'].setValue(.5)
+            setFontProperties(defaulttextnode['Font'],**fontpropsdict)
+            x,y = textnode['X'].getValue(usedefault=True),textnode['Y'].getValue(usedefault=True)
+            curfontprops = getFontProperties(textnode['Font'],textscaling=textscaling)
+            self.figure.text(x,y,textnode.getValue(usedefault=True),fontdict=curfontprops,
+                             ha=textnode['HorizontalAlignment'].getValue(usedefault=True),
+                             va=textnode['VerticalAlignment'].getValue(usedefault=True))
+
         # Draw the plot to screen.
         self.canvas.draw()
         
@@ -1722,9 +1734,9 @@ def setFontProperties(node,family=None,size=8,style='normal',weight=400):
     node['Style'].setValue(style)
     node['Weight'].setValue(weight)
     
-def getFontProperties(node):
+def getFontProperties(node,textscaling=1.):
     return {'family':node['Family'].getValue(usedefault=True),
-            'size':node['Size'].getValue(usedefault=True),
+            'size':node['Size'].getValue(usedefault=True)*textscaling,
             'style':node['Style'].getValue(usedefault=True),
             'weight':node['Weight'].getValue(usedefault=True)}
     

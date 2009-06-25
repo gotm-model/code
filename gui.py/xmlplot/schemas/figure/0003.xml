@@ -405,5 +405,28 @@
 			</element>
 		</element>
 	</element>
-		
+
+	<element name="FigureTexts" label="texts">
+		<element name="Text" type="string" label="text" minOccurs="0" maxOccurs="unbounded">
+			<element name="X" type="float" label="x coordinate" minInclusive="0" maxInclusive="1"/>
+			<element name="Y" type="float" label="y coordinate" minInclusive="0" maxInclusive="1"/>
+			<link template="FontProperties" name="Font" grouponly="True"/>
+			<element name="HorizontalAlignment" type="string" label="horizontal alignment">
+				<options>
+					<option value="left"/>
+					<option value="center"/>
+					<option value="right"/>
+				</options>
+			</element>
+			<element name="VerticalAlignment" type="string" label="vertical alignment">
+				<options>
+					<option value="top"/>
+					<option value="center"/>
+					<option value="bottom"/>
+					<option value="baseline"/>
+				</options>
+			</element>
+		</element>
+	</element>
+
 </element>
