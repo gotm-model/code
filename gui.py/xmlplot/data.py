@@ -1211,6 +1211,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             
             if coordvar is None:
                 # No coordinate variable available: use indices
+                if not isinstance(bounds[idim],slice): continue
                 coorddims = [dimname]
                 coords = numpy.arange(bounds[idim].start,bounds[idim].stop,bounds[idim].step,dtype=numpy.float)
             else:
