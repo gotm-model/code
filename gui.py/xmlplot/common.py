@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.28 2009-06-22 15:50:32 jorn Exp $
+#$Id: common.py,v 1.29 2009-06-30 11:00:35 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -768,8 +768,14 @@ class Variable(object):
         """
         def __init__(self,dimensions=(),coords=None,coords_stag=None,data=None):
             self.ndim = len(dimensions)
-            if coords      is None: coords      = self.ndim*[None]
-            if coords_stag is None: coords_stag = self.ndim*[None]
+            if coords is None:
+                coords = self.ndim*[None]
+            else:
+                coords = list(coords)
+            if coords_stag is None:
+                coords_stag = self.ndim*[None]
+            else:
+                coords_stag = list(coords_stag)
             self.dimensions = dimensions
             self.data = data
             self.coords = coords
@@ -874,7 +880,7 @@ class Variable(object):
                 # Interpolate the data.
                 newslice.data = interp1_from_weights(ilow,ihigh,whigh,newslice.data,axis=idim)
                 
-            # Return the new slice with inteprolated data
+            # Return the new slice with interpolated data
             return newslice
 
         def removeDimension(self,idimension,inplace=True):
