@@ -922,6 +922,11 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             ncvar = nc.variables[self.ncvarname]
             setattr(ncvar,name,value)
             
+        def getDataType(self):
+            nc = self.store.getcdf()
+            ncvar = nc.variables[self.ncvarname]
+            return ncvar.typecode()
+            
         def getDimensions_raw(self,reassign=True):
           nc = self.store.getcdf()
           ncvar = nc.variables[self.ncvarname]
