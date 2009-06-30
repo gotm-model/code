@@ -1643,12 +1643,14 @@ class Figure(xmlstore.util.referencedobject):
             defaulttextnode['VerticalAlignment'].setValue('center')
             defaulttextnode['X'].setValue(.5)
             defaulttextnode['Y'].setValue(.5)
+            defaulttextnode['Rotation'].setValue(0.)
             setFontProperties(defaulttextnode['Font'],**fontpropsdict)
             x,y = textnode['X'].getValue(usedefault=True),textnode['Y'].getValue(usedefault=True)
             curfontprops = getFontProperties(textnode['Font'],textscaling=textscaling)
             self.figure.text(x,y,textnode.getValue(usedefault=True),fontdict=curfontprops,
                              ha=textnode['HorizontalAlignment'].getValue(usedefault=True),
-                             va=textnode['VerticalAlignment'].getValue(usedefault=True))
+                             va=textnode['VerticalAlignment'].getValue(usedefault=True),
+                             rotation=textnode['Rotation'].getValue(usedefault=True))
 
         # Draw the plot to screen.
         self.canvas.draw()

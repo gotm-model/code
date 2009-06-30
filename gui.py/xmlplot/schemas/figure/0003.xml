@@ -426,6 +426,7 @@
 					<option value="baseline"/>
 				</options>
 			</element>
+			<element name="Rotation" type="float" label="rotation" minInclusive="-360." maxInclusive="360." unit="º"/>
 		</element>
 	</element>
 
