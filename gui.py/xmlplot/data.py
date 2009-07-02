@@ -1,11 +1,18 @@
 # Import modules from standard Python library
-import os, sys, re, datetime, shutil, StringIO, types
+import os, sys, re, datetime, shutil, StringIO, types, UserDict
 
 # Import additional third party modules
 import numpy
 
 # Import our custom modules
 import common, xmlstore.util, xmlstore.xmlstore
+
+def openNetCDF(path,mode='r'):
+    if isinstance(path,basestring):
+        return getNetCDFFile(path,mode)
+    else:
+        assert mode=='r','A multi-file NetCDF dataset can only be opened for reading.'
+        return MultiNetCDFFile(*path)
 
 def getNetCDFFile(path,mode='r'):
     """Returns a NetCDFFile file object representing the NetCDF file
@@ -29,11 +36,12 @@ def getNetCDFFile(path,mode='r'):
     
     # We prefer ScientificPython. Try that first.
     ready = True
+    error = ''
     oldscientific = False
     try:
         import Scientific.IO.NetCDF
     except Exception,e:
-        error = 'Cannot load Scientific.IO.NetCDF. Reason: %s.\n' % str(e)
+        error += 'Cannot load Scientific.IO.NetCDF. Reason: %s.\n' % str(e)
         ready = False
     if ready:
         try:
@@ -87,6 +95,290 @@ def getNetCDFFile(path,mode='r'):
         
     # No NetCDF module found - raise exception.
     raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, netCDF4 or pynetcdf.')
+
+class ReferenceTimeParseError(Exception): pass
+
+def parseNcTimeUnit(fullunit):
+  """Parses a udunits/COARDS units string to extract the reference time and time unit.
+  Raises an exception if the string does not match udunits/COARDS convention.
+  Returns the time unit (in days), and the reference date+time used.
+
+  Supposedly the udunits package could do this, but so far I have not found a minimal
+  udunits module for Python.
+  """
+
+  # Retrieve time unit (in days) and reference date/time, based on COARDS convention.
+  if ' since ' not in fullunit:
+      raise ReferenceTimeParseError('"units" attribute equals "%s", which does not follow COARDS convention. Problem: string does not contain " since ".' % fullunit)
+  timeunit,reftime = fullunit.split(' since ')
+  
+  # Parse the reference date, time and timezone
+  datematch = re.match(r'(\d\d\d\d)[-\/](\d{1,2})-(\d{1,2})\s*',reftime)
+  if datematch is None:
+    raise ReferenceTimeParseError('"units" attribute equals "%s", which does not follow COARDS convention. Problem: cannot parse date in "%s".' % (fullunit,reftime))
+  year,month,day = map(int,datematch.group(1,2,3))
+  year = max(year,1900) # datetime year>=datetime.MINYEAR, but strftime needs year>=1900
+  hours,minutes,seconds,mseconds = 0,0,0,0
+  reftime = reftime[datematch.end():]
+  if len(reftime)>0:
+    timematch = re.match(r'(\d{1,2}):(\d{1,2}):(\d{1,2}(?:\.\d*)?)\s*',reftime)
+    if timematch is None:
+        raise ReferenceTimeParseError('"units" attribute equals "%s", which does not follow COARDS convention. Problem: cannot parse time in "%s".' % (fullunit,reftime))
+    hours,minutes = map(int,timematch.group(1,2))
+    seconds = float(timematch.group(3))
+    mseconds = 1e6*(seconds % 1.)
+    seconds = int(seconds)
+    reftime = reftime[timematch.end():]
+  dateref = datetime.datetime(year,month,day,hours,minutes,seconds,tzinfo=xmlstore.util.utc)
+  if len(reftime)>0:
+    timezonematch = re.match(r'(-?\d{1,2})(?::?(\d\d))?$',reftime)
+    if timezonematch is None:
+        raise ReferenceTimeParseError('"units" attribute equals "%s", which does not follow COARDS convention. Problem: cannot parse time zone in "%s".' % (fullunit,reftime))
+    if timezonematch.group(2) is None:
+        dhour,dmin = int(timezonematch.group(1)),0
+    else:
+        dhour,dmin = map(int,timezonematch.group(1,2))
+        if dhour<0: dmin = -dmin
+    dateref -= datetime.timedelta(hours=dhour,minutes=dmin)
+  
+  # Get time unit in number of days.
+  timeunit = timeunit.lower()
+  if timeunit in ('seconds','second','secs','sec','ss','s'):
+      timeunit = 1./86400.
+  elif timeunit in ('minutes','minute','mins','min'):
+      timeunit = 1./1440.
+  elif timeunit in ('hours','hour','hrs','hr','hs','h'):
+      timeunit = 1./24.
+  elif timeunit in ('days','day','ds','d'):
+      timeunit = 1.
+  elif timeunit in ('years','year','yrs','yr','ys','y'):
+      timeunit = 365.   # udunits convention: year=365 days
+  else:
+      raise ReferenceTimeParseError('"units" attribute equals "%s", which does not follow COARDS convention. Problem: unknown time unit "%s".' % (fullunit,timeunit))
+  
+  return timeunit,dateref
+
+def getNcAttributes(obj):
+    """Transparent access to the attributes of a NetCDF file or variable,
+    using the clean ncattrs method of NetCDF4 if available.
+    """
+    if hasattr(obj,'ncattrs'): return obj.ncattrs()
+    names = dir(obj)
+    if 'close' in names:
+        # NetCDF file
+        return [name for name in names if name not in ('close','createDimension','createVariable','flush','sync')]
+    else:
+        # NetCDF variable
+        return [name for name in names if name not in ('assignValue','getValue','typecode')]
+      
+def getNcData(ncvar,bounds=None,maskoutsiderange=True):
+    """Returns a slab of values from a NetCDF variable, respecting several NetCDF attributes
+    such as missing value specifications, valid value ranges, time unit, etc.
+    """
+    if bounds:
+        # Bounds provided - read a slice.
+        if len(ncvar.shape)!=len(bounds): raise Exception('Number of provided slices (%i) does not match number of dimensions (%i).' % (len(bounds),len(ncvar.shape)))
+        dat = numpy.asarray(ncvar[bounds])
+    elif len(ncvar.shape)>0:
+        # Variable is non-scalar - read all data.
+        dat = numpy.asarray(ncvar[(slice(None),)*len(ncvar.shape)])
+    else:
+        # Variable is a scalar - read all data.
+        dat = numpy.asarray(ncvar.getValue())
+
+    # Start without mask, and define function for creating/updating mask
+    mask = None
+    def addmask(mask,newmask):
+        if mask is None:
+            mask = numpy.empty(dat.shape,dtype=numpy.bool)
+            mask.fill(False)
+        return numpy.logical_or(mask,newmask)
+
+    # Process the various COARDS/CF variable attributes for missing data.
+    if maskoutsiderange:
+        if hasattr(ncvar,'valid_min'): mask = addmask(mask,dat<ncvar.valid_min)
+        if hasattr(ncvar,'valid_max'): mask = addmask(mask,dat>ncvar.valid_max)
+        if hasattr(ncvar,'valid_range'):
+            assert len(ncvar.valid_range)==2,'NetCDF attribute "valid_range" must consist of two values, but contains %i.' % len(ncvar.valid_range)
+            minv,maxv = ncvar.valid_range
+            mask = addmask(mask,numpy.logical_or(dat<minv,dat>maxv))
+    if hasattr(ncvar,'_FillValue'):    mask = addmask(mask,dat==numpy.asarray(ncvar._FillValue,dtype=dat.dtype))
+    if hasattr(ncvar,'missing_value'): mask = addmask(mask,dat==numpy.asarray(ncvar.missing_value,dtype=dat.dtype))
+
+    # Apply the combined mask (if any)
+    if mask is not None: dat = numpy.ma.masked_where(mask,dat,copy=False)
+
+    # If we have to apply a transformation to the data, make sure that the data type can accommodate it.
+    # Cast to the most detailed type available (64-bit float)
+    if hasattr(ncvar,'scale_factor') or hasattr(ncvar,'add_offset') and dat.dtype!=numpy.float: dat = numpy.asarray(dat,dtype=numpy.float)
+  
+    # Apply transformation to data based on nc variable attributes.
+    if hasattr(ncvar,'scale_factor'): dat *= float(ncvar.scale_factor)
+    if hasattr(ncvar,'add_offset'):   dat += float(ncvar.add_offset)
+  
+    # If the unit is time, convert to internal time unit
+    if hasattr(ncvar,'units'):
+        timeref = None
+        try:
+            timeunit,timeref = parseNcTimeUnit(ncvar.units)
+        except ReferenceTimeParseError:
+            pass
+        if timeref is not None:
+            timeref = common.date2num(timeref)
+            dat = timeref+timeunit*numpy.asarray(dat,numpy.float64)
+      
+    return dat
+          
+class MultiNetCDFFile(object):
+    class Variable(object):
+        def __init__(self,store,name):
+            self.store = store
+            self.name = name
+            self.ncvars = [nc.variables[name] for nc in self.store.ncs]
+            
+        def __array__(self,*args,**kwargs):
+            return numpy.asarray(self[(Ellipsis,)],*args,**kwargs)
+            
+        def __getitem__(self,indices):
+            if not isinstance(indices,(tuple,list)): indices = (indices,)
+            
+            dims = list(self.dimensions)
+            idim = dims.index(self.store.variabledim)
+            shape = self.shape
+            indices = common.processEllipsis(indices,len(shape))
+
+            indices = list(indices)
+            if isinstance(indices[idim],slice):
+                istart,istop,istep = indices[idim].indices(shape[idim])
+            else:
+                istart = indices[idim]
+                istop = istart+1
+            
+            data = []
+            for ivar,ncvar in enumerate(self.ncvars):
+                if istart>=ncvar.shape[idim]:
+                    # Start position beyond current file.
+                    istart -= ncvar.shape[idim]
+                    istop  -= ncvar.shape[idim]
+                else:
+                    # Start position within current file.
+                    if isinstance(indices[idim],int):
+                        indices[idim] = istart
+                        return ncvar[tuple(indices)]
+                        #return getNcData(ncvar,tuple(indices))
+                    if istop<=ncvar.shape[idim]:
+                        # Stop position within current file
+                        indices[idim] = slice(istart,istop,istep)
+                    else:
+                        # Stop position beyond current file
+                        indices[idim] = slice(istart,None,istep)
+                        left = (ncvar.shape[idim]-istart-1) % istep
+                        istart = istep-left-1
+                        istop -= ncvar.shape[idim]
+                    data.append(ncvar[tuple(indices)])
+                    #data.append(getNcData(ncvar,tuple(indices)))
+                    if indices[idim].stop is not None: break
+                    
+                # Process overlap between current and next file.
+                if ivar<len(self.ncvars)-1:
+                    istart += self.store.overlaps[ivar]
+                    istop += self.store.overlaps[ivar]
+                    
+            return numpy.concatenate(data,axis=idim)
+            
+        def ncattrs(self):
+            return getNcAttributes(self.ncvars[0])
+            
+        def __getattr__(self,name):
+            if name=='shape':
+                return [self.store.dim2length[d] for d in self.ncvars[0].dimensions]
+            for ncvar in self.ncvars:
+                if hasattr(ncvar,name): return getattr(ncvar,name)
+            raise AttributeError(name)
+
+    class Variables(object,UserDict.DictMixin):
+        def __init__(self,store):
+            self.store = store
+    
+        def __getitem__(self,name):
+            ncvar = self.store.ncs[0].variables[name]
+            if self.store.variabledim not in ncvar.dimensions: return ncvar
+            return MultiNetCDFFile.Variable(self.store,name)
+        
+        def keys(self):
+            return self.store.ncs[0].variables.keys()
+
+    def __init__(self,*args):
+        paths = []
+        import glob
+        for arg in args:
+            paths += glob.glob(arg)
+
+        # Open NetCDF files.
+        for path in paths: print path
+        self.ncs = [getNetCDFFile(path) for path in paths]
+                
+        # Get list of all dimensions and variables.
+        dims,vars = set(),set()
+        for nc in self.ncs:
+            dims.update(nc.dimensions.keys())
+            vars.update(nc.variables.keys())
+        
+        # Check if all files use all dimensions and variables.
+        # For variables, also check if the variable attributes are identical everywhere.
+        dim2coords,var2attr = {},{}
+        self.variabledim = None
+        for nc,path in zip(self.ncs,paths):
+            for var in vars:
+                assert var in nc.variables,'Variable %s does not appear in in "%s". For multiple NetCDF files to be loaded as one single file, they must all contain the same variables.' % (var,path)
+                ncvar = nc.variables[var]
+                atts = dict([(k,getattr(ncvar,k)) for k in getNcAttributes(ncvar)])
+                if var not in var2attr:
+                    var2attr[var] = atts
+                else:
+                    assert var2attr[var]==atts,'Current attributes of variable "%s" (%s) do not match its attributes in one of the other NetCDF files (%s).' % (var,atts,var2attr[var])
+            for dim in dims:
+                assert dim in nc.dimensions,'Dimension %s is missing in "%s". For multiple NetCDF files to be loaded as one single file, all must use the same dimensions.' % (dim,path)
+                assert dim in nc.variables,'Dimension %s does not have an associated coordinated variable in "%s". For multiple NetCDF files to be loaded as one single file, all dimensions must be accompanied by a coordinate variable.' % (dim,path)
+                coord = getNcData(nc.variables[dim])
+                if dim not in dim2coords:
+                    dim2coords[dim] = coord
+                else:
+                    if self.variabledim!=dim and (dim2coords[dim].shape!=coord.shape or (dim2coords[dim]!=coord).any()):
+                        assert self.variabledim is None,'More than one dimension (%s, %s) varies between files.' % (self.variabledim,dim)
+                        self.variabledim = dim
+        assert self.variabledim is not None, 'All dimensions have the same coordinates in the supplied files. One dimension should differ between files in order for them to be loaded as a single file.'
+                        
+        self.ncs.sort(cmp=lambda x,y: cmp(x.variables[self.variabledim][0],y.variables[self.variabledim][0]))
+        
+        self.dim2length = dict([(k,len(v)) for k,v in dim2coords.iteritems()])
+        self.dim2length[self.variabledim] = 0
+        self.overlaps = []
+        lastcoord = None
+        for nc in self.ncs:
+            curcoord = getNcData(nc.variables[self.variabledim])
+            if lastcoord is not None:
+                overlap = curcoord.searchsorted(lastcoord[-1],side='right')
+                self.dim2length[self.variabledim] -= overlap
+                self.overlaps.append(overlap)
+            self.dim2length[self.variabledim] += len(curcoord)
+            lastcoord = curcoord
+        
+    def ncattrs(self):
+        return getNcAttributes(self.ncs[0])
+
+    def __getattr__(self,name):
+        if name=='dimensions':
+            return self.dim2length
+        elif name=='variables':
+            return MultiNetCDFFile.Variables(self)
+        for nc in self.ncs:
+            if hasattr(nc,name): return getattr(nc,name)
+        raise AttributeError(name)
+        
+    def close(self):
+        for nc in self.ncs: nc.close()
+        self.ncs = []
 
 class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx):
 
@@ -870,9 +1162,10 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
     
     @staticmethod
     def loadUnknownConvention(path):
+        nc = openNetCDF(path)
         for convention in NetCDFStore.conventions:
-            if convention.testFile(path): return convention(path)
-        return NetCDFStore(path)
+            if convention.testFile(nc): return convention(nc)
+        return NetCDFStore(nc)
     
     class NetCDFVariable(common.Variable):
         def __init__(self,store,ncvarname):
@@ -911,10 +1204,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         def getProperties(self):
             nc = self.store.getcdf()
             ncvar = nc.variables[self.ncvarname]
-            if hasattr(ncvar,'ncattrs'):
-                propnames = ncvar.ncattrs()
-            else:
-                propnames = [p for p in dir(ncvar) if p not in ('assignValue','getValue','typecode')]
+            propnames = getNcAttributes(ncvar)
             return dict([(key,getattr(ncvar,key)) for key in propnames])
 
         def setProperty(self,name,value):
@@ -1118,57 +1408,11 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           # Get NetCDF file and variable objects.
           nc = self.store.getcdf()
           ncvar = nc.variables[self.ncvarname]
-
           try:
-            if bounds:
-                # Bounds provided - read a slice.
-                assert len(ncvar.shape)==len(bounds),'Number of provided slices (%i) does not match number of dimensions of NetCDF variable (%i).' % (len(bounds),len(ncvar.shape))
-                dat = numpy.asarray(ncvar[bounds])
-            elif len(ncvar.shape)>0:
-                # Variable is non-scalar - read all data.
-                dat = numpy.asarray(ncvar[(slice(None),)*len(ncvar.shape)])
-            else:
-                # Variable is a scalar - read all data.
-                dat = numpy.asarray(ncvar.getValue())
-          except Exception, e:
-            raise Exception('Unable to read values for NetCDF variable "%s". Error: %s' % (self.getName(),str(e)))
+            dat = getNcData(ncvar,bounds,maskoutsiderange=self.store.maskoutsiderange)
+          except Exception,e:
+            raise Exception('Unable to read data from netCDF variable "%s": %s' % (self.ncvarname,str(e)))
 
-          # Start without mask, and define function for creating/updating mask
-          mask = None
-          def addmask(mask,newmask):
-              if mask is None:
-                  mask = numpy.empty(dat.shape,dtype=numpy.bool)
-                  mask.fill(False)
-              return numpy.logical_or(mask,newmask)
-
-          # Process the various COARDS/CF variable attributes for missing data.
-          if self.store.maskoutsiderange:
-              if hasattr(ncvar,'valid_min'): mask = addmask(mask,dat<ncvar.valid_min)
-              if hasattr(ncvar,'valid_max'): mask = addmask(mask,dat>ncvar.valid_max)
-              if hasattr(ncvar,'valid_range'):
-                  assert len(ncvar.valid_range)==2,'NetCDF attribute "valid_range" must consist of two values, but contains %i.' % len(ncvar.valid_range)
-                  minv,maxv = ncvar.valid_range
-                  mask = addmask(mask,numpy.logical_or(dat<minv,dat>maxv))
-          if hasattr(ncvar,'_FillValue'):    mask = addmask(mask,dat==numpy.asarray(ncvar._FillValue,dtype=dat.dtype))
-          if hasattr(ncvar,'missing_value'): mask = addmask(mask,dat==numpy.asarray(ncvar.missing_value,dtype=dat.dtype))
-
-          # Apply the combined mask (if any)
-          if mask is not None: dat = numpy.ma.masked_where(mask,dat,copy=False)
-
-          # If we have to apply a transformation to the data, make sure that the data type can accommodate it.
-          # Cast to the most detailed type available (64-bit float)
-          if hasattr(ncvar,'scale_factor') or hasattr(ncvar,'add_offset') and dat.dtype!=numpy.float: dat = numpy.asarray(dat,dtype=numpy.float)
-          
-          # Apply transformation to data based on nc variable attributes.
-          if hasattr(ncvar,'scale_factor'): dat *= float(ncvar.scale_factor)
-          if hasattr(ncvar,'add_offset'):   dat += float(ncvar.add_offset)
-          
-          # If the unit is time, convert to internal time unit
-          if self.store.isTimeDimension(self.ncvarname):
-              timeunit,timeref = self.store.getTimeReference(self.ncvarname)
-              timeref = common.date2num(timeref)
-              dat = timeref+timeunit*numpy.asarray(dat,numpy.float64)
-              
           return dat
               
         def getSlice(self,bounds,dataonly=False,cache=False,transfercoordinatemask=True):
@@ -1309,9 +1553,16 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         # NetCDF variable attributes (as specified by CF convention)
         self.maskoutsiderange = True
         
-        if path is not None: self.load(path,*args,**kwargs)
+        if path is not None:
+            if isinstance(path,(tuple,list,basestring)):
+                self.load(path,*args,**kwargs)
+            else:
+                self.nc = path
+                self.autoReassignCoordinates()
+                self.relabelVariables()
                 
     def __str__(self):
+        if isinstance(self.datafile,(list,tuple)): return ', '.join(self.datafile)
         return self.datafile
 
     def getDimensionInfo_raw(self,dimname):
@@ -1332,6 +1583,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         return res
                 
     def save(self,path):
+        assert isinstance(self.datafile,basestring),'Only single NetCDF files can be saved.'
         shutil.copyfile(self.datafile,path)
         
     def unlink(self):
@@ -1366,7 +1618,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         """
         if self.nc is not None: return self.nc
         assert self.datafile is not None, 'The path to the NetCDF file has not yet been set. This may imply that the object has been unlinked.'
-        self.nc = getNetCDFFile(self.datafile,self.mode)
+        self.nc = openNetCDF(self.datafile,self.mode)
         return self.nc
 
     def getVariableNames_raw(self):
@@ -1433,16 +1685,12 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
     def getDefaultCoordinateDelta(self,dimname,coord):
         return 1.
         
-    class ReferenceTimeParseError(Exception):
-        def __init__(self,error):
-            Exception.__init__(self,error)
-        
     def isTimeDimension(self,dimname):
         """See if specified dimension is a time dimension according to COARDS convention.
         """
         try:
             timeunit,timeref = self.getTimeReference(dimname)
-        except self.ReferenceTimeParseError:
+        except ReferenceTimeParseError:
             return False
         return True
 
@@ -1450,69 +1698,16 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
       """Parses the "units" attribute of the NetCDF variable, and returns the time unit
       (in days) and the reference date. Throws an exception if the "units" attribute does
       not match the COARDS/udunits convention for specifying time offsets.
-      
-      Supposedly the udunits package could do this, but so far I have not found a minimal
-      udunits module for Python.
       """
       nc = self.getcdf()
       if dimname not in nc.variables:
-          raise self.ReferenceTimeParseError('dimensions "%s" does not have an associated variable.' % (dimname,))
+          raise ReferenceTimeParseError('dimensions "%s" does not have an associated variable.' % (dimname,))
 
       cdfvar = self.getcdf().variables[dimname]
       if not hasattr(cdfvar,'units'):
-          raise self.ReferenceTimeParseError('variable "%s" lacks "units" attribute.' % (dimname,))
+          raise ReferenceTimeParseError('variable "%s" lacks "units" attribute.' % (dimname,))
         
-      # Retrieve time unit (in days) and reference date/time, based on COARDS convention.
-      fullunit = cdfvar.units
-      if ' since ' not in fullunit:
-          raise self.ReferenceTimeParseError('"units" attribute of variable "%s" equals "%s", which does not follow COARDS convention. Problem: string does not contain " since ".' % (dimname,fullunit))
-      timeunit,reftime = fullunit.split(' since ')
-      
-      # Parse the reference date, time and timezone
-      datematch = re.match(r'(\d\d\d\d)[-\/](\d{1,2})-(\d{1,2})\s*',reftime)
-      if datematch is None:
-        raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse date in "%s".' % (fullunit,reftime))
-      year,month,day = map(int,datematch.group(1,2,3))
-      year = max(year,1900) # datetime year>=datetime.MINYEAR, but strftime needs year>=1900
-      hours,minutes,seconds,mseconds = 0,0,0,0
-      reftime = reftime[datematch.end():]
-      if len(reftime)>0:
-        timematch = re.match(r'(\d{1,2}):(\d{1,2}):(\d{1,2}(?:\.\d*)?)\s*',reftime)
-        if timematch is None:
-            raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time in "%s".' % (fullunit,reftime))
-        hours,minutes = map(int,timematch.group(1,2))
-        seconds = float(timematch.group(3))
-        mseconds = 1e6*(seconds % 1.)
-        seconds = int(seconds)
-        reftime = reftime[timematch.end():]
-      dateref = datetime.datetime(year,month,day,hours,minutes,seconds,tzinfo=xmlstore.util.utc)
-      if len(reftime)>0:
-        timezonematch = re.match(r'(-?\d{1,2})(?::?(\d\d))?$',reftime)
-        if timezonematch is None:
-            raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: cannot parse time zone in "%s".' % (fullunit,reftime))
-        if timezonematch.group(2) is None:
-            dhour,dmin = int(timezonematch.group(1)),0
-        else:
-            dhour,dmin = map(int,timezonematch.group(1,2))
-            if dhour<0: dmin = -dmin
-        dateref -= datetime.timedelta(hours=dhour,minutes=dmin)
-      
-      # Get time unit in number of days.
-      timeunit = timeunit.lower()
-      if timeunit in ('seconds','second','secs','sec','ss','s'):
-          timeunit = 1./86400.
-      elif timeunit in ('minutes','minute','mins','min'):
-          timeunit = 1./1440.
-      elif timeunit in ('hours','hour','hrs','hr','hs','h'):
-          timeunit = 1./24.
-      elif timeunit in ('days','day','ds','d'):
-          timeunit = 1.
-      elif timeunit in ('years','year','yrs','yr','ys','y'):
-          timeunit = 365.   # udunits convention: year=365 days
-      else:
-          raise self.ReferenceTimeParseError('"units" attribute of variable "time" equals "%s", which does not follow COARDS convention. Problem: unknown time unit "%s".' % (fullunit,timeunit))
-      
-      return timeunit,dateref
+      return parseNcTimeUnit(cdfvar.units)
 
 class NetCDFStore_GOTM(NetCDFStore):
     """Class encapsulating a GOTM/GETM-produced NetCDF file.
@@ -1524,9 +1719,8 @@ class NetCDFStore_GOTM(NetCDFStore):
     """
     
     @staticmethod
-    def testFile(path):
+    def testFile(nc):
         match = False
-        nc = getNetCDFFile(path)
         ncvars,ncdims = nc.variables,nc.dimensions
         
         # Test for GETM with curvilinear coordinates
@@ -1548,7 +1742,6 @@ class NetCDFStore_GOTM(NetCDFStore):
         if ('sigma' in ncdims and
             'bathymetry' in ncvars and 'elev' in ncvars): match = True
 
-        nc.close()
         return match
 
     def __init__(self,path=None,*args,**kwargs):
@@ -1840,7 +2033,7 @@ class NetCDFStore_GOTM(NetCDFStore):
         # Only operate on time dimension
         try:
             timeunit,timeref = self.getTimeReference(dimname)
-        except self.ReferenceTimeParseError:
+        except ReferenceTimeParseError:
             return NetCDFStore.getDefaultCoordinateDelta(self,dimname,coords)
             
         # Take delta as the difference between the reference time and the first time step
@@ -1850,13 +2043,11 @@ class NetCDFStore_GOTM(NetCDFStore):
 
 class NetCDFStore_MOM4(NetCDFStore):
     @staticmethod
-    def testFile(path):
+    def testFile(nc):
         match = False
-        nc = getNetCDFFile(path)
         ncvars,ncdims = nc.variables,nc.dimensions
         if ('xt_ocean' in ncdims and 'yt_ocean' in ncdims and
             'geolon_t' in ncvars and 'geolat_t' in ncvars): match = True
-        nc.close()
         return match
 
     def __init__(self,path=None,*args,**kwargs):
