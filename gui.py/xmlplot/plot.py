@@ -128,11 +128,11 @@ class CustomDateFormatter(matplotlib.dates.DateFormatter):
 
     def strftime(self, dt, fmt):
         if ('%e' in fmt):
-            dayname = str(matplotlib.dates.DateFormatter.strftime(self,dt,'%A'))
-            fmt = fmt.replace('%e',dayname[0])
+            dayname = matplotlib.dates.DateFormatter.strftime(self,dt,'%A')
+            fmt = str(fmt.replace('%e',dayname[0]))
         if ('%n' in fmt):
-            month = str(matplotlib.dates.DateFormatter.strftime(self,dt,'%b'))
-            fmt = fmt.replace('%n',month[0])
+            month = matplotlib.dates.DateFormatter.strftime(self,dt,'%b')
+            fmt = str(fmt.replace('%n',month[0]))
         if ('%Q' in fmt):
             monthnr = int(matplotlib.dates.DateFormatter.strftime(self,dt,'%m'))
             fmt = fmt.replace('%Q','Q%i' % math.ceil(monthnr/3.))
