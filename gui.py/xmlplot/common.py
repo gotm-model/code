@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.29 2009-06-30 11:00:35 jorn Exp $
+#$Id: common.py,v 1.30 2009-07-05 12:37:46 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -453,8 +453,8 @@ def getboundindices(data,axis,minval=None,maxval=None):
         lc = -lc
         
     imin,imax = 0,n
-    if minval is not None: imin = min(n-1,max(0,lc.searchsorted(minval)-1))
-    if maxval is not None: imax = max(1  ,min(n,uc.searchsorted(maxval)+1))
+    if minval is not None: imin = min(n-1,max(0,lc.searchsorted(minval,side='left')-1))
+    if maxval is not None: imax = max(1  ,min(n,uc.searchsorted(maxval,side='right')+1))
     return imin,imax
     
 def broadcastSelective(source,sourcedims,targetshape,targetdims):
