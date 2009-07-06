@@ -1191,7 +1191,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                     pass
                 if timeref is not None:
                     timeref = common.date2num(timeref)
-                    data = numpy.asarray((data-timeref)/timeunit,dtype=ncvar.typecode())
+                    data = numpy.asarray((data-timeref)/timeunit,dtype=self.getDataType())
             if hasattr(data,'filled') and hasattr(ncvar,'_FillValue'):
                 ncvar[slic] = data.filled(ncvar._FillValue)
             else:
