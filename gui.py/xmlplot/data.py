@@ -315,7 +315,6 @@ class MultiNetCDFFile(object):
             paths += glob.glob(arg)
 
         # Open NetCDF files.
-        for path in paths: print path
         self.ncs = [getNetCDFFile(path) for path in paths]
                 
         # Get list of all dimensions and variables.
@@ -336,7 +335,9 @@ class MultiNetCDFFile(object):
                 if var not in var2attr:
                     var2attr[var] = atts
                 else:
-                    assert var2attr[var]==atts,'Current attributes of variable "%s" (%s) do not match its attributes in one of the other NetCDF files (%s).' % (var,atts,var2attr[var])
+                    match = var2attr[var]==atts
+                    if hasattr(match,'all'): match = match.all() 
+                    assert match,'Current attributes of variable "%s" (%s) do not match its attributes in one of the other NetCDF files (%s).' % (var,atts,var2attr[var])
             for dim in dims:
                 assert dim in nc.dimensions,'Dimension %s is missing in "%s". For multiple NetCDF files to be loaded as one single file, all must use the same dimensions.' % (dim,path)
                 assert dim in nc.variables,'Dimension %s does not have an associated coordinated variable in "%s". For multiple NetCDF files to be loaded as one single file, all dimensions must be accompanied by a coordinate variable.' % (dim,path)
@@ -1182,6 +1183,15 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             assert self.store.mode=='w','NetCDF file has not been opened for writing.'
             nc = self.store.getcdf()
             ncvar = nc.variables[self.ncvarname]
+            if hasattr(ncvar,'units'):
+                timeref = None
+                try:
+                    timeunit,timeref = parseNcTimeUnit(ncvar.units)
+                except ReferenceTimeParseError:
+                    pass
+                if timeref is not None:
+                    timeref = common.date2num(timeref)
+                    data = numpy.asarray((data-timeref)/timeunit,dtype=ncvar.typecode())
             if hasattr(data,'filled') and hasattr(ncvar,'_FillValue'):
                 ncvar[slic] = data.filled(ncvar._FillValue)
             else:
@@ -1258,6 +1268,8 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             return True
 
         def translateSliceSpecification(self,bounds):
+          if not isinstance(bounds,(list,tuple)): bounds = (bounds,)
+        
           dimnames = list(self.getDimensions_raw())
           shape = self.getShape()
 
