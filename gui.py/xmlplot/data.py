@@ -1225,6 +1225,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         def getDataType(self):
             nc = self.store.getcdf()
             ncvar = nc.variables[self.ncvarname]
+            if hasattr(ncvar,'dtype'): return ncvar.dtype
             return ncvar.typecode()
             
         def getDimensions_raw(self,reassign=True):
