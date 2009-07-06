@@ -409,7 +409,9 @@ class FigureAnimator(object):
         self.index += 1
         oldupdating = self.figure.setUpdating(False)
         self.figure.slices[self.dimension] = self.index
-        if self.titletemplate is None: self.titletemplate = str(self.figure['Title'].getValue(usedefault=True))
+        if self.titletemplate is None:
+            self.titletemplate = self.figure['Title'].getValue(usedefault=False)
+            if self.titletemplate is not None: self.titletemplate = str(self.titletemplate)
         self.figure['Title'].setValue(self.getDynamicTitle(self.titletemplate))
         self.figure.setUpdating(oldupdating)
         return self.index<(self.length-1)
