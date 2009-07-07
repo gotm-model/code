@@ -1179,11 +1179,11 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         def getName_raw(self):
             return self.ncvarname
 
-        def setData(self,data,slic=(Ellipsis,)):
+        def setData(self,data,slic=(Ellipsis,),converttime=True):
             assert self.store.mode=='w','NetCDF file has not been opened for writing.'
             nc = self.store.getcdf()
             ncvar = nc.variables[self.ncvarname]
-            if hasattr(ncvar,'units'):
+            if converttime and hasattr(ncvar,'units'):
                 timeref = None
                 try:
                     timeunit,timeref = parseNcTimeUnit(ncvar.units)
