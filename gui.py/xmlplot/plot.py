@@ -382,13 +382,18 @@ class FigureAnimator(object):
         for v in self.getPlottedVariables():
             curdims = list(v.getDimensions())
             if self.dimension in curdims:
+                idim = curdims.index(self.dimension)
                 shape = v.getShape()
                 if shape is not None:
-                    idim = curdims.index(self.dimension)
-                    if length is None:
-                        length = shape[idim]
-                    else:
-                        assert length==shape[idim],'Animated dimension %s has different lengths %i and %i for the different plotted variables.' % (self.dimension,length,shape[idim])
+                    curlength = shape[idim]
+                else:
+                    slcs = [0]*len(curdims)
+                    slcs[idim] = slice(None)
+                    curlength = len(v.getSlice(slcs,dataonly=True))
+                if length is None:
+                    length = curlength
+                else:
+                    assert length==curlength,'Animated dimension %s has different lengths %i and %i for the different plotted variables.' % (self.dimension,length,curlength)
                 icount+=1
             useddims.update(curdims)
         assert icount>0,'None of the plotted variables uses animated dimension %s (used: %s).' % (self.dimension,', '.join(useddims))
