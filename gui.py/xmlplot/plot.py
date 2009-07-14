@@ -383,11 +383,12 @@ class FigureAnimator(object):
             curdims = list(v.getDimensions())
             if self.dimension in curdims:
                 shape = v.getShape()
-                idim = curdims.index(self.dimension)
-                if length is None:
-                    length = shape[idim]
-                else:
-                    assert length==shape[idim],'Animated dimension %s has different lengths %i and %i for the different plotted variables.' % (self.dimension,length,shape[idim])
+                if shape is not None:
+                    idim = curdims.index(self.dimension)
+                    if length is None:
+                        length = shape[idim]
+                    else:
+                        assert length==shape[idim],'Animated dimension %s has different lengths %i and %i for the different plotted variables.' % (self.dimension,length,shape[idim])
                 icount+=1
             useddims.update(curdims)
         assert icount>0,'None of the plotted variables uses animated dimension %s (used: %s).' % (self.dimension,', '.join(useddims))
