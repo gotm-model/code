@@ -389,12 +389,14 @@ class FigureAnimator(object):
                 else:
                     slcs = [0]*len(curdims)
                     slcs[idim] = slice(None)
-                    curlength = len(v.getSlice(slcs,dataonly=True))
+                    curdat = v.getSlice(slcs,dataonly=True)
+                    if isinstance(curdat,(list,tuple)): curdat = curdat[0]
+                    curlength = len(curdat)
                 if length is None:
                     length = curlength
                 else:
                     assert length==curlength,'Animated dimension %s has different lengths %i and %i for the different plotted variables.' % (self.dimension,length,curlength)
-                icount+=1
+                icount += 1
             useddims.update(curdims)
         assert icount>0,'None of the plotted variables uses animated dimension %s (used: %s).' % (self.dimension,', '.join(useddims))
         self.length = length
