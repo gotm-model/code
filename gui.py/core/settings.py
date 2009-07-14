@@ -23,8 +23,11 @@ class SettingsStore(xmlstore.xmlstore.TypedStore):
     @staticmethod    
     def getSettingsPath():
         if sys.platform == 'win32':
-            from win32com.shell import shellcon, shell
-            appdata = shell.SHGetFolderPath(0, shellcon.CSIDL_APPDATA, 0, 0)
+            try:
+                from win32com.shell import shellcon, shell
+                appdata = shell.SHGetFolderPath(0, shellcon.CSIDL_APPDATA, 0, 0)
+            except ImportError:
+                appdata = os.environ['APPDATA']
             return os.path.join(appdata,'GOTM','settings.xml')
         else:
             return os.path.expanduser('~/.gotm.gui')
