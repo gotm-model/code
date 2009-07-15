@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.30 2009-07-05 12:37:46 jorn Exp $
+#$Id: common.py,v 1.31 2009-07-15 15:11:22 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -179,7 +179,7 @@ def interp1_get_weights(allx,X,axis=0):
     
     # Input array is sorted in descending order:
     # Switch the sign of the input array and target coordinates to get values in ascending order
-    if allx[tuple([0]*allx.ndim)]>allx[tuple([0]*(allx.ndim-1)+[1])]:
+    if allx.shape[-1]>1 and allx[tuple([0]*allx.ndim)]>allx[tuple([0]*(allx.ndim-1)+[1])]:
         allx = -allx
         X = -X
 
@@ -200,7 +200,11 @@ def interp1_get_weights(allx,X,axis=0):
         # Get the bounds of valid indices
         # These are upper indices for linear interpolation (the actual value lies below),
         # so valid indices are >=1 and <dimension length
-        bounds = iX.searchsorted((0.5,x.shape[0]-0.5))
+        mini,maxi = 0.5,x.shape[0]-0.5
+        if iX[-1]<iX[0]:
+            bounds = (-iX).searchsorted((-maxi,-mini))
+        else:
+            bounds = iX.searchsorted((mini,maxi))
         v = slice(bounds[0],bounds[1])
         
         # Store upper indices for linear interpolation
