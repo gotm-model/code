@@ -1174,7 +1174,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             self.ncvarname = str(ncvarname)
             
         def __str__(self):
-            return self.store.datafile+'/'+self.ncvarname
+            return str(self.store)+'/'+self.ncvarname
 
         def getName_raw(self):
             return self.ncvarname
@@ -1568,13 +1568,16 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         
         if path is not None:
             if isinstance(path,(tuple,list,basestring)):
+                # Path to a NetCDF file is provided, or a list/tuple of paths.
                 self.load(path,*args,**kwargs)
             else:
+                # Open NetCDF file is provided.
                 self.nc = path
                 self.autoReassignCoordinates()
                 self.relabelVariables()
                 
     def __str__(self):
+        if self.datafile is None: return ''
         if isinstance(self.datafile,(list,tuple)): return ', '.join(self.datafile)
         return self.datafile
 
