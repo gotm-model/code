@@ -1,4 +1,4 @@
-import UserDict,datetime,types
+import UserDict,types
 import numpy
 import common
 
@@ -140,12 +140,11 @@ class LazyExpression(object):
             LazyExpression.globalfuncs['min' ].usefirstunit = True
             LazyExpression.globalfuncs['max' ].usefirstunit = True
             LazyExpression.globalfuncs['sum' ].usefirstunit = True
-            
+
             import functions
             for name in dir(functions):
                 LazyExpression.globalfuncs[name] = LazyExpression.NamedFunction(name,getattr(functions,name),useslices=True)
                 
-            LazyExpression.globalfuncs['datetime'] = LazyExpression.NamedFunction('datetime',datetime.datetime)
         return LazyExpression.globalfuncs
 
     @staticmethod
@@ -241,15 +240,31 @@ class LazyExpression(object):
     @staticmethod
     def argument2value(arg,slic=None,dataonly=False):
         if isinstance(arg,LazyExpression):
-            if arg.canprocessslice:
-                #if slic is not None: print 'Integrating %s in %s' % (slic,arg)
-                return arg.getValue(extraslices=slic,dataonly=dataonly)
+            dims = list(arg.getDimensions())
+            procslic = {}
+            if slic:
+                # Separate sliced dimensions in those that can be processed by the argument,
+                # and those that should be applied afterwards.
+                slic = dict(slic)
+                for idim in range(len(dims)-1,-1,-1):
+                    dim = dims[idim]
+                    if dim in slic and arg.canProcessSlice(dim):
+                        procslic[dim] = slic[dim]
+                        if not isinstance(slic[dim],slice): del dims[idim]
+                        del slic[dim]
+                    
+            # Obtain the data
+            if procslic:
+                res = arg.getValue(extraslices=procslic,dataonly=dataonly)
             else:
                 res = arg.getValue(dataonly=dataonly)
-                if slic is not None:
-                    slic = [slic.get(dim,slice(None)) for dim in arg.getDimensions()]
-                    res = res.__getitem__(slic)
-                return res
+                
+            # Apply remaining slices (if any)
+            if slic:
+                slic = [slic.get(dim,slice(None)) for dim in dims]
+                res = res.__getitem__(slic)
+                
+            return res
         elif isinstance(arg,tuple):
             return tuple([LazyExpression.argument2value(subarg,slic,dataonly) for subarg in arg])
         elif isinstance(arg,list):
@@ -288,8 +303,12 @@ class LazyExpression(object):
         self.args = args
         self.kwargs = kwargs
         
+    def canProcessSlice(self,dimension):
+        return self.canprocessslice
+        
     def debugPrint(self,indent=''):
         print indent+'%s, dims=(%s), shape=%s' % (str(self),','.join(self.getDimensions()),str(self.getShape()))
+        indent = ' '*len(indent)
         for arg in self.args:
             if isinstance(arg,LazyExpression):
                 arg.debugPrint(indent+'  ')
@@ -619,7 +638,7 @@ class LazyFunction(LazyOperation):
         data = self.func(*resolvedargs,**resolvedkwargs)
         
         # If no NumPy array is returned, do nothing
-        if dataonly or not isinstance(data,numpy.ndarray): return data
+        if dataonly or (not isinstance(data,numpy.ndarray)) or targetslice is None: return data
 
         # If the function has removed a dimension, make sure it is removed from the coordinate array as well.
         if self.removedim is not None: targetslice.removeDimension(self.removedim)
