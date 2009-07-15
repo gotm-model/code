@@ -1,4 +1,6 @@
-import common,expressions,datetime
+import common,expressions
+import datetime
+oridatetime = datetime
 import numpy
 
 class statistics(expressions.LazyFunction):
@@ -193,9 +195,12 @@ class interp(expressions.LazyFunction):
         for d in kwargs.iterkeys():
             assert d in dims, 'Dimension %s does not exist in original slice. Available dimensions: %s' % (d,', '.join(dims))
         self.usefirstunit = True
+        
+    def canProcessSlice(self,dimension):
+        return dimension not in self.kwargs
 
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
-        assert isinstance(resolvedargs[0],common.Variable.Slice),'The first argument to interpn must be a variable slice.'
+        assert isinstance(resolvedargs[0],common.Variable.Slice),'The first argument to interp must be a variable slice.'
         dataslice = resolvedargs[0]
         newslice = dataslice.interp(**resolvedkwargs)
         if dataonly: return newslice.data
@@ -297,3 +302,36 @@ class coorddelta(expressions.LazyFunction):
         if dataonly: return resolvedtarget.data
         return resolvedtarget
         
+class nspace(expressions.LazyFunction):
+    """Abstract base class for linspace/logspace.
+    """
+    def __init__(self,*args,**kwargs):
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,getattr(numpy,self.__class__.__name__),*args,**kwargs)
+    def getShape(self):
+        if 'num' in self.kwargs and isinstance(self.kwargs['num'],int):
+            return (self.kwargs['num'],)
+        elif len(self.args)>2 and isinstance(self.args[2],int):
+            return (self.args[2],)
+        elif len(self.args)<=2 and 'num' not in self.kwargs:
+            return (50,)
+        return self.getValue(dataonly=True).shape
+    def getDimensions(self):
+        return ('',)
+
+class linspace(nspace): pass
+class logspace(nspace): pass
+
+class arange(expressions.LazyFunction):
+    def __init__(self,*args,**kwargs):
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,getattr(numpy,self.__class__.__name__),*args,**kwargs)
+    def getShape(self):
+        return self.getValue(dataonly=True).shape
+    def getDimensions(self):
+        return ('',)
+
+class datetime(expressions.LazyFunction):
+    def __init__(self,*args,**kwargs):
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,oridatetime.datetime,*args,**kwargs)
+    def getValue(self,extraslices=None,dataonly=False):
+        val = expressions.LazyFunction.getValue(self,extraslices=extraslices,dataonly=dataonly)
+        return common.date2num(val)
