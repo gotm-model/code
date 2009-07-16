@@ -859,6 +859,7 @@ class Figure(xmlstore.util.referencedobject):
             defaultseriesnode['UseColorMap'].setValue(True)
             defaultseriesnode['EdgeColor'].setValue(xmlstore.datatypes.Color(0,0,0))
             defaultseriesnode['EdgeWidth'].setValue(1.)
+            defaultseriesnode['ArrowColor'].setValue(xmlstore.datatypes.Color(0,0,0))
             defaultseriesnode['ArrowPivot'].setValue('tail')
             defaultseriesnode['ArrowKey'].setValue(True)
             defaultseriesnode['ArrowKey/Label'].setValue('arrow')
@@ -1352,7 +1353,8 @@ class Figure(xmlstore.util.referencedobject):
                     pivot = seriesnode['ArrowPivot'].getValue(usedefault=True)
                     if C is None:
                         # Quiver without color values
-                        pc = drawaxes.quiver(X,Y,U,V,cmap=cm,norm=norm,scale=scale,pivot=pivot,width=width)
+                        arrowcolor = seriesnode['ArrowColor'].getValue(usedefault=True)
+                        pc = drawaxes.quiver(X,Y,U,V,color=arrowcolor.getNormalized(),scale=scale,pivot=pivot,width=width)
                     else:
                         # Quiver with color values
                         pc = drawaxes.quiver(X,Y,U,V,C,cmap=cm,norm=norm,scale=scale,pivot=pivot,width=width)

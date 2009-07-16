@@ -365,6 +365,12 @@
         </condition>
       </element>
 
+			<element name="ArrowColor" type="color" label="arrow color">
+				<condition type="and">
+					<condition type="eq" variable="./Type" value="3"/>
+					<condition type="eq" variable="./UseColorMap" value="False"/>
+				</condition>
+			</element>
 			<element name="ArrowScale" type="float" label="arrow scaling">
 				<condition type="eq" variable="./Type" value="3"/>
 			</element>
