@@ -308,16 +308,27 @@ class MultiNetCDFFile(object):
         def keys(self):
             return self.store.ncs[0].variables.keys()
 
-    def __init__(self,*args):
+    def __init__(self,*args,**kwargs):
         paths = []
         import glob
         for arg in args:
             paths += glob.glob(arg)
-
+            
+        # Functions for comparing two dictionaries, capable of
+        # dealing with elements that are numpy arrays.
+        def cmpattributes(atts1,atts2):
+            match = set(atts1.iterkeys())==set(atts2.iterkeys())
+            if not match: return False
+            for k in atts1.iterkeys():
+                match = atts1[k]==atts2[k]
+                if hasattr(match,'all'): match = match.all() 
+                if not match: return False
+            return True
+                    
         # Open NetCDF files.
         self.ncs = [getNetCDFFile(path) for path in paths]
                 
-        # Get list of all dimensions and variables.
+        # Get list of all dimensions and variables (unions over all files).
         dims,vars = set(),set()
         for nc in self.ncs:
             dims.update(nc.dimensions.keys())
@@ -326,37 +337,53 @@ class MultiNetCDFFile(object):
         # Check if all files use all dimensions and variables.
         # For variables, also check if the variable attributes are identical everywhere.
         dim2coords,var2attr = {},{}
-        self.variabledim = None
+        self.variabledim = kwargs.get('dimension',None)
         for nc,path in zip(self.ncs,paths):
+            # Check variables
             for var in vars:
+                # Check for presence of variable.
                 assert var in nc.variables,'Variable %s does not appear in in "%s". For multiple NetCDF files to be loaded as one single file, they must all contain the same variables.' % (var,path)
+                
+                # Compare attributes
                 ncvar = nc.variables[var]
                 atts = dict([(k,getattr(ncvar,k)) for k in getNcAttributes(ncvar)])
                 if var not in var2attr:
                     var2attr[var] = atts
                 else:
-                    refatts = var2attr[var]
-                    match = set(atts.keys())==set(refatts.keys())
-                    if match:
-                        for k in atts.iterkeys():
-                            match = atts[k]==refatts[k]
-                            if hasattr(match,'all'): match = match.all() 
-                            if not match: break
-                    assert match,'Current attributes of variable "%s" (%s) do not match its attributes in one of the other NetCDF files (%s).' % (var,atts,var2attr[var])
+                    assert cmpattributes(atts,var2attr[var]),'Current attributes of variable "%s" (%s) do not match its attributes in one of the other NetCDF files (%s).' % (var,atts,var2attr[var])
+                    
+            # Check dimensions
             for dim in dims:
+                # Check for presence of dimension in dimensions and coordinate variables.
                 assert dim in nc.dimensions,'Dimension %s is missing in "%s". For multiple NetCDF files to be loaded as one single file, all must use the same dimensions.' % (dim,path)
-                assert dim in nc.variables,'Dimension %s does not have an associated coordinated variable in "%s". For multiple NetCDF files to be loaded as one single file, all dimensions must be accompanied by a coordinate variable.' % (dim,path)
+
+                # If no coordinate values are available, just continue with the next dimension.
+                # (we will not be able to determine the file order, so we xcept the given order)
+                if dim not in nc.variables: continue
+                
+                # Compare coordinate values.
                 coord = getNcData(nc.variables[dim])
                 if dim not in dim2coords:
                     dim2coords[dim] = coord
                 else:
                     if self.variabledim!=dim and (dim2coords[dim].shape!=coord.shape or (dim2coords[dim]!=coord).any()):
+                        # These coordinates vary between files - make sure this is the only dimension that differs.
                         assert self.variabledim is None,'More than one dimension (%s, %s) varies between files.' % (self.variabledim,dim)
                         self.variabledim = dim
+                        
+        # Make sure that the values of one dimension vary between files.
         assert self.variabledim is not None, 'All dimensions have the same coordinates in the supplied files. One dimension should differ between files in order for them to be loaded as a single file.'
                         
-        self.ncs.sort(cmp=lambda x,y: cmp(x.variables[self.variabledim][0],y.variables[self.variabledim][0]))
+        # Sort NetCDF files based on their values for the varying dimension.
+        # Only works if we have the cooridnate values for all files.
+        nc2coords = {}
+        for nc in self.ncs:
+            if self.variabledim in nc.variables: nc2coords[nc] = nc.variables[self.variabledim][0]
+        if len(nc2coords)==len(self.ncs):
+            self.ncs.sort(cmp=lambda x,y: cmp(nc2coords[x],nc2coords[y]))
         
+        # Determine the length of all dimensions in the merged file, and
+        # determine the overlap (if any) between the different files.
         self.dim2length = dict([(k,len(v)) for k,v in dim2coords.iteritems()])
         self.dim2length[self.variabledim] = 0
         self.overlaps = []
@@ -371,6 +398,7 @@ class MultiNetCDFFile(object):
             lastcoord = curcoord
         
     def ncattrs(self):
+        # Just return the NetCDF attributes of the first file.
         return getNcAttributes(self.ncs[0])
 
     def __getattr__(self,name):
@@ -378,11 +406,15 @@ class MultiNetCDFFile(object):
             return self.dim2length
         elif name=='variables':
             return MultiNetCDFFile.Variables(self)
+            
+        # Request for a custom attribute - loop over all NetCDF files until it is found.
         for nc in self.ncs:
             if hasattr(nc,name): return getattr(nc,name)
+            
         raise AttributeError(name)
         
     def close(self):
+        # Close all NetCDf files.
         for nc in self.ncs: nc.close()
         self.ncs = []
 
@@ -1438,7 +1470,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           bounds = self.translateSliceSpecification(bounds)
           
           # Retrieve the data values
-          if cache and numpy.prod(self.getShape())<1000000:
+          n = 1L
+          for l in self.getShape(): n *= l
+          if cache and n<1000000:
               # Take all data from cache if present, otherwise read all data from NetCDF and store it in cache first.
               if self.ncvarname not in self.store.cachedcoords:
                   self.store.cachedcoords[self.ncvarname] = self.getNcData()
