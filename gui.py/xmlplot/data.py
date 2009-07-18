@@ -1,5 +1,5 @@
 # Import modules from standard Python library
-import os, sys, re, datetime, shutil, StringIO, types, UserDict
+import os, sys, re, datetime, shutil, StringIO, types, UserDict, glob
 
 # Import additional third party modules
 import numpy
@@ -8,6 +8,11 @@ import numpy
 import common, xmlstore.util, xmlstore.xmlstore
 
 def openNetCDF(path,mode='r'):
+    # Test if the path contains wildcard, and resolves to multiple files.
+    # If so, we will try to combine these files.
+    paths = glob.glob(path)
+    if len(paths)>1: path = paths
+    
     if isinstance(path,basestring):
         return getNetCDFFile(path,mode)
     else:
@@ -310,7 +315,6 @@ class MultiNetCDFFile(object):
 
     def __init__(self,*args,**kwargs):
         paths = []
-        import glob
         for arg in args:
             paths += glob.glob(arg)
             
