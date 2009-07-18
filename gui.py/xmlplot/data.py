@@ -335,8 +335,13 @@ class MultiNetCDFFile(object):
                 if var not in var2attr:
                     var2attr[var] = atts
                 else:
-                    match = var2attr[var]==atts
-                    if hasattr(match,'all'): match = match.all() 
+                    refatts = var2attr[var]
+                    match = set(atts.keys())==set(refatts.keys())
+                    if match:
+                        for k in atts.iterkeys():
+                            match = atts[k]==refatts[k]
+                            if hasattr(match,'all'): match = match.all() 
+                            if not match: break
                     assert match,'Current attributes of variable "%s" (%s) do not match its attributes in one of the other NetCDF files (%s).' % (var,atts,var2attr[var])
             for dim in dims:
                 assert dim in nc.dimensions,'Dimension %s is missing in "%s". For multiple NetCDF files to be loaded as one single file, all must use the same dimensions.' % (dim,path)
