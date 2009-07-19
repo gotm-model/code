@@ -1,11 +1,28 @@
 # Import modules from standard Python (>= 2.4) library
-import datetime, sys
+import datetime, sys, cPickle, StringIO
 
 # Import third-party modules
 from PyQt4 import QtGui,QtCore
 
 # Import our own custom modules
 import xmlstore,util,datatypes
+
+def find_global(module,name):
+    import sys
+    return getattr(sys.modules[module],name)
+
+def dumps(obj):
+    stream = StringIO.StringIO()
+    p = cPickle.Pickler(stream,-1)
+    #setattr(p,'find_global',find_global)
+    p.dump(obj)
+    return stream.getvalue()
+
+def loads(self,string):
+    stream = StringIO.StringIO(string)
+    p = cPickle.Unpickler(stream)
+    setattr(p,'find_global',find_global)
+    return p.load()
 
 def needCloseButton():
     """Whether to add a close button to Qt4 windows.
@@ -36,6 +53,19 @@ def getEditors():
                    'duration':DurationEditor,
                    'color'   :ColorEditor}
     return editors
+
+def getEditor(name):
+    edts = getEditors()
+    if name not in edts and name.startswith('array(') and name.endswith(')'):
+        # This is an array data type. Build a suitable editor class on the spot.
+        basename = name[6:-1]
+        baseclass = getEditor(basename)
+        if baseclass is None: return None
+        valueclass = xmlstore.datatypes.get(name)
+        
+        # Create a new class for this array type and cache it for future use.
+        edts[name] = type('Array'+baseclass.__name__,(ArrayEditor,),{'elementeditorclass':baseclass,'elementname':basename,'valueclass':valueclass})
+    return edts.get(name,None)
              
 def createEditor(node,parent=None,selectwithradio=False,**kwargs):
     """Returns an editor for the specified TypedStore node, as child of the supplied
@@ -43,18 +73,27 @@ def createEditor(node,parent=None,selectwithradio=False,**kwargs):
     """
     assert isinstance(node,xmlstore.Node), 'First argument to createEditor must be of type node.'
     assert parent is None or isinstance(parent,QtGui.QWidget), 'If a parent is supplied to createEditor, it must derive from QWidget.'
-    editorclass = getEditors().get(node.getValueType(),None)
-    assert editorclass is not None, 'No editor available for node of type "%s".' % node.getValueType()
+    if 'editorclass' in kwargs:
+        editorclass = kwargs.pop('editorclass')
+    else:
+        editorclass = getEditor(node.getValueType())
+        assert editorclass is not None, 'No editor available for node of type "%s".' % node.getValueType()
+        
     if issubclass(editorclass,AbstractSelectEditor) or not node.templatenode.hasAttribute('hasoptions'):
-        return editorclass(parent,node,**kwargs)
+        editor = editorclass(parent,node,**kwargs)
     else:
         if selectwithradio:
-            return SelectEditorRadio(parent,node,**kwargs)
+            editor = SelectEditorRadio(parent,node,**kwargs)
         else:
             lineedit = None
             if node.templatenode.hasAttribute('editable'): lineedit = editorclass(parent,node,**kwargs)
             assert lineedit is None or isinstance(lineedit,QtGui.QLineEdit), 'Editor class must derive from QLineEdit.'
-            return SelectEditor(parent,node,lineedit=lineedit,**kwargs)
+            editor = SelectEditor(parent,node,lineedit=lineedit,**kwargs)
+            
+    if editor is not None and hasattr(editor,'separate'):
+        editor = PrivateWindowEditor(node,editor,parent)
+        
+    return editor
              
 def registerEditor(typename,editorclass):
     """Registers an editor class for a user-defined data type.
@@ -81,16 +120,20 @@ class AbstractPropertyEditor(object):
     def value(self):
         pass
     def editingFinished(self,*args,**kwargs):
-        self.emit(QtCore.SIGNAL('propertyEditingFinished()'))
+        self.emit(QtCore.SIGNAL('propertyEditingFinished(QObject&,bool)'),self,kwargs.get('forceclose',False))
            
     # Optional (static) methods that classes should implement if the value can
     # be represented by a QtCore.QVariant object.
     @staticmethod
     def convertFromQVariant(value):
-        raise Exception('Class does not support conversions from QVariant.')
+        #return value.toPyObject()
+        return loads(value.toString())
+
     @staticmethod
     def convertToQVariant(value):
-        raise Exception('Class does not support conversions from QVariant.')
+        #return QtCore.QVariant(value)
+        return QtCore.QVariant(dumps(value))
+
     @staticmethod
     def displayValue(delegate,painter,option,index):
         QtGui.QItemDelegate.paint(delegate,painter,option,index)
@@ -346,8 +389,11 @@ class DateTimeEditor(AbstractPropertyEditor,QtGui.QDateTimeEdit):
         return qtdatetime2datetime(value)
 
     def setValue(self,value):
-        if value is None: value = QtCore.QDateTime()
-        self.setDateTime(datetime2qtdatetime(value))
+        if value is None:
+            value = QtCore.QDateTime()
+        else:
+            value = datetime2qtdatetime(value)
+        self.setDateTime(value)
 
     @staticmethod
     def convertFromQVariant(value):
@@ -669,6 +715,29 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
                 ColorEditor.color2name[(c.red(),c.green(),c.blue())] = cn
         coltup = (value.red,value.green,value.blue)
         return ColorEditor.color2name.get(coltup,'custom')
+
+class PrivateWindowEditor(QtGui.QWidget,AbstractPropertyEditor):
+    def __init__(self,node,editor,parent=None):
+        QtGui.QWidget.__init__(self,parent)
+        self.node = node
+        self.editor = editor
+
+    def setValue(self,value=None):
+        return self.editor.setValue(value)
+        
+    def value(self):
+        return self.editor.value()
+        
+    def showEvent(self,ev):
+        dialog = QtGui.QDialog(self)
+        dialog.setWindowTitle(self.node.getText(detail=1))
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(self.editor)
+        dialog.setLayout(layout)
+        
+        ret = dialog.exec_()
+        self.editingFinished(forceclose=True)
+        dialog.destroy()
         
 # =======================================================================
 # PropertyDelegate: a Qt delegate used to create editors for property
@@ -702,8 +771,14 @@ class PropertyDelegate(QtGui.QItemDelegate):
 
         # Install event filter that captures key events for view from the editor (e.g. return press).
         editor.installEventFilter(self)
+        self.connect(editor,QtCore.SIGNAL('propertyEditingFinished(QObject&,bool)'),self.editingFinished)
         
         return editor
+        
+    def editingFinished(self,editor,forceclose):
+        if not forceclose: return
+        self.emit(QtCore.SIGNAL('commitData(QWidget*)'),editor)
+        self.emit(QtCore.SIGNAL('closeEditor(QWidget*,QAbstractItemDelegate::EndEditHint)'),editor,QtGui.QAbstractItemDelegate.NoHint)
         
     def paint(self,painter,option,index):
         """Paints the current value for display (not editing!)
@@ -712,8 +787,9 @@ class PropertyDelegate(QtGui.QItemDelegate):
         node = index.internalPointer()
         if index.column()==1 and node.canHaveValue():
             fieldtype = node.getValueType()
-            dt = getEditors()
-            dt.get(fieldtype,AbstractPropertyEditor).displayValue(self,painter,option,index)
+            editorclass = getEditor(fieldtype)
+            if editorclass is None: editorclass = AbstractPropertyEditor
+            editorclass.displayValue(self,painter,option,index)
         else:
             QtGui.QItemDelegate.paint(self,painter,option,index)
             
@@ -742,7 +818,140 @@ class PropertyDelegate(QtGui.QItemDelegate):
         # That would disable clean-up, so we do it here explicitly.
         editor.hide()
         editor.destroy()
+          
+class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
+    separate = True
+        
+    class Delegate(PropertyDelegate):
+        """Property delegate that uses the official index.data() to obtain
+        the current value, and model.setData(index,value) to set the value.
+        
+        This works only for data types that support conversion to/from QVariant,
+        which excludes generic Python objects in PyQt <4.5.
+        
+        When we can safely expect the user base to use PyQt4 >=4.5, we can insert
+        the overridden methods in this class into the original PropertyDelegate.
+        """
+        
+        def setEditorData(self, editor,index):
+            value = index.data(QtCore.Qt.EditRole)
+            if value.isValid():
+                value = self.properties['editorclass'].convertFromQVariant(value)
+            else:
+                value = None
+            editor.setValue(value)
+            if isinstance(value,util.referencedobject): value.release()
 
+        def setModelData(self, editor, model, index):
+            value = editor.value()
+            if value is None:
+                value = QtCore.QVariant()
+            else:
+                value = self.properties['editorclass'].convertToQVariant(value)
+            model.setData(index,value)
+            if isinstance(value,util.referencedobject): value.release()
+                
+            # Below we clean up the editor ourselves. Qt would normally take
+            # care of that, but for our own editors that live partially in
+            # Python the Qt4/PyQt4 destructor fails to call the Python destroy.
+            # That would disable clean-up, so we do it here explicitly.
+            editor.hide()
+            editor.destroy()      
+
+        def paint(self,painter,option,index):
+            self.properties['editorclass'].displayValue(self,painter,option,index)
+        
+    class Model(QtCore.QAbstractItemModel):
+        def __init__(self,data,node,editorclass):
+            QtCore.QAbstractItemModel.__init__(self)
+            if data is None: data = []
+            def convert(arr):
+                res = []
+                for e in arr:
+                    if isinstance(e,(list,tuple)):
+                        e = convert(e)
+                    elif isinstance(e,xmlstore.datatypes.DataTypeArray.EmptyDataType):
+                        e = None
+                    res.append(e)
+                return res
+            self.arraydata = convert(data)
+            self.editorclass = editorclass
+            self.node = node
+            
+        def index(self,irow,icolumn,parent=None):
+            if parent is None: parent = QtCore.QModelIndex()
+            assert not parent.isValid(), 'Only the root can have child nodes.'
+            return self.createIndex(irow,icolumn,self.node)
+
+        def parent(self,index):
+            return QtCore.QModelIndex()
+            
+        def rowCount(self,parent=None):
+            if parent is None: parent = QtCore.QModelIndex()
+            
+            # Only the root node has children - return 0 rows if this is not the root.
+            if parent.isValid(): return 0
+            return len(self.arraydata)
+
+        def columnCount(self,parent=None):
+            if parent is None: parent = QtCore.QModelIndex()
+
+            # Only the root node has children - return 0 rows if this is not the root.
+            if parent.isValid(): return 0
+            if not self.arraydata: return 0
+            
+            if isinstance(self.arraydata[0],(tuple,list)): return len(self.arraydata[0])
+            return 1
+
+        def data(self,index,role=QtCore.Qt.DisplayRole):
+            if role==QtCore.Qt.DisplayRole or role==QtCore.Qt.EditRole:
+                irow = index.row()
+                val = self.arraydata[irow]
+                if isinstance(val,(tuple,list)):
+                    icol = index.column()
+                    val = val[icol]
+                if val is None: return QtCore.QVariant()
+                return self.editorclass.convertToQVariant(val)
+                
+            return QtCore.QVariant()
+            
+        def setData(self,index,value,role=QtCore.Qt.EditRole):
+            if role!=QtCore.Qt.EditRole: return
+            if not value.isValid():
+                value = None
+            else:
+                value = self.editorclass.convertFromQVariant(value)
+            irow = index.row()
+            if isinstance(self.arraydata[irow],(tuple,list)):
+                icol = index.column()
+                self.arraydata[irow][icol] = value
+            else:
+                self.arraydata[irow] = value
+
+        def flags(self,index):
+            return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
+            
+    def __init__(self,parent,node,**kwargs):
+        QtGui.QTableView.__init__(self,parent)
+        self.setItemDelegate(self.Delegate(self,editorclass=self.elementeditorclass,**kwargs))
+        self.node = node
+        self.datamodel = None
+                
+    def value(self):
+        return self.datamodel.arraydata
+
+    def setValue(self,value=None):
+        if value is None:
+            shape = self.node.templatenode.getAttribute('shape')
+            if shape!='':
+                shape = map(int,shape.split(','))
+                def makeEmptyArray(s):
+                    if len(s)==1: return [None]*s[0]
+                    return [makeEmptyArray(s[1:])]*s[0]
+                value = makeEmptyArray(shape)
+        self.datamodel = self.Model(value,self.node,self.elementeditorclass)
+        self.setModel(self.datamodel)
+        
 # =======================================================================
 # TypedStoreModel: a Qt item model that encapsulates TypedStore
 # =======================================================================
@@ -930,10 +1139,10 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             elif role==QtCore.Qt.EditRole:
                 value = node.getValue(usedefault=True)
                 if value is None: return QtCore.QVariant()
-                dt = getEditors()
-                assert fieldtype in dt, 'No editor class defined for data type "%s".' % fieldtype
-                result = dt[fieldtype].convertToQVariant(value)
-                if isinstance(value,util.referencedobject): value.release()
+                editorclass = getEditor(fieldtype)
+                assert editorclass is not None, 'No editor class defined for data type "%s".' % fieldtype
+                result = editorclass.convertToQVariant(value)
+                #if isinstance(value,util.referencedobject): value.release()
                 return result
             else:
                 assert False, 'Don\'t know how to handle role %s.' % role
@@ -974,9 +1183,9 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             # Convert the supplied QVariant to the node data type,
             # set the node value, and release the value object if applicable.
             fieldtype = node.getValueType()
-            dt = getEditors()
-            assert fieldtype in dt, 'No editor class defined for data type "%s".' % fieldtype
-            value = dt[fieldtype].convertFromQVariant(value)
+            editorclass = getEditor(fieldtype)
+            assert editorclass is not None, 'No editor class defined for data type "%s".' % fieldtype
+            value = editorclass.convertFromQVariant(value)
             node.setValue(value)
             if isinstance(value,util.referencedobject): value.release()
 
@@ -1649,7 +1858,7 @@ class PropertyEditor(object):
         """
         self.changehandlers.append(callback)
 
-    def onChange(self):
+    def onChange(self,*args,**kwargs):
         """Called internally after the value in the editor has changed.
         Dispatches the change event to the attached event handlers (if any).
         """
@@ -1678,7 +1887,7 @@ class PropertyEditor(object):
         else:
             # Create a normal editor that derives from AbstractPropertyEditor
             editor = createEditor(node,parent,**kwargs)
-            editor.connect(editor, QtCore.SIGNAL('propertyEditingFinished()'), self.onChange)
+            editor.connect(editor, QtCore.SIGNAL('propertyEditingFinished(QObject&,bool)'), self.onChange)
             
         # Add what's-this information.
         if whatsthis and isinstance(editor,QtGui.QWidget):

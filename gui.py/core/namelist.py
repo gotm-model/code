@@ -69,18 +69,21 @@ class Namelist(object):
         while ipos<len(self.data):
             ch = self.data[ipos]
             if ch.isspace():
+                # Skip whitespace
                 ipos += 1
             elif ch in '"\'(':
-                closer = ch
-                if ch=='(': closer = ')'
-                iend = self.data.find(ch,ipos+1)
-                if iend==-1: raise Exception('Opening %s is not matched by closing %s.' % (ch,closer))
+                # Character-delimited string or list
+                closech = {'(':')'}.get(ch,ch)
+                iend = self.data.find(closech,ipos+1)
+                if iend==-1: raise Exception('Opening %s is not matched by closing %s.' % (ch,closech))
                 items.append(self.data[ipos:iend+1])
                 ipos = iend+1
             elif ch in '*=,':
+                # Operator
                 items.append(ch)
                 ipos += 1
             elif ch.isalnum() or ch in '._-+':
+                # Identifier or non-quoted value
                 iend = ipos+1
                 while iend<len(self.data) and (self.data[iend].isalnum() or self.data[iend] in '._-+'): iend+=1
                 items.append(self.data[ipos:iend])
@@ -97,9 +100,14 @@ class Namelist(object):
         while items:
             varname = items.pop(0)
             equals = items.pop(0)
+            if equals.startswith('(') and equals.endswith(')'):
+                slic = equals[1:-1]
+                equals = items.pop(0)
+            else:
+                slic = None
             if equals!='=': raise Exception('Equals sign (=) excepted after variable name %s.' % varname)
             values,valuerequired = [],True
-            while items and (len(items)==1 or items[1]!='='):
+            while items and not (len(items)>1 and items[1]=='=') and not (len(items)>2 and items[1][:1]=='(' and items[1][-1:]==')' and items[2]=='='):
                 value = items.pop(0)
                 if value==',':
                     # Field separator - ignore if a value preceded it, otherwise interpret it as null value.
@@ -117,7 +125,7 @@ class Namelist(object):
                     values.append(value)
                     valuerequired = False
             if len(values)==1: values = values[0]
-            self.assignments.append((varname,values))
+            self.assignments.append((varname,slic,values))
 
     def __iter__(self):
         return self

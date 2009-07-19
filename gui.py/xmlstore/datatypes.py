@@ -9,15 +9,16 @@ def register(name,datatype):
     types[name] = datatype
 
 def get(name):
-    if name in types:
-        return types[name]
-    elif name.startswith('array(') and name.endswith(')'):
+    if name not in types and name.startswith('array(') and name.endswith(')'):
         # This is an array data type. Build a suitable class on the spot.
-        base = get(name[6:-1])
-        if base is None: return None
-        types[name] = type('Array'+base.__name__,(DataTypeArray,),{'elementclass':base})
-        return types[name]
-    return None
+        basename = name[6:-1]
+        baseclass = get(basename)
+        if baseclass is None: return None
+        
+        # Create a new class for this array type and cache it for future use.
+        classname = 'Array'+baseclass.__name__
+        types[name] = type(classname,(DataTypeArray,),{'elementclass':baseclass,'elementname':basename})
+    return types.get(name,None)
 
 class DataType(object):
     """Abstract class for user data types. Derived classes must implement
@@ -79,22 +80,23 @@ class DataTypeArray(DataType,list):
         def toNamelistString(self,context,template=None):
             return ''
 
-    def __init__(self,data):
+    def __init__(self,data=None,template=None):
         DataType.__init__(self)
         list.__init__(self)
-        def convert(arr):
-            newdat = []
-            for e in arr:
-                if e is None:
-                    newdat.append(DataTypeArray.EmptyDataType())
-                elif isinstance(e,(list,tuple)):
-                    newdat.append(convert(e))
-                elif not isinstance(e,self.elementclass):
-                    newdat.append(self.elementclass(e))
-                else:
-                    newdat.append(e)
-            return newdat
-        self += convert(data)
+        
+        # Determine shape if available - this will force the array in the right shape.
+        shape = None
+        if template is not None and template.hasAttribute('shape'):
+            shape = template.getAttribute('shape').split(',')
+            
+        # Make sure the data is "clean" - i.e., it contains the right types, has the right shape, etc.
+        cleandata = self.getSafeValue(data,recursive=True,shape=shape)
+
+        # If the provided data consists of a scalar, encapsulate it with a list (ourselves).
+        if isinstance(cleandata,(list,tuple)):
+            self.extend(cleandata) 
+        else:
+            self.append(cleandata)
     
     @classmethod
     def load(ownclass,node,context,template=None):
@@ -107,14 +109,37 @@ class DataTypeArray(DataType,list):
             if not childvals: childvals = ownclass.elementclass.load(n,context,template)
             return childvals
             
-        return ownclass(getElements(node))
+        return ownclass(getElements(node),template=template)
+        
+    def getSafeValue(self,value,recursive=False,shape=None):
+        # If an iterable is required but a scalar is provided, encapsulate the scalar by a list.
+        if shape and not isinstance(value,(list,tuple)): value = [value]
+        
+        if value is None:
+            # None is cast to EmptyDataType (which knows how to do conversions to/from strings, etc.)
+            return DataTypeArray.EmptyDataType()
+        elif recursive and isinstance(value,(list,tuple)):
+            # Recursively check the iterable, making sure the shape constraints (if any) are respected.
+            assert shape is None or len(shape)>0, 'Data consists of an array (%s), but a scalar was expected (prescribed by the array shape).' % str(value)
+            n,childshape = len(value),None
+            if shape is not None and shape[0]!=':': n,childshape = int(shape[0]),shape[1:]
+            result = []
+            for i in range(n):
+                childvalue = None
+                if i<len(value): childvalue = value[i]
+                result.append(self.getSafeValue(childvalue,True,childshape))
+            return result
+        elif not isinstance(value,(list,tuple,self.elementclass,DataTypeArray.EmptyDataType)):
+            # Neither a missing value nor an iterable - cast it to the right (scalar) data type.
+            return self.elementclass(value)
+        return value
 
     def save(self,node,context):
         xmldocument = node
         while xmldocument.parentNode is not None: xmldocument = xmldocument.parentNode
         assert xmldocument.nodeType==xmldocument.DOCUMENT_NODE, 'Could not find DOM document node. Node "%s" does not have a parent.' % xmldocument.tagName
 
-        for ch in node.childNodes:
+        for ch in reversed(node.childNodes):
             node.removeChild(ch)
             ch.unlink()
         def storeElements(elements,targetnode):
@@ -124,7 +149,7 @@ class DataTypeArray(DataType,list):
                 if isinstance(e,(list,tuple)):
                     storeElements(e,ch)
                 else:
-                    e.save(ch,context)
+                    self.getSafeValue(e).save(ch,context)
         storeElements(self,node)
 
     def preparePersist(self,node,context):
@@ -133,7 +158,7 @@ class DataTypeArray(DataType,list):
                 if isinstance(e,(list,tuple)):
                     preparePersistElements(e,ch)
                 else:
-                    e.preparePersist(ch,context)
+                    self.getSafeValue(e).preparePersist(ch,context)
         preparePersistElements(self,node)
 
     def persist(self,node,context):
@@ -142,7 +167,7 @@ class DataTypeArray(DataType,list):
                 if isinstance(e,(list,tuple)):
                     persistElements(e,ch)
                 else:
-                    e.persist(ch,context)
+                    self.getSafeValue(e).persist(ch,context)
         persistElements(self,node)
         
     def validate(self,templatenode,callback=None):
@@ -151,7 +176,7 @@ class DataTypeArray(DataType,list):
                 if isinstance(e,(list,tuple)):
                     if not validateElements(e,ch): return False
                 else:
-                    if not e.validate(templatenode,callback): return False
+                    if not self.getSafeValue(e).validate(templatenode,callback): return False
             return True
         return validateElements(self)
         
@@ -162,36 +187,78 @@ class DataTypeArray(DataType,list):
                 if isinstance(e,(list,tuple)):
                     strings.append(toPrettyStringElements(e))
                 else:
-                    strings.append(e.toPrettyString())
+                    strings.append(self.getSafeValue(e).toPrettyString())
             return '['+','.join(strings)+']'
         return toPrettyStringElements(self)
 
     def toNamelistString(self,context,template=None):
         # First try to get the intended shape of the array (if specified)
         # We will make sure not to write out more values that the array should contain.
-        n = None
-        if template is not None and template.hasAttribute('shape'):
-            n = int(template.getAttribute('shape'))
+        assert template is not None,'Arrays can only be written to namelists if the template node with metadata is provided.'
+        assert template.hasAttribute('shape'),'Arrays can only be written to namelists if the "shape" attribute on the template node is specified.'
+                
+        def makeAssignment(values,shape,inds):
+            result = []
+            if len(shape)>1:
+                for i,value in enumerate(values):
+                    result += makeAssignment(value,shape[1:],inds+[i+1])
+            else:
+                strings = []
+                for value in values:
+                    strings.append(self.getSafeValue(value).toNamelistString(context,template))
+                result.append((','.join(map(str,inds)+[':']),','.join(strings)))
+            return result
             
-        strings = []
-        for e in self:
-            assert not isinstance(e,(list,tuple)), 'Only 1D arrays can be saved to FORTRAN namelists.'
-            strings.append(e.toNamelistString(context,template))
-            if n is not None and len(strings)==n: break
-        return ','.join(strings)
+        shape = template.getAttribute('shape').split(',')
+        cleandata = self.getSafeValue(self,recursive=True,shape=shape)
+        return makeAssignment(cleandata,shape,[])
 
     @classmethod
     def fromNamelistString(ownclass,strings,context,template=None):
         if not isinstance(strings,(list,tuple)): strings = [strings]
         if template is not None and template.hasAttribute('shape'):
-            n = int(template.getAttribute('shape'))
+            shape = template.getAttribute('shape').split(',')
+            assert len(shape)==1,'Cannot directly assign values to arrays with more than 1 dimension in namelists (assign to 1D array subsets instead).'
+            n = int(shape[0])
             if len(strings)<n: strings += [None]*(n-len(strings))
             strings = strings[:n]
         data = []
         for item in strings:
             if item is not None: item = ownclass.elementclass.fromNamelistString(item,context,template)
             data.append(item)
-        return ownclass(data)
+        return ownclass(data,template=template)
+        
+    def setItemFromNamelist(self,slic,strings,context,template=None):
+        assert template.hasAttribute('shape'),'Can only assign to subsection of arrays if their shape is explicitly specified through the "shape" attribute.'
+        shape = template.getAttribute('shape').split(',')
+        inds = slic.split(',')
+        assert len(inds)==len(shape),'Number of indexed dimensions (%s) does not match array shape (%s).' % (','.join(inds),','.join(shape))
+
+        # Convert strings to data values of the right type.
+        data = []
+        if not isinstance(strings,(list,tuple)): strings = (strings,)
+        for item in strings:
+            if item is not None: item = self.elementclass.fromNamelistString(item,context,template)
+            data.append(item)
+        
+        def assign(root,inds,vals):
+            if inds[0]==':':
+                if not isinstance(vals,(list,tuple)): vals=[vals]
+                overlap = min(len(root),len(vals))
+                if len(inds)==1:
+                    for i in range(overlap):
+                        if vals[i] is not None and not isinstance(vals[i],DataTypeArray.EmptyDataType): root[i] = vals[i]
+                else:
+                    for i in range(overlap): assign(root[i],inds[1:],vals[i])
+            else:
+                i = int(inds[0])-1
+                if len(inds)==1:
+                    if isinstance(vals,(list,tuple)): vals=vals[0]
+                    root[i] = vals
+                else:
+                    assign(root[i],inds[1:],vals)
+                
+        assign(self,inds,data)            
         
 class DataTypeSimple(DataType):
     """Data type that can be completely represented by a single string.

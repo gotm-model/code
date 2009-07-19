@@ -235,7 +235,7 @@ class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
         ret = dialog.exec_()
         if ret == QtGui.QDialog.Accepted:
             self.linkedfile = dialog.linkedfile
-            self.editingFinished()
+            self.editingFinished(forceclose=True)
         dialog.destroy()
             
     def destroy(self):

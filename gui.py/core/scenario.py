@@ -118,6 +118,8 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                         continue
                     else:
                         raise namelist.NamelistParseException('Namelist file "%s" is not present.' % fullnmlfilename,None,None,None)
+                        
+                # Obtain the namelist file, open it, parse it, and close it.
                 df = nmlcontainer.getItem(fullnmlfilename)
                 df_file = df.getAsReadOnlyFile()
                 nmlfile = namelist.NamelistFile(df_file,cursubs)
@@ -134,9 +136,10 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                     # Parse the next namelist.
                     nmlist = nmlfile.parseNextNamelist(expectedlist=listname)
 
+                    # Index of next expected child node [used only in "strict" parsing mode]
                     childindex = 0
 
-                    for (foundvarname,vardata) in nmlist:
+                    for (foundvarname,slic,vardata) in nmlist:
 
                         if strict:
                             # Strict parsing: all variables must appear once and in predefined order.
@@ -149,20 +152,29 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                             childindex += 1
                         else:
                             # Loose parsing: variables can appear multiple times or not at all, and do not need to appear in order.
+                            # This is how FORTRAN operates.
                             for listchild in filechild.children:
                                 varname = listchild.getId()
                                 if varname.lower()==foundvarname.lower(): break
                             else:
                                 raise namelist.NamelistParseException('Encountered variable "%s", which should not be present in this namelist.' % (foundvarname,),fullnmlfilename,listname,varname)
                                 
+                        # If no value was provided, skip to the next assignment.
                         if vardata is None: continue
 
                         # Retrieve the value (in the correct data type) from the namelist string.
                         vartype = listchild.getValueType(returnclass=True)
-                        try:
-                            val = vartype.fromNamelistString(vardata,datafilecontext,listchild.templatenode)
-                        except Exception,e:
-                            raise namelist.NamelistParseException('%s' % e,fullnmlfilename,listname,varname)
+                        if slic is None:
+                            # No slice specification - assign to entire variable.
+                            try:
+                                val = vartype.fromNamelistString(vardata,datafilecontext,listchild.templatenode)
+                            except Exception,e:
+                                raise namelist.NamelistParseException('%s Variable data: %s' % (e,vardata),fullnmlfilename,listname,varname)
+                        else:
+                            # Slice specification provided - assign to subset of variable.
+                            val = listchild.getValue()
+                            if val is None: val = vartype(template=listchild.templatenode)
+                            val.setItemFromNamelist(slic,vardata,datafilecontext,listchild.templatenode)
 
                         # Transfer the value to the store.
                         listchild.setValue(val)
@@ -171,6 +183,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                         if isinstance(val,xmlstore.util.referencedobject):
                             val.release()
                         
+                    # If we are in "strict" mode, check if there are any remaining variables that were not assigned to.
                     if strict and childindex<len(filechild.children):
                         lcnames = ['"%s"' % lc.getId() for lc in filechild.children[childindex:]]
                         raise namelist.NamelistParseException('Variables %s are missing' % ', '.join(lcnames),fullnmlfilename,listname,None)
@@ -262,7 +275,11 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                                     if allowmissingvalues or listchild.isHidden(): continue
                                     raise Exception('Value for variable "%s" in namelist "%s" not set.' % (varname,listname))
                                 varstring = varval.toNamelistString(context,listchild.templatenode)
-                                nmlfile.write('   '+varname+' = '+varstring+',\n')
+                                if isinstance(varstring,(list,tuple)):
+                                    for ind,value in varstring:
+                                        nmlfile.write('   %s(%s) = %s,\n' % (varname,ind,value))
+                                else:
+                                    nmlfile.write('   %s = %s,\n' % (varname,varstring))
                                 if isinstance(varval,xmlstore.util.referencedobject): varval.release()
                             nmlfile.write('/\n\n')
                     finally:
