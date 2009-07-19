@@ -3,7 +3,7 @@
 
 	<template id="FontProperties">
 		<element name="Family" type="fontname" label="font name"/>
-		<element name="Size"   type="int" label="font size" unit="pt"/>
+		<element name="Size"   type="int" label="font size" unit="pt" maxInclusive="1638"/>
 		<element name="Weight" type="int" label="font weight">
 			<options>
 				<option value="400" label="normal"/>
