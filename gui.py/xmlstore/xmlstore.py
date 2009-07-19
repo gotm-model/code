@@ -1825,16 +1825,17 @@ class TypedStore(util.referencedobject):
         # Find nodes of type "select" that have been set to an invalid (non-existing) option.
         for node in selectnodes:
             value = node.getValue(usedefault=usedefault)
-            optionsroot = util.findDescendantNode(node.templatenode,['options'])
-            assert optionsroot is not None, 'Schema node %s is of type "select", but lacks the "options" child node.' % node
             opt = 0
-            for ch in optionsroot.childNodes:
-                if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
-                    chvalue = value.fromXmlString(ch.getAttribute('value'),{},node.templatenode)
-                    if value==chvalue:
-                        opt = 1
-                        if ch.getAttribute('disabled')!='True': opt = 2
-                        break
+            if value is not None:
+                optionsroot = util.findDescendantNode(node.templatenode,['options'])
+                assert optionsroot is not None, 'Schema node %s is of type "select", but lacks the "options" child node.' % node
+                for ch in optionsroot.childNodes:
+                    if ch.nodeType==ch.ELEMENT_NODE and ch.localName=='option':
+                        chvalue = value.fromXmlString(ch.getAttribute('value'),{},node.templatenode)
+                        if value==chvalue:
+                            opt = 1
+                            if ch.getAttribute('disabled')!='True': opt = 2
+                            break
             if opt!=2:
                 if repair==2 or (repair==1 and node.isHidden()):
                     node.setValue(node.getDefaultValue())
