@@ -181,7 +181,7 @@ def setNodeText(node,text,xmldocument=None):
     if xmldocument is None:
         xmldocument = node
         while xmldocument.parentNode is not None: xmldocument=xmldocument.parentNode
-    for ch in node.childNodes:
+    for ch in reversed(node.childNodes):
         if ch.nodeType == ch.TEXT_NODE:
             node.removeChild(ch)
             ch.unlink()
@@ -191,7 +191,7 @@ def setNodeText(node,text,xmldocument=None):
 def removeNodeChildren(node):
     """Removes all child nodes from the specified node.
     """
-    for ch in node.childNodes:
+    for ch in reversed(node.childNodes):
         node.removeChild(ch)
         ch.unlink()
 
