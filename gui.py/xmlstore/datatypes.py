@@ -427,7 +427,6 @@ class TimeDelta(DataTypeSimple,datetime.timedelta):
     
     def __init__(self,*args,**kwargs):
         DataTypeSimple.__init__(self)
-        datetime.timedelta.__init__(self,*args,**kwargs)
 
     @classmethod
     def fromXmlString(cls,text,context,template):
