@@ -10,8 +10,9 @@ import common, xmlstore.util, xmlstore.xmlstore
 def openNetCDF(path,mode='r'):
     # Test if the path contains wildcard, and resolves to multiple files.
     # If so, we will try to combine these files.
-    paths = glob.glob(path)
-    if len(paths)>1: path = paths
+    if isinstance(path,basestring):
+        paths = glob.glob(path)
+        if len(paths)>1: path = paths
     
     if isinstance(path,basestring):
         return getNetCDFFile(path,mode)
