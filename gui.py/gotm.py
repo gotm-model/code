@@ -188,7 +188,8 @@ class PageIntroduction(commonqt.WizardPage):
         self.owner.setProperty('result',None)
 
         # For version only:
-        import matplotlib,numpy,gotm
+        import matplotlib,numpy
+        import gotm
 
         versions = []
         versions.append(('Python','%i.%i.%i %s %i' % sys.version_info))
