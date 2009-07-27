@@ -140,10 +140,41 @@
 						<option value="0" label="zooming of grid with ddl, ddu >= 0"/>
 						<option value="1" label="sigma grid (relative depth fractions) read from file"/>
 						<option value="2" label="cartesian grid (fixed layer height in m) read from file"/>
+						<option value="3" label="adaptive grid" disabled="True"/>
 					</options>
 				</element>
+				<element name="c1ad"   type="float">
+					<condition type="eq" variable="./grid_method" value="3"/>
+				</element>
+				<element name="c2ad"   type="float">
+					<condition type="eq" variable="./grid_method" value="3"/>
+				</element>
+				<element name="c3ad"   type="float">
+					<condition type="eq" variable="./grid_method" value="3"/>
+				</element>
+				<element name="c4ad"   type="float">
+					<condition type="eq" variable="./grid_method" value="3"/>
+				</element>
+				<element name="Tgrid"  type="float">
+					<condition type="eq" variable="./grid_method" value="3"/>
+				</element>
+				<element name="NNnorm" type="float">
+					<condition type="eq" variable="./grid_method" value="3"/>
+				</element>
+				<element name="SSnorm" type="float">
+					<condition type="eq" variable="./grid_method" value="3"/>
+				</element>
+				<element name="dsurf"  type="float">
+					<condition type="eq" variable="./grid_method" value="3"/>
+				</element>
+				<element name="dtgrid" type="float">
+					<condition type="eq" variable="./grid_method" value="3"/>
+				</element>
 				<element name="grid_file" type="gotmdatafile" label="file for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">
-					<condition type="ne" variable="./grid_method" value="0"/>
+					<condition type="or">
+						<condition type="eq" variable="./grid_method" value="1"/>
+						<condition type="eq" variable="./grid_method" value="2"/>
+					</condition>
 					<fileinfo type="singleprofile">
 						<filevariables>
 							<filevariable name="h" label="height"/>
