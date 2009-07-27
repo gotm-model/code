@@ -703,9 +703,9 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.xmlstore.Convertor):
         # ===============================================
 
         # Convert absolute time interval to relative time interval.
-        dt = source['gotmrun/model_setup/dt'].getValue()
+        dt = source['gotmrun/model_setup/dt'].getValue(usedefault=True)
         target['timeintegration/dt'].setValue(xmlstore.datatypes.TimeDelta(seconds=dt))
-        target['output/dtsave'].setValue(xmlstore.datatypes.TimeDelta(seconds=dt*source['gotmrun/output/nsave'].getValue()))
+        target['output/dtsave'].setValue(xmlstore.datatypes.TimeDelta(seconds=dt*source['gotmrun/output/nsave'].getValue(usedefault=True)))
 
         # ===============================================
         #  meanflow
@@ -718,21 +718,21 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.xmlstore.Convertor):
         # ===============================================
 
         # Convert calc_fluxes from boolean into integer.
-        if source['airsea/airsea/calc_fluxes'].getValue():
+        if source['airsea/airsea/calc_fluxes'].getValue(usedefault=True):
             target['airsea/flux_source'].setValue(0)
         else:
             target['airsea/flux_source'].setValue(1)
         
         # If heat fluxes are effectively disabled, set the heat flux method to "none"
-        if source['airsea/airsea/heat_method'].getValue()==1 and target['airsea/const_heat'].getValue()==0.:
+        if source['airsea/airsea/heat_method'].getValue(usedefault=True)==1 and target['airsea/const_heat'].getValue()==0.:
             target['airsea/heat_method'].setValue(0)
 
         # If short-wave radiation is effectively disabled, set the swr method to "none"
-        if source['airsea/airsea/swr_method'].getValue()==1 and target['airsea/const_swr'].getValue()==0.:
+        if source['airsea/airsea/swr_method'].getValue(usedefault=True)==1 and target['airsea/const_swr'].getValue()==0.:
             target['airsea/swr_method'].setValue(0)
 
         # If momentum fluxes are effectively disabled, set the momentum flux method to "none"
-        if source['airsea/airsea/momentum_method'].getValue()==1 and target['airsea/const_tx'].getValue()==0. and target['airsea/const_ty'].getValue()==0.:
+        if source['airsea/airsea/momentum_method'].getValue(usedefault=True)==1 and target['airsea/const_tx'].getValue()==0. and target['airsea/const_ty'].getValue()==0.:
             target['airsea/momentum_method'].setValue(0)
         
         # ===============================================
@@ -740,17 +740,17 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.xmlstore.Convertor):
         # ===============================================
 
         # Merge analytical salinity profile setting into main salinity settings.
-        if source['obs/sprofile/s_prof_method'].getValue()==1:
-            target['obs/sprofile'].setValue(10+source['obs/sprofile/s_analyt_method'].getValue())
+        if source['obs/sprofile/s_prof_method'].getValue(usedefault=True)==1:
+            target['obs/sprofile'].setValue(10+source['obs/sprofile/s_analyt_method'].getValue(usedefault=True))
 
         # Copy constant salinity, surface salinity from shared top layer salinity.
         target['obs/sprofile/s_const'].setValue(target['obs/sprofile/s_1'].getValue())
         target['obs/sprofile/s_surf' ].setValue(target['obs/sprofile/s_1'].getValue())
 
         # Determine type of salinity relaxation.        
-        relaxbulk = source['obs/sprofile/SRelaxTauM'].getValue()<1e+15
-        relaxbott = source['obs/sprofile/SRelaxTauB'].getValue()<1e+15 and source['obs/sprofile/SRelaxBott'].getValue()>0
-        relaxsurf = source['obs/sprofile/SRelaxTauS'].getValue()<1e+15 and source['obs/sprofile/SRelaxSurf'].getValue()>0
+        relaxbulk = source['obs/sprofile/SRelaxTauM'].getValue(usedefault=True)<1e+15
+        relaxbott = source['obs/sprofile/SRelaxTauB'].getValue(usedefault=True)<1e+15 and source['obs/sprofile/SRelaxBott'].getValue(usedefault=True)>0
+        relaxsurf = source['obs/sprofile/SRelaxTauS'].getValue(usedefault=True)<1e+15 and source['obs/sprofile/SRelaxSurf'].getValue(usedefault=True)>0
         target['obs/sprofile/SRelax'].setValue(relaxbulk or relaxbott or relaxsurf)
         
         # ===============================================
@@ -758,25 +758,25 @@ class Convertor_gotm_4_1_0_to_gotmgui_0_5_0(xmlstore.xmlstore.Convertor):
         # ===============================================
 
         # Merge analytical temperature profile setting into main temperature settings.
-        if source['obs/tprofile/t_prof_method'].getValue()==1:
-            target['obs/tprofile'].setValue(10+source['obs/tprofile/t_analyt_method'].getValue())
+        if source['obs/tprofile/t_prof_method'].getValue(usedefault=True)==1:
+            target['obs/tprofile'].setValue(10+source['obs/tprofile/t_analyt_method'].getValue(usedefault=True))
 
         # Copy constant temperature, surface temperature from shared top layer temperature.
         target['obs/tprofile/t_const'].setValue(target['obs/tprofile/t_1'].getValue())
         target['obs/tprofile/t_surf' ].setValue(target['obs/tprofile/t_1'].getValue())
 
         # Determine type of temperature relaxation.        
-        relaxbulk = source['obs/tprofile/TRelaxTauM'].getValue()<1e+15
-        relaxbott = source['obs/tprofile/TRelaxTauB'].getValue()<1e+15 and source['obs/tprofile/TRelaxBott'].getValue()>0
-        relaxsurf = source['obs/tprofile/TRelaxTauS'].getValue()<1e+15 and source['obs/tprofile/TRelaxSurf'].getValue()>0
+        relaxbulk = source['obs/tprofile/TRelaxTauM'].getValue(usedefault=True)<1e+15
+        relaxbott = source['obs/tprofile/TRelaxTauB'].getValue(usedefault=True)<1e+15 and source['obs/tprofile/TRelaxBott'].getValue(usedefault=True)>0
+        relaxsurf = source['obs/tprofile/TRelaxTauS'].getValue(usedefault=True)<1e+15 and source['obs/tprofile/TRelaxSurf'].getValue(usedefault=True)>0
         target['obs/tprofile/TRelax'].setValue(relaxbulk or relaxbott or relaxsurf)
 
         # ===============================================
         #  obs: external pressure
         # ===============================================
 
-        target['obs/ext_pressure/PressUOffset' ].setValue(source['obs/ext_pressure/PressConstU'].getValue())
-        target['obs/ext_pressure/PressVOffset' ].setValue(source['obs/ext_pressure/PressConstV'].getValue())
+        target['obs/ext_pressure/PressUOffset'].setValue(target['obs/ext_pressure/PressConstU'].getValue())
+        target['obs/ext_pressure/PressVOffset'].setValue(target['obs/ext_pressure/PressConstV'].getValue())
 
         # ===============================================
         #  obs: sea surface elevation

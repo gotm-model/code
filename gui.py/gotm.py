@@ -344,7 +344,7 @@ class PageChooseAction(commonqt.WizardPage):
 
             progslicer.nextStep('Loading scenario...',nodetailedmessage=True)
             try:
-                newscen = self.scenariowidget.getScenario(callback=progslicer.getStepCallback())
+                newscen = self.scenariowidget.getScenario(callback=progslicer.getStepCallback(),completecallback=dialog.close)
             except Exception,e:
                 dialog.close()
                 if isinstance(e,AssertionError): raise

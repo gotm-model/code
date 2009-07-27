@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.48 2009-06-23 08:13:53 jorn Exp $
+#$Id: scenariobuilder.py,v 1.49 2009-07-27 08:08:25 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -99,7 +99,7 @@ class ScenarioWidget(QtGui.QWidget):
         elif checkedid==3:
             return self.pathImport2.hasPath()
 
-    def getScenario(self,callback=None):
+    def getScenario(self,callback=None,completecallback=None):
         if not self.isComplete(): return None
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
         try:
@@ -146,6 +146,8 @@ class ScenarioWidget(QtGui.QWidget):
 
         finally:
             QtGui.QApplication.restoreOverrideCursor()
+            
+        if completecallback is not None: completecallback()
 
         if checkedid!=0:
             # We have loaded a scenario from file. Look for empty nodes and reset these to their defaults.
@@ -192,7 +194,7 @@ class PageOpen(commonqt.WizardPage):
     def saveData(self,mustbevalid):
         dialog = commonqt.ProgressDialog(self,title='Please wait...',suppressstatus=True)
         try:
-            newscen = self.scenariowidget.getScenario(callback=dialog.onProgressed)
+            newscen = self.scenariowidget.getScenario(callback=dialog.onProgressed,completecallback=dialog.close)
         except Exception,e:
             QtGui.QMessageBox.critical(self, 'Unable to obtain scenario', str(e), QtGui.QMessageBox.Ok, QtGui.QMessageBox.NoButton)
             dialog.close()
