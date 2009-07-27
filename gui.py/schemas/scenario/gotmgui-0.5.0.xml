@@ -39,8 +39,11 @@
 			</options>
     </element>
     <element name="nlev" type="int" label="number of layers" minInclusive="1" maxInclusive="1000" description="The number of depth levels used to describe the water column. More levels increase accuracy and result resolution, but also simulation time.">
-      <condition type="eq" variable="./grid_method" value="0"/>
-    </element>
+			<condition type="or">
+				<condition type="eq" variable="./grid_method" value="0"/>
+				<condition type="eq" variable="./grid_method" value="3"/>
+			</condition>
+		</element>
     <element name="ddu" type="float" label="surface zooming" description="Grid zooming (surface), 0: no zooming; > 3 strong zooming" minInclusive="0">
 			<condition type="eq" variable="./grid_method" value="0"/>
 		</element>
@@ -58,31 +61,31 @@
 				</filevariables>
 			</fileinfo>
 		</element>
-		<element name="c1ad"   type="float">
+		<element name="c1ad"   type="float" label="weighting factor for adaptation to buoyancy frequency">
 			<condition type="eq" variable="./grid_method" value="3"/>
 		</element>
-		<element name="c2ad"   type="float">
+		<element name="c2ad"   type="float" label="weighting factor for adaptation to shear frequency">
 			<condition type="eq" variable="./grid_method" value="3"/>
 		</element>
-		<element name="c3ad"   type="float">
+		<element name="c3ad"   type="float" label="weighting factor for adaptation to surface distance">
 			<condition type="eq" variable="./grid_method" value="3"/>
 		</element>
-		<element name="c4ad"   type="float">
+		<element name="c4ad"   type="float" label="weighting factor for adaptation to background">
 			<condition type="eq" variable="./grid_method" value="3"/>
 		</element>
-		<element name="Tgrid"  type="float">
+		<element name="Tgrid"  type="float" label="grid adaptation time scale">
 			<condition type="eq" variable="./grid_method" value="3"/>
 		</element>
-		<element name="NNnorm" type="float">
+		<element name="NNnorm" type="float" label="normalisation factor for adaptation to buoyancy frequency">
 			<condition type="eq" variable="./grid_method" value="3"/>
 		</element>
-		<element name="SSnorm" type="float">
+		<element name="SSnorm" type="float" label="normalisation factor for adaptation to shear frequency">
 			<condition type="eq" variable="./grid_method" value="3"/>
 		</element>
-		<element name="dsurf"  type="float">
+		<element name="dsurf"  type="float" label="normalisation factor for adaptation to surface distance">
 			<condition type="eq" variable="./grid_method" value="3"/>
 		</element>
-		<element name="dtgrid" type="float">
+		<element name="dtgrid" type="float" label="time step for grid adaptation (must be fraction of dt)">
 			<condition type="eq" variable="./grid_method" value="3"/>
 		</element>
 	</element>

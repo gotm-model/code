@@ -143,31 +143,31 @@
 					<option value="3" label="adaptive grid" disabled="True"/>
 				</options>
 			</element>
-			<element name="c1ad"   type="float">
+			<element name="c1ad"   type="float" label="weighting factor for adaptation to buoyancy frequency">
 				<condition type="eq" variable="./grid_method" value="3"/>
 			</element>
-			<element name="c2ad"   type="float">
+			<element name="c2ad"   type="float" label="weighting factor for adaptation to shear frequency">
 				<condition type="eq" variable="./grid_method" value="3"/>
 			</element>
-			<element name="c3ad"   type="float">
+			<element name="c3ad"   type="float" label="weighting factor for adaptation to surface distance">
 				<condition type="eq" variable="./grid_method" value="3"/>
 			</element>
-			<element name="c4ad"   type="float">
+			<element name="c4ad"   type="float" label="weighting factor for adaptation to background">
 				<condition type="eq" variable="./grid_method" value="3"/>
 			</element>
-			<element name="Tgrid"  type="float">
+			<element name="Tgrid"  type="float" label="grid adaptation time scale">
 				<condition type="eq" variable="./grid_method" value="3"/>
 			</element>
-			<element name="NNnorm" type="float">
+			<element name="NNnorm" type="float" label="normalisation factor for adaptation to buoyancy frequency">
 				<condition type="eq" variable="./grid_method" value="3"/>
 			</element>
-			<element name="SSnorm" type="float">
+			<element name="SSnorm" type="float" label="normalisation factor for adaptation to shear frequency">
 				<condition type="eq" variable="./grid_method" value="3"/>
 			</element>
-			<element name="dsurf"  type="float">
+			<element name="dsurf"  type="float" label="normalisation factor for adaptation to surface distance">
 				<condition type="eq" variable="./grid_method" value="3"/>
 			</element>
-			<element name="dtgrid" type="float">
+			<element name="dtgrid" type="float" label="time step for grid adaptation (must be fraction of dt)">
 				<condition type="eq" variable="./grid_method" value="3"/>
 			</element>
 			<element name="grid_file" type="gotmdatafile" label="file for sigma or cartesian grid. the first line gives the number of layers, the following lines give fractions or layer heights in m from the surface down to the bottom.">

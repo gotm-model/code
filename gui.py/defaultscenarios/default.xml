@@ -42,6 +42,15 @@
 			<ddu>0.0</ddu>
 			<ddl>0.0</ddl>
 			<grid_method>0</grid_method>
+			<c1ad>0.4</c1ad>
+			<c2ad>0.4</c2ad>
+			<c3ad>0.1</c3ad>
+			<c4ad>0.1</c4ad>
+			<Tgrid>3600.0</Tgrid>
+			<NNnorm>0.2</NNnorm>
+			<SSnorm>0.2</SSnorm>
+			<dsurf>40.0</dsurf>
+			<dtgrid>2.0</dtgrid>
 			<grid_file>grid_file.dat</grid_file>
 			<gravity>9.81</gravity>
 			<rho_0>1027.0</rho_0>
