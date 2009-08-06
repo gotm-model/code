@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.49 2009-07-27 08:08:25 jorn Exp $
+#$Id: scenariobuilder.py,v 1.50 2009-08-06 13:22:48 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -147,8 +147,6 @@ class ScenarioWidget(QtGui.QWidget):
         finally:
             QtGui.QApplication.restoreOverrideCursor()
             
-        if completecallback is not None: completecallback()
-
         if checkedid!=0:
             # We have loaded a scenario from file. Look for empty nodes and reset these to their defaults.
             #emptynodes = scen.root.getEmptyNodes()
@@ -159,6 +157,7 @@ class ScenarioWidget(QtGui.QWidget):
                 if isinstance(defval,xmlstore.util.referencedobject): defval.release()
             emptycount = len(emptynodes)
             if emptycount>0:
+                if completecallback is not None: completecallback()
                 QtGui.QMessageBox.information(self,'Scenario is incomplete','In this scenario the following %i variables do not have a value:\n\n%s\n\nThese variables will be set to their default value.' % (emptycount,'\n'.join(['/'.join(n.location) for n in emptynodes])),QtGui.QMessageBox.Ok)
                 scen.changed = True
             
