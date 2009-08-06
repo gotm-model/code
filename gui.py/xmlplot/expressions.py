@@ -613,13 +613,12 @@ class LazyFunction(LazyOperation):
         
         For numpy functions, the name of the argument is typically "axis".
         """
-        self.removedim = None
+        self.removedim = -1
         if argname in self.kwargs:
             self.removedim = self.kwargs[argname]
         elif argindex<len(self.args):
             self.args = list(self.args)
             self.removedim = self.args[argindex]
-        if self.removedim is None: return
         
         self.outsourceslices = False
             
@@ -641,7 +640,11 @@ class LazyFunction(LazyOperation):
         if dataonly or (not isinstance(data,numpy.ndarray)) or targetslice is None: return data
 
         # If the function has removed a dimension, make sure it is removed from the coordinate array as well.
-        if self.removedim is not None: targetslice.removeDimension(self.removedim)
+        if self.removedim is not None:
+            if self.removedim==-1:
+                targetslice = common.Variable.Slice()
+            else:
+                targetslice.removeDimension(self.removedim)
 
         targetslice.data = data
         targetslice.debugCheck('Invalid result of function "%s"' % self.name)
@@ -650,6 +653,7 @@ class LazyFunction(LazyOperation):
     def getShape(self):
         # Get the shape with the default implementation, but
         # slice out the dimension that this function will remove (if any)
+        if self.removedim==-1: return ()
         startshape = LazyOperation.getShape(self)
         if startshape is None: return None
         s = list(startshape)
@@ -659,6 +663,7 @@ class LazyFunction(LazyOperation):
     def getDimensions(self):
         # Get the dimensions with the default implementation, but
         # slice out the dimension that this function will remove (if any)
+        if self.removedim==-1: return []
         dims = list(LazyOperation.getDimensions(self))
         if self.removedim is not None: del dims[self.removedim]
         return dims
