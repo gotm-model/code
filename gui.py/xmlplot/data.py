@@ -1470,7 +1470,9 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
 
           return dat
               
-        def getSlice(self,bounds,dataonly=False,cache=False,transfercoordinatemask=True):
+        def getSlice(self,bounds=None,dataonly=False,cache=False,transfercoordinatemask=True):
+          if bounds is None: bounds = (Ellipsis,)
+        
           # Translate the slice specification so only slice objects and integer indices remain.
           bounds = self.translateSliceSpecification(bounds)
           

@@ -806,7 +806,10 @@ class VariableExpression(common.Variable):
     def getUnit(self):
         return ', '.join([node.getText(type=3,addparentheses=False) for node in self.root])
 
-    def getSlice(self,bounds,dataonly=False):
+    def getSlice(self,bounds=None,dataonly=False):
+        ndim = len(self.getDimensions())
+        if bounds is None: bounds = (Ellipsis,)
+        bounds = common.processEllipsis(bounds,ndim)
         return [node[bounds].getValue(dataonly=dataonly) for node in self.root]
 
     def getShape(self):

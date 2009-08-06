@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.31 2009-07-15 15:11:22 jorn Exp $
+#$Id: common.py,v 1.32 2009-08-06 13:34:02 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -917,11 +917,12 @@ class Variable(object):
         def __getitem__(self,slic):
             # Check whether the slice argument contains only integers and slice objects,
             # and build an array with slices for staggered coordinates.
+            if not isinstance(slic,(list,tuple)): slic = (slic,)
             assert len(slic)==self.data.ndim, 'Number of slices (%i) does not match number of variable dimensions (%i).' % (len(slic),self.data.ndim)
             
             cslice_stag = []
             for i,s in enumerate(slic):
-                assert isinstance(s,(int,slice)),'The slice argument for dimension %s is not an integer or slice object. Fancy indexing with arrays of integers or booleans is not yet supported.' % self.dimensions[i]
+                assert isinstance(s,(int,slice)),'The slice argument for dimension %s is not an integer or slice object (but %s). Fancy indexing with arrays of integers or booleans is not yet supported.' % (self.dimensions[i],str(s))
                 if isinstance(s,slice):
                     start,stop,step = s.indices(self.data.shape[i])
                     assert step==1,'The step argument for slicing dimension %s equals %i. Slices with a step other than 1 are not yet supported.' % (self.dimensions[i],step)
