@@ -20,6 +20,59 @@ def openNetCDF(path,mode='r'):
         assert mode=='r','A multi-file NetCDF dataset can only be opened for reading.'
         return MultiNetCDFFile(*path)
 
+netcdfmodules,selectednetcdfmodule = None,None
+def chooseNetCDFModule():
+    global netcdfmodules,selectednetcdfmodule
+    global Scientific,netCDF4,pynetcdf
+    
+    netcdfmodules = []
+    selectednetcdfmodule = -1
+    error = ''
+
+    # We prefer ScientificPython. Try that first.
+    ready = True
+    try:
+        import Scientific.IO.NetCDF
+    except ImportError,e:
+        error += 'Cannot load Scientific.IO.NetCDF. Reason: %s.\n' % str(e)
+        ready = False
+    if ready:
+        oldscientific = False
+        try:
+            version = map(int,Scientific.__version__.split('.')[:2])
+            oldscientific = version[0]<2 or (version[0]==2 and version[1]<7)
+        except: pass
+        if not oldscientific and selectednetcdfmodule==-1: selectednetcdfmodule = len(netcdfmodules)
+        netcdfmodules.append(('Scientific.IO.NetCDF',Scientific.__version__))
+
+    # ScientificPython failed. Try netCDF4 instead.
+    ready = True
+    try:
+        import netCDF4
+    except ImportError,e:
+        error += 'Cannot load netCDF4. Reason: %s.\n' % str(e)
+        ready = False
+    if ready:
+        if selectednetcdfmodule==-1: selectednetcdfmodule = len(netcdfmodules)
+        netcdfmodules.append(('netCDF4',netCDF4.__version__))
+    
+    # ScientificPython and netCDF4 failed. Try pynetcdf instead.
+    ready = True
+    try:
+        import pynetcdf
+    except ImportError,e:
+        error += 'Cannot load pynetcdf. Reason: %s.\n' % str(e)
+        ready = False
+    if ready:
+        if selectednetcdfmodule==-1:
+            pyver = sys.version_info
+            if (pyver[0]==2 and pyver[1]>=5) or pyver[0]>2:
+                print 'pynetcdf will be used for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (error,pyver[0],pyver[1],pyver[2])
+            selectednetcdfmodule = len(netcdfmodules)
+        netcdfmodules.append(('pynetcdf',''))
+        
+    if selectednetcdfmodule==-1 and netcdfmodules: selectednetcdfmodule = 0
+
 def getNetCDFFile(path,mode='r'):
     """Returns a NetCDFFile file object representing the NetCDF file
     at the specified path. The returned object follows
@@ -31,6 +84,8 @@ def getNetCDFFile(path,mode='r'):
     Scientific.IO.NetCDFFile conventions. Thus adding/replacing a module
     for NetCDF support should only require a chnage in this function.
     """
+    
+    if selectednetcdfmodule is None: chooseNetCDFModule()
 
     # First import NetCDF file format support (we do this here rather
     # than on import, because this module can be useful without NetCDF
@@ -39,68 +94,28 @@ def getNetCDFFile(path,mode='r'):
     # First check if the file exists in the first place.
     if mode=='r' and not os.path.isfile(path):
         raise Exception('"%s" is not an existing file.' % path)
-    
-    # We prefer ScientificPython. Try that first.
-    ready = True
-    error = ''
-    oldscientific = False
-    try:
-        import Scientific.IO.NetCDF
-    except Exception,e:
-        error += 'Cannot load Scientific.IO.NetCDF. Reason: %s.\n' % str(e)
-        ready = False
-    if ready:
-        try:
-            version = map(int,Scientific.__version__.split('.')[:2])
-            oldscientific = version[0]<2 or (version[0]==2 and version[1]<7)
-        except: pass
-        if not oldscientific:
-            try:
-                nc = Scientific.IO.NetCDF.NetCDFFile(path,mode=mode)
-            except Exception, e:
-                raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
-            return nc
-
-    # ScientificPython failed. Try netCDF4 instead.
-    ready = True
-    try:
-        import netCDF4
-    except Exception,e:
-        error += 'Cannot load netCDF4. Reason: %s.\n' % str(e)
-        ready = False
-    if ready:
-        try:
-            nc = netCDF4.Dataset(path,mode=mode,format='NETCDF3_CLASSIC')
-        except Exception, e:
-            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
-        return nc
-    
-    # ScientificPython and netCDF4 failed. Try pynetcdf instead.
-    ready = True
-    try:
-        import pynetcdf
-    except Exception,e:
-        error += 'Cannot load pynetcdf. Reason: %s.\n' % str(e)
-        ready = False
-    if ready:
-        pyver = sys.version_info
-        if (pyver[0]==2 and pyver[1]>=5) or pyver[0]>2:
-            print '%sWe will use pynetcdf for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (error,pyver[0],pyver[1],pyver[2])
-        try:
-            nc = pynetcdf.NetCDFFile(path,mode=mode)
-        except Exception, e:
-            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
-        return nc
-
-    if oldscientific:
+        
+    netcdfmodule = netcdfmodules[selectednetcdfmodule][0]
+    if netcdfmodule=='Scientific.IO.NetCDF':
         try:
             nc = Scientific.IO.NetCDF.NetCDFFile(path,mode=mode)
         except Exception, e:
             raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
-        return nc
+    elif netcdfmodule=='netCDF4':
+        try:
+            nc = netCDF4.Dataset(path,mode=mode,format='NETCDF3_CLASSIC')
+        except Exception, e:
+            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
+    elif netcdfmodule=='pynetcdf':
+        try:
+            nc = pynetcdf.NetCDFFile(path,mode=mode)
+        except Exception, e:
+            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
+    else:
+        # No NetCDF module found - raise exception.
+        raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, netCDF4 or pynetcdf.')
         
-    # No NetCDF module found - raise exception.
-    raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, netCDF4 or pynetcdf.')
+    return nc
 
 class ReferenceTimeParseError(Exception): pass
 
