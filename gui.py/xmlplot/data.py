@@ -67,7 +67,7 @@ def chooseNetCDFModule():
         if selectednetcdfmodule==-1:
             pyver = sys.version_info
             if (pyver[0]==2 and pyver[1]>=5) or pyver[0]>2:
-                print 'pynetcdf will be used for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (error,pyver[0],pyver[1],pyver[2])
+                print 'pynetcdf will be used for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (pyver[0],pyver[1],pyver[2])
             selectednetcdfmodule = len(netcdfmodules)
         netcdfmodules.append(('pynetcdf',''))
         
