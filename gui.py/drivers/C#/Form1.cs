@@ -82,6 +82,11 @@ namespace PythonNetTest
 
             // Create the simulator in Python.
             PyObject simulator = PythonEngine.ImportModule("core.simulator");
+
+            // Retrieve the version of GOTM (not needed, proof-of-concept only)
+            string gotmversion = (string)simulator.GetAttr("gotmversion").AsManagedObject(typeof(string));
+
+            // Create a simulator object for the loaded scenario.
             simulator = simulator.InvokeMethod("Simulator", scenario);
 
             // At this point GOTM has initialized and everything is known, including the names, units etc.
