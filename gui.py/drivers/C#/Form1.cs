@@ -73,10 +73,12 @@ namespace PythonNetTest
             //DateTime stop = DateTime.Parse((string)pystop.AsManagedObject(typeof(string)), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
             //TimeSpan timesp = stop - start;
 
-            // Determine the number of GOTM time steps in a month.
+            // Determine the number of GOTM time steps in a month (slabsize).
             PyObject pydt = scenario["timeintegration/dt"].InvokeMethod("getValue").InvokeMethod("getAsSeconds");
-            float dt = (float)pydt.AsManagedObject(typeof(float));
-            int slabsize = (int)Math.Round(30 * 24 * 3600 / dt);
+            float gotmdt = (float)pydt.AsManagedObject(typeof(float));
+            const double desireddt = 30 * 24 * 3600;
+            int slabsize = (int)Math.Round(desireddt / gotmdt);
+            double externaldt = slabsize * gotmdt;
 
             // Create the simulator in Python.
             PyObject simulator = PythonEngine.ImportModule("core.simulator");
@@ -105,6 +107,29 @@ namespace PythonNetTest
                 string biotext = "";
                 for (int i = 0; i < names.Length; i++) biotext += names[i] + " = " + vals[i].ToString() + " " + units[i] + "\r\n";
                 this.progressBar1.BeginInvoke((MethodInvoker)(delegate {this.textBox1.Text = biotext; }));
+
+                // Below: a proof-of-concept showing biological feedback to GOTM.
+                // This is coded especially for the NPZD model, and will therefore only be
+                // executed if there are exactly 4 biological state variables.
+                // Disable this if you just want to run an unmodified scenario, by setting biofeedback to false.
+                const bool biofeedback = true;
+
+                if (biofeedback && vals.Length == 4)
+                {
+                    // Calculate new depth-integrated bio values by introducing predation
+                    // of 10% of the zooplankton per day
+                    double[] newvals = vals;
+                    double removez = (1.0 - Math.Pow(0.9, externaldt / 3600 / 24)) * vals[2];
+                    newvals[0] += removez;
+                    newvals[2] -= removez;
+
+                    // Send new depth-integrated bio values to GOTM.
+                    // It will then distributed the change over depth, ensuring that
+                    // the relative change in each variable is the same in every layer.
+                    PyObject[] pynewvals = new PyObject[vals.Length];
+                    for (int i = 0; i < vals.Length; i++) pynewvals[i] = new PyFloat(newvals[i]);
+                    simulator.InvokeMethod("setBioValues", new PyList(pynewvals));
+                }
             }
 
             // Clean up after the run and obtain the result.

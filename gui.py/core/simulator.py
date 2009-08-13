@@ -197,9 +197,21 @@ class Simulator(object):
         units = readstringarray(gotm.bio_var.var_units)
         return names,longnames,units
         
+    def getDepth(self):
+        return gotm.meanflow.h.sum()
+        
     def getBioValues(self):
         if gotm.bio_var.cc is None: return ()
         return list((gotm.bio_var.cc*gotm.meanflow.h).sum(axis=1)/gotm.meanflow.h.sum())
+        
+    def setBioValues(self,values):
+        assert len(values)==gotm.bio_var.cc.shape[0],'Number of provided values (%i) does not match number of bio state variables (%s).' % (len(values),gotm.bio_var.cc.shape[0])
+        oldvalues = self.getBioValues()
+        values = list(values)
+        values = numpy.asarray(values,dtype=numpy.float)
+        relchange = values/numpy.asarray(oldvalues,dtype=numpy.float)
+        relchange.shape = -1,1
+        gotm.bio_var.cc *= relchange
 
 def simulate(scenario,progresscallback=None,continuecallback=None,redirect=True):
     simulator = Simulator(scenario,redirect=redirect)
