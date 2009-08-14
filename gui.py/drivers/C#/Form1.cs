@@ -13,7 +13,10 @@ namespace PythonNetTest
 
     public partial class Form1 : Form
     {
-        PyObject scenario,result;
+        // Default scenario to load. If it is not found, the user will have to open one manually.
+        const string scenariopath = "\\\\pc-jorn\\Users\\Jorn\\Documents\\GOTM test cases\\gotmscenario 11-9-2007\\nns_annual.gotmscenario";
+
+        PyObject scenario, result;
         System.Threading.Thread thread;
         IntPtr threadstate;
 
@@ -21,9 +24,20 @@ namespace PythonNetTest
         {
             InitializeComponent();
 
-            // Make sure that the GUI libraries can be found [note: we need several individual .py library files,
-            // no longer a single module that takes control. Thus we need a directory rather than a path to a file]
-            System.Environment.SetEnvironmentVariable("PYTHONPATH", @"Z:\\Documents\\Programmeren\\GOTM-CVS\\gotm\\gui.py;");
+            // Make sure that the GOTMGUI libraries can be found by Python.
+            // Retrieve the path to the GOTMGUI libraries from the environment.
+            // Note GOTMGUIDIR environment variable takes priority over GOTMDIR.
+            string gotmguidir = System.Environment.GetEnvironmentVariable("GOTMGUIDIR");
+            if (gotmguidir == null)
+            {
+                string gotmdir = System.Environment.GetEnvironmentVariable("GOTMDIR");
+                gotmguidir = System.IO.Path.Combine(gotmdir, "gui.py");
+            }
+
+            // Prepend GOTMGUI directory to the PYTHONPATH.
+            string pythonpath = System.Environment.GetEnvironmentVariable("PYTHONPATH");
+            if (pythonpath == null) pythonpath = "";
+            System.Environment.SetEnvironmentVariable("PYTHONPATH", gotmguidir + ";" + pythonpath);
 
             // Initialize the Python engine.
             PythonEngine.Initialize();
@@ -35,12 +49,18 @@ namespace PythonNetTest
             threadstate = PythonEngine.BeginAllowThreads();
 
             // Preload a scenario because I am getting tired of browsing to an exising one via dialogs.
-            IntPtr pyLock = PythonEngine.AcquireLock();
-            PyObject corescenario = PythonEngine.ImportModule("core.scenario");
-            this.scenario = corescenario.GetAttr("Scenario").InvokeMethod("fromSchemaName",new PyString("gotmgui-0.5.0"));
-            this.scenario.InvokeMethod("loadAll", new PyString("\\\\pc-jorn\\Users\\Jorn\\Documents\\GOTM test cases\\gotmscenario 11-9-2007\\nns_annual.gotmscenario"));
-            corescenario.Dispose();
-            PythonEngine.ReleaseLock(pyLock);
+            if (System.IO.File.Exists(scenariopath))
+            {
+                IntPtr pyLock = PythonEngine.AcquireLock();
+                PyObject corescenario = PythonEngine.ImportModule("core.scenario");
+                this.scenario = corescenario.GetAttr("Scenario").InvokeMethod("fromSchemaName", new PyString("gotmgui-0.5.0"));
+                this.scenario.InvokeMethod("loadAll", new PyString(scenariopath));
+                corescenario.Dispose();
+                PythonEngine.ReleaseLock(pyLock);
+                this.buttonEdit.Enabled = true;
+                this.buttonSimulate.Enabled = true;
+                this.buttonSimulate.Select();
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -89,9 +109,9 @@ namespace PythonNetTest
             // Create a simulator object for the loaded scenario.
             simulator = simulator.InvokeMethod("Simulator", scenario);
 
-            // At this point GOTM has initialized and everything is known, including the names, units etc.
-            // of the biological
-            //String xml = scenario.InvokeMethod("describe");
+            // At this point GOTM has initialized and everything is known of the biological module.
+            // The tuple that is returned by getBioVariableInfo contains three arrays:
+            // short names, long names, and units.
             PyTuple bioinfo = new PyTuple(simulator.InvokeMethod("getBioVariableInfo"));
             string[] names = (string[])bioinfo[1].AsManagedObject(typeof(string[]));
             string[] units = (string[])bioinfo[2].AsManagedObject(typeof(string[]));
@@ -103,15 +123,21 @@ namespace PythonNetTest
                 hasmore = simulator.InvokeMethod("runSlab",new PyInt(slabsize)).IsTrue();
 
                 // Send fraction complete to progress bar.
+                // NB BeginInvoke/MethodInvoker is used to allow for safe passage of the
+                // progress message across thread barriers (the progress bar lives in another thread).
                 float progress = (float)simulator.InvokeMethod("getProgress").AsManagedObject(typeof(float));
                 this.progressBar1.BeginInvoke((MethodInvoker)(delegate {this.progressBar1.Value = (int)Math.Round(progress * 100);}));
 
-                // Get a string describing the current depth-integrated bio values.
+                // Get the current depth-integrated bio values.
                 PyObject biovals = simulator.InvokeMethod("getBioValues");
                 double[] vals = (double[])biovals.AsManagedObject(typeof(double[]));
+
+                // Build a string describing current bio values, and show it in the GUI.
+                // NB BeginInvoke/MethodInvoker is used to allow for safe passage of the
+                // data across thread barriers (the textbox lives in another thread).
                 string biotext = "";
                 for (int i = 0; i < names.Length; i++) biotext += names[i] + " = " + vals[i].ToString() + " " + units[i] + "\r\n";
-                this.progressBar1.BeginInvoke((MethodInvoker)(delegate {this.textBox1.Text = biotext; }));
+                this.textBox1.BeginInvoke((MethodInvoker)(delegate { this.textBox1.Text = biotext; }));
 
                 // Below: a proof-of-concept showing biological feedback to GOTM.
                 // This is coded especially for the NPZD model, and will therefore only be
@@ -131,6 +157,7 @@ namespace PythonNetTest
                     // Send new depth-integrated bio values to GOTM.
                     // It will then distributed the change over depth, ensuring that
                     // the relative change in each variable is the same in every layer.
+                    // This redistribution scheme preserves positivity and conserves mass.
                     PyObject[] pynewvals = new PyObject[vals.Length];
                     for (int i = 0; i < vals.Length; i++) pynewvals[i] = new PyFloat(newvals[i]);
                     simulator.InvokeMethod("setBioValues", new PyList(pynewvals));
@@ -141,6 +168,11 @@ namespace PythonNetTest
             result = simulator.InvokeMethod("finalize");
 
             PythonEngine.ReleaseLock(pyLock);
+
+            this.buttonShowResults.BeginInvoke((MethodInvoker)(delegate {
+                this.buttonShowResults.Enabled = true;
+                this.buttonShowResults.Select(); 
+            }));
         }
 
         private void button3_Click(object sender, EventArgs e)
@@ -161,6 +193,13 @@ namespace PythonNetTest
             if (newscenario.IsTrue()) scenario = newscenario;
 
             PythonEngine.ReleaseLock(pyLock);
+
+            if (scenario.IsTrue())
+            {
+                this.buttonEdit.Enabled = true;
+                this.buttonSimulate.Enabled = true;
+                this.buttonSimulate.Select();
+            }
         }
 
     }
