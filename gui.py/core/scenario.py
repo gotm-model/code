@@ -73,9 +73,11 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         # (these are the same, unless prototype namelist files are used)
         nmlfilelist = nmlcontainer.listFiles()
         datafilecontext = {'container':container}
+        
+        interface = self.getInterface(omitgroupers=True)
 
         try:
-            for mainchild in self.root.children:
+            for mainchild in interface.getChildren(self.root):
                 # If we are using prototypes, all namelist files are available, but not all contain
                 # values; then, just skip namelist files that are disabled by settings in the preceding
                 # namelists.
@@ -130,9 +132,12 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                 df.release()
 
                 # Loop over all nodes below the root (each node represents a namelist file)
-                for filechild in mainchild.children:
+                for filechild in interface.getChildren(mainchild):
                     # Get name of the expected namelist.
                     listname = filechild.getId()
+                    
+                    # Get a list with all child nodes (i.e., namelist variables)
+                    listchildren = interface.getChildren(filechild)
 
                     assert not filechild.canHaveValue(), 'Found non-folder node with id %s below branch %s, where only folders are expected.' % (listname,nmlfilename)
 
@@ -146,9 +151,9 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
 
                         if strict:
                             # Strict parsing: all variables must appear once and in predefined order.
-                            if childindex>=len(filechild.children):
+                            if childindex>=len(listchildren):
                                 raise namelist.NamelistParseException('Encountered variable "%s" where end of namelist was expected.' % (foundvarname,),fullnmlfilename,listname,None)
-                            listchild = filechild.children[childindex]
+                            listchild = listchildren[childindex]
                             varname = listchild.getId()
                             if varname.lower()!=foundvarname.lower():
                                 raise namelist.NamelistParseException('Found variable "%s" where "%s" was expected.' % (foundvarname,varname),fullnmlfilename,listname,varname)
@@ -156,7 +161,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                         else:
                             # Loose parsing: variables can appear multiple times or not at all, and do not need to appear in order.
                             # This is how FORTRAN operates.
-                            for listchild in filechild.children:
+                            for listchild in listchildren:
                                 varname = listchild.getId()
                                 if varname.lower()==foundvarname.lower(): break
                             else:
@@ -187,12 +192,13 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                             val.release()
                         
                     # If we are in "strict" mode, check if there are any remaining variables that were not assigned to.
-                    if strict and childindex<len(filechild.children):
-                        lcnames = ['"%s"' % lc.getId() for lc in filechild.children[childindex:]]
+                    if strict and childindex<len(listchildren):
+                        lcnames = ['"%s"' % lc.getId() for lc in listchildren[childindex:]]
                         raise namelist.NamelistParseException('Variables %s are missing' % ', '.join(lcnames),fullnmlfilename,listname,None)
         finally:
             container.release()
             nmlcontainer.release()
+            self.disconnectInterface(interface)
             if 'linkedobjects' in datafilecontext:
                 for v in datafilecontext['linkedobjects'].itervalues():
                     v.release()
@@ -213,6 +219,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         if copydatafiles:
             context['targetcontainer'] = xmlstore.datatypes.DataContainerDirectory(targetpath)
 
+        interface = self.getInterface(omitgroupers=True)
         try:
             try:
                 if addcomments:
@@ -221,8 +228,9 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                     linelength = 80
                     wrapper = textwrap.TextWrapper(subsequent_indent='  ')
                 
-                progslicer = xmlstore.util.ProgressSlicer(callback,len(self.root.children))
-                for mainchild in self.root.children:
+                rootchildren = interface.getChildren(self.root)
+                progslicer = xmlstore.util.ProgressSlicer(callback,len(rootchildren))
+                for mainchild in rootchildren:
                     assert not mainchild.canHaveValue(), 'Found a variable below the root node, where only folders are expected.'
 
                     nmlfilename = mainchild.getId()
@@ -238,9 +246,10 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                     nmlfile = open(nmlfilepath,'w')
 
                     try:
-                        for filechild in mainchild.children:
+                        for filechild in interface.getChildren(mainchild):
                             assert not filechild.canHaveValue(), 'Found a variable directly below branch "%s", where only folders are expected.' % nmlfilename
                             listname = filechild.getId()
+                            listchildren = interface.getChildren(filechild)
 
                             if addcomments:
                                 nmlfile.write('!'+(linelength-1)*'-'+'\n')
@@ -250,7 +259,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
 
                                 comments = []
                                 varnamelength = 0
-                                for listchild in filechild.children:
+                                for listchild in listchildren:
                                     comment = self.getNamelistVariableDescription(listchild)
                                     if len(comment[0])>varnamelength: varnamelength = len(comment[0])
                                     comments.append(comment)
@@ -270,7 +279,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                                 nmlfile.write('\n')
 
                             nmlfile.write('&'+listname+'\n')
-                            for listchild in filechild.children:
+                            for listchild in listchildren:
                                 if listchild.hasChildren():
                                     raise Exception('Found a folder ("%s") below branch %s/%s, where only variables are expected.' % (listchild.getId(),nmlfilename,listname))
                                 varname = listchild.getId()
@@ -294,6 +303,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                 if createddir: shutil.rmtree(targetpath)
                 raise
         finally:
+            self.disconnectInterface(interface)
             if 'targetcontainer' in context: context['targetcontainer'].release()
 
     @staticmethod
@@ -375,14 +385,14 @@ class Scenario(NamelistStore):
     @staticmethod
     def getDefaultSchemas():
         if Scenario.schemadict is None:
-            Scenario.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario'))
+            Scenario.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario_BFM'))
         return Scenario.schemadict
 
     defaultdict = None
     @staticmethod
     def getDefaultValues():
         if Scenario.defaultdict is None:
-            Scenario.defaultdict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios'))
+            Scenario.defaultdict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios_BFM'))
         return Scenario.defaultdict
 
     @classmethod
@@ -514,7 +524,7 @@ class Scenario(NamelistStore):
 
 Scenario.clearConvertors()
 
-converterdir = os.path.join(common.getDataRoot(),'schemas/scenario')
+converterdir = os.path.join(common.getDataRoot(),'schemas/scenario_BFM')
 for name in os.listdir(converterdir):
     if not name.endswith('.converter'): continue
     path = os.path.join(converterdir,name)
