@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<converter source="gotm-3.2.4" target="gotm-3.3.2">
+	<links>
+		<link source="/gotmmean/meanflow/charnok"     target="/gotmmean/meanflow/charnock"/>
+		<link source="/gotmmean/meanflow/charnok_val" target="/gotmmean/meanflow/charnock_val"/>
+	</links>
+</converter>

@@ -266,6 +266,27 @@ def stripWhitespace(node):
         if ch.nodeType==ch.ELEMENT_NODE:
             stripWhitespace(ch)
 
+def getRootNodeInfo(path):
+    """Use SAX to parse XML file up to the first node (root node) only,
+    and returns the local name of that node, and its attributes.
+    Should be far more efficient than complete DOM-based parsing.
+    """
+    import xml.sax
+    class DoneException(Exception): pass
+    class handler(xml.sax.handler.ContentHandler):
+        def __init__(self):
+            self.rootname,self.rootattributes = None,{}
+        def startElement(self,name,attr):
+            self.rootname = name
+            self.rootattributes = dict([(k,attr.getValue(k)) for k in attr.getNames()])
+            raise DoneException
+    h = handler()
+    try:
+        xml.sax.parse(path,h)
+    except DoneException:
+        pass
+    return h.rootname,h.rootattributes
+        
 # ------------------------------------------------------------------------------------------
 # Progress report merging class
 # ------------------------------------------------------------------------------------------

@@ -1950,7 +1950,13 @@ class TypedStore(util.referencedobject):
     @classmethod
     def clearConvertors(cls):
         cls.convertorsfrom = {}
-
+        
+    @classmethod
+    def addConverterFromXml(cls,path):
+        fw,bw = XmlConvertor.createClasses(path)
+        cls.addConvertor(fw,addsimplereverse=False)
+        if bw is not None: cls.addConvertor(bw,addsimplereverse=False)
+        
     @classmethod
     def addConvertor(cls,convertorclass,addsimplereverse=False):
         """Registers the specified convertor class. The source and target version that
@@ -2471,6 +2477,58 @@ class Convertor(object):
         """Convert mapping from source to target nodes to mapping from target 
         to source nodes. Used as basis for easy back-conversions."""
         return [(targetpath,sourcepath) for (sourcepath,targetpath) in self.links]
+
+class XmlConvertor(Convertor):
+    
+    @staticmethod
+    def createClasses(path):
+        rootname,rootattr = util.getRootNodeInfo(path)
+        assert rootname=='converter','Root node is named "%s", but must be named "converter" for XML-based converters.' % rootname
+        sourceid,targetid = rootattr.get('source'),rootattr.get('target')
+
+        def createconvertor(sourceid,targetid):
+            defaultname = re.sub('\W','_','Xml_Convertor_%s_%s' % (sourceid,targetid))
+            attr = {'fixedsourceid':sourceid,
+                    'fixedtargetid':targetid,
+                    'path':path}
+            #print 'Creating convertor class %s.' % (defaultname,)
+            return type(str(defaultname),(XmlConvertor,),attr)
+        fw = createconvertor(sourceid,targetid)
+        bw = createconvertor(targetid,sourceid)
+        return fw,bw
+        
+    @classmethod
+    def initialize(cls):
+        #print 'Initializing converter %s.' % (cls.__name__,)
+        xmlconvertor = xml.dom.minidom.parse(cls.path)
+        root = xmlconvertor.documentElement
+        assert root.localName=='converter','Root element of "%s" is called "%s", but root of converter xml must be called "converter".' % (cls.path,root.localName)
+        sourceid,targetid = root.getAttribute('source'),root.getAttribute('target')
+        reverse = targetid==cls.fixedsourceid
+        customcodename = 'forward'
+        if reverse: customcodename = 'backward'
+        cls.defaultlinks,cls.customconversion = [],None
+        for node in root.childNodes:
+            if node.nodeType==node.ELEMENT_NODE and node.localName=='links':
+                for linknode in node.childNodes:
+                    if linknode.nodeType==linknode.ELEMENT_NODE and linknode.localName=='link':
+                        cls.defaultlinks.append((linknode.getAttribute('source'),linknode.getAttribute('target')))
+            elif node.nodeType==node.ELEMENT_NODE and node.localName=='custom':
+                for customnode in node.childNodes:
+                    if customnode.nodeType==customnode.ELEMENT_NODE and customnode.localName==customcodename:
+                        for data in customnode.childNodes:
+                            if data.nodeType==data.CDATA_SECTION_NODE: break
+                        cls.customconversion = compile(data.nodeValue,cls.path,'exec')
+        if reverse: cls.defaultlinks = [(targetpath,sourcepath) for (sourcepath,targetpath) in cls.defaultlinks]
+    
+    def __init__(self):
+        if not hasattr(self,'defaultlinks'): self.initialize()
+        Convertor.__init__(self)
+        
+    def registerLinks(self):
+        self.links = self.defaultlinks
+    def convertCustom(self,source,target,callback=None):
+        if self.customconversion is not None: exec self.customconversion
 
 class ConvertorChain(Convertor):
     """Generic class for multiple-step conversions.

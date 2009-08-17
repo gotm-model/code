@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+<converter source="gotm-3.3.2" target="gotm-4.0.0">
+	<links>
+		<link source="/obs/ext_pressure/PressMethod" target="/obs/ext_pressure/ext_press_mode"/>
+	</links>
+</converter>

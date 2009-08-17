@@ -1,0 +1,265 @@
+<?xml version="1.0" ?>
+<converter source="gotm-4.1.0" target="gotmgui-0.5.0">
+	<links>
+		<link source="/gotmrun/model_setup/title"         target="/title"/>
+		<link source="/gotmrun/model_setup/cnpar"         target="/timeintegration/cnpar"/>
+		<link source="/gotmrun/station"                   target="/station"/>
+		<link source="/gotmrun/time"                      target="/time"/>
+		<link source="/gotmrun/output"                    target="/output"/>
+		<link source="/gotmrun/model_setup/buoy_method"   target="/meanflow/buoy_method"/>
+		<link source="/gotmrun/model_setup/nlev"          target="/grid/nlev"/>
+		<link source="/gotmrun/eqstate"                   target="/meanflow"/>
+		<link source="/gotmrun/eqstate"                   target="/meanflow/eq_state_method"/>
+		<link source="/gotmmean/meanflow"                 target="/grid"/>
+		<link source="/gotmmean/meanflow"                 target="/meanflow"/>
+		<link source="/airsea/airsea"                     target="/airsea"/>
+		<link source="/gotmturb/turbulence"               target="/gotmturb"/>
+		<link source="/gotmturb/scnd"                     target="/gotmturb/scnd/scnd_coeff"/>
+		<link source="/kpp/kpp"                           target="/gotmturb/kpp"/>
+		<link source="/obs/sprofile/s_prof_method"        target="/obs/sprofile"/>
+		<link source="/obs/sprofile"                      target="/obs/sprofile/SRelax"/>
+		<link source="/obs/tprofile/t_prof_method"        target="/obs/tprofile"/>
+		<link source="/obs/tprofile"                      target="/obs/tprofile/TRelax"/>
+		<link source="/obs/ext_pressure/ext_press_method" target="/obs/ext_pressure"/>
+		<link source="/obs/int_pressure/int_press_method" target="/obs/int_pressure"/>
+		<link source="/obs/extinct/extinct_method"        target="/obs/extinct"/>
+		<link source="/obs/w_advspec/w_adv_method"        target="/obs/w_advspec"/>
+		<link source="/obs/zetaspec/zeta_method"          target="/obs/zetaspec"/>
+		<link source="/obs/wave_nml/wave_method"          target="/obs/wave_nml"/>
+		<link source="/obs/velprofile/vel_prof_method"    target="/obs/velprofile"/>
+		<link source="/obs/eprofile/e_prof_method"        target="/obs/eprofile"/>
+		<link source="/obs/o2_profile/o2_prof_method"     target="/obs/o2_profile"/>
+		<link source="/obs/bioprofiles/bio_prof_method"   target="/obs/bioprofiles"/>
+		<link source="/bio/bio_nml"                       target="/bio"/>
+		<link source="/bio_npzd/bio_npzd_nml"             target="/bio/bio_model/bio_npzd"/>
+		<link source="/bio_iow/bio_iow_nml"               target="/bio/bio_model/bio_iow"/>
+		<link source="/bio_sed/bio_sed_nml"               target="/bio/bio_model/bio_sed"/>
+		<link source="/bio_fasham/bio_fasham_nml"         target="/bio/bio_model/bio_fasham"/>
+		<link source="/bio_npzd_fe/bio_npzd_fe_nml"       target="/bio/bio_model/bio_npzd_fe"/>
+		<!--<link source="/bio_BFM"                           target="/bio/bio_model/bio_BFM"/>-->
+	</links>
+	<custom>
+		<forward>
+<![CDATA[
+# ===============================================
+#  gotmrun
+# ===============================================
+
+# Convert absolute time interval to relative time interval.
+dt = source['gotmrun/model_setup/dt'].getValue(usedefault=True)
+target['timeintegration/dt'].setValue(datatypes.TimeDelta(seconds=dt))
+target['output/dtsave'].setValue(datatypes.TimeDelta(seconds=dt*source['gotmrun/output/nsave'].getValue(usedefault=True)))
+
+# ===============================================
+#  meanflow
+# ===============================================
+
+target['meanflow/z0s'].setValue(target['meanflow/z0s_min'].getValue())
+
+# ===============================================
+#  airsea
+# ===============================================
+
+# Convert calc_fluxes from boolean into integer.
+if source['airsea/airsea/calc_fluxes'].getValue(usedefault=True):
+    target['airsea/flux_source'].setValue(0)
+else:
+    target['airsea/flux_source'].setValue(1)
+
+# If heat fluxes are effectively disabled, set the heat flux method to "none"
+if source['airsea/airsea/heat_method'].getValue(usedefault=True)==1 and target['airsea/const_heat'].getValue()==0.:
+    target['airsea/heat_method'].setValue(0)
+
+# If short-wave radiation is effectively disabled, set the swr method to "none"
+if source['airsea/airsea/swr_method'].getValue(usedefault=True)==1 and target['airsea/const_swr'].getValue()==0.:
+    target['airsea/swr_method'].setValue(0)
+
+# If momentum fluxes are effectively disabled, set the momentum flux method to "none"
+if source['airsea/airsea/momentum_method'].getValue(usedefault=True)==1 and target['airsea/const_tx'].getValue()==0. and target['airsea/const_ty'].getValue()==0.:
+    target['airsea/momentum_method'].setValue(0)
+
+# ===============================================
+#  obs: salinity
+# ===============================================
+
+# Merge analytical salinity profile setting into main salinity settings.
+if source['obs/sprofile/s_prof_method'].getValue(usedefault=True)==1:
+    target['obs/sprofile'].setValue(10+source['obs/sprofile/s_analyt_method'].getValue(usedefault=True))
+
+# Copy constant salinity, surface salinity from shared top layer salinity.
+target['obs/sprofile/s_const'].setValue(target['obs/sprofile/s_1'].getValue())
+target['obs/sprofile/s_surf' ].setValue(target['obs/sprofile/s_1'].getValue())
+
+# Determine type of salinity relaxation.        
+relaxbulk = source['obs/sprofile/SRelaxTauM'].getValue(usedefault=True)<1e+15
+relaxbott = source['obs/sprofile/SRelaxTauB'].getValue(usedefault=True)<1e+15 and source['obs/sprofile/SRelaxBott'].getValue(usedefault=True)>0
+relaxsurf = source['obs/sprofile/SRelaxTauS'].getValue(usedefault=True)<1e+15 and source['obs/sprofile/SRelaxSurf'].getValue(usedefault=True)>0
+target['obs/sprofile/SRelax'].setValue(relaxbulk or relaxbott or relaxsurf)
+
+# ===============================================
+#  obs: temperature
+# ===============================================
+
+# Merge analytical temperature profile setting into main temperature settings.
+if source['obs/tprofile/t_prof_method'].getValue(usedefault=True)==1:
+    target['obs/tprofile'].setValue(10+source['obs/tprofile/t_analyt_method'].getValue(usedefault=True))
+
+# Copy constant temperature, surface temperature from shared top layer temperature.
+target['obs/tprofile/t_const'].setValue(target['obs/tprofile/t_1'].getValue())
+target['obs/tprofile/t_surf' ].setValue(target['obs/tprofile/t_1'].getValue())
+
+# Determine type of temperature relaxation.        
+relaxbulk = source['obs/tprofile/TRelaxTauM'].getValue(usedefault=True)<1e+15
+relaxbott = source['obs/tprofile/TRelaxTauB'].getValue(usedefault=True)<1e+15 and source['obs/tprofile/TRelaxBott'].getValue(usedefault=True)>0
+relaxsurf = source['obs/tprofile/TRelaxTauS'].getValue(usedefault=True)<1e+15 and source['obs/tprofile/TRelaxSurf'].getValue(usedefault=True)>0
+target['obs/tprofile/TRelax'].setValue(relaxbulk or relaxbott or relaxsurf)
+
+# ===============================================
+#  obs: external pressure
+# ===============================================
+
+target['obs/ext_pressure/PressUOffset'].setValue(target['obs/ext_pressure/PressConstU'].getValue())
+target['obs/ext_pressure/PressVOffset'].setValue(target['obs/ext_pressure/PressConstV'].getValue())
+
+# ===============================================
+#  obs: sea surface elevation
+# ===============================================
+
+ref = source['obs/zetaspec/zeta_0'].getValue()
+target['obs/zetaspec/zeta_const' ].setValue(ref)
+target['obs/zetaspec/zeta_offset'].setValue(ref)
+
+# ===============================================
+#  bio
+# ===============================================
+if not source['bio/bio_nml/bio_calc'].getValue():
+    target['bio/bio_model'].setValue(0)
+
+# Note: we implicitly lose output settings out_fmt, out_dir and out_fn; the GUI scenario
+# does not support (or need) these.
+]]>
+		</forward>
+		<backward>
+<![CDATA[
+# ===============================================
+#  gotmrun
+# ===============================================
+
+# Move from absolute time interval between outputs to relative intervals (number of simulation steps)
+dt = source['timeintegration/dt'].getValue().getAsSeconds()
+target['gotmrun/model_setup/dt'].setValue(dt)
+relinterval = int(source['output/dtsave'].getValue().getAsSeconds()/dt)
+if relinterval<1: relinterval=1
+target['gotmrun/output/nsave'].setValue(relinterval)
+
+# If we use a custom grid, take the number of layers from the grid file.
+if source['/grid/grid_method'].getValue()>0:
+    val = source['/grid/grid_file'].getValue()
+    nlev = len(val.getData()[0])
+    target['gotmrun/model_setup/nlev'].setValue(nlev)
+
+# Add output path and type (not present in GUI scenarios)
+target['gotmrun/output/out_fmt'].setValue(2)
+target['gotmrun/output/out_dir'].setValue('.')
+target['gotmrun/output/out_fn' ].setValue('result')
+
+# ===============================================
+#  meanflow
+# ===============================================
+
+# Choose between constant and minimum surface roughness value, based on use of Charnock adaptation.
+if not source['meanflow/charnock'].getValue():
+    target['gotmmean/meanflow/z0s_min'].setValue(source['meanflow/z0s'].getValue())
+
+# ===============================================
+#  airsea
+# ===============================================
+
+# Convert flux source from "select" to "bool".
+target['airsea/airsea/calc_fluxes'].setValue(source['airsea/flux_source'].getValue()==0)
+
+# ===============================================
+#  obs: salinity
+# ===============================================
+
+# If an analytical salinity profile is used, extract the analytical method from the main salinity setting.
+sprofile = source['obs/sprofile'].getValue()
+if sprofile>10:
+    target['obs/sprofile/s_prof_method'].setValue(1)
+    target['obs/sprofile/s_analyt_method'].setValue(sprofile-10)
+
+# Choose between constant and surface salinity based on chosen analytical method.
+s_analyt_method = target['obs/sprofile/s_analyt_method'].getValue()
+if s_analyt_method==1:
+    target['obs/sprofile/s_1'].setValue(source['obs/sprofile/s_const'].getValue())
+elif s_analyt_method==3:
+    target['obs/sprofile/s_1'].setValue(source['obs/sprofile/s_surf'].getValue())
+
+# Disable salinity relaxation where needed.
+if not source['obs/sprofile/SRelax'].getValue():
+    target['obs/sprofile/SRelaxTauM'].setValue(1.e15)
+    target['obs/sprofile/SRelaxTauB'].setValue(1.e15)
+    target['obs/sprofile/SRelaxTauS'].setValue(1.e15)
+
+# ===============================================
+#  obs: temperature
+# ===============================================
+
+# If an analytical temperature profile is used, extract the analytical method from the main temperature setting.
+tprofile = source['obs/tprofile'].getValue()
+if tprofile>10:
+    target['obs/tprofile/t_prof_method'  ].setValue(1)
+    target['obs/tprofile/t_analyt_method'].setValue(tprofile-10)
+
+# Choose between constant and surface temperature based on chosen analytical method.
+t_analyt_method = target['obs/tprofile/t_analyt_method'].getValue()
+if t_analyt_method==1:
+    target['obs/tprofile/t_1'].setValue(source['obs/tprofile/t_const'].getValue())
+elif t_analyt_method==3:
+    target['obs/tprofile/t_1'].setValue(source['obs/tprofile/t_surf' ].getValue())
+
+# Disable temperature relaxation where needed.
+if not source['obs/tprofile/TRelax'].getValue():
+    target['obs/tprofile/TRelaxTauM'].setValue(1.e15)
+    target['obs/tprofile/TRelaxTauB'].setValue(1.e15)
+    target['obs/tprofile/TRelaxTauS'].setValue(1.e15)
+
+# ===============================================
+#  obs: external pressure
+# ===============================================
+
+if source['obs/ext_pressure'].getValue()==1:
+    target['obs/ext_pressure/PressConstU'].setValue(source['obs/ext_pressure/PressUOffset'].getValue())
+    target['obs/ext_pressure/PressConstV'].setValue(source['obs/ext_pressure/PressVOffset'].getValue())
+
+# ===============================================
+#  obs: internal pressure
+# ===============================================
+
+if source['obs/int_pressure'].getValue()==1:
+    if source['obs/sprofile'].getValue()==0:
+        target['obs/int_pressure/const_dsdx'].setValue(0.0)
+        target['obs/int_pressure/const_dsdy'].setValue(0.0)
+    if source['obs/tprofile'].getValue()==0:
+        target['obs/int_pressure/const_dtdx'].setValue(0.0)
+        target['obs/int_pressure/const_dtdy'].setValue(0.0)
+
+# ===============================================
+#  obs: sea surface elevation
+# ===============================================
+
+if source['obs/zetaspec'].getValue()==1:
+    target['obs/zetaspec/zeta_0'].setValue(source['obs/zetaspec/zeta_offset'].getValue())
+else:
+    target['obs/zetaspec/zeta_0'].setValue(source['obs/zetaspec/zeta_const' ].getValue())
+
+# ===============================================
+#  bio
+# ===============================================
+usebio = source['bio/bio_model'].getValue()!=0
+target['bio/bio_nml/bio_calc'].setValue(usebio)
+if not usebio: target['bio/bio_nml/bio_model'].setValue(1)
+]]>
+		</backward>
+	</custom>
+</converter>
