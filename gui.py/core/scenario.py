@@ -385,14 +385,14 @@ class Scenario(NamelistStore):
     @staticmethod
     def getDefaultSchemas():
         if Scenario.schemadict is None:
-            Scenario.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario_BFM'))
+            Scenario.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario'))
         return Scenario.schemadict
 
     defaultdict = None
     @staticmethod
     def getDefaultValues():
         if Scenario.defaultdict is None:
-            Scenario.defaultdict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios_BFM'))
+            Scenario.defaultdict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios'))
         return Scenario.defaultdict
 
     @classmethod
@@ -524,7 +524,7 @@ class Scenario(NamelistStore):
 
 Scenario.clearConvertors()
 
-converterdir = os.path.join(common.getDataRoot(),'schemas/scenario_BFM')
+converterdir = os.path.join(common.getDataRoot(),'schemas/scenario')
 for name in os.listdir(converterdir):
     if not name.endswith('.converter'): continue
     path = os.path.join(converterdir,name)
