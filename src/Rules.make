@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.20 2009-03-18 09:24:01 kb Exp $
+#$Id: Rules.make,v 1.21 2009-08-20 07:16:36 kb Exp $
 
 SHELL   = /bin/sh
 
@@ -46,7 +46,7 @@ endif
 ifdef NETCDFLIBNAME
 NETCDFLIB       = $(NETCDFLIBNAME)
 else
-NETCDFLIB       = -lnetcdf
+NETCDFLIB       = -lnetcdf -lnetcdff
 endif
 
 ifeq ($(NETCDF_VERSION),NETCDF4)
