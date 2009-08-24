@@ -335,3 +335,117 @@ class datetime(expressions.LazyFunction):
     def getValue(self,extraslices=None,dataonly=False):
         val = expressions.LazyFunction.getValue(self,extraslices=extraslices,dataonly=dataonly)
         return common.date2num(val)
+
+class addgaps(expressions.LazyFunction):
+    def __init__(self,sourceslice,axis=None,maxstep=None):
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,None,sourceslice,axis,maxstep=maxstep)
+
+    def getShape(self):
+        return None
+        
+    def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
+        src,axis = resolvedargs
+        maxstep = resolvedkwargs['maxstep']
+
+        if axis is None:
+            # Default to first axis
+            axis = 0
+        elif isinstance(axis,basestring):
+            # Axis is provided as string; find the index of that axis.
+            dims = list(src.dimensions)
+            assert axis in dims,'Specified axis "%s" does not exist. Available: %s.' % (axis,', '.join(dims))
+            axis = list(dims).index(axis)
+            
+        # Find the step widths for the specified axis
+        coords = src.coords[axis].copy()
+        flatcoords = numpy.swapaxes(coords,axis,0)
+        flatcoords.shape = coords.shape[0],-1
+        flatcoords = flatcoords.mean(axis=1)
+        steps = numpy.diff(flatcoords)
+        
+        # Get indices of the intervals that exceeds the specified maximum step width.
+        if maxstep is None: maxstep = steps.mean()
+        gaps = (steps>maxstep).nonzero()[0]
+        ngap = len(gaps)
+        if ngap==0: return src
+        
+        # Create new data slice that can accomodate the extra masked values.
+        newshape = list(src.data.shape)
+        newshape[axis] += ngap
+        newshape_stag = [l+1 for l in newshape]
+        newdata = numpy.ma.array(numpy.empty(newshape,dtype=src.data.dtype),copy=False,mask=True)
+        newcoords      = [numpy.empty(newshape,     dtype=c.dtype) for c in src.coords]
+        newcoords_stag = [numpy.empty(newshape_stag,dtype=c.dtype) for c in src.coords_stag]
+        res = common.Variable.Slice(src.dimensions,coords=newcoords,coords_stag=newcoords_stag,data=newdata)
+        
+        # Prepare array for retrieving and assigning data and coordinates.
+        srcslc,targetslc = [slice(None)]*len(newshape),[slice(None)]*len(newshape)
+        csrcslc,ctargetslc = list(srcslc),list(targetslc)
+        
+        # Copy left boundary of staggered coordinates
+        ctargetslc[axis] = 0
+        for c,newc in zip(src.coords_stag,newcoords_stag):
+            newc[tuple(ctargetslc)] = c[tuple(ctargetslc)]
+        
+        lasti = 0
+        for skip,i in enumerate(gaps):
+            newstart = lasti+skip
+            n = i+1-lasti
+            
+            srcslc[axis] = slice(lasti,i+1)
+            targetslc[axis] = slice(newstart,newstart+n)
+            csrcslc[axis] = slice(i,i+2)
+            ctargetslc[axis] = newstart+n
+            
+            # -----------------------------
+            # Copy data
+            # -----------------------------
+            newdata[tuple(targetslc)] = src.data[tuple(srcslc)]
+            
+            # -----------------------------
+            # Copy center coordinates
+            # -----------------------------
+            for c,newc in zip(src.coords,newcoords):
+                newc[tuple(targetslc)] = c[tuple(srcslc)]
+                
+                # Generate new center coordinate for inside the gap
+                newc[tuple(ctargetslc)] = c[tuple(csrcslc)].mean(axis=axis)
+
+            # -----------------------------
+            # Copy staggered coordinates
+            # -----------------------------
+            
+            # Inside values (if any)
+            if n>1:
+                srcslc[axis] = slice(lasti+1,i+1)
+                targetslc[axis] = slice(newstart+1,newstart+n)
+                for c,newc in zip(src.coords_stag,newcoords_stag):
+                    newc[tuple(targetslc)] = c[tuple(srcslc)]
+                    
+            # Left boundary inside current gap
+            csrcslc[axis] = slice(i,i+2)
+            ctargetslc[axis] = newstart+n
+            for ax,(c,newc) in enumerate(zip(src.coords_stag,newcoords_stag)):
+                newc[tuple(ctargetslc)] = c[tuple(csrcslc)].mean(axis=axis)
+                if ax==axis: newc[tuple(ctargetslc)]+=maxstep/2.
+                
+            # Right boundary inside current gap
+            csrcslc[axis] = slice(i+1,i+3)
+            ctargetslc[axis] = newstart+n+1
+            for ax,(c,newc) in enumerate(zip(src.coords_stag,newcoords_stag)):
+                newc[tuple(ctargetslc)] = c[tuple(csrcslc)].mean(axis=axis)
+                if ax==axis: newc[tuple(ctargetslc)]-=maxstep/2.
+                
+            lasti = i+1
+
+        # Copy remaining data
+        srcslc   [axis] = slice(lasti,     None)
+        targetslc[axis] = slice(lasti+ngap,None)
+        newdata[tuple(targetslc)] = src.data[tuple(srcslc)]
+        for c,newc in zip(src.coords,newcoords):
+            newc[tuple(targetslc)] = c[tuple(srcslc)]
+        for c,newc in zip(src.coords_stag,newcoords_stag):
+            newc[tuple(targetslc)] = c[tuple(srcslc)]
+        
+        return res
+        
