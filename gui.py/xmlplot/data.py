@@ -1721,6 +1721,14 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         nc = self.getcdf()
         if ncvarname not in nc.variables: return None
         return self.NetCDFVariable(self,ncvarname)
+    
+    def createDimension(self,dimname,length):
+        assert self.mode=='w','NetCDF file has not been opened for writing.'
+        nc = self.getcdf()
+        nc.createDimension(dimname, length)
+
+    def setProperty(self,name,value):
+        setattr(self.getcdf(),name,value)
         
     def addVariable(self,varName,dimensions,datatype='d',missingvalue=None):
         assert self.mode=='w','NetCDF file has not been opened for writing.'
@@ -1738,7 +1746,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         dims = variable.getDimensions_raw(reassign=False)
         shape = variable.getShape()
         for dim,length in zip(dims,shape):
-            if dim not in nc.dimensions: nc.createDimension(dim, length)
+            if dim not in nc.dimensions: self.createDimension(dim, length)
         data = variable.getSlice((Ellipsis,),dataonly=True)
         nctype = {'float32':'f','float64':'d'}[str(data.dtype)]
         ncvar = nc.createVariable(variable.getName(),nctype,dims)
