@@ -339,6 +339,7 @@ class datetime(expressions.LazyFunction):
 class addgaps(expressions.LazyFunction):
     def __init__(self,sourceslice,axis=None,maxstep=None):
         expressions.LazyFunction.__init__(self,self.__class__.__name__,None,sourceslice,axis,maxstep=maxstep)
+        self.useslices = True
 
     def getShape(self):
         return None
@@ -372,20 +373,23 @@ class addgaps(expressions.LazyFunction):
         # Create new data slice that can accomodate the extra masked values.
         newshape = list(src.data.shape)
         newshape[axis] += ngap
-        newshape_stag = [l+1 for l in newshape]
         newdata = numpy.ma.array(numpy.empty(newshape,dtype=src.data.dtype),copy=False,mask=True)
-        newcoords      = [numpy.empty(newshape,     dtype=c.dtype) for c in src.coords]
-        newcoords_stag = [numpy.empty(newshape_stag,dtype=c.dtype) for c in src.coords_stag]
+        newcoords,newcoords_stag = None,None
+        if not dataonly:
+            newshape_stag = [l+1 for l in newshape]
+            newcoords      = [numpy.empty(newshape,     dtype=c.dtype) for c in src.coords]
+            newcoords_stag = [numpy.empty(newshape_stag,dtype=c.dtype) for c in src.coords_stag]
         res = common.Variable.Slice(src.dimensions,coords=newcoords,coords_stag=newcoords_stag,data=newdata)
         
         # Prepare array for retrieving and assigning data and coordinates.
         srcslc,targetslc = [slice(None)]*len(newshape),[slice(None)]*len(newshape)
         csrcslc,ctargetslc = list(srcslc),list(targetslc)
         
-        # Copy left boundary of staggered coordinates
-        ctargetslc[axis] = 0
-        for c,newc in zip(src.coords_stag,newcoords_stag):
-            newc[tuple(ctargetslc)] = c[tuple(ctargetslc)]
+        if not dataonly:
+            # Copy left boundary of staggered coordinates
+            ctargetslc[axis] = 0
+            for c,newc in zip(src.coords_stag,newcoords_stag):
+                newc[tuple(ctargetslc)] = c[tuple(ctargetslc)]
         
         lasti = 0
         for skip,i in enumerate(gaps):
@@ -394,47 +398,49 @@ class addgaps(expressions.LazyFunction):
             
             srcslc[axis] = slice(lasti,i+1)
             targetslc[axis] = slice(newstart,newstart+n)
-            csrcslc[axis] = slice(i,i+2)
-            ctargetslc[axis] = newstart+n
             
             # -----------------------------
             # Copy data
             # -----------------------------
             newdata[tuple(targetslc)] = src.data[tuple(srcslc)]
             
-            # -----------------------------
-            # Copy center coordinates
-            # -----------------------------
-            for c,newc in zip(src.coords,newcoords):
-                newc[tuple(targetslc)] = c[tuple(srcslc)]
-                
-                # Generate new center coordinate for inside the gap
-                newc[tuple(ctargetslc)] = c[tuple(csrcslc)].mean(axis=axis)
+            if not dataonly:
+                # -----------------------------
+                # Copy center coordinates
+                # -----------------------------
+                csrcslc[axis] = slice(i,i+2)
+                ctargetslc[axis] = newstart+n
 
-            # -----------------------------
-            # Copy staggered coordinates
-            # -----------------------------
-            
-            # Inside values (if any)
-            if n>1:
-                srcslc[axis] = slice(lasti+1,i+1)
-                targetslc[axis] = slice(newstart+1,newstart+n)
-                for c,newc in zip(src.coords_stag,newcoords_stag):
+                for c,newc in zip(src.coords,newcoords):
                     newc[tuple(targetslc)] = c[tuple(srcslc)]
                     
-            # Left boundary inside current gap
-            csrcslc[axis] = slice(i,i+2)
-            ctargetslc[axis] = newstart+n
-            for ax,(c,newc) in enumerate(zip(src.coords_stag,newcoords_stag)):
-                newc[tuple(ctargetslc)] = c[tuple(csrcslc)].mean(axis=axis)
-                if ax==axis: newc[tuple(ctargetslc)]+=maxstep/2.
+                    # Generate new center coordinate for inside the gap
+                    newc[tuple(ctargetslc)] = c[tuple(csrcslc)].mean(axis=axis)
+
+                # -----------------------------
+                # Copy staggered coordinates
+                # -----------------------------
                 
-            # Right boundary inside current gap
-            csrcslc[axis] = slice(i+1,i+3)
-            ctargetslc[axis] = newstart+n+1
-            for ax,(c,newc) in enumerate(zip(src.coords_stag,newcoords_stag)):
-                newc[tuple(ctargetslc)] = c[tuple(csrcslc)].mean(axis=axis)
-                if ax==axis: newc[tuple(ctargetslc)]-=maxstep/2.
+                # Inside values (if any)
+                if n>1:
+                    srcslc[axis] = slice(lasti+1,i+1)
+                    targetslc[axis] = slice(newstart+1,newstart+n)
+                    for c,newc in zip(src.coords_stag,newcoords_stag):
+                        newc[tuple(targetslc)] = c[tuple(srcslc)]
+                        
+                # Left boundary inside current gap
+                csrcslc[axis] = slice(i,i+2)
+                ctargetslc[axis] = newstart+n
+                for ax,(c,newc) in enumerate(zip(src.coords_stag,newcoords_stag)):
+                    newc[tuple(ctargetslc)] = c[tuple(csrcslc)].mean(axis=axis)
+                    if ax==axis: newc[tuple(ctargetslc)] += maxstep/2.
+                    
+                # Right boundary inside current gap
+                csrcslc[axis] = slice(i+1,i+3)
+                ctargetslc[axis] = newstart+n+1
+                for ax,(c,newc) in enumerate(zip(src.coords_stag,newcoords_stag)):
+                    newc[tuple(ctargetslc)] = c[tuple(csrcslc)].mean(axis=axis)
+                    if ax==axis: newc[tuple(ctargetslc)] -= maxstep/2.
                 
             lasti = i+1
 
@@ -442,6 +448,10 @@ class addgaps(expressions.LazyFunction):
         srcslc   [axis] = slice(lasti,     None)
         targetslc[axis] = slice(lasti+ngap,None)
         newdata[tuple(targetslc)] = src.data[tuple(srcslc)]
+        
+        if dataonly: return newdata
+        
+        # Copy remaining coordinate data
         for c,newc in zip(src.coords,newcoords):
             newc[tuple(targetslc)] = c[tuple(srcslc)]
         for c,newc in zip(src.coords_stag,newcoords_stag):
