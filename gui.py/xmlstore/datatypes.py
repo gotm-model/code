@@ -154,27 +154,33 @@ class DataTypeArray(DataType,list):
 
     def preparePersist(self,node,context):
         def preparePersistElements(elements,targetnode):
+            ch = targetnode.firstChild
             for e in elements:
+                while ch.nodeType!=ch.ELEMENT_NODE or ch.localName!='e': ch = ch.nextSibling
                 if isinstance(e,(list,tuple)):
                     preparePersistElements(e,ch)
                 else:
                     self.getSafeValue(e).preparePersist(ch,context)
+                ch = ch.nextSibling
         preparePersistElements(self,node)
 
     def persist(self,node,context):
         def persistElements(elements,targetnode):
+            ch = targetnode.firstChild
             for e in elements:
+                while ch.nodeType!=ch.ELEMENT_NODE or ch.localName!='e': ch = ch.nextSibling
                 if isinstance(e,(list,tuple)):
                     persistElements(e,ch)
                 else:
                     self.getSafeValue(e).persist(ch,context)
+                ch = ch.nextSibling
         persistElements(self,node)
         
     def validate(self,templatenode,callback=None):
         def validateElements(elements):
             for e in elements:
                 if isinstance(e,(list,tuple)):
-                    if not validateElements(e,ch): return False
+                    if not validateElements(e): return False
                 else:
                     if not self.getSafeValue(e).validate(templatenode,callback): return False
             return True
