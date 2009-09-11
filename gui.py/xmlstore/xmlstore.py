@@ -77,28 +77,35 @@ class Schema(object):
         self.buildDependencies()
 
     @staticmethod
+    def resolveLinkedPath(path,refpath=''):
+        while True:
+            match = re.match('\[(\w+)]',path)
+            if match is None: break
+            exp = match.group(1)
+            assert exp in Schema.knownpaths, 'Do not know the location of "%s" in linked path "%s".' % (exp,path)
+            path = os.path.join(path[:match.start(0)],Schema.knownpaths[exp],path[match.end(0)+1:])
+        return os.path.abspath(os.path.join(os.path.dirname(refpath),path))
+
+    @staticmethod
     def resolveLinks(dom,sourcepath):
         # Resolve links to external documents
         links = dom.getElementsByTagName('link')
         templates = dict([(node.getAttribute('id'),node) for node in dom.getElementsByTagName('template')])
         for link in links:
             assert link.hasAttribute('path') or link.hasAttribute('template'), 'Link node does not have "path" or "template" attribute.'
-            
             if link.hasAttribute('path'):
                 # We need to copy from an external XML document.
-                linkedpath = link.getAttribute('path')
-                while True:
-                    match = re.match('\[(\w+)]',linkedpath)
-                    if match is None: break
-                    exp = match.group(1)
-                    assert exp in Schema.knownpaths, 'Do not know the location of "%s" in linked path "%s".' % (exp,linkedpath)
-                    linkedpath = os.path.join(linkedpath[:match.start(0)],Schema.knownpaths[exp],linkedpath[match.end(0)+1:])
-                linkedpath = os.path.abspath(os.path.join(os.path.dirname(sourcepath),linkedpath))
+                linkedpath = Schema.resolveLinkedPath(link.getAttribute('path'),sourcepath)
                 if not os.path.isfile(linkedpath):
                     raise Exception('Linked XML schema file "%s" does not exist.' % linkedpath)
+                link.setAttribute('sourcepath',linkedpath)
                 childdom = xml.dom.minidom.parse(linkedpath)
                 Schema.resolveLinks(childdom,linkedpath)
                 templateroot = childdom.documentElement
+                if link.hasAttribute('node'):
+                    linkednode = link.getAttribute('node')
+                    templateroot = Schema.getNodeFromPath(linkednode.split('/'),templateroot)
+                    assert templateroot is not None, 'Unable to locate node "%s" in "%s".' % (linkednode,linkedpath)
             else:
                 # We need to copy from an internal template.
                 templateid = link.getAttribute('template')
@@ -112,13 +119,15 @@ class Schema(object):
             
             # Copy attributes and children of link node to new node.
             for key in link.attributes.keys():
-                if key not in ('path','template'):
+                if key not in ('path','template','node'):
                     newnode.setAttribute(key,link.getAttribute(key))
+
             for ch in link.childNodes:
                 util.copyNode(ch,newnode,targetdoc=dom)
-                    
+
             # Remove link node
             linkparent.removeChild(link)
+            
         return len(links)>0
         
     def getRoot(self):
@@ -165,16 +174,16 @@ class Schema(object):
                     
     # getTemplateNode: obtains template node at given path
     # (path specification consists of array of node ids)
-    def getNodeFromPath(self,path,root=None):
+    @staticmethod
+    def getNodeFromPath(path,root):
         """Obtains DOM node in schema at specified path. If a reference node
         is provided, the path is assumed to be relative to the reference node.
         If no reference node is provided, the path is assumed absolute, that is,
         relative to the schema root element."""
-        if root is None: root=self.dom.documentElement
         for childname in path:
             if childname=='..':
-                assert not root.isSameNode(self.dom.documentElement)
                 root = root.parentNode
+                assert root.nodeType!=root.DOCUMENT_NODE,'Cannot go up one level; already at the schema root.'
             elif childname!='' and childname!='.':
                 for root in root.childNodes:
                     if root.nodeType==root.ELEMENT_NODE and root.localName=='element' and root.getAttribute('name')==childname:
@@ -207,10 +216,10 @@ class Schema(object):
         """
         if absourcepath is None: '/'.join(self.getPathFromNode(sourcenode))
         
-        refnode = None
+        refnode = self.dom.documentElement
         if targetpath[0]!='/': refnode = sourcenode.parentNode
         splittargetpath = targetpath.split('/')
-        targetnode = self.getNodeFromPath(splittargetpath,root=refnode)
+        targetnode = Schema.getNodeFromPath(splittargetpath,refnode)
         assert targetnode is not None, 'Cannot locate target node "%s" for node "%s".' % (targetpath,absourcepath)
         
         abstargetpath = self.getPathFromNode(targetnode)
@@ -230,6 +239,7 @@ class Schema(object):
         """For the given template node, registers that another node at the
         specified (potentially relative) path depends on it.
         """
+        #print '%s depends on %s' % (dependantnodepath,node.getAttribute('name'))
         deplist = util.findDescendantNode(node,['dependentvariables'],create=True)
         depnode = self.dom.createElementNS(deplist.namespaceURI,'dependentvariable')
         depnode.setAttribute('path',dependantnodepath)
@@ -339,9 +349,10 @@ class TypedStoreInterface(object):
     property set and (2) to omit nodes with the "grouponly" attribute set, replacing
     them instead with the node's children.
     """
-    def __init__(self,store,showhidden=True,omitgroupers=False,processDefaultChange=0):
+    def __init__(self,store,showhidden=True,omitgroupers=False,processDefaultChange=0,interfacetype='gui'):
         self.showhidden = showhidden
         self.omitgroupers = omitgroupers
+        self.interfacetype = interfacetype
         self.blockNotifyOfHiddenNodes = (not showhidden)
         
         # How to process changes in the default node value
@@ -357,6 +368,9 @@ class TypedStoreInterface(object):
     def unlink(self):
         assert self.eventhandlers is not None, 'unlink called on TypedStoreInterface for the second time.'
         self.eventhandlers = None
+        
+    def isGrouper(self,node):
+        return self.omitgroupers and ('True' in node.grouponly or self.interfacetype in node.grouponly)
 
     def getChildCount(self,node):
         """Returns the number of children of the specified node."""
@@ -365,7 +379,7 @@ class TypedStoreInterface(object):
         childcount = 0
         for child in node.children:
             if child.visible or self.showhidden:
-                if self.omitgroupers and child.grouponly:
+                if self.isGrouper(child):
                     childcount += self.getChildCount(child)
                 else:
                     childcount += 1
@@ -378,7 +392,7 @@ class TypedStoreInterface(object):
         res = []
         for child in node.children:
             if child.visible or self.showhidden:
-                if self.omitgroupers and child.grouponly:
+                if self.isGrouper(child):
                     res += self.getChildren(child)
                 else:
                     res.append(child)
@@ -388,9 +402,8 @@ class TypedStoreInterface(object):
         """Returns the parent of the specified node."""
         assert isinstance(node,Node), 'Supplied object is not of type "Node" (but "%s").' % node
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
-        if not self.omitgroupers: return node.parent
         par = node.parent
-        while par.grouponly: par = par.parent
+        while self.isGrouper(par): par = par.parent
         return par
 
     def getChildByIndex(self,node,index,returnindex=False):
@@ -399,7 +412,7 @@ class TypedStoreInterface(object):
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         for child in node.children:
             if child.visible or self.showhidden:
-                if self.omitgroupers and child.grouponly:
+                if self.isGrouper(child):
                     index = self.getChildByIndex(child,index,returnindex=True)
                     if not isinstance(index,int): return index
                 else:
@@ -416,11 +429,11 @@ class TypedStoreInterface(object):
         assert node.isValid(), 'Supplied node %s is invalid (has already been destroyed).' % node
         ind = 0
         par = node.parent
-        if self.omitgroupers and par.grouponly: ind = self.getOwnIndex(par)
+        if self.isGrouper(par): ind = self.getOwnIndex(par)
         for (isib,sib) in enumerate(par.children):
             if sib is node or isib==node.futureindex: break
             if sib.visible or self.showhidden:
-                if self.omitgroupers and sib.grouponly:
+                if self.isGrouper(sib):
                     ind += self.getChildCount(sib)
                 else:
                     ind += 1
@@ -517,7 +530,7 @@ class TypedStoreInterface(object):
         if 'beforeVisibilityChange' not in self.eventhandlers: return
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
         if self.blockNotifyOfHiddenNodes and (not showhide) and node.isHidden(): return
-        if self.omitgroupers and node.grouponly:
+        if self.isGrouper(node):
             children = self.getChildren(node)
             if len(children)==0: return
             self.eventhandlers['beforeVisibilityChange'](children,shownew,showhide)
@@ -533,7 +546,7 @@ class TypedStoreInterface(object):
         if 'afterVisibilityChange' not in self.eventhandlers: return
         if self.blockNotifyOfHiddenNodes and self.getParent(node).isHidden(): return
         if self.blockNotifyOfHiddenNodes and (not showhide) and node.isHidden(): return
-        if self.omitgroupers and node.grouponly:
+        if self.isGrouper(node):
             children = self.getChildren(node)
             if len(children)==0: return
             self.eventhandlers['afterVisibilityChange'](children,shownew,showhide)
@@ -581,7 +594,7 @@ class Node(object):
         self.children = []
         self.futureindex = None
         self.visible = self.templatenode.getAttribute('hidden')!='True'
-        self.grouponly = self.templatenode.getAttribute('grouponly')=='True'
+        self.grouponly = frozenset(self.templatenode.getAttribute('grouponly').split(';'))
 
         # Build a dictionary with all child value nodes
         valuechildren = {}
@@ -1245,9 +1258,10 @@ class Node(object):
         value has not been set, and existing optional nodes are not
         removed first.
         """
+        if matchednodes is not None: matchednodes[self] = sourcenode
+
         # Copy node value (if both source and target can have a value)
         if self.canHaveValue() and sourcenode.canHaveValue():
-            if matchednodes is not None: matchednodes.append(self)
             if replace or not self.hasValue():
                 curval = sourcenode.getValue()
                 self.setValue(curval)
@@ -1297,6 +1311,9 @@ class Node(object):
 # ------------------------------------------------------------------------------------------
 # TypedStore
 # ------------------------------------------------------------------------------------------
+
+def createStoreClass(name,schemainfodir):
+    return type(name,(TypedStore,),{'schemainfodir':schemainfodir})
             
 # TypedStore: encapsulates the above store.
 #   Adds the use of a second XML document (template) that describes the data types
@@ -1306,58 +1323,63 @@ class Node(object):
 #   Node are obtained by traversing the tree (start: TypedStore.root).
 class TypedStore(util.referencedobject):
 
-    defaultname2scenarios = None
+    schemainfodir = None
+    version2defaultstore = None
     
-    @staticmethod
-    def getDefaultSchemas():
-        """Returns a dictionary that links short schema names to the full schema
-        paths (XML schema file).
+    @classmethod
+    def getSchemaInfo(cls):
+        """Returns a SchemaInfo object that contains information on available schemas, converters, etc.
         
-        This method may be overridden by deriving classes if they need the
-        ability to refer to schemas by shortcuts rather than paths.
+        This method may be overridden by deriving classes if they want to make pre-made schemas,
+        converters and such available.
         """
-        return ShortcutDictionary()
-
-    @staticmethod
-    def getDefaultValues():
-        """Returns a dictionary that links short names of default value set
-        to the paths of the value files (XML file).
-        
-        This method may be overridden by deriving classes if they need the
-        ability to refer to default value sets by shortcuts rather than paths.
-        """
-        return ShortcutDictionary()
+        if cls.schemainfodir is not None: return schemainfocache[cls.schemainfodir]
+        return SchemaInfo()
 
     @classmethod
-    def getDefault(cls,name,version):
+    def getDefault(cls,version):
         """Returns a TypedStore with the set of default value identified by
         the specified name, converted to the specified version if needed.
         
-        To use this, the deriving class MUST implement getDefaultValues!
+        To use this, the deriving class MUST implement getSchemaInfo!
         """
         import atexit
         if cls==TypedStore: return None
-        if name is None: name = 'default'
-        if cls.defaultname2scenarios is None: cls.defaultname2scenarios = {}
-        version2store = cls.defaultname2scenarios.setdefault(name,{})
-        if version in version2store:
-            # We have the requested default with the requested version in our cache; return it.
-            return version2store[version]
-        elif 'source' not in version2store:
+        if cls.version2defaultstore is None: cls.version2defaultstore = {}
+
+        # If we have defaults for the requested version in our cache, return these.
+        if version in cls.version2defaultstore: return cls.version2defaultstore[version]
+            
+        # Function for filling in default values for linked-in templates.
+        def addDefaultsForLinks(store):
+            for node in store.root.getDescendants():
+                if node.templatenode.hasAttribute('sourcepath') and node.valueroot is None:
+                    # The template for this node was linked in, and we do not have any default values for it yet.
+                    srcdir = os.path.dirname(node.templatenode.getAttribute('sourcepath'))
+                    subcls = createStoreClass('dummy',srcdir)
+                    defs = subcls.getDefault(node.templatenode.getAttribute('version'))
+                    if defs is not None: node.copyFrom(defs.root)
+            
+        if 'source' not in cls.version2defaultstore:
             # We do not have any version of the requested default; first obtain the source version.
-            path = cls.getDefaultValues().get(name,None)
-            if path is None: return None
+            version2path = cls.getSchemaInfo().getDefaults()
+            if not version2path: return None
+            path = version2path.values()[0]
             sourcestore = cls.fromXmlFile(path,adddefault=False)
+            addDefaultsForLinks(sourcestore)
             atexit.register(TypedStore.release,sourcestore)
-            version2store['source'] = sourcestore
-            version2store[sourcestore.version] = sourcestore
+            cls.version2defaultstore['source'] = sourcestore
+            cls.version2defaultstore[sourcestore.version] = sourcestore
             if sourcestore.version==version: return sourcestore
+            
         # We now have the source version of the requested default, but we need another version. Convert.
-        sourcestore = version2store['source']
+        sourcestore = cls.version2defaultstore['source']
         defstore = cls.fromSchemaName(version,adddefault=False)
         sourcestore.convert(defstore,usedefaults=False)
+        addDefaultsForLinks(defstore)
         atexit.register(TypedStore.release,defstore)
-        version2store[version] = defstore
+        cls.version2defaultstore[version] = defstore
+
         return defstore
 
     @classmethod
@@ -1365,10 +1387,10 @@ class TypedStore(util.referencedobject):
         """Returns a TypedStore based on the schema identified by the specified
         name.
         
-        To use this, the deriving class MUST implement getDefaultSchemas!
+        To use this, the deriving class MUST implement getSchemaInfo!
         """
         assert cls!=TypedStore, 'fromSchemaName cannot be called on base class "TypedStore", only on derived classes. You need to create a derived class with versioning support.'
-        schemapath = cls.getDefaultSchemas().get(schemaname,None)
+        schemapath = cls.getSchemaInfo().getSchemas().get(schemaname,None)
         if schemapath is None: 
             raise Exception('Unable to locate XML schema file for "%s".' % schemaname)
         kwargs['schema'] = schemapath
@@ -1381,7 +1403,7 @@ class TypedStore(util.referencedobject):
         
         The values file is openend, its schema identified retrieved. Then the
         program attempt to created the required schema. For this to work,
-        the deriving class must implement getDefaultSchemas.
+        the deriving class must implement getSchemaInfo.
         """
         assert cls!=TypedStore, 'fromXmlFile cannot be called on base class "TypedStore", only on derived classes. Use setStore if you do not require versioning.'
         if not os.path.isfile(path):
@@ -1426,7 +1448,7 @@ class TypedStore(util.referencedobject):
         
         # Add store with default values if requested and available.
         if adddefault:
-            defscenario = self.getDefault(None,self.version)
+            defscenario = self.getDefault(self.version)
             if defscenario is not None: self.setDefaultStore(defscenario,updatevisibility=False)
 
         # Now set current values in the store
@@ -1482,6 +1504,8 @@ class TypedStore(util.referencedobject):
         omit schema nodes that are meant for grouping only (with the "grouponly"
         attribute). Also, interfaces provide the *only* means of being notified by the
         store about changes of node value, visibility, etc.
+        
+        Remember to call store.disconnectInterface after you are done with the interface.
         """
         return TypedStoreInterface(self,**kwargs)
 
@@ -1497,7 +1521,7 @@ class TypedStore(util.referencedobject):
         if container is not None: container.addref()
         self.context['container'] = container
 
-    def setStore(self,valueroot):
+    def setStore(self,valueroot,resolvelinks=True):
         """Provides an XML DOM tree with values for the TypedStore. This
         replaces any existing values. The values can be specified as a
         path to an XML file (i.e., a string), an XML document, or an XML
@@ -1515,7 +1539,7 @@ class TypedStore(util.referencedobject):
 
         assert valueroot is None or isinstance(valueroot,basestring) or isinstance(valueroot,xml.dom.Node), 'Supplied value root must None, a path to an XML file, or an XML node, but is %s.' % valueroot
 
-        valuedom = None
+        valuedom,docpath = None,''
         if valueroot is None:
             impl = xml.dom.minidom.getDOMImplementation()
             assert templateroot.hasAttribute('name'), 'Root of the schema does not have attribute "name".'
@@ -1523,6 +1547,7 @@ class TypedStore(util.referencedobject):
             valueroot = valuedom.documentElement
             valueroot.setAttribute('version',self.version)
         elif isinstance(valueroot,basestring):
+            docpath = valueroot
             valuedom = xml.dom.minidom.parse(valueroot)
             valueroot = valuedom.documentElement
         elif valueroot.nodeType==valueroot.DOCUMENT_NODE:
@@ -1545,6 +1570,22 @@ class TypedStore(util.referencedobject):
         self.xmlroot = valueroot
 
         self.context = {}
+        
+        # Resolve links to external XML documents (if any)
+        if resolvelinks:
+            def processnode(node,refpath):
+                for ch in node.childNodes:
+                    if ch.nodeType==ch.ELEMENT_NODE: processnode(ch,refpath)
+                if node.hasAttribute('link'):
+                    linkedpath = Schema.resolveLinkedPath(node.getAttribute('link'))
+                    if not os.path.isfile(linkedpath):
+                        raise Exception('Linked values file "%s" does not exist.' % linkedpath)
+                    childdom = xml.dom.minidom.parse(linkedpath)
+                    for sourcech in childdom.documentElement.childNodes:
+                        cpy = util.copyNode(sourcech,node,targetdoc=valuedom)
+                        if cpy.nodeType==cpy.ELEMENT_NODE: processnode(cpy,linkedpath)
+                    node.removeAttribute('link')
+            processnode(self.xmlroot,docpath)
 
         self.root = Node(self,templateroot,self.xmlroot,[],None)
         self.changed = False
@@ -1885,119 +1926,12 @@ class TypedStore(util.referencedobject):
         elif target.version==self.version:
             return target
 
-        convertor = self.getConvertor(self.version,target.version)
+        convertor = self.getSchemaInfo().getConverter(self.version,target.version)
         if convertor is None:
             raise Exception('No convertor available to convert version "%s" to "%s".' % (self.version,target.version))
         convertor.convert(self,target,callback=callback,usedefaults=usedefaults)
 
         return target
-
-    convertorsfrom = {}
-
-    @classmethod
-    def getConvertor(cls,sourceid,targetid,directonly=False):
-        """Returns a convertor object, capable of converting between the specified versions.
-        Conversion routes may be direct (using one convertor object), or indirect (using a
-        chain of convertor objects). Specify "directonly" to retrieve only direct conversion
-        routes. Return None if no convertor is available that meets the specified criteria.
-        """
-        # Try direct route first.
-        if (sourceid in cls.convertorsfrom) and (targetid in cls.convertorsfrom[sourceid]):
-            convertorclass = cls.convertorsfrom[sourceid][targetid]
-            if convertorclass.defaultconvertor:
-                conv = convertorclass()
-                revconv = cls.getConvertor(targetid,sourceid,directonly=True)
-                if revconv is not None:
-                    conv.links = revconv.reverseLinks()
-                return conv
-            else:
-                return convertorclass()
-
-        # Direct route not available, try indirect routes
-        if not directonly:
-            indirectroutes = cls.findIndirectConversion(sourceid,targetid,depth='  ')
-            if len(indirectroutes)>0:
-                indirectroutes.sort(key=len)
-                route = indirectroutes[0]
-                chain = []
-                for istep in range(len(route)-1):
-                    convertor = cls.getConvertor(route[istep],route[istep+1],directonly=True)
-                    chain.append(convertor)
-                return ConvertorChain(chain)
-
-        # No route available.
-        return None
-
-    @classmethod
-    def findIndirectConversion(cls,sourceid,targetid,disallowed=[],depth=''):
-        """Returns all conversion routes between the specified source version and target
-        version. Use of intermediate versions specified in "disallowed" will be avoided
-        (this is used specifically for prevetion of circular conversion routes). The
-        depth argument is used for debugging output only."""
-        next = cls.convertorsfrom.get(sourceid,{}).keys()
-        routes = []
-        curdisallowed = disallowed[:]+[sourceid]
-        for curnext in next:
-            if curnext in curdisallowed: continue
-            if curnext==targetid:
-                routes.append([sourceid,curnext])
-            else:
-                childroutes = cls.findIndirectConversion(curnext,targetid,curdisallowed,depth=depth+'  ')
-                for cr in childroutes:
-                    routes.append([sourceid]+cr)
-        return routes
-
-    @classmethod
-    def clearConvertors(cls):
-        cls.convertorsfrom = {}
-        
-    @classmethod
-    def addConverterFromXml(cls,path):
-        fw,bw = XmlConvertor.createClasses(path)
-        cls.addConvertor(fw,addsimplereverse=False)
-        if bw is not None: cls.addConvertor(bw,addsimplereverse=False)
-        
-    @classmethod
-    def addConvertor(cls,convertorclass,addsimplereverse=False):
-        """Registers the specified convertor class. The source and target version that
-        the convertor supports are part of the convertor class supplied, and are therefore
-        not specified explicitly. The 'addsimplereverse" option will additionally register
-        a simple class for back conversion, via addDefaultConvertor."""
-        sourceid = convertorclass.fixedsourceid
-        targetid = convertorclass.fixedtargetid
-        assert sourceid is not None, 'Error! Specified convertor class lacks a source identifier.'
-        assert targetid is not None, 'Error! Specified convertor class lacks a target identifier.'
-        if sourceid not in cls.convertorsfrom: cls.convertorsfrom[sourceid] = {}
-        assert targetid not in cls.convertorsfrom[sourceid], 'Error! A class for converting from "%s" to "%s" was already specified previously.' % (sourceid,targetid)
-        cls.convertorsfrom[sourceid][targetid] = convertorclass
-        if addsimplereverse: cls.addDefaultConvertor(targetid,sourceid)
-        
-    @classmethod
-    def addDefaultConvertor(cls,sourceid,targetid):
-        """Registers the "default convertor" for conversion from the specified source, to the
-        specified target. The default convertor will attempt a deep copy, copying all values
-        at locations that match between source and target."""
-        if sourceid not in cls.convertorsfrom: cls.convertorsfrom[sourceid] = {}
-        assert targetid not in cls.convertorsfrom[sourceid], 'Error! A class for converting from "%s" to "%s" was already specified previously.' % (sourceid,targetid)
-        defaultname = re.sub('\W','_','Default_Convertor_%s_%s' % (sourceid,targetid))
-        cls.convertorsfrom[sourceid][targetid] = type(defaultname,(Convertor,),{'fixedsourceid':sourceid,'fixedtargetid':targetid,'defaultconvertor':True})
-
-    @classmethod
-    def hasConvertor(cls,sourceid,targetid):
-        """Checks if a conversion route between the specified versions is available.
-        Both direct and indirect (via another version) routes are ok.
-        """
-        # Try direct conversion
-        if cls.getConvertor(sourceid,targetid) is not None:
-            return True
-
-        print 'Searching for indirect conversion routes from '+sourceid+' to '+targetid+'.'
-        indirectroutes = cls.findIndirectConversion(sourceid,targetid,depth='  ')
-        for indirect in indirectroutes:
-            print indirect
-        print 'Found '+str(len(indirectroutes))+' indirect routes.'
-
-        return len(indirectroutes)>0
 
     @classmethod
     def rankSources(cls,targetid,sourceids,requireplatform=None):
@@ -2012,7 +1946,7 @@ class TypedStore(util.referencedobject):
         # source we can actually convert to the target version.
         sourceinfo = []
         for sid in sourceids:
-            if sid==targetid or cls.hasConvertor(sid,targetid):
+            if sid==targetid or cls.getSchemaInfo().hasConverter(sid,targetid):
                 (platform,version) = sid.split('-')
                 if requireplatform is None or requireplatform==platform:
                     version = versionStringToInt(version)
@@ -2368,7 +2302,141 @@ def versionStringToInt(versionstring):
         version += int(c)*base
         base *= 256
     return version
-    
+
+class SchemaInfoCache(object):
+    def __init__(self):
+        self.path2info = {}
+    def __getitem__(self,path):
+        if path not in self.path2info: self.path2info[path] = SchemaInfo(path)
+        return self.path2info[path]
+schemainfocache = SchemaInfoCache()
+
+class SchemaInfo(object):
+    def __init__(self,infodir=None):
+        assert infodir is None or os.path.isdir(infodir),'SchemaInfo object can only be initialized from a directory, but "%s" is not an existing directory.' % infodir
+        self.schemas = None
+        self.convertorsfrom = None
+        self.defaults = None
+        self.infodir = infodir
+            
+    def getSchemas(self):
+        """Returns a dictionary that links schema version strings to paths to the corresponding schema file.
+        """
+        if self.schemas is None:
+            self.schemas = {}
+            if self.infodir is not None: self.addSchemas(self.infodir)
+        return self.schemas
+
+    def getConverters(self):
+        """Returns information on available converters.
+        This information is provided as a dictionary linking each source version to another dictionary
+        that links available target versions to the Converter class that can perform the actual
+        conversion. Only direct conversions are included.
+        """
+        if self.convertorsfrom is None:
+            self.convertorsfrom = {}
+            if self.infodir is not None: self.addConverters(self.infodir)
+        return self.convertorsfrom
+        
+    def getDefaults(self):
+        """Returns a dictionary that links version strings to paths to the corresponding default file.
+        """
+        if self.defaults is None:
+            self.defaults = {}
+            if self.infodir is not None: self.addDefaults(self.infodir)
+        return self.defaults
+
+    def getConverter(self,sourceid,targetid,directonly=False):
+        """Returns a convertor object, capable of converting between the specified versions.
+        Conversion routes may be direct (using one convertor object), or indirect (using a
+        chain of convertor objects). Specify "directonly" to retrieve only direct conversion
+        routes. Return None if no convertor is available that meets the specified criteria.
+        """
+        # Try direct route first.
+        if (sourceid in self.getConverters()) and (targetid in self.getConverters()[sourceid]):
+            return self.getConverters()[sourceid][targetid]()
+
+        # Direct route not available, try indirect routes
+        if not directonly:
+            indirectroutes = self.findIndirectConversion(sourceid,targetid,depth='  ')
+            if len(indirectroutes)>0:
+                indirectroutes.sort(key=len)
+                route = indirectroutes[0]
+                chain = []
+                for istep in range(len(route)-1):
+                    convertor = self.getConverter(route[istep],route[istep+1],directonly=True)
+                    chain.append(convertor)
+                return ConvertorChain(chain)
+
+        # No route available.
+        return None
+
+    def findIndirectConversion(self,sourceid,targetid,disallowed=[],depth=''):
+        """Returns all conversion routes between the specified source version and target
+        version. Use of intermediate versions specified in "disallowed" will be avoided
+        (this is used specifically for prevetion of circular conversion routes). The
+        depth argument is used for debugging output only."""
+        next = self.getConverters().get(sourceid,{}).keys()
+        routes = []
+        curdisallowed = disallowed[:]+[sourceid]
+        for curnext in next:
+            if curnext in curdisallowed: continue
+            if curnext==targetid:
+                routes.append([sourceid,curnext])
+            else:
+                childroutes = self.findIndirectConversion(curnext,targetid,curdisallowed,depth=depth+'  ')
+                for cr in childroutes:
+                    routes.append([sourceid]+cr)
+        return routes
+        
+    def addSchemas(self,dirpath):
+        assert os.path.isdir(dirpath),'Provided path "%s" must be a directory.' % dirpath        
+        for name in os.listdir(dirpath):
+            fullpath = os.path.join(dirpath,name)
+            if os.path.isfile(fullpath):
+                (basename,ext) = os.path.splitext(name)
+                if ext in ('.xml','.schema'): self.getSchemas()[basename] = fullpath
+
+    def addConverters(self,dirpath):
+        assert os.path.isdir(dirpath),'Provided path "%s" must be a directory.' % dirpath
+        #print 'Adding converters from "%s".' % dirpath
+        for name in os.listdir(dirpath):
+            fullpath = os.path.join(dirpath,name)
+            if name.endswith('.converter') and os.path.isfile(fullpath):
+                self.addConverterFromXml(fullpath)
+                
+    def addDefaults(self,dirpath):
+        assert os.path.isdir(dirpath),'Provided path "%s" must be a directory.' % dirpath        
+        for name in os.listdir(dirpath):
+            fullpath = os.path.join(dirpath,name)
+            if os.path.isfile(fullpath) and fullpath.endswith('.defaults'):
+                rootname,rootattr = util.getRootNodeInfo(fullpath)
+                self.getDefaults()[rootattr.get('version','')] = fullpath
+                        
+    def addConverterFromXml(self,xmlpath):
+        fw,bw = XmlConvertor.createClasses(xmlpath)
+        self.addConverter(fw)
+        if bw is not None: self.addConverter(bw)
+        
+    def addConverter(self,convertorclass):
+        """Registers the specified convertor class. The source and target version that
+        the convertor supports are part of the convertor class supplied, and are therefore
+        not specified explicitly.
+        """
+        sourceid = convertorclass.fixedsourceid
+        targetid = convertorclass.fixedtargetid
+        assert sourceid is not None, 'Error! Specified convertor class lacks a source identifier.'
+        assert targetid is not None, 'Error! Specified convertor class lacks a target identifier.'
+        source2target = self.getConverters().setdefault(sourceid,{})
+        assert targetid not in source2target, 'Error! A class for converting from "%s" to "%s" was already specified previously.' % (sourceid,targetid)
+        source2target[targetid] = convertorclass
+
+    def hasConverter(self,sourceid,targetid):
+        """Checks if a conversion route between the specified versions is available.
+        Both direct and indirect (via another version) routes are ok.
+        """
+        return self.getConverter(sourceid,targetid) is not None
+            
 class Convertor(object):
     """Base class for conversion between TypedStore objects that differ
     in version; derive custom convertors from this class.
@@ -2376,18 +2444,18 @@ class Convertor(object):
     For the most simple conversions, you can just derive a class from
     this generic Convertor, specify a list of links between source and
     target nodes for those nodes that changed name and/or location between
-    versions, and a list of (newly introduced) target nodes that must be
-    set to their default. The lists of explicit links and defaults should
-    be set in the overridden method registerLinks, in lists self.links and
-    self.defaults.
+    versions. The lists of explicit links should be built in the overridden
+    method "registerLinks".
     
-    For more advanced conversions, you can in addition override the convert
-    method (which should then still call the base method) for custom
-    functionality.
+    For more advanced conversions, you can in addition override the
+    "convertCustom" method for custom functionality.
+    
+    Note: conversions can also be fully configured by means of XML files.
+    This is usually preferable over designing custom classes that override Converter.
+    For more information see the XmlConverter class.
     """
     fixedsourceid = None
     fixedtargetid = None
-    defaultconvertor = False
     
     defaults = None
 
@@ -2404,14 +2472,7 @@ class Convertor(object):
         self.sourceid = sourceid
         self.targetid = targetid
 
-        self.sourceversion = sourceid.split('-')[-1]
-        self.targetversion = targetid.split('-')[-1]
-
-        self.sourceversionint = versionStringToInt(self.sourceversion)
-        self.targetversionint = versionStringToInt(self.targetversion)
-
         self.links = []
-        #self.defaults = None
         self.registerLinks()
 
     def registerLinks(self):
@@ -2422,20 +2483,21 @@ class Convertor(object):
         """
         pass
 
-    def convert(self,source,target,callback=None,usedefaults=True):
+    def convert(self,source,target,callback=None,usedefaults=True,convertlinkedata=True,matchednodes=None):
         """Converts source TypedStore object to target TypedStore object.
         This method performs a simple deep copy of all values, and then
         handles explicitly specified links between source and target nodes
         (which can be set by inheriting classes), and sets a list of target
         nodes to their defaults (this list is also specified by inheriting
         classes)."""
-        matchednodes = None
-        if usedefaults and self.__class__.defaults is None:
-            matchednodes = []
+        if matchednodes is None: matchednodes = {}
+            
+        if isinstance(source,TypedStore): source = source.root
+        if isinstance(target,TypedStore): target = target.root
         
         # Try simple deep copy: nodes with the same name and location in both
         # source and target store will have their value copied.
-        target.root.copyFrom(source.root,matchednodes=matchednodes)
+        target.copyFrom(source,matchednodes=matchednodes)
 
         # Handle explicit one-to-one links between source nodes and target nodes.
         for (sourcepath,targetpath) in self.links:
@@ -2449,23 +2511,40 @@ class Convertor(object):
             
         if matchednodes is not None:
             defaults = []
-            for node in target.root.getDescendants():
-                if node.canHaveValue() and node not in matchednodes:
+            for node in target.getDescendants():
+                if node in matchednodes:
+                    # Check if the source and target nodes were linked-in from another source.
+                    # If so, and their versions differ, try to locate a convertor automatically,
+                    # and perform the conversion.
+                    srcnode = matchednodes[node]
+                    if convertlinkedata and node.templatenode.hasAttribute('sourcepath') and srcnode.templatenode.hasAttribute('sourcepath'):
+                        srcdir = os.path.dirname(node.templatenode.getAttribute('sourcepath'))
+                        subsrcversion,subtgtversion = srcnode.templatenode.getAttribute('version'),node.templatenode.getAttribute('version')
+                        if subsrcversion!=subtgtversion and srcdir==os.path.dirname(srcnode.templatenode.getAttribute('sourcepath')):
+                            # Both the source and target node are linked-in from the same directory and differ in version.
+                            # Try to locate a converter in the same directory to perform the conversion automatically.
+                            conv = schemainfocache[srcdir].getConverter(subsrcversion,subtgtversion)
+                            if conv is not None: conv.convert(srcnode,node,usedefaults=usedefaults,convertlinkedata=False,matchednodes=matchednodes)
+                elif node.canHaveValue():
+                    # Node was not matched in the source store, but it should have a value.
+                    # Insert the default value.
                     #print '%s in version %s did not get a value from version %s' % (node,self.targetid,self.sourceid)
-                    defaults.append('/'.join(node.location))
-            self.__class__.defaults = defaults
+                    defaults.append('/'.join(node.location[len(target.location):]))
             
-        # Reset target nodes to defaults where required.
+            # If the list with nodes that need a default value has not been built yet, use the current one.
+            if usedefaults and self.__class__.defaults is None:
+                self.__class__.defaults = defaults
+            
+        # Set target nodes to defaults where required.
         if self.defaults and usedefaults:
-            defscen = target.getDefault(None,target.version)
             for path in self.defaults:
                 targetnode = target[path]
                 if targetnode.getValue(usedefault=False) is not None: continue
-                #print 'Using default value for %s/%s' % (self.targetid,path)
-                sourcevalue = defscen[path].getValue(usedefault=False)
-                if sourcevalue is None: continue
-                targetnode.setValue(sourcevalue)
-                if isinstance(sourcevalue,util.referencedobject): sourcevalue.release()
+                sourcevalue = targetnode.getDefaultValue()
+                #print 'Using default value for %s/%s: %s' % (self.targetid,path,str(sourcevalue))
+                if sourcevalue is not None:
+                    targetnode.setValue(sourcevalue)
+                    if isinstance(sourcevalue,util.referencedobject): sourcevalue.release()
 
         # Do custom conversions
         self.convertCustom(source,target,callback)
@@ -2473,15 +2552,19 @@ class Convertor(object):
     def convertCustom(self,source,target,callback=None):
         pass
 
-    def reverseLinks(self):
-        """Convert mapping from source to target nodes to mapping from target 
-        to source nodes. Used as basis for easy back-conversions."""
-        return [(targetpath,sourcepath) for (sourcepath,targetpath) in self.links]
-
 class XmlConvertor(Convertor):
+    """This class represents converters stored in XML format.
+    """
     
     @staticmethod
     def createClasses(path):
+        """Parses the specified XML file and creates from it classes for forward and backward conversion.
+        If backward conversion is unavailable, None is returned for the backward conversion class.
+        
+        For performance reasons, the XML is only parsed up to the root node in order to read the source
+        and target versions. The file is fully parsed only when converters of the created classes are
+        actually instantiated.
+        """
         rootname,rootattr = util.getRootNodeInfo(path)
         assert rootname=='converter','Root node is named "%s", but must be named "converter" for XML-based converters.' % rootname
         sourceid,targetid = rootattr.get('source'),rootattr.get('target')
@@ -2499,6 +2582,10 @@ class XmlConvertor(Convertor):
         
     @classmethod
     def initialize(cls):
+        """Completely parses the XML file with conversion information, creating
+        a list of links between source and target version, and compiling any
+        custom conversion code on the fly.
+        """
         #print 'Initializing converter %s.' % (cls.__name__,)
         xmlconvertor = xml.dom.minidom.parse(cls.path)
         root = xmlconvertor.documentElement
@@ -2527,6 +2614,7 @@ class XmlConvertor(Convertor):
         
     def registerLinks(self):
         self.links = self.defaultlinks
+        
     def convertCustom(self,source,target,callback=None):
         if self.customconversion is not None: exec self.customconversion
 
@@ -2541,7 +2629,7 @@ class ConvertorChain(Convertor):
         temptargets = []
         nsteps = len(self.chain)
         if callback is not None:
-            stepcallback = lambda p,s: callback((istep+p)/nsteps,s)
+            stepcallback = lambda progress,message: callback((istep+progress)/nsteps,message)
         else:
             stepcallback = None
         for istep in range(nsteps-1):

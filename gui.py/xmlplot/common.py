@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.32 2009-08-06 13:34:02 jorn Exp $
+#$Id: common.py,v 1.33 2009-09-11 11:50:20 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -847,6 +847,37 @@ class Variable(object):
             if self.lbound is not None: newslice.lbound = self.lbound.squeeze()
             if self.ubound is not None: newslice.ubound = self.ubound.squeeze()
 
+            return newslice
+            
+        def compressed(self):
+            print self.dimensions
+            if not hasattr(self.data,'_mask'): return self
+            assert self.ndim==1,'"compressed" can only be used on 1D arrays.'
+            newslice = Variable.Slice(self.dimensions)
+            valid = numpy.logical_not(self.data._mask)
+            newslice.coords[0] = self.coords[0][valid]
+            newslice.data = self.data[valid]
+            
+            gapstops  = numpy.nonzero(numpy.logical_and(numpy.logical_not(valid[:-1]),valid[1:]))+1
+            gapstarts = numpy.nonzero(numpy.logical_and(valid[:-1],numpy.logical_not(valid[1:])))+1
+            gapstops,gapstarts = map(list,(gapstops,gapstarts))
+            if not valid[-1]: gapstops += [len(valid)]
+            newslice.coords_stag[0] = numpy.array((newslice.coords.shape[0]+1,),dtype=self.coords_stag[0].dtype)
+            i,gapstart = 0,0
+            if valid[0]:
+                gapstart = gapstarts.pop(0)
+                newslice.coords_stag[0][:gapstart] = self.coords_stag[0][:gapstart]
+                i = gapstart
+            while gapstops:
+                gapstop = gapstops.pop(0)
+                if (gapstop-gapstart)%2==0:
+                    newslice.coords_stag[0][i] = self.coords_stag[0][[gapstart+(gapstop-gapstart)/2+1]]
+                else:
+                    newslice.coords_stag[0][i] = self.coords[0][gapstart+(gapstop-gapstart+1)/2]
+                gapstart = gapstarts.pop(0)
+                newslice.coords_stag[0][i+1:i+gapstart-gapstop] = newslice.coords_stag[0][gapstop:gapstart]
+                i += 1+gapstart-gapstop
+            
             return newslice
             
         def interp(self,**kwargs):

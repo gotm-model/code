@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<converter source="gotm-4.1.0" target="gotmgui-0.5.0">
+<converter source="gotm-4.1.0" target="gotmgui-0.5.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../xmlstore/converter-1.0.xsd">
 	<links>
 		<link source="/gotmrun/model_setup/title"         target="/title"/>
 		<link source="/gotmrun/model_setup/cnpar"         target="/timeintegration/cnpar"/>
@@ -31,11 +31,12 @@
 		<link source="/obs/o2_profile/o2_prof_method"     target="/obs/o2_profile"/>
 		<link source="/obs/bioprofiles/bio_prof_method"   target="/obs/bioprofiles"/>
 		<link source="/bio/bio_nml"                       target="/bio"/>
-		<link source="/bio_npzd/bio_npzd_nml"             target="/bio/bio_model/bio_npzd"/>
-		<link source="/bio_iow/bio_iow_nml"               target="/bio/bio_model/bio_iow"/>
-		<link source="/bio_sed/bio_sed_nml"               target="/bio/bio_model/bio_sed"/>
-		<link source="/bio_fasham/bio_fasham_nml"         target="/bio/bio_model/bio_fasham"/>
-		<link source="/bio_npzd_fe/bio_npzd_fe_nml"       target="/bio/bio_model/bio_npzd_fe"/>
+		<link source="/bio_npzd"                          target="/bio/bio_model/bio_npzd"/>
+		<link source="/bio_iow"                           target="/bio/bio_model/bio_iow"/>
+		<link source="/bio_sed"                           target="/bio/bio_model/bio_sed"/>
+		<link source="/bio_fasham"                        target="/bio/bio_model/bio_fasham"/>
+		<link source="/bio_npzd_fe"                       target="/bio/bio_model/bio_npzd_fe"/>
+		<link source="/bio_photo"                         target="/bio/bio_model/bio_photo"/>
 		<!--<link source="/bio_BFM"                           target="/bio/bio_model/bio_BFM"/>-->
 	</links>
 	<custom>

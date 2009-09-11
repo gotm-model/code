@@ -1087,24 +1087,156 @@
 			</element>
 		</element>
 
-		<element name="seagrass" label="seagrass model" optional="True">
-			<element name="canopy">
-				<element name="seagrass_calc" type="bool"  label="use seagrass model"/>
-				<element name="grassfile"     type="gotmdatafile"  label="depth-varying maximum excursion limit and friction coefficient">
-					<condition type="eq" variable="./seagrass_calc" value="True"/>
-          <fileinfo type="singleprofile">
-            <filedimensions>
-							<filedimension name="z" label="height above bottom" unit="m" />
-            </filedimensions>
-            <filevariables>
-              <filevariable name="exc"   label="maximum excursion limit" unit="m" />
-              <filevariable name="vfric" label="friction coefficient" unit="1/m" />
-            </filevariables>
-          </fileinfo>
-        </element>
-				<element name="XP_rat" type="float" label="efficiency of turbulence production by seagrass friction">
-					<condition type="eq" variable="./seagrass_calc" value="True"/>
-				</element>
+	<element name="bio" label="basic settings for biogeochemical model" optional="True">
+		<element name="bio_nml">
+			<element name="bio_calc"  type="bool"   label="calculate biological model"/>
+			<element name="bio_model" type="int" label="biological model">
+				<condition type="eq" variable="./bio_calc" value="True"/>
+				<options>
+					<option label="NPZD"                  description="NPZD (4 variables)"                 value="1"/>
+					<option label="IOW-ERGOM"             description="IOW-ERGOM (4 variables)"            value="2"/>
+					<option label="Suspended matter only" description="Suspended matter only (1 variable)" value="3"/>
+					<option label="Fasham et al. 1990"    description="Fasham et al. 1990 (7 variables)"   value="4"/>
+				</options>
+			</element>
+			<element name="bio_eulerian" type="bool" label="state variables are Eulerian">
+				<condition type="eq" variable="./bio_calc" value="True"/>
+			</element>
+			<element name="cnpar" type="float" label="Cranck-Nicholson parameter for vertical diffusion">
+				<condition type="eq" variable="./bio_calc" value="True"/>
+			</element>
+			<element name="w_adv_discr" type="int" label="advection scheme for vertical motion">
+				<condition type="eq" variable="./bio_calc" value="True"/>
+				<options>
+					<option value="1" label="first-order upstream"/>
+					<option value="2" label="not coded yet" disabled="True"/>
+					<option value="3" label="third-order polynomial"/>
+					<option value="4" label="TVD with Superbee limiter"/>
+					<option value="5" label="TVD with MUSCL limiter"/>
+					<option value="6" label="TVD with ULTIMATE QUICKEST"/>
+				</options>
+			</element>
+			<element name="ode_method" type="int" label="ODE scheme for source and sink dynamics">
+				<condition type="eq" variable="./bio_calc" value="True"/>
+				<options>
+					<option value="1"  label="Forward Euler"                   description="first-order explicit (not positive)"/>
+					<option value="2"  label="Runge-Kutta 2"                   description="second-order explicit Runge-Kutta (not positive)"/>
+					<option value="3"  label="Runge-Kutta 4"                   description="fourth-order explicit Runge-Kutta (not positive)"/>
+					<option value="4"  label="Patankar 1"                      description="Patankar (first-order, not conservative)"/>
+					<option value="5"  label="Patankar-RK 2"                   description="Patankar-RK (second-order, not conservative)"/>
+					<option value="6"  label="Patankar-RK 4"                   description="Patankar-RK (does not work, not conservative)"/>
+					<option value="7"  label="Modified Patankar 1"             description="Modified Patankar (1st-order, conservat., posit.)"/>
+					<option value="8"  label="Modified Patankar 2"             description="Modified Patankar-RK (2nd-order, conservat., posit.)"/>
+					<option value="9"  label="Modified Patankar 4"             description="Modified Patankar-RK (does not work, conservat., posit.)"/>
+				</options>
+			</element>
+			<element name="split_factor"      type="int"  label="number of biogeochemical time steps per physical time step" minInclusive="1">
+				<condition type="eq" variable="./bio_calc" value="True"/>
+			</element>
+			<element name="bioshade_feedback" type="bool" label="feedback of bio-turbidity to temperature equation">
+				<condition type="eq" variable="./bio_calc" value="True"/>
+			</element>
+			<element name="bio_lagrange_mean" type="bool" label="average Lagrangian concentrations on output">
+				<condition type="and">
+					<condition type="eq" variable="./bio_calc"     value="True"/>
+					<condition type="eq" variable="./bio_eulerian" value="False"/>
+				</condition>
+			</element>
+			<element name="bio_npar"          type="int"  label="total number of Lagrangian particles">
+				<condition type="and">
+					<condition type="eq" variable="./bio_calc"     value="True"/>
+					<condition type="eq" variable="./bio_eulerian" value="False"/>
+				</condition>
 			</element>
 		</element>
+	</element>
+
+	<link path="[gotmsrc]/extras/bio/npzd/metadata/nml-001.schema">
+		<condition type="and">
+			<condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
+			<condition type="eq" variable="/bio/bio_nml/bio_model" value="1" />
+		</condition>
+	</link>
+	
+	<link path="[gotmsrc]/extras/bio/iow/metadata/nml-001.schema">
+		<condition type="and">
+			<condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
+			<condition type="eq" variable="/bio/bio_nml/bio_model" value="2" />
+		</condition>
+	</link>
+
+	<link path="[gotmsrc]/extras/bio/sed/metadata/nml-001.schema">
+		<condition type="and">
+			<condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
+			<condition type="eq" variable="/bio/bio_nml/bio_model" value="3" />
+		</condition>
+	</link>
+
+	<element name="bio_fasham" label="Fasham et al. biological model with modifications by Kühn and Radach">
+		<condition type="and">
+			<condition type="eq" variable="/bio/bio_nml/bio_calc"  value="True"/>
+			<condition type="eq" variable="/bio/bio_nml/bio_model" value="4"/>
+		</condition>
+		<element name="bio_fasham_nml">
+			<element name="numc"      type="int"   label="number of compartments for geobiochemical model"/>
+			<element name="p_initial" type="float" label="initial phytoplankton concentration" unit="mmol N/m**3"/>
+			<element name="z_initial" type="float" label="initial zooplakton concentration" unit="mmol N/m**3"/>
+			<element name="b_initial" type="float" label="initial bacteria concentration" unit="mmol N/m**3"/>
+			<element name="d_initial" type="float" label="initial detritus concentration" unit="mmol N/m**3"/>
+			<element name="n_initial" type="float" label="initial nitrate concentration" unit="mmol N/m**3"/>
+			<element name="a_initial" type="float" label="initial ammonium concentration" unit="mmol N/m**3"/>
+			<element name="l_initial" type="float" label="initial LDON concentration" unit="mmol N/m**3"/>
+			<element name="p0"        type="float" label="minimum phytoplankton concentration" unit="mmol N/m**3"/>
+			<element name="z0"        type="float" label="minimum zooplakton concentration" unit="mmol N/m**3"/>
+			<element name="b0"        type="float" label="minimum bacteria concentration" unit="mmol N/m**3"/>
+			<element name="vp"        type="float" label="maximum phytoplankton uptake rate" unit="1/d"/>
+			<element name="alpha"     type="float" label="slope of the PI-curve" unit="m**2/(W d)"/>
+			<element name="k1"        type="float" label="half saturation constant nitrate uptake" unit="mmol N/m**3"/>
+			<element name="k2"        type="float" label="half saturation constant ammonium uptake" unit="mmol N/m**3"/>
+			<element name="mu1"       type="float" label="phytoplankton mortality rate" unit="1/d"/>
+			<element name="k5"        type="float" label="half saturation constant phytoplankton mortality" unit="mmol N/m**3"/>
+			<element name="gamma"     type="float" label="exudation fraction"/>
+			<element name="w_p"       type="float" label="phytoplankton settling velocity" unit="m/d"/>
+			<element name="gmax"      type="float" label="maximum ingestion rate" unit="1/d"/>
+			<element name="k3"        type="float" label="half saturation constant ingestion" unit="mmol N/m**3"/>
+			<element name="beta"      type="float" label="grazing efficiency"/>
+			<element name="mu2"       type="float" label="maximum zooplankton loss rate" unit="1/d"/>
+			<element name="k6"        type="float" label="half saturation zooplankton loss" unit="mmol N/m**3"/>
+			<element name="delta"     type="float" label="fractional zooplankton loss to LDON"/>
+			<element name="epsi"      type="float" label="fractional zooplankton loss to ammonium"/>
+			<element name="r1"        type="float" label="grazing preference phytoplankton"/>
+			<element name="r2"        type="float" label="grazing preference bacteria"/>
+			<element name="r3"        type="float" label="grazing preference detritus"/>
+			<element name="vb"        type="float" label="maximum bacterial uptake rate" unit="1/d"/>
+			<element name="k4"        type="float" label="half saturation bacterial uptake" unit="mmol N/m**3"/>
+			<element name="mu3"       type="float" label="bacteria excretion rate" unit="1/d"/>
+			<element name="eta"       type="float" label="uptake ratio ammonium:LDON"/>
+			<element name="mu4"       type="float" label="detritus breakdown rate" unit="1/d"/>
+			<element name="w_d"       type="float" label="detritus settling velocity" unit="m/d"/>
+			<element name="kc"        type="float" label="attenuation constant for the self shading effect" unit="m**2/mmol N"/>
+			<element name="aa"        type="float" label="weighting factor for visible light fraction"/>
+			<element name="g2"        type="float" label="attenuation length for visible light" unit="m"/>
+		</element>
+	</element>
+
+	<element name="seagrass" label="seagrass model" optional="True">
+		<element name="canopy">
+			<element name="seagrass_calc" type="bool"  label="use seagrass model"/>
+			<element name="grassfile"     type="gotmdatafile"  label="depth-varying maximum excursion limit and friction coefficient">
+				<condition type="eq" variable="./seagrass_calc" value="True"/>
+				<fileinfo type="singleprofile">
+					<filedimensions>
+						<filedimension name="z" label="height above bottom" unit="m" />
+					</filedimensions>
+					<filevariables>
+						<filevariable name="exc"   label="maximum excursion limit" unit="m" />
+						<filevariable name="vfric" label="friction coefficient" unit="1/m" />
+					</filevariables>
+				</fileinfo>
+			</element>
+			<element name="XP_rat" type="float" label="efficiency of turbulence production by seagrass friction">
+				<condition type="eq" variable="./seagrass_calc" value="True"/>
+			</element>
+		</element>
+	</element>
 </element>

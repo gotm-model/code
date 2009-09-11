@@ -62,9 +62,26 @@
 			<xs:sequence>
 				<xs:element ref="condition" minOccurs="0" maxOccurs="unbounded" />
 			</xs:sequence>
-			<xs:attribute name="type"     type="conditiontype" use="required" />
-			<xs:attribute name="variable" type="xs:string" use="optional" />
-			<xs:attribute name="value"    type="xs:string" use="optional" />
+			<xs:attribute name="type"     type="conditiontype" use="required">
+				<xs:annotation>
+					<xs:documentation>Condition type.</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:attribute name="variable" type="xs:string" use="optional">
+				<xs:annotation>
+					<xs:documentation>Location of the dependent variable. Relative paths can be used, and in that case these are relative to the container of the node to which the condition applies.</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:attribute name="value"    type="xs:string" use="optional">
+				<xs:annotation>
+					<xs:documentation>Value of the dependent variable to check against.</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:attribute name="source"   type="xs:string" use="optional">
+				<xs:annotation>
+					<xs:documentation>Name of the attached store in which the dependent variable may be found. Usage of this attribute requires that the store is always attached to another by custom code.</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
 		</xs:complexType>
 	</xs:element>
 

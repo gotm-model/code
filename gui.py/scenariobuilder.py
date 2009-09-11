@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.50 2009-08-06 13:22:48 jorn Exp $
+#$Id: scenariobuilder.py,v 1.51 2009-09-11 11:50:18 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -15,21 +15,20 @@ class ScenarioWidget(QtGui.QWidget):
         QtGui.QWidget.__init__(self,parent)
 
         self.bngroup      = QtGui.QButtonGroup()
-        self.radioNew     = QtGui.QRadioButton('Create a new scenario from a template.',self)
+        self.radioNew     = QtGui.QRadioButton('Create a new scenario.',self)
         self.radioOpen    = QtGui.QRadioButton('Open an existing scenario.',self)
         self.radioImport1 = QtGui.QRadioButton('Import a namelist-based scenario from an existing directory.',self)
         self.radioImport2 = QtGui.QRadioButton('Import a namelist-based scenario from an archive.',self)
 
-        self.labTemplate = QtGui.QLabel('Template:',self)
-        default2path = core.scenario.Scenario.getDefaultValues()
-        self.comboTemplates = QtGui.QComboBox(parent)
-        for (name,path) in default2path.items():
-            self.comboTemplates.addItem(name,QtCore.QVariant(name))
-        #self.comboTemplates.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
-        self.templatelayout = QtGui.QHBoxLayout()
-        self.templatelayout.addWidget(self.labTemplate)
-        self.templatelayout.addWidget(self.comboTemplates,1)
-        self.templatelayout.addStretch()
+        #self.labTemplate = QtGui.QLabel('Template:',self)
+        #default2path = core.scenario.Scenario.getDefaultValues()
+        #self.comboTemplates = QtGui.QComboBox(parent)
+        #for (name,path) in default2path.items():
+        #    self.comboTemplates.addItem(name,QtCore.QVariant(name))
+        #self.templatelayout = QtGui.QHBoxLayout()
+        #self.templatelayout.addWidget(self.labTemplate)
+        #self.templatelayout.addWidget(self.comboTemplates,1)
+        #self.templatelayout.addStretch()
 
         self.pathOpen    = commonqt.PathEditor(self,header='File to open: ',mrupaths=mrupaths)
         self.pathImport1 = commonqt.PathEditor(self,header='Directory to import: ',getdirectory=True)
@@ -45,7 +44,7 @@ class ScenarioWidget(QtGui.QWidget):
 
         layout = QtGui.QGridLayout()
         layout.addWidget(self.radioNew,       0,0,1,3)
-        layout.addLayout(self.templatelayout, 1,1)
+        #layout.addLayout(self.templatelayout, 1,1)
         layout.addWidget(self.radioOpen,      2,0,1,3)
         layout.addWidget(self.pathOpen,       3,1,1,2)
         layout.addWidget(self.radioImport1,   4,0,1,3)
@@ -79,8 +78,8 @@ class ScenarioWidget(QtGui.QWidget):
     def onSourceChange(self):
         self.setUpdatesEnabled(False)
         checkedid = self.bngroup.checkedId()
-        self.labTemplate.setVisible(checkedid==0)
-        self.comboTemplates.setVisible(checkedid==0)
+        #self.labTemplate.setVisible(checkedid==0)
+        #self.comboTemplates.setVisible(checkedid==0)
         self.pathOpen.setVisible(checkedid==1)
         self.pathImport1.setVisible(checkedid==2)
         self.pathImport2.setVisible(checkedid==3)
@@ -105,12 +104,13 @@ class ScenarioWidget(QtGui.QWidget):
         try:
             checkedid = self.bngroup.checkedId()
             if   checkedid==0:
-                index = self.comboTemplates.currentIndex()
-                defname = unicode(self.comboTemplates.itemData(index).toString())
-                defscenario = core.scenario.Scenario.getDefault(defname,core.scenario.guiscenarioversion)
-                xmldom = defscenario.toXmlDom()
+                #index = self.comboTemplates.currentIndex()
+                #defname = unicode(self.comboTemplates.itemData(index).toString())
+                #defscenario = core.scenario.Scenario.getDefault(defname,core.scenario.guiscenarioversion)
+                #xmldom = defscenario.toXmlDom()
                 scen = core.scenario.Scenario.fromSchemaName(core.scenario.guiscenarioversion)
-                scen.setStore(xmldom)
+                #scen.setStore(xmldom)
+                scen.fillMissingValues()
             elif checkedid==1:
                 path = self.pathOpen.path()
                 if path.endswith('.gotmresult'):
@@ -871,7 +871,7 @@ class PageBio(ScenarioPage):
 
         # Set up model/treeview for bio section of scenario
         self.tree = xmlstore.gui_qt4.TypedStoreTreeView(self,self.scenario,self.scenario['/bio/bio_model'],datasourcedir=parent.getProperty('datasourcedir'))
-        self.tree.setRootIsDecorated(False)
+        self.tree.setRootIsDecorated(True)
 
         editBioModel = self.factory.createEditor('bio/bio_model',self)
         self.factory.attachExternalEditor(self.tree,'bio/bio_model',conditiontype='ne',conditionvalue=0)

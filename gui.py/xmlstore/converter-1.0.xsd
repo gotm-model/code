@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:simpleType name="versiontype">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="(.+-)?[\d\.]+"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="path">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="\S+"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:element name="link">
+		<xs:annotation>
+			<xs:documentation>A link between a node in the source store and a node in the target store.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="source" type="path" use="required" />
+			<xs:attribute name="target" type="path" use="required" />
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="links">
+		<xs:annotation>
+			<xs:documentation>A list of links between nodes in the source and the target stores.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="link" minOccurs="0" maxOccurs="unbounded">
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="custom">
+		<xs:annotation>
+			<xs:documentation>Custom Python code for conversion.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="forward"  minOccurs="0" maxOccurs="1" type="xs:string">
+					<xs:annotation>
+						<xs:documentation>Custom Python code for forward conversion (from source version of to target version). During conversion, the root node of the input store is available as "source", and the root node of the output store as "target".</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="backward" minOccurs="0" maxOccurs="1" type="xs:string">
+					<xs:annotation>
+						<xs:documentation>Custom Python code for backward conversion (from target version to source version). During conversion, the root node of the input store is available as "source", and the root node of the output store as "target".</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="converter">
+		<xs:annotation>
+			<xs:documentation>Root node of the converter.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="links"  minOccurs="0" maxOccurs="1"/>
+				<xs:element ref="custom" minOccurs="0" maxOccurs="1"/>
+			</xs:sequence>
+			<xs:attribute name="source" type="versiontype" use="required" />
+			<xs:attribute name="target" type="versiontype" use="required" />
+		</xs:complexType>
+	</xs:element>
+
+</xs:schema>

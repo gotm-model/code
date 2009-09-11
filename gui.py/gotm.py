@@ -9,7 +9,7 @@ from PyQt4 import QtGui,QtCore
 # Import MatPlotLib to configure key parameters
 import matplotlib
 matplotlib.use('Qt4Agg')
-matplotlib.rcParams['numerix'] = 'numpy'
+#matplotlib.rcParams['numerix'] = 'numpy'
 
 # In order to find our custom data files, make sure that we are in the directory
 # containing the executable.
@@ -103,7 +103,7 @@ class GOTMWizard(commonqt.Wizard):
                 
                 # Add combobox with versions.
                 self.comboVersion = QtGui.QComboBox(self)
-                versions = scen.getDefaultSchemas().keys()
+                versions = scen.getSchemaInfo().getSchemas().keys()
                 versions.sort()
                 for v in versions:
                     # Only show schemas for namelist-supporting GOTM

@@ -162,12 +162,19 @@
         <option value="f" label="full"/>
       </options>
     </element>
+		<element name="IsGlobal" label="global map" type="bool" hidden="True"/>
+		<element name="LeftLongitude" label="leftmost longitude" type="float" unit="º East">
+			<condition type="and">
+				<condition type="eq" variable="." value="True"/>
+				<condition type="eq" variable="IsGlobal" value="True"/>
+			</condition>
+		</element>
 		<element name="Range" label="range">
 			<condition type="eq" variable="." value="True"/>
-			<element name="LowerLeftLatitude"   type="float" minInclusive="-90"  maxInclusive="90"  label="lower left latitude"/>
-			<element name="LowerLeftLongitude"  type="float" minInclusive="-360" maxInclusive="720" label="lower left longitude"/>
-			<element name="UpperRightLatitude"  type="float" minInclusive="-90"  maxInclusive="90"  label="upper right latitude"/>
-			<element name="UpperRightLongitude" type="float" minInclusive="-360" maxInclusive="720" label="upper right longitude"/>
+			<element name="LowerLeftLatitude"   type="float" minInclusive="-90"  maxInclusive="90"  label="lower left latitude"   unit="º North"/>
+			<element name="LowerLeftLongitude"  type="float" minInclusive="-360" maxInclusive="720" label="lower left longitude"  unit="º East"/>
+			<element name="UpperRightLatitude"  type="float" minInclusive="-90"  maxInclusive="90"  label="upper right latitude"  unit="º North"/>
+			<element name="UpperRightLongitude" type="float" minInclusive="-360" maxInclusive="720" label="upper right longitude" unit="º East"/>
 		</element>
 		<element name="FillContinents" type="bool" label="fill continents">
 			<condition type="eq" variable="." value="True"/>

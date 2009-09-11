@@ -5,11 +5,16 @@ guiscenarioversion = 'gotmgui-0.5.0'
 savedscenarioversion = 'gotm-4.0.0'
 
 # Import modules from standard Python library
-import os, shutil, re, datetime
+import os, shutil, re, datetime, sys
 
 # Import our own custom modules
 import xmlstore.xmlstore, xmlstore.util, xmlplot.data
 import common, namelist
+
+# In the developers' version, some parts of the schemas will be loaded from the GOTM source directory.
+# If this directory can be found, register its location with the xmlstore module.
+srcdir = os.path.abspath(os.path.join(common.getDataRoot(),'../src'))
+if os.path.isdir(srcdir): xmlstore.xmlstore.Schema.knownpaths['gotmsrc'] = srcdir
 
 class NamelistStore(xmlstore.xmlstore.TypedStore):
 
@@ -20,7 +25,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
 
     @classmethod
     def fromNamelists(cls,path,protodir=None,targetversion=None,strict = True,requireplatform=None):
-        sourceids = cls.rankSources(targetversion,Scenario.getDefaultSchemas().keys(),requireplatform=requireplatform)
+        sourceids = cls.rankSources(targetversion,Scenario.getSchemaInfo().getSchemas().keys(),requireplatform=requireplatform)
         scenario = None
         failures = ''
         for sourceid in sourceids:
@@ -74,7 +79,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         nmlfilelist = nmlcontainer.listFiles()
         datafilecontext = {'container':container}
         
-        interface = self.getInterface(omitgroupers=True)
+        interface = self.getInterface(omitgroupers=True,interfacetype='nml')
 
         try:
             for mainchild in interface.getChildren(self.root):
@@ -219,7 +224,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         if copydatafiles:
             context['targetcontainer'] = xmlstore.datatypes.DataContainerDirectory(targetpath)
 
-        interface = self.getInterface(omitgroupers=True)
+        interface = self.getInterface(omitgroupers=True,interfacetype='nml')
         try:
             try:
                 if addcomments:
@@ -378,22 +383,12 @@ class Scenario(NamelistStore):
     # Descriptive name for the store to be used when communicating with the user.
     storetitle = 'GOTM scenario'
 
+    @staticmethod
+    def getSchemaInfo():
+        return xmlstore.xmlstore.schemainfocache[os.path.join(common.getDataRoot(),'schemas/scenario')]
+
     def __init__(self,schema,valueroot=None,adddefault = True):
         NamelistStore.__init__(self,schema,valueroot,adddefault=adddefault)
-
-    schemadict = None
-    @staticmethod
-    def getDefaultSchemas():
-        if Scenario.schemadict is None:
-            Scenario.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/scenario'))
-        return Scenario.schemadict
-
-    defaultdict = None
-    @staticmethod
-    def getDefaultValues():
-        if Scenario.defaultdict is None:
-            Scenario.defaultdict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'defaultscenarios'))
-        return Scenario.defaultdict
 
     @classmethod
     def getCustomDataTypes(ownclass):
@@ -517,15 +512,3 @@ class Scenario(NamelistStore):
                     value.release()
                 
         return errors,validity
-
-# ========================================================================================
-# Here start custom convertors!
-# ========================================================================================
-
-Scenario.clearConvertors()
-
-converterdir = os.path.join(common.getDataRoot(),'schemas/scenario')
-for name in os.listdir(converterdir):
-    if not name.endswith('.converter'): continue
-    path = os.path.join(converterdir,name)
-    if os.path.isfile(path): Scenario.addConverterFromXml(path)

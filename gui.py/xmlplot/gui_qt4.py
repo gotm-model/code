@@ -373,10 +373,7 @@ class FigurePanel(QtGui.QWidget):
     def __init__(self,parent,detachbutton=True):
         QtGui.QWidget.__init__(self,parent)
 
-        # Create MatPlotLib figure with background and border colors equal to our background color.
-        #backgroundcolor = self.palette().color(self.backgroundRole())
-        #mplcolor = (backgroundcolor.red()/255., backgroundcolor.green()/255., backgroundcolor.blue()/255.)
-        #self.mplfigure = matplotlib.figure.Figure(facecolor=mplcolor,edgecolor=mplcolor,dpi=self.logicalDpiX())
+        # Create MatPlotLib figure with transparent background and no border.
         self.mplfigure = matplotlib.figure.Figure(facecolor='none',frameon=False,dpi=self.logicalDpiX())
 
         # Create MatPlotLib canvas (Qt-backend) attached to our MatPlotLib figure.

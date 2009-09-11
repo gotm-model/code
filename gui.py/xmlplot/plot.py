@@ -293,83 +293,19 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
     versions of the XML schema for figures.
     """
 
+    @staticmethod
+    def getSchemaInfo():
+        return xmlstore.xmlstore.schemainfocache[os.path.join(common.getDataRoot(),'schemas/figure')]
+
     def __init__(self,valueroot=None,adddefault = True,schema=None):
         if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/figure/0003.xml')
         xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
-
-    schemadict = None
-    @staticmethod
-    def getDefaultSchemas():
-        if FigureProperties.schemadict is None:
-            FigureProperties.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/figure'))
-        return FigureProperties.schemadict
         
     @classmethod
     def getCustomDataTypes(ownclass):
         dt = xmlstore.xmlstore.TypedStore.getCustomDataTypes()
         dt['colormap'] = xmlstore.datatypes.String
         return dt
-
-    class Convertor_0002_0003(xmlstore.xmlstore.Convertor):
-        fixedsourceid = '0002'
-        fixedtargetid = '0003'
-
-        def convertCustom(self,source,target,callback=None):
-            markertypes = {0:'',1:'.',2:',',3:'o',4:'^',5:'s',6:'+',7:'x',8:'D'}
-            linestyles = {0:'',1:'-',2:'--',3:'-.',4:':'}
-            tickformats = {0:'dd-mmm-yyyy HH:MM:SS',
-                            1:'dd-mmm-yyyy',
-                            2:'mm/dd/yy',
-                            3:'mmm',
-                            4:'m',
-                            5:'mm',
-                            6:'mm/dd',
-                            7:'dd',
-                            8:'ddd',
-                            9:'d',
-                            10:'yyyy',
-                            11:'yy',
-                            12:'mmmyy',
-                            13:'HH:MM:SS',
-                            14:'HH:MM:SS PM',
-                            15:'HH:MM',
-                            16:'HH:MM PM',
-                            17:'QQ-yy',
-                            18:'QQ',
-                            19:'dd/mm',
-                            20:'dd/mm/yy',
-                            21:'mmm.dd,yyyy HH:MM:SS',
-                            22:'mmm.dd,yyyy',
-                            23:'mm/dd/yyyy',
-                            24:'dd/mm/yyyy',
-                            25:'yy/mm/dd',
-                            26:'yyyy/mm/dd',
-                            27:'QQ-yyyy',
-                            28:'mmmyyyy'}
-                            
-            def updateLine2D(sourcenode):
-                line = sourcenode['Line'].getValue(usedefault=False)
-                marker = sourcenode['Marker'].getValue(usedefault=False)
-                if line is None and marker is None: return
-                targetnode = target.mapForeignNode(sourcenode)
-                if line   is not None: targetnode['Line'].setValue(linestyles[line])
-                if marker is not None: targetnode['Marker'].setValue(markertypes[marker])
-                            
-            # Update line and marker styles in grid and data series.
-            updateLine2D(source['Grid/LineProperties'])
-            for seriesnode in source['Data'].getLocationMultiple(['Series']):
-                updateLine2D(seriesnode['LineProperties'])
-                
-            # Update time formats
-            for sourcenode in source['Axes'].getLocationMultiple(['Axis']):
-                minfmt = sourcenode['TicksMinor/FormatTime'].getValue(usedefault=False)
-                majfmt = sourcenode['TicksMajor/FormatTime'].getValue(usedefault=False)
-                if minfmt is None and majfmt is None: continue
-                targetnode = target.mapForeignNode(sourcenode)
-                if minfmt is not None: targetnode['TicksMinor/FormatTime'].setValue(tickformats[minfmt])
-                if majfmt is not None: targetnode['TicksMajor/FormatTime'].setValue(tickformats[majfmt])
-
-FigureProperties.addConvertor(FigureProperties.Convertor_0002_0003)
 
 class FigureAnimator(object):
     def __init__(self,figure,dimension):
@@ -466,7 +402,7 @@ class FigureAnimator(object):
             try:
                 path % (1,)
             except:
-                raise Exception('The provided path should either be an existing directory, or a file name template that accepts a single integer as formatting argument.')
+                raise Exception('"%s" should either be an existing directory, or a file name template that accepts a single integer as formatting argument.' % path)
             nametemplate = path
             targetdir = '.'
                 
@@ -835,7 +771,6 @@ class Figure(xmlstore.util.referencedobject):
         legenddata = {'handles':[],'labels':[]}
 
         seriesslices,seriesvariables,seriesinfo = [],[],[]
-        xrange,yrange = [None,None],[None,None]
         for iseries,seriesnode in enumerate(forcedseries):
             # Get the path of the data source (data source identifier + variable id)
             varpath = seriesnode.getSecondaryId()
@@ -1032,16 +967,8 @@ class Figure(xmlstore.util.referencedobject):
                     if C is not None: C = C.transpose()
                     if U is not None: U,V = U.transpose(),V.transpose()
                 
-            if X is not None:
-                curmin,curmax = X.min(),X.max()
-                if xrange[0] is None or curmin<xrange[0]: xrange[0] = curmin
-                if xrange[1] is None or curmax>xrange[1]: xrange[1] = curmax
-                info['x'] = X
-            if Y is not None:
-                curmin,curmax = Y.min(),Y.max()
-                if yrange[0] is None or curmin<yrange[0]: yrange[0] = curmin
-                if yrange[1] is None or curmax>yrange[1]: yrange[1] = curmax
-                info['y'] = Y
+            if X is not None: info['x'] = X
+            if Y is not None: info['y'] = Y
             if C is not None: info['C'] = C
             if U is not None: info['U'] = U
             if V is not None: info['V'] = V
@@ -1062,10 +989,21 @@ class Figure(xmlstore.util.referencedobject):
         # Remove unused dimensions (recognizable by the lack of attributes such as "datatype")
         for axisname in axis2data.keys():
             if 'datatype' not in axis2data[axisname]: del axis2data[axisname]
-                
+
+        def getrange(seriesinfo,axis):
+            range = [None,None]
+            for info in seriesinfo:
+                if axis in info:
+                    curmin,curmax = info[axis].min(),info[axis].max()
+                    if range[0] is None or curmin<range[0]: range[0] = curmin
+                    if range[1] is None or curmax>range[1]: range[1] = curmax
+            return range
+        xrange = getrange(seriesinfo,'x')
+        yrange = getrange(seriesinfo,'y')
+
         # Handle transformations due to map projection (if any)
-        xcanbelon = xrange[0] is not None and xrange[0]>=-360 and xrange[1]<=360
-        ycanbelat = yrange[0] is not None and yrange[0]>=-90  and yrange[1]<=90
+        xcanbelon = xrange[0] is not None and xrange[0]>=-361 and xrange[1]<=361
+        ycanbelat = yrange[0] is not None and yrange[0]>=-91  and yrange[1]<=91
         if xcanbelon and ycanbelat:
             # Try importing basemap
             try:
@@ -1078,13 +1016,80 @@ class Figure(xmlstore.util.referencedobject):
         if ismap:
             # Create the basemap object
             nodemap = self.properties['Map']
+            defnodemap = self.defaultproperties['Map']
+
+            # Determine whether the map is global (approximately 180 degrees latitude, 360 degrees longitude)
+            isglobal = False
+            for info in seriesinfo:
+                if 'x' not in info: continue
+                lons = info['x']
+                missinglon = 360.-(lons[:,-1]-lons[:,0])
+                if (missinglon<2*360/lons.shape[1]).all():
+                    isglobal = True
+                    break
+            defnodemap['IsGlobal'].setValue(isglobal)
+
+            if isglobal:
+                # Shift longitude grid where needed
+                defnodemap['LeftLongitude'].setValue(xrange[0])
+                leftlon = nodemap['LeftLongitude'].getValue(usedefault=True)
+                leftlon = xrange[0] + (leftlon-xrange[0]) % 360.
+                for info in seriesinfo:
+                    if 'x' not in info or 'y' not in info: continue
+                    lons = info['x']
+                    missinglon = 360.-(lons[:,-1]-lons[:,0])
+
+                    # If we use staggered coordinates, the total map width may exceed 360 degrees longitude.
+                    # If this happens, correct it.
+                    addcyclic = (missinglon>0.).any()
+                    if (missinglon<0.).any() and (lons[:,-2]-lons[:,0]<360.).all():
+                        # The first and final cell overlap, but the first and one-but-last do not.
+                        # Assume overlap is due to numerical artifacts, and adjust the rightmost coordinate.
+                        #print 'synchronizing left and right boundary because longitude overlaps for %i latitudes' % (missinglon<0.).sum()
+                        lons[:,-1] = lons[:,0]+360.-1.e-4
+                        addcyclic = False
+                    
+                    # Add cyclic boundary point and shift longitude grid if needed.
+                    if leftlon!=xrange[0]:
+                        i0 = numpy.fabs(lons-leftlon).argmin(axis=1)
+                        assert (i0==i0[0]).all(),'Cannot shift map because new leftmost longitude index varies with latitude.'
+                        i0 = i0[0]
+                        if i0==lons.shape[1]-1: i0 = 0
+                        for k in 'xyUVC':
+                            if k not in info or i0==0: continue
+                            if addcyclic:
+                                #print 'Adding cyclic point for '+k
+                                info[k] = numpy.ma.concatenate((info[k],info[k].take((0,),axis=1)),axis=1)
+                                if k=='x': info[k][:,-1] += 360.-1.e-4
+                            if hasattr(info[k],'mask'):
+                                newdata = numpy.ma.empty_like(info[k])
+                            else:
+                                newdata = numpy.empty_like(info[k])
+                            n = newdata.shape[1]
+                            newdata[:,:n-i0] = info[k][:,i0:]
+                            newdata[:,n-i0:] = info[k][:,1:i0+1] # Skip very first (cyclic) point, and add a new cyclic point
+                            if k=='x' and i0!=0:
+                                newdata[:,n-i0:] += 360.
+                                newdata[:,-1] -= 1.e-4
+                            info[k] = newdata
+                xrange = getrange(seriesinfo,'x')
+                            
             res  = nodemap['Resolution'].getValue(usedefault=True)
             proj = nodemap['Projection'].getValue(usedefault=True)
-            defnodemap = self.defaultproperties['Map']
-            defnodemap['Range/LowerLeftLatitude'].setValue(max(-90,yrange[0]-0.5))
-            defnodemap['Range/LowerLeftLongitude'].setValue(max(-360,xrange[0]-0.5))
-            defnodemap['Range/UpperRightLatitude'].setValue(min(90,yrange[1]+0.5))
-            defnodemap['Range/UpperRightLongitude'].setValue(min(720,xrange[1]+0.5))
+            if isglobal:
+                lonrange = [xrange[0],xrange[0]+360.]
+                if lonrange[0]<-360:
+                    lonrange[0],lonrange[1] = lonrange[0]+360,lonrange[1]+360
+                elif lonrange[1]>720:
+                    lonrange[0],lonrange[1] = lonrange[0]-360,lonrange[1]-360
+                latrange = [-90,90]
+            else:
+                lonrange = [max(-360,xrange[0]-0.5),min(720,xrange[1]+0.5)]
+                latrange = [max(- 90,yrange[0]-0.5),min( 90,yrange[1]+0.5)]
+            defnodemap['Range/LowerLeftLatitude'].setValue(latrange[0])
+            defnodemap['Range/LowerLeftLongitude'].setValue(lonrange[0])
+            defnodemap['Range/UpperRightLatitude'].setValue(latrange[1])
+            defnodemap['Range/UpperRightLongitude'].setValue(lonrange[1])
             llcrnrlon=nodemap['Range/LowerLeftLongitude' ].getValue(usedefault=True)
             llcrnrlat=nodemap['Range/LowerLeftLatitude'  ].getValue(usedefault=True)
             urcrnrlon=nodemap['Range/UpperRightLongitude'].getValue(usedefault=True)
@@ -1109,7 +1114,7 @@ class Figure(xmlstore.util.referencedobject):
             drawaxes = basemap
 
             # Transform x,y coordinates
-            for info,varslices in zip(seriesinfo,seriesslices):
+            for info in seriesinfo:
                 if 'x' in info and 'y' in info:
                     if 'U' in info and 'V' in info:
                         info['U'],info['V'],info['x'],info['y'] = basemap.rotate_vector(info['U'],info['V'],info['x'],info['y'],returnxy=True)

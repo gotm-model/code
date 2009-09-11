@@ -43,7 +43,6 @@ import xmlplot.common
 own_data_files += xmlplot.common.get_py2exe_datafiles()
 
 # Add GOTM-GUI data files.
-adddir('defaultscenarios')
 adddir('reporttemplates')
 adddir('schemas')
 adddir('icons')

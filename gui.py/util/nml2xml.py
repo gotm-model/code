@@ -95,7 +95,7 @@ GOTM-GUI, while using .proto files in directory "./v3.2/templates".
         return 1
 
     # Check if we have an XML schema for the specified target scenario version.
-    schemas = core.scenario.Scenario.getDefaultSchemas()
+    schemas = core.scenario.Scenario.getSchemaInfo().getSchemas()
     if targetschema not in schemas:
         print 'Error! No XML schema available for specified output version "%s".' % targetschema
         return 1

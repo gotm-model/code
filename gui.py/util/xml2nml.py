@@ -62,7 +62,7 @@ contains namelist and data files suitable for GOTM version 3.2.4.
         return 1
 
     # Check if we have an XML schema for the specified target scenario version.
-    schemas = core.scenario.Scenario.getDefaultSchemas()
+    schemas = core.scenario.Scenario.getSchemaInfo().getSchemas()
     if schemaname not in schemas:
         print 'Error! No XML schema available for specified output version "%s".' % schemaname
         return 1

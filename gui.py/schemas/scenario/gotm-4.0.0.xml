@@ -1138,7 +1138,7 @@
 				<condition type="eq" variable="./bio_calc" value="True"/>
 				<options>
 					<option value="1" label="first-order upstream"/>
-					<option value="2" label="not coded yet"/>
+					<option value="2" label="not coded yet" disabled="True"/>
 					<option value="3" label="third-order polynomial"/>
 					<option value="4" label="TVD with Superbee limiter"/>
 					<option value="5" label="TVD with MUSCL limiter"/>
@@ -1182,143 +1182,27 @@
 		</element>
 	</element>
 
-	<element name="bio_npzd" label="NPZD biological model">
+	<link path="[gotmsrc]/extras/bio/npzd/metadata/nml-001.schema">
 		<condition type="and">
-			<condition type="eq" variable="/bio/bio_nml/bio_calc"  value="True"/>
-			<condition type="eq" variable="/bio/bio_nml/bio_model" value="1"/>
+			<condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
+			<condition type="eq" variable="/bio/bio_nml/bio_model" value="1" />
 		</condition>
-		<element name="bio_npzd_nml">
-			<element name="numc"      type="int"   label="number of compartments for geobiochemical model"/>
-			<element name="n_initial" type="float" label="initial nutrient concentration"      unit="mmol/m**3"/>
-			<element name="p_initial" type="float" label="initial phytoplankton concentration" unit="mmol/m**3"/>
-			<element name="z_initial" type="float" label="initial zooplankton concentration"   unit="mmol/m**3"/>
-			<element name="d_initial" type="float" label="initial detritus concentration"      unit="mmol/m**3"/>
-			<element name="p0"        type="float" label="minimum phytoplankton concentration" unit="mmol/m**3"/>
-			<element name="z0"        type="float" label="minimum zooplankton concentration"   unit="mmol/m**3"/>
-			<element name="w_p"       type="float" label="settling velocity of phytoplankton"  unit="m/d"/>
-			<element name="w_d"       type="float" label="settling velocity of detritus"    unit="m/d"/>
-			<element name="kc"        type="float" label="attenuation constant for the self shading effect"  unit="m**2/mmol N"/>
-			<element name="I_min"     type="float" label="minimum photosynthetically active radiation (PAR)" unit="W/m**2"/>
-			<element name="rmax"      type="float" label="maximum nutrient uptake rate"                      unit="1/d"/>
-			<element name="gmax"      type="float" label="maximum grazing rate"                              unit="1/d"/>
-			<element name="Iv"        type="float" label="Ivlev constant"                                    />
-			<element name="alpha"     type="float" label="half saturation"                                   unit="mmol N/m**3"/>
-			<element name="rpn"       type="float" label="p --> n rate (p metabolism)"                       unit="1/d"/>
-			<element name="rzn"       type="float" label="z --> n rate (z metabolism)"                       unit="1/d"/>
-			<element name="rdn"       type="float" label="d --> n rate (remineralisation)"                   unit="1/d"/>
-			<element name="rpdu"      type="float" label="p --> d rate (p mortality), in euphotic zone"      unit="1/d"/>
-			<element name="rpdl"      type="float" label="p --> d rate (p mortality), below euphotic zone"   unit="1/d"/>
-			<element name="rzd"       type="float" label="z --> d rate (z mortality)"                        unit="1/d"/>
-			<element name="aa"         type="float" label="weighting factor for visible light fraction"/>
-			<element name="g2"         type="float" label="attenuation length for visible light" unit="m"/>
-		</element>
-	</element>
+	</link>
 
-	<element name="bio_iow" label="IOW biological model according to Neumann et al. 2002 and Burchard et al. 2005">
+	<link path="[gotmsrc]/extras/bio/iow/metadata/nml-001.schema">
 		<condition type="and">
-			<condition type="eq" variable="/bio/bio_nml/bio_calc"  value="True"/>
-			<condition type="eq" variable="/bio/bio_nml/bio_model" value="2"/>
+			<condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
+			<condition type="eq" variable="/bio/bio_nml/bio_model" value="2" />
 		</condition>
-		<element name="bio_iow_nml">
-			<element name="numc"       type="int"   label="number of compartments for geobiochemical model"/>
-			
-			<element name="p1_initial" type="float" label="initial diatom concentration" unit="mmol N/m**3"/>
-			<element name="p2_initial" type="float" label="initial flagellate concentration" unit="mmol N/m**3"/>
-			<element name="p3_initial" type="float" label="initial cyanobacteria concentration" unit="mmol N/m**3"/>
-			<element name="zo_initial" type="float" label="initial zooplankton concentration" unit="mmol N/m**3"/>
-			<element name="de_initial" type="float" label="initial detritus concentration" unit="mmol N/m**3"/>
-			<element name="am_initial" type="float" label="initial ammonium concentration" unit="mmol N/m**3"/>
-			<element name="ni_initial" type="float" label="initial nitrate concentration" unit="mmol N/m**3"/>
-			<element name="po_initial" type="float" label="initial phosphate concentration" unit="mmol P/m**3"/>
-			<element name="o2_initial" type="float" label="initial oxygen concentration" unit="mmol N/m**3"/>
-			
-			<element name="sfl_po"     type="float" label="constant surface phosphate flux" unit="mmol P/m**2/d"/>
-			<element name="sfl_am"     type="float" label="constant surface ammonium flux" unit="mmol N/m**2/d"/>
-			<element name="sfl_ni"     type="float" label="constant surface nitrate flux" unit="mmol N/m**2/d"/>
-			<element name="surface_flux_method" type="int" label="method to specify surface fluxes">
-				<options>
-					<option value="0" label="constant fluxes" />
-					<option value="2" label="from file 'bio_fluxes.dat'"/>
-				</options>
-			</element>
-			
-			<element name="fluff"      type="bool"  label="calculate fluff layer"/>
-			<element name="fl_initial" type="float" label="initial fluff concentration" unit="mmol N/m**2">
-				<condition type="eq" variable="./fluff" value="True"/>
-			</element>
-			
-			<element name="p10"        type="float" label="minimum diatom concentration" unit="mmol N/m**3"/>
-			<element name="p20"        type="float" label="minimum flagellate concentration" unit="mmol N/m**3"/>
-			<element name="p30"        type="float" label="minimum cyanobacteria concentration" unit="mmol N/m**3"/>
-			<element name="zo0"        type="float" label="minimum zooplankton concentration" unit="mmol N/m**3"/>
-			
-			<element name="w_p1"       type="float" label="sinking speed diatoms" unit="m/d"/>
-			<element name="w_p2"       type="float" label="sinking speed flagellates" unit="m/d"/>
-			<element name="w_p3"       type="float" label="sinking speed cyanobacteria" unit="m/d"/>
-			<element name="w_de"       type="float" label="sinking speed detritus" unit="m/d"/>
-			<element name="kc"         type="float" label="attenuation constant for the self shading effect" unit="m**2/mmol N"/>
-			
-			<element name="I_min"      type="float" label="minimum photosynthetically active radiation (PAR)" unit="W/m**2"/>
-			<element name="r1max"      type="float" label="maximum growth rate diatoms" unit="1/d"/>
-			<element name="r2max"      type="float" label="maximum growth rate flagellates" unit="1/d"/>
-			<element name="r3max"      type="float" label="maximum growth rate cyanobacteria" unit="1/d"/>
-			<element name="alpha1"     type="float" label="half saturation diatoms" unit="mmol N/m**3"/>
-			<element name="alpha2"     type="float" label="half saturation flagellates" unit="mmol N/m**3"/>
-			<element name="alpha3"     type="float" label="half saturation cyanobacteria" unit="mmol N/m**3"/>
-			<element name="lpa"        type="float" label="p --> a rate (p respiration)" unit="1/d"/>
-			<element name="lpd"        type="float" label="p --> d rate (p mortality)" unit="1/d"/>
-			<element name="tf"         type="float" label="temperature control flagellates" unit="°C"/>
-			<element name="tbg"        type="float" label="temperature control cyanobacteria" unit="°C"/>
-			<element name="beta_bg"    type="float" label="temperature control cyanobacteria" unit="1/°C"/>
-			<element name="g1max"      type="float" label="maximum grazing rate on diatoms" unit="1/d"/>
-			<element name="g2max"      type="float" label="maximum grazing rate on flagellates" unit="1/d"/>
-			<element name="g3max"      type="float" label="maximum grazing rate on cyanobacteria" unit="1/d"/>
-			<element name="lza"        type="float" label="z --> a rate (z exudation)" unit="m**3/d/mmol N"/>
-			<element name="lzd"        type="float" label="z --> d rate (z mortality)" unit="m**3/d/mmol N"/>
-			<element name="iv"         type="float" label="Ivlev constant" unit="1/(mmol N/m**3)**3"/>
-			<element name="topt"       type="float" label="optimum temperature" unit="°C"/>
+	</link>
 
-			<element name="lan"        type="float" label="nitrification constant" unit="1/d"/>
-			<element name="oan"        type="float" label="oxygen parameter"/>
-			<element name="beta_an"    type="float" label="temperature control" unit="1/°C"/>
-
-			<element name="lda"        type="float" label="detritus mineralisation constant" unit="1/d"/>
-			<element name="tda"        type="float" label="temperature control" unit="°C"/>
-			<element name="beta_da"    type="float" label="temperature control"/>
-			<element name="lds"        type="float" label="rate of detritus sinking into sediment" unit="m/d"/>
-			<element name="lsa"        type="float" label="rate of sediment mineralisation" unit="1/d"/>
-			<element name="bsa"        type="float" label="temperature control of sediment mineralisation" unit="1/°C"/>
-			<element name="ph1"        type="float" label="release of phosphate 1"/>
-			<element name="ph2"        type="float" label="release of phosphate 2"/>
-			<element name="pvel"       type="float" label="piston velocity" unit="m/d"/>
-
-			<element name="sr"         type="float" label="Redfield ratio" unit="mmol P/mmol N"/>
-			<element name="s1"         type="float" label="reduced nitrate/oxidized detritus"/>
-			<element name="s2"         type="float" label="oxygen production/recycled nitrogen"/>
-			<element name="s3"         type="float" label="oyxgen production related to N"/>
-			<element name="s4"         type="float" label="nitrification"/>
-
-			<element name="a0"         type="float" label="osat parameter" unit="mmol/m**3"/>
-			<element name="a1"         type="float" label="osat parameter"/>
-			<element name="a2"         type="float" label="osat parameter" unit="1/°C"/>
-
-			<element name="aa"         type="float" label="weighting factor for visible light fraction"/>
-			<element name="g2"         type="float" label="attenuation length for visible light" unit="m"/>
-		</element>
-	</element>
-
-	<element name="bio_sed" label="sedimentation model">
+	<link path="[gotmsrc]/extras/bio/sed/metadata/nml-001.schema">
 		<condition type="and">
-			<condition type="eq" variable="/bio/bio_nml/bio_calc"  value="True"/>
-			<condition type="eq" variable="/bio/bio_nml/bio_model" value="3"/>
+			<condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
+			<condition type="eq" variable="/bio/bio_nml/bio_model" value="3" />
 		</condition>
-		<element name="bio_sed_nml">
-			<element name="numc"      type="int"   label="number of compartments for geobiochemical model"/>
-			<element name="C_initial" type="float" label="initial suspended matter concentration" unit="mmol N/m**3"/>
-			<element name="w_C"       type="float" label="settling velocity of suspended matter" unit="m/d"/>
-		</element>
-	</element>
-	
+	</link>
+
 	<element name="bio_fasham" label="Fasham et al. biological model with modifications by Kühn and Radach">
 		<condition type="and">
 			<condition type="eq" variable="/bio/bio_nml/bio_calc"  value="True"/>

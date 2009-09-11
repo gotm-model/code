@@ -16,12 +16,9 @@ class ResultProperties(xmlstore.xmlstore.TypedStore):
         if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml')
         xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
-    schemadict = None
     @staticmethod
-    def getDefaultSchemas():
-        if FigureProperties.schemadict is None:
-            FigureProperties.schemadict = xmlstore.xmlstore.ShortcutDictionary.fromDirectory(os.path.join(common.getDataRoot(),'schemas/result'))
-        return FigureProperties.schemadict
+    def getSchemaInfo():
+        return xmlstore.xmlstore.schemainfocache[os.path.join(common.getDataRoot(),'schemas/result')]
         
     @classmethod
     def getCustomDataTypes(ownclass):

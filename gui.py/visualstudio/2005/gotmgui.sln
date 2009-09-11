@@ -51,6 +51,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scenario", "scenario", "{44
 		..\..\schemas\scenario\gotm-3.2.4.xml = ..\..\schemas\scenario\gotm-3.2.4.xml
 		..\..\schemas\scenario\gotm-3.3.2.xml = ..\..\schemas\scenario\gotm-3.3.2.xml
 		..\..\schemas\scenario\gotm-4.0.0.xml = ..\..\schemas\scenario\gotm-4.0.0.xml
+		..\..\schemas\scenario\gotm-4.1.0.defaults = ..\..\schemas\scenario\gotm-4.1.0.defaults
 		..\..\schemas\scenario\gotm-4.1.0.xml = ..\..\schemas\scenario\gotm-4.1.0.xml
 		..\..\schemas\scenario\gotmgui-0.5.0.xml = ..\..\schemas\scenario\gotmgui-0.5.0.xml
 	EndProjectSection
@@ -62,15 +63,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "settings", "settings", "{C9
 	EndProjectSection
 	ProjectSection(SolutionItems) = preProject
 		..\..\schemas\settings\gotmgui.xml = ..\..\schemas\settings\gotmgui.xml
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "defaultscenarios", "defaultscenarios", "{B38CA698-68F3-46B6-8CA2-C1CF389AD0E7}"
-	ProjectSection(WebsiteProperties) = preProject
-		Debug.AspNetCompiler.Debug = "True"
-		Release.AspNetCompiler.Debug = "False"
-	EndProjectSection
-	ProjectSection(SolutionItems) = preProject
-		..\..\defaultscenarios\default.xml = ..\..\defaultscenarios\default.xml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "util", "util", "{B352B739-F677-4F20-A890-51CEA0CD2086}"
@@ -122,6 +114,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlstore", "xmlstore", "{F9
 		Release.AspNetCompiler.Debug = "False"
 	EndProjectSection
 	ProjectSection(SolutionItems) = preProject
+		..\..\xmlstore\converter-1.0.xsd = ..\..\xmlstore\converter-1.0.xsd
 		..\..\xmlstore\datatypes.py = ..\..\xmlstore\datatypes.py
 		..\..\xmlstore\gui_qt4.py = ..\..\xmlstore\gui_qt4.py
 		..\..\xmlstore\util.py = ..\..\xmlstore\util.py
@@ -156,6 +149,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "datafilecache", "datafileca
 		..\..\xmlplot\schemas\datafilecache\0001.xml = ..\..\xmlplot\schemas\datafilecache\0001.xml
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "converters", "converters", "{7F94F549-7EBA-49C5-9B5A-1973D64666F0}"
+	ProjectSection(WebsiteProperties) = preProject
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.Debug = "False"
+	EndProjectSection
+	ProjectSection(SolutionItems) = preProject
+		..\..\schemas\scenario\gotm-3.2.4_gotm-3.3.2.converter = ..\..\schemas\scenario\gotm-3.2.4_gotm-3.3.2.converter
+		..\..\schemas\scenario\gotm-3.3.2_gotm-4.0.0.converter = ..\..\schemas\scenario\gotm-3.3.2_gotm-4.0.0.converter
+		..\..\schemas\scenario\gotm-4.0.0_gotm-4.1.0.converter = ..\..\schemas\scenario\gotm-4.0.0_gotm-4.1.0.converter
+		..\..\schemas\scenario\gotm-4.1.0_gotmgui-0.5.0.converter = ..\..\schemas\scenario\gotm-4.1.0_gotmgui-0.5.0.converter
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -168,6 +173,7 @@ Global
 		{CDBA7004-02BA-40A3-9F2A-D7A10F701220} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{4481907A-5850-4BAC-94F2-23E2FC5BB33B} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{C9C26D7C-F213-41C1-91AC-0313D612391E} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
+		{7F94F549-7EBA-49C5-9B5A-1973D64666F0} = {4481907A-5850-4BAC-94F2-23E2FC5BB33B}
 		{2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2} = {ED14B761-93AA-4FA8-8E62-2EAD150852E8}
 		{10A4F0A0-9287-4C21-93F1-22BA1F540459} = {ED14B761-93AA-4FA8-8E62-2EAD150852E8}
 		{E25CD9E2-4661-4402-9E28-33ED4336CEFA} = {2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2}
