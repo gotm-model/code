@@ -153,7 +153,7 @@ class Schema(object):
                     self.buildDependencies(root=ch,curpath=childcurpath,curowner=ch)
                     if ch.hasAttribute('unit'):
                         unit = ch.getAttribute('unit')
-                        if unit[0]=='[' and unit[-1]==']':
+                        if unit and unit[0]=='[' and unit[-1]==']':
                             unitnode,relcurpath = self.getReversePath(ch,unit[1:-1],absourcepath=childcurpath)
                             self.registerDependency(unitnode,relcurpath,'unit')
                 elif ch.localName=='condition':
@@ -1058,9 +1058,10 @@ class Node(object):
         """Returns the unit of the node; None is returned if the node
         does not have a unit specified.
         """
-        if not self.templatenode.hasAttribute('unit'): return None
         unit = self.templatenode.getAttribute('unit')
-        if unit[0]=='[' and unit[-1]==']':
+        if unit in ('','-'):
+            unit = None
+        elif unit[0]=='[' and unit[-1]==']':
             node = self.parent[unit[1:-1]]
             if node is None: return None
             unit = node.getValueAsString(addunit=False,usedefault=True)
