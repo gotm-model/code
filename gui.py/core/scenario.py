@@ -223,6 +223,16 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         context = {}
         if copydatafiles:
             context['targetcontainer'] = xmlstore.datatypes.DataContainerDirectory(targetpath)
+            
+        def encode_error_handler(exc):
+            assert isinstance(exc, UnicodeEncodeError), 'do not know how to handle %r' % exc
+            l = []
+            for c in exc.object[exc.start:exc.end]:
+                l.append(xmlplot.common.unicodechar2ascii(c))
+            return (u', '.join(l), exc.end)
+
+        import codecs
+        codecs.register_error('namelist', encode_error_handler)
 
         interface = self.getInterface(omitgroupers=True,interfacetype='nml')
         try:
@@ -258,7 +268,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
 
                             if addcomments:
                                 nmlfile.write('!'+(linelength-1)*'-'+'\n')
-                                title = filechild.getText(detail=2).encode('ascii','xmlcharrefreplace')
+                                title = filechild.getText(detail=2).encode('ascii','namelist')
                                 nmlfile.write(textwrap.fill(title,linelength-2,initial_indent='! ',subsequent_indent='! '))
                                 nmlfile.write('\n!'+(linelength-1)*'-'+'\n')
 
@@ -273,7 +283,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                                     wrappedlines = []
                                     lines.insert(0,'['+vartype+']')
                                     for line in lines:
-                                        line = line.encode('ascii','xmlcharrefreplace')
+                                        line = line.encode('ascii','namelist')
                                         wrappedlines += wrapper.wrap(line)
                                     firstline = wrappedlines.pop(0)
                                     nmlfile.write('! %-*s %s\n' % (varnamelength,varid,firstline))
