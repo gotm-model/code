@@ -188,7 +188,7 @@
 				</xs:union>
 			</xs:simpleType>
 		</xs:attribute>
-		<xs:attribute name="grouponly" type="xs:string" use="optional" fixed="True">
+		<xs:attribute name="grouponly" type="xs:string" use="optional" default="True">
 			<xs:annotation>
 				<xs:documentation>Whether to prevent display of this element as a separate level in the hierarchy. If set to True, children of this element will appear as children of this element's parent, and the element itself will be invisible.</xs:documentation>
 			</xs:annotation>
