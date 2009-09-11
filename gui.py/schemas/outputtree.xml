@@ -138,7 +138,7 @@
       <element name="pho"/>
       <element name="oxy"/>
       <element name="flf">
-        <condition type="eq" variable="/bio/bio_model/bio_iow/fluff" value="True" source="scenario"/>
+        <condition type="eq" variable="/bio/bio_model/bio_iow/bio_iow_nml/fluff" value="True" source="scenario"/>
       </element>
     </element>
     <element name="sed" grouponly="True">
