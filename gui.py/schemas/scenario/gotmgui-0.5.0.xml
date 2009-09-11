@@ -5,8 +5,8 @@
 
 	<element name="station" label="geographic location" description="The details of the geographic location that you want to simulate. Note that the coordinates affect different parts of the model, e.g., Coriolis rotation and solar radiation.">
 		<element name="name"      type="string" label="station name"/>
-		<element name="latitude"  type="float"  label="latitude"    minInclusive="-90"  maxInclusive="90"   unit="º North"/>
-		<element name="longitude" type="float"  label="longitude"   minInclusive="-360" maxInclusive="360"  unit="º East"/>
+		<element name="latitude"  type="float"  label="latitude"    minInclusive="-90"  maxInclusive="90"   unit="° North"/>
+		<element name="longitude" type="float"  label="longitude"   minInclusive="-360" maxInclusive="360"  unit="° East"/>
 		<element name="depth"     type="float"  label="water depth" minInclusive="0"    maxInclusive="5000" unit="m"/>
 	</element>
 
@@ -161,7 +161,7 @@
 				<option value="3" label="linear, reference pressure prescribed" description="linear equation of state with reference temperature, salinity and pressure prescribed. Expansion coefficients are calculated once at the prescribed pressure; specify the surface pressure to work with potential temperature and density."/>
 				<option value="4" label="linear, expansion coefficients prescribed" description="linear equation of state with reference temperature, salinity, thermal expansion coefficient and saline expansion coefficient."/>
 			</options>
-			<element name="T0" type="float" label="reference temperature" unit="ºC">
+			<element name="T0" type="float" label="reference temperature" unit="°C">
 				<condition type="or">
 					<condition type="eq" variable="/meanflow/eq_state_method" value="3"/>
 					<condition type="eq" variable="/meanflow/eq_state_method" value="4"/>
@@ -807,22 +807,22 @@
 				<option value="13" label="analytical: profile with constant N²"/>
 				<option value="2" label="custom observed profiles"/>
 			</options>
-			<element name="t_const" type="float" label="constant temperature" unit="ºC">
+			<element name="t_const" type="float" label="constant temperature" unit="°C">
 				<condition type="eq" variable="." value="11"/>
 			</element>
 			<element name="z_t1" type="float" label="upper layer thickness" unit="m">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element name="t_1" type="float" label="upper layer temperature" unit="ºC">
+			<element name="t_1" type="float" label="upper layer temperature" unit="°C">
 				<condition type="eq" variable="." value="12"/>
 			</element>
 			<element name="z_t2" type="float" label="lower layer thickness" unit="m">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element name="t_2" type="float" label="lower layer temperature" unit="ºC">
+			<element name="t_2" type="float" label="lower layer temperature" unit="°C">
 				<condition type="eq" variable="." value="12"/>
 			</element>
-			<element name="t_surf" type="float" label="surface temperature" unit="ºC">
+			<element name="t_surf" type="float" label="surface temperature" unit="°C">
 				<condition type="eq" variable="." value="13"/>
 			</element>
 			<element name="t_obs_NN" type="float" label="constant N²">
@@ -832,7 +832,7 @@
 				<condition type="eq" variable="." value="2"/>
 				<fileinfo type="profilesintime">
 					<filevariables>
-						<filevariable name="temp" label="temperature" unit="ºC"/>
+						<filevariable name="temp" label="temperature" unit="°C"/>
 					</filevariables>
 				</fileinfo>
 			</element>

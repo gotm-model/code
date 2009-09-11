@@ -18,8 +18,8 @@
 		
 		<element name="station" label="geographic location">
 			<element name="name"      type="string" label="name of the station"/>
-			<element name="latitude"  type="float"  label="latitude"    minInclusive="-90"  maxInclusive="90"   unit="º North"/>
-			<element name="longitude" type="float"  label="longitude"   minInclusive="-360" maxInclusive="360"  unit="º East"/>
+			<element name="latitude"  type="float"  label="latitude"    minInclusive="-90"  maxInclusive="90"   unit="° North"/>
+			<element name="longitude" type="float"  label="longitude"   minInclusive="-360" maxInclusive="360"  unit="° East"/>
 			<element name="depth"     type="float"  label="water depth" minInclusive="0"    maxInclusive="5000" unit="m"/>
 		</element>
 		
@@ -93,7 +93,7 @@
 					<option value="4" label="linear equation of state with T0,S0,dtr0,dsr0"/>
 				</options>
 			</element>
-			<element name="T0" type="float" label="reference temperature for linear equation of state" unit="ºC">
+			<element name="T0" type="float" label="reference temperature for linear equation of state" unit="°C">
 				<condition type="or">
 					<condition type="eq" variable="./eq_state_method" value="3"/>
 					<condition type="eq" variable="./eq_state_method" value="4"/>
@@ -754,7 +754,7 @@
 						<condition type="eq" variable="./t_analyt_method" value="2"/>
 					</condition>
 				</element>
-				<element name="t_1" type="float" label="constant temperature if t_analyt_method=1, upper layer temperature if t_analyt_method=2, surface temperature if t_analyt_method=3" unit="ºC">
+				<element name="t_1" type="float" label="constant temperature if t_analyt_method=1, upper layer temperature if t_analyt_method=2, surface temperature if t_analyt_method=3" unit="°C">
 					<condition type="eq" variable="./t_prof_method" value="1"/>
 				</element>
 				<element name="z_t2" type="float" label="lower layer thickness if t_analyt_method=2" unit="m">
@@ -763,7 +763,7 @@
 						<condition type="eq" variable="./t_analyt_method" value="2"/>
 					</condition>
 				</element>
-				<element name="t_2" type="float" label="lower layer temperature if t_analyt_method=2" unit="ºC">
+				<element name="t_2" type="float" label="lower layer temperature if t_analyt_method=2" unit="°C">
 					<condition type="and">
 						<condition type="eq" variable="./t_prof_method" value="1"/>
 						<condition type="eq" variable="./t_analyt_method" value="2"/>
@@ -779,7 +779,7 @@
 					<condition type="eq" variable="./t_prof_method" value="2"/>
 					<fileinfo type="profilesintime">
 						<filevariables>
-							<filevariable name="temp" label="temperature" unit="ºC"/>
+							<filevariable name="temp" label="temperature" unit="°C"/>
 						</filevariables>
 					</fileinfo>
 				</element>
@@ -1172,52 +1172,12 @@
 		</condition>
 	</link>
 
-	<element name="bio_fasham" label="Fasham et al. biological model with modifications by Kühn and Radach">
+	<link path="[gotmsrc]/extras/bio/fasham/metadata/nml-001.schema">
 		<condition type="and">
-			<condition type="eq" variable="/bio/bio_nml/bio_calc"  value="True"/>
-			<condition type="eq" variable="/bio/bio_nml/bio_model" value="4"/>
+			<condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
+			<condition type="eq" variable="/bio/bio_nml/bio_model" value="4" />
 		</condition>
-		<element name="bio_fasham_nml">
-			<element name="numc"      type="int"   label="number of compartments for geobiochemical model"/>
-			<element name="p_initial" type="float" label="initial phytoplankton concentration" unit="mmol N/m**3"/>
-			<element name="z_initial" type="float" label="initial zooplakton concentration" unit="mmol N/m**3"/>
-			<element name="b_initial" type="float" label="initial bacteria concentration" unit="mmol N/m**3"/>
-			<element name="d_initial" type="float" label="initial detritus concentration" unit="mmol N/m**3"/>
-			<element name="n_initial" type="float" label="initial nitrate concentration" unit="mmol N/m**3"/>
-			<element name="a_initial" type="float" label="initial ammonium concentration" unit="mmol N/m**3"/>
-			<element name="l_initial" type="float" label="initial LDON concentration" unit="mmol N/m**3"/>
-			<element name="p0"        type="float" label="minimum phytoplankton concentration" unit="mmol N/m**3"/>
-			<element name="z0"        type="float" label="minimum zooplakton concentration" unit="mmol N/m**3"/>
-			<element name="b0"        type="float" label="minimum bacteria concentration" unit="mmol N/m**3"/>
-			<element name="vp"        type="float" label="maximum phytoplankton uptake rate" unit="1/d"/>
-			<element name="alpha"     type="float" label="slope of the PI-curve" unit="m**2/(W d)"/>
-			<element name="k1"        type="float" label="half saturation constant nitrate uptake" unit="mmol N/m**3"/>
-			<element name="k2"        type="float" label="half saturation constant ammonium uptake" unit="mmol N/m**3"/>
-			<element name="mu1"       type="float" label="phytoplankton mortality rate" unit="1/d"/>
-			<element name="k5"        type="float" label="half saturation constant phytoplankton mortality" unit="mmol N/m**3"/>
-			<element name="gamma"     type="float" label="exudation fraction"/>
-			<element name="w_p"       type="float" label="phytoplankton settling velocity" unit="m/d"/>
-			<element name="gmax"      type="float" label="maximum ingestion rate" unit="1/d"/>
-			<element name="k3"        type="float" label="half saturation constant ingestion" unit="mmol N/m**3"/>
-			<element name="beta"      type="float" label="grazing efficiency"/>
-			<element name="mu2"       type="float" label="maximum zooplankton loss rate" unit="1/d"/>
-			<element name="k6"        type="float" label="half saturation zooplankton loss" unit="mmol N/m**3"/>
-			<element name="delta"     type="float" label="fractional zooplankton loss to LDON"/>
-			<element name="epsi"      type="float" label="fractional zooplankton loss to ammonium"/>
-			<element name="r1"        type="float" label="grazing preference phytoplankton"/>
-			<element name="r2"        type="float" label="grazing preference bacteria"/>
-			<element name="r3"        type="float" label="grazing preference detritus"/>
-			<element name="vb"        type="float" label="maximum bacterial uptake rate" unit="1/d"/>
-			<element name="k4"        type="float" label="half saturation bacterial uptake" unit="mmol N/m**3"/>
-			<element name="mu3"       type="float" label="bacteria excretion rate" unit="1/d"/>
-			<element name="eta"       type="float" label="uptake ratio ammonium:LDON"/>
-			<element name="mu4"       type="float" label="detritus breakdown rate" unit="1/d"/>
-			<element name="w_d"       type="float" label="detritus settling velocity" unit="m/d"/>
-			<element name="kc"        type="float" label="attenuation constant for the self shading effect" unit="m**2/mmol N"/>
-			<element name="aa"        type="float" label="weighting factor for visible light fraction"/>
-			<element name="g2"        type="float" label="attenuation length for visible light" unit="m"/>
-		</element>
-	</element>
+	</link>
 
 	<element name="seagrass" label="seagrass model" optional="True">
 		<element name="canopy">

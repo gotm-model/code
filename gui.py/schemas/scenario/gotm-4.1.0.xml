@@ -16,8 +16,8 @@
 		</element>
 		<element name="station" label="geographic location">
 			<element name="name" type="string" label="name of the station" />
-			<element name="latitude" type="float" label="latitude" minInclusive="-90" maxInclusive="90" unit="º North" />
-			<element name="longitude" type="float" label="longitude" minInclusive="-360" maxInclusive="360" unit="º East" />
+			<element name="latitude" type="float" label="latitude" minInclusive="-90" maxInclusive="90" unit="° North" />
+			<element name="longitude" type="float" label="longitude" minInclusive="-360" maxInclusive="360" unit="° East" />
 			<element name="depth" type="float" label="water depth" minInclusive="0" maxInclusive="5000" unit="m" />
 		</element>
 		<element name="time" label="duration of run">
@@ -91,7 +91,7 @@
 				</options>
 			</element>
 			<element name="T0" type="float" label="reference temperature for linear equation of state"
-				unit="ºC">
+				unit="°C">
 				<condition type="or">
 					<condition type="eq" variable="./eq_state_method" value="3" />
 					<condition type="eq" variable="./eq_state_method" value="4" />
@@ -785,7 +785,7 @@
 				</condition>
 			</element>
 			<element name="t_1" type="float" label="constant temperature if t_analyt_method=1, upper layer temperature if t_analyt_method=2, surface temperature if t_analyt_method=3"
-				unit="ºC">
+				unit="°C">
 				<condition type="eq" variable="./t_prof_method" value="1" />
 			</element>
 			<element name="z_t2" type="float" label="lower layer thickness if t_analyt_method=2" unit="m">
@@ -794,7 +794,7 @@
 					<condition type="eq" variable="./t_analyt_method" value="2" />
 				</condition>
 			</element>
-			<element name="t_2" type="float" label="lower layer temperature if t_analyt_method=2" unit="ºC">
+			<element name="t_2" type="float" label="lower layer temperature if t_analyt_method=2" unit="°C">
 				<condition type="and">
 					<condition type="eq" variable="./t_prof_method" value="1" />
 					<condition type="eq" variable="./t_analyt_method" value="2" />
@@ -810,7 +810,7 @@
 				<condition type="eq" variable="./t_prof_method" value="2" />
 				<fileinfo type="profilesintime">
 					<filevariables>
-						<filevariable name="temp" label="temperature" unit="ºC" />
+						<filevariable name="temp" label="temperature" unit="°C" />
 					</filevariables>
 				</fileinfo>
 			</element>
