@@ -445,8 +445,8 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
     # This is implemented as XML store (rather than Python object) because it
     # needs to be saved in a descriptive form along with the data files themselves.
     class DataFileCache(xmlstore.xmlstore.TypedStore):
-        @staticmethod
-        def getSchemaInfo():
+        @classmethod
+        def getSchemaInfo(cls):
             return xmlstore.xmlstore.schemainfocache[os.path.join(common.getDataRoot(),'schemas/datafilecache')]
 
         def __init__(self,valueroot=None,adddefault = True,schema=None):

@@ -24,13 +24,21 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
 
     @classmethod
-    def fromNamelists(cls,path,protodir=None,targetversion=None,strict = True,requireplatform=None):
-        sourceids = cls.rankSources(targetversion,Scenario.getSchemaInfo().getSchemas().keys(),requireplatform=requireplatform)
+    def fromNamelists(cls,path,protodir=None,targetversion=None,strict = False,requireplatform=None):
+        # Get a list of available schema versions and check if the target version is available.
+        sourceids = cls.getSchemaInfo().getSchemas().keys()
+        if targetversion is not None and targetversion not in sourceids:
+            raise Exception('No schema available for desired version "%s".' % targetversion)
+            
+        # Rank the source versions according to correspondence with target version and version number (higher is better).
+        sourceids = cls.rankSources(sourceids,targetversion,requireplatform=requireplatform)
+        
+        # Try the available schemas one by one, and see if they match the namelists.
         scenario = None
         failures = ''
         for sourceid in sourceids:
             if common.verbose: print 'Trying scenario format "%s"...' % sourceid
-            scenario = Scenario.fromSchemaName(sourceid)
+            scenario = cls.fromSchemaName(sourceid)
             try:
                 scenario.loadFromNamelists(path,strict=strict,protodir=protodir)
             except namelist.NamelistParseException,e:
@@ -40,9 +48,13 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
             if scenario is not None:
                 #print 'Path "'+path+'" matches template "'+template+'".'
                 break
+                
+        # Check if we found a schema that matches the namelists.
         if scenario is None:
             raise Exception('The path "%s" does not contain a supported scenario. Details:\n%s' % (path,failures))
-        if scenario.version!=targetversion:
+            
+        # Convert the store to the desired version, if specified.
+        if targetversion is not None and scenario.version!=targetversion:
             newscenario = scenario.convert(targetversion)
             scenario.release()
             return newscenario
@@ -362,7 +374,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         # Get description of conditions (if any).
         condition = xmlstore.util.findDescendantNode(node.templatenode,['condition'])
         if condition is not None:
-            condline = Scenario.getNamelistConditionDescription(condition)
+            condline = NamelistStore.getNamelistConditionDescription(condition)
             lines.append('This variable is used only if '+condline)
 
         return (varid,datatype,lines)
@@ -380,7 +392,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                 return var+' != '+val
         elif condtype=='and' or condtype=='or':
             conds = xmlstore.util.findDescendantNodes(node,['condition'])
-            conddescs = map(Scenario.getNamelistConditionDescription,conds)
+            conddescs = map(NamelistStore.getNamelistConditionDescription,conds)
             return '('+(' '+condtype+' ').join(conddescs)+')'
         else:
             raise Exception('Unknown condition type "%s".' % condtype)
@@ -393,8 +405,8 @@ class Scenario(NamelistStore):
     # Descriptive name for the store to be used when communicating with the user.
     storetitle = 'GOTM scenario'
 
-    @staticmethod
-    def getSchemaInfo():
+    @classmethod
+    def getSchemaInfo(cls):
         return xmlstore.xmlstore.schemainfocache[os.path.join(common.getDataRoot(),'schemas/scenario')]
 
     def __init__(self,schema,valueroot=None,adddefault = True):

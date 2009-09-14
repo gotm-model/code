@@ -293,8 +293,8 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
     versions of the XML schema for figures.
     """
 
-    @staticmethod
-    def getSchemaInfo():
+    @classmethod
+    def getSchemaInfo(cls):
         return xmlstore.xmlstore.schemainfocache[os.path.join(common.getDataRoot(),'schemas/figure')]
 
     def __init__(self,valueroot=None,adddefault = True,schema=None):

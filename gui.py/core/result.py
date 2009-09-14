@@ -16,8 +16,8 @@ class ResultProperties(xmlstore.xmlstore.TypedStore):
         if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml')
         xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
-    @staticmethod
-    def getSchemaInfo():
+    @classmethod
+    def getSchemaInfo(cls):
         return xmlstore.xmlstore.schemainfocache[os.path.join(common.getDataRoot(),'schemas/result')]
         
     @classmethod

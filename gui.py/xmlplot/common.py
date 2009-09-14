@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.34 2009-09-11 14:37:07 jorn Exp $
+#$Id: common.py,v 1.35 2009-09-14 09:38:09 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -86,6 +86,8 @@ def unicodechar2ascii(ch):
         repl = unicodedata.name(ch,u'0x%x' % ich)
         if repl.startswith('GREEK SMALL LETTER '):
             repl = '\\'+repl[19:].lower()
+        elif repl.startswith('GREEK CAPITAL LETTER '):
+            repl = '\\'+repl[21:].capitalize()
         charreplacements[ich] = repl
     return charreplacements[ich]
     

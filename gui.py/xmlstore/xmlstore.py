@@ -1935,19 +1935,20 @@ class TypedStore(util.referencedobject):
         return target
 
     @classmethod
-    def rankSources(cls,targetid,sourceids,requireplatform=None):
+    def rankSources(cls,sourceids,targetid=None,requireplatform=None):
         """Rank a set of supplied versions/identifiers according to platform (i.e. gotmgui, gotm)
         and version. Rank criterion is 'closeness' (in version and platform) to the reference
         targetid.
         """
-        (targetplatform,targetversion) = targetid.split('-')
-        targetversion = versionStringToInt(targetversion)
+        if targetid is not None:
+            (targetplatform,targetversion) = targetid.split('-')
+            targetversion = versionStringToInt(targetversion)
 
         # Decompose source ids into name and (integer) version, but only take
         # source we can actually convert to the target version.
         sourceinfo = []
         for sid in sourceids:
-            if sid==targetid or cls.getSchemaInfo().hasConverter(sid,targetid):
+            if targetid is None or sid==targetid or cls.getSchemaInfo().hasConverter(sid,targetid):
                 (platform,version) = sid.split('-')
                 if requireplatform is None or requireplatform==platform:
                     version = versionStringToInt(version)
@@ -1956,15 +1957,14 @@ class TypedStore(util.referencedobject):
         # Sort by platform (because we want the target platform first)
         sourceinfoclasses = {}
         for sinf in sourceinfo:
-            if sinf[0] not in sourceinfoclasses: sourceinfoclasses[sinf[0]] = []
-            sourceinfoclasses[sinf[0]].append(sinf)
+            sourceinfoclasses.setdefault(sinf[0],[]).append(sinf)
 
         # Now sort per platform according to version (higher versions first)
         result = []
         for sourceplatform in sourceinfoclasses.keys():
             infos = sourceinfoclasses[sourceplatform]
             infos.sort(cmp=lambda x,y: cmp(y[1],x[1]))
-            if sourceplatform==targetplatform:
+            if targetid is not None and sourceplatform==targetplatform:
                 result = infos+result
             else:
                 result += infos
