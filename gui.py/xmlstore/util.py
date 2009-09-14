@@ -342,3 +342,17 @@ class ProgressSlicer(object):
         """
         if self.callback is None: return None
         return self.onStepProgressed
+
+charreplacements = {176:'deg',178:'^2',179:'^3'}
+def unicodechar2ascii(ch):
+    ich = ord(ch)
+    if ich not in charreplacements:
+        import unicodedata
+        repl = unicodedata.name(ch,u'0x%x' % ich)
+        if repl.startswith('GREEK SMALL LETTER '):
+            repl = '\\'+repl[19:].lower()
+        elif repl.startswith('GREEK CAPITAL LETTER '):
+            repl = '\\'+repl[21:].capitalize()
+        charreplacements[ich] = repl
+    return charreplacements[ich]
+        

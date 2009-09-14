@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.35 2009-09-14 09:38:09 jorn Exp $
+#$Id: common.py,v 1.36 2009-09-14 11:22:47 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -76,21 +76,7 @@ def convertUnitToUnicode(unit):
     unit = unit.replace('^2',sup2)
     unit = unit.replace('**3',sup3)
     unit = unit.replace('^3',sup3)
-    return unit
-
-charreplacements = {176:'deg',178:'^2',179:'^3'}
-def unicodechar2ascii(ch):
-    ich = ord(ch)
-    if ich not in charreplacements:
-        import unicodedata
-        repl = unicodedata.name(ch,u'0x%x' % ich)
-        if repl.startswith('GREEK SMALL LETTER '):
-            repl = '\\'+repl[19:].lower()
-        elif repl.startswith('GREEK CAPITAL LETTER '):
-            repl = '\\'+repl[21:].capitalize()
-        charreplacements[ich] = repl
-    return charreplacements[ich]
-    
+    return unit    
 
 # ------------------------------------------------------------------------------------------
 # Date format convertor

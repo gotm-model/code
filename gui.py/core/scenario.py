@@ -8,7 +8,7 @@ savedscenarioversion = 'gotm-4.0.0'
 import os, shutil, re, datetime, sys
 
 # Import our own custom modules
-import xmlstore.xmlstore, xmlstore.util, xmlplot.data
+import xmlstore.xmlstore, xmlstore.util
 import common, namelist
 
 # In the developers' version, some parts of the schemas will be loaded from the GOTM source directory.
@@ -240,7 +240,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
             assert isinstance(exc, UnicodeEncodeError), 'do not know how to handle %r' % exc
             l = []
             for c in exc.object[exc.start:exc.end]:
-                l.append(xmlplot.common.unicodechar2ascii(c))
+                l.append(xmlstore.util.unicodechar2ascii(c))
             return (u', '.join(l), exc.end)
 
         import codecs
@@ -415,6 +415,7 @@ class Scenario(NamelistStore):
     @classmethod
     def getCustomDataTypes(ownclass):
         dt = xmlstore.xmlstore.TypedStore.getCustomDataTypes()
+        import xmlplot.data
         dt['gotmdatafile'] = xmlplot.data.LinkedFileVariableStore
         return dt
 
