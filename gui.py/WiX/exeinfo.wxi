@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Include xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<ProgId Id="GOTM-GUI result" Description="GOTM-GUI result" Icon="gotmgui.ico" IconIndex="0" Advertise="yes">
+		<Extension Id="gotmresult" Advertise="yes">
+			<Verb Id="open" Command="&amp;Open" Argument="&quot;%1&quot;" Sequence="1" />
+		</Extension>
+	</ProgId>
+	<ProgId Id="GOTM-GUI scenario" Description="GOTM-GUI scenario" Icon="gotmgui.ico" IconIndex="0" Advertise="yes">
+		<Extension Id="gotmscenario" Advertise="yes">
+			<Verb Id="open" Command="&amp;Open" Argument="&quot;%1&quot;" Sequence="1" />
+		</Extension>
+	</ProgId>
+	<Shortcut Id="gotm.exe" Directory="ProgramMenuFolder" Name="GOTM-GUI" Description="Use the General Ocean Turbulence Model for water column simulations." Icon="gotmgui.ico" IconIndex="0" Show="normal" WorkingDirectory="TARGETDIR" Advertise="yes" />
+</Include>
