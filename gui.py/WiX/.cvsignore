@@ -9,3 +9,4 @@ dist
 *.wixobj
 *.wixpdb
 *.msi
+files.wxs

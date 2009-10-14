@@ -1,0 +1,61 @@
+<?xml version="1.0" ?>
+<converter source="0002" target="0003" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../xmlstore/converter-1.0.xsd">
+	<custom>
+		<forward>
+<![CDATA[
+markertypes = {0:'',1:'.',2:',',3:'o',4:'^',5:'s',6:'+',7:'x',8:'D'}
+linestyles = {0:'',1:'-',2:'--',3:'-.',4:':'}
+tickformats = {0:'dd-mmm-yyyy HH:MM:SS',
+                1:'dd-mmm-yyyy',
+                2:'mm/dd/yy',
+                3:'mmm',
+                4:'m',
+                5:'mm',
+                6:'mm/dd',
+                7:'dd',
+                8:'ddd',
+                9:'d',
+                10:'yyyy',
+                11:'yy',
+                12:'mmmyy',
+                13:'HH:MM:SS',
+                14:'HH:MM:SS PM',
+                15:'HH:MM',
+                16:'HH:MM PM',
+                17:'QQ-yy',
+                18:'QQ',
+                19:'dd/mm',
+                20:'dd/mm/yy',
+                21:'mmm.dd,yyyy HH:MM:SS',
+                22:'mmm.dd,yyyy',
+                23:'mm/dd/yyyy',
+                24:'dd/mm/yyyy',
+                25:'yy/mm/dd',
+                26:'yyyy/mm/dd',
+                27:'QQ-yyyy',
+                28:'mmmyyyy'}
+                
+def updateLine2D(sourcenode,targetnode):
+    global linestyles,markertypes
+    line = sourcenode['Line'].getValue(usedefault=False)
+    marker = sourcenode['Marker'].getValue(usedefault=False)
+    if line is None and marker is None: return
+    if line   is not None: targetnode['Line'].setValue(linestyles[line])
+    if marker is not None: targetnode['Marker'].setValue(markertypes[marker])
+                
+# Update line and marker styles in grid and data series.
+updateLine2D(source['Grid/LineProperties'],target['Grid/LineProperties'])
+for sourceseriesnode,targetseriesnode in zip(source['Data'].getLocationMultiple(['Series']),target['Data'].getLocationMultiple(['Series'])):
+    updateLine2D(sourceseriesnode['LineProperties'],targetseriesnode['LineProperties'])
+    
+# Update time formats
+for sourcenode,targetnode in zip(source['Axes'].getLocationMultiple(['Axis']),target['Axes'].getLocationMultiple(['Axis'])):
+    minfmt = sourcenode['TicksMinor/FormatTime'].getValue(usedefault=False)
+    majfmt = sourcenode['TicksMajor/FormatTime'].getValue(usedefault=False)
+    if minfmt is None and majfmt is None: continue
+    if minfmt is not None: targetnode['TicksMinor/FormatTime'].setValue(tickformats[minfmt])
+    if majfmt is not None: targetnode['TicksMajor/FormatTime'].setValue(tickformats[majfmt])
+]]>
+		</forward>
+	</custom>
+</converter>
