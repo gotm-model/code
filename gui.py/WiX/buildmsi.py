@@ -80,7 +80,7 @@ if ret!=0:
     print 'CANDLE failed with return code %i: exiting.' % ret
     sys.exit(1)
 
-ret = subprocess.call(('light.exe','gotmgui.wixobj','files.wixobj','-b','../dist','-o','gotmgui.msi'))
+ret = subprocess.call(('light.exe','gotmgui.wixobj','files.wixobj','-b','../dist','-o','gotmgui-%s.msi' % version))
 if ret!=0:
     print 'LIGHT failed with return code %i: exiting.' % ret
     sys.exit(1)

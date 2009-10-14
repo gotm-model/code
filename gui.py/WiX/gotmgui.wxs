@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-    <Product Id="{844FF358-3E48-44B2-AAA1-502EB5EFCBAA}" Codepage="1252" Language="1033" Manufacturer="Bolding &amp; Burchard" Name="GOTM-GUI" UpgradeCode="{4B998060-7774-43AF-BC61-8E1D4FE4F2D7}" Version="$(var.Version)">
+    <Product Id="*" Codepage="1252" Language="1033" Manufacturer="Bolding &amp; Burchard" Name="GOTM-GUI" UpgradeCode="{4B998060-7774-43AF-BC61-8E1D4FE4F2D7}" Version="$(var.Version)">
         <Package Compressed="yes" InstallerVersion="200" Languages="1033" Manufacturer="Jorn Bruggeman" Platform="x86" />
         <Binary Id="DefBannerBitmap" SourceFile=".\Binary\DefBannerBitmap.bmp" />
         <Binary Id="UpFldrBtn"       SourceFile=".\Binary\UpFldrBtn.bmp"       />
