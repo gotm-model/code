@@ -373,13 +373,13 @@ class String(DataTypeSimple,unicode):
     @classmethod
     def fromNamelistString(cls,string,context,template=None):
         if string[0] in '"\'':
-            if string[0]!=string[-1]:
+            if len(string)<2 or string[0]!=string[-1]:
                 raise Exception('Closing quote missing in namelist string %s.' % string)
             return string[1:-1]
         return string
         
     def toNamelistString(self,context,template=None):
-        return '\''+str(self)+'\''
+        return '\''+unicode(self)+'\''
         
 register('string',String)
 

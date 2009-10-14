@@ -11,9 +11,14 @@ import os, shutil, re, datetime, sys
 import xmlstore.xmlstore, xmlstore.util
 import common, namelist
 
-# In the developers' version, some parts of the schemas will be loaded from the GOTM source directory.
-# If this directory can be found, register its location with the xmlstore module.
-srcdir = os.path.abspath(os.path.join(common.getDataRoot(),'../src'))
+# Some parts of the schemas will be loaded from the GOTM source directory.
+# For the developer's version, the source directory can be found one level below the GUI.
+# For the frozen version (py2exe build), the required files are present in the gotmsrc
+# subdirectory directly below the GUI directory.
+if hasattr(sys,'frozen'):
+    srcdir = os.path.abspath(os.path.join(common.getDataRoot(),'gotmsrc'))
+else:
+    srcdir = os.path.abspath(os.path.join(common.getDataRoot(),'../src'))
 if os.path.isdir(srcdir): xmlstore.xmlstore.Schema.knownpaths['gotmsrc'] = srcdir
 
 class NamelistStore(xmlstore.xmlstore.TypedStore):
@@ -319,9 +324,9 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                                 varstring = varval.toNamelistString(context,listchild.templatenode)
                                 if isinstance(varstring,(list,tuple)):
                                     for ind,value in varstring:
-                                        nmlfile.write('   %s(%s) = %s,\n' % (varname,ind,value))
+                                        nmlfile.write('   %s(%s) = %s,\n' % (varname,ind,value.encode('ascii','namelist')))
                                 else:
-                                    nmlfile.write('   %s = %s,\n' % (varname,varstring))
+                                    nmlfile.write('   %s = %s,\n' % (varname,varstring.encode('ascii','namelist')))
                                 if isinstance(varval,xmlstore.util.referencedobject): varval.release()
                             nmlfile.write('/\n\n')
                     finally:

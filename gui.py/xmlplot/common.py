@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.36 2009-09-14 11:22:47 jorn Exp $
+#$Id: common.py,v 1.37 2009-10-14 09:22:51 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -256,9 +256,15 @@ def ndgrid(*coords):
     return newcoords
 
 def getCenters(data,addends=False):
-    delta = (data[1:]-data[:-1])/2
-    newdata = data[:-1]+delta
-    if addends: newdata = numpy.concatenate(([data[0]-delta[0]],newdata,[data[-1]+delta[-1]]),0)
+    if len(data)==1:
+        if not addends: return numpy.empty((0,),dtype=data.dtype)
+        newdata = numpy.empty((2,),dtype=data.dtype)
+        newdata[0] = data[0]-0.5
+        newdata[1] = data[0]+0.5
+    else:
+        delta = (data[1:]-data[:-1])/2
+        newdata = data[:-1]+delta
+        if addends: newdata = numpy.concatenate(([data[0]-delta[0]],newdata,[data[-1]+delta[-1]]),0)
     return newdata
 
 def replicateCoordinates(coords,data,idim):

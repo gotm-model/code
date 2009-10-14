@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: simulator.py,v 1.21 2009-06-22 15:44:56 jorn Exp $
+#$Id: simulator.py,v 1.22 2009-10-14 09:22:51 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -153,7 +153,7 @@ class PageProgress(commonqt.WizardPage):
             self.savebutton.show()
 
         # Set text with GOTM output
-        self.text.setPlainText(res.stderr)
+        if res.stderr is not None: self.text.setPlainText(res.stderr)
         
         # Save result object
         if res.returncode==0:

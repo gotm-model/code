@@ -12,6 +12,9 @@ class Simulator(object):
     def __init__(self,scenario,redirect=True):
         self.scenario = scenario
         self.redirect = redirect
+        self.outfile = None
+        self.errfile = None
+        self.olddir = None
         
         # Create result object.
         if verbose: print 'creating result'
@@ -92,11 +95,11 @@ class Simulator(object):
                 return data
                 
             # Read GOTM output from temporary files, then delete these files.
-            self.result.stderr = readoutput(self.errfile)
-            self.result.stdout = readoutput(self.outfile)
+            if self.errfile is not None: self.result.stderr = readoutput(self.errfile)
+            if self.outfile is not None: self.result.stdout = readoutput(self.outfile)
 
         # Return to previous working directory.
-        os.chdir(self.olddir)
+        if self.olddir is not None: os.chdir(self.olddir)
 
         if self.result.returncode==0:    
             # Succeeded: get the result. Note: the result "inherits" the temporary directory,
