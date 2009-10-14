@@ -23,7 +23,7 @@ from distutils.core import setup
 import py2exe
 
 from distutils.filelist import findall
-import os, os.path
+import os, os.path,glob
 
 def adddir(path,localtarget=None):
     if localtarget is None: localtarget = path
@@ -31,6 +31,14 @@ def adddir(path,localtarget=None):
         localname = os.path.join(localtarget, f[len(path)+1:])
         if 'CVS' in localname: continue
         own_data_files.append((os.path.dirname(localname),[f]))
+
+def addtreewithwildcard(sourceroot,path,localtarget):
+    cwd = os.getcwd()
+    os.chdir(sourceroot)
+    for f in glob.glob(path):
+        if os.path.isfile(f):
+            own_data_files.append((os.path.join(localtarget,os.path.dirname(f)),[os.path.join(sourceroot,f)]))
+    os.chdir(cwd)
 
 own_data_files = []
 
@@ -47,7 +55,12 @@ adddir('reporttemplates')
 adddir('schemas')
 adddir('icons')
 own_data_files.append(('',['logo.png']))
-#own_data_files.append(('',['C:\Program Files\Python24\MSVCP71.dll']))
+
+addtreewithwildcard('../src','extras/bio/*/metadata/*','gotmsrc')
+
+own_data_files.append(('',['C:\\Windows\\System32\\MSVCP71.dll']))
+own_data_files.append(('',['C:\\Program Files\\Microsoft Visual Studio 8\\VC\\redist\\x86\\Microsoft.VC80.CRT\\MSVCR80.dll']))
+own_data_files.append(('',['C:\\Program Files\\Microsoft Visual Studio 8\\VC\\redist\\x86\\Microsoft.VC80.CRT\\Microsoft.VC80.CRT.manifest']))
 
 setup(
     windows=[{'script':'gotm.py','icon_resources':[(1,'gotmgui.ico')]}],
