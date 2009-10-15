@@ -1572,6 +1572,22 @@ class LinkedFileDataEditor(QtGui.QDialog):
                 model.setData(index, QtCore.QVariant(editor.value()))
             elif isinstance(editor,QtGui.QDateTimeEdit):
                 model.setData(index, QtCore.QVariant(editor.dateTime()))
+
+    class CustomListView(QtGui.QListView):
+        def keyPressEvent(self,event):
+            if event.key()==QtCore.Qt.Key_Delete:
+                self.emit(QtCore.SIGNAL('deletePressed()'))
+                event.accept()
+                return
+            QtGui.QListView.keyPressEvent(self,event)
+
+    class CustomTableView(QtGui.QTableView):
+        def keyPressEvent(self,event):
+            if event.key()==QtCore.Qt.Key_Delete:
+                self.emit(QtCore.SIGNAL('deletePressed()'))
+                event.accept()
+                return
+            QtGui.QTableView.keyPressEvent(self,event)
                 
     def __init__(self,linkedfile,parent=None,title=None):
         QtGui.QDialog.__init__(self,parent)
@@ -1585,7 +1601,7 @@ class LinkedFileDataEditor(QtGui.QDialog):
         # Left panel: data editor
         loDataEdit = QtGui.QHBoxLayout()
         if isinstance(self.linkedfile,data.LinkedProfilesInTime):
-            self.listTimes = QtGui.QListView(self)
+            self.listTimes = self.CustomListView(self)
             self.listmodel = LinkedFileDataEditor.LinkedDataModel(self.linkedfile,type=1)
             self.listTimes.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
             self.listTimes.setModel(self.listmodel)
@@ -1593,7 +1609,8 @@ class LinkedFileDataEditor(QtGui.QDialog):
             loDataEdit.addWidget(self.listTimes)
             self.connect(self.listTimes, QtCore.SIGNAL('customContextMenuRequested(const QPoint &)'), self.onTableContextMenu)
             self.connect(self.listTimes.selectionModel(), QtCore.SIGNAL('currentChanged(const QModelIndex &,const QModelIndex &)'), self.onTimeChanged)
-        self.tableData = QtGui.QTableView(self)
+            self.connect(self.listTimes, QtCore.SIGNAL('deletePressed()'), self.onDelete)
+        self.tableData = self.CustomTableView(self)
         self.tablemodel = LinkedFileDataEditor.LinkedDataModel(self.linkedfile)
         self.tableData.verticalHeader().hide()
         self.tableData.verticalHeader().setDefaultSectionSize(20)
@@ -1603,6 +1620,7 @@ class LinkedFileDataEditor(QtGui.QDialog):
         self.tableData.setItemDelegate(self.tabledelegate)
         self.tableData.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.connect(self.tableData, QtCore.SIGNAL('customContextMenuRequested(const QPoint &)'), self.onTableContextMenu)
+        self.connect(self.tableData, QtCore.SIGNAL('deletePressed()'), self.onDelete)
         
         loDataEdit.addWidget(self.tableData)
         
@@ -1643,7 +1661,10 @@ class LinkedFileDataEditor(QtGui.QDialog):
         selectmodel.clear()
         selectmodel.select(QtGui.QItemSelection(model.index(newindex,0),model.index(newindex+nrows-1,0)),QtGui.QItemSelectionModel.ClearAndSelect|QtGui.QItemSelectionModel.Rows)
         selectmodel.setCurrentIndex(model.index(newindex,0),QtGui.QItemSelectionModel.NoUpdate)
-
+        
+    def onDelete(self):
+        self.removeRow(self.sender())
+        
     def removeRow(self,view=None):
         """Event handler: called when user clicks the "Remove row" button.
         Removes all selected rows.
