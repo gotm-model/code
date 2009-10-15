@@ -511,6 +511,7 @@ class Figure(xmlstore.util.referencedobject):
         self.updating = True
         self.dirty = False
         self.haschanged = False
+        self.errors = []
         
         # Whether to automatically squeeze out singleton dimensions in the data to plot.
         self.autosqueeze = True
@@ -687,6 +688,7 @@ class Figure(xmlstore.util.referencedobject):
             
         # Clear the current MatPlotLib figure.
         self.figure.clear()
+        self.errors = []
         
         w = self.properties['Width'].getValue(usedefault=True)
         h = self.properties['Height'].getValue(usedefault=True)
@@ -1395,7 +1397,7 @@ class Figure(xmlstore.util.referencedobject):
                 plotcount[2] += 1
             
             else:
-                print 'We can only plot variables with 1 or 2 dimensions, but "%s" has %i dimensions. Skipping it.' % (varpath,varslice.ndim)
+                self.errors.append('Data series %s ("%s") has %i independent coordinate dimensions, but only series with one or two independent dimensions can be plotted.' % (varpath,label,varslice.ndim))
 
             hascolormap |= curhascolormap
 
@@ -1673,7 +1675,8 @@ class Figure(xmlstore.util.referencedobject):
         # Draw the plot to screen.
         self.canvas.draw()
         
-        for cb in self.callbacks['completeStateChange']: cb(len(forcedseries)>0)
+        validplot = (plotcount[1]+plotcount[2])>0
+        for cb in self.callbacks['completeStateChange']: cb(validplot)
 
         self.dirty = False
 

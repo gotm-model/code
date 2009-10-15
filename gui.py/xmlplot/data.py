@@ -1032,7 +1032,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         if cleardata: self.griddeddata = None
 
     def clear(self,clearfile=True):
-        self.data = (numpy.empty((0,)),[],[])
+        self.data = [numpy.empty((0,)),[],[]]
         LinkedFileVariableStore.clear(self,clearfile=clearfile)
 
     def dataChanged(self,clearfile=True):
@@ -1047,10 +1047,12 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         if ind==0:
             return (dimdata.min(),dimdata.max())
         else:
-            dimmin,dimmax = dimdata[0].min(),dimdata[0].max()
-            for iobs in range(1,len(dimdata)):
-                dimmin = min(dimmin,dimdata[iobs].min())
-                dimmax = max(dimmin,dimdata[iobs].max())
+            dimmin,dimmax = None,None
+            for curdata in dimdata:
+                if 0 in curdata.shape: continue
+                curmin,curmax = curdata.min(),curdata.max()
+                if dimmin is None or curmin<dimmin: dimmin = curmin
+                if dimmax is None or curmax>dimmax: dimmax = curmax
             return (dimmin,dimmax)
                 
     def writeData(self,target,callback=None):
@@ -1074,18 +1076,25 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
     def getGriddedData(self,callback=None):
         data = self.getData()
         if self.griddeddata is None:
-            times,depths,values = data
+            # Select only non-empty profiles
+            times,depths,values = [],[],[]
+            for t,d,v in zip(*data):
+                if 0 not in d.shape:
+                    times.append(t)
+                    depths.append(d)
+                    values.append(v)
+            times = numpy.array(times,dtype=data[0].dtype)
             
             varcount = len(self.vardata)
             
             # Find unique depth levels.
-            uniquedepths = {}
+            uniquedepths = set()
             for ds in depths:
-                for d in ds: uniquedepths[d] = True
+                for d in ds: uniquedepths.add(d)
             
             # Create depth grid to interpolate on to. Use the observation depths if less than 200,
             # otherwise create a equidistant 200-point grid between the minimum and maximum depth.
-            uniquedepths = uniquedepths.keys()
+            uniquedepths = list(uniquedepths)
             uniquedepths.sort()
             if len(uniquedepths)<200:
                 depthdatatype = self.dimensions[self.dimensionorder[1]]['datatype']

@@ -404,6 +404,11 @@ class FigurePanel(QtGui.QWidget):
         except AttributeError:
             pass
         
+        self.errortext = QtGui.QLabel(self)
+        self.errortext.setVisible(False)
+        self.errortext.setAlignment(QtCore.Qt.AlignTop)
+        self.errortext.setWordWrap(True)
+        
         self.toolbar = QtGui.QToolBar(self)
         self.toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.toolbar.addAction(getIcon('configure.png'),'Properties...',self.onAdvancedClicked)
@@ -421,6 +426,7 @@ class FigurePanel(QtGui.QWidget):
         self.actZoom.setCheckable(True)
         self.actPan.setCheckable(True)
 
+        layout.addWidget(self.errortext)
         layout.addWidget(self.canvas)
         layout.addWidget(self.toolbar)
 
@@ -448,8 +454,14 @@ class FigurePanel(QtGui.QWidget):
     def onFigureStateChanged(self,complete):
         """Called when the figure state (figure shown/no figure shown) changes.
         """
+        self.errortext.setVisible(not complete)
+        if self.figure.errors:
+            self.errortext.setText('\n'.join(self.figure.errors))
+        else:
+            self.errortext.setText('No data to plot.')
+        self.canvas.setVisible(complete)
         self.toolbar.setVisible(complete)
-        self.setEnabled(complete)
+        #self.setEnabled(complete)
 
     def onFigurePropertyStoreChanged(self):
         """Called when all customized figure properties change at once
@@ -1011,7 +1023,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
     def onEditData(self):
         dialog = LinkedFileDataEditor(self.linkedfile,self)
         if dialog.exec_()!=QtGui.QDialog.Accepted: return
-        for panel in self.panels: panel.figure.update()
+        self.setData()
         
     def getCurrentVariable(self):
         """Returns the currently selected (visible) variable.
@@ -1111,7 +1123,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
             v = self.linkedfile.getVariable(varname)
             self.privatestore.addChild(v.copy())
             panel.figure.update()
-            if not isinstance(v,common.FunctionVariable): v=None
+            if not isinstance(v,common.FunctionVariable): v = None
             dataeditor.setVariable(v)
         
         # Enable the "Export" button if the data file is valid.
@@ -1231,7 +1243,7 @@ class LinkedFileDataEditor(QtGui.QDialog):
                     self.datelabels = (self.datastore.getDimensionInfo_raw(dimname)['datatype']=='datetime')
             elif isinstance(self.datastore,data.LinkedProfilesInTime):
                 if self.type==0:
-                    if self.pos<len(rawdata[1]):
+                    if self.pos<len(rawdata[1]) and self.pos>=0:
                         self.rowlabels = rawdata[1][self.pos]
                         self.datamatrix = rawdata[2][self.pos]
                         self.datelabels = False
@@ -1242,6 +1254,10 @@ class LinkedFileDataEditor(QtGui.QDialog):
                 assert False, 'Unknown data file type "%s".' % self.datastore.type
                 
         def saveData(self):
+            """Send changed data arrays back to the original data store.
+            This is needed if the data objects have been replaced by new ones,
+            not if the data are modified in place.
+            """
             rawdata = self.datastore.getData()
             if isinstance(self.datastore,data.LinkedMatrix):
                 if len(self.datastore.dimensions)==1:
@@ -1249,13 +1265,15 @@ class LinkedFileDataEditor(QtGui.QDialog):
                 rawdata[-1] = self.datamatrix
             elif isinstance(self.datastore,data.LinkedProfilesInTime):
                 if self.type==0:
-                    if self.pos<len(rawdata[1]):
+                    assert self.rowlabels is not None, 'Table for profiles must have row labels.'
+                    if self.pos>=0 and self.pos<len(rawdata[1]):
                         rawdata[1][self.pos] = self.rowlabels
                         rawdata[2][self.pos] = self.datamatrix
                 else:
                     rawdata[0] = self.rowlabels
             else:
                 assert False, 'Unknown data file type "%s".' % self.datastore.type
+            self.datastore.dataChanged()
             
         def reset(self):
             self.loadData()
@@ -1317,88 +1335,162 @@ class LinkedFileDataEditor(QtGui.QDialog):
             return QtCore.QVariant()
             
         def setData(self,index,value,role=QtCore.Qt.EditRole):
-            if role==QtCore.Qt.EditRole:
-                if value.canConvert(QtCore.QVariant.DateTime):
-                    value = value.toDateTime()
-                    value.setTimeSpec(QtCore.Qt.UTC)
-                    value = common.date2num(xmlstore.gui_qt4.qtdatetime2datetime(value))
-                elif value.canConvert(QtCore.QVariant.Double):
-                    (value,ok) = value.toDouble()
-                else:
-                    assert False, 'Do not know variant type %s.' % val.type()
-                rowindex = index.row()
-                colindex = index.column()
-                if self.rowlabels is not None: colindex -= 1
-                if colindex==-1:
-                    # We have edited a row label. The table is kep sorted according
-                    # to row labels, so this means the position of the current row
-                    # may have change.
-                    if self.rowlabels[rowindex]==value: return True
-                    newrowindex = self.rowlabels.searchsorted(value)
-                    self.rowlabels[rowindex] = value
-                    if newrowindex!=rowindex and newrowindex!=rowindex+1:
-                        # Row position should change
-                        buflab = self.rowlabels[rowindex]
-                        bufdata = self.datamatrix[rowindex,:].copy()
-                        if newrowindex>rowindex+1:
-                            self.rowlabels[rowindex:newrowindex-1] = self.rowlabels[rowindex+1:newrowindex]
-                            self.rowlabels[newrowindex-1] = buflab
-                            if self.datamatrix is not None:
-                                self.datamatrix[rowindex:newrowindex-1,:] = self.datamatrix[rowindex+1:newrowindex,:]
-                                self.datamatrix[newrowindex-1,:] = bufdata
-                            if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type!=0:
-                                self.datastore.data[1].insert(newrowindex-1,self.datastore.data[1].pop(rowindex))
-                                self.datastore.data[2].insert(newrowindex-1,self.datastore.data[2].pop(rowindex))
-                            self.emitRowsChanged(rowindex,newrowindex-1)
-                        elif newrowindex<rowindex:
-                            self.rowlabels[newrowindex+1:rowindex+1] = self.rowlabels[newrowindex:rowindex]
-                            self.rowlabels[newrowindex] = buflab
-                            if self.datamatrix is not None:
-                                self.datamatrix[newrowindex+1:rowindex+1,:] = self.datamatrix[newrowindex:rowindex,:]
-                                self.datamatrix[newrowindex,:] = bufdata
-                            if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type!=0:
-                                self.datastore.data[1].insert(newrowindex,self.datastore.data[1].pop(rowindex))
-                                self.datastore.data[2].insert(newrowindex,self.datastore.data[2].pop(rowindex))
-                            self.emitRowsChanged(newrowindex,rowindex)
-                else:
-                    if self.datamatrix[rowindex,colindex]==value: return True
-                    self.datamatrix[rowindex,colindex] = value
-                self.datastore.dataChanged()
-                self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),index,index)
+            # Only do something if we are editing the data.
+            if role!=QtCore.Qt.EditRole: return True
+            
+            # Convert the new value from variant to native data type.
+            if value.canConvert(QtCore.QVariant.DateTime):
+                value = value.toDateTime()
+                value.setTimeSpec(QtCore.Qt.UTC)
+                value = common.date2num(xmlstore.gui_qt4.qtdatetime2datetime(value))
+            elif value.canConvert(QtCore.QVariant.Double):
+                (value,ok) = value.toDouble()
+            else:
+                assert False, 'Do not know variant type %s.' % val.type()
+            
+            # Find the row and column index of the edited variable, and
+            # adjust the column index to skip row labels (if any).    
+            rowindex = index.row()
+            colindex = index.column()
+            if self.rowlabels is not None: colindex -= 1
+            
+            if colindex==-1:
+                # We have edited a row label. The table is kept sorted according
+                # to row labels, so this means the position of the current row
+                # may have change.
+                if self.rowlabels[rowindex]==value: return True
+                newrowindex = self.rowlabels.searchsorted(value)
+                self.rowlabels[rowindex] = value
+                if newrowindex!=rowindex and newrowindex!=rowindex+1:
+                    # Row position should change
+                    
+                    # Buffer the label and data of the row that changes position.
+                    buflab = self.rowlabels[rowindex]
+                    if self.datamatrix is not None: bufdata = self.datamatrix[rowindex,:].copy()
+                    
+                    if newrowindex>rowindex+1:
+                        # Row moves down
+                        self.rowlabels[rowindex:newrowindex-1] = self.rowlabels[rowindex+1:newrowindex]
+                        self.rowlabels[newrowindex-1] = buflab
+                        if self.datamatrix is not None:
+                            self.datamatrix[rowindex:newrowindex-1,:] = self.datamatrix[rowindex+1:newrowindex,:]
+                            self.datamatrix[newrowindex-1,:] = bufdata
+                        if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type!=0:
+                            # We have edited the time of a profile - move the depth and values along as well.
+                            self.datastore.data[1].insert(newrowindex-1,self.datastore.data[1].pop(rowindex))
+                            self.datastore.data[2].insert(newrowindex-1,self.datastore.data[2].pop(rowindex))
+                        self.emitRowsChanged(rowindex,newrowindex-1)
+                    elif newrowindex<rowindex:
+                        # Row moves up
+                        self.rowlabels[newrowindex+1:rowindex+1] = self.rowlabels[newrowindex:rowindex]
+                        self.rowlabels[newrowindex] = buflab
+                        if self.datamatrix is not None:
+                            self.datamatrix[newrowindex+1:rowindex+1,:] = self.datamatrix[newrowindex:rowindex,:]
+                            self.datamatrix[newrowindex,:] = bufdata
+                        if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type!=0:
+                            # We have edited the time of a profile - move the depth and values along as well.
+                            self.datastore.data[1].insert(newrowindex,self.datastore.data[1].pop(rowindex))
+                            self.datastore.data[2].insert(newrowindex,self.datastore.data[2].pop(rowindex))
+                        self.emitRowsChanged(newrowindex,rowindex)
+            else:
+                if self.datamatrix[rowindex,colindex]==value: return True
+                self.datamatrix[rowindex,colindex] = value
+                
+            # Make sure that the data store knows that its contents have changed.
+            self.datastore.dataChanged()
+            
+            # Notify any GUI elements attache dto the model that data have changed.
+            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),index,index)
+            
             return True
             
-        def addRow(self):
-            newrowindex = self.datamatrix.shape[0]
-            self.beginInsertRows(QtCore.QModelIndex(),newrowindex,newrowindex)
+        def addRow(self,newrowindex=None,nrows=1):
+            """Adds one or more rows to the current data object.
+            """
+            # By default: add the new row to the end of the list.
+            if newrowindex is None: newrowindex = self.datamatrix.shape[0]
+            
+            self.beginInsertRows(QtCore.QModelIndex(),newrowindex,newrowindex+nrows-1)
+            
             if self.datamatrix is not None:
-                newrow = numpy.zeros((1,self.datamatrix.shape[1]),self.datamatrix.dtype)
-                self.datamatrix = numpy.concatenate((self.datamatrix,newrow))
+                # Add a new row to the data matrix.
+                newrows = numpy.zeros((nrows,self.datamatrix.shape[1]),self.datamatrix.dtype)
+                self.datamatrix = numpy.concatenate((self.datamatrix[:newrowindex,:],newrows,self.datamatrix[newrowindex:,:]),axis=0)
+                
             if self.rowlabels is not None:
-                if self.datelabels:
-                    if newrowindex==0:
-                        newval = common.date2num(datetime.datetime.today())
-                    else:
-                        newval = self.rowlabels[-1]
-                        if newrowindex>1: newval += self.rowlabels[-1]-self.rowlabels[-2]
+                delta = 1.
+                if len(self.rowlabels)==0:
+                    # Creating the first row(s).
+                    start = 0.
+                    if self.datelabels: start = common.date2num(datetime.datetime.today())
+                elif newrowindex>0 and newrowindex<len(self.rowlabels):
+                    # Inserting in the middle.
+                    above,below = self.rowlabels[newrowindex-1],self.rowlabels[newrowindex]
+                    delta = (below-above)/(nrows+1)
+                    start = above + delta
+                elif newrowindex==0:
+                    # Inserting at the top.
+                    below = self.rowlabels[newrowindex]
+                    if len(self.rowlabels)>1:
+                        delta = self.rowlabels[newrowindex+1] - below
+                    start = below-nrows*delta
                 else:
-                    newval = 0.
-                self.rowlabels = numpy.concatenate((self.rowlabels,[newval]))
+                    # Appending to the bottom.
+                    above = self.rowlabels[newrowindex-1]
+                    if len(self.rowlabels)>1:
+                        delta = above - self.rowlabels[newrowindex-2]
+                    start = above+delta
+                
+                # Add a new row to the list of row labels.
+                values = numpy.linspace(start,start+(nrows-1)*delta,nrows)
+                self.rowlabels = numpy.concatenate((self.rowlabels[:newrowindex],values,self.rowlabels[newrowindex:]))
+
+                if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type!=0:
+                    # We have added one or more profiles - add empty arrays for the associated depths and values.
+                    dimdatatype = self.datastore.mpldatatypes[self.datastore.dimensions[self.datastore.dimensionorder[1]]['datatype']]
+                    valdatatype = self.datastore.mpldatatypes[self.datastore.datatype]
+                    nvar = len(self.datastore.vardata)
+                    for i in range(nrows):
+                        self.datastore.data[1].insert(newrowindex,numpy.empty((0,),    dimdatatype))
+                        self.datastore.data[2].insert(newrowindex,numpy.empty((0,nvar),valdatatype))
+            
+            # Replace data in the store by our new objects.    
             self.saveData()
-            self.datastore.dataChanged()
+            
             self.endInsertRows()
             
         def removeRow(self,start,stop=None):
-            if stop is None: stop=start
+            """Remove a contiguous set of one or more rows from the current data object.
+            """
+        
+            # If no last row is provided, just remove the one row (i.e., the start row)
+            if stop is None: stop = start
+            
             self.beginRemoveRows(QtCore.QModelIndex(),start,stop)
+            
             if self.datamatrix is not None:
+                # Remove row from data matrix.
                 self.datamatrix = numpy.concatenate((self.datamatrix[0:start,:],self.datamatrix[stop+1:,:]))
+                
             if self.rowlabels is not None:
+                # Remove row from list of row labels.
                 self.rowlabels = numpy.concatenate((self.rowlabels[0:start],self.rowlabels[stop+1:]))
+
+                if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type!=0:
+                    # We have removed one or more profiles - remove arrays for the associated depths and values.
+                    for i in range(stop-start+1):
+                        del self.datastore.data[1][start]
+                        del self.datastore.data[2][start]
+                
+            # Replace data in the store by our new objects.    
             self.saveData()
-            self.datastore.dataChanged()
+            
             self.endRemoveRows()
             
         def emitRowsChanged(self,start,stop):
+            """Shortcut routine for internal use that tells any GUI elements attached
+            to the model that all data in the specified rows have changed.
+            """
             startindex = self.index(start,0)
             stopindex = self.index(stop,self.columnCount()-1)
             self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),startindex,stopindex)
@@ -1407,19 +1499,34 @@ class LinkedFileDataEditor(QtGui.QDialog):
             return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
             
         def headerData(self,section, orientation, role=QtCore.Qt.DisplayRole):
-            if orientation==QtCore.Qt.Horizontal and role==QtCore.Qt.DisplayRole:
-                if isinstance(self.datastore,data.LinkedMatrix):
-                    if len(self.datastore.dimensions)==1: section-=1
-                    if section==-1:
-                        val = self.datastore.getDimensionNames()[0]
-                    else:
-                        val = self.datastore.keys()[section]
-                if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type==0:
-                    if section==0:
-                        val = 'depth'
-                    else:
-                        val = self.datastore.keys()[section-1]
+            # Return no header if the orientation is not horizontal, or the role is not display or tooltip.
+            if orientation!=QtCore.Qt.Horizontal or role not in (QtCore.Qt.DisplayRole,QtCore.Qt.ToolTipRole):  return QtCore.QVariant()
+            
+            if isinstance(self.datastore,(data.LinkedMatrix,data.LinkedProfilesInTime)):
+                if len(self.datastore.dimensions)>0: section -= 1
+                if section==-1:
+                    # Header requested for coordinate variable
+                    i = 0
+                    if isinstance(self.datastore,data.LinkedProfilesInTime) and self.type==0: i += 1
+                    val = self.datastore.getDimensionNames()[i]
+                    info = self.datastore.getDimensionInfo(val)
+                    longname = info.get('label',val)
+                    unit = info.get('unit','')
+                else:
+                    # Header requested for value variable
+                    val = self.datastore.keys()[section]
+                    var = self.datastore[val]
+                    longname = var.getLongName()
+                    unit = var.getUnit()
+                        
+                # If the long name is small, it will be shown directly, making the tooltip superfluous.
+                if role==QtCore.Qt.ToolTipRole and len(longname)<10: return QtCore.QVariant()
+                
+                if role==QtCore.Qt.ToolTipRole or len(longname)<10: val = longname
+                if unit: val += ' (%s)' % unit
                 return QtCore.QVariant(val)
+                
+            # No tooltip
             return QtCore.QVariant()
     
     class LinkedFileDelegate(QtGui.QItemDelegate):
@@ -1482,7 +1589,9 @@ class LinkedFileDataEditor(QtGui.QDialog):
             self.listmodel = LinkedFileDataEditor.LinkedDataModel(self.linkedfile,type=1)
             self.listTimes.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
             self.listTimes.setModel(self.listmodel)
+            self.listTimes.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
             loDataEdit.addWidget(self.listTimes)
+            self.connect(self.listTimes, QtCore.SIGNAL('customContextMenuRequested(const QPoint &)'), self.onTableContextMenu)
             self.connect(self.listTimes.selectionModel(), QtCore.SIGNAL('currentChanged(const QModelIndex &,const QModelIndex &)'), self.onTimeChanged)
         self.tableData = QtGui.QTableView(self)
         self.tablemodel = LinkedFileDataEditor.LinkedDataModel(self.linkedfile)
@@ -1492,24 +1601,12 @@ class LinkedFileDataEditor(QtGui.QDialog):
         self.tableData.setModel(self.tablemodel)
         self.tabledelegate = self.LinkedFileDelegate()
         self.tableData.setItemDelegate(self.tabledelegate)
+        self.tableData.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.connect(self.tableData, QtCore.SIGNAL('customContextMenuRequested(const QPoint &)'), self.onTableContextMenu)
         
         loDataEdit.addWidget(self.tableData)
         
-        # Left panel: editor buttons
-        loEditorButtons = QtGui.QHBoxLayout()
-
-        self.addrowbutton = QtGui.QPushButton('Add row',self)
-        loEditorButtons.addWidget(self.addrowbutton)
-        self.connect(self.addrowbutton, QtCore.SIGNAL('clicked()'), self.addRow)
-
-        self.removerowbutton = QtGui.QPushButton('Remove row',self)
-        loEditorButtons.addWidget(self.removerowbutton)
-        self.connect(self.removerowbutton, QtCore.SIGNAL('clicked()'), self.removeRow)
-
-        loEditorButtons.addStretch(1)
-
         loLeft.addLayout(loDataEdit)
-        loLeft.addLayout(loEditorButtons)
 
         # Bottom panel: OK and Cancel button
         lobuttons = QtGui.QHBoxLayout()
@@ -1533,27 +1630,82 @@ class LinkedFileDataEditor(QtGui.QDialog):
 
         if title is not None: self.setWindowTitle(title)
         
-    def addRow(self):
+    def addRow(self,view=None,newindex=None,nrows=1):
         """Event handler: called when user clicks the "Add row" button.
         """
-        self.tablemodel.addRow()
-        self.tableData.selectRow(self.tablemodel.rowCount()-1)
+        if view is None: view = self.tableData
+        model = view.model()
+        if newindex is None: newindex = model.rowCount()
+        model.addRow(newindex,nrows)
+        
+        # Select newly added rows
+        selectmodel = view.selectionModel()
+        selectmodel.clear()
+        selectmodel.select(QtGui.QItemSelection(model.index(newindex,0),model.index(newindex+nrows-1,0)),QtGui.QItemSelectionModel.ClearAndSelect|QtGui.QItemSelectionModel.Rows)
+        selectmodel.setCurrentIndex(model.index(newindex,0),QtGui.QItemSelectionModel.NoUpdate)
 
-    def removeRow(self):
+    def removeRow(self,view=None):
         """Event handler: called when user clicks the "Remove row" button.
+        Removes all selected rows.
         """
-        rows = self.tableData.selectionModel().selectedRows()
+        if view is None: view = self.tableData
+        model = view.model()
+        
+        # Get selected rows; do nothing if no rows are selected.
+        rows = view.selectionModel().selectedRows()
         if len(rows)==0: return
-        bottom = rows[-1].row()
+        
+        # Get indices of selected rows and sort them in increasing order.
+        rows = [r.row() for r in rows]
+        rows.sort(reverse=True)
+        
+        # Iterate over selected rows, deleting contiguous blocks one by one.
+        bottom = rows[0]
         top = bottom
-        for index in reversed(rows[:-1]):
-            currow = index.row()
+        for currow in rows[1:]:
             if currow!=top-1:
-                self.tablemodel.removeRow(top,bottom)
+                # New row is not attached to previous selection.
+                # Therefore, first remove previous selection.
+                model.removeRow(top,bottom)
                 bottom = currow
             top = currow
-        self.tablemodel.removeRow(top,bottom)
+        model.removeRow(top,bottom)
         
+    def onTableContextMenu(self,pos):
+        table = self.sender()
+    
+        # Get list of selected rows.
+        selectedrows = sorted([r.row() for r in table.selectionModel().selectedRows()])
+
+        # Build context menu
+        menu = QtGui.QMenu(self)
+        
+        actRemoveRows, actInsertRowsAbove, actInsertRowsBelow, actNewRow = None, None, None, None
+        if selectedrows:
+            rowtext = 'row'
+            if len(selectedrows)>1: rowtext = '%i rows' % len(selectedrows)
+            submenu = menu.addMenu(getIcon('insert_table_row.png'),'Insert %s' % rowtext)
+            actInsertRowsAbove = submenu.addAction('above selection')
+            actInsertRowsBelow = submenu.addAction('below selection')
+            actRemoveRows = menu.addAction(getIcon('delete_table_row.png'),'Delete selected %s' % rowtext)
+        elif table.model().datamatrix is not None or table.model().rowlabels is not None:
+            actNewRow = menu.addAction('Add row')
+
+        if menu.isEmpty(): return
+
+        # Show context menu and take action.
+        actChosen = menu.exec_(table.mapToGlobal(pos))
+        if not actChosen: return
+        
+        if actChosen==actRemoveRows:
+            self.removeRow(table)
+        elif actChosen==actInsertRowsAbove:
+            self.addRow(table,selectedrows[0],len(selectedrows))
+        elif actChosen==actInsertRowsBelow:
+            self.addRow(table,selectedrows[-1]+1,len(selectedrows))
+        elif actChosen==actNewRow:
+            self.addRow(table,0,1)
+    
     def onTimeChanged(self,current,previous):
         """Event handler: called when the user selects another date (only used for profiles in time).
         """
