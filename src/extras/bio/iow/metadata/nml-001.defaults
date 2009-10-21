@@ -52,8 +52,6 @@
 		<tda>13.0</tda>
 		<beta_da>20.0</beta_da>
 		<lds>3.5</lds>
-		<lsd>25.0</lsd>
-		<tau_crit>0.07</tau_crit>
 		<lsa>0.001</lsa>
 		<bsa>0.15</bsa>
 		<ph1>0.15</ph1>

@@ -67,8 +67,6 @@
 		<element name="tda"        type="float" label="temperature control" unit="°C"/>
 		<element name="beta_da"    type="float" label="temperature control"/>
 		<element name="lds"        type="float" label="rate of detritus sinking into sediment" unit="m/d"/>
-		<element name="lsd"        type="float" label="rate of sediment resuspension" unit="1/d"/>
-		<element name="tau_crit"   type="float" label="critical shear stress for resuspension" unit="N/m2"/>
 		<element name="lsa"        type="float" label="rate of sediment mineralisation" unit="1/d"/>
 		<element name="bsa"        type="float" label="temperature control of sediment mineralisation" unit="1/°C"/>
 		<element name="ph1"        type="float" label="release of phosphate 1"/>
