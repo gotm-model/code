@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.2 2008-07-08 09:58:38 lars Exp $
+!$Id: bio_iow.F90,v 1.3 2009-10-21 08:02:08 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.3  2009-10-21 08:02:08  hb
+!  Fluff layer resuspension added.
+!
 !  Revision 1.2  2008-07-08 09:58:38  lars
 !  adapted to changed BIO initialization algorithm
 !
@@ -180,32 +183,34 @@
    REALTYPE                  :: w_de=-3.
    REALTYPE, public          :: kc=0.03
    REALTYPE                  :: i_min=25.
-   REALTYPE                  :: r1max=1.
-   REALTYPE                  :: r2max=1.
-   REALTYPE                  :: r3max=1.
-   REALTYPE                  :: alpha1=0.3
-   REALTYPE                  :: alpha2=0.15
+   REALTYPE                  :: r1max=2.0
+   REALTYPE                  :: r2max=0.7
+   REALTYPE                  :: r3max=0.5
+   REALTYPE                  :: alpha1=1.35
+   REALTYPE                  :: alpha2=0.675
    REALTYPE                  :: alpha3=0.5
    REALTYPE                  :: lpa=0.01
    REALTYPE                  :: lpd=0.02
    REALTYPE                  :: Tf=10.
-   REALTYPE                  :: Tbg=16.
+   REALTYPE                  :: Tbg=14.
    REALTYPE                  :: beta_bg=1.
    REALTYPE                  :: g1max=0.5
    REALTYPE                  :: g2max=0.5
    REALTYPE                  :: g3max=0.25
-   REALTYPE                  :: lza=0.3
-   REALTYPE                  :: lzd=0.6
-   REALTYPE, public          :: iv=1.2
+   REALTYPE                  :: lza=0.0666666666
+   REALTYPE                  :: lzd=0.1333333333
+   REALTYPE, public          :: iv=0.24444444
    REALTYPE                  :: topt=20.
    REALTYPE                  :: lan=0.1
    REALTYPE                  :: oan=0.01
    REALTYPE                  :: beta_an=0.11
    REALTYPE                  :: lda=0.003
-   REALTYPE                  :: Tda=13.
+   REALTYPE                  :: tda=13.
    REALTYPE                  :: beta_da=20.
-   REALTYPE                  :: lds=4.05e-5
-   REALTYPE                  :: lsa=1.16e-8
+   REALTYPE                  :: lds=3.5
+   REALTYPE                  :: lsd=25.0
+   REALTYPE                  :: tau_crit=0.07
+   REALTYPE                  :: lsa=0.001
    REALTYPE                  :: bsa=0.15
    REALTYPE                  :: ph1=0.15
    REALTYPE                  :: ph2=0.1
@@ -213,13 +218,13 @@
    REALTYPE                  :: sr=0.0625
    REALTYPE                  :: s1=5.3
    REALTYPE                  :: s2=6.625
-   REALTYPE                  :: s3=8.125
-   REALTYPE                  :: s4=0.666666666
+   REALTYPE                  :: s3=8.625
+   REALTYPE                  :: s4=2.0
    REALTYPE                  :: a0=31.25
    REALTYPE                  :: a1=14.603
    REALTYPE                  :: a2=0.4025
-   REALTYPE                  :: aa=0.62
-   REALTYPE                  :: g2=20.0
+   REALTYPE                  :: aa=0.78
+   REALTYPE                  :: g2=7.9
    integer                   :: out_unit
    integer, parameter        :: p1=1,p2=2,p3=3,zo=4,de=5,     &
                                 am=6,ni=7,po=8,o2=9,fl=10
@@ -262,7 +267,7 @@
                       w_de,kc,i_min,r1max,r2max,r3max,alpha1,alpha2,         &
                       alpha3,lpa,lpd,tf,tbg,beta_bg,g1max,g2max,             &
                       g3max,lza,lzd,iv,topt,lan,oan,beta_an,lda,             &
-                      tda,beta_da,lds,lsa,bsa,ph1,ph2,pvel,sr,               &
+                      tda,beta_da,lds,lsd,tau_crit,lsa,bsa,ph1,ph2,pvel,sr,  &
                       s1,s2,s3,s4,a0,a1,a2,aa,g2
 !EOP
 !-----------------------------------------------------------------------
@@ -298,6 +303,7 @@
    lan    = lan     /secs_pr_day
    lda    = lda     /secs_pr_day
    lds    = lds     /secs_pr_day
+   lsd    = lsd     /secs_pr_day
    lsa    = lsa     /secs_pr_day
    pvel   = pvel    /secs_pr_day
 
@@ -893,9 +899,10 @@
 ! !LOCAL VARIABLES:
   REALTYPE, save             :: iopt
   REALTYPE                   :: rat(0:nlev,0:nlev)
-  REALTYPE                   :: psum,llda,llan,llsa,r1,r2,r3
+  REALTYPE                   :: psum,llda,llan,llsa,llds,llsd,r1,r2,r3
   REALTYPE                   :: wo=30.,wn=0.1,dot2=0.2
   REALTYPE                   :: thopnp,thomnp,thomnm,thsum
+  REALTYPE                   :: taub
   integer                    :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
@@ -903,6 +910,7 @@
 !KBK - is it necessary to initialise every time - expensive in a 3D model
    pp = _ZERO_
    dd = _ZERO_
+
    if (first) then
       iopt=max(0.25*I_0,I_min)
       do ci=1,nlev
@@ -913,6 +921,8 @@
    rat=1.         ! fixed (in time  space) ratio between sink and source
    rat(de,fl)=h(1)
    rat(fl,am)=1./h(1)
+
+   taub=u_taub**2*1000.
 
    do ci=1,nlev
 
@@ -930,6 +940,16 @@
               *lan*exp(beta_an*t(ci))
       if ((fluff).and.(ci.eq.1)) then
          llsa=lsa*exp(bsa*t(ci))*(th(cc(o2,ci),wo,dot2,_ONE_))
+         if (tau_crit.gt.taub) then
+            llds=lds*(tau_crit-taub)/tau_crit
+         else
+            llds=0.
+         end if
+         if (tau_crit.lt.taub) then
+            llsd=lsd*(taub-tau_crit)/tau_crit
+         else
+            llsd=0.
+         end if
       end if
       r1=r1max*min(yy(alpha1,cc(am,ci)+cc(ni,ci)),yy(sr*alpha1,cc(po,ci)),   &
                    ppi(ci))
@@ -959,7 +979,8 @@
       dd(ni,p1,ci)=cc(ni,ci)/(cc(ni,ci)+cc(am,ci))*r1*(cc(p1,ci)+p10)
       dd(ni,p2,ci)=cc(ni,ci)/(cc(ni,ci)+cc(am,ci))*r2*(cc(p2,ci)+p20)
       if ((fluff).and.(ci.eq.1)) then
-         dd(de,fl,ci)=lds*cc(de,ci)/h(ci)
+         dd(de,fl,ci)=llds*cc(de,ci)/h(ci)
+         dd(fl,de,ci)=llsd*cc(fl,ci)
          dd(fl,am,ci)=llsa*cc(fl,ci)
       end if
 

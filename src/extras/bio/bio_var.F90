@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.13 2008-07-08 10:09:05 lars Exp $
+!$Id: bio_var.F90,v 1.14 2009-10-21 08:02:08 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -64,6 +64,7 @@
    integer                                      :: nlev
    REALTYPE                                     :: dt
    REALTYPE                                     :: zbot
+   REALTYPE                                     :: u_taub
    REALTYPE                                     :: ztop
    REALTYPE, dimension(:)         , allocatable :: h
    REALTYPE, dimension(:)         , allocatable :: t
@@ -102,6 +103,9 @@
 !  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
+!  Revision 1.14  2009-10-21 08:02:08  hb
+!  Fluff layer resuspension added.
+!
 !  Revision 1.13  2008-07-08 10:09:05  lars
 !  new structure with general particle support
 !

@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.41 2009-02-16 11:16:38 lars Exp $
+!$Id: gotm.F90,v 1.42 2009-10-21 08:02:09 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -94,6 +94,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.42  2009-10-21 08:02:09  hb
+!  Fluff layer resuspension added.
+!
 !  Revision 1.41  2009-02-16 11:16:38  lars
 !  bug fix in bioprofs allocation
 !
@@ -342,7 +345,7 @@
 
    if (bio_calc) then
 
-      call set_env_bio(nlev,dt,-depth0,h,t,s,rho,nuh,rad,wind,I_0, &
+      call set_env_bio(nlev,dt,-depth0,u_taub,h,t,s,rho,nuh,rad,wind,I_0, &
            secondsofday,w,w_adv_discr,npar)
       
       call init_var_bio()
@@ -483,7 +486,7 @@
 #endif
 #ifdef BIO
       if (bio_calc) then
-         call set_env_bio(nlev,dt,-depth0,h,t,s,rho,nuh,rad,wind,I_0,   &
+         call set_env_bio(nlev,dt,-depth0,u_taub,h,t,s,rho,nuh,rad,wind,I_0, &
                           secondsofday,w,w_adv_discr,npar)
          call do_bio_fluxes(julianday,secondsofday)
          call do_bio()

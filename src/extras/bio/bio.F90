@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.49 2008-11-11 13:40:32 jorn Exp $
+!$Id: bio.F90,v 1.50 2009-10-21 08:02:07 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -93,6 +93,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.50  2009-10-21 08:02:07  hb
+!  Fluff layer resuspension added.
+!
 !  Revision 1.49  2008-11-11 13:40:32  jorn
 !  major revision of 0d biogeochemical framework; added output of depth-integrated conserved BGC quantities; added support for running multiple BGC models side-by-side
 !
@@ -694,7 +697,7 @@
 ! !IROUTINE: Set bio module environment 
 !
 ! !INTERFACE: 
-   subroutine set_env_bio(nlev_,dt_,zbot_,h_,t_,s_,rho_,nuh_,rad_,       &
+   subroutine set_env_bio(nlev_,dt_,zbot_,u_taub_,h_,t_,s_,rho_,nuh_,rad_,   &
                           wind_,I_0_,secondsofday_,w_,w_adv_ctr_,npar_)
 !
 ! !DESCRIPTION:
@@ -718,6 +721,7 @@
    REALTYPE, intent(in)                :: dt_
    REALTYPE, intent(in)                :: zbot_
    REALTYPE, intent(in)                :: h_(0:nlev)
+   REALTYPE, intent(in)                :: u_taub_
    REALTYPE, intent(in)                :: nuh_(0:nlev)
    REALTYPE, intent(in)                :: t_(0:nlev)
    REALTYPE, intent(in)                :: s_(0:nlev)
@@ -745,6 +749,7 @@
    dt           = dt_
    zbot         = zbot_
    h            = h_
+   u_taub       = u_taub_
    t            = t_
    s            = s_
    rho          = rho_
@@ -927,7 +932,7 @@
    REALTYPE                  :: dt_eff
    integer                   :: j,n
    integer                   :: split
-   integer                   :: i,np,nc
+   integer                   :: i,np,nc,vars_zero_d=0
    integer, save             :: count=0
    logical, save             :: set_C_zero=.true.
 
@@ -944,6 +949,7 @@
    case (2)
 #ifdef BIO_IOW
       call surface_fluxes_iow(nlev,t(nlev))
+      if (numc.eq.10) vars_zero_d=1
 #endif
    case (3)
    case (4)
@@ -964,7 +970,7 @@
       call update_sinking_rates_0d(numc,nlev,cc)
    end select
    
-   do j=1,numc
+   do j=1,numc-vars_zero_d
          
 !     do advection step due to settling or rising
       call adv_center(nlev,dt,h,h,ws(j,:),flux,                   &

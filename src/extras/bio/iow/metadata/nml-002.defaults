@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<bio_iow version="nml-001">
+<bio_iow version="nml-002">
 	<bio_iow_nml>
 		<numc>9</numc>
 		<p1_initial>0.1</p1_initial>
