@@ -1,4 +1,4 @@
-!$Id: time.F90,v 1.9 2009-10-21 09:16:42 kb Exp $
+!$Id: time.F90,v 1.10 2009-10-21 09:17:27 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -42,8 +42,8 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  $Log: time.F90,v $
-!  Revision 1.9  2009-10-21 09:16:42  kb
-!  fixed initialisation of jul1, secs1 when timefmt=1
+!  Revision 1.10  2009-10-21 09:17:27  kb
+!  ooobs - removed test print statements
 !
 !  Revision 1.8  2005-06-27 13:44:07  kbk
 !  modified + removed traling blanks
@@ -156,9 +156,6 @@
          STDERR 'Fatal error: A non valid input format has been chosen'
          stop 'init_time'
    end select
-
-STDERR jul1,secs1
-stop
 
    jul0  = jul1
    secs0 = secs1
