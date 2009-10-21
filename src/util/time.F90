@@ -1,4 +1,4 @@
-!$Id: time.F90,v 1.8 2005-06-27 13:44:07 kbk Exp $
+!$Id: time.F90,v 1.9 2009-10-21 09:16:42 kb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -35,12 +35,16 @@
    REALTYPE,          public           :: timestep
    REALTYPE,          public           :: fsecs,simtime
    integer,           public           :: julianday,secondsofday
+   integer,           public           :: yearday
    integer,           public           :: timefmt
    integer,           public           :: MinN,MaxN
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  $Log: time.F90,v $
+!  Revision 1.9  2009-10-21 09:16:42  kb
+!  fixed initialisation of jul1, secs1 when timefmt=1
+!
 !  Revision 1.8  2005-06-27 13:44:07  kbk
 !  modified + removed traling blanks
 !
@@ -120,6 +124,7 @@
          HasRealTime=.false.
          LEVEL2 '# of timesteps: ',MaxN
          start='2000-01-01 00:00:00'
+         call read_time_string(start,jul1,secs1)
          LEVEL2 'Fake start:     ',start
       case (2)
          LEVEL2 'Start:          ',start
@@ -151,6 +156,9 @@
          STDERR 'Fatal error: A non valid input format has been chosen'
          stop 'init_time'
    end select
+
+STDERR jul1,secs1
+stop
 
    jul0  = jul1
    secs0 = secs1
