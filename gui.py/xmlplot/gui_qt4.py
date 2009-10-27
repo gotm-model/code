@@ -906,7 +906,9 @@ class LinkedFileEditorDialog(QtGui.QDialog):
 
         self.privatestore = common.VariableStore()
 
-        self.linkedfile = linkedfile
+        self.linkedfile = linkedfile.copy()  # Copies only the metadata, not the actual data!
+        self.linkedfile.setDataFile(linkedfile.getDataFile())
+
         self.datasourcedir = datasourcedir
         
         #self.dlgEditFunction = None
