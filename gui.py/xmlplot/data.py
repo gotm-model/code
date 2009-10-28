@@ -95,7 +95,8 @@ def getNetCDFFile(path,mode='r'):
     if mode=='r' and not os.path.isfile(path):
         raise Exception('"%s" is not an existing file.' % path)
         
-    netcdfmodule = netcdfmodules[selectednetcdfmodule][0]
+    netcdfmodule = None
+    if netcdfmodules: netcdfmodule = netcdfmodules[selectednetcdfmodule][0]
     if netcdfmodule=='Scientific.IO.NetCDF':
         try:
             nc = Scientific.IO.NetCDF.NetCDFFile(path,mode=mode)
@@ -113,7 +114,7 @@ def getNetCDFFile(path,mode='r'):
             raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
     else:
         # No NetCDF module found - raise exception.
-        raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, netCDF4 or pynetcdf.')
+        raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, python-netcdf4 or pynetcdf.')
         
     return nc
 
