@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.50 2009-10-21 08:02:07 hb Exp $
+!$Id: bio.F90,v 1.51 2009-10-30 13:03:02 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -88,11 +88,18 @@
 
 
    logical, public                     :: bio_calc=.false.
+ 
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.51  2009-10-30 13:03:02  hb
+!  Liss and Merlivat relationship for the piston velocity + Weiss formula for saturation oxygen included into bio_iow by Adolf Stips
+!
+!  
+!  line 952: call surface_fluxes_iow(nlev,t(nlev),s(nlev),wind)
+!
 !  Revision 1.50  2009-10-21 08:02:07  hb
 !  Fluff layer resuspension added.
 !
@@ -250,8 +257,7 @@
    integer                   :: ode_method=1
    integer                   :: split_factor=1
    logical                   :: bioshade_feedback=.true.
-
-
+ 
    contains
 
 !-----------------------------------------------------------------------
@@ -948,7 +954,7 @@
    case (1)
    case (2)
 #ifdef BIO_IOW
-      call surface_fluxes_iow(nlev,t(nlev))
+      call surface_fluxes_iow(nlev,t(nlev),s(nlev),wind)
       if (numc.eq.10) vars_zero_d=1
 #endif
    case (3)

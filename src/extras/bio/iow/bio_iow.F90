@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.3 2009-10-21 08:02:08 hb Exp $
+!$Id: bio_iow.F90,v 1.4 2009-10-30 13:03:02 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,12 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.4  2009-10-30 13:03:02  hb
+!  Liss and Merlivat relationship for the piston velocity + Weiss formula for saturation oxygen included into bio_iow by Adolf Stips
+!
+!
+!  Liss and Merlivat relationship for the piston velocity + Weiss formula for saturation oxygen
+!
 !  Revision 1.3  2009-10-21 08:02:08  hb
 !  Fluff layer resuspension added.
 !
@@ -587,39 +593,136 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Surface fluxes for the IOW model
-!
+! !IROUTINE: Weiss formula for the saturation oxygen (osat)
+! 
 ! !INTERFACE:
-   subroutine surface_fluxes_iow(nlev,t)
+   REALTYPE function osat_weiss(t,s)
 !
 ! !DESCRIPTION:
-! Here, those surface fluxes which have been read from a file are transformed
-! to SI units, and the surface oxygen flux is calculated by means of the 
-! following formula:
-! \begin{equation}\label{o2flux}
-! F^s_9 = p_{vel} \left(O_{sat}-c_9 \right)
+! Weiss formula for the saturation oxygen (osat) \cite{Weiss1970}:
+! 
+! \begin{equation}\label{osat_weiss}
+! O_{sat}= \exp\left[a_1 +a_2\frac{100}{T}+a_3\ln\left(\frac{T}{100}\right)
+! +a_4\frac{T}{100}+S \left\{b_1+b_2\frac{T}{100}
+! +b_3\left(\frac{T}{100}\right)^2   \right\}\right],
 ! \end{equation}
-! with
-! \begin{equation}\label{osat}
-! O_{sat}= a_0\left(a_1-a_2T  \right).
-! \end{equation}
+!
+! where $T$ is the temperature in Kelvin and the empirical constants are
+! given in table \ref{table_weiss}.
+! 
+! \begin{table}[h]
+! \begin{center}
+! \begin{tabular}{|l|l|l|l|l|l|l|}
+! \hline
+! $a_1$ & $a_2$ & $a_3$ & $a_4$ & $b_1$ & $b_2$ & $b_3$ \\ \hline
+! -173.4292 &
+! 249.6339 &
+! 143.3483 &
+! -21.8492 &
+! -0.033096 &
+! 0.014259 &
+! -0.001700 \\ \hline
+! \end{tabular}
+! \caption{Constants for the oxygen saturation formula by \cite{Weiss1970},
+! see equation (\ref{osat_weiss}).}
+! \label{table_weiss}
+! \end{center}
+! \end{table}
 !
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-  integer                              :: nlev
-  REALTYPE, intent(in)                 :: t
+  REALTYPE, intent(in)                 :: t,s
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
+  REALTYPE                 :: tk
+  REALTYPE                 :: aa1=-173.4292
+  REALTYPE                 :: aa2=249.6339
+  REALTYPE                 :: a3=143.3483
+  REALTYPE                 :: a4=-21.8492
+  REALTYPE                 :: b1=-0.033096
+  REALTYPE                 :: b2=0.014259
+  REALTYPE                 :: b3=-0.001700
+  REALTYPE                 :: kelvin=273.16
+  REALTYPE                 :: mol_per_liter=44.661
+
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   tk=(t+kelvin)*0.01
+   osat_weiss=exp(aa1+aa2/tk+a3*log(tk)+a4*tk    &
+              +s*(b1+(b2+b3*tk)*tk))*mol_per_liter
+   return
+   end function osat_weiss 
+!EOC
+!-----------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Surface fluxes for the IOW model
+!
+! !INTERFACE:
+  subroutine surface_fluxes_iow(nlev,t,s,wind)
+!
+! !DESCRIPTION:
+! Here, those surface fluxes which have been read from a file are transformed
+! to SI units. The surface oxygen flux is calculated by means of the 
+! following formula:
+! \begin{equation}\label{o2flux}
+! F^s_9 = p_{vel} \left(O_{sat}-c_9 \right)
+! \end{equation}
+! The piston velocity is calculated by using the model of
+! Liss and Merlivat (1986), which includes three regimes (smooth surface,
+! rough surface and breaking waves) depending on the magnitude of wind speed,
+! $wind$:
+! \begin{equation}
+! \label{p_vel}
+! \begin{array}{l}
+! \chem{at} \quad wind < 3.6 [m/s]:\quad  V {=} 1.003 wind / Sc^{0.66} \\
+! \chem{at}\quad 3.6\le wind \le 13 [m/s]:\quad V {=} 5.9(2.85 wind - 9.65) /   ! Sc^{0.5} \\
+! \chem{at}\quad 13 < wind [m/s]:\quad  V {=} 5.9(5.9 wind - 49.3) / Sc^{0.5} \\
+! \end{array}
+! \end{equation}
+! The Schmidt number $Sc$ is defined as ratio between the kinematic viscosity
+! and the molecular diffusivity of oxygen. The following expression for $Sc$ 
+! (Stigebrandt, 1991) is applied:
+! \begin{equation}
+! \label{Sc}
+! Sc{=}1450-71T+1.1T^2.
+! \end{equation} 
+! Weiss formula for the saturation oxygen (osat_weiss) is used for calculating
+! the air-sea surface flux 
+!
+! The following formula is applied for Osat:
+! \begin{equation}\label{osat}
+! O_{sat}= a_0\left(a_1-a_2T  \right).
+! \end{equation}
+!
+! 
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+  integer                              :: nlev
+  REALTYPE, intent(in)                 :: t,wind,s
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Karsten Bolding
+!
+! !LOCAL VARIABLES:
+  REALTYPE                 :: p_vel
+  integer                  :: newflux=1
+
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
-!  NOTE: Positive fluxes into the sea surface must have negative sign !
+!  NOTE: Positive fluxes into the sea surface must have negative sign! 
    select case (surface_flux_method)
       case (-1)! absolutely nothing
       case (0) ! constant
@@ -631,12 +734,29 @@
       case default
    end select
 
-! surface oxygen flux
-   sfl(o2) = pvel*(a0*(a1-a2*t)-cc(o2,nlev))
+!  Calculation of the surface oxygen flux
+   if (newflux .eq. 1) then
+      if (wind .gt. 13.) then
+         p_vel = 5.9*(5.9*wind-49.3)/sqrt(1450.+(1.1*t-71.)*t)
+      else
+         if (wind .lt. 3.6) then
+             p_vel = 5.9*(0.17*wind)/(1450.+(1.1*t-71.)*t)**(0.66)
+         else
+            p_vel = 5.9*(2.85*wind-9.65)/sqrt(1450.+(1.1*t-71.)*t)
+         end if 
+      end if   
+      if (p_vel .lt. 0.05) then
+          p_vel = 0.05
+      end if 
+      p_vel = p_vel/secs_pr_day 
+      sfl(o2) =p_vel*(osat_weiss(t,s)-cc(o2,nlev))
+   else
+      sfl(o2) = pvel*(a0*(a1-a2*t)-cc(o2,nlev))
+   end if
+
    return
    end subroutine surface_fluxes_iow
 !EOC
-
 !-----------------------------------------------------------------------
 !BOP
 !
