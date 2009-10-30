@@ -23,12 +23,12 @@ def openNetCDF(path,mode='r'):
 netcdfmodules,selectednetcdfmodule = None,None
 def chooseNetCDFModule():
     global netcdfmodules,selectednetcdfmodule
-    global Scientific,netCDF4,pynetcdf
+    global pupynere,Scientific,netCDF4,pynetcdf
     
     netcdfmodules = []
     selectednetcdfmodule = -1
     error = ''
-
+    
     # We prefer ScientificPython. Try that first.
     ready = True
     try:
@@ -45,7 +45,7 @@ def chooseNetCDFModule():
         if not oldscientific and selectednetcdfmodule==-1: selectednetcdfmodule = len(netcdfmodules)
         netcdfmodules.append(('Scientific.IO.NetCDF',Scientific.__version__))
 
-    # ScientificPython failed. Try netCDF4 instead.
+    # Try to locate netCDF4.
     ready = True
     try:
         import netCDF4
@@ -56,7 +56,7 @@ def chooseNetCDFModule():
         if selectednetcdfmodule==-1: selectednetcdfmodule = len(netcdfmodules)
         netcdfmodules.append(('netCDF4',netCDF4.__version__))
     
-    # ScientificPython and netCDF4 failed. Try pynetcdf instead.
+    # Try to locate pynetcdf.
     ready = True
     try:
         import pynetcdf
@@ -70,6 +70,17 @@ def chooseNetCDFModule():
                 print 'pynetcdf will be used for NetCDF support. Note though that pynetcdf has known incompatibilities with Python 2.5 and higher, and you are using Python %i.%i.%i.' % (pyver[0],pyver[1],pyver[2])
             selectednetcdfmodule = len(netcdfmodules)
         netcdfmodules.append(('pynetcdf',''))
+
+    # Try to locate PuPyNeRe, though that does not always work.
+    ready = True
+    try:
+        import pupynere
+    except ImportError,e:
+        error += 'Cannot load pupynere. Reason: %s.\n' % str(e)
+        ready = False
+    if ready:
+        if selectednetcdfmodule==-1: selectednetcdfmodule = len(netcdfmodules)
+        netcdfmodules.append(('pupynere',''))
         
     if selectednetcdfmodule==-1 and netcdfmodules: selectednetcdfmodule = 0
 
@@ -107,6 +118,12 @@ def getNetCDFFile(path,mode='r'):
             nc = netCDF4.Dataset(path,mode=mode,format='NETCDF3_CLASSIC')
         except Exception, e:
             raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
+    elif netcdfmodule=='pupynere':
+        nc = pupynere.NetCDFFile(path,mode=mode)
+        try:
+            nc = pupynere.NetCDFFile(path,mode=mode)
+        except Exception, e:
+            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
     elif netcdfmodule=='pynetcdf':
         try:
             nc = pynetcdf.NetCDFFile(path,mode=mode)
@@ -115,7 +132,6 @@ def getNetCDFFile(path,mode='r'):
     else:
         # No NetCDF module found - raise exception.
         raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, python-netcdf4 or pynetcdf.')
-        
     return nc
 
 class ReferenceTimeParseError(Exception): pass
