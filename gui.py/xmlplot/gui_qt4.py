@@ -1597,18 +1597,19 @@ class LinkedFileDataEditor(QtGui.QDialog):
         self.linkedfile = linkedfile
 
         lo = QtGui.QGridLayout()
-        
-        loLeft = QtGui.QVBoxLayout()
 
         # Left panel: data editor
-        loDataEdit = QtGui.QHBoxLayout()
         if isinstance(self.linkedfile,data.LinkedProfilesInTime):
+            self.labelTimes = QtGui.QLabel('Time:',self)
+            lo.addWidget(self.labelTimes,0,0)
+            self.labelProfile = QtGui.QLabel('Profile:',self)
+            lo.addWidget(self.labelProfile,0,1)
             self.listTimes = self.CustomListView(self)
             self.listmodel = LinkedFileDataEditor.LinkedDataModel(self.linkedfile,type=1)
             self.listTimes.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
             self.listTimes.setModel(self.listmodel)
             self.listTimes.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-            loDataEdit.addWidget(self.listTimes)
+            lo.addWidget(self.listTimes,1,0)
             self.connect(self.listTimes, QtCore.SIGNAL('customContextMenuRequested(const QPoint &)'), self.onTableContextMenu)
             self.connect(self.listTimes.selectionModel(), QtCore.SIGNAL('currentChanged(const QModelIndex &,const QModelIndex &)'), self.onTimeChanged)
             self.connect(self.listTimes, QtCore.SIGNAL('deletePressed()'), self.onDelete)
@@ -1624,9 +1625,10 @@ class LinkedFileDataEditor(QtGui.QDialog):
         self.connect(self.tableData, QtCore.SIGNAL('customContextMenuRequested(const QPoint &)'), self.onTableContextMenu)
         self.connect(self.tableData, QtCore.SIGNAL('deletePressed()'), self.onDelete)
         
-        loDataEdit.addWidget(self.tableData)
-        
-        loLeft.addLayout(loDataEdit)
+        lo.addWidget(self.tableData,max(0,lo.rowCount()-1),max(0,lo.columnCount()-1))
+
+        if isinstance(self.linkedfile,data.LinkedProfilesInTime):
+            self.listTimes.setCurrentIndex(self.listmodel.index(0,0))
 
         # Bottom panel: OK and Cancel button
         lobuttons = QtGui.QHBoxLayout()
@@ -1636,9 +1638,9 @@ class LinkedFileDataEditor(QtGui.QDialog):
         lobuttons.addWidget(self.buttonOk)
         lobuttons.addWidget(self.buttonCancel)
         
-        loLeft.addLayout(lobuttons)
+        lo.addLayout(lobuttons,lo.rowCount(),0,1,lo.columnCount())
 
-        self.setLayout(loLeft)
+        self.setLayout(lo)
 
         self.connect(self.buttonOk,     QtCore.SIGNAL('clicked()'), self.accept)
         self.connect(self.buttonCancel, QtCore.SIGNAL('clicked()'), self.reject)
@@ -1734,5 +1736,6 @@ class LinkedFileDataEditor(QtGui.QDialog):
         """
         self.tablemodel.pos = current.row()
         self.tablemodel.reset()
+        self.labelProfile.setText('Profile for %s' % self.listmodel.data(current).toString())
         self.tableData.horizontalScrollBar().setValue(0)
         self.tableData.verticalScrollBar().setValue(0)
