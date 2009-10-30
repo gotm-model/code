@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.37 2009-10-14 09:22:51 jorn Exp $
+#$Id: common.py,v 1.38 2009-10-30 11:04:02 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -856,7 +856,6 @@ class Variable(object):
             return newslice
             
         def compressed(self):
-            print self.dimensions
             if not hasattr(self.data,'_mask'): return self
             assert self.ndim==1,'"compressed" can only be used on 1D arrays.'
             newslice = Variable.Slice(self.dimensions)
@@ -864,25 +863,48 @@ class Variable(object):
             newslice.coords[0] = self.coords[0][valid]
             newslice.data = self.data[valid]
             
-            gapstops  = numpy.nonzero(numpy.logical_and(numpy.logical_not(valid[:-1]),valid[1:]))+1
-            gapstarts = numpy.nonzero(numpy.logical_and(valid[:-1],numpy.logical_not(valid[1:])))+1
+            gapstops  = numpy.nonzero(numpy.logical_and(numpy.logical_not(valid[:-1]),valid[1:]))[0]+1
+            gapstarts = numpy.nonzero(numpy.logical_and(valid[:-1],numpy.logical_not(valid[1:])))[0]+1
             gapstops,gapstarts = map(list,(gapstops,gapstarts))
             if not valid[-1]: gapstops += [len(valid)]
-            newslice.coords_stag[0] = numpy.array((newslice.coords.shape[0]+1,),dtype=self.coords_stag[0].dtype)
+            newslice.coords_stag[0] = numpy.empty((newslice.coords[0].shape[0]+1,),dtype=self.coords_stag[0].dtype)
             i,gapstart = 0,0
+            
+            # Copy values up to the first gap
             if valid[0]:
                 gapstart = gapstarts.pop(0)
+                #print 'copying old data until first gap at %i' % gapstart
                 newslice.coords_stag[0][:gapstart] = self.coords_stag[0][:gapstart]
                 i = gapstart
+                
+            # Process all gaps (also takes care of copying values after a gap)
             while gapstops:
                 gapstop = gapstops.pop(0)
-                if (gapstop-gapstart)%2==0:
-                    newslice.coords_stag[0][i] = self.coords_stag[0][[gapstart+(gapstop-gapstart)/2+1]]
+                #print 'handling gap from %i to %i' % (gapstart,gapstop)
+                if gapstart==0:
+                    # First value is a gap: copy leftmost bound
+                    newslice.coords_stag[0][0] = self.coords_stag[0][0]
+                elif gapstop==len(valid):
+                    # Last value is a gap: copy rightmost bound
+                    newslice.coords_stag[0][-1] = self.coords_stag[0][-1]
+                elif (gapstop-gapstart)%2==0:
+                    # Internal gap of even number of entries (use central cell bound for gap center)
+                    newslice.coords_stag[0][i] = self.coords_stag[0][gapstart+(gapstop-gapstart)/2]
                 else:
-                    newslice.coords_stag[0][i] = self.coords[0][gapstart+(gapstop-gapstart+1)/2]
-                gapstart = gapstarts.pop(0)
-                newslice.coords_stag[0][i+1:i+gapstart-gapstop] = newslice.coords_stag[0][gapstop:gapstart]
-                i += 1+gapstart-gapstop
+                    # Internal gap of odd number of entries (use central cell center for gap center)
+                    newslice.coords_stag[0][i] = self.coords[0][gapstart+(gapstop-gapstart+1)/2-1]
+                i += 1
+                
+                # Copy values between this gap and the next (or the end)
+                if gapstarts:
+                    gapstart = gapstarts.pop(0)
+                else:
+                    gapstart = len(self.data)+1
+                    assert not gapstops, 'No gap starts left, but there are still gap stops.'
+                #print 'copying original values between %i and %i' % (gapstop,gapstart)
+                newslice.coords_stag[0][i:i+gapstart-gapstop-1] = self.coords_stag[0][gapstop+1:gapstart]
+                
+                i += gapstart-gapstop-1
             
             return newslice
             
