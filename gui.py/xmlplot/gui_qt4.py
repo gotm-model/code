@@ -1023,7 +1023,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         #if self.dlgEditFunction is not None: self.dlgEditFunction.hide()
         
     def onEditData(self):
-        dialog = LinkedFileDataEditor(self.linkedfile,self)
+        dialog = LinkedFileDataEditor(self.linkedfile,self,title='Edit %s' % unicode(self.windowTitle()).lower())
         if dialog.exec_()!=QtGui.QDialog.Accepted: return
         self.setData()
         
