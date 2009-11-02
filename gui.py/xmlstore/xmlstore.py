@@ -1361,20 +1361,31 @@ class TypedStore(util.referencedobject):
                     defs = subcls.getDefault(node.templatenode.getAttribute('version'))
                     if defs is not None: node.copyFrom(defs.root)
             
-        if 'source' not in cls.version2defaultstore:
-            # We do not have any version of the requested default; first obtain the source version.
-            version2path = cls.getSchemaInfo().getDefaults()
-            if not version2path: return None
+        # Get a dictionary linking versions to paths for default values.
+        version2path = cls.getSchemaInfo().getDefaults()
+        
+        # If no defaults are available, return None.
+        if not version2path: return None
+        
+        # Select the file with defaults to load.
+        if version in version2path:
+            # Default values are present for the requested version; use these.
+            path = version2path[version]
+        else:
+            # No default values present for the requested version.
+            # Use the first values available - we will attempt conversion to the desired version.
             path = version2path.values()[0]
-            sourcestore = cls.fromXmlFile(path,adddefault=False)
-            addDefaultsForLinks(sourcestore)
-            atexit.register(TypedStore.release,sourcestore)
-            cls.version2defaultstore['source'] = sourcestore
-            cls.version2defaultstore[sourcestore.version] = sourcestore
-            if sourcestore.version==version: return sourcestore
+
+        # Load the selected defaults from file.
+        sourcestore = cls.fromXmlFile(path,adddefault=False)
+        addDefaultsForLinks(sourcestore)
+        atexit.register(TypedStore.release,sourcestore)
+        cls.version2defaultstore[sourcestore.version] = sourcestore
+        
+        # If the loaded defaults already have the right version, return them.
+        if sourcestore.version==version: return sourcestore
             
-        # We now have the source version of the requested default, but we need another version. Convert.
-        sourcestore = cls.version2defaultstore['source']
+        # Loaded defaults have the wrong version. Attempt conversion to desired version.
         defstore = cls.fromSchemaName(version,adddefault=False)
         sourcestore.convert(defstore,usedefaults=False)
         addDefaultsForLinks(defstore)
