@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.38 2009-10-30 11:04:02 jorn Exp $
+#$Id: common.py,v 1.39 2009-11-03 11:27:20 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -856,7 +856,12 @@ class Variable(object):
             return newslice
             
         def compressed(self):
+            # If the source data is not a asked array, return it unmodified.
             if not hasattr(self.data,'_mask'): return self
+
+            # If no data is masked, return everything unmodified.
+            if not numpy.any(self.data._mask): return self
+            
             assert self.ndim==1,'"compressed" can only be used on 1D arrays.'
             newslice = Variable.Slice(self.dimensions)
             valid = numpy.logical_not(self.data._mask)
