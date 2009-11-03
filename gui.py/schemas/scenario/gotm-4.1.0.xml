@@ -1230,7 +1230,7 @@
 		</condition>
 	</link>
 
-	<link path="[gotmsrc]/extras/bio/iow/metadata/nml-001.schema">
+	<link path="[gotmsrc]/extras/bio/iow/metadata/nml-002.schema">
 		<condition type="and">
 			<condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
 			<condition type="eq" variable="/bio/bio_nml/bio_model" value="2" />

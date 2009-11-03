@@ -1207,7 +1207,7 @@
 				<condition type="eq" variable="." value="1"/>
 			</link>
 
-			<link name="bio_iow" path="[gotmsrc]/extras/bio/iow/metadata/nml-001.schema" grouponly="True">
+			<link name="bio_iow" path="[gotmsrc]/extras/bio/iow/metadata/nml-002.schema" grouponly="True">
 				<condition type="eq" variable="." value="2"/>
 			</link>
 
