@@ -12,7 +12,10 @@ def openNetCDF(path,mode='r'):
     # If so, we will try to combine these files.
     if isinstance(path,basestring):
         paths = glob.glob(path)
-        if len(paths)>1: path = paths
+        if len(paths)==1:
+            path = paths[0]
+        elif len(paths)>1:
+            path = paths
     
     if isinstance(path,basestring):
         return getNetCDFFile(path,mode)
