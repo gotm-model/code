@@ -2078,7 +2078,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                         bath = bath.filled(min(bath.min(),-elev.max()))
                                             
                     # Let elevation follow bathymetry whereever it was originally masked.
-                    if elevmask is not None:
+                    if elevmask is not None and numpy.any(elevmask):
                         bigbath = numpy.empty_like(elev)
                         bigbath[:] = bath
                         elev[elevmask] = -bigbath[elevmask]
