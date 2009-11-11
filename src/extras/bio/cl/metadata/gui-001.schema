@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<element name="bio_cl" label="Chlorination model" version="gui-001" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../gui.py/core/scenario-1.0.xsd">
+	<element name="iniconcs" label="initial concentrations">
+		<element name="cl_initial" type="float" label="chlorine"      unit="mmol/m³"/>
+		<element name="s_initial" type="float" label="chlorine-reactive-compound" unit="mmol/m³"/>
+	</element>
+	<element name="minconcs" label="minimum concentrations">
+		<element name="cl0" type="float" label="chlorine" unit="mg/l"/>
+		<element name="s0" type="float" label="chlorine-reactive-compound"   unit="mg/l"/>
+	</element>
+	<element name="settling" label="settling velocities">
+		<element name="w_cl" type="float" label="chlorine" unit="m/d"/>
+	</element>
+	<element name="params" label="ecosystem parameters">
+		<element name="numc"      type="int"   label="number of compartments for geobiochemical model" hidden="True"/>
+                <element name="cl_method" type="int"   label="number of model used" hidden="True"/>
+		<element name="k1"        type="float" label="decay k1"                        unit="1/s"/>
+		<element name="k2"        type="float" label="decay k2"                        unit="1/s"/>
+		<element name="wk1"       type="float" label="decay k1"                        unit=""/>
+		<element name="wk2"       type="float" label="calibration constant"                        unit=""/>
+	</element>
+</element>

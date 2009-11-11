@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.51 2009-10-30 13:03:02 hb Exp $
+!$Id: bio.F90,v 1.52 2009-11-11 13:08:54 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -32,6 +32,11 @@
 #ifdef BIO_NPZD
    use bio_npzd, only : init_bio_npzd,init_var_npzd
    use bio_npzd, only : light_npzd, do_bio_npzd
+#endif
+
+#ifdef BIO_CL
+   use bio_cl, only : init_bio_cl,init_var_cl
+   use bio_cl, only : do_bio_cl
 #endif
 
 #ifdef BIO_IOW
@@ -88,17 +93,13 @@
 
 
    logical, public                     :: bio_calc=.false.
- 
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
-!  Revision 1.51  2009-10-30 13:03:02  hb
-!  Liss and Merlivat relationship for the piston velocity + Weiss formula for saturation oxygen included into bio_iow by Adolf Stips
-!
-!  
-!  line 952: call surface_fluxes_iow(nlev,t(nlev),s(nlev),wind)
+!  Revision 1.52  2009-11-11 13:08:54  kb
+!  added chlorination model - Rennau
 !
 !  Revision 1.50  2009-10-21 08:02:07  hb
 !  Fluff layer resuspension added.
@@ -252,12 +253,13 @@
 !
 ! !PRIVATE DATA MEMBERS:
 !  from a namelist
-   REALTYPE                  :: cnpar=0.5
+   REALTYPE                  :: cnpar=0.9
    integer                   :: w_adv_discr=6
    integer                   :: ode_method=1
    integer                   :: split_factor=1
    logical                   :: bioshade_feedback=.true.
- 
+
+
    contains
 
 !-----------------------------------------------------------------------
@@ -412,6 +414,18 @@
          FATAL "and re-compile"
          stop "init_bio()"
 #endif
+      case (8) ! The CL model
+#ifdef BIO_CL
+
+         call init_bio_cl(namlst,'bio_cl.nml',unit)
+
+#else
+         FATAL "bio_cl not compiled!!"
+         FATAL "set environment variable BIO_CL different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+
       case (20)  ! PHOTO (adaption model according to Nagai et al. (2003)
 #ifdef BIO_PHOTO
 
@@ -444,6 +458,7 @@
 
 !     allocate memory for Eulerian fields
       if (nmax_ .gt. 0) then
+         nlev = nmax_
          nmax = nmax_
          call alloc_eul
       else
@@ -656,6 +671,17 @@
 #else
          FATAL "bio_bio_npzd_fe not compiled!!"
          FATAL "set environment variable BIO_NPZD_FE different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+      case (8) ! The CL model
+#ifdef BIO_CL
+
+         call init_var_cl
+
+#else
+         FATAL "bio_cl not compiled!!"
+         FATAL "set environment variable BIO_CL different from false"
          FATAL "and re-compile"
          stop "init_bio()"
 #endif
@@ -971,11 +997,12 @@
 #ifdef BIO_NPZD_FE
       call surface_fluxes_npzd_fe(nlev)
 #endif
+   case (8)
    case (1000:)
       call surface_fluxes_0d(nlev,t(nlev),s(nlev))
       call update_sinking_rates_0d(numc,nlev,cc)
    end select
-   
+
    do j=1,numc-vars_zero_d
          
 !     do advection step due to settling or rising
@@ -991,7 +1018,7 @@
 !     do diffusion step
       call diff_center(nlev,dt,cnpar,posconc(j),h,Neumann,Neumann,&
            sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
-      
+
    end do
 
    do split=1,split_factor
@@ -1036,6 +1063,10 @@
 #ifdef BIO_NPZD_FE
          call light_npzd_fe(nlev,bioshade_feedback)
          call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd_fe)
+#endif
+      case (8)
+#ifdef BIO_CL
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_cl)
 #endif
       case (1000:)
          call light_0d(model%models(1),nlev,bioshade_feedback)
@@ -1194,9 +1225,11 @@
 
    allocate(cc(1:numc,0:nmax),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc)'
+   cc=_ZERO_
 
    allocate(ws(1:numc,0:nmax),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (ws)'
+   ws=_ZERO_
 
    allocate(sfl(1:numc),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (sfl)'
@@ -1212,6 +1245,7 @@
 
    allocate(zlev(0:nmax),stat=rc)
    if (rc /= 0) stop 'allocate_memory_l: Error allocating (zlev)'
+   zlev=_ZERO_
 
 !  externally provided arrays
    allocate(h(0:nmax),stat=rc)

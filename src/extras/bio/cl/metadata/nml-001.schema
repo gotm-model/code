@@ -1,0 +1,16 @@
+<?xml version="1.0" ?>
+<element name="bio_cl" label="Chlorination model" version="nml-001" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../gui.py/core/scenario-1.0.xsd">
+	<element name="bio_cl_nml">
+		<element name="numc"       type="int"   label="number of compartments for geobiochemical model" hidden="True"/>
+		<element name="cl_method"  type="int"   label="chlorination method" hidden="True"/>
+		<element name="cl_initial" type="float" label="initial chlorine concentration"      unit="mg/l"/>
+		<element name="s_initial"  type="float" label="initial chlorine-reactive-compound concentration" unit="mg/l"/>
+		<element name="cl0"        type="float" label="minimum chlorine concentration" unit="mg/l"/>
+		<element name="s0"         type="float" label="minimum chlorine-reactive-compound concentration"   unit="mg/l"/>
+		<element name="w_cl"       type="float" label="settling velocity of chlorine"  unit="m/d"/>
+		<element name="k1"         type="float" label="k1 decay constant"  unit="s-1"/>
+                <element name="k2"         type="float" label="k2 decay constant"  unit="s-1"/>
+		<element name="wk1"        type="float" label="wang model k1 decay constant"  unit=""/>
+		<element name="wk2"        type="float" label="wang calibration constant"  unit=""/>
+	</element>
+</element>

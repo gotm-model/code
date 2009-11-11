@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.14 2009-10-21 08:02:08 hb Exp $
+!$Id: bio_var.F90,v 1.15 2009-11-11 13:08:54 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -30,6 +30,7 @@
    integer, parameter                           :: FASHAM=4
    integer, parameter                           :: ERGOM_MAB=5
    integer, parameter                           :: ROLM=6
+   integer, parameter                           :: CL=8
    integer, parameter                           :: PHOTO=20
 
 !  time parameters
@@ -103,6 +104,9 @@
 !  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
+!  Revision 1.15  2009-11-11 13:08:54  kb
+!  added chlorination model - Rennau
+!
 !  Revision 1.14  2009-10-21 08:02:08  hb
 !  Fluff layer resuspension added.
 !

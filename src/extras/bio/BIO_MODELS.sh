@@ -1,7 +1,8 @@
-#$Id: BIO_MODELS.sh,v 1.2 2008-07-08 10:03:15 lars Exp $
+#$Id: BIO_MODELS.sh,v 1.3 2009-11-11 13:08:54 kb Exp $
 
 #export BIO_TEMPLATE=false
 #export BIO_NPZD=false
+#export BIO_CL=false
 #export BIO_IOW=false
 #export BIO_FASHAM=false
 #export BIO_SED=false

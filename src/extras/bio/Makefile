@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.26 2008-11-18 12:41:34 jorn Exp $
+#$Id: Makefile,v 1.27 2009-11-11 13:08:54 kb Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -31,6 +31,7 @@ ${LIB}(bio.o)
 
 #BIO_TEMPLATE=false
 #BIO_NPZD=false
+#BIO_CL=false
 #BIO_IOW=false
 #BIO_SED=false
 #BIO_FASHAM=false
@@ -49,6 +50,12 @@ DOCSRC  += npzd/bio_npzd.F90
 SUBDIRS += npzd
 SUBDIRS += npzd_0d
 DEFINES += -DBIO_NPZD
+endif
+
+ifneq ($(BIO_CL),false)
+DOCSRC  += cl/bio_cl.F90
+SUBDIRS += cl
+DEFINES += -DBIO_CL
 endif
 
 ifneq ($(BIO_IOW),false)
