@@ -1775,10 +1775,11 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             if dim not in nc.dimensions: self.createDimension(dim, length)
         data = variable.getSlice((Ellipsis,),dataonly=True)
         nctype = {'float32':'f','float64':'d'}[str(data.dtype)]
-        ncvar = nc.createVariable(variable.getName(),nctype,dims)
+        var = self.addVariable(variable.getName(),dims,datatype=nctype)
         for key,value in variable.getProperties().iteritems():
-            setattr(ncvar,key,value)
-        ncvar[(slice(None),)*len(shape)] = data
+            var.setProperty(key,value)
+        var.setData(data)
+        return var
 
     def getDimensions(self):
         nc = self.getcdf()
@@ -2023,7 +2024,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                 # the data with a nearest-neighbor approach. This improves the elevations of interfaces.
                 # Then save the mask so we can reapply it later.
                 if hasattr(elev,'_mask'):
-                    if isinstance(elev._mask,numpy.ndarray):
+                    if isinstance(elev._mask,numpy.ndarray) and numpy.any(elevmask):
                         mask = setmask(mask,elev._mask[:,numpy.newaxis,...])
                         elev = common.interpolateEdges(elev,dims=(1,2))
                         elevmask = elev._mask
@@ -2078,7 +2079,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                         bath = bath.filled(min(bath.min(),-elev.max()))
                                             
                     # Let elevation follow bathymetry whereever it was originally masked.
-                    if elevmask is not None and numpy.any(elevmask):
+                    if elevmask is not None:
                         bigbath = numpy.empty_like(elev)
                         bigbath[:] = bath
                         elev[elevmask] = -bigbath[elevmask]
