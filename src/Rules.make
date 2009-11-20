@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.21 2009-08-20 07:16:36 kb Exp $
+#$Id: Rules.make,v 1.22 2009-11-20 08:16:56 kb Exp $
 
 SHELL   = /bin/sh
 
@@ -22,6 +22,8 @@ SEAGRASS=false
 SEAGRASS=true
 BIO=false
 BIO=true
+NO_0D_BIO=true
+NO_0D_BIO=false
 
 FEATURES	=
 FEATURE_LIBS	=
@@ -98,6 +100,9 @@ ifeq ($(BIO),true)
 DEFINES += -DBIO
 FEATURES += extras/bio
 FEATURE_LIBS += -lbio$(buildtype)
+endif
+ifeq ($(NO_0D_BIO),true)
+DEFINES         += -DNO_0D_BIO
 endif
 
 # Directory related settings.

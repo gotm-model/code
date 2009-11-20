@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.52 2009-11-11 13:08:54 kb Exp $
+!$Id: bio.F90,v 1.53 2009-11-20 08:16:56 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,11 +18,12 @@
 ! 
 ! !USES:
    use bio_var
-   
+#ifndef NO_0D_BIO
    use bio_0d, only: model,init_bio_0d, init_var_0d, &
                      light_0d, light_0d_par, &
                      surface_fluxes_0d, update_sinking_rates_0d, &
                      do_bio_0d_eul, do_bio_0d_par
+#endif
 
 #ifdef BIO_TEMPLATE
    use bio_template, only : init_bio_template,init_var_template
@@ -98,6 +99,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.53  2009-11-20 08:16:56  kb
+!  allow compilation excluding 0D BIO framework - set in Rules.make
+!
 !  Revision 1.52  2009-11-11 13:08:54  kb
 !  added chlorination model - Rennau
 !
@@ -437,9 +441,11 @@
          FATAL "and re-compile"
          stop "init_bio()"
 #endif
-      
+
+#ifndef NO_0D_BIO
       case (1000:)
          call init_bio_0d(namlst,unit)
+#endif
    
       case default
          stop "bio: no valid biomodel specified in bio.nml !"
@@ -696,9 +702,11 @@
          FATAL "and re-compile"
          stop "init_bio()"
 #endif
-      
+
+#ifndef NO_0D_BIO
       case (1000:)
          call init_var_0d
+#endif
          
       case default
          stop "bio: no valid biomodel specified in bio.nml !"
@@ -998,9 +1006,11 @@
       call surface_fluxes_npzd_fe(nlev)
 #endif
    case (8)
+#ifndef NO_0D_BIO
    case (1000:)
       call surface_fluxes_0d(nlev,t(nlev),s(nlev))
       call update_sinking_rates_0d(numc,nlev,cc)
+#endif
    end select
 
    do j=1,numc-vars_zero_d
@@ -1068,9 +1078,11 @@
 #ifdef BIO_CL
          call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_cl)
 #endif
+#ifndef NO_0D_BIO
       case (1000:)
          call light_0d(model%models(1),nlev,bioshade_feedback)
          call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_0d_eul)
+#endif
       end select
       
    end do
@@ -1140,9 +1152,11 @@
       call do_bio_sed_par
    case (20)
       call do_bio_photo_par
+#ifndef NO_0D_BIO
    case (1000:)
       call light_0d_par(model%models(1),nlev,bioshade_feedback)
       call do_bio_0d_par(ode_method,dt)
+#endif
    case default
       FATAL 'bio_model=', bio_model, ' is not a valid particle model.'
       stop 'do_bio_par()'
