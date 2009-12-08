@@ -298,7 +298,15 @@
 	<element name="Data" label="data series">
 		<element name="Series" label="series" minOccurs="0" maxOccurs="unbounded">
       <element name="Label" type="string" label="label"/>
-			<element name="Type" type="int" label="type" hidden="True"/>
+			<element name="Type" type="int" label="type" hidden="True">
+				<options>
+					<option value="0" label="1 scalar variable"/>
+					<option value="1" label="1 1-dimensional variable"/>
+					<option value="2" label="1 2-dimensional variable"/>
+					<option value="3" label="2 2-dimensional variables"/>
+					<option value="4" label="2 n-dimensional variables"/>
+				</options>
+			</element>
 			<link template="Line2D" name="LineProperties" grouponly="True">
 				<condition type="eq" variable="./Type" value="1"/>
 			</link>
@@ -323,6 +331,14 @@
           <option label="contours"        value="2"/>
         </options>
 			</element>
+			<element name="PlotTypeTwoVariable" type="int" label="plot type">
+				<condition type="eq" variable="./Type" value="3"/>
+				<options>
+					<option label="vector"    value="0"/>
+					<option label="wind rose" value="1"/>
+				</options>
+			</element>
+			
 			<element name="ContourCount" type="int" label="number of contours">
 				<condition type="and">
 					<condition type="eq" variable="./Type"       value="2"/>
@@ -375,17 +391,27 @@
 			<element name="ArrowColor" type="color" label="arrow color">
 				<condition type="and">
 					<condition type="eq" variable="./Type" value="3"/>
+					<condition type="eq" variable="./PlotTypeTwoVariable" value="0"/>
 					<condition type="eq" variable="./UseColorMap" value="False"/>
 				</condition>
 			</element>
 			<element name="ArrowScale" type="float" label="arrow scaling">
-				<condition type="eq" variable="./Type" value="3"/>
+				<condition type="and">
+					<condition type="eq" variable="./Type" value="3"/>
+					<condition type="eq" variable="./PlotTypeTwoVariable" value="0"/>
+				</condition>
 			</element>
 			<element name="ArrowWidth" type="float" label="arrow shaft width">
-				<condition type="eq" variable="./Type" value="3"/>
+				<condition type="and">
+					<condition type="eq" variable="./Type" value="3"/>
+					<condition type="eq" variable="./PlotTypeTwoVariable" value="0"/>
+				</condition>
 			</element>
 			<element name="ArrowPivot" type="string" label="arrow pivot">
-				<condition type="eq" variable="./Type" value="3"/>
+				<condition type="and">
+					<condition type="eq" variable="./Type" value="3"/>
+					<condition type="eq" variable="./PlotTypeTwoVariable" value="0"/>
+				</condition>
 				<options>
 					<option value="tail"  />
 					<option value="middle"/>
@@ -393,7 +419,10 @@
 				</options>
 			</element>
 			<element name="ArrowKey" type="bool" label="arrow key">
-				<condition type="eq" variable="./Type" value="3"/>
+				<condition type="and">
+					<condition type="eq" variable="./Type" value="3"/>
+					<condition type="eq" variable="./PlotTypeTwoVariable" value="0"/>
+				</condition>
 				<element name="X" type="float" label="x-coordinate">
 					<condition type="eq" variable="." value="True"/>
 				</element>

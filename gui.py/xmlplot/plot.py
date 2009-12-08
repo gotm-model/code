@@ -693,17 +693,7 @@ class Figure(xmlstore.util.referencedobject):
         w = self.properties['Width'].getValue(usedefault=True)
         h = self.properties['Height'].getValue(usedefault=True)
         self.figure.set_size_inches(w/2.54,h/2.54)
-
-        # Create one subplot only.
-        bg = self.properties['BackgroundColor'].getValue(usedefault=True)
-        nodePadding = self.properties['Padding']
-        padLeft   = nodePadding['Left'  ].getValue(usedefault=True)
-        padRight  = nodePadding['Right' ].getValue(usedefault=True)
-        padTop    = nodePadding['Top'   ].getValue(usedefault=True)
-        padBottom = nodePadding['Bottom'].getValue(usedefault=True)
-        self.figure.subplots_adjust(left=padLeft,right=1.-padRight,top=1.-padTop,bottom=padBottom)
-        axes = self.figure.add_subplot(111,axis_bgcolor=bg.getNormalized())
-        
+                
         # Obtain text scaling property (from % to fraction)
         textscaling = self.properties['FontScaling'].getValue(usedefault=True)/100.
         
@@ -742,8 +732,7 @@ class Figure(xmlstore.util.referencedobject):
             axis2data[forcedaxis.getSecondaryId()] = {'forcedrange':[axmin,axmax],'logscale':logscale}
 
         # Shortcuts to the nodes specifying the series to plot.
-        forceddatanode = self.properties['Data']
-        forcedseries = forceddatanode.getLocationMultiple(['Series'])
+        forcedseries = self.properties['Data'].getLocationMultiple(['Series'])
 
         # Shortcut to the node that will hold defaults for the plotted series.
         defaultdatanode = self.defaultproperties['Data']
@@ -764,6 +753,9 @@ class Figure(xmlstore.util.referencedobject):
                 
         # Start with z order index 0 (incrementing it with every item added)
         zorder = 0
+
+        # Default projection: rectilinear (= no transformation)
+        projection = 'rectilinear'
         
         # Dictionary holding number of data series per number of independent dimensions.
         plotcount = {1:0,2:0}
@@ -790,6 +782,7 @@ class Figure(xmlstore.util.referencedobject):
             defaultseriesnode = defaultdatanode.getChildById('Series',varpath,create=True)
             defaultseriesnode['Label'].setValue(longname)
             defaultseriesnode['PlotType3D'].setValue(0)
+            defaultseriesnode['PlotTypeTwoVariable'].setValue(0)
             defaultseriesnode['HasConfidenceLimits'].setValue(False)
             setLineProperties(defaultseriesnode['LineProperties'])
             defaultseriesnode['ShowEdges'].setValue(False)
@@ -860,11 +853,23 @@ class Figure(xmlstore.util.referencedobject):
 
             # Get the number of dimensions from the data slice, and add it to the plot properties.
             typ = varslices[0].ndim
-            if typ==2 and len(varslices)>1: typ=3
+            if len(varslices)>1:
+                if typ==2:
+                    # Vector or wind rose plot
+                    typ = 3
+                else:
+                    # Wind rose plot
+                    typ = 4
             defaultseriesnode['Type'].setValue(typ)
 
             # Get the plot type for 3D plots.
             plottype3d = seriesnode['PlotType3D'].getValue(usedefault=True)
+            plottype2var = seriesnode['PlotTypeTwoVariable'].getValue(usedefault=True)
+            if projection=='rectilinear' and ((typ==3 and plottype2var==1) or typ==4):
+                if iseries>0: raise Exception('Series %i requires a wind rose projection, but earlier series use a rectilinear projection. Cannot combine both in the same plot.' % iseries)
+                projection = 'windrose'
+            elif projection=='windrose':
+                raise Exception('Series %i requires a rectilinear projection, but earlier series use a wind rose projection. Cannot combine both in the same plot.' % iseries)
 
             # We use a staggered grid (coordinates at interfaces,
             # values at centers) for certain 3D plot types.
@@ -888,9 +893,11 @@ class Figure(xmlstore.util.referencedobject):
             # Now determine the axes ranges
             varslice = varslices[0]
             info = {}
-            X,Y,U,V,C = None,None,None,None,None
+            X,Y,U,V,C,wd,ws = None,None,None,None,None,None,None
             xinfo,yinfo,cinfo = None,None,None
-            if varslice.ndim==1:
+            if projection=='windrose':
+                wd,ws = varslices[0].data.ravel(),varslices[1].data.ravel()
+            elif varslice.ndim==1:
                 # One coordinate dimension
                 X,Y = varslice.coords[0], varslice.data
                 xinfo = var.getDimensionInfo(varslice.dimensions[0])
@@ -969,11 +976,13 @@ class Figure(xmlstore.util.referencedobject):
                     if C is not None: C = C.transpose()
                     if U is not None: U,V = U.transpose(),V.transpose()
                 
-            if X is not None: info['x'] = X
-            if Y is not None: info['y'] = Y
-            if C is not None: info['C'] = C
-            if U is not None: info['U'] = U
-            if V is not None: info['V'] = V
+            if X  is not None: info['x' ] = X
+            if Y  is not None: info['y' ] = Y
+            if wd is not None: info['wd'] = wd
+            if ws is not None: info['ws'] = ws
+            if C  is not None: info['C' ] = C
+            if U  is not None: info['U' ] = U
+            if V  is not None: info['V' ] = V
             if xinfo is not None:
                 axis2data.setdefault('x',{'forcedrange':[None,None]}).update(xinfo)
                 axis2data['x'].setdefault('dimensions',[]).append(xname)
@@ -1003,9 +1012,28 @@ class Figure(xmlstore.util.referencedobject):
         xrange = getrange(seriesinfo,'x')
         yrange = getrange(seriesinfo,'y')
 
+        # Load alternative projection if needed.
+        if projection=='windrose':
+            try:
+                import windrose
+            except ImportError:
+                raise Exception('This plot is configured to display a wind rose, but the Python package "windrose" is not found. Please install this first.')
+            windrose.WindroseAxes.name = 'windrose'
+            matplotlib.projections.register_projection(windrose.WindroseAxes)
+
+        # Create one subplot only.
+        bg = self.properties['BackgroundColor'].getValue(usedefault=True)
+        nodePadding = self.properties['Padding']
+        padLeft   = nodePadding['Left'  ].getValue(usedefault=True)
+        padRight  = nodePadding['Right' ].getValue(usedefault=True)
+        padTop    = nodePadding['Top'   ].getValue(usedefault=True)
+        padBottom = nodePadding['Bottom'].getValue(usedefault=True)
+        self.figure.subplots_adjust(left=padLeft,right=1.-padRight,top=1.-padTop,bottom=padBottom)
+        axes = self.figure.add_subplot(111,axis_bgcolor=bg.getNormalized(),projection=projection)
+
         # Handle transformations due to map projection (if any)
-        xcanbelon = xrange[0] is not None and xrange[0]>=-361 and xrange[1]<=361
-        ycanbelat = yrange[0] is not None and yrange[0]>=-91  and yrange[1]<=91
+        xcanbelon = projection=='rectilinear' and xrange[0] is not None and xrange[0]>=-361 and xrange[1]<=361
+        ycanbelat = projection=='rectilinear' and yrange[0] is not None and yrange[0]>=-91  and yrange[1]<=91
         if xcanbelon and ycanbelat:
             # Try importing basemap
             try:
@@ -1166,11 +1194,16 @@ class Figure(xmlstore.util.referencedobject):
             curhascolormap = False
             
             # Plot the data series
-            if varslice.ndim==0:
+            if projection=='windrose':
+                wd,ws = info['wd'],info['ws']
+                axes.contourf(wd, ws, cmap=cm)
+                axes.contour (wd, ws, colors='black')
+                curhascolormap = True
+            elif varslice.ndim==0:
                 # Zero-dimensional coordinate space (i.e., only a single data value is available)
                 # No plotting of coordinate-less data (yet)
                 pass
-            if varslice.ndim==1:
+            elif varslice.ndim==1:
                 # One-dimensional coordinate space (x).
                 
                 # Retrieve cached coordinates
@@ -1675,7 +1708,7 @@ class Figure(xmlstore.util.referencedobject):
         # Draw the plot to screen.
         self.canvas.draw()
         
-        validplot = (plotcount[1]+plotcount[2])>0
+        validplot = (plotcount[1]+plotcount[2])>0 or projection=='windrose'
         for cb in self.callbacks['completeStateChange']: cb(validplot)
 
         self.dirty = False
