@@ -406,7 +406,7 @@ class MultiNetCDFFile(object):
                 if dim not in dim2coords:
                     dim2coords[dim] = coord
                 else:
-                    if self.variabledim!=dim and (dim2coords[dim].shape!=coord.shape or (dim2coords[dim]!=coord).any()):
+                    if self.variabledim!=dim and (dim2coords[dim].shape!=coord.shape or numpy.any(dim2coords[dim]!=coord)):
                         # These coordinates vary between files - make sure this is the only dimension that differs.
                         assert self.variabledim is None,'More than one dimension (%s, %s) varies between files.' % (self.variabledim,dim)
                         self.variabledim = dim
