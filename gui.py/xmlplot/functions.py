@@ -458,4 +458,18 @@ class addgaps(expressions.LazyFunction):
             newc[tuple(targetslc)] = c[tuple(srcslc)]
         
         return res
+
+class uv2ds(expressions.LazyFunction):
+    def __init__(self,u,v):
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,None,u,v)
+    def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
+        u,v = resolvedargs[0],resolvedargs[1]
+        if not dataonly: u,v = u.data,v.data
+        angle = (1.+numpy.arctan2(v,u)/numpy.pi)*180.
+        speed = numpy.sqrt(u*u+v*v)
+        if dataonly:
+            resolvedargs[0],resolvedargs[1] = angle,speed
+        else:
+            resolvedargs[0].data,resolvedargs[1].data = angle,speed
+        return resolvedargs
         
