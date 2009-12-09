@@ -1269,8 +1269,9 @@ class Figure(xmlstore.util.referencedobject):
                 # Create colorbar
                 assert cb is None, 'Currently only one object that needs a colorbar is supported per figure.'
                 cax, kw = matplotlib.colorbar.make_axes(axes)
+                binvalues = numpy.linspace(realbins[0],realbins[-1],len(bins))
                 if rosetype!=2:
-                    cb = matplotlib.colorbar.ColorbarBase(cax,cmap=cm,boundaries=realbins)
+                    cb = matplotlib.colorbar.ColorbarBase(cax,cmap=cm,boundaries=realbins,values=binvalues)
                 else:
                     cb = matplotlib.colorbar.ColorbarBase(cax,cmap=cm,boundaries=realbins,filled=False)
                     cb.add_lines(realbins,['None']+list(axes._colors(cm,len(bins))),linewidths=edgewidth)
