@@ -74,7 +74,7 @@ def chooseNetCDFModule():
             selectednetcdfmodule = len(netcdfmodules)
         netcdfmodules.append(('pynetcdf',''))
 
-    # Try to locate PuPyNeRe, though that does not always work.
+    # Try to locate PuPyNeRe, though that does not work for all NetCDF files (e.g., GOTM!).
     ready = True
     try:
         import pupynere

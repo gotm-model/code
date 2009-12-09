@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.39 2009-11-03 11:27:20 jorn Exp $
+#$Id: common.py,v 1.40 2009-12-09 09:53:10 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -856,13 +856,16 @@ class Variable(object):
             return newslice
             
         def compressed(self):
-            # If the source data is not a asked array, return it unmodified.
+            assert self.ndim==1,'"compressed" can only be used on 1D arrays.'
+
+            # If the source data is not a masked array, return it unmodified.
             if not hasattr(self.data,'_mask'): return self
 
             # If no data is masked, return everything unmodified.
             if not numpy.any(self.data._mask): return self
             
-            assert self.ndim==1,'"compressed" can only be used on 1D arrays.'
+            # Create a new data slice to hold the compressed data, and directly compress
+            # the data and center coordinates (only staggered coordinates take work)
             newslice = Variable.Slice(self.dimensions)
             valid = numpy.logical_not(self.data._mask)
             newslice.coords[0] = self.coords[0][valid]
