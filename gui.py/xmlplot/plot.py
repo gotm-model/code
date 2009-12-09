@@ -827,7 +827,10 @@ class Figure(xmlstore.util.referencedobject):
                     
             # Get the data
             varslices = var.getSlice(tuple(dimbounds))
-            if not isinstance(varslices,(list,tuple)): varslices = [varslices]
+            if not isinstance(varslices,(list,tuple)):
+                varslices = [varslices]
+            elif len(varslices)==1 and isinstance(varslices[0],(list,tuple)):
+                varslices = varslices[0]
             assert len(varslices)>0, 'Unable to retrieve any variable slices.'
             
             # Skip this variable if (parts of) its data are unavailable.
@@ -1196,8 +1199,21 @@ class Figure(xmlstore.util.referencedobject):
             # Plot the data series
             if projection=='windrose':
                 wd,ws = info['wd'],info['ws']
-                axes.contourf(wd, ws, cmap=cm)
-                axes.contour (wd, ws, colors='black')
+                defaultseriesnode['WindRoseType'].setValue(0)
+                defaultseriesnode['Rotate180'].setValue(False)
+                defaultseriesnode['SectorCount'].setValue(16)
+                defaultseriesnode['NormalizeCounts'].setValue(False)
+                rosetype = seriesnode['WindRoseType'].getValue(usedefault=True)
+                nsector = seriesnode['SectorCount'].getValue(usedefault=True)
+                norm = seriesnode['NormalizeCounts'].getValue(usedefault=True)
+                blowto = seriesnode['Rotate180'].getValue(usedefault=True)
+                if rosetype==0:
+                    axes.bar(wd, ws, cmap=cm, normed=norm, nsector=nsector, blowto=blowto)
+                elif rosetype==1:
+                    axes.box(wd, ws, cmap=cm, normed=norm, nsector=nsector, blowto=blowto)
+                else:
+                    axes.contourf(wd, ws, cmap=cm, normed=norm, nsector=nsector, blowto=blowto)
+                    axes.contour (wd, ws, colors='black', normed=norm, nsector=nsector, blowto=blowto)
                 curhascolormap = True
             elif varslice.ndim==0:
                 # Zero-dimensional coordinate space (i.e., only a single data value is available)

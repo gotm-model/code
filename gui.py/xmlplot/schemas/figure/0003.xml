@@ -388,6 +388,48 @@
         </condition>
       </element>
 
+			<element name="WindRoseType" type="int" label="rose type">
+				<condition type="or">
+					<condition type="and">
+						<condition type="eq" variable="./Type" value="3"/>
+						<condition type="eq" variable="./PlotTypeTwoVariable" value="1"/>
+					</condition>
+					<condition type="eq" variable="./Type" value="4"/>
+				</condition>
+				<options>
+					<option label="bar"      value="0"/>
+					<option label="box"      value="1"/>
+					<option label="contours" value="2"/>
+				</options>
+			</element>
+			<element name="SectorCount" type="int" label="number of sectors">
+				<condition type="or">
+					<condition type="and">
+						<condition type="eq" variable="./Type" value="3"/>
+						<condition type="eq" variable="./PlotTypeTwoVariable" value="1"/>
+					</condition>
+					<condition type="eq" variable="./Type" value="4"/>
+				</condition>
+			</element>
+			<element name="NormalizeCounts" type="bool" label="express bin counts in %">
+				<condition type="or">
+					<condition type="and">
+						<condition type="eq" variable="./Type" value="3"/>
+						<condition type="eq" variable="./PlotTypeTwoVariable" value="1"/>
+					</condition>
+					<condition type="eq" variable="./Type" value="4"/>
+				</condition>
+			</element>
+			<element name="Rotate180" type="bool" label="rotate 180°" description="rotate wind/current rose 180° to switch between to/from directions">
+				<condition type="or">
+					<condition type="and">
+						<condition type="eq" variable="./Type" value="3"/>
+						<condition type="eq" variable="./PlotTypeTwoVariable" value="1"/>
+					</condition>
+					<condition type="eq" variable="./Type" value="4"/>
+				</condition>
+			</element>
+
 			<element name="ArrowColor" type="color" label="arrow color">
 				<condition type="and">
 					<condition type="eq" variable="./Type" value="3"/>
