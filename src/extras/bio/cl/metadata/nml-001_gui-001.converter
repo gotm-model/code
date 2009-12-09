@@ -5,6 +5,5 @@
 		<link source="/bio_cl_nml" target="/iniconcs"/>
 		<link source="/bio_cl_nml" target="/minconcs"/>
 		<link source="/bio_cl_nml" target="/settling"/>
-		<link source="/bio_cl_nml" target="/light"/>
 	</links>
 </converter>

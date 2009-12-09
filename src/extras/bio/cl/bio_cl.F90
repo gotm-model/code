@@ -1,4 +1,4 @@
-!$Id: bio_cl.F90,v 1.1 2009-11-11 13:08:55 kb Exp $
+!$Id: bio_cl.F90,v 1.2 2009-12-09 13:11:54 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,6 +26,9 @@
 !                      with input from John Aldrige
 !
 !  $Log: bio_cl.F90,v $
+!  Revision 1.2  2009-12-09 13:11:54  kb
+!  added GUI for BIO/CL model - Rennau
+!
 !  Revision 1.1  2009-11-11 13:08:55  kb
 !  added chlorination model - Rennau
 !
@@ -34,9 +37,9 @@
 !  from a namelist
    integer                   :: cl_method
    REALTYPE                  :: cl_initial=0.1
-   REALTYPE                  :: s_initial=0.8
-   REALTYPE                  :: k1=0.4/60.
-   REALTYPE                  :: k2=0.0023/60.
+   REALTYPE                  :: s_initial=0.58
+   REALTYPE                  :: k1=0.000042
+   REALTYPE                  :: k2=0.013
    REALTYPE                  :: wk1=-0.5757
    REALTYPE                  :: wk2=1.
 
@@ -295,11 +298,11 @@
    select case (cl_method)
       case (1) ! Cefas
          do ci=1,nlev
-!           dcl=k1*cl**2*s+k2*cl
-            x=k1*cc(1,ci)*cc(1,ci)*cc(2,ci)
-            dd(1,1,ci)=x+k2*cc(1,ci)
+!           dcl=k2*cl**2*s+k1*cl
+            x=k2*cc(1,ci)*cc(1,ci)*cc(2,ci)
+            dd(1,1,ci)=x+k1*cc(1,ci)
             dd(1,2,ci) = _ZERO_
-!           ds=k1*cl**2*s
+!           ds=k2*cl**2*s
             dd(2,2,ci)=x
          end do
       case (2) ! Wang

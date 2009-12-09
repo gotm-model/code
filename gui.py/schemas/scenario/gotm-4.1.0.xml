@@ -1172,6 +1172,9 @@
 					<option label="Fasham et al. 1990"    description="Fasham et al. 1990 (7 variables)"   value="4" />
 					<option label="NPZD_Fe"               description="NPZD_Fe biological model"           value="7"/>
 					<option label="photo-reponse model"   description="adaption model according to Nagai et al. (2003)" value="20"/>
+					<option label="chlorine decay"        description="cl (2 variables)"                   value="8" />
+					<option label="chlorine decay"        description="cl (2 variables)"                   value="8" />
+					<option label="chlorine decay"        description="cl (2 variables)"                   value="8" />
 				</options>
 			</element>
 			<element name="bio_eulerian" type="bool" label="state variables are Eulerian">
@@ -1263,7 +1266,28 @@
 			<condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
 			<condition type="eq" variable="/bio/bio_nml/bio_model" value="20" />
 		</condition>
+        <link path="[gotmsrc]/extras/bio/cl/metadata/nml-001.schema">
+                <condition type="and">
+                        <condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
+                        <condition type="eq" variable="/bio/bio_nml/bio_model" value="8" />
+                </condition>
+        </link>
+
 	</link>
+        <link path="[gotmsrc]/extras/bio/cl/metadata/nml-001.schema">
+                <condition type="and">
+                        <condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
+                        <condition type="eq" variable="/bio/bio_nml/bio_model" value="8" />
+                </condition>
+        </link>
+
+
+        <link path="[gotmsrc]/extras/bio/cl/metadata/nml-001.schema">
+                <condition type="and">
+                        <condition type="eq" variable="/bio/bio_nml/bio_calc" value="True" />
+                        <condition type="eq" variable="/bio/bio_nml/bio_model" value="8" />
+                </condition>
+        </link>
 
 	<element name="seagrass" label="seagrass model" optional="True">
 		<element name="canopy">

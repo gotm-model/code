@@ -4,12 +4,12 @@
 		<numc>2</numc>
 		<cl_method>1</cl_method>
 		<cl_initial>0.1</cl_initial>
-		<s_initial>0.8</s_initial>
+		<s_initial>0.58</s_initial>
 		<cl0>0.</cl0>
 		<s0>0.</s0>
 		<w_cl>0.</w_cl>
-		<k1>0.00667</k1>
-		<k2>3.83e-05</k2>
+		<k1>0.000042</k1>
+		<k2>0.013</k2>
 		<wk1>-0.5757</wk1>
 		<wk2>1.</wk2>
 	</bio_cl_nml>
