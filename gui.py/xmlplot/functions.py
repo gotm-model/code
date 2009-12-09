@@ -465,7 +465,7 @@ class uv2ds(expressions.LazyFunction):
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         u,v = resolvedargs[0],resolvedargs[1]
         if not dataonly: u,v = u.data,v.data
-        angle = (1.+numpy.arctan2(v,u)/numpy.pi)*180.
+        angle = (-numpy.arctan2(v,u)/numpy.pi+0.5)%2*180
         speed = numpy.sqrt(u*u+v*v)
         if dataonly:
             resolvedargs[0],resolvedargs[1] = angle,speed
