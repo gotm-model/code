@@ -921,6 +921,7 @@ class Figure(xmlstore.util.referencedobject):
             xinfo,yinfo,cinfo = None,None,None
             if projection=='windrose':
                 wd,C = varslices[0].data.ravel(),varslices[1].data.ravel()
+                if hasattr(C,'_mask'): wd,C = wd.compressed(),C.compressed()
                 cname = 'speed'
                 cinfo = {'label':'speed',
                          'unit':var.getUnit(),
@@ -1275,6 +1276,16 @@ class Figure(xmlstore.util.referencedobject):
                 else:
                     cb = matplotlib.colorbar.ColorbarBase(cax,cmap=cm,boundaries=realbins,filled=False)
                     cb.add_lines(realbins,['None']+list(axes._colors(cm,len(bins))),linewidths=edgewidth)
+
+                yinfo = {'label':'',
+                         'unit':'',
+                         'datatype':'float',
+                         'tight':False,
+                         'reversed':False,
+                         'datarange':[0.,axes.get_rmax()]}
+                axis2data.setdefault('y',{'forcedrange':[None,None]}).update(yinfo)
+                axis2data['y'].setdefault('dimensions',[]).append('radius')
+
             elif varslice.ndim==0:
                 # Zero-dimensional coordinate space (i.e., only a single data value is available)
                 # No plotting of coordinate-less data (yet)
