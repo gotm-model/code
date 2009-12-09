@@ -335,60 +335,11 @@
 				<condition type="eq" variable="./Type" value="3"/>
 				<options>
 					<option label="vector"    value="0"/>
-					<option label="wind rose" value="1"/>
+					<option label="polar rose" value="1"/>
 				</options>
 			</element>
-			
-			<element name="ContourCount" type="int" label="number of contours">
-				<condition type="and">
-					<condition type="eq" variable="./Type"       value="2"/>
-					<condition type="ne" variable="./PlotType3D" value="0"/>
-				</condition>
-			</element>
-      <element name="ShowEdges" type="bool" label="show edges">
-        <condition type="and">
-          <condition type="eq" variable="./Type"       value="2"/>
-          <condition type="ne" variable="./PlotType3D" value="2"/>
-        </condition>
-      </element>
-      <element name="UseColorMap" type="bool" label="use colormap">
-				<condition type="or">
-					<condition type="and">
-						<condition type="eq" variable="./Type"       value="2"/>
-						<condition type="eq" variable="./PlotType3D" value="2"/>
-					</condition>
-					<condition type="eq" variable="./Type"         value="3"/>
-				</condition>
-			</element>
-			<element name="EdgeColor" type="color" label="edge color">
-				<condition type="and">
-					<condition type="eq" variable="./Type" value="2"/>
-          <condition type="or">
-            <condition type="and">
-              <condition type="eq" variable="./PlotType3D" value="1"/>
-              <condition type="eq" variable="./ShowEdges"  value="True"/>
-            </condition>
-            <condition type="and">
-              <condition type="eq" variable="./PlotType3D"   value="2"/>
-              <condition type="ne" variable="./UseColorMap"  value="True"/>
-            </condition>
-          </condition>
-        </condition>
-      </element>
-      <element name="EdgeWidth" type="float" label="edge width">
-        <condition type="and">
-          <condition type="eq" variable="./Type" value="2"/>
-          <condition type="or">
-            <condition type="and">
-              <condition type="eq" variable="./PlotType3D" value="1"/>
-              <condition type="eq" variable="./ShowEdges"  value="True"/>
-            </condition>
-            <condition type="eq" variable="./PlotType3D"   value="2"/>
-          </condition>
-        </condition>
-      </element>
 
-			<element name="WindRoseType" type="int" label="rose type">
+			<element name="PolarRoseType" type="int" label="polar rose type">
 				<condition type="or">
 					<condition type="and">
 						<condition type="eq" variable="./Type" value="3"/>
@@ -400,7 +351,17 @@
 					<option label="bar"      value="0"/>
 					<option label="box"      value="1"/>
 					<option label="contours" value="2"/>
+					<option label="filled contours" value="3"/>
 				</options>
+			</element>
+			<element name="RoseBinCount" type="int" label="number of bins">
+				<condition type="or">
+					<condition type="and">
+						<condition type="eq" variable="./Type" value="3"/>
+						<condition type="eq" variable="./PlotTypeTwoVariable" value="1"/>
+					</condition>
+					<condition type="eq" variable="./Type" value="4"/>
+				</condition>
 			</element>
 			<element name="SectorCount" type="int" label="number of sectors">
 				<condition type="or">
@@ -420,7 +381,7 @@
 					<condition type="eq" variable="./Type" value="4"/>
 				</condition>
 			</element>
-			<element name="Rotate180" type="bool" label="rotate 180°" description="rotate wind/current rose 180° to switch between to/from directions">
+			<element name="Rotate180" type="bool" label="rotate 180°" description="rotate polar rose 180° to switch between to/from directions">
 				<condition type="or">
 					<condition type="and">
 						<condition type="eq" variable="./Type" value="3"/>
@@ -429,6 +390,130 @@
 					<condition type="eq" variable="./Type" value="4"/>
 				</condition>
 			</element>
+			<element name="RoseSectorSpacing" type="float" label="opening between sectors" minInclusive="0" maxInclusive="1">
+				<condition type="and">
+					<condition type="eq" variable="./PolarRoseType" value="0"/>
+					<condition type="or">
+						<condition type="and">
+							<condition type="eq" variable="./Type" value="3"/>
+							<condition type="eq" variable="./PlotTypeTwoVariable" value="1"/>
+						</condition>
+						<condition type="eq" variable="./Type" value="4"/>
+					</condition>
+				</condition>
+			</element>
+
+			<element name="ContourCount" type="int" label="number of contours">
+				<condition type="and">
+					<condition type="eq" variable="./Type"       value="2"/>
+					<condition type="ne" variable="./PlotType3D" value="0"/>
+				</condition>
+			</element>
+			
+      <element name="ShowEdges" type="bool" label="show edges">
+				<condition type="or">
+							
+					<!-- a polar rose plot (except when for contour-only plots) -->
+					<condition type="and">
+						<condition type="or">
+							<condition type="and">
+								<condition type="eq" variable="./Type" value="3"/>
+								<condition type="eq" variable="./PlotTypeTwoVariable" value="1"/>
+							</condition>
+							<condition type="eq" variable="./Type" value="4"/>
+						</condition>
+						<condition type="ne" variable="./PolarRoseType" value="2"/>
+					</condition>
+
+					<!-- a pcolor or filled contour plot -->
+					<condition type="and">
+						<condition type="eq" variable="./Type"       value="2"/>
+						<condition type="ne" variable="./PlotType3D" value="2"/>
+					</condition>
+				</condition>
+			</element>
+			
+      <element name="UseColorMap" type="bool" label="use colormap">
+				<condition type="or">
+					<!-- a contour plot -->
+					<condition type="and">
+						<condition type="eq" variable="./Type"       value="2"/>
+						<condition type="eq" variable="./PlotType3D" value="2"/>
+					</condition>
+
+					<!-- a vector plot -->
+					<condition type="and">
+						<condition type="eq" variable="./Type" value="3"/>
+						<condition type="eq" variable="./PlotTypeTwoVariable" value="0"/>
+					</condition>
+				</condition>
+			</element>
+			
+			<element name="EdgeColor" type="color" label="edge color">
+				<condition type="or">
+					<!-- a polar rose plot with edges shown, or with contours only -->
+					<condition type="and">
+						<condition type="or">
+							<condition type="and">
+								<condition type="eq" variable="./Type" value="3"/>
+								<condition type="eq" variable="./PlotTypeTwoVariable" value="1"/>
+							</condition>
+							<condition type="eq" variable="./Type" value="4"/>
+						</condition>
+						<condition type="or">
+							<condition type="eq" variable="./PolarRoseType" value="2"/>
+							<condition type="eq" variable="./ShowEdges" value="True"/>
+						</condition>
+					</condition>
+
+					<!-- filled contour plot with edges or normal contour plot -->
+					<condition type="and">
+						<condition type="eq" variable="./Type" value="2"/>
+						<condition type="or">
+							<condition type="and">
+								<condition type="eq" variable="./PlotType3D" value="1"/>
+								<condition type="eq" variable="./ShowEdges"  value="True"/>
+							</condition>
+							<condition type="and">
+								<condition type="eq" variable="./PlotType3D"   value="2"/>
+								<condition type="ne" variable="./UseColorMap"  value="True"/>
+							</condition>
+						</condition>
+					</condition>
+				</condition>
+      </element>
+			
+      <element name="EdgeWidth" type="float" label="edge width">
+				<condition type="or">
+					<!-- a polar rose plot with edges shown, or with contours only -->
+					<condition type="and">
+						<condition type="or">
+							<condition type="and">
+								<condition type="eq" variable="./Type" value="3"/>
+								<condition type="eq" variable="./PlotTypeTwoVariable" value="1"/>
+							</condition>
+							<condition type="eq" variable="./Type" value="4"/>
+						</condition>
+						<condition type="or">
+							<condition type="eq" variable="./PolarRoseType" value="2"/>
+							<condition type="eq" variable="./ShowEdges" value="True"/>
+						</condition>
+					</condition>
+					
+					<!-- filled contour plot with edges or normal contour plot -->
+					<condition type="and">
+						<condition type="eq" variable="./Type" value="2"/>
+						<condition type="or">
+							<condition type="and">
+								<condition type="eq" variable="./PlotType3D" value="1"/>
+								<condition type="eq" variable="./ShowEdges"  value="True"/>
+							</condition>
+							<condition type="eq" variable="./PlotType3D"   value="2"/>
+						</condition>
+					</condition>
+				</condition>
+      </element>
+
 
 			<element name="ArrowColor" type="color" label="arrow color">
 				<condition type="and">

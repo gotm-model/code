@@ -545,7 +545,7 @@ class Color(DataTypeSimple):
         """
         return Color(self.red,self.green,self.blue)
 
-    def toXmlString(self,context):
+    def toXmlString(self,context={},empty=''):
         """Returns a string representation of the value of the Color object,
         suitable from saving to XML.
         This string can be parsed through the static "fromXmlString" method.
@@ -556,7 +556,7 @@ class Color(DataTypeSimple):
         if self.isValid():
             return '#%02x%02x%02x' % (self.red,self.green,self.blue)
         else:
-            return ''
+            return empty
         
     def isValid(self):
         """Returns whether the object currently contains a valid color.

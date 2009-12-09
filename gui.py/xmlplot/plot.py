@@ -5,6 +5,27 @@ import numpy
 
 import xmlstore.xmlstore,xmlstore.util,common,expressions
 
+def calculateContourLevels(cc,zmin,zmax,logscale=False):
+    # Choose a contour locator
+    if logscale:
+        loc = matplotlib.ticker.LogLocator()
+    else:
+        loc = matplotlib.ticker.MaxNLocator(cc+1)
+
+    # Choose contours (code taken from matplotlib.contour.py, _autolev function)
+    loc.create_dummy_axis()
+    loc.set_bounds(zmin, zmax)
+    lev = loc()
+    zmargin = (zmax - zmin) * 0.000001 # so z < (zmax + zmargin)
+    if zmax >= lev[-1]:
+        lev[-1] += zmargin
+    if zmin <= lev[0]:
+        if logscale:
+            lev[0] = 0.99 * zmin
+        else:
+            lev[0] -= zmargin
+    return lev
+            
 colormaps,colormaplist = None,None
 def getColorMaps():
     global colormaps,colormaplist
@@ -896,10 +917,17 @@ class Figure(xmlstore.util.referencedobject):
             # Now determine the axes ranges
             varslice = varslices[0]
             info = {}
-            X,Y,U,V,C,wd,ws = None,None,None,None,None,None,None
+            X,Y,U,V,C,wd = None,None,None,None,None,None
             xinfo,yinfo,cinfo = None,None,None
             if projection=='windrose':
-                wd,ws = varslices[0].data.ravel(),varslices[1].data.ravel()
+                wd,C = varslices[0].data.ravel(),varslices[1].data.ravel()
+                cname = 'speed'
+                cinfo = {'label':'speed',
+                         'unit':var.getUnit(),
+                         'datatype':'float',
+                         'tight':False,
+                         'reversed':False,
+                         'datarange':[C.min(),C.max()]}
             elif varslice.ndim==1:
                 # One coordinate dimension
                 X,Y = varslice.coords[0], varslice.data
@@ -982,7 +1010,6 @@ class Figure(xmlstore.util.referencedobject):
             if X  is not None: info['x' ] = X
             if Y  is not None: info['y' ] = Y
             if wd is not None: info['wd'] = wd
-            if ws is not None: info['ws'] = ws
             if C  is not None: info['C' ] = C
             if U  is not None: info['U' ] = U
             if V  is not None: info['V' ] = V
@@ -1198,23 +1225,55 @@ class Figure(xmlstore.util.referencedobject):
             
             # Plot the data series
             if projection=='windrose':
-                wd,ws = info['wd'],info['ws']
-                defaultseriesnode['WindRoseType'].setValue(0)
+                wd,ws = info['wd'],info['C']
+
+                # Set default properties for polar rose
+                defaultseriesnode['RoseBinCount'].setValue(7)
+                defaultseriesnode['ShowEdges'].setValue(True)
+                defaultseriesnode['PolarRoseType'].setValue(0)
                 defaultseriesnode['Rotate180'].setValue(False)
                 defaultseriesnode['SectorCount'].setValue(16)
+                defaultseriesnode['RoseSectorSpacing'].setValue(0.2)
                 defaultseriesnode['NormalizeCounts'].setValue(False)
-                rosetype = seriesnode['WindRoseType'].getValue(usedefault=True)
+
+                # Calculate velocity bins
+                wsrange = list(axis2data.get('colorbar',{}).get('forcedrange',[None,None]))
+                wsmin,wsmax = wsrange
+                if wsmin is None: wsmin = ws.min()
+                if wsmax is None: wsmax = ws.max()
+                realbins = calculateContourLevels(seriesnode['RoseBinCount'].getValue(usedefault=True), wsmin, wsmax)
+                bins = realbins[:-1]
+                
+                # Get active properties for polar rose
+                rosetype = seriesnode['PolarRoseType'].getValue(usedefault=True)
                 nsector = seriesnode['SectorCount'].getValue(usedefault=True)
+                opening = 1.-seriesnode['RoseSectorSpacing'].getValue(usedefault=True)
                 norm = seriesnode['NormalizeCounts'].getValue(usedefault=True)
                 blowto = seriesnode['Rotate180'].getValue(usedefault=True)
+                edgewidth = seriesnode['EdgeWidth'].getValue(usedefault=True)
+                edgecolor = seriesnode['EdgeColor'].getValue(usedefault=True).toXmlString(empty='None')
+                if rosetype!=2 and not seriesnode['ShowEdges'].getValue(usedefault=True): edgecolor = 'None'
+                
+                # Draw polar rose
                 if rosetype==0:
-                    axes.bar(wd, ws, cmap=cm, normed=norm, nsector=nsector, blowto=blowto)
+                    pc = axes.bar(wd, ws, bins=bins, cmap=cm, normed=norm, nsector=nsector, blowto=blowto, edgecolor=edgecolor, linewidth=edgewidth, opening=opening)
                 elif rosetype==1:
-                    axes.box(wd, ws, cmap=cm, normed=norm, nsector=nsector, blowto=blowto)
+                    pc = axes.box(wd, ws, bins=bins, cmap=cm, normed=norm, nsector=nsector, blowto=blowto, edgecolor=edgecolor, linewidth=edgewidth)
+                elif rosetype==2:
+                    pc = axes.contour (wd, ws, bins=bins, cmap=cm, normed=norm, nsector=nsector, blowto=blowto, linewidth=edgewidth)
                 else:
-                    axes.contourf(wd, ws, cmap=cm, normed=norm, nsector=nsector, blowto=blowto)
-                    axes.contour (wd, ws, colors='black', normed=norm, nsector=nsector, blowto=blowto)
+                    pc = axes.contourf(wd, ws, bins=bins, cmap=cm, normed=norm, nsector=nsector, blowto=blowto)
+                    if edgecolor!='None': axes.contour (wd, ws, bins=bins, colors='black', normed=norm, nsector=nsector, blowto=blowto, linewidth=edgewidth)
                 curhascolormap = True
+
+                # Create colorbar
+                assert cb is None, 'Currently only one object that needs a colorbar is supported per figure.'
+                cax, kw = matplotlib.colorbar.make_axes(axes)
+                if rosetype!=2:
+                    cb = matplotlib.colorbar.ColorbarBase(cax,cmap=cm,boundaries=realbins)
+                else:
+                    cb = matplotlib.colorbar.ColorbarBase(cax,cmap=cm,boundaries=realbins,filled=False)
+                    cb.add_lines(realbins,['None']+list(axes._colors(cm,len(bins))),linewidths=edgewidth)
             elif varslice.ndim==0:
                 # Zero-dimensional coordinate space (i.e., only a single data value is available)
                 # No plotting of coordinate-less data (yet)
@@ -1336,27 +1395,10 @@ class Figure(xmlstore.util.referencedobject):
                         cc = seriesnode['ContourCount'].getValue()
                         if cc is None: cc = 7
 
-                        # Choose a contour locator
-                        if logscale:
-                            loc = matplotlib.ticker.LogLocator()
-                        else:
-                            loc = matplotlib.ticker.MaxNLocator(cc+1)
-
-                        # Choose contours (code taken from matplotlib.contour.py, _autolev function)
-                        loc.create_dummy_axis()
                         zmin,zmax = crange
                         if zmin is None: zmin = C.min()
                         if zmax is None: zmax = C.max()
-                        loc.set_bounds(zmin, zmax)
-                        lev = loc()
-                        zmargin = (zmax - zmin) * 0.000001 # so z < (zmax + zmargin)
-                        if zmax >= lev[-1]:
-                            lev[-1] += zmargin
-                        if zmin <= lev[0]:
-                            if logscale:
-                                lev[0] = 0.99 * zmin
-                            else:
-                                lev[0] -= zmargin
+                        lev = calculateContourLevels(cc,zmin,zmax,logscale)
                         if not fill: lev = lev[1:-1]
                         defaultseriesnode['ContourCount'].setValue(len(lev)-2)
                         
