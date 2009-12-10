@@ -37,6 +37,7 @@
 		<link source="/bio_fasham"                        target="/bio/bio_model/bio_fasham"/>
 		<link source="/bio_npzd_fe"                       target="/bio/bio_model/bio_npzd_fe"/>
 		<link source="/bio_photo"                         target="/bio/bio_model/bio_photo"/>
+		<link source="/bio_cl"                            target="/bio/bio_model/bio_cl"/>
 		<!--<link source="/bio_BFM"                           target="/bio/bio_model/bio_BFM"/>-->
 	</links>
 	<custom>
