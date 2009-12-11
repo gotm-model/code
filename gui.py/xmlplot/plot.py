@@ -1049,8 +1049,16 @@ class Figure(xmlstore.util.referencedobject):
                 import windrose
             except ImportError:
                 raise Exception('This plot is configured to display a wind rose, but the Python package "windrose" is not found. Please install this first.')
-            windrose.WindroseAxes.name = 'windrose'
-            matplotlib.projections.register_projection(windrose.WindroseAxes)
+            class WindRoseProjection(windrose.WindroseAxes):
+                name = 'windrose'
+                def set_radii_angle(self, **kwargs):
+                    rmax = kwargs.pop('rmax',self.get_rmax())
+                    loc = matplotlib.ticker.MaxNLocator(7)
+                    loc.create_dummy_axis()
+                    loc.set_bounds(0, rmax)
+                    radii = loc()[1:-1]
+                    axes.set_rgrids(radii=radii, angle=self.radii_angle)
+            matplotlib.projections.register_projection(WindRoseProjection)
 
         # Create one subplot only.
         bg = self.properties['BackgroundColor'].getValue(usedefault=True)
@@ -1280,11 +1288,11 @@ class Figure(xmlstore.util.referencedobject):
                 yinfo = {'label':'',
                          'unit':'',
                          'datatype':'float',
-                         'tight':False,
+                         'tight':True,
                          'reversed':False,
                          'datarange':[0.,axes.get_rmax()]}
-                axis2data.setdefault('y',{'forcedrange':[None,None]}).update(yinfo)
-                axis2data['y'].setdefault('dimensions',[]).append('radius')
+                axis2data.setdefault('r',{'forcedrange':[None,None]}).update(yinfo)
+                axis2data['r'].setdefault('dimensions',[]).append('bincount')
 
             elif varslice.ndim==0:
                 # Zero-dimensional coordinate space (i.e., only a single data value is available)
@@ -1578,7 +1586,7 @@ class Figure(xmlstore.util.referencedobject):
         self.defaultproperties['HasColorMap'].setValue(hascolormap)
 
         # Transform axes to log-scale where specified.
-        for axisname in ('x','y','z','colorbar'):
+        for axisname in ('x','y','z','colorbar','r'):
             if axisname not in axis2data: continue
             
             # Get default and forced axis properties
@@ -1588,7 +1596,7 @@ class Figure(xmlstore.util.referencedobject):
             # Determine whether the axis can be log-transformed.
             axisdata = axis2data.get(axisname,{})
             datarange = axisdata.get('datarange',[None,None])
-            canhavelogscale = axisdata['datatype']!='datetime' and datarange[0] is not None
+            canhavelogscale = axisname!='r' and axisdata['datatype']!='datetime' and datarange[0] is not None
             if canhavelogscale: canhavelogscale = datarange[0]>0 or datarange[1]>0
             
             # Set log transformation defaults.
@@ -1606,7 +1614,7 @@ class Figure(xmlstore.util.referencedobject):
         # Get effective ranges for each dimension (based on forced limits and natural data ranges)
         oldaxes    = [node.getSecondaryId() for node in forcedaxes.getLocationMultiple(['Axis'])]
         olddefaxes = [node.getSecondaryId() for node in defaultaxes.getLocationMultiple(['Axis'])]
-        for axisname in ('x','y','z','colorbar'):
+        for axisname in ('x','y','z','colorbar','r'):
             if axisname not in axis2data: continue
 
             axisdata = axis2data[axisname]
@@ -1624,7 +1632,7 @@ class Figure(xmlstore.util.referencedobject):
                 if axisdata['datarange'][0] is None: naturalrange = [0.,1.]
             elif axisname=='x':
                 naturalrange = axes.get_xlim()
-            elif axisname=='y':
+            elif axisname in 'yr':
                 naturalrange = axes.get_ylim()
             else:
                 # Color range has been enforced before if needed (via pc.set_clim).
@@ -1687,7 +1695,7 @@ class Figure(xmlstore.util.referencedobject):
             mplaxis = None
             if axisname=='x':
                 mplaxis = axes.get_xaxis()
-            elif axisname=='y':
+            elif axisname in 'yr':
                 mplaxis = axes.get_yaxis()
             elif cb is not None:
                 mplaxis = cb.ax.get_yaxis()
@@ -1732,6 +1740,14 @@ class Figure(xmlstore.util.referencedobject):
             elif axisname=='y':
                 if label!='': axes.set_ylabel(label,fontproperties=fontprops)
                 axes.set_ylim(effrange[0],effrange[1])
+            elif axisname=='r':
+                if label!='': axes.set_ylabel(label,fontproperties=fontprops)
+                loc = matplotlib.ticker.MaxNLocator(7)
+                loc.create_dummy_axis()
+                loc.set_bounds(0, effrange[1])
+                radii = loc()[1:-1]
+                axes.set_rmax(effrange[1])
+                axes.set_rgrids(radii=radii, angle=axes.radii_angle)
             elif axisname=='colorbar' and cb is not None:
                 if label!='': cb.set_label(label,fontproperties=fontprops)
 
