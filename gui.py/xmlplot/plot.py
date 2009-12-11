@@ -1049,16 +1049,8 @@ class Figure(xmlstore.util.referencedobject):
                 import windrose
             except ImportError:
                 raise Exception('This plot is configured to display a wind rose, but the Python package "windrose" is not found. Please install this first.')
-            class WindRoseProjection(windrose.WindroseAxes):
-                name = 'windrose'
-                def set_radii_angle(self, **kwargs):
-                    rmax = kwargs.pop('rmax',self.get_rmax())
-                    loc = matplotlib.ticker.MaxNLocator(7)
-                    loc.create_dummy_axis()
-                    loc.set_bounds(0, rmax)
-                    radii = loc()[1:-1]
-                    axes.set_rgrids(radii=radii, angle=self.radii_angle)
-            matplotlib.projections.register_projection(WindRoseProjection)
+            windrose.WindroseAxes.name = 'windrose'
+            matplotlib.projections.register_projection(windrose.WindroseAxes)
 
         # Create one subplot only.
         bg = self.properties['BackgroundColor'].getValue(usedefault=True)
@@ -1748,6 +1740,7 @@ class Figure(xmlstore.util.referencedobject):
                 radii = loc()[1:-1]
                 axes.set_rmax(effrange[1])
                 axes.set_rgrids(radii=radii, angle=axes.radii_angle)
+                mplaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
             elif axisname=='colorbar' and cb is not None:
                 if label!='': cb.set_label(label,fontproperties=fontprops)
 
