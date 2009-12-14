@@ -920,8 +920,14 @@ class Figure(xmlstore.util.referencedobject):
             X,Y,U,V,C,wd = None,None,None,None,None,None
             xinfo,yinfo,cinfo = None,None,None
             if projection=='windrose':
+                # Get flattened direction and speed, and eliminate masked values (if any)
                 wd,C = varslices[0].data.ravel(),varslices[1].data.ravel()
                 if hasattr(C,'_mask'): wd,C = wd.compressed(),C.compressed()
+                
+                # If all data were masked, were are now left with an empty array.
+                # Detect this, and if it is the case, continue with other data series.
+                if 0 in wd.shape: continue
+                
                 cname = 'speed'
                 cinfo = {'label':'speed',
                          'unit':var.getUnit(),
@@ -1035,7 +1041,7 @@ class Figure(xmlstore.util.referencedobject):
         def getrange(seriesinfo,axis):
             range = [None,None]
             for info in seriesinfo:
-                if axis in info:
+                if axis in info and not (hasattr(info[axis],'_mask') and numpy.all(info[axis]._mask)):
                     curmin,curmax = info[axis].min(),info[axis].max()
                     if range[0] is None or curmin<range[0]: range[0] = curmin
                     if range[1] is None or curmax>range[1]: range[1] = curmax
