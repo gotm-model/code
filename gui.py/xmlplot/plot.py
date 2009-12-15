@@ -1361,6 +1361,7 @@ class Figure(xmlstore.util.referencedobject):
                 pc = None       # object using colormap
                 norm = None     # color normalization object
                 curhascolormap = C is not None
+                cbborders = None # borders for discrete colors in colorbar
                 
                 if C is not None:
                     axisdata = axis2data.get('colorbar',{})
@@ -1429,6 +1430,7 @@ class Figure(xmlstore.util.referencedobject):
                             contourcm = cm
                             if edgecolor is not None: contourcm = None
                             cpc = drawaxes.contour(X,Y,C,lev[1:-1],norm=norm,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+                            if edgecolor is not None: cbborders = cpc
                             if not fill: pc = cpc
                             
                         if plottype3d==2 and edgecolor is not None: curhascolormap = False
@@ -1503,6 +1505,7 @@ class Figure(xmlstore.util.referencedobject):
                     assert cb is None, 'Currently only one object that needs a colorbar is supported per figure.'
                     pc.set_clim(crange)
                     cb = self.figure.colorbar(pc,ax=axes)
+                    if cbborders is not None: cb.add_lines(cbborders)
 
                 plotcount[2] += 1
             
