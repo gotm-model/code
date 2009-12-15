@@ -1270,7 +1270,7 @@ class Figure(xmlstore.util.referencedobject):
                     pc = axes.contour (wd, ws, bins=bins, cmap=cm, normed=norm, nsector=nsector, blowto=blowto, linewidth=edgewidth)
                 else:
                     pc = axes.contourf(wd, ws, bins=bins, cmap=cm, normed=norm, nsector=nsector, blowto=blowto)
-                    if edgecolor!='None': axes.contour (wd, ws, bins=bins, colors='black', normed=norm, nsector=nsector, blowto=blowto, linewidth=edgewidth)
+                    if edgecolor!='None': axes.contour (wd, ws, bins=bins, colors=edgecolor, normed=norm, nsector=nsector, blowto=blowto, linewidth=edgewidth)
                 curhascolormap = True
 
                 # Create colorbar
@@ -1279,6 +1279,7 @@ class Figure(xmlstore.util.referencedobject):
                 binvalues = numpy.linspace(realbins[0],realbins[-1],len(bins))
                 if rosetype!=2:
                     cb = matplotlib.colorbar.ColorbarBase(cax,cmap=cm,boundaries=realbins,values=binvalues)
+                    if edgecolor!='None': cb.add_lines(realbins,edgecolor,linewidths=edgewidth)
                 else:
                     cb = matplotlib.colorbar.ColorbarBase(cax,cmap=cm,boundaries=realbins,filled=False)
                     cb.add_lines(realbins,['None']+list(axes._colors(cm,len(bins))),linewidths=edgewidth)

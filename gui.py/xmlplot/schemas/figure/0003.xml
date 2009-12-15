@@ -451,7 +451,7 @@
 			
 			<element name="EdgeColor" type="color" label="edge color">
 				<condition type="or">
-					<!-- a polar rose plot with edges shown, or with contours only -->
+					<!-- a polar rose plot with edges shown, except when it is contours only -->
 					<condition type="and">
 						<condition type="or">
 							<condition type="and">
@@ -460,8 +460,8 @@
 							</condition>
 							<condition type="eq" variable="./Type" value="4"/>
 						</condition>
-						<condition type="or">
-							<condition type="eq" variable="./PolarRoseType" value="2"/>
+						<condition type="and">
+							<condition type="ne" variable="./PolarRoseType" value="2"/>
 							<condition type="eq" variable="./ShowEdges" value="True"/>
 						</condition>
 					</condition>
