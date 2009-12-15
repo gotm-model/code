@@ -1946,6 +1946,8 @@ class NetCDFStore_GOTM(NetCDFStore):
         self.generatecartesiancenters = self.generatecartesiancenters or ('xx' in ncvars and 'yx' in ncvars and 'xic' in ncdims and 'etac' in ncdims and 'xc' not in ncvars and 'yc' not in ncvars)
         if self.generatecartesiancenters:
             # We have to generate centered Cartesian coordinates
+            self.staggeredcoordinates['xc'] = 'xx'
+            self.staggeredcoordinates['yc'] = 'yx'
             names += ['xc','yc']
         
         return names
