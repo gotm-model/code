@@ -1836,8 +1836,10 @@ class NetCDFStore_GOTM(NetCDFStore):
         ncvars,ncdims = nc.variables,nc.dimensions
         
         # Test for GETM with curvilinear coordinates
+        # (either lon,lat or staggered Cartesian coordinates must be available)
         if ('xic'  in ncdims and 'etac' in ncdims and
-            'lonc' in ncvars and 'latc' in ncvars): match = True
+            (('lonc' in ncvars and 'latc' in ncvars)
+             or ('xx' in ncvars and 'yx' in ncvars))): match = True
 
         # Test for GETM with cartesian coordinates
         if ('xc'  in ncdims and 'yc' in ncdims and
@@ -1863,32 +1865,44 @@ class NetCDFStore_GOTM(NetCDFStore):
         # Link new depth coordinates to an existing NetCDF dimension
         self.depth2coord = {}
 
+        self.generatecartesiancenters = False
+
         NetCDFStore.__init__(self,path,*args,**kwargs)
         
         # Link centered and staggered coordinates
         self.staggeredcoordinates['z' ] = 'z_stag'
         self.staggeredcoordinates['z1'] = 'z1_stag'
-        
+                
     def autoReassignCoordinates(self):
         NetCDFStore.autoReassignCoordinates(self)
         
         # Get reference to NetCDF file and its variables and dimensions.
         nc = self.getcdf()
-        ncvars,ncdims = nc.variables,nc.dimensions
+        ncvars,ncdims = self.getVariableNames_raw(),nc.dimensions
 
         # --------------------------------------------------------------
         # Re-assign x,y coordinate dimensions
         # --------------------------------------------------------------
 
         # Re-assign for GETM with curvilinear coordinates
-        if 'xic'  in ncdims and 'etac' in ncdims:
+        if 'xic' in ncdims and 'etac' in ncdims:
             self.xname,self.yname = 'xic','etac'
             if 'lonc' in ncvars and 'latc' in ncvars:
                 self.reassigneddims['xic' ] = 'lonc'
                 self.reassigneddims['etac'] = 'latc'
+            elif 'xc' in ncvars and 'yc' in ncvars:
+                self.reassigneddims['xic' ] = 'xc'
+                self.reassigneddims['etac'] = 'yc'
+        if 'xix' in ncdims and 'etax' in ncdims:
+            if 'lonx' in ncvars and 'latx' in ncvars:
+                self.reassigneddims['xix' ] = 'lonx'
+                self.reassigneddims['etax'] = 'latx'
+            elif 'xx' in ncvars and 'yx' in ncvars:
+                self.reassigneddims['xix' ] = 'xx'
+                self.reassigneddims['etax'] = 'yx'
 
         # Re-assign for GETM with cartesian coordinates
-        if 'xc'   in ncdims and 'yc'   in ncdims:
+        if 'xc' in ncdims and 'yc' in ncdims:
             self.xname,self.yname = 'xc','yc'
             if 'lonc' in ncvars and 'latc' in ncvars:
                 self.reassigneddims['xc' ] = 'lonc'
@@ -1920,19 +1934,83 @@ class NetCDFStore_GOTM(NetCDFStore):
     def getVariableNames_raw(self):
         names = list(NetCDFStore.getVariableNames_raw(self))
         
-        ncvars = self.getcdf().variables
+        nc = self.getcdf()
+        ncvars,ncdims = nc.variables,nc.dimensions
         if self.elevname in ncvars and (self.hname in ncvars or ('sigma' in ncvars and 'bathymetry' in ncvars)):
             names.append('z')
         
             # Only add alternative depth coordinate if it is actually used in the NetCDF file.
             # (note: GETM does not use it, but GOTM does)
-            if 'z1' in self.getcdf().variables: names.append('z1')
+            if 'z1' in ncvars: names.append('z1')
+            
+        self.generatecartesiancenters = self.generatecartesiancenters or ('xx' in ncvars and 'yx' in ncvars and 'xic' in ncdims and 'etac' in ncdims and 'xc' not in ncvars and 'yc' not in ncvars)
+        if self.generatecartesiancenters:
+            # We have to generate centered Cartesian coordinates
+            names += ['xc','yc']
         
         return names
 
     def getVariable_raw(self,varname):
-        if varname not in ('z','z1','z_stag','z1_stag'):
-            return NetCDFStore.getVariable_raw(self,varname)
+            
+        class CenterVariable(NetCDFStore.NetCDFVariable):
+            def __init__(self,store,ncvarname):
+                NetCDFStore.NetCDFVariable.__init__(self,store,ncvarname)
+                self.centername = ncvarname
+                self.stagname = '%sx' % ncvarname[0]
+
+            def getShape(self):
+                s = self.store[self.stagname].getShape()
+                return (s[0]-1,s[1]-1)
+
+            def getLongName(self):
+                return '%s-position' % self.centername
+
+            def getUnit(self):
+                return self.store[self.stagname].getUnit()
+
+            def getProperties(self):
+                return {}
+
+            def getDimensions_raw(self,reassign=True):
+                dims = ('etac','xic')
+                if reassign: dims = [self.store.reassigneddims.get(d,d) for d in dims]
+                return dims
+
+            def getNcData(self,bounds=None,allowmask=True):
+                # If no bounds are set, use complete data range.
+                if bounds is None:
+                    shape = self.getShape()
+                    bounds = (slice(0,shape[0]),slice(0,shape[1]))
+                    
+                # Convert integer indices to slices so we always have 2 dimensions.
+                fullbounds = []
+                for b in bounds:
+                    if isinstance(b,int): b = slice(b,b+1)
+                    fullbounds.append(b)
+                
+                # Obtain all 4 corners
+                stagvar = self.store[self.stagname]
+                stagvals = stagvar.getSlice(fullbounds,dataonly=True)
+                oldbound0 = fullbounds[0]
+                fullbounds[0] = slice(fullbounds[0].start+1,fullbounds[0].stop+1,fullbounds[0].step)
+                stagvals += stagvar.getSlice(fullbounds,dataonly=True)
+                fullbounds[1] = slice(fullbounds[1].start+1,fullbounds[1].stop+1,fullbounds[1].step)
+                stagvals += stagvar.getSlice(fullbounds,dataonly=True)
+                fullbounds[0] = oldbound0
+                stagvals += stagvar.getSlice(fullbounds,dataonly=True)
+                
+                # Average the corners to obtain center coordinates
+                centers = stagvals/4.
+                
+                # Eliminate singleton dimensiuons where integer indices were used.
+                if bounds is not None:
+                    newshape = []
+                    for l,b in zip(centers.shape,bounds):
+                        if not isinstance(b,int): newshape.append(l)
+                    centers.shape = newshape
+                    
+                # Return center coordinates.
+                return centers
 
         class DepthVariable(NetCDFStore.NetCDFVariable):
             def __init__(self,store,ncvarname,dimname):
@@ -2136,7 +2214,11 @@ class NetCDFStore_GOTM(NetCDFStore):
 
                 return res
 
-        return DepthVariable(self,varname,varname)
+        if self.generatecartesiancenters and varname in ('xc','yc'):
+            return CenterVariable(self,varname)
+        elif varname in ('z','z1','z_stag','z1_stag'):
+            return DepthVariable(self,varname,varname)
+        return NetCDFStore.getVariable_raw(self,varname)
 
     def getDefaultCoordinateDelta(self,dimname,coords):
         # Only operate on 1D coordinates
