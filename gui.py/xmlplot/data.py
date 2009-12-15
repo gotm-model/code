@@ -1993,7 +1993,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                 
                 # Obtain all 4 corners
                 stagvar = self.store[self.stagname]
-                stagvals = stagvar.getSlice(fullbounds,dataonly=True)
+                stagvals = stagvar.getSlice(fullbounds,dataonly=True).copy()
                 oldbound0 = fullbounds[0]
                 fullbounds[0] = slice(fullbounds[0].start+1,fullbounds[0].stop+1,fullbounds[0].step)
                 stagvals += stagvar.getSlice(fullbounds,dataonly=True)
