@@ -87,6 +87,7 @@ def chooseNetCDFModule():
         
     if selectednetcdfmodule==-1 and netcdfmodules: selectednetcdfmodule = 0
 
+class NetCDFError(Exception): pass
 def getNetCDFFile(path,mode='r'):
     """Returns a NetCDFFile file object representing the NetCDF file
     at the specified path. The returned object follows
@@ -107,34 +108,34 @@ def getNetCDFFile(path,mode='r'):
 
     # First check if the file exists in the first place.
     if mode=='r' and not os.path.isfile(path):
-        raise Exception('"%s" is not an existing file.' % path)
-        
+        raise NetCDFError('"%s" is not an existing file.' % path)
+
     netcdfmodule = None
     if netcdfmodules: netcdfmodule = netcdfmodules[selectednetcdfmodule][0]
     if netcdfmodule=='Scientific.IO.NetCDF':
         try:
             nc = Scientific.IO.NetCDF.NetCDFFile(path,mode=mode)
         except Exception, e:
-            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
+            raise NetCDFError('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
     elif netcdfmodule=='netCDF4':
         try:
             nc = netCDF4.Dataset(path,mode=mode,format='NETCDF3_CLASSIC')
         except Exception, e:
-            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
+            raise NetCDFError('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
     elif netcdfmodule=='pupynere':
         nc = pupynere.NetCDFFile(path,mode=mode)
         try:
             nc = pupynere.NetCDFFile(path,mode=mode)
         except Exception, e:
-            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
+            raise NetCDFError('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
     elif netcdfmodule=='pynetcdf':
         try:
             nc = pynetcdf.NetCDFFile(path,mode=mode)
         except Exception, e:
-            raise Exception('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
+            raise NetCDFError('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
     else:
         # No NetCDF module found - raise exception.
-        raise Exception('Cannot load a module for NetCDF reading. Please install either ScientificPython, python-netcdf4 or pynetcdf.')
+        raise NetCDFError('Cannot load a module for NetCDF reading. Please install either ScientificPython, python-netcdf4 or pynetcdf.')
     return nc
 
 class ReferenceTimeParseError(Exception): pass
