@@ -2105,7 +2105,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                 # the data with a nearest-neighbor approach. This improves the elevations of interfaces.
                 # Then save the mask so we can reapply it later.
                 if hasattr(elev,'_mask'):
-                    if isinstance(elev._mask,numpy.ndarray) and numpy.any(elevmask):
+                    if isinstance(elev._mask,numpy.ndarray) and numpy.any(elev._mask):
                         mask = setmask(mask,elev._mask[:,numpy.newaxis,...])
                         elev = common.interpolateEdges(elev,dims=(1,2))
                         elevmask = elev._mask
