@@ -3,5 +3,5 @@
 	<element name="FigureSettings">
 		<link path="[xmlplot]/schemas/figure/0003.schema" minOccurs="0" maxOccurs="unbounded"/>
 	</element>
-	<link path="../report/gotmgui.xml"/>
+	<link path="../report/gotmgui.schema"/>
 </element>

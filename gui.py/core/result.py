@@ -13,7 +13,7 @@ class ResultProperties(xmlstore.xmlstore.TypedStore):
     """
 
     def __init__(self,valueroot=None,adddefault = True,schema=None):
-        if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/result/gotmgui.xml')
+        if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/result/gotmgui.schema')
         xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
     @classmethod

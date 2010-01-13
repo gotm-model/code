@@ -48,7 +48,7 @@ class Report(xmlstore.util.referencedobject):
     def __init__(self,defaultfont=None):
         xmlstore.util.referencedobject.__init__(self)
         
-        reportschema = os.path.join(common.getDataRoot(),'schemas/report/gotmgui.xml')
+        reportschema = os.path.join(common.getDataRoot(),'schemas/report/gotmgui.schema')
         self.store = xmlstore.xmlstore.TypedStore(reportschema)
 
         self.defaultstore = xmlstore.xmlstore.TypedStore(reportschema)

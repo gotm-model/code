@@ -2407,7 +2407,7 @@ class SchemaInfo(object):
             fullpath = os.path.join(dirpath,name)
             if os.path.isfile(fullpath):
                 (basename,ext) = os.path.splitext(name)
-                if ext in ('.xml','.schema'): self.getSchemas()[basename] = fullpath
+                if ext=='.schema': self.getSchemas()[basename] = fullpath
 
     def addConverters(self,dirpath):
         assert os.path.isdir(dirpath),'Provided path "%s" must be a directory.' % dirpath

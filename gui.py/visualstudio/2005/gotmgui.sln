@@ -21,7 +21,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schemas", "schemas", "{9B09
 		Release.AspNetCompiler.Debug = "False"
 	EndProjectSection
 	ProjectSection(SolutionItems) = preProject
-		..\..\schemas\outputtree.xml = ..\..\schemas\outputtree.xml
+		..\..\schemas\outputtree.schema = ..\..\schemas\outputtree.schema
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "report", "report", "{1B98823E-819F-46B0-950F-A1F2993538AD}"
@@ -30,7 +30,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "report", "report", "{1B9882
 		Release.AspNetCompiler.Debug = "False"
 	EndProjectSection
 	ProjectSection(SolutionItems) = preProject
-		..\..\schemas\report\gotmgui.xml = ..\..\schemas\report\gotmgui.xml
+		..\..\schemas\report\gotmgui.schema = ..\..\schemas\report\gotmgui.schema
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "result", "result", "{CDBA7004-02BA-40A3-9F2A-D7A10F701220}"
@@ -39,7 +39,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "result", "result", "{CDBA70
 		Release.AspNetCompiler.Debug = "False"
 	EndProjectSection
 	ProjectSection(SolutionItems) = preProject
-		..\..\schemas\result\gotmgui.xml = ..\..\schemas\result\gotmgui.xml
+		..\..\schemas\result\gotmgui.schema = ..\..\schemas\result\gotmgui.schema
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scenario", "scenario", "{4481907A-5850-4BAC-94F2-23E2FC5BB33B}"
@@ -48,12 +48,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scenario", "scenario", "{44
 		Release.AspNetCompiler.Debug = "False"
 	EndProjectSection
 	ProjectSection(SolutionItems) = preProject
-		..\..\schemas\scenario\gotm-3.2.4.xml = ..\..\schemas\scenario\gotm-3.2.4.xml
-		..\..\schemas\scenario\gotm-3.3.2.xml = ..\..\schemas\scenario\gotm-3.3.2.xml
-		..\..\schemas\scenario\gotm-4.0.0.xml = ..\..\schemas\scenario\gotm-4.0.0.xml
+		..\..\schemas\scenario\gotm-3.2.4.schema = ..\..\schemas\scenario\gotm-3.2.4.schema
+		..\..\schemas\scenario\gotm-3.3.2.schema = ..\..\schemas\scenario\gotm-3.3.2.schema
+		..\..\schemas\scenario\gotm-4.0.0.schema = ..\..\schemas\scenario\gotm-4.0.0.schema
 		..\..\schemas\scenario\gotm-4.1.0.defaults = ..\..\schemas\scenario\gotm-4.1.0.defaults
-		..\..\schemas\scenario\gotm-4.1.0.xml = ..\..\schemas\scenario\gotm-4.1.0.xml
-		..\..\schemas\scenario\gotmgui-0.5.0.xml = ..\..\schemas\scenario\gotmgui-0.5.0.xml
+		..\..\schemas\scenario\gotm-4.1.0.schema = ..\..\schemas\scenario\gotm-4.1.0.schema
+		..\..\schemas\scenario\gotmgui-0.5.0.schema = ..\..\schemas\scenario\gotmgui-0.5.0.schema
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "settings", "settings", "{C9C26D7C-F213-41C1-91AC-0313D612391E}"
@@ -62,7 +62,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "settings", "settings", "{C9
 		Release.AspNetCompiler.Debug = "False"
 	EndProjectSection
 	ProjectSection(SolutionItems) = preProject
-		..\..\schemas\settings\gotmgui.xml = ..\..\schemas\settings\gotmgui.xml
+		..\..\schemas\settings\gotmgui.schema = ..\..\schemas\settings\gotmgui.schema
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "util", "util", "{B352B739-F677-4F20-A890-51CEA0CD2086}"
