@@ -1201,9 +1201,7 @@
 				<option label="Fasham et al. (1990)"  description="Fasham et al. (1990) (7 variables)" value="4"/>
         <option label="NPZD_Fe"               description="NPZD_Fe biological model"           value="7"/>
 				<option label="photo-reponse model"   description="adaption model according to Nagai et al. (2003)" value="20"/>
-                                <option label="Chlorine decay model"   description="Chlorine decay model (CEFAS or Wang et al.)" value="8"/>
-                                <option label="Chlorine decay model"   description="Chlorine decay model (CEFAS or Wang et al.)" value="8"/>
-                                <option label="Chlorine decay model"   description="Chlorine decay model (CEFAS or Wang et al.)" value="8"/>
+        <option label="Chlorine decay model"   description="Chlorine decay model (CEFAS or Wang et al.)" value="8"/>
 			</options>
 			
 			<link name="bio_npzd" path="[gotmsrc]/extras/bio/npzd/metadata/gui-001.schema" grouponly="True">

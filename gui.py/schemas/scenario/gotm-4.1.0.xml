@@ -1173,8 +1173,6 @@
 					<option label="NPZD_Fe"               description="NPZD_Fe biological model"           value="7"/>
 					<option label="photo-reponse model"   description="adaption model according to Nagai et al. (2003)" value="20"/>
 					<option label="chlorine decay"        description="cl (2 variables)"                   value="8" />
-					<option label="chlorine decay"        description="cl (2 variables)"                   value="8" />
-					<option label="chlorine decay"        description="cl (2 variables)"                   value="8" />
 				</options>
 			</element>
 			<element name="bio_eulerian" type="bool" label="state variables are Eulerian">
