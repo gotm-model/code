@@ -135,9 +135,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "figure", "figure", "{E25CD9
 		Release.AspNetCompiler.Debug = "False"
 	EndProjectSection
 	ProjectSection(SolutionItems) = preProject
-		..\..\xmlplot\schemas\figure\0001.xml = ..\..\xmlplot\schemas\figure\0001.xml
-		..\..\xmlplot\schemas\figure\0002.xml = ..\..\xmlplot\schemas\figure\0002.xml
-		..\..\xmlplot\schemas\figure\0003.xml = ..\..\xmlplot\schemas\figure\0003.xml
+		..\..\xmlplot\schemas\figure\0001.schema = ..\..\xmlplot\schemas\figure\0001.schema
+		..\..\xmlplot\schemas\figure\0002.schema = ..\..\xmlplot\schemas\figure\0002.schema
+		..\..\xmlplot\schemas\figure\0002_0003.converter = ..\..\xmlplot\schemas\figure\0002_0003.converter
+		..\..\xmlplot\schemas\figure\0003.schema = ..\..\xmlplot\schemas\figure\0003.schema
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "datafilecache", "datafilecache", "{10A4F0A0-9287-4C21-93F1-22BA1F540459}"
@@ -146,7 +147,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "datafilecache", "datafileca
 		Release.AspNetCompiler.Debug = "False"
 	EndProjectSection
 	ProjectSection(SolutionItems) = preProject
-		..\..\xmlplot\schemas\datafilecache\0001.xml = ..\..\xmlplot\schemas\datafilecache\0001.xml
+		..\..\xmlplot\schemas\datafilecache\0001.schema = ..\..\xmlplot\schemas\datafilecache\0001.schema
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "converters", "converters", "{7F94F549-7EBA-49C5-9B5A-1973D64666F0}"
@@ -175,7 +176,7 @@ Global
 		{C9C26D7C-F213-41C1-91AC-0313D612391E} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{7F94F549-7EBA-49C5-9B5A-1973D64666F0} = {4481907A-5850-4BAC-94F2-23E2FC5BB33B}
 		{2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2} = {ED14B761-93AA-4FA8-8E62-2EAD150852E8}
-		{10A4F0A0-9287-4C21-93F1-22BA1F540459} = {ED14B761-93AA-4FA8-8E62-2EAD150852E8}
 		{E25CD9E2-4661-4402-9E28-33ED4336CEFA} = {2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2}
+		{10A4F0A0-9287-4C21-93F1-22BA1F540459} = {2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2}
 	EndGlobalSection
 EndGlobal

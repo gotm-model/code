@@ -319,7 +319,7 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
         return xmlstore.xmlstore.schemainfocache[os.path.join(common.getDataRoot(),'schemas/figure')]
 
     def __init__(self,valueroot=None,adddefault = True,schema=None):
-        if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/figure/0003.xml')
+        if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/figure/0003.schema')
         xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
         
     @classmethod

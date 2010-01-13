@@ -471,7 +471,7 @@ class LinkedFileVariableStore(common.VariableStore,xmlstore.datatypes.DataFileEx
             return xmlstore.xmlstore.schemainfocache[os.path.join(common.getDataRoot(),'schemas/datafilecache')]
 
         def __init__(self,valueroot=None,adddefault = True,schema=None):
-            if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/datafilecache/0001.xml')
+            if schema is None: schema = os.path.join(common.getDataRoot(),'schemas/datafilecache/0001.schema')
             xmlstore.xmlstore.TypedStore.__init__(self,schema,valueroot,adddefault=adddefault)
 
     class LinkedFileVariable(common.Variable):
