@@ -230,6 +230,8 @@ def copyNode(sourcenode,newparent,targetdoc=None,name=None,before=None):
             cpy.setAttribute(key,sourcenode.getAttribute(key))
     elif sourcenode.nodeType==sourcenode.TEXT_NODE:
         cpy = targetdoc.createTextNode(sourcenode.data)
+    elif sourcenode.nodeType==sourcenode.COMMENT_NODE:
+		pass
     else:
         print 'WARNING: do not know how to copy node with type %s. Skipping...' % sourcenode.nodeType
         
