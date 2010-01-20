@@ -409,6 +409,15 @@ def main(options,args):
         print 'PyQt4 version: %s' % QtCore.PYQT_VERSION_STR
         print 'Qt version: %s' % QtCore.qVersion()
         core.common.verbose = True
+
+    if options.nc is not None:
+        import xmlplot.data
+        if xmlplot.data.selectednetcdfmodule is None: xmlplot.data.chooseNetCDFModule()
+        for xmlplot.data.selectednetcdfmodule,(m,v) in enumerate(xmlplot.data.netcdfmodules):
+            if m==options.nc: break
+        else:
+            print 'Forced NetCDF module "%s" is not available. Available modules: %s.' % (options.nc,', '.join([m[0] for m in xmlplot.data.netcdfmodules]))
+            sys.exit(2)
 	
     # Create the application and enter the main message loop.
     createQApp = QtGui.QApplication.startingUp()
@@ -504,7 +513,9 @@ if (__name__=='__main__'):
     parser.add_option('-v','--verbose',action='store_true',help='writes debug strings to standard output.')
     parser.add_option('-p','--profile',action='store_true',help='activates profiling.')
     parser.add_option('-d','--debug',action='store_true',help='activates debugging (e.g., reference counting).')
-    parser.set_defaults(profile=False,showoptions=False,verbose=False,debug=False)
+    if not hasattr(sys,'frozen'):
+        parser.add_option('--nc', type='string', help='NetCDF module to use')
+    parser.set_defaults(profile=False,showoptions=False,verbose=False,debug=False,nc=None)
     (options, args) = parser.parse_args()
     
     if options.debug: xmlstore.util.referencedobject.checkreferences = True
