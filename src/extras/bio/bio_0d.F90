@@ -1,4 +1,4 @@
-!$Id: bio_0d.F90,v 1.9 2009-05-10 18:34:50 jorn Exp $
+!$Id: bio_0d.F90,v 1.10 2010-01-20 16:57:51 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -191,7 +191,7 @@
 !  Original author(s): Jorn Bruggeman
 
 ! !LOCAL VARIABLES:
-   integer :: i,j,ioffset
+   integer :: j,ioffset
 
 !EOP
 !-----------------------------------------------------------------------
@@ -369,7 +369,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer :: i,j
+   integer :: i
    REALTYPE :: zz,bioext
 
 !EOP
@@ -417,7 +417,7 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer :: ind,i,j
+   integer :: ind,i
    REALTYPE :: bioext
 
 !EOP
@@ -568,7 +568,6 @@
 !
 ! !LOCAL VARIABLES:
    integer                    :: i,j,ind
-   REALTYPE                   :: bioext
 !EOP
 !-----------------------------------------------------------------------
 !BOC
