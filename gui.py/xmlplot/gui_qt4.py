@@ -379,7 +379,6 @@ class FigurePanel(QtGui.QWidget):
         # Create MatPlotLib canvas (Qt-backend) attached to our MatPlotLib figure.
         self.canvas = FigureCanvas(self.mplfigure)
         self.canvas.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
-        self.canvas.setMinimumSize(300,250)
         self.connect(self.canvas, QtCore.SIGNAL('afterResize()'), self.afterCanvasResize)
 
         # Create our figure that encapsulates MatPlotLib figure.
