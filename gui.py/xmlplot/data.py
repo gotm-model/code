@@ -123,9 +123,8 @@ def getNetCDFFile(path,mode='r'):
         except Exception, e:
             raise NetCDFError('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
     elif netcdfmodule=='pupynere':
-        nc = pupynere.NetCDFFile(path,mode=mode)
         try:
-            nc = pupynere.NetCDFFile(path,mode=mode)
+            nc = pupynere.NetCDFFile(path,mode=mode,mmap=False)
         except Exception, e:
             raise NetCDFError('An error occured while opening the NetCDF file "%s": %s' % (path,str(e)))
     elif netcdfmodule=='pynetcdf':
