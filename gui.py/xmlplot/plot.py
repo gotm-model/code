@@ -999,7 +999,7 @@ class Figure(xmlstore.util.referencedobject):
                     V = varslices[1].data
                     defaultseriesnode['UseColorMap'].setValue(False)
                     if seriesnode['UseColorMap'].getValue(usedefault=True):
-                        C = numpy.ma.absolute(U+V*1j)
+                        C = numpy.sqrt(U*U+V*V)
                         cname = 'arrowlength'
                         cinfo = {'label':'arrow length',
                                  'unit':'',
@@ -1449,26 +1449,28 @@ class Figure(xmlstore.util.referencedobject):
                     
                     # Calculate velocities (needed for arrow auto-scaling)
                     vel = C
-                    if vel is None: vel = numpy.ma.absolute(U+V*1j)
+                    if vel is None: vel = numpy.sqrt(U*U+V*V)
                     keylength = numpy.abs(U).max()
 
-                    # Get combined mask of U,V and (optionally) C
-                    mask = None
-                    def addmask(mask,newmask):
-                        if mask is None:
-                            mask = numpy.empty(U.shape,dtype=numpy.bool)
-                            mask.fill(False)
-                        return numpy.logical_or(mask,newmask)
-                    if hasattr(U,'_mask'): mask = addmask(mask,U._mask)
-                    if hasattr(V,'_mask'): mask = addmask(mask,V._mask)
-                    if C is not None and hasattr(C,'_mask'): mask = addmask(mask,C._mask)
-                    
-                    # Quiver with masked arrays has bugs in MatPlotlib 0.98.5
-                    # Therefore we mask here only the color array, making sure that its mask combines
-                    # the masks of U,V,C.
-                    if mask is not None:
-                        if C is not None: C = numpy.ma.masked_where(mask,C,copy=False)
-                        U,V = U.filled(0.),V.filled(0.)
+                    remove_UV_mask = False
+                    if remove_UV_mask:
+                        # Get combined mask of U,V and (optionally) C
+                        mask = None
+                        def addmask(mask,newmask):
+                            if mask is None:
+                                mask = numpy.empty(U.shape,dtype=numpy.bool)
+                                mask.fill(False)
+                            return numpy.logical_or(mask,newmask)
+                        if hasattr(U,'_mask'): mask = addmask(mask,U._mask)
+                        if hasattr(V,'_mask'): mask = addmask(mask,V._mask)
+                        if C is not None and hasattr(C,'_mask'): mask = addmask(mask,C._mask)
+                        
+                        # Quiver with masked arrays has bugs in MatPlotlib 0.98.5
+                        # Therefore we mask here only the color array, making sure that its mask combines
+                        # the masks of U,V,C.
+                        if mask is not None:
+                            if C is not None: C = numpy.ma.masked_where(mask,C,copy=False)
+                            U,V = U.filled(0.),V.filled(0.)
                             
                     scale = seriesnode['ArrowScale'].getValue(usedefault=True)
                     width = seriesnode['ArrowWidth'].getValue(usedefault=True)
