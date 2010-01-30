@@ -1319,13 +1319,14 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           if reassign:
               # Re-assign dimensions based on the "coordinates" attribute of the variable.
               if hasattr(ncvar,'coordinates'):
-                coords = reversed(ncvar.coordinates.split())
-                coordsdims = nc.variables[coords[0]].dimensions
-                inextcoorddim = 0
-                for irdim,rdim in enumerate(rawdims):
-                    if rdim in coordsdims:
-                        rawdims[irdim] = coordsdims[inextcoorddim]
-                        inextcoorddim += 1
+                coords = tuple(reversed(ncvar.coordinates.split()))
+                if coords[0] in nc.variables:
+                    coordsdims = nc.variables[coords[0]].dimensions
+                    inextcoorddim = 0
+                    for irdim,rdim in enumerate(rawdims):
+                        if rdim in coordsdims:
+                            rawdims[irdim] = coordsdims[inextcoorddim]
+                            inextcoorddim += 1
                         
               # Re-assign dimensions based on globally specified re-assignments
               for idim,dim in enumerate(rawdims):
