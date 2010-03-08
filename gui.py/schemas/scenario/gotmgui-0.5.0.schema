@@ -1235,11 +1235,6 @@
 				<condition type="eq" variable="." value="8" />
 			</link>
 
-
-			<link name="bio_cl" path="[gotmsrc]/extras/bio/cl/metadata/gui-001.schema" grouponly="True">
-				<condition type="eq" variable="." value="8" />
-			</link>
-
 		</element>
 		<element name="bio_eulerian" type="bool" label="state variables are Eulerian">
 			<condition type="ne" variable="./bio_model" value="0"/>
