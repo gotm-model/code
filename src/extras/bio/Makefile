@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.28 2009-11-20 08:16:56 kb Exp $
+#$Id: Makefile,v 1.29 2010-03-08 10:58:52 hb Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
@@ -12,6 +12,7 @@ DOCSRC	=  bio.F90                   \
            npzd/bio_npzd.F90         \
            fasham/bio_fasham.F90     \
            iow/bio_iow.F90           \
+           mangan/bio_mangan.F90     \
            photo/bio_photo.F90       \
            bio_fluxes.F90            \
            bio_alloc_info.F90        \
@@ -23,7 +24,7 @@ ${LIB}(bio_alloc_info.o)        \
 ${LIB}(bio_fluxes.o)		\
 ${LIB}(bio_types.o)
 
-OBJ2   = 
+OBJ2   =
 ifneq ($(NO_0D_BIO),true)
 OBJ2   += \
 ${LIB}(bio_0d_gen.o)		\
@@ -40,9 +41,10 @@ ${LIB}(bio.o)
 #BIO_SED=false
 #BIO_FASHAM=false
 BIO_MAB=false
-#BIO_ROLM=false
+BIO_ROLM=false
 #BIO_NPZD_FE=false
 #BIO_PHOTO=false
+#BIO_MANGAN=false
 
 ifneq ($(BIO_TEMPLATE),false)
 SUBDIRS += template
@@ -106,9 +108,11 @@ SUBDIRS += photo
 DEFINES += -DBIO_PHOTO
 endif
 
-
-
-
+ifneq ($(BIO_MANGAN),false)
+DOCSRC  += mangan/bio_mangan.F90
+SUBDIRS += mangan
+DEFINES += -DBIO_MANGAN
+endif
 
 all: $(OBJ1) OBJS $(OBJ2)
 	$(MOVE_MODULES_COMMAND)

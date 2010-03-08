@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.53 2009-11-20 08:16:56 kb Exp $
+!$Id: bio.F90,v 1.54 2010-03-08 10:58:52 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -75,6 +75,11 @@
    use bio_photo, only : do_bio_photo_eul,do_bio_photo_par
 #endif
 
+#ifdef BIO_MANGAN
+   use bio_mangan, only : init_bio_mangan,init_var_mangan
+   use bio_mangan, only : light_mangan, do_bio_mangan
+#endif
+
 #if 0
    use mussels, only : init_mussels, do_mussels, end_mussels
    use mussels, only : mussels_calc,total_mussel_flux
@@ -99,11 +104,22 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.54  2010-03-08 10:58:52  hb
+!  Simple maganese model added, see subdir extras/bio/mangan/
+!
 !  Revision 1.53  2009-11-20 08:16:56  kb
 !  allow compilation excluding 0D BIO framework - set in Rules.make
 !
 !  Revision 1.52  2009-11-11 13:08:54  kb
 !  added chlorination model - Rennau
+!
+!  $Log: bio.F90,v $
+!  Revision 1.54  2010-03-08 10:58:52  hb
+!  Simple maganese model added, see subdir extras/bio/mangan/
+!
+!  Revision 1.51  2009-10-30 13:03:02  hb
+!  Liss and Merlivat relationship for the piston velocity + Weiss formula
+!  for saturation oxygen included into bio_iow by Adolf Stips
 !
 !  Revision 1.50  2009-10-21 08:02:07  hb
 !  Fluff layer resuspension added.
@@ -262,7 +278,6 @@
    integer                   :: ode_method=1
    integer                   :: split_factor=1
    logical                   :: bioshade_feedback=.true.
-
 
    contains
 
@@ -426,6 +441,18 @@
 #else
          FATAL "bio_cl not compiled!!"
          FATAL "set environment variable BIO_CL different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+
+      case (10) ! The MANGAN model
+#ifdef BIO_MANGAN
+
+         call init_bio_mangan(namlst,'bio_mangan.nml',unit)
+
+#else
+         FATAL "bio_mangan not compiled!!"
+         FATAL "set environment variable BIO_MANGAN different from false"
          FATAL "and re-compile"
          stop "init_bio()"
 #endif
@@ -691,6 +718,19 @@
          FATAL "and re-compile"
          stop "init_bio()"
 #endif
+
+      case (10) ! The MANGAN model
+#ifdef BIO_MANGAN
+
+         call init_var_mangan
+
+#else
+         FATAL "bio_npzd not compiled!!"
+         FATAL "set environment variable BIO_MANGAN different from false"
+         FATAL "and re-compile"
+         stop "init_bio()"
+#endif
+
       case (20)  ! PHOTO (adaption model according to Nagai et al. (2003)
 #ifdef BIO_PHOTO
 
@@ -1006,6 +1046,10 @@
       call surface_fluxes_npzd_fe(nlev)
 #endif
    case (8)
+
+   case (10)
+      vars_zero_d=3
+
 #ifndef NO_0D_BIO
    case (1000:)
       call surface_fluxes_0d(nlev,t(nlev),s(nlev))
@@ -1077,6 +1121,11 @@
       case (8)
 #ifdef BIO_CL
          call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_cl)
+#endif
+      case (10)
+#ifdef BIO_MANGAN
+         call light_mangan(nlev,bioshade_feedback)
+         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_mangan)
 #endif
 #ifndef NO_0D_BIO
       case (1000:)

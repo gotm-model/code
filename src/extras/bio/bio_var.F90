@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.15 2009-11-11 13:08:54 kb Exp $
+!$Id: bio_var.F90,v 1.16 2010-03-08 10:58:52 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,7 @@
    integer, parameter                           :: ERGOM_MAB=5
    integer, parameter                           :: ROLM=6
    integer, parameter                           :: CL=8
+   integer, parameter                           :: MANGAN=10
    integer, parameter                           :: PHOTO=20
 
 !  time parameters
@@ -104,6 +105,9 @@
 !  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
+!  Revision 1.16  2010-03-08 10:58:52  hb
+!  Simple maganese model added, see subdir extras/bio/mangan/
+!
 !  Revision 1.15  2009-11-11 13:08:54  kb
 !  added chlorination model - Rennau
 !
