@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.22 2009-11-20 08:16:56 kb Exp $
+#$Id: Rules.make,v 1.23 2010-04-12 12:35:53 kb Exp $
 
 SHELL   = /bin/sh
 
@@ -22,8 +22,8 @@ SEAGRASS=false
 SEAGRASS=true
 BIO=false
 BIO=true
-NO_0D_BIO=true
 NO_0D_BIO=false
+NO_0D_BIO=true
 
 FEATURES	=
 FEATURE_LIBS	=
@@ -37,6 +37,15 @@ ifeq ($(NetCDF),true)
 
 DEFINES += -DNETCDF_FMT
 
+ifeq ($(NETCDF_VERSION),NETCDF4)
+
+DEFINES         += -DNETCDF4
+INCDIRS         += $(shell nc-config --fflags)
+NETCDFLIB       =  $(shell nc-config --flibs)
+
+else  # NetCDF3 is default
+
+DEFINES         += -DNETCDF3
 ifdef NETCDFINC
 INCDIRS         += -I$(NETCDFINC)
 endif
@@ -48,26 +57,12 @@ endif
 ifdef NETCDFLIBNAME
 NETCDFLIB       = $(NETCDFLIBNAME)
 else
-NETCDFLIB       = -lnetcdf -lnetcdff
+NETCDFLIB       = -lnetcdf
 endif
-
-ifeq ($(NETCDF_VERSION),NETCDF4)
-
-DEFINES         += -DNETCDF4
-ifdef HDF5_DIR
-INCDIRS         += -I$(HDF5_DIR)/include
-LINKDIRS        += -L$(HDF5_DIR)/lib
-endif
-HDF5LIB         = -lhdf5_hl -lhdf5 -lz
-
-else  # NetCDF3 is default
-
-DEFINES         += -DNETCDF3
-HDF5LIB         =
 
 endif
 
-EXTRA_LIBS      += $(NETCDFLIB) $(HDF5LIB)
+EXTRA_LIBS      += $(NETCDFLIB)
 
 endif
 # NetCDF/HDF configuration done
