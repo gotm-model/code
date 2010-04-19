@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.5 2010-04-19 07:38:48 hb Exp $
+!$Id: bio_iow.F90,v 1.6 2010-04-19 13:36:30 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.6  2010-04-19 13:36:30  hb
+!  Phosphate release of detritus mineralisation added to PROTEX documentation
+!
 !  Revision 1.5  2010-04-19 07:38:48  hb
 !  posconc for O2 set to 1 to guarantee stability
 !
@@ -961,6 +964,11 @@
 ! Zooplankton exudation into phosphorus:
 ! \begin{equation}\label{neu_p84}
 ! p_{8,4}=s_R d_{4,6}.
+! \end{equation}
+!
+! Phosphate release due to detritus mineralisation:
+! \begin{equation}\label{neu_p85}
+! p_{8,5}=s_R d_{5,6}.
 ! \end{equation}
 ! 
 ! Oxygen production due to ammonium uptake by phytoplankton classes $c_i$, $i=1,2$and nitrification of ammonium into nitrate:
