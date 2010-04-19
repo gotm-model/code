@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.4 2009-10-30 13:03:02 hb Exp $
+!$Id: bio_iow.F90,v 1.5 2010-04-19 07:38:48 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.5  2010-04-19 07:38:48  hb
+!  posconc for O2 set to 1 to guarantee stability
+!
 !  Revision 1.4  2009-10-30 13:03:02  hb
 !  Liss and Merlivat relationship for the piston velocity + Weiss formula for saturation oxygen included into bio_iow by Adolf Stips
 !
@@ -443,7 +446,7 @@
    posconc(am) = 1
    posconc(ni) = 1
    posconc(po) = 1
-   posconc(o2) = 0
+   posconc(o2) = 1
 
 #if 0
    mussels_inhale(p1) = .true.
