@@ -2,10 +2,10 @@
 <bio_mangan version="nml-001">
         <bio_mangan_nml>
                 <numc>6</numc>
-                <mnO_ini>5.</mno_ini>
+                <mnO_ini>5.</mnO_ini>
                 <mn2_ini>5.</mn2_ini>
                 <spm_ini>0.1</spm_ini>
-                <mnO_sed_ini>0.1</mno_sed_ini>
+                <mnO_sed_ini>0.1</mnO_sed_ini>
                 <mn2_sed_ini>0.1</mn2_sed_ini>
                 <spm_sed_ini>2.0</spm_sed_ini>
                 <r_ox>0.1</r_ox>

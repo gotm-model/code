@@ -1194,14 +1194,15 @@
 	<element name="bio" label="biogeochemistry" optional="True">
 		<element name="bio_model" type="int" label="biogeochemical model">
 			<options>
-        <option label="none"                  description="no biogeochemical model"            value="0"/>
-        <option label="NPZD"                  description="NPZD (4 variables)"                 value="1"/>
-				<option label="IOW-ERGOM"             description="IOW-ERGOM (4 variables)"            value="2"/>
-				<option label="Suspended matter only" description="Suspended matter only (1 variable)" value="3"/>
-				<option label="Fasham et al. (1990)"  description="Fasham et al. (1990) (7 variables)" value="4"/>
-        <option label="NPZD_Fe"               description="NPZD_Fe biological model"           value="7"/>
-				<option label="photo-reponse model"   description="adaption model according to Nagai et al. (2003)" value="20"/>
-        <option label="Chlorine decay model"  description="Chlorine decay model (CEFAS or Wang et al.)" value="8"/>
+        			<option label="none"			description="no biogeochemical model"			value="0"/>
+        			<option label="NPZD"			description="NPZD (4 variables)"			value="1"/>
+				<option label="IOW-ERGOM"		description="IOW-ERGOM (4 variables)"			value="2"/>
+				<option label="Suspended matter only"	description="Suspended matter only"			value="3"/>
+				<option label="Fasham et al. (1990)"	description="Fasham et al. (1990) (7 variables)"	value="4"/>
+        			<option label="NPZD_Fe"			description="NPZD_Fe biological model"			value="7"/>
+				<option label="photo-reponse model"	description="adaption model according to Nagai et al. (2003)" value="20"/>
+        			<option label="Chlorine decay model"	description="Chlorine decay model (CEFAS or Wang et al.)" value="8"/>
+				<option label="Mangan"			description="Mangan"					value="10"/>
 			</options>
 			
 			<link name="bio_npzd" path="[gotmsrc]/extras/bio/npzd/metadata/gui-001.schema" grouponly="True">
@@ -1226,13 +1227,14 @@
 
 			<link name="bio_photo" path="[gotmsrc]/extras/bio/photo/metadata/nml-001.schema" grouponly="True">
 				<condition type="eq" variable="." value="20" />
+			</link>
+
 			<link name="bio_cl" path="[gotmsrc]/extras/bio/cl/metadata/gui-001.schema" grouponly="True">
 				<condition type="eq" variable="." value="8" />
 			</link>
 
-			</link>
-			<link name="bio_cl" path="[gotmsrc]/extras/bio/cl/metadata/gui-001.schema" grouponly="True">
-				<condition type="eq" variable="." value="8" />
+			<link name="bio_mangan" path="[gotmsrc]/extras/bio/mangan/metadata/gui-001.schema" grouponly="True">
+				<condition type="eq" variable="." value="10" />
 			</link>
 
 		</element>

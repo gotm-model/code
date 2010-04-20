@@ -3,8 +3,5 @@
 	<links>
 		<link source="/bio_mangan_nml" target="/params"/>
 		<link source="/bio_mangan_nml" target="/iniconcs"/>
-		<link source="/bio_mangan_nml" target="/minconcs"/>
-		<link source="/bio_mangan_nml" target="/settling"/>
-		<link source="/bio_mangan_nml" target="/light"/>
 	</links>
 </converter>
