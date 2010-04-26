@@ -5,10 +5,18 @@ import util
 types = {}
 
 def register(name,datatype):
+    """Register a new data type by coupling a name (used in XML "datatype" attributes in schemas)
+    to a data type class. The calss must inherit from datatypes.DataType.
+    """
+    assert issubclass(datatype,DataType), 'New data types must inherit from datatypes.DataType.'
     assert name not in types, 'Data type %s has already been registered.' % datatype
     types[name] = datatype
 
 def get(name):
+    """Obtain the data type class registered to the given data type name.
+    This essentially is a simple dictionary lookup, but it also can generate new
+    data type classes on the spot for data type names that meet the "array(...)" template.
+    """
     if name not in types and name.startswith('array(') and name.endswith(')'):
         # This is an array data type. Build a suitable class on the spot.
         basename = name[6:-1]
@@ -218,6 +226,28 @@ class DataTypeArray(DataType,list):
         shape = template.getAttribute('shape').split(',')
         cleandata = self.getSafeValue(self,recursive=True,shape=shape)
         return makeAssignment(cleandata,shape,[])
+
+    @classmethod
+    def fromXmlString(ownclass,string,context,template=None):
+        """Loads the array from a comma-separated string.
+        
+        Note: this is not actually used in XML values files, because array elements are stored in individual
+        XML elements through the load/save methods. However, this method is used by scripts that take data
+        values from strings (command line arguments, environmental variables). Hence its existence, but the
+        name is far from perfect...
+        """
+        strings = string.split(',')
+        if template is not None and template.hasAttribute('shape'):
+            shape = template.getAttribute('shape').split(',')
+            assert len(shape)==1,'Cannot assign values to arrays with more than 1 dimension through a comma-separated string.'
+            n = int(shape[0])
+            if len(strings)<n: strings += [None]*(n-len(strings))
+            strings = strings[:n]
+        data = []
+        for item in strings:
+            if item is not None: item = ownclass.elementclass.fromXmlString(item,context,template)
+            data.append(item)
+        return ownclass(data,template=template)
 
     @classmethod
     def fromNamelistString(ownclass,strings,context,template=None):
