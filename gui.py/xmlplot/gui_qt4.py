@@ -127,7 +127,7 @@ class ColorMapEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
         self.model = ColorMapEditor.Model(self.items,self)
         self.setModel(self.model)
         self.view().setUniformItemSizes(True)
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
+        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
         self.setIconSize(QtCore.QSize(100.,10.))
                 
     def value(self):
@@ -235,7 +235,7 @@ class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
         ret = dialog.exec_()
         if ret == QtGui.QDialog.Accepted:
             self.linkedfile = dialog.linkedfile
-            self.editingFinished(forceclose=True)
+            self.onPropertyEditingFinished(forceclose=True)
         dialog.destroy()
             
     def destroy(self):

@@ -105,7 +105,7 @@ class AbstractPropertyEditor(object):
     """Abstract class for editing the value of a node in the TypedStore.
     Methods value and setValue must be implemented by inheriting classes.
 
-    Also, these classes must call editingFinished after the user has changed
+    Also, these classes must call onPropertyEditingFinished after the user has changed
     the value in the editor. The moment where this should happen will differ
     between editors: a line edit control should not call it while the user
     is still changing the string - it must therefore call it only after the
@@ -119,7 +119,7 @@ class AbstractPropertyEditor(object):
         pass
     def value(self):
         pass
-    def editingFinished(self,*args,**kwargs):
+    def onPropertyEditingFinished(self,*args,**kwargs):
         self.emit(QtCore.SIGNAL('propertyEditingFinished(QObject&,bool)'),self,kwargs.get('forceclose',False))
            
     # Optional (static) methods that classes should implement if the value can
@@ -167,7 +167,7 @@ class StringEditor(AbstractPropertyEditor,QtGui.QLineEdit):
     def __init__(self,parent,node,**kwargs):
         QtGui.QLineEdit.__init__(self,parent)
         AbstractPropertyEditor.__init__(self,parent,node)
-        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.editingFinished)
+        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.onPropertyEditingFinished)
         
     def value(self):
         return unicode(QtGui.QLineEdit.text(self))
@@ -204,7 +204,7 @@ class IntEditor(AbstractPropertyEditor,QtGui.QSpinBox):
             unit = node.getUnit()
             if unit is not None: self.setSuffix(' '+unit)
 
-        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.editingFinished)
+        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.onPropertyEditingFinished)
         
     def value(self):
         self.interpretText()
@@ -272,7 +272,7 @@ class SelectEditor(AbstractSelectEditor,QtGui.QComboBox):
             self.setEditable(True)
             self.setLineEdit(lineedit)
         self.populate(node)
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
+        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
         
     def populate(self,node):
         for ichild,label,description in self.getOptions():
@@ -331,7 +331,7 @@ class SelectEditorRadio(AbstractSelectEditor,QtGui.QButtonGroup):
             if description!='':
                 opt.setWhatsThis(description)
             self.addButton(opt,ichild)
-        self.connect(self, QtCore.SIGNAL('buttonClicked(int)'), self.editingFinished)
+        self.connect(self, QtCore.SIGNAL('buttonClicked(int)'), self.onPropertyEditingFinished)
 
     def value(self):
         return self.valueFromIndex(self.checkedId())
@@ -352,7 +352,7 @@ class BoolEditor(AbstractPropertyEditor,QtGui.QComboBox):
         AbstractPropertyEditor.__init__(self,parent,node)
         self.addItem('Yes',QtCore.QVariant(True ))
         self.addItem('No', QtCore.QVariant(False))
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
+        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
         
     def value(self):
         return self.itemData(self.currentIndex()).toBool()
@@ -379,7 +379,7 @@ class DateTimeEditor(AbstractPropertyEditor,QtGui.QDateTimeEdit):
     def __init__(self,parent,node,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
         AbstractPropertyEditor.__init__(self,parent,node)
-        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.editingFinished)
+        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.onPropertyEditingFinished)
         
     def value(self):
         value = self.dateTime()
@@ -421,7 +421,7 @@ class DurationEditor(QtGui.QWidget,AbstractPropertyEditor):
         
         lo.setMargin(0)
 
-        self.connect(self.spinValue,  QtCore.SIGNAL('editingFinished()'),       self.editingFinished)
+        self.connect(self.spinValue,  QtCore.SIGNAL('editingFinished()'),       self.onPropertyEditingFinished)
         self.connect(self.comboUnits, QtCore.SIGNAL('currentIndexChanged(int)'),self.onUnitChange)
 
         self.setLayout(lo)
@@ -462,7 +462,7 @@ class DurationEditor(QtGui.QWidget,AbstractPropertyEditor):
             self.spinValue.setMaximum(24.)
         elif unit==3:
             self.spinValue.setMaximum(3650.)
-        self.editingFinished()
+        self.onPropertyEditingFinished()
 
     @staticmethod
     def convertFromQVariant(value):
@@ -536,7 +536,7 @@ class ScientificDoubleEditor(QtGui.QLineEdit,AbstractPropertyEditor):
         self.curvalidator = ScientificDoubleValidator(self)
         self.setValidator(self.curvalidator)
         self.suffix = ''
-        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.editingFinished)
+        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.onPropertyEditingFinished)
 
         if node is not None:
             templatenode = node.templatenode        
@@ -614,7 +614,7 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
             if c.alpha()<255: continue
             self.addColor(cn,c)
         self.addColor('custom...',QtGui.QColor(255,255,255))
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.editingFinished)
+        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
         
     def setValue(self,value):
         if not value.isValid():
@@ -642,7 +642,7 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
         if index==self.count()-1:
             col = QtGui.QColorDialog.getColor(QtGui.QColor(self.itemData(index)),self)
             self.setItemColor(index,col)
-            self.editingFinished()
+            self.onPropertyEditingFinished()
 
     def addColor(self,text,color=None):
         if color is None:
@@ -734,7 +734,7 @@ class PrivateWindowEditor(QtGui.QWidget,AbstractPropertyEditor):
         dialog.setLayout(layout)
         
         ret = dialog.exec_()
-        self.editingFinished(forceclose=True)
+        self.onPropertyEditingFinished(forceclose=True)
         dialog.destroy()
         
 # =======================================================================
