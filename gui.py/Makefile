@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.10 2008-08-21 15:43:39 jorn Exp $
+#$Id: Makefile,v 1.11 2010-05-06 05:20:19 kb Exp $
 
 # -----------------------------------------------------------
 # Makefile for creating the Python-based GUI for GOTM
@@ -32,7 +32,7 @@
 # If this does not work, you will have to set these three variables
 # explicitly (see below).
 ifndef PYTHONVERSION
-PYTHONVERSION = python2.5
+PYTHONVERSION = python2.6
 endif
 
 # The directory that contains Python header files.
@@ -65,8 +65,9 @@ endif
 # users will need to set the NUMPYDIR environment variable before
 # running make!
 ifndef NUMPYDIR
-NUMPYDIR = /usr/local/lib/$(PYTHONVERSION)/site-packages/numpy
-NUMPYDIR = /usr/lib/$(PYTHONVERSION)/site-packages/numpy
+# note this is debian/ubuntu python package install directory
+# other distributions might choose differently - kb 2010-05-06
+NUMPYDIR = /usr/lib/$(PYTHONVERSION)/dist-packages/numpy
 endif
 
 # The directory that contains NumPy include files. Normally this can be
