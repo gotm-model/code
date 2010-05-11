@@ -4,7 +4,7 @@ FC=gfortran
 DEFINES += -DFORTRAN95
 can_do_F90=true
 F90_to_f90=
-MODULES=-M $(MODDIR)
+MODULES=-J $(MODDIR)
 EXTRAS = -ffree-form -Wall -std=f95 -pedantic
 EXTRAS = -ffree-form -Wall -std=gnu
 DEBUG_FLAGS = -g 
