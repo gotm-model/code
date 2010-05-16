@@ -353,7 +353,7 @@ class TypedStoreInterface(object):
         self.showhidden = showhidden
         self.omitgroupers = omitgroupers
         self.interfacetype = interfacetype
-        self.blockNotifyOfHiddenNodes = (not showhidden)
+        self.blockNotifyOfHiddenNodes = not showhidden
         
         # How to process changes in the default node value
         # -1: never report

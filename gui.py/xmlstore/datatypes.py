@@ -245,7 +245,10 @@ class DataTypeArray(DataType,list):
             strings = strings[:n]
         data = []
         for item in strings:
-            if item is not None: item = ownclass.elementclass.fromXmlString(item,context,template)
+            if item=='':
+                item = None
+            elif item is not None:
+                item = ownclass.elementclass.fromXmlString(item,context,template)
             data.append(item)
         return ownclass(data,template=template)
 
