@@ -230,6 +230,30 @@
 				<condition type="eq" variable="." value="True"/>
 			</element>
 		</element>
+    <element name="DrawParallels" type="bool" label="draw parallels">
+      <condition type="eq" variable="." value="True"/>
+      <element name="Parallels" type="array(float)" shape=":" label="parallels">
+        <condition type="eq" variable="." value="True"/>
+      </element>
+      <element name="Color" type="color" label="line color">
+        <condition type="eq" variable="." value="True"/>
+      </element>
+      <element name="LineWidth" type="float" label="line width">
+        <condition type="eq" variable="." value="True"/>
+      </element>
+    </element>
+    <element name="DrawMeridians" type="bool" label="draw meridians">
+      <condition type="eq" variable="." value="True"/>
+      <element name="Meridians" type="array(float)" shape=":" label="meridians">
+        <condition type="eq" variable="." value="True"/>
+      </element>
+      <element name="Color" type="color" label="line color">
+        <condition type="eq" variable="." value="True"/>
+      </element>
+      <element name="LineWidth" type="float" label="line width">
+        <condition type="eq" variable="." value="True"/>
+      </element>
+    </element>
   </element>
 
   <element name="CanHaveLegend" type="bool" hidden="True"/>
@@ -403,13 +427,20 @@
 				</condition>
 			</element>
 
-			<element name="ContourCount" type="int" label="number of contours">
+      <element name="ContourCount" type="int" label="number of contours">
 				<condition type="and">
 					<condition type="eq" variable="./Type"       value="2"/>
 					<condition type="ne" variable="./PlotType3D" value="0"/>
 				</condition>
 			</element>
-			
+
+      <element name="ContourLevels" type="array(float)" shape=":" label="contour levels">
+        <condition type="and">
+          <condition type="eq" variable="./Type"       value="2"/>
+          <condition type="ne" variable="./PlotType3D" value="0"/>
+        </condition>
+      </element>
+
       <element name="ShowEdges" type="bool" label="show edges">
 				<condition type="or">
 							

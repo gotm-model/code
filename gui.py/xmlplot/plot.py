@@ -518,6 +518,12 @@ class Figure(xmlstore.util.referencedobject):
         nodemap['DrawStates'].setValue(False)
         nodemap['DrawStates/Color'].setValue(xmlstore.datatypes.Color(0,0,0))
         nodemap['DrawStates/LineWidth'].setValue(.5)
+        nodemap['DrawParallels'].setValue(False)
+        nodemap['DrawParallels/Color'].setValue(xmlstore.datatypes.Color(0,0,0))
+        nodemap['DrawParallels/LineWidth'].setValue(.5)
+        nodemap['DrawMeridians'].setValue(False)
+        nodemap['DrawMeridians/Color'].setValue(xmlstore.datatypes.Color(0,0,0))
+        nodemap['DrawMeridians/LineWidth'].setValue(.5)
 
         # Take default figure size from value at initialization
         w,h = self.figure.get_size_inches()
@@ -1411,6 +1417,7 @@ class Figure(xmlstore.util.referencedobject):
                         if plottype3d==2 and seriesnode['UseColorMap'].getValue(usedefault=True): edgecolor = None
                         edgewidth = float(seriesnode['EdgeWidth'].getValue(usedefault=True))
                         borders,fill = (showedges or plottype3d==2),plottype3d==1
+                        
                         cc = seriesnode['ContourCount'].getValue()
                         if cc is None: cc = 7
 
@@ -1418,19 +1425,29 @@ class Figure(xmlstore.util.referencedobject):
                         if zmin is None: zmin = C.min()
                         if zmax is None: zmax = C.max()
                         lev = calculateContourLevels(cc,zmin,zmax,logscale)
-                        if not fill: lev = lev[1:-1]
                         defaultseriesnode['ContourCount'].setValue(len(lev)-2)
+                        defaultseriesnode['ContourLevels'].setValue(list(lev[1:-1]))
+                        if not fill: lev = lev[1:-1]
                         
-                        # Contour count was specified
+                        forcedlev = seriesnode['ContourLevels'].getValue()
+                        if forcedlev is not None:
+                            levcount = len(forcedlev)
+                            if fill:
+                                lev = [lev[0]]+list(forcedlev)+[lev[-1]]
+                            else:
+                                lev = forcedlev
+                            defaultseriesnode['ContourCount'].setValue(levcount)
+                        
                         if fill:
                             pc = drawaxes.contourf(X,Y,C,lev,norm=norm,zorder=zorder,cmap=cm)
+                            lev = lev[1:-1] # If we will also draw the contour lines themselves, the outside bounds must be omitted.
                         if borders:
                             if fill: zorder += 1
                             contourcm = cm
                             if edgecolor is not None: contourcm = None
-                            cpc = drawaxes.contour(X,Y,C,lev[1:-1],norm=norm,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
+                            cpc = drawaxes.contour(X,Y,C,lev,norm=norm,zorder=zorder,colors=edgecolor,linewidths=edgewidth,cmap=contourcm)
                             if edgecolor is not None: cbborders = cpc
-                            if not fill: pc = cpc
+                            if len(lev)>1 and not fill: pc = cpc
                             
                         if plottype3d==2 and edgecolor is not None: curhascolormap = False
                     else:
@@ -1556,6 +1573,16 @@ class Figure(xmlstore.util.referencedobject):
                 color = nodemap['DrawStates/Color'].getValue(usedefault=True)
                 linewidth = nodemap['DrawStates/LineWidth'].getValue(usedefault=True)
                 basemap.drawstates(color=color.getNormalized(),linewidth=linewidth)
+            if nodemap['DrawParallels'].getValue(usedefault=True):
+                parallels = nodemap['DrawParallels/Parallels'].getValue(usedefault=True)
+                color = nodemap['DrawParallels/Color'].getValue(usedefault=True)
+                linewidth = nodemap['DrawParallels/LineWidth'].getValue(usedefault=True)
+                basemap.drawparallels(parallels,color=color.getNormalized(),linewidth=linewidth,labels=[1,0,0,1],**fontpropsdict)
+            if nodemap['DrawMeridians'].getValue(usedefault=True):
+                meridians = nodemap['DrawMeridians/Meridians'].getValue(usedefault=True)
+                color = nodemap['DrawMeridians/Color'].getValue(usedefault=True)
+                linewidth = nodemap['DrawMeridians/LineWidth'].getValue(usedefault=True)
+                basemap.drawmeridians(meridians,color=color.getNormalized(),linewidth=linewidth,labels=[1,0,0,1],**fontpropsdict)
 
         # Create and store title
         title = ''
