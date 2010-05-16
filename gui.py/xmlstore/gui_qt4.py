@@ -860,7 +860,7 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
             self.properties['editorclass'].displayValue(self,painter,option,index)
         
     class Model(QtCore.QAbstractItemModel):
-        def __init__(self,data,node,editorclass):
+        def __init__(self,shape,data,node,editorclass):
             QtCore.QAbstractItemModel.__init__(self)
             if data is None: data = []
             def convert(arr):
@@ -872,9 +872,50 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
                         e = None
                     res.append(e)
                 return res
+            self.shape = shape
             self.arraydata = convert(data)
             self.editorclass = editorclass
             self.node = node
+            
+        def getDataMatrix(self):
+            nrow,ncol,hascolumns = None,None,False
+            if self.shape is not None:
+                if len(self.shape)>0 and self.shape[0] is not None: nrow = self.shape[0]
+                hascolumns = len(self.shape)>1
+                if hascolumns and self.shape[1] is not None: ncol = self.shape[1]
+            
+            if nrow is None:
+                # Count the number of rows (ignore trailing missing values)
+                nrow = len(self.arraydata)
+                for rowdata in reversed(self.arraydata):
+                    if rowdata is not None: break
+                    nrow -= 1
+                    
+            if hascolumns and ncol is None:
+                # Count the number of columns (ignore trailing missing values)
+                ncol = 0
+                for rowdata in self.arraydata[:nrow]:
+                    if rowdata is None or len(rowdata)<=ncol: continue
+                    curncol = len(rowdata)
+                    for coldata in reversed(rowdata):
+                        if coldata is not None: break
+                        curncol -= 1
+                    ncol = max(ncol,curncol)
+                
+            if not hascolumns:
+                # Take all rows except trailing missing values.
+                data = self.arraydata[:nrow]
+            else:
+                # Make sure each row has the desired number of columns, then
+                # return all except trailing missing values.
+                data = []
+                for rowdata in self.arraydata[:nrow]:
+                    if len(rowdata)<ncol:
+                        rowdata = list(rowdata)
+                        rowdata += [None]*(ncol-len(rowdata))
+                    data.append(rowdata[:ncol])
+                    
+            return data
             
         def index(self,irow,icolumn,parent=None):
             if parent is None: parent = QtCore.QModelIndex()
@@ -889,42 +930,56 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
             
             # Only the root node has children - return 0 rows if this is not the root.
             if parent.isValid(): return 0
-            return len(self.arraydata)
+            
+            l = self.shape[0]
+            if l is None: l = 256*256
+            return l
 
         def columnCount(self,parent=None):
             if parent is None: parent = QtCore.QModelIndex()
 
             # Only the root node has children - return 0 rows if this is not the root.
             if parent.isValid(): return 0
-            if not self.arraydata: return 0
+            if len(self.shape)==1: return 1
             
-            if isinstance(self.arraydata[0],(tuple,list)): return len(self.arraydata[0])
-            return 1
+            l = self.shape[1]
+            if l is None: l = 256*256
+            return l
 
         def data(self,index,role=QtCore.Qt.DisplayRole):
             if role==QtCore.Qt.DisplayRole or role==QtCore.Qt.EditRole:
                 irow = index.row()
-                val = self.arraydata[irow]
-                if isinstance(val,(tuple,list)):
-                    icol = index.column()
-                    val = val[icol]
+                val = None
+                if irow<len(self.arraydata):
+                    val = self.arraydata[irow]
+                    if len(self.shape)>1:
+                        icol = index.column()
+                        if icol<len(self.arraydata[irow]):
+                            val = val[icol]
                 if val is None: return QtCore.QVariant()
                 return self.editorclass.convertToQVariant(val)
                 
             return QtCore.QVariant()
             
         def setData(self,index,value,role=QtCore.Qt.EditRole):
-            if role!=QtCore.Qt.EditRole: return
+            if role!=QtCore.Qt.EditRole: return False
             if not value.isValid():
                 value = None
             else:
                 value = self.editorclass.convertFromQVariant(value)
             irow = index.row()
+            if irow>=len(self.arraydata):
+                self.arraydata += [None]*(irow-len(self.arraydata)+1)
             if isinstance(self.arraydata[irow],(tuple,list)):
                 icol = index.column()
+                if self.arraydata[irow] is None: self.arraydata[irow] = []
+                if icol>=len(self.arraydata[irow]):
+                    self.arraydata[irow] += [None]*(icol-len(self.arraydata[irow])+1)
                 self.arraydata[irow][icol] = value
             else:
                 self.arraydata[irow] = value
+            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),index,index)
+            return True
 
         def flags(self,index):
             return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
@@ -934,20 +989,37 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
         self.setItemDelegate(self.Delegate(self,editorclass=self.elementeditorclass,**kwargs))
         self.node = node
         self.datamodel = None
+        
+    def keyPressEvent(self,event):
+        if event.key()==QtCore.Qt.Key_Delete:
+            for ind in self.selectionModel().selectedIndexes():
+                self.datamodel.setData(ind,QtCore.QVariant())
+        else:
+            QtGui.QTableView.keyPressEvent(self,event)
                 
     def value(self):
-        return self.datamodel.arraydata
+        return self.datamodel.getDataMatrix()
 
     def setValue(self,value=None):
-        if value is None:
-            shape = self.node.templatenode.getAttribute('shape')
-            if shape!='':
-                shape = map(int,shape.split(','))
-                def makeEmptyArray(s):
-                    if len(s)==1: return [None]*s[0]
-                    return [makeEmptyArray(s[1:])]*s[0]
-                value = makeEmptyArray(shape)
-        self.datamodel = self.Model(value,self.node,self.elementeditorclass)
+        strshape = self.node.templatenode.getAttribute('shape')
+        shape = None
+        if strshape!='':
+            shape = []
+            for l in strshape.split(','):
+                if l==':':
+                    shape.append(None)
+                else:
+                    shape.append(int(l))
+
+        #if value is None:
+        #    shape = self.node.templatenode.getAttribute('shape')
+        #    if shape!='':
+        #        shape = map(int,shape.split(','))
+        #        def makeEmptyArray(s):
+        #            if len(s)==1: return [None]*s[0]
+        #            return [makeEmptyArray(s[1:])]*s[0]
+        #        value = makeEmptyArray(shape)
+        self.datamodel = self.Model(shape,value,self.node,self.elementeditorclass)
         self.setModel(self.datamodel)
         
 # =======================================================================

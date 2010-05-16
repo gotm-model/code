@@ -121,23 +121,34 @@ class DataTypeArray(DataType,list):
         
     def getSafeValue(self,value,recursive=False,shape=None):
         # If an iterable is required but a scalar is provided, encapsulate the scalar by a list.
-        if shape and not isinstance(value,(list,tuple)): value = [value]
+        if shape and not hasattr(value,'__iter__'): value = [value]
         
         if value is None:
             # None is cast to EmptyDataType (which knows how to do conversions to/from strings, etc.)
             return DataTypeArray.EmptyDataType()
-        elif recursive and isinstance(value,(list,tuple)):
+        elif recursive and hasattr(value,'__iter__'):
             # Recursively check the iterable, making sure the shape constraints (if any) are respected.
             assert shape is None or len(shape)>0, 'Data consists of an array (%s), but a scalar was expected (prescribed by the array shape).' % str(value)
-            n,childshape = len(value),None
-            if shape is not None and shape[0]!=':': n,childshape = int(shape[0]),shape[1:]
+            
+            # Determine expected number of items and the shape of child elements.
+            n,childshape = None,None
+            if shape is not None:
+                if shape[0]!=':': n = int(shape[0])
+                childshape = shape[1:]
+                
+            # Fill array with supplied values.
             result = []
-            for i in range(n):
-                childvalue = None
-                if i<len(value): childvalue = value[i]
+            for childvalue in value:
                 result.append(self.getSafeValue(childvalue,True,childshape))
+                if n is not None and len(result)==n: break
+
+            # If the number of supplied values is insufficient, pad with missing values.
+            if n is not None and len(result)<n:
+                for i in range(n-len(result)):
+                    result.append(self.getSafeValue(None,True,childshape))
+                    
             return result
-        elif not isinstance(value,(list,tuple,self.elementclass,DataTypeArray.EmptyDataType)):
+        elif not (hasattr(value,'__iter__') or isinstance(value,(self.elementclass,DataTypeArray.EmptyDataType))):
             # Neither a missing value nor an iterable - cast it to the right (scalar) data type.
             return self.elementclass(value)
         return value
@@ -240,9 +251,10 @@ class DataTypeArray(DataType,list):
         if template is not None and template.hasAttribute('shape'):
             shape = template.getAttribute('shape').split(',')
             assert len(shape)==1,'Cannot assign values to arrays with more than 1 dimension through a comma-separated string.'
-            n = int(shape[0])
-            if len(strings)<n: strings += [None]*(n-len(strings))
-            strings = strings[:n]
+            if shape[0]!=':':
+                n = int(shape[0])
+                if len(strings)<n: strings += [None]*(n-len(strings))
+                strings = strings[:n]
         data = []
         for item in strings:
             if item=='':
