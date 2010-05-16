@@ -694,7 +694,6 @@ class Figure(xmlstore.util.referencedobject):
         figure properties are set based on properties of the obtained data,
         and the figure is built and shown.
         """
-
         # We are called whenever figure properties change. If we do not want to update now,
         # just register that an update is needed and exit.
         if not self.updating:
@@ -1452,7 +1451,7 @@ class Figure(xmlstore.util.referencedobject):
                     if vel is None: vel = numpy.sqrt(U*U+V*V)
                     keylength = numpy.abs(U).max()
 
-                    remove_UV_mask = False
+                    remove_UV_mask = False  # used to be needed for old matplotlib, not anymore as of 0.99.1.1
                     if remove_UV_mask:
                         # Get combined mask of U,V and (optionally) C
                         mask = None
