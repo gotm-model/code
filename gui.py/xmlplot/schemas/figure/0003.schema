@@ -230,6 +230,7 @@
 				<condition type="eq" variable="." value="True"/>
 			</element>
 		</element>
+    
     <element name="DrawParallels" type="bool" label="draw parallels">
       <condition type="eq" variable="." value="True"/>
       <element name="Parallels" type="array(float)" shape=":" label="parallels">
@@ -241,7 +242,14 @@
       <element name="LineWidth" type="float" label="line width">
         <condition type="eq" variable="." value="True"/>
       </element>
+      <element name="XOffset" type="float" label="label offset in x direction">
+        <condition type="eq" variable="." value="True"/>
+      </element>
+      <element name="YOffset" type="float" label="label offset in y direction">
+        <condition type="eq" variable="." value="True"/>
+      </element>
     </element>
+    
     <element name="DrawMeridians" type="bool" label="draw meridians">
       <condition type="eq" variable="." value="True"/>
       <element name="Meridians" type="array(float)" shape=":" label="meridians">
@@ -251,6 +259,12 @@
         <condition type="eq" variable="." value="True"/>
       </element>
       <element name="LineWidth" type="float" label="line width">
+        <condition type="eq" variable="." value="True"/>
+      </element>
+      <element name="XOffset" type="float" label="label offset in x direction">
+        <condition type="eq" variable="." value="True"/>
+      </element>
+      <element name="YOffset" type="float" label="label offset in y direction">
         <condition type="eq" variable="." value="True"/>
       </element>
     </element>

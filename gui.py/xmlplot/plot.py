@@ -1581,12 +1581,17 @@ class Figure(xmlstore.util.referencedobject):
                 loc.set_bounds(llcrnrlat, urcrnrlat)
                 lev = loc()
                 defaultnodemap['DrawParallels/Parallels'].setValue(tuple(lev))
+                defaultnodemap['DrawParallels/XOffset'].setValue((basemap.urcrnrx-basemap.llcrnrx)/100.)
+                defaultnodemap['DrawParallels/YOffset'].setValue(basemap.aspect*(basemap.urcrnry-basemap.llcrnry)/100.)
 
                 parallels = nodemap['DrawParallels/Parallels'].getValue(usedefault=True)
                 if parallels:
-                    color = nodemap['DrawParallels/Color'].getValue(usedefault=True)
-                    linewidth = nodemap['DrawParallels/LineWidth'].getValue(usedefault=True)
-                    basemap.drawparallels(parallels,color=color.getNormalized(),linewidth=linewidth,labels=[1,0,0,1],**fontpropsdict)
+                    basemap.drawparallels(parallels,labels=[1,0,0,1],
+                                          color    =nodemap['DrawParallels/Color'    ].getValue(usedefault=True).getNormalized(),
+                                          linewidth=nodemap['DrawParallels/LineWidth'].getValue(usedefault=True),
+                                          xoffset  =nodemap['DrawParallels/XOffset'  ].getValue(usedefault=True),
+                                          yoffset  =nodemap['DrawParallels/YOffset'  ].getValue(usedefault=True),
+                                          **fontpropsdict)
             if nodemap['DrawMeridians'].getValue(usedefault=True):
                 llcrnrlon = nodemap['Range/LowerLeftLongitude' ].getValue(usedefault=True)
                 urcrnrlon = nodemap['Range/UpperRightLongitude'].getValue(usedefault=True)
@@ -1595,12 +1600,17 @@ class Figure(xmlstore.util.referencedobject):
                 loc.set_bounds(llcrnrlon, urcrnrlon)
                 lev = loc()
                 defaultnodemap['DrawMeridians/Meridians'].setValue(tuple(lev))
+                defaultnodemap['DrawMeridians/XOffset'].setValue((basemap.urcrnrx-basemap.llcrnrx)/100.)
+                defaultnodemap['DrawMeridians/YOffset'].setValue(basemap.aspect*(basemap.urcrnry-basemap.llcrnry)/100.)
                 
                 meridians = nodemap['DrawMeridians/Meridians'].getValue(usedefault=True)
                 if meridians:
-                    color = nodemap['DrawMeridians/Color'].getValue(usedefault=True)
-                    linewidth = nodemap['DrawMeridians/LineWidth'].getValue(usedefault=True)
-                    basemap.drawmeridians(meridians,color=color.getNormalized(),linewidth=linewidth,labels=[1,0,0,1],**fontpropsdict)
+                    basemap.drawmeridians(meridians,labels=[1,0,0,1],
+                                          color    =nodemap['DrawMeridians/Color'    ].getValue(usedefault=True).getNormalized(),
+                                          linewidth=nodemap['DrawMeridians/LineWidth'].getValue(usedefault=True),
+                                          xoffset  =nodemap['DrawMeridians/XOffset'  ].getValue(usedefault=True),
+                                          yoffset  =nodemap['DrawMeridians/YOffset'  ].getValue(usedefault=True),
+                                          **fontpropsdict)
 
         # Create and store title
         title = ''
