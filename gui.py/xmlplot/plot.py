@@ -1548,7 +1548,7 @@ class Figure(xmlstore.util.referencedobject):
             
         # Add map objects if needed
         if ismap:
-            nodemap = self.properties['Map']
+            nodemap,defaultnodemap = self.properties['Map'],self.defaultproperties['Map']
             if nodemap['FillContinents'].getValue(usedefault=True):
                 contcolor = nodemap['FillContinents/Color'].getValue(usedefault=True)
                 lakecolor = nodemap['FillContinents/LakeColor'].getValue(usedefault=True)
@@ -1574,15 +1574,33 @@ class Figure(xmlstore.util.referencedobject):
                 linewidth = nodemap['DrawStates/LineWidth'].getValue(usedefault=True)
                 basemap.drawstates(color=color.getNormalized(),linewidth=linewidth)
             if nodemap['DrawParallels'].getValue(usedefault=True):
+                llcrnrlat = nodemap['Range/LowerLeftLatitude' ].getValue(usedefault=True)
+                urcrnrlat = nodemap['Range/UpperRightLatitude'].getValue(usedefault=True)
+                loc = matplotlib.ticker.MaxNLocator(8)
+                loc.create_dummy_axis()
+                loc.set_bounds(llcrnrlat, urcrnrlat)
+                lev = loc()
+                defaultnodemap['DrawParallels/Parallels'].setValue(tuple(lev))
+
                 parallels = nodemap['DrawParallels/Parallels'].getValue(usedefault=True)
-                color = nodemap['DrawParallels/Color'].getValue(usedefault=True)
-                linewidth = nodemap['DrawParallels/LineWidth'].getValue(usedefault=True)
-                basemap.drawparallels(parallels,color=color.getNormalized(),linewidth=linewidth,labels=[1,0,0,1],**fontpropsdict)
+                if parallels:
+                    color = nodemap['DrawParallels/Color'].getValue(usedefault=True)
+                    linewidth = nodemap['DrawParallels/LineWidth'].getValue(usedefault=True)
+                    basemap.drawparallels(parallels,color=color.getNormalized(),linewidth=linewidth,labels=[1,0,0,1],**fontpropsdict)
             if nodemap['DrawMeridians'].getValue(usedefault=True):
+                llcrnrlon = nodemap['Range/LowerLeftLongitude' ].getValue(usedefault=True)
+                urcrnrlon = nodemap['Range/UpperRightLongitude'].getValue(usedefault=True)
+                loc = matplotlib.ticker.MaxNLocator(8)
+                loc.create_dummy_axis()
+                loc.set_bounds(llcrnrlon, urcrnrlon)
+                lev = loc()
+                defaultnodemap['DrawMeridians/Meridians'].setValue(tuple(lev))
+                
                 meridians = nodemap['DrawMeridians/Meridians'].getValue(usedefault=True)
-                color = nodemap['DrawMeridians/Color'].getValue(usedefault=True)
-                linewidth = nodemap['DrawMeridians/LineWidth'].getValue(usedefault=True)
-                basemap.drawmeridians(meridians,color=color.getNormalized(),linewidth=linewidth,labels=[1,0,0,1],**fontpropsdict)
+                if meridians:
+                    color = nodemap['DrawMeridians/Color'].getValue(usedefault=True)
+                    linewidth = nodemap['DrawMeridians/LineWidth'].getValue(usedefault=True)
+                    basemap.drawmeridians(meridians,color=color.getNormalized(),linewidth=linewidth,labels=[1,0,0,1],**fontpropsdict)
 
         # Create and store title
         title = ''
