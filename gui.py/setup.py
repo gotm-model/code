@@ -1,4 +1,4 @@
-import sys
+import sys,os
 
 # Windows finds the CRT in the side-by-side assembly store (SxS), but Python does not look there.
 # Therefore we add a location of the CRT to the Python path.
@@ -58,9 +58,9 @@ own_data_files.append(('',['logo.png']))
 
 addtreewithwildcard('../src','extras/bio/*/metadata/*','gotmsrc')
 
-own_data_files.append(('',['C:\\Windows\\System32\\MSVCP71.dll']))
-own_data_files.append(('',['C:\\Program Files\\Microsoft Visual Studio 8\\VC\\redist\\x86\\Microsoft.VC80.CRT\\MSVCR80.dll']))
-own_data_files.append(('',['C:\\Program Files\\Microsoft Visual Studio 8\\VC\\redist\\x86\\Microsoft.VC80.CRT\\Microsoft.VC80.CRT.manifest']))
+#own_data_files.append(('',['C:\\Windows\\System32\\MSVCP71.dll']))
+#own_data_files.append(('',[os.path.join(os.environ['VS80COMNTOOLS'],'..\\..\\VC\\redist\\x86\\Microsoft.VC80.CRT\\MSVCR80.dll')]))
+#own_data_files.append(('',[os.path.join(os.environ['VS80COMNTOOLS'],'..\\..\\VC\\redist\\x86\\Microsoft.VC80.CRT\\Microsoft.VC80.CRT.manifest')]))
 
 setup(
     windows=[{'script':'gotm.py','icon_resources':[(1,'gotmgui.ico')]}],
@@ -70,7 +70,7 @@ setup(
 #                'includes' : ['sip','PyQt4._qt'],
                 'includes' : ['sip'],
                 'excludes' : ['_gtkagg', '_tkagg', '_wxagg','Tkconstants','Tkinter','tcl','wx','pynetcdf','cProfile','pstats','modeltest','mpl_toolkits.basemap'],
-                'dll_excludes': ['libgdk-win32-2.0-0.dll', 'libgobject-2.0-0.dll', 'libgdk_pixbuf-2.0-0.dll','wxmsw26uh_vc.dll','tcl84.dll','tk84.dll'],
+                'dll_excludes': ['libgdk-win32-2.0-0.dll', 'libgobject-2.0-0.dll', 'libgdk_pixbuf-2.0-0.dll','wxmsw26uh_vc.dll','tcl84.dll','tk84.dll','powrprof.dll'],
             }},
     data_files=own_data_files
 )

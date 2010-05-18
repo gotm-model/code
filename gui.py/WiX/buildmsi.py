@@ -16,6 +16,15 @@ version = sys.argv[1]
 output = 'files.wxs'
 indent = '  '
 
+# Find WiX utilities
+if 'WIX' not in os.environ:
+    print 'Cannot find environment variable "WIX". Is WIX (http://wix.sourceforge.net) installed?'
+    sys.exit(1)
+path_candle = os.path.join(os.environ['WIX'],'bin','candle.exe')
+path_light  = os.path.join(os.environ['WIX'],'bin','light.exe')
+assert os.path.isfile(path_candle),'Cannot find WiX utility candle.exe at "%s".' % path_candle
+assert os.path.isfile(path_light ),'Cannot find WiX utility light.exe at "%s".' % path_light
+
 # Get full path to executable
 exe = os.path.normpath(os.path.join(sourcedir,exe))
 
@@ -75,12 +84,12 @@ f_files.close()
 
 import subprocess
 
-ret = subprocess.call(('candle.exe','gotmgui.wxs','files.wxs','-dVersion=%s' % version))
+ret = subprocess.call((path_candle,'gotmgui.wxs','files.wxs','vcredist.wxs','-dVersion=%s' % version))
 if ret!=0:
     print 'CANDLE failed with return code %i: exiting.' % ret
     sys.exit(1)
 
-ret = subprocess.call(('light.exe','gotmgui.wixobj','files.wixobj','-b','../dist','-o','gotmgui-%s.msi' % version))
+ret = subprocess.call((path_light,'gotmgui.wixobj','files.wixobj','vcredist.wixobj','-b','../dist','-o','gotmgui-%s.msi' % version))
 if ret!=0:
     print 'LIGHT failed with return code %i: exiting.' % ret
     sys.exit(1)

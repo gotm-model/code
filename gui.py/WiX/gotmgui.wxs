@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
     <Product Id="*" Codepage="1252" Language="1033" Manufacturer="Bolding &amp; Burchard" Name="GOTM-GUI" UpgradeCode="{4B998060-7774-43AF-BC61-8E1D4FE4F2D7}" Version="$(var.Version)">
-        <Package Compressed="yes" InstallerVersion="200" Languages="1033" Manufacturer="Jorn Bruggeman" Platform="x86" />
+        <Package Compressed="yes" InstallerVersion="300" Languages="1033" Manufacturer="Jorn Bruggeman" Platform="x86" />
         <Binary Id="DefBannerBitmap" SourceFile=".\Binary\DefBannerBitmap.bmp" />
         <Binary Id="UpFldrBtn"       SourceFile=".\Binary\UpFldrBtn.bmp"       />
         <Binary Id="NewFldrBtn"      SourceFile=".\Binary\NewFldrBtn.bmp"      />
@@ -15,6 +15,7 @@
         <Feature Id="DefaultFeature" ConfigurableDirectory="TARGETDIR" Level="1">
 					<ComponentGroupRef Id="GOTMComponents"/>
         </Feature>
+        <FeatureRef Id="VCRedist"/>
         <Icon Id="gotmgui.ico" SourceFile="..\gotmgui.ico" />
         <Media Id="1" Cabinet="data.cab" EmbedCab="yes" CompressionLevel="high" />
         <Property Id="ARPHELPLINK" Value="http://www.gotm.net" />
