@@ -1,4 +1,4 @@
-!$Id: bio_mangan.F90,v 1.1 2010-03-08 10:58:52 hb Exp $
+!$Id: bio_mangan.F90,v 1.2 2010-05-18 15:50:19 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -481,7 +481,6 @@
    do ci=1,nlev
       spm_tot=spm_tot+h(ci)*cc(spm,ci)
    end do
-   write(90,*) mn_tot,spm_tot
    
 
    return
