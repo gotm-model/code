@@ -620,7 +620,7 @@
 		</element>
 	</element>
 
-	<element name="FigureTexts" label="texts">
+	<element name="FigureTexts" label="text strings">
 		<element name="Text" type="string" label="text" minOccurs="0" maxOccurs="unbounded">
 			<element name="X" type="float" label="x coordinate" minInclusive="0" maxInclusive="1"/>
 			<element name="Y" type="float" label="y coordinate" minInclusive="0" maxInclusive="1"/>
