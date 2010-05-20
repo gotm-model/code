@@ -169,7 +169,7 @@
 				<condition type="eq" variable="IsGlobal" value="True"/>
 			</condition>
 		</element>
-		<element name="Range" label="range">
+		<element name="Range" label="map domain">
 			<condition type="eq" variable="." value="True"/>
 			<element name="LowerLeftLatitude"   type="float" minInclusive="-90"  maxInclusive="90"  label="lower left latitude"   unit="° North"/>
 			<element name="LowerLeftLongitude"  type="float" minInclusive="-360" maxInclusive="720" label="lower left longitude"  unit="° East"/>
