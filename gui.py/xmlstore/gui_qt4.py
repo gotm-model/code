@@ -727,9 +727,10 @@ class PrivateWindowEditor(QtGui.QWidget,AbstractPropertyEditor):
         return self.editor.value()
         
     def showEvent(self,ev):
-        dialog = QtGui.QDialog(self)
+        dialog = QtGui.QDialog(self,QtCore.Qt.Tool)
         dialog.setWindowTitle(self.node.getText(detail=1))
         layout = QtGui.QVBoxLayout()
+        layout.setContentsMargins(0,0,0,0)
         layout.addWidget(self.editor)
         dialog.setLayout(layout)
         
@@ -945,6 +946,25 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
             l = self.shape[1]
             if l is None: l = 256*256
             return l
+            
+        def headerData(self,section,orientation,role):
+            # Only process display role.
+            if role!=QtCore.Qt.DisplayRole:
+                return QtCore.QAbstractItemModel.headerData(self,section,orientation,role)
+                
+            if orientation==QtCore.Qt.Horizontal:
+                # Use Excel-style column names (A-Z, AA-ZZ, AAA-ZZZ, ...).
+                string = ''
+                quot = section
+                while True:
+                    quot,rem = divmod(quot,26)
+                    string = chr(ord('A')+rem)+string
+                    if quot==0: break
+                    quot -= 1
+                return QtCore.QVariant(string)
+            else:
+                # Use row number (1-based) as row name.
+                return QtCore.QVariant(section+1)
 
         def data(self,index,role=QtCore.Qt.DisplayRole):
             if role==QtCore.Qt.DisplayRole or role==QtCore.Qt.EditRole:
@@ -954,31 +974,53 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
                     val = self.arraydata[irow]
                     if len(self.shape)>1:
                         icol = index.column()
-                        if icol<len(self.arraydata[irow]):
+                        if val is not None and icol<len(val):
                             val = val[icol]
                 if val is None: return QtCore.QVariant()
                 return self.editorclass.convertToQVariant(val)
                 
             return QtCore.QVariant()
             
+        def clearData(self,index):
+            self.setData(index,QtCore.QVariant())
+            
         def setData(self,index,value,role=QtCore.Qt.EditRole):
+            # Only process edit role
             if role!=QtCore.Qt.EditRole: return False
+            
+            # Get value in native data type (convert from QVariant)
             if not value.isValid():
                 value = None
             else:
                 value = self.editorclass.convertFromQVariant(value)
+                
+            # Get row index
             irow = index.row()
+            
+            # Append additional rows if needed
             if irow>=len(self.arraydata):
+                if value is None: return True
                 self.arraydata += [None]*(irow-len(self.arraydata)+1)
-            if isinstance(self.arraydata[irow],(tuple,list)):
+                
+            if len(self.shape)>1:
+                # 2D array
                 icol = index.column()
+                
+                # Make sure the specified row exists and has the desired length.
                 if self.arraydata[irow] is None: self.arraydata[irow] = []
                 if icol>=len(self.arraydata[irow]):
+                    if value is None: return True
                     self.arraydata[irow] += [None]*(icol-len(self.arraydata[irow])+1)
+                    
                 self.arraydata[irow][icol] = value
             else:
+                # 1D array
                 self.arraydata[irow] = value
+                
+            # Notify that data have changed.
             self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),index,index)
+            
+            # Return True (data successfully set)
             return True
 
         def flags(self,index):
@@ -993,7 +1035,7 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
     def keyPressEvent(self,event):
         if event.key()==QtCore.Qt.Key_Delete:
             for ind in self.selectionModel().selectedIndexes():
-                self.datamodel.setData(ind,QtCore.QVariant())
+                self.datamodel.clearData(ind)
         else:
             QtGui.QTableView.keyPressEvent(self,event)
                 
@@ -1011,15 +1053,8 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
                 else:
                     shape.append(int(l))
 
-        #if value is None:
-        #    shape = self.node.templatenode.getAttribute('shape')
-        #    if shape!='':
-        #        shape = map(int,shape.split(','))
-        #        def makeEmptyArray(s):
-        #            if len(s)==1: return [None]*s[0]
-        #            return [makeEmptyArray(s[1:])]*s[0]
-        #        value = makeEmptyArray(shape)
         self.datamodel = self.Model(shape,value,self.node,self.elementeditorclass)
+        #self.horizontalHeader().setVisible(len(shape)>1)
         self.setModel(self.datamodel)
         
 # =======================================================================
