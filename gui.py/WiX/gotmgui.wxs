@@ -632,8 +632,8 @@
             </Dialog>
         </UI>
         <Upgrade Id="{4B998060-7774-43AF-BC61-8E1D4FE4F2D7}">
-            <UpgradeVersion Minimum="0.0.0.0" Maximum="$(var.Version)" Property="PREVIOUSVERSIONSINSTALLED" IncludeMinimum="yes" />
-            <UpgradeVersion Minimum="$(var.Version)" Property="NEWERPRODUCTFOUND" OnlyDetect="yes" IncludeMinimum="yes" />
+            <UpgradeVersion Maximum="$(var.Version)" Property="PREVIOUSVERSIONSINSTALLED" IncludeMaximum="yes" />
+            <UpgradeVersion Minimum="$(var.Version)" Property="NEWERPRODUCTFOUND" IncludeMinimum="no" OnlyDetect="yes" />
         </Upgrade>
         <InstallExecuteSequence>
             <Custom Action="ERRCA_CANCELNEWERVERSION" Sequence="201">NEWERPRODUCTFOUND AND NOT Installed</Custom>
