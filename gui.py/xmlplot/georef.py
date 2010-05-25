@@ -1,4 +1,6 @@
 import os.path
+import zipfile
+import StringIO
 
 # NumPy
 import numpy
@@ -54,8 +56,8 @@ class GeoRefExporter(plot.BaseExporter):
     def getFileTypes(cls,source):
         filetypes = {}
         if source.basemap is not None:
-            if gdal is not None: filetypes['GeoTiff'] = ('tif','tiff')
-            filetypes['Kml']     = ('kml',)
+            if gdal is not None: filetypes['GeoTIFF'] = ('tif','tiff')
+            filetypes['Keyhole Markup Language'] = ('kmz',)
         return filetypes
 
     def draw(self):
@@ -94,7 +96,7 @@ class GeoRefExporter(plot.BaseExporter):
         self.figure.set_size_inches((widthpx+0.001)/self.dpi,(widthpx*aspect+0.001)/self.dpi)
         
     def export(self,path,format):
-        assert format in ('GeoTiff','Kml'), 'Unknown export format "%s" requested.' % format
+        assert format in ('GeoTIFF','Keyhole Markup Language'), 'Unknown export format "%s" requested.' % format
         if format=='GeoTiff':
             self.exportGeoTiff(path)
         else:
@@ -150,27 +152,28 @@ class GeoRefExporter(plot.BaseExporter):
         dst_ds = None
 
     def exportKml(self,path):
+        # KML only supports one projection.
         self.source['Map/Projection'].setValue('cyl')
         
+        # Build up the figure.
         self.draw()
+        
+        # Create KMZ file (ZIP container)
+        out = zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED)
     
         # Get map extent
         ax = self.figure.gca()
         xmin,xmax = ax.get_xlim()
         ymin,ymax = ax.get_ylim()
 
-        basepath,ext = os.path.splitext(path)
-        imgpath = unicode(basepath)+'.png'
-        self.source.canvas.print_figure(imgpath,dpi=self.dpi,facecolor='None',edgecolor='None',orientation='portrait')
+        # Image file name
+        imgpath = 'img.png'
         
-        f = open(unicode(basepath)+'.kml','w')
-        f.write("""<?xml version="1.0" encoding="UTF-8"?>
+        # Create the KML string.
+        strkml = """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
-  <Folder>
-      <name>Ground Overlays</name>
-      <description>Examples of ground overlays</description>
-      <GroundOverlay>
-        <Icon><href>file://%s</href></Icon>
+    <GroundOverlay>
+        <Icon><href>%s</href></Icon>
         <LatLonBox>
             <north>%s</north>
             <south>%s</south>
@@ -178,10 +181,20 @@ class GeoRefExporter(plot.BaseExporter):
             <west>%s</west>
             <rotation>0.</rotation>
         </LatLonBox>
-      </GroundOverlay>
-  </Folder>
-</kml>""" % (imgpath,ymax,ymin,xmax,xmin))
-        f.close()
+    </GroundOverlay>
+</kml>""" % (imgpath,ymax,ymin,xmax,xmin)
+        
+        # Save the KML string to the KMZ (ZIP) container.
+        out.writestr('doc.kml',strkml)
+
+        # Save the in-memory figure to the KMZ (ZIP) container.
+        fpng = StringIO.StringIO()
+        self.source.canvas.print_figure(fpng,dpi=self.dpi,facecolor='None',edgecolor='None',orientation='portrait')
+        out.writestr(imgpath,fpng.getvalue())
+        fpng.close()
+
+        # Close the KMZ (ZIP) container.
+        out.close()
         
 if hasbasemap:
     plot.Figure.registerExporter('geo-referenced image file',GeoRefExporter)
