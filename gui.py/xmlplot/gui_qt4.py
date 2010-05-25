@@ -416,7 +416,7 @@ class FigurePanel(QtGui.QWidget):
         self.actPan = self.toolbar.addAction('Pan',self.onPanClicked)
         self.actResetView = self.toolbar.addAction(getIcon('viewmagfit.png'),'Reset view',self.onResetViewClicked)
         self.toolbar.addSeparator()
-        self.toolbar.addAction(getIcon('filesaveas.png'),'Save as',self.onExport)
+        act = self.toolbar.addAction(getIcon('filesaveas.png'),'Save as',self.onExport)
         self.toolbar.addAction(getIcon('fileprint.png'),'Print',self.onPrint)
         if detachbutton:
             self.toolbar.addSeparator()
@@ -650,33 +650,16 @@ class FigurePanel(QtGui.QWidget):
         """
         
         class ExportSettings(QtGui.QDialog):
-            def __init__(self,parent=None):
+            def __init__(self,store,parent=None):
                 QtGui.QDialog.__init__(self,parent,QtCore.Qt.Dialog | QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowSystemMenuHint)
                 
-                layout = QtGui.QGridLayout()
-                
-                labWidth = QtGui.QLabel('Width:',self)
-                labHeight = QtGui.QLabel('Height:',self)
-                labResolution = QtGui.QLabel('Resolution:',self)
-                layout.addWidget(labWidth,     0,0)
-                layout.addWidget(labHeight,    1,0)
-                layout.addWidget(labResolution,2,0)
+                layout = QtGui.QVBoxLayout()
+                self.store = store
 
-                self.editWidth = xmlstore.gui_qt4.ScientificDoubleEditor(self)
-                self.editHeight = xmlstore.gui_qt4.ScientificDoubleEditor(self)
-                self.editResolution = xmlstore.gui_qt4.ScientificDoubleEditor(self)
-                layout.addWidget(self.editWidth,     0,1)
-                layout.addWidget(self.editHeight,    1,1)
-                layout.addWidget(self.editResolution,2,1)
-                
-                labWidthUnit = QtGui.QLabel('cm',self)
-                labHeightUnit = QtGui.QLabel('cm',self)
-                labResolutionUnit = QtGui.QLabel('dpi',self)
-                layout.addWidget(labWidthUnit,     0,2)
-                layout.addWidget(labHeightUnit,    1,2)
-                layout.addWidget(labResolutionUnit,2,2)
-                
-                layout.setColumnStretch(3,1)
+                self.tree = xmlstore.gui_qt4.TypedStoreTreeView(self,self.store,expanddepth=3,resizecolumns=False)
+                self.tree.header().setVisible(False)
+                self.tree.setRootIsDecorated(False)
+                layout.addWidget(self.tree)
 
                 layoutButtons = QtGui.QHBoxLayout()
 
@@ -690,54 +673,48 @@ class FigurePanel(QtGui.QWidget):
                 self.connect(self.bnCancel, QtCore.SIGNAL('clicked()'), self.reject)
                 layoutButtons.addWidget(self.bnCancel)
                 
-                layout.addLayout(layoutButtons,3,0,1,4)
+                layout.addLayout(layoutButtons)
 
                 self.setLayout(layout)
                 
                 self.setWindowIcon(getIcon('filesaveas.png'))
                 self.setWindowTitle('Figure export settings')
 
-        dialog = ExportSettings(self)
-        oldwidth = self.canvas.figure.get_figwidth()
-        oldheight = self.canvas.figure.get_figheight()
-        olddpi = self.canvas.figure.get_dpi()
-        dialog.editWidth.setValue (self.figure['Width' ].getValue(usedefault=True),'%.1f')
-        dialog.editHeight.setValue(self.figure['Height'].getValue(usedefault=True),'%.1f')
-        dialog.editResolution.setValue(olddpi,'%.0f')
-        if dialog.exec_()!=QtGui.QDialog.Accepted: return
-
-        # Routine to get list of possible file types and extensions
-        # taken from NavigationToolbar2QT.save_figure (backend_qt4.py)
-        filetypes = self.canvas.get_supported_filetypes_grouped()
-        sorted_filetypes = filetypes.items()
-        sorted_filetypes.sort()
-        default_filetype = 'png'
+        exporters = self.figure.getExporters()
         filters = []
-        selectedFilter = None
-        for name, exts in sorted_filetypes:
-            exts_list = " ".join(['*.%s' % ext for ext in exts])
-            filter = '%s (%s)' % (name, exts_list)
-            if default_filetype in exts:
-                selectedFilter = filter
-            filters.append(filter)
-        filters = ';;'.join(filters)
+        filter2exportercls = {}
+        filter2format = {}
+        default_filetype = 'png'
+        for exportercls in exporters.itervalues():
+            for name, exts in exportercls.getFileTypes(self.figure).iteritems():
+                exts_list = ' '.join(['*.%s' % ext for ext in exts])
+                filter = '%s (%s)' % (name, exts_list)
+                if default_filetype in exts:
+                    selectedFilter = filter
+                filters.append(filter)
+                filter2exportercls[filter] = exportercls
+                filter2format[filter] = name
+        filters = ';;'.join(sorted(filters))
 
+        # Show save file dialog box.
+        selectedFilter = QtCore.QString(selectedFilter)
         fname = QtGui.QFileDialog.getSaveFileName(self,'Choose location to save plot to','',filters,selectedFilter)
-        if fname:
-            # Calculate desired width and height in inches
-            width = dialog.editWidth.value()/2.54
-            height = dialog.editHeight.value()/2.54
-            QtGui.qApp.setOverrideCursor(QtCore.Qt.WaitCursor)
-            try:
-                agg = self.canvas.switch_backends(FigureCanvasAgg)
-                self.canvas.figure.set_figwidth(width)
-                self.canvas.figure.set_figheight(height)
-                agg.print_figure(unicode(fname),dpi=dialog.editResolution.value(), facecolor='w', edgecolor='w', orientation='portrait')
-                self.canvas.figure.set_figwidth(oldwidth)
-                self.canvas.figure.set_figheight(oldheight)
-                self.canvas.figure.set_canvas(self.canvas)
-            finally:
-                QtGui.qApp.restoreOverrideCursor()
+        if not fname: return
+        
+        selectedFilter = unicode(selectedFilter)
+        exportercls = filter2exportercls[selectedFilter]
+
+        exporter = exportercls(self.figure)
+
+        if exporter.properties is not None:
+            dialog = ExportSettings(exporter.properties,self)
+            if dialog.exec_()!=QtGui.QDialog.Accepted: return
+
+        QtGui.qApp.setOverrideCursor(QtCore.Qt.WaitCursor)
+        try:
+            exporter.export(unicode(fname),filter2format[selectedFilter])
+        finally:
+            QtGui.qApp.restoreOverrideCursor()
         
     def onPrint(self):
         """Called when the user clicks the "Print..." button.

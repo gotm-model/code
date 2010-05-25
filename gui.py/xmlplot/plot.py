@@ -5,6 +5,70 @@ import numpy
 
 import xmlstore.xmlstore,xmlstore.util,common,expressions
 
+class BaseExporter:
+    @classmethod
+    def isCompatible(figure):
+        return True
+
+    @classmethod
+    def getFileTypes(cls,source):
+        return {}
+
+    def __init__(self,source,properties=None):
+        self.source = source
+        self.properties = properties
+        
+    def export(self,path,format):
+        pass
+
+class Exporter(BaseExporter):
+    propertyxml = """<?xml version="1.0"?>
+<element name="Settings">
+  <element name="Width"      label="width"      type="float" unit="cm"/>
+  <element name="Height"     label="height"     type="float" unit="cm"/>
+  <element name="Resolution" label="resolution" type="int"   unit="dpi"/>
+</element>
+    """
+    
+    def __init__(self,source):
+        # Create XML stores for default and customized properties.
+        self.schema = xmlstore.xmlstore.Schema(Exporter.propertyxml,sourceisxml=True)
+        store = xmlstore.xmlstore.TypedStore(self.schema)
+        self.defaultstore = xmlstore.xmlstore.TypedStore(self.schema)
+        self.defaultstore['Width' ].setValue(source['Width' ].getValue(usedefault=True))
+        self.defaultstore['Height'].setValue(source['Height'].getValue(usedefault=True))
+        self.defaultstore['Resolution'].setValue(96)
+        store.setDefaultStore(self.defaultstore)
+        
+        BaseExporter.__init__(self,source,store)
+
+    @classmethod
+    def getFileTypes(cls,source):
+        types = {}
+        for ext,name in matplotlib.backend_bases.FigureCanvasBase.filetypes.items():
+            types.setdefault(name,[]).append(ext)
+        return types
+
+    def export(self,path,format):
+        """Export the contents of the figure to file.
+        """
+        width  = self.properties['Width' ].getValue(usedefault=True)/2.54
+        height = self.properties['Height'].getValue(usedefault=True)/2.54
+        dpi    = self.properties['Resolution'].getValue(usedefault=True)
+        
+        # Restore original figure dimensions.
+        oldwidth  = self.source.figure.get_figwidth()
+        oldheight = self.source.figure.get_figheight()
+        self.source.figure.set_figwidth (width)
+        self.source.figure.set_figheight(height)
+
+        # Save the figure to file.
+        self.source.canvas.print_figure(unicode(path),dpi=dpi,facecolor='w',edgecolor='w',orientation='portrait')
+        
+        # Restore original figure dimensions.
+        self.source.figure.set_figwidth (oldwidth)
+        self.source.figure.set_figheight(oldheight)
+
 def calculateContourLevels(cc,zmin,zmax,logscale=False):
     # Choose a contour locator
     if logscale:
@@ -442,6 +506,15 @@ class Figure(xmlstore.util.referencedobject):
     to be plotted. All configuration of the plots is done through a
     xmlstore.TypedStore object.
     """
+    exporters = {'image file':Exporter}
+    
+    @staticmethod
+    def registerExporter(name,cls):
+        Figure.exporters[name] = cls
+        
+    def getExporters(self):
+        import georef
+        return self.exporters
 
     def __init__(self,figure=None,defaultfont=None):
         global matplotlib
@@ -675,13 +748,19 @@ class Figure(xmlstore.util.referencedobject):
         """
         self.haschanged = False
         
-    def exportToFile(self,path,dpi=150):
+    def exportToFile(self,path,width=None,height=None,dpi=150):
         """Export the contents of the figure to file.
         """
-        w = self['Width'].getValue(usedefault=True)
-        h = self['Height'].getValue(usedefault=True)
-        self.figure.set_size_inches(w/2.54,h/2.54)
-        self.canvas.print_figure(str(path),dpi=dpi,facecolor='w')
+        # Restore original figure dimensions.
+        if width  is not None: self.figure.set_figwidth (width)
+        if height is not None: self.figure.set_figheight(height)
+
+        # Save the figure to file.
+        self.canvas.print_figure(unicode(path),dpi=dpi,facecolor='w',edgecolor='w',orientation='portrait')
+        
+        # Restore original figure dimensions.
+        if width  is not None: self.figure.set_figwidth (self['Width'].getValue(usedefault=True)/2.54)
+        if height is not None: self.figure.set_figheight(self['Height'].getValue(usedefault=True)/2.54)
         
     def copyFrom(self,sourcefigure):
         """Copies all plot properties and data sources from the supplied source figure.
@@ -705,20 +784,35 @@ class Figure(xmlstore.util.referencedobject):
         if not self.updating:
             self.dirty = True
             return
+            
+        # If no target figure is supplied, we will update ourselves.
+        validplot = self.draw()
+        
+        # Draw the plot to screen.
+        self.canvas.draw()
+        
+        # Notify attached objects that the figure state may have changed.
+        for cb in self.callbacks['completeStateChange']: cb(validplot)
 
+        # Store that the figure now reflects all current settings.
+        self.dirty = False
+
+    def draw(self,figure=None):
         # Below: code for debugging superfluous plot updates (sends stack trace to stdout)
         #import traceback
         #print '--- stack for call to update ---'   
         #trace = traceback.format_list(traceback.extract_stack(limit=10))    
         #for l in trace: print l,
+        
+        if figure is None: figure = self.figure
             
         # Clear the current MatPlotLib figure.
-        self.figure.clear()
+        figure.clear()
         self.errors = []
         
         w = self.properties['Width'].getValue(usedefault=True)
         h = self.properties['Height'].getValue(usedefault=True)
-        self.figure.set_size_inches(w/2.54,h/2.54)
+        figure.set_size_inches(w/2.54,h/2.54)
                 
         # Obtain text scaling property (from % to fraction)
         textscaling = self.properties['FontScaling'].getValue(usedefault=True)/100.
@@ -775,7 +869,7 @@ class Figure(xmlstore.util.referencedobject):
         # Obtain the currently selected colormap, and make sure NaNs are plotted as white.
         cmdict,cmlist = getColorMaps()
         cm = cmdict[self.properties['ColorMap'].getValue(usedefault=True)]
-        cm.set_bad('w')
+        cm.set_bad('None')
                 
         # Start with z order index 0 (incrementing it with every item added)
         zorder = 0
@@ -1070,8 +1164,8 @@ class Figure(xmlstore.util.referencedobject):
         padRight  = nodePadding['Right' ].getValue(usedefault=True)
         padTop    = nodePadding['Top'   ].getValue(usedefault=True)
         padBottom = nodePadding['Bottom'].getValue(usedefault=True)
-        self.figure.subplots_adjust(left=padLeft,right=1.-padRight,top=1.-padTop,bottom=padBottom)
-        axes = self.figure.add_subplot(111,axis_bgcolor=bg.getNormalized(),projection=projection)
+        figure.subplots_adjust(left=padLeft,right=1.-padRight,top=1.-padTop,bottom=padBottom)
+        axes = figure.add_subplot(111,axis_bgcolor=bg.getNormalized(),projection=projection)
 
         # Handle transformations due to map projection (if any)
         xcanbelon = projection=='rectilinear' and xrange[0] is not None and xrange[0]>=-361 and xrange[1]<=361
@@ -1525,7 +1619,7 @@ class Figure(xmlstore.util.referencedobject):
                     # Create colorbar
                     assert cb is None, 'Currently only one object that needs a colorbar is supported per figure.'
                     pc.set_clim(crange)
-                    cb = self.figure.colorbar(pc,ax=axes)
+                    cb = figure.colorbar(pc,ax=axes)
                     if cbborders is not None: cb.add_lines(cbborders)
 
                 plotcount[2] += 1
@@ -1636,7 +1730,7 @@ class Figure(xmlstore.util.referencedobject):
             legprop = self.properties['Legend']
             if legprop.getValue(usedefault=True):
                 legend = axes.legend(legenddata['handles'],legenddata['labels'],loc=legprop['Location'].getValue(usedefault=True),prop=fontprops)
-                #legend = self.figure.legend(legenddata['handles'],legenddata['labels'],1,prop=fontprops)
+                #legend = figure.legend(legenddata['handles'],legenddata['labels'],1,prop=fontprops)
                 legend.set_zorder(zorder)
                 zorder += 1
 
@@ -1830,7 +1924,7 @@ class Figure(xmlstore.util.referencedobject):
         axes.get_xaxis().get_offset_text().set_fontproperties(fontprops)
         axes.get_yaxis().get_offset_text().set_fontproperties(fontprops)
         
-        # Scale text labels for color bar.
+        # Transfer font properties to color bar.
         if cb is not None:
             cb.ax.yaxis.get_offset_text().set_fontproperties(fontprops)
             for l in cb.ax.yaxis.get_ticklabels(): l.set_fontproperties(fontprops)
@@ -1848,18 +1942,15 @@ class Figure(xmlstore.util.referencedobject):
             setFontProperties(defaulttextnode['Font'],**fontpropsdict)
             x,y = textnode['X'].getValue(usedefault=True),textnode['Y'].getValue(usedefault=True)
             curfontprops = getFontProperties(textnode['Font'],textscaling=textscaling)
-            self.figure.text(x,y,textnode.getValue(usedefault=True),fontdict=curfontprops,
-                             ha=textnode['HorizontalAlignment'].getValue(usedefault=True),
-                             va=textnode['VerticalAlignment'].getValue(usedefault=True),
-                             rotation=textnode['Rotation'].getValue(usedefault=True))
+            figure.text(x,y,textnode.getValue(usedefault=True),fontdict=curfontprops,
+                        ha=textnode['HorizontalAlignment'].getValue(usedefault=True),
+                        va=textnode['VerticalAlignment'].getValue(usedefault=True),
+                        rotation=textnode['Rotation'].getValue(usedefault=True))
 
-        # Draw the plot to screen.
-        self.canvas.draw()
-        
+        # Determine whether a valid plot is now shown.
         validplot = (plotcount[1]+plotcount[2])>0 or projection=='windrose'
-        for cb in self.callbacks['completeStateChange']: cb(validplot)
-
-        self.dirty = False
+        
+        return validplot
 
     def onAspectChange(self,redraw=True):
         if self.colorbar is not None and self.ismap:
