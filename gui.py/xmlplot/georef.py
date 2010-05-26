@@ -165,6 +165,8 @@ class GeoRefExporter(plot.BaseExporter):
         ax = self.figure.gca()
         xmin,xmax = ax.get_xlim()
         ymin,ymax = ax.get_ylim()
+        
+        title = self.source['Title'].getValue(usedefault=True)
 
         # Image file name
         imgpath = 'img.png'
@@ -173,7 +175,10 @@ class GeoRefExporter(plot.BaseExporter):
         strkml = """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
     <GroundOverlay>
-        <Icon><href>%s</href></Icon>
+        <name>%s</name>
+        <Icon>
+            <href>%s</href>
+        </Icon>
         <LatLonBox>
             <north>%s</north>
             <south>%s</south>
@@ -182,7 +187,7 @@ class GeoRefExporter(plot.BaseExporter):
             <rotation>0.</rotation>
         </LatLonBox>
     </GroundOverlay>
-</kml>""" % (imgpath,ymax,ymin,xmax,xmin)
+</kml>""" % (title,imgpath,ymax,ymin,xmax,xmin)
         
         # Save the KML string to the KMZ (ZIP) container.
         out.writestr('doc.kml',strkml)
