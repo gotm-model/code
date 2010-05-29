@@ -869,7 +869,7 @@ class Figure(xmlstore.util.referencedobject):
         # Obtain the currently selected colormap, and make sure NaNs are plotted as white.
         cmdict,cmlist = getColorMaps()
         cm = cmdict[self.properties['ColorMap'].getValue(usedefault=True)]
-        cm.set_bad('None')
+        cm.set_bad('k',alpha=0.0)
                 
         # Start with z order index 0 (incrementing it with every item added)
         zorder = 0
