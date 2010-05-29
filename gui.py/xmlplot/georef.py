@@ -31,6 +31,10 @@ class GeoRefExporter(plot.BaseExporter):
     propertyxml = """<?xml version="1.0"?>
 <element name="Settings">
   <element name="Width" label="width" type="int" unit="px"/>
+  <element name="HasColorBar" type="bool" hidden="True"/>
+  <element name="ShowColorBar" label="show colorbar" type="bool">
+    <condition type="eq" variable="HasColorBar" value="True"/>
+  </element>
 </element>
     """
 
@@ -40,6 +44,8 @@ class GeoRefExporter(plot.BaseExporter):
         store = xmlstore.xmlstore.TypedStore(self.schema)
         self.defaultstore = xmlstore.xmlstore.TypedStore(self.schema)
         self.defaultstore['Width'].setValue(1024)
+        self.defaultstore['ShowColorBar'].setValue(False)
+        self.defaultstore['HasColorBar'].setValue(source.colorbar is not None)
         store.setDefaultStore(self.defaultstore)
 
         sourcecopy = plot.Figure()
@@ -78,26 +84,48 @@ class GeoRefExporter(plot.BaseExporter):
         self.figure.set_edgecolor('None')
         self.figure.set_dpi(self.dpi)
         
-        self.figure.subplots_adjust(left=0., bottom=0., right=1., top=1.)
-        #self.figure.gca().patch.set_visible(False)
-        self.figure.gca().set_frame_on(False)
+        axesfillfigure = True
         
         if self.source.colorbar is not None:
-            self.source.colorbar.ax.set_visible(False)
+            if self.properties['ShowColorBar'].getValue(usedefault=True):
+                axesfillfigure = False
+            else:
+                self.source.colorbar.ax.set_visible(False)
 
+        if axesfillfigure:
+            self.figure.subplots_adjust(left=0., bottom=0., right=1., top=1.)
+        self.figure.gca().patch.set_visible(False)
+        self.figure.gca().set_frame_on(False)
+        self.figure.gca().set_title('')
+        
         # Calculate effective aspect ratio
-        ax = self.figure.gca()
-        xl,yl = ax.get_xlim(),ax.get_ylim()
-        aspect = (yl[1]-yl[0])/(xl[1]-xl[0])
+        xmin,xmax,ymin,ymax = self.getAxesRanges()
+        aspect = (ymax-ymin)/(xmax-xmin)
 
         # Adjust figure size according to desired aspect ratio
         # Add epsilon to desired size in inches, because MPL floors size in pixels,
         # which means that numerical inaccuracies could result in 1 pixel less width or height.
         self.figure.set_size_inches((widthpx+0.001)/self.dpi,(widthpx*aspect+0.001)/self.dpi)
+
+    def getAxesRanges(self):
+        ax = self.figure.gca()
+        xmin,xmax = ax.get_xlim()
+        ymin,ymax = ax.get_ylim()
+        xrange = xmax-xmin
+        yrange = ymax-ymin
+        
+        axesbox = self.figure.gca().get_position()
+        w,h = axesbox.width,axesbox.height
+        xmin -=     axesbox.xmin /float(w)*xrange
+        xmax += (1.-axesbox.xmax)/float(w)*xrange
+        ymin -=     axesbox.ymin /float(h)*yrange
+        ymax += (1.-axesbox.ymax)/float(h)*yrange
+        
+        return xmin,xmax,ymin,ymax
         
     def export(self,path,format):
         assert format in ('GeoTIFF','Keyhole Markup Language'), 'Unknown export format "%s" requested.' % format
-        if format=='GeoTiff':
+        if format=='GeoTIFF':
             self.exportGeoTiff(path)
         else:
             self.exportKml(path)
@@ -115,9 +143,7 @@ class GeoRefExporter(plot.BaseExporter):
         if debug: print 'Resulting image is %i x %i pixels.' % (widthpx,heightpx)
 
         # Get minimum and maximum of axes to determine pixel dimensions and map offset.
-        ax = self.figure.gca()
-        xmin,xmax = ax.get_xlim()
-        ymin,ymax = ax.get_ylim()
+        xmin,xmax,ymin,ymax = self.getAxesRanges()
 
         # Create a GeoTIFF object. Note we use 4 bands, to accommodate RBGA.
         driver = gdal.GetDriverByName('GTiff')
@@ -162,9 +188,7 @@ class GeoRefExporter(plot.BaseExporter):
         out = zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED)
     
         # Get map extent
-        ax = self.figure.gca()
-        xmin,xmax = ax.get_xlim()
-        ymin,ymax = ax.get_ylim()
+        xmin,xmax,ymin,ymax = self.getAxesRanges()
         
         title = self.source['Title'].getValue(usedefault=True)
 
