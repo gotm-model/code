@@ -15,6 +15,12 @@ import util, datatypes
 
 verbose = False
 
+replaceNever             = 0
+replaceExistingValues    = 1
+replaceWithEmpty         = 2
+replaceRemoveOldChildren = 4
+replaceAll               = 7
+
 class Schema(object):
     """Class for managing XML-based schemas, used to define TypedStore objects.
     Supports caching of schemas (based on file path), parsing of schemas
@@ -1251,7 +1257,7 @@ class Node(object):
         if recursive:
             for child in self.children: child.updateVisibility(recursive=True,notify=notify)
 
-    def copyFrom(self,sourcenode,replace=True,matchednodes=None):
+    def copyFrom(self,sourcenode,replace=replaceAll,matchednodes=None):
         """Recursively copies the value of the current node from the
         specified source node.
         
@@ -1263,9 +1269,9 @@ class Node(object):
 
         # Copy node value (if both source and target can have a value)
         if self.canHaveValue() and sourcenode.canHaveValue():
-            if replace or not self.hasValue():
+            if replace&replaceExistingValues or not self.hasValue():
                 curval = sourcenode.getValue()
-                self.setValue(curval)
+                if replace&replaceWithEmpty or curval is not None: self.setValue(curval)
                 if isinstance(curval,util.referencedobject): curval.release()
 
         # If replacing previous contents, remove optional nodes (with minoccurs=0)
@@ -1304,7 +1310,7 @@ class Node(object):
                 
             index += 1
             
-        if replace:
+        if replace&replaceRemoveOldChildren:
             # Remove all optional child nodes that were not matched by a child of the source node.
             for ch in oldchildren:
                 if ch.canHaveClones(): self.removeChildNode(ch)
@@ -1806,7 +1812,7 @@ class TypedStore(util.referencedobject):
                     n.setValue(defvalue)
                     if isinstance(defvalue,util.referencedobject): defvalue.release()
         else:
-            self.root.copyFrom(self.defaultstore.root,replace=False)
+            self.root.copyFrom(self.defaultstore.root,replace=replaceNever)
 
     def clearValidationHistory(self,nodes=None):
         if nodes is None:
@@ -1926,7 +1932,7 @@ class TypedStore(util.referencedobject):
         
         return errors,validity
         
-    def convert(self,target,callback=None,usedefaults=True,usecustom=True):
+    def convert(self,target,callback=None,usedefaults=True,usecustom=True,replace=replaceAll):
         """Converts the TypedStore object to the specified target. The target may be
         a version string (a new TypedStore object with the desired version will be created)
         or an existing TypedStore object with the different version.
@@ -1941,7 +1947,7 @@ class TypedStore(util.referencedobject):
         convertor = self.getSchemaInfo().getConverter(self.version,target.version)
         if convertor is None:
             raise Exception('No convertor available to convert version "%s" to "%s".' % (self.version,target.version))
-        convertor.convert(self,target,callback=callback,usedefaults=usedefaults,usecustom=usecustom)
+        convertor.convert(self,target,callback=callback,usedefaults=usedefaults,usecustom=usecustom,replace=replace)
 
         return target
 
@@ -2061,9 +2067,10 @@ class TypedStore(util.referencedobject):
                 # (of type "file") in the newly saved file.
                 # NB during back-conversion, existing values must not be overwritten with defaults (automatic if the saved
                 # version does not provide values), and the custom conversion rotuine must not be executed, as
-                # information in the exisitng scenario could get lost otherwise.
+                # information in the exisitng scenario could get lost otherwise. Also, existing values (e.g., data objects)
+                # may be overwritten, but not with empty values.
                 progslicer.nextStep('loading saved version')
-                tempstore.convert(self,callback=progslicer.getStepCallback(),usedefaults=False,usecustom=False)
+                tempstore.convert(self,callback=progslicer.getStepCallback(),usedefaults=False,usecustom=False,replace=replaceExistingValues)
 
             # Release the conversion result.
             tempstore.release()
@@ -2498,7 +2505,7 @@ class Convertor(object):
         """
         pass
 
-    def convert(self,source,target,callback=None,usedefaults=True,usecustom=True,convertlinkedata=True,matchednodes=None):
+    def convert(self,source,target,callback=None,usedefaults=True,usecustom=True,replace=replaceAll,convertlinkedata=True,matchednodes=None):
         """Converts source TypedStore object to target TypedStore object.
         This method performs a simple deep copy of all values, and then
         handles explicitly specified links between source and target nodes
@@ -2512,7 +2519,7 @@ class Convertor(object):
         
         # Try simple deep copy: nodes with the same name and location in both
         # source and target store will have their value copied.
-        target.copyFrom(source,matchednodes=matchednodes)
+        target.copyFrom(source,matchednodes=matchednodes,replace=replace)
 
         # Handle explicit one-to-one links between source nodes and target nodes.
         for (sourcepath,targetpath) in self.links:
@@ -2522,7 +2529,7 @@ class Convertor(object):
             targetnode = target[targetpath]
             if targetnode is None:
                 raise Exception('Cannot locate node "%s" in target.' % targetpath)
-            targetnode.copyFrom(sourcenode,matchednodes=matchednodes)
+            targetnode.copyFrom(sourcenode,matchednodes=matchednodes,replace=replace)
             
         if matchednodes is not None:
             defaults = []
@@ -2539,7 +2546,7 @@ class Convertor(object):
                             # Both the source and target node are linked-in from the same directory and differ in version.
                             # Try to locate a converter in the same directory to perform the conversion automatically.
                             conv = schemainfocache[srcdir].getConverter(subsrcversion,subtgtversion)
-                            if conv is not None: conv.convert(srcnode,node,usedefaults=usedefaults,usecustom=usecustom,convertlinkedata=False,matchednodes=matchednodes)
+                            if conv is not None: conv.convert(srcnode,node,usedefaults=usedefaults,usecustom=usecustom,replace=replace,convertlinkedata=False,matchednodes=matchednodes)
                 elif node.canHaveValue():
                     # Node was not matched in the source store, but it should have a value.
                     # Insert the default value.
@@ -2554,7 +2561,7 @@ class Convertor(object):
         if self.defaults and usedefaults:
             for path in self.defaults:
                 targetnode = target[path]
-                if targetnode.getValue(usedefault=False) is not None: continue
+                if targetnode.hasValue(): continue
                 sourcevalue = targetnode.getDefaultValue()
                 #print 'Using default value for %s/%s: %s' % (self.targetid,path,str(sourcevalue))
                 if sourcevalue is not None:

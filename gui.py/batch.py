@@ -147,7 +147,7 @@ if res.returncode==0:
         rep = core.report.Report()
         
         # Use report settings stored within the result (if any)
-        rep.store.root.copyFrom(res.store['ReportSettings'],replace=True)
+        rep.store.root.copyFrom(res.store['ReportSettings'])
 
         # Add all possible output variables
         treestore = res.getVariableTree(os.path.join(core.common.getDataRoot(),'schemas/outputtree.schema'),plottableonly=True)

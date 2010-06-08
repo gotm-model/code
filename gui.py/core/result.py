@@ -160,14 +160,14 @@ class Result(xmlplot.data.NetCDFStore_GOTM):
         setroot = self.store['FigureSettings']
         fignodename = source.root.templatenode.getAttribute('name')
         fig = setroot.getChildById(fignodename,name,create=True)
-        fig.copyFrom(source.root,replace=True)
+        fig.copyFrom(source.root)
 
     def getFigure(self,name,target):
         setroot = self.store['FigureSettings']
         fignodename = target.root.templatenode.getAttribute('name')
         fig = setroot.getChildById(fignodename,name,create=False)
         if fig is not None:
-            target.root.copyFrom(fig,replace=True)
+            target.root.copyFrom(fig)
             return True
         return False
 
