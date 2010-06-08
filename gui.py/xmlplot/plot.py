@@ -513,7 +513,10 @@ class Figure(xmlstore.util.referencedobject):
         Figure.exporters[name] = cls
         
     def getExporters(self):
-        import georef
+        try:
+            import georef
+        except ImportError:
+            pass
         return self.exporters
 
     def __init__(self,figure=None,defaultfont=None):
