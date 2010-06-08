@@ -1926,7 +1926,7 @@ class TypedStore(util.referencedobject):
         
         return errors,validity
         
-    def convert(self,target,callback=None,usedefaults=True):
+    def convert(self,target,callback=None,usedefaults=True,usecustom=True):
         """Converts the TypedStore object to the specified target. The target may be
         a version string (a new TypedStore object with the desired version will be created)
         or an existing TypedStore object with the different version.
@@ -1941,7 +1941,7 @@ class TypedStore(util.referencedobject):
         convertor = self.getSchemaInfo().getConverter(self.version,target.version)
         if convertor is None:
             raise Exception('No convertor available to convert version "%s" to "%s".' % (self.version,target.version))
-        convertor.convert(self,target,callback=callback,usedefaults=usedefaults)
+        convertor.convert(self,target,callback=callback,usedefaults=usedefaults,usecustom=usecustom)
 
         return target
 
@@ -2059,8 +2059,11 @@ class TypedStore(util.referencedobject):
             if claim:
                 # Convert back: by doing this the original store will be able to reference nodes
                 # (of type "file") in the newly saved file.
+                # NB during back-conversion, existing values must not be overwritten with defaults (automatic if the saved
+                # version does not provide values), and the custom conversion rotuine must not be executed, as
+                # information in the exisitng scenario could get lost otherwise.
                 progslicer.nextStep('loading saved version')
-                tempstore.convert(self,callback=progslicer.getStepCallback())
+                tempstore.convert(self,callback=progslicer.getStepCallback(),usedefaults=False,usecustom=False)
 
             # Release the conversion result.
             tempstore.release()
@@ -2495,7 +2498,7 @@ class Convertor(object):
         """
         pass
 
-    def convert(self,source,target,callback=None,usedefaults=True,convertlinkedata=True,matchednodes=None):
+    def convert(self,source,target,callback=None,usedefaults=True,usecustom=True,convertlinkedata=True,matchednodes=None):
         """Converts source TypedStore object to target TypedStore object.
         This method performs a simple deep copy of all values, and then
         handles explicitly specified links between source and target nodes
@@ -2536,7 +2539,7 @@ class Convertor(object):
                             # Both the source and target node are linked-in from the same directory and differ in version.
                             # Try to locate a converter in the same directory to perform the conversion automatically.
                             conv = schemainfocache[srcdir].getConverter(subsrcversion,subtgtversion)
-                            if conv is not None: conv.convert(srcnode,node,usedefaults=usedefaults,convertlinkedata=False,matchednodes=matchednodes)
+                            if conv is not None: conv.convert(srcnode,node,usedefaults=usedefaults,usecustom=usecustom,convertlinkedata=False,matchednodes=matchednodes)
                 elif node.canHaveValue():
                     # Node was not matched in the source store, but it should have a value.
                     # Insert the default value.
@@ -2559,7 +2562,8 @@ class Convertor(object):
                     if isinstance(sourcevalue,util.referencedobject): sourcevalue.release()
 
         # Do custom conversions
-        self.convertCustom(source,target,callback)
+        if usecustom:
+            self.convertCustom(source,target,callback)
 
     def convertCustom(self,source,target,callback=None):
         pass
@@ -2637,7 +2641,7 @@ class ConvertorChain(Convertor):
         Convertor.__init__(self,chain[0].sourceid,chain[-1].targetid)
         self.chain = chain
 
-    def convert(self,source,target,callback=None,usedefaults=True):
+    def convert(self,source,target,callback=None,**kwargs):
         temptargets = []
         nsteps = len(self.chain)
         if callback is not None:
@@ -2651,12 +2655,12 @@ class ConvertorChain(Convertor):
             if verbose: print 'Converting to temporary target "%s".' % temptargetid
             temptarget = source.fromSchemaName(temptargetid)
             temptargets.append(temptarget)
-            convertor.convert(source,temptarget,callback=stepcallback)
+            convertor.convert(source,temptarget,callback=stepcallback,**kwargs)
             source = temptarget
         convertor = self.chain[-1]
         istep = nsteps-1
         if callback is not None: callback(float(istep)/nsteps,'converting to version "%s".' % target.version)
         if verbose: print 'Converting to final target "%s".' % target.version
-        convertor.convert(source,target,callback=stepcallback)
+        convertor.convert(source,target,callback=stepcallback,**kwargs)
         for temptarget in temptargets: temptarget.release()
 
