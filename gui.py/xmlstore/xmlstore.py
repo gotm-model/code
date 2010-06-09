@@ -2070,14 +2070,13 @@ class TypedStore(util.referencedobject):
             tempstore.saveAll(path, targetversion = targetversion,targetisdir = targetisdir,callback=progslicer.getStepCallback())
 
             if claim:
-                # Convert back: by doing this the original store will be able to reference nodes
-                # (of type "file") in the newly saved file.
-                # NB during back-conversion, existing values must not be overwritten with defaults (automatic if the saved
-                # version does not provide values), and the custom conversion rotuine must not be executed, as
-                # information in the exisitng scenario could get lost otherwise. Also, existing values (e.g., data objects)
-                # may be overwritten, but not with empty values.
-                progslicer.nextStep('loading saved version')
-                for savednode,sourcenode in matches.iteritems():
+                # Assign the value of all saved variables with separate data to the original data store,
+                # where possible. Ideally, this can be done for all variables with separate data, allowing
+                # the original source file of the original data store to be released.
+                progslicer.nextStep('redirecting variables with separate data to saved file.')
+                callback = progslicer.getStepCallback()
+                for imatch,(savednode,sourcenode) in enumerate(matches.iteritems()):
+                    callback(float(imatch)/len(matches),'redirecting variable %i.' % imatch)
                     cls = sourcenode.getValueType(returnclass=True)
                     if cls is not None and issubclass(cls,util.referencedobject):
                         savedvalue = savednode.getValue()
