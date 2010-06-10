@@ -231,8 +231,7 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
     mask = None
     def addmask(mask,newmask):
         if mask is None:
-            mask = numpy.empty(dat.shape,dtype=numpy.bool)
-            mask.fill(False)
+            mask = numpy.zeros(dat.shape,dtype=numpy.bool)
         return numpy.logical_or(mask,newmask)
 
     # Process the various COARDS/CF variable attributes for missing data.
@@ -243,11 +242,11 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
             assert len(ncvar.valid_range)==2,'NetCDF attribute "valid_range" must consist of two values, but contains %i.' % len(ncvar.valid_range)
             minv,maxv = ncvar.valid_range
             mask = addmask(mask,numpy.logical_or(dat<minv,dat>maxv))
-    if hasattr(ncvar,'_FillValue'):    mask = addmask(mask,dat==numpy.asarray(ncvar._FillValue,dtype=dat.dtype))
+    if hasattr(ncvar,'_FillValue'):    mask = addmask(mask,dat==numpy.asarray(ncvar._FillValue,   dtype=dat.dtype))
     if hasattr(ncvar,'missing_value'): mask = addmask(mask,dat==numpy.asarray(ncvar.missing_value,dtype=dat.dtype))
 
     # Apply the combined mask (if any)
-    if mask is not None: dat = numpy.ma.masked_where(mask,dat,copy=False)
+    if mask is not None and mask.any(): dat = numpy.ma.masked_where(mask,dat,copy=False)
 
     # If we have to apply a transformation to the data, make sure that the data type can accommodate it.
     # Cast to the most detailed type available (64-bit float)
@@ -1593,11 +1592,41 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             # Coordinates should not have a mask - undo the masking.
             if hasattr(coords,'_mask'): coords = numpy.array(coords,copy=False)
 
+            # Locate variable that contains staggered [boundary] coordinates.
+            stagcoordvar = None
+            if coordvar is not None:
+                if dimname in self.store.staggeredcoordinates:
+                    # The store has assigned a variable with staggered coordinates.
+                    stagcoordvar = self.store.getVariable_raw(self.store.staggeredcoordinates[dimname])
+                    assert stagcoordvar is not None, 'Staggered coordinate for dimension %s registered in store as variable %s, but not present as variable.' % (dimname,self.store.staggeredcoordinates[dimname])
+                elif 'bounds' in coordvar.getProperties():
+                    # The variable itself points to a variable with staggered coordinates (CF convention: bounds attribute).
+                    boundvar = coordvar.getProperties()['bounds']
+                    stagcoordvar = self.store.getVariable_raw(boundvar)
+                    assert stagcoordvar is not None, 'Boundary values for coordinate variable %s are set to variable %s, but this variable is not present in the NetCDF file.' % (coordvar.getName(),boundvar)
+            
             # Get staggered coordinates over entire domain
-            if coordvar is not None and dimname in self.store.staggeredcoordinates:
-                # A variable exists that contains the staggered coordinates.
-                stagcoordvar = self.store.getVariable_raw(self.store.staggeredcoordinates[dimname])
-                assert stagcoordvar is not None, 'Staggered coordinate for dimension %s registered in store as variable %s, but not present as variable.' % (dimname,self.store.staggeredcoordinates[dimname])
+            if stagcoordvar is not None:
+                centshape = coordvar.getShape()
+                stagshape = stagcoordvar.getShape()
+                if len(stagshape)==len(centshape)+1:    # CF convention: one extra dimension for the corner index
+                    stagdata = stagcoordvar.getSlice(dataonly=True, cache=True)
+                    newshape = [l+1 for l in centshape]
+                    stagcoordvar = numpy.zeros(newshape)
+                    if len(centshape)==1:
+                        assert stagshape[-1]==2, 'A 1D coordinate variable must have 2 boundaries per cell (not %i).' % (stagshape[-1],)
+                        stagcoordvar[:-1] =  stagdata[:,0]
+                        stagcoordvar[1: ] += stagdata[:,1]
+                        stagcoordvar[1:-1] /= 2
+                    elif len(centshape)==2:
+                        assert stagshape[-1]==4, 'A 2D coordinate variable must have 4 boundaries per cell (not %i).' % (stagshape[-1],)
+                        stagcoordvar[ :-1, :-1]  = stagdata[:,:,0]
+                        stagcoordvar[ :-1,1:  ] += stagdata[:,:,1]
+                        stagcoordvar[1:,  1:  ] += stagdata[:,:,2]
+                        stagcoordvar[1:  , :-1] += stagdata[:,:,3]
+                        stagcoordvar[1:-1,:] /= 2
+                        stagcoordvar[:,1:-1] /= 2
+            
                 coordslice_stag = []
                 for slc in coordslice:
                     if isinstance(slc,slice):
@@ -1607,7 +1636,10 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                         # We take a single [centered] index from this dimension:
                         # Get the left and right bounds, so we can average them later.
                         coordslice_stag.append(slice(slc,slc+2))
-                coords_stag = stagcoordvar.getSlice(coordslice_stag, dataonly=True, cache=True)
+                if isinstance(stagcoordvar,numpy.ndarray):
+                    coords_stag = stagcoordvar[coordslice_stag]
+                else:
+                    coords_stag = stagcoordvar.getSlice(coordslice_stag, dataonly=True, cache=True)
 
                 # Undo the staggering of the dimensions that we take a single slice through
                 # by averaging the left- and right bounds.
