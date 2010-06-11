@@ -690,6 +690,9 @@ class Figure(xmlstore.util.referencedobject):
         """
         if self.defaultsource==name: self.defaultsource = None
         return self.source.removeChild(name)
+        
+    def getDataSources(self):
+        return self.source.children
 
     def clearProperties(self,deleteoptional=True):
         """Clear all customized figure properties (which means defaults will be used).
