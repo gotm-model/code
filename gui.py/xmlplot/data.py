@@ -1918,8 +1918,11 @@ class NetCDFStore_GOTM(NetCDFStore):
         # --------------------------------------------------------------
 
         # Re-assign for GETM with curvilinear coordinates
+        # Preferentially, x and y are re-assigned to longitude and latitude.
+        # If these are not available, they will be re-assigned to projected x and y instead.
         if 'xic' in ncdims and 'etac' in ncdims:
-            self.xname,self.yname = 'xic','etac'
+            # Center coordinate are available, re-assign to either lon,lat or projected x,y, if possible.
+            self.xname,self.yname = 'xic','etac'   # x,y dimensions to be used for depth
             if 'lonc' in ncvars and 'latc' in ncvars:
                 self.reassigneddims['xic' ] = 'lonc'
                 self.reassigneddims['etac'] = 'latc'
@@ -1927,6 +1930,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                 self.reassigneddims['xic' ] = 'xc'
                 self.reassigneddims['etac'] = 'yc'
         if 'xix' in ncdims and 'etax' in ncdims:
+            # Boundary coordinate are available, re-assign to either lon,lat or projected x,y, if possible.
             if 'lonx' in ncvars and 'latx' in ncvars:
                 self.reassigneddims['xix' ] = 'lonx'
                 self.reassigneddims['etax'] = 'latx'
@@ -1934,12 +1938,19 @@ class NetCDFStore_GOTM(NetCDFStore):
                 self.reassigneddims['xix' ] = 'xx'
                 self.reassigneddims['etax'] = 'yx'
 
-        # Re-assign for GETM with cartesian coordinates
+        # Re-assign for GETM with cartesian coordinates.
+        # x and y are re-assigned to longitude and latitude, if possible.
         if 'xc' in ncdims and 'yc' in ncdims:
-            self.xname,self.yname = 'xc','yc'
+            # Center coordinate are available.
+            self.xname,self.yname = 'xc','yc'   # x,y dimensions to be used for depth
             if 'lonc' in ncvars and 'latc' in ncvars:
                 self.reassigneddims['xc' ] = 'lonc'
                 self.reassigneddims['yc'] = 'latc'
+        if 'xx' in ncdims and 'yx' in ncdims:
+            # Boundary coordinate are available.
+            if 'lonx' in ncvars and 'latx' in ncvars:
+                self.reassigneddims['xx'] = 'lonx'
+                self.reassigneddims['yx'] = 'latx'
 
         # For GETM with spherical coordinates, we just need to remember the latitude,longitude
         # names for when we return the dimensions of the new vertical coordinates.
@@ -2004,7 +2015,10 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return self.store[self.stagname].getUnit()
 
             def getProperties(self):
-                return {}
+                return {'history':'auto-generated from boundary coordinates in variable %s' % self.stagname}
+
+            def getDataType(self):
+                return self.store[self.stagname].getDataType()
 
             def getDimensions_raw(self,reassign=True):
                 dims = ('etac','xic')
