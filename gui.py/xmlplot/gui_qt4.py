@@ -355,6 +355,7 @@ class FigureCanvas(FigureCanvasQTAgg):
     def __init__(self, figure):
         FigureCanvasQTAgg.__init__(self, figure)
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent,False)
+        self.animating = False
 
     def resizeEvent( self, e ):
         FigureCanvasQTAgg.resizeEvent( self, e )
@@ -363,7 +364,10 @@ class FigureCanvas(FigureCanvasQTAgg):
     def draw(self):
         self.replot = True
         self.get_renderer().clear()
-        self.update()
+        if self.animating:
+            self.repaint()
+        else:
+            self.update()
 
 class FigurePanel(QtGui.QWidget):
     """This widget contains a MatPlotLib canvas that hosts a figure, plus a toolbar
@@ -441,6 +445,12 @@ class FigurePanel(QtGui.QWidget):
         
     def hideEvent(self,event):
         if self.dialogAdvanced is not None: self.dialogAdvanced.hide()
+        
+    def startAnimation(self):
+        self.canvas.animating = True
+
+    def stopAnimation(self):
+        self.canvas.animating = False
         
     def afterCanvasResize(self):
         w,h = self.canvas.figure.get_size_inches()
