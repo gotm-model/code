@@ -824,7 +824,7 @@ class Figure(xmlstore.util.referencedobject):
         textscaling = self.properties['FontScaling'].getValue(usedefault=True)/100.
         
         # First scale the default font size; this takes care of all relative font sizes (e.g. "small")
-        matplotlib.font_manager.fontManager.set_default_size(textscaling*matplotlib.rcParams['font.size'])
+        #matplotlib.font_manager.fontManager.set_default_size(textscaling*matplotlib.rcParams['font.size'])
         
         # Get default font properties
         fontpropsdict = getFontProperties(self.properties['Font'],textscaling=textscaling)
