@@ -32,7 +32,21 @@ def chooseNetCDFModule():
     selectednetcdfmodule = -1
     error = ''
     
-    # We prefer ScientificPython. Try that first.
+    # Try to locate netCDF4.
+    ready = True
+    try:
+        import netCDF4
+    except ImportError,e:
+        error += 'Cannot load netCDF4. Reason: %s.\n' % str(e)
+        ready = False
+    if ready:
+        if selectednetcdfmodule==-1: selectednetcdfmodule = len(netcdfmodules)
+        netcdfmodules.append(('netCDF4',netCDF4.__version__))
+
+    # Try to locate ScientificPython.
+    # Note that is is best doen after trying netCDF4, because ScientificPython's version of the NetCDF library is generally lower (3.x).
+    # If ScientificPython is loaded first, netCDF4 is unable to load the required >=4 version of the NetCDF library.
+    # If ScientificPython is loaded after netCDF4, it will use the NetCDF library loaded by netCDF4, if both these modules are present.
     ready = True
     try:
         import Scientific.IO.NetCDF
@@ -47,18 +61,7 @@ def chooseNetCDFModule():
         except: pass
         if not oldscientific and selectednetcdfmodule==-1: selectednetcdfmodule = len(netcdfmodules)
         netcdfmodules.append(('Scientific.IO.NetCDF',Scientific.__version__))
-
-    # Try to locate netCDF4.
-    ready = True
-    try:
-        import netCDF4
-    except ImportError,e:
-        error += 'Cannot load netCDF4. Reason: %s.\n' % str(e)
-        ready = False
-    if ready:
-        if selectednetcdfmodule==-1: selectednetcdfmodule = len(netcdfmodules)
-        netcdfmodules.append(('netCDF4',netCDF4.__version__))
-    
+   
     # Try to locate pynetcdf.
     ready = True
     try:
