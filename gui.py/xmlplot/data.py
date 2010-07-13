@@ -1531,11 +1531,20 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
           else:
               # Read the data slab directly from the NetCDF file.
               dat = self.getNcData(bounds)
+              
+              # Determine the expected shape of the returned data.
               expectedshape = []
-              for i in range(len(bounds)):
-                if isinstance(bounds[i],slice):
-                    expectedshape.append((bounds[i].stop-bounds[i].start-1)/bounds[i].step+1)
-              assert tuple(dat.shape)==tuple(expectedshape),'%s: getNcData returned data with shape %s, while shape %s was requested.' % (self.getName(),dat.shape,expectedshape)
+              for b in bounds:
+                if isinstance(b,slice):
+                    expectedshape.append((b.stop-b.start-1)/b.step+1)
+              expectedshape = tuple(expectedshape)
+              
+              # netCDF4 pre 2010-07-12 incorrectly neglects to squeeze out singleton dimension of scalars.
+              # Therefore, ignore differences between expected and returned data shape if they are due to singleton dimensions.
+              if dat.shape!=expectedshape and [l for l in expectedshape if l>1]==[l for l in dat.shape if l>1]: dat.shape = expectedshape
+              
+              # Check whether expected and returned data shapes match.
+              assert dat.shape==expectedshape,'%s: getNcData returned data with shape %s, while shape %s was requested.' % (self.getName(),dat.shape,expectedshape)
 
           # If the caller wants the data values only, we are done: return the value array.
           if dataonly: return dat
