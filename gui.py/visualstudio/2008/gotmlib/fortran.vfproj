@@ -4,7 +4,7 @@
 		<Platform Name="Win32"/></Platforms>
 	<Configurations>
 		<Configuration Name="Debug|Win32" OutputDirectory="$(ConfigurationName)\$(ProjectName)" IntermediateDirectory="$(temp)\$(ProjectName)\$(ConfigurationName)" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.lib;$(TargetPath)" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\..\include;$(NETCDF_PREFIX)\include" PreprocessorDefinitions="REAL_4B=real(4);FORTRAN95;NUDGE_VEL;NETCDF_FMT;DEBUG=STATIC;SEAGRASS;BIO;LAGRANGE;BIO_NPZD;BIO_IOW;BIO_FASHAM;BIO_SED;BIO_NPZD_FE;BIO_PHOTO;BIO_CL;BIO_MANGAN;GUSTINESS;LOCATIONTYPE=integer;LOCATIONVARIABLE=ilev" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\..\include;$(NETCDF_PREFIX)\include" PreprocessorDefinitions="REAL_4B=real(4);FORTRAN95;NUDGE_VEL;NETCDF_FMT;DEBUG=STATIC;SEAGRASS;BIO;LAGRANGE;BIO_NPZD;BIO_IOW;BIO_FASHAM;BIO_SED;BIO_NPZD_FE;BIO_PHOTO;BIO_CL;BIO_MANGAN;GUSTINESS;LOCATIONTYPE=integer;LOCATIONVARIABLE=ilev" ExternalNameInterpretation="extNameLowerCase" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
 				<Tool Name="VFLibrarianTool" OutputFile="$(OUTDIR)/gotm-lib-cvs.lib" AdditionalLibraryDirectories="$(NETCDF_PREFIX)\lib" AdditionalDependencies="netcdf.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TypeLibraryName="$(IntDir)/$(InputName).tlb"/>
@@ -14,7 +14,7 @@
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
 		<Configuration Name="Release|Win32" OutputDirectory="$(ConfigurationName)\$(ProjectName)" IntermediateDirectory="$(temp)\$(ProjectName)\$(ConfigurationName)" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.lib;$(TargetPath)" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" BufferedIO="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\..\include;$(NETCDF_PREFIX)\include" PreprocessorDefinitions="REAL_4B=real(4);FORTRAN95;NUDGE_VEL;NETCDF_FMT;SEAGRASS;BIO;LAGRANGE;BIO_NPZD;BIO_IOW;BIO_FASHAM;BIO_SED;BIO_NPZD_FE;BIO_PHOTO;BIO_CL;BIO_MANGAN;GUSTINESS;LOCATIONTYPE=integer;LOCATIONVARIABLE=ilev" WarnUnusedVariables="true" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" BufferedIO="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="..\..\..\..\include;$(NETCDF_PREFIX)\include" PreprocessorDefinitions="REAL_4B=real(4);FORTRAN95;NUDGE_VEL;NETCDF_FMT;SEAGRASS;BIO;LAGRANGE;BIO_NPZD;BIO_IOW;BIO_FASHAM;BIO_SED;BIO_NPZD_FE;BIO_PHOTO;BIO_CL;BIO_MANGAN;GUSTINESS;LOCATIONTYPE=integer;LOCATIONVARIABLE=ilev" WarnUnusedVariables="true" ExternalNameInterpretation="extNameLowerCase" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/"/>
 				<Tool Name="VFLibrarianTool" OutputFile="$(OUTDIR)/gotm-lib-cvs.lib" AdditionalLibraryDirectories="$(NETCDF_PREFIX)\lib" AdditionalDependencies="netcdf.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TypeLibraryName="$(IntDir)/$(InputName).tlb"/>
@@ -47,19 +47,14 @@
 		<File RelativePath="..\..\..\..\src\extras\bio\fasham\bio_fasham.F90"/></Filter>
 		<Filter Name="iow">
 		<File RelativePath="..\..\..\..\src\extras\bio\iow\bio_iow.F90"/></Filter>
-		<Filter Name="jellyfish">
-		<File RelativePath="\\pc-jorn\Users\Jorn\Documents\Programmeren\GOTM-CVS\gotm\src\extras\bio\jellyfish_0d\bio_jellyfish_0d.F90"/></Filter>
 		<Filter Name="mab">
 		<File RelativePath="..\..\..\..\src\extras\bio\mab\bio_mab.F90"/></Filter>
 		<Filter Name="mangan">
 		<File RelativePath="..\..\..\..\src\extras\bio\mangan\bio_mangan.F90"/></Filter>
-		<Filter Name="co2sys_0d">
-		<File RelativePath="..\..\..\..\src\extras\bio\co2sys_0d\bio_co2_sys_0d.F90"/>
-		<File RelativePath="C:\Temp\carbonate model\co2_dyn.F90"/></Filter>
-		<Filter Name="npzd">
-		<File RelativePath="..\..\..\..\src\extras\bio\npzd\bio_npzd.F90"/></Filter>
 		<Filter Name="npzd_0d">
 		<File RelativePath="..\..\..\..\src\extras\bio\npzd_0d\bio_npzd_0d.F90"/></Filter>
+		<Filter Name="npzd">
+		<File RelativePath="..\..\..\..\src\extras\bio\npzd\bio_npzd.F90"/></Filter>
 		<Filter Name="npzd_fe">
 		<File RelativePath="..\..\..\..\src\extras\bio\npzd_fe\bio_npzd_fe.F90"/></Filter>
 		<Filter Name="photo">
@@ -72,7 +67,6 @@
 		<File RelativePath="..\..\..\..\src\extras\bio\template\bio_template.F90"/></Filter>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_0d.F90"/>
-		<File RelativePath="\\pc-jorn\Users\Jorn\Documents\Programmeren\GOTM-CVS\gotm\src\extras\bio\bio_0d_driver_gotm.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_0d_gen.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_alloc_info.F90"/>
 		<File RelativePath="..\..\..\..\src\extras\bio\bio_fluxes.F90"/>
