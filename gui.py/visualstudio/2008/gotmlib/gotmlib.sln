@@ -1,0 +1,28 @@
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "fortran", "fortran.vfproj", "{7D63F885-F1D8-469C-A076-488A23EB592B}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "c++", "c++.vcproj", "{D2E4E488-7696-48EA-92EE-FA94594D0B24}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7D63F885-F1D8-469C-A076-488A23EB592B} = {7D63F885-F1D8-469C-A076-488A23EB592B}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7D63F885-F1D8-469C-A076-488A23EB592B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7D63F885-F1D8-469C-A076-488A23EB592B}.Debug|Win32.Build.0 = Debug|Win32
+		{7D63F885-F1D8-469C-A076-488A23EB592B}.Release|Win32.ActiveCfg = Release|Win32
+		{7D63F885-F1D8-469C-A076-488A23EB592B}.Release|Win32.Build.0 = Release|Win32
+		{D2E4E488-7696-48EA-92EE-FA94594D0B24}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D2E4E488-7696-48EA-92EE-FA94594D0B24}.Debug|Win32.Build.0 = Debug|Win32
+		{D2E4E488-7696-48EA-92EE-FA94594D0B24}.Release|Win32.ActiveCfg = Release|Win32
+		{D2E4E488-7696-48EA-92EE-FA94594D0B24}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
