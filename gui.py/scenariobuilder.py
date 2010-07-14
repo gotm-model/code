@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.53 2010-07-14 15:43:10 jorn Exp $
+#$Id: scenariobuilder.py,v 1.54 2010-07-14 15:57:06 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -206,6 +206,9 @@ class PageOpen(commonqt.WizardPage):
 class ScenarioPage(commonqt.WizardPage):
     def __init__(self,parent=None):
         commonqt.WizardPage.__init__(self, parent)
+        
+        # Needed to make sure that GUI editors for xmlplot data types (gotmdatafile) are registered.
+        import xmlplot.gui_qt4
 
         self.scenario = parent.getProperty('scenario')
         if self.scenario is None: raise Exception('No scenario available; this page should not have been available.')

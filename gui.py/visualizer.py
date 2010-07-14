@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-#$Id: visualizer.py,v 1.43 2010-01-13 15:13:37 jorn Exp $
+#$Id: visualizer.py,v 1.44 2010-07-14 15:57:06 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
-import xmlstore.gui_qt4, xmlplot.gui_qt4
+import xmlstore.gui_qt4
 import core.common, core.result, core.report, commonqt
 
 import sys,datetime
@@ -113,6 +113,7 @@ class VisualizeWidget(QtGui.QWidget):
         self.treeVariables.setModel(self.model)
         self.connect(self.treeVariables.selectionModel(), QtCore.SIGNAL('selectionChanged(const QItemSelection &, const QItemSelection &)'), self.OnVarSelected)
 
+        import xmlplot.gui_qt4
         self.figurepanel = xmlplot.gui_qt4.FigurePanel(self)
 
         self.label = QtGui.QLabel('Here you can view the results of the simulation. Please choose a variable to be plotted from the menu.',self)
@@ -318,6 +319,8 @@ class PageReportGenerator(commonqt.WizardPage):
         commonqt.WizardPage.__init__(self, parent)
 
         self.result = parent.getProperty('result')
+        
+        import xmlplot.gui_qt4
         deffont = xmlplot.gui_qt4.getFontSubstitute(unicode(self.fontInfo().family()))
         self.report = core.report.Report(defaultfont = deffont)
         
