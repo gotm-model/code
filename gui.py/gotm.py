@@ -16,8 +16,6 @@ import xmlstore.util, xmlstore.gui_qt4
 import core.common
 import commonqt
 
-xmlstore.xmlstore.Schema.knownpaths['xmlplot'] = os.path.join(core.common.getDataRoot(),'xmlplot')
-
 class GOTMWizard(commonqt.Wizard):
     """Customized wizard dialog that show the GOTM logo at the top of the wizard window,
     and adds a "Tools" button for various functionality such as "Save as" and export of

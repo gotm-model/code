@@ -1,6 +1,7 @@
-import xmlstore.xmlstore
 import sys, os.path
 import common
+import xmlstore.xmlstore
+import xmlplot.common
 
 class LoadException(Exception): pass
 
