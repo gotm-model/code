@@ -1,20 +1,16 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.66 2009-06-23 08:13:53 jorn Exp $
+#$Id: commonqt.py,v 1.67 2010-07-14 15:43:10 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
 
 # Import third-party modules
 from PyQt4 import QtGui,QtCore
-import matplotlib.figure, pytz
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 # Import our own custom modules
-import xmlstore.xmlstore,xmlstore.util
-import xmlplot.plot,xmlplot.data,xmlplot.common
-import core.common,core.settings
+import xmlstore.util
+import core.common
 
 radiowidth = None
 def getRadioWidth():
@@ -281,6 +277,7 @@ class Wizard(QtGui.QDialog):
         self.bnlayout.addWidget(self.bnNext)
 
         if closebutton:
+            import xmlplot.gui_qt4
             self.bnClose = QtGui.QPushButton(xmlplot.gui_qt4.getIcon('exit.png'),'&Close',self)
             self.connect(self.bnClose, QtCore.SIGNAL('clicked()'), self.accept)
             self.bnlayout.addWidget(self.bnClose)
@@ -292,16 +289,22 @@ class Wizard(QtGui.QDialog):
 
         self.shared = {}
 
-        self.settings = core.settings.SettingsStore()
-        try:
-            self.settings.load()
-        except core.settings.LoadException,e:
-            QtGui.QMessageBox.warning(self, 'Unable to load settings', str(e))
+        self.settings = None
 
         self.sequence = sequence
         self.currentpage = None
         
         self.allowfinish = allowfinish
+
+    def getSettings(self):
+        if self.settings is None:
+            import core.settings
+            self.settings = core.settings.SettingsStore()
+            try:
+                self.settings.load()
+            except core.settings.LoadException,e:
+                QtGui.QMessageBox.warning(self, 'Unable to load settings', str(e))
+        return self.settings
 
     def getProperty(self,propertyname):
         if propertyname not in self.shared: return None
@@ -321,9 +324,10 @@ class Wizard(QtGui.QDialog):
             self.setProperty(propertyname,None)
 
     def destroy(self, destroyWindow = True, destroySubWindows = True):
-        self.settings.save()
-        self.settings.release()
-        self.settings = None
+        if self.settings is not None:
+            self.settings.save()
+            self.settings.release()
+            self.settings = None
         for v in self.shared.values():
             try:
                 v.release()
@@ -500,12 +504,12 @@ class WizardFork(WizardSequence):
         self.wizard = wiz
 
     def getNextPage(self,stay=False):
-        if stay: return WizardSequence()
         if self.index==-1:
             seq = self.getSequence()
             assert seq is not None, 'Fork did not return a new sequence'
+            if stay: return seq.getNextPage(stay=stay)
             self.items = [seq]
-        return WizardSequence.getNextPage(self,stay=False)
+        return WizardSequence.getNextPage(self,stay=stay)
 
     def getSequence(self):
         return None

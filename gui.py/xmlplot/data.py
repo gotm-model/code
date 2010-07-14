@@ -173,7 +173,7 @@ def parseNcTimeUnit(fullunit):
     mseconds = 1e6*(seconds % 1.)
     seconds = int(seconds)
     reftime = reftime[timematch.end():]
-  dateref = datetime.datetime(year,month,day,hours,minutes,seconds,tzinfo=xmlstore.util.utc)
+  dateref = datetime.datetime(year,month,day,hours,minutes,seconds,tzinfo=xmlstore.util.getUTC())
   if len(reftime)>0:
     timezonematch = re.match(r'(-?\d{1,2})(?::?(\d\d))?$',reftime)
     if timezonematch is None:

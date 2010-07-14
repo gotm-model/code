@@ -149,7 +149,7 @@ def qtdatetime2datetime(qtdatetime):
     qdt = qtdatetime.toUTC()
     d = qdt.date()
     t = qdt.time()
-    return datetime.datetime(d.year(),d.month(),d.day(),t.hour(),t.minute(),t.second(),tzinfo=util.utc)
+    return datetime.datetime(d.year(),d.month(),d.day(),t.hour(),t.minute(),t.second(),tzinfo=util.getUTC())
 
 def datetime2qtdatetime(dt):
     """Convert Python datetime object to Qt QDateTime object.

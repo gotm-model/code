@@ -1,6 +1,6 @@
-#$Id: common.py,v 1.6 2009-05-19 11:36:01 jorn Exp $
+#$Id: common.py,v 1.7 2010-07-14 15:43:10 jorn Exp $
 
-import sys, os.path, tempfile, shutil, atexit
+import sys, os.path, shutil, atexit
 
 verbose = False
 
@@ -22,6 +22,7 @@ class TempDirManager(object):
 
     @staticmethod
     def create(prefix=''):
+        import tempfile
         path = tempfile.mkdtemp('',prefix)
         if TempDirManager.tempdirs is None:
             TempDirManager.tempdirs = []

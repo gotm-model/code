@@ -2,7 +2,7 @@
 import os, xml.dom.minidom, shutil
 
 # Import own custom modules
-import xmlstore.util, xmlstore.xmlstore, xmlplot.plot
+import xmlstore.util, xmlstore.xmlstore
 
 import common
 
@@ -158,6 +158,7 @@ class Report(xmlstore.util.referencedobject):
         
         # Create figure to be used for plotting observations and results.
         if len(inputdata)>0 or len(plotvariables)>0:
+            import xmlplot.plot
             fig = xmlplot.plot.Figure(defaultfont=fontname)
         else:
             fig = None

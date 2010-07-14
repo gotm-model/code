@@ -1,5 +1,4 @@
 import tempfile,os,time
-import numpy
 
 import common,result,gotm
 
@@ -211,6 +210,7 @@ class Simulator(object):
         assert len(values)==gotm.bio_var.cc.shape[0],'Number of provided values (%i) does not match number of bio state variables (%s).' % (len(values),gotm.bio_var.cc.shape[0])
         oldvalues = self.getBioValues()
         values = list(values)
+        import numpy
         values = numpy.asarray(values,dtype=numpy.float)
         relchange = values/numpy.asarray(oldvalues,dtype=numpy.float)
         relchange.shape = -1,1

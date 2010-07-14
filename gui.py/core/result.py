@@ -1,6 +1,7 @@
 import os.path, xml.dom.minidom, shutil, StringIO
 
-import xmlplot.common, xmlstore.xmlstore, xmlplot.plot, xmlplot.data
+import xmlstore.xmlstore
+import xmlplot.common, xmlplot.data
 import common, scenario
 
 class ResultProperties(xmlstore.xmlstore.TypedStore):
@@ -22,6 +23,7 @@ class ResultProperties(xmlstore.xmlstore.TypedStore):
         
     @classmethod
     def getCustomDataTypes(ownclass):
+        import xmlplot.plot
         dt = xmlplot.plot.FigureProperties.getCustomDataTypes()
         return dt
 

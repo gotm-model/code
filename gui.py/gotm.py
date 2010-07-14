@@ -6,21 +6,17 @@ import os,sys,optparse
 # Import Qt Modules
 from PyQt4 import QtGui,QtCore
 
-# Import MatPlotLib to configure key parameters
-import matplotlib
-matplotlib.use('Qt4Agg')
-#matplotlib.rcParams['numerix'] = 'numpy'
-
 # In order to find our custom data files, make sure that we are in the directory
 # containing the executable.
 oldworkingdir = os.getcwdu()
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
 # Now import our custom modules
-import xmlplot.common, xmlstore.xmlstore, xmlstore.util, xmlstore.gui_qt4
-import core.common, core.scenario, core.result, commonqt
+import xmlstore.util, xmlstore.gui_qt4
+import core.common
+import commonqt
 
-import scenariobuilder,simulator,visualizer
+xmlstore.xmlstore.Schema.knownpaths['xmlplot'] = os.path.join(core.common.getDataRoot(),'xmlplot')
 
 class GOTMWizard(commonqt.Wizard):
     """Customized wizard dialog that show the GOTM logo at the top of the wizard window,
@@ -42,7 +38,7 @@ class GOTMWizard(commonqt.Wizard):
         commonqt.Wizard.__init__(self,parent,sequence,closebutton,headerlogo=os.path.join(core.common.getDataRoot(),'logo.png'))
 
         self.bnTools = QtGui.QPushButton(commonqt.getIcon('advanced.png'),'&Tools',self)
-        self.bnTools.setEnabled(False)
+        #self.bnTools.setEnabled(False)
         self.bnlayout.insertWidget(1,self.bnTools)
 
         self.menuTools = QtGui.QMenu(self)
@@ -50,6 +46,7 @@ class GOTMWizard(commonqt.Wizard):
         self.actExportScenario = self.menuTools.addAction('Export scenario to namelists...',self.onExportScenario)
         self.actSaveResult     = self.menuTools.addAction('Save result as...',self.onSaveResultAs)
         self.actExportResult   = self.menuTools.addAction('Export result to NetCDF...',self.onExportResult)
+        self.actAbout          = self.menuTools.addAction('About GOTM-GUI...',self.onAbout)
         
         if showoptions:
             self.actShowSettings = self.menuTools.addAction('Options...',self.onShowSettings)
@@ -67,14 +64,67 @@ class GOTMWizard(commonqt.Wizard):
         if propertyname=='scenario' or propertyname=='result':
             scen = self.getProperty('scenario')
             res  = self.getProperty('result')
-            self.bnTools.setEnabled(scen is not None or res is not None or self.actShowSettings is not None)
+            #self.bnTools.setEnabled(scen is not None or res is not None or self.actShowSettings is not None)
             self.actSaveScenario.setVisible(scen is not None)
             self.actExportScenario.setVisible(scen is not None)
             self.actSaveResult.setVisible(res is not None)
             self.actExportResult.setVisible(res is not None)
+            
+    def onAbout(self):
+        # For version only:
+        import gotm
+        import matplotlib,numpy
+        import xmlplot.data
+        if xmlplot.data.selectednetcdfmodule is None: xmlplot.data.chooseNetCDFModule()
+
+        dialog = QtGui.QDialog()
+        layout = QtGui.QVBoxLayout()
+
+        label = QtGui.QLabel( \
+            """<p>GOTM-GUI was developed by <a href="mailto:jorn.bruggeman@xs4all.nl">Jorn Bruggeman</a> from funding by <a href="http://www.bolding-burchard.com">Bolding & Burchard</a>.</p>
+
+<p>This program is licensed under the <a href="http://www.gnu.org">GNU General Public License</a>.</p>
+
+<p>For any questions, please consult <a href="http://www.gotm.net">www.gotm.net</a> or write an email to <a href="mailto:gotm-users@googlegroups.com">gotm-users@googlegroups.com</a> - subscription required.</p>
+""",dialog)
+        label.setWordWrap(True)
+        label.setOpenExternalLinks(True)
+        layout.addWidget(label)
+
+        versions = []
+        versions.append(('Python','%i.%i.%i %s %i' % sys.version_info))
+        versions.append(('Qt4',QtCore.qVersion()))
+        versions.append(('PyQt4',QtCore.PYQT_VERSION_STR))
+        versions.append(('numpy',numpy.__version__))
+        versions.append(('matplotlib',matplotlib.__version__))
+        versions.append(xmlplot.data.netcdfmodules[xmlplot.data.selectednetcdfmodule])
+        versions.append(('gotm',gotm.gui_util.getversion().rstrip()))
+        
+        strversions = '<table cellspacing="0" cellpadding="0">'
+        for v in versions:
+            strversions += '<tr><td>%s</td><td>&nbsp;</td><td>%s</td></tr>' % v
+        strversions += '</table>'
+
+        labelVersions = QtGui.QLabel('Module versions:',dialog)
+        layout.addWidget(labelVersions)
+        
+        textVersions = QtGui.QTextEdit(strversions,dialog)
+        textVersions.setMaximumHeight(120)
+        textVersions.setReadOnly(True)
+        layout.addWidget(textVersions)
+        
+        bnOk = QtGui.QPushButton('&OK',self)
+        dialog.connect(bnOk, QtCore.SIGNAL('clicked()'), dialog.accept)
+        layout.addWidget(bnOk)
+        
+        dialog.setLayout(layout)
+        
+        dialog.setWindowTitle('About GOTM-GUI')
+        
+        dialog.exec_()        
 
     def onShowSettings(self):
-        dialog = xmlstore.gui_qt4.PropertyEditorDialog(self,self.settings,'Options',flags=QtCore.Qt.Tool)
+        dialog = xmlstore.gui_qt4.PropertyEditorDialog(self,self.getSettings(),'Options',flags=QtCore.Qt.Tool)
         dialog.show()
             
     def onSaveScenarioAs(self):
@@ -86,7 +136,7 @@ class GOTMWizard(commonqt.Wizard):
                 scen.saveAll(path,callback=dialog.onProgressed)
             finally:
                 dialog.close()
-            self.settings.addUniqueValue('Paths/RecentScenarios','Path',path)
+            self.getSettings().addUniqueValue('Paths/RecentScenarios','Path',path)
 
     def onExportScenario(self):
         class ChooseVersionDialog(QtGui.QDialog):
@@ -158,7 +208,7 @@ class GOTMWizard(commonqt.Wizard):
                 res.save(path,callback=dialog.onProgressed)
             finally:
                 dialog.close()
-            self.settings.addUniqueValue('Paths/RecentResults','Path',path)
+            self.getSettings().addUniqueValue('Paths/RecentResults','Path',path)
             
     def onExportResult(self):
         res = self.getProperty('result')
@@ -187,27 +237,6 @@ class PageIntroduction(commonqt.WizardPage):
         self.owner.setProperty('scenario',None)
         self.owner.setProperty('result',None)
 
-        # For version only:
-        import matplotlib,numpy
-        import gotm
-
-        versions = []
-        versions.append(('Python','%i.%i.%i %s %i' % sys.version_info))
-        versions.append(('Qt4',QtCore.qVersion()))
-        versions.append(('PyQt4',QtCore.PYQT_VERSION_STR))
-        versions.append(('numpy',numpy.__version__))
-        versions.append(('matplotlib',matplotlib.__version__))
-        try:
-            import Scientific
-            versions.append(('Scientific',Scientific.__version__))
-        except: pass
-        versions.append(('gotm',gotm.gui_util.getversion().rstrip()))
-        
-        strversions = '<table cellspacing="0" cellpadding="0">'
-        for v in versions:
-            strversions += '<tr><td>%s</td><td>&nbsp;</td><td>%s</td></tr>' % v
-        strversions += '</table>'
-
         layout = QtGui.QVBoxLayout()
 
         self.label = QtGui.QLabel( \
@@ -234,17 +263,7 @@ class PageIntroduction(commonqt.WizardPage):
             print 'Failed to enable links in QLabel. This may be because you are using a version of Qt prior to 4.2. Error: %s' % e
         layout.addWidget(self.label)
 
-        layout.addStretch()
-
         layout.addStretch(1)
-
-        self.labelVersions = QtGui.QLabel('Module versions:',self)
-        layout.addWidget(self.labelVersions)
-        
-        self.textVersions = QtGui.QTextEdit(strversions,self)
-        self.textVersions.setMaximumHeight(120)
-        self.textVersions.setReadOnly(True)
-        layout.addWidget(self.textVersions)
 
         self.setLayout(layout)
 
@@ -258,12 +277,14 @@ class PageChooseAction(commonqt.WizardPage):
     """
     
     def __init__(self,parent=None):
+        import scenariobuilder,visualizer
+    
         commonqt.WizardPage.__init__(self, parent)
 
-        pathnodes = self.parent().settings.root.getLocationMultiple(['Paths','RecentScenarios','Path'])
+        pathnodes = self.parent().getSettings().root.getLocationMultiple(['Paths','RecentScenarios','Path'])
         mruscenarios = [p.getValue() for p in pathnodes]
 
-        pathnodes = self.parent().settings.root.getLocationMultiple(['Paths','RecentResults','Path'])
+        pathnodes = self.parent().getSettings().root.getLocationMultiple(['Paths','RecentResults','Path'])
         mruresults = [p.getValue() for p in pathnodes]
 
         self.label = QtGui.QLabel('What would you like to do?',self)
@@ -368,7 +389,7 @@ class PageChooseAction(commonqt.WizardPage):
 
             # Add to list of most-recently-used scenarios
             if newscen.path is not None:
-                self.owner.settings.addUniqueValue('Paths/RecentScenarios','Path',newscen.path)
+                self.owner.getSettings().addUniqueValue('Paths/RecentScenarios','Path',newscen.path)
             
             res =  True
         if checkedid==1:
@@ -386,7 +407,7 @@ class PageChooseAction(commonqt.WizardPage):
 
             # Add to list of most-recently-used results
             if newresult.path is not None:
-                self.owner.settings.addUniqueValue('Paths/RecentResults','Path',newresult.path)
+                self.owner.getSettings().addUniqueValue('Paths/RecentResults','Path',newresult.path)
 
             res = True
 
@@ -394,15 +415,6 @@ class PageChooseAction(commonqt.WizardPage):
             dialog.close()
         return res
 
-class ForkOnAction(commonqt.WizardFork):
-    def getSequence(self):
-        if self.wizard.getProperty('mainaction')=='scenario':
-            if self.wizard.getProperty('skipscenariobuilder'):
-                return commonqt.WizardSequence([simulator.PageProgress])
-            else:
-                return commonqt.WizardSequence([scenariobuilder.SequenceEditScenario(),simulator.PageProgress])
-        else:
-            return commonqt.WizardSequence([commonqt.WizardDummyPage])
 def main(options,args):
     if options.verbose:
         print 'Python version: %s' % unicode(sys.version_info)
@@ -426,9 +438,26 @@ def main(options,args):
     else:
         app = QtGui.qApp
 
+    class ForkOnAction1(commonqt.WizardFork):
+        def getSequence(self):
+            if self.wizard.getProperty('mainaction')=='scenario':
+                import simulator
+                if self.wizard.getProperty('skipscenariobuilder'):
+                    return commonqt.WizardSequence([simulator.PageProgress])
+                else:
+                    import scenariobuilder
+                    return commonqt.WizardSequence([scenariobuilder.SequenceEditScenario(),simulator.PageProgress])
+            else:
+                return commonqt.WizardSequence([commonqt.WizardDummyPage])
+
+    class ForkOnAction2(commonqt.WizardFork):
+        def getSequence(self):
+            import visualizer
+            return commonqt.WizardSequence([visualizer.PageVisualize,visualizer.PageReportGenerator,visualizer.PageSave,visualizer.PageFinal])
+
     # Create wizard dialog
     wiz = GOTMWizard(closebutton = xmlstore.gui_qt4.needCloseButton(), showoptions=options.showoptions)
-    seq = commonqt.WizardSequence([PageIntroduction,PageChooseAction,ForkOnAction(wiz),visualizer.PageVisualize,visualizer.PageReportGenerator,visualizer.PageSave,visualizer.PageFinal])
+    seq = commonqt.WizardSequence([PageIntroduction,PageChooseAction,ForkOnAction1(wiz),ForkOnAction2(wiz)])
     wiz.setSequence(seq)
     wiz.setWindowTitle('GOTM-GUI')
     wiz.resize(850, 600)
@@ -438,6 +467,8 @@ def main(options,args):
     scen = None
     res = None
     if len(args)>0:
+        import core.scenario, core.result
+    
         openpath = os.path.normpath(os.path.join(oldworkingdir, args[0]))
         del args[0]
         
@@ -476,7 +507,7 @@ def main(options,args):
         wiz.setProperty('mainaction','result')
         wiz.setProperty('result', res)
         if openpath.endswith('.gotmresult'):
-            wiz.settings.addUniqueValue('Paths/RecentResults','Path',openpath)
+            wiz.getSettings().addUniqueValue('Paths/RecentResults','Path',openpath)
         if res.scenario is not None:
             wiz.setProperty('scenario', res.scenario.addref())
         wiz.onNext(askoldpage=False)
@@ -485,7 +516,7 @@ def main(options,args):
         wiz.setProperty('mainaction','scenario')
         wiz.setProperty('scenario',scen)
         if openpath.endswith('.gotmscenario'):
-            wiz.settings.addUniqueValue('Paths/RecentScenarios','Path',openpath)
+            wiz.getSettings().addUniqueValue('Paths/RecentScenarios','Path',openpath)
         wiz.onNext(askoldpage=False)
 
     # Show wizard dialog

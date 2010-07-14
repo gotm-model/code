@@ -1,9 +1,6 @@
 # Import modules from standard Python (>= 2.4) library
 import datetime,time,xml.dom.minidom
 
-# Import custom third party modules.
-import pytz
-
 # ------------------------------------------------------------------------------------------
 # Base class that supports reference counting
 # ------------------------------------------------------------------------------------------
@@ -99,14 +96,16 @@ class referencedobject(object):
 # ------------------------------------------------------------------------------------------
 
 # Date format used for datetime strings visible to the user.
-utc = pytz.timezone('UTC')
+def getUTC():
+    import pytz
+    return pytz.timezone('UTC')
 
 def dateTimeFromTuple(tup):
     """Returns a datetime object from a sequence with six items: year,
     month, day, hours, minutes, seconds. The resulting object will use
     time zone UTC explicitly.
     """
-    return datetime.datetime(tup[0],tup[1],tup[2],tup[3],tup[4],tup[5],tzinfo=utc)
+    return datetime.datetime(tup[0],tup[1],tup[2],tup[3],tup[4],tup[5],tzinfo=getUTC())
 
 def parseDateTime(str,fmt):
     """Convert string to Python datetime object, using specified format.

@@ -1,4 +1,4 @@
-import datetime,re,os,os.path,zipfile,tarfile,shutil,StringIO
+import datetime,re,os,os.path,shutil,StringIO
 
 import util
 
@@ -445,7 +445,7 @@ class DateTime(DataTypeSimple,datetime.datetime):
                 match = DateTime.reDateTime.match(args[0])
                 if match is None: raise Exception('Cannot parse "%s" as datetime object.' % args[0])
                 args = map(int,match.groups())
-                kwargs['tzinfo'] = util.utc
+                kwargs['tzinfo'] = util.getUTC()
         return super(DateTime,cls).__new__(cls,*args,**kwargs)
 
     def __init__(self,*args,**kwargs):
@@ -644,6 +644,7 @@ class DataContainer(util.referencedobject):
         if os.path.isdir(path):
             return DataContainerDirectory(path)
         elif os.path.isfile(path):
+            import zipfile,tarfile
             if zipfile.is_zipfile(path):
                 return DataContainerZip(path)
             elif tarfile.is_tarfile(path):
@@ -859,10 +860,10 @@ class DataFile(DataType,util.referencedobject):
         DataFile.getData), then writes it all to the archive.
         """
         assert self.isValid(), 'addToTar: DataFile is not valid (i.e., empty).'
+        import tarfile,time
         data = self.getData(textmode=False,readonly=True)
         tarinfo = tarfile.TarInfo(filename)
         tarinfo.size = len(data)
-        import time
         tarinfo.mtime = time.time()
         tfile.addfile(tarinfo,StringIO.StringIO(data))
 
@@ -1228,6 +1229,7 @@ class DataContainerZip(DataContainer):
             assert mode=='r', 'Can initialize DataContainerZip with file-like object only in read-only mode.'
         else:
             assert False, 'Cannot initialize DataContainerZip with %s.' % source
+            
         self.mode = None
         self.zfile = None
         self.source = source
@@ -1297,6 +1299,7 @@ class DataContainerZip(DataContainer):
         is accessed.
         """
         assert mode in ('r','w','a'), 'DataContainerZip.setMode: mode must be "r", "w", or "a" (not "%s").' % mode
+        import zipfile
         if self.zfile is not None:
             if mode==self.mode: return
             self.zfile.close()
@@ -1417,6 +1420,7 @@ class DataContainerTar(DataContainer):
         is accessed.
         """
         assert mode in ('r','w'), 'DataContainerZip.setMode: mode must be "r" or "w" (not "%s").' % mode
+        import tarfile
         if mode=='w': mode='w:gz'
         if self.tfile is not None:
             if mode==self.mode: return

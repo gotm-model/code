@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.52 2009-10-14 09:23:40 jorn Exp $
+#$Id: scenariobuilder.py,v 1.53 2010-07-14 15:43:10 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -995,7 +995,7 @@ class PageSave(commonqt.WizardPage):
                 dialog.close()
                 return False
             dialog.close()
-            self.owner.settings.addUniqueValue('Paths/RecentScenarios','Path',targetpath)
+            self.owner.getSettings().addUniqueValue('Paths/RecentScenarios','Path',targetpath)
         return True
 
     def doNotShow(self):
