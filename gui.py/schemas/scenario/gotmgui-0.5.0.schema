@@ -741,8 +741,65 @@
 	</element>
 
 	<element name="obs" label="observations">
-	
-		<element name="sprofile" type="int" label="salinity profiles" description="Together with temperature, salinity determines the buoyancy of the water. Vertical gradients in buoyancy affect the production and destruction of turbulence. For accurate resolution of turbulent processes, it is therefore essential that you provide information on observed or estimated salinities here.">
+
+    <element name="tprofile" type="int" label="temperature profiles" description="observed or prescribed (potential) temperature profiles">
+      <options>
+        <option value="0" label="none: temperature equation is not solved"/>
+        <option value="11" label="analytical: constant temperature across column"/>
+        <option value="12" label="analytical: two-layer stratification"/>
+        <option value="13" label="analytical: profile with constant N²"/>
+        <option value="2" label="custom observed profiles"/>
+      </options>
+      <element name="t_const" type="float" label="constant temperature" unit="°C">
+        <condition type="eq" variable="." value="11"/>
+      </element>
+      <element name="z_t1" type="float" label="upper layer thickness" unit="m">
+        <condition type="eq" variable="." value="12"/>
+      </element>
+      <element name="t_1" type="float" label="upper layer temperature" unit="°C">
+        <condition type="eq" variable="." value="12"/>
+      </element>
+      <element name="z_t2" type="float" label="lower layer thickness" unit="m">
+        <condition type="eq" variable="." value="12"/>
+      </element>
+      <element name="t_2" type="float" label="lower layer temperature" unit="°C">
+        <condition type="eq" variable="." value="12"/>
+      </element>
+      <element name="t_surf" type="float" label="surface temperature" unit="°C">
+        <condition type="eq" variable="." value="13"/>
+      </element>
+      <element name="t_obs_NN" type="float" label="constant N²">
+        <condition type="eq" variable="." value="13"/>
+      </element>
+      <element name="t_prof_file" type="gotmdatafile" label="custom temperature profiles">
+        <condition type="eq" variable="." value="2"/>
+        <fileinfo type="profilesintime">
+          <filevariables>
+            <filevariable name="temp" label="temperature" unit="°C"/>
+          </filevariables>
+        </fileinfo>
+      </element>
+      <element name="TRelax" type="bool" label="relax model results towards observations">
+        <condition type="ne" variable="." value="0"/>
+        <element name="TRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
+          <condition type="eq" variable="."  value="True"/>
+        </element>
+        <element name="TRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
+          <condition type="eq" variable="."  value="True"/>
+        </element>
+        <element name="TRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
+          <condition type="eq" variable="."  value="True"/>
+        </element>
+        <element name="TRelaxBott" type="float" label="height of bottom relaxation layer" description="Height of bottom relaxation layer." unit="m">
+          <condition type="eq" variable="."  value="True"/>
+        </element>
+        <element name="TRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
+          <condition type="eq" variable="."  value="True"/>
+        </element>
+      </element>
+    </element>
+    
+    <element name="sprofile" type="int" label="salinity profiles" description="Together with temperature, salinity determines the buoyancy of the water. Vertical gradients in buoyancy affect the production and destruction of turbulence. For accurate resolution of turbulent processes, it is therefore essential that you provide information on observed or estimated salinities here.">
 			<options>
 				<option value="0" label="none: salinity equation is not solved"/>
 				<option value="11" label="analytical: constant salinity across column"/>
@@ -795,63 +852,6 @@
 				</element>
 				<element name="SRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
 					<condition type="eq" variable="." value="True"/>
-				</element>
-			</element>
-		</element>
-
-		<element name="tprofile" type="int" label="temperature profiles" description="observed or prescribed (potential) temperature profiles">
-			<options>
-				<option value="0" label="none: temperature equation is not solved"/>
-				<option value="11" label="analytical: constant temperature across column"/>
-				<option value="12" label="analytical: two-layer stratification"/>
-				<option value="13" label="analytical: profile with constant N²"/>
-				<option value="2" label="custom observed profiles"/>
-			</options>
-			<element name="t_const" type="float" label="constant temperature" unit="°C">
-				<condition type="eq" variable="." value="11"/>
-			</element>
-			<element name="z_t1" type="float" label="upper layer thickness" unit="m">
-				<condition type="eq" variable="." value="12"/>
-			</element>
-			<element name="t_1" type="float" label="upper layer temperature" unit="°C">
-				<condition type="eq" variable="." value="12"/>
-			</element>
-			<element name="z_t2" type="float" label="lower layer thickness" unit="m">
-				<condition type="eq" variable="." value="12"/>
-			</element>
-			<element name="t_2" type="float" label="lower layer temperature" unit="°C">
-				<condition type="eq" variable="." value="12"/>
-			</element>
-			<element name="t_surf" type="float" label="surface temperature" unit="°C">
-				<condition type="eq" variable="." value="13"/>
-			</element>
-			<element name="t_obs_NN" type="float" label="constant N²">
-				<condition type="eq" variable="." value="13"/>
-			</element>
-			<element name="t_prof_file" type="gotmdatafile" label="custom temperature profiles">
-				<condition type="eq" variable="." value="2"/>
-				<fileinfo type="profilesintime">
-					<filevariables>
-						<filevariable name="temp" label="temperature" unit="°C"/>
-					</filevariables>
-				</fileinfo>
-			</element>
-			<element name="TRelax" type="bool" label="relax model results towards observations">
-				<condition type="ne" variable="." value="0"/>
-				<element name="TRelaxTauM" type="float" label="relaxation time for bulk of the flow" unit="s">
-					<condition type="eq" variable="."  value="True"/>
-				</element>
-				<element name="TRelaxTauB" type="float" label="relaxation time for bottom layer" unit="s">
-					<condition type="eq" variable="."  value="True"/>
-				</element>
-				<element name="TRelaxTauS" type="float" label="relaxation time for surface layer" unit="s">
-					<condition type="eq" variable="."  value="True"/>
-				</element>
-				<element name="TRelaxBott" type="float" label="height of bottom relaxation layer" description="Height of bottom relaxation layer." unit="m">
-					<condition type="eq" variable="."  value="True"/>
-				</element>
-				<element name="TRelaxSurf" type="float" label="height of surface relaxation layer" description="Height of surface relaxation layer." unit="m">
-					<condition type="eq" variable="."  value="True"/>
 				</element>
 			</element>
 		</element>

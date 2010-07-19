@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.55 2010-07-19 13:45:50 jorn Exp $
+#$Id: scenariobuilder.py,v 1.56 2010-07-19 13:50:21 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -1022,7 +1022,7 @@ class PageFinal(commonqt.WizardPage):
 
 class SequenceEditScenario(commonqt.WizardSequence):
     def __init__(self):
-        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageAirSeaInteraction2,PageTurbulence,PageSalinity,PageTemperature,PageBio,PageAdvanced,PageSave])
+        commonqt.WizardSequence.__init__(self,[PageLocation,PageDiscretization,PageAirSeaInteraction,PageAirSeaInteraction2,PageTurbulence,PageTemperature,PageSalinity,PageBio,PageAdvanced,PageSave])
 
 def loadScenario():
     # Create the application and enter the main message loop.
