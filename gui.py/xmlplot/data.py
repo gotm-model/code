@@ -1197,7 +1197,11 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                 iline += 1
                 
                 # Read values (depth followed by data) and check.
-                linedata = map(float,line.split())
+                try:
+                    linedata = map(float,line.split())
+                except ValueError,e:
+                    raise Exception('Line %i: %s' % (iline,e))
+                    
                 if len(linedata)<varcount+1:
                     raise Exception('Line %i contains only %i value(s), where %i (1 time and %i observations) are expected.' % (iline,len(linedata),varcount+1,varcount))
                 if prevdepth is not None:
