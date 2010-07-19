@@ -75,7 +75,7 @@ class GOTMWizard(commonqt.Wizard):
         import xmlplot.data
         if xmlplot.data.selectednetcdfmodule is None: xmlplot.data.chooseNetCDFModule()
 
-        dialog = QtGui.QDialog()
+        dialog = QtGui.QDialog(self,QtCore.Qt.Dialog|QtCore.Qt.CustomizeWindowHint|QtCore.Qt.WindowTitleHint|QtCore.Qt.WindowCloseButtonHint)
         layout = QtGui.QVBoxLayout()
 
         label = QtGui.QLabel( \
@@ -103,7 +103,8 @@ class GOTMWizard(commonqt.Wizard):
             strversions += '<tr><td>%s</td><td>&nbsp;</td><td>%s</td></tr>' % v
         strversions += '</table>'
 
-        labelVersions = QtGui.QLabel('Module versions:',dialog)
+        labelVersions = QtGui.QLabel('In bug reports, please quote the following version information:',dialog)
+        labelVersions.setWordWrap(True)
         layout.addWidget(labelVersions)
         
         textVersions = QtGui.QTextEdit(strversions,dialog)
@@ -113,11 +114,17 @@ class GOTMWizard(commonqt.Wizard):
         
         bnOk = QtGui.QPushButton('&OK',self)
         dialog.connect(bnOk, QtCore.SIGNAL('clicked()'), dialog.accept)
-        layout.addWidget(bnOk)
+
+        bnlayout = QtGui.QHBoxLayout()
+        bnlayout.addStretch(1.)
+        bnlayout.addWidget(bnOk)
+
+        layout.addLayout(bnlayout)
         
         dialog.setLayout(layout)
         
         dialog.setWindowTitle('About GOTM-GUI')
+        dialog.resize(450,200)
         
         dialog.exec_()        
 

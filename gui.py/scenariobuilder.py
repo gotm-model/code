@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: scenariobuilder.py,v 1.54 2010-07-14 15:57:06 jorn Exp $
+#$Id: scenariobuilder.py,v 1.55 2010-07-19 13:45:50 jorn Exp $
 
 from PyQt4 import QtGui,QtCore
 
@@ -111,6 +111,7 @@ class ScenarioWidget(QtGui.QWidget):
                 scen = core.scenario.Scenario.fromSchemaName(core.scenario.guiscenarioversion)
                 #scen.setStore(xmldom)
                 scen.fillMissingValues()
+                scen.resetChanged()
             elif checkedid==1:
                 path = self.pathOpen.path()
                 if path.endswith('.gotmresult'):

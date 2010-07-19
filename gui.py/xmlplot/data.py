@@ -914,7 +914,7 @@ class LinkedMatrix(LinkedFileVariableStore):
         # Get the data type to use for the dimension
         dimdatatype = self.dimensions[self.dimensionorder[0]]['datatype']
         
-        # Size of one memory slab
+        # Size of one memory slab (roughly equivalent to 1 MB in memory)
         buffersize = 125000/(varcount+1)
 
         times = []

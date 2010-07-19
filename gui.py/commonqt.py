@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#$Id: commonqt.py,v 1.67 2010-07-14 15:43:10 jorn Exp $
+#$Id: commonqt.py,v 1.68 2010-07-19 13:45:50 jorn Exp $
 
 # Import modules from standard Python (>= 2.4) library
 import datetime, re, os.path, sys
@@ -385,6 +385,7 @@ class Wizard(QtGui.QDialog):
         self.connect(self.bnHome, QtCore.SIGNAL('clicked()'), self.onHome)
 
     def switchPage(self,newpage):
+        QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
         layout = self.layout()
         if self.currentpage is not None:
             self.currentpage.hide()
@@ -399,6 +400,7 @@ class Wizard(QtGui.QDialog):
         self.bnHome.setEnabled(cangoback)
         self.bnBack.setEnabled(cangoback)
         self.onCompleteStateChanged()
+        QtGui.QApplication.restoreOverrideCursor()
 
     def onCompleteStateChanged(self):
         curpage = self.currentpage
@@ -522,7 +524,7 @@ class WizardFork(WizardSequence):
 
 class ProgressDialog(QtGui.QProgressDialog):
     def __init__(self,parent=None,minimumduration=500,title=None,suppressstatus=False):
-        QtGui.QProgressDialog.__init__(self,'',QtCore.QString(),0,0,parent,QtCore.Qt.Dialog|QtCore.Qt.WindowTitleHint|QtCore.Qt.MSWindowsFixedSizeDialogHint)
+        QtGui.QProgressDialog.__init__(self,'',QtCore.QString(),0,0,parent,QtCore.Qt.Dialog|QtCore.Qt.CustomizeWindowHint|QtCore.Qt.WindowTitleHint|QtCore.Qt.MSWindowsFixedSizeDialogHint)
         self.setModal(True)
         self.setMinimumDuration(minimumduration)
         self.setRange(0,0)

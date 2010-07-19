@@ -374,7 +374,7 @@ class FigurePanel(QtGui.QWidget):
     that allows for figure zooming, panning, printing, exporting, etc.
     """
     
-    def __init__(self,parent,detachbutton=True):
+    def __init__(self,parent,detachbutton=True,reportnodata=True):
         QtGui.QWidget.__init__(self,parent)
 
         # Create MatPlotLib figure with transparent background and no border.
@@ -411,6 +411,7 @@ class FigurePanel(QtGui.QWidget):
         self.errortext.setVisible(False)
         self.errortext.setAlignment(QtCore.Qt.AlignTop)
         self.errortext.setWordWrap(True)
+        self.reportnodata = reportnodata
         
         self.toolbar = QtGui.QToolBar(self)
         self.toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
@@ -463,7 +464,7 @@ class FigurePanel(QtGui.QWidget):
     def onFigureStateChanged(self,complete):
         """Called when the figure state (figure shown/no figure shown) changes.
         """
-        self.errortext.setVisible(not complete)
+        self.errortext.setVisible((not complete) and (self.figure.errors or self.reportnodata))
         if self.figure.errors:
             self.errortext.setText('\n'.join(self.figure.errors))
         else:
@@ -987,7 +988,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
 
         self.first = True
         
-        self.progressdialog = QtGui.QProgressDialog('',QtCore.QString(),0,0,self,QtCore.Qt.Dialog|QtCore.Qt.WindowTitleHint)
+        self.progressdialog = QtGui.QProgressDialog('',QtCore.QString(),0,0,self,QtCore.Qt.Dialog|QtCore.Qt.CustomizeWindowHint|QtCore.Qt.WindowTitleHint)
         self.progressdialog.setModal(True)
         self.progressdialog.setMinimumDuration(0)
         self.progressdialog.setAutoReset(False)
