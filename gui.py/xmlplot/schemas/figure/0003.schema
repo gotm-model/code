@@ -20,14 +20,14 @@
 	
   <template id="Line2D">
     <element name="CanHaveMarker" type="bool" hidden="True"/>
-    <element name="Line" type="string" label="line">
-      <options>
+    <element name="Line" type="linestyle" label="line">
+      <!--<options>
         <option label="none"     value=""  />
         <option label="solid"    value="-" />
-        <option label="dashed"   value="--"/>
+        <option label="dashed"   value="-q-"/>
         <option label="dash-dot" value="-."/>
         <option label="dotted"   value=":" />
-      </options>
+      </options>-->
       <element name="Color" type="color" label="color">
         <condition type="ne" variable="." value=""/>
       </element>
@@ -35,8 +35,9 @@
         <condition type="ne" variable="." value=""/>
       </element>
     </element>
-    <element name="Marker" type="string" label="marker">
+    <element name="Marker" type="markertype" label="marker">
       <condition type="eq" variable="./CanHaveMarker" value="True"/>
+      <!--
       <options>
         <option label="none"     value="" />
         <option label="point"    value="."/>
@@ -47,7 +48,7 @@
         <option label="plus"     value="+"/>
         <option label="cross"    value="x"/>
         <option label="diamond"  value="D"/>
-      </options>
+      </options>-->
       <element name="Size" type="float" label="size" unit="pt">
         <condition type="and">
           <condition type="ne" variable="." value=""/>

@@ -93,107 +93,147 @@ class MapProjectionEditor(xmlstore.gui_qt4.SimpleSelectEditor):
 
 xmlstore.gui_qt4.registerEditor('mapprojection',MapProjectionEditor)
 
-class ColorMapEditor(QtGui.QComboBox,xmlstore.gui_qt4.AbstractPropertyEditor):
+class ColorMapEditor(xmlstore.gui_qt4.StringWithImageEditor):
     """Widget for choosing a colormap, suitable for use in MatPlotLib figures.
     """
-    cache = {}
     canvas,figure = None,None
+    width,height = 100.,10.
+    showlabel = True
     
-    class Model(QtCore.QAbstractListModel):
-        def __init__(self,items,parent):
-            QtCore.QAbstractListModel.__init__(self,parent)
-            self.items = items
-            
-        def rowCount(self,parent):
-            if parent.isValid(): return 0
-            return len(self.items)
-
-        def data(self,index,role):
-            irow = index.row()
-            name = self.items[irow]
-            if role==QtCore.Qt.DecorationRole:
-                pixmap = ColorMapEditor.getPixMap(name,100.,10.)
-                return QtCore.QVariant(QtGui.QIcon(pixmap))
-            elif role==QtCore.Qt.DisplayRole:
-                return QtCore.QVariant(name)
-            else:
-                return QtCore.QVariant()
-
     def __init__(self,parent,node,**kwargs):
-        QtGui.QComboBox.__init__(self,parent)
-        xmlstore.gui_qt4.AbstractPropertyEditor.__init__(self,parent,node)
-
-        colormaps,self.items = plot.getColorMaps()
-        self.model = ColorMapEditor.Model(self.items,self)
-        self.setModel(self.model)
-        self.view().setUniformItemSizes(True)
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
-        self.setIconSize(QtCore.QSize(100.,10.))
-                
-    def value(self):
-        return self.items[self.currentIndex()]
-        
-    def setValue(self,value):
-        for i in range(self.count()):
-            if self.items[i]==value:
-                self.setCurrentIndex(i)
-                break
-
+        colormaps,items = plot.getColorMaps()
+        xmlstore.gui_qt4.StringWithImageEditor.__init__(self,parent,node,items,**kwargs)
+    
     @staticmethod
-    def getPixMap(value,width,height):
-        qPixMap = ColorMapEditor.cache.get(value,None)
-        if qPixMap is None or qPixMap.width()!=width or qPixMap.height()!=height:
-            colormaps,cmlist = plot.getColorMaps()
-            cm = colormaps[value]
-            if ColorMapEditor.figure is None:
-                ColorMapEditor.figure = matplotlib.figure.Figure(figsize=(width,height),dpi=1)
-                ColorMapEditor.canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(ColorMapEditor.figure)
-                ColorMapEditor.figure.subplots_adjust(top=1.,bottom=0.,left=0.,right=1.)
-                axes = ColorMapEditor.figure.add_subplot(111)
-                axes.axis('off')
-            else:
-                ColorMapEditor.figure.set_size_inches(width,height)
-                axes = ColorMapEditor.figure.gca()
-            
-            a = numpy.outer(numpy.ones(2),numpy.arange(0,1,1./width))
-            axes.imshow(a,aspect='auto',cmap=cm,origin='lower')
-            ColorMapEditor.canvas.draw()
-            if QtCore.QSysInfo.ByteOrder == QtCore.QSysInfo.LittleEndian:
-                stringBuffer = ColorMapEditor.canvas.get_renderer()._renderer.tostring_bgra()
-            else:
-                stringBuffer = ColorMapEditor.canvas.get_renderer()._renderer.tostring_argb()
-            qImage = QtGui.QImage(stringBuffer, width, height, QtGui.QImage.Format_ARGB32)
-            qPixMap = QtGui.QPixmap.fromImage(qImage)
-            
-            # Add border
-            p = QtGui.QPainter(qPixMap)
-            penwidth = p.pen().width()
-            if penwidth==0: penwidth=1
-            p.drawRect(QtCore.QRectF(0,0,width-penwidth,height-penwidth))
-            
-            # Store in cache
-            ColorMapEditor.cache[value] = qPixMap
+    def createPixMap(value,width,height,dpi):
+        colormaps,cmlist = plot.getColorMaps()
+        cm = colormaps[value]
+        if ColorMapEditor.figure is None:
+            ColorMapEditor.figure = matplotlib.figure.Figure(figsize=(width,height),dpi=1)
+            ColorMapEditor.canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(ColorMapEditor.figure)
+            ColorMapEditor.figure.subplots_adjust(top=1.,bottom=0.,left=0.,right=1.)
+            axes = ColorMapEditor.figure.add_subplot(111)
+            axes.axis('off')
+        else:
+            ColorMapEditor.figure.set_size_inches(width,height)
+            axes = ColorMapEditor.figure.gca()
+        
+        a = numpy.outer(numpy.ones(2),numpy.arange(0,1,1./width))
+        axes.imshow(a,aspect='auto',cmap=cm,origin='lower')
+        ColorMapEditor.canvas.draw()
+        if QtCore.QSysInfo.ByteOrder == QtCore.QSysInfo.LittleEndian:
+            stringBuffer = ColorMapEditor.canvas.get_renderer()._renderer.tostring_bgra()
+        else:
+            stringBuffer = ColorMapEditor.canvas.get_renderer()._renderer.tostring_argb()
+        qImage = QtGui.QImage(stringBuffer, width, height, QtGui.QImage.Format_ARGB32)
+        qPixMap = QtGui.QPixmap.fromImage(qImage)
+        
+        # Add border
+        p = QtGui.QPainter(qPixMap)
+        penwidth = p.pen().width()
+        if penwidth==0: penwidth=1
+        p.drawRect(QtCore.QRectF(0,0,width-penwidth,height-penwidth))
+        
         return qPixMap
 
-    @staticmethod
-    def displayValue(delegate,painter,option,index):
-        value = ColorMapEditor.convertFromQVariant(index.data(QtCore.Qt.EditRole))
-        qPixMap = ColorMapEditor.getPixMap(value,100.,10.)
-        option.decorationAlignment = QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter
-        delegate.drawBackground(painter,option,index)
-        xOffset = QtGui.qApp.style().pixelMetric(QtGui.QStyle.PM_FocusFrameHMargin,option)
-        delegate.drawDecoration(painter,option,option.rect.adjusted(xOffset,0,0,0),qPixMap)
-        delegate.drawFocus(painter,option,option.rect)
-
-    @staticmethod
-    def convertFromQVariant(value):
-        return xmlstore.gui_qt4.StringEditor.convertFromQVariant(value)
-
-    @staticmethod
-    def convertToQVariant(value):
-        return xmlstore.gui_qt4.StringEditor.convertToQVariant(value)
-
 xmlstore.gui_qt4.registerEditor('colormap',ColorMapEditor)
+
+class MarkerTypeEditor(xmlstore.gui_qt4.StringWithImageEditor):
+    """Widget for choosing a marker type, suitable for use in MatPlotLib figures.
+    """
+    canvas,figure = None,None
+    width,height = 15.,15.
+    showlabel = True
+    
+    def __init__(self,parent,node,**kwargs):
+        import matplotlib.lines
+        items = ['']
+        item2label = {'':'none'}
+        for k,v in matplotlib.lines.Line2D.markers.iteritems():
+            if not (isinstance(k,basestring) and v!='_draw_nothing'): continue
+            if v.startswith('_draw_'): v = v[6:]
+            items.append(k)
+            item2label[k] = v.replace('_',' ')
+        xmlstore.gui_qt4.StringWithImageEditor.__init__(self,parent,node,items,item2label=item2label,**kwargs)
+    
+    @staticmethod
+    def createPixMap(value,width,height,dpi):
+        if MarkerTypeEditor.figure is None:
+            MarkerTypeEditor.figure = matplotlib.figure.Figure(figsize=(float(width)/dpi,float(height)/dpi),dpi=dpi,facecolor='None',edgecolor='None')
+            MarkerTypeEditor.canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(MarkerTypeEditor.figure)
+            MarkerTypeEditor.figure.subplots_adjust(top=1.,bottom=0.,left=0.,right=1.)
+            axes = MarkerTypeEditor.figure.add_subplot(111)
+        else:
+            MarkerTypeEditor.figure.set_size_inches((float(width)/dpi,float(height)/dpi))
+            axes = MarkerTypeEditor.figure.gca()
+            
+        axes.clear()
+        axes.axis('off')
+        axes.set_xlim(0.,1.)
+        axes.set_ylim(0.,1.)
+        
+        axes.plot((0.5,),(0.5,),marker=value,markersize=0.45*height*72/dpi,markeredgecolor='k',markerfacecolor='k')
+        MarkerTypeEditor.canvas.get_renderer().clear()
+        MarkerTypeEditor.canvas.draw()
+        if QtCore.QSysInfo.ByteOrder == QtCore.QSysInfo.LittleEndian:
+            stringBuffer = MarkerTypeEditor.canvas.get_renderer()._renderer.tostring_bgra()
+        else:
+            stringBuffer = MarkerTypeEditor.canvas.get_renderer()._renderer.tostring_argb()
+        qImage = QtGui.QImage(stringBuffer, width, height, QtGui.QImage.Format_ARGB32)
+        qPixMap = QtGui.QPixmap.fromImage(qImage)
+        
+        return qPixMap
+
+xmlstore.gui_qt4.registerEditor('markertype',MarkerTypeEditor)
+
+class LineStyleEditor(xmlstore.gui_qt4.StringWithImageEditor):
+    """Widget for choosing a marker type, suitable for use in MatPlotLib figures.
+    """
+    canvas,figure = None,None
+    width,height = 50.,10.
+    showlabel = True
+    
+    def __init__(self,parent,node,**kwargs):
+        import matplotlib.lines
+        items = ['']
+        item2label = {'':'none'}
+        for k,v in matplotlib.lines.Line2D.lineStyles.iteritems():
+            if not (isinstance(k,basestring) and v!='_draw_nothing'): continue
+            if v.startswith('_draw_'): v = v[6:]
+            items.append(k)
+            item2label[k] = v.replace('_',' ')
+        
+        xmlstore.gui_qt4.StringWithImageEditor.__init__(self,parent,node,items,item2label=item2label,**kwargs)
+    
+    @staticmethod
+    def createPixMap(value,width,height,dpi):
+        if LineStyleEditor.figure is None:
+            LineStyleEditor.figure = matplotlib.figure.Figure(figsize=(float(width)/dpi,float(height)/dpi),dpi=dpi,facecolor='None',edgecolor='None')
+            LineStyleEditor.canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(LineStyleEditor.figure)
+            LineStyleEditor.figure.subplots_adjust(top=1.,bottom=0.,left=0.,right=1.)
+            axes = LineStyleEditor.figure.add_subplot(111)
+        else:
+            LineStyleEditor.figure.set_size_inches((float(width)/dpi,float(height)/dpi))
+            axes = LineStyleEditor.figure.gca()
+            
+        axes.clear()
+        axes.axis('off')
+        axes.set_xlim(0.,1.)
+        axes.set_ylim(0.,1.)
+        
+        axes.plot((0.,1.),(0.5,0.5),linestyle=value,linewidth=1.*72/dpi,color='k')
+        LineStyleEditor.canvas.get_renderer().clear()
+        LineStyleEditor.canvas.draw()
+        if QtCore.QSysInfo.ByteOrder == QtCore.QSysInfo.LittleEndian:
+            stringBuffer = LineStyleEditor.canvas.get_renderer()._renderer.tostring_bgra()
+        else:
+            stringBuffer = LineStyleEditor.canvas.get_renderer()._renderer.tostring_argb()
+        qImage = QtGui.QImage(stringBuffer, width, height, QtGui.QImage.Format_ARGB32)
+        qPixMap = QtGui.QPixmap.fromImage(qImage)
+        
+        return qPixMap
+
+xmlstore.gui_qt4.registerEditor('linestyle',LineStyleEditor)
 
 class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
     """Widget for "editing" a linked file. Currently just displays a button that,

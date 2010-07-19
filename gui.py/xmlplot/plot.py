@@ -389,7 +389,9 @@ class FigureProperties(xmlstore.xmlstore.TypedStore):
     @classmethod
     def getCustomDataTypes(ownclass):
         dt = xmlstore.xmlstore.TypedStore.getCustomDataTypes()
-        dt['colormap'] = xmlstore.datatypes.String
+        dt['colormap']   = xmlstore.datatypes.String
+        dt['markertype'] = xmlstore.datatypes.String
+        dt['linestyle']  = xmlstore.datatypes.String
         return dt
 
 class FigureAnimator(object):
