@@ -841,7 +841,6 @@ class LinkedMatrix(LinkedFileVariableStore):
             dimtype = self.dimensions[self.dimensionorder[0]]['datatype']
             dimisdate = (dimtype=='datetime')
             if dimisdate:
-                datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
                 prevdate = None
             dimvalues = numpy.empty((obscount,),self.mpldatatypes[dimtype])
 
@@ -855,10 +854,10 @@ class LinkedMatrix(LinkedFileVariableStore):
             if dimcount==1:
                 if dimisdate:
                     # Read the date + time
-                    datematch = datetimere.match(line)
-                    if datematch is None:
-                        raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
-                    refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+                    try:
+                        refvals = map(int,(line[:4],line[5:7],line[8:10],line[11:13],line[14:16],line[17:19]))
+                    except ValueError:
+                        raise Exception('Line %i does not start with date and time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
                     dimvalue = xmlstore.util.dateTimeFromTuple(refvals)
                     if prevdate is not None and dimvalue<prevdate:
                         raise Exception('Line %i: observation time %s lies before previous observation time %s. Times should be increasing.' % (iline,xmlstore.util.formatDateTime(dimvalue),xmlstore.util.formatDateTime(prevdate)))
@@ -866,7 +865,7 @@ class LinkedMatrix(LinkedFileVariableStore):
                     dimvalue = common.date2num(dimvalue)
                 
                     # Read variable values.
-                    data = line[datematch.end()+1:].split()
+                    data = line[19:].split()
                 else:
                     # Split line, convert values to floats and store first as coordinate.
                     data = map(float,line.split())
@@ -911,15 +910,12 @@ class LinkedMatrix(LinkedFileVariableStore):
         
         # Access the data through some read-only file-like object.
         f = self.datafile.getAsReadOnlyFile()
-
-        # Compile regular expression for reading dates.
-        datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
         
         # Get the data type to use for the dimension
         dimdatatype = self.dimensions[self.dimensionorder[0]]['datatype']
         
         # Size of one memory slab
-        buffersize = 1000
+        buffersize = 125000/(varcount+1)
 
         times = []
         values = []
@@ -939,15 +935,15 @@ class LinkedMatrix(LinkedFileVariableStore):
             iline += 1
             
             # Read the date + time
-            datematch = datetimere.match(line)
-            if datematch is None:
-                raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
-            refvals = map(int,datematch.groups()) # Convert matched strings into integers
+            try:
+                refvals = map(int,(line[:4],line[5:7],line[8:10],line[11:13],line[14:16],line[17:19]))
+            except ValueError:
+                raise Exception('Line %i does not start with date and time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             curdate = xmlstore.util.dateTimeFromTuple(refvals)
             times[-1][ipos] = common.date2num(curdate)
             
             # Read values.
-            data = line[datematch.end()+1:].split()
+            data = line[19:].split()
             if len(data)<varcount:
                 raise Exception('Line %i contains only %i observations, where %i are expected (%s).' % (iline,len(data),varcount,', '.join([d[1] for d in self.vardata])))
             values[-1][ipos,:] = map(float,data[:varcount])
@@ -1148,9 +1144,6 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
         # Access the data through some read-only file-like object.
         f = self.datafile.getAsReadOnlyFile()
 
-        # Compile regular expression for reading dates.
-        datetimere = re.compile('(\d\d\d\d).(\d\d).(\d\d) (\d\d).(\d\d).(\d\d)')
-
         times = []
         depths = []
         values = []
@@ -1162,15 +1155,15 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
             iline += 1
             
             # Read date & time
-            datematch = datetimere.match(line)
-            if datematch is None:
-                raise Exception('Line %i does not start with time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
-            refvals = map(int,datematch.group(1,2,3,4,5,6)) # Convert matched strings into integers
+            try:
+                refvals = map(int,(line[:4],line[5:7],line[8:10],line[11:13],line[14:16],line[17:19]))
+            except ValueError:
+                raise Exception('Line %i does not start with date and time (yyyy-mm-dd hh:mm:ss). Line contents: %s' % (iline,line))
             curdate = xmlstore.util.dateTimeFromTuple(refvals)
             curdate = common.date2num(curdate)
 
             # Get the number of observations and the depth direction.
-            (depthcount,updown) = map(int, line[datematch.end()+1:].split())
+            (depthcount,updown) = map(int, line[19:].split())
 
             # Create arrays that will contains depths and observed values.
             depthdatatype = self.dimensions[self.dimensionorder[1]]['datatype']
@@ -1203,7 +1196,7 @@ class LinkedProfilesInTime(LinkedFileVariableStore):
                     raise Exception('Line %i: %s' % (iline,e))
                     
                 if len(linedata)<varcount+1:
-                    raise Exception('Line %i contains only %i value(s), where %i (1 time and %i observations) are expected.' % (iline,len(linedata),varcount+1,varcount))
+                    raise Exception('Line %i contains only %i value(s), where %i (1 depth and %i observations) are expected.' % (iline,len(linedata),varcount+1,varcount))
                 if prevdepth is not None:
                     if linedata[0]==prevdepth:
                         raise Exception('Found duplicate observation for depth %.4f at line %i.' % (linedata[0],iline))
