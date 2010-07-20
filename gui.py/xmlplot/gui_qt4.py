@@ -7,6 +7,7 @@ import numpy
 import matplotlib.figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_agg import FigureCanvasAgg
+import matplotlib.lines
 
 # Import our own custom modules
 import xmlstore.xmlstore,xmlstore.util,xmlstore.gui_qt4
@@ -143,18 +144,18 @@ class MarkerTypeEditor(xmlstore.gui_qt4.StringWithImageEditor):
     """
     canvas,figure = None,None
     width,height = 15.,15.
-    showlabel = True
+    showlabel = False
     
     def __init__(self,parent,node,**kwargs):
-        import matplotlib.lines
-        items = ['']
-        item2label = {'':'none'}
-        for k,v in matplotlib.lines.Line2D.markers.iteritems():
-            if not (isinstance(k,basestring) and v!='_draw_nothing'): continue
-            if v.startswith('_draw_'): v = v[6:]
-            items.append(k)
-            item2label[k] = v.replace('_',' ')
-        xmlstore.gui_qt4.StringWithImageEditor.__init__(self,parent,node,items,item2label=item2label,**kwargs)
+        items = [''] + [k for k,v in matplotlib.lines.Line2D.markers.iteritems() if isinstance(k,basestring) and v!='_draw_nothing']
+        xmlstore.gui_qt4.StringWithImageEditor.__init__(self,parent,node,items,**kwargs)
+
+    @classmethod
+    def getLabel(cls,name):
+        if not name: return 'none'
+        label = matplotlib.lines.Line2D.markers[name]
+        if label.startswith('_draw_'): label = label[6:]
+        return label.replace('_',' ')
     
     @staticmethod
     def createPixMap(value,width,height,dpi):
@@ -180,9 +181,7 @@ class MarkerTypeEditor(xmlstore.gui_qt4.StringWithImageEditor):
         else:
             stringBuffer = MarkerTypeEditor.canvas.get_renderer()._renderer.tostring_argb()
         qImage = QtGui.QImage(stringBuffer, width, height, QtGui.QImage.Format_ARGB32)
-        qPixMap = QtGui.QPixmap.fromImage(qImage)
-        
-        return qPixMap
+        return QtGui.QPixmap.fromImage(qImage)
 
 xmlstore.gui_qt4.registerEditor('markertype',MarkerTypeEditor)
 
@@ -191,19 +190,18 @@ class LineStyleEditor(xmlstore.gui_qt4.StringWithImageEditor):
     """
     canvas,figure = None,None
     width,height = 50.,10.
-    showlabel = True
+    showlabel = False
     
     def __init__(self,parent,node,**kwargs):
-        import matplotlib.lines
-        items = ['']
-        item2label = {'':'none'}
-        for k,v in matplotlib.lines.Line2D.lineStyles.iteritems():
-            if not (isinstance(k,basestring) and v!='_draw_nothing'): continue
-            if v.startswith('_draw_'): v = v[6:]
-            items.append(k)
-            item2label[k] = v.replace('_',' ')
-        
-        xmlstore.gui_qt4.StringWithImageEditor.__init__(self,parent,node,items,item2label=item2label,**kwargs)
+        items = [''] + [k for k,v in matplotlib.lines.Line2D.lineStyles.iteritems() if isinstance(k,basestring) and v!='_draw_nothing']
+        xmlstore.gui_qt4.StringWithImageEditor.__init__(self,parent,node,items,**kwargs)
+    
+    @classmethod
+    def getLabel(cls,name):
+        if not name: return 'none'
+        label = matplotlib.lines.Line2D.lineStyles[name]
+        if label.startswith('_draw_'): label = label[6:]
+        return label.replace('_',' ')
     
     @staticmethod
     def createPixMap(value,width,height,dpi):
@@ -221,7 +219,7 @@ class LineStyleEditor(xmlstore.gui_qt4.StringWithImageEditor):
         axes.set_xlim(0.,1.)
         axes.set_ylim(0.,1.)
         
-        axes.plot((0.,1.),(0.5,0.5),linestyle=value,linewidth=1.*72/dpi,color='k')
+        axes.plot((0.,1.),(0.5,0.5),linestyle=value,linewidth=1.,color='k')
         LineStyleEditor.canvas.get_renderer().clear()
         LineStyleEditor.canvas.draw()
         if QtCore.QSysInfo.ByteOrder == QtCore.QSysInfo.LittleEndian:
@@ -229,9 +227,7 @@ class LineStyleEditor(xmlstore.gui_qt4.StringWithImageEditor):
         else:
             stringBuffer = LineStyleEditor.canvas.get_renderer()._renderer.tostring_argb()
         qImage = QtGui.QImage(stringBuffer, width, height, QtGui.QImage.Format_ARGB32)
-        qPixMap = QtGui.QPixmap.fromImage(qImage)
-        
-        return qPixMap
+        return QtGui.QPixmap.fromImage(qImage)
 
 xmlstore.gui_qt4.registerEditor('linestyle',LineStyleEditor)
 

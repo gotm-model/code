@@ -739,42 +739,49 @@ class PrivateWindowEditor(QtGui.QWidget,AbstractPropertyEditor):
         dialog.destroy()
 
 class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
-    """Widget for choosing a colormap, suitable for use in MatPlotLib figures.
+    """Widget for selecting an image, represented internally by a string.
     """
+    class Delegate(QtGui.QItemDelegate):
+        def __init__(self,parent):
+            QtGui.QItemDelegate.__init__(self,parent)
+            self.owner = parent
+            
+        def paint(self,painter,option,index):
+            self.owner.displayValue(self,painter,option,index)
+    
     class Model(QtCore.QAbstractListModel):
-        def __init__(self,items,item2label,parent,pixmapsource,width,height,dpi,showlabel):
+        def __init__(self,parent):
             QtCore.QAbstractListModel.__init__(self,parent)
-            self.items = items
-            self.item2label = item2label
-            self.pixmapsource = pixmapsource
-            self.width = width
-            self.height = height
-            self.dpi = dpi
-            self.showlabel = showlabel
+            self.owner = parent
             
         def rowCount(self,parent):
             if parent.isValid(): return 0
-            return len(self.items)
+            return len(self.owner.items)
 
         def data(self,index,role):
             irow = index.row()
-            name = self.items[irow]
+            name = self.owner.items[irow]
             if role==QtCore.Qt.DecorationRole:
-                pixmap = self.pixmapsource(name,self.width,self.height,self.dpi)
-                return QtCore.QVariant(QtGui.QIcon(pixmap))
-            elif role==QtCore.Qt.DisplayRole and self.showlabel:
-                return QtCore.QVariant(self.item2label.get(name,name))
-            else:
-                return QtCore.QVariant()
+                pixmap = self.owner.getPixMap(name,self.owner.width,self.owner.height,self.owner.logicalDpiX())
+                return QtCore.QVariant(pixmap)
+            elif role==QtCore.Qt.DisplayRole and self.owner.showlabel:
+                return QtCore.QVariant(self.owner.getLabel(name))
+            elif role==QtCore.Qt.EditRole:
+                return QtCore.QVariant(name)
+            return QtCore.QVariant()
 
-    def __init__(self,parent,node,items,item2label={},**kwargs):
+    def __init__(self,parent,node,items,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
         AbstractPropertyEditor.__init__(self,parent,node)
 
         self.items = items
-        self.item2label = item2label
-        self.model = StringWithImageEditor.Model(self.items,self.item2label,self,self.getPixMap,self.width,self.height,self.logicalDpiX(),self.showlabel)
+
+        self.delegate = StringWithImageEditor.Delegate(self)
+        self.setItemDelegate(self.delegate)
+
+        self.model = StringWithImageEditor.Model(self)
         self.setModel(self.model)
+        
         self.view().setUniformItemSizes(True)
         self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
         self.setIconSize(QtCore.QSize(self.width,self.height))
@@ -794,10 +801,12 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
         qPixMap = cls.cache.get(value,None)
         if qPixMap is None or qPixMap.width()!=width or qPixMap.height()!=height:
             qPixMap = cls.createPixMap(value,width,height,dpi)
-            
-            # Store in cache
             cls.cache[value] = qPixMap
         return qPixMap
+
+    @classmethod
+    def getLabel(cls,name):
+        return name
 
     @classmethod
     def displayValue(cls,delegate,painter,option,index):
@@ -807,6 +816,8 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
         delegate.drawBackground(painter,option,index)
         xOffset = QtGui.qApp.style().pixelMetric(QtGui.QStyle.PM_FocusFrameHMargin,option)
         delegate.drawDecoration(painter,option,option.rect.adjusted(xOffset,0,0,0),qPixMap)
+        if cls.showlabel:
+            delegate.drawDisplay(painter,option,option.rect.adjusted(xOffset*2+qPixMap.width(),0,0,0),cls.getLabel(value))
         delegate.drawFocus(painter,option,option.rect)
 
     @staticmethod
