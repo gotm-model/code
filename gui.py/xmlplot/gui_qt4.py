@@ -99,7 +99,6 @@ class ColorMapEditor(xmlstore.gui_qt4.StringWithImageEditor):
     """
     canvas,figure = None,None
     width,height = 100.,10.
-    showlabel = True
     
     def __init__(self,parent,node,**kwargs):
         colormaps,items = plot.getColorMaps()
@@ -144,7 +143,6 @@ class MarkerTypeEditor(xmlstore.gui_qt4.StringWithImageEditor):
     """
     canvas,figure = None,None
     width,height = 15.,15.
-    showlabel = False
     
     def __init__(self,parent,node,**kwargs):
         items = [''] + [k for k,v in matplotlib.lines.Line2D.markers.iteritems() if isinstance(k,basestring) and v!='_draw_nothing']
@@ -153,12 +151,15 @@ class MarkerTypeEditor(xmlstore.gui_qt4.StringWithImageEditor):
     @classmethod
     def getLabel(cls,name):
         if not name: return 'none'
-        label = matplotlib.lines.Line2D.markers[name]
-        if label.startswith('_draw_'): label = label[6:]
-        return label.replace('_',' ')
+        return None
+        
+        #label = matplotlib.lines.Line2D.markers[name]
+        #if label.startswith('_draw_'): label = label[6:]
+        #return label.replace('_',' ')
     
     @staticmethod
     def createPixMap(value,width,height,dpi):
+        if value=='': return None
         if MarkerTypeEditor.figure is None:
             MarkerTypeEditor.figure = matplotlib.figure.Figure(figsize=(float(width)/dpi,float(height)/dpi),dpi=dpi,facecolor='None',edgecolor='None')
             MarkerTypeEditor.canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(MarkerTypeEditor.figure)
@@ -190,7 +191,6 @@ class LineStyleEditor(xmlstore.gui_qt4.StringWithImageEditor):
     """
     canvas,figure = None,None
     width,height = 50.,10.
-    showlabel = False
     
     def __init__(self,parent,node,**kwargs):
         items = [''] + [k for k,v in matplotlib.lines.Line2D.lineStyles.iteritems() if isinstance(k,basestring) and v!='_draw_nothing']
@@ -199,12 +199,15 @@ class LineStyleEditor(xmlstore.gui_qt4.StringWithImageEditor):
     @classmethod
     def getLabel(cls,name):
         if not name: return 'none'
-        label = matplotlib.lines.Line2D.lineStyles[name]
-        if label.startswith('_draw_'): label = label[6:]
-        return label.replace('_',' ')
+        return None
+        
+        #label = matplotlib.lines.Line2D.lineStyles[name]
+        #if label.startswith('_draw_'): label = label[6:]
+        #return label.replace('_',' ')
     
     @staticmethod
     def createPixMap(value,width,height,dpi):
+        if value=='': return None
         if LineStyleEditor.figure is None:
             LineStyleEditor.figure = matplotlib.figure.Figure(figsize=(float(width)/dpi,float(height)/dpi),dpi=dpi,facecolor='None',edgecolor='None')
             LineStyleEditor.canvas = matplotlib.backends.backend_agg.FigureCanvasAgg(LineStyleEditor.figure)

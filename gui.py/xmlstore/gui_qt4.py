@@ -763,9 +763,10 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
             name = self.owner.items[irow]
             if role==QtCore.Qt.DecorationRole:
                 pixmap = self.owner.getPixMap(name,self.owner.width,self.owner.height,self.owner.logicalDpiX())
-                return QtCore.QVariant(pixmap)
-            elif role==QtCore.Qt.DisplayRole and self.owner.showlabel:
-                return QtCore.QVariant(self.owner.getLabel(name))
+                if pixmap: return QtCore.QVariant(pixmap)
+            elif role==QtCore.Qt.DisplayRole:
+                label = self.owner.getLabel(name)
+                if label: return QtCore.QVariant(label)
             elif role==QtCore.Qt.EditRole:
                 return QtCore.QVariant(name)
             return QtCore.QVariant()
@@ -782,7 +783,7 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
         self.model = StringWithImageEditor.Model(self)
         self.setModel(self.model)
         
-        self.view().setUniformItemSizes(True)
+        #self.view().setUniformItemSizes(True)
         self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
         self.setIconSize(QtCore.QSize(self.width,self.height))
                 
@@ -811,13 +812,17 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
     @classmethod
     def displayValue(cls,delegate,painter,option,index):
         value = cls.convertFromQVariant(index.data(QtCore.Qt.EditRole))
+        rect = option.rect
         qPixMap = cls.getPixMap(value,cls.width,cls.height,painter.device().logicalDpiX())
-        option.decorationAlignment = QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter
-        delegate.drawBackground(painter,option,index)
-        xOffset = QtGui.qApp.style().pixelMetric(QtGui.QStyle.PM_FocusFrameHMargin,option)
-        delegate.drawDecoration(painter,option,option.rect.adjusted(xOffset,0,0,0),qPixMap)
-        if cls.showlabel:
-            delegate.drawDisplay(painter,option,option.rect.adjusted(xOffset*2+qPixMap.width(),0,0,0),cls.getLabel(value))
+        if qPixMap:
+            option.decorationAlignment = QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter
+            delegate.drawBackground(painter,option,index)
+            xOffset = QtGui.qApp.style().pixelMetric(QtGui.QStyle.PM_FocusFrameHMargin,option)
+            delegate.drawDecoration(painter,option,rect.adjusted(xOffset,0,0,0),qPixMap)
+            rect = rect.adjusted(xOffset*2+qPixMap.width(),0,0,0)
+        label = cls.getLabel(value)
+        if label:
+            delegate.drawDisplay(painter,option,rect,label)
         delegate.drawFocus(painter,option,option.rect)
 
     @staticmethod
