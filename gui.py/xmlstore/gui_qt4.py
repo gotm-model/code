@@ -783,7 +783,6 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
         self.model = StringWithImageEditor.Model(self)
         self.setModel(self.model)
         
-        #self.view().setUniformItemSizes(True)
         self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
         self.setIconSize(QtCore.QSize(self.width,self.height))
                 

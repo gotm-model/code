@@ -103,6 +103,7 @@ class ColorMapEditor(xmlstore.gui_qt4.StringWithImageEditor):
     def __init__(self,parent,node,**kwargs):
         colormaps,items = plot.getColorMaps()
         xmlstore.gui_qt4.StringWithImageEditor.__init__(self,parent,node,items,**kwargs)
+        self.view().setUniformItemSizes(True)
     
     @staticmethod
     def createPixMap(value,width,height,dpi):
