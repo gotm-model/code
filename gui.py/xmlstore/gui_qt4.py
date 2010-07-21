@@ -748,6 +748,12 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
             
         def paint(self,painter,option,index):
             self.owner.displayValue(self,painter,option,index)
+            
+        def sizeHint(self,option,index):
+            h = max(option.fontMetrics.height(),self.owner.height)
+            w = self.owner.width+2*QtGui.QStyle.PM_FocusFrameHMargin
+            #if label: w += option.fontMetrics.width(label)+2*QtGui.QStyle.PM_FocusFrameHMargin
+            return QtCore.QSize(w,h)
     
     class Model(QtCore.QAbstractListModel):
         def __init__(self,parent):
@@ -785,6 +791,7 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
         
         self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
         self.setIconSize(QtCore.QSize(self.width,self.height))
+        self.view().setUniformItemSizes(True)
                 
     def value(self):
         return self.items[self.currentIndex()]
