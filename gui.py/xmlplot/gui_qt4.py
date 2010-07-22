@@ -503,7 +503,7 @@ class FigurePanel(QtGui.QWidget):
     def onFigureStateChanged(self,complete):
         """Called when the figure state (figure shown/no figure shown) changes.
         """
-        self.errortext.setVisible((not complete) and (self.figure.errors or self.reportnodata))
+        self.errortext.setVisible((not complete) and (bool(self.figure.errors) or self.reportnodata))
         if self.figure.errors:
             self.errortext.setText('\n'.join(self.figure.errors))
         else:
