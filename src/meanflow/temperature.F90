@@ -1,4 +1,4 @@
-!$Id: temperature.F90,v 1.19 2008-03-07 17:57:49 hb Exp $
+!$Id: temperature.F90,v 1.20 2010-07-28 15:09:46 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -67,7 +67,7 @@
 !
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
-   use meanflow,     only: h,u,v,w,T,avh
+   use meanflow,     only: h,u,v,w,T,S,avh
    use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
    use observations, only: w_adv_discr,w_adv_method
@@ -110,6 +110,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: temperature.F90,v $
+!  Revision 1.20  2010-07-28 15:09:46  hb
+!  Surface heat flux truncated when SST < freezing temperature
+!
 !  Revision 1.19  2008-03-07 17:57:49  hb
 !  AdvBcup changed to oneSided
 !
@@ -186,7 +189,12 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffTup        = heat/(rho_0*cp)
+! simple sea ice model: surface heat flux switched off for sst < freezing temp
+   if (T(nlev) .le. -0.0575*S(nlev)) then
+       DiffTup    = max(_ZERO_,heat/(rho_0*cp))
+   else
+       DiffTup    = heat/(rho_0*cp)
+   end if
    DiffTdw        = _ZERO_
 
    AdvBcup        = oneSided
