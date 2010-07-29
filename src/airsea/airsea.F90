@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.30 2009-03-22 07:32:39 jorn Exp $
+!$Id: airsea.F90,v 1.31 2010-07-29 14:24:36 hb Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -68,6 +68,7 @@
 !  sum of short wave radiation
 !  and surface heat flux (J/m^2)
    REALTYPE, public                    :: int_total=_ZERO_
+   REALTYPE, public                    :: cloud=_ZERO_
 !
 ! !DEFINED PARAMETERS:
    integer,  parameter                 :: meteo_unit=20
@@ -85,6 +86,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.31  2010-07-29 14:24:36  hb
+!  Cloud cover now interpolated to time step (change by Sebastian Sonntag, Hamburg)
+!
 !  Revision 1.30  2009-03-22 07:32:39  jorn
 !  made swr clean-up independent of use of meteo data
 !
@@ -200,7 +204,7 @@
    REALTYPE                  :: u10,v10
    REALTYPE                  :: airp
    REALTYPE                  :: airt,twet,tdew
-   REALTYPE                  :: cloud
+   REALTYPE                  :: cloud_obs
    REALTYPE                  :: rh
 
    REALTYPE                  :: const_swr=_ZERO_
@@ -452,7 +456,7 @@
    twet=0.
    tdew=0.
    rh=0.
-   cloud=0.
+   cloud_obs=0.
    sss=0.
    airt=0.
 
@@ -660,9 +664,9 @@
    integer, save             :: meteo_jul1,meteo_secs1
    integer, save             :: meteo_jul2=0,meteo_secs2=0
    REALTYPE, save            :: obs(7)
-   REALTYPE, save            :: alpha(4)
-   REALTYPE, save            :: h1,tx1,ty1
-   REALTYPE, save            :: h2=0.,tx2=0.,ty2=0.
+   REALTYPE, save            :: alpha(5)
+   REALTYPE, save            :: h1,tx1,ty1,cloud1
+   REALTYPE, save            :: h2=0.,tx2=0.,ty2=0.,cloud2=0.
    logical, save             :: first=.true.
    integer                   :: rc
    REALTYPE                  :: ta,ta_k,tw,tw_k 
@@ -676,6 +680,7 @@
       h2=0.
       tx2=0.
       ty2=0.
+      cloud2=0.
       first=.true.
    end if
 !  This part initialises and reads in new values if necessary.
@@ -688,12 +693,12 @@
          meteo_secs2 = hh*3600 + min*60 + ss
          if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .gt. 0) EXIT
       end do
-      u10    = obs(1)
-      v10    = obs(2)
-      airp  = obs(3)*100. !kbk mbar/hPa --> Pa
-      airt  = obs(4)
-      rh    = obs(5)
-      cloud = obs(6)
+      u10       = obs(1)
+      v10       = obs(2)
+      airp      = obs(3)*100. !kbk mbar/hPa --> Pa
+      airt      = obs(4)
+      rh        = obs(5)
+      cloud_obs = obs(6)
 
       if (sst .lt. 100.) then
          tw  = sst
@@ -717,33 +722,41 @@
                              dlat,tw_k,ta_k,cloud,qb)
          call airsea_fluxes(fluxes_method, &
                             tw,ta,u10,v10,precip,evap,tx1,ty1,qe,qh)
-         h1=(qb+qe+qh)
-         h2  = h1
-         tx2 = tx1
-         ty2 = ty1
+         h1     = (qb+qe+qh)
+         h2     = h1
+         tx2    = tx1
+         ty2    = ty1
+         cloud1 = cloud_obs
+         cloud2 = cloud1
          first = .false.
       else
-         h1  = h2
-         tx1 = tx2
-         ty1 = ty2
+         h1     = h2
+         tx1    = tx2
+         ty1    = ty2
+         cloud1 = cloud2
+         cloud2 = cloud_obs
+
          call humidity(hum_method,rh,airp,tw,ta)
          call back_radiation(back_radiation_method, &
                              dlat,tw_k,ta_k,cloud,qb)
          call airsea_fluxes(fluxes_method, &
                             tw,ta,u10,v10,precip,evap,tx2,ty2,qe,qh)
          h2=(qb+qe+qh)
+
       end if
       dt = time_diff(meteo_jul2,meteo_secs2,meteo_jul1,meteo_secs1)
       alpha(2) = (h2-h1)/dt
       alpha(3) = (tx2-tx1)/dt
       alpha(4) = (ty2-ty1)/dt
+      alpha(5) = (cloud2-cloud1)/dt
    end if
 
 !  Do the time interpolation
    t  = time_diff(jul,secs,meteo_jul1,meteo_secs1)
-   heat = h1  + t*alpha(2)
-   tx   = tx1 + t*alpha(3)
-   ty   = ty1 + t*alpha(4)
+   heat  = h1  + t*alpha(2)
+   tx    = tx1 + t*alpha(3)
+   ty    = ty1 + t*alpha(4)
+   cloud = cloud1 + t*alpha(5)
 
    w = sqrt(u10*u10+v10*v10)
 
