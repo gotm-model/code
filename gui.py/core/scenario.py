@@ -21,6 +21,9 @@ else:
     srcdir = os.path.abspath(os.path.join(common.getDataRoot(),'../src'))
 if os.path.isdir(srcdir): xmlstore.xmlstore.Schema.knownpaths['gotmsrc'] = srcdir
 
+schemadir = None
+schemadir = 'C:\Temp\ersemewecoupler\gotmBFM\Schemas\scenario_BFM'
+
 class NamelistStore(xmlstore.xmlstore.TypedStore):
 
     def __init__(self,*args,**kwargs):
@@ -412,7 +415,9 @@ class Scenario(NamelistStore):
 
     @classmethod
     def getSchemaInfo(cls):
-        return xmlstore.xmlstore.schemainfocache[os.path.join(common.getDataRoot(),'schemas/scenario')]
+        global schemadir
+        if schemadir is None: schemadir = os.path.join(common.getDataRoot(),'schemas/scenario')
+        return xmlstore.xmlstore.schemainfocache[schemadir]
 
     def __init__(self,schema,valueroot=None,adddefault = True):
         NamelistStore.__init__(self,schema,valueroot,adddefault=adddefault)
