@@ -22,7 +22,6 @@ else:
 if os.path.isdir(srcdir): xmlstore.xmlstore.Schema.knownpaths['gotmsrc'] = srcdir
 
 schemadir = None
-schemadir = 'C:\Temp\ersemewecoupler\gotmBFM\Schemas\scenario_BFM'
 
 class NamelistStore(xmlstore.xmlstore.TypedStore):
 
