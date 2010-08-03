@@ -103,7 +103,7 @@ class Schema(object):
                 # We need to copy from an external XML document.
                 linkedpath = Schema.resolveLinkedPath(link.getAttribute('path'),sourcepath)
                 if not os.path.isfile(linkedpath):
-                    raise Exception('Linked XML schema file "%s" does not exist.' % linkedpath)
+                    raise Exception('Linked XML schema file "%s" does not exist. Source: %s' % (linkedpath,sourcepath))
                 link.setAttribute('sourcepath',linkedpath)
                 childdom = xml.dom.minidom.parse(linkedpath)
                 Schema.resolveLinks(childdom,linkedpath)
@@ -1365,7 +1365,7 @@ class TypedStore(util.referencedobject):
         # Function for filling in default values for linked-in templates.
         def addDefaultsForLinks(store):
             for node in store.root.getDescendants():
-                if node.templatenode.hasAttribute('sourcepath') and node.valueroot is None:
+                if node.templatenode.hasAttribute('sourcepath') and node.templatenode.getAttribute('version') and node.valueroot is None:
                     # The template for this node was linked in, and we do not have any default values for it yet.
                     srcdir = os.path.dirname(node.templatenode.getAttribute('sourcepath'))
                     subcls = createStoreClass('dummy',srcdir)
@@ -1415,7 +1415,7 @@ class TypedStore(util.referencedobject):
         assert cls!=TypedStore, 'fromSchemaName cannot be called on base class "TypedStore", only on derived classes. You need to create a derived class with versioning support.'
         schemapath = cls.getSchemaInfo().getSchemas().get(schemaname,None)
         if schemapath is None: 
-            raise Exception('Unable to locate XML schema file for "%s".' % schemaname)
+            raise Exception('Unable to locate XML schema file for "%s". Available: %s' % (schemaname,', '.join(cls.getSchemaInfo().getSchemas().keys())))
         kwargs['schema'] = schemapath
         store = cls(*args,**kwargs)
         return store
@@ -2429,7 +2429,10 @@ class SchemaInfo(object):
             fullpath = os.path.join(dirpath,name)
             if os.path.isfile(fullpath):
                 (basename,ext) = os.path.splitext(name)
-                if ext=='.schema': self.getSchemas()[basename] = fullpath
+                if ext=='.schema':
+                    rootname,rootattr = util.getRootNodeInfo(fullpath)
+                    self.getSchemas()[rootattr.get('version','')] = fullpath
+                    #self.getSchemas()[basename] = fullpath
 
     def addConverters(self,dirpath):
         assert os.path.isdir(dirpath),'Provided path "%s" must be a directory.' % dirpath
