@@ -435,6 +435,10 @@ def main(options,args):
         else:
             print 'Forced NetCDF module "%s" is not available. Available modules: %s.' % (options.nc,', '.join([m[0] for m in xmlplot.data.netcdfmodules]))
             sys.exit(2)
+
+    if options.schemadir is not None:
+        import core.scenario
+        core.scenario.schemadir = options.schemadir
 	
     # Create the application and enter the main message loop.
     createQApp = QtGui.QApplication.startingUp()
@@ -551,6 +555,7 @@ if (__name__=='__main__'):
     parser.add_option('-d','--debug',action='store_true',help='activates debugging (e.g., reference counting).')
     if not hasattr(sys,'frozen'):
         parser.add_option('--nc', type='string', help='NetCDF module to use')
+        parser.add_option('--schemadir', type='string', help='Path to scenario schema directory')
     parser.set_defaults(profile=False,showoptions=False,verbose=False,debug=False,nc=None)
     (options, args) = parser.parse_args()
     
