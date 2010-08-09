@@ -687,7 +687,10 @@ class Node(object):
         value = None
         if self.valuenode is not None:
             valuetype = self.getValueType(returnclass=True)
-            value = valuetype.load(self.valuenode,self.controller.context,self.templatenode)
+            try:
+                value = valuetype.load(self.valuenode,self.controller.context,self.templatenode)
+            except ValueError,e:
+                raise ValueError('%s: %s' % ('/'.join(self.location),e))
         if value is None and usedefault: value = self.getDefaultValue()
         return value
         

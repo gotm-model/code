@@ -383,7 +383,8 @@ class Bool(DataTypeSimple,int):
         
     @classmethod
     def fromXmlString(cls,string,context,template=None):
-        assert string in ('True','False'), 'Cannot convert XML string "%s" to a Boolean value (Booleans can only be True or False).' % string
+        if string not in ('True','False'):
+            raise ValueError('Cannot convert XML string "%s" to a Boolean value (Booleans can only be True or False).' % string)
         return Bool(string=='True')
         
     @classmethod
