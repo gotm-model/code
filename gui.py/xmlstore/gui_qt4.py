@@ -1555,8 +1555,9 @@ class ExtendedTreeView(QtGui.QTreeView):
     uses to reset nodes or branches. Works only with TypedStoreModel.
     """
 
-    def __init__(self,parent=None):
+    def __init__(self,parent=None,autoexpandnondefaults=False):
         QtGui.QTreeView.__init__(self,parent)
+        self.autoexpandnondefaults = autoexpandnondefaults
 
     def setExpandedAll(self,value=True,maxdepth=1000,root=None,depth=0):
         """Expands/collapses all branches in the tree below the given root node
@@ -1632,14 +1633,22 @@ class ExtendedTreeView(QtGui.QTreeView):
         parent node is automatically expanded.
         """
         QtGui.QTreeView.rowsInserted(self,parent,start,end)
+                
+        # If needed, expand all child rows that were set to a non-default value.
+        if self.autoexpandnondefaults:
+            for i in range(start,end+1):
+                self.expandNonDefaults(parent.child(i,0))
+                
+        # Auto-expand if the newly inserted rows were the very first children of the parent.
+        # This will make sure that insertion of rows will not go unnoticed.
         model = self.model()
         if model.rowCount(parent)==end-start+1:
             self.expand(parent)
 
 class TypedStoreTreeView(ExtendedTreeView):
     
-    def __init__(self,parent,store,rootnode=None,expanddepth=1,resizecolumns=True,**kwargs):
-        ExtendedTreeView.__init__(self, parent)
+    def __init__(self,parent,store,rootnode=None,expanddepth=1,resizecolumns=True,autoexpandnondefaults=True,**kwargs):
+        ExtendedTreeView.__init__(self, parent, autoexpandnondefaults)
 
         self.store = store
         self.rootnode = rootnode
