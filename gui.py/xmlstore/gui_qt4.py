@@ -970,7 +970,7 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
                 for e in arr:
                     if isinstance(e,(list,tuple)):
                         e = convert(e)
-                    elif isinstance(e,xmlstore.datatypes.DataTypeArray.EmptyDataType):
+                    elif e is xmlstore.datatypes.DataTypeArray.empty:
                         e = None
                     res.append(e)
                 return res
@@ -1078,6 +1078,10 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
                         if val is not None and icol<len(val):
                             val = val[icol]
                 if val is None: return QtCore.QVariant()
+                if role==QtCore.Qt.DisplayRole:
+                    cls = self.node.getValueType(returnclass=True).elementclass
+                    if not isinstance(val,cls): val = cls(val)
+                    return QtCore.QVariant(val.toPrettyString())
                 return self.editorclass.convertToQVariant(val)
                 
             return QtCore.QVariant()
@@ -1579,13 +1583,11 @@ class ExtendedTreeView(QtGui.QTreeView):
         model = self.model()
         if root is None: root=QtCore.QModelIndex()
         exp = False
-        rc = model.rowCount(root)
-        if rc>0:
-            for ich in range(rc):
-                ch = model.index(ich,0,root)
-                if self.expandNonDefaults(root=ch):
-                    exp = True
-            if exp: self.expand(root)
+        for ich in range(model.rowCount(root)):
+            ch = model.index(ich,0,root)
+            if self.expandNonDefaults(root=ch):
+                exp = True
+        if exp: self.expand(root)
         if not model.hasDefaultValue(root): exp = True
         return exp
 

@@ -87,6 +87,7 @@ class DataTypeArray(DataType,list):
             return ''
         def toNamelistString(self,context,template=None):
             return ''
+    empty = EmptyDataType()
 
     def __init__(self,data=None,template=None):
         DataType.__init__(self)
@@ -124,8 +125,8 @@ class DataTypeArray(DataType,list):
         if shape and not hasattr(value,'__iter__'): value = [value]
         
         if value is None:
-            # None is cast to EmptyDataType (which knows how to do conversions to/from strings, etc.)
-            return DataTypeArray.EmptyDataType()
+            # None is cast to EmptyDataType (which knows how to do conversions to/from strings)
+            return DataTypeArray.empty
         elif recursive and hasattr(value,'__iter__'):
             # Recursively check the iterable, making sure the shape constraints (if any) are respected.
             assert shape is None or len(shape)>0, 'Data consists of an array (%s), but a scalar was expected (prescribed by the array shape).' % str(value)
@@ -298,7 +299,7 @@ class DataTypeArray(DataType,list):
                 overlap = min(len(root),len(vals))
                 if len(inds)==1:
                     for i in range(overlap):
-                        if vals[i] is not None and not isinstance(vals[i],DataTypeArray.EmptyDataType): root[i] = vals[i]
+                        if vals[i] is not None and vals[i] is not DataTypeArray.empty: root[i] = vals[i]
                 else:
                     for i in range(overlap): assign(root[i],inds[1:],vals[i])
             else:
