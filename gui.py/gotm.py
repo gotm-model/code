@@ -427,6 +427,7 @@ def main(options,args):
         print 'Module versions:'
         for module,version in getVersions():
             print '   %s %s' % (module,version)
+        global core,xmlstore
         import core.common,xmlstore.xmlstore
         core.common.verbose = True
         xmlstore.xmlstore.verbose = True
