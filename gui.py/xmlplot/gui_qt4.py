@@ -392,9 +392,9 @@ class FigureCanvas(FigureCanvasQTAgg):
     update the figure size when the user resize (the container of) the canvas.
     """
     def __init__(self, figure):
+        self.animating = False
         FigureCanvasQTAgg.__init__(self, figure)
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent,False)
-        self.animating = False
 
     def resizeEvent( self, e ):
         FigureCanvasQTAgg.resizeEvent( self, e )
