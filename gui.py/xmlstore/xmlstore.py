@@ -2684,18 +2684,18 @@ class ConvertorChain(Convertor):
             curmatches = {}
             convertor.convert(source,temptarget,callback=stepcallback,matchednodes=curmatches,**kwargs)
             if oldmatches is not None:
-                oldmatches = dict([(target,oldmatches[source]) for target,source in curmatches.iteritems() if source in oldmatches])
+                oldmatches = dict([(targetnode,oldmatches[sourcenode]) for targetnode,sourcenode in curmatches.iteritems() if sourcenode in oldmatches])
             else:
                 oldmatches = curmatches
             source = temptarget
 
         convertor = self.chain[-1]
         istep = nsteps-1
-        if callback is not None: callback(float(istep)/nsteps,'converting to version "%s".' % target.version)
-        if verbose: print 'Converting to final target "%s".' % target.version
+        if callback is not None: callback(float(istep)/nsteps,'converting to version "%s".' % convertor.targetid)
+        if verbose: print 'Converting to final target "%s".' % convertor.targetid
         curmatches = {}
         convertor.convert(source,target,callback=stepcallback,matchednodes=curmatches,**kwargs)
-        oldmatches = dict([(target,oldmatches[source]) for target,source in curmatches.iteritems() if source in oldmatches])
+        oldmatches = dict([(targetnode,oldmatches[sourcenode]) for targetnode,sourcenode in curmatches.iteritems() if sourcenode in oldmatches])
         for temptarget in temptargets: temptarget.release()
 
         if matchednodes is not None: matchednodes.update(oldmatches)
