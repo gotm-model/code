@@ -16,6 +16,24 @@ import xmlstore.util, xmlstore.gui_qt4
 import core.common
 import commonqt
 
+def getVersions():
+    yield ('Python','%i.%i.%i %s %i' % sys.version_info)
+    yield ('Qt4',QtCore.qVersion())
+    yield ('PyQt4',QtCore.PYQT_VERSION_STR)
+    
+    import numpy
+    yield ('numpy',numpy.__version__)
+
+    import matplotlib
+    yield ('matplotlib',matplotlib.__version__)
+    
+    import xmlplot.data
+    if xmlplot.data.selectednetcdfmodule is None: xmlplot.data.chooseNetCDFModule()
+    yield xmlplot.data.netcdfmodules[xmlplot.data.selectednetcdfmodule]
+
+    import gotm
+    yield ('gotm',gotm.gui_util.getversion().rstrip())
+
 class GOTMWizard(commonqt.Wizard):
     """Customized wizard dialog that show the GOTM logo at the top of the wizard window,
     and adds a "Tools" button for various functionality such as "Save as" and export of
@@ -69,12 +87,6 @@ class GOTMWizard(commonqt.Wizard):
             self.actExportResult.setVisible(res is not None)
             
     def onAbout(self):
-        # For version only:
-        import gotm
-        import matplotlib,numpy
-        import xmlplot.data
-        if xmlplot.data.selectednetcdfmodule is None: xmlplot.data.chooseNetCDFModule()
-
         dialog = QtGui.QDialog(self,QtCore.Qt.Dialog|QtCore.Qt.CustomizeWindowHint|QtCore.Qt.WindowTitleHint|QtCore.Qt.WindowCloseButtonHint)
         layout = QtGui.QVBoxLayout()
 
@@ -89,19 +101,9 @@ class GOTMWizard(commonqt.Wizard):
         label.setOpenExternalLinks(True)
         layout.addWidget(label)
 
-        versions = []
-        versions.append(('Python','%i.%i.%i %s %i' % sys.version_info))
-        versions.append(('Qt4',QtCore.qVersion()))
-        versions.append(('PyQt4',QtCore.PYQT_VERSION_STR))
-        versions.append(('numpy',numpy.__version__))
-        versions.append(('matplotlib',matplotlib.__version__))
-        versions.append(xmlplot.data.netcdfmodules[xmlplot.data.selectednetcdfmodule])
-        versions.append(('gotm',gotm.gui_util.getversion().rstrip()))
-        
-        strversions = '<table cellspacing="0" cellpadding="0">'
-        for v in versions:
-            strversions += '<tr><td>%s</td><td>&nbsp;</td><td>%s</td></tr>' % v
-        strversions += '</table>'
+        strversions = ''
+        for v in getVersions():
+            strversions += '%s %s<br>' % v
 
         labelVersions = QtGui.QLabel('In bug reports, please quote the following version information:',dialog)
         labelVersions.setWordWrap(True)
@@ -422,10 +424,12 @@ class PageChooseAction(commonqt.WizardPage):
 
 def main(options,args):
     if options.verbose:
-        print 'Python version: %s' % unicode(sys.version_info)
-        print 'PyQt4 version: %s' % QtCore.PYQT_VERSION_STR
-        print 'Qt version: %s' % QtCore.qVersion()
+        print 'Module versions:'
+        for module,version in getVersions():
+            print '   %s %s' % (module,version)
+        import core.common,xmlstore.xmlstore
         core.common.verbose = True
+        xmlstore.xmlstore.verbose = True
 
     if options.nc is not None:
         import xmlplot.data
