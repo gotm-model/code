@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.40 2009-12-09 09:53:10 jorn Exp $
+#$Id: common.py,v 1.41 2010-08-19 13:17:33 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -23,6 +23,19 @@ def get_py2exe_datafiles():
     datafiles += adddir(os.path.join(root,'schemas'),'xmlplot/schemas/')
     datafiles += adddir(os.path.join(root,'icons'),'xmlplot/icons/')
     return datafiles
+
+def getVersions():
+    yield ('Python','%i.%i.%i %s %i' % sys.version_info)
+    
+    import numpy
+    yield ('numpy',numpy.__version__)
+
+    import matplotlib
+    yield ('matplotlib',matplotlib.__version__)
+    
+    import xmlplot.data
+    if xmlplot.data.selectednetcdfmodule is None: xmlplot.data.chooseNetCDFModule()
+    for ncver in xmlplot.data.netcdfmodules: yield ncver
 
 # ------------------------------------------------------------------------------------------
 # Functions for getting/settings the path to data files
