@@ -86,7 +86,7 @@ def chooseNetCDFModule():
         ready = False
     if ready:
         if selectednetcdfmodule==-1: selectednetcdfmodule = len(netcdfmodules)
-        netcdfmodules.append(('pupynere',''))
+        netcdfmodules.append(('pupynere','unknown'))
         
     if selectednetcdfmodule==-1 and netcdfmodules: selectednetcdfmodule = 0
 
