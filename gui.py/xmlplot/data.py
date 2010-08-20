@@ -236,17 +236,35 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
         if mask is None:
             mask = numpy.zeros(dat.shape,dtype=numpy.bool)
         return numpy.logical_or(mask,newmask)
+        
+    def getAttribute(att):
+        if not hasattr(ncvar,att): return
+        val = getattr(ncvar,att)
+        try:
+            return numpy.asarray(val,dtype=dat.dtype)
+        except:
+            print 'WARNING: NetCDF attribute "%s" cannot be cast to required data type (%s) and will therefore be ignored. Attribute type: %s. Attribute value: %s.' % (att,dat.dtype,type(val),val)
+            #pass
 
     # Process the various COARDS/CF variable attributes for missing data.
     if maskoutsiderange:
-        if hasattr(ncvar,'valid_min'): mask = addmask(mask,dat<ncvar.valid_min)
-        if hasattr(ncvar,'valid_max'): mask = addmask(mask,dat>ncvar.valid_max)
-        if hasattr(ncvar,'valid_range'):
-            assert len(ncvar.valid_range)==2,'NetCDF attribute "valid_range" must consist of two values, but contains %i.' % len(ncvar.valid_range)
-            minv,maxv = ncvar.valid_range
-            mask = addmask(mask,numpy.logical_or(dat<minv,dat>maxv))
-    if hasattr(ncvar,'_FillValue'):    mask = addmask(mask,dat==numpy.asarray(ncvar._FillValue,   dtype=dat.dtype))
-    if hasattr(ncvar,'missing_value'): mask = addmask(mask,dat==numpy.asarray(ncvar.missing_value,dtype=dat.dtype))
+        minval,maxval = getAttribute('valid_min'),getAttribute('valid_max')
+        if minval is not None: mask = addmask(mask,dat<minval)
+        if maxval is not None: mask = addmask(mask,dat>maxval)
+        valrange = getAttribute('valid_range')
+        if valrange is not None:
+            if not len(valrange)==2:
+                print 'WARNING: NetCDF attribute "valid_range" must consist of two values, but contains %i. It will be ignored.' % len(ncvar.valid_range)
+            else:
+                mask = addmask(mask,numpy.logical_or(dat<valrange[0],dat>valrange[1]))
+            
+    # Interpret fill value attribute.
+    fillval = getAttribute('_FillValue')
+    if fillval is not None: mask = addmask(mask,dat==fillval)
+
+    # Interpret missing value attribute.
+    missingval = getAttribute('missing_value')
+    if missingval is not None: mask = addmask(mask,dat==missingval)
 
     # Apply the combined mask (if any)
     if mask is not None and mask.any(): dat = numpy.ma.masked_where(mask,dat,copy=False)
