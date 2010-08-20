@@ -237,11 +237,12 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
             mask = numpy.zeros(dat.shape,dtype=numpy.bool)
         return numpy.logical_or(mask,newmask)
         
-    def getAttribute(att):
+    def getAttribute(att,dtype=None):
+        if dtype is None: dtype = dat.dtype
         if not hasattr(ncvar,att): return
         val = getattr(ncvar,att)
         try:
-            return numpy.asarray(val,dtype=dat.dtype)
+            return numpy.asarray(val,dtype=dtype)
         except:
             print 'WARNING: NetCDF attribute "%s" cannot be cast to required data type (%s) and will therefore be ignored. Attribute type: %s. Attribute value: %s.' % (att,dat.dtype,type(val),val)
             #pass
@@ -271,11 +272,12 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
 
     # If we have to apply a transformation to the data, make sure that the data type can accommodate it.
     # Cast to the most detailed type available (64-bit float)
-    if hasattr(ncvar,'scale_factor') or hasattr(ncvar,'add_offset') and dat.dtype!=numpy.float: dat = numpy.asarray(dat,dtype=numpy.float)
+    scale,offset = getAttribute('scale_factor',numpy.float),getAttribute('add_offset',numpy.float)
+    if scale is not None or offset is not None and dat.dtype!=numpy.float: dat = numpy.asarray(dat,dtype=numpy.float)
   
     # Apply transformation to data based on nc variable attributes.
-    if hasattr(ncvar,'scale_factor'): dat *= float(ncvar.scale_factor)
-    if hasattr(ncvar,'add_offset'):   dat += float(ncvar.add_offset)
+    if scale  is not None: dat *= scale
+    if offset is not None: dat += offset
   
     # If the unit is time, convert to internal time unit
     if hasattr(ncvar,'units'):
