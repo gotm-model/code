@@ -262,17 +262,24 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
             else:
                 mask = addmask(mask,numpy.logical_or(dat<valrange[0],dat>valrange[1]))
             
-    # Interpret fill value attribute.
-    fillval = getAttribute('_FillValue',dtype=dat.dtype)
-    if fillval is not None: mask = addmask(mask,dat==fillval)
+    # Variable to receive the final fill value to use for masked array creation.
+    final_fill_value = None
 
-    # Interpret missing value attribute (may be a 1D array).
+    # Interpret missing value attribute (may be a 1D array).    
     missingval = getAttribute('missing_value',dtype=dat.dtype)
     if missingval is not None:
-        for v in missingval.reshape(-1): mask = addmask(mask,dat==v)
+        missingval.shape = (-1,)
+        for v in missingval: mask = addmask(mask,dat==v)
+        final_fill_value = missingval[0]
+
+    # Interpret fill value attribute.
+    fillval = getAttribute('_FillValue',dtype=dat.dtype)
+    if fillval is not None:
+        mask = addmask(mask,dat==fillval)
+        final_fill_value = fillval
 
     # Apply the combined mask (if any)
-    if mask is not None and mask.any(): dat = numpy.ma.masked_where(mask,dat,copy=False)
+    if mask is not None and mask.any(): dat = numpy.ma.masked_array(dat,mask=mask,copy=False,fill_value=final_fill_value)
 
     # If we have to apply a transformation to the data, make sure that the data type can accommodate it.
     # Cast to the most detailed type available (64-bit float)
