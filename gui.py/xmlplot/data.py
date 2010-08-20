@@ -237,22 +237,21 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
             mask = numpy.zeros(dat.shape,dtype=numpy.bool)
         return numpy.logical_or(mask,newmask)
         
-    def getAttribute(att,dtype=None):
-        if dtype is None: dtype = dat.dtype
+    def getAttribute(att,**kwargs):
         if not hasattr(ncvar,att): return
         val = getattr(ncvar,att)
         try:
-            return numpy.asarray(val,dtype=dtype)
+            return numpy.asarray(val,**kwargs)
         except:
-            print 'WARNING: NetCDF attribute "%s" cannot be cast to required data type (%s) and will therefore be ignored. Attribute type: %s. Attribute value: %s.' % (att,dat.dtype,type(val),val)
+            print 'WARNING: NetCDF attribute "%s" cannot be cast to required data type (%s) and will therefore be ignored. Attribute type: %s. Attribute value: %s.' % (att,kwargs.get('dtype','unspecified'),type(val),val)
             #pass
 
     # Process the various COARDS/CF variable attributes for missing data.
     if maskoutsiderange:
-        minval,maxval = getAttribute('valid_min'),getAttribute('valid_max')
+        minval,maxval = getAttribute('valid_min',dtype=dat.dtype),getAttribute('valid_max',dtype=dat.dtype)
         if minval is not None: mask = addmask(mask,dat<minval)
         if maxval is not None: mask = addmask(mask,dat>maxval)
-        valrange = getAttribute('valid_range')
+        valrange = getAttribute('valid_range',dtype=dat.dtype)
         if valrange is not None:
             if not len(valrange)==2:
                 print 'WARNING: NetCDF attribute "valid_range" must consist of two values, but contains %i. It will be ignored.' % len(ncvar.valid_range)
@@ -260,19 +259,20 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
                 mask = addmask(mask,numpy.logical_or(dat<valrange[0],dat>valrange[1]))
             
     # Interpret fill value attribute.
-    fillval = getAttribute('_FillValue')
+    fillval = getAttribute('_FillValue',dtype=dat.dtype)
     if fillval is not None: mask = addmask(mask,dat==fillval)
 
-    # Interpret missing value attribute.
-    missingval = getAttribute('missing_value')
-    if missingval is not None: mask = addmask(mask,dat==missingval)
+    # Interpret missing value attribute (may be a 1D array).
+    missingval = getAttribute('missing_value',dtype=dat.dtype)
+    if missingval is not None:
+        for v in missingval.reshape(-1): mask = addmask(mask,dat==v)
 
     # Apply the combined mask (if any)
     if mask is not None and mask.any(): dat = numpy.ma.masked_where(mask,dat,copy=False)
 
     # If we have to apply a transformation to the data, make sure that the data type can accommodate it.
     # Cast to the most detailed type available (64-bit float)
-    scale,offset = getAttribute('scale_factor',numpy.float),getAttribute('add_offset',numpy.float)
+    scale,offset = getAttribute('scale_factor',dtype=numpy.float),getAttribute('add_offset',dtype=numpy.float)
     if scale is not None or offset is not None and dat.dtype!=numpy.float: dat = numpy.asarray(dat,dtype=numpy.float)
   
     # Apply transformation to data based on nc variable attributes.
