@@ -237,8 +237,9 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
     mask = None
     def addmask(mask,newmask):
         if mask is None:
-            mask = numpy.zeros(dat.shape,dtype=numpy.bool)
-        return numpy.logical_or(mask,newmask)
+            mask = numpy.zeros(dat.shape,dtype=numpy.int)
+        mask += newmask
+        return mask
         
     def getAttribute(att,**kwargs):
         if not hasattr(ncvar,att): return
