@@ -219,6 +219,9 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
     """Returns a slab of values from a NetCDF variable, respecting several NetCDF attributes
     such as missing value specifications, valid value ranges, time unit, etc.
     """
+    # Disable automatic masking [python-netcdf only!]
+    if hasattr(ncvar,'set_auto_maskandscale'): ncvar.set_auto_maskandscale(False)
+    
     if bounds:
         # Bounds provided - read a slice.
         if len(ncvar.shape)!=len(bounds): raise Exception('Number of provided slices (%i) does not match number of dimensions (%i).' % (len(bounds),len(ncvar.shape)))
