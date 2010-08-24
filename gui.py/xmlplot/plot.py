@@ -996,7 +996,7 @@ class Figure(xmlstore.util.referencedobject):
             # Get the plot type for 3D plots.
             plottype3d = seriesnode['PlotType3D'].getValue(usedefault=True)
             plottype2var = seriesnode['PlotTypeTwoVariable'].getValue(usedefault=True)
-            if projection=='rectilinear' and ((typ==3 and plottype2var==1) or typ==4):
+            if projection=='rectilinear' and ((typ==3 and plottype2var==1) or typ==4) and len(varslices)>1:
                 if iseries>0: raise Exception('Series %i requires a wind rose projection, but earlier series use a rectilinear projection. Cannot combine both in the same plot.' % iseries)
                 projection = 'windrose'
             elif projection=='windrose':
