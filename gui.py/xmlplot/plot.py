@@ -1836,7 +1836,7 @@ class Figure(xmlstore.util.referencedobject):
             if not numpy.isfinite(naturalrange[0]): naturalrange[0] = None
             if not numpy.isfinite(naturalrange[1]): naturalrange[1] = None
             
-            # Reverse bpunds where needed
+            # Reverse bounds where needed
             if axisdata['reversed']: naturalrange[0],naturalrange[1] = naturalrange[1],naturalrange[0]
             if reverse: effrange[1],effrange[0] = effrange[0],effrange[1]
 
