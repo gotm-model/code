@@ -249,23 +249,21 @@ def stripWhitespace(node):
     """Removes nodes that contain only white space from the beginning
     and end of the list of child nodes of the specified node.
     """
-
-    # Strip whitespace at start of element contents.
-    ch = node.firstChild
-    while ch is not None and ch.nodeType==ch.TEXT_NODE and len(ch.data.strip())==0:
-        node.removeChild(ch)
-        ch = node.firstChild
-        
-    # Strip whitespace at end of element contents.
-    ch = node.lastChild
-    while ch is not None and ch.nodeType==ch.TEXT_NODE and len(ch.data.strip())==0:
-        node.removeChild(ch)
-        ch = node.lastChild
-    
     # Process element child nodes.
+    textnodes = []
     for ch in node.childNodes:
         if ch.nodeType==ch.ELEMENT_NODE:
             stripWhitespace(ch)
+        elif ch.nodeType==ch.TEXT_NODE:
+            textnodes.append(ch)
+            
+    if textnodes:
+        # Reuse first text node to absorbed merged and whitespace-stripped text, and delete any other text nodes.
+        text = ''.join([ch.data for ch in textnodes]).strip()
+        if text:
+            textnodes[0].data = text
+            textnodes = textnodes[1:]
+        for ch in textnodes: node.removeChild(ch)
 
 def getRootNodeInfo(path):
     """Use SAX to parse XML file up to the first node (root node) only,
