@@ -271,10 +271,12 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
         missingval.shape = (-1,)
         for v in missingval: mask = addmask(mask,dat==v)
         final_fill_value = missingval[0]
+    else:
+        missingval = ()
 
     # Interpret fill value attribute.
     fillval = getAttribute('_FillValue',dtype=dat.dtype)
-    if fillval is not None:
+    if fillval is not None and fillval not in missingval:
         mask = addmask(mask,dat==fillval)
         final_fill_value = fillval
 
