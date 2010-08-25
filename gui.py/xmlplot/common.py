@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.42 2010-08-20 10:36:56 jorn Exp $
+#$Id: common.py,v 1.43 2010-08-25 13:43:23 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -814,6 +814,15 @@ class Variable(object):
             # Bounds for confidence interval (optional)
             self.lbound = None
             self.ubound = None
+            
+        def transpose(self,axes=None):
+            if axes is None: axes = range(self.ndim-1,-1,-1)
+            newslice = Variable.Slice([self.dimensions[i] for i in axes])
+            for i in range(self.ndim):
+                newslice.coords[self.ndim-1-i] = numpy.transpose(self.coords[i],axes)
+                newslice.coords_stag[self.ndim-1-i] = numpy.transpose(self.coords_stag[i],axes)
+            newslice.data = numpy.transpose(self.data,axes)
+            return newslice
         
         def isValid(self):
             """Returns true if the slice if valid, i.e., if dimensions and

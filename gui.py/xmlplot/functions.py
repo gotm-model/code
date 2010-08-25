@@ -472,4 +472,20 @@ class uv2ds(expressions.LazyFunction):
         else:
             resolvedargs[0].data,resolvedargs[1].data = angle,speed
         return resolvedargs
-        
+
+class transpose(expressions.LazyFunction):
+    def __init__(self,arg):
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,getattr(numpy,self.__class__.__name__),arg)
+    def getShape(self):
+        s = expressions.LazyFunction.getShape(self)
+        if s is not None: s = s[::-1]
+        return s
+    def getDimensions(self):
+        return expressions.LazyFunction.getDimensions(self)[::-1]
+    def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
+        arg = resolvedargs[0]
+        if dataonly:
+            arg = numpy.transpose(arg)
+        else:
+            arg = arg.transpose()
+        return arg
