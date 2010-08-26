@@ -475,7 +475,8 @@ class uv2ds(expressions.LazyFunction):
 
 class transpose(expressions.LazyFunction):
     def __init__(self,arg):
-        expressions.LazyFunction.__init__(self,self.__class__.__name__,getattr(numpy,self.__class__.__name__),arg)
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,getattr(numpy,self.__class__.__name__),arg,outsourceslices=False)
+        self.usefirstunit = True
     def getShape(self):
         s = expressions.LazyFunction.getShape(self)
         if s is not None: s = s[::-1]
