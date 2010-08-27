@@ -1749,13 +1749,15 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         if var is None: return res
         res['label'] = var.getLongName()
         res['unit']  = var.getUnit()
-        if dimname in ('z','z1'):
+        props = var.getProperties()
+        if dimname in ('z','z1') or props.get('axis','')=='Z':
             res['preferredaxis'] = 'y'
         elif self.isTimeDimension(dimname):
             res['datatype'] = 'datetime'
             res['preferredaxis'] = 'x'
             res['unit'] = ''
-        props = var.getProperties()
+        elif props.get('axis','')=='T':
+            res['preferredaxis'] = 'x'
         if props.get('positive','up')=='down':
             res['reversed'] = True
         return res
