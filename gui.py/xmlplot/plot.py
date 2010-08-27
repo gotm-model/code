@@ -1312,18 +1312,6 @@ class Figure(xmlstore.util.referencedobject):
                 
                 # Get minimum and maximum coordinates.
                 if curcoords.ndim==1:
-                    # Coordinates provided as vector (1D) valid over whole domain.
-                    datamin = curcoords[0]
-                    datamax = curcoords[-1]
-                else:
-                    # Coordinates are provided as multidimensional array, with a value for every
-                    # coordinate (data point) in the domain. We assume that for a given point
-                    # in the space of the other coordinates, the current cordinate increases
-                    # monotonously (i.e., position 0 holds the lowest value and position -1 the
-                    # highest)
-                    #datamin = curcoords.take((0, ),idim).min()
-                    #datamax = curcoords.take((-1,),idim).max()
-
                     datamin = curcoords.min()
                     datamax = curcoords.max()
                     
@@ -1813,7 +1801,9 @@ class Figure(xmlstore.util.referencedobject):
                 forcedrange = [axisnode['Minimum'].getValue(),axisnode['Maximum'].getValue()]
             bothforced = (forcedrange[0] is not None and forcedrange[1] is not None)
             reverse = (bothforced and forcedrange[0]>forcedrange[1]) or (axisdata['reversed'] and not bothforced)
-            if reverse: forcedrange[0],forcedrange[1] = forcedrange[1],forcedrange[0]
+            if reverse:
+                # If the axis needs to be reversed (high to low), store this feature, and store forced range as minimum,maximum.
+                forcedrange = forcedrange[::-1]
                 
             # Make sure forced ranges are valid if log transform is applied.
             if axisnode['LogScale'].getValue(usedefault=True):
@@ -1837,7 +1827,7 @@ class Figure(xmlstore.util.referencedobject):
             if not numpy.isfinite(naturalrange[1]): naturalrange[1] = None
             
             # Reverse bounds where needed
-            if axisdata['reversed']: naturalrange[0],naturalrange[1] = naturalrange[1],naturalrange[0]
+            if axisdata['reversed']: naturalrange = naturalrange[::-1]
             if reverse: effrange[1],effrange[0] = effrange[0],effrange[1]
 
             # Build default label for this axis
