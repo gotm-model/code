@@ -1020,6 +1020,24 @@ class Figure(xmlstore.util.referencedobject):
                        'reversed':False,
                        'datarange':[varslices[0].data.min(),varslices[0].data.max()]}
             if hasattr(vardata['datarange'][0],'_mask') and vardata['datarange'][0]._mask: vardata['datarange'] = [None,None]
+            
+            def switchAxes(xpref,ypref):
+                if xpref is not None: xpref = xpref.upper()
+                if ypref is not None: ypref = ypref.upper()
+                if xpref=='T':
+                    # Time always maps to x-axis - no transpose.
+                    return False
+                elif xpref=='X':
+                    # Only transpose if y variable want to use time axis.
+                    return ypref is not None and ypref=='T'
+                elif xpref=='Y':
+                    # Transpose unless y coordinate also want Y, or it wants Z.
+                    return ypref is None or ypref not in 'YZ'
+                elif xpref=='Z':
+                    # Transpose unless y coordinate also wants Z.
+                    return ypref is None or ypref!='Z'
+                # No preference for x coordinate. Transpose only if y coordinate prefers X or T axis.
+                return ypref is not None and ypref in 'XT'
                 
             # Now determine the axes ranges
             varslice = varslices[0]
@@ -1047,7 +1065,7 @@ class Figure(xmlstore.util.referencedobject):
                 X,Y = varslice.coords[0], varslice.data
                 xinfo = var.getDimensionInfo(varslice.dimensions[0])
                 yinfo = vardata
-                switchaxes = xinfo['preferredaxis']=='y'
+                switchaxes = switchAxes(xinfo['preferredaxis'],None)
                 xname,yname = varslice.dimensions[0], varpath
                 if switchaxes:
                     X,Y = Y,X
@@ -1062,8 +1080,8 @@ class Figure(xmlstore.util.referencedobject):
                 if var.hasReversedDimensions(): xdim,ydim = 1,0
                 xname,yname = varslice.dimensions[xdim],varslice.dimensions[ydim]
                 xinfo,yinfo = var.getDimensionInfo(xname),var.getDimensionInfo(yname)
-                xpref,ypref = xinfo['preferredaxis'],yinfo['preferredaxis']
-                if (xpref=='y' and ypref!='y') or (ypref=='x' and xpref!='x'):
+                switchaxes = switchAxes(xinfo['preferredaxis'],yinfo['preferredaxis'])
+                if switchaxes:
                     # One independent dimension prefers to switch axis and the other does not disagree.
                     xdim,ydim = ydim,xdim
                     xname,yname = yname,xname
@@ -1311,10 +1329,10 @@ class Figure(xmlstore.util.referencedobject):
                 curcoords = info[axisname]
                 
                 # Get minimum and maximum coordinates.
-                if curcoords.ndim==1:
-                    datamin = curcoords.min()
-                    datamax = curcoords.max()
+                datamin = curcoords.min()
+                datamax = curcoords.max()
                     
+                # If all coordinate values were masked, restore open boundaries.
                 if hasattr(datamin,'_mask'): datamin,datamax = None,None
 
                 # Update effective dimension bounds                    
