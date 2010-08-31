@@ -245,7 +245,7 @@ class LazyExpression(object):
             if slic:
                 # Separate sliced dimensions in those that can be processed by the argument,
                 # and those that should be applied afterwards.
-                slic = dict(slic)
+                slic = dict([(k,v) for k,v in slic.iteritems() if k in dims])
                 for idim in range(len(dims)-1,-1,-1):
                     dim = dims[idim]
                     if dim in slic and arg.canProcessSlice(dim):
