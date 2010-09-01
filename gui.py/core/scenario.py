@@ -73,6 +73,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
             
         # Convert the store to the desired version, if specified.
         if targetversion is not None and scenario.version!=targetversion:
+            if common.verbose: print 'Converting to desired schema version %s...' % targetversion
             newscenario = scenario.convert(targetversion)
             scenario.release()
             return newscenario
