@@ -41,24 +41,35 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         sourceids = cls.rankSources(sourceids,targetversion,requireplatform=requireplatform)
         
         # Try the available schemas one by one, and see if they match the namelists.
-        scenario = None
+        scenario,missingcount = None,None
         failures = ''
+        if common.verbose: print 'Detecting suitable schema for namelists in "%s"...' % path
         for sourceid in sourceids:
-            if common.verbose: print 'Trying scenario format "%s"...' % sourceid
-            scenario = cls.fromSchemaName(sourceid)
+            if common.verbose: print 'Trying schema "%s"...' % sourceid,
+            curscenario = cls.fromSchemaName(sourceid)
             try:
-                scenario.loadFromNamelists(path,strict=strict,protodir=protodir)
+                curscenario.loadFromNamelists(path,strict=strict,protodir=protodir)
             except namelist.NamelistParseException,e:
                 failures += 'Path "%s" does not match template "%s".\nReason: %s\n' % (path,sourceid,e)
-                scenario.release()
-                scenario = None
+                if common.verbose: print 'no match, %s.' % (e,)
+                curscenario.release()
+                continue
+            curmissingcount = len(curscenario.root.getEmptyNodes())
+            if common.verbose: print 'match, %i missing values.' % (curmissingcount,)
             if scenario is not None:
-                #print 'Path "'+path+'" matches template "'+template+'".'
-                break
+                # A schema with higher priority matched - determine if this is a better match, based on the number of missing values.
+                if missingcount<=curmissingcount:
+                    # Earlier schema was a better match - clean up the current one and move on.
+                    curscenario.release()
+                    continue
+                scenario.release()
+            scenario,missingcount = curscenario,curmissingcount
                 
         # Check if we found a schema that matches the namelists.
         if scenario is None:
             raise Exception('The path "%s" does not contain a supported scenario. Details:\n%s' % (path,failures))
+
+        if common.verbose: print 'Final selected schema: %s.' % (scenario.version)
             
         # Convert the store to the desired version, if specified.
         if targetversion is not None and scenario.version!=targetversion:
@@ -69,7 +80,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
             return scenario
 
     def loadFromNamelists(self, srcpath, strict=False, protodir=None):
-        if common.verbose: print 'Importing scenario from namelist files...'
+        #if common.verbose: print 'Importing scenario from namelist files...'
 
         # Try to open the specified path (currently can be zip, tar/gz or a directory)
         try:
