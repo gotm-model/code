@@ -1318,8 +1318,10 @@ class Figure(xmlstore.util.referencedobject):
                         info['U'],info['V'],info['x'],info['y'] = basemap.rotate_vector(info['U'],info['V'],info['x'],info['y'],returnxy=True)
                     else:
                         info['x'],info['y'] = basemap(info['x'],info['y'])
-            axis2data['x'].update({'unit':'','label':'','hideticks':True})
-            axis2data['y'].update({'unit':'','label':'','hideticks':True})
+            axis2data['x'].update({'label':'','hideticks':True})
+            axis2data['y'].update({'label':'','hideticks':True})
+            if proj!='cyl': axis2data['x']['unit'] = axis2data['y']['unit'] = 'm'
+                
 
         for seriesnode,var,varslices,info in zip(forcedseries,seriesvariables,seriesslices,seriesinfo):
             varpath = seriesnode.getSecondaryId()
@@ -1856,7 +1858,7 @@ class Figure(xmlstore.util.referencedobject):
 
             # Build default label for this axis
             deflab = axisdata['label']
-            if axisdata['unit']!='' and axisdata['unit'] is not None: deflab += ' ('+axisdata['unit']+')'
+            if deflab and axisdata['unit']!='' and axisdata['unit'] is not None: deflab += ' ('+axisdata['unit']+')'
             
             # Set default axis properties.
             defaxisnode['Label'].setValue(deflab)
