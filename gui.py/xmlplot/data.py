@@ -44,7 +44,7 @@ def chooseNetCDFModule():
         netcdfmodules.append(('netCDF4',netCDF4.__version__))
 
     # Try to locate ScientificPython.
-    # Note that is is best doen after trying netCDF4, because ScientificPython's version of the NetCDF library is generally lower (3.x).
+    # Note that is is best done after trying netCDF4, because ScientificPython's version of the NetCDF library is generally lower (3.x).
     # If ScientificPython is loaded first, netCDF4 is unable to load the required >=4 version of the NetCDF library.
     # If ScientificPython is loaded after netCDF4, it will use the NetCDF library loaded by netCDF4, if both these modules are present.
     ready = True
