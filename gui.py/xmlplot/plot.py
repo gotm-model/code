@@ -1266,7 +1266,6 @@ class Figure(xmlstore.util.referencedobject):
                             info[k] = newdata
                 xrange = getrange(seriesinfo,'x')
                             
-            res  = nodemap['Resolution'].getValue(usedefault=True)
             proj = nodemap['Projection'].getValue(usedefault=True)
             if isglobal:
                 lonrange = [xrange[0],xrange[0]+360.]
@@ -1278,27 +1277,32 @@ class Figure(xmlstore.util.referencedobject):
             else:
                 lonrange = [max(-360,xrange[0]-0.5),min(720,xrange[1]+0.5)]
                 latrange = [max(- 90,yrange[0]-0.5),min( 90,yrange[1]+0.5)]
-            defnodemap['Range/LowerLeftLatitude'].setValue(latrange[0])
-            defnodemap['Range/LowerLeftLongitude'].setValue(lonrange[0])
-            defnodemap['Range/UpperRightLatitude'].setValue(latrange[1])
+            defnodemap['Range/LowerLeftLongitude' ].setValue(lonrange[0])
+            defnodemap['Range/LowerLeftLatitude'  ].setValue(latrange[0])
             defnodemap['Range/UpperRightLongitude'].setValue(lonrange[1])
-            llcrnrlon=nodemap['Range/LowerLeftLongitude' ].getValue(usedefault=True)
-            llcrnrlat=nodemap['Range/LowerLeftLatitude'  ].getValue(usedefault=True)
-            urcrnrlon=nodemap['Range/UpperRightLongitude'].getValue(usedefault=True)
-            urcrnrlat=nodemap['Range/UpperRightLatitude' ].getValue(usedefault=True)
-            if (self.basemap is None or self.basemap.projection!=proj or self.basemap.resolution!=res or 
-               self.basemap.llcrnrlon!=llcrnrlon or self.basemap.llcrnrlat!=llcrnrlat or self.basemap.urcrnrlon!=urcrnrlon or self.basemap.urcrnrlat!=urcrnrlat):
+            defnodemap['Range/UpperRightLatitude' ].setValue(latrange[1])
+            defnodemap['Range/CentralLongitude'   ].setValue((lonrange[0]+lonrange[1])/2.)
+            defnodemap['Range/CentralLatitude'    ].setValue((latrange[0]+latrange[1])/2.)
+            boundinglat = None
+            if proj in ('spstere', 'npstere', 'splaea', 'nplaea', 'spaeqd', 'npaeqd'):
+                if proj.startswith('np'):
+                    defnodemap['Range/BoundingLatitude'   ].setValue(max(0.,latrange[0]))
+                else:
+                    defnodemap['Range/BoundingLatitude'   ].setValue(-min(0.,latrange[1]))
+                boundinglat = nodemap['Range/BoundingLatitude'].getValue(usedefault=True)
+            basemap_args = {'projection':proj,
+                            'resolution': nodemap['Resolution'               ].getValue(usedefault=True),
+                            'llcrnrlon':  nodemap['Range/LowerLeftLongitude' ].getValue(usedefault=True),
+                            'llcrnrlat':  nodemap['Range/LowerLeftLatitude'  ].getValue(usedefault=True),
+                            'urcrnrlon':  nodemap['Range/UpperRightLongitude'].getValue(usedefault=True),
+                            'urcrnrlat':  nodemap['Range/UpperRightLatitude' ].getValue(usedefault=True),
+                            'lon_0':      nodemap['Range/CentralLongitude'   ].getValue(usedefault=True),
+                            'lat_0':      nodemap['Range/CentralLatitude'    ].getValue(usedefault=True),
+                            'boundinglat': boundinglat}
+            if (self.basemap is None or self.basemap_args!=basemap_args):
                 # Basemap object does not exist yet or has different settings than needed - create a new basemap.
-                self.basemap = mpl_toolkits.basemap.Basemap(llcrnrlon=llcrnrlon,
-                                                       llcrnrlat=llcrnrlat,
-                                                       urcrnrlon=urcrnrlon,
-                                                       urcrnrlat=urcrnrlat,
-                                                       projection=proj,
-                                                       resolution=res,
-                                                       ax=axes,
-                                                       suppress_ticks=False,
-                                                       lon_0=(xrange[0]+xrange[1])/2.,
-                                                       lat_0=(yrange[0]+yrange[1])/2.)
+                self.basemap = mpl_toolkits.basemap.Basemap(ax=axes,suppress_ticks=False,**basemap_args)
+                self.basemap_args = basemap_args
             else:
                 # A matching basemap object exists: just set its axes and continue.
                 self.basemap.ax = axes
@@ -1308,6 +1312,8 @@ class Figure(xmlstore.util.referencedobject):
             # Transform x,y coordinates
             for info in seriesinfo:
                 if 'x' in info and 'y' in info:
+                    #info['x'] = numpy.ma.array(info['x'],mask=numpy.logical_or(info['x']<basemap_args['llcrnrlon'],info['x']>basemap_args['urcrnrlon']),copy=False)
+                    #info['y'] = numpy.ma.array(info['y'],mask=numpy.logical_or(info['y']<basemap_args['llcrnrlat'],info['y']>basemap_args['urcrnrlat']),copy=False)
                     if 'U' in info and 'V' in info:
                         info['U'],info['V'],info['x'],info['y'] = basemap.rotate_vector(info['U'],info['V'],info['x'],info['y'],returnxy=True)
                     else:
