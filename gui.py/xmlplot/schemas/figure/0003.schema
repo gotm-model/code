@@ -176,9 +176,29 @@
 			<element name="LowerLeftLongitude"  type="float" minInclusive="-360" maxInclusive="720" label="lower left longitude"  unit="° East"/>
 			<element name="UpperRightLatitude"  type="float" minInclusive="-90"  maxInclusive="90"  label="upper right latitude"  unit="° North"/>
 			<element name="UpperRightLongitude" type="float" minInclusive="-360" maxInclusive="720" label="upper right longitude" unit="° East"/>
-      <element name="CentralLatitude"     type="float" minInclusive="-90"  maxInclusive="90"  label="central latitude"      unit="° North"/>
-      <element name="CentralLongitude"    type="float" minInclusive="-360" maxInclusive="720" label="central longitude"     unit="° East"/>
-      <element name="BoundingLatitude"    type="float" minInclusive="0"    maxInclusive="90"  label="bounding latitude"     unit="°"/>
+      <element name="CentralLatitude"     type="float" minInclusive="-90"  maxInclusive="90"  label="central latitude"      unit="° North">
+        <condition type="and">
+          <condition type="ne" variable="../Projection" value="cyl"/>
+          <condition type="ne" variable="../Projection" value="merc"/>
+          <condition type="ne" variable="../Projection" value="tmerc"/>
+        </condition>
+      </element>
+      <element name="CentralLongitude"    type="float" minInclusive="-360" maxInclusive="720" label="central longitude"     unit="° East">
+        <condition type="and">
+          <condition type="ne" variable="../Projection" value="cyl"/>
+          <condition type="ne" variable="../Projection" value="merc"/>
+        </condition>
+      </element>
+      <element name="BoundingLatitude"    type="float" minInclusive="0"    maxInclusive="90"  label="bounding latitude"     unit="°">
+        <condition type="or">
+          <condition type="eq" variable="../Projection" value="spstere"/>
+          <condition type="eq" variable="../Projection" value="npstere"/>
+          <condition type="eq" variable="../Projection" value="splaea"/>
+          <condition type="eq" variable="../Projection" value="nplaea"/>
+          <condition type="eq" variable="../Projection" value="spaeqd"/>
+          <condition type="eq" variable="../Projection" value="npaeqd"/>
+        </condition>
+      </element>
     </element>
 		<element name="FillContinents" type="bool" label="fill continents">
 			<condition type="eq" variable="." value="True"/>
