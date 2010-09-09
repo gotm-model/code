@@ -100,7 +100,7 @@ def getNetCDFFile(path,mode='r'):
     module to use. All other functions just operate on an object
     returned by this function, and expect this object to follow
     Scientific.IO.NetCDFFile conventions. Thus adding/replacing a module
-    for NetCDF support should only require a chnage in this function.
+    for NetCDF support should only require a change in this function.
     """
     
     if selectednetcdfmodule is None: chooseNetCDFModule()
@@ -142,6 +142,7 @@ def getNetCDFFile(path,mode='r'):
 
 class ReferenceTimeParseError(Exception): pass
 
+reNcDate,reNcTime,reNcTimeZone = None,None,None
 def parseNcTimeUnit(fullunit):
   """Parses a udunits/COARDS units string to extract the reference time and time unit.
   Raises an exception if the string does not match udunits/COARDS convention.
@@ -150,14 +151,19 @@ def parseNcTimeUnit(fullunit):
   Supposedly the udunits package could do this, but so far I have not found a minimal
   udunits module for Python.
   """
-
   # Retrieve time unit (in days) and reference date/time, based on COARDS convention.
   if ' since ' not in fullunit:
       raise ReferenceTimeParseError('"units" attribute equals "%s", which does not follow COARDS convention. Problem: string does not contain " since ".' % fullunit)
   timeunit,reftime = fullunit.split(' since ')
+
+  global reNcDate,reNcTime,reNcTimeZone
+  if reNcDate is None:
+    reNcDate     = re.compile(r'(\d\d\d\d)[-\/](\d{1,2})-(\d{1,2})\s*')
+    reNcTime     = re.compile(r'(\d{1,2}):(\d{1,2}):(\d{1,2}(?:\.\d*)?)\s*')
+    reNcTimeZone = re.compile(r'(-?\d{1,2})(?::?(\d\d))?$')
   
   # Parse the reference date, time and timezone
-  datematch = re.match(r'(\d\d\d\d)[-\/](\d{1,2})-(\d{1,2})\s*',reftime)
+  datematch = reNcDate.match(reftime)
   if datematch is None:
     raise ReferenceTimeParseError('"units" attribute equals "%s", which does not follow COARDS convention. Problem: cannot parse date in "%s".' % (fullunit,reftime))
   year,month,day = map(int,datematch.group(1,2,3))
@@ -165,7 +171,7 @@ def parseNcTimeUnit(fullunit):
   hours,minutes,seconds,mseconds = 0,0,0,0
   reftime = reftime[datematch.end():]
   if len(reftime)>0:
-    timematch = re.match(r'(\d{1,2}):(\d{1,2}):(\d{1,2}(?:\.\d*)?)\s*',reftime)
+    timematch = reNcTime.match(reftime)
     if timematch is None:
         raise ReferenceTimeParseError('"units" attribute equals "%s", which does not follow COARDS convention. Problem: cannot parse time in "%s".' % (fullunit,reftime))
     hours,minutes = map(int,timematch.group(1,2))
@@ -175,7 +181,7 @@ def parseNcTimeUnit(fullunit):
     reftime = reftime[timematch.end():]
   dateref = datetime.datetime(year,month,day,hours,minutes,seconds,tzinfo=xmlstore.util.getUTC())
   if len(reftime)>0:
-    timezonematch = re.match(r'(-?\d{1,2})(?::?(\d\d))?$',reftime)
+    timezonematch = reNcTimeZone.match(reftime)
     if timezonematch is None:
         raise ReferenceTimeParseError('"units" attribute equals "%s", which does not follow COARDS convention. Problem: cannot parse time zone in "%s".' % (fullunit,reftime))
     if timezonematch.group(2) is None:
@@ -1298,8 +1304,15 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
 
         def setData(self,data,slic=(Ellipsis,),converttime=True):
             assert self.store.mode=='w','NetCDF file has not been opened for writing.'
+            
+            # Retrieve the NetCDF variable object.
             nc = self.store.getcdf()
             ncvar = nc.variables[self.ncvarname]
+
+            # Disable automatic masking and scaling [python-netcdf only!]
+            if hasattr(ncvar,'set_auto_maskandscale'): ncvar.set_auto_maskandscale(False)
+
+            # Process time units - if applicable.
             if converttime and hasattr(ncvar,'units'):
                 timeref = None
                 try:
@@ -1309,12 +1322,19 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 if timeref is not None:
                     timeref = common.date2num(timeref)
                     data = numpy.asarray((data-timeref)/timeunit,dtype=self.getDataType())
-            if hasattr(ncvar,'add_offset'): data = data-ncvar.add_offset
+                    
+            # Process offset and scale value - if applicable.
+            if hasattr(ncvar,'add_offset'):   data = data-ncvar.add_offset
             if hasattr(ncvar,'scale_factor'): data = data/ncvar.scale_factor
-            if hasattr(data,'filled') and hasattr(ncvar,'_FillValue'):
-                ncvar[slic] = data.filled(ncvar._FillValue)
-            else:
-                ncvar[slic] = data
+
+            # Fill masked values with designated missing value (if any).
+            if hasattr(data,'filled') and hasattr(ncvar,'_FillValue'): data = data.filled(ncvar._FillValue)
+            
+            # If the internal storage type is integer, round the values to the nearest integer first.
+            if numpy.dtype(self.getDataType()).kind in 'iu': data = numpy.round(data)
+
+            # Save data to NetCDF variable.
+            ncvar[slic] = data
 
         def getLongName(self):
             nc = self.store.getcdf()
