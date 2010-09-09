@@ -195,8 +195,10 @@ def parseNcTimeUnit(fullunit):
       timeunit = 1./24.
   elif timeunit in ('days','day','ds','d'):
       timeunit = 1.
+  elif timeunit in ('months','month'):
+      timeunit = 365.242198781/12.   # udunits convention: month=year/12=365.242198781/12 days
   elif timeunit in ('years','year','yrs','yr','ys','y'):
-      timeunit = 365.   # udunits convention: year=365 days
+      timeunit = 365.242198781   # udunits convention: year=365.242198781 days
   else:
       raise ReferenceTimeParseError('"units" attribute equals "%s", which does not follow COARDS convention. Problem: unknown time unit "%s".' % (fullunit,timeunit))
   
@@ -1307,6 +1309,8 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
                 if timeref is not None:
                     timeref = common.date2num(timeref)
                     data = numpy.asarray((data-timeref)/timeunit,dtype=self.getDataType())
+            if hasattr(ncvar,'add_offset'): data = data-ncvar.add_offset
+            if hasattr(ncvar,'scale_factor'): data = data/ncvar.scale_factor
             if hasattr(data,'filled') and hasattr(ncvar,'_FillValue'):
                 ncvar[slic] = data.filled(ncvar._FillValue)
             else:
