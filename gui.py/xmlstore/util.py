@@ -95,10 +95,26 @@ class referencedobject(object):
 # Date-time parsing variables and functions
 # ------------------------------------------------------------------------------------------
 
+class UTC(datetime.tzinfo):
+    """Minimal tzinfo class for UTC
+    """
+    ZERO = datetime.timedelta(0)
+
+    def utcoffset(self, dt):
+        return UTC.ZERO
+
+    def tzname(self, dt):
+        return 'UTC'
+
+    def dst(self, dt):
+        return UTC.ZERO
+        
 # Date format used for datetime strings visible to the user.
+utc = None
 def getUTC():
-    import pytz
-    return pytz.timezone('UTC')
+    global utc
+    if utc is None: utc = UTC()
+    return utc
 
 def dateTimeFromTuple(tup):
     """Returns a datetime object from a sequence with six items: year,
