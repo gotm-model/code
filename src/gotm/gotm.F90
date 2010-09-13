@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.42 2009-10-21 08:02:09 hb Exp $
+!$Id: gotm.F90,v 1.43 2010-09-13 15:59:36 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -94,6 +94,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.43  2010-09-13 15:59:36  jorn
+!  improved clean up of bio models
+!
 !  Revision 1.42  2009-10-21 08:02:09  hb
 !  Fluff layer resuspension added.
 !
@@ -589,6 +592,8 @@
    call clean_tridiagonal()
 
 #ifdef BIO
+   call clean_bio_fluxes()
+
    call clean_bio()
 #endif
 

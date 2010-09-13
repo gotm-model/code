@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.55 2010-09-13 15:15:50 jorn Exp $
+!$Id: bio.F90,v 1.56 2010-09-13 15:59:36 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,64 +19,64 @@
 ! !USES:
    use bio_var
 #ifndef NO_0D_BIO
-   use bio_0d, only: model,init_bio_0d, init_var_0d, &
+   use bio_0d, only: model,init_bio_0d, init_var_0d, end_bio_0d, &
                      light_0d, light_0d_par, &
                      surface_fluxes_0d, update_sinking_rates_0d, &
                      do_bio_0d_eul, do_bio_0d_par
 #endif
 
 #ifdef BIO_TEMPLATE
-   use bio_template, only : init_bio_template,init_var_template
+   use bio_template, only : init_bio_template,init_var_template,end_bio_template
    use bio_template, only : light_template
 #endif
 
 #ifdef BIO_NPZD
-   use bio_npzd, only : init_bio_npzd,init_var_npzd
+   use bio_npzd, only : init_bio_npzd,init_var_npzd,end_bio_npzd
    use bio_npzd, only : light_npzd, do_bio_npzd
 #endif
 
 #ifdef BIO_CL
-   use bio_cl, only : init_bio_cl,init_var_cl
+   use bio_cl, only : init_bio_cl,init_var_cl,end_bio_cl
    use bio_cl, only : do_bio_cl
 #endif
 
 #ifdef BIO_IOW
-   use bio_iow, only : init_bio_iow,init_var_iow
+   use bio_iow, only : init_bio_iow,init_var_iow,end_bio_iow
    use bio_iow, only : light_iow,surface_fluxes_iow,do_bio_iow
 #endif
 
 #ifdef BIO_FASHAM
-   use bio_fasham, only : init_bio_fasham,init_var_fasham
+   use bio_fasham, only : init_bio_fasham,init_var_fasham,end_bio_fasham
    use bio_fasham, only : light_fasham,do_bio_fasham
 #endif
 
 #ifdef BIO_SED
-   use bio_sed, only : init_bio_sed,init_var_sed
+   use bio_sed, only : init_bio_sed,init_var_sed,end_bio_sed
    use bio_sed, only : do_bio_sed_eul,do_bio_sed_par
 #endif
 
 #ifdef BIO_MAB
-   use bio_mab, only : init_bio_mab,init_var_mab
+   use bio_mab, only : init_bio_mab,init_var_mab,end_bio_mab
    use bio_mab, only : light_mab,surface_fluxes_mab,do_bio_mab
 #endif
 
 #ifdef BIO_ROLM
-   use bio_rolm, only : init_bio_rolm,init_var_rolm
+   use bio_rolm, only : init_bio_rolm,init_var_rolm,end_bio_rolm
    use bio_rolm, only : light_rolm,surface_fluxes_rolm,do_bio_rolm
 #endif
 
 #ifdef BIO_NPZD_FE
-   use bio_npzd_fe, only : init_bio_npzd_fe,init_var_npzd_fe
+   use bio_npzd_fe, only : init_bio_npzd_fe,init_var_npzd_fe,clean_bio_npzd_fe
    use bio_npzd_fe, only : light_npzd_fe,surface_fluxes_npzd_fe,do_bio_npzd_fe
 #endif
 
 #ifdef BIO_PHOTO
-   use bio_photo, only : init_bio_photo,init_var_photo
+   use bio_photo, only : init_bio_photo,init_var_photo,end_bio_photo
    use bio_photo, only : do_bio_photo_eul,do_bio_photo_par
 #endif
 
 #ifdef BIO_MANGAN
-   use bio_mangan, only : init_bio_mangan,init_var_mangan
+   use bio_mangan, only : init_bio_mangan,init_var_mangan,end_bio_mangan
    use bio_mangan, only : light_mangan, do_bio_mangan
 #endif
 
@@ -104,6 +104,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.56  2010-09-13 15:59:36  jorn
+!  improved clean up of bio models
+!
 !  Revision 1.55  2010-09-13 15:15:50  jorn
 !  make sure bio variables will be reset when a new run starts
 !
@@ -117,6 +120,9 @@
 !  added chlorination model - Rennau
 !
 !  $Log: bio.F90,v $
+!  Revision 1.56  2010-09-13 15:59:36  jorn
+!  improved clean up of bio models
+!
 !  Revision 1.55  2010-09-13 15:15:50  jorn
 !  make sure bio variables will be reset when a new run starts
 !
@@ -1507,6 +1513,60 @@
 !BOC
 
    LEVEL1 'clean_bio'
+
+   if (bio_calc) then
+      select case (bio_model)
+      case (-1)
+#ifdef BIO_TEMPLATE
+         call end_bio_template
+#endif
+      case (1) ! The NPZD model
+#ifdef BIO_NPZD
+         call end_bio_npzd
+#endif
+      case (2)  ! The IOW model
+#ifdef BIO_IOW
+         call end_bio_iow
+#endif
+      case (3)  ! The simple sedimentation model
+#ifdef BIO_SED
+         call end_bio_sed
+#endif
+      case (4)  ! The FASHAM model
+#ifdef BIO_FASHAM
+         call end_bio_fasham
+#endif
+      case (5)  ! The IOW model, modified for MaBenE
+#ifdef BIO_MAB
+         call end_bio_mab
+#endif
+      case (6)  ! RedOxLayer Model (ROLM)
+#ifdef BIO_ROLM
+         call end_bio_rolm
+#endif
+      case (7)  ! NPZD_FE (Weber_etal2007)
+#ifdef BIO_NPZD_FE
+         call clean_bio_npzd_fe
+#endif
+      case (8) ! The CL model
+#ifdef BIO_CL
+         call end_bio_cl
+#endif
+      case (10) ! The MANGAN model
+#ifdef BIO_MANGAN
+         call end_bio_mangan
+#endif
+      case (20)  ! PHOTO (adaption model according to Nagai et al. (2003)
+#ifdef BIO_PHOTO
+         call end_bio_photo
+#endif
+
+#ifndef NO_0D_BIO
+      case (1000:)
+         call end_bio_0d
+#endif
+      end select
+   end if
 
    ! clean up memory
    call dealloc_eul()

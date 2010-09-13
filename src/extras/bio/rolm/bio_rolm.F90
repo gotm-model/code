@@ -1,4 +1,4 @@
-!$Id: bio_rolm.F90,v 1.2 2008-07-08 09:58:38 lars Exp $
+!$Id: bio_rolm.F90,v 1.3 2010-09-13 15:59:36 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -1468,6 +1468,8 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+
+   if (allocated(ppi)) deallocate(ppi)
 
    return
    end subroutine end_bio_rolm

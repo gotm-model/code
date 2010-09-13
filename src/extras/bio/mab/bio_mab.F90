@@ -956,6 +956,8 @@
 !-----------------------------------------------------------------------
 !BOC
 
+   if (allocated(ppi)) deallocate(ppi)
+
    return
    end subroutine end_bio_mab
 !EOC

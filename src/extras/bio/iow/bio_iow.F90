@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.6 2010-04-19 13:36:30 hb Exp $
+!$Id: bio_iow.F90,v 1.7 2010-09-13 15:59:36 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.7  2010-09-13 15:59:36  jorn
+!  improved clean up of bio models
+!
 !  Revision 1.6  2010-04-19 13:36:30  hb
 !  Phosphate release of detritus mineralisation added to PROTEX documentation
 !
@@ -1182,6 +1185,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+   if (allocated(ppi)) deallocate(ppi)
 
    return
    end subroutine end_bio_iow

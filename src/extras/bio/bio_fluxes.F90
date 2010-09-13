@@ -1,4 +1,4 @@
-!$Id: bio_fluxes.F90,v 1.4 2008-10-17 08:50:47 lars Exp $
+!$Id: bio_fluxes.F90,v 1.5 2010-09-13 15:59:36 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -17,7 +17,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_bio_fluxes, do_bio_fluxes
+   public init_bio_fluxes, do_bio_fluxes, clean_bio_fluxes
 !
 ! !PRIVATE DATA MEMBERS:
    integer                              :: sfl_unit=61
@@ -27,6 +27,9 @@
 !  Original author(s): Karsten Bolding and Hans Burchard
 !
 !  $Log: bio_fluxes.F90,v $
+!  Revision 1.5  2010-09-13 15:59:36  jorn
+!  improved clean up of bio models
+!
 !  Revision 1.4  2008-10-17 08:50:47  lars
 !  changed documentation label
 !
@@ -161,6 +164,40 @@
 
    return
    end subroutine do_bio_fluxes
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Clean up bio flux data
+!
+! !INTERFACE:
+   subroutine clean_bio_fluxes
+!
+! !DESCRIPTION:
+!  Deallocate memory
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Hans Burchard, Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   if (surface_flux_method.eq.2) then
+      if (allocated(sfl_read)) deallocate(sfl_read)
+      if (allocated(obs1))     deallocate(obs1)
+      if (allocated(obs2))     deallocate(obs2)
+      if (allocated(alpha))    deallocate(alpha)
+      
+      close(sfl_unit)
+   end if
+
+   return
+   end subroutine clean_bio_fluxes
 !EOC
 
 !-----------------------------------------------------------------------
