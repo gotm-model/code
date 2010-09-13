@@ -561,7 +561,7 @@ if (__name__=='__main__'):
     if not hasattr(sys,'frozen'):
         parser.add_option('--nc', type='string', help='NetCDF module to use')
         parser.add_option('--schemadir', type='string', help='Path to scenario schema directory')
-    parser.set_defaults(profile=False,showoptions=False,verbose=False,debug=False,nc=None)
+    parser.set_defaults(profile=False,showoptions=False,verbose=False,debug=False,nc=None,schemadir=None)
     (options, args) = parser.parse_args()
     
     if options.debug: xmlstore.util.referencedobject.checkreferences = True
