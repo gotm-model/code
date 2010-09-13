@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.54 2010-03-08 10:58:52 hb Exp $
+!$Id: bio.F90,v 1.55 2010-09-13 15:15:50 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -104,6 +104,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.55  2010-09-13 15:15:50  jorn
+!  make sure bio variables will be reset when a new run starts
+!
 !  Revision 1.54  2010-03-08 10:58:52  hb
 !  Simple maganese model added, see subdir extras/bio/mangan/
 !
@@ -114,6 +117,9 @@
 !  added chlorination model - Rennau
 !
 !  $Log: bio.F90,v $
+!  Revision 1.55  2010-09-13 15:15:50  jorn
+!  make sure bio variables will be reset when a new run starts
+!
 !  Revision 1.54  2010-03-08 10:58:52  hb
 !  Simple maganese model added, see subdir extras/bio/mangan/
 !
@@ -1439,6 +1445,8 @@
    if (allocated(w))              deallocate(w)
    if (allocated(bioshade_))      deallocate(bioshade_)
    if (allocated(abioshade_))     deallocate(abioshade_)
+   
+   init_saved_vars = .true.
 
    return
    end subroutine dealloc_eul
