@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.43 2010-09-13 15:59:36 jorn Exp $
+!$Id: gotm.F90,v 1.44 2010-09-13 16:09:16 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -94,6 +94,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.44  2010-09-13 16:09:16  jorn
+!  added seagrass clean-up
+!
 !  Revision 1.43  2010-09-13 15:59:36  jorn
 !  improved clean up of bio models
 !
@@ -595,6 +598,10 @@
    call clean_bio_fluxes()
 
    call clean_bio()
+#endif
+
+#ifdef SEAGRASS
+   call end_seagrass
 #endif
 
    return

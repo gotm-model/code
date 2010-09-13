@@ -1,4 +1,4 @@
-!$Id: seagrass.F90,v 1.9 2007-01-06 11:49:15 kbk Exp $
+!$Id: seagrass.F90,v 1.10 2010-09-13 16:09:16 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,9 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: seagrass.F90,v $
+!  Revision 1.10  2010-09-13 16:09:16  jorn
+!  added seagrass clean-up
+!
 !  Revision 1.9  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -398,6 +401,13 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+
+   if (allocated(xx))     deallocate(xx)
+   if (allocated(yy))     deallocate(yy)
+   if (allocated(xxP))    deallocate(xxP)
+   if (allocated(exc))    deallocate(exc)
+   if (allocated(vfric))  deallocate(vfric)
+   if (allocated(grassz)) deallocate(grassz)
 
    return
    end subroutine end_seagrass
