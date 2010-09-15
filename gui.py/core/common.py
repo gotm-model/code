@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.7 2010-07-14 15:43:10 jorn Exp $
+#$Id: common.py,v 1.8 2010-09-15 10:33:41 jorn Exp $
 
 import sys, os.path, shutil, atexit
 
@@ -45,7 +45,7 @@ class TempDirManager(object):
     @staticmethod
     def cleanup():
         for path in TempDirManager.tempdirs:
-            TempDirManager.deleteTempDir(path,unregister=False)
+            TempDirManager.delete(path,unregister=False)
 
 # ------------------------------------------------------------------------------------------
 # Command line argument utility functions
