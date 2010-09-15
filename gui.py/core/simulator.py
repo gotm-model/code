@@ -131,7 +131,7 @@ class Simulator(object):
         # if no progress notifications are desired and the simulation cannot be cancelled,
         # simply run the complete simulation at once (slice size = entire simulation)
         islicesize = 100
-        if progresscallback is None and continuecallback is None: islicesize = stepcount
+        if progresscallback is None and continuecallback is None: islicesize = self.stepcount
 
         hasmore = True
         
