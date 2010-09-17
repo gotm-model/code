@@ -1,4 +1,4 @@
-!$Id: uequation.F90,v 1.12 2008-03-07 17:57:49 hb Exp $
+!$Id: uequation.F90,v 1.13 2010-09-17 12:53:48 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -66,7 +66,7 @@
 ! !USES:
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: h,u,uo,v,w,avh
-   use meanflow,     only: drag,SS
+   use meanflow,     only: drag,SS,runtimeu
    use observations, only: w_adv_method,w_adv_discr
    use observations, only: uProf,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdx,dpdx
@@ -110,6 +110,9 @@
 !                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: uequation.F90,v $
+!  Revision 1.13  2010-09-17 12:53:48  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.12  2008-03-07 17:57:49  hb
 !  AdvBcup changed to oneSided
 !
@@ -156,7 +159,6 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: URelaxTau(0:nlev)
-   REALTYPE, save            :: runtime=_ZERO_
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -183,9 +185,9 @@
 
 !  set vector of relaxation times
    if (vel_relax_ramp .lt. long) then
-      runtime=runtime+dt
-      if (runtime .lt. vel_relax_ramp) then
-         URelaxTau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtime)
+      runtimeu=runtimeu+dt
+      if (runtimeu .lt. vel_relax_ramp) then
+         URelaxTau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtimeu)
       else
          URelaxTau=vel_relax_tau
       end if

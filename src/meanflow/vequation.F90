@@ -1,4 +1,4 @@
-!$Id: vequation.F90,v 1.11 2008-03-07 17:57:49 hb Exp $
+!$Id: vequation.F90,v 1.12 2010-09-17 12:53:48 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -45,7 +45,7 @@
 ! !USES:
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: h,v,vo,u,w,avh
-   use meanflow,     only: drag,SS
+   use meanflow,     only: drag,SS,runtimev
    use observations, only: w_adv_method,w_adv_discr
    use observations, only: vProf,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdy,dpdy
@@ -88,6 +88,9 @@
 !                       Hans Burchard and Karsten Bolding)
 !
 !  $Log: vequation.F90,v $
+!  Revision 1.12  2010-09-17 12:53:48  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.11  2008-03-07 17:57:49  hb
 !  AdvBcup changed to oneSided
 !
@@ -134,7 +137,6 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: VRelaxTau(0:nlev)
-   REALTYPE, save            :: runtime=_ZERO_
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -161,9 +163,9 @@
 
 !  set vector of relaxation times
    if (vel_relax_ramp .lt. long) then
-      runtime=runtime+dt
-      if (runtime .lt. vel_relax_ramp) then
-         VRelaxTau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtime)
+      runtimev=runtimev+dt
+      if (runtimev .lt. vel_relax_ramp) then
+         VRelaxTau=vel_relax_tau*vel_relax_ramp/(vel_relax_ramp-runtimev)
       else
          VRelaxTau=vel_relax_tau
       end if
@@ -204,7 +206,6 @@
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
                     DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,V)
-
 
    return
    end subroutine vequation

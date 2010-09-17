@@ -1,4 +1,4 @@
-!$Id: output.F90,v 1.9 2006-11-29 09:31:20 kbk Exp $
+!$Id: output.F90,v 1.10 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -28,21 +28,25 @@
    integer, public, parameter          :: ascii_unit=50
    integer, public, parameter          :: grads_unit=51
    character(len=19)                   :: ts
-   integer                             :: out_fmt=ASCII
-   character(len=PATH_MAX)             :: out_dir='.'
-   character(len=PATH_MAX)             :: out_fn='gotm'
-   integer                             :: nsave=1
-   logical                             :: diagnostics=.false.
-   integer                             :: mld_method=1
-   REALTYPE                            :: diff_k=1.e-5
-   REALTYPE                            :: Ri_crit=0.5
-   logical                             :: rad_corr=.true.
+   integer                             :: out_fmt
+   character(len=PATH_MAX)             :: out_dir
+   character(len=PATH_MAX)             :: out_fn
+   integer                             :: nsave
+   logical                             :: diagnostics
+   integer                             :: mld_method
+   REALTYPE                            :: diff_k
+   REALTYPE                            :: Ri_crit
+   logical                             :: rad_corr
+   logical                             :: init_diagnostics
 
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: output.F90,v $
+!  Revision 1.10  2010-09-17 12:53:52  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.9  2006-11-29 09:31:20  kbk
 !  output units made public
 !
@@ -116,6 +120,7 @@
 !-------------------------------------------------------------------------
 !BOC
    LEVEL1 'init_output'
+
    call write_time_string(julianday,secondsofday,ts)
 
    select case (out_fmt)
@@ -162,6 +167,7 @@
       open(heat_unit,file=trim(tmp_fn),err=100,status='unknown')
       tmp_fn = TRIM(out_dir) //'/'// TRIM(out_fn) // '.energy'
       open(energy_unit,file=trim(tmp_fn),err=100,status='unknown')
+      init_diagnostics = .true.
    end if
    return
 100 FATAL 'unable to open ',trim(tmp_fn),' for output.'
@@ -340,7 +346,6 @@
    REALTYPE                  :: wstar,tstar
    REALTYPE                  :: sbf,stf,MOL
    REALTYPE                  :: Ri(0:nlev)
-   logical, save             :: first=.true.
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -425,7 +430,7 @@
       heat_sim=heat_sim+T(i)*h(i)*rho_0*cp
       heat_obs=heat_obs+tprof(i)*h(i)*rho_0*cp
    end do
-   if (first) then
+   if (init_diagnostics) then
       heat_sim0=heat_sim
       heat_obs0=heat_obs
       heat_flux=0.
@@ -446,7 +451,7 @@
       epot=epot+h(i)*buoy(i)*z
       z=z-0.5*h(i)
    end do
-   if (first) then
+   if (init_diagnostics) then
       epot0=epot
    end if
    epot=epot-epot0
@@ -479,7 +484,7 @@
    write(heat_unit,111)   x,heat_flux,heat_sim,heat_obs
    write(energy_unit,111) x,ekin,epot,eturb
 
-   first=.false.
+   init_diagnostics=.false.
 111 format(F10.5,1x,4(E12.5,1x))
 
    return

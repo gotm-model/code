@@ -1,4 +1,4 @@
-!$Id: bio_0d.F90,v 1.10 2010-01-20 16:57:51 jorn Exp $
+!$Id: bio_0d.F90,v 1.11 2010-09-17 12:53:46 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -32,12 +32,12 @@
 !
 ! !PRIVATE DATA MEMBERS:
    type (type_model_collection) :: model
-   
-   ! Lagrangian model
+
+!  Lagrangian model
    integer :: np,nt
    REALTYPE, allocatable :: shade(:),extinction(:),cc_loc(:,:)
    type (type_environment) :: env_par
-   
+
    REALTYPE, allocatable :: cc_diag(:,:)
 
 !
@@ -46,7 +46,7 @@
 !
 !EOP
 !-----------------------------------------------------------------------
-   
+
    contains
 
 !-----------------------------------------------------------------------
@@ -80,16 +80,16 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL2 'init_bio_0d'
-   
+
    ! Get actual model info based on the model selected.
    model_name = get_model_name(bio_model)
-   
+
    ! Use single instance
    model = init_bio_0d_generic(1,(/bio_model/),namlst,(/'bio_'//trim(model_name)//'.nml'/))
-   
+
    ! Use two instances
    !model = init_bio_0d_generic(2,(/bio_model,bio_model/),namlst,(/'bio_'//trim(model_name)//'.nml ','bio_'//trim(model_name)//'1.nml'/))
-   
+
    ! Allocate global arrays for info on biogeochemical model
    ! Add a variable for particle densities if using Lagragian model
    numc = model%info%state_variable_count
@@ -103,7 +103,7 @@
       var_units(1) = 'counts/volume'
       var_long (1) = 'number of particles per volume'
       ioffset = 1
-      
+
       ntype = 1
       nprop = model%info%state_variable_count
    else
@@ -199,7 +199,7 @@
 
    ioffset = 0
    if (.not. bio_eulerian) ioffset = 1
-   
+
    do j=1,model%info%state_variable_count
       ws(j+ioffset,0:nlev) = -model%info%variables(j)%sinking_rate
       posconc(j+ioffset) = model%info%variables(j)%positive_definite
@@ -214,7 +214,7 @@
       do j=1,model%info%state_variable_count
          par_prop(:,j,nt) = (ztop-zbot)*model%info%variables(j)%initial_value/npar
       end do
-      
+
       ! Configure particle variable
       cc = _ZERO_
       ws(1,0:nlev) = _ZERO_
@@ -231,7 +231,7 @@
          cc(j,1:nlev) = model%info%variables(j)%initial_value
       end do
    end if
-   
+
    ! Array for diagnostic variables
    ! NB it needs to have lower bound 0 for the second dimension (depth),
    ! even though the values at index 0 will never be used.
@@ -305,7 +305,7 @@
 
    ! If sinking rates are constant (time- and space-independent, just return.
    if (model%info%dynamic_sinking_rates.eq.0) return
-   
+
    ! Initialize the environment
    call init_environment(env)
 
@@ -322,7 +322,7 @@
    do imodel=1,model%count
       ! Update PAR - this will be used in the local environment, on which sinking can depend.
       call light_0d(model%models(imodel),nlev,.false.)
-      
+
       ! Find the index of the last state variable for the current model
       ilast = ifirst+model%models(imodel)%info%state_variable_count-1
 
@@ -336,7 +336,7 @@
          env%rho  = rho(ci)
          call get_sinking_rates_bio_0d_generic(model,env,cc(ifirst:ilast,ci),ws(ifirst:ilast,ci))
       end do
-      
+
       ! The variables of the next model begin after the last variable of the current model.
       ifirst = ilast+1
    end do
@@ -357,7 +357,7 @@
 !
 ! !USES:
    use observations, only:A,g2
-   
+
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -386,7 +386,7 @@
 
       ! Add the extinction of the second half of the grid box.
       bioext = bioext+get_bio_extinction_bio_0d_generic(model,cc(:,i))*0.5*h(i)
-      
+
       zz=zz+0.5*h(i)
       if (bioshade_feedback) bioshade_(i)=exp(-bioext)
    end do
@@ -445,7 +445,7 @@
       bioext = bioext+extinction(i)*h(i)
       shade(i-1) = exp(-bioext) ! Note: this is the shade factor at the top of the grid box
    end do
-   
+
    ! Set feedback of bioturbidity to physics if needed
    if (bioshade_feedback) bioshade_(1:nlev)=shade(0:nlev-1)
    end subroutine light_0d_par
@@ -488,7 +488,7 @@
 !KBK - is it necessary to initialise every time - expensive in a 3D model
    pp = _ZERO_
    dd = _ZERO_
-   
+
    ! Set up abiotic environment
    call init_environment(env)
 
@@ -520,15 +520,15 @@
                   cc(ifirst:ilast,ci),env,pp(ifirst:ilast,ifirst:ilast,ci),&
                   dd(ifirst:ilast,ifirst:ilast,ci),diag(ifirst_diag:ilast_diag,ci))
       end do
-      
+
       ! Update PAR based on extinction values of the next model (if any)
       if (imodel.lt.model%count) call light_0d(model%models(imodel+1),nlev,.false.)
-      
+
       ! The variables of the next model begin after the last variable of the current model.
       ifirst      = ilast     +1
       ifirst_diag = ilast_diag+1
    end do
-   
+
    if (first) then
       do ci=1,model%info%diagnostic_variable_count
          if (model%info%diagnostic_variables(ci)%time_treatment.eq.0) then
@@ -540,7 +540,7 @@
          end if
       end do
    end if
-   
+
    end subroutine do_bio_0d_eul
 !EOC
 
@@ -573,13 +573,13 @@
 !BOC
 
    nt = 1
-   
+
    ! First column of state variable array is not used by ode solvers.
    cc_loc(1:model%info%state_variable_count,0) = _ZERO_
-   
+
    ! Set up abiotic environment
    call init_environment(env_par)
-   
+
    ! Set non-local properties of the environment
    env_par%I_0  = I_0
    env_par%wind = wind
@@ -588,14 +588,14 @@
    do np=1,npar
       ! Get the current state
       cc_loc(1:model%info%state_variable_count,1) = par_prop(np,1:model%info%state_variable_count,nt)
-      
+
       ! Call ode solver to get updated state
       call ode_solver(ode_method,model%info%state_variable_count,1,dt,cc_loc,get_bio_0d_par_rhs)
-      
+
       ! Store updated state as particle properties
       par_prop(np,1:model%info%state_variable_count,nt) = cc_loc(1:model%info%state_variable_count,1)
    end do
-   
+
    ! Initialize array with [Eulerian] summary statistics
    cc = _ZERO_
 
@@ -619,7 +619,7 @@
    do i=1,nlev
       cc(:,i) = cc(:,i)/h(i)
    end do
-   
+
    end subroutine do_bio_0d_par
 !EOC
 
@@ -670,7 +670,7 @@
    env_par%nuh  = rat*nuh(i)+(1.-rat)*nuh(i-1)
    env_par%rho  = rat*rho(i)+(1.-rat)*rho(i-1)
    call do_bio_0d_generic(model,first,par_prop(np,1:model%info%state_variable_count,nt),env_par,pp(:,:,1),dd(:,:,1),diag)
-   
+
    end subroutine get_bio_0d_par_rhs
 !EOC
 
@@ -767,8 +767,8 @@
 
    end subroutine save_bio_0d
 !EOC
-   
-   
+
+
 !-----------------------------------------------------------------------
 !BOP
 !

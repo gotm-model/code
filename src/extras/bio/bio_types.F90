@@ -1,4 +1,4 @@
-!$Id: bio_types.F90,v 1.6 2009-05-11 13:41:41 jorn Exp $
+!$Id: bio_types.F90,v 1.7 2010-09-17 12:53:46 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -48,7 +48,7 @@
    type type_diagnostic_variable_info
       character(len=64) :: name, longname, unit
       integer           :: id
-      
+
       ! Time treatment:
       ! 0: last value
       ! 1: time-integrated
@@ -73,7 +73,7 @@
       ! 2: variable-specific sinking rates depend on time and space
       !    (optionally including the current state and local enviroment)
       integer  :: dynamic_sinking_rates
-      
+
       type (type_state_variable_info),     allocatable :: variables(:)
       type (type_diagnostic_variable_info),allocatable :: diagnostic_variables(:)
       type (type_conserved_quantity_info), allocatable :: conserved_quantities(:)
@@ -88,7 +88,7 @@
       REALTYPE :: rho    ! Density (kg/m3)
       REALTYPE :: nuh    ! Turbulent diffusivity (m2/s)
       REALTYPE :: z      ! Depth (m)
-      
+
       ! Surface variables. Note: Ideally a biogeochemical model should
       ! depend on local conditions only, and therefore not need any of
       ! the below variables. This is particularly true if the model is
@@ -101,17 +101,17 @@
 !-----------------------------------------------------------------------
 
    contains
-   
+
    function create_model_info(variable_count,diagnostic_variable_count,conserved_quantity_count) result(modelinfo)
       integer, intent(in) :: variable_count,diagnostic_variable_count,conserved_quantity_count
       type (type_model_info) :: modelinfo
-   
+
       modelinfo%state_variable_count      = variable_count
       modelinfo%diagnostic_variable_count = diagnostic_variable_count
       modelinfo%conserved_quantity_count  = conserved_quantity_count
-      
+
       modelinfo%dynamic_sinking_rates = 0
-      
+
       ! Allocate and initialize memory for state variable information
       allocate(modelinfo%variables(1:modelinfo%state_variable_count))
       do i=1,modelinfo%state_variable_count
@@ -133,7 +133,7 @@
 
    subroutine init_state_variable_info(varinfo)
       type (type_state_variable_info), intent(inout) :: varinfo
-   
+
       varinfo%name = ''
       varinfo%unit = ''
       varinfo%longname = ''
@@ -148,7 +148,7 @@
 
    subroutine init_diagnostic_variable_info(varinfo)
       type (type_diagnostic_variable_info), intent(inout) :: varinfo
-   
+
       varinfo%name = ''
       varinfo%unit = ''
       varinfo%longname = ''
@@ -158,7 +158,7 @@
 
    subroutine init_conserved_quantity_info(conservedinfo)
       type (type_conserved_quantity_info), intent(inout) :: conservedinfo
-   
+
       conservedinfo%name = ''
       conservedinfo%unit = ''
       conservedinfo%longname = ''
@@ -167,7 +167,7 @@
 
    subroutine init_environment(env)
       type (type_environment), intent(inout) :: env
-      
+
       ! Local properties
       env%par  = _ZERO_
       env%t    = _ZERO_

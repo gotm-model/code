@@ -1,4 +1,4 @@
-!$Id: airsea.F90,v 1.31 2010-07-29 14:24:36 hb Exp $
+!$Id: airsea.F90,v 1.32 2010-09-17 12:53:45 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -36,39 +36,42 @@
    public                              :: clean_air_sea
    public                              :: set_sst
    public                              :: integrated_fluxes
+#ifdef _PRINTSTATE_
+   public                              :: print_state_airsea
+#endif   
 !
 ! !PUBLIC DATA MEMBERS:
-   logical,  public                    :: calc_fluxes=.false.
+   logical,  public                    :: calc_fluxes
 !
 !  wind speed (m/s)
-   REALTYPE, public                    :: w=_ZERO_
+   REALTYPE, public                    :: w
 !
 !  surface short-wave radiation
 !  and surface heat flux (W/m^2)
-   REALTYPE, public                    :: I_0=_ZERO_
-   REALTYPE, public                    :: heat=_ZERO_
+   REALTYPE, public                    :: I_0
+   REALTYPE, public                    :: heat
 
 !  surface stress components (Pa)
-   REALTYPE, public                    :: tx=_ZERO_,ty=_ZERO_
+   REALTYPE, public                    :: tx,ty
 
 !  precipitation and  evaporation
 !  (m/s)
-   REALTYPE, public                    :: precip=_ZERO_
-   REALTYPE, public                    :: evap=_ZERO_
+   REALTYPE, public                    :: precip
+   REALTYPE, public                    :: evap
 
 !  sea surface temperature (degC) and
 !  sea surface salinity (psu)
-   REALTYPE, public                    :: sst=_ZERO_
-   REALTYPE, public                    :: sss=_ZERO_
+   REALTYPE, public                    :: sst
+   REALTYPE, public                    :: sss
 
 !  integrated short-wave radiation,
 !  surface heat flux (J/m^2)
-   REALTYPE, public                    :: int_swr=_ZERO_,int_heat=_ZERO_
+   REALTYPE, public                    :: int_swr,int_heat
 
 !  sum of short wave radiation
 !  and surface heat flux (J/m^2)
-   REALTYPE, public                    :: int_total=_ZERO_
-   REALTYPE, public                    :: cloud=_ZERO_
+   REALTYPE, public                    :: int_total
+   REALTYPE, public                    :: cloud
 !
 ! !DEFINED PARAMETERS:
    integer,  parameter                 :: meteo_unit=20
@@ -86,6 +89,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea.F90,v $
+!  Revision 1.32  2010-09-17 12:53:45  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.31  2010-07-29 14:24:36  hb
 !  Cloud cover now interpolated to time step (change by Sebastian Sonntag, Hamburg)
 !
@@ -180,18 +186,18 @@
 !  initial import into CVS
 !
 ! !LOCAL VARIABLES:
-   logical                   :: init_saved_vars=.true.
-   integer                   :: swr_method=0
-   integer                   :: fluxes_method=1
-   integer                   :: back_radiation_method=1
+   logical                   :: init_saved_vars
+   integer                   :: swr_method
+   integer                   :: fluxes_method
+   integer                   :: back_radiation_method
    integer                   :: heat_method
    integer                   :: momentum_method
-   integer                   :: precip_method=0
-   integer                   :: sst_method=0
-   integer                   :: sss_method=0
+   integer                   :: precip_method
+   integer                   :: sst_method
+   integer                   :: sss_method
    integer                   :: hum_method
-   logical, public           :: rain_impact=.false.
-   logical, public           :: calc_evaporation=.false.
+   logical, public           :: rain_impact
+   logical, public           :: calc_evaporation
 
    character(len=PATH_MAX)   :: meteo_file
    character(len=PATH_MAX)   :: swr_file
@@ -207,13 +213,23 @@
    REALTYPE                  :: cloud_obs
    REALTYPE                  :: rh
 
-   REALTYPE                  :: const_swr=_ZERO_
-   REALTYPE                  :: swr_factor=_ONE_
+   REALTYPE                  :: const_swr
+   REALTYPE                  :: swr_factor
    REALTYPE                  :: const_heat
    REALTYPE                  :: const_tx,const_ty
-   REALTYPE                  :: const_precip=_ZERO_
-   REALTYPE                  :: precip_factor=_ONE_
+   REALTYPE                  :: const_precip
+   REALTYPE                  :: precip_factor
    REALTYPE                  :: dlon,dlat
+
+!  short_wave_radiation has an optional argument [swr] and therefore needs an explicit interface
+   interface
+      subroutine short_wave_radiation(jul,secs,dlon,dlat,cloud,swr)
+         integer, intent(in)                 :: jul,secs
+         REALTYPE, intent(in)                :: dlon,dlat
+         REALTYPE, intent(in)                :: cloud
+         REALTYPE, optional, intent(out)     :: swr
+      end subroutine short_wave_radiation
+   end interface
 !
 ! !BUGS:
 !  Wind speed - w - is not entirely correct. 
@@ -339,6 +355,95 @@
 !BOC
    LEVEL1 'init_air_sea'
 
+!  Ensure that variables with the "save" attribute will be initialized later on.
+   init_saved_vars = .true.
+
+!  wind speed (m/s)
+   w = _ZERO_
+
+!  surface short-wave radiation and surface heat flux (W/m^2)
+   I_0  = _ZERO_
+   heat = _ZERO_
+
+!  surface stress components (Pa)
+   tx = _ZERO_
+   ty = _ZERO_
+
+!  precipitation and  evaporation (m/s)
+   precip = _ZERO_
+   evap   = _ZERO_
+
+!  sea surface temperature (degC) and sea surface salinity (psu)
+   sst = _ZERO_
+   sss = _ZERO_
+
+!  cloud cover
+   cloud = _ZERO_
+
+!  relative humidity (various measures)
+   twet = _ZERO_
+   tdew = _ZERO_
+   rh   = _ZERO_
+
+!  observed cloud cover
+   cloud_obs = _ZERO_
+
+!  air temperature
+   airt = _ZERO_
+
+!  u and v components of wind at 10 m
+   u10 = _ZERO_
+   v10 = _ZERO_
+
+!  air pressure
+   airp = _ZERO_
+
+!  initialize additional variables defined in airsea_variables module
+   es   = _ZERO_
+   ea   = _ZERO_
+   qs   = _ZERO_
+   qa   = _ZERO_
+   L    = _ZERO_
+   rhoa = _ZERO_
+
+!  initialize integrated heat fluxes
+   int_swr   = _ZERO_
+   int_heat  = _ZERO_
+   int_total = _ZERO_
+
+!  store provided longitude and latitude
+   dlon = lon
+   dlat = lat
+
+!  initialize namelist variables to reasonable defaults.
+   calc_fluxes=.false.
+   fluxes_method=1
+   back_radiation_method=1
+   meteo_file = ''
+   hum_method = 0
+   heat_method = 0
+   rain_impact=.false.
+   calc_evaporation=.false.
+   swr_method=0
+   const_swr=_ZERO_
+   swr_file = ''
+   swr_factor=_ONE_
+   const_heat = _ZERO_
+   heatflux_file = ''
+   momentum_method = 0
+   const_tx = _ZERO_
+   const_ty = _ZERO_
+   momentumflux_file = ''
+   precip_method=0
+   const_precip=_ZERO_
+   precip_file = ''
+   precip_factor=_ONE_
+   sst_method=0
+   sst_file = ''
+   sss_method=0
+   sss_file = ''
+
+!  Read namelist variables from file.
    open(namlst,file='airsea.nml',action='read',status='old',err=90)
    read(namlst,nml=airsea,err=91)
    close(namlst)
@@ -452,16 +557,6 @@
          LEVEL2 'calc_evaporation= ',calc_evaporation
       case default
    end select
-
-   twet=0.
-   tdew=0.
-   rh=0.
-   cloud_obs=0.
-   sss=0.
-   airt=0.
-
-   dlon = lon
-   dlat = lat
 
    return
 
@@ -615,7 +710,6 @@
    end if
    if (swr_method    .eq. FROMFILE) close(swr_unit)
    if (precip_method .eq. FROMFILE) close(precip_unit)
-   init_saved_vars=.true.
    return
    end subroutine clean_air_sea
 !EOC
@@ -662,26 +756,24 @@
    REALTYPE                  :: t
    REALTYPE, SAVE            :: dt
    integer, save             :: meteo_jul1,meteo_secs1
-   integer, save             :: meteo_jul2=0,meteo_secs2=0
+   integer, save             :: meteo_jul2,meteo_secs2
    REALTYPE, save            :: obs(7)
    REALTYPE, save            :: alpha(5)
    REALTYPE, save            :: h1,tx1,ty1,cloud1
-   REALTYPE, save            :: h2=0.,tx2=0.,ty2=0.,cloud2=0.
-   logical, save             :: first=.true.
+   REALTYPE, save            :: h2,tx2,ty2,cloud2
    integer                   :: rc
    REALTYPE                  :: ta,ta_k,tw,tw_k 
-   REALTYPE                  :: qe=_ZERO_,qh=_ZERO_,qb=_ZERO_
+   REALTYPE                  :: qe,qh,qb
 !
 !-----------------------------------------------------------------------
 !BOC
    if (init_saved_vars) then
-      meteo_jul2=0
-      meteo_secs2=0
-      h2=0.
-      tx2=0.
-      ty2=0.
-      cloud2=0.
-      first=.true.
+      meteo_jul2  = 0 
+      meteo_secs2 = 0
+      h2     = _ZERO_
+      tx2    = _ZERO_
+      ty2    = _ZERO_
+      cloud2 = _ZERO_
    end if
 !  This part initialises and reads in new values if necessary.
    if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .lt. 0) then
@@ -716,7 +808,7 @@
          ta_k = airt
       end if
 
-      if (first) then
+      if (init_saved_vars) then
          call humidity(hum_method,rh,airp,tw,ta)
          call back_radiation(back_radiation_method, &
                              dlat,tw_k,ta_k,cloud,qb)
@@ -728,7 +820,6 @@
          ty2    = ty1
          cloud1 = cloud_obs
          cloud2 = cloud1
-         first = .false.
       else
          h1     = h2
          tx1    = tx2
@@ -797,16 +888,16 @@
    REALTYPE                  :: t,alpha
    REALTYPE, save            :: dt
    integer, save             :: swr_jul1,swr_secs1
-   integer, save             :: swr_jul2=0,swr_secs2=0
-   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   integer, save             :: swr_jul2,swr_secs2
+   REALTYPE, save            :: obs1(1),obs2(1)
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
    if (init_saved_vars) then
-      swr_jul2=0
-      swr_secs2=0
-      obs2(1)=0.
+      swr_jul2  = 0
+      swr_secs2 = 0
+      obs2(1) = _ZERO_
    end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(swr_jul2,swr_secs2,jul,secs) .lt. 0) then
@@ -864,16 +955,16 @@
    REALTYPE                  :: t,alpha
    REALTYPE, SAVE            :: dt
    integer, save             :: heat_jul1,heat_secs1
-   integer, save             :: heat_jul2=0,heat_secs2=0
-   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   integer, save             :: heat_jul2,heat_secs2
+   REALTYPE, save            :: obs1(1),obs2(1)
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
    if (init_saved_vars) then
-      heat_jul2=0
-      heat_secs2=0
-      obs2(1)=0.
+      heat_jul2  = 0
+      heat_secs2 = 0
+      obs2(1) = _ZERO_
    end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(heat_jul2,heat_secs2,jul,secs) .lt. 0) then
@@ -931,17 +1022,17 @@
    REALTYPE                  :: t,alpha
    REALTYPE, save            :: dt
    integer, save             :: mom_jul1,mom_secs1
-   integer, save             :: mom_jul2=0,mom_secs2=0
-   REALTYPE, save            :: obs1(2),obs2(2)=0.
+   integer, save             :: mom_jul2,mom_secs2
+   REALTYPE, save            :: obs1(2),obs2(2)
    integer                   :: rc
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    if (init_saved_vars) then
-      mom_jul2=0
-      mom_secs2=0
-      obs2(2)=0.
+      mom_jul2  = 0
+      mom_secs2 = 0
+      obs2(2) = _ZERO_
    end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(mom_jul2,mom_secs2,jul,secs) .lt. 0) then
@@ -1001,16 +1092,16 @@
    REALTYPE                  :: t,alpha
    REALTYPE, save            :: dt
    integer, save             :: precip_jul1,precip_secs1
-   integer, save             :: precip_jul2=0,precip_secs2=0
-   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   integer, save             :: precip_jul2,precip_secs2
+   REALTYPE, save            :: obs1(1),obs2(1)
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
    if (init_saved_vars) then
-      precip_jul2=0
-      precip_secs2=0
-      obs2(1)=0.
+      precip_jul2  = 0
+      precip_secs2 = 0
+      obs2(1) = _ZERO_
    end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(precip_jul2,precip_secs2,jul,secs) .lt. 0) then
@@ -1068,16 +1159,16 @@
    REALTYPE                  :: t,alpha
    REALTYPE, save            :: dt
    integer, save             :: sst_jul1,sst_secs1
-   integer, save             :: sst_jul2=0,sst_secs2=0
-   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   integer, save             :: sst_jul2,sst_secs2
+   REALTYPE, save            :: obs1(1),obs2(1)
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
    if (init_saved_vars) then
-     sst_jul2=0
-     sst_secs2=0
-     obs2(1)=0.
+     sst_jul2  = 0
+     sst_secs2 = 0
+     obs2(1) = _ZERO_
    end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(sst_jul2,sst_secs2,jul,secs) .lt. 0) then
@@ -1136,16 +1227,16 @@
    REALTYPE                  :: t,alpha
    REALTYPE, save            :: dt
    integer, save             :: sss_jul1,sss_secs1
-   integer, save             :: sss_jul2=0,sss_secs2=0
-   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   integer, save             :: sss_jul2,sss_secs2
+   REALTYPE, save            :: obs1(1),obs2(1)
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
    if (init_saved_vars) then
-      sss_jul2=0
-      sss_secs2=0
-      obs2(1)=0.
+      sss_jul2  = 0
+      sss_secs2 = 0
+      obs2(1) = _ZERO_
    end if
 !  This part initialise and read in new values if necessary.
    if(time_diff(sss_jul2,sss_secs2,jul,secs) .lt. 0) then
@@ -1234,6 +1325,79 @@
    return
    end subroutine set_sst
 !EOC
+
+#ifdef _PRINTSTATE_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Print the current state of the air--sea interaction module.
+!
+! !INTERFACE:
+   subroutine print_state_airsea()
+!
+! !DESCRIPTION:
+!  This routine writes the value of all module-level variables to screen.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'State of airsea module:'
+   LEVEL2 'calc_fluxes',calc_fluxes
+   LEVEL2 'w',w
+   LEVEL2 'I_0',I_0
+   LEVEL2 'heat',heat
+   LEVEL2 'tx,ty',tx,ty
+   LEVEL2 'precip,evap',precip,evap
+   LEVEL2 'sst,sss',sst,sss
+   LEVEL2 'int_swr,int_heat,int_total',int_swr,int_heat,int_total
+   LEVEL2 'cloud',cloud
+
+   LEVEL2 'init_saved_vars',init_saved_vars
+   LEVEL2 'swr_method',swr_method
+   LEVEL2 'fluxes_method',fluxes_method
+   LEVEL2 'back_radiation_method',back_radiation_method
+   LEVEL2 'heat_method',heat_method
+   LEVEL2 'momentum_method',momentum_method
+   LEVEL2 'precip_method',precip_method
+   LEVEL2 'sst_method',sst_method
+   LEVEL2 'sss_method',sss_method
+   LEVEL2 'hum_method',hum_method
+   LEVEL2 'rain_impact',rain_impact
+   LEVEL2 'calc_evaporation',calc_evaporation
+
+   LEVEL2 'meteo_file',meteo_file
+   LEVEL2 'swr_file',swr_file
+   LEVEL2 'heatflux_file',heatflux_file
+   LEVEL2 'momentumflux_file',momentumflux_file
+   LEVEL2 'precip_file',precip_file
+   LEVEL2 'sss_file',sss_file
+   LEVEL2 'sst_file',sst_file
+
+   LEVEL2 'u10,v10',u10,v10
+   LEVEL2 'airp',airp
+   LEVEL2 'airt,twet,tdew',airt,twet,tdew
+   LEVEL2 'cloud_obs',cloud_obs
+   LEVEL2 'rh',rh
+
+   LEVEL2 'const_swr',const_swr
+   LEVEL2 'swr_factor',swr_factor
+   LEVEL2 'const_heat',const_heat
+   LEVEL2 'const_tx,const_ty',const_tx,const_ty
+   LEVEL2 'const_precip',const_precip
+   LEVEL2 'precip_factor',precip_factor
+   LEVEL2 'dlon,dlat',dlon,dlat
+
+   LEVEL2 'es,ea,qs,qa,L,rhoa',es,ea,qs,qa,L,rhoa
+   
+   end subroutine print_state_airsea
+!EOC
+#endif
 
 !-----------------------------------------------------------------------
 

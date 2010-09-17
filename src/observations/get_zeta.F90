@@ -1,4 +1,4 @@
-!$Id: get_zeta.F90,v 1.7 2006-11-27 09:25:18 kbk Exp $
+!$Id: get_zeta.F90,v 1.8 2010-09-17 12:53:51 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -30,6 +30,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_zeta.F90,v $
+!  Revision 1.8  2010-09-17 12:53:51  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.7  2006-11-27 09:25:18  kbk
 !  use logical var init_saved_vars to initialise saved variables
 !
@@ -58,9 +61,9 @@
    REALTYPE                  :: t
    REALTYPE, save            :: dt
    integer, save             :: jul1,secs1
-   integer, save             :: jul2=0,secs2=0
+   integer, save             :: jul2,secs2
    REALTYPE, save            :: alpha(1)
-   REALTYPE, save            :: obs1(1),obs2(1)=0.
+   REALTYPE, save            :: obs1(1),obs2(1)
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
@@ -68,7 +71,7 @@
    if (init_saved_vars) then
       jul2=0
       secs2=0
-      obs2(1)=0.
+      obs2(1)=_ZERO_
    end if
 
    select case(method)

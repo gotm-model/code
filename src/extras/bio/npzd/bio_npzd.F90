@@ -1,4 +1,4 @@
-!$Id: bio_npzd.F90,v 1.2 2008-07-08 09:58:38 lars Exp $
+!$Id: bio_npzd.F90,v 1.3 2010-09-17 12:53:47 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,6 +38,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_npzd.F90,v $
+!  Revision 1.3  2010-09-17 12:53:47  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.2  2008-07-08 09:58:38  lars
 !  adapted to changed BIO initialization algorithm
 !
@@ -94,29 +97,29 @@
 !
 ! !LOCAL VARIABLES:
 !  from a namelist
-   REALTYPE                  :: n_initial=4.5
-   REALTYPE                  :: p_initial=0.
-   REALTYPE                  :: z_initial=0.
-   REALTYPE                  :: d_initial=4.5
-   REALTYPE, public          :: p0=0.0225
-   REALTYPE                  :: z0=0.0225
-   REALTYPE                  :: w_p=-1.157407e-05
-   REALTYPE                  :: w_d=-5.787037e-05
-   REALTYPE, public          :: kc=0.03
-   REALTYPE                  :: i_min=25.
-   REALTYPE                  :: rmax=1.157407e-05
-   REALTYPE                  :: gmax=5.787037e-06
-   REALTYPE                  :: iv=1.1
-   REALTYPE                  :: alpha=0.3
-   REALTYPE                  :: rpn=1.157407e-07
-   REALTYPE                  :: rzn=1.157407e-07
-   REALTYPE                  :: rdn=3.472222e-08
-   REALTYPE                  :: rpdu=2.314814e-07
-   REALTYPE                  :: rpdl=1.157407e-06
+   REALTYPE                  :: n_initial
+   REALTYPE                  :: p_initial
+   REALTYPE                  :: z_initial
+   REALTYPE                  :: d_initial
+   REALTYPE, public          :: p0
+   REALTYPE                  :: z0
+   REALTYPE                  :: w_p
+   REALTYPE                  :: w_d
+   REALTYPE, public          :: kc
+   REALTYPE                  :: i_min
+   REALTYPE                  :: rmax
+   REALTYPE                  :: gmax
+   REALTYPE                  :: iv
+   REALTYPE                  :: alpha
+   REALTYPE                  :: rpn
+   REALTYPE                  :: rzn
+   REALTYPE                  :: rdn
+   REALTYPE                  :: rpdu
+   REALTYPE                  :: rpdl
    REALTYPE                  :: rpd
-   REALTYPE                  :: rzd=2.314814e-07
-   REALTYPE                  :: aa=0.62
-   REALTYPE                  :: g2=20.0
+   REALTYPE                  :: rzd
+   REALTYPE                  :: aa
+   REALTYPE                  :: g2
    integer                   :: out_unit
    integer, parameter        :: n=1,p=2,z=3,d=4
 !EOP
@@ -159,6 +162,30 @@
    LEVEL2 'init_bio_npzd'
 
    numc=4
+
+   ! Initialize namelist parameetrs to reasonable defaults.
+   n_initial=4.5
+   p_initial=0.
+   z_initial=0.
+   d_initial=4.5
+   p0=0.0225
+   z0=0.0225
+   w_p=-1.157407e-05
+   w_d=-5.787037e-05
+   kc=0.03
+   i_min=25.
+   rmax=1.157407e-05
+   gmax=5.787037e-06
+   iv=1.1
+   alpha=0.3
+   rpn=1.157407e-07
+   rzn=1.157407e-07
+   rdn=3.472222e-08
+   rpdu=2.314814e-07
+   rpdl=1.157407e-06
+   rzd=2.314814e-07
+   aa=0.62
+   g2=20.0
 
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_npzd_nml,err=99)

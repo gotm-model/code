@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.19 2008-08-01 07:32:25 lars Exp $
+!$Id: ncdfout.F90,v 1.20 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -46,7 +46,7 @@
 ! !PUBLIC DATA MEMBERS:
 
 !  netCDF file id
-   integer, public                     :: ncid=-1
+   integer, public                     :: ncid
 
 !  dimension ids
    integer                             :: lon_dim,lat_dim,z_dim,z1_dim
@@ -58,6 +58,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
+!  Revision 1.20  2010-09-17 12:53:52  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.19  2008-08-01 07:32:25  lars
 !  updated unit description
 !
@@ -115,13 +118,13 @@
 !EOP
 !
 ! !PRIVATE DATA MEMBERS
-   logical, private          :: first=.true.
-   integer, public          :: set_no=0
+   logical, private          :: first
+   integer, public          :: set_no
 !  dimension lengths
    integer, parameter        :: lon_len=1
    integer, parameter        :: lat_len=1
    integer                   :: depth_len
-   integer                   :: time_len=NF_UNLIMITED
+   integer, parameter        :: time_len=NF_UNLIMITED
 !  variable ids
    integer, private          :: lon_id,lat_id,z_id,z1_id,time_id
    integer, private          :: zeta_id
@@ -152,7 +155,7 @@
    integer, private          :: o2_obs_id
    integer, private          :: ncdf_time_unit
    integer, private          :: start(4),edges(4)
-   logical,save,private      :: GrADS=.false.
+   logical,private           :: GrADS
 !
 !-----------------------------------------------------------------------
 
@@ -188,6 +191,9 @@
    character(len=128)        :: ncdf_time_str,history
 !-------------------------------------------------------------------------
 !BOC
+   first = .true.
+
+   ncid = -1
    iret = nf_create(fn,NF_CLOBBER,ncid)
    call check_err(iret)
 
@@ -208,7 +214,7 @@
       iret = nf_def_dim(ncid, 'z1', nlev, z1_dim)
       call check_err(iret)
    end if
-   iret = nf_def_dim(ncid, 'time', NF_UNLIMITED, time_dim)
+   iret = nf_def_dim(ncid, 'time', time_len, time_dim)
    call check_err(iret)
 
 !  define coordinates
@@ -564,6 +570,7 @@
          end do
          iret = store_data(ncid,z1_id,Z_SHAPE,nlev,array=dum)
       end if
+      set_no = 0
       first = .false.
    end if
 
@@ -723,8 +730,6 @@
       iret = nf_close(ncid)
       call check_err(iret)
    end if
-   first=.true.
-   set_no=0
 
    return
    end subroutine close_ncdf
@@ -951,7 +956,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: iret,n=0
+   integer                   :: iret,n
    integer                   :: idum(1:nlev)
    REAL_4B                   :: r4,dum(1:nlev)
 !

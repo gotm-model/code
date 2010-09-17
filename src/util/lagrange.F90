@@ -1,4 +1,4 @@
-!$Id: lagrange.F90,v 1.8 2009-01-07 07:25:37 kb Exp $
+!$Id: lagrange.F90,v 1.9 2010-09-17 12:53:53 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -51,6 +51,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: lagrange.F90,v $
+!  Revision 1.9  2010-09-17 12:53:53  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.8  2009-01-07 07:25:37  kb
 !  fixed various compilation warnings found by gfortran
 !
@@ -76,12 +79,12 @@
 !  general lagrangian 1D solver
 !
 ! !LOCAL VARIABLES:
-   integer         :: i,n
-   REALTYPE        :: rnd(npar),rnd_var=0.333333333,rnd_var_inv
-   REALTYPE        :: visc_back=0.e-6
-   REALTYPE        :: depth,dz(nlev),dzn(nlev),step,zp_old
-   REALTYPE        :: visc,rat,dt_inv,zloc
-   logical         :: visc_corr=.false.
+   integer            :: i,n
+   REALTYPE           :: rnd(npar),rnd_var_inv
+   REALTYPE,parameter :: visc_back=0.e-6,rnd_var=0.333333333
+   REALTYPE           :: depth,dz(nlev),dzn(nlev),step,zp_old
+   REALTYPE           :: visc,rat,dt_inv,zloc
+   logical,parameter  :: visc_corr=.false.
 !EOP
 !-----------------------------------------------------------------------
 !BOC

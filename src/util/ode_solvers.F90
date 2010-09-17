@@ -1,4 +1,4 @@
-!$Id: ode_solvers.F90,v 1.5 2007-03-15 08:34:34 kbk Exp $
+!$Id: ode_solvers.F90,v 1.6 2010-09-17 12:53:53 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -75,7 +75,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -145,7 +153,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -220,7 +236,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -318,7 +342,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -422,7 +454,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -504,7 +544,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -576,7 +624,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -696,7 +752,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -793,7 +857,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -875,7 +947,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -1002,7 +1082,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -1083,7 +1171,15 @@
 ! !INPUT/OUTPUT PARAMETER:
    REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
 
-   external                            :: right_hand_side
+   interface
+      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      end subroutine right_hand_side
+   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -1115,7 +1211,7 @@
    do ci=1,nlev
       rhs(:,ci) = 0.5 * (rhs(:,ci) + sum(pp(:,:,ci),2) - sum(dd(:,:,ci),2))
 
-      ! Correct for the state variables that will be included in 'p'.
+!     Correct for the state variables that will be included in 'p'.
       do i=1,numc
          if (rhs(i,ci) .lt. 0.) rhs(:,ci) = rhs(:,ci) * cc(i,ci)/cc_med(i,ci)
       end do

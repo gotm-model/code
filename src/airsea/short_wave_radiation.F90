@@ -1,4 +1,4 @@
-!$Id: short_wave_radiation.F90,v 1.1 2007-09-25 10:06:10 kbk Exp $
+!$Id: short_wave_radiation.F90,v 1.2 2010-09-17 12:53:45 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -46,6 +46,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: short_wave_radiation.F90,v $
+!  Revision 1.2  2010-09-17 12:53:45  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.1  2007-09-25 10:06:10  kbk
 !  modularized the airsea module - added Fairall method
 !
@@ -55,10 +58,10 @@
    REALTYPE, parameter       :: deg2rad=pi/180.
    REALTYPE, parameter       :: rad2deg=180./pi
 
-   REALTYPE                  :: solar=1350.
-   REALTYPE                  :: eclips=23.439*deg2rad
-   REALTYPE                  :: tau=0.7
-   REALTYPE                  :: aozone=0.09
+   REALTYPE, parameter       :: solar=1350.
+   REALTYPE, parameter       :: eclips=23.439*deg2rad
+   REALTYPE, parameter       :: tau=0.7
+   REALTYPE, parameter       :: aozone=0.09
 
    REALTYPE                  :: th0,th02,th03,sundec
    REALTYPE                  :: thsun,coszen,zen,dzen,sunbet
@@ -69,14 +72,14 @@
    REALTYPE                  :: yrdays,days,hour,tjul
    REALTYPE                  :: rlon,rlat
 
-   integer                   :: yday(12) = &
+   integer, parameter        :: yday(12) = &
                  (/ 0,31,59,90,120,151,181,212,243,273,304,334 /)
 
-   REALTYPE                  :: alb1(20) = &
+   REALTYPE, parameter       :: alb1(20) = &
                  (/.719,.656,.603,.480,.385,.300,.250,.193,.164, &
                    .131,.103,.084,.071,.061,.054,.039,.036,.032,.031,.030 /)
 
-   REALTYPE                  :: za(20) = &
+   REALTYPE, parameter       :: za(20) = &
                  (/90.,88.,86.,84.,82.,80.,78.,76.,74.,70.,  &
                    66.,62.,58.,54.,50.,40.,30.,20.,10.,0.0 /)
 

@@ -1,4 +1,4 @@
-!$Id: time.F90,v 1.10 2009-10-21 09:17:27 kb Exp $
+!$Id: time.F90,v 1.11 2010-09-17 12:53:53 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -27,10 +27,13 @@
    public                              :: julian_day, update_time
    public                              :: write_time_string
    public                              :: time_diff
+#ifdef _PRINTSTATE_
+   public                              :: print_state_time
+#endif
 !
 ! !PUBLIC DATA MEMBERS:
    character(len=19), public           :: timestr
-   character(len=19), public           :: start='2000-01-01 00:00:00'
+   character(len=19), public           :: start
    character(len=19), public           :: stop
    REALTYPE,          public           :: timestep
    REALTYPE,          public           :: fsecs,simtime
@@ -42,6 +45,9 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !  $Log: time.F90,v $
+!  Revision 1.11  2010-09-17 12:53:53  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.10  2009-10-21 09:17:27  kb
 !  ooobs - removed test print statements
 !
@@ -72,8 +78,8 @@
 !EOP
 !
 ! !PRIVATE DATA MEMBERS:
-   logical                   :: HasRealTime=.true.
-   integer                   :: jul0=-1,secs0=-1
+   logical                   :: HasRealTime
+   integer                   :: jul0,secs0
 !
 !-----------------------------------------------------------------------
 !
@@ -127,6 +133,7 @@
          call read_time_string(start,jul1,secs1)
          LEVEL2 'Fake start:     ',start
       case (2)
+         HasRealTime=.true.
          LEVEL2 'Start:          ',start
          LEVEL2 'Stop:           ',stop
          call read_time_string(start,jul1,secs1)
@@ -140,6 +147,7 @@
          nsecs = nsecs - 86400*ndays
          STDERR '        ==> ',ndays,' day(s) and ',nsecs,' seconds ==> ',MaxN,' micro time steps'
       case (3)
+         HasRealTime=.true.
          LEVEL2 'Start:          ',start
          LEVEL2 '# of timesteps: ',MaxN
 
@@ -162,6 +170,7 @@
 
    julianday    = jul0
    secondsofday = secs0
+   fsecs = secs0
 
    simtime = timestep*(MaxN-MinN+1)
 
@@ -429,6 +438,44 @@
    return
    end function  time_diff
 !EOC
+
+#ifdef _PRINTSTATE_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Print the current state of the time module.
+!
+! !INTERFACE:
+   subroutine print_state_time()
+!
+! !DESCRIPTION:
+!  This routine writes the value of all module-level variables to screen.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'State of time module:'
+   LEVEL2 'timestr',timestr
+   LEVEL2 'start',start
+   LEVEL2 'stop',stop
+   LEVEL2 'timestep',timestep
+   LEVEL2 'fsecs,simtime',fsecs,simtime
+   LEVEL2 'julianday,secondsofday',julianday,secondsofday
+   LEVEL2 'yearday',yearday
+   LEVEL2 'timefmt',timefmt
+   LEVEL2 'MinN,MaxN',MinN,MaxN
+   LEVEL2 'HasRealTime',HasRealTime
+   LEVEL2 'jul0,secs0',jul0,secs0
+   
+   end subroutine print_state_time
+!EOC
+#endif
 
 !-----------------------------------------------------------------------
 

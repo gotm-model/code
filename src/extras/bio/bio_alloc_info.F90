@@ -1,4 +1,4 @@
-!$Id: bio_alloc_info.F90,v 1.1 2008-07-08 10:13:59 lars Exp $
+!$Id: bio_alloc_info.F90,v 1.2 2010-09-17 12:53:46 jorn Exp $
 
 !-----------------------------------------------------------------------
 !BOP
@@ -33,16 +33,19 @@
 
    allocate(var_ids(numc),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating var_ids)'
+   var_ids = -1
 
    allocate(var_names(numc),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating var_names)'
+   var_names = ''
 
    allocate(var_units(numc),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating var_units)'
+   var_units = ''
 
    allocate(var_long(numc),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating var_long)'
-
+   var_long = ''
 
    return
    end subroutine bio_alloc_info

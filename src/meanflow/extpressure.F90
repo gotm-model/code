@@ -1,4 +1,4 @@
-!$Id: extpressure.F90,v 1.9 2007-01-06 11:57:08 kbk Exp $
+!$Id: extpressure.F90,v 1.10 2010-09-17 12:53:48 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -52,6 +52,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: extpressure.F90,v $
+!  Revision 1.10  2010-09-17 12:53:48  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.9  2007-01-06 11:57:08  kbk
 !  PressMethod --> ext_press_mode
 !
@@ -88,7 +91,6 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-
    select case (method)
       case (1)
 !        current measurement at h_press above bed
@@ -115,9 +117,9 @@
          end do
       case (2)
 !     vertical mean of current prescribed
-         uint=0.
-         vint=0.
-         hint=0.
+         uint=_ZERO_
+         vint=_ZERO_
+         hint=_ZERO_
          do i=1,nlev
             hint=hint+h(i)
             uint=uint+h(i)*u(i)

@@ -1,4 +1,4 @@
-!$Id: observations.F90,v 1.22 2009-01-07 07:25:38 kb Exp $
+!$Id: observations.F90,v 1.23 2010-09-17 12:53:51 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -33,9 +33,12 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_observations, get_all_obs, read_obs, read_profiles,&
           clean_observations
+#ifdef _PRINTSTATE_
+   public print_state_observations
+#endif
 !
 ! !PUBLIC DATA MEMBERS:
-   logical, public                               :: init_saved_vars=.true.
+   logical, public                               :: init_saved_vars
 !
 !  'observed' salinity profile
    REALTYPE, public, dimension(:), allocatable   :: sprof
@@ -65,13 +68,13 @@
    REALTYPE, public, dimension(:), allocatable   :: SRelaxTau,TRelaxTau
 
 !  sea surface elevation, sea surface gradients and height of velocity obs.
-   REALTYPE, public          :: zeta=0.,dpdx=0.,dpdy=0.,h_press=0
+   REALTYPE, public          :: zeta,dpdx,dpdy,h_press
 
 !  vertical advection velocity
-   REALTYPE, public          :: w_adv=0.,w_height
+   REALTYPE, public          :: w_adv,w_height
 
 !  Parameters for water classification - default Jerlov type I
-   REALTYPE, public          :: A=0.58,g1=0.35,g2=23.0
+   REALTYPE, public          :: A,g1,g2
 
 #ifdef BIO
 !  'observed' biological profiles
@@ -86,112 +89,112 @@
 !------------------------------------------------------------------------------
 
 !  Salinity profile(s)
-   integer, public           :: s_prof_method=0
-   integer, public           :: s_analyt_method=1
-   character(LEN=PATH_MAX)   :: s_prof_file='sprof.dat'
+   integer, public           :: s_prof_method
+   integer, public           :: s_analyt_method
+   character(LEN=PATH_MAX)   :: s_prof_file
    REALTYPE                  :: z_s1,s_1,z_s2,s_2
    REALTYPE                  :: s_obs_NN
-   REALTYPE                  :: SRelaxTauM=0.
-   REALTYPE                  :: SRelaxTauS=0.
-   REALTYPE                  :: SRelaxTauB=0.
-   REALTYPE                  :: SRelaxSurf=0.
-   REALTYPE                  :: SRelaxBott=0.
+   REALTYPE                  :: SRelaxTauM
+   REALTYPE                  :: SRelaxTauS
+   REALTYPE                  :: SRelaxTauB
+   REALTYPE                  :: SRelaxSurf
+   REALTYPE                  :: SRelaxBott
 
 !  Temperature profile(s)
-   integer, public           :: t_prof_method=0
-   integer, public           :: t_analyt_method=1
-   character(LEN=PATH_MAX)   :: t_prof_file='tprof.dat'
+   integer, public           :: t_prof_method
+   integer, public           :: t_analyt_method
+   character(LEN=PATH_MAX)   :: t_prof_file
    REALTYPE                  :: z_t1,t_1,z_t2,t_2
    REALTYPE                  :: t_obs_NN
-   REALTYPE                  :: TRelaxTauM=0.
-   REALTYPE                  :: TRelaxTauS=0.
-   REALTYPE                  :: TRelaxTauB=0.
-   REALTYPE                  :: TRelaxSurf=0.
-   REALTYPE                  :: TRelaxBott=0.
+   REALTYPE                  :: TRelaxTauM
+   REALTYPE                  :: TRelaxTauS
+   REALTYPE                  :: TRelaxTauB
+   REALTYPE                  :: TRelaxSurf
+   REALTYPE                  :: TRelaxBott
 
 !  Oxygen profile(s)
-   integer, public           :: o2_prof_method=0
-   integer, public           :: o2_units=1
-   character(LEN=PATH_MAX)   :: o2_prof_file='o2.dat'
+   integer, public           :: o2_prof_method
+   integer, public           :: o2_units
+   character(LEN=PATH_MAX)   :: o2_prof_file
 
 !  External pressure - 'press' namelist
-   integer, public           :: ext_press_method=0,ext_press_mode=0
-   character(LEN=PATH_MAX)   :: ext_press_file=''
-   REALTYPE, public          :: PressConstU=0.
-   REALTYPE, public          :: PressConstV=0.
-   REALTYPE, public          :: PressHeight=0.
-   REALTYPE, public          :: PeriodM=44714.
-   REALTYPE, public          :: AmpMu=0.
-   REALTYPE, public          :: AmpMv=0.
-   REALTYPE, public          :: PhaseMu=0.
-   REALTYPE, public          :: PhaseMv=0.
-   REALTYPE, public          :: PeriodS=43200.
-   REALTYPE, public          :: AmpSu=0.
-   REALTYPE, public          :: AmpSv=0.
-   REALTYPE, public          :: PhaseSu=0.
-   REALTYPE, public          :: PhaseSv=0.
+   integer, public           :: ext_press_method,ext_press_mode
+   character(LEN=PATH_MAX)   :: ext_press_file
+   REALTYPE, public          :: PressConstU
+   REALTYPE, public          :: PressConstV
+   REALTYPE, public          :: PressHeight
+   REALTYPE, public          :: PeriodM
+   REALTYPE, public          :: AmpMu
+   REALTYPE, public          :: AmpMv
+   REALTYPE, public          :: PhaseMu
+   REALTYPE, public          :: PhaseMv
+   REALTYPE, public          :: PeriodS
+   REALTYPE, public          :: AmpSu
+   REALTYPE, public          :: AmpSv
+   REALTYPE, public          :: PhaseSu
+   REALTYPE, public          :: PhaseSv
 
 !  Internal pressure - 'internal_pressure' namelist
-   integer, public           :: int_press_method=0
-   character(LEN=PATH_MAX)   :: int_press_file=''
-   REALTYPE, public          :: const_dsdx=0.
-   REALTYPE, public          :: const_dsdy=0.
-   REALTYPE, public          :: const_dtdx=0.
-   REALTYPE, public          :: const_dtdy=0.
-   logical, public           :: s_adv=.false.
-   logical, public           :: t_adv=.false.
+   integer, public           :: int_press_method
+   character(LEN=PATH_MAX)   :: int_press_file
+   REALTYPE, public          :: const_dsdx
+   REALTYPE, public          :: const_dsdy
+   REALTYPE, public          :: const_dtdx
+   REALTYPE, public          :: const_dtdy
+   logical, public           :: s_adv
+   logical, public           :: t_adv
 
 !  Light extinction - the 'extinct' namelist
-   integer                   :: extinct_method=1
-   character(LEN=PATH_MAX)   :: extinct_file='extinction.dat'
+   integer                   :: extinct_method
+   character(LEN=PATH_MAX)   :: extinct_file
 
 !  Vertical advection velocity - 'w_advspec' namelist
-   integer, public           :: w_adv_method=0
-   REALTYPE, public          :: w_adv0=0.
-   REALTYPE, public          :: w_adv_height0=0.
-   character(LEN=PATH_MAX)   :: w_adv_file='w_adv.dat'
-   integer, public           :: w_adv_discr=1
+   integer, public           :: w_adv_method
+   REALTYPE, public          :: w_adv0
+   REALTYPE, public          :: w_adv_height0
+   character(LEN=PATH_MAX)   :: w_adv_file
+   integer, public           :: w_adv_discr
 
 !  Sea surface elevations - 'zetaspec' namelist
-   integer,public            :: zeta_method=0
-   character(LEN=PATH_MAX)   :: zeta_file='zeta.dat'
-   REALTYPE, public          :: zeta_0=0.
-   REALTYPE, public          :: period_1=44714.
-   REALTYPE, public          :: amp_1=0.
-   REALTYPE, public          :: phase_1=0.
-   REALTYPE, public          :: period_2=43200.
-   REALTYPE, public          :: amp_2=0.
-   REALTYPE, public          :: phase_2=0.
+   integer,public            :: zeta_method
+   character(LEN=PATH_MAX)   :: zeta_file
+   REALTYPE, public          :: zeta_0
+   REALTYPE, public          :: period_1
+   REALTYPE, public          :: amp_1
+   REALTYPE, public          :: phase_1
+   REALTYPE, public          :: period_2
+   REALTYPE, public          :: amp_2
+   REALTYPE, public          :: phase_2
 
 !  Wind waves - 'wave_nml' namelist
-   integer,public            :: wave_method=0
-   character(LEN=PATH_MAX)   :: wave_file='wave.dat'
-   REALTYPE, public          :: Hs=_ZERO_
-   REALTYPE, public          :: Tz=_ZERO_
-   REALTYPE, public          :: phiw=_ZERO_
+   integer,public            :: wave_method
+   character(LEN=PATH_MAX)   :: wave_file
+   REALTYPE, public          :: Hs
+   REALTYPE, public          :: Tz
+   REALTYPE, public          :: phiw
 
 !  Observed velocity profile profiles - typically from ADCP
-   integer                   :: vel_prof_method=0
-   CHARACTER(LEN=PATH_MAX)   :: vel_prof_file='velprof.dat'
-   REALTYPE, public          :: vel_relax_tau=3600.
-   REALTYPE, public          :: vel_relax_ramp=86400.
+   integer                   :: vel_prof_method
+   CHARACTER(LEN=PATH_MAX)   :: vel_prof_file
+   REALTYPE, public          :: vel_relax_tau
+   REALTYPE, public          :: vel_relax_ramp
 
 !  Observed dissipation profiles
-   integer                   :: e_prof_method=0
-   REALTYPE                  :: e_obs_const=1.e-12
-   CHARACTER(LEN=PATH_MAX)   :: e_prof_file='eprof.dat'
+   integer                   :: e_prof_method
+   REALTYPE                  :: e_obs_const
+   CHARACTER(LEN=PATH_MAX)   :: e_prof_file
 
 !  Buoyancy - 'bprofile' namelist
-   REALTYPE, public          :: b_obs_surf=0.,b_obs_NN=0.
-   REALTYPE, public          :: b_obs_sbf=0.
+   REALTYPE, public          :: b_obs_surf,b_obs_NN
+   REALTYPE, public          :: b_obs_sbf
 
 #ifdef BIO
 !  Observed biological profiles
-   integer, public           :: bio_prof_method=1
-   CHARACTER(LEN=PATH_MAX)   :: bio_prof_file='bioprofs.dat'
+   integer, public           :: bio_prof_method
+   CHARACTER(LEN=PATH_MAX)   :: bio_prof_file
 #endif
 
-   REALTYPE,public, parameter:: pi=3.141592654
+   REALTYPE,public, parameter:: pi=3.141592654d0
 
 ! !DEFINED PARAMETERS:
 
@@ -227,6 +230,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: observations.F90,v $
+!  Revision 1.23  2010-09-17 12:53:51  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.22  2009-01-07 07:25:38  kb
 !  fixed various compilation warnings found by gfortran
 !
@@ -393,6 +399,122 @@
 !BOC
    LEVEL1 'init_observations'
 
+   init_saved_vars=.true.
+
+!  Salinity profile(s)
+   s_prof_method=0
+   s_analyt_method=1
+   s_prof_file='sprof.dat'
+   z_s1 = _ZERO_
+   s_1 = _ZERO_
+   z_s2 = _ZERO_
+   s_2 = _ZERO_
+   s_obs_NN = _ZERO_
+   SRelaxTauM=_ZERO_
+   SRelaxTauS=_ZERO_
+   SRelaxTauB=_ZERO_
+   SRelaxSurf=_ZERO_
+   SRelaxBott=_ZERO_
+
+!  Temperature profile(s)
+   t_prof_method=0
+   t_analyt_method=1
+   t_prof_file='tprof.dat'
+   z_t1 = _ZERO_
+   t_1 = _ZERO_
+   z_t2 = _ZERO_
+   t_2 = _ZERO_
+   t_obs_NN = _ZERO_
+   TRelaxTauM=_ZERO_
+   TRelaxTauS=_ZERO_
+   TRelaxTauB=_ZERO_
+   TRelaxSurf=_ZERO_
+   TRelaxBott=_ZERO_
+
+!  Oxygen profile(s)
+   o2_prof_method=0
+   o2_units=1
+   o2_prof_file='o2.dat'
+
+!  External pressure - 'press' namelist
+   ext_press_method=0
+   ext_press_mode=0
+   ext_press_file=''
+   PressConstU=_ZERO_
+   PressConstV=_ZERO_
+   PressHeight=_ZERO_
+   PeriodM=44714.
+   AmpMu=_ZERO_
+   AmpMv=_ZERO_
+   PhaseMu=_ZERO_
+   PhaseMv=_ZERO_
+   PeriodS=43200.
+   AmpSu=_ZERO_
+   AmpSv=_ZERO_
+   PhaseSu=_ZERO_
+   PhaseSv=_ZERO_
+
+!  Internal pressure - 'internal_pressure' namelist
+   int_press_method=0
+   int_press_file=''
+   const_dsdx=_ZERO_
+   const_dsdy=_ZERO_
+   const_dtdx=_ZERO_
+   const_dtdy=_ZERO_
+   s_adv=.false.
+   t_adv=.false.
+
+!  Light extinction - the 'extinct' namelist
+   extinct_method=1
+   extinct_file='extinction.dat'
+
+!  Vertical advection velocity - 'w_advspec' namelist
+   w_adv_method=0
+   w_adv0=_ZERO_
+   w_adv_height0=_ZERO_
+   w_adv_file='w_adv.dat'
+   w_adv_discr=1
+
+!  Sea surface elevations - 'zetaspec' namelist
+   zeta_method=0
+   zeta_file='zeta.dat'
+   zeta_0=_ZERO_
+   period_1=44714.
+   amp_1=_ZERO_
+   phase_1=_ZERO_
+   period_2=43200.
+   amp_2=_ZERO_
+   phase_2=_ZERO_
+
+!  Wind waves - 'wave_nml' namelist
+   wave_method=0
+   wave_file='wave.dat'
+   Hs=_ZERO_
+   Tz=_ZERO_
+   phiw=_ZERO_
+
+!  Observed velocity profile profiles - typically from ADCP
+   vel_prof_method=0
+   vel_prof_file='velprof.dat'
+   vel_relax_tau=3600.
+   vel_relax_ramp=86400.
+
+!  Observed dissipation profiles
+   e_prof_method=0
+   e_obs_const=1.e-12
+   e_prof_file='eprof.dat'
+
+!  Buoyancy - 'bprofile' namelist
+   b_obs_surf=_ZERO_
+   b_obs_NN=_ZERO_
+   b_obs_sbf=_ZERO_
+
+#ifdef BIO
+!  Observed biological profiles
+   bio_prof_method=1
+   bio_prof_file='bioprofs.dat'
+#endif
+
    open(namlst,file=fn,status='old',action='read',err=80)
    read(namlst,nml=sprofile,err=81)
    read(namlst,nml=tprofile,err=82)
@@ -414,51 +536,51 @@
 
    allocate(sprof(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (sprof)'
-   sprof = 0.
+   sprof = _ZERO_
 
    allocate(tprof(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (tprof)'
-   tprof = 0.
+   tprof = _ZERO_
 
    allocate(dsdx(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (dsdx)'
-   dsdx = 0.
+   dsdx = _ZERO_
 
    allocate(dsdy(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (dsdy)'
-   dsdy = 0.
+   dsdy = _ZERO_
 
    allocate(dtdx(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (dtdx)'
-   dtdx = 0.
+   dtdx = _ZERO_
 
    allocate(dtdy(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (dtdy)'
-   dsdy = 0.
+   dsdy = _ZERO_
 
    allocate(idpdx(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (idpdx)'
-   idpdx = 0.
+   idpdx = _ZERO_
 
    allocate(idpdy(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (idpdy)'
-   idpdy = 0.
+   idpdy = _ZERO_
 
    allocate(SRelaxTau(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (SRelaxTau)'
-   SRelaxTau = 0.
+   SRelaxTau = _ZERO_
 
    allocate(TRelaxTau(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (TRelaxTau)'
-   TRelaxTau = 0.
+   TRelaxTau = _ZERO_
 
    allocate(uprof(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_observations: Error allocating (uprof)'
-   uprof = 0.
+   uprof = _ZERO_
 
    allocate(vprof(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_observations: Error allocating (vprof)'
-   vprof = 0.
+   vprof = _ZERO_
 
    allocate(epsprof(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_observations: Error allocating (epsprof)'
@@ -479,7 +601,7 @@
       if (ds.le.TRelaxSurf) TRelaxTau(i)=TRelaxTauS
       db=db+0.5*h(i)
       ds=ds-0.5*h(i)
-      if ((s_prof_method.ne.0).and.(SRelaxTau(i).le.0.)) then
+      if ((s_prof_method.ne.0).and.(SRelaxTau(i).le._ZERO_)) then
          LEVEL2 ''
          LEVEL2 '***************************************************'
          LEVEL2 'SRelaxTau at i=',i,' is not a positive value.'
@@ -488,7 +610,7 @@
          LEVEL2 '***************************************************'
          stop 'init_observations'
       end if
-      if ((t_prof_method.ne.0).and.(TRelaxTau(i).le.0.)) then
+      if ((t_prof_method.ne.0).and.(TRelaxTau(i).le._ZERO_)) then
          LEVEL2 ''
          LEVEL2 '***************************************************'
          LEVEL2 'TRelaxTau at i=',i,' is not a positive value.'
@@ -544,7 +666,7 @@
 !  The temperature profile
    select case (t_prof_method)
       case (NOTHING)
-         tprof = 0.
+         tprof = _ZERO_
       case (ANALYTICAL)
 
         ! different ways to prescribe profiles analytically
@@ -672,8 +794,8 @@
 !  The observed velocity profile
    select case (vel_prof_method)
       case (0)
-         uprof = 0.
-         vprof = 0.
+         uprof = _ZERO_
+         vprof = _ZERO_
       case (2)
          open(vel_prof_unit,file=vel_prof_file,status='UNKNOWN',err=109)
          LEVEL2 'Reading velocity profiles from:'
@@ -685,7 +807,7 @@
 !  The observed dissipation profile
    select case (e_prof_method)
       case (0)
-         epsprof = 0.
+         epsprof = _ZERO_
       case (2)
          open(e_prof_unit,file=e_prof_file,status='UNKNOWN',err=110)
          LEVEL2 'Reading dissipation profiles from:'
@@ -1061,11 +1183,109 @@
 #endif
    LEVEL2 'done.'
 
-   init_saved_vars=.true.
-
    return
    end subroutine clean_observations
 !EOC
+
+#ifdef _PRINTSTATE_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Print the current state of the observations module.
+!
+! !INTERFACE:
+   subroutine print_state_observations()
+!
+! !DESCRIPTION:
+!  This routine writes the value of all module-level variables to screen.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'State of observations module:'
+   LEVEL2 'init_saved_vars',init_saved_vars
+   if (allocated(sprof  )) LEVEL2 'sprof',sprof
+   if (allocated(tprof  )) LEVEL2 'tprof',tprof
+   if (allocated(o2_prof)) LEVEL2 'o2_prof',o2_prof
+   if (allocated(dsdx   )) LEVEL2 'dsdx',dsdx
+   if (allocated(dsdy   )) LEVEL2 'dsdy',dsdy
+   if (allocated(dtdx   )) LEVEL2 'dtdx',dtdx
+   if (allocated(dtdy   )) LEVEL2 'dtdy',dtdy
+   if (allocated(idpdx  )) LEVEL2 'idpdx',idpdx
+   if (allocated(idpdy  )) LEVEL2 'idpdy',idpdy
+   if (allocated(uprof  )) LEVEL2 'uprof',uprof
+   if (allocated(vprof  )) LEVEL2 'vprof',vprof
+   if (allocated(epsprof)) LEVEL2 'epsprof',epsprof
+   if (allocated(SRelaxTau)) LEVEL2 'SRelaxTau',SRelaxTau
+   if (allocated(TRelaxTau)) LEVEL2 'TRelaxTau',TRelaxTau
+   LEVEL2 'zeta,dpdx,dpdy,h_press',zeta,dpdx,dpdy,h_press
+   LEVEL2 'w_adv,w_height',w_adv,w_height
+   LEVEL2 'A,g1,g2',A,g1,g2
+#ifdef BIO
+   if (allocated(bioprofs)) LEVEL2 'bioprofs',bioprofs
+#endif
+
+   LEVEL2 'salinity namelist',                                  &
+            s_prof_method,s_analyt_method,                      &
+            s_prof_file,z_s1,s_1,z_s2,s_2,s_obs_NN,             &
+            SRelaxTauM,SRelaxTauS,SRelaxTauB,                   &
+            SRelaxSurf,SRelaxBott
+
+   LEVEL2 'temperature namelist',                               &
+            t_prof_method,t_analyt_method,                      &
+            t_prof_file,z_t1,t_1,z_t2,t_2,t_obs_NN,             &
+            TRelaxTauM,TRelaxTauS,TRelaxTauB,                   &
+            TRelaxSurf,TRelaxBott
+
+   LEVEL2 'oxygen namelist',                                    &
+            o2_prof_method,o2_units,o2_prof_file
+
+   LEVEL2 'external pressure namelist',                         &
+            ext_press_method,ext_press_mode,ext_press_file,     &
+            PressConstU,PressConstV,PressHeight,                &
+            PeriodM,AmpMu,AmpMv,PhaseMu,PhaseMv,                &
+            PeriodS,AmpSu,AmpSv,PhaseSu,PhaseSv
+
+   LEVEL2 'internal_pressure namelist',                         &
+            int_press_method,int_press_file,                    &
+            const_dsdx,const_dsdy,const_dtdx,const_dtdy,        &
+            s_adv,t_adv
+
+   LEVEL2 'extinct namelist',extinct_method,extinct_file
+
+   LEVEL2 'w_advspec namelist',                                 &
+            w_adv_method,w_adv0,w_adv_height0,w_adv_file,w_adv_discr
+
+   LEVEL2 'zetaspec namelist',                                  &
+            zeta_method,zeta_file,zeta_0,                       &
+            period_1,amp_1,phase_1,period_2,amp_2,phase_2
+
+   LEVEL2 'wave_nml namelist',                                  &
+            wave_method,wave_file,Hs,Tz,phiw
+
+   LEVEL2 'observed velocity profiles namelist',                &
+            vel_prof_method,vel_prof_file,                      &
+            vel_relax_tau,vel_relax_ramp
+
+   LEVEL2 'observed dissipation profiles namelist',             &
+            e_prof_method,e_obs_const,e_prof_file
+
+   LEVEL2 'bprofile namelist',b_obs_surf,b_obs_NN,b_obs_sbf
+
+#ifdef BIO
+   LEVEL2 'observed biological profiles namelist',              &
+            bio_prof_method,bio_prof_file
+#endif
+   end subroutine print_state_observations
+!EOC
+#endif
+
 !-----------------------------------------------------------------------
 
    end module observations

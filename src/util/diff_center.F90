@@ -1,4 +1,4 @@
-!$Id: diff_center.F90,v 1.4 2005-11-17 09:58:20 hb Exp $
+!$Id: diff_center.F90,v 1.5 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -111,6 +111,9 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: diff_center.F90,v $
+!  Revision 1.5  2010-09-17 12:53:52  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.4  2005-11-17 09:58:20  hb
 !  explicit argument for positive definite variables in diff_center()
 !
@@ -196,7 +199,7 @@
       stop  'diff_center.F90'
    end select
 
-   ! relaxation to observed value
+!  relaxation to observed value
    if (minval(Taur).lt.1.E10) then
       do i=1,N
          bu(i)=bu(i)+dt/Taur(i)

@@ -1,4 +1,4 @@
-!$Id: asciiout.F90,v 1.5 2005-07-06 14:19:50 kbk Exp $
+!$Id: asciiout.F90,v 1.6 2010-09-17 12:53:51 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -21,11 +21,16 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_ascii, do_ascii_out, close_ascii
+
+   integer :: set
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: asciiout.F90,v $
+!  Revision 1.6  2010-09-17 12:53:51  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.5  2005-07-06 14:19:50  kbk
 !  added writing of obs. velocities
 !
@@ -75,6 +80,7 @@
 !BOC
    open(unit,status='unknown',file=fn)
    write(unit,*) '# ',trim(title)
+   set = 0
    return
    end subroutine init_ascii
 !EOC
@@ -118,7 +124,6 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   integer, save             :: set=0
    REALTYPE                  :: d
    REALTYPE                  :: zz(0:nlev)
 !

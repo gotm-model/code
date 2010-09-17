@@ -1,4 +1,4 @@
-!$Id: production.F90,v 1.4 2005-08-28 09:40:03 hb Exp $
+!$Id: production.F90,v 1.5 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -77,6 +77,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: production.F90,v $
+!  Revision 1.5  2010-09-17 12:53:52  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.4  2005-08-28 09:40:03  hb
 !  Misspelling in documentation corrected.
 !
@@ -109,10 +112,11 @@
 !EOP
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
-   REALTYPE                      :: alpha_eff=_ZERO_
+   REALTYPE                      :: alpha_eff
    integer                       :: i
 !-----------------------------------------------------------------------
 !BOC
+   alpha_eff=_ZERO_
    if (iw_model.eq.1) then
       alpha_eff=alpha
    end if

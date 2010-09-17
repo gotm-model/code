@@ -1,4 +1,4 @@
-!$Id: bio_npzd_0d.F90,v 1.6 2009-05-10 18:36:38 jorn Exp $
+!$Id: bio_npzd_0d.F90,v 1.7 2010-09-17 12:53:47 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -71,7 +71,7 @@
 ! !INPUT PARAMETERS:
    type (type_npzd), intent(out)   :: self
    integer,          intent(in )   :: namlst
-   
+
    type (type_model_info) :: modelinfo
 !
 ! !REVISION HISTORY:
@@ -125,7 +125,7 @@
    self%rpdu = rpdu/secs_pr_day
    self%rpdl = rpdl/secs_pr_day
    self%rzd  = rzd /secs_pr_day
-   
+
    ! Create container for model information, specifying the number of state variables (4: NPZD)
    ! the number of diagnostic variables (5), and the number of conserved quantities (1: nitrogen)
    modelinfo = create_model_info(4,5,1)
@@ -202,7 +202,7 @@
 
 99 FATAL 'I could not read namelist bio_npzd_nml'
    stop 'init_bio_npzd_0d'
-   
+
    end function init_bio_npzd_0d
 !EOC
 
@@ -415,7 +415,7 @@
    dd(d,n)=self%rdn*cc(d)                      ! sdn
    dd(p,d)=     rpd*cc(p)                      ! spd
    dd(z,d)=self%rzd*cc(z)                      ! szd
-   
+
    do i=1,numc
       do j=1,numc
          pp(i,j)=dd(j,i)

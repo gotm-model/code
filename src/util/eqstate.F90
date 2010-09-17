@@ -1,4 +1,4 @@
-!$Id: eqstate.F90,v 1.8 2008-08-01 07:33:14 lars Exp $
+!$Id: eqstate.F90,v 1.9 2010-09-17 12:53:53 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -47,7 +47,7 @@
 !     \item a general linear form of the equation of state
 !  \end{enumerate}
 
- !USES:
+!USES:
    IMPLICIT NONE
 
 !  default: all is private.
@@ -60,6 +60,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: eqstate.F90,v $
+!  Revision 1.9  2010-09-17 12:53:53  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.8  2008-08-01 07:33:14  lars
 !  modified documentation
 !
@@ -89,6 +92,7 @@
 !  private data memebers
    integer                   :: eq_state_method, eq_state_mode
    REALTYPE                  :: T0,S0,p0,dtr0,dsr0
+   logical                   :: init_linearised
 !
 !-----------------------------------------------------------------------
 
@@ -123,6 +127,7 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_eqstate'
+   init_linearised = .true.
    if(present(namlst)) then
       read(namlst,nml=eqstate,err=80)
    end if
@@ -194,61 +199,60 @@
    REALTYPE, save            :: rh0,dtr,dsr
    REALTYPE                  :: dTT,dSS
    logical                   :: press
-   logical, save             :: first=.true.
 !
 !-----------------------------------------------------------------------
 !BOC
    select case (eq_state_mode)
       case(1)
-      select case (eq_state_method)
-         case (1)
-            press=.true.
-            x=unesco(S,T,p,press)
-         case (2)
-            press=.false.
-            x=unesco(S,T,p,press)
-         case (3)
-            if (first) then
-               press=.true.   ! This allows for choosing potentials other than p=0
-               dTT=0.001
-               dSS=0.001
-               rh0= unesco(S0,T0,p0,press)
-               dtr=(unesco(S0,T0+0.5*dTT,p0,press)        &
-                   -unesco(S0,T0-0.5*dTT,p0,press))/dTT
-               dsr=(unesco(S0+0.5*dSS,T0,p0,press)        &
-                   -unesco(S0-0.5*dSS,T0,p0,press))/dSS
-               first=.false.
-            end if
-            x=rh0+dtr*(T-T0)+dsr*(S-S0)
-         case (4)
-            x=rho_0+dtr0*(T-T0)+dsr0*(S-S0)
-         case default
-      end select
+         select case (eq_state_method)
+            case (1)
+               press=.true.
+               x=unesco(S,T,p,press)
+            case (2)
+               press=.false.
+               x=unesco(S,T,p,press)
+            case (3)
+               if (init_linearised) then
+                  press=.true.   ! This allows for choosing potentials other than p=0
+                  dTT=0.001
+                  dSS=0.001
+                  rh0= unesco(S0,T0,p0,press)
+                  dtr=(unesco(S0,T0+0.5*dTT,p0,press)        &
+                      -unesco(S0,T0-0.5*dTT,p0,press))/dTT
+                  dsr=(unesco(S0+0.5*dSS,T0,p0,press)        &
+                      -unesco(S0-0.5*dSS,T0,p0,press))/dSS
+                  init_linearised=.false.
+               end if
+               x=rh0+dtr*(T-T0)+dsr*(S-S0)
+            case (4)
+               x=rho_0+dtr0*(T-T0)+dsr0*(S-S0)
+            case default
+         end select
       case(2)
-      select case (eq_state_method)
-         case (1)
-            press=.true.
-            x=rho_feistel(S,T,p*10.,press)
-         case (2)
-            press=.false.
-            x=rho_feistel(S,T,p*10.,press)
-         case (3)
-            if (first) then
-               press=.true.   ! This allows for choosing potentials other than p=0
-               dTT=0.001
-               dSS=0.001
-               rh0= rho_feistel(S0,T0,p0*10.,press)
-               dtr=(rho_feistel(S0,T0+0.5*dTT,p0*10.,press)        &
-                   -rho_feistel(S0,T0-0.5*dTT,p0*10.,press))/dTT
-               dsr=(rho_feistel(S0+0.5*dSS,T0,p0*10.,press)        &
-                   -rho_feistel(S0-0.5*dSS,T0,p0*10.,press))/dSS
-               first=.false.
-            end if
-            x=rh0+dtr*(T-T0)+dsr*(S-S0)
-         case (4)
-            x=rho_0+dtr0*(T-T0)+dsr0*(S-S0)
-         case default
-      end select
+         select case (eq_state_method)
+            case (1)
+               press=.true.
+               x=rho_feistel(S,T,p*10.,press)
+            case (2)
+               press=.false.
+               x=rho_feistel(S,T,p*10.,press)
+            case (3)
+               if (init_linearised) then
+                  press=.true.   ! This allows for choosing potentials other than p=0
+                  dTT=0.001
+                  dSS=0.001
+                  rh0= rho_feistel(S0,T0,p0*10.,press)
+                  dtr=(rho_feistel(S0,T0+0.5*dTT,p0*10.,press)        &
+                      -rho_feistel(S0,T0-0.5*dTT,p0*10.,press))/dTT
+                  dsr=(rho_feistel(S0+0.5*dSS,T0,p0*10.,press)        &
+                      -rho_feistel(S0-0.5*dSS,T0,p0*10.,press))/dSS
+                  init_linearised=.false.
+               end if
+               x=rh0+dtr*(T-T0)+dsr*(S-S0)
+            case (4)
+               x=rho_0+dtr0*(T-T0)+dsr0*(S-S0)
+            case default
+         end select
       case default
    end select
 

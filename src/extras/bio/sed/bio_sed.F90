@@ -1,4 +1,4 @@
-!$Id: bio_sed.F90,v 1.2 2008-07-08 10:04:23 lars Exp $
+!$Id: bio_sed.F90,v 1.3 2010-09-17 12:53:47 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -33,6 +33,9 @@
 !  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
 !  $Log: bio_sed.F90,v $
+!  Revision 1.3  2010-09-17 12:53:47  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.2  2008-07-08 10:04:23  lars
 !  changed initialization and particle support
 !
@@ -71,8 +74,8 @@
 !
 ! !LOCAL VARIABLES:
 !  from a namelist
-   REALTYPE                  :: C_initial=4.5
-   REALTYPE                  :: w_C=-5.787037e-05
+   REALTYPE                  :: C_initial
+   REALTYPE                  :: w_C
 
 ! field IDs 
   integer, parameter                          ::  LoadInd=1
@@ -114,9 +117,16 @@
 !BOC
    LEVEL2 'init_bio_sed'
 
+   C_initial=4.5
+   w_C=-5.787037e-05
+
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_sed_nml,err=99)
    close(namlst)
+   
+   numc  = 1
+   ntype = 1
+   nprop = 1
 
    LEVEL3 'namelist "', fname, '" read'
 
@@ -182,16 +192,16 @@
   if (bio_eulerian) then
 
      cc(1,:)    = C_initial
-     
+
      ws(1,:)    = w_C
-     
+
      posconc(1) = 1
 
   else
-     
+
      !  all fields empty
      cc = _ZERO_
-     
+
      !  constant sinking
      ws(1,:)    = w_C
 
@@ -202,9 +212,9 @@
      nt = 1
 
      par_prop(:,LoadInd,nt) = (ztop-zbot)*C_initial/npar
-     
+
   endif
-  
+
 
 #if 0
    mussels_inhale(1) = .true.
@@ -339,7 +349,7 @@
 !BOC
 
    call do_statistics
-   
+
    return
    end subroutine do_bio_sed_par
 !EOC
@@ -395,7 +405,7 @@
          cc(:,i) = _ZERO_
       end if
    end do
-      
+
    return
    end subroutine do_statistics
 !EOC

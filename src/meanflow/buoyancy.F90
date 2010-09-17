@@ -1,4 +1,4 @@
-!$Id: buoyancy.F90,v 1.9 2008-03-07 17:57:49 hb Exp $
+!$Id: buoyancy.F90,v 1.10 2010-09-17 12:53:48 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -52,7 +52,7 @@
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
 ! !USES:
-   use meanflow,      only: h,w,buoy,T,avh
+   use meanflow,      only: h,w,buoy,T,avh,init_buoyancy
    use meanflow,      only: w_grid,grid_method
    use observations,  only: b_obs_NN,b_obs_surf,b_obs_sbf
    use observations,  only: w_adv_discr,w_adv_method
@@ -82,6 +82,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: buoyancy.F90,v $
+!  Revision 1.10  2010-09-17 12:53:48  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.9  2008-03-07 17:57:49  hb
 !  AdvBcup changed to oneSided
 !
@@ -120,8 +123,6 @@
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: BRelaxTau(0:nlev)
    REALTYPE                  :: zz
-
-   logical, save             :: first=.true.
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -139,7 +140,7 @@
 
 
 !  construct initial linear profile from information in namelist
-   if (first) then
+   if (init_buoyancy) then
 
       zz=_ZERO_
       do i=nlev,1,-1
@@ -148,7 +149,7 @@
          zz=zz+0.5*h(i)
       end do
 
-      first=.false.
+      init_buoyancy=.false.
    end if
 
 !  compose source term

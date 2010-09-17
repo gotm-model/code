@@ -1,4 +1,4 @@
-!$Id: cmue_sg.F90,v 1.8 2007-01-06 11:49:15 kbk Exp $
+!$Id: cmue_sg.F90,v 1.9 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -38,6 +38,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: cmue_sg.F90,v $
+!  Revision 1.9  2010-09-17 12:53:52  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.8  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -67,7 +70,8 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: Ri,Prandtl,limit=3.
+   REALTYPE                  :: Ri,Prandtl
+   REALTYPE,parameter        :: limit=3.
 !
 !-----------------------------------------------------------------------
 !BOC

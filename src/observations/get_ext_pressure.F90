@@ -1,4 +1,4 @@
-!$Id: get_ext_pressure.F90,v 1.10 2009-03-23 10:00:28 lars Exp $
+!$Id: get_ext_pressure.F90,v 1.11 2010-09-17 12:53:49 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -33,6 +33,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_ext_pressure.F90,v $
+!  Revision 1.11  2010-09-17 12:53:49  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.10  2009-03-23 10:00:28  lars
 !  compute h_press also for method=1
 !
@@ -72,9 +75,9 @@
    REALTYPE                  :: t
    REALTYPE, SAVE            :: dt
    integer, save             :: jul1,secs1
-   integer, save             :: jul2=0,secs2=0
+   integer, save             :: jul2,secs2
    REALTYPE, save            :: alpha(3)
-   REALTYPE, save            :: obs(3),obs1(3),obs2(3)=0.
+   REALTYPE, save            :: obs(3),obs1(3),obs2(3)
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
@@ -82,7 +85,7 @@
    if (init_saved_vars) then
       jul2=0
       secs2=0
-      obs2(3)=0.
+      obs2(3)=_ZERO_
    end if
 
    select case(method)
@@ -92,7 +95,6 @@
          dpdy    = PressConstV
       case(1)                                    ! tides
          h_press = PressHeight
-
          dpdx = AmpMu*sin(2*pi*(fsecs-PhaseMu)/PeriodM)    &
                 + AmpSu*sin(2*pi*(fsecs-PhaseSu)/PeriodS)    &
                 + PressConstU

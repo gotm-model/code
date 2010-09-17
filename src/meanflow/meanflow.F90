@@ -1,4 +1,4 @@
-!$Id: meanflow.F90,v 1.16 2007-01-03 21:45:20 hb Exp $
+!$Id: meanflow.F90,v 1.17 2010-09-17 12:53:48 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -19,9 +19,13 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_meanflow, clean_meanflow
+#ifdef _PRINTSTATE_
+   public print_state_meanflow
+#endif   
 !
 ! !PUBLIC DATA MEMBERS:
-   logical, public                              :: grid_ready=.false.
+   logical, public                              :: grid_ready
+   logical, public                              :: init_buoyancy
 
 !  coordinate z, layer thicknesses
    REALTYPE, public, dimension(:), allocatable  :: ga,z,h,ho
@@ -68,31 +72,31 @@
 # endif
 
 !  the 'meanflow' namelist
-   REALTYPE, public                    :: h0b=0.05
-   REALTYPE, public                    :: z0s_min=0.02
-   logical,  public                    :: charnock=.false.
-   REALTYPE, public                    :: charnock_val=1400.
-   REALTYPE, public                    :: ddu=0.
-   REALTYPE, public                    :: ddl=0.
-   integer,  public                    :: grid_method=1
-   REALTYPE, public                    :: c1ad=0.8
-   REALTYPE, public                    :: c2ad=0.0
-   REALTYPE, public                    :: c3ad=0.1
-   REALTYPE, public                    :: c4ad=0.1
-   REALTYPE, public                    :: Tgrid=3600.
-   REALTYPE, public                    :: NNnorm=0.2
-   REALTYPE, public                    :: SSnorm=0.2
-   REALTYPE, public                    :: dsurf=10.0
-   REALTYPE, public                    :: dtgrid=5.
-   character(LEN=PATH_MAX), public     :: grid_file='grid.dat'
-   REALTYPE, public                    :: gravity=9.81
-   REALTYPE, public                    :: rho_0=1027.
-   REALTYPE, public                    :: cp=3985.
-   REALTYPE, public                    :: avmolu=1.3e-6
-   REALTYPE, public                    :: avmolT=1.4e-7
-   REALTYPE, public                    :: avmolS=1.1e-9
-   integer,  public                    :: MaxItz0b=10
-   logical,  public                    :: no_shear=.false.
+   REALTYPE, public                    :: h0b
+   REALTYPE, public                    :: z0s_min
+   logical,  public                    :: charnock
+   REALTYPE, public                    :: charnock_val
+   REALTYPE, public                    :: ddu
+   REALTYPE, public                    :: ddl
+   integer,  public                    :: grid_method
+   REALTYPE, public                    :: c1ad
+   REALTYPE, public                    :: c2ad
+   REALTYPE, public                    :: c3ad
+   REALTYPE, public                    :: c4ad
+   REALTYPE, public                    :: Tgrid
+   REALTYPE, public                    :: NNnorm
+   REALTYPE, public                    :: SSnorm
+   REALTYPE, public                    :: dsurf
+   REALTYPE, public                    :: dtgrid
+   character(LEN=PATH_MAX), public     :: grid_file
+   REALTYPE, public                    :: gravity
+   REALTYPE, public                    :: rho_0
+   REALTYPE, public                    :: cp
+   REALTYPE, public                    :: avmolu
+   REALTYPE, public                    :: avmolT
+   REALTYPE, public                    :: avmolS
+   integer,  public                    :: MaxItz0b
+   logical,  public                    :: no_shear
 
 !  the roughness lengths
    REALTYPE, public                    :: z0b,z0s,za
@@ -104,11 +108,9 @@
    REALTYPE, public                    :: u_taub,u_taus
 
 !  other stuff
-   integer,  public                    :: eq_state_method
-   REALTYPE, public                    :: depth0=0.
+   REALTYPE, public                    :: depth0
    REALTYPE, public                    :: depth
-   REALTYPE, public                    :: obs_heat_content=0.
-   REALTYPE, public                    :: calc_heat_content=0.
+   REALTYPE, public                    :: runtimeu, runtimev
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, public, parameter         :: pi=3.141592654
@@ -117,6 +119,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: meanflow.F90,v $
+!  Revision 1.17  2010-09-17 12:53:48  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.16  2007-01-03 21:45:20  hb
 !  LaTeX bug fix in documentation
 !
@@ -210,11 +215,68 @@
 !BOC
    LEVEL1 'init_meanflow'
 
+!  Initialize namelist variables with default values.
+!  Note that namelists should preferably contain all variables,
+!  which implies that all defaults defined below will be overwritten.
+   h0b          = 0.05
+   z0s_min      = 0.02
+   charnock     = .false.
+   charnock_val = 1400.
+   ddu          = _ZERO_
+   ddl          = _ZERO_
+   grid_method  = 1
+   c1ad         = 0.8
+   c2ad         = 0.0
+   c3ad         = 0.1
+   c4ad         = 0.1
+   Tgrid        = 3600.
+   NNnorm       = 0.2
+   SSnorm       = 0.2
+   dsurf        = 10.0
+   dtgrid       = 5.
+   grid_file    = 'grid.dat'
+   gravity      = 9.81
+   rho_0        = 1027.
+   cp           = 3985.
+   avmolu       = 1.3e-6
+   avmolT       = 1.4e-7
+   avmolS       = 1.1e-9
+   MaxItz0b     = 10
+   no_shear     = .false.
+
+!  Read namelist from file.
    open(namlst,file=fn,status='old',action='read',err=80)
    LEVEL2 'reading meanflow namelists..'
    read(namlst,nml=meanflow,err=81)
    close (namlst)
    LEVEL2 'done.'
+
+!  Important: we do not initialize "depth" here, because it has already been initialized by gotm.F90.
+
+!  Initialize bottom and surface stress to zero
+!  They will be set in friction, but also used as input in the same routine.
+   u_taub = _ZERO_
+   u_taus = _ZERO_
+
+!  Store initial depth (actual depth will e a function of surface elevation)
+   depth0=depth
+
+!  Initialize surface and bottom roughness
+   z0b=0.03*h0b
+   z0s=z0s_min    ! lu (otherwise z0s is not initialized)
+   za=_ZERO_      ! roughness caused by suspended sediment
+
+!  Calculate Coriolis parameter
+   cori=2*omega * sin(2*pi*latitude/360.)
+
+!  Specify that the buoyance profile and grid still need to be calculated.
+!  Note that the former is used only if a prognostic equation for buoyancy is used.
+   init_buoyancy = .true.
+   grid_ready = .false.
+
+!  Initialize cumulative run time used to detect u and v ramp.
+   runtimeu = _ZERO_
+   runtimev = _ZERO_
 
    LEVEL2 'allocation meanflow memory..'
 
@@ -348,15 +410,6 @@
 
    LEVEL2 'done.'
 
-   depth0=depth
-   z0b=0.03*h0b
-
-   z0s=z0s_min    ! lu (otherwise z0s is not initialized)
-
-   za=_ZERO_      ! roughness caused by suspended sediment
-
-   cori=2*omega * sin(2*pi*latitude/360.)
-
    return
 80 FATAL 'I could not open: ',trim(fn)
    stop 'init_meanflow'
@@ -428,11 +481,83 @@
 # endif
    LEVEL2 'done.'
 
-   grid_ready=.false.
-
    return
    end subroutine clean_meanflow
 !EOC
+
+#ifdef _PRINTSTATE_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Print the current state of the meanflow module.
+!
+! !INTERFACE:
+   subroutine print_state_meanflow()
+!
+! !DESCRIPTION:
+!  This routine writes the value of all module-level variables to screen.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'State of meanflow module:'
+   LEVEL2 'grid_ready',grid_ready
+   LEVEL2 'init_buoyancy',init_buoyancy
+   if (allocated(ga))  LEVEL2 'ga',ga
+   if (allocated(z))   LEVEL2 'z',z
+   if (allocated(h))   LEVEL2 'h',h
+   if (allocated(ho))  LEVEL2 'ho',ho
+   if (allocated(u))   LEVEL2 'u',u
+   if (allocated(v))   LEVEL2 'v',v
+   if (allocated(w))   LEVEL2 'w',w
+   if (allocated(uo))  LEVEL2 'uo',uo
+   if (allocated(vo))  LEVEL2 'vo',vo
+   if (allocated(T))   LEVEL2 'T',t
+   if (allocated(S))   LEVEL2 'S',s
+   if (allocated(rho)) LEVEL2 'rho',rho
+   if (allocated(NN))  LEVEL2 'NN',NN
+   if (allocated(NNT)) LEVEL2 'NNT',NNT
+   if (allocated(NNS)) LEVEL2 'NNS',NNS
+   if (allocated(SS))  LEVEL2 'SS',SS
+   if (allocated(SSU)) LEVEL2 'SSU',SSU
+   if (allocated(SSV)) LEVEL2 'SSV',SSV
+   if (allocated(buoy)) LEVEL2 'buoy',buoy
+   if (allocated(rad)) LEVEL2 'rad',rad
+   if (allocated(xp))  LEVEL2 'xP',xP
+   if (allocated(avh)) LEVEL2 'avh',avh
+   if (allocated(w_grid)) LEVEL2 'w_grid',w_grid
+   if (allocated(fric)) LEVEL2 'fric',fric
+   if (allocated(drag)) LEVEL2 'drag',drag
+   if (allocated(bioshade)) LEVEL2 'bioshade',bioshade
+# ifdef EXTRA_OUTPUT
+   if (allocated(mean1)) LEVEL2 'mean1',mean1
+   if (allocated(mean2)) LEVEL2 'mean2',mean2
+   if (allocated(mean3)) LEVEL2 'mean3',mean3
+   if (allocated(mean4)) LEVEL2 'mean4',mean4
+   if (allocated(mean5)) LEVEL2 'mean5',mean5
+# endif
+
+   LEVEL2 'meanflow namelist',                      &
+      h0b,z0s_min,charnock,charnock_val,ddu,ddl,    &
+      grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm, &
+      SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,  &
+      cp,avmolu,avmolT, avmolS,MaxItz0b,no_shear
+
+   LEVEL2 'z0b,z0s,za',z0b,z0s,za
+   LEVEL2 'cori',cori
+   LEVEL2 'u_taub,u_taus',u_taub,u_taus
+   LEVEL2 'depth0, depth',depth0, depth
+   LEVEL2 'runtimeu, runtimev',runtimeu, runtimev
+   
+   end subroutine print_state_meanflow
+!EOC
+#endif
 
 !-----------------------------------------------------------------------
 

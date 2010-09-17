@@ -1,4 +1,4 @@
-!$Id: friction.F90,v 1.9 2006-11-20 17:26:15 kbk Exp $
+!$Id: friction.F90,v 1.11 2010-09-17 12:53:48 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -51,14 +51,14 @@
 !    z_0^s=\alpha \frac{(u_*^s)^2}{g}
 !   \point
 !  \end{equation}
-!  The model constant $\alpha$ is read in as {\tt charnok\_val} from
+!  The model constant $\alpha$ is read in as {\tt charnock\_val} from
 !  the {\tt meanflow} namelist.
 !
 ! !USES:
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za
    use meanflow,      only: u,v,gravity
    use meanflow,      only: u_taub,u_taus,drag
-   use meanflow,      only: charnok,charnok_val,z0s_min
+   use meanflow,      only: charnock,charnock_val,z0s_min
 
 !
    IMPLICIT NONE
@@ -70,6 +70,12 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: friction.F90,v $
+!  Revision 1.11  2010-09-17 12:53:48  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
+!  Revision 1.10  2006-11-20 17:28:58  kbk
+!  [Cc]harnok -> [Cc]harnock - A. Jenkins
+!
 !  Revision 1.9  2006-11-20 17:26:15  kbk
 !  [Cc]harnok -> [Cc]harnock - A. Jenkins
 !
@@ -109,8 +115,8 @@
    drag = _ZERO_
 
 !  use the Charnock formula to compute the surface roughness
-   if (charnok) then
-      z0s=charnok_val*u_taus**2/gravity
+   if (charnock) then
+      z0s=charnock_val*u_taus**2/gravity
       if (z0s.lt.z0s_min) z0s=z0s_min
    else
       z0s=z0s_min
@@ -125,14 +131,14 @@
          z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
       end if
 
-      !  compute the factor r (version 1, with log-law)
+!     compute the factor r (version 1, with log-law)
       rr=kappa/(log((z0b+h(1)/2)/z0b))
 
-      !  compute the factor r (version 2, with meanvalue log-law)
-      !   frac=(z0b+h(1))/z0b
-      !   rr=kappa/((z0b+h(1))/h(1)*log(frac)-1.)
+!     compute the factor r (version 2, with meanvalue log-law)
+!     frac=(z0b+h(1))/z0b
+!     rr=kappa/((z0b+h(1))/h(1)*log(frac)-1.)
 
-      !  compute the friction velocity at the bottom
+!     compute the friction velocity at the bottom
       u_taub = rr*sqrt( u(1)*u(1) + v(1)*v(1) )
 
    end do

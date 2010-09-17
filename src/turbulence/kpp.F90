@@ -1,4 +1,4 @@
-!$Id: kpp.F90,v 1.4 2007-01-06 11:49:15 kbk Exp $
+!$Id: kpp.F90,v 1.5 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -201,7 +201,7 @@
 
 ! !PUBLIC MEMBER FUNCTIONS:
 !
-  public init_kpp, do_kpp
+  public init_kpp, do_kpp, clean_kpp
 
 ! !PUBLIC DATA MEMBERS:
 !
@@ -325,6 +325,9 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: kpp.F90,v $
+!  Revision 1.5  2010-09-17 12:53:52  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.4  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -758,7 +761,7 @@
 
 !  Compute distance between centers (between rho-points)
 !  Note that h is the distance between faces (between w-points)
-   do k=1,nlev
+   do k=1,nlev-1
       h_r(k) = 0.5*(h(k)+ h(k+1))
    enddo
 
@@ -2010,6 +2013,53 @@
 
  end subroutine wscale
 !EOC
+
+! !IROUTINE: Clean up the kpp module
+!
+! !INTERFACE:
+   subroutine clean_kpp()
+!
+! !DESCRIPTION:
+!  De-allocate all memory allocated in init\_kpp().
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'clean_kpp'
+
+   LEVEL2 'de-allocating KPP memory ...'
+   if (allocated(num)) deallocate(num)
+   if (allocated(nuh)) deallocate(nuh)
+   if (allocated(nus)) deallocate(nus)
+   if (allocated(gamu)) deallocate(gamu)
+   if (allocated(gamv)) deallocate(gamv)
+   if (allocated(gamh)) deallocate(gamh)
+   if (allocated(gams)) deallocate(gams)
+   if (allocated(Rig)) deallocate(Rig)
+   if (allocated(z_w)) deallocate(z_w)
+   if (allocated(z_r)) deallocate(z_r)
+   if (allocated(h_r)) deallocate(h_r)
+
+# ifdef EXTRA_OUTPUT
+
+   if (allocated(turb1)) deallocate(turb1)
+   if (allocated(turb2)) deallocate(turb2)
+   if (allocated(turb3)) deallocate(turb3)
+   if (allocated(turb4)) deallocate(turb4)
+   if (allocated(turb5)) deallocate(turb5)
+
+# endif
+
+   return
+   end subroutine clean_kpp
+
+!-----------------------------------------------------------------------
 
 
 !-----------------------------------------------------------------------

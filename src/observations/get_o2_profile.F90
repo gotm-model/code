@@ -1,4 +1,4 @@
-!$Id: get_o2_profile.F90,v 1.6 2007-09-11 13:24:32 jorn Exp $
+!$Id: get_o2_profile.F90,v 1.7 2010-09-17 12:53:49 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_o2_profile.F90,v $
+!  Revision 1.7  2010-09-17 12:53:49  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.6  2007-09-11 13:24:32  jorn
 !  added stop after fatal error reading profile
 !
@@ -56,14 +59,14 @@
    integer                   :: rc
    integer                   :: yy,mm,dd,hh,min,ss
    REALTYPE                  :: t,dt
-   REALTYPE                  :: mol_per_liter=44.661
-   REALTYPE                  :: g_per_liter=0.7
+   REALTYPE,parameter        :: mol_per_liter=44.661
+   REALTYPE,parameter        :: g_per_liter=0.7
    integer, save             :: jul1,secs1
-   integer, save             :: jul2=0,secs2=0
+   integer, save             :: jul2,secs2
    integer, parameter        :: cols=1
-   integer, save             :: lines=0
-   integer, save             :: nprofiles=0
-   logical, save             :: one_profile=.false.
+   integer, save             :: lines
+   integer, save             :: nprofiles
+   logical, save             :: one_profile
    REALTYPE, save, dimension(:,:), allocatable :: prof1,prof2,alpha
 !
 !-----------------------------------------------------------------------
@@ -74,19 +77,18 @@
       lines=0
       nprofiles=0
       one_profile=.false.
-   end if
 
-   if ( .not. allocated(prof1)) then
+      if (allocated(prof1)) deallocate(prof1)
       allocate(prof1(0:nlev,cols),stat=rc)
       if (rc /= 0) stop 'get_o2_profile: Error allocating memory (prof1)'
-      prof1 = 0.
-   end if
-   if ( .not. allocated(prof2)) then
+      prof1 = _ZERO_
+
+      if (allocated(prof2)) deallocate(prof2)
       allocate(prof2(0:nlev,cols),stat=rc)
       if (rc /= 0) stop 'get_o2_profile: Error allocating memory (prof2)'
-      prof2 = 0.
-   end if
-   if ( .not. allocated(alpha)) then
+      prof2 = _ZERO_
+
+      if (allocated(alpha)) deallocate(alpha)
       allocate(alpha(0:nlev,cols),stat=rc)
       if (rc /= 0) stop 'get_o2_profile: Error allocating memory (alpha)'
    end if

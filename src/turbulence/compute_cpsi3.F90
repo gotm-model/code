@@ -1,4 +1,4 @@
-!$Id: compute_cpsi3.F90,v 1.2 2007-01-06 11:49:15 kbk Exp $
+!$Id: compute_cpsi3.F90,v 1.3 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -32,6 +32,9 @@
 !  Original author(s): Hans Burchard, Lars Umlauf
 !
 ! $Log: compute_cpsi3.F90,v $
+! Revision 1.3  2010-09-17 12:53:52  jorn
+! extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 ! Revision 1.2  2007-01-06 11:49:15  kbk
 ! namelist file extension changed .inp --> .nml
 !
@@ -42,8 +45,10 @@
 !EOP
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
-     integer                       :: i,imax=100
-     REALTYPE                      :: fc,fp,e=1.e-8,step,ann
+     integer                       :: i
+     integer,parameter             :: imax=100
+     REALTYPE                      :: fc,fp,step,ann
+     REALTYPE,parameter            :: e=1.e-8
 !
 !-----------------------------------------------------------------------
 !BOC

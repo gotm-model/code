@@ -1,4 +1,4 @@
-!$Id: seagrass.F90,v 1.10 2010-09-13 16:09:16 jorn Exp $
+!$Id: seagrass.F90,v 1.11 2010-09-17 12:53:47 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,11 +26,14 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_seagrass, do_seagrass, save_seagrass, end_seagrass
-   logical, public                     :: seagrass_calc=.false.
+   logical, public                     :: seagrass_calc
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: seagrass.F90,v $
+!  Revision 1.11  2010-09-17 12:53:47  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.10  2010-09-13 16:09:16  jorn
 !  added seagrass clean-up
 !
@@ -63,6 +66,7 @@
 !
    REALTYPE, dimension(:), allocatable :: xx,yy
    REALTYPE, dimension(:), allocatable :: exc,vfric,grassz,xxP
+   logical                   :: init_output
 !  from a namelist
    character(len=PATH_MAX)   :: grassfile='seagrass.dat'
    REALTYPE                  :: XP_rat
@@ -113,6 +117,9 @@
 !BOC
    LEVEL1 'init_seagrass'
 
+   init_output = .true.
+   seagrass_calc = .false.
+
    maxn=nlev
 
 !  Open and read the namelist
@@ -129,25 +136,27 @@
 
       allocate(xx(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (xx)'
+      xx = _ZERO_
 
       allocate(yy(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (yy)'
+      yy = _ZERO_
 
       allocate(xxP(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (xxP)'
+      xxP= _ZERO_
 
       allocate(exc(0:grassn),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (exc)'
+      exc = _ZERO_
 
       allocate(vfric(0:grassn),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (vfric)'
+      vfric = _ZERO_
 
       allocate(grassz(0:grassn),stat=rc)
       if (rc /= 0) STOP 'init_seagrass: Error allocating (grassz)'
-
-      xx = _ZERO_
-      yy = _ZERO_
-      xxP= _ZERO_
+      grassz = _ZERO_
 
       do i=1,grassn
          read(unit,*) grassz(i),exc(i),vfric(i)
@@ -328,7 +337,6 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 ! !LOCAL VARIABLES:
-   logical, save             :: first=.true.
    integer, save             :: x_excur_id,y_excur_id,n
    integer                   :: i,iret
    REALTYPE                  :: zz
@@ -349,7 +357,7 @@
          end do
       case (NETCDF)
 #ifdef NETCDF_FMT
-         if(first) then
+         if (init_output) then
             dims(1) = lon_dim
             dims(2) = lat_dim
             dims(3) = z_dim
@@ -364,7 +372,7 @@
                    long_name='seagrass excursion(y)',missing_value=miss_val)
             iret = define_mode(ncid,.false.)
             n = ubound(xx,1)
-            first = .false.
+            init_output = .false.
          end if
          xx(grassind+1:maxn)=miss_val
          yy(grassind+1:maxn)=miss_val
@@ -402,12 +410,14 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   if (allocated(xx))     deallocate(xx)
-   if (allocated(yy))     deallocate(yy)
-   if (allocated(xxP))    deallocate(xxP)
-   if (allocated(exc))    deallocate(exc)
-   if (allocated(vfric))  deallocate(vfric)
-   if (allocated(grassz)) deallocate(grassz)
+   if (seagrass_calc) then
+      if (allocated(xx))     deallocate(xx)
+      if (allocated(yy))     deallocate(yy)
+      if (allocated(xxP))    deallocate(xxP)
+      if (allocated(exc))    deallocate(exc)
+      if (allocated(vfric))  deallocate(vfric)
+      if (allocated(grassz)) deallocate(grassz)
+   end if
 
    return
    end subroutine end_seagrass

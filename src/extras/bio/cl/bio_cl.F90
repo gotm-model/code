@@ -1,4 +1,4 @@
-!$Id: bio_cl.F90,v 1.2 2009-12-09 13:11:54 kb Exp $
+!$Id: bio_cl.F90,v 1.3 2010-09-17 12:53:46 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -26,6 +26,9 @@
 !                      with input from John Aldrige
 !
 !  $Log: bio_cl.F90,v $
+!  Revision 1.3  2010-09-17 12:53:46  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.2  2009-12-09 13:11:54  kb
 !  added GUI for BIO/CL model - Rennau
 !
@@ -89,7 +92,7 @@
    close(namlst)
    LEVEL2 'read_test'
    LEVEL3 'namelist "', fname, '" read'
- 
+
    select case (cl_method)
       case (1) ! Cefas
          numc=2
@@ -98,7 +101,7 @@
       case default
          stop 'init_bio_cl(): non valid cl_method'
    end select
- 
+
 !  Conversion from day to second
    w_cl = w_cl  /secs_pr_day
 

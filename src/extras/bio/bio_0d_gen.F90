@@ -1,4 +1,4 @@
-!$Id: bio_0d_gen.F90,v 1.8 2009-05-11 13:57:31 jorn Exp $
+!$Id: bio_0d_gen.F90,v 1.9 2010-09-17 12:53:46 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -103,7 +103,7 @@
    type type_model
       integer :: id
       type (type_model_info) :: info
-      
+
       ! Derived types that below to specific biogeochemical models.
       type (type_npzd) :: npzd
    end type type_model
@@ -152,7 +152,7 @@
 !
 !EOP
 !-----------------------------------------------------------------------
-   
+
    contains
 
 !-----------------------------------------------------------------------
@@ -181,7 +181,7 @@
       case default
          stop 'bio_0d_gen::get_model_name: no valid biogeochemical model specified!'
    end select
-   
+
    end function get_model_name
 !EOC
 
@@ -225,7 +225,7 @@
    end select
    close(nmlunit)
    LEVEL3 'model '//trim(modelname)//' initialized successfully from '//trim(nmlfilename)
-   
+
    ! Apply prefix to variable names
    if (present(nameprefix)) then
       do i=1,model%info%state_variable_count
@@ -251,12 +251,12 @@
          model%info%conserved_quantities(i)%longname = trim(longnameprefix)//' '//trim(model%info%conserved_quantities(i)%longname)
       end do
    end if
-   
+
    ! Store the identifier for the selected model.
    model%id = bio_model
-   
+
    return
-   
+
 98 LEVEL2 'I could not open '//trim(nmlfilename)
    LEVEL2 'If thats not what you want you have to supply '//trim(nmlfilename)
    LEVEL2 'See the bio example on www.gotm.net for a working '//trim(nmlfilename)
@@ -433,12 +433,12 @@
    ! Allocate the memory for the set of biogeochemical models in the collection.
    collection%count = count
    allocate(collection%models(1:count))
-   
+
    ! Initial number of state variables and conserved quantities.
    nstate = 0
    ndiag = 0
    ncons = 0
-   
+
    ! Allow each biogeochemical model to initialize.
    do i = 1,count
       ! Generate prefix strings if not specified
@@ -453,10 +453,10 @@
       else
          write (unit=longnameprefix, fmt='(a,a,i2.2)') trim(modelname),' ',i
       end if
-      
+
       ! Initialize the current model
       collection%models(i) = init_bio_0d_generic(bio_model(i),nmlunit,nmlfilename(i),nameprefix,longnameprefix)
-      
+
       ! Update the total number of state variables and conserved quantities.
       nstate = nstate + collection%models(i)%info%state_variable_count
       ndiag  = ndiag  + collection%models(i)%info%diagnostic_variable_count
@@ -483,7 +483,7 @@
       ndiag  = ndiag  + collection%models(i)%info%diagnostic_variable_count
       ncons  = ncons  + collection%models(i)%info%conserved_quantity_count
    end do
-   
+
    end function init_bio_collection
 !EOC
 

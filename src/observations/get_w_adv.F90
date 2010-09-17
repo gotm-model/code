@@ -1,4 +1,4 @@
-!$Id: get_w_adv.F90,v 1.8 2006-11-27 09:25:18 kbk Exp $
+!$Id: get_w_adv.F90,v 1.9 2010-09-17 12:53:50 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -35,6 +35,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_w_adv.F90,v $
+!  Revision 1.9  2010-09-17 12:53:50  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.8  2006-11-27 09:25:18  kbk
 !  use logical var init_saved_vars to initialise saved variables
 !
@@ -67,9 +70,9 @@
    REALTYPE                  :: t
    REALTYPE, save            :: dt
    integer, save             :: jul1,secs1
-   integer, save             :: jul2=0,secs2=0
+   integer, save             :: jul2,secs2
    REALTYPE, save            :: alpha(2)
-   REALTYPE, save            :: obs1(2),obs2(2)=0.
+   REALTYPE, save            :: obs1(2),obs2(2)
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
@@ -77,11 +80,12 @@
    if (init_saved_vars) then
       jul2=0
       secs2=0
-      obs2(2)=0.
+      obs2(2)=_ZERO_
    end if
 
    select case(method)
       case(0)                               ! no vertical advection
+         w_height = _ZERO_
          w_adv = _ZERO_
       case(1)
          w_height = w_adv_height0

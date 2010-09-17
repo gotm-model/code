@@ -1,4 +1,4 @@
-!$Id: bio_var.F90,v 1.16 2010-03-08 10:58:52 hb Exp $
+!$Id: bio_var.F90,v 1.17 2010-09-17 12:53:46 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -45,8 +45,8 @@
    REALTYPE, dimension(:,:)       , allocatable :: cc,ws
 
 !  surface fluxes
-   integer                                      :: surface_flux_method=-1
-   integer                                      :: n_surface_fluxes=-1
+   integer                                      :: surface_flux_method
+   integer                                      :: n_surface_fluxes
    REALTYPE, dimension(:)         , allocatable :: sfl_read
    REALTYPE, dimension(:)         , allocatable :: sfl,bfl
    integer , dimension(:)         , allocatable :: posconc
@@ -62,7 +62,7 @@
 !  external variables - i.e. provided by the calling program but
 !  made available via this module to the different biological models
 !  the variables are copied via set_env_spm() in bio.F90
-   integer                                      :: nmax=0
+   integer                                      :: nmax
    integer                                      :: nlev
    REALTYPE                                     :: dt
    REALTYPE                                     :: zbot
@@ -78,7 +78,7 @@
    REALTYPE                                     :: wind
    REALTYPE                                     :: I_0
    REALTYPE                                     :: secondsofday
-   integer                                      :: w_adv_ctr=0
+   integer                                      :: w_adv_ctr
 
 
 !  external variables updated by the biological models
@@ -90,21 +90,24 @@
 
 !  Lagrangian particles
 !  (also passed over to and from external routines)
-   integer                                      :: npar=0
-   integer                                      :: ntype=0   
-   integer                                      :: nprop=0   
-   logical                                      :: par_allocation=.false.   
+   integer                                      :: npar
+   integer                                      :: ntype 
+   integer                                      :: nprop 
+   logical                                      :: par_allocation
    logical , dimension(:,:)       , allocatable :: par_act  
    integer , dimension(:,:)       , allocatable :: par_ind
    REALTYPE, dimension(:,:)       , allocatable :: par_z
    REALTYPE, dimension(:,:,:)     , allocatable :: par_prop
 
-   logical                                      :: init_saved_vars=.true.
+   logical                                      :: init_saved_vars
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
 !  $Log: bio_var.F90,v $
+!  Revision 1.17  2010-09-17 12:53:46  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.16  2010-03-08 10:58:52  hb
 !  Simple maganese model added, see subdir extras/bio/mangan/
 !

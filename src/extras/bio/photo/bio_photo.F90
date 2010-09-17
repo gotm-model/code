@@ -1,4 +1,4 @@
-!$Id: bio_photo.F90,v 1.3 2008-10-17 08:48:29 lars Exp $
+!$Id: bio_photo.F90,v 1.4 2010-09-17 12:53:47 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -99,6 +99,9 @@
 !  Original author(s): Lars Umlauf, Hans Burchard, Karsten Bolding
 !
 !  $Log: bio_photo.F90,v $
+!  Revision 1.4  2010-09-17 12:53:47  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.3  2008-10-17 08:48:29  lars
 !  fixed bug in carbon time stepping
 !
@@ -118,7 +121,7 @@
 
 !  photoresponse time (s)
    REALTYPE                                   ::  gamma=     3600. 
-  
+
 !  initial carbon concentration (pg C/cell)
    REALTYPE                                   ::  cinit=     0.
 
@@ -291,18 +294,18 @@
 
 ! fill-in concentration arays and sinking speed
   if (bio_eulerian) then
-  
+
      !  all fields empty
      cc = _ZERO_
-     
+
      !  no sinking
      ws = _ZERO_
-     
+
   else
-     
+
      !  all fields empty
      cc = _ZERO_
-     
+
      !  no sinking
      ws = _ZERO_
 
@@ -311,26 +314,26 @@
 
      !  initialize particle properties
      nt = 1
-     
+
      do np=1,npar
-        
+
         ! short wave light fraction
         par                  = rad(nlev)*((1.-aa)*exp(par_z(np,nt)/g2)) 
-        
+
         ! local inhibition state      
         par_prop(np,XInd,nt) = _ONE_ - exp(-((max(par,eb)-eb)/eb)**2)        
-      
+
         ! initially fully adapted
         par_prop(np,YInd,nt) =  par_prop(np,XInd,nt)                    
 
      end do ! particle loop
-     
+
      par_prop(:,ProdInd,nt)  = _ZERO_  
      par_prop(:,CarbInd,nt)  = cinit
-   
-     
+
+
   endif
-  
+
 
    LEVEL3 'variables initialized'
 
@@ -415,7 +418,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   
+
    return
    end subroutine do_bio_photo_eul
 !EOC
@@ -452,7 +455,7 @@
 
 !-----------------------------------------------------------------------
 !BOC
-   
+
    ! only one type of particles used in this model
    nt = 1
 
@@ -461,25 +464,25 @@
 
    ! vertical migration according to time and inhibition state
    if (photo_mig) then
- 
+
       do np=1,npar
-         
+
          y     = par_prop(np,YInd,nt)   ! get inhibition state
-         
+
          if ((dayhour.gt.6.).and.(dayhour.lt.18.)) then
-            
+
             if ( y.gt.yh )  then
                w = -w_c          ! it's day but it's too bright: move down
             else
                w = w_c           ! it's day and not too bright: move up
             endif
-            
+
          else
-            
+
             w = -w_c             ! it's night: move down
-            
+
          end if
-         
+
 
 !        now move
          step   = dt*w
@@ -489,7 +492,7 @@
 
 !        reflect particle if it jumps below bed or above surface
          if (par_z(np,nt) .lt. zbot) par_z(np,nt) = zbot + ( zbot - par_z(np,nt) )
-      
+
          if (par_z(np,nt) .gt. ztop) par_z(np,nt)=  ztop - par_z(np,nt) 
 
 
@@ -515,10 +518,10 @@
 !  compute light inhibition properties, production, and carbon content 
 
    do np=1,npar
-     
+
       ! short wave light fraction
       par   = rad(nlev)*((_ONE_ - aa)*exp(par_z(np,nt)/g2))    
-      
+
       ! inhibition state
       x     = 1. - exp(-((max(par,eb)-eb)/eb)**2) ! adapted
 
@@ -531,7 +534,7 @@
       pl    = plm*(1.-exp(-par/el))               ! inhibited production
 
       y     = y + dt/gamma*(x-y)                  ! update ihibition
-      
+
       p     = pd+y*(pl-pd)                        ! instantaneous production
 
 !     update carbon content
@@ -547,7 +550,7 @@
    end do ! particle loop
 
    call do_statistics
-   
+
    return
    end subroutine do_bio_photo_par
 !EOC
@@ -615,7 +618,7 @@
          cc(:,i) = _ZERO_
       end if
    end do
-      
+
    return
    end subroutine do_statistics
 !EOC

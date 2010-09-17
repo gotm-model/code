@@ -330,6 +330,7 @@
 
    allocate(ppi(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_mab(): Error allocating ppi)'
+   ppi = _ZERO_
 
    select case (surface_flux_method)
       case (-1)! absolutely nothing
@@ -893,7 +894,7 @@
       dd(ni,ni,ci)=s1*llda*cc(de,ci)*thomnp    ! denitrification
       dd(po,po,ci)=sr*( r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)                &
                        +r3*(cc(p3,ci)+p30)) 
-      
+
       if ((fluff).and.(ci.eq.1)) then
          dd(fl,fl,ci)=th(cc(o2,ci),wo,_ZERO_,_ONE_)*dd(fl,am,ci)
          dd(ni,ni,ci)=dd(ni,ni,ci)+s1*thomnp*dd(fl,am,ci)/h(ci)

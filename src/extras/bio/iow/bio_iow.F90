@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.7 2010-09-13 15:59:36 jorn Exp $
+!$Id: bio_iow.F90,v 1.8 2010-09-17 12:53:46 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.8  2010-09-17 12:53:46  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.7  2010-09-13 15:59:36  jorn
 !  improved clean up of bio models
 !
@@ -289,7 +292,6 @@
 !BOC
    LEVEL2 'init_bio_iow'
 
-   numc=9
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_iow_nml,err=99)
    close(namlst)
@@ -298,6 +300,7 @@
 
    n_surface_fluxes=3
 
+   numc=9
    if (fluff) numc=numc+1
 
 !  Conversion from day to second
@@ -468,6 +471,7 @@
 
    allocate(ppi(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_iow(): Error allocating ppi)'
+   ppi = _ZERO_
 
    select case (surface_flux_method)
       case (-1)! absolutely nothing
@@ -725,12 +729,11 @@
 !
 ! !LOCAL VARIABLES:
   REALTYPE                 :: p_vel
-  integer                  :: newflux=1
+  integer,parameter        :: newflux=1
 
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
 !  NOTE: Positive fluxes into the sea surface must have negative sign! 
    select case (surface_flux_method)
       case (-1)! absolutely nothing
@@ -1123,7 +1126,7 @@
       dd(ni,ni,ci)=s1*llda*cc(de,ci)*thomnp    ! denitrification
       dd(po,po,ci)=sr*( r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)                &
                        +r3*(cc(p3,ci)+p30)) 
-      
+
       if ((fluff).and.(ci.eq.1)) then
          dd(fl,fl,ci)=th(cc(o2,ci),wo,_ZERO_,_ONE_)*dd(fl,am,ci)
          dd(ni,ni,ci)=dd(ni,ni,ci)+s1*thomnp*dd(fl,am,ci)/h(ci)

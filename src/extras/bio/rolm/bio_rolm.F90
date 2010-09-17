@@ -1,4 +1,4 @@
-!$Id: bio_rolm.F90,v 1.3 2010-09-13 15:59:36 jorn Exp $
+!$Id: bio_rolm.F90,v 1.4 2010-09-17 12:53:47 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -557,6 +557,8 @@
 
    allocate(ppi(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_var_rolm(): Error allocating ppi)'
+   ppi = _ZERO_
+
    select case (surface_flux_method)
       case (-1)! absolutely nothing
       case (0) ! constant
@@ -1143,7 +1145,7 @@
 ! total OM mineralization ("P" units)
 
      PhosPOP       =AmmonPON/16.
- 
+
      pp(po4,pop,ci)=PhosPOP
      dd(pop,po4,ci)=pp(po4,pop,ci)
 
@@ -1229,7 +1231,7 @@
 
 !----------------------------------------
 ! S2O3 oxidation with O2: S2O32- + 2O2 + 2OH- -> 2SO42- + H2O :
- 
+
      s23_ox        =K_s23_ox*cc(s2o3, ci)*cc(o2, ci)  
 
      pp(so4,s2o3,ci)=s23_ox
@@ -1249,7 +1251,7 @@
 !---------------------------------------------------------------------------
 !========Mn==================================================================
 !---------------------------------------------------------------------------
- 
+
 ! Mn2 oxidation: 4Mn2+ + O2 + 4H+ -> 4Mn3+ + 2H2O :
 
      mn_ox         =th(cc(mn2, ci),s_mnox_mn2,_ZERO_,_ONE_)&
@@ -1383,7 +1385,7 @@
      HeteroA       =(0.5*(DcPM_NO3+DcDM_NO3) + DcPM_SO4+DcDM_SO4) &
  		    *(cc(bha, ci)+0.000001*th(cc(bha, ci),s_bac_new,_ONE_,_ZERO_)) &
                     *60.*cc(don, ci)/(cc(don, ci)+0.1)
-  
+
      pp(bha,dop,ci)=HeteroA
      dd(dop,bha,ci)=Sp*pp(bha,dop,ci)
      dd(don,bha,ci)=Sn*pp(bha,dop,ci)

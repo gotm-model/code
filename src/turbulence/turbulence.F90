@@ -1,4 +1,4 @@
-!$Id: turbulence.F90,v 1.18 2007-07-23 11:28:39 hb Exp $
+!$Id: turbulence.F90,v 1.19 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -40,6 +40,9 @@
    public init_turbulence, do_turbulence
    public k_bc,q2over2_bc,epsilon_bc,psi_bc,q2l_bc
    public clean_turbulence
+#ifdef _PRINTSTATE_
+   public print_state_turbulence   
+#endif
 
 ! !PUBLIC DATA MEMBERS:
 !  TKE, rate of dissipation, turbulent length-scale
@@ -104,70 +107,70 @@
    REALTYPE, public                              :: craig_m,sig_e0
 
 !  the 'turbulence' namelist
-   integer, public                               :: turb_method=2
-   integer, public                               :: tke_method=2
-   integer, public                               :: len_scale_method=8
-   integer, public                               :: stab_method=3
+   integer, public                               :: turb_method
+   integer, public                               :: tke_method
+   integer, public                               :: len_scale_method
+   integer, public                               :: stab_method
 
 !  the 'bc' namelist
-   integer, public                               :: k_ubc=1
-   integer, public                               :: k_lbc=1
-   integer, public                               :: kb_ubc=1
-   integer, public                               :: kb_lbc=1
-   integer, public                               :: psi_ubc=1
-   integer, public                               :: psi_lbc=1
-   integer, public                               :: ubc_type=1
-   integer, public                               :: lbc_type=1
+   integer, public                               :: k_ubc
+   integer, public                               :: k_lbc
+   integer, public                               :: kb_ubc
+   integer, public                               :: kb_lbc
+   integer, public                               :: psi_ubc
+   integer, public                               :: psi_lbc
+   integer, public                               :: ubc_type
+   integer, public                               :: lbc_type
 
 !  the 'turb_param' namelist
-   REALTYPE, public                              :: cm0_fix=0.5477
-   REALTYPE, public                              :: Prandtl0_fix=0.74
-   REALTYPE, public                              :: cw=100.0
-   logical                                       :: compute_kappa=.false.
-   REALTYPE, public                              :: kappa=0.4
-   logical                                       :: compute_c3=.false.
-   REALTYPE                                      :: ri_st=0.25
-   logical,  public                              :: length_lim=.false.
-   REALTYPE, public                              :: galp=0.53
-   REALTYPE, public                              :: const_num=5.0e-4
-   REALTYPE, public                              :: const_nuh=5.0e-4
-   REALTYPE, public                              :: k_min=1.0e-8
-   REALTYPE, public                              :: eps_min=1.0e-12
-   REALTYPE, public                              :: kb_min=1.0e-8
-   REALTYPE, public                              :: epsb_min=1.0e-12
+   REALTYPE, public                              :: cm0_fix
+   REALTYPE, public                              :: Prandtl0_fix
+   REALTYPE, public                              :: cw
+   logical                                       :: compute_kappa
+   REALTYPE, public                              :: kappa
+   logical                                       :: compute_c3
+   REALTYPE                                      :: ri_st
+   logical,  public                              :: length_lim
+   REALTYPE, public                              :: galp
+   REALTYPE, public                              :: const_num
+   REALTYPE, public                              :: const_nuh
+   REALTYPE, public                              :: k_min
+   REALTYPE, public                              :: eps_min
+   REALTYPE, public                              :: kb_min
+   REALTYPE, public                              :: epsb_min
 
 !  the 'generic' namelist
-   logical                                       :: compute_param=.false.
-   REALTYPE, public                              :: gen_m=1.5
-   REALTYPE, public                              :: gen_n=-1.0
-   REALTYPE, public                              :: gen_p=3.0
-   REALTYPE, public                              :: cpsi1=1.44
-   REALTYPE, public                              :: cpsi2=1.92
-   REALTYPE, public                              :: cpsi3minus=0.0
-   REALTYPE, public                              :: cpsi3plus=1.0
-   REALTYPE                                      :: sig_kpsi=1.0
-   REALTYPE, public                              :: sig_psi=1.3
-   REALTYPE                                      :: gen_d=-1.2
-   REALTYPE                                      :: gen_alpha=-2.0
-   REALTYPE                                      :: gen_l=0.2
+   logical                                       :: compute_param
+   REALTYPE, public                              :: gen_m
+   REALTYPE, public                              :: gen_n
+   REALTYPE, public                              :: gen_p
+   REALTYPE, public                              :: cpsi1
+   REALTYPE, public                              :: cpsi2
+   REALTYPE, public                              :: cpsi3minus
+   REALTYPE, public                              :: cpsi3plus
+   REALTYPE                                      :: sig_kpsi
+   REALTYPE, public                              :: sig_psi
+   REALTYPE                                      :: gen_d
+   REALTYPE                                      :: gen_alpha
+   REALTYPE                                      :: gen_l
 
 !  the 'keps' namelist
-   REALTYPE, public                              :: ce1=1.44
-   REALTYPE, public                              :: ce2=1.92
-   REALTYPE, public                              :: ce3minus=0.0
-   REALTYPE, public                              :: ce3plus=1.0
-   REALTYPE, public                              :: sig_k=1.0
-   REALTYPE, public                              :: sig_e=1.3
-   logical,  public                              :: sig_peps=.false.
+   REALTYPE, public                              :: ce1
+   REALTYPE, public                              :: ce2
+   REALTYPE, public                              :: ce3minus
+   REALTYPE, public                              :: ce3plus
+   REALTYPE, public                              :: sig_k
+   REALTYPE, public                              :: sig_e
+   logical,  public                              :: sig_peps
 
 !  the 'my' namelist
-   REALTYPE, public                              :: e1=1.8
-   REALTYPE, public                              :: e2=1.33
-   REALTYPE, public                              :: e3=1.8
-   REALTYPE, public                              :: sq=0.2
-   REALTYPE, public                              :: sl=0.2
-   integer,  public                              :: my_length=1
-   logical,  public                              :: new_constr=.false.
+   REALTYPE, public                              :: e1
+   REALTYPE, public                              :: e2
+   REALTYPE, public                              :: e3
+   REALTYPE, public                              :: sq
+   REALTYPE, public                              :: sl
+   integer,  public                              :: my_length
+   logical,  public                              :: new_constr
 
 !  the 'scnd' namelist
    integer                                       ::  scnd_method
@@ -185,13 +188,13 @@
 
 
 !  the 'iw' namelist
-   integer,  public                              :: iw_model=0
-   REALTYPE, public                              :: alpha=0.0
-   REALTYPE, public                              :: klimiw=1e-6
-   REALTYPE, public                              :: rich_cr=0.7
-   REALTYPE, public                              :: numiw=1.e-4
-   REALTYPE, public                              :: nuhiw=5.e-5
-   REALTYPE, public                              :: numshear=5.e-3
+   integer,  public                              :: iw_model
+   REALTYPE, public                              :: alpha
+   REALTYPE, public                              :: klimiw
+   REALTYPE, public                              :: rich_cr
+   REALTYPE, public                              :: numiw
+   REALTYPE, public                              :: nuhiw
+   REALTYPE, public                              :: numshear
 !
 ! !DEFINED PARAMETERS:
 
@@ -246,8 +249,8 @@
 
 !
 ! !BUGS:
-!        The algebraic equation for the TKE is not save
-!        to use at the moment. Use it only in conncection
+!        The algebraic equation for the TKE is not safe
+!        to use at the moment. Use it only in connection
 !        with the prescribed length-scale profiles. The
 !        functions report_model() will report wrong things
 !        for the algebraic TKE equation. To be fixed with
@@ -260,6 +263,9 @@
 
 !
 !  $Log: turbulence.F90,v $
+!  Revision 1.19  2010-09-17 12:53:52  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.18  2007-07-23 11:28:39  hb
 !  cw for Craig-Banner wave breaking from namelist now used in fk_craig.F90
 !
@@ -393,6 +399,124 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_turbulence: v',RELEASE
+
+   a1 = _ZERO_
+   a2 = _ZERO_
+   a3 = _ZERO_
+   a4 = _ZERO_
+   a5 = _ZERO_
+
+   at1 = _ZERO_
+   at2 = _ZERO_
+   at3 = _ZERO_
+   at4 = _ZERO_
+   at5 = _ZERO_
+
+   cm0 = _ZERO_
+   cmsf = _ZERO_
+   cde = _ZERO_
+   rcm = _ZERO_
+   b1 = _ZERO_
+
+!  Prandtl-number in neutrally stratified flow
+   Prandtl0 = _ZERO_
+
+!  parameters for wave-breaking
+   craig_m = _ZERO_
+   sig_e0 = _ZERO_
+
+   ! Initialize all namelist variables to reasonable defaults.
+   turb_method=2
+   tke_method=2
+   len_scale_method=8
+   stab_method=3
+
+!  the 'bc' namelist
+   k_ubc=1
+   k_lbc=1
+   kb_ubc=1
+   kb_lbc=1
+   psi_ubc=1
+   psi_lbc=1
+   ubc_type=1
+   lbc_type=1
+
+!  the 'turb_param' namelist
+   cm0_fix=0.5477
+   Prandtl0_fix=0.74
+   cw=100.0
+   compute_kappa=.false.
+   kappa=0.4
+   compute_c3=.false.
+   ri_st=0.25
+   length_lim=.false.
+   galp=0.53
+   const_num=5.0e-4
+   const_nuh=5.0e-4
+   k_min=1.0e-8
+   eps_min=1.0e-12
+   kb_min=1.0e-8
+   epsb_min=1.0e-12
+
+!  the 'generic' namelist
+   compute_param=.false.
+   gen_m=1.5
+   gen_n=-1.0
+   gen_p=3.0
+   cpsi1=1.44
+   cpsi2=1.92
+   cpsi3minus=0.0
+   cpsi3plus=1.0
+   sig_kpsi=1.0
+   sig_psi=1.3
+   gen_d=-1.2
+   gen_alpha=-2.0
+   gen_l=0.2
+
+!  the 'keps' namelist
+   ce1=1.44
+   ce2=1.92
+   ce3minus=0.0
+   ce3plus=1.0
+   sig_k=1.0
+   sig_e=1.3
+   sig_peps=.false.
+
+!  the 'my' namelist
+   e1=1.8
+   e2=1.33
+   e3=1.8
+   sq=0.2
+   sl=0.2
+   my_length=1
+   new_constr=.false.
+
+!  the 'scnd' namelist
+   scnd_method = 0
+   kb_method   = 0
+   epsb_method = 0
+   scnd_coeff  = 0
+   cc1 = _ZERO_
+   ct1 = _ZERO_
+   ctt = _ZERO_
+   cc2 = _ZERO_
+   cc3 = _ZERO_
+   cc4 = _ZERO_
+   cc5 = _ZERO_
+   cc6 = _ZERO_
+   ct2 = _ZERO_
+   ct3 = _ZERO_
+   ct4 = _ZERO_
+   ct5 = _ZERO_
+
+!  the 'iw' namelist
+   iw_model=0
+   alpha=0.0
+   klimiw=1e-6
+   rich_cr=0.7
+   numiw=1.e-4
+   nuhiw=5.e-5
+   numshear=5.e-3
 
    ! read the variables from the namelist file
 
@@ -3365,6 +3489,95 @@
 
    return
    end subroutine clean_turbulence
+
+#ifdef _PRINTSTATE_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Print the current state of the turbulence module.
+!
+! !INTERFACE:
+   subroutine print_state_turbulence()
+!
+! !DESCRIPTION:
+!  This routine writes the value of all module-level variables to screen.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (turb_method.eq.99) return
+
+   LEVEL1 'State of turbulence module:'
+   LEVEL2 'tke,eps,L',tke,eps,L
+   LEVEL2 'tkeo',tkeo
+   LEVEL2 'kb,epsb',kb,epsb
+   LEVEL2 'P,B,Pb',P,B,Pb
+   LEVEL2 'num,nuh,nus',num,nuh,nus
+   LEVEL2 'gamu,gamv',gamu,gamv
+   LEVEL2 'gamb,gamh,gams',gamb,gamh,gams
+   LEVEL2 'cmue1,cmue2',cmue1,cmue2
+   LEVEL2 'gam',gam
+   LEVEL2 'as,an,at',as,an,at
+   LEVEL2 'r',r
+   LEVEL2 'Rig',Rig
+   LEVEL2 'xRf',xRf
+   LEVEL2 'uu,vv,ww',uu,vv,ww
+
+#ifdef EXTRA_OUTPUT
+   LEVEL2 'turb1',turb1
+   LEVEL2 'turb2',turb2
+   LEVEL2 'turb3',turb3
+   LEVEL2 'turb4',turb4
+   LEVEL2 'turb5',turb5
+#endif
+
+   LEVEL2 'cm0,cmsf,cde,rcm, b1',cm0,cmsf,cde,rcm, b1
+   LEVEL2 'Prandtl0',Prandtl0
+   LEVEL2 'craig_m,sig_e0',craig_m,sig_e0
+
+   LEVEL2 'turbulence namelist', turb_method,tke_method,       &
+                            len_scale_method,stab_method
+
+   LEVEL2 'bc namelist',    k_ubc,k_lbc,kb_ubc,kb_lbc,         &
+                            psi_ubc,psi_lbc,                   &
+                            ubc_type,lbc_type
+
+   LEVEL2 'turb_param namelist', cm0_fix,Prandtl0_fix,cw,           &
+                            compute_kappa,kappa,               &
+                            compute_c3,ri_st,length_lim,galp,  &
+                            const_num,const_nuh,k_min,eps_min, &
+                            kb_min,epsb_min
+
+   LEVEL2 'generic namelist', compute_param,gen_m,gen_n,gen_p,   &
+                            cpsi1,cpsi2,cpsi3minus,cpsi3plus,  &
+                            sig_kpsi,sig_psi,                  &
+                            gen_d,gen_alpha,gen_l
+
+   LEVEL2 'keps namelist',  ce1,ce2,ce3minus,ce3plus,sig_k,    &
+                            sig_e,sig_peps
+
+   LEVEL2 'my namelist',    e1,e2,e3,sq,sl,my_length,new_constr
+
+   LEVEL2 'scnd namelist',  scnd_method,kb_method,epsb_method, &
+                            scnd_coeff,                        &
+                            cc1,cc2,cc3,cc4,cc5,cc6,           &
+                            ct1,ct2,ct3,ct4,ct5,ctt
+
+   LEVEL2 'a1,a2,a3,a4,a5',a1,a2,a3,a4,a5
+   LEVEL2 'at1,at2,at3,at4,at5',at1,at2,at3,at4,at5
+
+   LEVEL2 'iw namelist',    iw_model,alpha,klimiw,rich_cr,     &
+                            numiw,nuhiw,numshear
+
+   end subroutine print_state_turbulence
+!EOC
+#endif
 
 !-----------------------------------------------------------------------
 

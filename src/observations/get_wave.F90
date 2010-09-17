@@ -1,4 +1,4 @@
-!$Id: get_wave.F90,v 1.2 2007-01-04 12:19:09 kbk Exp $
+!$Id: get_wave.F90,v 1.3 2010-09-17 12:53:51 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -32,6 +32,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_wave.F90,v $
+!  Revision 1.3  2010-09-17 12:53:51  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.2  2007-01-04 12:19:09  kbk
 !  updated documentation
 !
@@ -45,9 +48,9 @@
    REALTYPE                  :: t
    REALTYPE, save            :: dt
    integer, save             :: jul1,secs1
-   integer, save             :: jul2=0,secs2=0
+   integer, save             :: jul2,secs2
    REALTYPE, save            :: alpha(3)
-   REALTYPE, save            :: obs1(3),obs2(3)=_ZERO_
+   REALTYPE, save            :: obs1(3),obs2(3)
    integer                   :: rc
 !EOP
 !-----------------------------------------------------------------------
@@ -55,7 +58,7 @@
    if (init_saved_vars) then
       jul2=0
       secs2=0
-      obs2=0.
+      obs2=_ZERO_
    end if
 
 !  This part initialises and reads in new values if necessary.

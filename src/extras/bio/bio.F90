@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.56 2010-09-13 15:59:36 jorn Exp $
+!$Id: bio.F90,v 1.57 2010-09-17 12:53:45 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -96,14 +96,19 @@
    public init_bio,init_var_bio
    public set_env_bio,do_bio,get_bio_updates
    public clean_bio
+#ifdef _PRINTSTATE_   
+   public print_state_bio
+#endif
 
-
-   logical, public                     :: bio_calc=.false.
+   logical, public                     :: bio_calc
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.57  2010-09-17 12:53:45  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.56  2010-09-13 15:59:36  jorn
 !  improved clean up of bio models
 !
@@ -120,6 +125,9 @@
 !  added chlorination model - Rennau
 !
 !  $Log: bio.F90,v $
+!  Revision 1.57  2010-09-17 12:53:45  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.56  2010-09-13 15:59:36  jorn
 !  improved clean up of bio models
 !
@@ -285,11 +293,11 @@
 !
 ! !PRIVATE DATA MEMBERS:
 !  from a namelist
-   REALTYPE                  :: cnpar=0.9
-   integer                   :: w_adv_discr=6
-   integer                   :: ode_method=1
-   integer                   :: split_factor=1
-   logical                   :: bioshade_feedback=.true.
+   REALTYPE                  :: cnpar
+   integer                   :: w_adv_discr
+   integer                   :: ode_method
+   integer                   :: split_factor
+   logical                   :: bioshade_feedback
 
    contains
 
@@ -347,21 +355,51 @@
 
    LEVEL1 'init_bio'
 
+   init_saved_vars = .true.
+
+!  Initialize namelist variables to reasonable defaults.
+   bio_calc = .false.
+   cnpar=0.9
+   w_adv_discr=6
+   ode_method=1
+   split_factor=1
+   bioshade_feedback=.true.
+
+!  Initialize variables defined in bio_var module.
+!  Scalars only - allocatable arrays are set to a default upon allocation.
+   numc = 0
+   surface_flux_method=0
+   n_surface_fluxes=0
+   nmax = 0
+   nlev = 0
+   dt = _ZERO_
+   zbot = _ZERO_
+   u_taub = _ZERO_
+   ztop = _ZERO_
+   wind = _ZERO_   
+   I_0 = _ZERO_
+   secondsofday = _ZERO_
+   w_adv_ctr = 0
+   npar=0
+   ntype=0   
+   nprop=0
+   par_allocation=.false.   
+
 !  open and read the namelist
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_nml,err=99)
    close(namlst)
 
    if (bio_calc) then
-   
+
 !     read individual model namelists
       select case (bio_model)
-         
+
       case (-1)
 #ifdef BIO_TEMPLATE
 
          call init_bio_template(namlst,'bio_template.nml',unit)
-         
+
 #else
          FATAL "bio_template not compiled!!"
          FATAL "set environment variable BIO_TEMPLATE different from false"
@@ -485,7 +523,7 @@
       case (1000:)
          call init_bio_0d(namlst,unit)
 #endif
-   
+
       case default
          stop "bio: no valid biomodel specified in bio.nml !"
       end select
@@ -630,10 +668,10 @@
    if (bio_calc) then
 
       select case (bio_model)
-         
+
       case (-1)
 #ifdef BIO_TEMPLATE
-         
+
          call init_var_template
 
 #else
@@ -759,7 +797,7 @@
       case (1000:)
          call init_var_0d
 #endif
-         
+
       case default
          stop "bio: no valid biomodel specified in bio.nml !"
       end select
@@ -869,10 +907,10 @@
    if (present(npar_) ) then
 
       if (npar /= npar_) then
-         
+
          npar      = npar_
          par_allocation = .true.
-         
+
       else
          par_allocation = .false.
       end if
@@ -883,7 +921,7 @@
       stop 'set_env_bio('
 
    endif
-      
+
 
    return
    end subroutine set_env_bio
@@ -927,27 +965,27 @@
 
 !  update model fields
    if (bio_calc) then
-      
 
-      ! Eulerian model
+
+!     Eulerian model
       if (bio_eulerian) then
-         
-         call do_bio_eul
-         
 
-      ! particle model
+         call do_bio_eul
+
+
+!     particle model
       else 
-         
+
          if (npar /= 0) call do_bio_par
-         
+
       end if
-      
+
 #if 0
       if (mussels_calc) then
          call do_mussels(numc,dt,t(1))
       end if
 #endif
-      
+
    end if
 
    return
@@ -1024,9 +1062,7 @@
    REALTYPE                  :: dt_eff
    integer                   :: j,n
    integer                   :: split
-   integer                   :: i,np,nc,vars_zero_d=0
-   integer, save             :: count=0
-   logical, save             :: set_C_zero=.true.
+   integer                   :: i,np,nc,vars_zero_d
 
 !-----------------------------------------------------------------------
 !BOC
@@ -1034,6 +1070,7 @@
    Qsour    = _ZERO_
    Lsour    = _ZERO_
    RelaxTau = 1.e15
+   vars_zero_d = 0
    
    select case (bio_model)
    case (-1)
@@ -1070,17 +1107,17 @@
    end select
 
    do j=1,numc-vars_zero_d
-         
+
 !     do advection step due to settling or rising
       call adv_center(nlev,dt,h,h,ws(j,:),flux,                   &
            flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(j,:))
-         
+
 !     do advection step due to vertical velocity
       if(w_adv_ctr .ne. 0) then
          call adv_center(nlev,dt,h,h,w,flux,                   &
               flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(j,:))
       end if
-      
+
 !     do diffusion step
       call diff_center(nlev,dt,cnpar,posconc(j),h,Neumann,Neumann,&
            sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
@@ -1145,7 +1182,7 @@
          call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_0d_eul)
 #endif
       end select
-      
+
    end do
 
    return
@@ -1187,7 +1224,7 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   
+
    if (par_allocation) then 
       call dealloc_par
       call alloc_par
@@ -1195,7 +1232,7 @@
 
 
 
-   ! stochastic dispersion of all particle types
+!  stochastic dispersion of all particle types
    do nt=1,ntype
 
       call lagrange(nlev,dt,zlev,nuh,ws(1,1),npar,                      &
@@ -1207,7 +1244,7 @@
    end do
 
 
-   ! update particle properties according to model
+!  update particle properties according to model
    select case (bio_model)
    case (3)
       call do_bio_sed_par
@@ -1297,6 +1334,7 @@
 !  internal arrays
    allocate(par(0:nmax),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
+   par = _ZERO_
 
    allocate(cc(1:numc,0:nmax),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc)'
@@ -1325,31 +1363,39 @@
 !  externally provided arrays
    allocate(h(0:nmax),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (h)'
+   h = _ZERO_
 
    allocate(nuh(0:nmax),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (nuh)'
+   nuh = _ZERO_
 
    allocate(t(0:nmax),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (t)'
+   t = _ZERO_
 
    allocate(s(0:nmax),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (s)'
+   s = _ZERO_
 
    allocate(rho(0:nmax),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (rho)'
+   rho = _ZERO_
 
    allocate(rad(0:nmax),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (rad)'
+   rad = _ZERO_
 
    allocate(w(0:nmax),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (w)'
+   w = _ZERO_
 
    allocate(bioshade_(0:nmax),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (bioshade)'
+   bioshade_ = _ONE_
 
    allocate(abioshade_(0:nmax),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (abioshade)'
-
+   abioshade_ = _ZERO_
 
    return
    end subroutine alloc_eul
@@ -1385,19 +1431,22 @@
    allocate(par_act(npar,ntype),stat=rc)
    if (rc /= 0) &
         STOP 'allocate_memory_par(): Error allocating (par_act)'
+   par_act = .true.
 
    allocate(par_ind(npar,ntype),stat=rc)
    if (rc /= 0) &
         STOP 'allocate_memory_par(): Error allocating (par_ind)'
+   par_ind = -1
 
    allocate(par_z(npar,ntype),stat=rc)
    if (rc /= 0) &
         STOP 'allocate_memory_par(): Error allocating (par_z)'
+   par_z = _ZERO_
 
    allocate(par_prop(npar,nprop,ntype),stat=rc)
    if (rc /= 0) &
         STOP 'allocate_memory_par(): Error allocating (par_prop)'
-
+   par_prop = _ZERO_
 
 
    return
@@ -1451,8 +1500,6 @@
    if (allocated(w))              deallocate(w)
    if (allocated(bioshade_))      deallocate(bioshade_)
    if (allocated(abioshade_))     deallocate(abioshade_)
-   
-   init_saved_vars = .true.
 
    return
    end subroutine dealloc_eul
@@ -1568,7 +1615,7 @@
       end select
    end if
 
-   ! clean up memory
+!  clean up memory
    call dealloc_eul()
 
    if (.not. bio_eulerian) then
@@ -1577,19 +1624,117 @@
 
    end if
 
-   ! clean up mussles
+!  clean up mussles
 #if 0
    if (mussels_calc) then
       call end_mussels()
    end if
 #endif
 
-   
+
    LEVEL1 'done.'
 
    return
    end subroutine clean_bio
 !EOC
+
+#ifdef _PRINTSTATE_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Print the current state of the bio module.
+!
+! !INTERFACE:
+   subroutine print_state_bio()
+!
+! !DESCRIPTION:
+!  This routine writes the value of all module-level variables to screen.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'State of bio module:'
+   LEVEL2 'bio_calc',bio_calc
+   LEVEL2 'cnpar',cnpar
+   LEVEL2 'w_adv_discr',w_adv_discr
+   LEVEL2 'ode_method',ode_method
+   LEVEL2 'split_factor',split_factor
+   LEVEL2 'bioshade_feedback',bioshade_feedback
+
+   LEVEL2 'bio_model',bio_model
+   LEVEL2 'bio_eulerian',bio_eulerian
+
+!  general model variables
+   LEVEL2 'numc',numc
+   if (allocated(zlev)) LEVEL2 'zlev',zlev
+   if (allocated(par )) LEVEL2 'par',par
+   if (allocated(cc  )) LEVEL2 'cc',cc
+   if (allocated(ws  )) LEVEL2 'ws',ws
+
+!  surface fluxes
+   LEVEL2 'surface_flux_method',surface_flux_method
+   LEVEL2 'n_surface_fluxes',n_surface_fluxes
+   if (allocated(sfl_read))       LEVEL2 'sfl_read',sfl_read
+   if (allocated(sfl))            LEVEL2 'sfl',sfl
+   if (allocated(bfl))            LEVEL2 'bfl',bfl
+   if (allocated(posconc))        LEVEL2 'posconc',posconc
+   if (allocated(mussels_inhale)) LEVEL2 'mussels_inhale',mussels_inhale
+
+!  description of variables in cc array
+   if (allocated(var_ids))   LEVEL2 'var_ids',var_ids
+   if (allocated(var_names)) LEVEL2 'var_names',var_names
+   if (allocated(var_units)) LEVEL2 'var_units',var_units
+   if (allocated(var_long))  LEVEL2 'var_long',var_long
+
+!  external variables - i.e. provided by the calling program but
+!  made available via this module to the different biological models
+!  the variables are copied via set_env_spm() in bio.F90
+   LEVEL2 'nmax',nmax
+   LEVEL2 'nlev',nlev
+   LEVEL2 'dt',dt
+   LEVEL2 'zbot',zbot
+   LEVEL2 'u_taub',u_taub
+   LEVEL2 'ztop',ztop
+   if (allocated(h))   LEVEL2 'h',h
+   if (allocated(t))   LEVEL2 't',t
+   if (allocated(s))   LEVEL2 's',s
+   if (allocated(rho)) LEVEL2 'rho',rho
+   if (allocated(nuh)) LEVEL2 'nuh',nuh
+   if (allocated(w))   LEVEL2 'w',w
+   if (allocated(rad)) LEVEL2 'rad',rad
+   LEVEL2 'wind',wind
+   LEVEL2 'I_0',I_0
+   LEVEL2 'secondsofday',secondsofday
+   LEVEL2 'w_adv_ctr',w_adv_ctr
+
+!  external variables updated by the biological models
+!  the variables are copied back to the calling program using
+!  get_bio_updates()
+   if (allocated(bioshade_))  LEVEL2 'bioshade_',bioshade_
+   if (allocated(abioshade_)) LEVEL2 'abioshade_',abioshade_
+
+!  Lagrangian particles
+!  (also passed over to and from external routines)
+   LEVEL2 'npar',npar
+   LEVEL2 'ntype',ntype 
+   LEVEL2 'nprop',nprop 
+   LEVEL2 'par_allocation',par_allocation
+   if (allocated(par_act))  LEVEL2 'par_act',par_act  
+   if (allocated(par_ind))  LEVEL2 'par_ind',par_ind
+   if (allocated(par_z))    LEVEL2 'par_z',par_z
+   if (allocated(par_prop)) LEVEL2 'par_prop',par_prop
+
+   LEVEL2 'init_saved_vars',init_saved_vars
+
+   end subroutine print_state_bio
+!EOC
+#endif
 
 
    end module bio

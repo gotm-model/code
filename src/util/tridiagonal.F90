@@ -1,4 +1,4 @@
-!$Id: tridiagonal.F90,v 1.7 2006-11-24 15:13:41 kbk Exp $
+!$Id: tridiagonal.F90,v 1.8 2010-09-17 12:53:53 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -22,6 +22,9 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
+!  Revision 1.8  2010-09-17 12:53:53  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.7  2006-11-24 15:13:41  kbk
 !  de-allocate memory and close open files
 !
@@ -83,25 +86,27 @@
    LEVEL1 'init_tridiagonal'
    allocate(au(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating au)'
-   au = 0.
+   au = _ZERO_
 
    allocate(bu(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating bu)'
-   bu = 0.
+   bu = _ZERO_
 
    allocate(cu(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating cu)'
-   cu = 0.
+   cu = _ZERO_
 
    allocate(du(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating du)'
-   du = 0.
+   du = _ZERO_
 
    allocate(ru(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating ru)'
+   ru = _ZERO_
 
    allocate(qu(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating qu)'
+   qu = _ZERO_
 
    return
    end subroutine init_tridiagonal
@@ -134,6 +139,9 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: tridiagonal.F90,v $
+!  Revision 1.8  2010-09-17 12:53:53  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.7  2006-11-24 15:13:41  kbk
 !  de-allocate memory and close open files
 !

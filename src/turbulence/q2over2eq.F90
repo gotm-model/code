@@ -1,4 +1,4 @@
-!$Id: q2over2eq.F90,v 1.5 2005-12-28 09:42:33 hb Exp $
+!$Id: q2over2eq.F90,v 1.6 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -81,6 +81,9 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: q2over2eq.F90,v $
+!  Revision 1.6  2010-09-17 12:53:52  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.5  2005-12-28 09:42:33  hb
 !  Patankar trick reverted to older versions for stabilising 3D computations
 !
@@ -114,7 +117,7 @@
 !
 
    tkeo=tke
- 
+
    do i=1,nlev-1
 
 !     compute diffusivity

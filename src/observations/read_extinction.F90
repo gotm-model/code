@@ -1,4 +1,4 @@
-!$Id: read_extinction.F90,v 1.6 2007-01-06 11:49:15 kbk Exp $
+!$Id: read_extinction.F90,v 1.7 2010-09-17 12:53:51 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -14,7 +14,7 @@
 !
 ! !USES:
    use time
-   use observations, only : read_obs
+   use observations, only : read_obs,init_saved_vars
    use observations, only : A,g1,g2
    IMPLICIT NONE
 !
@@ -25,6 +25,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: read_extinction.F90,v $
+!  Revision 1.7  2010-09-17 12:53:51  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.6  2007-01-06 11:49:15  kbk
 !  namelist file extension changed .inp --> .nml
 !
@@ -50,13 +53,19 @@
    REALTYPE                  :: t
    REALTYPE, save            :: dt
    integer, save             :: jul1,secs1
-   integer, save             :: jul2=0,secs2=0
+   integer, save             :: jul2,secs2
    REALTYPE, save            :: alpha(3)
-   REALTYPE, save            :: obs(3),obs1(3),obs2(3)=0.
+   REALTYPE, save            :: obs(3),obs1(3),obs2(3)
    integer                   :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (init_saved_vars) then
+      jul2=0
+      secs2=0
+      obs2=_ZERO_
+   end if
+
 !  This part initialise and read in new values if necessary.
    if(time_diff(jul2,secs2,jul,secs) .lt. 0) then
       do

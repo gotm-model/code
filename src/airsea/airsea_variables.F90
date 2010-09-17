@@ -1,4 +1,4 @@
-!$Id: airsea_variables.F90,v 1.4 2008-05-02 11:49:12 kb Exp $
+!$Id: airsea_variables.F90,v 1.5 2010-09-17 12:53:45 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -29,17 +29,20 @@
    REALTYPE, public, parameter         :: g = 9.81        ! [m/s2]
    REALTYPE, public, parameter         :: rho_0 = 1025.   ! [kg/m3]
    REALTYPE, public, parameter         :: kappa = 0.41    ! von Karman
-   REALTYPE, public                    :: es=_ZERO_
-   REALTYPE, public                    :: ea=_ZERO_
-   REALTYPE, public                    :: qs=_ZERO_
-   REALTYPE, public                    :: qa=_ZERO_
-   REALTYPE, public                    :: L=_ZERO_
-   REALTYPE, public                    :: rhoa=_ZERO_
+   REALTYPE, public                    :: es
+   REALTYPE, public                    :: ea
+   REALTYPE, public                    :: qs
+   REALTYPE, public                    :: qa
+   REALTYPE, public                    :: L
+   REALTYPE, public                    :: rhoa
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 !  $Log: airsea_variables.F90,v $
+!  Revision 1.5  2010-09-17 12:53:45  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.4  2008-05-02 11:49:12  kb
 !  explicitely initialise variable to 0 - solves Mac bug
 !

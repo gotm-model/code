@@ -1,4 +1,4 @@
-!$Id: bio_save.F90,v 1.11 2009-11-20 08:37:50 kb Exp $
+!$Id: bio_save.F90,v 1.12 2010-09-17 12:53:46 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -34,7 +34,6 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-   logical, save             :: first=.true.
    integer, save             :: nn
    integer, save             :: totn_id
    integer                   :: iret
@@ -44,24 +43,18 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (init_saved_vars) then
-      init_saved_vars=.false.
-      first=.true.
-   end if
-
    select case (bio_model)
 #ifndef NO_0D_BIO
       case (1000:)
-         call save_bio_0d(first,out_fmt,out_unit,ncid)
+         call save_bio_0d(init_saved_vars,out_fmt,out_unit,ncid)
 #endif
    end select
 
    select case (out_fmt)
       case (ASCII)
-         if(first) then
+         if (init_saved_vars) then
             open(out_unit,file='bio.out',status='unknown')
             nn = ubound(cc(1,:),1)
-            first = .false.
          end if
          write(out_unit,*)
          write(out_unit,*) trim(ts)
@@ -75,8 +68,7 @@
 
       case (NETCDF)
 #ifdef NETCDF_FMT
-         if(first) then
-            first = .false.
+         if (init_saved_vars) then
             dims(1) = lon_dim
             dims(2) = lat_dim
             dims(3) = z_dim
@@ -112,6 +104,8 @@
          FATAL 'A non valid output format has been chosen'
          stop 'bio_save'
    end select
+
+   if (init_saved_vars) init_saved_vars = .false.
 
    return
    end subroutine bio_save

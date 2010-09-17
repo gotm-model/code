@@ -1,4 +1,4 @@
-!$Id: adv_center.F90,v 1.4 2006-11-06 13:36:46 hb Exp $
+!$Id: adv_center.F90,v 1.5 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -208,6 +208,9 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: adv_center.F90,v $
+!  Revision 1.5  2010-09-17 12:53:52  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.4  2006-11-06 13:36:46  hb
 !  Option for conservative vertical advection added to adv_center
 !
@@ -226,7 +229,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                              :: i,k,it
-   REALTYPE                             :: x,r,Phi,limit=_ZERO_
+   REALTYPE                             :: x,r,Phi,limit
    REALTYPE                             :: Yu,Yc,Yd
    REALTYPE                             :: c,cmax
    REALTYPE                             :: cu(0:N)
@@ -385,7 +388,7 @@
 
 !     do the vertical advection step which will be used for prescribed
 !     vertical flow velocity and for settling of suspended matter.
- 
+
       if (mode.eq.0) then ! non-conservative 
          do k=1,N
             Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/        &

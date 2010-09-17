@@ -1,4 +1,4 @@
-!$Id: bio_npzd_fe.F90,v 1.2 2008-07-08 09:58:38 lars Exp $
+!$Id: bio_npzd_fe.F90,v 1.3 2010-09-17 12:53:47 jorn Exp $
 #include"cppdefs.h"
 #define IRON_QUOTA_LIMITATION
 
@@ -43,6 +43,9 @@
 !  Original author(s): Weber et al. 2007
 !
 !  $Log: bio_npzd_fe.F90,v $
+!  Revision 1.3  2010-09-17 12:53:47  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.2  2008-07-08 09:58:38  lars
 !  adapted to changed BIO initialization algorithm
 !
@@ -133,7 +136,7 @@
    REALTYPE                  :: smallm = 1.e-15
    REALTYPE                  :: k_fe = 0.2
    REALTYPE                  :: fe_ld,fe_cui,fe_cuii
-  
+
    integer, parameter        :: f3=5,f2=6,fc=7,fl=8,fp=9
    integer, parameter        :: li=10,pt=11,ho=12,om=13
    integer, parameter        :: pf=14,zf=15,df=16
@@ -559,7 +562,6 @@
 !
 ! !LOCAL VARIABLES:
    integer                    :: i,j,ci
-   REALTYPE, save             :: tt=0.,dt=200. 
    REALTYPE                   :: fe_fe3red,fe_fecred,fe_fe2ox,fe_lr,fe_dr
    REALTYPE                   :: feir,fe_sca,ta
    REALTYPE                   :: mue_max,mue_par,mue_nut,mue,graz

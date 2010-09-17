@@ -1,4 +1,4 @@
-!$Id: get_int_pressure.F90,v 1.5 2006-11-27 09:25:18 kbk Exp $
+!$Id: get_int_pressure.F90,v 1.6 2010-09-17 12:53:49 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -33,6 +33,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_int_pressure.F90,v $
+!  Revision 1.6  2010-09-17 12:53:49  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.5  2006-11-27 09:25:18  kbk
 !  use logical var init_saved_vars to initialise saved variables
 !
@@ -55,9 +58,9 @@
    integer                   :: yy,mm,dd,hh,min,ss
    REALTYPE                  :: t,dt
    integer, save             :: jul1,secs1
-   integer, save             :: jul2=0,secs2=0
+   integer, save             :: jul2,secs2
    integer, parameter        :: cols=4
-   integer, save             :: lines=0
+   integer, save             :: lines
    REALTYPE, save, dimension(:,:), allocatable :: prof1,prof2,alpha
 !
 !-----------------------------------------------------------------------
@@ -66,6 +69,9 @@
       jul2=0
       secs2=0
       lines=0
+      if (allocated(prof1)) deallocate(prof1)
+      if (allocated(prof2)) deallocate(prof2)
+      if (allocated(alpha)) deallocate(alpha)
    end if
 
    select case(method)
@@ -77,17 +83,15 @@
       case(1)
 !        already initialised in observations.F90
       case(2)
-         if ( .not. allocated(prof1)) then
+         if (init_saved_vars) then
             allocate(prof1(0:nlev,cols),stat=rc)
             if (rc /= 0) stop 'read_tprofile: Error allocating memory (prof1)'
-            prof1 = 0.
-         end if
-         if ( .not. allocated(prof2)) then
+            prof1 = _ZERO_
+
             allocate(prof2(0:nlev,cols),stat=rc)
-           if (rc /= 0) stop 'read_tprofile: Error allocating memory (prof2)'
-            prof2 = 0.
-         end if
-         if ( .not. allocated(alpha)) then
+            if (rc /= 0) stop 'read_tprofile: Error allocating memory (prof2)'
+            prof2 = _ZERO_
+
             allocate(alpha(0:nlev,cols),stat=rc)
             if (rc /= 0) stop 'read_tprofile: Error allocating memory (alpha)'
          end if

@@ -1,4 +1,4 @@
-!$Id: get_bio_profiles.F90,v 1.3 2009-03-19 09:36:32 kb Exp $
+!$Id: get_bio_profiles.F90,v 1.4 2010-09-17 12:53:48 jorn Exp $
 #ifdef BIO
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
@@ -32,6 +32,9 @@
 !  Original author(s): Karsten Bolding
 !
 !  $Log: get_bio_profiles.F90,v $
+!  Revision 1.4  2010-09-17 12:53:48  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.3  2009-03-19 09:36:32  kb
 !  also work with BIO=false
 !
@@ -49,35 +52,34 @@
    integer                   :: yy,mm,dd,hh,min,ss
    REALTYPE                  :: t,dt
    integer, save             :: jul1,secs1
-   integer, save             :: jul2=0,secs2=0
+   integer, save             :: jul2,secs2
    integer, save             :: cols
-   integer, save             :: lines=0
-   integer, save             :: nprofiles=0
-   logical, save             :: one_profile=.false.
+   integer, save             :: lines
+   integer, save             :: nprofiles
+   logical, save             :: one_profile
    REALTYPE, save, dimension(:,:), allocatable :: prof1,prof2,alpha
 !
 !-----------------------------------------------------------------------
 !BOC
    if (init_saved_vars) then
-      jul2=0
-      secs2=0
-      cols=size(bioprofs,1)
-      lines=0
-      nprofiles=0
-      one_profile=.false.
-   end if
+      jul2  = 0
+      secs2 = 0
+      cols  = size(bioprofs,1)
+      lines = 0
+      nprofiles =0
+      one_profile = .false.
 
-   if ( .not. allocated(prof1)) then
+      if (allocated(prof1)) deallocate(prof1)
       allocate(prof1(0:nlev,cols),stat=rc)
       if (rc /= 0) stop 'get_bio_profiles: Error allocating memory (prof1)'
-      prof1 = 0.
-   end if
-   if ( .not. allocated(prof2)) then
+      prof1 = _ZERO_
+
+      if (allocated(prof2)) deallocate(prof2)
       allocate(prof2(0:nlev,cols),stat=rc)
       if (rc /= 0) stop 'get_bio_profiles: Error allocating memory (prof2)'
-      prof2 = 0.
-   end if
-   if ( .not. allocated(alpha)) then
+      prof2 = _ZERO_
+
+      if (allocated(alpha)) deallocate(alpha)
       allocate(alpha(0:nlev,cols),stat=rc)
       if (rc /= 0) stop 'get_bio_profiles: Error allocating memory (alpha)'
    end if

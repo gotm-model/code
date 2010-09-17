@@ -1,4 +1,4 @@
-!$Id: compute_rist.F90,v 1.3 2007-01-06 11:49:15 kbk Exp $
+!$Id: compute_rist.F90,v 1.4 2010-09-17 12:53:52 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
@@ -37,17 +37,20 @@
 !EOP
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:
-     integer                      :: i,j,imax=100
-     REALTYPE                     :: cc3,fc,fp,e=1.e-9,step,ann
-     REALTYPE                     :: ffc,ffp,Ri,Rii,ee=1.e-4
+     integer                      :: i,j
+     integer,parameter            :: imax=100
+     REALTYPE                     :: cc3,fc,fp,step,ann
+     REALTYPE                     :: ffc,ffp,Ri,Rii
      REALTYPE                     :: NN(0:2),SS(0:2)
-     logical                      :: converged=.true.
+     logical                      :: converged
+     REALTYPE,parameter           :: e=1.e-9,ee=1.e-4
 !
 !-----------------------------------------------------------------------
 !BOC
    NN=0.
    SS=0.
    Ri=0.18  ! Initial guess for Rist
+   converged = .true.
 
    do j=0,imax
       Rii=Ri

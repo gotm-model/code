@@ -1,4 +1,4 @@
-!$Id: bio_fasham.F90,v 1.2 2008-07-08 09:58:39 lars Exp $
+!$Id: bio_fasham.F90,v 1.3 2010-09-17 12:53:46 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -50,6 +50,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_fasham.F90,v $
+!  Revision 1.3  2010-09-17 12:53:46  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.2  2008-07-08 09:58:39  lars
 !  adapted to changed BIO initialization algorithm
 !
@@ -488,7 +491,7 @@
    dd = _ZERO_
 
    do ci=1,nlev
-   
+
       ff= vp*alpha*par(ci)/sqrt(vp**2+alpha**2*par(ci)**2) 
       fac=(cc(z,ci)+z0)/(k3*(r1*cc(p,ci)+r2*cc(b,ci)+r3*cc(d,ci))+  &
                       r1*cc(p,ci)**2+r2*cc(b,ci)**2+r3*cc(d,ci)**2)

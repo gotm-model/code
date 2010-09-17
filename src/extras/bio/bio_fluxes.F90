@@ -1,4 +1,4 @@
-!$Id: bio_fluxes.F90,v 1.5 2010-09-13 15:59:36 jorn Exp $
+!$Id: bio_fluxes.F90,v 1.6 2010-09-17 12:53:46 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -21,12 +21,16 @@
 !
 ! !PRIVATE DATA MEMBERS:
    integer                              :: sfl_unit=61
+   integer                              :: jul1,secs1,jul2,secs2
    REALTYPE, allocatable                :: obs1(:),obs2(:),alpha(:)
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Karsten Bolding and Hans Burchard
 !
 !  $Log: bio_fluxes.F90,v $
+!  Revision 1.6  2010-09-17 12:53:46  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.5  2010-09-13 15:59:36  jorn
 !  improved clean up of bio models
 !
@@ -84,17 +88,24 @@
 
          allocate(sfl_read(n_surface_fluxes),stat=rc)
          if (rc /= 0) stop 'init_bio_fluxes: Error allocating sfl_read)'
+         sfl_read = _ZERO_
 
          allocate(obs1(n_surface_fluxes),stat=rc)
          if (rc /= 0) stop 'init_bio_fluxes: Error allocating obs1)'
+         obs1 = _ZERO_
 
          allocate(obs2(n_surface_fluxes),stat=rc)
          if (rc /= 0) stop 'init_bio_fluxes: Error allocating obs2)'
+         obs2 = _ZERO_
 
          allocate(alpha(n_surface_fluxes),stat=rc)
          if (rc /= 0) stop 'init_bio_fluxes: Error allocating alpha)'
+         alpha = _ZERO_
 
          open(sfl_unit,file='bio_fluxes.dat',status='unknown')
+
+         jul2=0
+         secs2=0
 !KBK
       case default
    end select
@@ -127,12 +138,10 @@
 ! !LOCAL VARIABLES:
    integer                   :: yy,mm,dd,hh,min,ss
    REALTYPE                  :: tfrac,dt
-   integer, save             :: jul1,secs1,jul2=0,secs2=0
    integer                   :: rc
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
    select case (surface_flux_method)
 
 !  NOTE: Positive fluxes into the sea surface must have negative sign !
@@ -192,7 +201,7 @@
       if (allocated(obs1))     deallocate(obs1)
       if (allocated(obs2))     deallocate(obs2)
       if (allocated(alpha))    deallocate(alpha)
-      
+
       close(sfl_unit)
    end if
 

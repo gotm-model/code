@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.44 2010-09-13 16:09:16 jorn Exp $
+!$Id: gotm.F90,v 1.45 2010-09-17 12:53:47 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -51,7 +51,7 @@
    use turbulence,  only: kappa
    use turbulence,  only: clean_turbulence
 
-   use kpp,         only: init_kpp,do_kpp
+   use kpp,         only: init_kpp,do_kpp,clean_kpp
 
    use mtridiagonal,only: init_tridiagonal,clean_tridiagonal
    use eqstate,     only: init_eqstate
@@ -94,6 +94,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.45  2010-09-17 12:53:47  jorn
+!  extensive code clean-up to ensure proper initialization and clean-up of all variables
+!
 !  Revision 1.44  2010-09-13 16:09:16  jorn
 !  added seagrass clean-up
 !
@@ -284,6 +287,24 @@
    LEVEL1 'init_gotm'
    STDERR LINE
 
+!  The sea surface elevation (zeta) and vertical advection method (w_adv_method)
+!  will be set by init_observations.
+!  However, before that happens, it is already used in updategrid.
+!  therefore, we set to to a reasonable default here.
+   zeta = _ZERO_
+   w_adv_method = 0
+
+!  Initialize namelist parameters to reasonable defaults.
+   out_fmt     = ASCII
+   out_dir     = '.'
+   out_fn      = 'gotm'
+   nsave       = 1
+   diagnostics = .false.
+   mld_method  = 1
+   diff_k      = 1.e-5
+   Ri_crit     = 0.5
+   rad_corr    = .true.
+
 !  open the namelist file.
    LEVEL2 'reading model setup namelists..'
    open(namlst,file='gotmrun.nml',status='old',action='read',err=90)
@@ -329,13 +350,13 @@
 
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
-!  initalise mean fields
+!  initialise mean fields
    s = sprof
    t = tprof
    u = uprof
    v = vprof
 
-!  initalize KPP model
+!  initialize KPP model
    if (turb_method.eq.99) then
       call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
    endif
@@ -344,7 +365,7 @@
    call init_air_sea(namlst,latitude,longitude)
 
 
-!  initalize BIO module
+!  initialize BIO module
 #ifdef BIO
 
    call init_bio(namlst,'bio.nml',unit_bio,nlev)
@@ -353,13 +374,14 @@
 
       call set_env_bio(nlev,dt,-depth0,u_taub,h,t,s,rho,nuh,rad,wind,I_0, &
            secondsofday,w,w_adv_discr,npar)
-      
+
       call init_var_bio()
-      
+
       call init_bio_fluxes()
 
       allocate(bioprofs(1:numc,0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_gotm: Error allocating (bioprofs)'
+      bioprofs = _ZERO_
 
       if ( bio_prof_method .eq. 2 ) then
          cc = bioprofs
@@ -371,6 +393,10 @@
 
    LEVEL2 'done.'
    STDERR LINE
+
+#ifdef _PRINTSTATE_
+   call print_state
+#endif
 
    return
 
@@ -435,7 +461,6 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'time_loop'
-
    do n=MinN,MaxN
 
 !     prepare time and output
@@ -549,6 +574,7 @@
       if(diagnostics) then
          call do_diagnostics(n,nlev,buoy_method,dt,u_taus,u_taub,I_0,heat)
       end if
+
    end do
    STDERR LINE
 
@@ -580,6 +606,10 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+#ifdef _PRINTSTATE_
+   call print_state
+#endif
+
    LEVEL1 'clean_up'
 
    call close_output()
@@ -587,6 +617,8 @@
    call clean_air_sea()
 
    call clean_meanflow()
+
+   if (turb_method.eq.99) call clean_kpp()
 
    call clean_turbulence()
 
@@ -607,6 +639,51 @@
    return
    end subroutine clean_up
 !EOC
+
+#ifdef _PRINTSTATE_
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Print the current state of all loaded gotm modules.
+!
+! !INTERFACE:
+   subroutine print_state()
+!
+! !DESCRIPTION:
+!  This routine writes the value of all module-level variables to screen.
+!
+! !USES:
+   use airsea,    only: print_state_airsea
+   use turbulence,only: print_state_turbulence
+
+   IMPLICIT NONE
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL1 'state of gotm module'
+   LEVEL2 'title',title
+   LEVEL2 'nlev',nlev
+   LEVEL2 'dt',dt
+   LEVEL2 'cnpar',cnpar
+   LEVEL2 'buoy_method',buoy_method
+   LEVEL2 'name',name
+   LEVEL2 'latitude',latitude
+   LEVEL2 'longitude',longitude
+
+   call print_state_time
+   call print_state_meanflow
+   call print_state_observations
+   call print_state_airsea
+   call print_state_turbulence
+   call print_state_bio
+
+   end subroutine print_state
+!EOC
+#endif
 
 !-----------------------------------------------------------------------
 
