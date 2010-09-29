@@ -677,7 +677,7 @@ class Node(object):
         """Determines whether the node is valid. Returns False only if
         "destroy" has been called.
         """
-        return self.controller != None
+        return self.controller is not None
 
     def getValue(self,usedefault=False):
         """Returns the typed value of the node. This function returns

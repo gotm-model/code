@@ -1702,12 +1702,12 @@ class PropertyEditorDialog(QtGui.QDialog):
     Incoporates the ExtendedTreeView attached to a TypedStoreModel.
     """
     
-    def __init__(self,parent,store,title='',instructions='',loadsave=False,flags=QtCore.Qt.Dialog,icon=None,loadhook=None):
+    def __init__(self,parent,store,title='',instructions='',loadsave=False,flags=QtCore.Qt.Dialog,icon=None,loadhook=None,rootnode=None):
         if icon is not None: flags |= QtCore.Qt.WindowSystemMenuHint
         QtGui.QDialog.__init__(self, parent, flags)
 
         self.store = store
-        self.tree = TypedStoreTreeView(self,self.store,expanddepth=3,resizecolumns=False)
+        self.tree = TypedStoreTreeView(self,self.store,expanddepth=3,resizecolumns=False,rootnode=rootnode)
 
         self.setSizeGripEnabled(True)
 

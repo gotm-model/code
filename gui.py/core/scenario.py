@@ -31,7 +31,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
 
     @classmethod
-    def fromNamelists(cls,path,protodir=None,targetversion=None,strict = False,requireplatform=None):
+    def fromNamelists(cls,path,prototypepath=None,targetversion=None,strict = False,requireplatform=None,root=None):
         # Get a list of available schema versions and check if the target version is available.
         sourceids = cls.getSchemaInfo().getSchemas().keys()
         if targetversion is not None and targetversion not in sourceids:
@@ -48,7 +48,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
             if common.verbose: print 'Trying schema "%s"...' % sourceid,
             curscenario = cls.fromSchemaName(sourceid)
             try:
-                curscenario.loadFromNamelists(path,strict=strict,protodir=protodir)
+                curscenario.loadFromNamelists(path,strict=strict,prototypepath=prototypepath,root=root)
             except namelist.NamelistParseException,e:
                 failures += 'Path "%s" does not match template "%s".\nReason: %s\n' % (path,sourceid,e)
                 if common.verbose: print 'no match, %s.' % (e,)
@@ -79,182 +79,349 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
             return newscenario
         else:
             return scenario
+            
+    class NoNamelistRepresentationException(Exception):
+        pass
+        
+    def detectNodeRolesInNamelist(self,interface=None):
+        if interface is None: interface = self.getInterface(omitgroupers=True,interfacetype='nml')
+    
+        # Iterate over all nodes and determine whether they represent
+        # a directory (0), a file (1), a namelist (2) or a namelist variable (3) in a namelist representation.
+        node2nmltype = {}
+        def detectNodeRoleInNml(node):
+            children = interface.getChildren(node)
+            if len(children)==0:
+                tp = 3
+            else:
+                tp = None
+                for child in children:
+                    typefromchild = max(0,detectNodeRoleInNml(child)-1)
+                    if tp is None:
+                        tp = typefromchild
+                    elif tp!=typefromchild:
+                        raise self.NoNamelistRepresentationException('Node %s contains mixed content that cannot correspond to a namelist representation.' % '/'.join(node.location))
+            node2nmltype[node] = tp
+            return tp
+        detectNodeRoleInNml(self.root)
+        return node2nmltype
 
-    def loadFromNamelists(self, srcpath, strict=False, protodir=None):
-        #if common.verbose: print 'Importing scenario from namelist files...'
+    def loadFromNamelists(self, srcpath, strict=False, prototypepath=None, root=None):
 
-        # Try to open the specified path (currently can be zip, tar/gz or a directory)
-        try:
-            container = xmlstore.datatypes.DataContainer.fromPath(srcpath)
-        except Exception,e:
-            raise Exception('Unable to load specified path. ' + unicode(e))
+        def processDirectory(node,prefix=''):
+            assert node2nmltype[node]==0,'processDirectory should only be called on nodes representing a directory in the namelist representation.'
+            for child in interface.getChildren(node):
+                childpath = prefix+child.getId()
+                if node2nmltype[child]==0:
+                    # Child node represents another directory.
+                    processDirectory(child,childpath+'/')
+                else:
+                    # Child node represents a file with namelists.
+                    cursubs = globalsubs
+                    if prototypepath is None:
+                        # Normal namelist file
+                        ext = self.namelistextension
+                        if child.templatenode.hasAttribute('namelistextension'):
+                            ext = child.templatenode.getAttribute('namelistextension')
+                        fullnmlfilename = childpath+ext
+                    else:
+                        # Prototype namelist in which values will be substituted.
+                        fullnmlfilename = childpath+'.proto'
+
+                        # Load the relevant value substitutions (if any).
+                        df = container.getItem(nmlfilename+'.values')
+                        if df is not None:
+                            df_file = df.getAsReadOnlyFile()
+                            cursubs = [namelist.NamelistSubstitutions(df_file)]
+                            df_file.close()
+                            df.release()
+
+                    # Find and parse the namelist file.
+                    for fn in nmlfilelist:
+                        if fn==fullnmlfilename or fn.endswith('/'+fullnmlfilename):
+                            # Note - we currently also allow the namelist file to be found deeper in the source container tree.
+                            # This serves to allow tar/gz files with a single root folder that contains the namelist files.
+                            fullnmlfilename = fn
+                            break
+                    else:
+                        # Namelist file was not found.
+                        if child.templatenode.getAttribute('optional')=='True':
+                            # This namelist file is missing but not required. Use default values and continue.
+                            if self.defaultstore is not None:
+                                child.copyFrom(self.defaultstore.mapForeignNode(child))
+                            continue
+                        elif child.isHidden():
+                            # This namelist file is missing but will not be used. Thus no worries: continue.
+                            continue
+                        else:
+                            raise namelist.NamelistParseException('Namelist file "%s" is not present.' % fullnmlfilename,None,None,None)
+                            
+                    # Obtain the namelist file, open it, parse it, and close it.
+                    df = nmlcontainer.getItem(fullnmlfilename)
+                    df_file = df.getAsReadOnlyFile()
+                    nmlfile = namelist.NamelistFile(df_file,cursubs)
+                    df_file.close()
+                    df.release()
+            
+                    # Child node represents a file containing namelists.
+                    processFile(child,nmlfile,fullnmlfilename)
+        
+        def processFile(node,nmlfile,fullnmlfilename):
+            # Loop over all nodes below the node representing the namelst file (each node represents a namelist)
+            for filechild in interface.getChildren(node):
+                processNamelist(filechild,nmlfile,fullnmlfilename)
+        
+        def processNamelist(node,nmlfile,fullnmlfilename):
+            # Get name of the expected namelist.
+            listname = node.getId()
+            
+            # Get a list with all child nodes (i.e., namelist variables)
+            listchildren = interface.getChildren(node)
+
+            assert not node.canHaveValue(), 'Found non-folder node with id %s below branch %s, where only folders are expected.' % (listname,nmlfilename)
+
+            # Parse the next namelist.
+            nmlist = nmlfile.parseNextNamelist(expectedlist=listname)
+
+            # Index of next expected child node [used only in "strict" parsing mode]
+            childindex = 0
+
+            for (foundvarname,slic,vardata) in nmlist:
+
+                if strict:
+                    # Strict parsing: all variables must appear once and in predefined order.
+                    if childindex>=len(listchildren):
+                        raise namelist.NamelistParseException('Encountered variable "%s" where end of namelist was expected.' % (foundvarname,),fullnmlfilename,listname,None)
+                    listchild = listchildren[childindex]
+                    varname = listchild.getId()
+                    if varname.lower()!=foundvarname.lower():
+                        raise namelist.NamelistParseException('Found variable "%s" where "%s" was expected.' % (foundvarname,varname),fullnmlfilename,listname,varname)
+                    childindex += 1
+                else:
+                    # Loose parsing: variables can appear multiple times or not at all, and do not need to appear in order.
+                    # This is how FORTRAN operates.
+                    for listchild in listchildren:
+                        varname = listchild.getId()
+                        if varname.lower()==foundvarname.lower(): break
+                    else:
+                        raise namelist.NamelistParseException('Encountered variable "%s", which should not be present in this namelist.' % (foundvarname,),fullnmlfilename,listname,varname)
+                        
+                # If no value was provided, skip to the next assignment.
+                if vardata is None: continue
+
+                # Retrieve the value (in the correct data type) from the namelist string.
+                vartype = listchild.getValueType(returnclass=True)
+                if slic is None:
+                    # No slice specification - assign to entire variable.
+                    try:
+                        val = vartype.fromNamelistString(vardata,datafilecontext,listchild.templatenode)
+                    except Exception,e:
+                        raise namelist.NamelistParseException('%s Variable data: %s' % (e,vardata),fullnmlfilename,listname,varname)
+                else:
+                    # Slice specification provided - assign to subset of variable.
+                    val = listchild.getValue()
+                    if val is None: val = vartype(template=listchild.templatenode)
+                    val.setItemFromNamelist(slic,vardata,datafilecontext,listchild.templatenode)
+
+                # Transfer the value to the store.
+                listchild.setValue(val)
+                
+                # Release the value object.
+                if isinstance(val,xmlstore.util.referencedobject):
+                    val.release()
+                
+            # If we are in "strict" mode, check if there are any remaining variables that were not assigned to.
+            if strict and childindex<len(listchildren):
+                lcnames = ['"%s"' % lc.getId() for lc in listchildren[childindex:]]
+                raise namelist.NamelistParseException('Variables %s are missing' % ', '.join(lcnames),fullnmlfilename,listname,None)
 
         # Start with empty scenario
         self.setStore(None)
 
-        globalsubs = []
-        if protodir is not None:
-            # Namelist are specified as .proto files plus one or more .values files.
-            # Load the substitutions specified in the main .values file.
-            nmlcontainer = xmlstore.datatypes.DataContainerDirectory(protodir)
-            df = container.getItem(os.path.basename(srcpath)+'.values')
-            df_file = df.getAsReadOnlyFile()
-            globalsubs.append(namelist.NamelistSubstitutions(df_file))
-            df_file.close()
-            df.release()
-        else:
-            nmlcontainer = container.addref()
-
-        # Build a list of files in the namelist directory
-        # (these are the same, unless prototype namelist files are used)
-        nmlfilelist = nmlcontainer.listFiles()
-        datafilecontext = {'container':container}
-        
+        # Retrieve an interface to the store.
+        # (by accessing it through the interface, namelist-specific instructions in the schema
+        # will be respected)
         interface = self.getInterface(omitgroupers=True,interfacetype='nml')
-
+        
+        # Determine for each node in the store what structure it corresponds to in the namelist representation.
+        # Structures can be directories (type 0), files (type 1), namelists (type 2) and namelist variables (type 3).
+        # An exception will be thrown if the schema cannot map to a valid namelist representation, i.e.,
+        # when a node would contain a mixture of files, namelists and/or namelist variables.
         try:
-            for mainchild in interface.getChildren(self.root):
-                # If we are using prototypes, all namelist files are available, but not all contain
-                # values; then, just skip namelist files that are disabled by settings in the preceding
-                # namelists.
-                if protodir is not None and mainchild.isHidden(): continue
+            node2nmltype = self.detectNodeRolesInNamelist(interface)
+        except self.NoNamelistRepresentationException:
+            raise namelist.NamelistParseException('This schema cannot be used for namelists.')
+
+        if root is None:
+            root = self.root
+        elif isinstance(root,basestring):
+            root = self.root[root]
+
+        datafilecontext = {}
+        roottype = node2nmltype[root]
+        assert roottype in (0,1),'Root of data store should represent either a directory (0) or file (1) in namelists, but its type equals %i.' % roottype
+        try:
+            if roottype==0:
+                # Root node maps to a directory in namelist representation.
+            
+                # Try to open the specified path as a file container (currently can be zip, tar/gz or a directory)
+                # This path will contain namelist values.
+                try:
+                    container = xmlstore.datatypes.DataContainer.fromPath(srcpath)
+                except Exception,e:
+                    raise Exception('Unable to load specified path. ' + unicode(e))
+
+                # Retrieve the container for the namelist structures.
+                # This is the same container that contains values, unless we are using prototype files.
+                globalsubs = []
+                if prototypepath is not None:
+                    # Namelist are specified as .proto files plus one or more .values files.
+
+                    # Open the container for prototype/template files.
+                    nmlcontainer = xmlstore.datatypes.DataContainerDirectory(prototypepath)
+
+                    # Load the substitutions specified in the main .values file.
+                    df = container.getItem(os.path.basename(srcpath)+'.values')
+                    df_file = df.getAsReadOnlyFile()
+                    globalsubs.append(namelist.NamelistSubstitutions(df_file))
+                    df_file.close()
+                    df.release()
+                else:
+                    # Namelist structure and values are stored together in files with F90 namelists.
+                    # Obtain a new reference to the values container that was opened before.
+                    nmlcontainer = container.addref()
+
+                # Build a list of files in the namelist directory
+                nmlfilelist = nmlcontainer.listFiles()
                 
-                # Get name (excl. extension) for the namelist file.
-                nmlfilename = mainchild.getId()
-
-                assert not mainchild.canHaveValue(), 'Found non-folder node with id %s below root, where only folders are expected.' % nmlfilename
-
-                cursubs = globalsubs
-                if protodir is None:
-                    # Normal namelist file
-                    ext = self.namelistextension
-                    if mainchild.templatenode.hasAttribute('namelistextension'):
-                        ext = mainchild.templatenode.getAttribute('namelistextension')
-                    fullnmlfilename = nmlfilename+ext
-                else:
-                    # Prototype namelist in which values will be substituted.
-                    fullnmlfilename = nmlfilename+'.proto'
-
-                    # Load the relevant value substitutions (if any).
-                    df = container.getItem(nmlfilename+'.values')
-                    if df is not None:
-                        df_file = df.getAsReadOnlyFile()
-                        cursubs = [namelist.NamelistSubstitutions(df_file)]
-                        df_file.close()
-                        df.release()
-
-                # Find and parse the namelist file.
-                for fn in nmlfilelist:
-                    if fn==fullnmlfilename or fn.endswith('/'+fullnmlfilename):
-                        fullnmlfilename = fn
-                        break
-                else:
-                    if mainchild.templatenode.getAttribute('optional')=='True':
-                        # This namelist file is missing but not required. Use default values and continue
-                        if self.defaultstore is not None:
-                            mainchild.copyFrom(self.defaultstore.mapForeignNode(mainchild))
-                        continue
-                    elif mainchild.isHidden():
-                        # This namelist file is missing but will not be used. Thus no worries: continue
-                        continue
-                    else:
-                        raise namelist.NamelistParseException('Namelist file "%s" is not present.' % fullnmlfilename,None,None,None)
-                        
-                # Obtain the namelist file, open it, parse it, and close it.
-                df = nmlcontainer.getItem(fullnmlfilename)
-                df_file = df.getAsReadOnlyFile()
-                nmlfile = namelist.NamelistFile(df_file,cursubs)
-                df_file.close()
-                df.release()
-
-                # Loop over all nodes below the root (each node represents a namelist file)
-                for filechild in interface.getChildren(mainchild):
-                    # Get name of the expected namelist.
-                    listname = filechild.getId()
+                # Define the context for reading store values. This includes a reference to the source container,
+                # as values may be stored in separate files containing binary or textual data.
+                datafilecontext['container'] = container.addref()
+            
+                try:
+                    processDirectory(root)
+                finally:
+                    container.release()
+                    nmlcontainer.release()
+            else:
+                if not os.path.isfile(srcpath):
+                    raise Exception('"%s" is not an existing file.' % srcpath)
                     
-                    # Get a list with all child nodes (i.e., namelist variables)
-                    listchildren = interface.getChildren(filechild)
+                # Define the context for reading store values. This includes a reference to the source container,
+                # as values may be stored in separate files containing binary or textual data.
+                datafilecontext['container'] = xmlstore.datatypes.DataContainerDirectory(os.path.split(srcpath)[0])
 
-                    assert not filechild.canHaveValue(), 'Found non-folder node with id %s below branch %s, where only folders are expected.' % (listname,nmlfilename)
-
-                    # Parse the next namelist.
-                    nmlist = nmlfile.parseNextNamelist(expectedlist=listname)
-
-                    # Index of next expected child node [used only in "strict" parsing mode]
-                    childindex = 0
-
-                    for (foundvarname,slic,vardata) in nmlist:
-
-                        if strict:
-                            # Strict parsing: all variables must appear once and in predefined order.
-                            if childindex>=len(listchildren):
-                                raise namelist.NamelistParseException('Encountered variable "%s" where end of namelist was expected.' % (foundvarname,),fullnmlfilename,listname,None)
-                            listchild = listchildren[childindex]
-                            varname = listchild.getId()
-                            if varname.lower()!=foundvarname.lower():
-                                raise namelist.NamelistParseException('Found variable "%s" where "%s" was expected.' % (foundvarname,varname),fullnmlfilename,listname,varname)
-                            childindex += 1
-                        else:
-                            # Loose parsing: variables can appear multiple times or not at all, and do not need to appear in order.
-                            # This is how FORTRAN operates.
-                            for listchild in listchildren:
-                                varname = listchild.getId()
-                                if varname.lower()==foundvarname.lower(): break
-                            else:
-                                raise namelist.NamelistParseException('Encountered variable "%s", which should not be present in this namelist.' % (foundvarname,),fullnmlfilename,listname,varname)
-                                
-                        # If no value was provided, skip to the next assignment.
-                        if vardata is None: continue
-
-                        # Retrieve the value (in the correct data type) from the namelist string.
-                        vartype = listchild.getValueType(returnclass=True)
-                        if slic is None:
-                            # No slice specification - assign to entire variable.
-                            try:
-                                val = vartype.fromNamelistString(vardata,datafilecontext,listchild.templatenode)
-                            except Exception,e:
-                                raise namelist.NamelistParseException('%s Variable data: %s' % (e,vardata),fullnmlfilename,listname,varname)
-                        else:
-                            # Slice specification provided - assign to subset of variable.
-                            val = listchild.getValue()
-                            if val is None: val = vartype(template=listchild.templatenode)
-                            val.setItemFromNamelist(slic,vardata,datafilecontext,listchild.templatenode)
-
-                        # Transfer the value to the store.
-                        listchild.setValue(val)
-                        
-                        # Release the value object.
-                        if isinstance(val,xmlstore.util.referencedobject):
-                            val.release()
-                        
-                    # If we are in "strict" mode, check if there are any remaining variables that were not assigned to.
-                    if strict and childindex<len(listchildren):
-                        lcnames = ['"%s"' % lc.getId() for lc in listchildren[childindex:]]
-                        raise namelist.NamelistParseException('Variables %s are missing' % ', '.join(lcnames),fullnmlfilename,listname,None)
-        finally:
-            container.release()
-            nmlcontainer.release()
+                # Open the namelist file, parse it, and close it.
+                df_file = open(srcpath,'rU')
+                nmlfile = namelist.NamelistFile(df_file)
+                df_file.close()
+        
+                # Child node represents a file containing namelists.
+                processFile(root,nmlfile,srcpath)
+        finally:            
             self.disconnectInterface(interface)
             if 'linkedobjects' in datafilecontext:
                 for v in datafilecontext['linkedobjects'].itervalues():
                     v.release()
+            if 'container' in datafilecontext:
+                datafilecontext['container'].release()
 
-    def writeAsNamelists(self, targetpath, copydatafiles=True, addcomments=False, allowmissingvalues=False, callback=None):
+    def writeAsNamelists(self, targetpath, copydatafiles=True, addcomments=False, allowmissingvalues=False, callback=None, root=None):
+    
+        def processDirectory(node,prefix=''):
+            children = interface.getChildren(node)
+            progslicer = xmlstore.util.ProgressSlicer(callback,len(children))
+            for child in children:
+                childpath = os.path.join(prefix,child.getId())
+                progslicer.nextStep(childpath)
+                
+                if child.isHidden(): continue
+                
+                if node2nmltype[child]==0:
+                    # Child node maps to a directory in namelist representation.
+                    if not os.path.isdir(childpath): os.mkdir(childpath)
+                    processDirectory(child,childpath)
+                else:
+                    # Child node maps to a file in namelist representation.
+
+                    # Create the namelist file.
+                    ext = self.namelistextension
+                    if child.templatenode.hasAttribute('namelistextension'):
+                        ext = child.templatenode.getAttribute('namelistextension')
+                    nmlfilepath = childpath+ext
+                    nmlfile = open(nmlfilepath,'w')
+                    try:
+                        processFile(child,nmlfile)
+                    finally:
+                        nmlfile.close()
+
+        def processFile(node,nmlfile):
+            for child in interface.getChildren(node):
+                listname = child.getId()
+                listchildren = interface.getChildren(child)
+
+                if addcomments:
+                    nmlfile.write('!'+(linelength-1)*'-'+'\n')
+                    title = child.getText(detail=2).encode('ascii','namelist')
+                    nmlfile.write(textwrap.fill(title,linelength-2,initial_indent='! ',subsequent_indent='! '))
+                    nmlfile.write('\n!'+(linelength-1)*'-'+'\n')
+
+                    comments = []
+                    varnamelength = 0
+                    for listchild in listchildren:
+                        comment = self.getNamelistVariableDescription(listchild)
+                        if len(comment[0])>varnamelength: varnamelength = len(comment[0])
+                        comments.append(comment)
+                    wrapper.width = linelength-varnamelength-5
+                    for (varid,vartype,lines) in comments:
+                        wrappedlines = []
+                        lines.insert(0,'['+vartype+']')
+                        for line in lines:
+                            line = line.encode('ascii','namelist')
+                            wrappedlines += wrapper.wrap(line)
+                        firstline = wrappedlines.pop(0)
+                        nmlfile.write('! %-*s %s\n' % (varnamelength,varid,firstline))
+                        for line in wrappedlines:
+                            nmlfile.write('! '+varnamelength*' '+'   '+line+'\n')
+                    if len(comments)>0:
+                        nmlfile.write('!'+(linelength-1)*'-'+'\n')
+                    nmlfile.write('\n')
+
+                nmlfile.write('&'+listname+'\n')
+                for listchild in listchildren:
+                    if listchild.hasChildren():
+                        raise Exception('Found a folder ("%s") below branch %s/%s, where only variables are expected.' % (listchild.getId(),nmlfilename,listname))
+                    varname = listchild.getId()
+                    varval = listchild.getValue(usedefault=True)
+                    if varval is None:
+                        # If the variable value is not set while its node is hidden,
+                        # the variable will not be used, and we skip it silently.
+                        if allowmissingvalues or listchild.isHidden(): continue
+                        raise Exception('Value for variable "%s" in namelist "%s" not set.' % (varname,listname))
+                    varstring = varval.toNamelistString(context,listchild.templatenode)
+                    if isinstance(varstring,(list,tuple)):
+                        for ind,value in varstring:
+                            nmlfile.write('   %s(%s) = %s,\n' % (varname,ind,value.encode('ascii','namelist')))
+                    else:
+                        nmlfile.write('   %s = %s,\n' % (varname,varstring.encode('ascii','namelist')))
+                    if isinstance(varval,xmlstore.util.referencedobject): varval.release()
+                nmlfile.write('/\n\n')
+
+        # Retrieve an interface to the store.
+        # (by accessing it through the interface, namelist-specific instructions in the schema
+        # will be respected)
+        interface = self.getInterface(omitgroupers=True,interfacetype='nml')
+        
+        # Determine for each node in the store what structure it corresponds to in the namelist representation.
+        # Structures can be directories (type 0), files (type 1), namelists (type 2) and namelist variables (type 3).
+        # An exception will be thrown if the schema cannot map to a valid namelist representation, i.e.,
+        # when a node would contain a mixture of files, namelists and/or namelist variables.
+        node2nmltype = self.detectNodeRolesInNamelist(interface)
+
         if common.verbose: print 'Exporting scenario to namelist files...'
 
-        # If the directory to write to does not exist, create it.
-        createddir = False
-        if (not os.path.isdir(targetpath)):
-            try:
-                os.mkdir(targetpath)
-                createddir = True
-            except Exception,e:
-                raise Exception('Unable to create target directory "%s". Error: %s' %(targetpath,str(e)))
-                
-        context = {}
-        if copydatafiles:
-            context['targetcontainer'] = xmlstore.datatypes.DataContainerDirectory(targetpath)
-            
+        # Define an error handler for unicode->ascii conversion problems.
+        # This handler automatically replaces the unicode by an ascii expression.
         def encode_error_handler(exc):
             assert isinstance(exc, UnicodeEncodeError), 'do not know how to handle %r' % exc
             l = []
@@ -262,92 +429,62 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                 l.append(xmlstore.util.unicodechar2ascii(c))
             return (u', '.join(l), exc.end)
 
+        # Import codecs module and register custom error handler.
         import codecs
         codecs.register_error('namelist', encode_error_handler)
 
-        interface = self.getInterface(omitgroupers=True,interfacetype='nml')
+        if addcomments:
+            # Import and configure text wrapping utility.
+            import textwrap
+            linelength = 80
+            wrapper = textwrap.TextWrapper(subsequent_indent='  ')
+
+        # Define the context used for writing data files.
+        context = {}
+        
+        # If root node is not specified, use the root of the schema.
+        if root is None:
+            root = self.root
+        elif isinstance(root,basestring):
+            root = self.root[root]
+            
+        roottype = node2nmltype[root]
+        assert roottype in (0,1),'Root of data store should represent either a directory (0) or file (1) in namelists, but its type equals %i.' % roottype
         try:
-            try:
-                if addcomments:
-                    # Import and configure text wrapping utility.
-                    import textwrap
-                    linelength = 80
-                    wrapper = textwrap.TextWrapper(subsequent_indent='  ')
-                
-                rootchildren = interface.getChildren(self.root)
-                progslicer = xmlstore.util.ProgressSlicer(callback,len(rootchildren))
-                for mainchild in rootchildren:
-                    assert not mainchild.canHaveValue(), 'Found a variable below the root node, where only folders are expected.'
-
-                    nmlfilename = mainchild.getId()
-                    progslicer.nextStep(nmlfilename)
-
-                    if mainchild.isHidden(): continue
-
-                    # Create the namelist file.
-                    ext = self.namelistextension
-                    if mainchild.templatenode.hasAttribute('namelistextension'):
-                        ext = mainchild.templatenode.getAttribute('namelistextension')
-                    nmlfilepath = os.path.join(targetpath, nmlfilename+ext)
-                    nmlfile = open(nmlfilepath,'w')
-
+            if roottype==0:
+                # Root node maps to a directory in namelist representation.
+            
+                # If the directory to write to does not exist, create it.
+                createddir = False
+                if not os.path.isdir(targetpath):
                     try:
-                        for filechild in interface.getChildren(mainchild):
-                            assert not filechild.canHaveValue(), 'Found a variable directly below branch "%s", where only folders are expected.' % nmlfilename
-                            listname = filechild.getId()
-                            listchildren = interface.getChildren(filechild)
+                        os.mkdir(targetpath)
+                        createddir = True
+                    except Exception,e:
+                        raise Exception('Unable to create target directory "%s". Error: %s' %(targetpath,str(e)))
+                        
+                # Set the context for writing of node values.
+                # The "targetcontainer" variable will serve as the location to write auxilliary data files to.
+                if copydatafiles:
+                    context['targetcontainer'] = xmlstore.datatypes.DataContainerDirectory(targetpath)
+                    
+                # Write the namelist tree, and make sure the created directory is deleted if any error occurs.
+                try:
+                    processDirectory(root,targetpath)
+                except:
+                    if createddir: shutil.rmtree(targetpath)
+                    raise
+            else:
+                # Root node maps to a file in namelist representation
+                if copydatafiles:
+                    context['targetcontainer'] = xmlstore.datatypes.DataContainerDirectory(os.path.split(os.path.normpath(targetpath))[0])
 
-                            if addcomments:
-                                nmlfile.write('!'+(linelength-1)*'-'+'\n')
-                                title = filechild.getText(detail=2).encode('ascii','namelist')
-                                nmlfile.write(textwrap.fill(title,linelength-2,initial_indent='! ',subsequent_indent='! '))
-                                nmlfile.write('\n!'+(linelength-1)*'-'+'\n')
-
-                                comments = []
-                                varnamelength = 0
-                                for listchild in listchildren:
-                                    comment = self.getNamelistVariableDescription(listchild)
-                                    if len(comment[0])>varnamelength: varnamelength = len(comment[0])
-                                    comments.append(comment)
-                                wrapper.width = linelength-varnamelength-5
-                                for (varid,vartype,lines) in comments:
-                                    wrappedlines = []
-                                    lines.insert(0,'['+vartype+']')
-                                    for line in lines:
-                                        line = line.encode('ascii','namelist')
-                                        wrappedlines += wrapper.wrap(line)
-                                    firstline = wrappedlines.pop(0)
-                                    nmlfile.write('! %-*s %s\n' % (varnamelength,varid,firstline))
-                                    for line in wrappedlines:
-                                        nmlfile.write('! '+varnamelength*' '+'   '+line+'\n')
-                                if len(comments)>0:
-                                    nmlfile.write('!'+(linelength-1)*'-'+'\n')
-                                nmlfile.write('\n')
-
-                            nmlfile.write('&'+listname+'\n')
-                            for listchild in listchildren:
-                                if listchild.hasChildren():
-                                    raise Exception('Found a folder ("%s") below branch %s/%s, where only variables are expected.' % (listchild.getId(),nmlfilename,listname))
-                                varname = listchild.getId()
-                                varval = listchild.getValue(usedefault=True)
-                                if varval is None:
-                                    # If the variable value is not set while its node is hidden,
-                                    # the variable will not be used, and we skip it silently.
-                                    if allowmissingvalues or listchild.isHidden(): continue
-                                    raise Exception('Value for variable "%s" in namelist "%s" not set.' % (varname,listname))
-                                varstring = varval.toNamelistString(context,listchild.templatenode)
-                                if isinstance(varstring,(list,tuple)):
-                                    for ind,value in varstring:
-                                        nmlfile.write('   %s(%s) = %s,\n' % (varname,ind,value.encode('ascii','namelist')))
-                                else:
-                                    nmlfile.write('   %s = %s,\n' % (varname,varstring.encode('ascii','namelist')))
-                                if isinstance(varval,xmlstore.util.referencedobject): varval.release()
-                            nmlfile.write('/\n\n')
-                    finally:
-                        nmlfile.close()
-            except:
-                if createddir: shutil.rmtree(targetpath)
-                raise
+                # Open the target namelist file
+                nmlfile = open(targetpath,'w')
+                try:
+                    processFile(root,nmlfile)
+                finally:
+                    nmlfile.close()
         finally:
             self.disconnectInterface(interface)
             if 'targetcontainer' in context: context['targetcontainer'].release()
@@ -393,14 +530,19 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         # Get description of conditions (if any).
         condition = xmlstore.util.findDescendantNode(node.templatenode,['condition'])
         if condition is not None:
-            condline = NamelistStore.getNamelistConditionDescription(condition)
-            lines.append('This variable is used only if '+condline)
+            prefix = 'This variable is used only if '
+            condtype = condition.getAttribute('type')
+            if condtype=='ne':
+                prefix = 'This variable is not used if '
+                condtype = 'eq'
+            condline = NamelistStore.getNamelistConditionDescription(condition,condtype)
+            lines.append(prefix+condline)
 
         return (varid,datatype,lines)
 
     @staticmethod
-    def getNamelistConditionDescription(node):
-        condtype = node.getAttribute('type')
+    def getNamelistConditionDescription(node,condtype=None):
+        if condtype is None: condtype = node.getAttribute('type')
         if condtype=='eq' or condtype=='ne':
             var = node.getAttribute('variable')
             val = node.getAttribute('value')

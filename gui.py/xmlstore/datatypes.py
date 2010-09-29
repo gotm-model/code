@@ -1362,7 +1362,7 @@ class DataContainerTar(DataContainer):
 
         def unlink(self):
             """Destroys the data file object. This closes open streams etc."""
-            if self.tarcontainer == None: return
+            if self.tarcontainer is None: return
             self.tarcontainer.release()
             self.tarcontainer = None
 

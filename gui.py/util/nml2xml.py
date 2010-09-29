@@ -110,7 +110,7 @@ GOTM-GUI, while using .proto files in directory "./v3.2/templates".
 
     # Try to parse the namelist files (implicitly converts to the specified target version).
     try:
-        scen = core.scenario.Scenario.fromNamelists(srcpath,protodir=protodir,targetversion=targetschema,strict=strict,requireplatform='gotm')
+        scen = core.scenario.Scenario.fromNamelists(srcpath,prototypepath=protodir,targetversion=targetschema,strict=strict,requireplatform='gotm')
     except Exception,e:
         print '\n\nFailed to load scenario from namelists. Reason:\n'+str(e)
         print '\nYou might try adding the switch -ns. This switch disables strict namelist parsing.'
