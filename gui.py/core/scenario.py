@@ -255,7 +255,10 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         if root is None:
             root = self.root
         elif isinstance(root,basestring):
-            root = self.root[root]
+            strroot = root
+            root = self.root[strroot]
+            if root is None:
+                raise namelist.NamelistParseException('Specified root node "%s" does not exist in schema.' % strroot)
 
         datafilecontext = {}
         roottype = node2nmltype[root]

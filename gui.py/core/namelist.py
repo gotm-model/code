@@ -12,7 +12,11 @@ class NamelistParseException(Exception):
         self.variablename = variablename
 
     def __str__(self):
-        return Exception.__str__(self)+'.\nFile: '+str(self.filename)+', namelist: '+str(self.namelistname)+', variable: '+str(self.variablename)
+        msg = [Exception.__str__(self)]
+        if self.filename     is not None: msg.append('file: %s' % self.filename)
+        if self.namelistname is not None: msg.append('namelist: %s' % self.namelistname)
+        if self.variablename is not None: msg.append('variable: %s' % self.variablename)
+        return ', '.join(msg)
 
 class NamelistSubstitutions(object):
     subs_re = None
