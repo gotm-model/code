@@ -1215,6 +1215,7 @@ class Figure(xmlstore.util.referencedobject):
             for info in seriesinfo:
                 if 'x' not in info: continue
                 lons = info['x']
+                if lons.ndim<=1 or lons.shape[1]<=1: continue
                 missinglon = 360.-(lons[:,-1]-lons[:,0])
                 if (missinglon<2*360/lons.shape[1]).all():
                     isglobal = True
@@ -1229,6 +1230,7 @@ class Figure(xmlstore.util.referencedobject):
                 for info in seriesinfo:
                     if 'x' not in info or 'y' not in info: continue
                     lons = info['x']
+                    if lons.ndim<=1 or lons.shape[1]<=1: continue
                     missinglon = 360.-(lons[:,-1]-lons[:,0])
 
                     # If we use staggered coordinates, the total map width may exceed 360 degrees longitude.
@@ -1805,20 +1807,6 @@ class Figure(xmlstore.util.referencedobject):
             if axisname in oldaxes: oldaxes.remove(axisname)
             if axisname in olddefaxes: olddefaxes.remove(axisname)
 
-            # Range selected by MatPlotLib
-            if axisdata.get('tight',True):
-                naturalrange = axisdata['datarange'][:]
-                if axisdata['datarange'][0] is None: naturalrange = [0.,1.]
-            elif axisname=='x':
-                naturalrange = axes.get_xlim()
-            elif axisname in 'yr':
-                naturalrange = axes.get_ylim()
-            else:
-                # Color range has been enforced before if needed (via pc.set_clim).
-                # Thus we can no longer ask MatPlotLib for "natural" bounds - just use data limits.
-                naturalrange = axisdata['datarange'][:]
-                if axisdata['datarange'][0] is None: naturalrange = [0.,1.]
-                
             # Get range forced by user
             if istimeaxis:
                 mintime,maxtime = axisnode['MinimumTime'].getValue(),axisnode['MaximumTime'].getValue()
@@ -1842,6 +1830,20 @@ class Figure(xmlstore.util.referencedobject):
             effdatarange = axisdata['datarange'][:]
             if forcedrange[0] is not None: effdatarange[0] = forcedrange[0]
             if forcedrange[1] is not None: effdatarange[1] = forcedrange[1]
+
+            # Range selected by MatPlotLib
+            if axisdata.get('tight',True) and effdatarange[0]!=effdatarange[1]:
+                naturalrange = axisdata['datarange'][:]
+                if axisdata['datarange'][0] is None: naturalrange = [0.,1.]
+            elif axisname=='x':
+                naturalrange = axes.get_xlim()
+            elif axisname in 'yr':
+                naturalrange = axes.get_ylim()
+            else:
+                # Color range has been enforced before if needed (via pc.set_clim).
+                # Thus we can no longer ask MatPlotLib for "natural" bounds - just use data limits.
+                naturalrange = axisdata['datarange'][:]
+                if axisdata['datarange'][0] is None: naturalrange = [0.,1.]
 
             # Effective range, combining natural range with user overrides.
             effrange = list(forcedrange)

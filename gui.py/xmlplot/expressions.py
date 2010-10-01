@@ -9,6 +9,8 @@ def getShape(obj):
         return obj.getShape()
     elif isinstance(obj,numpy.ndarray):
         return obj.shape
+    elif isinstance(obj,(list,tuple)):
+        return (len(obj),)
     else:
         return None
 
@@ -815,7 +817,8 @@ class VariableExpression(common.Variable):
         ndim = len(self.getDimensions())
         if bounds is None: bounds = (Ellipsis,)
         bounds = common.processEllipsis(bounds,ndim)
-        return [node[bounds].getValue(dataonly=dataonly) for node in self.root]
+        s = [node[bounds].getValue(dataonly=dataonly) for node in self.root]
+        return s
 
     def getShape(self):
         return self.root[0].getShape()

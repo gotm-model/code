@@ -336,6 +336,22 @@ class datetime(expressions.LazyFunction):
         val = expressions.LazyFunction.getValue(self,extraslices=extraslices,dataonly=dataonly)
         return common.date2num(val)
 
+class var(expressions.LazyFunction):
+    def __init__(self,data,coords=None):
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,None,data,coords=coords)
+        self.shape = expressions.getShape(self.args[0])
+        self.var = common.Variable(None)
+    def getShape(self):
+        return self.shape
+    def getDimensions(self):
+        return ['dim%i' % i for i in range(len(self.shape))]
+    def getVariables(self):
+        return [self.var]
+    def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
+        if dataonly: return resolvedargs[0]
+        s = common.Variable.Slice.fromData(resolvedargs[0],resolvedkwargs['coords'])
+        return s
+
 class addgaps(expressions.LazyFunction):
     def __init__(self,sourceslice,axis=None,maxstep=None):
         expressions.LazyFunction.__init__(self,self.__class__.__name__,None,sourceslice,axis,maxstep=maxstep)
