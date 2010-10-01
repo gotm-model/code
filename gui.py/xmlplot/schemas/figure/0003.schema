@@ -539,11 +539,18 @@
 					<condition type="and">
 						<condition type="eq" variable="./Type" value="2"/>
 						<condition type="or">
-							<condition type="and">
-								<condition type="eq" variable="./PlotType3D" value="1"/>
+              
+              <!-- pcolor or filled contour plot with edges -->
+              <condition type="and">
+                <condition type="or">
+                  <condition type="eq" variable="./PlotType3D" value="0"/>
+                  <condition type="eq" variable="./PlotType3D" value="1"/>
+                </condition>
 								<condition type="eq" variable="./ShowEdges"  value="True"/>
 							</condition>
-							<condition type="and">
+
+              <!-- normal contour plot with cusom colors rather than colors from colormap -->
+              <condition type="and">
 								<condition type="eq" variable="./PlotType3D"   value="2"/>
 								<condition type="ne" variable="./UseColorMap"  value="True"/>
 							</condition>
@@ -574,8 +581,11 @@
 						<condition type="eq" variable="./Type" value="2"/>
 						<condition type="or">
 							<condition type="and">
-								<condition type="eq" variable="./PlotType3D" value="1"/>
-								<condition type="eq" variable="./ShowEdges"  value="True"/>
+                <condition type="or">
+                  <condition type="eq" variable="./PlotType3D" value="0"/>
+                  <condition type="eq" variable="./PlotType3D" value="1"/>
+                </condition>
+                <condition type="eq" variable="./ShowEdges"  value="True"/>
 							</condition>
 							<condition type="eq" variable="./PlotType3D"   value="2"/>
 						</condition>

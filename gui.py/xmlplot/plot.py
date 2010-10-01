@@ -1568,12 +1568,14 @@ class Figure(xmlstore.util.referencedobject):
                         if plottype3d==2 and edgecolor is not None: curhascolormap = False
                     else:
                         # We have to plot a colored quadrilinear mesh
-                        edgecolor = 'None'
                         if seriesnode['ShowEdges'].getValue(usedefault=True):
                             # NB at present MatPlotLib just detects whether the edge color differs
                             # from None, and then draws black borders. I.e., the actual color is ignored.
                             edgecolor = seriesnode['EdgeColor'].getValue(usedefault=True).getNormalized()
-                        pc = drawaxes.pcolormesh(X,Y,C,cmap=cm,norm=norm,edgecolors=edgecolor)
+                            edgewidth = seriesnode['EdgeWidth'].getValue(usedefault=True)
+                            pc = drawaxes.pcolor(X,Y,C,cmap=cm,norm=norm,edgecolors=edgecolor,linewidths=edgewidth)
+                        else:
+                            pc = drawaxes.pcolormesh(X,Y,C,cmap=cm,norm=norm,edgecolors='None')
                       
                 else:
                     # Two dependent variables: X,Y,U,V,C plot using quiver or barbs
