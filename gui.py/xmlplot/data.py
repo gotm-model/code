@@ -1303,7 +1303,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
             return self.ncvarname
 
         def setData(self,data,slic=(Ellipsis,),converttime=True):
-            assert self.store.mode=='w','NetCDF file has not been opened for writing.'
+            assert self.store.mode in ('w','a','r+'),'NetCDF file has not been opened for writing.'
             
             # Retrieve the NetCDF variable object.
             nc = self.store.getcdf()
@@ -1851,7 +1851,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         return self.NetCDFVariable(self,ncvarname)
     
     def createDimension(self,dimname,length):
-        assert self.mode=='w','NetCDF file has not been opened for writing.'
+        assert self.mode in ('w','a','r+'),'NetCDF file has not been opened for writing.'
         nc = self.getcdf()
         nc.createDimension(dimname, length)
 
@@ -1859,7 +1859,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         setattr(self.getcdf(),name,value)
         
     def addVariable(self,varName,dimensions,datatype='d',missingvalue=None):
-        assert self.mode=='w','NetCDF file has not been opened for writing.'
+        assert self.mode in ('w','a','r+'),'NetCDF file has not been opened for writing.'
         nc = self.getcdf()
         ncvar = nc.createVariable(varName,datatype,dimensions)
         if missingvalue is not None:
@@ -1868,7 +1868,7 @@ class NetCDFStore(common.VariableStore,xmlstore.util.referencedobject):
         return self.getVariable_raw(varName)
                 
     def copyVariable(self,variable):
-        assert self.mode=='w','NetCDF file has not been opened for writing.'
+        assert self.mode in ('w','a','r+'),'NetCDF file has not been opened for writing.'
         assert isinstance(variable,NetCDFStore.NetCDFVariable),'Added variable must be an existing NetCDF variable object, not %s.' % str(variable)
         nc = self.getcdf()
         dims = variable.getDimensions_raw(reassign=False)
