@@ -54,8 +54,17 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                 if common.verbose: print 'no match, %s.' % (e,)
                 curscenario.release()
                 continue
-            curmissingcount = len(curscenario.root.getEmptyNodes())
-            if common.verbose: print 'match, %i missing values.' % (curmissingcount,)
+            curmissing = ['/'.join(n.location) for n in curscenario.root.getEmptyNodes()]
+            curmissingcount = len(curmissing)
+            
+            if common.verbose:
+                if curmissingcount>0:
+                    print 'match, %i missing values:' % (curmissingcount,)
+                    for nodepath in curmissing:
+                        print '  %s' % nodepath
+                else:
+                    print 'complete match'
+                
             if scenario is not None:
                 # A schema with higher priority matched - determine if this is a better match, based on the number of missing values.
                 if missingcount<=curmissingcount:
