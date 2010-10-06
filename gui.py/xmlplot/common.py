@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.44 2010-10-01 14:49:27 jorn Exp $
+#$Id: common.py,v 1.45 2010-10-06 14:07:55 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -1112,12 +1112,18 @@ class Variable(object):
     def getLongName(self):
         """Returns a long (pretty) name for the variable.
         """
-        return ''
+        return self.getName_raw()
 
     def getUnit(self):
         """Returns the unit of the variable.
         """
         return ''
+        
+    def getDataType(self):
+        return None
+        
+    def getProperties(self):
+        return {}
 
     def getDimensions(self):
         dims = self.getDimensions_raw()

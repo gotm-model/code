@@ -347,6 +347,17 @@ class var(expressions.LazyFunction):
         return ['dim%i' % i for i in range(len(self.shape))]
     def getVariables(self):
         return [self.var]
+    def getValue(self,extraslices=None,dataonly=False):
+        if extraslices is not None:
+            # Filter out slices for dimensions that we do not support.
+            dims = self.getDimensions()
+            extraslices = dict([(k,v) for k,v in extraslices.iteritems() if k in dims])
+        data = expressions.LazyExpression.argument2value(self.args[0],extraslices,dataonly=True)
+        if dataonly: return data
+        coords = expressions.LazyExpression.argument2value(self.kwargs['coords'],extraslices,dataonly=True)
+        s = common.Variable.Slice.fromData(data,coords)
+        return s
+
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         if dataonly: return resolvedargs[0]
         s = common.Variable.Slice.fromData(resolvedargs[0],resolvedkwargs['coords'])
@@ -501,8 +512,4 @@ class transpose(expressions.LazyFunction):
         return expressions.LazyFunction.getDimensions(self)[::-1]
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         arg = resolvedargs[0]
-        if dataonly:
-            arg = numpy.transpose(arg)
-        else:
-            arg = arg.transpose()
-        return arg
+        return arg.transpose()
