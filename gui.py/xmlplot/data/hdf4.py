@@ -44,6 +44,7 @@ class HDF4Store(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
             fillvalue = self.hdfvar.attributes().get('Fill',None)
             if fillvalue is not None:
                 dat = numpy.ma.array(dat,mask=(dat==fillvalue),copy=False)
+                
             if dataonly: return dat
 
             dims = self.getDimensions_raw()
@@ -74,7 +75,7 @@ class HDF4Store(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
         """Returns a Variable object for the given original short variable name.
         The method must be implemented by derived classes.
         """
-        return HDF4Store.Variable(self,self.file.select(varname))
+        return self.Variable(self,self.file.select(varname))
 
     def getVariableNames_raw(self):
         """Returns a list of original short names for all variables present in the store.

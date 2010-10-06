@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.45 2010-10-06 14:07:55 jorn Exp $
+#$Id: common.py,v 1.46 2010-10-06 15:47:11 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -799,7 +799,7 @@ class Variable(object):
 
         @staticmethod
         def fromData(data,coords=None):
-            data = numpy.asarray(data)
+            if not isinstance(data,numpy.ndarray): data = numpy.asarray(data)
             dimnames = ['dim%i' % i for i in range(data.ndim)]
             s = Variable.Slice(dimnames)
             s.data = data
@@ -807,9 +807,9 @@ class Variable(object):
             if coords is not None:
                 s.coords = [numpy.asarray(c) for c in coords]
                 s.coords_stag = []
-                for c in s.coords:
-                    assert c.shape==data.shape,'Shape of coordinates for dimension %i (%s) does not match shape of data (%s).' % (idim,','.join(c.shape),','.join(data.shape))
-                    s.coords_stag = stagger(c)
+                for idim,c in enumerate(s.coords):
+                    assert c.shape==data.shape,'Shape of coordinates for dimension %i (%s) does not match shape of data (%s).' % (idim,','.join(map(str,c.shape)),','.join(map(str,data.shape)))
+                    s.coords_stag.append(stagger(c))
             return s
 
         def __init__(self,dimensions=(),coords=None,coords_stag=None,data=None):

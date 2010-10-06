@@ -122,6 +122,8 @@ class MapProjectionChoice(xmlstore.datatypes.String):
             import mpl_toolkits.basemap
         except:
             return self
+        if self not in mpl_toolkits.basemap._projnames:
+            raise Exception('Map projection "%s" not found. Available: %s.' % (self,', '.join(sorted(mpl_toolkits.basemap._projnames))))
         return mpl_toolkits.basemap._projnames[self]
 xmlstore.datatypes.register('mapprojection',MapProjectionChoice)
       

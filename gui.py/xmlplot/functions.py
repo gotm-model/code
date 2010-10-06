@@ -344,7 +344,7 @@ class var(expressions.LazyFunction):
     def getShape(self):
         return self.shape
     def getDimensions(self):
-        return ['dim%i' % i for i in range(len(self.shape))]
+        return ['dim%i' % idim for idim in range(len(self.shape))]
     def getVariables(self):
         return [self.var]
     def getValue(self,extraslices=None,dataonly=False):
@@ -356,11 +356,6 @@ class var(expressions.LazyFunction):
         if dataonly: return data
         coords = expressions.LazyExpression.argument2value(self.kwargs['coords'],extraslices,dataonly=True)
         s = common.Variable.Slice.fromData(data,coords)
-        return s
-
-    def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
-        if dataonly: return resolvedargs[0]
-        s = common.Variable.Slice.fromData(resolvedargs[0],resolvedkwargs['coords'])
         return s
 
 class addgaps(expressions.LazyFunction):
@@ -512,4 +507,26 @@ class transpose(expressions.LazyFunction):
         return expressions.LazyFunction.getDimensions(self)[::-1]
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         arg = resolvedargs[0]
+        if dataonly: arg = arg.data
         return arg.transpose()
+        
+class meshgrid(expressions.LazyFunction):
+    def __init__(self,x,y):
+        expressions.LazyFunction.__init__(self,self.__class__.__name__,getattr(numpy,self.__class__.__name__),x,y,outsourceslices=False)
+    def getShape(self):
+        shape = []
+        for arg in self.args:
+            s = expressions.getShape(arg)
+            if s is None: return None
+            shape.append(s[0])
+        return shape
+    def getDimensions(self):
+        dims = []
+        for arg in self.args:
+            if isinstance(arg,expressions.LazyExpression):
+                d = arg.getDimensions()
+                assert len(d)==1,'Arguments to meshgrid must be 1-dimensional. Dimension count = %i.' % len(d)
+                dims.append(d[0])
+            else:
+                dims.append('')
+        return dims
