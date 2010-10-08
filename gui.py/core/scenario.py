@@ -374,7 +374,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
 
                 if addcomments:
                     nmlfile.write('!'+(linelength-1)*'-'+'\n')
-                    title = child.getText(detail=2).encode('ascii','namelist')
+                    title = child.getText(detail=2).encode('ascii','xmlstore_descrepl')
                     nmlfile.write(textwrap.fill(title,linelength-2,initial_indent='! ',subsequent_indent='! '))
                     nmlfile.write('\n!'+(linelength-1)*'-'+'\n')
 
@@ -389,7 +389,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                         wrappedlines = []
                         lines.insert(0,'['+vartype+']')
                         for line in lines:
-                            line = line.encode('ascii','namelist')
+                            line = line.encode('ascii','xmlstore_descrepl')
                             wrappedlines += wrapper.wrap(line)
                         firstline = wrappedlines.pop(0)
                         nmlfile.write('! %-*s %s\n' % (varnamelength,varid,firstline))
@@ -413,9 +413,9 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                     varstring = varval.toNamelistString(context,listchild.templatenode)
                     if isinstance(varstring,(list,tuple)):
                         for ind,value in varstring:
-                            nmlfile.write('   %s(%s) = %s,\n' % (varname,ind,value.encode('ascii','namelist')))
+                            nmlfile.write('   %s(%s) = %s,\n' % (varname,ind,value.encode('ascii','xmlstore_descrepl')))
                     else:
-                        nmlfile.write('   %s = %s,\n' % (varname,varstring.encode('ascii','namelist')))
+                        nmlfile.write('   %s = %s,\n' % (varname,varstring.encode('ascii','xmlstore_descrepl')))
                     if isinstance(varval,xmlstore.util.referencedobject): varval.release()
                 nmlfile.write('/\n\n')
 
@@ -431,19 +431,6 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         node2nmltype = self.detectNodeRolesInNamelist(interface)
 
         if common.verbose: print 'Exporting scenario to namelist files...'
-
-        # Define an error handler for unicode->ascii conversion problems.
-        # This handler automatically replaces the unicode by an ascii expression.
-        def encode_error_handler(exc):
-            assert isinstance(exc, UnicodeEncodeError), 'do not know how to handle %r' % exc
-            l = []
-            for c in exc.object[exc.start:exc.end]:
-                l.append(xmlstore.util.unicodechar2ascii(c))
-            return (u', '.join(l), exc.end)
-
-        # Import codecs module and register custom error handler.
-        import codecs
-        codecs.register_error('namelist', encode_error_handler)
 
         if addcomments:
             # Import and configure text wrapping utility.
@@ -542,7 +529,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
         # Get description of conditions (if any).
         condition = xmlstore.util.findDescendantNode(node.templatenode,['condition'])
         if condition is not None:
-            prefix = 'This variable is used only if '
+            prefix = 'This variable is only used if '
             condtype = condition.getAttribute('type')
             if condtype=='ne':
                 prefix = 'This variable is not used if '

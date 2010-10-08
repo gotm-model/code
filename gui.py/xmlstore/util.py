@@ -1,5 +1,5 @@
 # Import modules from standard Python (>= 2.4) library
-import datetime,time,xml.dom.minidom
+import datetime,time,xml.dom.minidom,codecs
 
 # ------------------------------------------------------------------------------------------
 # Base class that supports reference counting
@@ -370,4 +370,15 @@ def unicodechar2ascii(ch):
             repl = '\\'+repl[21:].capitalize()
         charreplacements[ich] = repl
     return charreplacements[ich]
-        
+
+def ascii_encode_error_handler(exc):
+    assert isinstance(exc, UnicodeEncodeError), 'do not know how to handle %r' % exc
+    l = []
+    for c in exc.object[exc.start:exc.end]:
+        l.append(unicodechar2ascii(c))
+    return (u', '.join(l), exc.end)
+codecs.register_error('xmlstore_descrepl', ascii_encode_error_handler)
+
+def unicode2ascii(string):
+    return string.encode('ascii','xmlstore_descrepl')
+    
