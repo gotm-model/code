@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.46 2010-10-06 15:47:11 jorn Exp $
+#$Id: common.py,v 1.47 2010-10-11 09:49:29 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -34,8 +34,8 @@ def getVersions():
     yield ('matplotlib',matplotlib.__version__)
     
     import xmlplot.data
-    if xmlplot.data.selectednetcdfmodule is None: xmlplot.data.chooseNetCDFModule()
-    for ncver in xmlplot.data.netcdfmodules: yield ncver
+    if xmlplot.data.netcdf.selectednetcdfmodule is None: xmlplot.data.netcdf.chooseNetCDFModule()
+    for ncver in xmlplot.data.netcdf.netcdfmodules: yield ncver
 
     try:
         from PyQt4 import QtCore
