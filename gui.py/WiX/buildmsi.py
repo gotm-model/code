@@ -1,6 +1,6 @@
 # User-configurable settings
 sourcedir = '../dist'
-exe = 'gotm.exe'
+exe = 'gotmgui.exe'
 
 # Import modules
 import os,re,sys,codecs

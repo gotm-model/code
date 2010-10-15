@@ -10,5 +10,5 @@
 			<Verb Id="open" Command="&amp;Open" Argument="&quot;%1&quot;" Sequence="1" />
 		</Extension>
 	</ProgId>
-	<Shortcut Id="gotm.exe" Directory="ProgramMenuFolder" Name="GOTM-GUI" Description="Use the General Ocean Turbulence Model for water column simulations." Icon="gotmgui.ico" IconIndex="0" Show="normal" WorkingDirectory="TARGETDIR" Advertise="yes" />
+	<Shortcut Id="gotmgui.exe" Directory="ProgramMenuFolder" Name="GOTM-GUI" Description="Use the General Ocean Turbulence Model for water column simulations." Icon="gotmgui.ico" IconIndex="0" Show="normal" WorkingDirectory="TARGETDIR" Advertise="yes" />
 </Include>

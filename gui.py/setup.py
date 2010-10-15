@@ -63,7 +63,7 @@ addtreewithwildcard('../src','extras/bio/*/metadata/*','gotmsrc')
 #own_data_files.append(('',[os.path.join(os.environ['VS80COMNTOOLS'],'..\\..\\VC\\redist\\x86\\Microsoft.VC80.CRT\\Microsoft.VC80.CRT.manifest')]))
 
 setup(
-    windows=[{'script':'gotm.py','icon_resources':[(1,'gotmgui.ico')]}],
+    windows=[{'script':'gotmgui.py','icon_resources':[(1,'gotmgui.ico')]}],
     console=[{'script':'batch.py'}],
     options={'py2exe': {
                 'packages' : ['matplotlib', 'pytz'],
