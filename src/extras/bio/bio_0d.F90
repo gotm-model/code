@@ -1,4 +1,4 @@
-!$Id: bio_0d.F90,v 1.11 2010-09-17 12:53:46 jorn Exp $
+!$Id: bio_0d.F90,v 1.12 2010-12-16 11:10:07 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -687,7 +687,7 @@
 !
 ! !USES:
    use output,  only: nsave
-   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dims
+   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dim3d,dim4d
    use ncdfout, only: define_mode,new_nc_variable,set_attributes,store_data
 
    IMPLICIT NONE
@@ -716,26 +716,19 @@
          if(first) then
             iret = define_mode(ncid,.true.)
 
-            dims(1) = lon_dim
-            dims(2) = lat_dim
-            dims(3) = z_dim
-            dims(4) = time_dim
-
             ! Add a variable for each diagnostic variable
             do n=1,model%info%diagnostic_variable_count
                iret = new_nc_variable(ncid,model%info%diagnostic_variables(n)%name,NF_REAL, &
-                                      4,dims,model%info%diagnostic_variables(n)%id)
+                                      dim4d,model%info%diagnostic_variables(n)%id)
                iret = set_attributes(ncid,model%info%diagnostic_variables(n)%id,       &
                                      units=model%info%diagnostic_variables(n)%unit,    &
                                      long_name=model%info%diagnostic_variables(n)%longname)
             end do
 
-            dims(3) = time_dim
-
             ! Add a variable for each conserved quantity
             do n=1,model%info%conserved_quantity_count
                iret = new_nc_variable(ncid,'tot_'//model%info%conserved_quantities(n)%name,NF_REAL, &
-                                      3,dims,model%info%conserved_quantities(n)%id)
+                                      dim3d,model%info%conserved_quantities(n)%id)
                iret = set_attributes(ncid,model%info%conserved_quantities(n)%id,       &
                                      units='m*'//model%info%conserved_quantities(n)%unit,    &
                                      long_name='depth-integrated '//model%info%conserved_quantities(n)%longname)
