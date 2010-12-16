@@ -8,6 +8,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Python", "Python", "{AF3430
 		..\..\scenariobuilder.py = ..\..\scenariobuilder.py
 		..\..\setup.py = ..\..\setup.py
 		..\..\simulator.py = ..\..\simulator.py
+		..\..\visualizer.py = ..\..\visualizer.py
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schemas", "schemas", "{9B09D41F-5FB8-4FAD-8E03-F5E53103748D}"
@@ -63,7 +64,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlplot", "xmlplot", "{ED14B761-93AA-4FA8-8E62-2EAD150852E8}"
 	ProjectSection(SolutionItems) = preProject
 		..\..\xmlplot\common.py = ..\..\xmlplot\common.py
-		..\..\xmlplot\data.py = ..\..\xmlplot\data.py
 		..\..\xmlplot\expressions.py = ..\..\xmlplot\expressions.py
 		..\..\xmlplot\functions.py = ..\..\xmlplot\functions.py
 		..\..\xmlplot\georef.py = ..\..\xmlplot\georef.py
@@ -106,6 +106,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "converters", "converters", 
 		..\..\schemas\scenario\gotm-4.1.0_gotmgui-0.5.0.converter = ..\..\schemas\scenario\gotm-4.1.0_gotmgui-0.5.0.converter
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "data", "data", "{E0960FB7-DE47-4E34-99D9-CFFA4B986B85}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\xmlplot\data\__init__.py = ..\..\xmlplot\data\__init__.py
+		..\..\xmlplot\data\gotmtext.py = ..\..\xmlplot\data\gotmtext.py
+		..\..\xmlplot\data\hdf4.py = ..\..\xmlplot\data\hdf4.py
+		..\..\xmlplot\data\netcdf.py = ..\..\xmlplot\data\netcdf.py
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -120,6 +128,7 @@ Global
 		{C9C26D7C-F213-41C1-91AC-0313D612391E} = {9B09D41F-5FB8-4FAD-8E03-F5E53103748D}
 		{7F94F549-7EBA-49C5-9B5A-1973D64666F0} = {4481907A-5850-4BAC-94F2-23E2FC5BB33B}
 		{2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2} = {ED14B761-93AA-4FA8-8E62-2EAD150852E8}
+		{E0960FB7-DE47-4E34-99D9-CFFA4B986B85} = {ED14B761-93AA-4FA8-8E62-2EAD150852E8}
 		{E25CD9E2-4661-4402-9E28-33ED4336CEFA} = {2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2}
 		{10A4F0A0-9287-4C21-93F1-22BA1F540459} = {2C85DE96-9B7C-440B-92C7-CCEA8E9BF0F2}
 	EndGlobalSection
