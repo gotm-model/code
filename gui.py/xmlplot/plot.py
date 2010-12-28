@@ -1049,7 +1049,10 @@ class Figure(xmlstore.util.referencedobject):
             if projection=='windrose':
                 # Get flattened direction and speed, and eliminate masked values (if any)
                 wd,C = varslices[0].data.ravel(),varslices[1].data.ravel()
-                if hasattr(C,'_mask'): wd,C = wd.compressed(),C.compressed()
+                mask = common.getMergedMask((wd,C))
+                if mask is not None:
+                    valid = numpy.logical_not(mask)
+                    wd,C = wd.compress(valid),C.compress(valid)
                 
                 # If all data were masked, were are now left with an empty array.
                 # Detect this, and if it is the case, continue with other data series.
@@ -1593,15 +1596,7 @@ class Figure(xmlstore.util.referencedobject):
                     remove_UV_mask = False  # used to be needed for old matplotlib, not anymore as of 0.99.1.1
                     if remove_UV_mask:
                         # Get combined mask of U,V and (optionally) C
-                        mask = None
-                        def addmask(mask,newmask):
-                            if mask is None:
-                                mask = numpy.empty(U.shape,dtype=numpy.bool)
-                                mask.fill(False)
-                            return numpy.logical_or(mask,newmask)
-                        if hasattr(U,'_mask'): mask = addmask(mask,U._mask)
-                        if hasattr(V,'_mask'): mask = addmask(mask,V._mask)
-                        if C is not None and hasattr(C,'_mask'): mask = addmask(mask,C._mask)
+                        mask = common.getMergedMask((U,V,C))
                         
                         # Quiver with masked arrays has bugs in MatPlotlib 0.98.5
                         # Therefore we mask here only the color array, making sure that its mask combines

@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.47 2010-10-11 09:49:29 jorn Exp $
+#$Id: common.py,v 1.48 2010-12-28 22:05:40 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -131,6 +131,16 @@ def convertMatlabDateFormat(fmt):
 # ------------------------------------------------------------------------------------------
 # Numerical helper utilities
 # ------------------------------------------------------------------------------------------
+
+def getMergedMask(sources):
+    shape = sources[0].shape
+    mask = None
+    def addmask(mask,newmask):
+        if mask is None: mask = numpy.zeros(shape,dtype=numpy.bool)
+        return numpy.logical_or(mask,newmask)
+    for source in sources:
+        if hasattr(source,'_mask'): mask = addmask(mask,source._mask)
+    return mask
 
 def findIndices(bounds,data):
     """Look for boundary indices of array based on desired value range.
