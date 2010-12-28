@@ -487,6 +487,9 @@ class uv2ds(expressions.LazyFunction):
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         u,v = resolvedargs[0],resolvedargs[1]
         if not dataonly: u,v = u.data,v.data
+        
+        # Calculate the angle and speed.
+        # The angle is given with respect to (0,1), typically North. Positive clockwise.
         angle = (-numpy.arctan2(v,u)/numpy.pi+0.5)%2*180
         speed = numpy.sqrt(u*u+v*v)
         

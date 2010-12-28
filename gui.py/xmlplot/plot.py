@@ -1021,6 +1021,9 @@ class Figure(xmlstore.util.referencedobject):
                        'tight':False,
                        'reversed':False,
                        'datarange':[varslices[0].data.min(),varslices[0].data.max()]}
+                       
+            # If all data are masked, the bounds will be masked as well.
+            # Switch to no bounds if this situation occurs.
             if hasattr(vardata['datarange'][0],'_mask') and vardata['datarange'][0]._mask: vardata['datarange'] = [None,None]
             
             def switchAxes(xpref,ypref):
