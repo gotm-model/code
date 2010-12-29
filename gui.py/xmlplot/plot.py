@@ -977,12 +977,8 @@ class Figure(xmlstore.util.referencedobject):
                 # Store singleton dimensions as fixed extra coordinates.
                 if self.autosqueeze: varslices[i] = varslices[i].squeeze()
                 
-                # Mask infinite/nan values, if any - only do this if the array is not masked
-                # already, because it seems isfinite is not supported on masked arrays.
-                if not hasattr(varslices[i].data,'_mask'):
-                    invalid = numpy.logical_not(numpy.isfinite(varslices[i].data))
-                    if invalid.any():
-                        varslices[i].data = numpy.ma.masked_where(invalid,varslices[i].data,copy=False)
+                # Mask infinite/nan values, if any.
+                varslices[i].data = numpy.ma.masked_invalid(varslices[i].data,copy=False)
 
             # Get the number of dimensions from the data slice, and add it to the plot properties.
             typ = varslices[0].ndim
@@ -1510,8 +1506,9 @@ class Figure(xmlstore.util.referencedobject):
                         
                         # If we will make a vector plot: use color mask for u,v data as well.
                         if 'U' in info:
-                            info['U'] = numpy.ma.masked_where(C._mask,info['U'],copy=False)
-                            info['V'] = numpy.ma.masked_where(C._mask,info['V'],copy=False)
+                            mask = numpy.ma.getmask(C)
+                            info['U'] = numpy.ma.masked_where(mask,info['U'],copy=False)
+                            info['V'] = numpy.ma.masked_where(mask,info['V'],copy=False)
                     
                         # Ignore nonpositive color limits since a log scale is to be used.
                         if crange[0] is not None and crange[0]<=0.: crange[0] = None
@@ -1520,7 +1517,7 @@ class Figure(xmlstore.util.referencedobject):
                     if crange[0] is None and crange[1] is None:
                         # Automatic color bounds: first check if we are not dealing with data with all the same value.
                         # if so, explicitly set the color range because MatPlotLib 0.90.0 chokes on identical min and max.
-                        if hasattr(C,'_mask'):
+                        if numpy.ma.getmask(C) is not numpy.ma.nomask:
                             flatC = C.compressed()
                         else:
                             flatC = C.ravel()

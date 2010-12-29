@@ -1,4 +1,4 @@
-#$Id: common.py,v 1.48 2010-12-28 22:05:40 jorn Exp $
+#$Id: common.py,v 1.49 2010-12-29 12:13:04 jorn Exp $
 
 # Import modules from standard Python library
 import sys,os.path,UserDict,re,xml.dom.minidom,datetime
@@ -139,7 +139,8 @@ def getMergedMask(sources):
         if mask is None: mask = numpy.zeros(shape,dtype=numpy.bool)
         return numpy.logical_or(mask,newmask)
     for source in sources:
-        if hasattr(source,'_mask'): mask = addmask(mask,source._mask)
+        curmask = numpy.ma.getmask(source)
+        if curmask is not numpy.ma.nomask: mask = addmask(mask,curmask)
     return mask
 
 def findIndices(bounds,data):
@@ -446,9 +447,9 @@ def interpolateEdges(data,dims=None):
     """Use nearest neighbor interpolation to provide values for masked cells
     that lie adjacent to non-mask cells.
     """
-    if not hasattr(data,'_mask'): return data
+    oldmask = numpy.ma.getmask(data)
+    if oldmask is numpy.ma.nomask: return data
     if dims is None: dims = range(data.ndim)
-    oldmask = data._mask
     oldnonmask = numpy.logical_not(oldmask)
     data = data.filled(0.)
     maskcount = numpy.array(oldnonmask,dtype=numpy.int)
@@ -466,7 +467,7 @@ def interpolateEdges(data,dims=None):
     maskcount[newmask] = 1
     newdata /= maskcount
     data[oldmask] = newdata[oldmask]
-    return numpy.ma.masked_where(newmask,data)
+    return numpy.ma.masked_where(newmask,data,copy=False)
     
 def getboundindices(data,axis,minval=None,maxval=None):
     """Returns the indices for the specified axis that envelope (i.e., lie just outside)
@@ -913,16 +914,14 @@ class Variable(object):
         def compressed(self):
             assert self.ndim==1,'"compressed" can only be used on 1D arrays.'
 
-            # If the source data is not a masked array, return it unmodified.
-            if not hasattr(self.data,'_mask'): return self
-
             # If no data is masked, return everything unmodified.
-            if not numpy.any(self.data._mask): return self
+            mask = numpy.ma.getdata(self.data)
+            if mask is numpy.ma.nomask or not numpy.any(mask): return self
             
             # Create a new data slice to hold the compressed data, and directly compress
             # the data and center coordinates (only staggered coordinates take work)
             newslice = Variable.Slice(self.dimensions)
-            valid = numpy.logical_not(self.data._mask)
+            valid = numpy.logical_not(mask)
             newslice.coords[0] = self.coords[0][valid]
             newslice.data = self.data[valid]
             
