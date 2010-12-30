@@ -1020,7 +1020,7 @@ class Figure(xmlstore.util.referencedobject):
                        
             # If all data are masked, the bounds will be masked as well.
             # Switch to no bounds if this situation occurs.
-            if hasattr(vardata['datarange'][0],'_mask') and vardata['datarange'][0]._mask: vardata['datarange'] = [None,None]
+            if numpy.ma.getmask(vardata['datarange'][0]): vardata['datarange'] = [None,None]
             
             def switchAxes(xpref,ypref):
                 if xpref is not None: xpref = xpref.upper()
@@ -1136,7 +1136,7 @@ class Figure(xmlstore.util.referencedobject):
                                    'tight':False,
                                    'reversed':False,
                                    'datarange':[C.min(),C.max()]}
-                        if hasattr(cinfo['datarange'][0],'_mask') and cinfo['datarange'][0]._mask: cinfo['datarange'] = [None,None]
+                        if numpy.ma.getmask(cinfo['datarange'][0]): cinfo['datarange'] = [None,None]
                     
                 # Transpose values if needed
                 if xdim<ydim:
@@ -1170,7 +1170,7 @@ class Figure(xmlstore.util.referencedobject):
         def getrange(seriesinfo,axis):
             range = [None,None]
             for info in seriesinfo:
-                if axis in info and not (hasattr(info[axis],'_mask') and numpy.all(info[axis]._mask)):
+                if axis in info and not numpy.all(numpy.ma.getmask(info[axis])):
                     curmin,curmax = info[axis].min(),info[axis].max()
                     if range[0] is None or curmin<range[0]: range[0] = curmin
                     if range[1] is None or curmax>range[1]: range[1] = curmax
@@ -1347,7 +1347,7 @@ class Figure(xmlstore.util.referencedobject):
                 datamax = curcoords.max()
                     
                 # If all coordinate values were masked, restore open boundaries.
-                if hasattr(datamin,'_mask'): datamin,datamax = None,None
+                if numpy.ma.getmask(datamin): datamin,datamax = None,None
 
                 # Update effective dimension bounds                    
                 effrange = axis2data.setdefault(axisname,{}).setdefault('datarange',[None,None])

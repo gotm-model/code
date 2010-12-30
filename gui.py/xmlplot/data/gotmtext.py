@@ -536,7 +536,8 @@ class LinkedMatrix(LinkedFileVariableStore):
         varcount = len(self.vardata)
         vardata = data[-1]
         
-        mask = hasattr(vardata,'_mask')
+        # Get the mask of the data (numpy.ma.nomask if not set)
+        mask = numpy.ma.getmask(vardata)
         
         if self.type==1:
             # Write first line with number of observations.
@@ -550,7 +551,7 @@ class LinkedMatrix(LinkedFileVariableStore):
                 else:
                     target.write('%.12g' % dimdata[iline])
             for ivar in range(varcount):
-                if mask and vardata._mask[iline,ivar]:
+                if mask is not numpy.ma.nomask and mask[iline,ivar]:
                     target.write('\t%s' % missing)
                 else:
                     target.write('\t%.12g' % vardata[iline,ivar])
