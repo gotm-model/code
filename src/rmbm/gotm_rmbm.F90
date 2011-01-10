@@ -1,4 +1,4 @@
-!$Id: gotm_rmbm.F90,v 1.1 2011-01-10 12:24:27 jorn Exp $
+!$Id: gotm_rmbm.F90,v 1.2 2011-01-10 15:20:29 jorn Exp $
 #include "cppdefs.h"
 #include "rmbm_driver.h"
 
@@ -859,7 +859,7 @@
 ! !USES:
    use output,  only: out_fmt
 #ifdef NETCDF_FMT
-   use ncdfout, only: ncid,lon_dim,lat_dim,z_dim,time_dim,dims
+   use ncdfout, only: ncid,lon_dim,lat_dim,z_dim,time_dim,dim3d,dim4d
    use ncdfout, only: define_mode,new_nc_variable,set_attributes
 #endif
 !
@@ -887,16 +887,10 @@
          ! Put NetCDF library in define mode.
          iret = define_mode(ncid,.true.)
 
-         ! Set up dimension indices for 4D variables (longitude,latitude,depth,time).
-         dims(1) = lon_dim
-         dims(2) = lat_dim
-         dims(3) = z_dim
-         dims(4) = time_dim
-
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical state variable.
          do n=1,ubound(model%info%state_variables,1)
             iret = new_nc_variable(ncid,model%info%state_variables(n)%name,NF_REAL, &
-                                   4,dims,model%info%state_variables(n)%externalid)
+                                   dim4d,model%info%state_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables(n)%externalid,       &
                                   units=model%info%state_variables(n)%units,    &
                                   long_name=model%info%state_variables(n)%longname)
@@ -905,19 +899,16 @@
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical diagnostic variable.
          do n=1,ubound(model%info%diagnostic_variables,1)
             iret = new_nc_variable(ncid,model%info%diagnostic_variables(n)%name,NF_REAL, &
-                                   4,dims,model%info%diagnostic_variables(n)%externalid)
+                                   dim4d,model%info%diagnostic_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables(n)%externalid,    &
                                   units=model%info%diagnostic_variables(n)%units,        &
                                   long_name=model%info%diagnostic_variables(n)%longname)
          end do
 
-         ! Set up dimension indices for 3D variables (longitude,latitude,time).
-         dims(3) = time_dim
-
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical state variable.
          do n=1,ubound(model%info%state_variables_ben,1)
             iret = new_nc_variable(ncid,model%info%state_variables_ben(n)%name,NF_REAL, &
-                                   3,dims,model%info%state_variables_ben(n)%externalid)
+                                   dim3d,model%info%state_variables_ben(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables_ben(n)%externalid,    &
                                   units=model%info%state_variables_ben(n)%units,        &
                                   long_name=model%info%state_variables_ben(n)%longname)
@@ -926,7 +917,7 @@
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical diagnostic variable.
          do n=1,ubound(model%info%diagnostic_variables_hz,1)
             iret = new_nc_variable(ncid,model%info%diagnostic_variables_hz(n)%name,NF_REAL, &
-                                   3,dims,model%info%diagnostic_variables_hz(n)%externalid)
+                                   dim3d,model%info%diagnostic_variables_hz(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables_hz(n)%externalid,    &
                                   units=model%info%diagnostic_variables_hz(n)%units,        &
                                   long_name=model%info%diagnostic_variables_hz(n)%longname)
@@ -935,7 +926,7 @@
          ! Add a variable for each conserved quantity
          do n=1,ubound(model%info%conserved_quantities,1)
             iret = new_nc_variable(ncid,trim(model%info%conserved_quantities(n)%name)//'_tot',NF_REAL, &
-                                   3,dims,model%info%conserved_quantities(n)%externalid)
+                                   dim3d,model%info%conserved_quantities(n)%externalid)
             iret = set_attributes(ncid,model%info%conserved_quantities(n)%externalid,      &
                                   units='m*'//model%info%conserved_quantities(n)%units,    &
                                   long_name=trim(model%info%conserved_quantities(n)%longname)//', depth-integrated')
