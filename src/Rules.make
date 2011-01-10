@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.26 2011-01-10 12:24:27 jorn Exp $
+#$Id: Rules.make,v 1.27 2011-01-10 12:35:34 jorn Exp $
 
 SHELL   = /bin/sh
 
@@ -69,7 +69,7 @@ endif
 
 # if we want to include RMBM -Repository of Marine Biogeochemical Models
 ifdef RMBM
-INCDIRS         += -I$(RMBMDIR)/include -I$(RMBMDIR)/src/drivers/gotm $(RMBMDIR)/modules/$(FORTRAN_COMPILER)
+INCDIRS         += -I$(RMBMDIR)/include -I$(RMBMDIR)/src/drivers/gotm -I$(RMBMDIR)/modules/$(FORTRAN_COMPILER)
 LINKDIRS        += -L$(RMBMDIR)/lib/$(FORTRAN_COMPILER)
 EXTRA_LIBS      += rmbm_prod
 DEFINES += -D_RMBM_
