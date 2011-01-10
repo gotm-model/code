@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.27 2011-01-10 12:35:34 jorn Exp $
+#$Id: Rules.make,v 1.28 2011-01-10 17:30:02 kb Exp $
 
 SHELL   = /bin/sh
 
@@ -71,7 +71,7 @@ endif
 ifdef RMBM
 INCDIRS         += -I$(RMBMDIR)/include -I$(RMBMDIR)/src/drivers/gotm -I$(RMBMDIR)/modules/$(FORTRAN_COMPILER)
 LINKDIRS        += -L$(RMBMDIR)/lib/$(FORTRAN_COMPILER)
-EXTRA_LIBS      += rmbm_prod
+EXTRA_LIBS      += -lrmbm_prod
 DEFINES += -D_RMBM_
 FEATURES += rmbm
 FEATURE_LIBS += -lgotm_rmbm$(buildtype)
