@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.45 2010-09-17 12:53:47 jorn Exp $
+!$Id: gotm.F90,v 1.46 2011-01-11 16:38:33 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -68,6 +68,9 @@
    use bio_fluxes
    use bio_var, only: npar,numc,cc
 #endif
+#ifdef _RMBM_
+   use gotm_rmbm
+#endif
 
    use output
 
@@ -94,6 +97,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.46  2011-01-11 16:38:33  jorn
+!  call rmbm from gotm (if _RMBM_ is defined)
+!
 !  Revision 1.45  2010-09-17 12:53:47  jorn
 !  extensive code clean-up to ensure proper initialization and clean-up of all variables
 !
@@ -391,6 +397,18 @@
 
 #endif
 
+!  initalize RMBM module
+#ifdef _RMBM_
+
+   call init_gotm_rmbm(namlst,'rmbm.nml')
+
+   call init_var_gotm_rmbm(nlev)
+
+   call set_env_gotm_rmbm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
+                          nuh,h,w,rad(1:nlev),bioshade(1:nlev),I_0,wind,precip,evap,z(1:nlev))
+
+#endif
+
    LEVEL2 'done.'
    STDERR LINE
 
@@ -524,6 +542,9 @@
          call get_bio_updates(nlev,bioshade)
       end if
 #endif
+#ifdef _RMBM_
+      call do_gotm_rmbm(nlev)
+#endif
 
 !    compute turbulent mixing
       select case (turb_method)
@@ -565,6 +586,9 @@
 #endif
 #ifdef BIO
          if (bio_calc) call bio_save(_ZERO_)
+#endif
+#ifdef _RMBM_
+         call save_gotm_rmbm(nlev)
 #endif
       end if
 
@@ -634,6 +658,10 @@
 
 #ifdef SEAGRASS
    call end_seagrass
+#endif
+
+#ifdef _RMBM_
+   call clean_gotm_rmbm()
 #endif
 
    return
