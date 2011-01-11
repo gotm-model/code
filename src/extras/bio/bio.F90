@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.57 2010-09-17 12:53:45 jorn Exp $
+!$Id: bio.F90,v 1.58 2011-01-11 16:37:04 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -106,6 +106,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.58  2011-01-11 16:37:04  jorn
+!  changed ode solvers to operate either on pp/dd or on rhs vector
+!
 !  Revision 1.57  2010-09-17 12:53:45  jorn
 !  extensive code clean-up to ensure proper initialization and clean-up of all variables
 !
@@ -125,6 +128,9 @@
 !  added chlorination model - Rennau
 !
 !  $Log: bio.F90,v $
+!  Revision 1.58  2011-01-11 16:37:04  jorn
+!  changed ode solvers to operate either on pp/dd or on rhs vector
+!
 !  Revision 1.57  2010-09-17 12:53:45  jorn
 !  extensive code clean-up to ensure proper initialization and clean-up of all variables
 !
@@ -1130,58 +1136,49 @@
 !     very important for 3D models to save extra 3D field:
       bioshade_=_ONE_
 
+!     update the light regime
       select case (bio_model)
       case (-1)
 #ifdef BIO_TEMPLATE
          call light_template(nlev,bioshade_feedback)
-         !               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_template)
 #endif
       case (1)
 #ifdef BIO_NPZD
          call light_npzd(nlev,bioshade_feedback)
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd)
 #endif
       case (2)
 #ifdef BIO_IOW
          call light_iow(nlev,bioshade_feedback)
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_iow)
 #endif
       case (3)
       case (4)
 #ifdef BIO_FASHAM
          call light_fasham(nlev,bioshade_feedback)
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_fasham)
 #endif
       case (5)
 #ifdef BIO_MAB
          call light_mab(nlev,bioshade_feedback)
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_mab)
 #endif
       case (6)
 #ifdef BIO_ROLM
          call light_rolm(nlev,bioshade_feedback)
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_rolm)
 #endif
       case (7)
 #ifdef BIO_NPZD_FE
          call light_npzd_fe(nlev,bioshade_feedback)
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_npzd_fe)
-#endif
-      case (8)
-#ifdef BIO_CL
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_cl)
 #endif
       case (10)
 #ifdef BIO_MANGAN
          call light_mangan(nlev,bioshade_feedback)
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_mangan)
 #endif
 #ifndef NO_0D_BIO
       case (1000:)
          call light_0d(model%models(1),nlev,bioshade_feedback)
-         call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_0d_eul)
 #endif
       end select
+
+!     time-integrate the biogeochemcial sink and source terms.
+      call ode_solver(ode_method,numc,nlev,dt_eff,cc,right_hand_side_rhs,right_hand_side_ppdd)
 
    end do
 
@@ -1189,6 +1186,155 @@
    end subroutine do_bio_eul
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Calculate the right-hand side of the biogeochemical model
+! in the form of production/destruction matrices.
+!
+! !INTERFACE:
+   subroutine right_hand_side_ppdd(first,numc,nlev,cc,pp,dd)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   logical, intent(in)                  :: first
+   integer, intent(in)                  :: numc,nlev
+   REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
+   REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+!
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!
+! !LOCAL VARIABLES:
+   integer                              :: i
+   REALTYPE,allocatable                 :: rhs(:,:)
+!-----------------------------------------------------------------------
+!BOC
+   select case (bio_model)
+   case (-1)
+#ifdef BIO_TEMPLATE
+      !               call ode_solver(ode_method,numc,nlev,dt_eff,cc,do_bio_template)
+#endif
+   case (1)
+#ifdef BIO_NPZD
+      call do_bio_npzd(first,numc,nlev,cc,pp,dd)
+#endif
+   case (2)
+#ifdef BIO_IOW
+      call do_bio_iow(first,numc,nlev,cc,pp,dd)
+#endif
+   case (3)
+   case (4)
+#ifdef BIO_FASHAM
+      call do_bio_fasham(first,numc,nlev,cc,pp,dd)
+#endif
+   case (5)
+#ifdef BIO_MAB
+      call do_bio_mab(first,numc,nlev,cc,pp,dd)
+#endif
+   case (6)
+#ifdef BIO_ROLM
+      call do_bio_rolm(first,numc,nlev,cc,pp,dd)
+#endif
+   case (7)
+#ifdef BIO_NPZD_FE
+      call do_bio_npzd_fe(first,numc,nlev,cc,pp,dd)
+#endif
+   case (8)
+#ifdef BIO_CL
+      call do_bio_cl(first,numc,nlev,cc,pp,dd)
+#endif
+   case (10)
+#ifdef BIO_MANGAN
+      call do_bio_mangan(first,numc,nlev,cc,pp,dd)
+#endif
+#ifndef NO_0D_BIO
+   case (1000:)
+      call do_bio_0d_eul(first,numc,nlev,cc,pp,dd)
+#endif
+   case default
+!     The model does not provide production/destruction matrices
+!     It must then provide a vector of local temproal derivatives instead.
+!     Calculate this vector and use it to fill the production matrices.
+      allocate(rhs(1:numc,0:nlev))
+      call right_hand_side_rhs(first,numc,nlev,cc,rhs)
+      pp = _ZERO_
+      dd = _ZERO_
+      do i=1,numc
+         pp(i,i,:) = rhs(i,:)
+      end do
+      deallocate(rhs)
+   end select
+   
+   end subroutine
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Calculate the right-hand side of the biogeochemical model
+! in the form of a vector with per-variable local temporal derivatives.
+!
+! !INTERFACE:
+   subroutine right_hand_side_rhs(first,numc,nlev,cc,rhs)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   logical, intent(in)                  :: first
+   integer, intent(in)                  :: numc,nlev
+   REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
+!
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!
+! !LOCAL VARIABLES:
+   integer                              :: i,j
+   REALTYPE, allocatable                :: pp(:,:,:),dd(:,:,:)
+!-----------------------------------------------------------------------
+!BOC
+   select case (bio_model)
+   case default
+!     The model does not provide a vector of temporal derivatives.
+!     It must then provide production/destruction matrices instead.
+!     Calculate these, and sum them to obtain temporal derivatives.
+      allocate(pp(1:numc,1:numc,0:nlev))
+      allocate(dd(1:numc,1:numc,0:nlev))
+      call right_hand_side_ppdd(first,numc,nlev,cc,pp,dd)
+      do i=1,numc
+         rhs(i,:) = sum(pp(i,:,:),1)-sum(dd(i,:,:),1)
+         !rhs(i,:) = _ZERO_
+         !do j=1,numc
+         !   rhs(i,:) = rhs(i,:) + pp(i,j,:)-dd(i,j,:)
+         !end do
+      end do
+      deallocate(pp)
+      deallocate(dd)
+   end select
+   
+   end subroutine
+!EOC
 
 !-----------------------------------------------------------------------
 !BOP
