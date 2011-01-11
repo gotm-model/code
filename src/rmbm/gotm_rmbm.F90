@@ -1,4 +1,4 @@
-!$Id: gotm_rmbm.F90,v 1.2 2011-01-10 15:20:29 jorn Exp $
+!$Id: gotm_rmbm.F90,v 1.3 2011-01-11 16:37:45 jorn Exp $
 #include "cppdefs.h"
 #include "rmbm_driver.h"
 
@@ -886,6 +886,15 @@
 #ifdef NETCDF_FMT
          ! Put NetCDF library in define mode.
          iret = define_mode(ncid,.true.)
+
+         dim4d(1) = lon_dim
+         dim4d(2) = lat_dim
+         dim4d(3) = z_dim
+         dim4d(4) = time_dim
+
+         dim3d(1) = lon_dim
+         dim3d(2) = lat_dim
+         dim3d(3) = time_dim
 
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical state variable.
          do n=1,ubound(model%info%state_variables,1)
