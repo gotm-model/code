@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.30 2011-01-13 12:23:45 jorn Exp $
+#$Id: Rules.make,v 1.31 2011-01-13 14:39:16 jorn Exp $
 
 SHELL   = /bin/sh
 
@@ -69,12 +69,18 @@ endif
 
 # if we want to include FABM - Framework for Aquatic Biogeochemical Models
 ifdef FABM
+
+ifndef FABMDIR
+FABMDIR  := $(HOME)/fabm
+endif
+
 INCDIRS         += -I$(FABMDIR)/include -I$(FABMDIR)/src/drivers/gotm -I$(FABMDIR)/modules/$(FORTRAN_COMPILER)
 LINKDIRS        += -L$(FABMDIR)/lib/$(FORTRAN_COMPILER)
 EXTRA_LIBS      += -lfabm_prod
 DEFINES += -D_FABM_
 FEATURES += fabm
 FEATURE_LIBS += -lgotm_fabm$(buildtype)
+
 endif
 
 #
