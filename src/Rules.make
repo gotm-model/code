@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.31 2011-01-13 14:39:16 jorn Exp $
+#$Id: Rules.make,v 1.32 2011-01-13 15:32:28 jorn Exp $
 
 SHELL   = /bin/sh
 
@@ -74,8 +74,8 @@ ifndef FABMDIR
 FABMDIR  := $(HOME)/fabm
 endif
 
-INCDIRS         += -I$(FABMDIR)/include -I$(FABMDIR)/src/drivers/gotm -I$(FABMDIR)/modules/$(FORTRAN_COMPILER)
-LINKDIRS        += -L$(FABMDIR)/lib/$(FORTRAN_COMPILER)
+INCDIRS         += -I$(FABMDIR)/include -I$(FABMDIR)/src/drivers/gotm -I$(FABMDIR)/modules/gotm/$(FORTRAN_COMPILER)
+LINKDIRS        += -L$(FABMDIR)/lib/gotm/$(FORTRAN_COMPILER)
 EXTRA_LIBS      += -lfabm_prod
 DEFINES += -D_FABM_
 FEATURES += fabm
