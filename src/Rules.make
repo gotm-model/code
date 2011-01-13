@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.29 2011-01-13 12:04:34 jorn Exp $
+#$Id: Rules.make,v 1.30 2011-01-13 12:23:45 jorn Exp $
 
 SHELL   = /bin/sh
 
@@ -67,11 +67,11 @@ EXTRA_LIBS      += $(NETCDFLIB)
 endif
 # NetCDF/HDF configuration done
 
-# if we want to include RMBM -Repository of Marine Biogeochemical Models
-ifdef RMBM
-INCDIRS         += -I$(RMBMDIR)/include -I$(RMBMDIR)/src/drivers/gotm -I$(RMBMDIR)/modules/$(FORTRAN_COMPILER)
-LINKDIRS        += -L$(RMBMDIR)/lib/$(FORTRAN_COMPILER)
-EXTRA_LIBS      += -lrmbm_prod
+# if we want to include FABM - Framework for Aquatic Biogeochemical Models
+ifdef FABM
+INCDIRS         += -I$(FABMDIR)/include -I$(FABMDIR)/src/drivers/gotm -I$(FABMDIR)/modules/$(FORTRAN_COMPILER)
+LINKDIRS        += -L$(FABMDIR)/lib/$(FORTRAN_COMPILER)
+EXTRA_LIBS      += -lfabm_prod
 DEFINES += -D_FABM_
 FEATURES += fabm
 FEATURE_LIBS += -lgotm_fabm$(buildtype)

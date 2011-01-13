@@ -1,21 +1,21 @@
-!$Id: gotm_fabm.F90,v 1.1 2011-01-13 12:07:16 jorn Exp $
+!$Id: gotm_fabm.F90,v 1.2 2011-01-13 12:20:22 jorn Exp $
 #include "cppdefs.h"
-#include "rmbm_driver.h"
+#include "fabm_driver.h"
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: gotm_rmbm --- Interface to Repository of Marine Biogeochemical Models (RMBM)
+! !MODULE: gotm_fabm --- Interface to Framework for Aquatic Biogeochemical Models (FABM)
 !
 ! !INTERFACE:
-   module gotm_rmbm
+   module gotm_fabm
 !
 ! !DESCRIPTION:
 ! TODO
 ! 
 ! !USES:
-   use rmbm
-   use rmbm_types
+   use fabm
+   use fabm_types
    
    implicit none
 
@@ -51,9 +51,9 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_rmbm,init_var_gotm_rmbm
-   public set_env_gotm_rmbm,do_gotm_rmbm
-   public clean_gotm_rmbm,save_gotm_rmbm
+   public init_gotm_fabm,init_var_gotm_fabm
+   public set_env_gotm_fabm,do_gotm_fabm
+   public clean_gotm_fabm,save_gotm_fabm
 
 !
 ! !REVISION HISTORY:!
@@ -66,7 +66,7 @@
    ! Namelist variables
    REALTYPE                  :: cnpar
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor
-   logical                   :: rmbm_calc,bioshade_feedback,repair_state
+   logical                   :: fabm_calc,bioshade_feedback,repair_state
 
    ! Model
    type (type_model), pointer :: model
@@ -78,7 +78,7 @@
    ! Arrays for work, vertical movement, and cross-boundary fluxes
    REALTYPE,allocatable,dimension(LOCATION_DIMENSIONS,:) :: ws
    REALTYPE,allocatable,dimension(:)                     :: sfl,bfl,total,cc_diag_hz
-   REALTYPE,allocatable _ATTR_DIMENSIONS_1_                :: local
+   REALTYPE,allocatable _ATTR_DIMENSIONS_1_              :: local
    
    ! Arrays for environmental variables not supplied externally.
    REALTYPE,allocatable,dimension(LOCATION_DIMENSIONS)   :: par,pres
@@ -87,7 +87,7 @@
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
    REALTYPE,pointer,dimension(LOCATION_DIMENSIONS) :: nuh,h,bioshade,rad,w,z
-   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_ :: precip,evap
+   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
 
    contains
 
@@ -97,10 +97,10 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_gotm_rmbm(namlst,fname)
+   subroutine init_gotm_fabm(namlst,fname)
 !
 ! !DESCRIPTION: 
-! Initializes the GOTM-RMBM driver module by reading settings from rmbm.nml.
+! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
 ! !USES:
    IMPLICIT NONE
@@ -119,17 +119,17 @@
    integer                   :: i
    character(len=64)         :: models(256)
    type (type_model),pointer :: childmodel
-   namelist /bio_nml/ rmbm_calc,models,                                 &
+   namelist /bio_nml/ fabm_calc,models,                                 &
                       cnpar,w_adv_discr,ode_method,split_factor,        &
                       bioshade_feedback,repair_state
 !
 !-----------------------------------------------------------------------
 !BOC
 
-   LEVEL1 'init_gotm_rmbm'
+   LEVEL1 'init_gotm_fabm'
    
-   ! Initialize RMBM model identifiers to invalid id.
-   rmbm_calc         = .false.
+   ! Initialize FABM model identifiers to invalid id.
+   fabm_calc         = .false.
    models            = ''
    cnpar             = _ONE_
    w_adv_discr       = 6
@@ -140,31 +140,31 @@
 
    ! Open the namelist file and read the namelist.
    ! Note that the namelist file is left open until the routine terminates,
-   ! so RMBM can read more namelists from it during initialization.
+   ! so FABM can read more namelists from it during initialization.
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_nml,err=99)
 
-   if (rmbm_calc) then
+   if (fabm_calc) then
    
       ! Create model tree
-      model => rmbm_create_model()
+      model => fabm_create_model()
       do i=1,ubound(models,1)
          if (trim(models(i)).ne.'') &
-            childmodel => rmbm_create_model(trim(models(i)),parent=model)
+            childmodel => fabm_create_model(trim(models(i)),parent=model)
       end do
       
       ! Initialize model tree (creates metadata and assigns variable identifiers)
-      call rmbm_init(model,namlst)
+      call fabm_init(model,namlst)
 
       ! Report prognostic variable descriptions
-      LEVEL2 'RMBM pelagic state variables:'
+      LEVEL2 'FABM pelagic state variables:'
       do i=1,ubound(model%info%state_variables,1)
          LEVEL3 trim(model%info%state_variables(i)%name), '  ', &
                 trim(model%info%state_variables(i)%units),'  ',&
                 trim(model%info%state_variables(i)%longname)
       end do
 
-      LEVEL2 'RMBM benthic state variables:'
+      LEVEL2 'FABM benthic state variables:'
       do i=1,ubound(model%info%state_variables_ben,1)
          LEVEL3 trim(model%info%state_variables_ben(i)%name), '  ', &
                 trim(model%info%state_variables_ben(i)%units),'  ',&
@@ -172,14 +172,14 @@
       end do
 
       ! Report diagnostic variable descriptions
-      LEVEL2 'RMBM diagnostic variables defined on the full model domain:'
+      LEVEL2 'FABM diagnostic variables defined on the full model domain:'
       do i=1,ubound(model%info%diagnostic_variables,1)
          LEVEL3 trim(model%info%diagnostic_variables(i)%name), '  ', &
                 trim(model%info%diagnostic_variables(i)%units),'  ',&
                 trim(model%info%diagnostic_variables(i)%longname)
       end do
 
-      LEVEL2 'RMBM diagnostic variables defined on a horizontal slice of the model domain:'
+      LEVEL2 'FABM diagnostic variables defined on a horizontal slice of the model domain:'
       do i=1,ubound(model%info%diagnostic_variables_hz,1)
          LEVEL3 trim(model%info%diagnostic_variables_hz(i)%name), '  ', &
                 trim(model%info%diagnostic_variables_hz(i)%units),'  ',&
@@ -214,11 +214,11 @@
          case (1003)
             LEVEL2 'Using runge_kutta_4() with pp/dd matrices'
          case default
-            stop "init_gotm_rmbm: no valid ode_method specified in rmbm.nml!"
+            stop "init_gotm_fabm: no valid ode_method specified in fabm.nml!"
       end select
       
-      ! Initialize RMBM output (creates NetCDF variables)
-      call init_output_gotm_rmbm()
+      ! Initialize FABM output (creates NetCDF variables)
+      call init_output_gotm_fabm()
 
    end if
 
@@ -230,11 +230,11 @@
 98 LEVEL2 'I could not open '//trim(fname)
    LEVEL2 'If thats not what you want you have to supply '//trim(fname)
    LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
-   rmbm_calc = .false.
+   fabm_calc = .false.
    return
 99 FATAL 'I could not read '//trim(fname)
-   stop 'init_gotm_rmbm'
-   end subroutine init_gotm_rmbm
+   stop 'init_gotm_fabm'
+   end subroutine init_gotm_fabm
 !EOC
 
 
@@ -245,7 +245,7 @@
 ! !IROUTINE: Initialise bio variables
 !
 ! !INTERFACE:
-   subroutine init_var_gotm_rmbm(LOCATION)
+   subroutine init_var_gotm_fabm(LOCATION)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -266,9 +266,9 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. rmbm_calc) return
+   if (.not. fabm_calc) return
    
-   call rmbm_set_domain(model,LOCATION)
+   call fabm_set_domain(model,LOCATION)
 
    ! Allocate state variable array for pelagic amnd benthos combined and provide initial values.
    ! In terms of memory use, it is a waste to allocate storage for benthic variables across the entire
@@ -319,26 +319,26 @@
    ! This will be calculated internally during each time step.
    allocate(par(LOCATION_RANGE),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
-   call rmbm_link_data(model,varname_par,par(1:LOCATION))
+   call fabm_link_data(model,varname_par,par(1:LOCATION))
 
    ! Allocate array for local pressure.
    ! This will be calculated [approximated] from layer depths internally during each time step.
    allocate(pres(LOCATION_RANGE),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (pres)'
-   call rmbm_link_data(model,varname_pres,pres(1:LOCATION))
+   call fabm_link_data(model,varname_pres,pres(1:LOCATION))
 
    ! Allocate arrays for storing local and column-integrated values of diagnostic variables.
    ! These are used during each save.
    allocate(total(1:ubound(model%info%conserved_quantities,1)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (total)'
-#ifdef _RMBM_USE_1D_LOOP_
+#ifdef _FABM_USE_1D_LOOP_
    allocate(local(1:LOCATION,1:ubound(model%info%conserved_quantities,1)),stat=rc)
 #else
    allocate(local(1:ubound(model%info%conserved_quantities,1)),stat=rc)
 #endif
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (local)'
 
-   end subroutine init_var_gotm_rmbm
+   end subroutine init_var_gotm_fabm
 !EOC
 
 
@@ -349,7 +349,7 @@
 ! !IROUTINE: Set bio module environment 
 !
 ! !INTERFACE: 
-   subroutine set_env_gotm_rmbm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho,nuh_,h_,w_,rad_,bioshade_,I_0,wnd,precip_,evap_,z_)
+   subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho,nuh_,h_,w_,rad_,bioshade_,I_0,wnd,precip_,evap_,z_)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -369,16 +369,16 @@
 !EOP
 !-----------------------------------------------------------------------!
 !BOC
-   if (.not. rmbm_calc) return
+   if (.not. fabm_calc) return
 
-   ! Provide pointers to arrays with environmental variables to RMBM.
-   call rmbm_link_data   (model,varname_temp,   temp)
-   call rmbm_link_data   (model,varname_salt,   salt_)
-   call rmbm_link_data   (model,varname_dens,   rho)
-   call rmbm_link_data_hz(model,varname_wind_sf,wnd)
-   call rmbm_link_data_hz(model,varname_par_sf, I_0)
+   ! Provide pointers to arrays with environmental variables to FABM.
+   call fabm_link_data   (model,varname_temp,   temp)
+   call fabm_link_data   (model,varname_salt,   salt_)
+   call fabm_link_data   (model,varname_dens,   rho)
+   call fabm_link_data_hz(model,varname_wind_sf,wnd)
+   call fabm_link_data_hz(model,varname_par_sf, I_0)
    
-   ! Save pointers to external dynamic variables that we need later (in do_gotm_rmbm)
+   ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh => nuh_             ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
    h   => h_               ! layer heights [1d array] needed for advection, diffusion
    w   => w_               ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
@@ -388,7 +388,7 @@
    precip => precip_       ! precipitation [scalar] - used to calculate dilution of biogeochemical variables due to increased water volume
    evap   => evap_         ! evaporation [scalar] - used to calculate concentration of biogeochemical variables due to decreased water volume
    
-   ! Copy scalars that will not change during simulation, and are needed in do_gotm_rmbm)
+   ! Copy scalars that will not change during simulation, and are needed in do_gotm_fabm)
    dt = dt_
    w_adv_method = w_adv_method_
    w_adv_ctr = w_adv_ctr_
@@ -396,16 +396,16 @@
    ! Calculate and save internal time step.
    dt_eff = dt/float(split_factor)
    
-   end subroutine set_env_gotm_rmbm
+   end subroutine set_env_gotm_fabm
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Update the RMBM model
+! !IROUTINE: Update the FABM model
 !
 ! !INTERFACE:
-   subroutine do_gotm_rmbm(nlev)
+   subroutine do_gotm_fabm(nlev)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -435,7 +435,7 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   if (.not. rmbm_calc) return
+   if (.not. fabm_calc) return
 
    ! Set local source terms for diffusion scheme to zero,
    ! because source terms are integrated independently later on.
@@ -449,23 +449,23 @@
    pres(1:nlev) = -z(1:nlev)
    
    do i=1,ubound(model%info%state_variables,1)
-      call rmbm_link_state_data(model,i,cc(i,1:nlev))
+      call fabm_link_state_data(model,i,cc(i,1:nlev))
    end do
    do i=1,ubound(model%info%state_variables_ben,1)
-      call rmbm_link_benthos_state_data(model,i,cc(ubound(model%info%state_variables,1)+i,1))
+      call fabm_link_benthos_state_data(model,i,cc(ubound(model%info%state_variables,1)+i,1))
    end do
 
    ! Get updated vertical movement (m/s, positive for upwards) for biological state variables.
-#ifdef _RMBM_USE_1D_LOOP_
-   call rmbm_get_vertical_movement(model,1,nlev,ws(1:nlev,:))
+#ifdef _FABM_USE_1D_LOOP_
+   call fabm_get_vertical_movement(model,1,nlev,ws(1:nlev,:))
 #else
    do i=1,nlev
-      call rmbm_get_vertical_movement(model,i,ws(i,:))
+      call fabm_get_vertical_movement(model,i,ws(i,:))
    end do
 #endif
 
    ! Get updated air-sea fluxes for biological state variables.
-   call rmbm_get_surface_exchange(model,nlev,sfl)
+   call fabm_get_surface_exchange(model,nlev,sfl)
    
    ! Calculate dilution due to surface freshwater flux (m/s)
    ! If surface freshwater flux is not specified, but surface salinity is relaxed to observations,
@@ -499,8 +499,8 @@
 
    end do
 
-   ! Repair state before calling RMBM
-   call do_repair_state(nlev,'gotm_rmbm::do_gotm_rmbm, after advection/diffusion')
+   ! Repair state before calling FABM
+   call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after advection/diffusion')
 
    do split=1,split_factor
       ! Update local light field (self-shading may have changed through changes in biological state variables)
@@ -509,26 +509,26 @@
       ! Time-integrate one biological time step
       call ode_solver(ode_method,ubound(cc,1),nlev,dt_eff,cc(:,0:nlev),right_hand_side_rhs,right_hand_side_ppdd)
 
-      ! Provide RMBM with (pointers to) updated state variables.
+      ! Provide FABM with (pointers to) updated state variables.
       do i=1,ubound(model%info%state_variables,1)
-         call rmbm_link_state_data(model,i,cc(i,1:nlev))
+         call fabm_link_state_data(model,i,cc(i,1:nlev))
       end do
       do i=1,ubound(model%info%state_variables_ben,1)
-         call rmbm_link_benthos_state_data(model,i,cc(ubound(model%info%state_variables,1)+i,1))
+         call fabm_link_benthos_state_data(model,i,cc(ubound(model%info%state_variables,1)+i,1))
       end do
 
       ! Repair state
-      call do_repair_state(nlev,'gotm_rmbm::do_gotm_rmbm, after time integration')
+      call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after time integration')
 
       ! Time-integrate diagnostic variables defined on horizontonal slices, where needed.
       do i=1,ubound(model%info%diagnostic_variables_hz,1)
          if (model%info%diagnostic_variables_hz(i)%time_treatment.eq.time_treatment_last) then
             ! Simply use last value
-            cc_diag_hz(i) = rmbm_get_diagnostic_data_hz(model,i)
+            cc_diag_hz(i) = fabm_get_diagnostic_data_hz(model,i)
          else
             ! Integration or averaging in time needed: for now do simple Forward Euler integration.
             ! If averaging is required, this will be done upon output by diving by the elapsed period.
-            cc_diag_hz(i) = cc_diag_hz(i) + rmbm_get_diagnostic_data_hz(model,i)*dt_eff
+            cc_diag_hz(i) = cc_diag_hz(i) + fabm_get_diagnostic_data_hz(model,i)*dt_eff
          end if
       end do
       
@@ -536,16 +536,16 @@
       do i=1,ubound(model%info%diagnostic_variables,1)
          if (model%info%diagnostic_variables(i)%time_treatment.eq.time_treatment_last) then
             ! Simply use last value
-            cc_diag(i,1:nlev) = rmbm_get_diagnostic_data(model,i)
+            cc_diag(i,1:nlev) = fabm_get_diagnostic_data(model,i)
          else
             ! Integration or averaging in time needed: for now do simple Forward Euler integration.
             ! If averaging is required, this will be done upon output by diving by the elapsed period.
-            cc_diag(i,1:nlev) = cc_diag(i,1:nlev) + rmbm_get_diagnostic_data(model,i)*dt_eff
+            cc_diag(i,1:nlev) = cc_diag(i,1:nlev) + fabm_get_diagnostic_data(model,i)*dt_eff
          end if
       end do
    end do
 
-   end subroutine do_gotm_rmbm
+   end subroutine do_gotm_fabm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -574,24 +574,24 @@
 !
 ! !LOCAL VARIABLES:
    logical :: valid
-#ifndef _RMBM_USE_1D_LOOP_
+#ifndef _FABM_USE_1D_LOOP_
    integer :: ci
 #endif
 !
 !-----------------------------------------------------------------------
 !BOC
-#ifdef _RMBM_USE_1D_LOOP_
-   call rmbm_check_state(model,1,nlev,repair_state,valid)
+#ifdef _FABM_USE_1D_LOOP_
+   call fabm_check_state(model,1,nlev,repair_state,valid)
 #else
    do ci=1,nlev
-      call rmbm_check_state(model,ci,repair_state,valid)
+      call fabm_check_state(model,ci,repair_state,valid)
       if (.not.(valid.or.repair_state)) exit
    end do
 #endif   
    if (.not. (valid .or. repair_state)) then
       FATAL 'State variable values are invalid and repair is not allowed.'
       FATAL location
-      stop 'gotm_rmbm::do_repair_state'
+      stop 'gotm_fabm::do_repair_state'
    end if
 
    end subroutine do_repair_state
@@ -633,17 +633,17 @@
    ! Shortcut to the number of pelagic state variables.
    n = ubound(model%info%state_variables,1)
 
-   ! Provide RMBM with (pointers to) the current state.
+   ! Provide FABM with (pointers to) the current state.
    do i=1,ubound(model%info%state_variables,1)
-      call rmbm_link_state_data(model,i,cc(i,1:nlev))
+      call fabm_link_state_data(model,i,cc(i,1:nlev))
    end do
    do i=1,ubound(model%info%state_variables_ben,1)
-      call rmbm_link_benthos_state_data(model,i,cc(n+i,1))
+      call fabm_link_benthos_state_data(model,i,cc(n+i,1))
    end do
 
    ! If this is not the first step in the (multi-step) integration scheme,
    ! then first make sure that the intermediate state variable values are valid.
-   if (.not. first) call do_repair_state(nlev,'gotm_rmbm::right_hand_side_rhs')
+   if (.not. first) call do_repair_state(nlev,'gotm_fabm::right_hand_side_rhs')
 
    ! Initialization is needed because the different biogeochemical models increment or decrement
    ! the temporal derivatives, rather than setting them directly. This is needed for the simultaenous
@@ -651,17 +651,17 @@
    rhs = _ZERO_
 
    ! Calculate temporal derivatives due to benthic processes.
-   call rmbm_do_benthos(model,1,rhs(1:n,1),rhs(n+1:,1))
+   call fabm_do_benthos(model,1,rhs(1:n,1),rhs(n+1:,1))
    
    ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
    rhs(1:n,1) = rhs(1:n,1)/h(2)
 
    ! Add pelagic sink and source terms for all depth levels.
-#ifdef _RMBM_USE_1D_LOOP_
-   call rmbm_do(model,1,nlev,rhs(1:n,1:nlev))
+#ifdef _FABM_USE_1D_LOOP_
+   call fabm_do(model,1,nlev,rhs(1:n,1:nlev))
 #else   
    do i=1,nlev
-      call rmbm_do(model,i,rhs(1:n,i))
+      call fabm_do(model,i,rhs(1:n,i))
    end do
 #endif
 
@@ -705,36 +705,36 @@
    ! Shortcut to the number of pelagic state variables.
    n = ubound(model%info%state_variables,1)
 
-   ! Provide RMBM with (pointers to) the current state.
+   ! Provide FABM with (pointers to) the current state.
    do i=1,ubound(model%info%state_variables,1)
-      call rmbm_link_state_data(model,i,cc(i,1:nlev))
+      call fabm_link_state_data(model,i,cc(i,1:nlev))
    end do
    do i=1,ubound(model%info%state_variables_ben,1)
-      call rmbm_link_benthos_state_data(model,i,cc(n+i,1))
+      call fabm_link_benthos_state_data(model,i,cc(n+i,1))
    end do
 
    ! If this is not the first step in the (multi-step) integration scheme,
    ! then first make sure that the intermediate state variable values are valid.
-   if (.not. first) call do_repair_state(nlev,'gotm_rmbm::right_hand_side_ppdd')
+   if (.not. first) call do_repair_state(nlev,'gotm_fabm::right_hand_side_ppdd')
 
-   ! Initialiaze production and destruction matrices to zero because RMBM
+   ! Initialiaze production and destruction matrices to zero because FABM
    ! biogeochemical models increment these, rather than set these.
    pp = _ZERO_
    dd = _ZERO_
    
    ! Calculate temporal derivatives due to benthic processes.
-   call rmbm_do_benthos(model,1,pp(:,:,1),dd(:,:,1),n)
+   call fabm_do_benthos(model,1,pp(:,:,1),dd(:,:,1),n)
    
    ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
    pp(1:n,:,1) = pp(1:n,:,1)/h(2)
    dd(1:n,:,1) = dd(1:n,:,1)/h(2)
 
    ! Add pelagic sink and source terms for all depth levels.
-#ifdef _RMBM_USE_1D_LOOP_
-   call rmbm_do(model,1,nlev,pp(1:n,1:n,1:nlev),dd(1:n,1:n,1:nlev))
+#ifdef _FABM_USE_1D_LOOP_
+   call fabm_do(model,1,nlev,pp(1:n,1:n,1:nlev),dd(1:n,1:n,1:nlev))
 #else
    do i=1,nlev
-      call rmbm_do(model,i,pp(1:n,1:n,i),dd(1:n,1:n,i))
+      call fabm_do(model,i,pp(1:n,1:n,i),dd(1:n,1:n,i))
    end do
 #endif
 
@@ -747,7 +747,7 @@
 ! !IROUTINE: Finish biogeochemical model
 !
 ! !INTERFACE:
-   subroutine clean_gotm_rmbm
+   subroutine clean_gotm_fabm
 !
 ! !DESCRIPTION:
 !  Deallocate memory.
@@ -762,7 +762,7 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   LEVEL1 'clean_gotm_rmbm'
+   LEVEL1 'clean_gotm_fabm'
 
    ! Deallocate internal arrays
    if (allocated(cc))             deallocate(cc)
@@ -777,7 +777,7 @@
    if (allocated(pres))           deallocate(pres)
    LEVEL1 'done.'
 
-   end subroutine clean_gotm_rmbm
+   end subroutine clean_gotm_fabm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -809,7 +809,7 @@
 ! !LOCAL VARIABLES:
    integer :: i
    REALTYPE :: zz,bioext,localext
-#ifdef _RMBM_USE_1D_LOOP_
+#ifdef _FABM_USE_1D_LOOP_
    REALTYPE :: localexts(1:nlev)
 #endif
 !
@@ -818,14 +818,14 @@
    zz = _ZERO_
    bioext = _ZERO_
 
-#ifdef _RMBM_USE_1D_LOOP_
-   call rmbm_get_light_extinction(model,1,nlev,localexts)
+#ifdef _FABM_USE_1D_LOOP_
+   call fabm_get_light_extinction(model,1,nlev,localexts)
 #endif
    do i=nlev,1,-1
-#ifdef _RMBM_USE_1D_LOOP_
+#ifdef _FABM_USE_1D_LOOP_
       localext = localexts(i)
 #else
-      call rmbm_get_light_extinction(model,i,localext)
+      call fabm_get_light_extinction(model,i,localext)
 #endif
    
       ! Add the extinction of the first half of the grid box.
@@ -850,7 +850,7 @@
 ! !IROUTINE: Initialize output
 !
 ! !INTERFACE:
-   subroutine init_output_gotm_rmbm()
+   subroutine init_output_gotm_fabm()
    
 !
 ! !DESCRIPTION:
@@ -879,7 +879,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. rmbm_calc) return
+   if (.not. fabm_calc) return
    
    select case (out_fmt)
       case (NETCDF)
@@ -946,7 +946,7 @@
 #endif
    end select
 
-   end subroutine init_output_gotm_rmbm
+   end subroutine init_output_gotm_fabm
 !EOC
 
 !-----------------------------------------------------------------------
@@ -955,7 +955,7 @@
 ! !IROUTINE: Save values of biogeochemical variables
 !
 ! !INTERFACE:
-   subroutine save_gotm_rmbm(nlev)
+   subroutine save_gotm_fabm(nlev)
    
 !
 ! !DESCRIPTION:
@@ -988,7 +988,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. rmbm_calc) return
+   if (.not. fabm_calc) return
    
    select case (out_fmt)
       case (NETCDF)
@@ -1034,8 +1034,8 @@
          end do
 
          ! Integrate conserved quantities over depth.
-#ifdef _RMBM_USE_1D_LOOP_
-         call rmbm_get_conserved_quantities(model,1,nlev,local)
+#ifdef _FABM_USE_1D_LOOP_
+         call fabm_get_conserved_quantities(model,1,nlev,local)
          do n=1,ubound(model%info%conserved_quantities,1)
             ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
             ! We therefore need to increment the index by 1 in order to address original elements >=1!
@@ -1046,7 +1046,7 @@
          do n=1,nlev
             ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
             ! We therefore need to increment the index by 1 in order to address original elements >=1!
-            call rmbm_get_conserved_quantities(model,n,local)
+            call fabm_get_conserved_quantities(model,n,local)
             total = total + h(n+1)*local
          end do
 #endif
@@ -1058,10 +1058,10 @@
 #endif
    end select
 
-   end subroutine save_gotm_rmbm
+   end subroutine save_gotm_fabm
 !EOC
 
-   end module gotm_rmbm
+   end module gotm_fabm
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
