@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.46 2011-01-11 16:38:33 jorn Exp $
+!$Id: gotm.F90,v 1.47 2011-01-13 12:04:34 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -68,7 +68,7 @@
    use bio_fluxes
    use bio_var, only: npar,numc,cc
 #endif
-#ifdef _RMBM_
+#ifdef _FABM_
    use gotm_rmbm
 #endif
 
@@ -97,8 +97,11 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.47  2011-01-13 12:04:34  jorn
+!  renamed RMBM to FABM
+!
 !  Revision 1.46  2011-01-11 16:38:33  jorn
-!  call rmbm from gotm (if _RMBM_ is defined)
+!  call rmbm from gotm (if _FABM_ is defined)
 !
 !  Revision 1.45  2010-09-17 12:53:47  jorn
 !  extensive code clean-up to ensure proper initialization and clean-up of all variables
@@ -398,7 +401,7 @@
 #endif
 
 !  initalize RMBM module
-#ifdef _RMBM_
+#ifdef _FABM_
 
    call init_gotm_rmbm(namlst,'rmbm.nml')
 
@@ -542,7 +545,7 @@
          call get_bio_updates(nlev,bioshade)
       end if
 #endif
-#ifdef _RMBM_
+#ifdef _FABM_
       call do_gotm_rmbm(nlev)
 #endif
 
@@ -587,7 +590,7 @@
 #ifdef BIO
          if (bio_calc) call bio_save(_ZERO_)
 #endif
-#ifdef _RMBM_
+#ifdef _FABM_
          call save_gotm_rmbm(nlev)
 #endif
       end if
@@ -660,7 +663,7 @@
    call end_seagrass
 #endif
 
-#ifdef _RMBM_
+#ifdef _FABM_
    call clean_gotm_rmbm()
 #endif
 
