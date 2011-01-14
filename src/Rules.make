@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.33 2011-01-14 09:28:56 jorn Exp $
+#$Id: Rules.make,v 1.34 2011-01-14 09:58:41 jorn Exp $
 
 SHELL   = /bin/sh
 
@@ -71,7 +71,7 @@ endif
 ifdef FABM
 
 ifndef FABMDIR
-FABMDIR  := $(HOME)/fabm-svn
+FABMDIR  := $(HOME)/FABM/fabm-svn
 endif
 
 INCDIRS         += -I$(FABMDIR)/include -I$(FABMDIR)/src/drivers/gotm -I$(FABMDIR)/modules/gotm/$(FORTRAN_COMPILER)
