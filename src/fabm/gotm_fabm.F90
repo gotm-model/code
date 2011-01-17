@@ -1,4 +1,4 @@
-!$Id: gotm_fabm.F90,v 1.2 2011-01-13 12:20:22 jorn Exp $
+!$Id: gotm_fabm.F90,v 1.3 2011-01-17 12:14:27 jorn Exp $
 #include "cppdefs.h"
 #include "fabm_driver.h"
 
@@ -72,21 +72,21 @@
    type (type_model), pointer :: model
    
    ! Arrays for state and diagnostic variables
-   REALTYPE,allocatable,dimension(LOCATION_DIMENSIONS,:),target :: cc
-   REALTYPE,allocatable,dimension(LOCATION_DIMENSIONS,:)        :: cc_diag
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:),target :: cc
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:)        :: cc_diag
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
-   REALTYPE,allocatable,dimension(LOCATION_DIMENSIONS,:) :: ws
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:) :: ws
    REALTYPE,allocatable,dimension(:)                     :: sfl,bfl,total,cc_diag_hz
    REALTYPE,allocatable _ATTR_DIMENSIONS_1_              :: local
    
    ! Arrays for environmental variables not supplied externally.
-   REALTYPE,allocatable,dimension(LOCATION_DIMENSIONS)   :: par,pres
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres
    
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(LOCATION_DIMENSIONS) :: nuh,h,bioshade,rad,w,z
+   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,rad,w,z
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
 
    contains
@@ -245,7 +245,7 @@
 ! !IROUTINE: Initialise bio variables
 !
 ! !INTERFACE:
-   subroutine init_var_gotm_fabm(LOCATION)
+   subroutine init_var_gotm_fabm(_LOCATION_)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -253,7 +253,7 @@
 ! !USES:
    IMPLICIT NONE
    
-   _LOCATION_TYPE_,intent(in) :: LOCATION
+   _LOCATION_TYPE_,intent(in) :: _LOCATION_
 !
 !
 ! !REVISION HISTORY:
@@ -268,14 +268,14 @@
 !BOC
    if (.not. fabm_calc) return
    
-   call fabm_set_domain(model,LOCATION)
+   call fabm_set_domain(model,_LOCATION_)
 
    ! Allocate state variable array for pelagic amnd benthos combined and provide initial values.
    ! In terms of memory use, it is a waste to allocate storage for benthic variables across the entire
    ! column (the bottom layer should suffice). However, it is important that all values at a given point
    ! in time are integrated simultaneously in multi-step algorithms. This currently can only be arranged
    ! By storing benthic values together with the pelagic, in a full;y depth=-explicit array.
-   allocate(cc(1:ubound(model%info%state_variables,1)+ubound(model%info%state_variables_ben,1),LOCATION_RANGE),stat=rc)
+   allocate(cc(1:ubound(model%info%state_variables,1)+ubound(model%info%state_variables_ben,1),_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc)'
    cc = _ZERO_
    do i=1,ubound(model%info%state_variables,1)
@@ -287,7 +287,7 @@
 
    ! Allocate diagnostic variable array and set all values to zero.
    ! (needed because time-integrated/averaged variables will increment rather than set the array)
-   allocate(cc_diag(1:ubound(model%info%diagnostic_variables,1),LOCATION_RANGE),stat=rc)
+   allocate(cc_diag(1:ubound(model%info%diagnostic_variables,1),_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_diag)'
    cc_diag = _ZERO_
 
@@ -299,7 +299,7 @@
 
    ! Allocate array with vertical movement rates (m/s, positive for upwards),
    ! and set these to the values provided by the model.
-   allocate(ws(LOCATION_RANGE,1:ubound(model%info%state_variables,1)),stat=rc)
+   allocate(ws(_LOCATION_RANGE_,1:ubound(model%info%state_variables,1)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (ws)'
    do i=1,ubound(model%info%state_variables,1)
       ws(:,i) = model%info%state_variables(i)%vertical_movement
@@ -317,22 +317,22 @@
 
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
-   allocate(par(LOCATION_RANGE),stat=rc)
+   allocate(par(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
-   call fabm_link_data(model,varname_par,par(1:LOCATION))
+   call fabm_link_data(model,varname_par,par(1:_LOCATION_))
 
    ! Allocate array for local pressure.
    ! This will be calculated [approximated] from layer depths internally during each time step.
-   allocate(pres(LOCATION_RANGE),stat=rc)
+   allocate(pres(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (pres)'
-   call fabm_link_data(model,varname_pres,pres(1:LOCATION))
+   call fabm_link_data(model,varname_pres,pres(1:_LOCATION_))
 
    ! Allocate arrays for storing local and column-integrated values of diagnostic variables.
    ! These are used during each save.
    allocate(total(1:ubound(model%info%conserved_quantities,1)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (total)'
 #ifdef _FABM_USE_1D_LOOP_
-   allocate(local(1:LOCATION,1:ubound(model%info%conserved_quantities,1)),stat=rc)
+   allocate(local(1:_LOCATION_,1:ubound(model%info%conserved_quantities,1)),stat=rc)
 #else
    allocate(local(1:ubound(model%info%conserved_quantities,1)),stat=rc)
 #endif
