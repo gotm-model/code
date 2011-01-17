@@ -1632,8 +1632,12 @@ class NetCDFStore_MOM4(NetCDFStore):
         ncvars,ncdims = nc.variables,nc.dimensions
         if ('xt_ocean'  in ncdims and 'yt_ocean' in ncdims and
             'geolon_t' in ncvars and 'geolat_t' in ncvars):
-            self.reassigneddims['xt_ocean' ] = 'geolon_t'
-            self.reassigneddims['yt_ocean'] = 'geolat_t'
+            lon = numpy.ma.compressed(getNcData(ncvars['geolon_t']))
+
+            # Only reassign dimension if alternative coordinate values have a meaningful value.
+            if lon.shape[0]>0 and (lon!=lon[0]).any():
+                self.reassigneddims['xt_ocean' ] = 'geolon_t'
+                self.reassigneddims['yt_ocean'] = 'geolat_t'
 
 NetCDFStore.registerConvention(NetCDFStore_GOTM)
 NetCDFStore.registerConvention(NetCDFStore_MOM4)
