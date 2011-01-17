@@ -1517,11 +1517,8 @@ class Figure(xmlstore.util.referencedobject):
                     if crange[0] is None and crange[1] is None:
                         # Automatic color bounds: first check if we are not dealing with data with all the same value.
                         # if so, explicitly set the color range because MatPlotLib 0.90.0 chokes on identical min and max.
-                        if numpy.ma.getmask(C) is not numpy.ma.nomask:
-                            flatC = C.compressed()
-                        else:
-                            flatC = C.ravel()
-                        if len(flatC)>0:
+                        flatC = numpy.ma.compressed(C)
+                        if flatC.shape[0]>0:
                             # One or more unmasked values
                             if (flatC==flatC[0]).all(): crange = (flatC[0]-1.,flatC[0]+1.)
                         else:
