@@ -1,4 +1,4 @@
-!$Id: gotm_fabm.F90,v 1.3 2011-01-17 12:14:27 jorn Exp $
+!$Id: gotm_fabm.F90,v 1.4 2011-01-17 16:22:44 jorn Exp $
 #include "cppdefs.h"
 #include "fabm_driver.h"
 
@@ -253,7 +253,7 @@
 ! !USES:
    IMPLICIT NONE
    
-   _LOCATION_TYPE_,intent(in) :: _LOCATION_
+   _DECLARE_LOCATION_ARG_
 !
 !
 ! !REVISION HISTORY:
@@ -268,7 +268,7 @@
 !BOC
    if (.not. fabm_calc) return
    
-   call fabm_set_domain(model,_LOCATION_)
+   call fabm_set_domain(model _ARG_LOCATION_)
 
    ! Allocate state variable array for pelagic amnd benthos combined and provide initial values.
    ! In terms of memory use, it is a waste to allocate storage for benthic variables across the entire
