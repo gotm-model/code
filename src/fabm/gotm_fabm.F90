@@ -1,4 +1,4 @@
-!$Id: gotm_fabm.F90,v 1.4 2011-01-17 16:22:44 jorn Exp $
+!$Id: gotm_fabm.F90,v 1.5 2011-01-29 22:42:43 jorn Exp $
 #include "cppdefs.h"
 #include "fabm_driver.h"
 
@@ -385,8 +385,8 @@
    rad => rad_             ! short wave radiation [1d array] used to calculate photosynthetically active radiation
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
    z => z_                 ! depth [1d array], used to calculate local pressure
-   precip => precip_       ! precipitation [scalar] - used to calculate dilution of biogeochemical variables due to increased water volume
-   evap   => evap_         ! evaporation [scalar] - used to calculate concentration of biogeochemical variables due to decreased water volume
+   precip => precip_       ! precipitation [scalar] - used to calculate dilution due to increased water volume
+   evap   => evap_         ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    
    ! Copy scalars that will not change during simulation, and are needed in do_gotm_fabm)
    dt = dt_
@@ -1000,7 +1000,8 @@
 
          ! Store benthic biogeochemical state variables.
          do n=1,ubound(model%info%state_variables_ben,1)
-            iret = store_data(ncid,model%info%state_variables_ben(n)%externalid,XYT_SHAPE,1,scalar=cc(ubound(model%info%state_variables,1)+n,1))
+            iret = store_data(ncid,model%info%state_variables_ben(n)%externalid,XYT_SHAPE,1, &
+                            & scalar=cc(ubound(model%info%state_variables,1)+n,1))
          end do
 
          ! Process and store diagnostic variables defined on the full domain.
