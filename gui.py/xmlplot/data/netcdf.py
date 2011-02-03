@@ -900,51 +900,60 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
                     stagcoordvar = self.store.getVariable_raw(boundvar)
                     assert stagcoordvar is not None, 'Boundary values for coordinate variable %s are set to variable %s, but this variable is not present in the NetCDF file.' % (coordvar.getName(),boundvar)
             
+            class NetCDFWarning(Exception): pass
+            
             # Get staggered coordinates over entire domain
             if stagcoordvar is not None:
-                centshape = coordvar.getShape()
-                stagshape = stagcoordvar.getShape()
-                if len(stagshape)==len(centshape)+1:    # CF convention: one extra dimension for the corner index
-                    stagdata = stagcoordvar.getSlice(dataonly=True, cache=True)
-                    newshape = [l+1 for l in centshape]
-                    stagcoordvar = numpy.zeros(newshape)
-                    if len(centshape)==1:
-                        assert stagshape[-1]==2, 'A 1D coordinate variable must have 2 boundaries per cell (not %i).' % (stagshape[-1],)
-                        stagcoordvar[:-1] =  stagdata[:,0]
-                        stagcoordvar[1: ] += stagdata[:,1]
-                        stagcoordvar[1:-1] /= 2
-                    elif len(centshape)==2:
-                        assert stagshape[-1]==4, 'A 2D coordinate variable must have 4 boundaries per cell (not %i).' % (stagshape[-1],)
-                        stagcoordvar[ :-1, :-1]  = stagdata[:,:,0]
-                        stagcoordvar[ :-1,1:  ] += stagdata[:,:,1]
-                        stagcoordvar[1:,  1:  ] += stagdata[:,:,2]
-                        stagcoordvar[1:  , :-1] += stagdata[:,:,3]
-                        stagcoordvar[1:-1,:] /= 2
-                        stagcoordvar[:,1:-1] /= 2
-            
-                coordslice_stag = []
-                for slc in coordslice:
-                    if isinstance(slc,slice):
-                        # We take a subset of this dimension: extent the slice with 1.
-                        coordslice_stag.append(slice(slc.start,slc.stop+slc.step,slc.step))
+                try:
+                    centshape = coordvar.getShape()
+                    stagshape = stagcoordvar.getShape()
+                    if len(stagshape)==len(centshape)+1:    # CF convention: one extra dimension for the corner index
+                        stagdata = stagcoordvar.getSlice(dataonly=True, cache=True)
+                        newshape = [l+1 for l in centshape]
+                        stagcoordvar = numpy.zeros(newshape)
+                        if len(centshape)==1:
+                            if stagshape[-1]!=2:           raise NetCDFWarning('A 1D coordinate variable must have 2 boundaries per cell (not %i).' % (stagshape[-1],))
+                            if stagshape[0]!=centshape[0]: raise NetCDFWarning('Lengths of the main dimension of interface (%i) and center coordinates (%i) do not match.' % (stagshape[0],centshape[0]))
+                            stagcoordvar[:-1] =  stagdata[:,0]
+                            stagcoordvar[1: ] += stagdata[:,1]
+                            stagcoordvar[1:-1] /= 2
+                        elif len(centshape)==2:
+                            if stagshape[-1]!=4: raise NetCDFWarning('A 2D coordinate variable must have 4 boundaries per cell (not %i).' % (stagshape[-1],))
+                            stagcoordvar[ :-1, :-1]  = stagdata[:,:,0]
+                            stagcoordvar[ :-1,1:  ] += stagdata[:,:,1]
+                            stagcoordvar[1:,  1:  ] += stagdata[:,:,2]
+                            stagcoordvar[1:  , :-1] += stagdata[:,:,3]
+                            stagcoordvar[1:-1,:] /= 2
+                            stagcoordvar[:,1:-1] /= 2
+                
+                    coordslice_stag = []
+                    for slc in coordslice:
+                        if isinstance(slc,slice):
+                            # We take a subset of this dimension: extent the slice with 1.
+                            coordslice_stag.append(slice(slc.start,slc.stop+slc.step,slc.step))
+                        else:
+                            # We take a single [centered] index from this dimension:
+                            # Get the left and right bounds, so we can average them later.
+                            coordslice_stag.append(slice(slc,slc+2))
+                    if isinstance(stagcoordvar,numpy.ndarray):
+                        coords_stag = stagcoordvar[coordslice_stag]
                     else:
-                        # We take a single [centered] index from this dimension:
-                        # Get the left and right bounds, so we can average them later.
-                        coordslice_stag.append(slice(slc,slc+2))
-                if isinstance(stagcoordvar,numpy.ndarray):
-                    coords_stag = stagcoordvar[coordslice_stag]
-                else:
-                    coords_stag = stagcoordvar.getSlice(coordslice_stag, dataonly=True, cache=True)
+                        coords_stag = stagcoordvar.getSlice(coordslice_stag, dataonly=True, cache=True)
 
-                # Undo the staggering of the dimensions that we take a single slice through
-                # by averaging the left- and right bounds.
-                for i in range(len(coordslice)-1,-1,-1):
-                    if isinstance(coordslice[i],int): coords_stag = coords_stag.mean(axis=i)
+                    # Undo the staggering of the dimensions that we take a single slice through
+                    # by averaging the left- and right bounds.
+                    for i in range(len(coordslice)-1,-1,-1):
+                        if isinstance(coordslice[i],int): coords_stag = coords_stag.mean(axis=i)
 
-                # Coordinates should not have a mask - undo the masking.
-                if numpy.ma.getmask(coords_stag) is not numpy.ma.nomask:
-                    coords_stag = numpy.array(coords_stag,copy=False)
-            else:
+                    # Coordinates should not have a mask - undo the masking.
+                    if numpy.ma.getmask(coords_stag) is not numpy.ma.nomask:
+                        coords_stag = numpy.array(coords_stag,copy=False)
+                except NetCDFWarning,e:
+                    # Problem with specified interface coordinate - make sure they auto-generated instead.
+                    print e
+                    stagcoordvar = None
+            
+            if stagcoordvar is None:
                 # Auto-generate the staggered coordinates.
                 coords_stag = xmlplot.common.stagger(coords)
             
