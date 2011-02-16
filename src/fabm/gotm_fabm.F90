@@ -1,4 +1,4 @@
-!$Id: gotm_fabm.F90,v 1.5 2011-01-29 22:42:43 jorn Exp $
+!$Id: gotm_fabm.F90,v 1.6 2011-02-16 16:19:59 jorn Exp $
 #include "cppdefs.h"
 #include "fabm_driver.h"
 
@@ -81,7 +81,7 @@
    REALTYPE,allocatable _ATTR_DIMENSIONS_1_              :: local
    
    ! Arrays for environmental variables not supplied externally.
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres,swr
    
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
@@ -320,6 +320,12 @@
    allocate(par(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
    call fabm_link_data(model,varname_par,par(1:_LOCATION_))
+
+   ! Allocate array for photosynthetically active radiation (PAR).
+   ! This will be calculated internally during each time step.
+   allocate(swr(_LOCATION_RANGE_),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (swr)'
+   call fabm_link_data(model,varname_swr,swr(1:_LOCATION_))
 
    ! Allocate array for local pressure.
    ! This will be calculated [approximated] from layer depths internally during each time step.
@@ -774,6 +780,7 @@
    if (allocated(total))          deallocate(total)
    if (allocated(local))          deallocate(local)
    if (allocated(par))            deallocate(par)
+   if (allocated(swr))            deallocate(swr)
    if (allocated(pres))           deallocate(pres)
    LEVEL1 'done.'
 
@@ -793,7 +800,7 @@
 ! based on surface radiation, and background and biotic extinction.
 !
 ! !USES:
-   use observations, only:A,g2
+   use observations, only:A,g1,g2
    
    IMPLICIT NONE
 !
@@ -833,6 +840,7 @@
 
       zz=zz+0.5*h(i+1)
       par(i)=rad(nlev)*(_ONE_-A)*exp(-zz/g2-bioext)
+      swr(i)=par(i)+rad(nlev)*A*exp(-zz/g1)
 
       ! Add the extinction of the second half of the grid box.
       bioext = bioext+localext*0.5*h(i+1)
