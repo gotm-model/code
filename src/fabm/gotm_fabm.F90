@@ -1,4 +1,4 @@
-!$Id: gotm_fabm.F90,v 1.6 2011-02-16 16:19:59 jorn Exp $
+!$Id: gotm_fabm.F90,v 1.7 2011-02-18 17:10:26 jorn Exp $
 #include "cppdefs.h"
 #include "fabm_driver.h"
 
@@ -51,7 +51,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_fabm,init_var_gotm_fabm
+   public init_gotm_fabm
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm,save_gotm_fabm
 
@@ -97,7 +97,7 @@
 ! !IROUTINE: Initialise the bio module
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm(namlst,fname)
+   subroutine init_gotm_fabm(_LOCATION_,namlst,fname)
 !
 ! !DESCRIPTION: 
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
@@ -106,7 +106,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer,          intent(in)        :: namlst
+   integer,          intent(in)        :: _LOCATION_,namlst
    character(len=*), intent(in)        :: fname
 
 !
@@ -154,7 +154,7 @@
       end do
       
       ! Initialize model tree (creates metadata and assigns variable identifiers)
-      call fabm_init(model,namlst)
+      call fabm_init(model,namlst,_LOCATION_)
 
       ! Report prognostic variable descriptions
       LEVEL2 'FABM pelagic state variables:'
@@ -219,6 +219,9 @@
       
       ! Initialize FABM output (creates NetCDF variables)
       call init_output_gotm_fabm()
+      
+      ! Initialize spatially explicit variables
+      call init_var_gotm_fabm(_LOCATION_)
 
    end if
 
@@ -266,10 +269,6 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. fabm_calc) return
-   
-   call fabm_set_domain(model _ARG_LOCATION_)
-
    ! Allocate state variable array for pelagic amnd benthos combined and provide initial values.
    ! In terms of memory use, it is a waste to allocate storage for benthic variables across the entire
    ! column (the bottom layer should suffice). However, it is important that all values at a given point
