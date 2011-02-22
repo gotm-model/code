@@ -1,4 +1,4 @@
-!$Id: driver_0d.F90,v 1.7 2009-05-10 18:34:51 jorn Exp $
+!$Id: driver_0d.F90,v 1.8 2011-01-11 16:37:05 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -198,7 +198,7 @@
 ! !IROUTINE: Get the right-hand side of the ODE system.
 !
 ! !INTERFACE:
-   subroutine get_rhs(first,numc,nlev,cc,pp,dd)
+   subroutine get_ppdd(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -224,6 +224,45 @@
 !-----------------------------------------------------------------------
 !BOC
    call do_bio_0d_generic(model,first,cc(:,1),env,pp(:,:,1),dd(:,:,1),diag)
+   
+   end subroutine get_ppdd
+!EOC
+!BOP
+!
+! !IROUTINE: Get the right-hand side of the ODE system.
+!
+! !INTERFACE:
+   subroutine get_rhs(first,numc,nlev,cc,rhs)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   logical, intent(in)                  :: first
+   integer, intent(in)                  :: numc,nlev
+   REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   REALTYPE :: pp(1:numc,1:numc)
+   REALTYPE :: dd(1:numc,1:numc)
+   REALTYPE :: diag(1:model%info%diagnostic_variable_count)
+   integer  :: i
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   call do_bio_0d_generic(model,first,cc(:,1),env,pp(:,:),dd(:,:),diag)
+   do i=1,numc
+      rhs(i,1) = sum(pp(i,:))-sum(dd(i,:))
+   end do
    
    end subroutine get_rhs
 !EOC
@@ -284,7 +323,7 @@
       env%par = par_fraction*env%par
 
       ! Integrate one time step
-      call ode_solver(ode_method,model%info%state_variable_count,1,dt,cc,get_rhs)
+      call ode_solver(ode_method,model%info%state_variable_count,1,dt,cc,get_rhs,get_ppdd)
       
       ! Do output
       if (mod(n,nsave).eq.0) then

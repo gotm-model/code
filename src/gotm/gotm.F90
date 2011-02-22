@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.45 2010-09-17 12:53:47 jorn Exp $
+!$Id: gotm.F90,v 1.49 2011-02-18 17:10:27 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -68,6 +68,9 @@
    use bio_fluxes
    use bio_var, only: npar,numc,cc
 #endif
+#ifdef _FABM_
+   use gotm_fabm
+#endif
 
    use output
 
@@ -94,6 +97,18 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.49  2011-02-18 17:10:27  jorn
+!  combined FABM initialization and space-explicit allocation in single routine
+!
+!  Revision 1.48  2011-01-13 12:20:22  jorn
+!  further renames RMBM to FABM
+!
+!  Revision 1.47  2011-01-13 12:04:34  jorn
+!  renamed FABM to FABM
+!
+!  Revision 1.46  2011-01-11 16:38:33  jorn
+!  call fabm from gotm (if _FABM_ is defined)
+!
 !  Revision 1.45  2010-09-17 12:53:47  jorn
 !  extensive code clean-up to ensure proper initialization and clean-up of all variables
 !
@@ -391,6 +406,16 @@
 
 #endif
 
+!  initalize FABM module
+#ifdef _FABM_
+
+   call init_gotm_fabm(nlev,namlst,'fabm.nml')
+
+   call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
+                          nuh,h,w,rad(1:nlev),bioshade(1:nlev),I_0,wind,precip,evap,z(1:nlev))
+
+#endif
+
    LEVEL2 'done.'
    STDERR LINE
 
@@ -524,6 +549,9 @@
          call get_bio_updates(nlev,bioshade)
       end if
 #endif
+#ifdef _FABM_
+      call do_gotm_fabm(nlev)
+#endif
 
 !    compute turbulent mixing
       select case (turb_method)
@@ -565,6 +593,9 @@
 #endif
 #ifdef BIO
          if (bio_calc) call bio_save(_ZERO_)
+#endif
+#ifdef _FABM_
+         call save_gotm_fabm(nlev)
 #endif
       end if
 
@@ -634,6 +665,10 @@
 
 #ifdef SEAGRASS
    call end_seagrass
+#endif
+
+#ifdef _FABM_
+   call clean_gotm_fabm()
 #endif
 
    return

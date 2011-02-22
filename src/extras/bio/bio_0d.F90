@@ -1,4 +1,4 @@
-!$Id: bio_0d.F90,v 1.11 2010-09-17 12:53:46 jorn Exp $
+!$Id: bio_0d.F90,v 1.13 2011-01-11 16:37:05 jorn Exp $
 #include"cppdefs.h"
 
 !-----------------------------------------------------------------------
@@ -590,7 +590,7 @@
       cc_loc(1:model%info%state_variable_count,1) = par_prop(np,1:model%info%state_variable_count,nt)
 
       ! Call ode solver to get updated state
-      call ode_solver(ode_method,model%info%state_variable_count,1,dt,cc_loc,get_bio_0d_par_rhs)
+      call ode_solver(ode_method,model%info%state_variable_count,1,dt,cc_loc,get_bio_0d_par_rhs,get_bio_0d_par_ppdd)
 
       ! Store updated state as particle properties
       par_prop(np,1:model%info%state_variable_count,nt) = cc_loc(1:model%info%state_variable_count,1)
@@ -628,7 +628,46 @@
 ! !IROUTINE: Get the right-hand side of the ODE system for the current particle
 !
 ! !INTERFACE:
-   subroutine get_bio_0d_par_rhs(first,numc,nlev,cc,pp,dd)
+   subroutine get_bio_0d_par_rhs(first,numc,nlev,cc,rhs)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   logical, intent(in)                  :: first
+   integer, intent(in)                  :: numc,nlev
+   REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   REALTYPE                   :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
+   integer                    :: i
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   call get_bio_0d_par_ppdd(first,numc,nlev,cc,pp,dd)
+   
+   do i=1,numc
+      rhs(i,:) = sum(pp(i,:,:),1)-sum(dd(i,:,:),1)
+   end do
+
+   end subroutine get_bio_0d_par_rhs
+!EOC
+
+!BOP
+!
+! !IROUTINE: Get the right-hand side of the ODE system for the current particle
+!
+! !INTERFACE:
+   subroutine get_bio_0d_par_ppdd(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -671,7 +710,7 @@
    env_par%rho  = rat*rho(i)+(1.-rat)*rho(i-1)
    call do_bio_0d_generic(model,first,par_prop(np,1:model%info%state_variable_count,nt),env_par,pp(:,:,1),dd(:,:,1),diag)
 
-   end subroutine get_bio_0d_par_rhs
+   end subroutine get_bio_0d_par_ppdd
 !EOC
 
 !-----------------------------------------------------------------------
@@ -687,7 +726,7 @@
 !
 ! !USES:
    use output,  only: nsave
-   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dims
+   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dim3d,dim4d
    use ncdfout, only: define_mode,new_nc_variable,set_attributes,store_data
 
    IMPLICIT NONE
@@ -716,26 +755,28 @@
          if(first) then
             iret = define_mode(ncid,.true.)
 
-            dims(1) = lon_dim
-            dims(2) = lat_dim
-            dims(3) = z_dim
-            dims(4) = time_dim
+            dim4d(1) = lon_dim
+            dim4d(2) = lat_dim
+            dim4d(3) = z_dim
+            dim4d(4) = time_dim
 
             ! Add a variable for each diagnostic variable
             do n=1,model%info%diagnostic_variable_count
                iret = new_nc_variable(ncid,model%info%diagnostic_variables(n)%name,NF_REAL, &
-                                      4,dims,model%info%diagnostic_variables(n)%id)
+                                      dim4d,model%info%diagnostic_variables(n)%id)
                iret = set_attributes(ncid,model%info%diagnostic_variables(n)%id,       &
                                      units=model%info%diagnostic_variables(n)%unit,    &
                                      long_name=model%info%diagnostic_variables(n)%longname)
             end do
 
-            dims(3) = time_dim
+            dim3d(1) = lon_dim
+            dim3d(2) = lat_dim
+            dim3d(3) = time_dim
 
             ! Add a variable for each conserved quantity
             do n=1,model%info%conserved_quantity_count
                iret = new_nc_variable(ncid,'tot_'//model%info%conserved_quantities(n)%name,NF_REAL, &
-                                      3,dims,model%info%conserved_quantities(n)%id)
+                                      dim3d,model%info%conserved_quantities(n)%id)
                iret = set_attributes(ncid,model%info%conserved_quantities(n)%id,       &
                                      units='m*'//model%info%conserved_quantities(n)%unit,    &
                                      long_name='depth-integrated '//model%info%conserved_quantities(n)%longname)

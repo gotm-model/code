@@ -1,4 +1,4 @@
-!$Id: ncdfout.F90,v 1.20 2010-09-17 12:53:52 jorn Exp $
+!$Id: ncdfout.F90,v 1.21 2010-12-16 09:52:37 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -34,10 +34,8 @@
 !
 ! !USES:
    use turbulence, only: turb_method
-
+   use netcdf
    IMPLICIT NONE
-
-   include 'netcdf.inc'
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_ncdf, do_ncdf_out, close_ncdf
@@ -51,13 +49,17 @@
 !  dimension ids
    integer                             :: lon_dim,lat_dim,z_dim,z1_dim
    integer                             :: time_dim
-   integer, parameter                  :: dim1=1,dim4=4
-   integer                             :: dims(dim4)
+   integer                             :: dim1d(1)
+   integer                             :: dim3d(3)
+   integer                             :: dim4d(4)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: ncdfout.F90,v $
+!  Revision 1.21  2010-12-16 09:52:37  kb
+!  updated to Fortran90 NetCDF interface
+!
 !  Revision 1.20  2010-09-17 12:53:52  jorn
 !  extensive code clean-up to ensure proper initialization and clean-up of all variables
 !
@@ -124,7 +126,7 @@
    integer, parameter        :: lon_len=1
    integer, parameter        :: lat_len=1
    integer                   :: depth_len
-   integer, parameter        :: time_len=NF_UNLIMITED
+   integer, parameter        :: time_len=NF90_UNLIMITED
 !  variable ids
    integer, private          :: lon_id,lat_id,z_id,z1_id,time_id
    integer, private          :: zeta_id
@@ -194,7 +196,7 @@
    first = .true.
 
    ncid = -1
-   iret = nf_create(fn,NF_CLOBBER,ncid)
+   iret = nf90_create(fn,NF90_CLOBBER,ncid)
    call check_err(iret)
 
    depth_len=nlev
@@ -204,188 +206,188 @@
    end if
 
 !  define dimensions
-   iret = nf_def_dim(ncid, 'lon', 1, lon_dim)
+   iret = nf90_def_dim(ncid, 'lon', 1, lon_dim)
    call check_err(iret)
-   iret = nf_def_dim(ncid, 'lat', 1, lat_dim)
+   iret = nf90_def_dim(ncid, 'lat', 1, lat_dim)
    call check_err(iret)
-   iret = nf_def_dim(ncid, 'z', nlev, z_dim)
+   iret = nf90_def_dim(ncid, 'z', nlev, z_dim)
    call check_err(iret)
    if( .not. GrADS ) then
-      iret = nf_def_dim(ncid, 'z1', nlev, z1_dim)
+      iret = nf90_def_dim(ncid, 'z1', nlev, z1_dim)
       call check_err(iret)
    end if
-   iret = nf_def_dim(ncid, 'time', time_len, time_dim)
+   iret = nf90_def_dim(ncid, 'time', time_len, time_dim)
    call check_err(iret)
 
 !  define coordinates
-   dims(1) = lon_dim
-   iret = nf_def_var(ncid,'lon',NF_REAL,1,dims,lon_id)
+   dim1d = lon_dim
+   iret = nf90_def_var(ncid,'lon',NF90_REAL,dim1d,lon_id)
    call check_err(iret)
-   dims(1) = lat_dim
-   iret = nf_def_var(ncid,'lat',NF_REAL,1,dims,lat_id)
+   dim1d = lat_dim
+   iret = nf90_def_var(ncid,'lat',NF90_REAL,dim1d,lat_id)
    call check_err(iret)
-   dims(1) = z_dim
-   iret = nf_def_var(ncid,'z',NF_REAL,1,dims,z_id)
+   dim1d = z_dim
+   iret = nf90_def_var(ncid,'z',NF90_REAL,dim1d,z_id)
    call check_err(iret)
    if( .not. GrADS ) then
-      dims(1) = z1_dim
-      iret = nf_def_var(ncid,'z1',NF_REAL,1,dims,z1_id)
+      dim1d = z1_dim
+      iret = nf90_def_var(ncid,'z1',NF90_REAL,dim1d,z1_id)
       call check_err(iret)
    end if
-   dims(1) = time_dim
-   iret = nf_def_var(ncid,'time',NF_REAL,1,dims,time_id)
+   dim1d = time_dim
+   iret = nf90_def_var(ncid,'time',NF90_REAL,dim1d,time_id)
    call check_err(iret)
 
 !  define variables
 
 !  x,y,t
-   dims(1) = lon_dim
-   dims(2) = lat_dim
-   dims(3) = time_dim
-   iret = nf_def_var(ncid,'zeta',NF_REAL,3,dims, zeta_id)
+   dim3d(1) = lon_dim
+   dim3d(2) = lat_dim
+   dim3d(3) = time_dim
+   iret = nf90_def_var(ncid,'zeta',NF90_REAL,dim3d,zeta_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'sst',NF_REAL,3,dims, sst_id)
+   iret = nf90_def_var(ncid,'sst',NF90_REAL,dim3d,sst_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'sss',NF_REAL,3,dims, sss_id)
+   iret = nf90_def_var(ncid,'sss',NF90_REAL,dim3d,sss_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'x-taus',NF_REAL,3,dims, x_taus_id)
+   iret = nf90_def_var(ncid,'x-taus',NF90_REAL,dim3d,x_taus_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'y-taus',NF_REAL,3,dims, y_taus_id)
+   iret = nf90_def_var(ncid,'y-taus',NF90_REAL,dim3d,y_taus_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'swr',NF_REAL,3,dims, swr_id)
+   iret = nf90_def_var(ncid,'swr',NF90_REAL,dim3d,swr_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'heat',NF_REAL,3,dims, heat_id)
+   iret = nf90_def_var(ncid,'heat',NF90_REAL,dim3d,heat_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'total',NF_REAL,3,dims, total_id)
-   call check_err(iret)
-
-   iret = nf_def_var(ncid,'int_swr',NF_REAL,3,dims, int_swr_id)
-   call check_err(iret)
-   iret = nf_def_var(ncid,'int_heat',NF_REAL,3,dims, int_heat_id)
-   call check_err(iret)
-   iret = nf_def_var(ncid,'int_total',NF_REAL,3,dims, int_total_id)
-   call check_err(iret)
-   iret = nf_def_var(ncid,'precip',NF_REAL,3,dims, precip_id)
-   call check_err(iret)
-   iret = nf_def_var(ncid,'evap',NF_REAL,3,dims, evap_id)
+   iret = nf90_def_var(ncid,'total',NF90_REAL,dim3d,total_id)
    call check_err(iret)
 
-   iret = nf_def_var(ncid,'u_taus',NF_REAL,3,dims, u_taus_id)
+   iret = nf90_def_var(ncid,'int_swr',NF90_REAL,dim3d,int_swr_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'u_taub',NF_REAL,3,dims, u_taub_id)
+   iret = nf90_def_var(ncid,'int_heat',NF90_REAL,dim3d,int_heat_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'int_total',NF90_REAL,dim3d,int_total_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'precip',NF90_REAL,dim3d,precip_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'evap',NF90_REAL,dim3d,evap_id)
+   call check_err(iret)
+
+   iret = nf90_def_var(ncid,'u_taus',NF90_REAL,dim3d,u_taus_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'u_taub',NF90_REAL,dim3d,u_taub_id)
    call check_err(iret)
 
    if (turb_method.eq.99) then
-      iret = nf_def_var(ncid,'zsbl',NF_REAL,3,dims, zsbl_id)
+      iret = nf90_def_var(ncid,'zsbl',NF90_REAL,dim3d,zsbl_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'zbbl',NF_REAL,3,dims, zbbl_id)
+      iret = nf90_def_var(ncid,'zbbl',NF90_REAL,dim3d,zbbl_id)
       call check_err(iret)
    endif
 
 
 !  x,y,z,t
-   dims(1) = lon_dim
-   dims(2) = lat_dim
-   dims(3) = z_dim
-   dims(4) = time_dim
-   iret = nf_def_var(ncid,'h',NF_REAL,4,dims,h_id)
+   dim4d(1) = lon_dim
+   dim4d(2) = lat_dim
+   dim4d(3) = z_dim
+   dim4d(4) = time_dim
+   iret = nf90_def_var(ncid,'h',NF90_REAL,dim4d,h_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'u',NF_REAL,4,dims,u_id)
+   iret = nf90_def_var(ncid,'u',NF90_REAL,dim4d,u_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'u_obs',NF_REAL,4,dims,u_obs_id)
+   iret = nf90_def_var(ncid,'u_obs',NF90_REAL,dim4d,u_obs_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'v',NF_REAL,4,dims,v_id)
+   iret = nf90_def_var(ncid,'v',NF90_REAL,dim4d,v_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'v_obs',NF_REAL,4,dims,v_obs_id)
+   iret = nf90_def_var(ncid,'v_obs',NF90_REAL,dim4d,v_obs_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'salt',NF_REAL,4,dims,salt_id)
+   iret = nf90_def_var(ncid,'salt',NF90_REAL,dim4d,salt_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'salt_obs',NF_REAL,4,dims,salt_obs_id)
+   iret = nf90_def_var(ncid,'salt_obs',NF90_REAL,dim4d,salt_obs_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'temp',NF_REAL,4,dims,temp_id)
+   iret = nf90_def_var(ncid,'temp',NF90_REAL,dim4d,temp_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'temp_obs',NF_REAL,4,dims,temp_obs_id)
+   iret = nf90_def_var(ncid,'temp_obs',NF90_REAL,dim4d,temp_obs_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'SS',NF_REAL,4,dims,SS_id)
+   iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'SS_obs',NF_REAL,4,dims,SS_obs_id)
+   iret = nf90_def_var(ncid,'SS_obs',NF90_REAL,dim4d,SS_obs_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'NN',NF_REAL,4,dims,NN_id)
+   iret = nf90_def_var(ncid,'NN',NF90_REAL,dim4d,NN_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'NN_obs',NF_REAL,4,dims,NN_obs_id)
+   iret = nf90_def_var(ncid,'NN_obs',NF90_REAL,dim4d,NN_obs_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'sigma_t',NF_REAL,4,dims,sigma_t_id)
+   iret = nf90_def_var(ncid,'sigma_t',NF90_REAL,dim4d,sigma_t_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'sigma_t_obs',NF_REAL,4,dims,sigma_t_obs_id)
+   iret = nf90_def_var(ncid,'sigma_t_obs',NF90_REAL,dim4d,sigma_t_obs_id)
    call check_err(iret)
    if( .not. GrADS ) then
-      dims(3) = z1_dim
+      dim4d(3) = z1_dim
    end if
-   iret = nf_def_var(ncid,'num',NF_REAL,4,dims,num_id)
+   iret = nf90_def_var(ncid,'num',NF90_REAL,dim4d,num_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'nuh',NF_REAL,4,dims,nuh_id)
+   iret = nf90_def_var(ncid,'nuh',NF90_REAL,dim4d,nuh_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'nus',NF_REAL,4,dims,nus_id)
+   iret = nf90_def_var(ncid,'nus',NF90_REAL,dim4d,nus_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'gamu',NF_REAL,4,dims,gamu_id)
+   iret = nf90_def_var(ncid,'gamu',NF90_REAL,dim4d,gamu_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'gamv',NF_REAL,4,dims,gamv_id)
+   iret = nf90_def_var(ncid,'gamv',NF90_REAL,dim4d,gamv_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'gamh',NF_REAL,4,dims,gamh_id)
+   iret = nf90_def_var(ncid,'gamh',NF90_REAL,dim4d,gamh_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'gams',NF_REAL,4,dims,gams_id)
+   iret = nf90_def_var(ncid,'gams',NF90_REAL,dim4d,gams_id)
    call check_err(iret)
 
    if (turb_method.ne.99) then
-      iret = nf_def_var(ncid,'tke',NF_REAL,4,dims,tke_id)
+      iret = nf90_def_var(ncid,'tke',NF90_REAL,dim4d,tke_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'kb',NF_REAL,4,dims,kb_id)
+      iret = nf90_def_var(ncid,'kb',NF90_REAL,dim4d,kb_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'l',NF_REAL,4,dims,l_id)
+      iret = nf90_def_var(ncid,'l',NF90_REAL,dim4d,l_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'eps',NF_REAL,4,dims,eps_id)
+      iret = nf90_def_var(ncid,'eps',NF90_REAL,dim4d,eps_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'epsb',NF_REAL,4,dims,epsb_id)
+      iret = nf90_def_var(ncid,'epsb',NF90_REAL,dim4d,epsb_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'eps_obs',NF_REAL,4,dims,eps_obs_id)
+      iret = nf90_def_var(ncid,'eps_obs',NF90_REAL,dim4d,eps_obs_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'P',NF_REAL,4,dims,P_id)
+      iret = nf90_def_var(ncid,'P',NF90_REAL,dim4d,P_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'G',NF_REAL,4,dims,G_id)
+      iret = nf90_def_var(ncid,'G',NF90_REAL,dim4d,G_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'Pb',NF_REAL,4,dims,Pb_id)
+      iret = nf90_def_var(ncid,'Pb',NF90_REAL,dim4d,Pb_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'uu',NF_REAL,4,dims,uu_id)
+      iret = nf90_def_var(ncid,'uu',NF90_REAL,dim4d,uu_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'vv',NF_REAL,4,dims,vv_id)
+      iret = nf90_def_var(ncid,'vv',NF90_REAL,dim4d,vv_id)
       call check_err(iret)
-      iret = nf_def_var(ncid,'ww',NF_REAL,4,dims,ww_id)
+      iret = nf90_def_var(ncid,'ww',NF90_REAL,dim4d,ww_id)
       call check_err(iret)
    endif
 
-   iret = nf_def_var(ncid,'o2_obs',NF_REAL,4,dims,o2_obs_id)
+   iret = nf90_def_var(ncid,'o2_obs',NF90_REAL,dim4d,o2_obs_id)
    call check_err(iret)
 
 # ifdef EXTRA_OUTPUT
-   iret = nf_def_var(ncid,'mean1',NF_REAL,4,dims,mean1_id)
+   iret = nf90_def_var(ncid,'mean1',NF90_REAL,dim4d,mean1_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'mean2',NF_REAL,4,dims,mean2_id)
+   iret = nf90_def_var(ncid,'mean2',NF90_REAL,dim4d,mean2_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'mean3',NF_REAL,4,dims,mean3_id)
+   iret = nf90_def_var(ncid,'mean3',NF90_REAL,dim4d,mean3_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'mean4',NF_REAL,4,dims,mean4_id)
+   iret = nf90_def_var(ncid,'mean4',NF90_REAL,dim4d,mean4_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'mean5',NF_REAL,4,dims,mean5_id)
+   iret = nf90_def_var(ncid,'mean5',NF90_REAL,dim4d,mean5_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'turb1',NF_REAL,4,dims,turb1_id)
+   iret = nf90_def_var(ncid,'turb1',NF90_REAL,dim4d,turb1_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'turb2',NF_REAL,4,dims,turb2_id)
+   iret = nf90_def_var(ncid,'turb2',NF90_REAL,dim4d,turb2_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'turb3',NF_REAL,4,dims,turb3_id)
+   iret = nf90_def_var(ncid,'turb3',NF90_REAL,dim4d,turb3_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'turb4',NF_REAL,4,dims,turb4_id)
+   iret = nf90_def_var(ncid,'turb4',NF90_REAL,dim4d,turb4_id)
    call check_err(iret)
-   iret = nf_def_var(ncid,'turb5',NF_REAL,4,dims,turb5_id)
+   iret = nf90_def_var(ncid,'turb5',NF90_REAL,dim4d,turb5_id)
    call check_err(iret)
 # endif
 
@@ -490,21 +492,21 @@
 # endif
 
 !  global attributes
-   iret = nf_put_att_text(ncid,NF_GLOBAL,'Title',LEN_TRIM(title),title)
+   iret = nf90_put_att(ncid,NF90_GLOBAL,'title',trim(title))
    history = 'Created by GOTM v. '//RELEASE
-   iret = nf_put_att_text(ncid,NF_GLOBAL,'history',LEN_TRIM(history),history)
-   iret = nf_put_att_text(ncid,NF_GLOBAL,'Conventions',6,'COARDS')
+   iret = nf90_put_att(ncid,NF90_GLOBAL,'history',trim(history))
+   iret = nf90_put_att(ncid,NF90_GLOBAL,'Conventions','COARDS')
    call check_err(iret)
 
 !  leave define mode
-   iret = nf_enddef(ncid)
+   iret = nf90_enddef(ncid)
    call check_err(iret)
 
 !  save latitude and logitude
    iret = store_data(ncid,lon_id,POINT,1,scalar=lon)
    iret = store_data(ncid,lat_id,POINT,1,scalar=lat)
 
-   iret = nf_sync(ncid)
+   iret = nf90_sync(ncid)
    call check_err(iret)
 
    return
@@ -693,7 +695,7 @@
    iret = store_data(ncid,turb5_id,XYZT_SHAPE,nlev,array=turb5)
 # endif
 
-   iret = nf_sync(ncid)
+   iret = nf90_sync(ncid)
    call check_err(iret)
 
    return
@@ -727,7 +729,7 @@
    LEVEL1 'Output has been written in NetCDF'
 
    if (ncid .ne. -1) then
-      iret = nf_close(ncid)
+      iret = nf90_close(ncid)
       call check_err(iret)
    end if
 
@@ -767,10 +769,10 @@
 !-----------------------------------------------------------------------
 !BOC
    if(action) then
-      iret = nf_redef(ncid)
+      iret = nf90_redef(ncid)
 !kbk      call check_err(iret)
    else
-      iret = nf_enddef(ncid)
+      iret = nf90_enddef(ncid)
 !kbk      call check_err(iret)
    end if
    define_mode = 0
@@ -784,7 +786,7 @@
 ! !IROUTINE: Define a new NetCDF variable
 !
 ! !INTERFACE:
-   integer function new_nc_variable(ncid,name,data_type,n,dims,id)
+   integer function new_nc_variable(ncid,name,data_type,dims,id)
 !
 ! !DESCRIPTION:
 !  This routine is used to define a new variable to store in a NetCDF file.
@@ -795,7 +797,7 @@
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: ncid
    character(len=*), intent(in)        :: name
-   integer, intent(in)                 :: data_type,n
+   integer, intent(in)                 :: data_type
    integer, intent(in)                 :: dims(:)
 !
 ! !OUTPUT PARAMETERS:
@@ -813,7 +815,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   iret = nf_def_var(ncid,name,data_type,n,dims,id)
+   iret = nf90_def_var(ncid,name,data_type,dims,id)
    call check_err(iret)
    new_nc_variable = iret
    return
@@ -864,59 +866,55 @@
 !-----------------------------------------------------------------------
 !BOC
    if(present(units)) then
-      len = len_trim(units)
-      iret = nf_put_att_text(ncid,id,'units',len,units)
+      iret = nf90_put_att(ncid,id,'units',trim(units))
    end if
 
    if(present(long_name)) then
-      len = len_trim(long_name)
-      iret = nf_put_att_text(ncid,id,'long_name',len,long_name)
+      iret = nf90_put_att(ncid,id,'long_name',trim(long_name))
    end if
 
    if(present(C_format)) then
-      len = len_trim(C_format)
-      iret = nf_put_att_text(ncid,id,'C_format',len,C_format)
+      iret = nf90_put_att(ncid,id,'C_format',trim(C_format))
    end if
 
    if(present(FORTRAN_format)) then
-      len = len_trim(FORTRAN_format)
-      iret = nf_put_att_text(ncid,id,'FORTRAN_format',len,FORTRAN_format)
+      iret = nf90_put_att(ncid,id,'FORTRAN_format',trim(FORTRAN_format))
    end if
 
    if(present(valid_min)) then
       vals(1) = valid_min
-      iret = nf_put_att_real(ncid,id,'valid_min',NF_FLOAT,1,vals)
+      iret = nf90_put_att(ncid,id,'valid_min',vals(1:1))
    end if
 
    if(present(valid_max)) then
       vals(1) = valid_max
-      iret = nf_put_att_real(ncid,id,'valid_max',NF_FLOAT,1,vals)
+      iret = nf90_put_att(ncid,id,'valid_max',vals(1:1))
    end if
 
    if(present(valid_range)) then
       vals(1) = valid_range(1)
       vals(2) = valid_range(2)
-      iret = nf_put_att_real(ncid,id,'valid_range',NF_FLOAT,2,vals)
+      iret = nf90_put_att(ncid,id,'valid_range',vals(1:2))
    end if
 
    if(present(scale_factor)) then
       vals(1) = scale_factor
-      iret = nf_put_att_real(ncid,id,'scale_factor',NF_FLOAT,1,vals)
+      iret = nf90_put_att(ncid,id,'scale_factor',vals(1:1))
    end if
 
    if(present(add_offset)) then
       vals(1) = add_offset
-      iret = nf_put_att_real(ncid,id,'add_offset',NF_FLOAT,1,vals)
+      iret = nf90_put_att(ncid,id,'add_offset',vals(1:1))
    end if
 
    if(present(FillValue)) then
       vals(1) = FillValue
-      iret = nf_put_att_real(ncid,id,'_FillValue',NF_FLOAT,1,vals)
+      iret = nf90_put_att(ncid,id,'_FillValue',vals(1:1))
    end if
 
    if(present(missing_value)) then
       vals(1) = missing_value
-      iret = nf_put_att_real(ncid,id,'missing_value',NF_FLOAT,1,vals)
+      iret = nf90_put_att(ncid,id,'missing_value',vals(1:1))
    end if
 
    set_attributes = 0
@@ -957,8 +955,9 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: iret,n
-   integer                   :: idum(1:nlev)
-   REAL_4B                   :: r4,dum(1:nlev)
+   integer                   :: idum(1)
+   REAL_4B                   :: r4
+   REAL_4B                   :: dum(1)
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -980,11 +979,11 @@
    if (present(iscalar)) then
       select case (var_shape)
          case(POINT)
-            iret = nf_put_var_int(ncid,id,iscalar)
+            iret = nf90_put_var(ncid,id,iscalar)
          case(T_SHAPE)
             start(1) = set_no; edges(1) = 1
             idum(1)=iscalar
-            iret = nf_put_vara_int(ncid,id,start,edges,idum)
+            iret = nf90_put_var(ncid,id,idum,start,edges)
          case default
             FATAL 'A non valid - var_shape - has been passed in store_data()'
             stop 'store_data'
@@ -993,17 +992,17 @@
       select case (var_shape)
          case(POINT)
             r4 = scalar
-            iret = nf_put_var_real(ncid,id,r4)
+            iret = nf90_put_var(ncid,id,r4)
          case(T_SHAPE)
             start(1) = set_no; edges(1) = 1
             dum(1)=scalar
-            iret = nf_put_vara_real(ncid,id,start,edges,dum)
+            iret = nf90_put_var(ncid,id,dum,start,edges)
          case(XYT_SHAPE)
             start(1) = 1;   edges(1) = lon_len
             start(2) = 1;   edges(2) = lat_len
             start(3) = set_no; edges(3) = 1
             dum(1)=scalar
-            iret = nf_put_vara_real(ncid,id,start,edges,dum)
+            iret = nf90_put_var(ncid,id,dum,start,edges)
          case default
             FATAL 'A non valid - var_shape - has been passed in store_data()'
             stop 'store_data'
@@ -1021,8 +1020,8 @@
             FATAL 'A non valid - var_shape - has been passed in store_data()'
             stop 'store_data'
       end select
-      dum(1:nlev)=array(1:nlev)
-      iret = nf_put_vara_real(ncid,id,start,edges,dum)
+!KB      dum(1:nlev)=array(1:nlev)
+      iret = nf90_put_var(ncid,id,array(1:nlev),start,edges)
    else
    end if
    call check_err(iret)
@@ -1038,10 +1037,10 @@
 !-----------------------------------------------------------------------
 
    subroutine check_err(iret)
+   use netcdf
    integer iret
-   include 'netcdf.inc'
-   if (iret .ne. NF_NOERR) then
-   print *, nf_strerror(iret)
+   if (iret .ne. NF90_NOERR) then
+   print *, nf90_strerror(iret)
    stop
    endif
    end

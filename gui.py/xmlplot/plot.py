@@ -977,12 +977,8 @@ class Figure(xmlstore.util.referencedobject):
                 # Store singleton dimensions as fixed extra coordinates.
                 if self.autosqueeze: varslices[i] = varslices[i].squeeze()
                 
-                # Mask infinite/nan values, if any - only do this if the array is not masked
-                # already, because it seems isfinite is not supported on masked arrays.
-                if not hasattr(varslices[i].data,'_mask'):
-                    invalid = numpy.logical_not(numpy.isfinite(varslices[i].data))
-                    if invalid.any():
-                        varslices[i].data = numpy.ma.masked_where(invalid,varslices[i].data,copy=False)
+                # Mask infinite/nan values, if any.
+                varslices[i].data = numpy.ma.masked_invalid(varslices[i].data,copy=False)
 
             # Get the number of dimensions from the data slice, and add it to the plot properties.
             typ = varslices[0].ndim
@@ -1021,7 +1017,10 @@ class Figure(xmlstore.util.referencedobject):
                        'tight':False,
                        'reversed':False,
                        'datarange':[varslices[0].data.min(),varslices[0].data.max()]}
-            if hasattr(vardata['datarange'][0],'_mask') and vardata['datarange'][0]._mask: vardata['datarange'] = [None,None]
+                       
+            # If all data are masked, the bounds will be masked as well.
+            # Switch to no bounds if this situation occurs.
+            if numpy.ma.getmask(vardata['datarange'][0]): vardata['datarange'] = [None,None]
             
             def switchAxes(xpref,ypref):
                 if xpref is not None: xpref = xpref.upper()
@@ -1049,7 +1048,10 @@ class Figure(xmlstore.util.referencedobject):
             if projection=='windrose':
                 # Get flattened direction and speed, and eliminate masked values (if any)
                 wd,C = varslices[0].data.ravel(),varslices[1].data.ravel()
-                if hasattr(C,'_mask'): wd,C = wd.compressed(),C.compressed()
+                mask = common.getMergedMask((wd,C))
+                if mask is not None:
+                    valid = numpy.logical_not(mask)
+                    wd,C = wd.compress(valid),C.compress(valid)
                 
                 # If all data were masked, were are now left with an empty array.
                 # Detect this, and if it is the case, continue with other data series.
@@ -1134,7 +1136,7 @@ class Figure(xmlstore.util.referencedobject):
                                    'tight':False,
                                    'reversed':False,
                                    'datarange':[C.min(),C.max()]}
-                        if hasattr(cinfo['datarange'][0],'_mask') and cinfo['datarange'][0]._mask: cinfo['datarange'] = [None,None]
+                        if numpy.ma.getmask(cinfo['datarange'][0]): cinfo['datarange'] = [None,None]
                     
                 # Transpose values if needed
                 if xdim<ydim:
@@ -1168,7 +1170,7 @@ class Figure(xmlstore.util.referencedobject):
         def getrange(seriesinfo,axis):
             range = [None,None]
             for info in seriesinfo:
-                if axis in info and not (hasattr(info[axis],'_mask') and numpy.all(info[axis]._mask)):
+                if axis in info and not numpy.all(numpy.ma.getmask(info[axis])):
                     curmin,curmax = info[axis].min(),info[axis].max()
                     if range[0] is None or curmin<range[0]: range[0] = curmin
                     if range[1] is None or curmax>range[1]: range[1] = curmax
@@ -1345,7 +1347,7 @@ class Figure(xmlstore.util.referencedobject):
                 datamax = curcoords.max()
                     
                 # If all coordinate values were masked, restore open boundaries.
-                if hasattr(datamin,'_mask'): datamin,datamax = None,None
+                if numpy.ma.getmask(datamin): datamin,datamax = None,None
 
                 # Update effective dimension bounds                    
                 effrange = axis2data.setdefault(axisname,{}).setdefault('datarange',[None,None])
@@ -1504,8 +1506,9 @@ class Figure(xmlstore.util.referencedobject):
                         
                         # If we will make a vector plot: use color mask for u,v data as well.
                         if 'U' in info:
-                            info['U'] = numpy.ma.masked_where(C._mask,info['U'],copy=False)
-                            info['V'] = numpy.ma.masked_where(C._mask,info['V'],copy=False)
+                            mask = numpy.ma.getmask(C)
+                            info['U'] = numpy.ma.masked_where(mask,info['U'],copy=False)
+                            info['V'] = numpy.ma.masked_where(mask,info['V'],copy=False)
                     
                         # Ignore nonpositive color limits since a log scale is to be used.
                         if crange[0] is not None and crange[0]<=0.: crange[0] = None
@@ -1514,11 +1517,8 @@ class Figure(xmlstore.util.referencedobject):
                     if crange[0] is None and crange[1] is None:
                         # Automatic color bounds: first check if we are not dealing with data with all the same value.
                         # if so, explicitly set the color range because MatPlotLib 0.90.0 chokes on identical min and max.
-                        if hasattr(C,'_mask'):
-                            flatC = C.compressed()
-                        else:
-                            flatC = C.ravel()
-                        if len(flatC)>0:
+                        flatC = numpy.ma.compressed(C)
+                        if flatC.shape[0]>0:
                             # One or more unmasked values
                             if (flatC==flatC[0]).all(): crange = (flatC[0]-1.,flatC[0]+1.)
                         else:
@@ -1593,15 +1593,7 @@ class Figure(xmlstore.util.referencedobject):
                     remove_UV_mask = False  # used to be needed for old matplotlib, not anymore as of 0.99.1.1
                     if remove_UV_mask:
                         # Get combined mask of U,V and (optionally) C
-                        mask = None
-                        def addmask(mask,newmask):
-                            if mask is None:
-                                mask = numpy.empty(U.shape,dtype=numpy.bool)
-                                mask.fill(False)
-                            return numpy.logical_or(mask,newmask)
-                        if hasattr(U,'_mask'): mask = addmask(mask,U._mask)
-                        if hasattr(V,'_mask'): mask = addmask(mask,V._mask)
-                        if C is not None and hasattr(C,'_mask'): mask = addmask(mask,C._mask)
+                        mask = common.getMergedMask((U,V,C))
                         
                         # Quiver with masked arrays has bugs in MatPlotlib 0.98.5
                         # Therefore we mask here only the color array, making sure that its mask combines

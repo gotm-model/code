@@ -487,8 +487,19 @@ class uv2ds(expressions.LazyFunction):
     def _getValue(self,resolvedargs,resolvedkwargs,dataonly=False):
         u,v = resolvedargs[0],resolvedargs[1]
         if not dataonly: u,v = u.data,v.data
+        
+        # Calculate the angle and speed.
+        # The angle is given with respect to (0,1), typically North. Positive clockwise.
         angle = (-numpy.arctan2(v,u)/numpy.pi+0.5)%2*180
         speed = numpy.sqrt(u*u+v*v)
+        
+        # numpy.arctan2 does not seem to respect [preserve] the masks of its input arguments.
+        # Therefore, the joint mask is calculated and applied explicitly here.
+        mask = common.getMergedMask((u,v))
+        if mask is not None:
+            angle = numpy.ma.masked_where(mask,angle,copy=False)
+            speed = numpy.ma.masked_where(mask,speed,copy=False)
+            
         if dataonly:
             resolvedargs[0],resolvedargs[1] = angle,speed
         else:

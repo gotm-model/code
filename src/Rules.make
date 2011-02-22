@@ -1,4 +1,4 @@
-#$Id: Rules.make,v 1.24 2010-05-06 05:16:10 kb Exp $
+#$Id: Rules.make,v 1.34 2011-01-14 09:58:41 jorn Exp $
 
 SHELL   = /bin/sh
 
@@ -67,6 +67,22 @@ EXTRA_LIBS      += $(NETCDFLIB)
 endif
 # NetCDF/HDF configuration done
 
+# if we want to include FABM - Framework for Aquatic Biogeochemical Models
+ifdef FABM
+
+ifndef FABMDIR
+FABMDIR  := $(HOME)/FABM/fabm-svn
+endif
+
+INCDIRS         += -I$(FABMDIR)/include -I$(FABMDIR)/src/drivers/gotm -I$(FABMDIR)/modules/gotm/$(FORTRAN_COMPILER)
+LINKDIRS        += -L$(FABMDIR)/lib/gotm/$(FORTRAN_COMPILER)
+EXTRA_LIBS      += -lfabm_prod
+DEFINES += -D_FABM_
+FEATURES += fabm
+FEATURE_LIBS += -lgotm_fabm$(buildtype)
+
+endif
+
 #
 # phony targets
 #
@@ -74,7 +90,7 @@ endif
 
 # Top of this version of GOTM.
 ifndef GOTMDIR
-GOTMDIR  := $(HOME)/GOTM/gotm-git
+GOTMDIR  := $(HOME)/GOTM/gotm-cvs
 endif
 
 CPP	= /lib/cpp

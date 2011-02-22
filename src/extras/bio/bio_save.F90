@@ -1,4 +1,4 @@
-!$Id: bio_save.F90,v 1.12 2010-09-17 12:53:46 jorn Exp $
+!$Id: bio_save.F90,v 1.13 2010-12-16 09:49:11 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -18,14 +18,12 @@
 #endif
    use output, only: out_fmt,ts
 #ifdef NETCDF_FMT
+   use netcdf
    use ncdfout, only: ncid
-   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dims
+   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dim1d,dim4d
    use ncdfout, only: define_mode,new_nc_variable,set_attributes,store_data
 #endif
    IMPLICIT NONE
-#ifdef NETCDF_FMT
-#include "netcdf.inc"
-#endif
 !
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)                :: totn
@@ -69,23 +67,23 @@
       case (NETCDF)
 #ifdef NETCDF_FMT
          if (init_saved_vars) then
-            dims(1) = lon_dim
-            dims(2) = lat_dim
-            dims(3) = z_dim
-            dims(4) = time_dim
+            dim4d(1) = lon_dim
+            dim4d(2) = lat_dim
+            dim4d(3) = z_dim
+            dim4d(4) = time_dim
 
             iret = define_mode(ncid,.true.)
 
             do n=1,numc
-               iret = new_nc_variable(ncid,var_names(n),NF_REAL, &
-                                      4,dims,var_ids(n))
+               iret = new_nc_variable(ncid,var_names(n),NF90_REAL, &
+                                      dim4d,var_ids(n))
                iret = set_attributes(ncid,var_ids(n),       &
                                      units=var_units(n),    &
                                      long_name=var_long(n))
             end do
 
-            dims(1) = time_dim
-            iret = new_nc_variable(ncid,'totn',NF_REAL,1,dims,totn_id)
+            dim1d(1) = time_dim
+            iret = new_nc_variable(ncid,'totn',NF90_REAL,dim1d,totn_id)
             iret = set_attributes(ncid,totn_id,units='mmol/m**2',    &
                    long_name='total N')
 

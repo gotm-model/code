@@ -1,4 +1,4 @@
-!$Id: ode_solvers.F90,v 1.6 2010-09-17 12:53:53 jorn Exp $
+!$Id: ode_solvers.F90,v 1.7 2011-01-11 16:37:05 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -6,7 +6,7 @@
 ! !ROUTINE: General ODE solver \label{sec:ode-solver}
 !
 ! !INTERFACE:
-   subroutine ode_solver(solver,numc,nlev,dt,cc,right_hand_side)
+   subroutine ode_solver(solver,numc,nlev,dt,cc,right_hand_side_rhs,right_hand_side_ppdd)
 !
 ! !DESCRIPTION:
 ! Here, 10 different numerical solvers for the right hand sides of the
@@ -76,13 +76,23 @@
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
    interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+      subroutine right_hand_side_ppdd(first,numc,nlev,cc,pp,dd)
          logical, intent(in)                  :: first
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         
          REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
          REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+      end
+   end interface
+
+   interface
+      subroutine right_hand_side_rhs(first,numc,nlev,cc,rhs)
+         logical, intent(in)                  :: first
+         integer, intent(in)                  :: numc,nlev
+         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
+         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
+      end
    end interface
 !
 ! !REVISION HISTORY:
@@ -94,27 +104,27 @@
 !BOC
    select case (solver)
       case (1)
-         call euler_forward(dt,numc,nlev,cc,right_hand_side)
+         call euler_forward(dt,numc,nlev,cc,right_hand_side_rhs)
       case (2)
-         call runge_kutta_2(dt,numc,nlev,cc,right_hand_side)
+         call runge_kutta_2(dt,numc,nlev,cc,right_hand_side_rhs)
       case (3)
-         call runge_kutta_4(dt,numc,nlev,cc,right_hand_side)
+         call runge_kutta_4(dt,numc,nlev,cc,right_hand_side_rhs)
       case (4)
-         call patankar(dt,numc,nlev,cc,right_hand_side)
+         call patankar(dt,numc,nlev,cc,right_hand_side_ppdd)
       case (5)
-         call patankar_runge_kutta_2(dt,numc,nlev,cc,right_hand_side)
+         call patankar_runge_kutta_2(dt,numc,nlev,cc,right_hand_side_ppdd)
       case (6)
-         call patankar_runge_kutta_4(dt,numc,nlev,cc,right_hand_side)
+         call patankar_runge_kutta_4(dt,numc,nlev,cc,right_hand_side_ppdd)
       case (7)
-         call modified_patankar(dt,numc,nlev,cc,right_hand_side)
+         call modified_patankar(dt,numc,nlev,cc,right_hand_side_ppdd)
       case (8)
-         call modified_patankar_2(dt,numc,nlev,cc,right_hand_side)
+         call modified_patankar_2(dt,numc,nlev,cc,right_hand_side_ppdd)
       case (9)
-         call modified_patankar_4(dt,numc,nlev,cc,right_hand_side)
+         call modified_patankar_4(dt,numc,nlev,cc,right_hand_side_ppdd)
       case (10)
-         call emp_1(dt,numc,nlev,cc,right_hand_side)
+         call emp_1(dt,numc,nlev,cc,right_hand_side_rhs)
       case (11)
-         call emp_2(dt,numc,nlev,cc,right_hand_side)
+         call emp_2(dt,numc,nlev,cc,right_hand_side_rhs)
       case default
          stop "bio: no valid solver method specified in bio.nml !"
    end select
@@ -154,13 +164,12 @@
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
    interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+      subroutine right_hand_side(first,numc,nlev,cc,rhs)
          logical, intent(in)                  :: first
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
+      end
    end interface
 !
 ! !REVISION HISTORY:
@@ -168,29 +177,20 @@
 !
 ! !LOCAL VARIABLES:
   logical  :: first
-  REALTYPE :: rhs
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
-  integer  :: i,j,ci
+  REALTYPE :: rhs(1:numc,0:nlev)
+  integer  :: i,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
-   pp=_ZERO_
-   dd=_ZERO_
-
    first=.true.
 !   STDERR 'euler_forward ',first
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
+   call right_hand_side(first,numc,nlev,cc,rhs)
    first=.false.
 !   STDERR 'euler_forward ',first
 
    do ci=1,nlev
       do i=1,numc
-         rhs=_ZERO_
-         do j=1,numc
-            rhs=rhs+pp(i,j,ci)-dd(i,j,ci)
-         end do
-         cc(i,ci)=cc(i,ci)+dt*rhs
+         cc(i,ci)=cc(i,ci)+dt*rhs(i,ci)
       end do
    end do
 
@@ -237,13 +237,12 @@
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
    interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+      subroutine right_hand_side(first,numc,nlev,cc,rhs)
          logical, intent(in)                  :: first
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
+      end
    end interface
 !
 ! !REVISION HISTORY:
@@ -251,40 +250,27 @@
 !
 ! !LOCAL VARIABLES:
   logical  :: first
-  REALTYPE :: rhs(1:numc,0:nlev),rhs1(1:numc)
+  REALTYPE :: rhs(1:numc,0:nlev),rhs1(1:numc,0:nlev)
   REALTYPE :: cc1(1:numc,0:nlev)
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
-  integer  :: i,j,ci
+  integer  :: i,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
-   pp=_ZERO_
-   dd=_ZERO_
-
    first=.true.
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
+   call right_hand_side(first,numc,nlev,cc,rhs)
    first=.false.
 
    do ci=1,nlev
       do i=1,numc
-         rhs(i,ci)=_ZERO_
-         do j=1,numc
-            rhs(i,ci)=rhs(i,ci)+pp(i,j,ci)-dd(i,j,ci)
-         end do
          cc1(i,ci)=cc(i,ci)+dt*rhs(i,ci)
       end do
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp,dd)
+   call right_hand_side(first,numc,nlev,cc1,rhs1)
 
    do ci=1,nlev
       do i=1,numc
-         rhs1(i)=_ZERO_
-         do j=1,numc
-            rhs1(i)=rhs1(i)+pp(i,j,ci)-dd(i,j,ci)
-         end do
-         cc(i,ci)=cc(i,ci)+dt*0.5*(rhs(i,ci)+rhs1(i))
+         cc(i,ci)=cc(i,ci)+dt*0.5*(rhs(i,ci)+rhs1(i,ci))
       end do
    end do
 
@@ -343,13 +329,12 @@
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
    interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+      subroutine right_hand_side(first,numc,nlev,cc,rhs)
          logical, intent(in)                  :: first
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
+      end
    end interface
 !
 ! !REVISION HISTORY:
@@ -360,61 +345,40 @@
   REALTYPE :: rhs(1:numc,0:nlev),rhs1(1:numc,0:nlev)
   REALTYPE :: rhs2(1:numc,0:nlev),rhs3(1:numc,0:nlev)
   REALTYPE :: cc1(1:numc,0:nlev)
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
-  integer  :: i,j,ci
+  integer  :: i,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
-   pp=_ZERO_
-   dd=_ZERO_
-
    first=.true.
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
+   call right_hand_side(first,numc,nlev,cc,rhs)
    first=.false.
 
    do ci=1,nlev
       do i=1,numc
-         rhs(i,ci)=_ZERO_
-         do j=1,numc
-            rhs(i,ci)=rhs(i,ci)+pp(i,j,ci)-dd(i,j,ci)
-         end do
          cc1(i,ci)=cc(i,ci)+dt*rhs(i,ci)
       end do
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp,dd)
+   call right_hand_side(first,numc,nlev,cc1,rhs1)
 
    do ci=1,nlev
       do i=1,numc
-         rhs1(i,ci)=_ZERO_
-         do j=1,numc
-            rhs1(i,ci)=rhs1(i,ci)+pp(i,j,ci)-dd(i,j,ci)
-         end do
          cc1(i,ci)=cc(i,ci)+dt*rhs1(i,ci)
       end do
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp,dd)
+   call right_hand_side(first,numc,nlev,cc1,rhs2)
 
    do ci=1,nlev
       do i=1,numc
-         rhs2(i,ci)=_ZERO_
-         do j=1,numc
-            rhs2(i,ci)=rhs2(i,ci)+pp(i,j,ci)-dd(i,j,ci)
-         end do
          cc1(i,ci)=cc(i,ci)+dt*rhs2(i,ci)
       end do
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp,dd)
+   call right_hand_side(first,numc,nlev,cc1,rhs3)
 
    do ci=1,nlev
       do i=1,numc
-         rhs3(i,ci)=_ZERO_
-         do j=1,numc
-            rhs3(i,ci)=rhs3(i,ci)+pp(i,j,ci)-dd(i,j,ci)
-         end do
          cc(i,ci)=cc(i,ci)+dt*1./3.*(0.5*rhs(i,ci)+rhs1(i,ci)+rhs2(i,ci)+0.5*rhs3(i,ci))
       end do
    end do
@@ -1083,13 +1047,12 @@
    REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
 
    interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+      subroutine right_hand_side(first,numc,nlev,cc,rhs)
          logical, intent(in)                  :: first
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
+      end
    end interface
 !
 ! !REVISION HISTORY:
@@ -1097,24 +1060,19 @@
 !
 ! !LOCAL VARIABLES:
   logical  :: first
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
+  REALTYPE :: derivative(1:numc,0:nlev)
   integer  :: ci
-  REALTYPE :: pi, derivative(1:numc)
+  REALTYPE :: pi
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
-   pp=_ZERO_
-   dd=_ZERO_
-
    first=.true.
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
+   call right_hand_side(first,numc,nlev,cc,derivative)
    first=.false.
 
    do ci=1,nlev
-      derivative(:) = sum(pp(:,:,ci),2)-sum(dd(:,:,ci),2)
-      call findp_bisection(numc, cc(:,ci), derivative(:), dt, 1.d-9, pi)
-      cc(:,ci) = cc(:,ci) + dt*derivative(:)*pi
+      call findp_bisection(numc, cc(:,ci), derivative(:,ci), dt, 1.d-9, pi)
+      cc(:,ci) = cc(:,ci) + dt*derivative(:,ci)*pi
    end do
 
    return
@@ -1172,13 +1130,12 @@
    REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
 
    interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
+      subroutine right_hand_side(first,numc,nlev,cc,rhs)
          logical, intent(in)                  :: first
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
+      end
    end interface
 !
 ! !REVISION HISTORY:
@@ -1186,32 +1143,26 @@
 !
 ! !LOCAL VARIABLES:
   logical  :: first
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
   integer  :: i,ci
-  REALTYPE :: pi, rhs(1:numc,0:nlev), cc_med(1:numc,0:nlev)
+  REALTYPE :: pi, rhs(1:numc,0:nlev), cc_med(1:numc,0:nlev), rhs_med(1:numc,0:nlev)
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
-   pp=_ZERO_
-   dd=_ZERO_
-
    first=.true.
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
+   call right_hand_side(first,numc,nlev,cc,rhs)
    first=.false.
 
    do ci=1,nlev
-      rhs(:,ci) = sum(pp(:,:,ci),2) - sum(dd(:,:,ci),2)
       call findp_bisection(numc, cc(:,ci), rhs(:,ci), dt, 1.d-9, pi)
       cc_med(:,ci) = cc(:,ci) + dt*rhs(:,ci)*pi
    end do
 
-   call right_hand_side(first,numc,nlev,cc_med,pp,dd)
+   call right_hand_side(first,numc,nlev,cc_med,rhs_med)
 
    do ci=1,nlev
-      rhs(:,ci) = 0.5 * (rhs(:,ci) + sum(pp(:,:,ci),2) - sum(dd(:,:,ci),2))
+      rhs(:,ci) = 0.5 * (rhs(:,ci) + rhs_med(:,ci))
 
-!     Correct for the state variables that will be included in 'p'.
+      ! Correct for the state variables that will be included in 'p'.
       do i=1,numc
          if (rhs(i,ci) .lt. 0.) rhs(:,ci) = rhs(:,ci) * cc(i,ci)/cc_med(i,ci)
       end do

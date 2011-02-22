@@ -65,7 +65,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="netcdf.lib"
-				OutputFile="$(ConfigurationName)\gotm.pyd"
+				OutputFile="..\..\..\gotm.pyd"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(PythonDir)\libs&quot;;&quot;$(IFORT_COMPILER11)\lib\ia32&quot;;&quot;$(NETCDF_PREFIX)\lib&quot;"
 				GenerateDebugInformation="true"

@@ -15,6 +15,7 @@ os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 import xmlstore.util, xmlstore.gui_qt4
 import core.common
 import commonqt
+import errortrap
 
 def getVersions():
     yield ('Python','%i.%i.%i %s %i' % sys.version_info)
@@ -452,6 +453,8 @@ def main(options,args):
     else:
         app = QtGui.qApp
 
+    app.setWindowIcon(QtGui.QIcon(os.path.join(core.common.getDataRoot(),'icon.png')))
+
     class ForkOnAction1(commonqt.WizardFork):
         def getSequence(self):
             if self.wizard.getProperty('mainaction')=='scenario':
@@ -539,7 +542,7 @@ def main(options,args):
     # Redirect stderr to error dialog (last action before message loop is started,
     # because text sent to stderr will be lost if redirected to error dialog without
     # the message loop being started.
-    commonqt.redirect_stderr()
+    errortrap.redirect_stderr('GOTM-GUI','You may be able to continue working. However, we would appreciate it if you report this error. To do so, send an e-mail to <a href="mailto:gotm-users@googlegroups.com">gotm-users@googlegroups.com</a> with the above error message, and the circumstances under which the error occurred.')
 
     # Enter the main message loop.
     ret = app.exec_()

@@ -1,4 +1,4 @@
-!$Id: seagrass.F90,v 1.11 2010-09-17 12:53:47 jorn Exp $
+!$Id: seagrass.F90,v 1.12 2010-12-16 09:49:11 kb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -31,6 +31,9 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !  $Log: seagrass.F90,v $
+!  Revision 1.12  2010-12-16 09:49:11  kb
+!  updated to Fortran90 NetCDF interface
+!
 !  Revision 1.11  2010-09-17 12:53:47  jorn
 !  extensive code clean-up to ensure proper initialization and clean-up of all variables
 !
@@ -322,16 +325,12 @@
    use meanflow, only:     h
    use output, only: out_fmt,ascii_unit,ts
 #ifdef NETCDF_FMT
+   use netcdf
    use ncdfout, only: ncid
-   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dims
+   use ncdfout, only: lon_dim,lat_dim,z_dim,time_dim,dim4d
    use ncdfout, only: define_mode,new_nc_variable,set_attributes,store_data
 #endif
    IMPLICIT NONE
-
-#ifdef NETCDF_FMT
-#include "netcdf.inc"
-#endif
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -358,16 +357,16 @@
       case (NETCDF)
 #ifdef NETCDF_FMT
          if (init_output) then
-            dims(1) = lon_dim
-            dims(2) = lat_dim
-            dims(3) = z_dim
-            dims(4) = time_dim
+            dim4d(1) = lon_dim
+            dim4d(2) = lat_dim
+            dim4d(3) = z_dim
+            dim4d(4) = time_dim
             miss_val = -999.0
             iret = define_mode(ncid,.true.)
-            iret = new_nc_variable(ncid,'x-excur',NF_REAL,4,dims,x_excur_id)
+            iret = new_nc_variable(ncid,'x-excur',NF90_REAL,dim4d,x_excur_id)
             iret = set_attributes(ncid,x_excur_id,units='m',    &
                    long_name='seagrass excursion(x)',missing_value=miss_val)
-            iret = new_nc_variable(ncid,'y-excur',NF_REAL,4,dims,y_excur_id)
+            iret = new_nc_variable(ncid,'y-excur',NF90_REAL,dim4d,y_excur_id)
             iret = set_attributes(ncid,y_excur_id,units='m',    &
                    long_name='seagrass excursion(y)',missing_value=miss_val)
             iret = define_mode(ncid,.false.)
