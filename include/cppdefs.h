@@ -48,13 +48,13 @@
 #undef  SINGLE
 
 #ifdef SINGLE
-#define REALTYPE real
-#define MPI_REALTYPE	MPI_REAL
+#define REALTYPE real(kind=4)
+!#define MPI_REALTYPE	MPI_REAL
 #define _ZERO_ 0.0
 #define _ONE_  1.0
 #else
-#define REALTYPE double precision
-#define MPI_REALTYPE	MPI_DOUBLE_PRECISION
+#define REALTYPE real(kind=8) 
+!#define MPI_REALTYPE	MPI_DOUBLE_PRECISION
 #define _ZERO_ 0.0d0
 #define _ONE_  1.0d0
 #endif
@@ -71,6 +71,4 @@
 #define KPP_IP_FC
 #undef KPP_CLIP_GS
 #define KPP_SALINITY
-
-
 
