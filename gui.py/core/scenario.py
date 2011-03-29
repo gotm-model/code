@@ -213,7 +213,7 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
                         varname = listchild.getId()
                         if varname.lower()==foundvarname.lower(): break
                     else:
-                        raise namelist.NamelistParseException('Encountered variable "%s", which should not be present in this namelist.' % (foundvarname,),fullnmlfilename,listname,varname)
+                        raise namelist.NamelistParseException('Encountered variable "%s", which should not be present in this namelist.' % (foundvarname,),fullnmlfilename,listname)
                         
                 # If no value was provided, skip to the next assignment.
                 if vardata is None: continue
@@ -572,17 +572,17 @@ class Scenario(NamelistStore):
         return xmlstore.xmlstore.schemainfocache[schemadir]
 
     def __init__(self,schema,valueroot=None,adddefault = True):
-        NamelistStore.__init__(self,schema,valueroot,adddefault=adddefault)
+        super(Scenario,self).__init__(schema,valueroot,adddefault=adddefault)
 
     @classmethod
     def getCustomDataTypes(ownclass):
-        dt = xmlstore.xmlstore.TypedStore.getCustomDataTypes()
+        dt = super(Scenario,ownclass).getCustomDataTypes()
         import xmlplot.data
         dt['gotmdatafile'] = xmlplot.data.LinkedFileVariableStore
         return dt
 
     def load(self,path):
-        xmlstore.xmlstore.TypedStore.load(self,path)
+        super(Scenario,self).load(path)
 
         # If the scenario was stored in the official 'save' version, we should not consider it changed.
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
@@ -591,10 +591,10 @@ class Scenario(NamelistStore):
     def saveAll(self,path,targetversion=None,*args,**kwargs):
         if targetversion is None: targetversion = savedscenarioversion
         kwargs['fillmissing'] = True
-        xmlstore.xmlstore.TypedStore.saveAll(self,path,targetversion=targetversion,*args,**kwargs)
+        super(Scenario,self).saveAll(path,targetversion=targetversion,*args,**kwargs)
 
     def loadAll(self,path,*args,**kwargs):
-        xmlstore.xmlstore.TypedStore.loadAll(self,path,*args,**kwargs)
+        super(Scenario,self).loadAll(path,*args,**kwargs)
 
         # If the scenario was stored in the official 'save' version, we should not consider it changed.
         # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
@@ -602,7 +602,7 @@ class Scenario(NamelistStore):
         
     def _validate(self,nodes,usedefault=True,validatedatafiles=True,callback=None,repair=0,usehistory=True):
         # Call base implementation of validate.
-        errors,validity = xmlstore.xmlstore.TypedStore._validate(self,nodes,usedefault=usedefault,repair=repair,callback=callback,usehistory=usehistory)
+        errors,validity = super(Scenario,self)._validate(nodes,usedefault=usedefault,repair=repair,callback=callback,usehistory=usehistory)
         
         # We only know how to validate one scenario version;
         # return base result if version does not match.
