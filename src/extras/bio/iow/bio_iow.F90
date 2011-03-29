@@ -1,4 +1,4 @@
-!$Id: bio_iow.F90,v 1.8 2010-09-17 12:53:46 jorn Exp $
+!$Id: bio_iow.F90,v 1.9 2011-03-29 14:25:34 hb Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -70,6 +70,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio_iow.F90,v $
+!  Revision 1.9  2011-03-29 14:25:34  hb
+!  Documentation of surface_fluxes_iow in bio_iow.F90 corrected
+!
 !  Revision 1.8  2010-09-17 12:53:46  jorn
 !  extensive code clean-up to ensure proper initialization and clean-up of all variables
 !
@@ -683,35 +686,39 @@
   subroutine surface_fluxes_iow(nlev,t,s,wind)
 !
 ! !DESCRIPTION:
+!
 ! Here, those surface fluxes which have been read from a file are transformed
-! to SI units. The surface oxygen flux is calculated by means of the 
+! to SI units. The surface oxygen flux is calculated by means of the
 ! following formula:
 ! \begin{equation}\label{o2flux}
 ! F^s_9 = p_{vel} \left(O_{sat}-c_9 \right)
 ! \end{equation}
-! The piston velocity is calculated by using the model of
-! Liss and Merlivat (1986), which includes three regimes (smooth surface,
+! The piston velocity, $p_{vel}$, is calculated by using the model of
+! \cite{LissMerlivat86}, which includes three regimes (smooth surface,
 ! rough surface and breaking waves) depending on the magnitude of wind speed,
-! $wind$:
+! $W$:
 ! \begin{equation}
 ! \label{p_vel}
 ! \begin{array}{l}
-! \chem{at} \quad wind < 3.6 [m/s]:\quad  V {=} 1.003 wind / Sc^{0.66} \\
-! \chem{at}\quad 3.6\le wind \le 13 [m/s]:\quad V {=} 5.9(2.85 wind - 9.65) /   ! Sc^{0.5} \\
-! \chem{at}\quad 13 < wind [m/s]:\quad  V {=} 5.9(5.9 wind - 49.3) / Sc^{0.5} \\
+! p_{vel}=
+! \left\{
+! \begin{array}{ll}
+! 1.003 W / Sc^{0.66} & \mbox{ for } W < 3.6 \mbox{m/s}, \\
+! 5.9(2.85 W - 9.65)/Sc^{0.5} & \mbox{ for } 3.6\mbox{m/s} \leq W \leq 13\mbox{m/s}, \\
+! 5.9(5.9 W - 49.3) / Sc^{0.5} & \mbox{ for } W > 13 \mbox{m/s}.
+! \end{array}
+! \right.
 ! \end{array}
 ! \end{equation}
 ! The Schmidt number $Sc$ is defined as ratio between the kinematic viscosity
-! and the molecular diffusivity of oxygen. The following expression for $Sc$ 
-! (Stigebrandt, 1991) is applied:
+! and the molecular diffusivity of oxygen. The following expression for $Sc$
+! (\cite{Stigebrandt1991}) is applied:
 ! \begin{equation}
 ! \label{Sc}
 ! Sc{=}1450-71T+1.1T^2.
-! \end{equation} 
-! Weiss formula for the saturation oxygen (osat_weiss) is used for calculating
-! the air-sea surface flux 
-!
-! The following formula is applied for Osat:
+! \end{equation}
+! The Weiss formula for the saturation oxygen is used for calculating
+! the air-sea surface flux:
 ! \begin{equation}\label{osat}
 ! O_{sat}= a_0\left(a_1-a_2T  \right).
 ! \end{equation}
@@ -728,7 +735,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE                 :: p_vel
+  REALTYPE                 :: p_vel,sc
   integer,parameter        :: newflux=1
 
 !EOP
@@ -748,13 +755,14 @@
 
 !  Calculation of the surface oxygen flux
    if (newflux .eq. 1) then
+      sc=1450.+(1.1*t-71.)*t
       if (wind .gt. 13.) then
-         p_vel = 5.9*(5.9*wind-49.3)/sqrt(1450.+(1.1*t-71.)*t)
+         p_vel = 5.9*(5.9*wind-49.3)/sqrt(sc)
       else
          if (wind .lt. 3.6) then
-             p_vel = 5.9*(0.17*wind)/(1450.+(1.1*t-71.)*t)**(0.66)
+            p_vel = 1.003*wind/(sc)**(0.66)
          else
-            p_vel = 5.9*(2.85*wind-9.65)/sqrt(1450.+(1.1*t-71.)*t)
+            p_vel = 5.9*(2.85*wind-9.65)/sqrt(sc)
          end if 
       end if   
       if (p_vel .lt. 0.05) then
