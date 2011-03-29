@@ -3,13 +3,10 @@
 import sys, os, os.path
 
 gotmguiroot = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..')
-
 path = sys.path[:] 
 sys.path.append(gotmguiroot)
-try: 
-    import core.common, core.scenario
-finally: 
-    sys.path = path
+
+import core.common, core.scenario
 
 # Small function for receiving progress messages when parsing data files.
 nextprogress = 0.
