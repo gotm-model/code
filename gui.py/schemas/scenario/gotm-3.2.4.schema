@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<element name="scenario" label="scenario" version="gotm-3.2.4" namelistextension=".inp" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../core/scenario-1.0.xsd">
+<element name="scenario" label="scenario" version="gotm-3.2.4" namelistextension=".inp" packagedvaluesname="scenario.xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../core/scenario-1.0.xsd">
 
 	<element name="gotmrun" label="general">
 	

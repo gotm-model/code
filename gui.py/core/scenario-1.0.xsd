@@ -17,7 +17,12 @@
 							<xs:documentation>Extension used for FORTRAN namelist files representing this scenario. This attribute should only be set on the root element.</xs:documentation>
 						</xs:annotation>
 					</xs:attribute>
-				</xs:extension>
+          <xs:attribute name="packagedvaluesname" type="xs:string" use="optional">
+            <xs:annotation>
+              <xs:documentation>Name to use for XML values file if stored in a package together with associated data. This attribute should only be set on the root element.</xs:documentation>
+            </xs:annotation>
+          </xs:attribute>
+        </xs:extension>
 			</xs:complexContent>
 		</xs:complexType>
 		

@@ -26,7 +26,7 @@ schemadir = None
 class NamelistStore(xmlstore.xmlstore.TypedStore):
 
     def __init__(self,*args,**kwargs):
-        xmlstore.xmlstore.TypedStore.__init__(self,*args,**kwargs)
+        super(NamelistStore,self).__init__(*args,**kwargs)
 
         self.namelistextension = self.root.templatenode.getAttribute('namelistextension')
 
@@ -558,12 +558,9 @@ class NamelistStore(xmlstore.xmlstore.TypedStore):
             raise Exception('Unknown condition type "%s".' % condtype)
             
 class Scenario(NamelistStore):
-
-    # Name to be used for the main XML file if the store is saved to an archive.
-    storefilename = 'scenario.xml'
     
     # Descriptive name for the store to be used when communicating with the user.
-    storetitle = 'GOTM scenario'
+    packagetitle = 'GOTM scenario'
 
     @classmethod
     def getSchemaInfo(cls):

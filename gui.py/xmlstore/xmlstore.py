@@ -2006,7 +2006,10 @@ class TypedStore(util.referencedobject):
     def canBeOpened(cls, container):
         """Returns whether the specified path can be opened as a TypedStore object."""
         assert isinstance(container,datatypes.DataContainer), 'Argument must be data container object.'
-        return cls.storefilename in container.listFiles()
+        files = container.listFiles()
+        for name in cls.getSchemaInfo().getPackagedValuesNames():
+            if name in files: return True
+        return False
 
     def save(self,path):
         """Saves the values as XML, to the specified path. A file saved in this manner
@@ -2142,7 +2145,9 @@ class TypedStore(util.referencedobject):
             # Add XML store to the container
             progslicer.nextStep('saving configuration')
             df = datatypes.DataFileXmlNode(self.xmldocument)
-            df_added = container.addItem(df,self.storefilename)
+            storefilename = self.schema.getRoot().getAttribute('packagedvaluesname')
+            if storefilename=='': storefilename = 'values.xml'
+            df_added = container.addItem(df,storefilename)
             df_added.release()
             df.release()
 
@@ -2179,16 +2184,20 @@ class TypedStore(util.referencedobject):
         files = container.listFiles()
 
         # Check for existence of main file.
-        # Note: the name of the main file (self.storefilename) and its description
-        # (self.storetitle) must be set by inheriting classes.
-        if self.storefilename not in files:
-            raise Exception('The specified source does not contain "%s" and can therefore not be a %s.' % (self.storefilename,self.storetitle))
+        storefilenames = self.getSchemaInfo().getPackagedValuesNames()
+        for storefilename in storefilenames:
+            if storefilename in files: break
+        else:
+            storefilenames = ['"%s"' % n for n in storefilenames]
+            strstorefilenames = storefilenames[-1]
+            if len(storefilenames)>1: strstorefilenames = '%s or %s' % (', '.join(storefilenames[:-1]),strstorefilenames)
+            raise Exception('The specified source does not contain %s and can therefore not be a %s.' % (strstorefilenames,self.packagetitle))
 
         # Report that we are beginning to load.            
         if callback is not None: callback(0.,'parsing XML')
 
         # Read and parse the store XML file.
-        datafile = container.getItem(self.storefilename)
+        datafile = container.getItem(storefilename)
         f = datafile.getAsReadOnlyFile()
         storedom = xml.dom.minidom.parse(f)
         f.close()
@@ -2198,7 +2207,7 @@ class TypedStore(util.referencedobject):
         version = storedom.documentElement.getAttribute('version')
         if self.version!=version and version!='':
             # The version of the saved scenario does not match the version of this scenario object; convert it.
-            if verbose: print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.storetitle,path,version,self.version)
+            if verbose: print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.packagetitle,path,version,self.version)
             if callback is not None: callback(0.5,'converting scenario')
             tempstore = self.fromSchemaName(version)
             tempstore.loadAll(container)
@@ -2210,6 +2219,8 @@ class TypedStore(util.referencedobject):
             self.originalversion = version
         else:
             # Attach the parsed scenario (XML DOM).
+            reqstorefilename = self.schema.getRoot().getAttribute('packagedvaluesname')
+            assert storefilename==reqstorefilename,'Schema-specified name for values file (%s) does not match found the values file found in the package (%s).' % (reqstorefilename,storefilename)
             self.setStore(storedom)
             self.setContainer(container)
             
@@ -2362,6 +2373,7 @@ class SchemaInfo(object):
         self.schemas = None
         self.convertorsfrom = None
         self.defaults = None
+        self.packagedvaluesnames = None
         self.infodir = infodir
             
     def getSchemas(self):
@@ -2369,8 +2381,15 @@ class SchemaInfo(object):
         """
         if self.schemas is None:
             self.schemas = {}
+            self.packagedvaluesnames = set()
             if self.infodir is not None: self.addSchemas(self.infodir)
         return self.schemas
+
+    def getPackagedValuesNames(self):
+        """Returns a dictionary that links schema version strings to paths to the corresponding schema file.
+        """
+        self.getSchemas()
+        return self.packagedvaluesnames
 
     def getConverters(self):
         """Returns information on available converters.
@@ -2443,6 +2462,7 @@ class SchemaInfo(object):
                 if ext=='.schema':
                     rootname,rootattr = util.getRootNodeInfo(fullpath)
                     self.getSchemas()[rootattr.get('version','')] = fullpath
+                    self.packagedvaluesnames.add(rootattr.get('packagedvaluesname','values.xml'))
                     #self.getSchemas()[basename] = fullpath
 
     def addConverters(self,dirpath):
