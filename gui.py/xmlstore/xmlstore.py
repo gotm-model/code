@@ -1440,6 +1440,9 @@ class TypedStore(util.referencedobject):
             raise Exception('XML file "%s" does not have the version attribute. Therefore we cannot automatically select the XML schema to use.' % path)
         store = cls.fromSchemaName(version,**kwargs)
         store.setStore(valuedom)
+        container = datatypes.DataContainerDirectory(os.path.dirname(path))
+        store.setContainer(container)
+        container.release()
         return store
 
     def __init__(self,schema,valueroot=None,otherstores={},adddefault=True):
@@ -2019,6 +2022,7 @@ class TypedStore(util.referencedobject):
         
         If the version of the XML file does not match the version of the store, conversion
         is attempted."""
+        container = None
         if isinstance(path,datatypes.DataFile):
             f = path.getAsReadOnlyFile()
             try:
@@ -2033,6 +2037,7 @@ class TypedStore(util.referencedobject):
                 valuedom = xml.dom.minidom.parse(path)
             except Exception,e:
                 raise Exception('"%s" does not contain valid XML: %s' % (path,unicode(e)))
+            container = datatypes.DataContainerDirectory(os.path.dirname(path))
             
         schemarootname = self.schema.getRoot().getAttribute('name')
         if valuedom.documentElement.localName!=schemarootname:
@@ -2049,6 +2054,9 @@ class TypedStore(util.referencedobject):
             self.originalversion = version
         else:
             self.setStore(valuedom)
+            if container is not None:
+                self.setContainer(container)
+                container.release()
 
     def saveAll(self,path,targetversion=None,targetisdir = False,claim=True,fillmissing=False,callback=None):
         """Saves the values plus any associated data in a ZIP archive or directory.
