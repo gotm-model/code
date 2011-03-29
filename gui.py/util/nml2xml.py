@@ -3,7 +3,6 @@
 import sys, os, os.path
 
 gotmguiroot = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..')
-path = sys.path[:] 
 sys.path.append(gotmguiroot)
 
 import core.common, core.scenario
