@@ -2183,6 +2183,9 @@ class TypedStore(util.referencedobject):
         # Get list of files in source container.
         files = container.listFiles()
 
+        # Get a descriptive name for the package, to be used in diagnostic and error messages.
+        packagetitle = getattr(self,'packagetitle','packaged XLM store')
+
         # Check for existence of main file.
         storefilenames = self.getSchemaInfo().getPackagedValuesNames()
         for storefilename in storefilenames:
@@ -2191,7 +2194,7 @@ class TypedStore(util.referencedobject):
             storefilenames = ['"%s"' % n for n in storefilenames]
             strstorefilenames = storefilenames[-1]
             if len(storefilenames)>1: strstorefilenames = '%s or %s' % (', '.join(storefilenames[:-1]),strstorefilenames)
-            raise Exception('The specified source does not contain %s and can therefore not be a %s.' % (strstorefilenames,self.packagetitle))
+            raise Exception('The specified source does not contain %s and can therefore not be a %s.' % (strstorefilenames,packagetitle))
 
         # Report that we are beginning to load.            
         if callback is not None: callback(0.,'parsing XML')
@@ -2207,7 +2210,7 @@ class TypedStore(util.referencedobject):
         version = storedom.documentElement.getAttribute('version')
         if self.version!=version and version!='':
             # The version of the saved scenario does not match the version of this scenario object; convert it.
-            if verbose: print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.packagetitle,path,version,self.version)
+            if verbose: print '%s "%s" has version "%s"; starting conversion to "%s".' % (packagetitle,path,version,self.version)
             if callback is not None: callback(0.5,'converting scenario')
             tempstore = self.fromSchemaName(version)
             tempstore.loadAll(container)
@@ -2220,6 +2223,7 @@ class TypedStore(util.referencedobject):
         else:
             # Attach the parsed scenario (XML DOM).
             reqstorefilename = self.schema.getRoot().getAttribute('packagedvaluesname')
+            if reqstorefilename=='': reqstorefilename = 'values.xml'
             assert storefilename==reqstorefilename,'Schema-specified name for values file (%s) does not match found the values file found in the package (%s).' % (reqstorefilename,storefilename)
             self.setStore(storedom)
             self.setContainer(container)
