@@ -2063,7 +2063,7 @@ class TypedStore(util.referencedobject):
 
     def saveAll(self,path,targetversion=None,targetisdir = False,claim=True,fillmissing=False,callback=None):
         """Saves the values plus any associated data in a ZIP archive or directory.
-        A file or direcoty created in this manner may be loaded again through the
+        A file or directory created in this manner may be loaded again through the
         "loadAll" method.
         
         The "claim" argument decides whether the TypedStore object will, after the save,
