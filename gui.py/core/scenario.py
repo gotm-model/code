@@ -578,25 +578,35 @@ class Scenario(NamelistStore):
         dt['gotmdatafile'] = xmlplot.data.LinkedFileVariableStore
         return dt
 
-    def load(self,path):
-        super(Scenario,self).load(path)
+    @classmethod
+    def fromXmlFile(cls,path,**kwargs):
+        store = super(Scenario,cls).fromXmlFile(path,**kwargs)
 
-        # If the scenario was stored in the official 'save' version, we should not consider it changed.
-        # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
-        if self.originalversion==savedscenarioversion: self.resetChanged()
+        # If the scenario was stored in the official 'save' version, and we only converted it to the display version,
+        # we should not consider it changed. In that case, reset the 'changed' status.
+        if store.originalversion==savedscenarioversion and store.version==guiscenarioversion: store.resetChanged()
+        
+        return store
+
+    @classmethod
+    def fromContainer(cls,path,*args,**kwargs):
+        store = super(Scenario,cls).fromContainer(path,*args,**kwargs)
+
+        # If the scenario was stored in the official 'save' version, and we only converted it to the display version,
+        # we should not consider it changed. In that case, reset the 'changed' status.
+        if store.originalversion==savedscenarioversion and store.version==guiscenarioversion: store.resetChanged()
+
+        return store
 
     def saveAll(self,path,targetversion=None,*args,**kwargs):
+        # Set default version
         if targetversion is None: targetversion = savedscenarioversion
+        
+        # Make sure any missing values are filled with defaults before saving.
         kwargs['fillmissing'] = True
+        
         super(Scenario,self).saveAll(path,targetversion=targetversion,*args,**kwargs)
 
-    def loadAll(self,path,*args,**kwargs):
-        super(Scenario,self).loadAll(path,*args,**kwargs)
-
-        # If the scenario was stored in the official 'save' version, we should not consider it changed.
-        # (even though we had to convert it to the 'display' version). Therefore, reset the 'changed' status.
-        if self.originalversion==savedscenarioversion: self.resetChanged()
-        
     def _validate(self,nodes,usedefault=True,validatedatafiles=True,callback=None,repair=0,usehistory=True):
         # Call base implementation of validate.
         errors,validity = super(Scenario,self)._validate(nodes,usedefault=usedefault,repair=repair,callback=callback,usehistory=usehistory)

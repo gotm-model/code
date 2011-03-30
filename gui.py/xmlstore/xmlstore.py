@@ -2175,7 +2175,7 @@ class TypedStore(util.referencedobject):
 
             # Now save the result of the conversion.
             progslicer.nextStep('saving')
-            tempstore.saveAll(path, targetversion = targetversion,targetisdir = targetisdir,callback=progslicer.getStepCallback())
+            tempstore.saveAll(path, targetversion=targetversion, targetisdir=targetisdir, fillmissing=fillmissing, callback=progslicer.getStepCallback())
 
             if claim:
                 # Assign the value of all saved variables with separate data to the original data store,
