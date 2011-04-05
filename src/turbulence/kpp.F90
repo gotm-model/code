@@ -1,4 +1,4 @@
-!$Id: kpp.F90,v 1.5 2010-09-17 12:53:52 jorn Exp $
+!$Id: kpp.F90,v 1.6 2011-04-05 14:53:31 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -193,7 +193,7 @@
   use turbulence,   only: turb1,turb2,turb3,turb4,turb5
 #endif
 
-  use eqstate
+  !use eqstate
 
   IMPLICIT NONE
 
@@ -325,6 +325,9 @@
 !  Original author(s): Lars Umlauf
 !
 !  $Log: kpp.F90,v $
+!  Revision 1.6  2011-04-05 14:53:31  jorn
+!  removed reference to eqstate from kpp
+!
 !  Revision 1.5  2010-09-17 12:53:52  jorn
 !  extensive code clean-up to ensure proper initialization and clean-up of all variables
 !
