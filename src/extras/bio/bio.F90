@@ -1,4 +1,4 @@
-!$Id: bio.F90,v 1.58 2011-01-11 16:37:04 jorn Exp $
+!$Id: bio.F90,v 1.59 2011-04-05 14:53:00 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -85,8 +85,6 @@
    use mussels, only : mussels_calc,total_mussel_flux
 #endif
 
-   use output, only: out_fmt,write_results,ts
-
    use util
 !
 !  default: all is private.
@@ -106,6 +104,9 @@
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
 !  $Log: bio.F90,v $
+!  Revision 1.59  2011-04-05 14:53:00  jorn
+!  removed reference to observations module from bio
+!
 !  Revision 1.58  2011-01-11 16:37:04  jorn
 !  changed ode solvers to operate either on pp/dd or on rhs vector
 !
@@ -128,6 +129,9 @@
 !  added chlorination model - Rennau
 !
 !  $Log: bio.F90,v $
+!  Revision 1.59  2011-04-05 14:53:00  jorn
+!  removed reference to observations module from bio
+!
 !  Revision 1.58  2011-01-11 16:37:04  jorn
 !  changed ode solvers to operate either on pp/dd or on rhs vector
 !
