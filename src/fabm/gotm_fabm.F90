@@ -1,4 +1,4 @@
-!$Id: gotm_fabm.F90,v 1.8 2011-04-05 13:45:01 jorn Exp $
+!$Id: gotm_fabm.F90,v 1.9 2011-04-05 14:07:33 jorn Exp $
 #include "cppdefs.h"
 #include "fabm_driver.h"
 
@@ -92,6 +92,8 @@
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,rad,w,z
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
+   
+   REALTYPE,pointer :: A,g1,g2
 
    contains
 
@@ -358,7 +360,8 @@
 ! !IROUTINE: Set bio module environment 
 !
 ! !INTERFACE: 
-   subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho,nuh_,h_,w_,rad_,bioshade_,I_0,wnd,precip_,evap_,z_)
+   subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho,nuh_,h_,w_, &
+                                rad_,bioshade_,I_0,wnd,precip_,evap_,z_,A_,g1_,g2_)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -371,6 +374,7 @@
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho,nuh_,h_,w_,rad_,bioshade_,z_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0,wnd,precip_,evap_
+   REALTYPE, intent(in),target :: A_,g1_,g2_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -404,6 +408,10 @@
 
    ! Calculate and save internal time step.
    dt_eff = dt/float(split_factor)
+   
+   A => A_
+   g1 => g1_
+   g2 => g2_
    
    end subroutine set_env_gotm_fabm
 !EOC
@@ -801,11 +809,6 @@
 ! !DESCRIPTION:
 ! Calculate photosynthetically active radiation over entire column
 ! based on surface radiation, and background and biotic extinction.
-!
-! !USES:
-   use observations, only:A,g1,g2
-   
-   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
