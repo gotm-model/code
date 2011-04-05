@@ -1,4 +1,4 @@
-!$Id: gotm_fabm.F90,v 1.9 2011-04-05 14:07:33 jorn Exp $
+!$Id: gotm_fabm.F90,v 1.10 2011-04-05 14:52:04 jorn Exp $
 #include "cppdefs.h"
 #include "fabm_driver.h"
 
@@ -90,10 +90,10 @@
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,rad,w,z
+   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
    
-   REALTYPE,pointer :: A,g1,g2
+   REALTYPE,pointer :: I_0,A,g1,g2
 
    contains
 
@@ -361,7 +361,7 @@
 !
 ! !INTERFACE: 
    subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho,nuh_,h_,w_, &
-                                rad_,bioshade_,I_0,wnd,precip_,evap_,z_,A_,g1_,g2_)
+                                bioshade_,I_0_,wnd,precip_,evap_,z_,A_,g1_,g2_)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -372,8 +372,8 @@
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho,nuh_,h_,w_,rad_,bioshade_,z_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0,wnd,precip_,evap_
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho,nuh_,h_,w_,bioshade_,z_
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,wnd,precip_,evap_
    REALTYPE, intent(in),target :: A_,g1_,g2_
 !
 ! !REVISION HISTORY:
@@ -389,13 +389,12 @@
    call fabm_link_data   (model,varname_salt,   salt_)
    call fabm_link_data   (model,varname_dens,   rho)
    call fabm_link_data_hz(model,varname_wind_sf,wnd)
-   call fabm_link_data_hz(model,varname_par_sf, I_0)
+   call fabm_link_data_hz(model,varname_par_sf, I_0_)
    
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh => nuh_             ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
    h   => h_               ! layer heights [1d array] needed for advection, diffusion
    w   => w_               ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
-   rad => rad_             ! short wave radiation [1d array] used to calculate photosynthetically active radiation
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
    z => z_                 ! depth [1d array], used to calculate local pressure
    precip => precip_       ! precipitation [scalar] - used to calculate dilution due to increased water volume
@@ -409,6 +408,7 @@
    ! Calculate and save internal time step.
    dt_eff = dt/float(split_factor)
    
+   I_0 => I_0_
    A => A_
    g1 => g1_
    g2 => g2_
@@ -845,8 +845,8 @@
       bioext = bioext+localext*0.5*h(i+1)
 
       zz=zz+0.5*h(i+1)
-      par(i)=rad(nlev)*(_ONE_-A)*exp(-zz/g2-bioext)
-      swr(i)=par(i)+rad(nlev)*A*exp(-zz/g1)
+      par(i)=I_0*(_ONE_-A)*exp(-zz/g2-bioext)
+      swr(i)=par(i)+I_0*A*exp(-zz/g1)
 
       ! Add the extinction of the second half of the grid box.
       bioext = bioext+localext*0.5*h(i+1)

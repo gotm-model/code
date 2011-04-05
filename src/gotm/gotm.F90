@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.51 2011-04-05 14:07:33 jorn Exp $
+!$Id: gotm.F90,v 1.52 2011-04-05 14:52:04 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -99,6 +99,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.52  2011-04-05 14:52:04  jorn
+!  removed rad from fabm inputs (I_0 suffices)
+!
 !  Revision 1.51  2011-04-05 14:07:33  jorn
 !  fabm now receives light parameters instead of taking them from observations
 !
@@ -425,7 +428,7 @@
    call init_gotm_fabm_output()
 
    call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
-                          nuh,h,w,rad(1:nlev),bioshade(1:nlev),I_0,wind,precip,evap,z(1:nlev), &
+                          nuh,h,w,bioshade(1:nlev),I_0,wind,precip,evap,z(1:nlev), &
                           A,g1,g2)
 
 #endif
