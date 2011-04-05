@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.49 2011-02-18 17:10:27 jorn Exp $
+!$Id: gotm.F90,v 1.50 2011-04-05 13:45:01 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -69,7 +69,9 @@
    use bio_var, only: npar,numc,cc
 #endif
 #ifdef _FABM_
-   use gotm_fabm
+   use gotm_fabm,only:init_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm
+   use gotm_fabm_input,only:init_gotm_fabm_input,do_gotm_fabm_input
+   use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output
 #endif
 
    use output
@@ -97,6 +99,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.50  2011-04-05 13:45:01  jorn
+!  added basic fabm profile input; split fabm input, output, core over different files
+!
 !  Revision 1.49  2011-02-18 17:10:27  jorn
 !  combined FABM initialization and space-explicit allocation in single routine
 !
@@ -410,6 +415,11 @@
 #ifdef _FABM_
 
    call init_gotm_fabm(nlev,namlst,'fabm.nml')
+   
+   call init_gotm_fabm_input(nlev,namlst,'fabm_input.nml')
+
+   ! Initialize FABM output (creates NetCDF variables)
+   call init_gotm_fabm_output()
 
    call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,rad(1:nlev),bioshade(1:nlev),I_0,wind,precip,evap,z(1:nlev))
@@ -550,7 +560,8 @@
       end if
 #endif
 #ifdef _FABM_
-      call do_gotm_fabm(nlev)
+      call do_gotm_fabm_input(julianday,secondsofday,nlev)
+      call do_gotm_fabm(julianday,secondsofday,nlev)
 #endif
 
 !    compute turbulent mixing
@@ -595,7 +606,7 @@
          if (bio_calc) call bio_save(_ZERO_)
 #endif
 #ifdef _FABM_
-         call save_gotm_fabm(nlev)
+         call do_gotm_fabm_output(nlev)
 #endif
       end if
 
