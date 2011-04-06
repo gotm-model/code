@@ -1,4 +1,4 @@
-!$Id: gotm.F90,v 1.52 2011-04-05 14:52:04 jorn Exp $
+!$Id: gotm.F90,v 1.53 2011-04-06 14:43:39 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -99,6 +99,9 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 !  $Log: gotm.F90,v $
+!  Revision 1.53  2011-04-06 14:43:39  jorn
+!  removed time arguments to do_gotm_fabm, do not recalculate depth in gotm_fabm
+!
 !  Revision 1.52  2011-04-05 14:52:04  jorn
 !  removed rad from fabm inputs (I_0 suffices)
 !
@@ -568,7 +571,7 @@
 #endif
 #ifdef _FABM_
       call do_gotm_fabm_input(julianday,secondsofday,nlev)
-      call do_gotm_fabm(julianday,secondsofday,nlev)
+      call do_gotm_fabm(nlev)
 #endif
 
 !    compute turbulent mixing

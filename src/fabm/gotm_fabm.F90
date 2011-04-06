@@ -1,4 +1,4 @@
-!$Id: gotm_fabm.F90,v 1.10 2011-04-05 14:52:04 jorn Exp $
+!$Id: gotm_fabm.F90,v 1.11 2011-04-06 14:43:39 jorn Exp $
 #include "cppdefs.h"
 #include "fabm_driver.h"
 
@@ -422,7 +422,7 @@
 ! !IROUTINE: Update the FABM model
 !
 ! !INTERFACE:
-   subroutine do_gotm_fabm(jul,secs,nlev)
+   subroutine do_gotm_fabm(nlev)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -433,7 +433,7 @@
 !
    IMPLICIT NONE
 !
-   integer, intent(in) :: jul,secs,nlev
+   integer, intent(in) :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -821,14 +821,13 @@
 !
 ! !LOCAL VARIABLES:
    integer :: i
-   REALTYPE :: zz,bioext,localext
+   REALTYPE :: bioext,localext
 #ifdef _FABM_USE_1D_LOOP_
    REALTYPE :: localexts(1:nlev)
 #endif
 !
 !-----------------------------------------------------------------------
 !BOC
-   zz = _ZERO_
    bioext = _ZERO_
 
 #ifdef _FABM_USE_1D_LOOP_
@@ -844,14 +843,12 @@
       ! Add the extinction of the first half of the grid box.
       bioext = bioext+localext*0.5*h(i+1)
 
-      zz=zz+0.5*h(i+1)
-      par(i)=I_0*(_ONE_-A)*exp(-zz/g2-bioext)
-      swr(i)=par(i)+I_0*A*exp(-zz/g1)
+      par(i) = I_0*(_ONE_-A)*exp(z(i)/g2-bioext)
+      swr(i) = par(i)+I_0*A*exp(z(i)/g1)
 
       ! Add the extinction of the second half of the grid box.
       bioext = bioext+localext*0.5*h(i+1)
       
-      zz=zz+0.5*h(i+1)
       if (bioshade_feedback) bioshade(i)=exp(-bioext)
    end do
 
