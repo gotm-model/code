@@ -1454,7 +1454,8 @@ class DataFileXmlNode(DataFile):
         """
         import codecs
         f = codecs.open(targetpath,'w','utf-8')
-        self.xmlnode.writexml(f,encoding='utf-8')
+        util.stripWhitespace(self.xmlnode)
+        self.xmlnode.writexml(f,encoding='utf-8',addindent='\t',newl='\n')
         f.close()
 
     def unlink(self):

@@ -1424,24 +1424,148 @@ class TypedStore(util.referencedobject):
         return store
 
     @classmethod
-    def fromXmlFile(cls,path,**kwargs):
+    def fromXmlFile(cls,path,targetstore=None,**kwargs):
         """Returns a TypedStore for the values at the specified path (XML file).
         
-        The values file is openend, its schema identified retrieved. Then the
+        The values file is openend, its version identifier retrieved. Then the
         program attempt to created the required schema. For this to work,
         the deriving class must implement getSchemaInfo.
+        
+        Additional named arguments are passes to the constructor (__init__)
+        of the data store class.
         """
-        assert cls!=TypedStore, 'fromXmlFile cannot be called on base class "TypedStore", only on derived classes. Use setStore if you do not require versioning.'
-        if not os.path.isfile(path):
-            raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
-        valuedom = xml.dom.minidom.parse(path)
+        container = None
+        if isinstance(path,datatypes.DataFile):
+            # XML file is provided as DataFile object.
+            f = path.getAsReadOnlyFile()
+            try:
+                valuedom = xml.dom.minidom.parse(f)
+            except Exception,e:
+                raise Exception('Unable to parse as XML: '+unicode(e))
+            f.close()
+        else:
+            # XML file is provided as a path.
+            if not os.path.isfile(path):
+                raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
+            try:
+                valuedom = xml.dom.minidom.parse(path)
+            except Exception,e:
+                raise Exception('"%s" does not contain valid XML: %s' % (path,unicode(e)))
+            container = datatypes.DataContainerDirectory(os.path.dirname(path))
+            
+        # Get version of the XML file.
         version = valuedom.documentElement.getAttribute('version')
-        if version=='':
-            raise Exception('XML file "%s" does not have the version attribute. Therefore we cannot automatically select the XML schema to use.' % path)
-        store = cls.fromSchemaName(version,**kwargs)
-        store.setStore(valuedom)
-        return store
+        
+        # If no target store was provided, create one for the version of the XML file.
+        if targetstore is None: targetstore = cls.fromSchemaName(version,**kwargs)
 
+        # Make sure the names of the root element match in schema and values file.
+        schemarootname = targetstore.schema.getRoot().getAttribute('name')
+        if valuedom.documentElement.localName!=schemarootname:
+            raise Exception('Name of XML root node (%s) does not match root identifier in schema specification (%s).' % (valuedom.documentElement.localName,schemarootname))
+
+        if targetstore.version!=version and version!='':
+            # The version of the loaded values does not match the version of the target store; convert it.
+            if verbose: print 'Value file "%s" has version "%s"; starting conversion to "%s".' % (path,version,targetstore.version)
+            tempstore = cls.fromSchemaName(version)
+            tempstore.setStore(valuedom)
+            tempstore.convert(targetstore)
+            tempstore.release()
+            targetstore.originalversion = version
+        else:
+            # Versions of target store and values file match; supply the values to the store.
+            targetstore.setStore(valuedom)
+            if container is not None:
+                targetstore.setContainer(container)
+                container.release()
+                
+        return targetstore
+
+    @classmethod
+    def fromContainer(cls,path,callback=None,targetstore=None,**kwargs):
+        """Loads values plus associated data from the specified path. The path should point
+        to a valid data container, i.e., a ZIP file, TAR/GZ file, or a directory. The source
+        container typically has been saved through the "saveAll" method.
+        
+        Additional named arguments are passes to the constructor (__init__)
+        of the data store class.
+        """
+        if isinstance(path,basestring):
+            # Container is provided as a string [path name]
+            container = datatypes.DataContainer.fromPath(path)
+        elif isinstance(path,datatypes.DataContainer):
+            # Container is provided as DataContainer object.
+            container = path.addref()
+        elif isinstance(path,datatypes.DataFile):
+            # Container is provided as a DataFile (an object in another container)
+            # In this case, the DataFile must be a ZIP file.
+            container = datatypes.DataContainerZip(path)
+        else:
+            assert False,'Supplied source must be a path, a data container object or a data file object.'
+
+        # Get list of files in source container.
+        files = container.listFiles()
+
+        # Get a descriptive name for the package, to be used in diagnostic and error messages.
+        packagetitle = getattr(cls,'packagetitle','packaged XLM store')
+
+        # Check for existence of XML values file.
+        storefilenames = cls.getSchemaInfo().getPackagedValuesNames()
+        for storefilename in storefilenames:
+            if storefilename in files: break
+        else:
+            storefilenames = ['"%s"' % n for n in storefilenames]
+            strstorefilenames = storefilenames[-1]
+            if len(storefilenames)>1: strstorefilenames = '%s or %s' % (', '.join(storefilenames[:-1]),strstorefilenames)
+            raise Exception('The specified source does not contain %s and can therefore not be a %s.' % (strstorefilenames,packagetitle))
+
+        # Report that we are beginning to load.            
+        if callback is not None: callback(0.,'parsing XML')
+
+        # Read and parse the XML values file.
+        datafile = container.getItem(storefilename)
+        f = datafile.getAsReadOnlyFile()
+        storedom = xml.dom.minidom.parse(f)
+        f.close()
+        datafile.release()
+        
+        # Get the version of the values file.
+        version = storedom.documentElement.getAttribute('version')
+        
+        # If no target store was provided, create one for the version of the XML values file.
+        if targetstore is None: targetstore = cls.fromSchemaName(version,**kwargs)
+        
+        if targetstore.version!=version and version!='':
+            # The version of the values file does not match the version of the target store; convert the values.
+            if verbose: print '%s "%s" has version "%s"; starting conversion to "%s".' % (packagetitle,path,version,targetstore.version)
+            if callback is not None: callback(0.5,'converting scenario')
+            tempstore = cls.fromSchemaName(version)
+            tempstore.loadAll(container)
+            if callback is None:
+                tempstore.convert(targetstore)
+            else:
+                tempstore.convert(targetstore,callback=lambda p,s: callback(.5+.5*p,'converting scenario: '+s))
+            tempstore.release()
+            targetstore.originalversion = version
+        else:
+            # Versions of values file and target store match; supply values to the store.
+            reqstorefilename = targetstore.schema.getRoot().getAttribute('packagedvaluesname')
+            if reqstorefilename=='': reqstorefilename = 'values.xml'
+            assert storefilename==reqstorefilename,'Schema-specified name for values file (%s) does not match found the values file found in the package (%s).' % (reqstorefilename,storefilename)
+            targetstore.setStore(storedom)
+            targetstore.setContainer(container)
+            
+        # Store source path.
+        targetstore.path = container.path
+
+        # Release reference to container.
+        container.release()
+
+        # Report that we have finished loading.            
+        if callback is not None: callback(1.,'done')
+        
+        return targetstore
+                
     def __init__(self,schema,valueroot=None,otherstores={},adddefault=True):
         
         util.referencedobject.__init__(self)
@@ -2003,7 +2127,25 @@ class TypedStore(util.referencedobject):
     def canBeOpened(cls, container):
         """Returns whether the specified path can be opened as a TypedStore object."""
         assert isinstance(container,datatypes.DataContainer), 'Argument must be data container object.'
-        return cls.storefilename in container.listFiles()
+        files = container.listFiles()
+        for name in cls.getSchemaInfo().getPackagedValuesNames():
+            if name in files: return True
+        return False
+
+    def load(self,path):
+        """Loads values from an existing XML values file. This file may have been saved with the
+        "save" method, or it may be taken from a container saved with the "saveAll" method.
+        
+        If the version of the XML file does not match the version of the store, conversion
+        is attempted."""
+        self.fromXmlFile(path,targetstore=self)
+
+    def loadAll(self,path,callback=None):
+        """Loads values plus associated data from the specified path. The path should point
+        to a valid data container, i.e., a ZIP file, TAR/GZ file, or a directory. The source
+        container typically has been saved through the "saveAll" method.
+        """
+        self.fromContainer(path,callback,targetstore=self)
 
     def save(self,path):
         """Saves the values as XML, to the specified path. A file saved in this manner
@@ -2013,46 +2155,9 @@ class TypedStore(util.referencedobject):
         self.xmldocument.writexml(f,encoding='utf-8',addindent='\t',newl='\n')            
         f.close()
 
-    def load(self,path):
-        """Loads values from an existing XML file. This file may have been saved with the
-        "save" method, or it may be taken from a container saved with the "saveAll" method.
-        
-        If the version of the XML file does not match the version of the store, conversion
-        is attempted."""
-        if isinstance(path,datatypes.DataFile):
-            f = path.getAsReadOnlyFile()
-            try:
-                valuedom = xml.dom.minidom.parse(f)
-            except Exception,e:
-                raise Exception('Unable to parse as XML: '+unicode(e))
-            f.close()
-        else:
-            if not os.path.isfile(path):
-                raise Exception('Specified path "%s" does not exist, or is not a file.' % path)
-            try:
-                valuedom = xml.dom.minidom.parse(path)
-            except Exception,e:
-                raise Exception('"%s" does not contain valid XML: %s' % (path,unicode(e)))
-            
-        schemarootname = self.schema.getRoot().getAttribute('name')
-        if valuedom.documentElement.localName!=schemarootname:
-            raise Exception('Name of XML root node (%s) does not match root identifier in schema specification (%s).' % (valuedom.documentElement.localName,schemarootname))
-
-        version = valuedom.documentElement.getAttribute('version')
-        if self.version!=version and version!='':
-            # The version of the saved store does not match the version of this store object; convert it.
-            if verbose: print 'Value file "%s" has version "%s"; starting conversion to "%s".' % (path,version,self.version)
-            tempstore = self.fromSchemaName(version)
-            tempstore.setStore(valuedom)
-            tempstore.convert(self)
-            tempstore.release()
-            self.originalversion = version
-        else:
-            self.setStore(valuedom)
-
     def saveAll(self,path,targetversion=None,targetisdir = False,claim=True,fillmissing=False,callback=None):
         """Saves the values plus any associated data in a ZIP archive or directory.
-        A file or direcoty created in this manner may be loaded again through the
+        A file or directory created in this manner may be loaded again through the
         "loadAll" method.
         
         The "claim" argument decides whether the TypedStore object will, after the save,
@@ -2070,7 +2175,7 @@ class TypedStore(util.referencedobject):
 
             # Now save the result of the conversion.
             progslicer.nextStep('saving')
-            tempstore.saveAll(path, targetversion = targetversion,targetisdir = targetisdir,callback=progslicer.getStepCallback())
+            tempstore.saveAll(path, targetversion=targetversion, targetisdir=targetisdir, fillmissing=fillmissing, callback=progslicer.getStepCallback())
 
             if claim:
                 # Assign the value of all saved variables with separate data to the original data store,
@@ -2134,7 +2239,9 @@ class TypedStore(util.referencedobject):
             # Add XML store to the container
             progslicer.nextStep('saving configuration')
             df = datatypes.DataFileXmlNode(self.xmldocument)
-            df_added = container.addItem(df,self.storefilename)
+            storefilename = self.schema.getRoot().getAttribute('packagedvaluesname')
+            if storefilename=='': storefilename = 'values.xml'
+            df_added = container.addItem(df,storefilename)
             df_added.release()
             df.release()
 
@@ -2152,67 +2259,6 @@ class TypedStore(util.referencedobject):
             self.path = None
         
         self.resetChanged()
-
-    def loadAll(self,path,callback=None):
-        """Loads values plus associated data from the specified path. The path should point
-        to a valid data container, i.e., a ZIP file, TAR/GZ file, or a directory. The source
-        container typically has been saved through the "saveAll" method.
-        """
-        if isinstance(path,basestring):
-            container = datatypes.DataContainer.fromPath(path)
-        elif isinstance(path,datatypes.DataContainer):
-            container = path.addref()
-        elif isinstance(path,datatypes.DataFile):
-            container = datatypes.DataContainerZip(path)
-        else:
-            assert False,'Supplied source must be a path, a data container object or a data file object.'
-
-        # Get list of files in source container.
-        files = container.listFiles()
-
-        # Check for existence of main file.
-        # Note: the name of the main file (self.storefilename) and its description
-        # (self.storetitle) must be set by inheriting classes.
-        if self.storefilename not in files:
-            raise Exception('The specified source does not contain "%s" and can therefore not be a %s.' % (self.storefilename,self.storetitle))
-
-        # Report that we are beginning to load.            
-        if callback is not None: callback(0.,'parsing XML')
-
-        # Read and parse the store XML file.
-        datafile = container.getItem(self.storefilename)
-        f = datafile.getAsReadOnlyFile()
-        storedom = xml.dom.minidom.parse(f)
-        f.close()
-        datafile.release()
-        
-        # Get the schema version that the store values file matches.
-        version = storedom.documentElement.getAttribute('version')
-        if self.version!=version and version!='':
-            # The version of the saved scenario does not match the version of this scenario object; convert it.
-            if verbose: print '%s "%s" has version "%s"; starting conversion to "%s".' % (self.storetitle,path,version,self.version)
-            if callback is not None: callback(0.5,'converting scenario')
-            tempstore = self.fromSchemaName(version)
-            tempstore.loadAll(container)
-            if callback is None:
-                tempstore.convert(self)
-            else:
-                tempstore.convert(self,callback=lambda p,s: callback(.5+.5*p,'converting scenario: '+s))
-            tempstore.release()
-            self.originalversion = version
-        else:
-            # Attach the parsed scenario (XML DOM).
-            self.setStore(storedom)
-            self.setContainer(container)
-            
-        # Store source path.
-        self.path = container.path
-
-        # Release reference to container.
-        container.release()
-
-        # Report that we have finished loading.            
-        if callback is not None: callback(1.,'done')
 
     def toXml(self,enc='utf-8'):
         """Returns the values as an XML string, with specified encoding."""
@@ -2354,6 +2400,7 @@ class SchemaInfo(object):
         self.schemas = None
         self.convertorsfrom = None
         self.defaults = None
+        self.packagedvaluesnames = None
         self.infodir = infodir
             
     def getSchemas(self):
@@ -2361,8 +2408,15 @@ class SchemaInfo(object):
         """
         if self.schemas is None:
             self.schemas = {}
+            self.packagedvaluesnames = set()
             if self.infodir is not None: self.addSchemas(self.infodir)
         return self.schemas
+
+    def getPackagedValuesNames(self):
+        """Returns a dictionary that links schema version strings to paths to the corresponding schema file.
+        """
+        self.getSchemas()
+        return self.packagedvaluesnames
 
     def getConverters(self):
         """Returns information on available converters.
@@ -2435,6 +2489,7 @@ class SchemaInfo(object):
                 if ext=='.schema':
                     rootname,rootattr = util.getRootNodeInfo(fullpath)
                     self.getSchemas()[rootattr.get('version','')] = fullpath
+                    self.packagedvaluesnames.add(rootattr.get('packagedvaluesname','values.xml'))
                     #self.getSchemas()[basename] = fullpath
 
     def addConverters(self,dirpath):

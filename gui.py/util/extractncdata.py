@@ -4,8 +4,6 @@ import sys, os, os.path
 import numpy
 
 gotmguiroot = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..')
-
-path = sys.path[:] 
 sys.path.append(gotmguiroot)
 try: 
     import xmlplot.data

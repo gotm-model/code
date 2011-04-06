@@ -1,4 +1,4 @@
-#$Id: Makefile,v 1.1 2011-01-13 12:07:16 jorn Exp $
+#$Id: Makefile,v 1.2 2011-04-05 13:47:17 jorn Exp $
 #
 # Makefile to build the FABM-GOTM link module
 #
@@ -9,7 +9,7 @@ LIB	= $(LIBDIR)/libgotm_fabm$(buildtype).a
 
 DOCSRC	=  gotm_fabm.F90  
 
-OBJ   = ${LIB}(gotm_fabm.o)
+OBJ   = ${LIB}(gotm_fabm.o) ${LIB}(gotm_fabm_input.o) ${LIB}(gotm_fabm_output.o)
 
 all: $(OBJ)
 	$(MOVE_MODULES_COMMAND)

@@ -1,4 +1,4 @@
-!$Id: gotm_fabm.F90,v 1.7 2011-02-18 17:10:26 jorn Exp $
+!$Id: gotm_fabm.F90,v 1.11 2011-04-06 14:43:39 jorn Exp $
 #include "cppdefs.h"
 #include "fabm_driver.h"
 
@@ -53,8 +53,12 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_gotm_fabm
    public set_env_gotm_fabm,do_gotm_fabm
-   public clean_gotm_fabm,save_gotm_fabm
-
+   public clean_gotm_fabm
+   
+   public fabm_calc
+   
+   ! Varibale below must be accessible for gotm_fabm_save and gotm_fabm_obs
+   public model,cc,cc_diag,cc_diag_hz,local,total,dt,h,z
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Jorn Bruggeman
@@ -86,8 +90,10 @@
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,rad,w,z
+   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
+   
+   REALTYPE,pointer :: I_0,A,g1,g2
 
    contains
 
@@ -116,8 +122,8 @@
 !EOP
 !
 !  local variables
-   integer                   :: i
-   character(len=64)         :: models(256)
+   integer                   :: i,j,variablecount,ivariables(256)
+   character(len=64)         :: models(256),variables(256),file
    type (type_model),pointer :: childmodel
    namelist /bio_nml/ fabm_calc,models,                                 &
                       cnpar,w_adv_discr,ode_method,split_factor,        &
@@ -217,9 +223,6 @@
             stop "init_gotm_fabm: no valid ode_method specified in fabm.nml!"
       end select
       
-      ! Initialize FABM output (creates NetCDF variables)
-      call init_output_gotm_fabm()
-      
       ! Initialize spatially explicit variables
       call init_var_gotm_fabm(_LOCATION_)
 
@@ -235,8 +238,11 @@
    LEVEL2 'See the bio example on www.gotm.net for a working '//trim(fname)
    fabm_calc = .false.
    return
+
 99 FATAL 'I could not read '//trim(fname)
    stop 'init_gotm_fabm'
+   return
+   
    end subroutine init_gotm_fabm
 !EOC
 
@@ -283,7 +289,7 @@
    do i=1,ubound(model%info%state_variables_ben,1)
       cc(ubound(model%info%state_variables,1)+i,1) = model%info%state_variables_ben(i)%initial_value
    end do
-
+   
    ! Allocate diagnostic variable array and set all values to zero.
    ! (needed because time-integrated/averaged variables will increment rather than set the array)
    allocate(cc_diag(1:ubound(model%info%diagnostic_variables,1),_LOCATION_RANGE_),stat=rc)
@@ -354,7 +360,8 @@
 ! !IROUTINE: Set bio module environment 
 !
 ! !INTERFACE: 
-   subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho,nuh_,h_,w_,rad_,bioshade_,I_0,wnd,precip_,evap_,z_)
+   subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho,nuh_,h_,w_, &
+                                bioshade_,I_0_,wnd,precip_,evap_,z_,A_,g1_,g2_)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -365,8 +372,9 @@
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho,nuh_,h_,w_,rad_,bioshade_,z_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0,wnd,precip_,evap_
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho,nuh_,h_,w_,bioshade_,z_
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,wnd,precip_,evap_
+   REALTYPE, intent(in),target :: A_,g1_,g2_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -381,13 +389,12 @@
    call fabm_link_data   (model,varname_salt,   salt_)
    call fabm_link_data   (model,varname_dens,   rho)
    call fabm_link_data_hz(model,varname_wind_sf,wnd)
-   call fabm_link_data_hz(model,varname_par_sf, I_0)
+   call fabm_link_data_hz(model,varname_par_sf, I_0_)
    
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh => nuh_             ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
    h   => h_               ! layer heights [1d array] needed for advection, diffusion
    w   => w_               ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
-   rad => rad_             ! short wave radiation [1d array] used to calculate photosynthetically active radiation
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
    z => z_                 ! depth [1d array], used to calculate local pressure
    precip => precip_       ! precipitation [scalar] - used to calculate dilution due to increased water volume
@@ -400,6 +407,11 @@
 
    ! Calculate and save internal time step.
    dt_eff = dt/float(split_factor)
+   
+   I_0 => I_0_
+   A => A_
+   g1 => g1_
+   g2 => g2_
    
    end subroutine set_env_gotm_fabm
 !EOC
@@ -798,11 +810,6 @@
 ! Calculate photosynthetically active radiation over entire column
 ! based on surface radiation, and background and biotic extinction.
 !
-! !USES:
-   use observations, only:A,g1,g2
-   
-   IMPLICIT NONE
-!
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
    logical, intent(in)                 :: bioshade_feedback
@@ -814,14 +821,13 @@
 !
 ! !LOCAL VARIABLES:
    integer :: i
-   REALTYPE :: zz,bioext,localext
+   REALTYPE :: bioext,localext
 #ifdef _FABM_USE_1D_LOOP_
    REALTYPE :: localexts(1:nlev)
 #endif
 !
 !-----------------------------------------------------------------------
 !BOC
-   zz = _ZERO_
    bioext = _ZERO_
 
 #ifdef _FABM_USE_1D_LOOP_
@@ -837,236 +843,16 @@
       ! Add the extinction of the first half of the grid box.
       bioext = bioext+localext*0.5*h(i+1)
 
-      zz=zz+0.5*h(i+1)
-      par(i)=rad(nlev)*(_ONE_-A)*exp(-zz/g2-bioext)
-      swr(i)=par(i)+rad(nlev)*A*exp(-zz/g1)
+      par(i) = I_0*(_ONE_-A)*exp(z(i)/g2-bioext)
+      swr(i) = par(i)+I_0*A*exp(z(i)/g1)
 
       ! Add the extinction of the second half of the grid box.
       bioext = bioext+localext*0.5*h(i+1)
       
-      zz=zz+0.5*h(i+1)
       if (bioshade_feedback) bioshade(i)=exp(-bioext)
    end do
 
    end subroutine light
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Initialize output
-!
-! !INTERFACE:
-   subroutine init_output_gotm_fabm()
-   
-!
-! !DESCRIPTION:
-!  Initialize the output by defining biogeochemical variables.
-!
-! !USES:
-   use output,  only: out_fmt
-#ifdef NETCDF_FMT
-   use ncdfout, only: ncid,lon_dim,lat_dim,z_dim,time_dim,dim3d,dim4d
-   use ncdfout, only: define_mode,new_nc_variable,set_attributes
-#endif
-!
-   IMPLICIT NONE
-!
-#ifdef NETCDF_FMT
-#include "netcdf.inc"
-#endif
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer :: iret,n
-!
-!-----------------------------------------------------------------------
-!BOC
-   if (.not. fabm_calc) return
-   
-   select case (out_fmt)
-      case (NETCDF)
-#ifdef NETCDF_FMT
-         ! Put NetCDF library in define mode.
-         iret = define_mode(ncid,.true.)
-
-         dim4d(1) = lon_dim
-         dim4d(2) = lat_dim
-         dim4d(3) = z_dim
-         dim4d(4) = time_dim
-
-         dim3d(1) = lon_dim
-         dim3d(2) = lat_dim
-         dim3d(3) = time_dim
-
-         ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical state variable.
-         do n=1,ubound(model%info%state_variables,1)
-            iret = new_nc_variable(ncid,model%info%state_variables(n)%name,NF_REAL, &
-                                   dim4d,model%info%state_variables(n)%externalid)
-            iret = set_attributes(ncid,model%info%state_variables(n)%externalid,       &
-                                  units=model%info%state_variables(n)%units,    &
-                                  long_name=model%info%state_variables(n)%longname)
-         end do
-
-         ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical diagnostic variable.
-         do n=1,ubound(model%info%diagnostic_variables,1)
-            iret = new_nc_variable(ncid,model%info%diagnostic_variables(n)%name,NF_REAL, &
-                                   dim4d,model%info%diagnostic_variables(n)%externalid)
-            iret = set_attributes(ncid,model%info%diagnostic_variables(n)%externalid,    &
-                                  units=model%info%diagnostic_variables(n)%units,        &
-                                  long_name=model%info%diagnostic_variables(n)%longname)
-         end do
-
-         ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical state variable.
-         do n=1,ubound(model%info%state_variables_ben,1)
-            iret = new_nc_variable(ncid,model%info%state_variables_ben(n)%name,NF_REAL, &
-                                   dim3d,model%info%state_variables_ben(n)%externalid)
-            iret = set_attributes(ncid,model%info%state_variables_ben(n)%externalid,    &
-                                  units=model%info%state_variables_ben(n)%units,        &
-                                  long_name=model%info%state_variables_ben(n)%longname)
-         end do
-
-         ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical diagnostic variable.
-         do n=1,ubound(model%info%diagnostic_variables_hz,1)
-            iret = new_nc_variable(ncid,model%info%diagnostic_variables_hz(n)%name,NF_REAL, &
-                                   dim3d,model%info%diagnostic_variables_hz(n)%externalid)
-            iret = set_attributes(ncid,model%info%diagnostic_variables_hz(n)%externalid,    &
-                                  units=model%info%diagnostic_variables_hz(n)%units,        &
-                                  long_name=model%info%diagnostic_variables_hz(n)%longname)
-         end do
-
-         ! Add a variable for each conserved quantity
-         do n=1,ubound(model%info%conserved_quantities,1)
-            iret = new_nc_variable(ncid,trim(model%info%conserved_quantities(n)%name)//'_tot',NF_REAL, &
-                                   dim3d,model%info%conserved_quantities(n)%externalid)
-            iret = set_attributes(ncid,model%info%conserved_quantities(n)%externalid,      &
-                                  units='m*'//model%info%conserved_quantities(n)%units,    &
-                                  long_name=trim(model%info%conserved_quantities(n)%longname)//', depth-integrated')
-         end do
-
-         ! Take NetCDF library out of define mode (ready for storing data).
-         iret = define_mode(ncid,.false.)
-#endif
-   end select
-
-   end subroutine init_output_gotm_fabm
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Save values of biogeochemical variables
-!
-! !INTERFACE:
-   subroutine save_gotm_fabm(nlev)
-   
-!
-! !DESCRIPTION:
-!  Save properties of biogeochemical model, including state variable
-!  values, diagnostic variable values, and sums of conserved quantities.
-!
-! !USES:
-   use output,  only: nsave,out_fmt
-#ifdef NETCDF_FMT
-   use ncdfout, only: ncid
-   use ncdfout, only: store_data
-#endif
-
-   IMPLICIT NONE
-
-#ifdef NETCDF_FMT
-#include "netcdf.inc"
-#endif
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                  :: nlev
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer :: iret,n
-!
-!-----------------------------------------------------------------------
-!BOC
-   if (.not. fabm_calc) return
-   
-   select case (out_fmt)
-      case (NETCDF)
-#ifdef NETCDF_FMT
-         ! Store pelagic biogeochemical state variables.
-         do n=1,ubound(model%info%state_variables,1)
-            iret = store_data(ncid,model%info%state_variables(n)%externalid,XYZT_SHAPE,nlev,array=cc(n,0:nlev))
-         end do
-
-         ! Store benthic biogeochemical state variables.
-         do n=1,ubound(model%info%state_variables_ben,1)
-            iret = store_data(ncid,model%info%state_variables_ben(n)%externalid,XYT_SHAPE,1, &
-                            & scalar=cc(ubound(model%info%state_variables,1)+n,1))
-         end do
-
-         ! Process and store diagnostic variables defined on the full domain.
-         do n=1,ubound(model%info%diagnostic_variables,1)
-            ! Time-average diagnostic variable if needed.
-            if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged) &
-               cc_diag(n,1:nlev) = cc_diag(n,1:nlev)/(nsave*dt)
-               
-            ! Store diagnostic variable values.
-            iret = store_data(ncid,model%info%diagnostic_variables(n)%externalid,XYZT_SHAPE,nlev,array=cc_diag(n,0:nlev))
-            
-            ! Reset diagnostic variables to zero if they will be time-integrated (or time-averaged).
-            if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged .or. &
-                model%info%diagnostic_variables(n)%time_treatment==time_treatment_step_integrated) &
-               cc_diag(n,1:nlev) = _ZERO_
-         end do
-
-         ! Process and store diagnostic variables defined on horizontal slices of the domain.
-         do n=1,ubound(model%info%diagnostic_variables_hz,1)
-            ! Time-average diagnostic variable if needed.
-            if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_averaged) &
-               cc_diag_hz(n) = cc_diag_hz(n)/(nsave*dt)
-               
-            ! Store diagnostic variable values.
-            iret = store_data(ncid,model%info%diagnostic_variables_hz(n)%externalid,XYT_SHAPE,nlev,scalar=cc_diag_hz(n))
-            
-            ! Reset diagnostic variables to zero if they will be time-integrated (or time-averaged).
-            if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_averaged .or. &
-                model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_step_integrated) &
-               cc_diag_hz(n) = _ZERO_
-         end do
-
-         ! Integrate conserved quantities over depth.
-#ifdef _FABM_USE_1D_LOOP_
-         call fabm_get_conserved_quantities(model,1,nlev,local)
-         do n=1,ubound(model%info%conserved_quantities,1)
-            ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
-            ! We therefore need to increment the index by 1 in order to address original elements >=1!
-            total(n) = sum(h(2:nlev+1)*local(1:nlev,n))
-         end do
-#else
-         total = _ZERO_
-         do n=1,nlev
-            ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
-            ! We therefore need to increment the index by 1 in order to address original elements >=1!
-            call fabm_get_conserved_quantities(model,n,local)
-            total = total + h(n+1)*local
-         end do
-#endif
-
-         ! Store conserved quantity integrals.
-         do n=1,ubound(model%info%conserved_quantities,1)
-            iret = store_data(ncid,model%info%conserved_quantities(n)%externalid,XYT_SHAPE,1,scalar=total(n))
-         end do
-#endif
-   end select
-
-   end subroutine save_gotm_fabm
 !EOC
 
    end module gotm_fabm
