@@ -741,7 +741,7 @@ static void f2py_setup_bio_var(void (*cc)(int*,npy_intp*,void(*)(char*,npy_intp*
   f2py_bio_var_def[i_f2py++].func = var_long;
   f2py_bio_var_def[i_f2py++].func = var_units;
 }
-extern void F_FUNC_US(f2pyinitbio_var,F2PYINITBIO_VAR)(void (*)(void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),int*),void (*)(int*,npy_intp*,void(*)(char*,int*),npy_intp*),void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),int*),void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),int*)));
+extern void F_FUNC_US(f2pyinitbio_var,F2PYINITBIO_VAR)(void (*)(void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),int*),void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),npy_intp*),void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),int*),void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),int*)));
 static void f2py_init_bio_var(void) {
   F_FUNC_US(f2pyinitbio_var,F2PYINITBIO_VAR)(f2py_setup_bio_var);
 }
