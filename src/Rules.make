@@ -90,7 +90,7 @@ endif
 
 # Top of this version of GOTM.
 ifndef GOTMDIR
-GOTMDIR  := $(HOME)/GOTM/gotm-cvs
+GOTMDIR  := $(HOME)/GOTM/gotm-git
 endif
 
 CPP	= /lib/cpp
