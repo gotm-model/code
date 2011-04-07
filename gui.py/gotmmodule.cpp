@@ -734,14 +734,14 @@ static FortranDataDef f2py_bio_var_def[] = {
   {NULL}
 };
 
-static void f2py_setup_bio_var(void (*cc)(int*,int*,void(*)(char*,int*),int*),void (*var_names)(int*,int*,void(*)(char*,int*),int*),void (*var_long)(int*,int*,void(*)(char*,int*),int*),void (*var_units)(int*,int*,void(*)(char*,int*),int*)) {
+static void f2py_setup_bio_var(void (*cc)(int*,npy_intp*,void(*)(char*,npy_intp*),int*),void (*var_names)(int*,npy_intp*,void(*)(char*,npy_intp*),int*),void (*var_long)(int*,npy_intp*,void(*)(char*,npy_intp*),int*),void (*var_units)(int*,npy_intp*,void(*)(char*,npy_intp*),int*)) {
   int i_f2py=0;
   f2py_bio_var_def[i_f2py++].func = cc;
   f2py_bio_var_def[i_f2py++].func = var_names;
   f2py_bio_var_def[i_f2py++].func = var_long;
   f2py_bio_var_def[i_f2py++].func = var_units;
 }
-extern void F_FUNC_US(f2pyinitbio_var,F2PYINITBIO_VAR)(void (*)(void (*)(int*,int*,void(*)(char*,int*),int*),void (*)(int*,int*,void(*)(char*,int*),int*),void (*)(int*,int*,void(*)(char*,int*),int*),void (*)(int*,int*,void(*)(char*,int*),int*)));
+extern void F_FUNC_US(f2pyinitbio_var,F2PYINITBIO_VAR)(void (*)(void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),int*),void (*)(int*,npy_intp*,void(*)(char*,int*),npy_intp*),void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),int*),void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),int*)));
 static void f2py_init_bio_var(void) {
   F_FUNC_US(f2pyinitbio_var,F2PYINITBIO_VAR)(f2py_setup_bio_var);
 }
@@ -752,11 +752,11 @@ static FortranDataDef f2py_meanflow_def[] = {
   {NULL}
 };
 
-static void f2py_setup_meanflow(void (*h)(int*,int*,void(*)(char*,int*),int*)) {
+static void f2py_setup_meanflow(void (*h)(int*,npy_intp*,void(*)(char*,npy_intp*),int*)) {
   int i_f2py=0;
   f2py_meanflow_def[i_f2py++].func = h;
 }
-extern void F_FUNC(f2pyinitmeanflow,F2PYINITMEANFLOW)(void (*)(void (*)(int*,int*,void(*)(char*,int*),int*)));
+extern void F_FUNC(f2pyinitmeanflow,F2PYINITMEANFLOW)(void (*)(void (*)(int*,npy_intp*,void(*)(char*,npy_intp*),int*)));
 static void f2py_init_meanflow(void) {
   F_FUNC(f2pyinitmeanflow,F2PYINITMEANFLOW)(f2py_setup_meanflow);
 }
