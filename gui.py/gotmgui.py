@@ -88,7 +88,12 @@ class GOTMWizard(commonqt.Wizard):
             self.actExportResult.setVisible(res is not None)
             
     def onAbout(self):
-        dialog = QtGui.QDialog(self,QtCore.Qt.Dialog|QtCore.Qt.CustomizeWindowHint|QtCore.Qt.WindowTitleHint|QtCore.Qt.WindowCloseButtonHint)
+        attr = QtCore.Qt.Dialog|QtCore.Qt.CustomizeWindowHint|QtCore.Qt.WindowTitleHint
+        try:
+            attr |= QtCore.Qt.WindowCloseButtonHint
+        except AttributeError:
+            pass
+        dialog = QtGui.QDialog(self,attr)
         layout = QtGui.QVBoxLayout()
 
         label = QtGui.QLabel( \
