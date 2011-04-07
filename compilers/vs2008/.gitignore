@@ -1,0 +1,6 @@
+Debug
+Release
+*.ncb
+*.u2d
+*.user
+*.suo
