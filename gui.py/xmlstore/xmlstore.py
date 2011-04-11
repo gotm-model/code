@@ -1451,7 +1451,7 @@ class TypedStore(util.referencedobject):
                 valuedom = xml.dom.minidom.parse(path)
             except Exception,e:
                 raise Exception('"%s" does not contain valid XML: %s' % (path,unicode(e)))
-            container = datatypes.DataContainerDirectory(os.path.dirname(path))
+            container = datatypes.DataContainerDirectory(os.path.dirname(os.path.abspath(path)))
             
         # Get version of the XML file.
         version = valuedom.documentElement.getAttribute('version')
