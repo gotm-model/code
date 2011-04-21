@@ -1428,7 +1428,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                 elevbounds,hbounds,bathbounds,sigmabounds = (Ellipsis,),(Ellipsis,),(Ellipsis,),(Ellipsis,)
                 if bounds is not None:
                     # First translate integer indices into slice objects with length 1.
-                    # This ensures all 4 dimensions will be present during the calculations.
+                    # This ensures all dimensions will be present during the calculations.
                     newbounds = []
                     for l in bounds:
                         if isinstance(l,int):
@@ -1442,7 +1442,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # Make sure calculations operate on entire depth range
                     newbounds[1] = slice(None)
                     
-                    elevbounds = (newbounds[0],newbounds[2],newbounds[3])
+                    elevbounds = [newbounds[i] for i in range(len(newbounds)) if i!=1]
                     hbounds = newbounds
                     bathbounds = newbounds[-2:]
                     sigmabounds = (newbounds[1],)
@@ -1523,8 +1523,9 @@ class NetCDFStore_GOTM(NetCDFStore):
                         z1_stag = np.concatenate((np.take(z_stag,(0,),1),z[:,1:,...],np.take(z_stag,(-1,),1)),1)
                         
                         # Use normal staggering for the time, longitude and latitude dimension.
-                        data['z_stag']  = xmlplot.common.stagger(z_stag, (0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
-                        data['z1_stag'] = xmlplot.common.stagger(z1_stag,(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+                        remdims = [i for i in range(z_stag.ndim) if i!=1]
+                        data['z_stag']  = xmlplot.common.stagger(z_stag, remdims,defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+                        data['z1_stag'] = xmlplot.common.stagger(z1_stag,remdims,defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
                 else:
                     # Get bathymetry (dimension 0: y coordinate, dimension 1: x coordinate)
                     bath = self.store[self.store.bathymetryname].getSlice(bathbounds,dataonly=True,cache=cachebasedata)
