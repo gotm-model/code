@@ -63,7 +63,10 @@ class Exporter(BaseExporter):
         self.source.figure.set_figheight(height)
 
         # Save the figure to file.
-        self.source.canvas.print_figure(unicode(path),dpi=dpi,facecolor='w',edgecolor='w',orientation='portrait')
+        fmt = os.path.splitext(unicode(path))[1][1:].lower()
+        possibleexts = self.getFileTypes(self.source)[format]
+        if fmt not in possibleexts: fmt = possibleexts[0]
+        self.source.canvas.print_figure(unicode(path),dpi=dpi,facecolor='w',edgecolor='w',orientation='portrait',format=fmt)
         
         # Restore original figure dimensions.
         self.source.figure.set_figwidth (oldwidth)
