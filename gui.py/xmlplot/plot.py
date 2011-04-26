@@ -1,6 +1,6 @@
 import math,os.path,xml.dom.minidom
 
-import matplotlib, matplotlib.colors, matplotlib.dates, matplotlib.font_manager
+import matplotlib, matplotlib.colors, matplotlib.dates, matplotlib.font_manager, matplotlib.ticker
 import numpy
 
 import xmlstore.xmlstore,xmlstore.util,common,expressions
@@ -1490,6 +1490,8 @@ class Figure(xmlstore.util.referencedobject):
                 
                 pc = None       # object using colormap
                 norm = None     # color normalization object
+                clocator = None
+                cformatter = None
                 curhascolormap = C is not None
                 cbborders = None # borders for discrete colors in colorbar
                 
@@ -1501,6 +1503,8 @@ class Figure(xmlstore.util.referencedobject):
                     crange = list(axis2data.get('colorbar',{}).get('forcedrange',[None,None]))
                     if logscale:
                         norm = matplotlib.colors.LogNorm()
+                        cformatter = matplotlib.ticker.LogFormatterMathtext()   # default is wrong (LogFormatter) and broken in MPL 1.0.1; force it to the correct formatter.
+                        clocator = matplotlib.ticker.LogLocator()
                         
                         # Mask values <= 0 manually, because color bar locators choke on them.
                         invalid = C<=0
@@ -1642,7 +1646,8 @@ class Figure(xmlstore.util.referencedobject):
                     # Create colorbar
                     assert cb is None, 'Currently only one object that needs a colorbar is supported per figure.'
                     pc.set_clim(crange)
-                    cb = figure.colorbar(pc,ax=axes)
+                    cb = figure.colorbar(pc,ax=axes,format=cformatter)
+                    cb.locator = clocator
                     if cbborders is not None: cb.add_lines(cbborders)
 
                 plotcount[2] += 1
