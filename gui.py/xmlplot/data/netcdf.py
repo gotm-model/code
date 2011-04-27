@@ -1395,7 +1395,13 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return self.store[self.store.elevname].getUnit()
 
             def getProperties(self):
-                return {}
+                if self.store.bathymetryname is None:
+                    return {'history':'auto-generated from layer thickness and surface elevation.'}
+                else:
+                    return {'history':'auto-generated from sigma levels, elevation and bathymetry.'}
+
+            def getDataType(self):
+                return self.store[self.store.elevname].getDataType()
 
             def getDimensions_raw(self,reassign=True):
                 dims = list(self.store[self.store.elevname].getDimensions_raw(reassign=False))
@@ -1444,7 +1450,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     
                     elevbounds = [newbounds[i] for i in range(len(newbounds)) if i!=1]
                     hbounds = newbounds
-                    bathbounds = newbounds[-2:]
+                    bathbounds = newbounds[2:]
                     sigmabounds = (newbounds[1],)
             
                 np = numpy
