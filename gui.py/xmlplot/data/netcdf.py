@@ -1136,8 +1136,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
         nc = self.getcdf()
         ncdims = list(nc.dimensions)
         def cmpdims(x,y):
-            for vn in nc.variables.keys():
-                v = nc.variables[vn]
+            for v in nc.variables.values():
                 if x in v.dimensions and y in v.dimensions:
                     curdims = list(v.dimensions)
                     return cmp(curdims.index(x),curdims.index(y))
@@ -1383,6 +1382,7 @@ class NetCDFStore_GOTM(NetCDFStore):
             def __init__(self,store,ncvarname,dimname):
                 NetCDFStore.NetCDFVariable.__init__(self,store,ncvarname)
                 self.dimname = dimname
+                self.cacheddims = None
                 self.cachedshape = None
         
             def getName_raw(self):
@@ -1404,22 +1404,50 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return self.store[self.store.elevname].getDataType()
 
             def getDimensions_raw(self,reassign=True):
-                dims = list(self.store[self.store.elevname].getDimensions_raw(reassign=False))
-                dims.insert(1,self.store.depth2coord.get(self.dimname,self.dimname))
-                if reassign: dims = [self.store.reassigneddims.get(d,d) for d in dims]
-                return dims
+                if self.cacheddims is None:
+                    def addvar(name):
+                        curvar = self.store[name]
+                        curdims = curvar.getDimensions_raw(reassign=False)
+                        dims.update(curdims)
+                        for d,l in zip(curdims,curvar.getShape()): dim2length[d] = l
+
+                    # Get the set of dimensions (unordered) for all source variables combined.
+                    dims = set()
+                    dim2length = {}
+                    addvar(self.store.elevname)
+                    if self.store.bathymetryname is None:
+                        # Depth from elevation and layer thicknesses
+                        addvar(self.store.hname)
+                    else:
+                        # Depth from elevation, bathymetry and sigma levels
+                        addvar(self.store.bathymetryname)
+                        addvar('sigma')
+                        
+                    # Order dimensions
+                    nc = self.store.getcdf()
+                    for v in nc.variables.values():
+                        if all([d in v.dimensions for d in dims]): break
+                    else:
+                        assert False,'None of the NetCDF variables uses all dimensions that are needed for the depth coordinate.'
+                    self.cacheddims = [d for d in v.dimensions if d in dims]
+                    
+                    # Save shape
+                    self.cachedshape = [dim2length[d] for d in self.cacheddims]
+                    if self.dimname.endswith('_stag'):
+                        self.cachedshape = tuple([l+1 for l in self.cachedshape])
+
+                    # Relabel depth dimension to own name.
+                    izdim = self.cacheddims.index(self.store.depth2coord.get('z','z'))
+                    self.cacheddims[izdim] = self.store.depth2coord.get(self.dimname,self.dimname)
+
+                # Re-assign dimensions if needed.
+                if reassign: return [self.store.reassigneddims.get(d,d) for d in self.cacheddims]
+                return list(self.cacheddims)
                 
             def getShape(self):
                 if self.cachedshape is None:
-                    if self.store.bathymetryname is None:
-                        self.cachedshape = self.store[self.store.hname].getShape()
-                    else:
-                        elevshape = self.store[self.store.elevname].getShape()
-                        sigmashape = self.store['sigma'].getShape()
-                        self.cachedshape = [elevshape[0],sigmashape[0]] + list(elevshape[1:])
-                    if self.dimname.endswith('_stag'):
-                        self.cachedshape = tuple([l+1 for l in self.cachedshape])
-                return self.cachedshape
+                    self.getDimensions_raw(reassign=False)
+                return list(self.cachedshape)
                 
             def getNcData(self,bounds=None,allowmask=True):
                 # Return values from cache if available.
@@ -1429,44 +1457,66 @@ class NetCDFStore_GOTM(NetCDFStore):
                     else:                        
                         return self.store.cachedcoords[self.dimname][bounds]
 
-                # Get the bounds to use for the different variables used  to calculate depth.
                 cachebasedata = bounds is not None
-                elevbounds,hbounds,bathbounds,sigmabounds = (Ellipsis,),(Ellipsis,),(Ellipsis,),(Ellipsis,)
+                izdim = self.getDimensions_raw(reassign=False).index(self.store.depth2coord.get(self.dimname,self.dimname))
+
+                # Determine shape of depth centers
+                shape = self.getShape()
+                if self.dimname.endswith('_stag'): shape = [l-1 for l in shape]
+
                 if bounds is not None:
-                    # First translate integer indices into slice objects with length 1.
-                    # This ensures all dimensions will be present during the calculations.
+                    # Determine dimension boundaries for the source variables.
+                    assert len(bounds)==len(shape),'Number of bounds (%i) does not match the variable shape (%s)' % (len(bounds),','.join(map(str,shape)))
                     newbounds = []
-                    for l in bounds:
-                        if isinstance(l,int):
+                    for i,l in enumerate(bounds):
+                        if i==izdim:
+                            # depth dimension: we need the complete range.
+                            l = slice(None)
+                        elif isinstance(l,int):
+                            # integer index: convert to slice with length 1 to preserve rank and dimension order.
                             l = slice(l,l+1)
                         elif self.dimname.endswith('_stag'):
                             # If we need staggered coordinates, all dimensions will expand by 1
                             # in the end. Therefore, subtract 1 from their length here.
                             l = slice(l.start,l.stop-l.step,l.step)
+                        start,stop,step = l.indices(shape[i])
+                        shape[i] = 1+int((stop-start-1)/step)
                         newbounds.append(l)
-                        
-                    # Make sure calculations operate on entire depth range
-                    newbounds[1] = slice(None)
+
+                dims = self.getDimensions_raw(reassign=False)
+                dims[izdim] = self.store.depth2coord.get('z','z')   # set name of depth dimension to that used by source variables.
+                def getvardata(name):
+                    var = self.store[name]
+                    vardims = var.getDimensions_raw(reassign=False)
+                    if bounds is None:
+                        varbounds = None
+                    else:
+                        varbounds = [newbounds[dims.index(d)] for d in vardims]
+                    data = var.getSlice(varbounds,dataonly=True,cache=cachebasedata)
+                    dimlengths = dict(zip(vardims,data.shape))
+                    assert len(vardims)==data.ndim,'%s: number of variable dimensions and array rank do not match.' % name
+                    data.shape = [dimlengths.get(d,1) for d in dims]
+                    return data
                     
-                    elevbounds = [newbounds[i] for i in range(len(newbounds)) if i!=1]
-                    hbounds = newbounds
-                    bathbounds = newbounds[2:]
-                    sigmabounds = (newbounds[1],)
+                def takezrange(array,start,stop=None):
+                    slc = [slice(None)]*array.ndim
+                    if isinstance(start,slice):
+                        slc[izdim] = start
+                    else:
+                        slc[izdim] = slice(start,stop)
+                    return array[slc]
             
-                np = numpy
                 mask,elevmask = numpy.ma.nomask,numpy.ma.nomask
                 data = {}
                             
                 # Get elevations
-                elev = self.store[self.store.elevname].getSlice(elevbounds,dataonly=True,cache=cachebasedata)
+                elev = getvardata(self.store.elevname)
 
                 # Subroutine for creating and updating the depth mask.
                 def setmask(mask,newmask):
                     if mask is numpy.ma.nomask:
                         # Create new depth mask based on provided mask, allowing for broadcasting.
-                        zshape = list(elev.shape)
-                        zshape.insert(1,self.store['z'].getShape()[1])
-                        mask = numpy.empty(zshape,dtype=numpy.bool)
+                        mask = numpy.empty(shape,dtype=numpy.bool)
                         mask[...] = newmask
                     else:
                         # Combine provided mask with existing one.
@@ -1480,11 +1530,11 @@ class NetCDFStore_GOTM(NetCDFStore):
                 if elevmask is not numpy.ma.nomask:
                     if numpy.any(elevmask):
                         # Add elevation mask to global depth mask (insert z dimension).
-                        mask = setmask(mask,elevmask[:,numpy.newaxis,...])
+                        mask = setmask(mask,elevmask)
                         
                         # Set masked edges of valid [unmasked] elevation domain to bordering
                         # elevation values, in order to allow for correct calculation of interface depths.
-                        elev = xmlplot.common.interpolateEdges(elev,dims=(1,2))
+                        elev = xmlplot.common.interpolateEdges(elev)
                         elevmask = numpy.ma.getmask(elev)
                         
                     # Eliminate elevation mask.
@@ -1494,7 +1544,7 @@ class NetCDFStore_GOTM(NetCDFStore):
 
                 if self.store.bathymetryname is None:
                     # Get layer heights (dimension 0: time, dimension 1: depth, dimension 2: y coordinate, dimension 3: x coordinate)
-                    h = self.store[self.store.hname].getSlice(hbounds,dataonly=True,cache=cachebasedata)
+                    h = getvardata(self.store.hname)
                                         
                     # Fill masked values (we do not want coordinate arrays with masked values)
                     # This should not have any effect, as the value arrays should also be masked at
@@ -1506,18 +1556,15 @@ class NetCDFStore_GOTM(NetCDFStore):
                         h = h.filled(0.)
                     
                     # Get depths of interfaces
-                    z_stag = h.cumsum(axis=1)
-                    sliceshape = list(z_stag.shape)
-                    sliceshape[1] = 1
-                    z_stag = np.concatenate((numpy.zeros(sliceshape,z_stag.dtype),z_stag),axis=1)
-                    bottomdepth = z_stag[:,-1,...]-elev
-                    z_stag -= bottomdepth[:,numpy.newaxis,...]
+                    z_stag = numpy.concatenate((numpy.zeros_like(h.take((0,),axis=izdim)),h.cumsum(axis=izdim)),axis=izdim)
+                    bottomdepth = z_stag.take((-1,),axis=izdim)-elev
+                    z_stag -= bottomdepth
                     
                     # Get depths of layer centers
-                    z = z_stag[:,1:z_stag.shape[1],...]-0.5*h[:,:,...]
+                    z = takezrange(z_stag,1)-0.5*h
                     
                     # The actual interface coordinate z1 lacks the bottom interface
-                    z1 = z_stag[:,1:,...]
+                    z1 = takezrange(z_stag,1)
                     
                     # Store depth dimension
                     data['z']  = z
@@ -1526,15 +1573,15 @@ class NetCDFStore_GOTM(NetCDFStore):
                     if bounds is None or self.dimname in ('z_stag','z1_stag'):
                         # Use the actual top and bottom of the column as boundary interfaces for the
                         # grid of the interface coordinate.
-                        z1_stag = np.concatenate((np.take(z_stag,(0,),1),z[:,1:,...],np.take(z_stag,(-1,),1)),1)
+                        z1_stag = numpy.concatenate((numpy.take(z_stag,(0,),axis=izdim),takezrange(z,1),numpy.take(z_stag,(-1,),axis=izdim)),axis=izdim)
                         
                         # Use normal staggering for the time, longitude and latitude dimension.
-                        remdims = [i for i in range(z_stag.ndim) if i!=1]
+                        remdims = [i for i in range(z_stag.ndim) if i!=izdim]
                         data['z_stag']  = xmlplot.common.stagger(z_stag, remdims,defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
                         data['z1_stag'] = xmlplot.common.stagger(z1_stag,remdims,defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
                 else:
-                    # Get bathymetry (dimension 0: y coordinate, dimension 1: x coordinate)
-                    bath = self.store[self.store.bathymetryname].getSlice(bathbounds,dataonly=True,cache=cachebasedata)
+                    # Get bathymetry
+                    bath = getvardata(self.store.bathymetryname)
                     
                     # Check bathymetry mask.
                     bathmask = numpy.ma.getmask(bath)
@@ -1552,33 +1599,36 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # Let elevation follow bathymetry whereever it was originally masked.
                     if elevmask is not numpy.ma.nomask:
                         bigbath = numpy.empty_like(elev)
-                        bigbath[:] = bath
+                        bigbath[...] = bath
                         elev[elevmask] = -bigbath[elevmask]
 
                     # Calculate water depth at each point in time
                     # Clip it at zero: nearest neighbor interpolation of elevations may have
                     # caused water levels below the bottom.
-                    depth = numpy.maximum(bath[numpy.newaxis,:,:]+elev,0.)
+                    depth = numpy.maximum(bath+elev,0.)
                     
                     # Get sigma levels (constant across time and space)
-                    sigma = self.store['sigma'].getSlice(sigmabounds,dataonly=True,cache=cachebasedata)
+                    sigma = getvardata('sigma')
                     
                     # From sigma levels and water depth, calculate the z coordinates.
-                    data['z'] = sigma.reshape((1,-1,1,1))*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
+                    data['z'] = sigma*depth + elev
                     if bounds is None or self.dimname=='z_stag':
                         # Calculate staggered sigma coordinates
-                        sigma_stag = numpy.empty((sigma.shape[0]+1,),dtype=sigma.dtype)
-                        sigma_stag[0] = -1.
-                        sigma_stag[1:-1] = (sigma[:-1]+sigma[1:])/2.
-                        sigma_stag[-1] = 0.
+                        sigma_stag_shape = list(sigma.shape)
+                        sigma_stag_shape[izdim] += 1
+                        sigma_stag = numpy.empty(sigma_stag_shape,dtype=sigma.dtype)
+                        takezrange(sigma_stag,0, 1)[...] = -1.
+                        takezrange(sigma_stag,1,-1)[...] = 0.5*(takezrange(sigma,0,-1)+takezrange(sigma,1))
+                        takezrange(sigma_stag,-1  )[...] = 0.
 
                         # First stagger in deth dimension.
-                        z_stag = sigma_stag.reshape((1,-1,1,1))*depth[:,numpy.newaxis,:,:] + elev[:,numpy.newaxis,:,:]
+                        z_stag = sigma_stag*depth + elev
                         
                         # Use default staggering for remaining dimensions of staggered z.
-                        data['z_stag'] = xmlplot.common.stagger(z_stag,dimindices=(0,2,3),defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+                        remdims = [i for i in range(z_stag.ndim) if i!=izdim]
+                        data['z_stag'] = xmlplot.common.stagger(z_stag,dimindices=remdims,defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
 
-                # Apply the mask to the center coordinates (if any)
+                # Apply the mask (if any) to the center coordinates
                 if mask is not numpy.ma.nomask:
                     data['z'] = numpy.ma.masked_where(mask,data['z'],copy=False)
 
@@ -1592,17 +1642,17 @@ class NetCDFStore_GOTM(NetCDFStore):
                 res = data[self.dimname]
                 
                 # Now finally take the depth range that we need
-                depthslice = bounds[1]
+                depthslice = bounds[izdim]
                 if isinstance(depthslice,int): depthslice = slice(depthslice,depthslice+1)
-                res = res[(slice(None),depthslice,Ellipsis)]
+                res = takezrange(res,depthslice)
                 
                 # Undo the staggering for the dimension that we take a single slice through.
                 if self.dimname.endswith('_stag'):
-                    # This is a staggered variable - average left and right bounds.
+                    # This is a staggered variable - average left and right bounds for indexed dimensions.
                     for i in range(len(bounds)-1,-1,-1):
                         if isinstance(bounds[i],int): res = res.mean(axis=i)
                 else:
-                    # This is a non-staggered variable - flatten the dimensions.
+                    # This is a non-staggered variable - take out the indexed dimensions.
                     res.shape = [l for i,l in enumerate(res.shape) if not isinstance(bounds[i],int)]
 
                 return res
