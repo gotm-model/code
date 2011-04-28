@@ -71,7 +71,7 @@ endif
 ifdef FABM
 
 ifndef FABMDIR
-FABMDIR  := $(HOME)/FABM/fabm-svn
+FABMDIR  := $(HOME)/FABM/fabm-git
 endif
 
 INCDIRS         += -I$(FABMDIR)/include -I$(FABMDIR)/src/drivers/gotm -I$(FABMDIR)/modules/gotm/$(FORTRAN_COMPILER)
