@@ -38,7 +38,14 @@ class GOTMThread(QtCore.QThread):
     
   def run(self):
     assert self.scenario is not None, 'No scenario specified.'
-    import core.simulator
+    try:
+        import core.simulator
+    except ImportError,e:
+        import core.result
+        self.res = core.result.Result()
+        self.res.errormessage = str(e)
+        self.res.returncode = 1
+        raise
     self.res = core.simulator.simulate(self.scenario,continuecallback=self.canContinue,progresscallback=self.progressed)
     
   def stop(self):
