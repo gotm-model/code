@@ -245,8 +245,9 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
     mask = None
     def addmask(mask,newmask):
         if mask is None:
-            mask = numpy.zeros(dat.shape,dtype=numpy.int)
-        mask += newmask
+            mask = newmask
+        else:
+            mask |= newmask
         return mask
         
     def getAttribute(att,**kwargs):
@@ -256,19 +257,20 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
             return numpy.asarray(val,**kwargs)
         except:
             print 'WARNING: NetCDF attribute "%s" cannot be cast to required data type (%s) and will therefore be ignored. Attribute type: %s. Attribute value: %s.' % (att,kwargs.get('dtype','unspecified'),type(val),val)
-            #pass
+        return None
 
     # Process the various COARDS/CF variable attributes for missing data.
     if maskoutsiderange:
         minval,maxval = getAttribute('valid_min',dtype=dat.dtype),getAttribute('valid_max',dtype=dat.dtype)
-        if minval is not None: mask = addmask(mask,dat<minval)
-        if maxval is not None: mask = addmask(mask,dat>maxval)
         valrange = getAttribute('valid_range',dtype=dat.dtype)
         if valrange is not None:
             if not len(valrange)==2:
                 print 'WARNING: NetCDF attribute "valid_range" must consist of two values, but contains %i. It will be ignored.' % len(ncvar.valid_range)
             else:
-                mask = addmask(mask,numpy.logical_or(dat<valrange[0],dat>valrange[1]))
+                if minval is None or valrange[0]>minval: minval = valrange[0]
+                if maxval is None or valrange[1]<maxval: maxval = valrange[1]
+        if minval is not None: mask = addmask(mask,dat<minval)
+        if maxval is not None: mask = addmask(mask,dat>maxval)
             
     # Variable to receive the final fill value to use for masked array creation.
     final_fill_value = None
@@ -885,7 +887,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
             
             # Coordinates should not have a mask - undo the masking.
             if coordmask is not numpy.ma.nomask:
-                coords = numpy.array(coords,copy=False)
+                coords = numpy.ma.getdata(coords)
 
             # Locate variable that contains staggered [boundary] coordinates.
             stagcoordvar = None
@@ -946,8 +948,8 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
                         if isinstance(coordslice[i],int): coords_stag = coords_stag.mean(axis=i)
 
                     # Coordinates should not have a mask - undo the masking.
-                    if numpy.ma.getmask(coords_stag) is not numpy.ma.nomask:
-                        coords_stag = numpy.array(coords_stag,copy=False)
+                    if numpy.ma.is_masked(coords_stag):
+                        coords_stag = numpy.ma.getdata(coords_stag)
                 except NetCDFWarning,e:
                     # Problem with specified interface coordinate - make sure they auto-generated instead.
                     print e
