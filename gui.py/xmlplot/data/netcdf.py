@@ -687,23 +687,24 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
 
           # Translate indices based on non-integer values (e.g. floating point values, dates)
           # to integer indices.
-          floatdimnames = [dimnames[idim] for idim in floatindices]
-          newshape = [shape[idim] for idim in floatindices]
-          summeddistance = numpy.zeros(newshape,dtype=numpy.float)
-          for idim in floatindices:
-            bound = bounds[idim]
-            if isinstance(bound,datetime.datetime): bound = xmlplot.common.date2num(bound)
-            dimname = dimnames[idim]
-            coordvar = self.store.getVariable_raw(dimname)
-            coorddims = list(coordvar.getDimensions())
-            for cd in coorddims:
-                assert cd in dimnames,'Coordinate %s depends on %s, but the variable %s itself does not depend on %s.' % (dimname,cd,self.getName(),cd)
-                assert cd in floatdimnames,'A float index is provided for dimension %s, but not for dimension %s on which %s depends.' % (dimname,cd,dimname)
-            coords = coordvar.getSlice([boundindices[dimnames.index(cd)] for cd in coorddims], dataonly=True, cache=True)
-            coords = xmlplot.common.broadcastSelective(coords,coorddims,newshape,floatdimnames)
-            summeddistance += numpy.abs(coords-bound)
-          indices = numpy.unravel_index(summeddistance.argmin(), newshape)
-          for idim,index in zip(floatindices,indices): boundindices[idim] = index
+          if floatindices:
+            floatdimnames = [dimnames[idim] for idim in floatindices]
+            newshape = [shape[idim] for idim in floatindices]
+            summeddistance = numpy.zeros(newshape,dtype=numpy.float)
+            for idim in floatindices:
+              bound = bounds[idim]
+              if isinstance(bound,datetime.datetime): bound = xmlplot.common.date2num(bound)
+              dimname = dimnames[idim]
+              coordvar = self.store.getVariable_raw(dimname)
+              coorddims = list(coordvar.getDimensions())
+              for cd in coorddims:
+                  assert cd in dimnames,'Coordinate %s depends on %s, but the variable %s itself does not depend on %s.' % (dimname,cd,self.getName(),cd)
+                  assert cd in floatdimnames,'A float index is provided for dimension %s, but not for dimension %s on which %s depends.' % (dimname,cd,dimname)
+              coords = coordvar.getSlice([boundindices[dimnames.index(cd)] for cd in coorddims], dataonly=True, cache=True)
+              coords = xmlplot.common.broadcastSelective(coords,coorddims,newshape,floatdimnames)
+              summeddistance += numpy.abs(coords-bound)
+            indices = numpy.unravel_index(summeddistance.argmin(), newshape)
+            for idim,index in zip(floatindices,indices): boundindices[idim] = index
           
           return tuple(boundindices)
           
