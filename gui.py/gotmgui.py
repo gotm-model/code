@@ -18,7 +18,7 @@ import commonqt
 import errortrap
 
 def getVersions():
-    yield ('Python','%i.%i.%i %s %i' % sys.version_info)
+    yield ('Python','%i.%i.%i %s %i' % tuple(sys.version_info))
     yield ('Qt4',QtCore.qVersion())
     yield ('PyQt4',QtCore.PYQT_VERSION_STR)
     

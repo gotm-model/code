@@ -1023,7 +1023,7 @@ class Figure(xmlstore.util.referencedobject):
                        
             # If all data are masked, the bounds will be masked as well.
             # Switch to no bounds if this situation occurs.
-            if numpy.ma.getmask(vardata['datarange'][0]): vardata['datarange'] = [None,None]
+            if numpy.ma.is_masked(vardata['datarange'][0]): vardata['datarange'] = [None,None]
             
             def switchAxes(xpref,ypref):
                 if xpref is not None: xpref = xpref.upper()
@@ -1139,7 +1139,7 @@ class Figure(xmlstore.util.referencedobject):
                                    'tight':False,
                                    'reversed':False,
                                    'datarange':[C.min(),C.max()]}
-                        if numpy.ma.getmask(cinfo['datarange'][0]): cinfo['datarange'] = [None,None]
+                        if numpy.ma.is_masked(cinfo['datarange'][0]): cinfo['datarange'] = [None,None]
                     
                 # Transpose values if needed
                 if xdim<ydim:
@@ -1198,7 +1198,8 @@ class Figure(xmlstore.util.referencedobject):
         padTop    = nodePadding['Top'   ].getValue(usedefault=True)
         padBottom = nodePadding['Bottom'].getValue(usedefault=True)
         figure.subplots_adjust(left=padLeft,right=1.-padRight,top=1.-padTop,bottom=padBottom)
-        axes = figure.add_subplot(111,axis_bgcolor=bg.getNormalized(),projection=projection)
+        axes = figure.add_subplot(111,projection=projection)
+        axes.set_axis_bgcolor(bg.getNormalized())
 
         # Handle transformations due to map projection (if any)
         xcanbelon = projection=='rectilinear' and xrange[0] is not None and xrange[0]>=-361 and xrange[1]<=361
@@ -1350,7 +1351,7 @@ class Figure(xmlstore.util.referencedobject):
                 datamax = curcoords.max()
                     
                 # If all coordinate values were masked, restore open boundaries.
-                if numpy.ma.getmask(datamin): datamin,datamax = None,None
+                if numpy.ma.is_masked(datamin): datamin,datamax = None,None
 
                 # Update effective dimension bounds                    
                 effrange = axis2data.setdefault(axisname,{}).setdefault('datarange',[None,None])

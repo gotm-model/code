@@ -214,6 +214,7 @@ class LazyExpression(object):
         """This function takes a slice object and converts it to a descriptive slice
         specification string.
         """
+        slices = common.processEllipsis(slices,len(dimnames))
         slicestrings = []
         for dimname,slic in zip(dimnames,slices):
             res = LazyExpression.slice2string(slic)
@@ -722,14 +723,14 @@ class LazySlice(LazyOperation):
     def getValue(self,extraslices=None,dataonly=False):
         # Resolve any lazy objects in our slice specification.
         slices = LazyExpression.argument2value(self.slice,dataonly=True)
-        
+        slices = common.processEllipsis(slices,len(self.args[0].getDimensions()))
         if self.simpleslices:
             # Slice specification is integer-based - determine the final indices based on the shape of the data.
             # This is *required* if this slice is to be combined with a higher level slice (extraslices argument).
             shape = self.args[0].getShape()
             if shape is not None:
                 newslices = []
-                for sl,l in zip(common.processEllipsis(slices,len(shape)),shape):
+                for sl,l in zip(slices,shape):
                     if isinstance(sl,slice):
                         start,stop,step = sl.indices(l)
                         sl = slice(start,stop,step)
