@@ -70,7 +70,7 @@
    ! Namelist variables
    REALTYPE                  :: cnpar
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor
-   logical                   :: fabm_calc,bioshade_feedback,repair_state
+   logical                   :: fabm_calc,bioshade_feedback,repair_state,no_precipitation_dilution
 
    ! Model
    type (type_model), pointer :: model
@@ -127,7 +127,7 @@
    type (type_model),pointer :: childmodel
    namelist /bio_nml/ fabm_calc,models,                                 &
                       cnpar,w_adv_discr,ode_method,split_factor,        &
-                      bioshade_feedback,repair_state
+                      bioshade_feedback,repair_state,no_precipitation_dilution
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -143,6 +143,7 @@
    split_factor      = 1
    bioshade_feedback = .true.
    repair_state      = .false.
+   no_precipitation_dilution = .false. ! useful to check mass conservation
 
    ! Open the namelist file and read the namelist.
    ! Note that the namelist file is left open until the routine terminates,
@@ -494,7 +495,7 @@
 
    do i=1,ubound(model%info%state_variables,1)
       ! Add surface flux due to evaporation/precipitation, unless the model explicitly says otherwise.
-      if (.not. model%info%state_variables(i)%no_precipitation_dilution) &
+      if (.not. (model%info%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution)) &
          sfl(i) = sfl(i)-cc(i,nlev)*dilution
    
       ! Determine whether the variable is positive-definite based on its lower allowed bound.
