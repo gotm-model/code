@@ -795,7 +795,9 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
           try:
             dat = getNcData(ncvar,bounds,maskoutsiderange=self.store.maskoutsiderange)
           except Exception,e:
-            raise Exception('Unable to read data from netCDF variable "%s": %s' % (self.ncvarname,str(e)))
+            strex = str(e)
+            if strex=='': strex = e.__class__.__name__
+            raise Exception('Unable to read data from netCDF variable "%s": %s' % (self.ncvarname,strex))
 
           return dat
               
