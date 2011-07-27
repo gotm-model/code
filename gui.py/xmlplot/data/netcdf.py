@@ -24,7 +24,20 @@ def openNetCDF(path,mode='r'):
         return MultiNetCDFFile(*path)
 
 netcdfmodules,selectednetcdfmodule = None,None
-def chooseNetCDFModule():
+def chooseNetCDFModule(forcedmodule=None):
+    if forcedmodule is None:
+        # Select default NetCDF module.
+        enumerateNetCDFModules()
+    else:
+        # Find user-specified NetCDF module.
+        global selectednetcdfmodule
+        if netcdfmodules is None: enumerateNetCDFModules()
+        for selectednetcdfmodule,(m,v) in enumerate(netcdfmodules):
+            if m==forcedmodule: break
+        else:
+            raise Exception('Forced NetCDF module "%s" is not available. Available modules: %s.' % (forcedmodule,', '.join([m[0] for m in netcdfmodules])))
+
+def enumerateNetCDFModules():
     global netcdfmodules,selectednetcdfmodule
     global pupynere,Scientific,netCDF4,pynetcdf
     

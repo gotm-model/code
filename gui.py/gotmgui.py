@@ -439,12 +439,11 @@ def main(options,args):
         xmlstore.xmlstore.verbose = True
 
     if options.nc is not None:
-        import xmlplot.data
-        if xmlplot.data.netcdf.selectednetcdfmodule is None: xmlplot.data.netcdf.chooseNetCDFModule()
-        for xmlplot.data.netcdf.selectednetcdfmodule,(m,v) in enumerate(xmlplot.data.netcdf.netcdfmodules):
-            if m==options.nc: break
-        else:
-            print 'Forced NetCDF module "%s" is not available. Available modules: %s.' % (options.nc,', '.join([m[0] for m in xmlplot.data.netcdf.netcdfmodules]))
+        import xmlplot.data.netcdf
+        try:
+            xmlplot.data.netcdf.chooseNetCDFModule(options.nc)
+        except Exception,e:
+            print e
             sys.exit(2)
 
     if options.schemadir is not None:
