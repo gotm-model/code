@@ -21,6 +21,8 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_gotm_fabm_output, do_gotm_fabm_output
+!EOP
+!-----------------------------------------------------------------------
 
 contains
 
