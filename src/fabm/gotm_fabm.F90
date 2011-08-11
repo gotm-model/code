@@ -57,8 +57,9 @@
    
    public fabm_calc
    
-   ! Varibale below must be accessible for gotm_fabm_save and gotm_fabm_obs
+   ! Variable below must be accessible for gotm_fabm_save and gotm_fabm_obs
    public model,cc,cc_diag,cc_diag_hz,local,total,dt,h,z
+   public cc_obs,relax_tau
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Jorn Bruggeman
@@ -78,6 +79,8 @@
    ! Arrays for state and diagnostic variables
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:),target :: cc
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:)        :: cc_diag
+
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:) :: cc_obs,relax_tau
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:) :: ws
@@ -290,6 +293,16 @@
    do i=1,ubound(model%info%state_variables_ben,1)
       cc(ubound(model%info%state_variables,1)+i,1) = model%info%state_variables_ben(i)%initial_value
    end do
+
+!  Allocate array for storing observations for each 1D state variable.
+   allocate(cc_obs(_LOCATION_RANGE_,1:ubound(model%info%state_variables,1)),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_obs)'
+   cc_obs = _ZERO_
+
+!  Allocate array for storing relaxation time for each 1D state variable.
+   allocate(relax_tau(_LOCATION_RANGE_,1:ubound(model%info%state_variables,1)),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (relax_tau)'
+   relax_tau = 1.d15
    
    ! Allocate diagnostic variable array and set all values to zero.
    ! (needed because time-integrated/averaged variables will increment rather than set the array)
@@ -445,7 +458,6 @@
    integer, parameter        :: adv_mode_0=0
    integer, parameter        :: adv_mode_1=1
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev)
-   REALTYPE                  :: RelaxTau(0:nlev)
    REALTYPE                  :: dilution
    integer                   :: i
    integer                   :: split,posconc
@@ -460,12 +472,10 @@
    Qsour    = _ZERO_
    Lsour    = _ZERO_
    
-   ! Disable relaxation to observed local values.
-   RelaxTau = 1.e15
-   
    ! Calculate local pressure
    pres(1:nlev) = -z(1:nlev)
    
+!  Transfer current state to FABM.
    do i=1,ubound(model%info%state_variables,1)
       call fabm_link_state_data(model,i,cc(i,1:nlev))
    end do
@@ -513,7 +523,7 @@
       
       ! Do diffusion step
       call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
-           sfl(i),bfl(i),nuh,Lsour,Qsour,RelaxTau,cc(i,:),cc(i,:))
+        sfl(i),bfl(i),nuh,Lsour,Qsour,relax_tau(:,i),cc_obs(:,i),cc(i,:))
 
    end do
 

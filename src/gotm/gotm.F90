@@ -420,16 +420,22 @@
 
 #endif
 
-!  initalize FABM module
+!  initialize FABM module
 #ifdef _FABM_
 
    call init_gotm_fabm(nlev,namlst,'fabm.nml')
    
+!  Initialize FABM input (data files with observations)
    call init_gotm_fabm_input(nlev,namlst,'fabm_input.nml')
 
-   ! Initialize FABM output (creates NetCDF variables)
+!  Read observations on FABM variables for the first time, and use them to initialize state variables.
+   call do_gotm_fabm_input(julianday,secondsofday,nlev,z,.true.)
+
+!  Initialize FABM output (creates NetCDF variables)
    call init_gotm_fabm_output()
 
+!  Link relevant GOTM data to FABM.
+!  This sets pointers, rather than copying data, and therefore needs to be done only once.
    call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,wind,precip,evap,z(1:nlev), &
                           A,g1,g2)
@@ -570,7 +576,7 @@
       end if
 #endif
 #ifdef _FABM_
-      call do_gotm_fabm_input(julianday,secondsofday,nlev)
+      call do_gotm_fabm_input(julianday,secondsofday,nlev,z,.false.)
       call do_gotm_fabm(nlev)
 #endif
 
