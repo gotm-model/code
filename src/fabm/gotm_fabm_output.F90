@@ -9,7 +9,12 @@
 !
 ! !INTERFACE:
    module gotm_fabm_output
-
+!
+! !DESCRIPTION:
+!  This module contains routines for creating and writing NetCDF variables for all FABM
+!  state and diagnostic variables.
+!
+! !USES:
    use gotm_fabm
    use fabm
    use fabm_types
@@ -44,8 +49,6 @@ contains
    use ncdfout, only: ncid,lon_dim,lat_dim,z_dim,time_dim,dim3d,dim4d
    use ncdfout, only: define_mode,new_nc_variable,set_attributes
 #endif
-!
-   IMPLICIT NONE
 !
 #ifdef NETCDF_FMT
 #include "netcdf.inc"
@@ -151,8 +154,6 @@ contains
    use ncdfout, only: store_data
 #endif
 
-   IMPLICIT NONE
-
 #ifdef NETCDF_FMT
 #include "netcdf.inc"
 #endif
@@ -243,6 +244,8 @@ contains
 
    end subroutine do_gotm_fabm_output
 !EOC
+
+!-----------------------------------------------------------------------
 
    end module gotm_fabm_output
 
