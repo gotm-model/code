@@ -11,14 +11,72 @@
    module gotm_fabm
 !
 ! !DESCRIPTION:
-! TODO
+!  This module provides the link between the General Ocean Turbulence Model and
+!  the Framework for Aquatic Biogeochemical Models.
 ! 
 ! !USES:
    use fabm
    use fabm_types
    
    implicit none
+!
+!  default: all is private.
+   private
+!
+! !PUBLIC MEMBER FUNCTIONS:
+   public init_gotm_fabm
+   public set_env_gotm_fabm,do_gotm_fabm
+   public clean_gotm_fabm
+   public fabm_calc
+   
+   ! Variables below must be accessible for gotm_fabm_output
+   public local,total,dt,h
+!
+! !PUBLIC DATA MEMBERS:
+!  The one and only model
+   type (type_model), pointer, public :: model
 
+!  Arrays for state and diagnostic variables
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:),public,target :: cc
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:),public        :: cc_diag
+
+!  Arrays for observations
+   REALTYPE, allocatable, target, public :: obs_0d(:),obs_1d(:,:),relax_tau_0d(:),relax_tau_1d(:,:)
+
+!  Arrays for diagnostic variables defined on horizontal slices of the model domain.
+   REALTYPE,allocatable,dimension(:),public                              :: cc_diag_hz
+   
+   integer,allocatable,dimension(:),public :: cc_ben_obs_indices,cc_obs_indices
+!
+! !REVISION HISTORY:!
+!  Original author(s): Jorn Bruggeman
+!
+!EOP
+!-----------------------------------------------------------------------
+!
+! !PRIVATE DATA MEMBERS:
+   ! Namelist variables
+   REALTYPE                  :: cnpar
+   integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor
+   logical                   :: fabm_calc,bioshade_feedback,repair_state,no_precipitation_dilution
+
+   ! Arrays for work, vertical movement, and cross-boundary fluxes
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:) :: ws
+   REALTYPE,allocatable,dimension(:)                       :: sfl,bfl,total
+   REALTYPE,allocatable _ATTR_DIMENSIONS_1_                :: local
+   
+   ! Arrays for environmental variables not supplied externally.
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres,swr
+   
+   ! External variables
+   REALTYPE :: dt,dt_eff   ! External and internal time steps
+   integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
+   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z
+   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
+   
+   REALTYPE,pointer :: I_0,A,g1,g2
+
+!  Explicit interface for ode solver.
    interface   
       subroutine ode_solver(solver,numc,nlev,dt,cc,right_hand_side_rhs,right_hand_side_ppdd)
          integer,  intent(in)                :: solver,nlev,numc
@@ -46,57 +104,6 @@
          end interface
       end subroutine
    end interface
-!
-!  default: all is private.
-   private
-!
-! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_fabm
-   public set_env_gotm_fabm,do_gotm_fabm
-   public clean_gotm_fabm
-   
-   public fabm_calc
-   
-   ! Variable below must be accessible for gotm_fabm_save and gotm_fabm_obs
-   public model,cc,cc_diag,cc_diag_hz,local,total,dt,h,z
-   public cc_obs,relax_tau
-!
-! !REVISION HISTORY:!
-!  Original author(s): Jorn Bruggeman
-!
-!EOP
-!-----------------------------------------------------------------------
-!
-! !PRIVATE DATA MEMBERS:
-   ! Namelist variables
-   REALTYPE                  :: cnpar
-   integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor
-   logical                   :: fabm_calc,bioshade_feedback,repair_state,no_precipitation_dilution
-
-   ! Model
-   type (type_model), pointer :: model
-   
-   ! Arrays for state and diagnostic variables
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:),target :: cc
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:)        :: cc_diag
-
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:) :: cc_obs,relax_tau
-
-   ! Arrays for work, vertical movement, and cross-boundary fluxes
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:) :: ws
-   REALTYPE,allocatable,dimension(:)                     :: sfl,bfl,total,cc_diag_hz
-   REALTYPE,allocatable _ATTR_DIMENSIONS_1_              :: local
-   
-   ! Arrays for environmental variables not supplied externally.
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres,swr
-   
-   ! External variables
-   REALTYPE :: dt,dt_eff   ! External and internal time steps
-   integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z
-   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
-   
-   REALTYPE,pointer :: I_0,A,g1,g2
 
    contains
 
@@ -293,16 +300,6 @@
    do i=1,ubound(model%info%state_variables_ben,1)
       cc(ubound(model%info%state_variables,1)+i,1) = model%info%state_variables_ben(i)%initial_value
    end do
-
-!  Allocate array for storing observations for each 1D state variable.
-   allocate(cc_obs(_LOCATION_RANGE_,1:ubound(model%info%state_variables,1)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_obs)'
-   cc_obs = _ZERO_
-
-!  Allocate array for storing relaxation time for each 1D state variable.
-   allocate(relax_tau(_LOCATION_RANGE_,1:ubound(model%info%state_variables,1)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (relax_tau)'
-   relax_tau = 1.d15
    
    ! Allocate diagnostic variable array and set all values to zero.
    ! (needed because time-integrated/averaged variables will increment rather than set the array)
@@ -458,6 +455,7 @@
    integer, parameter        :: adv_mode_0=0
    integer, parameter        :: adv_mode_1=1
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev)
+   REALTYPE                  :: RelaxTau(0:nlev)
    REALTYPE                  :: dilution
    integer                   :: i
    integer                   :: split,posconc
@@ -471,6 +469,9 @@
    ! because source terms are integrated independently later on.
    Qsour    = _ZERO_
    Lsour    = _ZERO_
+   
+!  Default: no relaxation
+   RelaxTau = 1.d15
    
    ! Calculate local pressure
    pres(1:nlev) = -z(1:nlev)
@@ -522,8 +523,15 @@
               flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(i,:))
       
       ! Do diffusion step
-      call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
-        sfl(i),bfl(i),nuh,Lsour,Qsour,relax_tau(:,i),cc_obs(:,i),cc(i,:))
+      if (cc_obs_indices(i).ne.-1) then
+!        Observation on this variable are available.      
+         call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
+            sfl(i),bfl(i),nuh,Lsour,Qsour,relax_tau_1d(:,cc_obs_indices(i)),obs_1d(:,cc_obs_indices(i)),cc(i,:))
+      else
+!        Observation on this variable are not available.      
+         call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
+            sfl(i),bfl(i),nuh,Lsour,Qsour,RelaxTau,cc(i,:),cc(i,:))
+      end if
 
    end do
 
