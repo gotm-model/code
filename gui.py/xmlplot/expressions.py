@@ -740,7 +740,8 @@ class LazySlice(LazyOperation):
         if extraslices is not None:
             # Add the additional slices
             assert self.simpleslices,'LazySlice variable receives additional slice, but does not support slice combination.'
-            extraslices = [extraslices.get(d,slice(i,shape[i],1)) for i,d in enumerate(self.getDimensions())]
+            shape = self.getShape()
+            extraslices = [extraslices.get(d,slice(0,shape[i],1)) for i,d in enumerate(self.getDimensions())]
             slices = LazyExpression.combineSlices(slices,extraslices)
             
         # Convert list of slices to dictionary linking dimension name to corresponding slice.
