@@ -64,10 +64,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="netcdf.lib"
 				OutputFile="..\..\gui.py\gotm.pyd"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(PythonDir)\libs&quot;;&quot;$(IFORT_COMPILER11)\lib\ia32&quot;;&quot;$(NETCDF_PREFIX)\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(PythonDir)\libs&quot;;&quot;$(IFORT_COMPILER11)\lib\ia32&quot;"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)/c++.pdb"
 				SubSystem="2"
@@ -145,7 +144,7 @@
 				Name="VCLinkerTool"
 				OutputFile="..\..\gui.py\gotm.pyd"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(PythonDir)\libs&quot;;&quot;$(IFORT_COMPILER11)\lib\ia32&quot;;&quot;$(NETCDF_PREFIX)\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(PythonDir)\libs&quot;;&quot;$(IFORT_COMPILER11)\lib\ia32&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
