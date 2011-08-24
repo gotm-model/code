@@ -1,7 +1,7 @@
 "DeployProject"
 {
-"VSVersion" = "3:701"
-"ProjectType" = "8:{2C2AF0D9-9B47-4FE5-BEF2-169778172667}"
+"VSVersion" = "3:800"
+"ProjectType" = "8:{978C614F-708E-4E1A-B201-565925725DBA}"
 "IsWebType" = "8:FALSE"
 "ProjectName" = "8:setup"
 "LanguageId" = "3:1033"
@@ -1207,6 +1207,14 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:1"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:FALSE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+            }
         }
     }
     "Deployable"
@@ -1226,12 +1234,9 @@
             {
             }
         }
-        "Feature"
-        {
-        }
         "File"
         {
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_00549D9F576C40C692E0BA5EBF03259D"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_00549D9F576C40C692E0BA5EBF03259D"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\VeraBI.ttf"
             "TargetName" = "8:VeraBI.ttf"
@@ -1251,7 +1256,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_014E03BE11FB4C46BADB00E955202639"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_014E03BE11FB4C46BADB00E955202639"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\filesave.svg"
             "TargetName" = "8:filesave.svg"
@@ -1271,7 +1276,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_07F6F44FD0524BAF8C8552C0A0D52CC7"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_07F6F44FD0524BAF8C8552C0A0D52CC7"
             {
             "SourcePath" = "8:..\\..\\dist\\_nc_nxutils.pyd"
             "TargetName" = "8:_nc_nxutils.pyd"
@@ -1291,7 +1296,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_09375E4E905D4BA38938BB47341002F9"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_09375E4E905D4BA38938BB47341002F9"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\cmex10.ttf"
             "TargetName" = "8:cmex10.ttf"
@@ -1311,7 +1316,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_0A8B1CB6FFD04C178387CCDF09450FB2"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0A8B1CB6FFD04C178387CCDF09450FB2"
             {
             "SourcePath" = "8:..\\..\\dist\\_isnan.pyd"
             "TargetName" = "8:_isnan.pyd"
@@ -1331,7 +1336,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_0B4F6E058F7C46B797E11A8F9681F903"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0B4F6E058F7C46B797E11A8F9681F903"
             {
             "SourcePath" = "8:..\\..\\dist\\_sort.pyd"
             "TargetName" = "8:_sort.pyd"
@@ -1351,7 +1356,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_0E0E00F36CF14A94B215A018C43B459F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0E0E00F36CF14A94B215A018C43B459F"
             {
             "SourcePath" = "8:..\\..\\dist\\schemas\\scenario\\gotm-3.3.2.xml"
             "TargetName" = "8:gotm-3.3.2.xml"
@@ -1371,7 +1376,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_0E9D242219F242A586951863B43DD10E"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0E9D242219F242A586951863B43DD10E"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\zoom_to_rect.svg"
             "TargetName" = "8:zoom_to_rect.svg"
@@ -1391,7 +1396,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_0F95BD4696B048F59670490C77928191"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0F95BD4696B048F59670490C77928191"
             {
             "SourcePath" = "8:..\\..\\dist\\QtGui.pyd"
             "TargetName" = "8:QtGui.pyd"
@@ -1411,7 +1416,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_13CC19F813794E6A903ED30E30D6181D"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_13CC19F813794E6A903ED30E30D6181D"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\putr8a.afm"
             "TargetName" = "8:putr8a.afm"
@@ -1431,7 +1436,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_1491B333D4874F6FAA0E47D85558C3F2"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1491B333D4874F6FAA0E47D85558C3F2"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_down.ppm"
             "TargetName" = "8:stock_down.ppm"
@@ -1451,7 +1456,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_176F0D2884E8493B9816CCAE9187EF6F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_176F0D2884E8493B9816CCAE9187EF6F"
             {
             "SourcePath" = "8:..\\..\\dist\\multiarray.pyd"
             "TargetName" = "8:multiarray.pyd"
@@ -1471,7 +1476,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_178A3C41A10F4A8DAE5A7ACC7150F79B"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_178A3C41A10F4A8DAE5A7ACC7150F79B"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pagko8a.afm"
             "TargetName" = "8:pagko8a.afm"
@@ -1491,7 +1496,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_1814E56E17B74B7EA5DE9E01B4C355EB"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1814E56E17B74B7EA5DE9E01B4C355EB"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\zoom_to_rect.ppm"
             "TargetName" = "8:zoom_to_rect.ppm"
@@ -1511,7 +1516,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_1A947035AB6640778F27F37241565D09"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1A947035AB6640778F27F37241565D09"
             {
             "SourcePath" = "8:..\\..\\dist\\logo.png"
             "TargetName" = "8:logo.png"
@@ -1531,7 +1536,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_1ADEB2021D3641C49B89AD79E4E71422"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1ADEB2021D3641C49B89AD79E4E71422"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_close.xpm"
             "TargetName" = "8:stock_close.xpm"
@@ -1551,7 +1556,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_1CAB56CAFDA94C8E90BAC8FD855ABDFF"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1CAB56CAFDA94C8E90BAC8FD855ABDFF"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\cmr10.afm"
             "TargetName" = "8:cmr10.afm"
@@ -1571,7 +1576,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_1D1A0C0CEC644762A342160273728E46"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1D1A0C0CEC644762A342160273728E46"
             {
             "SourcePath" = "8:..\\..\\dist\\_gtkagg.pyd"
             "TargetName" = "8:_gtkagg.pyd"
@@ -1591,7 +1596,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_1D9DCD58F14E42229D7C52D18168D30C"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1D9DCD58F14E42229D7C52D18168D30C"
             {
             "SourcePath" = "8:..\\..\\dist\\QtCore.pyd"
             "TargetName" = "8:QtCore.pyd"
@@ -1611,7 +1616,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_1DCB6956DBBC4968903DCCD151C120AD"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1DCB6956DBBC4968903DCCD151C120AD"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_zoom-in.ppm"
             "TargetName" = "8:stock_zoom-in.ppm"
@@ -1631,7 +1636,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_20EBF5B4E495482BA942112097BD8A3B"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_20EBF5B4E495482BA942112097BD8A3B"
             {
             "SourcePath" = "8:..\\..\\dist\\_compiled_base.pyd"
             "TargetName" = "8:_compiled_base.pyd"
@@ -1651,7 +1656,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_219FB9D4BD7F4553ADFACA2567002FE1"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_219FB9D4BD7F4553ADFACA2567002FE1"
             {
             "SourcePath" = "8:..\\..\\dist\\_ssl.pyd"
             "TargetName" = "8:_ssl.pyd"
@@ -1671,7 +1676,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_23DADA78103042299C3DE77490B9BC5D"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_23DADA78103042299C3DE77490B9BC5D"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pplri8a.afm"
             "TargetName" = "8:pplri8a.afm"
@@ -1691,7 +1696,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_2426A6C7C2504B838F47D94C09CED0DD"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2426A6C7C2504B838F47D94C09CED0DD"
             {
             "SourcePath" = "8:..\\..\\dist\\shapelibc.pyd"
             "TargetName" = "8:shapelibc.pyd"
@@ -1711,7 +1716,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_24E9A15BA438457F8B42BF3616A17F01"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_24E9A15BA438457F8B42BF3616A17F01"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\VeraMoBI.ttf"
             "TargetName" = "8:VeraMoBI.ttf"
@@ -1731,7 +1736,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_254840152CB34ACA85E4D2C5DC521FCE"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_254840152CB34ACA85E4D2C5DC521FCE"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\cmtt10.afm"
             "TargetName" = "8:cmtt10.afm"
@@ -1751,7 +1756,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_256760DC19BB43C5B42E6C12C7340EC3"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_256760DC19BB43C5B42E6C12C7340EC3"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pncr8a.afm"
             "TargetName" = "8:pncr8a.afm"
@@ -1771,7 +1776,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_27451C9B9D9B4A09A88BEA5804665D1F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_27451C9B9D9B4A09A88BEA5804665D1F"
             {
             "SourcePath" = "8:..\\..\\dist\\_ns_transforms.pyd"
             "TargetName" = "8:_ns_transforms.pyd"
@@ -1791,7 +1796,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_27AAE57EA2AF415BB7FCAE84D1B56A9F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_27AAE57EA2AF415BB7FCAE84D1B56A9F"
             {
             "SourcePath" = "8:..\\..\\dist\\pythoncom24.dll"
             "TargetName" = "8:pythoncom24.dll"
@@ -1811,7 +1816,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_288CB990FD264E8B868F2C673DE46B99"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_288CB990FD264E8B868F2C673DE46B99"
             {
             "SourcePath" = "8:..\\..\\dist\\_tkagg.pyd"
             "TargetName" = "8:_tkagg.pyd"
@@ -1831,7 +1836,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_2B327656AC334E198D4C3FF5CD13A769"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2B327656AC334E198D4C3FF5CD13A769"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\back.xpm"
             "TargetName" = "8:back.xpm"
@@ -1851,7 +1856,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_2B522A92E503475ABD746527D5653E2F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2B522A92E503475ABD746527D5653E2F"
             {
             "SourcePath" = "8:..\\..\\dist\\lapack_lite.pyd"
             "TargetName" = "8:lapack_lite.pyd"
@@ -1871,7 +1876,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_2CD7CCEA0DA2444390D57A8470163312"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2CD7CCEA0DA2444390D57A8470163312"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\cmsy10.afm"
             "TargetName" = "8:cmsy10.afm"
@@ -1891,7 +1896,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_2D15841BA06A4C089110C11390854E20"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2D15841BA06A4C089110C11390854E20"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\Vera.ttf"
             "TargetName" = "8:Vera.ttf"
@@ -1911,7 +1916,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_326F67D9100B4C82BF00DC2AFE7F1A10"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_326F67D9100B4C82BF00DC2AFE7F1A10"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\cmr10.ttf"
             "TargetName" = "8:cmr10.ttf"
@@ -1931,7 +1936,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_3533B40712FD4B21A8D7718E11F5CDD4"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3533B40712FD4B21A8D7718E11F5CDD4"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\forward.png"
             "TargetName" = "8:forward.png"
@@ -1951,7 +1956,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_3559478880874DF9ABFDCFAA64D8BA7F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3559478880874DF9ABFDCFAA64D8BA7F"
             {
             "SourcePath" = "8:..\\..\\dist\\shell.pyd"
             "TargetName" = "8:shell.pyd"
@@ -1971,7 +1976,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_365D4484129B401FB7B352DA0ED3E60D"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_365D4484129B401FB7B352DA0ED3E60D"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\subplots.png"
             "TargetName" = "8:subplots.png"
@@ -1991,7 +1996,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_36D13B810A864B8EBDEEE044BCAFD827"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_36D13B810A864B8EBDEEE044BCAFD827"
             {
             "SourcePath" = "8:..\\..\\dist\\sgmlop.pyd"
             "TargetName" = "8:sgmlop.pyd"
@@ -2011,7 +2016,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_3B6DD38714504BD4BE4B25D72EA3F1AA"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3B6DD38714504BD4BE4B25D72EA3F1AA"
             {
             "SourcePath" = "8:..\\..\\dist\\_na_image.pyd"
             "TargetName" = "8:_na_image.pyd"
@@ -2031,7 +2036,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_3CFF218929E14270B6A8091EABC92377"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3CFF218929E14270B6A8091EABC92377"
             {
             "SourcePath" = "8:..\\..\\dist\\reporttemplates\\default\\index.xml"
             "TargetName" = "8:index.xml"
@@ -2051,7 +2056,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_3D56061CD60E4E0FBB64E4ED3CF7DCCB"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3D56061CD60E4E0FBB64E4ED3CF7DCCB"
             {
             "SourcePath" = "8:..\\..\\dist\\_win32sysloader.pyd"
             "TargetName" = "8:_win32sysloader.pyd"
@@ -2071,7 +2076,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_400F680DC3B940E4AB86356339A4C018"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_400F680DC3B940E4AB86356339A4C018"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_right.ppm"
             "TargetName" = "8:stock_right.ppm"
@@ -2091,7 +2096,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_40710D7BBD7C40C6B458C93AA9B1A286"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_40710D7BBD7C40C6B458C93AA9B1A286"
             {
             "SourcePath" = "8:..\\..\\dist\\_ns_backend_gdk.pyd"
             "TargetName" = "8:_ns_backend_gdk.pyd"
@@ -2111,7 +2116,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4086B27C2E2149ED84785BFEE4F655C8"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4086B27C2E2149ED84785BFEE4F655C8"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\matplotlibrc"
             "TargetName" = "8:matplotlibrc"
@@ -2131,7 +2136,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_410F8B8D532546339B576C7EF5BECE33"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_410F8B8D532546339B576C7EF5BECE33"
             {
             "SourcePath" = "8:..\\..\\dist\\_nc_image.pyd"
             "TargetName" = "8:_nc_image.pyd"
@@ -2151,7 +2156,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4393227C923A484F98C1BFF0D2A1EADB"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4393227C923A484F98C1BFF0D2A1EADB"
             {
             "SourcePath" = "8:..\\..\\dist\\defaultscenarios\\default.xml"
             "TargetName" = "8:default.xml"
@@ -2171,7 +2176,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_43D5AEE1437D45F3B42E9098187959C3"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_43D5AEE1437D45F3B42E9098187959C3"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\move.png"
             "TargetName" = "8:move.png"
@@ -2191,7 +2196,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_43E3926ABD354750AB7B6C2D6B9D5286"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_43E3926ABD354750AB7B6C2D6B9D5286"
             {
             "SourcePath" = "8:..\\..\\dist\\netcdf.dll"
             "TargetName" = "8:netcdf.dll"
@@ -2211,7 +2216,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4645AA7CE1A644899253F84A8A5EFE61"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4645AA7CE1A644899253F84A8A5EFE61"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\phvbo8an.afm"
             "TargetName" = "8:phvbo8an.afm"
@@ -2231,7 +2236,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_477333F4CF9A40D0BD6A0A89485A488F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_477333F4CF9A40D0BD6A0A89485A488F"
             {
             "SourcePath" = "8:..\\..\\dist\\schemas\\scenario\\gotm-4.0.0.xml"
             "TargetName" = "8:gotm-4.0.0.xml"
@@ -2251,7 +2256,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_47D7299B0A8645E09F5F2E923AE56E26"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_47D7299B0A8645E09F5F2E923AE56E26"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\filesave.png"
             "TargetName" = "8:filesave.png"
@@ -2271,7 +2276,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_47F0B3C0FF154F99A6E421BD855084A5"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_47F0B3C0FF154F99A6E421BD855084A5"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pzcmi8a.afm"
             "TargetName" = "8:pzcmi8a.afm"
@@ -2291,7 +2296,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_481F611C710D4249AF7CA83EB75CD25D"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_481F611C710D4249AF7CA83EB75CD25D"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\hand.png"
             "TargetName" = "8:hand.png"
@@ -2311,7 +2316,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4838DC8E890B4103AB8E4F318A098DD4"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4838DC8E890B4103AB8E4F318A098DD4"
             {
             "SourcePath" = "8:..\\..\\dist\\reporttemplates\\default\\main.js"
             "TargetName" = "8:main.js"
@@ -2331,7 +2336,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4964416059D1495696D00AF9532FA488"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4964416059D1495696D00AF9532FA488"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\phvr8an.afm"
             "TargetName" = "8:phvr8an.afm"
@@ -2351,7 +2356,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4A3802C7661B426E9CF15164ED406173"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4A3802C7661B426E9CF15164ED406173"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\cmmi10.ttf"
             "TargetName" = "8:cmmi10.ttf"
@@ -2371,7 +2376,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4B6F353D6BB048D5A573091CD0A8C37F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4B6F353D6BB048D5A573091CD0A8C37F"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pagdo8a.afm"
             "TargetName" = "8:pagdo8a.afm"
@@ -2391,7 +2396,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4BDF6A4EDD8C411F87C6B55E6804E69B"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4BDF6A4EDD8C411F87C6B55E6804E69B"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pagk8a.afm"
             "TargetName" = "8:pagk8a.afm"
@@ -2411,7 +2416,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4BFCD9D23C7F486494FDB3BA9F4EE307"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4BFCD9D23C7F486494FDB3BA9F4EE307"
             {
             "SourcePath" = "8:..\\..\\dist\\schemas\\figure\\gotmgui.xml"
             "TargetName" = "8:gotmgui.xml"
@@ -2431,7 +2436,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4DCA193D097A494EBB7AAC949651FA4A"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4DCA193D097A494EBB7AAC949651FA4A"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\phvb8an.afm"
             "TargetName" = "8:phvb8an.afm"
@@ -2451,7 +2456,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4DDE16B850F444AFAF3EE4BBF56699D5"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4DDE16B850F444AFAF3EE4BBF56699D5"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_down.xpm"
             "TargetName" = "8:stock_down.xpm"
@@ -2471,7 +2476,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_4FC67FF024BA4DC48EBCE0FFE3DE2C00"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4FC67FF024BA4DC48EBCE0FFE3DE2C00"
             {
             "SourcePath" = "8:..\\..\\dist\\schemas\\scenario\\gotmgui-0.5.0.xml"
             "TargetName" = "8:gotmgui-0.5.0.xml"
@@ -2491,7 +2496,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_5025339248ED4D72A20937EAB3AE66FF"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5025339248ED4D72A20937EAB3AE66FF"
             {
             "SourcePath" = "8:..\\..\\dist\\_nc_transforms.pyd"
             "TargetName" = "8:_nc_transforms.pyd"
@@ -2511,7 +2516,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_5289F18793FA4FB6B01139BCAA88C876"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5289F18793FA4FB6B01139BCAA88C876"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\VeraMoBd.ttf"
             "TargetName" = "8:VeraMoBd.ttf"
@@ -2531,7 +2536,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_546109F608D245799918DF543055190E"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_546109F608D245799918DF543055190E"
             {
             "SourcePath" = "8:..\\..\\dist\\zlib.pyd"
             "TargetName" = "8:zlib.pyd"
@@ -2551,7 +2556,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_549FC8ADB05B4A208F40BEFC30FFCFD0"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_549FC8ADB05B4A208F40BEFC30FFCFD0"
             {
             "SourcePath" = "8:..\\..\\dist\\ft2font.pyd"
             "TargetName" = "8:ft2font.pyd"
@@ -2571,7 +2576,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_561803997EF647848E44C83A9215DD33"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_561803997EF647848E44C83A9215DD33"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\forward.svg"
             "TargetName" = "8:forward.svg"
@@ -2591,7 +2596,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_5666B00F10DB440A9DB92F34D9787458"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5666B00F10DB440A9DB92F34D9787458"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\cmex10.afm"
             "TargetName" = "8:cmex10.afm"
@@ -2611,7 +2616,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_57EE08E1E93E429A92F87C2CB14D53A1"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_57EE08E1E93E429A92F87C2CB14D53A1"
             {
             "SourcePath" = "8:..\\..\\dist\\_socket.pyd"
             "TargetName" = "8:_socket.pyd"
@@ -2631,7 +2636,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_5861C21469AC46069FCA4A12B5021B3D"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5861C21469AC46069FCA4A12B5021B3D"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pplbi8a.afm"
             "TargetName" = "8:pplbi8a.afm"
@@ -2651,7 +2656,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_5AAA4D8AA29F478EBCF89DAD18AEAFA6"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5AAA4D8AA29F478EBCF89DAD18AEAFA6"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\matplotlib.svg"
             "TargetName" = "8:matplotlib.svg"
@@ -2671,7 +2676,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_5B2E112CA47E4B84A6909176B22F8B14"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5B2E112CA47E4B84A6909176B22F8B14"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\VeraMono.ttf"
             "TargetName" = "8:VeraMono.ttf"
@@ -2691,7 +2696,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_5C32267E225941478034A87CCE788CE1"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5C32267E225941478034A87CCE788CE1"
             {
             "SourcePath" = "8:..\\..\\dist\\_na_backend_agg.pyd"
             "TargetName" = "8:_na_backend_agg.pyd"
@@ -2711,7 +2716,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_60F2D7E551704BC191D8F8774A446B72"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_60F2D7E551704BC191D8F8774A446B72"
             {
             "SourcePath" = "8:..\\..\\dist\\pywintypes24.dll"
             "TargetName" = "8:pywintypes24.dll"
@@ -2731,7 +2736,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_6558C05B42424411ACA688B61149CFCE"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6558C05B42424411ACA688B61149CFCE"
             {
             "SourcePath" = "8:..\\..\\dist\\_nc_backend_agg.pyd"
             "TargetName" = "8:_nc_backend_agg.pyd"
@@ -2751,7 +2756,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_666DC39BFC284CE2AAE638913A4B943A"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_666DC39BFC284CE2AAE638913A4B943A"
             {
             "SourcePath" = "8:..\\..\\dist\\unicodedata.pyd"
             "TargetName" = "8:unicodedata.pyd"
@@ -2771,7 +2776,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_68215EBCD74548C7BA400837A6CFDB0B"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_68215EBCD74548C7BA400837A6CFDB0B"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\ptmr8a.afm"
             "TargetName" = "8:ptmr8a.afm"
@@ -2791,7 +2796,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_69A52546C3E745C687E971E87F167FFC"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_69A52546C3E745C687E971E87F167FFC"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\phvro8a.afm"
             "TargetName" = "8:phvro8a.afm"
@@ -2811,7 +2816,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_69E0BE2167344092956DDFDC0523E628"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_69E0BE2167344092956DDFDC0523E628"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\move.xpm"
             "TargetName" = "8:move.xpm"
@@ -2831,7 +2836,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_6A5F7B3C1D5543C3B492EA350A93E9F2"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6A5F7B3C1D5543C3B492EA350A93E9F2"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pncri8a.afm"
             "TargetName" = "8:pncri8a.afm"
@@ -2851,7 +2856,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_6C3C271A7ED1425BBCE99E451C2FF2C8"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6C3C271A7ED1425BBCE99E451C2FF2C8"
             {
             "SourcePath" = "8:..\\..\\dist\\batch.exe"
             "TargetName" = "8:batch.exe"
@@ -2871,7 +2876,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_6DAAAF61717D42288DCE9BDBA37D23B4"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6DAAAF61717D42288DCE9BDBA37D23B4"
             {
             "SourcePath" = "8:..\\..\\dist\\gotm.pyd"
             "TargetName" = "8:gotm.pyd"
@@ -2891,7 +2896,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_6E5CEF7CA9EC4CB5A47C0DE498A328F9"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6E5CEF7CA9EC4CB5A47C0DE498A328F9"
             {
             "SourcePath" = "8:..\\..\\dist\\_netcdf.pyd"
             "TargetName" = "8:_netcdf.pyd"
@@ -2911,7 +2916,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_71F4F181B5ED4E6A8CBCE9ECB98FFED6"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_71F4F181B5ED4E6A8CBCE9ECB98FFED6"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\hand.xpm"
             "TargetName" = "8:hand.xpm"
@@ -2931,7 +2936,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_72459E4C372940FEB898A877DAB38E40"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_72459E4C372940FEB898A877DAB38E40"
             {
             "SourcePath" = "8:..\\..\\dist\\gotm.exe"
             "TargetName" = "8:gotm.exe"
@@ -2951,7 +2956,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_749AF40767B840119FC0D4408B7909D5"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_749AF40767B840119FC0D4408B7909D5"
             {
             "SourcePath" = "8:..\\..\\dist\\umath.pyd"
             "TargetName" = "8:umath.pyd"
@@ -2971,7 +2976,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_758D4CB33C5B4D4C88D216DE39751FE5"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_758D4CB33C5B4D4C88D216DE39751FE5"
             {
             "SourcePath" = "8:..\\..\\dist\\ctraits.pyd"
             "TargetName" = "8:ctraits.pyd"
@@ -2991,7 +2996,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_7825326CE96049A09CD9E063588B48C5"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7825326CE96049A09CD9E063588B48C5"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pplr8a.afm"
             "TargetName" = "8:pplr8a.afm"
@@ -3011,7 +3016,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_7992DE373CD24A9C8A82E62584EDF086"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7992DE373CD24A9C8A82E62584EDF086"
             {
             "SourcePath" = "8:..\\..\\dist\\schemas\\settings\\gotmgui.xml"
             "TargetName" = "8:gotmgui.xml"
@@ -3031,7 +3036,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_7A3F9D4A10CD443AAD38598A662451FF"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7A3F9D4A10CD443AAD38598A662451FF"
             {
             "SourcePath" = "8:..\\..\\dist\\QtCore4.dll"
             "TargetName" = "8:QtCore4.dll"
@@ -3051,7 +3056,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_7E4DCC4244DA4A7EBC0976E8B1B6C73F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7E4DCC4244DA4A7EBC0976E8B1B6C73F"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\VeraSeBd.ttf"
             "TargetName" = "8:VeraSeBd.ttf"
@@ -3071,7 +3076,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_7F66D0AB96E0462696EF68CE94B0F80C"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7F66D0AB96E0462696EF68CE94B0F80C"
             {
             "SourcePath" = "8:..\\..\\dist\\_nc_backend_gdk.pyd"
             "TargetName" = "8:_nc_backend_gdk.pyd"
@@ -3091,7 +3096,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_7FA115E1CCF34646903A31CC183A0AEE"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7FA115E1CCF34646903A31CC183A0AEE"
             {
             "SourcePath" = "8:..\\..\\dist\\_ns_backend_agg.pyd"
             "TargetName" = "8:_ns_backend_agg.pyd"
@@ -3111,7 +3116,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_7FE6A2B586074AA889EEF811FF1DC9C5"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7FE6A2B586074AA889EEF811FF1DC9C5"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_refresh.ppm"
             "TargetName" = "8:stock_refresh.ppm"
@@ -3131,7 +3136,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_80AAF13E718D42B2A485D3E2FA2D3177"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_80AAF13E718D42B2A485D3E2FA2D3177"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\cmtt10.ttf"
             "TargetName" = "8:cmtt10.ttf"
@@ -3151,7 +3156,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_80E41402703A459BB44A62139188D965"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_80E41402703A459BB44A62139188D965"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_left.xpm"
             "TargetName" = "8:stock_left.xpm"
@@ -3171,7 +3176,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_81431E076F95428CBA31A3D275316C20"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_81431E076F95428CBA31A3D275316C20"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pbkli8a.afm"
             "TargetName" = "8:pbkli8a.afm"
@@ -3191,7 +3196,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_8353FA39154D48C3812C4F53B1533E03"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8353FA39154D48C3812C4F53B1533E03"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\ptmb8a.afm"
             "TargetName" = "8:ptmb8a.afm"
@@ -3211,7 +3216,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_83DC3A29ED904568807071CEDA341754"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_83DC3A29ED904568807071CEDA341754"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pncb8a.afm"
             "TargetName" = "8:pncb8a.afm"
@@ -3231,7 +3236,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_84C9195AD24844FBB9B55125A02C613B"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_84C9195AD24844FBB9B55125A02C613B"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\phvlo8a.afm"
             "TargetName" = "8:phvlo8a.afm"
@@ -3251,7 +3256,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_868E936FE1334BAAAD3E5A49A3585FFA"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_868E936FE1334BAAAD3E5A49A3585FFA"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_save_as.ppm"
             "TargetName" = "8:stock_save_as.ppm"
@@ -3271,7 +3276,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_87A628EC98BD4598AA52FCB7C35C257E"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_87A628EC98BD4598AA52FCB7C35C257E"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pcrb8a.afm"
             "TargetName" = "8:pcrb8a.afm"
@@ -3291,7 +3296,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_87E72D61BAAA4AD2942EABD060F011EB"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_87E72D61BAAA4AD2942EABD060F011EB"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\ptmri8a.afm"
             "TargetName" = "8:ptmri8a.afm"
@@ -3311,7 +3316,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_888C1F2D5030488CA815ECFCA3C9EE60"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_888C1F2D5030488CA815ECFCA3C9EE60"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\phvro8an.afm"
             "TargetName" = "8:phvro8an.afm"
@@ -3331,7 +3336,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_88FB9AB9ED56467097844967CD267DF0"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_88FB9AB9ED56467097844967CD267DF0"
             {
             "SourcePath" = "8:..\\..\\dist\\_ns_nxutils.pyd"
             "TargetName" = "8:_ns_nxutils.pyd"
@@ -3351,7 +3356,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_8C05707A02424EAABB0633733538C259"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8C05707A02424EAABB0633733538C259"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_zoom-out.xpm"
             "TargetName" = "8:stock_zoom-out.xpm"
@@ -3371,7 +3376,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_8CBC195FB72846B7882716F17B8F53BF"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8CBC195FB72846B7882716F17B8F53BF"
             {
             "SourcePath" = "8:..\\..\\dist\\_windowing.pyd"
             "TargetName" = "8:_windowing.pyd"
@@ -3391,7 +3396,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_8E3675572D164E2188A1B2E88F8741EA"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8E3675572D164E2188A1B2E88F8741EA"
             {
             "SourcePath" = "8:..\\..\\dist\\sip.pyd"
             "TargetName" = "8:sip.pyd"
@@ -3411,7 +3416,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_8FC7EAECF96E4D00B8A48957A24D0D9D"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8FC7EAECF96E4D00B8A48957A24D0D9D"
             {
             "SourcePath" = "8:..\\..\\dist\\reporttemplates\\default\\main.css"
             "TargetName" = "8:main.css"
@@ -3431,7 +3436,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_91AA7D6B75DC48AD9000DCE722A2936B"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_91AA7D6B75DC48AD9000DCE722A2936B"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pagd8a.afm"
             "TargetName" = "8:pagd8a.afm"
@@ -3451,7 +3456,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_91E79853D6814DE6AD0933A0373CEB55"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_91E79853D6814DE6AD0933A0373CEB55"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\VeraMoIt.ttf"
             "TargetName" = "8:VeraMoIt.ttf"
@@ -3471,7 +3476,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_954439C716844E6585C21BAECC04F32D"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_954439C716844E6585C21BAECC04F32D"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_zoom-out.ppm"
             "TargetName" = "8:stock_zoom-out.ppm"
@@ -3491,7 +3496,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_9583FC46A1F445008E85700F8AB7C5CC"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9583FC46A1F445008E85700F8AB7C5CC"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pplb8a.afm"
             "TargetName" = "8:pplb8a.afm"
@@ -3511,7 +3516,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_9724CC76CB5743E2A36B3AB73DE22F82"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9724CC76CB5743E2A36B3AB73DE22F82"
             {
             "SourcePath" = "8:..\\..\\dist\\schemas\\scenario\\gotm-3.2.4.xml"
             "TargetName" = "8:gotm-3.2.4.xml"
@@ -3531,7 +3536,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_9770687F38B8410AACFF7228E0C919AC"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9770687F38B8410AACFF7228E0C919AC"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\back.ppm"
             "TargetName" = "8:back.ppm"
@@ -3551,7 +3556,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_97775919563044EE841F7BD48593C1B3"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_97775919563044EE841F7BD48593C1B3"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pbkd8a.afm"
             "TargetName" = "8:pbkd8a.afm"
@@ -3571,7 +3576,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_99765FD4349A459395F3541986171BB5"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_99765FD4349A459395F3541986171BB5"
             {
             "SourcePath" = "8:..\\..\\dist\\_agg.pyd"
             "TargetName" = "8:_agg.pyd"
@@ -3591,7 +3596,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_99F0F7F180304F4AB7840F2DFC7ECAB7"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_99F0F7F180304F4AB7840F2DFC7ECAB7"
             {
             "SourcePath" = "8:..\\..\\dist\\python24.dll"
             "TargetName" = "8:python24.dll"
@@ -3611,7 +3616,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_9AD8D35C07C74973B8795B05DA7801F4"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9AD8D35C07C74973B8795B05DA7801F4"
             {
             "SourcePath" = "8:..\\..\\dist\\select.pyd"
             "TargetName" = "8:select.pyd"
@@ -3631,7 +3636,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_9B55681BCAC34002A0A9FDA62EC90F4A"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9B55681BCAC34002A0A9FDA62EC90F4A"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pcrbo8a.afm"
             "TargetName" = "8:pcrbo8a.afm"
@@ -3651,7 +3656,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_9C8CF1CF16494660A44B3BDFF3B59359"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9C8CF1CF16494660A44B3BDFF3B59359"
             {
             "SourcePath" = "8:..\\..\\dist\\schemas\\result\\gotmgui.xml"
             "TargetName" = "8:gotmgui.xml"
@@ -3671,7 +3676,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_9E0F786682C44C5DA5189F45FFFF2CB3"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9E0F786682C44C5DA5189F45FFFF2CB3"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\subplots.xpm"
             "TargetName" = "8:subplots.xpm"
@@ -3691,7 +3696,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_9F13A6AEAD0B40B6A5B58441C4086DB4"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9F13A6AEAD0B40B6A5B58441C4086DB4"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\cmsy10.ttf"
             "TargetName" = "8:cmsy10.ttf"
@@ -3711,7 +3716,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_A237F286452D4625BB7DFDFAB121FB0F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A237F286452D4625BB7DFDFAB121FB0F"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\forward.ppm"
             "TargetName" = "8:forward.ppm"
@@ -3731,7 +3736,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_A25428C9A92D4CAA98C5835BFD4BDFC2"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A25428C9A92D4CAA98C5835BFD4BDFC2"
             {
             "SourcePath" = "8:..\\..\\dist\\schemas\\scenario\\gotm-4.1.0.xml"
             "TargetName" = "8:gotm-4.1.0.xml"
@@ -3751,7 +3756,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_A2CC3ED43490475C86CE4338B9953B74"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A2CC3ED43490475C86CE4338B9953B74"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\ptmbi8a.afm"
             "TargetName" = "8:ptmbi8a.afm"
@@ -3771,7 +3776,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_A3DB85E5D4BF48F3B7CBB1800429C775"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A3DB85E5D4BF48F3B7CBB1800429C775"
             {
             "SourcePath" = "8:..\\..\\dist\\w9xpopen.exe"
             "TargetName" = "8:w9xpopen.exe"
@@ -3791,7 +3796,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_A59F1888EEAD4C689B2999AB3BB447BD"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A59F1888EEAD4C689B2999AB3BB447BD"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\phvl8a.afm"
             "TargetName" = "8:phvl8a.afm"
@@ -3811,7 +3816,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_A6D9C0C58C684FB59C76AC339E6664D0"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A6D9C0C58C684FB59C76AC339E6664D0"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\putbi8a.afm"
             "TargetName" = "8:putbi8a.afm"
@@ -3831,7 +3836,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_A729758EFDAE4894B4DBD15E37B987D8"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A729758EFDAE4894B4DBD15E37B987D8"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\home.xpm"
             "TargetName" = "8:home.xpm"
@@ -3851,7 +3856,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_A925687AF77844A3A78C7FB3139435C4"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A925687AF77844A3A78C7FB3139435C4"
             {
             "SourcePath" = "8:..\\..\\dist\\_ns_image.pyd"
             "TargetName" = "8:_ns_image.pyd"
@@ -3871,7 +3876,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_A9279970ED3D480BBE3C053942BBDAF9"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A9279970ED3D480BBE3C053942BBDAF9"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pzdr.afm"
             "TargetName" = "8:pzdr.afm"
@@ -3891,7 +3896,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_AA5EF0EC1A604EF2A97FC0868B8B79B2"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AA5EF0EC1A604EF2A97FC0868B8B79B2"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\matplotlib.png"
             "TargetName" = "8:matplotlib.png"
@@ -3911,7 +3916,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_AAC24EE1C32A4E3C88D9229AAE6953AC"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AAC24EE1C32A4E3C88D9229AAE6953AC"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\VeraSe.ttf"
             "TargetName" = "8:VeraSe.ttf"
@@ -3931,7 +3936,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_ABE53631694C48AC9CC688CFFD986730"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ABE53631694C48AC9CC688CFFD986730"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\filesave.ppm"
             "TargetName" = "8:filesave.ppm"
@@ -3951,7 +3956,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_AD82957208BE4000B31E67A326542936"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AD82957208BE4000B31E67A326542936"
             {
             "SourcePath" = "8:..\\..\\dist\\_na_transforms.pyd"
             "TargetName" = "8:_na_transforms.pyd"
@@ -3971,7 +3976,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_AF9D433FFDEF446A89BE6E9655592F64"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AF9D433FFDEF446A89BE6E9655592F64"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_zoom-in.xpm"
             "TargetName" = "8:stock_zoom-in.xpm"
@@ -3991,7 +3996,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_B03154E9AF474A69B5889C90DD8A15DE"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B03154E9AF474A69B5889C90DD8A15DE"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\back.png"
             "TargetName" = "8:back.png"
@@ -4011,7 +4016,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_B1C6D2D00C154C8CB675CD32CF23E111"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B1C6D2D00C154C8CB675CD32CF23E111"
             {
             "SourcePath" = "8:..\\..\\dist\\bz2.pyd"
             "TargetName" = "8:bz2.pyd"
@@ -4031,7 +4036,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_B1FFB4C3D7994AEDB656C4B9D743FA87"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B1FFB4C3D7994AEDB656C4B9D743FA87"
             {
             "SourcePath" = "8:..\\..\\dist\\dbflibc.pyd"
             "TargetName" = "8:dbflibc.pyd"
@@ -4051,7 +4056,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_B282816F2FB14BED9A8D1793404CA44F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B282816F2FB14BED9A8D1793404CA44F"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\home.png"
             "TargetName" = "8:home.png"
@@ -4071,7 +4076,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_B34087DF7FA449F39199B7F9D6801BDF"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B34087DF7FA449F39199B7F9D6801BDF"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\phvr8a.afm"
             "TargetName" = "8:phvr8a.afm"
@@ -4091,7 +4096,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_B80CC8BC7E5D4F5781337A57B5AF4D81"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B80CC8BC7E5D4F5781337A57B5AF4D81"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\zoom_to_rect.xpm"
             "TargetName" = "8:zoom_to_rect.xpm"
@@ -4111,7 +4116,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_B8AFEE5A819A45EAAD990880A1500505"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B8AFEE5A819A45EAAD990880A1500505"
             {
             "SourcePath" = "8:..\\..\\dist\\_wxagg.pyd"
             "TargetName" = "8:_wxagg.pyd"
@@ -4131,7 +4136,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_BA53730942AD4235B16615ACEEEAD082"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BA53730942AD4235B16615ACEEEAD082"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\VeraIt.ttf"
             "TargetName" = "8:VeraIt.ttf"
@@ -4151,7 +4156,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_BAEB5F2C132141ECAD35BB96EB651728"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BAEB5F2C132141ECAD35BB96EB651728"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\forward.xpm"
             "TargetName" = "8:forward.xpm"
@@ -4171,7 +4176,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_BBD01E92375B4274904884E1C81A157B"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BBD01E92375B4274904884E1C81A157B"
             {
             "SourcePath" = "8:..\\..\\dist\\mingwm10.dll"
             "TargetName" = "8:mingwm10.dll"
@@ -4191,7 +4196,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_BDBAFBC8050545AB917D9ABB39123A0C"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BDBAFBC8050545AB917D9ABB39123A0C"
             {
             "SourcePath" = "8:..\\..\\dist\\_nc_cntr.pyd"
             "TargetName" = "8:_nc_cntr.pyd"
@@ -4211,7 +4216,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_C02C389C482B44BA845A29EF74357266"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C02C389C482B44BA845A29EF74357266"
             {
             "SourcePath" = "8:..\\..\\dist\\_ns_cntr.pyd"
             "TargetName" = "8:_ns_cntr.pyd"
@@ -4231,7 +4236,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_C03DFA37998E4615BBB9D01F209D0744"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C03DFA37998E4615BBB9D01F209D0744"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\VeraBd.ttf"
             "TargetName" = "8:VeraBd.ttf"
@@ -4251,7 +4256,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_C0AED714DCA940C2A7A6654828E52966"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C0AED714DCA940C2A7A6654828E52966"
             {
             "SourcePath" = "8:..\\..\\dist\\_na_cntr.pyd"
             "TargetName" = "8:_na_cntr.pyd"
@@ -4271,7 +4276,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_C137E181D06C49379215448DDC3C47B7"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C137E181D06C49379215448DDC3C47B7"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_up.xpm"
             "TargetName" = "8:stock_up.xpm"
@@ -4291,7 +4296,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_C45F30D8CD4A47E0BBFE703CB23B3B8F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C45F30D8CD4A47E0BBFE703CB23B3B8F"
             {
             "SourcePath" = "8:..\\..\\dist\\_na_backend_gdk.pyd"
             "TargetName" = "8:_na_backend_gdk.pyd"
@@ -4311,7 +4316,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_C56F9B5186E84ABA8575A2A4D50DE6DE"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C56F9B5186E84ABA8575A2A4D50DE6DE"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\putb8a.afm"
             "TargetName" = "8:putb8a.afm"
@@ -4331,7 +4336,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_C74B6FF902DB49BCBDB7AFC58A4F3E8A"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C74B6FF902DB49BCBDB7AFC58A4F3E8A"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\phvbo8a.afm"
             "TargetName" = "8:phvbo8a.afm"
@@ -4351,7 +4356,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_CC1CF324B0A24E6F932CABF8E0936A5B"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CC1CF324B0A24E6F932CABF8E0936A5B"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pbkl8a.afm"
             "TargetName" = "8:pbkl8a.afm"
@@ -4371,7 +4376,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_CC24183BB4AA4FFD9C0ADC2195CF37BF"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CC24183BB4AA4FFD9C0ADC2195CF37BF"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\cmmi10.afm"
             "TargetName" = "8:cmmi10.afm"
@@ -4391,7 +4396,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_CC53AA2DCB994DCEA9D2CF94A1A6FFAC"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CC53AA2DCB994DCEA9D2CF94A1A6FFAC"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_close.ppm"
             "TargetName" = "8:stock_close.ppm"
@@ -4411,7 +4416,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_CE2629BA75D54748874A392B4486FA68"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CE2629BA75D54748874A392B4486FA68"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\home.svg"
             "TargetName" = "8:home.svg"
@@ -4431,7 +4436,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_CE3E8DF5C9024064AAD4DC21BBACC703"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CE3E8DF5C9024064AAD4DC21BBACC703"
             {
             "SourcePath" = "8:..\\..\\dist\\win32api.pyd"
             "TargetName" = "8:win32api.pyd"
@@ -4451,7 +4456,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_CE7A41DBE48842C183C19017834E8245"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CE7A41DBE48842C183C19017834E8245"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\zoom_to_rect.png"
             "TargetName" = "8:zoom_to_rect.png"
@@ -4471,7 +4476,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_CF6509B0D0584B95817448CFD5485762"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CF6509B0D0584B95817448CFD5485762"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\hand.svg"
             "TargetName" = "8:hand.svg"
@@ -4491,7 +4496,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_CF9996C3E85C4EFC826C7D3A41F5FD93"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CF9996C3E85C4EFC826C7D3A41F5FD93"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pcrr8a.afm"
             "TargetName" = "8:pcrr8a.afm"
@@ -4511,7 +4516,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_CFF1C3B2CA474C43A063BE1AD7E80EE7"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CFF1C3B2CA474C43A063BE1AD7E80EE7"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\psyr.afm"
             "TargetName" = "8:psyr.afm"
@@ -4531,7 +4536,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_D35C4827540A4F9BA53C4470A9D55883"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D35C4827540A4F9BA53C4470A9D55883"
             {
             "SourcePath" = "8:..\\..\\dist\\schemas\\report\\gotmgui.xml"
             "TargetName" = "8:gotmgui.xml"
@@ -4551,7 +4556,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_D465E3CC2707419EA25CCBF225AA80D6"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D465E3CC2707419EA25CCBF225AA80D6"
             {
             "SourcePath" = "8:..\\..\\dist\\win32pdh.pyd"
             "TargetName" = "8:win32pdh.pyd"
@@ -4571,7 +4576,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_D4AD501791614B5D9CF299566D22619D"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D4AD501791614B5D9CF299566D22619D"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\filesave.xpm"
             "TargetName" = "8:filesave.xpm"
@@ -4591,7 +4596,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_D6000289C8754C4798D9E76966DC8B57"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D6000289C8754C4798D9E76966DC8B57"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_refresh.xpm"
             "TargetName" = "8:stock_refresh.xpm"
@@ -4611,7 +4616,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_D69C57AAA9AB40E2BBD32BCFE1E7EC26"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D69C57AAA9AB40E2BBD32BCFE1E7EC26"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\move.svg"
             "TargetName" = "8:move.svg"
@@ -4631,7 +4636,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_D8787F7C95524FA6BAF9BB83026A3409"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D8787F7C95524FA6BAF9BB83026A3409"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\home.ppm"
             "TargetName" = "8:home.ppm"
@@ -4651,7 +4656,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_D925C72B3DC34BFD831CD21EC7E5CA12"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D925C72B3DC34BFD831CD21EC7E5CA12"
             {
             "SourcePath" = "8:..\\..\\dist\\QtGui4.dll"
             "TargetName" = "8:QtGui4.dll"
@@ -4671,7 +4676,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_DFC0A5645CDA4E8F814648A88D158F40"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DFC0A5645CDA4E8F814648A88D158F40"
             {
             "SourcePath" = "8:..\\..\\dist\\_dotblas.pyd"
             "TargetName" = "8:_dotblas.pyd"
@@ -4691,7 +4696,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_E1DDBF2F591D462AB334FB4CD0545533"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E1DDBF2F591D462AB334FB4CD0545533"
             {
             "SourcePath" = "8:..\\..\\dist\\proj4.pyd"
             "TargetName" = "8:proj4.pyd"
@@ -4711,7 +4716,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_E1E11506124C46B19EAEF26032552424"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E1E11506124C46B19EAEF26032552424"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\hand.ppm"
             "TargetName" = "8:hand.ppm"
@@ -4731,7 +4736,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_E55BCF253F274AD3B693E12074530C9E"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E55BCF253F274AD3B693E12074530C9E"
             {
             "SourcePath" = "8:..\\..\\dist\\schemas\\outputtree.xml"
             "TargetName" = "8:outputtree.xml"
@@ -4751,7 +4756,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_E591BD1A2C50426E89330BC7C8C0D5A6"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E591BD1A2C50426E89330BC7C8C0D5A6"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\back.svg"
             "TargetName" = "8:back.svg"
@@ -4771,7 +4776,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_E76A24F01BD24FA28AE9567DE3C3333C"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E76A24F01BD24FA28AE9567DE3C3333C"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_up.ppm"
             "TargetName" = "8:stock_up.ppm"
@@ -4791,7 +4796,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_E853A828EB484B68A698887EC42CE182"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E853A828EB484B68A698887EC42CE182"
             {
             "SourcePath" = "8:..\\..\\dist\\pyexpat.pyd"
             "TargetName" = "8:pyexpat.pyd"
@@ -4811,7 +4816,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_E8B7AD3982B44AB79B4258D08C026B20"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E8B7AD3982B44AB79B4258D08C026B20"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\subplots.ppm"
             "TargetName" = "8:subplots.ppm"
@@ -4831,7 +4836,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_E8E7605DF34840A483F8C91EDD34DCDF"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E8E7605DF34840A483F8C91EDD34DCDF"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_left.ppm"
             "TargetName" = "8:stock_left.ppm"
@@ -4851,7 +4856,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_E91765F05E0743069D6595A006EACE27"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E91765F05E0743069D6595A006EACE27"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\putri8a.afm"
             "TargetName" = "8:putri8a.afm"
@@ -4871,7 +4876,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_EB3565CD2AFB4950A41D66124129C861"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EB3565CD2AFB4950A41D66124129C861"
             {
             "SourcePath" = "8:..\\..\\dist\\mtrand.pyd"
             "TargetName" = "8:mtrand.pyd"
@@ -4891,7 +4896,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_EC9B29A573694F8B90D05D468F5A438F"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EC9B29A573694F8B90D05D468F5A438F"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\move.ppm"
             "TargetName" = "8:move.ppm"
@@ -4911,7 +4916,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_ECFD121AC9CF4A83A6734A3AB9296681"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ECFD121AC9CF4A83A6734A3AB9296681"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_save_as.xpm"
             "TargetName" = "8:stock_save_as.xpm"
@@ -4931,7 +4936,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_EEFCA494616E41B0B6B1D171687D868E"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EEFCA494616E41B0B6B1D171687D868E"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\phvb8a.afm"
             "TargetName" = "8:phvb8a.afm"
@@ -4951,7 +4956,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_F309247481FA4C568667156CA5189F41"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F309247481FA4C568667156CA5189F41"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pcrro8a.afm"
             "TargetName" = "8:pcrro8a.afm"
@@ -4971,7 +4976,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_F48A2F9A23F84ABD915448CD1CF2E9BB"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F48A2F9A23F84ABD915448CD1CF2E9BB"
             {
             "SourcePath" = "8:..\\..\\dist\\scalarmath.pyd"
             "TargetName" = "8:scalarmath.pyd"
@@ -4991,7 +4996,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_F5654A03941A46C3B2B0545FBA7A6EB8"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F5654A03941A46C3B2B0545FBA7A6EB8"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pncbi8a.afm"
             "TargetName" = "8:pncbi8a.afm"
@@ -5011,7 +5016,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_F69AC8F60A8848A998B7F35C6DE75E72"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F69AC8F60A8848A998B7F35C6DE75E72"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\stock_right.xpm"
             "TargetName" = "8:stock_right.xpm"
@@ -5031,7 +5036,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_F760E122C50F4580BA8F692240185AFF"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F760E122C50F4580BA8F692240185AFF"
             {
             "SourcePath" = "8:..\\..\\dist\\fftpack_lite.pyd"
             "TargetName" = "8:fftpack_lite.pyd"
@@ -5051,7 +5056,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_FBA37EC5CCA0482EAAAFE44C0448D28E"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FBA37EC5CCA0482EAAAFE44C0448D28E"
             {
             "SourcePath" = "8:..\\..\\dist\\_na_nxutils.pyd"
             "TargetName" = "8:_na_nxutils.pyd"
@@ -5071,7 +5076,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_FDD8214A7C8943D59A4B236016478601"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FDD8214A7C8943D59A4B236016478601"
             {
             "SourcePath" = "8:..\\..\\dist\\library.zip"
             "TargetName" = "8:library.zip"
@@ -5091,7 +5096,7 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{A582A373-4685-4296-BEFE-614B80A702C3}:_FE2F84390BF24D62929ECBF171AFB606"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FE2F84390BF24D62929ECBF171AFB606"
             {
             "SourcePath" = "8:..\\..\\dist\\matplotlibdata\\pbkdi8a.afm"
             "TargetName" = "8:pbkdi8a.afm"
@@ -5114,7 +5119,7 @@
         }
         "FileType"
         {
-            "{9300C6CA-4CE0-41D6-A6CD-70E04FD37067}:_855FB0B365C14B06B31A8F7EBC6C9C1A"
+            "{5EB83D71-FA18-4901-BE56-DE22E13CC478}:_855FB0B365C14B06B31A8F7EBC6C9C1A"
             {
             "Name" = "8:GOTM-GUI result"
             "Description" = "8:GOTM-GUI result"
@@ -5128,7 +5133,7 @@
                 }
                 "Verbs"
                 {
-                    "{9D28A334-2E55-48EE-AD7D-2DF3F0641A76}:_AF5B1E36B1FB43F6A32893BC09D0220F"
+                    "{95C0C507-CBF0-42B8-B119-07219E384A4A}:_AF5B1E36B1FB43F6A32893BC09D0220F"
                     {
                     "Command" = "8:&Open"
                     "Verb" = "8:open"
@@ -5137,7 +5142,7 @@
                     }
                 }
             }
-            "{9300C6CA-4CE0-41D6-A6CD-70E04FD37067}:_EB725316EC04420FA92333EB04C4766C"
+            "{5EB83D71-FA18-4901-BE56-DE22E13CC478}:_EB725316EC04420FA92333EB04C4766C"
             {
             "Name" = "8:GOTM-GUI scenario"
             "Description" = "8:GOTM-GUI scenario"
@@ -5151,7 +5156,7 @@
                 }
                 "Verbs"
                 {
-                    "{9D28A334-2E55-48EE-AD7D-2DF3F0641A76}:_4B8BF2B4D1AB45B1B9ECEBC05114B6F0"
+                    "{95C0C507-CBF0-42B8-B119-07219E384A4A}:_4B8BF2B4D1AB45B1B9ECEBC05114B6F0"
                     {
                     "Command" = "8:&Open"
                     "Verb" = "8:open"
@@ -5163,7 +5168,7 @@
         }
         "Folder"
         {
-            "{78BAF5CE-F2E5-45BE-83BC-DB6AF387E941}:_756C06C19E0A4F32B6D7E39310E78083"
+            "{1525181F-901A-416C-8A58-119130FE478E}:_756C06C19E0A4F32B6D7E39310E78083"
             {
             "Name" = "8:#1919"
             "AlwaysCreate" = "11:FALSE"
@@ -5174,7 +5179,7 @@
                 {
                 }
             }
-            "{58C0ADA3-3CEA-43BD-A3B3-2EA121BC8217}:_FD247DB2DB31429BB880118E6AD632D3"
+            "{3C67513D-01DD-4637-8A68-80971EB9504F}:_FD247DB2DB31429BB880118E6AD632D3"
             {
             "DefaultLocation" = "8:[ProgramFilesFolder][ProductName]"
             "Name" = "8:#1925"
@@ -5184,7 +5189,7 @@
             "Property" = "8:TARGETDIR"
                 "Folders"
                 {
-                    "{F27BD5C5-A65D-4608-96D4-7C5DA1F76302}:_1E69F873E85943209870ED80FD757724"
+                    "{9EF0B969-E518-4E46-987F-47570745A589}:_1E69F873E85943209870ED80FD757724"
                     {
                     "Name" = "8:schemas"
                     "AlwaysCreate" = "11:FALSE"
@@ -5193,7 +5198,7 @@
                     "Property" = "8:_29FC987828584934980A37DCCD22E290"
                         "Folders"
                         {
-                            "{F27BD5C5-A65D-4608-96D4-7C5DA1F76302}:_5D71607C193440C1BA7E86B473AE57C1"
+                            "{9EF0B969-E518-4E46-987F-47570745A589}:_5D71607C193440C1BA7E86B473AE57C1"
                             {
                             "Name" = "8:scenario"
                             "AlwaysCreate" = "11:FALSE"
@@ -5204,7 +5209,7 @@
                                 {
                                 }
                             }
-                            "{F27BD5C5-A65D-4608-96D4-7C5DA1F76302}:_8837445818DF443FA6879178C0602645"
+                            "{9EF0B969-E518-4E46-987F-47570745A589}:_8837445818DF443FA6879178C0602645"
                             {
                             "Name" = "8:report"
                             "AlwaysCreate" = "11:FALSE"
@@ -5215,7 +5220,7 @@
                                 {
                                 }
                             }
-                            "{F27BD5C5-A65D-4608-96D4-7C5DA1F76302}:_AE888DC598C048E89D05EF120267712C"
+                            "{9EF0B969-E518-4E46-987F-47570745A589}:_AE888DC598C048E89D05EF120267712C"
                             {
                             "Name" = "8:figure"
                             "AlwaysCreate" = "11:FALSE"
@@ -5226,7 +5231,7 @@
                                 {
                                 }
                             }
-                            "{F27BD5C5-A65D-4608-96D4-7C5DA1F76302}:_CFF36C0E9CF048B189E11D4332B4CE31"
+                            "{9EF0B969-E518-4E46-987F-47570745A589}:_CFF36C0E9CF048B189E11D4332B4CE31"
                             {
                             "Name" = "8:settings"
                             "AlwaysCreate" = "11:FALSE"
@@ -5237,7 +5242,7 @@
                                 {
                                 }
                             }
-                            "{F27BD5C5-A65D-4608-96D4-7C5DA1F76302}:_F8E81539AF9F4BAB9D845AB24BFE6096"
+                            "{9EF0B969-E518-4E46-987F-47570745A589}:_F8E81539AF9F4BAB9D845AB24BFE6096"
                             {
                             "Name" = "8:result"
                             "AlwaysCreate" = "11:FALSE"
@@ -5250,7 +5255,7 @@
                             }
                         }
                     }
-                    "{F27BD5C5-A65D-4608-96D4-7C5DA1F76302}:_40DA823FA40448FAB1F8B576D90024D6"
+                    "{9EF0B969-E518-4E46-987F-47570745A589}:_40DA823FA40448FAB1F8B576D90024D6"
                     {
                     "Name" = "8:matplotlibdata"
                     "AlwaysCreate" = "11:FALSE"
@@ -5261,7 +5266,7 @@
                         {
                         }
                     }
-                    "{F27BD5C5-A65D-4608-96D4-7C5DA1F76302}:_5DF0A59E197C47018189C19CFC4B61EB"
+                    "{9EF0B969-E518-4E46-987F-47570745A589}:_5DF0A59E197C47018189C19CFC4B61EB"
                     {
                     "Name" = "8:defaultscenarios"
                     "AlwaysCreate" = "11:FALSE"
@@ -5272,7 +5277,7 @@
                         {
                         }
                     }
-                    "{F27BD5C5-A65D-4608-96D4-7C5DA1F76302}:_85DF2E297C2248C2850D69A637A38C65"
+                    "{9EF0B969-E518-4E46-987F-47570745A589}:_85DF2E297C2248C2850D69A637A38C65"
                     {
                     "Name" = "8:reporttemplates"
                     "AlwaysCreate" = "11:FALSE"
@@ -5281,7 +5286,7 @@
                     "Property" = "8:_5CDE02B02E934BC4B5A248B621E8BFA3"
                         "Folders"
                         {
-                            "{F27BD5C5-A65D-4608-96D4-7C5DA1F76302}:_438EE210F63A4F1EB71CC3BCAEA339EC"
+                            "{9EF0B969-E518-4E46-987F-47570745A589}:_438EE210F63A4F1EB71CC3BCAEA339EC"
                             {
                             "Name" = "8:default"
                             "AlwaysCreate" = "11:FALSE"
@@ -5306,6 +5311,7 @@
         "MsiBootstrapper"
         {
         "LangId" = "3:1033"
+        "RequiresElevation" = "11:FALSE"
         }
         "Product"
         {
@@ -5314,9 +5320,11 @@
         "ProductCode" = "8:{15142C18-4E33-4A9C-9743-CCB9D95983F4}"
         "PackageCode" = "8:{AC33CAA3-6F50-4B89-B9BB-578E7E125D9B}"
         "UpgradeCode" = "8:{4B998060-7774-43AF-BC61-8E1D4FE4F2D7}"
+        "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
+        "InstallAllUsers" = "11:FALSE"
         "ProductVersion" = "8:0.93.0"
         "Manufacturer" = "8:Bolding & Burchard Hydrodynamics"
         "ARPHELPTELEPHONE" = "8:"
@@ -5331,6 +5339,10 @@
         "ARPIconIndex" = "3:1"
         "SearchPath" = "8:"
         "UseSystemSearchPath" = "11:TRUE"
+        "TargetPlatform" = "3:0"
+        "PreBuildEvent" = "8:"
+        "PostBuildEvent" = "8:"
+        "RunPostBuildEvent" = "3:0"
         }
         "Registry"
         {
@@ -5338,7 +5350,7 @@
             {
                 "Keys"
                 {
-                    "{6A471EEF-D31B-40F8-BCF6-C9E8EC783F36}:_3956D17A5BE042F1A64658FC480E7801"
+                    "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_3956D17A5BE042F1A64658FC480E7801"
                     {
                     "Name" = "8:Software"
                     "Condition" = "8:"
@@ -5347,7 +5359,7 @@
                     "Transitive" = "11:FALSE"
                         "Keys"
                         {
-                            "{6A471EEF-D31B-40F8-BCF6-C9E8EC783F36}:_042B1ABA131449E09A3251B663EABF39"
+                            "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_042B1ABA131449E09A3251B663EABF39"
                             {
                             "Name" = "8:[Manufacturer]"
                             "Condition" = "8:"
@@ -5372,7 +5384,7 @@
             {
                 "Keys"
                 {
-                    "{6A471EEF-D31B-40F8-BCF6-C9E8EC783F36}:_8445C1227A7D4ECDA75FBC5BD8B48DC5"
+                    "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_8445C1227A7D4ECDA75FBC5BD8B48DC5"
                     {
                     "Name" = "8:Software"
                     "Condition" = "8:"
@@ -5381,7 +5393,7 @@
                     "Transitive" = "11:FALSE"
                         "Keys"
                         {
-                            "{6A471EEF-D31B-40F8-BCF6-C9E8EC783F36}:_538DA5F65FB44D729809FCFD099FDF3E"
+                            "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_538DA5F65FB44D729809FCFD099FDF3E"
                             {
                             "Name" = "8:[Manufacturer]"
                             "Condition" = "8:"
@@ -5426,7 +5438,7 @@
         }
         "Shortcut"
         {
-            "{478F747B-8505-45D1-9AAE-8C3B645C26E3}:_0DC9A27CE0D247A89C5D6622EF8F5D23"
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_0DC9A27CE0D247A89C5D6622EF8F5D23"
             {
             "Name" = "8:GOTM-GUI"
             "Arguments" = "8:"
@@ -5443,14 +5455,14 @@
         }
         "UserInterface"
         {
-            "{8D9DEE8B-DD8B-4F48-9072-C4364E4F4011}:_0A650E84D4364C469B30C1F19B708D7F"
+            "{DF760B10-853B-4699-99F2-AFF7185B4A62}:_0A650E84D4364C469B30C1F19B708D7F"
             {
             "Name" = "8:#1901"
             "Sequence" = "3:1"
             "Attributes" = "3:2"
                 "Dialogs"
                 {
-                    "{18ADD6EC-89FE-4ED7-AD3E-211C40278470}:_F9EF03C3E52241F291372A0A0AD902A9"
+                    "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_F9EF03C3E52241F291372A0A0AD902A9"
                     {
                     "Sequence" = "3:100"
                     "DisplayName" = "8:Progress"
@@ -5487,14 +5499,14 @@
                     }
                 }
             }
-            "{8D9DEE8B-DD8B-4F48-9072-C4364E4F4011}:_2B9573061F6A4CF5B29145DA864F4131"
+            "{DF760B10-853B-4699-99F2-AFF7185B4A62}:_2B9573061F6A4CF5B29145DA864F4131"
             {
             "Name" = "8:#1900"
             "Sequence" = "3:1"
             "Attributes" = "3:1"
                 "Dialogs"
                 {
-                    "{18ADD6EC-89FE-4ED7-AD3E-211C40278470}:_0733BA09838E4ED79BF59F7B37F1466C"
+                    "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_0733BA09838E4ED79BF59F7B37F1466C"
                     {
                     "Sequence" = "3:200"
                     "DisplayName" = "8:Installation Folder"
@@ -5514,9 +5526,22 @@
                             "Setting" = "3:1"
                             "UsePlugInResources" = "11:TRUE"
                             }
+                            "InstallAllUsersVisible"
+                            {
+                            "Name" = "8:InstallAllUsersVisible"
+                            "DisplayName" = "8:#1059"
+                            "Description" = "8:#1159"
+                            "Type" = "3:5"
+                            "ContextData" = "8:1;True=1;False=0"
+                            "Attributes" = "3:0"
+                            "Setting" = "3:0"
+                            "Value" = "3:1"
+                            "DefaultValue" = "3:1"
+                            "UsePlugInResources" = "11:TRUE"
+                            }
                         }
                     }
-                    "{18ADD6EC-89FE-4ED7-AD3E-211C40278470}:_7E93F10A50DD4F61B0B65C722FC0DC96"
+                    "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_7E93F10A50DD4F61B0B65C722FC0DC96"
                     {
                     "Sequence" = "3:300"
                     "DisplayName" = "8:Confirm Installation"
@@ -5538,7 +5563,7 @@
                             }
                         }
                     }
-                    "{18ADD6EC-89FE-4ED7-AD3E-211C40278470}:_BB427A4CF1994702B12B66E399A860FD"
+                    "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_BB427A4CF1994702B12B66E399A860FD"
                     {
                     "Sequence" = "3:100"
                     "DisplayName" = "8:Welcome"
@@ -5588,20 +5613,20 @@
                     }
                 }
             }
-            "{B654A020-6903-4E6A-A86C-75DC463DB54B}:_8ED6F2C312CB4625944F7EE497E40080"
+            "{2479F3F5-0309-486D-8047-8187E2CE5BA0}:_8ED6F2C312CB4625944F7EE497E40080"
             {
             "UseDynamicProperties" = "11:FALSE"
             "IsDependency" = "11:FALSE"
             "SourcePath" = "8:<VsdDialogDir>\\VsdBasicDialogs.wim"
             }
-            "{8D9DEE8B-DD8B-4F48-9072-C4364E4F4011}:_916DA34EA0B048CABCEB7B3105A2C0D7"
+            "{DF760B10-853B-4699-99F2-AFF7185B4A62}:_916DA34EA0B048CABCEB7B3105A2C0D7"
             {
             "Name" = "8:#1900"
             "Sequence" = "3:2"
             "Attributes" = "3:1"
                 "Dialogs"
                 {
-                    "{18ADD6EC-89FE-4ED7-AD3E-211C40278470}:_8B01F976A6E740BD86021D9B56337AF6"
+                    "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_8B01F976A6E740BD86021D9B56337AF6"
                     {
                     "Sequence" = "3:100"
                     "DisplayName" = "8:Welcome"
@@ -5649,7 +5674,7 @@
                             }
                         }
                     }
-                    "{18ADD6EC-89FE-4ED7-AD3E-211C40278470}:_989D3E472A1B47D083660900254973AC"
+                    "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_989D3E472A1B47D083660900254973AC"
                     {
                     "Sequence" = "3:300"
                     "DisplayName" = "8:Confirm Installation"
@@ -5671,7 +5696,7 @@
                             }
                         }
                     }
-                    "{18ADD6EC-89FE-4ED7-AD3E-211C40278470}:_D1A01E9A729F4E20817A53C38A5800F8"
+                    "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_D1A01E9A729F4E20817A53C38A5800F8"
                     {
                     "Sequence" = "3:200"
                     "DisplayName" = "8:Installation Folder"
@@ -5695,14 +5720,14 @@
                     }
                 }
             }
-            "{8D9DEE8B-DD8B-4F48-9072-C4364E4F4011}:_98AC29B86C0846EAB76139D6D8F2417B"
+            "{DF760B10-853B-4699-99F2-AFF7185B4A62}:_98AC29B86C0846EAB76139D6D8F2417B"
             {
             "Name" = "8:#1902"
             "Sequence" = "3:2"
             "Attributes" = "3:3"
                 "Dialogs"
                 {
-                    "{18ADD6EC-89FE-4ED7-AD3E-211C40278470}:_EF4350A813184CD39F241F07D3FF998C"
+                    "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_EF4350A813184CD39F241F07D3FF998C"
                     {
                     "Sequence" = "3:100"
                     "DisplayName" = "8:Finished"
@@ -5726,14 +5751,14 @@
                     }
                 }
             }
-            "{8D9DEE8B-DD8B-4F48-9072-C4364E4F4011}:_AD305B1531034CD3874013A02DA8969E"
+            "{DF760B10-853B-4699-99F2-AFF7185B4A62}:_AD305B1531034CD3874013A02DA8969E"
             {
             "Name" = "8:#1901"
             "Sequence" = "3:2"
             "Attributes" = "3:2"
                 "Dialogs"
                 {
-                    "{18ADD6EC-89FE-4ED7-AD3E-211C40278470}:_8C4A52A8537B4DCC962DBEF677BB1870"
+                    "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_8C4A52A8537B4DCC962DBEF677BB1870"
                     {
                     "Sequence" = "3:100"
                     "DisplayName" = "8:Progress"
@@ -5770,14 +5795,14 @@
                     }
                 }
             }
-            "{8D9DEE8B-DD8B-4F48-9072-C4364E4F4011}:_EB37915717414F348E30E310E83C716E"
+            "{DF760B10-853B-4699-99F2-AFF7185B4A62}:_EB37915717414F348E30E310E83C716E"
             {
             "Name" = "8:#1902"
             "Sequence" = "3:1"
             "Attributes" = "3:3"
                 "Dialogs"
                 {
-                    "{18ADD6EC-89FE-4ED7-AD3E-211C40278470}:_B9551D051F29433998F38B3A15F45D1F"
+                    "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_B9551D051F29433998F38B3A15F45D1F"
                     {
                     "Sequence" = "3:100"
                     "DisplayName" = "8:Finished"
@@ -5814,7 +5839,7 @@
                     }
                 }
             }
-            "{B654A020-6903-4E6A-A86C-75DC463DB54B}:_F4C22D6360CA46749EE54D1B4001CEC0"
+            "{2479F3F5-0309-486D-8047-8187E2CE5BA0}:_F4C22D6360CA46749EE54D1B4001CEC0"
             {
             "UseDynamicProperties" = "11:FALSE"
             "IsDependency" = "11:FALSE"
@@ -5823,7 +5848,7 @@
         }
         "MergeModule"
         {
-            "{35A69C6E-5BA4-440D-803D-762B59A45393}:_BFB16A873A5C4F6DA5488510CD8ADCEB"
+            "{CEE29DC0-9FBA-4B99-8D47-5BC643D9B626}:_BFB16A873A5C4F6DA5488510CD8ADCEB"
             {
             "UseDynamicProperties" = "11:TRUE"
             "IsDependency" = "11:FALSE"
@@ -5848,7 +5873,7 @@
             "Feature" = "8:"
             "IsolateTo" = "8:"
             }
-            "{35A69C6E-5BA4-440D-803D-762B59A45393}:_E51BDD0CD10B491F8C77E28358161687"
+            "{CEE29DC0-9FBA-4B99-8D47-5BC643D9B626}:_E51BDD0CD10B491F8C77E28358161687"
             {
             "UseDynamicProperties" = "11:TRUE"
             "IsDependency" = "11:FALSE"
@@ -5875,9 +5900,6 @@
             }
         }
         "ProjectOutput"
-        {
-        }
-        "VJSharpPlugin"
         {
         }
     }
