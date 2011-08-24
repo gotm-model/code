@@ -87,7 +87,8 @@ contains
                                    dim4d,model%info%state_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables(n)%externalid,       &
                                   units=model%info%state_variables(n)%units,    &
-                                  long_name=model%info%state_variables(n)%longname)
+                                  long_name=model%info%state_variables(n)%longname, &
+                                  missing_value=model%info%state_variables(n)%missing_value)
          end do
 
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical diagnostic variable.
@@ -96,7 +97,8 @@ contains
                                    dim4d,model%info%diagnostic_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables(n)%externalid,    &
                                   units=model%info%diagnostic_variables(n)%units,        &
-                                  long_name=model%info%diagnostic_variables(n)%longname)
+                                  long_name=model%info%diagnostic_variables(n)%longname, &
+                                  missing_value=model%info%diagnostic_variables(n)%missing_value)
          end do
 
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical state variable.
@@ -105,7 +107,8 @@ contains
                                    dim3d,model%info%state_variables_ben(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables_ben(n)%externalid,    &
                                   units=model%info%state_variables_ben(n)%units,        &
-                                  long_name=model%info%state_variables_ben(n)%longname)
+                                  long_name=model%info%state_variables_ben(n)%longname, &
+                                  missing_value=model%info%state_variables_ben(n)%missing_value)
          end do
 
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical diagnostic variable.
@@ -114,7 +117,8 @@ contains
                                    dim3d,model%info%diagnostic_variables_hz(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables_hz(n)%externalid,    &
                                   units=model%info%diagnostic_variables_hz(n)%units,        &
-                                  long_name=model%info%diagnostic_variables_hz(n)%longname)
+                                  long_name=model%info%diagnostic_variables_hz(n)%longname, &
+                                  missing_value=model%info%diagnostic_variables_hz(n)%missing_value)
          end do
 
          ! Add a variable for each conserved quantity
