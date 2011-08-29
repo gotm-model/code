@@ -531,7 +531,7 @@ def processEllipsis(slics,ndims):
         if slics[i] is Ellipsis:
             del newslics[i]
             for j in range(ndims-len(newslics)): newslics.insert(i,slice(None))
-    return newslics
+    return tuple(newslics)
 
 class VariableStore(UserDict.DictMixin):
     """Abstract base class for objects containing one or more variables that
@@ -793,6 +793,15 @@ class VariableStore(UserDict.DictMixin):
         by derived classes if it can be done more efficiently.
         """
         return dict([(name,self.getVariable_raw(name).getLongName()) for name in self.getVariableNames_raw()])
+
+    def getDimensions(self):
+        """Return a list of dimensions in this data store."""
+        return None
+
+    def getDimensionLength(self,dimname):
+        """Returns the length of the specified dimension, plus a flag specifying whether
+        the dimension is unlimited."""
+        return None,None
 
 class Variable(object):
     """Abstract class that represents a variable that can be plotted.

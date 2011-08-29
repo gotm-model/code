@@ -55,7 +55,7 @@ def enumerateNetCDFModules():
     if ready:
         if selectednetcdfmodule==-1: selectednetcdfmodule = len(netcdfmodules)
         netcdfmodules.append(('netCDF4',netCDF4.__version__))
-
+    
     # Try to locate ScientificPython.
     # Note that is is best done after trying netCDF4, because ScientificPython's version of the NetCDF library is generally lower (3.x).
     # If ScientificPython is loaded first, netCDF4 is unable to load the required >=4 version of the NetCDF library.
@@ -309,7 +309,7 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
     # If we have to apply a transformation to the data, make sure that the data type can accommodate it.
     # Cast to the most detailed type available (64-bit float)
     scale,offset = getAttribute('scale_factor',dtype=numpy.float),getAttribute('add_offset',dtype=numpy.float)
-    if scale is not None or offset is not None and dat.dtype!=numpy.float: dat = numpy.asarray(dat,dtype=numpy.float)
+    if scale is not None or offset is not None and dat.dtype!=numpy.float: dat = dat.astype(numpy.float)
   
     # Apply transformation to data based on nc variable attributes.
     if scale  is not None: dat *= scale
@@ -324,7 +324,8 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
             pass
         if timeref is not None:
             timeref = xmlplot.common.date2num(timeref)
-            dat = timeref+timeunit*numpy.asarray(dat,numpy.float64)
+            if dat.dtype!=numpy.float64: dat = dat.astype(numpy.float64)
+            dat = timeref+timeunit*dat
     
     return dat
           
@@ -1112,6 +1113,10 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
         nc = self.getcdf()
         nc.createDimension(dimname, length)
 
+    def getProperties(self):
+        nc = self.getcdf()
+        return dict([(k,getattr(nc,k)) for k in getNcAttributes(nc)])
+
     def setProperty(self,name,value):
         setattr(self.getcdf(),name,value)
         
@@ -1161,6 +1166,24 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
             return 0
         ncdims.sort(cmp=cmpdims)
         return ncdims
+        
+    def getDimensionLength(self,dimname):
+        nc = self.getcdf()
+        length = nc.dimensions[dimname]
+        isunlimited = length is None
+        if not (length is None or isinstance(length,int)):
+            # NetCDF4 uses dimension objects.
+            isunlimited = length.isunlimited()
+            length = len(length)
+        elif isunlimited:
+            # NetCDF3: locate length of unlimited dimension manually.
+            for vn in nc.variables.keys():
+                v = nc.variables[vn]
+                if dimname in v.dimensions:
+                    curdims = list(v.dimensions)
+                    length = v.shape[curdims.index(dimname)]
+                    break
+        return length,isunlimited
 
     def getDefaultCoordinateDelta(self,dimname,coord):
         return 1.
