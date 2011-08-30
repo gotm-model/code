@@ -70,6 +70,10 @@
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
+#ifdef _LAKE_
+   use observations, only: hypsoprof,dhypsodzprof
+   use util,         only: flux
+#endif
 
    IMPLICIT NONE
 !
@@ -148,6 +152,9 @@
    REALTYPE                  :: AdvSup,AdvSdw
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
+#ifdef _LAKE_
+   REALTYPE                  :: AdvSpeed(0:nlev)
+#endif
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -158,14 +165,23 @@
    DiffSup        = -S(nlev)*(precip+evap)
    DiffSdw        = _ZERO_
 
+#ifdef _LAKE_
+   AdvBcup       = flux
+   AdvBcdw       = flux
+#else
    AdvBcup       = oneSided
    AdvBcdw       = oneSided
+#endif
    AdvSup        = _ZERO_
    AdvSdw        = _ZERO_
 
 !  compute total diffusivity
    do i=0,nlev
+#ifdef _IDEALISED_
+      avh(i)=nus(i)
+#else
       avh(i)=nus(i)+avmolS
+#endif
    end do
 
 !  add contributions to source term
@@ -186,16 +202,96 @@
       end do
    end if
 
+#ifdef _LAKE_
+!  transform to new variables
+!  watch out for different boundary types they can be defined at
+!  grid center and at grid face
+   select case(DiffBcup)
+   case(Neumann)
+      DiffSup = DiffSup * hypsoprof(nlev)
+   case(Dirichlet)
+      DiffSup = DiffSup * (hypsoprof(nlev) + hypsoprof(nlev-1))/2
+   case default
+      FATAL 'invalid boundary condition type for upper boundary'
+      stop 'salinity.F90'
+   end select
 
+   select case(DiffBcdw)
+   case(Neumann)
+      DiffSdw = DiffSdw * hypsoprof(0)
+   case(Dirichlet)
+      DiffSdw = DiffSdw * (hypsoprof(1) + hypsoprof(0))/2
+   case default
+      FATAL 'invalid boundary condition type for lower boundary'
+      stop 'salinity.F90'
+   end select
+!  only one boundary type is applicable to advection routine
+!  and these are always zero, so no transformation is needed
+
+!  compute all neccessary things at the grid centers
+   do i = 1, nlev
+      S(i) =  S(i) * (hypsoprof(i) + hypsoprof(i-1))/2
+      sprof(i) = sprof(i) * (hypsoprof(i) + hypsoprof(i-1))/2
+      Qsour(i) = Qsour(i) * (hypsoprof(i) + hypsoprof(i-1))/2
+   end do
+!  compute all neccessary things at the grid interfaces
+!  set up the advection speed
+!  with "normal" advection (w) too
+   if (w_adv_method.ne.0) then
+      do i = 0, nlev
+         AdvSpeed(i) = w(i) + avh(i) * dhypsodzprof(i) / hypsoprof(i)
+      end do
+   else
+      do i = 0, nlev
+         AdvSpeed(i) = avh(i) * dhypsodzprof(i) / hypsoprof(i)
+      end do
+   end if
+
+!  do advection step for lake model
+   call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
+                        AdvSup,AdvSdw,4,1,S)
+#else
 !  do advection step
    if (w_adv_method .ne. 0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                           AdvSup,AdvSdw,w_adv_discr,adv_mode,S)
    end if
+#endif
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
                     DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
+
+#ifdef _LAKE_
+!  transform everything back
+!  compute all neccessary things at the grid centers
+   do i = 1, nlev
+      S(i) = S(i) / ((hypsoprof(i) + hypsoprof(i-1))/2)
+      sprof(i) = sprof(i) / ((hypsoprof(i) + hypsoprof(i-1))/2)
+      Qsour(i) = Qsour(i) / ((hypsoprof(i) + hypsoprof(i-1))/2)
+   end do
+
+!  transform bc's back, you never know...
+   select case(DiffBcup)
+   case(Neumann)
+      DiffSup = DiffSup / hypsoprof(nlev)
+   case(Dirichlet)
+      DiffSup = DiffSup / ((hypsoprof(nlev) + hypsoprof(nlev-1))/2)
+   case default
+      FATAL 'invalid boundary condition type for upper boundary'
+      stop 'salinity.F90'
+   end select
+
+   select case(DiffBcdw)
+   case(Neumann)
+      DiffSdw = DiffSdw / hypsoprof(0)
+   case(Dirichlet)
+      DiffSdw = DiffSdw / ((hypsoprof(1) + hypsoprof(0))/2)
+   case default
+      FATAL 'invalid boundary condition type for lower boundary'
+      stop 'salinity.F90'
+   end select
+#endif
 
    return
    end subroutine salinity

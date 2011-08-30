@@ -72,6 +72,10 @@
    use observations, only: idpdx,dpdx
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
+#ifdef _LAKE_
+   use observations, only: hypsoprof,dhypsodzprof
+   use util,         only: flux
+#endif
 
    IMPLICIT NONE
 !
@@ -159,6 +163,9 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: URelaxTau(0:nlev)
+#ifdef _LAKE_
+   REALTYPE                  :: AdvSpeed(0:nlev)
+#endif
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -219,16 +226,102 @@
 !  implement bottom friction as source term
    Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
 
+#ifdef _LAKE_
+!  transform to new variables
+!  watch out for different boundary types they can be defined at
+!  grid center and at grid face
+   select case(DiffBcup)
+   case(Neumann)
+      DiffUup = DiffUup * hypsoprof(nlev)
+   case(Dirichlet)
+      DiffUup = DiffUup * (hypsoprof(nlev) + hypsoprof(nlev-1))/2
+   case default
+      FATAL 'invalid boundary condition type for upper boundary'
+      stop 'uequation.F90'
+   end select
+
+   select case(DiffBcdw)
+   case(Neumann)
+      DiffUdw = DiffUdw * hypsoprof(0)
+   case(Dirichlet)
+      DiffUdw = DiffUdw * (hypsoprof(1) + hypsoprof(0))/2
+   case default
+      FATAL 'invalid boundary condition type for lower boundary'
+      stop 'uequation.F90'
+   end select
+!  only one boundary type is applicable to advection routine
+!  and these are always zero, so no transformation is needed
+
+!  compute bottom friction at every layer
+   do i = 1, nlev
+      Lsour(i) = - drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i)) * &
+         (dhypsodzprof(i) + dhypsodzprof(i-1))/2
+   end do
+!  compute all neccessary things at the grid centers
+   do i = 1, nlev
+      U(i) =  U(i) * (hypsoprof(i) + hypsoprof(i-1))/2
+      uprof(i) = uprof(i) * (hypsoprof(i) + hypsoprof(i-1))/2
+      Qsour(i) = Qsour(i) * (hypsoprof(i) + hypsoprof(i-1))/2
+   end do
+!  compute all neccessary things at the grid interfaces
+!  set up the advection speed
+!  with "normal" advection (w) too
+   if (w_adv_method.ne.0) then
+      do i = 0, nlev
+         AdvSpeed(i) = w(i) + avh(i) * dhypsodzprof(i) / hypsoprof(i)
+      end do
+!  only with advection from modified diffusion eq.
+   else
+      do i = 0, nlev
+         AdvSpeed(i) = avh(i) * dhypsodzprof(i) / hypsoprof(i)
+      end do
+   end if
+
+!  do advection step for lake model
+   call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
+                        AdvUup,AdvUdw,4,1,U)
+#else
 !  do advection step
    if (w_adv_method.ne.0) then
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                           AdvUup,AdvUdw,w_adv_discr,adv_mode,U)
    end if
+#endif
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
                     DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uProf,U)
 
+#ifdef _LAKE_
+!  transform everything back
+!  compute all neccessary things at the grid centers
+   do i = 1, nlev
+      U(i) = U(i) / ((hypsoprof(i) + hypsoprof(i-1))/2)
+      uprof(i) = uprof(i) / ((hypsoprof(i) + hypsoprof(i-1))/2)
+      Qsour(i) = Qsour(i) / ((hypsoprof(i) + hypsoprof(i-1))/2)
+   end do
+
+!  transform bc's back, you never know...
+   select case(DiffBcup)
+   case(Neumann)
+      DiffUup = DiffUup / hypsoprof(nlev)
+   case(Dirichlet)
+      DiffUup = DiffUup / ((hypsoprof(nlev) + hypsoprof(nlev-1))/2)
+   case default
+      FATAL 'invalid boundary condition type for upper boundary'
+      stop 'uequation.F90'
+   end select
+
+   select case(DiffBcdw)
+   case(Neumann)
+      DiffUdw = DiffUdw / hypsoprof(0)
+   case(Dirichlet)
+      DiffUdw = DiffUdw / ((hypsoprof(1) + hypsoprof(0))/2)
+   case default
+      FATAL 'invalid boundary condition type for lower boundary'
+      stop 'uequation.F90'
+   end select
+#endif
 
    return
    end subroutine uequation

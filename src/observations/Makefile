@@ -41,6 +41,7 @@ ${LIB}(get_wave.o)		\
 ${LIB}(get_vel_profile.o)	\
 ${LIB}(get_eps_profile.o)	\
 ${LIB}(get_bio_profiles.o)	\
+${LIB}(get_hypso_profile.o)	\
 ${LIB}(analytical_profile.o)	\
 ${LIB}(const_NNT.o)             \
 ${LIB}(const_NNS.o)
