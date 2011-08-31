@@ -60,7 +60,7 @@ devel stable branch: VERSION
 distclean:
 	make -C doc/ $@
 	make -C src/ $@
-	$(RM) timestep VERSION include/version.h
+	$(RM) timestamp VERSION include/version.h
 	$(RM) -r lib/ modules/
 
 #-----------------------------------------------------------------------
