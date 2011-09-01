@@ -40,8 +40,9 @@ gotmlib:
 
 subdirs: $(SUBDIRS)
 
-install: $(EXEC) 
-	$(MV) $(EXEC) $(BINDIR)
+install: $(EXEC)
+	mkdir -p $(BINDIR)
+	mv $(EXEC) $(BINDIR)
 
 $(SUBDIRS):
 	$(MAKE) -C $@
