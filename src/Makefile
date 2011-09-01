@@ -21,7 +21,7 @@ ALL_LIBS	= $(FEATURE_LIBS) $(CORE_LIBS) $(EXTRA_LIBS)
 
 EXEC		= gotm$(buildtype)_$(FORTRAN_COMPILER)
 
-all: ../VERSION $(EXEC)
+all: ../VERSION $(EXEC) install
 
 ../VERSION: ../Makefile
 	$(MAKE) -C ..
@@ -79,5 +79,5 @@ ifdef FEATURES
 endif
 
 distclean: realclean
-	$(RM) gotm_debug_* gotm_prof_* gotm_prod_*
+	$(RM) ../bin/gotm_*
 

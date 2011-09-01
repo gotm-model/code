@@ -1,6 +1,4 @@
-src/gotm_debug_*
-src/gotm_prof_*
-src/gotm_prod_*
+bin/
 lib/
 modules/
 timestamp

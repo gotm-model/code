@@ -61,7 +61,7 @@ distclean:
 	make -C doc/ $@
 	make -C src/ $@
 	$(RM) timestamp VERSION include/version.h
-	$(RM) -r lib/ modules/
+	$(RM) -r bin/ lib/ modules/
 
 #-----------------------------------------------------------------------
 # Copyright (C) 2001 - Hans Burchard and Karsten Bolding (BBH)         !
