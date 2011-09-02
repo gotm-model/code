@@ -1,5 +1,9 @@
 *.pyd
 *.pyc
+*.pyo
+*.tmp
+*.TMP
+*.xsx
 win32bin
 build
 dist
