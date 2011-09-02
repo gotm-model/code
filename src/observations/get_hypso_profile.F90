@@ -3,24 +3,21 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: get_hypso_profile
+! !IROUTINE: read_hypsography
 !
 ! !INTERFACE:
-   subroutine get_hypso_profile(unit,jul,secs,nlev,z,h)
+   subroutine read_hypsography(unit,nlev,z,h)
 !
 ! !DESCRIPTION:
-!  This routine is responsible for providing sane values to `observed'
-!  hypography.
+!  This routine is responsible for providing values for hypography.
 !
 ! !USES:
-   use time
    use observations, only: init_saved_vars,read_profiles,hypsoprof,dhypsodzprof
 !   use observations, only: read_profiles,hypsoprof
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer, intent(in):: unit
-   integer, intent(in):: jul,secs
    integer, intent(in):: nlev
    REALTYPE, intent(in):: z(0:nlev)
    REALTYPE, intent(in):: h(0:nlev)
@@ -33,14 +30,8 @@
 ! !LOCAL VARIABLES:
    integer                   :: i
    integer                   :: rc
-   integer                   :: yy,mm,dd,hh,min,ss
-   REALTYPE                  :: dt
-   integer, save             :: jul1,secs1
-   integer, save             :: jul2,secs2
-   integer, parameter        :: cols=1
+   integer                   :: N_file, up_down
    integer, save             :: lines
-   integer, save             :: nprofiles
-   logical, save             :: one_profile
    REALTYPE, save, dimension(:,:), allocatable :: prof
    REALTYPE                  :: zPrime(0:nlev+1)
    REALTYPE                  :: hypsoproftemp(0:nlev+1)
@@ -56,59 +47,70 @@
    do i = nlev-1, 1, -1
       zPrime(i) = zPrime(i+1) - h(i)
    end do
-   if (init_saved_vars) then
-      jul2=0
-      secs2=0
-      lines=0
-      nprofiles=0
-      one_profile=.false.
 
-      if (allocated(prof)) deallocate(prof)
-      allocate(prof(0:nlev+1,cols),stat=rc)
-      if (rc /= 0) stop 'get_t_profile: Error allocating memory (prof2)'
+   if (allocated(prof)) deallocate(prof)
+      allocate(prof(0:nlev+1),stat=rc)
+   if (rc /= 0) stop 'read_hypsograph: Error allocating memory (prof2)'
       prof = _ZERO_
-
    end if
 
-!  This part initialises and reads in new values if necessary.
-   if(.not. one_profile .and. time_diff(jul2,secs2,jul,secs) .lt. 0) then
-      do
-         jul1 = jul2
-         secs1 = secs2
-         call read_profiles(unit,nlev+1,cols,yy,mm,dd,hh,min,ss,zPrime,prof,lines,rc)
-         if(rc .ne. 0) then
-            if(nprofiles .eq. 1) then
-               LEVEL3 'One hypsography profile present.'
-               one_profile = .true.
-               hypsoproftemp = prof(:,1)
-               do i = 0, nlev
-                  hypsoprof(i) = hypsoproftemp(i+1)
-               enddo
-!              calculate the derivative of the hypsography wrt z
-!              both hypsoprof & dhypsodzprof are defined at the grid interfaces
-!              forward diff at bottom
-               dhypsodzprof(0) = (hypsoprof(1) - hypsoprof(0)) / h(1)
-!              backward diff at surface
-               dhypsodzprof(nlev) = (hypsoprof(nlev) - hypsoprof(nlev-1)) / &
-                                    h(nlev)
-!              the rest central diff
-               do i = 1, nlev-1
-                  dhypsodzprof(i) = (hypsoprof(i+1) - hypsoprof(i-1)) / &
-                                    (h(i+1) + h(i))
-               end do
-            else
-               FATAL 'Error reading hypsography around line #',lines
-               stop 'get_hypso_profile'
-            end if
-            EXIT
-         else
-            nprofiles = nprofiles + 1
-            call julian_day(yy,mm,dd,jul2)
-            secs2 = hh*3600 + min*60 + ss
-            if(time_diff(jul2,secs2,jul,secs) .gt. 0) EXIT
-         end if
+!  This part initialises and reads in values.
+   !TODO replace read_profiles by gridinterpol, cause this is the only reason
+   !it's getting used
+   ierr=0
+   read(unit,'(A72)',ERR=100,END=110) cbuf
+   read(cbuf(20:),*,ERR=100,END=110) N_file,up_down
+   lines = 1
+   allocate(tmp_depth(0:N_file),stat=rc)
+   if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_depth)'
+   allocate(tmp_profs(0:N_file),stat=rc)
+   if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_profs)'
+
+   if(up_down .eq. 1) then
+      do i=1,N_file
+         lines = lines+1
+         read(unit,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,1)
+      end do
+   else
+      do i=N_file,1,-1
+         lines = lines+1
+         read(unit,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,1)
       end do
    end if
+   if(rc .eq. 0) then
+      deallocate(tmp_depth)
+      deallocate(tmp_profs)
+      deallocate(prof)
+      FATAL 'Error reading hypsography around line #',lines
+      stop 'read_hypsography'
+   end if
+!   call read_profiles(unit,nlev+1,cols,yy,mm,dd,hh,min,ss,zPrime,prof,lines,rc)
+!   subroutine read_profiles(unit,nlev,cols,yy,mm,dd,hh,min,ss,z, &
+!                            profiles,lines,ierr)
+
+   call gridinterpol(N_file,cols,tmp_depth,tmp_profs,nlev,z,prof)
+
+   hypsoproftemp = prof(:,1)
+   do i = 0, nlev
+      hypsoprof(i) = hypsoproftemp(i+1)
+   end do
+
+!  calculate the derivative of the hypsography wrt z
+!  both hypsoprof & dhypsodzprof are defined at the grid interfaces
+!  forward diff at bottom
+   dhypsodzprof(0) = (hypsoprof(1) - hypsoprof(0)) / h(1)
+!  backward diff at surface
+   dhypsodzprof(nlev) = (hypsoprof(nlev) - hypsoprof(nlev-1)) / &
+                        h(nlev)
+!  the rest central diff
+   do i = 1, nlev-1
+      dhypsodzprof(i) = (hypsoprof(i+1) - hypsoprof(i-1)) / &
+                        (h(i+1) + h(i))
+   end do
+
+   deallocate(tmp_depth)
+   deallocate(tmp_profs)
+   deallocate(prof)
 
    return
    end subroutine get_hypso_profile

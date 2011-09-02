@@ -886,7 +886,7 @@
          open(hypso_prof_unit,file=hypso_prof_file,status='unknown',err=113)
          LEVEL2 'Reading hypsography from:'
          LEVEL3 trim(hypso_prof_file)
-         call get_hypso_profile(hypso_prof_unit,julday,secs,nlev,z,h)
+         call read_hypsography(hypso_prof_unit,nlev,z,h)
       case default
    end select
 #endif
