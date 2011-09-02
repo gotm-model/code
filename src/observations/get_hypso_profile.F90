@@ -6,7 +6,7 @@
 ! !IROUTINE: read_hypsography
 !
 ! !INTERFACE:
-   subroutine read_hypsography(unit,nlev,z,h)
+   subroutine read_hypsography(unit,nlev,z,h,ierr)
 !
 ! !DESCRIPTION:
 !  This routine is responsible for providing values for hypography.
@@ -21,6 +21,8 @@
    integer, intent(in):: nlev
    REALTYPE, intent(in):: z(0:nlev)
    REALTYPE, intent(in):: h(0:nlev)
+! !OUTPUT PARAMETERS:
+   integer, intent(out)                :: ierr
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lennart Schueler
@@ -32,9 +34,13 @@
    integer                   :: rc
    integer                   :: N_file, up_down
    integer, save             :: lines
-   REALTYPE, save, dimension(:,:), allocatable :: prof
+   REALTYPE,allocatable,dimension(:) :: tmp_depth
+   REALTYPE,allocatable,dimension(:) :: tmp_prof
+!   REALTYPE, save, dimension(:), allocatable :: prof
+   REALTYPE,allocatable,dimension(:) :: prof
    REALTYPE                  :: zPrime(0:nlev+1)
-   REALTYPE                  :: hypsoproftemp(0:nlev+1)
+!   REALTYPE                  :: hypsoproftemp(0:nlev+1)
+   character(len=128)         :: cbuf
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -49,50 +55,55 @@
    end do
 
    if (allocated(prof)) deallocate(prof)
-      allocate(prof(0:nlev+1),stat=rc)
-   if (rc /= 0) stop 'read_hypsograph: Error allocating memory (prof2)'
+      allocate(prof(0:nlev),stat=rc)
+   if (rc /= 0) stop 'read_hypsograph: Error allocating memory (prof)'
       prof = _ZERO_
-   end if
 
 !  This part initialises and reads in values.
    !TODO replace read_profiles by gridinterpol, cause this is the only reason
    !it's getting used
-   ierr=0
-   read(unit,'(A72)',ERR=100,END=110) cbuf
-   read(cbuf(20:),*,ERR=100,END=110) N_file,up_down
+   ierr = 0
+!   read(unit,'(A72)',ERR=100,END=110) cbuf
+!   read(cbuf(20:),*,ERR=100,END=110) N_file,up_down
+   read(unit,*,ERR=100,END=110) N_file,up_down
    lines = 1
-   allocate(tmp_depth(0:N_file),stat=rc)
+
+   write(*,*) "N_file = ", N_file
+   write(*,*) "up_down = ", up_down
+
+   allocate(tmp_depth(0:N_file+1),stat=rc)
    if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_depth)'
-   allocate(tmp_profs(0:N_file),stat=rc)
-   if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_profs)'
+   allocate(tmp_prof(0:N_file+1),stat=rc)
+   if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_prof)'
 
    if(up_down .eq. 1) then
       do i=1,N_file
          lines = lines+1
-         read(unit,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,1)
+         read(unit,*,ERR=100,END=110) tmp_depth(i), tmp_prof(i)
       end do
    else
       do i=N_file,1,-1
          lines = lines+1
-         read(unit,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,1)
+         read(unit,*,ERR=100,END=110) tmp_depth(i), tmp_prof(i)
+         write(*,*) "i = ", i, " | depth(i) = ", tmp_depth(i), &
+            " | prof(i) = ", tmp_prof(i)
       end do
    end if
-   if(rc .eq. 0) then
-      deallocate(tmp_depth)
-      deallocate(tmp_profs)
-      deallocate(prof)
-      FATAL 'Error reading hypsography around line #',lines
-      stop 'read_hypsography'
-   end if
+!   if(rc .eq. 0) then
+!      deallocate(tmp_depth)
+!      deallocate(tmp_prof)
+!      deallocate(prof)
+!      FATAL 'Error reading hypsography around line #',lines
+!      stop 'read_hypsography'
+!   end if
 !   call read_profiles(unit,nlev+1,cols,yy,mm,dd,hh,min,ss,zPrime,prof,lines,rc)
 !   subroutine read_profiles(unit,nlev,cols,yy,mm,dd,hh,min,ss,z, &
 !                            profiles,lines,ierr)
 
-   call gridinterpol(N_file,cols,tmp_depth,tmp_profs,nlev,z,prof)
+   call gridinterpol(N_file,1,tmp_depth,tmp_prof,nlev,z,prof)
 
-   hypsoproftemp = prof(:,1)
    do i = 0, nlev
-      hypsoprof(i) = hypsoproftemp(i+1)
+      hypsoprof(i) = prof(i+1)
    end do
 
 !  calculate the derivative of the hypsography wrt z
@@ -109,11 +120,19 @@
    end do
 
    deallocate(tmp_depth)
-   deallocate(tmp_profs)
+   deallocate(tmp_prof)
    deallocate(prof)
 
    return
-   end subroutine get_hypso_profile
+!  maybe these parameters should be defined in meanflow.F90
+!  like in observations.F90
+!  READ_ERROR = -2
+100 ierr = -2
+   return
+!  END_OF_FILE = -1
+110 ierr = -1
+   return
+   end subroutine read_hypsography
 !EOC
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
