@@ -423,7 +423,7 @@
 !  initialize FABM module
 #ifdef _FABM_
 
-   call init_gotm_fabm(nlev,namlst,'fabm.nml')
+   call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml')
    
 !  Initialize FABM input (data files with observations)
    call init_gotm_fabm_input(nlev,namlst,'fabm_input.nml')

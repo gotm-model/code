@@ -133,11 +133,11 @@
 !
 !  local variables
    integer                   :: i,j,variablecount,ivariables(256)
-   character(len=64)         :: models(256),variables(256),file
+   character(len=64)         :: variables(256),file
    type (type_model),pointer :: childmodel
-   namelist /bio_nml/ fabm_calc,models,                                 &
-                      cnpar,w_adv_discr,ode_method,split_factor,        &
-                      bioshade_feedback,repair_state,no_precipitation_dilution
+   namelist /gotm_fabm_nml/ fabm_calc,                                 &
+                            cnpar,w_adv_discr,ode_method,split_factor,        &
+                            bioshade_feedback,repair_state,no_precipitation_dilution
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -146,7 +146,6 @@
    
    ! Initialize FABM model identifiers to invalid id.
    fabm_calc         = .false.
-   models            = ''
    cnpar             = _ONE_
    w_adv_discr       = 6
    ode_method        = 1
@@ -159,19 +158,16 @@
    ! Note that the namelist file is left open until the routine terminates,
    ! so FABM can read more namelists from it during initialization.
    open(namlst,file=fname,action='read',status='old',err=98)
-   read(namlst,nml=bio_nml,err=99)
+   read(namlst,nml=gotm_fabm_nml,err=99)
+   close(namlst)
 
    if (fabm_calc) then
    
       ! Create model tree
-      model => fabm_create_model()
-      do i=1,ubound(models,1)
-         if (trim(models(i)).ne.'') &
-            childmodel => fabm_create_model(trim(models(i)),parent=model)
-      end do
+      model => fabm_create_model_from_file(namlst)
       
       ! Initialize model tree (creates metadata and assigns variable identifiers)
-      call fabm_init(model,namlst,_LOCATION_)
+      call fabm_set_domain(model,_LOCATION_)
 
       ! Report prognostic variable descriptions
       LEVEL2 'FABM pelagic state variables:'
@@ -238,9 +234,6 @@
       call init_var_gotm_fabm(_LOCATION_)
 
    end if
-
-   ! Close the namelist file
-   close(namlst)
 
    return
 
