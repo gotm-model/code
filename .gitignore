@@ -1,0 +1,6 @@
+bin/
+lib/
+modules/
+timestamp
+VERSION
+include/version.h
