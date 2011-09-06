@@ -83,41 +83,41 @@ contains
 
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical state variable.
          do n=1,ubound(model%info%state_variables,1)
-            iret = new_nc_variable(ncid,model%info%state_variables(n)%name,NF_REAL, &
+            iret = new_nc_variable(ncid,trim(model%info%state_variables(n)%name),NF_REAL, &
                                    dim4d,model%info%state_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables(n)%externalid,       &
-                                  units=model%info%state_variables(n)%units,    &
-                                  long_name=model%info%state_variables(n)%longname, &
+                                  units=trim(model%info%state_variables(n)%units),    &
+                                  long_name=trim(model%info%state_variables(n)%longname), &
                                   missing_value=model%info%state_variables(n)%missing_value)
          end do
 
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical diagnostic variable.
          do n=1,ubound(model%info%diagnostic_variables,1)
-            iret = new_nc_variable(ncid,model%info%diagnostic_variables(n)%name,NF_REAL, &
+            iret = new_nc_variable(ncid,trim(model%info%diagnostic_variables(n)%name),NF_REAL, &
                                    dim4d,model%info%diagnostic_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables(n)%externalid,    &
-                                  units=model%info%diagnostic_variables(n)%units,        &
-                                  long_name=model%info%diagnostic_variables(n)%longname, &
+                                  units=trim(model%info%diagnostic_variables(n)%units),        &
+                                  long_name=trim(model%info%diagnostic_variables(n)%longname), &
                                   missing_value=model%info%diagnostic_variables(n)%missing_value)
          end do
 
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical state variable.
          do n=1,ubound(model%info%state_variables_ben,1)
-            iret = new_nc_variable(ncid,model%info%state_variables_ben(n)%name,NF_REAL, &
+            iret = new_nc_variable(ncid,trim(model%info%state_variables_ben(n)%name),NF_REAL, &
                                    dim3d,model%info%state_variables_ben(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables_ben(n)%externalid,    &
-                                  units=model%info%state_variables_ben(n)%units,        &
-                                  long_name=model%info%state_variables_ben(n)%longname, &
+                                  units=trim(model%info%state_variables_ben(n)%units),        &
+                                  long_name=trim(model%info%state_variables_ben(n)%longname), &
                                   missing_value=model%info%state_variables_ben(n)%missing_value)
          end do
 
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical diagnostic variable.
          do n=1,ubound(model%info%diagnostic_variables_hz,1)
-            iret = new_nc_variable(ncid,model%info%diagnostic_variables_hz(n)%name,NF_REAL, &
+            iret = new_nc_variable(ncid,trim(model%info%diagnostic_variables_hz(n)%name),NF_REAL, &
                                    dim3d,model%info%diagnostic_variables_hz(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables_hz(n)%externalid,    &
-                                  units=model%info%diagnostic_variables_hz(n)%units,        &
-                                  long_name=model%info%diagnostic_variables_hz(n)%longname, &
+                                  units=trim(model%info%diagnostic_variables_hz(n)%units),        &
+                                  long_name=trim(model%info%diagnostic_variables_hz(n)%longname), &
                                   missing_value=model%info%diagnostic_variables_hz(n)%missing_value)
          end do
 
@@ -126,7 +126,7 @@ contains
             iret = new_nc_variable(ncid,trim(model%info%conserved_quantities(n)%name)//'_tot',NF_REAL, &
                                    dim3d,model%info%conserved_quantities(n)%externalid)
             iret = set_attributes(ncid,model%info%conserved_quantities(n)%externalid,      &
-                                  units='m*'//model%info%conserved_quantities(n)%units,    &
+                                  units='m*'//trim(model%info%conserved_quantities(n)%units),    &
                                   long_name=trim(model%info%conserved_quantities(n)%longname)//', depth-integrated')
          end do
 
