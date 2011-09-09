@@ -917,7 +917,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
                     # The variable itself points to a variable with staggered coordinates (CF convention: bounds attribute).
                     boundvar = coordvar.getProperties()['bounds']
                     stagcoordvar = self.store.getVariable_raw(boundvar)
-                    assert stagcoordvar is not None, 'Boundary values for coordinate variable %s are set to variable %s, but this variable is not present in the NetCDF file.' % (coordvar.getName(),boundvar)
+                    if stagcoordvar is None: print 'WARNING: boundary values for coordinate variable %s are set to variable %s, but this variable is not present in the NetCDF file.' % (coordvar.getName(),boundvar)
             
             class NetCDFWarning(Exception): pass
             
