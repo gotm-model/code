@@ -1,4 +1,4 @@
-!$Id: get_hypso_profile.F90,v 0.1 2011-04-19 16:24:48 schueler Exp $
+!$Id: read_hypsography.F90,v 0.1 2011-04-19 16:24:48 schueler Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -12,8 +12,7 @@
 !  This routine is responsible for providing values for hypography.
 !
 ! !USES:
-   use observations, only: init_saved_vars,read_profiles,hypsoprof,dhypsodzprof
-!   use observations, only: read_profiles,hypsoprof
+   use observations, only: hypsoprof,dhypsodzprof
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -36,11 +35,8 @@
    integer, save             :: lines
    REALTYPE,allocatable,dimension(:) :: tmp_depth
    REALTYPE,allocatable,dimension(:) :: tmp_prof
-!   REALTYPE, save, dimension(:), allocatable :: prof
    REALTYPE,allocatable,dimension(:) :: prof
    REALTYPE                  :: zPrime(0:nlev+1)
-!   REALTYPE                  :: hypsoproftemp(0:nlev+1)
-   character(len=128)         :: cbuf
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -56,25 +52,22 @@
 
    if (allocated(prof)) deallocate(prof)
       allocate(prof(0:nlev),stat=rc)
-   if (rc /= 0) stop 'read_hypsograph: Error allocating memory (prof)'
+   if (rc /= 0) stop 'read_hypsography: Error allocating memory (prof)'
       prof = _ZERO_
 
 !  This part initialises and reads in values.
-   !TODO replace read_profiles by gridinterpol, cause this is the only reason
-   !it's getting used
    ierr = 0
-!   read(unit,'(A72)',ERR=100,END=110) cbuf
-!   read(cbuf(20:),*,ERR=100,END=110) N_file,up_down
    read(unit,*,ERR=100,END=110) N_file,up_down
    lines = 1
 
-   write(*,*) "N_file = ", N_file
-   write(*,*) "up_down = ", up_down
-
-   allocate(tmp_depth(0:N_file+1),stat=rc)
-   if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_depth)'
+   if (allocated(tmp_depth)) deallocate(tmp_depth)
+      allocate(tmp_depth(0:N_file+1),stat=rc)
+   if (rc /= 0) stop 'read_hypsography: Error allocating memory (tmp_depth)'
+      tmp_depth = _ZERO_
+   if (allocated(tmp_prof)) deallocate(tmp_prof)
    allocate(tmp_prof(0:N_file+1),stat=rc)
-   if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_prof)'
+   if (rc /= 0) stop 'read_hypsography: Error allocating memory (tmp_prof)'
+      tmp_prof = _ZERO_
 
    if(up_down .eq. 1) then
       do i=1,N_file
@@ -85,21 +78,10 @@
       do i=N_file,1,-1
          lines = lines+1
          read(unit,*,ERR=100,END=110) tmp_depth(i), tmp_prof(i)
-         write(*,*) "i = ", i, " | depth(i) = ", tmp_depth(i), &
-            " | prof(i) = ", tmp_prof(i)
       end do
    end if
-!   if(rc .eq. 0) then
-!      deallocate(tmp_depth)
-!      deallocate(tmp_prof)
-!      deallocate(prof)
-!      FATAL 'Error reading hypsography around line #',lines
-!      stop 'read_hypsography'
-!   end if
-!   call read_profiles(unit,nlev+1,cols,yy,mm,dd,hh,min,ss,zPrime,prof,lines,rc)
-!   subroutine read_profiles(unit,nlev,cols,yy,mm,dd,hh,min,ss,z, &
-!                            profiles,lines,ierr)
 
+!  interpolate read in hypsography to grid used in GOTM
    call gridinterpol(N_file,1,tmp_depth,tmp_prof,nlev,z,prof)
 
    do i = 0, nlev
@@ -119,9 +101,9 @@
                         (h(i+1) + h(i))
    end do
 
-   deallocate(tmp_depth)
-   deallocate(tmp_prof)
-   deallocate(prof)
+   if (allocated(prof)) deallocate(prof)
+   if (allocated(tmp_depth)) deallocate(tmp_depth)
+   if (allocated(tmp_prof)) deallocate(tmp_prof)
 
    return
 !  maybe these parameters should be defined in meanflow.F90
