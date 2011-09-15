@@ -75,10 +75,11 @@
    use observations, only: A,g1,g2
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
-#ifdef _LAKE_
+!#ifdef _LAKE_
+   use meanflow,     only: hypsography_file
    use meanflow, only: hypsography,hypsography_slope
    use util,         only: flux
-#endif
+!#endif
 
    IMPLICIT NONE
 !
@@ -186,9 +187,9 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: z
-#ifdef _LAKE_
+!#ifdef _LAKE_
    REALTYPE                  :: AdvSpeed(0:nlev)
-#endif
+!#endif
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -204,13 +205,16 @@
    end if
    DiffTdw        = _ZERO_
 
-#ifdef _LAKE_
-   AdvBcup        = flux
-   AdvBcdw        = flux
-#else
-   AdvBcup        = oneSided
-   AdvBcdw        = oneSided
-#endif
+!#ifdef _LAKE_
+   if (hypsography_file /= '') then
+      AdvBcup        = flux
+      AdvBcdw        = flux
+   else
+!#else
+      AdvBcup        = oneSided
+      AdvBcdw        = oneSided
+   end if
+!#endif
    AdvTup         = _ZERO_
    AdvTdw         = _ZERO_
 
@@ -258,96 +262,101 @@
       end do
    end if
 
-#ifdef _LAKE_
-!  transform to new variables
-!  watch out for different boundary types they can be defined at
-!  grid center and at grid face
-   select case(DiffBcup)
-   case(Neumann)
-      DiffTup = DiffTup * hypsography(nlev)
-   case(Dirichlet)
-      DiffTup = DiffTup * (hypsography(nlev) + hypsography(nlev-1))/2
-   case default
-      FATAL 'invalid boundary condition type for upper boundary'
-      stop 'temperature.F90'
-   end select
+!#ifdef _LAKE_
+   if (hypsography_file /= '') then
+!     transform to new variables
+!     watch out for different boundary types they can be defined at
+!     grid center and at grid face
+      select case(DiffBcup)
+      case(Neumann)
+         DiffTup = DiffTup * hypsography(nlev)
+      case(Dirichlet)
+         DiffTup = DiffTup * (hypsography(nlev) + hypsography(nlev-1))/2
+      case default
+         FATAL 'invalid boundary condition type for upper boundary'
+         stop 'temperature.F90'
+      end select
 
-   select case(DiffBcdw)
-   case(Neumann)
-      DiffTdw = DiffTdw * hypsography(0)
-   case(Dirichlet)
-      DiffTdw = DiffTdw * (hypsography(1) + hypsography(0))/2
-   case default
-      FATAL 'invalid boundary condition type for lower boundary'
-      stop 'temperature.F90'
-   end select
-!  only one boundary type is applyable to advection routine
-!  and these are always zero, so no transformation is needed
+      select case(DiffBcdw)
+      case(Neumann)
+         DiffTdw = DiffTdw * hypsography(0)
+      case(Dirichlet)
+         DiffTdw = DiffTdw * (hypsography(1) + hypsography(0))/2
+      case default
+         FATAL 'invalid boundary condition type for lower boundary'
+         stop 'temperature.F90'
+      end select
+!     only one boundary type is applyable to advection routine
+!     and these are always zero, so no transformation is needed
 
-!  compute all neccessary things at the grid centers
-   do i = 1, nlev
-      T(i) =  T(i) * (hypsography(i) + hypsography(i-1))/2
-      tprof(i) = tprof(i) * (hypsography(i) + hypsography(i-1))/2
-      Qsour(i) = Qsour(i) * (hypsography(i) + hypsography(i-1))/2
-   end do
-!  compute all neccessary things at the grid interfaces
-!  set up the advection speed
-!  with "normal" advection (w) too
-   if (w_adv_method.ne.0) then
-      do i = 0, nlev
-         AdvSpeed(i) = w(i) + avh(i) * hypsography_slope(i) / hypsography(i)
+!     compute all neccessary things at the grid centers
+      do i = 1, nlev
+         T(i) =  T(i) * (hypsography(i) + hypsography(i-1))/2
+         tprof(i) = tprof(i) * (hypsography(i) + hypsography(i-1))/2
+         Qsour(i) = Qsour(i) * (hypsography(i) + hypsography(i-1))/2
       end do
+!     compute all neccessary things at the grid interfaces
+!     set up the advection speed
+!     with "normal" advection (w) too
+      if (w_adv_method.ne.0) then
+         do i = 0, nlev
+            AdvSpeed(i) = w(i) + avh(i) * hypsography_slope(i) / hypsography(i)
+         end do
+      else
+         do i = 0, nlev
+            AdvSpeed(i) = avh(i) * hypsography_slope(i) / hypsography(i)
+         end do
+      end if
+
+!     do advection step for lake model
+      call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
+                           AdvTup,AdvTdw,4,1,T)
    else
-      do i = 0, nlev
-         AdvSpeed(i) = avh(i) * hypsography_slope(i) / hypsography(i)
-      end do
+!#else
+!     do advection step
+      if (w_adv_method.ne.0) then
+         call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
+                             AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
+      end if
    end if
-
-!  do advection step for lake model
-   call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
-                        AdvTup,AdvTdw,4,1,T)
-#else
-!  do advection step
-   if (w_adv_method.ne.0) then
-      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                          AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
-   end if
-#endif
+!#endif
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
                     DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
 
-#ifdef _LAKE_
-!  transform everything back
-!  compute all neccessary things at the grid centers
-   do i = 1, nlev
-      T(i) = T(i) / ((hypsography(i) + hypsography(i-1))/2)
-      tprof(i) = tprof(i) / ((hypsography(i) + hypsography(i-1))/2)
-      Qsour(i) = Qsour(i) / ((hypsography(i) + hypsography(i-1))/2)
-   end do
+!#ifdef _LAKE_
+   if (hypsography_file /= '') then
+!     transform everything back
+!     compute all neccessary things at the grid centers
+      do i = 1, nlev
+         T(i) = T(i) / ((hypsography(i) + hypsography(i-1))/2)
+         tprof(i) = tprof(i) / ((hypsography(i) + hypsography(i-1))/2)
+         Qsour(i) = Qsour(i) / ((hypsography(i) + hypsography(i-1))/2)
+      end do
 
-!  transform bc's back, you never know...
-   select case(DiffBcup)
-   case(Neumann)
-      DiffTup = DiffTup / hypsography(nlev)
-   case(Dirichlet)
-      DiffTup = DiffTup / ((hypsography(nlev) + hypsography(nlev-1))/2)
-   case default
-      FATAL 'invalid boundary condition type for upper boundary'
-      stop 'temperature.F90'
-   end select
+!     transform bc's back, you never know...
+      select case(DiffBcup)
+      case(Neumann)
+         DiffTup = DiffTup / hypsography(nlev)
+      case(Dirichlet)
+         DiffTup = DiffTup / ((hypsography(nlev) + hypsography(nlev-1))/2)
+      case default
+         FATAL 'invalid boundary condition type for upper boundary'
+         stop 'temperature.F90'
+      end select
 
-   select case(DiffBcdw)
-   case(Neumann)
-      DiffTdw = DiffTdw / hypsography(0)
-   case(Dirichlet)
-      DiffTdw = DiffTdw / ((hypsography(1) + hypsography(0))/2)
-   case default
-      FATAL 'invalid boundary condition type for lower boundary'
-      stop 'temperature.F90'
-   end select
-#endif
+      select case(DiffBcdw)
+      case(Neumann)
+         DiffTdw = DiffTdw / hypsography(0)
+      case(Dirichlet)
+         DiffTdw = DiffTdw / ((hypsography(1) + hypsography(0))/2)
+      case default
+         FATAL 'invalid boundary condition type for lower boundary'
+         stop 'temperature.F90'
+      end select
+   end if
+!#endif
 
    return
    end subroutine temperature
