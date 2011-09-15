@@ -81,12 +81,6 @@
    REALTYPE, public, dimension(:,:), allocatable :: bioprofs
 #endif
 
-#ifdef _LAKE_
-!  'observed' hypsography
-   REALTYPE, public, dimension(:), allocatable   :: hypsoprof
-   REALTYPE, public, dimension(:), allocatable   :: dhypsodzprof
-#endif
-
 !------------------------------------------------------------------------------
 !
 ! the following data are not all public,
@@ -200,12 +194,6 @@
    CHARACTER(LEN=PATH_MAX)   :: bio_prof_file
 #endif
 
-#ifdef _LAKE_
-!  Observed hypsography
-   integer, public           :: hypso_prof_method
-   CHARACTER(LEN=PATH_MAX)   :: hypso_prof_file
-#endif
-
    REALTYPE,public, parameter:: pi=3.141592654d0
 
 ! !DEFINED PARAMETERS:
@@ -224,9 +212,6 @@
    integer, parameter        :: o2_prof_unit=40
 #ifdef BIO
    integer, parameter        :: bio_prof_unit=41
-#endif
-#ifdef _LAKE_
-   integer, parameter        :: hypso_prof_unit=42
 #endif
 
 !  pre-defined parameters
@@ -407,10 +392,6 @@
    namelist /bioprofiles/  bio_prof_method,bio_prof_file
 #endif
 
-#ifdef _LAKE_
-   namelist /hypsoprofile/  hypso_prof_method,hypso_prof_file
-#endif
-
    integer                   :: rc,i
    REALTYPE                  :: ds,db
 !
@@ -534,12 +515,6 @@
    bio_prof_file='bioprofs.dat'
 #endif
 
-#ifdef _LAKE_
-!  hypsography
-   hypso_prof_method=2
-   hypso_prof_file='hypsoprof.dat'
-#endif
-
    open(namlst,file=fn,status='old',action='read',err=80)
    read(namlst,nml=sprofile,err=81)
    read(namlst,nml=tprofile,err=82)
@@ -556,10 +531,6 @@
 #ifdef BIO
    read(namlst,nml=bioprofiles,err=93)
    STDERR bio_prof_method,trim(bio_prof_file)
-#endif
-#ifdef _LAKE_
-   read(namlst,nml=hypsoprofile,err=94)
-   STDERR hypso_prof_method,trim(hypso_prof_file)
 #endif
    close(namlst)
 
@@ -614,15 +585,6 @@
    allocate(epsprof(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_observations: Error allocating (epsprof)'
    epsprof = _ZERO_
-
-#ifdef _LAKE_
-   allocate(hypsoprof(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_observations: Error allocating (hypsoprof)'
-   hypsoprof = _ZERO_
-   allocate(dhypsodzprof(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_observations: Error allocating (dhypsodzprof)'
-   dhypsodzprof = _ZERO_
-#endif
 
    db=_ZERO_
    ds=depth
@@ -879,18 +841,6 @@
    end select
 #endif
 
-#ifdef _LAKE_
-!  The hypsography
-   select case (hypso_prof_method)
-      case (FROMFILE)
-         open(hypso_prof_unit,file=hypso_prof_file,status='unknown',err=113)
-         LEVEL2 'Reading hypsography from:'
-         LEVEL3 trim(hypso_prof_file)
-         call read_hypsography(hypso_prof_unit,nlev,z,h,rc)
-      case default
-   end select
-#endif
-
    init_saved_vars=.false.
    return
 
@@ -924,10 +874,6 @@
 93 FATAL 'I could not read "bioprofiles" namelist'
    stop 'init_observations'
 #endif
-#ifdef _LAKE_
-94 FATAL 'I could not read "hypsoprofiles" namelist'
-   stop 'init_observations'
-#endif
 
 101 FATAL 'Unable to open "',trim(s_prof_file),'" for reading'
    stop 'init_observations'
@@ -953,10 +899,6 @@
    stop 'init_observations'
 #ifdef BIO
 112 FATAL 'Unable to open "',trim(bio_prof_file),'" for reading'
-   stop 'init_observations'
-#endif
-#ifdef _LAKE_
-113 FATAL 'Unable to open "',trim(hypso_prof_file),'" for reading'
    stop 'init_observations'
 #endif
 
@@ -1223,10 +1165,6 @@
 #ifdef BIO
    if (allocated(bioprofs)) deallocate(bioprofs)
 #endif
-#ifdef _LAKE_
-   if (allocated(hypsoprof)) deallocate(hypsoprof)
-   if (allocated(dhypsodzprof)) deallocate(dhypsodzprof)
-#endif
    LEVEL2 'done.'
 
    LEVEL2 'closing any open files ...'
@@ -1242,9 +1180,6 @@
    close(o2_prof_unit)
 #ifdef BIO
    close(bio_prof_unit)
-#endif
-#ifdef _LAKE_
-   close(hypso_prof_unit)
 #endif
    LEVEL2 'done.'
 
@@ -1294,10 +1229,6 @@
    LEVEL2 'A,g1,g2',A,g1,g2
 #ifdef BIO
    if (allocated(bioprofs)) LEVEL2 'bioprofs',bioprofs
-#endif
-#ifdef _LAKE_
-   if (allocated(hypsoprof  )) LEVEL2 'hypsoprof',hypsoprof
-   if (allocated(dhypsodzprof  )) LEVEL2 'dhypsodzprof',dhypsodzprof
 #endif
 
    LEVEL2 'salinity namelist',                                  &
@@ -1351,11 +1282,6 @@
    LEVEL2 'observed biological profiles namelist',              &
             bio_prof_method,bio_prof_file
 #endif
-#ifdef _LAKE_
-   LEVEL2 'observed hypsography namelist',                      &
-            hypso_prof_method,hypso_prof_file
-#endif
-
    end subroutine print_state_observations
 !EOC
 #endif

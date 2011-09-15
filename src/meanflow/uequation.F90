@@ -73,7 +73,7 @@
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 #ifdef _LAKE_
-   use observations, only: hypsoprof,dhypsodzprof
+   use meanflow, only: hypsography,hypsography_slope
    use util,         only: flux
 #endif
 
@@ -232,9 +232,9 @@
 !  grid center and at grid face
    select case(DiffBcup)
    case(Neumann)
-      DiffUup = DiffUup * hypsoprof(nlev)
+      DiffUup = DiffUup * hypsography(nlev)
    case(Dirichlet)
-      DiffUup = DiffUup * (hypsoprof(nlev) + hypsoprof(nlev-1))/2
+      DiffUup = DiffUup * (hypsography(nlev) + hypsography(nlev-1))/2
    case default
       FATAL 'invalid boundary condition type for upper boundary'
       stop 'uequation.F90'
@@ -242,9 +242,9 @@
 
    select case(DiffBcdw)
    case(Neumann)
-      DiffUdw = DiffUdw * hypsoprof(0)
+      DiffUdw = DiffUdw * hypsography(0)
    case(Dirichlet)
-      DiffUdw = DiffUdw * (hypsoprof(1) + hypsoprof(0))/2
+      DiffUdw = DiffUdw * (hypsography(1) + hypsography(0))/2
    case default
       FATAL 'invalid boundary condition type for lower boundary'
       stop 'uequation.F90'
@@ -255,25 +255,25 @@
 !  compute bottom friction at every layer
    do i = 1, nlev
       Lsour(i) = - drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i)) * &
-         (dhypsodzprof(i) + dhypsodzprof(i-1))/2
+         (hypsography_slope(i) + hypsography_slope(i-1))/2
    end do
 !  compute all neccessary things at the grid centers
    do i = 1, nlev
-      U(i) =  U(i) * (hypsoprof(i) + hypsoprof(i-1))/2
-      uprof(i) = uprof(i) * (hypsoprof(i) + hypsoprof(i-1))/2
-      Qsour(i) = Qsour(i) * (hypsoprof(i) + hypsoprof(i-1))/2
+      U(i) =  U(i) * (hypsography(i) + hypsography(i-1))/2
+      uprof(i) = uprof(i) * (hypsography(i) + hypsography(i-1))/2
+      Qsour(i) = Qsour(i) * (hypsography(i) + hypsography(i-1))/2
    end do
 !  compute all neccessary things at the grid interfaces
 !  set up the advection speed
 !  with "normal" advection (w) too
    if (w_adv_method.ne.0) then
       do i = 0, nlev
-         AdvSpeed(i) = w(i) + avh(i) * dhypsodzprof(i) / hypsoprof(i)
+         AdvSpeed(i) = w(i) + avh(i) * hypsography_slope(i) / hypsography(i)
       end do
 !  only with advection from modified diffusion eq.
    else
       do i = 0, nlev
-         AdvSpeed(i) = avh(i) * dhypsodzprof(i) / hypsoprof(i)
+         AdvSpeed(i) = avh(i) * hypsography_slope(i) / hypsography(i)
       end do
    end if
 
@@ -296,17 +296,17 @@
 !  transform everything back
 !  compute all neccessary things at the grid centers
    do i = 1, nlev
-      U(i) = U(i) / ((hypsoprof(i) + hypsoprof(i-1))/2)
-      uprof(i) = uprof(i) / ((hypsoprof(i) + hypsoprof(i-1))/2)
-      Qsour(i) = Qsour(i) / ((hypsoprof(i) + hypsoprof(i-1))/2)
+      U(i) = U(i) / ((hypsography(i) + hypsography(i-1))/2)
+      uprof(i) = uprof(i) / ((hypsography(i) + hypsography(i-1))/2)
+      Qsour(i) = Qsour(i) / ((hypsography(i) + hypsography(i-1))/2)
    end do
 
 !  transform bc's back, you never know...
    select case(DiffBcup)
    case(Neumann)
-      DiffUup = DiffUup / hypsoprof(nlev)
+      DiffUup = DiffUup / hypsography(nlev)
    case(Dirichlet)
-      DiffUup = DiffUup / ((hypsoprof(nlev) + hypsoprof(nlev-1))/2)
+      DiffUup = DiffUup / ((hypsography(nlev) + hypsography(nlev-1))/2)
    case default
       FATAL 'invalid boundary condition type for upper boundary'
       stop 'uequation.F90'
@@ -314,9 +314,9 @@
 
    select case(DiffBcdw)
    case(Neumann)
-      DiffUdw = DiffUdw / hypsoprof(0)
+      DiffUdw = DiffUdw / hypsography(0)
    case(Dirichlet)
-      DiffUdw = DiffUdw / ((hypsoprof(1) + hypsoprof(0))/2)
+      DiffUdw = DiffUdw / ((hypsography(1) + hypsography(0))/2)
    case default
       FATAL 'invalid boundary condition type for lower boundary'
       stop 'uequation.F90'

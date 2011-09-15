@@ -22,7 +22,8 @@ salinity.F90		\
 buoyancy.F90		\
 shear.F90	\
 stratification.F90	\
-convectiveadjustment.F90 
+convectiveadjustment.F90\
+read_hypsography.F90
 
 MOD	= \
 ${LIB}(meanflow.o)
@@ -41,7 +42,8 @@ ${LIB}(salinity.o)		\
 ${LIB}(stratification.o)	\
 ${LIB}(shear.o)	\
 ${LIB}(buoyancy.o)		\
-${LIB}(convectiveadjustment.o)	
+${LIB}(convectiveadjustment.o)	\
+${LIB}(read_hypsography.o)
 
 
 all: $(MOD) $(OBJ)

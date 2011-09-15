@@ -21,7 +21,7 @@
    public init_meanflow, clean_meanflow
 #ifdef _PRINTSTATE_
    public print_state_meanflow
-#endif   
+#endif
 !
 ! !PUBLIC DATA MEMBERS:
    logical, public                              :: grid_ready
@@ -63,6 +63,16 @@
 
 !  shading in the water column
    REALTYPE, public, dimension(:), allocatable  :: bioshade
+
+!#ifdef _LAKE_
+!  hypsography for lake model
+   integer, public                               :: N_input
+   REALTYPE, public, dimension(:), allocatable   :: depth_input
+   REALTYPE, public, dimension(:), allocatable   :: hypsography_input
+   REALTYPE, public, dimension(:), allocatable   :: hypsography
+   REALTYPE, public, dimension(:), allocatable   :: hypsography_slope
+   CHARACTER(LEN=PATH_MAX), public               :: hypsography_file
+!#endif
 
 # ifdef EXTRA_OUTPUT
 
@@ -114,6 +124,7 @@
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, public, parameter         :: pi=3.141592654
+   integer, parameter        :: hypsography_unit=70
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -209,7 +220,8 @@
    namelist /meanflow/  h0b,z0s_min,charnock,charnock_val,ddu,ddl,     &
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
-                        avmolu,avmolT,avmolS,MaxItz0b,no_shear
+                        avmolu,avmolT,avmolS,MaxItz0b,no_shear,        &
+                        hypsography_file
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -243,6 +255,7 @@
    avmolS       = 1.1e-9
    MaxItz0b     = 10
    no_shear     = .false.
+   hypsography_file = ''
 
 !  Read namelist from file.
    open(namlst,file=fn,status='old',action='read',err=80)
@@ -384,6 +397,19 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (bioshade)'
    bioshade= _ONE_
 
+!#ifdef _LAKE_
+   if (hypsography_file .ne. '') then
+      allocate(hypsography(0:nlev),stat=rc)
+      if (rc /= 0) stop 'init_meanflow: Error allocating (hypsography)'
+         hypsography = _ZERO_
+      allocate(hypsography_slope(0:nlev),stat=rc)
+      if (rc /= 0) stop 'init_meanflow: Error allocating (hypsography_slope)'
+         hypsography_slope = _ZERO_
+         open(hypsography_unit,file=hypsography_file,status='unknown',err=112)
+      call read_hypsography(hypsography_unit,rc)
+   end if
+!#endif
+
 # ifdef EXTRA_OUTPUT
 
    allocate(mean1(0:nlev),stat=rc)
@@ -414,6 +440,8 @@
 80 FATAL 'I could not open: ',trim(fn)
    stop 'init_meanflow'
 81 FATAL 'I could not read "meanflow" namelist'
+   stop 'init_meanflow'
+112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
    stop 'init_meanflow'
 
    end subroutine init_meanflow
@@ -472,6 +500,12 @@
    if (allocated(avh)) deallocate(avh)
    if (allocated(w_grid)) deallocate(w_grid)
    if (allocated(bioshade)) deallocate(bioshade)
+!#ifdef _LAKE_
+   if (allocated(depth_input)) deallocate(depth_input)
+   if (allocated(hypsography_input)) deallocate(hypsography_input)
+   if (allocated(hypsography)) deallocate(hypsography)
+   if (allocated(hypsography_slope)) deallocate(hypsography_slope)
+!#endif
 # ifdef EXTRA_OUTPUT
    if (allocated(mean1)) dallocate(mean1)
    if (allocated(mean2)) dallocate(mean2)
@@ -535,6 +569,14 @@
    if (allocated(fric)) LEVEL2 'fric',fric
    if (allocated(drag)) LEVEL2 'drag',drag
    if (allocated(bioshade)) LEVEL2 'bioshade',bioshade
+!#ifdef _LAKE_
+   if (allocated(depth_input)) LEVEL2 'depth_input', depth_input
+   if (allocated(hypsography_input)) LEVEL2 'hypsography_input', &
+      hypsography_input
+   if (allocated(hypsography)) LEVEL2 'hypsography',hypsography
+   if (allocated(hypsography_slope)) LEVEL2 'hypsography_slope', &
+      hypsography_slope
+!#endif
 # ifdef EXTRA_OUTPUT
    if (allocated(mean1)) LEVEL2 'mean1',mean1
    if (allocated(mean2)) LEVEL2 'mean2',mean2
@@ -554,7 +596,7 @@
    LEVEL2 'u_taub,u_taus',u_taub,u_taus
    LEVEL2 'depth0, depth',depth0, depth
    LEVEL2 'runtimeu, runtimev',runtimeu, runtimev
-   
+
    end subroutine print_state_meanflow
 !EOC
 #endif
