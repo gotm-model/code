@@ -16,7 +16,6 @@ vequation.F90		\
 extpressure.F90		\
 intpressure.F90		\
 friction.F90		\
-friction_lake.F90	\
 temperature.F90		\
 salinity.F90		\
 buoyancy.F90		\
@@ -36,7 +35,6 @@ ${LIB}(vequation.o)		\
 ${LIB}(extpressure.o)		\
 ${LIB}(intpressure.o)		\
 ${LIB}(friction.o)		\
-${LIB}(friction_lake.o)		\
 ${LIB}(temperature.o)		\
 ${LIB}(salinity.o)		\
 ${LIB}(stratification.o)	\

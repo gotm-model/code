@@ -541,11 +541,7 @@
       call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
       call extpressure(ext_press_mode,nlev)
       call intpressure(nlev)
-#ifdef _LAKE_
-      call friction_lake(kappa,avmolu,tx,ty,nlev)
-#else
-      call friction(kappa,avmolu,tx,ty)
-#endif
+      call friction(kappa,avmolu,tx,ty,nlev)
 
 #ifdef SEAGRASS
       if(seagrass_calc) call do_seagrass(nlev,dt)

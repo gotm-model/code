@@ -6,7 +6,7 @@
 ! !ROUTINE: The vertical friction \label{sec:friction}
 !
 ! !INTERFACE:
-   subroutine friction(kappa,avmolu,tx,ty)
+   subroutine friction(kappa,avmolu,tx,ty,nlev)
 !
 ! !DESCRIPTION:
 !  This subroutine updates the bottom roughness
@@ -59,12 +59,14 @@
    use meanflow,      only: u,v,gravity
    use meanflow,      only: u_taub,u_taus,drag
    use meanflow,      only: charnock,charnock_val,z0s_min
+   use meanflow,      only: hypsography_file
 
 !
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)                :: kappa,avmolu,tx,ty
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -106,7 +108,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                             :: i
+   integer                             :: i,j
    REALTYPE                            :: rr
 !
 !-----------------------------------------------------------------------
@@ -123,25 +125,55 @@
    end if
 
 !  iterate bottom roughness length MaxItz0b times
-   do i=1,MaxItz0b
+   if (hypsography_file .eq. '') then
+      do i=1,MaxItz0b
 
-      if (avmolu.le.0) then
-         z0b=0.03*h0b + za
-      else
-         z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
-      end if
+         if (avmolu.le.0) then
+            z0b=0.03*h0b + za
+         else
+            z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
+         end if
 
-!     compute the factor r (version 1, with log-law)
-      rr=kappa/(log((z0b+h(1)/2)/z0b))
+!        compute the factor r (version 1, with log-law)
+         rr=kappa/(log((z0b+h(1)/2)/z0b))
 
-!     compute the factor r (version 2, with meanvalue log-law)
-!     frac=(z0b+h(1))/z0b
-!     rr=kappa/((z0b+h(1))/h(1)*log(frac)-1.)
+!        compute the factor r (version 2, with meanvalue log-law)
+!        frac=(z0b+h(1))/z0b
+!        rr=kappa/((z0b+h(1))/h(1)*log(frac)-1.)
 
-!     compute the friction velocity at the bottom
-      u_taub = rr*sqrt( u(1)*u(1) + v(1)*v(1) )
+!        compute the friction velocity at the bottom
+         u_taub = rr*sqrt( u(1)*u(1) + v(1)*v(1) )
 
-   end do
+      end do
+!  for lake model the friction has to be calculacted at every depth
+   else
+!  iterate from nlev to 1 so that u_taub is located at 1 at the end
+!  this is important for other modules
+      do j=nlev,1,-1
+         do i=1,MaxItz0b
+
+            if (avmolu.le.0) then
+               z0b=0.03*h0b + za
+            else
+               z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
+            end if
+
+!           compute the factor r (version 1, with log-law)
+            rr=kappa/(log((z0b+h(j)/2)/z0b))
+
+!           compute the factor r (version 2, with meanvalue log-law)
+!           frac=(z0b+h(j))/z0b
+!           rr=kappa/((z0b+h(j))/h(j)*log(frac)-1.)
+
+!           compute the friction velocity at every grid cell
+            u_taub = rr*sqrt( u(j)*u(j) + v(j)*v(j) )
+
+         end do
+!        add bottom friction as source term for the momentum equation
+         drag(j) = drag(j) +  rr*rr
+      end do
+   end if
+
 
 !  add bottom friction as source term for the momentum equation
    drag(1) = drag(1) +  rr*rr
