@@ -122,12 +122,12 @@
    end do
 
    if (allocated(prof)) deallocate(prof)
-      allocate(prof(0:nlev),stat=rc)
+      allocate(prof(0:nlev+1),stat=rc)
    if (rc /= 0) stop 'read_hypsography: Error allocating memory (prof)'
       prof = _ZERO_
 
 !  interpolate hypsography to grid used by GOTM
-   call gridinterpol(N_input,1,depth_input,hypsography_input,nlev,z,prof)
+   call gridinterpol(N_input,1,depth_input,hypsography_input,nlev+1,z,prof)
 
    do i = 0, nlev
       hypsography(i) = prof(i+1)
