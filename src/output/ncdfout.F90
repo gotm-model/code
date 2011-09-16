@@ -158,6 +158,7 @@
    integer, private          :: ncdf_time_unit
    integer, private          :: start(4),edges(4)
    logical,private           :: GrADS
+   integer, private          :: hypsography_id, hypsography_slope_id
 !
 !-----------------------------------------------------------------------
 
@@ -170,6 +171,8 @@
 !
 ! !INTERFACE:
    subroutine init_ncdf(fn,title,lat,lon,nlev,start_time,time_unit)
+! !USES:
+   use meanflow, only: hypsography_file
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
@@ -308,6 +311,12 @@
    call check_err(iret)
    iret = nf90_def_var(ncid,'temp_obs',NF90_REAL,dim4d,temp_obs_id)
    call check_err(iret)
+   if (hypsography_file /= '') then
+      iret = nf90_def_var(ncid,'A',NF90_REAL,dim4d,hypsography_id)
+      call check_err(iret)
+      iret = nf90_def_var(ncid,'dAdz',NF90_REAL,dim4d, hypsography_slope_id)
+      call check_err(iret)
+   end if
    iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'SS_obs',NF90_REAL,dim4d,SS_obs_id)
@@ -445,6 +454,10 @@
    iret = set_attributes(ncid,salt_obs_id,units='g/kg',long_name='obs. salinity')
    iret = set_attributes(ncid,temp_id,units='celsius',long_name='temperature')
    iret = set_attributes(ncid,temp_obs_id,units='celsius',long_name='obs. temperature')
+   if (hypsography_file /= '') then
+      iret = set_attributes(ncid,hypsography_id,units='m2',long_name='hypsography')
+      iret = set_attributes(ncid,hypsography_slope_id,units='m',long_name='slope of hypsography')
+   end if
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
    iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency squared')
    iret = set_attributes(ncid,sigma_t_id,units='kg/m3',long_name='sigma_t')
@@ -529,6 +542,7 @@
    use airsea,       only: int_swr,int_heat,int_total
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
    use meanflow,     only: h,u,v,z,S,T,buoy,SS,NN
+   use meanflow,     only: hypsography_file,hypsography,hypsography_slope
    use turbulence,   only: P,B,Pb
    use turbulence,   only: num,nuh,nus
    use turbulence,   only: gamu,gamv,gamh,gams
@@ -623,6 +637,10 @@
    iret = store_data(ncid,salt_obs_id,XYZT_SHAPE,nlev,array=sprof)
    iret = store_data(ncid,temp_id,XYZT_SHAPE,nlev,array=T)
    iret = store_data(ncid,temp_obs_id,XYZT_SHAPE,nlev,array=tprof)
+   if (hypsography_file /= '') then
+      iret = store_data(ncid,hypsography_id,XYZT_SHAPE,nlev,array=hypsography)
+      iret = store_data(ncid,hypsography_slope_id,XYZT_SHAPE,nlev,array=hypsography_slope)
+   end if
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
    iret = store_data(ncid,NN_id,XYZT_SHAPE,nlev,array=NN)
 
