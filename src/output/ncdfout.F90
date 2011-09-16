@@ -159,6 +159,7 @@
    integer, private          :: start(4),edges(4)
    logical,private           :: GrADS
    integer, private          :: hypsography_id, hypsography_slope_id
+   integer, private          :: drag_id
 !
 !-----------------------------------------------------------------------
 
@@ -316,6 +317,8 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'dAdz',NF90_REAL,dim4d, hypsography_slope_id)
       call check_err(iret)
+      iret = nf90_def_var(ncid,'drag',NF90_REAL,dim4d,drag_id)
+      call check_err(iret)
    end if
    iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
    call check_err(iret)
@@ -457,6 +460,7 @@
    if (hypsography_file /= '') then
       iret = set_attributes(ncid,hypsography_id,units='m2',long_name='hypsography')
       iret = set_attributes(ncid,hypsography_slope_id,units='m',long_name='slope of hypsography')
+      iret = set_attributes(ncid,drag_id,units='m2',long_name='drag')
    end if
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
    iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency squared')
@@ -543,6 +547,7 @@
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
    use meanflow,     only: h,u,v,z,S,T,buoy,SS,NN
    use meanflow,     only: hypsography_file,hypsography,hypsography_slope
+   use meanflow,     only: drag
    use turbulence,   only: P,B,Pb
    use turbulence,   only: num,nuh,nus
    use turbulence,   only: gamu,gamv,gamh,gams
@@ -640,6 +645,7 @@
    if (hypsography_file /= '') then
       iret = store_data(ncid,hypsography_id,XYZT_SHAPE,nlev,array=hypsography)
       iret = store_data(ncid,hypsography_slope_id,XYZT_SHAPE,nlev,array=hypsography_slope)
+      iret = store_data(ncid,drag_id,XYZT_SHAPE,nlev,array=drag)
    end if
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
    iret = store_data(ncid,NN_id,XYZT_SHAPE,nlev,array=NN)

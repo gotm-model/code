@@ -73,6 +73,7 @@
 !#ifdef _LAKE_
    use meanflow,     only: hypsography_file
    use meanflow, only: hypsography,hypsography_slope
+   use meanflow,     only: idealised
    use util,         only: flux
 !#endif
 
@@ -181,11 +182,14 @@
 
 !  compute total diffusivity
    do i=0,nlev
-#ifdef _IDEALISED_
+!#ifdef _IDEALISED_
+   if (idealised) then
       avh(i)=nus(i)
-#else
+   else
+!#else
       avh(i)=nus(i)+avmolS
-#endif
+   end if
+!#endif
    end do
 
 !  add contributions to source term

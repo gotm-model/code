@@ -77,7 +77,8 @@
    use util,         only: oneSided,zeroDivergence
 !#ifdef _LAKE_
    use meanflow,     only: hypsography_file
-   use meanflow, only: hypsography,hypsography_slope
+   use meanflow,     only: hypsography,hypsography_slope
+   use meanflow,     only: idealised
    use util,         only: flux
 !#endif
 
@@ -230,11 +231,14 @@
       rad(i)=I_0*(A*exp(-z/g1)+(1.-A)*exp(-z/g2)*bioshade(i+1))
 
 !     compute total diffusivity
-#ifdef _IDEALISED_
+!#ifdef _IDEALISED_
+   if (idealised) then
       avh(i)=nuh(i)
-#else
+   else
+!#else
       avh(i)=nuh(i)+avmolT
-#endif
+   end if
+!#endif
    end do
 
 

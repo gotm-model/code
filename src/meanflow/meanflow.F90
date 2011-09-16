@@ -72,6 +72,7 @@
    REALTYPE, public, dimension(:), allocatable   :: hypsography
    REALTYPE, public, dimension(:), allocatable   :: hypsography_slope
    CHARACTER(LEN=PATH_MAX), public               :: hypsography_file
+   logical, public                               :: idealised
 !#endif
 
 # ifdef EXTRA_OUTPUT
@@ -221,7 +222,7 @@
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
                         avmolu,avmolT,avmolS,MaxItz0b,no_shear,        &
-                        hypsography_file
+                        hypsography_file,idealised
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -256,6 +257,7 @@
    MaxItz0b     = 10
    no_shear     = .false.
    hypsography_file = ''
+   idealised    = .false.
 
 !  Read namelist from file.
    open(namlst,file=fn,status='old',action='read',err=80)
