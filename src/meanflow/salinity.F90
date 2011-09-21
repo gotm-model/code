@@ -256,10 +256,9 @@
             AdvSpeed(i) = avh(i) * hypsography_slope(i) / hypsography(i)
          end do
       end if
-
 !     do advection step for lake model
       call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
-                           AdvSup,AdvSdw,4,1,S,adv_error)
+                           AdvSup,AdvSdw,w_adv_discr,1,S,adv_error)
       if (adv_error) then
          write(*,*) "Courant number greater than 1 for salinity"
          do i = 0, nlev

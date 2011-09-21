@@ -160,6 +160,7 @@
    logical,private           :: GrADS
    integer, private          :: hypsography_id, hypsography_slope_id
    integer, private          :: slope_over_hypsography_id
+   integer, private          :: total_salt_id
    integer, private          :: drag_id
 !
 !-----------------------------------------------------------------------
@@ -322,6 +323,8 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'dAdz over A',NF90_REAL,dim4d, slope_over_hypsography_id)
       call check_err(iret)
+      iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
+      call check_err(iret)
    end if
    iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
    call check_err(iret)
@@ -465,6 +468,7 @@
       iret = set_attributes(ncid,hypsography_slope_id,units='m',long_name='slope of hypsography')
       iret = set_attributes(ncid,slope_over_hypsography_id,units='1/m',long_name='slope over hypsography')
       iret = set_attributes(ncid,drag_id,units='m2',long_name='drag')
+      iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
    end if
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
    iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency squared')
@@ -652,6 +656,11 @@
       iret = store_data(ncid,hypsography_slope_id,XYZT_SHAPE,nlev,array=hypsography_slope)
       iret = store_data(ncid,slope_over_hypsography_id,XYZT_SHAPE,nlev,array=slope_over_hypsography)
       iret = store_data(ncid,drag_id,XYZT_SHAPE,nlev,array=drag)
+      dum(1) = 0
+      do i=0,nlev
+         dum(1) = dum(1) + hypsography(i) * S(i) * h(i)
+      end do
+   iret = store_data(ncid,total_salt_id,XYT_SHAPE,1,scalar=dum(1))
    end if
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
    iret = store_data(ncid,NN_id,XYZT_SHAPE,nlev,array=NN)
