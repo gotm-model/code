@@ -72,9 +72,10 @@
    use util,         only: oneSided,zeroDivergence
 !#ifdef _LAKE_
    use meanflow,     only: hypsography_file
-   use meanflow, only: hypsography,hypsography_slope
+   use meanflow,     only: hypsography,hypsography_slope
    use meanflow,     only: idealised
    use util,         only: flux
+   use meanflow,     only: adv_error
 !#endif
 
    IMPLICIT NONE
@@ -258,13 +259,23 @@
 
 !     do advection step for lake model
       call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
-                           AdvSup,AdvSdw,4,1,S)
+                           AdvSup,AdvSdw,4,1,S,adv_error)
+      if (adv_error) then
+         write(*,*) "Courant number greater than 1 for salinity"
+         do i = 0, nlev
+            if (AdvSpeed(i) .gt. 0.0) then
+            write(*,*) "i = ", i, " | AdvSpeed(i) = ", AdvSpeed(i), " | mu = ",&
+               AdvSpeed(i) * dt / h(i)
+            end if
+         end do
+         write(*,*) " "
+      end if
    else
 !#else
 !     do advection step
       if (w_adv_method .ne. 0) then
          call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                             AdvSup,AdvSdw,w_adv_discr,adv_mode,S)
+                             AdvSup,AdvSdw,w_adv_discr,adv_mode,S,adv_error)
       end if
    end if
 !#endif

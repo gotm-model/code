@@ -91,7 +91,7 @@
 !
 ! !USES:
    use meanflow, only: N_input,depth_input,hypsography_input
-   use meanflow, only: hypsography,hypsography_slope
+   use meanflow, only: hypsography,hypsography_slope,slope_over_hypsography
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -146,6 +146,9 @@
    do i = 1, nlev-1
       hypsography_slope(i) = (hypsography(i+1) - hypsography(i-1)) / &
                         (h(i+1) + h(i))
+   end do
+   do i = 0, nlev
+      slope_over_hypsography(i) = hypsography_slope(i) / hypsography(i)
    end do
 
    end subroutine update_hypsography

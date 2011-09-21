@@ -55,6 +55,7 @@
    use meanflow,     only: hypsography,hypsography_slope
    use meanflow,     only: hypsography_file
    use util,         only: flux
+   use meanflow,     only: adv_error
 !#endif
 
    IMPLICIT NONE
@@ -260,19 +261,29 @@
 !     do advection step for lake model
       call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
                            AdvVup,AdvVdw,4,1,V)
+      if (adv_error) then
+         write(*,*) "Courant number greater than 1 for vequation"
+         do i = 0, nlev
+            if (AdvSpeed(i) .gt. 0.0) then
+            write(*,*) "i = ", i, " | AdvSpeed(i) = ", AdvSpeed(i), " | mu = ",&
+               AdvSpeed(i) * dt / h(i)
+            end if
+         end do
+         write(*,*) " "
+      end if
    else
 !#else
 !     do advection step
       if (w_adv_method.ne.0) then
          call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                         AdvVup,AdvVdw,w_adv_discr,adv_mode,V)
+                         AdvVup,AdvVdw,w_adv_discr,adv_mode,V,adv_error)
       end if
    end if
 !#endif
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,V)
+                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,V,adv_error)
 
 !#ifdef _LAKE_
    if (hypsography_file /= '') then

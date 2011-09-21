@@ -6,7 +6,7 @@
 ! !ROUTINE: Advection schemes --- grid centers\label{sec:advectionMean}
 !
 ! !INTERFACE:
-   subroutine adv_center(N,dt,h,ho,ww,Bcup,Bcdw,Yup,Ydw,method,mode,Y)
+   subroutine adv_center(N,dt,h,ho,ww,Bcup,Bcdw,Yup,Ydw,method,mode,Y,adv_error)
 !
 ! !DESCRIPTION:
 !
@@ -199,6 +199,7 @@
 !
 ! !INPUT/OUTPUT PARAMETERS:
    REALTYPE                            :: Y(0:N)
+   logical                             :: adv_error
 !
 ! !DEFINED PARAMETERS:
    REALTYPE,     parameter             :: one6th=1.0d0/6.0d0
@@ -261,6 +262,9 @@
       STDERR 'In adv_center():'
       STDERR 'Maximum Courant number is ',cmax
       STDERR it,' iterations used for vertical advection'
+      adv_error = .true.
+   else
+      adv_error = .false.
    endif
 !#endif
 

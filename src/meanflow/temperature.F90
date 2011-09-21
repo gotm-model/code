@@ -80,6 +80,7 @@
    use meanflow,     only: hypsography,hypsography_slope
    use meanflow,     only: idealised
    use util,         only: flux
+   use meanflow,     only: adv_error
 !#endif
 
    IMPLICIT NONE
@@ -314,13 +315,23 @@
 
 !     do advection step for lake model
       call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
-                           AdvTup,AdvTdw,4,1,T)
+                           AdvTup,AdvTdw,4,1,T,adv_error)
+      if (adv_error) then
+         write(*,*) "Courant number greater than 1 for temperature"
+         do i = 0, nlev
+            if (AdvSpeed(i) .gt. 0.0) then
+            write(*,*) "i = ", i, " | AdvSpeed(i) = ", AdvSpeed(i), " | mu = ",&
+               AdvSpeed(i) * dt / h(i)
+            end if
+         end do
+         write(*,*) " "
+      end if
    else
 !#else
 !     do advection step
       if (w_adv_method.ne.0) then
          call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                             AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
+                             AdvTup,AdvTdw,w_adv_discr,adv_mode,T,adv_error)
       end if
    end if
 !#endif

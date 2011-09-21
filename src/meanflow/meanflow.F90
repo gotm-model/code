@@ -71,8 +71,10 @@
    REALTYPE, public, dimension(:), allocatable   :: hypsography_input
    REALTYPE, public, dimension(:), allocatable   :: hypsography
    REALTYPE, public, dimension(:), allocatable   :: hypsography_slope
+   REALTYPE, public, dimension(:), allocatable   :: slope_over_hypsography
    CHARACTER(LEN=PATH_MAX), public               :: hypsography_file
    logical, public                               :: idealised
+   logical, public                               :: adv_error
 !#endif
 
 # ifdef EXTRA_OUTPUT
@@ -407,8 +409,12 @@
       allocate(hypsography_slope(0:nlev),stat=rc)
       if (rc /= 0) stop 'init_meanflow: Error allocating (hypsography_slope)'
          hypsography_slope = _ZERO_
+      allocate(slope_over_hypsography(0:nlev),stat=rc)
+      if (rc /= 0) stop 'init_meanflow: Error allocating (slope_over_hypsography)'
+         slope_over_hypsography = _ZERO_
          open(hypsography_unit,file=hypsography_file,status='unknown',err=112)
       call read_hypsography(hypsography_unit,rc)
+      adv_error = .false.
    end if
 !#endif
 
@@ -507,6 +513,7 @@
    if (allocated(hypsography_input)) deallocate(hypsography_input)
    if (allocated(hypsography)) deallocate(hypsography)
    if (allocated(hypsography_slope)) deallocate(hypsography_slope)
+   if (allocated(slope_over_hypsography)) deallocate(slope_over_hypsography)
 !#endif
 # ifdef EXTRA_OUTPUT
    if (allocated(mean1)) dallocate(mean1)
@@ -578,6 +585,8 @@
    if (allocated(hypsography)) LEVEL2 'hypsography',hypsography
    if (allocated(hypsography_slope)) LEVEL2 'hypsography_slope', &
       hypsography_slope
+   if (allocated(slope_over_hypsography)) LEVEL2 'slope_over_hypsography', &
+      slope_over_hypsography
 !#endif
 # ifdef EXTRA_OUTPUT
    if (allocated(mean1)) LEVEL2 'mean1',mean1
