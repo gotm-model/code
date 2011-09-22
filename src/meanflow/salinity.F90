@@ -256,19 +256,6 @@
             AdvSpeed(i) = avh(i) * hypsography_slope(i) / hypsography(i)
          end do
       end if
-!     do advection step for lake model
-      call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
-                           AdvSup,AdvSdw,w_adv_discr,1,S,adv_error)
-      if (adv_error) then
-         write(*,*) "Courant number greater than 1 for salinity"
-         do i = 0, nlev
-            if (AdvSpeed(i) .gt. 0.0) then
-            write(*,*) "i = ", i, " | AdvSpeed(i) = ", AdvSpeed(i), " | mu = ",&
-               AdvSpeed(i) * dt / h(i)
-            end if
-         end do
-         write(*,*) " "
-      end if
    else
 !#else
 !     do advection step
@@ -282,6 +269,19 @@
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
                     DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
+!     do advection step for lake model
+      call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
+                           AdvSup,AdvSdw,w_adv_discr,1,S,adv_error)
+      if (adv_error) then
+         write(*,*) "Courant number greater than 1 for salinity"
+         do i = 0, nlev
+            if (AdvSpeed(i) .gt. 0.0) then
+            write(*,*) "i = ", i, " | AdvSpeed(i) = ", AdvSpeed(i), " | mu = ",&
+               AdvSpeed(i) * dt / h(i)
+            end if
+         end do
+         write(*,*) " "
+      end if
 
 !#ifdef _LAKE_
    if (hypsography_file /= '') then
