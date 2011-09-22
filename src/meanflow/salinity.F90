@@ -184,12 +184,12 @@
 !  compute total diffusivity
    do i=0,nlev
 !#ifdef _IDEALISED_
-   if (idealised) then
-      avh(i)=nus(i)
-   else
+      if (idealised) then
+         avh(i)=nus(i)
+      else
 !#else
-      avh(i)=nus(i)+avmolS
-   end if
+         avh(i)=nus(i)+avmolS
+      end if
 !#endif
    end do
 
@@ -254,8 +254,11 @@
       else
          do i = 0, nlev
             AdvSpeed(i) = avh(i) * hypsography_slope(i) / hypsography(i)
+            write(*,*) i, ",", hypsography_slope(i)
          end do
       end if
+      stop
+
 !     do advection step for lake model
       call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
                            AdvSup,AdvSdw,w_adv_discr,1,S,adv_error)
