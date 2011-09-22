@@ -657,10 +657,10 @@
       iret = store_data(ncid,slope_over_hypsography_id,XYZT_SHAPE,nlev,array=slope_over_hypsography)
       iret = store_data(ncid,drag_id,XYZT_SHAPE,nlev,array=drag)
       dum(1) = 0
-      do i=0,nlev
-         dum(1) = dum(1) + hypsography(i) * S(i) * h(i)
+      do i=1,nlev
+         dum(1) = dum(1) + ((hypsography(i)+hypsography(i-1))/2) * S(i) * h(i)
       end do
-   iret = store_data(ncid,total_salt_id,XYT_SHAPE,1,scalar=dum(1))
+      iret = store_data(ncid,total_salt_id,XYT_SHAPE,1,scalar=dum(1))
    end if
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
    iret = store_data(ncid,NN_id,XYZT_SHAPE,nlev,array=NN)
