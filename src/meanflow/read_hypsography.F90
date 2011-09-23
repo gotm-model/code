@@ -40,11 +40,11 @@
    lines = 1
 
    if (allocated(depth_input)) deallocate(depth_input)
-   allocate(depth_input(0:N_input+1),stat=rc)
+   allocate(depth_input(0:N_input),stat=rc)
    if (rc /= 0) stop 'read_hypsography: Error allocating memory (depth_input)'
    depth_input = _ZERO_
    if (allocated(hypsography_input)) deallocate(hypsography_input)
-   allocate(hypsography_input(0:N_input+1),stat=rc)
+   allocate(hypsography_input(0:N_input),stat=rc)
    if (rc /= 0) then
       stop 'read_hypsography: Error allocating memory (hypsography_input)'
    end if
@@ -127,11 +127,16 @@
       prof = _ZERO_
 
 !  interpolate hypsography to grid used by GOTM
-   call gridinterpol(N_input,1,depth_input,hypsography_input,nlev+1,z,prof)
+   call gridinterpol(N_input,1,depth_input,hypsography_input,nlev+1,zPrime,prof)
 
    do i = 0, nlev
       hypsography(i) = prof(i+1)
    end do
+
+!   do i = 0,nlev
+!      write(*,*) i, ",", zPrime(i), ",", hypsography(i)
+!   end do
+!   stop
 
    if (allocated(prof)) deallocate(prof)
 
@@ -144,12 +149,18 @@
                         h(nlev)
 !  the rest central diff
    do i = 1, nlev-1
-      hypsography_slope(i) = (hypsography(i+1) - hypsography(i-1)) / &
-                        (h(i+1) + h(i))
+!      hypsography_slope(i) = (hypsography(i+1) - hypsography(i-1)) / &
+!                        (h(i+1) + h(i))
+      hypsography_slope(i) = (hypsography(i) - hypsography(i-1)) / &
+                        (h(i))
    end do
    do i = 0, nlev
       slope_over_hypsography(i) = hypsography_slope(i) / hypsography(i)
    end do
+!   do i = 0,nlev+1
+!      write(*,*) "i = ", i, "h = ", h(i), "A = ", hypsography(i), &
+!         "dAdz = ", hypsography_slope(i)
+!   end do
 
    end subroutine update_hypsography
 !EOC

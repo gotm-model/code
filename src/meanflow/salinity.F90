@@ -255,6 +255,7 @@
          do i = 0, nlev
             AdvSpeed(i) = avh(i) * hypsography_slope(i) / hypsography(i)
          end do
+      end if
 
 !     do advection step for lake model
       call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
