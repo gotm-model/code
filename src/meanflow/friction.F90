@@ -145,6 +145,10 @@
          u_taub = rr*sqrt( u(1)*u(1) + v(1)*v(1) )
 
       end do
+
+!  add bottom friction as source term for the momentum equation
+   drag(1) = drag(1) +  rr*rr
+
 !  for lake model the friction has to be calculacted at every depth
    else
 !  iterate from nlev to 1 so that u_taub is located at 1 at the end
@@ -173,10 +177,6 @@
          drag(j) = drag(j) +  rr*rr
       end do
    end if
-
-
-!  add bottom friction as source term for the momentum equation
-   drag(1) = drag(1) +  rr*rr
 
 !  be careful: tx and ty are the surface shear-stresses
 !  already divided by rho!
