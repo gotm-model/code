@@ -546,6 +546,12 @@
 #ifdef SEAGRASS
       if(seagrass_calc) call do_seagrass(nlev,dt)
 #endif
+!      if (n .gt. MinN) then
+!         do i=1,nlev
+!            write(*,*) i, ",", S(i)
+!         end do
+!         stop
+!      end if
 
 !     update temperature and salinity
       if (s_prof_method .ne. 0) then
