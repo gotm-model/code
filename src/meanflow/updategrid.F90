@@ -276,11 +276,9 @@
       case default
     end select
 
-!#ifdef _LAKE_
    if (hypsography .ne. '') then
       call update_hypsography(nlev,z,h)
    end if
-!#endif
 
    return
 
