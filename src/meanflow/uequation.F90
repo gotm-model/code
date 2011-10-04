@@ -219,7 +219,13 @@
    end do
 
 !  implement bottom friction as source term
-   Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
+   if (hypsography .eq. '') then
+      Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
+   else
+      do i=1,nlev
+         Lsour(i) = - drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
+      end do
+   end if
 
 !  do advection step
    if (w_adv_method.ne.0) then
