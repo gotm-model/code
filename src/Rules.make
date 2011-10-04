@@ -24,10 +24,6 @@ BIO=false
 BIO=true
 NO_0D_BIO=false
 NO_0D_BIO=true
-#GOTM_LAKE=false
-#GOTM_LAKE=true
-#GOTM_IDEALISED=false
-#GOTM_IDEALISED=true
 
 FEATURES	=
 FEATURE_LIBS	=
@@ -119,13 +115,6 @@ endif
 ifeq ($(NO_0D_BIO),true)
 DEFINES         += -DNO_0D_BIO
 endif
-#ifeq ($(GOTM_LAKE),true)
-#DEFINES += -D_LAKE_
-#endif
-#ifeq ($(GOTM_IDEALISED),true)
-#DEFINES += -D_IDEALISED_
-#endif
-
 
 # Directory related settings.
 
