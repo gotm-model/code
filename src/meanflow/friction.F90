@@ -59,7 +59,7 @@
    use meanflow,      only: u,v,gravity
    use meanflow,      only: u_taub,u_taus,drag
    use meanflow,      only: charnock,charnock_val,z0s_min
-   use meanflow,      only: hypsography_file
+   use meanflow,      only: hypsography
 
 !
    IMPLICIT NONE
@@ -125,7 +125,7 @@
    end if
 
 !  iterate bottom roughness length MaxItz0b times
-   if (hypsography_file .eq. '') then
+   if (hypsography .eq. '') then
       do i=1,MaxItz0b
 
          if (avmolu.le.0) then

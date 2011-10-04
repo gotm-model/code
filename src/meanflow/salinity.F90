@@ -64,19 +64,15 @@
 ! !USES:
    use meanflow,     only: avmols
    use meanflow,     only: h,u,v,w,S,avh
+   use meanflow,     only: hypsography
+   use meanflow,     only: Ac,Af
+   use meanflow,     only: idealised
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: sprof,SRelaxTau
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
-!#ifdef _LAKE_
-   use meanflow,     only: hypsography_file
-   use meanflow,     only: hypsography,hypsography_slope
-   use meanflow,     only: idealised
-   use util,         only: flux
-   use meanflow,     only: adv_error
-!#endif
 
    IMPLICIT NONE
 !
@@ -155,9 +151,6 @@
    REALTYPE                  :: AdvSup,AdvSdw
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
-!#ifdef _LAKE_
-   REALTYPE                  :: AdvSpeed(0:nlev)
-!#endif
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -168,29 +161,18 @@
    DiffSup        = -S(nlev)*(precip+evap)
    DiffSdw        = _ZERO_
 
-!#ifdef _LAKE_
-   if (hypsography_file /= '') then
-      AdvBcup       = flux
-      AdvBcdw       = flux
-   else
-!#else
-      AdvBcup       = oneSided
-      AdvBcdw       = oneSided
-   end if
-!#endif
+   AdvBcup       = oneSided
+   AdvBcdw       = oneSided
    AdvSup        = _ZERO_
    AdvSdw        = _ZERO_
 
 !  compute total diffusivity
    do i=0,nlev
-!#ifdef _IDEALISED_
       if (idealised) then
          avh(i)=nus(i)
       else
-!#else
          avh(i)=nus(i)+avmolS
       end if
-!#endif
    end do
 
 !  add contributions to source term
@@ -211,111 +193,21 @@
       end do
    end if
 
-!#ifdef _LAKE_
-   if (hypsography_file /= '') then
-!     transform to new variables
-!     watch out for different boundary types they can be defined at
-!     grid center and at grid face
-      select case(DiffBcup)
-      case(Neumann)
-         DiffSup = DiffSup * hypsography(nlev)
-      case(Dirichlet)
-         DiffSup = DiffSup * (hypsography(nlev) + hypsography(nlev-1))/2
-      case default
-         FATAL 'invalid boundary condition type for upper boundary'
-         stop 'salinity.F90'
-      end select
 
-      select case(DiffBcdw)
-      case(Neumann)
-         DiffSdw = DiffSdw * hypsography(0)
-      case(Dirichlet)
-         DiffSdw = DiffSdw * (hypsography(1) + hypsography(0))/2
-      case default
-         FATAL 'invalid boundary condition type for lower boundary'
-         stop 'salinity.F90'
-      end select
-!     only one boundary type is applicable to advection routine
-!     and these are always zero, so no transformation is needed
-
-!     compute all neccessary things at the grid centers
-      do i = 1, nlev
-         S(i) =  S(i) * (hypsography(i) + hypsography(i-1))/2
-         sprof(i) = sprof(i) * (hypsography(i) + hypsography(i-1))/2
-         Qsour(i) = Qsour(i) * (hypsography(i) + hypsography(i-1))/2
-      end do
-!     compute all neccessary things at the grid interfaces
-!     set up the advection speed
-!     with "normal" advection (w) too
-      if (w_adv_method.ne.0) then
-         do i = 0, nlev
-            AdvSpeed(i) = w(i) + avh(i) * hypsography_slope(i) / hypsography(i)
-         end do
-      else
-         do i = 0, nlev
-            AdvSpeed(i) = avh(i) * hypsography_slope(i) / hypsography(i)
-         end do
-      end if
-
-!     do advection step for lake model
-      call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
-                           AdvSup,AdvSdw,w_adv_discr,1,S,adv_error)
-      if (adv_error) then
-         write(*,*) "Courant number greater than 1 for salinity"
-         do i = 0, nlev
-            if (AdvSpeed(i) .gt. 0.0) then
-            write(*,*) "i = ", i, " | AdvSpeed(i) = ", AdvSpeed(i), " | mu = ",&
-               AdvSpeed(i) * dt / h(i)
-            end if
-         end do
-         write(*,*) " "
-      end if
-   else
-!#else
-!     do advection step
-      if (w_adv_method .ne. 0) then
-         call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                             AdvSup,AdvSdw,w_adv_discr,adv_mode,S,adv_error)
-      end if
+!  do advection step
+   if (w_adv_method .ne. 0) then
+      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
+                          AdvSup,AdvSdw,w_adv_discr,adv_mode,S)
    end if
-!#endif
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
-
-!#ifdef _LAKE_
-   if (hypsography_file /= '') then
-!     transform everything back
-!     compute all neccessary things at the grid centers
-      do i = 1, nlev
-         S(i) = S(i) / ((hypsography(i) + hypsography(i-1))/2)
-         sprof(i) = sprof(i) / ((hypsography(i) + hypsography(i-1))/2)
-         Qsour(i) = Qsour(i) / ((hypsography(i) + hypsography(i-1))/2)
-      end do
-
-!     transform bc's back, you never know...
-      select case(DiffBcup)
-      case(Neumann)
-         DiffSup = DiffSup / hypsography(nlev)
-      case(Dirichlet)
-         DiffSup = DiffSup / ((hypsography(nlev) + hypsography(nlev-1))/2)
-      case default
-         FATAL 'invalid boundary condition type for upper boundary'
-         stop 'salinity.F90'
-      end select
-
-      select case(DiffBcdw)
-      case(Neumann)
-         DiffSdw = DiffSdw / hypsography(0)
-      case(Dirichlet)
-         DiffSdw = DiffSdw / ((hypsography(1) + hypsography(0))/2)
-      case default
-         FATAL 'invalid boundary condition type for lower boundary'
-         stop 'salinity.F90'
-      end select
+   if (hypsography .eq. '') then
+      call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,       &
+                       DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
+   else
+      call diff_center_hypso(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw, &
+            DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,Ac,Af,S)
    end if
-!#endif
 
    return
    end subroutine salinity

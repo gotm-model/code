@@ -13,7 +13,8 @@
 !  file specified in the meanflow namelist.
 !
 ! !USES:
-   use meanflow, only: N_input,depth_input,hypsography_input
+   use meanflow, only: N_input,depth_input,A_input
+   use meanflow, only: Ac,Af
    use meanflow, only: hypsography,hypsography_slope
    IMPLICIT NONE
 !
@@ -43,22 +44,22 @@
    allocate(depth_input(0:N_input),stat=rc)
    if (rc /= 0) stop 'read_hypsography: Error allocating memory (depth_input)'
    depth_input = _ZERO_
-   if (allocated(hypsography_input)) deallocate(hypsography_input)
-   allocate(hypsography_input(0:N_input),stat=rc)
+   if (allocated(A_input)) deallocate(A_input)
+   allocate(A_input(0:N_input),stat=rc)
    if (rc /= 0) then
-      stop 'read_hypsography: Error allocating memory (hypsography_input)'
+      stop 'read_hypsography: Error allocating memory (A_input)'
    end if
-   hypsography_input = _ZERO_
+   A_input = _ZERO_
 
    if(up_down .eq. 1) then
       do i=1,N_input
          lines = lines+1
-         read(unit,*,ERR=100,END=110) depth_input(i), hypsography_input(i)
+         read(unit,*,ERR=100,END=110) depth_input(i), A_input(i)
       end do
    else
       do i=N_input,1,-1
          lines = lines+1
-         read(unit,*,ERR=100,END=110) depth_input(i), hypsography_input(i)
+         read(unit,*,ERR=100,END=110) depth_input(i), A_input(i)
       end do
    end if
 
@@ -90,7 +91,8 @@
 !  calculating the derivative dA(z)/dz.
 !
 ! !USES:
-   use meanflow, only: N_input,depth_input,hypsography_input
+   use meanflow, only: N_input,depth_input,A_input
+   use meanflow, only: Ac,Af
    use meanflow, only: hypsography,hypsography_slope,slope_over_hypsography
    IMPLICIT NONE
 !
@@ -125,42 +127,36 @@
       allocate(prof(0:nlev+1),stat=rc)
    if (rc /= 0) stop 'read_hypsography: Error allocating memory (prof)'
       prof = _ZERO_
-
-!  interpolate hypsography to grid used by GOTM
-   call gridinterpol(N_input,1,depth_input,hypsography_input,nlev+1,zPrime,prof)
+!  interpolate hypsography to grid interfaces used by GOTM
+   call gridinterpol(N_input,1,depth_input,A_input,nlev+1,zPrime,prof)
 
    do i = 0, nlev
-      hypsography(i) = prof(i+1)
+      Af(i) = prof(i+1)
    end do
 
-!   do i = 0,nlev
-!      write(*,*) i, ",", zPrime(i), ",", hypsography(i)
-!   end do
-!   stop
-
    if (allocated(prof)) deallocate(prof)
+
+!  interpolate hypsography to grid centres used by GOTM
+   call gridinterpol(N_input,1,depth_input,A_input,nlev,z,Ac)
 
 !  calculate the derivative of the hypsography wrt z
 !  both hypsography & hypsography_slope are defined at the grid interfaces
 !  forward diff at bottom
-   hypsography_slope(0) = (hypsography(1) - hypsography(0)) / h(1)
+   hypsography_slope(0) = (Af(1) - Af(0)) / h(1)
 !  backward diff at surface
-   hypsography_slope(nlev) = (hypsography(nlev) - hypsography(nlev-1)) / &
+   hypsography_slope(nlev) = (Af(nlev) - Af(nlev-1)) / &
                         h(nlev)
 !  the rest central diff
    do i = 1, nlev-1
-!      hypsography_slope(i) = (hypsography(i+1) - hypsography(i-1)) / &
+   !TODO can central diff be used again!?
+!      hypsography_slope(i) = (Af(i+1) - Af(i-1)) / &
 !                        (h(i+1) + h(i))
-      hypsography_slope(i) = (hypsography(i) - hypsography(i-1)) / &
+      hypsography_slope(i) = (Af(i) - Af(i-1)) / &
                         (h(i))
    end do
    do i = 0, nlev
-      slope_over_hypsography(i) = hypsography_slope(i) / hypsography(i)
+      slope_over_hypsography(i) = hypsography_slope(i) / Af(i)
    end do
-!   do i = 0,nlev+1
-!      write(*,*) "i = ", i, "h = ", h(i), "A = ", hypsography(i), &
-!         "dAdz = ", hypsography_slope(i)
-!   end do
 
    end subroutine update_hypsography
 !EOC

@@ -46,17 +46,13 @@
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: h,v,vo,u,w,avh
    use meanflow,     only: drag,SS,runtimev
+   use meanflow,     only: hypsography
+   use meanflow,     only: Ac,Af
    use observations, only: w_adv_method,w_adv_discr
    use observations, only: vProf,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdy,dpdy
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
-!#ifdef _LAKE_
-   use meanflow,     only: hypsography,hypsography_slope
-   use meanflow,     only: hypsography_file
-   use util,         only: flux
-   use meanflow,     only: adv_error
-!#endif
 
    IMPLICIT NONE
 !
@@ -143,9 +139,6 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: VRelaxTau(0:nlev)
-!#ifdef _LAKE_
-   REALTYPE                  :: AdvSpeed(0:nlev)
-!#endif
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -206,117 +199,20 @@
 !  implement bottom friction as source term
    Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
 
-!#ifdef _LAKE_
-   if (hypsography_file /= '') then
-!     transform to new variables
-!     watch out for different boundary types they can be defined at
-!     grid center and at grid face
-      select case(DiffBcup)
-      case(Neumann)
-         DiffVup = DiffVup * hypsography(nlev)
-      case(Dirichlet)
-         DiffVup = DiffVup * (hypsography(nlev) + hypsography(nlev-1))/2
-      case default
-         FATAL 'invalid boundary condition type for upper boundary'
-         stop 'uequation.F90'
-      end select
-
-      select case(DiffBcdw)
-      case(Neumann)
-         DiffVdw = DiffVdw * hypsography(0)
-      case(Dirichlet)
-         DiffVdw = DiffVdw * (hypsography(1) + hypsography(0))/2
-      case default
-         FATAL 'invalid boundary condition type for lower boundary'
-         stop 'uequation.F90'
-      end select
-!     only one boundary type is applyable to advection routine
-!     and these are always zero, so no transformation is needed
-
-!     compute bottom friction at every layer
-      do i = 1, nlev
-         Lsour(i) = - drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i)) * &
-            (hypsography_slope(i) + hypsography_slope(i-1))/2
-      end do
-!     compute all neccessary things at the grid centers
-      do i = 1, nlev
-         V(i) =  V(i) * (hypsography(i) + hypsography(i-1))/2
-         vprof(i) = vprof(i) * (hypsography(i) + hypsography(i-1))/2
-         Qsour(i) = Qsour(i) * (hypsography(i) + hypsography(i-1))/2
-      end do
-!     compute all neccessary things at the grid interfaces
-!     set up the advection speed
-!     with "normal" advection (w) too
-      if (w_adv_method.ne.0) then
-         do i = 0, nlev
-            AdvSpeed(i) = w(i) + avh(i) * hypsography_slope(i) / hypsography(i)
-         end do
-!     only with advection from modified diffusion eq.
-      else
-         do i = 0, nlev
-            AdvSpeed(i) = avh(i) * hypsography_slope(i) / hypsography(i)
-         end do
-      end if
-
-!     do advection step for lake model
-      call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
-                           AdvVup,AdvVdw,4,1,V)
-      if (adv_error) then
-         write(*,*) "Courant number greater than 1 for vequation"
-         do i = 0, nlev
-            if (AdvSpeed(i) .gt. 0.0) then
-            write(*,*) "i = ", i, " | AdvSpeed(i) = ", AdvSpeed(i), " | mu = ",&
-               AdvSpeed(i) * dt / h(i)
-            end if
-         end do
-         write(*,*) " "
-      end if
-   else
-!#else
-!     do advection step
-      if (w_adv_method.ne.0) then
-         call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                         AdvVup,AdvVdw,w_adv_discr,adv_mode,V,adv_error)
-      end if
+!  do advection step
+   if (w_adv_method.ne.0) then
+      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
+                      AdvVup,AdvVdw,w_adv_discr,adv_mode,V)
    end if
-!#endif
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,V,adv_error)
-
-!#ifdef _LAKE_
-   if (hypsography_file /= '') then
-!     transform everything back
-!     compute all neccessary things at the grid centers
-      do i = 1, nlev
-         V(i) = V(i) / ((hypsography(i) + hypsography(i-1))/2)
-         vprof(i) = vprof(i) / ((hypsography(i) + hypsography(i-1))/2)
-         Qsour(i) = Qsour(i) / ((hypsography(i) + hypsography(i-1))/2)
-      end do
-
-!     transform bc's back, you never know...
-      select case(DiffBcup)
-      case(Neumann)
-         DiffVup = DiffVup / hypsography(nlev)
-      case(Dirichlet)
-         DiffVup = DiffVup / ((hypsography(nlev) + hypsography(nlev-1))/2)
-      case default
-         FATAL 'invalid boundary condition type for upper boundary'
-         stop 'vequation.F90'
-      end select
-
-      select case(DiffBcdw)
-      case(Neumann)
-         DiffVdw = DiffVdw / hypsography(0)
-      case(Dirichlet)
-         DiffVdw = DiffVdw / ((hypsography(1) + hypsography(0))/2)
-      case default
-         FATAL 'invalid boundary condition type for lower boundary'
-         stop 'vequation.F90'
-      end select
+   if (hypsography .eq. '') then
+      call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,       &
+                       DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,V)
+   else
+      call diff_center_hypso(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw, &
+            DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,Ac,Af,V)
    end if
-!#endif
 
    return
    end subroutine vequation

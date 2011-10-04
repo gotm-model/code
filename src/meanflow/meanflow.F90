@@ -64,18 +64,16 @@
 !  shading in the water column
    REALTYPE, public, dimension(:), allocatable  :: bioshade
 
-!#ifdef _LAKE_
 !  hypsography for lake model
    integer, public                               :: N_input
    REALTYPE, public, dimension(:), allocatable   :: depth_input
-   REALTYPE, public, dimension(:), allocatable   :: hypsography_input
-   REALTYPE, public, dimension(:), allocatable   :: hypsography
+   REALTYPE, public, dimension(:), allocatable   :: A_input,Ac,Af
    REALTYPE, public, dimension(:), allocatable   :: hypsography_slope
    REALTYPE, public, dimension(:), allocatable   :: slope_over_hypsography
    CHARACTER(LEN=PATH_MAX), public               :: hypsography_file
+   CHARACTER(LEN=PATH_MAX), public               :: hypsography
    logical, public                               :: idealised
    logical, public                               :: adv_error
-!#endif
 
 # ifdef EXTRA_OUTPUT
 
@@ -224,7 +222,7 @@
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
                         avmolu,avmolT,avmolS,MaxItz0b,no_shear,        &
-                        hypsography_file,idealised
+                        hypsography,idealised
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -258,7 +256,7 @@
    avmolS       = 1.1e-9
    MaxItz0b     = 10
    no_shear     = .false.
-   hypsography_file = ''
+   hypsography  = ''
    idealised    = .false.
 
 !  Read namelist from file.
@@ -401,22 +399,25 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (bioshade)'
    bioshade= _ONE_
 
-!#ifdef _LAKE_
-   if (hypsography_file .ne. '') then
-      allocate(hypsography(0:nlev),stat=rc)
-      if (rc /= 0) stop 'init_meanflow: Error allocating (hypsography)'
-         hypsography = _ZERO_
+   if (hypsography .ne. '') then
+      write(*,*) "Why am I here!?!"
+      allocate(Ac(0:nlev),stat=rc)
+      if (rc /= 0) stop 'init_meanflow: Error allocating (Ac)'
+         Ac = _ZERO_
+      allocate(Af(0:nlev),stat=rc)
+      if (rc /= 0) stop 'init_meanflow: Error allocating (Af)'
+         Af = _ZERO_
       allocate(hypsography_slope(0:nlev),stat=rc)
       if (rc /= 0) stop 'init_meanflow: Error allocating (hypsography_slope)'
          hypsography_slope = _ZERO_
       allocate(slope_over_hypsography(0:nlev),stat=rc)
       if (rc /= 0) stop 'init_meanflow: Error allocating (slope_over_hypsography)'
          slope_over_hypsography = _ZERO_
-         open(hypsography_unit,file=hypsography_file,status='unknown',err=112)
+         open(hypsography_unit,file=hypsography,status='unknown',err=112)
+      write(*,*) "Why am I here!?!2"
       call read_hypsography(hypsography_unit,rc)
       adv_error = .false.
    end if
-!#endif
 
 # ifdef EXTRA_OUTPUT
 
@@ -449,7 +450,7 @@
    stop 'init_meanflow'
 81 FATAL 'I could not read "meanflow" namelist'
    stop 'init_meanflow'
-112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
+112 FATAL 'Unable to open "',trim(hypsography),'" for reading'
    stop 'init_meanflow'
 
    end subroutine init_meanflow
@@ -508,13 +509,12 @@
    if (allocated(avh)) deallocate(avh)
    if (allocated(w_grid)) deallocate(w_grid)
    if (allocated(bioshade)) deallocate(bioshade)
-!#ifdef _LAKE_
    if (allocated(depth_input)) deallocate(depth_input)
-   if (allocated(hypsography_input)) deallocate(hypsography_input)
-   if (allocated(hypsography)) deallocate(hypsography)
+   if (allocated(A_input)) deallocate(A_input)
+   if (allocated(Ac)) deallocate(Ac)
+   if (allocated(Af)) deallocate(Af)
    if (allocated(hypsography_slope)) deallocate(hypsography_slope)
    if (allocated(slope_over_hypsography)) deallocate(slope_over_hypsography)
-!#endif
 # ifdef EXTRA_OUTPUT
    if (allocated(mean1)) dallocate(mean1)
    if (allocated(mean2)) dallocate(mean2)
@@ -578,16 +578,14 @@
    if (allocated(fric)) LEVEL2 'fric',fric
    if (allocated(drag)) LEVEL2 'drag',drag
    if (allocated(bioshade)) LEVEL2 'bioshade',bioshade
-!#ifdef _LAKE_
    if (allocated(depth_input)) LEVEL2 'depth_input', depth_input
-   if (allocated(hypsography_input)) LEVEL2 'hypsography_input', &
-      hypsography_input
-   if (allocated(hypsography)) LEVEL2 'hypsography',hypsography
+   if (allocated(A_input)) LEVEL2 'A_input', A_input
+   if (allocated(Ac)) LEVEL2 'Ac', Ac
+   if (allocated(Af)) LEVEL2 'Ac', Af
    if (allocated(hypsography_slope)) LEVEL2 'hypsography_slope', &
       hypsography_slope
    if (allocated(slope_over_hypsography)) LEVEL2 'slope_over_hypsography', &
       slope_over_hypsography
-!#endif
 # ifdef EXTRA_OUTPUT
    if (allocated(mean1)) LEVEL2 'mean1',mean1
    if (allocated(mean2)) LEVEL2 'mean2',mean2

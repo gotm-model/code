@@ -69,19 +69,15 @@
    use meanflow,     only: avmolt,rho_0,cp
    use meanflow,     only: h,u,v,w,T,S,avh
    use meanflow,     only: bioshade
+   use meanflow,     only: hypsography
+   use meanflow,     only: Ac,Af
+   use meanflow,     only: idealised
    use observations, only: dtdx,dtdy,t_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau
    use observations, only: A,g1,g2
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
-!#ifdef _LAKE_
-   use meanflow,     only: hypsography_file
-   use meanflow,     only: hypsography,hypsography_slope
-   use meanflow,     only: idealised
-   use util,         only: flux
-   use meanflow,     only: adv_error
-!#endif
 
    IMPLICIT NONE
 !
@@ -189,9 +185,6 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: z
-!#ifdef _LAKE_
-   REALTYPE                  :: AdvSpeed(0:nlev)
-!#endif
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -207,16 +200,8 @@
    end if
    DiffTdw        = _ZERO_
 
-!#ifdef _LAKE_
-   if (hypsography_file /= '') then
-      AdvBcup        = flux
-      AdvBcdw        = flux
-   else
-!#else
-      AdvBcup        = oneSided
-      AdvBcdw        = oneSided
-   end if
-!#endif
+   AdvBcup        = oneSided
+   AdvBcdw        = oneSided
    AdvTup         = _ZERO_
    AdvTdw         = _ZERO_
 
@@ -232,16 +217,12 @@
       rad(i)=I_0*(A*exp(-z/g1)+(1.-A)*exp(-z/g2)*bioshade(i+1))
 
 !     compute total diffusivity
-!#ifdef _IDEALISED_
-   if (idealised) then
-      avh(i)=nuh(i)
-   else
-!#else
-      avh(i)=nuh(i)+avmolT
-   end if
-!#endif
+      if (idealised) then
+         avh(i)=nuh(i)
+      else
+         avh(i)=nuh(i)+avmolT
+      end if
    end do
-
 
 !  add contributions to source term
    Lsour=_ZERO_
@@ -267,111 +248,20 @@
       end do
    end if
 
-!#ifdef _LAKE_
-   if (hypsography_file /= '') then
-!     transform to new variables
-!     watch out for different boundary types they can be defined at
-!     grid center and at grid face
-      select case(DiffBcup)
-      case(Neumann)
-         DiffTup = DiffTup * hypsography(nlev)
-      case(Dirichlet)
-         DiffTup = DiffTup * (hypsography(nlev) + hypsography(nlev-1))/2
-      case default
-         FATAL 'invalid boundary condition type for upper boundary'
-         stop 'temperature.F90'
-      end select
-
-      select case(DiffBcdw)
-      case(Neumann)
-         DiffTdw = DiffTdw * hypsography(0)
-      case(Dirichlet)
-         DiffTdw = DiffTdw * (hypsography(1) + hypsography(0))/2
-      case default
-         FATAL 'invalid boundary condition type for lower boundary'
-         stop 'temperature.F90'
-      end select
-!     only one boundary type is applyable to advection routine
-!     and these are always zero, so no transformation is needed
-
-!     compute all neccessary things at the grid centers
-      do i = 1, nlev
-         T(i) =  T(i) * (hypsography(i) + hypsography(i-1))/2
-         tprof(i) = tprof(i) * (hypsography(i) + hypsography(i-1))/2
-         Qsour(i) = Qsour(i) * (hypsography(i) + hypsography(i-1))/2
-      end do
-!     compute all neccessary things at the grid interfaces
-!     set up the advection speed
-!     with "normal" advection (w) too
-      if (w_adv_method.ne.0) then
-         do i = 0, nlev
-            AdvSpeed(i) = w(i) + avh(i) * hypsography_slope(i) / hypsography(i)
-         end do
-      else
-         do i = 0, nlev
-            AdvSpeed(i) = avh(i) * hypsography_slope(i) / hypsography(i)
-         end do
-      end if
-
-!     do advection step for lake model
-      call adv_center(nlev,dt,h,h,AdvSpeed,AdvBcup,AdvBcdw,                &
-                           AdvTup,AdvTdw,4,1,T,adv_error)
-      if (adv_error) then
-         write(*,*) "Courant number greater than 1 for temperature"
-         do i = 0, nlev
-            if (AdvSpeed(i) .gt. 0.0) then
-            write(*,*) "i = ", i, " | AdvSpeed(i) = ", AdvSpeed(i), " | mu = ",&
-               AdvSpeed(i) * dt / h(i)
-            end if
-         end do
-         write(*,*) " "
-      end if
-   else
-!#else
-!     do advection step
-      if (w_adv_method.ne.0) then
-         call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
-                             AdvTup,AdvTdw,w_adv_discr,adv_mode,T,adv_error)
-      end if
+!  do advection step
+   if (w_adv_method.ne.0) then
+      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
+                          AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
    end if
-!#endif
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
-                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
-
-!#ifdef _LAKE_
-   if (hypsography_file /= '') then
-!     transform everything back
-!     compute all neccessary things at the grid centers
-      do i = 1, nlev
-         T(i) = T(i) / ((hypsography(i) + hypsography(i-1))/2)
-         tprof(i) = tprof(i) / ((hypsography(i) + hypsography(i-1))/2)
-         Qsour(i) = Qsour(i) / ((hypsography(i) + hypsography(i-1))/2)
-      end do
-
-!     transform bc's back, you never know...
-      select case(DiffBcup)
-      case(Neumann)
-         DiffTup = DiffTup / hypsography(nlev)
-      case(Dirichlet)
-         DiffTup = DiffTup / ((hypsography(nlev) + hypsography(nlev-1))/2)
-      case default
-         FATAL 'invalid boundary condition type for upper boundary'
-         stop 'temperature.F90'
-      end select
-
-      select case(DiffBcdw)
-      case(Neumann)
-         DiffTdw = DiffTdw / hypsography(0)
-      case(Dirichlet)
-         DiffTdw = DiffTdw / ((hypsography(1) + hypsography(0))/2)
-      case default
-         FATAL 'invalid boundary condition type for lower boundary'
-         stop 'temperature.F90'
-      end select
+   if (hypsography .eq. '') then
+      call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,       & 
+                       DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
+   else
+      call diff_center_hypso(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw, & 
+            DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,Ac,Af,T)
    end if
-!#endif
 
    return
    end subroutine temperature

@@ -24,15 +24,16 @@ ${LIB}(ode_solvers.o)		\
 ${LIB}(gridinterpol.o)		\
 ${LIB}(convert_fluxes.o)	\
 ${LIB}(diff_center.o)           \
+${LIB}(diff_center_hypso.o)     \
 ${LIB}(diff_face.o)             \
 ${LIB}(lagrange.o)              \
-${LIB}(adv_center.o)            
+${LIB}(adv_center.o)
 
 all: $(MOD) $(OBJ)
 	$(MOVE_MODULES_COMMAND)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../doc/util.tex 
+	$(PROTEX) $(DOCSRC) > ../../doc/util.tex
 	touch doc
 
 clean:
