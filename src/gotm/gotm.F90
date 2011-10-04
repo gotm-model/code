@@ -613,7 +613,6 @@
 # endif
       end select
 
-!#ifdef _IDEALISED_
 !     CONSTANT nu* for idealised test case
       if (idealised) then
          do i = 0, nlev
@@ -622,7 +621,6 @@
             num(i) = 1.0d-5
          end do
       end if
-!#endif
 
 !     do the output
       if (write_results) then
