@@ -423,7 +423,7 @@
 !  initialize FABM module
 #ifdef _FABM_
 
-   call init_gotm_fabm(nlev,namlst,'fabm.nml')
+   call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml')
    
 !  Initialize FABM input (data files with observations)
    call init_gotm_fabm_input(nlev,namlst,'fabm_input.nml')
@@ -438,7 +438,7 @@
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
    call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,wind,precip,evap,z(1:nlev), &
-                          A,g1,g2)
+                          A,g1,g2,SRelaxTau(1:nlev),sProf(1:nlev))
 
 #endif
 

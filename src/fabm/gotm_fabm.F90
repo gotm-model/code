@@ -58,7 +58,8 @@
    ! Namelist variables
    REALTYPE                  :: cnpar
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor
-   logical                   :: fabm_calc,bioshade_feedback,repair_state,no_precipitation_dilution
+   logical                   :: fabm_calc,bioshade_feedback,repair_state, &
+                                no_precipitation_dilution,salinity_relaxation_to_freshwater_flux
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:) :: ws
@@ -72,6 +73,7 @@
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z
+   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: SRelaxTau,sProf,salt
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
    
    REALTYPE,pointer :: I_0,A,g1,g2
@@ -133,11 +135,12 @@
 !
 !  local variables
    integer                   :: i,j,variablecount,ivariables(256)
-   character(len=64)         :: models(256),variables(256),file
+   character(len=64)         :: variables(256),file
    type (type_model),pointer :: childmodel
-   namelist /bio_nml/ fabm_calc,models,                                 &
-                      cnpar,w_adv_discr,ode_method,split_factor,        &
-                      bioshade_feedback,repair_state,no_precipitation_dilution
+   namelist /gotm_fabm_nml/ fabm_calc,                                 &
+                            cnpar,w_adv_discr,ode_method,split_factor,        &
+                            bioshade_feedback,repair_state,no_precipitation_dilution, &
+                            salinity_relaxation_to_freshwater_flux
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -146,32 +149,29 @@
    
    ! Initialize FABM model identifiers to invalid id.
    fabm_calc         = .false.
-   models            = ''
    cnpar             = _ONE_
    w_adv_discr       = 6
    ode_method        = 1
    split_factor      = 1
    bioshade_feedback = .true.
    repair_state      = .false.
+   salinity_relaxation_to_freshwater_flux = .false.
    no_precipitation_dilution = .false. ! useful to check mass conservation
 
    ! Open the namelist file and read the namelist.
    ! Note that the namelist file is left open until the routine terminates,
    ! so FABM can read more namelists from it during initialization.
    open(namlst,file=fname,action='read',status='old',err=98)
-   read(namlst,nml=bio_nml,err=99)
+   read(namlst,nml=gotm_fabm_nml,err=99)
+   close(namlst)
 
    if (fabm_calc) then
    
       ! Create model tree
-      model => fabm_create_model()
-      do i=1,ubound(models,1)
-         if (trim(models(i)).ne.'') &
-            childmodel => fabm_create_model(trim(models(i)),parent=model)
-      end do
+      model => fabm_create_model_from_file(namlst)
       
       ! Initialize model tree (creates metadata and assigns variable identifiers)
-      call fabm_init(model,namlst,_LOCATION_)
+      call fabm_set_domain(model,_LOCATION_)
 
       ! Report prognostic variable descriptions
       LEVEL2 'FABM pelagic state variables:'
@@ -238,9 +238,6 @@
       call init_var_gotm_fabm(_LOCATION_)
 
    end if
-
-   ! Close the namelist file
-   close(namlst)
 
    return
 
@@ -372,7 +369,7 @@
 !
 ! !INTERFACE: 
    subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho,nuh_,h_,w_, &
-                                bioshade_,I_0_,wnd,precip_,evap_,z_,A_,g1_,g2_)
+                                bioshade_,I_0_,wnd,precip_,evap_,z_,A_,g1_,g2_,SRelaxTau_,sProf_)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -384,6 +381,7 @@
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho,nuh_,h_,w_,bioshade_,z_
+   REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,wnd,precip_,evap_
    REALTYPE, intent(in),target :: A_,g1_,g2_
 !
@@ -410,6 +408,17 @@
    z => z_                 ! depth [1d array], used to calculate local pressure
    precip => precip_       ! precipitation [scalar] - used to calculate dilution due to increased water volume
    evap   => evap_         ! evaporation [scalar] - used to calculate concentration due to decreased water volume
+   salt   => salt_         ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
+   
+   if (present(SRelaxTau_) .and. present(sProf_)) then
+      SRelaxTau => SRelaxTau_ ! salinity relaxation times [1d array] - used to calculate virtual freshening due to salinity relaxation
+      sProf     => sProf_     ! salinity relaxation values [1d array] - used to calculate virtual freshening due to salinity relaxation
+   else
+      if (salinity_relaxation_to_freshwater_flux) &
+         stop 'gotm_fabm:set_env_gotm_fabm: salinity_relaxation_to_freshwater_flux is set, but salinity relaxation arrays are not provided.'
+      nullify(SRelaxTau)
+      nullify(sProf)
+   end if
    
    ! Copy scalars that will not change during simulation, and are needed in do_gotm_fabm)
    dt = dt_
@@ -440,7 +449,6 @@
 !
 ! !USES:
    use util,only: flux,Neumann
-   !use observations,only: SRelaxTau,sProf
 !
    IMPLICIT NONE
 !
@@ -456,7 +464,7 @@
    integer, parameter        :: adv_mode_1=1
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev)
    REALTYPE                  :: RelaxTau(0:nlev)
-   REALTYPE                  :: dilution
+   REALTYPE                  :: dilution,virtual_dilution
    integer                   :: i
    integer                   :: split,posconc
 !
@@ -497,17 +505,25 @@
    call fabm_get_surface_exchange(model,nlev,sfl)
    
    ! Calculate dilution due to surface freshwater flux (m/s)
-   ! If surface freshwater flux is not specified, but surface salinity is relaxed to observations,
-   ! calculate the effective dilution from the relation term, and use that instead.
    dilution = precip+evap
-   !if (any(SRelaxTau(1:nlev)<1.e10)) &
-   !   dilution = dilution + sum((salt(1:nlev)-sProf(1:nlev))/SRelaxTau(1:nlev)*h(2:nlev+1)) &
-   !                        /sum(salt(1:nlev)*h(2:nlev+1)) * sum(h(2:nlev+1))
+
+   ! If salinity is relaxed to observations, the change in column-integrated salintiy can converted into a
+   ! a virtual freshwater flux. Optionally, this freshwater flux can be imposed at the surface on biogoeochemical
+   ! variables, effectively mimicking precipitation or evaporation. This makes sense only if the salinity change
+   ! is primarily due to surface fluxes - not if it is meant to represent lateral input of other water masses.
+   if (salinity_relaxation_to_freshwater_flux .and. any(SRelaxTau(1:nlev)<1.e10)) then
+      ! NB unit of virtual_dilution is relative dilution across column, i.e., fraction/s
+      virtual_dilution = sum((salt(1:nlev)-sProf(1:nlev))/SRelaxTau(1:nlev)*h(2:nlev+1))/sum(salt(1:nlev)*h(2:nlev+1))
+   else
+      virtual_dilution = _ZERO_
+   end if
 
    do i=1,ubound(model%info%state_variables,1)
       ! Add surface flux due to evaporation/precipitation, unless the model explicitly says otherwise.
-      if (.not. (model%info%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution)) &
+      if (.not. (model%info%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution)) then
          sfl(i) = sfl(i)-cc(i,nlev)*dilution
+         if (virtual_dilution.ne._ZERO_) sfl(i) = sfl(i)-sum(cc(i,1:nlev)*h(2:nlev+1))*virtual_dilution
+      end if
    
       ! Determine whether the variable is positive-definite based on its lower allowed bound.
       posconc = 0

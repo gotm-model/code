@@ -9,7 +9,7 @@ Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "gotmlib", "gotmlib.vfproj",
 		{7D63F885-F1D8-469C-A076-488A23EB592B} = {7D63F885-F1D8-469C-A076-488A23EB592B}
 	EndProjectSection
 EndProject
-Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "fabm", "%FABMDIR%\compilers\vs2008\fabm.vfproj", "{7D63F885-F1D8-469C-A076-488A23EB592B}"
+Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "fabm", "%FABMDIR%\compilers\vs2008\fabm-gotm.vfproj", "{7D63F885-F1D8-469C-A076-488A23EB592B}"
 EndProject
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "gotm", "gotm.vfproj", "{3FB5B776-C037-415F-BD91-38084CAF1E29}"
 	ProjectSection(ProjectDependencies) = postProject
