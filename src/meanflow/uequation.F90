@@ -223,8 +223,7 @@
       Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
    else
       do i=1,nlev
-         Lsour(i)= - (dAdz(i)/Ac(i)*&
-                      drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i)))
+         Lsour(i)= - dAdz(i) * drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
       end do
    end if
 
