@@ -158,8 +158,7 @@
    integer, private          :: ncdf_time_unit
    integer, private          :: start(4),edges(4)
    logical,private           :: GrADS
-   integer, private          :: Ac_id, Af_id, hypsography_slope_id
-   integer, private          :: slope_over_hypsography_id
+   integer, private          :: Ac_id,Af_id,dAdz_id
    integer, private          :: total_salt_id
    integer, private          :: drag_id
 !
@@ -317,6 +316,8 @@
    if (hypsography /= '') then
       iret = nf90_def_var(ncid,'Ac',NF90_REAL,dim4d,Ac_id)
       call check_err(iret)
+      iret = nf90_def_var(ncid,'dAdz',NF90_REAL,dim4d, dAdz_id)
+      call check_err(iret)
       iret = nf90_def_var(ncid,'drag',NF90_REAL,dim4d,drag_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
@@ -353,10 +354,6 @@
    call check_err(iret)
    if (hypsography /= '') then
       iret = nf90_def_var(ncid,'Af',NF90_REAL,dim4d,Af_id)
-      call check_err(iret)
-      iret = nf90_def_var(ncid,'dAdz',NF90_REAL,dim4d, hypsography_slope_id)
-      call check_err(iret)
-      iret = nf90_def_var(ncid,'dAdz over A',NF90_REAL,dim4d, slope_over_hypsography_id)
       call check_err(iret)
    end if
 
@@ -472,9 +469,8 @@
                             long_name='hypsography at grid centres')
       iret = set_attributes(ncid,Af_id,units='m2', &
                             long_name='hypsography at grid interfaces')
-      iret = set_attributes(ncid,hypsography_slope_id,units='m',long_name='slope of hypsography')
-      iret = set_attributes(ncid,slope_over_hypsography_id,units='1/m',long_name='slope over hypsography')
-      iret = set_attributes(ncid,drag_id,units='m2',long_name='drag')
+      iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsography')
+      iret = set_attributes(ncid,drag_id,units='-',long_name='drag')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
    end if
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
@@ -561,8 +557,7 @@
    use airsea,       only: int_swr,int_heat,int_total
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
    use meanflow,     only: h,u,v,z,S,T,buoy,SS,NN
-   use meanflow,     only: hypsography,Ac,Af,hypsography_slope
-   use meanflow,     only: slope_over_hypsography
+   use meanflow,     only: hypsography,Ac,Af,dAdz
    use meanflow,     only: drag
    use turbulence,   only: P,B,Pb
    use turbulence,   only: num,nuh,nus
@@ -667,9 +662,7 @@
    iret = store_data(ncid,temp_obs_id,XYZT_SHAPE,nlev,array=tprof)
    if (hypsography /= '') then
       iret = store_data(ncid,Ac_id,XYZT_SHAPE,nlev,array=Ac)
-      iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
-      iret = store_data(ncid,hypsography_slope_id,XYZT_SHAPE,nlev,array=hypsography_slope)
-      iret = store_data(ncid,slope_over_hypsography_id,XYZT_SHAPE,nlev,array=slope_over_hypsography)
+      iret = store_data(ncid,dAdz_id,XYZT_SHAPE,nlev,array=dAdz)
       iret = store_data(ncid,drag_id,XYZT_SHAPE,nlev,array=drag)
    end if
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
@@ -715,9 +708,6 @@
    iret = store_data(ncid,gams_id,XYZT_SHAPE,nlev,array=gams)
    if (hypsography /= '') then
       iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
-      iret = store_data(ncid,hypsography_slope_id,XYZT_SHAPE,nlev,array=hypsography_slope)
-      iret = store_data(ncid,slope_over_hypsography_id,XYZT_SHAPE,nlev,array=slope_over_hypsography)
-      iret = store_data(ncid,drag_id,XYZT_SHAPE,nlev,array=drag)
    end if
 
    if (turb_method.ne.99) then

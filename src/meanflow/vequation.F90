@@ -47,7 +47,7 @@
    use meanflow,     only: h,v,vo,u,w,avh
    use meanflow,     only: drag,SS,runtimev
    use meanflow,     only: hypsography
-   use meanflow,     only: Ac,Af
+   use meanflow,     only: Ac,Af,dAdz
    use observations, only: w_adv_method,w_adv_discr
    use observations, only: vProf,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdy,dpdy
@@ -201,7 +201,8 @@
       Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
    else
       do i=1,nlev
-         Lsour(i) = - drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
+         Lsour(i)= -(dAdz(i)/Ac(i)*&
+                      drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i)))
       end do
    end if
 

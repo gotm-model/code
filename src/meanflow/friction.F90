@@ -59,7 +59,7 @@
    use meanflow,      only: u,v,gravity
    use meanflow,      only: u_taub,u_taus,drag
    use meanflow,      only: charnock,charnock_val,z0s_min
-   use meanflow,      only: hypsography
+   use meanflow,      only: hypsography,Ac
 
 !
    IMPLICIT NONE
@@ -145,9 +145,8 @@
          u_taub = rr*sqrt( u(1)*u(1) + v(1)*v(1) )
 
       end do
-
-!  add bottom friction as source term for the momentum equation
-   drag(1) = drag(1) +  rr*rr
+!     add bottom friction as source term for the momentum equation
+      drag(1) = drag(1) +  rr*rr
 
 !  for lake model the friction has to be calculacted at every depth
    else

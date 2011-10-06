@@ -14,8 +14,8 @@
 !
 ! !USES:
    use meanflow, only: N_input,depth_input,A_input
-   use meanflow, only: Ac,Af
-   use meanflow, only: hypsography,hypsography_slope
+   use meanflow, only: hypsography
+   use meanflow, only: Ac,Af,dAdz
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -92,9 +92,8 @@
 !
 ! !USES:
    use meanflow, only: N_input,depth_input,A_input
-   use meanflow, only: Ac,Af
-   use meanflow, only: hypsography,hypsography_slope,slope_over_hypsography
-   IMPLICIT NONE
+   use meanflow, only: hypsography
+   use meanflow, only: Ac,Af,dAdz
 !
 ! !INPUT PARAMETERS:
    integer, intent(in):: nlev
@@ -127,7 +126,7 @@
       allocate(prof(0:nlev+1),stat=rc)
    if (rc /= 0) stop 'read_hypsography: Error allocating memory (prof)'
       prof = _ZERO_
-!  interpolate hypsography to grid interfaces used by GOTM
+!  interpolate hypsography Af to grid interfaces used by GOTM
    call gridinterpol(N_input,1,depth_input,A_input,nlev+1,zPrime,prof)
 
    do i = 0, nlev
@@ -136,26 +135,13 @@
 
    if (allocated(prof)) deallocate(prof)
 
-!  interpolate hypsography to grid centres used by GOTM
+!  interpolate hypsography Ac to grid centres used by GOTM
    call gridinterpol(N_input,1,depth_input,A_input,nlev,z,Ac)
 
 !  calculate the derivative of the hypsography wrt z
-!  both hypsography & hypsography_slope are defined at the grid interfaces
-!  forward diff at bottom
-   hypsography_slope(0) = (Af(1) - Af(0)) / h(1)
-!  backward diff at surface
-   hypsography_slope(nlev) = (Af(nlev) - Af(nlev-1)) / &
-                        h(nlev)
-!  the rest central diff
-   do i = 1, nlev-1
-   !TODO can central diff be used again!?
-!      hypsography_slope(i) = (Af(i+1) - Af(i-1)) / &
-!                        (h(i+1) + h(i))
-      hypsography_slope(i) = (Af(i) - Af(i-1)) / &
-                        (h(i))
-   end do
-   do i = 0, nlev
-      slope_over_hypsography(i) = hypsography_slope(i) / Af(i)
+!  dAdz is defined at the grid centres
+   do i = 1, nlev
+      dAdz(i) = (Af(i) - Af(i-1)) / (h(i))
    end do
 
    end subroutine update_hypsography
