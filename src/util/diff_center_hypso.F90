@@ -162,7 +162,6 @@
       l     = dt*Lsour(N)
 
       au(N) =-cnpar*a
-      ! TODO check this trick to find out what's to be done here
       if (posconc .eq. 1 .and. Yup.lt._ZERO_) then ! Patankar (1980) trick
          bu(N) =  _ONE_ - au(N) - l  - dt*Yup/Y(N)/h(N)
          du(N) = Y(N) + dt*Qsour(N)   &
