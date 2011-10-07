@@ -59,7 +59,7 @@
    use meanflow,      only: u,v,gravity
    use meanflow,      only: u_taub,u_taus,drag
    use meanflow,      only: charnock,charnock_val,z0s_min
-   use meanflow,      only: hypsography,Ac
+   use meanflow,      only: hypsography
 
 !
    IMPLICIT NONE
@@ -149,6 +149,8 @@
       drag(1) = drag(1) +  rr*rr
 
 !  for lake model the friction has to be calculacted at every depth
+!  drag(j) = drag(j) * dAdz(j)/Ac(j) is done implicitly when solving
+!  the diffusion equation, see u-,v-equation.F90 and diff_center_hypso.F90
    else
 !  iterate from nlev to 1 so that u_taub is located at 1 at the end
 !  this is important for other modules
