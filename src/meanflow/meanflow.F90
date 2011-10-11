@@ -13,6 +13,8 @@
 !  calculation and also makes the proper initialisations.
 !
 ! !USES:
+   use hypsography, only: lake,idealised
+   use hypsography, only: hypsography_file,init_hypsography
    IMPLICIT NONE
 !  Default all is private.
    private
@@ -64,14 +66,6 @@
 !  shading in the water column
    REALTYPE, public, dimension(:), allocatable  :: bioshade
 
-!  hypsography for lake model
-   CHARACTER(LEN=PATH_MAX), public               :: hypsography
-   CHARACTER(LEN=PATH_MAX), public               :: hypsography_file
-   integer, public                               :: N_input
-   REALTYPE, public, dimension(:), allocatable   :: A_input,depth_input
-   REALTYPE, public, dimension(:), allocatable   :: Ac,Af,dAdz
-   logical, public                               :: idealised
-
 # ifdef EXTRA_OUTPUT
 
 !  dummies for testing
@@ -122,7 +116,6 @@
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, public, parameter         :: pi=3.141592654
-   integer, parameter        :: hypsography_unit=70
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -219,7 +212,7 @@
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
                         avmolu,avmolT,avmolS,MaxItz0b,no_shear,        &
-                        hypsography,idealised
+                        hypsography_file,idealised
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -253,7 +246,7 @@
    avmolS       = 1.1e-9
    MaxItz0b     = 10
    no_shear     = .false.
-   hypsography  = ''
+   hypsography_file  = ''
    idealised    = .false.
 
 !  Read namelist from file.
@@ -396,21 +389,7 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (bioshade)'
    bioshade= _ONE_
 
-   if (hypsography .ne. '') then
-      write(*,*) "Why am I here!?!"
-      allocate(Ac(0:nlev),stat=rc)
-      if (rc /= 0) stop 'init_meanflow: Error allocating (Ac)'
-         Ac = _ZERO_
-      allocate(Af(0:nlev),stat=rc)
-      if (rc /= 0) stop 'init_meanflow: Error allocating (Af)'
-         Af = _ZERO_
-      allocate(dAdz(0:nlev),stat=rc)
-      if (rc /= 0) stop 'init_meanflow: Error allocating (dAdz)'
-         dAdz = _ZERO_
-         open(hypsography_unit,file=hypsography,status='unknown',err=112)
-      write(*,*) "Why am I here!?!2"
-      call read_hypsography(hypsography_unit,rc)
-   end if
+   call init_hypsography(nlev)
 
 # ifdef EXTRA_OUTPUT
 
@@ -442,8 +421,6 @@
 80 FATAL 'I could not open: ',trim(fn)
    stop 'init_meanflow'
 81 FATAL 'I could not read "meanflow" namelist'
-   stop 'init_meanflow'
-112 FATAL 'Unable to open "',trim(hypsography),'" for reading'
    stop 'init_meanflow'
 
    end subroutine init_meanflow
@@ -502,11 +479,6 @@
    if (allocated(avh)) deallocate(avh)
    if (allocated(w_grid)) deallocate(w_grid)
    if (allocated(bioshade)) deallocate(bioshade)
-   if (allocated(depth_input)) deallocate(depth_input)
-   if (allocated(A_input)) deallocate(A_input)
-   if (allocated(Ac)) deallocate(Ac)
-   if (allocated(Af)) deallocate(Af)
-   if (allocated(dAdz)) deallocate(dAdz)
 # ifdef EXTRA_OUTPUT
    if (allocated(mean1)) dallocate(mean1)
    if (allocated(mean2)) dallocate(mean2)
@@ -570,11 +542,6 @@
    if (allocated(fric)) LEVEL2 'fric',fric
    if (allocated(drag)) LEVEL2 'drag',drag
    if (allocated(bioshade)) LEVEL2 'bioshade',bioshade
-   if (allocated(depth_input)) LEVEL2 'depth_input', depth_input
-   if (allocated(A_input)) LEVEL2 'A_input', A_input
-   if (allocated(Ac)) LEVEL2 'Ac', Ac
-   if (allocated(Af)) LEVEL2 'Ac', Af
-   if (allocated(dAdz)) LEVEL2 'dAdz', dAdz
 # ifdef EXTRA_OUTPUT
    if (allocated(mean1)) LEVEL2 'mean1',mean1
    if (allocated(mean2)) LEVEL2 'mean2',mean2

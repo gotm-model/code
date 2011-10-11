@@ -59,7 +59,7 @@
    use meanflow,      only: u,v,gravity
    use meanflow,      only: u_taub,u_taus,drag
    use meanflow,      only: charnock,charnock_val,z0s_min
-   use meanflow,      only: hypsography
+   use hypsography,   only: lake
 
 !
    IMPLICIT NONE
@@ -108,7 +108,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                             :: i,j
+   integer                             :: i,j,j_max
    REALTYPE                            :: rr
 !
 !-----------------------------------------------------------------------
@@ -125,7 +125,17 @@
    end if
 
 !  iterate bottom roughness length MaxItz0b times
-   if (hypsography .eq. '') then
+!  for lake model the friction has to be calculacted at every depth
+!  drag(j) = drag(j) * dAdz(j)/Ac(j) is done implicitly when solving
+!  the diffusion equation, see u-,v-equation.F90 and diff_center_hypso.F90
+   if (lake) then
+      j_max = sizeof(h) / sizeof(h(1)) - 1
+   else
+      j_max = 1
+   end if
+!  iterate from nlev to 1 so that u_taub is located at 1 at the end
+!  this is important for other modules
+   do j=j_max,1,-1
       do i=1,MaxItz0b
 
          if (avmolu.le.0) then
@@ -135,49 +145,19 @@
          end if
 
 !        compute the factor r (version 1, with log-law)
-         rr=kappa/(log((z0b+h(1)/2)/z0b))
+         rr=kappa/(log((z0b+h(j)/2)/z0b))
 
 !        compute the factor r (version 2, with meanvalue log-law)
-!        frac=(z0b+h(1))/z0b
-!        rr=kappa/((z0b+h(1))/h(1)*log(frac)-1.)
+!        frac=(z0b+h(j))/z0b
+!        rr=kappa/((z0b+h(j))/h(j)*log(frac)-1.)
 
-!        compute the friction velocity at the bottom
-         u_taub = rr*sqrt( u(1)*u(1) + v(1)*v(1) )
+!        compute the friction velocity at every grid cell
+         u_taub = rr*sqrt( u(j)*u(j) + v(j)*v(j) )
 
       end do
 !     add bottom friction as source term for the momentum equation
-      drag(1) = drag(1) +  rr*rr
-
-!  for lake model the friction has to be calculacted at every depth
-!  drag(j) = drag(j) * dAdz(j)/Ac(j) is done implicitly when solving
-!  the diffusion equation, see u-,v-equation.F90 and diff_center_hypso.F90
-   else
-!  iterate from nlev to 1 so that u_taub is located at 1 at the end
-!  this is important for other modules
-      do j=nlev,1,-1
-         do i=1,MaxItz0b
-
-            if (avmolu.le.0) then
-               z0b=0.03*h0b + za
-            else
-               z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
-            end if
-
-!           compute the factor r (version 1, with log-law)
-            rr=kappa/(log((z0b+h(j)/2)/z0b))
-
-!           compute the factor r (version 2, with meanvalue log-law)
-!           frac=(z0b+h(j))/z0b
-!           rr=kappa/((z0b+h(j))/h(j)*log(frac)-1.)
-
-!           compute the friction velocity at every grid cell
-            u_taub = rr*sqrt( u(j)*u(j) + v(j)*v(j) )
-
-         end do
-!        add bottom friction as source term for the momentum equation
-         drag(j) = drag(j) +  rr*rr
-      end do
-   end if
+      drag(j) = drag(j) +  rr*rr
+   end do
 
 !  be careful: tx and ty are the surface shear-stresses
 !  already divided by rho!

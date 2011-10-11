@@ -1,21 +1,102 @@
-!$Id: read_hypsography.F90,v 0.1 2011-04-19 16:24:48 schueler Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: read_hypsography
+! !MODULE: read_hypsography
+!
+! !INTERFACE:
+   module hypsography
+!
+! !DESCRIPTION:
+!  This module is responsible for reading in values for the hypography from a
+!  file specified in the meanflow namelist and updating it according to the
+!  GOTM (time dependant) grid layers.
+!
+   IMPLICIT NONE
+   public                                :: init_hypsography,clean_hypsography
+   public                                :: read_hypsography,update_hypsography
+!  !PUBLIC DATA MEMBERS:
+   logical, public                               :: lake
+   CHARACTER(LEN=PATH_MAX), public               :: hypsography_file
+   REALTYPE, public, dimension(:), allocatable   :: Ac,Af,dAdz
+   logical, public                               :: idealised
+
+!  !input variables
+   integer                               :: N_input
+   REALTYPE, dimension(:), allocatable   :: A_input,depth_input
+
+!
+! !REVISION HISTORY:
+!  Original author(s): Lennart Schueler
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: rc
+! !DEFINED PARAMETERS:
+   integer, parameter        :: hypsography_unit=70
+!
+!-----------------------------------------------------------------------
+
+   contains
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !ROUTINE: initialises everything related to the lake model
+!
+! !INTERFACE:
+   subroutine init_hypsography(nlev)
+!
+!  !DESCRIPTION:
+!  Initialises everything related to the lake model, e.g. allocating memory
+!  for arrays.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in) :: nlev
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+      if (hypsography_file .ne. '') then
+         lake = .true.
+         allocate(Ac(0:nlev),stat=rc)
+         if (rc /= 0) stop 'init_hypsography: Error allocating (Ac)'
+            Ac = _ZERO_
+         allocate(Af(0:nlev),stat=rc)
+         if (rc /= 0) stop 'init_hypsography: Error allocating (Af)'
+            Af = _ZERO_
+         allocate(dAdz(0:nlev),stat=rc)
+         if (rc /= 0) stop 'init_hypsography: Error allocating (dAdz)'
+            dAdz = _ZERO_
+            open(hypsography_unit,file=hypsography_file,status='unknown',err=112)
+         call read_hypsography(hypsography_unit,rc)
+      else
+         lake = .false.
+      end if
+
+      return
+112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
+      stop 'init_hypsography'
+
+   end subroutine init_hypsography
+!EOC
+!-----------------------------------------------------------------------
+!BOP
+!
+! !ROUTINE: Initial read in of the hypsography from specified file
 !
 ! !INTERFACE:
    subroutine read_hypsography(unit,ierr)
 !
-! !DESCRIPTION:
-!  This routine is responsible for reading in values for the hypography from a
-!  file specified in the meanflow namelist.
+!  !DESCRIPTION:
+!  Reads in the hypsography from file at "unit" and saves everything
+!  to the *_input variables.
 !
 ! !USES:
-   use meanflow, only: N_input,depth_input,A_input
-   use meanflow, only: hypsography
-   use meanflow, only: Ac,Af,dAdz
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -64,8 +145,6 @@
    end if
 
    return
-!  maybe these parameters should be defined in meanflow.F90
-!  like in observations.F90
 !  READ_ERROR = -2
 100 ierr = -2
    FATAL 'Error reading hypsography (READ_ERROR)'
@@ -80,7 +159,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: read_hypsography
+! !IROUTINE: update_hypsography
 !
 ! !INTERFACE:
    subroutine update_hypsography(nlev,z,h)
@@ -91,9 +170,7 @@
 !  calculating the derivative dA(z)/dz.
 !
 ! !USES:
-   use meanflow, only: N_input,depth_input,A_input
-   use meanflow, only: hypsography
-   use meanflow, only: Ac,Af,dAdz
+   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer, intent(in):: nlev
@@ -145,7 +222,38 @@
    end do
 
    end subroutine update_hypsography
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Cleaning up the hypsography variables
+!
+! !INTERFACE:
+   subroutine clean_hypsography()
+!
+! !DESCRIPTION:
+!  De-allocates all memory allocated via init\_hypsography()
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+!
+! !REVISION HISTORY:
+!  Original author(s): Lennart Schueler
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+      if (allocated(Ac)) deallocate(Ac)
+      if (allocated(Af)) deallocate(Af)
+      if (allocated(dAdz)) deallocate(dAdz)
+
+      return
+   end subroutine clean_hypsography
+
+   end module hypsography
 !EOC
+
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
 !-----------------------------------------------------------------------

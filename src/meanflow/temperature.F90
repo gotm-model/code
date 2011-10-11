@@ -69,9 +69,8 @@
    use meanflow,     only: avmolt,rho_0,cp
    use meanflow,     only: h,u,v,w,T,S,avh
    use meanflow,     only: bioshade
-   use meanflow,     only: hypsography
-   use meanflow,     only: Ac,Af
-   use meanflow,     only: idealised
+   use hypsography,  only: lake,idealised
+   use hypsography,  only: Ac,Af
    use observations, only: dtdx,dtdy,t_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau
@@ -255,12 +254,12 @@
    end if
 
 !  do diffusion step
-   if (hypsography .eq. '') then
-      call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,       & 
-                       DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
-   else
+   if (lake) then
       call diff_center_hypso(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw, & 
             DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,Ac,Af,T)
+   else
+      call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,       & 
+                       DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
    end if
 
    return

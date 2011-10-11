@@ -46,8 +46,8 @@
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: h,v,vo,u,w,avh
    use meanflow,     only: drag,SS,runtimev
-   use meanflow,     only: hypsography
-   use meanflow,     only: Ac,Af,dAdz
+   use hypsography,  only: lake
+   use hypsography,  only: Ac,Af,dAdz
    use observations, only: w_adv_method,w_adv_discr
    use observations, only: vProf,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdy,dpdy
@@ -197,12 +197,12 @@
    end do
 
 !  implement bottom friction as source term
-   if (hypsography .eq. '') then
-      Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
-   else
+   if (lake) then
       do i=1,nlev
          Lsour(i)= - dAdz(i) * drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
       end do
+   else
+      Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
    end if
 
 !  do advection step
@@ -212,12 +212,12 @@
    end if
 
 !  do diffusion step
-   if (hypsography .eq. '') then
-      call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,       &
-                       DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,V)
-   else
+   if (lake) then
       call diff_center_hypso(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw, &
             DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,Ac,Af,V)
+   else
+      call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,       &
+                       DiffVup,DiffVdw,avh,Lsour,Qsour,VRelaxTau,vProf,V)
    end if
 
    return
