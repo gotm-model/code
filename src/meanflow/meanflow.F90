@@ -13,7 +13,7 @@
 !  calculation and also makes the proper initialisations.
 !
 ! !USES:
-   use hypsography, only: lake,idealised
+   use hypsography, only: idealised
    use hypsography, only: hypsography_file,init_hypsography
    IMPLICIT NONE
 !  Default all is private.
