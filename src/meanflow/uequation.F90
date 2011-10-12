@@ -234,13 +234,8 @@
    end if
 
 !  do diffusion step
-   if (lake) then
-      call diff_center_hypso(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw, &
-            DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uProf,Ac,Af,U)
-   else
-      call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,       &
-                       DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uProf,U)
-   end if
+   call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,DiffBcup,DiffBcdw,    &
+                    DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uProf,U)
 
    return
    end subroutine uequation

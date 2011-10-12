@@ -17,6 +17,7 @@
 ! !USES:
    use fabm
    use fabm_types
+   use hypsography, only: Ac,Af
    
    implicit none
 !
@@ -541,11 +542,11 @@
       ! Do diffusion step
       if (cc_obs_indices(i).ne.-1) then
 !        Observation on this variable are available.      
-         call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
+         call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,Neumann,Neumann,&
             sfl(i),bfl(i),nuh,Lsour,Qsour,relax_tau_1d(:,cc_obs_indices(i)),obs_1d(:,cc_obs_indices(i)),cc(i,:))
       else
 !        Observation on this variable are not available.      
-         call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
+         call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,Neumann,Neumann,&
             sfl(i),bfl(i),nuh,Lsour,Qsour,RelaxTau,cc(i,:),cc(i,:))
       end if
 

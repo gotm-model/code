@@ -200,13 +200,8 @@
    end if
 
 !  do diffusion step
-   if (lake) then
-      call diff_center_hypso(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw, &
-            DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,Ac,Af,S)
-   else
-      call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,       &
-                       DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
-   end if
+   call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,DiffBcup,DiffBcdw,    &
+                    DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
 
    return
    end subroutine salinity

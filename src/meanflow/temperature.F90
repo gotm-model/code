@@ -254,13 +254,8 @@
    end if
 
 !  do diffusion step
-   if (lake) then
-      call diff_center_hypso(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw, & 
-            DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,Ac,Af,T)
-   else
-      call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,       & 
-                       DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
-   end if
+   call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,DiffBcup,DiffBcdw,    &
+                    DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
 
    return
    end subroutine temperature

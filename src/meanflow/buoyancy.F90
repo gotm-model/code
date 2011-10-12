@@ -58,6 +58,7 @@
    use observations,  only: w_adv_discr,w_adv_method
    use util,          only: Dirichlet,Neumann
    use util,          only: oneSided,zeroDivergence
+   use hypsography,   only: Ac,Af
 !
    IMPLICIT NONE
 !
@@ -168,7 +169,7 @@
    end if
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,DiffBcup,DiffBcdw,          &
+   call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,DiffBcup,DiffBcdw,    &
                     DiffBup,DiffBdw,avh,Lsour,Qsour,                    &
                     BRelaxTau,buoy,buoy)
 

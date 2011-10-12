@@ -86,6 +86,7 @@
 #endif
 
    use util
+   use hypsography, only: Ac,Af
 !
 !  default: all is private.
    private
@@ -1129,7 +1130,7 @@
       end if
 
 !     do diffusion step
-      call diff_center(nlev,dt,cnpar,posconc(j),h,Neumann,Neumann,&
+      call diff_center(nlev,dt,cnpar,posconc(j),h,Ac,Af,Neumann,Neumann,&
            sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
 
    end do

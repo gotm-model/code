@@ -61,14 +61,16 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+      !always allocate memory for Ac, Af so that diff_center() works
+      allocate(Ac(0:nlev),stat=rc)
+      if (rc /= 0) stop 'init_hypsography: Error allocating (Ac)'
+         Ac = _ONE_
+      allocate(Af(0:nlev),stat=rc)
+      if (rc /= 0) stop 'init_hypsography: Error allocating (Af)'
+         Af = _ONE_
+
       if (hypsography_file .ne. '') then
          lake = .true.
-         allocate(Ac(0:nlev),stat=rc)
-         if (rc /= 0) stop 'init_hypsography: Error allocating (Ac)'
-            Ac = _ZERO_
-         allocate(Af(0:nlev),stat=rc)
-         if (rc /= 0) stop 'init_hypsography: Error allocating (Af)'
-            Af = _ZERO_
          allocate(dAdz(0:nlev),stat=rc)
          if (rc /= 0) stop 'init_hypsography: Error allocating (dAdz)'
             dAdz = _ZERO_
