@@ -507,6 +507,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: n
+   !only needed for idealised, delete later
    integer                   :: i
 
    REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
@@ -543,7 +544,7 @@
       call vequation(nlev,dt,cnpar,ty,num,gamv,ext_press_mode)
       call extpressure(ext_press_mode,nlev)
       call intpressure(nlev)
-      call friction(kappa,avmolu,tx,ty,nlev)
+      call friction(kappa,avmolu,tx,ty)
 
 #ifdef SEAGRASS
       if(seagrass_calc) call do_seagrass(nlev,dt)
@@ -610,13 +611,13 @@
       end select
 
 !     CONSTANT nu* for idealised test case
-!      if (idealised) then
-!         do i = 0, nlev
-!            nuh(i) = 1.0d-6
-!            nus(i) = 1.0d-6
-!            num(i) = 1.0d-5
-!         end do
-!      end if
+      if (idealised) then
+         do i = 0, nlev
+            nuh(i) = 1.0d-6
+            nus(i) = 1.0d-6
+            num(i) = 1.0d-5
+         end do
+      end if
 
 !     do the output
       if (write_results) then

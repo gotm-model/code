@@ -6,7 +6,7 @@
 ! !ROUTINE: The vertical friction \label{sec:friction}
 !
 ! !INTERFACE:
-   subroutine friction(kappa,avmolu,tx,ty,nlev)
+   subroutine friction(kappa,avmolu,tx,ty)
 !
 ! !DESCRIPTION:
 !  This subroutine updates the bottom roughness
@@ -66,7 +66,6 @@
 !
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)                :: kappa,avmolu,tx,ty
-   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
