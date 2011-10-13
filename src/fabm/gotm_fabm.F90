@@ -17,7 +17,7 @@
 ! !USES:
    use fabm
    use fabm_types
-   use hypsography, only: Ac,Af
+   use meanflow, only: Ac,Af
    
    implicit none
 !

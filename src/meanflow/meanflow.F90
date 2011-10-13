@@ -13,8 +13,6 @@
 !  calculation and also makes the proper initialisations.
 !
 ! !USES:
-   use hypsography, only: idealised
-   use hypsography, only: hypsography_file,init_hypsography
    IMPLICIT NONE
 !  Default all is private.
    private
@@ -113,6 +111,12 @@
    REALTYPE, public                    :: depth0
    REALTYPE, public                    :: depth
    REALTYPE, public                    :: runtimeu, runtimev
+
+!  variables needed for the lake model
+   logical, public                               :: lake
+   CHARACTER(LEN=PATH_MAX), public               :: hypsography_file
+   REALTYPE, public, dimension(:), allocatable   :: Ac,Af,dAdz
+   logical, public                               :: idealised
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, public, parameter         :: pi=3.141592654
@@ -388,8 +392,6 @@
    allocate(bioshade(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (bioshade)'
    bioshade= _ONE_
-
-   call init_hypsography(nlev)
 
 # ifdef EXTRA_OUTPUT
 

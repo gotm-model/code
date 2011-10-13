@@ -59,7 +59,7 @@
    use meanflow,      only: u,v,gravity
    use meanflow,      only: u_taub,u_taus,drag
    use meanflow,      only: charnock,charnock_val,z0s_min
-   use hypsography,   only: lake
+   use meanflow,      only: lake
 
 !
    IMPLICIT NONE

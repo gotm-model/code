@@ -86,7 +86,7 @@
 #endif
 
    use util
-   use hypsography, only: Ac,Af
+   use meanflow, only: Ac,Af
 !
 !  default: all is private.
    private

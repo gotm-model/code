@@ -67,10 +67,10 @@
 !
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
-   use meanflow,     only: h,u,v,w,T,S,avh
+   use meanflow,     only: lake,idealised
+   use meanflow,     only: h,Ac,Af
+   use meanflow,     only: u,v,w,T,S,avh
    use meanflow,     only: bioshade
-   use hypsography,  only: lake,idealised
-   use hypsography,  only: Ac,Af
    use observations, only: dtdx,dtdy,t_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau

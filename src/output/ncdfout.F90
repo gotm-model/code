@@ -173,7 +173,7 @@
 ! !INTERFACE:
    subroutine init_ncdf(fn,title,lat,lon,nlev,start_time,time_unit)
 ! !USES:
-   use hypsography, only: lake
+   use meanflow, only: lake
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
@@ -551,9 +551,10 @@
 ! !USES:
    use airsea,       only: tx,ty,I_0,heat,precip,evap,sst,sss
    use airsea,       only: int_swr,int_heat,int_total
+   use meanflow,     only: lake
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
-   use meanflow,     only: h,u,v,z,S,T,buoy,SS,NN
-   use hypsography,  only: lake,Ac,Af,dAdz
+   use meanflow,     only: h,Ac,Af,dAdz
+   use meanflow,     only: u,v,z,S,T,buoy,SS,NN
    use turbulence,   only: P,B,Pb
    use turbulence,   only: num,nuh,nus
    use turbulence,   only: gamu,gamv,gamh,gams

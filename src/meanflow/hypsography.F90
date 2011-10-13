@@ -12,14 +12,12 @@
 !  file specified in the meanflow namelist and updating it according to the
 !  GOTM (time dependant) grid layers.
 !
+! !USES
+   use meanflow, only: lake,Ac,Af,dAdz,hypsography_file,idealised
    IMPLICIT NONE
    public                                :: init_hypsography,clean_hypsography
    public                                :: read_hypsography,update_hypsography
 !  !PUBLIC DATA MEMBERS:
-   logical, public                               :: lake
-   CHARACTER(LEN=PATH_MAX), public               :: hypsography_file
-   REALTYPE, public, dimension(:), allocatable   :: Ac,Af,dAdz
-   logical, public                               :: idealised
 
 !  !input variables
    integer                               :: N_input

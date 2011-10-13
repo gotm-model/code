@@ -8,8 +8,8 @@ include ../Rules.make
 LIB	= $(LIBDIR)/libmeanflow$(buildtype).a
 
 DOCSRC	= \
-hypsography.F90         \
 meanflow.F90		\
+hypsography.F90         \
 updategrid.F90		\
 coriolis.F90		\
 uequation.F90		\
@@ -25,8 +25,8 @@ stratification.F90	\
 convectiveadjustment.F90
 
 MOD	= \
-${LIB}(hypsography.o)           \
-${LIB}(meanflow.o)
+${LIB}(meanflow.o)     \
+${LIB}(hypsography.o)
 
 OBJ   = \
 ${LIB}(updategrid.o)		\

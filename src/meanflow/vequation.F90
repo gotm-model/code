@@ -44,10 +44,10 @@
 !
 ! !USES:
    use meanflow,     only: gravity,avmolu
-   use meanflow,     only: h,v,vo,u,w,avh
+   use meanflow,     only: lake
+   use meanflow,     only: h,Ac,Af,dAdz
+   use meanflow,     only: v,vo,u,w,avh
    use meanflow,     only: drag,SS,runtimev
-   use hypsography,  only: lake
-   use hypsography,  only: Ac,Af,dAdz
    use observations, only: w_adv_method,w_adv_discr
    use observations, only: vProf,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdy,dpdy

@@ -74,8 +74,7 @@
    use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output
 #endif
 
-   !TODO remove later
-   use hypsography, only: idealised
+   use hypsography, only: init_hypsography,clean_hypsography
    use output
 
    IMPLICIT NONE
@@ -366,6 +365,7 @@
 !  From here - each init_? is responsible for opening and closing the
 !  namlst - unit.
    call init_meanflow(namlst,'gotmmean.nml',nlev,latitude)
+   call init_hypsography(nlev)
    call init_tridiagonal(nlev)
    call updategrid(nlev,dt,zeta)
 
@@ -610,13 +610,13 @@
       end select
 
 !     CONSTANT nu* for idealised test case
-      if (idealised) then
-         do i = 0, nlev
-            nuh(i) = 1.0d-6
-            nus(i) = 1.0d-6
-            num(i) = 1.0d-5
-         end do
-      end if
+!      if (idealised) then
+!         do i = 0, nlev
+!            nuh(i) = 1.0d-6
+!            nus(i) = 1.0d-6
+!            num(i) = 1.0d-5
+!         end do
+!      end if
 
 !     do the output
       if (write_results) then
@@ -685,6 +685,8 @@
    call close_output()
 
    call clean_air_sea()
+
+   call clean_hypsography()
 
    call clean_meanflow()
 
