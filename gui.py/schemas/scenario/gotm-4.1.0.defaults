@@ -60,6 +60,7 @@
 			<avmols>1.1e-009</avmols>
 			<MaxItz0b>1</MaxItz0b>
 			<no_shear>False</no_shear>
+			<hypsography_file>''<hypsography_file>
 		</meanflow>
 	</gotmmean>
 	<airsea>
