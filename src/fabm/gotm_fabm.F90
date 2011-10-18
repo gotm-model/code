@@ -307,6 +307,13 @@
       call fabm_link_benthos_state_data(model,i,cc(ubound(model%info%state_variables,1)+i,1))
    end do
    
+   ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
+   ! Initialize observation indicies to -1 (no external observations provided)
+   allocate(cc_obs_indices    (1:ubound(model%info%state_variables,1)))
+   allocate(cc_ben_obs_indices(1:ubound(model%info%state_variables_ben,1)))
+   cc_obs_indices = -1
+   cc_ben_obs_indices = -1
+
    ! Allocate diagnostic variable array and set all values to zero.
    ! (needed because time-integrated/averaged variables will increment rather than set the array)
    allocate(cc_diag(1:ubound(model%info%diagnostic_variables,1),_LOCATION_RANGE_),stat=rc)
@@ -447,34 +454,38 @@
    g2 => g2_
    
    ! Handle externally provided 0d observations.
-   do i=1,ubound(obs_0d_ids,1)
-      if (obs_0d_ids(i).ne.-1) then
-         ! Check whether this is a state variable.
-         ! If so, observations will be handled through relaxtion, not here.
-         isstatevariable = .false.
-         do j=1,ubound(cc_ben_obs_indices,1)
-            if (obs_0d_ids(i).eq.cc_ben_obs_indices(j)) isstatevariable = .true.
-         end do
-         
-         ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
-         if (.not. isstatevariable) call fabm_link_data_hz(model,obs_0d_ids(i),obs_0d(i))
-      end if
-   end do
+   if (allocated(obs_0d_ids)) then
+      do i=1,ubound(obs_0d_ids,1)
+         if (obs_0d_ids(i).ne.-1) then
+            ! Check whether this is a state variable.
+            ! If so, observations will be handled through relaxation, not here.
+            isstatevariable = .false.
+            do j=1,ubound(cc_ben_obs_indices,1)
+               if (obs_0d_ids(i).eq.cc_ben_obs_indices(j)) isstatevariable = .true.
+            end do
+            
+            ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
+            if (.not. isstatevariable) call fabm_link_data_hz(model,obs_0d_ids(i),obs_0d(i))
+         end if
+      end do
+   end if
 
    ! Handle externally provided 1d observations.
-   do i=1,ubound(obs_1d_ids,1)
-      if (obs_1d_ids(i).ne.-1) then
-         ! Check whether this is a state variable.
-         ! If so, observations will be handled through relaxtion, not here.
-         isstatevariable = .false.
-         do j=1,ubound(cc_obs_indices,1)
-            if (obs_1d_ids(i).eq.cc_obs_indices(j)) isstatevariable = .true.
-         end do
-         
-         ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
-         if (.not. isstatevariable) call fabm_link_data(model,obs_1d_ids(i),obs_1d(1:,i))
-      end if
-   end do
+   if (allocated(obs_1d_ids)) then
+      do i=1,ubound(obs_1d_ids,1)
+         if (obs_1d_ids(i).ne.-1) then
+            ! Check whether this is a state variable.
+            ! If so, observations will be handled through relaxation, not here.
+            isstatevariable = .false.
+            do j=1,ubound(cc_obs_indices,1)
+               if (obs_1d_ids(i).eq.cc_obs_indices(j)) isstatevariable = .true.
+            end do
+            
+            ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
+            if (.not. isstatevariable) call fabm_link_data(model,obs_1d_ids(i),obs_1d(1:,i))
+         end if
+      end do
+   end if
    
    ! At this stage, FABM has been provided with arrays for all state variables, any variables
    ! read in from file (gotm_fabm_input), and all variables exposed by GOTM. If FABM is still
@@ -560,11 +571,11 @@
    ! a virtual freshwater flux. Optionally, this freshwater flux can be imposed at the surface on biogoeochemical
    ! variables, effectively mimicking precipitation or evaporation. This makes sense only if the salinity change
    ! is primarily due to surface fluxes - not if it is meant to represent lateral input of other water masses.
-   if (salinity_relaxation_to_freshwater_flux .and. any(SRelaxTau(1:nlev)<1.e10)) then
+   virtual_dilution = _ZERO_
+   if (salinity_relaxation_to_freshwater_flux) then
       ! NB unit of virtual_dilution is relative dilution across column, i.e., fraction/s
-      virtual_dilution = sum((salt(1:nlev)-sProf(1:nlev))/SRelaxTau(1:nlev)*h(2:nlev+1))/sum(salt(1:nlev)*h(2:nlev+1))
-   else
-      virtual_dilution = _ZERO_
+      if (any(SRelaxTau(1:nlev)<1.e10)) &
+         virtual_dilution = sum((salt(1:nlev)-sProf(1:nlev))/SRelaxTau(1:nlev)*h(2:nlev+1))/sum(salt(1:nlev)*h(2:nlev+1))
    end if
 
    do i=1,ubound(model%info%state_variables,1)
@@ -596,11 +607,11 @@
       
       ! Do diffusion step
       if (cc_obs_indices(i).ne.-1) then
-!        Observation on this variable are available.      
+!        Observations on this variable are available.      
          call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
             sfl(i),bfl(i),nuh,Lsour,Qsour,relax_tau_1d(:,cc_obs_indices(i)),obs_1d(:,cc_obs_indices(i)),cc(i,:))
       else
-!        Observation on this variable are not available.      
+!        Observations on this variable are not available.      
          call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
             sfl(i),bfl(i),nuh,Lsour,Qsour,RelaxTau,cc(i,:),cc(i,:))
       end if

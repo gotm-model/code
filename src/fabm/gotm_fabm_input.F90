@@ -129,9 +129,7 @@
    varcount_1d = 0
    varcount_0d = 0
 
-!  Allocate arrays linking that specify an observation index (-1 if not set) for every state variable.
-   allocate(cc_obs_indices    (1:ubound(model%info%state_variables,1)))
-   allocate(cc_ben_obs_indices(1:ubound(model%info%state_variables_ben,1)))
+!  Reset observations for pelagic and benthic state variables.
    cc_obs_indices = -1
    cc_ben_obs_indices = -1
 
