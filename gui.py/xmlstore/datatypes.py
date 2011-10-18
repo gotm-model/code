@@ -719,13 +719,18 @@ class DataFile(DataType,util.referencedobject):
         string = String.fromNamelistString(string,context,infonode)
         container = context['container']
         if container is None: return DataFile()
+        res = container.getItem(string)
+        if res is not None: return res
         filelist = container.listFiles()
-        if string in filelist:
-            return container.getItem(string)
         for fn in filelist:
             if fn.endswith('/'+string):
                 return container.getItem(fn)
         return DataFile()
+
+    @classmethod
+    def fromXmlString(ownclass,string,context,infonode):
+        assert 'container' in context,'Cannot load data file because no "container" object has been provided through context.'
+        return ownclass.fromNamelistString(string,context,infonode)
 
     def save(self,node,context):
         """Saves the DataFile to the specified XML node. Currently the node will
@@ -901,6 +906,13 @@ class DataFileEx(DataType,util.referencedobject):
     @classmethod
     def fromNamelistString(ownclass,string,context,infonode):
         datafile = DataFile.fromNamelistString(string,context,infonode)
+        res = ownclass.createObject(datafile,context,infonode,infonode.getAttribute('name'))
+        datafile.release()
+        return res
+
+    @classmethod
+    def fromXmlString(ownclass,string,context,infonode):
+        datafile = DataFile.fromXmlString(string,context,infonode)
         res = ownclass.createObject(datafile,context,infonode,infonode.getAttribute('name'))
         datafile.release()
         return res
