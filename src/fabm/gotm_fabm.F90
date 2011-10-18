@@ -42,11 +42,14 @@
 
 !  Arrays for observations
    REALTYPE, allocatable, target, public :: obs_0d(:),obs_1d(:,:),relax_tau_0d(:),relax_tau_1d(:,:)
+   integer,  allocatable,         public :: obs_0d_ids(:), obs_1d_ids(:)
 
 !  Arrays for diagnostic variables defined on horizontal slices of the model domain.
    REALTYPE,allocatable,dimension(:),public                              :: cc_diag_hz
    
    integer,allocatable,dimension(:),public :: cc_ben_obs_indices,cc_obs_indices
+   
+   integer(8) :: clock_adv,clock_diff,clock_source
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Jorn Bruggeman
@@ -167,6 +170,10 @@
 
    if (fabm_calc) then
    
+      clock_adv    = 0
+      clock_diff   = 0
+      clock_source = 0
+   
       ! Create model tree
       model => fabm_create_model_from_file(namlst)
       
@@ -283,7 +290,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   ! Allocate state variable array for pelagic amnd benthos combined and provide initial values.
+   ! Allocate state variable array for pelagic and benthos combined and provide initial values.
    ! In terms of memory use, it is a waste to allocate storage for benthic variables across the entire
    ! column (the bottom layer should suffice). However, it is important that all values at a given point
    ! in time are integrated simultaneously in multi-step algorithms. This currently can only be arranged
@@ -293,9 +300,11 @@
    cc = _ZERO_
    do i=1,ubound(model%info%state_variables,1)
       cc(i,:) = model%info%state_variables(i)%initial_value
+      call fabm_link_state_data(model,i,cc(i,1:))
    end do
    do i=1,ubound(model%info%state_variables_ben,1)
       cc(ubound(model%info%state_variables,1)+i,1) = model%info%state_variables_ben(i)%initial_value
+      call fabm_link_benthos_state_data(model,i,cc(ubound(model%info%state_variables,1)+i,1))
    end do
    
    ! Allocate diagnostic variable array and set all values to zero.
@@ -389,6 +398,10 @@
 !  Original author(s): Jorn Bruggeman
 !
 !EOP
+!
+! !LOCAL VARIABLES:
+   integer                   :: i,j
+   logical                   :: isstatevariable
 !-----------------------------------------------------------------------!
 !BOC
    if (.not. fabm_calc) return
@@ -411,7 +424,7 @@
    salt   => salt_         ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
    
    if (present(SRelaxTau_) .and. present(sProf_)) then
-      SRelaxTau => SRelaxTau_ ! salinity relaxation times [1d array] - used to calculate virtual freshening due to salinity relaxation
+      SRelaxTau => SRelaxTau_ ! salinity relaxation times  [1d array] - used to calculate virtual freshening due to salinity relaxation
       sProf     => sProf_     ! salinity relaxation values [1d array] - used to calculate virtual freshening due to salinity relaxation
    else
       if (salinity_relaxation_to_freshwater_flux) &
@@ -432,6 +445,41 @@
    A => A_
    g1 => g1_
    g2 => g2_
+   
+   ! Handle externally provided 0d observations.
+   do i=1,ubound(obs_0d_ids,1)
+      if (obs_0d_ids(i).ne.-1) then
+         ! Check whether this is a state variable.
+         ! If so, observations will be handled through relaxtion, not here.
+         isstatevariable = .false.
+         do j=1,ubound(cc_ben_obs_indices,1)
+            if (obs_0d_ids(i).eq.cc_ben_obs_indices(j)) isstatevariable = .true.
+         end do
+         
+         ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
+         if (.not. isstatevariable) call fabm_link_data_hz(model,obs_0d_ids(i),obs_0d(i))
+      end if
+   end do
+
+   ! Handle externally provided 1d observations.
+   do i=1,ubound(obs_1d_ids,1)
+      if (obs_1d_ids(i).ne.-1) then
+         ! Check whether this is a state variable.
+         ! If so, observations will be handled through relaxtion, not here.
+         isstatevariable = .false.
+         do j=1,ubound(cc_obs_indices,1)
+            if (obs_1d_ids(i).eq.cc_obs_indices(j)) isstatevariable = .true.
+         end do
+         
+         ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
+         if (.not. isstatevariable) call fabm_link_data(model,obs_1d_ids(i),obs_1d(1:,i))
+      end if
+   end do
+   
+   ! At this stage, FABM has been provided with arrays for all state variables, any variables
+   ! read in from file (gotm_fabm_input), and all variables exposed by GOTM. If FABM is still
+   ! lacking variable references, this should now trigger an error.
+   call fabm_check_ready(model)
    
    end subroutine set_env_gotm_fabm
 !EOC
@@ -467,6 +515,7 @@
    REALTYPE                  :: dilution,virtual_dilution
    integer                   :: i
    integer                   :: split,posconc
+   integer(8)                :: clock_start,clock_end
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -528,6 +577,8 @@
       ! Determine whether the variable is positive-definite based on its lower allowed bound.
       posconc = 0
       if (model%info%state_variables(i)%minimum.ge._ZERO_) posconc = 1
+
+      call system_clock(clock_start)
          
       ! Do advection step due to settling or rising
       call adv_center(nlev,dt,h,h,ws(:,i),flux,                   &
@@ -537,6 +588,11 @@
       if (w_adv_method .ne. 0) &
          call adv_center(nlev,dt,h,h,w,flux,                   &
               flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(i,:))
+
+      call system_clock(clock_end)
+      clock_adv = clock_adv + clock_end-clock_start
+
+      call system_clock(clock_start)
       
       ! Do diffusion step
       if (cc_obs_indices(i).ne.-1) then
@@ -549,10 +605,15 @@
             sfl(i),bfl(i),nuh,Lsour,Qsour,RelaxTau,cc(i,:),cc(i,:))
       end if
 
+      call system_clock(clock_end)
+      clock_diff = clock_diff + clock_end-clock_start
+
    end do
 
    ! Repair state before calling FABM
    call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after advection/diffusion')
+
+   call system_clock(clock_start)
 
    do split=1,split_factor
       ! Update local light field (self-shading may have changed through changes in biological state variables)
@@ -596,6 +657,9 @@
          end if
       end do
    end do
+
+   call system_clock(clock_end)
+   clock_source = clock_source + clock_end-clock_start
 
    end subroutine do_gotm_fabm
 !EOC
@@ -811,8 +875,18 @@
 !  Original author(s): Jorn Bruggeman
 !
 !EOP
+
+   integer(8) :: clock,ticks_per_sec
+   REALTYPE :: tick_rate
 !-----------------------------------------------------------------------
 !BOC
+
+   call system_clock( count=clock, count_rate=ticks_per_sec)
+   tick_rate = 1./ticks_per_sec
+
+   LEVEL1 'Time spent on advection of FABM variables:',clock_adv*tick_rate
+   LEVEL1 'Time spent on diffusion of FABM variables:',clock_diff*tick_rate
+   LEVEL1 'Time spent on sink/source terms of FABM variables:',clock_source*tick_rate
 
    LEVEL1 'clean_gotm_fabm'
 
