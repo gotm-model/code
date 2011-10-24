@@ -64,6 +64,10 @@
    REALTYPE, public                    :: sst
    REALTYPE, public                    :: sss
 
+!  integrated precipitationa and 
+!  evaporation + sum (m)
+   REALTYPE, public                    :: int_precip,int_evap,int_fwf
+
 !  integrated short-wave radiation,
 !  surface heat flux (J/m^2)
    REALTYPE, public                    :: int_swr,int_heat
@@ -406,7 +410,10 @@
    L    = _ZERO_
    rhoa = _ZERO_
 
-!  initialize integrated heat fluxes
+!  initialize integrated freshwater and heat fluxes
+   int_precip= _ZERO_
+   int_evap  = _ZERO_
+   int_fwf   = _ZERO_
    int_swr   = _ZERO_
    int_heat  = _ZERO_
    int_total = _ZERO_
@@ -1287,9 +1294,12 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   int_swr   = int_swr + dt*I_0
-   int_heat  = int_heat + dt*heat
-   int_total = int_swr + int_heat
+   int_precip= int_precip + dt*precip
+   int_evap  = int_evap   + dt*evap
+   int_fwf   = int_precip + int_evap
+   int_swr   = int_swr    + dt*I_0
+   int_heat  = int_heat   + dt*heat
+   int_total = int_swr    + int_heat
    return
    end subroutine integrated_fluxes
 !EOC
