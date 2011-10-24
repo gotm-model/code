@@ -1135,19 +1135,20 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
             ncvar = nc.createVariable(varName,datatype,dimensions)
         return self.getVariable_raw(varName)
                 
-    def copyVariable(self,variable):
+    def copyVariable(self,variable,name=None,dims=None):
         assert self.mode in ('w','a','r+'),'NetCDF file has not been opened for writing.'
         assert isinstance(variable,NetCDFStore.NetCDFVariable),'Added variable must be an existing NetCDF variable object, not %s.' % str(variable)
-        nc = self.getcdf()
-        dims = variable.getDimensions_raw(reassign=False)
         shape = variable.getShape()
+        props = variable.getProperties()
+        if dims is None: dims = variable.getDimensions_raw(reassign=False)
+        nc = self.getcdf()
         for dim,length in zip(dims,shape):
             if dim not in nc.dimensions: self.createDimension(dim, length)
         data = variable.getSlice((Ellipsis,),dataonly=True)
         nctype = {'float32':'f','float64':'d'}[str(data.dtype)]
-        var = self.addVariable(variable.getName(),dims,datatype=nctype)
-        newprops = var.getProperties()
-        for key,value in variable.getProperties().iteritems():
+        if name is None: name = variable.getName()
+        var = self.addVariable(name,dims,datatype=nctype,missingvalue=props.get('_FillValue',None))
+        for key,value in props.iteritems():
             try:
                 var.setProperty(key,value)
             except AttributeError:  # netcdf-python does not allow _FillValue to be set after variable creation - ignore this.
