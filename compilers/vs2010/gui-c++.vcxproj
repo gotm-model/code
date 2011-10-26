@@ -89,7 +89,7 @@
     </ClCompile>
     <Link>
       <OutputFile>..\..\gui.py\gotm.pyd</OutputFile>
-      <AdditionalLibraryDirectories>$(PythonDir)\libs;$(IFORT_COMPILER12)\lib\ia32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(PythonDir)\libs;$(IFORT_COMPILER12)\compiler\lib\ia32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
