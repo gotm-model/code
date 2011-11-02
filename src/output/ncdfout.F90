@@ -133,6 +133,7 @@
    integer, private          :: sst_id,sss_id
    integer, private          :: x_taus_id,y_taus_id
    integer, private          :: swr_id,heat_id,total_id,precip_id,evap_id
+   integer, private          :: int_precip_id,int_evap_id,int_fwf_id
    integer, private          :: int_swr_id,int_heat_id,int_total_id
    integer, private          :: u_taus_id,u_taub_id
    integer, private          :: zsbl_id,zbbl_id
@@ -263,6 +264,13 @@
    iret = nf90_def_var(ncid,'heat',NF90_REAL,dim3d,heat_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'total',NF90_REAL,dim3d,total_id)
+   call check_err(iret)
+
+   iret = nf90_def_var(ncid,'int_precip',NF90_REAL,dim3d,int_precip_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'int_evap',NF90_REAL,dim3d,int_evap_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'int_fwf',NF90_REAL,dim3d,int_fwf_id)
    call check_err(iret)
 
    iret = nf90_def_var(ncid,'int_swr',NF90_REAL,dim3d,int_swr_id)
@@ -438,6 +446,9 @@
    iret = set_attributes(ncid,swr_id,units='W/m2',long_name='short wave radiation')
    iret = set_attributes(ncid,heat_id,units='W/m2',long_name='surface heat flux')
    iret = set_attributes(ncid,total_id,units='W/m2',long_name='total surface heat exchange')
+   iret = set_attributes(ncid,int_precip_id,units='m',long_name='integrated precipitation')
+   iret = set_attributes(ncid,int_evap_id,units='m',long_name='integrated evaporation')
+   iret = set_attributes(ncid,int_fwf_id,units='m',long_name='integrated fresh water fluxes')
    iret = set_attributes(ncid,int_swr_id,units='J/m2',long_name='integrated short wave radiation')
    iret = set_attributes(ncid,int_heat_id,units='J/m2',long_name='integrated surface heat flux')
    iret = set_attributes(ncid,int_total_id,units='J/m2',long_name='integrated total surface heat exchange')
@@ -550,6 +561,7 @@
 !
 ! !USES:
    use airsea,       only: tx,ty,I_0,heat,precip,evap,sst,sss
+   use airsea,       only: int_precip,int_evap,int_fwf
    use airsea,       only: int_swr,int_heat,int_total
    use meanflow,     only: lake
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
@@ -626,6 +638,9 @@
    iret = store_data(ncid,swr_id,XYT_SHAPE,1,scalar=I_0)
    iret = store_data(ncid,heat_id,XYT_SHAPE,1,scalar=heat)
    iret = store_data(ncid,total_id,XYT_SHAPE,1,scalar=heat+I_0)
+   iret = store_data(ncid,int_precip_id,XYT_SHAPE,1,scalar=int_precip)
+   iret = store_data(ncid,int_evap_id,XYT_SHAPE,1,scalar=int_evap)
+   iret = store_data(ncid,int_fwf_id,XYT_SHAPE,1,scalar=int_fwf)
    iret = store_data(ncid,int_swr_id,XYT_SHAPE,1,scalar=int_swr)
    iret = store_data(ncid,int_heat_id,XYT_SHAPE,1,scalar=int_heat)
    iret = store_data(ncid,int_total_id,XYT_SHAPE,1,scalar=int_total)

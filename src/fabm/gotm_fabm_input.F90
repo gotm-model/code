@@ -18,7 +18,8 @@
 ! !USES:
    use fabm, only: fabm_get_variable_id
    use fabm_types,only: shape_full,shape_hz,id_not_used
-   use gotm_fabm,only:fabm_calc,model,cc,obs_1d,obs_0d,relax_tau_0d,relax_tau_1d,cc_ben_obs_indices,cc_obs_indices
+   use gotm_fabm,only:fabm_calc,model,cc,obs_1d,obs_0d,relax_tau_0d,relax_tau_1d, &
+                      cc_ben_obs_indices,cc_obs_indices,obs_1d_ids,obs_0d_ids
    
    implicit none
    
@@ -102,12 +103,13 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   character(len=64)         :: variables(max_variable_count_per_file),file
-   integer                   :: i,j,variable_count,varcount_1d,varcount_0d
+   character(len=64)         :: variable,variables(max_variable_count_per_file),file
+   integer                   :: i,j,variable_count,varcount_1d,varcount_0d,index
    integer                   :: curtype,filetype,fabm_ids(max_variable_count_per_file),istatevar
-   REALTYPE                  :: relax_tau(max_variable_count_per_file)
+   REALTYPE                  :: relax_tau,relax_taus(max_variable_count_per_file)
    integer, parameter        :: type_unknown = 0, type_profile = 1, type_scalar = 2
-   namelist /observations/ file,variable_count,variables,relax_tau
+   logical                   :: file_exists
+   namelist /observations/ variable,variables,file,index,relax_tau,relax_taus
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -127,9 +129,7 @@
    varcount_1d = 0
    varcount_0d = 0
 
-!  Allocate arrays linking that specify an observation index (-1 if not set) for every state variable.
-   allocate(cc_obs_indices    (1:ubound(model%info%state_variables,1)))
-   allocate(cc_ben_obs_indices(1:ubound(model%info%state_variables_ben,1)))
+!  Reset observations for pelagic and benthic state variables.
    cc_obs_indices = -1
    cc_ben_obs_indices = -1
 
@@ -140,9 +140,11 @@
    
 !     Initialize namelist variables.
       file = ''
+      variable = ''
       variables = ''
-      variable_count = -1
+      index = -1
       relax_tau = 1.d15
+      relax_taus = 1.d15
       
 !     Initialize file type (profile or scalar) to unknown
       filetype = type_unknown
@@ -150,44 +152,63 @@
 !     Read a namelist that describes a single file with observations.
 !     If no namelist is found, exit the do loop.
       read(namlst,nml=observations,err=99,end=97)
-   
-!     If variable names are not provided, set them equal to the model state variables.
-      if (all(variables.eq.'')) then
-         LEVEL2 'Names of variables in FABM input file "'//trim(file)//'" are not provided in the namelist. &
-                &Defaulting to all FABM state variables.'
-         if (variable_count.ne.-1 .and. variable_count.lt.ubound(model%info%state_variables,1)) then
-            FATAL 'If the names of variables in the input file are not provided, variablecount &
-                  &must not be set, or it must equal or exceed the number of FABM state variables.'
-            stop 'gotm_fabm_input:init_gotm_fabm_input'
-         end if
-         if (variable_count.eq.-1) variable_count = ubound(model%info%state_variables,1)
-         do i=1,ubound(model%info%state_variables,1)
-            variables(i) = model%info%state_variables(i)%name
-         end do
-      end if
-
-!     If variable count is not provided, set it equal to the index of the last provided variable name.
-      if (variable_count.eq.-1) then
-         do i=1,max_variable_count_per_file
-            if (variables(i).ne.'') variable_count = i
-         end do
-         LEVEL2 'Count of variables in FABM input file '//trim(file)//' is not provided in the namelist. Defaulting to &
-                &index of last specified variable, i.e., ',variable_count
-      end if
-
-!     Check upper bound on the number of variables per input file.
-      if (variable_count>max_variable_count_per_file) then
-         FATAL 'Specified number of input variables exceeds the maximum number of variables per &
-               &input file. Please split the variables over multiple input files and specify the variable names &
-               &explicitly in the "observed_profiles" namelists.'
+      
+!     Make sure the file path is specified.
+      if (file.eq.'') then
+         FATAL 'observations namelist must contain parameter "file", specifying the path to the data file.'
          stop 'gotm_fabm_input:init_gotm_fabm_input'
       end if
+      
+!     Make sure the specified file exists.
+      inquire(file=file,exist=file_exists)
+      if (.not.file_exists) then
+         FATAL 'Input file "'//trim(file)//'", specified in namelist "observations", does not exist.'
+         stop 'gotm_fabm_input:init_gotm_fabm_input'
+      end if
+      
+      if (variable.ne.'') then
+!        The namelist describes a single variable. Check parameter validity and transfer variable settings to the array-based settings.
+         if (any(variables.ne.'')) then
+            FATAL 'Parameters "variable" and "variables" in namelist "observations" may not both be used.'
+            stop 'gotm_fabm_input:init_gotm_fabm_input'
+         end if
+         if (any(relax_taus<1.d15)) then
+            FATAL 'Parameter "relax_taus" cannot be used in combination with "variable" in namelist "observations"; use "relax_tau" instead.'
+            stop 'gotm_fabm_input:init_gotm_fabm_input'
+         end if
+         if (index.eq.-1) index = 1
+         if (index>ubound(variables,1)) then
+            FATAL 'Parameter "index" in namelist "observations" may not exceed ',ubound(variables,1)
+            stop 'gotm_fabm_input:init_gotm_fabm_input'
+         end if
+         variables(index) = variable
+         relax_taus(index) = relax_tau
+      else
+!        The namelist describes multiple variables. Check parameter validity.
+         if (relax_tau<1.d15) then
+            FATAL 'Parameter "relax_tau" cannot be used in combination with "variables" in namelist "observations"; use "relax_taus" instead.'
+            stop 'gotm_fabm_input:init_gotm_fabm_input'
+         end if
+         if (index.ne.-1) then
+            FATAL 'Parameters "index" cannot be used in combination with "variables" in namelist "observations".'
+            stop 'gotm_fabm_input:init_gotm_fabm_input'
+         end if
+      end if
    
+!     If variable names are not provided, raise an error.
+      if (all(variables.eq.'')) then
+         FATAL 'Neither "variable" nor "variables" is set in namelist "observations".'
+         stop 'gotm_fabm_input:init_gotm_fabm_input'
+      end if
+
 !     Find the provided variable names in FABM.
       fabm_ids = -1
-      do i=1,variable_count
+      do i=1,ubound(variables,1)
 !        If this variable is not used, skip to the next.
          if (variables(i).eq.'') cycle
+         
+!        Update number of last used column.
+         variable_count = i
          
 !        First search in pelagic variables
          fabm_ids(i) = fabm_get_variable_id(model,variables(i),shape_full)
@@ -216,12 +237,6 @@
          
 !        Report that this variable will use observations.
          LEVEL2 'Reading observed values for variable '//trim(variables(i))//' from '//trim(file)
-         if (relax_tau(i).ge.1.d15) then
-            LEVEL3 'These values will be used for initialization only.'
-         else
-            LEVEL3 'These values will be used for initialization and relaxation,'
-            LEVEL3 'with relax_tau =',relax_tau(i)
-         end if
 
 !        Increment count of variables with observations, and determine for each variable
 !        whether it maps to a model state variable. If so, store the observation index for
@@ -247,14 +262,30 @@
             end do
             if (istatevar.ne.-1) cc_ben_obs_indices(istatevar) = varcount_0d
          end if
+
+!        Describe how observation data will be used.
+         if (istatevar.ne.-1) then
+            if (relax_taus(i).ge.1.d15) then
+               LEVEL3 'These values will be used for initialization only.'
+            else
+               LEVEL3 'These values will be used for initialization and relaxation,'
+               LEVEL3 'with relax_tau =',relax_taus(i)
+            end if
+         else
+            if (relax_taus(i).lt.1.d15) then
+               FATAL 'Relaxation times set in namelist "observations" can only be used for state variables, not for '//trim(variables(i))//'.'
+               stop 'gotm_fabm_input:init_gotm_fabm_input'
+            end if
+            LEVEL3 'These values will be used throughout the simulation.'
+         end if
       end do
 
 !     Initialize profile file.
       select case (filetype)
          case (type_profile)
-            call create_observed_profile_info(file,fabm_ids(1:variable_count),relax_tau(1:variable_count),_LOCATION_)
+            call create_observed_profile_info(file,fabm_ids(1:variable_count),relax_taus(1:variable_count),_LOCATION_)
          case (type_scalar)
-            call create_observed_scalar_info(file,fabm_ids(1:variable_count),relax_tau(1:variable_count))
+            call create_observed_scalar_info(file,fabm_ids(1:variable_count),relax_taus(1:variable_count))
       end select
 
    end do
@@ -265,6 +296,8 @@
 !  Allocate target arrays for observations and relaxation times.
 98 allocate(obs_0d(1:varcount_0d))
    allocate(obs_1d(0:_LOCATION_,1:varcount_1d))
+   allocate(obs_0d_ids(1:varcount_0d))
+   allocate(obs_1d_ids(1:varcount_1d))
    allocate(relax_tau_0d(1:varcount_0d))
    allocate(relax_tau_1d(0:_LOCATION_,1:varcount_1d))
 
@@ -275,6 +308,7 @@
          if (observed_profile_info(i)%variableids(j).ne.-1) then
             varcount_1d = varcount_1d + 1
             observed_profile_info(i)%targets(j)%data => obs_1d(:,varcount_1d)
+            obs_1d_ids  (  varcount_1d) = observed_profile_info(i)%variableids(j)
             relax_tau_1d(:,varcount_1d) = observed_profile_info(i)%relax_tau(j)
          end if
       end do
@@ -287,6 +321,7 @@
          if (observed_scalar_info(i)%variableids(j).ne.-1) then
             varcount_0d = varcount_0d + 1
             observed_scalar_info(i)%targets(j)%data => obs_0d(varcount_0d)
+            obs_0d_ids  (varcount_0d) = observed_scalar_info(i)%variableids(j)
             relax_tau_0d(varcount_0d) = observed_scalar_info(i)%relax_tau(j)
          end if
       end do
@@ -332,23 +367,23 @@
 !  If FABM is not used, return immediately.
    if (.not.fabm_calc) return
 
-!  Loop over all files with observations, and for each, obtain current profiles for all contained variables.
+!  Loop over all files with observations, and for each, obtain current values for all contained variables.
    do i=1,ubound(observed_profile_info,1)
-      if (observed_profile_info(i)%unit.ne.-1) then
-!        Get variable values from the current data file.
-         call get_observed_profiles(observed_profile_info(i),jul,secs,nlev,z)
-
-!        If requested, copy new variable values to the FABM state variable array.
-         if (init_state) then
-            do n=1,ubound(model%info%state_variables,1)
-               if (cc_obs_indices(n).ne.-1) cc(n,:) = obs_1d(:,cc_obs_indices(n))
-            end do
-            do n=1,ubound(model%info%state_variables_ben,1)
-               if (cc_ben_obs_indices(n).ne.-1) cc(ubound(model%info%state_variables,1)+n,1) = obs_0d(cc_ben_obs_indices(n))
-            end do
-         end if
-      end if
+      if (observed_profile_info(i)%unit.ne.-1) call get_observed_profiles(observed_profile_info(i),jul,secs,nlev,z)
    end do
+   do i=1,ubound(observed_scalar_info,1)
+      if (observed_scalar_info(i)%unit.ne.-1) call get_observed_scalars(observed_scalar_info(i),jul,secs)
+   end do
+
+!  If requested, initialize FABM state variables with observed values.
+   if (init_state) then
+      do n=1,ubound(model%info%state_variables,1)
+         if (cc_obs_indices(n).ne.-1) cc(n,:) = obs_1d(:,cc_obs_indices(n))
+      end do
+      do n=1,ubound(model%info%state_variables_ben,1)
+         if (cc_ben_obs_indices(n).ne.-1) cc(ubound(model%info%state_variables,1)+n,1) = obs_0d(cc_ben_obs_indices(n))
+      end do
+   end if
    
    end subroutine do_gotm_fabm_input
 !EOC
