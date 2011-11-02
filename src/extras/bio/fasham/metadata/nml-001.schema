@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <element name="bio_fasham" label="Fasham et al. biological model" description="Fasham et al. biological model with modifications by Kühn and Radach" version="nml-001" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../gui.py/core/scenario-1.0.xsd">
 	<element name="bio_fasham_nml" grouponly="gui">
-		<element name="numc"      type="int"   label="number of compartments for geobiochemical model"/>
+		<element name="numc"      type="int"   label="number of compartments for geobiochemical model" hidden="True"/>
 		<element name="p_initial" type="float" label="initial phytoplankton concentration" unit="mmol N/m³"/>
 		<element name="z_initial" type="float" label="initial zooplakton concentration" unit="mmol N/m³"/>
 		<element name="b_initial" type="float" label="initial bacteria concentration" unit="mmol N/m³"/>

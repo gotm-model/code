@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <element name="bio_iow" version="nml-002" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../gui.py/core/scenario-1.0.xsd" label="IOW biological model" description="IOW biological model according to Neumann et al. 2002 and Burchard et al. 2005">
 	<element name="bio_iow_nml" grouponly="gui">
-		<element name="numc"       type="int"   label="number of compartments for geobiochemical model"/>
+		<element name="numc"       type="int"   label="number of compartments for geobiochemical model" hidden="True"/>
 
 		<element name="p1_initial" type="float" label="initial diatom concentration" unit="mmol N/m³"/>
 		<element name="p2_initial" type="float" label="initial flagellate concentration" unit="mmol N/m³"/>
