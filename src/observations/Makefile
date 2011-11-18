@@ -20,6 +20,7 @@ get_zeta.F90            \
 get_wave.F90            \
 get_vel_profile.F90     \
 get_eps_profile.F90	\
+get_inflows.F90         \
 analytical_profile.F90	\
 const_NNT.F90		\
 const_NNS.F90             
@@ -41,6 +42,7 @@ ${LIB}(get_wave.o)		\
 ${LIB}(get_vel_profile.o)	\
 ${LIB}(get_eps_profile.o)	\
 ${LIB}(get_bio_profiles.o)	\
+${LIB}(get_inflows.o)           \
 ${LIB}(analytical_profile.o)	\
 ${LIB}(const_NNT.o)             \
 ${LIB}(const_NNS.o)

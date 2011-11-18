@@ -81,6 +81,9 @@
    REALTYPE, public, dimension(:,:), allocatable :: bioprofs
 #endif
 
+!  inflow to lake model
+   REALTYPE, public, dimension(:), allocatable   :: inflows
+
 !------------------------------------------------------------------------------
 !
 ! the following data are not all public,
@@ -194,6 +197,10 @@
    CHARACTER(LEN=PATH_MAX)   :: bio_prof_file
 #endif
 
+!  Observed inflows
+   integer, public           :: inflows_method
+   CHARACTER(LEN=PATH_MAX)   :: inflows_file
+
    REALTYPE,public, parameter:: pi=3.141592654d0
 
 ! !DEFINED PARAMETERS:
@@ -213,6 +220,7 @@
 #ifdef BIO
    integer, parameter        :: bio_prof_unit=41
 #endif
+   integer, parameter        :: inflows_unit=71
 
 !  pre-defined parameters
    integer, parameter        :: READ_SUCCESS=1
@@ -391,6 +399,7 @@
 #ifdef BIO
    namelist /bioprofiles/  bio_prof_method,bio_prof_file
 #endif
+   namelist /inflows/ inflows_method,inflows_file
 
    integer                   :: rc,i
    REALTYPE                  :: ds,db
@@ -515,6 +524,9 @@
    bio_prof_file='bioprofs.dat'
 #endif
 
+!  Observed inflows
+   inflows_file='inflows.dat'
+
    open(namlst,file=fn,status='old',action='read',err=80)
    read(namlst,nml=sprofile,err=81)
    read(namlst,nml=tprofile,err=82)
@@ -532,6 +544,7 @@
    read(namlst,nml=bioprofiles,err=93)
    STDERR bio_prof_method,trim(bio_prof_file)
 #endif
+   read(namlst,nml=inflows,err=94)
    close(namlst)
 
    allocate(sprof(0:nlev),stat=rc)
@@ -841,6 +854,16 @@
    end select
 #endif
 
+!  The inflows
+   select case (inflows_method)
+      case (FROMFILE)
+         open(inflows_unit,file=inflows_file,status='unknown',err=113)
+         LEVEL2 'Reading inflows from:'
+         LEVEL3 trim(inflows_file)
+         call get_inflows(inflows_unit,julday,secs,nlev,z)
+      case default
+   end select
+
    init_saved_vars=.false.
    return
 
@@ -874,6 +897,8 @@
 93 FATAL 'I could not read "bioprofiles" namelist'
    stop 'init_observations'
 #endif
+94 FATAL 'I could not read "inflows" namelist'
+   stop 'init_observations'
 
 101 FATAL 'Unable to open "',trim(s_prof_file),'" for reading'
    stop 'init_observations'
@@ -901,6 +926,8 @@
 112 FATAL 'Unable to open "',trim(bio_prof_file),'" for reading'
    stop 'init_observations'
 #endif
+113 FATAL 'Unable to open "',trim(inflows_file),'" for reading'
+   stop 'init_observations'
 
    return
    end subroutine init_observations
@@ -977,6 +1004,9 @@
 #ifdef BIO
    if(bio_prof_method .eq. 2) then
       call get_bio_profiles(bio_prof_unit,julday,secs,nlev,z)
+   end if
+   if(inflows_method .eq. 2) then
+      call get_inflows(inflows_unit,julday,secs,nlev,z)
    end if
 #endif
    return
@@ -1165,6 +1195,7 @@
 #ifdef BIO
    if (allocated(bioprofs)) deallocate(bioprofs)
 #endif
+   if (allocated(inflows)) deallocate(inflows)
    LEVEL2 'done.'
 
    LEVEL2 'closing any open files ...'
@@ -1181,6 +1212,7 @@
 #ifdef BIO
    close(bio_prof_unit)
 #endif
+   close(inflows_unit)
    LEVEL2 'done.'
 
    return
@@ -1230,6 +1262,7 @@
 #ifdef BIO
    if (allocated(bioprofs)) LEVEL2 'bioprofs',bioprofs
 #endif
+   if (allocated(inflows)) LEVEL2 'inflows',inflows
 
    LEVEL2 'salinity namelist',                                  &
             s_prof_method,s_analyt_method,                      &
@@ -1282,6 +1315,9 @@
    LEVEL2 'observed biological profiles namelist',              &
             bio_prof_method,bio_prof_file
 #endif
+   LEVEL2 'observed inflows namelist',                          &
+            inflows_method,inflows_file
+
    end subroutine print_state_observations
 !EOC
 #endif
