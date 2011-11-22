@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <element name="bio_npzd_fe" label="NPZD_Fe biological model" version="nml-001" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../gui.py/core/scenario-1.0.xsd">
 	<element name="bio_npzd_fe_nml" grouponly="gui">
-		<element name="numc" type="int" label="number of compartments for biogeochemical model" />
+		<element name="numc" type="int" label="number of compartments for biogeochemical model" hidden="True"/>
 		<element name="N_initial"  type="float" label="initial nutrient concentration" unit="mmol N/m³" />
 		<element name="P_initial"  type="float" label="initial phytoplankton concentration" unit="mmol N/m³" />
 		<element name="Z_initial"  type="float" label="initial zooplankton concentration" unit="mmol N/m³" />
