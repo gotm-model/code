@@ -77,7 +77,7 @@
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: SRelaxTau,sProf,salt
-   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
+   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap,u_taub
    
    REALTYPE,pointer :: I_0,A,g1,g2
 
@@ -385,7 +385,7 @@
 !
 ! !INTERFACE: 
    subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho,nuh_,h_,w_, &
-                                bioshade_,I_0_,wnd,precip_,evap_,z_,A_,g1_,g2_,SRelaxTau_,sProf_)
+                                bioshade_,I_0_,u_taub_,wnd,precip_,evap_,z_,A_,g1_,g2_,SRelaxTau_,sProf_)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -398,7 +398,7 @@
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho,nuh_,h_,w_,bioshade_,z_
    REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,wnd,precip_,evap_
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,wnd,precip_,evap_,u_taub_
    REALTYPE, intent(in),target :: A_,g1_,g2_
 !
 ! !REVISION HISTORY:
@@ -419,6 +419,7 @@
    call fabm_link_data   (model,varname_dens,   rho)
    call fabm_link_data_hz(model,varname_wind_sf,wnd)
    call fabm_link_data_hz(model,varname_par_sf, I_0_)
+   call fabm_link_data_hz(model,varname_taub, u_taub_)
    
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh => nuh_             ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
@@ -452,6 +453,7 @@
    A => A_
    g1 => g1_
    g2 => g2_
+   u_taub => u_taub_
    
    ! Handle externally provided 0d observations.
    if (allocated(obs_0d_ids)) then
