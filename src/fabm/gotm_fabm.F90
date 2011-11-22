@@ -71,11 +71,12 @@
    
    ! Arrays for environmental variables not supplied externally.
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres,swr
+   REALTYPE :: taub
    
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z
+   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z,rho
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: SRelaxTau,sProf,salt
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap,u_taub
    
@@ -350,6 +351,9 @@
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
    call fabm_link_data(model,varname_par,par(1:_LOCATION_))
 
+   ! Link scalar that will hold bottom stress to FABM.
+   call fabm_link_data_hz(model,varname_taub,taub)
+   
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    allocate(swr(_LOCATION_RANGE_),stat=rc)
@@ -384,7 +388,7 @@
 ! !IROUTINE: Set bio module environment 
 !
 ! !INTERFACE: 
-   subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho,nuh_,h_,w_, &
+   subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
                                 bioshade_,I_0_,u_taub_,wnd,precip_,evap_,z_,A_,g1_,g2_,SRelaxTau_,sProf_)
 !
 ! !DESCRIPTION:
@@ -396,7 +400,7 @@
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho,nuh_,h_,w_,bioshade_,z_
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
    REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,wnd,precip_,evap_,u_taub_
    REALTYPE, intent(in),target :: A_,g1_,g2_
@@ -416,10 +420,9 @@
    ! Provide pointers to arrays with environmental variables to FABM.
    call fabm_link_data   (model,varname_temp,   temp)
    call fabm_link_data   (model,varname_salt,   salt_)
-   call fabm_link_data   (model,varname_dens,   rho)
+   call fabm_link_data   (model,varname_dens,   rho_)
    call fabm_link_data_hz(model,varname_wind_sf,wnd)
    call fabm_link_data_hz(model,varname_par_sf, I_0_)
-   call fabm_link_data_hz(model,varname_taub, u_taub_)
    
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh => nuh_             ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
@@ -430,6 +433,7 @@
    precip => precip_       ! precipitation [scalar] - used to calculate dilution due to increased water volume
    evap   => evap_         ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    salt   => salt_         ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
+   rho    => rho_          ! density [1d array] - used to calculate bottom stress from bottom friction velocity.
    
    if (present(SRelaxTau_) .and. present(sProf_)) then
       SRelaxTau => SRelaxTau_ ! salinity relaxation times  [1d array] - used to calculate virtual freshening due to salinity relaxation
@@ -525,7 +529,7 @@
    integer, parameter        :: adv_mode_1=1
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev)
    REALTYPE                  :: RelaxTau(0:nlev)
-   REALTYPE                  :: dilution,virtual_dilution
+   REALTYPE                  :: dilution,virtual_dilution,curpres
    integer                   :: i
    integer                   :: split,posconc
    integer(8)                :: clock_start,clock_end
@@ -544,7 +548,15 @@
    RelaxTau = 1.d15
    
    ! Calculate local pressure
-   pres(1:nlev) = -z(1:nlev)
+   curpres = _ZERO_
+   do i=nlev,1,-1
+      pres(i) = curpres + rho(i)*h(i+1)*0.5d0
+      curpres = curpres + rho(i)*h(i+1)
+   end do
+   pres(1:nlev) = pres(1:nlev)*9.81d-4
+   
+   ! Calculate bottom stress from bottom friction velocity.
+   taub = u_taub*u_taub*rho(1)
    
 !  Transfer current state to FABM.
    do i=1,ubound(model%info%state_variables,1)
