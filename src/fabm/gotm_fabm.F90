@@ -523,7 +523,7 @@
    integer, parameter        :: adv_mode_1=1
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev)
    REALTYPE                  :: RelaxTau(0:nlev)
-   REALTYPE                  :: dilution,virtual_dilution,curpres
+   REALTYPE                  :: dilution,virtual_dilution
    integer                   :: i
    integer                   :: split,posconc
    integer(8)                :: clock_start,clock_end
@@ -542,10 +542,9 @@
    RelaxTau = 1.d15
    
    ! Calculate local pressure
-   curpres = _ZERO_
-   do i=nlev,1,-1
-      pres(i) = curpres + rho(i)*h(i+1)*0.5d0
-      curpres = curpres + rho(i)*h(i+1)
+   pres(nlev) = rho(nlev)*h(nlev+1)*0.5d0
+   do i=nlev-1,1,-1
+      pres(i) = pres(i+1) + (rho(i)*h(i+1)+rho(i+1)*h(i+2))*0.5d0
    end do
    pres(1:nlev) = pres(1:nlev)*9.81d-4
    
