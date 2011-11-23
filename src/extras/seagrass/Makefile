@@ -1,4 +1,3 @@
-#$Id: Makefile,v 1.3 2004-01-12 08:50:43 lars Exp $
 #
 # Makefile to build the Seagrass Module - libseagrass.a
 #

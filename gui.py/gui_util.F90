@@ -1,5 +1,3 @@
-!$Id: gui_util.F90,v 1.3 2010-10-01 12:36:32 jorn Exp $
-
 #include"cppdefs.h"
 
 module gui_util

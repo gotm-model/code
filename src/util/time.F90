@@ -1,4 +1,3 @@
-!$Id: time.F90,v 1.11 2010-09-17 12:53:53 jorn Exp $
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -27,6 +26,7 @@
    public                              :: julian_day, update_time
    public                              :: write_time_string
    public                              :: time_diff
+   public                              :: sunrise_sunset
 #ifdef _PRINTSTATE_
    public                              :: print_state_time
 #endif
@@ -437,6 +437,44 @@
 
    return
    end function  time_diff
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE:  Return the times of sunrise and sunset
+!
+! !INTERFACE:
+   subroutine sunrise_sunset(latitude,declination,sunrise,sunset)
+!
+! !DESCRIPTION:
+! This functions returns the time difference between two
+! dates in seconds. The dates are given as Julian day and seconds
+! of that day.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: latitude,declination
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)               :: sunrise,sunset
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+! !LOCAL VARIABLES:
+   REALTYPE                  :: omega,hour
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   omega = acos(-tan(latitude*3.141516/180.)*tan(declination*3.141516/180.))
+   hour  = omega*180/3.141516/15.
+   sunrise = 12. - hour 
+   sunset  = 12. + hour 
+   return
+   end subroutine  sunrise_sunset
 !EOC
 
 #ifdef _PRINTSTATE_

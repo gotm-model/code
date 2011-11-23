@@ -1,4 +1,3 @@
-#$Id: Makefile,v 1.17 2007-04-18 12:00:22 kbk Exp $
 #
 # Makefile for making new release of GOTM.
 #

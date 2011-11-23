@@ -1,4 +1,3 @@
-#$Id: Makefile,v 1.10 2006-10-26 10:12:34 kbk Exp $
 #
 # Makefile to build the the Util library - libutil.a
 #

@@ -1,7 +1,5 @@
-!$Id: gotm_fabm_output.F90,v 1.1 2011-04-05 13:45:01 jorn Exp $
 #include "cppdefs.h"
 #include "fabm_driver.h"
-
 !-----------------------------------------------------------------------
 !BOP
 !

@@ -1,4 +1,3 @@
-#$Id: Makefile,v 1.29 2010-03-08 10:58:52 hb Exp $
 #
 # Makefile to build the Bio Module - libbio.a
 #
