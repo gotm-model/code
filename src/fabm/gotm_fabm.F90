@@ -69,14 +69,13 @@
    
    ! Arrays for environmental variables not supplied externally.
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres,swr
-   REALTYPE :: taub
    
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z,rho
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: SRelaxTau,sProf,salt
-   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap,u_taub
+   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
    
    REALTYPE,pointer :: I_0,A,g1,g2
 
@@ -348,9 +347,6 @@
    allocate(par(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
    call fabm_link_data(model,varname_par,par(1:_LOCATION_))
-
-   ! Link scalar that will hold bottom stress to FABM.
-   call fabm_link_data_hz(model,varname_taub,taub)
    
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
@@ -387,7 +383,7 @@
 !
 ! !INTERFACE: 
    subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
-                                bioshade_,I_0_,u_taub_,wnd,precip_,evap_,z_,A_,g1_,g2_,SRelaxTau_,sProf_)
+                                bioshade_,I_0_,taub,wnd,precip_,evap_,z_,A_,g1_,g2_,SRelaxTau_,sProf_)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -400,7 +396,7 @@
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
    REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,wnd,precip_,evap_,u_taub_
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
 !
 ! !REVISION HISTORY:
@@ -421,6 +417,7 @@
    call fabm_link_data   (model,varname_dens,   rho_)
    call fabm_link_data_hz(model,varname_wind_sf,wnd)
    call fabm_link_data_hz(model,varname_par_sf, I_0_)
+   call fabm_link_data_hz(model,varname_taub,   taub)
    
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh => nuh_             ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
@@ -455,7 +452,6 @@
    A => A_
    g1 => g1_
    g2 => g2_
-   u_taub => u_taub_
    
    ! Handle externally provided 0d observations.
    if (allocated(obs_0d_ids)) then
@@ -552,9 +548,6 @@
       curpres = curpres + rho(i)*h(i+1)
    end do
    pres(1:nlev) = pres(1:nlev)*9.81d-4
-   
-   ! Calculate bottom stress from bottom friction velocity.
-   taub = u_taub*u_taub*rho(1)
    
 !  Transfer current state to FABM.
    do i=1,ubound(model%info%state_variables,1)

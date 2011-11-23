@@ -55,8 +55,8 @@
 !
 ! !USES:
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za
-   use meanflow,      only: u,v,gravity
-   use meanflow,      only: u_taub,u_taus,drag
+   use meanflow,      only: u,v,rho,gravity
+   use meanflow,      only: u_taub,u_taus,drag,taub
    use meanflow,      only: charnock,charnock_val,z0s_min
 
 !
@@ -141,6 +141,9 @@
       u_taub = rr*sqrt( u(1)*u(1) + v(1)*v(1) )
 
    end do
+
+!  calculate bottom stress, which is used by sediment resuspension models
+   taub = u_taub*u_taub*rho(1)
 
 !  add bottom friction as source term for the momentum equation
    drag(1) = drag(1) +  rr*rr

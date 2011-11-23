@@ -106,6 +106,9 @@
 !  the friction velocities
    REALTYPE, public                    :: u_taub,u_taus
 
+!  bottom stress
+   REALTYPE, public                    :: taub
+
 !  other stuff
    REALTYPE, public                    :: depth0
    REALTYPE, public                    :: depth
