@@ -4,3 +4,5 @@ modules/
 timestamp
 VERSION
 include/version.h
+*.o
+*.so
