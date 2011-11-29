@@ -1160,6 +1160,20 @@
 				</fileinfo>
 			</element>
 		</element>
+		<element name="inflows" label="observed inflow profiles">
+			<element name="inflows_method" type="int" label="method to create initial or observed inflow profiles">
+				<options>
+					<option value="0" label="none" />
+					<option value="2" label="custom observed profiles" />
+				</options>
+			</element>
+			<element name="inflows_file" type="gotmdatafile" label="filename of file with inflow profiles">
+				<condition type="eq" variable="./inflows_method" value="2" />
+				<fileinfo type="profilesintime">
+					<filevariables />
+				</fileinfo>
+			</element>
+		</element>
 	</element>
 	<element name="bio" label="basic settings for biogeochemical model" optional="True">
 		<element name="bio_nml">
