@@ -16,7 +16,7 @@
    use gotm_fabm
    use fabm
    use fabm_types
-   
+
    implicit none
 
 !  default: all is private.
@@ -36,7 +36,7 @@ contains
 !
 ! !INTERFACE:
    subroutine init_gotm_fabm_output()
-   
+
 !
 ! !DESCRIPTION:
 !  Initialize the output by defining biogeochemical variables.
@@ -63,7 +63,7 @@ contains
 !-----------------------------------------------------------------------
 !BOC
    if (.not. fabm_calc) return
-   
+
    select case (out_fmt)
       case (NETCDF)
 #ifdef NETCDF_FMT
@@ -143,7 +143,7 @@ contains
 !
 ! !INTERFACE:
    subroutine do_gotm_fabm_output(nlev)
-   
+
 !
 ! !DESCRIPTION:
 !  Save properties of biogeochemical model, including state variable
@@ -174,7 +174,7 @@ contains
 !-----------------------------------------------------------------------
 !BOC
    if (.not. fabm_calc) return
-   
+
    select case (out_fmt)
       case (NETCDF)
 #ifdef NETCDF_FMT
@@ -194,10 +194,10 @@ contains
             ! Time-average diagnostic variable if needed.
             if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged) &
                cc_diag(n,1:nlev) = cc_diag(n,1:nlev)/(nsave*dt)
-               
+
             ! Store diagnostic variable values.
             iret = store_data(ncid,model%info%diagnostic_variables(n)%externalid,XYZT_SHAPE,nlev,array=cc_diag(n,0:nlev))
-            
+
             ! Reset diagnostic variables to zero if they will be time-integrated (or time-averaged).
             if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged .or. &
                 model%info%diagnostic_variables(n)%time_treatment==time_treatment_step_integrated) &
@@ -209,10 +209,10 @@ contains
             ! Time-average diagnostic variable if needed.
             if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_averaged) &
                cc_diag_hz(n) = cc_diag_hz(n)/(nsave*dt)
-               
+
             ! Store diagnostic variable values.
             iret = store_data(ncid,model%info%diagnostic_variables_hz(n)%externalid,XYT_SHAPE,nlev,scalar=cc_diag_hz(n))
-            
+
             ! Reset diagnostic variables to zero if they will be time-integrated (or time-averaged).
             if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_averaged .or. &
                 model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_step_integrated) &

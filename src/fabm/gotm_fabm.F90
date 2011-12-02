@@ -11,11 +11,11 @@
 ! !DESCRIPTION:
 !  This module provides the link between the General Ocean Turbulence Model and
 !  the Framework for Aquatic Biogeochemical Models.
-! 
+!
 ! !USES:
    use fabm
    use fabm_types
-   
+
    implicit none
 !
 !  default: all is private.
@@ -26,7 +26,7 @@
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
-   
+
    ! Variables below must be accessible for gotm_fabm_output
    public local,total,dt,h
 !
@@ -44,9 +44,9 @@
 
 !  Arrays for diagnostic variables defined on horizontal slices of the model domain.
    REALTYPE,allocatable,dimension(:),public                              :: cc_diag_hz
-   
+
    integer,allocatable,dimension(:),public :: cc_ben_obs_indices,cc_obs_indices
-   
+
    integer(8) :: clock_adv,clock_diff,clock_source
 !
 ! !REVISION HISTORY:!
@@ -66,21 +66,21 @@
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:) :: ws
    REALTYPE,allocatable,dimension(:)                       :: sfl,bfl,total
    REALTYPE,allocatable _ATTR_DIMENSIONS_1_                :: local
-   
+
    ! Arrays for environmental variables not supplied externally.
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres,swr
-   
+
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z,rho
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: SRelaxTau,sProf,salt
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
-   
+
    REALTYPE,pointer :: I_0,A,g1,g2
 
 !  Explicit interface for ode solver.
-   interface   
+   interface
       subroutine ode_solver(solver,numc,nlev,dt,cc,right_hand_side_rhs,right_hand_side_ppdd)
          integer,  intent(in)                :: solver,nlev,numc
          REALTYPE, intent(in)                :: dt
@@ -91,7 +91,7 @@
                logical,  intent(in)                 :: first
                integer,  intent(in)                 :: numc,nlev
                REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-               
+
                REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
                REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
             end
@@ -118,7 +118,7 @@
 ! !INTERFACE:
    subroutine init_gotm_fabm(_LOCATION_,namlst,fname)
 !
-! !DESCRIPTION: 
+! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
 ! !USES:
@@ -147,7 +147,7 @@
 !BOC
 
    LEVEL1 'init_gotm_fabm'
-   
+
    ! Initialize FABM model identifiers to invalid id.
    fabm_calc         = .false.
    cnpar             = _ONE_
@@ -167,14 +167,14 @@
    close(namlst)
 
    if (fabm_calc) then
-   
+
       clock_adv    = 0
       clock_diff   = 0
       clock_source = 0
-   
+
       ! Create model tree
       model => fabm_create_model_from_file(namlst)
-      
+
       ! Initialize model tree (creates metadata and assigns variable identifiers)
       call fabm_set_domain(model,_LOCATION_)
 
@@ -208,7 +208,7 @@
                 trim(model%info%diagnostic_variables_hz(i)%longname)
       end do
 
-      ! Report type of solver 
+      ! Report type of solver
       LEVEL2 "Using Eulerian solver"
       select case (ode_method)
          case (1)
@@ -238,7 +238,7 @@
          case default
             stop "init_gotm_fabm: no valid ode_method specified in fabm.nml!"
       end select
-      
+
       ! Initialize spatially explicit variables
       call init_var_gotm_fabm(_LOCATION_)
 
@@ -255,7 +255,7 @@
 99 FATAL 'I could not read '//trim(fname)
    stop 'init_gotm_fabm'
    return
-   
+
    end subroutine init_gotm_fabm
 !EOC
 
@@ -274,7 +274,7 @@
 !
 ! !USES:
    IMPLICIT NONE
-   
+
    _DECLARE_LOCATION_ARG_
 !
 !
@@ -304,7 +304,7 @@
       cc(ubound(model%info%state_variables,1)+i,1) = model%info%state_variables_ben(i)%initial_value
       call fabm_link_benthos_state_data(model,i,cc(ubound(model%info%state_variables,1)+i,1))
    end do
-   
+
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
    ! Initialize observation indicies to -1 (no external observations provided)
    allocate(cc_obs_indices    (1:ubound(model%info%state_variables,1)))
@@ -347,7 +347,7 @@
    allocate(par(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
    call fabm_link_data(model,varname_par,par(1:_LOCATION_))
-   
+
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    allocate(swr(_LOCATION_RANGE_),stat=rc)
@@ -379,9 +379,9 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Set bio module environment 
+! !IROUTINE: Set bio module environment
 !
-! !INTERFACE: 
+! !INTERFACE:
    subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
                                 bioshade_,I_0_,taub,wnd,precip_,evap_,z_,A_,g1_,g2_,SRelaxTau_,sProf_)
 !
@@ -418,7 +418,7 @@
    call fabm_link_data_hz(model,varname_wind_sf,wnd)
    call fabm_link_data_hz(model,varname_par_sf, I_0_)
    call fabm_link_data_hz(model,varname_taub,   taub)
-   
+
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh => nuh_             ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
    h   => h_               ! layer heights [1d array] needed for advection, diffusion
@@ -429,7 +429,7 @@
    evap   => evap_         ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    salt   => salt_         ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
    rho    => rho_          ! density [1d array] - used to calculate bottom stress from bottom friction velocity.
-   
+
    if (present(SRelaxTau_) .and. present(sProf_)) then
       SRelaxTau => SRelaxTau_ ! salinity relaxation times  [1d array] - used to calculate virtual freshening due to salinity relaxation
       sProf     => sProf_     ! salinity relaxation values [1d array] - used to calculate virtual freshening due to salinity relaxation
@@ -439,7 +439,7 @@
       nullify(SRelaxTau)
       nullify(sProf)
    end if
-   
+
    ! Copy scalars that will not change during simulation, and are needed in do_gotm_fabm)
    dt = dt_
    w_adv_method = w_adv_method_
@@ -447,12 +447,12 @@
 
    ! Calculate and save internal time step.
    dt_eff = dt/float(split_factor)
-   
+
    I_0 => I_0_
    A => A_
    g1 => g1_
    g2 => g2_
-   
+
    ! Handle externally provided 0d observations.
    if (allocated(obs_0d_ids)) then
       do i=1,ubound(obs_0d_ids,1)
@@ -463,7 +463,7 @@
             do j=1,ubound(cc_ben_obs_indices,1)
                if (obs_0d_ids(i).eq.cc_ben_obs_indices(j)) isstatevariable = .true.
             end do
-            
+
             ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
             if (.not. isstatevariable) call fabm_link_data_hz(model,obs_0d_ids(i),obs_0d(i))
          end if
@@ -480,18 +480,18 @@
             do j=1,ubound(cc_obs_indices,1)
                if (obs_1d_ids(i).eq.cc_obs_indices(j)) isstatevariable = .true.
             end do
-            
+
             ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
             if (.not. isstatevariable) call fabm_link_data(model,obs_1d_ids(i),obs_1d(1:,i))
          end if
       end do
    end if
-   
+
    ! At this stage, FABM has been provided with arrays for all state variables, any variables
    ! read in from file (gotm_fabm_input), and all variables exposed by GOTM. If FABM is still
    ! lacking variable references, this should now trigger an error.
    call fabm_check_ready(model)
-   
+
    end subroutine set_env_gotm_fabm
 !EOC
 
@@ -537,17 +537,17 @@
    ! because source terms are integrated independently later on.
    Qsour    = _ZERO_
    Lsour    = _ZERO_
-   
+
 !  Default: no relaxation
    RelaxTau = 1.d15
-   
+
    ! Calculate local pressure
    pres(nlev) = rho(nlev)*h(nlev+1)*0.5d0
    do i=nlev-1,1,-1
       pres(i) = pres(i+1) + (rho(i)*h(i+1)+rho(i+1)*h(i+2))*0.5d0
    end do
    pres(1:nlev) = pres(1:nlev)*9.81d-4
-   
+
 !  Transfer current state to FABM.
    do i=1,ubound(model%info%state_variables,1)
       call fabm_link_state_data(model,i,cc(i,1:nlev))
@@ -567,7 +567,7 @@
 
    ! Get updated air-sea fluxes for biological state variables.
    call fabm_get_surface_exchange(model,nlev,sfl)
-   
+
    ! Calculate dilution due to surface freshwater flux (m/s)
    dilution = precip+evap
 
@@ -588,17 +588,17 @@
          sfl(i) = sfl(i)-cc(i,nlev)*dilution
          if (virtual_dilution.ne._ZERO_) sfl(i) = sfl(i)-sum(cc(i,1:nlev)*h(2:nlev+1))*virtual_dilution
       end if
-   
+
       ! Determine whether the variable is positive-definite based on its lower allowed bound.
       posconc = 0
       if (model%info%state_variables(i)%minimum.ge._ZERO_) posconc = 1
 
       call system_clock(clock_start)
-         
+
       ! Do advection step due to settling or rising
       call adv_center(nlev,dt,h,h,ws(:,i),flux,                   &
            flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(i,:))
-         
+
       ! Do advection step due to vertical velocity
       if (w_adv_method .ne. 0) &
          call adv_center(nlev,dt,h,h,w,flux,                   &
@@ -608,14 +608,14 @@
       clock_adv = clock_adv + clock_end-clock_start
 
       call system_clock(clock_start)
-      
+
       ! Do diffusion step
       if (cc_obs_indices(i).ne.-1) then
-!        Observations on this variable are available.      
+!        Observations on this variable are available.
          call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
             sfl(i),bfl(i),nuh,Lsour,Qsour,relax_tau_1d(:,cc_obs_indices(i)),obs_1d(:,cc_obs_indices(i)),cc(i,:))
       else
-!        Observations on this variable are not available.      
+!        Observations on this variable are not available.
          call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
             sfl(i),bfl(i),nuh,Lsour,Qsour,RelaxTau,cc(i,:),cc(i,:))
       end if
@@ -659,7 +659,7 @@
             cc_diag_hz(i) = cc_diag_hz(i) + fabm_get_diagnostic_data_hz(model,i)*dt_eff
          end if
       end do
-      
+
       ! Time-integrate diagnostic variables defined on the full domain, where needed.
       do i=1,ubound(model%info%diagnostic_variables,1)
          if (model%info%diagnostic_variables(i)%time_treatment.eq.time_treatment_last) then
@@ -718,7 +718,7 @@
       call fabm_check_state(model,ci,repair_state,valid)
       if (.not.(valid.or.repair_state)) exit
    end do
-#endif   
+#endif
    if (.not. (valid .or. repair_state)) then
       FATAL 'State variable values are invalid and repair is not allowed.'
       FATAL location
@@ -783,14 +783,14 @@
 
    ! Calculate temporal derivatives due to benthic processes.
    call fabm_do_benthos(model,1,rhs(1:n,1),rhs(n+1:,1))
-   
+
    ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
    rhs(1:n,1) = rhs(1:n,1)/h(2)
 
    ! Add pelagic sink and source terms for all depth levels.
 #ifdef _FABM_USE_1D_LOOP_
    call fabm_do(model,1,nlev,rhs(1:n,1:nlev))
-#else   
+#else
    do i=1,nlev
       call fabm_do(model,i,rhs(1:n,i))
    end do
@@ -852,10 +852,10 @@
    ! biogeochemical models increment these, rather than set these.
    pp = _ZERO_
    dd = _ZERO_
-   
+
    ! Calculate temporal derivatives due to benthic processes.
    call fabm_do_benthos(model,1,pp(:,:,1),dd(:,:,1),n)
-   
+
    ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
    pp(1:n,:,1) = pp(1:n,:,1)/h(2)
    dd(1:n,:,1) = dd(1:n,:,1)/h(2)
@@ -963,7 +963,7 @@
 #else
       call fabm_get_light_extinction(model,i,localext)
 #endif
-   
+
       ! Add the extinction of the first half of the grid box.
       bioext = bioext+localext*0.5*h(i+1)
 
@@ -972,7 +972,7 @@
 
       ! Add the extinction of the second half of the grid box.
       bioext = bioext+localext*0.5*h(i+1)
-      
+
       if (bioshade_feedback) bioshade(i)=exp(-bioext)
    end do
 

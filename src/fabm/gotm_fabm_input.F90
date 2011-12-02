@@ -18,9 +18,9 @@
    use fabm_types,only: shape_full,shape_hz,id_not_used
    use gotm_fabm,only:fabm_calc,model,cc,obs_1d,obs_0d,relax_tau_0d,relax_tau_1d, &
                       cc_ben_obs_indices,cc_obs_indices,obs_1d_ids,obs_0d_ids
-   
+
    implicit none
-   
+
 !  default: all is private.
    private
 !
@@ -62,7 +62,7 @@
       integer,dimension(:),allocatable :: variableids
       REALTYPE,dimension(:),allocatable :: relax_tau
    end type
-   
+
 !  PRIVATE DATA MEMBERS
 
 !  Lists with information on 0D and 1D data files
@@ -77,7 +77,7 @@
    integer,parameter :: first_unit_no = 555
 
    contains
-   
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -122,8 +122,8 @@
 
 !  Take first unit to use from module-level parameter.
    next_unit_no = first_unit_no
-   
-!  Initialize global variable counts to zero.   
+
+!  Initialize global variable counts to zero.
    varcount_1d = 0
    varcount_0d = 0
 
@@ -135,7 +135,7 @@
    open(namlst,file=fname,action='read',status='old',err=98)
 
    do
-   
+
 !     Initialize namelist variables.
       file = ''
       variable = ''
@@ -143,27 +143,27 @@
       index = -1
       relax_tau = 1.d15
       relax_taus = 1.d15
-      
+
 !     Initialize file type (profile or scalar) to unknown
       filetype = type_unknown
 
 !     Read a namelist that describes a single file with observations.
 !     If no namelist is found, exit the do loop.
       read(namlst,nml=observations,err=99,end=97)
-      
+
 !     Make sure the file path is specified.
       if (file.eq.'') then
          FATAL 'observations namelist must contain parameter "file", specifying the path to the data file.'
          stop 'gotm_fabm_input:init_gotm_fabm_input'
       end if
-      
+
 !     Make sure the specified file exists.
       inquire(file=file,exist=file_exists)
       if (.not.file_exists) then
          FATAL 'Input file "'//trim(file)//'", specified in namelist "observations", does not exist.'
          stop 'gotm_fabm_input:init_gotm_fabm_input'
       end if
-      
+
       if (variable.ne.'') then
 !        The namelist describes a single variable. Check parameter validity and transfer variable settings to the array-based settings.
          if (any(variables.ne.'')) then
@@ -192,7 +192,7 @@
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
       end if
-   
+
 !     If variable names are not provided, raise an error.
       if (all(variables.eq.'')) then
          FATAL 'Neither "variable" nor "variables" is set in namelist "observations".'
@@ -204,10 +204,10 @@
       do i=1,ubound(variables,1)
 !        If this variable is not used, skip to the next.
          if (variables(i).eq.'') cycle
-         
+
 !        Update number of last used column.
          variable_count = i
-         
+
 !        First search in pelagic variables
          fabm_ids(i) = fabm_get_variable_id(model,variables(i),shape_full)
 
@@ -218,7 +218,7 @@
          else
             curtype = type_profile
          end if
-         
+
 !        Report an error if the variable was still not found.
          if (fabm_ids(i).eq.id_not_used) then
             FATAL 'Variable '//trim(variables(i))//', referenced in namelist observations &
@@ -232,7 +232,7 @@
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
          filetype = curtype
-         
+
 !        Report that this variable will use observations.
          LEVEL2 'Reading observed values for variable '//trim(variables(i))//' from '//trim(file)
 
@@ -287,7 +287,7 @@
       end select
 
    end do
-   
+
 !  Close the namelist file
 97 close(namlst)
 
@@ -324,7 +324,7 @@
          end if
       end do
    end do
-   
+
    LEVEL1 'done'
 
    return
@@ -334,7 +334,7 @@
 
    end subroutine init_gotm_fabm_input
 !EOC
-   
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -382,7 +382,7 @@
          if (cc_ben_obs_indices(n).ne.-1) cc(ubound(model%info%state_variables,1)+n,1) = obs_0d(cc_ben_obs_indices(n))
       end do
    end if
-   
+
    end subroutine do_gotm_fabm_input
 !EOC
 
@@ -420,7 +420,7 @@
    allocate(observed_profile_info(ubound(observed_profile_info_old,1)+1))
    observed_profile_info(1:ubound(observed_profile_info_old,1)) = observed_profile_info_old(:)
    deallocate(observed_profile_info_old)
-   
+
 !  Get shortcut to new observed profile info.
    info => observed_profile_info(ubound(observed_profile_info,1))
 
@@ -438,7 +438,7 @@
 !  Opening was successful - store the file unit, and increment the next unit with 1.
    info%unit = next_unit_no
    next_unit_no = next_unit_no + 1
-   
+
    variablecount = ubound(variableids,1)
 
    allocate(info%variableids(variablecount),stat=rc)
@@ -448,7 +448,7 @@
    allocate(info%relax_tau(variablecount),stat=rc)
    if (rc /= 0) stop 'gotm_fabm_input:create_observed_profile_info: Error allocating memory (relax_tau)'
    info%relax_tau = relax_tau
-   
+
    allocate(info%targets(variablecount),stat=rc)
    if (rc /= 0) stop 'gotm_fabm_input:create_observed_profile_info: Error allocating memory (targets)'
    do i=1,variablecount
@@ -470,7 +470,7 @@
 
 80 FATAL 'Unable to open "',trim(file),'" for reading'
    stop 'gotm_fabm_input::init_observed_profiles'
-   
+
    end subroutine create_observed_profile_info
 !EOC
 
@@ -496,7 +496,7 @@
    integer,                          intent(in)   :: nlev
    REALTYPE,                         intent(in)   :: z(0:nlev)
 !
-! !INPUT/OUTPUT PARAMETERS: 
+! !INPUT/OUTPUT PARAMETERS:
    type(type_observed_profile_info), intent(inout):: info
 !
 ! !REVISION HISTORY:
@@ -592,7 +592,7 @@
    allocate(observed_scalar_info(ubound(observed_scalar_info_old,1)+1))
    observed_scalar_info(1:ubound(observed_scalar_info_old,1)) = observed_scalar_info_old(:)
    deallocate(observed_scalar_info_old)
-   
+
 !  Get shortcut to new observed profile info.
    info => observed_scalar_info(ubound(observed_scalar_info,1))
 
@@ -607,7 +607,7 @@
 !  Opening was successful - store the file unit, and increment the next unit with 1.
    info%unit = next_unit_no
    next_unit_no = next_unit_no + 1
-   
+
    variablecount = ubound(variableids,1)
 
    allocate(info%variableids(variablecount),stat=rc)
@@ -639,7 +639,7 @@
 
 80 FATAL 'Unable to open "',trim(file),'" for reading'
    stop 'gotm_fabm_input:init_observed_scalars'
-   
+
    end subroutine create_observed_scalar_info
 !EOC
 
@@ -663,7 +663,7 @@
 ! !INPUT PARAMETERS:
    integer,                         intent(in)   :: jul,secs
 !
-! !INPUT/OUTPUT PARAMETERS: 
+! !INPUT/OUTPUT PARAMETERS:
    type(type_observed_scalar_info), intent(inout):: info
 !
 ! !REVISION HISTORY:
