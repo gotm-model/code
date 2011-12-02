@@ -81,8 +81,8 @@
    REALTYPE, public, dimension(:,:), allocatable :: bioprofs
 #endif
 
-!  inflow to lake model
-   REALTYPE, public, dimension(:), allocatable   :: inflows
+!  inflows for lake model
+   REALTYPE, public, dimension(:,:), allocatable :: inflows
 
 !------------------------------------------------------------------------------
 !
