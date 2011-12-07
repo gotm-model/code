@@ -69,6 +69,7 @@
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: sprof,SRelaxTau
+   use observations, only: inflows
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
@@ -150,6 +151,7 @@
    REALTYPE                  :: AdvSup,AdvSdw
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
+   logical                   :: inflow = .false.
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -177,6 +179,25 @@
 !  add contributions to source term
    Lsour=_ZERO_
    Qsour=_ZERO_
+
+   if (inflows(1,1) >= 17.0) then
+      write(*,*) "inflow!"
+      inflow = .true.
+   end if
+   if (inflows(1,1) <= 10.0) then
+      if (inflow) then
+         write(*,*) "stop inflow"
+         inflow = .false.
+      end if
+   end if
+   if (inflow) then
+      Qsour(20) = Qsour(20) + 0.00001
+   end if
+!   do i =1,nlev
+!      if (Qsour(i) > _ZERO_) then
+!      write(*,*) "q(i) = ", Qsour(i), "(", i, ")"
+!      end if
+!   end do
 
    do i=1,nlev
 !     from non-local turbulence
