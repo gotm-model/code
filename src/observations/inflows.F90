@@ -39,8 +39,18 @@
    integer, save             :: lines
    integer, save             :: nprofiles
    logical, save             :: one_profile
-   REALTYPE, dimension(:), allocatable :: depth_input
-   REALTYPE, dimension(:,:), allocatable :: inflows_input,alpha
+   REALTYPE, dimension(0:nlev) :: depth
+   REALTYPE, save, dimension(:), allocatable :: depth_input
+   REALTYPE, save, dimension(:,:), allocatable :: inflows_input1,inflows_input2
+   REALTYPE, save, dimension(:,:), allocatable :: alpha
+
+   integer                   :: ierr
+   integer                   :: N_input
+   integer                   :: i,j
+   integer                   :: up_down
+   REALTYPE                  :: x
+   character(len=128)        :: cbuf
+   character                 :: c1,c2,c3,c4
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -50,164 +60,113 @@
       lines=0
       nprofiles=0
       one_profile=.false.
+      ierr = 0
+      read(unit,'(A72)',ERR=100,END=110) cbuf
+      read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
+      read(cbuf(20:),*,ERR=100,END=110) N_input,up_down
 
-      !TODO the allocation in read_inflows is probably sufficient
       if (allocated(depth_input)) deallocate(depth_input)
-      allocate(depth_input(0:nlev),stat=rc)
+      allocate(depth_input(1:N_input),stat=rc)
       if (rc /= 0) stop 'get_inflows: Error allocating memory (depth_input)'
       depth_input = _ZERO_
 
+      if (allocated(inflows_input2)) deallocate(inflows_input2)
+      allocate(inflows_input2(cols,1:N_input),stat=rc)
+      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input2)'
+
+      if (allocated(inflows_input1)) deallocate(inflows_input1)
+      allocate(inflows_input1(cols,1:N_input),stat=rc)
+      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input1)'
+
+      if (allocated(inflows)) deallocate(inflows)
+      allocate(inflows(cols,1:N_input),stat=rc)
+      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows)'
+
       if (allocated(alpha)) deallocate(alpha)
-      allocate(alpha(0:nlev,cols),stat=rc)
+      allocate(alpha(cols,1:N_input),stat=rc)
       if (rc /= 0) stop 'get_inflows: Error allocating memory (alpha)'
-
-      !TODO the allocation in read_inflows is probably sufficient
-      if (allocated(inflows_input)) deallocate(inflows_input)
-      allocate(inflows_input(cols,0:nlev),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input)'
    end if
-call read_inflows(unit,rc,depth_input,inflows_input, nlev)
 
-!!  This part initialises and reads in new values if necessary.
-!   if(.not. one_profile .and. time_diff(jul2,secs2,jul,secs) .lt. 0) then
-!      do
-!         jul1 = jul2
-!         secs1 = secs2
-!         prof1 = prof2
-!         call read_inflows(unit,rc,depth_input,inflows_input)
-!         if(rc .ne. 0) then
-!            if(nprofiles .eq. 1) then
-!               LEVEL3 'Only one salinity profile present.'
-!               one_profile = .true.
-!               do n=1,cols
-!                  inflows(:,n) = prof1(:,n)
-!               end do
-!            else
-!               FATAL 'Error reading inflows around line # ',lines
-!               stop 'get_inflows'
-!            end if
-!            EXIT
-!         else
-!            nprofiles = nprofiles + 1
-!            call julian_day(yy,mm,dd,jul2)
-!            secs2 = hh*3600 + min*60 + ss
-!            if(time_diff(jul2,secs2,jul,secs) .gt. 0) EXIT
-!         end if
-!      end do
-!      if( .not. one_profile) then
-!         dt = time_diff(jul2,secs2,jul1,secs1)
-!         alpha = (prof2-prof1)/dt
-!      end if
-!   end if
-!!  Do the time interpolation - only if more than one profile
-!   if( .not. one_profile) then
-!      t  = time_diff(jul,secs,jul1,secs1)
-!      do n=1,cols
-!         inflows(n,:) = prof1(:,n) + t*alpha(:,n)
-!      end do
-!   end if
-!
-!   do n=0, nlev
-!      write(*,*) "n = ", n, "inflows = ", inflows(:,n)
-!   end do
+!  This part initialises and reads in new values if necessary.
+   if(.not. one_profile .and. time_diff(jul2,secs2,jul,secs) .lt. 0) then
+      do
+         jul1 = jul2
+         secs1 = secs2
+         inflows_input1 = inflows_input2
 
-   return
-   end subroutine get_inflows
-!EOC
+         ierr = 0
+         read(unit,'(A72)',ERR=100,END=110) cbuf
+         read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
+         read(cbuf(20:),*,ERR=100,END=110) N_input,up_down
+         lines = 1
 
-!-----------------------------------------------------------------------
-!BOP
-!
-! !ROUTINE: Initial read in of the inflows from specified file
-!
-! !INTERFACE:
-   subroutine read_inflows(unit,ierr,depth,inflows,nlev)
-!
-!  !DESCRIPTION:
-!  Reads in the inflows from file at "unit" and saves everything
-!  to the *_input variables.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)       :: unit
-   integer, intent(in)       :: nlev
-! !OUTPUT PARAMETERS:
-   integer, intent(out)      :: ierr
-! !INPUT/OUTPUT PARAMETERS:
-   REALTYPE, dimension(0:nlev), intent(inout) :: depth
-   REALTYPE, dimension(0:nlev,2), intent(inout) :: inflows
+         select case (up_down)
+            case(1)  ! surface ref, read from bottom
+               do i=1,N_input
+                  lines = lines+1
+                  read(unit,*,ERR=100,END=110) depth_input(i),(inflows_input2(i,j),j=1,cols)
+               end do
+            case(2)  ! surface ref, read from surface
+               do i=N_input,1,-1
+                  lines = lines+1
+                  read(unit,*,ERR=100,END=110) depth_input(i),(inflows_input2(j,i),j=1,cols)
+               end do
+            case(3)  ! bottom ref, read from bottom
+               do i=1,N_input
+                  lines = lines+1
+                  read(unit,*,ERR=100,END=110) depth_input(i),(inflows_input2(i,j),j=1,cols)
+               end do
+               do i=1,N_input/2
+                  x = depth_input(i)
+                  depth_input(i) = -depth_input(N_input-(i-1))
+                  depth_input(N_input-(i-1)) = -x
+               end do
+            case(4)  ! bottom ref, read from surface
+               do i=N_input,1,-1
+                  lines = lines+1
+                  read(unit,*,ERR=100,END=110) depth_input(i),(inflows_input2(i,j),j=1,cols)
+               end do
+               do i=1,N_input/2
+                  x = depth_input(i)
+                  depth_input(i) = -depth_input(N_input-(i-1))
+                  depth_input(N_input-(i-1)) = -x
+               end do
+            case default
+         end select
+         if(rc .ne. 0) then
+            if(nprofiles .eq. 1) then
+               LEVEL3 'Only one inflow profile present.'
+               one_profile = .true.
+               do n=1,cols
+                  inflows(n,:) = inflows_input1(n,:)
+               end do
+            else
+               FATAL 'Error reading inflows around line # ',lines
+               stop 'get_inflows'
+            end if
+            EXIT
+         else
+            nprofiles = nprofiles + 1
+            call julian_day(yy,mm,dd,jul2)
+            secs2 = hh*3600 + min*60 + ss
+            if(time_diff(jul2,secs2,jul,secs) .gt. 0) EXIT
+         end if
+      end do
+      if( .not. one_profile) then
+         dt = time_diff(jul2,secs2,jul1,secs1)
+         alpha = (inflows_input2-inflows_input1)/dt
+      end if
+   end if
 
-!
-! !REVISION HISTORY:
-!  Original author(s): Lennart Schueler
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer                   :: N_input
-   integer                   :: i,j
-   integer                   :: rc
-   integer                   :: up_down
-   integer, save             :: lines
-   REALTYPE                  :: x
-   character(len=128)        :: cbuf
-   character                 :: c1,c2,c3,c4
-   integer                   :: yy,mm,dd,hh,min,ss
-   integer, parameter        :: cols=2
-!-----------------------------------------------------------------------
-!BOC
-   ierr = 0
-   read(unit,'(A72)',ERR=100,END=110) cbuf
-   read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
-   read(cbuf(20:),*,ERR=100,END=110) N_input,up_down
-   lines = 1
+!  Do the time interpolation - only if more than one profile
+   if( .not. one_profile) then
+      t  = time_diff(jul,secs,jul1,secs1)
+      do n=1,cols
+         inflows(n,:) = inflows_input1(n,:) + t*alpha(n,:)
+      end do
+   end if
 
-!   if (allocated(depth)) deallocate(depth)
-!   allocate(depth(0:N_input),stat=rc)
-!   if (rc /= 0) stop 'read_inflows: Error allocating memory (depth_input)'
-!   depth = _ZERO_
-!
-!   if (allocated(inflows)) deallocate(inflows)
-!   allocate(inflows(0:N_input,cols),stat=rc)
-!   if (rc /= 0) stop 'read_inflows: Error allocating memory (inflows_input)'
-!   inflows = _ZERO_
-
-   select case (up_down)
-      case(1)  ! surface ref, read from bottom
-         do i=1,N_input
-            lines = lines+1
-            read(unit,*,ERR=100,END=110) depth(i),(inflows(i,j),j=1,cols)
-         end do
-      case(2)  ! surface ref, read from surface
-         do i=N_input,1,-1
-            lines = lines+1
-            read(unit,*,ERR=100,END=110) depth(i),(inflows(i,j),j=1,cols)
-         end do
-      case(3)  ! bottom ref, read from bottom
-         do i=1,N_input
-            lines = lines+1
-            read(unit,*,ERR=100,END=110) depth(i),(inflows(i,j),j=1,cols)
-         end do
-         do i=1,N_input/2
-            x = depth(i)
-            depth(i) = -depth(N_input-(i-1))
-            depth(N_input-(i-1)) = -x
-         end do
-      case(4)  ! bottom ref, read from surface
-         do i=N_input,1,-1
-            lines = lines+1
-            read(unit,*,ERR=100,END=110) depth(i),(inflows(i,j),j=1,cols)
-         end do
-         do i=1,N_input/2
-            x = depth(i)
-            depth(i) = -depth(N_input-(i-1))
-            depth(N_input-(i-1)) = -x
-         end do
-      case default
-   end select
-   write(*,*) depth, inflows
+   write(*,*) inflows
    write(*,*)
 
    return
@@ -220,7 +179,8 @@ call read_inflows(unit,rc,depth_input,inflows_input, nlev)
    FATAL 'Error reading inflows (END_OF_FILE)'
    return
 900 format(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)
-   end subroutine read_inflows
+
+   end subroutine get_inflows
 !EOC
 
 !-----------------------------------------------------------------------
