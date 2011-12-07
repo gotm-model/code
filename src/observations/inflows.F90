@@ -166,9 +166,6 @@
       end do
    end if
 
-   write(*,*) inflows
-   write(*,*)
-
    return
 !  READ_ERROR = -2
 100 ierr = -2
@@ -189,7 +186,44 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows()
+   subroutine update_inflows(cols, N_input, threshold)
+!
+! !DESCRIPTION:
+!  TODO!
+!
+! !USES:
+   use observations, only: inflows
+
+   IMPLICIT NONE
+
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: cols
+   integer, intent(in)                 :: N_input
+   REALTYPE, intent(in)                :: threshold
+!EOP
+!
+! !LOCAL VARIABLES:
+   integer              :: i
+!
+!-----------------------------------------------------------------------
+!BOC
+
+   do i=1,N_input
+      if (inflows(1,i) >= threshold) then
+      
+      end if
+   end do
+
+   end subroutine update_inflows
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !ROUTINE: cleaning up
+!
+! !INTERFACE:
+   subroutine clean_inflows()
 !
 ! !DESCRIPTION:
 !  TODO!
@@ -201,9 +235,8 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   end subroutine update_inflows
+   end subroutine clean_inflows
 !EOC
-
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
 !-----------------------------------------------------------------------
