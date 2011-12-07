@@ -191,13 +191,13 @@
       end if
    end if
    if (inflow) then
-      Qsour(20) = Qsour(20) + 0.00001
+      Qsour(20) = Qsour(20) + 100000 / (Ac(20)*h(20))
    end if
-!   do i =1,nlev
-!      if (Qsour(i) > _ZERO_) then
-!      write(*,*) "q(i) = ", Qsour(i), "(", i, ")"
-!      end if
-!   end do
+   do i =1,nlev
+      if (Qsour(i) > _ZERO_) then
+      write(*,*) "q(i) = ", Qsour(i), "(", i, ")"
+      end if
+   end do
 
    do i=1,nlev
 !     from non-local turbulence
