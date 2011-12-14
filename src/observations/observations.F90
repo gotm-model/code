@@ -82,7 +82,8 @@
 #endif
 
 !  inflows for lake model
-   REALTYPE, public, dimension(:,:), allocatable :: inflows
+   REALTYPE, public, dimension(:,:), allocatable :: inflows_input
+   REALTYPE, public, dimension(:), allocatable   :: Qs, Qt
 
 !------------------------------------------------------------------------------
 !
@@ -861,7 +862,7 @@
          open(inflows_unit,file=inflows_file,status='unknown',err=113)
          LEVEL2 'Reading inflows from:'
          LEVEL3 trim(inflows_file)
-         call get_inflows(inflows_unit,julday,secs,nlev,z)
+         call get_inflows(inflows_input,inflows_unit,julday,secs,nlev,z)
       case default
    end select
 
@@ -1007,7 +1008,7 @@
       call get_bio_profiles(bio_prof_unit,julday,secs,nlev,z)
    end if
    if(inflows_method .eq. 2) then
-      call get_inflows(inflows_unit,julday,secs,nlev,z)
+      call get_inflows(inflows_input,inflows_unit,julday,secs,nlev,z)
    end if
 #endif
    return
@@ -1196,7 +1197,8 @@
 #ifdef BIO
    if (allocated(bioprofs)) deallocate(bioprofs)
 #endif
-   if (allocated(inflows)) deallocate(inflows)
+   if (allocated(Qs)) deallocate(Qs)
+   if (allocated(Qt)) deallocate(Qt)
    LEVEL2 'done.'
 
    LEVEL2 'closing any open files ...'
@@ -1263,7 +1265,9 @@
 #ifdef BIO
    if (allocated(bioprofs)) LEVEL2 'bioprofs',bioprofs
 #endif
-   if (allocated(inflows)) LEVEL2 'inflows',inflows
+   if (allocated(Qs)) LEVEL2 'Qs',Qs
+   if (allocated(Qt)) LEVEL2 'Qt',Qt
+   if (allocated(inflows_input)) LEVEL2 'inflows_input',inflows_input
 
    LEVEL2 'salinity namelist',                                  &
             s_prof_method,s_analyt_method,                      &

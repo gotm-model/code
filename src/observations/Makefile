@@ -8,7 +8,7 @@ include ../Rules.make
 LIB	= $(LIBDIR)/libobservations$(buildtype).a
 
 DOCSRC	= \
-observations.F90 	    \
+observations.F90        \
 inflows.F90             \
 get_s_profile.F90       \
 get_t_profile.F90       \
