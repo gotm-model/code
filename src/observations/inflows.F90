@@ -2,6 +2,41 @@
 !-----------------------------------------------------------------------
 !BOP
 !
+! !MODULE: inflows
+!
+! !INTERFACE:
+   module inflows
+!
+! !DESCRIPTION:
+! TODO: write descr.
+!
+! !USES
+   use observations, only: inflows
+   IMPLICIT NONE
+   public                                :: init_inflows,clean_inflows
+   public                                :: read_inflows,update_inflows
+!  !PUBLIC DATA MEMBERS:
+
+!  !input variables
+   integer                               :: N_input
+   REALTYPE, dimension(:), allocatable   :: A_input,depth_input
+
+!
+! !REVISION HISTORY:
+!  Original author(s): Lennart Schueler
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+! !DEFINED PARAMETERS:
+!
+!-----------------------------------------------------------------------
+
+   contains
+
+!-----------------------------------------------------------------------
+!BOP
+!
 ! !ROUTINE: initialises everything related to the inflows
 !
 ! !INTERFACE:
@@ -104,17 +139,20 @@
             case(1)  ! surface ref, read from bottom
                do i=1,N_input
                   lines = lines+1
-                  read(unit,*,ERR=100,END=110) depth_input(i),(inflows_input2(i,j),j=1,cols)
+                  read(unit,*,ERR=100,END=110) &
+                     depth_input(i),(inflows_input2(i,j),j=1,cols)
                end do
             case(2)  ! surface ref, read from surface
                do i=N_input,1,-1
                   lines = lines+1
-                  read(unit,*,ERR=100,END=110) depth_input(i),(inflows_input2(j,i),j=1,cols)
+                  read(unit,*,ERR=100,END=110) &
+                     depth_input(i),(inflows_input2(j,i),j=1,cols)
                end do
             case(3)  ! bottom ref, read from bottom
                do i=1,N_input
                   lines = lines+1
-                  read(unit,*,ERR=100,END=110) depth_input(i),(inflows_input2(i,j),j=1,cols)
+                  read(unit,*,ERR=100,END=110) &
+                     depth_input(i),(inflows_input2(i,j),j=1,cols)
                end do
                do i=1,N_input/2
                   x = depth_input(i)
@@ -124,7 +162,8 @@
             case(4)  ! bottom ref, read from surface
                do i=N_input,1,-1
                   lines = lines+1
-                  read(unit,*,ERR=100,END=110) depth_input(i),(inflows_input2(i,j),j=1,cols)
+                  read(unit,*,ERR=100,END=110) &
+                     depth_input(i),(inflows_input2(i,j),j=1,cols)
                end do
                do i=1,N_input/2
                   x = depth_input(i)
@@ -297,6 +336,8 @@
 !BOC
 
    end subroutine clean_inflows
+
+   end module inflows
 !EOC
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
