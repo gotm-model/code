@@ -69,7 +69,7 @@
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: sprof,SRelaxTau
-   use observations, only: inflows
+   use observations, only: inflows_input
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
@@ -180,11 +180,11 @@
    Lsour=_ZERO_
    Qsour=_ZERO_
 
-   if (inflows(1,1) >= 17.0) then
+   if (inflows_input(1,1) >= 17.0) then
       write(*,*) "inflow!"
       inflow = .true.
    end if
-   if (inflows(1,1) <= 10.0) then
+   if (inflows_input(1,1) <= 10.0) then
       if (inflow) then
          write(*,*) "stop inflow"
          inflow = .false.

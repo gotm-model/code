@@ -25,6 +25,7 @@
 !  Free format is used for reading-in the actual data.
 !
 ! !USES:
+   use inflows, only: get_inflows
    IMPLICIT NONE
 
 !  default: all is private.

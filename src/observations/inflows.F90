@@ -11,7 +11,6 @@
 ! TODO: write descr.
 !
 ! !USES
-   use observations, only: inflows
    IMPLICIT NONE
    public                                :: init_inflows,clean_inflows
    public                                :: get_inflows,update_inflows
@@ -28,6 +27,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+!   REALTYPE, public, dimension(:,:), allocatable :: inflows
    integer                   :: rc
 ! !DEFINED PARAMETERS:
 !
@@ -70,7 +70,7 @@
 ! !ROUTINE: initialises everything related to the inflows
 !
 ! !INTERFACE:
-   subroutine get_inflows(unit,jul,secs,nlev,z)
+   subroutine get_inflows(inflows_input,unit,jul,secs,nlev,z)
 !
 ! !DESCRIPTION:
 !  This routine is responsible for providing sane values to `observed'
@@ -82,7 +82,7 @@
 !
 ! !USES:
    use time
-   use observations, only: init_saved_vars,read_profiles,inflows
+   use observations, only: init_saved_vars,read_profiles
 
    IMPLICIT NONE
 !
@@ -91,6 +91,7 @@
    integer, intent(in)                 :: jul,secs
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: z(0:nlev)
+   REALTYPE, intent(inout), dimension(:,:)             :: inflows_input
 !
 !EOP
 !
@@ -143,9 +144,9 @@
       allocate(inflows_input1(cols,1:N_input),stat=rc)
       if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input1)'
 
-      if (allocated(inflows)) deallocate(inflows)
-      allocate(inflows(cols,1:N_input),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows)'
+!      if (allocated(inflows_input)) deallocate(inflows_input)
+!      allocate(inflows_input(cols,1:N_input),stat=rc)
+!      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input)'
 
       if (allocated(alpha)) deallocate(alpha)
       allocate(alpha(cols,1:N_input),stat=rc)
@@ -207,7 +208,7 @@
                LEVEL3 'Only one inflow profile present.'
                one_profile = .true.
                do n=1,cols
-                  inflows(n,:) = inflows_input1(n,:)
+                  inflows_input(n,:) = inflows_input1(n,:)
                end do
             else
                FATAL 'Error reading inflows around line # ',lines
@@ -231,7 +232,7 @@
    if( .not. one_profile) then
       t  = time_diff(jul,secs,jul1,secs1)
       do n=1,cols
-         inflows(n,:) = inflows_input1(n,:) + t*alpha(n,:)
+         inflows_input(n,:) = inflows_input1(n,:) + t*alpha(n,:)
       end do
    end if
 
@@ -255,7 +256,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(cols, N_input, threshold, nlev, dt)
+   subroutine update_inflows(inflows_input,Qs, Qt, cols, N_input, threshold, nlev, dt)
 !
 ! !DESCRIPTION:
 !  TODO!
@@ -263,12 +264,13 @@
 ! !USES:
    use meanflow, only: S, T
    use meanflow, only: h, Ac
-   use observations, only: inflows
    use eqstate, only: unesco
 
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:
+   REALTYPE, intent(inout), dimension(:,:), allocatable :: inflows_input
+   REALTYPE, intent(inout)             :: Qs(0:nlev), Qt(0:nlev)
    integer, intent(in)                 :: cols
    integer, intent(in)                 :: N_input
    REALTYPE, intent(in)                :: threshold
@@ -285,18 +287,17 @@
    REALTYPE             :: V,VI,VIn
    REALTYPE             :: SI,TI
    integer              :: tauI
-   REALTYPE, dimension(:), allocatable :: FQ
-   REALTYPE, dimension(:), allocatable :: Q
+   REALTYPE, dimension(:), allocatable :: FQs, FQt
    integer              :: index_min
 !
 !-----------------------------------------------------------------------
 !BOC
-   allocate(Q(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_hypsography: Error allocating (Q)'
-      Q = _ONE_
+!   allocate(Q(0:nlev),stat=rc)
+!   if (rc /= 0) stop 'init_hypsography: Error allocating (Q)'
+!      Q = _ONE_
 
    do i=1,N_input
-      if (inflows(1,i) >= threshold) then
+      if (inflows_input(1,i) >= threshold) then
          trigger = .true.
          SI = 11.5
          TI = 4.0
@@ -336,11 +337,14 @@
          n = n+1
       end do
       do i=index_min,n
-         Q(i) = SI
+         Qs(i) = SI
+         Qt(i) = TI
       end do
-      FQ(0) = Q(0)
+      FQs(0) = Qs(0)
+      FQt(0) = Qt(0)
       do i=1,nlev
-         FQ(i) = FQ(i-1) + Q(i)
+         FQs(i) = FQs(i-1) + Qs(i)
+         FQt(i) = FQt(i-1) + Qt(i)
       end do
 
    end if
