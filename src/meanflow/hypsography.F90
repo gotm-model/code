@@ -2,7 +2,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: read_hypsography
+! !MODULE: hypsography
 !
 ! !INTERFACE:
    module hypsography
