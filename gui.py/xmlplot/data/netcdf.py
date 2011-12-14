@@ -897,7 +897,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
                 if datamask is numpy.ma.nomask:
                     datamask = coordmask
                 else:
-                    datamask = numpy.logical_or(datamask,coordmask)
+                    datamask |= coordmask
 
             # If we take a single index for this dimension, it will not be included in the output.
             if not isinstance(bounds[idim],slice): continue
@@ -1562,7 +1562,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                         mask[...] = newmask
                     else:
                         # Combine provided mask with existing one.
-                        mask = numpy.logical_or(mask,newmask)
+                        mask |= newmask
                     return mask
 
                 # If elevations are (partially) masked, first fill the first layer of masked cells around
@@ -1571,7 +1571,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                 elevmask = numpy.ma.getmask(elev)
                 if elevmask is not numpy.ma.nomask:
                     if numpy.any(elevmask):
-                        # Add elevation mask to global depth mask (insert z dimension).
+                        # Add elevation mask to global depth mask (NB getvardata will have inserted z dimension already).
                         mask = setmask(mask,elevmask)
                         
                         # Set masked edges of valid [unmasked] elevation domain to bordering
@@ -1591,7 +1591,6 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # Fill masked values (we do not want coordinate arrays with masked values)
                     # This should not have any effect, as the value arrays should also be masked at
                     # these locations.
-                    # Check for the "filled" attribute to see if these are masked arrays.
                     hmask = numpy.ma.getmask(h)
                     if hmask is not numpy.ma.nomask:
                         mask = setmask(mask,hmask)

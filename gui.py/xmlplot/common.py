@@ -136,8 +136,12 @@ def getMergedMask(sources):
     shape = sources[0].shape
     mask = None
     def addmask(mask,newmask):
-        if mask is None: mask = numpy.zeros(shape,dtype=numpy.bool)
-        return numpy.logical_or(mask,newmask)
+        if mask is None:
+            mask = numpy.empty(shape,dtype=numpy.bool)
+            mask[...] = newmask
+        else:
+            mask |= newmask
+        return mask
     for source in sources:
         curmask = numpy.ma.getmask(source)
         if curmask is not numpy.ma.nomask: mask = addmask(mask,curmask)
