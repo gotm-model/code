@@ -132,8 +132,8 @@ def convertMatlabDateFormat(fmt):
 # Numerical helper utilities
 # ------------------------------------------------------------------------------------------
 
-def getMergedMask(sources):
-    shape = sources[0].shape
+def getMergedMask(*sources):
+    shape = numpy.broadcast(*sources).shape
     mask = None
     def addmask(mask,newmask):
         if mask is None:

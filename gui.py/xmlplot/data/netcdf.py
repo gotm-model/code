@@ -908,12 +908,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
 
             # Locate variable that contains staggered [boundary] coordinates.
             stagcoordvar = None
-            if coordvar is not None:
-                if dimname in self.store.staggeredcoordinates:
-                    # The store has assigned a variable with staggered coordinates.
-                    stagcoordvar = self.store.getVariable_raw(self.store.staggeredcoordinates[dimname])
-                    assert stagcoordvar is not None, 'Staggered coordinate for dimension %s registered in store as variable %s, but not present as variable.' % (dimname,self.store.staggeredcoordinates[dimname])
-                elif 'bounds' in coordvar.getProperties():
+            if coordvar is not None and 'bounds' in coordvar.getProperties():
                     # The variable itself points to a variable with staggered coordinates (CF convention: bounds attribute).
                     boundvar = coordvar.getProperties()['bounds']
                     stagcoordvar = self.store.getVariable_raw(boundvar)
@@ -948,7 +943,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
                     coordslice_stag = []
                     for slc in coordslice:
                         if isinstance(slc,slice):
-                            # We take a subset of this dimension: extent the slice with 1.
+                            # We take a subset of this dimension: extend the slice with 1.
                             coordslice_stag.append(slice(slc.start,slc.stop+slc.step,slc.step))
                         else:
                             # We take a single [centered] index from this dimension:
@@ -1004,7 +999,6 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
 
         self.cachedcoords = {}
         self.reassigneddims = {}
-        self.staggeredcoordinates = {}
         
         # Whether to mask values outside the range specified by valid_min,valid_max,valid_range
         # NetCDF variable attributes (as specified by CF convention)
@@ -1260,10 +1254,6 @@ class NetCDFStore_GOTM(NetCDFStore):
         self.generatecartesiancenters = False
 
         NetCDFStore.__init__(self,path,*args,**kwargs)
-        
-        # Link centered and staggered coordinates
-        self.staggeredcoordinates['z' ] = 'z_stag'
-        self.staggeredcoordinates['z1'] = 'z1_stag'
                 
     def autoReassignCoordinates(self):
         NetCDFStore.autoReassignCoordinates(self)
@@ -1347,11 +1337,7 @@ class NetCDFStore_GOTM(NetCDFStore):
             if 'z1' in ncvars: names.append('z1')
             
         self.generatecartesiancenters = self.generatecartesiancenters or ('xx' in ncvars and 'yx' in ncvars and 'xic' in ncdims and 'etac' in ncdims and 'xc' not in ncvars and 'yc' not in ncvars)
-        if self.generatecartesiancenters:
-            # We have to generate centered Cartesian coordinates
-            self.staggeredcoordinates['xc'] = 'xx'
-            self.staggeredcoordinates['yc'] = 'yx'
-            names += ['xc','yc']
+        if self.generatecartesiancenters: names += ['xc','yc']
         
         return names
 
@@ -1374,7 +1360,9 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return self.store[self.stagname].getUnit()
 
             def getProperties(self):
-                return {'history':'auto-generated from boundary coordinates in variable %s' % self.stagname}
+                props = {'history':'auto-generated from boundary coordinates in variable %s' % self.stagname}
+                props['bounds'] = self.stagname
+                return props
 
             def getDataType(self):
                 return self.store[self.stagname].getDataType()
@@ -1438,9 +1426,11 @@ class NetCDFStore_GOTM(NetCDFStore):
 
             def getProperties(self):
                 if self.store.bathymetryname is None:
-                    return {'history':'auto-generated from layer thickness and surface elevation.'}
+                    props = {'history':'auto-generated from layer thickness and surface elevation.'}
                 else:
-                    return {'history':'auto-generated from sigma levels, elevation and bathymetry.'}
+                    props = {'history':'auto-generated from sigma levels, elevation and bathymetry.'}
+                if not self.dimname.endswith('_stag'): props['bounds'] = self.dimname + '_stag'
+                return props
 
             def getDataType(self):
                 return self.store[self.store.elevname].getDataType()
