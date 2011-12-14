@@ -14,7 +14,7 @@
    use observations, only: inflows
    IMPLICIT NONE
    public                                :: init_inflows,clean_inflows
-   public                                :: read_inflows,update_inflows
+   public                                :: get_inflows,update_inflows
 !  !PUBLIC DATA MEMBERS:
 
 !  !input variables
@@ -28,11 +28,41 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                   :: rc
 ! !DEFINED PARAMETERS:
 !
 !-----------------------------------------------------------------------
 
    contains
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !ROUTINE: initialises everything related to the inflows
+!
+! !INTERFACE:
+   subroutine init_inflows(nlev)
+!
+!  !DESCRIPTION:
+!  Initialises everything related to the lake model, e.g. allocating memory
+!  for arrays.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in) :: nlev
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+      !always allocate memory for Ac, Af so that diff_center() works
+      return
+!112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
+!      stop 'init_hypsography'
+
+   end subroutine init_inflows
+!EOC
 
 !-----------------------------------------------------------------------
 !BOP
@@ -253,8 +283,10 @@
    REALTYPE             :: depth
    REALTYPE             :: zI_min,zI_max
    REALTYPE             :: V,VI,VIn
-   REALTYPE             :: FQ
-   REALTYPE, public, dimension(:), allocatable :: Q
+   REALTYPE             :: SI,TI
+   integer              :: tauI
+   REALTYPE, dimension(:), allocatable :: FQ
+   REALTYPE, dimension(:), allocatable :: Q
    integer              :: index_min
 !
 !-----------------------------------------------------------------------
@@ -273,7 +305,7 @@
          tauI = 1209600
       end if
    end do
-   if trigger then
+   if (trigger) then
       depth = _ZERO_
       do i=1,nlev
          depth = depth + h(i)
@@ -285,12 +317,12 @@
       do i=1,nlev
          depth = depth - h(i)
          rhoI = unesco(SI,TI,depth/10.0d0,.false.)
-         rho = unesco(S,T,depth/10.0d0,.false.)
+         rho = unesco(S(i),T(i),depth/10.0d0,.false.)
          if (rhoI < rho) then
             zI_min = zI_min + h(i)
          else
             index_min = i
-            break
+            exit
          end if
       end do
 
