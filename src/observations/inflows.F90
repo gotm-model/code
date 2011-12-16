@@ -16,10 +16,6 @@
    public                                :: get_inflows,update_inflows
 !  !PUBLIC DATA MEMBERS:
 
-!  !input variables
-   integer                               :: N_input
-   REALTYPE, dimension(:), allocatable   :: A_input,depth_input
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lennart Schueler
@@ -28,7 +24,11 @@
 !
 ! !LOCAL VARIABLES:
 !   REALTYPE, public, dimension(:,:), allocatable :: inflows
-   integer                   :: rc
+   integer                                     :: rc
+   integer                                     :: N_input
+   REALTYPE, dimension(:), allocatable         :: A_input,depth_input
+   REALTYPE, save, dimension(:,:), allocatable :: inflows_input1,inflows_input2
+   REALTYPE, save, dimension(:,:), allocatable :: alpha
 ! !DEFINED PARAMETERS:
 !
 !-----------------------------------------------------------------------
@@ -70,7 +70,7 @@
 ! !ROUTINE: initialises everything related to the inflows
 !
 ! !INTERFACE:
-   subroutine get_inflows(inflows_input,unit,jul,secs,nlev,z)
+   subroutine get_inflows(unit,init_saved_vars,jul,secs,nlev,z,inflows_input)
 !
 ! !DESCRIPTION:
 !  This routine is responsible for providing sane values to `observed'
@@ -82,16 +82,16 @@
 !
 ! !USES:
    use time
-   use observations, only: init_saved_vars,read_profiles
 
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: unit
+   logical, intent(in)                 :: init_saved_vars
    integer, intent(in)                 :: jul,secs
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: z(0:nlev)
-   REALTYPE, intent(inout), dimension(:,:)             :: inflows_input
+   REALTYPE, intent(inout), dimension(:,:), allocatable :: inflows_input
 !
 !EOP
 !
@@ -106,12 +106,9 @@
    integer, save             :: nprofiles
    logical, save             :: one_profile
    REALTYPE, dimension(0:nlev) :: depth
-   REALTYPE, save, dimension(:), allocatable :: depth_input
-   REALTYPE, save, dimension(:,:), allocatable :: inflows_input1,inflows_input2
-   REALTYPE, save, dimension(:,:), allocatable :: alpha
 
    integer                   :: ierr
-   integer                   :: N_input
+   integer                   :: N_input_old
    integer                   :: i,j
    integer                   :: up_down
    REALTYPE                  :: x
@@ -127,30 +124,46 @@
       nprofiles=0
       one_profile=.false.
       ierr = 0
+      N_input_old = N_input
       read(unit,'(A72)',ERR=100,END=110) cbuf
       read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
       read(cbuf(20:),*,ERR=100,END=110) N_input,up_down
+      !go back one "read-command" in file
+      backspace(unit)
 
-      if (allocated(depth_input)) deallocate(depth_input)
-      allocate(depth_input(1:N_input),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (depth_input)'
-      depth_input = _ZERO_
+      ! only allocate memory if the size of the arrays will change
+      if (N_input .ne. N_input_old) then
+         if (allocated(depth_input)) deallocate(depth_input)
+         allocate(depth_input(1:N_input),stat=rc)
+         if (rc /= 0) stop 'get_inflows: Error allocating memory (depth_input)'
+         depth_input = _ZERO_
 
-      if (allocated(inflows_input2)) deallocate(inflows_input2)
-      allocate(inflows_input2(cols,1:N_input),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input2)'
+         if (allocated(inflows_input2)) deallocate(inflows_input2)
+         allocate(inflows_input2(cols,1:N_input),stat=rc)
+         if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input2)'
+         inflows_input2 = _ZERO_
 
-      if (allocated(inflows_input1)) deallocate(inflows_input1)
-      allocate(inflows_input1(cols,1:N_input),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input1)'
+         if (allocated(inflows_input1)) deallocate(inflows_input1)
+         allocate(inflows_input1(cols,1:N_input),stat=rc)
+         if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input1)'
+         inflows_input1 = _ZERO_
 
-!      if (allocated(inflows_input)) deallocate(inflows_input)
-!      allocate(inflows_input(cols,1:N_input),stat=rc)
-!      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input)'
+         if (allocated(inflows_input)) deallocate(inflows_input)
+         allocate(inflows_input(cols,1:N_input),stat=rc)
+         if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input)'
+         inflows_input = _ZERO_
 
-      if (allocated(alpha)) deallocate(alpha)
-      allocate(alpha(cols,1:N_input),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (alpha)'
+         if (allocated(alpha)) deallocate(alpha)
+         allocate(alpha(cols,1:N_input),stat=rc)
+         if (rc /= 0) stop 'get_inflows: Error allocating memory (alpha)'
+         alpha = _ZERO_
+      else
+         depth_input = _ZERO_
+         inflows_input2 = _ZERO_
+         inflows_input1 = _ZERO_
+         inflows_input = _ZERO_
+         alpha = _ZERO_
+      end if
    end if
 
 !  This part initialises and reads in new values if necessary.
@@ -370,7 +383,12 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+      if (allocated(depth_input)) deallocate(depth_input)
+      if (allocated(inflows_input2)) deallocate(inflows_input2)
+      if (allocated(inflows_input1)) deallocate(inflows_input1)
+      if (allocated(alpha)) deallocate(alpha)
 
+      return
    end subroutine clean_inflows
 
    end module inflows

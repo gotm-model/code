@@ -25,7 +25,9 @@
 !  Free format is used for reading-in the actual data.
 !
 ! !USES:
-   use inflows, only: get_inflows
+   use hypsography, only: lake
+   use inflows, only: init_inflows
+   use inflows, only: get_inflows!, update_inflows
    IMPLICIT NONE
 
 !  default: all is private.
@@ -858,14 +860,24 @@
 #endif
 
 !  The inflows
-   select case (inflows_method)
-      case (FROMFILE)
-         open(inflows_unit,file=inflows_file,status='unknown',err=113)
-         LEVEL2 'Reading inflows from:'
-         LEVEL3 trim(inflows_file)
-         call get_inflows(inflows_input,inflows_unit,julday,secs,nlev,z)
-      case default
-   end select
+   allocate(Qs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qs)'
+   Qs = _ZERO_
+
+   allocate(Qt(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qt)'
+   Qt = _ZERO_
+
+   if (lake) then
+      select case (inflows_method)
+         case (FROMFILE)
+            open(inflows_unit,file=inflows_file,status='unknown',err=113)
+            LEVEL2 'Reading inflows from:'
+            LEVEL3 trim(inflows_file)
+            call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
+         case default
+      end select
+   end if
 
    init_saved_vars=.false.
    return
@@ -1008,8 +1020,8 @@
    if(bio_prof_method .eq. 2) then
       call get_bio_profiles(bio_prof_unit,julday,secs,nlev,z)
    end if
-   if(inflows_method .eq. 2) then
-      call get_inflows(inflows_input,inflows_unit,julday,secs,nlev,z)
+   if(lake .and. inflows_method .eq. 2) then
+      call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
    end if
 #endif
    return
@@ -1198,6 +1210,7 @@
 #ifdef BIO
    if (allocated(bioprofs)) deallocate(bioprofs)
 #endif
+   if (allocated(inflows_input)) deallocate(inflows_input)
    if (allocated(Qs)) deallocate(Qs)
    if (allocated(Qt)) deallocate(Qt)
    LEVEL2 'done.'
