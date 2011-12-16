@@ -377,7 +377,7 @@
    call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
    call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
-                          depth,nlev,z,h,gravity,rho_0)
+                          depth,nlev,dt,z,h,gravity,rho_0)
 
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 

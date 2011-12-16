@@ -11,10 +11,10 @@
 ! TODO: write descr.
 !
 ! !USES
+!  !PUBLIC DATA MEMBERS:
    IMPLICIT NONE
    public                                :: init_inflows,clean_inflows
    public                                :: get_inflows,update_inflows
-!  !PUBLIC DATA MEMBERS:
 
 !
 ! !REVISION HISTORY:
@@ -23,10 +23,10 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-!   REALTYPE, public, dimension(:,:), allocatable :: inflows
    integer                                     :: rc
+   integer, parameter                          :: cols=2
    integer                                     :: N_input
-   REALTYPE, dimension(:), allocatable         :: A_input,depth_input
+   REALTYPE, save, dimension(:), allocatable   :: A_input,depth_input
    REALTYPE, save, dimension(:,:), allocatable :: inflows_input1,inflows_input2
    REALTYPE, save, dimension(:,:), allocatable :: alpha
 ! !DEFINED PARAMETERS:
@@ -101,7 +101,6 @@
    REALTYPE                  :: t,dt
    integer, save             :: jul1,secs1
    integer, save             :: jul2,secs2
-   integer, parameter        :: cols=2
    integer, save             :: lines
    integer, save             :: nprofiles
    logical, save             :: one_profile
@@ -269,7 +268,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(inflows_input,Qs, Qt, cols, N_input, threshold, nlev, dt)
+   subroutine update_inflows(inflows_input,Qs,Qt,FQs,FQt,nlev,dt)
 !
 ! !DESCRIPTION:
 !  TODO!
@@ -284,9 +283,7 @@
 ! !INPUT PARAMETERS:
    REALTYPE, intent(inout), dimension(:,:), allocatable :: inflows_input
    REALTYPE, intent(inout)             :: Qs(0:nlev), Qt(0:nlev)
-   integer, intent(in)                 :: cols
-   integer, intent(in)                 :: N_input
-   REALTYPE, intent(in)                :: threshold
+   REALTYPE, intent(inout)             :: FQs(0:nlev), FQt(0:nlev)
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: dt
 !EOP
@@ -300,26 +297,24 @@
    REALTYPE             :: V,VI,VIn
    REALTYPE             :: SI,TI
    integer              :: tauI
-   REALTYPE, dimension(:), allocatable :: FQs, FQt
    integer              :: index_min
+   REALTYPE             :: threshold
 !
 !-----------------------------------------------------------------------
 !BOC
-!   allocate(Q(0:nlev),stat=rc)
-!   if (rc /= 0) stop 'init_hypsography: Error allocating (Q)'
-!      Q = _ONE_
+   threshold = 17.0
 
    do i=1,N_input
       if (inflows_input(1,i) >= threshold) then
          trigger = .true.
-         SI = 11.5
-         TI = 4.0
-         VI = 100000
+         SI = 11.5d0
+         TI = 4.0d0
+         VI = 100000.0d0
          !2 weeks
          tauI = 1209600
       end if
    end do
-   if (trigger) then
+   if (trigger .or. VI > 0.0) then
       depth = _ZERO_
       do i=1,nlev
          depth = depth + h(i)
@@ -359,7 +354,7 @@
          FQs(i) = FQs(i-1) + Qs(i)
          FQt(i) = FQt(i-1) + Qt(i)
       end do
-
+   VI = VI - VIn
    end if
    trigger = .false.
 

@@ -27,7 +27,7 @@
 ! !USES:
    use hypsography, only: lake
    use inflows, only: init_inflows
-   use inflows, only: get_inflows!, update_inflows
+   use inflows, only: get_inflows, update_inflows
    IMPLICIT NONE
 
 !  default: all is private.
@@ -85,8 +85,10 @@
 #endif
 
 !  inflows for lake model
+   REALTYPE, private                             :: dt
    REALTYPE, public, dimension(:,:), allocatable :: inflows_input
    REALTYPE, public, dimension(:), allocatable   :: Qs, Qt
+   REALTYPE, public, dimension(:), allocatable   :: FQs, FQt
 
 !------------------------------------------------------------------------------
 !
@@ -325,7 +327,7 @@
 !
 ! !INTERFACE:
    subroutine init_observations(namlst,fn,julday,secs,                 &
-                                depth,nlev,z,h,gravity,rho_0)
+                                depth,nlev,delta_t,z,h,gravity,rho_0)
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
@@ -345,6 +347,7 @@
    integer, intent(in)                 :: julday,secs
    REALTYPE, intent(in)                :: depth
    integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: delta_t
    REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
    REALTYPE, intent(in)                :: gravity,rho_0
 !
@@ -413,6 +416,7 @@
    LEVEL1 'init_observations'
 
    init_saved_vars=.true.
+   dt = delta_t
 
 !  Salinity profile(s)
    s_prof_method=0
@@ -868,6 +872,14 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (Qt)'
    Qt = _ZERO_
 
+   allocate(FQs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (FQs)'
+   FQs = _ZERO_
+
+   allocate(FQt(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (FQt)'
+   FQt = _ZERO_
+
    if (lake) then
       select case (inflows_method)
          case (FROMFILE)
@@ -1022,6 +1034,7 @@
    end if
    if(lake .and. inflows_method .eq. 2) then
       call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
+      call update_inflows(inflows_input,Qs,Qt,FQs,FQt,nlev,dt)
    end if
 #endif
    return
@@ -1213,6 +1226,8 @@
    if (allocated(inflows_input)) deallocate(inflows_input)
    if (allocated(Qs)) deallocate(Qs)
    if (allocated(Qt)) deallocate(Qt)
+   if (allocated(FQs)) deallocate(FQs)
+   if (allocated(FQt)) deallocate(FQt)
    LEVEL2 'done.'
 
    LEVEL2 'closing any open files ...'
@@ -1281,6 +1296,8 @@
 #endif
    if (allocated(Qs)) LEVEL2 'Qs',Qs
    if (allocated(Qt)) LEVEL2 'Qt',Qt
+   if (allocated(FQs)) LEVEL2 'FQs',FQs
+   if (allocated(FQt)) LEVEL2 'FQt',FQt
    if (allocated(inflows_input)) LEVEL2 'inflows_input',inflows_input
 
    LEVEL2 'salinity namelist',                                  &
