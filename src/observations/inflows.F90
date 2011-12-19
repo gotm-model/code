@@ -344,6 +344,10 @@
          zI_max = zI_max + h(n)
          n = n+1
       end do
+      if (n .gt. nlev) then
+         write(*,*) "Warning: Too much water flowing into the basin."
+         n = nlev
+      end if
       do i=index_min,n
          Qs(i) = SI
          Qt(i) = TI
