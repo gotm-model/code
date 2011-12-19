@@ -26,7 +26,7 @@
 !
 ! !USES:
    use hypsography, only: lake
-   use inflows, only: init_inflows
+   use inflows, only: init_inflows, clean_inflows
    use inflows, only: get_inflows, update_inflows
    IMPLICIT NONE
 
@@ -1228,6 +1228,7 @@
    if (allocated(Qt)) deallocate(Qt)
    if (allocated(FQs)) deallocate(FQs)
    if (allocated(FQt)) deallocate(FQt)
+   call clean_inflows()
    LEVEL2 'done.'
 
    LEVEL2 'closing any open files ...'
