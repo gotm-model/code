@@ -69,7 +69,8 @@
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: sprof,SRelaxTau
-   use observations, only: inflows_input
+!   use observations, only: inflows_input
+   use observations, only: Qs, FQs
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
@@ -180,25 +181,6 @@
    Lsour=_ZERO_
    Qsour=_ZERO_
 
-   if (inflows_input(1,1) >= 17.0) then
-      write(*,*) "inflow!"
-      inflow = .true.
-   end if
-   if (inflows_input(1,1) <= 10.0) then
-      if (inflow) then
-         write(*,*) "stop inflow"
-         inflow = .false.
-      end if
-   end if
-   if (inflow) then
-      Qsour(20) = Qsour(20) + 100000 / (Ac(20)*h(20))
-   end if
-   do i =1,nlev
-      if (Qsour(i) > _ZERO_) then
-      write(*,*) "q(i) = ", Qsour(i), "(", i, ")"
-      end if
-   end do
-
    do i=1,nlev
 !     from non-local turbulence
 #ifdef NONLOCAL
@@ -211,6 +193,16 @@
       do i=1,nlev
          Qsour(i) = Qsour(i) - u(i)*dsdx(i) - v(i)*dsdy(i)
       end do
+   end if
+
+!  ... and from inflows
+   if (lake) then
+      do i=1,nlev
+         Qsour(i) = Qsour(i) + Qs(i)
+         w(i) = FQs(i) / Ac(i)
+      end do
+      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
+                          AdvSup,AdvSdw,w_adv_discr,adv_mode,S)
    end if
 
 
