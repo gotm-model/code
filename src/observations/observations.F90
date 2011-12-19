@@ -89,6 +89,7 @@
    REALTYPE, public, dimension(:,:), allocatable :: inflows_input
    REALTYPE, public, dimension(:), allocatable   :: Qs, Qt
    REALTYPE, public, dimension(:), allocatable   :: FQs, FQt
+   REALTYPE                                      :: V_inflow
 
 !------------------------------------------------------------------------------
 !
@@ -535,6 +536,7 @@
 !  Observed inflows
    inflows_method=0
    inflows_file='inflows_file.dat'
+   V_inflow = _ZERO_
 
    open(namlst,file=fn,status='old',action='read',err=80)
    read(namlst,nml=sprofile,err=81)
@@ -1034,7 +1036,7 @@
    end if
    if(lake .and. inflows_method .eq. 2) then
       call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
-      call update_inflows(inflows_input,Qs,Qt,FQs,FQt,nlev,dt)
+      call update_inflows(inflows_input,V_inflow,Qs,Qt,FQs,FQt,nlev,dt)
    end if
 #endif
    return

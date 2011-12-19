@@ -268,7 +268,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(inflows_input,Qs,Qt,FQs,FQt,nlev,dt)
+   subroutine update_inflows(inflows_input,VI,Qs,Qt,FQs,FQt,nlev,dt)
 !
 ! !DESCRIPTION:
 !  TODO!
@@ -282,6 +282,7 @@
 
 ! !INPUT PARAMETERS:
    REALTYPE, intent(inout), dimension(:,:), allocatable :: inflows_input
+   REALTYPE, intent(inout)             :: VI
    REALTYPE, intent(inout)             :: Qs(0:nlev), Qt(0:nlev)
    REALTYPE, intent(inout)             :: FQs(0:nlev), FQt(0:nlev)
    integer, intent(in)                 :: nlev
@@ -294,7 +295,7 @@
    REALTYPE             :: rhoI,rho
    REALTYPE             :: depth
    REALTYPE             :: zI_min,zI_max
-   REALTYPE             :: V,VI,VIn
+   REALTYPE             :: V,VIn
    REALTYPE             :: SI,TI
    integer              :: tauI
    integer              :: index_min
@@ -303,18 +304,23 @@
 !-----------------------------------------------------------------------
 !BOC
    threshold = 17.0
+   trigger = .false.
 
    do i=1,N_input
       if (inflows_input(1,i) >= threshold) then
+         write(*,*) "inflow was triggered"
          trigger = .true.
          SI = 11.5d0
          TI = 4.0d0
-         VI = 100000.0d0
+         VI = VI + 1.0d0
          !2 weeks
-         tauI = 1209600
+         !tauI = 1209600
+         !1 day
+         tauI = 86400
       end if
    end do
    if (trigger .or. VI > 0.0) then
+      write(*,*) "V_inflow = ", VI
       depth = _ZERO_
       do i=1,nlev
          depth = depth + h(i)
@@ -359,8 +365,8 @@
          FQt(i) = FQt(i-1) + Qt(i)
       end do
    VI = VI - VIn
+   write(*,*) "Qs = ", Qs
    end if
-   trigger = .false.
 
    end subroutine update_inflows
 !EOC
