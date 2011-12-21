@@ -161,6 +161,7 @@
    logical,private           :: GrADS
    integer, private          :: Ac_id,Af_id,dAdz_id
    integer, private          :: total_salt_id
+   integer, private          :: Qs_id, Qt_id
 !
 !-----------------------------------------------------------------------
 
@@ -327,6 +328,10 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
       call check_err(iret)
+      iret = nf90_def_var(ncid,'Qs',NF90_REAL,dim4d,Qs_id)
+      call check_err(iret)
+      iret = nf90_def_var(ncid,'Qt',NF90_REAL,dim4d,Qt_id)
+      call check_err(iret)
    end if
    iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
    call check_err(iret)
@@ -479,6 +484,10 @@
                             long_name='hypsography at grid interfaces')
       iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsography')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
+      iret = set_attributes(ncid,Qs_id,units='g/kg', &
+                            long_name='salt inflow')
+      iret = set_attributes(ncid,Qs_id,units='celsius', &
+                            long_name='temperature inflow')
    end if
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
    iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency squared')
@@ -573,6 +582,7 @@
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
+   use observations, only: Qs, Qt
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
@@ -674,6 +684,8 @@
    if (lake) then
       iret = store_data(ncid,Ac_id,XYZT_SHAPE,nlev,array=Ac)
       iret = store_data(ncid,dAdz_id,XYZT_SHAPE,nlev,array=dAdz)
+      iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)
+      iret = store_data(ncid,Qt_id,XYZT_SHAPE,nlev,array=Qt)
    end if
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
    iret = store_data(ncid,NN_id,XYZT_SHAPE,nlev,array=NN)
