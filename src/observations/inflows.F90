@@ -29,6 +29,11 @@
    REALTYPE, save, dimension(:), allocatable   :: A_input,depth_input
    REALTYPE, save, dimension(:,:), allocatable :: inflows_input1,inflows_input2
    REALTYPE, save, dimension(:,:), allocatable :: alpha
+   REALTYPE, save                              :: tauI
+   REALTYPE, save                              :: tauI_left
+   REALTYPE, save                              :: SI,TI
+   REALTYPE, save                              :: mI
+   REALTYPE, save                              :: VIn
 ! !DEFINED PARAMETERS:
 !
 !-----------------------------------------------------------------------
@@ -56,8 +61,10 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-      !always allocate memory for Ac, Af so that diff_center() works
-      return
+      mI = 0.0d0
+      SI = 12.0d0
+      TI = 10.0d0
+      tauI = _ZERO_
 !112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
 !      stop 'init_hypsography'
 
@@ -295,77 +302,111 @@
    REALTYPE             :: rhoI,rho
    REALTYPE             :: depth
    REALTYPE             :: zI_min,zI_max
-   REALTYPE             :: V,VIn
-   REALTYPE             :: SI,TI
-   integer              :: tauI
+   REALTYPE             :: V_basin
+   REALTYPE             :: QI
    integer              :: index_min
    REALTYPE             :: threshold
 !
 !-----------------------------------------------------------------------
 !BOC
-   threshold = 17.0
+   threshold = 17.0848d0
    trigger = .false.
 
+   ! check if an inflow will occure
    do i=1,N_input
       if (inflows_input(1,i) >= threshold) then
+         write(*,*) "!!!!!!!!!!!!!!!!!!!!"
          write(*,*) "inflow was triggered"
+         write(*,*) "!!!!!!!!!!!!!!!!!!!!"
          trigger = .true.
-         SI = 11.5d0
-         TI = 4.0d0
-         VI = VI + 1.0d0
          !2 weeks
-         !tauI = 1209600
+         tauI = 1209600
          !1 day
-         tauI = 86400
+         !tauI = 86400d0
+         tauI_left = TauI
+         !tauI = tauI + 1200
+         VI = VI + 50d10
+         VIn = (VI / tauI) * dt
       end if
    end do
-   if (trigger .or. VI > 0.0) then
-      write(*,*) "V_inflow = ", VI
+
+   ! inflow triggered or still in progress
+   if ((trigger .or. VI .gt. _ZERO_) .and. tauI_left .gt. _ZERO_) then
       depth = _ZERO_
       do i=1,nlev
-         depth = depth + h(i)
+         depth = depth - h(i)
       end do
 
-      !find min depth
-      zI_min = 0.0
+      ! find minimal depth where the inflow will take place
+      zI_min = _ZERO_
       index_min = 0
       do i=1,nlev
-         depth = depth - h(i)
+         depth = depth + h(i)
          rhoI = unesco(SI,TI,depth/10.0d0,.false.)
          rho = unesco(S(i),T(i),depth/10.0d0,.false.)
-         if (rhoI < rho) then
-            zI_min = zI_min + h(i)
-         else
+!         write(*,*) "depth = ", depth
+!         write(*,*) "S_inflow = ", SI
+!         write(*,*) "T_inflow = ", TI
+!         write(*,*) "rho_inflow = ", rhoI
+!         write(*,*) "S_ambient = ", S(i)
+!         write(*,*) "T_ambient = ", T(i)
+!         write(*,*) "rho_ambient = ", rho
+         ! if the density of the inflowing water is greate than the
+         ! ambient water then the lowest interleaving depth is found
+         if (rhoI > rho) then
+            write(*,*) "interleaving depth found"
+            write(*,*) depth
+            zI_min = depth
             index_min = i
             exit
          end if
       end do
 
-      VIn = (VI / tauI) * dt
-      V = _ZERO_
+      write(*,*) ""
+      write(*,*) "z_inflow min = ", zI_min, " | index_min = ", index_min
+      write(*,*) ""
+      write(*,*) "dt = ", dt, " | tau_inflow_left = ", tauI_left
+
+      ! find the z-levels in which the water will interleave
+      V_basin = _ZERO_
       zI_max = zI_min
       n = index_min
-      do while (V < VIn)
-         V = V + Ac(n) * h(n)
-         zI_max = zI_max + h(n)
+      do while (V_basin < VIn)
+         V_basin = V_basin + Ac(n) * h(n)
+         zI_max = zI_max - h(n)
          n = n+1
+         if (n .gt. nlev) then
+            write(*,*) "Warning: Too much water flowing into the basin."
+            n = nlev
+            exit
+         end if
       end do
-      if (n .gt. nlev) then
-         write(*,*) "Warning: Too much water flowing into the basin."
-         n = nlev
-      end if
+
+      write(*,*) ""
+      write(*,*) "V_inflow = ", VI, " | V_inflow_timestep = ", VIn, &
+         " | V_basin = ", V_basin
+
+      ! calculate the source terms
       do i=index_min,n
-         Qs(i) = SI
-         Qt(i) = TI
+         Qs(i) = (SI - S(i)) / tauI
+         Qt(i) = (TI - T(i)) / tauI
       end do
+      ! calculate the vertical flux terms
       FQs(0) = Qs(0)
       FQt(0) = Qt(0)
       do i=1,nlev
          FQs(i) = FQs(i-1) + Qs(i)
          FQt(i) = FQt(i-1) + Qt(i)
       end do
-   VI = VI - VIn
-   write(*,*) "Qs = ", Qs
+      VI = VI - VIn
+      tauI_left = tauI_left - dt
+   else
+      do i=0,nlev
+         Qs(i) = _ZERO_
+         Qt(i) = _ZERO_
+         FQs(i) = _ZERO_
+         FQt(i) = _ZERO_
+      end do
    end if
 
    end subroutine update_inflows

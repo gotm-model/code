@@ -199,7 +199,7 @@
    if (lake) then
       do i=1,nlev
          Qsour(i) = Qsour(i) + Qs(i)
-         w(i) = FQs(i) / Ac(i)
+!         w(i) = FQs(i) / Ac(i)
       end do
       call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
                           AdvSup,AdvSdw,w_adv_discr,adv_mode,S)

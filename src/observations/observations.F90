@@ -537,6 +537,7 @@
    inflows_method=0
    inflows_file='inflows_file.dat'
    V_inflow = _ZERO_
+   call init_inflows(nlev)
 
    open(namlst,file=fn,status='old',action='read',err=80)
    read(namlst,nml=sprofile,err=81)
