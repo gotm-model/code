@@ -62,8 +62,8 @@
 !-----------------------------------------------------------------------
 !BOC
       mI = 0.0d0
-      SI = 17.0d0
-      TI = 10.0d0
+      SI = 12.5d0
+      TI = 4.0d0
       tauI = _ZERO_
 !112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
 !      stop 'init_hypsography'
@@ -321,7 +321,8 @@
          !1 day
          !tauI = 86400d0
          tauI_left = TauI
-         VI = 70d10
+         VI = 50d9
+         VI = 800000d9
          VIn = (VI / tauI) * dt
       end if
    end do
@@ -386,7 +387,13 @@
       ! calculate the source terms
       do i=index_min,n
          Qs(i) = (SI - S(i)) / tauI
+         if (Qs(i) .lt. _ZERO_) then
+            Qs(i) = _ZERO_
+         end if
          Qt(i) = (TI - T(i)) / tauI
+         if (Qt(i) .lt. _ZERO_) then
+            Qt(i) = _ZERO_
+         end if
       end do
       ! calculate the vertical flux terms
       FQs(0) = Qs(0)
