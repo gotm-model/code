@@ -489,7 +489,7 @@
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
       iret = set_attributes(ncid,Qs_id,units='g/kg', &
                             long_name='salt inflow')
-      iret = set_attributes(ncid,Qs_id,units='celsius', &
+      iret = set_attributes(ncid,Qt_id,units='celsius', &
                             long_name='temperature inflow')
       iret = set_attributes(ncid,wIs_id,units='m/s', &
                             long_name='vertical salinity advection velocity')
