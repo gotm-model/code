@@ -62,7 +62,7 @@
 !-----------------------------------------------------------------------
 !BOC
       mI = 0.0d0
-      SI = 12.0d0
+      SI = 17.0d0
       TI = 10.0d0
       tauI = _ZERO_
 !112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
@@ -298,7 +298,6 @@
 !
 ! !LOCAL VARIABLES:
    integer              :: i,n
-   logical              :: trigger
    REALTYPE             :: rhoI,rho
    REALTYPE             :: depth
    REALTYPE             :: zI_min,zI_max
@@ -310,7 +309,6 @@
 !-----------------------------------------------------------------------
 !BOC
    threshold = 17.0848d0
-   trigger = .false.
 
    ! check if an inflow will occure
    do i=1,N_input
@@ -318,20 +316,19 @@
          write(*,*) "!!!!!!!!!!!!!!!!!!!!"
          write(*,*) "inflow was triggered"
          write(*,*) "!!!!!!!!!!!!!!!!!!!!"
-         trigger = .true.
          !2 weeks
-         tauI = 1209600
+         tauI = 1209600d0
          !1 day
          !tauI = 86400d0
          tauI_left = TauI
-         !tauI = tauI + 1200
-         VI = VI + 50d10
+         VI = 70d10
          VIn = (VI / tauI) * dt
       end if
    end do
 
    ! inflow triggered or still in progress
-   if ((trigger .or. VI .gt. _ZERO_) .and. tauI_left .gt. _ZERO_) then
+   if (tauI_left .gt. _ZERO_) then
+      ! calculate depth of water column
       depth = _ZERO_
       do i=1,nlev
          depth = depth - h(i)
@@ -351,21 +348,21 @@
 !         write(*,*) "S_ambient = ", S(i)
 !         write(*,*) "T_ambient = ", T(i)
 !         write(*,*) "rho_ambient = ", rho
-         ! if the density of the inflowing water is greate than the
+         ! if the density of the inflowing water is greater than the
          ! ambient water then the lowest interleaving depth is found
          if (rhoI > rho) then
-            write(*,*) "interleaving depth found"
-            write(*,*) depth
+!            write(*,*) "interleaving depth found"
+!            write(*,*) depth
             zI_min = depth
             index_min = i
             exit
          end if
       end do
 
-      write(*,*) ""
-      write(*,*) "z_inflow min = ", zI_min, " | index_min = ", index_min
-      write(*,*) ""
-      write(*,*) "dt = ", dt, " | tau_inflow_left = ", tauI_left
+!      write(*,*) ""
+!      write(*,*) "z_inflow min = ", zI_min, " | index_min = ", index_min
+!      write(*,*) ""
+!      write(*,*) "dt = ", dt, " | tau_inflow_left = ", tauI_left
 
       ! find the z-levels in which the water will interleave
       V_basin = _ZERO_
@@ -382,9 +379,9 @@
          end if
       end do
 
-      write(*,*) ""
-      write(*,*) "V_inflow = ", VI, " | V_inflow_timestep = ", VIn, &
-         " | V_basin = ", V_basin
+!      write(*,*) ""
+!      write(*,*) "V_inflow = ", VI, " | V_inflow_timestep = ", VIn, &
+!         " | V_basin = ", V_basin
 
       ! calculate the source terms
       do i=index_min,n
@@ -401,7 +398,7 @@
       VI = VI - VIn
       tauI_left = tauI_left - dt
    else
-      do i=0,nlev
+      do i=1,nlev
          Qs(i) = _ZERO_
          Qt(i) = _ZERO_
          FQs(i) = _ZERO_

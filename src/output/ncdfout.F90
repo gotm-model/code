@@ -162,6 +162,7 @@
    integer, private          :: Ac_id,Af_id,dAdz_id
    integer, private          :: total_salt_id
    integer, private          :: Qs_id, Qt_id
+   integer, private          :: wIs_id
 !
 !-----------------------------------------------------------------------
 
@@ -330,8 +331,8 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'Qs',NF90_REAL,dim4d,Qs_id)
       call check_err(iret)
-      iret = nf90_def_var(ncid,'Qt',NF90_REAL,dim4d,Qt_id)
-      call check_err(iret)
+!      iret = nf90_def_var(ncid,'wIs',NF90_REAL,dim4d,wIs_id)
+!      call check_err(iret)
    end if
    iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
    call check_err(iret)
@@ -488,6 +489,8 @@
                             long_name='salt inflow')
       iret = set_attributes(ncid,Qs_id,units='celsius', &
                             long_name='temperature inflow')
+!      iret = set_attributes(ncid,wIs_id,units='m/s', &
+!                            long_name='vertical advection velocity of salinity')
    end if
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
    iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency squared')
@@ -582,7 +585,7 @@
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
-   use observations, only: Qs, Qt
+   use observations, only: Qs, Qt, FQs, FQt
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
@@ -686,6 +689,10 @@
       iret = store_data(ncid,dAdz_id,XYZT_SHAPE,nlev,array=dAdz)
       iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)
       iret = store_data(ncid,Qt_id,XYZT_SHAPE,nlev,array=Qt)
+      do i=1,nlev
+         dum(i) = FQs(i) / Ac(i)
+      end do
+!      iret = store_data(ncid,wIs_id,XYZT_SHAPE,nlev,array=dum)
    end if
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
    iret = store_data(ncid,NN_id,XYZT_SHAPE,nlev,array=NN)
