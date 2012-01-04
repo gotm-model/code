@@ -1,4 +1,3 @@
-#$Id: Makefile,v 1.1 2009-11-11 13:08:55 kb Exp $
 #
 # Makefile to build the cl bio-module
 #

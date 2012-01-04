@@ -1,4 +1,3 @@
-!$Id: main.F90,v 1.7 2005-11-15 11:45:08 lars Exp $
 #include<cppdefs.h>
 !-----------------------------------------------------------------------
 !BOP
@@ -58,12 +57,16 @@
 ! !LOCAL VARIABLES:
    character(LEN=8)          :: datestr
    real                      :: t1=-1,t2=-1
+REALTYPE :: sunrise, sunset
 !
 !-----------------------------------------------------------------------
 !BOC
 #ifdef FORTRAN95
    call CPU_Time(t1)
 #endif
+call sunrise_sunset(56.d0,23.26d0,sunrise,sunset)
+STDERR sunrise,sunset
+
    call Date_And_Time(datestr,timestr)
    STDERR LINE
    STDERR 'GOTM ver. ',RELEASE,': Started on  ',datestr,' ',timestr

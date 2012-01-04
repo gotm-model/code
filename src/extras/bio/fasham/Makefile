@@ -1,4 +1,3 @@
-#$Id: Makefile,v 1.1 2008-03-26 08:51:42 kb Exp $
 #
 # Makefile to build the fasham bio-module
 #

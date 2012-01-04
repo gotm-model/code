@@ -1,4 +1,3 @@
-!$Id: gotm.F90,v 1.53 2011-04-06 14:43:39 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -439,7 +438,7 @@
 !  Link relevant GOTM data to FABM.
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
    call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
-                          nuh,h,w,bioshade(1:nlev),I_0,wind,precip,evap,z(1:nlev), &
+                          nuh,h,w,bioshade(1:nlev),I_0,taub,wind,precip,evap,z(1:nlev), &
                           A,g1,g2,SRelaxTau(1:nlev),sProf(1:nlev))
 
 #endif

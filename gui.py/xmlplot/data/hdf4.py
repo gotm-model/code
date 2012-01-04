@@ -124,7 +124,7 @@ class HDF4Store(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
                     if datamask is numpy.ma.nomask:
                         datamask = coordmask
                     else:
-                        datamask = numpy.logical_or(datamask,coordmask)
+                        datamask |= coordmask
 
                 # If we take a single index for this dimension, it will not be included in the output.
                 if not isinstance(bound,slice): continue

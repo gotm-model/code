@@ -897,7 +897,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
                 if datamask is numpy.ma.nomask:
                     datamask = coordmask
                 else:
-                    datamask = numpy.logical_or(datamask,coordmask)
+                    datamask |= coordmask
 
             # If we take a single index for this dimension, it will not be included in the output.
             if not isinstance(bounds[idim],slice): continue
@@ -908,12 +908,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
 
             # Locate variable that contains staggered [boundary] coordinates.
             stagcoordvar = None
-            if coordvar is not None:
-                if dimname in self.store.staggeredcoordinates:
-                    # The store has assigned a variable with staggered coordinates.
-                    stagcoordvar = self.store.getVariable_raw(self.store.staggeredcoordinates[dimname])
-                    assert stagcoordvar is not None, 'Staggered coordinate for dimension %s registered in store as variable %s, but not present as variable.' % (dimname,self.store.staggeredcoordinates[dimname])
-                elif 'bounds' in coordvar.getProperties():
+            if coordvar is not None and 'bounds' in coordvar.getProperties():
                     # The variable itself points to a variable with staggered coordinates (CF convention: bounds attribute).
                     boundvar = coordvar.getProperties()['bounds']
                     stagcoordvar = self.store.getVariable_raw(boundvar)
@@ -948,7 +943,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
                     coordslice_stag = []
                     for slc in coordslice:
                         if isinstance(slc,slice):
-                            # We take a subset of this dimension: extent the slice with 1.
+                            # We take a subset of this dimension: extend the slice with 1.
                             coordslice_stag.append(slice(slc.start,slc.stop+slc.step,slc.step))
                         else:
                             # We take a single [centered] index from this dimension:
@@ -1004,7 +999,6 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
 
         self.cachedcoords = {}
         self.reassigneddims = {}
-        self.staggeredcoordinates = {}
         
         # Whether to mask values outside the range specified by valid_min,valid_max,valid_range
         # NetCDF variable attributes (as specified by CF convention)
@@ -1135,19 +1129,20 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
             ncvar = nc.createVariable(varName,datatype,dimensions)
         return self.getVariable_raw(varName)
                 
-    def copyVariable(self,variable):
+    def copyVariable(self,variable,name=None,dims=None):
         assert self.mode in ('w','a','r+'),'NetCDF file has not been opened for writing.'
         assert isinstance(variable,NetCDFStore.NetCDFVariable),'Added variable must be an existing NetCDF variable object, not %s.' % str(variable)
-        nc = self.getcdf()
-        dims = variable.getDimensions_raw(reassign=False)
         shape = variable.getShape()
+        props = variable.getProperties()
+        if dims is None: dims = variable.getDimensions_raw(reassign=False)
+        nc = self.getcdf()
         for dim,length in zip(dims,shape):
             if dim not in nc.dimensions: self.createDimension(dim, length)
         data = variable.getSlice((Ellipsis,),dataonly=True)
         nctype = {'float32':'f','float64':'d'}[str(data.dtype)]
-        var = self.addVariable(variable.getName(),dims,datatype=nctype)
-        newprops = var.getProperties()
-        for key,value in variable.getProperties().iteritems():
+        if name is None: name = variable.getName()
+        var = self.addVariable(name,dims,datatype=nctype,missingvalue=props.get('_FillValue',None))
+        for key,value in props.iteritems():
             try:
                 var.setProperty(key,value)
             except AttributeError:  # netcdf-python does not allow _FillValue to be set after variable creation - ignore this.
@@ -1259,10 +1254,6 @@ class NetCDFStore_GOTM(NetCDFStore):
         self.generatecartesiancenters = False
 
         NetCDFStore.__init__(self,path,*args,**kwargs)
-        
-        # Link centered and staggered coordinates
-        self.staggeredcoordinates['z' ] = 'z_stag'
-        self.staggeredcoordinates['z1'] = 'z1_stag'
                 
     def autoReassignCoordinates(self):
         NetCDFStore.autoReassignCoordinates(self)
@@ -1346,11 +1337,7 @@ class NetCDFStore_GOTM(NetCDFStore):
             if 'z1' in ncvars: names.append('z1')
             
         self.generatecartesiancenters = self.generatecartesiancenters or ('xx' in ncvars and 'yx' in ncvars and 'xic' in ncdims and 'etac' in ncdims and 'xc' not in ncvars and 'yc' not in ncvars)
-        if self.generatecartesiancenters:
-            # We have to generate centered Cartesian coordinates
-            self.staggeredcoordinates['xc'] = 'xx'
-            self.staggeredcoordinates['yc'] = 'yx'
-            names += ['xc','yc']
+        if self.generatecartesiancenters: names += ['xc','yc']
         
         return names
 
@@ -1373,7 +1360,9 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return self.store[self.stagname].getUnit()
 
             def getProperties(self):
-                return {'history':'auto-generated from boundary coordinates in variable %s' % self.stagname}
+                props = {'history':'auto-generated from boundary coordinates in variable %s' % self.stagname}
+                props['bounds'] = self.stagname
+                return props
 
             def getDataType(self):
                 return self.store[self.stagname].getDataType()
@@ -1437,9 +1426,11 @@ class NetCDFStore_GOTM(NetCDFStore):
 
             def getProperties(self):
                 if self.store.bathymetryname is None:
-                    return {'history':'auto-generated from layer thickness and surface elevation.'}
+                    props = {'history':'auto-generated from layer thickness and surface elevation.'}
                 else:
-                    return {'history':'auto-generated from sigma levels, elevation and bathymetry.'}
+                    props = {'history':'auto-generated from sigma levels, elevation and bathymetry.'}
+                if not self.dimname.endswith('_stag'): props['bounds'] = self.dimname + '_stag'
+                return props
 
             def getDataType(self):
                 return self.store[self.store.elevname].getDataType()
@@ -1561,7 +1552,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                         mask[...] = newmask
                     else:
                         # Combine provided mask with existing one.
-                        mask = numpy.logical_or(mask,newmask)
+                        mask |= newmask
                     return mask
 
                 # If elevations are (partially) masked, first fill the first layer of masked cells around
@@ -1570,7 +1561,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                 elevmask = numpy.ma.getmask(elev)
                 if elevmask is not numpy.ma.nomask:
                     if numpy.any(elevmask):
-                        # Add elevation mask to global depth mask (insert z dimension).
+                        # Add elevation mask to global depth mask (NB getvardata will have inserted z dimension already).
                         mask = setmask(mask,elevmask)
                         
                         # Set masked edges of valid [unmasked] elevation domain to bordering
@@ -1590,7 +1581,6 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # Fill masked values (we do not want coordinate arrays with masked values)
                     # This should not have any effect, as the value arrays should also be masked at
                     # these locations.
-                    # Check for the "filled" attribute to see if these are masked arrays.
                     hmask = numpy.ma.getmask(h)
                     if hmask is not numpy.ma.nomask:
                         mask = setmask(mask,hmask)

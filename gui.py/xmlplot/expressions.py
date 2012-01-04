@@ -207,6 +207,7 @@ class LazyExpression(object):
         specification string.
         """
         slicestrings = [LazyExpression.slice2string(slic) for slic in slices]
+        if len(slicestrings)==0: return ''
         return '[%s]' % ','.join(slicestrings)
 
     @staticmethod

@@ -1051,7 +1051,7 @@ class Figure(xmlstore.util.referencedobject):
             if projection=='windrose':
                 # Get flattened direction and speed, and eliminate masked values (if any)
                 wd,C = varslices[0].data.ravel(),varslices[1].data.ravel()
-                mask = common.getMergedMask((wd,C))
+                mask = common.getMergedMask(wd,C)
                 if mask is not None:
                     valid = numpy.logical_not(mask)
                     wd,C = wd.compress(valid),C.compress(valid)
@@ -1131,7 +1131,9 @@ class Figure(xmlstore.util.referencedobject):
                     V = varslices[1].data
                     defaultseriesnode['UseColorMap'].setValue(False)
                     if seriesnode['UseColorMap'].getValue(usedefault=True):
-                        C = numpy.sqrt(U*U+V*V)
+                        uvmask = common.getMergedMask(U,V)
+                        C = numpy.sqrt(numpy.ma.filled(U,fill_value=0.)**2+numpy.ma.filled(V,fill_value=0.)**2)
+                        if uvmask is not None: C = numpy.ma.array(C,mask=uvmask)
                         cname = 'arrowlength'
                         cinfo = {'label':'arrow length',
                                  'unit':'',
@@ -1595,20 +1597,11 @@ class Figure(xmlstore.util.referencedobject):
                     
                     # Calculate velocities (needed for arrow auto-scaling)
                     vel = C
-                    if vel is None: vel = numpy.sqrt(U*U+V*V)
+                    if vel is None:
+                        uvmask = common.getMergedMask(U,V)
+                        vel = numpy.sqrt(numpy.ma.filled(U,fill_value=0.)**2+numpy.ma.filled(V,fill_value=0.)**2)
+                        if uvmask is not None: vel = numpy.ma.array(vel,mask=uvmask)
                     keylength = numpy.abs(U).max()
-
-                    remove_UV_mask = False  # used to be needed for old matplotlib, not anymore as of 0.99.1.1
-                    if remove_UV_mask:
-                        # Get combined mask of U,V and (optionally) C
-                        mask = common.getMergedMask((U,V,C))
-                        
-                        # Quiver with masked arrays has bugs in MatPlotlib 0.98.5
-                        # Therefore we mask here only the color array, making sure that its mask combines
-                        # the masks of U,V,C.
-                        if mask is not None:
-                            if C is not None: C = numpy.ma.masked_where(mask,C,copy=False)
-                            U,V = U.filled(0.),V.filled(0.)
                             
                     scale = seriesnode['ArrowScale'].getValue(usedefault=True)
                     width = seriesnode['ArrowWidth'].getValue(usedefault=True)
@@ -1648,7 +1641,6 @@ class Figure(xmlstore.util.referencedobject):
                     assert cb is None, 'Currently only one object that needs a colorbar is supported per figure.'
                     pc.set_clim(crange)
                     cb = figure.colorbar(pc,ax=axes,format=cformatter)
-                    cb.locator = clocator
                     if cbborders is not None: cb.add_lines(cbborders)
 
                 plotcount[2] += 1
@@ -1873,8 +1865,10 @@ class Figure(xmlstore.util.referencedobject):
             defaxisnode['Unit'].setValue(axisdata['unit'])
             defaxisnode['TicksMajor'].setValue(not axisdata.get('hideticks',False))
             defaxisnode['TicksMajor/ShowLabels'].setValue(True)
+            #defaxisnode['TicksMajor/MaximumTickCount'].setValue(8)
             defaxisnode['TicksMinor'].setValue(False)
             defaxisnode['TicksMinor/ShowLabels'].setValue(False)
+            #defaxisnode['TicksMinor/MaximumTickCount'].setValue(8)
             defaxisnode['IsTimeAxis'].setValue(istimeaxis)
 
             # Get the MatPlotLib axis object.
@@ -1886,6 +1880,7 @@ class Figure(xmlstore.util.referencedobject):
             elif cb is not None:
                 mplaxis = cb.ax.get_yaxis()
 
+            locMajor,locMinor = None,None
             if istimeaxis:
                 assert axisname!='colorbar', 'The color bar cannot be a time axis.'
                 
@@ -1893,12 +1888,12 @@ class Figure(xmlstore.util.referencedobject):
                     # Major ticks
                     dayspan = (effdatarange[1]-effdatarange[0])
                     location,interval,tickformat,tickspan = getTimeTickSettings(dayspan,axisnode['TicksMajor'],defaxisnode['TicksMajor'])
-                    mplaxis.set_major_locator(getTimeLocator(location,interval))
+                    locMajor = getTimeLocator(location,interval)
                     mplaxis.set_major_formatter(CustomDateFormatter(tickformat))
 
                     # Minor ticks
                     location,interval,tickformat,tickspan = getTimeTickSettings(min(tickspan,dayspan),axisnode['TicksMinor'],defaxisnode['TicksMinor'])
-                    mplaxis.set_minor_locator(getTimeLocator(location,interval))
+                    locMinor = getTimeLocator(location,interval)
 
                 # Set the "natural" axis limits based on the data ranges.
                 defaxisnode['MinimumTime'].setValue(common.num2date(naturalrange[0]))
@@ -1908,12 +1903,37 @@ class Figure(xmlstore.util.referencedobject):
                 defaxisnode['Minimum'].setValue(naturalrange[0])
                 defaxisnode['Maximum'].setValue(naturalrange[1])
 
-            # Remove axis ticks if required.
+            # Set axis locators and completely remove axis ticks if required.
             if mplaxis:
                 if not axisnode['TicksMajor'].getValue(usedefault=True):
-                    mplaxis.set_major_locator(matplotlib.ticker.FixedLocator([]))
+                    # Remove all major ticks
+                    locMajor = matplotlib.ticker.FixedLocator([])
+                elif locMajor is None:
+                    # Use default major tick locator.
+                    #locMajor = matplotlib.ticker.MaxNLocator(nbins=1+axisnode['TicksMajor/MaximumTickCount'].getValue(usedefault=True), steps=[1, 2, 5, 10])
+                    locMajor = matplotlib.ticker.AutoLocator()
                 if not axisnode['TicksMinor'].getValue(usedefault=True):
-                    mplaxis.set_minor_locator(matplotlib.ticker.FixedLocator([]))
+                    # Remove all minor ticks
+                    locMinor = matplotlib.ticker.FixedLocator([])
+                elif locMinor is None:
+                    # Use default minor tick locator.
+                    #locMinor = matplotlib.ticker.MaxNLocator(nbins=1+axisnode['TicksMinor/MaximumTickCount'].getValue(usedefault=True), steps=[1, 2, 5, 10])
+                    locMinor = matplotlib.ticker.AutoLocator()
+                    
+                if axisname=='colorbar':
+                    # Color bar has a special routine for setting locators (major only).
+                    if cb.locator is None:
+                        # No locator has been set yet - use our value.
+                        cb.set_ticks(locMajor)
+                    else:
+                        # A locator has been set - this means we are plotting a contour set with fixed levels.
+                        # Tick number can vary only by omitting every nth tick.
+                        #cb.set_ticks(matplotlib.ticker.FixedLocator(cb.mappable.levels, nbins=1+axisnode['TicksMajor/MaximumTickCount'].getValue(usedefault=True)))
+                        pass
+                else:
+                    # Axis other than color bar.
+                    mplaxis.set_major_locator(locMajor)
+                    mplaxis.set_minor_locator(locMinor)
 
             # Obtain label for axis.
             label = axisnode['Label'].getValue(usedefault=True)

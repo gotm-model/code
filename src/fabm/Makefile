@@ -1,4 +1,3 @@
-#$Id: Makefile,v 1.2 2011-04-05 13:47:17 jorn Exp $
 #
 # Makefile to build the FABM-GOTM link module
 #

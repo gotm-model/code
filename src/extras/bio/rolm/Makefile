@@ -1,4 +1,3 @@
-#$Id: Makefile,v 1.1 2008-03-26 08:51:44 kb Exp $
 #
 # Makefile to build the rolm bio-module
 #

@@ -1,4 +1,3 @@
-!$Id: friction.F90,v 1.11 2010-09-17 12:53:48 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -56,8 +55,8 @@
 !
 ! !USES:
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za
-   use meanflow,      only: u,v,gravity
-   use meanflow,      only: u_taub,u_taus,drag
+   use meanflow,      only: u,v,rho,gravity
+   use meanflow,      only: u_taub,u_taus,drag,taub
    use meanflow,      only: charnock,charnock_val,z0s_min
    use meanflow,      only: lake
 
@@ -157,6 +156,9 @@
 !     add bottom friction as source term for the momentum equation
       drag(j) = drag(j) +  rr*rr
    end do
+
+!  calculate bottom stress, which is used by sediment resuspension models
+   taub = u_taub*u_taub*rho(1)
 
 !  be careful: tx and ty are the surface shear-stresses
 !  already divided by rho!

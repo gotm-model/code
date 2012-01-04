@@ -1,4 +1,3 @@
-#$Id: Makefile,v 1.4 2005-07-06 14:22:40 kbk Exp $
 #
 # Makefile to build the the output library - liboutput.a
 #

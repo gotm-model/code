@@ -1,4 +1,3 @@
-!$Id: meanflow.F90,v 1.17 2010-09-17 12:53:48 jorn Exp $
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -106,6 +105,9 @@
 
 !  the friction velocities
    REALTYPE, public                    :: u_taub,u_taus
+
+!  bottom stress
+   REALTYPE, public                    :: taub
 
 !  other stuff
    REALTYPE, public                    :: depth0

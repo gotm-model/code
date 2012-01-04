@@ -1,4 +1,3 @@
-#$Id: Makefile,v 1.1 2008-07-08 10:17:24 lars Exp $
 #
 # Makefile to build the npzd bio-module
 #
