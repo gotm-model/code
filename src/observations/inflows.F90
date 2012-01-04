@@ -62,7 +62,7 @@
 !-----------------------------------------------------------------------
 !BOC
       mI = 0.0d0
-      SI = 12.5d0
+      SI = 10.5d0
       TI = 4.0d0
       tauI = _ZERO_
 !112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
@@ -301,7 +301,7 @@
    REALTYPE             :: rhoI,rho
    REALTYPE             :: depth
    REALTYPE             :: zI_min,zI_max
-   REALTYPE             :: V_basin
+   REALTYPE             :: VI_basin
    REALTYPE             :: QI
    integer              :: index_min
    REALTYPE             :: threshold
@@ -319,7 +319,7 @@
          !2 weeks
          tauI = 1209600d0
          !1 day
-         !tauI = 86400d0
+         !tauI = 3 * 86400d0
          tauI_left = TauI
          VI = 50d9
          VIn = (VI / tauI) * dt
@@ -351,11 +351,11 @@
       end do
 
       ! find the z-levels in which the water will interleave
-      V_basin = _ZERO_
+      VI_basin = _ZERO_
       zI_max = zI_min
       n = index_min
-      do while (V_basin < VIn)
-         V_basin = V_basin + Ac(n) * h(n)
+      do while (VI_basin < VIn)
+         VI_basin = VI_basin + Ac(n) * h(n)
          zI_max = zI_max - h(n)
          n = n+1
          ! for debugging only
@@ -367,15 +367,12 @@
       end do
 
       ! calculate the source terms
+      write(*,*) "min inflow index = ", index_min
+      write(*,*) "max inflow index = ", n
+      write(*,*) ""
       do i=index_min,n
-         Qs(i) = (SI - S(i)) / tauI
-         if (Qs(i) .lt. _ZERO_) then
-            Qs(i) = _ZERO_
-         end if
-         Qt(i) = (TI - T(i)) / tauI
-         if (Qt(i) .lt. _ZERO_) then
-            Qt(i) = _ZERO_
-         end if
+         Qs(i) = SI / tauI / (n-index_min)
+         Qt(i) = TI / tauI / (n-index_min)
       end do
 
       ! calculate the vertical flux terms
