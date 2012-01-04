@@ -322,7 +322,6 @@
          !tauI = 86400d0
          tauI_left = TauI
          VI = 50d9
-         VI = 800000d9
          VIn = (VI / tauI) * dt
       end if
    end do
@@ -342,28 +341,14 @@
          depth = depth + h(i)
          rhoI = unesco(SI,TI,depth/10.0d0,.false.)
          rho = unesco(S(i),T(i),depth/10.0d0,.false.)
-!         write(*,*) "depth = ", depth
-!         write(*,*) "S_inflow = ", SI
-!         write(*,*) "T_inflow = ", TI
-!         write(*,*) "rho_inflow = ", rhoI
-!         write(*,*) "S_ambient = ", S(i)
-!         write(*,*) "T_ambient = ", T(i)
-!         write(*,*) "rho_ambient = ", rho
          ! if the density of the inflowing water is greater than the
          ! ambient water then the lowest interleaving depth is found
          if (rhoI > rho) then
-!            write(*,*) "interleaving depth found"
-!            write(*,*) depth
             zI_min = depth
             index_min = i
             exit
          end if
       end do
-
-!      write(*,*) ""
-!      write(*,*) "z_inflow min = ", zI_min, " | index_min = ", index_min
-!      write(*,*) ""
-!      write(*,*) "dt = ", dt, " | tau_inflow_left = ", tauI_left
 
       ! find the z-levels in which the water will interleave
       V_basin = _ZERO_
@@ -373,16 +358,13 @@
          V_basin = V_basin + Ac(n) * h(n)
          zI_max = zI_max - h(n)
          n = n+1
+         ! for debugging only
          if (n .gt. nlev) then
             write(*,*) "Warning: Too much water flowing into the basin."
             n = nlev
             exit
          end if
       end do
-
-!      write(*,*) ""
-!      write(*,*) "V_inflow = ", VI, " | V_inflow_timestep = ", VIn, &
-!         " | V_basin = ", V_basin
 
       ! calculate the source terms
       do i=index_min,n
@@ -395,6 +377,7 @@
             Qt(i) = _ZERO_
          end if
       end do
+
       ! calculate the vertical flux terms
       FQs(0) = Qs(0)
       FQt(0) = Qt(0)

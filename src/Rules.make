@@ -58,7 +58,6 @@ ifdef NETCDFLIBNAME
 NETCDFLIB       = $(NETCDFLIBNAME)
 else
 NETCDFLIB       = -lnetcdf
-#NETCDFLIB       += -lnetcdff
 endif
 
 endif
