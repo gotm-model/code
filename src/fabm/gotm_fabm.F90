@@ -415,7 +415,7 @@
    ! Provide pointers to arrays with environmental variables to FABM.
    call fabm_link_data   (model,varname_temp,   temp)
    call fabm_link_data   (model,varname_salt,   salt_)
-   call fabm_link_data   (model,varname_dens,   rho_)
+   call fabm_link_data   (model,varname_dens,   rho)
    call fabm_link_data_hz(model,varname_wind_sf,wnd)
    call fabm_link_data_hz(model,varname_par_sf, I_0_)
    call fabm_link_data_hz(model,varname_taub,   taub)
@@ -612,11 +612,11 @@
 
       ! Do diffusion step
       if (cc_obs_indices(i).ne.-1) then
-!        Observation on this variable are available.      
+!        Observations on this variable are available.
          call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,Neumann,Neumann,&
             sfl(i),bfl(i),nuh,Lsour,Qsour,relax_tau_1d(:,cc_obs_indices(i)),obs_1d(:,cc_obs_indices(i)),cc(i,:))
       else
-!        Observation on this variable are not available.      
+!        Observations on this variable are not available.
          call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,Neumann,Neumann,&
             sfl(i),bfl(i),nuh,Lsour,Qsour,RelaxTau,cc(i,:),cc(i,:))
       end if

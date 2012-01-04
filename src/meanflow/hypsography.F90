@@ -114,7 +114,7 @@
    integer                   :: rc
    integer                   :: up_down
    integer, save             :: lines
-!
+   REALTYPE                  :: x
 !-----------------------------------------------------------------------
 !BOC
    ierr = 0
@@ -132,17 +132,39 @@
    end if
    A_input = _ZERO_
 
-   if(up_down .eq. 1) then
-      do i=1,N_input
-         lines = lines+1
-         read(unit,*,ERR=100,END=110) depth_input(i), A_input(i)
-      end do
-   else
-      do i=N_input,1,-1
-         lines = lines+1
-         read(unit,*,ERR=100,END=110) depth_input(i), A_input(i)
-      end do
-   end if
+   select case (up_down)
+      case(1)  ! surface ref, read from bottom
+         do i=1,N_input
+            lines = lines+1
+            read(unit,*,ERR=100,END=110) depth_input(i), A_input(i)
+         end do
+      case(2)  ! surface ref, read from surface
+         do i=N_input,1,-1
+            lines = lines+1
+            read(unit,*,ERR=100,END=110) depth_input(i), A_input(i)
+         end do
+      case(3)  ! bottom ref, read from bottom
+         do i=1,N_input
+            lines = lines+1
+            read(unit,*,ERR=100,END=110) depth_input(i), A_input(i)
+         end do
+         do i=1,N_input/2
+            x = depth_input(i)
+            depth_input(i) = -depth_input(N_input-(i-1))
+            depth_input(N_input-(i-1)) = -x
+         end do
+      case(4)  ! bottom ref, read from surface
+         do i=N_input,1,-1
+            lines = lines+1
+            read(unit,*,ERR=100,END=110) depth_input(i), A_input(i)
+         end do
+         do i=1,N_input/2
+            x = depth_input(i)
+            depth_input(i) = -depth_input(N_input-(i-1))
+            depth_input(N_input-(i-1)) = -x
+         end do
+      case default
+   end select
 
    return
 !  READ_ERROR = -2
