@@ -367,9 +367,6 @@
       end do
 
       ! calculate the source terms
-      write(*,*) "min inflow index = ", index_min
-      write(*,*) "max inflow index = ", n
-      write(*,*) ""
       do i=index_min,n
          Qs(i) = SI / tauI / (n-index_min)
          Qt(i) = TI / tauI / (n-index_min)
