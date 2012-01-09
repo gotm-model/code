@@ -34,6 +34,7 @@
    REALTYPE, save                              :: SI,TI
    REALTYPE, save                              :: mI
    REALTYPE, save                              :: VIn
+   REALTYPE, save                              :: V_diff
 ! !DEFINED PARAMETERS:
 !
 !-----------------------------------------------------------------------
@@ -65,6 +66,7 @@
       SI = 10.5d0
       TI = 4.0d0
       tauI = _ZERO_
+      V_diff = _ZERO_
 !112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
 !      stop 'init_hypsography'
 
@@ -365,11 +367,24 @@
             exit
          end if
       end do
+      ! VI_basin is now too big so go back one step
+      n = n-1
+      zI_max = zI_max + h(n)
+      VI_basin = VI_basin + Ac(n) * h(n)
+
+      ! save the difference between VI_basin and VIn until
+      ! it fills an entire water layer, then fill that layer and reset V_diff
+      V_diff = V_diff + (VIn - VI_basin)
+      if (V_diff .ge. (Ac(n+1) * h(n+1))) then
+         n = n + 1
+         V_diff = _ZERO_
+      end if
 
       ! calculate the source terms
+      ! "+1" because loop includes both n and index_min
       do i=index_min,n
-         Qs(i) = SI / tauI / (n-index_min)
-         Qt(i) = TI / tauI / (n-index_min)
+         Qs(i) = SI / tauI / (n-index_min+1)
+         Qt(i) = TI / tauI / (n-index_min+1)
       end do
 
       ! calculate the vertical flux terms
