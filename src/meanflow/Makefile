@@ -8,7 +8,7 @@ LIB	= $(LIBDIR)/libmeanflow$(buildtype).a
 
 DOCSRC	= \
 meanflow.F90		\
-hypsography.F90         \
+hypsography.F90     \
 updategrid.F90		\
 coriolis.F90		\
 uequation.F90		\

@@ -309,6 +309,10 @@
 			<bio_prof_method>0</bio_prof_method>
 			<bio_prof_file>bio_prof_file.dat</bio_prof_file>
 		</bioprofiles>
+		<inflows>
+			<inflows_method>0</inflows_method>
+			<inflows_file>inflows_file.dat</inflows_file>
+		</inflows>
 	</obs>
 	<bio>
 		<bio_nml>

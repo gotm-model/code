@@ -7,7 +7,8 @@ include ../Rules.make
 LIB	= $(LIBDIR)/libobservations$(buildtype).a
 
 DOCSRC	= \
-observations.F90 	\
+inflows.F90             \
+observations.F90        \
 get_s_profile.F90       \
 get_t_profile.F90       \
 get_o2_profile.F90      \
@@ -25,6 +26,7 @@ const_NNS.F90
 
 
 MOD	= \
+${LIB}(inflows.o) \
 ${LIB}(observations.o)
 
 OBJ	= \

@@ -24,6 +24,9 @@
 !  Free format is used for reading-in the actual data.
 !
 ! !USES:
+   use hypsography, only: lake
+   use inflows, only: init_inflows, clean_inflows
+   use inflows, only: get_inflows, update_inflows
    IMPLICIT NONE
 
 !  default: all is private.
@@ -79,6 +82,13 @@
 !  'observed' biological profiles
    REALTYPE, public, dimension(:,:), allocatable :: bioprofs
 #endif
+
+!  inflows for lake model
+   REALTYPE, private                             :: dt
+   REALTYPE, public, dimension(:,:), allocatable :: inflows_input
+   REALTYPE, public, dimension(:), allocatable   :: Qs, Qt
+   REALTYPE, public, dimension(:), allocatable   :: FQs, FQt
+   REALTYPE                                      :: V_inflow
 
 !------------------------------------------------------------------------------
 !
@@ -193,6 +203,10 @@
    CHARACTER(LEN=PATH_MAX)   :: bio_prof_file
 #endif
 
+!  Observed inflows
+   integer, public           :: inflows_method
+   CHARACTER(LEN=PATH_MAX)   :: inflows_file
+
    REALTYPE,public, parameter:: pi=3.141592654d0
 
 ! !DEFINED PARAMETERS:
@@ -212,6 +226,7 @@
 #ifdef BIO
    integer, parameter        :: bio_prof_unit=41
 #endif
+   integer, parameter        :: inflows_unit=71
 
 !  pre-defined parameters
    integer, parameter        :: READ_SUCCESS=1
@@ -312,7 +327,7 @@
 !
 ! !INTERFACE:
    subroutine init_observations(namlst,fn,julday,secs,                 &
-                                depth,nlev,z,h,gravity,rho_0)
+                                depth,nlev,delta_t,z,h,gravity,rho_0)
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
@@ -332,6 +347,7 @@
    integer, intent(in)                 :: julday,secs
    REALTYPE, intent(in)                :: depth
    integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: delta_t
    REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
    REALTYPE, intent(in)                :: gravity,rho_0
 !
@@ -390,6 +406,7 @@
 #ifdef BIO
    namelist /bioprofiles/  bio_prof_method,bio_prof_file
 #endif
+   namelist /inflows/ inflows_method,inflows_file
 
    integer                   :: rc,i
    REALTYPE                  :: ds,db
@@ -399,6 +416,7 @@
    LEVEL1 'init_observations'
 
    init_saved_vars=.true.
+   dt = delta_t
 
 !  Salinity profile(s)
    s_prof_method=0
@@ -514,6 +532,12 @@
    bio_prof_file='bioprofs.dat'
 #endif
 
+!  Observed inflows
+   inflows_method=0
+   inflows_file='inflows_file.dat'
+   V_inflow = _ZERO_
+   call init_inflows(nlev)
+
    open(namlst,file=fn,status='old',action='read',err=80)
    read(namlst,nml=sprofile,err=81)
    read(namlst,nml=tprofile,err=82)
@@ -531,6 +555,7 @@
    read(namlst,nml=bioprofiles,err=93)
    STDERR bio_prof_method,trim(bio_prof_file)
 #endif
+   read(namlst,nml=inflows,err=94)
    close(namlst)
 
    allocate(sprof(0:nlev),stat=rc)
@@ -840,6 +865,34 @@
    end select
 #endif
 
+!  The inflows
+   allocate(Qs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qs)'
+   Qs = _ZERO_
+
+   allocate(Qt(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qt)'
+   Qt = _ZERO_
+
+   allocate(FQs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (FQs)'
+   FQs = _ZERO_
+
+   allocate(FQt(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (FQt)'
+   FQt = _ZERO_
+
+   if (lake) then
+      select case (inflows_method)
+         case (FROMFILE)
+            open(inflows_unit,file=inflows_file,status='unknown',err=113)
+            LEVEL2 'Reading inflows from:'
+            LEVEL3 trim(inflows_file)
+            call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
+         case default
+      end select
+   end if
+
    init_saved_vars=.false.
    return
 
@@ -873,6 +926,8 @@
 93 FATAL 'I could not read "bioprofiles" namelist'
    stop 'init_observations'
 #endif
+94 FATAL 'I could not read "inflows" namelist'
+   stop 'init_observations'
 
 101 FATAL 'Unable to open "',trim(s_prof_file),'" for reading'
    stop 'init_observations'
@@ -900,6 +955,8 @@
 112 FATAL 'Unable to open "',trim(bio_prof_file),'" for reading'
    stop 'init_observations'
 #endif
+113 FATAL 'Unable to open "',trim(inflows_file),'" for reading'
+   stop 'init_observations'
 
    return
    end subroutine init_observations
@@ -976,6 +1033,10 @@
 #ifdef BIO
    if(bio_prof_method .eq. 2) then
       call get_bio_profiles(bio_prof_unit,julday,secs,nlev,z)
+   end if
+   if(lake .and. inflows_method .eq. 2) then
+      call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
+      call update_inflows(inflows_input,V_inflow,Qs,Qt,FQs,FQt,nlev,dt)
    end if
 #endif
    return
@@ -1164,6 +1225,12 @@
 #ifdef BIO
    if (allocated(bioprofs)) deallocate(bioprofs)
 #endif
+   if (allocated(inflows_input)) deallocate(inflows_input)
+   if (allocated(Qs)) deallocate(Qs)
+   if (allocated(Qt)) deallocate(Qt)
+   if (allocated(FQs)) deallocate(FQs)
+   if (allocated(FQt)) deallocate(FQt)
+   call clean_inflows()
    LEVEL2 'done.'
 
    LEVEL2 'closing any open files ...'
@@ -1180,6 +1247,7 @@
 #ifdef BIO
    close(bio_prof_unit)
 #endif
+   close(inflows_unit)
    LEVEL2 'done.'
 
    return
@@ -1229,6 +1297,11 @@
 #ifdef BIO
    if (allocated(bioprofs)) LEVEL2 'bioprofs',bioprofs
 #endif
+   if (allocated(Qs)) LEVEL2 'Qs',Qs
+   if (allocated(Qt)) LEVEL2 'Qt',Qt
+   if (allocated(FQs)) LEVEL2 'FQs',FQs
+   if (allocated(FQt)) LEVEL2 'FQt',FQt
+   if (allocated(inflows_input)) LEVEL2 'inflows_input',inflows_input
 
    LEVEL2 'salinity namelist',                                  &
             s_prof_method,s_analyt_method,                      &
@@ -1281,6 +1354,9 @@
    LEVEL2 'observed biological profiles namelist',              &
             bio_prof_method,bio_prof_file
 #endif
+   LEVEL2 'observed inflows namelist',                          &
+            inflows_method,inflows_file
+
    end subroutine print_state_observations
 !EOC
 #endif

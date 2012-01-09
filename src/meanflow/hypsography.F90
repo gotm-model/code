@@ -2,7 +2,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: read_hypsography
+! !MODULE: hypsography
 !
 ! !INTERFACE:
    module hypsography
@@ -84,6 +84,7 @@
 
    end subroutine init_hypsography
 !EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -244,6 +245,8 @@
    end do
 
    end subroutine update_hypsography
+!EOC
+
 !-----------------------------------------------------------------------
 !BOP
 !
