@@ -383,8 +383,8 @@
       ! calculate the source terms
       ! "+1" because loop includes both n and index_min
       do i=index_min,n
-         Qs(i) = SI / tauI / (n-index_min+1)
-         Qt(i) = TI / tauI / (n-index_min+1)
+         Qs(i) = (S(i) - SI) / tauI / (n-index_min+1)
+         Qt(i) = (T(i) - TI) / tauI / (n-index_min+1)
       end do
 
       ! calculate the vertical flux terms
