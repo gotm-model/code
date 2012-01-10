@@ -25,7 +25,6 @@
 !  Free format is used for reading-in the actual data.
 !
 ! !USES:
-   use hypsography, only: lake
    use inflows, only: init_inflows, clean_inflows
    use inflows, only: get_inflows, update_inflows
    IMPLICIT NONE
@@ -85,11 +84,10 @@
 #endif
 
 !  inflows for lake model
-   REALTYPE, private                             :: dt
    REALTYPE, public, dimension(:,:), allocatable :: inflows_input
    REALTYPE, public, dimension(:), allocatable   :: Qs, Qt
    REALTYPE, public, dimension(:), allocatable   :: FQs, FQt
-   REALTYPE                                      :: V_inflow
+   REALTYPE,  public                             :: V_inflow
 
 !------------------------------------------------------------------------------
 !
@@ -328,7 +326,7 @@
 !
 ! !INTERFACE:
    subroutine init_observations(namlst,fn,julday,secs,                 &
-                                depth,nlev,delta_t,z,h,gravity,rho_0)
+                                depth,nlev,z,h,gravity,rho_0)
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
@@ -348,7 +346,6 @@
    integer, intent(in)                 :: julday,secs
    REALTYPE, intent(in)                :: depth
    integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: delta_t
    REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
    REALTYPE, intent(in)                :: gravity,rho_0
 !
@@ -417,7 +414,6 @@
    LEVEL1 'init_observations'
 
    init_saved_vars=.true.
-   dt = delta_t
 
 !  Salinity profile(s)
    s_prof_method=0
@@ -883,16 +879,14 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (FQt)'
    FQt = _ZERO_
 
-   if (lake) then
-      select case (inflows_method)
-         case (FROMFILE)
-            open(inflows_unit,file=inflows_file,status='unknown',err=113)
-            LEVEL2 'Reading inflows from:'
-            LEVEL3 trim(inflows_file)
-            call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
-         case default
-      end select
-   end if
+   select case (inflows_method)
+      case (FROMFILE)
+         open(inflows_unit,file=inflows_file,status='unknown',err=113)
+         LEVEL2 'Reading inflows from:'
+         LEVEL3 trim(inflows_file)
+         call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
+      case default
+   end select
 
    init_saved_vars=.false.
    return
@@ -1035,9 +1029,8 @@
    if(bio_prof_method .eq. 2) then
       call get_bio_profiles(bio_prof_unit,julday,secs,nlev,z)
    end if
-   if(lake .and. inflows_method .eq. 2) then
+   if(inflows_method .eq. 2) then
       call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
-      call update_inflows(inflows_input,V_inflow,Qs,Qt,FQs,FQt,nlev,dt)
    end if
 #endif
    return

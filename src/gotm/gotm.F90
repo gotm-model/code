@@ -75,6 +75,7 @@
 #endif
 
    use hypsography, only: init_hypsography,clean_hypsography
+   use inflows, only: update_inflows
    use output
 
    IMPLICIT NONE
@@ -377,7 +378,7 @@
    call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
    call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
-                          depth,nlev,dt,z,h,gravity,rho_0)
+                          depth,nlev,z,h,gravity,rho_0)
 
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
@@ -538,6 +539,8 @@
 !     meanflow integration starts
       call updategrid(nlev,dt,zeta)
       call coriolis(nlev,dt)
+      call update_inflows(nlev,dt,S(0:nlev),T(0:nlev),h,Ac, &
+                          inflows_input,V_inflow,Qs,Qt,FQs,FQt)
 
 !     update velocity
       call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)

@@ -32,7 +32,6 @@
    REALTYPE, save                              :: tauI
    REALTYPE, save                              :: tauI_left
    REALTYPE, save                              :: SI,TI
-   REALTYPE, save                              :: mI
    REALTYPE, save                              :: VIn
    REALTYPE, save                              :: V_diff
 ! !DEFINED PARAMETERS:
@@ -62,7 +61,6 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-      mI = 0.0d0
       SI = 10.5d0
       TI = 4.0d0
       tauI = _ZERO_
@@ -277,25 +275,28 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(inflows_input,VI,Qs,Qt,FQs,FQt,nlev,dt)
+   subroutine update_inflows(nlev,dt,S,T,h,Ac,inflows_input,VI,Qs,Qt,FQs,FQt)
 !
 ! !DESCRIPTION:
 !  TODO!
 !
 ! !USES:
-   use meanflow, only: S, T
-   use meanflow, only: h, Ac
+!   use meanflow, only: S, T
+!   use meanflow, only: h, Ac
    use eqstate, only: unesco
 
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:
+   integer, intent(in)                  :: nlev
+   REALTYPE, intent(in)                 :: dt
+   REALTYPE, intent(in)                 :: S(0:nlev), T(0:nlev)
+   REALTYPE, intent(in)                 :: h(0:nlev), Ac(0:nlev)
    REALTYPE, intent(inout), dimension(:,:), allocatable :: inflows_input
-   REALTYPE, intent(inout)             :: VI
-   REALTYPE, intent(inout)             :: Qs(0:nlev), Qt(0:nlev)
-   REALTYPE, intent(inout)             :: FQs(0:nlev), FQt(0:nlev)
-   integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: dt
+   ! TODO: should this be an argument or a module variable!?
+   REALTYPE, intent(inout)              :: VI
+   REALTYPE, intent(inout)              :: Qs(0:nlev), Qt(0:nlev)
+   REALTYPE, intent(inout)              :: FQs(0:nlev), FQt(0:nlev)
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -380,11 +381,19 @@
          V_diff = _ZERO_
       end if
 
+      do i=1,nlev
+         Qs(i) = _ZERO_
+         Qt(i) = _ZERO_
+         FQs(i) = _ZERO_
+         FQt(i) = _ZERO_
+      end do
       ! calculate the source terms
       ! "+1" because loop includes both n and index_min
       do i=index_min,n
-         Qs(i) = (S(i) - SI) / tauI / (n-index_min+1)
-         Qt(i) = (T(i) - TI) / tauI / (n-index_min+1)
+!         Qs(i) = (SI - S(i)) / tauI / (n-index_min+1)
+!         Qt(i) = (TI - T(i)) / tauI / (n-index_min+1)
+         Qs(i) = SI / tauI / (n-index_min+1)
+         Qt(i) = TI / tauI / (n-index_min+1)
       end do
 
       ! calculate the vertical flux terms
@@ -417,7 +426,7 @@
    subroutine clean_inflows()
 !
 ! !DESCRIPTION:
-!  TODO!
+!  De-allocates all memory allocated via init\_inflows()
 !
 ! !USES:
    IMPLICIT NONE
