@@ -370,7 +370,7 @@
       ! VI_basin is now too big so go back one step
       n = n-1
       zI_max = zI_max + h(n)
-      VI_basin = VI_basin + Ac(n) * h(n)
+      VI_basin = VI_basin - Ac(n) * h(n)
 
       ! save the difference between VI_basin and VIn until
       ! it fills an entire water layer, then fill that layer and reset V_diff
