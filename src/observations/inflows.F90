@@ -307,6 +307,7 @@
    REALTYPE             :: VI_basin
    REALTYPE             :: QI
    integer              :: index_min
+   integer              :: overflow_index
    REALTYPE             :: threshold
 !
 !-----------------------------------------------------------------------
@@ -379,6 +380,9 @@
       if (V_diff .ge. (Ac(n+1) * h(n+1))) then
          n = n + 1
          V_diff = _ZERO_
+         overflow_index = 1
+      else
+         overflow_index = 0
       end if
 
       do i=1,nlev
@@ -392,8 +396,8 @@
       do i=index_min,n
 !         Qs(i) = (SI - S(i)) / tauI / (n-index_min+1)
 !         Qt(i) = (TI - T(i)) / tauI / (n-index_min+1)
-         Qs(i) = SI / tauI / (n-index_min+1)
-         Qt(i) = TI / tauI / (n-index_min+1)
+         Qs(i) = SI / tauI / (n-index_min+1-overflow_index)
+         Qt(i) = TI / tauI / (n-index_min+1-overflow_index)
       end do
 
       ! calculate the vertical flux terms
