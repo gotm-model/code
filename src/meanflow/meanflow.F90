@@ -20,7 +20,7 @@
    public init_meanflow, clean_meanflow
 #ifdef _PRINTSTATE_
    public print_state_meanflow
-#endif   
+#endif
 !
 ! !PUBLIC DATA MEMBERS:
    logical, public                              :: grid_ready
@@ -556,7 +556,7 @@
    LEVEL2 'u_taub,u_taus',u_taub,u_taus
    LEVEL2 'depth0, depth',depth0, depth
    LEVEL2 'runtimeu, runtimev',runtimeu, runtimev
-   
+
    end subroutine print_state_meanflow
 !EOC
 #endif

@@ -109,11 +109,11 @@
 !  documentation finish for print
 !
 !  Revision 1.8  2005/11/03 20:53:37  hb
-!  Patankar trick reverted to older versions for 
+!  Patankar trick reverted to older versions for
 !  stabilising 3D computations
 !
 !  Revision 1.7  2005/08/11 13:11:50  lars
-!  Added explicit loops for diffusivities for 3-D z-level support. 
+!  Added explicit loops for diffusivities for 3-D z-level support.
 !  Thanks to Vicente Fernandez.
 !
 !  Revision 1.6  2005/06/27 13:44:07  kbk
@@ -126,7 +126,7 @@
 !  double definitions removed - to conform with DEC compiler
 !
 !  Revision 1.3  2003/03/10 09:02:04  gotm
-!  Added new Generic Turbulence Model + 
+!  Added new Generic Turbulence Model +
 !  improved documentation and cleaned up code
 !
 !

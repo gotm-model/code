@@ -149,7 +149,7 @@
 ! models. Presently, GOTM uses the uppermost grid point as the reference value.
 ! The bulk Richardson-number is then computed at the grid faces by linear
 ! interpolation of quantities defined at the centers (if
-! ${\tt KPP\_TWOPOINT\_REF}$ is defined) or by simply identifying the 
+! ${\tt KPP\_TWOPOINT\_REF}$ is defined) or by simply identifying the
 ! neighbouring center-value with the value at the face.
 ! The "turbulent velocity shear", $V_t$, is computed as described
 ! by \cite{Largeetal94}. The value of $z_{bl}$ is then found from

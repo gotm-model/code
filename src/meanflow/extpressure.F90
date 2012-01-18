@@ -99,7 +99,7 @@
             LEVEL2 'PressHeight=',h_press, 'but it must be positive.'
             LEVEL2 'Please correct this in obs.nml and rerun.'
             LEVEL2 'Program aborted.'
-            LEVEL2 '***************************************************' 
+            LEVEL2 '***************************************************'
             stop 'extpressure'
          end if
          z(1)=0.5*h(1)

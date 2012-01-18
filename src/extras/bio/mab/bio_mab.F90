@@ -9,8 +9,8 @@
 !
 ! !DESCRIPTION:
 ! Special version of the biogeochemical model by \cite{Neumannetal2002}
-! for the MaBenE project. 
-! 
+! for the MaBenE project.
+!
 !
 ! !USES:
 !  default: all is private.
@@ -217,11 +217,11 @@
 
    var_names(9) = 'oxy'
    var_units(9) = 'mmol o2/m**3'
-   var_long(9)  = 'oxygen'   
+   var_long(9)  = 'oxygen'
 
    var_names(10) = 'slt'
    var_units(10) = 'g/m**3'
-   var_long(10)  = 'silt'   
+   var_long(10)  = 'silt'
 
    if (fluff) then
       var_names(11) = 'flf'
@@ -254,7 +254,7 @@
 !
 ! !DESCRIPTION:
 !  Here, the the initial conditions are set and the settling velocities are
-!  transferred to all vertical levels. All concentrations except oxygen 
+!  transferred to all vertical levels. All concentrations except oxygen
 !  are declared
 !  as non-negative variables, and it is defined which variables would be
 !  taken up by benthic filter feeders.
@@ -282,7 +282,7 @@
       cc(po,i)=po_initial
       cc(o2,i)=o2_initial
       cc(se,i)=se_initial
-      if (fluff) then 
+      if (fluff) then
          if (i .eq. 1) then
             cc(fl,i)=fl_initial+1.e-10
          else
@@ -388,7 +388,7 @@
          th=_ONE_
       else
          th=_ZERO_
-      end if    
+      end if
    end if
    return
    end function th
@@ -434,7 +434,7 @@
    REALTYPE function fpz(g,t,topt,psum)
 !
 ! !DESCRIPTION:
-! The Ivlev formulation for zooplankton grazing on the three phytoplankton 
+! The Ivlev formulation for zooplankton grazing on the three phytoplankton
 ! classes $c_1$, $c_2$, and $c_3$ is given here as a function:
 ! \begin{equation}\label{neu_di4}
 ! d_{i,4}=g_i^{\max}\left(1+\frac{T^2}{T_{opt}^2}\exp
@@ -472,7 +472,7 @@
 !
 ! !DESCRIPTION:
 ! Here, those surface fluxes which have been read from a file are transformed
-! to SI units, and the surface oxygen flux is calculated by means of the 
+! to SI units, and the surface oxygen flux is calculated by means of the
 ! following formula:
 ! \begin{equation}\label{o2flux}
 ! F^s_9 = p_{vel} \left(O_{sat}-c_9 \right)
@@ -486,7 +486,7 @@
 !
 ! where $T$ is the temperature in Kelvin and the empirical constants are
 ! given in table \ref{table_weiss}.
-! 
+!
 ! \begin{table}[h]
 ! \begin{center}
 ! \begin{tabular}{|l|l|l|l|l|l|l|}
@@ -505,7 +505,7 @@
 ! \label{table_weiss}
 ! \end{center}
 ! \end{table}
-! 
+!
 !
 ! !USES:
    IMPLICIT NONE
@@ -616,9 +616,9 @@
    subroutine do_bio_mab(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION:
-! The right hand sides of the \cite{Neumannetal2002} biogeochemical model are 
+! The right hand sides of the \cite{Neumannetal2002} biogeochemical model are
 ! coded in this soubroutine.
-! First of all, based on (\ref{theta}) and (\ref{Y}), 
+! First of all, based on (\ref{theta}) and (\ref{Y}),
 ! we construct limiters for chemical
 ! reactions which depend on the availability of oxygen ($c_9$) and nitrate
 ! ($c_7$) and have to add up to unity:
@@ -632,28 +632,28 @@
 ! L^-_- &=& \frac{l^-_-}{l^+_+ + l^-_+ + l^-_-}. \\ \\
 ! \end{array}
 ! \end{equation}
-! 
+!
 ! Mortality of the three phytoplankton classes $c_i$, $i=1,\dots,3$:
 ! \begin{equation}\label{neu_di5}
 ! d_{i,5}=l_{PD} c_i
 ! \end{equation}
-! 
+!
 ! Respiration of the three phytoplankton classes $c_i$, $i=1,\dots,3$
 ! into ammonium:
 ! \begin{equation}\label{neu_di6}
 ! d_{i,6}=l_{PA} c_i
 ! \end{equation}
-! 
+!
 ! Zooplankton mortality:
 ! \begin{equation}\label{neu_d45}
 ! d_{4,5}=l_{ZD}(c_4+c_4^{\min})c_4
 ! \end{equation}
-! 
+!
 ! Zooplankton exudation into ammonium:
 ! \begin{equation}\label{neu_d46}
 ! d_{4,6}=l_{ZA}(c_4+c_4^{\min})c_4
 ! \end{equation}
-! 
+!
 ! Detritus mineralisation:
 ! \begin{equation}\label{neu_d56}
 ! d_{5,6}=L_{DA}c_5
@@ -662,24 +662,24 @@
 ! \begin{equation}\label{LDA}
 ! L_{DA} = l_{DA} \left(1+\beta_{DA}Y(T_{DA},T)\right).
 ! \end{equation}
-! 
+!
 ! Ammonium uptake by phytoplankta $c_i$, $i=1,2$:
 ! \begin{equation}\label{neu_d6i}
 ! d_{6,i}=R_i\frac{c_6}{c_6+c_7}\left(c_i+c_i^{\min} \right)
 ! \end{equation}
 ! with the growth rate for diatoms,
 ! \begin{equation}\label{r1}
-! R_1=r_1^{\max} \min\left\{ 
-! Y(\alpha_1,c_6+c_7), Y(s_R\alpha_1,c_8), PPI  
+! R_1=r_1^{\max} \min\left\{
+! Y(\alpha_1,c_6+c_7), Y(s_R\alpha_1,c_8), PPI
 ! \right\}
 ! \end{equation}
 ! and the growth rate for flagellates,
 ! \begin{equation}\label{r2}
 ! R_2=r_2^{\max}\left(1+Y\left(T_f,T \right)\right)\min\left\{
-! Y(\alpha_2,c_6+c_7),Y(s_R\alpha_2,c_8),PPI 
+! Y(\alpha_2,c_6+c_7),Y(s_R\alpha_2,c_8),PPI
 ! \right\}.
 ! \end{equation}
-! Here, 
+! Here,
 ! \begin{equation}\label{ppi}
 ! PPI=\frac{I_{PAR}}{I_{opt}}\exp\left(1-\frac{I_{PAR}}{I_{opt}}  \right)
 ! \end{equation}
@@ -688,7 +688,7 @@
 ! I_{opt}=\max\left\{\frac{I_0}{4},I_{\min}   \right\}
 ! \end{equation}
 ! and $I_{PAR}$ from (\ref{light}).
-! 
+!
 ! Nitrification of ammonium to nitrate:
 ! \begin{equation}\label{neu_d67}
 ! d_{6,7}=L_{AN}c_6
@@ -697,48 +697,48 @@
 ! \begin{equation}\label{LAN}
 ! L_{AN}=l_{AN}\theta(c_9,0,0,1)\frac{c_9}{O_{AN}+c_9}\exp\left(\beta_{AN}T\right).
 ! \end{equation}
-! 
+!
 ! Nitrate uptake by phytoplankta $c_i$, $i=1,2$:
 ! \begin{equation}\label{neu_d7i}
 ! d_{7,i}=R_i\frac{c_7}{c_6+c_7}\left(c_i+c_i^{\min} \right).
 ! \end{equation}
-! 
+!
 ! Settling of detritus into sediment:
 ! \begin{equation}\label{neu_d510}
 ! d_{5,10}=l_{DS} \frac{c_5}{h_1}\delta_{k,1}
 ! \end{equation}
-! 
+!
 ! Mineralisation of sediment into ammonium:
 ! \begin{equation}\label{neu_d106}
 ! d_{10,6}=L_{SA} c_{10}
-! \end{equation} 
+! \end{equation}
 ! with
 ! \begin{equation}\label{LSA}
 ! L_{SA}=l_{SA} \exp\left(\beta_{SA}T \right) \theta(c_9,c_9^t,0.2,1)
 ! \end{equation}
-! 
+!
 ! From the above sink terms, respective source terms are calculated by means of (\ref{eq:am:symmetry}),
 ! except for settling of detritus into sediment and mineralisation of sediment into
 ! ammonium, for which we have:
 ! \begin{equation}\label{neu_p105}
 ! p_{10,5}=h_1 d_{5,10}, \quad p_{6,10}=\frac{d_{10,6}}{h_1}.
 ! \end{equation}
-! 
+!
 ! Denitrification in water column:
 ! \begin{equation}\label{neu_d77}
 ! d_{7,7}=s_1 \left(L_{DA} c_5 +L_{SA} \frac{c_{10}}{h_1}\delta_{k,1} \right)L^-_+.
 ! \end{equation}
-! 
+!
 ! Denitrification in sediment:
 ! \begin{equation}\label{neu_d1010}
 ! d_{10,10}=\theta(c_9,c_9^t,0,1) L_{SA} c_{10}
 ! \end{equation}
-! 
+!
 ! Phosphorus uptake by the three phytoplankton classes $c_i$, $i=1,\dots,3$:
 ! \begin{equation}\label{neu_d88}
-! d_{8,8}=s_R \left(\sum_{j=1}^3 R_j \left(c_j+c_j^{\min}   \right)     \right). 
+! d_{8,8}=s_R \left(\sum_{j=1}^3 R_j \left(c_j+c_j^{\min}   \right)     \right).
 ! \end{equation}
-! 
+!
 ! Nitrogen fixation:
 ! \begin{equation}\label{neu_p33}
 ! p_{3,3}=R_3\left(c_3+c_3^{\min}\right)
@@ -747,54 +747,54 @@
 ! \begin{equation}\label{r3}
 ! R_3=r_3^{\max}\frac{1}{1+\exp\left(\beta_{bg}\left(T_{bg}-T  \right)   \right)}\min\left\{Y\left(s_R\alpha_3,c_8\right),PPI   \right\}
 ! \end{equation}
-! 
+!
 ! Respiration of the three phytoplankton classes $c_i$, $i=1,\dots,3$
 ! into phosphorus:
 ! \begin{equation}\label{neu_p8i}
 ! p_{8,i}=s_R d_{i,6}.
 ! \end{equation}
-! 
+!
 ! Zooplankton exudation into phosphorus:
 ! \begin{equation}\label{neu_p84}
 ! p_{8,4}=s_R d_{4,6}.
 ! \end{equation}
-! 
+!
 ! Oxygen production due to ammonium uptake by phytoplankton classes $c_i$, $i=1,2$and nitrification of ammonium into nitrate:
 ! \begin{equation}\label{neu_p96}
 ! p_{9,6}= s_2 \left(d_{6,1}+d_{6,2} \right)-s_4 d_{6,7}.
 ! \end{equation}
-! 
+!
 ! Oxygen production due to nitrate uptake by phytoplankton classes $c_i$, $i=1,2$:
 ! \begin{equation}\label{neu_p97}
 ! p_{9,7}= s_3 \left(d_{7,1}+d_{7,2} \right).
 ! \end{equation}
-! 
+!
 ! Oxygen production due to nitrogen fixation by blue-greens:
 ! \begin{equation}\label{neu_p99}
 ! p_{9,9}=s_2 p{3,3}
 ! \end{equation}
-! 
+!
 ! Oxygen demand due to
 ! respiration of the three phytoplankton classes $c_i$, $i=1,\dots,3$:
 ! \begin{equation}\label{neu_p9i}
 ! p_{9,i}=-s_2 d_{i,6}.
 ! \end{equation}
-! 
+!
 ! Oxygen demand of zooplankton exudation:
 ! \begin{equation}\label{neu_p94}
 ! p_{9,4}=-s_2 d_{4,6}.
 ! \end{equation}
-! 
+!
 ! Oxygen demand of mineralisation of detritus into ammonium:
 ! \begin{equation}\label{neu_p95}
 ! p_{9,5}=-s_2\left(L_+^++L_-^- \right) d_{5,6}.
 ! \end{equation}
-! 
+!
 ! Oxygen demand of mineralisation of sediment into ammonium:
 ! \begin{equation}\label{neu_p910}
 ! p_{9,10}=-\left(s_4+s_2\left(L_+^++L_-^- \right)\right) \frac{d_{10,6}}{h_1}\delta_{k,1}.
 ! \end{equation}
-! 
+!
 ! Phosphate release due to mineralisation of sediment into ammonium:
 ! \begin{equation}\label{neu_p88}
 ! p_{8,8}=(1-p_1\theta\left(c_9,c_9^t,0,1\right)Y(p_2,c_9))\frac{d_{10,6}}{h_1}\delta_{k,1}.
@@ -850,7 +850,7 @@
       thomnp=thomnp/thsum
       thomnm=thomnm/thsum
 
-      psum=cc(p1,ci)+cc(p2,ci)+cc(p3,ci)+p10+p20+p30 
+      psum=cc(p1,ci)+cc(p2,ci)+cc(p3,ci)+p10+p20+p30
       llda=lda*(1.+beta_da*yy(tda,t(ci)))
       llan=th(cc(o2,ci),_ZERO_,_ZERO_,_ONE_)*cc(o2,ci)/(oan+cc(o2,ci))      &
               *lan*exp(beta_an*t(ci))
@@ -889,11 +889,11 @@
          dd(fl,am,ci)=llsa*cc(fl,ci)
       end if
 
-!  Sink terms for positive compartments, which do not appear 
+!  Sink terms for positive compartments, which do not appear
 !  as source terms for other compartments:
       dd(ni,ni,ci)=s1*llda*cc(de,ci)*thomnp    ! denitrification
       dd(po,po,ci)=sr*( r1*(cc(p1,ci)+p10)+r2*(cc(p2,ci)+p20)                &
-                       +r3*(cc(p3,ci)+p30)) 
+                       +r3*(cc(p3,ci)+p30))
 
       if ((fluff).and.(ci.eq.1)) then
          dd(fl,fl,ci)=th(cc(o2,ci),wo,_ZERO_,_ONE_)*dd(fl,am,ci)
@@ -908,22 +908,22 @@
          end do
       end do
 
-!   Non-conservative source terms or source and sink terms which are 
+!   Non-conservative source terms or source and sink terms which are
 !   stoichiometrically related to other source terms:
       pp(p3,p3,ci)=r3*(cc(p3,ci)+p30)     ! nitrogen fixation
-      pp(po,p1,ci)=sr*dd(p1,am,ci)   
-      pp(po,p2,ci)=sr*dd(p2,am,ci)  
-      pp(po,p3,ci)=sr*dd(p3,am,ci)  
-      pp(po,de,ci)=sr*dd(de,am,ci)   
-      pp(po,zo,ci)=sr*dd(zo,am,ci)    
-      pp(o2,am,ci)=s2*(dd(am,p1,ci)+dd(am,p2,ci))-s4*dd(am,ni,ci)    
-      pp(o2,ni,ci)=s3*(dd(ni,p1,ci)+dd(ni,p2,ci))  
+      pp(po,p1,ci)=sr*dd(p1,am,ci)
+      pp(po,p2,ci)=sr*dd(p2,am,ci)
+      pp(po,p3,ci)=sr*dd(p3,am,ci)
+      pp(po,de,ci)=sr*dd(de,am,ci)
+      pp(po,zo,ci)=sr*dd(zo,am,ci)
+      pp(o2,am,ci)=s2*(dd(am,p1,ci)+dd(am,p2,ci))-s4*dd(am,ni,ci)
+      pp(o2,ni,ci)=s3*(dd(ni,p1,ci)+dd(ni,p2,ci))
       pp(o2,o2,ci)=s2*pp(p3,p3,ci)        ! nitrogen fixation
-      pp(o2,p1,ci)=-s2*dd(p1,am,ci)  
-      pp(o2,p2,ci)=-s2*dd(p2,am,ci)  
-      pp(o2,p3,ci)=-s2*dd(p3,am,ci)  
-      pp(o2,zo,ci)=-s2*dd(zo,am,ci)  
-!      pp(o2,am,ci)=-s4*dd(am,ni,ci) 
+      pp(o2,p1,ci)=-s2*dd(p1,am,ci)
+      pp(o2,p2,ci)=-s2*dd(p2,am,ci)
+      pp(o2,p3,ci)=-s2*dd(p3,am,ci)
+      pp(o2,zo,ci)=-s2*dd(zo,am,ci)
+!      pp(o2,am,ci)=-s4*dd(am,ni,ci)
       pp(o2,de,ci)=-s2*(thopnp+thomnm)*dd(de,am,ci)
       if ((fluff).and.(ci.eq.1)) then
          pp(o2,fl,ci)=-(s4+s2*(thopnp+thomnm))*dd(fl,am,ci)/h(ci)

@@ -12,11 +12,11 @@
 !  state variable called {\tt conc}. The suspended matter is subject
 !  to a constant settling velocity, has no surface fluxes of suspended matter,
 !  but the suspended matter may be taken out at the bed, if the mussel
-!  module of GOTM is activated. No right-hand side process terms are 
-!  involved here. Note that this module has an Eulerian version, 
+!  module of GOTM is activated. No right-hand side process terms are
+!  involved here. Note that this module has an Eulerian version,
 !  corresponding to a simple advection-diffusion equation with constant
 !  settling velocity, and a Langrangian particle version, in which
-!  particle diffusion is performed by random-walking the particles 
+!  particle diffusion is performed by random-walking the particles
 !  as described in \sect{sec:lagrangian}.
 !
 ! !USES:
@@ -76,7 +76,7 @@
    REALTYPE                  :: C_initial
    REALTYPE                  :: w_C
 
-! field IDs 
+! field IDs
   integer, parameter                          ::  LoadInd=1
 
 
@@ -122,7 +122,7 @@
    open(namlst,file=fname,action='read',status='old',err=98)
    read(namlst,nml=bio_sed_nml,err=99)
    close(namlst)
-   
+
    numc  = 1
    ntype = 1
    nprop = 1
@@ -167,9 +167,9 @@
 !  Here, fields names for the output variables are assigned
 !  (in this case only one variable describing the sediment
 !  concentration {\tt conc} exisits), and the concentration
-!  field is initialized with a uniform concentration as 
-!  specified in the namelist file {\tt bio\_sed.nml}. If the 
-!  particle solver is used, all particles are distributed 
+!  field is initialized with a uniform concentration as
+!  specified in the namelist file {\tt bio\_sed.nml}. If the
+!  particle solver is used, all particles are distributed
 !  homogeneously over the water column.
 !
 ! !USES:
@@ -236,9 +236,9 @@
    subroutine init_par_sed()
 !
 ! !DESCRIPTION:
-! Particles are distributed homogeneously over the whole water column. 
+! Particles are distributed homogeneously over the whole water column.
 ! Indices of vertical grid cells are assigend to all particles, and the
-! particles are marked active.  
+! particles are marked active.
 !
 ! !USES:
    IMPLICIT NONE
@@ -333,8 +333,8 @@
    subroutine do_bio_sed_par
 !
 ! !DESCRIPTION:
-!  Only provided for completeness since particle properties are 
-! assumed passive here and do not change. 
+!  Only provided for completeness since particle properties are
+! assumed passive here and do not change.
 !
 ! !USES:
    IMPLICIT NONE
@@ -387,7 +387,7 @@
    do np=1,npar
       if (par_act(np,nt)) then
 
-         ind = par_ind(np,nt) 
+         ind = par_ind(np,nt)
 
          ! add load concentrations
          cc(1,ind) = cc(1,ind) + par_prop(np,LoadInd,nt)

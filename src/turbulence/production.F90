@@ -128,7 +128,7 @@
       enddo
    else
       do i=0,nlev
-         P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) ) 
+         P(i)    =  num(i)*( SS(i)+alpha_eff*NN(i) )
          B(i)    = -nuh(i)*NN(i)
          Pb(i)   = -  B(i)*NN(i)
       enddo

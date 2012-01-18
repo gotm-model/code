@@ -76,7 +76,7 @@
 !  added new copyright to files
 !
 !  Revision 1.3  2003/03/10 09:02:05  gotm
-!  Added new Generic Turbulence Model + 
+!  Added new Generic Turbulence Model +
 !  improved documentation and cleaned up code
 !
 !  Revision 1.2  2002/02/08 08:59:59  gotm

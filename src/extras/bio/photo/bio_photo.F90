@@ -19,14 +19,14 @@
 ! depth of the short-wave fraction, and $I_0$ the incoming solar
 ! radiation. The parameters $a$ and $\gamma_2$ have to be provided
 ! separately here via the namelist of this model, but they should be
-! made consistent with the values chosen in {\tt obs.inp} via the 
+! made consistent with the values chosen in {\tt obs.inp} via the
 ! Jerlov water class.
 !
 ! Note that radiation units used by \cite{Nagaietal2003a}
 ! have been converted to units W m$^{-2}$ s$^{-1}$ using the
 ! conversion relation $1$ W m$^{-2}$ s$^{-1}$ $ \approx 0.2174 \, \mu$E
-! m$^{-2}$ s$^{-1}$, which is strictly valid only for a wave length of 
-! $550$ nm. 
+! m$^{-2}$ s$^{-1}$, which is strictly valid only for a wave length of
+! $550$ nm.
 !
 ! Instantaneous photosynthetic production rates for fully uninhibited and
 ! fully inhibited cells are
@@ -39,7 +39,7 @@
 ! \end{array}
 ! \end{equation}
 ! respectively, with the maximum production rates, $P_{dm}$ and
-! $P_{lm}$, and the saturation values, $E_d$ and $E_l$. In contrast to 
+! $P_{lm}$, and the saturation values, $E_d$ and $E_l$. In contrast to
 ! \cite{Nagaietal2003a}, here production is in carbon units (converted
 ! from the oxygen units by using the appropriate molar weights).
 !
@@ -49,20 +49,20 @@
 ! \end{equation}
 ! where $0 \le Y \le 1$ denotes the instantaneous inhibition
 ! factor determining whether cells suffer from photoinhibition.
-! The inhibition parameter $Y$ is computed from a linear first-order 
+! The inhibition parameter $Y$ is computed from a linear first-order
 ! differential equation,
 ! \begin{equation}
 ! \frac{\mbox{d} Y}{\mbox{d} t} = \frac{1}{\gamma} (X-Y) \; ,
 ! \end{equation}
-! where $\gamma$ is the response time scale and $X$ is the 
-! inhibition factor after full adaption to the local conditions. 
-! It is computed from 
+! where $\gamma$ is the response time scale and $X$ is the
+! inhibition factor after full adaption to the local conditions.
+! It is computed from
 ! \begin{equation}
 !   X=1-\exp \left(-\left(\frac{\max\{PAR,E_b\}-E_b}{E_b}\right)^2 \right).
 ! \end{equation}
 !
 ! From these production parameters, the cell carbon content is then computed
-! according to 
+! according to
 ! \begin{equation}
 !  \deriv{C}{t} = P - \mu C \; ,
 ! \end{equation}
@@ -72,7 +72,7 @@
 ! migrate vertically according to the following algorithm. From
 ! 06:00 am to 06:00 pm particles move upwards unless their individual
 ! photoinhibition parameter, $Y$, exceeds the threshold $Y_h$. Those
-! particles move downward, i.e.\ away from bright regions. From 
+! particles move downward, i.e.\ away from bright regions. From
 ! 06:00 pm to 06:00 am, all particles move downward. For all types
 ! of motion the migration speed, $w_c$, is identical and constant.
 !
@@ -119,13 +119,13 @@
    logical                                    ::  photo_mig=.false.
 
 !  photoresponse time (s)
-   REALTYPE                                   ::  gamma=     3600. 
+   REALTYPE                                   ::  gamma=     3600.
 
 !  initial carbon concentration (pg C/cell)
    REALTYPE                                   ::  cinit=     0.
 
 !  uninhibited production (pg C/cell/hour)
-   REALTYPE                                   ::  pdm=       4.0 
+   REALTYPE                                   ::  pdm=       4.0
 
 !  inhibited production (pg C/cell/hour)
    REALTYPE                                   ::  plm=       0.25
@@ -152,7 +152,7 @@
    REALTYPE                                   ::  w_c=       0.0003
 
 !  (1-aa) is PAR fraction of visible light
-   REALTYPE                                   ::  aa=        0.78   
+   REALTYPE                                   ::  aa=        0.78
 
 !  penetration depth of PAR (m)
    REALTYPE                                   ::  g2=        7.9
@@ -161,7 +161,7 @@
 !-----------------------------------------------------------------------
 
 
-!  field IDs 
+!  field IDs
    integer, parameter                          ::  XInd=1,YInd=2
    integer, parameter                          ::  ProdInd=3,CarbInd=4
 
@@ -177,9 +177,9 @@
    subroutine init_bio_photo(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the namelist {\tt bio\_photo.nml} is read, some 
+!  Here, the namelist {\tt bio\_photo.nml} is read, some
 !  variables are converted to SI units, and the variable
-!  descriptions (names, units) are set. 
+!  descriptions (names, units) are set.
 !
 ! !USES:
    IMPLICIT NONE
@@ -200,7 +200,7 @@
    namelist /bio_photo_nml/ numc,ntype,nprop,photo_mig,gamma,           &
                             pdm,plm,cinit,mu,ed,el,eb,yl,yh,            &
                             w_c,aa,g2
-!-----------------------------------------------------------------------                      
+!-----------------------------------------------------------------------
 !BOC
    LEVEL2 'init_bio_photo'
 
@@ -265,9 +265,9 @@
    subroutine init_var_photo
 !
 ! !DESCRIPTION:
-! According to the initial water column parameters, the variables of 
-! the {\tt photo} module are initialized here. This routine should 
-! only be called from inside GOTM. If the {\tt photo} module is 
+! According to the initial water column parameters, the variables of
+! the {\tt photo} module are initialized here. This routine should
+! only be called from inside GOTM. If the {\tt photo} module is
 ! linked to an external calling programm (3D model), all variables
 ! of the model need to initialized from inside the calling program.
 !
@@ -317,17 +317,17 @@
      do np=1,npar
 
         ! short wave light fraction
-        par                  = rad(nlev)*((1.-aa)*exp(par_z(np,nt)/g2)) 
+        par                  = rad(nlev)*((1.-aa)*exp(par_z(np,nt)/g2))
 
-        ! local inhibition state      
-        par_prop(np,XInd,nt) = _ONE_ - exp(-((max(par,eb)-eb)/eb)**2)        
+        ! local inhibition state
+        par_prop(np,XInd,nt) = _ONE_ - exp(-((max(par,eb)-eb)/eb)**2)
 
         ! initially fully adapted
-        par_prop(np,YInd,nt) =  par_prop(np,XInd,nt)                    
+        par_prop(np,YInd,nt) =  par_prop(np,XInd,nt)
 
      end do ! particle loop
 
-     par_prop(:,ProdInd,nt)  = _ZERO_  
+     par_prop(:,ProdInd,nt)  = _ZERO_
      par_prop(:,CarbInd,nt)  = cinit
 
 
@@ -352,9 +352,9 @@
    subroutine init_par_photo()
 !
 ! !DESCRIPTION:
-! Particles are distributed homogeneously over the whole water column. 
+! Particles are distributed homogeneously over the whole water column.
 ! Indices of vertical grid cells are assigned to all particles, and the
-! particles are marked active.  
+! particles are marked active.
 !
 ! !USES:
    IMPLICIT NONE
@@ -431,10 +431,10 @@
 ! !INTERFACE:
    subroutine do_bio_photo_par
 !
-! !DESCRIPTION: 
+! !DESCRIPTION:
 ! This routine updates the {\tt photo} module according to the updated
-! water column properties, i.e.\ after a call to {\tt set\_env\_bio()}. 
-! It may be called either from inside GOTM, or from an external 
+! water column properties, i.e.\ after a call to {\tt set\_env\_bio()}.
+! It may be called either from inside GOTM, or from an external
 ! calling programm (3D model).
 !
 !
@@ -492,7 +492,7 @@
 !        reflect particle if it jumps below bed or above surface
          if (par_z(np,nt) .lt. zbot) par_z(np,nt) = zbot + ( zbot - par_z(np,nt) )
 
-         if (par_z(np,nt) .gt. ztop) par_z(np,nt)=  ztop - par_z(np,nt) 
+         if (par_z(np,nt) .gt. ztop) par_z(np,nt)=  ztop - par_z(np,nt)
 
 
 !        calculate new layer index of particle location
@@ -514,12 +514,12 @@
    end if  ! particle loop
 
 
-!  compute light inhibition properties, production, and carbon content 
+!  compute light inhibition properties, production, and carbon content
 
    do np=1,npar
 
       ! short wave light fraction
-      par   = rad(nlev)*((_ONE_ - aa)*exp(par_z(np,nt)/g2))    
+      par   = rad(nlev)*((_ONE_ - aa)*exp(par_z(np,nt)/g2))
 
       ! inhibition state
       x     = 1. - exp(-((max(par,eb)-eb)/eb)**2) ! adapted
@@ -537,13 +537,13 @@
       p     = pd+y*(pl-pd)                        ! instantaneous production
 
 !     update carbon content
-      c     = par_prop(np,CarbInd,nt)     
-      c     = c + (p - mu*c)*dt 
+      c     = par_prop(np,CarbInd,nt)
+      c     = c + (p - mu*c)*dt
 
 !     copy back to property array
-      par_prop(np,XInd   ,nt)     = x      
-      par_prop(np,YInd   ,nt)     = y      
-      par_prop(np,ProdInd,nt)     = p*secs_pr_hour                
+      par_prop(np,XInd   ,nt)     = x
+      par_prop(np,YInd   ,nt)     = y
+      par_prop(np,ProdInd,nt)     = p*secs_pr_hour
       par_prop(np,CarbInd,nt)     = c
 
    end do ! particle loop
@@ -590,7 +590,7 @@
    do np=1,npar
       if (par_act(np,nt)) then
 
-         ind = par_ind(np,nt) 
+         ind = par_ind(np,nt)
 
          ! count particles per grid volume
          cc(1,ind) = cc(1,ind) + _ONE_

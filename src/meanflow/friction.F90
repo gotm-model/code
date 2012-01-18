@@ -42,8 +42,8 @@
 !  this method is supported in {\tt friction()} and can be activated by
 !  uncommenting one line in the code.
 !
-!  If no breaking surface waves are considered, the law of the wall 
-!  also holds at the surface. The surface roughness length may 
+!  If no breaking surface waves are considered, the law of the wall
+!  also holds at the surface. The surface roughness length may
 !  be calculated according to the \cite{Charnock55} formula,
 !  \begin{equation}
 !   \label{Charnock}

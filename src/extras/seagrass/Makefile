@@ -15,7 +15,7 @@ all: ${OBJ}
 	$(MOVE_MODULES_COMMAND)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../../doc/seagrass.tex 
+	$(PROTEX) $(DOCSRC) > ../../../doc/seagrass.tex
 	touch doc
 
 clean:

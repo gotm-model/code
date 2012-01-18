@@ -21,7 +21,7 @@ get_vel_profile.F90     \
 get_eps_profile.F90	\
 analytical_profile.F90	\
 const_NNT.F90		\
-const_NNS.F90             
+const_NNS.F90
 
 
 MOD	= \
@@ -51,7 +51,7 @@ all: $(MOD) $(OBJ)
 $(OBJ): $(MOD)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../doc/observations.tex 
+	$(PROTEX) $(DOCSRC) > ../../doc/observations.tex
 	touch doc
 
 clean:

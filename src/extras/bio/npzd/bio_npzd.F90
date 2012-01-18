@@ -19,7 +19,7 @@
 ! is modelled by means of an Ivlev formulation, see eq.\ (\ref{dpz}).
 ! All other processes are based on linear first-order kinematics,
 ! see eqs.\ (\ref{dpn}) - (\ref{dzd}).
-! For all details of the NPZD model implemented here, 
+! For all details of the NPZD model implemented here,
 ! see \cite{Burchardetal2005b}.
 !
 ! !USES:
@@ -135,8 +135,8 @@
    subroutine init_bio_npzd(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio\_npzd.nml} is read and 
-!  various variables (rates and settling velocities) 
+!  Here, the bio namelist {\tt bio\_npzd.nml} is read and
+!  various variables (rates and settling velocities)
 !  are transformed into SI units.
 !
 ! !USES:
@@ -252,7 +252,7 @@
 ! !DESCRIPTION:
 !  Here, the the initial conditions are set and the settling velocities are
 !  transferred to all vertical levels. All concentrations are declared
-!  as non-negative variables, and it is defined which variables would be 
+!  as non-negative variables, and it is defined which variables would be
 !  taken up by benthic filter feeders.
 !
 ! !USES:
@@ -338,7 +338,7 @@
    REALTYPE function fpz(p,z)
 !
 ! !DESCRIPTION:
-! Here, the classical Ivlev formulation for zooplankton grazing on 
+! Here, the classical Ivlev formulation for zooplankton grazing on
 ! phytoplankton is formulated.
 !
 ! !USES:
@@ -427,38 +427,38 @@
 ! \exp\left(1-\frac{I_{PAR}}{I_{opt}}\right)
 ! \frac{c_n}{\alpha+c_n}c_p
 ! \end{equation}
-! 
+!
 ! with
-! 
+!
 ! \begin{equation}
 ! I_{opt}=\max\left(\frac14I_{PAR},I_{\min}\right).
 ! \end{equation}
-! 
+!
 ! Grazing of zooplankton on phytoplankton:
 ! \begin{equation}\label{dpz}
 ! d_{pz}=g_{\max}\left(1-\exp\left(-I_v^2c_p^2\right)\right)c_z
 ! \end{equation}
-! 
+!
 ! Phytoplankton excretion:
 ! \begin{equation}\label{dpn}
 ! d_{pn} = r_{pn} c_p
 ! \end{equation}
-! 
+!
 ! Zooplankton excretion:
 ! \begin{equation}\label{dzn}
 ! d_{zn} = r_{zn} c_z
 ! \end{equation}
-! 
+!
 ! Remineralisation of detritus into nutrients:
 ! \begin{equation}\label{ddn}
 ! d_{dn} = r_{dn} c_d
 ! \end{equation}
-! 
+!
 ! Phytoplankton mortality:
 ! \begin{equation}\label{dpd}
 ! d_{pd} = r_{pd} c_p
 ! \end{equation}
-! 
+!
 ! Zooplankton mortality:
 ! \begin{equation}\label{dzd}
 ! d_{zd} = r_{zd} c_z

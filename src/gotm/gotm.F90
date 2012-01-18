@@ -243,7 +243,7 @@
 !  removed tabs
 !
 !  Revision 1.5  2003/03/10 09:20:27  gotm
-!  Added new Generic Turbulence Model + 
+!  Added new Generic Turbulence Model +
 !  improved documentation and cleaned up code
 !
 !  Revision 1.3  2001/11/18 15:58:02  gotm
@@ -423,7 +423,7 @@
 #ifdef _FABM_
 
    call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml')
-   
+
 !  Initialize FABM input (data files with observations)
    call init_gotm_fabm_input(nlev,namlst,'fabm_input.nml')
 

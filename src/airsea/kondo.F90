@@ -14,11 +14,11 @@
 !  humidity (either directly given or recalculated from the
 !  wet bulb or the dew point temperature),
 !  this routine first computes the transfer coefficients for the surface
-!  momentum flux vector, $(\tau_x^s,\tau_y^s)$ ($c_{dd}$), 
+!  momentum flux vector, $(\tau_x^s,\tau_y^s)$ ($c_{dd}$),
 !  the latent heat flux, $Q_e$, ($c_{ed}$)
-!  and the sensible heat flux, $Q_h$, 
+!  and the sensible heat flux, $Q_h$,
 !  ($c_{hd}$) heat flux according to the \cite{Kondo75}
-!  bulk formulae. Afterwards, these fluxes are calculated according 
+!  bulk formulae. Afterwards, these fluxes are calculated according
 !  to the following formulae:
 !
 !  \begin{equation}

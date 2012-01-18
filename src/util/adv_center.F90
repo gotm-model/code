@@ -25,7 +25,7 @@
 ! has a non-zero vertical velocity. In three-dimensional applications,
 ! this transport would be conservative, since vertical divergence would be
 ! compensated by horizontal convergence and vice versa. However, the
-! key assumption of one-dimensional modelling is horizontal homogeneity, 
+! key assumption of one-dimensional modelling is horizontal homogeneity,
 ! such that we indeed have to apply a vertically non-conservative method,
 ! which is of the form
 !  \begin{equation}
@@ -43,9 +43,9 @@
 !   \comma
 !  \end{equation}
 ! where the integers $n$ and $i$ correspond to the present time and space
-! level, respectively. 
+! level, respectively.
 !
-! For the non-conservative form \eq{Yadvection_noncons}, 
+! For the non-conservative form \eq{Yadvection_noncons},
 ! an extra term needs to be included:
 !  \begin{equation}
 !   \label{advDiscretized_noncons}
@@ -56,8 +56,8 @@
 !
 !  Which advection method is applied is decided by the flag {\tt mode},
 !  which gives conservative advection \eq{advDiscretized_cons}
-!  for {\tt mode=1} and 
-!  non-conservative advection \eq{advDiscretized_noncons} for {\tt mode=0}. 
+!  for {\tt mode=1} and
+!  non-conservative advection \eq{advDiscretized_noncons} for {\tt mode=0}.
 !
 ! Fluxes are defined at the grid faces, the variable $Y_i$ is defined at the
 !  grid centers. The fluxes are computed in an upstream-biased way,
@@ -388,16 +388,16 @@
 !     do the vertical advection step which will be used for prescribed
 !     vertical flow velocity and for settling of suspended matter.
 
-      if (mode.eq.0) then ! non-conservative 
+      if (mode.eq.0) then ! non-conservative
          do k=1,N
             Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/        &
                  h(k)-Y(k)*(ww(k)-ww(k-1))/h(k))
          enddo
-      else                ! conservative  
+      else                ! conservative
          do k=1,N
             Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/h(k))
          enddo
-      end if   
+      end if
 
    end do ! end of the iteration loop
 

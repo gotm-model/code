@@ -8,13 +8,13 @@
    module bio
 !
 ! !DESCRIPTION:
-! This is the central module for all biogeochemical models. 
+! This is the central module for all biogeochemical models.
 ! From here, after reading the namelist file {\tt bio.nml},
 ! the individual biogeochemical model is initialised, the memory
 ! is allocated, the advection and diffusion is called, the ODE solvers
 ! for the right hand sides are called, and simple Lagrangian particle
 ! calculations are managed.
-! 
+!
 ! !USES:
    use bio_var
 #ifndef NO_0D_BIO
@@ -93,7 +93,7 @@
    public init_bio,init_var_bio
    public set_env_bio,do_bio,get_bio_updates
    public clean_bio
-#ifdef _PRINTSTATE_   
+#ifdef _PRINTSTATE_
    public print_state_bio
 #endif
 
@@ -318,20 +318,20 @@
 ! !INTERFACE:
    subroutine init_bio(namlst,fname,unit,nmax_)
 !
-! !DESCRIPTION: 
+! !DESCRIPTION:
 ! Here, all initialization procedures are triggered that
 ! are independent of the use of the BIO module from inside GOTM, or
 ! from an external calling program, i.e.\ from a 3D model. The
 ! following steps are subsequently performed.
 !
 ! \begin{enumerate}
-!  \item Memory for {\tt nmax} vertical layers is allocated for all 
-!  Eulerian fields. If called from an external 3D model, {\tt nmax} 
+!  \item Memory for {\tt nmax} vertical layers is allocated for all
+!  Eulerian fields. If called from an external 3D model, {\tt nmax}
 !  corresponds to the maximum number of layers in \emph{any} of the
 !  water columns.
-!  \item The namelist {\tt bio.nml} is read. 
-!  \item The initialization routine for the selected ecosystem model 
-!  is called. In most cases this amounts to not much more than reading 
+!  \item The namelist {\tt bio.nml} is read.
+!  \item The initialization routine for the selected ecosystem model
+!  is called. In most cases this amounts to not much more than reading
 !  the corresponding namelist, e.g.\ {\tt bio\_npzd.nml}, and assigning
 !  the description tags to the ecosystem variables.
 ! \end{enumerate}
@@ -385,14 +385,14 @@
    zbot = _ZERO_
    u_taub = _ZERO_
    ztop = _ZERO_
-   wind = _ZERO_   
+   wind = _ZERO_
    I_0 = _ZERO_
    secondsofday = _ZERO_
    w_adv_ctr = 0
    npar=0
-   ntype=0   
+   ntype=0
    nprop=0
-   par_allocation=.false.   
+   par_allocation=.false.
 
 !  open and read the namelist
    open(namlst,file=fname,action='read',status='old',err=98)
@@ -558,7 +558,7 @@
          stop 'init_bio()'
       endif
 
-!     report type of solver 
+!     report type of solver
       if ( bio_eulerian ) then
          LEVEL2 "Using Eulerian solver"
          select case (ode_method)
@@ -628,15 +628,15 @@
 ! \begin{enumerate}
 !  \item Allocating memory for the particle properties (if a particle
 !  solver has been chosen),
-!  \item Computing the position of the grid interfaces (needed for 
+!  \item Computing the position of the grid interfaces (needed for
 !  averaging particle properties over grid cells)
-!  \item Calling the initialization routines for the respective 
+!  \item Calling the initialization routines for the respective
 !  bio modules
 ! \end{enumerate}
-!  
-! If the bio module is used from a 3D code outside GOTM this routine 
-! should not be called. In this case, all initialization should be 
-! done inside the external calling program. Note in particular that 
+!
+! If the bio module is used from a 3D code outside GOTM this routine
+! should not be called. In this case, all initialization should be
+! done inside the external calling program. Note in particular that
 ! the numbe of particles may change during the run, and variable memory
 ! needs to be allocated.
 !
@@ -833,23 +833,23 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Set bio module environment 
+! !IROUTINE: Set bio module environment
 !
-! !INTERFACE: 
+! !INTERFACE:
    subroutine set_env_bio(nlev_,dt_,zbot_,u_taub_,h_,t_,s_,rho_,nuh_,rad_,   &
                           wind_,I_0_,secondsofday_,w_,w_adv_ctr_,npar_)
 !
 ! !DESCRIPTION:
-! This routine prepares the environment for the bio module, and keeps 
-! track of the memory. Every time this routine is called 
-! the module's variables related to meteorology, mixing, grid parameters, 
+! This routine prepares the environment for the bio module, and keeps
+! track of the memory. Every time this routine is called
+! the module's variables related to meteorology, mixing, grid parameters,
 ! etc. are updated with the values supplied as arguments. These updated
 ! values are then accessible to all module routines if required.
 !
 ! Note that if the bio-module is called from outside GOTM,
 ! e.g.\ from a 3-D model,
 ! this routine has to be called every time the environment parameters,
-! the number of vertical grid points, or the number of particles in the 
+! the number of vertical grid points, or the number of particles in the
 ! local water column has changed.
 !
 ! !USES:
@@ -939,15 +939,15 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Update the bio model 
+! !IROUTINE: Update the bio model
 !
 ! !INTERFACE:
    subroutine do_bio()
 !
 ! !DESCRIPTION:
 ! This routine is a simple wrapper selecting between calls to the
-! Eulerian and Lagrangian (particle) routines used to update the 
-! bio model. 
+! Eulerian and Lagrangian (particle) routines used to update the
+! bio model.
 !
 ! !USES:
    IMPLICIT NONE
@@ -983,7 +983,7 @@
 
 
 !     particle model
-      else 
+      else
 
          if (npar /= 0) call do_bio_par
 
@@ -1011,7 +1011,7 @@
    subroutine do_bio_eul()
 !
 ! !DESCRIPTION:
-! This is the main loop for the Eulerian biogeochemical model. Basically 
+! This is the main loop for the Eulerian biogeochemical model. Basically
 ! an operational split method is used, with first calculating the
 ! transport part, and than the reaction part.
 ! During the transport part, all sinks and sources are set to zero,
@@ -1020,7 +1020,7 @@
 ! is called.  For the Eulerian calculation, vertical advection
 ! (due to settling or rising or vertical migration), vertical advection due
 ! to physical velocity and vertical
-! diffusion (due to mixing) and afterwards the light 
+! diffusion (due to mixing) and afterwards the light
 ! calculation (for the PAR) and the ODE solver for the right
 ! hand sides are called. The vertical advection due to settling and
 ! rising must be conservative,
@@ -1035,14 +1035,14 @@
 ! implemented in GOTM so far. In the temperature equation the
 ! absorption of solar radiation, $I(z)$, is the only source term,
 ! see equation (\ref{Iz}) section \ref{sec:temperature}.
-! In (\ref{Iz}), a term $B(z)$ due to bioturbidity is used, which 
+! In (\ref{Iz}), a term $B(z)$ due to bioturbidity is used, which
 ! is calculated as a function of the biogeochemical particulate
 ! matter in the water column:
 ! \begin{equation}\label{B}
 ! B(z)=\exp\left(-k_c\int_z^0\left(\sum C_{turb}(\xi)\right)\,d\xi\right),
 ! \end{equation}
-! where $k_c$ is the attenuation constant for self shading and 
-! $\sum C_{turb}$ is the sum of the biogeochemical particulate 
+! where $k_c$ is the attenuation constant for self shading and
+! $\sum C_{turb}$ is the sum of the biogeochemical particulate
 ! matter concentrations.
 ! The photosynthetically
 ! available radiation, $I_{PAR}$, follows from
@@ -1080,7 +1080,7 @@
    Lsour    = _ZERO_
    RelaxTau = 1.e15
    vars_zero_d = 0
-   
+
    select case (bio_model)
    case (-1)
    case (1)
@@ -1279,7 +1279,7 @@
       end do
       deallocate(rhs)
    end select
-   
+
    end subroutine
 !EOC
 
@@ -1335,7 +1335,7 @@
       deallocate(pp)
       deallocate(dd)
    end select
-   
+
    end subroutine
 !EOC
 
@@ -1349,9 +1349,9 @@
 !
 ! !DESCRIPTION:
 ! Here, all particle properties are updated. This includes a
-! random-walk step in order to update the particle positions, 
-! as well as a modification of bio-geochemical properties 
-! according to the particle model. 
+! random-walk step in order to update the particle positions,
+! as well as a modification of bio-geochemical properties
+! according to the particle model.
 !
 ! At the moment, only two particle models are available: model 3 for
 ! simple sedimentation and model 20 corresponding to a simple
@@ -1374,7 +1374,7 @@
 !BOC
 
 
-   if (par_allocation) then 
+   if (par_allocation) then
       call dealloc_par
       call alloc_par
    endif
@@ -1420,11 +1420,11 @@
 !
 ! !IROUTINE: Return updated bio variable
 !
-! !INTERFACE: 
+! !INTERFACE:
    subroutine get_bio_updates(nlev,bioshade)
 !
 ! !DESCRIPTION:
-! Return variables that have been updated by the bio module. At the 
+! Return variables that have been updated by the bio module. At the
 ! moment, only the variable bioshade is returned in order to re-use
 ! it in the calling code for self-shading effects.
 !
@@ -1462,9 +1462,9 @@
 !
 ! !DESCRIPTION:
 !  Allocates memory for the arrays related to the Eulerian model. This
-!  routine is only called once during the initialization procedure, 
+!  routine is only called once during the initialization procedure,
 !  with {\tt nmax} being the maximum number of layers that is expected
-!  for the run. 
+!  for the run.
 !
 ! !USES:
    IMPLICIT NONE
@@ -1871,10 +1871,10 @@
 !  Lagrangian particles
 !  (also passed over to and from external routines)
    LEVEL2 'npar',npar
-   LEVEL2 'ntype',ntype 
-   LEVEL2 'nprop',nprop 
+   LEVEL2 'ntype',ntype
+   LEVEL2 'nprop',nprop
    LEVEL2 'par_allocation',par_allocation
-   if (allocated(par_act))  LEVEL2 'par_act',par_act  
+   if (allocated(par_act))  LEVEL2 'par_act',par_act
    if (allocated(par_ind))  LEVEL2 'par_ind',par_ind
    if (allocated(par_z))    LEVEL2 'par_z',par_z
    if (allocated(par_prop)) LEVEL2 'par_prop',par_prop
