@@ -34,6 +34,7 @@
    public                              :: do_air_sea
    public                              :: clean_air_sea
    public                              :: set_sst
+   public                              :: set_ssuv
    public                              :: integrated_fluxes
 #ifdef _PRINTSTATE_
    public                              :: print_state_airsea
@@ -58,10 +59,12 @@
    REALTYPE, public                    :: precip
    REALTYPE, public                    :: evap
 
-!  sea surface temperature (degC) and
-!  sea surface salinity (psu)
+!  sea surface temperature (degC), sea surface salinity (psu),
+!  sea surface current components (m/s)
    REALTYPE, public                    :: sst
    REALTYPE, public                    :: sss
+   REALTYPE, public                    :: ssu
+   REALTYPE, public                    :: ssv
 
 !  integrated precipitationa and 
 !  evaporation + sum (m)
@@ -198,6 +201,7 @@
    integer                   :: precip_method
    integer                   :: sst_method
    integer                   :: sss_method
+   integer                   :: ssuv_method
    integer                   :: hum_method
    logical, public           :: rain_impact
    logical, public           :: calc_evaporation
@@ -352,7 +356,8 @@
                      momentumflux_file, &
                      precip_method,const_precip,precip_file,precip_factor,&
                      sst_method, sst_file, &
-                     sss_method, sss_file
+                     sss_method, sss_file, &
+                     ssuv_method
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -379,6 +384,10 @@
 !  sea surface temperature (degC) and sea surface salinity (psu)
    sst = _ZERO_
    sss = _ZERO_
+
+!  sea surface velocities (m/s)
+   ssu = _ZERO_
+   ssv = _ZERO_
 
 !  cloud cover
    cloud = _ZERO_
@@ -423,6 +432,7 @@
 
 !  initialize namelist variables to reasonable defaults.
    calc_fluxes=.false.
+   ssuv_method=0
    fluxes_method=1
    back_radiation_method=1
    meteo_file = ''
@@ -819,7 +829,7 @@
          call back_radiation(back_radiation_method, &
                              dlat,tw_k,ta_k,cloud,qb)
          call airsea_fluxes(fluxes_method, &
-                            tw,ta,u10,v10,precip,evap,tx1,ty1,qe,qh)
+                            tw,ta,u10-ssu,v10-ssv,precip,evap,tx1,ty1,qe,qh)
          h1     = (qb+qe+qh)
          h2     = h1
          tx2    = tx1
@@ -837,7 +847,7 @@
          call back_radiation(back_radiation_method, &
                              dlat,tw_k,ta_k,cloud,qb)
          call airsea_fluxes(fluxes_method, &
-                            tw,ta,u10,v10,precip,evap,tx2,ty2,qe,qh)
+                            tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
          h2=(qb+qe+qh)
 
       end if
@@ -855,7 +865,7 @@
    ty    = ty1 + t*alpha(4)
    cloud = cloud1 + t*alpha(5)
 
-   w = sqrt(u10*u10+v10*v10)
+   w = sqrt((u10-ssu)*(u10-ssu)+(v10-ssv)*(v10-ssv))
 
    return
    end subroutine flux_from_meteo
@@ -1335,6 +1345,41 @@
    end subroutine set_sst
 !EOC
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Set the surface velocities to be used from model.
+!
+! !INTERFACE:
+   subroutine set_ssuv(uvel,vvel)
+!
+! !DESCRIPTION:
+!  This routine sets the simulated
+!  sea surface velocities to be used for
+!  the surface flux calculations.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: uvel,vvel
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding
+!
+!  See log for airsea module
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (ssuv_method.ne.0) then
+      ssu = uvel
+      ssv = vvel
+   end if
+   
+   end subroutine set_ssuv
+!EOC
+
 #ifdef _PRINTSTATE_
 !-----------------------------------------------------------------------
 !BOP
@@ -1364,6 +1409,7 @@
    LEVEL2 'tx,ty',tx,ty
    LEVEL2 'precip,evap',precip,evap
    LEVEL2 'sst,sss',sst,sss
+   LEVEL2 'ssu,ssv',ssu,ssv
    LEVEL2 'int_swr,int_heat,int_total',int_swr,int_heat,int_total
    LEVEL2 'cloud',cloud
 
@@ -1376,6 +1422,7 @@
    LEVEL2 'precip_method',precip_method
    LEVEL2 'sst_method',sst_method
    LEVEL2 'sss_method',sss_method
+   LEVEL2 'ssuv_method',ssuv_method
    LEVEL2 'hum_method',hum_method
    LEVEL2 'rain_impact',rain_impact
    LEVEL2 'calc_evaporation',calc_evaporation

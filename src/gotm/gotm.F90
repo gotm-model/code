@@ -38,7 +38,7 @@
    use time
 
    use airsea,      only: init_air_sea,do_air_sea,clean_air_sea
-   use airsea,      only: set_sst,integrated_fluxes
+   use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
    use airsea,      only: wind=>w,tx,ty,I_0,heat,precip,evap
 
@@ -523,6 +523,7 @@
 !     external forcing
       if( calc_fluxes ) then
          call set_sst(T(nlev))
+         call set_ssuv(u(nlev),v(nlev))
       end if
       call do_air_sea(julianday,secondsofday)
 

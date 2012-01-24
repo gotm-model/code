@@ -90,8 +90,8 @@
 			<sst_file>sst_file.dat</sst_file>
 			<sss_method>0</sss_method>
 			<sss_file>sss_file.dat</sss_file>
-		
-  </airsea>
+      <ssuv_method>0</ssuv_method>
+    </airsea>
 	</airsea>
 	<gotmturb>
 		<turbulence>

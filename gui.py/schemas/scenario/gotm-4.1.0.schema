@@ -379,7 +379,14 @@
 					</filevariables>
 				</fileinfo>
 			</element>
-		</element>
+      <element name="ssuv_method" type="int" label="wind speed correction for current velocity">
+        <condition type="eq" variable="./calc_fluxes" value="True" />
+        <options>
+          <option value="0" label="use absolute wind speed" />
+          <option value="1" label="use relative wind speed" />
+        </options>
+      </element>
+    </element>
 	</element>
 	<element name="gotmturb" label="turbulence">
 		<element name="turbulence" label="general">
