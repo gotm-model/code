@@ -15,7 +15,7 @@ back_radiation.F90		\
 airsea_fluxes.F90		\
 kondo.F90			\
 fairall.F90			\
-short_wave_radiation.F90	
+short_wave_radiation.F90
 
 MOD	= \
 ${LIB}(airsea_variables.o)	\
@@ -38,7 +38,7 @@ tst_airsea: $(MOD)
 	$(FC) -o tst_airsea tst_airsea.F90 $(MOD)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../doc/airsea.tex 
+	$(PROTEX) $(DOCSRC) > ../../doc/airsea.tex
 	touch doc
 
 clean:

@@ -20,7 +20,7 @@ salinity.F90		\
 buoyancy.F90		\
 shear.F90	\
 stratification.F90	\
-convectiveadjustment.F90 
+convectiveadjustment.F90
 
 MOD	= \
 ${LIB}(meanflow.o)
@@ -38,7 +38,7 @@ ${LIB}(salinity.o)		\
 ${LIB}(stratification.o)	\
 ${LIB}(shear.o)	\
 ${LIB}(buoyancy.o)		\
-${LIB}(convectiveadjustment.o)	
+${LIB}(convectiveadjustment.o)
 
 
 all: $(MOD) $(OBJ)
@@ -47,7 +47,7 @@ all: $(MOD) $(OBJ)
 $(OBJ): $(MOD)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../doc/meanflow.tex 
+	$(PROTEX) $(DOCSRC) > ../../doc/meanflow.tex
 	touch doc
 
 clean:

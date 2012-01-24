@@ -1,5 +1,5 @@
 #
-# Makefile for making the source code documentation. 
+# Makefile for making the source code documentation.
 #
 
 SHELL	   = /bin/sh
@@ -143,11 +143,11 @@ clean:
 
 realclean: clean
 	$(RM) *.dvi *.ps *.pdf
-	$(RM) -rf html/ 
+	$(RM) -rf html/
 	$(RM) -rf $(PROTEXSRC)
 
 distclean: realclean
 	$(RM) *.gz *.zip *.Z
-	$(RM) html html_scp pdf_scp 
+	$(RM) html html_scp pdf_scp
 	$(RM) -rf figures
 

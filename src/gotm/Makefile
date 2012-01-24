@@ -21,7 +21,7 @@ all: $(MOD) $(OBJ)
 	$(MOVE_MODULES_COMMAND)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../doc/gotm.tex 
+	$(PROTEX) $(DOCSRC) > ../../doc/gotm.tex
 	touch doc
 
 clean:

@@ -128,9 +128,9 @@
    subroutine init_par_bio_0d()
 !
 ! !DESCRIPTION:
-! Particles are distributed homogeneously over the whole water column. 
+! Particles are distributed homogeneously over the whole water column.
 ! Indices of vertical grid cells are assigend to all particles, and the
-! particles are marked active.  
+! particles are marked active.
 !
 ! !USES:
    IMPLICIT NONE
@@ -602,7 +602,7 @@
       if (par_act(np,nt)) then
 
          ! Get depth index of the current particle
-         ind = par_ind(np,nt) 
+         ind = par_ind(np,nt)
 
          ! Count particles per grid volume
          cc(1,ind) = cc(1,ind) + _ONE_
@@ -653,7 +653,7 @@
 !-----------------------------------------------------------------------
 !BOC
    call get_bio_0d_par_ppdd(first,numc,nlev,cc,pp,dd)
-   
+
    do i=1,numc
       rhs(i,:) = sum(pp(i,:,:),1)-sum(dd(i,:,:),1)
    end do

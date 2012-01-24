@@ -9,7 +9,7 @@
 !
 ! !DESCRIPTION:
 !  Computes the density, $\mean{\rho}$, and buoyancy from the
-!  salinity, $S$, the temperature, $\Theta$, and the thermodynamic 
+!  salinity, $S$, the temperature, $\Theta$, and the thermodynamic
 !  pressure, $P$, according to an \emph{equation of state},
 !  \begin{equation}
 !    \label{DefEOS}
@@ -23,7 +23,7 @@
 !  pressure, then $\mean{\rho}$ will be the in-situ density.  On the
 !  other hand, if $P$ is identified with the surface pressure, and
 !  $\Theta$ with the potential temperature, the same equation of
-!  state, \eq{DefEOS}, will yield $\mean{\rho}$ as the potential 
+!  state, \eq{DefEOS}, will yield $\mean{\rho}$ as the potential
 !  density. Note that the quantity {\tt sigma\_t} found in the GOTM output
 !  is simply computed from  $\mean{\rho}$ - 1000 kg m$^{-3}$, and may
 !  therefore adopt different meanings.

@@ -38,7 +38,7 @@
    public                              :: integrated_fluxes
 #ifdef _PRINTSTATE_
    public                              :: print_state_airsea
-#endif   
+#endif
 !
 ! !PUBLIC DATA MEMBERS:
    logical,  public                    :: calc_fluxes
@@ -66,7 +66,7 @@
    REALTYPE, public                    :: ssu
    REALTYPE, public                    :: ssv
 
-!  integrated precipitationa and 
+!  integrated precipitationa and
 !  evaporation + sum (m)
    REALTYPE, public                    :: int_precip,int_evap,int_fwf
 
@@ -239,9 +239,9 @@
    end interface
 !
 ! !BUGS:
-!  Wind speed - w - is not entirely correct. 
-!  No temporal interpolation is done. If the momentum fluxes tx,ty are 
-!  specified w=0. 
+!  Wind speed - w - is not entirely correct.
+!  No temporal interpolation is done. If the momentum fluxes tx,ty are
+!  specified w=0.
 !  The Fairall and Kondo methods calculate their own w internally.
 !  w is used by e.g. bio.F90
 !EOP
@@ -778,13 +778,13 @@
    REALTYPE, save            :: h1,tx1,ty1,cloud1
    REALTYPE, save            :: h2,tx2,ty2,cloud2
    integer                   :: rc
-   REALTYPE                  :: ta,ta_k,tw,tw_k 
+   REALTYPE                  :: ta,ta_k,tw,tw_k
    REALTYPE                  :: qe,qh,qb
 !
 !-----------------------------------------------------------------------
 !BOC
    if (init_saved_vars) then
-      meteo_jul2  = 0 
+      meteo_jul2  = 0
       meteo_secs2 = 0
       h2     = _ZERO_
       tx2    = _ZERO_
@@ -947,7 +947,7 @@
 !
 ! !DESCRIPTION:
 !   For {\tt calc\_fluxes=.false.}, this routine reads in
-!   the sum of sensible, latent and long-wave back-radiation flux 
+!   the sum of sensible, latent and long-wave back-radiation flux
 !   in W\,m$^{-2}$ from {\tt heatflux\_file} and interpolate in time.
 !
 ! !USES:
@@ -1450,7 +1450,7 @@
    LEVEL2 'dlon,dlat',dlon,dlat
 
    LEVEL2 'es,ea,qs,qa,L,rhoa',es,ea,qs,qa,L,rhoa
-   
+
    end subroutine print_state_airsea
 !EOC
 #endif

@@ -9,7 +9,7 @@
 !
 ! !DESCRIPTION:
 !
-!  Here, number of public variables in the airsea module is declared. 
+!  Here, number of public variables in the airsea module is declared.
 !
 ! !USES:
    IMPLICIT NONE
@@ -24,7 +24,7 @@
    REALTYPE, public, parameter         :: bolz=5.67e-8
    REALTYPE, public, parameter         :: kelvin=273.16
    REALTYPE, public, parameter         :: const06=0.62198
-   REALTYPE, public, parameter         :: rgas = 287.1    ! 
+   REALTYPE, public, parameter         :: rgas = 287.1    !
    REALTYPE, public, parameter         :: g = 9.81        ! [m/s2]
    REALTYPE, public, parameter         :: rho_0 = 1025.   ! [kg/m3]
    REALTYPE, public, parameter         :: kappa = 0.41    ! von Karman

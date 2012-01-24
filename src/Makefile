@@ -25,7 +25,7 @@ all: ../VERSION $(EXEC) install
 ../VERSION: ../Makefile
 	$(MAKE) -C ..
 
-$(EXEC): makedirs subdirs features gotmlib 
+$(EXEC): makedirs subdirs features gotmlib
 	$(FC) -o $@ ./gotm/main.o $(LDFLAGS) -lgotm$(buildtype) $(ALL_LIBS)
 	$(RM) ./gotm/main.o
 
@@ -68,7 +68,7 @@ clean:
 
 realclean: clean
 	$(RM) *~
-	$(RM) ../modules/$(FORTRAN_COMPILER)/*.{m,mod} 
+	$(RM) ../modules/$(FORTRAN_COMPILER)/*.{m,mod}
 	$(RM) ../lib/$(FORTRAN_COMPILER)/lib*$(buildtype).a
 ifdef SUBDIRS
 	set -e; for i in gotm $(SUBDIRS); do $(MAKE) -C $$i $@; done

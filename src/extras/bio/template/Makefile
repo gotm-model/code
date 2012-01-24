@@ -15,7 +15,7 @@ all: ${OBJS}
 	$(MOVE_MODULES_COMMAND)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../../../doc/bio.tex 
+	$(PROTEX) $(DOCSRC) > ../../../../doc/bio.tex
 	touch doc
 
 clean:

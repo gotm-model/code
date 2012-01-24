@@ -71,7 +71,7 @@ ${LIB}(cmue_sg.o)		\
 ${LIB}(compute_cpsi3.o)		\
 ${LIB}(compute_rist.o)		\
 ${LIB}(fk_craig.o)		\
-${LIB}(internal_wave.o)		
+${LIB}(internal_wave.o)
 
 
 all: $(MOD) ${OBJ}
@@ -80,7 +80,7 @@ all: $(MOD) ${OBJ}
 $(OBJ): $(MOD)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../doc/turbulence.tex 
+	$(PROTEX) $(DOCSRC) > ../../doc/turbulence.tex
 	touch doc
 
 clean:

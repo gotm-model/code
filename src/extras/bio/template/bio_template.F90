@@ -136,10 +136,10 @@
    subroutine init_var_template
 !
 ! !DESCRIPTION:
-!  Here, the the initial conditions should be set and the settling 
+!  Here, the the initial conditions should be set and the settling
 !  velocities should be
-!  transferred to all vertical levels. Non-negative concentrations 
-!  should be declared  as non-negative variables, 
+!  transferred to all vertical levels. Non-negative concentrations
+!  should be declared  as non-negative variables,
 !  and it should be defined which variables would be
 !  taken up by benthic filter feeders.
 !
@@ -236,7 +236,7 @@
 ! !DESCRIPTION:
 ! Here, the source and sink terms for the right hand sides need to be
 ! defined. Since this is a template file only, nothing is done here,
-! and the execution of the program is terminated here. 
+! and the execution of the program is terminated here.
 !
 ! !USES:
    IMPLICIT NONE

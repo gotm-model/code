@@ -10,20 +10,20 @@
    module bio_npzd_fe
 !
 ! !DESCRIPTION:
-!  The FeNPZD model (Weber et al. 2007) which is described here consists 
+!  The FeNPZD model (Weber et al. 2007) which is described here consists
 !  of a simple biological NPZD-type (Oschlies and Schartau 2005) and a
 !  complex iron model (Weber et al. 2005). An iron quota for
-!  phytoplankton, zooplankton and detritus is introduced allowing a 
-!  decoupling between the cycling of Fe and N (Weber et al. 2007). Growth 
-!  of phytoplankton can depend on the iron quota by setting the define 
+!  phytoplankton, zooplankton and detritus is introduced allowing a
+!  decoupling between the cycling of Fe and N (Weber et al. 2007). Growth
+!  of phytoplankton can depend on the iron quota by setting the define
 !  statement iron_quota_limitation.
-! 
+!
 !  The iron model consists of 8 compartments (5 iron species (Fe3+, Fe2+,
-!  colloidal Fe, Fe-particles, Fe-ligands), superoxide, hydrogen peroxide 
-!  as well as ligands and particles. Sources and sinks of the iron species 
-!  are oxidation and reduction processes (photoreduction) as well as 
+!  colloidal Fe, Fe-particles, Fe-ligands), superoxide, hydrogen peroxide
+!  as well as ligands and particles. Sources and sinks of the iron species
+!  are oxidation and reduction processes (photoreduction) as well as
 !  mechanical related processes (e.g. scavenging).
-!  It should be considered that the parameters for the iron model are not 
+!  It should be considered that the parameters for the iron model are not
 !  well known and changes might be necessary for future simulations.
 !
 ! !USES:
@@ -80,7 +80,7 @@
    REALTYPE                  :: slopf= 0.925
    REALTYPE                  :: gmax= 1.575
    REALTYPE                  :: pcr= 1.6
-   REALTYPE                  :: mzq= 0.34 
+   REALTYPE                  :: mzq= 0.34
    REALTYPE                  :: exf= 0.01
    REALTYPE                  :: rem= 0.048
    REALTYPE                  :: w_d= -18.
@@ -181,7 +181,7 @@
                 fe_diss,fe_dismt,fe_lf,fe_ligand,fe_c,fe_cd,fe_pd,      &
                 fe_colag,fe_star,fe_n2cp,fe_phdet,fe_solub,             &
                 fe_rh2o2,fe2n,fe_irmax,ta_f,fe_lrm,fe_so2m,             &
-                fe_cuox,fe_cured,fe_cutot,w_fp,w_pt,smallm,             & 
+                fe_cuox,fe_cured,fe_cutot,w_fp,w_pt,smallm,             &
                 k_fe, fe2n_min
 
 !EOP
@@ -241,7 +241,7 @@
    fe_cui  = fe_cutot * fe_cured/(fe_cured+fe_cuox)
    fe_cuii = fe_cutot * fe_cuox/(fe_cured+fe_cuox)
 
-!   mpfq = mpq/fe2n  
+!   mpfq = mpq/fe2n
 !   mzfq = mzq/fe2n
 !   pcrf = pcr/fe2n
 ! ---
@@ -350,7 +350,7 @@
    IMPLICIT NONE
 
 ! !REVISION HISTORY:
-!  Original author(s): Weber et al. 2007 
+!  Original author(s): Weber et al. 2007
 
 ! !LOCAL VARIABLES:
   integer                    :: i
@@ -372,9 +372,9 @@
       cc(pt,i)=pt_initial
       cc(ho,i)=ho_initial
       cc(om,i)=om_initial
-      cc(pf,i)=pf_initial 
-      cc(zf,i)=zf_initial 
-      cc(df,i)=df_initial 
+      cc(pf,i)=pf_initial
+      cc(zf,i)=zf_initial
+      cc(df,i)=df_initial
    end do
 
    do i=0,nlev
@@ -387,7 +387,7 @@
       ws(f2,i)= _ZERO_
       ws(fc,i)= _ZERO_
       ws(fl,i)= _ZERO_
-      ws(fp,i)= w_fp 
+      ws(fp,i)= w_fp
       ws(li,i)= _ZERO_
       ws(pt,i)= w_pt
       ws(ho,i)= _ZERO_
@@ -456,7 +456,7 @@
   integer                              :: nlev
 !
 ! !REVISION HISTORY:
-!  Original author(s): Weber et al. 2007 
+!  Original author(s): Weber et al. 2007
 !
 ! !LOCAL VARIABLES:
 !EOP
@@ -557,7 +557,7 @@
    REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
 !
 ! !REVISION HISTORY:
-!  Original author(s): Weber et al. 2007 
+!  Original author(s): Weber et al. 2007
 !
 ! !LOCAL VARIABLES:
    integer                    :: i,j,ci
@@ -576,7 +576,7 @@
    do ci=1,nlev ! loop over vertical layers
 
 !     NPZD
-!     Here the rates for growth, grazing, excretion, mortality and 
+!     Here the rates for growth, grazing, excretion, mortality and
 !     remineralization are calculated
 
 !     temperature dependence
@@ -585,7 +585,7 @@
       mue_max =  mue_m * ta
 !     light limitation
       mue_par = (mue_max * alpha * par(ci)) /   &
-                (mue_max**2 + (alpha*par(ci))**2)**0.5 
+                (mue_max**2 + (alpha*par(ci))**2)**0.5
 !     nutrient limitation
       mue_nut = (cc(nu,ci)/(k_n+cc(nu,ci))) * mue_max
       mue     =  min(mue_par,mue_nut)
@@ -598,26 +598,26 @@
       graz = (gmax*pcr*cc(ph,ci)**2)/ (gmax + pcr*cc(ph,ci)**2)  !grazing
 
 !     Sink terms for non-negative compartments, which appear exactly
-!     as or proportional to source terms for other compartments in the NPZD 
+!     as or proportional to source terms for other compartments in the NPZD
 !     model part:
-!     The sloppy feeding/assimilation efficiency term is assumed to be a 
+!     The sloppy feeding/assimilation efficiency term is assumed to be a
 !     loss term for zooplankton grazing and a source for detritus
 
       dd(nu,ph,ci)= mue      * cc(ph,ci)
       dd(ph,zo,ci)= graz     * cc(zo,ci)
-      dd(ph,de,ci)= mpq      * cc(ph,ci)**2 
+      dd(ph,de,ci)= mpq      * cc(ph,ci)**2
       dd(ph,nu,ci)= mp * ta  * cc(ph,ci)
       dd(zo,nu,ci)= exf* ta  * cc(zo,ci)
       dd(zo,de,ci)= mzq      * cc(zo,ci)**2 + (1-slopf)*graz*cc(zo,ci)
       dd(de,nu,ci)= rem * ta * cc(de,ci)
 
 !     NPZD Fe internal quota
-!     Here the iron uptake and content of the phytoplankton, zooplankton 
+!     Here the iron uptake and content of the phytoplankton, zooplankton
 !     and detritus is calculated.
 
-!     = fe2n (fixed Fe:N-ratio) 
+!     = fe2n (fixed Fe:N-ratio)
       fe2n_p = cc(pf,ci)/cc(ph,ci)
-!     = fe2n (fixed Fe:N-ratio) 
+!     = fe2n (fixed Fe:N-ratio)
       fe2n_z = cc(zf,ci)/cc(zo,ci)
       fe_up  = cc(fl,ci)
       mue_fe = mue_max * (fe_up / (fe_up + k_fe))
@@ -625,16 +625,16 @@
       mue_f2 = fe2n * mue * cc(ph,ci)
 
 !     Sink terms for non-negative compartments, which appear exactly
-!     as or proportional to source terms for other compartments in the 
+!     as or proportional to source terms for other compartments in the
 !     Fe-NPZD model part:
 #ifdef IRON_QUOTA_LIMITATION
-      dd(fl,pf,ci)= min(mue_f1,mue_f2) 
-#else  
-!     (fixed Fe:N-ratio) 
+      dd(fl,pf,ci)= min(mue_f1,mue_f2)
+#else
+!     (fixed Fe:N-ratio)
       dd(fl,pf,ci)= fe2n * mue * cc(ph,ci)
 #endif
       dd(pf,zf,ci)= fe2n_p * graz * cc(zo,ci)
-      dd(pf,df,ci)= fe2n_p * mpq  * cc(ph,ci)**2 
+      dd(pf,df,ci)= fe2n_p * mpq  * cc(ph,ci)**2
       dd(pf,fl,ci)= mp  * ta      * cc(pf,ci)
       dd(zf,fl,ci)= exf * ta      * cc(zf,ci)
       dd(zf,df,ci)= fe2n_z * mzq  * cc(zo,ci)**2 + fe2n_p *  &
@@ -657,11 +657,11 @@
       fe_fe2ox  = fe_o2 + fe_h2o2*cc(ho,ci) + fe_oo2m*cc(om,ci)
       fe_lr     = fe_lrm*feir/fe_irmax
       fe_dr     = fe_phdet*feir/fe_irmax
-!     scavenging 
+!     scavenging
       fe_sca    = fe_star * (det_m+cc(pt,ci))
 
 !     Sink terms for non-negative compartments, which appear exactly
-!     as or proportional to source terms for other compartments in the 
+!     as or proportional to source terms for other compartments in the
 !     Fe-model part:
 !     fe_scavenging
       dd(f3,fp,ci)=fe_sca*cc(f3,ci)
@@ -687,7 +687,7 @@
       dd(fp,f3,ci)=fe_pd*cc(fp,ci)
 !     fe_colloidal aggragation
       dd(fc,fp,ci)=fe_colag*cc(fc,ci)*(det_m+cc(pt,ci))
-      dd(om,ho,ci)= fe_oo2m*cc(f2,ci)*cc(om,ci) + & 
+      dd(om,ho,ci)= fe_oo2m*cc(f2,ci)*cc(om,ci) + &
                  fe_cuox*fe_cui*cc(om,ci)
 
 !     Source terms which are exactly sinks terms of other compartments or
@@ -698,7 +698,7 @@
          end do
       end do
 
-!     Sink terms for positive compartments, which do not appear 
+!     Sink terms for positive compartments, which do not appear
 !     as source terms for other compartments:
       dd(om,om,ci)= 2.0*fe_dismt*cc(om,ci)**2 + &
                  fe_cured*fe_cuii*cc(om,ci)+ &
@@ -707,12 +707,12 @@
                  fe_diss*cc(ho,ci)
       dd(li,li,ci)= fe_lf*exlig*cc(f3,ci)
 
-!     Non-conservative source terms or source and sink terms which are 
+!     Non-conservative source terms or source and sink terms which are
 !     stoichiometrically related to other source terms:
       pp(li,li,ci)= (fe_ld + fe_lr)*cc(fl,ci)
       pp(om,om,ci)= fe_o2*cc(f2,ci)+fe_so2m * feir/fe_irmax
       pp(ho,ho,ci)= fe_dismt*cc(om,ci)**2
-      if (ci .eq. 1) then     
+      if (ci .eq. 1) then
 !        bottom nudging
          pp(fc,fc,ci)= (fc_initial-cc(fc,ci))/86400.
 !        bottom nudging

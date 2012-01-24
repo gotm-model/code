@@ -14,8 +14,8 @@
 ! step of the operational split method for the complete biogeochemical
 ! models. The remaining ODE is
 ! \begin{equation}\label{ODESystem}
-!   \partial_t c_i 
-! =   P_i(\vec{c}) -D_i(\vec{c}), \;\; i = 1,\ldots,I, 
+!   \partial_t c_i
+! =   P_i(\vec{c}) -D_i(\vec{c}), \;\; i = 1,\ldots,I,
 ! \end{equation}
 ! with $c_i$ denoting the concentrations of state variables.
 ! The right hand side denotes the reaction terms,
@@ -23,7 +23,7 @@
 ! $d_{i,j}(\vec{c})$, which represent reactive fluxes from
 ! $c_i$ to $c_j$, and in turn, $p_{i,j}(\vec{c})$ are reactive fluxes from
 ! $c_j$ received by $c_i$, see equation (\ref{eq:am:a}).
-! 
+!
 ! These methods are:
 !
 ! \begin{enumerate}
@@ -35,11 +35,11 @@
 ! \item Fourth-order Patankar-Runge-Kutta (does not work, not conservative)
 ! \item First-order Modified Patankar (conservative and positive)
 ! \item Second-order Modified Patankar-Runge-Kutta (conservative and positive)
-! \item Fourth-order Modified Patankar-Runge-Kutta 
+! \item Fourth-order Modified Patankar-Runge-Kutta
 !       (does not work, conservative and positive)
-! \item First-order Extended Modified Patankar 
+! \item First-order Extended Modified Patankar
 !       (stoichiometrically conservative and positive)
-! \item Second-order Extended Modified Patankar-Runge-Kutta 
+! \item Second-order Extended Modified Patankar-Runge-Kutta
 !       (stoichiometrically conservative and positive)
 ! \end{enumerate}
 !
@@ -49,20 +49,20 @@
 ! for one limiting nutrient and therefore they developed the
 ! Extended Modified Patankar (EMP) schemes 10 and 11 which are also
 ! stoichiometrically conservative. Patankar and Modified Patankar
-! schemes of fourth order have not yet been developed, such that 
+! schemes of fourth order have not yet been developed, such that
 ! choices 6 and 9 do not work yet.
 !
-! The call to {\tt ode\_solver()} requires a little explanation. The 
-! first argument {\tt solver} is an integer and specifies which solver 
+! The call to {\tt ode\_solver()} requires a little explanation. The
+! first argument {\tt solver} is an integer and specifies which solver
 ! to use. The arguments {\tt numc} and {\tt nlev} gives the dimensions
-! of the data structure {\tt cc} i.e. {\tt cc(1:numc,0:nlev)}. 
-! {\tt dt} is simply the time step. The last argument is the most 
+! of the data structure {\tt cc} i.e. {\tt cc(1:numc,0:nlev)}.
+! {\tt dt} is simply the time step. The last argument is the most
 ! complicated. {\tt right\_hand\_side} is a subroutine with a fixed
 ! argument list. The subroutine evaluates the right hand side of the ODE
 ! and may be called more than once during one time-step - for higher order
 ! schemes. For an example of a correct {\tt right\_hand\_side} have a look
 ! at e.g. {\tt do\_bio\_npzd()}
-! 
+!
 !
 ! !USES:
    IMPLICIT NONE
@@ -79,7 +79,7 @@
          logical, intent(in)                  :: first
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         
+
          REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
          REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
       end
@@ -141,7 +141,7 @@
    subroutine euler_forward(dt,numc,nlev,cc,right_hand_side)
 !
 ! !DESCRIPTION:
-! Here, the first-order Euler-forward (E1) scheme is coded, with one 
+! Here, the first-order Euler-forward (E1) scheme is coded, with one
 ! evaluation of the right-hand sides per time step:
 ! \begin{equation}\label{eq:am:euler}
 ! \begin{array}{rcl}
@@ -286,7 +286,7 @@
    subroutine runge_kutta_4(dt,numc,nlev,cc,right_hand_side)
 !
 ! !DESCRIPTION:
-! Here, the fourth-order Runge-Kutta (RK4) scheme is coded, 
+! Here, the fourth-order Runge-Kutta (RK4) scheme is coded,
 ! with four evaluations
 ! of the right hand sides per time step:
 ! \begin{equation}\label{eq2}
@@ -298,17 +298,17 @@
 ! -D_i\left(\underline c^n\right)\right\} \\ \\
 ! c_i^{(2)} &=&
 ! \displaystyle
-! c_i^n+\Delta t \left\{P_i\left(\frac12\left(\underline c^n+\underline 
-! c^{(1)}\right)\right)-D_i\left(\frac12\left(\underline c^n+\underline 
+! c_i^n+\Delta t \left\{P_i\left(\frac12\left(\underline c^n+\underline
+! c^{(1)}\right)\right)-D_i\left(\frac12\left(\underline c^n+\underline
 ! c^{(1)}\right)\right)\right\} \\ \\
 ! c_i^{(3)} &=&
 ! \displaystyle
-! c_i^n+\Delta t \left\{P_i\left(\frac12\left(\underline c^n+\underline 
-! c^{(2)}\right)\right)-D_i\left(\frac12\left(\underline c^n+\underline 
+! c_i^n+\Delta t \left\{P_i\left(\frac12\left(\underline c^n+\underline
+! c^{(2)}\right)\right)-D_i\left(\frac12\left(\underline c^n+\underline
 ! c^{(2)}\right)\right)\right\} \\ \\
 ! c_i^{(4)} &=&
 ! \displaystyle
-! c_i^n+\Delta t \left\{P_i\left(\underline c^{(3)}\right)-D_i\left(\underline 
+! c_i^n+\Delta t \left\{P_i\left(\underline c^{(3)}\right)-D_i\left(\underline
 ! c^{(3)}\right)\right\} \\ \\
 ! c_i^{n+1} &=&
 ! \displaystyle
@@ -438,7 +438,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
+!  absolutely essential since not all elements are calculated
    pp=_ZERO_
    dd=_ZERO_
 
@@ -473,7 +473,7 @@
 ! !DESCRIPTION:
 ! Here, the second-order Patankar-Runge-Kutta (PRK2) scheme is coded,
 ! with two evaluations of the right hand sides per time step:
-! 
+!
 ! \begin{equation}\label{eq:am:PRK}
 !   \left.
 !   \begin{array}{rcl}
@@ -529,7 +529,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
+!  absolutely essential since not all elements are calculated
    pp=_ZERO_
    dd=_ZERO_
 
@@ -612,7 +612,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
+!  absolutely essential since not all elements are calculated
    pp=_ZERO_
    dd=_ZERO_
 
@@ -703,7 +703,7 @@
 !                                         \dfrac{c_i^{n+1}}{c_i^n} \right\}.
 ! \end{array}
 ! \end{equation}
-! 
+!
 !
 ! !USES:
    IMPLICIT NONE
@@ -736,7 +736,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
+!  absolutely essential since not all elements are calculated
    pp=_ZERO_
    dd=_ZERO_
 
@@ -773,7 +773,7 @@
 ! !DESCRIPTION:
 ! Here, the second-order Modified Patankar-Runge-Kutta (MPRK2) scheme is coded,
 ! with two evaluations of the right hand sides per time step:
-! 
+!
 ! \begin{equation}\label{eq:am:MPRK}
 !   \left. \begin{array}{rcl}
 !     c_i^{(1)} &=&
@@ -809,7 +809,7 @@
 !   \end{array}
 !   \right\}
 ! \end{equation}
-! 
+!
 ! !USES:
    IMPLICIT NONE
 !
@@ -843,7 +843,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
+!  absolutely essential since not all elements are calculated
    pp=_ZERO_ ; pp1=_ZERO_
    dd=_ZERO_ ; dd1=_ZERO_
 
@@ -935,7 +935,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated 
+!  absolutely essential since not all elements are calculated
    pp=_ZERO_ ; pp1=_ZERO_ ; pp2=_ZERO_ ; pp3=_ZERO_
    dd=_ZERO_ ; dd1=_ZERO_ ; dd2=_ZERO_ ; dd3=_ZERO_
 
@@ -1093,13 +1093,13 @@
 !
 ! \begin{eqnarray}
 !   \vec{c}^{(1)} & = & \vec{c}^n  + \Delta t \: \vec{f}(t^n ,\vec{c}^n )\prod\limits_{j \in J^n } {\frac{{c_j^{(1)} }}{{c_j^n }}} \nonumber \\
-!   \vec{c}^{n + 1} & = & \vec{c}^n  + \frac{{\Delta t}}{2}\left( {\vec{f}(t^n ,\vec{c}^n ) + \vec{f}(t^{n + 1} ,\vec{c}^{(1)} )} \right)\prod\limits_{k \in K^n } {\frac{{c_k^{n + 1} }}{{c_k^{(1)} }}} 
+!   \vec{c}^{n + 1} & = & \vec{c}^n  + \frac{{\Delta t}}{2}\left( {\vec{f}(t^n ,\vec{c}^n ) + \vec{f}(t^{n + 1} ,\vec{c}^{(1)} )} \right)\prod\limits_{k \in K^n } {\frac{{c_k^{n + 1} }}{{c_k^{(1)} }}}
 ! \end{eqnarray}
 !
 ! where
 !
 ! \begin{eqnarray}
-!   J^n & = & \left\{ {i:f_i (t^n ,\vec{c}^n ) < 0, i \in \{ 1,...,I\} } \right\} \nonumber \\ 
+!   J^n & = & \left\{ {i:f_i (t^n ,\vec{c}^n ) < 0, i \in \{ 1,...,I\} } \right\} \nonumber \\
 !   K^n & = & \left\{ {i:f_i (t^n ,\vec{c}^n ) + f_i (t^{n+1} ,\vec{c}^{(1)} ) < 0, i \in \{ 1,...,I\} } \right\}.
 ! \end{eqnarray}
 !
@@ -1107,8 +1107,8 @@
 ! a step with the first-order scheme if we rewrite it as
 !
 ! \begin{eqnarray}
-!   \lefteqn{\vec{c}^{n + 1} = \vec{c}^n + \Delta t \: \vec{h}(t^n,t^{n + 1},\vec{c}^n,\vec{c}^{(1)})\prod\limits_{k \in 
-!     K^n} {\frac{c_k^{n + 1} }{c_k^n }}} \nonumber \\ 
+!   \lefteqn{\vec{c}^{n + 1} = \vec{c}^n + \Delta t \: \vec{h}(t^n,t^{n + 1},\vec{c}^n,\vec{c}^{(1)})\prod\limits_{k \in
+!     K^n} {\frac{c_k^{n + 1} }{c_k^n }}} \nonumber \\
 !   & & \mbox{with }\vec{h}(t^n,t^{n + 1},\vec{c}^n,\vec{c}^{(1)}) = \frac{1}{2}\left( {\vec{f}(t^n,\vec{c}^n) + \vec{f}(t^{n + 1},\vec{c}^{(1)})} \right)\prod\limits_{k \in K^n} {\frac{c_k^n }{c_k^{(1)} }}.
 ! \end{eqnarray}
 !
@@ -1184,7 +1184,7 @@
    subroutine findp_bisection(numc, cc, derivative, dt, accuracy, pi)
 !
 ! !DESCRIPTION:
-! Auxiliary subroutine for finding the Extended Modified Patankar 
+! Auxiliary subroutine for finding the Extended Modified Patankar
 ! product term $p$ with the bisection technique.
 !
 ! This subroutine solves the non-linear problem
@@ -1211,11 +1211,11 @@
 ! imposes restriction
 !
 ! \begin{equation}
-!   p \in \left( 0, \min \left( {1,\mathop {\min }\limits_{j \in J^n} \left( { - 
+!   p \in \left( 0, \min \left( {1,\mathop {\min }\limits_{j \in J^n} \left( { -
 !                   \frac{c_j^n }{\Delta t \: f_j (t^n,\vec{c}^n)}} \right)} \right) \right).
 ! \end{equation}
 !
-! It has been proved that there exists exactly one $p$ for which the above is 
+! It has been proved that there exists exactly one $p$ for which the above is
 ! true, see \cite{Bruggemanetal2005}.
 ! The resulting problem is solved using the bisection scheme, which is guaranteed to converge.
 !

@@ -20,7 +20,7 @@ all: $(MOD)
 	$(MOVE_MODULES_COMMAND)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../doc/output.tex 
+	$(PROTEX) $(DOCSRC) > ../../doc/output.tex
 	touch doc
 
 clean:

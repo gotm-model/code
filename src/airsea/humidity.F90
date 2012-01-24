@@ -10,10 +10,10 @@
 ! !DESCRIPTION:
 !
 ! This routine calculated the saturation vapour pressure at SST and at
-! air temperature, as well as the saturation specific humidty and the 
+! air temperature, as well as the saturation specific humidty and the
 ! specific humidity. For the latter, four methods are implemented,
 ! and the method has to be chosen in the namelist file {\tt airsea.nml}
-! as parameter {\tt hum\_method}, see \sect{sec:init-air-sea} for details. 
+! as parameter {\tt hum\_method}, see \sect{sec:init-air-sea} for details.
 !
 !
 ! !USES:

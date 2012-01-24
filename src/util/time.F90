@@ -471,8 +471,8 @@
 !BOC
    omega = acos(-tan(latitude*3.141516/180.)*tan(declination*3.141516/180.))
    hour  = omega*180/3.141516/15.
-   sunrise = 12. - hour 
-   sunset  = 12. + hour 
+   sunrise = 12. - hour
+   sunset  = 12. + hour
    return
    end subroutine  sunrise_sunset
 !EOC
@@ -510,7 +510,7 @@
    LEVEL2 'MinN,MaxN',MinN,MaxN
    LEVEL2 'HasRealTime',HasRealTime
    LEVEL2 'jul0,secs0',jul0,secs0
-   
+
    end subroutine print_state_time
 !EOC
 #endif

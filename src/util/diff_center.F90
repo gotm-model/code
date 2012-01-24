@@ -185,7 +185,7 @@
          du(1) = Y(1) + dt*(Qsour(1))   &
                + (_ONE_ - cnpar)*c*(Y(2)-Y(1))
       else
-         bu(1) = _ONE_ - cu(1) - l 
+         bu(1) = _ONE_ - cu(1) - l
          du(1) = Y(1) + dt*(Qsour(1)+Ydw/h(1))   &
                + (_ONE_ - cnpar)*c*(Y(2)-Y(1))
       end if
