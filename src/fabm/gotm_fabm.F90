@@ -233,8 +233,6 @@
             LEVEL2 'Using emp_1()'
          case (11)
             LEVEL2 'Using emp_2()'
-         case (1003)
-            LEVEL2 'Using runge_kutta_4() with pp/dd matrices'
          case default
             stop "init_gotm_fabm: no valid ode_method specified in fabm.nml!"
       end select
@@ -648,7 +646,7 @@
       ! Repair state
       call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after time integration')
 
-      ! Time-integrate diagnostic variables defined on horizontonal slices, where needed.
+      ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
       do i=1,ubound(model%info%diagnostic_variables_hz,1)
          if (model%info%diagnostic_variables_hz(i)%time_treatment.eq.time_treatment_last) then
             ! Simply use last value
