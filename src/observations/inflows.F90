@@ -325,7 +325,7 @@
          !1 day
          !tauI = 3 * 86400d0
          tauI_left = TauI
-         VI = 50d9
+         VI = 50d5
          VIn = (VI / tauI) * dt
       end if
    end do
@@ -394,10 +394,10 @@
       ! calculate the source terms
       ! "+1" because loop includes both n and index_min
       do i=index_min,n
-!         Qs(i) = (SI - S(i)) / tauI / (n-index_min+1)
-!         Qt(i) = (TI - T(i)) / tauI / (n-index_min+1)
-         Qs(i) = SI / tauI / (n-index_min+1-overflow_index)
-         Qt(i) = TI / tauI / (n-index_min+1-overflow_index)
+!         Qs(i) = (SI - S(i)) / tauI / (n-index_min+1-overflow_index)
+!         Qt(i) = (TI - T(i)) / tauI / (n-index_min+1-overflow_index)
+         Qs(i) = (SI * dt) / (tauI * (n-index_min+1-overflow_index))
+         Qt(i) = (TI * dt) / (tauI * (n-index_min+1-overflow_index))
       end do
 
       ! calculate the vertical flux terms
@@ -407,6 +407,9 @@
          FQs(i) = FQs(i-1) + Qs(i)
          FQt(i) = FQt(i-1) + Qt(i)
       end do
+      ! calculate the sink term at sea surface
+      Qs(nlev) = -FQs(nlev)
+      Qt(nlev) = -FQt(nlev)
       VI = VI - VIn
       tauI_left = tauI_left - dt
    else
