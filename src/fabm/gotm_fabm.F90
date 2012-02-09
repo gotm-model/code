@@ -144,7 +144,7 @@
 
    LEVEL1 'init_gotm_fabm'
 
-   ! Initialize FABM model identifiers to invalid id.
+   ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
    cnpar             = _ONE_
    w_adv_discr       = 6
@@ -264,11 +264,9 @@
    subroutine init_var_gotm_fabm(_LOCATION_)
 !
 ! !DESCRIPTION:
-! This routine allocates memory for all variables needed to hold the values of
-! FABM variables.
+! This routine allocates memory for all FABM variables.
 !
    _DECLARE_LOCATION_ARG_
-!
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -760,7 +758,7 @@
    if (.not. first) call do_repair_state(nlev,'gotm_fabm::right_hand_side_rhs')
 
    ! Initialization is needed because the different biogeochemical models increment or decrement
-   ! the temporal derivatives, rather than setting them directly. This is needed for the simultaenous
+   ! the temporal derivatives, rather than setting them directly. This is needed for the simultaneous
    ! running of different coupled BGC models.
    rhs = _ZERO_
 
