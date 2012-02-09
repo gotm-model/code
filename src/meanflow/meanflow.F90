@@ -107,7 +107,7 @@
    REALTYPE, public                    :: u_taub,u_taus
 
 !  bottom stress
-   REALTYPE, public                    :: taub
+   REALTYPE, public, target            :: taub
 
 !  other stuff
    REALTYPE, public                    :: depth0
@@ -259,6 +259,7 @@
 !  They will be set in friction, but also used as input in the same routine.
    u_taub = _ZERO_
    u_taus = _ZERO_
+   taub = _ZERO_
 
 !  Store initial depth (actual depth will e a function of surface elevation)
    depth0=depth
@@ -553,7 +554,7 @@
 
    LEVEL2 'z0b,z0s,za',z0b,z0s,za
    LEVEL2 'cori',cori
-   LEVEL2 'u_taub,u_taus',u_taub,u_taus
+   LEVEL2 'u_taub,u_taus,taub',u_taub,u_taus,taub
    LEVEL2 'depth0, depth',depth0, depth
    LEVEL2 'runtimeu, runtimev',runtimeu, runtimev
 
