@@ -1064,7 +1064,9 @@
 
    rat=1.         ! fixed (in time  space) ratio between sink and source
    rat(de,fl)=h(1)
+   rat(o2,fl)=h(1)
    rat(fl,am)=1./h(1)
+   rat(fl,de)=1./h(1)
 
    taub=u_taub**2*1000.
 
