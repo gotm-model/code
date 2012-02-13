@@ -151,7 +151,6 @@
    REALTYPE                  :: AdvSup,AdvSdw
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
-   logical                   :: inflow = .false.
 !
 !-----------------------------------------------------------------------
 !BOC

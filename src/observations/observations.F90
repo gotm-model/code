@@ -880,7 +880,8 @@
          open(inflows_unit,file=inflows_file,status='unknown',err=113)
          LEVEL2 'Reading inflows from:'
          LEVEL3 trim(inflows_file)
-         call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
+         call get_inflows(inflows_unit,init_saved_vars,julday,secs, &
+                          inflows_input)
       case default
    end select
 
@@ -1026,7 +1027,8 @@
       call get_bio_profiles(bio_prof_unit,julday,secs,nlev,z)
    end if
    if(inflows_method .eq. 2) then
-      call get_inflows(inflows_unit,init_saved_vars,julday,secs,nlev,z,inflows_input)
+      call get_inflows(inflows_unit,init_saved_vars,julday,secs, &
+                       inflows_input)
    end if
 #endif
    return

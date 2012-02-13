@@ -84,7 +84,7 @@
 ! !ROUTINE: initialises everything related to the inflows
 !
 ! !INTERFACE:
-   subroutine get_inflows(unit,init_saved_vars,jul,secs,nlev,z,inflows_input)
+   subroutine get_inflows(unit,init_saved_vars,jul,secs,inflows_input)
 !
 ! !DESCRIPTION:
 !  This routine is responsible for providing sane values to `observed'
@@ -103,8 +103,6 @@
    integer, intent(in)                 :: unit
    logical, intent(in)                 :: init_saved_vars
    integer, intent(in)                 :: jul,secs
-   integer, intent(in)                 :: nlev
-   REALTYPE, intent(in)                :: z(0:nlev)
    REALTYPE, intent(inout), dimension(:,:), allocatable :: inflows_input
 !
 !EOP
@@ -118,8 +116,6 @@
    integer, save             :: lines
    integer, save             :: nprofiles
    logical, save             :: one_profile
-   REALTYPE, dimension(0:nlev) :: depth
-
    integer                   :: ierr
    integer                   :: N_input_old
    integer                   :: i,j
@@ -314,7 +310,6 @@
    REALTYPE             :: zI_min,zI_max
    REALTYPE             :: VI_basin
    integer              :: index_min
-   integer              :: overflow_index
    REALTYPE             :: threshold
 !
 !-----------------------------------------------------------------------

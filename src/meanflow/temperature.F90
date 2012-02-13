@@ -185,7 +185,6 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: z
-   logical                   :: inflow = .false.
 !
 !-----------------------------------------------------------------------
 !BOC
