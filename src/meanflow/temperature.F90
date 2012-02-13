@@ -68,13 +68,14 @@
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
    use meanflow,     only: lake,idealised
-   use meanflow,     only: h,Ac,Af
+   use meanflow,     only: h,Ac,Af,dAdz
    use meanflow,     only: u,v,w,T,S,avh
    use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau
    use observations, only: A,g1,g2
+   use observations, only: qt, FQ
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -174,7 +175,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: adv_mode=0
+   integer                   :: adv_mode=1
    integer                   :: posconc=0
    integer                   :: i
    integer                   :: DiffBcup,DiffBcdw
@@ -184,6 +185,7 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: z
+   logical                   :: inflow = .false.
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -247,9 +249,19 @@
       end do
    end if
 
+!  ... and from inflows
+   if (lake) then
+      do i=1,nlev
+         Qsour(i) = Qsour(i) + (dAdz(i) / Ac(i) * qt(i))
+         w(i) = FQ(i) / Af(i)
+      end do
+      call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,               &
+                          AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
+   end if
+
 !  do advection step
    if (w_adv_method.ne.0) then
-      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
+      call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,               &
                           AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
    end if
 

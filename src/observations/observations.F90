@@ -85,8 +85,8 @@
 
 !  inflows for lake model
    REALTYPE, public, dimension(:,:), allocatable :: inflows_input
-   REALTYPE, public, dimension(:), allocatable   :: Qs, Qt
-   REALTYPE, public, dimension(:), allocatable   :: FQs, FQt
+   REALTYPE, public, dimension(:), allocatable   :: qs, qt
+   REALTYPE, public, dimension(:), allocatable   :: FQ
    REALTYPE,  public                             :: V_inflow
 
 !------------------------------------------------------------------------------
@@ -863,21 +863,17 @@
 #endif
 
 !  The inflows
-   allocate(Qs(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (Qs)'
-   Qs = _ZERO_
+   allocate(qs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (qs)'
+   qs = _ZERO_
 
-   allocate(Qt(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (Qt)'
-   Qt = _ZERO_
+   allocate(qt(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (qt)'
+   qt = _ZERO_
 
-   allocate(FQs(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (FQs)'
-   FQs = _ZERO_
-
-   allocate(FQt(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (FQt)'
-   FQt = _ZERO_
+   allocate(FQ(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (FQ)'
+   FQ = _ZERO_
 
    select case (inflows_method)
       case (FROMFILE)
@@ -1220,10 +1216,9 @@
    if (allocated(bioprofs)) deallocate(bioprofs)
 #endif
    if (allocated(inflows_input)) deallocate(inflows_input)
-   if (allocated(Qs)) deallocate(Qs)
-   if (allocated(Qt)) deallocate(Qt)
-   if (allocated(FQs)) deallocate(FQs)
-   if (allocated(FQt)) deallocate(FQt)
+   if (allocated(qs)) deallocate(qs)
+   if (allocated(qt)) deallocate(qt)
+   if (allocated(FQ)) deallocate(FQ)
    call clean_inflows()
    LEVEL2 'done.'
 
@@ -1291,10 +1286,9 @@
 #ifdef BIO
    if (allocated(bioprofs)) LEVEL2 'bioprofs',bioprofs
 #endif
-   if (allocated(Qs)) LEVEL2 'Qs',Qs
-   if (allocated(Qt)) LEVEL2 'Qt',Qt
-   if (allocated(FQs)) LEVEL2 'FQs',FQs
-   if (allocated(FQt)) LEVEL2 'FQt',FQt
+   if (allocated(qs)) LEVEL2 'qs',qs
+   if (allocated(qt)) LEVEL2 'qt',qt
+   if (allocated(FQ)) LEVEL2 'FQ',FQ
    if (allocated(inflows_input)) LEVEL2 'inflows_input',inflows_input
 
    LEVEL2 'salinity namelist',                                  &

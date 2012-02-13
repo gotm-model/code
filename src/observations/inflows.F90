@@ -29,11 +29,13 @@
    REALTYPE, save, dimension(:), allocatable   :: A_input,depth_input
    REALTYPE, save, dimension(:,:), allocatable :: inflows_input1,inflows_input2
    REALTYPE, save, dimension(:,:), allocatable :: alpha
+   REALTYPE, save, dimension(:), allocatable :: Q
    REALTYPE, save                              :: tauI
    REALTYPE, save                              :: tauI_left
    REALTYPE, save                              :: SI,TI
-   REALTYPE, save                              :: VIn
+   REALTYPE, save                              :: VI_step
    REALTYPE, save                              :: V_diff
+   REALTYPE, save                              :: Q_I
 ! !DEFINED PARAMETERS:
 !
 !-----------------------------------------------------------------------
@@ -65,6 +67,11 @@
       TI = 4.0d0
       tauI = _ZERO_
       V_diff = _ZERO_
+      Q_I = _ZERO_
+      if (allocated(Q)) deallocate(Q)
+      allocate(Q(0:nlev),stat=rc)
+      if (rc /= 0) stop 'init_inflows: Error allocating memory (Q)'
+      Q = _ZERO_
 !112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
 !      stop 'init_hypsography'
 
@@ -275,7 +282,8 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(nlev,dt,S,T,h,Ac,inflows_input,VI,Qs,Qt,FQs,FQt)
+   subroutine update_inflows(nlev,dt,S,T,h,Ac,Af,inflows_input,VI, &
+                             qs,qt,FQ)
 !
 ! !DESCRIPTION:
 !  TODO!
@@ -291,12 +299,12 @@
    integer, intent(in)                  :: nlev
    REALTYPE, intent(in)                 :: dt
    REALTYPE, intent(in)                 :: S(0:nlev), T(0:nlev)
-   REALTYPE, intent(in)                 :: h(0:nlev), Ac(0:nlev)
+   REALTYPE, intent(in)                 :: h(0:nlev), Ac(0:nlev), Af(0:nlev)
    REALTYPE, intent(inout), dimension(:,:), allocatable :: inflows_input
    ! TODO: should this be an argument or a module variable!?
    REALTYPE, intent(inout)              :: VI
-   REALTYPE, intent(inout)              :: Qs(0:nlev), Qt(0:nlev)
-   REALTYPE, intent(inout)              :: FQs(0:nlev), FQt(0:nlev)
+   REALTYPE, intent(inout)              :: qs(0:nlev), qt(0:nlev)
+   REALTYPE, intent(inout)              :: FQ(0:nlev)
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -305,7 +313,6 @@
    REALTYPE             :: depth
    REALTYPE             :: zI_min,zI_max
    REALTYPE             :: VI_basin
-   REALTYPE             :: QI
    integer              :: index_min
    integer              :: overflow_index
    REALTYPE             :: threshold
@@ -325,8 +332,9 @@
          !1 day
          !tauI = 3 * 86400d0
          tauI_left = TauI
-         VI = 50d5
-         VIn = (VI / tauI) * dt
+         VI = 50d09
+         VI_step = (VI / tauI) * dt
+         Q_I = VI / tauI
       end if
    end do
 
@@ -358,7 +366,7 @@
       VI_basin = _ZERO_
       zI_max = zI_min
       n = index_min
-      do while (VI_basin < VIn)
+      do while (VI_basin < VI_step)
          VI_basin = VI_basin + Ac(n) * h(n)
          zI_max = zI_max - h(n)
          n = n+1
@@ -369,55 +377,43 @@
             exit
          end if
       end do
-      ! VI_basin is now too big so go back one step
+!      ! VI_basin is now too big so go back one step
       n = n-1
-      zI_max = zI_max + h(n)
-      VI_basin = VI_basin - Ac(n) * h(n)
+!      zI_max = zI_max + h(n)
+!      VI_basin = VI_basin - Ac(n) * h(n)
 
-      ! save the difference between VI_basin and VIn until
-      ! it fills an entire water layer, then fill that layer and reset V_diff
-      V_diff = V_diff + (VIn - VI_basin)
-      if (V_diff .ge. (Ac(n+1) * h(n+1))) then
-         n = n + 1
-         V_diff = _ZERO_
-         overflow_index = 1
-      else
-         overflow_index = 0
-      end if
-
-      do i=1,nlev
-         Qs(i) = _ZERO_
-         Qt(i) = _ZERO_
-         FQs(i) = _ZERO_
-         FQt(i) = _ZERO_
+      do i=0,nlev
+         qs(i) = _ZERO_
+         qt(i) = _ZERO_
+         Q(i) = _ZERO_
+         FQ(i) = _ZERO_
       end do
       ! calculate the source terms
       ! "+1" because loop includes both n and index_min
       do i=index_min,n
-!         Qs(i) = (SI - S(i)) / tauI / (n-index_min+1-overflow_index)
-!         Qt(i) = (TI - T(i)) / tauI / (n-index_min+1-overflow_index)
-         Qs(i) = (SI * dt) / (tauI * (n-index_min+1-overflow_index))
-         Qt(i) = (TI * dt) / (tauI * (n-index_min+1-overflow_index))
+         Q(i) = Q_I / (n-index_min+1)
+         !TODO check the +1.0d0 -> needed for alternating signs in salinity
+         qs(i) = SI * Q(i) / (Af(i) - Af(i-1))
+         qt(i) = SIGN(TI * Q(i) / (Af(i) - Af(i-1)), TI-T(i+1)+1.0d0)
       end do
 
       ! calculate the vertical flux terms
-      FQs(0) = Qs(0)
-      FQt(0) = Qt(0)
-      do i=1,nlev
-         FQs(i) = FQs(i-1) + Qs(i)
-         FQt(i) = FQt(i-1) + Qt(i)
+      FQ(index_min) = Q(index_min)
+      do i=index_min+1,nlev-1
+         FQ(i) = FQ(i-1) + Q(i)
       end do
+
       ! calculate the sink term at sea surface
-      Qs(nlev) = -FQs(nlev)
-      Qt(nlev) = -FQt(nlev)
-      VI = VI - VIn
+      qs(nlev) = -S(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1))
+      qt(nlev) = SIGN(T(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1)), &
+                      -T(nlev))
+      VI = VI - VI_step
       tauI_left = tauI_left - dt
    else
       do i=1,nlev
-         Qs(i) = _ZERO_
-         Qt(i) = _ZERO_
-         FQs(i) = _ZERO_
-         FQt(i) = _ZERO_
+         qs(i) = _ZERO_
+         qt(i) = _ZERO_
+         FQ(i) = _ZERO_
       end do
    end if
 
