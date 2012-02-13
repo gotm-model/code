@@ -160,8 +160,9 @@
    logical,private           :: GrADS
    integer, private          :: Ac_id,Af_id,dAdz_id
    integer, private          :: total_salt_id
-   integer, private          :: Qs_id, Qt_id
+   integer, private          :: qs_id, qt_id
    integer, private          :: wIs_id
+   integer, private          :: FQ_id
 !
 !-----------------------------------------------------------------------
 
@@ -324,15 +325,19 @@
    if (lake) then
       iret = nf90_def_var(ncid,'Ac',NF90_REAL,dim4d,Ac_id)
       call check_err(iret)
+      iret = nf90_def_var(ncid,'Af',NF90_REAL,dim4d,Af_id)
+      call check_err(iret)
       iret = nf90_def_var(ncid,'dAdz',NF90_REAL,dim4d, dAdz_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
       call check_err(iret)
-      iret = nf90_def_var(ncid,'Qs',NF90_REAL,dim4d,Qs_id)
+      iret = nf90_def_var(ncid,'qs',NF90_REAL,dim4d,qs_id)
       call check_err(iret)
-      iret = nf90_def_var(ncid,'Qt',NF90_REAL,dim4d,Qt_id)
+      iret = nf90_def_var(ncid,'qt',NF90_REAL,dim4d,qt_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'wIs',NF90_REAL,dim4d,wIs_id)
+      call check_err(iret)
+      iret = nf90_def_var(ncid,'FQ',NF90_REAL,dim4d,FQ_id)
       call check_err(iret)
    end if
    iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
@@ -364,10 +369,6 @@
    call check_err(iret)
    iret = nf90_def_var(ncid,'gams',NF90_REAL,dim4d,gams_id)
    call check_err(iret)
-   if (lake) then
-      iret = nf90_def_var(ncid,'Af',NF90_REAL,dim4d,Af_id)
-      call check_err(iret)
-   end if
 
    if (turb_method.ne.99) then
       iret = nf90_def_var(ncid,'tke',NF90_REAL,dim4d,tke_id)
@@ -486,12 +487,14 @@
                             long_name='hypsography at grid interfaces')
       iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsography')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
-      iret = set_attributes(ncid,Qs_id,units='g/(kg*s)', &
+      iret = set_attributes(ncid,qs_id,units='m/s', &
                             long_name='salt inflow')
-      iret = set_attributes(ncid,Qt_id,units='celsius/s', &
+      iret = set_attributes(ncid,qt_id,units='celsius*m/s', &
                             long_name='temperature inflow')
       iret = set_attributes(ncid,wIs_id,units='m/s', &
                             long_name='vertical salinity advection velocity')
+      iret = set_attributes(ncid,FQ_id,units='m**3/s', &
+                            long_name='vertical salinity transport')
    end if
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
    iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency squared')
@@ -586,7 +589,7 @@
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
-   use observations, only: Qs, Qt, FQs
+   use observations, only: qs, qt, FQ
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
@@ -687,13 +690,15 @@
    iret = store_data(ncid,temp_obs_id,XYZT_SHAPE,nlev,array=tprof)
    if (lake) then
       iret = store_data(ncid,Ac_id,XYZT_SHAPE,nlev,array=Ac)
+      iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
       iret = store_data(ncid,dAdz_id,XYZT_SHAPE,nlev,array=dAdz)
-      iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)
-      iret = store_data(ncid,Qt_id,XYZT_SHAPE,nlev,array=Qt)
+      iret = store_data(ncid,qs_id,XYZT_SHAPE,nlev,array=qs)
+      iret = store_data(ncid,qt_id,XYZT_SHAPE,nlev,array=qt)
       do i=1,nlev
-         dum(i) = FQs(i) / Ac(i)
+         dum(i) = FQ(i) / Af(i)
       end do
       iret = store_data(ncid,wIs_id,XYZT_SHAPE,nlev,array=dum)
+      iret = store_data(ncid,FQ_id,XYZT_SHAPE,nlev,array=FQ)
    end if
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
    iret = store_data(ncid,NN_id,XYZT_SHAPE,nlev,array=NN)
@@ -736,9 +741,6 @@
    iret = store_data(ncid,gamv_id,XYZT_SHAPE,nlev,array=gamv)
    iret = store_data(ncid,gamh_id,XYZT_SHAPE,nlev,array=gamh)
    iret = store_data(ncid,gams_id,XYZT_SHAPE,nlev,array=gams)
-   if (lake) then
-      iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
-   end if
 
    if (turb_method.ne.99) then
       iret = store_data(ncid,tke_id,XYZT_SHAPE,nlev,array=tke)

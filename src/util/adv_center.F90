@@ -5,7 +5,7 @@
 ! !ROUTINE: Advection schemes --- grid centers\label{sec:advectionMean}
 !
 ! !INTERFACE:
-   subroutine adv_center(N,dt,h,ho,ww,Bcup,Bcdw,Yup,Ydw,method,mode,Y)
+   subroutine adv_center(N,dt,h,ho,Ac,Af,ww,Bcup,Bcdw,Yup,Ydw,method,mode,Y)
 !
 ! !DESCRIPTION:
 !
@@ -175,6 +175,12 @@
 !  old layer thickness (m)
    REALTYPE, intent(in)                :: ho(0:N)
 
+!  hypsography at grid centre
+   REALTYPE, intent(in)                :: Ac(0:N)
+
+!  hypsography at grid face
+   REALTYPE, intent(in)                :: Af(0:N)
+
 !  vertical advection speed
    REALTYPE, intent(in)                :: ww(0:N)
 
@@ -342,7 +348,7 @@
           end select
 
 !        compute the limited flux
-         cu(k)=ww(k)*(Yc+0.5*limit*(1-c)*(Yd-Yc))
+         cu(k)=Af(k)*ww(k)*(Yc+0.5*limit*(1-c)*(Yd-Yc))
 
       end do
 
@@ -354,7 +360,7 @@
          cu(N) =  ww(N)*Yup
       case (oneSided)
          if (ww(N).ge._ZERO_) then
-            cu(N) =  ww(N)*Y(N)
+            cu(N) =  Af(N)*ww(N)*Y(N)
          else
             cu(N) = _ZERO_
          end if
@@ -374,7 +380,7 @@
          cu(0) =  ww(0)*Ydw
       case (oneSided)
          if(ww(0).le._ZERO_) then
-            cu(0) =  ww(0)*Y(1)
+            cu(0) =  Af(0)*ww(0)*Y(1)
          else
             cu(0) = _ZERO_
          end if
@@ -395,7 +401,7 @@
          enddo
       else                ! conservative  
          do k=1,N
-            Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/h(k))
+            Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/(Ac(k)*h(k)))
          enddo
       end if   
 

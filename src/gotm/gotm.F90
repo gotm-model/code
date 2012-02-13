@@ -73,7 +73,8 @@
    use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output
 #endif
 
-   use hypsography, only: init_hypsography,clean_hypsography
+   use hypsography, only: lake,init_hypsography,clean_hypsography
+   use inflows, only: update_inflows
    use output
 
    IMPLICIT NONE
@@ -376,7 +377,7 @@
    call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
    call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
-                          depth,nlev,dt,z,h,gravity,rho_0)
+                          depth,nlev,z,h,gravity,rho_0)
 
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
@@ -537,6 +538,8 @@
 !     meanflow integration starts
       call updategrid(nlev,dt,zeta)
       call coriolis(nlev,dt)
+      call update_inflows(lake,nlev,dt,S(0:nlev),T(0:nlev),h,Ac,Af, &
+                          inflows_input,V_inflow,Qs,Qt,FQ)
 
 !     update velocity
       call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
