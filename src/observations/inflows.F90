@@ -278,20 +278,19 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(nlev,dt,S,T,h,Ac,Af,inflows_input,VI, &
+   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,Af,inflows_input,VI, &
                              qs,qt,FQ)
 !
 ! !DESCRIPTION:
 !  TODO!
 !
 ! !USES:
-!   use meanflow, only: S, T
-!   use meanflow, only: h, Ac
    use eqstate, only: unesco
 
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:
+   logical, intent(in)                  :: lake
    integer, intent(in)                  :: nlev
    REALTYPE, intent(in)                 :: dt
    REALTYPE, intent(in)                 :: S(0:nlev), T(0:nlev)
@@ -317,99 +316,101 @@
    threshold = 17.0848d0
 
    ! check if an inflow will occure
-   do i=1,N_input
-      if (inflows_input(1,i) >= threshold) then
-         write(*,*) "!!!!!!!!!!!!!!!!!!!!"
-         write(*,*) "inflow was triggered"
-         write(*,*) "!!!!!!!!!!!!!!!!!!!!"
-         !2 weeks
-         tauI = 1209600d0
-         !1 day
-         !tauI = 3 * 86400d0
-         tauI_left = TauI
-         VI = 50d09
-         VI_step = (VI / tauI) * dt
-         Q_I = VI / tauI
+   if (lake) then
+      do i=1,N_input
+         if (inflows_input(1,i) >= threshold) then
+            write(*,*) "!!!!!!!!!!!!!!!!!!!!"
+            write(*,*) "inflow was triggered"
+            write(*,*) "!!!!!!!!!!!!!!!!!!!!"
+            !2 weeks
+            tauI = 1209600d0
+            !1 day
+            !tauI = 3 * 86400d0
+            tauI_left = TauI
+            VI = 50d09
+            VI_step = (VI / tauI) * dt
+            Q_I = VI / tauI
+         end if
+      end do
+
+      ! inflow triggered or still in progress
+      if (tauI_left .gt. _ZERO_) then
+         ! calculate depth of water column
+         depth = _ZERO_
+         do i=1,nlev
+            depth = depth - h(i)
+         end do
+
+         ! find minimal depth where the inflow will take place
+         zI_min = _ZERO_
+         index_min = 0
+         do i=1,nlev
+            depth = depth + h(i)
+            rhoI = unesco(SI,TI,depth/10.0d0,.false.)
+            rho = unesco(S(i),T(i),depth/10.0d0,.false.)
+            ! if the density of the inflowing water is greater than the
+            ! ambient water then the lowest interleaving depth is found
+            if (rhoI > rho) then
+               zI_min = depth
+               index_min = i
+               exit
+            end if
+         end do
+
+         ! find the z-levels in which the water will interleave
+         VI_basin = _ZERO_
+         zI_max = zI_min
+         n = index_min
+         do while (VI_basin < VI_step)
+            VI_basin = VI_basin + Ac(n) * h(n)
+            zI_max = zI_max - h(n)
+            n = n+1
+            ! for debugging only
+            if (n .gt. nlev) then
+               write(*,*) "Warning: Too much water flowing into the basin."
+               n = nlev
+               exit
+            end if
+         end do
+   !      ! VI_basin is now too big so go back one step
+         n = n-1
+   !      zI_max = zI_max + h(n)
+   !      VI_basin = VI_basin - Ac(n) * h(n)
+
+         do i=0,nlev
+            qs(i) = _ZERO_
+            qt(i) = _ZERO_
+            Q(i) = _ZERO_
+            FQ(i) = _ZERO_
+         end do
+         ! calculate the source terms
+         ! "+1" because loop includes both n and index_min
+         do i=index_min,n
+            Q(i) = Q_I / (n-index_min+1)
+            !TODO check the +1.0d0 -> needed for alternating signs in salinity
+            qs(i) = SI * Q(i) / (Af(i) - Af(i-1))
+            qt(i) = SIGN(TI * Q(i) / (Af(i) - Af(i-1)), TI-T(i+1)+1.0d0)
+         end do
+
+         ! calculate the vertical flux terms
+         FQ(index_min) = Q(index_min)
+         do i=index_min+1,nlev-1
+            FQ(i) = FQ(i-1) + Q(i)
+         end do
+
+         ! calculate the sink term at sea surface
+         qs(nlev) = -S(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1))
+         qt(nlev) = SIGN(T(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1)), &
+                         -T(nlev))
+         VI = VI - VI_step
+         tauI_left = tauI_left - dt
+      else
+         do i=1,nlev
+            qs(i) = _ZERO_
+            qt(i) = _ZERO_
+            FQ(i) = _ZERO_
+         end do
       end if
-   end do
-
-   ! inflow triggered or still in progress
-   if (tauI_left .gt. _ZERO_) then
-      ! calculate depth of water column
-      depth = _ZERO_
-      do i=1,nlev
-         depth = depth - h(i)
-      end do
-
-      ! find minimal depth where the inflow will take place
-      zI_min = _ZERO_
-      index_min = 0
-      do i=1,nlev
-         depth = depth + h(i)
-         rhoI = unesco(SI,TI,depth/10.0d0,.false.)
-         rho = unesco(S(i),T(i),depth/10.0d0,.false.)
-         ! if the density of the inflowing water is greater than the
-         ! ambient water then the lowest interleaving depth is found
-         if (rhoI > rho) then
-            zI_min = depth
-            index_min = i
-            exit
-         end if
-      end do
-
-      ! find the z-levels in which the water will interleave
-      VI_basin = _ZERO_
-      zI_max = zI_min
-      n = index_min
-      do while (VI_basin < VI_step)
-         VI_basin = VI_basin + Ac(n) * h(n)
-         zI_max = zI_max - h(n)
-         n = n+1
-         ! for debugging only
-         if (n .gt. nlev) then
-            write(*,*) "Warning: Too much water flowing into the basin."
-            n = nlev
-            exit
-         end if
-      end do
-!      ! VI_basin is now too big so go back one step
-      n = n-1
-!      zI_max = zI_max + h(n)
-!      VI_basin = VI_basin - Ac(n) * h(n)
-
-      do i=0,nlev
-         qs(i) = _ZERO_
-         qt(i) = _ZERO_
-         Q(i) = _ZERO_
-         FQ(i) = _ZERO_
-      end do
-      ! calculate the source terms
-      ! "+1" because loop includes both n and index_min
-      do i=index_min,n
-         Q(i) = Q_I / (n-index_min+1)
-         !TODO check the +1.0d0 -> needed for alternating signs in salinity
-         qs(i) = SI * Q(i) / (Af(i) - Af(i-1))
-         qt(i) = SIGN(TI * Q(i) / (Af(i) - Af(i-1)), TI-T(i+1)+1.0d0)
-      end do
-
-      ! calculate the vertical flux terms
-      FQ(index_min) = Q(index_min)
-      do i=index_min+1,nlev-1
-         FQ(i) = FQ(i-1) + Q(i)
-      end do
-
-      ! calculate the sink term at sea surface
-      qs(nlev) = -S(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1))
-      qt(nlev) = SIGN(T(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1)), &
-                      -T(nlev))
-      VI = VI - VI_step
-      tauI_left = tauI_left - dt
-   else
-      do i=1,nlev
-         qs(i) = _ZERO_
-         qt(i) = _ZERO_
-         FQ(i) = _ZERO_
-      end do
    end if
 
    end subroutine update_inflows

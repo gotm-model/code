@@ -74,7 +74,7 @@
    use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output
 #endif
 
-   use hypsography, only: init_hypsography,clean_hypsography
+   use hypsography, only: lake,init_hypsography,clean_hypsography
    use inflows, only: update_inflows
    use output
 
@@ -539,7 +539,7 @@
 !     meanflow integration starts
       call updategrid(nlev,dt,zeta)
       call coriolis(nlev,dt)
-      call update_inflows(nlev,dt,S(0:nlev),T(0:nlev),h,Ac,Af, &
+      call update_inflows(lake,nlev,dt,S(0:nlev),T(0:nlev),h,Ac,Af, &
                           inflows_input,V_inflow,Qs,Qt,FQ)
 
 !     update velocity
