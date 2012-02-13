@@ -801,7 +801,6 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE, save                      :: iopt
-   REALTYPE                            :: rat(0:nlev,0:nlev)
    REALTYPE                            :: psum,llda,llan,llsa,r1,r2,r3
    REALTYPE                            :: wo=30.,wn=0.1,dot2=0.2
    REALTYPE                            :: thopnp,thomnp,thomnm,thsum
@@ -822,7 +821,6 @@
 
    pp = _ZERO_
    dd = _ZERO_
-   rat=1.         ! fixed (in time  space) ratio between sink and source
 
    depthCi(nlev)=0.5
    do i=nlev-1,1,-1

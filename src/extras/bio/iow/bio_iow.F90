@@ -1042,7 +1042,7 @@
 !
 ! !LOCAL VARIABLES:
   REALTYPE, save             :: iopt
-  REALTYPE                   :: rat(0:nlev,0:nlev)
+  REALTYPE                   :: rat(1:numc,1:numc)
   REALTYPE                   :: psum,llda,llan,llsa,llds,llsd,r1,r2,r3
   REALTYPE                   :: wo=30.,wn=0.1,dot2=0.2
   REALTYPE                   :: thopnp,thomnp,thomnm,thsum

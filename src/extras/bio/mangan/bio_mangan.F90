@@ -425,7 +425,7 @@
 !
 ! !LOCAL VARIABLES:
   integer                    :: i,j,ci
-  REALTYPE                   :: rat(0:nlev,0:nlev)
+  REALTYPE                   :: rat(1:numc,1:numc)
   REALTYPE                   :: taub,r_sedim=0.,r_resus=0.
   REALTYPE                   :: mn_tot,spm_tot
 
