@@ -78,6 +78,8 @@
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
 
    REALTYPE,pointer :: I_0,A,g1,g2
+   integer,pointer  :: yearday,secondsofday
+   REALTYPE, target :: decimal_yearday
 
 !  Explicit interface for ode solver.
    interface
@@ -352,6 +354,11 @@
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (pres)'
    call fabm_link_data(model,varname_pres,pres(1:_LOCATION_))
 
+   ! Initialize scalar to hold day of the year (floating poitn value),
+   ! and link it to FABM.
+   decimal_yearday = _ZERO_
+   call fabm_link_scalar(model,varname_yearday,decimal_yearday)
+
    ! Allocate arrays for storing local and column-integrated values of conserved quantities.
    ! These are used during each save.
    allocate(total(1:ubound(model%info%conserved_quantities,1)),stat=rc)
@@ -373,7 +380,8 @@
 !
 ! !INTERFACE:
    subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
-                                bioshade_,I_0_,taub,wnd,precip_,evap_,z_,A_,g1_,g2_,SRelaxTau_,sProf_)
+                                bioshade_,I_0_,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
+                                yearday_,secondsofday_,SRelaxTau_,sProf_)
 !
 ! !DESCRIPTION:
 ! This routine is called once from GOTM to provide pointers to the arrays that describe
@@ -383,9 +391,10 @@
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
-   REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
+   integer,  intent(in),target :: yearday_,secondsofday_
+   REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -440,6 +449,9 @@
    A => A_
    g1 => g1_
    g2 => g2_
+   
+   yearday => yearday_
+   secondsofday => secondsofday_
 
    ! Handle externally provided 0d observations.
    if (allocated(obs_0d_ids)) then
@@ -533,6 +545,9 @@
       pres(i) = pres(i+1) + (rho(i)*h(i+1)+rho(i+1)*h(i+2))*0.5d0
    end do
    pres(1:nlev) = pres(1:nlev)*9.81d-4
+
+!  Calculate decimal day of the year (1 jan 00:00 = 0.)
+   decimal_yearday = yearday-1 + dble(secondsofday)/86400.d0
 
 !  Transfer current state to FABM.
    do i=1,ubound(model%info%state_variables,1)
