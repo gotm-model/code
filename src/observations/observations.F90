@@ -1025,11 +1025,13 @@
    if(bio_prof_method .eq. 2) then
       call get_bio_profiles(bio_prof_unit,julday,secs,nlev,z)
    end if
+#endif
+
    if(inflows_method .eq. 2) then
       call get_inflows(inflows_unit,init_saved_vars,julday,secs, &
                        inflows_input)
    end if
-#endif
+
    return
    end subroutine get_all_obs
 !EOC
