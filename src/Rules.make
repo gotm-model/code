@@ -40,8 +40,8 @@ DEFINES += -DNETCDF_FMT
 ifeq ($(NETCDF_VERSION),NETCDF4)
 
 DEFINES         += -DNETCDF4
-INCDIRS         += $(shell nf-config --fflags)
-NETCDFLIB       =  $(shell nf-config --flibs)
+INCDIRS         += $(shell nc-config --fflags)
+NETCDFLIB       =  $(shell nc-config --flibs)
 
 else  # NetCDF3 is default
 
