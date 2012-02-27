@@ -25,7 +25,7 @@
 !
 ! !USES:
    use inflows, only: init_inflows, clean_inflows
-   use inflows, only: get_inflows, update_inflows
+   use inflows, only: get_inflows
    IMPLICIT NONE
 
 !  default: all is private.
@@ -83,10 +83,9 @@
 #endif
 
 !  inflows for lake model
-   REALTYPE, public, dimension(:,:), allocatable :: inflows_input
+   REALTYPE, public, dimension(:), allocatable   :: inflows_input
    REALTYPE, public, dimension(:), allocatable   :: qs, qt
    REALTYPE, public, dimension(:), allocatable   :: FQ
-   REALTYPE,  public                             :: V_inflow
 
 !------------------------------------------------------------------------------
 !
@@ -531,7 +530,6 @@
 !  Observed inflows
    inflows_method=0
    inflows_file='inflows_file.dat'
-   V_inflow = _ZERO_
    call init_inflows(nlev)
 
    open(namlst,file=fn,status='old',action='read',err=80)

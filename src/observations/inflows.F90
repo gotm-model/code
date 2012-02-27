@@ -24,18 +24,14 @@
 !
 ! !LOCAL VARIABLES:
    integer                                     :: rc
-   integer, parameter                          :: cols=2
+   integer, parameter                          :: cols=3
    integer                                     :: N_input
-   REALTYPE, save, dimension(:), allocatable   :: A_input,depth_input
-   REALTYPE, save, dimension(:,:), allocatable :: inflows_input1,inflows_input2
-   REALTYPE, save, dimension(:,:), allocatable :: alpha
-   REALTYPE, save, dimension(:), allocatable :: Q
+   REALTYPE, save, dimension(:), allocatable   :: inflows_input1,inflows_input2
+   REALTYPE, save, dimension(:), allocatable   :: alpha
+   REALTYPE, save, dimension(:), allocatable   :: Q
    REALTYPE, save                              :: tauI
    REALTYPE, save                              :: tauI_left
-   REALTYPE, save                              :: SI,TI
-   REALTYPE, save                              :: VI_step
-   REALTYPE, save                              :: V_diff
-   REALTYPE, save                              :: Q_I
+   REALTYPE, save                              :: QI,SI,TI
 ! !DEFINED PARAMETERS:
 !
 !-----------------------------------------------------------------------
@@ -66,12 +62,28 @@
       SI = 10.5d0
       TI = 4.0d0
       tauI = _ZERO_
-      V_diff = _ZERO_
-      Q_I = _ZERO_
+      QI = _ZERO_
+ 
       if (allocated(Q)) deallocate(Q)
       allocate(Q(0:nlev),stat=rc)
-      if (rc /= 0) stop 'init_inflows: Error allocating memory (Q)'
+      if (rc /= 0) stop 'get_inflows: Error allocating memory (Q)'
       Q = _ZERO_
+
+      if (allocated(inflows_input1)) deallocate(inflows_input1)
+      allocate(inflows_input1(cols),stat=rc)
+      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input1)'
+      inflows_input1 = _ZERO_
+
+      if (allocated(inflows_input2)) deallocate(inflows_input2)
+      allocate(inflows_input2(cols),stat=rc)
+      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input2)'
+      inflows_input2 = _ZERO_
+
+      if (allocated(alpha)) deallocate(alpha)
+      allocate(alpha(cols),stat=rc)
+      if (rc /= 0) stop 'get_inflows: Error allocating memory (alpha)'
+      alpha = _ZERO_
+
 !112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
 !      stop 'init_hypsography'
 
@@ -103,7 +115,7 @@
    integer, intent(in)                 :: unit
    logical, intent(in)                 :: init_saved_vars
    integer, intent(in)                 :: jul,secs
-   REALTYPE, intent(inout), dimension(:,:), allocatable :: inflows_input
+   REALTYPE, intent(inout), dimension(:), allocatable :: inflows_input
 !
 !EOP
 !
@@ -117,7 +129,6 @@
    integer, save             :: nprofiles
    logical, save             :: one_profile
    integer                   :: ierr
-   integer                   :: N_input_old
    integer                   :: i,j
    integer                   :: up_down
    REALTYPE                  :: x
@@ -133,46 +144,23 @@
       nprofiles=0
       one_profile=.false.
       ierr = 0
-      N_input_old = N_input
       read(unit,'(A72)',ERR=100,END=110) cbuf
       read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
       read(cbuf(20:),*,ERR=100,END=110) N_input,up_down
       !go back one "read-command" in file
       backspace(unit)
 
+      if (allocated(inflows_input)) deallocate(inflows_input)
+      allocate(inflows_input(cols),stat=rc)
+      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input)'
+      inflows_input1 = _ZERO_
+
       ! only allocate memory if the size of the arrays will change
-      if (N_input .ne. N_input_old) then
-         if (allocated(depth_input)) deallocate(depth_input)
-         allocate(depth_input(1:N_input),stat=rc)
-         if (rc /= 0) stop 'get_inflows: Error allocating memory (depth_input)'
-         depth_input = _ZERO_
-
-         if (allocated(inflows_input2)) deallocate(inflows_input2)
-         allocate(inflows_input2(cols,1:N_input),stat=rc)
-         if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input2)'
-         inflows_input2 = _ZERO_
-
-         if (allocated(inflows_input1)) deallocate(inflows_input1)
-         allocate(inflows_input1(cols,1:N_input),stat=rc)
-         if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input1)'
-         inflows_input1 = _ZERO_
-
-         if (allocated(inflows_input)) deallocate(inflows_input)
-         allocate(inflows_input(cols,1:N_input),stat=rc)
-         if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input)'
-         inflows_input = _ZERO_
-
-         if (allocated(alpha)) deallocate(alpha)
-         allocate(alpha(cols,1:N_input),stat=rc)
-         if (rc /= 0) stop 'get_inflows: Error allocating memory (alpha)'
-         alpha = _ZERO_
-      else
-         depth_input = _ZERO_
-         inflows_input2 = _ZERO_
-         inflows_input1 = _ZERO_
-         inflows_input = _ZERO_
-         alpha = _ZERO_
-      end if
+      !TODO does this still have to be done!?
+      inflows_input2 = _ZERO_
+      inflows_input1 = _ZERO_
+      inflows_input = _ZERO_
+      alpha = _ZERO_
    end if
 
 !  This part initialises and reads in new values if necessary.
@@ -186,52 +174,13 @@
          read(unit,'(A72)',ERR=100,END=110) cbuf
          read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
          read(cbuf(20:),*,ERR=100,END=110) N_input,up_down
-         lines = 1
 
-         select case (up_down)
-            case(1)  ! surface ref, read from bottom
-               do i=1,N_input
-                  lines = lines+1
-                  read(unit,*,ERR=100,END=110) &
-                     depth_input(i),(inflows_input2(i,j),j=1,cols)
-               end do
-            case(2)  ! surface ref, read from surface
-               do i=N_input,1,-1
-                  lines = lines+1
-                  read(unit,*,ERR=100,END=110) &
-                     depth_input(i),(inflows_input2(j,i),j=1,cols)
-               end do
-            case(3)  ! bottom ref, read from bottom
-               do i=1,N_input
-                  lines = lines+1
-                  read(unit,*,ERR=100,END=110) &
-                     depth_input(i),(inflows_input2(i,j),j=1,cols)
-               end do
-               do i=1,N_input/2
-                  x = depth_input(i)
-                  depth_input(i) = -depth_input(N_input-(i-1))
-                  depth_input(N_input-(i-1)) = -x
-               end do
-            case(4)  ! bottom ref, read from surface
-               do i=N_input,1,-1
-                  lines = lines+1
-                  read(unit,*,ERR=100,END=110) &
-                     depth_input(i),(inflows_input2(i,j),j=1,cols)
-               end do
-               do i=1,N_input/2
-                  x = depth_input(i)
-                  depth_input(i) = -depth_input(N_input-(i-1))
-                  depth_input(N_input-(i-1)) = -x
-               end do
-            case default
-         end select
+         read(unit,*,ERR=100,END=110) inflows_input2
          if(rc .ne. 0) then
             if(nprofiles .eq. 1) then
                LEVEL3 'Only one inflow profile present.'
                one_profile = .true.
-               do n=1,cols
-                  inflows_input(n,:) = inflows_input1(n,:)
-               end do
+               inflows_input = inflows_input1
             else
                FATAL 'Error reading inflows around line # ',lines
                stop 'get_inflows'
@@ -254,7 +203,7 @@
    if( .not. one_profile) then
       t  = time_diff(jul,secs,jul1,secs1)
       do n=1,cols
-         inflows_input(n,:) = inflows_input1(n,:) + t*alpha(n,:)
+         inflows_input = inflows_input1 + t*alpha
       end do
    end if
 
@@ -278,7 +227,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,Af,inflows_input,VI, &
+   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,Af,inflows_input, &
                              qs,qt,FQ)
 !
 ! !DESCRIPTION:
@@ -295,9 +244,8 @@
    REALTYPE, intent(in)                 :: dt
    REALTYPE, intent(in)                 :: S(0:nlev), T(0:nlev)
    REALTYPE, intent(in)                 :: h(0:nlev), Ac(0:nlev), Af(0:nlev)
-   REALTYPE, intent(inout), dimension(:,:), allocatable :: inflows_input
+   REALTYPE, intent(inout), dimension(:), allocatable :: inflows_input
    ! TODO: should this be an argument or a module variable!?
-   REALTYPE, intent(inout)              :: VI
    REALTYPE, intent(inout)              :: qs(0:nlev), qt(0:nlev)
    REALTYPE, intent(inout)              :: FQ(0:nlev)
 !EOP
@@ -309,32 +257,17 @@
    REALTYPE             :: zI_min,zI_max
    REALTYPE             :: VI_basin
    integer              :: index_min
-   REALTYPE             :: threshold
 !
 !-----------------------------------------------------------------------
 !BOC
-   threshold = 17.0848d0
 
    ! check if an inflow will occure
    if (lake) then
-      do i=1,N_input
-         if (inflows_input(1,i) >= threshold) then
-            write(*,*) "!!!!!!!!!!!!!!!!!!!!"
-            write(*,*) "inflow was triggered"
-            write(*,*) "!!!!!!!!!!!!!!!!!!!!"
-            !2 weeks
-            tauI = 1209600d0
-            !1 day
-            !tauI = 3 * 86400d0
-            tauI_left = TauI
-            VI = 50d09
-            VI_step = (VI / tauI) * dt
-            Q_I = VI / tauI
-         end if
-      end do
-
+      QI = inflows_input(1)
+      SI = inflows_input(2)
+      TI = inflows_input(3)
       ! inflow triggered or still in progress
-      if (tauI_left .gt. _ZERO_) then
+      if (QI .gt. _ZERO_) then
          ! calculate depth of water column
          depth = _ZERO_
          do i=1,nlev
@@ -361,7 +294,7 @@
          VI_basin = _ZERO_
          zI_max = zI_min
          n = index_min
-         do while (VI_basin < VI_step)
+         do while (VI_basin < QI*dt)
             VI_basin = VI_basin + Ac(n) * h(n)
             zI_max = zI_max - h(n)
             n = n+1
@@ -386,7 +319,7 @@
          ! calculate the source terms
          ! "+1" because loop includes both n and index_min
          do i=index_min,n
-            Q(i) = Q_I / (n-index_min+1)
+            Q(i) = QI / (n-index_min+1)
             !TODO check the +1.0d0 -> needed for alternating signs in salinity
             qs(i) = SI * Q(i) / (Af(i) - Af(i-1))
             qt(i) = SIGN(TI * Q(i) / (Af(i) - Af(i-1)), TI-T(i+1)+1.0d0)
@@ -402,12 +335,11 @@
          qs(nlev) = -S(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1))
          qt(nlev) = SIGN(T(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1)), &
                          -T(nlev))
-         VI = VI - VI_step
-         tauI_left = tauI_left - dt
       else
          do i=1,nlev
             qs(i) = _ZERO_
             qt(i) = _ZERO_
+            Q(i) = _ZERO_
             FQ(i) = _ZERO_
          end do
       end if
@@ -433,7 +365,6 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-      if (allocated(depth_input)) deallocate(depth_input)
       if (allocated(inflows_input2)) deallocate(inflows_input2)
       if (allocated(inflows_input1)) deallocate(inflows_input1)
       if (allocated(alpha)) deallocate(alpha)
