@@ -50,6 +50,7 @@
    use observations, only: w_adv_method,w_adv_discr
    use observations, only: vProf,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdy,dpdy
+   use observations, only: FQ
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -199,14 +200,17 @@
    if (lake) then
       do i=1,nlev
          Lsour(i)= - dAdz(i) * drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
+         w(i) = FQ(i) / Af(i)
       end do
+      call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,              &
+                      AdvVup,AdvVdw,1,adv_mode,V)
    else
       Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
    end if
 
 !  do advection step
    if (w_adv_method.ne.0) then
-      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
+      call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,              &
                       AdvVup,AdvVdw,w_adv_discr,adv_mode,V)
    end if
 

@@ -254,7 +254,7 @@
          w(i) = FQ(i) / Af(i)
       end do
       call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,               &
-                          AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
+                          AdvTup,AdvTdw,1,adv_mode,T)
    end if
 
 !  do advection step
