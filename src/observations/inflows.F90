@@ -259,6 +259,7 @@
    REALTYPE             :: depth
    REALTYPE             :: zI_min,zI_max
    REALTYPE             :: VI_basin
+   REALTYPE             :: dA
    integer              :: index_min
 !
 !-----------------------------------------------------------------------
@@ -325,8 +326,12 @@
             do i=index_min,n
                Q(i) = QI / (n-index_min+1)
                !TODO check the +1.0d0 -> needed for alternating signs in salinity
-               qs(i) = SI * Q(i) / (Af(i) - Af(i-1))
-               qt(i) = SIGN(TI * Q(i) / (Af(i) - Af(i-1)), TI-T(i+1)+1.0d0)
+               dA = Af(i) - Af(i-1)
+               if (dA .eq. _ZERO_) then
+                  dA = _ONE_
+               endif
+               qs(i) = SI * Q(i) / dA
+               qt(i) = SIGN(TI * Q(i) / dA, TI-T(i+1)+1.0d0)
             end do
 
             ! calculate the vertical flux terms
@@ -336,9 +341,12 @@
             end do
 
             ! calculate the sink term at sea surface
-            qs(nlev) = -S(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1))
-            qt(nlev) = SIGN(T(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1)), &
-                            -T(nlev))
+               dA = Af(nlev) - Af(nlev-1)
+               if (dA .eq. _ZERO_) then
+                  dA = _ONE_
+               endif
+            qs(nlev) = -S(nlev) * FQ(nlev-1) / dA
+            qt(nlev) = SIGN(T(nlev) * FQ(nlev-1) / dA, -T(nlev))
          else
             do i=1,nlev
                qs(i) = _ZERO_
