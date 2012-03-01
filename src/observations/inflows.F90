@@ -32,6 +32,7 @@
    REALTYPE, save                              :: tauI
    REALTYPE, save                              :: tauI_left
    REALTYPE, save                              :: QI,SI,TI
+   integer, save                              :: inflows_method
 ! !DEFINED PARAMETERS:
 !
 !-----------------------------------------------------------------------
@@ -44,7 +45,7 @@
 ! !ROUTINE: initialises everything related to the inflows
 !
 ! !INTERFACE:
-   subroutine init_inflows(nlev)
+   subroutine init_inflows(nlev, method)
 !
 !  !DESCRIPTION:
 !  Initialises everything related to the lake model, e.g. allocating memory
@@ -55,34 +56,36 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in) :: nlev
+   integer, intent(in) :: method
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-      SI = 10.5d0
-      TI = 4.0d0
-      tauI = _ZERO_
-      QI = _ZERO_
- 
-      if (allocated(Q)) deallocate(Q)
-      allocate(Q(0:nlev),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (Q)'
-      Q = _ZERO_
+   inflows_method = method
+   SI = 10.5d0
+   TI = 4.0d0
+   tauI = _ZERO_
+   QI = _ZERO_
 
-      if (allocated(inflows_input1)) deallocate(inflows_input1)
-      allocate(inflows_input1(cols),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input1)'
-      inflows_input1 = _ZERO_
+   if (allocated(Q)) deallocate(Q)
+   allocate(Q(0:nlev),stat=rc)
+   if (rc /= 0) stop 'get_inflows: Error allocating memory (Q)'
+   Q = _ZERO_
 
-      if (allocated(inflows_input2)) deallocate(inflows_input2)
-      allocate(inflows_input2(cols),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input2)'
-      inflows_input2 = _ZERO_
+   if (allocated(inflows_input1)) deallocate(inflows_input1)
+   allocate(inflows_input1(cols),stat=rc)
+   if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input1)'
+   inflows_input1 = _ZERO_
 
-      if (allocated(alpha)) deallocate(alpha)
-      allocate(alpha(cols),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (alpha)'
-      alpha = _ZERO_
+   if (allocated(inflows_input2)) deallocate(inflows_input2)
+   allocate(inflows_input2(cols),stat=rc)
+   if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input2)'
+   inflows_input2 = _ZERO_
+
+   if (allocated(alpha)) deallocate(alpha)
+   allocate(alpha(cols),stat=rc)
+   if (rc /= 0) stop 'get_inflows: Error allocating memory (alpha)'
+   alpha = _ZERO_
 
 !112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
 !      stop 'init_hypsography'
@@ -262,86 +265,88 @@
 !BOC
 
    ! check if an inflow will occure
-   if (lake) then
-      QI = inflows_input(1)
-      SI = inflows_input(2)
-      TI = inflows_input(3)
-      ! inflow triggered or still in progress
-      if (QI .gt. _ZERO_) then
-         ! calculate depth of water column
-         depth = _ZERO_
-         do i=1,nlev
-            depth = depth - h(i)
-         end do
+   if (inflows_method .eq. 2) then
+      if (lake) then
+         QI = inflows_input(1)
+         SI = inflows_input(2)
+         TI = inflows_input(3)
+         ! inflow triggered or still in progress
+         if (QI .gt. _ZERO_) then
+            ! calculate depth of water column
+            depth = _ZERO_
+            do i=1,nlev
+               depth = depth - h(i)
+            end do
 
-         ! find minimal depth where the inflow will take place
-         zI_min = _ZERO_
-         index_min = 0
-         do i=1,nlev
-            depth = depth + h(i)
-            rhoI = unesco(SI,TI,depth/10.0d0,.false.)
-            rho = unesco(S(i),T(i),depth/10.0d0,.false.)
-            ! if the density of the inflowing water is greater than the
-            ! ambient water then the lowest interleaving depth is found
-            if (rhoI > rho) then
-               zI_min = depth
-               index_min = i
-               exit
-            end if
-         end do
+            ! find minimal depth where the inflow will take place
+            zI_min = _ZERO_
+            index_min = 0
+            do i=1,nlev
+               depth = depth + h(i)
+               rhoI = unesco(SI,TI,depth/10.0d0,.false.)
+               rho = unesco(S(i),T(i),depth/10.0d0,.false.)
+               ! if the density of the inflowing water is greater than the
+               ! ambient water then the lowest interleaving depth is found
+               if (rhoI > rho) then
+                  zI_min = depth
+                  index_min = i
+                  exit
+               end if
+            end do
 
-         ! find the z-levels in which the water will interleave
-         VI_basin = _ZERO_
-         zI_max = zI_min
-         n = index_min
-         do while (VI_basin < QI*dt)
-            VI_basin = VI_basin + Ac(n) * h(n)
-            zI_max = zI_max - h(n)
-            n = n+1
-            ! for debugging only
-            if (n .gt. nlev) then
-               write(*,*) "Warning: Too much water flowing into the basin."
-               n = nlev
-               exit
-            end if
-         end do
-   !      ! VI_basin is now too big so go back one step
-         n = n-1
-   !      zI_max = zI_max + h(n)
-   !      VI_basin = VI_basin - Ac(n) * h(n)
+            ! find the z-levels in which the water will interleave
+            VI_basin = _ZERO_
+            zI_max = zI_min
+            n = index_min
+            do while (VI_basin < QI*dt)
+               VI_basin = VI_basin + Ac(n) * h(n)
+               zI_max = zI_max - h(n)
+               n = n+1
+               ! for debugging only
+               if (n .gt. nlev) then
+                  write(*,*) "Warning: Too much water flowing into the basin."
+                  n = nlev
+                  exit
+               end if
+            end do
+      !      ! VI_basin is now too big so go back one step
+            n = n-1
+      !      zI_max = zI_max + h(n)
+      !      VI_basin = VI_basin - Ac(n) * h(n)
 
-         do i=0,nlev
-            qs(i) = _ZERO_
-            qt(i) = _ZERO_
-            Q(i) = _ZERO_
-            FQ(i) = _ZERO_
-         end do
-         ! calculate the source terms
-         ! "+1" because loop includes both n and index_min
-         do i=index_min,n
-            Q(i) = QI / (n-index_min+1)
-            !TODO check the +1.0d0 -> needed for alternating signs in salinity
-            qs(i) = SI * Q(i) / (Af(i) - Af(i-1))
-            qt(i) = SIGN(TI * Q(i) / (Af(i) - Af(i-1)), TI-T(i+1)+1.0d0)
-         end do
+            do i=0,nlev
+               qs(i) = _ZERO_
+               qt(i) = _ZERO_
+               Q(i) = _ZERO_
+               FQ(i) = _ZERO_
+            end do
+            ! calculate the source terms
+            ! "+1" because loop includes both n and index_min
+            do i=index_min,n
+               Q(i) = QI / (n-index_min+1)
+               !TODO check the +1.0d0 -> needed for alternating signs in salinity
+               qs(i) = SI * Q(i) / (Af(i) - Af(i-1))
+               qt(i) = SIGN(TI * Q(i) / (Af(i) - Af(i-1)), TI-T(i+1)+1.0d0)
+            end do
 
-         ! calculate the vertical flux terms
-         FQ(index_min) = Q(index_min)
-         do i=index_min+1,nlev-1
-            FQ(i) = FQ(i-1) + Q(i)
-         end do
+            ! calculate the vertical flux terms
+            FQ(index_min) = Q(index_min)
+            do i=index_min+1,nlev-1
+               FQ(i) = FQ(i-1) + Q(i)
+            end do
 
-         ! calculate the sink term at sea surface
-         qs(nlev) = -S(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1))
-         qt(nlev) = SIGN(T(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1)), &
-                         -T(nlev))
-      else
-         do i=1,nlev
-            qs(i) = _ZERO_
-            qt(i) = _ZERO_
-            Q(i) = _ZERO_
-            FQ(i) = _ZERO_
-         end do
+            ! calculate the sink term at sea surface
+            qs(nlev) = -S(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1))
+            qt(nlev) = SIGN(T(nlev) * FQ(nlev-1) / (Af(nlev) - Af(nlev-1)), &
+                            -T(nlev))
+         else
+            do i=1,nlev
+               qs(i) = _ZERO_
+               qt(i) = _ZERO_
+               Q(i) = _ZERO_
+               FQ(i) = _ZERO_
+            end do
+         end if
       end if
    end if
 

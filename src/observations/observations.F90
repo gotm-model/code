@@ -530,7 +530,6 @@
 !  Observed inflows
    inflows_method=0
    inflows_file='inflows_file.dat'
-   call init_inflows(nlev)
 
    open(namlst,file=fn,status='old',action='read',err=80)
    read(namlst,nml=sprofile,err=81)
@@ -872,6 +871,7 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (FQ)'
    FQ = _ZERO_
 
+   call init_inflows(nlev, inflows_method)
    select case (inflows_method)
       case (FROMFILE)
          open(inflows_unit,file=inflows_file,status='unknown',err=113)
