@@ -230,8 +230,8 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,Af,inflows_input, &
-                             qs,qt,FQ)
+   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,Af,dAdz,inflows_input, &
+                             Qs,Qt,FQ)
 !
 ! !DESCRIPTION:
 !  TODO!
@@ -247,9 +247,10 @@
    REALTYPE, intent(in)                 :: dt
    REALTYPE, intent(in)                 :: S(0:nlev), T(0:nlev)
    REALTYPE, intent(in)                 :: h(0:nlev), Ac(0:nlev), Af(0:nlev)
+   REALTYPE, intent(in)                 :: dAdz(0:nlev)
    REALTYPE, intent(inout), dimension(:), allocatable :: inflows_input
    ! TODO: should this be an argument or a module variable!?
-   REALTYPE, intent(inout)              :: qs(0:nlev), qt(0:nlev)
+   REALTYPE, intent(inout)              :: Qs(0:nlev), Qt(0:nlev)
    REALTYPE, intent(inout)              :: FQ(0:nlev)
 !EOP
 !
@@ -316,8 +317,8 @@
       !      VI_basin = VI_basin - Ac(n) * h(n)
 
             do i=0,nlev
-               qs(i) = _ZERO_
-               qt(i) = _ZERO_
+               Qs(i) = _ZERO_
+               Qt(i) = _ZERO_
                Q(i) = _ZERO_
                FQ(i) = _ZERO_
             end do
@@ -325,19 +326,19 @@
             ! "+1" because loop includes both n and index_min
             do i=index_min,n
                Q(i) = QI / (n-index_min+1)
-               !TODO check the +1.0d0 -> needed for alternating signs in salinity
+               !TODO check the +1.0d0->needed for alternating signs in salinity
                dA = Af(i) - Af(i-1)
                if (dA .eq. _ZERO_) then
                   dA = _ONE_
                endif
-               qs(i) = SI * Q(i) / dA
-               qt(i) = SIGN(TI * Q(i) / dA, TI-T(i+1)+1.0d0)
+               Qs(i) = dAdz(i) / Ac(i) * SI * Q(i) / dA
+               Qt(i) = dAdz(i) / Ac(i) * SIGN(TI * Q(i) / dA, TI-T(i+1)+1.0d0)
             end do
 
             ! calculate the vertical flux terms
             FQ(index_min) = Q(index_min)
             do i=index_min+1,nlev-1
-               FQ(i) = FQ(i-1) + Q(i)
+               FQ(i) = (FQ(i-1) + Q(i))*0.1d1
             end do
 
             ! calculate the sink term at sea surface
@@ -345,12 +346,13 @@
                if (dA .eq. _ZERO_) then
                   dA = _ONE_
                endif
-            qs(nlev) = -S(nlev) * FQ(nlev-1) / dA
-            qt(nlev) = SIGN(T(nlev) * FQ(nlev-1) / dA, -T(nlev))
+            Qs(nlev) = -dAdz(i) / Ac(i) * S(nlev) * FQ(nlev-1) / dA
+            Qt(nlev) = dAdz(i) / Ac(i) * SIGN(T(nlev) * FQ(nlev-1) / dA, &
+                                              -T(nlev))
          else
             do i=1,nlev
-               qs(i) = _ZERO_
-               qt(i) = _ZERO_
+               Qs(i) = _ZERO_
+               Qt(i) = _ZERO_
                Q(i) = _ZERO_
                FQ(i) = _ZERO_
             end do

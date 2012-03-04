@@ -68,7 +68,7 @@
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: sprof,SRelaxTau
-   use observations, only: qs, FQ
+   use observations, only: Qs, FQ
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
@@ -195,7 +195,7 @@
 !  ... and from inflows
    if (lake) then
       do i=1,nlev
-         Qsour(i) = Qsour(i) + (dAdz(i) / Ac(i) * qs(i))
+         Qsour(i) = Qsour(i) + Qs(i)
          w(i) = FQ(i) / Af(i)
       end do
       call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,               &
