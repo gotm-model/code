@@ -160,7 +160,7 @@
    logical,private           :: GrADS
    integer, private          :: Ac_id,Af_id,dAdz_id
    integer, private          :: total_salt_id
-   integer, private          :: qs_id, qt_id
+   integer, private          :: Qs_id, Qt_id
    integer, private          :: wIs_id
    integer, private          :: FQ_id
 !
@@ -331,9 +331,9 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
       call check_err(iret)
-      iret = nf90_def_var(ncid,'qs',NF90_REAL,dim4d,qs_id)
+      iret = nf90_def_var(ncid,'Qs',NF90_REAL,dim4d,Qs_id)
       call check_err(iret)
-      iret = nf90_def_var(ncid,'qt',NF90_REAL,dim4d,qt_id)
+      iret = nf90_def_var(ncid,'Qt',NF90_REAL,dim4d,Qt_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'wIs',NF90_REAL,dim4d,wIs_id)
       call check_err(iret)
@@ -487,9 +487,9 @@
                             long_name='hypsography at grid interfaces')
       iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsography')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
-      iret = set_attributes(ncid,qs_id,units='m/s', &
+      iret = set_attributes(ncid,Qs_id,units='1/s', &
                             long_name='salt inflow')
-      iret = set_attributes(ncid,qt_id,units='celsius*m/s', &
+      iret = set_attributes(ncid,Qt_id,units='celsius/s', &
                             long_name='temperature inflow')
       iret = set_attributes(ncid,wIs_id,units='m/s', &
                             long_name='vertical salinity advection velocity')
@@ -589,7 +589,7 @@
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
-   use observations, only: qs, qt, FQ
+   use observations, only: Qs, Qt, FQ
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
@@ -692,8 +692,8 @@
       iret = store_data(ncid,Ac_id,XYZT_SHAPE,nlev,array=Ac)
       iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
       iret = store_data(ncid,dAdz_id,XYZT_SHAPE,nlev,array=dAdz)
-      iret = store_data(ncid,qs_id,XYZT_SHAPE,nlev,array=qs)
-      iret = store_data(ncid,qt_id,XYZT_SHAPE,nlev,array=qt)
+      iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)
+      iret = store_data(ncid,Qt_id,XYZT_SHAPE,nlev,array=Qt)
       do i=1,nlev
          dum(i) = FQ(i) / Af(i)
       end do
