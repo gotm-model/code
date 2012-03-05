@@ -164,8 +164,10 @@
 !
 !  Initialize.
 !
-   qe=_ZERO_
-   qh=_ZERO_
+   qe   = _ZERO_
+   qh   = _ZERO_
+   taux = _ZERO_
+   tauy = _ZERO_
    delw=sqrt(w*w+wgust*wgust)
    if (delw .ne. 0.0) then
 !-----------------------------------------------------------------------
