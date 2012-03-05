@@ -23,16 +23,12 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                                     :: rc
    integer, parameter                          :: cols=3
-   integer                                     :: N_input
    REALTYPE, save, dimension(:), allocatable   :: inflows_input1,inflows_input2
    REALTYPE, save, dimension(:), allocatable   :: alpha
    REALTYPE, save, dimension(:), allocatable   :: Q
-   REALTYPE, save                              :: tauI
-   REALTYPE, save                              :: tauI_left
-   REALTYPE, save                              :: QI,SI,TI
-   integer, save                              :: inflows_method
+   REALTYPE                                    :: QI,SI,TI
+   integer, save                               :: inflows_method
 ! !DEFINED PARAMETERS:
 !
 !-----------------------------------------------------------------------
@@ -55,6 +51,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+   integer             :: rc
    integer, intent(in) :: nlev
    integer, intent(in) :: method
 !
@@ -62,10 +59,6 @@
 !-----------------------------------------------------------------------
 !BOC
    inflows_method = method
-   SI = 10.5d0
-   TI = 4.0d0
-   tauI = _ZERO_
-   QI = _ZERO_
 
    if (allocated(Q)) deallocate(Q)
    allocate(Q(0:nlev),stat=rc)
@@ -86,9 +79,6 @@
    allocate(alpha(cols),stat=rc)
    if (rc /= 0) stop 'get_inflows: Error allocating memory (alpha)'
    alpha = _ZERO_
-
-!112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
-!      stop 'init_hypsography'
 
    end subroutine init_inflows
 !EOC
@@ -133,7 +123,6 @@
    logical, save             :: one_profile
    integer                   :: ierr
    integer                   :: i,j
-   integer                   :: up_down
    REALTYPE                  :: x
    character(len=128)        :: cbuf
    character                 :: c1,c2,c3,c4
@@ -149,21 +138,17 @@
       ierr = 0
       read(unit,'(A72)',ERR=100,END=110) cbuf
       read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
-      read(cbuf(20:),*,ERR=100,END=110) N_input,up_down
       !go back one "read-command" in file
       backspace(unit)
 
       if (allocated(inflows_input)) deallocate(inflows_input)
       allocate(inflows_input(cols),stat=rc)
       if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input)'
-      inflows_input1 = _ZERO_
-
-      ! only allocate memory if the size of the arrays will change
-      !TODO does this still have to be done!?
-      inflows_input2 = _ZERO_
-      inflows_input1 = _ZERO_
       inflows_input = _ZERO_
+      inflows_input1 = _ZERO_
+      inflows_input2 = _ZERO_
       alpha = _ZERO_
+      Q = _ZERO_
    end if
 
 !  This part initialises and reads in new values if necessary.
@@ -176,9 +161,8 @@
          ierr = 0
          read(unit,'(A72)',ERR=100,END=110) cbuf
          read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
-         read(cbuf(20:),*,ERR=100,END=110) N_input,up_down
 
-         read(unit,*,ERR=100,END=110) inflows_input2
+         read(cbuf(20:),*,ERR=100,END=110) inflows_input2
          if(rc .ne. 0) then
             if(nprofiles .eq. 1) then
                LEVEL3 'Only one inflow profile present.'
@@ -242,23 +226,21 @@
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:
-   logical, intent(in)                  :: lake
-   integer, intent(in)                  :: nlev
-   REALTYPE, intent(in)                 :: dt
-   REALTYPE, intent(in)                 :: S(0:nlev), T(0:nlev)
-   REALTYPE, intent(in)                 :: h(0:nlev), Ac(0:nlev), Af(0:nlev)
-   REALTYPE, intent(in)                 :: dAdz(0:nlev)
+   logical, intent(in)                                :: lake
+   integer, intent(in)                                :: nlev
+   REALTYPE, intent(in)                               :: dt
+   REALTYPE, intent(in)                               :: S(0:nlev), T(0:nlev)
+   REALTYPE, intent(in)                               :: h(0:nlev), Ac(0:nlev), Af(0:nlev)
+   REALTYPE, intent(in)                               :: dAdz(0:nlev)
    REALTYPE, intent(inout), dimension(:), allocatable :: inflows_input
-   ! TODO: should this be an argument or a module variable!?
-   REALTYPE, intent(inout)              :: Qs(0:nlev), Qt(0:nlev)
-   REALTYPE, intent(inout)              :: FQ(0:nlev)
+   REALTYPE, intent(inout)                            :: Qs(0:nlev), Qt(0:nlev)
+   REALTYPE, intent(inout)                            :: FQ(0:nlev)
 !EOP
 !
 ! !LOCAL VARIABLES:
    integer              :: i,n
    REALTYPE             :: rhoI,rho
    REALTYPE             :: depth
-   REALTYPE             :: zI_min,zI_max
    REALTYPE             :: VI_basin
    REALTYPE             :: dA
    integer              :: index_min
@@ -280,8 +262,14 @@
                depth = depth - h(i)
             end do
 
+            do i=0,nlev
+               Qs(i) = _ZERO_
+               Qt(i) = _ZERO_
+               Q(i) = _ZERO_
+               FQ(i) = _ZERO_
+            end do
+
             ! find minimal depth where the inflow will take place
-            zI_min = _ZERO_
             index_min = 0
             do i=1,nlev
                depth = depth + h(i)
@@ -290,38 +278,32 @@
                ! if the density of the inflowing water is greater than the
                ! ambient water then the lowest interleaving depth is found
                if (rhoI > rho) then
-                  zI_min = depth
                   index_min = i
                   exit
                end if
             end do
 
+            !density of the inflowing water is too small -> no inflow
+            if (index_min .eq. 0) then
+               return
+            endif
+
             ! find the z-levels in which the water will interleave
             VI_basin = _ZERO_
-            zI_max = zI_min
             n = index_min
             do while (VI_basin < QI*dt)
                VI_basin = VI_basin + Ac(n) * h(n)
-               zI_max = zI_max - h(n)
                n = n+1
-               ! for debugging only
                if (n .gt. nlev) then
+                  !if inflow at surface -> no inflow
+                  !debug output only
                   write(*,*) "Warning: Too much water flowing into the basin."
-                  n = nlev
-                  exit
+                  return
                end if
             end do
-      !      ! VI_basin is now too big so go back one step
+            ! VI_basin is now too big so go back one step
             n = n-1
-      !      zI_max = zI_max + h(n)
-      !      VI_basin = VI_basin - Ac(n) * h(n)
 
-            do i=0,nlev
-               Qs(i) = _ZERO_
-               Qt(i) = _ZERO_
-               Q(i) = _ZERO_
-               FQ(i) = _ZERO_
-            end do
             ! calculate the source terms
             ! "+1" because loop includes both n and index_min
             do i=index_min,n
@@ -329,26 +311,34 @@
                !TODO check the +1.0d0->needed for alternating signs in salinity
                dA = Af(i) - Af(i-1)
                if (dA .eq. _ZERO_) then
-                  dA = _ONE_
+                  Qs(i) = _ONE_ / Ac(i) * SI * Q(i) / h(i)
+                  Qt(i) = _ONE_ / Ac(i) * SIGN(TI * Q(i) / h(i), &
+                                               TI-T(i+1)+1.0d0)
+               else
+                  ! boundary area AB ~ dz dA/dz = dA
+                  Qs(i) = dAdz(i) / Ac(i) * SI * Q(i) / dA
+                  Qt(i) = dAdz(i) / Ac(i) * SIGN(TI * Q(i) / dA, &
+                                                 TI-T(i+1)+1.0d0)
                endif
-               Qs(i) = dAdz(i) / Ac(i) * SI * Q(i) / dA
-               Qt(i) = dAdz(i) / Ac(i) * SIGN(TI * Q(i) / dA, TI-T(i+1)+1.0d0)
             end do
 
             ! calculate the vertical flux terms
             FQ(index_min) = Q(index_min)
             do i=index_min+1,nlev-1
-               FQ(i) = (FQ(i-1) + Q(i))*0.1d1
+               FQ(i) = FQ(i-1) + Q(i)
             end do
 
             ! calculate the sink term at sea surface
-               dA = Af(nlev) - Af(nlev-1)
-               if (dA .eq. _ZERO_) then
-                  dA = _ONE_
-               endif
-            Qs(nlev) = -dAdz(i) / Ac(i) * S(nlev) * FQ(nlev-1) / dA
-            Qt(nlev) = dAdz(i) / Ac(i) * SIGN(T(nlev) * FQ(nlev-1) / dA, &
-                                              -T(nlev))
+            dA = Af(nlev) - Af(nlev-1)
+            if (dA .eq. _ZERO_) then
+               Qs(nlev) = -_ONE_ / Ac(i) * S(nlev) * FQ(nlev-1) / h(i)
+               Qt(nlev) = _ONE_ / Ac(i) * SIGN(T(nlev) * FQ(nlev-1) / h(i),&
+                                                 -T(nlev))
+            else
+               Qs(nlev) = -dAdz(i) / Ac(i) * S(nlev) * FQ(nlev-1) / dA
+               Qt(nlev) = dAdz(i) / Ac(i) * SIGN(T(nlev) * FQ(nlev-1) / dA,&
+                                                 -T(nlev))
+            endif
          else
             do i=1,nlev
                Qs(i) = _ZERO_
