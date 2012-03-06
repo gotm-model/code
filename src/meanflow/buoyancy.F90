@@ -163,7 +163,7 @@
 
 !  do advection step
    if (w_adv_method .ne. 0) then
-      call adv_center(nlev,dt,h,h,w,AdvBcup,AdvBcdw,                    &
+      call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,              &
                       AdvBup,AdvBdw,w_adv_discr,adv_mode,buoy)
    end if
 

@@ -1119,12 +1119,12 @@
    do j=1,numc-vars_zero_d
 
 !     do advection step due to settling or rising
-      call adv_center(nlev,dt,h,h,ws(j,:),flux,                   &
+      call adv_center(nlev,dt,h,h,Ac,Af,ws(j,:),flux,              &
            flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(j,:))
 
 !     do advection step due to vertical velocity
       if(w_adv_ctr .ne. 0) then
-         call adv_center(nlev,dt,h,h,w,flux,                   &
+         call adv_center(nlev,dt,h,h,Ac,Af,w,flux,              &
               flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(j,:))
       end if
 
