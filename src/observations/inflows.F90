@@ -226,15 +226,15 @@
    IMPLICIT NONE
 
 ! !INPUT PARAMETERS:
-   logical, intent(in)                                :: lake
-   integer, intent(in)                                :: nlev
-   REALTYPE, intent(in)                               :: dt
-   REALTYPE, intent(in)                               :: S(0:nlev), T(0:nlev)
-   REALTYPE, intent(in)                               :: h(0:nlev), Ac(0:nlev), Af(0:nlev)
-   REALTYPE, intent(in)                               :: dAdz(0:nlev)
+   logical, intent(in)                    :: lake
+   integer, intent(in)                    :: nlev
+   REALTYPE, intent(in)                   :: dt
+   REALTYPE, intent(in)                   :: S(0:nlev), T(0:nlev)
+   REALTYPE, intent(in)                   :: h(0:nlev), Ac(0:nlev), Af(0:nlev)
+   REALTYPE, intent(in)                   :: dAdz(0:nlev)
    REALTYPE, intent(inout), dimension(:), allocatable :: inflows_input
-   REALTYPE, intent(inout)                            :: Qs(0:nlev), Qt(0:nlev)
-   REALTYPE, intent(inout)                            :: FQ(0:nlev)
+   REALTYPE, intent(inout)                :: Qs(0:nlev), Qt(0:nlev)
+   REALTYPE, intent(inout)                :: FQ(0:nlev)
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -312,13 +312,15 @@
                dA = Af(i) - Af(i-1)
                if (dA .eq. _ZERO_) then
                   Qs(i) = _ONE_ / Ac(i) * SI * Q(i) / h(i)
-                  Qt(i) = _ONE_ / Ac(i) * SIGN(TI * Q(i) / h(i), &
-                                               TI-T(i+1)+1.0d0)
+                  !Qt(i) = _ONE_ / Ac(i) * SIGN(TI * Q(i) / h(i), &
+                  !                             TI-T(i))
+                  Qt(i) = _ONE_ / Ac(i) * TI * Q(i) / h(i)
                else
                   ! boundary area AB ~ dz dA/dz = dA
                   Qs(i) = dAdz(i) / Ac(i) * SI * Q(i) / dA
-                  Qt(i) = dAdz(i) / Ac(i) * SIGN(TI * Q(i) / dA, &
-                                                 TI-T(i+1)+1.0d0)
+                  !Qt(i) = dAdz(i) / Ac(i) * SIGN(TI * Q(i) / dA, &
+                  !                               TI-T(i))
+                  Qt(i) = dAdz(i) / Ac(i) * TI * Q(i) / dA
                endif
             end do
 
@@ -332,12 +334,14 @@
             dA = Af(nlev) - Af(nlev-1)
             if (dA .eq. _ZERO_) then
                Qs(nlev) = -_ONE_ / Ac(i) * S(nlev) * FQ(nlev-1) / h(i)
-               Qt(nlev) = _ONE_ / Ac(i) * SIGN(T(nlev) * FQ(nlev-1) / h(i),&
-                                                 -T(nlev))
+               !Qt(nlev) = _ONE_ / Ac(i) * SIGN(T(nlev) * FQ(nlev-1) / h(i),&
+               !                                  -T(nlev))
+               Qt(nlev) = -_ONE_ / Ac(i) * T(nlev) * FQ(nlev-1) / h(i)
             else
                Qs(nlev) = -dAdz(i) / Ac(i) * S(nlev) * FQ(nlev-1) / dA
-               Qt(nlev) = dAdz(i) / Ac(i) * SIGN(T(nlev) * FQ(nlev-1) / dA,&
-                                                 -T(nlev))
+               !Qt(nlev) = dAdz(i) / Ac(i) * SIGN(T(nlev) * FQ(nlev-1) / dA,&
+               !                                  -T(nlev))
+               Qt(nlev) = -dAdz(i) / Ac(i) * T(nlev) * FQ(nlev-1) / dA
             endif
          else
             do i=1,nlev
