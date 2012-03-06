@@ -84,7 +84,7 @@
 
 !  inflows for lake model
    REALTYPE, public, dimension(:), allocatable   :: inflows_input
-   REALTYPE, public, dimension(:), allocatable   :: qs, qt
+   REALTYPE, public, dimension(:), allocatable   :: Qs, Qt
    REALTYPE, public, dimension(:), allocatable   :: FQ
 
 !------------------------------------------------------------------------------
@@ -859,13 +859,13 @@
 #endif
 
 !  The inflows
-   allocate(qs(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (qs)'
-   qs = _ZERO_
+   allocate(Qs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qs)'
+   Qs = _ZERO_
 
-   allocate(qt(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_observations: Error allocating (qt)'
-   qt = _ZERO_
+   allocate(Qt(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qt)'
+   Qt = _ZERO_
 
    allocate(FQ(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (FQ)'
@@ -1217,8 +1217,8 @@
    if (allocated(bioprofs)) deallocate(bioprofs)
 #endif
    if (allocated(inflows_input)) deallocate(inflows_input)
-   if (allocated(qs)) deallocate(qs)
-   if (allocated(qt)) deallocate(qt)
+   if (allocated(Qs)) deallocate(Qs)
+   if (allocated(Qt)) deallocate(Qt)
    if (allocated(FQ)) deallocate(FQ)
    call clean_inflows()
    LEVEL2 'done.'
@@ -1287,8 +1287,8 @@
 #ifdef BIO
    if (allocated(bioprofs)) LEVEL2 'bioprofs',bioprofs
 #endif
-   if (allocated(qs)) LEVEL2 'qs',qs
-   if (allocated(qt)) LEVEL2 'qt',qt
+   if (allocated(Qs)) LEVEL2 'Qs',Qs
+   if (allocated(Qt)) LEVEL2 'Qt',Qt
    if (allocated(FQ)) LEVEL2 'FQ',FQ
    if (allocated(inflows_input)) LEVEL2 'inflows_input',inflows_input
 
