@@ -308,20 +308,8 @@
             ! "+1" because loop includes both n and index_min
             do i=index_min,n
                Q(i) = QI / (n-index_min+1)
-               !TODO check the +1.0d0->needed for alternating signs in salinity
-               dA = Af(i) - Af(i-1)
-               if (dA .eq. _ZERO_) then
-                  Qs(i) = _ONE_ / Ac(i) * SI * Q(i) / h(i)
-                  !Qt(i) = _ONE_ / Ac(i) * SIGN(TI * Q(i) / h(i), &
-                  !                             TI-T(i))
-                  Qt(i) = _ONE_ / Ac(i) * TI * Q(i) / h(i)
-               else
-                  ! boundary area AB ~ dz dA/dz = dA
-                  Qs(i) = dAdz(i) / Ac(i) * SI * Q(i) / dA
-                  !Qt(i) = dAdz(i) / Ac(i) * SIGN(TI * Q(i) / dA, &
-                  !                               TI-T(i))
-                  Qt(i) = dAdz(i) / Ac(i) * TI * Q(i) / dA
-               endif
+               Qs(i) = SI * Q(i) / (Ac(i) * h(i))
+               Qt(i) = TI * Q(i) / (Ac(i) * h(i))
             end do
 
             ! calculate the vertical flux terms
@@ -331,18 +319,8 @@
             end do
 
             ! calculate the sink term at sea surface
-            dA = Af(nlev) - Af(nlev-1)
-            if (dA .eq. _ZERO_) then
-               Qs(nlev) = -_ONE_ / Ac(i) * S(nlev) * FQ(nlev-1) / h(i)
-               !Qt(nlev) = _ONE_ / Ac(i) * SIGN(T(nlev) * FQ(nlev-1) / h(i),&
-               !                                  -T(nlev))
-               Qt(nlev) = -_ONE_ / Ac(i) * T(nlev) * FQ(nlev-1) / h(i)
-            else
-               Qs(nlev) = -dAdz(i) / Ac(i) * S(nlev) * FQ(nlev-1) / dA
-               !Qt(nlev) = dAdz(i) / Ac(i) * SIGN(T(nlev) * FQ(nlev-1) / dA,&
-               !                                  -T(nlev))
-               Qt(nlev) = -dAdz(i) / Ac(i) * T(nlev) * FQ(nlev-1) / dA
-            endif
+            Qs(nlev) = -S(nlev) * FQ(nlev-1) / (Ac(i) * h(i))
+            Qt(nlev) = -T(nlev) * FQ(nlev-1) / (Ac(i) * h(i))
          else
             do i=1,nlev
                Qs(i) = _ZERO_

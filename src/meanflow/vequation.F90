@@ -199,13 +199,7 @@
 !  implement bottom friction as source term
    if (lake) then
       do i=1,nlev
-         if (dAdz(i) .eq. _ZERO_) then
-            Lsour(i)= - _ONE_ / Ac(i) / h(i) * &
-                        drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
-         else
-            Lsour(i)= - dAdz(i) / Ac(i) / (Af(i) - Af(i-1)) * &
-                        drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
-         endif
+         Lsour(i)= - (drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))) / (Ac(i) * h(i))
          w(i) = FQ(i) / Af(i)
       end do
       call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,              &
