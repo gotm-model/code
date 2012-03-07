@@ -122,8 +122,7 @@
    integer, save             :: nprofiles
    logical, save             :: one_profile
    integer                   :: ierr
-   integer                   :: i,j
-   REALTYPE                  :: x
+   integer                   :: i
    character(len=128)        :: cbuf
    character                 :: c1,c2,c3,c4
 !
@@ -214,7 +213,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,Af,inflows_input, &
+   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,inflows_input, &
                              Qs,Qt,FQ)
 !
 ! !DESCRIPTION:
@@ -230,7 +229,7 @@
    integer, intent(in)                    :: nlev
    REALTYPE, intent(in)                   :: dt
    REALTYPE, intent(in)                   :: S(0:nlev), T(0:nlev)
-   REALTYPE, intent(in)                   :: h(0:nlev), Ac(0:nlev), Af(0:nlev)
+   REALTYPE, intent(in)                   :: h(0:nlev), Ac(0:nlev)
    REALTYPE, intent(inout), dimension(:), allocatable :: inflows_input
    REALTYPE, intent(inout)                :: Qs(0:nlev), Qt(0:nlev)
    REALTYPE, intent(inout)                :: FQ(0:nlev)
@@ -241,7 +240,6 @@
    REALTYPE             :: rhoI,rho
    REALTYPE             :: depth
    REALTYPE             :: VI_basin
-   REALTYPE             :: dA
    integer              :: index_min
 !
 !-----------------------------------------------------------------------
