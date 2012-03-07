@@ -202,6 +202,7 @@
          Lsour(i)= - (drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))) / (Ac(i) * h(i))
          w(i) = FQ(i) / Af(i)
       end do
+      Lsour(nlev) = Lsour(nlev) - FQ(nlev-1) / (Ac(nlev) * h(nlev))
       call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,              &
                       AdvVup,AdvVdw,1,1,V)
    else
