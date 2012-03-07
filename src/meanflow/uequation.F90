@@ -65,7 +65,7 @@
 ! !USES:
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: lake
-   use meanflow,     only: h,Ac,Af,dAdz
+   use meanflow,     only: h,Ac,Af
    use meanflow,     only: u,uo,v,w,avh
    use meanflow,     only: drag,SS,runtimeu
    use observations, only: w_adv_method,w_adv_discr

@@ -214,7 +214,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,Af,dAdz,inflows_input, &
+   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,Af,inflows_input, &
                              Qs,Qt,FQ)
 !
 ! !DESCRIPTION:
@@ -231,7 +231,6 @@
    REALTYPE, intent(in)                   :: dt
    REALTYPE, intent(in)                   :: S(0:nlev), T(0:nlev)
    REALTYPE, intent(in)                   :: h(0:nlev), Ac(0:nlev), Af(0:nlev)
-   REALTYPE, intent(in)                   :: dAdz(0:nlev)
    REALTYPE, intent(inout), dimension(:), allocatable :: inflows_input
    REALTYPE, intent(inout)                :: Qs(0:nlev), Qt(0:nlev)
    REALTYPE, intent(inout)                :: FQ(0:nlev)

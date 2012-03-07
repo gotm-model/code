@@ -67,7 +67,7 @@
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
    use meanflow,     only: lake,idealised
-   use meanflow,     only: h,Ac,Af,dAdz
+   use meanflow,     only: h,Ac,Af
    use meanflow,     only: u,v,w,T,S,avh
    use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv

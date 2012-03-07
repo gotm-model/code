@@ -63,7 +63,7 @@
 ! !USES:
    use meanflow,     only: avmols
    use meanflow,     only: lake,idealised
-   use meanflow,     only: h,Ac,Af,dAdz
+   use meanflow,     only: h,Ac,Af
    use meanflow,     only: u,v,w,S,avh
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
