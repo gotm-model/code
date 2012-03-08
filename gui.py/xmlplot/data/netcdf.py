@@ -306,14 +306,21 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
     # Apply the combined mask (if any)
     if mask is not None and mask.any(): dat = numpy.ma.masked_array(dat,mask=mask,copy=False,fill_value=final_fill_value)
 
-    # If we have to apply a transformation to the data, make sure that the data type can accommodate it.
-    # Cast to the most detailed type available (64-bit float)
-    scale,offset = getAttribute('scale_factor',dtype=numpy.float),getAttribute('add_offset',dtype=numpy.float)
-    if scale is not None or offset is not None and dat.dtype!=numpy.float: dat = dat.astype(numpy.float)
+    # If we have to apply a transformation to the data, the final data type is defined by the transformation parameters.
+    # cast the data array to that type if needed.
+    scale  = getAttribute('scale_factor')
+    offset = getAttribute('add_offset')
+    targetdtype = None
+    if scale is not None:
+        targetdtype = numpy.asarray(scale).dtype
+    elif offset is not None:
+        targetdtype = numpy.asarray(offset).dtype
+    if targetdtype is not None and targetdtype!=dat.dtype:
+        dat = dat.astype(targetdtype)
   
     # Apply transformation to data based on nc variable attributes.
-    if scale  is not None: dat *= scale
-    if offset is not None: dat += offset
+    if scale  is not None and scale !=1.: dat *= scale
+    if offset is not None and offset!=0.: dat += offset
   
     # If the unit is time, convert to internal time unit
     if hasattr(ncvar,'units'):
@@ -612,38 +619,43 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
             if hasattr(ncvar,'dtype'): return ncvar.dtype
             return ncvar.typecode()
             
-        def getDimensions_raw(self,reassign=True):
+        def getCoordinateVariables(self):
+            props = self.getProperties()
+            dims = self.getDimensions_raw()
+                
+            dim2coordvar = {}
+
+            # First try variable-specific links between dimensions and coordinates.
+            if 'coordinates' in props:
+                coordvars = []
+                coordvar2dims = {}
+                for name in props['coordinates'].split():
+                    coordvar = self.store.getVariable_raw(name)
+                    if coordvar is not None:
+                        coorddims = coordvar.getDimensions_raw()
+                        if all([(cd in dims) for cd in coorddims]):
+                            coordvar2dims[coordvar] = coorddims
+                            coordvars.append(coordvar)
+                for coordvar in sorted(coordvars,cmp=lambda x,y: cmp(len(coordvar2dims[x]),len(coordvar2dims[y]))):
+                    for coorddim in reversed(coordvar2dims[coordvar]):
+                        if coorddim not in dim2coordvar:
+                            dim2coordvar[coorddim] = coordvar
+                            break
+            
+            # Set any missing coordinate variable to default.
+            for dim in dims:
+                if dim not in dim2coordvar:
+                    coordname = self.store.defaultcoordinates.get(dim,dim)
+                    coordvar = self.store.getVariable_raw(coordname)
+                    if coordvar is not None and all([(cd in dims) for cd in coordvar.getDimensions_raw()]):
+                        dim2coordvar[dim] = coordvar
+                
+            return tuple([dim2coordvar.get(dim,None) for dim in dims])
+            
+        def getDimensions_raw(self):
           nc = self.store.getcdf()
           ncvar = nc.variables[self.ncvarname]
-          rawdims = list(ncvar.dimensions)
-          
-          if reassign:
-              # Re-assign dimensions based on the "coordinates" attribute of the variable.
-              if hasattr(ncvar,'coordinates'):
-                coords = tuple(reversed(ncvar.coordinates.split()))
-                if coords[0] in nc.variables:
-                    coordsdims = nc.variables[coords[0]].dimensions
-                    inextcoorddim = 0
-                    for irdim,rdim in enumerate(rawdims):
-                        if rdim in coordsdims:
-                            rawdims[irdim] = coordsdims[inextcoorddim]
-                            inextcoorddim += 1
-                        
-              # Re-assign dimensions based on globally specified re-assignments
-              for idim,dim in enumerate(rawdims):
-                rawdims[idim] = self.store.reassigneddims.get(dim,dim)
-                
-              # Undo re-assignments if not all coordinate dimensions are used by this variable.
-              for idim in range(len(rawdims)):
-                if rawdims[idim]==self.ncvarname or rawdims[idim]==ncvar.dimensions[idim]: continue
-                cdims = self.store.getVariable_raw(rawdims[idim]).getDimensions_raw(reassign=False)
-                for cdim in cdims:
-                    if cdim not in ncvar.dimensions:
-                        #print 'undoing reassignment to %s because %s is not in variable dimensions %s' % (rawdims[idim],cdim,','.join(ncvar.dimensions))
-                        rawdims[idim] = ncvar.dimensions[idim]
-                        break
-            
-          return tuple(rawdims)
+          return tuple(ncvar.dimensions)
           
         def getShape(self):
             nc = self.store.getcdf()
@@ -863,27 +875,18 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
           # Retrieve coordinate values
           inewdim = 0
           datamask = numpy.ma.getmask(dat)
-          for idim,dimname in enumerate(dimnames):
+          for idim,coordvar in enumerate(self.getCoordinateVariables()):
             # If we take a single index for this dimension, it will not be included in the output.
             if (not transfercoordinatemask) and not isinstance(bounds[idim],slice): continue
-
-            # Get the coordinate variable          
-            coordvar = self.store.getVariable_raw(dimname)
             
             if coordvar is None:
-                # No coordinate variable available: use indices
+                # No coordinate variable available: auto-generate integers from 0 to dimension length-1.
                 if not isinstance(bounds[idim],slice): continue
-                coorddims = [dimname]
+                coorddims = (dimnames[idim],)
                 coords = numpy.arange(bounds[idim].start,bounds[idim].stop,bounds[idim].step,dtype=numpy.float)
             else:
-                # Coordinate variable present: use it.
-                coorddims = list(coordvar.getDimensions())
-
-                # Debug check: see if all coordinate dimensions are also used by the variable.
-                for cd in coorddims:
-                    assert cd in dimnames, 'Coordinate dimension %s is not used by this variable (it uses %s).' % (cd,', '.join(dimnames))
-
                 # Get coordinate values
+                coorddims = coordvar.getDimensions()
                 coordslice = [bounds[dimnames.index(cd)] for cd in coorddims]
                 coords = coordvar.getSlice(coordslice, dataonly=True, cache=True)
                 
@@ -998,7 +1001,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
         self.mode = 'r'
 
         self.cachedcoords = {}
-        self.reassigneddims = {}
+        self.defaultcoordinates = {}
         
         # Whether to mask values outside the range specified by valid_min,valid_max,valid_range
         # NetCDF variable attributes (as specified by CF convention)
@@ -1066,7 +1069,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
         self.relabelVariables()
 
     def autoReassignCoordinates(self):
-        self.reassigneddims = {}
+        self.defaultcoordinates = {}
     
     def getcdf(self):
         """Returns a NetCDFFile file object representing the NetCDF file
@@ -1134,7 +1137,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
         assert isinstance(variable,NetCDFStore.NetCDFVariable),'Added variable must be an existing NetCDF variable object, not %s.' % str(variable)
         shape = variable.getShape()
         props = variable.getProperties()
-        if dims is None: dims = variable.getDimensions_raw(reassign=False)
+        if dims is None: dims = variable.getDimensions_raw()
         nc = self.getcdf()
         for dim,length in zip(dims,shape):
             if dim not in nc.dimensions: self.createDimension(dim, length)
@@ -1273,19 +1276,19 @@ class NetCDFStore_GOTM(NetCDFStore):
             # Center coordinate are available, re-assign to either lon,lat or projected x,y, if possible.
             self.xname,self.yname = 'xic','etac'   # x,y dimensions to be used for depth
             if 'lonc' in ncvars and 'latc' in ncvars:
-                self.reassigneddims['xic' ] = 'lonc'
-                self.reassigneddims['etac'] = 'latc'
+                self.defaultcoordinates['xic' ] = 'lonc'
+                self.defaultcoordinates['etac'] = 'latc'
             elif 'xc' in ncvars and 'yc' in ncvars:
-                self.reassigneddims['xic' ] = 'xc'
-                self.reassigneddims['etac'] = 'yc'
+                self.defaultcoordinates['xic' ] = 'xc'
+                self.defaultcoordinates['etac'] = 'yc'
         if 'xix' in ncdims and 'etax' in ncdims:
             # Boundary coordinate are available, re-assign to either lon,lat or projected x,y, if possible.
             if 'lonx' in ncvars and 'latx' in ncvars:
-                self.reassigneddims['xix' ] = 'lonx'
-                self.reassigneddims['etax'] = 'latx'
+                self.defaultcoordinates['xix' ] = 'lonx'
+                self.defaultcoordinates['etax'] = 'latx'
             elif 'xx' in ncvars and 'yx' in ncvars:
-                self.reassigneddims['xix' ] = 'xx'
-                self.reassigneddims['etax'] = 'yx'
+                self.defaultcoordinates['xix' ] = 'xx'
+                self.defaultcoordinates['etax'] = 'yx'
 
         # Re-assign for GETM with cartesian coordinates.
         # x and y are re-assigned to longitude and latitude, if possible.
@@ -1293,13 +1296,13 @@ class NetCDFStore_GOTM(NetCDFStore):
             # Center coordinate are available.
             self.xname,self.yname = 'xc','yc'   # x,y dimensions to be used for depth
             if 'lonc' in ncvars and 'latc' in ncvars:
-                self.reassigneddims['xc' ] = 'lonc'
-                self.reassigneddims['yc'] = 'latc'
+                self.defaultcoordinates['xc' ] = 'lonc'
+                self.defaultcoordinates['yc'] = 'latc'
         if 'xx' in ncdims and 'yx' in ncdims:
             # Boundary coordinate are available.
             if 'lonx' in ncvars and 'latx' in ncvars:
-                self.reassigneddims['xx'] = 'lonx'
-                self.reassigneddims['yx'] = 'latx'
+                self.defaultcoordinates['xx'] = 'lonx'
+                self.defaultcoordinates['yx'] = 'latx'
 
         # For GETM with spherical coordinates, we just need to remember the latitude,longitude
         # names for when we return the dimensions of the new vertical coordinates.
@@ -1315,14 +1318,18 @@ class NetCDFStore_GOTM(NetCDFStore):
         # Re-assign depth coordinate dimension if using GETM with elevation,layer heights
         if ('level' in ncdims and 'h' in ncvars and 'elev' in ncvars):
             # GETM: "level" reassigned to "z"
-            self.reassigneddims['level' ] = 'z'
+            self.defaultcoordinates['level' ] = 'z'
             self.hname,self.elevname = 'h','elev'
             self.depth2coord['z'] = 'level'
+            self.depthdim = 'level'
         elif ('sigma' in ncdims and 'bathymetry' in ncvars and 'elev' in ncvars):
             # GETM: "sigma" reassigned to "z"
-            self.reassigneddims['sigma' ] = 'z'
+            self.defaultcoordinates['sigma' ] = 'z'
             self.bathymetryname,self.elevname = 'bathymetry','elev'
             self.depth2coord['z'] = 'sigma'
+            self.depthdim = 'sigma'
+        else:
+            self.depthdim = 'z'
             
     def getVariableNames_raw(self):
         names = list(NetCDFStore.getVariableNames_raw(self))
@@ -1367,10 +1374,8 @@ class NetCDFStore_GOTM(NetCDFStore):
             def getDataType(self):
                 return self.store[self.stagname].getDataType()
 
-            def getDimensions_raw(self,reassign=True):
-                dims = ('etac','xic')
-                if reassign: dims = [self.store.reassigneddims.get(d,d) for d in dims]
-                return dims
+            def getDimensions_raw(self):
+                return ('etac','xic')
 
             def getNcData(self,bounds=None,allowmask=True):
                 # If no bounds are set, use complete data range.
@@ -1435,11 +1440,11 @@ class NetCDFStore_GOTM(NetCDFStore):
             def getDataType(self):
                 return self.store[self.store.elevname].getDataType()
 
-            def getDimensions_raw(self,reassign=True):
+            def getDimensions_raw(self):
                 if self.cacheddims is None:
                     def addvar(name):
                         curvar = self.store[name]
-                        curdims = curvar.getDimensions_raw(reassign=False)
+                        curdims = curvar.getDimensions_raw()
                         dims.update(curdims)
                         for d,l in zip(curdims,curvar.getShape()): dim2length[d] = l
 
@@ -1462,38 +1467,44 @@ class NetCDFStore_GOTM(NetCDFStore):
                     else:
                         assert False,'None of the NetCDF variables uses all dimensions that are needed for the depth coordinate.'
                     self.cacheddims = [d for d in v.dimensions if d in dims]
-                    
+
                     # Save shape
                     self.cachedshape = [dim2length[d] for d in self.cacheddims]
                     if self.dimname.endswith('_stag'):
                         self.cachedshape = tuple([l+1 for l in self.cachedshape])
 
-                    # Relabel depth dimension to own name.
-                    izdim = self.cacheddims.index(self.store.depth2coord.get('z','z'))
-                    self.cacheddims[izdim] = self.store.depth2coord.get(self.dimname,self.dimname)
+                    # Rename depth dimension
+                    self.izdim = self.cacheddims.index(self.store.depthdim)
+                    centercoord = self.dimname
+                    if self.dimname.endswith('_stag'): centercoord = centercoord[:-5]
+                    dimname = self.store.depth2coord.get(centercoord,centercoord)
+                    if self.dimname.endswith('_stag'): dimname = dimname+'_stag'
+                    self.cacheddims[self.izdim] = dimname
 
                 # Re-assign dimensions if needed.
-                if reassign: return [self.store.reassigneddims.get(d,d) for d in self.cacheddims]
-                return list(self.cacheddims)
+                return self.cacheddims
                 
             def getShape(self):
                 if self.cachedshape is None:
-                    self.getDimensions_raw(reassign=False)
-                return list(self.cachedshape)
+                    self.getDimensions_raw()
+                return self.cachedshape
                 
             def getNcData(self,bounds=None,allowmask=True):
                 # Return values from cache if available.
-                if 'z' in self.store.cachedcoords:
+                if self.dimname in self.store.cachedcoords:
                     if bounds is None:
                         return self.store.cachedcoords[self.dimname]
                     else:                        
                         return self.store.cachedcoords[self.dimname][bounds]
 
                 cachebasedata = bounds is not None
-                izdim = self.getDimensions_raw(reassign=False).index(self.store.depth2coord.get(self.dimname,self.dimname))
+                izdim = self.izdim
 
-                # Determine shape of depth centers
-                shape = self.getShape()
+                # Determine list of dimensions and desired shape for depth source variables
+                # (bathymetry, elevation, layer heights)
+                dims = list(self.getDimensions_raw())
+                dims[izdim] = self.store.depthdim            
+                shape = list(self.getShape())
                 if self.dimname.endswith('_stag'): shape = [l-1 for l in shape]
 
                 if bounds is not None:
@@ -1515,11 +1526,9 @@ class NetCDFStore_GOTM(NetCDFStore):
                         shape[i] = 1+int((stop-start-1)/step)
                         newbounds.append(l)
 
-                dims = self.getDimensions_raw(reassign=False)
-                dims[izdim] = self.store.depth2coord.get('z','z')   # set name of depth dimension to that used by source variables.
                 def getvardata(name):
                     var = self.store[name]
-                    vardims = var.getDimensions_raw(reassign=False)
+                    vardims = var.getDimensions_raw()
                     if bounds is None:
                         varbounds = None
                     else:
@@ -1733,8 +1742,8 @@ class NetCDFStore_MOM4(NetCDFStore):
 
             # Only reassign dimension if alternative coordinate values have a meaningful value.
             if lon.shape[0]>0 and (lon!=lon[0]).any():
-                self.reassigneddims['xt_ocean' ] = 'geolon_t'
-                self.reassigneddims['yt_ocean'] = 'geolat_t'
+                self.defaultcoordinates['xt_ocean' ] = 'geolon_t'
+                self.defaultcoordinates['yt_ocean']  = 'geolat_t'
 
         if ('xu_ocean'  in ncdims and 'yu_ocean' in ncdims and
             'geolon_c' in ncvars and 'geolat_c' in ncvars):
@@ -1742,8 +1751,8 @@ class NetCDFStore_MOM4(NetCDFStore):
 
             # Only reassign dimension if alternative coordinate values have a meaningful value.
             if lon.shape[0]>0 and (lon!=lon[0]).any():
-                self.reassigneddims['xu_ocean' ] = 'geolon_c'
-                self.reassigneddims['yu_ocean'] = 'geolat_c'
+                self.defaultcoordinates['xu_ocean' ] = 'geolon_c'
+                self.defaultcoordinates['yu_ocean']  = 'geolat_c'
 
 NetCDFStore.registerConvention(NetCDFStore_GOTM)
 NetCDFStore.registerConvention(NetCDFStore_MOM4)

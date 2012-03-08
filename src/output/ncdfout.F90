@@ -202,6 +202,8 @@
 !BOC
    first = .true.
 
+   LEVEL2 'NetCDF version: ',trim(NF90_INQ_LIBVERS())
+
    ncid = -1
    iret = nf90_create(fn,NF90_CLOBBER,ncid)
    call check_err(iret)

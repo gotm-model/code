@@ -11,10 +11,10 @@
 !
 ! Here, the long-wave back radiation is calculated by means of one out
 ! of four methods, which depend on the value given to the parameter
-! {\tt method}: 
-! {\tt method}=1: \cite{Clarketal74},  
-! {\tt method}=2: \cite{HastenrathLamb78},  
-! {\tt method}=3: \cite{Bignamietal95},  
+! {\tt method}:
+! {\tt method}=1: \cite{Clarketal74},
+! {\tt method}=2: \cite{HastenrathLamb78},
+! {\tt method}=3: \cite{Bignamietal95},
 ! {\tt method}=4: \cite{BerliandBerliand52}.
 ! It should ne noted that the latitude must here be given in degrees.
 !

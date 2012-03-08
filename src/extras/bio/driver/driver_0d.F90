@@ -45,7 +45,7 @@
    integer  :: swr_method = 0
    REALTYPE :: cloud = _ZERO_, depth = _ZERO_, par_fraction = _ONE_, par_background_extinction = _ZERO_
    logical  :: apply_self_shading = .true., add_environment = .false., add_conserved_quantities = .false.
-   
+
    REALTYPE,allocatable                   :: cc(:,:),totals(:)
    type (type_model)                      :: model
    type (type_environment)                :: env
@@ -103,7 +103,7 @@
    read(namlst,nml=model_setup,err=91)
    read(namlst,nml=environment,err=92)
    read(namlst,nml=output     ,err=93)
-   
+
    ! Close the namelist file.
    close (namlst)
 
@@ -130,11 +130,11 @@
         status='old',err=95)
    LEVEL2 'Reading local environment data from:'
    LEVEL3 trim(env_file)
-   
+
    ! Get info on the selected biogeochemical model.
    model_name = get_model_name(bio_model)
    model = init_bio_0d_generic(bio_model,namlst,'bio_'//trim(model_name)//'.nml')
-   
+
    allocate(totals(1:model%info%conserved_quantity_count))
 
    ! Create state variable vector, using the initial values specified by the model.
@@ -223,7 +223,7 @@
 !-----------------------------------------------------------------------
 !BOC
    call do_bio_0d_generic(model,first,cc(:,1),env,pp(:,:,1),dd(:,:,1),diag)
-   
+
    end subroutine get_ppdd
 !EOC
 !BOP
@@ -262,7 +262,7 @@
    do i=1,numc
       rhs(i,1) = sum(pp(i,:))-sum(dd(i,:))
    end do
-   
+
    end subroutine get_rhs
 !EOC
 !-----------------------------------------------------------------------
@@ -299,16 +299,16 @@
 
       ! Update time
       call update_time(n)
-      
+
       ! Update environment
       call read_environment(julianday,secondsofday,env)
-      
+
       ! Calculate photosynthetically active radiation if it is not provided in the input file.
       if (swr_method.eq.0) then
          ! Calculate photosynthetically active radiation from geographic location, time, cloud cover.
          call short_wave_radiation(julianday,secondsofday,longitude,latitude,cloud,env%par)
       end if
-      
+
       ! Apply light attentuation with depth, unless local light is provided in the input file.
       if (swr_method.ne.2) then
          ! Either we calculate surface PAR, or surface PAR is provided.
@@ -317,13 +317,13 @@
          if (apply_self_shading) extinction = extinction + get_bio_extinction_bio_0d_generic(model,cc(:,1))
          env%par = env%par*exp(env%z*extinction)
       end if
-      
+
       ! Multiply by fraction of short-wave radiation that is photosynthetically active.
       env%par = par_fraction*env%par
 
       ! Integrate one time step
       call ode_solver(ode_method,model%info%state_variable_count,1,dt,cc,get_rhs,get_ppdd)
-      
+
       ! Do output
       if (mod(n,nsave).eq.0) then
          call write_time_string(julianday,secondsofday,timestr)
@@ -400,10 +400,10 @@
          env_jul1  = env_jul2
          env_secs1 = env_secs2
          obs1      = obs2
-         
+
          ! Try to read another observation
          call read_obs(env_unit,yy,mm,dd,hh,min,ss,nobs,obs2,rc)
-         
+
          ! Interpret the status code that was returned.
          if (rc==END_OF_FILE) then
             ! Unable to read more observations: set the last observation equal to the first
@@ -417,15 +417,15 @@
             ! Unknown error occurred: fail.
             stop 'read_environment: error when reading environment from file.'
          end if
-         
+
          ! Calculate the time of the observation we just read.
          call julian_day(yy,mm,dd,env_jul2)
          env_secs2 = hh*3600 + min*60 + ss
-         
+
          ! If the new observation lies beyond the current time, we are done.
          if(time_diff(env_jul2,env_secs2,jul,secs) .gt. 0) EXIT
       end do
-      
+
       if (env_jul1.eq.0) then
          ! The time of the very first observation already lies beyond current time.
          ! Set the left-side observation equal to the right-side one that we just read.
@@ -433,7 +433,7 @@
          env_secs1 = env_secs2
          obs1      = obs2
       end if
-      
+
       ! Calculate the difference in time between the left- and right-side observation.
       dt = time_diff(env_jul2,env_secs2,env_jul1,env_secs1)
    end if
@@ -455,7 +455,7 @@
    env%s   = curobs(3)
 
    end subroutine read_environment
-   
+
 
 !-----------------------------------------------------------------------
 !BOP
@@ -512,7 +512,7 @@
    end subroutine read_obs
 !EOC
 
-   
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -534,7 +534,7 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'clean_up'
-   
+
    close(env_unit)
    close(out_unit)
 

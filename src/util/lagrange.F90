@@ -3,7 +3,7 @@
 !BOP
 !
 ! !ROUTINE: Lagrangian particle random walk \label{sec:lagrange}
-! 
+!
 ! !INTERFACE:
    subroutine lagrange(nlev,dt,zlev,nuh,w,npar,active,zi,zp)
 !
@@ -22,18 +22,18 @@
 ! \Delta t\right\}^{1/2},
 ! \end{array}
 ! \end{equation}
-! where $R$ is a random process with $\langle R \rangle =0$ (zero mean) and  
+! where $R$ is a random process with $\langle R \rangle =0$ (zero mean) and
 ! and the variance $\langle R^2 \rangle=r$.
 ! Set {\tt visc\_corr=.true.} for
 ! evaluating eddy viscosity in a semi-implicit way. A background viscosity
-! ({\tt visc\_back}) may be set. The variance $r$ of the random walk scheme 
+! ({\tt visc\_back}) may be set. The variance $r$ of the random walk scheme
 ! ({\tt rnd\_var}) has to be set manually as well here.
 !
 ! !USES:
 !
    IMPLICIT NONE
 !
-! !INPUT PARAMETERS: 
+! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: dt
    REALTYPE, intent(in)                :: zlev(0:nlev)
@@ -42,7 +42,7 @@
    integer, intent(in)                 :: npar
    logical, intent(in)                 :: active(npar)
 !
-! !INPUT/OUTPUT PARAMETERS: 
+! !INPUT/OUTPUT PARAMETERS:
    integer, intent(inout)              :: zi(npar)
    REALTYPE, intent(inout)             :: zp(npar)
 !
@@ -94,7 +94,7 @@
    call random_number(rnd)
    rnd=(2.*rnd-1.)
 
-   do i=1,nlev 
+   do i=1,nlev
       dz(i)=zlev(i)-zlev(i-1)
       dzn(i)=(nuh(i)-nuh(i-1))/dz(i)
    end do
@@ -157,4 +157,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

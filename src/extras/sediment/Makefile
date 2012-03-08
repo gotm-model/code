@@ -15,7 +15,7 @@ all: ${OBJ}
 	$(MOVE_MODULES_COMMAND)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../../doc/sediment.tex 
+	$(PROTEX) $(DOCSRC) > ../../../doc/sediment.tex
 	touch doc
 
 clean:

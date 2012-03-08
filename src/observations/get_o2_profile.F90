@@ -140,7 +140,7 @@
             STDERR "namelist o2_profile of obs.nml. program aborted in"
             STDERR "get_o2_profile.F90."
             stop
-   end select 
+   end select
 
    return
    end subroutine get_o2_profile

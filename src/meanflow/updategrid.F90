@@ -41,11 +41,11 @@
 !
 !  Furthermore, vertical velocity profiles are calculated here, if
 !  {\tt w\_adv\_method} is 1 or 2, which has to be chosen in the
-!  {\tt w\_advspec} namelist in {\tt obs.nml}. The profiles of vertical 
+!  {\tt w\_advspec} namelist in {\tt obs.nml}. The profiles of vertical
 !  velocity are determined by two values,
-!  the height of maximum absolute value of vertical velocity, {\tt w\_height}, 
+!  the height of maximum absolute value of vertical velocity, {\tt w\_height},
 !  and the vertical velocity at this height, {\tt w\_adv}. From {\tt w\_height},
-!  the vertical velocity is linearly decreasing towards the surface and 
+!  the vertical velocity is linearly decreasing towards the surface and
 !  the bottom, where is value is zero.
 
 !
@@ -89,7 +89,7 @@
 !  small deviations between depth and depth0 tolerated now
 !
 !  Revision 1.13  2005/08/15 20:23:40  hb
-!  Vertical advection profiles triangle-shaped also for 
+!  Vertical advection profiles triangle-shaped also for
 !  temporally constant vertical velocity
 !
 !  Revision 1.12  2005/06/27 13:44:07  kbk

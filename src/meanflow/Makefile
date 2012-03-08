@@ -49,7 +49,7 @@ all: $(MOD) $(OBJ)
 $(OBJ): $(MOD)
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../doc/meanflow.tex 
+	$(PROTEX) $(DOCSRC) > ../../doc/meanflow.tex
 	touch doc
 
 clean:

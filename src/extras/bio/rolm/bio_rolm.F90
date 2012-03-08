@@ -9,35 +9,35 @@
 !
 ! !DESCRIPTION:
 !  The goal of this biogeochemical O-N-S-P-Mn-Fe RedOxLayer Model (ROLM)
-!  (Yakushev et al., 2006) is to study the processes of these chemical 
+!  (Yakushev et al., 2006) is to study the processes of these chemical
 !  elements cycling in the water column with suboxic and anoxic conditions.
-!  The biogeochemical processes of organic matter (OM) formation 
-!  (photosynthesis and chemosynthesis), OM decay (aerobic decomposition, 
-!  denitrification, sulphate reduction), nitrification, anammox, hydrogen 
-!  sulfide oxidation, the reduction and oxidation of manganese and iron 
+!  The biogeochemical processes of organic matter (OM) formation
+!  (photosynthesis and chemosynthesis), OM decay (aerobic decomposition,
+!  denitrification, sulphate reduction), nitrification, anammox, hydrogen
+!  sulfide oxidation, the reduction and oxidation of manganese and iron
 !  species and the transformation of phosphorus species were parameterized.
-!  Model consists of the following stat variables: Dissolved oxygen (O2), 
-!  hydrogen sulfide (H2S), elemental sulfur (S0), thiosulfate (S2O3), 
+!  Model consists of the following stat variables: Dissolved oxygen (O2),
+!  hydrogen sulfide (H2S), elemental sulfur (S0), thiosulfate (S2O3),
 !  sulfate (SO4), ammonia (NH4), nitrite (NO2), nitrate (NO3), particulate
-!  organic nitrogen (PON), dissolved organic nitrogen (DON), phosphate 
-!  (PO4), particulate organic phosphorus (POP), dissolved organic 
-!  phosphorus (DOP), bivalent manganese (MnII), trivalent manganese 
+!  organic nitrogen (PON), dissolved organic nitrogen (DON), phosphate
+!  (PO4), particulate organic phosphorus (POP), dissolved organic
+!  phosphorus (DOP), bivalent manganese (MnII), trivalent manganese
 !  (MnIII), quadrivalent manganese (MnIV), bivalent iron (FeII), trivalent
-!  iron (FeIII), phytoplankton (Phy), zooplankton (Zoo), aerobic 
-!  heterotrophic bacteria (Bhe), aerobic autotrophic bacteria (Bae), 
+!  iron (FeIII), phytoplankton (Phy), zooplankton (Zoo), aerobic
+!  heterotrophic bacteria (Bhe), aerobic autotrophic bacteria (Bae),
 !  anaerobic heterotrophic bacteria (Bha), anaerobic autotrophic bacteria
-!  (Baa). The concentrations are in uM (for O,N,P,S species) and 
-!  mg*WetWeight*m-3 (for biological parameters). A detailed description 
+!  (Baa). The concentrations are in uM (for O,N,P,S species) and
+!  mg*WetWeight*m-3 (for biological parameters). A detailed description
 !  of the model is available at
 !  http://www.io-warnemuende.de/documents/mebe68\_2007-yakushev.pdf.
-!  This implemented version of ROLM model includes slight modifications 
+!  This implemented version of ROLM model includes slight modifications
 !  and was included into GOTM by E.Yakushev, O.Podymov and I.Kuznetsov
 !  in September 2007.
 !
-!  when WRITEFINISH is defined, results of modeling are written into 
+!  when WRITEFINISH is defined, results of modeling are written into
 !  'finish' file (defined in bio\_rolm.nml) every end of a modeled year.
 !  If you want to initialize a new calculation with this file, define
-!  it as 'chem\_init' in bio\_rolm.nml or replace original initialization 
+!  it as 'chem\_init' in bio\_rolm.nml or replace original initialization
 !  file with it.
 #define WRITEFINISH
 
@@ -79,15 +79,15 @@
 !----Phy  ----------!
    REALTYPE          :: KNF       ! Maximum specific growth rate
    REALTYPE          :: k_Erlov   ! Extinction coefficient
-   REALTYPE          :: Io        ! Optimal irradiance 
-   REALTYPE          :: Iopt      ! Optimal irradiance 
+   REALTYPE          :: Io        ! Optimal irradiance
+   REALTYPE          :: Iopt      ! Optimal irradiance
    REALTYPE          :: bm        ! Coefficient for dependence on t
    REALTYPE          :: cm        ! Coefficient for dependence on t
    REALTYPE          :: KFN       ! Specific respiration rate
    REALTYPE          :: KFP       ! Specific rate of mortality
    REALTYPE          :: KFD       ! Specific rate of excretion
 !----Zoo -----------!
-   REALTYPE          :: KFZ       ! Max.spec. rate of grazing of Zoo on Phy 
+   REALTYPE          :: KFZ       ! Max.spec. rate of grazing of Zoo on Phy
    REALTYPE          :: KF        ! Half-sat.const. for grazing of Zoo on Phy for Phy/Zoo ratio
    REALTYPE          :: FP        !
    REALTYPE          :: Phypor    !
@@ -140,7 +140,7 @@
    REALTYPE          :: NkP       ! N[uM]/P[uM]
    REALTYPE          :: OkN       ! O[uM]/N[uM]
    REALTYPE          :: SkP       ! S[uM]/P[uM]
-!  References: Yakushev, 1998; Savchuk, Wulff, 1996: Ward, Kilpatrik, 1991; 
+!  References: Yakushev, 1998; Savchuk, Wulff, 1996: Ward, Kilpatrik, 1991;
 !              Gregoire et al.2001, Konovalov et al., 2006;
 
    REALTYPE          :: Bu        ! Burial coeficient for lower boundary
@@ -197,8 +197,8 @@
    REALTYPE          :: k_mnoxO2   ! half sat. of Mn oxidation
    REALTYPE          :: k_mnrdHS   ! half sat. of Mn reduction
    REALTYPE          :: O2s_nf     ! half saturation for nitrification
-   REALTYPE          :: s_bac_new  ! threshold for Bact re-apperence 
-   REALTYPE          :: s_po4_srp  ! threshold for PO4 scaveging 
+   REALTYPE          :: s_bac_new  ! threshold for Bact re-apperence
+   REALTYPE          :: s_po4_srp  ! threshold for PO4 scaveging
 
 !  parameters for low boundary conditions
    REALTYPE          :: b_nh4, b_po4, b_h2s, b_mn2, b_fe2
@@ -229,7 +229,7 @@
 !----Mn---------!
    K_mn_ox, K_mn_ox2, K_mn_rd, K_mn_rd2,&
 !----Fe---------!
-   K_fe_ox, K_fe_nox, K_fe_mnox, K_fe_rd,& 
+   K_fe_ox, K_fe_nox, K_fe_mnox, K_fe_rd,&
 !Stoichiometric coefficients
    Sp, SpZ, Sn, Ss, Sc, OkP, NkP, OkN, SkP,&
 ! Burial coeff. and time of relaxation
@@ -296,7 +296,7 @@
    read(namlst,nml=bio_rolm_lowbound_nml,err=99)
    close(namlst)
    n_surface_fluxes = 4
-#ifdef WRITEFINISH 
+#ifdef WRITEFINISH
    writeFinish = .false.
 #endif
 
@@ -586,8 +586,8 @@
 !
 ! !DESCRIPTION:
 !  Instead of the
-!  heavyside switches used by e.g.\ \cite{Neumannetal2002}, we apply here 
-!  a smoothed {\it tangens hyperbolicus} transition 
+!  heavyside switches used by e.g.\ \cite{Neumannetal2002}, we apply here
+!  a smoothed {\it tangens hyperbolicus} transition
 !  with prescribed width $x_w$:
 !  \begin{equation}\label{theta}
 !  \theta (x,x_w,y_{\min},y_{\max})= y_{\min}+(y_{\max}-y_{\min})
@@ -659,7 +659,7 @@
 !
 ! !DESCRIPTION:
 ! Here, those surface fluxes which have been read from a file are transformed
-! to SI units, and the surface oxygen flux is calculated by means of the 
+! to SI units, and the surface oxygen flux is calculated by means of the
 ! following formula:
 ! \begin{equation}\label{o2flux}
 ! F^s_9 = p_{vel} \left(O_{sat}-c_9 \right)
@@ -704,7 +704,7 @@
 !     case (2) ! from file via sfl_read
 !         sfl(ni) = -sfl_read(1)/secs_pr_day
 !         sfl(am) = -sfl_read(2)/secs_pr_day
-!         sfl(po) = -sfl_read(3)/secs_pr_day 
+!         sfl(po) = -sfl_read(3)/secs_pr_day
       case (3) ! sfl array filled externally - for 3D models
       case default
    end select
@@ -774,9 +774,9 @@
    subroutine do_bio_rolm(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION:
-! The right hand sides of the \cite{Neumannetal2002} biogeochemical model are 
+! The right hand sides of the \cite{Neumannetal2002} biogeochemical model are
 ! coded in this soubroutine.
-! First of all, based on (\ref{theta}) and (\ref{Y}), 
+! First of all, based on (\ref{theta}) and (\ref{Y}),
 ! we construct limiters for chemical
 ! reactions which depend on the availability of oxygen ($c_9$) and nitrate
 ! ($c_7$) and have to add up to unity:
@@ -801,7 +801,6 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE, save                      :: iopt
-   REALTYPE                            :: rat(0:nlev,0:nlev)
    REALTYPE                            :: psum,llda,llan,llsa,r1,r2,r3
    REALTYPE                            :: wo=30.,wn=0.1,dot2=0.2
    REALTYPE                            :: thopnp,thomnp,thomnm,thsum
@@ -822,7 +821,6 @@
 
    pp = _ZERO_
    dd = _ZERO_
-   rat=1.         ! fixed (in time  space) ratio between sink and source
 
    depthCi(nlev)=0.5
    do i=nlev-1,1,-1
@@ -886,7 +884,7 @@
 
 ! dependence of photosynthesis on P
      LimP          =th(cc(po4,ci),s_pho_po4,_ZERO_,_ONE_)*&
-                    ((cc(po4, ci))/cc(phy, ci))/(cc(po4, ci)/cc(phy, ci)+KPO4/25.) 
+                    ((cc(po4, ci))/cc(phy, ci))/(cc(po4, ci)/cc(phy, ci)+KPO4/25.)
 
 ! dependence of photosynthesis on cc(nO3, ci),cc(nO2, ci):
      LimNO3        =th((cc(no3, ci)+cc(no2, ci)),s_pho_noX,_ZERO_,_ONE_)*&
@@ -1002,7 +1000,7 @@
 !---------------------------------------- In oxic conditions:
 ! POM oxic mineralization: (CH2O)106(NH3)16H3PO4 + 106O2 -> 106CO2 + 16NH3 + H3PO4 + 106H2O :
      DcPM_O2       =th(cc(o2, ci),s_omox_o2,_ZERO_,_ONE_)*exp(0.15*t(ci)) &
-                    *KNP4*cc(pon, ci)*(cc(o2, ci))/(cc(o2, ci)+k_omox_o2) 
+                    *KNP4*cc(pon, ci)*(cc(o2, ci))/(cc(o2, ci)+k_omox_o2)
 
 ! DOM oxic mineralization: (CH2O)106(NH3)16H3PO4 + 106O2 -> 106CO2 + 16NH3 + H3PO4 + 106H2O :
      DcDM_O2       =th(cc(o2, ci),s_omox_o2,_ZERO_,_ONE_)*exp(0.15*t(ci)) &
@@ -1014,15 +1012,15 @@
 
 
 !---------------------------------------- in suboxic conditions:
-! OM denitrification (Richards, 1965): (CH2O)106(NH3)16H3PO4 + 84.8HNO3 = 106CO2 + 42.4N2 + 148.4H2O + 16NH3 + H3PO4  
-! POM denitrification (1st stage) (Anderson et al., 1982): 1/2CH2O + NO3 -> NO2- + 1/2H2O + 1/2CO2 : 
+! OM denitrification (Richards, 1965): (CH2O)106(NH3)16H3PO4 + 84.8HNO3 = 106CO2 + 42.4N2 + 148.4H2O + 16NH3 + H3PO4
+! POM denitrification (1st stage) (Anderson et al., 1982): 1/2CH2O + NO3 -> NO2- + 1/2H2O + 1/2CO2 :
 
      Denitr1_PM    =th(cc(o2, ci),s_omno_o2,_ONE_,_ZERO_) &
                      *KN32*(1.-cc(o2, ci)/(25.*(26.-cc(o2, ci)))) &
                      *cc(no3, ci)/(cc(no3, ci) +k_omno_no3)*cc(pon, ci)
 
 !----------------------------------------
-! DOM denitrification (1st stage): 1/2CH2O + NO3 -> NO2- + 1/2H2O + 1/2CO2 : 
+! DOM denitrification (1st stage): 1/2CH2O + NO3 -> NO2- + 1/2H2O + 1/2CO2 :
 
      Denitr1_DM    =th(cc(o2, ci),s_omno_o2,_ONE_,_ZERO_) &
                     *KN32*(1.-cc(o2, ci)/(25.*(26.-cc(o2, ci)))) &
@@ -1056,28 +1054,28 @@
 
 
 !---------------------------------------- in suboxic conditions:
-! OM denitrification (Richards, 1965): (CH2O)106(NH3)16H3PO4 + 84.8HNO3 = 106CO2 + 42.4N2 + 148.4H2O + 16NH3 + H3PO4  
-! POM denitrification (1st stage) (Anderson et al., 1982): 1/2CH2O + NO3 -> NO2- + 1/2H2O + 1/2CO2 : 
+! OM denitrification (Richards, 1965): (CH2O)106(NH3)16H3PO4 + 84.8HNO3 = 106CO2 + 42.4N2 + 148.4H2O + 16NH3 + H3PO4
+! POM denitrification (1st stage) (Anderson et al., 1982): 1/2CH2O + NO3 -> NO2- + 1/2H2O + 1/2CO2 :
 
      Denitr1_PM    =th(cc(o2, ci),s_omno_o2,_ONE_,_ZERO_) &
                     *KN32*(1.-cc(o2, ci)/(25.*(26.-cc(o2, ci)))) &
                     *cc(no3, ci)/(cc(no3, ci) +k_omno_no3)*cc(pon, ci)
 
-!---------------------------------------- 
+!----------------------------------------
 ! DOM denitrification (1st stage): 1/2CH2O + NO3 -> NO2- + 1/2H2O + 1/2CO2 :
 
      Denitr1_DM    =th(cc(o2, ci),s_omno_o2,_ONE_,_ZERO_) &
                     *KN32*(1.-cc(o2, ci)/(25.*(26.-cc(o2, ci)))) &
                     *cc(no3, ci)/(cc(no3, ci)+k_omno_no3)*cc(don, ci)
 
-!---------------------------------------- 
+!----------------------------------------
 ! POM denitrification (2d stage): 3/4CH2O + H+ + NO2- -> 1/2N2 + 5/4H2O + 3/4CO2
 
      Denitr2_PM    =th(cc(o2, ci),s_omno_o2,_ONE_,_ZERO_) &
                     *KN24*(1.-cc(o2, ci)/(25.*(26.-cc(o2, ci)))) &
                     *cc(no2, ci)/(cc(no2, ci)+k_omno_no2)*cc(pon, ci)
 
-!---------------------------------------- 
+!----------------------------------------
 ! DOM denitrification (2d stage): 3/4CH2O + H+ + NO2- -> 1/2N2 + 5/4H2O + 3/4CO2
 
      Denitr2_DM    =th(cc(o2, ci),s_omno_o2,_ONE_,_ZERO_) &
@@ -1106,17 +1104,17 @@
 ! DOM sulfatereduction (1st stage):
      s4_rd_DM      =th(cc(o2, ci),s_omso_o2,_ONE_,_ZERO_) &
                     *th((cc(no3, ci)+cc(no2, ci)),s_omso_no,_ONE_,_ZERO_) &
-                    *K_s4_rd*5000.*cc(don, ci) 
+                    *K_s4_rd*5000.*cc(don, ci)
 
-! POM sulfatereduction (2d stage): 
+! POM sulfatereduction (2d stage):
      s23_rd_PM     =th(cc(o2, ci),s_omso_o2,_ONE_,_ZERO_) &
                     *th((cc(no3, ci)+cc(no2, ci)),s_omso_no,_ONE_,_ZERO_) &
-                    *K_s23_rd*cc(pon, ci)*cc(s2o3, ci) 
+                    *K_s23_rd*cc(pon, ci)*cc(s2o3, ci)
 
 ! DOM sulfatereduction (2d stage):
      s23_rd_DM     =th(cc(o2, ci),s_omso_o2,_ONE_,_ZERO_) &
                     *th((cc(no3, ci)+cc(no2, ci)),s_omso_no,_ONE_,_ZERO_) &
-                    *K_s23_rd*cc(don, ci)*cc(s2o3, ci) 
+                    *K_s23_rd*cc(don, ci)*cc(s2o3, ci)
 
      s4_rd         =s4_rd_PM  + s4_rd_DM ! in S units
      s23_rd        =s23_rd_PM + s23_rd_DM
@@ -1161,8 +1159,8 @@
      pp(don,pon,ci)=AutolisN
      dd(pon,don,ci)=pp(don,pon,ci)
 
-!---------------------------------------- 
-! Nitrogen fixation  described as appearence of NH4 available for 
+!----------------------------------------
+! Nitrogen fixation  described as appearence of NH4 available for
 ! phytoplankton: N2 -> NH4 :
 
      SigmaN        =cc(no3, ci)+cc(no2, ci)+cc(nh4, ci)
@@ -1172,7 +1170,7 @@
 
      pp(nh4,nh4,ci)=Nfixation
 
-!---------------------------------------- 
+!----------------------------------------
 ! Anammox : NO2 + NH4 -> N2 + 2H2O :
 
      anammox       =th(cc(o2, ci),s_anm_o2,_ONE_,_ZERO_)*cc(no2, ci)*cc(nh4, ci)*k_annamox
@@ -1213,7 +1211,7 @@
 !----------------------------------------
 ! HS oxidation with O2: 2H2S + O2 -> 2S0 + 2H2O :
 
-     hs_ox         =K_hs_ox*cc(h2s, ci)*cc(o2, ci) 
+     hs_ox         =K_hs_ox*cc(h2s, ci)*cc(o2, ci)
 
      pp(s0,h2s,ci) =hs_ox
      dd(h2s,s0,ci) =pp(s0,h2s,ci)
@@ -1222,7 +1220,7 @@
 !----------------------------------------
 ! S0 oxidation with O2: 2S0 + O2 + H2O -> S2O32- + 2H+ :
 
-     s0_ox         =K_s0_ox*cc(s0, ci)*cc(o2, ci) 
+     s0_ox         =K_s0_ox*cc(s0, ci)*cc(o2, ci)
 
      dd(s0,s2o3,ci)=s0_ox
      dd(o2,s0,ci)  =dd(s0,s2o3,ci)
@@ -1231,7 +1229,7 @@
 !----------------------------------------
 ! S2O3 oxidation with O2: S2O32- + 2O2 + 2OH- -> 2SO42- + H2O :
 
-     s23_ox        =K_s23_ox*cc(s2o3, ci)*cc(o2, ci)  
+     s23_ox        =K_s23_ox*cc(s2o3, ci)*cc(o2, ci)
 
      pp(so4,s2o3,ci)=s23_ox
      dd(s2o3,so4,ci)=pp(so4,s2o3,ci)
@@ -1296,7 +1294,7 @@
 !---------------------------------------------------------------------------
 
 ! Fe2 oxidation by O2: 4Fe2+ + O2 + 2H2O -> 4Fe3+ + 4OH :
-     fe_ox         =th(cc(fe2, ci),s_feox_fe2,_ZERO_,_ONE_)*K_fe_ox*cc(o2, ci)*cc(fe2, ci) 
+     fe_ox         =th(cc(fe2, ci),s_feox_fe2,_ZERO_,_ONE_)*K_fe_ox*cc(o2, ci)*cc(fe2, ci)
 
      pp(fe3,fe2,ci)=fe_ox
      dd(fe2,fe3,ci)=pp(fe3,fe2,ci)
@@ -1304,7 +1302,7 @@
 
 !----------------------------------------------------
 ! Fe2 oxidation by Mn4: 2Fe2++MnO2+2H2O ®2FeOOH+Mn2++2H+ :
-     fe_mnox       =th(cc(fe2, ci),s_feox_fe2,_ZERO_,_ONE_)*K_fe_mnox*cc(mn4, ci)*cc(fe2, ci) 
+     fe_mnox       =th(cc(fe2, ci),s_feox_fe2,_ZERO_,_ONE_)*K_fe_mnox*cc(mn4, ci)*cc(fe2, ci)
 
      pp(fe3,mn2,ci)=fe_mnox
      dd(fe2,mn4,ci)=pp(fe3,mn2,ci)
@@ -1313,7 +1311,7 @@
 
 !----------------------------------------------------
 ! Fe3 reduction: 2FeOOH + H2S -> 2Fe2+ + S0 + 4OH- :
-     fe_rd         =K_fe_rd*cc(fe3, ci)*cc(h2s, ci) 
+     fe_rd         =K_fe_rd*cc(fe3, ci)*cc(h2s, ci)
 
      pp(fe2,fe3,ci)=fe_rd
      dd(fe3,fe2,ci)=pp(fe2,fe3,ci)
@@ -1389,7 +1387,7 @@
      dd(dop,bha,ci)=Sp*pp(bha,dop,ci)
      dd(don,bha,ci)=Sn*pp(bha,dop,ci)
 
-     MortBhetA     =0. !00001*cc(bha, ci)*cc(bha, ci) 
+     MortBhetA     =0. !00001*cc(bha, ci)*cc(bha, ci)
 
      dd(bha,pop,ci)=MortBhetA
      pp(pop,bha,ci)=Sp*0.3*dd(bha,pop,ci)
@@ -1431,7 +1429,7 @@
    dd(po4,po4,1)=(+1)*(cc(po4,1)-b_po4)/Trel
 
 
-!  y=1-0.5(1-tanh(1-x^2)), dd(h2s, h2s,1) = y * (cc(h2s,1) - SedConcH2S) / Trel. 
+!  y=1-0.5(1-tanh(1-x^2)), dd(h2s, h2s,1) = y * (cc(h2s,1) - SedConcH2S) / Trel.
 !  where y is a dependence of H2S on O2 concentration in the near-bottom layer
 !  SedConcH2S is concentration of H2S in sediment,
 !  x is oxygen concentration

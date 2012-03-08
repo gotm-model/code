@@ -40,7 +40,7 @@
    public k_bc,q2over2_bc,epsilon_bc,psi_bc,q2l_bc
    public clean_turbulence
 #ifdef _PRINTSTATE_
-   public print_state_turbulence   
+   public print_state_turbulence
 #endif
 
 ! !PUBLIC DATA MEMBERS:
@@ -302,7 +302,7 @@
 !  removed tabs
 !
 !  Revision 1.5  2003/03/10 09:02:06  gotm
-!  Added new Generic Turbulence Model + 
+!  Added new Generic Turbulence Model +
 !  improved documentation and cleaned up code
 !
 !
@@ -2082,11 +2082,11 @@
 !   of the turbulent diffusivities.
 !  \item  {\tt turb\_method = 2} corresponds to models computing the diffusivities
 !  from the TKE and the turbulent length scale according to \eq{nu}. TKE and length scale
-!  are computed from dynamic PDEs or algebraic relations, an empirical (i.e.\ not 
-!  derived from a second-order model) stability function is used, see 
+!  are computed from dynamic PDEs or algebraic relations, an empirical (i.e.\ not
+!  derived from a second-order model) stability function is used, see
 !  \sect{sec:stabilityFunctions}.
 !  \item  {\tt turb\_method = 3} corresponds to a second-order model for the turbulent
-!  fluxes. 
+!  fluxes.
 ! \end{itemize}
 !
 ! The second-order models fall into different categories, depending on the

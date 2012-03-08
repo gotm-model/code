@@ -132,15 +132,15 @@ fortranobject.o:
 
 gotm-f2pywrappers2.o: gui_util.o
 
-clean: 
+clean:
 	$(MAKE) -C ../src $@
 	$(RM) *~ *.o
 
-realclean: clean 
+realclean: clean
 	$(MAKE) -C ../src $@
 	$(RM) *.pyc
 
-distclean: realclean 
+distclean: realclean
 	$(MAKE) -C ../src $@
 	$(RM) *.so
 

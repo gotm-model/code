@@ -49,7 +49,7 @@
 !    If this function is not provided, the bio extinction will be calculated from the specific
 !    extinction coefficients for each state variable as specified in the model information,
 !    specifically member "specific_light_extinction" of the state variable information.
-!    (note: specific extinction coefficients default to 0: no attenuation due to biogeochemical components) 
+!    (note: specific extinction coefficients default to 0: no attenuation due to biogeochemical components)
 !
 ! 7) If (part of) the model state variable are composed of conserved quantities (energy and/or
 !    chemical elements), a function that provides the sum of these quantities given the model
@@ -79,10 +79,10 @@
 !
 ! !USES:
    use bio_types
-!   
+!
 !  Reference specific biogeochemical models:
    use bio_npzd_0d
-!   
+!
 !  default: all is private.
    private
 !

@@ -10,19 +10,19 @@
 ! !DESCRIPTION:
 !  The surface momentum flux vector, $(\tau_x^s,\tau_y^s)$,
 !  in [N\,m$^{-2}$],
-!  the latent heat flux, $Q_e$, 
+!  the latent heat flux, $Q_e$,
 !  and the sensible heat flux, $Q_h$, both in [W\,m$^{-2}$]
 !  are calculated here according to the \cite{Fairalletal96a} bulk
 !  formulae, which are build on the Liu-Katsaros-Businger
-!  (\cite{Liuetal79}) method. 
+!  (\cite{Liuetal79}) method.
 !  Cool skin and warm layer effects are considered according to the
 !  suggestions of \cite{Fairalletal96b}.
 !
 !  The air temperature {\tt airt} and the sea surface temperature
-!  {\tt sst} may be given in Kelvin or Celcius: 
-!  if they are $>$ 100 - Kelvin is assumed. 
-!  
-!  This piece of code has been adapted from the COARE code originally 
+!  {\tt sst} may be given in Kelvin or Celcius:
+!  if they are $>$ 100 - Kelvin is assumed.
+!
+!  This piece of code has been adapted from the COARE code originally
 !  written by David Rutgers and Frank Bradley - see
 !  http://www.coaps.fsu.edu/COARE/flux\_algor/flux.html.
 !
@@ -164,8 +164,10 @@
 !
 !  Initialize.
 !
-   qe=_ZERO_
-   qh=_ZERO_
+   qe   = _ZERO_
+   qh   = _ZERO_
+   taux = _ZERO_
+   tauy = _ZERO_
    delw=sqrt(w*w+wgust*wgust)
    if (delw .ne. 0.0) then
 !-----------------------------------------------------------------------

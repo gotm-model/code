@@ -90,10 +90,10 @@
 !  Lagrangian particles
 !  (also passed over to and from external routines)
    integer                                      :: npar
-   integer                                      :: ntype 
-   integer                                      :: nprop 
+   integer                                      :: ntype
+   integer                                      :: nprop
    logical                                      :: par_allocation
-   logical , dimension(:,:)       , allocatable :: par_act  
+   logical , dimension(:,:)       , allocatable :: par_act
    integer , dimension(:,:)       , allocatable :: par_ind
    REALTYPE, dimension(:,:)       , allocatable :: par_z
    REALTYPE, dimension(:,:,:)     , allocatable :: par_prop
@@ -163,4 +163,4 @@
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------

@@ -7,7 +7,7 @@
    subroutine bio_alloc_info
 !
 ! !DESCRIPTION:
-!  Allocates memory for the character strings describing the 
+!  Allocates memory for the character strings describing the
 !  variables of the bio model
 !
 ! !USES:

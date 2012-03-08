@@ -15,7 +15,7 @@ DOCSRC	=  bio.F90                   \
            photo/bio_photo.F90       \
            bio_fluxes.F90            \
            bio_alloc_info.F90        \
-           bio_save.F90   
+           bio_save.F90
 
 OBJ1   = \
 ${LIB}(bio_var.o)		\
@@ -66,43 +66,43 @@ DEFINES += -DBIO_CL
 endif
 
 ifneq ($(BIO_IOW),false)
-DOCSRC  += iow/bio_iow.F90  
+DOCSRC  += iow/bio_iow.F90
 SUBDIRS += iow
 DEFINES += -DBIO_IOW
 endif
 
 ifneq ($(BIO_SED),false)
-DOCSRC  += sed/bio_sed.F90 
+DOCSRC  += sed/bio_sed.F90
 SUBDIRS += sed
 DEFINES += -DBIO_SED
 endif
 
 ifneq ($(BIO_FASHAM),false)
-DOCSRC  += fasham/bio_fasham.F90 
+DOCSRC  += fasham/bio_fasham.F90
 SUBDIRS += fasham
 DEFINES += -DBIO_FASHAM
 endif
 
 ifneq ($(BIO_MAB),false)
-DOCSRC  += 
+DOCSRC  +=
 SUBDIRS += mab
 DEFINES += -DBIO_MAB
 endif
 
 ifneq ($(BIO_ROLM),false)
-DOCSRC  += 
+DOCSRC  +=
 SUBDIRS += rolm
 DEFINES += -DBIO_ROLM
 endif
 
 ifneq ($(BIO_NPZD_FE),false)
-DOCSRC  += 
+DOCSRC  +=
 SUBDIRS += npzd_fe
 DEFINES += -DBIO_NPZD_FE
 endif
 
 ifneq ($(BIO_PHOTO),false)
-DOCSRC  += photo/bio_photo.F90  
+DOCSRC  += photo/bio_photo.F90
 SUBDIRS += photo
 DEFINES += -DBIO_PHOTO
 endif
@@ -122,7 +122,7 @@ OBJS: $(SUBDIRS)
 $(OBJ2): OBJS
 
 doc:    $(DOCSRC)
-	$(PROTEX) $(DOCSRC) > ../../../doc/bio.tex 
+	$(PROTEX) $(DOCSRC) > ../../../doc/bio.tex
 	touch doc
 
 clean:

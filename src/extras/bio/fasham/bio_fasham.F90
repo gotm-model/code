@@ -8,7 +8,7 @@
    module bio_fasham
 !
 ! !DESCRIPTION:
-!  The model developed by \cite{Fashametal1990} 
+!  The model developed by \cite{Fashametal1990}
 !  uses nitrogen as 'currency' according to the evidence that in
 !  most cases nitrogen is the limiting macronutrient. It consists of
 !  seven state variables: phytoplankton, zooplankton, bacteria,
@@ -31,8 +31,8 @@
 !  A detailed mathematical description of all
 !  processes is given in section \ref{sec:bio-fasham-rhs}.
 !  The version of the \cite{Fashametal1990} model which is implemented includes
-!  slight modifications by \cite{KuehnRadach1997} and has been 
-!  included into GOTM by \cite{Burchardetal05}. 
+!  slight modifications by \cite{KuehnRadach1997} and has been
+!  included into GOTM by \cite{Burchardetal05}.
 
 ! !USES:
 !  default: all is private.
@@ -337,7 +337,7 @@
 ! !DESCRIPTION:
 ! Here, the photosynthetically available radiation is calculated
 ! by simply assuming that the short wave part of the total
-! radiation is available for photosynthesis. 
+! radiation is available for photosynthesis.
 ! The photosynthetically
 ! available radiation, $I_{PAR}$, follows from (\ref{light}).
 ! The user should make
@@ -390,12 +390,12 @@
    subroutine do_bio_fasham(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION:
-! 
+!
 ! The \cite{Fashametal1990} model consisting of the $I=7$
-! state variables phytoplankton, bacteria, detritus, zooplankton, 
+! state variables phytoplankton, bacteria, detritus, zooplankton,
 ! nitrate, ammonium and dissolved organic nitrogen is described here
 ! in detail.
-! 
+!
 ! Phytoplankton mortality and zooplankton grazing loss of phytoplankton:
 ! \begin{equation}\label{d13}
 ! d_{1,3} = \mu_1 \frac{c_1+c_{1}^{\min}}{K_5+c_1+c_{1}^{\min}}c_1+
@@ -410,19 +410,19 @@
 ! \end{equation}
 ! with
 ! \begin{equation}\label{FI}
-!  F(I_{PAR}) = \frac{V_p\alpha I_{PAR}(z)}{\left(V_p^2+\alpha^2(I_{PAR}(z))^2 
+!  F(I_{PAR}) = \frac{V_p\alpha I_{PAR}(z)}{\left(V_p^2+\alpha^2(I_{PAR}(z))^2
 ! \right)^{1/2}}.
 ! \end{equation}
-! With $I_{PAR}$ from (\ref{light}). 
-! 
+! With $I_{PAR}$ from (\ref{light}).
+!
 ! Zooplankton grazing loss:
 ! \begin{equation}\label{di3}
-! d_{2,3} = (1-\beta)\frac{g\rho_2 c_2^2}{K_3 \sum_{j=1}^3 \rho_jc_j 
+! d_{2,3} = (1-\beta)\frac{g\rho_2 c_2^2}{K_3 \sum_{j=1}^3 \rho_jc_j
 ! + \sum_{j=1}^3 \rho_jc_j^2} (c_4+c_{4}^{\min}).
 ! \end{equation}
 ! Zooplankton grazing:
 ! \begin{equation}\label{di4}
-! d_{i,4} = \beta\frac{g\rho_i c_i^2}{K_3 \sum_{j=1}^3 \rho_jc_j 
+! d_{i,4} = \beta\frac{g\rho_i c_i^2}{K_3 \sum_{j=1}^3 \rho_jc_j
 ! + \sum_{j=1}^3 \rho_jc_j^2} (c_4+c_{4}^{\min}), \quad i=1,\dots,3.
 ! \end{equation}
 ! Bacteria excretion rate:
@@ -435,7 +435,7 @@
 ! \end{equation}
 ! Zooplankton losses to detritus, ammonium and LDON:
 ! \begin{equation}\label{d43}
-! d_{4,3} = (1-\epsilon-\delta)\mu_2 
+! d_{4,3} = (1-\epsilon-\delta)\mu_2
 ! \frac{c_4+c_{4}^{\min}}{K_6+c_4+c_{4}^{\min}}c_4.
 ! \end{equation}
 ! \begin{equation}\label{d46}
@@ -456,7 +456,7 @@
 ! \end{equation}
 ! Ammonium uptake by bacteria:
 ! \begin{equation}\label{d62}
-! d_{6,2} = V_b \frac{\min(c_6,\eta c_7)}{K_4+\min(c_6,\eta c_7)+c_7} 
+! d_{6,2} = V_b \frac{\min(c_6,\eta c_7)}{K_4+\min(c_6,\eta c_7)+c_7}
 ! (c_2+c_{2}^{\min}).
 ! \end{equation}
 ! LDON uptake by bacteria:
@@ -491,7 +491,7 @@
 
    do ci=1,nlev
 
-      ff= vp*alpha*par(ci)/sqrt(vp**2+alpha**2*par(ci)**2) 
+      ff= vp*alpha*par(ci)/sqrt(vp**2+alpha**2*par(ci)**2)
       fac=(cc(z,ci)+z0)/(k3*(r1*cc(p,ci)+r2*cc(b,ci)+r3*cc(d,ci))+  &
                       r1*cc(p,ci)**2+r2*cc(b,ci)**2+r3*cc(d,ci)**2)
       min67=min(cc(a,ci),eta*cc(l,ci))

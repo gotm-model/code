@@ -37,8 +37,8 @@
    character(len=19), public           :: stop
    REALTYPE,          public           :: timestep
    REALTYPE,          public           :: fsecs,simtime
-   integer,           public           :: julianday,secondsofday
-   integer,           public           :: yearday
+   integer,target,    public           :: julianday,secondsofday
+   integer,target,    public           :: yearday
    integer,           public           :: timefmt
    integer,           public           :: MinN,MaxN
 !
@@ -311,6 +311,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: nsecs
+   integer                   :: yyyy,mm,dd,jd_firstjan
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -318,6 +319,10 @@
    fsecs = n*timestep + secs0
    julianday    = jul0 + nsecs/86400
    secondsofday = mod(nsecs,86400)
+
+   call calendar_date(julianday,yyyy,mm,dd)
+   call julian_day(yyyy,1,1,jd_firstjan)
+   yearday = julianday-jd_firstjan+1
 
    return
    end subroutine update_time
@@ -471,8 +476,8 @@
 !BOC
    omega = acos(-tan(latitude*3.141516/180.)*tan(declination*3.141516/180.))
    hour  = omega*180/3.141516/15.
-   sunrise = 12. - hour 
-   sunset  = 12. + hour 
+   sunrise = 12. - hour
+   sunset  = 12. + hour
    return
    end subroutine  sunrise_sunset
 !EOC
@@ -510,7 +515,7 @@
    LEVEL2 'MinN,MaxN',MinN,MaxN
    LEVEL2 'HasRealTime',HasRealTime
    LEVEL2 'jul0,secs0',jul0,secs0
-   
+
    end subroutine print_state_time
 !EOC
 #endif

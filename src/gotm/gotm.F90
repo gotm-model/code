@@ -38,7 +38,7 @@
    use time
 
    use airsea,      only: init_air_sea,do_air_sea,clean_air_sea
-   use airsea,      only: set_sst,integrated_fluxes
+   use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
    use airsea,      only: wind=>w,tx,ty,I_0,heat,precip,evap
 
@@ -245,7 +245,7 @@
 !  removed tabs
 !
 !  Revision 1.5  2003/03/10 09:20:27  gotm
-!  Added new Generic Turbulence Model + 
+!  Added new Generic Turbulence Model +
 !  improved documentation and cleaned up code
 !
 !  Revision 1.3  2001/11/18 15:58:02  gotm
@@ -426,7 +426,7 @@
 #ifdef _FABM_
 
    call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml')
-   
+
 !  Initialize FABM input (data files with observations)
    call init_gotm_fabm_input(nlev,namlst,'fabm_input.nml')
 
@@ -440,7 +440,7 @@
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
    call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,taub,wind,precip,evap,z(1:nlev), &
-                          A,g1,g2,SRelaxTau(1:nlev),sProf(1:nlev))
+                          A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev))
 
 #endif
 
@@ -528,6 +528,7 @@
 !     external forcing
       if( calc_fluxes ) then
          call set_sst(T(nlev))
+         call set_ssuv(u(nlev),v(nlev))
       end if
       call do_air_sea(julianday,secondsofday)
 

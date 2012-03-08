@@ -134,7 +134,7 @@
 !  documentation finish for print
 !
 !  Revision 1.13  2005/09/12 21:46:46  hb
-!  use of bioshade corrected (should work on short 
+!  use of bioshade corrected (should work on short
 !  wave length part of light spectrum only)
 !
 !  Revision 1.12  2005/06/27 13:44:07  kbk
@@ -144,7 +144,7 @@
 !  updated documentation
 !
 !  Revision 1.10  2004/07/28 11:29:10  hb
-!  Bug removed, rad is not any more multiplied with bioshade; 
+!  Bug removed, rad is not any more multiplied with bioshade;
 !  bug found by Jorn Bruggeman, Amsterdam
 !
 !  Revision 1.9  2003/07/23 12:33:21  hb
@@ -174,7 +174,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: adv_mode=1
+   integer                   :: adv_mode=0
    integer                   :: posconc=0
    integer                   :: i
    integer                   :: DiffBcup,DiffBcdw

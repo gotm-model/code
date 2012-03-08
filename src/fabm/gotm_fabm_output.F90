@@ -49,7 +49,7 @@ contains
 #endif
 !
 #ifdef NETCDF_FMT
-#include "netcdf.inc"
+   use netcdf
 #endif
 !
 ! !REVISION HISTORY:
@@ -81,7 +81,7 @@ contains
 
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical state variable.
          do n=1,ubound(model%info%state_variables,1)
-            iret = new_nc_variable(ncid,trim(model%info%state_variables(n)%name),NF_REAL, &
+            iret = new_nc_variable(ncid,trim(model%info%state_variables(n)%name),NF90_REAL, &
                                    dim4d,model%info%state_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables(n)%externalid,       &
                                   units=trim(model%info%state_variables(n)%units),    &
@@ -91,7 +91,7 @@ contains
 
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical diagnostic variable.
          do n=1,ubound(model%info%diagnostic_variables,1)
-            iret = new_nc_variable(ncid,trim(model%info%diagnostic_variables(n)%name),NF_REAL, &
+            iret = new_nc_variable(ncid,trim(model%info%diagnostic_variables(n)%name),NF90_REAL, &
                                    dim4d,model%info%diagnostic_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables(n)%externalid,    &
                                   units=trim(model%info%diagnostic_variables(n)%units),        &
@@ -101,7 +101,7 @@ contains
 
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical state variable.
          do n=1,ubound(model%info%state_variables_ben,1)
-            iret = new_nc_variable(ncid,trim(model%info%state_variables_ben(n)%name),NF_REAL, &
+            iret = new_nc_variable(ncid,trim(model%info%state_variables_ben(n)%name),NF90_REAL, &
                                    dim3d,model%info%state_variables_ben(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables_ben(n)%externalid,    &
                                   units=trim(model%info%state_variables_ben(n)%units),        &
@@ -111,7 +111,7 @@ contains
 
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical diagnostic variable.
          do n=1,ubound(model%info%diagnostic_variables_hz,1)
-            iret = new_nc_variable(ncid,trim(model%info%diagnostic_variables_hz(n)%name),NF_REAL, &
+            iret = new_nc_variable(ncid,trim(model%info%diagnostic_variables_hz(n)%name),NF90_REAL, &
                                    dim3d,model%info%diagnostic_variables_hz(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables_hz(n)%externalid,    &
                                   units=trim(model%info%diagnostic_variables_hz(n)%units),        &
@@ -121,7 +121,7 @@ contains
 
          ! Add a variable for each conserved quantity
          do n=1,ubound(model%info%conserved_quantities,1)
-            iret = new_nc_variable(ncid,trim(model%info%conserved_quantities(n)%name)//'_tot',NF_REAL, &
+            iret = new_nc_variable(ncid,trim(model%info%conserved_quantities(n)%name)//'_tot',NF90_REAL, &
                                    dim3d,model%info%conserved_quantities(n)%externalid)
             iret = set_attributes(ncid,model%info%conserved_quantities(n)%externalid,      &
                                   units='m*'//trim(model%info%conserved_quantities(n)%units),    &
@@ -157,7 +157,7 @@ contains
 #endif
 
 #ifdef NETCDF_FMT
-#include "netcdf.inc"
+   use netcdf
 #endif
 !
 ! !INPUT PARAMETERS:

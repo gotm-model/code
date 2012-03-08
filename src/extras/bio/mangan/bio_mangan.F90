@@ -15,9 +15,9 @@
 ! \begin{equation}
 ! \begin{array}{lllll}
 ! \displaystyle
-! \partial_t \left[Mn^{2+}\right] & 
+! \partial_t \left[Mn^{2+}\right] &
 ! \displaystyle
-! - \partial_z \left(K_v\partial_z 
+! - \partial_z \left(K_v\partial_z
 ! \left[Mn^{2+}\right]\right) &
 ! &=&
 ! \displaystyle
@@ -27,63 +27,63 @@
 ! \displaystyle
 ! - \partial_z \left(K_v\partial_z \left[MnO_2\right]\right) &
 ! \displaystyle
-! - \partial_z \left(w_s\left[MnO_2\right]\right) 
+! - \partial_z \left(w_s\left[MnO_2\right]\right)
 ! &=&
 ! \displaystyle
 ! +r_{ox}\left[Mn^{2+}\right] \frac{C}{C+C_{1/2}}, \\ \\
 ! \displaystyle
 ! \partial_t C &
 ! - \partial_z \left(K_v\partial_z C\right) &
-! - \partial_z \left(w_s C\right) 
+! - \partial_z \left(w_s C\right)
 ! &=&
 ! \displaystyle
-! 0, 
+! 0,
 ! \end{array}
 ! \end{equation}
 ! with the bottom boundary conditions
 ! \begin{equation}
 ! \begin{array}{lll}
 ! \displaystyle
-! \left(K_v\partial_z\left[Mn^{2+}\right]\right)_{z=-H} &=& 
+! \left(K_v\partial_z\left[Mn^{2+}\right]\right)_{z=-H} &=&
 ! \displaystyle
 ! v_t \left(\frac{10^3[Mn^{2+}]_s}{D_s}-[Mn^{2+}]_{z=-H}\right),
 ! \\ \\
 ! \displaystyle
-! \left(K_v\partial_z\left[MnO_2\right]+w_s\left[MnO_2\right]\right)_{z=-H} &=& 
+! \left(K_v\partial_z\left[MnO_2\right]+w_s\left[MnO_2\right]\right)_{z=-H} &=&
 ! \displaystyle
 ! - F\left([MnO_2]\right),
 ! \\ \\
 ! \displaystyle
-! \left(K_v\partial_zC+w_sC\right)_{z=-H} &=& 
+! \left(K_v\partial_zC+w_sC\right)_{z=-H} &=&
 ! \displaystyle
 ! - F(C).
 ! \\ \\
 ! \end{array}
 ! \end{equation}
-! 
+!
 ! Sediment equations for manganese-2 ($\left[Mn^{2+}\right]_s$),
 ! manganese oxyde ($\left[MnO_2\right]_s$) and suspended particulate matter
 ! ($C_s$):
 ! \begin{equation}
 ! \begin{array}{llll}
 ! \displaystyle
-! \partial_t \left[Mn^{2+}\right]_s 
-! &=& 
+! \partial_t \left[Mn^{2+}\right]_s
+! &=&
 ! \displaystyle
 ! +r_{red} \left[MnO_2\right]_s &
 ! \displaystyle
 ! -\frac{v_t}{10^3} \left(\frac{10^3[Mn^{2+}]_s}{D_s}-[Mn^{2+}]_{z=-H}\right),
 ! \\ \\
 ! \displaystyle
-! \partial_t \left[MnO_2\right]_s &=& 
+! \partial_t \left[MnO_2\right]_s &=&
 ! \displaystyle
 ! -r_{red} \left[MnO_2\right]_s &
 ! \displaystyle
 ! + \frac{F\left([MnO_2]\right)}{10^3},
 ! \\ \\
 ! \displaystyle
-! \partial_t C_s 
-! &=& 
+! \partial_t C_s
+! &=&
 ! \displaystyle
 !  &
 ! \displaystyle
@@ -111,7 +111,7 @@
 ! \left\{
 ! \begin{array}{ll}
 ! \displaystyle
-!  w_s \frac{\tau_{bc}-|\tau_b|}{\tau_{bc}}C_{z=-H}, 
+!  w_s \frac{\tau_{bc}-|\tau_b|}{\tau_{bc}}C_{z=-H},
 ! & \mbox{ for } \tau_{bc}>|\tau_b|,\\ \\
 ! \displaystyle
 !  r_{ero} \frac{\tau_{bc}-|\tau_b|}{\tau_{bc}}
@@ -120,12 +120,12 @@
 ! \end{array}
 ! \right.
 ! \end{equation}
-! 
+!
 ! \begin{table}[h]
 ! \begin{center}
 ! \begin{tabular}{|l|l|l|}
 ! \hline
-! Model parameter & Symbol & unit \\ \hline \hline 
+! Model parameter & Symbol & unit \\ \hline \hline
 ! Manganese oxide concentration in water & $\left[MnO_2\right]$ & $\mu$M\,m$^{-3}$ \\ \hline
 ! Maganese-2 concentration in water & $\left[Mn^{2+}\right]$ & $\mu$M\,m$^{-3}$ \\ \hline
 ! Suspended matter concentration in water & $C$ & kg\,m$^{-3}$ \\ \hline
@@ -136,13 +136,13 @@
 ! \end{center}
 ! \caption{Model parameters for the manganese model.}
 ! \end{table}
-! 
-! 
+!
+!
 ! \begin{table}[h]
 ! \begin{center}
 ! \begin{tabular}{|l|l|l|l|}
 ! \hline
-! Empirical parameter & Symbol & value & unit \\ \hline \hline 
+! Empirical parameter & Symbol & value & unit \\ \hline \hline
 ! Initial $\left[MnO_2\right]$ concentration & $\left[MnO_2\right]^0$ && $\mu$M\,m$^{-3}$ \\ \hline
 ! Initial $\left[Mn^{2+}\right]$ concentration & $\left[Mn^{2+}\right]^0$ && $\mu$M\,m$^{-3}$ \\ \hline
 ! Initial $C$ concentration & $C^0$ && kg\,m$^{-3}$ \\ \hline
@@ -158,7 +158,7 @@
 ! Sediment depth & $D_s$ && m \\ \hline
 ! Half saturation $C$ in water & $C_{1/2}$ && kg\,m$^{-3}$ \\ \hline
 ! Half saturation $C_s$ in sediment & $C_{s,1/2}$ && kg\,m$^{-2}$ \\ \hline
-! Half saturation $\left[Mn^{2+}\right]_s$ in sediment & 
+! Half saturation $\left[Mn^{2+}\right]_s$ in sediment &
 ! $\left[Mn^{2+}\right]_{s,1/2}$ && mM\,m$^{-2}$ \\ \hline
 ! \end{tabular}
 ! \caption{Empirical parameters for the manganese model.}
@@ -213,8 +213,8 @@
    subroutine init_bio_mangan(namlst,fname,unit)
 !
 ! !DESCRIPTION:
-!  Here, the bio namelist {\tt bio\_mangan.nml} is read and 
-!  various variables (rates and settling velocities) 
+!  Here, the bio namelist {\tt bio\_mangan.nml} is read and
+!  various variables (rates and settling velocities)
 !  are transformed into SI units.
 !
 ! !USES:
@@ -309,7 +309,7 @@
 ! !DESCRIPTION:
 !  Here, the the initial conditions are set and the settling velocities are
 !  transferred to all vertical levels. All concentrations are declared
-!  as non-negative variables, and it is defined which variables would be 
+!  as non-negative variables, and it is defined which variables would be
 !  taken up by benthic filter feeders.
 !
 ! !USES:
@@ -425,7 +425,7 @@
 !
 ! !LOCAL VARIABLES:
   integer                    :: i,j,ci
-  REALTYPE                   :: rat(0:nlev,0:nlev)
+  REALTYPE                   :: rat(1:numc,1:numc)
   REALTYPE                   :: taub,r_sedim=0.,r_resus=0.
   REALTYPE                   :: mn_tot,spm_tot
 
@@ -456,13 +456,13 @@
 
       if (ci.eq.1) then
          dd(mno_sed,mn2_sed,ci)=r_red*cc(mno_sed,ci)
-         dd(mn2_sed,mn2    ,ci)=v_t*(1000.*cc(mn2_sed,ci)/d_s-cc(mn2,ci))/1000. 
+         dd(mn2_sed,mn2    ,ci)=v_t*(1000.*cc(mn2_sed,ci)/d_s-cc(mn2,ci))/1000.
          dd(mno_sed,mno    ,ci)=r_resus*cc(mno_sed,ci)*mno_sed12/            &
                                       (cc(mno_sed,ci)+mno_sed12)
          dd(spm_sed,spm    ,ci)=r_resus*cc(spm_sed,ci)*spm_sed12/            &
                                       (cc(spm_sed,ci)+spm_sed12)
          dd(mno,mno_sed    ,ci)=r_sedim*cc(mno,ci)
-         dd(spm,spm_sed    ,ci)=r_sedim*cc(spm,ci) 
+         dd(spm,spm_sed    ,ci)=r_sedim*cc(spm,ci)
       end if
 
       do i=1,numc

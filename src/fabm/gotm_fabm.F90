@@ -38,16 +38,16 @@
 !  Arrays for state and diagnostic variables
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:),public,target :: cc
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:),public        :: cc_diag
+   REALTYPE,allocatable,dimension(:),                      public        :: cc_diag_hz
 
-!  Arrays for observations
+!  Arrays for observations, relaxation times and FABM variable identifiers associated with the observations.
    REALTYPE, allocatable, target, public :: obs_0d(:),obs_1d(:,:),relax_tau_0d(:),relax_tau_1d(:,:)
    integer,  allocatable,         public :: obs_0d_ids(:), obs_1d_ids(:)
 
-!  Arrays for diagnostic variables defined on horizontal slices of the model domain.
-   REALTYPE,allocatable,dimension(:),public                              :: cc_diag_hz
-
+!  Observation indices (from obs_0d, obs_1d) for pelagic and benthic state variables.
    integer,allocatable,dimension(:),public :: cc_ben_obs_indices,cc_obs_indices
 
+!  Variables to hold time spent on advection, diffusion, sink/source terms.
    integer(8) :: clock_adv,clock_diff,clock_source
 !
 ! !REVISION HISTORY:!
@@ -79,6 +79,8 @@
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
 
    REALTYPE,pointer :: I_0,A,g1,g2
+   integer,pointer  :: yearday,secondsofday
+   REALTYPE, target :: decimal_yearday
 
 !  Explicit interface for ode solver.
    interface
@@ -114,7 +116,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Initialise the bio module
+! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
    subroutine init_gotm_fabm(_LOCATION_,namlst,fname)
@@ -122,13 +124,9 @@
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
-! !USES:
-   IMPLICIT NONE
-!
 ! !INPUT PARAMETERS:
    integer,          intent(in)        :: _LOCATION_,namlst
    character(len=*), intent(in)        :: fname
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -149,7 +147,7 @@
 
    LEVEL1 'init_gotm_fabm'
 
-   ! Initialize FABM model identifiers to invalid id.
+   ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
    cnpar             = _ONE_
    w_adv_discr       = 6
@@ -234,8 +232,6 @@
             LEVEL2 'Using emp_1()'
          case (11)
             LEVEL2 'Using emp_2()'
-         case (1003)
-            LEVEL2 'Using runge_kutta_4() with pp/dd matrices'
          case default
             stop "init_gotm_fabm: no valid ode_method specified in fabm.nml!"
       end select
@@ -265,19 +261,15 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Initialise bio variables
+! !IROUTINE: Initialise FABM variables
 !
 ! !INTERFACE:
    subroutine init_var_gotm_fabm(_LOCATION_)
 !
 ! !DESCRIPTION:
-! TODO
+! This routine allocates memory for all FABM variables.
 !
-! !USES:
-   IMPLICIT NONE
-
    _DECLARE_LOCATION_ARG_
-!
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -293,7 +285,7 @@
    ! In terms of memory use, it is a waste to allocate storage for benthic variables across the entire
    ! column (the bottom layer should suffice). However, it is important that all values at a given point
    ! in time are integrated simultaneously in multi-step algorithms. This currently can only be arranged
-   ! By storing benthic values together with the pelagic, in a full;y depth=-explicit array.
+   ! by storing benthic values together with the pelagic, in a fully depth-explicit array.
    allocate(cc(1:ubound(model%info%state_variables,1)+ubound(model%info%state_variables_ben,1),_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc)'
    cc = _ZERO_
@@ -307,25 +299,27 @@
    end do
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
-   ! Initialize observation indicies to -1 (no external observations provided)
-   allocate(cc_obs_indices    (1:ubound(model%info%state_variables,1)))
-   allocate(cc_ben_obs_indices(1:ubound(model%info%state_variables_ben,1)))
+   ! Initialize observation indices to -1 (no external observations provided)
+   allocate(cc_obs_indices    (1:ubound(model%info%state_variables,1)),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_obs_indices)'
    cc_obs_indices = -1
+   allocate(cc_ben_obs_indices(1:ubound(model%info%state_variables_ben,1)),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_ben_obs_indices)'
    cc_ben_obs_indices = -1
 
-   ! Allocate diagnostic variable array and set all values to zero.
-   ! (needed because time-integrated/averaged variables will increment rather than set the array)
+   ! Allocate array for pelagic diagnostic variables; set all values to zero.
+   ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
    allocate(cc_diag(1:ubound(model%info%diagnostic_variables,1),_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_diag)'
    cc_diag = _ZERO_
 
-   ! Allocate diagnostic variable array and set all values to zero.
-   ! (needed because time-integrated/averaged variables will increment rather than set the array)
+   ! Allocate array for diagnostic variables on horizontal surfaces; set all values to zero.
+   ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
    allocate(cc_diag_hz(1:ubound(model%info%diagnostic_variables_hz,1)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_diag_hz)'
    cc_diag_hz = _ZERO_
 
-   ! Allocate array with vertical movement rates (m/s, positive for upwards),
+   ! Allocate array for vertical movement rates (m/s, positive for upwards),
    ! and set these to the values provided by the model.
    allocate(ws(_LOCATION_RANGE_,1:ubound(model%info%state_variables,1)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (ws)'
@@ -349,19 +343,24 @@
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
    call fabm_link_data(model,varname_par,par(1:_LOCATION_))
 
-   ! Allocate array for photosynthetically active radiation (PAR).
+   ! Allocate array for shortwave radiation (swr).
    ! This will be calculated internally during each time step.
    allocate(swr(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (swr)'
    call fabm_link_data(model,varname_swr,swr(1:_LOCATION_))
 
    ! Allocate array for local pressure.
-   ! This will be calculated [approximated] from layer depths internally during each time step.
+   ! This will be calculated from layer depths and density internally during each time step.
    allocate(pres(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (pres)'
    call fabm_link_data(model,varname_pres,pres(1:_LOCATION_))
 
-   ! Allocate arrays for storing local and column-integrated values of diagnostic variables.
+   ! Initialize scalar to hold day of the year (floating poitn value),
+   ! and link it to FABM.
+   decimal_yearday = _ZERO_
+   call fabm_link_scalar(model,varname_yearday,decimal_yearday)
+
+   ! Allocate arrays for storing local and column-integrated values of conserved quantities.
    ! These are used during each save.
    allocate(total(1:ubound(model%info%conserved_quantities,1)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (total)'
@@ -375,30 +374,28 @@
    end subroutine init_var_gotm_fabm
 !EOC
 
-
-
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Set bio module environment
+! !IROUTINE: Set environment for FABM
 !
 ! !INTERFACE:
    subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
-                                bioshade_,I_0_,taub,wnd,precip_,evap_,z_,A_,g1_,g2_,SRelaxTau_,sProf_)
+                                bioshade_,I_0_,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
+                                yearday_,secondsofday_,SRelaxTau_,sProf_)
 !
 ! !DESCRIPTION:
-! TODO
-!
-! !USES:
-   IMPLICIT NONE
+! This routine is called once from GOTM to provide pointers to the arrays that describe
+! the physical environment relevant for biogeochemical processes (temprature, salinity, etc.)
 !
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
-   REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
+   integer,  intent(in),target :: yearday_,secondsofday_
+   REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -421,15 +418,15 @@
    call fabm_link_data_hz(model,varname_taub,   taub)
 
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
-   nuh => nuh_             ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
-   h   => h_               ! layer heights [1d array] needed for advection, diffusion
-   w   => w_               ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
+   nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
+   h        => h_          ! layer heights [1d array] needed for advection, diffusion
+   w        => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
-   z => z_                 ! depth [1d array], used to calculate local pressure
-   precip => precip_       ! precipitation [scalar] - used to calculate dilution due to increased water volume
-   evap   => evap_         ! evaporation [scalar] - used to calculate concentration due to decreased water volume
-   salt   => salt_         ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
-   rho    => rho_          ! density [1d array] - used to calculate bottom stress from bottom friction velocity.
+   z        => z_          ! depth [1d array], used to calculate local pressure
+   precip   => precip_     ! precipitation [scalar] - used to calculate dilution due to increased water volume
+   evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
+   salt     => salt_       ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
+   rho      => rho_        ! density [1d array] - used to calculate bottom stress from bottom friction velocity.
 
    if (present(SRelaxTau_) .and. present(sProf_)) then
       SRelaxTau => SRelaxTau_ ! salinity relaxation times  [1d array] - used to calculate virtual freshening due to salinity relaxation
@@ -453,6 +450,9 @@
    A => A_
    g1 => g1_
    g2 => g2_
+   
+   yearday => yearday_
+   secondsofday => secondsofday_
 
    ! Handle externally provided 0d observations.
    if (allocated(obs_0d_ids)) then
@@ -510,8 +510,6 @@
 ! !USES:
    use util,only: flux,Neumann
 !
-   IMPLICIT NONE
-!
    integer, intent(in) :: nlev
 !
 ! !REVISION HISTORY:
@@ -542,12 +540,15 @@
 !  Default: no relaxation
    RelaxTau = 1.d15
 
-   ! Calculate local pressure
+   ! Calculate local pressure from layer height and density
    pres(nlev) = rho(nlev)*h(nlev+1)*0.5d0
    do i=nlev-1,1,-1
       pres(i) = pres(i+1) + (rho(i)*h(i+1)+rho(i+1)*h(i+2))*0.5d0
    end do
    pres(1:nlev) = pres(1:nlev)*9.81d-4
+
+!  Calculate decimal day of the year (1 jan 00:00 = 0.)
+   decimal_yearday = yearday-1 + dble(secondsofday)/86400.d0
 
 !  Transfer current state to FABM.
    do i=1,ubound(model%info%state_variables,1)
@@ -649,7 +650,7 @@
       ! Repair state
       call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after time integration')
 
-      ! Time-integrate diagnostic variables defined on horizontonal slices, where needed.
+      ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
       do i=1,ubound(model%info%diagnostic_variables_hz,1)
          if (model%info%diagnostic_variables_hz(i)%time_treatment.eq.time_treatment_last) then
             ! Simply use last value
@@ -683,17 +684,15 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Checks the current values of all state variables
+! !IROUTINE: Check the current values of all state variables
 !
 ! !INTERFACE:
    subroutine do_repair_state(nlev,location)
 !
 ! !DESCRIPTION:
 ! Checks the current values of all state variables and repairs these
-! if allowed and possible.
-!
-! !USES:
-   IMPLICIT NONE
+! if allowed and possible. If the state is invalid and repair is not
+! allowed, the model is brought down.
 !
 ! !INPUT PARAMETERS:
    integer,         intent(in) :: nlev
@@ -732,17 +731,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Calculates temporal derivatives as a derivative vector
+! !IROUTINE: Calculate sink/source terms as temporal derivative vector
 !
 ! !INTERFACE:
    subroutine right_hand_side_rhs(first,numc,nlev,cc,rhs)
 !
 ! !DESCRIPTION:
-! Checks the current values of all state variables and repairs these
-! if allowed and possible.
-!
-! !USES:
-   IMPLICIT NONE
+! Calculates the sink/source terms of the FABM variables and returns
+! these as a vector with temporal derivatives.
 !
 ! !INPUT PARAMETERS:
    logical, intent(in)                  :: first
@@ -778,7 +774,7 @@
    if (.not. first) call do_repair_state(nlev,'gotm_fabm::right_hand_side_rhs')
 
    ! Initialization is needed because the different biogeochemical models increment or decrement
-   ! the temporal derivatives, rather than setting them directly. This is needed for the simultaenous
+   ! the temporal derivatives, rather than setting them directly. This is needed for the simultaneous
    ! running of different coupled BGC models.
    rhs = _ZERO_
 
@@ -803,17 +799,14 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Calculates temporal derivatives as production/destruction matrices
+! !IROUTINE: Calculate sink/source terms as production/destruction matrices
 !
 ! !INTERFACE:
    subroutine right_hand_side_ppdd(first,numc,nlev,cc,pp,dd)
 !
 ! !DESCRIPTION:
-! Checks the current values of all state variables and repairs these
-! if allowed and possible.
-!
-! !USES:
-   IMPLICIT NONE
+! Calculates the sink/source terms of the FABM variables and returns
+! these as production and destruction matrices \cite{Burchardetal2003b}.
 !
 ! !INPUT PARAMETERS:
    logical,  intent(in)                 :: first
@@ -882,10 +875,7 @@
    subroutine clean_gotm_fabm
 !
 ! !DESCRIPTION:
-!  Deallocate memory.
-!
-! !USES:
-   IMPLICIT NONE
+!  Report timing results and deallocate memory.
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -907,17 +897,19 @@
    LEVEL1 'clean_gotm_fabm'
 
    ! Deallocate internal arrays
-   if (allocated(cc))             deallocate(cc)
-   if (allocated(cc_diag))        deallocate(cc_diag)
-   if (allocated(cc_diag_hz))     deallocate(cc_diag_hz)
-   if (allocated(ws))             deallocate(ws)
-   if (allocated(sfl))            deallocate(sfl)
-   if (allocated(bfl))            deallocate(bfl)
-   if (allocated(total))          deallocate(total)
-   if (allocated(local))          deallocate(local)
-   if (allocated(par))            deallocate(par)
-   if (allocated(swr))            deallocate(swr)
-   if (allocated(pres))           deallocate(pres)
+   if (allocated(cc))                 deallocate(cc)
+   if (allocated(cc_diag))            deallocate(cc_diag)
+   if (allocated(cc_diag_hz))         deallocate(cc_diag_hz)
+   if (allocated(ws))                 deallocate(ws)
+   if (allocated(sfl))                deallocate(sfl)
+   if (allocated(bfl))                deallocate(bfl)
+   if (allocated(par))                deallocate(par)
+   if (allocated(swr))                deallocate(swr)
+   if (allocated(pres))               deallocate(pres)
+   if (allocated(total))              deallocate(total)
+   if (allocated(local))              deallocate(local)
+   if (allocated(cc_obs_indices))     deallocate(cc_obs_indices)
+   if (allocated(cc_ben_obs_indices)) deallocate(cc_ben_obs_indices)
    LEVEL1 'done.'
 
    end subroutine clean_gotm_fabm
@@ -932,8 +924,9 @@
    subroutine light(nlev,bioshade_feedback)
 !
 ! !DESCRIPTION:
-! Calculate photosynthetically active radiation over entire column
-! based on surface radiation, and background and biotic extinction.
+! Calculate photosynthetically active radiation (PAR) and short wave
+! radiation (SWR) over entire column, using surface short wave radiation,
+! and background and biotic extinction.
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
