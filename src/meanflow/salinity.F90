@@ -141,7 +141,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: adv_mode=1
+   integer                   :: adv_mode=0
    integer                   :: posconc=1
    integer                   :: i
    integer                   :: DiffBcup,DiffBcdw
