@@ -162,7 +162,7 @@
    integer, private          :: total_salt_id
    integer, private          :: Qs_id, Qt_id
    integer, private          :: wIs_id
-   integer, private          :: FQ_id
+   integer, private          :: FQ_id, Q_id
 !
 !-----------------------------------------------------------------------
 
@@ -341,6 +341,8 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'FQ',NF90_REAL,dim4d,FQ_id)
       call check_err(iret)
+      iret = nf90_def_var(ncid,'Q',NF90_REAL,dim3d,Q_id)
+      call check_err(iret)
    end if
    iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
    call check_err(iret)
@@ -497,6 +499,8 @@
                             long_name='vertical salinity advection velocity')
       iret = set_attributes(ncid,FQ_id,units='m**3/s', &
                             long_name='vertical salinity transport')
+      iret = set_attributes(ncid,Q_id,units='m**3/s', &
+                            long_name='Water transport from inflows')
    end if
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
    iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency squared')
@@ -591,7 +595,7 @@
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
-   use observations, only: Qs, Qt, FQ
+   use observations, only: Qs, Qt, FQ, inflows_input
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
@@ -673,6 +677,7 @@
          dum(1) = dum(1) + Ac(i) * S(i) * h(i)
       end do
       iret = store_data(ncid,total_salt_id,XYT_SHAPE,1,scalar=dum(1))
+      iret = store_data(ncid,Q_id,XYT_SHAPE,1,scalar=inflows_input(1))
    end if
 
    if (turb_method.eq.99) then
