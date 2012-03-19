@@ -145,6 +145,8 @@
 !BOC
 
    LEVEL1 'init_gotm_fabm'
+   
+   nullify(model)
 
    ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
