@@ -879,16 +879,21 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
             # If we take a single index for this dimension, it will not be included in the output.
             if (not transfercoordinatemask) and not isinstance(bounds[idim],slice): continue
             
-            if coordvar is None:
-                # No coordinate variable available: auto-generate integers from 0 to dimension length-1.
-                if not isinstance(bounds[idim],slice): continue
-                coorddims = (dimnames[idim],)
-                coords = numpy.arange(bounds[idim].start,bounds[idim].stop,bounds[idim].step,dtype=numpy.float)
-            else:
+            coords = None
+            if coordvar is not None:
                 # Get coordinate values
                 coorddims = coordvar.getDimensions()
                 coordslice = [bounds[dimnames.index(cd)] for cd in coorddims]
                 coords = coordvar.getSlice(coordslice, dataonly=True, cache=True)
+                if numpy.all(coords==coords.flatten()[0]):
+                    # Error: all coordinate values are masked.
+                    coords = None
+                
+            if coords is None:
+                # No coordinate variable available: auto-generate integers from 0 to dimension length-1.
+                if not isinstance(bounds[idim],slice): continue
+                coorddims = (dimnames[idim],)
+                coords = numpy.arange(bounds[idim].start,bounds[idim].stop,bounds[idim].step,dtype=numpy.float)
                 
             # Get the list of coordinate dimensions after the ones with single index have been sliced out.
             newcoorddims = [cd for cd in coorddims if isinstance(bounds[dimnames.index(cd)],slice)]
