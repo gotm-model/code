@@ -2,7 +2,7 @@
 import datetime, os.path, sys
 
 # Import third-party modules
-from PyQt4 import QtGui,QtCore
+from xmlstore.qt_compat import QtGui,QtCore
 import numpy
 import matplotlib.figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
@@ -117,7 +117,6 @@ class ColorMapEditor(xmlstore.gui_qt4.StringWithImageEditor):
         else:
             ColorMapEditor.figure.set_size_inches(width,height)
             axes = ColorMapEditor.figure.gca()
-        
         a = numpy.outer(numpy.ones(2),numpy.arange(0,1,1./width))
         axes.imshow(a,aspect='auto',cmap=cm,origin='lower')
         ColorMapEditor.canvas.draw()
@@ -257,7 +256,7 @@ class LinkedFileEditor(QtGui.QWidget,xmlstore.gui_qt4.AbstractPropertyEditor):
 
         self.setLayout(lo)
 
-        self.connect(self.plotbutton, QtCore.SIGNAL('clicked()'), self.onPlot)
+        self.plotbutton.clicked.connect(self.onPlot)
         
     def showEvent(self,ev):
         if self.autoopen: self.onPlot()
@@ -391,6 +390,8 @@ class FigureCanvas(FigureCanvasQTAgg):
     canvas resize event to external subscribers. This is used to automatically
     update the figure size when the user resize (the container of) the canvas.
     """
+    afterResize = QtCore.Signal()
+    
     def __init__(self, figure):
         self.animating = False
         FigureCanvasQTAgg.__init__(self, figure)
@@ -398,7 +399,7 @@ class FigureCanvas(FigureCanvasQTAgg):
 
     def resizeEvent( self, e ):
         FigureCanvasQTAgg.resizeEvent( self, e )
-        self.emit(QtCore.SIGNAL('afterResize()'))
+        self.afterResize.emit()
 
     def draw(self):
         self.replot = True
@@ -422,7 +423,7 @@ class FigurePanel(QtGui.QWidget):
         # Create MatPlotLib canvas (Qt-backend) attached to our MatPlotLib figure.
         self.canvas = FigureCanvas(self.mplfigure)
         self.canvas.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
-        self.connect(self.canvas, QtCore.SIGNAL('afterResize()'), self.afterCanvasResize)
+        self.canvas.afterResize.connect(self.afterCanvasResize)
 
         # Create our figure that encapsulates MatPlotLib figure.
         deffont = getFontSubstitute(unicode(self.fontInfo().family()))
@@ -440,11 +441,7 @@ class FigurePanel(QtGui.QWidget):
         self.factory = xmlstore.gui_qt4.PropertyEditorFactory(self.figure.properties,live=True,allowhide=True)
 
         layout = QtGui.QVBoxLayout()
-        try:
-            # Try-except because versions of Qt4 < 4.3 did not support this attribute
-            layout.setContentsMargins(0,0,0,0)
-        except AttributeError:
-            pass
+        layout.setContentsMargins(0,0,0,0)
         
         self.errortext = QtGui.QLabel(self)
         self.errortext.setVisible(False)
@@ -607,7 +604,7 @@ class FigurePanel(QtGui.QWidget):
         """Closes all detached figures.
         """
         for ch in self.detachedfigures:
-            self.disconnect(ch, QtCore.SIGNAL('beforeDestroy'), self.beforeDetachedDestroy)
+            ch.beforeDestroy.disconnect(self.beforeDetachedDestroy)
             ch.close()
 
     def onAdvancedClicked(self):
@@ -715,12 +712,12 @@ class FigurePanel(QtGui.QWidget):
 
                 # Add "OK" button
                 self.bnOk = QtGui.QPushButton('&OK',self)
-                self.connect(self.bnOk, QtCore.SIGNAL('clicked()'), self.accept)
+                self.bnOk.clicked.connect(self.accept)
                 layoutButtons.addWidget(self.bnOk)
 
                 # Add "Cancel" button
                 self.bnCancel = QtGui.QPushButton('&Cancel',self)
-                self.connect(self.bnCancel, QtCore.SIGNAL('clicked()'), self.reject)
+                self.bnCancel.clicked.connect(self.reject)
                 layoutButtons.addWidget(self.bnCancel)
                 
                 layout.addLayout(layoutButtons)
@@ -747,8 +744,7 @@ class FigurePanel(QtGui.QWidget):
         filters = ';;'.join(sorted(filters))
 
         # Show save file dialog box.
-        selectedFilter = QtCore.QString(selectedFilter)
-        fname = QtGui.QFileDialog.getSaveFileName(self,'Choose location to save plot to','',filters,selectedFilter)
+        fname,selectedFilter = QtGui.QFileDialog.getSaveFileNameAndFilter(self,'Choose location to save plot to','',filters,selectedFilter)
         if not fname: return
         
         selectedFilter = unicode(selectedFilter)
@@ -839,7 +835,7 @@ class FigurePanel(QtGui.QWidget):
         fd = FigureDialog(self,sourcefigure=self.figure)
         fd.show()
         self.detachedfigures.append(fd)
-        self.connect(fd, QtCore.SIGNAL('beforeDestroy'), self.beforeDetachedDestroy)
+        fd.beforeDestroy.connect(self.beforeDetachedDestroy)
         
     def beforeDetachedDestroy(self,dialog):
         """Called just before a detached figure is destroyed (e.g., when it
@@ -865,6 +861,7 @@ class FigurePanel(QtGui.QWidget):
 class FigureDialog(QtGui.QDialog):
     """Dialog that contains a single figure panel.
     """
+    beforeDestroy = QtCore.Signal(object)
     
     def __init__(self,parent=None,varstore=None,varname=None,sourcefigure=None,figureproperties=None,quitonclose=False,closebutton=None,destroyonclose=True):
         QtGui.QDialog.__init__(self,parent,QtCore.Qt.Window | QtCore.Qt.WindowMaximizeButtonHint | QtCore.Qt.WindowSystemMenuHint )
@@ -915,7 +912,7 @@ class FigureDialog(QtGui.QDialog):
         if self.destroyonclose: self.destroy()
         
     def destroy(self,destroyWindow = True, destroySubWindows = True):
-        self.emit(QtCore.SIGNAL('beforeDestroy'),self)
+        self.beforeDestroy.emit(self)
         assert self.panel is not None, 'FigurePanel is None. This means FigureDialog.destroy() is now called for the second time.'
         self.panel.destroy()
         self.panel = None
@@ -948,7 +945,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         #self.list = QtGui.QComboBox(self)
         #namedict = self.linkedfile.getVariableLongNames()
         #for name in self.linkedfile.keys():
-        #    self.list.addItem(namedict[name],QtCore.QVariant(name))
+        #    self.list.addItem(namedict[name],name)
         #self.list.setEnabled(self.list.count()>0)
         #lolist.addWidget(self.list,1)
         #loRight.addLayout(lolist)
@@ -966,7 +963,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
             l.addWidget(panel)
             widget.setLayout(l)
             
-            self.connect(de.bnApply, QtCore.SIGNAL('clicked()'), self.onApplyFunction)
+            de.bnApply.clicked.connect(self.onApplyFunction)
             
             self.panels.append(panel)
             self.dataeditors.append(de)
@@ -986,7 +983,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
                 panel,widget = createPanel()
                 self.tabs.addTab(widget,namedict[name])
             loRight.addWidget(self.tabs)
-            self.connect(self.tabs, QtCore.SIGNAL('currentChanged(int)'), self.onTabChanged)
+            self.tabs.currentChanged.connect(self.onTabChanged)
 
         for panel in self.panels:
             firstaction = panel.toolbar.actions()[0]
@@ -1017,17 +1014,17 @@ class LinkedFileEditorDialog(QtGui.QDialog):
 
         self.setLayout(loRight)
 
-        self.connect(self.buttonImport, QtCore.SIGNAL('clicked()'), self.onImport)
-        self.connect(self.buttonExport, QtCore.SIGNAL('clicked()'), self.onExport)
-        self.connect(self.buttonEdit,   QtCore.SIGNAL('clicked()'), self.onEditData)
-        self.connect(self.buttonOk,     QtCore.SIGNAL('clicked()'), self.accept)
-        self.connect(self.buttonCancel, QtCore.SIGNAL('clicked()'), self.reject)
+        self.buttonImport.clicked.connect(self.onImport)
+        self.buttonExport.clicked.connect(self.onExport)
+        self.buttonEdit.clicked.connect(self.onEditData)
+        self.buttonOk.clicked.connect(self.accept)
+        self.buttonCancel.clicked.connect(self.reject)
 
         self.resize(750, 450)
 
         self.first = True
         
-        self.progressdialog = QtGui.QProgressDialog('',QtCore.QString(),0,0,self,QtCore.Qt.Dialog|QtCore.Qt.CustomizeWindowHint|QtCore.Qt.WindowTitleHint)
+        self.progressdialog = QtGui.QProgressDialog('',None,0,0,self,QtCore.Qt.Dialog|QtCore.Qt.CustomizeWindowHint|QtCore.Qt.WindowTitleHint)
         self.progressdialog.setModal(True)
         self.progressdialog.setMinimumDuration(0)
         self.progressdialog.setAutoReset(False)
@@ -1040,7 +1037,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
             target = icon
             icon = None
         act = QtGui.QAction(string,panel.toolbar)
-        self.connect(act,QtCore.SIGNAL('triggered()'),target)
+        act.triggered.connect(target)
         panel.toolbar.insertAction(before,act)
         return act
         
@@ -1064,7 +1061,7 @@ class LinkedFileEditorDialog(QtGui.QDialog):
     def onEditFunction(self):
         if self.dlgEditFunction is None:
             self.dlgEditFunction = FunctionVariableEditor(self,QtCore.Qt.Tool)
-            self.connect(self.dlgEditFunction.bnApply, QtCore.SIGNAL('clicked()'), self.onApplyFunction)
+            self.dlgEditFunction.bnApply.clicked.connect(self.onApplyFunction)
         variable = self.getCurrentVariable()
         if not isinstance(variable,common.FunctionVariable): variable = None
         self.dlgEditFunction.setVariable(variable)
@@ -1172,7 +1169,8 @@ class LinkedFileEditorDialog(QtGui.QDialog):
     def onImport(self):
         dir = ''
         if self.datasourcedir is not None: dir = self.datasourcedir.get('')
-        path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',dir,''))
+        path,filter = QtGui.QFileDialog.getOpenFileNameAndFilter(self,'',dir,'')
+        path = unicode(path)
 
         # If the browse dialog was cancelled, just return.
         if path=='': return
@@ -1193,7 +1191,8 @@ class LinkedFileEditorDialog(QtGui.QDialog):
         memdf.release()
 
     def onExport(self):
-        path = unicode(QtGui.QFileDialog.getSaveFileName(self,'','',''))
+        path,filter = QtGui.QFileDialog.getSaveFileNameAndFilter(self,'','','')
+        path = unicode(path)
         
         # If the browse dialog was cancelled, just return.
         if path=='': return
@@ -1349,32 +1348,29 @@ class LinkedFileDataEditor(QtGui.QDialog):
 
                 if role==QtCore.Qt.DisplayRole:
                     if isinstance(val,datetime.datetime):
-                        return QtCore.QVariant(xmlstore.util.formatDateTime(val))
+                        val = xmlstore.util.formatDateTime(val)
                     else:
-                        return QtCore.QVariant('%.6g' % float(val))
-                        
-                if isinstance(val,datetime.datetime):
-                    val = xmlstore.gui_qt4.datetime2qtdatetime(val)
+                        val = '%.6g' % float(val)
                 else:
-                    val = float(val)
+                    if isinstance(val,datetime.datetime):
+                        val = xmlstore.gui_qt4.datetime2qtdatetime(val)
+                    else:
+                        val = float(val)
                     
-                return QtCore.QVariant(val)
+                return val
                 
-            return QtCore.QVariant()
+            return None
             
         def setData(self,index,value,role=QtCore.Qt.EditRole):
             # Only do something if we are editing the data.
             if role!=QtCore.Qt.EditRole: return True
             
             # Convert the new value from variant to native data type.
-            if value.canConvert(QtCore.QVariant.DateTime):
-                value = value.toDateTime()
+            if isinstance(value,QtCore.QDateTime):
                 value.setTimeSpec(QtCore.Qt.UTC)
                 value = common.date2num(xmlstore.gui_qt4.qtdatetime2datetime(value))
-            elif value.canConvert(QtCore.QVariant.Double):
-                (value,ok) = value.toDouble()
-            else:
-                assert False, 'Do not know variant type %s.' % val.type()
+            elif not isinstance(value,float):
+                assert False, 'Do not know variant type %s.' % type(value)
             
             # Find the row and column index of the edited variable, and
             # adjust the column index to skip row labels (if any).    
@@ -1428,7 +1424,7 @@ class LinkedFileDataEditor(QtGui.QDialog):
             self.datastore.dataChanged()
             
             # Notify any GUI elements attache dto the model that data have changed.
-            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),index,index)
+            self.dataChanged.emit(index,index)
             
             return True
             
@@ -1521,14 +1517,14 @@ class LinkedFileDataEditor(QtGui.QDialog):
             """
             startindex = self.index(start,0)
             stopindex = self.index(stop,self.columnCount()-1)
-            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),startindex,stopindex)
+            self.dataChanged.emit(startindex,stopindex)
             
         def flags(self,index):
             return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
             
         def headerData(self,section, orientation, role=QtCore.Qt.DisplayRole):
             # Return no header if the orientation is not horizontal, or the role is not display or tooltip.
-            if orientation!=QtCore.Qt.Horizontal or role not in (QtCore.Qt.DisplayRole,QtCore.Qt.ToolTipRole):  return QtCore.QVariant()
+            if orientation!=QtCore.Qt.Horizontal or role not in (QtCore.Qt.DisplayRole,QtCore.Qt.ToolTipRole):  return None
             
             if isinstance(self.datastore,(data.LinkedMatrix,data.LinkedProfilesInTime)):
                 if len(self.datastore.dimensions)>0: section -= 1
@@ -1548,14 +1544,14 @@ class LinkedFileDataEditor(QtGui.QDialog):
                     unit = var.getUnit()
                         
                 # If the long name is small, it will be shown directly, making the tooltip superfluous.
-                if role==QtCore.Qt.ToolTipRole and len(longname)<10: return QtCore.QVariant()
+                if role==QtCore.Qt.ToolTipRole and len(longname)<10: return None
                 
                 if role==QtCore.Qt.ToolTipRole or len(longname)<10: val = longname
                 if unit: val += ' (%s)' % unit
-                return QtCore.QVariant(val)
+                return val
                 
             # No tooltip
-            return QtCore.QVariant()
+            return None
     
     class LinkedFileDelegate(QtGui.QItemDelegate):
 
@@ -1565,12 +1561,11 @@ class LinkedFileDataEditor(QtGui.QDialog):
         # createEditor (inherited from QtGui.QItemDelegate)
         #   Creates the editor widget for the model item at the given index
         def createEditor(self, parent, option, index):
-            val = index.data(QtCore.Qt.EditRole)
-            type = val.type()
-            if type==QtCore.QVariant.Double:
+            value = index.data(QtCore.Qt.EditRole)
+            if isinstance(value,float):
                 editor = xmlstore.gui_qt4.ScientificDoubleEditor(parent)
                 self.currenteditor = editor
-            elif type==QtCore.QVariant.DateTime:
+            else:
                 editor = QtGui.QDateTimeEdit(parent)
 
             # Install event filter that captures key events for view from the editor (e.g. return press).
@@ -1582,13 +1577,10 @@ class LinkedFileDataEditor(QtGui.QDialog):
         #   Sets value in the editor widget, for the model item at the given index
         def setEditorData(self, editor,index):
             value = index.data(QtCore.Qt.EditRole)
-            if not value.isValid(): return
-            type = value.type()
-            if type==QtCore.QVariant.Double:
-                value,ret = value.toDouble()
+            if value is None: return
+            if isinstance(value,float):
                 editor.setValue(value)
-            elif type==QtCore.QVariant.DateTime:
-                value = value.toDateTime()
+            else:
                 editor.setDateTime(value)
 
         # setModelData (inherited from QtGui.QItemDelegate)
@@ -1597,22 +1589,24 @@ class LinkedFileDataEditor(QtGui.QDialog):
             if isinstance(editor,xmlstore.gui_qt4.ScientificDoubleEditor):
                 editor.interpretText()
                 if not editor.hasAcceptableInput(): return
-                model.setData(index, QtCore.QVariant(editor.value()))
+                model.setData(index, editor.value())
             elif isinstance(editor,QtGui.QDateTimeEdit):
-                model.setData(index, QtCore.QVariant(editor.dateTime()))
+                model.setData(index, editor.dateTime())
 
     class CustomListView(QtGui.QListView):
+        deletePressed = QtCore.Signal()
         def keyPressEvent(self,event):
             if event.key()==QtCore.Qt.Key_Delete:
-                self.emit(QtCore.SIGNAL('deletePressed()'))
+                self.deletePressed.emit()
                 event.accept()
                 return
             QtGui.QListView.keyPressEvent(self,event)
 
     class CustomTableView(QtGui.QTableView):
+        deletePressed = QtCore.Signal()
         def keyPressEvent(self,event):
             if event.key()==QtCore.Qt.Key_Delete:
-                self.emit(QtCore.SIGNAL('deletePressed()'))
+                self.deletePressed.emit()
                 event.accept()
                 return
             QtGui.QTableView.keyPressEvent(self,event)
@@ -1636,9 +1630,9 @@ class LinkedFileDataEditor(QtGui.QDialog):
             self.listTimes.setModel(self.listmodel)
             self.listTimes.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
             lo.addWidget(self.listTimes,1,0)
-            self.connect(self.listTimes, QtCore.SIGNAL('customContextMenuRequested(const QPoint &)'), self.onTableContextMenu)
-            self.connect(self.listTimes.selectionModel(), QtCore.SIGNAL('currentChanged(const QModelIndex &,const QModelIndex &)'), self.onTimeChanged)
-            self.connect(self.listTimes, QtCore.SIGNAL('deletePressed()'), self.onDelete)
+            self.listTimes.customContextMenuRequested.connect(self.onTableContextMenu)
+            self.listTimes.selectionModel().currentChanged.connect(self.onTimeChanged)
+            self.listTimes.deletePressed.connect(self.onDelete)
         self.tableData = self.CustomTableView(self)
         self.tablemodel = LinkedFileDataEditor.LinkedDataModel(self.linkedfile)
         self.tableData.verticalHeader().hide()
@@ -1648,8 +1642,8 @@ class LinkedFileDataEditor(QtGui.QDialog):
         self.tabledelegate = self.LinkedFileDelegate()
         self.tableData.setItemDelegate(self.tabledelegate)
         self.tableData.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.connect(self.tableData, QtCore.SIGNAL('customContextMenuRequested(const QPoint &)'), self.onTableContextMenu)
-        self.connect(self.tableData, QtCore.SIGNAL('deletePressed()'), self.onDelete)
+        self.tableData.customContextMenuRequested.connect(self.onTableContextMenu)
+        self.tableData.deletePressed.connect(self.onDelete)
         
         lo.addWidget(self.tableData,max(0,lo.rowCount()-1),max(0,lo.columnCount()-1))
 
@@ -1668,8 +1662,8 @@ class LinkedFileDataEditor(QtGui.QDialog):
 
         self.setLayout(lo)
 
-        self.connect(self.buttonOk,     QtCore.SIGNAL('clicked()'), self.accept)
-        self.connect(self.buttonCancel, QtCore.SIGNAL('clicked()'), self.reject)
+        self.buttonOk.clicked.connect(self.accept)
+        self.buttonCancel.clicked.connect(self.reject)
 
         self.buttonOk.setDefault(True)
         self.buttonOk.setFocus()
@@ -1762,6 +1756,6 @@ class LinkedFileDataEditor(QtGui.QDialog):
         """
         self.tablemodel.pos = current.row()
         self.tablemodel.reset()
-        self.labelProfile.setText('Profile for %s' % self.listmodel.data(current).toString())
+        self.labelProfile.setText('Profile for %s' % self.listmodel.data(current))
         self.tableData.horizontalScrollBar().setValue(0)
         self.tableData.verticalScrollBar().setValue(0)

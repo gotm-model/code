@@ -2,7 +2,7 @@
 import datetime, sys, cPickle, StringIO
 
 # Import third-party modules
-from PyQt4 import QtGui,QtCore
+from qt_compat import QtGui,QtCore
 
 # Import our own custom modules
 import xmlstore,util,datatypes
@@ -120,19 +120,25 @@ class AbstractPropertyEditor(object):
     def value(self):
         pass
     def onPropertyEditingFinished(self,*args,**kwargs):
-        self.emit(QtCore.SIGNAL('propertyEditingFinished(QObject&,bool)'),self,kwargs.get('forceclose',False))
+        # NB this *requires* an old-style signal in PyQt4, because AbstractPropertyEditor does not inherit from QObject.
+        # The class *cannot* inherit from QObject because classes that derive from AbstractPropertyEditor
+        # will also derive from another QtGui class - and inheriting from multiple Qt4 classes simultaneously is
+        # not permitted.
+        self.emit(QtCore.SIGNAL('propertyEditingFinished(bool)'),kwargs.get('forceclose',False))
            
     # Optional (static) methods that classes should implement if the value can
     # be represented by a QtCore.QVariant object.
     @staticmethod
     def convertFromQVariant(value):
         #return value.toPyObject()
-        return loads(value.toString())
+        #return loads(value.toString())
+        return value
 
     @staticmethod
     def convertToQVariant(value):
         #return QtCore.QVariant(value)
-        return QtCore.QVariant(dumps(value))
+        #return QtCore.QVariant(dumps(value))
+        return value
 
     @staticmethod
     def displayValue(delegate,painter,option,index):
@@ -167,7 +173,7 @@ class StringEditor(AbstractPropertyEditor,QtGui.QLineEdit):
     def __init__(self,parent,node,**kwargs):
         QtGui.QLineEdit.__init__(self,parent)
         AbstractPropertyEditor.__init__(self,parent,node)
-        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.onPropertyEditingFinished)
+        self.editingFinished.connect(self.onPropertyEditingFinished)
         
     def value(self):
         return unicode(QtGui.QLineEdit.text(self))
@@ -178,11 +184,11 @@ class StringEditor(AbstractPropertyEditor,QtGui.QLineEdit):
         
     @staticmethod
     def convertFromQVariant(value):
-        return unicode(value.toString())
+        return unicode(value)
 
     @staticmethod
     def convertToQVariant(value):
-        return QtCore.QVariant(unicode(value))
+        return unicode(value)
 
 class IntEditor(AbstractPropertyEditor,QtGui.QSpinBox):
     """Editor for integer.
@@ -204,7 +210,7 @@ class IntEditor(AbstractPropertyEditor,QtGui.QSpinBox):
             unit = node.getUnit()
             if unit is not None: self.setSuffix(' '+unit)
 
-        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.onPropertyEditingFinished)
+        self.editingFinished.connect(self.onPropertyEditingFinished)
         
     def value(self):
         self.interpretText()
@@ -215,12 +221,11 @@ class IntEditor(AbstractPropertyEditor,QtGui.QSpinBox):
 
     @staticmethod
     def convertFromQVariant(value):
-        val,ret = value.toInt()
         return int(val)
 
     @staticmethod
     def convertToQVariant(value):
-        return QtCore.QVariant(int(value))
+        return int(value)
 
 class AbstractSelectEditor(AbstractPropertyEditor):
     def __init__(self,parent,node):
@@ -272,18 +277,18 @@ class SelectEditor(AbstractSelectEditor,QtGui.QComboBox):
             self.setEditable(True)
             self.setLineEdit(lineedit)
         self.populate(node)
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
+        self.currentIndexChanged.connect(self.onPropertyEditingFinished)
         
     def populate(self,node):
         for ichild,label,description in self.getOptions():
-            self.addItem(label,QtCore.QVariant(ichild))
+            self.addItem(label,ichild)
         
     def value(self):
         icurrentindex = self.currentIndex()
         if self.isEditable() and self.currentText()!=self.itemText(icurrentindex):
             value = self.lineedit.value()
         else:
-            ichild,ret = self.itemData(icurrentindex).toInt()
+            ichild = self.itemData(icurrentindex)
             value = self.valueFromIndex(ichild)
             assert value is not None, 'Cannot obtain value for index %i.' % ichild
         return value
@@ -331,7 +336,7 @@ class SelectEditorRadio(AbstractSelectEditor,QtGui.QButtonGroup):
             if description!='':
                 opt.setWhatsThis(description)
             self.addButton(opt,ichild)
-        self.connect(self, QtCore.SIGNAL('buttonClicked(int)'), self.onPropertyEditingFinished)
+        self.buttonClicked.connect(self.onPropertyEditingFinished)
 
     def value(self):
         return self.valueFromIndex(self.checkedId())
@@ -350,36 +355,36 @@ class BoolEditor(AbstractPropertyEditor,QtGui.QComboBox):
     def __init__(self,parent,node,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
         AbstractPropertyEditor.__init__(self,parent,node)
-        self.addItem('Yes',QtCore.QVariant(True ))
-        self.addItem('No', QtCore.QVariant(False))
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
+        self.addItem('Yes',True)
+        self.addItem('No', False)
+        self.currentIndexChanged.connect(self.onPropertyEditingFinished)
         
     def value(self):
-        return self.itemData(self.currentIndex()).toBool()
+        return bool(self.itemData(self.currentIndex()))
 
     def setValue(self,value):
         if value is None: value = True
         for ioption in range(self.count()):
-            optionvalue = self.itemData(ioption).toBool()
+            optionvalue = bool(self.itemData(ioption))
             if optionvalue==value:
                 self.setCurrentIndex(ioption)
                 break
 
     @staticmethod
     def convertFromQVariant(value):
-        return bool(value.toBool())
+        return bool(value)
 
     @staticmethod
     def convertToQVariant(value):
-        return QtCore.QVariant(bool(value))
+        return bool(value)
 
 class DateTimeEditor(AbstractPropertyEditor,QtGui.QDateTimeEdit):
     """Editor for a datetime object.
     """
     def __init__(self,parent,node,**kwargs):
-        QtGui.QComboBox.__init__(self,parent)
+        QtGui.QDateTimeEdit.__init__(self,parent)
         AbstractPropertyEditor.__init__(self,parent,node)
-        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.onPropertyEditingFinished)
+        self.editingFinished.connect(self.onPropertyEditingFinished)
         
     def value(self):
         value = self.dateTime()
@@ -395,12 +400,12 @@ class DateTimeEditor(AbstractPropertyEditor,QtGui.QDateTimeEdit):
 
     @staticmethod
     def convertFromQVariant(value):
-        return qtdatetime2datetime(value.toDateTime())
+        return qtdatetime2datetime(value)
 
     @staticmethod
     def convertToQVariant(value):
         assert isinstance(value,datetime.datetime), 'Supplied object is not of class datetime.datetime.'
-        return QtCore.QVariant(datetime2qtdatetime(value))
+        return datetime2qtdatetime(value)
 
 class DurationEditor(QtGui.QWidget,AbstractPropertyEditor):
     """Editor for a duration (time span).
@@ -419,10 +424,10 @@ class DurationEditor(QtGui.QWidget,AbstractPropertyEditor):
         lo.addWidget(self.spinValue)
         lo.addWidget(self.comboUnits)
         
-        lo.setMargin(0)
+        lo.setContentsMargins(0,0,0,0)
 
-        self.connect(self.spinValue,  QtCore.SIGNAL('editingFinished()'),       self.onPropertyEditingFinished)
-        self.connect(self.comboUnits, QtCore.SIGNAL('currentIndexChanged(int)'),self.onUnitChange)
+        self.spinValue.editingFinished.connect(self.onPropertyEditingFinished)
+        self.comboUnits.currentIndexChanged.connect(self.onUnitChange)
 
         self.setLayout(lo)
 
@@ -466,15 +471,12 @@ class DurationEditor(QtGui.QWidget,AbstractPropertyEditor):
 
     @staticmethod
     def convertFromQVariant(value):
-        value = value.toList()
-        days,  converted = value[0].toInt()
-        secs,  converted = value[1].toInt()
-        musecs,converted = value[2].toDouble()
+        days,secs,musecs = value
         return datatypes.TimeDelta(days=days,seconds=secs,microseconds=musecs)
 
     @staticmethod
     def convertToQVariant(value):
-        result = QtCore.QVariant([QtCore.QVariant(int(value.days)),QtCore.QVariant(int(value.seconds)),QtCore.QVariant(float(value.microseconds))])
+        return [int(value.days),int(value.seconds),float(value.microseconds)]
 
 class ScientificDoubleValidator(QtGui.QValidator):
     """Qt validator for floating point values
@@ -490,39 +492,41 @@ class ScientificDoubleValidator(QtGui.QValidator):
         self.suffix = ''
 
     def validate(self,input,pos):
-        input = unicode(input)
-        if self.suffix != '':
-            # Check for suffix (if ok, cut it off for further value checking)
-            if not input.endswith(self.suffix): return (QtGui.QValidator.Invalid,pos)
-            input = input[0:len(input)-len(self.suffix)]
+        assert isinstance(input,basestring),'input argument is not a string (old PyQt4 API?)'
+
+        # Check for suffix (if ok, cut it off for further value checking)
+        if not input.endswith(self.suffix): return (QtGui.QValidator.Invalid,input,pos)
+        vallength = len(input)-len(self.suffix)
 
         # Check for invalid characters
         rx = QtCore.QRegExp('[^\d\-+eE,.]')
-        if rx.indexIn(input)!=-1: return (QtGui.QValidator.Invalid,pos)
+        if rx.indexIn(input[:vallength])!=-1: return (QtGui.QValidator.Invalid,input,pos)
         
         # Check if we can convert it into a floating point value
         try:
-            v = float(input)
+            v = float(input[:vallength])
         except ValueError:
-            return (QtGui.QValidator.Intermediate,pos)
+            return (QtGui.QValidator.Intermediate,input,pos)
 
         # Check for minimum and maximum.
-        if self.minimum is not None and v<self.minimum: return (QtGui.QValidator.Intermediate,pos)
-        if self.maximum is not None and v>self.maximum: return (QtGui.QValidator.Intermediate,pos)
+        if self.minimum is not None and v<self.minimum: return (QtGui.QValidator.Intermediate,input,pos)
+        if self.maximum is not None and v>self.maximum: return (QtGui.QValidator.Intermediate,input,pos)
         
-        return (QtGui.QValidator.Acceptable,pos)
+        return (QtGui.QValidator.Acceptable,input,pos)
 
     def fixup(self,input):
-        if not input.endsWith(self.suffix): return
-        vallength = input.length()-len(self.suffix)
+        assert isinstance(input,basestring),'input argument is not a string (old PyQt4 API?)'
+        if not input.endswith(self.suffix): return input
 
         try:
-            v = float(input.left(vallength))
+            v = float(input[:len(input)-len(self.suffix)])
         except ValueError:
-            return
+            return input
 
-        if self.minimum is not None and v<self.minimum: input.replace(0,vallength,str(self.minimum))
-        if self.maximum is not None and v>self.maximum: input.replace(0,vallength,str(self.maximum))
+        if self.minimum is not None and v<self.minimum: input = u'%s%s' % (self.minimum,self.suffix)
+        if self.maximum is not None and v>self.maximum: input = u'%s%s' % (self.maximum,self.suffix)
+        print u'"%s"' % input
+        return input
 
     def setSuffix(self,suffix):
         self.suffix = suffix
@@ -536,7 +540,7 @@ class ScientificDoubleEditor(QtGui.QLineEdit,AbstractPropertyEditor):
         self.curvalidator = ScientificDoubleValidator(self)
         self.setValidator(self.curvalidator)
         self.suffix = ''
-        self.connect(self, QtCore.SIGNAL('editingFinished()'), self.onPropertyEditingFinished)
+        self.editingFinished.connect(self.onPropertyEditingFinished)
 
         if node is not None:
             templatenode = node.templatenode        
@@ -556,7 +560,7 @@ class ScientificDoubleEditor(QtGui.QLineEdit,AbstractPropertyEditor):
 
     def value(self):
         text = self.text()
-        text = text[0:len(text)-len(self.suffix)]
+        text = text[:len(text)-len(self.suffix)]
         if text=='': return 0
         return float(text)
 
@@ -575,7 +579,7 @@ class ScientificDoubleEditor(QtGui.QLineEdit,AbstractPropertyEditor):
         self.selectAll()
 
     def selectAll(self):
-        QtGui.QLineEdit.setSelection(self,0,self.text().length()-len(self.suffix))
+        QtGui.QLineEdit.setSelection(self,0,len(self.text())-len(self.suffix))
 
     def setMinimum(self,minimum):
         self.curvalidator.minimum = minimum
@@ -586,17 +590,17 @@ class ScientificDoubleEditor(QtGui.QLineEdit,AbstractPropertyEditor):
     def interpretText(self):
         if not self.hasAcceptableInput():
             text = self.text()
-            self.curvalidator.fixup(text)
-            self.setText(text)
+            textnew = self.curvalidator.fixup(text)
+            if textnew is None: textnew = text
+            self.setText(textnew)
 
     @staticmethod
     def convertFromQVariant(value):
-        val,ret = value.toDouble()
         return float(val)
 
     @staticmethod
     def convertToQVariant(value):
-        return QtCore.QVariant(float(value))
+        return float(value)
             
 class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
     """Editor for a color. Allows selection from a list of predefined colors,
@@ -604,7 +608,7 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
     """
     def __init__(self,parent,node=None,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
-        self.connect(self, QtCore.SIGNAL('activated(int)'), self.onActivated)
+        self.activated.connect(self.onActivated)
         self.allownone = (node is not None and node.templatenode.getAttribute('allownone')) or (node is None and kwargs.get('allownone',False))
         if self.allownone:
             # add none option
@@ -614,7 +618,7 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
             if c.alpha()<255: continue
             self.addColor(cn,c)
         self.addColor('custom...',QtGui.QColor(255,255,255))
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
+        self.currentIndexChanged.connect(self.onPropertyEditingFinished)
         
     def setValue(self,value):
         if not value.isValid():
@@ -650,13 +654,13 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
         else:
             iconsize = self.iconSize()
             qPixMap = ColorEditor.createPixmap(color,iconsize.width()-2,iconsize.height()-2)
-            self.addItem(QtGui.QIcon(qPixMap),text,QtCore.QVariant(color))
+            self.addItem(QtGui.QIcon(qPixMap),text,color)
         
     def setItemColor(self,index,color):
         iconsize = self.iconSize()
         qPixMap = ColorEditor.createPixmap(color,iconsize.width()-2,iconsize.height()-2)
         self.setItemIcon(index,QtGui.QIcon(qPixMap))
-        self.setItemData(index,QtCore.QVariant(color))
+        self.setItemData(index,color)
 
     @staticmethod
     def createPixmap(color,width,height):
@@ -673,14 +677,14 @@ class ColorEditor(QtGui.QComboBox,AbstractPropertyEditor):
 
     @staticmethod
     def convertFromQVariant(value):
-        if not value.isValid(): return datatypes.Color()
+        if value is None: return datatypes.Color()
         col = QtGui.QColor(value)
         return datatypes.Color(col.red(),col.green(),col.blue())
 
     @staticmethod
     def convertToQVariant(value):
-        if value.red is None or value.green is None or value.blue is None: return QtCore.QVariant()
-        return QtCore.QVariant(QtGui.QColor(value.red,value.green,value.blue))
+        if value.red is None or value.green is None or value.blue is None: return None
+        return QtGui.QColor(value.red,value.green,value.blue)
 
     @staticmethod
     def displayValue(delegate,painter,option,index):
@@ -769,13 +773,13 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
             name = self.owner.items[irow]
             if role==QtCore.Qt.DecorationRole:
                 pixmap = self.owner.getPixMap(name,self.owner.width,self.owner.height,self.owner.logicalDpiX())
-                if pixmap: return QtCore.QVariant(pixmap)
+                if pixmap: return pixmap
             elif role==QtCore.Qt.DisplayRole:
                 label = self.owner.getLabel(name)
-                if label: return QtCore.QVariant(label)
+                if label: return label
             elif role==QtCore.Qt.EditRole:
-                return QtCore.QVariant(name)
-            return QtCore.QVariant()
+                return name
+            return None
 
     def __init__(self,parent,node,items,**kwargs):
         QtGui.QComboBox.__init__(self,parent)
@@ -789,9 +793,9 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
         self.model = StringWithImageEditor.Model(self)
         self.setModel(self.model)
         
-        self.connect(self, QtCore.SIGNAL('currentIndexChanged(int)'), self.onPropertyEditingFinished)
+        self.currentIndexChanged.connect(self.onPropertyEditingFinished)
         self.setIconSize(QtCore.QSize(self.width,self.height))
-        self.view().setUniformItemSizes(True)
+        #self.view().setUniformItemSizes(True)  # Commented out because returned QAbstractItemView does not have setUniformItemSizes
                 
     def value(self):
         return self.items[self.currentIndex()]
@@ -819,7 +823,10 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
     def displayValue(cls,delegate,painter,option,index):
         value = cls.convertFromQVariant(index.data(QtCore.Qt.EditRole))
         rect = option.rect
-        qPixMap = cls.getPixMap(value,cls.width,cls.height,painter.device().logicalDpiX())
+        dev = painter.device()
+        print dev
+        dpi = option.widget.logicalDpiX()
+        qPixMap = cls.getPixMap(value,cls.width,cls.height,dpi)
         if qPixMap:
             option.decorationAlignment = QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter
             delegate.drawBackground(painter,option,index)
@@ -853,7 +860,7 @@ class PropertyDelegate(QtGui.QItemDelegate):
     """
 
     def __init__(self,parent=None,**kwargs):
-        QtGui.QItemDelegate.__init__(self,parent)
+        super(PropertyDelegate,self).__init__(parent)
         self.properties = dict(kwargs.items())
 
     def createEditor(self, parent, option, index):
@@ -866,19 +873,20 @@ class PropertyDelegate(QtGui.QItemDelegate):
 
         lo = editor.layout()
         if lo is not None:
-            lo.setMargin(0)
+            lo.setContentsMargins(0,0,0,0)
             lo.setSpacing(0)
 
         # Install event filter that captures key events for view from the editor (e.g. return press).
         editor.installEventFilter(self)
-        self.connect(editor,QtCore.SIGNAL('propertyEditingFinished(QObject&,bool)'),self.editingFinished)
+        editor.connect(editor,QtCore.SIGNAL('propertyEditingFinished(bool)'),self.editingFinished)
         
         return editor
         
-    def editingFinished(self,editor,forceclose):
+    def editingFinished(self,forceclose):
         if not forceclose: return
-        self.emit(QtCore.SIGNAL('commitData(QWidget*)'),editor)
-        self.emit(QtCore.SIGNAL('closeEditor(QWidget*,QAbstractItemDelegate::EndEditHint)'),editor,QtGui.QAbstractItemDelegate.NoHint)
+        editor = self.sender()
+        self.commitData.emit(editor)
+        self.closeEditor.emit(editor,QtGui.QAbstractItemDelegate.NoHint)
         
     def paint(self,painter,option,index):
         """Paints the current value for display (not editing!)
@@ -944,9 +952,7 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
 
         def setModelData(self, editor, model, index):
             value = editor.value()
-            if value is None:
-                value = QtCore.QVariant()
-            else:
+            if value is not None:
                 value = self.properties['editorclass'].convertToQVariant(value)
             model.setData(index,value)
             if isinstance(value,util.referencedobject): value.release()
@@ -1062,10 +1068,10 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
                     string = chr(ord('A')+rem)+string
                     if quot==0: break
                     quot -= 1
-                return QtCore.QVariant(string)
+                return string
             else:
                 # Use row number (1-based) as row name.
-                return QtCore.QVariant(section+1)
+                return str(section+1)
 
         def data(self,index,role=QtCore.Qt.DisplayRole):
             if role==QtCore.Qt.DisplayRole or role==QtCore.Qt.EditRole:
@@ -1077,17 +1083,17 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
                         icol = index.column()
                         if val is not None and icol<len(val):
                             val = val[icol]
-                if val is None: return QtCore.QVariant()
+                if val is None: return None
                 if role==QtCore.Qt.DisplayRole:
                     cls = self.node.getValueType(returnclass=True).elementclass
                     if not isinstance(val,cls): val = cls(val)
-                    return QtCore.QVariant(val.toPrettyString())
+                    return val.toPrettyString()
                 return self.editorclass.convertToQVariant(val)
                 
-            return QtCore.QVariant()
+            return None
             
         def clearData(self,index):
-            self.setData(index,QtCore.QVariant())
+            self.setData(index,None)
             
         def setData(self,index,value,role=QtCore.Qt.EditRole):
             # Only process edit role
@@ -1123,7 +1129,7 @@ class ArrayEditor(QtGui.QTableView,AbstractPropertyEditor):
                 self.arraydata[irow] = value
                 
             # Notify that data have changed.
-            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &,const QModelIndex &)'),index,index)
+            self.dataChanged.emit(index,index)
             
             # Return True (data successfully set)
             return True
@@ -1270,7 +1276,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
 
         # In some cases (e.g. when using What's-this) this function is called for the root node
         # (i.e. with an invalid index). In that case we just return the default data value.
-        if not index.isValid(): return QtCore.QVariant()
+        if not index.isValid(): return None
         
         # Shortcut to the xmlstore.TypedStore node (used below in many places)
         node = index.internalPointer()
@@ -1296,59 +1302,59 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             elif nodetype=='int' or nodetype=='float':
                 if templatenode.hasAttribute('minInclusive'): text += '\nminimum value: '+templatenode.getAttribute('minInclusive')
                 if templatenode.hasAttribute('maxInclusive'): text += '\nmaximum value: '+templatenode.getAttribute('maxInclusive')
-            return QtCore.QVariant(text)
+            return text
         elif role==QtCore.Qt.TextColorRole:
             if self.nohide and not node.visible:
                 # If we should show hidden nodes too, color them blue to differentiate.
-                return QtCore.QVariant(QtGui.QColor(0,0,255))
+                return QtGui.QColor(0,0,255)
             elif index.column()==1 and node.isReadOnly():
                 # Color read-only nodes grey to differentiate.
-                return QtCore.QVariant(QtGui.QColor(128,128,128))
+                return QtGui.QColor(128,128,128)
         elif self.checkboxes and role==QtCore.Qt.CheckStateRole:
             if node.canHaveValue():
                 # Node has own checkbox.
                 if node.getValue():
-                    return QtCore.QVariant(QtCore.Qt.Checked)
+                    return QtCore.Qt.Checked
                 else:
-                    return QtCore.QVariant(QtCore.Qt.Unchecked)
+                    return QtCore.Qt.Unchecked
             elif node.hasChildren():
                 # Node is parent of other nodes with their own checkbox; check value is derived from children.
                 state = None
                 for i in range(self.rowCount(index)):
-                    chstate,ret = index.child(i,0).data(QtCore.Qt.CheckStateRole).toInt()
+                    chstate = index.child(i,0).data(QtCore.Qt.CheckStateRole)
                     if chstate==QtCore.Qt.PartiallyChecked:
-                        return QtCore.QVariant(QtCore.Qt.PartiallyChecked)
+                        return QtCore.Qt.PartiallyChecked
                     elif state is None:
                         state = chstate
                     elif chstate!=state:
-                        return QtCore.QVariant(QtCore.Qt.PartiallyChecked)
-                return QtCore.QVariant(state)
+                        return QtCore.Qt.PartiallyChecked
+                return state
 
         # Now handle column-specific roles.
         if index.column()==0:
             if role==QtCore.Qt.DisplayRole:
-                return QtCore.QVariant(node.getText(detail=1))
+                return node.getText(detail=1)
             else:
-                return QtCore.QVariant()
+                return None
         else:
             # We only process the 'display', 'decoration', 'edit' and 'font' roles.
-            if role not in (QtCore.Qt.DisplayRole,QtCore.Qt.EditRole,QtCore.Qt.FontRole): return QtCore.QVariant()
+            if role not in (QtCore.Qt.DisplayRole,QtCore.Qt.EditRole,QtCore.Qt.FontRole): return None
 
             # Column 1 is only used for variables that can have a value.
-            if not node.canHaveValue(): return QtCore.QVariant()
+            if not node.canHaveValue(): return None
 
             fieldtype = node.getValueType()
             if role==QtCore.Qt.FontRole:
                 # Return bold font if the node value is set to something different than the default.
-                if self.typedstore.defaultstore is None: QtCore.QVariant()
+                if self.typedstore.defaultstore is None: return None
                 font = QtGui.QFont()
                 font.setBold(not node.hasDefaultValue())
-                return QtCore.QVariant(font)
+                return font
             elif role==QtCore.Qt.DisplayRole:
-                return QtCore.QVariant(node.getValueAsString(usedefault=True))
+                return node.getValueAsString(usedefault=True)
             elif role==QtCore.Qt.EditRole:
                 value = node.getValue(usedefault=True)
-                if value is None: return QtCore.QVariant()
+                if value is None: return None
                 editorclass = getEditor(fieldtype)
                 assert editorclass is not None, 'No editor class defined for data type "%s".' % fieldtype
                 result = editorclass.convertToQVariant(value)
@@ -1367,19 +1373,19 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
         # Handle the case where nodes have checkboxes, and the check state changed.
         if self.checkboxes and role==QtCore.Qt.CheckStateRole:
             if node.canHaveValue():
-                node.setValue(value.toBool())
-                self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+                node.setValue(value)
+                self.dataChanged.emit(index,index)
             elif node.hasChildren():
                 checkroot = (not self.inheritingchecks)
                 self.inheritingchecks = True
                 for i in range(self.rowCount(index)):
                     self.setData(index.child(i,0),value,role=QtCore.Qt.CheckStateRole)
-                self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+                self.dataChanged.emit(index,index)
                 if checkroot: self.inheritingchecks = False
             if not self.inheritingchecks:
                 par = index.parent()
                 while par.isValid():
-                    self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),par,par)
+                    self.dataChanged.emit(par,par)
                     par = par.parent()
             return True
 
@@ -1400,7 +1406,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
             if isinstance(value,util.referencedobject): value.release()
 
         # Emit the data-changed signal.
-        self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+        self.dataChanged.emit(index,index)
 
         # Return True: setData succeeded.
         return True
@@ -1433,10 +1439,10 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
         """
         if role==QtCore.Qt.DisplayRole:
             if section==0:
-                return QtCore.QVariant('variable')
+                return 'variable'
             elif section==1:
-                return QtCore.QVariant('value')
-        return QtCore.QVariant()
+                return 'value'
+        return None
         
     def indexFromNode(self,node,column=0):
         assert isinstance(node,xmlstore.Node), 'indexFromNode: supplied object is not of type "Node" (but "%s").' % (node,)
@@ -1508,11 +1514,11 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
         assert isinstance(node,xmlstore.Node), 'Supplied object is not of type "Node" (but "%s").' % node
         irow = self.storeinterface.getOwnIndex(node)
         index = self.createIndex(irow,1,node)
-        self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+        self.dataChanged.emit(index,index)
 
         if headertoo:
             index = self.createIndex(irow,0,node)
-            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex&,const QModelIndex&)'),index,index)
+            self.dataChanged.emit(index,index)
 
     def resetData(self,index,recursive=False):
         """Clears the value of the node identified by the supplied index, causing it
@@ -1538,7 +1544,7 @@ class TypedStoreModel(QtCore.QAbstractItemModel):
         res = []
         for irow in range(self.rowCount(index)):
             child = self.index(irow,0,index)
-            state,ret = child.data(QtCore.Qt.CheckStateRole).toInt()
+            state = child.data(QtCore.Qt.CheckStateRole)
             if state==QtCore.Qt.Checked:
                 res.append(child.internalPointer())
             res += self.getCheckedNodes(child)
@@ -1556,7 +1562,7 @@ class ExtendedTreeView(QtGui.QTreeView):
     """
 
     def __init__(self,parent=None,autoexpandnondefaults=False):
-        QtGui.QTreeView.__init__(self,parent)
+        super(ExtendedTreeView,self).__init__(parent)
         self.autoexpandnondefaults = autoexpandnondefaults
 
     def setExpandedAll(self,value=True,maxdepth=1000,root=None,depth=0):
@@ -1712,7 +1718,7 @@ class PropertyEditorDialog(QtGui.QDialog):
         self.setSizeGripEnabled(True)
 
         layout = QtGui.QVBoxLayout()
-        layout.setMargin(0)
+        layout.setContentsMargins(0,0,0,0)
 
         if instructions!='':
             lab = QtGui.QLabel(instructions,self)
@@ -1731,9 +1737,9 @@ class PropertyEditorDialog(QtGui.QDialog):
             layoutButtons.addWidget(bnReset)
             layoutButtons.addStretch(1)
             layout.addLayout(layoutButtons)
-            self.connect(bnLoad,  QtCore.SIGNAL('clicked()'), self.onLoad)
-            self.connect(bnSave,  QtCore.SIGNAL('clicked()'), self.onSave)
-            self.connect(bnReset, QtCore.SIGNAL('clicked()'), self.onReset)
+            bnLoad.clicked.connect(self.onLoad)
+            bnSave.clicked.connect(self.onSave)
+            bnReset.clicked.connect(self.onReset)
         
         self.setLayout(layout)
 
@@ -1754,7 +1760,8 @@ class PropertyEditorDialog(QtGui.QDialog):
         if self.tree.columnWidth(0)>maxwidth: self.tree.setColumnWidth(0,maxwidth)
         
     def onLoad(self):
-        path = unicode(QtGui.QFileDialog.getOpenFileName(self,'',self.lastpath,'XML files (*.xml);;All files (*.*)'))
+        path,selectedFilter = QtGui.QFileDialog.getOpenFileNameAndFilter(self,'',self.lastpath,'XML files (*.xml);;All files (*.*)')
+        path = unicode(path)
         if path=='': return
         try:
             if self.loadhook:
@@ -1766,7 +1773,8 @@ class PropertyEditorDialog(QtGui.QDialog):
         self.lastpath = path
     
     def onSave(self):
-        path = unicode(QtGui.QFileDialog.getSaveFileName(self,'',self.lastpath,'XML files (*.xml);;All files (*.*)'))
+        path,selectedFilter = QtGui.QFileDialog.getSaveFileNameAndFilter(self,'',self.lastpath,'XML files (*.xml);;All files (*.*)')
+        path = unicode(path)
         if path=='': return
         self.store.save(path)
         self.lastpath = path
@@ -2100,11 +2108,11 @@ class PropertyEditor(object):
             # We have to create an editor for a boolean, and use a checkbox rather
             # than the default editor (combobox-like)
             editor = QtGui.QCheckBox(node.getText(detail=1,capitalize=True),parent)
-            editor.connect(editor, QtCore.SIGNAL('stateChanged(int)'), self.onChange)
+            editor.stateChanged.connect(self.onChange)
         else:
             # Create a normal editor that derives from AbstractPropertyEditor
             editor = createEditor(node,parent,**kwargs)
-            editor.connect(editor, QtCore.SIGNAL('propertyEditingFinished(QObject&,bool)'), self.onChange)
+            editor.connect(editor,QtCore.SIGNAL('propertyEditingFinished(bool)'),self.onChange)
             
         # Add what's-this information.
         if whatsthis and isinstance(editor,QtGui.QWidget):

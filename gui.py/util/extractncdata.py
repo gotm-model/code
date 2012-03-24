@@ -16,7 +16,7 @@ def extractncdata(path,varname,pathout=None,fix='',plot=False,verbose=True,debug
         
     if plot:
         # Import GUI libraries
-        from PyQt4 import QtGui,QtCore
+        from xmlstore.qt_compat import QtGui,QtCore
         import xmlplot.gui_qt4
         
         # Create Qt4 application object if needed.

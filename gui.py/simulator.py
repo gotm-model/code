@@ -2,7 +2,7 @@
 
 #$Id: simulator.py,v 1.22 2009-10-14 09:22:51 jorn Exp $
 
-from PyQt4 import QtGui,QtCore
+from xmlstore.qt_compat import QtGui,QtCore
 
 import commonqt, core.common
 
@@ -11,6 +11,8 @@ import commonqt, core.common
 stacksize = 16*1024*1024
 
 class GOTMThread(QtCore.QThread):
+
+  progressed = QtCore.Signal(float,float)
 
   def __init__(self, parent):
     QtCore.QThread.__init__(self,parent)
@@ -33,9 +35,6 @@ class GOTMThread(QtCore.QThread):
     self.rwlock.unlock()
     return ret
     
-  def progressed(self,progress,remaining):
-    self.emit(QtCore.SIGNAL('progressed(double,double)'),progress,remaining)
-    
   def run(self):
     assert self.scenario is not None, 'No scenario specified.'
     try:
@@ -46,7 +45,7 @@ class GOTMThread(QtCore.QThread):
         self.res.errormessage = str(e)
         self.res.returncode = 1
         raise
-    self.res = core.simulator.simulate(self.scenario,continuecallback=self.canContinue,progresscallback=self.progressed)
+    self.res = core.simulator.simulate(self.scenario,continuecallback=self.canContinue,progresscallback=self.progressed.emit)
     
   def stop(self):
     self.rwlock.lockForWrite()
@@ -91,12 +90,15 @@ class PageProgress(commonqt.WizardPage):
         self.showhidebutton.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
         self.showhidebutton.setVisible(oldresult is not None)
         layout.addWidget(self.showhidebutton)
-        self.connect(self.showhidebutton, QtCore.SIGNAL('clicked()'),self.onShowHideOutput)
+        self.showhidebutton.clicked.connect(self.onShowHideOutput)
 
         # Add (initially hidden) text box for GOTM output.
         self.text = QtGui.QTextEdit(self)
         self.text.setLineWrapMode(QtGui.QTextEdit.NoWrap)
         self.text.setReadOnly(True)
+        font = QtGui.QFont('Courier')
+        font.setStyleHint(QtGui.QFont.TypeWriter)
+        self.text.setFont(font)
         if oldresult is not None: self.text.setPlainText(oldresult.stderr)
         self.text.hide()
         layout.addWidget(self.text)
@@ -107,7 +109,7 @@ class PageProgress(commonqt.WizardPage):
         self.savebutton.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Fixed)
         self.savebutton.hide()
         layout.addWidget(self.savebutton)
-        self.connect(self.savebutton, QtCore.SIGNAL('clicked()'),self.onSaveOutput)
+        self.savebutton.clicked.connect(self.onSaveOutput)
 
         layout.addStretch()
         
@@ -123,8 +125,8 @@ class PageProgress(commonqt.WizardPage):
 
     def startRun(self):
         self.gotmthread = GOTMThread(self)
-        self.connect(self.gotmthread, QtCore.SIGNAL('progressed(double,double)'), self.progressed, QtCore.Qt.QueuedConnection)
-        self.connect(self.gotmthread, QtCore.SIGNAL('finished()'), self.done, QtCore.Qt.QueuedConnection)
+        self.gotmthread.progressed.connect(self.progressed)
+        self.gotmthread.finished.connect(self.done)
         self.gotmthread.rungotm(self.scenario)
         
     def progressed(self,progress,remaining):
@@ -175,8 +177,8 @@ class PageProgress(commonqt.WizardPage):
     def saveData(self,mustbevalid):
         # Stop worker thread
         if self.gotmthread is not None:
-            self.disconnect(self.gotmthread, QtCore.SIGNAL('progressed(double)'), self.progressed)
-            self.disconnect(self.gotmthread, QtCore.SIGNAL('finished()'), self.done)
+            self.gotmthread.progressed.disconnect(self.progressed)
+            self.gotmthread.finished.disconnect(self.done)
             self.gotmthread.stop()
             if not self.gotmthread.isFinished(): self.gotmthread.wait()
             self.gotmthread = None
@@ -198,7 +200,7 @@ class PageProgress(commonqt.WizardPage):
             self.showhidebutton.setText(curtext.replace('Hide','Show'))
 
     def onSaveOutput(self):
-        path = unicode(QtGui.QFileDialog.getSaveFileName(self,'','','Text files (*.txt);;All files (*.*)'))
+        path,selectedFilter = map(unicode,QtGui.QFileDialog.getSaveFileNameAndFilter(self,'','','Text files (*.txt);;All files (*.*)'))
         if path=='': return
         f = open(path,'w')
         f.write(self.text.toPlainText())
