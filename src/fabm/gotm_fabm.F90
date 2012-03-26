@@ -169,6 +169,8 @@
 !BOC
 
    LEVEL1 'init_gotm_fabm'
+   
+   nullify(model)
 
    nullify(first_obs_0d)
    nullify(first_obs_1d)
