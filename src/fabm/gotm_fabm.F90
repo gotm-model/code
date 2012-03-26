@@ -22,10 +22,11 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_fabm
+   public init_gotm_fabm, init_gotm_fabm_state
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
+   public register_observation_0d,register_observation_1d
 
    ! Variables below must be accessible for gotm_fabm_output
    public local,total,dt,h
@@ -40,11 +41,34 @@
    REALTYPE,allocatable,dimension(:),                      public        :: cc_diag_hz
 
 !  Arrays for observations, relaxation times and FABM variable identifiers associated with the observations.
-   REALTYPE, allocatable, target, public :: obs_0d(:),obs_1d(:,:),relax_tau_0d(:),relax_tau_1d(:,:)
-   integer,  allocatable,         public :: obs_0d_ids(:), obs_1d_ids(:)
+   type type_obs_0d
+      integer           :: id
+      REALTYPE, pointer :: data,relax_tau
+      logical           :: isstatevariable
+      type (type_obs_0d),pointer :: next
+   end type
+
+   type type_obs_1d
+      integer                        :: id
+      REALTYPE, pointer,dimension(:) :: data,relax_tau
+      logical                        :: isstatevariable
+      type (type_obs_1d),pointer     :: next
+   end type
+
+   type type_obs_0d_pointer
+      type (type_obs_0d),pointer :: data
+   end type type_obs_0d_pointer
+
+   type type_obs_1d_pointer
+      type (type_obs_1d),pointer :: data
+   end type type_obs_1d_pointer
+
+   type (type_obs_0d),pointer :: first_obs_0d
+   type (type_obs_1d),pointer :: first_obs_1d
 
 !  Observation indices (from obs_0d, obs_1d) for pelagic and benthic state variables.
-   integer,allocatable,dimension(:),public :: cc_ben_obs_indices,cc_obs_indices
+   type (type_obs_0d_pointer),allocatable :: cc_ben_obs(:)
+   type (type_obs_1d_pointer),allocatable :: cc_obs(:)
 
 !  Variables to hold time spent on advection, diffusion, sink/source terms.
    integer(8) :: clock_adv,clock_diff,clock_source
@@ -145,6 +169,9 @@
 !BOC
 
    LEVEL1 'init_gotm_fabm'
+
+   nullify(first_obs_0d)
+   nullify(first_obs_1d)
 
    ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
@@ -299,12 +326,16 @@
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
    ! Initialize observation indices to -1 (no external observations provided)
-   allocate(cc_obs_indices    (1:ubound(model%info%state_variables,1)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_obs_indices)'
-   cc_obs_indices = -1
-   allocate(cc_ben_obs_indices(1:ubound(model%info%state_variables_ben,1)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_ben_obs_indices)'
-   cc_ben_obs_indices = -1
+   allocate(cc_obs(1:size(model%info%state_variables)),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_obs)'
+   do i=1,size(model%info%state_variables)
+      nullify(cc_obs(i)%data)
+   end do
+   allocate(cc_ben_obs(1:size(model%info%state_variables_ben)),stat=rc)
+   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_ben_obs)'
+   do i=1,size(model%info%state_variables_ben)
+      nullify(cc_ben_obs(i)%data)
+   end do
 
    ! Allocate array for pelagic diagnostic variables; set all values to zero.
    ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
@@ -403,7 +434,8 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,j
-   logical                   :: isstatevariable
+   type (type_obs_0d),pointer :: cur_obs_0d
+   type (type_obs_1d),pointer :: cur_obs_1d
 !-----------------------------------------------------------------------!
 !BOC
    if (.not. fabm_calc) return
@@ -453,39 +485,21 @@
    yearday => yearday_
    secondsofday => secondsofday_
 
-   ! Handle externally provided 0d observations.
-   if (allocated(obs_0d_ids)) then
-      do i=1,ubound(obs_0d_ids,1)
-         if (obs_0d_ids(i).ne.-1) then
-            ! Check whether this is a state variable.
-            ! If so, observations will be handled through relaxation, not here.
-            isstatevariable = .false.
-            do j=1,ubound(cc_ben_obs_indices,1)
-               if (obs_0d_ids(i).eq.cc_ben_obs_indices(j)) isstatevariable = .true.
-            end do
+   ! Handle externally provided 0d observations.   
+   cur_obs_0d => first_obs_0d
+   do while (associated(cur_obs_0d))
+      ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
+      if (.not. cur_obs_0d%isstatevariable) call fabm_link_data_hz(model,cur_obs_0d%id,cur_obs_0d%data)
+      cur_obs_0d => cur_obs_0d%next      
+   end do
 
-            ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
-            if (.not. isstatevariable) call fabm_link_data_hz(model,obs_0d_ids(i),obs_0d(i))
-         end if
-      end do
-   end if
-
-   ! Handle externally provided 1d observations.
-   if (allocated(obs_1d_ids)) then
-      do i=1,ubound(obs_1d_ids,1)
-         if (obs_1d_ids(i).ne.-1) then
-            ! Check whether this is a state variable.
-            ! If so, observations will be handled through relaxation, not here.
-            isstatevariable = .false.
-            do j=1,ubound(cc_obs_indices,1)
-               if (obs_1d_ids(i).eq.cc_obs_indices(j)) isstatevariable = .true.
-            end do
-
-            ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
-            if (.not. isstatevariable) call fabm_link_data(model,obs_1d_ids(i),obs_1d(1:,i))
-         end if
-      end do
-   end if
+   ! Handle externally provided 1d observations.   
+   cur_obs_1d => first_obs_1d
+   do while (associated(cur_obs_1d))
+      ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
+      if (.not. cur_obs_1d%isstatevariable) call fabm_link_data(model,cur_obs_1d%id,cur_obs_1d%data)
+      cur_obs_1d => cur_obs_1d%next      
+   end do
 
    ! At this stage, FABM has been provided with arrays for all state variables, any variables
    ! read in from file (gotm_fabm_input), and all variables exposed by GOTM. If FABM is still
@@ -611,10 +625,10 @@
       call system_clock(clock_start)
 
       ! Do diffusion step
-      if (cc_obs_indices(i).ne.-1) then
+      if (associated(cc_obs(i)%data)) then
 !        Observations on this variable are available.
          call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
-            sfl(i),bfl(i),nuh,Lsour,Qsour,relax_tau_1d(:,cc_obs_indices(i)),obs_1d(:,cc_obs_indices(i)),cc(i,:))
+            sfl(i),bfl(i),nuh,Lsour,Qsour,cc_obs(i)%data%relax_tau,cc_obs(i)%data%data,cc(i,:))
       else
 !        Observations on this variable are not available.
          call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
@@ -907,8 +921,8 @@
    if (allocated(pres))               deallocate(pres)
    if (allocated(total))              deallocate(total)
    if (allocated(local))              deallocate(local)
-   if (allocated(cc_obs_indices))     deallocate(cc_obs_indices)
-   if (allocated(cc_ben_obs_indices)) deallocate(cc_ben_obs_indices)
+   if (allocated(cc_obs))             deallocate(cc_obs)
+   if (allocated(cc_ben_obs))         deallocate(cc_ben_obs)
    LEVEL1 'done.'
 
    end subroutine clean_gotm_fabm
@@ -972,6 +986,98 @@
    end subroutine light
 !EOC
 
+   subroutine register_observation_0d(id,data,relax_tau)
+      integer,intent(in) :: id
+      REALTYPE,target :: data,relax_tau
+      
+      type (type_obs_0d),pointer :: cur_obs
+      integer                    :: i
+   
+      if (associated(first_obs_0d)) then
+         ! Find last observation that has been provided
+         cur_obs => first_obs_0d
+         do while (associated(cur_obs%next))
+            cur_obs => cur_obs%next
+         end do
+         
+         ! Append new observation
+         allocate(cur_obs%next)
+         cur_obs => cur_obs%next
+      else
+         ! No observation has been provided yet - create the first
+         allocate(first_obs_0d)
+         cur_obs => first_obs_0d
+      end if
+      
+      cur_obs%id = id
+      cur_obs%data => data
+      cur_obs%relax_tau => relax_tau
+      nullify(cur_obs%next)
+      cur_obs%isstatevariable = .false.
+      do i=1,size(model%info%state_variables_ben)
+         if (cur_obs%id.eq.model%info%state_variables_ben(i)%globalid%dependencyid) then
+            cur_obs%isstatevariable = .true.
+            cc_ben_obs(i)%data => cur_obs
+            exit
+         end if
+      end do
+   end subroutine register_observation_0d
+
+   subroutine register_observation_1d(id,data,relax_tau)
+      integer,intent(in) :: id
+      REALTYPE,target,dimension(:) :: data,relax_tau
+      
+      type (type_obs_1d),pointer :: cur_obs
+      integer                    :: i
+
+      if (associated(first_obs_1d)) then
+         ! Find last observation that has been provided
+         cur_obs => first_obs_1d
+         do while (associated(cur_obs%next))
+            cur_obs => cur_obs%next
+         end do
+         
+         ! Append new observation
+         allocate(cur_obs%next)
+         cur_obs => cur_obs%next
+      else
+         ! No observation has been provided yet - create the first
+         allocate(first_obs_1d)
+         cur_obs => first_obs_1d
+      end if
+      
+      cur_obs%id = id
+      cur_obs%data => data
+      cur_obs%relax_tau => relax_tau
+      cur_obs%isstatevariable = .false.
+      do i=1,size(model%info%state_variables)
+         if (cur_obs%id.eq.model%info%state_variables(i)%globalid%dependencyid) then
+            cur_obs%isstatevariable = .true.
+            cc_obs(i)%data => cur_obs
+            exit
+         end if
+      end do
+      nullify(cur_obs%next)
+   end subroutine register_observation_1d
+
+   subroutine init_gotm_fabm_state()
+   
+   integer :: i
+
+   do i=1,size(model%info%state_variables)
+      if (associated(cc_obs(i)%data)) then
+         cc(i,:) = cc_obs(i)%data%data
+      end if
+   end do
+
+   do i=1,size(model%info%state_variables_ben)
+      if (associated(cc_ben_obs(i)%data)) then
+         cc(size(model%info%state_variables,1)+i,1) = cc_ben_obs(i)%data%data
+      end if
+   end do
+   
+   end subroutine init_gotm_fabm_state
+      
    end module gotm_fabm
 
 !-----------------------------------------------------------------------
