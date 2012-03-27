@@ -207,14 +207,14 @@
 
       ! Report prognostic variable descriptions
       LEVEL2 'FABM pelagic state variables:'
-      do i=1,ubound(model%info%state_variables,1)
+      do i=1,size(model%info%state_variables)
          LEVEL3 trim(model%info%state_variables(i)%name), '  ', &
                 trim(model%info%state_variables(i)%units),'  ',&
                 trim(model%info%state_variables(i)%longname)
       end do
 
       LEVEL2 'FABM benthic state variables:'
-      do i=1,ubound(model%info%state_variables_ben,1)
+      do i=1,size(model%info%state_variables_ben)
          LEVEL3 trim(model%info%state_variables_ben(i)%name), '  ', &
                 trim(model%info%state_variables_ben(i)%units),'  ',&
                 trim(model%info%state_variables_ben(i)%longname)
@@ -222,14 +222,14 @@
 
       ! Report diagnostic variable descriptions
       LEVEL2 'FABM diagnostic variables defined on the full model domain:'
-      do i=1,ubound(model%info%diagnostic_variables,1)
+      do i=1,size(model%info%diagnostic_variables)
          LEVEL3 trim(model%info%diagnostic_variables(i)%name), '  ', &
                 trim(model%info%diagnostic_variables(i)%units),'  ',&
                 trim(model%info%diagnostic_variables(i)%longname)
       end do
 
       LEVEL2 'FABM diagnostic variables defined on a horizontal slice of the model domain:'
-      do i=1,ubound(model%info%diagnostic_variables_hz,1)
+      do i=1,size(model%info%diagnostic_variables_hz)
          LEVEL3 trim(model%info%diagnostic_variables_hz(i)%name), '  ', &
                 trim(model%info%diagnostic_variables_hz(i)%units),'  ',&
                 trim(model%info%diagnostic_variables_hz(i)%longname)
@@ -314,16 +314,16 @@
    ! column (the bottom layer should suffice). However, it is important that all values at a given point
    ! in time are integrated simultaneously in multi-step algorithms. This currently can only be arranged
    ! by storing benthic values together with the pelagic, in a fully depth-explicit array.
-   allocate(cc(1:ubound(model%info%state_variables,1)+ubound(model%info%state_variables_ben,1),_LOCATION_RANGE_),stat=rc)
+   allocate(cc(1:size(model%info%state_variables)+size(model%info%state_variables_ben),_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc)'
    cc = _ZERO_
-   do i=1,ubound(model%info%state_variables,1)
+   do i=1,size(model%info%state_variables)
       cc(i,:) = model%info%state_variables(i)%initial_value
       call fabm_link_state_data(model,i,cc(i,1:))
    end do
-   do i=1,ubound(model%info%state_variables_ben,1)
-      cc(ubound(model%info%state_variables,1)+i,1) = model%info%state_variables_ben(i)%initial_value
-      call fabm_link_benthos_state_data(model,i,cc(ubound(model%info%state_variables,1)+i,1))
+   do i=1,size(model%info%state_variables_ben)
+      cc(size(model%info%state_variables)+i,1) = model%info%state_variables_ben(i)%initial_value
+      call fabm_link_benthos_state_data(model,i,cc(size(model%info%state_variables)+i,1))
    end do
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
@@ -341,31 +341,31 @@
 
    ! Allocate array for pelagic diagnostic variables; set all values to zero.
    ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
-   allocate(cc_diag(1:ubound(model%info%diagnostic_variables,1),_LOCATION_RANGE_),stat=rc)
+   allocate(cc_diag(1:size(model%info%diagnostic_variables),_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_diag)'
    cc_diag = _ZERO_
 
    ! Allocate array for diagnostic variables on horizontal surfaces; set all values to zero.
    ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
-   allocate(cc_diag_hz(1:ubound(model%info%diagnostic_variables_hz,1)),stat=rc)
+   allocate(cc_diag_hz(1:size(model%info%diagnostic_variables_hz)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_diag_hz)'
    cc_diag_hz = _ZERO_
 
    ! Allocate array for vertical movement rates (m/s, positive for upwards),
    ! and set these to the values provided by the model.
-   allocate(ws(_LOCATION_RANGE_,1:ubound(model%info%state_variables,1)),stat=rc)
+   allocate(ws(_LOCATION_RANGE_,1:size(model%info%state_variables)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (ws)'
-   do i=1,ubound(model%info%state_variables,1)
+   do i=1,size(model%info%state_variables)
       ws(:,i) = model%info%state_variables(i)%vertical_movement
    end do
 
    ! Allocate array for surface fluxes and initialize these to zero (no flux).
-   allocate(sfl(1:ubound(model%info%state_variables,1)),stat=rc)
+   allocate(sfl(1:size(model%info%state_variables)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (sfl)'
    sfl = _ZERO_
 
    ! Allocate array for bottom fluxes and initialize these to zero (no flux).
-   allocate(bfl(1:ubound(model%info%state_variables,1)),stat=rc)
+   allocate(bfl(1:size(model%info%state_variables)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (bfl)'
    bfl = _ZERO_
 
@@ -394,12 +394,12 @@
 
    ! Allocate arrays for storing local and column-integrated values of conserved quantities.
    ! These are used during each save.
-   allocate(total(1:ubound(model%info%conserved_quantities,1)),stat=rc)
+   allocate(total(1:size(model%info%conserved_quantities)),stat=rc)
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (total)'
 #ifdef _FABM_USE_1D_LOOP_
-   allocate(local(1:_LOCATION_,1:ubound(model%info%conserved_quantities,1)),stat=rc)
+   allocate(local(1:_LOCATION_,1:size(model%info%conserved_quantities)),stat=rc)
 #else
-   allocate(local(1:ubound(model%info%conserved_quantities,1)),stat=rc)
+   allocate(local(1:size(model%info%conserved_quantities)),stat=rc)
 #endif
    if (rc /= 0) STOP 'allocate_memory(): Error allocating (local)'
 
@@ -566,11 +566,11 @@
    decimal_yearday = yearday-1 + dble(secondsofday)/86400.d0
 
 !  Transfer current state to FABM.
-   do i=1,ubound(model%info%state_variables,1)
+   do i=1,size(model%info%state_variables)
       call fabm_link_state_data(model,i,cc(i,1:nlev))
    end do
-   do i=1,ubound(model%info%state_variables_ben,1)
-      call fabm_link_benthos_state_data(model,i,cc(ubound(model%info%state_variables,1)+i,1))
+   do i=1,size(model%info%state_variables_ben)
+      call fabm_link_benthos_state_data(model,i,cc(size(model%info%state_variables)+i,1))
    end do
 
    ! Get updated vertical movement (m/s, positive for upwards) for biological state variables.
@@ -599,7 +599,7 @@
          virtual_dilution = sum((salt(1:nlev)-sProf(1:nlev))/SRelaxTau(1:nlev)*h(2:nlev+1))/sum(salt(1:nlev)*h(2:nlev+1))
    end if
 
-   do i=1,ubound(model%info%state_variables,1)
+   do i=1,size(model%info%state_variables)
       ! Add surface flux due to evaporation/precipitation, unless the model explicitly says otherwise.
       if (.not. (model%info%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution)) then
          sfl(i) = sfl(i)-cc(i,nlev)*dilution
@@ -655,18 +655,18 @@
       call ode_solver(ode_method,ubound(cc,1),nlev,dt_eff,cc(:,0:nlev),right_hand_side_rhs,right_hand_side_ppdd)
 
       ! Provide FABM with (pointers to) updated state variables.
-      do i=1,ubound(model%info%state_variables,1)
+      do i=1,size(model%info%state_variables)
          call fabm_link_state_data(model,i,cc(i,1:nlev))
       end do
-      do i=1,ubound(model%info%state_variables_ben,1)
-         call fabm_link_benthos_state_data(model,i,cc(ubound(model%info%state_variables,1)+i,1))
+      do i=1,size(model%info%state_variables_ben)
+         call fabm_link_benthos_state_data(model,i,cc(size(model%info%state_variables)+i,1))
       end do
 
       ! Repair state
       call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after time integration')
 
       ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
-      do i=1,ubound(model%info%diagnostic_variables_hz,1)
+      do i=1,size(model%info%diagnostic_variables_hz)
          if (model%info%diagnostic_variables_hz(i)%time_treatment.eq.time_treatment_last) then
             ! Simply use last value
             cc_diag_hz(i) = fabm_get_diagnostic_data_hz(model,i)
@@ -678,7 +678,7 @@
       end do
 
       ! Time-integrate diagnostic variables defined on the full domain, where needed.
-      do i=1,ubound(model%info%diagnostic_variables,1)
+      do i=1,size(model%info%diagnostic_variables)
          if (model%info%diagnostic_variables(i)%time_treatment.eq.time_treatment_last) then
             ! Simply use last value
             cc_diag(i,1:nlev) = fabm_get_diagnostic_data(model,i)
@@ -774,13 +774,13 @@
 !-----------------------------------------------------------------------
 !BOC
    ! Shortcut to the number of pelagic state variables.
-   n = ubound(model%info%state_variables,1)
+   n = size(model%info%state_variables)
 
    ! Provide FABM with (pointers to) the current state.
-   do i=1,ubound(model%info%state_variables,1)
+   do i=1,size(model%info%state_variables)
       call fabm_link_state_data(model,i,cc(i,1:nlev))
    end do
-   do i=1,ubound(model%info%state_variables_ben,1)
+   do i=1,size(model%info%state_variables_ben)
       call fabm_link_benthos_state_data(model,i,cc(n+i,1))
    end do
 
@@ -843,13 +843,13 @@
 !-----------------------------------------------------------------------
 !BOC
    ! Shortcut to the number of pelagic state variables.
-   n = ubound(model%info%state_variables,1)
+   n = size(model%info%state_variables)
 
    ! Provide FABM with (pointers to) the current state.
-   do i=1,ubound(model%info%state_variables,1)
+   do i=1,size(model%info%state_variables)
       call fabm_link_state_data(model,i,cc(i,1:nlev))
    end do
-   do i=1,ubound(model%info%state_variables_ben,1)
+   do i=1,size(model%info%state_variables_ben)
       call fabm_link_benthos_state_data(model,i,cc(n+i,1))
    end do
 

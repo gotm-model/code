@@ -180,7 +180,7 @@
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
          if (index.eq.-1) index = 1
-         if (index>ubound(variables,1)) then
+         if (index>size(variables)) then
             FATAL 'Parameter "index" in namelist "observations" may not exceed ',size(variables)
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
