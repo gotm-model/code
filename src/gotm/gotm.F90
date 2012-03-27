@@ -426,7 +426,7 @@
    call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml')
 
 !  Initialize FABM input (data files with observations)
-   call init_gotm_fabm_input(nlev,namlst,'fabm_input.nml')
+   call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
 
 !  Read observations on FABM variables for the first time.
    call do_gotm_fabm_input(julianday,secondsofday,nlev,z)

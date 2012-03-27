@@ -66,8 +66,8 @@
    end type
 
 !  Pointers to first files with observed profiles and observed scalars.
-   type (type_observed_profile_info),pointer :: first_observed_profile_info
-   type (type_observed_scalar_info), pointer :: first_observed_scalar_info
+   type (type_observed_profile_info),pointer :: first_observed_profile_info,last_observed_profile_info
+   type (type_observed_scalar_info), pointer :: first_observed_scalar_info,last_observed_scalar_info
 
 !  PRIVATE DATA MEMBERS
 
@@ -86,7 +86,7 @@
 ! !IROUTINE: Initialize input
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm_input(_LOCATION_,namlst,fname)
+   subroutine init_gotm_fabm_input(namlst,fname,nlev,h)
 !
 ! !DESCRIPTION:
 !  Initialize files with observations on FABM variables.
@@ -94,8 +94,9 @@
 ! !USES:
 !
 ! !INPUT PARAMETERS:
-   integer,          intent(in) :: _LOCATION_,namlst
+   integer,          intent(in) :: nlev,namlst
    character(len=*), intent(in) :: fname
+   REALTYPE,         intent(in) :: h(1:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -104,13 +105,15 @@
 !
 ! !LOCAL VARIABLES:
    character(len=64)            :: variable,variables(max_variable_count_per_file),file
-   integer                      :: i,file_variable_count,index
+   integer                      :: i,k,file_variable_count,index
    integer                      :: filetype
-   REALTYPE                     :: relax_tau,relax_taus(max_variable_count_per_file)
+   REALTYPE                     :: relax_tau,db,ds,depth
+   REALTYPE,dimension(max_variable_count_per_file) :: relax_taus,relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot
    integer, parameter           :: type_unknown = 0, type_profile = 1, type_scalar = 2
    logical                      :: file_exists
    type (type_variable),pointer :: curvariable,firstvariable
-   namelist /observations/ variable,variables,file,index,relax_tau,relax_taus
+   namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
+                           relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -122,6 +125,9 @@
 !  Initialize empty lists of observations files.
    nullify(first_observed_profile_info)
    nullify(first_observed_scalar_info)
+   
+!  Calculate depth (used to determine whether in surface/bottom/bulk for relaxation times)
+   depth = sum(h)
 
 !  Take first unit to use from module-level parameter.
    next_unit_no = first_unit_no
@@ -138,6 +144,10 @@
       index = -1
       relax_tau = 1.d15
       relax_taus = 1.d15
+      relax_taus_surf = 1.d15
+      relax_taus_bot = 1.d15
+      thicknesses_surf = _ZERO_
+      thicknesses_bot = _ZERO_
 
 !     Initialize file type (profile or scalar) to unknown
       filetype = type_unknown
@@ -216,27 +226,19 @@
             curvariable => curvariable%next
          end if
 
+!        Store variable name and index in file.
          nullify(curvariable%next)
          curvariable%name = variables(i)
          curvariable%index = i
          
 !        First search in pelagic variables
+         curvariable%type = type_profile
          curvariable%id = fabm_get_variable_id(model,variables(i),shape_full)
 
 !        If variable was not found, search variables defined on horizontal slice of model domain (e.g., benthos)
          if (curvariable%id.eq.id_not_used) then
             curvariable%id = fabm_get_variable_id(model,variables(i),shape_hz)
             curvariable%type = type_scalar
-            curvariable%data_0d = _ZERO_
-            curvariable%relax_tau_0d = relax_taus(i)
-            call register_observation_0d(curvariable%id,curvariable%data_0d,curvariable%relax_tau_0d)
-         else
-            curvariable%type = type_profile
-            allocate(curvariable%data_1d(0:_LOCATION_))
-            allocate(curvariable%relax_tau_1d(0:_LOCATION_))
-            curvariable%data_1d = _ZERO_
-            curvariable%relax_tau_1d = relax_taus(i)
-            call register_observation_1d(curvariable%id,curvariable%data_1d,curvariable%relax_tau_1d)
          end if
          
 !        Report an error if the variable was still not found.
@@ -246,6 +248,32 @@
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
 
+         if (curvariable%type.eq.type_scalar) then
+            curvariable%data_0d = _ZERO_
+            curvariable%relax_tau_0d = relax_taus(i)
+            call register_observation_0d(curvariable%id,curvariable%data_0d,curvariable%relax_tau_0d)
+         else
+            allocate(curvariable%data_1d(0:nlev))
+            allocate(curvariable%relax_tau_1d(0:nlev))
+            curvariable%data_1d = _ZERO_
+            curvariable%relax_tau_1d = relax_taus(i)
+
+!           Apply separate relaxation times for bottom and surface layer, if specified.
+            db = _ZERO_
+            ds = depth
+            do k=1,nlev
+               db = db+0.5*h(k)
+               ds = ds-0.5*h(k)
+               if (db.le.thicknesses_bot (i)) curvariable%relax_tau_1d(k) = relax_taus_bot(i)
+               if (ds.le.thicknesses_surf(i)) curvariable%relax_tau_1d(k) = relax_taus_surf(i)
+               db = db+0.5*h(k)
+               ds = ds-0.5*h(k)
+            end do
+
+!           Register observed variable with the GOTM-FABM driver.
+            call register_observation_1d(curvariable%id,curvariable%data_1d,curvariable%relax_tau_1d)
+         end if
+         
 !        Make sure profile and scalar variables are not mixed in the same input file.
          if (filetype.ne.type_unknown .and. filetype.ne.curvariable%type) then
             FATAL 'Cannot mix 0d and 1d variables in one observation file, as they require different formats.'
@@ -261,7 +289,7 @@
 !     Initialize profile file.
       select case (filetype)
          case (type_profile)
-            call create_observed_profile_info(file,file_variable_count,firstvariable,_LOCATION_)
+            call create_observed_profile_info(file,file_variable_count,firstvariable,nlev)
          case (type_scalar)
             call create_observed_scalar_info(file,file_variable_count,firstvariable)
       end select
@@ -353,50 +381,45 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   type(type_observed_profile_info),pointer :: info
-   integer                                  :: rc
+   integer :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
 !  Add entry to the observed profile file list.
    if (.not.associated(first_observed_profile_info)) then
       allocate(first_observed_profile_info)
-      info => first_observed_profile_info
+      last_observed_profile_info => first_observed_profile_info
    else
-      info => first_observed_profile_info
-      do while (associated(info%next))
-         info => info%next
-      end do
-      allocate(info%next)
-      info => info%next
+      allocate(last_observed_profile_info%next)
+      last_observed_profile_info => last_observed_profile_info%next
    end if
 
 !  Initialize derived type members that will hold information on the status of the input file.
-   nullify(info%next)
-   info%jul2  = 0
-   info%secs2 = 0
-   info%lines = 0
-   info%nprofiles = 0
-   info%one_profile = .false.
-   info%unit = -1
-   info%first_variable => firstvariable
+   nullify(last_observed_profile_info%next)
+   last_observed_profile_info%jul2  = 0
+   last_observed_profile_info%secs2 = 0
+   last_observed_profile_info%lines = 0
+   last_observed_profile_info%nprofiles = 0
+   last_observed_profile_info%one_profile = .false.
+   last_observed_profile_info%unit = -1
+   last_observed_profile_info%first_variable => firstvariable
 
 !  Open the input file.
    open(next_unit_no,file=file,status='unknown',err=80)
 
 !  Opening was successful - store the file unit, and increment the next unit with 1.
-   info%unit = next_unit_no
+   last_observed_profile_info%unit = next_unit_no
    next_unit_no = next_unit_no + 1
 
-   allocate(info%prof1(0:nlev,variablecount),stat=rc)
+   allocate(last_observed_profile_info%prof1(0:nlev,variablecount),stat=rc)
    if (rc /= 0) stop 'gotm_fabm_input:create_observed_profile_info: Error allocating memory (prof1)'
-   info%prof1 = _ZERO_
+   last_observed_profile_info%prof1 = _ZERO_
 
-   allocate(info%prof2(0:nlev,variablecount),stat=rc)
+   allocate(last_observed_profile_info%prof2(0:nlev,variablecount),stat=rc)
    if (rc /= 0) stop 'gotm_fabm_input:create_observed_profile_info: Error allocating memory (prof2)'
-   info%prof2 = _ZERO_
+   last_observed_profile_info%prof2 = _ZERO_
 
-   allocate(info%alpha(0:nlev,variablecount),stat=rc)
+   allocate(last_observed_profile_info%alpha(0:nlev,variablecount),stat=rc)
    if (rc /= 0) stop 'gotm_fabm_input:create_observed_profile_info: Error allocating memory (alpha)'
 
    return
@@ -520,47 +543,42 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   type(type_observed_scalar_info),pointer :: info
-   integer                                 :: rc
+   integer :: rc
 !
 !-----------------------------------------------------------------------
 !BOC
 !  Add entry to the observed profile file list.
    if (.not.associated(first_observed_scalar_info)) then
       allocate(first_observed_scalar_info)
-      info => first_observed_scalar_info
+      last_observed_scalar_info => first_observed_scalar_info
    else
-      info => first_observed_scalar_info
-      do while (associated(info%next))
-         info => info%next
-      end do
-      allocate(info%next)
-      info => info%next
+      allocate(last_observed_scalar_info%next)
+      last_observed_scalar_info => last_observed_scalar_info%next
    end if
 
 !  Initialize derived type members that will hold information on the status of the input file.
-   nullify(info%next)
-   info%jul2  = 0
-   info%secs2 = 0
-   info%unit = -1
-   info%first_variable => firstvariable
+   nullify(last_observed_scalar_info%next)
+   last_observed_scalar_info%jul2  = 0
+   last_observed_scalar_info%secs2 = 0
+   last_observed_scalar_info%unit = -1
+   last_observed_scalar_info%first_variable => firstvariable
 
 !  Open the input file.
    open(next_unit_no,file=file,status='unknown',err=80)
 
 !  Opening was successful - store the file unit, and increment the next unit with 1.
-   info%unit = next_unit_no
+   last_observed_scalar_info%unit = next_unit_no
    next_unit_no = next_unit_no + 1
 
-   allocate(info%obs1(variablecount),stat=rc)
+   allocate(last_observed_scalar_info%obs1(variablecount),stat=rc)
    if (rc /= 0) stop 'gotm_fabm_input:create_observed_scalar_info: Error allocating memory (obs1)'
-   info%obs1 = _ZERO_
+   last_observed_scalar_info%obs1 = _ZERO_
 
-   allocate(info%obs2(variablecount),stat=rc)
+   allocate(last_observed_scalar_info%obs2(variablecount),stat=rc)
    if (rc /= 0) stop 'gotm_fabm_input:create_observed_scalar_info: Error allocating memory (obs2)'
-   info%obs2 = _ZERO_
+   last_observed_scalar_info%obs2 = _ZERO_
 
-   allocate(info%alpha(variablecount),stat=rc)
+   allocate(last_observed_scalar_info%alpha(variablecount),stat=rc)
    if (rc /= 0) stop 'gotm_fabm_input:create_observed_scalar_info: Error allocating memory (alpha)'
 
    return
