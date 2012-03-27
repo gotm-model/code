@@ -823,9 +823,8 @@ class StringWithImageEditor(QtGui.QComboBox,AbstractPropertyEditor):
     def displayValue(cls,delegate,painter,option,index):
         value = cls.convertFromQVariant(index.data(QtCore.Qt.EditRole))
         rect = option.rect
-        dev = painter.device()
-        print dev
-        dpi = option.widget.logicalDpiX()
+        dpi = painter.device().logicalDpiX()
+        #dpi = option.widget.logicalDpiX()
         qPixMap = cls.getPixMap(value,cls.width,cls.height,dpi)
         if qPixMap:
             option.decorationAlignment = QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter
