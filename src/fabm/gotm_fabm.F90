@@ -1065,6 +1065,8 @@
    subroutine init_gotm_fabm_state()
    
    integer :: i
+   
+   if (.not.fabm_calc) return
 
    do i=1,size(model%info%state_variables)
       if (associated(cc_obs(i)%data)) then
