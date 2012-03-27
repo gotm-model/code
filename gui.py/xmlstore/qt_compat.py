@@ -1,3 +1,5 @@
+import os
+
 def importPyQt4():
 	import sip
 	sip.setapi('QString',  2)
@@ -10,6 +12,15 @@ def importPySide():
 	return _QtCore
 
 preference = ('PyQt4',importPyQt4),('PySide',importPySide)
+
+if 'QT_API' in os.environ:
+    preference = list(preference)
+    for i,(name,fn) in enumerate(preference):
+        if name.lower()==os.environ['QT_API'].lower():
+            preference.insert(0,preference.pop(i))
+            break
+    else:
+        print 'Qt4 backend "%s" set in environment variable "QT_API" not found. Auto-detecting...' % (os.environ['QT_API'],)
 
 qt4_backend = None
 for name,importFunction in preference:
