@@ -316,8 +316,8 @@
             end do
 
             ! calculate the sink term at sea surface
-            Qs(nlev) = -S(nlev) * FQ(nlev-1) / (Ac(i) * h(i))
-            Qt(nlev) = -T(nlev) * FQ(nlev-1) / (Ac(i) * h(i))
+            Qs(nlev) = -S(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
+            Qt(nlev) = -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
          else
             do i=1,nlev
                Qs(i) = _ZERO_
@@ -326,6 +326,7 @@
                FQ(i) = _ZERO_
             end do
          end if
+         Qs(nlev) = Qs(nlev) - 5.6d0 * 400.0d0 / (Ac(nlev) * h(nlev))
       end if
    end if
 
