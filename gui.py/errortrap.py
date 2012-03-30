@@ -1,5 +1,5 @@
 import sys
-from PyQt4 import QtCore,QtGui
+from xmlstore.qt_compat import QtCore,QtGui
 
 class ErrorReceiver(QtCore.QObject):
     """Objects of this class accept an ErrorEvent (contained), takes the contained error message
@@ -44,7 +44,7 @@ def redirect_stderr(appname,errortext):
             QtGui.QApplication.postEvent(errorreceiver,ErrorReceiver.ErrorEvent(text))
         def flush(self):
             pass
-    
+
     ErrorDialog.appname = appname
     ErrorDialog.errortext = errortext
             

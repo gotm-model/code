@@ -2,7 +2,7 @@
 
 #$Id: visualizer.py,v 1.45 2010-07-19 13:45:50 jorn Exp $
 
-from PyQt4 import QtGui,QtCore
+from xmlstore.qt_compat import QtGui,QtCore,qt4_backend,qt4_backend_version
 
 import xmlstore.gui_qt4
 import core.common, core.result, core.report, commonqt
@@ -42,6 +42,9 @@ def loadResult(path):
     return res
 
 class OpenWidget(QtGui.QWidget):
+
+    onCompleteStateChanged = QtCore.Signal()
+    
     def __init__(self,parent=None,mrupaths=[]):
         QtGui.QWidget.__init__(self,parent)
 
@@ -50,15 +53,15 @@ class OpenWidget(QtGui.QWidget):
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.pathOpen)
-        layout.setMargin(0)
+        layout.setContentsMargins(0,0,0,0)
         self.setLayout(layout)
-        self.connect(self.pathOpen, QtCore.SIGNAL('onChanged()'), self.completeStateChanged)
+        self.pathOpen.onChanged.connect(self.completeStateChanged)
         
     def setPath(self,path):
         self.pathOpen.setPath(path)
         
     def completeStateChanged(self):
-        self.emit(QtCore.SIGNAL('onCompleteStateChanged()'))
+        self.onCompleteStateChanged.emit()
 
     def isComplete(self):
         return self.pathOpen.hasPath()
@@ -79,7 +82,7 @@ class PageOpen(commonqt.WizardPage):
         layout.addWidget(self.openwidget)
         layout.addStretch()
         self.setLayout(layout)
-        self.connect(self.openwidget, QtCore.SIGNAL('onCompleteStateChanged()'), self.completeStateChanged)
+        self.openwidget.onCompleteStateChanged.connect(self.completeStateChanged)
 
     def isComplete(self):
         return self.openwidget.isComplete()
@@ -111,7 +114,7 @@ class VisualizeWidget(QtGui.QWidget):
         self.treeVariables.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.Expanding)
         self.treeVariables.setMaximumWidth(250)
         self.treeVariables.setModel(self.model)
-        self.connect(self.treeVariables.selectionModel(), QtCore.SIGNAL('selectionChanged(const QItemSelection &, const QItemSelection &)'), self.OnVarSelected)
+        self.treeVariables.selectionModel().selectionChanged.connect(self.OnVarSelected)
 
         import xmlplot.gui_qt4
         self.figurepanel = xmlplot.gui_qt4.FigurePanel(self,reportnodata=False)
@@ -176,11 +179,7 @@ class PageVisualize(commonqt.WizardPage):
         self.vizwidget = VisualizeWidget(self.result,parent=self)
         
         layout = QtGui.QHBoxLayout()
-        try:
-            # Try-except because versions of Qt4 < 4.3 did not support this attribute
-            layout.setContentsMargins(0,0,0,0)
-        except AttributeError:
-            pass
+        layout.setContentsMargins(0,0,0,0)
         layout.addWidget(self.vizwidget)
         self.setLayout(layout)
 
@@ -199,6 +198,9 @@ class PageVisualize(commonqt.WizardPage):
         commonqt.WizardPage.destroy(self,destroyWindow,destroySubWindows)
 
 class ConfigureReportWidget(QtGui.QWidget):
+    onCompleteStateChanged = QtCore.Signal()
+    onReportProgressed = QtCore.Signal(float,str)
+
     def __init__(self,parent,result,rep):
         QtGui.QWidget.__init__(self,parent)
         
@@ -212,7 +214,7 @@ class ConfigureReportWidget(QtGui.QWidget):
         self.labTemplates = QtGui.QLabel('Report template:',self)
         self.comboTemplates = QtGui.QComboBox(parent)
         for (name,path) in reportname2path.items():
-            self.comboTemplates.addItem(name,QtCore.QVariant(path))
+            self.comboTemplates.addItem(name,path)
         
         self.labOutput = QtGui.QLabel('Directory to save to:',self)
         self.pathOutput = commonqt.PathEditor(self,getdirectory=True)
@@ -262,13 +264,13 @@ class ConfigureReportWidget(QtGui.QWidget):
         self.figbox.setLayout(figlayout)
         layout.addWidget(self.figbox,3,0,1,2)
         
-        layout.setMargin(0)
+        layout.setContentsMargins(0,0,0,0)
         self.setLayout(layout)
 
-        self.connect(self.pathOutput, QtCore.SIGNAL('onChanged()'), self.completeStateChanged)
+        self.pathOutput.onChanged.connect(self.completeStateChanged)
 
     def completeStateChanged(self):
-        self.emit(QtCore.SIGNAL('onCompleteStateChanged()'))
+        self.onCompleteStateChanged.emit()
 
     def isComplete(self):
         return self.pathOutput.hasPath()
@@ -276,7 +278,7 @@ class ConfigureReportWidget(QtGui.QWidget):
     def generate(self):
         # Get path of target directory and template.
         templateindex = self.comboTemplates.currentIndex()
-        templatepath = unicode(self.comboTemplates.itemData(templateindex).toString())
+        templatepath = unicode(self.comboTemplates.itemData(templateindex))
         outputpath = self.pathOutput.path()
 
         # Warn if the target directory is not empty.
@@ -298,14 +300,11 @@ class ConfigureReportWidget(QtGui.QWidget):
         # Generate the report and display the wait cursor while doing so.
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
         try:
-            self.report.generate(self.result,outputpath,templatepath,callback=self.onReportProgressed)
+            self.report.generate(self.result,outputpath,templatepath,callback=self.onReportProgressed.emit)
         finally:
             QtGui.QApplication.restoreOverrideCursor()
 
         return True
-
-    def onReportProgressed(self,progressed,status):
-        self.emit(QtCore.SIGNAL('onReportProgressed'),progressed,status)
 
     def destroy(self,destroyWindow = True,destroySubWindows = True):
         self.factory.unlink()
@@ -352,9 +351,9 @@ class PageReportGenerator(commonqt.WizardPage):
 
         self.setLayout(layout)
 
-        self.connect(self.checkReport, QtCore.SIGNAL('stateChanged(int)'),        self.onCheckChange)
-        self.connect(self.reportwidget,QtCore.SIGNAL('onCompleteStateChanged()'), self.completeStateChanged)
-        self.connect(self.reportwidget,QtCore.SIGNAL('onReportProgressed'),       self.reportProgressed)
+        self.checkReport.stateChanged.connect(self.onCheckChange)
+        self.reportwidget.onCompleteStateChanged.connect(self.completeStateChanged)
+        self.reportwidget.onReportProgressed.connect(self.reportProgressed)
         self.onCheckChange()
 
     def onCheckChange(self):
@@ -426,8 +425,8 @@ class PageSave(commonqt.WizardPage):
 
         self.setLayout(layout)
 
-        self.connect(self.bngroup,  QtCore.SIGNAL('buttonClicked(int)'), self.onSourceChange)
-        self.connect(self.pathSave, QtCore.SIGNAL('onChanged()'),        self.completeStateChanged)
+        self.bngroup.buttonClicked.connect(self.onSourceChange)
+        self.pathSave.onChanged.connect(self.completeStateChanged)
 
         self.radioSave.setChecked(True)
         self.onSourceChange()
@@ -506,11 +505,7 @@ def visualizeResult(result):
     layout.addWidget(piclabel)
     layout.addWidget(visualizer)
     layout.setSpacing(0)
-    try:
-        # Try-except because versions of Qt4 < 4.3 did not support this attribute
-        layout.setContentsMargins(0,0,0,0)
-    except AttributeError:
-        pass
+    layout.setContentsMargins(0,0,0,0)
     dialog.setLayout(layout)
 
     dialog.setWindowTitle('Visualize results')
@@ -521,7 +516,7 @@ def visualizeResult(result):
 def main():
     # Debug info
     print 'Python version: '+str(sys.version_info)
-    print 'PyQt4 version: '+QtCore.PYQT_VERSION_STR
+    print '%s version: %s' % (qt4_backend,qt4_backend_version)
     print 'Qt version: '+QtCore.qVersion()
     print 'xml version: '+xml.__version__
 

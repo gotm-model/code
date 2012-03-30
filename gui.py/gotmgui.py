@@ -4,7 +4,12 @@
 import os,sys,optparse
 
 # Import Qt Modules
-from PyQt4 import QtGui,QtCore
+from xmlstore.qt_compat import QtGui,QtCore,qt4_backend,qt4_backend_version,mpl_qt4_backend
+
+# Configure matplotlib
+import matplotlib
+matplotlib.rcParams['backend.qt4'] = mpl_qt4_backend
+matplotlib.use('Qt4Agg')
 
 # In order to find our custom data files, make sure that we are in the directory
 # containing the executable.
@@ -20,7 +25,7 @@ import errortrap
 def getVersions():
     yield ('Python','%i.%i.%i %s %i' % tuple(sys.version_info))
     yield ('Qt4',QtCore.qVersion())
-    yield ('PyQt4',QtCore.PYQT_VERSION_STR)
+    yield (qt4_backend,qt4_backend_version)
     
     import numpy
     yield ('numpy',numpy.__version__)
@@ -121,7 +126,7 @@ class GOTMWizard(commonqt.Wizard):
         layout.addWidget(textVersions)
         
         bnOk = QtGui.QPushButton('&OK',self)
-        dialog.connect(bnOk, QtCore.SIGNAL('clicked()'), dialog.accept)
+        bnOk.clicked.connect(dialog.accept)
 
         bnlayout = QtGui.QHBoxLayout()
         bnlayout.addStretch(1.)
@@ -179,12 +184,12 @@ class GOTMWizard(commonqt.Wizard):
 
                 # Add "OK" button
                 self.bnOk = QtGui.QPushButton('&OK',self)
-                self.connect(self.bnOk, QtCore.SIGNAL('clicked()'), self.accept)
+                self.bnOk.clicked.connect(self.accept)
                 layoutButtons.addWidget(self.bnOk)
 
                 # Add "Cancel" button
                 self.bnCancel = QtGui.QPushButton('&Cancel',self)
-                self.connect(self.bnCancel, QtCore.SIGNAL('clicked()'), self.reject)
+                self.bnCancel.clicked.connect(self.reject)
                 layoutButtons.addWidget(self.bnCancel)
                 
                 layout.addLayout(layoutButtons)
@@ -304,14 +309,14 @@ class PageChooseAction(commonqt.WizardPage):
         self.radioScenario = QtGui.QRadioButton('I want to create, view or edit a scenario.',self)
         self.radioResult = QtGui.QRadioButton('I want to view or process the result of a previous simulation.',self)
         self.scenariowidget = scenariobuilder.ScenarioWidget(self,mrupaths=mruscenarios)
-        self.connect(self.scenariowidget, QtCore.SIGNAL('onCompleteStateChanged()'),self.completeStateChanged)
+        self.scenariowidget.onCompleteStateChanged.connect(self.completeStateChanged)
         self.resultwidget = visualizer.OpenWidget(self,mrupaths=mruresults)
-        self.connect(self.resultwidget, QtCore.SIGNAL('onCompleteStateChanged()'),self.completeStateChanged)
+        self.resultwidget.onCompleteStateChanged.connect(self.completeStateChanged)
 
         self.bngroup     = QtGui.QButtonGroup()
         self.bngroup.addButton(self.radioScenario,0)
         self.bngroup.addButton(self.radioResult,1)
-        self.connect(self.bngroup, QtCore.SIGNAL('buttonClicked(int)'), self.onSourceChange)
+        self.bngroup.buttonClicked.connect(self.onSourceChange)
         
         layout = QtGui.QGridLayout()
         layout.addWidget(self.label,0,0,1,2)

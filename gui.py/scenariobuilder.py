@@ -2,7 +2,7 @@
 
 #$Id: scenariobuilder.py,v 1.56 2010-07-19 13:50:21 jorn Exp $
 
-from PyQt4 import QtGui,QtCore
+from xmlstore.qt_compat import QtGui,QtCore,qt4_backend,qt4_backend_version
 
 # Import modules from standard Python library
 import sys,xml, os.path
@@ -10,6 +10,8 @@ import sys,xml, os.path
 import core.scenario, core.result, xmlstore.util, xmlstore.gui_qt4, commonqt
 
 class ScenarioWidget(QtGui.QWidget):
+
+    onCompleteStateChanged = QtCore.Signal()
 
     def __init__(self,parent=None,mrupaths=[]):
         QtGui.QWidget.__init__(self,parent)
@@ -24,7 +26,7 @@ class ScenarioWidget(QtGui.QWidget):
         #default2path = core.scenario.Scenario.getDefaultValues()
         #self.comboTemplates = QtGui.QComboBox(parent)
         #for (name,path) in default2path.items():
-        #    self.comboTemplates.addItem(name,QtCore.QVariant(name))
+        #    self.comboTemplates.addItem(name,name)
         #self.templatelayout = QtGui.QHBoxLayout()
         #self.templatelayout.addWidget(self.labTemplate)
         #self.templatelayout.addWidget(self.comboTemplates,1)
@@ -59,14 +61,14 @@ class ScenarioWidget(QtGui.QWidget):
 
         layout.setColumnMinimumWidth(0,commonqt.getRadioWidth())
 
-        layout.setMargin(0)
+        layout.setContentsMargins(0,0,0,0)
         
         self.setLayout(layout)
 
-        self.connect(self.bngroup,     QtCore.SIGNAL('buttonClicked(int)'), self.onSourceChange)
-        self.connect(self.pathOpen,    QtCore.SIGNAL('onChanged()'),        self.completeStateChanged)
-        self.connect(self.pathImport1, QtCore.SIGNAL('onChanged()'),        self.completeStateChanged)
-        self.connect(self.pathImport2, QtCore.SIGNAL('onChanged()'),        self.completeStateChanged)
+        self.bngroup.buttonClicked.connect(self.onSourceChange)
+        self.pathOpen.onChanged.connect(self.completeStateChanged)
+        self.pathImport1.onChanged.connect(self.completeStateChanged)
+        self.pathImport2.onChanged.connect(self.completeStateChanged)
 
         self.radioNew.setChecked(True)
         self.onSourceChange()
@@ -171,7 +173,7 @@ class ScenarioWidget(QtGui.QWidget):
         return self.bngroup.checkedId()!=0 and self.checkSkipToSimulation.isChecked()
 
     def completeStateChanged(self):
-        self.emit(QtCore.SIGNAL('onCompleteStateChanged()'))
+        self.onCompleteStateChanged.emit()
         
 class PageOpen(commonqt.WizardPage):
 
@@ -180,7 +182,7 @@ class PageOpen(commonqt.WizardPage):
 
         self.label = QtGui.QLabel('How do you want to obtain a scenario?',self)
         self.scenariowidget = ScenarioWidget(self)
-        self.connect(self.scenariowidget, QtCore.SIGNAL('onCompleteStateChanged()'),self.completeStateChanged)
+        self.scenariowidget.onCompleteStateChanged.connect(self.completeStateChanged)
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.label)
@@ -303,7 +305,7 @@ class PageLocation(ScenarioPage):
         
     def saveData(self,mustbevalid):
         if self.scenario.hasChanged() and not mustbevalid:
-            res = QtGui.QMessageBox.warning(self,'Leaving scenario editor','All changes to your scenario will be lost. Do you want to continue?',QtGui.QMessageBox.Yes,QtGui.QMessageBox.No,QtGui.QMessageBox.NoButton)
+            res = QtGui.QMessageBox.warning(self,'Leaving scenario editor','All changes to your scenario will be lost. Do you want to continue?',QtGui.QMessageBox.Yes|QtGui.QMessageBox.No,QtGui.QMessageBox.No)
             if res==QtGui.QMessageBox.No: return False
 
         return ScenarioPage.saveData(self,mustbevalid)
@@ -964,8 +966,8 @@ class PageSave(commonqt.WizardPage):
 
         self.setLayout(layout)
 
-        self.connect(self.bngroup,  QtCore.SIGNAL('buttonClicked(int)'), self.onSourceChange)
-        self.connect(self.pathSave, QtCore.SIGNAL('onChanged()'),        self.completeStateChanged)
+        self.bngroup.buttonClicked.connect(self.onSourceChange)
+        self.pathSave.onChanged.connect(self.completeStateChanged)
 
         self.radioSave.setChecked(True)
         self.onSourceChange()
@@ -1079,7 +1081,7 @@ def editScenario(scenario):
 def main():
     # Debug info
     print 'Python version: '+str(sys.version_info)
-    print 'PyQt4 version: '+QtCore.PYQT_VERSION_STR
+    print '%s version: %s' % (qt4_backend,qt4_backend_version)
     print 'Qt version: '+QtCore.qVersion()
     print 'xml version: '+xml.__version__
 

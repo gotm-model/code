@@ -38,9 +38,9 @@ def getVersions():
     for ncver in xmlplot.data.netcdf.netcdfmodules: yield ncver
 
     try:
-        from PyQt4 import QtCore
+        from xmlstore.qt_compat import QtCore,qt4_backend,qt4_backend_version
         yield ('Qt4',QtCore.qVersion())
-        yield ('PyQt4',QtCore.PYQT_VERSION_STR)
+        yield (qt4_backend,qt4_backend_version)
     except ImportError:
         pass
 

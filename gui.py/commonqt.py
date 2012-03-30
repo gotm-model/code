@@ -6,7 +6,7 @@
 import re, os.path
 
 # Import third-party modules
-from PyQt4 import QtGui,QtCore
+from xmlstore.qt_compat import QtGui,QtCore
 
 # Import our own custom modules
 import xmlstore.util
@@ -40,11 +40,9 @@ def browseForPath(parent=None,curpath=None,getdirectory=False,save=False,filter=
     if getdirectory:
         path = unicode(QtGui.QFileDialog.getExistingDirectory(parent,'',curpath))
     elif save:
-        selfilt = QtCore.QString()
-        path = unicode(QtGui.QFileDialog.getSaveFileName(parent,'',curpath,filter,selfilt,dlgoptions))
-        selfilt = unicode(selfilt)
+        path,selfilt = map(unicode,QtGui.QFileDialog.getSaveFileNameAndFilter(parent,'',curpath,filter,None,dlgoptions))
     else:
-        path = unicode(QtGui.QFileDialog.getOpenFileName(parent,'',curpath,filter))
+        path,selfilt = map(unicode,QtGui.QFileDialog.getOpenFileNameAndFilter(parent,'',curpath,filter))
         
     # If the browse dialog was cancelled, just return.
     if path=='': return None
@@ -75,6 +73,9 @@ def browseForPath(parent=None,curpath=None,getdirectory=False,save=False,filter=
 # =======================================================================
 
 class PathEditor(QtGui.QWidget):
+    onChanged = QtCore.Signal()
+    editingFinished = QtCore.Signal()
+
     def __init__(self,parent=None,compact=False,header=None,getdirectory=False,save=False,mrupaths=[]):
         QtGui.QWidget.__init__(self, parent)
 
@@ -107,14 +108,13 @@ class PathEditor(QtGui.QWidget):
 
         self.browsebutton = QtGui.QPushButton(text,self)
         lo.addWidget(self.browsebutton)
-
-        lo.setMargin(0)
+        lo.setContentsMargins(0,0,0,0)
 
         self.setLayout(lo)
 
-        self.connect(self.lineedit,     QtCore.SIGNAL('textChanged(const QString &)'), self.onChanged)
-        self.connect(self.lineedit,     QtCore.SIGNAL('editingFinished()'),            self.onEditingFinished)
-        self.connect(self.browsebutton, QtCore.SIGNAL('clicked()'),                    self.onBrowse)
+        self.lineedit.textChanged.connect(self.onChanged)
+        self.lineedit.editingFinished.connect(self.editingFinished)
+        self.browsebutton.clicked.connect(self.onBrowse)
 
         self.getdirectory = getdirectory
         self.save = save
@@ -131,6 +131,7 @@ class PathEditor(QtGui.QWidget):
         return unicode(self.lineedit.text())
         #return unicode(self.editor.currentText())
 
+    @QtCore.Slot()
     def onBrowse(self):
         curpath = self.path()
         if curpath=='' and self.defaultpath != None: curpath=self.defaultpath
@@ -140,11 +141,11 @@ class PathEditor(QtGui.QWidget):
     def hasPath(self):
         return (len(self.path())>0)
 
-    def onChanged(self,text):
-        self.emit(QtCore.SIGNAL('onChanged()'))
+    #def onChanged(self,text):
+    #    self.onChanged.emit()
 
-    def onEditingFinished(self):
-        self.emit(QtCore.SIGNAL('editingFinished()'))
+    #def onEditingFinished(self):
+    #    self.editingFinished.emit()
 
 # =======================================================================
 # Wizard: dialog for hosting series of 'wizard' pages
@@ -158,7 +159,7 @@ class Wizard(QtGui.QDialog):
         QtGui.QDialog.__init__(self, parent, QtCore.Qt.Window|QtCore.Qt.WindowContextHelpButtonHint|QtCore.Qt.WindowMinMaxButtonsHint)
 
         layout = QtGui.QVBoxLayout()
-        layout.setMargin(0)
+        layout.setContentsMargins(0,0,0,0)
         
         if headerlogo is not None:
             self.pm = QtGui.QPixmap(headerlogo,'PNG')
@@ -172,24 +173,24 @@ class Wizard(QtGui.QDialog):
         self.bnlayout.addStretch()
 
         self.bnHome = QtGui.QPushButton(getIcon('gohome.png'),'&Home',self)
-        self.connect(self.bnHome, QtCore.SIGNAL('clicked()'), self.onHome)
+        self.bnHome.clicked.connect(self.onHome)
         self.bnlayout.addWidget(self.bnHome)
 
         self.bnBack = QtGui.QPushButton(getIcon('back.png'),'&Back',self)
-        self.connect(self.bnBack, QtCore.SIGNAL('clicked()'), self.onBack)
+        self.bnBack.clicked.connect(self.onBack)
         self.bnlayout.addWidget(self.bnBack)
 
         self.bnNext = QtGui.QPushButton(getIcon('next.png'),'&Next',self)
-        self.connect(self.bnNext, QtCore.SIGNAL('clicked()'), self.onNext)
+        self.bnNext.clicked.connect(self.onNext)
         self.bnlayout.addWidget(self.bnNext)
 
         if closebutton:
             import xmlplot.gui_qt4
             self.bnClose = QtGui.QPushButton(xmlplot.gui_qt4.getIcon('exit.png'),'&Close',self)
-            self.connect(self.bnClose, QtCore.SIGNAL('clicked()'), self.accept)
+            self.bnClose.clicked.connect(self.accept)
             self.bnlayout.addWidget(self.bnClose)
 
-        self.bnlayout.setMargin(11)
+        self.bnlayout.setContentsMargins(11,11,11,11)
         layout.addLayout(self.bnlayout)
 
         self.setLayout(layout)
@@ -202,6 +203,8 @@ class Wizard(QtGui.QDialog):
         self.currentpage = None
         
         self.allowfinish = allowfinish
+        
+        self.busy = False
 
     def getSettings(self):
         if self.settings is None:
@@ -249,8 +252,10 @@ class Wizard(QtGui.QDialog):
         cls = self.sequence.getNextPage()
         self.switchPage(cls(self))
 
+    @QtCore.Slot()
     def onNext(self,askoldpage=True):
-        self.disconnect(self.bnNext, QtCore.SIGNAL('clicked()'), self.onNext)
+        if self.busy: return
+        self.busy = True
         cancelled = False
         if askoldpage:
             cancelled = not self.currentpage.saveData(mustbevalid=True)
@@ -265,10 +270,12 @@ class Wizard(QtGui.QDialog):
                 newpage = cls(self)
                 ready = (not newpage.doNotShow())
             self.switchPage(newpage)
-        self.connect(self.bnNext, QtCore.SIGNAL('clicked()'), self.onNext)
+        self.busy = False
 
+    @QtCore.Slot()
     def onBack(self):
-        self.disconnect(self.bnBack, QtCore.SIGNAL('clicked()'), self.onBack)
+        if self.busy: return
+        self.busy = True
         if self.currentpage.saveData(mustbevalid=False):
             ready = False
             while not ready:
@@ -277,10 +284,12 @@ class Wizard(QtGui.QDialog):
                 newpage = cls(self)
                 ready = (not newpage.doNotShow())
             self.switchPage(newpage)
-        self.connect(self.bnBack, QtCore.SIGNAL('clicked()'), self.onBack)
+        self.busy = False
 
+    @QtCore.Slot()
     def onHome(self):
-        self.disconnect(self.bnHome, QtCore.SIGNAL('clicked()'), self.onHome)
+        if self.busy: return
+        self.busy = True
         if self.currentpage.saveData(mustbevalid=False):
             cls = self.sequence.getPreviousPage()
             assert cls is not None, 'No previous page available to show; the home button should have been disabled.'
@@ -289,7 +298,7 @@ class Wizard(QtGui.QDialog):
                 cls = self.sequence.getPreviousPage()
             newpage = prevcls(self)
             self.switchPage(newpage)
-        self.connect(self.bnHome, QtCore.SIGNAL('clicked()'), self.onHome)
+        self.busy = False
 
     def switchPage(self,newpage):
         QtGui.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
@@ -297,12 +306,12 @@ class Wizard(QtGui.QDialog):
         if self.currentpage is not None:
             self.currentpage.hide()
             layout.removeWidget(self.currentpage)
-            self.disconnect(self.currentpage, QtCore.SIGNAL('onCompleteStateChanged()'),self.onCompleteStateChanged)
+            self.currentpage.onCompleteStateChanged.disconnect(self.onCompleteStateChanged)
             self.currentpage.destroy()
         self.currentpage = newpage
         layout.insertWidget(1,self.currentpage)
         self.currentpage.show()
-        self.connect(self.currentpage, QtCore.SIGNAL('onCompleteStateChanged()'),self.onCompleteStateChanged)
+        self.currentpage.onCompleteStateChanged.connect(self.onCompleteStateChanged)
         cangoback = (self.sequence.getPreviousPage(stay=True) is not None)
         self.bnHome.setEnabled(cangoback)
         self.bnBack.setEnabled(cangoback)
@@ -320,6 +329,7 @@ class Wizard(QtGui.QDialog):
 # =======================================================================
 
 class WizardPage(QtGui.QWidget):
+    onCompleteStateChanged = QtCore.Signal()
 
     def __init__(self,parent=None):
         QtGui.QWidget.__init__(self,parent)
@@ -330,7 +340,7 @@ class WizardPage(QtGui.QWidget):
         return False
 
     def completeStateChanged(self):
-        self.emit(QtCore.SIGNAL('onCompleteStateChanged()'))
+        self.onCompleteStateChanged.emit()
 
     def saveData(self,mustbevalid):
         return True
@@ -431,7 +441,7 @@ class WizardFork(WizardSequence):
 
 class ProgressDialog(QtGui.QProgressDialog):
     def __init__(self,parent=None,minimumduration=500,title=None,suppressstatus=False):
-        QtGui.QProgressDialog.__init__(self,'',QtCore.QString(),0,0,parent,QtCore.Qt.Dialog|QtCore.Qt.CustomizeWindowHint|QtCore.Qt.WindowTitleHint|QtCore.Qt.MSWindowsFixedSizeDialogHint)
+        QtGui.QProgressDialog.__init__(self,'',None,0,0,parent,QtCore.Qt.Dialog|QtCore.Qt.CustomizeWindowHint|QtCore.Qt.WindowTitleHint|QtCore.Qt.MSWindowsFixedSizeDialogHint)
         self.setModal(True)
         self.setMinimumDuration(minimumduration)
         self.setRange(0,0)

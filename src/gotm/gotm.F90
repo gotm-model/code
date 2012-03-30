@@ -68,7 +68,7 @@
    use bio_var, only: npar,numc,cc
 #endif
 #ifdef _FABM_
-   use gotm_fabm,only:init_gotm_fabm,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm
+   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm
    use gotm_fabm_input,only:init_gotm_fabm_input,do_gotm_fabm_input
    use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output
 #endif
@@ -425,13 +425,14 @@
 !  initialize FABM module
 #ifdef _FABM_
 
+!  Initialize the GOTM-FABM coupler from its configuration file.
    call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml')
 
 !  Initialize FABM input (data files with observations)
-   call init_gotm_fabm_input(nlev,namlst,'fabm_input.nml')
+   call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
 
-!  Read observations on FABM variables for the first time, and use them to initialize state variables.
-   call do_gotm_fabm_input(julianday,secondsofday,nlev,z,.true.)
+!  Read observations on FABM variables for the first time.
+   call do_gotm_fabm_input(julianday,secondsofday,nlev,z)
 
 !  Initialize FABM output (creates NetCDF variables)
    call init_gotm_fabm_output()
@@ -441,6 +442,10 @@
    call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,taub,wind,precip,evap,z(1:nlev), &
                           A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev))
+
+!  Initialize FABM initial state (this is done after the first call to do_gotm_fabm_input,
+!  to allow user-specified observed values to be used as initial state)
+   call init_gotm_fabm_state()
 
 #endif
 
@@ -583,7 +588,7 @@
       end if
 #endif
 #ifdef _FABM_
-      call do_gotm_fabm_input(julianday,secondsofday,nlev,z,.false.)
+      call do_gotm_fabm_input(julianday,secondsofday,nlev,z)
       call do_gotm_fabm(nlev)
 #endif
 

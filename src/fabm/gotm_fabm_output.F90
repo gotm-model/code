@@ -80,7 +80,7 @@ contains
          dim3d(3) = time_dim
 
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical state variable.
-         do n=1,ubound(model%info%state_variables,1)
+         do n=1,size(model%info%state_variables)
             iret = new_nc_variable(ncid,trim(model%info%state_variables(n)%name),NF90_REAL, &
                                    dim4d,model%info%state_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables(n)%externalid,       &
@@ -90,7 +90,7 @@ contains
          end do
 
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical diagnostic variable.
-         do n=1,ubound(model%info%diagnostic_variables,1)
+         do n=1,size(model%info%diagnostic_variables)
             iret = new_nc_variable(ncid,trim(model%info%diagnostic_variables(n)%name),NF90_REAL, &
                                    dim4d,model%info%diagnostic_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables(n)%externalid,    &
@@ -100,7 +100,7 @@ contains
          end do
 
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical state variable.
-         do n=1,ubound(model%info%state_variables_ben,1)
+         do n=1,size(model%info%state_variables_ben)
             iret = new_nc_variable(ncid,trim(model%info%state_variables_ben(n)%name),NF90_REAL, &
                                    dim3d,model%info%state_variables_ben(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables_ben(n)%externalid,    &
@@ -110,7 +110,7 @@ contains
          end do
 
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical diagnostic variable.
-         do n=1,ubound(model%info%diagnostic_variables_hz,1)
+         do n=1,size(model%info%diagnostic_variables_hz)
             iret = new_nc_variable(ncid,trim(model%info%diagnostic_variables_hz(n)%name),NF90_REAL, &
                                    dim3d,model%info%diagnostic_variables_hz(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables_hz(n)%externalid,    &
@@ -120,7 +120,7 @@ contains
          end do
 
          ! Add a variable for each conserved quantity
-         do n=1,ubound(model%info%conserved_quantities,1)
+         do n=1,size(model%info%conserved_quantities)
             iret = new_nc_variable(ncid,trim(model%info%conserved_quantities(n)%name)//'_tot',NF90_REAL, &
                                    dim3d,model%info%conserved_quantities(n)%externalid)
             iret = set_attributes(ncid,model%info%conserved_quantities(n)%externalid,      &
@@ -179,18 +179,18 @@ contains
       case (NETCDF)
 #ifdef NETCDF_FMT
          ! Store pelagic biogeochemical state variables.
-         do n=1,ubound(model%info%state_variables,1)
+         do n=1,size(model%info%state_variables)
             iret = store_data(ncid,model%info%state_variables(n)%externalid,XYZT_SHAPE,nlev,array=cc(n,0:nlev))
          end do
 
          ! Store benthic biogeochemical state variables.
-         do n=1,ubound(model%info%state_variables_ben,1)
+         do n=1,size(model%info%state_variables_ben)
             iret = store_data(ncid,model%info%state_variables_ben(n)%externalid,XYT_SHAPE,1, &
-                            & scalar=cc(ubound(model%info%state_variables,1)+n,1))
+                            & scalar=cc(size(model%info%state_variables)+n,1))
          end do
 
          ! Process and store diagnostic variables defined on the full domain.
-         do n=1,ubound(model%info%diagnostic_variables,1)
+         do n=1,size(model%info%diagnostic_variables)
             ! Time-average diagnostic variable if needed.
             if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged) &
                cc_diag(n,1:nlev) = cc_diag(n,1:nlev)/(nsave*dt)
@@ -205,7 +205,7 @@ contains
          end do
 
          ! Process and store diagnostic variables defined on horizontal slices of the domain.
-         do n=1,ubound(model%info%diagnostic_variables_hz,1)
+         do n=1,size(model%info%diagnostic_variables_hz)
             ! Time-average diagnostic variable if needed.
             if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_averaged) &
                cc_diag_hz(n) = cc_diag_hz(n)/(nsave*dt)
@@ -222,7 +222,7 @@ contains
          ! Integrate conserved quantities over depth.
 #ifdef _FABM_USE_1D_LOOP_
          call fabm_get_conserved_quantities(model,1,nlev,local)
-         do n=1,ubound(model%info%conserved_quantities,1)
+         do n=1,size(model%info%conserved_quantities)
             ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
             ! We therefore need to increment the index by 1 in order to address original elements >=1!
             total(n) = sum(h(2:nlev+1)*local(1:nlev,n))
@@ -238,7 +238,7 @@ contains
 #endif
 
          ! Store conserved quantity integrals.
-         do n=1,ubound(model%info%conserved_quantities,1)
+         do n=1,size(model%info%conserved_quantities)
             iret = store_data(ncid,model%info%conserved_quantities(n)%externalid,XYT_SHAPE,1,scalar=total(n))
          end do
 #endif
