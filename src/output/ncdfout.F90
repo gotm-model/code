@@ -176,7 +176,8 @@
 ! !INTERFACE:
    subroutine init_ncdf(fn,title,lat,lon,nlev,start_time,time_unit)
 ! !USES:
-   use meanflow, only: lake
+   use meanflow,     only: lake
+   use observations, only: inflows_method
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
@@ -333,17 +334,19 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
       call check_err(iret)
-      iret = nf90_def_var(ncid,'Qs',NF90_REAL,dim4d,Qs_id)
-      call check_err(iret)
-      iret = nf90_def_var(ncid,'Qt',NF90_REAL,dim4d,Qt_id)
-      call check_err(iret)
-      iret = nf90_def_var(ncid,'wIs',NF90_REAL,dim4d,wIs_id)
-      call check_err(iret)
-      iret = nf90_def_var(ncid,'FQ',NF90_REAL,dim4d,FQ_id)
-      call check_err(iret)
-      iret = nf90_def_var(ncid,'Q',NF90_REAL,dim3d,Q_id)
-      call check_err(iret)
-   end if
+      if (inflows_method.eq.2) then
+         iret = nf90_def_var(ncid,'Qs',NF90_REAL,dim4d,Qs_id)
+         call check_err(iret)
+         iret = nf90_def_var(ncid,'Qt',NF90_REAL,dim4d,Qt_id)
+         call check_err(iret)
+         iret = nf90_def_var(ncid,'wIs',NF90_REAL,dim4d,wIs_id)
+         call check_err(iret)
+         iret = nf90_def_var(ncid,'FQ',NF90_REAL,dim4d,FQ_id)
+         call check_err(iret)
+         iret = nf90_def_var(ncid,'Q',NF90_REAL,dim3d,Q_id)
+         call check_err(iret)
+      endif
+   endif
    iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'SS_obs',NF90_REAL,dim4d,SS_obs_id)
@@ -491,17 +494,19 @@
                             long_name='hypsography at grid interfaces')
       iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsography')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
-      iret = set_attributes(ncid,Qs_id,units='1/s', &
-                            long_name='salt inflow')
-      iret = set_attributes(ncid,Qt_id,units='celsius/s', &
-                            long_name='temperature inflow')
-      iret = set_attributes(ncid,wIs_id,units='m/s', &
-                            long_name='vertical salinity advection velocity')
-      iret = set_attributes(ncid,FQ_id,units='m**3/s', &
-                            long_name='vertical salinity transport')
-      iret = set_attributes(ncid,Q_id,units='m**3/s', &
-                            long_name='Water transport from inflows')
-   end if
+      if (inflows_method.eq.2) then
+         iret = set_attributes(ncid,Qs_id,units='1/s', &
+                               long_name='salt inflow')
+         iret = set_attributes(ncid,Qt_id,units='celsius/s', &
+                               long_name='temperature inflow')
+         iret = set_attributes(ncid,wIs_id,units='m/s', &
+                               long_name='vertical salinity advection velocity')
+         iret = set_attributes(ncid,FQ_id,units='m**3/s', &
+                               long_name='vertical salinity transport')
+         iret = set_attributes(ncid,Q_id,units='m**3/s', &
+                               long_name='Water transport from inflows')
+       endif
+   endif
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
    iret = set_attributes(ncid,NN_id,units='1/s2',long_name='buoyancy frequency squared')
    iret = set_attributes(ncid,sigma_t_id,units='kg/m3',long_name='sigma_t')
@@ -595,7 +600,7 @@
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
-   use observations, only: Qs, Qt, FQ, inflows_input
+   use observations, only: Qs, Qt, FQ, inflows_input, inflows_method
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
@@ -677,8 +682,10 @@
          dum(1) = dum(1) + Ac(i) * S(i) * h(i)
       end do
       iret = store_data(ncid,total_salt_id,XYT_SHAPE,1,scalar=dum(1))
-      iret = store_data(ncid,Q_id,XYT_SHAPE,1,scalar=inflows_input(1))
-   end if
+      if (inflows_method .eq. 2) then
+         iret = store_data(ncid,Q_id,XYT_SHAPE,1,scalar=inflows_input(1))
+      endif
+   endif
 
    if (turb_method.eq.99) then
       iret = store_data(ncid,zsbl_id,XYT_SHAPE,1,scalar=zsbl)
@@ -699,14 +706,16 @@
       iret = store_data(ncid,Ac_id,XYZT_SHAPE,nlev,array=Ac)
       iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
       iret = store_data(ncid,dAdz_id,XYZT_SHAPE,nlev,array=dAdz)
-      iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)
-      iret = store_data(ncid,Qt_id,XYZT_SHAPE,nlev,array=Qt)
-      do i=1,nlev
-         dum(i) = FQ(i) / Af(i)
-      end do
-      iret = store_data(ncid,wIs_id,XYZT_SHAPE,nlev,array=dum)
-      iret = store_data(ncid,FQ_id,XYZT_SHAPE,nlev,array=FQ)
-   end if
+      if (inflows_method.eq.2) then
+         iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)
+         iret = store_data(ncid,Qt_id,XYZT_SHAPE,nlev,array=Qt)
+         do i=1,nlev
+            dum(i) = FQ(i) / Af(i)
+         end do
+         iret = store_data(ncid,wIs_id,XYZT_SHAPE,nlev,array=dum)
+         iret = store_data(ncid,FQ_id,XYZT_SHAPE,nlev,array=FQ)
+      endif
+   endif
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
    iret = store_data(ncid,NN_id,XYZT_SHAPE,nlev,array=NN)
 
