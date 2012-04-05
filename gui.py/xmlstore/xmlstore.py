@@ -21,6 +21,9 @@ replaceWithEmpty         = 2
 replaceRemoveOldChildren = 4
 replaceAlways            = 7
 
+class ValidationException(Exception):
+    pass
+
 class Schema(object):
     """Class for managing XML-based schemas, used to define TypedStore objects.
     Supports caching of schemas (based on file path), parsing of schemas
@@ -1977,6 +1980,13 @@ class TypedStore(util.referencedobject):
 
         errors = []
         validity = dict([(node,True) for node in nodes])
+
+        # Retrieve validation history (this is a set containing the nodes that
+        # have been found valid in previous calls to "validate")
+        if usehistory:
+            oldvalids = self.validnodes
+        else:
+            oldvalids = set()
             
         # Build relevant subsets of node list.
         customnodes,selectnodes,emptynodes,lboundnodes,uboundnodes = [],[],[],[],[]
@@ -2061,7 +2071,95 @@ class TypedStore(util.referencedobject):
                         validity[node] = False
                         errors.append('variable "%s" is set to %s, which lies above the maximum of %s.' % (node.getText(1),value.toPrettyString(),maxval.toPrettyString()))
                 if isinstance(value,util.referencedobject): value.release()
+
+        def performTest(testnode):
+            """Validates nodes against a custom validation rule provided in XML.
+            """
+            def cleanup():
+                for value in namespace.itervalues():
+                    if isinstance(value,util.referencedobject): value.release()
         
+            def validate(namespace,affectednodes):
+                try:
+                    for ch in testnode.childNodes:
+                        if ch.nodeType!=ch.ELEMENT_NODE: continue
+                        if ch.localName=='error':
+                            # Validation based on expression
+                            assert ch.hasAttribute('expression'),'"expression" attribute not set on validation/rule/test node.'
+                            assert ch.hasAttribute('description'),'"description" attribute not set on validation/rule/test node.'
+                            if eval(ch.getAttribute('expression'),namespace):
+                                raise ValidationException(ch.getAttribute('description'))
+                        elif ch.localName=='custom':
+                            # Validation based on custom Python code
+                            for data in ch.childNodes:
+                                if data.nodeType==data.CDATA_SECTION_NODE: break
+                            code = compile(data.nodeValue,'<string>','exec')
+                            exec code in namespace
+                except ValidationException,e:
+                    # Flag all affected nodes as invalid and register the error message.
+                    for node in affectednodes:
+                        if node in validity: validity[node] = False
+                    errors.append(unicode(e))
+
+            # Get values for all variables that this rule uses.
+            namespace = {'ValidationException':ValidationException}
+            valuenodes = []
+            hastestablenodes = False
+            anyvartype,anyvarsymbol,anyvarname = None,None,None
+            for ch in testnode.childNodes:
+                if ch.nodeType!=ch.ELEMENT_NODE: continue
+                if ch.localName=='variable':
+                    assert ch.hasAttribute('path'),'"path" attribute not set on validation/rule/variable node.'
+                    path = ch.getAttribute('path')
+                    name = path.split('/')[-1]
+                    valuenode = self[path]
+                    if valuenode.isHidden() and repair!=0:
+                        # Dependent node is hidden and validation is not strict - skip this test.
+                        return cleanup()
+                    if validity.get(valuenode,False):
+                        # Dependant node is currently being validated - this test must be executed.
+                        hastestablenodes = True
+                    elif valuenode not in oldvalids:
+                        # Dependant node is (A) not currently validated and (B) has also not previously found to be valid.
+                        # (if (B), it would have been usable to validate the value of other currently tested nodes)
+                        # Skip this test.
+                        return cleanup()
+                    namespace[name] = valuenode.getValue(usedefault=usedefault)
+                    valuenodes.append(valuenode)
+                elif ch.localName=='anyvariable':
+                    assert ch.hasAttribute('type'),'"type" attribute not set on validation/rule/anyvariable node.'
+                    assert ch.hasAttribute('valuesymbol'),'"valuesymbol" attribute not set on validation/rule/anyvariable node.'
+                    assert ch.hasAttribute('namesymbol'),'"namesymbol" attribute not set on validation/rule/anyvariable node.'
+                    assert anyvartype is None,'Only one validation/rule/variable node can have the type attribute.'
+                    anyvartype = ch.getAttribute('type')
+                    anyvarsymbol = ch.getAttribute('valuesymbol')
+                    anyvarname = ch.getAttribute('namesymbol')
+
+            # Perform actual validation.
+            if anyvartype is not None:
+                # This rule applies to all nodes with a particular data type.
+                for node in nodes:
+                    if node.getValueType()==anyvartype and validity[node] and not (node.isHidden() and repair!=0):
+                        curnamspace = dict(namespace)
+                        value = node.getValue(usedefault=usedefault)
+                        curnamspace[anyvarsymbol] = value
+                        curnamspace[anyvarname] = node.getText(detail=1)
+                        validate(curnamspace,valuenodes+[node])
+                        if isinstance(value,util.referencedobject): value.release()
+            else:
+                # This rule applies to specific named nodes only.
+                if hastestablenodes: validate(namespace,valuenodes)
+            
+            return cleanup()
+            
+        # Apply custom validation rules, if set.
+        templateroot = self.schema.getRoot()
+        for validationnode in templateroot.childNodes:
+            if validationnode.nodeType==validationnode.ELEMENT_NODE and validationnode.localName=='validation':
+                for testnode in validationnode.childNodes:
+                    if testnode.nodeType==testnode.ELEMENT_NODE and testnode.localName=='test': performTest(testnode)
+                break
+
         return errors,validity
         
     def convert(self,target,callback=None,usedefaults=True,matchednodes=None):
