@@ -5,13 +5,12 @@ import datetime, os.path, sys
 from xmlstore.qt_compat import QtGui,QtCore
 import numpy
 import matplotlib.figure
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 import matplotlib.lines
 
 # Import our own custom modules
 import xmlstore.xmlstore,xmlstore.util,xmlstore.gui_qt4
-import plot,data,common
+import plot,data,common,mpl_backend_qt4
 
 # ====================================================================================
 # Utility functions
@@ -385,30 +384,6 @@ class FigureToolbar(matplotlib.backend_bases.NavigationToolbar2):
                                    guiEvent=event.guiEvent)
         return matplotlib.backend_bases.NavigationToolbar2.mouse_move(self,event)
 
-class FigureCanvas(FigureCanvasQTAgg):
-    """Canvas for Qt4, inheriting from FigureCanvasQTAgg. This class exposes the
-    canvas resize event to external subscribers. This is used to automatically
-    update the figure size when the user resize (the container of) the canvas.
-    """
-    afterResize = QtCore.Signal()
-    
-    def __init__(self, figure):
-        self.animating = False
-        FigureCanvasQTAgg.__init__(self, figure)
-        self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent,False)
-
-    def resizeEvent( self, e ):
-        FigureCanvasQTAgg.resizeEvent( self, e )
-        self.afterResize.emit()
-
-    def draw(self):
-        self.replot = True
-        self.get_renderer().clear()
-        if self.animating:
-            self.repaint()
-        else:
-            self.update()
-
 class FigurePanel(QtGui.QWidget):
     """This widget contains a MatPlotLib canvas that hosts a figure, plus a toolbar
     that allows for figure zooming, panning, printing, exporting, etc.
@@ -421,7 +396,7 @@ class FigurePanel(QtGui.QWidget):
         self.mplfigure = matplotlib.figure.Figure(facecolor='none',frameon=False,dpi=self.logicalDpiX())
 
         # Create MatPlotLib canvas (Qt-backend) attached to our MatPlotLib figure.
-        self.canvas = FigureCanvas(self.mplfigure)
+        self.canvas = mpl_backend_qt4.FigureCanvasQTAgg(self.mplfigure)
         self.canvas.setSizePolicy(QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Expanding)
         self.canvas.afterResize.connect(self.afterCanvasResize)
 
