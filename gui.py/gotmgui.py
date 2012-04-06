@@ -8,8 +8,8 @@ from xmlstore.qt_compat import QtGui,QtCore,qt4_backend,qt4_backend_version,mpl_
 
 # Configure matplotlib
 import matplotlib
-matplotlib.rcParams['backend.qt4'] = mpl_qt4_backend
-matplotlib.use('Qt4Agg')
+#matplotlib.rcParams['backend.qt4'] = mpl_qt4_backend
+matplotlib.use('agg')
 
 # In order to find our custom data files, make sure that we are in the directory
 # containing the executable.
