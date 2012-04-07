@@ -8,7 +8,7 @@ savedscenarioversion = 'gotm-4.0.0'
 import os, shutil, re, datetime, sys
 
 # Import our own custom modules
-import xmlstore.xmlstore, xmlstore.util
+import xmlstore.xmlstore, xmlstore.util, xmlstore.datatypes
 import common, namelist
 
 # Some parts of the schemas will be loaded from the GOTM source directory.

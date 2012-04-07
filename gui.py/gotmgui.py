@@ -441,7 +441,7 @@ def main(options,args):
         global core,xmlstore
         import core.common,xmlstore.xmlstore
         core.common.verbose = True
-        xmlstore.xmlstore.verbose = True
+        xmlstore.util.verbose = True
 
     if options.nc is not None:
         import xmlplot.data
