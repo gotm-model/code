@@ -1,6 +1,61 @@
 <?xml version="1.0"?>
 <element name="scenario" label="scenario" version="gotmgui-0.5.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../core/scenario-1.0.xsd">
 
+  <validation>
+    <test>
+      <variable path="/time/start"/>
+      <variable path="/time/stop"/>
+      <error expression="start>stop"  description="The end of the simulated period lies before its beginning."/>
+      <error expression="start==stop" description="The begin and end time of the simulated period are equal."/>
+    </test>
+    <test>
+      <variable path="/timeintegration/dt"/>
+      <variable path="/output/dtsave"/>
+      <error expression="dt>dtsave" description="The time step for calculations must be smaller than the output resolution."/>
+    </test>
+    <test>
+      <variable path="/airsea/flux_source"/>
+      <variable path="/airsea/swr_method"/>
+      <error expression="flux_source!=0 and swr_method==3" description="Short-wave radiation cannot be calculated because meteorological observations (including cloud cover) have not been provided."/>
+    </test>
+    <test>
+      <variable path="/station/depth"/>
+      <variable path="/grid/grid_method"/>
+      <variable path="/grid/grid_file"/>
+      <custom>
+<![CDATA[
+if grid_method==1:
+    # Sigma grid: validate sum of thicknesses only.
+    customdepth = grid_file.getData()[0].sum()
+    if abs(customdepth-1.)>1.e-8:
+        raise ValidationException('The sum of the relative layer thicknesses must equal 1, but it currently equals %.6g.' % customdepth)
+elif grid_method==2:
+    # Cartesian grid: validate sum of thicknesses in combination with column depth.
+    customdepth = grid_file.getData()[0].sum()
+    if abs(grid_file.getData()[0].sum()-depth)>1.e-5:
+        raise ValidationException('The sum of the custom layer thicknesses (%.6g) does not match the specified column depth (%.6g).' % (customdepth,depth))
+]]>        
+      </custom>
+    </test>
+    <test>
+      <anyvariable type="gotmdatafile" valuesymbol="variablevalue" namesymbol="variablename"/>
+      <variable path="/time/stop"/>
+      <custom>
+        <![CDATA[
+for dimname in variablevalue.getDimensionNames():
+    if variablevalue.getDimensionInfo(dimname)['datatype']=='datetime':
+        dimrange = variablevalue.getDimensionRange(dimname)
+        if dimrange is None:
+            raise ValidationException('Data series "%s" does not contain any value.' % (variablename,))
+        mintime,maxtime = dimrange
+        if stop>maxtime and maxtime!=mintime:
+            import xmlstore.util
+            raise ValidationException('Data series "%s" finishes at %s, before the simulation is set to end (%s).' % (variablename,xmlstore.util.formatDateTime(maxtime),xmlstore.util.formatDateTime(stop)))
+]]>
+      </custom>
+    </test>
+  </validation>
+
 	<element name="title" type="string" label="title of simulation"/>
 
 	<element name="station" label="geographic location" description="The details of the geographic location that you want to simulate. Note that the coordinates affect different parts of the model, e.g., Coriolis rotation and solar radiation.">

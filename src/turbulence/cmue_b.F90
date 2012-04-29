@@ -90,7 +90,7 @@
 
      cm3_inv = 1./cm0**3.
 
-     do i=0,nlev
+     do i=1,nlev-1
 
         dCm  =  d0  +  d1*an(i) +  d2*as(i) + d3*an(i)*as(i) + d4*an(i)*an(i) + d5*as(i)*as(i)
         nCm  =  n0  +  n1*an(i) +  n2*as(i) + n3*at(i)

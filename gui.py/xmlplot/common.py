@@ -525,9 +525,16 @@ def broadcastSelective(source,sourcedims,targetshape,targetdims):
 
     # Create array with the desired shape, and let numpy broadcast the array now that we have inserted
     # dimensions with length 1 at the right places.
-    res = numpy.empty(targetshape,dtype=source.dtype)
-    res[:] = source
-    return res
+    #res = numpy.empty(targetshape,dtype=source.dtype)
+    #res[:] = source
+    #return res
+
+    # Instead of duplicating all data, use a stride of 0 (and fix the shape)
+    from numpy.lib.stride_tricks import as_strided
+    strides = list(source.strides)
+    for i in range(len(targetshape)):
+        if source.shape[i]==1 and targetshape[i]>1: strides[i] = 0
+    return as_strided(source,targetshape,strides)
 
 def processEllipsis(slics,ndims):
     newslics = list(slics)
