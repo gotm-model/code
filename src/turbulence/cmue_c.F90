@@ -159,7 +159,7 @@
      anMin     = anMinNum / anMinDen
 
 
-     do i=0,nlev
+     do i=1,nlev-1
 
 !       clip an at minimum value
         an(i) = max(an(i),anLimitFact*anMin)
