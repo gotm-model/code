@@ -143,7 +143,7 @@
    endif
 
    dzen=(za(jab)-zen)/dza(jab)
-   albedo=alb1(jab)+dzen*(alb1(jab+1)-alb1(jab)) + bio_albedo
+   albedo=min(alb1(jab)+dzen*(alb1(jab+1)-alb1(jab)) + bio_albedo,_ONE_)
 
 !  radiation as from Reed(1977), Simpson and Paulson(1979)
 !  calculates SHORT WAVE FLUX ( watt/m*m )
