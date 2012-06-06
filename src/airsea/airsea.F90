@@ -233,13 +233,13 @@
 
 !  short_wave_radiation has an optional argument [swr] and therefore needs an explicit interface
    interface
-      subroutine short_wave_radiation(jul,secs,dlon,dlat,cloud,swr,bio_albedo)
+      function short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo) result(swr)
          integer, intent(in)                 :: jul,secs
          REALTYPE, intent(in)                :: dlon,dlat
          REALTYPE, intent(in)                :: cloud
-         REALTYPE, optional, intent(in)      :: bio_albedo
-         REALTYPE, optional, intent(out)     :: swr
-      end subroutine short_wave_radiation
+         REALTYPE, intent(in)                :: bio_albedo
+         REALTYPE                            :: swr
+      end function short_wave_radiation
    end interface
 !
 ! !BUGS:
@@ -660,7 +660,7 @@
    if (calc_fluxes) then
       call flux_from_meteo(jul,secs)
       if (swr_method .eq. 3) then
-         call short_wave_radiation(jul,secs,dlon,dlat,cloud,I_0,bio_albedo)
+         I_0 = short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo)
       end if
    else
 !     The heat fluxes

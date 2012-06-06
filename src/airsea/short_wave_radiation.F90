@@ -5,7 +5,7 @@
 ! !ROUTINE: Calculate the short--wave radiation \label{sec:swr}
 !
 ! !INTERFACE:
-   subroutine short_wave_radiation(jul,secs,dlon,dlat,cloud,swr,bio_albedo)
+   function short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo) result(swr)
 !
 ! !DESCRIPTION:
 !  This subroutine calculates the short--wave net radiation based on
@@ -37,10 +37,10 @@
    integer, intent(in)                 :: jul,secs
    REALTYPE, intent(in)                :: dlon,dlat
    REALTYPE, intent(in)                :: cloud
-   REALTYPE, intent(in), optional      :: bio_albedo
+   REALTYPE, intent(in)                :: bio_albedo
 !
 ! !OUTPUT PARAMETERS:
-   REALTYPE, optional, intent(out)     :: swr
+   REALTYPE                            :: swr
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -143,9 +143,7 @@
    endif
 
    dzen=(za(jab)-zen)/dza(jab)
-   albedo=alb1(jab)+dzen*(alb1(jab+1)-alb1(jab))
-   
-   if (present(bio_albedo)) albedo = albedo + bio_albedo
+   albedo=alb1(jab)+dzen*(alb1(jab+1)-alb1(jab)) + bio_albedo
 
 !  radiation as from Reed(1977), Simpson and Paulson(1979)
 !  calculates SHORT WAVE FLUX ( watt/m*m )
@@ -168,7 +166,7 @@
    swr = qshort
 
    return
-   end subroutine short_wave_radiation
+   end function short_wave_radiation
 !EOC
 
 !-----------------------------------------------------------------------
