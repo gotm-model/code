@@ -161,7 +161,7 @@
      xg2   =  -12.*at4*(a2**2.-3.*a3**2.)
 
 
-     do i=0,nlev
+     do i=1,nlev-1
 
         Pe   =   ( P(i) + B(i) )/eps(i)
         Pbeb =   Pb(i)/epsb(i)
