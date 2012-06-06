@@ -84,7 +84,7 @@
    REALTYPE                  :: cnpar
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor
    logical                   :: fabm_calc,repair_state, &
-                                bioshade_feedback,bio_albedo_feedback,bio_drag_feedback, &
+                                bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
                                 no_precipitation_dilution,salinity_relaxation_to_freshwater_flux
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
@@ -163,7 +163,7 @@
    type (type_model),pointer :: childmodel
    namelist /gotm_fabm_nml/ fabm_calc,                                               &
                             cnpar,w_adv_discr,ode_method,split_factor,               &
-                            bioshade_feedback,bio_albedo_feedback,bio_drag_feedback, &
+                            bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
                             repair_state,no_precipitation_dilution,                  &
                             salinity_relaxation_to_freshwater_flux
 !
@@ -184,8 +184,8 @@
    ode_method        = 1
    split_factor      = 1
    bioshade_feedback = .true.
-   bio_albedo_feedback = .true.
-   bio_drag_feedback = .true.
+   bioalbedo_feedback = .true.
+   biodrag_feedback  = .true.
    repair_state      = .false.
    salinity_relaxation_to_freshwater_flux = .false.
    no_precipitation_dilution = .false. ! useful to check mass conservation
@@ -466,12 +466,12 @@
    salt     => salt_       ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
    rho      => rho_        ! density [1d array] - used to calculate bottom stress from bottom friction velocity.
    
-   if (bio_drag_feedback.and.present(bio_drag_scale_)) then
+   if (biodrag_feedback.and.present(bio_drag_scale_)) then
       bio_drag_scale => bio_drag_scale_
    else
       nullify(bio_drag_scale)
    end if
-   if (bio_albedo_feedback.and.present(bio_albedo_)) then
+   if (bioalbedo_feedback.and.present(bio_albedo_)) then
       bio_albedo => bio_albedo_
    else
       nullify(bio_albedo)
