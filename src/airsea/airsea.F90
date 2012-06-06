@@ -79,6 +79,9 @@
    REALTYPE, public                    :: int_total
    REALTYPE, public                    :: cloud
 !
+!  feedbacks to drag and albedo by biogeochemistry
+   REALTYPE, target, public            :: bio_drag_scale,bio_albedo
+!
 ! !DEFINED PARAMETERS:
    integer,  parameter                 :: meteo_unit=20
    integer,  parameter                 :: swr_unit=21
@@ -230,10 +233,11 @@
 
 !  short_wave_radiation has an optional argument [swr] and therefore needs an explicit interface
    interface
-      subroutine short_wave_radiation(jul,secs,dlon,dlat,cloud,swr)
+      subroutine short_wave_radiation(jul,secs,dlon,dlat,cloud,swr,bio_albedo)
          integer, intent(in)                 :: jul,secs
          REALTYPE, intent(in)                :: dlon,dlat
          REALTYPE, intent(in)                :: cloud
+         REALTYPE, optional, intent(in)      :: bio_albedo
          REALTYPE, optional, intent(out)     :: swr
       end subroutine short_wave_radiation
    end interface
@@ -418,6 +422,10 @@
    L    = _ZERO_
    rhoa = _ZERO_
 
+!  Initialize feedbacks to drag and albedo from biogeochemistry
+   bio_drag_scale = _ONE_
+   bio_albedo     = _ZERO_
+   
 !  initialize integrated freshwater and heat fluxes
    int_precip= _ZERO_
    int_evap  = _ZERO_
@@ -652,7 +660,7 @@
    if (calc_fluxes) then
       call flux_from_meteo(jul,secs)
       if (swr_method .eq. 3) then
-         call short_wave_radiation(jul,secs,dlon,dlat,cloud,I_0)
+         call short_wave_radiation(jul,secs,dlon,dlat,cloud,I_0,bio_albedo)
       end if
    else
 !     The heat fluxes
@@ -685,6 +693,10 @@
          case default
       end select
    end if
+   
+!  Apply feedback from biogeochemistry to wind drag
+   tx = tx*bio_drag_scale
+   ty = ty*bio_drag_scale
 
    if (init_saved_vars) init_saved_vars=.false.
 
