@@ -512,8 +512,6 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: n
-   !only needed for idealised, delete later
-   integer                   :: i
 
    REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
@@ -617,15 +615,6 @@
                             NN,SS)
 # endif
       end select
-
-!     CONSTANT nu* for idealised test case
-      if (idealised) then
-         do i = 0, nlev
-            nuh(i) = 1.0d-6
-            nus(i) = 1.0d-6
-            num(i) = 1.0d-5
-         end do
-      end if
 
 !     do the output
       if (write_results) then

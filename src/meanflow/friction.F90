@@ -52,6 +52,8 @@
 !  \end{equation}
 !  The model constant $\alpha$ is read in as {\tt charnock\_val} from
 !  the {\tt meanflow} namelist.
+!  If lake is true, this module calculates the bottom friction at every grid
+!  cell.
 !
 ! !USES:
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za

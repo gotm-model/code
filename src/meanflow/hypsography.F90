@@ -11,9 +11,10 @@
 !  This module is responsible for reading in values for the hypography from a
 !  file specified in the meanflow namelist and updating it according to the
 !  GOTM (time dependant) grid layers.
+!  The hypsography is only used if lake is true.
 !
 ! !USES
-   use meanflow, only: lake,Ac,Af,dAdz,hypsography_file,idealised
+   use meanflow, only: lake,Ac,Af,dAdz,hypsography_file
    IMPLICIT NONE
    public                                :: init_hypsography,clean_hypsography
    public                                :: read_hypsography,update_hypsography
