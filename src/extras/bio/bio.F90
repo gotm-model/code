@@ -1397,9 +1397,13 @@
 !  update particle properties according to model
    select case (bio_model)
    case (3)
+#ifdef BIO_SED
       call do_bio_sed_par
+#endif
    case (20)
+#ifdef BIO_PHOTO
       call do_bio_photo_par
+#endif
 #ifndef NO_0D_BIO
    case (1000:)
       call light_0d_par(model%models(1),nlev,bioshade_feedback)

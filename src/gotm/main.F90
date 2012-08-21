@@ -86,11 +86,49 @@ STDERR sunrise,sunset
    STDERR 'CPU-time was in loop:  ',t2-t1,' seconds'
    STDERR 'Sim-time/CPU-time:     ',simtime/(t2-t1)
 #endif
-   STDERR LINE
-   STDERR LINE
+   call compilation_options
 
    end
 !EOC
+
+!-----------------------------------------------------------------------
+   subroutine compilation_options
+   IMPLICIT NONE
+!
+   STDERR LINE
+!   STDERR 'GOTM:     www.gotm.net'
+!   STDERR 'version:  ',RELEASE
+!   STDERR 'git:      ',GIT_REVISION
+!   STDERR 'compiler: ',FORTRAN_VERSION
+   STDERR 'Compilation options: '
+   STDERR LINE
+!
+#ifdef FORTRAN90
+   LEVEL1 'Fortran 90 compilation'
+#endif
+#ifdef FORTRAN95
+   LEVEL1 'Fortran 95 compilation'
+#endif
+#ifdef FORTRAN2003
+   LEVEL1 'Fortran 2003 compilation'
+#endif
+#ifdef _FABM_
+   LEVEL1 '_FABM_'
+#endif
+#ifdef SEAGRASS
+   LEVEL1 'SEAGRASS'
+#endif
+#ifdef SPM
+   LEVEL1 'SPM'
+#endif
+#ifdef SEDIMENT
+   LEVEL1 'SEDIMENT'
+#endif
+
+   STDERR LINE
+
+   return
+   end
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org

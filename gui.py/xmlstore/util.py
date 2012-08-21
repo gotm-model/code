@@ -1,6 +1,8 @@
 # Import modules from standard Python (>= 2.4) library
 import datetime,time,xml.dom.minidom,codecs
 
+verbose = False
+
 # ------------------------------------------------------------------------------------------
 # Base class that supports reference counting
 # ------------------------------------------------------------------------------------------
