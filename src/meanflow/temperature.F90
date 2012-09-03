@@ -64,9 +64,11 @@
 !  which is ensured by setting the local variable {\tt adv\_mode=0},
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
+!  If lake is true the advection due to inflows will be accounted for.
+!
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
-   use meanflow,     only: lake,idealised
+   use meanflow,     only: lake
    use meanflow,     only: h,Ac,Af
    use meanflow,     only: u,v,w,T,S,avh
    use meanflow,     only: bioshade
@@ -216,11 +218,7 @@
       rad(i)=I_0*(A*exp(-z/g1)+(1.-A)*exp(-z/g2)*bioshade(i+1))
 
 !     compute total diffusivity
-      if (idealised) then
-         avh(i)=nuh(i)
-      else
-         avh(i)=nuh(i)+avmolT
-      end if
+      avh(i)=nuh(i)+avmolT
    end do
 
 !  add contributions to source term

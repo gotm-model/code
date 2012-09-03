@@ -117,8 +117,9 @@
 !  variables needed for the lake model
    logical, public                               :: lake
    CHARACTER(LEN=PATH_MAX), public               :: hypsography_file
+!  the hypsography at the grid centers Ac, at the interfaces Af and the
+!  derivative wrt. z dAdz
    REALTYPE, public, dimension(:), allocatable   :: Ac,Af,dAdz
-   logical, public                               :: idealised
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, public, parameter         :: pi=3.141592654
@@ -218,7 +219,7 @@
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
                         avmolu,avmolT,avmolS,MaxItz0b,no_shear,        &
-                        hypsography_file,idealised
+                        hypsography_file
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -253,7 +254,6 @@
    MaxItz0b     = 10
    no_shear     = .false.
    hypsography_file  = ''
-   idealised    = .false.
 
 !  Read namelist from file.
    open(namlst,file=fn,status='old',action='read',err=80)

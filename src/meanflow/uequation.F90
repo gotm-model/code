@@ -62,6 +62,9 @@
 !  which is ensured by setting the local variable {\tt adv\_mode=0},
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
+! If lake is true additional "bottom" friction over the whole water column is
+! included.
+!
 ! !USES:
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: lake

@@ -86,7 +86,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: initialises everything related to the inflows
+! !ROUTINE: Reads in the necessary data for the inflows from file.
 !
 ! !INTERFACE:
    subroutine get_inflows(unit,init_saved_vars,jul,secs,inflows_input)
@@ -217,7 +217,10 @@
                              Qs,Qt,FQ)
 !
 ! !DESCRIPTION:
-!  TODO!
+!  Calculates the depth where the inflow occurs and
+!  what effects it has on the water column. The resulting flux variables
+!  can then be used by routines like salinity or temperature to calculate the
+!  vertical advection induced by the inflows.
 !
 ! !USES:
    use eqstate, only: unesco
@@ -245,7 +248,7 @@
 !-----------------------------------------------------------------------
 !BOC
 
-   ! check if an inflow will occure
+   ! check if an inflow will occur
    if (inflows_method .eq. 2) then
       if (lake) then
          QI = inflows_input(1)
@@ -326,7 +329,6 @@
                FQ(i) = _ZERO_
             end do
          end if
-         Qs(nlev) = Qs(nlev) - 5.6d0 * 400.0d0 / (Ac(nlev) * h(nlev))
       end if
    end if
 
