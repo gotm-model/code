@@ -123,7 +123,7 @@ def getNetCDFFile(path,mode='r'):
     # support as well).
 
     # First check if the file exists in the first place.
-    if mode=='r' and not os.path.isfile(path):
+    if mode=='r' and (not path.lower().startswith('http:')) and not os.path.isfile(path):
         raise NetCDFError('"%s" is not an existing file.' % path)
 
     netcdfmodule = None
