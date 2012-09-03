@@ -41,6 +41,9 @@
 !  \sect{sec:coriolis}. All other terms are completely analogous
 !  to those described in \sect{sec:uequation}.
 !
+! If lake is true additional "bottom" friction over the whole water column is
+! included.
+!
 ! !USES:
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: lake

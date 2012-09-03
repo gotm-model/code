@@ -1480,7 +1480,7 @@ class Figure(xmlstore.util.referencedobject):
                 # Plot line and/or markers
                 if plotargs['linestyle']!='' or plotargs['marker']!='':
                     hline = axes.plot(X,Y,zorder=zorder,label=label,**plotargs)
-                    legenddata['handles'].append(hline)
+                    legenddata['handles'].append(hline[0])
                     legenddata['labels'].append(label)
                                 
                 plotcount[1] += 1
@@ -1980,6 +1980,7 @@ class Figure(xmlstore.util.referencedobject):
             cb.ax.yaxis.get_offset_text().set_fontproperties(fontprops)
             for l in cb.ax.yaxis.get_ticklabels(): l.set_fontproperties(fontprops)
         self.colorbar,self.ismap = cb,ismap
+
         self.onAspectChange(redraw=False)
 
         defaulttextsnode = self.defaultproperties['FigureTexts']

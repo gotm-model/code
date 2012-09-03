@@ -25,7 +25,7 @@ def get_py2exe_datafiles():
     return datafiles
 
 def getVersions():
-    yield ('Python','%i.%i.%i %s %i' % sys.version_info)
+    yield ('Python','%i.%i.%i %s %i' % tuple(sys.version_info))
     
     import numpy
     yield ('numpy',numpy.__version__)

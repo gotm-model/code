@@ -60,9 +60,11 @@
 !  which is ensured by setting the local variable {\tt adv\_mode=0},
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
+!  If lake is true the advection due to inflows will be accounted for.
+!
 ! !USES:
    use meanflow,     only: avmols
-   use meanflow,     only: lake,idealised
+   use meanflow,     only: lake
    use meanflow,     only: h,Ac,Af
    use meanflow,     only: u,v,w,S,avh
    use observations, only: dsdx,dsdy,s_adv
@@ -167,11 +169,7 @@
 
 !  compute total diffusivity
    do i=0,nlev
-      if (idealised) then
-         avh(i)=nus(i)
-      else
-         avh(i)=nus(i)+avmolS
-      end if
+      avh(i)=nus(i)+avmolS
    end do
 
 !  add contributions to source term

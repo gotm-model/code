@@ -41,6 +41,7 @@
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
    use airsea,      only: wind=>w,tx,ty,I_0,heat,precip,evap
+   use airsea,      only: bio_albedo,bio_drag_scale
 
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,do_turbulence
@@ -441,7 +442,8 @@
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
    call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,taub,wind,precip,evap,z(1:nlev), &
-                          A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev))
+                          A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
+                          bio_albedo,bio_drag_scale)
 
 !  Initialize FABM initial state (this is done after the first call to do_gotm_fabm_input,
 !  to allow user-specified observed values to be used as initial state)
@@ -512,8 +514,6 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: n
-   !only needed for idealised, delete later
-   integer                   :: i
 
    REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
@@ -617,15 +617,6 @@
                             NN,SS)
 # endif
       end select
-
-!     CONSTANT nu* for idealised test case
-      if (idealised) then
-         do i = 0, nlev
-            nuh(i) = 1.0d-6
-            nus(i) = 1.0d-6
-            num(i) = 1.0d-5
-         end do
-      end if
 
 !     do the output
       if (write_results) then
