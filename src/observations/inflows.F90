@@ -122,7 +122,6 @@
    integer, save             :: nprofiles
    logical, save             :: one_profile
    integer                   :: ierr
-   integer                   :: i
    character(len=128)        :: cbuf
    character                 :: c1,c2,c3,c4
 !
