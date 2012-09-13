@@ -85,7 +85,6 @@
 #endif
 
    use util
-   use meanflow, only: Ac,Af
 !
 !  default: all is private.
    private
@@ -1069,6 +1068,7 @@
    integer, parameter        :: adv_mode_1=1
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev)
    REALTYPE                  :: RelaxTau(0:nlev)
+   REALTYPE                  :: dummy(0:nlev)
    REALTYPE                  :: dt_eff
    integer                   :: j,n
    integer                   :: split
@@ -1080,6 +1080,7 @@
    Qsour    = _ZERO_
    Lsour    = _ZERO_
    RelaxTau = 1.e15
+   dummy    = _ZERO_
    vars_zero_d = 0
 
    select case (bio_model)
@@ -1119,17 +1120,17 @@
    do j=1,numc-vars_zero_d
 
 !     do advection step due to settling or rising
-      call adv_center(nlev,dt,h,h,Ac,Af,ws(j,:),flux,              &
+      call adv_center(nlev,dt,h,h,dummy,dummy,ws(j,:),flux,              &
            flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(j,:))
 
 !     do advection step due to vertical velocity
       if(w_adv_ctr .ne. 0) then
-         call adv_center(nlev,dt,h,h,Ac,Af,w,flux,              &
+         call adv_center(nlev,dt,h,h,dummy,dummy,w,flux,              &
               flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(j,:))
       end if
 
 !     do diffusion step
-      call diff_center(nlev,dt,cnpar,posconc(j),h,Ac,Af,Neumann,Neumann,&
+      call diff_center(nlev,dt,cnpar,posconc(j),h,dummy,dummy,Neumann,Neumann,&
            sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
 
    end do
