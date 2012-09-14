@@ -69,16 +69,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlplot", "xmlplot", "{ED14
 		..\..\xmlplot\functions.py = ..\..\xmlplot\functions.py
 		..\..\xmlplot\georef.py = ..\..\xmlplot\georef.py
 		..\..\xmlplot\gui_qt4.py = ..\..\xmlplot\gui_qt4.py
+		..\..\xmlplot\mpl_backend_qt4.py = ..\..\xmlplot\mpl_backend_qt4.py
 		..\..\xmlplot\plot.py = ..\..\xmlplot\plot.py
 		..\..\xmlplot\xmlplot-1.0.xsd = ..\..\xmlplot\xmlplot-1.0.xsd
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "xmlstore", "xmlstore", "{F98996AE-260D-42D5-9E95-C3181A2D7C8E}"
 	ProjectSection(SolutionItems) = preProject
+		..\..\xmlstore\__init__.py = ..\..\xmlstore\__init__.py
 		..\..\xmlstore\converter-1.0.xsd = ..\..\xmlstore\converter-1.0.xsd
 		..\..\xmlstore\datatypes.py = ..\..\xmlstore\datatypes.py
 		..\..\xmlstore\gui_qt4.py = ..\..\xmlstore\gui_qt4.py
 		..\..\xmlstore\util.py = ..\..\xmlstore\util.py
+		..\..\xmlstore\versioning.py = ..\..\xmlstore\versioning.py
 		..\..\xmlstore\xmlstore-1.0.xsd = ..\..\xmlstore\xmlstore-1.0.xsd
 		..\..\xmlstore\xmlstore-base-1.0.xsd = ..\..\xmlstore\xmlstore-base-1.0.xsd
 		..\..\xmlstore\xmlstore.py = ..\..\xmlstore\xmlstore.py
