@@ -84,7 +84,8 @@
    ! Namelist variables
    REALTYPE                  :: cnpar
    integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor
-   logical                   :: fabm_calc,bioshade_feedback,repair_state, &
+   logical                   :: fabm_calc,repair_state, &
+                                bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
                                 no_precipitation_dilution,salinity_relaxation_to_freshwater_flux
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
@@ -100,7 +101,7 @@
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z,rho
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: SRelaxTau,sProf,salt
-   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_  :: precip,evap
+   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_    :: precip,evap,bio_drag_scale,bio_albedo
 
    REALTYPE,pointer :: I_0,A,g1,g2
    integer,pointer  :: yearday,secondsofday
@@ -161,9 +162,10 @@
    integer                   :: i,j,variablecount,ivariables(256)
    character(len=64)         :: variables(256),file
    type (type_model),pointer :: childmodel
-   namelist /gotm_fabm_nml/ fabm_calc,                                 &
-                            cnpar,w_adv_discr,ode_method,split_factor,        &
-                            bioshade_feedback,repair_state,no_precipitation_dilution, &
+   namelist /gotm_fabm_nml/ fabm_calc,                                               &
+                            cnpar,w_adv_discr,ode_method,split_factor,               &
+                            bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
+                            repair_state,no_precipitation_dilution,                  &
                             salinity_relaxation_to_freshwater_flux
 !
 !-----------------------------------------------------------------------
@@ -183,6 +185,8 @@
    ode_method        = 1
    split_factor      = 1
    bioshade_feedback = .true.
+   bioalbedo_feedback = .true.
+   biodrag_feedback  = .true.
    repair_state      = .false.
    salinity_relaxation_to_freshwater_flux = .false.
    no_precipitation_dilution = .false. ! useful to check mass conservation
@@ -415,7 +419,7 @@
 ! !INTERFACE:
    subroutine set_env_gotm_fabm(dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
                                 bioshade_,I_0_,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
-                                yearday_,secondsofday_,SRelaxTau_,sProf_)
+                                yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
 !
 ! !DESCRIPTION:
 ! This routine is called once from GOTM to provide pointers to the arrays that describe
@@ -429,6 +433,7 @@
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_
    REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
+   REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_HZ_ :: bio_albedo_,bio_drag_scale_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -461,6 +466,17 @@
    evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    salt     => salt_       ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
    rho      => rho_        ! density [1d array] - used to calculate bottom stress from bottom friction velocity.
+   
+   if (biodrag_feedback.and.present(bio_drag_scale_)) then
+      bio_drag_scale => bio_drag_scale_
+   else
+      nullify(bio_drag_scale)
+   end if
+   if (bioalbedo_feedback.and.present(bio_albedo_)) then
+      bio_albedo => bio_albedo_
+   else
+      nullify(bio_albedo)
+   end if
 
    if (present(SRelaxTau_) .and. present(sProf_)) then
       SRelaxTau => SRelaxTau_ ! salinity relaxation times  [1d array] - used to calculate virtual freshening due to salinity relaxation
@@ -693,6 +709,9 @@
 
    call system_clock(clock_end)
    clock_source = clock_source + clock_end-clock_start
+   
+   if (associated(bio_albedo))     call fabm_get_albedo(model,nlev,bio_albedo)
+   if (associated(bio_drag_scale)) call fabm_get_drag(model,nlev,bio_drag_scale)
 
    end subroutine do_gotm_fabm
 !EOC

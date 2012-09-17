@@ -108,7 +108,7 @@
      if (abs(n2-d5).lt.small) then
 !       (special treatment to  avoid a singularity)
 
-        do i=0,nlev
+        do i=1,nlev-1
 
 !          clip an at minimum value
            an(i) = max(an(i),anLimitFact*anMin)
@@ -131,7 +131,7 @@
 
      else
 
-        do i=0,nlev
+        do i=1,nlev-1
 
            an(i) = max(an(i),anLimitFact*anMin)
 
