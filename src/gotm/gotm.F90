@@ -510,7 +510,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: n
+   integer(kind=8)           :: n
 
    REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
