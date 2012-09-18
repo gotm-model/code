@@ -202,7 +202,7 @@
 !EOP
 !-------------------------------------------------------------------------
 !BOC
-   write_results = mod(n,nsave).eq.0
+   write_results = mod(n,int(nsave,kind=8)).eq.0
    call write_time_string(julianday,secondsofday,ts)
 
    return
