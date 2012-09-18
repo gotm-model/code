@@ -171,7 +171,7 @@
 !BOC
 
    LEVEL1 'init_gotm_fabm'
-   
+
    nullify(model)
 
    nullify(first_obs_0d)
@@ -465,7 +465,7 @@
    evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    salt     => salt_       ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
    rho      => rho_        ! density [1d array] - used to calculate bottom stress from bottom friction velocity.
-   
+
    if (biodrag_feedback.and.present(bio_drag_scale_)) then
       bio_drag_scale => bio_drag_scale_
    else
@@ -499,24 +499,24 @@
    A => A_
    g1 => g1_
    g2 => g2_
-   
+
    yearday => yearday_
    secondsofday => secondsofday_
 
-   ! Handle externally provided 0d observations.   
+   ! Handle externally provided 0d observations.
    cur_obs_0d => first_obs_0d
    do while (associated(cur_obs_0d))
       ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
       if (.not. cur_obs_0d%isstatevariable) call fabm_link_data_hz(model,cur_obs_0d%id,cur_obs_0d%data)
-      cur_obs_0d => cur_obs_0d%next      
+      cur_obs_0d => cur_obs_0d%next
    end do
 
-   ! Handle externally provided 1d observations.   
+   ! Handle externally provided 1d observations.
    cur_obs_1d => first_obs_1d
    do while (associated(cur_obs_1d))
       ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
       if (.not. cur_obs_1d%isstatevariable) call fabm_link_data(model,cur_obs_1d%id,cur_obs_1d%data)
-      cur_obs_1d => cur_obs_1d%next      
+      cur_obs_1d => cur_obs_1d%next
    end do
 
    ! At this stage, FABM has been provided with arrays for all state variables, any variables
@@ -708,7 +708,7 @@
 
    call system_clock(clock_end)
    clock_source = clock_source + clock_end-clock_start
-   
+
    if (associated(bio_albedo))     call fabm_get_albedo(model,nlev,bio_albedo)
    if (associated(bio_drag_scale)) call fabm_get_drag(model,nlev,bio_drag_scale)
 
@@ -1010,17 +1010,17 @@
    subroutine register_observation_0d(id,data,relax_tau)
       integer,intent(in) :: id
       REALTYPE,target :: data,relax_tau
-      
+
       type (type_obs_0d),pointer :: cur_obs
       integer                    :: i
-   
+
       if (associated(first_obs_0d)) then
          ! Find last observation that has been provided
          cur_obs => first_obs_0d
          do while (associated(cur_obs%next))
             cur_obs => cur_obs%next
          end do
-         
+
          ! Append new observation
          allocate(cur_obs%next)
          cur_obs => cur_obs%next
@@ -1029,7 +1029,7 @@
          allocate(first_obs_0d)
          cur_obs => first_obs_0d
       end if
-      
+
       cur_obs%id = id
       cur_obs%data => data
       cur_obs%relax_tau => relax_tau
@@ -1047,7 +1047,7 @@
    subroutine register_observation_1d(id,data,relax_tau)
       integer,intent(in) :: id
       REALTYPE,target,dimension(:) :: data,relax_tau
-      
+
       type (type_obs_1d),pointer :: cur_obs
       integer                    :: i
 
@@ -1057,7 +1057,7 @@
          do while (associated(cur_obs%next))
             cur_obs => cur_obs%next
          end do
-         
+
          ! Append new observation
          allocate(cur_obs%next)
          cur_obs => cur_obs%next
@@ -1066,7 +1066,7 @@
          allocate(first_obs_1d)
          cur_obs => first_obs_1d
       end if
-      
+
       cur_obs%id = id
       cur_obs%data => data
       cur_obs%relax_tau => relax_tau
@@ -1082,9 +1082,9 @@
    end subroutine register_observation_1d
 
    subroutine init_gotm_fabm_state()
-   
+
    integer :: i
-   
+
    if (.not.fabm_calc) return
 
    do i=1,size(model%info%state_variables)
@@ -1098,9 +1098,9 @@
          cc(size(model%info%state_variables,1)+i,1) = cc_ben_obs(i)%data%data
       end if
    end do
-   
+
    end subroutine init_gotm_fabm_state
-      
+
    end module gotm_fabm
 
 !-----------------------------------------------------------------------
