@@ -425,7 +425,7 @@
 !  Initialize feedbacks to drag and albedo from biogeochemistry
    bio_drag_scale = _ONE_
    bio_albedo     = _ZERO_
-   
+
 !  initialize integrated freshwater and heat fluxes
    int_precip= _ZERO_
    int_evap  = _ZERO_
@@ -693,7 +693,7 @@
          case default
       end select
    end if
-   
+
 !  Apply feedback from biogeochemistry to wind drag
    tx = tx*bio_drag_scale
    ty = ty*bio_drag_scale
@@ -1388,7 +1388,7 @@
       ssu = uvel
       ssv = vvel
    end if
-   
+
    end subroutine set_ssuv
 !EOC
 

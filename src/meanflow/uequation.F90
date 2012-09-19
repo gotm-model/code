@@ -244,6 +244,7 @@
    call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,DiffBcup,DiffBcdw,    &
                     DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uProf,U)
 
+
    return
    end subroutine uequation
 !EOC

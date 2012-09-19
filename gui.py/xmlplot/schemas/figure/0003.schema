@@ -130,6 +130,14 @@
         <option value="mmmyyyy"/>
       </options>
     </element>
+    <!--
+    <element name="MaximumTickCount" type="int" label="maximum tick count" minInclusive="1">
+      <condition type="and">
+        <condition type="eq" variable="."             value="True"/>
+        <condition type="eq" variable="../IsTimeAxis" value="False"/>
+      </condition>
+    </element>
+    -->
   </template>
 
 	<link template="FontProperties" name="Font" label="default font"/>

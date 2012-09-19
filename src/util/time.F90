@@ -302,7 +302,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: n
+   integer(kind=8), intent(in)         :: n
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -310,15 +310,15 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: nsecs
+   integer(kind=8)           :: nsecs
    integer                   :: yyyy,mm,dd,jd_firstjan
 !
 !-----------------------------------------------------------------------
 !BOC
-   nsecs = nint(n*timestep) + secs0
+   nsecs = nint(n*timestep,kind=8) + secs0
    fsecs = n*timestep + secs0
    julianday    = jul0 + nsecs/86400
-   secondsofday = mod(nsecs,86400)
+   secondsofday = mod(nsecs,int(86400,kind=8))
 
    call calendar_date(julianday,yyyy,mm,dd)
    call julian_day(yyyy,1,1,jd_firstjan)
@@ -419,7 +419,7 @@
 ! !IROUTINE:  Return the time difference in seconds
 !
 ! !INTERFACE:
-   integer FUNCTION time_diff(jul1,secs1,jul2,secs2)
+   REALTYPE FUNCTION time_diff(jul1,secs1,jul2,secs2)
 !
 ! !DESCRIPTION:
 ! This functions returns the time difference between two
@@ -438,7 +438,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   time_diff = 86400*(jul1-jul2) + (secs1-secs2)
+   time_diff = 86400.0d0 *(jul1-jul2) + _ONE_*(secs1-secs2)
 
    return
    end function  time_diff

@@ -129,7 +129,7 @@
 !  drag(j) = drag(j) * dAdz(j)/Ac(j) is done implicitly when solving
 !  the diffusion equation, see u-,v-equation.F90 and diff_center_hypso.F90
    if (lake) then
-      j_max = sizeof(h) / sizeof(h(1)) - 1
+      j_max = SIZE(h) - 1
    else
       j_max = 1
    end if
