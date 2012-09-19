@@ -2,22 +2,22 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !MODULE: hypsography
+! !MODULE: hypsograph
 !
 ! !INTERFACE:
-   module hypsography
+   module hypsograph
 !
 ! !DESCRIPTION:
 !  This module is responsible for reading in values for the hypography from a
 !  file specified in the meanflow namelist and updating it according to the
 !  GOTM (time dependant) grid layers.
-!  The hypsography is only used if lake is true.
+!  The hypsograph is only used if lake is true.
 !
 ! !USES
-   use meanflow, only: lake,Ac,Af,dAdz,hypsography_file
+   use meanflow, only: lake,Ac,Af,dAdz,hypsograph_file
    IMPLICIT NONE
-   public                                :: init_hypsography,clean_hypsography
-   public                                :: read_hypsography,update_hypsography
+   public                                :: init_hypsograph,clean_hypsograph
+   public                                :: read_hypsograph,update_hypsograph
 !  !PUBLIC DATA MEMBERS:
 
 !  !input variables
@@ -33,7 +33,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: rc
 ! !DEFINED PARAMETERS:
-   integer, parameter        :: hypsography_unit=70
+   integer, parameter        :: hypsograph_unit=70
 !
 !-----------------------------------------------------------------------
 
@@ -45,7 +45,7 @@
 ! !ROUTINE: initialises everything related to the lake model
 !
 ! !INTERFACE:
-   subroutine init_hypsography(nlev)
+   subroutine init_hypsograph(nlev)
 !
 !  !DESCRIPTION:
 !  Initialises everything related to the lake model, e.g. allocating memory
@@ -62,40 +62,40 @@
 !BOC
       !always allocate memory for Ac, Af so that diff_center() works
       allocate(Ac(0:nlev),stat=rc)
-      if (rc /= 0) stop 'init_hypsography: Error allocating (Ac)'
+      if (rc /= 0) stop 'init_hypsograph: Error allocating (Ac)'
          Ac = _ONE_
       allocate(Af(0:nlev),stat=rc)
-      if (rc /= 0) stop 'init_hypsography: Error allocating (Af)'
+      if (rc /= 0) stop 'init_hypsograph: Error allocating (Af)'
          Af = _ONE_
 
-      if (hypsography_file .ne. '') then
+      if (hypsograph_file .ne. '') then
          lake = .true.
          allocate(dAdz(0:nlev),stat=rc)
-         if (rc /= 0) stop 'init_hypsography: Error allocating (dAdz)'
+         if (rc /= 0) stop 'init_hypsograph: Error allocating (dAdz)'
             dAdz = _ZERO_
-            open(hypsography_unit,file=hypsography_file,status='unknown',err=112)
-         call read_hypsography(hypsography_unit,rc)
+            open(hypsograph_unit,file=hypsograph_file,status='unknown',err=112)
+         call read_hypsograph(hypsograph_unit,rc)
       else
          lake = .false.
       end if
 
       return
-112 FATAL 'Unable to open "',trim(hypsography_file),'" for reading'
-      stop 'init_hypsography'
+112 FATAL 'Unable to open "',trim(hypsograph_file),'" for reading'
+      stop 'init_hypsograph'
 
-   end subroutine init_hypsography
+   end subroutine init_hypsograph
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Initial read in of the hypsography from specified file
+! !ROUTINE: Initial read in of the hypsograph from specified file
 !
 ! !INTERFACE:
-   subroutine read_hypsography(unit,ierr)
+   subroutine read_hypsograph(unit,ierr)
 !
 !  !DESCRIPTION:
-!  Reads in the hypsography from file at "unit" and saves everything
+!  Reads in the hypsograph from file at "unit" and saves everything
 !  to the *_input variables.
 !
 ! !USES:
@@ -125,12 +125,12 @@
 
    if (allocated(depth_input)) deallocate(depth_input)
    allocate(depth_input(0:N_input),stat=rc)
-   if (rc /= 0) stop 'read_hypsography: Error allocating memory (depth_input)'
+   if (rc /= 0) stop 'read_hypsograph: Error allocating memory (depth_input)'
    depth_input = _ZERO_
    if (allocated(A_input)) deallocate(A_input)
    allocate(A_input(0:N_input),stat=rc)
    if (rc /= 0) then
-      stop 'read_hypsography: Error allocating memory (A_input)'
+      stop 'read_hypsograph: Error allocating memory (A_input)'
    end if
    A_input = _ZERO_
 
@@ -171,26 +171,26 @@
    return
 !  READ_ERROR = -2
 100 ierr = -2
-   FATAL 'Error reading hypsography (READ_ERROR)'
+   FATAL 'Error reading hypsograph (READ_ERROR)'
    return
 !  END_OF_FILE = -1
 110 ierr = -1
-   FATAL 'Error reading hypsography (END_OF_FILE)'
+   FATAL 'Error reading hypsograph (END_OF_FILE)'
    return
-   end subroutine read_hypsography
+   end subroutine read_hypsograph
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: update_hypsography
+! !IROUTINE: update_hypsograph
 !
 ! !INTERFACE:
-   subroutine update_hypsography(nlev,z,h)
+   subroutine update_hypsograph(nlev,z,h)
 !
 ! !DESCRIPTION:
-!  This routine is responsible for updating the hypsography every timestep.
-!  This includes interpolating the hypsography to the current grid and
+!  This routine is responsible for updating the hypsograph every timestep.
+!  This includes interpolating the hypsograph to the current grid and
 !  calculating the derivative dA(z)/dz.
 !
 ! !USES:
@@ -216,7 +216,7 @@
 !BOC
 !  z' defined on the interfaces, not as z on the grid centers
 !  let it start at "1", because the gridinterpol-routine-loop starts at "1"
-!  hypsography is defined at grid interfaces
+!  hypsograph is defined at grid interfaces
    zPrime(nlev+1) = _ZERO_
    zPrime(nlev) = -h(nlev)
    do i = nlev-1, 1, -1
@@ -225,9 +225,9 @@
 
    if (allocated(prof)) deallocate(prof)
       allocate(prof(0:nlev+1),stat=rc)
-   if (rc /= 0) stop 'read_hypsography: Error allocating memory (prof)'
+   if (rc /= 0) stop 'read_hypsograph: Error allocating memory (prof)'
       prof = _ZERO_
-!  interpolate hypsography Af to grid interfaces used by GOTM
+!  interpolate hypsograph Af to grid interfaces used by GOTM
    call gridinterpol(N_input,1,depth_input,A_input,nlev+1,zPrime,prof)
 
    do i = 0, nlev
@@ -236,28 +236,28 @@
 
    if (allocated(prof)) deallocate(prof)
 
-!  interpolate hypsography Ac to grid centres used by GOTM
+!  interpolate hypsograph Ac to grid centres used by GOTM
    call gridinterpol(N_input,1,depth_input,A_input,nlev,z,Ac)
 
-!  calculate the derivative of the hypsography wrt z
+!  calculate the derivative of the hypsograph wrt z
 !  dAdz is defined at the grid centres
    do i = 1, nlev
       dAdz(i) = (Af(i) - Af(i-1)) / (h(i))
    end do
 
-   end subroutine update_hypsography
+   end subroutine update_hypsograph
 !EOC
 
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Cleaning up the hypsography variables
+! !IROUTINE: Cleaning up the hypsograph variables
 !
 ! !INTERFACE:
-   subroutine clean_hypsography()
+   subroutine clean_hypsograph()
 !
 ! !DESCRIPTION:
-!  De-allocates all memory allocated via init\_hypsography()
+!  De-allocates all memory allocated via init\_hypsograph()
 !
 ! !USES:
    IMPLICIT NONE
@@ -275,9 +275,9 @@
       if (allocated(dAdz)) deallocate(dAdz)
 
       return
-   end subroutine clean_hypsography
+   end subroutine clean_hypsograph
 
-   end module hypsography
+   end module hypsograph
 !EOC
 
 !-----------------------------------------------------------------------
