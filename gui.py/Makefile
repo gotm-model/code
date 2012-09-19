@@ -30,7 +30,7 @@
 # If this does not work, you will have to set these three variables
 # explicitly (see below).
 ifndef PYTHONVERSION
-PYTHONVERSION = python2.6
+PYTHONVERSION = python2.7
 endif
 
 # The directory that contains Python header files.
