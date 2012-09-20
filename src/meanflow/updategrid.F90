@@ -57,7 +57,7 @@
    use meanflow,     only: lake
    use observations, only: zeta_method,w_adv_method
    use observations, only: w_adv,w_height,w_adv_discr
-   use hypsography,  only: update_hypsography
+   use hypsograph,   only: update_hypsograph
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -277,7 +277,7 @@
     end select
 
    if (lake) then
-      call update_hypsography(nlev,z,h)
+      call update_hypsograph(nlev,z,h)
    end if
 
    return

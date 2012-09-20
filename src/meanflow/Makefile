@@ -8,7 +8,7 @@ LIB	= $(LIBDIR)/libmeanflow$(buildtype).a
 
 DOCSRC	= \
 meanflow.F90		\
-hypsography.F90     \
+hypsograph.F90		\
 updategrid.F90		\
 coriolis.F90		\
 uequation.F90		\
@@ -25,7 +25,7 @@ convectiveadjustment.F90
 
 MOD	= \
 ${LIB}(meanflow.o)     \
-${LIB}(hypsography.o)
+${LIB}(hypsograph.o)
 
 OBJ   = \
 ${LIB}(updategrid.o)		\

@@ -192,7 +192,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: n
+   integer(kind=8), intent(in)         :: n
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -202,7 +202,7 @@
 !EOP
 !-------------------------------------------------------------------------
 !BOC
-   write_results = mod(n,nsave).eq.0
+   write_results = mod(n,int(nsave,kind=8)).eq.0
    call write_time_string(julianday,secondsofday,ts)
 
    return
@@ -225,7 +225,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: n,nlev
+   integer(kind=8), intent(in)         :: n
+   integer, intent(in)                 :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -322,7 +323,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: n,nlev,BuoyMeth
+   integer(kind=8), intent(in)         :: n
+   integer, intent(in)                 :: nlev,BuoyMeth
    REALTYPE, intent(in)                :: dt
    REALTYPE, intent(in)                :: u_taus,u_taub
    REALTYPE, intent(in)                :: I_0,heat

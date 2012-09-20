@@ -74,7 +74,7 @@
    use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output
 #endif
 
-   use hypsography, only: lake,init_hypsography,clean_hypsography
+   use hypsograph, only: lake,init_hypsograph,clean_hypsograph
    use inflows, only: update_inflows
    use output
 
@@ -366,7 +366,7 @@
 !  From here - each init_? is responsible for opening and closing the
 !  namlst - unit.
    call init_meanflow(namlst,'gotmmean.nml',nlev,latitude)
-   call init_hypsography(nlev)
+   call init_hypsograph(nlev)
    call init_tridiagonal(nlev)
    call updategrid(nlev,dt,zeta)
 
@@ -513,7 +513,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: n
+   integer(kind=8)           :: n
 
    REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
@@ -686,7 +686,7 @@
 
    call clean_air_sea()
 
-   call clean_hypsography()
+   call clean_hypsograph()
 
    call clean_meanflow()
 

@@ -33,7 +33,7 @@
 !-----------------------------------------------------------------------
 !
 !  PRIVATE TYPES
-   
+
 !  Information on an observed variable
    type type_variable
       character(len=64)                  :: name
@@ -125,7 +125,7 @@
 !  Initialize empty lists of observations files.
    nullify(first_observed_profile_info)
    nullify(first_observed_scalar_info)
-   
+
 !  Calculate depth (used to determine whether in surface/bottom/bulk for relaxation times)
    depth = sum(h)
 
@@ -203,7 +203,7 @@
          FATAL 'Neither "variable" nor "variables" is set in namelist "observations".'
          stop 'gotm_fabm_input:init_gotm_fabm_input'
       end if
-      
+
 !     Reset reference to first variable in file.
       nullify(firstvariable)
 
@@ -215,11 +215,11 @@
 
 !        Update number of last used column.
          file_variable_count = i
-         
+
          if (.not.associated(firstvariable)) then
 !           This is the first variable in the file: create it at the head of the list.
             allocate(firstvariable)
-            curvariable => firstvariable            
+            curvariable => firstvariable
          else
 !           This is not the first variable in the file: append to previous variable.
             allocate(curvariable%next)
@@ -230,7 +230,7 @@
          nullify(curvariable%next)
          curvariable%name = variables(i)
          curvariable%index = i
-         
+
 !        First search in pelagic variables
          curvariable%type = type_profile
          curvariable%id = fabm_get_variable_id(model,variables(i),shape_full)
@@ -240,7 +240,7 @@
             curvariable%id = fabm_get_variable_id(model,variables(i),shape_hz)
             curvariable%type = type_scalar
          end if
-         
+
 !        Report an error if the variable was still not found.
          if (curvariable%id.eq.id_not_used) then
             FATAL 'Variable '//trim(curvariable%name)//', referenced in namelist observations &
@@ -273,7 +273,7 @@
 !           Register observed variable with the GOTM-FABM driver.
             call register_observation_1d(curvariable%id,curvariable%data_1d,curvariable%relax_tau_1d)
          end if
-         
+
 !        Make sure profile and scalar variables are not mixed in the same input file.
          if (filetype.ne.type_unknown .and. filetype.ne.curvariable%type) then
             FATAL 'Cannot mix 0d and 1d variables in one observation file, as they require different formats.'
@@ -283,7 +283,7 @@
 
 !        Report that this variable will use observations.
          LEVEL2 'Reading observed values for variable '//trim(curvariable%name)//' from '//trim(file)
-         
+
       end do
 
 !     Initialize profile file.
@@ -338,7 +338,7 @@
 !BOC
 !  If FABM is not used, return immediately.
    if (.not.fabm_calc) return
-   
+
 !  Loop over files with observed profiles.
    cur_profile_info => first_observed_profile_info
    do while (associated(cur_profile_info))

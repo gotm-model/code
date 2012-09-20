@@ -221,6 +221,7 @@
       avh(i)=nuh(i)+avmolT
    end do
 
+
 !  add contributions to source term
    Lsour=_ZERO_
    Qsour=_ZERO_
@@ -264,7 +265,6 @@
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,DiffBcup,DiffBcdw,    &
                     DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
-
    return
    end subroutine temperature
 !EOC

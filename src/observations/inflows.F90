@@ -8,7 +8,11 @@
    module inflows
 !
 ! !DESCRIPTION:
-! TODO: write descr.
+! This module is responsible for all calculations related to inflows. This means
+! reading in prescribed values from a given file, calculating the depth where
+! the inflowing water masses interleave, and calculating vertical fluxes. These
+! vertical fluxes are used by other routines to calculate vertical advection
+! velocities.
 !
 ! !USES
 !  !PUBLIC DATA MEMBERS:
@@ -122,7 +126,6 @@
    integer, save             :: nprofiles
    logical, save             :: one_profile
    integer                   :: ierr
-   integer                   :: i
    character(len=128)        :: cbuf
    character                 :: c1,c2,c3,c4
 !
@@ -352,6 +355,7 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+      if (allocated(Q)) deallocate(Q)
       if (allocated(inflows_input2)) deallocate(inflows_input2)
       if (allocated(inflows_input1)) deallocate(inflows_input1)
       if (allocated(alpha)) deallocate(alpha)

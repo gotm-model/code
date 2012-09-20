@@ -489,10 +489,10 @@
    iret = set_attributes(ncid,temp_obs_id,units='celsius',long_name='obs. temperature')
    if (lake) then
       iret = set_attributes(ncid,Ac_id,units='m2', &
-                            long_name='hypsography at grid centres')
+                            long_name='hypsograph at grid centres')
       iret = set_attributes(ncid,Af_id,units='m2', &
-                            long_name='hypsography at grid interfaces')
-      iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsography')
+                            long_name='hypsograph at grid interfaces')
+      iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsograph')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
       if (inflows_method.eq.2) then
          iret = set_attributes(ncid,Qs_id,units='1/s', &

@@ -175,10 +175,10 @@
 !  old layer thickness (m)
    REALTYPE, intent(in)                :: ho(0:N)
 
-!  hypsography at grid centre
+!  hypsograph at grid centre
    REALTYPE, intent(in)                :: Ac(0:N)
 
-!  hypsography at grid face
+!  hypsograph at grid face
    REALTYPE, intent(in)                :: Af(0:N)
 
 !  vertical advection speed
