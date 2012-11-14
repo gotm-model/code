@@ -338,7 +338,7 @@
    integer, save             :: x_excur_id,y_excur_id,n
    integer                   :: i,iret
    REALTYPE                  :: zz
-   REALTYPE                  :: miss_val
+   REALTYPE, parameter       :: miss_val = -999.0
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -360,7 +360,6 @@
             dim4d(2) = lat_dim
             dim4d(3) = z_dim
             dim4d(4) = time_dim
-            miss_val = -999.0
             iret = define_mode(ncid,.true.)
             iret = new_nc_variable(ncid,'x-excur',NF90_REAL,dim4d,x_excur_id)
             iret = set_attributes(ncid,x_excur_id,units='m',    &
