@@ -67,7 +67,7 @@
     </ClCompile>
     <Link>
       <OutputFile>..\..\gui.py\$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>$(PythonDir)\libs;$(IFORT_COMPILER11)\lib\ia32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(PythonDir)\libs;$(IFORT_COMPILER12)\compiler\lib\ia32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)c++.pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
@@ -76,6 +76,8 @@
       </DataExecutionPrevention>
       <ImportLibrary>$(OutDir)c++.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <AdditionalDependencies>$(OutDir)\..\gui-fortran\gui-fortran.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -107,10 +109,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="$(PythonDir)\Lib\site-packages\numpy\f2py\src\fortranobject.c">
-      <UndefinePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
-    </ClCompile>
     <ClCompile Include="..\..\gui.py\gotmmodule.cpp" />
+    <ClCompile Include="fortranobject_wrapper.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(PythonDir)\Lib\site-packages\numpy\f2py\src\fortranobject.h" />
