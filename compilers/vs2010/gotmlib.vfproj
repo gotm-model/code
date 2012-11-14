@@ -25,7 +25,7 @@
 				<Tool Name="VFPreBuildEventTool"/>
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
-		<Configuration Name="Debug-nobio|Win32" ConfigurationType="typeStaticLibrary">
+		<Configuration Name="Debug-nobio|Win32" OutputDirectory="$(PlatformName)-$(ConfigurationName)\$(ProjectName)" IntermediateDirectory="$(PlatformName)-$(ConfigurationName)\$(ProjectName)" ConfigurationType="typeStaticLibrary">
 				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="$(ProjectDir)\..\..\include;..\..\extras\netcdf\win32\3.6.3\include;$(FABMDIR)\include;$(FABMDIR)\src\drivers\gotm" PreprocessorDefinitions="REAL_4B=real(4);FORTRAN95;NUDGE_VEL;NETCDF_FMT;SEAGRASS;LAGRANGE;GUSTINESS;NO_0D_BIO" WarnInterfaces="true" FloatingPointSpeculation="fpSpeculationOff" Traceback="true" BoundsCheck="true" UninitializedVariablesCheck="true" ArgTempCreatedCheck="true" RuntimeLibrary="rtMultiThreadedDebug" ImproveFloatingPointConsistency="true" Interfaces="true"/>
 				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="..\..\extras\netcdf\win32\3.6.3\lib" GenerateDebugInformation="true" SubSystem="subSystemConsole" AdditionalDependencies="netcdfs.lib"/>
 				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="..\..\extras\netcdf\win32\3.6.3\lib" LinkLibraryDependencies="true" AdditionalDependencies="netcdfs.lib"/>
@@ -36,7 +36,7 @@
 				<Tool Name="VFPreBuildEventTool"/>
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
-		<Configuration Name="Release-nobio|Win32" ConfigurationType="typeStaticLibrary">
+		<Configuration Name="Release-nobio|Win32" OutputDirectory="$(PlatformName)-$(ConfigurationName)\$(ProjectName)" IntermediateDirectory="$(PlatformName)-$(ConfigurationName)\$(ProjectName)" ConfigurationType="typeStaticLibrary">
 				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="$(ProjectDir)\..\..\include;..\..\extras\netcdf\win32\3.6.3\include;$(FABMDIR)\include;$(FABMDIR)\src\drivers\gotm" PreprocessorDefinitions="REAL_4B=real(4);FORTRAN95;NUDGE_VEL;NETCDF_FMT;SEAGRASS;GUSTINESS;"/>
 				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="..\..\extras\netcdf\win32\3.6.3\lib" SubSystem="subSystemConsole" AdditionalDependencies="netcdfs.lib"/>
 				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="..\..\extras\netcdf\win32\3.6.3\lib" LinkLibraryDependencies="true" AdditionalDependencies="netcdfs.lib"/>
