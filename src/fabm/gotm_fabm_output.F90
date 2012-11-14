@@ -1,3 +1,5 @@
+#ifdef _FABM_
+
 #include "cppdefs.h"
 #include "fabm_driver.h"
 !-----------------------------------------------------------------------
@@ -249,7 +251,9 @@ contains
 
 !-----------------------------------------------------------------------
 
-   end module gotm_fabm_output
+end module gotm_fabm_output
+
+#endif
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org

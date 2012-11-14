@@ -1,3 +1,5 @@
+#ifdef _FABM_
+
 #include "cppdefs.h"
 #include "fabm_driver.h"
 !-----------------------------------------------------------------------
@@ -654,6 +656,8 @@
 !-----------------------------------------------------------------------
 
    end module gotm_fabm_input
+
+#endif
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
