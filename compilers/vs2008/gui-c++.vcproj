@@ -18,8 +18,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="$(ConfigurationName)\$(ProjectName)"
-			IntermediateDirectory="$(temp)\$(ProjectName)\$(ConfigurationName)"
+			OutputDirectory="$(PlatformName)-$(ConfigurationName)\$(ProjectName)"
+			IntermediateDirectory="$(PlatformName)-$(ConfigurationName)\$(ProjectName)"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			CharacterSet="2"
@@ -66,7 +66,7 @@
 				Name="VCLinkerTool"
 				OutputFile="..\..\gui.py\gotm.pyd"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(PythonDir)\libs&quot;;&quot;$(IFORT_COMPILER11)\lib\ia32&quot;"
+				AdditionalLibraryDirectories="&quot;$(PythonDir)\libs&quot;;&quot;$(IFORT_COMPILER12)\compiler\lib\ia32&quot;"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)/c++.pdb"
 				SubSystem="2"
@@ -99,8 +99,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="$(ConfigurationName)\$(ProjectName)"
-			IntermediateDirectory="$(temp)\$(ProjectName)\$(ConfigurationName)"
+			OutputDirectory="$(PlatformName)-$(ConfigurationName)\$(ProjectName)"
+			IntermediateDirectory="$(PlatformName)-$(ConfigurationName)\$(ProjectName)"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			CharacterSet="2"
@@ -144,7 +144,7 @@
 				Name="VCLinkerTool"
 				OutputFile="..\..\gui.py\gotm.pyd"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(PythonDir)\libs&quot;;&quot;$(IFORT_COMPILER11)\lib\ia32&quot;"
+				AdditionalLibraryDirectories="&quot;$(PythonDir)\libs&quot;;&quot;$(IFORT_COMPILER12)\compiler\lib\ia32&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
