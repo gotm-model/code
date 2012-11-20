@@ -109,23 +109,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!  $Log: diff_center.F90,v $
-!  Revision 1.5  2010-09-17 12:53:52  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.4  2005-11-17 09:58:20  hb
-!  explicit argument for positive definite variables in diff_center()
-!
-!  Revision 1.3  2005/11/03 20:56:55  hb
-!  Source term linearisation now fully explicit again, reversion to old method
-!
-!  Revision 1.2  2005/09/16 13:54:02  lars
-!  added missing IMPLICIT NONE
-!
-!  Revision 1.1  2005/06/27 10:54:33  kbk
-!  new files needed
-!
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

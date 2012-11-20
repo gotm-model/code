@@ -323,26 +323,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!  $Log: kpp.F90,v $
-!  Revision 1.6  2011-04-05 14:53:31  jorn
-!  removed reference to eqstate from kpp
-!
-!  Revision 1.5  2010-09-17 12:53:52  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.4  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.3  2005/11/15 11:35:02  lars
-!  documentation finish for print
-!
-!  Revision 1.2  2005/07/21 10:20:00  lars
-!  polished documentation
-!
-!  Revision 1.1  2005/06/27 10:54:33  kbk
-!  new files needed
-!
-
 ! !LOCAL VARIABLES:
 !
 !  proportionality coefficient for

@@ -28,14 +28,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  $Log: analytical_profile.F90,v $
-!  Revision 1.6  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.5  2005/07/06 15:50:46  kbk
-!  added description - umlauf
-!
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

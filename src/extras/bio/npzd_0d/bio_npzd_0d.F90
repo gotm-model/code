@@ -37,7 +37,6 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Jorn Bruggeman
 !
-!
 ! !PUBLIC DERIVED TYPES:
    type type_npzd
       REALTYPE :: p0,z0,kc,i_min,rmax,gmax,iv,alpha,rpn,rzn,rdn,rpdu,rpdl,rzd

@@ -103,59 +103,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
-!  $Log: bio_var.F90,v $
-!  Revision 1.17  2010-09-17 12:53:46  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.16  2010-03-08 10:58:52  hb
-!  Simple maganese model added, see subdir extras/bio/mangan/
-!
-!  Revision 1.15  2009-11-11 13:08:54  kb
-!  added chlorination model - Rennau
-!
-!  Revision 1.14  2009-10-21 08:02:08  hb
-!  Fluff layer resuspension added.
-!
-!  Revision 1.13  2008-07-08 10:09:05  lars
-!  new structure with general particle support
-!
-!  Revision 1.12  2007-10-01 12:44:06  kbk
-!  added RedOxLayer Model (ROLM)
-!
-!  Revision 1.11  2007-03-14 12:46:07  kbk
-!  proper cleaning after simulation
-!
-!  Revision 1.10  2006-11-17 07:13:17  kbk
-!  rho amd wind-speed available via bio_var
-!
-!  Revision 1.9  2006-11-12 19:42:44  hb
-!  vertical advection due to physical vertical velocities enabled for the bio module
-!
-!  Revision 1.8  2006-10-26 13:12:46  kbk
-!  updated bio models to new ode_solver
-!
-!  Revision 1.7  2005-12-02 20:57:27  hb
-!  Documentation updated and some bugs fixed
-!
-!  Revision 1.6  2005-11-17 09:58:18  hb
-!  explicit argument for positive definite variables in diff_center()
-!
-!  Revision 1.5  2004/07/30 09:22:20  hb
-!  use bio_var in specific bio models - simpliefied internal interface
-!
-!  Revision 1.4  2004/03/30 11:32:48  kbk
-!  select between eulerian or lagrangian solver
-!
-!  Revision 1.3  2003/10/16 15:42:16  kbk
-!  simple mussesl model implemented - filter only
-!
-!  Revision 1.2  2003/09/16 12:11:24  hb
-!  added new biological model - bio_iow
-!
-!  Revision 1.1  2003/07/23 12:27:31  hb
-!  more generic support for different bio models
-!
-!
 !EOP
 !-----------------------------------------------------------------------
 

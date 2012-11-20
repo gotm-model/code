@@ -48,67 +48,6 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-!  $Log: bio_fasham.F90,v $
-!  Revision 1.3  2010-09-17 12:53:46  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.2  2008-07-08 09:58:39  lars
-!  adapted to changed BIO initialization algorithm
-!
-!  Revision 1.1  2008-03-26 08:51:43  kb
-!  new directory based bio structure
-!
-!  Revision 1.11  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.10  2006-10-26 13:12:46  kbk
-!  updated bio models to new ode_solver
-!
-!  Revision 1.9  2005-12-02 20:57:27  hb
-!  Documentation updated and some bugs fixed
-!
-!  Revision 1.8  2005-11-17 09:58:18  hb
-!  explicit argument for positive definite variables in diff_center()
-!
-!  Revision 1.7  2005/09/12 14:48:33  kbk
-!  merged generic biological module support
-!
-!  Revision 1.6.2.1  2005/07/05 20:25:35  hb
-!  added control over par calculation
-!
-!  Revision 1.6  2004/08/09 11:53:39  hb
-!  bioshading now without detritus
-!
-!  Revision 1.5  2004/08/02 08:34:36  hb
-!  updated init routines to reflect new internal bio interface
-!
-!  Revision 1.4  2004/08/01 15:52:57  hb
-!  alpha now devided by seconds per day
-!
-!  Revision 1.3  2004/07/30 09:22:20  hb
-!  use bio_var in specific bio models - simpliefied internal interface
-!
-!  Revision 1.2  2004/07/28 11:34:29  hb
-!  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.nml
-!
-!  Revision 1.1  2004/06/29 08:03:16  hb
-!  Fasham et al. 1990 model implemented
-!
-!  Revision 1.2  2003/10/16 15:42:16  kbk
-!  simple mussesl model implemented - filter only
-!
-!  Revision 1.1  2003/07/23 12:27:31  hb
-!  more generic support for different bio models
-!
-!  Revision 1.3  2003/04/05 07:01:41  kbk
-!  moved bioshade variable to meanflow - to compile properly
-!
-!  Revision 1.2  2003/04/04 14:25:52  hb
-!  First iteration of four-compartment geobiochemical model implemented
-!
-!  Revision 1.1  2003/04/01 17:01:00  hb
-!  Added infrastructure for geobiochemical model
-!
 ! !LOCAL VARIABLES:
 !  from a namelist
    REALTYPE                  ::  p_initial= 0.056666666

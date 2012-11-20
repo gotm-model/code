@@ -92,31 +92,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-!  $Log: intpressure.F90,v $
-!  Revision 1.8  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.7  2005/08/11 12:32:50  lars
-!  corrected error in Latex referencing
-!
-!  Revision 1.6  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.5  2004/08/18 11:43:51  lars
-!  updated documentation
-!
-!  Revision 1.4  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/28 08:56:56  kbk
-!  removed tabs
-!
-!  Revision 1.2  2003/03/10 08:50:06  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

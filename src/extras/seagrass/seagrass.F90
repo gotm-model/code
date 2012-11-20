@@ -29,42 +29,6 @@
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
-!  $Log: seagrass.F90,v $
-!  Revision 1.12  2010-12-16 09:49:11  kb
-!  updated to Fortran90 NetCDF interface
-!
-!  Revision 1.11  2010-09-17 12:53:47  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.10  2010-09-13 16:09:16  jorn
-!  added seagrass clean-up
-!
-!  Revision 1.9  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.8  2006-12-03 13:54:22  hb
-!  No extra production above seagrass
-!
-!  Revision 1.7  2006-11-21 15:21:56  kbk
-!  seagrass working again
-!
-!  Revision 1.6  2005-12-02 21:10:25  hb
-!  Documentation updated
-!
-!  Revision 1.5  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.4  2003/03/28 09:20:34  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/28 08:28:36  kbk
-!  removed tabs
-!
-!  Revision 1.2  2003/03/10 09:13:09  gotm
-!  Improved documentation
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
 !
    REALTYPE, dimension(:), allocatable :: xx,yy
    REALTYPE, dimension(:), allocatable :: exc,vfric,grassz,xxP

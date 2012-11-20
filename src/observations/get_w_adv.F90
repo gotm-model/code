@@ -33,35 +33,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  $Log: get_w_adv.F90,v $
-!  Revision 1.9  2010-09-17 12:53:50  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.8  2006-11-27 09:25:18  kbk
-!  use logical var init_saved_vars to initialise saved variables
-!
-!  Revision 1.7  2005/11/15 11:02:32  lars
-!  documentation finish for print
-!
-!  Revision 1.6  2005/08/15 11:54:01  hb
-!  sequence of reading w_adv and w_height changed,
-!  w_adv_height0 introduced, documentation extended
-!
-!  Revision 1.5  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.4  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/28 09:02:09  kbk
-!  removed tabs
-!
-!  Revision 1.2  2003/03/10 08:51:57  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

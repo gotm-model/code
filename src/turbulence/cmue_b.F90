@@ -44,11 +44,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!  $Log: cmue_b.F90,v $
-!  Revision 1.1  2005-06-27 10:54:33  kbk
-!  new files needed
-!
-!
 !EOP
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:

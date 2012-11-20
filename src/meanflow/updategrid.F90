@@ -64,63 +64,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
-!  $Log: updategrid.F90,v $
-!  Revision 1.20  2008-03-27 09:30:05  hb
-!  bug fix for w_height correction, bug found by Jorn Bruggeman
-!
-!  Revision 1.19  2007-01-06 11:49:16  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.18  2006-11-27 15:26:37  kbk
-!  initialise grid depending on grid_ready
-!
-!  Revision 1.17  2006-11-24 15:13:41  kbk
-!  de-allocate memory and close open files
-!
-!  Revision 1.16  2005-11-18 10:59:35  kbk
-!  removed unused variables - some left in parameter lists
-!
-!  Revision 1.15  2005/11/15 11:39:32  lars
-!  documentation finish for print
-!
-!  Revision 1.14  2005/08/25 19:41:33  hb
-!  small deviations between depth and depth0 tolerated now
-!
-!  Revision 1.13  2005/08/15 20:23:40  hb
-!  Vertical advection profiles triangle-shaped also for
-!  temporally constant vertical velocity
-!
-!  Revision 1.12  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.11  2004/08/18 11:46:19  lars
-!  updated documentation
-!
-!  Revision 1.10  2003/07/23 10:52:52  hb
-!  proper initialisation of gridinit + cleaning
-!
-!  Revision 1.9  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.8  2003/03/28 08:56:56  kbk
-!  removed tabs
-!
-!  Revision 1.7  2003/03/10 13:43:42  lars
-!  double definitions removed - to conform with DEC compiler
-!
-!  Revision 1.6  2003/03/10 08:50:08  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.5  2002/02/08 08:33:44  gotm
-!  Manuel added support for reading grid distribution from file
-!
-!  Revision 1.4  2001/11/27 19:51:49  gotm
-!  Cleaned
-!  Revision 1.3  2001/11/27 15:38:06  gotm
-!  Possible to read coordinate distribution from file
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
 !
 !EOP
 !

@@ -31,14 +31,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!  $Log: alpha_mnb.F90,v $
-!  Revision 1.2  2006-03-20 09:06:37  kbk
-!  removed explicit double precission dependency
-!
-!  Revision 1.1  2005/06/27 10:54:33  kbk
-!  new files needed
-!
-!
 !EOP
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:

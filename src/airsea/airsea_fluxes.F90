@@ -30,10 +30,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  $Log: airsea_fluxes.F90,v $
-!  Revision 1.1  2007-09-25 10:06:10  kbk
-!  modularized the airsea module - added Fairall method
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC

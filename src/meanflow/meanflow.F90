@@ -120,54 +120,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  $Log: meanflow.F90,v $
-!  Revision 1.17  2010-09-17 12:53:48  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.16  2007-01-03 21:45:20  hb
-!  LaTeX bug fix in documentation
-!
-!  Revision 1.15  2006-11-27 15:26:37  kbk
-!  initialise grid depending on grid_ready
-!
-!  Revision 1.14  2006-11-27 08:44:33  kbk
-!  de-allocate ga
-!
-!  Revision 1.13  2006-11-24 15:13:41  kbk
-!  de-allocate memory and close open files
-!
-!  Revision 1.12  2006-11-20 17:26:15  kbk
-!  [Cc]harnok -> [Cc]harnock - A. Jenkins
-!
-!  Revision 1.11  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.10  2004/01/27 08:33:20  lars
-!  omega-value bug fix
-!
-!  Revision 1.9  2004/01/12 15:21:09  lars
-!  added za for sediment-induced bottom roughness
-!
-!  Revision 1.8  2003/07/23 12:33:21  hb
-!  fixed bioshade init and use
-!
-!  Revision 1.6  2003/04/05 07:01:16  kbk
-!  moved bioshade variable to meanflow - to compile properly
-!
-!  Revision 1.5  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.4  2003/03/28 08:15:01  kbk
-!  removed tabs
-!
-!  Revision 1.3  2003/03/10 08:50:06  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.2  2001/11/18 15:58:02  gotm
-!  Vertical grid can now be read from file
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
-!
 !EOP
 !
 !  private date members

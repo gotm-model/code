@@ -44,36 +44,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!  $Log: time.F90,v $
-!  Revision 1.11  2010-09-17 12:53:53  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.10  2009-10-21 09:17:27  kb
-!  ooobs - removed test print statements
-!
-!  Revision 1.8  2005-06-27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.7  2004/08/17 15:45:16  lars
-!  corrected typos in docu
-!
-!  Revision 1.6  2003/03/28 09:38:54  kbk
-!  removed tabs
-!
-!  Revision 1.5  2003/03/28 09:20:36  kbk
-!  added new copyright to files
-!
-!  Revision 1.4  2003/03/28 07:56:05  kbk
-!  removed tabs
-!
-!  Revision 1.3  2003/03/10 13:48:15  lars
-!  changed intent(out) to intent(inout) for MaxN in init_time
-!
-!  Revision 1.2  2003/03/10 08:54:16  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
 !
 !EOP
 !

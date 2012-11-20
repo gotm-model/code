@@ -57,12 +57,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!  $Log: util.F90,v $
-!  Revision 1.1  2005-06-27 10:54:33  kbk
-!  new files needed
-!
-!
-
 !EOP
 
 

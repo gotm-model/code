@@ -24,17 +24,6 @@
 !  Original author(s): Hannes Rennau and Karsten Bolding
 !                      with input from John Aldrige
 !
-!  $Log: bio_cl.F90,v $
-!  Revision 1.3  2010-09-17 12:53:46  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.2  2009-12-09 13:11:54  kb
-!  added GUI for BIO/CL model - Rennau
-!
-!  Revision 1.1  2009-11-11 13:08:55  kb
-!  added chlorination model - Rennau
-!
-!
 ! !LOCAL VARIABLES:
 !  from a namelist
    integer                   :: cl_method

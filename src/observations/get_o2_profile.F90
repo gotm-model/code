@@ -29,29 +29,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  $Log: get_o2_profile.F90,v $
-!  Revision 1.7  2010-09-17 12:53:49  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.6  2007-09-11 13:24:32  jorn
-!  added stop after fatal error reading profile
-!
-!  Revision 1.5  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.4  2006-11-27 09:25:18  kbk
-!  use logical var init_saved_vars to initialise saved variables
-!
-!  Revision 1.3  2005-12-27 10:55:02  hb
-!  Unit conversion correct
-!
-!  Revision 1.2  2005-12-27 07:53:55  hb
-!  Oxygen unit conversions to mmol/m^3 included
-!
-!  Revision 1.1  2005-12-23 14:10:34  kbk
-!  support for reading oxygen profiles
-!
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

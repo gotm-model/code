@@ -80,40 +80,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-!  $Log: sediment.F90,v $
-!  Revision 1.11  2007-04-18 07:14:42  kbk
-!  .inp -> .nml
-!
-!  Revision 1.10  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.9  2004/06/29 12:56:36  lars
-!  removed tabs
-!
-!  Revision 1.8  2004/03/22 10:14:25  kbk
-!  cleaned, store old index -> much faster, fixed conc. calc.
-!
-!  Revision 1.7  2004/03/04 09:34:54  kbk
-!  selection between eularian and lagrangian solver
-!
-!  Revision 1.6  2004/01/13 10:20:21  lars
-!  removed small bug in namelist
-!
-!  Revision 1.5  2004/01/13 10:00:52  lars
-!  partical re-write using new adv.-diff. routines
-!
-!  Revision 1.4  2003/03/28 09:20:34  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/28 08:24:01  kbk
-!  removed tabs
-!
-!  Revision 1.2  2003/03/10 09:13:24  gotm
-!  Improved documentation
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
-!
 !  private data members from here on
 !
 !  the 'sedi' namelist

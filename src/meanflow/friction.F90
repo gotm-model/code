@@ -68,40 +68,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-!  $Log: friction.F90,v $
-!  Revision 1.11  2010-09-17 12:53:48  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.10  2006-11-20 17:28:58  kbk
-!  [Cc]harnok -> [Cc]harnock - A. Jenkins
-!
-!  Revision 1.9  2006-11-20 17:26:15  kbk
-!  [Cc]harnok -> [Cc]harnock - A. Jenkins
-!
-!  Revision 1.8  2005/08/11 12:31:54  lars
-!  corrected error in documentation. Thanks to Patrizio Mariani
-!
-!  Revision 1.7  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.6  2004/08/18 12:33:30  lars
-!  updated documentation
-!
-!  Revision 1.5  2004/01/13 08:39:49  lars
-!  included roughness due to suspended sediments
-!
-!  Revision 1.4  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/28 08:56:56  kbk
-!  removed tabs
-!
-!  Revision 1.2  2003/03/10 08:50:06  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

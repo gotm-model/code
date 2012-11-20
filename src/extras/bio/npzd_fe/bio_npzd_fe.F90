@@ -41,20 +41,6 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Weber et al. 2007
 !
-!  $Log: bio_npzd_fe.F90,v $
-!  Revision 1.3  2010-09-17 12:53:47  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.2  2008-07-08 09:58:38  lars
-!  adapted to changed BIO initialization algorithm
-!
-!  Revision 1.1  2008-03-26 08:51:44  kb
-!  new directory based bio structure
-!
-!  Revision 1.1  2008-02-20 11:29:59  kb
-!  added NPZD iron model - Weber et. all + Inga Hense
-!
-!
 ! !LOCAL VARIABLES:
 !  from a namelist
    REALTYPE                  :: N_initial=4.5

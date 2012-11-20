@@ -206,24 +206,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!  $Log: adv_center.F90,v $
-!  Revision 1.5  2010-09-17 12:53:52  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.4  2006-11-06 13:36:46  hb
-!  Option for conservative vertical advection added to adv_center
-!
-!  Revision 1.3  2006-03-20 09:06:38  kbk
-!  removed explicit double precission dependency
-!
-!  Revision 1.2  2005/11/18 10:59:34  kbk
-!  removed unused variables - some left in parameter lists
-!
-!  Revision 1.1  2005/06/27 10:54:33  kbk
-!  new files needed
-!
-!
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

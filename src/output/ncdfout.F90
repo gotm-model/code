@@ -55,67 +55,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  $Log: ncdfout.F90,v $
-!  Revision 1.21  2010-12-16 09:52:37  kb
-!  updated to Fortran90 NetCDF interface
-!
-!  Revision 1.20  2010-09-17 12:53:52  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.19  2008-08-01 07:32:25  lars
-!  updated unit description
-!
-!  Revision 1.18  2007-12-07 10:12:20  kb
-!  replaced p_e with precip and included evap
-!
-!  Revision 1.17  2007-11-02 10:58:34  jorn
-!  Made set_no public to allow other modules to save to NetCDF directly
-!
-!  Revision 1.16  2007-08-19 08:25:54  jorn
-!  fixed typo: celcius -> celsius
-!
-!  Revision 1.15  2006-11-27 15:13:43  kbk
-!  re-initialse first and set_no when closing .nc file
-!
-!  Revision 1.14  2005-12-27 08:37:58  hb
-!  Oxygen units indicated as mmol o2/m**3 in netCDF output
-!
-!  Revision 1.13  2005-12-23 14:10:35  kbk
-!  support for reading oxygen profiles
-!
-!  Revision 1.12  2005/11/18 11:16:27  kbk
-!  removed unused variables
-!
-!  Revision 1.11  2005/09/14 11:53:06  kbk
-!  fixed position of counter for time dimension - fixes bio storing
-!
-!  Revision 1.10  2005/08/11 14:15:33  kbk
-!  when storing time changed variable time to temp_time - Portland compiler
-!
-!  Revision 1.9  2005/07/06 14:22:40  kbk
-!  updated documentation - saves KPP related variables
-!
-!  Revision 1.8  2004/01/09 10:14:01  kbk
-!  consistency between stored surface stress and units (now N/m^2)
-!
-!  Revision 1.7  2003/12/11 09:58:22  kbk
-!  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
-!
-!  Revision 1.6  2003/10/14 08:04:32  kbk
-!  time is now stored as real
-!
-!  Revision 1.5  2003/06/13 09:27:16  hb
-!  Implemented freshwater fluxes
-!
-!  Revision 1.4  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/10 08:53:05  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
-!
 !EOP
 !
 ! !PRIVATE DATA MEMBERS
@@ -183,8 +122,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See ncdfout module
 !
 !EOP
 !
@@ -563,8 +500,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See ncdfout module
-!
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -733,8 +668,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See ncdfout module
-!
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -774,8 +707,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See ncdfout module
 !
 !EOP
 !
@@ -821,8 +752,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See ncdfout module
 !
 !EOP
 !
@@ -871,8 +800,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See ncdfout module
 !
 ! !LOCAL VARIABLES:
    integer                   :: len,iret
@@ -964,8 +891,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See ncdfout module
 !
 !EOP
 !

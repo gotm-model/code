@@ -30,17 +30,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Lars Umlauf
 !
-! $Log: compute_cpsi3.F90,v $
-! Revision 1.3  2010-09-17 12:53:52  jorn
-! extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-! Revision 1.2  2007-01-06 11:49:15  kbk
-! namelist file extension changed .inp --> .nml
-!
-! Revision 1.1  2005/06/27 10:54:33  kbk
-! new files needed
-!
-!
 !EOP
 !-----------------------------------------------------------------------
 ! !LOCAL VARIABLES:

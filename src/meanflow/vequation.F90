@@ -85,43 +85,6 @@
 !  Original author(s): Lars Umlauf
 !                      (re-write after first version of
 !                       Hans Burchard and Karsten Bolding)
-!
-!  $Log: vequation.F90,v $
-!  Revision 1.12  2010-09-17 12:53:48  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.11  2008-03-07 17:57:49  hb
-!  AdvBcup changed to oneSided
-!
-!  Revision 1.10  2006-11-06 13:36:45  hb
-!  Option for conservative vertical advection added to adv_center
-!
-!  Revision 1.9  2006-04-03 08:39:12  lars
-!  fixed bug in relaxation times - Thanks to Adolf Stips
-!
-!  Revision 1.8  2005-11-17 09:58:20  hb
-!  explicit argument for positive definite variables in diff_center()
-!
-!  Revision 1.7  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.7  2004/08/18 11:44:49  lars
-!  updated documentation
-!
-!  Revision 1.6  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.5  2003/03/28 08:56:56  kbk
-!  removed tabs
-!
-!  Revision 1.4  2003/03/10 08:50:07  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.3  2001/05/31 12:00:52  gotm
-!  Correction in the calculation of the shear squared calculation
-!  --- now according to Burchard 1995 (Ph.D. thesis).
-!  Also some cosmetics and cleaning of Makefiles.
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

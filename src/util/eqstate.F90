@@ -58,34 +58,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-!  $Log: eqstate.F90,v $
-!  Revision 1.9  2010-09-17 12:53:53  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.8  2008-08-01 07:33:14  lars
-!  modified documentation
-!
-!  Revision 1.7  2007-01-06 11:49:13  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.6  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.5  2003/03/28 09:20:36  kbk
-!  added new copyright to files
-!
-!  Revision 1.4  2003/03/28 08:06:33  kbk
-!  removed tabs
-!
-!  Revision 1.3  2003/03/10 08:54:16  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.2  2001/11/27 19:44:32  gotm
-!  Fixed an initialisation bug
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
-!
 !EOP
 !
 !  private data memebers

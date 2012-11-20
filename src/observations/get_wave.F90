@@ -30,18 +30,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  $Log: get_wave.F90,v $
-!  Revision 1.3  2010-09-17 12:53:51  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.2  2007-01-04 12:19:09  kbk
-!  updated documentation
-!
-!  Revision 1.1  2007-01-04 12:08:12  kbk
-!  adding surface waves
-!
-!
-!
 ! !LOCAL VARIABLES:
    integer                   :: yy,mm,dd,hh,min,ss
    REALTYPE                  :: t

@@ -146,7 +146,7 @@
       module procedure get_conserved_quantities_collection
    end interface get_conserved_quantities_bio_0d_generic
 !
-! !REVISION HISTORY:!
+! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
 !EOP

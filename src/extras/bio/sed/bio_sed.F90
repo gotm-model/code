@@ -31,43 +31,6 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
-!  $Log: bio_sed.F90,v $
-!  Revision 1.3  2010-09-17 12:53:47  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.2  2008-07-08 10:04:23  lars
-!  changed initialization and particle support
-!
-!  Revision 1.1  2008-03-26 08:51:44  kb
-!  new directory based bio structure
-!
-!  Revision 1.9  2007-04-18 07:35:26  kbk
-!  to avoid F95 warning
-!
-!  Revision 1.8  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.7  2006-10-26 13:12:46  kbk
-!  updated bio models to new ode_solver
-!
-!  Revision 1.6  2005-12-02 20:57:27  hb
-!  Documentation updated and some bugs fixed
-!
-!  Revision 1.5  2005-11-17 09:58:18  hb
-!  explicit argument for positive definite variables in diff_center()
-!
-!  Revision 1.4  2005/09/19 21:03:31  hb
-!  pp and dd properly set to zero
-!
-!  Revision 1.3  2004/08/02 08:34:36  hb
-!  updated init routines to reflect new internal bio interface
-!
-!  Revision 1.2  2004/07/30 09:22:20  hb
-!  use bio_var in specific bio models - simpliefied internal interface
-!
-!  Revision 1.1  2003/10/28 10:22:45  hb
-!  added support for sedimentation only 1 compartment bio model
-!
 !EOP
 !-----------------------------------------------------------------------!
 !
@@ -408,8 +371,6 @@
    return
    end subroutine do_statistics
 !EOC
-
-
 
 !-----------------------------------------------------------------------
 !BOP

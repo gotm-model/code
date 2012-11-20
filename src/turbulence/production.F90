@@ -70,43 +70,9 @@
 !  TKE production due to seagrass
 !  friction (m^2/s^3)
    REALTYPE, intent(in), optional      :: xP(0:nlev)
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
-!
-!  $Log: production.F90,v $
-!  Revision 1.5  2010-09-17 12:53:52  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.4  2005-08-28 09:40:03  hb
-!  Misspelling in documentation corrected.
-!
-!  Revision 1.3  2005/08/11 13:01:49  lars
-!  Added explicit loops for 3-D z-level support. Thanks to Vicente Fernandez.
-!
-!  Revision 1.2  2005/07/19 16:46:14  hb
-!  removed superfluous variables - NNT, NNS, SSU, SSV
-!
-!  Revision 1.1  2005/06/27 10:54:33  kbk
-!  new files needed
-!
-!  Revision 1.6  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.5  2003/03/28 08:56:56  kbk
-!  removed tabs
-!
-!  Revision 1.4  2003/03/10 08:50:07  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.3  2002/02/08 08:59:57  gotm
-!
-!  Revision 1.2  2001/11/18 16:02:16  gotm
-!  Allow no_shear calculation
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
 !
 !EOP
 !-----------------------------------------------------------------------

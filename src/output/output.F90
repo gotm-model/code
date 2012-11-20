@@ -42,37 +42,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
-!  $Log: output.F90,v $
-!  Revision 1.10  2010-09-17 12:53:52  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.9  2006-11-29 09:31:20  kbk
-!  output units made public
-!
-!  Revision 1.8  2005/07/19 17:09:37  hb
-!  removed code commented out
-!
-!  Revision 1.7  2005/07/06 14:22:40  kbk
-!  updated documentation - saves KPP related variables
-!
-!  Revision 1.6  2003/10/14 08:04:32  kbk
-!  time is now stored as real
-!
-!  Revision 1.5  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.4  2003/03/28 08:24:19  kbk
-!  removed tabs
-!
-!  Revision 1.3  2003/03/10 08:53:05  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.2  2001/11/18 11:51:52  gotm
-!  Fixed a typo
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:59  gotm
-!  initial import into CVS
-!
 !EOP
 !-----------------------------------------------------------------------
 !
@@ -108,8 +77,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See output module
 !
 !EOP
 !
@@ -197,8 +164,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See output module
-!
 !EOP
 !-------------------------------------------------------------------------
 !BOC
@@ -274,8 +239,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See output module
-!
 !EOP
 !-------------------------------------------------------------------------
 !BOC
@@ -331,8 +294,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See output module
 !
 !EOP
 !
