@@ -17,8 +17,8 @@
 !
 ! !USES:
    use fabm, only: fabm_get_variable_id
-   use fabm_types,only: shape_full,shape_hz,id_not_used
-   use gotm_fabm,only:fabm_calc,model,cc,register_observation_0d,register_observation_1d
+   use fabm_types,only: shape_full,shape_hz,shape_scalar,id_not_used
+   use gotm_fabm,only:fabm_calc,model,cc,register_observation
 
    implicit none
 
@@ -39,7 +39,7 @@
 !  Information on an observed variable
    type type_variable
       character(len=64)                  :: name
-      integer                            :: id,type,index
+      integer                            :: id,type,shape,index
       REALTYPE                           :: data_0d,relax_tau_0d
       REALTYPE, allocatable,dimension(:) :: data_1d,relax_tau_1d
       type (type_variable),pointer       :: next
@@ -236,10 +236,19 @@
 !        First search in pelagic variables
          curvariable%type = type_profile
          curvariable%id = fabm_get_variable_id(model,variables(i),shape_full)
+         curvariable%shape = shape_full
 
 !        If variable was not found, search variables defined on horizontal slice of model domain (e.g., benthos)
          if (curvariable%id.eq.id_not_used) then
             curvariable%id = fabm_get_variable_id(model,variables(i),shape_hz)
+            curvariable%shape = shape_hz
+            curvariable%type = type_scalar
+         end if
+
+!        If variable still was not found, search scalar [non-spatial] variables.
+         if (curvariable%id.eq.id_not_used) then
+            curvariable%id = fabm_get_variable_id(model,variables(i),shape_scalar)
+            curvariable%shape = shape_scalar
             curvariable%type = type_scalar
          end if
 
@@ -253,7 +262,7 @@
          if (curvariable%type.eq.type_scalar) then
             curvariable%data_0d = _ZERO_
             curvariable%relax_tau_0d = relax_taus(i)
-            call register_observation_0d(curvariable%id,curvariable%data_0d,curvariable%relax_tau_0d)
+            call register_observation(curvariable%id,curvariable%shape,data_0d=curvariable%data_0d,relax_tau_0d=curvariable%relax_tau_0d)
          else
             allocate(curvariable%data_1d(0:nlev))
             allocate(curvariable%relax_tau_1d(0:nlev))
@@ -273,7 +282,7 @@
             end do
 
 !           Register observed variable with the GOTM-FABM driver.
-            call register_observation_1d(curvariable%id,curvariable%data_1d,curvariable%relax_tau_1d)
+            call register_observation(curvariable%id,shape_full,data_1d=curvariable%data_1d,relax_tau_1d=curvariable%relax_tau_1d)
          end if
 
 !        Make sure profile and scalar variables are not mixed in the same input file.
@@ -470,10 +479,6 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-!  Currently, observed profiles are used for initialization only.
-!  If this is complete, do not read any further.
-   if (info%nprofiles.gt.0) return
-
 !  This part reads in new values if necessary.
    if(.not. info%one_profile .and. time_diff(info%jul2,info%secs2,jul,secs) .lt. 0) then
       do

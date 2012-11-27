@@ -40,7 +40,7 @@
    use airsea,      only: init_air_sea,do_air_sea,clean_air_sea
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
-   use airsea,      only: wind=>w,tx,ty,I_0,heat,precip,evap
+   use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap
    use airsea,      only: bio_albedo,bio_drag_scale
 
    use turbulence,  only: turb_method
@@ -277,8 +277,8 @@
 
 !  Link relevant GOTM data to FABM.
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
-   call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
-                          nuh,h,w,bioshade(1:nlev),I_0,taub,wind,precip,evap,z(1:nlev), &
+   call set_env_gotm_fabm(latitude,longitude,dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
+                          nuh,h,w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
                           A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
                           bio_albedo,bio_drag_scale)
 

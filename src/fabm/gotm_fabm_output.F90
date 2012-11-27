@@ -61,6 +61,8 @@ contains
 !
 ! !LOCAL VARIABLES:
    integer :: iret,n
+   type (type_obs),pointer :: cur_obs
+   character(len=64) :: name
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -130,6 +132,21 @@ contains
                                   long_name=trim(model%info%conserved_quantities(n)%longname)//', depth-integrated')
          end do
 
+         ! Add a NetCDF variable for each variable read from an external source [input file].
+         if (save_inputs) then
+            cur_obs => first_obs
+            do while (associated(cur_obs))
+               name = fabm_get_variable_name(model,cur_obs%id,cur_obs%shape)
+               select case (cur_obs%shape)
+                  case (shape_full)
+                     iret = new_nc_variable(ncid,trim(name),NF90_REAL,dim4d,cur_obs%ncid)
+                  case (shape_hz,shape_scalar)
+                     iret = new_nc_variable(ncid,trim(name),NF90_REAL,dim3d,cur_obs%ncid)
+               end select
+               cur_obs => cur_obs%next
+            end do
+         end if
+
          ! Take NetCDF library out of define mode (ready for storing data).
          iret = define_mode(ncid,.false.)
 #endif
@@ -172,6 +189,7 @@ contains
 !
 ! !LOCAL VARIABLES:
    integer :: iret,n
+   type (type_obs),pointer :: cur_obs
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -220,6 +238,20 @@ contains
                 model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_step_integrated) &
                cc_diag_hz(n) = _ZERO_
          end do
+
+         ! Store values for each variable read from an external source [input file].
+         if (save_inputs) then
+            cur_obs => first_obs
+            do while (associated(cur_obs))
+               select case (cur_obs%shape)
+                  case (shape_full)
+                     iret = store_data(ncid,cur_obs%ncid,XYZT_SHAPE,1,array=cur_obs%data_1d)
+                  case (shape_hz,shape_scalar)
+                     iret = store_data(ncid,cur_obs%ncid,XYT_SHAPE,1,scalar=cur_obs%data_0d)
+               end select
+               cur_obs => cur_obs%next
+            end do
+         end if
 
          ! Integrate conserved quantities over depth.
 #ifdef _FABM_USE_1D_LOOP_
