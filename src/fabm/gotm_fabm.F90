@@ -90,9 +90,9 @@
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z,rho
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: SRelaxTau,sProf,salt
-   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_    :: precip,evap,bio_drag_scale,bio_albedo,latitude,longitude
+   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_    :: precip,evap,bio_drag_scale,bio_albedo
 
-   REALTYPE,pointer :: I_0,cloud,A,g1,g2
+   REALTYPE,pointer :: I_0,A,g1,g2
    integer,pointer  :: yearday,secondsofday
    REALTYPE, target :: decimal_yearday
 
@@ -406,8 +406,8 @@
 ! !IROUTINE: Set environment for FABM
 !
 ! !INTERFACE:
-   subroutine set_env_gotm_fabm(latitude_,longitude_,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
-                                bioshade_,I_0_,cloud_,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
+   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
+                                bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
                                 yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
 !
 ! !DESCRIPTION:
@@ -415,11 +415,11 @@
 ! the physical environment relevant for biogeochemical processes (temprature, salinity, etc.)
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: latitude_,longitude_
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: latitude,longitude
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,cloud_,wnd,precip_,evap_,taub
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,cloud,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_
    REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
@@ -441,9 +441,12 @@
    call fabm_link_data   (model,varname_temp,   temp)
    call fabm_link_data   (model,varname_salt,   salt_)
    call fabm_link_data   (model,varname_dens,   rho_)
+   call fabm_link_data_hz(model,varname_lon,    longitude)
+   call fabm_link_data_hz(model,varname_lat,    latitude)
    call fabm_link_data_hz(model,varname_wind_sf,wnd)
    call fabm_link_data_hz(model,varname_par_sf, I_0_)
    call fabm_link_data_hz(model,varname_taub,   taub)
+   call fabm_link_data_hz(model,varname_cloud,  cloud)
 
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
@@ -478,8 +481,6 @@
    end if
 
    ! Copy scalars that will not change during simulation, and are needed in do_gotm_fabm)
-   latitude => latitude_
-   longitude => longitude_
    dt = dt_
    w_adv_method = w_adv_method_
    w_adv_ctr = w_adv_ctr_
@@ -488,7 +489,6 @@
    dt_eff = dt/float(split_factor)
 
    I_0 => I_0_
-   cloud => cloud_
    A => A_
    g1 => g1_
    g2 => g2_
