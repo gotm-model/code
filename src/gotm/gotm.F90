@@ -108,7 +108,7 @@
    integer                   :: buoy_method
 !  station description
    character(len=80)         :: name
-   REALTYPE                  :: latitude,longitude
+   REALTYPE,target           :: latitude,longitude
 !
 !-----------------------------------------------------------------------
 

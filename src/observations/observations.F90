@@ -40,7 +40,7 @@
    logical, public                               :: init_saved_vars
 !
 !  'observed' salinity profile
-   REALTYPE, public, dimension(:), allocatable   :: sprof
+   REALTYPE, public, dimension(:), allocatable, target :: sprof
 
 !  'observed' temperature profile
    REALTYPE, public, dimension(:), allocatable   :: tprof
@@ -64,7 +64,8 @@
    REALTYPE, public, dimension(:), allocatable   :: epsprof
 
 !  ralaxation times for salinity and temperature
-   REALTYPE, public, dimension(:), allocatable   :: SRelaxTau,TRelaxTau
+   REALTYPE, public, dimension(:), allocatable, target :: SRelaxTau
+   REALTYPE, public, dimension(:), allocatable         :: TRelaxTau
 
 !  sea surface elevation, sea surface gradients and height of velocity obs.
    REALTYPE, public          :: zeta,dpdx,dpdy,h_press
@@ -73,7 +74,7 @@
    REALTYPE, public          :: w_adv,w_height
 
 !  Parameters for water classification - default Jerlov type I
-   REALTYPE, public          :: A,g1,g2
+   REALTYPE, public, target  :: A,g1,g2
 
 #ifdef BIO
 !  'observed' biological profiles

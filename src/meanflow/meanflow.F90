@@ -27,16 +27,16 @@
    logical, public                              :: init_buoyancy
 
 !  coordinate z, layer thicknesses
-   REALTYPE, public, dimension(:), allocatable  :: ga,z,h,ho
+   REALTYPE, public, dimension(:), allocatable, target  :: ga,z,h,ho
 
 !  the velocity components
-   REALTYPE, public, dimension(:), allocatable  :: u,v,w
+   REALTYPE, public, dimension(:), allocatable, target  :: u,v,w
 
 !  velocity at old time step
    REALTYPE, public, dimension(:), allocatable  :: uo,vo
 
 !  potential temperature, salinity
-   REALTYPE, public, dimension(:), allocatable  :: T,S,rho
+   REALTYPE, public, dimension(:), allocatable, target  :: T,S,rho
 
 !  boyancy frequency squared
 !  (total, from temperature only, from salinity only)
@@ -61,7 +61,7 @@
    REALTYPE, public, dimension(:), allocatable  :: fric,drag
 
 !  shading in the water column
-   REALTYPE, public, dimension(:), allocatable  :: bioshade
+   REALTYPE, public, dimension(:), allocatable, target  :: bioshade
 
 # ifdef EXTRA_OUTPUT
 
