@@ -611,23 +611,20 @@
       ! Add surface flux due to evaporation/precipitation, unless the model explicitly says otherwise.
       if (.not. (model%info%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution)) then
          sfl(i) = sfl(i)-cc(i,nlev)*dilution
-         if (virtual_dilution.ne._ZERO_) sfl(i) = sfl(i)-sum(cc(i,1:nlev)*h(2:nlev+1))*virtual_dilution
+         if (virtual_dilution/=_ZERO_) sfl(i) = sfl(i)-sum(cc(i,1:nlev)*h(2:nlev+1))*virtual_dilution
       end if
 
       ! Determine whether the variable is positive-definite based on its lower allowed bound.
       posconc = 0
-      if (model%info%state_variables(i)%minimum.ge._ZERO_) posconc = 1
+      if (model%info%state_variables(i)%minimum>=_ZERO_) posconc = 1
 
       call system_clock(clock_start)
 
       ! Do advection step due to settling or rising
-      call adv_center(nlev,dt,h,h,ws(:,i),flux,                   &
-           flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(i,:))
+      call adv_center(nlev,dt,h,h,ws(:,i),flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(i,:))
 
       ! Do advection step due to vertical velocity
-      if (w_adv_method .ne. 0) &
-         call adv_center(nlev,dt,h,h,w,flux,                   &
-              flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(i,:))
+      if (w_adv_method/=0) call adv_center(nlev,dt,h,h,w,flux,flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(i,:))
 
       call system_clock(clock_end)
       clock_adv = clock_adv + clock_end-clock_start
@@ -675,7 +672,7 @@
 
       ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
       do i=1,size(model%info%diagnostic_variables_hz)
-         if (model%info%diagnostic_variables_hz(i)%time_treatment.eq.time_treatment_last) then
+         if (model%info%diagnostic_variables_hz(i)%time_treatment==time_treatment_last) then
             ! Simply use last value
             cc_diag_hz(i) = fabm_get_diagnostic_data_hz(model,i)
          else
@@ -687,7 +684,7 @@
 
       ! Time-integrate diagnostic variables defined on the full domain, where needed.
       do i=1,size(model%info%diagnostic_variables)
-         if (model%info%diagnostic_variables(i)%time_treatment.eq.time_treatment_last) then
+         if (model%info%diagnostic_variables(i)%time_treatment==time_treatment_last) then
             ! Simply use last value
             cc_diag(i,1:nlev) = fabm_get_diagnostic_data(model,i)
          else
@@ -1040,7 +1037,7 @@
             cur_obs%relax_tau_0d => relax_tau_0d
             if (shape==shape_hz) then
                do i=1,size(model%info%state_variables_ben)
-                  if (cur_obs%id.eq.model%info%state_variables_ben(i)%globalid%dependencyid) then
+                  if (cur_obs%id==model%info%state_variables_ben(i)%globalid%dependencyid) then
                      cur_obs%isstatevariable = .true.
                      cc_ben_obs(i)%data => cur_obs
                      exit
@@ -1051,7 +1048,7 @@
             cur_obs%data_1d => data_1d
             cur_obs%relax_tau_1d => relax_tau_1d
             do i=1,size(model%info%state_variables)
-               if (cur_obs%id.eq.model%info%state_variables(i)%globalid%dependencyid) then
+               if (cur_obs%id==model%info%state_variables(i)%globalid%dependencyid) then
                   cur_obs%isstatevariable = .true.
                   cc_obs(i)%data => cur_obs
                   exit
