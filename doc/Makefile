@@ -13,8 +13,7 @@ PROTEXSRC  = gotm.tex              \
              observations.tex      \
              output.tex            \
              util.tex              \
-             seagrass.tex          \
-             bio.tex
+             seagrass.tex
 
 TEXSRC     = introduction.tex      \
              mainIntro.tex         \
@@ -47,7 +46,7 @@ TEXHTMLSRC = introduction.tex      \
              a4_dvi letter_dvi html_dvi           \
              a4_ps  letter_ps  html_ps            \
              a4_pdf letter_pdf html_pdf           \
-             html_web
+             html_web upload
 
 
 all:         a4_pdf letter_pdf html_pdf html_web
@@ -124,14 +123,10 @@ html:   html.dvi
 	latex2html -antialias_text -white html.tex
 	touch html
 
-pdf_scp: a4.pdf letter.pdf
-	scp -r a4.pdf letter.pdf gotm.net:/data/kamel/domains/gotm.net/manual/pdf/
-	touch pdf_scp
-
-html_scp: html
-	scp -r html/* gotm.net:/data/kamel/domains/gotm.net/manual/html/
-	touch html_scp
-
+upload: a4.pdf letter.pdf html
+upload: a4.pdf letter.pdf
+	rsync -avz a4.pdf letter.pdf gotm.net:/var/www/www.gotm.net/htdocs/pages/documentation/manual/devel/pdf
+	rsync -avz html gotm.net:/var/www/www.gotm.net/htdocs/pages/documentation/manual/devel/
 
 figures:
 	wget -nd -nH -q http://www.gotm.net/data_files/gotm-figs-4.0.gz
