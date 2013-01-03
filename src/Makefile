@@ -20,10 +20,28 @@ ALL_LIBS	= $(FEATURE_LIBS) $(CORE_LIBS) $(EXTRA_LIBS)
 
 EXEC		= gotm$(buildtype)_$(FORTRAN_COMPILER)
 
-all: ../VERSION $(EXEC) install
+all: ../VERSION $(EXEC) install confdir
 
 ../VERSION: ../Makefile
 	$(MAKE) -C ..
+
+confall: confdir confflags
+
+confdir:
+	@echo "GOTMDIR:    "$(GOTMDIR)
+	@echo "BINDIR:     "$(BINDIR)
+	@echo "MODDIR:     "$(MODDIR)
+	@echo "LIBDIR:     "$(LIBDIR)
+	@echo "FABMDIR:    "$(FABMDIR)
+
+confflags:
+	@echo "DEFINES:    "$(DEFINES)
+	@echo "INCDIRS:    "$(INCDIRS)
+	@echo "LINKDIRS:   "$(LINKDIRS)
+	@echo "EXTRA_LIBS: "$(EXTRA_LIBS)
+	@echo "F90FLAGS:   "$(F90FLAGS)
+
+
 
 $(EXEC): makedirs subdirs features gotmlib
 	$(FC) -o $@ ./gotm/main.o $(LDFLAGS) -lgotm$(buildtype) $(ALL_LIBS)
