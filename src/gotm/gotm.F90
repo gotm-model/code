@@ -147,8 +147,8 @@
    namelist /model_setup/ title,nlev,dt,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
-   namelist /output/      out_fmt,out_dir,out_fn,nsave,diagnostics,     &
-                          mld_method,diff_k,Ri_crit,rad_corr
+   namelist /output/      out_fmt,out_dir,out_fn,nsave,sync_out, &
+                          diagnostics,mld_method,diff_k,Ri_crit,rad_corr
    integer          ::    rc
 !
 !-----------------------------------------------------------------------
@@ -168,6 +168,7 @@
    out_dir     = '.'
    out_fn      = 'gotm'
    nsave       = 1
+   sync_out    = 1
    diagnostics = .false.
    mld_method  = 1
    diff_k      = 1.e-5
@@ -182,6 +183,10 @@
    read(namlst,nml=station,err=92)
    read(namlst,nml=time,err=93)
    read(namlst,nml=output,err=94)
+
+   if (sync_out .lt. 0) then
+      sync_out = 0
+   end if
 
    LEVEL2 'done.'
 

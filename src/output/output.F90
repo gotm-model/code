@@ -31,6 +31,7 @@
    character(len=PATH_MAX)             :: out_dir
    character(len=PATH_MAX)             :: out_fn
    integer                             :: nsave
+   integer                             :: sync_out
    logical                             :: diagnostics
    integer                             :: mld_method
    REALTYPE                            :: diff_k
@@ -198,6 +199,7 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE                   :: secs
+   logical                    :: sync
 !EOP
 !-------------------------------------------------------------------------
 !BOC
@@ -210,7 +212,12 @@
             call do_ascii_out(nlev,ts,ascii_unit)
 #ifdef NETCDF_FMT
          case (NETCDF, GRADS)
-            call do_ncdf_out(nlev,secs)
+            if (sync_out .ne. 0 .and. mod(n,nsave*sync_out) .eq. 0) then
+               sync = .true.
+            else
+               sync = .false.
+            end if
+            call do_ncdf_out(nlev,secs,sync)
 #endif
          case default
            LEVEL1 'Fatal error: A non valid output format has been chosen'

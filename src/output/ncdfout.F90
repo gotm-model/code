@@ -468,7 +468,7 @@
 ! !IROUTINE: Save model results to file
 !
 ! !INTERFACE:
-   subroutine do_ncdf_out(nlev,secs)
+   subroutine do_ncdf_out(nlev,secs,sync)
 !
 ! !DESCRIPTION:
 !  Write the GOTM core variables to the NetCDF file.
@@ -496,6 +496,7 @@
 ! !INPUT PARAMETERS:
    integer,  intent(in)                :: nlev
    REALTYPE, intent(in)                :: secs
+   logical,  intent(in)                :: sync
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -646,8 +647,11 @@
    iret = store_data(ncid,turb5_id,XYZT_SHAPE,nlev,array=turb5)
 # endif
 
-   iret = nf90_sync(ncid)
-   call check_err(iret)
+   if (sync) then
+      iret = nf90_sync(ncid)
+      call check_err(iret)
+   end if
+
 
    return
    end subroutine do_ncdf_out

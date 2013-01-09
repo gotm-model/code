@@ -17,6 +17,7 @@
 			<out_dir>.</out_dir>
 			<out_fn>gotland</out_fn>
 			<nsave>144</nsave>
+			<sync_out>1</sync_out>
 			<diagnostics>False</diagnostics>
 			<mld_method>1</mld_method>
 			<diff_k>1e-005</diff_k>
