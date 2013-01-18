@@ -28,23 +28,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!  $Log: fk_craig.F90,v $
-!  Revision 1.5  2007-07-23 11:28:39  hb
-!  cw for Craig-Banner wave breaking from namelist now used in fk_craig.F90
-!
-!  Revision 1.4  2005-06-27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.3  2004/08/18 12:50:57  lars
-!  updated documentation
-!
-!  Revision 1.2  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.1  2003/03/10 09:00:36  gotm
-!  Part of new generic turbulence model
-!
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC

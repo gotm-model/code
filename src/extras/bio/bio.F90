@@ -102,201 +102,6 @@
 ! !REVISION HISTORY:!
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-!  $Log: bio.F90,v $
-!  Revision 1.59  2011-04-05 14:53:00  jorn
-!  removed reference to observations module from bio
-!
-!  Revision 1.58  2011-01-11 16:37:04  jorn
-!  changed ode solvers to operate either on pp/dd or on rhs vector
-!
-!  Revision 1.57  2010-09-17 12:53:45  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.56  2010-09-13 15:59:36  jorn
-!  improved clean up of bio models
-!
-!  Revision 1.55  2010-09-13 15:15:50  jorn
-!  make sure bio variables will be reset when a new run starts
-!
-!  Revision 1.54  2010-03-08 10:58:52  hb
-!  Simple maganese model added, see subdir extras/bio/mangan/
-!
-!  Revision 1.53  2009-11-20 08:16:56  kb
-!  allow compilation excluding 0D BIO framework - set in Rules.make
-!
-!  Revision 1.52  2009-11-11 13:08:54  kb
-!  added chlorination model - Rennau
-!
-!  $Log: bio.F90,v $
-!  Revision 1.59  2011-04-05 14:53:00  jorn
-!  removed reference to observations module from bio
-!
-!  Revision 1.58  2011-01-11 16:37:04  jorn
-!  changed ode solvers to operate either on pp/dd or on rhs vector
-!
-!  Revision 1.57  2010-09-17 12:53:45  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.56  2010-09-13 15:59:36  jorn
-!  improved clean up of bio models
-!
-!  Revision 1.55  2010-09-13 15:15:50  jorn
-!  make sure bio variables will be reset when a new run starts
-!
-!  Revision 1.54  2010-03-08 10:58:52  hb
-!  Simple maganese model added, see subdir extras/bio/mangan/
-!
-!  Revision 1.51  2009-10-30 13:03:02  hb
-!  Liss and Merlivat relationship for the piston velocity + Weiss formula
-!  for saturation oxygen included into bio_iow by Adolf Stips
-!
-!  Revision 1.50  2009-10-21 08:02:07  hb
-!  Fluff layer resuspension added.
-!
-!  Revision 1.49  2008-11-11 13:40:32  jorn
-!  major revision of 0d biogeochemical framework; added output of depth-integrated conserved BGC quantities; added support for running multiple BGC models side-by-side
-!
-!  Revision 1.48  2008-11-06 13:42:44  jorn
-!  several changes to 0d framework for biogeochemical models; added explicit support for time- and space-varying sinking and light extinction
-!
-!  Revision 1.47  2008-11-05 12:51:38  jorn
-!  restructured 0d biogeochemical framework; added experimental support for self-shading in 0d-based particle models
-!
-!  Revision 1.46  2008-11-03 12:57:34  jorn
-!  added support for 0D biogeochemical models in Lagrangian mode
-!
-!  Revision 1.45  2008-10-31 11:10:32  jorn
-!  first version of bio framework for 0D models and 0D NPZD test case
-!
-!  Revision 1.44  2008-07-08 10:09:05  lars
-!  new structure with general particle support
-!
-!  Revision 1.43  2008-03-26 08:56:53  kb
-!  new directory based bio structure
-!
-!  Revision 1.42  2008-02-20 11:29:59  kb
-!  added NPZD iron model - Weber et. all + Inga Hense
-!
-!  Revision 1.40  2007-11-07 11:14:24  kb
-!  no mussesl yet
-!
-!  Revision 1.39  2007-10-01 12:44:06  kbk
-!  added RedOxLayer Model (ROLM)
-!
-!  Revision 1.38  2007-04-18 07:36:47  kbk
-!  mussels will be developed in 4.1.x
-!
-!  Revision 1.37  2007-04-18 06:57:36  kbk
-!  Lagrangian simulations disabled by default
-!
-!  Revision 1.36  2007-03-14 12:46:07  kbk
-!  proper cleaning after simulation
-!
-!  Revision 1.35  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.34  2007-01-04 12:54:12  hb
-!  ifdef LAGRANGE removed
-!
-!  Revision 1.33  2006-11-17 07:13:17  kbk
-!  rho amd wind-speed available via bio_var
-!
-!  Revision 1.32  2006-11-12 19:42:44  hb
-!  vertical advection due to physical vertical velocities enabled for the bio module
-!
-!  Revision 1.31  2006-11-06 13:36:46  hb
-!  Option for conservative vertical advection added to adv_center
-!
-!  Revision 1.30  2006-10-26 13:12:46  kbk
-!  updated bio models to new ode_solver
-!
-!  Revision 1.29  2005-12-27 11:23:04  hb
-!  Weiss 1970 formula now used for surface oxygen saturation calculation in bio_mab.F90
-!
-!  Revision 1.28  2005-12-27 06:51:49  hb
-!  New biomodel bio_mab (bio_iow with additional sediment equation) added
-!
-!  Revision 1.27  2005-12-02 20:57:27  hb
-!  Documentation updated and some bugs fixed
-!
-!  Revision 1.26  2005-11-18 10:59:35  kbk
-!  removed unused variables - some left in parameter lists
-!
-!  Revision 1.25  2005/11/17 09:58:18  hb
-!  explicit argument for positive definite variables in diff_center()
-!
-!  Revision 1.24  2005/10/11 08:43:44  lars
-!  checked new transport routines
-!
-!  Revision 1.23  2005/09/19 21:07:00  hb
-!  yevol replaced by adv_center and diff_center
-!
-!  Revision 1.22  2005/09/12 14:48:33  kbk
-!  merged generic biological module support
-!
-!  Revision 1.21.2.1  2005/07/06 09:00:19  hb
-!  moved bio_save() from do_bio() to time_loop - temporary no NPZD totn calculation
-!
-!  Revision 1.21  2004/08/18 11:34:14  hb
-!  zlev now allocated from 0 to nlev
-!
-!  Revision 1.20  2004/08/02 11:44:12  kbk
-!  bio module compiles and runs with GETM
-!
-!  Revision 1.19  2004/08/02 08:35:08  hb
-!  no need to pass time information
-!
-!  Revision 1.18  2004/08/01 15:54:49  hb
-!  call to light_fasham commented in again
-!
-!  Revision 1.17  2004/07/30 09:22:20  hb
-!  use bio_var in specific bio models - simpliefied internal interface
-!
-!  Revision 1.16  2004/07/28 11:34:29  hb
-!  Bioshade feedback may now be switched on or off, depending on bioshade_feedback set to .true. or .false. in bio.nml
-!
-!  Revision 1.15  2004/06/29 08:03:16  hb
-!  Fasham et al. 1990 model implemented
-!
-!  Revision 1.14  2004/05/28 13:24:49  hb
-!  Extention of bio_iow to fluff layer and surface nutrient fluxes
-!
-!  Revision 1.13  2004/04/13 09:18:54  kbk
-!  size and temperature dependend filtration rate
-!
-!  Revision 1.12  2004/03/31 12:58:52  kbk
-!  lagrangian solver uses - total_mussel_flux
-!
-!  Revision 1.11  2004/03/30 11:32:48  kbk
-!  select between eulerian or lagrangian solver
-!
-!  Revision 1.10  2003/12/11 09:58:22  kbk
-!  now compiles with FORTRAN_COMPILER=IFORT - removed TABS
-!
-!  Revision 1.9  2003/10/28 10:22:45  hb
-!  added support for sedimentation only 1 compartment bio model
-!
-!  Revision 1.8  2003/10/16 15:42:16  kbk
-!  simple mussesl model implemented - filter only
-!
-!  Revision 1.7  2003/10/14 08:00:09  hb
-!  initialise sfl - no special treatment when cc(,) < 0
-!
-!  Revision 1.6  2003/09/16 12:11:24  hb
-!  added new biological model - bio_iow
-!
-!  Revision 1.5  2003/07/23 12:27:31  hb
-!  more generic support for different bio models
-!
-!  Revision 1.3  2003/04/05 07:01:41  kbk
-!  moved bioshade variable to meanflow - to compile properly
-!
-!  Revision 1.2  2003/04/04 14:25:52  hb
-!  First iteration of four-compartment geobiochemical model implemented
-!
-!  Revision 1.1  2003/04/01 17:01:00  hb
-!  Added infrastructure for geobiochemical model
-!
 !EOP
 !-----------------------------------------------------------------------
 !
@@ -347,7 +152,6 @@
    character(len=*), intent(in)        :: fname
    integer, intent(in)                 :: unit
    integer, intent(in)                 :: nmax_
-
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf, Hans Burchard, Karsten Bolding
@@ -643,7 +447,6 @@
 ! !USES:
    IMPLICIT NONE
 !
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding
 !
@@ -654,14 +457,12 @@
 
 !-----------------------------------------------------------------------
 !BOC
-
 !  allocate initial memory for particles
    if (.not. bio_eulerian) then
 
       call alloc_par()
 
    end if
-
 
 !  update grid
    zlev(0)= zbot
@@ -1214,7 +1015,6 @@
    REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
    REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
 !
-!
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
@@ -1362,7 +1162,6 @@
 ! !USES:
    IMPLICIT NONE
 !
-!
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf & Karsten Bolding
 !
@@ -1475,7 +1274,7 @@
 ! !USES:
    IMPLICIT NONE
 !
-! !REVISION HISTORY:!
+! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Lars Umlauf, Karsten Bolding!
 !EOP
 !-----------------------------------------------------------------------
@@ -1680,18 +1479,14 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-
    if (allocated(par_act))        deallocate(par_act)
    if (allocated(par_ind))        deallocate(par_ind)
    if (allocated(par_z))          deallocate(par_z)
    if (allocated(par_prop))       deallocate(par_prop)
 
-
    return
    end subroutine dealloc_par
 !EOC
-
-
 
 !-----------------------------------------------------------------------
 !BOP

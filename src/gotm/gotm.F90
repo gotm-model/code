@@ -40,7 +40,7 @@
    use airsea,      only: init_air_sea,do_air_sea,clean_air_sea
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
-   use airsea,      only: wind=>w,tx,ty,I_0,heat,precip,evap
+   use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap
    use airsea,      only: bio_albedo,bio_drag_scale
 
    use turbulence,  only: turb_method
@@ -100,164 +100,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  $Log: gotm.F90,v $
-!  Revision 1.53  2011-04-06 14:43:39  jorn
-!  removed time arguments to do_gotm_fabm, do not recalculate depth in gotm_fabm
-!
-!  Revision 1.52  2011-04-05 14:52:04  jorn
-!  removed rad from fabm inputs (I_0 suffices)
-!
-!  Revision 1.51  2011-04-05 14:07:33  jorn
-!  fabm now receives light parameters instead of taking them from observations
-!
-!  Revision 1.50  2011-04-05 13:45:01  jorn
-!  added basic fabm profile input; split fabm input, output, core over different files
-!
-!  Revision 1.49  2011-02-18 17:10:27  jorn
-!  combined FABM initialization and space-explicit allocation in single routine
-!
-!  Revision 1.48  2011-01-13 12:20:22  jorn
-!  further renames RMBM to FABM
-!
-!  Revision 1.47  2011-01-13 12:04:34  jorn
-!  renamed FABM to FABM
-!
-!  Revision 1.46  2011-01-11 16:38:33  jorn
-!  call fabm from gotm (if _FABM_ is defined)
-!
-!  Revision 1.45  2010-09-17 12:53:47  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.44  2010-09-13 16:09:16  jorn
-!  added seagrass clean-up
-!
-!  Revision 1.43  2010-09-13 15:59:36  jorn
-!  improved clean up of bio models
-!
-!  Revision 1.42  2009-10-21 08:02:09  hb
-!  Fluff layer resuspension added.
-!
-!  Revision 1.41  2009-02-16 11:16:38  lars
-!  bug fix in bioprofs allocation
-!
-!  Revision 1.40  2009-01-07 07:25:38  kb
-!  fixed various compilation warnings found by gfortran
-!
-!  Revision 1.39  2008-07-08 10:46:16  lars
-!  bug fix in BIO calling sequence
-!
-!  Revision 1.38  2008-07-08 10:09:06  lars
-!  new structure with general particle support
-!
-!  Revision 1.37  2008-04-09 11:56:28  kb
-!  GOTM/GETM concensus on signs for precip and evap - both positive into the ocean
-!
-!  Revision 1.36  2007-12-07 10:12:20  kb
-!  replaced p_e with precip and included evap
-!
-!  Revision 1.35  2007-06-19 10:38:02  kbk
-!  initialise biological profiles from external file
-!
-!  Revision 1.34  2007-03-15 10:52:07  kbk
-!  proper cleaning after simulation
-!
-!  Revision 1.33  2007-01-06 11:57:08  kbk
-!  PressMethod --> ext_press_mode
-!
-!  Revision 1.32  2006-11-27 10:08:33  kbk
-!  use var init_saved_vars to initialise saved variables - air_sea_interaction -> do_air_sea
-!
-!  Revision 1.31  2006-11-24 15:13:40  kbk
-!  de-allocate memory and close open files
-!
-!  Revision 1.30  2006-11-21 15:21:56  kbk
-!  seagrass working again
-!
-!  Revision 1.29  2006-11-17 07:13:16  kbk
-!  rho amd wind-speed available via bio_var
-!
-!  Revision 1.28  2006-11-12 19:42:45  hb
-!  vertical advection due to physical vertical velocities enabled for the bio module
-!
-!  Revision 1.27  2006-10-26 13:12:46  kbk
-!  updated bio models to new ode_solver
-!
-!  Revision 1.26  2005-12-27 11:23:04  hb
-!  Weiss 1970 formula now used for surface oxygen saturation calculation in bio_mab.F90
-!
-!  Revision 1.25  2005-11-18 10:59:35  kbk
-!  removed unused variables - some left in parameter lists
-!
-!  Revision 1.24  2005/11/15 11:45:08  lars
-!  documentation finish for print
-!
-!  Revision 1.23  2005/09/12 14:48:33  kbk
-!  merged generic biological module support
-!
-!  Revision 1.22  2005/08/11 12:29:38  lars
-!  added #ifdef for xP argument in do_turbulence()
-!
-!  Revision 1.21  2005/07/20 09:36:11  lars
-!  bug-fix in variances output
-!
-!  Revision 1.20  2005/07/19 16:46:14  hb
-!  removed superfluous variables - NNT, NNS, SSU, SSV
-!
-!  Revision 1.19  2005/07/19 16:33:22  hb
-!  moved  variances() from do_turbulence() to time_loop()
-!
-!  Revision 1.18  2005/07/12 10:13:21  hb
-!  dependence of init_turbulence from depth, z0s, z0b removed
-!
-!  Revision 1.17  2005/07/06 15:30:17  kbk
-!  added KPP, no bio, no sediment, updated documentation
-!
-!  Revision 1.16  2004/08/02 08:35:46  hb
-!  no need to pass time information
-!
-!  Revision 1.15  2004/07/29 17:36:36  hb
-!  separate reading fluxes from bio() - benefit of 3D models
-!
-!  Revision 1.14  2004/05/28 13:24:49  hb
-!  Extention of bio_iow to fluff layer and surface nutrient fluxes
-!
-!  Revision 1.13  2004/03/30 11:31:52  kbk
-!  h in parameter list to init_bio()
-!
-!  Revision 1.12  2004/03/04 10:13:01  kbk
-!  calc_sediment --> do_sediment
-!
-!  Revision 1.11  2003/09/16 12:17:10  hb
-!  added new biological model - bio_iow
-!
-!  Revision 1.10  2003/07/23 12:14:07  hb
-!  preparing for general bio interface
-!
-!  Revision 1.9  2003/04/04 14:25:52  hb
-!  First iteration of four-compartment geobiochemical model implemented
-!
-!  Revision 1.8  2003/04/01 17:01:00  hb
-!  Added infrastructure for geobiochemical model
-!
-!  Revision 1.7  2003/03/28 09:20:34  kbk
-!  added new copyright to files
-!
-!  Revision 1.6  2003/03/28 09:11:30  kbk
-!  removed tabs
-!
-!  Revision 1.5  2003/03/10 09:20:27  gotm
-!  Added new Generic Turbulence Model +
-!  improved documentation and cleaned up code
-!
-!  Revision 1.3  2001/11/18 15:58:02  gotm
-!  Vertical grid can now be read from file
-!
-!  Revision 1.2  2001/06/13 07:40:39  gotm
-!  Lon, lat was hardcoded in meteo.F90 - now passed via init_meteo()
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:59  gotm
-!  initial import into CVS
-!
 !EOP
 !
 !  private data members initialised via namelists
@@ -268,7 +110,7 @@
    integer                   :: buoy_method
 !  station description
    character(len=80)         :: name
-   REALTYPE                  :: latitude,longitude
+   REALTYPE,target           :: latitude,longitude
 !
 !-----------------------------------------------------------------------
 
@@ -301,16 +143,14 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See log for the gotm module
-!
 !EOP
 !
 ! !LOCAL VARIABLES:
    namelist /model_setup/ title,nlev,dt,cnpar,buoy_method
    namelist /station/     name,latitude,longitude,depth
    namelist /time/        timefmt,MaxN,start,stop
-   namelist /output/      out_fmt,out_dir,out_fn,nsave,diagnostics,     &
-                          mld_method,diff_k,Ri_crit,rad_corr
+   namelist /output/      out_fmt,out_dir,out_fn,nsave,sync_out, &
+                          diagnostics,mld_method,diff_k,Ri_crit,rad_corr
    integer          ::    rc
 !
 !-----------------------------------------------------------------------
@@ -330,6 +170,7 @@
    out_dir     = '.'
    out_fn      = 'gotm'
    nsave       = 1
+   sync_out    = 1
    diagnostics = .false.
    mld_method  = 1
    diff_k      = 1.e-5
@@ -344,6 +185,10 @@
    read(namlst,nml=station,err=92)
    read(namlst,nml=time,err=93)
    read(namlst,nml=output,err=94)
+
+   if (sync_out .lt. 0) then
+      sync_out = 0
+   end if
 
    LEVEL2 'done.'
 
@@ -440,8 +285,8 @@
 
 !  Link relevant GOTM data to FABM.
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
-   call set_env_gotm_fabm(dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
-                          nuh,h,w,bioshade(1:nlev),I_0,taub,wind,precip,evap,z(1:nlev), &
+   call set_env_gotm_fabm(latitude,longitude,dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
+                          nuh,h,w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
                           A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
                           bio_albedo,bio_drag_scale)
 
@@ -507,8 +352,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See log for the gotm module
 !
 !EOP
 !
@@ -670,8 +513,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See log for the gotm module
 !
 !EOP
 !-----------------------------------------------------------------------

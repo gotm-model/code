@@ -45,14 +45,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  $Log: short_wave_radiation.F90,v $
-!  Revision 1.2  2010-09-17 12:53:45  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.1  2007-09-25 10:06:10  kbk
-!  modularized the airsea module - added Fairall method
-!
-!
 ! !LOCAL VARIABLES:
    REALTYPE, parameter       :: pi=3.14159265358979323846
    REALTYPE, parameter       :: deg2rad=pi/180.

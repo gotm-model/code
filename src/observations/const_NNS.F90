@@ -29,14 +29,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!  $Log: const_NNS.F90,v $
-!  Revision 1.2  2008-05-15 10:08:49  lars
-!  fixed wrong sign
-!
-!  Revision 1.1  2005-06-27 10:54:33  kbk
-!  new files needed
-!
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

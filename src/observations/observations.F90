@@ -42,7 +42,7 @@
    logical, public                               :: init_saved_vars
 !
 !  'observed' salinity profile
-   REALTYPE, public, dimension(:), allocatable   :: sprof
+   REALTYPE, public, dimension(:), allocatable, target :: sprof
 
 !  'observed' temperature profile
    REALTYPE, public, dimension(:), allocatable   :: tprof
@@ -66,7 +66,8 @@
    REALTYPE, public, dimension(:), allocatable   :: epsprof
 
 !  ralaxation times for salinity and temperature
-   REALTYPE, public, dimension(:), allocatable   :: SRelaxTau,TRelaxTau
+   REALTYPE, public, dimension(:), allocatable, target :: SRelaxTau
+   REALTYPE, public, dimension(:), allocatable         :: TRelaxTau
 
 !  sea surface elevation, sea surface gradients and height of velocity obs.
    REALTYPE, public          :: zeta,dpdx,dpdy,h_press
@@ -75,7 +76,7 @@
    REALTYPE, public          :: w_adv,w_height
 
 !  Parameters for water classification - default Jerlov type I
-   REALTYPE, public          :: A,g1,g2
+   REALTYPE, public, target  :: A,g1,g2
 
 #ifdef BIO
 !  'observed' biological profiles
@@ -239,74 +240,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  $Log: observations.F90,v $
-!  Revision 1.23  2010-09-17 12:53:51  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.22  2009-01-07 07:25:38  kb
-!  fixed various compilation warnings found by gfortran
-!
-!  Revision 1.21  2007-12-07 10:10:51  kb
-!  allow longer lines in obs files
-!
-!  Revision 1.20  2007-11-02 09:51:17  jorn
-!  Fixed: error on compiling without bio support
-!
-!  Revision 1.19  2007-06-26 18:24:30  jorn
-!  fixed typos related to biological profiles
-!
-!  Revision 1.18  2007-06-19 10:38:03  kbk
-!  initialise biological profiles from external file
-!
-!  Revision 1.17  2007-01-06 11:57:07  kbk
-!  PressMethod --> ext_press_mode
-!
-!  Revision 1.16  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.15  2007-01-04 12:08:12  kbk
-!  adding surface waves
-!
-!  Revision 1.14  2006-11-27 09:25:18  kbk
-!  use logical var init_saved_vars to initialise saved variables
-!
-!  Revision 1.13  2006-11-24 15:13:41  kbk
-!  de-allocate memory and close open files
-!
-!  Revision 1.12  2005-12-23 14:10:34  kbk
-!  support for reading oxygen profiles
-!
-!  Revision 1.11  2005/11/15 11:02:32  lars
-!  documentation finish for print
-!
-!  Revision 1.10  2005/08/15 11:54:01  hb
-!  sequence of reading w_adv and w_height changed,
-!  w_adv_height0 introduced, documentation extended
-!
-!  Revision 1.9  2005/07/06 16:20:14  kbk
-!  updated documentation - added const_NNT and const_NNS
-!
-!  Revision 1.8  2004/07/30 09:26:01  hb
-!  Simple exponential light absorption added --> Wilfried Kuehn
-!
-!  Revision 1.7  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.6  2003/03/28 08:08:21  kbk
-!  removed tabs
-!
-!  Revision 1.5  2003/03/10 13:51:08  lars
-!  changed intent(out) to intent(inout) for lines in read_profiles()
-!
-!  Revision 1.4  2003/03/10 08:51:58  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.3  2001/11/27 15:35:55  gotm
-!  zeta_method now public - used by updategrid()
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
 !
 !EOP
 !
@@ -978,8 +911,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See observation module
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1065,8 +996,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  See observation module
-!
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -1123,8 +1052,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!
-!  See observation module
 !
 !EOP
 !

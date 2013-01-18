@@ -59,17 +59,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!  $Log: diff_face.F90,v $
-!  Revision 1.3  2005-11-03 20:56:55  hb
-!  Source term linearisation now fully explicit again, reversion to old method
-!
-!  Revision 1.2  2005/09/16 13:54:02  lars
-!  added missing IMPLICIT NONE
-!
-!  Revision 1.1  2005/06/27 10:54:33  kbk
-!  new files needed
-!
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

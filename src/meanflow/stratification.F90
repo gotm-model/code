@@ -99,28 +99,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  $Log: stratification.F90,v $
-!  Revision 1.7  2005-07-18 08:54:33  lars
-!  changed docu for html compliance
-!
-!  Revision 1.6  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.5  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.4  2003/03/28 08:56:56  kbk
-!  removed tabs
-!
-!  Revision 1.3  2003/03/10 08:50:07  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.2  2001/11/18 11:50:37  gotm
-!  Cleaned
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

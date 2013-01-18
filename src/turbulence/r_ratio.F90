@@ -23,16 +23,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf
 !
-!  $Log: r_ratio.F90,v $
-!  Revision 1.1  2005-06-27 10:54:33  kbk
-!  new files needed
-!
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
-!KBK   r = kb/epsb*eps/tke
    r = kb*eps/(epsb*tke)
 
    return

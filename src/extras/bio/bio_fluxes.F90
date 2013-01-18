@@ -1,3 +1,5 @@
+#ifdef BIO
+
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -25,28 +27,6 @@
 !
 ! !REVISION HISTORY:!
 !  Original author(s): Karsten Bolding and Hans Burchard
-!
-!  $Log: bio_fluxes.F90,v $
-!  Revision 1.6  2010-09-17 12:53:46  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.5  2010-09-13 15:59:36  jorn
-!  improved clean up of bio models
-!
-!  Revision 1.4  2008-10-17 08:50:47  lars
-!  changed documentation label
-!
-!  Revision 1.3  2008-06-20 12:19:37  kb
-!  avoid unit conflict with observed O2
-!
-!  Revision 1.2  2005-12-02 20:57:27  hb
-!  Documentation updated and some bugs fixed
-!
-!  Revision 1.1  2004/07/29 17:36:37  hb
-!  separate reading fluxes from bio() - benefit of 3D models
-!
-!
-! !LOCAL VARIABLES:
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -211,6 +191,8 @@
 !-----------------------------------------------------------------------
 
    end module bio_fluxes
+
+#endif
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org

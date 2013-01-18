@@ -178,7 +178,7 @@ for dimname in variablevalue.getDimensionNames():
 	</element>
 
 	<element name="meanflow" label="bulk flow properties">
-		<element name="h0b"         type="float" label="physical bottom roughness" description="Bottom roughness - Note: z0b=0.03*h0b+0.1*nu/ustar" unit="m"/>
+		<element name="h0b"         type="float" label="physical bottom roughness" description="Physical bottom roughness or bed roughness. This variable, h0b, relates to the hydrodynamic bottom roughness z0b as z0b = 0.03*h0b + 0.1*nu/ustar" unit="m"/>
 		<element name="MaxItz0b"    type="int"   label="number of iterations for hydrodynamic bottom roughness" description="Number of iterations for calculating the hydrodynamic bottom roughness from the bottom friction velocity and the physical bottom roughness." minInclusive="1" maxInclusive="1000"/>
 		<element name="charnock"    type="bool"  label="use Charnock (1955) surface roughness adaptation"/>
 		<element name="charnock_val" type="float" label="empirical constant for surface roughness adaptation" description="Empirical constant in Charnock 1955 formula (default = 1400).">

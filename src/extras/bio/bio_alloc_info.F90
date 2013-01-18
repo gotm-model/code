@@ -16,7 +16,6 @@
 
    IMPLICIT NONE
 
-
 ! !REVISION HISTORY:!
 !  Original author(s): Lars Umlauf, Karsten Bolding
 !

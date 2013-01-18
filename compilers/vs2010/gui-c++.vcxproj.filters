@@ -15,10 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(PythonDir)\Lib\site-packages\numpy\f2py\src\fortranobject.c">
+    <ClCompile Include="..\..\gui.py\gotmmodule.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\gui.py\gotmmodule.cpp">
+    <ClCompile Include="fortranobject_wrapper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

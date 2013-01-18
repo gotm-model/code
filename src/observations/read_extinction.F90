@@ -23,28 +23,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  $Log: read_extinction.F90,v $
-!  Revision 1.7  2010-09-17 12:53:51  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.6  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.5  2005/07/06 16:20:14  kbk
-!  updated documentation - added const_NNT and const_NNS
-!
-!  Revision 1.4  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/28 09:02:09  kbk
-!  removed tabs
-!
-!  Revision 1.2  2003/03/10 08:51:58  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

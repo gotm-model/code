@@ -20,30 +20,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
-!  $Log: tridiagonal.F90,v $
-!  Revision 1.8  2010-09-17 12:53:53  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.7  2006-11-24 15:13:41  kbk
-!  de-allocate memory and close open files
-!
-!  Revision 1.6  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.5  2004/08/17 15:33:47  lars
-!  removed tabs
-!
-!  Revision 1.4  2003/03/28 09:20:36  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/28 08:06:33  kbk
-!  removed tabs
-!
-!  Revision 1.2  2003/03/10 08:54:16  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
 !
 !EOP
 !
@@ -137,30 +113,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
-!  $Log: tridiagonal.F90,v $
-!  Revision 1.8  2010-09-17 12:53:53  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.7  2006-11-24 15:13:41  kbk
-!  de-allocate memory and close open files
-!
-!  Revision 1.6  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.5  2004/08/17 15:33:47  lars
-!  removed tabs
-!
-!  Revision 1.4  2003/03/28 09:20:36  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/28 08:06:33  kbk
-!  removed tabs
-!
-!  Revision 1.2  2003/03/10 08:54:16  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
 !
 !EOP
 !

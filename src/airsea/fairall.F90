@@ -45,32 +45,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Adolf Stips
 !
-!  $Log: fairall.F90,v $
-!  Revision 1.8  2009-01-07 07:25:38  kb
-!  fixed various compilation warnings found by gfortran
-!
-!  Revision 1.7  2008-07-07 09:05:08  lars
-!  corrected typo in documentation
-!
-!  Revision 1.6  2008-04-08 16:09:00  kb
-!  assure valid qh and qe under all circumstance - Bruggeman, Stips
-!
-!  Revision 1.5  2008-01-02 15:30:44  kb
-!  added link to Fairall page
-!
-!  Revision 1.4  2007-12-21 12:38:03  kb
-!  added precip/evap to kondo + cleaned
-!
-!  Revision 1.3  2007-12-19 10:41:20  kb
-!  fixed m/s --> kg/m2/s conversion bug - Stips
-!
-!  Revision 1.2  2007-10-02 10:14:08  kbk
-!  fixed rhoa calculation - rgas in airsea_variables module
-!
-!  Revision 1.1  2007-09-25 10:06:10  kbk
-!  modularized the airsea module - added Fairall method
-!
-
 ! !DEFINED PARAMETERS:
 !  Fairall LKB roughness Reynolds number to Von Karman
    REALTYPE,parameter        :: fdg = 1.0          ! non-dimensional

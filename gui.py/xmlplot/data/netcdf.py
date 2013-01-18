@@ -122,12 +122,13 @@ def getNetCDFFile(path,mode='r'):
     # than on import, because this module can be useful without NetCDF
     # support as well).
 
-    # First check if the file exists in the first place.
-    if mode=='r' and (not path.lower().startswith('http:')) and not os.path.isfile(path):
-        raise NetCDFError('"%s" is not an existing file.' % path)
-
     netcdfmodule = None
     if netcdfmodules: netcdfmodule = netcdfmodules[selectednetcdfmodule][0]
+
+    # First check if the file exists in the first place.
+    if mode=='r' and netcdfmodule!='netCDF4' and not os.path.isfile(path):
+        raise NetCDFError('"%s" is not an existing file.' % path)
+
     if netcdfmodule=='Scientific.IO.NetCDF':
         try:
             nc = Scientific.IO.NetCDF.NetCDFFile(path,mode=mode)

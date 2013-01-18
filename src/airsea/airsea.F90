@@ -44,11 +44,11 @@
    logical,  public                    :: calc_fluxes
 !
 !  wind speed (m/s)
-   REALTYPE, public                    :: w
+   REALTYPE, public, target            :: w
 !
 !  surface short-wave radiation
 !  and surface heat flux (W/m^2)
-   REALTYPE, public                    :: I_0
+   REALTYPE, public, target            :: I_0
    REALTYPE, public                    :: heat
 
 !  surface stress components (Pa)
@@ -56,8 +56,8 @@
 
 !  precipitation and  evaporation
 !  (m/s)
-   REALTYPE, public                    :: precip
-   REALTYPE, public                    :: evap
+   REALTYPE, public, target            :: precip
+   REALTYPE, public, target            :: evap
 
 !  sea surface temperature (degC), sea surface salinity (psu),
 !  sea surface current components (m/s)
@@ -96,103 +96,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
-!
-!  $Log: airsea.F90,v $
-!  Revision 1.32  2010-09-17 12:53:45  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.31  2010-07-29 14:24:36  hb
-!  Cloud cover now interpolated to time step (change by Sebastian Sonntag, Hamburg)
-!
-!  Revision 1.30  2009-03-22 07:32:39  jorn
-!  made swr clean-up independent of use of meteo data
-!
-!  Revision 1.29  2008-06-10 16:51:26  hb
-!  bug concerning I_0 removed
-!
-!  Revision 1.28  2008-04-09 12:01:05  kb
-!  initialise public variables to 0
-!
-!  Revision 1.27  2008-04-08 16:09:00  kb
-!  assure valid qh and qe under all circumstance - Bruggeman, Stips
-!
-!  Revision 1.26  2008-01-02 15:11:48  kb
-!  fixed w calculation - Kreuz
-!
-!  Revision 1.25  2008-01-02 14:36:37  kb
-!  fixed indexing
-!
-!  Revision 1.24  2007-12-11 11:05:48  lars
-!  corrected underscores in documentation
-!
-!  Revision 1.23  2007-12-09 10:25:48  kb
-!  introduced swr_method: 1->constant, 2->from file, 3->equation
-!
-!  Revision 1.22  2007-12-07 10:12:20  kb
-!  replaced p_e with precip and included evap
-!
-!  Revision 1.21  2007-09-25 10:06:10  kbk
-!  modularized the airsea module - added Fairall method
-!
-!  Revision 1.20  2007-09-13 12:06:44  hb
-!  fixed sign in momentum flux calculation
-!
-!  Revision 1.19  2007-06-26 18:24:29  jorn
-!  made precipitation-evaporation clean-up independent of use of meteo data
-!
-!  Revision 1.18  2007-05-21 14:08:08  kbk
-!  short wave radiation limitation suggested by Adolf Stips
-!
-!  Revision 1.17  2007-05-18 18:05:06  hb
-!  Bug in short-wave radiation removed
-!
-!  Revision 1.16  2007-01-07 13:21:27  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.15  2006-12-08 06:50:37  kbk
-!  fixed September in yday - Chris Locke
-!
-!  Revision 1.14  2006-11-27 10:08:33  kbk
-!  use var init_saved_vars to initialise saved variables - air_sea_interaction -> do_air_sea
-!
-!  Revision 1.13  2006-11-17 07:13:17  kbk
-!  rho amd wind-speed available via bio_var
-!
-!  Revision 1.12  2005/11/15 11:42:33  lars
-!  documentation finish for print
-!
-!  Revision 1.11  2005/07/06 13:58:07  kbk
-!  added fresh water, updated documentation
-!
-!  Revision 1.10  2004/07/30 09:19:03  hb
-!  wet_mode now red from namelist
-!
-!  Revision 1.9  2004/06/25 07:50:29  hb
-!  Preliminary wet mode choices improved
-!
-!  Revision 1.8  2004/05/28 13:14:14  hb
-!  airsea.F90 extended for dew point temperature
-!
-!  Revision 1.7  2003/06/13 09:27:16  hb
-!  Implemented freshwater fluxes
-!
-!  Revision 1.6  2003/03/28 09:20:34  kbk
-!  added new copyright to files
-!
-!  Revision 1.5  2003/03/28 08:13:47  kbk
-!  removed tabs
-!
-!  Revision 1.4  2003/03/10 08:37:56  gotm
-!  HB fixed the Kondo calculations
-!
-!  Revision 1.3  2001/11/18 11:43:48  gotm
-!  Cleaned
-!
-!  Revision 1.2  2001/06/13 07:40:39  gotm
-!  Lon, lat was hardcoded in meteo.F90 - now passed via init_meteo()
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
 !
 ! !LOCAL VARIABLES:
    logical                   :: init_saved_vars
@@ -338,8 +241,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
-!
-!  See log for airsea module
 !
 !EOP
 !
@@ -633,8 +534,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See log for airsea module
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -722,8 +621,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See log for airsea module
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -774,8 +671,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
-!
-!  See log for airsea module
 !
 !EOP
 !
@@ -907,8 +802,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See log for airsea module
-!
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -973,8 +866,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
-!
-!  See log for airsea module
 !
 !EOP
 !
@@ -1043,8 +934,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See log for airsea module
-!
 ! !LOCAL VARIABLES:
    integer                   :: yy,mm,dd,hh,min,ss
    REALTYPE                  :: t,alpha
@@ -1111,8 +1000,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See log for airsea module
-!
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -1177,8 +1064,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
-!
-!  See log for airsea module
 !
 !EOP
 !
@@ -1246,8 +1131,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See log for airsea module
-!
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -1310,8 +1193,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See log for airsea module
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1347,8 +1228,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  See log for airsea module
-!
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1378,8 +1257,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
-!
-!  See log for airsea module
 !
 !EOP
 !-----------------------------------------------------------------------

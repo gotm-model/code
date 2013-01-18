@@ -1,3 +1,5 @@
+#ifdef _FABM_
+
 #include "cppdefs.h"
 #include "fabm_driver.h"
 !-----------------------------------------------------------------------
@@ -15,8 +17,8 @@
 !
 ! !USES:
    use fabm, only: fabm_get_variable_id
-   use fabm_types,only: shape_full,shape_hz,id_not_used
-   use gotm_fabm,only:fabm_calc,model,cc,register_observation_0d,register_observation_1d
+   use fabm_types,only: shape_full,shape_hz,shape_scalar,id_not_used
+   use gotm_fabm,only:fabm_calc,model,cc,register_observation
 
    implicit none
 
@@ -37,7 +39,7 @@
 !  Information on an observed variable
    type type_variable
       character(len=64)                  :: name
-      integer                            :: id,type,index
+      integer                            :: id,type,shape,index
       REALTYPE                           :: data_0d,relax_tau_0d
       REALTYPE, allocatable,dimension(:) :: data_1d,relax_tau_1d
       type (type_variable),pointer       :: next
@@ -157,7 +159,7 @@
       read(namlst,nml=observations,err=99,end=97)
 
 !     Make sure the file path is specified.
-      if (file.eq.'') then
+      if (file=='') then
          FATAL 'observations namelist must contain parameter "file", specifying the path to the data file.'
          stop 'gotm_fabm_input:init_gotm_fabm_input'
       end if
@@ -169,9 +171,9 @@
          stop 'gotm_fabm_input:init_gotm_fabm_input'
       end if
 
-      if (variable.ne.'') then
+      if (variable/='') then
 !        The namelist describes a single variable. Check parameter validity and transfer variable settings to the array-based settings.
-         if (any(variables.ne.'')) then
+         if (any(variables/='')) then
             FATAL 'Parameters "variable" and "variables" in namelist "observations" may not both be used.'
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
@@ -179,7 +181,7 @@
             FATAL 'Parameter "relax_taus" cannot be used in combination with "variable" in namelist "observations"; use "relax_tau" instead.'
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
-         if (index.eq.-1) index = 1
+         if (index==-1) index = 1
          if (index>size(variables)) then
             FATAL 'Parameter "index" in namelist "observations" may not exceed ',size(variables)
             stop 'gotm_fabm_input:init_gotm_fabm_input'
@@ -192,14 +194,14 @@
             FATAL 'Parameter "relax_tau" cannot be used in combination with "variables" in namelist "observations"; use "relax_taus" instead.'
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
-         if (index.ne.-1) then
-            FATAL 'Parameters "index" cannot be used in combination with "variables" in namelist "observations".'
+         if (index/=-1) then
+            FATAL 'Parameter "index" cannot be used in combination with "variables" in namelist "observations".'
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
       end if
 
 !     If variable names are not provided, raise an error.
-      if (all(variables.eq.'')) then
+      if (all(variables=='')) then
          FATAL 'Neither "variable" nor "variables" is set in namelist "observations".'
          stop 'gotm_fabm_input:init_gotm_fabm_input'
       end if
@@ -211,7 +213,7 @@
       file_variable_count = 0
       do i=1,size(variables)
 !        If this variable is not used, skip to the next.
-         if (variables(i).eq.'') cycle
+         if (variables(i)=='') cycle
 
 !        Update number of last used column.
          file_variable_count = i
@@ -234,24 +236,33 @@
 !        First search in pelagic variables
          curvariable%type = type_profile
          curvariable%id = fabm_get_variable_id(model,variables(i),shape_full)
+         curvariable%shape = shape_full
 
 !        If variable was not found, search variables defined on horizontal slice of model domain (e.g., benthos)
-         if (curvariable%id.eq.id_not_used) then
+         if (curvariable%id==id_not_used) then
             curvariable%id = fabm_get_variable_id(model,variables(i),shape_hz)
+            curvariable%shape = shape_hz
+            curvariable%type = type_scalar
+         end if
+
+!        If variable still was not found, search scalar [non-spatial] variables.
+         if (curvariable%id==id_not_used) then
+            curvariable%id = fabm_get_variable_id(model,variables(i),shape_scalar)
+            curvariable%shape = shape_scalar
             curvariable%type = type_scalar
          end if
 
 !        Report an error if the variable was still not found.
-         if (curvariable%id.eq.id_not_used) then
+         if (curvariable%id==id_not_used) then
             FATAL 'Variable '//trim(curvariable%name)//', referenced in namelist observations &
                   &in '//trim(fname)//', was not found in model.'
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
 
-         if (curvariable%type.eq.type_scalar) then
+         if (curvariable%type==type_scalar) then
             curvariable%data_0d = _ZERO_
             curvariable%relax_tau_0d = relax_taus(i)
-            call register_observation_0d(curvariable%id,curvariable%data_0d,curvariable%relax_tau_0d)
+            call register_observation(curvariable%id,curvariable%shape,data_0d=curvariable%data_0d,relax_tau_0d=curvariable%relax_tau_0d)
          else
             allocate(curvariable%data_1d(0:nlev))
             allocate(curvariable%relax_tau_1d(0:nlev))
@@ -264,18 +275,18 @@
             do k=1,nlev
                db = db+0.5*h(k)
                ds = ds-0.5*h(k)
-               if (db.le.thicknesses_bot (i)) curvariable%relax_tau_1d(k) = relax_taus_bot(i)
-               if (ds.le.thicknesses_surf(i)) curvariable%relax_tau_1d(k) = relax_taus_surf(i)
+               if (db<=thicknesses_bot (i)) curvariable%relax_tau_1d(k) = relax_taus_bot(i)
+               if (ds<=thicknesses_surf(i)) curvariable%relax_tau_1d(k) = relax_taus_surf(i)
                db = db+0.5*h(k)
                ds = ds-0.5*h(k)
             end do
 
 !           Register observed variable with the GOTM-FABM driver.
-            call register_observation_1d(curvariable%id,curvariable%data_1d,curvariable%relax_tau_1d)
+            call register_observation(curvariable%id,shape_full,data_1d=curvariable%data_1d,relax_tau_1d=curvariable%relax_tau_1d)
          end if
 
 !        Make sure profile and scalar variables are not mixed in the same input file.
-         if (filetype.ne.type_unknown .and. filetype.ne.curvariable%type) then
+         if (filetype/=type_unknown .and. filetype/=curvariable%type) then
             FATAL 'Cannot mix 0d and 1d variables in one observation file, as they require different formats.'
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
@@ -342,14 +353,14 @@
 !  Loop over files with observed profiles.
    cur_profile_info => first_observed_profile_info
    do while (associated(cur_profile_info))
-      if (cur_profile_info%unit.ne.-1) call get_observed_profiles(cur_profile_info,jul,secs,nlev,z)
+      if (cur_profile_info%unit/=-1) call get_observed_profiles(cur_profile_info,jul,secs,nlev,z)
       cur_profile_info => cur_profile_info%next
    end do
 
 !  Loop over files with observed scalars.
    cur_scalar_info => first_observed_scalar_info
    do while (associated(cur_scalar_info))
-      if (cur_scalar_info%unit.ne.-1) call get_observed_scalars(cur_scalar_info,jul,secs)
+      if (cur_scalar_info%unit/=-1) call get_observed_scalars(cur_scalar_info,jul,secs)
       cur_scalar_info => cur_scalar_info%next
    end do
 
@@ -468,19 +479,15 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-!  Currently, observed profiles are used for initialization only.
-!  If this is complete, do not read any further.
-   if (info%nprofiles.gt.0) return
-
 !  This part reads in new values if necessary.
-   if(.not. info%one_profile .and. time_diff(info%jul2,info%secs2,jul,secs) .lt. 0) then
+   if(.not. info%one_profile .and. time_diff(info%jul2,info%secs2,jul,secs)<0) then
       do
          info%jul1 = info%jul2
          info%secs1 = info%secs2
          info%prof1 = info%prof2
          call read_profiles(info%unit,nlev,ubound(info%prof2,2),yy,mm,dd,hh,min,ss,z,info%prof2,info%lines,rc)
-         if(rc .ne. 0) then
-            if(info%nprofiles .eq. 1) then
+         if(rc/=0) then
+            if(info%nprofiles==1) then
                LEVEL3 'Only one set of profiles is present.'
                info%one_profile = .true.
                curvar => info%first_variable
@@ -492,12 +499,12 @@
                FATAL 'Error reading profiles around line #',info%lines
                stop 'gotm_fabm_input:get_observed_profiles'
             end if
-            EXIT
+            exit
          else
             info%nprofiles = info%nprofiles + 1
             call julian_day(yy,mm,dd,info%jul2)
             info%secs2 = hh*3600 + min*60 + ss
-            if(time_diff(info%jul2,info%secs2,jul,secs) .gt. 0) EXIT
+            if(time_diff(info%jul2,info%secs2,jul,secs)>0) exit
          end if
       end do
       if( .not. info%one_profile) then
@@ -626,7 +633,7 @@
 !-----------------------------------------------------------------------
 !BOC
 !  This part reads in new values if necessary.
-   if(time_diff(info%jul2,info%secs2,jul,secs) .lt. 0) then
+   if(time_diff(info%jul2,info%secs2,jul,secs)<0) then
       do
          info%jul1 = info%jul2
          info%secs1 = info%secs2
@@ -634,7 +641,7 @@
          call read_obs(info%unit,yy,mm,dd,hh,min,ss,size(info%obs2),info%obs2,rc)
          call julian_day(yy,mm,dd,info%jul2)
          info%secs2 = hh*3600 + min*60 + ss
-         if(time_diff(info%jul2,info%secs2,jul,secs) .gt. 0) exit
+         if(time_diff(info%jul2,info%secs2,jul,secs)>0) exit
       end do
       dt = time_diff(info%jul2,info%secs2,info%jul1,info%secs1)
       info%alpha = (info%obs2-info%obs1)/dt
@@ -654,6 +661,8 @@
 !-----------------------------------------------------------------------
 
    end module gotm_fabm_input
+
+#endif
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org

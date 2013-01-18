@@ -97,49 +97,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-!  $Log: salinity.F90,v $
-!  Revision 1.14  2008-04-09 11:56:31  kb
-!  GOTM/GETM concensus on signs for precip and evap - both positive into the ocean
-!
-!  Revision 1.13  2008-03-07 17:57:49  hb
-!  AdvBcup changed to oneSided
-!
-!  Revision 1.12  2007-12-07 10:12:20  kb
-!  replaced p_e with precip and included evap
-!
-!  Revision 1.11  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.10  2006-11-06 13:36:45  hb
-!  Option for conservative vertical advection added to adv_center
-!
-!  Revision 1.9  2005-11-17 09:58:20  hb
-!  explicit argument for positive definite variables in diff_center()
-!
-!  Revision 1.8  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.7  2004/08/18 11:43:10  lars
-!  updated documentation
-!
-!  Revision 1.6  2004/01/07 12:17:47  lars
-!  Removed latex bug
-!
-!  Revision 1.5  2003/06/13 09:27:15  hb
-!  Implemented freshwater fluxes
-!
-!  Revision 1.4  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/28 08:56:56  kbk
-!  removed tabs
-!
-!  Revision 1.2  2003/03/10 08:50:07  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

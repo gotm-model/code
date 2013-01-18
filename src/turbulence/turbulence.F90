@@ -59,7 +59,9 @@
 
 !  turbulent diffusivities
 !  of momentum, temperature, salinity
-   REALTYPE, public, dimension(:), allocatable   :: num,nuh,nus
+   REALTYPE, public, dimension(:), allocatable         :: num
+   REALTYPE, public, dimension(:), allocatable, target :: nuh
+   REALTYPE, public, dimension(:), allocatable         :: nus
 
 !  non-local fluxes of momentum
    REALTYPE, public, dimension(:), allocatable   :: gamu,gamv
@@ -259,61 +261,6 @@
 !  Original author(s): Karsten Bolding, Hans Burchard,
 !                      Manuel Ruiz Villarreal,
 !                      Lars Umlauf
-
-!
-!  $Log: turbulence.F90,v $
-!  Revision 1.19  2010-09-17 12:53:52  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.18  2007-07-23 11:28:39  hb
-!  cw for Craig-Banner wave breaking from namelist now used in fk_craig.F90
-!
-!  Revision 1.17  2007-01-06 11:49:15  kbk
-!  namelist file extension changed .inp --> .nml
-!
-!  Revision 1.16  2006-11-24 15:13:41  kbk
-!  de-allocate memory and close open files
-!
-!  Revision 1.15  2005/11/15 11:35:02  lars
-!  documentation finish for print
-!
-!  Revision 1.14  2005/09/13 10:00:54  kbk
-!  init_turbulence() now prints version - obtained from Makefile
-!
-!  Revision 1.13  2005/08/11 13:00:15  lars
-!  Added explicit interface for xP. Bug found by Vicente Fernandez.
-!
-!  Revision 1.12  2005/07/19 16:46:14  hb
-!  removed superfluous variables - NNT, NNS, SSU, SSV
-!
-!  Revision 1.11  2005/07/19 16:33:22  hb
-!  moved  variances() from do_turbulence() to time_loop()
-!
-!  Revision 1.10  2005/07/12 10:13:22  hb
-!  dependence of init_turbulence from depth, z0s, z0b removed
-!
-!  Revision 1.9  2005/07/06 14:07:17  kbk
-!  added KPP, updated documentation, new structure of turbulence module
-!
-!  Revision 1.7  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.6  2003/03/28 08:20:01  kbk
-!  removed tabs
-!
-!  Revision 1.5  2003/03/10 09:02:06  gotm
-!  Added new Generic Turbulence Model +
-!  improved documentation and cleaned up code
-!
-!
-!  Revision 1.3  2001/11/27 19:42:58  gotm
-!  Cleaned
-!
-!  Revision 1.2  2001/11/18 16:15:30  gotm
-!  New generic two-equation model
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
 !EOP
 !-----------------------------------------------------------------------
 

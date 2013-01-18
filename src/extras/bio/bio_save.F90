@@ -1,3 +1,5 @@
+#ifdef BIO
+
 #include"cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -107,6 +109,8 @@
    return
    end subroutine bio_save
 !EOC
+
+#endif
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org

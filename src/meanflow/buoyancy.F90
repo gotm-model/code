@@ -81,34 +81,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
 !
-!  $Log: buoyancy.F90,v $
-!  Revision 1.10  2010-09-17 12:53:48  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.9  2008-03-07 17:57:49  hb
-!  AdvBcup changed to oneSided
-!
-!  Revision 1.8  2006-11-06 13:36:45  hb
-!  Option for conservative vertical advection added to adv_center
-!
-!  Revision 1.7  2005-11-17 09:58:20  hb
-!  explicit argument for positive definite variables in diff_center()
-!
-!  Revision 1.6  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.5  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.4  2003/03/28 08:56:56  kbk
-!  removed tabs
-!
-!  Revision 1.3  2003/03/10 08:50:06  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:57  gotm
-!  initial import into CVS
-!
 !EOP
 !
 ! !LOCAL VARIABLES:

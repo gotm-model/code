@@ -26,25 +26,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
-!  $Log: asciiout.F90,v $
-!  Revision 1.6  2010-09-17 12:53:51  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.5  2005-07-06 14:19:50  kbk
-!  added writing of obs. velocities
-!
-!  Revision 1.4  2003/03/28 09:20:35  kbk
-!  added new copyright to files
-!
-!  Revision 1.3  2003/03/10 08:53:05  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.2  2001/11/18 11:51:16  gotm
-!  Now format statements
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
-!
 !EOP
 !-----------------------------------------------------------------------
 

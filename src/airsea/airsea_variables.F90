@@ -38,23 +38,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
-!  $Log: airsea_variables.F90,v $
-!  Revision 1.5  2010-09-17 12:53:45  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.4  2008-05-02 11:49:12  kb
-!  explicitely initialise variable to 0 - solves Mac bug
-!
-!  Revision 1.3  2007-12-21 12:38:03  kb
-!  added precip/evap to kondo + cleaned
-!
-!  Revision 1.2  2007-10-02 10:14:08  kbk
-!  fixed rhoa calculation - rgas in airsea_variables module
-!
-!  Revision 1.1  2007-09-25 10:06:10  kbk
-!  modularized the airsea module - added Fairall method
-!
-!
 !EOP
 !-----------------------------------------------------------------------
 

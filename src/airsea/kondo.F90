@@ -57,13 +57,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard and Karsten Bolding
 !
-!  $Log: kondo.F90,v $
-!  Revision 1.2  2007-12-21 12:38:03  kb
-!  added precip/evap to kondo + cleaned
-!
-!  Revision 1.1  2007-09-25 10:06:10  kbk
-!  modularized the airsea module - added Fairall method
-!
 ! !LOCAL VARIABLES:
    REALTYPE                  :: w,L
    REALTYPE                  :: s,s0

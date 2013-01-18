@@ -97,20 +97,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lars Umlauf, Hans Burchard, Karsten Bolding
 !
-!  $Log: bio_photo.F90,v $
-!  Revision 1.4  2010-09-17 12:53:47  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.3  2008-10-17 08:48:29  lars
-!  fixed bug in carbon time stepping
-!
-!  Revision 1.2  2008-07-08 10:40:28  lars
-!  added external info string allocation
-!
-!  Revision 1.1  2008-07-08 10:17:25  lars
-!  first version of particle model for photo response
-!
-
 ! !LOCAL VARIABLES:
 !
 !  ______namelist variables______
@@ -621,10 +607,6 @@
    return
    end subroutine do_statistics
 !EOC
-
-
-
-
 
 !-----------------------------------------------------------------------
 !BOP

@@ -26,21 +26,6 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
-!  $Log: gridinterpol.F90,v $
-!  Revision 1.5  2005-11-18 10:59:34  kbk
-!  removed unused variables - some left in parameter lists
-!
-!  Revision 1.4  2005/06/27 13:44:07  kbk
-!  modified + removed traling blanks
-!
-!  Revision 1.3  2003/03/28 09:20:36  kbk
-!  added new copyright to files
-!
-!  Revision 1.2  2003/03/10 08:54:16  gotm
-!  Improved documentation and cleaned up code
-!
-!  Revision 1.1.1.1  2001/02/12 15:55:58  gotm
-!  initial import into CVS
 !
 !EOP
 !

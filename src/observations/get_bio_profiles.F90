@@ -30,20 +30,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-!  $Log: get_bio_profiles.F90,v $
-!  Revision 1.4  2010-09-17 12:53:48  jorn
-!  extensive code clean-up to ensure proper initialization and clean-up of all variables
-!
-!  Revision 1.3  2009-03-19 09:36:32  kb
-!  also work with BIO=false
-!
-!  Revision 1.2  2007-09-11 13:24:32  jorn
-!  added stop after fatal error reading profile
-!
-!  Revision 1.1  2007-06-19 10:38:03  kbk
-!  initialise biological profiles from external file
-!
-!
 !EOP
 !
 ! !LOCAL VARIABLES:
