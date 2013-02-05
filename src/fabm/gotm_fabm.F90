@@ -1,5 +1,5 @@
-#include "cppdefs.h"
 #include "fabm_driver.h"
+#include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -27,7 +27,6 @@
    public clean_gotm_fabm
    public fabm_calc
    public register_observation
-   public type_obs,first_obs
 
    ! Variables below must be accessible for gotm_fabm_output
    public local,total,dt,h,save_inputs
@@ -42,22 +41,25 @@
    REALTYPE,allocatable,dimension(:),                      public        :: cc_diag_hz
 
 !  Arrays for observations, relaxation times and FABM variable identifiers associated with the observations.
-   type type_obs
-      integer                        :: id,shape,ncid
-      REALTYPE, pointer              :: data_0d,relax_tau_0d
-      REALTYPE, pointer,dimension(:) :: data_1d,relax_tau_1d
-      logical                        :: isstatevariable
-      type (type_obs),pointer        :: next
+   type type_forced_1d_state
+      REALTYPE, pointer,dimension(:) :: data      => null()
+      REALTYPE, pointer,dimension(:) :: relax_tau => null()
    end type
 
-   type type_obs_pointer
-      type (type_obs),pointer :: data
-   end type type_obs_pointer
-
-   type (type_obs),pointer :: first_obs
+   type type_forced_0d_state
+      REALTYPE, pointer :: data      => null()
+      REALTYPE, pointer :: relax_tau => null()
+   end type
 
 !  Observation indices (from obs_0d, obs_1d) for pelagic and benthic state variables.
-   type (type_obs_pointer),allocatable :: cc_ben_obs(:),cc_obs(:)
+   type (type_forced_1d_state),allocatable :: cc_obs(:)
+   type (type_forced_0d_state),allocatable :: cc_ben_obs(:)
+   
+   interface register_observation
+      module procedure register_bulk_observation
+      module procedure register_horizontal_observation
+      module procedure register_scalar_observation
+   end interface
 
 !  Variables to hold time spent on advection, diffusion, sink/source terms.
    integer(8) :: clock_adv,clock_diff,clock_source
@@ -164,8 +166,6 @@
 
    nullify(model)
 
-   nullify(first_obs)
-
    ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
    cnpar             = _ONE_
@@ -204,14 +204,14 @@
       do i=1,size(model%info%state_variables)
          LEVEL3 trim(model%info%state_variables(i)%name), '  ', &
                 trim(model%info%state_variables(i)%units),'  ',&
-                trim(model%info%state_variables(i)%longname)
+                trim(model%info%state_variables(i)%long_name)
       end do
 
       LEVEL2 'FABM benthic state variables:'
       do i=1,size(model%info%state_variables_ben)
          LEVEL3 trim(model%info%state_variables_ben(i)%name), '  ', &
                 trim(model%info%state_variables_ben(i)%units),'  ',&
-                trim(model%info%state_variables_ben(i)%longname)
+                trim(model%info%state_variables_ben(i)%long_name)
       end do
 
       ! Report diagnostic variable descriptions
@@ -219,14 +219,14 @@
       do i=1,size(model%info%diagnostic_variables)
          LEVEL3 trim(model%info%diagnostic_variables(i)%name), '  ', &
                 trim(model%info%diagnostic_variables(i)%units),'  ',&
-                trim(model%info%diagnostic_variables(i)%longname)
+                trim(model%info%diagnostic_variables(i)%long_name)
       end do
 
       LEVEL2 'FABM diagnostic variables defined on a horizontal slice of the model domain:'
       do i=1,size(model%info%diagnostic_variables_hz)
          LEVEL3 trim(model%info%diagnostic_variables_hz(i)%name), '  ', &
                 trim(model%info%diagnostic_variables_hz(i)%units),'  ',&
-                trim(model%info%diagnostic_variables_hz(i)%longname)
+                trim(model%info%diagnostic_variables_hz(i)%long_name)
       end do
 
       ! Report type of solver
@@ -309,93 +309,87 @@
    ! in time are integrated simultaneously in multi-step algorithms. This currently can only be arranged
    ! by storing benthic values together with the pelagic, in a fully depth-explicit array.
    allocate(cc(1:size(model%info%state_variables)+size(model%info%state_variables_ben),_LOCATION_RANGE_),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc)'
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc)'
    cc = _ZERO_
    do i=1,size(model%info%state_variables)
       cc(i,:) = model%info%state_variables(i)%initial_value
-      call fabm_link_state_data(model,i,cc(i,1:))
+      call fabm_link_bulk_state_data(model,i,cc(i,1:))
    end do
    do i=1,size(model%info%state_variables_ben)
       cc(size(model%info%state_variables)+i,1) = model%info%state_variables_ben(i)%initial_value
-      call fabm_link_benthos_state_data(model,i,cc(size(model%info%state_variables)+i,1))
+      call fabm_link_bottom_state_data(model,i,cc(size(model%info%state_variables)+i,1))
    end do
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
    ! Initialize observation indices to -1 (no external observations provided)
    allocate(cc_obs(1:size(model%info%state_variables)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_obs)'
-   do i=1,size(model%info%state_variables)
-      nullify(cc_obs(i)%data)
-   end do
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_obs)'
    allocate(cc_ben_obs(1:size(model%info%state_variables_ben)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_ben_obs)'
-   do i=1,size(model%info%state_variables_ben)
-      nullify(cc_ben_obs(i)%data)
-   end do
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_ben_obs)'
 
    ! Allocate array for pelagic diagnostic variables; set all values to zero.
    ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
    allocate(cc_diag(1:size(model%info%diagnostic_variables),_LOCATION_RANGE_),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_diag)'
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_diag)'
    cc_diag = _ZERO_
 
    ! Allocate array for diagnostic variables on horizontal surfaces; set all values to zero.
    ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
    allocate(cc_diag_hz(1:size(model%info%diagnostic_variables_hz)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (cc_diag_hz)'
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_diag_hz)'
    cc_diag_hz = _ZERO_
 
    ! Allocate array for vertical movement rates (m/s, positive for upwards),
    ! and set these to the values provided by the model.
    allocate(ws(_LOCATION_RANGE_,1:size(model%info%state_variables)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (ws)'
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (ws)'
    do i=1,size(model%info%state_variables)
       ws(:,i) = model%info%state_variables(i)%vertical_movement
    end do
 
    ! Allocate array for surface fluxes and initialize these to zero (no flux).
    allocate(sfl(1:size(model%info%state_variables)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (sfl)'
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (sfl)'
    sfl = _ZERO_
 
    ! Allocate array for bottom fluxes and initialize these to zero (no flux).
    allocate(bfl(1:size(model%info%state_variables)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (bfl)'
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (bfl)'
    bfl = _ZERO_
 
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    allocate(par(_LOCATION_RANGE_),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (par)'
-   call fabm_link_data(model,varname_par,par(1:_LOCATION_))
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (par)'
+   call fabm_link_bulk_data(model,varname_par,par(1:_LOCATION_))
 
    ! Allocate array for shortwave radiation (swr).
    ! This will be calculated internally during each time step.
    allocate(swr(_LOCATION_RANGE_),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (swr)'
-   call fabm_link_data(model,varname_swr,swr(1:_LOCATION_))
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (swr)'
+   call fabm_link_bulk_data(model,varname_swr,swr(1:_LOCATION_))
 
    ! Allocate array for local pressure.
    ! This will be calculated from layer depths and density internally during each time step.
    allocate(pres(_LOCATION_RANGE_),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (pres)'
-   call fabm_link_data(model,varname_pres,pres(1:_LOCATION_))
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (pres)'
+   call fabm_link_bulk_data(model,varname_pres,pres(1:_LOCATION_))
 
-   ! Initialize scalar to hold day of the year (floating poitn value),
+   ! Initialize scalar to hold day of the year (floating point value),
    ! and link it to FABM.
    decimal_yearday = _ZERO_
-   call fabm_link_scalar(model,varname_yearday,decimal_yearday)
+   call fabm_link_scalar_data(model,varname_yearday,decimal_yearday)
 
    ! Allocate arrays for storing local and column-integrated values of conserved quantities.
    ! These are used during each save.
    allocate(total(1:size(model%info%conserved_quantities)),stat=rc)
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (total)'
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (total)'
 #ifdef _FABM_USE_1D_LOOP_
    allocate(local(1:_LOCATION_,1:size(model%info%conserved_quantities)),stat=rc)
 #else
    allocate(local(1:size(model%info%conserved_quantities)),stat=rc)
 #endif
-   if (rc /= 0) STOP 'allocate_memory(): Error allocating (local)'
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (local)'
 
    end subroutine init_var_gotm_fabm
 !EOC
@@ -432,21 +426,20 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,j
-   type (type_obs),pointer   :: cur_obs
 !-----------------------------------------------------------------------!
 !BOC
    if (.not. fabm_calc) return
 
    ! Provide pointers to arrays with environmental variables to FABM.
-   call fabm_link_data   (model,varname_temp,   temp)
-   call fabm_link_data   (model,varname_salt,   salt_)
-   call fabm_link_data   (model,varname_dens,   rho_)
-   call fabm_link_data_hz(model,varname_lon,    longitude)
-   call fabm_link_data_hz(model,varname_lat,    latitude)
-   call fabm_link_data_hz(model,varname_wind_sf,wnd)
-   call fabm_link_data_hz(model,varname_par_sf, I_0_)
-   call fabm_link_data_hz(model,varname_taub,   taub)
-   call fabm_link_data_hz(model,varname_cloud,  cloud)
+   call fabm_link_bulk_data      (model,varname_temp,   temp)
+   call fabm_link_bulk_data      (model,varname_salt,   salt_)
+   call fabm_link_bulk_data      (model,varname_dens,   rho_)
+   call fabm_link_horizontal_data(model,varname_lon,    longitude)
+   call fabm_link_horizontal_data(model,varname_lat,    latitude)
+   call fabm_link_horizontal_data(model,varname_wind_sf,wnd)
+   call fabm_link_horizontal_data(model,varname_par_sf, I_0_)
+   call fabm_link_horizontal_data(model,varname_cloud,  cloud)
+   call fabm_link_horizontal_data(model,varname_taub,   taub)
 
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
@@ -495,21 +488,6 @@
 
    yearday => yearday_
    secondsofday => secondsofday_
-
-   ! Handle externally provided observations.
-   cur_obs => first_obs
-   do while (associated(cur_obs))
-      ! If not a state variable, handle the observations by providing FABM with a pointer to the observed data.
-      select case (cur_obs%shape)
-         case (shape_scalar)
-            call fabm_link_scalar(model,cur_obs%id,cur_obs%data_0d)
-         case (shape_hz)
-            if (.not. cur_obs%isstatevariable) call fabm_link_data_hz(model,cur_obs%id,cur_obs%data_0d)
-         case (shape_full)
-            if (.not. cur_obs%isstatevariable) call fabm_link_data(model,cur_obs%id,cur_obs%data_1d)
-      end select
-      cur_obs => cur_obs%next
-   end do
 
    ! At this stage, FABM has been provided with arrays for all state variables, any variables
    ! read in from file (gotm_fabm_input), and all variables exposed by GOTM. If FABM is still
@@ -575,10 +553,10 @@
 
 !  Transfer current state to FABM.
    do i=1,size(model%info%state_variables)
-      call fabm_link_state_data(model,i,cc(i,1:nlev))
+      call fabm_link_bulk_state_data(model,i,cc(i,1:nlev))
    end do
    do i=1,size(model%info%state_variables_ben)
-      call fabm_link_benthos_state_data(model,i,cc(size(model%info%state_variables)+i,1))
+      call fabm_link_bottom_state_data(model,i,cc(size(model%info%state_variables)+i,1))
    end do
 
    ! Get updated vertical movement (m/s, positive for upwards) for biological state variables.
@@ -635,7 +613,7 @@
       if (associated(cc_obs(i)%data)) then
 !        Observations on this variable are available.
          call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
-            sfl(i),bfl(i),nuh,Lsour,Qsour,cc_obs(i)%data%relax_tau_1d,cc_obs(i)%data%data_1d,cc(i,:))
+            sfl(i),bfl(i),nuh,Lsour,Qsour,cc_obs(i)%relax_tau,cc_obs(i)%data,cc(i,:))
       else
 !        Observations on this variable are not available.
          call diff_center(nlev,dt,cnpar,posconc,h,Neumann,Neumann,&
@@ -661,10 +639,10 @@
 
       ! Provide FABM with (pointers to) updated state variables.
       do i=1,size(model%info%state_variables)
-         call fabm_link_state_data(model,i,cc(i,1:nlev))
+         call fabm_link_bulk_state_data(model,i,cc(i,1:nlev))
       end do
       do i=1,size(model%info%state_variables_ben)
-         call fabm_link_benthos_state_data(model,i,cc(size(model%info%state_variables)+i,1))
+         call fabm_link_bottom_state_data(model,i,cc(size(model%info%state_variables)+i,1))
       end do
 
       ! Repair state
@@ -674,11 +652,11 @@
       do i=1,size(model%info%diagnostic_variables_hz)
          if (model%info%diagnostic_variables_hz(i)%time_treatment==time_treatment_last) then
             ! Simply use last value
-            cc_diag_hz(i) = fabm_get_diagnostic_data_hz(model,i)
+            cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
          else
             ! Integration or averaging in time needed: for now do simple Forward Euler integration.
             ! If averaging is required, this will be done upon output by diving by the elapsed period.
-            cc_diag_hz(i) = cc_diag_hz(i) + fabm_get_diagnostic_data_hz(model,i)*dt_eff
+            cc_diag_hz(i) = cc_diag_hz(i) + fabm_get_horizontal_diagnostic_data(model,i)*dt_eff
          end if
       end do
 
@@ -686,11 +664,11 @@
       do i=1,size(model%info%diagnostic_variables)
          if (model%info%diagnostic_variables(i)%time_treatment==time_treatment_last) then
             ! Simply use last value
-            cc_diag(i,1:nlev) = fabm_get_diagnostic_data(model,i)
+            cc_diag(i,1:nlev) = fabm_get_bulk_diagnostic_data(model,i)
          else
             ! Integration or averaging in time needed: for now do simple Forward Euler integration.
             ! If averaging is required, this will be done upon output by diving by the elapsed period.
-            cc_diag(i,1:nlev) = cc_diag(i,1:nlev) + fabm_get_diagnostic_data(model,i)*dt_eff
+            cc_diag(i,1:nlev) = cc_diag(i,1:nlev) + fabm_get_bulk_diagnostic_data(model,i)*dt_eff
          end if
       end do
    end do
@@ -786,10 +764,10 @@
 
    ! Provide FABM with (pointers to) the current state.
    do i=1,size(model%info%state_variables)
-      call fabm_link_state_data(model,i,cc(i,1:nlev))
+      call fabm_link_bulk_state_data(model,i,cc(i,1:nlev))
    end do
    do i=1,size(model%info%state_variables_ben)
-      call fabm_link_benthos_state_data(model,i,cc(n+i,1))
+      call fabm_link_bottom_state_data(model,i,cc(n+i,1))
    end do
 
    ! If this is not the first step in the (multi-step) integration scheme,
@@ -855,10 +833,10 @@
 
    ! Provide FABM with (pointers to) the current state.
    do i=1,size(model%info%state_variables)
-      call fabm_link_state_data(model,i,cc(i,1:nlev))
+      call fabm_link_bulk_state_data(model,i,cc(i,1:nlev))
    end do
    do i=1,size(model%info%state_variables_ben)
-      call fabm_link_benthos_state_data(model,i,cc(n+i,1))
+      call fabm_link_bottom_state_data(model,i,cc(n+i,1))
    end do
 
    ! If this is not the first step in the (multi-step) integration scheme,
@@ -920,19 +898,19 @@
    LEVEL1 'clean_gotm_fabm'
 
    ! Deallocate internal arrays
-   if (allocated(cc))                 deallocate(cc)
-   if (allocated(cc_diag))            deallocate(cc_diag)
-   if (allocated(cc_diag_hz))         deallocate(cc_diag_hz)
-   if (allocated(ws))                 deallocate(ws)
-   if (allocated(sfl))                deallocate(sfl)
-   if (allocated(bfl))                deallocate(bfl)
-   if (allocated(par))                deallocate(par)
-   if (allocated(swr))                deallocate(swr)
-   if (allocated(pres))               deallocate(pres)
-   if (allocated(total))              deallocate(total)
-   if (allocated(local))              deallocate(local)
-   if (allocated(cc_obs))             deallocate(cc_obs)
-   if (allocated(cc_ben_obs))         deallocate(cc_ben_obs)
+   if (allocated(cc))         deallocate(cc)
+   if (allocated(cc_obs))     deallocate(cc_obs)
+   if (allocated(cc_ben_obs)) deallocate(cc_ben_obs)
+   if (allocated(cc_diag))    deallocate(cc_diag)
+   if (allocated(cc_diag_hz)) deallocate(cc_diag_hz)
+   if (allocated(ws))         deallocate(ws)
+   if (allocated(sfl))        deallocate(sfl)
+   if (allocated(bfl))        deallocate(bfl)
+   if (allocated(par))        deallocate(par)
+   if (allocated(swr))        deallocate(swr)
+   if (allocated(pres))       deallocate(pres)
+   if (allocated(total))      deallocate(total)
+   if (allocated(local))      deallocate(local)
    LEVEL1 'done.'
 
    end subroutine clean_gotm_fabm
@@ -996,84 +974,63 @@
    end subroutine light
 !EOC
 
-   subroutine register_observation(id,shape,data_0d,relax_tau_0d,data_1d,relax_tau_1d)
-      integer,intent(in)                    :: id,shape
-      REALTYPE,target,             optional :: data_0d,relax_tau_0d
-      REALTYPE,target,dimension(:),optional :: data_1d,relax_tau_1d
+   subroutine register_bulk_observation(id,data,relax_tau)
+      type(type_bulk_variable_id),intent(inout) :: id
+      REALTYPE,target,dimension(:) :: data,relax_tau
 
-      type (type_obs),pointer :: cur_obs
       integer                 :: i
+      character(len=64)       :: varname
 
-      if (associated(first_obs)) then
-         ! Find last observation that has been provided
-         cur_obs => first_obs
-         do while (associated(cur_obs%next))
-            cur_obs => cur_obs%next
-         end do
+      varname = fabm_get_variable_name(model,id)
+      do i=1,size(model%info%state_variables)
+         if (varname==model%info%state_variables(i)%name) then
+            ! This is a state variable. Register the link between the state variable and the observations.
+            cc_obs(i)%data => data
+            cc_obs(i)%relax_tau => relax_tau
+            return
+         end if
+      end do
+      call fabm_link_bulk_data(model,id,data)
+   end subroutine register_bulk_observation
 
-         ! Append new observation
-         allocate(cur_obs%next)
-         cur_obs => cur_obs%next
-      else
-         ! No observation has been provided yet - create the first
-         allocate(first_obs)
-         cur_obs => first_obs
-      end if
+   subroutine register_horizontal_observation(horizontal_id,data,relax_tau)
+      type(type_horizontal_variable_id),intent(inout) :: horizontal_id
+      REALTYPE,target                        :: data,relax_tau
+      integer                 :: i
+      character(len=64)       :: varname
 
-      ! Initialize observation object
-      cur_obs%id = id
-      cur_obs%shape = shape
-      cur_obs%ncid = -1
-      cur_obs%isstatevariable = .false.
-      nullify(cur_obs%data_0d)
-      nullify(cur_obs%relax_tau_0d)
-      nullify(cur_obs%data_1d)
-      nullify(cur_obs%relax_tau_1d)
-      nullify(cur_obs%next)
-      
-      select case (shape)
-         case (shape_hz,shape_scalar)
-            cur_obs%data_0d => data_0d
-            cur_obs%relax_tau_0d => relax_tau_0d
-            if (shape==shape_hz) then
-               do i=1,size(model%info%state_variables_ben)
-                  if (cur_obs%id==model%info%state_variables_ben(i)%globalid%dependencyid) then
-                     cur_obs%isstatevariable = .true.
-                     cc_ben_obs(i)%data => cur_obs
-                     exit
-                  end if
-               end do
-            end if
-         case (shape_full)
-            cur_obs%data_1d => data_1d
-            cur_obs%relax_tau_1d => relax_tau_1d
-            do i=1,size(model%info%state_variables)
-               if (cur_obs%id==model%info%state_variables(i)%globalid%dependencyid) then
-                  cur_obs%isstatevariable = .true.
-                  cc_obs(i)%data => cur_obs
-                  exit
-               end if
-            end do
-      end select
-   end subroutine register_observation
+      varname = fabm_get_variable_name(model,horizontal_id)
+      do i=1,size(model%info%state_variables_ben)
+         if (varname==model%info%state_variables_ben(i)%name) then
+            ! This is a state variable. Register the link between the state variable and the observations.
+            cc_ben_obs(i)%data => data
+            cc_ben_obs(i)%relax_tau => relax_tau
+            return
+         end if
+      end do
+      call fabm_link_horizontal_data(model,horizontal_id,data)
+   end subroutine register_horizontal_observation
+
+   subroutine register_scalar_observation(scalar_id,data)
+      type(type_scalar_variable_id),intent(inout) :: scalar_id
+      REALTYPE,target                    :: data
+
+      call fabm_link_scalar_data(model,scalar_id,data)
+   end subroutine register_scalar_observation
 
    subroutine init_gotm_fabm_state()
 
-   integer :: i
+      integer :: i
 
-   if (.not.fabm_calc) return
+      if (.not.fabm_calc) return
 
-   do i=1,size(model%info%state_variables)
-      if (associated(cc_obs(i)%data)) then
-         cc(i,:) = cc_obs(i)%data%data_1d
-      end if
-   end do
+      do i=1,size(model%info%state_variables)
+         if (associated(cc_obs(i)%data)) cc(i,:) = cc_obs(i)%data
+      end do
 
-   do i=1,size(model%info%state_variables_ben)
-      if (associated(cc_ben_obs(i)%data)) then
-         cc(size(model%info%state_variables,1)+i,1) = cc_ben_obs(i)%data%data_0d
-      end if
-   end do
+      do i=1,size(model%info%state_variables_ben)
+         if (associated(cc_ben_obs(i)%data)) cc(size(model%info%state_variables,1)+i,1) = cc_ben_obs(i)%data
+      end do
 
    end subroutine init_gotm_fabm_state
 

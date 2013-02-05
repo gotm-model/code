@@ -16,8 +16,8 @@
 !  variables.
 !
 ! !USES:
-   use fabm, only: fabm_get_variable_id
-   use fabm_types,only: shape_full,shape_hz,shape_scalar,id_not_used
+   use fabm, only: fabm_get_bulk_variable_id,fabm_get_horizontal_variable_id,fabm_get_scalar_variable_id,fabm_is_variable_used
+   use fabm_types,only: type_bulk_variable_id,type_horizontal_variable_id,type_scalar_variable_id,rk
    use gotm_fabm,only:fabm_calc,model,cc,register_observation
 
    implicit none
@@ -27,6 +27,8 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_gotm_fabm_input,do_gotm_fabm_input
+   public type_input_variable,type_observed_profile_info,type_observed_scalar_info
+   public first_observed_profile_info,first_observed_scalar_info
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -36,34 +38,42 @@
 !
 !  PRIVATE TYPES
 
+   integer,parameter :: maxpathlen=256
+
 !  Information on an observed variable
-   type type_variable
-      character(len=64)                  :: name
-      integer                            :: id,type,shape,index
-      REALTYPE                           :: data_0d,relax_tau_0d
-      REALTYPE, allocatable,dimension(:) :: data_1d,relax_tau_1d
-      type (type_variable),pointer       :: next
+   type type_input_variable
+      character(len=64)                       :: name                 ! Variable name
+      type (type_bulk_variable_id)            :: id                   ! FABM identifier of pelagic variable (not associated if variable is not pelagic)
+      type (type_horizontal_variable_id)      :: horizontal_id        ! FABM identifier of horizontal variable (not associated if variable is not horizontal)
+      type (type_scalar_variable_id)          :: scalar_id            ! FABM identifier of scalar variable (not associated if variable is not scalar)
+      integer                                 :: index                ! Column index of variable in input file
+      integer                                 :: ncid                 ! NetCDF id in output file (only used if this variable is included in output)
+      REALTYPE                                :: data_0d,relax_tau_0d ! Pointers to data and relaxation times for scalars (depth-independent variables)
+      REALTYPE, allocatable,dimension(:)      :: data_1d,relax_tau_1d ! Pointers to data and relaxation times for profiles (depth-dependent variables)
+      type (type_input_variable),pointer      :: next                 ! Next variable in current input file
    end type
 
 !  Information on file with observed profiles
    type type_observed_profile_info
+      character(len=maxpathlen)             :: path
       REALTYPE, dimension(:,:), allocatable :: prof1,prof2,alpha
       integer                               :: jul1,secs1
       integer                               :: jul2,secs2
       integer                               :: unit
       integer                               :: lines,nprofiles
       logical                               :: one_profile
-      type (type_variable),pointer          :: first_variable
+      type (type_input_variable),pointer    :: first_variable
       type (type_observed_profile_info),pointer :: next
    end type
 
 !  Information on file with observed scalars (time series)
    type type_observed_scalar_info
+      character(len=maxpathlen)           :: path
       REALTYPE, dimension(:), allocatable :: obs1,obs2,alpha
       integer                             :: jul1,secs1
       integer                             :: jul2,secs2
       integer                             :: unit
-      type (type_variable),pointer        :: first_variable
+      type (type_input_variable),pointer  :: first_variable
       type (type_observed_scalar_info),pointer :: next
    end type
 
@@ -106,14 +116,15 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   character(len=64)            :: variable,variables(max_variable_count_per_file),file
+   character(len=maxpathlen)    :: file
+   character(len=64)            :: variable,variables(max_variable_count_per_file)
    integer                      :: i,k,file_variable_count,index
-   integer                      :: filetype
+   integer                      :: variabletype,filetype
    REALTYPE                     :: relax_tau,db,ds,depth
    REALTYPE,dimension(max_variable_count_per_file) :: relax_taus,relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot
    integer, parameter           :: type_unknown = 0, type_profile = 1, type_scalar = 2
    logical                      :: file_exists
-   type (type_variable),pointer :: curvariable,firstvariable
+   type (type_input_variable),pointer :: curvariable,firstvariable
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
                            relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot
 !
@@ -232,37 +243,39 @@
          nullify(curvariable%next)
          curvariable%name = variables(i)
          curvariable%index = i
+         curvariable%ncid = -1
 
 !        First search in pelagic variables
-         curvariable%type = type_profile
-         curvariable%id = fabm_get_variable_id(model,variables(i),shape_full)
-         curvariable%shape = shape_full
+         variabletype = type_profile
+         curvariable%id = fabm_get_bulk_variable_id(model,variables(i))
 
 !        If variable was not found, search variables defined on horizontal slice of model domain (e.g., benthos)
-         if (curvariable%id==id_not_used) then
-            curvariable%id = fabm_get_variable_id(model,variables(i),shape_hz)
-            curvariable%shape = shape_hz
-            curvariable%type = type_scalar
+         if (.not.fabm_is_variable_used(curvariable%id)) then
+            curvariable%horizontal_id = fabm_get_horizontal_variable_id(model,variables(i))
+            variabletype = type_scalar
          end if
 
 !        If variable still was not found, search scalar [non-spatial] variables.
-         if (curvariable%id==id_not_used) then
-            curvariable%id = fabm_get_variable_id(model,variables(i),shape_scalar)
-            curvariable%shape = shape_scalar
-            curvariable%type = type_scalar
+         if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id))) then
+            curvariable%scalar_id = fabm_get_scalar_variable_id(model,variables(i))
+            variabletype = type_scalar
          end if
 
 !        Report an error if the variable was still not found.
-         if (curvariable%id==id_not_used) then
+         if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id).or.fabm_is_variable_used(curvariable%scalar_id))) then
             FATAL 'Variable '//trim(curvariable%name)//', referenced in namelist observations &
                   &in '//trim(fname)//', was not found in model.'
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
 
-         if (curvariable%type==type_scalar) then
+         if (variabletype==type_scalar) then
             curvariable%data_0d = _ZERO_
             curvariable%relax_tau_0d = relax_taus(i)
-            call register_observation(curvariable%id,curvariable%shape,data_0d=curvariable%data_0d,relax_tau_0d=curvariable%relax_tau_0d)
+            if (fabm_is_variable_used(curvariable%horizontal_id)) then
+               call register_observation(curvariable%horizontal_id,curvariable%data_0d,curvariable%relax_tau_0d)
+            else
+               call register_observation(curvariable%scalar_id,curvariable%data_0d)
+            end if
          else
             allocate(curvariable%data_1d(0:nlev))
             allocate(curvariable%relax_tau_1d(0:nlev))
@@ -282,15 +295,15 @@
             end do
 
 !           Register observed variable with the GOTM-FABM driver.
-            call register_observation(curvariable%id,shape_full,data_1d=curvariable%data_1d,relax_tau_1d=curvariable%relax_tau_1d)
+            call register_observation(curvariable%id,curvariable%data_1d,curvariable%relax_tau_1d)
          end if
 
 !        Make sure profile and scalar variables are not mixed in the same input file.
-         if (filetype/=type_unknown .and. filetype/=curvariable%type) then
+         if (filetype/=type_unknown .and. filetype/=variabletype) then
             FATAL 'Cannot mix 0d and 1d variables in one observation file, as they require different formats.'
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
-         filetype = curvariable%type
+         filetype = variabletype
 
 !        Report that this variable will use observations.
          LEVEL2 'Reading observed values for variable '//trim(curvariable%name)//' from '//trim(file)
@@ -383,7 +396,7 @@
 ! !INPUT PARAMETERS:
    character(len=64),           intent(in) :: file
    integer,                     intent(in) :: variablecount
-   type (type_variable),pointer,intent(in) :: firstvariable
+   type (type_input_variable),pointer,intent(in) :: firstvariable
    integer,                     intent(in) :: nlev
 !
 ! !REVISION HISTORY:
@@ -475,7 +488,7 @@
    integer                      :: rc
    integer                      :: yy,mm,dd,hh,min,ss
    REALTYPE                     :: t,dt
-   type (type_variable),pointer :: curvar
+   type (type_input_variable),pointer :: curvar
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -542,7 +555,7 @@
 ! !INPUT PARAMETERS:
    character(len=64),           intent(in) :: file
    integer,                     intent(in) :: variablecount
-   type (type_variable),pointer,intent(in) :: firstvariable
+   type (type_input_variable),pointer,intent(in) :: firstvariable
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -628,7 +641,7 @@
    integer                      :: rc
    integer                      :: yy,mm,dd,hh,min,ss
    REALTYPE                     :: t,dt
-   type (type_variable),pointer :: curvar
+   type (type_input_variable),pointer :: curvar
 !
 !-----------------------------------------------------------------------
 !BOC
