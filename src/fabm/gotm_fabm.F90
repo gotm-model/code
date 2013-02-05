@@ -85,7 +85,7 @@
    REALTYPE,allocatable _ATTR_DIMENSIONS_1_                :: local
 
    ! Arrays for environmental variables not supplied externally.
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres,swr
+   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres,swr,k_par
 
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
@@ -363,6 +363,12 @@
    if (rc /= 0) stop 'allocate_memory(): Error allocating (par)'
    call fabm_link_bulk_data(model,varname_par,par(1:_LOCATION_))
 
+   ! Allocate array for attenuation coefficient pf photosynthetically active radiation (PAR).
+   ! This will be calculated internally during each time step.
+   allocate(k_par(_LOCATION_RANGE_),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (k_par)'
+   call fabm_link_bulk_data(model,varname_extc,k_par(1:_LOCATION_))
+
    ! Allocate array for shortwave radiation (swr).
    ! This will be calculated internally during each time step.
    allocate(swr(_LOCATION_RANGE_),stat=rc)
@@ -434,6 +440,7 @@
    call fabm_link_bulk_data      (model,varname_temp,   temp)
    call fabm_link_bulk_data      (model,varname_salt,   salt_)
    call fabm_link_bulk_data      (model,varname_dens,   rho_)
+   call fabm_link_bulk_data      (model,varname_layer_ht,h_(2:ubound(h,1)))
    call fabm_link_horizontal_data(model,varname_lon,    longitude)
    call fabm_link_horizontal_data(model,varname_lat,    latitude)
    call fabm_link_horizontal_data(model,varname_wind_sf,wnd)
@@ -962,8 +969,10 @@
       ! Add the extinction of the first half of the grid box.
       bioext = bioext+localext*0.5*h(i+1)
 
+      ! Calculate photosynthetically active radiation (PAR), shortwave radiation, and PAR attenuation.
       par(i) = I_0*(_ONE_-A)*exp(z(i)/g2-bioext)
       swr(i) = par(i)+I_0*A*exp(z(i)/g1)
+      k_par(i) = _ONE_/g2+localext
 
       ! Add the extinction of the second half of the grid box.
       bioext = bioext+localext*0.5*h(i+1)
