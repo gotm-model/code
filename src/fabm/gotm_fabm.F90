@@ -367,6 +367,7 @@
    ! This will be calculated internally during each time step.
    allocate(k_par(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (k_par)'
+   k_par = _ZERO_
    call fabm_link_bulk_data(model,varname_extc,k_par(1:_LOCATION_))
 
    ! Allocate array for shortwave radiation (swr).
@@ -440,7 +441,7 @@
    call fabm_link_bulk_data      (model,varname_temp,   temp)
    call fabm_link_bulk_data      (model,varname_salt,   salt_)
    call fabm_link_bulk_data      (model,varname_dens,   rho_)
-   call fabm_link_bulk_data      (model,varname_layer_ht,h_(2:ubound(h,1)))
+   call fabm_link_bulk_data      (model,varname_layer_ht,h_(2:ubound(h_,1)))
    call fabm_link_horizontal_data(model,varname_lon,    longitude)
    call fabm_link_horizontal_data(model,varname_lat,    latitude)
    call fabm_link_horizontal_data(model,varname_wind_sf,wnd)
@@ -914,6 +915,7 @@
    if (allocated(sfl))        deallocate(sfl)
    if (allocated(bfl))        deallocate(bfl)
    if (allocated(par))        deallocate(par)
+   if (allocated(k_par))      deallocate(k_par)
    if (allocated(swr))        deallocate(swr)
    if (allocated(pres))       deallocate(pres)
    if (allocated(total))      deallocate(total)
