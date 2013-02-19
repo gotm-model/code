@@ -126,6 +126,7 @@
    REALTYPE                  :: cloud_obs
    REALTYPE                  :: rh
 
+   REALTYPE                  :: wind_factor
    REALTYPE                  :: const_swr
    REALTYPE                  :: swr_factor
    REALTYPE                  :: const_heat
@@ -249,6 +250,7 @@
                      fluxes_method, &
                      back_radiation_method, &
                      meteo_file, &
+                     wind_factor, &
                      hum_method, &
                      heat_method, &
                      rain_impact, &
@@ -345,6 +347,7 @@
    fluxes_method=1
    back_radiation_method=1
    meteo_file = ''
+   wind_factor=_ONE_
    hum_method = 0
    heat_method = 0
    rain_impact=.false.
@@ -401,6 +404,9 @@
       LEVEL2 'Air-sea exchanges will be calculated'
       LEVEL2 'Reading meteo data from:'
       LEVEL3 trim(meteo_file)
+      if (wind_factor .ne. _ONE_) then
+         LEVEL3 'applying wind factor= ',wind_factor
+      end if
       LEVEL3 'heat- and momentum-fluxes:'
       select case (fluxes_method)
          case(1)
@@ -708,8 +714,8 @@
          meteo_secs2 = hh*3600 + min*60 + ss
          if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .gt. 0) EXIT
       end do
-      u10       = obs(1)
-      v10       = obs(2)
+      u10       = obs(1)*wind_factor
+      v10       = obs(2)*wind_factor
       airp      = obs(3)*100. !kbk mbar/hPa --> Pa
       airt      = obs(4)
       rh        = obs(5)
