@@ -59,7 +59,7 @@
 !
 ! !PRIVATE DATA MEMBERS
    logical, private          :: first
-   integer, public          :: set_no
+   integer, public           :: set_no
 !  dimension lengths
    integer, parameter        :: lon_len=1
    integer, parameter        :: lat_len=1
@@ -67,6 +67,9 @@
    integer, parameter        :: time_len=NF90_UNLIMITED
 !  variable ids
    integer, private          :: lon_id,lat_id,z_id,z1_id,time_id
+   integer, private          :: u10_id,v10_id
+   integer, private          :: airp_id,airt_id
+   integer, private          :: hum_id,cloud_id
    integer, private          :: zeta_id
    integer, private          :: sst_id,sss_id
    integer, private          :: x_taus_id,y_taus_id
@@ -114,7 +117,9 @@
 !
 ! !INTERFACE:
    subroutine init_ncdf(fn,title,lat,lon,nlev,start_time,time_unit)
+!
 ! !USES:
+   use airsea,       only: hum_method
    use meanflow,     only: lake
    use observations, only: inflows_method
    IMPLICIT NONE
@@ -191,6 +196,18 @@
    dim3d(1) = lon_dim
    dim3d(2) = lat_dim
    dim3d(3) = time_dim
+   iret = nf90_def_var(ncid,'u10',NF90_REAL,dim3d,u10_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'v10',NF90_REAL,dim3d,v10_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'airp',NF90_REAL,dim3d,airp_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'airt',NF90_REAL,dim3d,airt_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'humidity',NF90_REAL,dim3d,hum_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'cloud',NF90_REAL,dim3d,cloud_id)
+   call check_err(iret)
    iret = nf90_def_var(ncid,'zeta',NF90_REAL,dim3d,zeta_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'sst',NF90_REAL,dim3d,sst_id)
@@ -390,6 +407,19 @@
    iret = set_attributes(ncid,time_id,units=trim(ncdf_time_str))
 
 !  x,y,t
+   iret = set_attributes(ncid,u10_id,units='m/s',long_name='10m wind (x)')
+   iret = set_attributes(ncid,v10_id,units='m/s',long_name='10m wind (y)')
+   iret = set_attributes(ncid,airp_id,units='Pa',long_name='air pressure')
+   iret = set_attributes(ncid,airt_id,units='celsius',long_name='2m air temperature')
+   select case (hum_method)
+      case (1) ! relative humidity in % given
+         iret = set_attributes(ncid,hum_id,units='%',long_name='relative humidity')
+      case (2)  ! Specific humidity from wet bulb temperature
+         iret = set_attributes(ncid,hum_id,units='celcius',long_name='wet bulb temperature')
+      case (3)  ! Specific humidity from dew point temperature
+         iret = set_attributes(ncid,hum_id,units='celcius',long_name='dew point')
+   end select
+   iret = set_attributes(ncid,cloud_id,units='%',long_name='cloud cover')
    iret = set_attributes(ncid,zeta_id,units='m',long_name='sea surface elevation')
    iret = set_attributes(ncid,sst_id,units='celsius',long_name='sea surface temperature')
    iret = set_attributes(ncid,sss_id,units='g/kg',long_name='sea surface salinity')
@@ -524,6 +554,10 @@
 !  Write the GOTM core variables to the NetCDF file.
 !
 ! !USES:
+   use airsea,       only: hum_method
+   use airsea,       only: u10,v10
+   use airsea,       only: airp,airt
+   use airsea,       only: rh,twet,tdew,cloud
    use airsea,       only: tx,ty,I_0,heat,precip,evap,sst,sss
    use airsea,       only: int_precip,int_evap,int_fwf
    use airsea,       only: int_swr,int_heat,int_total
@@ -594,6 +628,19 @@
    iret = store_data(ncid,time_id,T_SHAPE,1,scalar=temp_time)
 
 !  Time varying data : x,y,t
+   iret = store_data(ncid,u10_id,XYT_SHAPE,1,scalar=u10)
+   iret = store_data(ncid,v10_id,XYT_SHAPE,1,scalar=v10)
+   iret = store_data(ncid,airp_id,XYT_SHAPE,1,scalar=airp)
+   iret = store_data(ncid,airt_id,XYT_SHAPE,1,scalar=airt)
+   select case (hum_method)
+      case (1) ! relative humidity in % given
+         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=rh)
+      case (2)  ! Specific humidity from wet bulb temperature
+         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=twet)
+      case (3)  ! Specific humidity from dew point temperature
+         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=tdew)
+   end select
+   iret = store_data(ncid,cloud_id,XYT_SHAPE,1,scalar=cloud)
    iret = store_data(ncid,zeta_id,XYT_SHAPE,1,scalar=zeta)
    iret = store_data(ncid,sst_id,XYT_SHAPE,1,scalar=sst)
    iret = store_data(ncid,sss_id,XYT_SHAPE,1,scalar=sss)
