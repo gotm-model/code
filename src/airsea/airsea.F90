@@ -43,6 +43,13 @@
 ! !PUBLIC DATA MEMBERS:
    logical,  public                    :: calc_fluxes
 !
+!  Meteorological forcing variables
+   integer,  public                    :: hum_method
+   REALTYPE, public                    :: u10,v10
+   REALTYPE, public                    :: airp,airt
+   REALTYPE, public                    :: rh,twet,tdew
+   REALTYPE, public                    :: cloud
+!
 !  wind speed (m/s)
    REALTYPE, public, target            :: w
 !
@@ -77,7 +84,6 @@
 !  sum of short wave radiation
 !  and surface heat flux (J/m^2)
    REALTYPE, public                    :: int_total
-   REALTYPE, public                    :: cloud
 !
 !  feedbacks to drag and albedo by biogeochemistry
    REALTYPE, target, public            :: bio_drag_scale,bio_albedo
@@ -108,7 +114,6 @@
    integer                   :: sst_method
    integer                   :: sss_method
    integer                   :: ssuv_method
-   integer                   :: hum_method
    logical, public           :: rain_impact
    logical, public           :: calc_evaporation
 
@@ -120,13 +125,8 @@
    character(len=PATH_MAX)   :: sss_file
    character(len=PATH_MAX)   :: sst_file
 
-   REALTYPE                  :: u10,v10
-   REALTYPE                  :: airp
-   REALTYPE                  :: airt,twet,tdew
-   REALTYPE                  :: cloud_obs
-   REALTYPE                  :: rh
-
    REALTYPE                  :: wind_factor
+   REALTYPE                  :: cloud_obs
    REALTYPE                  :: const_swr
    REALTYPE                  :: swr_factor
    REALTYPE                  :: const_heat
