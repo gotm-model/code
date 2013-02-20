@@ -65,6 +65,9 @@
 		<Filter Name="seagrass">
 		<File RelativePath="..\..\src\extras\seagrass\seagrass.F90"/></Filter>
 		<Filter Name="sediment"/></Filter>
+		<Filter Name="fabm">
+		<File RelativePath="..\..\src\fabm\gotm_fabm_input.F90"/>
+		<File RelativePath="..\..\src\fabm\gotm_fabm_output.F90"/></Filter>
 		<Filter Name="gotm">
 		<File RelativePath="..\..\src\gotm\gotm.F90"/></Filter>
 		<Filter Name="meanflow">
@@ -82,9 +85,8 @@
 		<File RelativePath="..\..\src\meanflow\uequation.F90"/>
 		<File RelativePath="..\..\src\meanflow\updategrid.F90"/>
 		<File RelativePath="..\..\src\meanflow\vequation.F90"/></Filter>
-		<Filter Name="fabm">
-		<File RelativePath="..\..\src\fabm\gotm_fabm_input.F90"/>
-		<File RelativePath="..\..\src\fabm\gotm_fabm_output.F90"/></Filter>
+		<Filter Name="input">
+		<File RelativePath="..\..\src\input\input.F90"/></Filter>
 		<Filter Name="observations">
 		<File RelativePath="..\..\src\observations\analytical_profile.F90"/>
 		<File RelativePath="..\..\src\observations\const_NNS.F90"/>

@@ -63,8 +63,6 @@ contains
 ! !LOCAL VARIABLES:
    integer :: iret,n
    type (type_input_variable),       pointer :: cur_obs_variable
-   type (type_observed_profile_info),pointer :: cur_obs_profile_file
-   type (type_observed_scalar_info), pointer :: cur_obs_scalar_file
    character(len=64) :: name
 !
 !-----------------------------------------------------------------------
@@ -138,30 +136,17 @@ contains
          ! If requested, add a NetCDF variable for each variable read from an external source [input file].
          if (save_inputs) then
             ! Enumerate profile (depth-dependent) inputs and create corresponding NetCDF variables.
-            cur_obs_profile_file => first_observed_profile_info
-            do while (associated(cur_obs_profile_file))
-               cur_obs_variable => cur_obs_profile_file%first_variable
-               do while (associated(cur_obs_variable))
+            cur_obs_variable => first_input_variable
+            do while (associated(cur_obs_variable))
+               if (associated(cur_obs_variable%data_1d)) then
                   iret = new_nc_variable(ncid,trim(cur_obs_variable%name),NF90_REAL,dim4d,cur_obs_variable%ncid)
-                  iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_file',trim(cur_obs_profile_file%path))
-                  iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_column',cur_obs_variable%index)
-                  cur_obs_variable => cur_obs_variable%next
-               end do               
-               cur_obs_profile_file => cur_obs_profile_file%next
-            end do
-
-            ! Enumerate scalar (depth-independent) inputs and create corresponding NetCDF variables.
-            cur_obs_scalar_file => first_observed_scalar_info
-            do while (associated(cur_obs_scalar_file))
-               cur_obs_variable => cur_obs_scalar_file%first_variable
-               do while (associated(cur_obs_variable))
+               else
                   iret = new_nc_variable(ncid,trim(cur_obs_variable%name),NF90_REAL,dim3d,cur_obs_variable%ncid)
-                  iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_file',trim(cur_obs_scalar_file%path))
-                  iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_column',cur_obs_variable%index)
-                  cur_obs_variable => cur_obs_variable%next
-               end do               
-               cur_obs_scalar_file => cur_obs_scalar_file%next
-            end do
+               end if
+               iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_file',trim(cur_obs_variable%path))
+               iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_column',cur_obs_variable%index)
+               cur_obs_variable => cur_obs_variable%next
+            end do               
          end if
 
          ! Take NetCDF library out of define mode (ready for storing data).
@@ -207,8 +192,6 @@ contains
 ! !LOCAL VARIABLES:
    integer :: iret,n,start(4),edges(4)
    type (type_input_variable),       pointer :: cur_obs_variable
-   type (type_observed_profile_info),pointer :: cur_obs_profile_file
-   type (type_observed_scalar_info), pointer :: cur_obs_scalar_file
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -248,15 +231,12 @@ contains
          end do
 
          ! Enumerate profile (depth-dependent) inputs and save corresponding data.
-         cur_obs_profile_file => first_observed_profile_info
-         do while (associated(cur_obs_profile_file))
-            cur_obs_variable => cur_obs_profile_file%first_variable
-            do while (associated(cur_obs_variable))
-               if (cur_obs_variable%ncid/=-1) iret = nf90_put_var(ncid,cur_obs_variable%ncid,cur_obs_variable%data_1d(1:nlev),start,edges)
-               cur_obs_variable => cur_obs_variable%next
-            end do               
-            cur_obs_profile_file => cur_obs_profile_file%next
-         end do
+         cur_obs_variable => first_input_variable
+         do while (associated(cur_obs_variable))
+            if (cur_obs_variable%ncid/=-1.and.associated(cur_obs_variable%data_1d)) &
+               iret = nf90_put_var(ncid,cur_obs_variable%ncid,cur_obs_variable%data_1d(1:nlev),start,edges)
+            cur_obs_variable => cur_obs_variable%next
+         end do               
 
          ! ---------------------------
          ! Depth-independent variables
@@ -284,14 +264,11 @@ contains
          end do
 
          ! Enumerate scalar (depth-independent) inputs and save corresponding data.
-         cur_obs_scalar_file => first_observed_scalar_info
-         do while (associated(cur_obs_scalar_file))
-            cur_obs_variable => cur_obs_scalar_file%first_variable
-            do while (associated(cur_obs_variable))
-               if (cur_obs_variable%ncid/=-1) iret = store_data(ncid,cur_obs_variable%ncid,XYT_SHAPE,1,scalar=cur_obs_variable%data_0d)
-               cur_obs_variable => cur_obs_variable%next
-            end do               
-            cur_obs_scalar_file => cur_obs_scalar_file%next
+         cur_obs_variable => first_input_variable
+         do while (associated(cur_obs_variable))
+            if (cur_obs_variable%ncid/=-1.and.associated(cur_obs_variable%data_0d)) &
+               iret = store_data(ncid,cur_obs_variable%ncid,XYT_SHAPE,1,scalar=cur_obs_variable%data_0d)
+            cur_obs_variable => cur_obs_variable%next
          end do
 
          ! Integrate conserved quantities over depth.
