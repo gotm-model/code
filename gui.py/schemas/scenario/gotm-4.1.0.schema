@@ -215,13 +215,16 @@
 				<fileinfo type="pointsintime">
 					<filevariables>
 						<filevariable name="u10"   label="wind speed in x-direction" unit="m/s" />
-            <filevariable name="v10"   label="wind speed in y-direction" unit="m/s" />
-            <filevariable name="airp"  label="air pressure" unit="hPa" />
-            <filevariable name="airt"  label="air temperature" unit="°C" />
-            <filevariable name="rh"    label="air humidity" />
-            <filevariable name="cloud" label="cloud cover" minInclusive="0" maxInclusive="1" />
+						<filevariable name="v10"   label="wind speed in y-direction" unit="m/s" />
+						<filevariable name="airp"  label="air pressure" unit="hPa" />
+						<filevariable name="airt"  label="air temperature" unit="°C" />
+						<filevariable name="rh"    label="air humidity" />
+						<filevariable name="cloud" label="cloud cover" minInclusive="0" maxInclusive="1" />
 					</filevariables>
 				</fileinfo>
+			</element>
+			<element name="wind_factor"  type="float" label="scale factor for u10 and v10" description="Scale factor for wind. If set to one, the original values are used. A value different from one might be applied to convert from non-GOTM units, or to test model sensitivity.">
+				<condition type="eq" variable="./calc_fluxes" value="True"/>
 			</element>
 			<element name="hum_method" type="int" label="decides what is given in 7. column in meteo_file">
 				<condition type="eq" variable="./calc_fluxes" value="True" />
