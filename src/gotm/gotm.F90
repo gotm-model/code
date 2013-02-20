@@ -224,6 +224,9 @@
    call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
                           depth,nlev,z,h,gravity,rho_0)
 
+!  Call do_input to make sure observed profiles are up-to-date.
+   call do_input(julianday,secondsofday,nlev,z)
+
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
 !  initialise mean fields

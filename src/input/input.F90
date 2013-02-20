@@ -31,13 +31,13 @@
 !  Information on an observed variable
    type type_1d_variable
       integer                            :: index = -1     ! Column index of variable in input file
-      REALTYPE, allocatable,dimension(:) :: data           ! Pointer to profile data (depth-dependent variable)
+      REALTYPE, pointer,dimension(:)     :: data => null() ! Pointer to profile data (depth-dependent variable)
       type (type_1d_variable),pointer    :: next => null() ! Next variable in current input file
    end type
 
    type type_0d_variable
       integer                           :: index = -1     ! Column index of variable in input file
-      REALTYPE                          :: data           ! Pointer to scalar data (depth-independent variable)
+      REALTYPE,pointer                  :: data => null() ! Pointer to scalar data (depth-independent variable)
       type (type_0d_variable),pointer   :: next => null() ! Next variable in current input file
    end type
 
@@ -83,6 +83,10 @@
    integer,parameter :: first_unit_no = 555
    
    integer :: nlev
+   character(len=128) :: cbuf
+
+   integer, parameter :: END_OF_FILE=-1
+   integer, parameter :: READ_ERROR=-2
 
    contains
 
@@ -124,14 +128,14 @@
 ! !IROUTINE: Register a 1d input variable.
 !
 ! !INTERFACE:
-   function register_input_1d(path,icolumn) result(pdata)
+   subroutine register_input_1d(path,icolumn,data)
 !
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
    character(len=*),intent(in) :: path
    integer,         intent(in) :: icolumn
-   REALTYPE,pointer            :: pdata(:)
+   REALTYPE,target             :: data(:)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -151,7 +155,7 @@
    else
       file => first_profile_file
       do while (associated(file))
-         if (file%path==path) exit
+         if (file%path==path.and.file%unit==-1) exit
          file => file%next
       end do
       if (.not.associated(file)) then
@@ -167,16 +171,6 @@
 
 !  Create a variable object for the specified column index
    if (associated(file%first_variable)) then
-      ! First determine whether a variable object for the specified column has already been created.
-      variable => file%first_variable
-      do while (associated(variable))
-         if (variable%index==icolumn) then
-            pdata => variable%data
-            return
-         end if
-         variable => variable%next
-      end do
-
 !     Append a new variable object to the linked list.
       variable => file%first_variable
       do while (associated(variable%next))
@@ -191,11 +185,10 @@
    end if
    
    variable%index = icolumn
-   allocate(variable%data(0:nlev))
+   variable%data => data
    variable%data = _ZERO_
-   pdata => variable%data
 
-   end function register_input_1d
+   end subroutine register_input_1d
 !EOC
 
 !-----------------------------------------------------------------------
@@ -204,14 +197,14 @@
 ! !IROUTINE: Register a 0d input variable.
 !
 ! !INTERFACE:
-   function register_input_0d(path,icolumn) result(pdata)
+   subroutine register_input_0d(path,icolumn,data)
 !
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
    character(len=*),intent(in) :: path
    integer,         intent(in) :: icolumn
-   REALTYPE,pointer            :: pdata
+   REALTYPE,target             :: data
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -231,7 +224,7 @@
    else
       file => first_timeseries_file
       do while (associated(file))
-         if (file%path==path) exit
+         if (file%path==path.and.file%unit==-1) exit
          file => file%next
       end do
       if (.not.associated(file)) then
@@ -247,16 +240,6 @@
 
 !  Create a variable object for the specified column index
    if (associated(file%first_variable)) then
-!     First determine whether a variable object for the specified column has already been created.
-      variable => file%first_variable
-      do while (associated(variable))
-         if (variable%index==icolumn) then
-            pdata => variable%data
-            return
-         end if
-         variable => variable%next
-      end do
-
 !     Append a new variable object to the linked list.
       variable => file%first_variable
       do while (associated(variable%next))
@@ -271,10 +254,10 @@
    end if
    
    variable%index = icolumn
+   variable%data => data
    variable%data = _ZERO_
-   pdata => variable%data
 
-   end function register_input_0d
+   end subroutine register_input_0d
 !EOC
 
 !-----------------------------------------------------------------------
@@ -400,7 +383,6 @@
 !
 ! !USES:
    use time, only: time_diff,julian_day
-   use observations, only: read_profiles
 !
 ! !INPUT PARAMETERS:
    integer,                 intent(in)   :: jul,secs
@@ -548,7 +530,6 @@
 !
 ! !USES:
    use time, only: time_diff,julian_day
-   use observations, only: read_obs
 !
 ! !INPUT PARAMETERS:
    integer,                    intent(in)    :: jul,secs
@@ -628,7 +609,6 @@
       curvar_1d => profile_file%first_variable
       do while (associated(curvar_1d))
          nextvar_1d => curvar_1d%next
-         if (allocated(curvar_1d%data)) deallocate(curvar_1d%data)
          deallocate(curvar_1d)
          curvar_1d => nextvar_1d
       end do
@@ -665,6 +645,144 @@
    nullify(first_timeseries_file)
 
    end subroutine close_input
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: read_obs
+!
+! !INTERFACE:
+   subroutine read_obs(unit,yy,mm,dd,hh,min,ss,N,obs,ierr)
+!
+! !DESCRIPTION:
+!  This routine will read all non-profile observations.
+!  The routine allows for reading more than one scalar variable at a time.
+!  The number of data to be read is specified by {\tt N}.
+!  Data read-in are returned
+!  in the 'obs' array. It is up to the calling routine to assign
+!  meaning full variables to the individual elements in {\tt obs}.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: unit
+   integer, intent(in)                 :: N
+!
+! !OUTPUT PARAMETERS:
+   integer, intent(out)                :: yy,mm,dd,hh,min,ss
+   REALTYPE,intent(out)                :: obs(:)
+   integer, intent(out)                :: ierr
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   character                 :: c1,c2,c3,c4
+   integer                   :: i
+!
+!-----------------------------------------------------------------------
+!BOC
+   ierr=0
+   read(unit,'(A128)',ERR=100,END=110) cbuf
+   read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
+   read(cbuf(20:),*,ERR=100,END=110) (obs(i),i=1,N)
+
+   return
+100 ierr=READ_ERROR
+   return
+110 ierr=END_OF_FILE
+   return
+900 format(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)
+   end subroutine read_obs
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: read_profiles
+!
+! !INTERFACE:
+   subroutine read_profiles(unit,nlev,cols,yy,mm,dd,hh,min,ss,z, &
+                            profiles,lines,ierr)
+!
+! !DESCRIPTION:
+!  Similar to {\tt read\_obs()} but used for reading profiles instead of
+!  scalar data.
+!  The data will be interpolated on the grid specified by nlev and z.
+!  The data can be read 'from the top' or 'from the bottom' depending on
+!  a flag in the actual file.
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: unit
+   integer, intent(in)                 :: nlev,cols
+   REALTYPE, intent(in)                :: z(:)
+!
+! !INPUT/OUTPUT PARAMETERS:
+   integer, intent(inout)              :: lines
+!
+! !OUTPUT PARAMETERS:
+   integer, intent(out)                :: yy,mm,dd,hh,min,ss
+   REALTYPE, intent(out)               :: profiles(:,:)
+   integer, intent(out)                :: ierr
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Hans Burchard
+!
+!EOP
+!
+! !LOCAL VARIABLES:
+   character                 :: c1,c2,c3,c4
+   integer                   :: i,j,rc
+   integer                   :: N,up_down
+   REALTYPE,allocatable,dimension(:)   :: tmp_depth
+   REALTYPE,allocatable,dimension(:,:) :: tmp_profs
+!
+!-----------------------------------------------------------------------
+!BOC
+   ierr=0
+   read(unit,'(A72)',ERR=100,END=110) cbuf
+   read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
+   read(cbuf(20:),*,ERR=100,END=110) N,up_down
+
+   lines = lines+1
+
+   allocate(tmp_depth(0:N),stat=rc)
+   if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_depth)'
+   allocate(tmp_profs(0:N,cols),stat=rc)
+   if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_profs)'
+
+   if(up_down .eq. 1) then
+      do i=1,N
+         lines = lines+1
+         read(unit,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,cols)
+      end do
+   else
+      do i=N,1,-1
+         lines = lines+1
+         read(unit,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,cols)
+      end do
+   end if
+
+   call gridinterpol(N,cols,tmp_depth,tmp_profs,nlev,z,profiles)
+
+   deallocate(tmp_depth)
+   deallocate(tmp_profs)
+
+   return
+100 ierr=READ_ERROR
+   return
+110 ierr=END_OF_FILE
+   return
+900 format(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)
+
+   end subroutine read_profiles
 !EOC
 
 !-----------------------------------------------------------------------

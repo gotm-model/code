@@ -24,6 +24,8 @@
 !  Free format is used for reading-in the actual data.
 !
 ! !USES:
+   use input
+
    IMPLICIT NONE
 
 !  default: all is private.
@@ -626,10 +628,11 @@
             case default
          end select
       case (FROMFILE)
-         open(t_prof_unit,file=t_prof_file,status='unknown',err=102)
-         LEVEL2 'Reading temperature profiles from:'
-         LEVEL3 trim(t_prof_file)
-         call get_t_profile(t_prof_unit,julday,secs,nlev,z)
+         !open(t_prof_unit,file=t_prof_file,status='unknown',err=102)
+         !LEVEL2 'Reading temperature profiles from:'
+         !LEVEL3 trim(t_prof_file)
+         !call get_t_profile(t_prof_unit,julday,secs,nlev,z)
+         call register_input_1d(t_prof_file,1,tprof)
       case default
    end select
 
@@ -872,9 +875,9 @@
       call get_s_profile(s_prof_unit,julday,secs,nlev,z)
    end if
 
-   if(t_prof_method .eq. 2) then
-      call get_t_profile(t_prof_unit,julday,secs,nlev,z)
-   end if
+   !if(t_prof_method .eq. 2) then
+   !   call get_t_profile(t_prof_unit,julday,secs,nlev,z)
+   !end if
 
    call get_ext_pressure(ext_press_method,ext_press_unit,julday,secs)
 

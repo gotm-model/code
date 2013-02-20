@@ -138,7 +138,7 @@ contains
             ! Enumerate profile (depth-dependent) inputs and create corresponding NetCDF variables.
             cur_obs_variable => first_input_variable
             do while (associated(cur_obs_variable))
-               if (associated(cur_obs_variable%data_1d)) then
+               if (allocated(cur_obs_variable%data_1d)) then
                   iret = new_nc_variable(ncid,trim(cur_obs_variable%name),NF90_REAL,dim4d,cur_obs_variable%ncid)
                else
                   iret = new_nc_variable(ncid,trim(cur_obs_variable%name),NF90_REAL,dim3d,cur_obs_variable%ncid)
@@ -233,7 +233,7 @@ contains
          ! Enumerate profile (depth-dependent) inputs and save corresponding data.
          cur_obs_variable => first_input_variable
          do while (associated(cur_obs_variable))
-            if (cur_obs_variable%ncid/=-1.and.associated(cur_obs_variable%data_1d)) &
+            if (cur_obs_variable%ncid/=-1.and.allocated(cur_obs_variable%data_1d)) &
                iret = nf90_put_var(ncid,cur_obs_variable%ncid,cur_obs_variable%data_1d(1:nlev),start,edges)
             cur_obs_variable => cur_obs_variable%next
          end do               
@@ -266,7 +266,7 @@ contains
          ! Enumerate scalar (depth-independent) inputs and save corresponding data.
          cur_obs_variable => first_input_variable
          do while (associated(cur_obs_variable))
-            if (cur_obs_variable%ncid/=-1.and.associated(cur_obs_variable%data_0d)) &
+            if (cur_obs_variable%ncid/=-1.and..not.allocated(cur_obs_variable%data_1d)) &
                iret = store_data(ncid,cur_obs_variable%ncid,XYT_SHAPE,1,scalar=cur_obs_variable%data_0d)
             cur_obs_variable => cur_obs_variable%next
          end do

@@ -51,8 +51,8 @@
       integer                                 :: ncid                 ! NetCDF id in output file (only used if this variable is included in output)
       REALTYPE                                :: relax_tau_0d         ! Relaxation times for scalars (depth-independent variables)
       REALTYPE, allocatable,dimension(:)      :: relax_tau_1d         ! Relaxation times for profiles (depth-dependent variables)
-      REALTYPE,pointer                        :: data_0d => null()
-      REALTYPE,pointer,dimension(:)           :: data_1d => null()
+      REALTYPE                                :: data_0d
+      REALTYPE,allocatable,dimension(:)       :: data_1d
       type (type_input_variable),pointer      :: next => null()       ! Next variable in current input file
    end type
 
@@ -243,7 +243,7 @@
          filetype = variabletype
 
          if (variabletype==type_scalar) then
-            curvariable%data_0d => register_input_0d(curvariable%path,curvariable%index)
+            call register_input_0d(curvariable%path,curvariable%index,curvariable%data_0d)
             curvariable%relax_tau_0d = relax_taus(i)
             if (fabm_is_variable_used(curvariable%horizontal_id)) then
                call register_observation(curvariable%horizontal_id,curvariable%data_0d,curvariable%relax_tau_0d)
@@ -251,9 +251,10 @@
                call register_observation(curvariable%scalar_id,curvariable%data_0d)
             end if
          else
-            curvariable%data_1d => register_input_1d(curvariable%path,curvariable%index)
+            allocate(curvariable%data_1d(0:nlev))
             allocate(curvariable%relax_tau_1d(0:nlev))
             curvariable%relax_tau_1d = relax_taus(i)
+            call register_input_1d(curvariable%path,curvariable%index,curvariable%data_1d)
 
 !           Apply separate relaxation times for bottom and surface layer, if specified.
             db = _ZERO_
