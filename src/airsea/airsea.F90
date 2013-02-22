@@ -1,4 +1,5 @@
 #include "cppdefs.h"
+!#define INTERPOLATE_METEO 1
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -22,7 +23,7 @@
 ! !USES:
    use airsea_variables
    use time,         only: julian_day, time_diff
-   use observations, only: read_obs
+   use input,        only: register_input_0d,read_obs
 !
    IMPLICIT NONE
 
@@ -45,10 +46,11 @@
 !
 !  Meteorological forcing variables
    integer,  public                    :: hum_method
-   REALTYPE, public                    :: u10,v10
-   REALTYPE, public                    :: airp,airt
-   REALTYPE, public                    :: rh,twet,tdew
-   REALTYPE, public                    :: cloud
+   REALTYPE, public, target            :: u10,v10
+   REALTYPE, public, target            :: airp,airt
+   REALTYPE, public, target            :: rh
+   REALTYPE, public                    :: twet,tdew
+   REALTYPE, public, target            :: cloud
 !
 !  wind speed (m/s)
    REALTYPE, public, target            :: w
@@ -56,10 +58,10 @@
 !  surface short-wave radiation
 !  and surface heat flux (W/m^2)
    REALTYPE, public, target            :: I_0
-   REALTYPE, public                    :: heat
+   REALTYPE, public, target            :: heat
 
 !  surface stress components (Pa)
-   REALTYPE, public                    :: tx,ty
+   REALTYPE, public, target            :: tx,ty
 
 !  precipitation and  evaporation
 !  (m/s)
@@ -68,8 +70,8 @@
 
 !  sea surface temperature (degC), sea surface salinity (psu),
 !  sea surface current components (m/s)
-   REALTYPE, public                    :: sst
-   REALTYPE, public                    :: sss
+   REALTYPE, public, target            :: sst
+   REALTYPE, public, target            :: sss
    REALTYPE, public                    :: ssu
    REALTYPE, public                    :: ssv
 
@@ -89,13 +91,9 @@
    REALTYPE, target, public            :: bio_drag_scale,bio_albedo
 !
 ! !DEFINED PARAMETERS:
+#ifndef INTERPOLATE_METEO
    integer,  parameter                 :: meteo_unit=20
-   integer,  parameter                 :: swr_unit=21
-   integer,  parameter                 :: heatflux_unit=22
-   integer,  parameter                 :: momentum_unit=23
-   integer,  parameter                 :: precip_unit=24
-   integer,  parameter                 :: sst_unit=25
-   integer,  parameter                 :: sss_unit=26
+#endif
    integer,  parameter                 :: CONSTVAL=1
    integer,  parameter                 :: FROMFILE=2
 !
@@ -104,7 +102,9 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 ! !LOCAL VARIABLES:
+#ifndef INTERPOLATE_METEO   
    logical                   :: init_saved_vars
+#endif
    integer                   :: swr_method
    integer                   :: fluxes_method
    integer                   :: back_radiation_method
@@ -126,7 +126,6 @@
    character(len=PATH_MAX)   :: sst_file
 
    REALTYPE                  :: wind_factor
-   REALTYPE                  :: cloud_obs
    REALTYPE                  :: const_swr
    REALTYPE                  :: swr_factor
    REALTYPE                  :: const_heat
@@ -270,8 +269,10 @@
 !BOC
    LEVEL1 'init_air_sea'
 
+#ifndef INTERPOLATE_METEO
 !  Ensure that variables with the "save" attribute will be initialized later on.
    init_saved_vars = .true.
+#endif
 
 !  wind speed (m/s)
    w = _ZERO_
@@ -303,9 +304,6 @@
    twet = _ZERO_
    tdew = _ZERO_
    rh   = _ZERO_
-
-!  observed cloud cover
-   cloud_obs = _ZERO_
 
 !  air temperature
    airt = _ZERO_
@@ -378,11 +376,11 @@
 
 !  The short wave radiation
    select case (swr_method)
-      case (1)
+      case (CONSTVAL)
          LEVEL2 'Using constant short wave radiation= ',const_swr
+         I_0 = const_swr
       case (FROMFILE)
-         open(swr_unit,file=swr_file,action='read', &
-              status='old',err=92)
+         call register_input_0d(swr_file,1,I_0,scale_factor=swr_factor)
          LEVEL2 'Reading short wave radiation data from:'
          LEVEL3 trim(swr_file)
          if (swr_factor .ne. _ONE_) then
@@ -400,13 +398,23 @@
 
    if (calc_fluxes) then
 
+#ifndef INTERPOLATE_METEO
       open(meteo_unit,file=meteo_file,action='read',status='old',err=93)
+#else
+      call register_input_0d(meteo_file,1,u10,scale_factor=wind_factor)
+      call register_input_0d(meteo_file,2,v10,scale_factor=wind_factor)
+      call register_input_0d(meteo_file,3,airp,scale_factor=100.d0)
+      call register_input_0d(meteo_file,4,airt)
+      call register_input_0d(meteo_file,5,rh)
+      call register_input_0d(meteo_file,6,cloud)
+#endif
       LEVEL2 'Air-sea exchanges will be calculated'
       LEVEL2 'Reading meteo data from:'
       LEVEL3 trim(meteo_file)
       if (wind_factor .ne. _ONE_) then
          LEVEL3 'applying wind factor= ',wind_factor
       end if
+      
       LEVEL3 'heat- and momentum-fluxes:'
       select case (fluxes_method)
          case(1)
@@ -432,9 +440,10 @@
 
 !     The heat fluxes
       select case (heat_method)
+         case (CONSTVAL)
+            heat = const_heat
          case (FROMFILE)
-            open(heatflux_unit,file=heatflux_file,action='read', &
-                 status='old',err=94)
+            call register_input_0d(heatflux_file,1,heat)
             LEVEL2 'Reading heat fluxes from:'
             LEVEL3 trim(heatflux_file)
          case default
@@ -442,9 +451,12 @@
 
 !     The momentum fluxes
       select case (momentum_method)
+         case (CONSTVAL)
+            tx = const_tx
+            ty = const_ty
          case (FROMFILE)
-            open(momentum_unit,file=momentumflux_file,action='read', &
-                 status='old',err=95)
+            call register_input_0d(momentumflux_file,1,tx)
+            call register_input_0d(momentumflux_file,2,ty)
             LEVEL2 'Reading momentum fluxes from:'
             LEVEL3 trim(momentumflux_file)
          case default
@@ -453,7 +465,7 @@
 !     The sea surface temperature
       select case (sst_method)
          case (FROMFILE)
-            open(sst_unit,file=sst_file,action='read',status='old',err=96)
+            call register_input_0d(sst_file,1,sst)
             LEVEL2 'Reading sea surface temperature from:'
             LEVEL3 trim(sst_file)
          case default
@@ -462,7 +474,7 @@
 !     The sea surface salinity
       select case (sss_method)
          case (FROMFILE)
-            open(sss_unit,file=sss_file,action='read',status='old',err=97)
+            call register_input_0d(sss_file,1,sss)
             LEVEL2 'Reading sea surface salinity from:'
             LEVEL3 trim(sss_file)
          case default
@@ -472,13 +484,13 @@
 
 !  The fresh water fluxes (used for calc_fluxes=.true. and calc_fluxes=.false.)
    select case (precip_method)
-      case (1)
+      case (CONSTVAL)
          LEVEL2 'Using constant precipitation= ',const_precip
          LEVEL2 'rain_impact=      ',rain_impact
          LEVEL2 'calc_evaporation= ',calc_evaporation
+         precip = const_precip
       case (FROMFILE)
-         open(precip_unit,file=precip_file,action='read', &
-              status='old',err=98)
+         call register_input_0d(precip_file,1,precip,scale_factor=precip_factor)
          LEVEL2 'Reading precipitation data from:'
          LEVEL3 trim(precip_file)
          if (precip_factor .ne. _ONE_) then
@@ -495,19 +507,7 @@
    stop 'init_airsea'
 91 FATAL 'I could not read airsea namelist'
    stop 'init_airsea'
-92 FATAL 'I could not open ',trim(swr_file)
-   stop 'init_airsea'
 93 FATAL 'I could not open ',trim(meteo_file)
-   stop 'init_airsea'
-94 FATAL 'I could not open ',trim(heatflux_file)
-   stop 'init_airsea'
-95 FATAL 'I could not open ',trim(momentumflux_file)
-   stop 'init_airsea'
-96 FATAL 'I could not open ',trim(sst_file)
-   stop 'init_airsea'
-97 FATAL 'I could not open ',trim(sss_file)
-   stop 'init_airsea'
-98 FATAL 'I could not open ',trim(precip_file)
    stop 'init_airsea'
 
    end subroutine init_air_sea
@@ -544,68 +544,26 @@
 !-----------------------------------------------------------------------
 !BOC
 
-!  The short wave radiation
-   select case (swr_method)
-      case (CONSTVAL)
-         I_0=const_swr
-      case (FROMFILE)
-         call read_swr(jul,secs,I_0)
-      case default
-   end select
-
-!  The freshwater flux (used for calc_fluxes=.true. and calc_fluxes=.false.)
-   select case (precip_method)
-      case (CONSTVAL)
-         precip=const_precip
-      case (FROMFILE)
-         call read_precip(jul,secs,precip)
-      case default
-   end select
-
    if (calc_fluxes) then
+!     Calculate bulk fluxes from meteorological conditions and surface state (sst,ssu,ssv).
       call flux_from_meteo(jul,secs)
+
+!    Optionally calculate surface shortwave radiation from location, time, cloud cover.
       if (swr_method .eq. 3) then
          I_0 = short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo)
       end if
    else
-!     The heat fluxes
-      select case (heat_method)
-         case (CONSTVAL)
-            heat=const_heat
-         case (FROMFILE)
-            call read_heat_flux(jul,secs,heat)
-         case default
-      end select
-!     The momentum fluxes
-      select case (momentum_method)
-         case (CONSTVAL)
-            tx=const_tx
-            ty=const_ty
-         case (FROMFILE)
-            call read_momentum_flux(jul,secs,tx,ty)
-         case default
-      end select
-!     The sea surface temperature
-      select case (sst_method)
-         case (FROMFILE)
-            call read_sst(jul,secs,sst)
-         case default
-      end select
-!     The sea surface salinity
-      select case (sss_method)
-         case (FROMFILE)
-            call read_sss(jul,secs,sss)
-         case default
-      end select
+!     If using constant momentum flux, apply time-varying feedback from biogeochemistry to drag.
+      if (momentum_method==CONSTVAL) then
+         tx = const_tx*bio_drag_scale
+         ty = const_ty*bio_drag_scale
+      end if
    end if
 
-!  Apply feedback from biogeochemistry to wind drag
-   tx = tx*bio_drag_scale
-   ty = ty*bio_drag_scale
+#ifndef INTERPOLATE_METEO   
+   if (init_saved_vars) init_saved_vars = .false.
+#endif
 
-   if (init_saved_vars) init_saved_vars=.false.
-
-   return
    end subroutine do_air_sea
 !EOC
 
@@ -627,21 +585,16 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
+   integer(8) :: clock,ticks_per_sec
+   REALTYPE :: tick_rate
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (calc_fluxes) then
-      close(meteo_unit)
-   else
-      if (heat_method     .eq. FROMFILE) close(heatflux_unit)
-      if (momentum_method .eq. FROMFILE) close(momentum_unit)
-      if (precip_method   .eq. FROMFILE) close(precip_unit)
-      if (sst_method      .eq. FROMFILE) close(sst_unit)
-      if (sss_method      .eq. FROMFILE) close(sss_unit)
-   end if
-   if (swr_method    .eq. FROMFILE) close(swr_unit)
-   if (precip_method .eq. FROMFILE) close(precip_unit)
-   return
+
+#ifndef INTERPOLATE_METEO   
+   if (calc_fluxes) close(meteo_unit)
+#endif
+
    end subroutine clean_air_sea
 !EOC
 
@@ -681,6 +634,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+#ifndef INTERPOLATE_METEO
    integer                   :: yy,mm,dd,hh,min,ss
    REALTYPE                  :: t
    REALTYPE, SAVE            :: dt
@@ -691,11 +645,13 @@
    REALTYPE, save            :: h1,tx1,ty1,cloud1
    REALTYPE, save            :: h2,tx2,ty2,cloud2
    integer                   :: rc
+#endif
    REALTYPE                  :: ta,ta_k,tw,tw_k
    REALTYPE                  :: qe,qh,qb
 !
 !-----------------------------------------------------------------------
 !BOC
+#ifndef INTERPOLATE_METEO
    if (init_saved_vars) then
       meteo_jul2  = 0
       meteo_secs2 = 0
@@ -719,7 +675,7 @@
       airp      = obs(3)*100. !kbk mbar/hPa --> Pa
       airt      = obs(4)
       rh        = obs(5)
-      cloud_obs = obs(6)
+      cloud     = obs(6)
 
       if (sst .lt. 100.) then
          tw  = sst
@@ -743,26 +699,26 @@
                              dlat,tw_k,ta_k,cloud,qb)
          call airsea_fluxes(fluxes_method, &
                             tw,ta,u10-ssu,v10-ssv,precip,evap,tx1,ty1,qe,qh)
-         h1     = (qb+qe+qh)
+         h1     = qb+qe+qh
+         cloud1 = cloud
+
          h2     = h1
          tx2    = tx1
          ty2    = ty1
-         cloud1 = cloud_obs
          cloud2 = cloud1
       else
          h1     = h2
          tx1    = tx2
          ty1    = ty2
          cloud1 = cloud2
-         cloud2 = cloud_obs
 
          call humidity(hum_method,rh,airp,tw,ta)
          call back_radiation(back_radiation_method, &
                              dlat,tw_k,ta_k,cloud,qb)
          call airsea_fluxes(fluxes_method, &
                             tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
-         h2=(qb+qe+qh)
-
+         h2     = qb+qe+qh
+         cloud2 = cloud
       end if
       dt = time_diff(meteo_jul2,meteo_secs2,meteo_jul1,meteo_secs1)
       alpha(2) = (h2-h1)/dt
@@ -777,405 +733,37 @@
    tx    = tx1 + t*alpha(3)
    ty    = ty1 + t*alpha(4)
    cloud = cloud1 + t*alpha(5)
+#else
+   if (sst .lt. 100.) then
+      tw  = sst
+      tw_k= sst+KELVIN
+   else
+      tw  = sst-KELVIN
+      tw_k= sst
+   end if
+
+   if (airt .lt. 100.) then
+      ta_k  = airt + KELVIN
+      ta = airt
+   else
+      ta  = airt - KELVIN
+      ta_k = airt
+   end if
+
+   call humidity(hum_method,rh,airp,tw,ta)
+   call back_radiation(back_radiation_method, &
+                       dlat,tw_k,ta_k,cloud,qb)
+   call airsea_fluxes(fluxes_method, &
+                      tw,ta,u10-ssu,v10-ssv,precip,evap,tx,ty,qe,qh)
+   heat = (qb+qe+qh)
 
    w = sqrt((u10-ssu)*(u10-ssu)+(v10-ssv)*(v10-ssv))
 
-   return
+   tx = tx*bio_drag_scale   
+   ty = ty*bio_drag_scale   
+#endif
+
    end subroutine flux_from_meteo
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Read short wave radiation, interpolate in time
-!
-! !INTERFACE:
-   subroutine read_swr(jul,secs,swr)
-!
-! !DESCRIPTION:
-!  This routine reads the short wave radiation (in W\,s$^{-2}$) from
-!  {\tt swr\_file} and interpolates in time.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: jul,secs
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE,intent(out)                :: swr
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer                   :: yy,mm,dd,hh,min,ss
-   REALTYPE                  :: t,alpha
-   REALTYPE, save            :: dt
-   integer, save             :: swr_jul1,swr_secs1
-   integer, save             :: swr_jul2,swr_secs2
-   REALTYPE, save            :: obs1(1),obs2(1)
-   integer                   :: rc
-!
-!-----------------------------------------------------------------------
-!BOC
-   if (init_saved_vars) then
-      swr_jul2  = 0
-      swr_secs2 = 0
-      obs2(1) = _ZERO_
-   end if
-!  This part initialise and read in new values if necessary.
-   if(time_diff(swr_jul2,swr_secs2,jul,secs) .lt. 0) then
-      do
-         swr_jul1 = swr_jul2
-         swr_secs1 = swr_secs2
-         obs1 = obs2
-         call read_obs(swr_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
-         call julian_day(yy,mm,dd,swr_jul2)
-         swr_secs2 = hh*3600 + min*60 + ss
-         if(time_diff(swr_jul2,swr_secs2,jul,secs) .gt. 0) EXIT
-      end do
-      dt = time_diff(swr_jul2,swr_secs2,swr_jul1,swr_secs1)
-   end if
-
-!  Do the time interpolation
-   t  = time_diff(jul,secs,swr_jul1,swr_secs1)
-   alpha = (obs2(1)-obs1(1))/dt
-   swr = (obs1(1) + t*alpha)*swr_factor
-
-   return
-   end subroutine read_swr
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Read heat flux data, interpolate in time
-!
-! !INTERFACE:
-   subroutine read_heat_flux(jul,secs,heat)
-!
-! !DESCRIPTION:
-!   For {\tt calc\_fluxes=.false.}, this routine reads in
-!   the sum of sensible, latent and long-wave back-radiation flux
-!   in W\,m$^{-2}$ from {\tt heatflux\_file} and interpolate in time.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: jul,secs
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE, intent(out)               :: heat
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer                   :: yy,mm,dd,hh,min,ss
-   REALTYPE                  :: t,alpha
-   REALTYPE, SAVE            :: dt
-   integer, save             :: heat_jul1,heat_secs1
-   integer, save             :: heat_jul2,heat_secs2
-   REALTYPE, save            :: obs1(1),obs2(1)
-   integer                   :: rc
-!
-!-----------------------------------------------------------------------
-!BOC
-   if (init_saved_vars) then
-      heat_jul2  = 0
-      heat_secs2 = 0
-      obs2(1) = _ZERO_
-   end if
-!  This part initialise and read in new values if necessary.
-   if(time_diff(heat_jul2,heat_secs2,jul,secs) .lt. 0) then
-      do
-         heat_jul1 = heat_jul2
-         heat_secs1 = heat_secs2
-         obs1 = obs2
-         call read_obs(heatflux_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
-         call julian_day(yy,mm,dd,heat_jul2)
-         heat_secs2 = hh*3600 + min*60 + ss
-         if(time_diff(heat_jul2,heat_secs2,jul,secs) .gt. 0) EXIT
-      end do
-      dt = time_diff(heat_jul2,heat_secs2,heat_jul1,heat_secs1)
-   end if
-
-!  Do the time interpolation
-   t  = time_diff(jul,secs,heat_jul1,heat_secs1)
-
-   alpha = (obs2(1)-obs1(1))/dt
-   heat = obs1(1) + t*alpha
-
-   return
-   end subroutine read_heat_flux
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Read momentum flux data, interpolate in time
-!
-! !INTERFACE:
-   subroutine read_momentum_flux(jul,secs,tx,ty)
-!
-! !DESCRIPTION:
-!   For {\tt calc\_fluxes=.false.}, this routine reads momentum fluxes
-!   in N\,m$^{-2}$ from \linebreak
-!   {\tt momentumflux\_file} and interpolates them in time.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer,intent(in)                  :: jul,secs
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE,intent(out)                :: tx,ty
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-! !LOCAL VARIABLES:
-   integer                   :: yy,mm,dd,hh,min,ss
-   REALTYPE                  :: t,alpha
-   REALTYPE, save            :: dt
-   integer, save             :: mom_jul1,mom_secs1
-   integer, save             :: mom_jul2,mom_secs2
-   REALTYPE, save            :: obs1(2),obs2(2)
-   integer                   :: rc
-!
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   if (init_saved_vars) then
-      mom_jul2  = 0
-      mom_secs2 = 0
-      obs2(2) = _ZERO_
-   end if
-!  This part initialise and read in new values if necessary.
-   if(time_diff(mom_jul2,mom_secs2,jul,secs) .lt. 0) then
-      do
-         mom_jul1 = mom_jul2
-         mom_secs1 = mom_secs2
-         obs1 = obs2
-         call read_obs(momentum_unit,yy,mm,dd,hh,min,ss,2,obs2,rc)
-         call julian_day(yy,mm,dd,mom_jul2)
-         mom_secs2 = hh*3600 + min*60 + ss
-         if(time_diff(mom_jul2,mom_secs2,jul,secs) .gt. 0) EXIT
-      end do
-      dt = time_diff(mom_jul2,mom_secs2,mom_jul1,mom_secs1)
-   end if
-
-!  Do the time interpolation
-   t  = time_diff(jul,secs,mom_jul1,mom_secs1)
-   alpha = (obs2(1)-obs1(1))/dt
-   tx = obs1(1) + t*alpha
-   alpha = (obs2(2)-obs1(2))/dt
-   ty = obs1(2) + t*alpha
-
-   return
-   end subroutine read_momentum_flux
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Read precipitation, interpolate in time
-!
-! !INTERFACE:
-   subroutine read_precip(jul,secs,precip)
-!
-! !DESCRIPTION:
-!  This routine reads the precipitation (in m\,s$^{-1}$) from
-!  {\tt precip\_file} and interpolates in time.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: jul,secs
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE,intent(out)                :: precip
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer                   :: yy,mm,dd,hh,min,ss
-   REALTYPE                  :: t,alpha
-   REALTYPE, save            :: dt
-   integer, save             :: precip_jul1,precip_secs1
-   integer, save             :: precip_jul2,precip_secs2
-   REALTYPE, save            :: obs1(1),obs2(1)
-   integer                   :: rc
-!
-!-----------------------------------------------------------------------
-!BOC
-   if (init_saved_vars) then
-      precip_jul2  = 0
-      precip_secs2 = 0
-      obs2(1) = _ZERO_
-   end if
-!  This part initialise and read in new values if necessary.
-   if(time_diff(precip_jul2,precip_secs2,jul,secs) .lt. 0) then
-      do
-         precip_jul1 = precip_jul2
-         precip_secs1 = precip_secs2
-         obs1 = obs2
-         call read_obs(precip_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
-         call julian_day(yy,mm,dd,precip_jul2)
-         precip_secs2 = hh*3600 + min*60 + ss
-         if(time_diff(precip_jul2,precip_secs2,jul,secs) .gt. 0) EXIT
-      end do
-      dt = time_diff(precip_jul2,precip_secs2,precip_jul1,precip_secs1)
-   end if
-
-!  Do the time interpolation
-   t  = time_diff(jul,secs,precip_jul1,precip_secs1)
-   alpha = (obs2(1)-obs1(1))/dt
-   precip = (obs1(1) + t*alpha)*precip_factor
-
-   return
-   end subroutine read_precip
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Read SST, interpolate in time
-!
-! !INTERFACE:
-   subroutine read_sst(jul,secs,sst)
-!
-! !DESCRIPTION:
-!   For {\tt calc\_fluxes=.false.}, this routine reads sea surface
-!   temperature (SST) from {\tt sst\_file}
-!  and interpolates in time.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: jul,secs
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE,intent(out)                :: sst
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer                   :: yy,mm,dd,hh,min,ss
-   REALTYPE                  :: t,alpha
-   REALTYPE, save            :: dt
-   integer, save             :: sst_jul1,sst_secs1
-   integer, save             :: sst_jul2,sst_secs2
-   REALTYPE, save            :: obs1(1),obs2(1)
-   integer                   :: rc
-!
-!-----------------------------------------------------------------------
-!BOC
-   if (init_saved_vars) then
-     sst_jul2  = 0
-     sst_secs2 = 0
-     obs2(1) = _ZERO_
-   end if
-!  This part initialise and read in new values if necessary.
-   if(time_diff(sst_jul2,sst_secs2,jul,secs) .lt. 0) then
-      do
-         sst_jul1 = sst_jul2
-         sst_secs1 = sst_secs2
-         obs1 = obs2
-         call read_obs(sst_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
-         call julian_day(yy,mm,dd,sst_jul2)
-         sst_secs2 = hh*3600 + min*60 + ss
-         if(time_diff(sst_jul2,sst_secs2,jul,secs) .gt. 0) EXIT
-      end do
-      dt = time_diff(sst_jul2,sst_secs2,sst_jul1,sst_secs1)
-   end if
-
-!  Do the time interpolation
-   t  = time_diff(jul,secs,sst_jul1,sst_secs1)
-   alpha = (obs2(1)-obs1(1))/dt
-   sst = obs1(1) + t*alpha
-
-   return
-   end subroutine read_sst
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Read SSS, interpolate in time
-!
-! !INTERFACE:
-   subroutine read_sss(jul,secs,sss)
-!
-! !DESCRIPTION:
-!   For {\tt calc\_fluxes=.false.}, this routine reads sea surface
-!   salinity (SSS) from {\tt sss\_file}
-!  and interpolates in time.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: jul,secs
-!
-! !OUTPUT PARAMETERS:
-   REALTYPE,intent(out)                :: sss
-!
-! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer                   :: yy,mm,dd,hh,min,ss
-   REALTYPE                  :: t,alpha
-   REALTYPE, save            :: dt
-   integer, save             :: sss_jul1,sss_secs1
-   integer, save             :: sss_jul2,sss_secs2
-   REALTYPE, save            :: obs1(1),obs2(1)
-   integer                   :: rc
-!
-!-----------------------------------------------------------------------
-!BOC
-   if (init_saved_vars) then
-      sss_jul2  = 0
-      sss_secs2 = 0
-      obs2(1) = _ZERO_
-   end if
-!  This part initialise and read in new values if necessary.
-   if(time_diff(sss_jul2,sss_secs2,jul,secs) .lt. 0) then
-      do
-         sss_jul1 = sss_jul2
-         sss_secs1 = sss_secs2
-         obs1 = obs2
-         call read_obs(sss_unit,yy,mm,dd,hh,min,ss,1,obs2,rc)
-         call julian_day(yy,mm,dd,sss_jul2)
-         sss_secs2 = hh*3600 + min*60 + ss
-         if(time_diff(sss_jul2,sss_secs2,jul,secs) .gt. 0) EXIT
-      end do
-      dt = time_diff(sss_jul2,sss_secs2,sss_jul1,sss_secs1)
-   end if
-
-!  Do the time interpolation
-   t  = time_diff(jul,secs,sss_jul1,sss_secs1)
-   alpha = (obs2(1)-obs1(1))/dt
-   sss = obs1(1) + t*alpha
-
-   return
-   end subroutine read_sss
 !EOC
 
 !-----------------------------------------------------------------------
@@ -1308,7 +896,6 @@
    LEVEL2 'int_swr,int_heat,int_total',int_swr,int_heat,int_total
    LEVEL2 'cloud',cloud
 
-   LEVEL2 'init_saved_vars',init_saved_vars
    LEVEL2 'swr_method',swr_method
    LEVEL2 'fluxes_method',fluxes_method
    LEVEL2 'back_radiation_method',back_radiation_method
@@ -1333,7 +920,6 @@
    LEVEL2 'u10,v10',u10,v10
    LEVEL2 'airp',airp
    LEVEL2 'airt,twet,tdew',airt,twet,tdew
-   LEVEL2 'cloud_obs',cloud_obs
    LEVEL2 'rh',rh
 
    LEVEL2 'const_swr',const_swr

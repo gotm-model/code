@@ -67,7 +67,7 @@ $(SUBDIRS):
 
 observations airsea meanflow turbulence output input: util
 
-observations: input
+observations airsea: input
 
 features:
 ifdef FEATURES

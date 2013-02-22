@@ -46,7 +46,7 @@
 !  surface fluxes
    integer                                      :: surface_flux_method
    integer                                      :: n_surface_fluxes
-   REALTYPE, dimension(:)         , allocatable :: sfl_read
+   REALTYPE, dimension(:),target  , allocatable :: sfl_read
    REALTYPE, dimension(:)         , allocatable :: sfl,bfl
    integer , dimension(:)         , allocatable :: posconc
    logical , dimension(:)         , allocatable :: mussels_inhale

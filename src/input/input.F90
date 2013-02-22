@@ -17,6 +17,7 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_input, do_input, close_input, register_input_0d, register_input_1d
+   public read_obs
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -33,12 +34,14 @@
       integer                            :: index = -1     ! Column index of variable in input file
       REALTYPE, pointer,dimension(:)     :: data => null() ! Pointer to profile data (depth-dependent variable)
       type (type_1d_variable),pointer    :: next => null() ! Next variable in current input file
+      REALTYPE                           :: scale_factor = _ONE_
    end type
 
    type type_0d_variable
-      integer                           :: index = -1     ! Column index of variable in input file
-      REALTYPE,pointer                  :: data => null() ! Pointer to scalar data (depth-independent variable)
-      type (type_0d_variable),pointer   :: next => null() ! Next variable in current input file
+      integer                            :: index = -1     ! Column index of variable in input file
+      REALTYPE,pointer                   :: data => null() ! Pointer to scalar data (depth-independent variable)
+      type (type_0d_variable),pointer    :: next => null() ! Next variable in current input file
+      REALTYPE                           :: scale_factor = _ONE_
    end type
 
 !  Information on file with observed profiles
@@ -128,14 +131,15 @@
 ! !IROUTINE: Register a 1d input variable.
 !
 ! !INTERFACE:
-   subroutine register_input_1d(path,icolumn,data)
+   subroutine register_input_1d(path,icolumn,data,scale_factor)
 !
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
-   character(len=*),intent(in) :: path
-   integer,         intent(in) :: icolumn
-   REALTYPE,target             :: data(:)
+   character(len=*), intent(in) :: path
+   integer,          intent(in) :: icolumn
+   REALTYPE,target              :: data(:)
+   REALTYPE,optional,intent(in) :: scale_factor
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -187,6 +191,7 @@
    variable%index = icolumn
    variable%data => data
    variable%data = _ZERO_
+   if (present(scale_factor)) variable%scale_factor = scale_factor
 
    end subroutine register_input_1d
 !EOC
@@ -197,14 +202,15 @@
 ! !IROUTINE: Register a 0d input variable.
 !
 ! !INTERFACE:
-   subroutine register_input_0d(path,icolumn,data)
+   subroutine register_input_0d(path,icolumn,data,scale_factor)
 !
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
-   character(len=*),intent(in) :: path
-   integer,         intent(in) :: icolumn
-   REALTYPE,target             :: data
+   character(len=*), intent(in) :: path
+   integer,          intent(in) :: icolumn
+   REALTYPE,target              :: data
+   REALTYPE,optional,intent(in) :: scale_factor
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -256,6 +262,7 @@
    variable%index = icolumn
    variable%data => data
    variable%data = _ZERO_
+   if (present(scale_factor)) variable%scale_factor = scale_factor
 
    end subroutine register_input_0d
 !EOC
@@ -334,7 +341,7 @@
 !-----------------------------------------------------------------------
 !BOC
 !  Open the input file.
-   open(next_unit_no,file=info%path,status='old',err=80)
+   open(next_unit_no,file=info%path,status='old',action='read',err=80)
 
 !  Opening was successful - store the file unit, and increment the next unit with 1.
    info%unit = next_unit_no
@@ -420,7 +427,7 @@
                info%one_profile = .true.
                curvar => info%first_variable
                do while (associated(curvar))
-                  curvar%data = info%prof1(:,curvar%index)
+                  curvar%data = curvar%scale_factor*info%prof1(:,curvar%index)
                   curvar => curvar%next
                end do
             else
@@ -446,7 +453,7 @@
       t = time_diff(jul,secs,info%jul1,info%secs1)
       curvar => info%first_variable
       do while (associated(curvar))
-         curvar%data = info%prof1(:,curvar%index) + t*info%alpha(:,curvar%index)
+         curvar%data = curvar%scale_factor*(info%prof1(:,curvar%index) + t*info%alpha(:,curvar%index))
          curvar => curvar%next
       end do
    end if
@@ -481,7 +488,7 @@
 !-----------------------------------------------------------------------
 !BOC
 !  Open the input file.
-   open(next_unit_no,file=info%path,status='old',err=80)
+   open(next_unit_no,file=info%path,status='old',action='read',err=80)
 
 !  Opening was successful - store the file unit, and increment the next unit with 1.
    info%unit = next_unit_no
@@ -571,7 +578,7 @@
    t  = time_diff(jul,secs,info%jul1,info%secs1)
    curvar => info%first_variable
    do while (associated(curvar))
-      curvar%data = info%obs1(curvar%index) + t*info%alpha(curvar%index)
+      curvar%data = curvar%scale_factor*(info%obs1(curvar%index) + t*info%alpha(curvar%index))
       curvar => curvar%next
    end do
 

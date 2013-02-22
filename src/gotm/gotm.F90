@@ -223,6 +223,7 @@
 #endif
    call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
                           depth,nlev,z,h,gravity,rho_0)
+   call get_all_obs(julianday,secondsofday,nlev,z)
 
 !  Call do_input to make sure observed profiles are up-to-date.
    call do_input(julianday,secondsofday,nlev,z)
@@ -429,7 +430,6 @@
       if (bio_calc) then
          call set_env_bio(nlev,dt,-depth0,u_taub,h,t,s,rho,nuh,rad,wind,I_0, &
                           secondsofday,w,w_adv_discr,npar)
-         call do_bio_fluxes(julianday,secondsofday)
          call do_bio()
          call get_bio_updates(nlev,bioshade)
       end if
