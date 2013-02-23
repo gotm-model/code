@@ -585,8 +585,6 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
-   integer(8) :: clock,ticks_per_sec
-   REALTYPE :: tick_rate
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -670,12 +668,12 @@
          meteo_secs2 = hh*3600 + min*60 + ss
          if(time_diff(meteo_jul2,meteo_secs2,jul,secs) .gt. 0) EXIT
       end do
-      u10       = obs(1)*wind_factor
-      v10       = obs(2)*wind_factor
-      airp      = obs(3)*100. !kbk mbar/hPa --> Pa
-      airt      = obs(4)
-      rh        = obs(5)
-      cloud     = obs(6)
+      u10   = obs(1)*wind_factor
+      v10   = obs(2)*wind_factor
+      airp  = obs(3)*100. !kbk mbar/hPa --> Pa
+      airt  = obs(4)
+      rh    = obs(5)
+      cloud = obs(6)
 
       if (sst .lt. 100.) then
          tw  = sst
@@ -693,33 +691,26 @@
          ta_k = airt
       end if
 
-      if (init_saved_vars) then
-         call humidity(hum_method,rh,airp,tw,ta)
-         call back_radiation(back_radiation_method, &
-                             dlat,tw_k,ta_k,cloud,qb)
-         call airsea_fluxes(fluxes_method, &
-                            tw,ta,u10-ssu,v10-ssv,precip,evap,tx1,ty1,qe,qh)
-         h1     = qb+qe+qh
-         cloud1 = cloud
+      h1     = h2
+      tx1    = tx2
+      ty1    = ty2
+      cloud1 = cloud2
 
-         h2     = h1
-         tx2    = tx1
-         ty2    = ty1
-         cloud2 = cloud1
-      else
+      call humidity(hum_method,rh,airp,tw,ta)
+      call back_radiation(back_radiation_method, &
+                          dlat,tw_k,ta_k,cloud,qb)
+      call airsea_fluxes(fluxes_method, &
+                         tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
+      h2     = qb+qe+qh
+      cloud2 = cloud
+
+      if (init_saved_vars) then
          h1     = h2
          tx1    = tx2
          ty1    = ty2
          cloud1 = cloud2
-
-         call humidity(hum_method,rh,airp,tw,ta)
-         call back_radiation(back_radiation_method, &
-                             dlat,tw_k,ta_k,cloud,qb)
-         call airsea_fluxes(fluxes_method, &
-                            tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
-         h2     = qb+qe+qh
-         cloud2 = cloud
       end if
+
       dt = time_diff(meteo_jul2,meteo_secs2,meteo_jul1,meteo_secs1)
       alpha(2) = (h2-h1)/dt
       alpha(3) = (tx2-tx1)/dt
@@ -756,12 +747,12 @@
    call airsea_fluxes(fluxes_method, &
                       tw,ta,u10-ssu,v10-ssv,precip,evap,tx,ty,qe,qh)
    heat = (qb+qe+qh)
+#endif
 
    w = sqrt((u10-ssu)*(u10-ssu)+(v10-ssv)*(v10-ssv))
 
    tx = tx*bio_drag_scale   
    ty = ty*bio_drag_scale   
-#endif
 
    end subroutine flux_from_meteo
 !EOC
