@@ -70,7 +70,8 @@
 
 !  sea surface temperature (degC), sea surface salinity (psu),
 !  sea surface current components (m/s)
-   REALTYPE, public, target            :: sst
+   REALTYPE, public                    :: sst
+   REALTYPE, public, target            :: sst_obs
    REALTYPE, public, target            :: sss
    REALTYPE, public                    :: ssu
    REALTYPE, public                    :: ssv
@@ -290,8 +291,9 @@
    evap   = _ZERO_
 
 !  sea surface temperature (degC) and sea surface salinity (psu)
-   sst = _ZERO_
-   sss = _ZERO_
+   sst     = _ZERO_
+   sst_obs = _ZERO_   
+   sss     = _ZERO_
 
 !  sea surface velocities (m/s)
    ssu = _ZERO_
@@ -465,7 +467,7 @@
 !     The sea surface temperature
       select case (sst_method)
          case (FROMFILE)
-            call register_input_0d(sst_file,1,sst)
+            call register_input_0d(sst_file,1,sst_obs)
             LEVEL2 'Reading sea surface temperature from:'
             LEVEL3 trim(sst_file)
          case default
@@ -548,7 +550,7 @@
 !     Calculate bulk fluxes from meteorological conditions and surface state (sst,ssu,ssv).
       call flux_from_meteo(jul,secs)
 
-!    Optionally calculate surface shortwave radiation from location, time, cloud cover.
+!     Optionally calculate surface shortwave radiation from location, time, cloud cover.
       if (swr_method .eq. 3) then
          I_0 = short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo)
       end if
@@ -558,6 +560,10 @@
          tx = const_tx*bio_drag_scale
          ty = const_ty*bio_drag_scale
       end if
+
+!     If reading SST from file, overwrite current (model) SST with observed value,
+!     to be used in output.
+      if (sst_method==FROMFILE) sst = sst_obs
    end if
 
 #ifndef INTERPOLATE_METEO   
@@ -882,7 +888,7 @@
    LEVEL2 'heat',heat
    LEVEL2 'tx,ty',tx,ty
    LEVEL2 'precip,evap',precip,evap
-   LEVEL2 'sst,sss',sst,sss
+   LEVEL2 'sst,sst_obs,sss',sst,sst_obs,sss
    LEVEL2 'ssu,ssv',ssu,ssv
    LEVEL2 'int_swr,int_heat,int_total',int_swr,int_heat,int_total
    LEVEL2 'cloud',cloud
