@@ -241,9 +241,9 @@
       call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
    endif
 
-   call init_output(title,nlev,latitude,longitude)
    call init_air_sea(namlst,latitude,longitude)
 
+   call init_output(title,nlev,latitude,longitude)
 
 !  initialize BIO module
 #ifdef BIO
