@@ -82,7 +82,6 @@
    integer :: next_unit_no
 !
 !  PRIVATE PARAMETERS
-   integer,parameter :: max_variable_count_per_file = 256
    integer,parameter :: first_unit_no = 555
    
    integer :: nlev
@@ -347,7 +346,7 @@
    info%unit = next_unit_no
    next_unit_no = next_unit_no + 1
    
-!  Determine the maximum number of column that we need to read.
+!  Determine the maximum number of columns that we need to read.
    nvar = 0
    curvar => info%first_variable
    do while (associated(curvar))
@@ -494,7 +493,7 @@
    info%unit = next_unit_no
    next_unit_no = next_unit_no + 1
 
-!  Determine the maximum number of column that we need to read.
+!  Determine the maximum number of columns that we need to read.
    nvar = 0
    curvar => info%first_variable
    do while (associated(curvar))
