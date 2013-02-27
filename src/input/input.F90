@@ -85,7 +85,6 @@
    integer,parameter :: first_unit_no = 555
    
    integer :: nlev
-   character(len=128) :: cbuf
 
    integer, parameter :: END_OF_FILE=-1
    integer, parameter :: READ_ERROR=-2
@@ -687,16 +686,28 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                   :: i,ios
+   logical                   :: data_ok
    character                 :: c1,c2,c3,c4
-   integer                   :: i
-!
+   character(len=128)        :: cbuf
 !-----------------------------------------------------------------------
 !BOC
-   ierr=0
-   read(unit,'(A128)',ERR=100,END=110) cbuf
-   read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
-   read(cbuf(20:),*,ERR=100,END=110) (obs(i),i=1,N)
+   ios=0
+   data_ok=.false.
+   do while (ios .eq. 0 .and. .not. data_ok)
+      read(unit,'(A128)',iostat=ios,ERR=100,END=110) cbuf
+      if (cbuf(1:1) == '#' .or. cbuf(1:1) == '!' .or. &
+          len(trim(cbuf)) == 0 ) then
+         data_ok=.false.
+      else
+         read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
+         read(cbuf(20:),*,ERR=100,END=110) (obs(i),i=1,N)
+         data_ok=.true.
+      end if
+   end do
+   data_ok=.false.
 
+   ierr=ios
    return
 100 ierr=READ_ERROR
    return
@@ -744,18 +755,30 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
+   integer                   :: ios
+   logical                   :: data_ok
    character                 :: c1,c2,c3,c4
    integer                   :: i,j,rc
    integer                   :: N,up_down
    REALTYPE,allocatable,dimension(:)   :: tmp_depth
    REALTYPE,allocatable,dimension(:,:) :: tmp_profs
-!
+   character(len=128)        :: cbuf
+   integer                   :: idx1,idx2,stride
 !-----------------------------------------------------------------------
 !BOC
-   ierr=0
-   read(unit,'(A72)',ERR=100,END=110) cbuf
-   read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
-   read(cbuf(20:),*,ERR=100,END=110) N,up_down
+   ios=0
+   data_ok=.false.
+   do while (ios .eq. 0 .and. .not. data_ok)
+      read(unit,'(A128)',iostat=ios,ERR=100,END=110) cbuf
+      if (cbuf(1:1) == '#' .or. cbuf(1:1) == '!' .or. &
+          len(trim(cbuf)) == 0 ) then
+         data_ok=.false.
+      else
+         read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
+         read(cbuf(20:),*,ERR=100,END=110) N,up_down
+         data_ok=.true.
+      end if
+   end do
 
    lines = lines+1
 
@@ -765,22 +788,33 @@
    if (rc /= 0) stop 'read_profiles: Error allocating memory (tmp_profs)'
 
    if(up_down .eq. 1) then
-      do i=1,N
-         lines = lines+1
-         read(unit,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,cols)
-      end do
+      idx1=1; idx2 = N; stride=1
    else
-      do i=N,1,-1
-         lines = lines+1
-         read(unit,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,cols)
-      end do
+      idx1=N; idx2 = 1; stride=-1
    end if
+
+   do i=idx1,idx2,stride
+      ios=0
+      data_ok=.false.
+      do while (ios .eq. 0 .and. .not. data_ok)
+         read(unit,'(A128)',iostat=ios,ERR=100,END=110) cbuf
+         lines = lines+1
+         if (cbuf(1:1) == '#' .or. cbuf(1:1) == '!' .or. &
+             len(trim(cbuf)) == 0 ) then
+            data_ok=.false.
+         else
+            read(cbuf,*,ERR=100,END=110) tmp_depth(i),(tmp_profs(i,j),j=1,cols)
+            data_ok=.true.
+         end if
+      end do
+   end do
 
    call gridinterpol(N,cols,tmp_depth,tmp_profs,nlev,z,profiles)
 
    deallocate(tmp_depth)
    deallocate(tmp_profs)
 
+   ierr=ios
    return
 100 ierr=READ_ERROR
    return
@@ -794,7 +828,6 @@
 !-----------------------------------------------------------------------
 
    end module input
-
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
