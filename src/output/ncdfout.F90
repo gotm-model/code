@@ -415,9 +415,9 @@
       case (1) ! relative humidity in % given
          iret = set_attributes(ncid,hum_id,units='%',long_name='relative humidity')
       case (2)  ! Specific humidity from wet bulb temperature
-         iret = set_attributes(ncid,hum_id,units='celcius',long_name='wet bulb temperature')
+         iret = set_attributes(ncid,hum_id,units='celsius',long_name='wet bulb temperature')
       case (3)  ! Specific humidity from dew point temperature
-         iret = set_attributes(ncid,hum_id,units='celcius',long_name='dew point')
+         iret = set_attributes(ncid,hum_id,units='celsius',long_name='dew point')
    end select
    iret = set_attributes(ncid,cloud_id,units='%',long_name='cloud cover')
    iret = set_attributes(ncid,zeta_id,units='m',long_name='sea surface elevation')

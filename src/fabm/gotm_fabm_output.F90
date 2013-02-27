@@ -16,6 +16,7 @@
 !
 ! !USES:
    use gotm_fabm
+   use gotm_fabm_input
    use fabm
    use fabm_types
 
@@ -61,7 +62,7 @@ contains
 !
 ! !LOCAL VARIABLES:
    integer :: iret,n
-   type (type_obs),pointer :: cur_obs
+   type (type_input_variable),       pointer :: cur_obs_variable
    character(len=64) :: name
 !
 !-----------------------------------------------------------------------
@@ -89,7 +90,7 @@ contains
                                    dim4d,model%info%state_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables(n)%externalid,       &
                                   units=trim(model%info%state_variables(n)%units),    &
-                                  long_name=trim(model%info%state_variables(n)%longname), &
+                                  long_name=trim(model%info%state_variables(n)%long_name), &
                                   missing_value=model%info%state_variables(n)%missing_value)
          end do
 
@@ -99,7 +100,7 @@ contains
                                    dim4d,model%info%diagnostic_variables(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables(n)%externalid,    &
                                   units=trim(model%info%diagnostic_variables(n)%units),        &
-                                  long_name=trim(model%info%diagnostic_variables(n)%longname), &
+                                  long_name=trim(model%info%diagnostic_variables(n)%long_name), &
                                   missing_value=model%info%diagnostic_variables(n)%missing_value)
          end do
 
@@ -109,7 +110,7 @@ contains
                                    dim3d,model%info%state_variables_ben(n)%externalid)
             iret = set_attributes(ncid,model%info%state_variables_ben(n)%externalid,    &
                                   units=trim(model%info%state_variables_ben(n)%units),        &
-                                  long_name=trim(model%info%state_variables_ben(n)%longname), &
+                                  long_name=trim(model%info%state_variables_ben(n)%long_name), &
                                   missing_value=model%info%state_variables_ben(n)%missing_value)
          end do
 
@@ -119,7 +120,7 @@ contains
                                    dim3d,model%info%diagnostic_variables_hz(n)%externalid)
             iret = set_attributes(ncid,model%info%diagnostic_variables_hz(n)%externalid,    &
                                   units=trim(model%info%diagnostic_variables_hz(n)%units),        &
-                                  long_name=trim(model%info%diagnostic_variables_hz(n)%longname), &
+                                  long_name=trim(model%info%diagnostic_variables_hz(n)%long_name), &
                                   missing_value=model%info%diagnostic_variables_hz(n)%missing_value)
          end do
 
@@ -129,22 +130,23 @@ contains
                                    dim3d,model%info%conserved_quantities(n)%externalid)
             iret = set_attributes(ncid,model%info%conserved_quantities(n)%externalid,      &
                                   units='m*'//trim(model%info%conserved_quantities(n)%units),    &
-                                  long_name=trim(model%info%conserved_quantities(n)%longname)//', depth-integrated')
+                                  long_name=trim(model%info%conserved_quantities(n)%long_name)//', depth-integrated')
          end do
 
-         ! Add a NetCDF variable for each variable read from an external source [input file].
+         ! If requested, add a NetCDF variable for each variable read from an external source [input file].
          if (save_inputs) then
-            cur_obs => first_obs
-            do while (associated(cur_obs))
-               name = fabm_get_variable_name(model,cur_obs%id,cur_obs%shape)
-               select case (cur_obs%shape)
-                  case (shape_full)
-                     iret = new_nc_variable(ncid,trim(name),NF90_REAL,dim4d,cur_obs%ncid)
-                  case (shape_hz,shape_scalar)
-                     iret = new_nc_variable(ncid,trim(name),NF90_REAL,dim3d,cur_obs%ncid)
-               end select
-               cur_obs => cur_obs%next
-            end do
+            ! Enumerate profile (depth-dependent) inputs and create corresponding NetCDF variables.
+            cur_obs_variable => first_input_variable
+            do while (associated(cur_obs_variable))
+               if (allocated(cur_obs_variable%data_1d)) then
+                  iret = new_nc_variable(ncid,trim(cur_obs_variable%name),NF90_REAL,dim4d,cur_obs_variable%ncid)
+               else
+                  iret = new_nc_variable(ncid,trim(cur_obs_variable%name),NF90_REAL,dim3d,cur_obs_variable%ncid)
+               end if
+               iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_file',trim(cur_obs_variable%path))
+               iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_column',cur_obs_variable%index)
+               cur_obs_variable => cur_obs_variable%next
+            end do               
          end if
 
          ! Take NetCDF library out of define mode (ready for storing data).
@@ -171,7 +173,7 @@ contains
 ! !USES:
    use output,  only: nsave,out_fmt
 #ifdef NETCDF_FMT
-   use ncdfout, only: ncid
+   use ncdfout, only: ncid,set_no
    use ncdfout, only: store_data
 #endif
 
@@ -188,8 +190,8 @@ contains
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer :: iret,n
-   type (type_obs),pointer :: cur_obs
+   integer :: iret,n,start(4),edges(4)
+   type (type_input_variable),       pointer :: cur_obs_variable
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -198,15 +200,19 @@ contains
    select case (out_fmt)
       case (NETCDF)
 #ifdef NETCDF_FMT
+         
+         ! ---------------------------
+         ! Depth-dependent variables
+         ! ---------------------------
+
+         start(1) = 1;      edges(1) = 1
+         start(2) = 1;      edges(2) = 1
+         start(3) = 1;      edges(3) = nlev
+         start(4) = set_no; edges(4) = 1
+
          ! Store pelagic biogeochemical state variables.
          do n=1,size(model%info%state_variables)
-            iret = store_data(ncid,model%info%state_variables(n)%externalid,XYZT_SHAPE,nlev,array=cc(n,0:nlev))
-         end do
-
-         ! Store benthic biogeochemical state variables.
-         do n=1,size(model%info%state_variables_ben)
-            iret = store_data(ncid,model%info%state_variables_ben(n)%externalid,XYT_SHAPE,1, &
-                            & scalar=cc(size(model%info%state_variables)+n,1))
+            iret = nf90_put_var(ncid,model%info%state_variables(n)%externalid,cc(n,1:nlev),start,edges)
          end do
 
          ! Process and store diagnostic variables defined on the full domain.
@@ -216,12 +222,30 @@ contains
                cc_diag(n,1:nlev) = cc_diag(n,1:nlev)/(nsave*dt)
 
             ! Store diagnostic variable values.
-            iret = store_data(ncid,model%info%diagnostic_variables(n)%externalid,XYZT_SHAPE,nlev,array=cc_diag(n,0:nlev))
+            iret = nf90_put_var(ncid,model%info%diagnostic_variables(n)%externalid,cc_diag(n,1:nlev),start,edges)
 
             ! Reset diagnostic variables to zero if they will be time-integrated (or time-averaged).
             if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged .or. &
                 model%info%diagnostic_variables(n)%time_treatment==time_treatment_step_integrated) &
                cc_diag(n,1:nlev) = _ZERO_
+         end do
+
+         ! Enumerate profile (depth-dependent) inputs and save corresponding data.
+         cur_obs_variable => first_input_variable
+         do while (associated(cur_obs_variable))
+            if (cur_obs_variable%ncid/=-1.and.allocated(cur_obs_variable%data_1d)) &
+               iret = nf90_put_var(ncid,cur_obs_variable%ncid,cur_obs_variable%data_1d(1:nlev),start,edges)
+            cur_obs_variable => cur_obs_variable%next
+         end do               
+
+         ! ---------------------------
+         ! Depth-independent variables
+         ! ---------------------------
+
+         ! Store benthic biogeochemical state variables.
+         do n=1,size(model%info%state_variables_ben)
+            iret = store_data(ncid,model%info%state_variables_ben(n)%externalid,XYT_SHAPE,1, &
+                            & scalar=cc(size(model%info%state_variables)+n,1))
          end do
 
          ! Process and store diagnostic variables defined on horizontal slices of the domain.
@@ -239,19 +263,13 @@ contains
                cc_diag_hz(n) = _ZERO_
          end do
 
-         ! Store values for each variable read from an external source [input file].
-         if (save_inputs) then
-            cur_obs => first_obs
-            do while (associated(cur_obs))
-               select case (cur_obs%shape)
-                  case (shape_full)
-                     iret = store_data(ncid,cur_obs%ncid,XYZT_SHAPE,1,array=cur_obs%data_1d)
-                  case (shape_hz,shape_scalar)
-                     iret = store_data(ncid,cur_obs%ncid,XYT_SHAPE,1,scalar=cur_obs%data_0d)
-               end select
-               cur_obs => cur_obs%next
-            end do
-         end if
+         ! Enumerate scalar (depth-independent) inputs and save corresponding data.
+         cur_obs_variable => first_input_variable
+         do while (associated(cur_obs_variable))
+            if (cur_obs_variable%ncid/=-1.and..not.allocated(cur_obs_variable%data_1d)) &
+               iret = store_data(ncid,cur_obs_variable%ncid,XYT_SHAPE,1,scalar=cur_obs_variable%data_0d)
+            cur_obs_variable => cur_obs_variable%next
+         end do
 
          ! Integrate conserved quantities over depth.
 #ifdef _FABM_USE_1D_LOOP_

@@ -7,7 +7,10 @@ import xmlstore.datatypes,core.scenario,core.simulator
 def run(scenariopath):
     # Load scenario.
     scen = core.scenario.Scenario.fromSchemaName(core.simulator.gotmscenarioversion)
-    scen.loadAll(scenariopath)
+    if scenariopath.endswith('.xml'):
+        scen.load(scenariopath)
+    else:
+        scen.loadAll(scenariopath)
     
     # Simulate
     res = core.simulator.simulate(scen,progresscallback=None,redirect=True)
@@ -24,7 +27,7 @@ def run(scenariopath):
     f = open(res.datafile,'rb')
     m = hashlib.md5()
     cursize = 0
-    while True:
+    while 1:
         dat = f.read(m.block_size)
         if not dat: break
         cursize += len(dat)
@@ -96,7 +99,7 @@ def linearrun(scenariopaths,nsim=1):
 
 def stresstest(scenariopaths):
     import random
-    while True:
+    while 1:
         valid = test(random.choice(scenariopaths))
         if not valid: return False
     return True
@@ -133,7 +136,7 @@ if __name__=='__main__':
                 arg += ['--cache',options.cache]
             ret = subprocess.call(arg,shell=True)
             if ret!=0:
-                print 'Error occured cduring pristine runs. Exiting...'
+                print 'Error occured during pristine runs. Exiting...'
                 sys.exit(1)
         sys.exit(0)
     
@@ -148,7 +151,7 @@ if __name__=='__main__':
         valid = stresstest(paths)
     else:
         print 'Iteratively testing %i scenarios.' % len(paths)
-        while True:
+        while 1:
             valid = linearrun(paths,options.repeat)
             if not (valid and options.loop): break
             print 'Looping...'

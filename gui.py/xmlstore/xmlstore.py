@@ -1470,6 +1470,9 @@ class TypedStore(util.referencedobject):
             if util.verbose: print 'Value file "%s" has version "%s"; starting conversion to "%s".' % (path,version,targetstore.version)
             tempstore = cls.fromSchemaName(version)
             tempstore.setStore(valuedom)
+            if container is not None:
+                tempstore.setContainer(container)
+                container.release()
             tempstore.convert(targetstore)
             tempstore.release()
             targetstore.originalversion = version

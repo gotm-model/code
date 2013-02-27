@@ -19,7 +19,7 @@
 !  suggestions of \cite{Fairalletal96b}.
 !
 !  The air temperature {\tt airt} and the sea surface temperature
-!  {\tt sst} may be given in Kelvin or Celcius:
+!  {\tt sst} may be given in Kelvin or Celsius:
 !  if they are $>$ 100 - Kelvin is assumed.
 !
 !  This piece of code has been adapted from the COARE code originally

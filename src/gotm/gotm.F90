@@ -34,6 +34,7 @@
 !
 ! !USES:
    use meanflow
+   use input
    use observations
    use time
 
@@ -70,7 +71,7 @@
 #endif
 #ifdef _FABM_
    use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm
-   use gotm_fabm_input,only:init_gotm_fabm_input,do_gotm_fabm_input
+   use gotm_fabm_input,only:init_gotm_fabm_input
    use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output
 #endif
 
@@ -204,6 +205,7 @@
    LEVEL2 trim(name)
 
    LEVEL2 'initializing modules....'
+   call init_input(nlev)
    call init_time(MinN,MaxN)
    call init_eqstate(namlst)
    close (namlst)
@@ -224,6 +226,10 @@
 #endif
    call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
                           depth,nlev,z,h,gravity,rho_0)
+   call get_all_obs(julianday,secondsofday,nlev,z)
+
+!  Call do_input to make sure observed profiles are up-to-date.
+   call do_input(julianday,secondsofday,nlev,z)
 
    call init_turbulence(namlst,'gotmturb.nml',nlev)
 
@@ -238,9 +244,9 @@
       call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
    endif
 
-   call init_output(title,nlev,latitude,longitude)
    call init_air_sea(namlst,latitude,longitude)
 
+   call init_output(title,nlev,latitude,longitude)
 
 !  initialize BIO module
 #ifdef BIO
@@ -277,9 +283,6 @@
 !  Initialize FABM input (data files with observations)
    call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
 
-!  Read observations on FABM variables for the first time.
-   call do_gotm_fabm_input(julianday,secondsofday,nlev,z)
-
 !  Initialize FABM output (creates NetCDF variables)
    call init_gotm_fabm_output()
 
@@ -290,7 +293,13 @@
                           A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
                           bio_albedo,bio_drag_scale)
 
-!  Initialize FABM initial state (this is done after the first call to do_gotm_fabm_input,
+#endif
+
+   call do_input(julianday,secondsofday,nlev,z)
+
+#ifdef _FABM_
+
+!  Initialize FABM initial state (this is done after the first call to do_input,
 !  to allow user-specified observed values to be used as initial state)
    call init_gotm_fabm_state()
 
@@ -371,6 +380,7 @@
       call prepare_output(n)
 
 !     all observations/data
+      call do_input(julianday,secondsofday,nlev,z)
       call get_all_obs(julianday,secondsofday,nlev,z)
 
 !     external forcing
@@ -425,13 +435,11 @@
       if (bio_calc) then
          call set_env_bio(nlev,dt,-depth0,u_taub,h,t,s,rho,nuh,rad,wind,I_0, &
                           secondsofday,w,w_adv_discr,npar)
-         call do_bio_fluxes(julianday,secondsofday)
          call do_bio()
          call get_bio_updates(nlev,bioshade)
       end if
 #endif
 #ifdef _FABM_
-      call do_gotm_fabm_input(julianday,secondsofday,nlev,z)
       call do_gotm_fabm(nlev)
 #endif
 
@@ -552,6 +560,8 @@
 #ifdef _FABM_
    call clean_gotm_fabm()
 #endif
+
+   call close_input()
 
    return
    end subroutine clean_up

@@ -212,7 +212,7 @@
             call do_ascii_out(nlev,ts,ascii_unit)
 #ifdef NETCDF_FMT
          case (NETCDF, GRADS)
-            if (sync_out .ne. 0 .and. mod(n,nsave*sync_out) .eq. 0) then
+            if (sync_out .ne. 0 .and. mod(n,int(nsave*sync_out,kind=8)) .eq. 0) then
                sync = .true.
             else
                sync = .false.

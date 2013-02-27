@@ -6,7 +6,7 @@ include Rules.make
 
 DOCSRC	= main.F90 gotm.F90
 
-SUBDIRS	= util observations airsea meanflow turbulence output
+SUBDIRS	= util input observations airsea meanflow turbulence output
 
 CORE_LIBS	=	\
 		-lairsea$(buildtype)		\
@@ -14,6 +14,7 @@ CORE_LIBS	=	\
 		-lturbulence$(buildtype) 	\
 		-lobservations$(buildtype)	\
 		-loutput$(buildtype)		\
+		-linput$(buildtype)		    \
 		-lutil$(buildtype)
 
 ALL_LIBS	= $(FEATURE_LIBS) $(CORE_LIBS) $(EXTRA_LIBS)
@@ -64,7 +65,9 @@ install: $(EXEC)
 $(SUBDIRS):
 	$(MAKE) -C $@
 
-observations airsea meanflow turbulence output: util
+observations airsea meanflow turbulence output input: util
+
+observations airsea: input
 
 features:
 ifdef FEATURES
