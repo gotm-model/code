@@ -135,11 +135,11 @@
    
    return
 
-98 LEVEL2 'I could not open inflows.nml. Inflows will not be used.'
-   LEVEL2 'If that''s not what you want you have to supply inflows.nml.'
-
 99 FATAL 'Error reading namelist "inflow" from inflows.nml.'
    stop 'init_inflows'
+
+98 LEVEL2 'I could not open inflows.nml. Inflows will not be used.'
+   LEVEL2 'If that''s not what you want you have to supply inflows.nml.'
 
    end subroutine init_inflows
 !EOC
