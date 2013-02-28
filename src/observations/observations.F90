@@ -234,7 +234,7 @@
 !
 ! !INTERFACE:
    subroutine init_observations(namlst,fn,julday,secs,                 &
-                                depth,nlev,z,h,gravity,rho_0)
+                                depth,nlev,z,h,gravity,rho_0,lake)
 !
 ! !DESCRIPTION:
 !  The {\tt init\_observations()} subroutine basically reads the {\tt obs.nml}
@@ -256,6 +256,7 @@
    integer, intent(in)                 :: nlev
    REALTYPE, intent(in)                :: z(0:nlev),h(0:nlev)
    REALTYPE, intent(in)                :: gravity,rho_0
+   logical,  intent(in)                :: lake
 !
 !
 ! !REVISION HISTORY:
@@ -835,7 +836,7 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (FQ)'
    FQ = _ZERO_
 
-   call init_inflows(nlev)
+   call init_inflows(lake,nlev)
 
    return
 

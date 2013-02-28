@@ -225,7 +225,7 @@
    call init_spm(namlst,'spm.nml',unit_spm,nlev)
 #endif
    call init_observations(namlst,'obs.nml',julianday,secondsofday,      &
-                          depth,nlev,z,h,gravity,rho_0)
+                          depth,nlev,z,h,gravity,rho_0,lake)
    call get_all_obs(julianday,secondsofday,nlev,z)
 
 !  Call do_input to make sure observed profiles are up-to-date.
@@ -397,7 +397,7 @@
 !     meanflow integration starts
       call updategrid(nlev,dt,zeta)
       call coriolis(nlev,dt)
-      call update_inflows(lake,nlev,dt,S(0:nlev),T(0:nlev),h,Ac,Qs,Qt,FQ)
+      call update_inflows(nlev,dt,S(0:nlev),T(0:nlev),h,Ac,Qs,Qt,FQ)
 
 !     update velocity
       call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
