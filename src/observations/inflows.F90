@@ -22,7 +22,8 @@
    public                                :: init_inflows,clean_inflows
    public                                :: update_inflows
    public                                :: type_inflow,ninflows,first_inflow
-
+   REALTYPE, public                      :: int_inflow=_ZERO_
+   REALTYPE, public                      :: int_outflow=_ZERO_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Lennart Schueler
@@ -196,6 +197,9 @@
 
       ! inflow triggered or still in progress
       if (current_inflow%QI .gt. _ZERO_) then
+
+         int_inflow = int_inflow + dt*current_inflow%QI
+
          if (current_inflow%has_T) then
             TI = current_inflow%TI
          else
@@ -265,6 +269,8 @@
          ! calculate the sink term at sea surface
          Qs(nlev) = Qs(nlev) -S(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
          Qt(nlev) = Qt(nlev) -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
+      else
+         int_outflow = int_outflow + dt*current_inflow%QI
       end if
       current_inflow => current_inflow%next
    end do

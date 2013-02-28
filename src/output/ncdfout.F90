@@ -106,6 +106,7 @@
    integer, private          :: wIs_id
    integer, private          :: FQ_id
    integer, private,allocatable :: Q_ids(:)
+   integer, private          :: int_inflow_id,int_outflow_id
 !
 !-----------------------------------------------------------------------
 
@@ -309,6 +310,10 @@
             call check_err(iret)
             current_inflow => current_inflow%next
          end do
+         iret = nf90_def_var(ncid,'int_inflow',NF90_REAL,dim3d,int_inflow_id)
+         call check_err(iret)
+         iret = nf90_def_var(ncid,'int_outflow',NF90_REAL,dim3d,int_outflow_id)
+         call check_err(iret)
       endif
    endif
    iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
@@ -486,10 +491,15 @@
          do while (associated(current_inflow))
             iinflow = iinflow + 1
             iret = set_attributes(ncid,Q_ids(iinflow),units='m**3/s', &
-                                  long_name='Water transport from inflow '//trim(current_inflow%name))
+!KB                                  long_name='Water transport from inflow '//trim(current_inflow%name))
+                                  long_name='inflow '//trim(current_inflow%name))
             call check_err(iret)
             current_inflow => current_inflow%next
          end do
+         iret = set_attributes(ncid,int_inflow_id,units='m^3', &
+                               long_name='Integrated inflow')
+         iret = set_attributes(ncid,int_outflow_id,units='m^3', &
+                               long_name='Integrated outflow')
        endif
    endif
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
@@ -591,6 +601,7 @@
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
    use observations, only: Qs, Qt, FQ
    use inflows,      only: first_inflow,type_inflow
+   use inflows,      only: int_inflow,int_outflow
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
@@ -692,6 +703,8 @@
          iret = store_data(ncid,Q_ids(iinflow),XYT_SHAPE,1,scalar=current_inflow%QI)
          current_inflow => current_inflow%next
       end do
+      iret = store_data(ncid,int_inflow_id,XYT_SHAPE,1,scalar=int_inflow)
+      iret = store_data(ncid,int_outflow_id,XYT_SHAPE,1,scalar=int_outflow)
    endif
 
    if (turb_method.eq.99) then
