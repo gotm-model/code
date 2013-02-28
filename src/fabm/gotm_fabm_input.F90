@@ -20,6 +20,7 @@
    use fabm_types,only: type_bulk_variable_id,type_horizontal_variable_id,type_scalar_variable_id,rk
    use gotm_fabm,only:fabm_calc,model,cc,register_observation
    use input,only: register_input_0d,register_input_1d
+   use inflows
 
    implicit none
 
@@ -37,8 +38,6 @@
 !-----------------------------------------------------------------------
 !
 !  PRIVATE TYPES
-
-   integer,parameter :: maxpathlen=256
 
 !  Information on an observed variable
    type type_input_variable

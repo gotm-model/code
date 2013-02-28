@@ -78,6 +78,7 @@
 		<File RelativePath="..\..\src\meanflow\coriolis.F90"/>
 		<File RelativePath="..\..\src\meanflow\extpressure.F90"/>
 		<File RelativePath="..\..\src\meanflow\friction.F90"/>
+		<File RelativePath="..\..\src\meanflow\hypsograph.F90"/>
 		<File RelativePath="..\..\src\meanflow\intpressure.F90"/>
 		<File RelativePath="..\..\src\meanflow\meanflow.F90"/>
 		<File RelativePath="..\..\src\meanflow\salinity.F90"/>
@@ -91,6 +92,7 @@
 		<File RelativePath="..\..\src\observations\analytical_profile.F90"/>
 		<File RelativePath="..\..\src\observations\const_NNS.F90"/>
 		<File RelativePath="..\..\src\observations\const_NNT.F90"/>
+		<File RelativePath="..\..\src\observations\inflows.F90"/>
 		<File RelativePath="..\..\src\observations\observations.F90"/></Filter>
 		<Filter Name="output">
 		<File RelativePath="..\..\src\output\asciiout.F90"/>

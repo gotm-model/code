@@ -104,7 +104,8 @@
    integer, private          :: total_salt_id
    integer, private          :: Qs_id, Qt_id
    integer, private          :: wIs_id
-   integer, private          :: FQ_id, Q_id
+   integer, private          :: FQ_id
+   integer, private,allocatable :: Q_ids(:)
 !
 !-----------------------------------------------------------------------
 
@@ -121,7 +122,7 @@
 ! !USES:
    use airsea,       only: hum_method
    use meanflow,     only: lake
-   use observations, only: inflows_method
+   use inflows,      only: ninflows,first_inflow,type_inflow
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
@@ -139,8 +140,9 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: iret
+   integer                   :: iret,iinflow
    character(len=128)        :: ncdf_time_str,history
+   type (type_inflow), pointer :: current_inflow
 !-------------------------------------------------------------------------
 !BOC
    first = .true.
@@ -288,7 +290,7 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
       call check_err(iret)
-      if (inflows_method.eq.2) then
+      if (ninflows>0) then
          iret = nf90_def_var(ncid,'Qs',NF90_REAL,dim4d,Qs_id)
          call check_err(iret)
          iret = nf90_def_var(ncid,'Qt',NF90_REAL,dim4d,Qt_id)
@@ -297,8 +299,16 @@
          call check_err(iret)
          iret = nf90_def_var(ncid,'FQ',NF90_REAL,dim4d,FQ_id)
          call check_err(iret)
-         iret = nf90_def_var(ncid,'Q',NF90_REAL,dim3d,Q_id)
-         call check_err(iret)
+         
+         allocate(Q_ids(ninflows))
+         iinflow = 0
+         current_inflow => first_inflow
+         do while (associated(current_inflow))
+            iinflow = iinflow + 1
+            iret = nf90_def_var(ncid,'Q_'//trim(current_inflow%name),NF90_REAL,dim3d,Q_ids(iinflow))
+            call check_err(iret)
+            current_inflow => current_inflow%next
+         end do
       endif
    endif
    iret = nf90_def_var(ncid,'SS',NF90_REAL,dim4d,SS_id)
@@ -461,7 +471,7 @@
                             long_name='hypsograph at grid interfaces')
       iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsograph')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
-      if (inflows_method.eq.2) then
+      if (ninflows>0) then
          iret = set_attributes(ncid,Qs_id,units='1/s', &
                                long_name='salt inflow')
          iret = set_attributes(ncid,Qt_id,units='celsius/s', &
@@ -470,8 +480,16 @@
                                long_name='vertical salinity advection velocity')
          iret = set_attributes(ncid,FQ_id,units='m**3/s', &
                                long_name='vertical salinity transport')
-         iret = set_attributes(ncid,Q_id,units='m**3/s', &
-                               long_name='Water transport from inflows')
+
+         iinflow = 0
+         current_inflow => first_inflow
+         do while (associated(current_inflow))
+            iinflow = iinflow + 1
+            iret = set_attributes(ncid,Q_ids(iinflow),units='m**3/s', &
+                                  long_name='Water transport from inflow '//trim(current_inflow%name))
+            call check_err(iret)
+            current_inflow => current_inflow%next
+         end do
        endif
    endif
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
@@ -571,7 +589,8 @@
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
-   use observations, only: Qs, Qt, FQ, inflows_input, inflows_method
+   use observations, only: Qs, Qt, FQ
+   use inflows,      only: first_inflow,type_inflow
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
@@ -591,11 +610,12 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                             :: iret,i
+   integer                             :: iret,i,iinflow
    REALTYPE                            :: temp_time
    REALTYPE                            :: dum(0:nlev)
    REAL_4B                             :: buoyp,buoym,dz
    REALTYPE                            :: zz
+   type (type_inflow),pointer          :: current_inflow
 !
 !-------------------------------------------------------------------------
 !BOC
@@ -665,9 +685,13 @@
          dum(1) = dum(1) + Ac(i) * S(i) * h(i)
       end do
       iret = store_data(ncid,total_salt_id,XYT_SHAPE,1,scalar=dum(1))
-      if (inflows_method .eq. 2) then
-         iret = store_data(ncid,Q_id,XYT_SHAPE,1,scalar=inflows_input(1))
-      endif
+      iinflow = 0
+      current_inflow => first_inflow
+      do while (associated(current_inflow))
+         iinflow = iinflow+1
+         iret = store_data(ncid,Q_ids(iinflow),XYT_SHAPE,1,scalar=current_inflow%QI)
+         current_inflow => current_inflow%next
+      end do
    endif
 
    if (turb_method.eq.99) then
@@ -689,7 +713,7 @@
       iret = store_data(ncid,Ac_id,XYZT_SHAPE,nlev,array=Ac)
       iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
       iret = store_data(ncid,dAdz_id,XYZT_SHAPE,nlev,array=dAdz)
-      if (inflows_method.eq.2) then
+      if (associated(first_inflow)) then
          iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)
          iret = store_data(ncid,Qt_id,XYZT_SHAPE,nlev,array=Qt)
          do i=1,nlev

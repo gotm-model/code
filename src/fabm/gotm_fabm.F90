@@ -15,7 +15,6 @@
 ! !USES:
    use fabm
    use fabm_types
-   use meanflow, only: Ac,Af
 
    implicit none
 !
@@ -91,7 +90,7 @@
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z,rho
+   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,Ac,Af,bioshade,w,z,rho
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: SRelaxTau,sProf,salt
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_    :: precip,evap,bio_drag_scale,bio_albedo
 
@@ -408,7 +407,7 @@
 ! !IROUTINE: Set environment for FABM
 !
 ! !INTERFACE:
-   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
+   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,Ac_,Af_,w_, &
                                 bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
                                 yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
 !
@@ -420,7 +419,7 @@
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: latitude,longitude
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho_,nuh_,h_,Ac_,Af_,w_,bioshade_,z_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,cloud,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_
@@ -453,6 +452,8 @@
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
    h        => h_          ! layer heights [1d array] needed for advection, diffusion
+   Ac       => Ac_         ! hypsograph
+   Af       => Af_         ! hypsograph
    w        => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
    z        => z_          ! depth [1d array], used to calculate local pressure

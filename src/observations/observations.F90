@@ -25,6 +25,7 @@
 !
 ! !USES:
    use input
+   use inflows
 
    IMPLICIT NONE
 
@@ -80,6 +81,10 @@
 !  'observed' biological profiles
    REALTYPE, public, dimension(:,:), allocatable, target :: bioprofs
 #endif
+
+!  inflows for lake model
+   REALTYPE, public, dimension(:), allocatable   :: Qs, Qt
+   REALTYPE, public, dimension(:), allocatable   :: FQ
 
 !------------------------------------------------------------------------------
 !
@@ -816,6 +821,21 @@
          stop 'init_observations()'
    end select
 #endif
+
+!  The inflows
+   allocate(Qs(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qs)'
+   Qs = _ZERO_
+
+   allocate(Qt(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qt)'
+   Qt = _ZERO_
+
+   allocate(FQ(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (FQ)'
+   FQ = _ZERO_
+
+   call init_inflows(nlev)
 
    return
 

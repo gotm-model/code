@@ -15,10 +15,13 @@
 ! velocities.
 !
 ! !USES
+   use input
+
 !  !PUBLIC DATA MEMBERS:
    IMPLICIT NONE
    public                                :: init_inflows,clean_inflows
-   public                                :: get_inflows,update_inflows
+   public                                :: update_inflows
+   public                                :: type_inflow,ninflows,first_inflow
 
 !
 ! !REVISION HISTORY:
@@ -27,12 +30,18 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer, parameter                          :: cols=3
-   REALTYPE, save, dimension(:), allocatable   :: inflows_input1,inflows_input2
-   REALTYPE, save, dimension(:), allocatable   :: alpha
-   REALTYPE, save, dimension(:), allocatable   :: Q
-   REALTYPE                                    :: QI,SI,TI
-   integer, save                               :: inflows_method
+   type type_inflow
+      character(len=64)      :: name = ''
+      REALTYPE               :: QI,SI,TI
+      logical                :: has_S = .false.
+      logical                :: has_T = .false.
+      REALTYPE, allocatable  :: Q(:)
+      type (type_inflow), pointer :: next => null()
+   end type
+   
+   integer                     :: ninflows
+   type (type_inflow), pointer :: first_inflow
+
 ! !DEFINED PARAMETERS:
 !
 !-----------------------------------------------------------------------
@@ -45,7 +54,7 @@
 ! !ROUTINE: initialises everything related to the inflows
 !
 ! !INTERFACE:
-   subroutine init_inflows(nlev, method)
+   subroutine init_inflows(nlev)
 !
 !  !DESCRIPTION:
 !  Initialises everything related to the lake model, e.g. allocating memory
@@ -55,159 +64,84 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer             :: rc
    integer, intent(in) :: nlev
-   integer, intent(in) :: method
+   
+   integer,parameter :: unit = 666
+
+   integer             :: rc
+   character(len=64)       :: name
+   character(len=PATH_MAX) :: Q_file,T_file,S_file
+   integer                 :: Q_col,T_col,S_col
+   
+   namelist /inflow/ name,Q_file,T_file,S_file,Q_col,T_col,S_col
+
+   type (type_inflow), pointer :: current_inflow
 !
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   inflows_method = method
+   ninflows = 0
+   nullify(first_inflow)
+   
+   open(unit,file='inflows.nml',action='read',status='old',err=98)
+   do
+      name   = ''
+      Q_file = ''
+      S_file = ''
+      T_file = ''
+      Q_col = 1
+      T_col = 1
+      S_col = 1
+   
+      read(unit,nml=inflow,err=99,end=97)
+      if (.not.associated(first_inflow)) then
+         allocate(first_inflow)
+         current_inflow => first_inflow
+      else
+         current_inflow => first_inflow
+         do while (associated(current_inflow%next))
+            current_inflow => current_inflow%next
+         end do
+         allocate(current_inflow%next)
+         current_inflow => current_inflow%next
+      end if
 
-   if (allocated(Q)) deallocate(Q)
-   allocate(Q(0:nlev),stat=rc)
-   if (rc /= 0) stop 'get_inflows: Error allocating memory (Q)'
-   Q = _ZERO_
+      if (name=='') then
+         FATAL 'Error: "name" must be provided in namelist "inflow".'
+         stop 'init_inflows'
+      end if
+      if (Q_file=='') then
+         FATAL 'Error: "Q_file" must be provided in namelist "inflow".'
+         stop 'init_inflows'
+      end if
+      
+      current_inflow%name = name
+      call register_input_0d(Q_file,Q_col,current_inflow%QI)
+      if (T_file/='') then
+         call register_input_0d(T_file,T_col,current_inflow%TI)
+         current_inflow%has_T = .true.
+      end if
+      if (S_file/='') then
+         call register_input_0d(S_file,S_col,current_inflow%SI)
+         current_inflow%has_S = .true.
+      end if
+      allocate(current_inflow%Q(0:nlev),stat=rc)
+      if (rc /= 0) STOP 'init_observations: Error allocating (Q)'
+      current_inflow%Q = _ZERO_
+      ninflows = ninflows + 1
 
-   if (allocated(inflows_input1)) deallocate(inflows_input1)
-   allocate(inflows_input1(cols),stat=rc)
-   if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input1)'
-   inflows_input1 = _ZERO_
+   end do
+97 close(unit)
+   
+   return
 
-   if (allocated(inflows_input2)) deallocate(inflows_input2)
-   allocate(inflows_input2(cols),stat=rc)
-   if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input2)'
-   inflows_input2 = _ZERO_
+98 LEVEL2 'I could not open inflows.nml. Inflows will not be used.'
+   LEVEL2 'If that''s not what you want you have to supply inflows.nml.'
 
-   if (allocated(alpha)) deallocate(alpha)
-   allocate(alpha(cols),stat=rc)
-   if (rc /= 0) stop 'get_inflows: Error allocating memory (alpha)'
-   alpha = _ZERO_
+99 FATAL 'Error reading namelist "inflow" from inflows.nml.'
+   stop 'init_inflows'
 
    end subroutine init_inflows
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !ROUTINE: Reads in the necessary data for the inflows from file.
-!
-! !INTERFACE:
-   subroutine get_inflows(unit,init_saved_vars,jul,secs,inflows_input)
-!
-! !DESCRIPTION:
-!  This routine is responsible for providing sane values to `observed'
-!  inflows.
-!  The subroutine is called in the {\tt get\_all\_obs()} subroutine
-!  as part of the main integration loop.
-!  In case of observations from file the temporal interpolation is
-!  done in this routine.
-!
-! !USES:
-   use time
-
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: unit
-   logical, intent(in)                 :: init_saved_vars
-   integer, intent(in)                 :: jul,secs
-   REALTYPE, intent(inout), dimension(:), allocatable :: inflows_input
-!
-!EOP
-!
-! !LOCAL VARIABLES:
-   integer                   :: rc,n
-   integer                   :: yy,mm,dd,hh,min,ss
-   REALTYPE                  :: t,dt
-   integer, save             :: jul1,secs1
-   integer, save             :: jul2,secs2
-   integer, save             :: lines
-   integer, save             :: nprofiles
-   logical, save             :: one_profile
-   integer                   :: ierr
-   character(len=128)        :: cbuf
-   character                 :: c1,c2,c3,c4
-!
-!-----------------------------------------------------------------------
-!BOC
-   if (init_saved_vars) then
-      jul2=0
-      secs2=0
-      lines=0
-      nprofiles=0
-      one_profile=.false.
-      ierr = 0
-      read(unit,'(A72)',ERR=100,END=110) cbuf
-      read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
-      !go back one "read-command" in file
-      backspace(unit)
-
-      if (allocated(inflows_input)) deallocate(inflows_input)
-      allocate(inflows_input(cols),stat=rc)
-      if (rc /= 0) stop 'get_inflows: Error allocating memory (inflows_input)'
-      inflows_input = _ZERO_
-      inflows_input1 = _ZERO_
-      inflows_input2 = _ZERO_
-      alpha = _ZERO_
-      Q = _ZERO_
-   end if
-
-!  This part initialises and reads in new values if necessary.
-   if(.not. one_profile .and. time_diff(jul2,secs2,jul,secs) .lt. 0) then
-      do
-         jul1 = jul2
-         secs1 = secs2
-         inflows_input1 = inflows_input2
-
-         ierr = 0
-         read(unit,'(A72)',ERR=100,END=110) cbuf
-         read(cbuf,900,ERR=100,END=110) yy,c1,mm,c2,dd,hh,c3,min,c4,ss
-
-         read(cbuf(20:),*,ERR=100,END=110) inflows_input2
-         if(rc .ne. 0) then
-            if(nprofiles .eq. 1) then
-               LEVEL3 'Only one inflow profile present.'
-               one_profile = .true.
-               inflows_input = inflows_input1
-            else
-               FATAL 'Error reading inflows around line # ',lines
-               stop 'get_inflows'
-            end if
-            EXIT
-         else
-            nprofiles = nprofiles + 1
-            call julian_day(yy,mm,dd,jul2)
-            secs2 = hh*3600 + min*60 + ss
-            if(time_diff(jul2,secs2,jul,secs) .gt. 0) EXIT
-         end if
-      end do
-      if( .not. one_profile) then
-         dt = time_diff(jul2,secs2,jul1,secs1)
-         alpha = (inflows_input2-inflows_input1)/dt
-      end if
-   end if
-
-!  Do the time interpolation - only if more than one profile
-   if( .not. one_profile) then
-      t  = time_diff(jul,secs,jul1,secs1)
-      do n=1,cols
-         inflows_input = inflows_input1 + t*alpha
-      end do
-   end if
-
-   return
-!  READ_ERROR = -2
-100 ierr = -2
-   FATAL 'Error reading inflows (READ_ERROR)'
-   return
-!  END_OF_FILE = -1
-110 ierr = -1
-   FATAL 'Error reading inflows (END_OF_FILE)'
-   return
-900 format(i4,a1,i2,a1,i2,1x,i2,a1,i2,a1,i2)
-
-   end subroutine get_inflows
 !EOC
 
 !-----------------------------------------------------------------------
@@ -216,8 +150,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,inflows_input, &
-                             Qs,Qt,FQ)
+   subroutine update_inflows(lake,nlev,dt,S,T,h,Ac,Qs,Qt,FQ)
 !
 ! !DESCRIPTION:
 !  Calculates the depth where the inflow occurs and
@@ -236,7 +169,6 @@
    REALTYPE, intent(in)                   :: dt
    REALTYPE, intent(in)                   :: S(0:nlev), T(0:nlev)
    REALTYPE, intent(in)                   :: h(0:nlev), Ac(0:nlev)
-   REALTYPE, intent(inout), dimension(:), allocatable :: inflows_input
    REALTYPE, intent(inout)                :: Qs(0:nlev), Qt(0:nlev)
    REALTYPE, intent(inout)                :: FQ(0:nlev)
 !EOP
@@ -246,30 +178,37 @@
    REALTYPE             :: rhoI,rho
    REALTYPE             :: depth
    REALTYPE             :: VI_basin
+   REALTYPE             :: TI,SI
    integer              :: index_min
+   type (type_inflow), pointer :: current_inflow
 !
 !-----------------------------------------------------------------------
 !BOC
+   Qs = _ZERO_
+   Qt = _ZERO_
+   FQ = _ZERO_
 
-   ! check if an inflow will occur
-   if (inflows_method .eq. 2) then
+   current_inflow => first_inflow
+   do while (associated(current_inflow))
+      current_inflow%Q = _ZERO_
       if (lake) then
-         QI = inflows_input(1)
-         SI = inflows_input(2)
-         TI = inflows_input(3)
          ! inflow triggered or still in progress
-         if (QI .gt. _ZERO_) then
+         if (current_inflow%QI .gt. _ZERO_) then
+            if (current_inflow%has_T) then
+               TI = current_inflow%TI
+            else
+               TI = T(nlev)
+            end if
+            if (current_inflow%has_S) then
+               SI = current_inflow%SI
+            else
+               SI = S(nlev)
+            end if
+         
             ! calculate depth of water column
             depth = _ZERO_
             do i=1,nlev
                depth = depth - h(i)
-            end do
-
-            do i=0,nlev
-               Qs(i) = _ZERO_
-               Qt(i) = _ZERO_
-               Q(i) = _ZERO_
-               FQ(i) = _ZERO_
             end do
 
             ! find minimal depth where the inflow will take place
@@ -294,7 +233,7 @@
             ! find the z-levels in which the water will interleave
             VI_basin = _ZERO_
             n = index_min
-            do while (VI_basin < QI*dt)
+            do while (VI_basin < current_inflow%QI*dt)
                VI_basin = VI_basin + Ac(n) * h(n)
                n = n+1
                if (n .gt. nlev) then
@@ -310,30 +249,24 @@
             ! calculate the source terms
             ! "+1" because loop includes both n and index_min
             do i=index_min,n
-               Q(i) = QI / (n-index_min+1)
-               Qs(i) = SI * Q(i) / (Ac(i) * h(i))
-               Qt(i) = TI * Q(i) / (Ac(i) * h(i))
+               current_inflow%Q(i) = current_inflow%QI / (n-index_min+1)
+               Qs(i) = Qs(i) + SI * current_inflow%Q(i) / (Ac(i) * h(i))
+               Qt(i) = Qt(i) + TI * current_inflow%Q(i) / (Ac(i) * h(i))
             end do
 
             ! calculate the vertical flux terms
-            FQ(index_min) = Q(index_min)
+            FQ(index_min) = current_inflow%Q(index_min)
             do i=index_min+1,nlev-1
-               FQ(i) = FQ(i-1) + Q(i)
+               FQ(i) = FQ(i-1) + current_inflow%Q(i)
             end do
 
             ! calculate the sink term at sea surface
-            Qs(nlev) = -S(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
-            Qt(nlev) = -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
-         else
-            do i=1,nlev
-               Qs(i) = _ZERO_
-               Qt(i) = _ZERO_
-               Q(i) = _ZERO_
-               FQ(i) = _ZERO_
-            end do
+            Qs(nlev) = Qs(nlev) -S(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
+            Qt(nlev) = Qt(nlev) -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
          end if
       end if
-   end if
+      current_inflow => current_inflow%next
+   end do
 
    end subroutine update_inflows
 !EOC
@@ -353,14 +286,19 @@
    IMPLICIT NONE
 !EOP
 !
+! !LOCAL VARIABLES:
+   type (type_inflow), pointer :: current_inflow, next_inflow
+!
 !-----------------------------------------------------------------------
 !BOC
-      if (allocated(Q)) deallocate(Q)
-      if (allocated(inflows_input2)) deallocate(inflows_input2)
-      if (allocated(inflows_input1)) deallocate(inflows_input1)
-      if (allocated(alpha)) deallocate(alpha)
+   current_inflow => first_inflow
+   do while (associated(current_inflow))
+      next_inflow => current_inflow%next
+      deallocate(current_inflow%Q)
+      deallocate(current_inflow)
+      current_inflow => next_inflow
+   end do
 
-      return
    end subroutine clean_inflows
 
    end module inflows
