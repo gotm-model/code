@@ -138,7 +138,7 @@
    jul0  = jul1
    secs0 = secs1
 
-   call update_time(0)
+   call update_time(0_8)
 
    simtime = timestep*(MaxN-MinN+1)
 
