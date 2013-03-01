@@ -41,6 +41,7 @@
    integer,target,    public           :: yearday
    integer,           public           :: timefmt
    integer,           public           :: MinN,MaxN
+   integer,parameter, public           :: timestepkind = selected_int_kind(12)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -138,7 +139,7 @@
    jul0  = jul1
    secs0 = secs1
 
-   call update_time(0_8)
+   call update_time(0_timestepkind)
 
    simtime = timestep*(MaxN-MinN+1)
 
@@ -270,7 +271,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer(kind=8), intent(in)         :: n
+   integer(kind=timestepkind), intent(in) :: n
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -278,15 +279,15 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer(kind=8)           :: nsecs
-   integer                   :: yyyy,mm,dd,jd_firstjan
+   integer(kind=timestepkind) :: nsecs
+   integer                    :: yyyy,mm,dd,jd_firstjan
 !
 !-----------------------------------------------------------------------
 !BOC
-   nsecs = nint(n*timestep,kind=8) + secs0
+   nsecs = nint(n*timestep,kind=timestepkind) + secs0
    fsecs = n*timestep + secs0
    julianday    = jul0 + nsecs/86400
-   secondsofday = mod(nsecs,int(86400,kind=8))
+   secondsofday = mod(nsecs,int(86400,kind=timestepkind))
 
    call calendar_date(julianday,yyyy,mm,dd)
    call julian_day(yyyy,1,1,jd_firstjan)
