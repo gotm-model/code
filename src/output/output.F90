@@ -14,7 +14,7 @@
 !  routines. It is not necessary to change anything in GOTM itself.
 !
 ! !USES:
-   use time, ONLY: write_time_string,julianday,secondsofday,timestep
+   use time, ONLY: write_time_string,julianday,secondsofday,timestep,timestepkind
    use asciiout
 #ifdef NETCDF_FMT
    use ncdfout, ONLY:  init_ncdf,do_ncdf_out,close_ncdf
@@ -160,7 +160,7 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer(kind=8), intent(in)         :: n
+   integer(kind=timestepkind), intent(in) :: n
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -168,7 +168,7 @@
 !EOP
 !-------------------------------------------------------------------------
 !BOC
-   write_results = mod(n,int(nsave,kind=8)).eq.0
+   write_results = mod(n,int(nsave,kind=timestepkind)).eq.0
    call write_time_string(julianday,secondsofday,ts)
 
    return
@@ -191,8 +191,8 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer(kind=8), intent(in)         :: n
-   integer, intent(in)                 :: nlev
+   integer(kind=timestepkind), intent(in) :: n
+   integer, intent(in)                    :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -212,7 +212,7 @@
             call do_ascii_out(nlev,ts,ascii_unit)
 #ifdef NETCDF_FMT
          case (NETCDF, GRADS)
-            if (sync_out .ne. 0 .and. mod(n,int(nsave*sync_out,kind=8)) .eq. 0) then
+            if (sync_out .ne. 0 .and. mod(n,int(nsave*sync_out,kind=timestepkind)) .eq. 0) then
                sync = .true.
             else
                sync = .false.
@@ -293,11 +293,11 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer(kind=8), intent(in)         :: n
-   integer, intent(in)                 :: nlev,BuoyMeth
-   REALTYPE, intent(in)                :: dt
-   REALTYPE, intent(in)                :: u_taus,u_taub
-   REALTYPE, intent(in)                :: I_0,heat
+   integer(kind=timestepkind), intent(in) :: n
+   integer, intent(in)                    :: nlev,BuoyMeth
+   REALTYPE, intent(in)                   :: dt
+   REALTYPE, intent(in)                   :: u_taus,u_taub
+   REALTYPE, intent(in)                   :: I_0,heat
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
