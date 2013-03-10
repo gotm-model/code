@@ -20,8 +20,10 @@ SEDIMENT=false
 #SEDIMENT=true
 SEAGRASS=false
 SEAGRASS=true
+ifndef BIO
 BIO=true
 BIO=false
+endif
 NO_0D_BIO=false
 NO_0D_BIO=true
 

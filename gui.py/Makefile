@@ -2,20 +2,17 @@
 # Makefile for creating the Python-based GUI for GOTM
 # -----------------------------------------------------------
 # In addition to the environment variables needed for GOTM
-# compilation (NETCDFHOME, NETCDFINC, NETCDFLIBNAME, GOTMDIR
+# compilation (NETCDFHOME, NETCDFINC, NETCDFLIBNAME, GOTMDIR,
 # FORTRAN_COMPILER), this makefile also needs to know about
 # the location of Python header files, the location of the
 # Python library, the name of the Python library, and the
-# location of NumPy. These should be set through variables
-# PYTHONINCDIR, PYTHONLIBDIR, PYTHONLIBNAME and NUMPYDIR,
-# respectively. If any of these is missing, a default value
-# is used that works at least on some systems.
-#
-# If the NumPy include files and F2Py are not located in the
-# default subdirectories under the NumPy root (/core/include
-# and /f2py, respectively), you will also need to specify
-# these paths in environment variables NUMPYINC and F2PYDIR,
-# respectively. This should rarely be necessary.
+# location of NumPy. The makefile tries to infer these
+# variables by calling "python". If the GUI will be used by
+# a python version different from the system "python", this
+# must be specified by setting environment variable PYTHON to
+# the desired Python interpreter (e.,g., python2.7) before
+# calling make. Alternatively, make can be called with
+# PYTHON=interpreter as additional argument.
 # -----------------------------------------------------------
 # Currently, only compilation with ifort/g++ is supported.
 # Compilation with GFORTRAN/g++ has been reported to work;
@@ -23,68 +20,39 @@
 # catch Fortran stop statements.
 # -----------------------------------------------------------
 
-# If Python and NumPy are installed at default locations, you may get
-# away by just setting PYTHONVERSION to your version of Python, e.g.,
-# python2.4, python2.5, etc. Other variables such as PYTHONINCDIR,
-# PYTHONLIBNAME and NUMPYDIR will then be derived from PYTHONVERSION.
-# If this does not work, you will have to set these three variables
-# explicitly (see below).
-ifndef PYTHONVERSION
-PYTHONVERSION = python2.7
+# The name of the Python interpreter. This is called by make
+# in order to infer Python-specific paths.
+ifndef PYTHON
+PYTHON = python
 endif
 
 # The directory that contains Python header files.
-# Below a quick default for our development systems - normal
-# users will need to set the PYTHONINCDIR environment variable before
-# running make!
 ifndef PYTHONINCDIR
-PYTHONINCDIR = /usr/include/$(PYTHONVERSION)
+PYTHONINCDIR = $(shell $(PYTHON) -c "import distutils.sysconfig; print distutils.sysconfig.get_python_inc()")
 endif
 
 # The directory that contains the Python library.
-# Below a quick default for our development systems - normal
-# users will need to set the PYTHONLIBDIR environment variable before
-# running make!
 ifndef PYTHONLIBDIR
-PYTHONLIBDIR = /usr/lib
+PYTHONLIBDIR = $(shell $(PYTHON) -c "import distutils.sysconfig; print distutils.sysconfig.get_python_lib()")
 endif
 
 # The name of the Python library to link against.
-# Below a quick default for our development systems - normal
-# users will need to set the PYTHONLIBNAME environment variable before
-# running make!
 ifndef PYTHONLIBNAME
-PYTHONLIBNAME = $(PYTHONVERSION)
+PYTHONLIBNAME = $(shell $(PYTHON) -c "import sys; print 'python'+sys.version[:3]")
 endif
 
-# The directory that contains NumPy; it must contain directories
-# core/include (NumPy header files) and f2py (Fortran to Python)
-# Below some quick defaults for our development systems - normal
-# users will need to set the NUMPYDIR environment variable before
-# running make!
-ifndef NUMPYDIR
-# note this is debian/ubuntu python package install directory
-# other distributions might choose differently - kb 2010-05-06
-NUMPYDIR = /usr/lib/$(PYTHONVERSION)/dist-packages/numpy
-endif
-
-# The directory that contains NumPy include files. Normally this can be
-# inferred from the NumPy root directory set above (NUMPYDIR). In most
-# cases users will therefore not have to set the NUMPYINC environment
-# variable. It is possible though.
+# The directory that contains NumPy include files.
 ifndef NUMPYINC
-NUMPYINC = $(NUMPYDIR)/core/include
+NUMPYINC = $(shell $(PYTHON) -c "import numpy; print numpy.get_include()")
 endif
 
 # The directory that contains F2Py (Fortran-to-Python interface generator.
-# Normally this path can be# inferred from the NumPy root directory set
-# above (NUMPYDIR). In most cases users will therefore not have to set the
-# F2PYDIR environment variable. It is possible though.
 ifndef F2PYDIR
-F2PYDIR = $(NUMPYDIR)/f2py
+F2PYDIR = $(shell $(PYTHON) -c "import numpy.f2py,os.path; print os.path.dirname(numpy.f2py.__file__)")
 endif
 
 # Include the rules for GOTM compilation.
+export BIO=true
 include ../src/Rules.make
 
 # The flag -fexceptions is needed to generate assembly from FORTRAN that is
@@ -100,6 +68,7 @@ CORE_LIBS	=	\
 		-lturbulence$(buildtype) 	\
 		-lobservations$(buildtype)	\
 		-loutput$(buildtype)		\
+		-linput$(buildtype)			\
 		-lutil$(buildtype)
 
 ALL_LIBS	= $(FEATURE_LIBS) $(CORE_LIBS) $(EXTRA_LIBS)
@@ -116,10 +85,18 @@ CPPFLAGS += -I$(PYTHONINCDIR) -I$(F2PYDIR)/src -I$(NUMPYINC)
 #   -lstdc++: the C++ standard library, needed because the Fortran compiler will do the linking.
 LDFLAGS += -shared -lgotm$(buildtype) $(ALL_LIBS) -L$(PYTHONLIBDIR) -l$(PYTHONLIBNAME) -lstdc++
 
-.PHONY: clean gotm all
+.PHONY: confall clean gotm all distclean realclean
 
-all: gotm gotmmodule.o fortranobject.o gotm-f2pywrappers2.o
-	$(FC) ./gotm-f2pywrappers2.o ./gotmmodule.o ./fortranobject.o ./gui_util.o $(LDFLAGS) -o gotm.so
+all: gotm gotmmodule.o fortranobject.o gotm-f2pywrappers2.o confall
+	$(FC) ./gotm-f2pywrappers2.o ./gotmmodule.o ./fortranobject.o ./gui_util.o $(LDFLAGS) -o gotm.so -Xlinker -zmuldefs
+
+confall:
+	@echo "PYTHON:        "$(PYTHON)
+	@echo "PYTHONINCDIR:  "$(PYTHONINCDIR)
+	@echo "PYTHONLIBDIR:  "$(PYTHONLIBDIR)
+	@echo "PYTHONLIBNAME: "$(PYTHONLIBNAME)
+	@echo "NUMPYINC:      "$(NUMPYINC)
+	@echo "F2PYDIR:       "$(F2PYDIR)
 
 gotm:
 	$(MAKE) EXTRA_FFLAGS="$(EXTRA_FFLAGS)" -C ../src all
