@@ -36,7 +36,7 @@ endif
 
 # The directory that contains the Python library.
 ifndef PYTHONLIBDIR
-PYTHONLIBDIR = $(shell $(PYTHON) -c "import distutils.sysconfig; print distutils.sysconfig.get_python_lib()")
+PYTHONLIBDIR = $(shell $(PYTHON) -c "import distutils.sysconfig,os.path; print os.path.join(distutils.sysconfig.PREFIX,'lib')")
 ifeq ($(PYTHONLIBDIR),)
 $(error "Unable to auto-detect Python library directory by calling $(PYTHON).")
 endif
