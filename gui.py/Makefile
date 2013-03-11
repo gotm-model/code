@@ -89,7 +89,7 @@ CORE_LIBS	=	\
 ALL_LIBS	= $(FEATURE_LIBS) $(CORE_LIBS) $(EXTRA_LIBS)
 
 # Extra include directories for the C++ code (Python, NumPy and F2PY)
-CPPFLAGS += -I$(PYTHONINCDIR) -I$(F2PYDIR)/src -I$(NUMPYINC)
+CPPFLAGS += -I$(PYTHONINCDIR) -I$(F2PYDIR)/src -I$(NUMPYINC) -D__STDC_FORMAT_MACROS
 
 # Extra linker options for our Python-GOTM library. Respectively:
 #   -shared: for building a shared library (*.so) rather than an executable
