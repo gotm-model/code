@@ -29,26 +29,41 @@ endif
 # The directory that contains Python header files.
 ifndef PYTHONINCDIR
 PYTHONINCDIR = $(shell $(PYTHON) -c "import distutils.sysconfig; print distutils.sysconfig.get_python_inc()")
+ifeq ($(PYTHONINCDIR),)
+$(error "Unable to auto-detect Python include directory by calling $(PYTHON).")
+endif
 endif
 
 # The directory that contains the Python library.
 ifndef PYTHONLIBDIR
 PYTHONLIBDIR = $(shell $(PYTHON) -c "import distutils.sysconfig; print distutils.sysconfig.get_python_lib()")
+ifeq ($(PYTHONLIBDIR),)
+$(error "Unable to auto-detect Python library directory by calling $(PYTHON).")
+endif
 endif
 
 # The name of the Python library to link against.
 ifndef PYTHONLIBNAME
 PYTHONLIBNAME = $(shell $(PYTHON) -c "import sys; print 'python'+sys.version[:3]")
+ifeq ($(PYTHONLIBNAME),)
+$(error "Unable to auto-detect Python library name by calling $(PYTHON).")
+endif
 endif
 
 # The directory that contains NumPy include files.
 ifndef NUMPYINC
 NUMPYINC = $(shell $(PYTHON) -c "import numpy; print numpy.get_include()")
+ifeq ($(NUMPYINC),)
+$(error "Unable to auto-detect Numpy include directory by calling $(PYTHON).")
+endif
 endif
 
 # The directory that contains F2Py (Fortran-to-Python interface generator.
 ifndef F2PYDIR
 F2PYDIR = $(shell $(PYTHON) -c "import numpy.f2py,os.path; print os.path.dirname(numpy.f2py.__file__)")
+ifeq ($(F2PYDIR),)
+$(error "Unable to auto-detect F2py directory by calling $(PYTHON).")
+endif
 endif
 
 # Include the rules for GOTM compilation.
