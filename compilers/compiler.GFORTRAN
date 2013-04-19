@@ -1,7 +1,7 @@
 # Set options for the GNU Fortran compiler
 ifeq ($(FORTRAN_COMPILER),GFORTRAN)
 FC=gfortran
-DEFINES += -DFORTRAN2003
+DEFINES += -DFORTRAN95 -DFORTRAN2003
 can_do_F90=true
 F90_to_f90=
 MODULES=-J$(MODDIR)
