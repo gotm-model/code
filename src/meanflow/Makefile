@@ -40,7 +40,9 @@ ${LIB}(salinity.o)		\
 ${LIB}(stratification.o)	\
 ${LIB}(shear.o)	\
 ${LIB}(buoyancy.o)		\
-${LIB}(convectiveadjustment.o)
+${LIB}(convectiveadjustment.o)	\
+${LIB}(water_balance.o)
+
 
 
 all: $(MOD) $(OBJ)

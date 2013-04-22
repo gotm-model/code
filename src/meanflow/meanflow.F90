@@ -120,6 +120,8 @@
 !  the hypsograph at the grid centers Ac, at the interfaces Af and the
 !  derivative wrt. z dAdz
    REALTYPE, public, dimension(:), allocatable   :: Ac,Af,dAdz
+   REALTYPE, public                              :: int_flows
+   REALTYPE, public                              :: int_fwf
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, public, parameter         :: pi=3.141592654
@@ -206,6 +208,8 @@
    MaxItz0b     = 10
    no_shear     = .false.
    hypsograph_file  = ''
+   int_flows    = _ZERO_
+   int_fwf      = _ZERO_
 
 !  Read namelist from file.
    open(namlst,file=fn,status='old',action='read',err=80)

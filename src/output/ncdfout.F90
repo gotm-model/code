@@ -73,8 +73,10 @@
    integer, private          :: zeta_id
    integer, private          :: sst_id,sss_id
    integer, private          :: x_taus_id,y_taus_id
-   integer, private          :: swr_id,heat_id,total_id,precip_id,evap_id
-   integer, private          :: int_precip_id,int_evap_id,int_fwf_id
+   integer, private          :: precip_id,evap_id
+   integer, private          :: int_precip_id,int_evap_id
+   integer, private          :: int_net_precip_id,int_flows_id,int_fwf_id
+   integer, private          :: swr_id,heat_id,total_id
    integer, private          :: int_swr_id,int_heat_id,int_total_id
    integer, private          :: u_taus_id,u_taub_id
    integer, private          :: zsbl_id,zbbl_id
@@ -232,6 +234,10 @@
    call check_err(iret)
    iret = nf90_def_var(ncid,'int_evap',NF90_REAL,dim3d,int_evap_id)
    call check_err(iret)
+   iret = nf90_def_var(ncid,'int_net_precip',NF90_REAL,dim3d,int_net_precip_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'int_flows',NF90_REAL,dim3d,int_flows_id)
+   call check_err(iret)
    iret = nf90_def_var(ncid,'int_fwf',NF90_REAL,dim3d,int_fwf_id)
    call check_err(iret)
 
@@ -373,8 +379,8 @@
       call check_err(iret)
    endif
 
-   iret = nf90_def_var(ncid,'o2_obs',NF90_REAL,dim4d,o2_obs_id)
-   call check_err(iret)
+!KB   iret = nf90_def_var(ncid,'o2_obs',NF90_REAL,dim4d,o2_obs_id)
+!KB   call check_err(iret)
 
 # ifdef EXTRA_OUTPUT
    iret = nf90_def_var(ncid,'mean1',NF90_REAL,dim4d,mean1_id)
@@ -445,6 +451,8 @@
    iret = set_attributes(ncid,total_id,units='W/m2',long_name='total surface heat exchange')
    iret = set_attributes(ncid,int_precip_id,units='m',long_name='integrated precipitation')
    iret = set_attributes(ncid,int_evap_id,units='m',long_name='integrated evaporation')
+   iret = set_attributes(ncid,int_net_precip_id,units='m',long_name='integrated netto precipitation')
+   iret = set_attributes(ncid,int_flows_id,units='m',long_name='integrated flows - scaled by area')
    iret = set_attributes(ncid,int_fwf_id,units='m',long_name='integrated fresh water fluxes')
    iret = set_attributes(ncid,int_swr_id,units='J/m2',long_name='integrated short wave radiation')
    iret = set_attributes(ncid,int_heat_id,units='J/m2',long_name='integrated surface heat flux')
@@ -587,8 +595,9 @@
    use airsea,       only: airp,airt
    use airsea,       only: rh,twet,tdew,cloud
    use airsea,       only: tx,ty,I_0,heat,precip,evap,sst,sss
-   use airsea,       only: int_precip,int_evap,int_fwf
+   use airsea,       only: int_precip,int_evap,int_net_precip
    use airsea,       only: int_swr,int_heat,int_total
+   use meanflow,     only: int_flows,int_fwf
    use meanflow,     only: lake
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
    use meanflow,     only: h,Ac,Af,dAdz
@@ -600,7 +609,7 @@
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
    use observations, only: Qs, Qt, FQ
-   use inflows,      only: first_inflow,type_inflow
+   use inflows,      only: ninflows,first_inflow,type_inflow
    use inflows,      only: int_inflow,int_outflow
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
@@ -682,6 +691,8 @@
    iret = store_data(ncid,total_id,XYT_SHAPE,1,scalar=heat+I_0)
    iret = store_data(ncid,int_precip_id,XYT_SHAPE,1,scalar=int_precip)
    iret = store_data(ncid,int_evap_id,XYT_SHAPE,1,scalar=int_evap)
+   iret = store_data(ncid,int_net_precip_id,XYT_SHAPE,1,scalar=int_net_precip)
+   iret = store_data(ncid,int_flows_id,XYT_SHAPE,1,scalar=int_flows)
    iret = store_data(ncid,int_fwf_id,XYT_SHAPE,1,scalar=int_fwf)
    iret = store_data(ncid,int_swr_id,XYT_SHAPE,1,scalar=int_swr)
    iret = store_data(ncid,int_heat_id,XYT_SHAPE,1,scalar=int_heat)
@@ -703,8 +714,10 @@
          iret = store_data(ncid,Q_ids(iinflow),XYT_SHAPE,1,scalar=current_inflow%QI)
          current_inflow => current_inflow%next
       end do
-      iret = store_data(ncid,int_inflow_id,XYT_SHAPE,1,scalar=int_inflow)
-      iret = store_data(ncid,int_outflow_id,XYT_SHAPE,1,scalar=int_outflow)
+      if (ninflows .gt. 0) then
+         iret = store_data(ncid,int_inflow_id,XYT_SHAPE,1,scalar=int_inflow)
+         iret = store_data(ncid,int_outflow_id,XYT_SHAPE,1,scalar=int_outflow)
+      end if
    endif
 
    if (turb_method.eq.99) then

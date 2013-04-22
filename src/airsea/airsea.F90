@@ -78,7 +78,7 @@
 
 !  integrated precipitationa and
 !  evaporation + sum (m)
-   REALTYPE, public                    :: int_precip,int_evap,int_fwf
+   REALTYPE, public                    :: int_precip,int_evap,int_net_precip
 
 !  integrated short-wave radiation,
 !  surface heat flux (J/m^2)
@@ -330,12 +330,12 @@
    bio_albedo     = _ZERO_
 
 !  initialize integrated freshwater and heat fluxes
-   int_precip= _ZERO_
-   int_evap  = _ZERO_
-   int_fwf   = _ZERO_
-   int_swr   = _ZERO_
-   int_heat  = _ZERO_
-   int_total = _ZERO_
+   int_precip      = _ZERO_
+   int_evap        = _ZERO_
+   int_net_precip  = _ZERO_
+   int_swr         = _ZERO_
+   int_heat        = _ZERO_
+   int_total       = _ZERO_
 
 !  store provided longitude and latitude
    dlon = lon
@@ -787,12 +787,12 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   int_precip= int_precip + dt*precip
-   int_evap  = int_evap   + dt*evap
-   int_fwf   = int_precip + int_evap
-   int_swr   = int_swr    + dt*I_0
-   int_heat  = int_heat   + dt*heat
-   int_total = int_swr    + int_heat
+   int_precip     = int_precip + dt*precip
+   int_evap       = int_evap   + dt*evap
+   int_net_precip = int_precip + int_evap
+   int_swr        = int_swr    + dt*I_0
+   int_heat       = int_heat   + dt*heat
+   int_total      = int_swr    + int_heat
    return
    end subroutine integrated_fluxes
 !EOC

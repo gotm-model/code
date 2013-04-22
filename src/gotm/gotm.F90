@@ -489,6 +489,7 @@
       end if
 
       call integrated_fluxes(dt)
+      call water_balance()
 
 !     diagnostic output
       if(diagnostics) then
