@@ -88,6 +88,7 @@
    if (.not.lake) return
    
    open(unit,file='inflows.nml',action='read',status='old',err=98)
+   LEVEL1 'init_inflows'
    do
       name   = ''
       Q_file = ''
@@ -119,6 +120,7 @@
          stop 'init_inflows'
       end if
       
+      LEVEL2 '.... ',trim(name)
       current_inflow%name = name
       call register_input_0d(Q_file,Q_col,current_inflow%QI)
       if (T_file/='') then
@@ -196,7 +198,7 @@
       current_inflow%Q = _ZERO_
 
       ! inflow triggered or still in progress
-      if (current_inflow%QI .gt. _ZERO_) then
+      if (current_inflow%QI .ge. _ZERO_) then
 
          int_inflow = int_inflow + dt*current_inflow%QI
 
@@ -271,6 +273,7 @@
          Qt(nlev) = Qt(nlev) -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
       else
          int_outflow = int_outflow + dt*current_inflow%QI
+STDERR trim(current_inflow%name),' ',int_outflow
       end if
       current_inflow => current_inflow%next
    end do
