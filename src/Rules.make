@@ -20,8 +20,10 @@ SEDIMENT=false
 #SEDIMENT=true
 SEAGRASS=false
 SEAGRASS=true
+ifndef BIO
 BIO=true
 BIO=false
+endif
 NO_0D_BIO=false
 NO_0D_BIO=true
 
@@ -40,7 +42,7 @@ DEFINES += -DNETCDF_FMT
 ifeq ($(NETCDF_VERSION),NETCDF4)
 
 DEFINES         += -DNETCDF4
-INCDIRS         += $(shell nf-config --fflags)
+INCDIRS         += -I$(shell nf-config --includedir)
 NETCDFLIB       =  $(shell nf-config --flibs)
 
 else  # NetCDF3 is default
