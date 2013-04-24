@@ -591,7 +591,7 @@
    virtual_dilution = _ZERO_
    if (salinity_relaxation_to_freshwater_flux) then
       ! NB unit of virtual_dilution is relative dilution across column, i.e., fraction/s
-      if (any(SRelaxTau(1:nlev)<1.e10)) &
+      if (any(SRelaxTau(1:nlev)<1.e10) .and. any(salt>0.)) &
          virtual_dilution = sum((salt(1:nlev)-sProf(1:nlev))/SRelaxTau(1:nlev)*h(2:nlev+1))/sum(salt(1:nlev)*h(2:nlev+1))
    end if
 
