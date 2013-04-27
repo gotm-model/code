@@ -26,7 +26,7 @@
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
-   public register_observation
+   public register_observation, register_inflow, register_inflow_concentration
 
    ! Variables below must be accessible for gotm_fabm_output
    public local,total,dt,h,save_inputs
@@ -49,6 +49,17 @@
    type type_forced_0d_state
       REALTYPE, pointer :: data      => null()
       REALTYPE, pointer :: relax_tau => null()
+   end type
+
+   type type_inflow_concentration
+      REALTYPE, pointer :: data => null()
+   end type
+
+   type type_inflow
+      character(len=64) :: name = ''
+      REALTYPE, pointer  :: Q(:)
+      type (type_inflow_concentration),dimension(:),_ALLOCATABLE_ :: cc _NULL_
+      type (type_inflow), pointer :: next => null()
    end type
 
 !  Observation indices (from obs_0d, obs_1d) for pelagic and benthic state variables.
@@ -90,13 +101,15 @@
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,Ac,Af,bioshade,w,z,rho
+   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,Ac,Af,FQ,bioshade,w,z,rho
    REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: SRelaxTau,sProf,salt
    REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_    :: precip,evap,bio_drag_scale,bio_albedo
 
    REALTYPE,pointer :: I_0,A,g1,g2
    integer,pointer  :: yearday,secondsofday
    REALTYPE, target :: decimal_yearday
+
+   type (type_inflow),pointer :: first_inflow
 
 !  Explicit interface for ode solver.
    interface
@@ -165,6 +178,8 @@
    LEVEL1 'init_gotm_fabm'
 
    nullify(model)
+
+   nullify(first_inflow)
 
    ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
@@ -407,7 +422,7 @@
 ! !IROUTINE: Set environment for FABM
 !
 ! !INTERFACE:
-   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,Ac_,Af_,w_, &
+   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,Ac_,Af_,FQ_,w_, &
                                 bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
                                 yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
 !
@@ -419,7 +434,7 @@
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: latitude,longitude
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho_,nuh_,h_,Ac_,Af_,w_,bioshade_,z_
+   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho_,nuh_,h_,Ac_,Af_,FQ_,w_,bioshade_,z_
    REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,cloud,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_
@@ -454,6 +469,7 @@
    h        => h_          ! layer heights [1d array] needed for advection, diffusion
    Ac       => Ac_         ! hypsograph
    Af       => Af_         ! hypsograph
+   FQ       => FQ_
    w        => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
    z        => z_          ! depth [1d array], used to calculate local pressure
@@ -519,7 +535,7 @@
 ! TODO
 !
 ! !USES:
-   use util,only: flux,Neumann
+   use util,only: flux,oneSided,Neumann
 !
    integer, intent(in) :: nlev
 !
@@ -534,19 +550,20 @@
    REALTYPE                  :: Qsour(0:nlev),Lsour(0:nlev)
    REALTYPE                  :: RelaxTau(0:nlev)
    REALTYPE                  :: dilution,virtual_dilution
-   integer                   :: i
+   integer                   :: i,k
    integer                   :: split,posconc
    integer(8)                :: clock_start,clock_end
+   type (type_inflow),pointer :: inflow
+   REALTYPE                  :: inflow_conc
 !
 !-----------------------------------------------------------------------
 !BOC
 
    if (.not. fabm_calc) return
 
-   ! Set local source terms for diffusion scheme to zero,
-   ! because source terms are integrated independently later on.
-   Qsour    = _ZERO_
-   Lsour    = _ZERO_
+   ! Set linear source term for diffusion scheme to zero,
+   ! because biogeochemical source terms are integrated independently later on.
+   Lsour = _ZERO_
 
 !  Default: no relaxation
    RelaxTau = 1.d15
@@ -596,6 +613,9 @@
    end if
 
    do i=1,size(model%info%state_variables)
+      ! Set constant diffusion source term to zero - potentially modified below by inflows.
+      Qsour = _ZERO_
+
       ! Add surface flux due to evaporation/precipitation, unless the model explicitly says otherwise.
       if (.not. (model%info%state_variables(i)%no_precipitation_dilution .or. no_precipitation_dilution)) then
          sfl(i) = sfl(i)-cc(i,nlev)*dilution
@@ -605,6 +625,41 @@
       ! Determine whether the variable is positive-definite based on its lower allowed bound.
       posconc = 0
       if (model%info%state_variables(i)%minimum>=_ZERO_) posconc = 1
+
+      ! Add inflow (e.g., rivers) to source term that is to be used in diffusion solver.
+      if (associated(first_inflow)) then
+         do k=1,nlev
+            w(k) = FQ(k) / Af(k)
+         end do
+         call adv_center(nlev,dt,h,h,Ac,Af,w,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(i,:))
+      end if
+
+      inflow => first_inflow
+      do while (associated(inflow))
+         if (associated(inflow%cc(i)%data).or..not.model%info%state_variables(i)%no_river_dilution) then
+            ! Default inflow concentration: zero      
+            inflow_conc = _ZERO_
+
+            ! See if a specific inflow concentration is prescribed for this biogeochemcial variable.
+            if (associated(inflow%cc(i)%data)) inflow_conc = inflow%cc(i)%data
+
+            ! Calculate change in all layers due to inflow
+            do k=1,nlev
+               Qsour(k) = Qsour(k) + inflow_conc * inflow%Q(k) / (Ac(k) * h(k+1))   ! NB h(0:nlev) mapped to h(1:nlev+1)!
+            end do
+         else
+            ! Calculate change in all layers due to inflow
+            do k=1,nlev
+               Qsour(k) = Qsour(k) + cc(i,k) * inflow%Q(k) / (Ac(k) * h(k+1))   ! NB h(0:nlev) mapped to h(1:nlev+1)!
+            end do
+         end if
+
+         ! Calculate the sink term at sea surface
+         ! This is taken directly from the original inflow scheme.
+         Qsour(nlev) = Qsour(nlev) - cc(i,nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
+
+         inflow => inflow%next
+      end do
 
       call system_clock(clock_start)
 
@@ -1033,6 +1088,61 @@
 
       call fabm_link_scalar_data(model,scalar_id,data)
    end subroutine register_scalar_observation
+
+   subroutine register_inflow(name,Q)
+      character(len=*),intent(in) :: name
+      REALTYPE,target             :: Q(:)
+
+      type (type_inflow),pointer :: inflow
+      integer :: rc
+
+      ! Start inflow list, or append inflow if list exists.
+      if (associated(first_inflow)) then
+         inflow => first_inflow
+         do while (associated(inflow%next))
+            inflow => inflow%next
+         end do
+         allocate(inflow%next)
+         inflow => inflow%next
+      else
+         allocate(first_inflow)
+         inflow => first_inflow
+      end if
+
+      inflow%name = name
+      inflow%Q => Q
+      allocate(inflow%cc(1:size(model%info%state_variables)),stat=rc)
+      if (rc /= 0) stop 'allocate_memory(): Error allocating (inflow%cc)'
+   end subroutine register_inflow
+
+   subroutine register_inflow_concentration(id,inflow_name,data)
+      type(type_bulk_variable_id),intent(in) :: id
+      character(len=*),intent(in)            :: inflow_name
+      REALTYPE,target                        :: data
+
+      integer                     :: i
+      character(len=64)           :: varname
+      type (type_inflow), pointer :: curinflow,inflow
+
+!     Find associated inflow (needs to be registered beforehand with register_inflow)
+      nullify(inflow)
+      curinflow => first_inflow
+      do while (associated(curinflow))
+         if (curinflow%name==inflow_name) inflow = curinflow
+         curinflow => curinflow%next
+      end do
+      if (.not.associated(inflow)) stop 'gotm_fabm:register_inflow_concentration: inflow was not registered with register_inflow'
+
+!     Find associated state variable
+      varname = fabm_get_variable_name(model,id)
+      do i=1,size(model%info%state_variables)
+         if (varname==model%info%state_variables(i)%name) then
+            inflow%cc(i)%data => data
+            return
+         end if
+      end do
+      stop 'register_inflow: state variable not found'
+   end subroutine register_inflow_concentration
 
    subroutine init_gotm_fabm_state()
 

@@ -18,7 +18,7 @@
 ! !USES:
    use fabm, only: fabm_get_bulk_variable_id,fabm_get_horizontal_variable_id,fabm_get_scalar_variable_id,fabm_is_variable_used
    use fabm_types,only: type_bulk_variable_id,type_horizontal_variable_id,type_scalar_variable_id,rk
-   use gotm_fabm,only:fabm_calc,model,cc,register_observation
+   use gotm_fabm,only:fabm_calc,model,cc,register_observation,register_inflow,register_inflow_concentration
    use input,only: register_input_0d,register_input_1d
    use inflows
 
@@ -52,6 +52,7 @@
       REALTYPE, allocatable,dimension(:)      :: relax_tau_1d         ! Relaxation times for profiles (depth-dependent variables)
       REALTYPE                                :: data_0d
       REALTYPE,allocatable,dimension(:)       :: data_1d
+      type (type_inflow),pointer              :: inflow => null() ! Name of the inflow that this variable corresponds to (only for pelagic variables)
       type (type_input_variable),pointer      :: next => null()       ! Next variable in current input file
    end type
 
@@ -91,11 +92,13 @@
    character(len=64)            :: variable,variables(max_variable_count_per_file)
    integer                      :: i,k,file_variable_count,index
    integer                      :: variabletype,filetype
+   integer                      :: vl,ifl
    REALTYPE                     :: relax_tau,db,ds,depth
    REALTYPE,dimension(max_variable_count_per_file) :: relax_taus,relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot
    integer, parameter           :: type_unknown = 0, type_profile = 1, type_scalar = 2
    logical                      :: file_exists
    type (type_input_variable),pointer :: curvariable
+   type (type_inflow),pointer   :: curinflow
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
                            relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot
 !
@@ -108,6 +111,13 @@
 
 !  Initialize empty lists of observations files.
    nullify(first_input_variable)
+
+!  Register inflows
+   curinflow => first_inflow
+   do while (associated(curinflow))
+      call register_inflow(curinflow%name,curinflow%Q)
+      curinflow => curinflow%next
+   end do
 
 !  Calculate depth (used to determine whether in surface/bottom/bulk for relaxation times)
    depth = sum(h)
@@ -227,6 +237,20 @@
             variabletype = type_scalar
          end if
 
+         if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id).or.fabm_is_variable_used(curvariable%scalar_id))) then
+            curinflow => first_inflow
+            do while (associated(curinflow))
+               vl = len_trim(variables(i))
+               ifl = len_trim(curinflow%name)
+               if (variables(i)(vl-ifl:vl)==curinflow%name) then
+                  curvariable%id = fabm_get_bulk_variable_id(model,variables(i)(:vl-ifl-1))
+                  variabletype = type_scalar
+                  if (fabm_is_variable_used(curvariable%id)) curvariable%inflow => curinflow
+               end if
+               curinflow => curinflow%next
+            end do
+         end if
+
 !        Report an error if the variable was still not found.
          if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id).or.fabm_is_variable_used(curvariable%scalar_id))) then
             FATAL 'Variable '//trim(curvariable%name)//', referenced in namelist observations &
@@ -242,20 +266,26 @@
          filetype = variabletype
 
          if (variabletype==type_scalar) then
+!           0D observation (horizontal-only, global scalar, or inflow for pelagic variable)
             call register_input_0d(curvariable%path,curvariable%index,curvariable%data_0d)
-            curvariable%relax_tau_0d = relax_taus(i)
-            if (fabm_is_variable_used(curvariable%horizontal_id)) then
-               call register_observation(curvariable%horizontal_id,curvariable%data_0d,curvariable%relax_tau_0d)
+            if (associated(curvariable%inflow)) then
+               call register_inflow_concentration(curvariable%id,curvariable%inflow%name,curvariable%data_0d)
             else
-               call register_observation(curvariable%scalar_id,curvariable%data_0d)
+               curvariable%relax_tau_0d = relax_taus(i)
+               if (fabm_is_variable_used(curvariable%horizontal_id)) then
+                  call register_observation(curvariable%horizontal_id,curvariable%data_0d,curvariable%relax_tau_0d)
+               else
+                  call register_observation(curvariable%scalar_id,curvariable%data_0d)
+               end if
             end if
          else
+!           1D observation (vertically structured variable)
             allocate(curvariable%data_1d(0:nlev))
             allocate(curvariable%relax_tau_1d(0:nlev))
             curvariable%relax_tau_1d = relax_taus(i)
             call register_input_1d(curvariable%path,curvariable%index,curvariable%data_1d)
 
-!           Apply separate relaxation times for bottom and surface layer, if specified.
+!           Apply separate relaxation times to bottom and surface layer, if specified.
             db = _ZERO_
             ds = depth
             do k=1,nlev
