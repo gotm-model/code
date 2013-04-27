@@ -549,18 +549,23 @@
    o2_prof = _ZERO_
 
 !  The salinity profile
+   LEVEL2 "initial salinity:"
    select case (s_prof_method)
       case (NOTHING)
+         LEVEL3 "none"
          sprof = _ZERO_
       case (ANALYTICAL)
 
          ! different ways to prescribe profiles analytically
          select case (s_analyt_method)
             case (CONST_PROF)
+               LEVEL3 "constant"
                sprof = s_1
             case (TWO_LAYERS)
+               LEVEL3 "two-layer"
                call analytical_profile(nlev,z,z_s1,s_1,z_s2,s_2,sprof)
             case (CONST_NN)
+               LEVEL3 "constant NN"
 
                if (.not.((t_prof_method       .eq. ANALYTICAL) .and.      &
                          (t_analyt_method .eq. CONST_PROF))   )  then
@@ -590,18 +595,23 @@
    end select
 
 !  The temperature profile
+   LEVEL2 "initial temperature:"
    select case (t_prof_method)
       case (NOTHING)
+         LEVEL3 "none"
          tprof = _ZERO_
       case (ANALYTICAL)
 
         ! different ways to prescribe profiles analytically
          select case (t_analyt_method)
          case (CONST_PROF)
+               LEVEL3 "constant"
                tprof = t_1
             case (TWO_LAYERS)
+               LEVEL3 "two-layer"
                call analytical_profile(nlev,z,z_t1,t_1,z_t2,t_2,tprof)
             case (CONST_NN)
+               LEVEL3 "constant NN"
 
                if (.not.((s_prof_method       .eq. ANALYTICAL) .and.      &
                          (s_analyt_method .eq. CONST_PROF))   )  then
@@ -631,12 +641,15 @@
    end select
 
 !  The external pressure
+   LEVEL2 "external pressure"
    select case (ext_press_method)
       case (NOTHING)
+         LEVEL3 "none"
          h_press = PressHeight
          dpdx    = PressConstU
          dpdy    = PressConstV
       case (ANALYTICAL)
+         LEVEL3 "analytical"
 !        The analytical prescription of external pressure is time-dependent
 !        and is therefore handled in get_all_obs.
       case (FROMFILE)
@@ -651,13 +664,16 @@
    end select
 
 !  The internal pressure
+   LEVEL2 "internal pressure"
    select case (int_press_method)
       case (NOTHING)
+         LEVEL3 "none"
          dsdx = _ZERO_
          dsdy = _ZERO_
          dtdx = _ZERO_
          dtdy = _ZERO_
       case (CONSTANT)
+         LEVEL3 "constant"
          dsdx = const_dsdx
          dsdy = const_dsdy
          dtdx = const_dtdx
@@ -675,6 +691,7 @@
    end select
 
 !  The light extinction profiles
+   LEVEL2 "extinction method"
    select case (extinct_method)
       case (0)
          call register_input_0d(extinct_file,1,A)
@@ -683,18 +700,25 @@
          LEVEL2 'Reading extinction data from:'
          LEVEL3 trim(extinct_file)
       case (1)
+         LEVEL3 "1"
          A=0.58;g1=0.35;g2=23.0
       case (2)
+         LEVEL3 "2"
          A=0.68;g1=1.20;g2=28.0
       case (3)
+         LEVEL3 "3"
          A=0.62;g1=0.60;g2=20.0
       case (4)
+         LEVEL3 "4"
          A=0.67;g1=1.00;g2=17.0
       case (5)
+         LEVEL3 "5"
          A=0.77;g1=1.50;g2=14.0
       case (6)
+         LEVEL3 "6"
          A=0.78;g1=1.40;g2=7.9
       case (7)
+         LEVEL3 "7"
          A=0.7;g1=0.40;g2=8.0 ! Adolf Stips - Lago Maggiore
       case default
          LEVEL1 'A non-valid extinct_method has been given ',extinct_method
@@ -702,11 +726,14 @@
    end select
 
 !  The vertical advection velocity
+   LEVEL2 "vertical advection"
    select case (w_adv_method)
       case(NOTHING)                               ! no vertical advection
+         LEVEL3 "none"
          w_height = _ZERO_
          w_adv    = _ZERO_
       case(CONSTANT)
+         LEVEL3 "constant"
          w_height = w_adv_height0
          w_adv    = w_adv0
       case (FROMFILE)
@@ -720,10 +747,13 @@
    end select
 
 !  The sea surface elevation
+   LEVEL2 "elevation"
    select case (zeta_method)
       case(0)
+         LEVEL3 "constant"
          zeta = zeta_0
       case(ANALYTICAL)
+         LEVEL3 "analytical"
 !        The analytical prescription of surface elevation is time-dependent
 !        and is therefore handled in get_all_obs.
       case (FROMFILE)
@@ -736,12 +766,15 @@
    end select
 
 !  Wind waves
+   LEVEL2 "waves"
    select case (wave_method)
       case (NOTHING)
+         LEVEL3 "none"
          Hs   = _ZERO_
          Tz   = _ZERO_
          phiw = _ZERO_
       case (CONSTANT)
+         LEVEL3 "constant"
 !        Constant Hs, Tz and phiw have been already been set via the wave namelist.
       case (FROMFILE)
          call register_input_0d(wave_file,1,Hs)
@@ -755,8 +788,10 @@
    end select
 
 !  The observed velocity profile
+   LEVEL2 "velocity profiles"
    select case (vel_prof_method)
       case (NOTHING)
+         LEVEL3 "none"
          uprof = _ZERO_
          vprof = _ZERO_
       case (FROMFILE)
@@ -770,8 +805,10 @@
    end select
 
 !  The observed dissipation profile
+   LEVEL2 "dissipations profiles"
    select case (e_prof_method)
       case (NOTHING)
+         LEVEL3 "none"
          epsprof = _ZERO_
       case (FROMFILE)
          call register_input_1d(e_prof_file,1,epsprof)
@@ -870,7 +907,6 @@
 93 FATAL 'I could not read "bioprofiles" namelist'
    stop 'init_observations'
 #endif
-
    end subroutine init_observations
 !EOC
 
