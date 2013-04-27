@@ -242,7 +242,7 @@
             do while (associated(curinflow))
                vl = len_trim(variables(i))
                ifl = len_trim(curinflow%name)
-               if (variables(i)(vl-ifl:vl)==curinflow%name) then
+               if (variables(i)(vl-ifl+1:vl)==curinflow%name) then
                   curvariable%id = fabm_get_bulk_variable_id(model,variables(i)(:vl-ifl-1))
                   variabletype = type_scalar
                   if (fabm_is_variable_used(curvariable%id)) curvariable%inflow => curinflow

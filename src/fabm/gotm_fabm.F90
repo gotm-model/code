@@ -1128,7 +1128,7 @@
       nullify(inflow)
       curinflow => first_inflow
       do while (associated(curinflow))
-         if (curinflow%name==inflow_name) inflow = curinflow
+         if (curinflow%name==inflow_name) inflow => curinflow
          curinflow => curinflow%next
       end do
       if (.not.associated(inflow)) stop 'gotm_fabm:register_inflow_concentration: inflow was not registered with register_inflow'
