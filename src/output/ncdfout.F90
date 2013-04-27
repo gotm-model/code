@@ -379,8 +379,8 @@
       call check_err(iret)
    endif
 
-!KB   iret = nf90_def_var(ncid,'o2_obs',NF90_REAL,dim4d,o2_obs_id)
-!KB   call check_err(iret)
+   iret = nf90_def_var(ncid,'o2_obs',NF90_REAL,dim4d,o2_obs_id)
+   call check_err(iret)
 
 # ifdef EXTRA_OUTPUT
    iret = nf90_def_var(ncid,'mean1',NF90_REAL,dim4d,mean1_id)
