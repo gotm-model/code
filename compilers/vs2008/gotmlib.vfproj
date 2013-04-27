@@ -87,7 +87,8 @@
 		<File RelativePath="..\..\src\meanflow\temperature.F90"/>
 		<File RelativePath="..\..\src\meanflow\uequation.F90"/>
 		<File RelativePath="..\..\src\meanflow\updategrid.F90"/>
-		<File RelativePath="..\..\src\meanflow\vequation.F90"/></Filter>
+		<File RelativePath="..\..\src\meanflow\vequation.F90"/>
+		<File RelativePath="..\..\src\meanflow\water_balance.F90"/></Filter>
 		<Filter Name="observations">
 		<File RelativePath="..\..\src\observations\analytical_profile.F90"/>
 		<File RelativePath="..\..\src\observations\const_NNS.F90"/>
