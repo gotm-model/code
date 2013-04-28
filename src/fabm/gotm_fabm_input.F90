@@ -237,6 +237,9 @@
             variabletype = type_scalar
          end if
 
+!        If variable still was not found, test whether its name matches the name of a pelagic variable,
+!        followed by an underscore, and the name of an inflow. In that case, the input variable specifies the
+!        time-varying concentration of the pelagic variable in the inflow.
          if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id).or.fabm_is_variable_used(curvariable%scalar_id))) then
             curinflow => first_inflow
             do while (associated(curinflow))
@@ -266,20 +269,22 @@
          filetype = variabletype
 
          if (variabletype==type_scalar) then
-!           0D observation (horizontal-only, global scalar, or inflow for pelagic variable)
+!           0D input variable (horizontal-only, global scalar, or inflow for pelagic variable)
             call register_input_0d(curvariable%path,curvariable%index,curvariable%data_0d)
+            curvariable%relax_tau_0d = relax_taus(i)
+
             if (associated(curvariable%inflow)) then
+!              Input is inflow concentration for pelagic variable.
                call register_inflow_concentration(curvariable%id,curvariable%inflow%name,curvariable%data_0d)
+            elseif (fabm_is_variable_used(curvariable%horizontal_id)) then
+!              Input is a variable defined on horizontal slice of model domain (e.g., benthos)
+               call register_observation(curvariable%horizontal_id,curvariable%data_0d,curvariable%relax_tau_0d)
             else
-               curvariable%relax_tau_0d = relax_taus(i)
-               if (fabm_is_variable_used(curvariable%horizontal_id)) then
-                  call register_observation(curvariable%horizontal_id,curvariable%data_0d,curvariable%relax_tau_0d)
-               else
-                  call register_observation(curvariable%scalar_id,curvariable%data_0d)
-               end if
+!              Input is a scalar [non-spatial] variable
+               call register_observation(curvariable%scalar_id,curvariable%data_0d)
             end if
          else
-!           1D observation (vertically structured variable)
+!           1D input variable (vertically structured variable)
             allocate(curvariable%data_1d(0:nlev))
             allocate(curvariable%relax_tau_1d(0:nlev))
             curvariable%relax_tau_1d = relax_taus(i)
