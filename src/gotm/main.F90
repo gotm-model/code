@@ -27,37 +27,68 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   character(LEN=8)          :: datestr
+   
+   character(LEN=8)          :: systemdate
+   character(LEN=10)         :: systemtime
+   character                 :: date
    real                      :: t1=-1,t2=-1
-REALTYPE :: sunrise, sunset
 !
 !-----------------------------------------------------------------------
 !BOC
-#ifdef FORTRAN95
+
+!  monitor CPU time and report system time and date
+#ifdef FORTRAN95 
    call CPU_Time(t1)
+
+   call Date_And_Time(DATE=systemdate,TIME=systemtime)
+   
+   STDERR LINE
+   STDERR 'GOTM ver. ',    RELEASE,                           &
+          ' started on ', systemdate(1:4), '/',               &
+                          systemdate(5:6), '/',               &
+                          systemdate(7:8),                    &
+          ' at ',         systemtime(1:2), ':',               &
+                          systemtime(3:4), ':',               &
+                          systemtime(5:6) 
+   STDERR LINE
+#else
+   STDERR LINE
+   STDERR 'GOTM ver. ',    RELEASE                           
+   STDERR LINE
 #endif
-call sunrise_sunset(56.d0,23.26d0,sunrise,sunset)
-STDERR sunrise,sunset
 
-   call Date_And_Time(datestr,timestr)
-   STDERR LINE
-   STDERR 'GOTM ver. ',RELEASE,': Started on  ',datestr,' ',timestr
-   STDERR LINE
-
+!  run the model
    call init_gotm()
    call time_loop()
    call clean_up()
 
+!  report system date and time at end of run
+#ifdef FORTRAN95
+   call Date_And_Time(DATE=systemdate,TIME=systemtime)
+   
+   STDERR LINE
+   STDERR 'GOTM ver. ',     RELEASE,                          &
+          ' finished on ', systemdate(1:4), '/',              &
+                           systemdate(5:6), '/',              &
+                           systemdate(7:8),                   &
+          ' at ',          systemtime(1:2), ':',              &
+                           systemtime(3:4), ':',              &
+                           systemtime(5:6) 
+   STDERR LINE
+#else
+   STDERR LINE
+   STDERR 'GOTM ver. ',    RELEASE                           
+   STDERR LINE
+#endif
+
+!  report CPU time used for run
 #ifdef FORTRAN95
    call CPU_Time(t2)
+
+   STDERR 'CPU time:                    ',t2-t1,' seconds'
+   STDERR 'Simulated time/CPU time:     ',simtime/(t2-t1)
 #endif
-   call Date_And_Time(datestr,timestr)
-   STDERR LINE
-   STDERR 'GOTM ver. ',RELEASE,': Finished on ',datestr,' ',timestr
-#ifdef FORTRAN95
-   STDERR 'CPU-time was in loop:  ',t2-t1,' seconds'
-   STDERR 'Sim-time/CPU-time:     ',simtime/(t2-t1)
-#endif
+
    call compilation_options
 
    end
