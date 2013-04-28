@@ -52,7 +52,7 @@
       REALTYPE, allocatable,dimension(:)      :: relax_tau_1d         ! Relaxation times for profiles (depth-dependent variables)
       REALTYPE                                :: data_0d
       REALTYPE,allocatable,dimension(:)       :: data_1d
-      type (type_inflow),pointer              :: inflow => null() ! Name of the inflow that this variable corresponds to (only for pelagic variables)
+      type (type_inflow),pointer              :: inflow => null()     ! Inflow that this variable corresponds to (only for pelagic variables)
       type (type_input_variable),pointer      :: next => null()       ! Next variable in current input file
    end type
 
@@ -90,7 +90,7 @@
 ! !LOCAL VARIABLES:
    character(len=maxpathlen)    :: file
    character(len=64)            :: variable,variables(max_variable_count_per_file)
-   integer                      :: i,k,file_variable_count,index
+   integer                      :: i,k,index
    integer                      :: variabletype,filetype
    integer                      :: vl,ifl
    REALTYPE                     :: relax_tau,db,ds,depth
@@ -195,7 +195,6 @@
       end if
 
 !     Find the provided variable names in FABM.
-      file_variable_count = 0
       do i=1,size(variables)
 !        If this variable is not used, skip to the next.
          if (variables(i)=='') cycle
