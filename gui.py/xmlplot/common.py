@@ -935,7 +935,7 @@ class Variable(object):
             assert self.ndim==1,'"compressed" can only be used on 1D arrays.'
 
             # If no data is masked, return everything unmodified.
-            mask = numpy.ma.getdata(self.data)
+            mask = numpy.ma.getmask(self.data)
             if mask is numpy.ma.nomask or not numpy.any(mask): return self
             
             # Create a new data slice to hold the compressed data, and directly compress
