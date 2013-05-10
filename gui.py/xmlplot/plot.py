@@ -154,6 +154,9 @@ class MergedVariableStore(common.VariableStore):
         def getDimensions_raw(self):
             return tuple([self.mergedimid]+list(self.vars[0].getDimensions_raw()))
 
+        def getShape(self):
+            return (len(self.vars),) + tuple(self.vars[0].getShape())
+
         def getSlice(self,bounds):
             slice = self.Slice(self.getDimensions())
             assert len(bounds)==slice.ndim, 'Number of specified dimensions (%i) does not equal number of data dimensions (%i).' % (len(bounds),slice.ndim)
