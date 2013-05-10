@@ -158,8 +158,10 @@ class MergedVariableStore(common.VariableStore):
             return (len(self.vars),) + tuple(self.vars[0].getShape())
 
         def getSlice(self,bounds,dataonly=False):
-            slice = self.Slice(self.getDimensions())
-            assert len(bounds)==slice.ndim, 'Number of specified dimensions (%i) does not equal number of data dimensions (%i).' % (len(bounds),slice.ndim)
+            dims = self.getDimensions()
+            assert len(bounds)==len(dims), 'Number of specified dimensions (%i) does not equal number of data dimensions (%i).' % (len(bounds),slice.ndim)
+            dims = [dim for (dim,bound) in zip(dims,bounds) if not isinstance(bound,int)]
+            slice = self.Slice(dims)
             
             # Get bound indices for the merged dimension
             ifirst,ilast = 0,len(self.vars)-1
