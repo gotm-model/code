@@ -157,7 +157,7 @@ class MergedVariableStore(common.VariableStore):
         def getShape(self):
             return (len(self.vars),) + tuple(self.vars[0].getShape())
 
-        def getSlice(self,bounds):
+        def getSlice(self,bounds,dataonly=False):
             slice = self.Slice(self.getDimensions())
             assert len(bounds)==slice.ndim, 'Number of specified dimensions (%i) does not equal number of data dimensions (%i).' % (len(bounds),slice.ndim)
             
@@ -179,6 +179,8 @@ class MergedVariableStore(common.VariableStore):
                     first = False
                 slice.data[ivar,...] = curslice.data
                 
+            if dataonly: return slice.data
+
             return slice
 
     def __init__(self,stores,mergedimid='obs',mergedimname='observation'):
