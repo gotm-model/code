@@ -102,7 +102,7 @@
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
-   integer,intent(in) :: n
+   integer,intent(in),optional :: n
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -112,8 +112,12 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_input'
-   
-   nlev = n
+
+   if (present(n)) then
+      nlev = n
+   else
+      nlev = -1
+   end if   
    next_unit_no = first_unit_no
    nullify(first_profile_file)
    nullify(first_timeseries_file)
@@ -150,6 +154,11 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (nlev==-1) then
+      FATAL 'input module has been initialized without depth information; depth-explicit inputs can therefore not be registered.'
+      stop 'input::register_input_1d'
+   end if
+
 !  Find a file object for the specified file path; create one if it does exist yet.
    if (.not.associated(first_profile_file)) then
       allocate(first_profile_file)
@@ -279,8 +288,9 @@
 ! !USES:
 !
 ! !INPUT PARAMETERS:
-   integer,  intent(in) :: jul,secs,nlev
-   REALTYPE, intent(in) :: z(:)
+   integer,  intent(in)          :: jul,secs
+   integer,  intent(in),optional :: nlev
+   REALTYPE, intent(in),optional :: z(:)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -292,6 +302,11 @@
    type (type_timeseries_file),pointer :: timeseries_file
 !-----------------------------------------------------------------------
 !BOC
+   if (associated(first_profile_file) .and. .not. (present(nlev).and.present(z))) then
+      FATAL 'do_input must receive nlev and z since one or more depth-varying inputs have been registered.'
+      stop 'input::do_input'
+   end if
+
 !  Loop over files with observed profiles.
    profile_file => first_profile_file
    do while (associated(profile_file))
