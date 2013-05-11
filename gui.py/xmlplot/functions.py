@@ -181,7 +181,8 @@ class flatten(expressions.LazyFunction):
 
     def getShape(self):
         axis = self.args[1]
-        targetaxis = self.kwargs.get('targetaxis',0 if axis!=0 else 1)
+        targetaxis = self.kwargs['targetaxis']
+        if targetaxis is None: targetaxis = 0 if axis!=0 else 1
         s = list(expressions.LazyOperation.getShape(self))
         s[targetaxis] *= s[self.removedim]
         del s[self.removedim]
