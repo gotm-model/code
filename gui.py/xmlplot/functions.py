@@ -180,7 +180,7 @@ class flatten(expressions.LazyFunction):
         return newslice
 
     def getShape(self):
-        s = list(LazyOperation.getShape(self))
+        s = list(expressions.LazyOperation.getShape(self))
         s[self.targetaxis] *= s[self.removedim]
         del s[self.removedim]
         return s
