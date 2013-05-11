@@ -338,6 +338,8 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
     return dat
           
 class MultiNetCDFFile(object):
+    class CoordinatesIdenticalException(Exception): pass
+
     class Variable(object):
         def __init__(self,store,name):
             self.store = store
@@ -465,7 +467,7 @@ class MultiNetCDFFile(object):
                 assert dim in nc.dimensions,'Dimension %s is missing in "%s". For multiple NetCDF files to be loaded as one single file, all must use the same dimensions.' % (dim,path)
 
                 # If no coordinate values are available, just continue with the next dimension.
-                # (we will not be able to determine the file order, so we xcept the given order)
+                # (we will not be able to determine the file order, so we accept the given order)
                 if dim not in nc.variables: continue
                 
                 # Compare coordinate values.
@@ -479,10 +481,11 @@ class MultiNetCDFFile(object):
                         self.variabledim = dim
                         
         # Make sure that the values of one dimension vary between files.
-        assert self.variabledim is not None, 'All dimensions have the same coordinates in the supplied files. One dimension should differ between files in order for them to be loaded as a single file.'
-                        
+        if self.variabledim is None:
+            raise MultiNetCDFFile.CoordinatesIdenticalException('All dimensions have the same coordinates in the supplied files. One dimension should differ between files in order for them to be loaded as a single file.')
+
         # Sort NetCDF files based on their values for the varying dimension.
-        # Only works if we have the cooridnate values for all files.
+        # Only works if we have the coordinate values for all files.
         nc2coords = {}
         for nc in self.ncs:
             if self.variabledim in nc.variables: nc2coords[nc] = nc.variables[self.variabledim][0]
@@ -539,7 +542,11 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
     
     @staticmethod
     def loadUnknownConvention(path):
-        nc = openNetCDF(path)
+        try:
+            nc = openNetCDF(path)
+        except MultiNetCDFFile.CoordinatesIdenticalException:
+            results = [xmlplot.data.NetCDFStore(filepath) for filepath in glob.glob(path)]
+            return xmlplot.plot.MergedVariableStore(results,mergedimid='obs',mergedimname='observation')        
         for convention in NetCDFStore.conventions:
             if convention.testFile(nc): return convention(nc)
         return NetCDFStore(nc)

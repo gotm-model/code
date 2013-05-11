@@ -191,6 +191,10 @@ class MergedVariableStore(common.VariableStore):
         self.mergedimid = mergedimid
         self.mergedimname = mergedimname
 
+    def unlink(self):
+        for store in self.stores: store.unlink()
+        self.stores = ()
+
     def getVariableNames_raw(self):
         return self.stores[0].getVariableNames_raw()
 
