@@ -1594,8 +1594,8 @@ class NetCDFStore_GOTM(NetCDFStore):
                             # Add elevation mask to global depth mask (NB getvardata will have inserted z dimension already).
                             mask = setmask(mask,elevmask)
                             
-                            # Set masked edges of valid [unmasked] elevation domain to bordering
-                            # elevation values, in order to allow for correct calculation of interface depths.
+                            # Set masked (land) edges of domain to nearest (in x,y space) neighbouring elevation values.
+                            # This is needed to allow the inference of corner points that fall outside the domain bounded by centre coordinates.
                             elev = xmlplot.common.interpolateEdges(elev)
                             elevmask = numpy.ma.getmask(elev)
 
@@ -1613,6 +1613,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     return elev,mask
                     
                 def getLayerHeights(mask):
+                    # Get layer heights
                     h = getvardata(self.store.hname)
                                         
                     # Fill masked values (we do not want coordinate arrays with masked values)
@@ -1620,26 +1621,31 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # these locations.
                     hmask = numpy.ma.getmask(h)
                     if hmask is not numpy.ma.nomask:
+                        # Add layer height mask to global depth mask.
                         mask = setmask(mask,hmask)
                         
+                        # Set masked (land) edges of domain to nearest (in x,y space) neighbouring layer heights.
+                        # This is needed to allow the inference of corner points that fall outside the domain bounded by centre coordinates.
                         ipaxes = [i for i in range(len(h.shape)) if i!=izdim]
                         h = xmlplot.common.interpolateEdges(h,dims=ipaxes)
                         
+                        # Fill remaining masked layer heights with zero.
                         h = h.filled(0.)
                         
                     return h,mask
                     
                 def getBathymetry(mask):
+                    # Get bathymetry (distance between geoid/mean sea level and bottom)
                     bath = getvardata(self.store.bathymetryname)
                     
                     # Check bathymetry mask.
                     bathmask = numpy.ma.getmask(bath)
                     if bathmask is not numpy.ma.nomask:
-                        # Apply bathymetry mask to global depth mask.
+                        # Add bathymetry mask to global depth mask.
                         mask = setmask(mask,bathmask)
                         
-                        # Set masked edges of valid [unmasked] bathymetry to bordering
-                        # bathymetry values, in order to allow for correct calculation of interface depths.
+                        # Set masked (land) edges of domain to nearest (in x,y space) neighbouring bahtymetry values.
+                        # This is needed to allow the inference of corner points that fall outside the domain bounded by centre coordinates.
                         bath = xmlplot.common.interpolateEdges(bath)
                         
                         # Fill the remaining masked bathymetry with the shallowest value in the domain.
