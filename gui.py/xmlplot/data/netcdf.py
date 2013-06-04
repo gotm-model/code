@@ -1240,28 +1240,28 @@ class NetCDFStore_GOTM(NetCDFStore):
         
         # Test for GETM with curvilinear coordinates
         # (either lon,lat or staggered Cartesian coordinates must be available)
-        if ('xic'  in ncdims and 'etac' in ncdims and
+        if ('xic' in ncdims and 'etac' in ncdims and
             (('lonc' in ncvars and 'latc' in ncvars)
              or ('xx' in ncvars and 'yx' in ncvars))): match = True
 
         # Test for GETM with cartesian coordinates
-        if ('xc'  in ncdims and 'yc' in ncdims and
-            'lonc' in ncvars and 'latc' in ncvars): match = True
+        if 'xc' in ncdims and 'yc' in ncdims and 'lonc' in ncvars and 'latc' in ncvars: match = True
 
-        # Test for GOTM with variable layer heights and sea surface elevation
-        if ('z' in ncdims and 'z1' in ncdims and
-            'h' in ncvars and 'zeta' in ncvars): match = True
+        # Test for GOTM convention for depth represented by layer heights and surface elevation.
+        if 'z' in ncdims and 'z1' in ncdims and 'h' in ncvars and 'zeta' in ncvars: match = True
 
-        # Test for GETM with variable heights and sea surface elevation
-        if ('level' in ncdims and 'bathymetry' in ncvars and ('h' in ncvars or 'hmean' in ncvars)): match = True
+        # Test for GETM convention for general, hybrid or adaptive vertical coordinates.
+        if 'level' in ncdims and 'bathymetry' in ncvars and ('h' in ncvars or 'hmean' in ncvars): match = True
 
-        if ('sigma' in ncdims and 'bathymetry' in ncvars and ('elev' in ncvars or 'elevmean' in ncvars)): match = True
+        # Test for GETM convention for sigma vertical coordinates.
+        if 'sigma' in ncdims and 'bathymetry' in ncvars and ('elev' in ncvars or 'elevmean' in ncvars): match = True
 
         return match
 
     def __init__(self,path=None,*args,**kwargs):
-        self.xname,self.yname,self.hname,self.elevname = 'lon','lat','h','zeta'
+        self.hname,self.elevname = 'h','zeta'
         self.bathymetryname = None
+        self.depthdim = None
 
         # Link new depth coordinates to an existing NetCDF dimension
         self.depth2coord = {}
@@ -1284,29 +1284,20 @@ class NetCDFStore_GOTM(NetCDFStore):
         # Re-assign for GETM with curvilinear coordinates
         # Preferentially, x and y are re-assigned to longitude and latitude.
         # If these are not available, they will be re-assigned to projected x and y instead.
-        if 'xic' in ncdims and 'etac' in ncdims:
-            # Center coordinate are available, re-assign to either lon,lat or projected x,y, if possible.
-            self.xname,self.yname = 'xic','etac'   # x,y dimensions to be used for depth
-            if 'lonc' in ncvars and 'latc' in ncvars:
-                self.defaultcoordinates['xic' ] = 'lonc'
-                self.defaultcoordinates['etac'] = 'latc'
-            elif 'xc' in ncvars and 'yc' in ncvars:
-                self.defaultcoordinates['xic' ] = 'xc'
-                self.defaultcoordinates['etac'] = 'yc'
-        if 'xix' in ncdims and 'etax' in ncdims:
-            # Boundary coordinate are available, re-assign to either lon,lat or projected x,y, if possible.
-            if 'lonx' in ncvars and 'latx' in ncvars:
-                self.defaultcoordinates['xix' ] = 'lonx'
-                self.defaultcoordinates['etax'] = 'latx'
-            elif 'xx' in ncvars and 'yx' in ncvars:
-                self.defaultcoordinates['xix' ] = 'xx'
-                self.defaultcoordinates['etax'] = 'yx'
+        # Do this for centre coordinates ("c"), corner coordinates ("x"), u coordinates ("u") and v coordinates ("v").
+        for pt in 'cxuv':
+            if 'xi'+pt not in ncdims or 'eta'+pt not in ncdims: continue
+            if 'lon'+pt in ncvars and 'lat'+pt in ncvars:
+                self.defaultcoordinates['xi' +pt] = 'lon'+pt
+                self.defaultcoordinates['eta'+pt] = 'lat'+pt
+            elif 'x'+pt in ncvars and 'y'+pt in ncvars:
+                self.defaultcoordinates['xi' +pt] = 'x'+pt
+                self.defaultcoordinates['eta'+pt] = 'y'+pt
 
         # Re-assign for GETM with cartesian coordinates.
         # x and y are re-assigned to longitude and latitude, if possible.
         if 'xc' in ncdims and 'yc' in ncdims:
             # Center coordinate are available.
-            self.xname,self.yname = 'xc','yc'   # x,y dimensions to be used for depth
             if 'lonc' in ncvars and 'latc' in ncvars:
                 self.defaultcoordinates['xc' ] = 'lonc'
                 self.defaultcoordinates['yc'] = 'latc'
@@ -1316,19 +1307,13 @@ class NetCDFStore_GOTM(NetCDFStore):
                 self.defaultcoordinates['xx'] = 'lonx'
                 self.defaultcoordinates['yx'] = 'latx'
 
-        # For GETM with spherical coordinates, we just need to remember the latitude,longitude
-        # names for when we return the dimensions of the new vertical coordinates.
-        if self.xname=='lon' and ('lon' not in ncvars) and 'lonc' in ncvars: self.xname = 'lonc'
-        if self.yname=='lat' and ('lat' not in ncvars) and 'latc' in ncvars: self.yname = 'latc'
-
         # --------------------------------------------------------------
         # Re-assign vertical dimension
         # NB the is done automatically for GOTM, because the original
         # z and z1 variables are overwritten.
         # --------------------------------------------------------------
 
-        # Re-assign depth coordinate dimension if using GETM with elevation,layer heights
-        if 'level' in ncdims and ('h' in ncvars or 'hmean' in ncvars) and 'bathymetry' in ncvars:
+        if 'level' in ncdims and 'bathymetry' in ncvars and ('h' in ncvars or 'hmean' in ncvars):
             # GETM with general, hybrid or adaptive vertical coordinates
             # Depth will be computed from bathymetry(x,y) and layer heights(x,y,z,t).
             # Depth dimension is called "level".
@@ -1338,7 +1323,7 @@ class NetCDFStore_GOTM(NetCDFStore):
             self.elevname = None
             self.depth2coord['z'] = 'level'
             self.depthdim = 'level'
-        elif 'sigma' in ncdims and 'bathymetry' in ncvars and ('elev' in ncvars):
+        elif 'sigma' in ncdims and 'bathymetry' in ncvars and ('elev' in ncvars or 'elevmean' in ncvars):
             # GETM with sigma coordinates
             # Depth will be computed from bathymetry(x,y), surface elevation(x,y,t) and sigma(z).
             # Depth dimension is called "sigma".
@@ -1348,21 +1333,24 @@ class NetCDFStore_GOTM(NetCDFStore):
             self.elevname = 'elev' if 'elev' in ncvars else 'elevmean'
             self.depth2coord['z'] = 'sigma'
             self.depthdim = 'sigma'
-        else:
-            # GETM or GOTM with z coordinates
+        elif 'z' in ncdims:
+            # GETM or GOTM with z coordinates.
+            # Depth dimension is called "z".
             self.depthdim = 'z'
-            
+
     def getVariableNames_raw(self):
         names = list(NetCDFStore.getVariableNames_raw(self))
-        
+
         nc = self.getcdf()
         ncvars,ncdims = nc.variables,nc.dimensions
-        if 'z' not in names: names.append('z')
-        if 'z1' in ncdims and 'z1' not in names: names.append('z1')
-            
+        
+        if self.depthdim is not None:
+            if 'z' not in names: names.append('z')
+            if 'z1' in ncdims and 'z1' not in names: names.append('z1')
+
         self.generatecartesiancenters = self.generatecartesiancenters or ('xx' in ncvars and 'yx' in ncvars and 'xic' in ncdims and 'etac' in ncdims and 'xc' not in ncvars and 'yc' not in ncvars)
         if self.generatecartesiancenters: names += ['xc','yc']
-        
+
         return names
 
     def getVariable_raw(self,varname):
