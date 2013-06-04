@@ -1036,6 +1036,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
         return self.datafile
 
     def getDimensionInfo_raw(self,dimname):
+        dimname = self.defaultcoordinates.get(dimname,dimname)
         res = xmlplot.common.VariableStore.getDimensionInfo_raw(self,dimname)
         var = self.getVariable_raw(dimname)
         if var is None: return res
