@@ -1621,7 +1621,8 @@ class NetCDFStore_GOTM(NetCDFStore):
                     if hmask is not numpy.ma.nomask:
                         mask = setmask(mask,hmask)
                         
-                        h = xmlplot.common.interpolateEdges(h)
+                        ipaxes = [i for i in range(len(h.shape)) if i!=izdim]
+                        h = xmlplot.common.interpolateEdges(h,dims=ipaxes)
                         
                         h = h.filled(0.)
                         
