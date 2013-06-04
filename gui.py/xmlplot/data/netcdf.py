@@ -1252,11 +1252,9 @@ class NetCDFStore_GOTM(NetCDFStore):
             'h' in ncvars and 'zeta' in ncvars): match = True
 
         # Test for GETM with variable heights and sea surface elevation
-        if ('level' in ncdims and
-            'h' in ncvars and 'elev' in ncvars): match = True
+        if ('level' in ncdims and 'bathymetry' in ncvars and ('h' in ncvars or 'hmean' in ncvars)): match = True
 
-        if ('sigma' in ncdims and
-            'bathymetry' in ncvars and 'elev' in ncvars): match = True
+        if ('sigma' in ncdims and 'bathymetry' in ncvars and ('elev' in ncvars or 'elevmean' in ncvars)): match = True
 
         return match
 
