@@ -212,22 +212,22 @@ contains
 
          ! Store pelagic biogeochemical state variables.
          do n=1,size(model%info%state_variables)
-            iret = nf90_put_var(ncid,model%info%state_variables(n)%externalid,cc(n,1:nlev),start,edges)
+            iret = nf90_put_var(ncid,model%info%state_variables(n)%externalid,cc(1:nlev,n),start,edges)
          end do
 
          ! Process and store diagnostic variables defined on the full domain.
          do n=1,size(model%info%diagnostic_variables)
             ! Time-average diagnostic variable if needed.
             if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged) &
-               cc_diag(n,1:nlev) = cc_diag(n,1:nlev)/(nsave*dt)
+               cc_diag(1:nlev,n) = cc_diag(1:nlev,n)/(nsave*dt)
 
             ! Store diagnostic variable values.
-            iret = nf90_put_var(ncid,model%info%diagnostic_variables(n)%externalid,cc_diag(n,1:nlev),start,edges)
+            iret = nf90_put_var(ncid,model%info%diagnostic_variables(n)%externalid,cc_diag(1:nlev,n),start,edges)
 
             ! Reset diagnostic variables to zero if they will be time-integrated (or time-averaged).
             if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged .or. &
                 model%info%diagnostic_variables(n)%time_treatment==time_treatment_step_integrated) &
-               cc_diag(n,1:nlev) = _ZERO_
+               cc_diag(1:nlev,n) = _ZERO_
          end do
 
          ! Enumerate profile (depth-dependent) inputs and save corresponding data.
@@ -245,7 +245,7 @@ contains
          ! Store benthic biogeochemical state variables.
          do n=1,size(model%info%state_variables_ben)
             iret = store_data(ncid,model%info%state_variables_ben(n)%externalid,XYT_SHAPE,1, &
-                            & scalar=cc(size(model%info%state_variables)+n,1))
+                            & scalar=cc(1,size(model%info%state_variables)+n))
          end do
 
          ! Process and store diagnostic variables defined on horizontal slices of the domain.
