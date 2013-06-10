@@ -128,9 +128,7 @@
 !EOP
 !
 !  local variables
-   integer                   :: i,j,variablecount,ivariables(256)
-   character(len=64)         :: variables(256),file
-   type (type_model),pointer :: childmodel
+   integer                   :: i
    namelist /gotm_fabm_nml/ fabm_calc,                                               &
                             cnpar,w_adv_discr,ode_method,split_factor,               &
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
@@ -442,9 +440,6 @@
 !  Original author(s): Jorn Bruggeman
 !
 !EOP
-!
-! !LOCAL VARIABLES:
-   integer                   :: i,j
 !-----------------------------------------------------------------------!
 !BOC
    if (.not. fabm_calc) return
