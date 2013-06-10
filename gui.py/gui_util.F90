@@ -8,8 +8,6 @@ module gui_util
 contains
 
     subroutine redirectoutput(outpath,errpath)
-        implicit none
-
         character(len=255), intent(in) :: outpath
         character(len=255), intent(in) :: errpath
 
@@ -20,8 +18,6 @@ contains
     end subroutine redirectoutput
 
     subroutine resetoutput()
-        implicit none
-
         if (redirected) then
             close(unit=stdout)
             close(unit=stderr)
@@ -30,8 +26,6 @@ contains
     end subroutine resetoutput
 
     subroutine getversion(versionstring)
-        implicit none
-
         character(len=255), intent(out) :: versionstring
 
         versionstring = RELEASE
