@@ -30,6 +30,9 @@
 
    ! Variables below must be accessible for gotm_fabm_output
    public local,total,dt,h,save_inputs
+
+   ! Variables below must be accessible for getm_fabm
+   public cc_transport
 !
 ! !PUBLIC DATA MEMBERS:
 !  The one and only model
@@ -87,6 +90,7 @@
    REALTYPE,allocatable,dimension(:)                       :: sfl,bfl,total
    REALTYPE,allocatable _ATTR_DIMENSIONS_1_                :: local
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: Qsour,Lsour,DefaultRelaxTau,curh,curnuh
+   logical,allocatable                                     :: cc_transport(:)
 
    ! Arrays for environmental variables not supplied externally.
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres,swr,k_par
@@ -347,6 +351,16 @@
    if (rc /= 0) stop 'allocate_memory(): Error allocating (bfl)'
    bfl = _ZERO_
 
+   ! Allocate array for surface fluxes and initialize these to zero (no flux).
+   allocate(cc_transport(1:size(model%info%state_variables)),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_transport)'
+   cc_transport = .true.
+#ifdef _FABM_F2003_
+   do i=1,size(model%info%state_variables)
+      cc_transport(i) = .not.model%info%state_variables(i)%properties%get_logical('disable_transport',default=.false.)
+   end do
+#endif
+
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    allocate(par(_LOCATION_RANGE_),stat=rc)
@@ -600,6 +614,8 @@
    ! Vertical advection and residual movement (sinking/floating)
    call system_clock(clock_start)
    do i=1,size(model%info%state_variables)
+      if (.not.cc_transport(i)) continue
+
       ! Do advection step due to settling or rising
       call adv_center(nlev,dt,curh,curh,ws(:,i),flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(:,i))
 
@@ -612,6 +628,8 @@
    ! Vertical diffusion
    clock_start = clock_end
    do i=1,size(model%info%state_variables)
+      if (.not.cc_transport(i)) continue
+
       ! Determine whether the variable is positive-definite based on its lower allowed bound.
       posconc = 0
       if (model%info%state_variables(i)%minimum>=_ZERO_) posconc = 1
