@@ -614,7 +614,7 @@
    ! Vertical advection and residual movement (sinking/floating)
    call system_clock(clock_start)
    do i=1,size(model%info%state_variables)
-      if (.not.cc_transport(i)) continue
+      if (.not.cc_transport(i)) cycle
 
       ! Do advection step due to settling or rising
       call adv_center(nlev,dt,curh,curh,ws(:,i),flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(:,i))
@@ -628,7 +628,7 @@
    ! Vertical diffusion
    clock_start = clock_end
    do i=1,size(model%info%state_variables)
-      if (.not.cc_transport(i)) continue
+      if (.not.cc_transport(i)) cycle
 
       ! Determine whether the variable is positive-definite based on its lower allowed bound.
       posconc = 0
