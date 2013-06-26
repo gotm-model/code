@@ -298,7 +298,7 @@
 
 !  Initialize FABM initial state (this is done after the first call to do_input,
 !  to allow user-specified observed values to be used as initial state)
-   call init_gotm_fabm_state()
+   call init_gotm_fabm_state(nlev)
 
 #endif
 

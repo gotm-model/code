@@ -1044,11 +1044,22 @@
       call fabm_link_scalar_data(model,scalar_id,data)
    end subroutine register_scalar_observation
 
-   subroutine init_gotm_fabm_state()
+   subroutine init_gotm_fabm_state(nlev)
+      integer,intent(in) :: nlev
 
       integer :: i
 
       if (.not.fabm_calc) return
+
+#ifdef _FABM_USE_1D_LOOP_
+      call fabm_initialize_state(model,1,nlev)
+#else
+      do i=1,nlev
+         call fabm_initialize_state(model,i)
+      end do
+#endif
+      call fabm_initialize_surface_state(model,nlev)
+      call fabm_initialize_bottom_state(model,1)
 
       do i=1,size(model%info%state_variables)
          if (associated(cc_obs(i)%data)) cc(:,i) = cc_obs(i)%data
