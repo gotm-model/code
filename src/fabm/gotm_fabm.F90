@@ -64,8 +64,8 @@
       module procedure register_scalar_observation
    end interface
 
-   type (type_bulk_variable_id) :: temp_id,salt_id,rho_id,h_id
-   type (type_horizontal_variable_id) :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id
+   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id
+   type (type_horizontal_variable_id),save :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id
 
 !  Variables to hold time spent on advection, diffusion, sink/source terms.
    integer(8) :: clock_adv,clock_diff,clock_source
