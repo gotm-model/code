@@ -193,9 +193,10 @@
 !                          & cloud cover in 1/10                                                    \\
 !                          & Example:                                                               \\
 !                          & {\tt 1998-01-01 00:00:00    6.87  10.95 1013.0   6.80   73.2   0.91}   \\
-! {\tt hum\_method}        & 1: relative humidity given as 7.\ column in {\tt meteo\_file}        \\
-!                          & 2: wet bulb temperature given as 7. column in {\tt meteo\_file}      \\
-!                          & 3: dew point temperature given as 7. column in {\tt meteo\_file}     \\
+! {\tt hum\_method}        & 1: relative humidity in \% given as 7.\ column in {\tt meteo\_file}        \\
+!                          & 2: wet bulb temperature in Celsius given as 7. column in {\tt meteo\_file}  \\
+!                          & 3: dew point temperature in Celsius given as 7. column in {\tt meteo\_file} \\
+!                          & 4: specific humidity in kg\,kg$^{-1}$ given as 7. column in {\tt meteo\_file} \\
 ! {\tt heat\_method}     & 0: heat flux not prescribed                                            \\
 !                          & 1: constant value for short wave radiation ({\tt const\_swr})        \\
 !                          &    and surface heat flux ({\tt const\_qh})                           \\
