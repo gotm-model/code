@@ -1002,7 +1002,7 @@
 
    subroutine register_bulk_observation(id,data,relax_tau)
       type(type_bulk_variable_id),intent(inout) :: id
-      REALTYPE,target,dimension(:) :: data,relax_tau
+      REALTYPE,target,dimension(0:) :: data,relax_tau
 
       integer                 :: i
       character(len=64)       :: varname
@@ -1016,7 +1016,7 @@
             return
          end if
       end do
-      call fabm_link_bulk_data(model,id,data)
+      call fabm_link_bulk_data(model,id,data(1:))
    end subroutine register_bulk_observation
 
    subroutine register_horizontal_observation(horizontal_id,data,relax_tau)
