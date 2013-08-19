@@ -113,7 +113,7 @@
 ! !INTERFACE:
 #define _STUB_
 #ifdef _STUB_
-   subroutine do_ice_winton()
+   subroutine do_ice_winton(hs,hi,t1,t2)
 #else
    subroutine do_ice_winton(hs, hi, t1, t2, ts, A, B, I, tfw, fb, dt, tmelt, bmelt)
 #endif
@@ -129,7 +129,13 @@
 ! !USES:
    IMPLICIT NONE
 !
-#ifndef _STUB_
+#ifdef _STUB_
+! !INPUT/OUTPUT PARAMETERS:
+   REALTYPE, intent(inout)   :: hs    ! snow thickness (m)
+   REALTYPE, intent(inout)   :: hi    ! ice thickness (m)
+   REALTYPE, intent(inout)   :: t1    ! upper ice temperature (deg-C)
+   REALTYPE, intent(inout)   :: t2    ! lower ice temperature (deg-C)
+#else
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)      :: A     ! net surface heat flux (+ up) at ts=0 (W/m^2)
    REALTYPE, intent(in)      :: B     ! d(sfc heat flux)/d(ts) [W/(m^2 deg-C)]
@@ -159,11 +165,24 @@
    REALTYPE        :: h1, h2
    REALTYPE        :: dh
    REALTYPE        :: f1
+#ifdef _STUB_
+   REALTYPE        :: R(4)
+   logical, save   :: first=.true.
+#endif
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 #ifdef _STUB_
-   LEVEL0 'do_ice_winton'
+   if (first) then
+      first=.false.
+      CALL random_seed()
+   end if
+!   LEVEL0 'do_ice_winton'
+   call random_number(R)
+   hs = hs + R(1) - 0.5
+   hi = hi + R(2) - 0.5
+   T1 = T1 + R(3) - 0.5
+   T2 = T2 + R(4) - 0.5
 #else
    if (hs > _ZERO_) then
       TSF = _ZERO_

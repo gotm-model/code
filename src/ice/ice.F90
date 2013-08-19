@@ -30,6 +30,8 @@
 !
 ! !PUBLIC DATA MEMBERS:
    integer, public                     :: ice_method
+!  Winton ice model
+   REALTYPE, public                    :: ice_hs,ice_hi,ice_T1,ice_T2
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -83,6 +85,7 @@
          LEVEL2 'Clip heat-fluxes if SST < freezing point (function of S)'
       case (2)
          LEVEL2 'Thermodynamic ice model adapted from Winton'
+         ice_hs=_ZERO_;ice_hi=_ZERO_;ice_T1=_ZERO_;ice_T2=_ZERO_
       case default
    end select
 
@@ -127,7 +130,7 @@
             LEVEL0 'do_ice: heat clipped to',heat
          end if
       case (2)
-         call do_ice_winton()
+         call do_ice_winton(ice_hs,ice_hi,ice_t1,ice_t2)
       case default
    end select
 

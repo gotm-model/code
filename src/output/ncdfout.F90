@@ -77,7 +77,10 @@
    integer, private          :: int_precip_id,int_evap_id,int_fwf_id
    integer, private          :: int_swr_id,int_heat_id,int_total_id
    integer, private          :: u_taus_id,u_taub_id
-   integer, private          :: snow_id,ice1_id,ice2_id
+!  Winton ice model
+   integer, private          :: ice_hs_id,ice_hi_id
+   integer, private          :: ice_T1_id,ice_T2_id
+!
    integer, private          :: zsbl_id,zbbl_id
    integer, private          :: h_id
    integer, private          :: u_id,u_obs_id
@@ -245,11 +248,13 @@
 
    select case (ice_method)
       case (2)  ! The Winton ice-model
-         iret = nf90_def_var(ncid,'snow',NF90_REAL,dim3d,snow_id)
+         iret = nf90_def_var(ncid,'ice_hs',NF90_REAL,dim3d,ice_hs_id)
          call check_err(iret)
-         iret = nf90_def_var(ncid,'ice1',NF90_REAL,dim3d,ice1_id)
+         iret = nf90_def_var(ncid,'ice_hi',NF90_REAL,dim3d,ice_hi_id)
          call check_err(iret)
-         iret = nf90_def_var(ncid,'ice2',NF90_REAL,dim3d,ice2_id)
+         iret = nf90_def_var(ncid,'ice_T1',NF90_REAL,dim3d,ice_T1_id)
+         call check_err(iret)
+         iret = nf90_def_var(ncid,'ice_T2',NF90_REAL,dim3d,ice_T2_id)
          call check_err(iret)
    end select
 
@@ -425,9 +430,10 @@
    iret = set_attributes(ncid,u_taub_id,units='m/s',long_name='bottom friction velocity')
    select case (ice_method)
       case (2)  ! The Winton ice-model
-         iret = set_attributes(ncid,snow_id,units='m',long_name='snow layer thickness')
-         iret = set_attributes(ncid,ice1_id,units='m',long_name='upper ice layer thickness')
-         iret = set_attributes(ncid,ice2_id,units='m',long_name='lower ice layer thickness')
+         iret = set_attributes(ncid,ice_hs_id,units='m',long_name='snow layer thickness')
+         iret = set_attributes(ncid,ice_hi_id,units='m',long_name='ice layer thickness')
+         iret = set_attributes(ncid,ice_T1_id,units='celsius',long_name='upper ice layer temperature')
+         iret = set_attributes(ncid,ice_T2_id,units='celsius',long_name='lower ice layer temperature')
    end select
 
    if (turb_method.eq.99) then
@@ -532,8 +538,8 @@
    use airsea,       only: tx,ty,I_0,heat,precip,evap,sst,sss
    use airsea,       only: int_precip,int_evap,int_fwf
    use airsea,       only: int_swr,int_heat,int_total
-   use ice,          only: ice_method
-   use ice_winton
+   use ice
+!   use ice_winton
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
    use meanflow,     only: h,u,v,z,S,T,buoy,SS,NN
    use turbulence,   only: P,B,Pb
@@ -634,9 +640,10 @@
 
    select case (ice_method)
       case (2)  ! The Winton ice-model
-!         iret = store_data(ncid,snow_id,XYT_SHAPE,1,scalar=snow)
-!         iret = store_data(ncid,ice1_id,XYT_SHAPE,1,scalar=ice1)
-!         iret = store_data(ncid,ice2_id,XYT_SHAPE,1,scalar=ice1)
+         iret = store_data(ncid,ice_hs_id,XYT_SHAPE,1,scalar=ice_hs)
+         iret = store_data(ncid,ice_hi_id,XYT_SHAPE,1,scalar=ice_hi)
+         iret = store_data(ncid,ice_T1_id,XYT_SHAPE,1,scalar=ice_T1)
+         iret = store_data(ncid,ice_T2_id,XYT_SHAPE,1,scalar=ice_T2)
    end select
 
 
