@@ -77,6 +77,7 @@
    integer, private          :: int_precip_id,int_evap_id,int_fwf_id
    integer, private          :: int_swr_id,int_heat_id,int_total_id
    integer, private          :: u_taus_id,u_taub_id
+   integer, private          :: snow_id,ice1_id,ice2_id
    integer, private          :: zsbl_id,zbbl_id
    integer, private          :: h_id
    integer, private          :: u_id,u_obs_id
@@ -115,6 +116,7 @@
 !
 ! !USES:
    use airsea,       only: hum_method
+   use ice,          only: ice_method
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
@@ -240,6 +242,16 @@
    call check_err(iret)
    iret = nf90_def_var(ncid,'u_taub',NF90_REAL,dim3d,u_taub_id)
    call check_err(iret)
+
+   select case (ice_method)
+      case (2)  ! The Winton ice-model
+         iret = nf90_def_var(ncid,'snow',NF90_REAL,dim3d,snow_id)
+         call check_err(iret)
+         iret = nf90_def_var(ncid,'ice1',NF90_REAL,dim3d,ice1_id)
+         call check_err(iret)
+         iret = nf90_def_var(ncid,'ice2',NF90_REAL,dim3d,ice2_id)
+         call check_err(iret)
+   end select
 
    if (turb_method.eq.99) then
       iret = nf90_def_var(ncid,'zsbl',NF90_REAL,dim3d,zsbl_id)
@@ -411,6 +423,12 @@
    iret = set_attributes(ncid,evap_id,units='m/s',long_name='evaporation')
    iret = set_attributes(ncid,u_taus_id,units='m/s',long_name='surface friction velocity')
    iret = set_attributes(ncid,u_taub_id,units='m/s',long_name='bottom friction velocity')
+   select case (ice_method)
+      case (2)  ! The Winton ice-model
+         iret = set_attributes(ncid,snow_id,units='m',long_name='snow layer thickness')
+         iret = set_attributes(ncid,ice1_id,units='m',long_name='upper ice layer thickness')
+         iret = set_attributes(ncid,ice2_id,units='m',long_name='lower ice layer thickness')
+   end select
 
    if (turb_method.eq.99) then
       iret = set_attributes(ncid,zsbl_id,units='m',long_name='SBL position (KPP)')
@@ -514,6 +532,8 @@
    use airsea,       only: tx,ty,I_0,heat,precip,evap,sst,sss
    use airsea,       only: int_precip,int_evap,int_fwf
    use airsea,       only: int_swr,int_heat,int_total
+   use ice,          only: ice_method
+   use ice_winton
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
    use meanflow,     only: h,u,v,z,S,T,buoy,SS,NN
    use turbulence,   only: P,B,Pb
@@ -611,6 +631,14 @@
    iret = store_data(ncid,evap_id,XYT_SHAPE,1,scalar=evap)
    iret = store_data(ncid,u_taub_id,XYT_SHAPE,1,scalar=u_taub)
    iret = store_data(ncid,u_taus_id,XYT_SHAPE,1,scalar=u_taus)
+
+   select case (ice_method)
+      case (2)  ! The Winton ice-model
+!         iret = store_data(ncid,snow_id,XYT_SHAPE,1,scalar=snow)
+!         iret = store_data(ncid,ice1_id,XYT_SHAPE,1,scalar=ice1)
+!         iret = store_data(ncid,ice2_id,XYT_SHAPE,1,scalar=ice1)
+   end select
+
 
    if (turb_method.eq.99) then
       iret = store_data(ncid,zsbl_id,XYT_SHAPE,1,scalar=zsbl)

@@ -44,6 +44,8 @@
    use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap
    use airsea,      only: bio_albedo,bio_drag_scale
 
+   use ice,         only: init_ice, do_ice
+
    use turbulence,  only: turb_method
    use turbulence,  only: init_turbulence,do_turbulence
    use turbulence,  only: num,nuh,nus
@@ -241,6 +243,8 @@
       call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
    endif
 
+   call init_ice(namlst)
+
    call init_air_sea(namlst,latitude,longitude)
 
    call init_output(title,nlev,latitude,longitude)
@@ -386,6 +390,8 @@
          call set_ssuv(u(nlev),v(nlev))
       end if
       call do_air_sea(julianday,secondsofday)
+
+      call do_ice()
 
 !     reset some quantities
       tx = tx/rho_0
@@ -574,6 +580,7 @@
 !
 ! !USES:
    use airsea,    only: print_state_airsea
+   use ice,       only: print_state_ice
    use turbulence,only: print_state_turbulence
 
    IMPLICIT NONE
@@ -598,6 +605,7 @@
    call print_state_meanflow
    call print_state_observations
    call print_state_airsea
+   call print_state_ice
    call print_state_turbulence
    call print_state_bio
 

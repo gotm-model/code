@@ -128,12 +128,17 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
+!  Ice now taken care of by ice model :-)
+#if 0
 ! simple sea ice model: surface heat flux switched off for sst < freezing temp
    if (T(nlev) .le. -0.0575*S(nlev)) then
        DiffTup    = max(_ZERO_,heat/(rho_0*cp))
    else
        DiffTup    = heat/(rho_0*cp)
    end if
+#else
+   DiffTup    = heat/(rho_0*cp)
+#endif
    DiffTdw        = _ZERO_
 
    AdvBcup        = oneSided
