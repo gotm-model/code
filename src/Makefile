@@ -6,12 +6,12 @@ include Rules.make
 
 DOCSRC	= main.F90 gotm.F90
 
-SUBDIRS	= util input observations airsea ice meanflow turbulence output
+SUBDIRS	= util input observations airsea meanflow ice turbulence output
 
 CORE_LIBS	=	\
-		-lice$(buildtype)		\
 		-lairsea$(buildtype)		\
 		-lmeanflow$(buildtype) 		\
+		-lice$(buildtype)		\
 		-lturbulence$(buildtype) 	\
 		-lobservations$(buildtype)	\
 		-loutput$(buildtype)		\
