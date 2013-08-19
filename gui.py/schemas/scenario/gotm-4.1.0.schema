@@ -392,6 +392,19 @@
       </element>
     </element>
 	</element>
+
+	<element name="ice">
+		<element name="ice">
+                        <element name="ice_method" type="int" label="ice modeling method">
+                                <options>
+                                        <option value="0" label="no ice modeling"/>
+                                        <option value="1" label="clip heat flux when SST less than freezing point"/>
+                                        <option value="2" label="thermodynamic ice model adapted after Michael Winton - http://www.gfdl.noaa.gov/sea-ice-simulator"/>
+                                </options>
+                        </element>
+		</element>
+	</element>
+
 	<element name="gotmturb" label="turbulence">
 		<element name="turbulence" label="general">
 			<element name="turb_method" type="int" label="type of turbulence closure">

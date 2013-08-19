@@ -95,6 +95,11 @@
 			<ssuv_method>0</ssuv_method>
 		</airsea>
 	</airsea>
+	<ice>
+		<ice>
+			<ice_method>1</ice_method>
+		</ice>
+	</ice>
 	<gotmturb>
 		<turbulence>
 			<turb_method>3</turb_method>
