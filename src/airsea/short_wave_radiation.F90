@@ -155,7 +155,10 @@
    endif
 #endif
 
-   swr = qshort
+!KB
+!   swr = qshort
+!KB
+   swr = 0.2*qshort
 
    return
    end function short_wave_radiation

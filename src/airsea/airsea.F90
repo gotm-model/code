@@ -678,7 +678,9 @@
       u10   = obs(1)*wind_factor
       v10   = obs(2)*wind_factor
       airp  = obs(3)*100. !kbk mbar/hPa --> Pa
-      airt  = obs(4)
+!KB
+      airt  = obs(4) - 5.
+!KB
       rh    = obs(5)
       cloud = obs(6)
 
