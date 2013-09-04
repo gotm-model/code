@@ -121,8 +121,8 @@
 ! !LOCAL VARIABLES:
    REALTYPE        :: tfw
    REALTYPE        :: fb=_ZERO_
-   REALTYPE        :: dt=3600.
-   REALTYPE        :: ts
+REALTYPE        :: dt=3600.
+REALTYPE        :: ts
    integer         :: n
 !EOP
 !-----------------------------------------------------------------------

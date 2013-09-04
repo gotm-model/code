@@ -45,7 +45,11 @@
 !  Note: in this implementation the equations are multiplied by hi to improve
 !  thin ice accuracy
 !
+<<<<<<< HEAD
 !  The code is based on the open source sea ice model included in the Modular
+=======
+!  The code is based on the open source sea ice model included in the Modular 
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
 !  Ocean Model.
 !
    implicit none
@@ -97,14 +101,21 @@
 !  ice optical extinction [1/m]
    REALTYPE                  :: OPT_EXT_ICE=1.5
 !  snow optical extinction  [1/m]
+<<<<<<< HEAD
    REALTYPE                  :: OPT_EXT_SNOW=15.0
+=======
+   REALTYPE                  :: OPT_EXT_SNOW=15.0  
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
 !  melt albedos scaled in below melting T
    REALTYPE                  :: T_RANGE_MELT=1.0
 !  hi/hs lower limit for temp. calc.
    REALTYPE                  :: H_LO_LIM = 0.0
+<<<<<<< HEAD
 !  ocean/ice heat flux constant
    REALTYPE                  :: KMELT = 6e-5*4e6
 
+=======
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
 !
 ! !REVISION HISTORY:
 !  Original author: Michael Winton
@@ -139,10 +150,16 @@
 !  Any surplus energy that is not used for melting is returned in tmelt and
 !  bmelt.
 !
+<<<<<<< HEAD
 !  Evaporation and bottom ablation formation are not included in
 !  this version of the model. Furthermore we do not keep an explicit water
 !  and salt budget for the sea ice and how that affects the water and salt
 !  budgets in the ocean.
+=======
+!  Evaporation, bottom ablation and frazil ice formation are not included in
+!  this version of the model. Furthermore we do not keep an explicit water
+!  budget for the sea ice and how that affects the water budget in the ocean.
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
 !
 ! !USES:
    IMPLICIT NONE
@@ -168,7 +185,11 @@
    REALTYPE, intent(inout)   :: t2    ! lower ice temperature (deg-C)
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)     :: tmelt ! accumulated top melting energy  (J/m^2)
+<<<<<<< HEAD
    REALTYPE, intent(inout)   :: bmelt ! accumulated bottom melting energy (J/m^2)
+=======
+   REALTYPE, intent(out)     :: bmelt ! accumulated bottom melting energy (J/m^2)
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
    REALTYPE, intent(out)     :: ts    ! surface temperature (deg-C)
 #endif
 !
@@ -189,7 +210,11 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+<<<<<<< HEAD
    LEVEL0 'begin do_ice_winton'
+=======
+   LEVEL0 'do_ice_winton'
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
 #ifdef _STUB_
    if (first) then
       first=.false.
@@ -201,6 +226,7 @@
    T1 = T1 + R(3) - 0.5
    T2 = T2 + R(4) - 0.5
 #else
+<<<<<<< HEAD
 !
 !  initialize surface temperature to zero (just to avoid strange output)
    ts = _ZERO_
@@ -217,17 +243,36 @@
 !
 !     set surface temperature to snow temperature or seawater freezing temp.
 !     TODO: refactor into a sub called update_t1_and_ts(hs, hie, dt, t1, t2)
+=======
+!  initialize accumulated melting energies
+   tmelt = _ZERO_
+   bmelt = _ZERO_
+!
+!  temperature update is only performed when there is ice
+   if (hi > _ZERO_) then
+!
+!     set surface temperature to snow temperature or seawater freezing temp.
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
       if (hs > _ZERO_) then
          tsf = _ZERO_
       else
          tsf = TFI
       endif
 !
+<<<<<<< HEAD
+=======
+!     prevent thin ice inaccuracy (mw)
+      hie = max(hi, H_LO_LIM);
+!
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
 !     compute upper ice and surface temperatures
       K12 = 4*KI*KS/(KS+4*KI*hs/hie)
       hi2 = hie*hie
 !
+<<<<<<< HEAD
       STDERR dt, KI, DI, hi2, CI
+=======
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
       A10 = DI*hi2*CI/(2*dt) + 2*KI*(4*dt*2*KI+DI*hi2*CI)/(6*dt*2*KI+DI*hi2*CI)
       B10 = -DI*hi2*(CI*t1+LI*TFI/t1)/(2*dt) - I*hie                       &
             -2*KI*(4*dt*2*KI*tfw+DI*hi2*CI*t2)/(6*dt*2*KI+DI*hi2*CI)
@@ -238,14 +283,19 @@
       t1 = -(sqrt(B1*B1-4*A1*C1)+B1)/(2*A1)
       ts = (K12*t1-A*hie)/(K12+B*hie)
 !
+<<<<<<< HEAD
 !     check if the snow (if present) or upper layer ice is melting
 !     if this is the case the temperatures are recalculted using modified
 !     A1 and B1 coefficients (see eqs. (19) - (20))
+=======
+!     slightly different equation for melting conditions
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
       if (ts > tsf) then
          A1 = A10+K12
          B1 = B10-K12*tsf
          t1 = -(sqrt(B1*B1-4*A1*C1)+B1)/(2*A1)
          ts = tsf
+<<<<<<< HEAD
 !        we will now save the surplus energy which we will use below for
 !        melting ice from above, see also eq. (22)
          tmelt = tmelt + (K12*(t1-ts)/hi-(A+B*ts))*dt
@@ -277,6 +327,28 @@
          t2 = TFI
       endif
 !
+=======
+!        equation (22) in Winton (2000)
+         tmelt = tmelt + (K12*(t1-ts)/hi-(A+B*ts))*dt
+      endif
+!
+!     set lower ice temp. -- use tfw as reference for thin ice precision
+      t1 = t1-tfw; 
+      t2 = t2-tfw;
+      t2 = (2*dt*2*KI*t1+DI*hi2*CI*t2)/(6*dt*2*KI+DI*hi2*CI)
+      t1 = t1+tfw; 
+      t2 = t2+tfw;
+!
+!     equation (23) in Winton (2000)
+      bmelt = bmelt + (fb+4*KI*(t2-tfw)/hie)*dt
+!
+!     put excess lower ice energy into bmelt
+      if (t2 > TFI) then
+         bmelt = bmelt + melt_energy(h2=hie/2,t2=TFI) - melt_energy(h2=hie/2,t2=t2)
+         t2 = TFI
+      endif
+!
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
 !     put excess upper ice energy into tmelt
       if (t1 > TFI) then
          tmelt = tmelt + melt_energy(h1=hie/2,t1=TFI) - melt_energy(h1=hie/2,t1=t1)
@@ -285,6 +357,7 @@
 !
 !     temperature update complete - check consistency
 !KB      call ice_consistency(ts, hs, hi, t1, t2, bmelt, tmelt)
+<<<<<<< HEAD
    endif
 !
 !  update snow and sea ice thicknesses and accompanying temperature updates
@@ -315,11 +388,37 @@
       tmelt = _ZERO_
    else if (tmelt <= melt_energy(hs,h1,t1)) then
 !     melting snow layer and part of top ice layer
+=======
+   endif
+!
+!  update snow and sea ice thicknesses
+   h1 = hie/2
+   h2 = h1
+!
+!  apply freezing
+   if (bmelt < _ZERO_) call add_to_bot(-bmelt/melt_energy(h2=_ONE_,t2=tfw), &
+                                     & tfw, h2, t2)
+!
+!  need this, below we divide by t1 even when h1 == 0
+   if (h1 == _ZERO_) t1 = tfw
+!
+!  apply energy fluxes at top
+   if (tmelt <= melt_energy(hs=hs)) then
+!     only melting snow
+      hs = hs - tmelt/melt_energy(hs=_ONE_)
+      tmelt = _ZERO_
+   else if (tmelt <= melt_energy(hs,h1,t1)) then
+!     melting snow snow and part of top ice layer
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
       h1 = h1 - (tmelt-melt_energy(hs))/melt_energy(h1=_ONE_,t1=t1)
       hs = _ZERO_
       tmelt = _ZERO_
    else if (tmelt <= melt_energy(hs,h1,t1,h2,t2)) then
+<<<<<<< HEAD
 !     melting snow layer, top ice layer and part of bottom ice layer
+=======
+!     melting snow snow, top ice layer and part of bottom ice layer
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
       h2 = h2 - (tmelt - melt_energy(hs,h1,t1))/melt_energy(h2=_ONE_,t2=t2)
       hs = _ZERO_
       h1 = _ZERO_
@@ -333,6 +432,7 @@
    endif
 !
 !  apply energy fluxes at bottom
+<<<<<<< HEAD
 !  TODO: refactor into a sub called apply_bottom_flux(hs, h1, h2, tmelt, t1, t2)
    if (bmelt > _ZERO_) then
       if (bmelt < melt_energy(h2=h2,t2=t2)) then
@@ -341,18 +441,31 @@
          bmelt = _ZERO_
       else if (bmelt < melt_energy(h1=h1,t1=t1,h2=h2,t2=t2)) then
 !        melting bottom ice layer and part of top ice layer
+=======
+   if (bmelt > _ZERO_) then
+      if (bmelt < melt_energy(h2=h2,t2=t2)) then
+         h2 = h2 - bmelt/melt_energy(h2=_ONE_,t2=t2)
+         bmelt = _ZERO_
+      else if (bmelt < melt_energy(h1=h1,t1=t1,h2=h2,t2=t2)) then
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
          h1 = h1-(bmelt-melt_energy(h2=h2,t2=t2))/melt_energy(h1=_ONE_,t1=t1)
          h2 = _ZERO_
          bmelt = _ZERO_
       else if (bmelt < melt_energy(hs,h1,t1,h2,t2)) then
+<<<<<<< HEAD
 !        melting bottom and top ice layers and part of snow layer
+=======
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
          hs = hs - (bmelt-melt_energy(h1=h1,t1=t1,h2=h2,t2=t2)) &
             & / melt_energy(hs=_ONE_)
          h1 = _ZERO_
          h2 = _ZERO_
          bmelt = _ZERO_
       else
+<<<<<<< HEAD
 !        melting all layers
+=======
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
          hs = _ZERO_
          h1 = _ZERO_
          h2 = _ZERO_
@@ -371,8 +484,12 @@
    if (hw > hi) then
       snow_to_ice = (hw-hi)*DI
       hs = hs - snow_to_ice/DS
+<<<<<<< HEAD
 !     the snow is added to the top ice layer preserving enthalpy
 !     t1 is therefore also changed during the consersion, see eq. (38).
+=======
+!     t1 is also changed when snow is converted to ice (eq. (38))
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
       call add_to_top(hw-hi, TFI, h1, t1)
    endif
 !
@@ -400,7 +517,11 @@
 !BOP
 !
 ! !IROUTINE: ice_consistency
+<<<<<<< HEAD
 !
+=======
+! 
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
 ! !INTERFACE:
    subroutine ice_consistency(ts, hs, hi, t1, t2, bmelt, tmelt)
 !
@@ -500,7 +621,11 @@ end subroutine ice_consistency
 !EOP
 !-----------------------------------------------------------------------
 !BOC
+<<<<<<< HEAD
 !
+=======
+!   
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
    as = ALB_SNO
    ai = ALB_ICE
 !
@@ -517,7 +642,11 @@ end subroutine ice_consistency
       ai = ai-0.075 *min((ts+T_RANGE_MELT-TFI)/T_RANGE_MELT,1.0)
    endif
 !  reduce albedo for thin ice
+<<<<<<< HEAD
    ai = fh*ai+(1-fh)*0.06
+=======
+   ai = fh*ai+(1-fh)*0.06 
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
 !
 !  calculate output values
    alb = cs*as+(1-cs)*ai
@@ -593,7 +722,11 @@ end subroutine ice_consistency
 !------------------------------------------------------------------------------!
 !BOP
 !
+<<<<<<< HEAD
 ! !IROUTINE: Even up the ice layers
+=======
+! !IROUTINE: Even up the ice layers 
+>>>>>>> 7ed7a5c5f5915fd8a0b47bacdb86da848ad702fe
 !
 ! !INTERFACE:
    subroutine even_up(h1, t1, h2, t2)
