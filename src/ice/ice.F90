@@ -11,9 +11,9 @@
 !  To be done
 !
 ! !USES:
-  use ice_winton,       only: do_ice_winton
+  use ice_winton,       only: do_ice_winton, KMELT, CW
   use meanflow,         only: T,S,rho
-  use airsea,           only: heat
+  use airsea,           only: heat,I_0
 !
    IMPLICIT NONE
 
@@ -32,6 +32,7 @@
    integer, public                     :: ice_method
 !  Winton ice model
    REALTYPE, public                    :: ice_hs,ice_hi,ice_T1,ice_T2
+   REALTYPE, public                    :: ice_tmelt,ice_bmelt
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -86,6 +87,7 @@
       case (2)
          LEVEL2 'Thermodynamic ice model adapted from Winton'
          ice_hs=_ZERO_;ice_hi=_ZERO_;ice_T1=_ZERO_;ice_T2=_ZERO_
+         ice_tmelt=_ZERO_;ice_bmelt=_ZERO_
       case default
    end select
 
@@ -114,7 +116,14 @@
    IMPLICIT NONE
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding
+!  Original author(s): Karsten Bolding, Jesper Larsen
+!
+! !LOCAL VARIABLES:
+   REALTYPE        :: tfw
+   REALTYPE        :: fb=_ZERO_
+   REALTYPE        :: dt=3600.
+   REALTYPE        :: ts
+   integer         :: n
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -125,12 +134,55 @@
          LEVEL2 'ice_method=',ice_method
       case (1)
 !         LEVEL0 T(10),S(10),heat
-         if (heat .gt. _ZERO_ .and. T(10) .le. -0.0575*S(10)) then
+         n = ubound(S,1)
+         if (heat .gt. _ZERO_ .and. T(n) .le. -0.0575*S(n)) then
             heat = _ZERO_
             LEVEL0 'do_ice: heat clipped to',heat
          end if
       case (2)
+#if 0
          call do_ice_winton(ice_hs,ice_hi,ice_t1,ice_t2)
+#else
+         n = ubound(S,1)
+         tfw = -0.0575*S(n)
+         if (heat .gt. _ZERO_ .and. T(n) .le. tfw) then
+            if (ice_hi .eq. _ZERO_) then
+               ice_bmelt = -heat*dt
+            endif
+            heat = _ZERO_
+            LEVEL0 'do_ice: heat clipped to',heat,ice_bmelt
+         end if
+!
+         if (T(n) .le. tfw) then
+!           during freezing conditions all available energy is converted
+!           to bottom freezing energy
+            ice_bmelt = ((T(n) - tfw)*rho(n)*CW)*dt
+!           the freezing heats the surface water to the freezing point
+            T(n) = tfw
+            STDERR 'do_ice: frazil ice formation', ice_bmelt, tfw, T(n)
+         else if (ice_hi .gt. _ZERO_) then
+!           when sea ice is present there is an ocean to sea ice heat flux, see eq. (23)
+!           with the linear form described in eq. (15) in "FMS Sea Ice Simulator"
+            ice_bmelt = KMELT*(T(n) - tfw)*dt
+!           TODO (KBK?): the surface water temperature should be changed according to
+!           how much energy is extracted
+            STDERR 'do_ice: ocean to bottom ice melting', ice_bmelt
+         end if
+         call do_ice_winton(heat,_ZERO_,I_0,tfw,fb,dt, &
+                            ice_hs,ice_hi,ice_t1,ice_t2, &
+                            ice_tmelt,ice_bmelt,ts)
+         if (ice_hi .gt. _ZERO_) then
+            heat = _ZERO_
+         endif
+!         STDERR heat,I_0,tfw,fb
+!        TODO (KBK?): the returned quantities in ice_tmelt and ice_bmelt are
+!        surplus energy that was not used for melting or was released during
+!        freezing. This energy should be used to modify T(n)
+         ice_tmelt = _ZERO_
+         ice_bmelt = _ZERO_
+!         STDERR ice_hs,ice_hi,ice_t1,ice_t2
+!         STDERR ice_tmelt,ice_bmelt,ts
+#endif
       case default
    end select
 
