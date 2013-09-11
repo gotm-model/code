@@ -120,13 +120,7 @@
 ! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_winton}
 !
 ! !INTERFACE:
-!#define _STUB_
-#ifdef _STUB_
-   subroutine do_ice_winton(hs,hi,t1,t2)
-#else
-!KB   subroutine do_ice_winton(hs, hi, t1, t2, ts, A, B, I, tfw, fb, dt, tmelt, bmelt)
    subroutine do_ice_winton(A,B,I,tfw,fb,dt,hs,hi,t1,t2,tmelt,bmelt,ts)
-#endif
 !
 ! !DESCRIPTION:
 !  This subroutine updates the sea ice prognostic variables. The updated
@@ -147,13 +141,6 @@
 ! !USES:
    IMPLICIT NONE
 !
-#ifdef _STUB_
-! !INPUT/OUTPUT PARAMETERS:
-   REALTYPE, intent(inout)   :: hs    ! snow thickness (m)
-   REALTYPE, intent(inout)   :: hi    ! ice thickness (m)
-   REALTYPE, intent(inout)   :: t1    ! upper ice temperature (deg-C)
-   REALTYPE, intent(inout)   :: t2    ! lower ice temperature (deg-C)
-#else
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)      :: A     ! net surface heat flux (+ up) at ts=0 (W/m^2)
    REALTYPE, intent(in)      :: B     ! d(sfc heat flux)/d(ts) [W/(m^2 deg-C)]
@@ -170,7 +157,6 @@
    REALTYPE, intent(out)     :: tmelt ! accumulated top melting energy  (J/m^2)
    REALTYPE, intent(inout)   :: bmelt ! accumulated bottom melting energy (J/m^2)
    REALTYPE, intent(out)     :: ts    ! surface temperature (deg-C)
-#endif
 !
 ! !LOCAL VARIABLES:
    REALTYPE        :: tsf
@@ -182,25 +168,10 @@
    REALTYPE        :: f1
    REALTYPE        :: hw
    REALTYPE        :: snow_to_ice
-#ifdef _STUB_
-   REALTYPE        :: R(4)
-   logical, save   :: first=.true.
-#endif
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    LEVEL0 'do_ice_winton'
-#ifdef _STUB_
-   if (first) then
-      first=.false.
-      CALL random_seed()
-   end if
-   call random_number(R)
-   hs = hs + R(1) - 0.5
-   hi = hi + R(2) - 0.5
-   T1 = T1 + R(3) - 0.5
-   T2 = T2 + R(4) - 0.5
-#else
 !
 !  initialize surface temperature to zero (just to avoid strange output)
    ts = _ZERO_
@@ -390,7 +361,6 @@
 !  postconditions
 !KB   call ice_consistency(ts, hs, hi, t1, t2, bmelt, tmelt)
 
-#endif
    LEVEL0 'end do_ice_winton'
    return
    end subroutine do_ice_winton

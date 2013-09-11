@@ -30,6 +30,8 @@
 !
 ! !PUBLIC DATA MEMBERS:
    integer, public                     :: ice_method
+!  Simple 'ice model'
+   REALTYPE, public                    :: ice_layer
 !  Winton ice model
    REALTYPE, public                    :: ice_hs,ice_hi,ice_T1,ice_T2
    REALTYPE, public                    :: ice_tmelt,ice_bmelt
@@ -84,6 +86,7 @@
          LEVEL2 'No ice calculations included'
       case (1)
          LEVEL2 'Clip heat-fluxes if SST < freezing point (function of S)'
+         ice_layer=_ZERO_
       case (2)
          LEVEL2 'Thermodynamic ice model adapted from Winton'
          ice_hs=_ZERO_;ice_hi=_ZERO_;ice_T1=_ZERO_;ice_T2=_ZERO_
@@ -138,11 +141,11 @@ REALTYPE        :: ts
          if (heat .gt. _ZERO_ .and. T(n) .le. -0.0575*S(n)) then
             heat = _ZERO_
             LEVEL0 'do_ice: heat clipped to',heat
+            ice_layer=_ONE_
+         else
+            ice_layer=_ZERO_
          end if
       case (2)
-#if 0
-         call do_ice_winton(ice_hs,ice_hi,ice_t1,ice_t2)
-#else
          n = ubound(S,1)
          tfw = -0.0575*S(n)
          if (heat .gt. _ZERO_ .and. T(n) .le. tfw) then
@@ -182,7 +185,6 @@ REALTYPE        :: ts
          ice_bmelt = _ZERO_
 !         STDERR ice_hs,ice_hi,ice_t1,ice_t2
 !         STDERR ice_tmelt,ice_bmelt,ts
-#endif
       case default
    end select
 

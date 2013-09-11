@@ -77,6 +77,8 @@
    integer, private          :: int_precip_id,int_evap_id,int_fwf_id
    integer, private          :: int_swr_id,int_heat_id,int_total_id
    integer, private          :: u_taus_id,u_taub_id
+!  Simple ice model
+   integer, private          :: ice_layer_id
 !  Winton ice model
    integer, private          :: ice_hs_id,ice_hi_id
    integer, private          :: ice_T1_id,ice_T2_id
@@ -248,6 +250,9 @@
    call check_err(iret)
 
    select case (ice_method)
+      case (1)  ! The simple 'ice-model'
+         iret = nf90_def_var(ncid,'ice_layer',NF90_REAL,dim3d,ice_layer_id)
+         call check_err(iret)
       case (2)  ! The Winton ice-model
          iret = nf90_def_var(ncid,'ice_hs',NF90_REAL,dim3d,ice_hs_id)
          call check_err(iret)
@@ -434,6 +439,8 @@
    iret = set_attributes(ncid,u_taus_id,units='m/s',long_name='surface friction velocity')
    iret = set_attributes(ncid,u_taub_id,units='m/s',long_name='bottom friction velocity')
    select case (ice_method)
+      case (1)  ! The simple 'ice-model'
+         iret = set_attributes(ncid,ice_layer_id,units='',long_name='ice layer')
       case (2)  ! The Winton ice-model
          iret = set_attributes(ncid,ice_hs_id,units='m',long_name='snow layer thickness')
          iret = set_attributes(ncid,ice_hi_id,units='m',long_name='ice layer thickness')
@@ -646,6 +653,8 @@
    iret = store_data(ncid,u_taus_id,XYT_SHAPE,1,scalar=u_taus)
 
    select case (ice_method)
+      case (1)  ! The simple 'ice-model'
+         iret = store_data(ncid,ice_layer_id,XYT_SHAPE,1,scalar=ice_layer)
       case (2)  ! The Winton ice-model
          iret = store_data(ncid,ice_hs_id,XYT_SHAPE,1,scalar=ice_hs)
          iret = store_data(ncid,ice_hi_id,XYT_SHAPE,1,scalar=ice_hi)
