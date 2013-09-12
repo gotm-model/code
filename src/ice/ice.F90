@@ -123,9 +123,9 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE        :: tfw
-   REALTYPE        :: fb=_ZERO_
-REALTYPE        :: dt=3600.
-REALTYPE        :: ts
+   REALTYPE        :: fb
+   REALTYPE        :: dt=3600.
+   REALTYPE        :: ts
    integer         :: n
 !EOP
 !-----------------------------------------------------------------------
@@ -148,6 +148,7 @@ REALTYPE        :: ts
       case (2)
          n = ubound(S,1)
          tfw = -0.0575*S(n)
+!        FIXME: The handling of "heat" in this sub should be changed 
          if (heat .gt. _ZERO_ .and. T(n) .le. tfw) then
             if (ice_hi .eq. _ZERO_) then
                ice_bmelt = -heat*dt
@@ -159,17 +160,17 @@ REALTYPE        :: ts
          if (T(n) .le. tfw) then
 !           during freezing conditions all available energy is converted
 !           to bottom freezing energy
-            ice_bmelt = ((T(n) - tfw)*rho(n)*CW)*dt
+            fb = (T(n) - tfw)*rho(n)*CW
+!           FIXME: This temperature cutoff is temporary until we use the
+!           output ice_{b,t}melt to heat/cool the surface water
 !           the freezing heats the surface water to the freezing point
             T(n) = tfw
-            STDERR 'do_ice: frazil ice formation', ice_bmelt, tfw, T(n)
+            STDERR 'do_ice: frazil ice formation', fb, tfw, T(n)
          else if (ice_hi .gt. _ZERO_) then
 !           when sea ice is present there is an ocean to sea ice heat flux, see eq. (23)
 !           with the linear form described in eq. (15) in "FMS Sea Ice Simulator"
-            ice_bmelt = KMELT*(T(n) - tfw)*dt
-!           TODO (KBK?): the surface water temperature should be changed according to
-!           how much energy is extracted
-            STDERR 'do_ice: ocean to bottom ice melting', ice_bmelt
+            fb = KMELT*(T(n) - tfw)
+            STDERR 'do_ice: ocean to bottom ice melting', fb
          end if
          call do_ice_winton(heat,_ZERO_,I_0,tfw,fb,dt, &
                             ice_hs,ice_hi,ice_t1,ice_t2, &
@@ -181,8 +182,6 @@ REALTYPE        :: ts
 !        TODO (KBK?): the returned quantities in ice_tmelt and ice_bmelt are
 !        surplus energy that was not used for melting or was released during
 !        freezing. This energy should be used to modify T(n)
-         ice_tmelt = _ZERO_
-         ice_bmelt = _ZERO_
 !         STDERR ice_hs,ice_hi,ice_t1,ice_t2
 !         STDERR ice_tmelt,ice_bmelt,ts
       case default

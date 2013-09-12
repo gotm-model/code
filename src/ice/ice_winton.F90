@@ -155,7 +155,7 @@
    REALTYPE, intent(inout)   :: t2    ! lower ice temperature (deg-C)
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)     :: tmelt ! accumulated top melting energy  (J/m^2)
-   REALTYPE, intent(inout)   :: bmelt ! accumulated bottom melting energy (J/m^2)
+   REALTYPE, intent(out)     :: bmelt ! accumulated bottom melting energy (J/m^2)
    REALTYPE, intent(out)     :: ts    ! surface temperature (deg-C)
 !
 ! !LOCAL VARIABLES:
@@ -176,8 +176,9 @@
 !  initialize surface temperature to zero (just to avoid strange output)
    ts = _ZERO_
 !
-!  initialize accumulated top melting energy
+!  initialize accumulated top and bottom melting energies
    tmelt = _ZERO_
+   bmelt = _ZERO_
 !
 !  prevent thin ice inaccuracy (mw)
    hie = max(hi, H_LO_LIM);
@@ -235,8 +236,8 @@
       t2 = t2+tfw;
 !
 !     calculate energy flux for bottom melting or freezing according to
-!     eq. (23). The oceanic heat flux to the ice bottom is however expected
-!     to be calculated by the ocean model and passed in in bmelt
+!     eq. (23). The oceanic heat flux to the ice bottom is expected
+!     to be calculated by the ocean model and passed in as fb
       bmelt = bmelt + (fb+4*KI*(t2-tfw)/hie)*dt
 !
 !     the temperature update can lead to a situation where the sea ice
@@ -263,12 +264,11 @@
    h2 = h1
 !
 !  apply freezing
-   if (bmelt < _ZERO_) then
-      LEVEL0 'ice_winton: frazil ice formation', bmelt
+   if (hi <= _ZERO_ .and. fb < _ZERO_) then
+      LEVEL0 'ice_winton: frazil ice formation', fb, bmelt
+      bmelt = fb*dt
       call add_to_bot(-bmelt/melt_energy(h2=_ONE_,t2=tfw), &
                                      & tfw, h2, t2)
-!     we have now expended all of bmelt on sea ice formation
-      bmelt = _ZERO_
    endif
 !
 !  TODO: Add atmospheric evaporation (we neglect this effect for now)
