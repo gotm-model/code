@@ -1004,8 +1004,8 @@
       type(type_bulk_variable_id),intent(inout) :: id
       REALTYPE,target,dimension(0:) :: data,relax_tau
 
-      integer                 :: i
-      character(len=64)       :: varname
+      integer                         :: i
+      character(len=attribute_length) :: varname
 
       varname = fabm_get_variable_name(model,id)
       do i=1,size(model%info%state_variables)
@@ -1022,8 +1022,8 @@
    subroutine register_horizontal_observation(horizontal_id,data,relax_tau)
       type(type_horizontal_variable_id),intent(inout) :: horizontal_id
       REALTYPE,target                        :: data,relax_tau
-      integer                 :: i
-      character(len=64)       :: varname
+      integer                         :: i
+      character(len=attribute_length) :: varname
 
       varname = fabm_get_variable_name(model,horizontal_id)
       do i=1,size(model%info%state_variables_ben)
