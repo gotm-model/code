@@ -12,7 +12,7 @@
 !
 ! !USES:
   use ice_winton,       only: do_ice_winton, KMELT, CW
-  use meanflow,         only: T,S,rho
+  use meanflow,         only: h,T,S,rho,rho_0
   use airsea,           only: heat,I_0
 !
    IMPLICIT NONE
@@ -160,7 +160,7 @@
          if (T(n) .le. tfw) then
 !           during freezing conditions all available energy is converted
 !           to bottom freezing energy
-            fb = (T(n) - tfw)*rho(n)*CW
+            fb = (T(n) - tfw)*h(n)*rho_0*CW/dt
 !           FIXME: This temperature cutoff is temporary until we use the
 !           output ice_{b,t}melt to heat/cool the surface water
 !           the freezing heats the surface water to the freezing point
