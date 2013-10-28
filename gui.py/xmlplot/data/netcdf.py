@@ -1464,7 +1464,7 @@ class NetCDFStore_GOTM(NetCDFStore):
 
                     # Get the set of dimensions (unordered) for all source variables combined.
                     dims = set((self.store.depthdim,))
-                    dim2length = {self.store.depthdim:nc.dimensions[self.store.depthdim]}
+                    dim2length = {self.store.depthdim:self.store.getDimensionLength(self.store.depthdim)[0]}
                     addvar(self.store.bathymetryname)
                     addvar(self.store.hname)
                     addvar(self.store.elevname)
