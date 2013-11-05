@@ -79,7 +79,7 @@
          LEVEL2 "sigma coordinates (zooming possible)"
          if (ddu .le. 0 .and. ddl .le. 0) then
             do i=1,nlev
-               ga(i)=ga(i-1)+1/float(nlev)
+               ga(i)=ga(i-1)+_ONE_/nlev
             end do
          else
             do i=1,nlev ! This zooming routine is from Antoine Garapon, ICCH, DK
