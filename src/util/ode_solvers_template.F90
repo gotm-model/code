@@ -166,7 +166,7 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE :: rhs _LOCDIMCC_
+   REALTYPE :: rhs _LOCDIMCC_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -208,13 +208,13 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE,dimension _LOCDIMCC_ :: rhs,cc1
+   REALTYPE,dimension _LOCDIMCC_ :: rhs,cc1
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    ! Midpoint method
    call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
-   cc1 = cc + 0.5d0*dt*rhs
+   cc1 = cc + dt*rhs/2
    call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
    cc = cc + dt*rhs
 
@@ -265,22 +265,22 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE,dimension _LOCDIMCC_ :: rhs,rhs1,cc1
+   REALTYPE,dimension _LOCDIMCC_ :: rhs,rhs1,cc1
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
-   rhs1 = 0.5d0*rhs
-   cc1 = cc + 0.5d0*dt*rhs
+   rhs1 = rhs/2
+   cc1 = cc + dt/2*rhs
    call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
    rhs1 = rhs1 + rhs
-   cc1 = cc + 0.5d0*dt*rhs
+   cc1 = cc + dt/2*rhs
    call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
    rhs1 = rhs1 + rhs
    cc1 = cc + dt*rhs
    call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
-   rhs1 = rhs1 + 0.5d0*rhs
-   cc = cc + dt*rhs1/3.d0
+   rhs1 = rhs1 + rhs/2
+   cc = cc + dt*rhs1/3
 
    end subroutine runge_kutta_4
 !EOC
@@ -310,9 +310,9 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE :: ppsum,ddsum
-  REALTYPE, dimension _LOCDIMPP_ :: pp,dd
-  integer  :: i,j,ci
+   REALTYPE :: ppsum,ddsum
+   REALTYPE, dimension _LOCDIMPP_ :: pp,dd
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -326,7 +326,7 @@
             ppsum=ppsum+pp _INPP_(i,j,ci)
             ddsum=ddsum+dd _INPP_(i,j,ci)
          end do
-         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum)/(1.+dt*ddsum/cc _INCC_(i,ci))
+         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum)/(_ONE_+dt*ddsum/cc _INCC_(i,ci))
       end do
    end do
 
@@ -372,9 +372,9 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE, dimension _LOCDIMPP_ :: pp,dd
-  REALTYPE, dimension _LOCDIMCC_ :: cc1,ppsum,ddsum
-  integer  :: i,j,ci
+   REALTYPE, dimension _LOCDIMPP_ :: pp,dd
+   REALTYPE, dimension _LOCDIMCC_ :: cc1,ppsum,ddsum
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -388,7 +388,7 @@
             ppsum _INCC_(i,ci)=ppsum _INCC_(i,ci)+pp _INPP_(i,j,ci)
             ddsum _INCC_(i,ci)=ddsum _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(1.+dt*ddsum _INCC_(i,ci)/cc _INCC_(i,ci))
+         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc _INCC_(i,ci))
       end do
    end do
 
@@ -400,7 +400,7 @@
             ppsum _INCC_(i,ci)=ppsum _INCC_(i,ci)+pp _INPP_(i,j,ci)
             ddsum _INCC_(i,ci)=ddsum _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+0.5*dt*ppsum _INCC_(i,ci))/(1.+0.5*dt*ddsum _INCC_(i,ci)/cc1 _INCC_(i,ci))
+         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt/2*ppsum _INCC_(i,ci))/(_ONE_+dt/2*ddsum _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
    end do
 
@@ -423,9 +423,9 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE, dimension _LOCDIMCC_ :: cc1,ppsum,ddsum,ppsum1,ddsum1,ppsum2,ddsum2,ppsum3,ddsum3
-  REALTYPE, dimension _LOCDIMPP_ :: pp,dd
-  integer  :: i,j,ci
+   REALTYPE, dimension _LOCDIMCC_ :: cc1,ppsum,ddsum,ppsum1,ddsum1,ppsum2,ddsum2,ppsum3,ddsum3
+   REALTYPE, dimension _LOCDIMPP_ :: pp,dd
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -439,7 +439,7 @@
             ppsum _INCC_(i,ci)=ppsum _INCC_(i,ci)+pp _INPP_(i,j,ci)
             ddsum _INCC_(i,ci)=ddsum _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(1.+dt*ddsum _INCC_(i,ci)/cc _INCC_(i,ci))
+         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc _INCC_(i,ci))
       end do
    end do
 
@@ -453,7 +453,7 @@
             ppsum1 _INCC_(i,ci)=ppsum1 _INCC_(i,ci)+pp _INPP_(i,j,ci)
             ddsum1 _INCC_(i,ci)=ddsum1 _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum1 _INCC_(i,ci))/(1.+dt*ddsum1 _INCC_(i,ci)/cc1 _INCC_(i,ci))
+         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum1 _INCC_(i,ci))/(_ONE_+dt*ddsum1 _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
    end do
 
@@ -467,7 +467,7 @@
             ppsum2 _INCC_(i,ci)=ppsum2 _INCC_(i,ci)+pp _INPP_(i,j,ci)
             ddsum2 _INCC_(i,ci)=ddsum2 _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum2 _INCC_(i,ci))/(1.+dt*ddsum2 _INCC_(i,ci)/cc1 _INCC_(i,ci))
+         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum2 _INCC_(i,ci))/(_ONE_+dt*ddsum2 _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
    end do
 
@@ -481,9 +481,9 @@
             ppsum3 _INCC_(i,ci)=ppsum3 _INCC_(i,ci)+pp _INPP_(i,j,ci)
             ddsum3 _INCC_(i,ci)=ddsum3 _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         ppsum _INCC_(i,ci)=1./3.*(0.5*ppsum _INCC_(i,ci)+ppsum1 _INCC_(i,ci)+ppsum2 _INCC_(i,ci)+0.5*ppsum3 _INCC_(i,ci))
-         ddsum _INCC_(i,ci)=1./3.*(0.5*ddsum _INCC_(i,ci)+ddsum1 _INCC_(i,ci)+ddsum2 _INCC_(i,ci)+0.5*ddsum3 _INCC_(i,ci))
-         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(1.+dt*ddsum _INCC_(i,ci)/cc1 _INCC_(i,ci))
+         ppsum _INCC_(i,ci)=(ppsum _INCC_(i,ci)/2+ppsum1 _INCC_(i,ci)+ppsum2 _INCC_(i,ci)+ppsum3 _INCC_(i,ci)/2)/3
+         ddsum _INCC_(i,ci)=(ddsum _INCC_(i,ci)/2+ddsum1 _INCC_(i,ci)+ddsum2 _INCC_(i,ci)+ddsum3 _INCC_(i,ci)/2)/3
+         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
    end do
 
@@ -518,9 +518,9 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE,dimension _LOCDIMPP_ :: pp,dd
-  REALTYPE :: a(1:numc,1:numc),r(1:numc)
-  integer  :: i,j,ci
+   REALTYPE,dimension _LOCDIMPP_ :: pp,dd
+   REALTYPE :: a(1:numc,1:numc),r(1:numc)
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -534,7 +534,7 @@
             if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc _INCC_(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc _INCC_(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
       call matrix(numc,a,r,cc _INCC_(:,ci))
@@ -595,10 +595,10 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  REALTYPE,dimension _LOCDIMPP_ :: pp,dd,pp1,dd1
-  REALTYPE :: a(1:numc,1:numc),r(1:numc)
-  REALTYPE :: cc1 _LOCDIMCC_
-  integer  :: i,j,ci
+   REALTYPE,dimension _LOCDIMPP_ :: pp,dd,pp1,dd1
+   REALTYPE :: a(1:numc,1:numc),r(1:numc)
+   REALTYPE :: cc1 _LOCDIMCC_
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -612,7 +612,7 @@
             if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc _INCC_(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc _INCC_(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
       call matrix(numc,a,r,cc1 _INCC_(:,ci))
@@ -620,8 +620,8 @@
 
    call right_hand_side_ppdd(.false.,numc,ni,cc1,pp1,dd1)
 
-   pp=0.5*(pp+pp1)
-   dd=0.5*(dd+dd1)
+   pp=(pp+pp1)/2
+   dd=(dd+dd1)/2
 
    do ci=1,ni
       do i=1,numc
@@ -631,7 +631,7 @@
             if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc1 _INCC_(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1 _INCC_(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
       call matrix(numc,a,r,cc _INCC_(:,ci))
@@ -656,14 +656,14 @@
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: pp(1:numc,1:numc,0:ni),dd(1:numc,1:numc,0:ni)
-  REALTYPE :: pp1(1:numc,1:numc,0:ni),dd1(1:numc,1:numc,0:ni)
-  REALTYPE :: pp2(1:numc,1:numc,0:ni),dd2(1:numc,1:numc,0:ni)
-  REALTYPE :: pp3(1:numc,1:numc,0:ni),dd3(1:numc,1:numc,0:ni)
-  REALTYPE :: a(1:numc,1:numc),r(1:numc)
-  REALTYPE :: cc1(1:numc,0:ni)
-  integer  :: i,j,ci
+   logical  :: first
+   REALTYPE :: pp(1:numc,1:numc,0:ni),dd(1:numc,1:numc,0:ni)
+   REALTYPE :: pp1(1:numc,1:numc,0:ni),dd1(1:numc,1:numc,0:ni)
+   REALTYPE :: pp2(1:numc,1:numc,0:ni),dd2(1:numc,1:numc,0:ni)
+   REALTYPE :: pp3(1:numc,1:numc,0:ni),dd3(1:numc,1:numc,0:ni)
+   REALTYPE :: a(1:numc,1:numc),r(1:numc)
+   REALTYPE :: cc1(1:numc,0:ni)
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -679,7 +679,7 @@
             if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc(i,ci)+dt*pp(i,i,ci)
       end do
       call matrix(numc,a,r,cc1(:,ci))
@@ -695,7 +695,7 @@
             if (i.ne.j) a(i,j)=-dt*pp1(i,j,ci)/cc1(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc(i,ci)+dt*pp1(i,i,ci)
       end do
       call matrix(numc,a,r,cc1(:,ci))
@@ -711,7 +711,7 @@
             if (i.ne.j) a(i,j)=-dt*pp2(i,j,ci)/cc1(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc(i,ci)+dt*pp2(i,i,ci)
       end do
       call matrix(numc,a,r,cc1(:,ci))
@@ -719,8 +719,8 @@
 
    call right_hand_side_ppdd(first,numc,ni,cc1,pp3,dd3)
 
-   pp=1./3.*(0.5*pp+pp1+pp2+0.5*pp3)
-   dd=1./3.*(0.5*dd+dd1+dd2+0.5*dd3)
+   pp=(pp/2+pp1+pp2+pp3/2)/3
+   dd=(dd/2+dd1+dd2+dd3/2)/3
 
    do ci=1,ni
       do i=1,numc
@@ -730,7 +730,7 @@
             if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc1(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc(i,ci)+dt*pp(i,i,ci)
       end do
       call matrix(numc,a,r,cc(:,ci))
@@ -766,10 +766,10 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: derivative _LOCDIMCC_
-  integer  :: ci
-  REALTYPE :: pi
+   logical  :: first
+   REALTYPE :: derivative _LOCDIMCC_
+   integer  :: ci
+   REALTYPE :: pi
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -827,8 +827,8 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-  integer  :: i,ci
-  REALTYPE :: pi, rhs _LOCDIMCC_, cc_med _LOCDIMCC_, rhs_med _LOCDIMCC_
+   integer  :: i,ci
+   REALTYPE :: pi, rhs _LOCDIMCC_, cc_med _LOCDIMCC_, rhs_med _LOCDIMCC_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -842,7 +842,7 @@
    call right_hand_side_rhs(.false.,numc,ni,cc_med,rhs_med)
 
    do ci=1,ni
-      rhs _INCC_(:,ci) = 0.5 * (rhs _INCC_(:,ci) + rhs_med _INCC_(:,ci))
+      rhs _INCC_(:,ci) = (rhs _INCC_(:,ci) + rhs_med _INCC_(:,ci))/2
 
       ! Correct for the state variables that will be included in 'p'.
       do i=1,numc
@@ -921,7 +921,7 @@
 !BOC
 ! Sort the supplied derivatives (find out which are negative).
    potnegcount = 0
-   piright = 1.
+   piright = _ONE_
    do i=1,numc
 
       if (derivative(i).lt.0.) then
@@ -932,14 +932,14 @@
          relderivative(potnegcount) = dt*derivative(i)/cc(i)
 
 !        Derivative is negative, and therefore places an upper bound on pi.
-         if (-1./relderivative(potnegcount).lt.piright) piright = -1./relderivative(potnegcount)
+         if (-_ONE_/relderivative(potnegcount).lt.piright) piright = -_ONE_/relderivative(potnegcount)
      end if
 
    end do
 
    if (potnegcount.eq.0) then
 !     All derivatives are positive, just do Euler.
-      pi = 1.0
+      pi = _ONE_
       return
    end if
 
@@ -951,12 +951,12 @@
 
    do iter=1,20
 !     New pi to test is middle of current pi-domain.
-      pi = 0.5*(piright+pileft)
+      pi = (piright+pileft)/2
 
 !     Calculate polynomial value.
-      fnow = 1.
+      fnow = _ONE_
       do i=1,potnegcount
-         fnow = fnow*(1.+relderivative(i)*pi)
+         fnow = fnow*(_ONE_+relderivative(i)*pi)
       end do
 
       if (fnow>pi) then
@@ -1003,16 +1003,16 @@
    integer, intent(in)                 :: n
 !
 ! INPUT/OUTPUT PARAMETERS:
-  REALTYPE                             :: a(1:n,1:n),r(1:n)
+   REALTYPE                            :: a(1:n,1:n),r(1:n)
 !
 ! OUTPUT PARAMETERS:
-  REALTYPE, intent(out)                :: c(1:n)
+   REALTYPE, intent(out)               :: c(1:n)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  integer  :: i,j,k
+   integer  :: i,j,k
 !EOP
 !-----------------------------------------------------------------------
 !BOC
