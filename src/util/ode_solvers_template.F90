@@ -77,7 +77,6 @@
 ! schemes. For an example of a correct {\tt right\_hand\_side} have a look
 ! at e.g. {\tt do\_bio\_npzd()}
 !
-!
 ! !USES:
    IMPLICIT NONE
 !
@@ -115,29 +114,29 @@
 !BOC
    select case (solver)
       case (1)
-         call euler_forward(dt,numc,ni,cc,right_hand_side_rhs)
+         call euler_forward()
       case (2)
-         call runge_kutta_2(dt,numc,ni,cc,right_hand_side_rhs)
+         call runge_kutta_2()
       case (3)
-         call runge_kutta_4(dt,numc,ni,cc,right_hand_side_rhs)
+         call runge_kutta_4()
       case (4)
-         call patankar(dt,numc,ni,cc,right_hand_side_ppdd)
+         call patankar()
       case (5)
-         call patankar_runge_kutta_2(dt,numc,ni,cc,right_hand_side_ppdd)
+         call patankar_runge_kutta_2()
       case (6)
-         call patankar_runge_kutta_4(dt,numc,ni,cc,right_hand_side_ppdd)
+         call patankar_runge_kutta_4()
       case (7)
-         call modified_patankar(dt,numc,ni,cc,right_hand_side_ppdd)
+         call modified_patankar()
       case (8)
-         call modified_patankar_2(dt,numc,ni,cc,right_hand_side_ppdd)
+         call modified_patankar_2()
       case (9)
-         call modified_patankar_4(dt,numc,ni,cc,right_hand_side_ppdd)
+         call modified_patankar_4()
       case (10)
-         call emp_1(dt,numc,ni,cc,right_hand_side_rhs)
+         call emp_1()
       case (11)
-         call emp_2(dt,numc,ni,cc,right_hand_side_rhs)
+         call emp_2()
       case default
-         stop "bio: no valid solver method specified in bio.nml !"
+         stop "gotm_fabm: no valid solver method specified in gotm_fabm.nml !"
    end select
 
 !EOC
@@ -149,7 +148,7 @@
 ! !IROUTINE: First-order Euler-forward scheme
 !
 ! !INTERFACE:
-   subroutine euler_forward(dt,numc,ni,cc,right_hand_side)
+   subroutine euler_forward()
 !
 ! !DESCRIPTION:
 ! Here, the first-order Euler-forward (E1) scheme is coded, with one
@@ -163,25 +162,6 @@
 ! \end{array}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,ni
-   REALTYPE, intent(in)                :: dt
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc _DIMCC_
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out)                :: rhs _DIMCC_
-      end
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
@@ -190,7 +170,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side(.true.,numc,ni,cc,rhs)
+   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
    cc = cc + dt*rhs
 
    end subroutine euler_forward
@@ -202,7 +182,7 @@
 ! !IROUTINE: Second-order Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine runge_kutta_2(dt,numc,ni,cc,right_hand_side)
+   subroutine runge_kutta_2()
 !
 ! !DESCRIPTION:
 ! Here, the second-order Runge-Kutta (RK2) scheme is coded, with two
@@ -224,25 +204,6 @@
 ! \right\}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,ni
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc _DIMCC_
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out)                :: rhs _DIMCC_
-      end
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
@@ -252,9 +213,9 @@
 !-----------------------------------------------------------------------
 !BOC
    ! Midpoint method
-   call right_hand_side(.true.,numc,ni,cc,rhs)
+   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
    cc1 = cc + 0.5d0*dt*rhs
-   call right_hand_side(.false.,numc,ni,cc1,rhs)
+   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
    cc = cc + dt*rhs
 
    end subroutine runge_kutta_2
@@ -266,7 +227,7 @@
 ! !IROUTINE: Fourth-order Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine runge_kutta_4(dt,numc,ni,cc,right_hand_side)
+   subroutine runge_kutta_4()
 !
 ! !DESCRIPTION:
 ! Here, the fourth-order Runge-Kutta (RK4) scheme is coded,
@@ -300,25 +261,6 @@
 ! \right\}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,ni
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc _DIMCC_
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out)                :: rhs _DIMCC_
-      end
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
@@ -327,16 +269,16 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side(.true.,numc,ni,cc,rhs)
+   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
    rhs1 = 0.5d0*rhs
    cc1 = cc + 0.5d0*dt*rhs
-   call right_hand_side(.false.,numc,ni,cc1,rhs)
+   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
    rhs1 = rhs1 + rhs
    cc1 = cc + 0.5d0*dt*rhs
-   call right_hand_side(.false.,numc,ni,cc1,rhs)
+   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
    rhs1 = rhs1 + rhs
    cc1 = cc + dt*rhs
-   call right_hand_side(.false.,numc,ni,cc1,rhs)
+   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
    rhs1 = rhs1 + 0.5d0*rhs
    cc = cc + dt*rhs1/3.d0
 
@@ -349,7 +291,7 @@
 ! !IROUTINE: First-order Patankar scheme
 !
 ! !INTERFACE:
-   subroutine patankar(dt,numc,ni,cc,right_hand_side)
+   subroutine patankar()
 !
 ! !DESCRIPTION:
 ! Here, the first-order Patankar-Euler scheme (PE1) scheme is coded,
@@ -364,25 +306,6 @@
 ! \end{array}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,ni
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc _DIMCC_
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out), dimension _DIMPP_ :: pp,dd
-      end subroutine right_hand_side
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
@@ -393,7 +316,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side(.true.,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
 
    do ci=1,ni
       do i=1,numc
@@ -416,7 +339,7 @@
 ! !IROUTINE: Second-order Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine patankar_runge_kutta_2(dt,numc,ni,cc,right_hand_side)
+   subroutine patankar_runge_kutta_2()
 !
 ! !DESCRIPTION:
 ! Here, the second-order Patankar-Runge-Kutta (PRK2) scheme is coded,
@@ -445,25 +368,6 @@
 !   \right\}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,ni
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc _DIMCC_
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out), dimension _DIMPP_ :: pp,dd
-      end subroutine right_hand_side
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
@@ -474,7 +378,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side(.true.,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
 
    do ci=1,ni
       do i=1,numc
@@ -488,7 +392,7 @@
       end do
    end do
 
-   call right_hand_side(.false.,numc,ni,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
 
    do ci=1,ni
       do i=1,numc
@@ -509,30 +413,11 @@
 ! !IROUTINE: Fourth-order Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine patankar_runge_kutta_4(dt,numc,ni,cc,right_hand_side)
+   subroutine patankar_runge_kutta_4()
 !
 ! !DESCRIPTION:
 ! This subroutine should become the fourth-order Patankar Runge-Kutta
 ! scheme, but it does not yet work.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,ni
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc _DIMCC_
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out), dimension _DIMPP_ :: pp,dd
-      end subroutine right_hand_side
-   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -544,7 +429,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side(.true.,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
 
    do ci=1,ni
       do i=1,numc
@@ -558,7 +443,7 @@
       end do
    end do
 
-   call right_hand_side(.false.,numc,ni,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
 
    do ci=1,ni
       do i=1,numc
@@ -572,7 +457,7 @@
       end do
    end do
 
-   call right_hand_side(.false.,numc,ni,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
 
    do ci=1,ni
       do i=1,numc
@@ -586,7 +471,7 @@
       end do
    end do
 
-   call right_hand_side(.false.,numc,ni,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
 
    do ci=1,ni
       do i=1,numc
@@ -611,7 +496,7 @@
 ! !IROUTINE: First-order Modified Patankar scheme
 !
 ! !INTERFACE:
-   subroutine modified_patankar(dt,numc,ni,cc,right_hand_side)
+   subroutine modified_patankar()
 !
 ! !DESCRIPTION:
 ! Here, the first-order Modified Patankar-Euler scheme (MPE1) scheme is coded,
@@ -629,26 +514,6 @@
 ! \end{array}
 ! \end{equation}
 !
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,ni
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc _DIMCC_
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out), dimension _DIMPP_ :: pp,dd
-      end subroutine right_hand_side
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
@@ -659,7 +524,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side(.true.,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
 
    do ci=1,ni
       do i=1,numc
@@ -684,7 +549,7 @@
 ! !IROUTINE: Second-order Modified Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine modified_patankar_2(dt,numc,ni,cc,right_hand_side)
+   subroutine modified_patankar_2()
 !
 ! !DESCRIPTION:
 ! Here, the second-order Modified Patankar-Runge-Kutta (MPRK2) scheme is coded,
@@ -726,25 +591,6 @@
 !   \right\}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,ni
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc _DIMCC_
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out), dimension _DIMPP_ :: pp,dd
-      end subroutine right_hand_side
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
@@ -756,7 +602,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side(.true.,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
 
    do ci=1,ni
       do i=1,numc
@@ -772,7 +618,7 @@
       call matrix(numc,a,r,cc1 _INCC_(:,ci))
    end do
 
-   call right_hand_side(.false.,numc,ni,cc1,pp1,dd1)
+   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp1,dd1)
 
    pp=0.5*(pp+pp1)
    dd=0.5*(dd+dd1)
@@ -800,30 +646,11 @@
 ! !IROUTINE: Fourth-order Modified Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine modified_patankar_4(dt,numc,ni,cc,right_hand_side)
+   subroutine modified_patankar_4()
 !
 ! !DESCRIPTION:
 ! This subroutine should become the fourth-order Modified Patankar Runge-Kutta
 ! scheme, but it does not yet work.
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,ni
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:ni)
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out), dimension _DIMPP_ :: pp,dd
-      end subroutine right_hand_side
-   end interface
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
@@ -841,7 +668,7 @@
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call right_hand_side(first,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(first,numc,ni,cc,pp,dd)
    first=.false.
 
    do ci=1,ni
@@ -858,7 +685,7 @@
       call matrix(numc,a,r,cc1(:,ci))
    end do
 
-   call right_hand_side(first,numc,ni,cc1,pp1,dd1)
+   call right_hand_side_ppdd(first,numc,ni,cc1,pp1,dd1)
 
    do ci=1,ni
       do i=1,numc
@@ -874,7 +701,7 @@
       call matrix(numc,a,r,cc1(:,ci))
    end do
 
-   call right_hand_side(first,numc,ni,cc1,pp2,dd2)
+   call right_hand_side_ppdd(first,numc,ni,cc1,pp2,dd2)
 
    do ci=1,ni
       do i=1,numc
@@ -890,7 +717,7 @@
       call matrix(numc,a,r,cc1(:,ci))
    end do
 
-   call right_hand_side(first,numc,ni,cc1,pp3,dd3)
+   call right_hand_side_ppdd(first,numc,ni,cc1,pp3,dd3)
 
    pp=1./3.*(0.5*pp+pp1+pp2+0.5*pp3)
    dd=1./3.*(0.5*dd+dd1+dd2+0.5*dd3)
@@ -909,7 +736,6 @@
       call matrix(numc,a,r,cc(:,ci))
    end do
 
-   return
    end subroutine modified_patankar_4
 !EOC
 
@@ -919,7 +745,7 @@
 ! !IROUTINE: First-order Extended Modified Patankar scheme
 !
 ! !INTERFACE:
-   subroutine emp_1(dt,numc,ni,cc,right_hand_side)
+   subroutine emp_1()
 !
 ! !DESCRIPTION:
 ! Here, the first-order Extended Modified Patankar scheme for
@@ -936,25 +762,6 @@
 ! unknown, and additionally using the restrictions imposed by the requirement of positivity.
 ! For more details, see \cite{Bruggemanetal2005}.
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,ni
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc _DIMCC_
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out)                :: rhs _DIMCC_
-      end
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
@@ -966,7 +773,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side(.true.,numc,ni,cc,derivative)
+   call right_hand_side_rhs(.true.,numc,ni,cc,derivative)
 
    do ci=1,ni
       call findp_bisection(numc, cc _INCC_(:,ci), derivative _INCC_(:,ci), dt, 1.d-9, pi)
@@ -982,7 +789,7 @@
 ! !IROUTINE: Second-order Extended Modified Patankar scheme
 !
 ! !INTERFACE:
-   subroutine emp_2(dt,numc,ni,cc,right_hand_side)
+   subroutine emp_2()
 !
 ! !DESCRIPTION:
 ! Here, the second-order Extended Modified Patankar scheme for
@@ -1016,25 +823,6 @@
 !
 ! For more details, see \cite{Bruggemanetal2005}.
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,ni
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)              :: cc _DIMCC_
-
-   interface
-      subroutine right_hand_side(first,numc,ni,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out)                :: rhs _DIMCC_
-      end
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
@@ -1044,14 +832,14 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side(.true.,numc,ni,cc,rhs)
+   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
 
    do ci=1,ni
       call findp_bisection(numc, cc _INCC_(:,ci), rhs _INCC_(:,ci), dt, 1.d-9, pi)
       cc_med _INCC_(:,ci) = cc _INCC_(:,ci) + dt*rhs _INCC_(:,ci)*pi
    end do
 
-   call right_hand_side(.false.,numc,ni,cc_med,rhs_med)
+   call right_hand_side_rhs(.false.,numc,ni,cc_med,rhs_med)
 
    do ci=1,ni
       rhs _INCC_(:,ci) = 0.5 * (rhs _INCC_(:,ci) + rhs_med _INCC_(:,ci))
@@ -1112,10 +900,6 @@
 ! It has been proved that there exists exactly one $p$ for which the above is
 ! true, see \cite{Bruggemanetal2005}.
 ! The resulting problem is solved using the bisection scheme, which is guaranteed to converge.
-!
-!
-! !USES:
-   implicit none
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)   :: numc
@@ -1214,9 +998,6 @@
 !
 ! !DESCRIPTION:
 ! This is a Gaussian solver for multi-dimensional linear equations.
-!
-! !USES:
-   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: n
