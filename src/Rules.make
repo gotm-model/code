@@ -86,7 +86,7 @@ DEFINES += -D_FABM_
 FEATURES += fabm
 FEATURE_LIBS += -lgotm_fabm$(buildtype)
 
-ifdef FABM_F2003
+ifndef FABM_NO_F2003
 DEFINES += -D_FABM_F2003_
 endif
 
