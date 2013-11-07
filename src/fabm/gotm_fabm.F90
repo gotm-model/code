@@ -15,6 +15,7 @@
 ! !USES:
    use fabm
    use fabm_types
+   use fabm_expressions
 
    implicit none
 !
@@ -53,6 +54,8 @@
       REALTYPE, pointer :: data      => null()
       REALTYPE, pointer :: relax_tau => null()
    end type
+
+   REALTYPE,allocatable,dimension(:),target :: horizontal_expression_data
 
 !  Observation indices (from obs_0d, obs_1d) for pelagic and benthic state variables.
    type (type_forced_1d_state),allocatable :: cc_obs(:)
@@ -117,7 +120,7 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm(_LOCATION_,namlst,fname)
+   subroutine init_gotm_fabm(_LOCATION_,namlst,fname,dt)
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
@@ -125,6 +128,7 @@
 ! !INPUT PARAMETERS:
    integer,          intent(in)        :: _LOCATION_,namlst
    character(len=*), intent(in)        :: fname
+   REALTYPE,optional,intent(in)        :: dt
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -179,7 +183,7 @@
       model => fabm_create_model_from_file(namlst)
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
-      call fabm_set_domain(model,_LOCATION_)
+      call fabm_set_domain(model,_LOCATION_,dt)
 
       ! Report prognostic variable descriptions
       LEVEL2 'FABM pelagic state variables:'
@@ -254,6 +258,11 @@
       par_sf_id    = fabm_get_horizontal_variable_id(model,varname_par_sf)
       cloud_id     = fabm_get_horizontal_variable_id(model,varname_cloud)
       taub_id      = fabm_get_horizontal_variable_id(model,varname_taub)
+
+#ifdef _FABM_F2003_
+      ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
+      call check_fabm_expressions()
+#endif
 
    end if
 
@@ -497,7 +506,8 @@
       sProf     => sProf_     ! salinity relaxation values [1d array] - used to calculate virtual freshening due to salinity relaxation
    else
       if (salinity_relaxation_to_freshwater_flux) &
-         stop 'gotm_fabm:set_env_gotm_fabm: salinity_relaxation_to_freshwater_flux is set, but salinity relaxation arrays are not provided.'
+         stop 'gotm_fabm:set_env_gotm_fabm: salinity_relaxation_to_freshwater_flux is set, &
+              &but salinity relaxation arrays are not provided.'
       nullify(SRelaxTau)
       nullify(sProf)
    end if
@@ -535,7 +545,7 @@
 ! !IROUTINE: Update the FABM model
 !
 ! !INTERFACE:
-   subroutine do_gotm_fabm(nlev)
+   subroutine do_gotm_fabm(nlev,itime)
 !
 ! !DESCRIPTION:
 ! TODO
@@ -543,7 +553,8 @@
 ! !USES:
    use util,only: flux,Neumann
 !
-   integer, intent(in) :: nlev
+   integer, intent(in)          :: nlev
+   REALTYPE,intent(in),optional :: itime
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -562,6 +573,8 @@
 !BOC
 
    if (.not. fabm_calc) return
+
+   call fabm_update_time(model,itime)
 
    ! Set contiguous arrays with layer heights and diffusivity, needed in calls to adv_center and diff_center.
    curh   = h
@@ -706,6 +719,88 @@
    end subroutine do_gotm_fabm
 !EOC
 
+#ifdef _FABM_F2003_
+   subroutine check_fabm_expressions()
+      class (type_expression),pointer :: expression
+      integer :: n
+      
+      n = 0
+      expression => model%info%first_expression
+      do while (associated(expression))
+         select type (expression)
+            class is (type_vertical_mean_expression)
+               n = n + 1
+         end select
+         expression => expression%next
+      end do
+
+      allocate(horizontal_expression_data(n))
+      horizontal_expression_data = _ZERO_
+
+      n = 0
+      expression => model%info%first_expression
+      do while (associated(expression))
+         select type (expression)
+            class is (type_vertical_mean_expression)
+               n = n + 1
+               call fabm_link_horizontal_data(model,trim(expression%output_name),horizontal_expression_data(n))
+         end select
+         expression => expression%next
+      end do
+   end subroutine
+
+   subroutine update_fabm_expressions(nlev)
+      integer,intent(in)             :: nlev
+
+      class (type_expression),pointer :: expression
+      real(rk)                       :: depth,weights(nlev)
+      logical                        :: started
+      integer                        :: k
+
+      expression => model%info%first_expression
+      do while (associated(expression))
+         select type (expression)
+            class is (type_vertical_mean_expression)
+               call update_vertical_mean(expression)
+         end select
+         expression => expression%next
+      end do
+      
+   contains
+   
+      subroutine update_vertical_mean(expression)
+         class (type_vertical_mean_expression),intent(in) :: expression
+
+         ! Loop over all levels, surface to bottom, and compute vertical mean.
+         depth = _ZERO_
+         weights = _ZERO_
+         started = .false.
+         do k=nlev,1,-1
+            depth = depth + curh(k)
+            if (.not.started) then
+               ! Not yet at minimum depth before
+               if (depth>=expression%minimum_depth) then
+                  ! Now crossing minimum depth interface
+                  started = .true.
+                  weights(k) = depth-expression%minimum_depth
+               end if
+            else
+               ! Beyond minimum depth, not yet at maximum depth before
+               weights(k) = curh(k)
+            end if
+            if (depth>expression%maximum_depth) then
+               ! Now crossing maximum depth interface; subtract part of layer height that is not included
+               weights(k) = weights(k) - (depth-expression%maximum_depth)
+               exit
+            end if
+         end do
+         weights = weights/(min(expression%maximum_depth,depth)-expression%minimum_depth)
+         expression%out%p = sum(expression%in%p(1:nlev)*weights)
+      end subroutine
+
+   end subroutine
+#endif
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -793,6 +888,9 @@
    do i=1,size(model%info%state_variables_ben)
       call fabm_link_bottom_state_data(model,i,cc(1,n+i))
    end do
+#ifdef _FABM_F2003_
+   call update_fabm_expressions(nlev)
+#endif
 
    ! If this is not the first step in the (multi-step) integration scheme,
    ! then first make sure that the intermediate state variable values are valid.
@@ -861,6 +959,9 @@
    do i=1,size(model%info%state_variables_ben)
       call fabm_link_bottom_state_data(model,i,cc(1,n+i))
    end do
+#ifdef _FABM_F2003_
+   call update_fabm_expressions(nlev)
+#endif
 
    ! If this is not the first step in the (multi-step) integration scheme,
    ! then first make sure that the intermediate state variable values are valid.
