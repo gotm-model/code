@@ -728,7 +728,7 @@
       expression => model%info%first_expression
       do while (associated(expression))
          select type (expression)
-            class is (type_vertical_mean_expression)
+            class is (type_vertical_mean)
                n = n + 1
          end select
          expression => expression%next
@@ -741,7 +741,7 @@
       expression => model%info%first_expression
       do while (associated(expression))
          select type (expression)
-            class is (type_vertical_mean_expression)
+            class is (type_vertical_mean)
                n = n + 1
                call fabm_link_horizontal_data(model,trim(expression%output_name),horizontal_expression_data(n))
          end select
@@ -760,7 +760,7 @@
       expression => model%info%first_expression
       do while (associated(expression))
          select type (expression)
-            class is (type_vertical_mean_expression)
+            class is (type_vertical_mean)
                call update_vertical_mean(expression)
          end select
          expression => expression%next
@@ -769,7 +769,7 @@
    contains
    
       subroutine update_vertical_mean(expression)
-         class (type_vertical_mean_expression),intent(in) :: expression
+         class (type_vertical_mean),intent(in) :: expression
 
          ! Loop over all levels, surface to bottom, and compute vertical mean.
          depth = _ZERO_
