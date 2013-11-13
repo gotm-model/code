@@ -168,7 +168,7 @@
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
-      end
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
@@ -241,7 +241,7 @@
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
-      end
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
@@ -333,7 +333,7 @@
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
-      end
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
@@ -424,7 +424,7 @@
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
          REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
@@ -514,7 +514,7 @@
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
          REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
@@ -594,7 +594,7 @@
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
          REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
@@ -722,7 +722,7 @@
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
          REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
@@ -827,7 +827,7 @@
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
          REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
@@ -917,7 +917,7 @@
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
          REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine right_hand_side
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
@@ -1051,7 +1051,7 @@
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
-      end
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
@@ -1134,7 +1134,7 @@
          integer, intent(in)                  :: numc,nlev
          REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
          REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
-      end
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
