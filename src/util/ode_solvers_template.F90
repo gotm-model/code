@@ -93,7 +93,7 @@
          integer, intent(in)                      :: numc,ni
          REALTYPE, intent(in)                     :: cc _DIMCC_
          REALTYPE, intent(out), dimension _DIMPP_ :: pp,dd
-      end
+      end subroutine
    end interface
 
    interface
@@ -102,7 +102,7 @@
          integer, intent(in)                  :: numc,ni
          REALTYPE, intent(in)                 :: cc _DIMCC_
          REALTYPE, intent(out)                :: rhs _DIMCC_
-      end
+      end subroutine
    end interface
 !
 ! !REVISION HISTORY:
