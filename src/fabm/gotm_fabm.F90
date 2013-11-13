@@ -248,16 +248,16 @@
       call init_var_gotm_fabm(_LOCATION_)
 
       ! Get ids for standard variables, to be used later to send data to FABM.
-      temp_id = fabm_get_bulk_variable_id(model,varname_temp)
-      salt_id = fabm_get_bulk_variable_id(model,varname_salt)
-      rho_id  = fabm_get_bulk_variable_id(model,varname_dens)
-      h_id    = fabm_get_bulk_variable_id(model,varname_layer_ht)
-      lon_id       = fabm_get_horizontal_variable_id(model,varname_lon)
-      lat_id       = fabm_get_horizontal_variable_id(model,varname_lat)
-      windspeed_id = fabm_get_horizontal_variable_id(model,varname_wind_sf)
-      par_sf_id    = fabm_get_horizontal_variable_id(model,varname_par_sf)
-      cloud_id     = fabm_get_horizontal_variable_id(model,varname_cloud)
-      taub_id      = fabm_get_horizontal_variable_id(model,varname_taub)
+      temp_id = fabm_get_bulk_variable_id(model,standard_variables%temperature)
+      salt_id = fabm_get_bulk_variable_id(model,standard_variables%practical_salinity)
+      rho_id  = fabm_get_bulk_variable_id(model,standard_variables%density)
+      h_id    = fabm_get_bulk_variable_id(model,standard_variables%cell_thickness)
+      lon_id       = fabm_get_horizontal_variable_id(model,standard_variables%longitude)
+      lat_id       = fabm_get_horizontal_variable_id(model,standard_variables%latitude)
+      windspeed_id = fabm_get_horizontal_variable_id(model,standard_variables%wind_speed)
+      par_sf_id    = fabm_get_horizontal_variable_id(model,standard_variables%surface_downwelling_photosynthetic_radiative_flux)
+      cloud_id     = fabm_get_horizontal_variable_id(model,standard_variables%cloud_area_fraction)
+      taub_id      = fabm_get_horizontal_variable_id(model,standard_variables%bottom_stress)
 
 #ifdef _FABM_F2003_
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
@@ -374,31 +374,31 @@
    ! This will be calculated internally during each time step.
    allocate(par(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (par)'
-   call fabm_link_bulk_data(model,varname_par,par(1:_LOCATION_))
+   call fabm_link_bulk_data(model,standard_variables%downwelling_photosynthetic_radiative_flux,par(1:_LOCATION_))
 
    ! Allocate array for attenuation coefficient pf photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    allocate(k_par(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (k_par)'
    k_par = _ZERO_
-   call fabm_link_bulk_data(model,varname_extc,k_par(1:_LOCATION_))
+   call fabm_link_bulk_data(model,standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux,k_par(1:_LOCATION_))
 
    ! Allocate array for shortwave radiation (swr).
    ! This will be calculated internally during each time step.
    allocate(swr(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (swr)'
-   call fabm_link_bulk_data(model,varname_swr,swr(1:_LOCATION_))
+   call fabm_link_bulk_data(model,standard_variables%downwelling_shortwave_flux,swr(1:_LOCATION_))
 
    ! Allocate array for local pressure.
    ! This will be calculated from layer depths and density internally during each time step.
    allocate(pres(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (pres)'
-   call fabm_link_bulk_data(model,varname_pres,pres(1:_LOCATION_))
+   call fabm_link_bulk_data(model,standard_variables%pressure,pres(1:_LOCATION_))
 
    ! Initialize scalar to hold day of the year (floating point value),
    ! and link it to FABM.
    decimal_yearday = _ZERO_
-   call fabm_link_scalar_data(model,varname_yearday,decimal_yearday)
+   call fabm_link_scalar_data(model,standard_variables%number_of_days_since_start_of_the_year,decimal_yearday)
 
    ! Allocate arrays for storing local and column-integrated values of conserved quantities.
    ! These are used during each save.
