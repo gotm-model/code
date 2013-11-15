@@ -38,7 +38,7 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_ncdf, do_ncdf_out, close_ncdf
-   public define_mode, new_nc_variable, set_attributes, store_data
+   public define_mode, new_nc_variable, set_attributes, store_data, check_err
 !
 ! !PUBLIC DATA MEMBERS:
 
@@ -1027,12 +1027,6 @@
    end function store_data
 !EOC
 
-!-----------------------------------------------------------------------
-
-   end module ncdfout
-
-!-----------------------------------------------------------------------
-
    subroutine check_err(iret)
    use netcdf
    integer iret
@@ -1040,8 +1034,13 @@
    print *, nf90_strerror(iret)
    stop
    endif
-   end
+   end subroutine
 
+!-----------------------------------------------------------------------
+
+   end module ncdfout
+
+!-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
