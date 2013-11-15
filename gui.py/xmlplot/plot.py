@@ -154,9 +154,14 @@ class MergedVariableStore(common.VariableStore):
         def getDimensions_raw(self):
             return tuple([self.mergedimid]+list(self.vars[0].getDimensions_raw()))
 
-        def getSlice(self,bounds):
-            slice = self.Slice(self.getDimensions())
-            assert len(bounds)==slice.ndim, 'Number of specified dimensions (%i) does not equal number of data dimensions (%i).' % (len(bounds),slice.ndim)
+        def getShape(self):
+            return (len(self.vars),) + tuple(self.vars[0].getShape())
+
+        def getSlice(self,bounds,dataonly=False):
+            dims = self.getDimensions()
+            assert len(bounds)==len(dims), 'Number of specified dimensions (%i) does not equal number of data dimensions (%i).' % (len(bounds),slice.ndim)
+            dims = [dim for (dim,bound) in zip(dims,bounds) if not isinstance(bound,int)]
+            slice = self.Slice(dims)
             
             # Get bound indices for the merged dimension
             ifirst,ilast = 0,len(self.vars)-1
@@ -176,6 +181,8 @@ class MergedVariableStore(common.VariableStore):
                     first = False
                 slice.data[ivar,...] = curslice.data
                 
+            if dataonly: return slice.data
+
             return slice
 
     def __init__(self,stores,mergedimid='obs',mergedimname='observation'):
@@ -183,6 +190,10 @@ class MergedVariableStore(common.VariableStore):
         self.stores = stores
         self.mergedimid = mergedimid
         self.mergedimname = mergedimname
+
+    def unlink(self):
+        for store in self.stores: store.unlink()
+        self.stores = ()
 
     def getVariableNames_raw(self):
         return self.stores[0].getVariableNames_raw()

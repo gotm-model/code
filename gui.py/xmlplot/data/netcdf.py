@@ -338,6 +338,8 @@ def getNcData(ncvar,bounds=None,maskoutsiderange=True):
     return dat
           
 class MultiNetCDFFile(object):
+    class CoordinatesIdenticalException(Exception): pass
+
     class Variable(object):
         def __init__(self,store,name):
             self.store = store
@@ -465,7 +467,7 @@ class MultiNetCDFFile(object):
                 assert dim in nc.dimensions,'Dimension %s is missing in "%s". For multiple NetCDF files to be loaded as one single file, all must use the same dimensions.' % (dim,path)
 
                 # If no coordinate values are available, just continue with the next dimension.
-                # (we will not be able to determine the file order, so we xcept the given order)
+                # (we will not be able to determine the file order, so we accept the given order)
                 if dim not in nc.variables: continue
                 
                 # Compare coordinate values.
@@ -479,10 +481,11 @@ class MultiNetCDFFile(object):
                         self.variabledim = dim
                         
         # Make sure that the values of one dimension vary between files.
-        assert self.variabledim is not None, 'All dimensions have the same coordinates in the supplied files. One dimension should differ between files in order for them to be loaded as a single file.'
-                        
+        if self.variabledim is None:
+            raise MultiNetCDFFile.CoordinatesIdenticalException('All dimensions have the same coordinates in the supplied files. One dimension should differ between files in order for them to be loaded as a single file.')
+
         # Sort NetCDF files based on their values for the varying dimension.
-        # Only works if we have the cooridnate values for all files.
+        # Only works if we have the coordinate values for all files.
         nc2coords = {}
         for nc in self.ncs:
             if self.variabledim in nc.variables: nc2coords[nc] = nc.variables[self.variabledim][0]
@@ -539,7 +542,11 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
     
     @staticmethod
     def loadUnknownConvention(path):
-        nc = openNetCDF(path)
+        try:
+            nc = openNetCDF(path)
+        except MultiNetCDFFile.CoordinatesIdenticalException:
+            results = [xmlplot.data.NetCDFStore(filepath) for filepath in glob.glob(path)]
+            return xmlplot.plot.MergedVariableStore(results,mergedimid='obs',mergedimname='observation')        
         for convention in NetCDFStore.conventions:
             if convention.testFile(nc): return convention(nc)
         return NetCDFStore(nc)
@@ -1029,6 +1036,7 @@ class NetCDFStore(xmlplot.common.VariableStore,xmlstore.util.referencedobject):
         return self.datafile
 
     def getDimensionInfo_raw(self,dimname):
+        dimname = self.defaultcoordinates.get(dimname,dimname)
         res = xmlplot.common.VariableStore.getDimensionInfo_raw(self,dimname)
         var = self.getVariable_raw(dimname)
         if var is None: return res
@@ -1232,30 +1240,28 @@ class NetCDFStore_GOTM(NetCDFStore):
         
         # Test for GETM with curvilinear coordinates
         # (either lon,lat or staggered Cartesian coordinates must be available)
-        if ('xic'  in ncdims and 'etac' in ncdims and
+        if ('xic' in ncdims and 'etac' in ncdims and
             (('lonc' in ncvars and 'latc' in ncvars)
              or ('xx' in ncvars and 'yx' in ncvars))): match = True
 
         # Test for GETM with cartesian coordinates
-        if ('xc'  in ncdims and 'yc' in ncdims and
-            'lonc' in ncvars and 'latc' in ncvars): match = True
+        if 'xc' in ncdims and 'yc' in ncdims and 'lonc' in ncvars and 'latc' in ncvars: match = True
 
-        # Test for GOTM with variable layer heights and sea surface elevation
-        if ('z' in ncdims and 'z1' in ncdims and
-            'h' in ncvars and 'zeta' in ncvars): match = True
+        # Test for GOTM convention for depth represented by layer heights and surface elevation.
+        if 'z' in ncdims and 'z1' in ncdims and 'h' in ncvars and 'zeta' in ncvars: match = True
 
-        # Test for GETM with variable heights and sea surface elevation
-        if ('level' in ncdims and
-            'h' in ncvars and 'elev' in ncvars): match = True
+        # Test for GETM convention for general, hybrid or adaptive vertical coordinates.
+        if 'level' in ncdims and 'bathymetry' in ncvars and ('h' in ncvars or 'hmean' in ncvars): match = True
 
-        if ('sigma' in ncdims and
-            'bathymetry' in ncvars and 'elev' in ncvars): match = True
+        # Test for GETM convention for sigma vertical coordinates.
+        if 'sigma' in ncdims and 'bathymetry' in ncvars and ('elev' in ncvars or 'elevmean' in ncvars): match = True
 
         return match
 
     def __init__(self,path=None,*args,**kwargs):
-        self.xname,self.yname,self.hname,self.elevname = 'lon','lat','h','zeta'
+        self.hname,self.elevname = 'h','zeta'
         self.bathymetryname = None
+        self.depthdim = None
 
         # Link new depth coordinates to an existing NetCDF dimension
         self.depth2coord = {}
@@ -1278,29 +1284,20 @@ class NetCDFStore_GOTM(NetCDFStore):
         # Re-assign for GETM with curvilinear coordinates
         # Preferentially, x and y are re-assigned to longitude and latitude.
         # If these are not available, they will be re-assigned to projected x and y instead.
-        if 'xic' in ncdims and 'etac' in ncdims:
-            # Center coordinate are available, re-assign to either lon,lat or projected x,y, if possible.
-            self.xname,self.yname = 'xic','etac'   # x,y dimensions to be used for depth
-            if 'lonc' in ncvars and 'latc' in ncvars:
-                self.defaultcoordinates['xic' ] = 'lonc'
-                self.defaultcoordinates['etac'] = 'latc'
-            elif 'xc' in ncvars and 'yc' in ncvars:
-                self.defaultcoordinates['xic' ] = 'xc'
-                self.defaultcoordinates['etac'] = 'yc'
-        if 'xix' in ncdims and 'etax' in ncdims:
-            # Boundary coordinate are available, re-assign to either lon,lat or projected x,y, if possible.
-            if 'lonx' in ncvars and 'latx' in ncvars:
-                self.defaultcoordinates['xix' ] = 'lonx'
-                self.defaultcoordinates['etax'] = 'latx'
-            elif 'xx' in ncvars and 'yx' in ncvars:
-                self.defaultcoordinates['xix' ] = 'xx'
-                self.defaultcoordinates['etax'] = 'yx'
+        # Do this for centre coordinates ("c"), corner coordinates ("x"), u coordinates ("u") and v coordinates ("v").
+        for pt in 'cxuv':
+            if 'xi'+pt not in ncdims or 'eta'+pt not in ncdims: continue
+            if 'lon'+pt in ncvars and 'lat'+pt in ncvars:
+                self.defaultcoordinates['xi' +pt] = 'lon'+pt
+                self.defaultcoordinates['eta'+pt] = 'lat'+pt
+            elif 'x'+pt in ncvars and 'y'+pt in ncvars:
+                self.defaultcoordinates['xi' +pt] = 'x'+pt
+                self.defaultcoordinates['eta'+pt] = 'y'+pt
 
         # Re-assign for GETM with cartesian coordinates.
         # x and y are re-assigned to longitude and latitude, if possible.
         if 'xc' in ncdims and 'yc' in ncdims:
             # Center coordinate are available.
-            self.xname,self.yname = 'xc','yc'   # x,y dimensions to be used for depth
             if 'lonc' in ncvars and 'latc' in ncvars:
                 self.defaultcoordinates['xc' ] = 'lonc'
                 self.defaultcoordinates['yc'] = 'latc'
@@ -1310,48 +1307,50 @@ class NetCDFStore_GOTM(NetCDFStore):
                 self.defaultcoordinates['xx'] = 'lonx'
                 self.defaultcoordinates['yx'] = 'latx'
 
-        # For GETM with spherical coordinates, we just need to remember the latitude,longitude
-        # names for when we return the dimensions of the new vertical coordinates.
-        if self.xname=='lon' and ('lon' not in ncvars) and 'lonc' in ncvars: self.xname = 'lonc'
-        if self.yname=='lat' and ('lat' not in ncvars) and 'latc' in ncvars: self.yname = 'latc'
-
         # --------------------------------------------------------------
         # Re-assign vertical dimension
         # NB the is done automatically for GOTM, because the original
         # z and z1 variables are overwritten.
         # --------------------------------------------------------------
 
-        # Re-assign depth coordinate dimension if using GETM with elevation,layer heights
-        if ('level' in ncdims and 'h' in ncvars and 'elev' in ncvars):
-            # GETM: "level" reassigned to "z"
-            self.defaultcoordinates['level' ] = 'z'
-            self.hname,self.elevname = 'h','elev'
+        if 'level' in ncdims and 'bathymetry' in ncvars and ('h' in ncvars or 'hmean' in ncvars):
+            # GETM with general, hybrid or adaptive vertical coordinates
+            # Depth will be computed from bathymetry(x,y) and layer heights(x,y,z,t).
+            # Depth dimension is called "level".
+            self.defaultcoordinates['level'] = 'z'
+            self.bathymetryname = 'bathymetry'
+            self.hname = 'h' if 'h' in ncvars else 'hmean'
+            self.elevname = None
             self.depth2coord['z'] = 'level'
             self.depthdim = 'level'
-        elif ('sigma' in ncdims and 'bathymetry' in ncvars and 'elev' in ncvars):
-            # GETM: "sigma" reassigned to "z"
-            self.defaultcoordinates['sigma' ] = 'z'
-            self.bathymetryname,self.elevname = 'bathymetry','elev'
+        elif 'sigma' in ncdims and 'bathymetry' in ncvars and ('elev' in ncvars or 'elevmean' in ncvars):
+            # GETM with sigma coordinates
+            # Depth will be computed from bathymetry(x,y), surface elevation(x,y,t) and sigma(z).
+            # Depth dimension is called "sigma".
+            self.defaultcoordinates['sigma'] = 'z'
+            self.bathymetryname = 'bathymetry'
+            self.hname = None
+            self.elevname = 'elev' if 'elev' in ncvars else 'elevmean'
             self.depth2coord['z'] = 'sigma'
             self.depthdim = 'sigma'
-        else:
+        elif 'z' in ncdims:
+            # GETM or GOTM with z coordinates.
+            # Depth dimension is called "z".
             self.depthdim = 'z'
-            
+
     def getVariableNames_raw(self):
         names = list(NetCDFStore.getVariableNames_raw(self))
-        
+
         nc = self.getcdf()
         ncvars,ncdims = nc.variables,nc.dimensions
-        if self.elevname in ncvars and (self.hname in ncvars or ('sigma' in ncvars and 'bathymetry' in ncvars)):
-            names.append('z')
         
-            # Only add alternative depth coordinate if it is actually used in the NetCDF file.
-            # (note: GETM does not use it, but GOTM does)
-            if 'z1' in ncvars: names.append('z1')
-            
+        if self.depthdim is not None:
+            if 'z' not in names: names.append('z')
+            if 'z1' in ncdims and 'z1' not in names: names.append('z1')
+
         self.generatecartesiancenters = self.generatecartesiancenters or ('xx' in ncvars and 'yx' in ncvars and 'xic' in ncdims and 'etac' in ncdims and 'xc' not in ncvars and 'yc' not in ncvars)
         if self.generatecartesiancenters: names += ['xc','yc']
-        
+
         return names
 
     def getVariable_raw(self,varname):
@@ -1433,7 +1432,10 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return 'depth'
 
             def getUnit(self):
-                return self.store[self.store.elevname].getUnit()
+                if self.store.elevname is not None:
+                    return self.store[self.store.elevname].getUnit()
+                else:
+                    return self.store[self.store.hname].getUnit()
 
             def getProperties(self):
                 if self.store.bathymetryname is None:
@@ -1444,30 +1446,30 @@ class NetCDFStore_GOTM(NetCDFStore):
                 return props
 
             def getDataType(self):
-                return self.store[self.store.elevname].getDataType()
+                if self.store.elevname is not None:
+                    return self.store[self.store.elevname].getDataType()
+                else:
+                    return self.store[self.store.hname].getDataType()
 
             def getDimensions_raw(self):
                 if self.cacheddims is None:
                     def addvar(name):
+                        if name is None or name not in self.store: return
                         curvar = self.store[name]
                         curdims = curvar.getDimensions_raw()
                         dims.update(curdims)
                         for d,l in zip(curdims,curvar.getShape()): dim2length[d] = l
 
-                    # Get the set of dimensions (unordered) for all source variables combined.
-                    dims = set()
-                    dim2length = {}
-                    addvar(self.store.elevname)
-                    if self.store.bathymetryname is None:
-                        # Depth from elevation and layer thicknesses
-                        addvar(self.store.hname)
-                    else:
-                        # Depth from elevation, bathymetry and sigma levels
-                        addvar(self.store.bathymetryname)
-                        addvar('sigma')
-                        
-                    # Order dimensions
                     nc = self.store.getcdf()
+
+                    # Get the set of dimensions (unordered) for all source variables combined.
+                    dims = set((self.store.depthdim,))
+                    dim2length = {self.store.depthdim:self.store.getDimensionLength(self.store.depthdim)[0]}
+                    addvar(self.store.bathymetryname)
+                    addvar(self.store.hname)
+                    addvar(self.store.elevname)
+
+                    # Order dimensions
                     for v in nc.variables.values():
                         if all([d in v.dimensions for d in dims]): break
                     else:
@@ -1553,12 +1555,9 @@ class NetCDFStore_GOTM(NetCDFStore):
                         slc[izdim] = slice(start,stop)
                     return array[slc]
             
-                mask,elevmask = numpy.ma.nomask,numpy.ma.nomask
+                mask = numpy.ma.nomask
                 data = {}
                             
-                # Get elevations
-                elev = getvardata(self.store.elevname)
-
                 # Subroutine for creating and updating the depth mask.
                 def setmask(mask,newmask):
                     if mask is numpy.ma.nomask:
@@ -1569,28 +1568,40 @@ class NetCDFStore_GOTM(NetCDFStore):
                         # Combine provided mask with existing one.
                         mask |= newmask
                     return mask
+                    
+                def getElevations(mask,bath=None):
+                    # Get elevations
+                    elev = getvardata(self.store.elevname)
 
-                # If elevations are (partially) masked, first fill the first layer of masked cells around
-                # the data with a nearest-neighbor approach. This improves the elevations of interfaces.
-                # Then save the mask so we can reapply it later.
-                elevmask = numpy.ma.getmask(elev)
-                if elevmask is not numpy.ma.nomask:
-                    if numpy.any(elevmask):
-                        # Add elevation mask to global depth mask (NB getvardata will have inserted z dimension already).
-                        mask = setmask(mask,elevmask)
-                        
-                        # Set masked edges of valid [unmasked] elevation domain to bordering
-                        # elevation values, in order to allow for correct calculation of interface depths.
-                        elev = xmlplot.common.interpolateEdges(elev)
-                        elevmask = numpy.ma.getmask(elev)
-                        
-                    # Eliminate elevation mask.
-                    # If bathymetry is available, this will be used later to make masked elevations follow bathymetry.
-                    # This will allow all layers in the masked domain to have height zero.
-                    elev = elev.filled(0.)
+                    # If elevations are (partially) masked, first fill the first layer of masked cells around
+                    # the data with a nearest-neighbor approach. This improves the elevations of interfaces.
+                    # Then save the mask so we can reapply it later.
+                    elevmask = numpy.ma.getmask(elev)
+                    if elevmask is not numpy.ma.nomask:
+                        if numpy.any(elevmask):
+                            # Add elevation mask to global depth mask (NB getvardata will have inserted z dimension already).
+                            mask = setmask(mask,elevmask)
+                            
+                            # Set masked (land) edges of domain to nearest (in x,y space) neighbouring elevation values.
+                            # This is needed to allow the inference of corner points that fall outside the domain bounded by centre coordinates.
+                            elev = xmlplot.common.interpolateEdges(elev)
+                            elevmask = numpy.ma.getmask(elev)
 
-                if self.store.bathymetryname is None:
-                    # Get layer heights (dimension 0: time, dimension 1: depth, dimension 2: y coordinate, dimension 3: x coordinate)
+                            # Let elevation follow bathymetry where it is still masked.
+                            if bath is not None and elevmask is not numpy.ma.nomask:
+                                bigbath = numpy.empty_like(elev)
+                                bigbath[...] = bath
+                                elev[elevmask] = -bigbath[elevmask]
+                            
+                        # Eliminate elevation mask.
+                        # If bathymetry is available, this will be used later to make masked elevations follow bathymetry.
+                        # This will allow all layers in the masked domain to have height zero.
+                        elev = elev.filled(0.)
+                        
+                    return elev,mask
+                    
+                def getLayerHeights(mask):
+                    # Get layer heights
                     h = getvardata(self.store.hname)
                                         
                     # Fill masked values (we do not want coordinate arrays with masked values)
@@ -1598,13 +1609,58 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # these locations.
                     hmask = numpy.ma.getmask(h)
                     if hmask is not numpy.ma.nomask:
+                        # Add layer height mask to global depth mask.
                         mask = setmask(mask,hmask)
+                        
+                        # Set masked (land) edges of domain to nearest (in x,y space) neighbouring layer heights.
+                        # This is needed to allow the inference of corner points that fall outside the domain bounded by centre coordinates.
+                        ipaxes = [i for i in range(len(h.shape)) if i!=izdim]
+                        h = xmlplot.common.interpolateEdges(h,dims=ipaxes)
+                        
+                        # Fill remaining masked layer heights with zero.
                         h = h.filled(0.)
+                        
+                    return h,mask
+                    
+                def getBathymetry(mask):
+                    # Get bathymetry (distance between geoid/mean sea level and bottom)
+                    bath = getvardata(self.store.bathymetryname)
+                    
+                    # Check bathymetry mask.
+                    bathmask = numpy.ma.getmask(bath)
+                    if bathmask is not numpy.ma.nomask:
+                        # Add bathymetry mask to global depth mask.
+                        mask = setmask(mask,bathmask)
+                        
+                        # Set masked (land) edges of domain to nearest (in x,y space) neighbouring bahtymetry values.
+                        # This is needed to allow the inference of corner points that fall outside the domain bounded by centre coordinates.
+                        bath = xmlplot.common.interpolateEdges(bath)
+                        
+                        # Fill the remaining masked bathymetry with the shallowest value in the domain.
+                        if self.store.elevname is not None:
+                            elev = getvardata(self.store.elevname)
+                            bath = bath.filled(min(bath.min(),-elev.max()))
+
+                    return bath,mask
+                    
+                # Depth can be reconstructed in three ways:
+                # elevations + layer heights (GOTM)
+                # bathymetry + layer heights (GETM, no sigma coordinates)
+                # bathymetry + elevations + sigma (GETM, sigma coordinates)
+                
+                if self.store.bathymetryname is None:
+                    # GOTM: reconstruct from elevations + layer heights
+
+                    # Get elevations
+                    elev,mask = getElevations(mask)
+                    
+                    # Get layer heights.
+                    h,mask = getLayerHeights(mask)
                     
                     # Get depths of interfaces
                     z_stag = numpy.concatenate((numpy.zeros_like(h.take((0,),axis=izdim)),h.cumsum(axis=izdim)),axis=izdim)
-                    bottomdepth = z_stag.take((-1,),axis=izdim)-elev
-                    z_stag -= bottomdepth
+                    depth = z_stag.take((-1,),axis=izdim)-elev
+                    z_stag -= depth
                     
                     # Get depths of layer centers
                     z = takezrange(z_stag,1)-0.5*h
@@ -1612,7 +1668,7 @@ class NetCDFStore_GOTM(NetCDFStore):
                     # The actual interface coordinate z1 lacks the bottom interface
                     z1 = takezrange(z_stag,1)
                     
-                    # Store depth dimension
+                    # Store depth coordinates
                     data['z']  = z
                     data['z1'] = z1
                     
@@ -1625,28 +1681,36 @@ class NetCDFStore_GOTM(NetCDFStore):
                         remdims = [i for i in range(z_stag.ndim) if i!=izdim]
                         data['z_stag']  = xmlplot.common.stagger(z_stag, remdims,defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
                         data['z1_stag'] = xmlplot.common.stagger(z1_stag,remdims,defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
+                        
+                elif self.store.hname is not None:
+                    # GETM (no sigma coordinates): reconstruct from bathymetry and layer heights
+                
+                    # Get bathymetry
+                    bath,mask = getBathymetry(mask)
+
+                    # Get layer heights.
+                    h,mask = getLayerHeights(mask)
+                    
+                    # Calculate depth of layer interfaces
+                    z_stag = numpy.concatenate((numpy.zeros_like(h.take((0,),axis=izdim)),h.cumsum(axis=izdim)),axis=izdim)
+                    z_stag -= bath
+
+                    # Get depths of layer centers
+                    z = takezrange(z_stag,1)-0.5*h
+
+                    # Store depth coordinates
+                    data['z']  = z
+
+                    if bounds is None or self.dimname=='z_stag':
+                        # Use normal staggering for the time, longitude and latitude dimension.
+                        remdims = [i for i in range(z_stag.ndim) if i!=izdim]
+                        data['z_stag']  = xmlplot.common.stagger(z_stag, remdims,defaultdeltafunction=self.store.getDefaultCoordinateDelta,dimnames=self.getDimensions_raw())
                 else:
                     # Get bathymetry
-                    bath = getvardata(self.store.bathymetryname)
-                    
-                    # Check bathymetry mask.
-                    bathmask = numpy.ma.getmask(bath)
-                    if bathmask is not numpy.ma.nomask:
-                        # Apply bathymetry mask to global depth mask.
-                        mask = setmask(mask,bathmask)
-                        
-                        # Set masked edges of valid [unmasked] bathymetry to bordering
-                        # bathymetry values, in order to allow for correct calculation of interface depths.
-                        bath = xmlplot.common.interpolateEdges(bath)
-                        
-                        # Fill the remaining masked bathymetry with the shallowest value in the domain.
-                        bath = bath.filled(min(bath.min(),-elev.max()))
-                                            
-                    # Let elevation follow bathymetry whereever it was originally masked.
-                    if elevmask is not numpy.ma.nomask:
-                        bigbath = numpy.empty_like(elev)
-                        bigbath[...] = bath
-                        elev[elevmask] = -bigbath[elevmask]
+                    bath,mask = getBathymetry(mask)
+
+                    # Get elevations
+                    elev,mask = getElevations(mask,bath)
 
                     # Calculate water depth at each point in time
                     # Clip it at zero: nearest neighbor interpolation of elevations may have

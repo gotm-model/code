@@ -48,7 +48,7 @@ contains
    use output,  only: out_fmt
 #ifdef NETCDF_FMT
    use ncdfout, only: ncid,lon_dim,lat_dim,z_dim,time_dim,dim3d,dim4d
-   use ncdfout, only: define_mode,new_nc_variable,set_attributes
+   use ncdfout, only: define_mode,new_nc_variable,set_attributes,check_err
 #endif
 !
 #ifdef NETCDF_FMT
@@ -144,7 +144,9 @@ contains
                   iret = new_nc_variable(ncid,trim(cur_obs_variable%name)//'_obs',NF90_REAL,dim3d,cur_obs_variable%ncid)
                end if
                iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_file',trim(cur_obs_variable%path))
+               call check_err(iret)
                iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_column',cur_obs_variable%index)
+               call check_err(iret)
                cur_obs_variable => cur_obs_variable%next
             end do               
          end if
@@ -173,8 +175,7 @@ contains
 ! !USES:
    use output,  only: nsave,out_fmt
 #ifdef NETCDF_FMT
-   use ncdfout, only: ncid,set_no
-   use ncdfout, only: store_data
+   use ncdfout, only: ncid,set_no,store_data,check_err
 #endif
 
 #ifdef NETCDF_FMT
@@ -212,29 +213,33 @@ contains
 
          ! Store pelagic biogeochemical state variables.
          do n=1,size(model%info%state_variables)
-            iret = nf90_put_var(ncid,model%info%state_variables(n)%externalid,cc(n,1:nlev),start,edges)
+            iret = nf90_put_var(ncid,model%info%state_variables(n)%externalid,cc(1:nlev,n),start,edges)
+            call check_err(iret)
          end do
 
          ! Process and store diagnostic variables defined on the full domain.
          do n=1,size(model%info%diagnostic_variables)
             ! Time-average diagnostic variable if needed.
             if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged) &
-               cc_diag(n,1:nlev) = cc_diag(n,1:nlev)/(nsave*dt)
+               cc_diag(1:nlev,n) = cc_diag(1:nlev,n)/(nsave*dt)
 
             ! Store diagnostic variable values.
-            iret = nf90_put_var(ncid,model%info%diagnostic_variables(n)%externalid,cc_diag(n,1:nlev),start,edges)
+            iret = nf90_put_var(ncid,model%info%diagnostic_variables(n)%externalid,cc_diag(1:nlev,n),start,edges)
+            call check_err(iret)
 
             ! Reset diagnostic variables to zero if they will be time-integrated (or time-averaged).
             if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged .or. &
                 model%info%diagnostic_variables(n)%time_treatment==time_treatment_step_integrated) &
-               cc_diag(n,1:nlev) = _ZERO_
+               cc_diag(1:nlev,n) = _ZERO_
          end do
 
          ! Enumerate profile (depth-dependent) inputs and save corresponding data.
          cur_obs_variable => first_input_variable
          do while (associated(cur_obs_variable))
-            if (cur_obs_variable%ncid/=-1.and.allocated(cur_obs_variable%data_1d)) &
+            if (cur_obs_variable%ncid/=-1.and.allocated(cur_obs_variable%data_1d)) then
                iret = nf90_put_var(ncid,cur_obs_variable%ncid,cur_obs_variable%data_1d(1:nlev),start,edges)
+               call check_err(iret)
+            end if
             cur_obs_variable => cur_obs_variable%next
          end do               
 
@@ -245,7 +250,7 @@ contains
          ! Store benthic biogeochemical state variables.
          do n=1,size(model%info%state_variables_ben)
             iret = store_data(ncid,model%info%state_variables_ben(n)%externalid,XYT_SHAPE,1, &
-                            & scalar=cc(size(model%info%state_variables)+n,1))
+                            & scalar=cc(1,size(model%info%state_variables)+n))
          end do
 
          ! Process and store diagnostic variables defined on horizontal slices of the domain.

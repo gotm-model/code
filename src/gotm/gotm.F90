@@ -278,7 +278,7 @@
 #ifdef _FABM_
 
 !  Initialize the GOTM-FABM coupler from its configuration file.
-   call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml')
+   call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml',dt)
 
 !  Initialize FABM input (data files with observations)
    call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
@@ -301,7 +301,7 @@
 
 !  Initialize FABM initial state (this is done after the first call to do_input,
 !  to allow user-specified observed values to be used as initial state)
-   call init_gotm_fabm_state()
+   call init_gotm_fabm_state(nlev)
 
 #endif
 
@@ -439,7 +439,7 @@
       end if
 #endif
 #ifdef _FABM_
-      call do_gotm_fabm(nlev)
+      call do_gotm_fabm(nlev,real(n,kind(_ONE_)))
 #endif
 
 !    compute turbulent mixing

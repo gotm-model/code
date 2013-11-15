@@ -193,9 +193,10 @@
 !                          & cloud cover in 1/10                                                    \\
 !                          & Example:                                                               \\
 !                          & {\tt 1998-01-01 00:00:00    6.87  10.95 1013.0   6.80   73.2   0.91}   \\
-! {\tt hum\_method}        & 1: relative humidity given as 7.\ column in {\tt meteo\_file}        \\
-!                          & 2: wet bulb temperature given as 7. column in {\tt meteo\_file}      \\
-!                          & 3: dew point temperature given as 7. column in {\tt meteo\_file}     \\
+! {\tt hum\_method}        & 1: relative humidity in \% given as 7.\ column in {\tt meteo\_file}        \\
+!                          & 2: wet bulb temperature in Celsius given as 7. column in {\tt meteo\_file}  \\
+!                          & 3: dew point temperature in Celsius given as 7. column in {\tt meteo\_file} \\
+!                          & 4: specific humidity in kg\,kg$^{-1}$ given as 7. column in {\tt meteo\_file} \\
 ! {\tt heat\_method}     & 0: heat flux not prescribed                                            \\
 !                          & 1: constant value for short wave radiation ({\tt const\_swr})        \\
 !                          &    and surface heat flux ({\tt const\_qh})                           \\
@@ -464,24 +465,6 @@
          case default
       end select
 
-!     The sea surface temperature
-      select case (sst_method)
-         case (FROMFILE)
-            call register_input_0d(sst_file,1,sst_obs)
-            LEVEL2 'Reading sea surface temperature from:'
-            LEVEL3 trim(sst_file)
-         case default
-      end select
-
-!     The sea surface salinity
-      select case (sss_method)
-         case (FROMFILE)
-            call register_input_0d(sss_file,1,sss)
-            LEVEL2 'Reading sea surface salinity from:'
-            LEVEL3 trim(sss_file)
-         case default
-      end select
-
    end if
 
 !  The fresh water fluxes (used for calc_fluxes=.true. and calc_fluxes=.false.)
@@ -500,6 +483,24 @@
          end if
          LEVEL2 'rain_impact=      ',rain_impact
          LEVEL2 'calc_evaporation= ',calc_evaporation
+      case default
+   end select
+
+!  The observed sea surface temperature
+   select case (sst_method)
+      case (FROMFILE)
+         call register_input_0d(sst_file,1,sst_obs)
+         LEVEL2 'Reading sea surface temperature from:'
+         LEVEL3 trim(sst_file)
+      case default
+   end select
+
+!  The observed sea surface salinity
+   select case (sss_method)
+      case (FROMFILE)
+         call register_input_0d(sss_file,1,sss)
+         LEVEL2 'Reading sea surface salinity from:'
+         LEVEL3 trim(sss_file)
       case default
    end select
 
@@ -561,10 +562,11 @@
          ty = const_ty*bio_drag_scale
       end if
 
-!     If reading SST from file, overwrite current (model) SST with observed value,
-!     to be used in output.
-      if (sst_method==FROMFILE) sst = sst_obs
    end if
+
+!  If reading SST from file, overwrite current (model) SST with observed value,
+!  to be used in output.
+   if (sst_method==FROMFILE) sst = sst_obs
 
 #ifndef INTERPOLATE_METEO   
    if (init_saved_vars) init_saved_vars = .false.

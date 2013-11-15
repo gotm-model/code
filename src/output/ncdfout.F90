@@ -38,7 +38,7 @@
 !
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_ncdf, do_ncdf_out, close_ncdf
-   public define_mode, new_nc_variable, set_attributes, store_data
+   public define_mode, new_nc_variable, set_attributes, store_data, check_err
 !
 ! !PUBLIC DATA MEMBERS:
 
@@ -439,6 +439,8 @@
          iret = set_attributes(ncid,hum_id,units='celsius',long_name='wet bulb temperature')
       case (3)  ! Specific humidity from dew point temperature
          iret = set_attributes(ncid,hum_id,units='celsius',long_name='dew point')
+      case (4)  ! Specific humidity given
+         iret = set_attributes(ncid,hum_id,units='kg/kg',long_name='specific humidity')
    end select
    iret = set_attributes(ncid,cloud_id,units='%',long_name='cloud cover')
    iret = set_attributes(ncid,zeta_id,units='m',long_name='sea surface elevation')
@@ -679,6 +681,8 @@
          iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=twet)
       case (3)  ! Specific humidity from dew point temperature
          iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=tdew)
+      case (4)  ! Specific humidity in kg/kg given
+         iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=rh)
    end select
    iret = store_data(ncid,cloud_id,XYT_SHAPE,1,scalar=cloud)
    iret = store_data(ncid,zeta_id,XYT_SHAPE,1,scalar=zeta)
@@ -1149,12 +1153,6 @@
    end function store_data
 !EOC
 
-!-----------------------------------------------------------------------
-
-   end module ncdfout
-
-!-----------------------------------------------------------------------
-
    subroutine check_err(iret)
    use netcdf
    integer iret
@@ -1162,8 +1160,13 @@
    print *, nf90_strerror(iret)
    stop
    endif
-   end
+   end subroutine
 
+!-----------------------------------------------------------------------
+
+   end module ncdfout
+
+!-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org

@@ -1,11 +1,25 @@
-#include"cppdefs.h"
+#include "cppdefs.h"
+
+#define _NAME_ ode_solver
+#define _LOWI_ 0
+#define _INCC_(m,i) (i,m)
+#define _INPP_(m,n,i) (i,m,n)
+
+! Dimension specifications for procedure arguments
+#define _DIMCC_ _INCC_(1:numc,_LOWI_:ni)
+#define _DIMPP_ _INPP_(1:numc,1:numc,_LOWI_:ni)
+
+! Dimension specifications for automatic (temporary) arrays
+#define _LOCDIMCC_ _DIMCC_
+#define _LOCDIMPP_ _DIMPP_
+
 !-----------------------------------------------------------------------
 !BOP
 !
 ! !ROUTINE: General ODE solver \label{sec:ode-solver}
 !
 ! !INTERFACE:
-   subroutine ode_solver(solver,numc,nlev,dt,cc,right_hand_side_rhs,right_hand_side_ppdd)
+   subroutine _NAME_(solver,numc,ni,dt,cc,right_hand_side_rhs,right_hand_side_ppdd)
 !
 ! !DESCRIPTION:
 ! Here, 10 different numerical solvers for the right hand sides of the
@@ -54,8 +68,8 @@
 !
 ! The call to {\tt ode\_solver()} requires a little explanation. The
 ! first argument {\tt solver} is an integer and specifies which solver
-! to use. The arguments {\tt numc} and {\tt nlev} gives the dimensions
-! of the data structure {\tt cc} i.e. {\tt cc(1:numc,0:nlev)}.
+! to use. The arguments {\tt numc} and {\tt ni} gives the dimensions
+! of the data structure {\tt cc} i.e. {\tt cc(1:numc,0:ni)}.
 ! {\tt dt} is simply the time step. The last argument is the most
 ! complicated. {\tt right\_hand\_side} is a subroutine with a fixed
 ! argument list. The subroutine evaluates the right hand side of the ODE
@@ -63,34 +77,31 @@
 ! schemes. For an example of a correct {\tt right\_hand\_side} have a look
 ! at e.g. {\tt do\_bio\_npzd()}
 !
-!
 ! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: solver,nlev,numc
+   integer, intent(in)                 :: solver,ni,numc
    REALTYPE, intent(in)                :: dt
 !
 ! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
+   REALTYPE, intent(inout)             :: cc _DIMCC_
 
    interface
-      subroutine right_hand_side_ppdd(first,numc,nlev,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
+      subroutine right_hand_side_ppdd(first,numc,ni,cc,pp,dd)
+         logical, intent(in)                      :: first
+         integer, intent(in)                      :: numc,ni
+         REALTYPE, intent(in)                     :: cc _DIMCC_
+         REALTYPE, intent(out), dimension _DIMPP_ :: pp,dd
       end subroutine
    end interface
 
    interface
-      subroutine right_hand_side_rhs(first,numc,nlev,cc,rhs)
+      subroutine right_hand_side_rhs(first,numc,ni,cc,rhs)
          logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
+         integer, intent(in)                  :: numc,ni
+         REALTYPE, intent(in)                 :: cc _DIMCC_
+         REALTYPE, intent(out)                :: rhs _DIMCC_
       end subroutine
    end interface
 !
@@ -103,42 +114,41 @@
 !BOC
    select case (solver)
       case (1)
-         call euler_forward(dt,numc,nlev,cc,right_hand_side_rhs)
+         call euler_forward()
       case (2)
-         call runge_kutta_2(dt,numc,nlev,cc,right_hand_side_rhs)
+         call runge_kutta_2()
       case (3)
-         call runge_kutta_4(dt,numc,nlev,cc,right_hand_side_rhs)
+         call runge_kutta_4()
       case (4)
-         call patankar(dt,numc,nlev,cc,right_hand_side_ppdd)
+         call patankar()
       case (5)
-         call patankar_runge_kutta_2(dt,numc,nlev,cc,right_hand_side_ppdd)
+         call patankar_runge_kutta_2()
       case (6)
-         call patankar_runge_kutta_4(dt,numc,nlev,cc,right_hand_side_ppdd)
+         call patankar_runge_kutta_4()
       case (7)
-         call modified_patankar(dt,numc,nlev,cc,right_hand_side_ppdd)
+         call modified_patankar()
       case (8)
-         call modified_patankar_2(dt,numc,nlev,cc,right_hand_side_ppdd)
+         call modified_patankar_2()
       case (9)
-         call modified_patankar_4(dt,numc,nlev,cc,right_hand_side_ppdd)
+         call modified_patankar_4()
       case (10)
-         call emp_1(dt,numc,nlev,cc,right_hand_side_rhs)
+         call emp_1()
       case (11)
-         call emp_2(dt,numc,nlev,cc,right_hand_side_rhs)
+         call emp_2()
       case default
-         stop "bio: no valid solver method specified in bio.nml !"
+         stop "gotm_fabm: no valid solver method specified in gotm_fabm.nml !"
    end select
 
-   return
-   end subroutine ode_solver
 !EOC
 
+   contains
 !-----------------------------------------------------------------------
 !BOP
 !
 ! !IROUTINE: First-order Euler-forward scheme
 !
 ! !INTERFACE:
-   subroutine euler_forward(dt,numc,nlev,cc,right_hand_side)
+   subroutine euler_forward()
 !
 ! !DESCRIPTION:
 ! Here, the first-order Euler-forward (E1) scheme is coded, with one
@@ -152,48 +162,17 @@
 ! \end{array}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   integer, intent(in)                 :: numc,nlev
-   REALTYPE, intent(in)                :: dt
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: rhs(1:numc,0:nlev)
-  integer  :: i,ci
+   REALTYPE :: rhs _LOCDIMCC_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   first=.true.
-!   STDERR 'euler_forward ',first
-   call right_hand_side(first,numc,nlev,cc,rhs)
-   first=.false.
-!   STDERR 'euler_forward ',first
+   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
+   cc = cc + dt*rhs
 
-   do ci=1,nlev
-      do i=1,numc
-         cc(i,ci)=cc(i,ci)+dt*rhs(i,ci)
-      end do
-   end do
-
-   return
    end subroutine euler_forward
 !EOC
 
@@ -203,7 +182,7 @@
 ! !IROUTINE: Second-order Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine runge_kutta_2(dt,numc,nlev,cc,right_hand_side)
+   subroutine runge_kutta_2()
 !
 ! !DESCRIPTION:
 ! Here, the second-order Runge-Kutta (RK2) scheme is coded, with two
@@ -225,55 +204,20 @@
 ! \right\}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,nlev
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: rhs(1:numc,0:nlev),rhs1(1:numc,0:nlev)
-  REALTYPE :: cc1(1:numc,0:nlev)
-  integer  :: i,ci
+   REALTYPE,dimension _LOCDIMCC_ :: rhs,cc1
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   first=.true.
-   call right_hand_side(first,numc,nlev,cc,rhs)
-   first=.false.
+   ! Midpoint method
+   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
+   cc1 = cc + dt*rhs/2
+   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
+   cc = cc + dt*rhs
 
-   do ci=1,nlev
-      do i=1,numc
-         cc1(i,ci)=cc(i,ci)+dt*rhs(i,ci)
-      end do
-   end do
-
-   call right_hand_side(first,numc,nlev,cc1,rhs1)
-
-   do ci=1,nlev
-      do i=1,numc
-         cc(i,ci)=cc(i,ci)+dt*0.5*(rhs(i,ci)+rhs1(i,ci))
-      end do
-   end do
-
-   return
    end subroutine runge_kutta_2
 !EOC
 
@@ -283,7 +227,7 @@
 ! !IROUTINE: Fourth-order Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine runge_kutta_4(dt,numc,nlev,cc,right_hand_side)
+   subroutine runge_kutta_4()
 !
 ! !DESCRIPTION:
 ! Here, the fourth-order Runge-Kutta (RK4) scheme is coded,
@@ -317,72 +261,27 @@
 ! \right\}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,nlev
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: rhs(1:numc,0:nlev),rhs1(1:numc,0:nlev)
-  REALTYPE :: rhs2(1:numc,0:nlev),rhs3(1:numc,0:nlev)
-  REALTYPE :: cc1(1:numc,0:nlev)
-  integer  :: i,ci
+   REALTYPE,dimension _LOCDIMCC_ :: rhs,rhs1,cc1
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   first=.true.
-   call right_hand_side(first,numc,nlev,cc,rhs)
-   first=.false.
+   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
+   rhs1 = rhs/2
+   cc1 = cc + dt/2*rhs
+   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
+   rhs1 = rhs1 + rhs
+   cc1 = cc + dt/2*rhs
+   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
+   rhs1 = rhs1 + rhs
+   cc1 = cc + dt*rhs
+   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
+   rhs1 = rhs1 + rhs/2
+   cc = cc + dt*rhs1/3
 
-   do ci=1,nlev
-      do i=1,numc
-         cc1(i,ci)=cc(i,ci)+dt*rhs(i,ci)
-      end do
-   end do
-
-   call right_hand_side(first,numc,nlev,cc1,rhs1)
-
-   do ci=1,nlev
-      do i=1,numc
-         cc1(i,ci)=cc(i,ci)+dt*rhs1(i,ci)
-      end do
-   end do
-
-   call right_hand_side(first,numc,nlev,cc1,rhs2)
-
-   do ci=1,nlev
-      do i=1,numc
-         cc1(i,ci)=cc(i,ci)+dt*rhs2(i,ci)
-      end do
-   end do
-
-   call right_hand_side(first,numc,nlev,cc1,rhs3)
-
-   do ci=1,nlev
-      do i=1,numc
-         cc(i,ci)=cc(i,ci)+dt*1./3.*(0.5*rhs(i,ci)+rhs1(i,ci)+rhs2(i,ci)+0.5*rhs3(i,ci))
-      end do
-   end do
-
-   return
    end subroutine runge_kutta_4
 !EOC
 
@@ -392,7 +291,7 @@
 ! !IROUTINE: First-order Patankar scheme
 !
 ! !INTERFACE:
-   subroutine patankar(dt,numc,nlev,cc,right_hand_side)
+   subroutine patankar()
 !
 ! !DESCRIPTION:
 ! Here, the first-order Patankar-Euler scheme (PE1) scheme is coded,
@@ -407,58 +306,30 @@
 ! \end{array}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,nlev
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: ppsum,ddsum
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
-  integer  :: i,j,ci
+   REALTYPE :: ppsum,ddsum
+   REALTYPE, dimension _LOCDIMPP_ :: pp,dd
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated
-   pp=_ZERO_
-   dd=_ZERO_
+   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
 
-   first=.true.
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
-   first=.false.
-
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
          ppsum=_ZERO_
          ddsum=_ZERO_
          do j=1,numc
-            ppsum=ppsum+pp(i,j,ci)
-            ddsum=ddsum+dd(i,j,ci)
+            ppsum=ppsum+pp _INPP_(i,j,ci)
+            ddsum=ddsum+dd _INPP_(i,j,ci)
          end do
-         cc(i,ci)=(cc(i,ci)+dt*ppsum)/(1.+dt*ddsum/cc(i,ci))
+         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum)/(_ONE_+dt*ddsum/cc _INCC_(i,ci))
       end do
    end do
 
-   return
    end subroutine patankar
 !EOC
 
@@ -468,7 +339,7 @@
 ! !IROUTINE: Second-order Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine patankar_runge_kutta_2(dt,numc,nlev,cc,right_hand_side)
+   subroutine patankar_runge_kutta_2()
 !
 ! !DESCRIPTION:
 ! Here, the second-order Patankar-Runge-Kutta (PRK2) scheme is coded,
@@ -497,71 +368,42 @@
 !   \right\}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,nlev
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: ppsum(1:numc,0:nlev),ddsum(1:numc,0:nlev)
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
-  REALTYPE :: cc1(1:numc,0:nlev)
-  integer  :: i,j,ci
+   REALTYPE, dimension _LOCDIMPP_ :: pp,dd
+   REALTYPE, dimension _LOCDIMCC_ :: cc1,ppsum,ddsum
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated
-   pp=_ZERO_
-   dd=_ZERO_
+   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
 
-   first=.true.
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
-   first=.false.
-
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
-         ppsum(i,ci)=_ZERO_
-         ddsum(i,ci)=_ZERO_
+         ppsum _INCC_(i,ci)=_ZERO_
+         ddsum _INCC_(i,ci)=_ZERO_
          do j=1,numc
-            ppsum(i,ci)=ppsum(i,ci)+pp(i,j,ci)
-            ddsum(i,ci)=ddsum(i,ci)+dd(i,j,ci)
+            ppsum _INCC_(i,ci)=ppsum _INCC_(i,ci)+pp _INPP_(i,j,ci)
+            ddsum _INCC_(i,ci)=ddsum _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         cc1(i,ci)=(cc(i,ci)+dt*ppsum(i,ci))/(1.+dt*ddsum(i,ci)/cc(i,ci))
+         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc _INCC_(i,ci))
       end do
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
 
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
          do j=1,numc
-            ppsum(i,ci)=ppsum(i,ci)+pp(i,j,ci)
-            ddsum(i,ci)=ddsum(i,ci)+dd(i,j,ci)
+            ppsum _INCC_(i,ci)=ppsum _INCC_(i,ci)+pp _INPP_(i,j,ci)
+            ddsum _INCC_(i,ci)=ddsum _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         cc(i,ci)=(cc(i,ci)+0.5*dt*ppsum(i,ci))/(1.+0.5*dt*ddsum(i,ci)/cc1(i,ci))
+         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt/2*ppsum _INCC_(i,ci))/(_ONE_+dt/2*ddsum _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
    end do
 
-   return
    end subroutine patankar_runge_kutta_2
 !EOC
 
@@ -571,112 +413,80 @@
 ! !IROUTINE: Fourth-order Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine patankar_runge_kutta_4(dt,numc,nlev,cc,right_hand_side)
+   subroutine patankar_runge_kutta_4()
 !
 ! !DESCRIPTION:
 ! This subroutine should become the fourth-order Patankar Runge-Kutta
 ! scheme, but it does not yet work.
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,nlev
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: ppsum(1:numc,0:nlev),ddsum(1:numc,0:nlev)
-  REALTYPE :: ppsum1(1:numc,0:nlev),ddsum1(1:numc,0:nlev)
-  REALTYPE :: ppsum2(1:numc,0:nlev),ddsum2(1:numc,0:nlev)
-  REALTYPE :: ppsum3(1:numc,0:nlev),ddsum3(1:numc,0:nlev)
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
-  REALTYPE :: cc1(1:numc,0:nlev)
-  integer  :: i,j,ci
+   REALTYPE, dimension _LOCDIMCC_ :: cc1,ppsum,ddsum,ppsum1,ddsum1,ppsum2,ddsum2,ppsum3,ddsum3
+   REALTYPE, dimension _LOCDIMPP_ :: pp,dd
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated
-   pp=_ZERO_
-   dd=_ZERO_
+   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
 
-   first=.true.
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
-   first=.false.
-
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
-         ppsum(i,ci)=_ZERO_
-         ddsum(i,ci)=_ZERO_
+         ppsum _INCC_(i,ci)=_ZERO_
+         ddsum _INCC_(i,ci)=_ZERO_
          do j=1,numc
-            ppsum(i,ci)=ppsum(i,ci)+pp(i,j,ci)
-            ddsum(i,ci)=ddsum(i,ci)+dd(i,j,ci)
+            ppsum _INCC_(i,ci)=ppsum _INCC_(i,ci)+pp _INPP_(i,j,ci)
+            ddsum _INCC_(i,ci)=ddsum _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         cc1(i,ci)=(cc(i,ci)+dt*ppsum(i,ci))/(1.+dt*ddsum(i,ci)/cc(i,ci))
+         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc _INCC_(i,ci))
       end do
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
 
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
-         ppsum1(i,ci)=_ZERO_
-         ddsum1(i,ci)=_ZERO_
+         ppsum1 _INCC_(i,ci)=_ZERO_
+         ddsum1 _INCC_(i,ci)=_ZERO_
          do j=1,numc
-            ppsum1(i,ci)=ppsum1(i,ci)+pp(i,j,ci)
-            ddsum1(i,ci)=ddsum1(i,ci)+dd(i,j,ci)
+            ppsum1 _INCC_(i,ci)=ppsum1 _INCC_(i,ci)+pp _INPP_(i,j,ci)
+            ddsum1 _INCC_(i,ci)=ddsum1 _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         cc1(i,ci)=(cc(i,ci)+dt*ppsum1(i,ci))/(1.+dt*ddsum1(i,ci)/cc1(i,ci))
+         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum1 _INCC_(i,ci))/(_ONE_+dt*ddsum1 _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
 
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
-         ppsum2(i,ci)=_ZERO_
-         ddsum2(i,ci)=_ZERO_
+         ppsum2 _INCC_(i,ci)=_ZERO_
+         ddsum2 _INCC_(i,ci)=_ZERO_
          do j=1,numc
-            ppsum2(i,ci)=ppsum2(i,ci)+pp(i,j,ci)
-            ddsum2(i,ci)=ddsum2(i,ci)+dd(i,j,ci)
+            ppsum2 _INCC_(i,ci)=ppsum2 _INCC_(i,ci)+pp _INPP_(i,j,ci)
+            ddsum2 _INCC_(i,ci)=ddsum2 _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         cc1(i,ci)=(cc(i,ci)+dt*ppsum2(i,ci))/(1.+dt*ddsum2(i,ci)/cc1(i,ci))
+         cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum2 _INCC_(i,ci))/(_ONE_+dt*ddsum2 _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
 
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
-         ppsum3(i,ci)=_ZERO_
-         ddsum3(i,ci)=_ZERO_
+         ppsum3 _INCC_(i,ci)=_ZERO_
+         ddsum3 _INCC_(i,ci)=_ZERO_
          do j=1,numc
-            ppsum3(i,ci)=ppsum3(i,ci)+pp(i,j,ci)
-            ddsum3(i,ci)=ddsum3(i,ci)+dd(i,j,ci)
+            ppsum3 _INCC_(i,ci)=ppsum3 _INCC_(i,ci)+pp _INPP_(i,j,ci)
+            ddsum3 _INCC_(i,ci)=ddsum3 _INCC_(i,ci)+dd _INPP_(i,j,ci)
          end do
-         ppsum(i,ci)=1./3.*(0.5*ppsum(i,ci)+ppsum1(i,ci)+ppsum2(i,ci)+0.5*ppsum3(i,ci))
-         ddsum(i,ci)=1./3.*(0.5*ddsum(i,ci)+ddsum1(i,ci)+ddsum2(i,ci)+0.5*ddsum3(i,ci))
-         cc(i,ci)=(cc(i,ci)+dt*ppsum(i,ci))/(1.+dt*ddsum(i,ci)/cc1(i,ci))
+         ppsum _INCC_(i,ci)=(ppsum _INCC_(i,ci)/2+ppsum1 _INCC_(i,ci)+ppsum2 _INCC_(i,ci)+ppsum3 _INCC_(i,ci)/2)/3
+         ddsum _INCC_(i,ci)=(ddsum _INCC_(i,ci)/2+ddsum1 _INCC_(i,ci)+ddsum2 _INCC_(i,ci)+ddsum3 _INCC_(i,ci)/2)/3
+         cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
    end do
 
-   return
    end subroutine patankar_runge_kutta_4
 !EOC
 
@@ -686,7 +496,7 @@
 ! !IROUTINE: First-order Modified Patankar scheme
 !
 ! !INTERFACE:
-   subroutine modified_patankar(dt,numc,nlev,cc,right_hand_side)
+   subroutine modified_patankar()
 !
 ! !DESCRIPTION:
 ! Here, the first-order Modified Patankar-Euler scheme (MPE1) scheme is coded,
@@ -704,61 +514,32 @@
 ! \end{array}
 ! \end{equation}
 !
-!
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,nlev
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
-  REALTYPE :: a(1:numc,1:numc),r(1:numc)
-  integer  :: i,j,ci
+   REALTYPE,dimension _LOCDIMPP_ :: pp,dd
+   REALTYPE :: a(1:numc,1:numc),r(1:numc)
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated
-   pp=_ZERO_
-   dd=_ZERO_
+   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
 
-   first=.true.
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
-   first=.false.
-
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc(j,ci)
+            a(i,i)=a(i,i)+dd _INPP_(i,j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc _INCC_(j,ci)
          end do
-         a(i,i)=dt*a(i,i)/cc(i,ci)
-         a(i,i)=1.+a(i,i)
-         r(i)=cc(i,ci)+dt*pp(i,i,ci)
+         a(i,i)=dt*a(i,i)/cc _INCC_(i,ci)
+         a(i,i)=_ONE_+a(i,i)
+         r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
-      call matrix(numc,a,r,cc(:,ci))
+      call matrix(numc,a,r,cc _INCC_(:,ci))
    end do
 
-   return
    end subroutine modified_patankar
 !EOC
 
@@ -768,7 +549,7 @@
 ! !IROUTINE: Second-order Modified Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine modified_patankar_2(dt,numc,nlev,cc,right_hand_side)
+   subroutine modified_patankar_2()
 !
 ! !DESCRIPTION:
 ! Here, the second-order Modified Patankar-Runge-Kutta (MPRK2) scheme is coded,
@@ -810,81 +591,52 @@
 !   \right\}
 ! \end{equation}
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,nlev
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
-  REALTYPE :: pp1(1:numc,1:numc,0:nlev),dd1(1:numc,1:numc,0:nlev)
-  REALTYPE :: a(1:numc,1:numc),r(1:numc)
-  REALTYPE :: cc1(1:numc,0:nlev)
-  integer  :: i,j,ci
+   REALTYPE,dimension _LOCDIMPP_ :: pp,dd,pp1,dd1
+   REALTYPE :: a(1:numc,1:numc),r(1:numc)
+   REALTYPE :: cc1 _LOCDIMCC_
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated
-   pp=_ZERO_ ; pp1=_ZERO_
-   dd=_ZERO_ ; dd1=_ZERO_
+   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
 
-   first=.true.
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
-   first=.false.
-
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc(j,ci)
+            a(i,i)=a(i,i)+dd _INPP_(i,j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc _INCC_(j,ci)
          end do
-         a(i,i)=dt*a(i,i)/cc(i,ci)
-         a(i,i)=1.+a(i,i)
-         r(i)=cc(i,ci)+dt*pp(i,i,ci)
+         a(i,i)=dt*a(i,i)/cc _INCC_(i,ci)
+         a(i,i)=_ONE_+a(i,i)
+         r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
-      call matrix(numc,a,r,cc1(:,ci))
+      call matrix(numc,a,r,cc1 _INCC_(:,ci))
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp1,dd1)
+   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp1,dd1)
 
-   pp=0.5*(pp+pp1)
-   dd=0.5*(dd+dd1)
+   pp=(pp+pp1)/2
+   dd=(dd+dd1)/2
 
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc1(j,ci)
+            a(i,i)=a(i,i)+dd _INPP_(i,j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc1 _INCC_(j,ci)
          end do
-         a(i,i)=dt*a(i,i)/cc1(i,ci)
-         a(i,i)=1.+a(i,i)
-         r(i)=cc(i,ci)+dt*pp(i,i,ci)
+         a(i,i)=dt*a(i,i)/cc1 _INCC_(i,ci)
+         a(i,i)=_ONE_+a(i,i)
+         r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
-      call matrix(numc,a,r,cc(:,ci))
+      call matrix(numc,a,r,cc _INCC_(:,ci))
    end do
 
-   return
    end subroutine modified_patankar_2
 !EOC
 
@@ -894,56 +646,32 @@
 ! !IROUTINE: Fourth-order Modified Patankar-Runge-Kutta scheme
 !
 ! !INTERFACE:
-   subroutine modified_patankar_4(dt,numc,nlev,cc,right_hand_side)
+   subroutine modified_patankar_4()
 !
 ! !DESCRIPTION:
 ! This subroutine should become the fourth-order Modified Patankar Runge-Kutta
 ! scheme, but it does not yet work.
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,nlev
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,pp,dd)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: pp(1:numc,1:numc,0:nlev)
-         REALTYPE, intent(out)                :: dd(1:numc,1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: pp(1:numc,1:numc,0:nlev),dd(1:numc,1:numc,0:nlev)
-  REALTYPE :: pp1(1:numc,1:numc,0:nlev),dd1(1:numc,1:numc,0:nlev)
-  REALTYPE :: pp2(1:numc,1:numc,0:nlev),dd2(1:numc,1:numc,0:nlev)
-  REALTYPE :: pp3(1:numc,1:numc,0:nlev),dd3(1:numc,1:numc,0:nlev)
-  REALTYPE :: a(1:numc,1:numc),r(1:numc)
-  REALTYPE :: cc1(1:numc,0:nlev)
-  integer  :: i,j,ci
+   logical  :: first
+   REALTYPE :: pp(1:numc,1:numc,0:ni),dd(1:numc,1:numc,0:ni)
+   REALTYPE :: pp1(1:numc,1:numc,0:ni),dd1(1:numc,1:numc,0:ni)
+   REALTYPE :: pp2(1:numc,1:numc,0:ni),dd2(1:numc,1:numc,0:ni)
+   REALTYPE :: pp3(1:numc,1:numc,0:ni),dd3(1:numc,1:numc,0:ni)
+   REALTYPE :: a(1:numc,1:numc),r(1:numc)
+   REALTYPE :: cc1(1:numc,0:ni)
+   integer  :: i,j,ci
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-!  absolutely essential since not all elements are calculated
-   pp=_ZERO_ ; pp1=_ZERO_ ; pp2=_ZERO_ ; pp3=_ZERO_
-   dd=_ZERO_ ; dd1=_ZERO_ ; dd2=_ZERO_ ; dd3=_ZERO_
-
    first=.true.
-   call right_hand_side(first,numc,nlev,cc,pp,dd)
+   call right_hand_side_ppdd(first,numc,ni,cc,pp,dd)
    first=.false.
 
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
@@ -951,15 +679,15 @@
             if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc(i,ci)+dt*pp(i,i,ci)
       end do
       call matrix(numc,a,r,cc1(:,ci))
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp1,dd1)
+   call right_hand_side_ppdd(first,numc,ni,cc1,pp1,dd1)
 
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
@@ -967,15 +695,15 @@
             if (i.ne.j) a(i,j)=-dt*pp1(i,j,ci)/cc1(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc(i,ci)+dt*pp1(i,i,ci)
       end do
       call matrix(numc,a,r,cc1(:,ci))
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp2,dd2)
+   call right_hand_side_ppdd(first,numc,ni,cc1,pp2,dd2)
 
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
@@ -983,18 +711,18 @@
             if (i.ne.j) a(i,j)=-dt*pp2(i,j,ci)/cc1(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc(i,ci)+dt*pp2(i,i,ci)
       end do
       call matrix(numc,a,r,cc1(:,ci))
    end do
 
-   call right_hand_side(first,numc,nlev,cc1,pp3,dd3)
+   call right_hand_side_ppdd(first,numc,ni,cc1,pp3,dd3)
 
-   pp=1./3.*(0.5*pp+pp1+pp2+0.5*pp3)
-   dd=1./3.*(0.5*dd+dd1+dd2+0.5*dd3)
+   pp=(pp/2+pp1+pp2+pp3/2)/3
+   dd=(dd/2+dd1+dd2+dd3/2)/3
 
-   do ci=1,nlev
+   do ci=1,ni
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
@@ -1002,13 +730,12 @@
             if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc1(j,ci)
          end do
          a(i,i)=dt*a(i,i)/cc1(i,ci)
-         a(i,i)=1.+a(i,i)
+         a(i,i)=_ONE_+a(i,i)
          r(i)=cc(i,ci)+dt*pp(i,i,ci)
       end do
       call matrix(numc,a,r,cc(:,ci))
    end do
 
-   return
    end subroutine modified_patankar_4
 !EOC
 
@@ -1018,7 +745,7 @@
 ! !IROUTINE: First-order Extended Modified Patankar scheme
 !
 ! !INTERFACE:
-   subroutine emp_1(dt,numc,nlev,cc,right_hand_side)
+   subroutine emp_1()
 !
 ! !DESCRIPTION:
 ! Here, the first-order Extended Modified Patankar scheme for
@@ -1035,46 +762,24 @@
 ! unknown, and additionally using the restrictions imposed by the requirement of positivity.
 ! For more details, see \cite{Bruggemanetal2005}.
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,nlev
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  REALTYPE :: derivative(1:numc,0:nlev)
-  integer  :: ci
-  REALTYPE :: pi
+   logical  :: first
+   REALTYPE :: derivative _LOCDIMCC_
+   integer  :: ci
+   REALTYPE :: pi
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   first=.true.
-   call right_hand_side(first,numc,nlev,cc,derivative)
-   first=.false.
+   call right_hand_side_rhs(.true.,numc,ni,cc,derivative)
 
-   do ci=1,nlev
-      call findp_bisection(numc, cc(:,ci), derivative(:,ci), dt, 1.d-9, pi)
-      cc(:,ci) = cc(:,ci) + dt*derivative(:,ci)*pi
+   do ci=1,ni
+      call findp_bisection(numc, cc _INCC_(:,ci), derivative _INCC_(:,ci), dt, 1.d-9, pi)
+      cc _INCC_(:,ci) = cc _INCC_(:,ci) + dt*derivative _INCC_(:,ci)*pi
    end do
 
-   return
    end subroutine emp_1
 !EOC
 
@@ -1084,7 +789,7 @@
 ! !IROUTINE: Second-order Extended Modified Patankar scheme
 !
 ! !INTERFACE:
-   subroutine emp_2(dt,numc,nlev,cc,right_hand_side)
+   subroutine emp_2()
 !
 ! !DESCRIPTION:
 ! Here, the second-order Extended Modified Patankar scheme for
@@ -1118,60 +823,37 @@
 !
 ! For more details, see \cite{Bruggemanetal2005}.
 !
-! !USES:
-   IMPLICIT NONE
-!
-! !INPUT PARAMETERS:
-   REALTYPE, intent(in)                :: dt
-   integer, intent(in)                 :: numc,nlev
-!
-! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)              :: cc(1:numc,0:nlev)
-
-   interface
-      subroutine right_hand_side(first,numc,nlev,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,nlev
-         REALTYPE, intent(in)                 :: cc(1:numc,0:nlev)
-         REALTYPE, intent(out)                :: rhs(1:numc,0:nlev)
-      end subroutine
-   end interface
-!
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-  logical  :: first
-  integer  :: i,ci
-  REALTYPE :: pi, rhs(1:numc,0:nlev), cc_med(1:numc,0:nlev), rhs_med(1:numc,0:nlev)
+   integer  :: i,ci
+   REALTYPE :: pi, rhs _LOCDIMCC_, cc_med _LOCDIMCC_, rhs_med _LOCDIMCC_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   first=.true.
-   call right_hand_side(first,numc,nlev,cc,rhs)
-   first=.false.
+   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
 
-   do ci=1,nlev
-      call findp_bisection(numc, cc(:,ci), rhs(:,ci), dt, 1.d-9, pi)
-      cc_med(:,ci) = cc(:,ci) + dt*rhs(:,ci)*pi
+   do ci=1,ni
+      call findp_bisection(numc, cc _INCC_(:,ci), rhs _INCC_(:,ci), dt, 1.d-9, pi)
+      cc_med _INCC_(:,ci) = cc _INCC_(:,ci) + dt*rhs _INCC_(:,ci)*pi
    end do
 
-   call right_hand_side(first,numc,nlev,cc_med,rhs_med)
+   call right_hand_side_rhs(.false.,numc,ni,cc_med,rhs_med)
 
-   do ci=1,nlev
-      rhs(:,ci) = 0.5 * (rhs(:,ci) + rhs_med(:,ci))
+   do ci=1,ni
+      rhs _INCC_(:,ci) = (rhs _INCC_(:,ci) + rhs_med _INCC_(:,ci))/2
 
       ! Correct for the state variables that will be included in 'p'.
       do i=1,numc
-         if (rhs(i,ci) .lt. 0.) rhs(:,ci) = rhs(:,ci) * cc(i,ci)/cc_med(i,ci)
+         if (rhs _INCC_(i,ci) .lt. 0.) rhs _INCC_(:,ci) = rhs _INCC_(:,ci) * cc _INCC_(i,ci)/cc_med _INCC_(i,ci)
       end do
 
-      call findp_bisection(numc, cc(:,ci), rhs(:,ci), dt, 1.d-9, pi)
+      call findp_bisection(numc, cc _INCC_(:,ci), rhs _INCC_(:,ci), dt, 1.d-9, pi)
 
-      cc(:,ci) = cc(:,ci) + dt*rhs(:,ci)*pi
+      cc _INCC_(:,ci) = cc _INCC_(:,ci) + dt*rhs _INCC_(:,ci)*pi
    end do ! ci (z-levels)
 
-   return
    end subroutine emp_2
 !EOC
 
@@ -1219,10 +901,6 @@
 ! true, see \cite{Bruggemanetal2005}.
 ! The resulting problem is solved using the bisection scheme, which is guaranteed to converge.
 !
-!
-! !USES:
-   implicit none
-!
 ! !INPUT PARAMETERS:
    integer, intent(in)   :: numc
    REALTYPE, intent(in)  :: cc(1:numc), derivative(1:numc)
@@ -1243,7 +921,7 @@
 !BOC
 ! Sort the supplied derivatives (find out which are negative).
    potnegcount = 0
-   piright = 1.
+   piright = _ONE_
    do i=1,numc
 
       if (derivative(i).lt.0.) then
@@ -1254,14 +932,14 @@
          relderivative(potnegcount) = dt*derivative(i)/cc(i)
 
 !        Derivative is negative, and therefore places an upper bound on pi.
-         if (-1./relderivative(potnegcount).lt.piright) piright = -1./relderivative(potnegcount)
+         if (-_ONE_/relderivative(potnegcount).lt.piright) piright = -_ONE_/relderivative(potnegcount)
      end if
 
    end do
 
    if (potnegcount.eq.0) then
 !     All derivatives are positive, just do Euler.
-      pi = 1.0
+      pi = _ONE_
       return
    end if
 
@@ -1273,12 +951,12 @@
 
    do iter=1,20
 !     New pi to test is middle of current pi-domain.
-      pi = 0.5*(piright+pileft)
+      pi = (piright+pileft)/2
 
 !     Calculate polynomial value.
-      fnow = 1.
+      fnow = _ONE_
       do i=1,potnegcount
-         fnow = fnow*(1.+relderivative(i)*pi)
+         fnow = fnow*(_ONE_+relderivative(i)*pi)
       end do
 
       if (fnow>pi) then
@@ -1307,8 +985,6 @@
 !    stop "ode_solvers::findp_bisection"
    end if
 
-   return
-
    end subroutine findp_bisection
 !EOC
 
@@ -1323,23 +999,20 @@
 ! !DESCRIPTION:
 ! This is a Gaussian solver for multi-dimensional linear equations.
 !
-! !USES:
-   IMPLICIT NONE
-!
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: n
 !
 ! INPUT/OUTPUT PARAMETERS:
-  REALTYPE                             :: a(1:n,1:n),r(1:n)
+   REALTYPE                            :: a(1:n,1:n),r(1:n)
 !
 ! OUTPUT PARAMETERS:
-  REALTYPE, intent(out)                :: c(1:n)
+   REALTYPE, intent(out)               :: c(1:n)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
 !
 ! !LOCAL VARIABLES:
-  integer  :: i,j,k
+   integer  :: i,j,k
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -1363,9 +1036,9 @@
       end do
    end do
 
-   return
    end subroutine matrix
 !EOC
+   end subroutine _NAME_
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org

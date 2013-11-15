@@ -75,13 +75,20 @@ ifdef FABM
 ifndef FABMDIR
 FABMDIR  := $(HOME)/FABM/fabm-git
 endif
+ifeq ($(wildcard $(FABMDIR)/src/fabm.F90),)
+$(error the directory FABMDIR=$(FABMDIR) is not a valid FABM directory)
+endif
 
 INCDIRS         += -I$(FABMDIR)/include -I$(FABMDIR)/src/drivers/gotm -I$(FABMDIR)/modules/gotm/$(FORTRAN_COMPILER)
 LINKDIRS        += -L$(FABMDIR)/lib/gotm/$(FORTRAN_COMPILER)
-EXTRA_LIBS      += -lfabm_prod
+EXTRA_LIBS      += -lfabm$(buildtype)
 DEFINES += -D_FABM_
 FEATURES += fabm
 FEATURE_LIBS += -lgotm_fabm$(buildtype)
+
+ifndef FABM_NO_F2003
+DEFINES += -D_FABM_F2003_
+endif
 
 endif
 
@@ -93,6 +100,9 @@ endif
 # Top of this version of GOTM.
 ifndef GOTMDIR
 GOTMDIR  := $(HOME)/GOTM/gotm-git
+endif
+ifeq ($(wildcard $(GOTMDIR)/src/gotm/gotm.F90),)
+$(error the directory GOTMDIR=$(GOTMDIR) is not a valid GOTM directory)
 endif
 
 CPP	= /lib/cpp
