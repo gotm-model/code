@@ -62,8 +62,7 @@ contains
 !
 ! !LOCAL VARIABLES:
    integer :: iret,n
-   type (type_input_variable),       pointer :: cur_obs_variable
-   character(len=64) :: name
+   type (type_input_variable),pointer :: cur_obs_variable
 !
 !-----------------------------------------------------------------------
 !BOC
