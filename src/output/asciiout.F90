@@ -77,7 +77,7 @@
 !  Writes all calculated data to an ASCII file.
 !
 ! !USES:
-   use meanflow,     only: depth0,h,u,v,z,S,T,NN,buoy
+   use meanflow,     only: depth0,h,u,v,z,S,T,buoy
    use turbulence,   only: num,nuh,tke,eps,L
    use turbulence,   only: kb,epsb
    use observations, only: tprof,sprof,uprof,vprof,epsprof

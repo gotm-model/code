@@ -858,7 +858,7 @@
 !  Original author(s): Karsten Bolding & Hans Burchard
 !
 ! !LOCAL VARIABLES:
-   integer                   :: len,iret
+   integer                   :: iret
    REAL_4B                   :: vals(2)
 !
 !EOP
