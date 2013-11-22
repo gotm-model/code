@@ -81,6 +81,7 @@
    integer, private          :: h_id
    integer, private          :: u_id,u_obs_id
    integer, private          :: v_id,v_obs_id
+   integer, private          :: rad_id
    integer, private          :: temp_id,temp_obs_id
    integer, private          :: salt_id,salt_obs_id
    integer, private          :: num_id,nuh_id,nus_id
@@ -268,6 +269,8 @@
    call check_err(iret)
    iret = nf90_def_var(ncid,'salt_obs',NF90_REAL,dim4d,salt_obs_id)
    call check_err(iret)
+   iret = nf90_def_var(ncid,'rad',NF90_REAL,dim4d,rad_id)
+   call check_err(iret)
    iret = nf90_def_var(ncid,'temp',NF90_REAL,dim4d,temp_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'temp_obs',NF90_REAL,dim4d,temp_obs_id)
@@ -425,6 +428,7 @@
    iret = set_attributes(ncid,v_obs_id,units='m/s',long_name='obs. y-velocity')
    iret = set_attributes(ncid,salt_id,units='g/kg',long_name='salinity')
    iret = set_attributes(ncid,salt_obs_id,units='g/kg',long_name='obs. salinity')
+   iret = set_attributes(ncid,rad_id,units='W/m2',long_name='radiation')
    iret = set_attributes(ncid,temp_id,units='celsius',long_name='temperature')
    iret = set_attributes(ncid,temp_obs_id,units='celsius',long_name='obs. temperature')
    iret = set_attributes(ncid,SS_id,units='1/s2',long_name='shear frequency squared')
@@ -515,7 +519,7 @@
    use airsea,       only: int_precip,int_evap,int_fwf
    use airsea,       only: int_swr,int_heat,int_total
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
-   use meanflow,     only: h,u,v,z,S,T,buoy,SS,NN
+   use meanflow,     only: h,u,v,z,S,rad,T,buoy,SS,NN
    use turbulence,   only: P,B,Pb
    use turbulence,   only: num,nuh,nus
    use turbulence,   only: gamu,gamv,gamh,gams
@@ -625,6 +629,7 @@
    iret = store_data(ncid,v_obs_id,XYZT_SHAPE,nlev,array=vprof)
    iret = store_data(ncid,salt_id,XYZT_SHAPE,nlev,array=S)
    iret = store_data(ncid,salt_obs_id,XYZT_SHAPE,nlev,array=sprof)
+   iret = store_data(ncid,rad_id,XYZT_SHAPE,nlev,array=rad)
    iret = store_data(ncid,temp_id,XYZT_SHAPE,nlev,array=T)
    iret = store_data(ncid,temp_obs_id,XYZT_SHAPE,nlev,array=tprof)
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
