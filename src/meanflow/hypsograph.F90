@@ -67,8 +67,10 @@
       allocate(Af(0:nlev),stat=rc)
       if (rc /= 0) stop 'init_hypsograph: Error allocating (Af)'
          Af = _ONE_
-
       if (hypsograph_file .ne. '') then
+         LEVEL1 'init_hypsograph'
+         LEVEL2 'reading hypsograph from:'
+         LEVEL3 trim(hypsograph_file)
          lake = .true.
          allocate(dAdz(0:nlev),stat=rc)
          if (rc /= 0) stop 'init_hypsograph: Error allocating (dAdz)'
