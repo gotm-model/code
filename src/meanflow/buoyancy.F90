@@ -53,7 +53,7 @@
 ! !USES:
    use meanflow,      only: h,Ac,Af
    use meanflow,      only: w,buoy,T,avh,init_buoyancy
-   use meanflow,      only: w_grid,grid_method
+   use meanflow,      only: grid_method
    use observations,  only: b_obs_NN,b_obs_surf,b_obs_sbf
    use observations,  only: w_adv_discr,w_adv_method
    use util,          only: Dirichlet,Neumann

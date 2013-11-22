@@ -817,14 +817,14 @@
       do while (associated(expression))
          select type (expression)
             class is (type_vertical_mean)
-               call update_vertical_mean(expression)
+               expression%out%p = calculate_vertical_mean(expression)
          end select
          expression => expression%next
       end do
       
    contains
    
-      subroutine update_vertical_mean(expression)
+      REALTYPE function calculate_vertical_mean(expression)
          class (type_vertical_mean),intent(in) :: expression
 
          ! Loop over all levels, surface to bottom, and compute vertical mean.
@@ -851,8 +851,8 @@
             end if
          end do
          weights = weights/(min(expression%maximum_depth,depth)-expression%minimum_depth)
-         expression%out%p = sum(expression%in%p(1:nlev)*weights)
-      end subroutine
+         calculate_vertical_mean = sum(expression%in%p(1:nlev)*weights)
+      end function
 
    end subroutine
 #endif

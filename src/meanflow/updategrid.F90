@@ -53,10 +53,10 @@
    use meanflow,     only: grid_ready
    use meanflow,     only: depth0,depth
    use meanflow,     only: ga,z,h,ho,ddu,ddl,grid_method
-   use meanflow,     only: NN,SS,w_grid,grid_file,w
+   use meanflow,     only: grid_file,w
    use meanflow,     only: lake
    use observations, only: zeta_method,w_adv_method
-   use observations, only: w_adv,w_height,w_adv_discr
+   use observations, only: w_adv,w_height
    use hypsograph,   only: update_hypsograph
    IMPLICIT NONE
 !
@@ -70,7 +70,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: i,rc,j,nlayers
+   integer                   :: i,j,nlayers
    REALTYPE                  :: zi(0:nlev),z_crit
    integer, parameter        :: grid_unit = 101
 !-----------------------------------------------------------------------
