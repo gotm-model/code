@@ -369,6 +369,11 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   LEVEL1 'saving initial conditions'
+   call prepare_output(0)
+   if (write_results) then
+      call do_all_output(0)
+   end if
    LEVEL1 'time_loop'
    do n=MinN,MaxN
 
@@ -466,22 +471,7 @@
 
 !     do the output
       if (write_results) then
-         if (turb_method .ne. 99) then
-            call variances(nlev,SSU,SSV)
-         endif
-         call do_output(n,nlev)
-#ifdef SEAGRASS
-         if (seagrass_calc) call save_seagrass()
-#endif
-#ifdef SPM
-         if (spm_calc) call spm_save(nlev)
-#endif
-#ifdef BIO
-         if (bio_calc) call bio_save(_ZERO_)
-#endif
-#ifdef _FABM_
-         call do_gotm_fabm_output(nlev)
-#endif
+         call do_all_output(n)
       end if
 
       call integrated_fluxes(dt)
@@ -496,6 +486,50 @@
 
    return
    end subroutine time_loop
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: A wrapper for doing all output.
+!
+! !INTERFACE:
+   subroutine do_all_output(n)
+!
+! !DESCRIPTION:
+! This function is just a wrapper for all output routines
+!
+! !USES:
+   IMPLICIT NONE
+!
+ !INPUT PARAMETERS:
+   integer(kind=timestepkind), intent(in)   :: n
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (turb_method .ne. 99) then
+      call variances(nlev,SSU,SSV)
+   endif
+   call do_output(n,nlev)
+#ifdef SEAGRASS
+   if (seagrass_calc) call save_seagrass()
+#endif
+#ifdef SPM
+   if (spm_calc) call spm_save(nlev)
+#endif
+#ifdef BIO
+   if (bio_calc) call bio_save(_ZERO_)
+#endif
+#ifdef _FABM_
+   call do_gotm_fabm_output(nlev)
+#endif
+
+   return
+   end subroutine do_all_output
 !EOC
 
 !-----------------------------------------------------------------------
