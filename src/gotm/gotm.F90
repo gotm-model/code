@@ -370,9 +370,9 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'saving initial conditions'
-   call prepare_output(0)
+   call prepare_output(0_timestepkind)
    if (write_results) then
-      call do_all_output(0)
+      call do_all_output(0_timestepkind)
    end if
    LEVEL1 'time_loop'
    do n=MinN,MaxN
