@@ -246,7 +246,7 @@
       call humidity(hum_method,rh,airp,ts,airt)
       call back_radiation(back_radiation_method, &
                           lat,ts+kelvin,airt+kelvin,cloud,qb)
-      call airsea_fluxes(fluxes_method, &
+      call airsea_fluxes(fluxes_method,.false.,.false., &
                          ts,airt,u10,v10,precip,evap,tx,ty,qe,qh)
       heat = (qb+qe+qh)
       STDERR 'heat ice =', heat
@@ -256,7 +256,7 @@
       call humidity(hum_method,rh,airp,ts-dts,airt)
       call back_radiation(back_radiation_method, &
                           lat,ts+kelvin-dts,airt+kelvin,cloud,qbm)
-      call airsea_fluxes(fluxes_method, &
+      call airsea_fluxes(fluxes_method,.false.,.false., &
                          ts-dts,airt,u10,v10,precip,evap,tx,ty,qem,qhm)
       B = (-heat + (qbm+qem+qhm))/dts
       STDERR 'd(-heat)/d(ts) =', B

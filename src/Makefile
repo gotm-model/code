@@ -10,6 +10,7 @@ SUBDIRS	= util input observations airsea meanflow ice turbulence output
 
 CORE_LIBS	=	\
 		-lairsea$(buildtype)		\
+		-lairsea_utils$(buildtype)	\
 		-lmeanflow$(buildtype) 		\
 		-lice$(buildtype)		\
 		-lturbulence$(buildtype) 	\

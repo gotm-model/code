@@ -19,7 +19,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: method
-   integer, intent(in)                 :: rain_impact,calc_evaporation
+   logical, intent(in)                 :: rain_impact,calc_evaporation
    REALTYPE, intent(in)                :: sst,airt,u10,v10,precip
 !
 ! !INPUT/OUTPUT PARAMETERS:
