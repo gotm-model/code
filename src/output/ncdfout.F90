@@ -73,7 +73,7 @@
    integer, private          :: zeta_id
    integer, private          :: sst_id,sss_id
    integer, private          :: x_taus_id,y_taus_id
-   integer, private          :: swr_id,heat_id,total_id,precip_id,evap_id
+   integer, private          :: swr_id,albedo_id,heat_id,total_id,precip_id,evap_id
    integer, private          :: int_precip_id,int_evap_id,int_fwf_id
    integer, private          :: int_swr_id,int_heat_id,int_total_id
    integer, private          :: u_taus_id,u_taub_id
@@ -220,6 +220,8 @@
    iret = nf90_def_var(ncid,'y-taus',NF90_REAL,dim3d,y_taus_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'swr',NF90_REAL,dim3d,swr_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'albedo',NF90_REAL,dim3d,albedo_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'heat',NF90_REAL,dim3d,heat_id)
    call check_err(iret)
@@ -426,6 +428,7 @@
    iret = set_attributes(ncid,x_taus_id,units='Pa',long_name='x-wind stress')
    iret = set_attributes(ncid,y_taus_id,units='Pa',long_name='y-wind stress')
    iret = set_attributes(ncid,swr_id,units='W/m2',long_name='short wave radiation')
+   iret = set_attributes(ncid,albedo_id,units='',long_name='albedo')
    iret = set_attributes(ncid,heat_id,units='W/m2',long_name='surface heat flux')
    iret = set_attributes(ncid,total_id,units='W/m2',long_name='total surface heat exchange')
    iret = set_attributes(ncid,int_precip_id,units='m',long_name='integrated precipitation')
@@ -549,7 +552,7 @@
    use airsea,       only: u10,v10
    use airsea,       only: airp,airt
    use airsea,       only: rh,twet,tdew,cloud
-   use airsea,       only: tx,ty,I_0,heat,precip,evap,sst,sss
+   use airsea,       only: tx,ty,I_0,albedo,heat,precip,evap,sst,sss
    use airsea,       only: int_precip,int_evap,int_fwf
    use airsea,       only: int_swr,int_heat,int_total
    use ice
@@ -639,6 +642,7 @@
    iret = store_data(ncid,x_taus_id,XYT_SHAPE,1,scalar=rho_0*tx)
    iret = store_data(ncid,y_taus_id,XYT_SHAPE,1,scalar=rho_0*ty)
    iret = store_data(ncid,swr_id,XYT_SHAPE,1,scalar=I_0)
+   iret = store_data(ncid,albedo_id,XYT_SHAPE,1,scalar=albedo)
    iret = store_data(ncid,heat_id,XYT_SHAPE,1,scalar=heat)
    iret = store_data(ncid,total_id,XYT_SHAPE,1,scalar=heat+I_0)
    iret = store_data(ncid,int_precip_id,XYT_SHAPE,1,scalar=int_precip)
