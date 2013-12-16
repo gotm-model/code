@@ -15,7 +15,8 @@ back_radiation.F90		\
 airsea_fluxes.F90		\
 kondo.F90			\
 fairall.F90			\
-short_wave_radiation.F90
+short_wave_radiation.F90	\
+albedo_water.F90
 
 MOD	= \
 ${LIB}(airsea_variables.o)	\
@@ -23,6 +24,7 @@ ${LIB}(airsea.o)
 
 OBJ	= \
 ${LIB}(short_wave_radiation.o)	\
+${LIB}(albedo_water.o)	\
 ${LIB}(humidity.o) 		\
 ${LIB}(back_radiation.o) 	\
 ${LIB}(airsea_fluxes.o) 	\

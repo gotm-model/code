@@ -22,7 +22,7 @@
 !
 ! !USES:
    use airsea_variables
-   use time,         only: julian_day, time_diff
+   use time,         only: julian_day, yearday, time_diff
    use input,        only: register_input_0d,read_obs
 !
    IMPLICIT NONE
@@ -57,7 +57,7 @@
 !
 !  surface short-wave radiation
 !  and surface heat flux (W/m^2)
-   REALTYPE, public, target            :: I_0
+   REALTYPE, public, target            :: I_0,albedo
    REALTYPE, public, target            :: heat
 
 !  surface stress components (Pa)
@@ -106,9 +106,9 @@
 #ifndef INTERPOLATE_METEO   
    logical                   :: init_saved_vars
 #endif
-   integer                   :: swr_method
-   integer                   :: fluxes_method
-   integer                   :: back_radiation_method
+   integer, public           :: swr_method
+   integer, public           :: fluxes_method
+   integer, public           :: back_radiation_method
    integer                   :: heat_method
    integer                   :: momentum_method
    integer                   :: precip_method
@@ -134,17 +134,6 @@
    REALTYPE                  :: const_precip
    REALTYPE                  :: precip_factor
    REALTYPE                  :: dlon,dlat
-
-!  short_wave_radiation has an optional argument [swr] and therefore needs an explicit interface
-   interface
-      function short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo) result(swr)
-         integer, intent(in)                 :: jul,secs
-         REALTYPE, intent(in)                :: dlon,dlat
-         REALTYPE, intent(in)                :: cloud
-         REALTYPE, intent(in)                :: bio_albedo
-         REALTYPE                            :: swr
-      end function short_wave_radiation
-   end interface
 !
 ! !BUGS:
 !  Wind speed - w - is not entirely correct.
@@ -281,6 +270,7 @@
 
 !  surface short-wave radiation and surface heat flux (W/m^2)
    I_0  = _ZERO_
+   albedo = _ZERO_
    heat = _ZERO_
 
 !  surface stress components (Pa)
@@ -543,6 +533,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
+! !LOCAL VARIABLES:
+   REALTYPE        :: hh
+   REALTYPE        :: short_wave_radiation
+   REALTYPE        :: albedo_water
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -553,7 +547,10 @@
 
 !     Optionally calculate surface shortwave radiation from location, time, cloud cover.
       if (swr_method .eq. 3) then
-         I_0 = short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo)
+         hh = secs*(_ONE_/3600)
+         I_0 = short_wave_radiation(yearday,hh,dlon,dlat,cloud)
+         albedo = albedo_water(1,yearday,hh,dlon,dlat)
+         I_0 = I_0*(_ONE_-albedo)
       end if
    else
 !     If using constant momentum flux, apply time-varying feedback from biogeochemistry to drag.
