@@ -5,8 +5,8 @@
 ! !ROUTINE: Wrapper for air-sea fluxes calculations \label{sec:airsea-fluxes}
 !
 ! !INTERFACE:
-   subroutine airsea_fluxes(method,sst,airt,u10,v10,precip, &
-                            evap,taux,tauy,qe,qh)
+   subroutine airsea_fluxes(method,rain_impact,calc_evaporation, &
+                            sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
 !
 ! !DESCRIPTION:
 !  A wrapper around the different methods for calculating momentum
@@ -19,6 +19,7 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: method
+   integer, intent(in)                 :: rain_impact,calc_evaporation
    REALTYPE, intent(in)                :: sst,airt,u10,v10,precip
 !
 ! !INPUT/OUTPUT PARAMETERS:
@@ -35,9 +36,11 @@
 !BOC
    select case (method)
       case (1) ! Kondo
-         call kondo(sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
+         call kondo(rain_impact,calc_evaporation, &
+                    sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
       case (2) ! Fairall et. all
-         call fairall(sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
+         call fairall(rain_impact,calc_evaporation, &
+                      sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
       case default
    end select
 

@@ -5,7 +5,8 @@
 ! !ROUTINE: Heat and momemtum fluxes according to Kondo \label{sec:kondo}
 !
 ! !INTERFACE:
-   subroutine kondo(sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
+   subroutine kondo(rain_impact,calc_evaporation, &
+                    sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
 !
 ! !DESCRIPTION:
 !  Based on the model sea surface temperature, the wind vector
@@ -42,10 +43,11 @@
    use airsea_variables, only: kelvin,const06,rgas,rho_0
    use airsea_variables, only: qs,qa,rhoa
    use airsea_variables, only: cpa,cpw
-   use airsea, only: rain_impact,calc_evaporation
+!   use airsea, only: rain_impact,calc_evaporation
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+   logical, intent(in)                 :: rain_impact,calc_evaporation
    REALTYPE, intent(in)                :: sst,airt,u10,v10,precip
 !
 ! !INPUT/OUTPUT PARAMETERS:

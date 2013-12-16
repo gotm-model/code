@@ -7,6 +7,9 @@ include ../Rules.make
 LIB	= ../../libairsea$(buildtype).a
 LIB	:= $(LIBDIR)/libairsea$(buildtype).a
 
+LIB1	= ../../libairsea_util$(buildtype).a
+LIB1	:= $(LIBDIR)/libairsea_utils$(buildtype).a
+
 DOCSRC	=\
 airsea.F90			\
 airsea_variables.F90		\
@@ -19,17 +22,17 @@ short_wave_radiation.F90	\
 albedo_water.F90
 
 MOD	= \
-${LIB}(airsea_variables.o)	\
+${LIB1}(airsea_variables.o)	\
 ${LIB}(airsea.o)
 
 OBJ	= \
 ${LIB}(short_wave_radiation.o)	\
 ${LIB}(albedo_water.o)	\
-${LIB}(humidity.o) 		\
-${LIB}(back_radiation.o) 	\
-${LIB}(airsea_fluxes.o) 	\
-${LIB}(kondo.o) 		\
-${LIB}(fairall.o)
+${LIB1}(humidity.o) 		\
+${LIB1}(back_radiation.o) 	\
+${LIB1}(airsea_fluxes.o) 	\
+${LIB1}(kondo.o) 		\
+${LIB1}(fairall.o)
 
 all: $(MOD) $(OBJ)
 	$(MOVE_MODULES_COMMAND)

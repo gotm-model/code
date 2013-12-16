@@ -5,7 +5,8 @@
 ! !ROUTINE: Heat and momentum fluxes according to Fairall et al.
 !
 ! !INTERFACE:
-   subroutine fairall(sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
+   subroutine fairall(rain_impact,calc_evaporation, &
+                      sst,airt,u10,v10,precip,evap,taux,tauy,qe,qh)
 !
 ! !DESCRIPTION:
 !  The surface momentum flux vector, $(\tau_x^s,\tau_y^s)$,
@@ -30,10 +31,11 @@
    use airsea_variables, only: kelvin,const06,rgas,rho_0,g,rho_0,kappa
    use airsea_variables, only: qs,qa,rhoa
    use airsea_variables, only: cpa,cpw
-   use airsea, only: rain_impact,calc_evaporation
+!KB   use airsea, only: rain_impact,calc_evaporation
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
+   logical, intent(in)                 :: rain_impact,calc_evaporation
    REALTYPE, intent(in)                :: sst,airt,u10,v10,precip
 !
 ! !INPUT/OUTPUT PARAMETERS:
