@@ -11,9 +11,13 @@
 !  To be done
 !
 ! !USES:
-  use ice_winton,       only: do_ice_winton, KMELT, CW
-  use meanflow,         only: h,T,S,rho,rho_0
-  use airsea,           only: heat,I_0
+   use time,             only: julianday, secondsofday
+   use airsea_variables, only: emiss,bolz,kelvin
+   use ice_winton,       only: do_ice_winton, ice_optics, KMELT, CW
+   use meanflow,         only: h,T,S,rho,rho_0
+   use airsea,           only: heat,I_0,albedo,precip,evap,cloud,swr_method,airt, &
+                               airp,rh,u10,v10,back_radiation_method,hum_method, &
+                               fluxes_method
 !
    IMPLICIT NONE
 
@@ -35,7 +39,11 @@
 !  Winton ice model
    REALTYPE, public                    :: ice_hs,ice_hi,ice_T1,ice_T2
    REALTYPE, public                    :: ice_tmelt,ice_bmelt
+   REALTYPE, public                    :: ice_ts
 !
+!  !PRIVATE DATA MEMBERS:
+   REALTYPE                            :: lat, lon
+
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
@@ -51,7 +59,7 @@
 ! !IROUTINE: Initialise the icea module \label{sec:init-ice}
 !
 ! !INTERFACE:
-   subroutine init_ice(namlst)
+   subroutine init_ice(namlst,latitude,longitude)
 !
 ! !DESCRIPTION:
 !  To be done
@@ -61,6 +69,8 @@
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: namlst
+   REALTYPE, intent(in)                :: latitude,longitude
+
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -71,6 +81,8 @@
 !-----------------------------------------------------------------------
 !BOC
    LEVEL1 'init_ice'
+   lat = latitude
+   lon = longitude
 
 !  initialize namelist variables to reasonable defaults.
    ice_method=0
@@ -90,7 +102,7 @@
       case (2)
          LEVEL2 'Thermodynamic ice model adapted from Winton'
          ice_hs=_ZERO_;ice_hi=_ZERO_;ice_T1=_ZERO_;ice_T2=_ZERO_
-         ice_tmelt=_ZERO_;ice_bmelt=_ZERO_
+         ice_ts=_ZERO_;ice_tmelt=_ZERO_;ice_bmelt=_ZERO_
       case default
    end select
 
@@ -123,10 +135,9 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE        :: tfw
-   REALTYPE        :: fb
    REALTYPE        :: dt=3600.
-   REALTYPE        :: ts
    integer         :: n
+   logical         :: has_ice
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -138,7 +149,8 @@
       case (1)
 !         LEVEL0 T(10),S(10),heat
          n = ubound(S,1)
-         if (heat .gt. _ZERO_ .and. T(n) .le. -0.0575*S(n)) then
+         tfw = -0.0575*S(n)
+         if (heat .gt. _ZERO_ .and. T(n) .le. tfw) then
             heat = _ZERO_
             LEVEL0 'do_ice: heat clipped to',heat
             ice_layer=_ONE_
@@ -146,44 +158,19 @@
             ice_layer=_ZERO_
          end if
       case (2)
-         n = ubound(S,1)
-         tfw = -0.0575*S(n)
-!        FIXME: The handling of "heat" in this sub should be changed 
-         if (heat .gt. _ZERO_ .and. T(n) .le. tfw) then
-            if (ice_hi .eq. _ZERO_) then
-               ice_bmelt = -heat*dt
-            endif
-            heat = _ZERO_
-            LEVEL0 'do_ice: heat clipped to',heat,ice_bmelt
-         end if
-!
-         if (T(n) .le. tfw) then
-!           during freezing conditions all available energy is converted
-!           to bottom freezing energy
-            fb = (T(n) - tfw)*h(n)*rho_0*CW/dt
-!           FIXME: This temperature cutoff is temporary until we use the
-!           output ice_{b,t}melt to heat/cool the surface water
-!           the freezing heats the surface water to the freezing point
-            T(n) = tfw
-            STDERR 'do_ice: frazil ice formation', fb, tfw, T(n)
-         else if (ice_hi .gt. _ZERO_) then
-!           when sea ice is present there is an ocean to sea ice heat flux, see eq. (23)
-!           with the linear form described in eq. (15) in "FMS Sea Ice Simulator"
-            fb = KMELT*(T(n) - tfw)
-            STDERR 'do_ice: ocean to bottom ice melting', fb
-         end if
-         call do_ice_winton(heat,_ZERO_,I_0,tfw,fb,dt, &
-                            ice_hs,ice_hi,ice_t1,ice_t2, &
-                            ice_tmelt,ice_bmelt,ts)
-         if (ice_hi .gt. _ZERO_) then
-            heat = _ZERO_
+         if (swr_method .ne. 3) then
+            STDERR 'Ice model currently only support swr_method 3'
+            stop 'Ice model currently only support swr_method 3'
          endif
-!         STDERR heat,I_0,tfw,fb
-!        TODO (KBK?): the returned quantities in ice_tmelt and ice_bmelt are
-!        surplus energy that was not used for melting or was released during
-!        freezing. This energy should be used to modify T(n)
-!         STDERR ice_hs,ice_hi,ice_t1,ice_t2
-!         STDERR ice_tmelt,ice_bmelt,ts
+         n = ubound(S,1)
+         call do_ice_winton(julianday,secondsofday,lon,lat, &
+                            cloud,airt,airp,rh,u10,v10, &
+                            S(n),rho(n),rho_0,h(n), &
+                            back_radiation_method,hum_method, &
+                            fluxes_method,dt, &
+                            T(n),heat,I_0,precip, &
+                            ice_hs,ice_hi,ice_t1,ice_t2, &
+                            ice_ts,albedo,ice_tmelt,ice_bmelt)
       case default
    end select
 

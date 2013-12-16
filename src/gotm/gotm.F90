@@ -243,7 +243,7 @@
       call init_kpp(namlst,'kpp.nml',nlev,depth,h,gravity,rho_0)
    endif
 
-   call init_ice(namlst)
+   call init_ice(namlst,latitude,longitude)
 
    call init_air_sea(namlst,latitude,longitude)
 
