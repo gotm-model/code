@@ -384,11 +384,9 @@
    allocate(cc_transport(1:size(model%info%state_variables)),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_transport)'
    cc_transport = .true.
-#ifdef _FABM_F2003_
    do i=1,size(model%info%state_variables)
       cc_transport(i) = .not.model%info%state_variables(i)%properties%get_logical('disable_transport',default=.false.)
    end do
-#endif
 
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
@@ -527,7 +525,7 @@
    w_adv_ctr = w_adv_ctr_
 
    ! Calculate and save internal time step.
-   dt_eff = dt/dble(split_factor)
+   dt_eff = dt/split_factor
 
    I_0 => I_0_
    A => A_
@@ -569,6 +567,8 @@
 !  Calculate decimal day of the year (1 jan 00:00 = 0.)
    decimal_yearday = yearday-1 + dble(secondsofday)/86400.d0
 
+   call fabm_update_time(model,itime)
+
    end subroutine
 
 !-----------------------------------------------------------------------
@@ -605,8 +605,6 @@
 !BOC
 
    if (.not. fabm_calc) return
-
-   call fabm_update_time(model,itime)
 
    call calculate_derived_input(nlev,itime)
 
@@ -740,7 +738,6 @@
    end subroutine do_gotm_fabm
 !EOC
 
-#ifdef _FABM_F2003_
    subroutine check_fabm_expressions()
       class (type_expression),pointer :: expression
       integer :: n
@@ -820,7 +817,6 @@
       end function
 
    end subroutine
-#endif
 
 !-----------------------------------------------------------------------
 !BOP
@@ -909,9 +905,7 @@
    do i=1,size(model%info%state_variables_ben)
       call fabm_link_bottom_state_data(model,i,cc(1,n+i))
    end do
-#ifdef _FABM_F2003_
    call update_fabm_expressions(nlev)
-#endif
 
    ! If this is not the first step in the (multi-step) integration scheme,
    ! then first make sure that the intermediate state variable values are valid.
@@ -980,9 +974,7 @@
    do i=1,size(model%info%state_variables_ben)
       call fabm_link_bottom_state_data(model,i,cc(1,n+i))
    end do
-#ifdef _FABM_F2003_
    call update_fabm_expressions(nlev)
-#endif
 
    ! If this is not the first step in the (multi-step) integration scheme,
    ! then first make sure that the intermediate state variable values are valid.
@@ -1191,7 +1183,7 @@
       end do
 
       call calculate_derived_input(nlev,_ZERO_)
-
+      
       ! Update derived expressions (vertical means, etc.)
       call update_fabm_expressions(nlev)
 
@@ -1208,10 +1200,12 @@
 #endif
 
       do i=1,size(model%info%diagnostic_variables_hz)
-         cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
+         if (model%info%diagnostic_variables_hz(i)%time_treatment/=time_treatment_integrated) &
+            cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
       end do
       do i=1,size(model%info%diagnostic_variables)
-         cc_diag(1:nlev,i) = fabm_get_bulk_diagnostic_data(model,i)
+         if (model%info%diagnostic_variables(i)%time_treatment/=time_treatment_integrated) &
+            cc_diag(1:nlev,i) = fabm_get_bulk_diagnostic_data(model,i)
       end do
 
    end subroutine init_gotm_fabm_state

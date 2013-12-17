@@ -185,7 +185,7 @@ contains
 ! !IROUTINE: Save values of biogeochemical variables
 !
 ! !INTERFACE:
-   subroutine do_gotm_fabm_output(nlev)
+   subroutine do_gotm_fabm_output(nlev,initial)
 
 !
 ! !DESCRIPTION:
@@ -204,6 +204,7 @@ contains
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                  :: nlev
+   logical, intent(in)                  :: initial
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -240,8 +241,12 @@ contains
          ! Process and store diagnostic variables defined on the full domain.
          do n=1,size(model%info%diagnostic_variables)
             ! Time-average diagnostic variable if needed.
-            if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged) &
+            if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged.and..not.initial) &
                cc_diag(1:nlev,n) = cc_diag(1:nlev,n)/(nsave*dt)
+
+            ! If we want time-step integrated values and have the initial field, multiply by output time step.
+            if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_step_integrated.and.initial) &
+               cc_diag(1:nlev,n) = cc_diag(1:nlev,n)*(nsave*dt)
 
             ! Store diagnostic variable values.
             iret = nf90_put_var(ncid,model%info%diagnostic_variables(n)%externalid,cc_diag(1:nlev,n),start,edges)
@@ -276,8 +281,12 @@ contains
          ! Process and store diagnostic variables defined on horizontal slices of the domain.
          do n=1,size(model%info%diagnostic_variables_hz)
             ! Time-average diagnostic variable if needed.
-            if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_averaged) &
+            if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_averaged.and..not.initial) &
                cc_diag_hz(n) = cc_diag_hz(n)/(nsave*dt)
+
+            ! If we want time-step integrated values and have the initial field, multiply by output time step.
+            if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_step_integrated.and.initial) &
+               cc_diag_hz(n) = cc_diag_hz(n)*(nsave*dt)
 
             ! Store diagnostic variable values.
             iret = store_data(ncid,model%info%diagnostic_variables_hz(n)%externalid,XYT_SHAPE,nlev,scalar=cc_diag_hz(n))

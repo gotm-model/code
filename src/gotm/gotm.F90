@@ -533,10 +533,9 @@
    if (bio_calc) call bio_save(_ZERO_)
 #endif
 #ifdef _FABM_
-   call do_gotm_fabm_output(nlev)
+   call do_gotm_fabm_output(nlev,initial=n==0_timestepkind)
 #endif
 
-   return
    end subroutine do_all_output
 !EOC
 
