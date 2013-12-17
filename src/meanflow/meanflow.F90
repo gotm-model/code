@@ -107,7 +107,7 @@
    REALTYPE, public, target            :: taub
 
 !  other stuff
-   REALTYPE, public                    :: depth0
+   REALTYPE, public, target            :: depth0
    REALTYPE, public                    :: depth
    REALTYPE, public                    :: runtimeu, runtimev
 !
