@@ -16,6 +16,7 @@
    use fabm
    use fabm_types
    use fabm_expressions
+   use fabm_config
 
    implicit none
 !
@@ -29,8 +30,11 @@
    public fabm_calc
    public register_observation
 
+   ! Passed through from fabm_types, used by hosts to provide additional inputs:
+   public standard_variables
+
    ! Variables below must be accessible for gotm_fabm_output
-   public local,total,dt,h,save_inputs
+   public dt,h,save_inputs
 
    ! Variables below must be accessible for getm_fabm
    public cc_transport
@@ -38,6 +42,12 @@
 ! !PUBLIC DATA MEMBERS:
 !  The one and only model
    type (type_model), pointer, public :: model
+
+   type,extends(type_base_driver) :: type_gotm_driver
+   contains
+      procedure :: fatal_error => gotm_driver_fatal_error
+      procedure :: log_message => gotm_driver_log_message
+   end type
 
 !  Arrays for state and diagnostic variables
    REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:),public,target :: cc
@@ -82,28 +92,27 @@
 ! !PRIVATE DATA MEMBERS:
    ! Namelist variables
    REALTYPE                  :: cnpar
-   integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor
+   integer                   :: w_adv_method,w_adv_discr,ode_method,split_factor,configuration_method
    logical                   :: fabm_calc,repair_state, &
                                 bioshade_feedback,bioalbedo_feedback,biodrag_feedback, &
                                 no_precipitation_dilution,salinity_relaxation_to_freshwater_flux, &
-                                save_inputs
+                                save_inputs, no_surface
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:) :: ws
-   REALTYPE,allocatable,dimension(:)                       :: sfl,bfl,total
-   REALTYPE,allocatable _ATTR_DIMENSIONS_1_                :: local
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: Qsour,Lsour,DefaultRelaxTau,curh,curnuh
-   logical,allocatable                                     :: cc_transport(:)
+   REALTYPE,allocatable,dimension(:,:) :: ws
+   REALTYPE,allocatable,dimension(:)   :: sfl,bfl
+   REALTYPE,allocatable,dimension(:)   :: Qsour,Lsour,DefaultRelaxTau,curh,curnuh
+   logical,allocatable                 :: cc_transport(:)
 
    ! Arrays for environmental variables not supplied externally.
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_)   :: par,pres,swr,k_par
+   REALTYPE,allocatable,dimension(:) :: par,pres,swr,k_par
 
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: nuh,h,bioshade,w,z,rho
-   REALTYPE,pointer,dimension(_LOCATION_DIMENSIONS_) :: SRelaxTau,sProf,salt
-   REALTYPE,pointer _ATTR_LOCATION_DIMENSIONS_HZ_    :: precip,evap,bio_drag_scale,bio_albedo
+   REALTYPE,pointer,dimension(:) :: nuh,h,bioshade,w,z,rho
+   REALTYPE,pointer,dimension(:) :: SRelaxTau,sProf,salt
+   REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
 
    REALTYPE,pointer :: I_0,A,g1,g2
    integer,pointer  :: yearday,secondsofday
@@ -141,7 +150,8 @@
                             cnpar,w_adv_discr,ode_method,split_factor,               &
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
                             repair_state,no_precipitation_dilution,                  &
-                            salinity_relaxation_to_freshwater_flux,save_inputs
+                            salinity_relaxation_to_freshwater_flux,save_inputs, &
+                            no_surface,configuration_method
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -161,8 +171,10 @@
    biodrag_feedback  = .true.
    repair_state      = .false.
    salinity_relaxation_to_freshwater_flux = .false.
-   no_precipitation_dilution = .false. ! useful to check mass conservation
+   no_precipitation_dilution = .false.              ! useful to check mass conservation
+   no_surface = .false.                             ! disables surface exchange; useful to check mass conservation
    save_inputs = .false.
+   configuration_method = 0                         ! 0: namelists, 1: YAML
 
    ! Open the namelist file and read the namelist.
    ! Note that the namelist file is left open until the routine terminates,
@@ -172,6 +184,8 @@
    close(namlst)
 
    if (fabm_calc) then
+      ! Provide FABM with an object for communication with host
+      allocate(type_gotm_driver::driver)
 
       clock_adv    = 0
       clock_diff   = 0
@@ -180,7 +194,15 @@
       fabm_ready = .false.
 
       ! Create model tree
-      model => fabm_create_model_from_file(namlst)
+      select case (configuration_method)
+         case (0)
+            ! From namelists in fabm.nml
+            model => fabm_create_model_from_file(namlst)
+         case (1)
+            ! From YAML file fabm.yaml
+            allocate(model)
+            call fabm_create_model_from_yaml_file(model)
+      end select
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
       call fabm_set_domain(model,_LOCATION_,dt)
@@ -259,10 +281,8 @@
       cloud_id     = fabm_get_horizontal_variable_id(model,standard_variables%cloud_area_fraction)
       taub_id      = fabm_get_horizontal_variable_id(model,standard_variables%bottom_stress)
 
-#ifdef _FABM_F2003_
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
       call check_fabm_expressions()
-#endif
 
    end if
 
@@ -400,17 +420,6 @@
    decimal_yearday = _ZERO_
    call fabm_link_scalar_data(model,standard_variables%number_of_days_since_start_of_the_year,decimal_yearday)
 
-   ! Allocate arrays for storing local and column-integrated values of conserved quantities.
-   ! These are used during each save.
-   allocate(total(1:size(model%info%conserved_quantities)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (total)'
-#ifdef _FABM_USE_1D_LOOP_
-   allocate(local(1:_LOCATION_,1:size(model%info%conserved_quantities)),stat=rc)
-#else
-   allocate(local(1:size(model%info%conserved_quantities)),stat=rc)
-#endif
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (local)'
-
    allocate(Qsour(_LOCATION_RANGE_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (Qsour)'
    Qsour    = _ZERO_
@@ -449,15 +458,15 @@
 ! the physical environment relevant for biogeochemical processes (temprature, salinity, etc.)
 !
 ! !INPUT PARAMETERS:
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: latitude,longitude
+   REALTYPE, intent(in),target :: latitude,longitude
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_    :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
-   REALTYPE, intent(in),target _ATTR_LOCATION_DIMENSIONS_HZ_ :: I_0_,cloud,wnd,precip_,evap_,taub
+   REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
+   REALTYPE, intent(in),target :: I_0_,cloud,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_
-   REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_ :: SRelaxTau_,sProf_
-   REALTYPE, intent(in),optional,target _ATTR_LOCATION_DIMENSIONS_HZ_ :: bio_albedo_,bio_drag_scale_
+   REALTYPE, intent(in),optional,target,dimension(:) :: SRelaxTau_,sProf_
+   REALTYPE, intent(in),optional,target :: bio_albedo_,bio_drag_scale_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -488,7 +497,7 @@
    precip   => precip_     ! precipitation [scalar] - used to calculate dilution due to increased water volume
    evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    salt     => salt_       ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
-   rho      => rho_        ! density [1d array] - used to calculate bottom stress from bottom friction velocity.
+   rho      => rho_        ! density [1d array] - used to calculate pressure.
 
    if (biodrag_feedback.and.present(bio_drag_scale_)) then
       bio_drag_scale => bio_drag_scale_
@@ -539,6 +548,29 @@
    end subroutine set_env_gotm_fabm
 !EOC
 
+   subroutine calculate_derived_input(nlev,itime)
+
+   integer, intent(in)          :: nlev
+   REALTYPE,intent(in),optional :: itime
+
+   integer :: i
+
+   ! Update contiguous arrays with layer heights and diffusivity, needed in calls to adv_center and diff_center.
+   curh   = h
+   curnuh = nuh
+
+   ! Calculate local pressure from layer height and density
+   pres(nlev) = rho(nlev)*curh(nlev)*0.5d0
+   do i=nlev-1,1,-1
+      pres(i) = pres(i+1) + (rho(i)*curh(i)+rho(i+1)*curh(i+1))*0.5d0
+   end do
+   pres(1:nlev) = pres(1:nlev)*9.81d-4
+
+!  Calculate decimal day of the year (1 jan 00:00 = 0.)
+   decimal_yearday = yearday-1 + dble(secondsofday)/86400.d0
+
+   end subroutine
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -576,19 +608,7 @@
 
    call fabm_update_time(model,itime)
 
-   ! Set contiguous arrays with layer heights and diffusivity, needed in calls to adv_center and diff_center.
-   curh   = h
-   curnuh = nuh
-
-   ! Calculate local pressure from layer height and density
-   pres(nlev) = rho(nlev)*curh(nlev)*0.5d0
-   do i=nlev-1,1,-1
-      pres(i) = pres(i+1) + (rho(i)*curh(i)+rho(i+1)*curh(i+1))*0.5d0
-   end do
-   pres(1:nlev) = pres(1:nlev)*9.81d-4
-
-!  Calculate decimal day of the year (1 jan 00:00 = 0.)
-   decimal_yearday = yearday-1 + dble(secondsofday)/86400.d0
+   call calculate_derived_input(nlev,itime)
 
    ! Get updated vertical movement (m/s, positive for upwards) for biological state variables.
 #ifdef _FABM_USE_1D_LOOP_
@@ -601,11 +621,12 @@
 
    ! Get updated air-sea fluxes for biological state variables.
    call fabm_get_surface_exchange(model,nlev,sfl)
+   if (no_surface) sfl = _ZERO_
 
    ! Calculate dilution due to surface freshwater flux (m/s)
    dilution = precip+evap
 
-   ! If salinity is relaxed to observations, the change in column-integrated salintiy can converted into a
+   ! If salinity is relaxed to observations, the change in column-integrated salinity can converted into a
    ! a virtual freshwater flux. Optionally, this freshwater flux can be imposed at the surface on biogoeochemical
    ! variables, effectively mimicking precipitation or evaporation. This makes sense only if the salinity change
    ! is primarily due to surface fluxes - not if it is meant to represent lateral input of other water masses.
@@ -728,7 +749,7 @@
       expression => model%info%first_expression
       do while (associated(expression))
          select type (expression)
-            class is (type_vertical_mean)
+            class is (type_vertical_integral)
                n = n + 1
          end select
          expression => expression%next
@@ -741,7 +762,7 @@
       expression => model%info%first_expression
       do while (associated(expression))
          select type (expression)
-            class is (type_vertical_mean)
+            class is (type_vertical_integral)
                n = n + 1
                call fabm_link_horizontal_data(model,trim(expression%output_name),horizontal_expression_data(n))
          end select
@@ -760,7 +781,7 @@
       expression => model%info%first_expression
       do while (associated(expression))
          select type (expression)
-            class is (type_vertical_mean)
+            class is (type_vertical_integral)
                expression%out%p = calculate_vertical_mean(expression)
          end select
          expression => expression%next
@@ -769,7 +790,7 @@
    contains
    
       REALTYPE function calculate_vertical_mean(expression)
-         class (type_vertical_mean),intent(in) :: expression
+         class (type_vertical_integral),intent(in) :: expression
 
          ! Loop over all levels, surface to bottom, and compute vertical mean.
          depth = _ZERO_
@@ -794,7 +815,7 @@
                exit
             end if
          end do
-         weights = weights/(min(expression%maximum_depth,depth)-expression%minimum_depth)
+         if (expression%average) weights = weights/(min(expression%maximum_depth,depth)-expression%minimum_depth)
          calculate_vertical_mean = sum(expression%in%p(1:nlev)*weights)
       end function
 
@@ -1034,8 +1055,6 @@
    if (allocated(k_par))      deallocate(k_par)
    if (allocated(swr))        deallocate(swr)
    if (allocated(pres))       deallocate(pres)
-   if (allocated(total))      deallocate(total)
-   if (allocated(local))      deallocate(local)
    LEVEL1 'done.'
 
    end subroutine clean_gotm_fabm
@@ -1149,6 +1168,7 @@
       integer,intent(in) :: nlev
 
       integer :: i
+      REALTYPE :: rhs(1:nlev,1:size(model%info%state_variables)),bottom_flux(size(model%info%bottom_state_variables)),surface_flux(size(model%info%surface_state_variables))
 
       if (.not.fabm_calc) return
 
@@ -1170,7 +1190,46 @@
          if (associated(cc_ben_obs(i)%data)) cc(1,size(model%info%state_variables,1)+i) = cc_ben_obs(i)%data
       end do
 
+      call calculate_derived_input(nlev,_ZERO_)
+
+      ! Update derived expressions (vertical means, etc.)
+      call update_fabm_expressions(nlev)
+
+      ! Call fabm_do here to make sure diagnostic variables all have an initial value.
+      rhs = _ZERO_
+      call fabm_do_surface(model,nlev,rhs(nlev,:))
+      call fabm_do_bottom(model,1,rhs(1,:),bottom_flux)
+#ifdef _FABM_USE_1D_LOOP_
+      call fabm_do(model,1,nlev,rhs)
+#else
+      do i=1,nlev
+         call fabm_do(model,i,rhs(i,:))
+      end do
+#endif
+
+      do i=1,size(model%info%diagnostic_variables_hz)
+         cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
+      end do
+      do i=1,size(model%info%diagnostic_variables)
+         cc_diag(1:nlev,i) = fabm_get_bulk_diagnostic_data(model,i)
+      end do
+
    end subroutine init_gotm_fabm_state
+
+   subroutine gotm_driver_fatal_error(self,location,message)
+      class (type_gotm_driver), intent(inout) :: self
+      character(len=*),  intent(in)    :: location,message
+
+      FATAL trim(location)//': '//trim(message)
+      stop 1
+   end subroutine
+
+   subroutine gotm_driver_log_message(self,message)
+      class (type_gotm_driver), intent(inout) :: self
+      character(len=*),  intent(in)    :: message
+
+      write (*,*) trim(message)
+   end subroutine
 
    end module gotm_fabm
 

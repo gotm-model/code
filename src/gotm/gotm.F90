@@ -70,9 +70,10 @@
    use bio_var, only: npar,numc,cc
 #endif
 #ifdef _FABM_
-   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm
+   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
+   use gotm_fabm,only:fabm_model=>model,fabm_standard_variables=>standard_variables
    use gotm_fabm_input,only:init_gotm_fabm_input
-   use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output
+   use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output,clean_gotm_fabm_output
 #endif
 
    use output
@@ -280,25 +281,32 @@
 !  Initialize FABM input (data files with observations)
    call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
 
-!  Initialize FABM output (creates NetCDF variables)
-   call init_gotm_fabm_output()
-
 !  Link relevant GOTM data to FABM.
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
+   if (fabm_calc) then
+      call fabm_model%link_horizontal_data(fabm_standard_variables%bottom_depth_below_geoid,depth0)
+   end if
    call set_env_gotm_fabm(latitude,longitude,dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
                           A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
                           bio_albedo,bio_drag_scale)
-
 #endif
 
    call do_input(julianday,secondsofday,nlev,z)
 
 #ifdef _FABM_
 
+!  Call stratification to make sure density has sensible value.
+   call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+
 !  Initialize FABM initial state (this is done after the first call to do_input,
 !  to allow user-specified observed values to be used as initial state)
    call init_gotm_fabm_state(nlev)
+
+!  Initialize FABM output (creates NetCDF variables)
+!  This should be done after init_gotm_fabm_state is called, so the output module can compute
+!  initial conserved quantity integrals.
+   call init_gotm_fabm_output(nlev)
 
 #endif
 
@@ -586,6 +594,7 @@
 
 #ifdef _FABM_
    call clean_gotm_fabm()
+   call clean_gotm_fabm_output()
 #endif
 
    call close_input()

@@ -26,7 +26,14 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-   public init_gotm_fabm_output, do_gotm_fabm_output
+   public init_gotm_fabm_output, do_gotm_fabm_output, clean_gotm_fabm_output
+
+   REALTYPE,allocatable :: total0(:),total(:)
+#ifdef _FABM_USE_1D_LOOP_
+   REALTYPE,allocatable :: local(:,:)
+#else
+   REALTYPE,allocatable :: local(:)
+#endif
 !EOP
 !-----------------------------------------------------------------------
 
@@ -38,8 +45,7 @@ contains
 ! !IROUTINE: Initialize output
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm_output()
-
+   subroutine init_gotm_fabm_output(nlev)
 !
 ! !DESCRIPTION:
 !  Initialize the output by defining biogeochemical variables.
@@ -54,6 +60,8 @@ contains
 #ifdef NETCDF_FMT
    use netcdf
 #endif
+
+   integer, intent(in) :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -61,12 +69,24 @@ contains
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer :: iret,n
+   integer :: iret,n,rc
    type (type_input_variable),pointer :: cur_obs_variable
 !
 !-----------------------------------------------------------------------
 !BOC
    if (.not. fabm_calc) return
+
+   ! Allocate memory for conserved quantity totals
+   allocate(total0(1:size(model%info%conserved_quantities)),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (total0)'
+   allocate(total(1:size(model%info%conserved_quantities)),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (total)'
+#ifdef _FABM_USE_1D_LOOP_
+   allocate(local(1:nlev,1:size(model%info%conserved_quantities)),stat=rc)
+#else
+   allocate(local(1:size(model%info%conserved_quantities)),stat=rc)
+#endif
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (local)'
 
    select case (out_fmt)
       case (NETCDF)
@@ -125,11 +145,11 @@ contains
 
          ! Add a variable for each conserved quantity
          do n=1,size(model%info%conserved_quantities)
-            iret = new_nc_variable(ncid,trim(model%info%conserved_quantities(n)%name)//'_tot',NF90_REAL, &
+            iret = new_nc_variable(ncid,'int_change_in_'//trim(model%info%conserved_quantities(n)%name),NF90_REAL, &
                                    dim3d,model%info%conserved_quantities(n)%externalid)
             iret = set_attributes(ncid,model%info%conserved_quantities(n)%externalid,      &
-                                  units='m*'//trim(model%info%conserved_quantities(n)%units),    &
-                                  long_name=trim(model%info%conserved_quantities(n)%long_name)//', depth-integrated')
+                                  units=trim(model%info%conserved_quantities(n)%units)//'*m',    &
+                                  long_name='integrated change in '//trim(model%info%conserved_quantities(n)%long_name))
          end do
 
          ! If requested, add a NetCDF variable for each variable read from an external source [input file].
@@ -154,6 +174,7 @@ contains
          iret = define_mode(ncid,.false.)
 #endif
    end select
+   call calculate_conserved_quantities(nlev,total0)
 
    end subroutine init_gotm_fabm_output
 !EOC
@@ -276,22 +297,10 @@ contains
          end do
 
          ! Integrate conserved quantities over depth.
-#ifdef _FABM_USE_1D_LOOP_
-         call fabm_get_conserved_quantities(model,1,nlev,local)
-         do n=1,size(model%info%conserved_quantities)
-            ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
-            ! We therefore need to increment the index by 1 in order to address original elements >=1!
-            total(n) = sum(h(2:nlev+1)*local(1:nlev,n))
-         end do
-#else
-         total = _ZERO_
-         do n=1,nlev
-            ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
-            ! We therefore need to increment the index by 1 in order to address original elements >=1!
-            call fabm_get_conserved_quantities(model,n,local)
-            total = total + h(n+1)*local
-         end do
-#endif
+         call calculate_conserved_quantities(nlev,total)
+
+         ! Compute difference with conserved quantity totals at t=0
+         total = total - total0
 
          ! Store conserved quantity integrals.
          do n=1,size(model%info%conserved_quantities)
@@ -302,6 +311,39 @@ contains
 
    end subroutine do_gotm_fabm_output
 !EOC
+
+   subroutine calculate_conserved_quantities(nlev,total)
+      integer, intent(in)  :: nlev
+      REALTYPE,intent(out) :: total(:)
+
+      integer :: n
+
+      ! Add conserved quantities at boundaries (in m-2)
+      call fabm_get_horizontal_conserved_quantities(model,1,total)
+
+#ifdef _FABM_USE_1D_LOOP_
+      call fabm_get_conserved_quantities(model,1,nlev,local)
+      do n=1,size(model%info%conserved_quantities)
+         ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
+         ! We therefore need to increment the index by 1 in order to address original elements >=1!
+         total(n) = total(n) + sum(h(2:nlev+1)*local(1:nlev,n))
+      end do
+#else
+      total = _ZERO_
+      do n=1,nlev
+         ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
+         ! We therefore need to increment the index by 1 in order to address original elements >=1!
+         call fabm_get_conserved_quantities(model,n,local)
+         total = total + h(n+1)*local
+      end do
+#endif
+   end subroutine
+
+   subroutine clean_gotm_fabm_output()
+      if (allocated(total0))           deallocate(total0)
+      if (allocated(total))            deallocate(total)
+      if (allocated(local))            deallocate(local)
+   end subroutine
 
 !-----------------------------------------------------------------------
 
