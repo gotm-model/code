@@ -71,7 +71,7 @@
 #endif
 #ifdef _FABM_
    use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
-   use gotm_fabm,only:fabm_model=>model,fabm_standard_variables=>standard_variables
+   use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
    use gotm_fabm_input,only:init_gotm_fabm_input
    use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output,clean_gotm_fabm_output
 #endif
@@ -284,7 +284,7 @@
 !  Link relevant GOTM data to FABM.
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
    if (fabm_calc) then
-      call fabm_model%link_horizontal_data(fabm_standard_variables%bottom_depth_below_geoid,depth0)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth_below_geoid,depth0)
    end if
    call set_env_gotm_fabm(latitude,longitude,dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
