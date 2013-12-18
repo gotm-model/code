@@ -37,9 +37,9 @@
 !  Simple 'ice model'
    REALTYPE, public                    :: ice_layer
 !  Winton ice model
-   REALTYPE, public                    :: ice_hs,ice_hi,ice_T1,ice_T2
+   REALTYPE, public                    :: ice_hs,ice_hi
+   REALTYPE, public                    :: ice_ts,ice_T1,ice_T2
    REALTYPE, public                    :: ice_tmelt,ice_bmelt
-   REALTYPE, public                    :: ice_ts
 !
 !  !PRIVATE DATA MEMBERS:
    REALTYPE                            :: lat, lon

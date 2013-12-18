@@ -81,7 +81,7 @@
    integer, private          :: ice_layer_id
 !  Winton ice model
    integer, private          :: ice_hs_id,ice_hi_id
-   integer, private          :: ice_T1_id,ice_T2_id
+   integer, private          :: ice_ts_id,ice_T1_id,ice_T2_id
    integer, private          :: ice_tmelt_id,ice_bmelt_id
 !
    integer, private          :: zsbl_id,zbbl_id
@@ -259,6 +259,8 @@
          iret = nf90_def_var(ncid,'ice_hs',NF90_REAL,dim3d,ice_hs_id)
          call check_err(iret)
          iret = nf90_def_var(ncid,'ice_hi',NF90_REAL,dim3d,ice_hi_id)
+         call check_err(iret)
+         iret= nf90_def_var(ncid,'ice_ts',NF90_REAL,dim3d,ice_ts_id)
          call check_err(iret)
          iret = nf90_def_var(ncid,'ice_T1',NF90_REAL,dim3d,ice_T1_id)
          call check_err(iret)
@@ -447,6 +449,7 @@
       case (2)  ! The Winton ice-model
          iret = set_attributes(ncid,ice_hs_id,units='m',long_name='snow layer thickness')
          iret = set_attributes(ncid,ice_hi_id,units='m',long_name='ice layer thickness')
+         iret = set_attributes(ncid,ice_ts_id,units='celsius',long_name='ice surface temperature')
          iret = set_attributes(ncid,ice_T1_id,units='celsius',long_name='upper ice layer temperature')
          iret = set_attributes(ncid,ice_T2_id,units='celsius',long_name='lower ice layer temperature')
          iret = set_attributes(ncid,ice_tmelt_id,units='J/m^2',long_name='acc. top melting energy')
@@ -663,6 +666,7 @@
          iret = store_data(ncid,ice_hs_id,XYT_SHAPE,1,scalar=ice_hs)
          iret = store_data(ncid,ice_hi_id,XYT_SHAPE,1,scalar=ice_hi)
          iret = store_data(ncid,ice_T1_id,XYT_SHAPE,1,scalar=ice_T1)
+         iret = store_data(ncid,ice_ts_id,XYT_SHAPE,1,scalar=ice_ts)
          iret = store_data(ncid,ice_T2_id,XYT_SHAPE,1,scalar=ice_T2)
          iret = store_data(ncid,ice_tmelt_id,XYT_SHAPE,1,scalar=ice_tmelt)
          iret = store_data(ncid,ice_bmelt_id,XYT_SHAPE,1,scalar=ice_bmelt)
