@@ -59,6 +59,7 @@
 !  and surface heat flux (W/m^2)
    REALTYPE, public, target            :: I_0
    REALTYPE, public, target            :: heat
+   REALTYPE, public                    :: qe,qh,qb
 
 !  surface stress components (Pa)
    REALTYPE, public, target            :: tx,ty
@@ -653,7 +654,6 @@
    integer                   :: rc
 #endif
    REALTYPE                  :: ta,ta_k,tw,tw_k
-   REALTYPE                  :: qe,qh,qb
 !
 !-----------------------------------------------------------------------
 !BOC
