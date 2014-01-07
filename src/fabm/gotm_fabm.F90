@@ -105,12 +105,12 @@
    logical,allocatable                 :: cc_transport(:)
 
    ! Arrays for environmental variables not supplied externally.
-   REALTYPE,allocatable,dimension(:) :: par,pres,swr,k_par
+   REALTYPE,allocatable,dimension(:),target :: par,pres,swr,k_par,z
 
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(:) :: nuh,h,bioshade,w,z,rho
+   REALTYPE,pointer,dimension(:) :: nuh,h,bioshade,w,rho
    REALTYPE,pointer,dimension(:) :: SRelaxTau,sProf,salt
    REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
 
@@ -390,28 +390,38 @@
 
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
-   allocate(par(_LOCATION_RANGE_),stat=rc)
+   allocate(par(1:_LOCATION_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (par)'
-   call fabm_link_bulk_data(model,standard_variables%downwelling_photosynthetic_radiative_flux,par(1:_LOCATION_))
+   par = _ZERO_
+   call fabm_link_bulk_data(model,standard_variables%downwelling_photosynthetic_radiative_flux,par)
 
    ! Allocate array for attenuation coefficient pf photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
-   allocate(k_par(_LOCATION_RANGE_),stat=rc)
+   allocate(k_par(1:_LOCATION_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (k_par)'
    k_par = _ZERO_
-   call fabm_link_bulk_data(model,standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux,k_par(1:_LOCATION_))
+   call fabm_link_bulk_data(model,standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux,k_par)
 
    ! Allocate array for shortwave radiation (swr).
    ! This will be calculated internally during each time step.
-   allocate(swr(_LOCATION_RANGE_),stat=rc)
+   allocate(swr(1:_LOCATION_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (swr)'
-   call fabm_link_bulk_data(model,standard_variables%downwelling_shortwave_flux,swr(1:_LOCATION_))
+   swr = _ZERO_
+   call fabm_link_bulk_data(model,standard_variables%downwelling_shortwave_flux,swr)
 
    ! Allocate array for local pressure.
    ! This will be calculated from layer depths and density internally during each time step.
-   allocate(pres(_LOCATION_RANGE_),stat=rc)
+   allocate(pres(1:_LOCATION_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (pres)'
-   call fabm_link_bulk_data(model,standard_variables%pressure,pres(1:_LOCATION_))
+   pres = _ZERO_
+   call fabm_link_bulk_data(model,standard_variables%pressure,pres)
+
+   ! Allocate array for local depth (below water surface).
+   ! This will be calculated from layer depths.
+   allocate(z(1:_LOCATION_),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (z)'
+   z = _ZERO_
+   call fabm_link_bulk_data(model,standard_variables%depth,z)
 
    ! Initialize scalar to hold day of the year (floating point value),
    ! and link it to FABM.
@@ -491,7 +501,6 @@
    h        => h_          ! layer heights [1d array] needed for advection, diffusion
    w        => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
-   z        => z_          ! depth [1d array], used to calculate local light intensity
    precip   => precip_     ! precipitation [scalar] - used to calculate dilution due to increased water volume
    evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
    salt     => salt_       ! salinity [1d array] - used to calculate virtual freshening due to salinity relaxation
@@ -563,6 +572,12 @@
       pres(i) = pres(i+1) + (rho(i)*curh(i)+rho(i+1)*curh(i+1))*0.5d0
    end do
    pres(1:nlev) = pres(1:nlev)*9.81d-4
+
+   ! Calculate local depth below surface from layer height
+   z(nlev) = curh(nlev)*0.5d0
+   do i=nlev-1,1,-1
+      z(i) = z(i+1) + (curh(i)+curh(i+1))*0.5d0
+   end do
 
 !  Calculate decimal day of the year (1 jan 00:00 = 0.)
    decimal_yearday = yearday-1 + dble(secondsofday)/86400.d0
@@ -1099,8 +1114,8 @@
       bioext = bioext+localext*0.5*curh(i)
 
       ! Calculate photosynthetically active radiation (PAR), shortwave radiation, and PAR attenuation.
-      par(i) = I_0*(_ONE_-A)*exp(z(i)/g2-bioext)
-      swr(i) = par(i)+I_0*A*exp(z(i)/g1)
+      par(i) = I_0*(_ONE_-A)*exp(-z(i)/g2-bioext)
+      swr(i) = par(i)+I_0*A*exp(-z(i)/g1)
       k_par(i) = _ONE_/g2+localext
 
       ! Add the extinction of the second half of the grid box.
