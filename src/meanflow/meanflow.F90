@@ -108,7 +108,7 @@
 
 !  other stuff
    REALTYPE, public, target            :: depth0
-   REALTYPE, public                    :: depth
+   REALTYPE, public, target            :: depth
    REALTYPE, public                    :: runtimeu, runtimev
 !
 ! !DEFINED PARAMETERS:
