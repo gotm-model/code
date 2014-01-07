@@ -653,7 +653,7 @@
    REALTYPE, save            :: h2,tx2,ty2,cloud2
    integer                   :: rc
 #endif
-   REALTYPE                  :: ta,ta_k,tw,tw_k
+   REALTYPE                  :: ta_k,tw,tw_k
 !
 !-----------------------------------------------------------------------
 !BOC

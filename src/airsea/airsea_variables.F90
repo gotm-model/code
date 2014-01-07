@@ -31,9 +31,10 @@
    REALTYPE, public                    :: es
    REALTYPE, public                    :: ea
    REALTYPE, public                    :: qs
-   REALTYPE, public                    :: qa
+   REALTYPE, public, target            :: qa              ! specific humidity (kg/kg)
    REALTYPE, public                    :: L
    REALTYPE, public                    :: rhoa
+   REALTYPE, public, target            :: ta              ! 2m air temperature (degree_Celsius)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding, Hans Burchard
