@@ -270,16 +270,16 @@
       call init_var_gotm_fabm(_LOCATION_)
 
       ! Get ids for standard variables, to be used later to send data to FABM.
-      temp_id = fabm_get_bulk_variable_id(model,standard_variables%temperature)
-      salt_id = fabm_get_bulk_variable_id(model,standard_variables%practical_salinity)
-      rho_id  = fabm_get_bulk_variable_id(model,standard_variables%density)
-      h_id    = fabm_get_bulk_variable_id(model,standard_variables%cell_thickness)
-      lon_id       = fabm_get_horizontal_variable_id(model,standard_variables%longitude)
-      lat_id       = fabm_get_horizontal_variable_id(model,standard_variables%latitude)
-      windspeed_id = fabm_get_horizontal_variable_id(model,standard_variables%wind_speed)
-      par_sf_id    = fabm_get_horizontal_variable_id(model,standard_variables%surface_downwelling_photosynthetic_radiative_flux)
-      cloud_id     = fabm_get_horizontal_variable_id(model,standard_variables%cloud_area_fraction)
-      taub_id      = fabm_get_horizontal_variable_id(model,standard_variables%bottom_stress)
+      temp_id = model%get_bulk_variable_id(standard_variables%temperature)
+      salt_id = model%get_bulk_variable_id(standard_variables%practical_salinity)
+      rho_id  = model%get_bulk_variable_id(standard_variables%density)
+      h_id    = model%get_bulk_variable_id(standard_variables%cell_thickness)
+      lon_id       = model%get_horizontal_variable_id(standard_variables%longitude)
+      lat_id       = model%get_horizontal_variable_id(standard_variables%latitude)
+      windspeed_id = model%get_horizontal_variable_id(standard_variables%wind_speed)
+      par_sf_id    = model%get_horizontal_variable_id(standard_variables%surface_downwelling_photosynthetic_radiative_flux)
+      cloud_id     = model%get_horizontal_variable_id(standard_variables%cloud_area_fraction)
+      taub_id      = model%get_horizontal_variable_id(standard_variables%bottom_stress)
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
       call check_fabm_expressions()
