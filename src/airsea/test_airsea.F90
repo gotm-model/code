@@ -65,6 +65,12 @@
    STDERR 'Bignami=    ',qb
    call back_radiation(4,dlat,tw_k,ta_k,cloud,qb)
    STDERR 'Berliand=   ',qb
+   call back_radiation(5,dlat,tw_k,ta_k,cloud,qb)
+   STDERR 'Josey 1 =   ',qb
+   call back_radiation(6,dlat,tw_k,ta_k,cloud,qb)
+   STDERR 'Josey 2 =   ',qb
+!   call back_radiation(7,dlat,tw_k,ta_k,cloud,qb)
+!   STDERR 'not available - yet :-)'
    STDERR
 
    STDERR

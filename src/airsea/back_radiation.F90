@@ -39,6 +39,8 @@
    integer, parameter   :: hastenrath=2 ! Hastenrath and Lamb, 1978
    integer, parameter   :: bignami=3    ! Bignami et al., 1995 - Medsea
    integer, parameter   :: berliand=4   ! Berliand and Berliand, 1952 - ROMS
+   integer, parameter   :: josey1=5     ! Josey 2003, 1
+   integer, parameter   :: josey2=6     ! Josey 2003, 2
 
 
    REALTYPE, parameter, dimension(91)  :: cloud_correction_factor = (/ &
@@ -101,6 +103,21 @@
          x2=(0.39-0.05*sqrt(0.01*ea))
          x3=4.0*ta**3*(tw-ta)
          qb=-emiss*bolz*(x1*x2+x3)
+      case(josey1)
+!        Use Josey et.al. formula 1 2003
+         x1=emiss*tw**4
+         x2=(10.77*cloud+2.34)*cloud-18.44
+         x3=0.955*(ta+x2)**4
+         qb=-bolz*(x1-x3)
+      case(josey2)
+!        Use Josey et.al. formula 2 2003
+         x1=emiss*tw**4
+!AS avoid zero trap, limit to about 1% rel. humidity ~ 10Pa
+         if ( ea .lt. 10.0 ) ea = 10.0
+         x2=34.07+4157.0/(log(2.1718e10/ea))
+         x2=(10.77*cloud+2.34)*cloud-18.44+0.84*(x2-ta+4.01)
+         x3=0.955*(ta+x2)**4
+         qb=-bolz*(x1-x3)
       case default
    end select
 
