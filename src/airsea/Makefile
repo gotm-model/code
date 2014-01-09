@@ -26,8 +26,8 @@ ${LIB1}(airsea_variables.o)	\
 ${LIB}(airsea.o)
 
 OBJ	= \
-${LIB}(short_wave_radiation.o)	\
-${LIB}(albedo_water.o)	\
+${LIB1}(short_wave_radiation.o)	\
+${LIB1}(albedo_water.o)	\
 ${LIB1}(humidity.o) 		\
 ${LIB1}(back_radiation.o) 	\
 ${LIB1}(airsea_fluxes.o) 	\
@@ -39,15 +39,17 @@ all: $(MOD) $(OBJ)
 
 $(OBJ): $(MOD)
 
-tst_airsea: $(MOD)
-	$(FC) -o tst_airsea tst_airsea.F90 $(MOD)
+test_airsea: $(MOD) $(OBJ) test_airsea.o
+	$(FC) -o $@ $@.o $(LIB1)
+	$(RM) $@.o
+	./$@
 
 doc:    $(DOCSRC)
 	$(PROTEX) $(DOCSRC) > ../../doc/airsea.tex
 	touch doc
 
 clean:
-	$(RM) -f ${LIB} $(MODDIR)/airsea.{m,mod} doc
+	$(RM) -f ${LIB} ${LIB1} $(MODDIR)/airsea.{m,mod} doc
 
 realclean: clean
 	$(RM) -f *.o *~
