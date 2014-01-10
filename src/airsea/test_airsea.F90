@@ -46,7 +46,18 @@
 !BOC
    tw_k = tw+kelvin
    ta_k = ta+kelvin
+   STDERR 'basic variables:'
+   STDERR 'rh=   ',rh
+   STDERR 'airp= ',airp
+   STDERR 'tw=   ',tw
+   STDERR 'ta=   ',ta
+   STDERR 'lon= ',dlon,'lat= ',dlat
+   STDERR 'cloud=',cloud
+   STDERR 'u10=  ',u10
+   STDERR 'v10=  ',v10
+   STDERR
 
+   STDERR 'humidity related variables:'
    call humidity(hum_method,rh,airp,tw,ta)
    STDERR 'es=   ',es
    STDERR 'ea=   ',ea
