@@ -74,8 +74,6 @@ contains
 !
 !-----------------------------------------------------------------------
 !BOC
-   if (.not. fabm_calc) return
-
    ! Allocate memory for conserved quantity totals
    allocate(total0(1:size(model%info%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (total0)'

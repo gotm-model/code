@@ -301,19 +301,22 @@
 
    call do_input(julianday,secondsofday,nlev,z)
 
-#ifdef _FABM_
-
 !  Call stratification to make sure density has sensible value.
+!  This is needed to ensure the initial density is saved correctly by do_all_output, and also for FABM.
    call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
 
-!  Initialize FABM initial state (this is done after the first call to do_input,
-!  to allow user-specified observed values to be used as initial state)
-   call init_gotm_fabm_state(nlev)
+#ifdef _FABM_
 
-!  Initialize FABM output (creates NetCDF variables)
-!  This should be done after init_gotm_fabm_state is called, so the output module can compute
-!  initial conserved quantity integrals.
-   call init_gotm_fabm_output(nlev)
+   if (fabm_calc) then
+!     Initialize FABM initial state (this is done after the first call to do_input,
+!     to allow user-specified observed values to be used as initial state)
+      call init_gotm_fabm_state(nlev)
+
+!     Initialize FABM output (creates NetCDF variables)
+!     This should be done after init_gotm_fabm_state is called, so the output module can compute
+!     initial conserved quantity integrals.
+      call init_gotm_fabm_output(nlev)
+   end if
 
 #endif
 

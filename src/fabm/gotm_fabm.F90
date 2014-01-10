@@ -1177,8 +1177,7 @@
       integer :: i
       REALTYPE :: rhs(1:nlev,1:size(model%info%state_variables)),bottom_flux(size(model%info%bottom_state_variables)),surface_flux(size(model%info%surface_state_variables))
 
-      if (.not.fabm_calc) return
-
+      ! Allow individual biogeochemical models to provide a custom initial state.
 #ifdef _FABM_USE_1D_LOOP_
       call fabm_initialize_state(model,1,nlev)
 #else
@@ -1189,14 +1188,15 @@
       call fabm_initialize_surface_state(model,nlev)
       call fabm_initialize_bottom_state(model,1)
 
+      ! If custom initial state have been provided through fabm_input.nml, use these to override the current initial state.
       do i=1,size(model%info%state_variables)
          if (associated(cc_obs(i)%data)) cc(:,i) = cc_obs(i)%data
       end do
-
       do i=1,size(model%info%state_variables_ben)
          if (associated(cc_ben_obs(i)%data)) cc(1,size(model%info%state_variables,1)+i) = cc_ben_obs(i)%data
       end do
 
+      ! Compute pressure, depth, day of the year
       call calculate_derived_input(nlev,_ZERO_)
       
       ! Update derived expressions (vertical means, etc.)
@@ -1214,6 +1214,7 @@
       end do
 #endif
 
+      ! Obtain current values of diagnostic variables from FABM.
       do i=1,size(model%info%diagnostic_variables_hz)
          if (model%info%diagnostic_variables_hz(i)%time_treatment/=time_treatment_integrated) &
             cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
