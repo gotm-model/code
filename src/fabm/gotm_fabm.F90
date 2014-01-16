@@ -856,7 +856,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   logical :: valid
+   logical :: valid,tmpvalid
 #ifndef _FABM_USE_1D_LOOP_
    integer :: ci
 #endif
@@ -871,6 +871,14 @@
       if (.not.(valid.or.repair_state)) exit
    end do
 #endif
+   if (valid .or. repair_state) then
+      call fabm_check_surface_state(model,nlev,repair_state,tmpvalid)
+      valid = valid.and.tmpvalid
+   end if
+   if (valid .or. repair_state) then
+      call fabm_check_bottom_state(model,nlev,repair_state,tmpvalid)
+      valid = valid.and.tmpvalid
+   end if
    if (.not. (valid .or. repair_state)) then
       FATAL 'State variable values are invalid and repair is not allowed.'
       FATAL location
