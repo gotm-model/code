@@ -876,7 +876,7 @@
       valid = valid.and.tmpvalid
    end if
    if (valid .or. repair_state) then
-      call fabm_check_bottom_state(model,nlev,repair_state,tmpvalid)
+      call fabm_check_bottom_state(model,1,repair_state,tmpvalid)
       valid = valid.and.tmpvalid
    end if
    if (.not. (valid .or. repair_state)) then
