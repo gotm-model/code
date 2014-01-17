@@ -113,6 +113,8 @@
    integer                   :: split_factor
    logical                   :: bioshade_feedback
 
+   integer(8)                :: clock_transport,clock_source
+
    contains
 
 !-----------------------------------------------------------------------
@@ -169,6 +171,9 @@
    LEVEL1 'init_bio'
 
    init_saved_vars = .true.
+
+   clock_transport = 0
+   clock_source = 0
 
 !  Initialize namelist variables to reasonable defaults.
    bio_calc = .false.
@@ -873,6 +878,7 @@
    integer                   :: j,n
    integer                   :: split
    integer                   :: i,np,nc,vars_zero_d
+   integer(8)                :: clock_start,clock_end
 
 !-----------------------------------------------------------------------
 !BOC
@@ -916,6 +922,8 @@
 #endif
    end select
 
+   call system_clock(clock_start)
+
    do j=1,numc-vars_zero_d
 
 !     do advection step due to settling or rising
@@ -933,6 +941,10 @@
            sfl(j),bfl(j),nuh,Lsour,Qsour,RelaxTau,cc(j,:),cc(j,:))
 
    end do
+
+   call system_clock(clock_end)
+   clock_transport = clock_transport+clock_end-clock_start
+   clock_start = clock_end
 
    do split=1,split_factor
       dt_eff=dt/float(split_factor)
@@ -985,6 +997,9 @@
       call ode_solver(ode_method,numc,nlev,dt_eff,cc,right_hand_side_rhs,right_hand_side_ppdd)
 
    end do
+
+   call system_clock(clock_end)
+   clock_source = clock_source+clock_end-clock_start
 
    return
    end subroutine do_bio_eul
@@ -1502,14 +1517,24 @@
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard, Karsten Bolding
-!
 !EOP
 !-----------------------------------------------------------------------
+!
+! !LOCAL VARIABLES:
+!
+   integer(8) :: clock,ticks_per_sec
+   REALTYPE :: tick_rate
+!-----------------------------------------------------------------------
 !BOC
-
    LEVEL1 'clean_bio'
 
    if (bio_calc) then
+      call system_clock( count=clock, count_rate=ticks_per_sec)
+      tick_rate = _ONE_/ticks_per_sec
+
+      LEVEL1 'Time spent on transport of bio variables:',clock_transport*tick_rate
+      LEVEL1 'Time spent on sink/source terms of bio variables:',clock_source*tick_rate
+
       select case (bio_model)
       case (-1)
 #ifdef BIO_TEMPLATE
