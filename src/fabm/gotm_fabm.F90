@@ -1047,6 +1047,9 @@
    REALTYPE :: tick_rate
 !-----------------------------------------------------------------------
 !BOC
+   if (.not. fabm_calc) return
+
+   LEVEL1 'clean_gotm_fabm'
 
    call system_clock( count=clock, count_rate=ticks_per_sec)
    tick_rate = _ONE_/ticks_per_sec
@@ -1054,8 +1057,6 @@
    LEVEL1 'Time spent on advection of FABM variables:',clock_adv*tick_rate
    LEVEL1 'Time spent on diffusion of FABM variables:',clock_diff*tick_rate
    LEVEL1 'Time spent on sink/source terms of FABM variables:',clock_source*tick_rate
-
-   LEVEL1 'clean_gotm_fabm'
 
    ! Deallocate internal arrays
    if (allocated(cc))         deallocate(cc)
