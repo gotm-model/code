@@ -101,44 +101,29 @@ contains
          dim3d(2) = lat_dim
          dim3d(3) = time_dim
 
-         ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical state variable.
+         ! Add a NetCDF variable for each pelagic (longitude,latitude,depth,time) biogeochemical state variable.
          do n=1,size(model%info%state_variables)
-            iret = new_nc_variable(ncid,trim(model%info%state_variables(n)%name),NF90_REAL, &
-                                   dim4d,model%info%state_variables(n)%externalid)
-            iret = set_attributes(ncid,model%info%state_variables(n)%externalid,       &
-                                  units=trim(model%info%state_variables(n)%units),    &
-                                  long_name=trim(model%info%state_variables(n)%long_name), &
-                                  missing_value=model%info%state_variables(n)%missing_value)
+            call add_variable(model%info%state_variables(n),dim4d)
+         end do
+
+         ! Add a NetCDF variable for each bottom (longitude,latitude,time) biogeochemical state variable.
+         do n=1,size(model%info%bottom_state_variables)
+            call add_variable(model%info%bottom_state_variables(n),dim3d)
+         end do
+
+         ! Add a NetCDF variable for each surface (longitude,latitude,time) biogeochemical state variable.
+         do n=1,size(model%info%surface_state_variables)
+            call add_variable(model%info%surface_state_variables(n),dim3d)
          end do
 
          ! Add a NetCDF variable for each 4D (longitude,latitude,depth,time) biogeochemical diagnostic variable.
          do n=1,size(model%info%diagnostic_variables)
-            iret = new_nc_variable(ncid,trim(model%info%diagnostic_variables(n)%name),NF90_REAL, &
-                                   dim4d,model%info%diagnostic_variables(n)%externalid)
-            iret = set_attributes(ncid,model%info%diagnostic_variables(n)%externalid,    &
-                                  units=trim(model%info%diagnostic_variables(n)%units),        &
-                                  long_name=trim(model%info%diagnostic_variables(n)%long_name), &
-                                  missing_value=model%info%diagnostic_variables(n)%missing_value)
-         end do
-
-         ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical state variable.
-         do n=1,size(model%info%state_variables_ben)
-            iret = new_nc_variable(ncid,trim(model%info%state_variables_ben(n)%name),NF90_REAL, &
-                                   dim3d,model%info%state_variables_ben(n)%externalid)
-            iret = set_attributes(ncid,model%info%state_variables_ben(n)%externalid,    &
-                                  units=trim(model%info%state_variables_ben(n)%units),        &
-                                  long_name=trim(model%info%state_variables_ben(n)%long_name), &
-                                  missing_value=model%info%state_variables_ben(n)%missing_value)
+            call add_variable(model%info%diagnostic_variables(n),dim4d)
          end do
 
          ! Add a NetCDF variable for each 3D (longitude,latitude,time) biogeochemical diagnostic variable.
-         do n=1,size(model%info%diagnostic_variables_hz)
-            iret = new_nc_variable(ncid,trim(model%info%diagnostic_variables_hz(n)%name),NF90_REAL, &
-                                   dim3d,model%info%diagnostic_variables_hz(n)%externalid)
-            iret = set_attributes(ncid,model%info%diagnostic_variables_hz(n)%externalid,    &
-                                  units=trim(model%info%diagnostic_variables_hz(n)%units),        &
-                                  long_name=trim(model%info%diagnostic_variables_hz(n)%long_name), &
-                                  missing_value=model%info%diagnostic_variables_hz(n)%missing_value)
+         do n=1,size(model%info%horizontal_diagnostic_variables)
+            call add_variable(model%info%horizontal_diagnostic_variables(n),dim3d)
          end do
 
          ! Add a variable for each conserved quantity
@@ -173,6 +158,19 @@ contains
 #endif
    end select
    call calculate_conserved_quantities(nlev,total0)
+
+   contains
+
+   subroutine add_variable(variable,dims)
+      class (type_external_variable),intent(inout) :: variable
+      integer,                       intent(in)    :: dims(:)
+      integer                                      :: iret
+
+      if (variable%output==output_none) return
+      iret = new_nc_variable(ncid,trim(variable%name),NF90_REAL,dims,variable%externalid)
+      iret = set_attributes(ncid,variable%externalid,units=trim(variable%units), &
+                            long_name=trim(variable%long_name),missing_value=variable%missing_value)
+   end subroutine
 
    end subroutine init_gotm_fabm_output
 !EOC
@@ -232,12 +230,15 @@ contains
 
          ! Store pelagic biogeochemical state variables.
          do n=1,size(model%info%state_variables)
+            if (model%info%state_variables(n)%output==output_none) continue
             iret = nf90_put_var(ncid,model%info%state_variables(n)%externalid,cc(1:nlev,n),start,edges)
             call check_err(iret)
          end do
 
          ! Process and store diagnostic variables defined on the full domain.
          do n=1,size(model%info%diagnostic_variables)
+            if (model%info%diagnostic_variables(n)%output==output_none) continue
+
             ! Time-average diagnostic variable if needed.
             if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged.and..not.initial) &
                cc_diag(1:nlev,n) = cc_diag(1:nlev,n)/(nsave*dt)
@@ -271,27 +272,30 @@ contains
          ! ---------------------------
 
          ! Store benthic biogeochemical state variables.
-         do n=1,size(model%info%state_variables_ben)
-            iret = store_data(ncid,model%info%state_variables_ben(n)%externalid,XYT_SHAPE,1, &
+         do n=1,size(model%info%bottom_state_variables)
+            if (model%info%bottom_state_variables(n)%output==output_none) continue
+            iret = store_data(ncid,model%info%bottom_state_variables(n)%externalid,XYT_SHAPE,1, &
                             & scalar=cc(1,size(model%info%state_variables)+n))
          end do
 
          ! Process and store diagnostic variables defined on horizontal slices of the domain.
-         do n=1,size(model%info%diagnostic_variables_hz)
+         do n=1,size(model%info%horizontal_diagnostic_variables)
+            if (model%info%horizontal_diagnostic_variables(n)%output==output_none) continue
+
             ! Time-average diagnostic variable if needed.
-            if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_averaged.and..not.initial) &
+            if (model%info%horizontal_diagnostic_variables(n)%time_treatment==time_treatment_averaged.and..not.initial) &
                cc_diag_hz(n) = cc_diag_hz(n)/(nsave*dt)
 
             ! If we want time-step integrated values and have the initial field, multiply by output time step.
-            if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_step_integrated.and.initial) &
+            if (model%info%horizontal_diagnostic_variables(n)%time_treatment==time_treatment_step_integrated.and.initial) &
                cc_diag_hz(n) = cc_diag_hz(n)*(nsave*dt)
 
             ! Store diagnostic variable values.
-            iret = store_data(ncid,model%info%diagnostic_variables_hz(n)%externalid,XYT_SHAPE,nlev,scalar=cc_diag_hz(n))
+            iret = store_data(ncid,model%info%horizontal_diagnostic_variables(n)%externalid,XYT_SHAPE,nlev,scalar=cc_diag_hz(n))
 
             ! Reset diagnostic variables to zero if they will be time-integrated (or time-averaged).
-            if (model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_averaged .or. &
-                model%info%diagnostic_variables_hz(n)%time_treatment==time_treatment_step_integrated) &
+            if (model%info%horizontal_diagnostic_variables(n)%time_treatment==time_treatment_averaged .or. &
+                model%info%horizontal_diagnostic_variables(n)%time_treatment==time_treatment_step_integrated) &
                cc_diag_hz(n) = _ZERO_
          end do
 
