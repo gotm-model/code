@@ -169,7 +169,8 @@ contains
       if (variable%output==output_none) return
       iret = new_nc_variable(ncid,trim(variable%name),NF90_REAL,dims,variable%externalid)
       iret = set_attributes(ncid,variable%externalid,units=trim(variable%units), &
-                            long_name=trim(variable%long_name),missing_value=variable%missing_value)
+                            long_name=trim(variable%long_name), &
+                            FillValue=variable%missing_value,missing_value=variable%missing_value)
    end subroutine
 
    end subroutine init_gotm_fabm_output
