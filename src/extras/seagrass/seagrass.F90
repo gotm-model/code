@@ -286,7 +286,7 @@
 !
 ! !USES:
    use meanflow, only:     h
-   use output, only: out_fmt,ascii_unit,ts
+   use output, only: out_fmt,ascii_unit
 #ifdef NETCDF_FMT
    use netcdf
    use ncdfout, only: ncid

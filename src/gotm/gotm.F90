@@ -41,8 +41,9 @@
    use airsea,      only: init_air_sea,do_air_sea,clean_air_sea
    use airsea,      only: set_sst,set_ssuv,integrated_fluxes
    use airsea,      only: calc_fluxes
-   use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap
+   use airsea,      only: wind=>w,tx,ty,I_0,cloud,heat,precip,evap,airp
    use airsea,      only: bio_albedo,bio_drag_scale
+   use airsea_variables, only: qa,ta
 
    use ice,         only: init_ice, do_ice
 
@@ -72,9 +73,10 @@
    use bio_var, only: npar,numc,cc
 #endif
 #ifdef _FABM_
-   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm
+   use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
+   use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
    use gotm_fabm_input,only:init_gotm_fabm_input
-   use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output
+   use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output,clean_gotm_fabm_output
 #endif
 
    use output
@@ -279,30 +281,46 @@
 #ifdef _FABM_
 
 !  Initialize the GOTM-FABM coupler from its configuration file.
-   call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml')
+   call init_gotm_fabm(nlev,namlst,'gotm_fabm.nml',dt)
 
 !  Initialize FABM input (data files with observations)
    call init_gotm_fabm_input(namlst,'fabm_input.nml',nlev,h(1:nlev))
 
-!  Initialize FABM output (creates NetCDF variables)
-   call init_gotm_fabm_output()
-
 !  Link relevant GOTM data to FABM.
 !  This sets pointers, rather than copying data, and therefore needs to be done only once.
+   if (fabm_calc) then
+      call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth,depth)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth_below_geoid,depth0)
+      if (calc_fluxes) then
+         call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
+         call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp)
+         call model_fabm%link_horizontal_data(standard_variables_fabm%surface_temperature,ta)
+      end if
+   end if
    call set_env_gotm_fabm(latitude,longitude,dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
                           nuh,h,w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
                           A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
                           bio_albedo,bio_drag_scale)
-
 #endif
 
    call do_input(julianday,secondsofday,nlev,z)
 
+!  Call stratification to make sure density has sensible value.
+!  This is needed to ensure the initial density is saved correctly by do_all_output, and also for FABM.
+   call stratification(nlev,buoy_method,dt,cnpar,nuh,gamh)
+
 #ifdef _FABM_
 
-!  Initialize FABM initial state (this is done after the first call to do_input,
-!  to allow user-specified observed values to be used as initial state)
-   call init_gotm_fabm_state(nlev)
+   if (fabm_calc) then
+!     Initialize FABM initial state (this is done after the first call to do_input,
+!     to allow user-specified observed values to be used as initial state)
+      call init_gotm_fabm_state(nlev)
+
+!     Initialize FABM output (creates NetCDF variables)
+!     This should be done after init_gotm_fabm_state is called, so the output module can compute
+!     initial conserved quantity integrals.
+      call init_gotm_fabm_output(nlev)
+   end if
 
 #endif
 
@@ -373,6 +391,11 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   LEVEL1 'saving initial conditions'
+   call prepare_output(0_timestepkind)
+   if (write_results) then
+      call do_all_output(0_timestepkind)
+   end if
    LEVEL1 'time_loop'
    do n=MinN,MaxN
 
@@ -441,7 +464,7 @@
       end if
 #endif
 #ifdef _FABM_
-      call do_gotm_fabm(nlev)
+      call do_gotm_fabm(nlev,real(n,kind(_ONE_)))
 #endif
 
 !    compute turbulent mixing
@@ -472,22 +495,7 @@
 
 !     do the output
       if (write_results) then
-         if (turb_method .ne. 99) then
-            call variances(nlev,SSU,SSV)
-         endif
-         call do_output(n,nlev)
-#ifdef SEAGRASS
-         if (seagrass_calc) call save_seagrass()
-#endif
-#ifdef SPM
-         if (spm_calc) call spm_save(nlev)
-#endif
-#ifdef BIO
-         if (bio_calc) call bio_save(_ZERO_)
-#endif
-#ifdef _FABM_
-         call do_gotm_fabm_output(nlev)
-#endif
+         call do_all_output(n)
       end if
 
       call integrated_fluxes(dt)
@@ -502,6 +510,49 @@
 
    return
    end subroutine time_loop
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: A wrapper for doing all output.
+!
+! !INTERFACE:
+   subroutine do_all_output(n)
+!
+! !DESCRIPTION:
+! This function is just a wrapper for all output routines
+!
+! !USES:
+   IMPLICIT NONE
+!
+ !INPUT PARAMETERS:
+   integer(kind=timestepkind), intent(in)   :: n
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (turb_method .ne. 99) then
+      call variances(nlev,SSU,SSV)
+   endif
+   call do_output(n,nlev)
+#ifdef SEAGRASS
+   if (seagrass_calc) call save_seagrass()
+#endif
+#ifdef SPM
+   if (spm_calc) call spm_save(nlev)
+#endif
+#ifdef BIO
+   if (bio_calc) call bio_save(_ZERO_)
+#endif
+#ifdef _FABM_
+   call do_gotm_fabm_output(nlev,initial=n==0_timestepkind)
+#endif
+
+   end subroutine do_all_output
 !EOC
 
 !-----------------------------------------------------------------------
@@ -558,6 +609,7 @@
 
 #ifdef _FABM_
    call clean_gotm_fabm()
+   call clean_gotm_fabm_output()
 #endif
 
    call close_input()

@@ -59,6 +59,7 @@
 !  and surface heat flux (W/m^2)
    REALTYPE, public, target            :: I_0,albedo
    REALTYPE, public, target            :: heat
+   REALTYPE, public                    :: qe,qh,qb
 
 !  surface stress components (Pa)
    REALTYPE, public, target            :: tx,ty
@@ -455,24 +456,6 @@
          case default
       end select
 
-!     The sea surface temperature
-      select case (sst_method)
-         case (FROMFILE)
-            call register_input_0d(sst_file,1,sst_obs)
-            LEVEL2 'Reading sea surface temperature from:'
-            LEVEL3 trim(sst_file)
-         case default
-      end select
-
-!     The sea surface salinity
-      select case (sss_method)
-         case (FROMFILE)
-            call register_input_0d(sss_file,1,sss)
-            LEVEL2 'Reading sea surface salinity from:'
-            LEVEL3 trim(sss_file)
-         case default
-      end select
-
    end if
 
 !  The fresh water fluxes (used for calc_fluxes=.true. and calc_fluxes=.false.)
@@ -491,6 +474,24 @@
          end if
          LEVEL2 'rain_impact=      ',rain_impact
          LEVEL2 'calc_evaporation= ',calc_evaporation
+      case default
+   end select
+
+!  The observed sea surface temperature
+   select case (sst_method)
+      case (FROMFILE)
+         call register_input_0d(sst_file,1,sst_obs)
+         LEVEL2 'Reading sea surface temperature from:'
+         LEVEL3 trim(sst_file)
+      case default
+   end select
+
+!  The observed sea surface salinity
+   select case (sss_method)
+      case (FROMFILE)
+         call register_input_0d(sss_file,1,sss)
+         LEVEL2 'Reading sea surface salinity from:'
+         LEVEL3 trim(sss_file)
       case default
    end select
 
@@ -559,10 +560,11 @@
          ty = const_ty*bio_drag_scale
       end if
 
-!     If reading SST from file, overwrite current (model) SST with observed value,
-!     to be used in output.
-      if (sst_method==FROMFILE) sst = sst_obs
    end if
+
+!  If reading SST from file, overwrite current (model) SST with observed value,
+!  to be used in output.
+   if (sst_method==FROMFILE) sst = sst_obs
 
 #ifndef INTERPOLATE_METEO   
    if (init_saved_vars) init_saved_vars = .false.
@@ -648,8 +650,7 @@
    REALTYPE, save            :: h2,tx2,ty2,cloud2
    integer                   :: rc
 #endif
-   REALTYPE                  :: ta,ta_k,tw,tw_k
-   REALTYPE                  :: qe,qh,qb
+   REALTYPE                  :: ta_k,tw,tw_k
 !
 !-----------------------------------------------------------------------
 !BOC

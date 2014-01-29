@@ -160,7 +160,7 @@
 !     Assume that wind is measured relative to sea surface and include
 !     gustiness.
 !     Initialize.
-      ier = 0.0
+      ier = 0
       delq=qa-qs
       delt=ta-tw
 
@@ -234,7 +234,7 @@
 
 !        Compute transfer coefficients for momentun (Cd), heat (Ch),
 !        and moisture (Ce).
-         if (ier .ge. 0.0) then
+         if (ier .ge. 0) then
             Wspeed=sqrt(w*w+wgus*wgus)
             Cd=Wstar*Wstar/(Wspeed*Wspeed)
 

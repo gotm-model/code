@@ -287,7 +287,7 @@
    nsecs = nint(n*timestep,kind=timestepkind) + secs0
    fsecs = n*timestep + secs0
    julianday    = jul0 + nsecs/86400
-   secondsofday = mod(nsecs,int(86400,kind=timestepkind))
+   secondsofday = mod(nsecs,86400_timestepkind)
 
    call calendar_date(julianday,yyyy,mm,dd)
    call julian_day(yyyy,1,1,jd_firstjan)

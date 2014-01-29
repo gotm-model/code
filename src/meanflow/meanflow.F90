@@ -54,9 +54,6 @@
 !  (most often used for diffusivities)
    REALTYPE, public, dimension(:), allocatable  :: avh
 
-!  grid-related vertical velocity
-   REALTYPE, public, dimension(:), allocatable  :: w_grid
-
 !  extra friction terms due to e.g. seagrass
    REALTYPE, public, dimension(:), allocatable  :: fric,drag
 
@@ -110,8 +107,8 @@
    REALTYPE, public, target            :: taub
 
 !  other stuff
-   REALTYPE, public                    :: depth0
-   REALTYPE, public                    :: depth
+   REALTYPE, public, target            :: depth0
+   REALTYPE, public, target            :: depth
    REALTYPE, public                    :: runtimeu, runtimev
 !
 ! !DEFINED PARAMETERS:
@@ -331,10 +328,6 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (avh)'
    avh = _ZERO_
 
-   allocate(w_grid(0:nlev),stat=rc)
-   if (rc /= 0) STOP 'init_meanflow: Error allocating (w_grid)'
-   w_grid = _ZERO_
-
    allocate(bioshade(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (bioshade)'
    bioshade= _ONE_
@@ -425,7 +418,6 @@
    if (allocated(buoy)) deallocate(buoy)
    if (allocated(rad)) deallocate(rad)
    if (allocated(avh)) deallocate(avh)
-   if (allocated(w_grid)) deallocate(w_grid)
    if (allocated(bioshade)) deallocate(bioshade)
 # ifdef EXTRA_OUTPUT
    if (allocated(mean1)) dallocate(mean1)
@@ -486,7 +478,6 @@
    if (allocated(rad)) LEVEL2 'rad',rad
    if (allocated(xp))  LEVEL2 'xP',xP
    if (allocated(avh)) LEVEL2 'avh',avh
-   if (allocated(w_grid)) LEVEL2 'w_grid',w_grid
    if (allocated(fric)) LEVEL2 'fric',fric
    if (allocated(drag)) LEVEL2 'drag',drag
    if (allocated(bioshade)) LEVEL2 'bioshade',bioshade

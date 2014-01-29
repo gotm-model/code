@@ -77,7 +77,7 @@
 !  Writes all calculated data to an ASCII file.
 !
 ! !USES:
-   use meanflow,     only: depth0,h,u,v,z,S,T,NN,buoy
+   use meanflow,     only: depth0,h,u,v,z,S,T,buoy
    use turbulence,   only: num,nuh,tke,eps,L
    use turbulence,   only: kb,epsb
    use observations, only: tprof,sprof,uprof,vprof,epsprof
@@ -139,7 +139,6 @@
 114 format(F10.4,2(1x,E10.4E2),2(1x,F10.6),2(1x,E10.4E2))
 115 format(F10.4,7(1x,E10.4E2))
 116 format(F10.4,2(1x,F10.6),3(2x,E10.4E2))
-117 format(A9,4(1x,A10))
 
 !#ifdef SEDIMENT
 !    call ascii_sediment(nlev,timestr)

@@ -30,7 +30,6 @@
    
    character(LEN=8)          :: systemdate
    character(LEN=10)         :: systemtime
-   character                 :: date
    real                      :: t1=-1,t2=-1
 !
 !-----------------------------------------------------------------------

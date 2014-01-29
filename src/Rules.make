@@ -81,14 +81,10 @@ endif
 
 INCDIRS         += -I$(FABMDIR)/include -I$(FABMDIR)/src/drivers/gotm -I$(FABMDIR)/modules/gotm/$(FORTRAN_COMPILER)
 LINKDIRS        += -L$(FABMDIR)/lib/gotm/$(FORTRAN_COMPILER)
-EXTRA_LIBS      += -lfabm_prod
+EXTRA_LIBS      += -lfabm$(buildtype)
 DEFINES += -D_FABM_
 FEATURES += fabm
 FEATURE_LIBS += -lgotm_fabm$(buildtype)
-
-ifdef FABM_F2003
-DEFINES += -D_FABM_F2003_
-endif
 
 endif
 
