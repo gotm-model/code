@@ -77,17 +77,11 @@
       module procedure register_scalar_observation
    end interface
 
-   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id
-   type (type_horizontal_variable_id),save :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id
+   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id
+   type (type_horizontal_variable_id),save :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id,swr_sf_id
 
 !  Variables to hold time spent on advection, diffusion, sink/source terms.
    integer(8) :: clock_adv,clock_diff,clock_source
-!
-! !REVISION HISTORY:!
-!  Original author(s): Jorn Bruggeman
-!
-!EOP
-!-----------------------------------------------------------------------
 !
 ! !PRIVATE DATA MEMBERS:
    ! Namelist variables
@@ -266,20 +260,23 @@
             stop "init_gotm_fabm: no valid ode_method specified in fabm.nml!"
       end select
 
-      ! Initialize spatially explicit variables
-      call init_var_gotm_fabm(_LOCATION_)
-
       ! Get ids for standard variables, to be used later to send data to FABM.
       temp_id = model%get_bulk_variable_id(standard_variables%temperature)
       salt_id = model%get_bulk_variable_id(standard_variables%practical_salinity)
       rho_id  = model%get_bulk_variable_id(standard_variables%density)
       h_id    = model%get_bulk_variable_id(standard_variables%cell_thickness)
+      par_id  = model%get_bulk_variable_id(standard_variables%downwelling_photosynthetic_radiative_flux)
+      swr_id  = model%get_bulk_variable_id(standard_variables%downwelling_shortwave_flux)
       lon_id       = model%get_horizontal_variable_id(standard_variables%longitude)
       lat_id       = model%get_horizontal_variable_id(standard_variables%latitude)
       windspeed_id = model%get_horizontal_variable_id(standard_variables%wind_speed)
       par_sf_id    = model%get_horizontal_variable_id(standard_variables%surface_downwelling_photosynthetic_radiative_flux)
+      swr_sf_id    = model%get_horizontal_variable_id(standard_variables%surface_downwelling_shortwave_flux)
       cloud_id     = model%get_horizontal_variable_id(standard_variables%cloud_area_fraction)
       taub_id      = model%get_horizontal_variable_id(standard_variables%bottom_stress)
+
+      ! Initialize spatially explicit variables
+      call init_var_gotm_fabm(_LOCATION_)
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
       call check_fabm_expressions()
@@ -393,7 +390,7 @@
    allocate(par(1:_LOCATION_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (par)'
    par = _ZERO_
-   call fabm_link_bulk_data(model,standard_variables%downwelling_photosynthetic_radiative_flux,par)
+   if (fabm_variable_needs_values(par_id)) call fabm_link_bulk_data(model,par_id,par)
 
    ! Allocate array for attenuation coefficient pf photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
@@ -407,7 +404,7 @@
    allocate(swr(1:_LOCATION_),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (swr)'
    swr = _ZERO_
-   call fabm_link_bulk_data(model,standard_variables%downwelling_shortwave_flux,swr)
+   if (fabm_variable_needs_values(swr_id)) call fabm_link_bulk_data(model,swr_id,swr)
 
    ! Allocate array for local pressure.
    ! This will be calculated from layer depths and density internally during each time step.
@@ -493,6 +490,7 @@
    call fabm_link_horizontal_data(model,lat_id,      latitude)
    call fabm_link_horizontal_data(model,windspeed_id,wnd)
    call fabm_link_horizontal_data(model,par_sf_id,   I_0_)
+   call fabm_link_horizontal_data(model,swr_sf_id,   I_0_)
    call fabm_link_horizontal_data(model,cloud_id,    cloud)
    call fabm_link_horizontal_data(model,taub_id,     taub)
 
@@ -726,7 +724,7 @@
             cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
          else
             ! Integration or averaging in time needed: for now do simple Forward Euler integration.
-            ! If averaging is required, this will be done upon output by diving by the elapsed period.
+            ! If averaging is required, this will be done upon output by dividing by the elapsed period.
             cc_diag_hz(i) = cc_diag_hz(i) + fabm_get_horizontal_diagnostic_data(model,i)*dt_eff
          end if
       end do
@@ -738,7 +736,7 @@
             cc_diag(1:nlev,i) = fabm_get_bulk_diagnostic_data(model,i)
          else
             ! Integration or averaging in time needed: for now do simple Forward Euler integration.
-            ! If averaging is required, this will be done upon output by diving by the elapsed period.
+            ! If averaging is required, this will be done upon output by dividing by the elapsed period.
             cc_diag(1:nlev,i) = cc_diag(1:nlev,i) + fabm_get_bulk_diagnostic_data(model,i)*dt_eff
          end if
       end do
@@ -1108,6 +1106,9 @@
 !-----------------------------------------------------------------------
 !BOC
    bioext = _ZERO_
+
+   call fabm_get_light_extinction(model,1,nlev,k_par)
+   call fabm_get_light(model,1,nlev)
 
 #ifdef _FABM_USE_1D_LOOP_
    call fabm_get_light_extinction(model,1,nlev,localexts)
