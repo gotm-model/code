@@ -11,6 +11,7 @@ DOCSRC	=\
 ice.F90			\
 
 MOD	= \
+${LIB}(ice_uvic.o)	\
 ${LIB}(ice_winton.o)	\
 ${LIB}(ice.o)
 

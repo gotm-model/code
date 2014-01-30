@@ -14,6 +14,7 @@
    use time,             only: julianday, secondsofday
    use airsea_variables, only: emiss,bolz,kelvin
    use ice_winton,       only: do_ice_winton, ice_optics, KMELT, CW
+   use ice_uvic,         only: do_ice_uvic
    use meanflow,         only: h,T,S,rho,rho_0
    use airsea,           only: heat,I_0,albedo,precip,evap,cloud,swr_method,airt, &
                                airp,rh,u10,v10,back_radiation_method,hum_method, &
@@ -40,6 +41,10 @@
    REALTYPE, public                    :: ice_hs,ice_hi
    REALTYPE, public                    :: ice_ts,ice_T1,ice_T2
    REALTYPE, public                    :: ice_tmelt,ice_bmelt
+!  University of Victoria ice model
+   REALTYPE, public                    :: ice_uvic_hs,ice_uvic_hi
+   REALTYPE, public                    :: ice_uvic_ts,ice_uvic_T1,ice_uvic_T2
+   REALTYPE, public                    :: ice_uvic_tmelt,ice_uvic_bmelt
 !
 !  !PRIVATE DATA MEMBERS:
    REALTYPE                            :: lat, lon
@@ -103,6 +108,10 @@
          LEVEL2 'Thermodynamic ice model adapted from Winton'
          ice_hs=_ZERO_;ice_hi=_ZERO_;ice_T1=_ZERO_;ice_T2=_ZERO_
          ice_ts=_ZERO_;ice_tmelt=_ZERO_;ice_bmelt=_ZERO_
+      case (3)
+         LEVEL2 'Thermodynamic ice model adapted from Flato, UVic'
+         ice_uvic_hs=_ZERO_;ice_uvic_hi=_ZERO_;ice_uvic_T1=_ZERO_;ice_uvic_T2=_ZERO_
+         ice_uvic_ts=_ZERO_;ice_uvic_tmelt=_ZERO_;ice_uvic_bmelt=_ZERO_
       case default
    end select
 
@@ -171,6 +180,17 @@
                             T(n),heat,I_0,precip, &
                             ice_hs,ice_hi,ice_t1,ice_t2, &
                             ice_ts,albedo,ice_tmelt,ice_bmelt)
+      case (3)
+         if (swr_method .ne. 3) then
+            STDERR 'Ice model currently only support swr_method 3'
+            stop 'Ice model currently only support swr_method 3'
+         endif
+         n = ubound(S,1)
+         call do_ice_uvic(dt,h(n),julianday,secondsofday,lon,lat, &
+                          I_0,airt,airp,rh,u10,v10,precip,cloud, &
+                          T(n),S(n),rho(n),rho_0, &
+                          back_radiation_method,hum_method,fluxes_method, &
+                          ice_uvic_hi,ice_uvic_hs,ice_uvic_t1,ice_uvic_t2,ice_uvic_ts,albedo,heat,ice_uvic_tmelt,ice_uvic_bmelt)
       case default
    end select
 
