@@ -92,13 +92,16 @@
    character(len=64)            :: variable,variables(max_variable_count_per_file)
    integer                      :: i,k,file_variable_count,index
    integer                      :: variabletype,filetype
-   REALTYPE                     :: relax_tau,db,ds,depth
+   REALTYPE                     :: relax_tau,db,ds,depth,constant_value
    REALTYPE,dimension(max_variable_count_per_file) :: relax_taus,relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot
+   REALTYPE,dimension(max_variable_count_per_file) :: constant_values
    integer, parameter           :: type_unknown = 0, type_profile = 1, type_scalar = 2
    logical                      :: file_exists
    type (type_input_variable),pointer :: curvariable
+   REALTYPE, parameter          :: missing_value = huge(_ONE_)
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
-                           relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot
+                           relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot, &
+                           constant_value
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -129,6 +132,8 @@
       relax_taus_bot = 1.d15
       thicknesses_surf = _ZERO_
       thicknesses_bot = _ZERO_
+      constant_value = missing_value
+      constant_values = missing_value
 
 !     Initialize file type (profile or scalar) to unknown
       filetype = type_unknown
@@ -137,16 +142,22 @@
 !     If no namelist is found, exit the do loop.
       read(namlst,nml=observations,err=99,end=97)
 
-!     Make sure the file path is specified.
-      if (file=='') then
-         FATAL 'observations namelist must contain parameter "file", specifying the path to the data file.'
-         stop 'gotm_fabm_input:init_gotm_fabm_input'
-      end if
-
-!     Make sure the specified file exists.
-      inquire(file=file,exist=file_exists)
-      if (.not.file_exists) then
-         FATAL 'Input file "'//trim(file)//'", specified in namelist "observations", does not exist.'
+      if (file/='') then
+!        Make sure the specified file exists.
+         inquire(file=file,exist=file_exists)
+         if (.not.file_exists) then
+            FATAL 'Input file "'//trim(file)//'", specified in namelist "observations", does not exist.'
+            stop 'gotm_fabm_input:init_gotm_fabm_input'
+         end if
+         if (constant_value/=missing_value) then
+            FATAL 'Parameters "file" and "constant_value" cannot both be specified.'
+            stop 'gotm_fabm_input:init_gotm_fabm_input'
+         end if
+      elseif (constant_value==missing_value) then
+!        No file path or constant value specified - report error.
+         FATAL 'observations namelist must either contain parameter "file", specifying the &
+               &path to the data file, or parameter "constant_value", specifying the value &
+               &to use throughout the simulation.'
          stop 'gotm_fabm_input:init_gotm_fabm_input'
       end if
 
@@ -167,6 +178,7 @@
          end if
          variables(index) = variable
          relax_taus(index) = relax_tau
+         constant_values(index) = constant_value
       else
 !        The namelist describes multiple variables. Check parameter validity.
          if (relax_tau<1.d15) then
@@ -175,6 +187,10 @@
          end if
          if (index/=-1) then
             FATAL 'Parameter "index" cannot be used in combination with "variables" in namelist "observations".'
+            stop 'gotm_fabm_input:init_gotm_fabm_input'
+         end if
+         if (constant_value/=missing_value) then
+            FATAL 'Parameter "constant_value" cannot be used in combination with "variables" in namelist "observations".'
             stop 'gotm_fabm_input:init_gotm_fabm_input'
          end if
       end if
@@ -243,18 +259,32 @@
          filetype = variabletype
 
          if (variabletype==type_scalar) then
-            call register_input_0d(curvariable%path,curvariable%index,curvariable%data_0d)
+            if (constant_values(i)/=missing_value) then
+                ! Variable fixed to constant value.
+                curvariable%data_0d = constant_values(i)
+            else
+                ! Variable read from file.
+                call register_input_0d(curvariable%path,curvariable%index,curvariable%data_0d)
+            end if
             curvariable%relax_tau_0d = relax_taus(i)
             if (fabm_is_variable_used(curvariable%horizontal_id)) then
+                ! Horizontal variable
                call register_observation(curvariable%horizontal_id,curvariable%data_0d,curvariable%relax_tau_0d)
             else
+                ! Scalar variable
                call register_observation(curvariable%scalar_id,curvariable%data_0d)
             end if
          else
             allocate(curvariable%data_1d(0:nlev))
             allocate(curvariable%relax_tau_1d(0:nlev))
             curvariable%relax_tau_1d = relax_taus(i)
-            call register_input_1d(curvariable%path,curvariable%index,curvariable%data_1d)
+            if (constant_values(i)/=missing_value) then
+                ! Variable fixed to constant value.
+                curvariable%data_1d = constant_values(i)
+            else
+                ! Variable read from file.
+                call register_input_1d(curvariable%path,curvariable%index,curvariable%data_1d)
+            end if
 
 !           Apply separate relaxation times for bottom and surface layer, if specified.
             db = _ZERO_
@@ -273,7 +303,11 @@
          end if
 
 !        Report that this variable will use observations.
-         LEVEL2 'Reading observed values for variable '//trim(curvariable%name)//' from '//trim(file)
+         if (constant_values(i)/=missing_value) then
+            LEVEL2 'Setting variable '//trim(curvariable%name)//' to constant value',constant_values(i)
+         else
+            LEVEL2 'Reading observed values for variable '//trim(curvariable%name)//' from '//trim(file)
+         end if
 
       end do
 
