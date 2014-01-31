@@ -14,7 +14,7 @@
    use time,             only: julianday, secondsofday
    use airsea_variables, only: emiss,bolz,kelvin
    use ice_winton,       only: do_ice_winton, ice_optics, KMELT, CW
-   use ice_uvic,         only: do_ice_uvic
+   use ice_uvic,         only: init_ice_uvic, do_ice_uvic
    use meanflow,         only: h,T,S,rho,rho_0
    use airsea,           only: heat,I_0,albedo,precip,evap,cloud,swr_method,airt, &
                                airp,rh,u10,v10,back_radiation_method,hum_method, &
@@ -110,6 +110,7 @@
          ice_ts=_ZERO_;ice_tmelt=_ZERO_;ice_bmelt=_ZERO_
       case (3)
          LEVEL2 'Thermodynamic ice model adapted from Flato, UVic'
+         call init_ice_uvic(7)
          ice_uvic_hs=_ZERO_;ice_uvic_hi=_ZERO_;ice_uvic_T1=_ZERO_;ice_uvic_T2=_ZERO_
          ice_uvic_ts=_ZERO_;ice_uvic_tmelt=_ZERO_;ice_uvic_bmelt=_ZERO_
       case default

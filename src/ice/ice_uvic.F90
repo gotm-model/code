@@ -16,8 +16,7 @@
    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-!   public                              :: init_ice_uvic
-   public                              :: do_ice_uvic
+   public                              :: init_ice_uvic,do_ice_uvic
 #if 0
    public                              :: ice_optics
 #endif
@@ -42,6 +41,53 @@
 
    contains
 
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Initialise the uvic--ice model \label{sec:init-uvic-ice}
+!
+! !INTERFACE:
+   subroutine init_ice_uvic(namlst)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)                 :: namlst
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding
+!
+!
+! !LOCAL VARIABLES:
+#if 0
+   namelist /uvic_ice/ nlayers
+#endif
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL3 'initializing ...'
+
+#if 0
+!  Read namelist variables from file.
+   open(namlst,file='uvic_ice.nml',action='read',status='old',err=90)
+   read(namlst,nml=uvic_ice,err=91)
+   close(namlst)
+#endif
+
+   return
+
+#if 0
+90 FATAL 'I could not open uvic_ice.nml'
+   stop 'init_ice_uvic'
+#endif
+
+   end subroutine init_ice_uvic
+!EOC
+
+!-----------------------------------------------------------------------
 !BOP
 !
 ! !ROUTINE: Calculate ice thermodynamics \label{sec:do_ice_uvic}
