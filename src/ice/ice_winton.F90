@@ -292,7 +292,7 @@
 !  freezing. This energy is used to modify the SST
 !  FIXME: max(...) temporarily included since rho is not initialized in
 !  first time step
-   dtemp = (tmelt + bmelt)/(CW*h*max(1000.0, rho))
+   dtemp = (tmelt + bmelt)/(CW*h*max(1000.0*_ONE_, rho))
    T = T + dtemp
    !if (dtemp .ne. 0.d0) then
    !   STDERR 'do_ice: SST change', tmelt+bmelt,dtemp, T, tfw
@@ -691,12 +691,12 @@ end subroutine ice_consistency
 !
 !  reduce albedo for thin ice using the same form as in
 !  Community Sea Ice Model (CSIM4)
-   fh = min(atan(5.0*hi)/atan(5.0*0.5),1.0)
+   fh = min(atan(5.0*hi)/atan(5.0*0.5),_ONE_)
 !
 !  reduce albedo for melting as in CSIM4 assuming 0.53/0.47 vis/ir
    if (ts+T_RANGE_MELT > TFI) then
-      as = as-0.1235*min((ts+T_RANGE_MELT-TFI)/T_RANGE_MELT,1.0)
-      ai = ai-0.075 *min((ts+T_RANGE_MELT-TFI)/T_RANGE_MELT,1.0)
+      as = as-0.1235*min((ts+T_RANGE_MELT-TFI)/T_RANGE_MELT,_ONE_)
+      ai = ai-0.075 *min((ts+T_RANGE_MELT-TFI)/T_RANGE_MELT,_ONE_)
    endif
 !  reduce albedo for thin ice
    ai = fh*ai+(1-fh)*0.06
