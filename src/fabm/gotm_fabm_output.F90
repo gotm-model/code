@@ -231,14 +231,14 @@ contains
 
          ! Store pelagic biogeochemical state variables.
          do n=1,size(model%info%state_variables)
-            if (model%info%state_variables(n)%output==output_none) continue
+            if (model%info%state_variables(n)%output==output_none) cycle
             iret = nf90_put_var(ncid,model%info%state_variables(n)%externalid,cc(1:nlev,n),start,edges)
             call check_err(iret)
          end do
 
          ! Process and store diagnostic variables defined on the full domain.
          do n=1,size(model%info%diagnostic_variables)
-            if (model%info%diagnostic_variables(n)%output==output_none) continue
+            if (model%info%diagnostic_variables(n)%output==output_none) cycle
 
             ! Time-average diagnostic variable if needed.
             if (model%info%diagnostic_variables(n)%time_treatment==time_treatment_averaged.and..not.initial) &
@@ -274,14 +274,14 @@ contains
 
          ! Store benthic biogeochemical state variables.
          do n=1,size(model%info%bottom_state_variables)
-            if (model%info%bottom_state_variables(n)%output==output_none) continue
+            if (model%info%bottom_state_variables(n)%output==output_none) cycle
             iret = store_data(ncid,model%info%bottom_state_variables(n)%externalid,XYT_SHAPE,1, &
                             & scalar=cc(1,size(model%info%state_variables)+n))
          end do
 
          ! Process and store diagnostic variables defined on horizontal slices of the domain.
          do n=1,size(model%info%horizontal_diagnostic_variables)
-            if (model%info%horizontal_diagnostic_variables(n)%output==output_none) continue
+            if (model%info%horizontal_diagnostic_variables(n)%output==output_none) cycle
 
             ! Time-average diagnostic variable if needed.
             if (model%info%horizontal_diagnostic_variables(n)%time_treatment==time_treatment_averaged.and..not.initial) &
