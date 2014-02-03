@@ -132,7 +132,8 @@ contains
                                    dim3d,model%info%conserved_quantities(n)%externalid)
             iret = set_attributes(ncid,model%info%conserved_quantities(n)%externalid,      &
                                   units=trim(model%info%conserved_quantities(n)%units)//'*m',    &
-                                  long_name='integrated change in '//trim(model%info%conserved_quantities(n)%long_name))
+                                  long_name='integrated change in '//trim(model%info%conserved_quantities(n)%long_name), &
+                                  missing_value=-1d20,FillValue=-1d20)
          end do
 
          ! If requested, add a NetCDF variable for each variable read from an external source [input file].
