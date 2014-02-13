@@ -542,14 +542,6 @@
    yearday => yearday_
    secondsofday => secondsofday_
 
-   ! At this stage, FABM has been provided with arrays for all state variables, any variables
-   ! read in from file (gotm_fabm_input), and all variables exposed by GOTM. If FABM is still
-   ! lacking variable references, this should now trigger an error.
-   if (.not.fabm_ready) then
-      call fabm_check_ready(model)
-      fabm_ready = .true.
-   end if
-
    end subroutine set_env_gotm_fabm
 !EOC
 
@@ -618,6 +610,14 @@
 !BOC
 
    if (.not. fabm_calc) return
+
+   ! At this stage, FABM has been provided with arrays for all state variables, any variables
+   ! read in from file (gotm_fabm_input), and all variables exposed by GOTM. If FABM is still
+   ! lacking variable references, this should now trigger an error.
+   if (.not.fabm_ready) then
+      call fabm_check_ready(model)
+      fabm_ready = .true.
+   end if
 
    call calculate_derived_input(nlev,itime)
 
