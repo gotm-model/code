@@ -17,6 +17,7 @@
    use fabm_types
    use fabm_expressions
    use fabm_config
+   use fabm_driver
 
    implicit none
 !
