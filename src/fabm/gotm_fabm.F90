@@ -140,7 +140,8 @@
 !EOP
 !
 !  local variables
-   integer                   :: i
+   integer :: i
+   logical :: file_exists
    namelist /gotm_fabm_nml/ fabm_calc,                                               &
                             cnpar,w_adv_discr,ode_method,split_factor,               &
                             bioshade_feedback,bioalbedo_feedback,biodrag_feedback,   &
@@ -169,7 +170,7 @@
    no_precipitation_dilution = .false.              ! useful to check mass conservation
    no_surface = .false.                             ! disables surface exchange; useful to check mass conservation
    save_inputs = .false.
-   configuration_method = 0                         ! 0: namelists, 1: YAML
+   configuration_method = -1                        ! -1: auto-detect, 0: namelists, 1: YAML
 
    ! Open the namelist file and read the namelist.
    ! Note that the namelist file is left open until the routine terminates,
@@ -189,6 +190,11 @@
       fabm_ready = .false.
 
       ! Create model tree
+      if (configuration_method==-1) then
+         configuration_method = 0
+         inquire(file='fabm.yaml',exist=file_exists)
+         if (file_exists) configuration_method = 1
+      end if
       select case (configuration_method)
          case (0)
             ! From namelists in fabm.nml
