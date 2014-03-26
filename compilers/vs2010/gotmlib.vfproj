@@ -56,6 +56,7 @@
 		<File RelativePath="..\..\src\airsea\airsea.F90"/>
 		<File RelativePath="..\..\src\airsea\airsea_fluxes.F90"/>
 		<File RelativePath="..\..\src\airsea\airsea_variables.F90"/>
+		<File RelativePath="..\..\src\airsea\albedo_water.F90"/>
 		<File RelativePath="..\..\src\airsea\back_radiation.F90"/>
 		<File RelativePath="..\..\src\airsea\fairall.F90"/>
 		<File RelativePath="..\..\src\airsea\humidity.F90"/>
@@ -70,6 +71,8 @@
 		<File RelativePath="..\..\src\fabm\gotm_fabm_output.F90"/></Filter>
 		<Filter Name="gotm">
 		<File RelativePath="..\..\src\gotm\gotm.F90"/></Filter>
+		<Filter Name="input">
+		<File RelativePath="..\..\src\input\input.F90"/></Filter>
 		<Filter Name="meanflow">
 		<File RelativePath="..\..\src\meanflow\buoyancy.F90"/>
 		<File RelativePath="..\..\src\meanflow\convectiveadjustment.F90"/>
@@ -85,8 +88,9 @@
 		<File RelativePath="..\..\src\meanflow\uequation.F90"/>
 		<File RelativePath="..\..\src\meanflow\updategrid.F90"/>
 		<File RelativePath="..\..\src\meanflow\vequation.F90"/></Filter>
-		<Filter Name="input">
-		<File RelativePath="..\..\src\input\input.F90"/></Filter>
+		<Filter Name="ice">
+		<File RelativePath="..\..\src\ice\ice.F90"/>
+		<File RelativePath="..\..\src\ice\ice_winton.F90"/></Filter>
 		<Filter Name="observations">
 		<File RelativePath="..\..\src\observations\analytical_profile.F90"/>
 		<File RelativePath="..\..\src\observations\const_NNS.F90"/>
