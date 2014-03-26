@@ -550,7 +550,7 @@
       if (swr_method .eq. 3) then
          hh = secs*(_ONE_/3600)
          I_0 = short_wave_radiation(yearday,hh,dlon,dlat,cloud)
-         albedo = albedo_water(1,yearday,hh,dlon,dlat)
+         albedo = albedo_water(1,yearday,hh,dlon,dlat,bio_albedo)
          I_0 = I_0*(_ONE_-albedo)
       end if
    else
