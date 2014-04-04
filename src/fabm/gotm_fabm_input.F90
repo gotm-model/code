@@ -17,7 +17,8 @@
 !
 ! !USES:
    use fabm, only: fabm_get_bulk_variable_id,fabm_get_horizontal_variable_id,fabm_get_scalar_variable_id,fabm_is_variable_used
-   use fabm_types,only: type_bulk_variable_id,type_horizontal_variable_id,type_scalar_variable_id,rk
+   use fabm,only: type_bulk_variable_id,type_horizontal_variable_id,type_scalar_variable_id
+   use fabm_types, only:rk
    use gotm_fabm,only:fabm_calc,model,cc,register_observation
    use input,only: register_input_0d,register_input_1d
 
