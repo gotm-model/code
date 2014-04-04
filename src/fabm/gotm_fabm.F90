@@ -726,7 +726,7 @@
 
       ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
       do i=1,size(model%diagnostic_variables_hz)
-         if (model%diagnostic_variables_hz(i)%time_treatment==time_treatment_last) then
+         if (model%diagnostic_variables_hz(i)%output==output_instantaneous) then
             ! Simply use last value
             cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
          else
@@ -738,7 +738,7 @@
 
       ! Time-integrate diagnostic variables defined on the full domain, where needed.
       do i=1,size(model%diagnostic_variables)
-         if (model%diagnostic_variables(i)%time_treatment==time_treatment_last) then
+         if (model%diagnostic_variables(i)%output==output_instantaneous) then
             ! Simply use last value
             cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
          else
@@ -1233,11 +1233,11 @@
 
       ! Obtain current values of diagnostic variables from FABM.
       do i=1,size(model%diagnostic_variables_hz)
-         if (model%diagnostic_variables_hz(i)%time_treatment/=time_treatment_integrated) &
+         if (model%diagnostic_variables_hz(i)%output/=output_time_integrated) &
             cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
       end do
       do i=1,size(model%diagnostic_variables)
-         if (model%diagnostic_variables(i)%time_treatment/=time_treatment_integrated) &
+         if (model%diagnostic_variables(i)%output/=output_time_integrated) &
             cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
       end do
 
