@@ -217,10 +217,10 @@
       end do
 
       LEVEL2 'FABM benthic state variables:'
-      do i=1,size(model%state_variables_ben)
-         LEVEL3 trim(model%state_variables_ben(i)%name), '  ', &
-                trim(model%state_variables_ben(i)%units),'  ',&
-                trim(model%state_variables_ben(i)%long_name)
+      do i=1,size(model%bottom_state_variables)
+         LEVEL3 trim(model%bottom_state_variables(i)%name), '  ', &
+                trim(model%bottom_state_variables(i)%units),'  ',&
+                trim(model%bottom_state_variables(i)%long_name)
       end do
 
       ! Report diagnostic variable descriptions
@@ -232,10 +232,10 @@
       end do
 
       LEVEL2 'FABM diagnostic variables defined on a horizontal slice of the model domain:'
-      do i=1,size(model%diagnostic_variables_hz)
-         LEVEL3 trim(model%diagnostic_variables_hz(i)%name), '  ', &
-                trim(model%diagnostic_variables_hz(i)%units),'  ',&
-                trim(model%diagnostic_variables_hz(i)%long_name)
+      do i=1,size(model%horizontal_diagnostic_variables)
+         LEVEL3 trim(model%horizontal_diagnostic_variables(i)%name), '  ', &
+                trim(model%horizontal_diagnostic_variables(i)%units),'  ',&
+                trim(model%horizontal_diagnostic_variables(i)%long_name)
       end do
 
       ! Report type of solver
@@ -335,15 +335,15 @@
    ! column (the bottom layer should suffice). However, it is important that all values at a given point
    ! in time are integrated simultaneously in multi-step algorithms. This currently can only be arranged
    ! by storing benthic values together with the pelagic, in a fully depth-explicit array.
-   allocate(cc(0:nlev,1:size(model%state_variables)+size(model%state_variables_ben)),stat=rc)
+   allocate(cc(0:nlev,1:size(model%state_variables)+size(model%bottom_state_variables)),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (cc)'
    cc = _ZERO_
    do i=1,size(model%state_variables)
       cc(:,i) = model%state_variables(i)%initial_value
       call fabm_link_bulk_state_data(model,i,cc(1:,i))
    end do
-   do i=1,size(model%state_variables_ben)
-      cc(1,size(model%state_variables)+i) = model%state_variables_ben(i)%initial_value
+   do i=1,size(model%bottom_state_variables)
+      cc(1,size(model%state_variables)+i) = model%bottom_state_variables(i)%initial_value
       call fabm_link_bottom_state_data(model,i,cc(1,size(model%state_variables)+i))
    end do
 
@@ -351,7 +351,7 @@
    ! Initialize observation indices to -1 (no external observations provided)
    allocate(cc_obs(1:size(model%state_variables)),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_obs)'
-   allocate(cc_ben_obs(1:size(model%state_variables_ben)),stat=rc)
+   allocate(cc_ben_obs(1:size(model%bottom_state_variables)),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_ben_obs)'
 
    ! Allocate array for pelagic diagnostic variables; set all values to zero.
@@ -362,7 +362,7 @@
 
    ! Allocate array for diagnostic variables on horizontal surfaces; set all values to zero.
    ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
-   allocate(cc_diag_hz(1:size(model%diagnostic_variables_hz)),stat=rc)
+   allocate(cc_diag_hz(1:size(model%horizontal_diagnostic_variables)),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_diag_hz)'
    cc_diag_hz = _ZERO_
 
@@ -717,7 +717,7 @@
       do i=1,size(model%state_variables)
          call fabm_link_bulk_state_data(model,i,cc(1:nlev,i))
       end do
-      do i=1,size(model%state_variables_ben)
+      do i=1,size(model%bottom_state_variables)
          call fabm_link_bottom_state_data(model,i,cc(1,size(model%state_variables)+i))
       end do
 
@@ -725,8 +725,8 @@
       call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after time integration')
 
       ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
-      do i=1,size(model%diagnostic_variables_hz)
-         if (model%diagnostic_variables_hz(i)%output==output_instantaneous) then
+      do i=1,size(model%horizontal_diagnostic_variables)
+         if (model%horizontal_diagnostic_variables(i)%output==output_instantaneous) then
             ! Simply use last value
             cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
          else
@@ -930,7 +930,7 @@
    do i=1,size(model%state_variables)
       call fabm_link_bulk_state_data(model,i,cc(1:nlev,i))
    end do
-   do i=1,size(model%state_variables_ben)
+   do i=1,size(model%bottom_state_variables)
       call fabm_link_bottom_state_data(model,i,cc(1,n+i))
    end do
    call update_fabm_expressions(nlev)
@@ -999,7 +999,7 @@
    do i=1,size(model%state_variables)
       call fabm_link_bulk_state_data(model,i,cc(1:nlev,i))
    end do
-   do i=1,size(model%state_variables_ben)
+   do i=1,size(model%bottom_state_variables)
       call fabm_link_bottom_state_data(model,i,cc(1,n+i))
    end do
    call update_fabm_expressions(nlev)
@@ -1170,8 +1170,8 @@
       character(len=attribute_length) :: varname
 
       varname = fabm_get_variable_name(model,horizontal_id)
-      do i=1,size(model%state_variables_ben)
-         if (varname==model%state_variables_ben(i)%name) then
+      do i=1,size(model%bottom_state_variables)
+         if (varname==model%bottom_state_variables(i)%name) then
             ! This is a state variable. Register the link between the state variable and the observations.
             cc_ben_obs(i)%data => data
             cc_ben_obs(i)%relax_tau => relax_tau
@@ -1209,7 +1209,7 @@
       do i=1,size(model%state_variables)
          if (associated(cc_obs(i)%data)) cc(:,i) = cc_obs(i)%data
       end do
-      do i=1,size(model%state_variables_ben)
+      do i=1,size(model%bottom_state_variables)
          if (associated(cc_ben_obs(i)%data)) cc(1,size(model%state_variables,1)+i) = cc_ben_obs(i)%data
       end do
 
@@ -1232,8 +1232,8 @@
 #endif
 
       ! Obtain current values of diagnostic variables from FABM.
-      do i=1,size(model%diagnostic_variables_hz)
-         if (model%diagnostic_variables_hz(i)%output/=output_time_integrated) &
+      do i=1,size(model%horizontal_diagnostic_variables)
+         if (model%horizontal_diagnostic_variables(i)%output/=output_time_integrated) &
             cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
       end do
       do i=1,size(model%diagnostic_variables)

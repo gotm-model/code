@@ -76,15 +76,15 @@ contains
 !BOC
    ! Allocate memory for conserved quantity totals
    allocate(total0(1:size(model%conserved_quantities)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (total0)'
+   if (rc /= 0) stop 'init_gotm_fabm_output: Error allocating (total0)'
    allocate(total(1:size(model%conserved_quantities)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (total)'
+   if (rc /= 0) stop 'init_gotm_fabm_output: Error allocating (total)'
 #ifdef _FABM_USE_1D_LOOP_
    allocate(local(1:nlev,1:size(model%conserved_quantities)),stat=rc)
 #else
    allocate(local(1:size(model%conserved_quantities)),stat=rc)
 #endif
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (local)'
+   if (rc /= 0) stop 'init_gotm_fabm_output: Error allocating (local)'
 
    select case (out_fmt)
       case (NETCDF)
