@@ -78,7 +78,7 @@
       module procedure register_scalar_observation
    end interface
 
-   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id
+   type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id,pres_id
    type (type_horizontal_variable_id),save :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id,swr_sf_id
 
 !  Variables to hold time spent on advection, diffusion, sink/source terms.
@@ -95,9 +95,9 @@
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
    REALTYPE,allocatable,dimension(:,:) :: ws
-   REALTYPE,allocatable,dimension(:)   :: sfl,bfl
-   REALTYPE,allocatable,dimension(:)   :: Qsour,Lsour,DefaultRelaxTau,curh,curnuh
-   logical,allocatable                 :: cc_transport(:)
+   REALTYPE,allocatable,dimension(:)   :: sfl,bfl,Qsour,Lsour,DefaultRelaxTau,curh,curnuh
+   logical,allocatable, dimension(:)   :: cc_transport
+   integer,allocatable, dimension(:)   :: posconc
 
    ! Arrays for environmental variables not supplied externally.
    REALTYPE,allocatable,dimension(:),target :: par,pres,swr,k_par,z
@@ -274,6 +274,7 @@
       h_id    = model%get_bulk_variable_id(standard_variables%cell_thickness)
       par_id  = model%get_bulk_variable_id(standard_variables%downwelling_photosynthetic_radiative_flux)
       swr_id  = model%get_bulk_variable_id(standard_variables%downwelling_shortwave_flux)
+      pres_id = model%get_bulk_variable_id(standard_variables%pressure)
       lon_id       = model%get_horizontal_variable_id(standard_variables%longitude)
       lat_id       = model%get_horizontal_variable_id(standard_variables%latitude)
       windspeed_id = model%get_horizontal_variable_id(standard_variables%wind_speed)
@@ -415,10 +416,12 @@
 
    ! Allocate array for local pressure.
    ! This will be calculated from layer depths and density internally during each time step.
-   allocate(pres(1:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (pres)'
-   pres = _ZERO_
-   call fabm_link_bulk_data(model,standard_variables%pressure,pres)
+   if (fabm_variable_needs_values(pres_id)) then
+      allocate(pres(1:nlev),stat=rc)
+      if (rc /= 0) stop 'allocate_memory(): Error allocating (pres)'
+      pres = _ZERO_
+      call fabm_link_bulk_data(model,pres_id,pres)
+   end if
 
    ! Allocate array for local depth (below water surface).
    ! This will be calculated from layer depths.
@@ -452,6 +455,13 @@
    if (rc /= 0) stop 'allocate_memory(): Error allocating (curnuh)'
    curnuh = _ZERO_
 
+   allocate(posconc(1:size(model%state_variables)),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (posconc)'
+   posconc = 0
+   do i=1,size(model%state_variables)
+      if (model%state_variables(i)%minimum>=_ZERO_) posconc(i) = 1
+   end do
+   
    end subroutine init_var_gotm_fabm
 !EOC
 
@@ -558,26 +568,31 @@
    REALTYPE,intent(in),optional :: itime
 
    integer :: i
+   REALTYPE,parameter :: gravity = 9.81d0
 
    ! Update contiguous arrays with layer heights and diffusivity, needed in calls to adv_center and diff_center.
    curh   = h
    curnuh = nuh
 
-   ! Calculate local pressure from layer height and density
-   pres(nlev) = rho(nlev)*curh(nlev)*0.5d0
-   do i=nlev-1,1,-1
-      pres(i) = pres(i+1) + (rho(i)*curh(i)+rho(i+1)*curh(i+1))*0.5d0
-   end do
-   pres(1:nlev) = pres(1:nlev)*9.81d-4
+   if (allocated(pres)) then
+      ! Calculate local pressure in dbar (10 kPa) from layer height and density
+      pres(nlev) = rho(nlev)*curh(nlev)/2
+      do i=nlev-1,1,-1
+         pres(i) = pres(i+1) + (rho(i)*curh(i)+rho(i+1)*curh(i+1))/2
+      end do
+      pres(1:nlev) = pres(1:nlev)*gravity/10000
+   end if
 
    ! Calculate local depth below surface from layer height
-   z(nlev) = curh(nlev)*0.5d0
+   ! Used internally to compute light field, and may be used by
+   ! biogeochemical models as well.
+   z(nlev) = curh(nlev)/2
    do i=nlev-1,1,-1
-      z(i) = z(i+1) + (curh(i)+curh(i+1))*0.5d0
+      z(i) = z(i+1) + (curh(i)+curh(i+1))/2
    end do
 
 !  Calculate decimal day of the year (1 jan 00:00 = 0.)
-   decimal_yearday = yearday-1 + dble(secondsofday)/86400.d0
+   decimal_yearday = yearday-1 + dble(secondsofday)/86400
 
    call fabm_update_time(model,itime)
 
@@ -610,7 +625,7 @@
    integer, parameter        :: adv_mode_1=1
    REALTYPE                  :: dilution,virtual_dilution
    integer                   :: i
-   integer                   :: split,posconc
+   integer                   :: split
    integer(8)                :: clock_start,clock_end
 !
 !-----------------------------------------------------------------------
@@ -645,7 +660,7 @@
    dilution = precip+evap
 
    ! If salinity is relaxed to observations, the change in column-integrated salinity can converted into a
-   ! a virtual freshwater flux. Optionally, this freshwater flux can be imposed at the surface on biogoeochemical
+   ! a virtual freshwater flux. Optionally, this freshwater flux can be imposed at the surface on biogeochemical
    ! variables, effectively mimicking precipitation or evaporation. This makes sense only if the salinity change
    ! is primarily due to surface fluxes - not if it is meant to represent lateral input of other water masses.
    virtual_dilution = _ZERO_
@@ -666,13 +681,13 @@
    ! Vertical advection and residual movement (sinking/floating)
    call system_clock(clock_start)
    do i=1,size(model%state_variables)
-      if (.not.cc_transport(i)) cycle
+      if (cc_transport(i)) then
+         ! Do advection step due to settling or rising
+         call adv_center(nlev,dt,curh,curh,ws(:,i),flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(:,i))
 
-      ! Do advection step due to settling or rising
-      call adv_center(nlev,dt,curh,curh,ws(:,i),flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(:,i))
-
-      ! Do advection step due to vertical velocity
-      if (w_adv_method/=0) call adv_center(nlev,dt,curh,curh,w,flux,flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(:,i))
+         ! Do advection step due to vertical velocity
+         if (w_adv_method/=0) call adv_center(nlev,dt,curh,curh,w,flux,flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(:,i))
+      end if
    end do
    call system_clock(clock_end)
    clock_adv = clock_adv + clock_end-clock_start
@@ -680,21 +695,17 @@
    ! Vertical diffusion
    clock_start = clock_end
    do i=1,size(model%state_variables)
-      if (.not.cc_transport(i)) cycle
-
-      ! Determine whether the variable is positive-definite based on its lower allowed bound.
-      posconc = 0
-      if (model%state_variables(i)%minimum>=_ZERO_) posconc = 1
-
-      ! Do diffusion step
-      if (associated(cc_obs(i)%data)) then
-!        Observations on this variable are available.
-         call diff_center(nlev,dt,cnpar,posconc,curh,Neumann,Neumann,&
-            sfl(i),bfl(i),curnuh,Lsour,Qsour,cc_obs(i)%relax_tau,cc_obs(i)%data,cc(:,i))
-      else
-!        Observations on this variable are not available.
-         call diff_center(nlev,dt,cnpar,posconc,curh,Neumann,Neumann,&
-            sfl(i),bfl(i),curnuh,Lsour,Qsour,DefaultRelaxTau,cc(:,i),cc(:,i))
+      if (cc_transport(i)) then
+         ! Do diffusion step
+         if (associated(cc_obs(i)%data)) then
+   !        Observations on this variable are available.
+            call diff_center(nlev,dt,cnpar,posconc(i),curh,Neumann,Neumann,&
+               sfl(i),bfl(i),curnuh,Lsour,Qsour,cc_obs(i)%relax_tau,cc_obs(i)%data,cc(:,i))
+         else
+   !        Observations on this variable are not available.
+            call diff_center(nlev,dt,cnpar,posconc(i),curh,Neumann,Neumann,&
+               sfl(i),bfl(i),curnuh,Lsour,Qsour,DefaultRelaxTau,cc(:,i),cc(:,i))
+         end if
       end if
    end do
    call system_clock(clock_end)
@@ -723,30 +734,6 @@
 
       ! Repair state
       call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after time integration')
-
-      ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
-      do i=1,size(model%horizontal_diagnostic_variables)
-         if (model%horizontal_diagnostic_variables(i)%output==output_instantaneous) then
-            ! Simply use last value
-            cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
-         else
-            ! Integration or averaging in time needed: for now do simple Forward Euler integration.
-            ! If averaging is required, this will be done upon output by dividing by the elapsed period.
-            cc_diag_hz(i) = cc_diag_hz(i) + fabm_get_horizontal_diagnostic_data(model,i)*dt_eff
-         end if
-      end do
-
-      ! Time-integrate diagnostic variables defined on the full domain, where needed.
-      do i=1,size(model%diagnostic_variables)
-         if (model%diagnostic_variables(i)%output==output_instantaneous) then
-            ! Simply use last value
-            cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
-         else
-            ! Integration or averaging in time needed: for now do simple Forward Euler integration.
-            ! If averaging is required, this will be done upon output by dividing by the elapsed period.
-            cc_diag(:,i) = cc_diag(:,i) + fabm_get_bulk_diagnostic_data(model,i)*dt_eff
-         end if
-      end do
    end do
 
    call system_clock(clock_end)
@@ -939,9 +926,8 @@
    ! then first make sure that the intermediate state variable values are valid.
    if (.not. first) call do_repair_state(nlev,'gotm_fabm::right_hand_side_rhs')
 
-   ! Initialization is needed because the different biogeochemical models increment or decrement
-   ! the temporal derivatives, rather than setting them directly. This is needed for the simultaneous
-   ! running of different coupled BGC models.
+   ! Initialization is needed because biogeochemical models increment or decrement
+   ! the temporal derivatives, rather than setting them directly.
    rhs = _ZERO_
 
    ! Calculate temporal derivatives due to benthic processes.
@@ -958,6 +944,8 @@
       call fabm_do(model,i,rhs(i,1:n))
    end do
 #endif
+
+   if (first) call save_diagnostics()
 
    end subroutine right_hand_side_rhs
 !EOC
@@ -1008,7 +996,7 @@
    ! then first make sure that the intermediate state variable values are valid.
    if (.not. first) call do_repair_state(nlev,'gotm_fabm::right_hand_side_ppdd')
 
-   ! Initialiaze production and destruction matrices to zero because FABM
+   ! Initialize production and destruction matrices to zero because FABM
    ! biogeochemical models increment these, rather than set these.
    pp = _ZERO_
    dd = _ZERO_
@@ -1029,8 +1017,38 @@
    end do
 #endif
 
+   if (first) call save_diagnostics()
+
    end subroutine right_hand_side_ppdd
 !EOC
+
+   subroutine save_diagnostics()
+      integer :: i
+
+      ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
+      do i=1,size(model%horizontal_diagnostic_variables)
+         if (model%horizontal_diagnostic_variables(i)%output==output_instantaneous) then
+            ! Simply use last value
+            cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
+         else
+            ! Integration or averaging in time needed: for now do simple Forward Euler integration.
+            ! If averaging is required, this will be done upon output by dividing by the elapsed period.
+            cc_diag_hz(i) = cc_diag_hz(i) + fabm_get_horizontal_diagnostic_data(model,i)*dt_eff
+         end if
+      end do
+
+      ! Time-integrate diagnostic variables defined on the full domain, where needed.
+      do i=1,size(model%diagnostic_variables)
+         if (model%diagnostic_variables(i)%output==output_instantaneous) then
+            ! Simply use last value
+            cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
+         else
+            ! Integration or averaging in time needed: for now do simple Forward Euler integration.
+            ! If averaging is required, this will be done upon output by dividing by the elapsed period.
+            cc_diag(:,i) = cc_diag(:,i) + fabm_get_bulk_diagnostic_data(model,i)*dt_eff
+         end if
+      end do
+   end subroutine
 
 !-----------------------------------------------------------------------
 !BOP
@@ -1069,13 +1087,47 @@
    if (allocated(cc_ben_obs)) deallocate(cc_ben_obs)
    if (allocated(cc_diag))    deallocate(cc_diag)
    if (allocated(cc_diag_hz)) deallocate(cc_diag_hz)
-   if (allocated(ws))         deallocate(ws)
-   if (allocated(sfl))        deallocate(sfl)
-   if (allocated(bfl))        deallocate(bfl)
-   if (allocated(par))        deallocate(par)
-   if (allocated(k_par))      deallocate(k_par)
-   if (allocated(swr))        deallocate(swr)
-   if (allocated(pres))       deallocate(pres)
+   if (allocated(horizontal_expression_data)) deallocate(horizontal_expression_data)
+
+   ! Deallocate work arrays used from do_gotm_fabm.
+   if (allocated(ws))              deallocate(ws)
+   if (allocated(sfl))             deallocate(sfl)
+   if (allocated(bfl))             deallocate(bfl)
+   if (allocated(Qsour))           deallocate(Qsour)
+   if (allocated(Lsour))           deallocate(Lsour)
+   if (allocated(DefaultRelaxTau)) deallocate(DefaultRelaxTau)
+   if (allocated(curh))            deallocate(curh)
+   if (allocated(curnuh))          deallocate(curnuh)
+   if (allocated(cc_transport))    deallocate(cc_transport)
+   if (allocated(posconc))         deallocate(posconc)
+
+   ! Deallocate arrays with internally computed environmental variables.
+   if (allocated(par))   deallocate(par)
+   if (allocated(k_par)) deallocate(k_par)
+   if (allocated(swr))   deallocate(swr)
+   if (allocated(pres))  deallocate(pres)
+   if (allocated(z))     deallocate(z)
+
+   ! Reset all module-level pointers
+   nullify(nuh)
+   nullify(h)
+   nullify(bioshade)
+   nullify(w)
+   nullify(rho)
+   nullify(SRelaxTau)
+   nullify(sProf)
+   nullify(salt)
+   nullify(precip)
+   nullify(evap)
+   nullify(bio_drag_scale)
+   nullify(bio_albedo)
+   nullify(I_0)
+   nullify(A)
+   nullify(g1)
+   nullify(g2)
+   nullify(yearday)
+   nullify(secondsofday)
+
    LEVEL1 'done.'
 
    end subroutine clean_gotm_fabm
