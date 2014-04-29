@@ -1246,6 +1246,9 @@
       integer :: i
       REALTYPE :: rhs(1:nlev,1:size(model%state_variables)),bottom_flux(size(model%bottom_state_variables)),surface_flux(size(model%surface_state_variables))
 
+      call fabm_check_ready(model)
+      fabm_ready = .true.
+
       ! Allow individual biogeochemical models to provide a custom initial state.
 #ifdef _FABM_USE_1D_LOOP_
       call fabm_initialize_state(model,1,nlev)
