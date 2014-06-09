@@ -1,5 +1,3 @@
-#include "cppdefs.h"
-
 #define _NAME_ ode_solver
 #define _LOWI_ 0
 
@@ -109,6 +107,7 @@
 
    interface
       subroutine right_hand_side_ppdd(first,_SIZE_,cc,pp,dd)
+         import
          logical,  intent(in)                     :: first
          integer,  intent(in)                     :: _SIZE_
          REALTYPE, intent(in)                     :: cc _DIMCC_
@@ -118,6 +117,7 @@
 
    interface
       subroutine right_hand_side_rhs(first,_SIZE_,cc,rhs)
+         import
          logical,  intent(in)  :: first
          integer,  intent(in)  :: _SIZE_
          REALTYPE, intent(in)  :: cc _DIMCC_
