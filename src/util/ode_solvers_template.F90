@@ -789,7 +789,6 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   logical  :: first
    REALTYPE :: derivative _LOCDIMCC_
    _ODE_DECLARE_ITERATOR_
    REALTYPE :: pi
