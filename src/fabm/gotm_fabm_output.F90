@@ -242,11 +242,11 @@ contains
             if (model%diagnostic_variables(n)%output==output_none) cycle
 
             ! Time-average diagnostic variable if needed.
-            if (model%diagnostic_variables(n)%time_treatment==time_treatment_averaged.and..not.initial) &
+            if (model%diagnostic_variables(n)%output==output_time_step_averaged.and..not.initial) &
                cc_diag(:,n) = cc_diag(:,n)/(nsave*dt)
 
             ! If we want time-step integrated values and have the initial field, multiply by output time step.
-            if (model%diagnostic_variables(n)%time_treatment==time_treatment_step_integrated.and.initial) &
+            if (model%diagnostic_variables(n)%output==output_time_step_integrated.and.initial) &
                cc_diag(:,n) = cc_diag(:,n)*(nsave*dt)
 
             ! Store diagnostic variable values.
@@ -254,8 +254,8 @@ contains
             call check_err(iret)
 
             ! Reset diagnostic variables to zero if they will be time-integrated (or time-averaged).
-            if (model%diagnostic_variables(n)%time_treatment==time_treatment_averaged .or. &
-                model%diagnostic_variables(n)%time_treatment==time_treatment_step_integrated) &
+            if (model%diagnostic_variables(n)%output==output_time_step_averaged .or. &
+                model%diagnostic_variables(n)%output==output_time_step_integrated) &
                cc_diag(:,n) = _ZERO_
          end do
 
@@ -273,11 +273,18 @@ contains
          ! Depth-independent variables
          ! ---------------------------
 
-         ! Store benthic biogeochemical state variables.
+         ! Store bottom-bound biogeochemical state variables.
          do n=1,size(model%bottom_state_variables)
             if (model%bottom_state_variables(n)%output==output_none) cycle
             iret = store_data(ncid,model%bottom_state_variables(n)%externalid,XYT_SHAPE,1, &
                             & scalar=cc(1,size(model%state_variables)+n))
+         end do
+
+         ! Store surface-bound biogeochemical state variables.
+         do n=1,size(model%surface_state_variables)
+            if (model%surface_state_variables(n)%output==output_none) cycle
+            iret = store_data(ncid,model%surface_state_variables(n)%externalid,XYT_SHAPE,1, &
+                            & scalar=cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+n))
          end do
 
          ! Process and store diagnostic variables defined on horizontal slices of the domain.
@@ -285,19 +292,19 @@ contains
             if (model%horizontal_diagnostic_variables(n)%output==output_none) cycle
 
             ! Time-average diagnostic variable if needed.
-            if (model%horizontal_diagnostic_variables(n)%time_treatment==time_treatment_averaged.and..not.initial) &
+            if (model%horizontal_diagnostic_variables(n)%output==output_time_step_averaged.and..not.initial) &
                cc_diag_hz(n) = cc_diag_hz(n)/(nsave*dt)
 
             ! If we want time-step integrated values and have the initial field, multiply by output time step.
-            if (model%horizontal_diagnostic_variables(n)%time_treatment==time_treatment_step_integrated.and.initial) &
+            if (model%horizontal_diagnostic_variables(n)%output==output_time_step_integrated.and.initial) &
                cc_diag_hz(n) = cc_diag_hz(n)*(nsave*dt)
 
             ! Store diagnostic variable values.
             iret = store_data(ncid,model%horizontal_diagnostic_variables(n)%externalid,XYT_SHAPE,nlev,scalar=cc_diag_hz(n))
 
             ! Reset diagnostic variables to zero if they will be time-integrated (or time-averaged).
-            if (model%horizontal_diagnostic_variables(n)%time_treatment==time_treatment_averaged .or. &
-                model%horizontal_diagnostic_variables(n)%time_treatment==time_treatment_step_integrated) &
+            if (model%horizontal_diagnostic_variables(n)%output==output_time_step_averaged .or. &
+                model%horizontal_diagnostic_variables(n)%output==output_time_step_integrated) &
                cc_diag_hz(n) = _ZERO_
          end do
 

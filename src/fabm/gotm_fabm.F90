@@ -216,11 +216,18 @@
                 trim(model%state_variables(i)%long_name)
       end do
 
-      LEVEL2 'FABM benthic state variables:'
+      LEVEL2 'FABM bottom-bound state variables:'
       do i=1,size(model%bottom_state_variables)
          LEVEL3 trim(model%bottom_state_variables(i)%name), '  ', &
                 trim(model%bottom_state_variables(i)%units),'  ',&
                 trim(model%bottom_state_variables(i)%long_name)
+      end do
+
+      LEVEL2 'FABM surface-bound state variables:'
+      do i=1,size(model%surface_state_variables)
+         LEVEL3 trim(model%surface_state_variables(i)%name), '  ', &
+                trim(model%surface_state_variables(i)%units),'  ',&
+                trim(model%surface_state_variables(i)%long_name)
       end do
 
       ! Report diagnostic variable descriptions
@@ -336,7 +343,7 @@
    ! column (the bottom layer should suffice). However, it is important that all values at a given point
    ! in time are integrated simultaneously in multi-step algorithms. This currently can only be arranged
    ! by storing benthic values together with the pelagic, in a fully depth-explicit array.
-   allocate(cc(0:nlev,1:size(model%state_variables)+size(model%bottom_state_variables)),stat=rc)
+   allocate(cc(0:nlev,1:size(model%state_variables)+size(model%bottom_state_variables)+size(model%surface_state_variables)),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (cc)'
    cc = _ZERO_
    do i=1,size(model%state_variables)
@@ -346,6 +353,10 @@
    do i=1,size(model%bottom_state_variables)
       cc(1,size(model%state_variables)+i) = model%bottom_state_variables(i)%initial_value
       call fabm_link_bottom_state_data(model,i,cc(1,size(model%state_variables)+i))
+   end do
+   do i=1,size(model%surface_state_variables)
+      cc(1,size(model%state_variables)+size(model%bottom_state_variables)+i) = model%surface_state_variables(i)%initial_value
+      call fabm_link_surface_state_data(model,i,cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i))
    end do
 
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
@@ -652,9 +663,9 @@
    end do
 #endif
 
-   ! Get updated air-sea fluxes for biological state variables.
-   call fabm_get_surface_exchange(model,nlev,sfl)
-   if (no_surface) sfl = _ZERO_
+   ! Start building surface flux (dilution due to precipitation/concentration due to evaporation only,
+   ! as biogeochemical processes that cause surface fluxes are handled as part of the sink/source terms.
+   sfl = _ZERO_
 
    ! Calculate dilution due to surface freshwater flux (m/s)
    dilution = precip+evap
@@ -730,6 +741,9 @@
       end do
       do i=1,size(model%bottom_state_variables)
          call fabm_link_bottom_state_data(model,i,cc(1,size(model%state_variables)+i))
+      end do
+      do i=1,size(model%surface_state_variables)
+         call fabm_link_surface_state_data(model,i,cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i))
       end do
 
       ! Repair state
@@ -920,6 +934,9 @@
    do i=1,size(model%bottom_state_variables)
       call fabm_link_bottom_state_data(model,i,cc(1,n+i))
    end do
+   do i=1,size(model%surface_state_variables)
+      call fabm_link_surface_state_data(model,i,cc(nlev,n+size(model%bottom_state_variables)+i))
+   end do
    call update_fabm_expressions(nlev)
 
    ! If this is not the first step in the (multi-step) integration scheme,
@@ -930,11 +947,19 @@
    ! the temporal derivatives, rather than setting them directly.
    rhs = _ZERO_
 
-   ! Calculate temporal derivatives due to benthic processes.
+   ! Calculate temporal derivatives due to bottom processes (e.g. sedimentation, benthic biota).
    call fabm_do_benthos(model,1,rhs(1,1:n),rhs(1,n+1:))
 
    ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
    rhs(1,1:n) = rhs(1,1:n)/curh(1)
+
+   if (.not.no_surface) then
+      ! Calculate temporal derivatives due to surface processes (e.g. gas exchange, ice algae).
+      call fabm_do_surface(model,nlev,rhs(nlev,1:n),rhs(nlev,n+size(model%bottom_state_variables)+1:))
+
+      ! Distribute surface flux into pelagic over surface box (i.e., divide by layer height).
+      rhs(1,1:n) = rhs(nlev,1:n)/curh(nlev)
+   end if
 
    ! Add pelagic sink and source terms for all depth levels.
 #ifdef _FABM_USE_1D_LOOP_
@@ -989,6 +1014,9 @@
    end do
    do i=1,size(model%bottom_state_variables)
       call fabm_link_bottom_state_data(model,i,cc(1,n+i))
+   end do
+   do i=1,size(model%surface_state_variables)
+      call fabm_link_surface_state_data(model,i,cc(nlev,n+size(model%bottom_state_variables)+i))
    end do
    call update_fabm_expressions(nlev)
 
