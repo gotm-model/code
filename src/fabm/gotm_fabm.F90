@@ -948,7 +948,7 @@
    rhs = _ZERO_
 
    ! Calculate temporal derivatives due to bottom processes (e.g. sedimentation, benthic biota).
-   call fabm_do_benthos(model,1,rhs(1,1:n),rhs(1,n+1:))
+   call fabm_do_bottom(model,1,rhs(1,1:n),rhs(1,n+1:n+size(model%bottom_state_variables)))
 
    ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
    rhs(1,1:n) = rhs(1,1:n)/curh(1)
