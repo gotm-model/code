@@ -142,9 +142,9 @@ contains
             cur_obs_variable => first_input_variable
             do while (associated(cur_obs_variable))
                if (allocated(cur_obs_variable%data_1d)) then
-                  iret = new_nc_variable(ncid,trim(cur_obs_variable%name)//'_obs',NF90_REAL,dim4d,cur_obs_variable%ncid)
+                  iret = new_nc_variable(ncid,trim(get_safe_name(cur_obs_variable%name))//'_obs',NF90_REAL,dim4d,cur_obs_variable%ncid)
                else
-                  iret = new_nc_variable(ncid,trim(cur_obs_variable%name)//'_obs',NF90_REAL,dim3d,cur_obs_variable%ncid)
+                  iret = new_nc_variable(ncid,trim(get_safe_name(cur_obs_variable%name))//'_obs',NF90_REAL,dim3d,cur_obs_variable%ncid)
                end if
                iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_file',trim(cur_obs_variable%path))
                call check_err(iret)
