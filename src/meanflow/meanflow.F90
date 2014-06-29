@@ -107,8 +107,8 @@
    REALTYPE, public, target            :: taub
 
 !  other stuff
-   REALTYPE, public                    :: depth0
-   REALTYPE, public                    :: depth
+   REALTYPE, public, target            :: depth0
+   REALTYPE, public, target            :: depth
    REALTYPE, public                    :: runtimeu, runtimev
 
 !  variables needed for the lake model
@@ -433,11 +433,11 @@
    if (allocated(avh)) deallocate(avh)
    if (allocated(bioshade)) deallocate(bioshade)
 # ifdef EXTRA_OUTPUT
-   if (allocated(mean1)) dallocate(mean1)
-   if (allocated(mean2)) dallocate(mean2)
-   if (allocated(mean3)) dallocate(mean3)
-   if (allocated(mean4)) dallocate(mean4)
-   if (allocated(mean5)) dallocate(mean5)
+   if (allocated(mean1)) deallocate(mean1)
+   if (allocated(mean2)) deallocate(mean2)
+   if (allocated(mean3)) deallocate(mean3)
+   if (allocated(mean4)) deallocate(mean4)
+   if (allocated(mean5)) deallocate(mean5)
 # endif
    LEVEL2 'done.'
 

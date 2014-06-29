@@ -1,9 +1,27 @@
-#include "cppdefs.h"
-
 #define _NAME_ ode_solver
 #define _LOWI_ 0
+
+#ifdef _ODE_ZEROD_
+
+! Non-spatial system. ODE solvers operate on vector with state only.
+#define _SIZE_ numc
+#define _INCC_(m,i) (m)
+#define _INPP_(m,n,i) (m,n)
+#define _ODE_DECLARE_ITERATOR_
+#define _ODE_LOOP_BEGIN_
+#define _ODE_LOOP_END_
+
+#else
+
+! One spatial dimension. ODE solvers operate on matrix with state and space dimensions.
+#define _SIZE_ numc,ni
 #define _INCC_(m,i) (i,m)
 #define _INPP_(m,n,i) (i,m,n)
+#define _ODE_DECLARE_ITERATOR_ integer :: ci
+#define _ODE_LOOP_BEGIN_ do ci=1,ni
+#define _ODE_LOOP_END_ end do
+
+#endif
 
 ! Dimension specifications for procedure arguments
 #define _DIMCC_ _INCC_(1:numc,_LOWI_:ni)
@@ -19,7 +37,7 @@
 ! !ROUTINE: General ODE solver \label{sec:ode-solver}
 !
 ! !INTERFACE:
-   subroutine _NAME_(solver,numc,ni,dt,cc,right_hand_side_rhs,right_hand_side_ppdd)
+   subroutine _NAME_(solver,_SIZE_,dt,cc,right_hand_side_rhs,right_hand_side_ppdd)
 !
 ! !DESCRIPTION:
 ! Here, 10 different numerical solvers for the right hand sides of the
@@ -81,27 +99,29 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                 :: solver,ni,numc
-   REALTYPE, intent(in)                :: dt
+   integer,  intent(in)    :: solver,_SIZE_
+   REALTYPE, intent(in)    :: dt
 !
 ! !INPUT/OUTPUT PARAMETER:
-   REALTYPE, intent(inout)             :: cc _DIMCC_
+   REALTYPE, intent(inout) :: cc _DIMCC_
 
    interface
-      subroutine right_hand_side_ppdd(first,numc,ni,cc,pp,dd)
-         logical, intent(in)                      :: first
-         integer, intent(in)                      :: numc,ni
+      subroutine right_hand_side_ppdd(first,_SIZE_,cc,pp,dd)
+         import
+         logical,  intent(in)                     :: first
+         integer,  intent(in)                     :: _SIZE_
          REALTYPE, intent(in)                     :: cc _DIMCC_
          REALTYPE, intent(out), dimension _DIMPP_ :: pp,dd
       end subroutine
    end interface
 
    interface
-      subroutine right_hand_side_rhs(first,numc,ni,cc,rhs)
-         logical, intent(in)                  :: first
-         integer, intent(in)                  :: numc,ni
-         REALTYPE, intent(in)                 :: cc _DIMCC_
-         REALTYPE, intent(out)                :: rhs _DIMCC_
+      subroutine right_hand_side_rhs(first,_SIZE_,cc,rhs)
+         import
+         logical,  intent(in)  :: first
+         integer,  intent(in)  :: _SIZE_
+         REALTYPE, intent(in)  :: cc _DIMCC_
+         REALTYPE, intent(out) :: rhs _DIMCC_
       end subroutine
    end interface
 !
@@ -136,7 +156,7 @@
       case (11)
          call emp_2()
       case default
-         stop "gotm_fabm: no valid solver method specified in gotm_fabm.nml !"
+         stop "ode_solvers_template: no valid solver method specified in gotm_fabm.nml !"
    end select
 
 !EOC
@@ -170,7 +190,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
+   call right_hand_side_rhs(.true.,_SIZE_,cc,rhs)
    cc = cc + dt*rhs
 
    end subroutine euler_forward
@@ -213,9 +233,9 @@
 !-----------------------------------------------------------------------
 !BOC
    ! Midpoint method
-   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
+   call right_hand_side_rhs(.true.,_SIZE_,cc,rhs)
    cc1 = cc + dt*rhs/2
-   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
+   call right_hand_side_rhs(.false.,_SIZE_,cc1,rhs)
    cc = cc + dt*rhs
 
    end subroutine runge_kutta_2
@@ -269,16 +289,16 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
+   call right_hand_side_rhs(.true.,_SIZE_,cc,rhs)
    rhs1 = rhs/2
    cc1 = cc + dt/2*rhs
-   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
+   call right_hand_side_rhs(.false.,_SIZE_,cc1,rhs)
    rhs1 = rhs1 + rhs
    cc1 = cc + dt/2*rhs
-   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
+   call right_hand_side_rhs(.false.,_SIZE_,cc1,rhs)
    rhs1 = rhs1 + rhs
    cc1 = cc + dt*rhs
-   call right_hand_side_rhs(.false.,numc,ni,cc1,rhs)
+   call right_hand_side_rhs(.false.,_SIZE_,cc1,rhs)
    rhs1 = rhs1 + rhs/2
    cc = cc + dt*rhs1/3
 
@@ -312,13 +332,14 @@
 ! !LOCAL VARIABLES:
    REALTYPE :: ppsum,ddsum
    REALTYPE, dimension _LOCDIMPP_ :: pp,dd
-   integer  :: i,j,ci
+   integer  :: i,j
+   _ODE_DECLARE_ITERATOR_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(.true.,_SIZE_,cc,pp,dd)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          ppsum=_ZERO_
          ddsum=_ZERO_
@@ -328,7 +349,7 @@
          end do
          cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum)/(_ONE_+dt*ddsum/cc _INCC_(i,ci))
       end do
-   end do
+   _ODE_LOOP_END_
 
    end subroutine patankar
 !EOC
@@ -374,13 +395,14 @@
 ! !LOCAL VARIABLES:
    REALTYPE, dimension _LOCDIMPP_ :: pp,dd
    REALTYPE, dimension _LOCDIMCC_ :: cc1,ppsum,ddsum
-   integer  :: i,j,ci
+   integer  :: i,j
+   _ODE_DECLARE_ITERATOR_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(.true.,_SIZE_,cc,pp,dd)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          ppsum _INCC_(i,ci)=_ZERO_
          ddsum _INCC_(i,ci)=_ZERO_
@@ -390,11 +412,11 @@
          end do
          cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc _INCC_(i,ci))
       end do
-   end do
+   _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,_SIZE_,cc1,pp,dd)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          do j=1,numc
             ppsum _INCC_(i,ci)=ppsum _INCC_(i,ci)+pp _INPP_(i,j,ci)
@@ -402,7 +424,7 @@
          end do
          cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt/2*ppsum _INCC_(i,ci))/(_ONE_+dt/2*ddsum _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
-   end do
+   _ODE_LOOP_END_
 
    end subroutine patankar_runge_kutta_2
 !EOC
@@ -425,13 +447,14 @@
 ! !LOCAL VARIABLES:
    REALTYPE, dimension _LOCDIMCC_ :: cc1,ppsum,ddsum,ppsum1,ddsum1,ppsum2,ddsum2,ppsum3,ddsum3
    REALTYPE, dimension _LOCDIMPP_ :: pp,dd
-   integer  :: i,j,ci
+   integer  :: i,j
+   _ODE_DECLARE_ITERATOR_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(.true.,_SIZE_,cc,pp,dd)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          ppsum _INCC_(i,ci)=_ZERO_
          ddsum _INCC_(i,ci)=_ZERO_
@@ -441,11 +464,11 @@
          end do
          cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc _INCC_(i,ci))
       end do
-   end do
+   _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,_SIZE_,cc1,pp,dd)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          ppsum1 _INCC_(i,ci)=_ZERO_
          ddsum1 _INCC_(i,ci)=_ZERO_
@@ -455,11 +478,11 @@
          end do
          cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum1 _INCC_(i,ci))/(_ONE_+dt*ddsum1 _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
-   end do
+   _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,_SIZE_,cc1,pp,dd)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          ppsum2 _INCC_(i,ci)=_ZERO_
          ddsum2 _INCC_(i,ci)=_ZERO_
@@ -469,11 +492,11 @@
          end do
          cc1 _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum2 _INCC_(i,ci))/(_ONE_+dt*ddsum2 _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
-   end do
+   _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp,dd)
+   call right_hand_side_ppdd(.false.,_SIZE_,cc1,pp,dd)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          ppsum3 _INCC_(i,ci)=_ZERO_
          ddsum3 _INCC_(i,ci)=_ZERO_
@@ -485,7 +508,7 @@
          ddsum _INCC_(i,ci)=(ddsum _INCC_(i,ci)/2+ddsum1 _INCC_(i,ci)+ddsum2 _INCC_(i,ci)+ddsum3 _INCC_(i,ci)/2)/3
          cc _INCC_(i,ci)=(cc _INCC_(i,ci)+dt*ppsum _INCC_(i,ci))/(_ONE_+dt*ddsum _INCC_(i,ci)/cc1 _INCC_(i,ci))
       end do
-   end do
+   _ODE_LOOP_END_
 
    end subroutine patankar_runge_kutta_4
 !EOC
@@ -520,13 +543,14 @@
 ! !LOCAL VARIABLES:
    REALTYPE,dimension _LOCDIMPP_ :: pp,dd
    REALTYPE :: a(1:numc,1:numc),r(1:numc)
-   integer  :: i,j,ci
+   integer  :: i,j
+   _ODE_DECLARE_ITERATOR_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(.true.,_SIZE_,cc,pp,dd)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
@@ -538,7 +562,7 @@
          r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
       call matrix(numc,a,r,cc _INCC_(:,ci))
-   end do
+   _ODE_LOOP_END_
 
    end subroutine modified_patankar
 !EOC
@@ -598,13 +622,14 @@
    REALTYPE,dimension _LOCDIMPP_ :: pp,dd,pp1,dd1
    REALTYPE :: a(1:numc,1:numc),r(1:numc)
    REALTYPE :: cc1 _LOCDIMCC_
-   integer  :: i,j,ci
+   integer  :: i,j
+   _ODE_DECLARE_ITERATOR_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_ppdd(.true.,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(.true.,_SIZE_,cc,pp,dd)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
@@ -616,14 +641,14 @@
          r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
       call matrix(numc,a,r,cc1 _INCC_(:,ci))
-   end do
+   _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(.false.,numc,ni,cc1,pp1,dd1)
+   call right_hand_side_ppdd(.false.,_SIZE_,cc1,pp1,dd1)
 
    pp=(pp+pp1)/2
    dd=(dd+dd1)/2
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
@@ -635,7 +660,7 @@
          r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
       call matrix(numc,a,r,cc _INCC_(:,ci))
-   end do
+   _ODE_LOOP_END_
 
    end subroutine modified_patankar_2
 !EOC
@@ -657,84 +682,82 @@
 !
 ! !LOCAL VARIABLES:
    logical  :: first
-   REALTYPE :: pp(1:numc,1:numc,0:ni),dd(1:numc,1:numc,0:ni)
-   REALTYPE :: pp1(1:numc,1:numc,0:ni),dd1(1:numc,1:numc,0:ni)
-   REALTYPE :: pp2(1:numc,1:numc,0:ni),dd2(1:numc,1:numc,0:ni)
-   REALTYPE :: pp3(1:numc,1:numc,0:ni),dd3(1:numc,1:numc,0:ni)
+   REALTYPE,dimension _LOCDIMPP_ :: pp,dd,pp1,dd1,pp2,dd2,pp3,dd3
    REALTYPE :: a(1:numc,1:numc),r(1:numc)
-   REALTYPE :: cc1(1:numc,0:ni)
-   integer  :: i,j,ci
+   REALTYPE :: cc1 _LOCDIMCC_
+   integer  :: i,j
+   _ODE_DECLARE_ITERATOR_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call right_hand_side_ppdd(first,numc,ni,cc,pp,dd)
+   call right_hand_side_ppdd(first,_SIZE_,cc,pp,dd)
    first=.false.
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc(j,ci)
+            a(i,i)=a(i,i)+dd _INPP_(i,j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc _INCC_(j,ci)
          end do
-         a(i,i)=dt*a(i,i)/cc(i,ci)
+         a(i,i)=dt*a(i,i)/cc _INCC_(i,ci)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc(i,ci)+dt*pp(i,i,ci)
+         r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
-      call matrix(numc,a,r,cc1(:,ci))
-   end do
+      call matrix(numc,a,r,cc1 _INCC_(:,ci))
+   _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(first,numc,ni,cc1,pp1,dd1)
+   call right_hand_side_ppdd(first,_SIZE_,cc1,pp1,dd1)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd1(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp1(i,j,ci)/cc1(j,ci)
+            a(i,i)=a(i,i)+dd1 _INPP_(i,j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp1 _INPP_(i,j,ci)/cc1 _INCC_(j,ci)
          end do
-         a(i,i)=dt*a(i,i)/cc1(i,ci)
+         a(i,i)=dt*a(i,i)/cc1 _INCC_(i,ci)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc(i,ci)+dt*pp1(i,i,ci)
+         r(i)=cc _INCC_(i,ci)+dt*pp1 _INPP_(i,i,ci)
       end do
-      call matrix(numc,a,r,cc1(:,ci))
-   end do
+      call matrix(numc,a,r,cc1 _INCC_(:,ci))
+   _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(first,numc,ni,cc1,pp2,dd2)
+   call right_hand_side_ppdd(first,_SIZE_,cc1,pp2,dd2)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd2(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp2(i,j,ci)/cc1(j,ci)
+            a(i,i)=a(i,i)+dd2 _INPP_(i,j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp2 _INPP_(i,j,ci)/cc1 _INCC_(j,ci)
          end do
-         a(i,i)=dt*a(i,i)/cc1(i,ci)
+         a(i,i)=dt*a(i,i)/cc1 _INCC_(i,ci)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc(i,ci)+dt*pp2(i,i,ci)
+         r(i)=cc _INCC_(i,ci)+dt*pp2 _INPP_(i,i,ci)
       end do
-      call matrix(numc,a,r,cc1(:,ci))
-   end do
+      call matrix(numc,a,r,cc1 _INCC_(:,ci))
+   _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(first,numc,ni,cc1,pp3,dd3)
+   call right_hand_side_ppdd(first,_SIZE_,cc1,pp3,dd3)
 
    pp=(pp/2+pp1+pp2+pp3/2)/3
    dd=(dd/2+dd1+dd2+dd3/2)/3
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       do i=1,numc
          a(i,i)=_ZERO_
          do j=1,numc
-            a(i,i)=a(i,i)+dd(i,j,ci)
-            if (i.ne.j) a(i,j)=-dt*pp(i,j,ci)/cc1(j,ci)
+            a(i,i)=a(i,i)+dd _INPP_(i,j,ci)
+            if (i.ne.j) a(i,j)=-dt*pp _INPP_(i,j,ci)/cc1 _INCC_(j,ci)
          end do
-         a(i,i)=dt*a(i,i)/cc1(i,ci)
+         a(i,i)=dt*a(i,i)/cc1 _INCC_(i,ci)
          a(i,i)=_ONE_+a(i,i)
-         r(i)=cc(i,ci)+dt*pp(i,i,ci)
+         r(i)=cc _INCC_(i,ci)+dt*pp _INPP_(i,i,ci)
       end do
-      call matrix(numc,a,r,cc(:,ci))
-   end do
+      call matrix(numc,a,r,cc _INCC_(:,ci))
+   _ODE_LOOP_END_
 
    end subroutine modified_patankar_4
 !EOC
@@ -766,19 +789,18 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   logical  :: first
    REALTYPE :: derivative _LOCDIMCC_
-   integer  :: ci
+   _ODE_DECLARE_ITERATOR_
    REALTYPE :: pi
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_rhs(.true.,numc,ni,cc,derivative)
+   call right_hand_side_rhs(.true.,_SIZE_,cc,derivative)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       call findp_bisection(numc, cc _INCC_(:,ci), derivative _INCC_(:,ci), dt, 1.d-9, pi)
       cc _INCC_(:,ci) = cc _INCC_(:,ci) + dt*derivative _INCC_(:,ci)*pi
-   end do
+   _ODE_LOOP_END_
 
    end subroutine emp_1
 !EOC
@@ -827,21 +849,22 @@
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
-   integer  :: i,ci
+   integer  :: i
+   _ODE_DECLARE_ITERATOR_
    REALTYPE :: pi, rhs _LOCDIMCC_, cc_med _LOCDIMCC_, rhs_med _LOCDIMCC_
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_rhs(.true.,numc,ni,cc,rhs)
+   call right_hand_side_rhs(.true.,_SIZE_,cc,rhs)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       call findp_bisection(numc, cc _INCC_(:,ci), rhs _INCC_(:,ci), dt, 1.d-9, pi)
       cc_med _INCC_(:,ci) = cc _INCC_(:,ci) + dt*rhs _INCC_(:,ci)*pi
-   end do
+   _ODE_LOOP_END_
 
-   call right_hand_side_rhs(.false.,numc,ni,cc_med,rhs_med)
+   call right_hand_side_rhs(.false.,_SIZE_,cc_med,rhs_med)
 
-   do ci=1,ni
+   _ODE_LOOP_BEGIN_
       rhs _INCC_(:,ci) = (rhs _INCC_(:,ci) + rhs_med _INCC_(:,ci))/2
 
       ! Correct for the state variables that will be included in 'p'.
@@ -852,7 +875,7 @@
       call findp_bisection(numc, cc _INCC_(:,ci), rhs _INCC_(:,ci), dt, 1.d-9, pi)
 
       cc _INCC_(:,ci) = cc _INCC_(:,ci) + dt*rhs _INCC_(:,ci)*pi
-   end do ! ci (z-levels)
+   _ODE_LOOP_END_ ! ci (z-levels)
 
    end subroutine emp_2
 !EOC

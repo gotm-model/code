@@ -169,9 +169,8 @@
 !-------------------------------------------------------------------------
 !BOC
    write_results = mod(n,int(nsave,kind=timestepkind)).eq.0
-   call write_time_string(julianday,secondsofday,ts)
+   if (write_results) call write_time_string(julianday,secondsofday,ts)
 
-   return
    end subroutine prepare_output
 !EOC
 
@@ -203,29 +202,24 @@
 !EOP
 !-------------------------------------------------------------------------
 !BOC
-   if (write_results) then
-
-      LEVEL2 'Saving....',ts
-      secs = n*timestep
-      select case (out_fmt)
-         case (ASCII)
-            call do_ascii_out(nlev,ts,ascii_unit)
+   LEVEL2 'Saving....',ts
+   secs = n*timestep
+   select case (out_fmt)
+      case (ASCII)
+         call do_ascii_out(nlev,ts,ascii_unit)
 #ifdef NETCDF_FMT
-         case (NETCDF, GRADS)
-            if (sync_out .ne. 0 .and. mod(n,int(nsave*sync_out,kind=timestepkind)) .eq. 0) then
-               sync = .true.
-            else
-               sync = .false.
-            end if
-            call do_ncdf_out(nlev,secs,sync)
+      case (NETCDF, GRADS)
+         if (sync_out .ne. 0 .and. mod(n,int(nsave*sync_out,kind=timestepkind)) .eq. 0) then
+            sync = .true.
+         else
+            sync = .false.
+         end if
+         call do_ncdf_out(nlev,secs,sync)
 #endif
-         case default
-           LEVEL1 'Fatal error: A non valid output format has been chosen'
-           stop 'do_output'
-      end select
-   end if
-
-   return
+      case default
+         LEVEL1 'Fatal error: A non valid output format has been chosen'
+         stop 'do_output'
+   end select
    end subroutine do_output
 !EOC
 

@@ -204,9 +204,6 @@
 ! !DEFINED PARAMETERS:
 
 !  pre-defined parameters
-   integer, parameter        :: READ_SUCCESS=1
-   integer, parameter        :: END_OF_FILE=-1
-   integer, parameter        :: READ_ERROR=-2
    integer, parameter        :: NOTHING=0
    integer, parameter        :: ANALYTICAL=1
    integer, parameter        :: CONSTANT=1

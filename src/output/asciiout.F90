@@ -134,11 +134,11 @@
      write(unit,116) z(i),tprof(i),sprof(i),uprof(i),vprof(i),epsprof(i)
    end do
 
-112 format(A9,6(1x,A10))
-113 format(A9,8(1x,A10))
-114 format(F10.4,2(1x,E10.4E2),2(1x,F10.6),2(1x,E10.4E2))
-115 format(F10.4,7(1x,E10.4E2))
-116 format(F10.4,2(1x,F10.6),3(2x,E10.4E2))
+112 format(A9,6(1x,A12))
+113 format(A9,8(1x,A12))
+114 format(F12.4,2(1x,E12.4E2),2(1x,F12.6),2(1x,E12.4E2))
+115 format(F12.4,7(1x,E12.4E2))
+116 format(F12.4,2(1x,F12.6),3(2x,E12.4E2))
 
 !#ifdef SEDIMENT
 !    call ascii_sediment(nlev,timestr)
