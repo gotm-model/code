@@ -958,7 +958,7 @@
       call fabm_do_surface(model,nlev,rhs(nlev,1:n),rhs(nlev,n+size(model%bottom_state_variables)+1:))
 
       ! Distribute surface flux into pelagic over surface box (i.e., divide by layer height).
-      rhs(1,1:n) = rhs(nlev,1:n)/curh(nlev)
+      rhs(nlev,1:n) = rhs(nlev,1:n)/curh(nlev)
    end if
 
    ! Add pelagic sink and source terms for all depth levels.
