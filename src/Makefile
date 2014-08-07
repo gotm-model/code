@@ -29,18 +29,19 @@ all: ../VERSION $(EXEC) install confdir
 confall: confdir confflags
 
 confdir:
-	@echo "GOTMDIR:    "$(GOTMDIR)
-	@echo "BINDIR:     "$(BINDIR)
-	@echo "MODDIR:     "$(MODDIR)
-	@echo "LIBDIR:     "$(LIBDIR)
-	@echo "FABMDIR:    "$(FABMDIR)
+	@echo "GOTMDIR:     "$(GOTMDIR)
+	@echo "BINDIR:      "$(BINDIR)
+	@echo "MODDIR:      "$(MODDIR)
+	@echo "LIBDIR:      "$(LIBDIR)
+	@echo "FABMDIR:     "$(FABMDIR)
+	@echo "FABM_PREFIX: "$(FABM_PREFIX)
 
 confflags:
-	@echo "DEFINES:    "$(DEFINES)
-	@echo "INCDIRS:    "$(INCDIRS)
-	@echo "LINKDIRS:   "$(LINKDIRS)
-	@echo "EXTRA_LIBS: "$(EXTRA_LIBS)
-	@echo "F90FLAGS:   "$(F90FLAGS)
+	@echo "DEFINES:     "$(DEFINES)
+	@echo "INCDIRS:     "$(INCDIRS)
+	@echo "LINKDIRS:    "$(LINKDIRS)
+	@echo "EXTRA_LIBS:  "$(EXTRA_LIBS)
+	@echo "F90FLAGS:    "$(F90FLAGS)
 
 
 
