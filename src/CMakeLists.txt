@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
 # Create main project.
 project(gotm Fortran)
 
@@ -61,11 +63,12 @@ add_library(fabm OBJECT
             fabm/gotm_fabm_input.F90
             fabm/gotm_fabm_output.F90
            )
+target_include_directories(fabm PRIVATE ${FABM_INCLUDE_DIRS})
+find_package(FABM REQUIRED)
 endif(USE_FABM)
 
 add_library(gotm OBJECT
             gotm/gotm.F90
-            gotm/main.F90
            )
 
 option(USE_ICE "Include ICE support" OFF)
@@ -167,6 +170,7 @@ add_library(turbulence OBJECT
             turbulence/tkealgebraic.F90
             turbulence/tkeeq.F90
             turbulence/turbulence.F90
+            turbulence/variances.F90
            )
 
 add_library(util OBJECT
@@ -185,10 +189,20 @@ add_library(util OBJECT
 
 add_dependencies(airsea util input)
 add_dependencies(gotm meanflow turbulence output)
+add_dependencies(output util)
 add_dependencies(meanflow observations)
 
 # Build GOTM executable.
-#KBadd_executable(gotm_exe main.F90)
+add_executable(gotm_exe
+               gotm/main.F90
+               $<TARGET_OBJECTS:gotm>
+               $<TARGET_OBJECTS:airsea>
+               $<TARGET_OBJECTS:meanflow>
+               $<TARGET_OBJECTS:turbulence>
+               $<TARGET_OBJECTS:observations>
+               $<TARGET_OBJECTS:output>
+               $<TARGET_OBJECTS:input>
+               $<TARGET_OBJECTS:util>)
 
 # Link with GOTM libraries.
 #KBtarget_link_libraries(gotm airsea meanflow turbulence observations output input util)
