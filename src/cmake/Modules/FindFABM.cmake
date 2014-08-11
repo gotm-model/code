@@ -1,18 +1,7 @@
-# FABM default installation prefix.
-if(WIN32)
-  if(DEFINED ENV{LOCALAPPDATA})
-    set(DEFAULT_FABM_PREFIX "$ENV{LOCALAPPDATA}/fabm/gotm")
-  else()
-    set(DEFAULT_FABM_PREFIX "$ENV{APPDATA}/fabm/gotm")
-  endif()
-else()
-  set(DEFAULT_FABM_PREFIX "$ENV{HOME}/local/fabm/gotm")
-endif()
-
 # Try to locate FABM's installation prefix.
 find_path(FABM_INSTALL_PREFIX
   NAMES include/fabm_driver.h
-  PATHS ${DEFAULT_FABM_PREFIX}
+  PATHS "$ENV{LOCALAPPDATA}/fabm/gotm" "$ENV{APPDATA}/fabm/gotm" "$ENV{HOME}/local/fabm/gotm"
 )
 
 # Find FABM library
