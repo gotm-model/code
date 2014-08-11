@@ -63,8 +63,8 @@ add_library(fabm OBJECT
             fabm/gotm_fabm_input.F90
             fabm/gotm_fabm_output.F90
            )
-target_include_directories(fabm PRIVATE ${FABM_INCLUDE_DIRS})
 find_package(FABM REQUIRED)
+set_property(TARGET fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 endif(USE_FABM)
 
 add_library(gotm OBJECT
