@@ -189,7 +189,7 @@ add_library(util OBJECT
 
 add_dependencies(airsea util input)
 add_dependencies(gotm meanflow turbulence output)
-add_dependencies(output util)
+add_dependencies(output util meanflow)
 add_dependencies(meanflow observations)
 
 # Build GOTM executable.
