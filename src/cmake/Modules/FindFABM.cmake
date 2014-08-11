@@ -1,5 +1,5 @@
 # Try to locate FABM's installation prefix.
-find_path(FABM_INSTALL_PREFIX
+find_path(FABM_PREFIX
   NAMES include/fabm_driver.h
   PATHS "$ENV{LOCALAPPDATA}/fabm/gotm" "$ENV{APPDATA}/fabm/gotm" "$ENV{HOME}/local/fabm/gotm"
   DOC "Installation prefix for Framework for Aquatic Biogeochemical Models - fabm.net"
@@ -7,11 +7,11 @@ find_path(FABM_INSTALL_PREFIX
 
 # Find FABM library
 find_library(FABM_LIBRARIES NAMES fabm
-             HINTS ${FABM_INSTALL_PREFIX}/lib
+             HINTS ${FABM_PREFIX}/lib
              DOC "FABM libraries")
 
 # Store configurable path of FABM include directory
-set(FABM_INCLUDE_DIRS "${FABM_INSTALL_PREFIX}/include"
+set(FABM_INCLUDE_DIRS "${FABM_PREFIX}/include"
     CACHE PATH
     "FABM include directories")
 
