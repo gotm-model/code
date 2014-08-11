@@ -2,6 +2,7 @@
 find_path(FABM_INSTALL_PREFIX
   NAMES include/fabm_driver.h
   PATHS "$ENV{LOCALAPPDATA}/fabm/gotm" "$ENV{APPDATA}/fabm/gotm" "$ENV{HOME}/local/fabm/gotm"
+  DOC "Installation prefix for Framework for Aquatic Biogeochemical Models - fabm.net"
 )
 
 # Find FABM library
@@ -18,7 +19,7 @@ mark_as_advanced(FABM_LIBRARIES FABM_INCLUDE_DIRS)
 
 # Process default arguments (QUIET, REQUIRED)
 include(FindPackageHandleStandardArgs) 
-find_package_handle_standard_args (NetCDF DEFAULT_MSG FABM_LIBRARIES FABM_INCLUDE_DIRS) 
+find_package_handle_standard_args (FABM DEFAULT_MSG FABM_LIBRARIES FABM_INCLUDE_DIRS) 
 
 # For backward compatibility:
 set(FABM_LIBRARY FABM_LIBRARIES)

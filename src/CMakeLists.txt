@@ -175,27 +175,38 @@ add_library(util OBJECT
             util/util.F90
            )
 
+add_dependencies(input util)
 add_dependencies(airsea util input)
 add_dependencies(gotm meanflow turbulence output)
 add_dependencies(output util meanflow turbulence)
 add_dependencies(meanflow observations)
 
+option(USE_NetCDF "Include NetCDF support" ON)
+if(USE_NetCDF)
+  find_package(NetCDF REQUIRED)
+  set_property(TARGET output APPEND PROPERTY INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
+  add_definitions(-DNETCDF_FMT -DREAL_4B=real(4))
+endif(USE_NetCDF)
+
 # For now set to off as default - should maybe be changed
 # Use FABM_PREFIX to locate include and lib directories
 option(USE_FABM "Include FABM support" ON)
 if(USE_FABM)
-find_package(FABM REQUIRED)
-add_library(fabm OBJECT
-            fabm/gotm_fabm.F90
-            fabm/gotm_fabm_input.F90
-            fabm/gotm_fabm_output.F90
-           )
-add_dependencies(fabm output)
-set_property(TARGET fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-add_definitions(-D_FABM_)
-add_dependencies(gotm fabm)
-set(ADDED_SRCS "$<TARGET_OBJECTS:fabm>")
+  find_package(FABM REQUIRED)
+  add_library(fabm OBJECT
+              fabm/gotm_fabm.F90
+              fabm/gotm_fabm_input.F90
+              fabm/gotm_fabm_output.F90
+             )
+  add_dependencies(fabm output)
+  if(USE_NetCDF)
+    set_property(TARGET fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
+  endif(USE_NetCDF)
+  set_property(TARGET fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  add_definitions(-D_FABM_)
+  add_dependencies(gotm fabm)
+  set(ADDED_SRCS "$<TARGET_OBJECTS:fabm>")
 endif(USE_FABM)
 
 # Build GOTM executable.
@@ -213,6 +224,13 @@ add_executable(gotm_exe
 if(USE_FABM)
   target_link_libraries(gotm_exe "${FABM_LIBRARIES}")
 endif(USE_FABM)
+if(USE_NetCDF)
+  target_link_libraries(gotm_exe "${NetCDF_LIBRARIES}")
+  if (NetCDF_STATIC_MSVC_BUILD)
+    set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_RELEASE "/NODEFAULTLIB:\"libcmtd\"")
+    target_compile_options(gotm_exe PRIVATE "/libs:static")
+  endif()
+endif(USE_NetCDF)
 
 # Link with GOTM libraries.
 #KBtarget_link_libraries(gotm airsea meanflow turbulence observations output input util)
