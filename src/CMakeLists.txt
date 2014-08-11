@@ -44,8 +44,6 @@ else()
   set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in")
 endif()
 
-set(CMAKE_Fortran_MODULE_DIRECTORY "${CMAKE_BINARY_DIR}/modules")
-
 # Global include directories
 include_directories("${PROJECT_SOURCE_DIR}/../include"
                     "${PROJECT_SOURCE_DIR}/util"
@@ -191,6 +189,8 @@ add_dependencies(meanflow util observations)
 add_dependencies(output util meanflow turbulence observations airsea)
 add_dependencies(gotm input output util meanflow turbulence observations airsea)
 
+set_property(TARGET util turbulence PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
+
 option(USE_NetCDF "Include NetCDF support" ON)
 if(USE_NetCDF)
   find_package(NetCDF REQUIRED)
@@ -213,6 +213,7 @@ if(USE_FABM)
     set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
   endif(USE_NetCDF)
   set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  set_property(TARGET gotm_fabm PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
   add_definitions(-D_FABM_)
 
   add_dependencies(gotm gotm_fabm)
@@ -243,30 +244,6 @@ endif(USE_NetCDF)
 if(USE_FABM)
   target_link_libraries(gotm_exe gotm_fabm ${FABM_LIBRARIES})
 endif(USE_FABM)
-
-# Link with GOTM libraries.
-#KBtarget_link_libraries(gotm airsea meanflow turbulence observations output input util)
-
-# Create a list of institute-specific object libraries.
-#KBforeach(institute ${FABM_INSTITUTES}) 
-  #KBadd_subdirectory(models/${institute})
-  #KBlist(APPEND MODEL_OBJECTS $<TARGET_OBJECTS:${institute}>)
-#KBendforeach(institute) 
-
-# Group config source files in a folder in IDEs that support this.
-#KBsource_group(config REGULAR_EXPRESSION config/)
-
-# Store FABM *.mod in separate directory, so these files can later be installed.
-#KBset_property(TARGET fabm_base fabm PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
-
-# Add directories with model-specific *.mod to include directories of main FABM library.
-#KBforeach(institute ${FABM_INSTITUTES})
-  #KBset_property(TARGET fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/models/${institute}")
-#KBendforeach(institute)
-
-# Place projects in specific solution folders (Visual Studio only).
-#KBset_property(TARGET fabm_base fabm     PROPERTY FOLDER fabm)
-#KBset_property(TARGET ${FABM_INSTITUTES} PROPERTY FOLDER fabm/models)
 
 # Install GOTM library and include files, unless the host overruled this.
 install(TARGETS gotm_exe DESTINATION bin)
