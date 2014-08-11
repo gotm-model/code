@@ -183,7 +183,7 @@ add_library(gotm OBJECT
             gotm/gotm.F90
            )
 
-add_dependencies(turbulence util)
+target_link_libraries(turbulence util)
 add_dependencies(input util)
 add_dependencies(observations util input)
 add_dependencies(airsea util input)
@@ -211,6 +211,7 @@ if(USE_FABM)
               fabm/gotm_fabm_output.F90
              )
   add_dependencies(gotm_fabm output)
+  target_link_libraries(gotm_fabm util)
   if(USE_NetCDF)
     set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
   endif(USE_NetCDF)
