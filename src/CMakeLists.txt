@@ -34,7 +34,14 @@ if(WIN32)
     set(DEFAULT_PREFIX "$ENV{APPDATA}/gotm")
   endif()
 else()
-  set(DEFAULT_PREFIX "$ENV{HOME}/local/gotm")
+  set(DEFAULT_PREFIX "$ENV{HOME}/local")
+endif()
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  # Still on CMake default - override with our own default.
+  set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in" FORCE)
+else()
+  # Just set the doc string for the variable.
+  set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in")
 endif()
 
 # Global include directories
@@ -261,26 +268,6 @@ endif(USE_FABM)
 # Place projects in specific solution folders (Visual Studio only).
 #KBset_property(TARGET fabm_base fabm     PROPERTY FOLDER fabm)
 #KBset_property(TARGET ${FABM_INSTITUTES} PROPERTY FOLDER fabm/models)
-
-# Re-initialize installation prefix if needed.
-mark_as_advanced(GOTM_DEFAULT_PREFIX)
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  # Installation prefix is still set to cmake default - overwrite it.
-  set(GOTM_INITIALIZE_PREFIX ON)
-else()
-  # Check whether cached actual and default prefixes match.
-  # If so, we'll overwrite prefix with our current preferred (host-specific) default.
-  set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in")
-  set(GOTM_DEFAULT_PREFIX  ${DEFAULT_PREFIX} CACHE PATH "Default directory to install GOTM in")
-  if (CMAKE_INSTALL_PREFIX STREQUAL GOTM_DEFAULT_PREFIX)
-    set(GOTM_INITIALIZE_PREFIX ON)
-  endif()
-endif()
-if (GOTM_INITIALIZE_PREFIX)
-  set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in" FORCE)
-  set(GOTM_DEFAULT_PREFIX  ${DEFAULT_PREFIX} CACHE PATH "Default directory to install GOTM in" FORCE)
-endif()
-message(STATUS "Installation prefix: ${CMAKE_INSTALL_PREFIX}")
 
 # Install GOTM library and include files, unless the host overruled this.
 install(TARGETS gotm
