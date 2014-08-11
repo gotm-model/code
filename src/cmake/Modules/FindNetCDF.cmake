@@ -43,17 +43,17 @@ endif()
 else()
 
 # Use GOTM environment variables: NetCDFLIBNAME, NetCDFLIBDIR, NetCDFINC
-if(DEFINED ENV{NetCDFLIBNAME})
-  set(flibs $ENV{NetCDFLIBNAME})
+if(DEFINED ENV{NETCDFLIBNAME})
+  set(flibs $ENV{NETCDFLIBNAME})
 else()
   set(flibs "-lnetcdf")
 endif()
-if(DEFINED ENV{NetCDFLIBDIR})
-  set(flibs "${flibs} -L$ENV{NetCDFLIBDIR}")
+if(DEFINED ENV{NETCDFLIBDIR})
+  set(flibs "${flibs} -L$ENV{NETCDFLIBDIR}")
 endif()
 set(NetCDF_LIBRARIES ${flibs} CACHE STRING "NetCDF linking flags")
 find_path(NetCDF_INCLUDE_DIRS netcdf.mod
-          HINTS ENV NetCDFINC
+          HINTS ENV NETCDFINC
           DOC "NetCDF include directory")
 
 endif()

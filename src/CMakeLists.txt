@@ -185,7 +185,7 @@ option(USE_NetCDF "Include NetCDF support" ON)
 if(USE_NetCDF)
   find_package(NetCDF REQUIRED)
   set_property(TARGET output APPEND PROPERTY INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
-  add_definitions(-DNETCDF_FMT -DREAL_4B=real(4))
+  add_definitions(-DNETCDF_FMT -DREAL_4B=real\(4\))
 endif(USE_NetCDF)
 
 # For now set to off as default - should maybe be changed
