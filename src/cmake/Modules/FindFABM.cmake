@@ -6,7 +6,7 @@ find_path(FABM_INSTALL_PREFIX
 
 # Find FABM library
 find_library(FABM_LIBRARIES NAMES fabm
-             HINTS ${DEFAULT_FABM_PREFIX}/lib
+             HINTS ${FABM_INSTALL_PREFIX}/lib
              DOC "FABM libraries")
 
 # Store configurable path of FABM include directory

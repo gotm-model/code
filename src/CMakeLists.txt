@@ -177,7 +177,7 @@ add_library(util OBJECT
 
 add_dependencies(airsea util input)
 add_dependencies(gotm meanflow turbulence output)
-add_dependencies(output util meanflow)
+add_dependencies(output util meanflow turbulence)
 add_dependencies(meanflow observations)
 
 # For now set to off as default - should maybe be changed
