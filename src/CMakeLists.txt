@@ -34,7 +34,7 @@ if(WIN32)
     set(DEFAULT_PREFIX "$ENV{APPDATA}/gotm")
   endif()
 else()
-  set(DEFAULT_PREFIX "$ENV{HOME}/local")
+  set(DEFAULT_PREFIX "$ENV{HOME}/local/gotm")
 endif()
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   # Still on CMake default - override with our own default.
