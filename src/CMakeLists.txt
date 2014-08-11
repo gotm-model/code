@@ -44,10 +44,12 @@ else()
   set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in")
 endif()
 
+set(CMAKE_Fortran_MODULE_DIRECTORY "${CMAKE_BINARY_DIR}/modules")
+
 # Global include directories
 include_directories("${PROJECT_SOURCE_DIR}/../include"
                     "${PROJECT_SOURCE_DIR}/util"
-#KB                    "${CMAKE_BINARY_DIR}/modules"
+                    "${CMAKE_BINARY_DIR}/modules"
                    )
 # Libraries added in alphabetic order - dependencies are dealt with below 
 add_library(airsea OBJECT
@@ -63,8 +65,8 @@ add_library(airsea OBJECT
 
 option(USE_ICE "Include ICE support" OFF)
 if(USE_ICE)
-add_library(ice OBJECT
-           )
+  add_library(ice OBJECT
+             )
 endif(USE_ICE)
 
 add_library(input OBJECT
@@ -101,7 +103,7 @@ add_library(output OBJECT
             output/output.F90
            )
 
-add_library(turbulence OBJECT
+add_library(turbulence
             turbulence/algebraiclength.F90
             turbulence/alpha_mnb.F90
             turbulence/cmue_a.F90
@@ -163,7 +165,7 @@ add_library(turbulence OBJECT
             turbulence/variances.F90
            )
 
-add_library(util OBJECT
+add_library(util
             util/adv_center.F90
             util/convert_fluxes.F90
             util/diff_center.F90
@@ -201,7 +203,7 @@ endif(USE_NetCDF)
 option(USE_FABM "Include FABM support" ON)
 if(USE_FABM)
   find_package(FABM REQUIRED)
-  add_library(gotm_fabm OBJECT
+  add_library(gotm_fabm
               fabm/gotm_fabm.F90
               fabm/gotm_fabm_input.F90
               fabm/gotm_fabm_output.F90
@@ -212,7 +214,6 @@ if(USE_FABM)
   endif(USE_NetCDF)
   set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   add_definitions(-D_FABM_)
-  set(ADDED_SRCS "$<TARGET_OBJECTS:gotm_fabm>")
 
   add_dependencies(gotm gotm_fabm)
   set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
@@ -224,13 +225,12 @@ add_executable(gotm_exe
                $<TARGET_OBJECTS:gotm>
                $<TARGET_OBJECTS:airsea>
                $<TARGET_OBJECTS:meanflow>
-               $<TARGET_OBJECTS:turbulence>
                $<TARGET_OBJECTS:observations>
                $<TARGET_OBJECTS:output>
                $<TARGET_OBJECTS:input>
-               $<TARGET_OBJECTS:util>
-               ${ADDED_SRCS})
+              )
 set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")
+target_link_libraries(gotm_exe turbulence util)
 
 if(USE_NetCDF)
   target_link_libraries(gotm_exe "${NetCDF_LIBRARIES}")
@@ -241,7 +241,7 @@ if(USE_NetCDF)
 endif(USE_NetCDF)
 
 if(USE_FABM)
-  target_link_libraries(gotm_exe "${FABM_LIBRARIES}")
+  target_link_libraries(gotm_exe gotm_fabm ${FABM_LIBRARIES})
 endif(USE_FABM)
 
 # Link with GOTM libraries.
@@ -269,16 +269,10 @@ endif(USE_FABM)
 #KBset_property(TARGET ${FABM_INSTITUTES} PROPERTY FOLDER fabm/models)
 
 # Install GOTM library and include files, unless the host overruled this.
-#install(TARGETS gotm
-#        DESTINATION lib)
-install(TARGETS gotm_exe
-        DESTINATION bin)
-#KBif (NOT DEFINED GOTM_NO_LIBRARY_INSTALL)
-  #KBinstall(TARGETS gotm
-    #KBDESTINATION lib)
-  #KBinstall(DIRECTORY ${CMAKE_BINARY_DIR}/modules/\${BUILD_TYPE}/
-    #KBDESTINATION include)
-  #KBinstall(FILES ${PROJECT_SOURCE_DIR}/../include/fabm.h ${PROJECT_SOURCE_DIR}/drivers/${FABMHOST}/fabm_driver.h
-    #KBDESTINATION include)
-#KBendif()
+install(TARGETS gotm_exe DESTINATION bin)
+install(TARGETS turbulence util DESTINATION lib)
+if(USE_FABM)
+  install(TARGETS gotm_fabm DESTINATION lib)
+endif()
+install(DIRECTORY ${CMAKE_BINARY_DIR}/modules/ DESTINATION include)
 
