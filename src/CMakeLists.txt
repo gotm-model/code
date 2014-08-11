@@ -176,11 +176,11 @@ add_library(util OBJECT
            )
 
 add_dependencies(input util)
-add_dependencies(observations util)
+add_dependencies(observations util input)
 add_dependencies(airsea util input)
-add_dependencies(gotm meanflow turbulence output)
-add_dependencies(output util meanflow turbulence)
-add_dependencies(meanflow observations)
+add_dependencies(meanflow util observations)
+add_dependencies(output util meanflow turbulence observations airsea)
+add_dependencies(gotm meanflow input observations util airsea turbulence output)
 
 option(USE_NetCDF "Include NetCDF support" ON)
 if(USE_NetCDF)
@@ -222,6 +222,7 @@ add_executable(gotm_exe
                $<TARGET_OBJECTS:input>
                $<TARGET_OBJECTS:util>
                ${ADDED_SRCS})
+set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")
 if(USE_FABM)
   target_link_libraries(gotm_exe "${FABM_LIBRARIES}")
 endif(USE_FABM)
