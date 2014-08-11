@@ -177,12 +177,17 @@ add_library(util OBJECT
             util/util.F90
            )
 
+add_library(gotm OBJECT
+            gotm/gotm.F90
+           )
+
 add_dependencies(turbulence util)
 add_dependencies(input util)
 add_dependencies(observations util input)
 add_dependencies(airsea util input)
 add_dependencies(meanflow util observations)
 add_dependencies(output util meanflow turbulence observations airsea)
+add_dependencies(gotm input output util meanflow turbulence observations airsea)
 
 option(USE_NetCDF "Include NetCDF support" ON)
 if(USE_NetCDF)
@@ -196,41 +201,37 @@ endif(USE_NetCDF)
 option(USE_FABM "Include FABM support" ON)
 if(USE_FABM)
   find_package(FABM REQUIRED)
-  add_library(fabm OBJECT
+  add_library(gotm_fabm OBJECT
               fabm/gotm_fabm.F90
               fabm/gotm_fabm_input.F90
               fabm/gotm_fabm_output.F90
              )
-  add_dependencies(fabm output)
+  add_dependencies(gotm_fabm output)
   if(USE_NetCDF)
-    set_property(TARGET fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
+    set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
   endif(USE_NetCDF)
-  set_property(TARGET fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   add_definitions(-D_FABM_)
-  set(ADDED_SRCS "$<TARGET_OBJECTS:fabm>")
-endif(USE_FABM)
+  set(ADDED_SRCS "$<TARGET_OBJECTS:gotm_fabm>")
 
-# Build GOTM library.
-add_library(gotm
-            gotm/gotm.F90
-            $<TARGET_OBJECTS:airsea>
-            $<TARGET_OBJECTS:meanflow>
-            $<TARGET_OBJECTS:turbulence>
-            $<TARGET_OBJECTS:observations>
-            $<TARGET_OBJECTS:output>
-            $<TARGET_OBJECTS:input>
-            $<TARGET_OBJECTS:util>
-            ${ADDED_SRCS})
+  add_dependencies(gotm gotm_fabm)
+  set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+endif(USE_FABM)
 
 # Build GOTM executable.
 add_executable(gotm_exe
-               gotm/main.F90)
-target_link_libraries(gotm_exe gotm)
+               gotm/main.F90
+               $<TARGET_OBJECTS:gotm>
+               $<TARGET_OBJECTS:airsea>
+               $<TARGET_OBJECTS:meanflow>
+               $<TARGET_OBJECTS:turbulence>
+               $<TARGET_OBJECTS:observations>
+               $<TARGET_OBJECTS:output>
+               $<TARGET_OBJECTS:input>
+               $<TARGET_OBJECTS:util>
+               ${ADDED_SRCS})
 set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")
 
-# For the Visual Studio linker, which does not like an input name (gotm.lib)
-# to match that the import library it wants to create.
-set_property(TARGET gotm_exe PROPERTY IMPORT_PREFIX "bin_")
 if(USE_NetCDF)
   target_link_libraries(gotm_exe "${NetCDF_LIBRARIES}")
   if (NetCDF_STATIC_MSVC_BUILD)
@@ -240,8 +241,6 @@ if(USE_NetCDF)
 endif(USE_NetCDF)
 
 if(USE_FABM)
-  add_dependencies(gotm fabm)
-  set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   target_link_libraries(gotm_exe "${FABM_LIBRARIES}")
 endif(USE_FABM)
 
@@ -270,8 +269,8 @@ endif(USE_FABM)
 #KBset_property(TARGET ${FABM_INSTITUTES} PROPERTY FOLDER fabm/models)
 
 # Install GOTM library and include files, unless the host overruled this.
-install(TARGETS gotm
-        DESTINATION lib)
+#install(TARGETS gotm
+#        DESTINATION lib)
 install(TARGETS gotm_exe
         DESTINATION bin)
 #KBif (NOT DEFINED GOTM_NO_LIBRARY_INSTALL)
