@@ -161,6 +161,7 @@ contains
    end select
    call calculate_conserved_quantities(nlev,total0)
 
+#ifdef NETCDF_FMT
    contains
 
    subroutine add_variable(variable,dims)
@@ -174,6 +175,7 @@ contains
                             long_name=trim(variable%long_name), &
                             FillValue=variable%missing_value,missing_value=variable%missing_value)
    end subroutine
+#endif
 
    end subroutine init_gotm_fabm_output
 !EOC

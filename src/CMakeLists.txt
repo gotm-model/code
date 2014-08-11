@@ -54,18 +54,6 @@ add_library(airsea OBJECT
             airsea/short_wave_radiation.F90
            )
 
-# For now set to off as default - should maybe be changed
-# Use FABM_PREFIX to locate include and lib directories
-option(USE_FABM "Include FABM support" ON)
-if(USE_FABM)
-add_library(fabm OBJECT
-            fabm/gotm_fabm.F90
-            fabm/gotm_fabm_input.F90
-            fabm/gotm_fabm_output.F90
-           )
-find_package(FABM REQUIRED)
-set_property(TARGET fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-endif(USE_FABM)
 
 add_library(gotm OBJECT
             gotm/gotm.F90
@@ -192,6 +180,24 @@ add_dependencies(gotm meanflow turbulence output)
 add_dependencies(output util meanflow)
 add_dependencies(meanflow observations)
 
+# For now set to off as default - should maybe be changed
+# Use FABM_PREFIX to locate include and lib directories
+option(USE_FABM "Include FABM support" ON)
+if(USE_FABM)
+find_package(FABM REQUIRED)
+add_library(fabm OBJECT
+            fabm/gotm_fabm.F90
+            fabm/gotm_fabm_input.F90
+            fabm/gotm_fabm_output.F90
+           )
+add_dependencies(fabm output)
+set_property(TARGET fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+add_definitions(-D_FABM_)
+add_dependencies(gotm fabm)
+set(ADDED_SRCS "$<TARGET_OBJECTS:fabm>")
+endif(USE_FABM)
+
 # Build GOTM executable.
 add_executable(gotm_exe
                gotm/main.F90
@@ -202,7 +208,11 @@ add_executable(gotm_exe
                $<TARGET_OBJECTS:observations>
                $<TARGET_OBJECTS:output>
                $<TARGET_OBJECTS:input>
-               $<TARGET_OBJECTS:util>)
+               $<TARGET_OBJECTS:util>
+               ${ADDED_SRCS})
+if(USE_FABM)
+  target_link_libraries(gotm_exe "${FABM_LIBRARIES}")
+endif(USE_FABM)
 
 # Link with GOTM libraries.
 #KBtarget_link_libraries(gotm airsea meanflow turbulence observations output input util)
