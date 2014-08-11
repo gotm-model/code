@@ -33,8 +33,10 @@ confdir:
 	@echo "BINDIR:      "$(BINDIR)
 	@echo "MODDIR:      "$(MODDIR)
 	@echo "LIBDIR:      "$(LIBDIR)
+ifeq ($(FABM),true)
 	@echo "FABMDIR:     "$(FABMDIR)
 	@echo "FABM_PREFIX: "$(FABM_PREFIX)
+endif
 
 confflags:
 	@echo "DEFINES:     "$(DEFINES)

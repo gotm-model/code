@@ -70,7 +70,7 @@ endif
 # NetCDF/HDF configuration done
 
 # if we want to include FABM - Framework for Aquatic Biogeochemical Models
-ifdef FABM
+ifeq ($(FABM),true)
 
 ifdef FABM_PREFIX
 
