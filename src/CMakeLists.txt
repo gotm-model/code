@@ -204,6 +204,7 @@ if(SEAGRASS)
               extras/seagrass/seagrass.F90
              )
   set(EXTRA_SRCS ${EXTRA_SRCS} $<TARGET_OBJECTS:seagrass>)
+  add_dependencies(seagrass output meanflow)
   add_dependencies(gotm seagrass)
 endif()
 
