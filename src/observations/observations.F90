@@ -572,7 +572,7 @@
          end select
 
       case (FROMFILE)
-         call register_input_1d(s_prof_file,1,sprof)
+         call register_input_1d(s_prof_file,1,sprof,'observed salinity')
          LEVEL2 'Reading salinity profiles from:'
          LEVEL3 trim(s_prof_file)
       case default
@@ -613,7 +613,7 @@
                stop 'init_observations()'
          end select
       case (FROMFILE)
-         call register_input_1d(t_prof_file,1,tprof)
+         call register_input_1d(t_prof_file,1,tprof,'observed temperature')
          LEVEL2 'Reading temperature profiles from:'
          LEVEL3 trim(t_prof_file)
       case default
@@ -631,9 +631,9 @@
 !        The analytical prescription of external pressure is time-dependent
 !        and is therefore handled in get_all_obs.
       case (FROMFILE)
-         call register_input_0d(ext_press_file,1,h_press)
-         call register_input_0d(ext_press_file,2,dpdx)
-         call register_input_0d(ext_press_file,3,dpdy)
+         call register_input_0d(ext_press_file,1,h_press,'observed external pressure: height above bed')
+         call register_input_0d(ext_press_file,2,dpdx,'observed external pressure: x-direction')
+         call register_input_0d(ext_press_file,3,dpdy,'observed external pressure: y-direction')
          LEVEL2 'Reading external pressure from:'
          LEVEL3 trim(ext_press_file)
       case default
@@ -654,10 +654,10 @@
          dtdx = const_dtdx
          dtdy = const_dtdy
       case (FROMFILE)
-         call register_input_1d(int_press_file,1,dsdx)
-         call register_input_1d(int_press_file,2,dsdy)
-         call register_input_1d(int_press_file,3,dtdx)
-         call register_input_1d(int_press_file,4,dtdy)
+         call register_input_1d(int_press_file,1,dsdx,'observed internal pressure: salinity gradient in x-direction')
+         call register_input_1d(int_press_file,2,dsdy,'observed internal pressure: salinity gradient in y-direction')
+         call register_input_1d(int_press_file,3,dtdx,'observed internal pressure: temperature gradient in x-direction')
+         call register_input_1d(int_press_file,4,dtdy,'observed internal pressure: temperature gradient in y-direction')
          LEVEL2 'Reading internal pressure from:'
          LEVEL3 trim(int_press_file)
       case default
@@ -668,9 +668,9 @@
 !  The light extinction profiles
    select case (extinct_method)
       case (0)
-         call register_input_0d(extinct_file,1,A)
-         call register_input_0d(extinct_file,2,g1)
-         call register_input_0d(extinct_file,3,g2)
+         call register_input_0d(extinct_file,1,A,'observed light extinction: non-visible fraction')
+         call register_input_0d(extinct_file,2,g1,'observed light extinction: e-folding depth of non-visible fraction')
+         call register_input_0d(extinct_file,3,g2,'observed light extinction: e-folding depth of visible fraction')
          LEVEL2 'Reading extinction data from:'
          LEVEL3 trim(extinct_file)
       case (1)
@@ -701,8 +701,8 @@
          w_height = w_adv_height0
          w_adv    = w_adv0
       case (FROMFILE)
-         call register_input_0d(w_adv_file,1,w_height)
-         call register_input_0d(w_adv_file,2,w_adv)
+         call register_input_0d(w_adv_file,1,w_height,'observed vertical velocity: depth')
+         call register_input_0d(w_adv_file,2,w_adv,'observed vertical velocity: value')
          LEVEL2 'Reading vertical velocity observations from:'
          LEVEL3 trim(w_adv_file)
       case default
@@ -718,7 +718,7 @@
 !        The analytical prescription of surface elevation is time-dependent
 !        and is therefore handled in get_all_obs.
       case (FROMFILE)
-         call register_input_0d(zeta_file,1,zeta)
+         call register_input_0d(zeta_file,1,zeta,'observed sea surface elevation')
          LEVEL2 'Reading sea surface elevations from:'
          LEVEL3 trim(zeta_file)
       case default
@@ -735,9 +735,9 @@
       case (CONSTANT)
 !        Constant Hs, Tz and phiw have been already been set via the wave namelist.
       case (FROMFILE)
-         call register_input_0d(wave_file,1,Hs)
-         call register_input_0d(wave_file,2,Tz)
-         call register_input_0d(wave_file,3,phiw)
+         call register_input_0d(wave_file,1,Hs,'observed wind waves: significant wave height')
+         call register_input_0d(wave_file,2,Tz,'observed wind waves: mean zero-crossing period')
+         call register_input_0d(wave_file,3,phiw,'observed wind waves: mean direction')
          LEVEL2 'Reading wind wave data from:'
          LEVEL3 trim(wave_file)
       case default
@@ -751,8 +751,8 @@
          uprof = _ZERO_
          vprof = _ZERO_
       case (FROMFILE)
-         call register_input_1d(vel_prof_file,1,uprof)
-         call register_input_1d(vel_prof_file,2,vprof)
+         call register_input_1d(vel_prof_file,1,uprof,'observed horizontal velocity: x-direction')
+         call register_input_1d(vel_prof_file,2,vprof,'observed horizontal velocity: y-direction')
          LEVEL2 'Reading velocity profiles from:'
          LEVEL3 trim(vel_prof_file)
       case default
@@ -765,7 +765,7 @@
       case (NOTHING)
          epsprof = _ZERO_
       case (FROMFILE)
-         call register_input_1d(e_prof_file,1,epsprof)
+         call register_input_1d(e_prof_file,1,epsprof,'observed turbulence dissipation')
          LEVEL2 'Reading dissipation profiles from:'
          LEVEL3 trim(e_prof_file)
       case default
@@ -781,11 +781,11 @@
       case (FROMFILE)
          select case (o2_units)
             case (1) ! mg/l
-               call register_input_1d(o2_prof_file,1,o2_prof,scale_factor=mmol_o2_per_gram)
+               call register_input_1d(o2_prof_file,1,o2_prof,'observed dissolved oxygen',scale_factor=mmol_o2_per_gram)
             case (2) ! ml/l
-               call register_input_1d(o2_prof_file,1,o2_prof,scale_factor=mmol_o2_per_liter)
+               call register_input_1d(o2_prof_file,1,o2_prof,'observed dissolved oxygen',scale_factor=mmol_o2_per_liter)
             case (3) ! mmol/m^3
-               call register_input_1d(o2_prof_file,1,o2_prof)
+               call register_input_1d(o2_prof_file,1,o2_prof,'observed dissolved oxygen')
             case default
                STDERR "Invalid choice for oxygen unit conversion given in"
                STDERR "namelist o2_profile of obs.nml. program aborted in"

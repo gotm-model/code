@@ -133,12 +133,12 @@
 ! !IROUTINE: Register a 1d input variable.
 !
 ! !INTERFACE:
-   subroutine register_input_1d(path,icolumn,data,scale_factor)
+   subroutine register_input_1d(path,icolumn,data,name,scale_factor)
 !
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
-   character(len=*), intent(in) :: path
+   character(len=*), intent(in) :: path,name
    integer,          intent(in) :: icolumn
    REALTYPE,target              :: data(:)
    REALTYPE,optional,intent(in) :: scale_factor
@@ -156,6 +156,11 @@
 !BOC
    if (nlev==-1) then
       FATAL 'input module has been initialized without depth information; depth-explicit inputs can therefore not be registered.'
+      stop 'input::register_input_1d'
+   end if
+
+   if (path=='') then
+      FATAL 'Empty file path specified to read variable '//trim(name)//' from.'
       stop 'input::register_input_1d'
    end if
 
@@ -209,12 +214,12 @@
 ! !IROUTINE: Register a 0d input variable.
 !
 ! !INTERFACE:
-   subroutine register_input_0d(path,icolumn,data,scale_factor)
+   subroutine register_input_0d(path,icolumn,data,name,scale_factor)
 !
 ! !DESCRIPTION:
 !
 ! !INPUT PARAMETERS:
-   character(len=*), intent(in) :: path
+   character(len=*), intent(in) :: path,name
    integer,          intent(in) :: icolumn
    REALTYPE,target              :: data
    REALTYPE,optional,intent(in) :: scale_factor
@@ -230,6 +235,11 @@
 !
 !-----------------------------------------------------------------------
 !BOC
+   if (path=='') then
+      FATAL 'Empty file path specified to read variable '//trim(name)//' from.'
+      stop 'input::register_input_0d'
+   end if
+
 !  Find a file object for the specified file path; create one if it does exist yet.
    if (.not.associated(first_timeseries_file)) then
       allocate(first_timeseries_file)

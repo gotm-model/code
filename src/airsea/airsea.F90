@@ -384,7 +384,7 @@
          LEVEL2 'Using constant short wave radiation= ',const_swr
          I_0 = const_swr
       case (FROMFILE)
-         call register_input_0d(swr_file,1,I_0,scale_factor=swr_factor)
+         call register_input_0d(swr_file,1,I_0,'surface short wave radiation',scale_factor=swr_factor)
          LEVEL2 'Reading short wave radiation data from:'
          LEVEL3 trim(swr_file)
          if (swr_factor .ne. _ONE_) then
@@ -447,7 +447,7 @@
          case (CONSTVAL)
             heat = const_heat
          case (FROMFILE)
-            call register_input_0d(heatflux_file,1,heat)
+            call register_input_0d(heatflux_file,1,heat,'surface heat flux')
             LEVEL2 'Reading heat fluxes from:'
             LEVEL3 trim(heatflux_file)
          case default
@@ -459,8 +459,8 @@
             tx = const_tx
             ty = const_ty
          case (FROMFILE)
-            call register_input_0d(momentumflux_file,1,tx)
-            call register_input_0d(momentumflux_file,2,ty)
+            call register_input_0d(momentumflux_file,1,tx,'surface momentum flux: x-direction')
+            call register_input_0d(momentumflux_file,2,ty,'surface momentum flux: y-direction')
             LEVEL2 'Reading momentum fluxes from:'
             LEVEL3 trim(momentumflux_file)
          case default
@@ -476,7 +476,7 @@
          LEVEL2 'calc_evaporation= ',calc_evaporation
          precip = const_precip
       case (FROMFILE)
-         call register_input_0d(precip_file,1,precip,scale_factor=precip_factor)
+         call register_input_0d(precip_file,1,precip,'precipitation',scale_factor=precip_factor)
          LEVEL2 'Reading precipitation data from:'
          LEVEL3 trim(precip_file)
          if (precip_factor .ne. _ONE_) then
@@ -490,7 +490,7 @@
 !  The observed sea surface temperature
    select case (sst_method)
       case (FROMFILE)
-         call register_input_0d(sst_file,1,sst_obs)
+         call register_input_0d(sst_file,1,sst_obs,'sea surface temperature')
          LEVEL2 'Reading sea surface temperature from:'
          LEVEL3 trim(sst_file)
       case default
@@ -499,7 +499,7 @@
 !  The observed sea surface salinity
    select case (sss_method)
       case (FROMFILE)
-         call register_input_0d(sss_file,1,sss)
+         call register_input_0d(sss_file,1,sss,'sea surface salinity')
          LEVEL2 'Reading sea surface salinity from:'
          LEVEL3 trim(sss_file)
       case default
