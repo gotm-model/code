@@ -5,6 +5,13 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 # Create main project.
 project(gotm Fortran)
 
+set(gotm_VERSION_MAJOR 4)
+set(gotm_VERSION_MINOR 1)
+set(gotm_VERSION_PATCH 0)
+set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
+
+configure_file(../include/version.h.in version.h)
+
 # Use solution folders in IDEs
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
