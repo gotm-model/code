@@ -5,17 +5,14 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 # Create main project.
 project(gotm Fortran)
 
+# Set version information.
 set(gotm_VERSION_MAJOR 4)
 set(gotm_VERSION_MINOR 1)
 set(gotm_VERSION_PATCH 0)
 set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
 
+# Generate include file with version information.
 configure_file(../include/version.h.in version.h)
-
-# Use solution folders in IDEs
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-add_definitions(-DFORTRAN95)
 
 # Specify default build type for single-type systems (not VS)
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -53,6 +50,15 @@ else()
   set(CMAKE_INSTALL_PREFIX ${DEFAULT_PREFIX} CACHE PATH "Directory to install GOTM in")
 endif()
 
+# Global preprocessor definitions
+add_definitions(-DFORTRAN95)
+
+option(EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
+mark_as_advanced(EXTRA_OUTPUT)
+if(EXTRA_OUTPUT)
+  add_definitions(-DEXTRA_OUTPUT)
+endif()
+
 # Global include directories
 include_directories("${PROJECT_SOURCE_DIR}/../include"
                     "${PROJECT_SOURCE_DIR}/util"
@@ -69,6 +75,7 @@ add_library(airsea OBJECT
             airsea/kondo.F90
             airsea/short_wave_radiation.F90
            )
+set_property(TARGET airsea APPEND PROPERTY COMPILE_DEFINITIONS GUSTINESS)
 
 option(USE_ICE "Include ICE support" OFF)
 if(USE_ICE)
@@ -190,6 +197,16 @@ add_library(gotm OBJECT
             gotm/gotm.F90
            )
 
+option(SEAGRASS "Enable seagrass module" OFF)
+if(SEAGRASS)
+  add_definitions(-DSEAGRASS)
+  add_library(seagrass OBJECT
+              extras/seagrass/seagrass.F90
+             )
+  set(EXTRA_SRCS ${EXTRA_SRCS} $<TARGET_OBJECTS:seagrass>)
+  add_dependencies(gotm seagrass)
+endif()
+
 target_link_libraries(turbulence util)
 add_dependencies(input util)
 add_dependencies(observations util input)
@@ -203,8 +220,8 @@ set_property(TARGET util turbulence PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_BI
 option(USE_NetCDF "Include NetCDF support" ON)
 if(USE_NetCDF)
   find_package(NetCDF REQUIRED)
-  set_property(TARGET output APPEND PROPERTY INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
   add_definitions(-DNETCDF_FMT -DREAL_4B=real\(4\))
+  include_directories("${NetCDF_INCLUDE_DIRS}")
 endif(USE_NetCDF)
 
 # For now set to off as default - should maybe be changed
@@ -219,9 +236,6 @@ if(USE_FABM)
              )
   add_dependencies(gotm_fabm output)
   target_link_libraries(gotm_fabm util)
-  if(USE_NetCDF)
-    set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
-  endif(USE_NetCDF)
   set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set_property(TARGET gotm_fabm PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
   add_definitions(-D_FABM_)
@@ -239,6 +253,7 @@ add_executable(gotm_exe
                $<TARGET_OBJECTS:observations>
                $<TARGET_OBJECTS:output>
                $<TARGET_OBJECTS:input>
+               ${EXTRA_SRCS}
               )
 set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")
 target_link_libraries(gotm_exe turbulence util)
