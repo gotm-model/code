@@ -804,7 +804,7 @@
       case (NOTHING)
       case (FROMFILE)
          do i=1,size(bioprofs,1)
-            call register_input_1d(bio_prof_file,i,bioprofs(i,:))
+            call register_input_1d(bio_prof_file,i,bioprofs(i,:),'observed biogeochemical variable')
          end do
          LEVEL2 'Reading biological profiles from:'
          LEVEL3 trim(bio_prof_file)

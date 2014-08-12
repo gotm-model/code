@@ -65,7 +65,7 @@
          if (rc /= 0) stop 'init_bio_fluxes: Error allocating sfl_read)'
          sfl_read = _ZERO_
          do n=1,n_surface_fluxes
-            call register_input_0d('bio_fluxes.dat',n,sfl_read(n))
+            call register_input_0d('bio_fluxes.dat',n,sfl_read(n),'surface flux of biogeochemical variable')
          end do
       case default
          stop "do_bio_fluxes: no valid surface_flux_method specified!"
