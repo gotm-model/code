@@ -230,7 +230,7 @@ if(BIO)
              )
   set_property(TARGET bio APPEND PROPERTY COMPILE_DEFINITIONS NO_0D_BIO BIO_TEMPLATE BIO_NPZD BIO_CL BIO_IOW BIO_FASHAM BIO_SED BIO_NPZD_FE BIO_PHOTO BIO_MANGAN)
   set(EXTRA_SRCS ${EXTRA_SRCS} $<TARGET_OBJECTS:bio>)
-  add_dependencies(bio util)
+  add_dependencies(bio util output)
   add_dependencies(gotm bio)
 endif()
 
