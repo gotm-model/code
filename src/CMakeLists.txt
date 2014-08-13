@@ -304,5 +304,5 @@ install(TARGETS turbulence util DESTINATION lib)
 if(USE_FABM)
   install(TARGETS gotm_fabm DESTINATION lib)
 endif()
-install(DIRECTORY ${CMAKE_BINARY_DIR}/modules/ DESTINATION include)
+install(DIRECTORY ${CMAKE_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
 
