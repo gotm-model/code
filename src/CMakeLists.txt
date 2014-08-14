@@ -12,7 +12,7 @@ set(gotm_VERSION_PATCH 0)
 set(gotm_VERSION "${gotm_VERSION_MAJOR}.${gotm_VERSION_MINOR}.${gotm_VERSION_PATCH}")
 
 # Generate include file with version information.
-configure_file(../include/version.h.in version.h)
+configure_file("${PROJECT_SOURCE_DIR}/../include/version.h.in" "${CMAKE_BINARY_DIR}/version.h")
 
 # Specify default build type for single-type systems (not VS)
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -60,7 +60,8 @@ if(EXTRA_OUTPUT)
 endif()
 
 # Global include directories
-include_directories("${PROJECT_SOURCE_DIR}/../include"
+include_directories("${CMAKE_BINARY_DIR}"
+                    "${PROJECT_SOURCE_DIR}/../include"
                     "${PROJECT_SOURCE_DIR}/util"
                     "${CMAKE_BINARY_DIR}/modules"
                    )
