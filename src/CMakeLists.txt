@@ -53,9 +53,9 @@ endif()
 # Global preprocessor definitions
 add_definitions(-DFORTRAN95)
 
-option(EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
-mark_as_advanced(EXTRA_OUTPUT)
-if(EXTRA_OUTPUT)
+option(GOTM_EXTRA_OUTPUT "Include additional turbulence diagnostics in output" OFF)
+mark_as_advanced(GOTM_EXTRA_OUTPUT)
+if(GOTM_EXTRA_OUTPUT)
   add_definitions(-DEXTRA_OUTPUT)
 endif()
 
@@ -78,11 +78,11 @@ add_library(airsea OBJECT
            )
 set_property(TARGET airsea APPEND PROPERTY COMPILE_DEFINITIONS GUSTINESS)
 
-#option(USE_ICE "Include ICE support" OFF)
-#if(USE_ICE)
+#option(GOTM_USE_ICE "Include ICE support" OFF)
+#if(GOTM_USE_ICE)
 #  add_library(ice OBJECT
 #             )
-#endif(USE_ICE)
+#endif(GOTM_USE_ICE)
 
 add_library(input OBJECT
             input/input.F90
@@ -198,8 +198,8 @@ add_library(gotm OBJECT
             gotm/gotm.F90
            )
 
-option(SEAGRASS "Enable seagrass module" OFF)
-if(SEAGRASS)
+option(GOTM_USE_SEAGRASS "Enable seagrass module" OFF)
+if(GOTM_USE_SEAGRASS)
   add_definitions(-DSEAGRASS)
   add_library(seagrass OBJECT
               extras/seagrass/seagrass.F90
@@ -209,8 +209,8 @@ if(SEAGRASS)
   add_dependencies(gotm seagrass)
 endif()
 
-option(BIO "Enable legacy biogeochemical modules" OFF)
-if(BIO)
+option(GOTM_USE_BIO "Enable legacy biogeochemical modules" OFF)
+if(GOTM_USE_BIO)
   add_definitions(-DBIO)
   add_library(bio OBJECT
               extras/bio/bio.F90
@@ -246,17 +246,17 @@ add_dependencies(gotm input output util meanflow turbulence observations airsea)
 
 set_property(TARGET util turbulence PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
 
-option(USE_NetCDF "Enable output in NetCDF format" ON)
-if(USE_NetCDF)
+option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
+if(GOTM_USE_NetCDF)
   find_package(NetCDF REQUIRED)
   add_definitions(-DNETCDF_FMT -DREAL_4B=real\(4\))
   include_directories("${NetCDF_INCLUDE_DIRS}")
-endif(USE_NetCDF)
+endif(GOTM_USE_NetCDF)
 
 # For now set to off as default - should maybe be changed
 # Use FABM_PREFIX to locate include and lib directories
-option(USE_FABM "Include FABM support" ON)
-if(USE_FABM)
+option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
+if(GOTM_USE_FABM)
   find_package(FABM REQUIRED)
   add_library(gotm_fabm
               fabm/gotm_fabm.F90
@@ -271,7 +271,7 @@ if(USE_FABM)
 
   add_dependencies(gotm gotm_fabm)
   set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-endif(USE_FABM)
+endif(GOTM_USE_FABM)
 
 # Build GOTM executable.
 add_executable(gotm_exe
@@ -287,22 +287,22 @@ add_executable(gotm_exe
 set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")
 target_link_libraries(gotm_exe turbulence util)
 
-if(USE_NetCDF)
+if(GOTM_USE_NetCDF)
   target_link_libraries(gotm_exe "${NetCDF_LIBRARIES}")
   if (NetCDF_STATIC_MSVC_BUILD)
     set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmtd\"")
     target_compile_options(gotm_exe PRIVATE "/libs:static")
   endif()
-endif(USE_NetCDF)
+endif(GOTM_USE_NetCDF)
 
-if(USE_FABM)
+if(GOTM_USE_FABM)
   target_link_libraries(gotm_exe gotm_fabm ${FABM_LIBRARIES})
-endif(USE_FABM)
+endif(GOTM_USE_FABM)
 
 # Install GOTM library and include files, unless the host overruled this.
 install(TARGETS gotm_exe DESTINATION bin)
 install(TARGETS turbulence util DESTINATION lib)
-if(USE_FABM)
+if(GOTM_USE_FABM)
   install(TARGETS gotm_fabm DESTINATION lib)
 endif()
 install(DIRECTORY ${CMAKE_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
