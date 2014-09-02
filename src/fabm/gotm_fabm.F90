@@ -655,13 +655,7 @@
    call calculate_derived_input(nlev,itime)
 
    ! Get updated vertical movement (m/s, positive for upwards) for biological state variables.
-#ifdef _FABM_USE_1D_LOOP_
    call fabm_get_vertical_movement(model,1,nlev,ws(1:nlev,:))
-#else
-   do i=1,nlev
-      call fabm_get_vertical_movement(model,i,ws(i,:))
-   end do
-#endif
 
    ! Start building surface flux (dilution due to precipitation/concentration due to evaporation only,
    ! as biogeochemical processes that cause surface fluxes are handled as part of the sink/source terms.
@@ -863,20 +857,10 @@
 !
 ! !LOCAL VARIABLES:
    logical :: valid,tmpvalid
-#ifndef _FABM_USE_1D_LOOP_
-   integer :: ci
-#endif
 !
 !-----------------------------------------------------------------------
 !BOC
-#ifdef _FABM_USE_1D_LOOP_
    call fabm_check_state(model,1,nlev,repair_state,valid)
-#else
-   do ci=1,nlev
-      call fabm_check_state(model,ci,repair_state,valid)
-      if (.not.(valid.or.repair_state)) exit
-   end do
-#endif
    if (valid .or. repair_state) then
       call fabm_check_surface_state(model,nlev,repair_state,tmpvalid)
       valid = valid.and.tmpvalid
@@ -962,13 +946,7 @@
    end if
 
    ! Add pelagic sink and source terms for all depth levels.
-#ifdef _FABM_USE_1D_LOOP_
    call fabm_do(model,1,nlev,rhs(1:nlev,1:n))
-#else
-   do i=1,nlev
-      call fabm_do(model,i,rhs(i,1:n))
-   end do
-#endif
 
    if (first) call save_diagnostics()
 
@@ -1037,13 +1015,7 @@
    dd(1,1:n,:) = dd(1,1:n,:)/curh(1)
 
    ! Add pelagic sink and source terms for all depth levels.
-#ifdef _FABM_USE_1D_LOOP_
    call fabm_do(model,1,nlev,pp(1:nlev,1:n,1:n),dd(1:nlev,1:n,1:n))
-#else
-   do i=1,nlev
-      call fabm_do(model,i,pp(i,1:n,1:n),dd(i,1:n,1:n))
-   end do
-#endif
 
    if (first) call save_diagnostics()
 
@@ -1185,38 +1157,29 @@
 !
 ! !LOCAL VARIABLES:
    integer :: i
-   REALTYPE :: bioext,localext
-#ifdef _FABM_USE_1D_LOOP_
+   REALTYPE :: bioext
    REALTYPE :: localexts(1:nlev)
-#endif
 !
 !-----------------------------------------------------------------------
 !BOC
    bioext = _ZERO_
 
-   call fabm_get_light_extinction(model,1,nlev,k_par)
+   call fabm_get_light_extinction(model,1,nlev,k_par(1:nlev))
    call fabm_get_light(model,1,nlev)
 
-#ifdef _FABM_USE_1D_LOOP_
-   call fabm_get_light_extinction(model,1,nlev,localexts)
-#endif
+   call fabm_get_light_extinction(model,1,nlev,localexts(1:nlev))
    do i=nlev,1,-1
-#ifdef _FABM_USE_1D_LOOP_
-      localext = localexts(i)
-#else
-      call fabm_get_light_extinction(model,i,localext)
-#endif
 
       ! Add the extinction of the first half of the grid box.
-      bioext = bioext+localext*0.5*curh(i)
+      bioext = bioext+localexts(i)*curh(i)/2
 
       ! Calculate photosynthetically active radiation (PAR), shortwave radiation, and PAR attenuation.
-      par(i) = I_0*(_ONE_-A)*exp(-z(i)/g2-bioext)
+      par(i) = I_0*(1-A)*exp(-z(i)/g2-bioext)
       swr(i) = par(i)+I_0*A*exp(-z(i)/g1)
-      k_par(i) = _ONE_/g2+localext
+      k_par(i) = 1/g2+localexts(i)
 
       ! Add the extinction of the second half of the grid box.
-      bioext = bioext+localext*0.5*curh(i)
+      bioext = bioext+localexts(i)*curh(i)/2
 
       if (bioshade_feedback) bioshade(i)=exp(-bioext)
    end do
@@ -1278,13 +1241,7 @@
       fabm_ready = .true.
 
       ! Allow individual biogeochemical models to provide a custom initial state.
-#ifdef _FABM_USE_1D_LOOP_
       call fabm_initialize_state(model,1,nlev)
-#else
-      do i=1,nlev
-         call fabm_initialize_state(model,i)
-      end do
-#endif
       call fabm_initialize_surface_state(model,nlev)
       call fabm_initialize_bottom_state(model,1)
 
@@ -1303,16 +1260,11 @@
       call update_fabm_expressions(nlev)
 
       ! Call fabm_do here to make sure diagnostic variables all have an initial value.
+      ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
       rhs = _ZERO_
       call fabm_do_surface(model,nlev,rhs(nlev,:))
       call fabm_do_bottom(model,1,rhs(1,:),bottom_flux)
-#ifdef _FABM_USE_1D_LOOP_
       call fabm_do(model,1,nlev,rhs)
-#else
-      do i=1,nlev
-         call fabm_do(model,i,rhs(i,:))
-      end do
-#endif
 
       ! Obtain current values of diagnostic variables from FABM.
       do i=1,size(model%horizontal_diagnostic_variables)
