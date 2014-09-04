@@ -446,7 +446,7 @@
          call read_profiles(info%unit,nlev,ubound(info%prof2,2),yy,mm,dd,hh,min,ss,z,info%prof2,info%lines,rc)
          if(rc/=0) then
             if(info%nprofiles==1) then
-               LEVEL3 'Only one set of profiles is present.'
+               LEVEL3 'Only one set of profiles is present in '//trim(info%path)//'.'
                info%one_profile = .true.
                curvar => info%first_variable
                do while (associated(curvar))
@@ -454,7 +454,7 @@
                   curvar => curvar%next
                end do
             else
-               FATAL 'Error reading profiles around line #',info%lines
+               FATAL 'Error reading profiles from '//trim(info%path)//' around line #',info%lines
                stop 'gotm_fabm_input:get_observed_profiles'
             end if
             exit
