@@ -455,7 +455,7 @@
                end do
             else
                FATAL 'Error reading profiles from '//trim(info%path)//' around line #',info%lines
-               stop 'gotm_fabm_input:get_observed_profiles'
+               stop 'input:get_observed_profiles'
             end if
             exit
          else
@@ -526,15 +526,15 @@
    end do
    
    allocate(info%obs1(nvar),stat=rc)
-   if (rc /= 0) stop 'gotm_fabm_input::initialize_timeseries_file: Error allocating memory (obs1)'
+   if (rc /= 0) stop 'input::initialize_timeseries_file: Error allocating memory (obs1)'
    info%obs1 = _ZERO_
 
    allocate(info%obs2(nvar),stat=rc)
-   if (rc /= 0) stop 'gotm_fabm_input::initialize_timeseries_file: Error allocating memory (obs2)'
+   if (rc /= 0) stop 'input::initialize_timeseries_file: Error allocating memory (obs2)'
    info%obs2 = _ZERO_
 
    allocate(info%alpha(nvar),stat=rc)
-   if (rc /= 0) stop 'gotm_fabm_input::initialize_timeseries_file: Error allocating memory (alpha)'
+   if (rc /= 0) stop 'input::initialize_timeseries_file: Error allocating memory (alpha)'
    info%alpha = _ZERO_
 
    return
