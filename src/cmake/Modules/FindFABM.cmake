@@ -11,9 +11,11 @@ find_library(FABM_LIBRARIES NAMES fabm
              DOC "FABM libraries")
 
 # Store configurable path of FABM include directory
-set(FABM_INCLUDE_DIRS "${FABM_PREFIX}/include"
-    CACHE PATH
-    "FABM include directories")
+find_path(FABM_INCLUDE_DIRS
+          NAMES fabm_driver.h
+          HINTS ${FABM_PREFIX}/include
+          DOC "FABM include directory"
+)
 
 mark_as_advanced(FABM_LIBRARIES FABM_INCLUDE_DIRS)
 
