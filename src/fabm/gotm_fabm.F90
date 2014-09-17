@@ -794,7 +794,7 @@
       do while (associated(expression))
          select type (expression)
             class is (type_vertical_integral)
-               model%environment%data(expression%out)%p = calculate_vertical_mean(expression)
+               model%environment%data_hz(expression%out)%p = calculate_vertical_mean(expression)
          end select
          expression => expression%next
       end do
