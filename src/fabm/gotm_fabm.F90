@@ -788,13 +788,15 @@
       class (type_expression),pointer :: expression
       real(rk)                       :: depth,weights(nlev)
       logical                        :: started
-      integer                        :: k
+      integer                        :: n,k
 
+      n = 0
       expression => model%root%first_expression
       do while (associated(expression))
          select type (expression)
             class is (type_vertical_integral)
-               model%environment%data_hz(expression%out)%p = calculate_vertical_mean(expression)
+               n = n + 1
+               horizontal_expression_data(n) = calculate_vertical_mean(expression)
          end select
          expression => expression%next
       end do
