@@ -1030,7 +1030,7 @@
          if (model%horizontal_diagnostic_variables(i)%output==output_instantaneous) then
             ! Simply use last value
             cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
-         else
+         elseif (model%horizontal_diagnostic_variables(i)%output/=output_none) then
             ! Integration or averaging in time needed: for now do simple Forward Euler integration.
             ! If averaging is required, this will be done upon output by dividing by the elapsed period.
             cc_diag_hz(i) = cc_diag_hz(i) + fabm_get_horizontal_diagnostic_data(model,i)*dt_eff
@@ -1042,7 +1042,7 @@
          if (model%diagnostic_variables(i)%output==output_instantaneous) then
             ! Simply use last value
             cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
-         else
+         elseif (model%diagnostic_variables(i)%output/=output_none) then
             ! Integration or averaging in time needed: for now do simple Forward Euler integration.
             ! If averaging is required, this will be done upon output by dividing by the elapsed period.
             cc_diag(:,i) = cc_diag(:,i) + fabm_get_bulk_diagnostic_data(model,i)*dt_eff
@@ -1268,11 +1268,12 @@
 
       ! Obtain current values of diagnostic variables from FABM.
       do i=1,size(model%horizontal_diagnostic_variables)
-         if (model%horizontal_diagnostic_variables(i)%output/=output_time_integrated) &
+         if (model%horizontal_diagnostic_variables(i)%output/=output_time_integrated &
+             .and.model%horizontal_diagnostic_variables(i)%output/=output_none) &
             cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
       end do
       do i=1,size(model%diagnostic_variables)
-         if (model%diagnostic_variables(i)%output/=output_time_integrated) &
+         if (model%diagnostic_variables(i)%output/=output_time_integrated.and.model%diagnostic_variables(i)%output/=output_none) &
             cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
       end do
 
