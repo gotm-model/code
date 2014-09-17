@@ -409,7 +409,7 @@
    allocate(par(1:nlev),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (par)'
    par = _ZERO_
-   if (fabm_variable_needs_values(par_id)) call fabm_link_bulk_data(model,par_id,par)
+   if (fabm_variable_needs_values(model,par_id)) call fabm_link_bulk_data(model,par_id,par)
 
    ! Allocate array for attenuation coefficient pf photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
@@ -423,11 +423,11 @@
    allocate(swr(1:nlev),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (swr)'
    swr = _ZERO_
-   if (fabm_variable_needs_values(swr_id)) call fabm_link_bulk_data(model,swr_id,swr)
+   if (fabm_variable_needs_values(model,swr_id)) call fabm_link_bulk_data(model,swr_id,swr)
 
    ! Allocate array for local pressure.
    ! This will be calculated from layer depths and density internally during each time step.
-   if (fabm_variable_needs_values(pres_id)) then
+   if (fabm_variable_needs_values(model,pres_id)) then
       allocate(pres(1:nlev),stat=rc)
       if (rc /= 0) stop 'allocate_memory(): Error allocating (pres)'
       pres = _ZERO_
@@ -794,7 +794,7 @@
       do while (associated(expression))
          select type (expression)
             class is (type_vertical_integral)
-               expression%out%p = calculate_vertical_mean(expression)
+               model%environment%data(expression%out)%p = calculate_vertical_mean(expression)
          end select
          expression => expression%next
       end do
@@ -828,7 +828,7 @@
             end if
          end do
          if (expression%average) weights = weights/(min(expression%maximum_depth,depth)-expression%minimum_depth)
-         calculate_vertical_mean = sum(expression%in%p(1:nlev)*weights)
+         calculate_vertical_mean = sum(model%environment%data(expression%in)%p(1:nlev)*weights)
       end function
 
    end subroutine
