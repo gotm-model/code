@@ -16,6 +16,7 @@
 			<out_fmt>2</out_fmt>
 			<out_dir>.</out_dir>
 			<out_fn>gotland</out_fn>
+			<nfirst>0</nfirst>
 			<nsave>144</nsave>
 			<sync_out>1</sync_out>
 			<diagnostics>False</diagnostics>

@@ -48,6 +48,7 @@
 			</element>
 			<element name="out_dir" type="string" label="path to output directory (set permissions)" />
 			<element name="out_fn" type="string" label="output string used to generate output file names" />
+			<element name="nfirst" type="int" label="first time-step to save" minInclusive="0" />
 			<element name="nsave" type="int" label="save results every 'nsave' timesteps" minInclusive="1" maxInclusive="86400" />
 			<element name="sync_out" type="int" label="sync to disk every 'sync_out' (NetCDF output only)" minInclusive="0" />
 			<element name="diagnostics" type="bool" label="diagnostics are written to output (if .true.)" />
