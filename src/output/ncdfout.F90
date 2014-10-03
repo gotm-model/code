@@ -72,6 +72,7 @@
    integer, private          :: u10_id,v10_id
    integer, private          :: airp_id,airt_id
    integer, private          :: hum_id,cloud_id
+   integer, private          :: rhoa_id
    integer, private          :: zeta_id
    integer, private          :: sst_id,sss_id
    integer, private          :: x_taus_id,y_taus_id
@@ -205,6 +206,8 @@
    iret = nf90_def_var(ncid,'humidity',NF90_REAL,dim3d,hum_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'cloud',NF90_REAL,dim3d,cloud_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'rhoa',NF90_REAL,dim3d,rhoa_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'zeta',NF90_REAL,dim3d,zeta_id)
    call check_err(iret)
@@ -406,6 +409,7 @@
          iret = set_attributes(ncid,hum_id,units='kg/kg',long_name='specific humidity')
    end select
    iret = set_attributes(ncid,cloud_id,units='%',long_name='cloud cover')
+   iret = set_attributes(ncid,rhoa_id,units='kg/m3',long_name='air density')
    iret = set_attributes(ncid,zeta_id,units='m',long_name='sea surface elevation')
    iret = set_attributes(ncid,sst_id,units='celsius',long_name='sea surface temperature')
    iret = set_attributes(ncid,sss_id,units='g/kg',long_name='sea surface salinity')
@@ -528,6 +532,7 @@
    use airsea,       only: u10,v10
    use airsea,       only: airp,airt
    use airsea,       only: rh,twet,tdew,cloud
+   use airsea_variables, only: rhoa
    use airsea,       only: tx,ty,I_0,qb,qe,qh,heat,precip,evap,sst,sss
    use airsea,       only: int_precip,int_evap,int_fwf
    use airsea,       only: int_swr,int_heat,int_total
@@ -610,6 +615,7 @@
          iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=rh)
    end select
    iret = store_data(ncid,cloud_id,XYT_SHAPE,1,scalar=cloud)
+   iret = store_data(ncid,rhoa_id,XYT_SHAPE,1,scalar=rhoa)
    iret = store_data(ncid,zeta_id,XYT_SHAPE,1,scalar=zeta)
    iret = store_data(ncid,sst_id,XYT_SHAPE,1,scalar=sst)
    iret = store_data(ncid,sss_id,XYT_SHAPE,1,scalar=sss)
