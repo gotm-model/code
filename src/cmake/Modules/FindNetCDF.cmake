@@ -42,7 +42,7 @@ endif()
 
 else()
 
-# Use GOTM environment variables: NetCDFLIBNAME, NetCDFLIBDIR, NetCDFINC
+# Use GOTM environment variables: NETCDFLIBNAME, NETCDFLIBDIR, NETCDFINC
 if(DEFINED ENV{NETCDFLIBNAME})
   set(flibs $ENV{NETCDFLIBNAME})
 else()
