@@ -168,7 +168,7 @@
 !EOP
 !-------------------------------------------------------------------------
 !BOC
-   write_results = n .ge. nfirst .and. mod(n,int(nsave,kind=timestepkind)).eq.0
+   write_results = n .ge. nfirst .and. mod(n-nfirst,int(nsave,kind=timestepkind)).eq.0
    if (write_results) call write_time_string(julianday,secondsofday,ts)
 
    end subroutine prepare_output
