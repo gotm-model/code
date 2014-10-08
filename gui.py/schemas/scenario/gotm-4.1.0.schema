@@ -277,6 +277,8 @@
           <option value="3" label="calculated from time, location and cloud cover"/>
         </options>
       </element>
+      <element name="albedo_correction"  type="bool" label="applying albedo correction" unit="">
+      </element>
       <element name="const_swr"  type="float" label="constant incoming short wave radiation" unit="W/m²" minInclusive="0" maxInclusive="1000">
         <condition type="eq" variable="./swr_method" value="1"/>
       </element>

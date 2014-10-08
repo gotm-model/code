@@ -75,6 +75,7 @@ add_library(airsea OBJECT
             airsea/humidity.F90
             airsea/kondo.F90
             airsea/short_wave_radiation.F90
+            airsea/albedo_water.F90
            )
 set_property(TARGET airsea APPEND PROPERTY COMPILE_DEFINITIONS GUSTINESS)
 

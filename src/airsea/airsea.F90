@@ -22,7 +22,7 @@
 !
 ! !USES:
    use airsea_variables
-   use time,         only: julian_day, time_diff
+   use time,         only: julian_day, yearday, time_diff
    use input,        only: register_input_0d,read_obs
 !
    IMPLICIT NONE
@@ -57,7 +57,7 @@
 !
 !  surface short-wave radiation
 !  and surface heat flux (W/m^2)
-   REALTYPE, public, target            :: I_0
+   REALTYPE, public, target            :: I_0,albedo
    REALTYPE, public, target            :: heat
    REALTYPE, public                    :: qe,qh,qb
 
@@ -107,9 +107,10 @@
 #ifndef INTERPOLATE_METEO   
    logical                   :: init_saved_vars
 #endif
-   integer                   :: swr_method
-   integer                   :: fluxes_method
-   integer                   :: back_radiation_method
+   integer, public           :: swr_method
+   logical, public           :: albedo_correction
+   integer, public           :: fluxes_method
+   integer, public           :: back_radiation_method
    integer                   :: heat_method
    integer                   :: momentum_method
    integer                   :: precip_method
@@ -136,7 +137,8 @@
    REALTYPE                  :: precip_factor
    REALTYPE                  :: dlon,dlat
 
-!  short_wave_radiation has an optional argument [swr] and therefore needs an explicit interface
+!  short_wave_radiation has an optional argument [swr] and therefore 
+!  needs an explicit interface
    interface
       function short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo) result(swr)
          integer, intent(in)                 :: jul,secs
@@ -257,7 +259,7 @@
                      heat_method, &
                      rain_impact, &
                      calc_evaporation, &
-                     swr_method,const_swr,swr_file,swr_factor, &
+                     swr_method,albedo_correction,const_swr,swr_file,swr_factor, &
                      const_heat, &
                      heatflux_file, &
                      momentum_method, &
@@ -282,6 +284,7 @@
 
 !  surface short-wave radiation and surface heat flux (W/m^2)
    I_0  = _ZERO_
+   albedo = _ZERO_
    heat = _ZERO_
 
 !  surface stress components (Pa)
@@ -355,6 +358,7 @@
    rain_impact=.false.
    calc_evaporation=.false.
    swr_method=0
+   albedo_correction=.true.
    const_swr=_ZERO_
    swr_file = ''
    swr_factor=_ONE_
@@ -398,6 +402,7 @@
             LEVEL2 'Calculating swr=swr(t(lon),lat,cloud)'
          end if
       case default
+      LEVEL2 'Albedo correction: ',albedo_correction
    end select
 
    if (calc_fluxes) then
@@ -544,6 +549,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
+! !LOCAL VARIABLES:
+   REALTYPE        :: hh
+   REALTYPE        :: short_wave_radiation
+   REALTYPE        :: albedo_water
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -554,7 +563,8 @@
 
 !     Optionally calculate surface shortwave radiation from location, time, cloud cover.
       if (swr_method .eq. 3) then
-         I_0 = short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo)
+         hh = secs*(_ONE_/3600)
+         I_0 = short_wave_radiation(yearday,hh,dlon,dlat,cloud)
       end if
    else
 !     If using constant momentum flux, apply time-varying feedback from biogeochemistry to drag.
@@ -564,6 +574,13 @@
       end if
 
    end if
+
+   if (albedo_correction .and. swr_method .ne. CONSTVAL) then
+      hh = secs*(_ONE_/3600)
+      albedo = albedo_water(1,yearday,hh,dlon,dlat,bio_albedo)
+      I_0 = I_0*(_ONE_-albedo)
+   end if
+
 
 !  If reading SST from file, overwrite current (model) SST with observed value,
 !  to be used in output.
@@ -707,8 +724,13 @@
       call humidity(hum_method,rh,airp,tw,ta)
       call back_radiation(back_radiation_method, &
                           dlat,tw_k,ta_k,cloud,qb)
+#if 0
+      call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
+                         tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
+#else
       call airsea_fluxes(fluxes_method, &
                          tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
+#endif
       h2     = qb+qe+qh
       cloud2 = cloud
 
