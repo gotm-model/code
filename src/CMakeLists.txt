@@ -300,6 +300,14 @@ if(GOTM_USE_FABM)
   target_link_libraries(gotm_exe gotm_fabm ${FABM_LIBRARIES})
 endif(GOTM_USE_FABM)
 
+# Test programs
+add_executable(test_airsea EXCLUDE_FROM_ALL
+               airsea/test_airsea.F90
+               $<TARGET_OBJECTS:airsea>
+               $<TARGET_OBJECTS:input>
+              )
+target_link_libraries(test_airsea util)
+
 # Install GOTM library and include files, unless the host overruled this.
 install(TARGETS gotm_exe DESTINATION bin)
 install(TARGETS turbulence util DESTINATION lib)
