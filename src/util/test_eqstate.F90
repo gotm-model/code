@@ -14,13 +14,15 @@
 !
 ! !LOCAL VARIABLES
 !  basic eqstate interaction variables
-   REALTYPE :: T0=10.
-   REALTYPE :: S0=35.
-   REALTYPE :: p0=35.
-   REALTYPE :: dtr0=-0.17
-   REALTYPE :: dsr0=0.78
-   REALTYPE :: rho_0=1025.
-   REALTYPE :: g=9.81
+   integer, parameter :: rk = kind(_ONE_)
+
+   REALTYPE :: T0=10._rk
+   REALTYPE :: S0=35._rk
+   REALTYPE :: p0=35._rk
+   REALTYPE :: dtr0=-0.17_rk
+   REALTYPE :: dsr0=0.78_rk
+   REALTYPE :: rho_0=1025._rk
+   REALTYPE :: g=9.81_rk
    REALTYPE :: S,T,p
 
    REALTYPE :: x ! from buoyancy to density
