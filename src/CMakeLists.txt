@@ -300,7 +300,16 @@ if(GOTM_USE_FABM)
   target_link_libraries(gotm_exe gotm_fabm ${FABM_LIBRARIES})
 endif(GOTM_USE_FABM)
 
-# Test programs
+# Install GOTM library and include files, unless the host overruled this.
+install(TARGETS gotm_exe DESTINATION bin)
+install(TARGETS turbulence util DESTINATION lib)
+if(GOTM_USE_FABM)
+  install(TARGETS gotm_fabm DESTINATION lib)
+endif()
+install(DIRECTORY ${CMAKE_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
+
+# Begin testing section
+
 add_executable(test_airsea EXCLUDE_FROM_ALL
                airsea/test_airsea.F90
                $<TARGET_OBJECTS:airsea>
@@ -318,11 +327,7 @@ add_executable(test_time EXCLUDE_FROM_ALL
               )
 target_link_libraries(test_time util)
 
-# Install GOTM library and include files, unless the host overruled this.
-install(TARGETS gotm_exe DESTINATION bin)
-install(TARGETS turbulence util DESTINATION lib)
-if(GOTM_USE_FABM)
-  install(TARGETS gotm_fabm DESTINATION lib)
-endif()
-install(DIRECTORY ${CMAKE_BINARY_DIR}/modules/\${BUILD_TYPE}/ DESTINATION include)
+add_custom_target(test_all WORKING_DIRECTORY tests COMMENT "building tests")
+add_dependencies( test_all test_airsea test_eqstate test_time)
 
+# End of testing section
