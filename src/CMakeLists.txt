@@ -313,6 +313,11 @@ add_executable(test_eqstate EXCLUDE_FROM_ALL
               )
 target_link_libraries(test_eqstate util)
 
+add_executable(test_time EXCLUDE_FROM_ALL
+               util/test_time.F90
+              )
+target_link_libraries(test_time util)
+
 # Install GOTM library and include files, unless the host overruled this.
 install(TARGETS gotm_exe DESTINATION bin)
 install(TARGETS turbulence util DESTINATION lib)

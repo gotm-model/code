@@ -24,6 +24,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public                              :: init_time, calendar_date
    public                              :: julian_day, update_time
+   public                              :: read_time_string
    public                              :: write_time_string
    public                              :: time_diff
    public                              :: sunrise_sunset
