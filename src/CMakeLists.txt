@@ -308,6 +308,11 @@ add_executable(test_airsea EXCLUDE_FROM_ALL
               )
 target_link_libraries(test_airsea util)
 
+add_executable(test_eqstate EXCLUDE_FROM_ALL
+               util/test_eqstate.F90
+              )
+target_link_libraries(test_eqstate util)
+
 # Install GOTM library and include files, unless the host overruled this.
 install(TARGETS gotm_exe DESTINATION bin)
 install(TARGETS turbulence util DESTINATION lib)
