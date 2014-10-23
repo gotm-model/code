@@ -25,6 +25,10 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
   set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffree-line-length-none")
 elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray")
   set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -N 1023")
+elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
+  if(WIN32)
+    set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} /Od")
+  endif()
 endif()
 
 # Use use position-independent code (-fPIC) everywhere if building shared libraries
@@ -254,11 +258,19 @@ if(GOTM_USE_NetCDF)
   include_directories("${NetCDF_INCLUDE_DIRS}")
 endif(GOTM_USE_NetCDF)
 
-# For now set to off as default - should maybe be changed
-# Use FABM_PREFIX to locate include and lib directories
 option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 if(GOTM_USE_FABM)
-  find_package(FABM REQUIRED)
+  find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
+  if(FABM_BASE)
+    # Include FABM source files
+    set(FORCED_FABM_HOST gotm)
+    add_subdirectory(${FABM_BASE}/src fabm_src)
+    set(FABM_LIBRARIES fabm)
+  else()
+    # Use FABM library
+    # Use FABM_PREFIX to locate include and lib directories
+    find_package(FABM REQUIRED)
+  endif()
   add_library(gotm_fabm
               fabm/gotm_fabm.F90
               fabm/gotm_fabm_input.F90
