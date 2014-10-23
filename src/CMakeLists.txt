@@ -266,6 +266,7 @@ if(GOTM_USE_FABM)
     set(FORCED_FABM_HOST gotm)
     add_subdirectory(${FABM_BASE}/src fabm_src)
     set(FABM_LIBRARIES fabm)
+    set(FABM_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/fabm_src/modules)
   else()
     # Use FABM library
     # Use FABM_PREFIX to locate include and lib directories
@@ -283,6 +284,7 @@ if(GOTM_USE_FABM)
   add_definitions(-D_FABM_)
 
   add_dependencies(gotm gotm_fabm)
+  target_link_libraries(gotm_fabm ${FABM_LIBRARIES})
   set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 endif(GOTM_USE_FABM)
 
