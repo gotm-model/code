@@ -1,4 +1,3 @@
-#include "fabm_driver.h"
 #include "cppdefs.h"
 !-----------------------------------------------------------------------
 !BOP
@@ -51,9 +50,9 @@
    end type
 
 !  Arrays for state and diagnostic variables
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:),public,target :: cc
-   REALTYPE,allocatable,dimension(_LOCATION_DIMENSIONS_,:),public        :: cc_diag
-   REALTYPE,allocatable,dimension(:),                      public        :: cc_diag_hz
+   REALTYPE,allocatable,dimension(:,:),public,target :: cc
+   REALTYPE,allocatable,dimension(:,:),public        :: cc_diag
+   REALTYPE,allocatable,dimension(:),  public        :: cc_diag_hz
 
 !  Arrays for observations, relaxation times and FABM variable identifiers associated with the observations.
    type type_forced_1d_state
@@ -124,13 +123,13 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm(_LOCATION_,namlst,fname,dt)
+   subroutine init_gotm_fabm(nlev,namlst,fname,dt)
 !
 ! !DESCRIPTION:
 ! Initializes the GOTM-FABM driver module by reading settings from fabm.nml.
 !
 ! !INPUT PARAMETERS:
-   integer,          intent(in)        :: _LOCATION_,namlst
+   integer,          intent(in)        :: nlev,namlst
    character(len=*), intent(in)        :: fname
    REALTYPE,optional,intent(in)        :: dt
 !
@@ -206,7 +205,7 @@
       end select
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
-      call fabm_set_domain(model,_LOCATION_,dt)
+      call fabm_set_domain(model,nlev,dt)
 
       ! Report prognostic variable descriptions
       LEVEL2 'FABM pelagic state variables:'
@@ -291,7 +290,7 @@
       taub_id      = model%get_horizontal_variable_id(standard_variables%bottom_stress)
 
       ! Initialize spatially explicit variables
-      call init_var_gotm_fabm(_LOCATION_)
+      call init_var_gotm_fabm(nlev)
 
       ! Enumerate expressions needed by FABM and allocate arrays to hold the associated data.
       call check_fabm_expressions()
