@@ -564,7 +564,7 @@
 !     Optionally calculate surface shortwave radiation from location, time, cloud cover.
       if (swr_method .eq. 3) then
          hh = secs*(_ONE_/3600)
-         I_0 = short_wave_radiation(yearday,hh,dlon,dlat,cloud)
+         I_0 = swr_factor*short_wave_radiation(yearday,hh,dlon,dlat,cloud)
       end if
    else
 !     If using constant momentum flux, apply time-varying feedback from biogeochemistry to drag.
