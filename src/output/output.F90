@@ -30,7 +30,7 @@
    integer                             :: out_fmt
    character(len=PATH_MAX)             :: out_dir
    character(len=PATH_MAX)             :: out_fn
-   integer                             :: nsave
+   integer                             :: nfirst,nsave
    integer                             :: sync_out
    logical                             :: diagnostics
    integer                             :: mld_method
@@ -168,7 +168,7 @@
 !EOP
 !-------------------------------------------------------------------------
 !BOC
-   write_results = mod(n,int(nsave,kind=timestepkind)).eq.0
+   write_results = n .ge. nfirst .and. mod(n-nfirst,int(nsave,kind=timestepkind)).eq.0
    if (write_results) call write_time_string(julianday,secondsofday,ts)
 
    end subroutine prepare_output

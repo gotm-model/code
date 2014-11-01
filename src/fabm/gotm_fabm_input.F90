@@ -1,7 +1,7 @@
 #ifdef _FABM_
 
 #include "cppdefs.h"
-#include "fabm_driver.h"
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -294,7 +294,7 @@
                 curvariable%data_0d = constant_values(i)
             else
                 ! Variable read from file.
-                call register_input_0d(curvariable%path,curvariable%index,curvariable%data_0d)
+                call register_input_0d(curvariable%path,curvariable%index,curvariable%data_0d,curvariable%name)
             end if
             curvariable%relax_tau_0d = relax_taus(i)
             if (associated(curvariable%inflow)) then
@@ -317,7 +317,7 @@
                 curvariable%data_1d = constant_values(i)
             else
                 ! Variable read from file.
-                call register_input_1d(curvariable%path,curvariable%index,curvariable%data_1d)
+                call register_input_1d(curvariable%path,curvariable%index,curvariable%data_1d,curvariable%name)
             end if
 
 !           Apply separate relaxation times for bottom and surface layer, if specified.

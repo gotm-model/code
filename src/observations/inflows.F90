@@ -39,7 +39,7 @@
       REALTYPE, allocatable  :: Q(:)
       type (type_inflow), pointer :: next => null()
    end type
-   
+
    integer                     :: ninflows
    type (type_inflow), pointer :: first_inflow
 
@@ -67,14 +67,14 @@
 ! !INPUT PARAMETERS:
    logical, intent(in) :: lake
    integer, intent(in) :: nlev
-   
+
    integer,parameter :: unit = 666
 
    integer             :: rc
    character(len=64)       :: name
    character(len=PATH_MAX) :: Q_file,T_file,S_file
    integer                 :: Q_col,T_col,S_col
-   
+
    namelist /inflow/ name,Q_file,T_file,S_file,Q_col,T_col,S_col
 
    type (type_inflow), pointer :: current_inflow
@@ -84,9 +84,9 @@
 !BOC
    ninflows = 0
    nullify(first_inflow)
-   
+
    if (.not.lake) return
-   
+
    open(unit,file='inflows.nml',action='read',status='old',err=98)
    LEVEL1 'init_inflows'
    do
@@ -97,7 +97,7 @@
       Q_col = 1
       T_col = 1
       S_col = 1
-   
+
       read(unit,nml=inflow,err=99,end=97)
       if (.not.associated(first_inflow)) then
          allocate(first_inflow)
@@ -119,16 +119,16 @@
          FATAL 'Error: "Q_file" must be provided in namelist "inflow".'
          stop 'init_inflows'
       end if
-      
+
       LEVEL2 '.... ',trim(name)
       current_inflow%name = name
-      call register_input_0d(Q_file,Q_col,current_inflow%QI)
+      call register_input_0d(Q_file,Q_col,current_inflow%QI,'observed inflow: discharge')
       if (T_file/='') then
-         call register_input_0d(T_file,T_col,current_inflow%TI)
+         call register_input_0d(T_file,T_col,current_inflow%TI,'observed inflow: temperature')
          current_inflow%has_T = .true.
       end if
       if (S_file/='') then
-         call register_input_0d(S_file,S_col,current_inflow%SI)
+         call register_input_0d(S_file,S_col,current_inflow%SI,'observed inflow: salinity')
          current_inflow%has_S = .true.
       end if
       allocate(current_inflow%Q(0:nlev),stat=rc)
@@ -138,7 +138,7 @@
 
    end do
 97 close(unit)
-   
+
    return
 
 99 FATAL 'Error reading namelist "inflow" from inflows.nml.'
@@ -212,7 +212,7 @@
          else
             SI = S(nlev)
          end if
-      
+
          ! calculate depth of water column
          depth = _ZERO_
          do i=1,nlev

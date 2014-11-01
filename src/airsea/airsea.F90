@@ -22,7 +22,7 @@
 !
 ! !USES:
    use airsea_variables
-   use time,         only: julian_day, time_diff
+   use time,         only: julian_day, yearday, time_diff
    use input,        only: register_input_0d,read_obs
 !
    IMPLICIT NONE
@@ -57,7 +57,7 @@
 !
 !  surface short-wave radiation
 !  and surface heat flux (W/m^2)
-   REALTYPE, public, target            :: I_0
+   REALTYPE, public, target            :: I_0,albedo
    REALTYPE, public, target            :: heat
    REALTYPE, public                    :: qe,qh,qb
 
@@ -104,12 +104,13 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 ! !LOCAL VARIABLES:
-#ifndef INTERPOLATE_METEO   
+#ifndef INTERPOLATE_METEO
    logical                   :: init_saved_vars
 #endif
-   integer                   :: swr_method
-   integer                   :: fluxes_method
-   integer                   :: back_radiation_method
+   integer, public           :: swr_method
+   logical, public           :: albedo_correction
+   integer, public           :: fluxes_method
+   integer, public           :: back_radiation_method
    integer                   :: heat_method
    integer                   :: momentum_method
    integer                   :: precip_method
@@ -136,7 +137,8 @@
    REALTYPE                  :: precip_factor
    REALTYPE                  :: dlon,dlat
 
-!  short_wave_radiation has an optional argument [swr] and therefore needs an explicit interface
+!  short_wave_radiation has an optional argument [swr] and therefore
+!  needs an explicit interface
    interface
       function short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo) result(swr)
          integer, intent(in)                 :: jul,secs
@@ -257,7 +259,7 @@
                      heat_method, &
                      rain_impact, &
                      calc_evaporation, &
-                     swr_method,const_swr,swr_file,swr_factor, &
+                     swr_method,albedo_correction,const_swr,swr_file,swr_factor, &
                      const_heat, &
                      heatflux_file, &
                      momentum_method, &
@@ -282,6 +284,7 @@
 
 !  surface short-wave radiation and surface heat flux (W/m^2)
    I_0  = _ZERO_
+   albedo = _ZERO_
    heat = _ZERO_
 
 !  surface stress components (Pa)
@@ -294,7 +297,7 @@
 
 !  sea surface temperature (degC) and sea surface salinity (psu)
    sst     = _ZERO_
-   sst_obs = _ZERO_   
+   sst_obs = _ZERO_
    sss     = _ZERO_
 
 !  sea surface velocities (m/s)
@@ -355,6 +358,7 @@
    rain_impact=.false.
    calc_evaporation=.false.
    swr_method=0
+   albedo_correction=.true.
    const_swr=_ZERO_
    swr_file = ''
    swr_factor=_ONE_
@@ -384,7 +388,7 @@
          LEVEL2 'Using constant short wave radiation= ',const_swr
          I_0 = const_swr
       case (FROMFILE)
-         call register_input_0d(swr_file,1,I_0,scale_factor=swr_factor)
+         call register_input_0d(swr_file,1,I_0,'surface short wave radiation',scale_factor=swr_factor)
          LEVEL2 'Reading short wave radiation data from:'
          LEVEL3 trim(swr_file)
          if (swr_factor .ne. _ONE_) then
@@ -398,6 +402,7 @@
             LEVEL2 'Calculating swr=swr(t(lon),lat,cloud)'
          end if
       case default
+      LEVEL2 'Albedo correction: ',albedo_correction
    end select
 
    if (calc_fluxes) then
@@ -418,7 +423,7 @@
       if (wind_factor .ne. _ONE_) then
          LEVEL3 'applying wind factor= ',wind_factor
       end if
-      
+
       LEVEL3 'heat- and momentum-fluxes:'
       select case (fluxes_method)
          case(1)
@@ -447,7 +452,7 @@
          case (CONSTVAL)
             heat = const_heat
          case (FROMFILE)
-            call register_input_0d(heatflux_file,1,heat)
+            call register_input_0d(heatflux_file,1,heat,'surface heat flux')
             LEVEL2 'Reading heat fluxes from:'
             LEVEL3 trim(heatflux_file)
          case default
@@ -459,8 +464,8 @@
             tx = const_tx
             ty = const_ty
          case (FROMFILE)
-            call register_input_0d(momentumflux_file,1,tx)
-            call register_input_0d(momentumflux_file,2,ty)
+            call register_input_0d(momentumflux_file,1,tx,'surface momentum flux: x-direction')
+            call register_input_0d(momentumflux_file,2,ty,'surface momentum flux: y-direction')
             LEVEL2 'Reading momentum fluxes from:'
             LEVEL3 trim(momentumflux_file)
          case default
@@ -476,7 +481,7 @@
          LEVEL2 'calc_evaporation= ',calc_evaporation
          precip = const_precip
       case (FROMFILE)
-         call register_input_0d(precip_file,1,precip,scale_factor=precip_factor)
+         call register_input_0d(precip_file,1,precip,'precipitation',scale_factor=precip_factor)
          LEVEL2 'Reading precipitation data from:'
          LEVEL3 trim(precip_file)
          if (precip_factor .ne. _ONE_) then
@@ -490,7 +495,7 @@
 !  The observed sea surface temperature
    select case (sst_method)
       case (FROMFILE)
-         call register_input_0d(sst_file,1,sst_obs)
+         call register_input_0d(sst_file,1,sst_obs,'sea surface temperature')
          LEVEL2 'Reading sea surface temperature from:'
          LEVEL3 trim(sst_file)
       case default
@@ -499,7 +504,7 @@
 !  The observed sea surface salinity
    select case (sss_method)
       case (FROMFILE)
-         call register_input_0d(sss_file,1,sss)
+         call register_input_0d(sss_file,1,sss,'sea surface salinity')
          LEVEL2 'Reading sea surface salinity from:'
          LEVEL3 trim(sss_file)
       case default
@@ -544,6 +549,10 @@
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
 !
+! !LOCAL VARIABLES:
+   REALTYPE        :: hh
+   REALTYPE        :: short_wave_radiation
+   REALTYPE        :: albedo_water
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -554,7 +563,8 @@
 
 !     Optionally calculate surface shortwave radiation from location, time, cloud cover.
       if (swr_method .eq. 3) then
-         I_0 = swr_factor*short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo)
+         hh = secs*(_ONE_/3600)
+         I_0 = swr_factor*short_wave_radiation(yearday,hh,dlon,dlat,cloud)
       end if
    else
 !     If using constant momentum flux, apply time-varying feedback from biogeochemistry to drag.
@@ -565,11 +575,18 @@
 
    end if
 
+   if (albedo_correction .and. swr_method .ne. CONSTVAL) then
+      hh = secs*(_ONE_/3600)
+      albedo = albedo_water(1,yearday,hh,dlon,dlat,bio_albedo)
+      I_0 = I_0*(_ONE_-albedo)
+   end if
+
+
 !  If reading SST from file, overwrite current (model) SST with observed value,
 !  to be used in output.
    if (sst_method==FROMFILE) sst = sst_obs
 
-#ifndef INTERPOLATE_METEO   
+#ifndef INTERPOLATE_METEO
    if (init_saved_vars) init_saved_vars = .false.
 #endif
 
@@ -598,7 +615,7 @@
 !-----------------------------------------------------------------------
 !BOC
 
-#ifndef INTERPOLATE_METEO   
+#ifndef INTERPOLATE_METEO
    if (calc_fluxes) close(meteo_unit)
 #endif
 
@@ -707,8 +724,13 @@
       call humidity(hum_method,rh,airp,tw,ta)
       call back_radiation(back_radiation_method, &
                           dlat,tw_k,ta_k,cloud,qb)
+#if 0
+      call airsea_fluxes(fluxes_method,rain_impact,calc_evaporation, &
+                         tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
+#else
       call airsea_fluxes(fluxes_method, &
                          tw,ta,u10-ssu,v10-ssv,precip,evap,tx2,ty2,qe,qh)
+#endif
       h2     = qb+qe+qh
       cloud2 = cloud
 
@@ -759,8 +781,8 @@
 
    w = sqrt((u10-ssu)*(u10-ssu)+(v10-ssv)*(v10-ssv))
 
-   tx = tx*bio_drag_scale   
-   ty = ty*bio_drag_scale   
+   tx = tx*bio_drag_scale
+   ty = ty*bio_drag_scale
 
    end subroutine flux_from_meteo
 !EOC

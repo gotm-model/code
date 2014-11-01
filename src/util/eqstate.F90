@@ -61,7 +61,7 @@
 !EOP
 !
 !  private data memebers
-   integer                   :: eq_state_method, eq_state_mode
+   integer, public           :: eq_state_method, eq_state_mode
    REALTYPE                  :: T0,S0,p0,dtr0,dsr0
    logical                   :: init_linearised
 !

@@ -95,8 +95,10 @@
 
 !-----------------------------------------------------------------------
    subroutine compilation_options
+#ifndef GFORTRAN
+   use, intrinsic ::  iso_Fortran_env
+#endif
    IMPLICIT NONE
-!
    STDERR LINE
 !   STDERR 'GOTM:     www.gotm.net'
 !   STDERR 'version:  ',RELEASE
@@ -105,6 +107,10 @@
    STDERR 'Compilation options: '
    STDERR LINE
 !
+#ifndef GFORTRAN
+!   STDERR compiler_version()
+!   STDERR compiler_options()
+#else
 #ifdef FORTRAN90
    LEVEL1 'Fortran 90 compilation'
 #endif
@@ -113,6 +119,7 @@
 #endif
 #ifdef FORTRAN2003
    LEVEL1 'Fortran 2003 compilation'
+#endif
 #endif
 #ifdef _FABM_
    LEVEL1 '_FABM_'

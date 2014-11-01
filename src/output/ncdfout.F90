@@ -72,10 +72,11 @@
    integer, private          :: u10_id,v10_id
    integer, private          :: airp_id,airt_id
    integer, private          :: hum_id,cloud_id
+   integer, private          :: rhoa_id
    integer, private          :: zeta_id
    integer, private          :: sst_id,sss_id
    integer, private          :: x_taus_id,y_taus_id
-   integer, private          :: swr_id
+   integer, private          :: swr_id,albedo_id
    integer, private          :: qb_id,qe_id,qh_id,heat_id
    integer, private          :: total_id,precip_id,evap_id
    integer, private          :: int_precip_id,int_evap_id,int_fwf_id
@@ -217,6 +218,8 @@
    call check_err(iret)
    iret = nf90_def_var(ncid,'cloud',NF90_REAL,dim3d,cloud_id)
    call check_err(iret)
+   iret = nf90_def_var(ncid,'rhoa',NF90_REAL,dim3d,rhoa_id)
+   call check_err(iret)
    iret = nf90_def_var(ncid,'zeta',NF90_REAL,dim3d,zeta_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'sst',NF90_REAL,dim3d,sst_id)
@@ -228,6 +231,8 @@
    iret = nf90_def_var(ncid,'y-taus',NF90_REAL,dim3d,y_taus_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'swr',NF90_REAL,dim3d,swr_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'albedo',NF90_REAL,dim3d,albedo_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'qb',NF90_REAL,dim3d,qb_id)
    call check_err(iret)
@@ -318,7 +323,7 @@
          call check_err(iret)
          iret = nf90_def_var(ncid,'FQ',NF90_REAL,dim4d,FQ_id)
          call check_err(iret)
-         
+
          allocate(Q_ids(ninflows))
          iinflow = 0
          current_inflow => first_inflow
@@ -455,12 +460,14 @@
          iret = set_attributes(ncid,hum_id,units='kg/kg',long_name='specific humidity')
    end select
    iret = set_attributes(ncid,cloud_id,units='%',long_name='cloud cover')
+   iret = set_attributes(ncid,rhoa_id,units='kg/m3',long_name='air density')
    iret = set_attributes(ncid,zeta_id,units='m',long_name='sea surface elevation')
    iret = set_attributes(ncid,sst_id,units='celsius',long_name='sea surface temperature')
    iret = set_attributes(ncid,sss_id,units='g/kg',long_name='sea surface salinity')
    iret = set_attributes(ncid,x_taus_id,units='Pa',long_name='x-wind stress')
    iret = set_attributes(ncid,y_taus_id,units='Pa',long_name='y-wind stress')
    iret = set_attributes(ncid,swr_id,units='W/m2',long_name='short wave radiation')
+   iret = set_attributes(ncid,albedo_id,units='',long_name='albedo over water')
    iret = set_attributes(ncid,qb_id,units='W/m2',long_name='long wave back-radiation')
    iret = set_attributes(ncid,qe_id,units='W/m2',long_name='sensible heat')
    iret = set_attributes(ncid,qh_id,units='W/m2',long_name='latent heat')
@@ -612,7 +619,8 @@
    use airsea,       only: u10,v10
    use airsea,       only: airp,airt
    use airsea,       only: rh,twet,tdew,cloud
-   use airsea,       only: tx,ty,I_0,qb,qe,qh,heat,precip,evap,sst,sss
+   use airsea_variables, only: rhoa
+   use airsea,       only: tx,ty,I_0,albedo,qb,qe,qh,heat,precip,evap,sst,sss
    use airsea,       only: int_precip,int_evap,int_net_precip
    use airsea,       only: int_swr,int_heat,int_total
    use meanflow,     only: int_flows,int_fwf
@@ -701,12 +709,14 @@
          iret = store_data(ncid,hum_id,XYT_SHAPE,1,scalar=rh)
    end select
    iret = store_data(ncid,cloud_id,XYT_SHAPE,1,scalar=cloud)
+   iret = store_data(ncid,rhoa_id,XYT_SHAPE,1,scalar=rhoa)
    iret = store_data(ncid,zeta_id,XYT_SHAPE,1,scalar=zeta)
    iret = store_data(ncid,sst_id,XYT_SHAPE,1,scalar=sst)
    iret = store_data(ncid,sss_id,XYT_SHAPE,1,scalar=sss)
    iret = store_data(ncid,x_taus_id,XYT_SHAPE,1,scalar=rho_0*tx)
    iret = store_data(ncid,y_taus_id,XYT_SHAPE,1,scalar=rho_0*ty)
    iret = store_data(ncid,swr_id,XYT_SHAPE,1,scalar=I_0)
+   iret = store_data(ncid,albedo_id,XYT_SHAPE,1,scalar=albedo)
    iret = store_data(ncid,qb_id,XYT_SHAPE,1,scalar=qb)
    iret = store_data(ncid,qe_id,XYT_SHAPE,1,scalar=qe)
    iret = store_data(ncid,qh_id,XYT_SHAPE,1,scalar=qh)

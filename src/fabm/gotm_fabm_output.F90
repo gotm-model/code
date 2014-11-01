@@ -1,7 +1,7 @@
 #ifdef _FABM_
 
 #include "cppdefs.h"
-#include "fabm_driver.h"
+
 !-----------------------------------------------------------------------
 !BOP
 !
@@ -15,10 +15,11 @@
 !  state and diagnostic variables.
 !
 ! !USES:
-   use gotm_fabm
+   use fabm_types,only:rk,get_safe_name,output_time_step_integrated,output_time_step_averaged,output_none
+   use fabm,only:type_external_variable,fabm_get_conserved_quantities,fabm_get_horizontal_conserved_quantities
+
    use gotm_fabm_input
-   use fabm
-   use fabm_types
+   use gotm_fabm
 
    implicit none
 
@@ -29,11 +30,7 @@
    public init_gotm_fabm_output, do_gotm_fabm_output, clean_gotm_fabm_output
 
    REALTYPE,allocatable :: total0(:),total(:)
-#ifdef _FABM_USE_1D_LOOP_
    REALTYPE,allocatable :: local(:,:)
-#else
-   REALTYPE,allocatable :: local(:)
-#endif
 !EOP
 !-----------------------------------------------------------------------
 
@@ -79,11 +76,7 @@ contains
    if (rc /= 0) stop 'init_gotm_fabm_output: Error allocating (total0)'
    allocate(total(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_gotm_fabm_output: Error allocating (total)'
-#ifdef _FABM_USE_1D_LOOP_
    allocate(local(1:nlev,1:size(model%conserved_quantities)),stat=rc)
-#else
-   allocate(local(1:size(model%conserved_quantities)),stat=rc)
-#endif
    if (rc /= 0) stop 'init_gotm_fabm_output: Error allocating (local)'
 
    select case (out_fmt)
@@ -160,6 +153,7 @@ contains
    end select
    call calculate_conserved_quantities(nlev,total0)
 
+#ifdef NETCDF_FMT
    contains
 
    subroutine add_variable(variable,dims)
@@ -173,6 +167,7 @@ contains
                             long_name=trim(variable%long_name), &
                             FillValue=variable%missing_value,missing_value=variable%missing_value)
    end subroutine
+#endif
 
    end subroutine init_gotm_fabm_output
 !EOC
@@ -341,22 +336,12 @@ contains
       ! Add conserved quantities at boundaries (in m-2)
       call fabm_get_horizontal_conserved_quantities(model,1,total)
 
-#ifdef _FABM_USE_1D_LOOP_
       call fabm_get_conserved_quantities(model,1,nlev,local)
       do n=1,size(model%conserved_quantities)
          ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
          ! We therefore need to increment the index by 1 in order to address original elements >=1!
          total(n) = total(n) + sum(h(2:nlev+1)*local(1:nlev,n))
       end do
-#else
-      total = _ZERO_
-      do n=1,nlev
-         ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
-         ! We therefore need to increment the index by 1 in order to address original elements >=1!
-         call fabm_get_conserved_quantities(model,n,local)
-         total = total + h(n+1)*local
-      end do
-#endif
    end subroutine
 
    subroutine clean_gotm_fabm_output()

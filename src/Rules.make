@@ -70,11 +70,24 @@ endif
 # NetCDF/HDF configuration done
 
 # if we want to include FABM - Framework for Aquatic Biogeochemical Models
-ifdef FABM
+ifeq ($(FABM),true)
+
+ifdef FABM_PREFIX
+
+ifeq ($(wildcard $(FABM_PREFIX)/lib/libfabm.*), )
+$(error the directory FABM_PREFIX=$(FABM_PREFIX) is not a valid FABM directory)
+endif
+
+INCDIRS         += -I$(FABM_PREFIX)/include
+LINKDIRS        += -L$(FABM_PREFIX)/lib
+EXTRA_LIBS      += -lfabm
+
+else
 
 ifndef FABMDIR
 FABMDIR  := $(HOME)/FABM/fabm-git
 endif
+
 ifeq ($(wildcard $(FABMDIR)/src/fabm.F90),)
 $(error the directory FABMDIR=$(FABMDIR) is not a valid FABM directory)
 endif
@@ -82,11 +95,15 @@ endif
 INCDIRS         += -I$(FABMDIR)/include -I$(FABMDIR)/src/drivers/gotm -I$(FABMDIR)/modules/gotm/$(FORTRAN_COMPILER)
 LINKDIRS        += -L$(FABMDIR)/lib/gotm/$(FORTRAN_COMPILER)
 EXTRA_LIBS      += -lfabm$(buildtype)
+
+endif
+
 DEFINES += -D_FABM_
 FEATURES += fabm
 FEATURE_LIBS += -lgotm_fabm$(buildtype)
 
 endif
+# FABM configuration done
 
 #
 # phony targets
