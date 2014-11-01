@@ -104,7 +104,7 @@
 !  Original author(s): Karsten Bolding, Hans Burchard
 !
 ! !LOCAL VARIABLES:
-#ifndef INTERPOLATE_METEO   
+#ifndef INTERPOLATE_METEO
    logical                   :: init_saved_vars
 #endif
    integer, public           :: swr_method
@@ -137,7 +137,7 @@
    REALTYPE                  :: precip_factor
    REALTYPE                  :: dlon,dlat
 
-!  short_wave_radiation has an optional argument [swr] and therefore 
+!  short_wave_radiation has an optional argument [swr] and therefore
 !  needs an explicit interface
    interface
       function short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo) result(swr)
@@ -297,7 +297,7 @@
 
 !  sea surface temperature (degC) and sea surface salinity (psu)
    sst     = _ZERO_
-   sst_obs = _ZERO_   
+   sst_obs = _ZERO_
    sss     = _ZERO_
 
 !  sea surface velocities (m/s)
@@ -423,7 +423,7 @@
       if (wind_factor .ne. _ONE_) then
          LEVEL3 'applying wind factor= ',wind_factor
       end if
-      
+
       LEVEL3 'heat- and momentum-fluxes:'
       select case (fluxes_method)
          case(1)
@@ -586,7 +586,7 @@
 !  to be used in output.
    if (sst_method==FROMFILE) sst = sst_obs
 
-#ifndef INTERPOLATE_METEO   
+#ifndef INTERPOLATE_METEO
    if (init_saved_vars) init_saved_vars = .false.
 #endif
 
@@ -615,7 +615,7 @@
 !-----------------------------------------------------------------------
 !BOC
 
-#ifndef INTERPOLATE_METEO   
+#ifndef INTERPOLATE_METEO
    if (calc_fluxes) close(meteo_unit)
 #endif
 
@@ -781,8 +781,8 @@
 
    w = sqrt((u10-ssu)*(u10-ssu)+(v10-ssv)*(v10-ssv))
 
-   tx = tx*bio_drag_scale   
-   ty = ty*bio_drag_scale   
+   tx = tx*bio_drag_scale
+   ty = ty*bio_drag_scale
 
    end subroutine flux_from_meteo
 !EOC

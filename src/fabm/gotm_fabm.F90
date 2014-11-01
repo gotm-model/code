@@ -70,7 +70,7 @@
 !  Observation indices (from obs_0d, obs_1d) for pelagic and benthic state variables.
    type (type_forced_1d_state),allocatable :: cc_obs(:)
    type (type_forced_0d_state),allocatable :: cc_ben_obs(:)
-   
+
    interface register_observation
       module procedure register_bulk_observation
       module procedure register_horizontal_observation
@@ -471,7 +471,7 @@
    do i=1,size(model%state_variables)
       if (model%state_variables(i)%minimum>=_ZERO_) posconc(i) = 1
    end do
-   
+
    end subroutine init_var_gotm_fabm
 !EOC
 
@@ -755,7 +755,7 @@
    subroutine check_fabm_expressions()
       class (type_expression),pointer :: expression
       integer :: n
-      
+
       n = 0
       expression => model%root%first_expression
       do while (associated(expression))
@@ -799,9 +799,9 @@
          end select
          expression => expression%next
       end do
-      
+
    contains
-   
+
       REALTYPE function calculate_vertical_mean(expression)
          class (type_vertical_integral),intent(in) :: expression
 
@@ -1256,7 +1256,7 @@
 
       ! Compute pressure, depth, day of the year
       call calculate_derived_input(nlev,_ZERO_)
-      
+
       ! Update derived expressions (vertical means, etc.)
       call update_fabm_expressions(nlev)
 
