@@ -83,7 +83,7 @@
 !
 !  PRIVATE PARAMETERS
    integer,parameter :: first_unit_no = 555
-   
+
    integer :: nlev
 
    integer, parameter :: END_OF_FILE=-1
@@ -117,7 +117,7 @@
       nlev = n
    else
       nlev = -1
-   end if   
+   end if
    next_unit_no = first_unit_no
    nullify(first_profile_file)
    nullify(first_timeseries_file)
@@ -199,7 +199,7 @@
       allocate(file%first_variable)
       variable => file%first_variable
    end if
-   
+
    variable%index = icolumn
    variable%data => data
    variable%data = _ZERO_
@@ -275,7 +275,7 @@
       allocate(file%first_variable)
       variable => file%first_variable
    end if
-   
+
    variable%index = icolumn
    variable%data => data
    variable%data = _ZERO_
@@ -369,7 +369,7 @@
 !  Opening was successful - store the file unit, and increment the next unit with 1.
    info%unit = next_unit_no
    next_unit_no = next_unit_no + 1
-   
+
 !  Determine the maximum number of columns that we need to read.
    nvar = 0
    curvar => info%first_variable
@@ -524,7 +524,7 @@
       nvar = max(nvar,curvar%index)
       curvar => curvar%next
    end do
-   
+
    allocate(info%obs1(nvar),stat=rc)
    if (rc /= 0) stop 'input::initialize_timeseries_file: Error allocating memory (obs1)'
    info%obs1 = _ZERO_

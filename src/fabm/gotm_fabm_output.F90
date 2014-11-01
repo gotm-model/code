@@ -144,7 +144,7 @@ contains
                iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_column',cur_obs_variable%index)
                call check_err(iret)
                cur_obs_variable => cur_obs_variable%next
-            end do               
+            end do
          end if
 
          ! Take NetCDF library out of define mode (ready for storing data).
@@ -215,7 +215,7 @@ contains
    select case (out_fmt)
       case (NETCDF)
 #ifdef NETCDF_FMT
-         
+
          ! ---------------------------
          ! Depth-dependent variables
          ! ---------------------------
@@ -262,7 +262,7 @@ contains
                call check_err(iret)
             end if
             cur_obs_variable => cur_obs_variable%next
-         end do               
+         end do
 
          ! ---------------------------
          ! Depth-independent variables
