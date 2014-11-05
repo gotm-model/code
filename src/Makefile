@@ -30,13 +30,16 @@ confall: confdir confflags
 
 confdir:
 	@echo "GOTMDIR:     "$(GOTMDIR)
+ifeq ($(FABM),true)
+ifdef FABM_PREFIX
+	@echo "FABM_PREFIX: "$(FABM_PREFIX)
+else
+	@echo "FABMDIR:     "$(FABMDIR)
+endif
+endif
 	@echo "BINDIR:      "$(BINDIR)
 	@echo "MODDIR:      "$(MODDIR)
 	@echo "LIBDIR:      "$(LIBDIR)
-ifeq ($(FABM),true)
-	@echo "FABMDIR:     "$(FABMDIR)
-	@echo "FABM_PREFIX: "$(FABM_PREFIX)
-endif
 
 confflags:
 	@echo "DEFINES:     "$(DEFINES)
