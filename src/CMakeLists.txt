@@ -299,7 +299,7 @@ if(GOTM_USE_NetCDF)
 endif(GOTM_USE_NetCDF)
 
 if(GOTM_USE_FABM)
-  target_link_libraries(gotm_exe gotm_fabm ${FABM_LIBRARIES})
+  target_link_libraries(gotm_exe gotm_fabm gotm_fabm_io ${FABM_LIBRARIES})
 endif(GOTM_USE_FABM)
 
 # Set default installation prefix.
