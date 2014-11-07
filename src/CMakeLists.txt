@@ -270,6 +270,7 @@ if(GOTM_USE_FABM)
               fabm/gotm_fabm_input.F90
               fabm/gotm_fabm_output.F90
              )
+  add_dependencies(gotm_fabm_io gotm_fabm)
   add_dependencies(gotm gotm_fabm gotm_fabm_io)
   set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 endif(GOTM_USE_FABM)
