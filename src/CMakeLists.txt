@@ -131,6 +131,30 @@ add_library(turbulence
 target_link_libraries(turbulence util)
 set_property(TARGET turbulence PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 
+option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
+if(GOTM_USE_FABM)
+  find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
+  if(FABM_BASE)
+    # Include FABM source files
+    set(FABM_FORCED_HOST gotm)
+    add_subdirectory(${FABM_BASE}/src fabm_src)
+    set(FABM_LIBRARIES fabm)
+    set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
+    mark_as_advanced(FABM_PREFIX)
+  else()
+    # Use FABM_PREFIX to locate include and lib directories
+    find_package(FABM REQUIRED)
+  endif()
+  add_library(gotm_fabm
+              fabm/gotm_fabm.F90
+             )
+  target_link_libraries(gotm_fabm util)
+  set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+  set_property(TARGET gotm_fabm PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+  add_definitions(-D_FABM_)
+  target_link_libraries(gotm_fabm ${FABM_LIBRARIES})
+endif(GOTM_USE_FABM)
+
 if(NOT GOTM_BUILD_LIBRARIES_ONLY)
 
 add_library(input OBJECT
@@ -241,33 +265,12 @@ if(GOTM_USE_NetCDF)
   include_directories("${NetCDF_INCLUDE_DIRS}")
 endif(GOTM_USE_NetCDF)
 
-option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 if(GOTM_USE_FABM)
-  find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
-  if(FABM_BASE)
-    # Include FABM source files
-    set(FABM_FORCED_HOST gotm)
-    add_subdirectory(${FABM_BASE}/src fabm_src)
-    set(FABM_LIBRARIES fabm)
-    set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
-    mark_as_advanced(FABM_PREFIX)
-  else()
-    # Use FABM_PREFIX to locate include and lib directories
-    find_package(FABM REQUIRED)
-  endif()
-  add_library(gotm_fabm
-              fabm/gotm_fabm.F90
+  add_library(gotm_fabm_io
               fabm/gotm_fabm_input.F90
               fabm/gotm_fabm_output.F90
              )
-  add_dependencies(gotm_fabm output)
-  target_link_libraries(gotm_fabm util)
-  set_property(TARGET gotm_fabm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  set_property(TARGET gotm_fabm PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
-  add_definitions(-D_FABM_)
-
-  add_dependencies(gotm gotm_fabm)
-  target_link_libraries(gotm_fabm ${FABM_LIBRARIES})
+  add_dependencies(gotm gotm_fabm gotm_fabm_io)
   set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 endif(GOTM_USE_FABM)
 
