@@ -46,7 +46,7 @@ if(GOTM_EXTRA_OUTPUT)
 endif()
 
 # Global include directories
-include_directories("${CMAKE_BINARY_DIR}"
+include_directories(BEFORE "${CMAKE_BINARY_DIR}"
                     "${PROJECT_SOURCE_DIR}/../include"
                     "${PROJECT_SOURCE_DIR}/util"
                     "${CMAKE_CURRENT_BINARY_DIR}/modules"
