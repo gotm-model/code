@@ -897,9 +897,9 @@
       shear2 = SS(i)
       cff    = shear2*shear2/(shear2*shear2+16.0E-10)
       nu_sx  = cff*nu_sx
-# else KPP_SHEAR
+# else
       nu_sx=_ZERO_
-# endif KPP_SHEAR
+# endif
 
 #ifdef KPP_INTERNAL_WAVE
 !
@@ -916,7 +916,7 @@
 #else
       iwm  =  _ZERO_
       iws  =  _ZERO_
-#endif KPP_INTERNAL_WAVE
+#endif
 
 
 # ifdef KPP_CONVEC
@@ -926,9 +926,9 @@
       cff    =  min(_ONE_,(bvfcon-cff)/bvfcon)
       nu_sxc =  _ONE_-cff*cff
       nu_sxc =  nu_sxc*nu_sxc*nu_sxc
-# else KPP_CONVEC
+# else
       nu_sxc =  _ZERO_
-# endif KPP_CONVEC
+# endif
 !
 !     Sum contributions due to internal wave breaking, shear instability
 !     and convective diffusivity due to shear instability.
@@ -991,7 +991,7 @@
       nuh(i)=nuh(i)  + nu_ddt
       nus(i)=nuh(i)  + nu_dds
 
-# endif KPP_DDMIX
+# endif
 
    enddo ! loop over interior points
 

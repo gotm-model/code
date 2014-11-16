@@ -28,7 +28,7 @@
 ! they have to be consistent with the equation of state used in your model.
 !
 ! !USES:
-  use eqstate
+  use eqstate, only: eos_alpha, eos_beta
   IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
