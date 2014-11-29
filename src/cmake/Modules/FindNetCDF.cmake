@@ -18,7 +18,7 @@ execute_process(COMMAND ${NetCDF_CONFIG_EXECUTABLE} --flibs
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 set(NetCDF_INCLUDE_DIRS ${includedir} CACHE STRING "NetCDF include directories")
 set(NetCDF_LIBRARIES ${flibs} CACHE STRING "NetCDF linking flags")
-mark_as_advanced(NetCDF_INCLUDE_DIRS NetCDF_FLIBS)
+mark_as_advanced(NetCDF_INCLUDE_DIRS NetCDF_LIBRARIES)
 
 elseif (WIN32)
 
