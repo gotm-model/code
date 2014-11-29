@@ -151,7 +151,7 @@
 
 !     add non-local fluxes
 #ifdef NONLOCAL
-!      Qsour(i) = Qsour(i) - ( gamm(i) - gamm(i-1) )/h(i)
+!      Qsour(i) = Qsour(i) - ( gamv(i) - gamv(i-1) )/h(i)
 #endif
 
    end do
