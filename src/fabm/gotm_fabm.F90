@@ -94,7 +94,7 @@
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
    REALTYPE,allocatable,dimension(:,:) :: ws
-   REALTYPE,allocatable,dimension(:)   :: sfl,bfl,Qsour,Lsour,DefaultRelaxTau,curh,curnuh
+   REALTYPE,allocatable,dimension(:)   :: sfl,bfl,Qsour,Lsour,DefaultRelaxTau,curh,curnuh,iweights
    logical,allocatable, dimension(:)   :: cc_transport
    integer,allocatable, dimension(:)   :: posconc
 
@@ -465,6 +465,10 @@
    if (rc /= 0) stop 'allocate_memory(): Error allocating (curnuh)'
    curnuh = _ZERO_
 
+   allocate(iweights(0:nlev),stat=rc)
+   if (rc /= 0) stop 'allocate_memory(): Error allocating (iweights)'
+   iweights = _ZERO_
+
    allocate(posconc(1:size(model%state_variables)),stat=rc)
    if (rc /= 0) stop 'allocate_memory(): Error allocating (posconc)'
    posconc = 0
@@ -633,6 +637,7 @@
 ! !LOCAL VARIABLES:
    integer, parameter        :: adv_mode_0=0
    integer, parameter        :: adv_mode_1=1
+   REALTYPE,dimension(0:nlev):: ws1d
    REALTYPE                  :: dilution,virtual_dilution
    integer                   :: i
    integer                   :: split
@@ -683,11 +688,15 @@
    end do
 
    ! Vertical advection and residual movement (sinking/floating)
+   ws1d(0   ) = _ZERO_
+   ws1d(nlev) = _ZERO_
+   iweights(1:nlev-1) = curh(2:nlev) / ( curh(1:nlev-1) + curh(2:nlev) )
    call system_clock(clock_start)
    do i=1,size(model%state_variables)
       if (cc_transport(i)) then
          ! Do advection step due to settling or rising
-         call adv_center(nlev,dt,curh,curh,ws(:,i),flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(:,i))
+         ws1d(1:nlev-1) = iweights(1:nlev-1)*ws(1:nlev-1,i) + (_ONE_-iweights(1:nlev-1))*ws(2:nlev,i)
+         call adv_center(nlev,dt,curh,curh,ws1d,flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(:,i))
 
          ! Do advection step due to vertical velocity
          if (w_adv_method/=0) call adv_center(nlev,dt,curh,curh,w,flux,flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(:,i))
