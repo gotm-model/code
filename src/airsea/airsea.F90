@@ -140,11 +140,11 @@
 !  short_wave_radiation has an optional argument [swr] and therefore
 !  needs an explicit interface
    interface
-      function short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo) result(swr)
-         integer, intent(in)                 :: jul,secs
+      function short_wave_radiation(yearday,hh,dlon,dlat,cloud) result(swr)
+         integer, intent(in)                 :: yearday
+         REALTYPE, intent(in)                :: hh
          REALTYPE, intent(in)                :: dlon,dlat
          REALTYPE, intent(in)                :: cloud
-         REALTYPE, intent(in)                :: bio_albedo
          REALTYPE                            :: swr
       end function short_wave_radiation
    end interface
