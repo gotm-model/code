@@ -175,6 +175,7 @@ add_library(airsea OBJECT
             airsea/fairall.F90
             airsea/humidity.F90
             airsea/kondo.F90
+            airsea/solar_zenith_angle.F90
             airsea/short_wave_radiation.F90
             airsea/albedo_water.F90
            )

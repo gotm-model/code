@@ -277,7 +277,15 @@
           <option value="3" label="calculated from time, location and cloud cover"/>
         </options>
       </element>
-      <element name="albedo_correction"  type="bool" label="applying albedo correction" unit="">
+      <element name="albedo_method"  type="int" label="albedo correction method" unit="">
+        <options>
+          <option value="0" label="constant albedo"/>
+          <option value="1" label="according to Payne (1972)"/>
+          <option value="2" label="according to Cogley (1979)"/>
+        </options>
+      </element>
+      <element name="const_albedo"  type="float" label="constant albedo" unit="" minInclusive="0" maxInclusive="1">
+        <condition type="eq" variable="./albedo_method" value="1"/>
       </element>
       <element name="const_swr"  type="float" label="constant incoming short wave radiation" unit="W/m²" minInclusive="0" maxInclusive="1000">
         <condition type="eq" variable="./swr_method" value="1"/>
