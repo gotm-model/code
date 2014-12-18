@@ -78,7 +78,8 @@
 			<const_heat>0.0</const_heat>
 			<heatflux_file>heatflux_file.dat</heatflux_file>
 			<swr_method>1</swr_method>
-			<albedo_correction>True</albedo_correction>
+			<albedo_method>1</albedo_method>
+			<const_albedo>0.</const_albedo>
 			<const_swr>0.0</const_swr>
 			<swr_file>swr_file.dat</swr_file>
 			<swr_factor>1.0</swr_factor>
