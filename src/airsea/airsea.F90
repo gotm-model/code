@@ -15,8 +15,9 @@
 !  prescribed. Alternatively, they may be calculated by means
 !  of bulk formulae from observed or modelled meteorological
 !  parameters and the solar radiation may be calculated
-!  from longitude, latitude,
-!  time and cloudiness. For the prescibed fluxes and solar radiation,
+!  from longitude, latitude, time and cloudiness. 
+!  Albedo correction is applied according to a namelist variable.
+!  For the prescibed fluxes and solar radiation,
 !  values may be constant or read in from files. All necessary
 !  setting have to be made in the namelist file {\tt airsea.nml}.
 !
@@ -108,7 +109,8 @@
    logical                   :: init_saved_vars
 #endif
    integer, public           :: swr_method
-   logical, public           :: albedo_correction
+   integer, public           :: albedo_method
+   REALTYPE, public          :: const_albedo
    integer, public           :: fluxes_method
    integer, public           :: back_radiation_method
    integer                   :: heat_method
@@ -136,18 +138,6 @@
    REALTYPE                  :: const_precip
    REALTYPE                  :: precip_factor
    REALTYPE                  :: dlon,dlat
-
-!  short_wave_radiation has an optional argument [swr] and therefore
-!  needs an explicit interface
-   interface
-      function short_wave_radiation(jul,secs,dlon,dlat,cloud,bio_albedo) result(swr)
-         integer, intent(in)                 :: jul,secs
-         REALTYPE, intent(in)                :: dlon,dlat
-         REALTYPE, intent(in)                :: cloud
-         REALTYPE, intent(in)                :: bio_albedo
-         REALTYPE                            :: swr
-      end function short_wave_radiation
-   end interface
 !
 ! !BUGS:
 !  Wind speed - w - is not entirely correct.
@@ -210,6 +200,8 @@
 !                          & 2: read short wave radiation from file                                 \\
 !                          & 3: Solar radiation is calculated from time, longitude, latitude,       \\
 !                          & and cloud cover.                                                       \\
+! {\tt albedo_method}    & 0=const, 1=Payne, 2=Cogley \\
+! {\tt const_albedo}     & used if albedo_method=0 - must be <= 1.0    \\
 ! {\tt const\_swr}       & constant value for short wave radiation in W\,m$^{-2}$                 \\
 !                          & (always positive)                                                      \\
 ! {\tt swr\_file}        & file with short wave radiation in W\,m$^{-2}$                          \\
@@ -259,7 +251,7 @@
                      heat_method, &
                      rain_impact, &
                      calc_evaporation, &
-                     swr_method,albedo_correction,const_swr,swr_file,swr_factor, &
+                     swr_method,albedo_method,const_albedo,const_swr,swr_file,swr_factor, &
                      const_heat, &
                      heatflux_file, &
                      momentum_method, &
@@ -358,7 +350,7 @@
    rain_impact=.false.
    calc_evaporation=.false.
    swr_method=0
-   albedo_correction=.true.
+   albedo_method=1
    const_swr=_ZERO_
    swr_file = ''
    swr_factor=_ONE_
@@ -401,8 +393,8 @@
          else
             LEVEL2 'Calculating swr=swr(t(lon),lat,cloud)'
          end if
+         LEVEL2 'Albedo method: ',albedo_method
       case default
-      LEVEL2 'Albedo correction: ',albedo_correction
    end select
 
    if (calc_fluxes) then
@@ -551,8 +543,11 @@
 !
 ! !LOCAL VARIABLES:
    REALTYPE        :: hh
+   REALTYPE        :: solar_zenith_angle
    REALTYPE        :: short_wave_radiation
+   REALTYPE        :: zenith_angle
    REALTYPE        :: albedo_water
+   logical         :: have_zenith_angle
 !EOP
 !-----------------------------------------------------------------------
 !BOC
@@ -562,9 +557,12 @@
       call flux_from_meteo(jul,secs)
 
 !     Optionally calculate surface shortwave radiation from location, time, cloud cover.
+      have_zenith_angle = .false.
       if (swr_method .eq. 3) then
          hh = secs*(_ONE_/3600)
-         I_0 = swr_factor*short_wave_radiation(yearday,hh,dlon,dlat,cloud)
+         zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
+         have_zenith_angle = .true.
+         I_0 = swr_factor*short_wave_radiation(zenith_angle,yearday,dlon,dlat,cloud)
       end if
    else
 !     If using constant momentum flux, apply time-varying feedback from biogeochemistry to drag.
@@ -575,10 +573,13 @@
 
    end if
 
-   if (albedo_correction .and. swr_method .ne. CONSTVAL) then
-      hh = secs*(_ONE_/3600)
-      albedo = albedo_water(1,yearday,hh,dlon,dlat,bio_albedo)
-      I_0 = I_0*(_ONE_-albedo)
+   if (swr_method .ne. CONSTVAL) then
+      if (.not. have_zenith_angle) then
+         hh = secs*(_ONE_/3600)
+         zenith_angle = solar_zenith_angle(yearday,hh,dlon,dlat)
+      end if
+      albedo = albedo_water(albedo_method,zenith_angle,yearday)
+      I_0 = I_0*(_ONE_-albedo-bio_albedo)
    end if
 
 

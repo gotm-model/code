@@ -25,6 +25,7 @@ ${LIB}(airsea.o)
 OBJ	= \
 ${LIB}(albedo_water.o)		\
 ${LIB}(short_wave_radiation.o)	\
+${LIB}(solar_zenith_angle.o)	\
 ${LIB}(humidity.o) 		\
 ${LIB}(back_radiation.o) 	\
 ${LIB}(airsea_fluxes.o) 	\
