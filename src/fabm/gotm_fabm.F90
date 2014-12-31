@@ -758,13 +758,12 @@
                   Qsour(k) = Qsour(k) + cc(k,i) * inflow%Q(k) / (Ac(k) * curh(k))
                end do
             end if
-
-            ! Calculate the sink term at sea surface
-            ! This is taken directly from the original inflow scheme.
-            Qsour(nlev) = Qsour(nlev) - cc(nlev,i) * FQ(nlev-1) / (Ac(nlev) * curh(nlev))
-
             inflow => inflow%next
          end do
+
+         ! Calculate the sink term at sea surface
+         ! This is taken directly from the original inflow scheme.
+         Qsour(nlev) = Qsour(nlev) - cc(nlev,i) * FQ(nlev-1) / (Ac(nlev) * curh(nlev))
 
          ! Do diffusion step
          if (associated(cc_obs(i)%data)) then
