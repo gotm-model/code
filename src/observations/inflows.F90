@@ -16,6 +16,7 @@
 !
 ! !USES
    use input
+   use observations, only: zeta
 
 !  !PUBLIC DATA MEMBERS:
    IMPLICIT NONE
@@ -213,16 +214,10 @@
             SI = S(nlev)
          end if
 
-         ! calculate depth of water column
-         depth = _ZERO_
-         do i=1,nlev
-            depth = depth - h(i)
-         end do
-
          ! find minimal depth where the inflow will take place
          index_min = 0
          do i=1,nlev
-            depth = depth + h(i)
+            depth = zeta - z(i)
             rhoI = unesco(SI,TI,depth/10.0d0,.false.)
             rho = unesco(S(i),T(i),depth/10.0d0,.false.)
             ! if the density of the inflowing water is greater than the
