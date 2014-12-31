@@ -185,11 +185,13 @@
    REALTYPE             :: depth
    REALTYPE             :: VI_basin
    REALTYPE             :: TI,SI
+   REALTYPE,dimension(0:nlev) :: Q
    integer              :: index_min
    type (type_inflow), pointer :: current_inflow
 !
 !-----------------------------------------------------------------------
 !BOC
+   Q  = _ZERO_
    Qs = _ZERO_
    Qt = _ZERO_
    FQ = _ZERO_
@@ -253,14 +255,9 @@
          ! "+1" because loop includes both n and index_min
          do i=index_min,n
             current_inflow%Q(i) = current_inflow%QI / (n-index_min+1)
+            Q (i) = Q (i) +      current_inflow%Q(i)
             Qs(i) = Qs(i) + SI * current_inflow%Q(i) / (Ac(i) * h(i))
             Qt(i) = Qt(i) + TI * current_inflow%Q(i) / (Ac(i) * h(i))
-         end do
-
-         ! calculate the vertical flux terms
-         FQ(index_min) = current_inflow%Q(index_min)
-         do i=index_min+1,nlev-1
-            FQ(i) = FQ(i-1) + current_inflow%Q(i)
          end do
 
          ! calculate the sink term at sea surface
@@ -272,6 +269,12 @@ STDERR trim(current_inflow%name),' ',int_outflow
       end if
       current_inflow => current_inflow%next
    end do
+
+   ! calculate the vertical flux terms
+   do i=1,nlev-1
+      FQ(i) = FQ(i-1) + Q(i)
+   end do
+
 
    end subroutine update_inflows
 !EOC
