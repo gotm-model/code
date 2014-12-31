@@ -314,10 +314,6 @@
 			<bio_prof_method>0</bio_prof_method>
 			<bio_prof_file>bio_prof_file.dat</bio_prof_file>
 		</bioprofiles>
-		<inflows>
-			<inflows_method>0</inflows_method>
-			<inflows_file>inflows_file.dat</inflows_file>
-		</inflows>
 	</obs>
 	<bio>
 		<bio_nml>
@@ -339,4 +335,15 @@
 			<XP_rat>1.0</XP_rat>
 		</canopy>
 	</seagrass>
+	<inflows>
+		<inflow>
+			<name>inflow1</name>
+			<Q_file>inflows_file.dat</Q_file>
+			<S_file>inflows_file.dat</S_file>
+			<T_file>inflows_file.dat</T_file>
+			<Q_col>1</Q_col>
+			<S_col>2</S_col>
+			<T_col>3</T_col>
+		</inflow>
+	</inflows>
 </scenario>

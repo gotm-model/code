@@ -1182,20 +1182,6 @@
 				</fileinfo>
 			</element>
 		</element>
-		<element name="inflows" label="observed inflow profiles">
-			<element name="inflows_method" type="int" label="method to create initial or observed inflow profiles">
-				<options>
-					<option value="0" label="none" />
-					<option value="2" label="custom observed profiles" />
-				</options>
-			</element>
-			<element name="inflows_file" type="gotmdatafile" label="filename of file with inflow profiles">
-				<condition type="eq" variable="./inflows_method" value="2" />
-				<fileinfo type="profilesintime">
-					<filevariables />
-				</fileinfo>
-			</element>
-		</element>
 	</element>
 	<element name="bio" label="basic settings for biogeochemical model" optional="True">
 		<element name="bio_nml">
@@ -1339,4 +1325,34 @@
 			</element>
 		</element>
 	</element>
+	<element name="inflows" label="basic settings for inflows" optional="True">
+		<element name="inflow" label="observed inflow profiles">
+			<element name="name" type="string" label="name of inflow" />
+			<element name="Q_file" type="gotmdatafile" label="filename of file with discharge data">
+				<fileinfo type="pointsintime">
+					<filevariables>
+						<filevariable name="QI" label="discharge" unit="m3 s-1" />
+					</filevariables>
+				</fileinfo>
+			</element>
+			<element name="S_file" type="gotmdatafile" label="filename of file with salinity data">
+				<fileinfo type="pointsintime">
+					<filevariables>
+						<filevariable name="SI" label="salinity" unit="1e-3" />
+					</filevariables>
+				</fileinfo>
+			</element>
+			<element name="T_file" type="gotmdatafile" label="filename of file with temperature data">
+				<fileinfo type="pointsintime">
+					<filevariables>
+						<filevariable name="TI" label="temperature" unit="°C" />
+					</filevariables>
+				</fileinfo>
+			</element>
+			<element name="Q_col" type="int" label="column in &quot;Q_file&quot; after timestamp" />
+			<element name="S_col" type="int" label="column in &quot;S_file&quot; after timestamp" />
+			<element name="T_col" type="int" label="column in &quot;T_file&quot; after timestamp" />
+		</element>
+	</element>
 </element>
+
