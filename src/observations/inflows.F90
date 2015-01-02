@@ -16,7 +16,6 @@
 !
 ! !USES
    use input
-   use observations, only: zeta
 
 !  !PUBLIC DATA MEMBERS:
    IMPLICIT NONE
@@ -157,7 +156,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(nlev,dt,S,T,z,h,Ac,Qs,Qt,FQ)
+   subroutine update_inflows(nlev,dt,S,T,zeta,z,h,Ac,Qs,Qt,FQ)
 !
 ! !DESCRIPTION:
 !  Calculates the depth where the inflow occurs and
@@ -172,7 +171,7 @@
 
 ! !INPUT PARAMETERS:
    integer, intent(in)                    :: nlev
-   REALTYPE, intent(in)                   :: dt
+   REALTYPE, intent(in)                   :: dt,zeta
    REALTYPE, intent(in)                   :: S(0:nlev), T(0:nlev)
    REALTYPE, intent(in)                   :: z(0:nlev), h(0:nlev), Ac(0:nlev)
    REALTYPE, intent(inout)                :: Qs(0:nlev), Qt(0:nlev)
