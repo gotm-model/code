@@ -261,8 +261,8 @@
          end do
 
          ! calculate the sink term at sea surface
-         Qs(nlev) = Qs(nlev) -S(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
-         Qt(nlev) = Qt(nlev) -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
+         !Qs(nlev) = Qs(nlev) -S(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
+         !Qt(nlev) = Qt(nlev) -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
       else
          int_outflow = int_outflow + dt*current_inflow%QI
 STDERR trim(current_inflow%name),' ',int_outflow

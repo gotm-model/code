@@ -739,6 +739,7 @@
          end if
 
          Qsour = _ZERO_
+         Lsour = _ZERO_
          inflow => first_inflow
          do while (associated(inflow))
             if (associated(inflow%cc(i)%data).or..not.model%state_variables(i)%no_river_dilution) then
@@ -763,7 +764,8 @@
 
          ! Calculate the sink term at sea surface
          ! This is taken directly from the original inflow scheme.
-         Qsour(nlev) = Qsour(nlev) - cc(nlev,i) * FQ(nlev-1) / (Ac(nlev) * curh(nlev))
+         !Qsour(nlev) = Qsour(nlev) - cc(nlev,i) * FQ(nlev-1) / (Ac(nlev) * curh(nlev))
+         Lsour(nlev) = Lsour(nlev) - FQ(nlev-1) / (Ac(nlev) * curh(nlev))
 
          ! Do diffusion step
          if (associated(cc_obs(i)%data)) then

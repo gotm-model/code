@@ -192,6 +192,7 @@
          Qsour(i) = Qsour(i) + Qt(i)
          w(i) = FQ(i) / Af(i)
       end do
+      Lsour(nlev) = Lsour(nlev) - FQ(nlev-1) / (Ac(nlev) * h(nlev))
       call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,               &
                           AdvTup,AdvTdw,1,1,T)
    end if
