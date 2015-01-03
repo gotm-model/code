@@ -219,6 +219,7 @@
 !  z' defined on the interfaces, not as z on the grid centers
 !  let it start at "1", because the gridinterpol-routine-loop starts at "1"
 !  hypsograph is defined at grid interfaces
+!  TODO: maybe we should use zi from meanflow ???
    zPrime(nlev+1) = _ZERO_
    zPrime(nlev) = -h(nlev)
    do i = nlev-1, 1, -1
