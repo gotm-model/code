@@ -187,9 +187,10 @@
          stop "updategrid: No valid grid_method specified"
    end select
 
-   z(1)=-depth0+0.5*h(1)
-   do i=2,nlev
-      z(i)=z(i-1)+0.5*(h(i-1)+h(i))
+   zi(0) = -depth0
+   do i=1,nlev
+      zi(i) = zi(i-1) +     h(i)
+      z (i) = zi(i-1) + 0.5*h(i)
    end do
 
 !  Vertical velocity calculation:
@@ -199,10 +200,6 @@
          ! no vertical advection
       case(1,2)
          ! linearly varying advection velocity with peak at "w_height"
-         zi(0)=-depth0
-         do i=1,nlev
-            zi(i)=zi(i-1)+h(i)
-         end do
          z_crit=zi(nlev)-0.01*(zi(nlev)-zi(0))
          if (w_height.gt.z_crit) w_height=z_crit
          z_crit=zi(0)+0.01*(zi(nlev)-zi(0))
