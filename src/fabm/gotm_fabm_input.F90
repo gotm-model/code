@@ -121,7 +121,7 @@
 !  Register inflows
    curinflow => first_inflow
    do while (associated(curinflow))
-      call register_inflow(curinflow%name,curinflow%Q)
+      call register_inflow(curinflow%name,curinflow%QI,curinflow%Q)
       curinflow => curinflow%next
    end do
 

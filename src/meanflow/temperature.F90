@@ -76,7 +76,7 @@
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau
    use observations, only: A,g1,g2
-   use observations, only: Qt, FQ
+   use observations, only: Qt, Lt, FQ
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -190,6 +190,7 @@
    if (lake) then
       do i=1,nlev
          Qsour(i) = Qsour(i) + Qt(i)
+         Lsour(i) = Lsour(i) + Lt(i)
          w(i) = FQ(i) / Af(i)
       end do
       w(nlev)=_ZERO_

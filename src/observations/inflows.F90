@@ -161,7 +161,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(nlev,dt,S,T,z,zi,h,Ac,Qs,Qt,FQ)
+   subroutine update_inflows(nlev,dt,S,T,z,zi,h,Ac,Qs,Qt,Ls,Lt,FQ)
 !
 ! !DESCRIPTION:
 !  Calculates the depth where the inflow occurs and
@@ -179,8 +179,7 @@
    REALTYPE, intent(in)                   :: dt
    REALTYPE, intent(in)                   :: S(0:nlev), T(0:nlev)
    REALTYPE,dimension(0:nlev),intent(in)  :: z,zi,h,Ac
-   REALTYPE, intent(inout)                :: Qs(0:nlev), Qt(0:nlev)
-   REALTYPE, intent(inout)                :: FQ(0:nlev)
+   REALTYPE,dimension(0:nlev),intent(inout) :: Qs,Qt,Ls,Lt,FQ
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -198,6 +197,8 @@
    Q  = _ZERO_
    Qs = _ZERO_
    Qt = _ZERO_
+   Ls = _ZERO_
+   Lt = _ZERO_
    FQ = _ZERO_
 
    current_inflow => first_inflow
@@ -289,7 +290,6 @@
          end if
 
          do i=index_min,n
-            Q (i) = Q (i) +      current_inflow%Q(i)
             Qs(i) = Qs(i) + SI * current_inflow%Q(i) / (Ac(i) * h(i))
             Qt(i) = Qt(i) + TI * current_inflow%Q(i) / (Ac(i) * h(i))
          end do
@@ -299,8 +299,54 @@
          !Qt(nlev) = Qt(nlev) -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
       else
          int_outflow = int_outflow + dt*current_inflow%QI
-STDERR trim(current_inflow%name),' ',int_outflow
+!STDERR trim(current_inflow%name),' ',int_outflow
+
+         if (       ( current_inflow%zl .lt. current_inflow%zu ) &
+              .and. ( current_inflow%zl .lt. zi(nlev)          ) &
+              .and. ( zi(0)             .lt. current_inflow%zu ) ) then
+
+            do index_min=1,nlev
+               if ( current_inflow%zl .lt. zi(index_min) ) exit
+            end do
+            do n=nlev,index_min,-1
+               if ( zi(n-1) .lt. current_inflow%zu ) exit
+            end do
+
+!           consider full discharge
+            hI = min(zi(nlev),current_inflow%zu) - max(current_inflow%zl,zi(0))
+
+            do i=index_min,n
+               current_inflow%Q(i) = current_inflow%QI * ( min(zi(i),current_inflow%zu)-max(current_inflow%zl,zi(i-1)) ) / hI
+            end do
+            if (current_inflow%has_T) then
+               TI = current_inflow%TI
+               do i=index_min,n
+                  Qt(i) = Qt(i) + TI * current_inflow%Q(i) / (Ac(i) * h(i))
+               end do
+            else
+               do i=index_min,n
+                  Lt(i) = Lt(i) + current_inflow%Q(i) / (Ac(i) * h(i))
+               end do
+            end if
+            if (current_inflow%has_S) then
+               SI = current_inflow%SI
+               do i=index_min,n
+                  Qs(i) = Qs(i) + SI * current_inflow%Q(i) / (Ac(i) * h(i))
+               end do
+            else
+               do i=index_min,n
+                  Ls(i) = Ls(i) + current_inflow%Q(i) / (Ac(i) * h(i))
+               end do
+            end if
+
+         end if
+
       end if
+
+      do i=index_min,n
+         Q (i) = Q (i) +      current_inflow%Q(i)
+      end do
+
       current_inflow => current_inflow%next
    end do
 

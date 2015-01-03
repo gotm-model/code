@@ -73,7 +73,7 @@
 
    type type_inflow
       character(len=64) :: name = ''
-      REALTYPE, pointer  :: Q(:)
+      REALTYPE, pointer  :: QI,Q(:)
       type (type_inflow_concentration),dimension(:),allocatable :: cc
       type (type_inflow), pointer :: next => null()
    end type
@@ -743,6 +743,9 @@
          Lsour = _ZERO_
          inflow => first_inflow
          do while (associated(inflow))
+
+            if (inflow%QI .ge. _ZERO_) then
+
             if (associated(inflow%cc(i)%data).or..not.model%state_variables(i)%no_river_dilution) then
                ! Default inflow concentration: zero
                inflow_conc = _ZERO_
@@ -757,6 +760,21 @@
             do k=1,nlev
                Qsour(k) = Qsour(k) + inflow_conc * inflow%Q(k) / (Ac(k) * curh(k))
             end do
+
+            else
+
+               if (associated(inflow%cc(i)%data)) then
+                  inflow_conc = inflow%cc(i)%data
+                  do k=1,nlev
+                     Qsour(k) = Qsour(k) + inflow_conc * inflow%Q(k) / (Ac(k) * curh(k))
+                  end do
+               else
+                  do k=1,nlev
+                     Lsour(k) = Lsour(k) +               inflow%Q(k) / (Ac(k) * curh(k))
+                  end do
+               end if
+
+            end if
 
             inflow => inflow%next
          end do
@@ -1298,9 +1316,9 @@
       call fabm_link_scalar_data(model,scalar_id,data)
    end subroutine register_scalar_observation
 
-   subroutine register_inflow(name,Q)
+   subroutine register_inflow(name,QI,Q)
       character(len=*),intent(in) :: name
-      REALTYPE,target             :: Q(:)
+      REALTYPE,target             :: QI,Q(:)
 
       type (type_inflow),pointer :: inflow
       integer :: rc
@@ -1319,6 +1337,7 @@
       end if
 
       inflow%name = name
+      inflow%QI => QI
       inflow%Q => Q
       allocate(inflow%cc(1:size(model%state_variables)),stat=rc)
       if (rc /= 0) stop 'allocate_memory(): Error allocating (inflow%cc)'

@@ -421,7 +421,7 @@
 !     meanflow integration starts
       call updategrid(nlev,dt,zeta)
       call coriolis(nlev,dt)
-      call update_inflows(nlev,dt,S(0:nlev),T(0:nlev),z,zi,h,Ac,Qs,Qt,FQ)
+      call update_inflows(nlev,dt,S(0:nlev),T(0:nlev),z,zi,h,Ac,Qs,Qt,Ls,Lt,FQ)
 
 !     update velocity
       call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
