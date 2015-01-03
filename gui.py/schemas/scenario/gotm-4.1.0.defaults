@@ -338,6 +338,8 @@
 	<inflows>
 		<inflow>
 			<name>inflow1</name>
+			<zl>10.0</zl>
+			<zu>0.0</zu>
 			<Q_file>inflows_file.dat</Q_file>
 			<S_file>inflows_file.dat</S_file>
 			<T_file>inflows_file.dat</T_file>

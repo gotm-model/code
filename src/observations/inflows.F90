@@ -33,7 +33,7 @@
 ! !LOCAL VARIABLES:
    type type_inflow
       character(len=64)      :: name = ''
-      REALTYPE               :: QI,SI,TI
+      REALTYPE               :: zl,zu,QI,SI,TI
       logical                :: has_S = .false.
       logical                :: has_T = .false.
       REALTYPE, allocatable  :: Q(:)
@@ -72,10 +72,11 @@
 
    integer             :: rc
    character(len=64)       :: name
+   REALTYPE                :: zl,zu
    character(len=PATH_MAX) :: Q_file,T_file,S_file
    integer                 :: Q_col,T_col,S_col
 
-   namelist /inflow/ name,Q_file,T_file,S_file,Q_col,T_col,S_col
+   namelist /inflow/ name,zl,zu,Q_file,T_file,S_file,Q_col,T_col,S_col
 
    type (type_inflow), pointer :: current_inflow
 !
@@ -91,6 +92,8 @@
    LEVEL1 'init_inflows'
    do
       name   = ''
+      zl = 10.0
+      zu =  0.0
       Q_file = ''
       S_file = ''
       T_file = ''
@@ -120,8 +123,10 @@
          stop 'init_inflows'
       end if
 
-      LEVEL2 '.... ',trim(name)
+      LEVEL2 '.... ',trim(name),real(zl),real(zu)
       current_inflow%name = name
+      current_inflow%zl   = zl
+      current_inflow%zu   = zu
       call register_input_0d(Q_file,Q_col,current_inflow%QI,'observed inflow: discharge')
       if (T_file/='') then
          call register_input_0d(T_file,T_col,current_inflow%TI,'observed inflow: temperature')

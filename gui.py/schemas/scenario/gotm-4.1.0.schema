@@ -1328,6 +1328,8 @@
 	<element name="inflows" label="basic settings for inflows" optional="True">
 		<element name="inflow" label="observed inflow profiles">
 			<element name="name" type="string" label="name of inflow" />
+			<element name="zl" type="float" label="vertical position of lower inflow boundary" description="if zu<=zl interleaving"/>
+			<element name="zu" type="float" label="vertical position of upper inflow boundary" description="if zu<=zl interleaving"/>
 			<element name="Q_file" type="string" label="filename of file with discharge data" />
 			<element name="S_file" type="string" label="filename of file with salinity data" />
 			<element name="T_file" type="string" label="filename of file with temperature data" />
