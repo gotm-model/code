@@ -301,7 +301,7 @@ STDERR trim(current_inflow%name),' ',int_outflow
    end do
 
    ! calculate the vertical flux terms
-   do i=1,nlev-1
+   do i=1,nlev
       FQ(i) = FQ(i-1) + Q(i)
    end do
 

@@ -732,9 +732,10 @@
 
          ! Add inflow (e.g., rivers) to source term that is to be used in diffusion solver.
          if (associated(first_inflow)) then
-            do k=1,nlev
+            do k=1,nlev-1
                w(k) = FQ(k) / Af(k)
             end do
+            w(nlev)=_ZERO_
             call adv_center(nlev,dt,curh,curh,Ac,Af,w,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
          end if
 
@@ -765,7 +766,7 @@
          ! Calculate the sink term at sea surface
          ! This is taken directly from the original inflow scheme.
          !Qsour(nlev) = Qsour(nlev) - cc(nlev,i) * FQ(nlev-1) / (Ac(nlev) * curh(nlev))
-         Lsour(nlev) = Lsour(nlev) - FQ(nlev-1) / (Ac(nlev) * curh(nlev))
+         Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * curh(nlev))
 
          ! Do diffusion step
          if (associated(cc_obs(i)%data)) then
