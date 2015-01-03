@@ -161,7 +161,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(nlev,dt,S,T,zeta,z,h,Ac,Qs,Qt,FQ)
+   subroutine update_inflows(nlev,dt,S,T,z,zi,h,Ac,Qs,Qt,FQ)
 !
 ! !DESCRIPTION:
 !  Calculates the depth where the inflow occurs and
@@ -176,9 +176,9 @@
 
 ! !INPUT PARAMETERS:
    integer, intent(in)                    :: nlev
-   REALTYPE, intent(in)                   :: dt,zeta
+   REALTYPE, intent(in)                   :: dt
    REALTYPE, intent(in)                   :: S(0:nlev), T(0:nlev)
-   REALTYPE, intent(in)                   :: z(0:nlev), h(0:nlev), Ac(0:nlev)
+   REALTYPE,dimension(0:nlev),intent(in)  :: z,zi,h,Ac
    REALTYPE, intent(inout)                :: Qs(0:nlev), Qt(0:nlev)
    REALTYPE, intent(inout)                :: FQ(0:nlev)
 !EOP
@@ -223,7 +223,7 @@
          ! find minimal depth where the inflow will take place
          index_min = 0
          do i=1,nlev
-            depth = zeta - z(i)
+            depth = zi(nlev) - z(i)
             rhoI = unesco(SI,TI,depth/10.0d0,.false.)
             rho = unesco(S(i),T(i),depth/10.0d0,.false.)
             ! if the density of the inflowing water is greater than the
