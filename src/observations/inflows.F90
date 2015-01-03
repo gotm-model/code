@@ -223,8 +223,12 @@
          if (       ( current_inflow%zl .lt. current_inflow%zu ) &
               .and. ( zi(0)             .lt. current_inflow%zu ) ) then
 
-            do index_min=1,nlev
-               if ( current_inflow%zl .lt. zi(index_min) ) exit
+            index_min = nlev
+            do i=1,nlev
+               if ( current_inflow%zl .lt. zi(i) ) then
+                  index_min = i
+                  exit
+               end if
             end do
             do n=nlev,index_min,-1
                if ( zi(n-1) .lt. current_inflow%zu ) exit
