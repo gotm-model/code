@@ -156,7 +156,7 @@
       w(nlev)=_ZERO_
       Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * h(nlev))
       call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,               &
-                          AdvSup,AdvSdw,1,1,S)
+                          AdvSup,AdvSdw,w_adv_discr,1,S)
    end if
 
 !  do advection step
