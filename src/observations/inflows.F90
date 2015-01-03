@@ -188,7 +188,7 @@
    REALTYPE             :: rhoI,rho
    REALTYPE             :: depth
    REALTYPE             :: VI_basin
-   REALTYPE             :: TI,SI
+   REALTYPE             :: hI,TI,SI
    REALTYPE,dimension(0:nlev) :: Q
    integer              :: index_min
    type (type_inflow), pointer :: current_inflow
@@ -219,6 +219,27 @@
          else
             SI = S(nlev)
          end if
+
+         if (       ( current_inflow%zl .lt. current_inflow%zu ) &
+              .and. ( zi(0)             .lt. current_inflow%zu ) ) then
+
+            do index_min=1,nlev
+               if ( current_inflow%zl .lt. zi(index_min) ) exit
+            end do
+            do n=nlev,index_min,-1
+               if ( zi(n-1) .lt. current_inflow%zu ) exit
+            end do
+
+!           consider full discharge (even if below bathy)
+            hI = current_inflow%zu - max(current_inflow%zl,zi(0))
+
+            do i=index_min,n-1
+               current_inflow%Q(i) = current_inflow%QI * ( min(zi(i),current_inflow%zu)-max(current_inflow%zl,zi(i-1)) ) / hI
+            end do
+!           discharge above fse counts for surface layer
+            current_inflow%Q(n) = current_inflow%QI * ( current_inflow%zu-max(current_inflow%zl,zi(n-1)) ) / hI
+
+         else
 
          ! find minimal depth where the inflow will take place
          index_min = 0
@@ -259,6 +280,11 @@
          ! "+1" because loop includes both n and index_min
          do i=index_min,n
             current_inflow%Q(i) = current_inflow%QI / (n-index_min+1)
+         end do
+
+         end if
+
+         do i=index_min,n
             Q (i) = Q (i) +      current_inflow%Q(i)
             Qs(i) = Qs(i) + SI * current_inflow%Q(i) / (Ac(i) * h(i))
             Qt(i) = Qt(i) + TI * current_inflow%Q(i) / (Ac(i) * h(i))
