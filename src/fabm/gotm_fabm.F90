@@ -749,17 +749,15 @@
 
                ! See if a specific inflow concentration is prescribed for this biogeochemical variable.
                if (associated(inflow%cc(i)%data)) inflow_conc = inflow%cc(i)%data
-
-               ! Calculate change in all layers due to inflow
-               do k=1,nlev
-                  Qsour(k) = Qsour(k) + inflow_conc * inflow%Q(k) / (Ac(k) * curh(k))
-               end do
             else
-               ! Calculate change in all layers due to inflow
-               do k=1,nlev
-                  Qsour(k) = Qsour(k) + cc(k,i) * inflow%Q(k) / (Ac(k) * curh(k))
-               end do
+               inflow_conc = cc(k,i)
             end if
+
+            ! Calculate change in all layers due to inflow
+            do k=1,nlev
+               Qsour(k) = Qsour(k) + inflow_conc * inflow%Q(k) / (Ac(k) * curh(k))
+            end do
+
             inflow => inflow%next
          end do
 
