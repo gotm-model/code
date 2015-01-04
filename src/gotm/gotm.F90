@@ -418,10 +418,15 @@
       tx = tx/rho_0
       ty = ty/rho_0
 
+      call integrated_fluxes(dt)
+
 !     meanflow integration starts
       call updategrid(nlev,dt,zeta)
       call coriolis(nlev,dt)
+
+!     TODO: move these 2 calls between integrated_fluxes() and updategrid() ?
       call update_inflows(nlev,dt,S(0:nlev),T(0:nlev),z,zi,h,Ac,Qs,Qt,Ls,Lt,FQ)
+      call water_balance()
 
 !     update velocity
       call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
@@ -496,9 +501,6 @@
       if (write_results) then
          call do_all_output(n)
       end if
-
-      call integrated_fluxes(dt)
-      call water_balance()
 
 !     diagnostic output
       if(diagnostics) then
