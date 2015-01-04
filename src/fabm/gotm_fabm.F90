@@ -115,7 +115,7 @@
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(:) :: nuh,h,Ac,Af,FQ,bioshade,w,rho
+   REALTYPE,pointer,dimension(:) :: nuh,h,Ac,Af,Qres,FQ,bioshade,w,rho
    REALTYPE,pointer,dimension(:) :: SRelaxTau,sProf,salt
    REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
 
@@ -500,7 +500,7 @@
 ! !IROUTINE: Set environment for FABM
 !
 ! !INTERFACE:
-   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,Ac_,Af_,FQ_,w_, &
+   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,Ac_,Af_,Qres_,FQ_,w_, &
                                 bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
                                 yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
 !
@@ -512,7 +512,7 @@
    REALTYPE, intent(in),target :: latitude,longitude
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,Ac_,Af_,FQ_,w_,bioshade_,z_
+   REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,Ac_,Af_,Qres_,FQ_,w_,bioshade_,z_
    REALTYPE, intent(in),target :: I_0_,cloud,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_
@@ -545,6 +545,7 @@
    h        => h_          ! layer heights [1d array] needed for advection, diffusion
    Ac       => Ac_         ! hypsograph
    Af       => Af_         ! hypsograph
+   Qres     => Qres_
    FQ       => FQ_
    w        => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
@@ -730,17 +731,24 @@
    do i=1,size(model%state_variables)
       if (cc_transport(i)) then
 
+         Qsour = _ZERO_
+         Lsour = _ZERO_
+
          ! Add inflow (e.g., rivers) to source term that is to be used in diffusion solver.
          if (associated(first_inflow)) then
-            do k=1,nlev-1
+            do k=1,nlev
                w(k) = FQ(k) / Af(k)
+               Lsour(k) = Lsour(k) + Qres(k) / (Ac(k) * curh(k))
             end do
+            ! Calculate the sink term at sea surface
             w(nlev)=_ZERO_
+            ! This is taken directly from the original inflow scheme.
+            !Qsour(nlev) = Qsour(nlev) - cc(nlev,i) * FQ(nlev-1) / (Ac(nlev) * curh(nlev))
+            Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * curh(nlev))
+
             call adv_center(nlev,dt,curh,curh,Ac,Af,w,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
          end if
 
-         Qsour = _ZERO_
-         Lsour = _ZERO_
          inflow => first_inflow
          do while (associated(inflow))
 
@@ -778,11 +786,6 @@
 
             inflow => inflow%next
          end do
-
-         ! Calculate the sink term at sea surface
-         ! This is taken directly from the original inflow scheme.
-         !Qsour(nlev) = Qsour(nlev) - cc(nlev,i) * FQ(nlev-1) / (Ac(nlev) * curh(nlev))
-         Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * curh(nlev))
 
          ! Do diffusion step
          if (associated(cc_obs(i)%data)) then

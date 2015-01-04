@@ -70,7 +70,7 @@
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: sprof,SRelaxTau
-   use observations, only: Qs, Ls, FQ
+   use observations, only: Qs, Ls, Qres, FQ
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
@@ -151,7 +151,7 @@
    if (lake) then
       do i=1,nlev
          Qsour(i) = Qsour(i) + Qs(i)
-         Lsour(i) = Lsour(i) + Ls(i)
+         Lsour(i) = Lsour(i) + Ls(i) + Qres(i)/(Ac(i)*h(i))
          w(i) = FQ(i) / Af(i)
       end do
       w(nlev)=_ZERO_

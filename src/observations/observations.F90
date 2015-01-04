@@ -84,7 +84,7 @@
 
 !  inflows for lake model
    REALTYPE, public, dimension(:), allocatable   :: Qs, Qt, Ls, Lt
-   REALTYPE, public, dimension(:), allocatable   :: FQ
+   REALTYPE, public, dimension(:), allocatable   :: Q, Qres, FQ
 
 !------------------------------------------------------------------------------
 !
@@ -873,6 +873,14 @@
    allocate(Lt(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (Lt)'
    Lt = _ZERO_
+
+   allocate(Q(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Q)'
+   Q = _ZERO_
+
+   allocate(Qres(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (Qres)'
+   Qres = _ZERO_
 
    allocate(FQ(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (FQ)'

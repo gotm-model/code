@@ -161,7 +161,7 @@
 ! !ROUTINE: calculate inflows
 !
 ! !INTERFACE:
-   subroutine update_inflows(nlev,dt,S,T,z,zi,h,Ac,Qs,Qt,Ls,Lt,FQ)
+   subroutine update_inflows(nlev,dt,S,T,z,zi,h,Ac,Qs,Qt,Ls,Lt,Q)
 !
 ! !DESCRIPTION:
 !  Calculates the depth where the inflow occurs and
@@ -179,7 +179,7 @@
    REALTYPE, intent(in)                   :: dt
    REALTYPE, intent(in)                   :: S(0:nlev), T(0:nlev)
    REALTYPE,dimension(0:nlev),intent(in)  :: z,zi,h,Ac
-   REALTYPE,dimension(0:nlev),intent(inout) :: Qs,Qt,Ls,Lt,FQ
+   REALTYPE,dimension(0:nlev),intent(inout) :: Qs,Qt,Ls,Lt,Q
 !EOP
 !
 ! !LOCAL VARIABLES:
@@ -188,18 +188,16 @@
    REALTYPE             :: depth
    REALTYPE             :: VI_basin
    REALTYPE             :: hI,TI,SI
-   REALTYPE,dimension(0:nlev) :: Q
    integer              :: index_min
    type (type_inflow), pointer :: current_inflow
 !
 !-----------------------------------------------------------------------
 !BOC
-   Q  = _ZERO_
    Qs = _ZERO_
    Qt = _ZERO_
    Ls = _ZERO_
    Lt = _ZERO_
-   FQ = _ZERO_
+   Q  = _ZERO_
 
    current_inflow => first_inflow
    do while (associated(current_inflow))
@@ -349,12 +347,6 @@
 
       current_inflow => current_inflow%next
    end do
-
-   ! calculate the vertical flux terms
-   do i=1,nlev
-      FQ(i) = FQ(i-1) + Q(i)
-   end do
-
 
    end subroutine update_inflows
 !EOC

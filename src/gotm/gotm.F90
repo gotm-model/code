@@ -295,7 +295,7 @@
       end if
    end if
    call set_env_gotm_fabm(latitude,longitude,dt,w_adv_method,w_adv_discr,t(1:nlev),s(1:nlev),rho(1:nlev), &
-                          nuh,h,Ac(1:nlev),Af(1:nlev),FQ(1:nlev),w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
+                          nuh,h,Ac(1:nlev),Af(1:nlev),Qres(1:nlev),FQ(1:nlev),w,bioshade(1:nlev),I_0,cloud,taub,wind,precip,evap,z(1:nlev), &
                           A,g1,g2,yearday,secondsofday,SRelaxTau(1:nlev),sProf(1:nlev), &
                           bio_albedo,bio_drag_scale)
 
@@ -425,8 +425,8 @@
       call coriolis(nlev,dt)
 
 !     TODO: move these 2 calls between integrated_fluxes() and updategrid() ?
-      call update_inflows(nlev,dt,S(0:nlev),T(0:nlev),z,zi,h,Ac,Qs,Qt,Ls,Lt,FQ)
-      call water_balance()
+      call update_inflows(nlev,dt,S(0:nlev),T(0:nlev),z,zi,h,Ac,Qs,Qt,Ls,Lt,Q)
+      call water_balance(nlev)
 
 !     update velocity
       call uequation(nlev,dt,cnpar,tx,num,gamu,ext_press_mode)
