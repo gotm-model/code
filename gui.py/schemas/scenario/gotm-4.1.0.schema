@@ -191,6 +191,13 @@
 				minInclusive="1" maxInclusive="1000" />
 			<element name="no_shear" type="bool" label=".true.: shear production term P is set to zero" />
 			<element name="hypsograph_file" type="string" label="file name of file with hypsography values. If this string is not empty it switches on the lake model." />
+			<element name="water_balance_method" type="int" label="introduce residual streams to correct water balance due to evap, precip, in- and outflows">
+				<options>
+					<option value="0" label="no water balance" />
+					<option value="1" label="residual stream at surface layer" />
+					<option value="2" label="volume-weighted residual streams at all layers" />
+				</options>
+			</element>
 		</element>
 	</element>
 	<element name="airsea">

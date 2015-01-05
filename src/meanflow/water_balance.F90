@@ -10,6 +10,8 @@
 ! !DESCRIPTION:
 !
 ! !USES:
+   use meanflow,      only: water_balance_method,WATER_BALANCE_NONE
+   use meanflow,      only: WATER_BALANCE_SURFACE,WATER_BALANCE_ALLLAYERS
    use meanflow,      only: int_flows,int_fwf,lake,Af,Ac,h
    use inflows,       only: int_inflow,int_outflow
    use airsea,        only: int_net_precip,evap,precip
@@ -28,10 +30,6 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer,parameter    :: WATER_BALANCE_NONE=0
-   integer,parameter    :: WATER_BALANCE_SURFACE=1
-   integer,parameter    :: WATER_BALANCE_ALLLAYERS=2
-   integer              :: water_balance_method=WATER_BALANCE_SURFACE
    integer              :: k
    REALTYPE             :: net_water_balance,Vc(0:nlev)
 !

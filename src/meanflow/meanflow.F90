@@ -117,6 +117,10 @@
 !  the hypsograph at the grid centers Ac, at the interfaces Af and the
 !  derivative wrt. z dAdz
    REALTYPE, public, dimension(:), allocatable   :: Ac,Af,dAdz
+   integer,  public, parameter                   :: WATER_BALANCE_NONE=0
+   integer,  public, parameter                   :: WATER_BALANCE_SURFACE=1
+   integer,  public, parameter                   :: WATER_BALANCE_ALLLAYERS=2
+   integer,  public                              :: water_balance_method=WATER_BALANCE_SURFACE
    REALTYPE, public                              :: int_flows
    REALTYPE, public                              :: int_fwf
 !

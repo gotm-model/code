@@ -63,6 +63,7 @@
 			<MaxItz0b>1</MaxItz0b>
 			<no_shear>False</no_shear>
 			<hypsograph_file></hypsograph_file>
+			<water_balance_method>1</water_balance_method>
 		</meanflow>
 	</gotmmean>
 	<airsea>
