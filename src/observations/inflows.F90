@@ -203,6 +203,9 @@
    do while (associated(current_inflow))
       current_inflow%Q = _ZERO_
 
+      index_min = nlev
+      n = 0
+
       ! inflow triggered or still in progress
       if (current_inflow%QI .ge. _ZERO_) then
 
