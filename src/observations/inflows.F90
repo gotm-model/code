@@ -209,8 +209,6 @@
       ! inflow triggered or still in progress
       if (current_inflow%QI .ge. _ZERO_) then
 
-         int_inflow = int_inflow + dt*current_inflow%QI
-
          if (current_inflow%has_T) then
             TI = current_inflow%TI
          else
@@ -222,30 +220,7 @@
             SI = S(nlev)
          end if
 
-         if (       ( current_inflow%zl .lt. current_inflow%zu ) &
-              .and. ( zi(0)             .lt. current_inflow%zu ) ) then
-
-            index_min = nlev
-            do i=1,nlev
-               if ( current_inflow%zl .lt. zi(i) ) then
-                  index_min = i
-                  exit
-               end if
-            end do
-            do n=nlev,index_min,-1
-               if ( zi(n-1) .lt. current_inflow%zu ) exit
-            end do
-
-!           consider full discharge (even if below bathy)
-            hI = current_inflow%zu - max(current_inflow%zl,zi(0))
-
-            do i=index_min,n-1
-               current_inflow%Q(i) = current_inflow%QI * ( min(zi(i),current_inflow%zu)-max(current_inflow%zl,zi(i-1)) ) / hI
-            end do
-!           discharge above fse counts for surface layer
-            current_inflow%Q(n) = current_inflow%QI * ( current_inflow%zu-max(current_inflow%zl,zi(n-1)) ) / hI
-
-         else
+         if ( current_inflow%zl .gt. current_inflow%zu ) then
 
          ! find minimal depth where the inflow will take place
          index_min = 0
@@ -288,7 +263,34 @@
             current_inflow%Q(i) = current_inflow%QI / (n-index_min+1)
          end do
 
+         else if ( zi(0) .lt. current_inflow%zu ) then
+
+            do i=1,nlev
+               if ( current_inflow%zl .lt. zi(i) ) then
+                  index_min = i
+                  exit
+               end if
+            end do
+            do n=nlev,index_min,-1
+               if ( zi(n-1) .lt. current_inflow%zu ) exit
+            end do
+
+!           consider full discharge (even if below bathy)
+            hI = current_inflow%zu - max(current_inflow%zl,zi(0))
+
+            do i=index_min,n-1
+               current_inflow%Q(i) = current_inflow%QI * ( min(zi(i),current_inflow%zu)-max(current_inflow%zl,zi(i-1)) ) / hI
+            end do
+!           discharge above fse counts for surface layer
+            current_inflow%Q(n) = current_inflow%QI * ( current_inflow%zu-max(current_inflow%zl,zi(n-1)) ) / hI
+
+         else
+
+            cycle
+
          end if
+
+         int_inflow = int_inflow + dt*current_inflow%QI
 
          do i=index_min,n
             Qs(i) = Qs(i) + SI * current_inflow%Q(i) / (Ac(i) * h(i))
