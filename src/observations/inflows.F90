@@ -273,6 +273,12 @@
                if ( zi(n-1) .lt. current_inflow%zu ) exit
             end do
 
+            if (current_inflow%zl .eq. current_inflow%zu) then
+
+               current_inflow%Q(n) = current_inflow%QI
+
+            else
+
 !           consider full discharge (even if below bathy)
             hI = current_inflow%zu - max(current_inflow%zl,zi(0)) + SMALL
 
@@ -281,6 +287,8 @@
             end do
 !           discharge above fse counts for surface layer
             current_inflow%Q(n) = current_inflow%QI * ( current_inflow%zu-max(current_inflow%zl,zi(n-1)) ) / hI
+
+            end if
 
          else
 
@@ -315,12 +323,20 @@
                if ( zi(n-1) .lt. current_inflow%zu ) exit
             end do
 
+            if (current_inflow%zl .eq. current_inflow%zu) then
+
+               current_inflow%Q(n) = current_inflow%QI
+
+            else
+
 !           consider full discharge
             hI = min(zi(nlev),current_inflow%zu) - max(current_inflow%zl,zi(0)) + SMALL
 
             do i=index_min,n
                current_inflow%Q(i) = current_inflow%QI * ( min(zi(i),current_inflow%zu)-max(current_inflow%zl,zi(i-1)) ) / hI
             end do
+
+            end if
 
          else
 
