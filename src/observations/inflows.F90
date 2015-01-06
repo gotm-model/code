@@ -301,12 +301,13 @@
          !Qs(nlev) = Qs(nlev) -S(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
          !Qt(nlev) = Qt(nlev) -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
       else
-         int_outflow = int_outflow + dt*current_inflow%QI
-!STDERR trim(current_inflow%name),' ',int_outflow
 
-         if (       ( current_inflow%zl .lt. current_inflow%zu ) &
-              .and. ( current_inflow%zl .lt. zi(nlev)          ) &
-              .and. ( zi(0)             .lt. current_inflow%zu ) ) then
+         if ( current_inflow%zl .gt. current_inflow%zu ) then
+
+            n = nlev
+            current_inflow%Q(nlev) = current_inflow%QI
+
+         else if ( current_inflow%zl .lt. zi(nlev) ) then
 
             do index_min=1,nlev
                if ( current_inflow%zl .lt. zi(index_min) ) exit
@@ -321,6 +322,15 @@
             do i=index_min,n
                current_inflow%Q(i) = current_inflow%QI * ( min(zi(i),current_inflow%zu)-max(current_inflow%zl,zi(i-1)) ) / hI
             end do
+
+         else
+
+            cycle
+
+         end if
+
+         int_outflow = int_outflow + dt*current_inflow%QI
+
             if (current_inflow%has_T) then
                TI = current_inflow%TI
                do i=index_min,n
@@ -341,8 +351,6 @@
                   Ls(i) = Ls(i) + current_inflow%Q(i) / (Ac(i) * h(i))
                end do
             end if
-
-         end if
 
       end if
 
