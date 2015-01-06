@@ -203,19 +203,19 @@
    do while (associated(current_inflow))
       current_inflow%Q = _ZERO_
 
+      if (current_inflow%has_T) then
+         TI = current_inflow%TI
+      else
+         TI = T(nlev)
+      end if
+      if (current_inflow%has_S) then
+         SI = current_inflow%SI
+      else
+         SI = S(nlev)
+      end if
+
       ! inflow triggered or still in progress
       if (current_inflow%QI .ge. _ZERO_) then
-
-         if (current_inflow%has_T) then
-            TI = current_inflow%TI
-         else
-            TI = T(nlev)
-         end if
-         if (current_inflow%has_S) then
-            SI = current_inflow%SI
-         else
-            SI = S(nlev)
-         end if
 
          if ( current_inflow%zl .gt. current_inflow%zu ) then
 
@@ -331,7 +331,6 @@
          int_outflow = int_outflow + dt*current_inflow%QI
 
             if (current_inflow%has_T) then
-               TI = current_inflow%TI
                do i=index_min,n
                   Qt(i) = Qt(i) + TI * current_inflow%Q(i) / (Ac(i) * h(i))
                end do
@@ -341,7 +340,6 @@
                end do
             end if
             if (current_inflow%has_S) then
-               SI = current_inflow%SI
                do i=index_min,n
                   Qs(i) = Qs(i) + SI * current_inflow%Q(i) / (Ac(i) * h(i))
                end do
