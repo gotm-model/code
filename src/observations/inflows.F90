@@ -203,9 +203,6 @@
    do while (associated(current_inflow))
       current_inflow%Q = _ZERO_
 
-      index_min = nlev
-      n = 0
-
       ! inflow triggered or still in progress
       if (current_inflow%QI .ge. _ZERO_) then
 
@@ -265,6 +262,7 @@
 
          else if ( zi(0) .lt. current_inflow%zu ) then
 
+            index_min = nlev
             do i=1,nlev
                if ( current_inflow%zl .lt. zi(i) ) then
                   index_min = i
@@ -304,6 +302,7 @@
 
          if ( current_inflow%zl .gt. current_inflow%zu ) then
 
+            index_min = nlev
             n = nlev
             current_inflow%Q(nlev) = current_inflow%QI
 
