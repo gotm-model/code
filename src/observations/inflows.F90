@@ -276,7 +276,7 @@
             end do
 
 !           consider full discharge (even if below bathy)
-            hI = current_inflow%zu - max(current_inflow%zl,zi(0))
+            hI = current_inflow%zu - max(current_inflow%zl,zi(0)) + SMALL
 
             do i=index_min,n-1
                current_inflow%Q(i) = current_inflow%QI * ( min(zi(i),current_inflow%zu)-max(current_inflow%zl,zi(i-1)) ) / hI
@@ -316,7 +316,7 @@
             end do
 
 !           consider full discharge
-            hI = min(zi(nlev),current_inflow%zu) - max(current_inflow%zl,zi(0))
+            hI = min(zi(nlev),current_inflow%zu) - max(current_inflow%zl,zi(0)) + SMALL
 
             do i=index_min,n
                current_inflow%Q(i) = current_inflow%QI * ( min(zi(i),current_inflow%zu)-max(current_inflow%zl,zi(i-1)) ) / hI
