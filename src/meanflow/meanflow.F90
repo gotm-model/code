@@ -174,7 +174,7 @@
                         grid_method,c1ad,c2ad,c3ad,c4ad,Tgrid,NNnorm,  &
                         SSnorm,dsurf,dtgrid,grid_file,gravity,rho_0,cp,&
                         avmolu,avmolT,avmolS,MaxItz0b,no_shear,        &
-                        hypsograph_file
+                        hypsograph_file,water_balance_method
 !
 !-----------------------------------------------------------------------
 !BOC
