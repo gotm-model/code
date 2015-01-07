@@ -270,8 +270,12 @@
                   exit
                end if
             end do
-            do n=nlev,index_min,-1
-               if ( zi(n-1) .lt. current_inflow%zu ) exit
+            n = index_min
+            do i=nlev,index_min,-1
+               if ( zi(i-1) .lt. current_inflow%zu ) then
+                  n = i
+                  exit
+               end if
             end do
 
             if (current_inflow%zl .eq. current_inflow%zu) then
