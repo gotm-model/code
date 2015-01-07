@@ -102,6 +102,8 @@
       S_col = 1
 
       read(unit,nml=inflow,err=99,end=97)
+      if (name=='') cycle
+
       if (.not.associated(first_inflow)) then
          allocate(first_inflow)
          current_inflow => first_inflow
@@ -114,28 +116,27 @@
          current_inflow => current_inflow%next
       end if
 
-      if (name=='') then
-         FATAL 'Error: "name" must be provided in namelist "inflow".'
-         stop 'init_inflows'
-      end if
-      if (Q_file=='') then
-         FATAL 'Error: "Q_file" must be provided in namelist "inflow".'
-         stop 'init_inflows'
-      end if
-
       LEVEL2 '.... ',trim(name),real(zl),real(zu)
       current_inflow%name = name
       current_inflow%zl   = zl
       current_inflow%zu   = zu
+
+      if (Q_file=='') then
+         FATAL 'Error: "Q_file" must be provided in namelist "inflow".'
+         stop 'init_inflows'
+      end if
       call register_input_0d(Q_file,Q_col,current_inflow%QI,'observed inflow: discharge')
+
       if (T_file/='') then
          call register_input_0d(T_file,T_col,current_inflow%TI,'observed inflow: temperature')
          current_inflow%has_T = .true.
       end if
+
       if (S_file/='') then
          call register_input_0d(S_file,S_col,current_inflow%SI,'observed inflow: salinity')
          current_inflow%has_S = .true.
       end if
+
       allocate(current_inflow%Q(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_observations: Error allocating (Q)'
       current_inflow%Q = _ZERO_
