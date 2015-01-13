@@ -45,6 +45,20 @@ if(GOTM_EXTRA_OUTPUT)
   add_definitions(-DEXTRA_OUTPUT)
 endif()
 
+if(NOT GOTM_BUILD_LIBRARIES_ONLY)
+  option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
+  if(GOTM_USE_NetCDF)
+    find_package(NetCDF REQUIRED)
+    add_definitions(-DNETCDF_FMT -DREAL_4B=real\(4\))
+    include_directories("${NetCDF_INCLUDE_DIRS}")
+    if (NetCDF_STATIC_MSVC_BUILD)
+      # On Windows with a statically-compiled NetCDF library - compile all code against static runtime.
+      # This MUST be done before any targets are added.
+      add_compile_options("/libs:static")
+    endif()
+  endif(GOTM_USE_NetCDF)
+endif(NOT GOTM_BUILD_LIBRARIES_ONLY)
+
 # Global include directories
 include_directories(BEFORE "${CMAKE_BINARY_DIR}"
                     "${PROJECT_SOURCE_DIR}/../include"
@@ -267,13 +281,6 @@ if(GOTM_USE_BIO)
   add_dependencies(gotm bio)
 endif()
 
-option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
-if(GOTM_USE_NetCDF)
-  find_package(NetCDF REQUIRED)
-  add_definitions(-DNETCDF_FMT -DREAL_4B=real\(4\))
-  include_directories("${NetCDF_INCLUDE_DIRS}")
-endif(GOTM_USE_NetCDF)
-
 if(GOTM_USE_FABM)
   add_library(gotm_fabm_io
               fabm/gotm_fabm_input.F90
@@ -302,8 +309,7 @@ target_link_libraries(gotm_exe turbulence util)
 if(GOTM_USE_NetCDF)
   target_link_libraries(gotm_exe "${NetCDF_LIBRARIES}")
   if (NetCDF_STATIC_MSVC_BUILD)
-    set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmtd\"")
-    target_compile_options(gotm_exe PRIVATE "/libs:static")
+    set_property(TARGET gotm_exe PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
   endif()
 endif(GOTM_USE_NetCDF)
 
