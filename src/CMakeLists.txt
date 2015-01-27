@@ -220,7 +220,7 @@ add_library(meanflow OBJECT
             meanflow/updategrid.F90
             meanflow/vequation.F90
            )
-add_dependencies(meanflow util observations)
+add_dependencies(meanflow util observations airsea)
 
 add_library(output OBJECT
             output/asciiout.F90
