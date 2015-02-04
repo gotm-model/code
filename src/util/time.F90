@@ -83,8 +83,9 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: jul1,secs1,jul2,secs2
-   integer                   :: ndays,nsecs
+   integer                    :: jul1,secs1,jul2,secs2
+   integer(kind=timestepkind) :: nsecs
+   integer                    :: ndays
 !
 !-------------------------------------------------------------------------
 !BOC
