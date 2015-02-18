@@ -282,7 +282,7 @@
             end do
 
          ! given depth range
-         else if ( zi(0) .lt. current_inflow%zu ) then
+         else if ( zi(0) .le. current_inflow%zu ) then
 !KB - should the water not fill up the basin? I.e. n=1!
 !KK - depends on zl
 
@@ -316,7 +316,7 @@
 
          else
 !KB - is the cycle needed?
-!           ignore inflows which are fully below the bottom (zl<=zu<=zi(0))
+!           ignore inflows which are fully below the bottom (zl<=zu<zi(0))
             cycle
 
          end if
