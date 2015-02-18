@@ -876,7 +876,12 @@ class Variable(object):
             coordinates are properly specified. Note that if a slice is valid,
             it might still be empty.
             """
-            return self.data is not None and (None not in self.coords) and (None not in self.coords_stag)
+            if self.data is None: return False
+            for c in self.coords:
+               if c is None: return False
+            for c in self.coords_stag:
+               if c is None: return False
+            return True
             
         def debugCheck(self,context=''):
             if context!='': context += ': '

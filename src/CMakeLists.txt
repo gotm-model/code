@@ -223,7 +223,7 @@ add_library(meanflow OBJECT
             meanflow/vequation.F90
             meanflow/water_balance.F90
            )
-add_dependencies(meanflow util observations)
+add_dependencies(meanflow util observations airsea)
 
 add_library(output OBJECT
             output/asciiout.F90

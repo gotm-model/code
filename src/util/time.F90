@@ -83,8 +83,9 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: jul1,secs1,jul2,secs2
-   integer                   :: ndays,nsecs
+   integer                    :: jul1,secs1,jul2,secs2
+   integer(kind=timestepkind) :: nsecs
+   integer                    :: ndays
 !
 !-------------------------------------------------------------------------
 !BOC
@@ -128,7 +129,7 @@
          nsecs = nint(MaxN*timestep) + secs1
          ndays = nsecs/86400
          jul2  = jul1 + ndays
-         secs2 = mod(nsecs,86400)
+         secs2 = mod(nsecs,86400_timestepkind)
 
          call write_time_string(jul2,secs2,stop)
          LEVEL2 'Stop:           ',stop

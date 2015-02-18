@@ -155,7 +155,8 @@
 !-----------------------------------------------------------------------
 !BOC
    if (nlev==-1) then
-      FATAL 'input module has been initialized without depth information; depth-explicit inputs can therefore not be registered.'
+      FATAL 'input module has been initialized without depth information; &
+         &depth-explicit inputs can therefore not be registered.'
       stop 'input::register_input_1d'
    end if
 

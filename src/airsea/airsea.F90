@@ -402,12 +402,12 @@
 #ifndef INTERPOLATE_METEO
       open(meteo_unit,file=meteo_file,action='read',status='old',err=93)
 #else
-      call register_input_0d(meteo_file,1,u10,scale_factor=wind_factor)
-      call register_input_0d(meteo_file,2,v10,scale_factor=wind_factor)
-      call register_input_0d(meteo_file,3,airp,scale_factor=100.d0)
-      call register_input_0d(meteo_file,4,airt)
-      call register_input_0d(meteo_file,5,rh)
-      call register_input_0d(meteo_file,6,cloud)
+      call register_input_0d(meteo_file,1,u10,'wind speed: x-direction',scale_factor=wind_factor)
+      call register_input_0d(meteo_file,2,v10,'wind speed: y-direction',scale_factor=wind_factor)
+      call register_input_0d(meteo_file,3,airp,'air pressure',scale_factor=100.d0)
+      call register_input_0d(meteo_file,4,airt,'air temperature')
+      call register_input_0d(meteo_file,5,rh,'relative humidity')
+      call register_input_0d(meteo_file,6,cloud,'cloud cover')
 #endif
       LEVEL2 'Air-sea exchanges will be calculated'
       LEVEL2 'Reading meteo data from:'
