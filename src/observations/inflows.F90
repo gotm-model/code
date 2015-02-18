@@ -125,6 +125,8 @@
       current_inflow%zu   = zu
 
 !KB will this increase readabillity ? And the use them below
+!KK I am not sure. IMO having all possible conditions of zl and zu written
+!   out directly in the if clauses avoids scrolling and simplifies understanding...
 !      if ( current_inflow%zl .gt. current_inflow%zu ) then
 !         current_inflow%interleaving = .true. ! default inflow
 !         current_inflow%surface      = .true. ! default outflow
@@ -249,12 +251,15 @@
 
             ! density of the inflowing water is too small -> no inflow
 !KB I think a surface inflow should be done in that case
+!KK Right (see the missing issues mentioned in the mail).
+!   This is Lennart's old code which need to be discussed with Hans/Lars.
             if (index_min .eq. 0) then
                return
             endif
 
             ! find the z-levels in which the water will interleave
 !KB What is the logic behind this - and is needed/correct?
+!KK seems to be some kind of CFL checking. Same as above - needs to be discussed with Hans/Lars.
             VI_basin = _ZERO_
             n = index_min
             do while (VI_basin < current_inflow%QI*dt)
@@ -279,6 +284,7 @@
          ! given depth range
          else if ( zi(0) .lt. current_inflow%zu ) then
 !KB - should the water not fill up the basin? I.e. n=1!
+!KK - depends on zl
 
             index_min = nlev
             do i=1,nlev
@@ -310,7 +316,7 @@
 
          else
 !KB - is the cycle needed?
-
+!           ignore inflows which are fully below the bottom (zl<=zu<=zi(0))
             cycle
 
          end if
@@ -323,6 +329,7 @@
          end do
 
 !KB - should this go?
+!KK - yes, because the correct FQ is calculated later in water_balance
          ! calculate the sink term at sea surface
          !Qs(nlev) = Qs(nlev) -S(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
          !Qt(nlev) = Qt(nlev) -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
@@ -337,11 +344,17 @@
             n = nlev
             current_inflow%Q(nlev) = current_inflow%QI
 
-         else if ( current_inflow%zl .lt. zi(nlev) ) then
+         else if ( current_inflow%zl .le. zi(nlev) ) then
 !KB - should zl=zu=0 not mean surface flow?
+!KK - only if zi(nlev-1)<=0<=zi(nlev)
+!KK - but you are right: I now added the special case zl=zu=zi(nlev) here
 
-            do index_min=1,nlev
-               if ( current_inflow%zl .lt. zi(index_min) ) exit
+            index_min = nlev
+            do i=1,nlev
+               if ( current_inflow%zl .lt. zi(i) ) then
+                  index_min = i
+                  exit
+               end if
             end do
             n = index_min
             do i=nlev,index_min,-1
