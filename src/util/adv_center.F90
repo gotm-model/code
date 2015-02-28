@@ -237,13 +237,17 @@
 
    it=min(itmax,int(cmax)+1)
 
-!#ifdef DEBUG
+#ifdef DEBUG
    if (it .gt. 1) then
       STDERR 'In adv_center():'
       STDERR 'Maximum Courant number is ',cmax
       STDERR it,' iterations used for vertical advection'
    endif
-!#endif
+#endif
+   if (it .eq. itmax) then
+      STDERR 'adv_center: clipped to maximum number of iterations'
+      STDERR '            cfl=',real(cmax/itmax)
+   end if
 
 !  splitting loop
    do i=1,it
