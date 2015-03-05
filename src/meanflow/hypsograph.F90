@@ -136,6 +136,8 @@
    end if
    A_input = _ZERO_
 
+!KB - will replace this logic using strip_string() for the simple reading
+!     an do the re-ordering after data has been read.
    select case (up_down)
       case(1)  ! surface ref, read from bottom
          do i=1,N_input
