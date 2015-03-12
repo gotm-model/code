@@ -118,7 +118,7 @@
    integer                   :: rc
    integer                   :: up_down
    integer, save             :: lines
-   REALTYPE                  :: x
+   REALTYPE                  :: x,y
 !-----------------------------------------------------------------------
 !BOC
    ierr = 0
@@ -154,10 +154,10 @@
             lines = lines+1
             read(unit,*,ERR=100,END=110) depth_input(i), A_input(i)
          end do
-         do i=1,N_input/2
-            x = depth_input(i)
-            depth_input(i) = -depth_input(N_input-(i-1))
-            depth_input(N_input-(i-1)) = -x
+         do i=1,N_input
+            depth_input(i) = depth_input(i)-depth_input(N_input)
+         end do
+         do i=1,N_input
          end do
       case(4)  ! bottom ref, read from surface
          do i=N_input,1,-1
