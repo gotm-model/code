@@ -121,6 +121,7 @@
    integer,  public, parameter                   :: WATER_BALANCE_SURFACE=1
    integer,  public, parameter                   :: WATER_BALANCE_ALLLAYERS=2
    integer,  public                              :: water_balance_method=WATER_BALANCE_SURFACE
+   REALTYPE, public                              :: net_water_balance
    REALTYPE, public                              :: int_flows
    REALTYPE, public                              :: int_fwf
 !
@@ -208,7 +209,8 @@
    avmolS       = 1.1e-9
    MaxItz0b     = 10
    no_shear     = .false.
-   hypsograph_file  = ''
+   hypsograph_file  = 'hypsograph.dat'
+   net_water_balance = _ZERO_
    int_flows    = _ZERO_
    int_fwf      = _ZERO_
 

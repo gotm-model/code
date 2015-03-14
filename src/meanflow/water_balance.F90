@@ -12,7 +12,8 @@
 ! !USES:
    use meanflow,      only: water_balance_method,WATER_BALANCE_NONE
    use meanflow,      only: WATER_BALANCE_SURFACE,WATER_BALANCE_ALLLAYERS
-   use meanflow,      only: int_flows,int_fwf,lake,Af,Ac,h
+   use meanflow,      only: int_flows,net_water_balance,int_fwf
+   use meanflow,      only: lake,Af,Ac,h
    use inflows,       only: int_inflow,int_outflow
    use airsea,        only: int_net_precip,evap,precip
    use observations,  only: Q,Qres,FQ
@@ -31,21 +32,21 @@
 !
 ! !LOCAL VARIABLES:
    integer              :: k
-   REALTYPE             :: net_water_balance,Vc(0:nlev)
+   REALTYPE             :: Vc(0:nlev)
 !
 !-----------------------------------------------------------------------
 !BOC
 
-  if (lake) then
+   if (lake) then
 #if 0
-     int_flows = int_inflow + int_outflow
+      int_flows = int_inflow + int_outflow
 #else
-     int_flows = (int_inflow + int_outflow)/Af(size(Af)-1)
+      int_flows = (int_inflow + int_outflow)/Af(size(Af)-1)
 #endif
-     int_fwf = int_flows + int_net_precip
-  else
-     int_fwf = int_net_precip
-  end if
+      int_fwf = int_flows + int_net_precip
+   else
+      int_fwf = int_net_precip
+   end if
 
    if (lake) then
       net_water_balance = sum(Q(1:nlev)) - Af(nlev)*(evap + precip)

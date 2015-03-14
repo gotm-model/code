@@ -195,12 +195,11 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer              :: i,n
+   integer              :: n,nmin,nmax
    REALTYPE             :: rhoI,rho
    REALTYPE             :: depth
    REALTYPE             :: VI_basin
    REALTYPE             :: hI,TI,SI
-   integer              :: index_min
    type (type_inflow), pointer :: current_inflow
 !
 !-----------------------------------------------------------------------
@@ -228,57 +227,63 @@
          SI = S(nlev)
       end if
 
+      nmin = -1
+      nmax = -1
+
       ! inflow triggered or still in progress
       if (current_inflow%QI .ge. _ZERO_) then
+
+!STDERR 'TI ',TI
 
          ! interleaving
          if ( current_inflow%zl .gt. current_inflow%zu ) then
 !KB         if ( current_inflow%interleaving ) then
 
             ! find minimal depth where the inflow will take place
-            index_min = 0
-            do i=1,nlev
-               depth = zi(nlev) - z(i)
+            nmin = 0
+            do n=1,nlev
+               depth = zi(nlev) - z(n)
                rhoI = unesco(SI,TI,depth/10.0d0,.false.)
-               rho = unesco(S(i),T(i),depth/10.0d0,.false.)
+               rho = unesco(S(n),T(n),depth/10.0d0,.false.)
                ! if the density of the inflowing water is greater than the
                ! ambient water then the lowest interleaving depth is found
                if (rhoI > rho) then
-                  index_min = i
+                  nmin = n
                   exit
                end if
             end do
 
-            ! density of the inflowing water is too small -> no inflow
-!KB I think a surface inflow should be done in that case
-!KK Right (see the missing issues mentioned in the mail).
-!   This is Lennart's old code which need to be discussed with Hans/Lars.
-            if (index_min .eq. 0) then
-               return
+            ! density of the inflowing water is too small -> surface inflow
+            if (nmin .eq. 0) then
+               nmin = nlev
+               nmax = nlev
             endif
 
             ! find the z-levels in which the water will interleave
 !KB What is the logic behind this - and is needed/correct?
 !KK seems to be some kind of CFL checking. Same as above - needs to be discussed with Hans/Lars.
+!KB - removed
+#if 0
             VI_basin = _ZERO_
-            n = index_min
+            nmax = nmin
             do while (VI_basin < current_inflow%QI*dt)
-               VI_basin = VI_basin + Ac(n) * h(n)
-               n = n+1
-               if (n .gt. nlev) then
+               VI_basin = VI_basin + Ac(nmax) * h(nmax)
+               nmax = nmax+1
+               if (nmax .gt. nlev) then
                   !if inflow at surface -> no inflow
                   !debug output only
-                  write(*,*) "Warning: Too much water flowing into the basin."
-                  return
+!                  write(*,*) "Warning: Too much water flowing into the basin."
+!                  return
                end if
             end do
             ! VI_basin is now too big so go back one step
-            n = n-1
+            nmax = nmax-1
+#endif
 
             ! calculate the source terms
-            ! "+1" because loop includes both n and index_min
-            do i=index_min,n
-               current_inflow%Q(i) = current_inflow%QI / (n-index_min+1)
+            ! "+1" because loop includes both n and nmin - KB ?
+            do n=nmin,nmax
+               current_inflow%Q(n) = current_inflow%QI / (nmax-nmin+1)
             end do
 
          ! given depth range
@@ -286,29 +291,29 @@
 !KB - should the water not fill up the basin? I.e. n=1!
 !KK - depends on zl
 
-            index_min = nlev
-            do i=1,nlev
-               if ( current_inflow%zl .lt. zi(i) ) then
-                  index_min = i
+            nmin = nlev
+            do n=1,nlev
+               if ( current_inflow%zl .lt. zi(n) ) then
+                  nmin = n
                   exit
                end if
             end do
-            n = index_min
-            do i=nlev,index_min,-1
-               if ( zi(i-1) .lt. current_inflow%zu ) then
-                  n = i
+            nmax = nmin
+            do n=nlev,nmin,-1
+               if ( zi(n-1) .lt. current_inflow%zu ) then
+                  nmax = n
                   exit
                end if
             end do
 
             if (current_inflow%zl .eq. current_inflow%zu) then
-               current_inflow%Q(n) = current_inflow%QI
+               current_inflow%Q(nmax) = current_inflow%QI
             else
 !              consider full discharge (even if below bathy)
                hI = current_inflow%zu - max(current_inflow%zl,zi(0)) + SMALL
 
-               do i=index_min,n-1
-                  current_inflow%Q(i) = current_inflow%QI * ( min(zi(i),current_inflow%zu)-max(current_inflow%zl,zi(i-1)) ) / hI
+               do n=nmin,nmax-1
+                  current_inflow%Q(n) = current_inflow%QI * ( min(zi(n),current_inflow%zu)-max(current_inflow%zl,zi(n-1)) ) / hI
                end do
 !              discharge above fse counts for surface layer
                current_inflow%Q(n) = current_inflow%QI * ( current_inflow%zu-max(current_inflow%zl,zi(n-1)) ) / hI
@@ -323,9 +328,9 @@
 
          int_inflow = int_inflow + dt*current_inflow%QI
 
-         do i=index_min,n
-            Qs(i) = Qs(i) + SI * current_inflow%Q(i) / (Ac(i) * h(i))
-            Qt(i) = Qt(i) + TI * current_inflow%Q(i) / (Ac(i) * h(i))
+         do n=nmin,nmax
+            Qs(n) = Qs(n) + SI * current_inflow%Q(n) / (Ac(n) * h(n))
+            Qt(n) = Qt(n) + TI * current_inflow%Q(n) / (Ac(n) * h(n))
          end do
 
 !KB - should this go?
@@ -340,8 +345,8 @@
          if ( current_inflow%zl .gt. current_inflow%zu ) then
 !KB         if ( current_inflow%surface ) then
 
-            index_min = nlev
-            n = nlev
+            nmin = nlev
+            nmax = nlev
             current_inflow%Q(nlev) = current_inflow%QI
 
          else if ( current_inflow%zl .le. zi(nlev) ) then
@@ -349,32 +354,32 @@
 !KK - only if zi(nlev-1)<=0<=zi(nlev)
 !KK - but you are right: I now added the special case zl=zu=zi(nlev) here
 
-            index_min = nlev
-            do i=1,nlev
-               if ( current_inflow%zl .lt. zi(i) ) then
-                  index_min = i
+            nmin = nlev
+            do n=1,nlev
+               if ( current_inflow%zl .lt. zi(n) ) then
+                  nmin = n
                   exit
                end if
             end do
-            n = index_min
-            do i=nlev,index_min,-1
-               if ( zi(i-1) .lt. current_inflow%zu ) then
-                  n = i
+            nmax = nmin
+            do n=nlev,nmin,-1
+               if ( zi(n-1) .lt. current_inflow%zu ) then
+                  nmax = n
                   exit
                end if
             end do
 
             if (current_inflow%zl .eq. current_inflow%zu) then
 
-               current_inflow%Q(n) = current_inflow%QI
+               current_inflow%Q(nmax) = current_inflow%QI
 
             else
 
 !              consider full discharge
                hI = min(zi(nlev),current_inflow%zu) - max(current_inflow%zl,zi(0)) + SMALL
 
-               do i=index_min,n
-                  current_inflow%Q(i) = current_inflow%QI * ( min(zi(i),current_inflow%zu)-max(current_inflow%zl,zi(i-1)) ) / hI
+               do n=nmin,nmax
+                  current_inflow%Q(n) = current_inflow%QI * ( min(zi(n),current_inflow%zu)-max(current_inflow%zl,zi(n-1)) ) / hI
                end do
 
             end if
@@ -388,28 +393,28 @@
          int_outflow = int_outflow + dt*current_inflow%QI
 
          if (current_inflow%has_T) then
-            do i=index_min,n
-               Qt(i) = Qt(i) + TI * current_inflow%Q(i) / (Ac(i) * h(i))
+            do n=nmin,nmax
+               Qt(n) = Qt(n) + TI * current_inflow%Q(n) / (Ac(n) * h(n))
             end do
          else
-            do i=index_min,n
-               Lt(i) = Lt(i) + current_inflow%Q(i) / (Ac(i) * h(i))
+            do n=nmin,nmax
+               Lt(n) = Lt(n) + current_inflow%Q(n) / (Ac(n) * h(n))
             end do
          end if
          if (current_inflow%has_S) then
-            do i=index_min,n
-               Qs(i) = Qs(i) + SI * current_inflow%Q(i) / (Ac(i) * h(i))
+            do n=nmin,nmax
+               Qs(n) = Qs(n) + SI * current_inflow%Q(n) / (Ac(n) * h(n))
             end do
          else
-            do i=index_min,n
-               Ls(i) = Ls(i) + current_inflow%Q(i) / (Ac(i) * h(i))
+            do n=nmin,nmax
+               Ls(n) = Ls(n) + current_inflow%Q(n) / (Ac(n) * h(n))
             end do
          end if
 
       end if
 
-      do i=index_min,n
-         Q(i) = Q(i) + current_inflow%Q(i)
+      do n=nmin,nmax
+         Q(n) = Q(n) + current_inflow%Q(n)
       end do
 
       current_inflow => current_inflow%next

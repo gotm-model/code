@@ -79,6 +79,7 @@
    integer, private          :: swr_id,albedo_id
    integer, private          :: qb_id,qe_id,qh_id,heat_id
    integer, private          :: total_id,precip_id,evap_id
+   integer, private          :: net_water_balance_id
    integer, private          :: int_precip_id,int_evap_id,int_fwf_id
    integer, private          :: int_net_precip_id,int_flows_id
    integer, private          :: int_swr_id,int_heat_id,int_total_id
@@ -250,6 +251,8 @@
    iret = nf90_def_var(ncid,'int_evap',NF90_REAL,dim3d,int_evap_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'int_net_precip',NF90_REAL,dim3d,int_net_precip_id)
+   call check_err(iret)
+   iret = nf90_def_var(ncid,'net_water_balance',NF90_REAL,dim3d,net_water_balance_id)
    call check_err(iret)
    iret = nf90_def_var(ncid,'int_flows',NF90_REAL,dim3d,int_flows_id)
    call check_err(iret)
@@ -476,6 +479,7 @@
    iret = set_attributes(ncid,int_precip_id,units='m',long_name='integrated precipitation')
    iret = set_attributes(ncid,int_evap_id,units='m',long_name='integrated evaporation')
    iret = set_attributes(ncid,int_net_precip_id,units='m',long_name='integrated netto precipitation')
+   iret = set_attributes(ncid,net_water_balance_id,units='m3/s',long_name='water balance')
    iret = set_attributes(ncid,int_flows_id,units='m',long_name='integrated flows - scaled by area')
    iret = set_attributes(ncid,int_fwf_id,units='m',long_name='integrated fresh water fluxes')
    iret = set_attributes(ncid,int_swr_id,units='J/m2',long_name='integrated short wave radiation')
@@ -623,6 +627,7 @@
    use airsea,       only: tx,ty,I_0,albedo,qb,qe,qh,heat,precip,evap,sst,sss
    use airsea,       only: int_precip,int_evap,int_net_precip
    use airsea,       only: int_swr,int_heat,int_total
+   use meanflow,     only: net_water_balance
    use meanflow,     only: int_flows,int_fwf
    use meanflow,     only: lake
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
@@ -725,6 +730,7 @@
    iret = store_data(ncid,int_precip_id,XYT_SHAPE,1,scalar=int_precip)
    iret = store_data(ncid,int_evap_id,XYT_SHAPE,1,scalar=int_evap)
    iret = store_data(ncid,int_net_precip_id,XYT_SHAPE,1,scalar=int_net_precip)
+   iret = store_data(ncid,net_water_balance_id,XYT_SHAPE,1,scalar=net_water_balance)
    iret = store_data(ncid,int_flows_id,XYT_SHAPE,1,scalar=int_flows)
    iret = store_data(ncid,int_fwf_id,XYT_SHAPE,1,scalar=int_fwf)
    iret = store_data(ncid,int_swr_id,XYT_SHAPE,1,scalar=int_swr)
