@@ -76,11 +76,6 @@
 !  Parameters for water classification - default Jerlov type I
    REALTYPE, public, target                            :: A,g1,g2
 
-#ifdef BIO
-!  'observed' biological profiles
-   REALTYPE, public, dimension(:,:), allocatable, target :: bioprofs
-#endif
-
 !------------------------------------------------------------------------------
 !
 ! the following data are not all public,
@@ -188,12 +183,6 @@
    REALTYPE, public          :: b_obs_surf,b_obs_NN
    REALTYPE, public          :: b_obs_sbf
 
-#ifdef BIO
-!  Observed biological profiles
-   integer, public           :: bio_prof_method
-   CHARACTER(LEN=PATH_MAX)   :: bio_prof_file
-#endif
-
    REALTYPE,public, parameter:: pi=3.141592654d0
 
 ! !DEFINED PARAMETERS:
@@ -300,10 +289,6 @@
    namelist /eprofile/ e_prof_method,e_obs_const,e_prof_file
 
    namelist /bprofile/ b_obs_surf,b_obs_NN,b_obs_sbf
-
-#ifdef BIO
-   namelist /bioprofiles/  bio_prof_method,bio_prof_file
-#endif
 
    integer                   :: rc,i
    REALTYPE                  :: ds,db
@@ -423,12 +408,6 @@
    b_obs_NN=_ZERO_
    b_obs_sbf=_ZERO_
 
-#ifdef BIO
-!  Observed biological profiles
-   bio_prof_method=1
-   bio_prof_file='bioprofs.dat'
-#endif
-
    open(namlst,file=fn,status='old',action='read',err=80)
    read(namlst,nml=sprofile,err=81)
    read(namlst,nml=tprofile,err=82)
@@ -442,10 +421,6 @@
    read(namlst,nml=eprofile,err=90)
    read(namlst,nml=bprofile,err=91)
    read(namlst,nml=o2_profile,err=92)
-#ifdef BIO
-   read(namlst,nml=bioprofiles,err=93)
-   STDERR bio_prof_method,trim(bio_prof_file)
-#endif
    close(namlst)
 
    allocate(sprof(0:nlev),stat=rc)
@@ -798,22 +773,6 @@
          stop 'init_observations()'
    end select
 
-#ifdef BIO
-!  The biological profile
-   select case (bio_prof_method)
-      case (NOTHING)
-      case (FROMFILE)
-         do i=1,size(bioprofs,1)
-            call register_input_1d(bio_prof_file,i,bioprofs(i,:),'observed biogeochemical variable')
-         end do
-         LEVEL2 'Reading biological profiles from:'
-         LEVEL3 trim(bio_prof_file)
-      case default
-         LEVEL1 'A non-valid bio_prof_method has been given ',bio_prof_method
-         stop 'init_observations()'
-   end select
-#endif
-
    return
 
 80 FATAL 'Unable to open "',trim(fn),'" for reading'
@@ -842,10 +801,6 @@
    stop 'init_observations'
 92 FATAL 'I could not read "o2_profile" namelist'
    stop 'init_observations'
-#ifdef BIO
-93 FATAL 'I could not read "bioprofiles" namelist'
-   stop 'init_observations'
-#endif
 
    end subroutine init_observations
 !EOC
@@ -940,9 +895,6 @@
    if (allocated(vprof)) deallocate(vprof)
    if (allocated(epsprof)) deallocate(epsprof)
    if (allocated(o2_prof)) deallocate(o2_prof)
-#ifdef BIO
-   if (allocated(bioprofs)) deallocate(bioprofs)
-#endif
    LEVEL2 'done.'
 
    end subroutine clean_observations
@@ -987,9 +939,6 @@
    LEVEL2 'zeta,dpdx,dpdy,h_press',zeta,dpdx,dpdy,h_press
    LEVEL2 'w_adv,w_height',w_adv,w_height
    LEVEL2 'A,g1,g2',A,g1,g2
-#ifdef BIO
-   if (allocated(bioprofs)) LEVEL2 'bioprofs',bioprofs
-#endif
 
    LEVEL2 'salinity namelist',                                  &
             s_prof_method,s_analyt_method,                      &
@@ -1038,10 +987,6 @@
 
    LEVEL2 'bprofile namelist',b_obs_surf,b_obs_NN,b_obs_sbf
 
-#ifdef BIO
-   LEVEL2 'observed biological profiles namelist',              &
-            bio_prof_method,bio_prof_file
-#endif
    end subroutine print_state_observations
 !EOC
 #endif

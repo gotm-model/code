@@ -257,34 +257,6 @@ if(GOTM_USE_SEAGRASS)
   set_property(TARGET seagrass PROPERTY FOLDER gotm)
 endif()
 
-option(GOTM_USE_BIO "Enable legacy biogeochemical modules" OFF)
-if(GOTM_USE_BIO)
-  add_definitions(-DBIO)
-  add_library(bio OBJECT
-              extras/bio/bio.F90
-              extras/bio/bio_fluxes.F90
-              extras/bio/bio_save.F90
-              extras/bio/bio_alloc_info.F90
-              extras/bio/bio_var.F90
-              extras/bio/template/bio_template.F90
-              extras/bio/npzd/bio_npzd.F90
-              extras/bio/cl/bio_cl.F90
-              extras/bio/iow/bio_iow.F90
-              extras/bio/fasham/bio_fasham.F90
-              extras/bio/sed/bio_sed.F90
-              #extras/bio/mab/bio_mab.F90
-              #extras/bio/rolm/bio_rolm.F90
-              extras/bio/npzd_fe/bio_npzd_fe.F90
-              extras/bio/photo/bio_photo.F90
-              extras/bio/mangan/bio_mangan.F90
-             )
-  set_property(TARGET bio APPEND PROPERTY COMPILE_DEFINITIONS NO_0D_BIO BIO_TEMPLATE BIO_NPZD BIO_CL BIO_IOW BIO_FASHAM BIO_SED BIO_NPZD_FE BIO_PHOTO BIO_MANGAN)
-  set(EXTRA_SRCS ${EXTRA_SRCS} $<TARGET_OBJECTS:bio>)
-  add_dependencies(bio util output)
-  add_dependencies(gotm bio)
-  set_property(TARGET bio PROPERTY FOLDER gotm)
-endif()
-
 if(GOTM_USE_FABM)
   add_library(gotm_fabm_io
               fabm/gotm_fabm_input.F90
