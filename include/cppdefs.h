@@ -51,11 +51,13 @@
 #define REALTYPE real(kind=selected_real_kind(6))
 !#define MPI_REALTYPE	MPI_REAL
 #define _ZERO_ 0.0
+#define _HALF_ 0.5
 #define _ONE_  1.0
 #else
 #define REALTYPE real(kind=selected_real_kind(13))
 !#define MPI_REALTYPE	MPI_DOUBLE_PRECISION
 #define _ZERO_ 0.0d0
+#define _HALF_ 0.5d0
 #define _ONE_  1.0d0
 #endif
 

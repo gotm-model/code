@@ -65,11 +65,6 @@
    use spm_var, only: spm_calc
    use spm, only: init_spm, set_env_spm, do_spm, end_spm
 #endif
-#ifdef BIO
-   use bio
-   use bio_fluxes
-   use bio_var, only: npar,numc,cc
-#endif
 #ifdef _FABM_
    use gotm_fabm,only:init_gotm_fabm,init_gotm_fabm_state,set_env_gotm_fabm,do_gotm_fabm,clean_gotm_fabm,fabm_calc
    use gotm_fabm,only:model_fabm=>model,standard_variables_fabm=>standard_variables
@@ -95,9 +90,6 @@
 #endif
 #ifdef SPM
    integer, parameter                  :: unit_spm=64
-#endif
-#ifdef BIO
-   integer, parameter                  :: unit_bio=63
 #endif
 !
 ! !REVISION HISTORY:
@@ -250,32 +242,6 @@
    call init_air_sea(namlst,latitude,longitude)
 
    call init_output(title,nlev,latitude,longitude)
-
-!  initialize BIO module
-#ifdef BIO
-
-   call init_bio(namlst,'bio.nml',unit_bio,nlev)
-
-   if (bio_calc) then
-
-      call set_env_bio(nlev,dt,-depth0,u_taub,h,t,s,rho,nuh,rad,wind,I_0, &
-           secondsofday,w,w_adv_discr,npar)
-
-      call init_var_bio()
-
-      call init_bio_fluxes()
-
-      allocate(bioprofs(1:numc,0:nlev),stat=rc)
-      if (rc /= 0) STOP 'init_gotm: Error allocating (bioprofs)'
-      bioprofs = _ZERO_
-
-      if ( bio_prof_method .eq. 2 ) then
-         cc = bioprofs
-      end if
-
-   end if
-
-#endif
 
 !  initialize FABM module
 #ifdef _FABM_
@@ -459,14 +425,6 @@
          call do_spm(nlev,dt)
       end if
 #endif
-#ifdef BIO
-      if (bio_calc) then
-         call set_env_bio(nlev,dt,-depth0,u_taub,h,t,s,rho,nuh,rad,wind,I_0, &
-                          secondsofday,w,w_adv_discr,npar)
-         call do_bio()
-         call get_bio_updates(nlev,bioshade)
-      end if
-#endif
 #ifdef _FABM_
       call do_gotm_fabm(nlev,real(n,kind(_ONE_)))
 #endif
@@ -547,9 +505,6 @@
 #ifdef SPM
    if (spm_calc) call spm_save(nlev)
 #endif
-#ifdef BIO
-   if (bio_calc) call bio_save(_ZERO_)
-#endif
 #ifdef _FABM_
    call do_gotm_fabm_output(nlev,initial=n==0_timestepkind)
 #endif
@@ -600,12 +555,6 @@
    call clean_observations()
 
    call clean_tridiagonal()
-
-#ifdef BIO
-   call clean_bio_fluxes()
-
-   call clean_bio()
-#endif
 
 #ifdef SEAGRASS
    call end_seagrass
