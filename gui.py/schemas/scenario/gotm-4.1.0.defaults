@@ -309,24 +309,7 @@
 			<o2_units>1</o2_units>
 			<o2_prof_file>o2_prof_file.dat</o2_prof_file>
 		</o2_profile>
-		<bioprofiles>
-			<bio_prof_method>0</bio_prof_method>
-			<bio_prof_file>bio_prof_file.dat</bio_prof_file>
-		</bioprofiles>
 	</obs>
-	<bio>
-		<bio_nml>
-			<bio_calc>False</bio_calc>
-			<bio_model>1</bio_model>
-			<bio_eulerian>True</bio_eulerian>
-			<cnpar>1.0</cnpar>
-			<w_adv_discr>6</w_adv_discr>
-			<ode_method>3</ode_method>
-			<split_factor>1</split_factor>
-			<bioshade_feedback>True</bioshade_feedback>
-			<npar>100000</npar>
-		</bio_nml>
-	</bio>
 	<seagrass>
 		<canopy>
 			<seagrass_calc>False</seagrass_calc>
