@@ -1,0 +1,4 @@
+This permanent branch exists in order to keep the old GOTM-BIO code available for users who have setups depending on this code. The old BIO code has not been maintained for a number of years as all bio-geochemmical related work in GOTM is now done through the FABM framework - www.fabm.net.
+
+Karsten Bolding
+2015-03-16
