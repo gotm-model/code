@@ -231,7 +231,8 @@
       nmax = -1
 
       ! inflow triggered or still in progress
-      if (current_inflow%QI .ge. _ZERO_) then
+!      if (current_inflow%QI .eq. _ZERO_) to avoid calculations when Q=0 something must be done
+      if (current_inflow%QI .gt. _ZERO_) then
 
 !STDERR 'TI ',TI
 
@@ -239,16 +240,23 @@
          if ( current_inflow%zl .gt. current_inflow%zu ) then
 !KB         if ( current_inflow%interleaving ) then
 
+!STDERR 'interleaving ',current_inflow%name
+
             ! find minimal depth where the inflow will take place
             nmin = 0
+            rhoI = unesco(SI,TI,_ZERO_,.false.)
             do n=1,nlev
                depth = zi(nlev) - z(n)
-               rhoI = unesco(SI,TI,depth/10.0d0,.false.)
+!STDERR 'R ',SI,TI
+!STDERR 'A ',S(n),T(n)
+!KB - UNPress is false               rhoI = unesco(SI,TI,depth/10.0d0,.false.)
                rho = unesco(S(n),T(n),depth/10.0d0,.false.)
+!STDERR n,rhoI,rho
                ! if the density of the inflowing water is greater than the
                ! ambient water then the lowest interleaving depth is found
                if (rhoI > rho) then
                   nmin = n
+                  nmax = n
                   exit
                end if
             end do
@@ -339,7 +347,11 @@
          !Qs(nlev) = Qs(nlev) -S(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
          !Qt(nlev) = Qt(nlev) -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
 
+!STDERR nmin,nmax,nlev
+
       else ! outflow
+
+!KBSTDERR current_inflow%zl,current_inflow%zu
 
          ! surface outflow
          if ( current_inflow%zl .gt. current_inflow%zu ) then
@@ -383,6 +395,8 @@
                end do
 
             end if
+
+!STDERR nmin,nmax,nlev
 
          else
 
