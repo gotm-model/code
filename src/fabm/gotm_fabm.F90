@@ -916,7 +916,7 @@
             end if
          end do
          if (expression%average) weights = weights/(min(expression%maximum_depth,depth)-expression%minimum_depth)
-!KB         calculate_vertical_mean = sum(model%environment%data(expression%in)%p(1:nlev)*weights)
+         calculate_vertical_mean = sum(model%data(expression%in)%p(1:nlev)*weights)
       end function
 
    end subroutine
