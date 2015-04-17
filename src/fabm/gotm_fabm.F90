@@ -761,7 +761,7 @@
                ! See if a specific stream concentration is prescribed for this biogeochemical variable.
                if (associated(stream%cc(i)%data)) stream_conc = stream%cc(i)%data
             else
-               stream_conc = cc(k,i)
+               stream_conc = cc(nlev,i)
             end if
 
             ! Calculate change in all layers due to stream
