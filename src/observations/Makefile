@@ -8,14 +8,14 @@ LIB	= $(LIBDIR)/libobservations$(buildtype).a
 
 DOCSRC	= \
 observations.F90        \
-inflows.F90             \
+streams.F90             \
 analytical_profile.F90	\
 const_NNT.F90		\
 const_NNS.F90
 
 
 MOD	= \
-${LIB}(inflows.o) \
+${LIB}(streams.o) \
 ${LIB}(observations.o)
 
 OBJ	= \

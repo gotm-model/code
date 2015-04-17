@@ -19,9 +19,9 @@
    use fabm, only: fabm_get_bulk_variable_id,fabm_get_horizontal_variable_id,fabm_get_scalar_variable_id,fabm_is_variable_used
    use fabm,only: type_bulk_variable_id,type_horizontal_variable_id,type_scalar_variable_id
    use fabm_types, only:rk
-   use gotm_fabm,only:fabm_calc,model,cc,register_observation,register_inflow,register_inflow_concentration
+   use gotm_fabm,only:fabm_calc,model,cc,register_observation,register_stream,register_stream_concentration
    use input,only: register_input_0d,register_input_1d
-   use inflows, only: type_inflow,first_inflow
+   use streams, only: type_stream,first_stream
 
    implicit none
 
@@ -55,7 +55,7 @@
       REALTYPE, allocatable,dimension(:)      :: relax_tau_1d         ! Relaxation times for profiles (depth-dependent variables)
       REALTYPE                                :: data_0d
       REALTYPE,allocatable,dimension(:)       :: data_1d
-      type (type_inflow),pointer              :: inflow => null()     ! Inflow that this variable corresponds to (only for pelagic variables)
+      type (type_stream),pointer              :: stream => null()     ! Inflow that this variable corresponds to (only for pelagic variables)
       type (type_input_variable),pointer      :: next => null()       ! Next variable in current input file
    end type
 
@@ -102,7 +102,7 @@
    integer, parameter           :: type_unknown = 0, type_profile = 1, type_scalar = 2
    logical                      :: file_exists
    type (type_input_variable),pointer :: curvariable
-   type (type_inflow),pointer   :: curinflow
+   type (type_stream),pointer   :: curstream
    REALTYPE, parameter          :: missing_value = huge(_ONE_)
    namelist /observations/ variable,variables,file,index,relax_tau,relax_taus, &
                            relax_taus_surf,relax_taus_bot,thicknesses_surf,thicknesses_bot, &
@@ -118,11 +118,11 @@
 !  Initialize empty lists of observations files.
    nullify(first_input_variable)
 
-!  Register inflows
-   curinflow => first_inflow
-   do while (associated(curinflow))
-      call register_inflow(curinflow%name,curinflow%QI,curinflow%Q)
-      curinflow => curinflow%next
+!  Register streams
+   curstream => first_stream
+   do while (associated(curstream))
+      call register_stream(curstream%name,curstream%QI,curstream%Q)
+      curstream => curstream%next
    end do
 
 !  Calculate depth (used to determine whether in surface/bottom/bulk for relaxation times)
@@ -257,19 +257,19 @@
          end if
 
 !        If variable still was not found, test whether its name matches the name of a pelagic variable,
-!        followed by an underscore, and the name of an inflow. In that case, the input variable specifies the
-!        time-varying concentration of the pelagic variable in the inflow.
+!        followed by an underscore, and the name of an stream. In that case, the input variable specifies the
+!        time-varying concentration of the pelagic variable in the stream.
          if (.not.(fabm_is_variable_used(curvariable%id).or.fabm_is_variable_used(curvariable%horizontal_id).or.fabm_is_variable_used(curvariable%scalar_id))) then
-            curinflow => first_inflow
-            do while (associated(curinflow))
+            curstream => first_stream
+            do while (associated(curstream))
                vl = len_trim(variables(i))
-               ifl = len_trim(curinflow%name)
-               if (variables(i)(vl-ifl+1:vl)==curinflow%name) then
+               ifl = len_trim(curstream%name)
+               if (variables(i)(vl-ifl+1:vl)==curstream%name) then
                   curvariable%id = fabm_get_bulk_variable_id(model,variables(i)(:vl-ifl-1))
                   variabletype = type_scalar
-                  if (fabm_is_variable_used(curvariable%id)) curvariable%inflow => curinflow
+                  if (fabm_is_variable_used(curvariable%id)) curvariable%stream => curstream
                end if
-               curinflow => curinflow%next
+               curstream => curstream%next
             end do
          end if
 
@@ -288,7 +288,7 @@
          filetype = variabletype
 
          if (variabletype==type_scalar) then
-!           0D input variable (horizontal-only, global scalar, or inflow for pelagic variable)
+!           0D input variable (horizontal-only, global scalar, or stream for pelagic variable)
             if (constant_values(i)/=missing_value) then
                 ! Variable fixed to constant value.
                 curvariable%data_0d = constant_values(i)
@@ -297,9 +297,9 @@
                 call register_input_0d(curvariable%path,curvariable%index,curvariable%data_0d,curvariable%name)
             end if
             curvariable%relax_tau_0d = relax_taus(i)
-            if (associated(curvariable%inflow)) then
-!              Input is inflow concentration for pelagic variable.
-               call register_inflow_concentration(curvariable%id,curvariable%inflow%name,curvariable%data_0d)
+            if (associated(curvariable%stream)) then
+!              Input is stream concentration for pelagic variable.
+               call register_stream_concentration(curvariable%id,curvariable%stream%name,curvariable%data_0d)
             elseif (fabm_is_variable_used(curvariable%horizontal_id)) then
 !              Input is a variable defined on horizontal slice of model domain (e.g., benthos)
                call register_observation(curvariable%horizontal_id,curvariable%data_0d,curvariable%relax_tau_0d)

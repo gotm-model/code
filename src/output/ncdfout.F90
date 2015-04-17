@@ -131,7 +131,7 @@
 ! !USES:
    use airsea,       only: hum_method
    use meanflow,     only: lake
-   use inflows,      only: ninflows,first_inflow,type_inflow
+   use streams,      only: nstreams,first_stream,type_stream
    IMPLICIT NONE
 !
 ! !DESCRIPTION:
@@ -149,9 +149,9 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: iret,iinflow
+   integer                   :: iret,istream
    character(len=128)        :: ncdf_time_str,history
-   type (type_inflow), pointer :: current_inflow
+   type (type_stream), pointer :: current_stream
 !-------------------------------------------------------------------------
 !BOC
    first = .true.
@@ -317,7 +317,7 @@
       call check_err(iret)
       iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
       call check_err(iret)
-      if (ninflows>0) then
+      if (nstreams>0) then
          iret = nf90_def_var(ncid,'Qs',NF90_REAL,dim4d,Qs_id)
          call check_err(iret)
          iret = nf90_def_var(ncid,'Qt',NF90_REAL,dim4d,Qt_id)
@@ -327,14 +327,14 @@
          iret = nf90_def_var(ncid,'FQ',NF90_REAL,dim4d,FQ_id)
          call check_err(iret)
 
-         allocate(Q_ids(ninflows))
-         iinflow = 0
-         current_inflow => first_inflow
-         do while (associated(current_inflow))
-            iinflow = iinflow + 1
-            iret = nf90_def_var(ncid,'Q_'//trim(current_inflow%name),NF90_REAL,dim3d,Q_ids(iinflow))
+         allocate(Q_ids(nstreams))
+         istream = 0
+         current_stream => first_stream
+         do while (associated(current_stream))
+            istream = istream + 1
+            iret = nf90_def_var(ncid,'Q_'//trim(current_stream%name),NF90_REAL,dim3d,Q_ids(istream))
             call check_err(iret)
-            current_inflow => current_inflow%next
+            current_stream => current_stream%next
          end do
          iret = nf90_def_var(ncid,'int_inflow',NF90_REAL,dim3d,int_inflow_id)
          call check_err(iret)
@@ -513,7 +513,7 @@
                             long_name='hypsograph at grid interfaces')
       iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsograph')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
-      if (ninflows>0) then
+      if (nstreams>0) then
          iret = set_attributes(ncid,Qs_id,units='1/s', &
                                long_name='salt inflow')
          iret = set_attributes(ncid,Qt_id,units='celsius/s', &
@@ -523,15 +523,15 @@
          iret = set_attributes(ncid,FQ_id,units='m**3/s', &
                                long_name='vertical salinity transport')
 
-         iinflow = 0
-         current_inflow => first_inflow
-         do while (associated(current_inflow))
-            iinflow = iinflow + 1
-            iret = set_attributes(ncid,Q_ids(iinflow),units='m**3/s', &
-!KB                                  long_name='Water transport from inflow '//trim(current_inflow%name))
-                                  long_name='inflow '//trim(current_inflow%name))
+         istream = 0
+         current_stream => first_stream
+         do while (associated(current_stream))
+            istream = istream + 1
+            iret = set_attributes(ncid,Q_ids(istream),units='m**3/s', &
+!KB                                  long_name='Water transport from stream '//trim(current_stream%name))
+                                  long_name='stream '//trim(current_stream%name))
             call check_err(iret)
-            current_inflow => current_inflow%next
+            current_stream => current_stream%next
          end do
          iret = set_attributes(ncid,int_inflow_id,units='m^3', &
                                long_name='Integrated inflow')
@@ -640,8 +640,8 @@
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
    use observations, only: Qs, Qt, FQ
-   use inflows,      only: ninflows,first_inflow,type_inflow
-   use inflows,      only: int_inflow,int_outflow
+   use streams,      only: nstreams,first_stream,type_stream
+   use streams,      only: int_inflow,int_outflow
    use eqstate,      only: eqstate1
 # ifdef EXTRA_OUTPUT
    use meanflow,     only: mean1,mean2,mean3,mean4,mean5
@@ -661,12 +661,12 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                             :: iret,i,iinflow
+   integer                             :: iret,i,istream
    REALTYPE                            :: temp_time
    REALTYPE                            :: dum(0:nlev)
    REAL_4B                             :: buoyp,buoym,dz
    REALTYPE                            :: zz
-   type (type_inflow),pointer          :: current_inflow
+   type (type_stream),pointer          :: current_stream
 !
 !-------------------------------------------------------------------------
 !BOC
@@ -746,14 +746,14 @@
          dum(1) = dum(1) + Ac(i) * S(i) * h(i)
       end do
       iret = store_data(ncid,total_salt_id,XYT_SHAPE,1,scalar=dum(1))
-      iinflow = 0
-      current_inflow => first_inflow
-      do while (associated(current_inflow))
-         iinflow = iinflow+1
-         iret = store_data(ncid,Q_ids(iinflow),XYT_SHAPE,1,scalar=current_inflow%QI)
-         current_inflow => current_inflow%next
+      istream = 0
+      current_stream => first_stream
+      do while (associated(current_stream))
+         istream = istream+1
+         iret = store_data(ncid,Q_ids(istream),XYT_SHAPE,1,scalar=current_stream%QI)
+         current_stream => current_stream%next
       end do
-      if (ninflows .gt. 0) then
+      if (nstreams .gt. 0) then
          iret = store_data(ncid,int_inflow_id,XYT_SHAPE,1,scalar=int_inflow)
          iret = store_data(ncid,int_outflow_id,XYT_SHAPE,1,scalar=int_outflow)
       end if
@@ -779,7 +779,7 @@
       iret = store_data(ncid,Ac_id,XYZT_SHAPE,nlev,array=Ac)
       iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
       iret = store_data(ncid,dAdz_id,XYZT_SHAPE,nlev,array=dAdz)
-      if (associated(first_inflow)) then
+      if (associated(first_stream)) then
          iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)
          iret = store_data(ncid,Qt_id,XYZT_SHAPE,nlev,array=Qt)
          do i=1,nlev

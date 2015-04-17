@@ -28,7 +28,7 @@
    public set_env_gotm_fabm,do_gotm_fabm
    public clean_gotm_fabm
    public fabm_calc
-   public register_observation, register_inflow, register_inflow_concentration
+   public register_observation, register_stream, register_stream_concentration
 
    ! Passed through from fabm_types, used by hosts to provide additional inputs:
    public standard_variables
@@ -67,15 +67,15 @@
 
    REALTYPE,allocatable,dimension(:),target :: horizontal_expression_data
 
-   type type_inflow_concentration
+   type type_stream_concentration
       REALTYPE, pointer :: data => null()
    end type
 
-   type type_inflow
+   type type_stream
       character(len=64) :: name = ''
       REALTYPE, pointer  :: QI,Q(:)
-      type (type_inflow_concentration),dimension(:),allocatable :: cc
-      type (type_inflow), pointer :: next => null()
+      type (type_stream_concentration),dimension(:),allocatable :: cc
+      type (type_stream), pointer :: next => null()
    end type
 
 !  Observation indices (from obs_0d, obs_1d) for pelagic and benthic state variables.
@@ -124,7 +124,7 @@
    REALTYPE, target :: decimal_yearday
    logical          :: fabm_ready
 
-   type (type_inflow),pointer :: first_inflow
+   type (type_stream),pointer :: first_stream
 
    contains
 
@@ -168,7 +168,7 @@
 
    nullify(model)
 
-   nullify(first_inflow)
+   nullify(first_stream)
 
    ! Initialize all namelist variables to reasonable default values.
    fabm_calc         = .false.
@@ -661,8 +661,8 @@
    integer                   :: i,k
    integer                   :: split
    integer(8)                :: clock_start,clock_end
-   type (type_inflow),pointer :: inflow
-   REALTYPE                  :: inflow_conc
+   type (type_stream),pointer :: stream
+   REALTYPE                  :: stream_conc
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -734,57 +734,57 @@
          Qsour = _ZERO_
          Lsour = _ZERO_
 
-         ! Add inflow (e.g., rivers) to source term that is to be used in diffusion solver.
-         if (associated(first_inflow)) then
+         ! Add stream (e.g., rivers) to source term that is to be used in diffusion solver.
+         if (associated(first_stream)) then
             do k=1,nlev
                w(k) = FQ(k) / Af(k)
                Lsour(k) = Lsour(k) + Qres(k) / (Ac(k) * curh(k))
             end do
             ! Calculate the sink term at sea surface
             w(nlev)=_ZERO_
-            ! This is taken directly from the original inflow scheme.
+            ! This is taken directly from the original stream scheme.
             !Qsour(nlev) = Qsour(nlev) - cc(nlev,i) * FQ(nlev-1) / (Ac(nlev) * curh(nlev))
             Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * curh(nlev))
 
             call adv_center(nlev,dt,curh,curh,Ac,Af,w,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
          end if
 
-         inflow => first_inflow
-         do while (associated(inflow))
+         stream => first_stream
+         do while (associated(stream))
 
-            if (inflow%QI .ge. _ZERO_) then
+            if (stream%QI .ge. _ZERO_) then
 
-            if (associated(inflow%cc(i)%data).or..not.model%state_variables(i)%no_river_dilution) then
-               ! Default inflow concentration: zero
-               inflow_conc = _ZERO_
+            if (associated(stream%cc(i)%data).or..not.model%state_variables(i)%no_river_dilution) then
+               ! Default stream concentration: zero
+               stream_conc = _ZERO_
 
-               ! See if a specific inflow concentration is prescribed for this biogeochemical variable.
-               if (associated(inflow%cc(i)%data)) inflow_conc = inflow%cc(i)%data
+               ! See if a specific stream concentration is prescribed for this biogeochemical variable.
+               if (associated(stream%cc(i)%data)) stream_conc = stream%cc(i)%data
             else
-               inflow_conc = cc(k,i)
+               stream_conc = cc(k,i)
             end if
 
-            ! Calculate change in all layers due to inflow
+            ! Calculate change in all layers due to stream
             do k=1,nlev
-               Qsour(k) = Qsour(k) + inflow_conc * inflow%Q(k) / (Ac(k) * curh(k))
+               Qsour(k) = Qsour(k) + stream_conc * stream%Q(k) / (Ac(k) * curh(k))
             end do
 
             else
 
-               if (associated(inflow%cc(i)%data)) then
-                  inflow_conc = inflow%cc(i)%data
+               if (associated(stream%cc(i)%data)) then
+                  stream_conc = stream%cc(i)%data
                   do k=1,nlev
-                     Qsour(k) = Qsour(k) + inflow_conc * inflow%Q(k) / (Ac(k) * curh(k))
+                     Qsour(k) = Qsour(k) + stream_conc * stream%Q(k) / (Ac(k) * curh(k))
                   end do
                else
                   do k=1,nlev
-                     Lsour(k) = Lsour(k) +               inflow%Q(k) / (Ac(k) * curh(k))
+                     Lsour(k) = Lsour(k) +               stream%Q(k) / (Ac(k) * curh(k))
                   end do
                end if
 
             end if
 
-            inflow => inflow%next
+            stream => stream%next
          end do
 
          ! Do diffusion step
@@ -916,7 +916,7 @@
             end if
          end do
          if (expression%average) weights = weights/(min(expression%maximum_depth,depth)-expression%minimum_depth)
-         calculate_vertical_mean = sum(model%environment%data(expression%in)%p(1:nlev)*weights)
+!KB         calculate_vertical_mean = sum(model%environment%data(expression%in)%p(1:nlev)*weights)
       end function
 
    end subroutine
@@ -1319,61 +1319,61 @@
       call fabm_link_scalar_data(model,scalar_id,data)
    end subroutine register_scalar_observation
 
-   subroutine register_inflow(name,QI,Q)
+   subroutine register_stream(name,QI,Q)
       character(len=*),intent(in) :: name
       REALTYPE,target             :: QI,Q(:)
 
-      type (type_inflow),pointer :: inflow
+      type (type_stream),pointer :: stream
       integer :: rc
 
-      ! Start inflow list, or append inflow if list exists.
-      if (associated(first_inflow)) then
-         inflow => first_inflow
-         do while (associated(inflow%next))
-            inflow => inflow%next
+      ! Start stream list, or append stream if list exists.
+      if (associated(first_stream)) then
+         stream => first_stream
+         do while (associated(stream%next))
+            stream => stream%next
          end do
-         allocate(inflow%next)
-         inflow => inflow%next
+         allocate(stream%next)
+         stream => stream%next
       else
-         allocate(first_inflow)
-         inflow => first_inflow
+         allocate(first_stream)
+         stream => first_stream
       end if
 
-      inflow%name = name
-      inflow%QI => QI
-      inflow%Q => Q
-      allocate(inflow%cc(1:size(model%state_variables)),stat=rc)
-      if (rc /= 0) stop 'allocate_memory(): Error allocating (inflow%cc)'
-   end subroutine register_inflow
+      stream%name = name
+      stream%QI => QI
+      stream%Q => Q
+      allocate(stream%cc(1:size(model%state_variables)),stat=rc)
+      if (rc /= 0) stop 'allocate_memory(): Error allocating (stream%cc)'
+   end subroutine register_stream
 
-   subroutine register_inflow_concentration(id,inflow_name,data)
+   subroutine register_stream_concentration(id,stream_name,data)
       type(type_bulk_variable_id),intent(in) :: id
-      character(len=*),intent(in)            :: inflow_name
+      character(len=*),intent(in)            :: stream_name
       REALTYPE,target                        :: data
 
       integer                     :: i
       character(len=64)           :: varname
-      type (type_inflow), pointer :: curinflow,inflow
+      type (type_stream), pointer :: curstream,stream
 
-!     Find associated inflow (needs to be registered beforehand with register_inflow)
-      nullify(inflow)
-      curinflow => first_inflow
-      do while (associated(curinflow))
-         if (curinflow%name==inflow_name) inflow => curinflow
-         curinflow => curinflow%next
+!     Find associated stream (needs to be registered beforehand with register_stream)
+      nullify(stream)
+      curstream => first_stream
+      do while (associated(curstream))
+         if (curstream%name==stream_name) stream => curstream
+         curstream => curstream%next
       end do
-      if (.not.associated(inflow)) stop 'gotm_fabm:register_inflow_concentration: inflow was not registered with register_inflow'
+      if (.not.associated(stream)) stop 'gotm_fabm:register_stream_concentration: stream was not registered with register_stream'
 
 !     Find associated state variable
       varname = fabm_get_variable_name(model,id)
       do i=1,size(model%state_variables)
          if (varname==model%state_variables(i)%name) then
-            inflow%cc(i)%data => data
+            stream%cc(i)%data => data
             return
          end if
       end do
-      stop 'register_inflow: state variable not found'
-   end subroutine register_inflow_concentration
+      stop 'register_stream: state variable not found'
+   end subroutine register_stream_concentration
 
    subroutine init_gotm_fabm_state(nlev)
       integer,intent(in) :: nlev

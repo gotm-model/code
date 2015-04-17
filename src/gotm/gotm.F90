@@ -73,7 +73,7 @@
 #endif
 
    use hypsograph, only: lake,init_hypsograph,clean_hypsograph
-   use inflows, only: update_inflows
+   use streams, only: update_streams
    use output
 
    IMPLICIT NONE
@@ -391,7 +391,7 @@
       call coriolis(nlev,dt)
 
 !     TODO: move these 2 calls between integrated_fluxes() and updategrid() ?
-      call update_inflows(nlev,dt,S(0:nlev),T(0:nlev),z,zi,h,Ac,Qs,Qt,Ls,Lt,Q)
+      call update_streams(nlev,dt,S(0:nlev),T(0:nlev),z,zi,h,Ac,Qs,Qt,Ls,Lt,Q)
       call water_balance(nlev)
 
 !     update velocity
