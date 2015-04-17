@@ -543,8 +543,8 @@
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
    h        => h_          ! layer heights [1d array] needed for advection, diffusion
-   Ac       => Ac_         ! hypsograph
-   Af       => Af_         ! hypsograph
+   Ac(0:)   => Ac_         ! hypsograph
+   Af(0:)   => Af_         ! hypsograph
    Qres     => Qres_
    FQ       => FQ_
    w        => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
