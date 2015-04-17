@@ -25,7 +25,7 @@
 !
 ! !USES:
    use input
-   use inflows
+   use streams
 
    IMPLICIT NONE
 
@@ -77,7 +77,7 @@
 !  Parameters for water classification - default Jerlov type I
    REALTYPE, public, target                            :: A,g1,g2
 
-!  inflows for lake model
+!  streams for lake model
    REALTYPE, public, dimension(:), allocatable   :: Qs, Qt, Ls, Lt
    REALTYPE, public, dimension(:), allocatable   :: Q, Qres, FQ
 
@@ -816,7 +816,7 @@
          stop 'init_observations()'
    end select
 
-!  The inflows
+!  The streams
    allocate(Qs(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (Qs)'
    Qs = _ZERO_
@@ -845,7 +845,7 @@
    if (rc /= 0) STOP 'init_observations: Error allocating (FQ)'
    FQ = _ZERO_
 
-   call init_inflows(lake,nlev)
+   call init_streams(lake,nlev)
 
    return
 

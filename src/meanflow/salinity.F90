@@ -60,7 +60,7 @@
 !  which is ensured by setting the local variable {\tt adv\_mode=0},
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
-!  If lake is true the advection due to inflows will be accounted for.
+!  If lake is true the advection due to streams will be accounted for.
 !
 ! !USES:
    use meanflow,     only: avmols
@@ -147,7 +147,7 @@
       end do
    end if
 
-!  ... and from inflows
+!  ... and from streams
    if (lake) then
       do i=1,nlev
          Qsour(i) = Qsour(i) + Qs(i)

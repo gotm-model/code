@@ -319,8 +319,8 @@
 			<XP_rat>1.0</XP_rat>
 		</canopy>
 	</seagrass>
-	<inflows>
-		<inflow>
+	<streams>
+		<stream>
 			<name>inflow1</name>
 			<zl>10.0</zl>
 			<zu>0.0</zu>
@@ -330,6 +330,17 @@
 			<Q_col>1</Q_col>
 			<S_col>2</S_col>
 			<T_col>3</T_col>
-		</inflow>
-	</inflows>
+		</stream>
+	</streams>
+	<fabm_input>
+		<observations>
+			<variable>kurt</variable>
+			<file></file>
+			<index>1</index>
+		</observations>
+		<observations>
+			<variable>egon</variable>
+			<constant_value>1.0</constant_value>
+		</observations>
+	</fabm_input>
 </scenario>

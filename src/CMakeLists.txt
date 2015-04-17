@@ -203,7 +203,7 @@ add_library(observations OBJECT
             observations/analytical_profile.F90
             observations/const_NNS.F90
             observations/const_NNT.F90
-            observations/inflows.F90
+            observations/streams.F90
             observations/observations.F90
            )
 add_dependencies(observations util input)

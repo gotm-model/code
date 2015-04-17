@@ -1196,9 +1196,9 @@
 			</element>
 		</element>
 	</element>
-	<element name="inflows" label="basic settings for inflows" optional="True">
-		<element name="inflow" label="observed inflow profiles">
-			<element name="name" type="string" label="name of inflow" />
+	<element name="streams" label="basic settings for streams" optional="True">
+		<element name="stream" label="observed stream profiles">
+			<element name="name" type="string" label="name of stream" />
 			<element name="zl" type="float" label="vertical position of lower inflow boundary" description="if zu &lt;= zl interleaving"/>
 			<element name="zu" type="float" label="vertical position of upper inflow boundary" description="if zu &lt;= zl interleaving"/>
 			<element name="Q_file" type="string" label="filename of file with discharge data" />
@@ -1207,6 +1207,14 @@
 			<element name="Q_col" type="int" label="column in &quot;Q_file&quot; after timestamp" />
 			<element name="S_col" type="int" label="column in &quot;S_file&quot; after timestamp" />
 			<element name="T_col" type="int" label="column in &quot;T_file&quot; after timestamp" />
+		</element>
+	</element>
+	<element name="fabm_input" label="FABM input specifications" optional="True">
+		<element name="observations" label="observed FABM scalar or profile data">
+			<element name="variable" type="string" label="name of FABM variable" />
+			<element name="file" type="string" label="file name" />
+			<element name="index" type="int" label="file name" />
+			<element name="constant_value" type="float" label="constant variable value" />
 		</element>
 	</element>
 </element>

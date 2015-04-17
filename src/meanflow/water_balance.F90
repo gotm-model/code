@@ -14,7 +14,7 @@
    use meanflow,      only: WATER_BALANCE_SURFACE,WATER_BALANCE_ALLLAYERS
    use meanflow,      only: int_flows,net_water_balance,int_fwf
    use meanflow,      only: lake,Af,Ac,h
-   use inflows,       only: int_inflow,int_outflow
+   use streams,       only: int_inflow,int_outflow
    use airsea,        only: int_net_precip,evap,precip
    use observations,  only: Q,Qres,FQ
 !
