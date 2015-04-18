@@ -109,6 +109,7 @@
    REALTYPE                  :: AdvSup,AdvSdw
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
+   REALTYPE                  :: wq(0:nlev)
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -152,11 +153,12 @@
       do i=1,nlev
          Qsour(i) = Qsour(i) + Qs(i)
          Lsour(i) = Lsour(i) + Ls(i) + Qres(i)/(Ac(i)*h(i))
-         w(i) = FQ(i) / Af(i)
+         wq(i) = FQ(i) / Af(i)
       end do
-      w(nlev)=_ZERO_
+      wq(0   )=_ZERO_
+      wq(nlev)=_ZERO_
       Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * h(nlev))
-      call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,               &
+      call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,               &
                           AdvSup,AdvSdw,w_adv_discr,1,S)
    end if
 

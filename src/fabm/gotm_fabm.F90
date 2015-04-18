@@ -657,6 +657,7 @@
    integer, parameter        :: adv_mode_0=0
    integer, parameter        :: adv_mode_1=1
    REALTYPE,dimension(0:nlev):: ws1d
+   REALTYPE,dimension(0:nlev):: wq
    REALTYPE                  :: dilution,virtual_dilution
    integer                   :: i,k
    integer                   :: split
@@ -737,16 +738,17 @@
          ! Add stream (e.g., rivers) to source term that is to be used in diffusion solver.
          if (associated(first_stream)) then
             do k=1,nlev
-               w(k) = FQ(k) / Af(k)
+               wq(k) = FQ(k) / Af(k)
                Lsour(k) = Lsour(k) + Qres(k) / (Ac(k) * curh(k))
             end do
+            wq(0) = _ZERO_
             ! Calculate the sink term at sea surface
-            w(nlev)=_ZERO_
+            wq(nlev)=_ZERO_
             ! This is taken directly from the original stream scheme.
             !Qsour(nlev) = Qsour(nlev) - cc(nlev,i) * FQ(nlev-1) / (Ac(nlev) * curh(nlev))
             Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * curh(nlev))
 
-            call adv_center(nlev,dt,curh,curh,Ac,Af,w,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
+            call adv_center(nlev,dt,curh,curh,Ac,Af,wq,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
          end if
 
          stream => first_stream
