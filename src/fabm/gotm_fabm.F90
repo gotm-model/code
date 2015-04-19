@@ -756,20 +756,20 @@
 
             if (stream%QI .ge. _ZERO_) then
 
-            if (associated(stream%cc(i)%data).or..not.model%state_variables(i)%no_river_dilution) then
-               ! Default stream concentration: zero
-               stream_conc = _ZERO_
+               if (associated(stream%cc(i)%data).or..not.model%state_variables(i)%no_river_dilution) then
+                  ! Default stream concentration: zero
+                  stream_conc = _ZERO_
 
-               ! See if a specific stream concentration is prescribed for this biogeochemical variable.
-               if (associated(stream%cc(i)%data)) stream_conc = stream%cc(i)%data
-            else
-               stream_conc = cc(nlev,i)
-            end if
+                  ! See if a specific stream concentration is prescribed for this biogeochemical variable.
+                  if (associated(stream%cc(i)%data)) stream_conc = stream%cc(i)%data
+               else
+                  stream_conc = cc(nlev,i)
+               end if
 
-            ! Calculate change in all layers due to stream
-            do k=1,nlev
-               Qsour(k) = Qsour(k) + stream_conc * stream%Q(k) / (Ac(k) * curh(k))
-            end do
+               ! Calculate change in all layers due to stream
+               do k=1,nlev
+                  Qsour(k) = Qsour(k) + stream_conc * stream%Q(k) / (Ac(k) * curh(k))
+               end do
 
             else
 
