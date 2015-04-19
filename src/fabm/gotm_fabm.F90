@@ -498,6 +498,72 @@
 !-----------------------------------------------------------------------
 !BOP
 !
+! !IROUTINE: Initialise the FABM driver
+!
+! !INTERFACE:
+   subroutine init_gotm_fabm_state(nlev)
+!
+! !DESCRIPTION:
+! TODO
+!
+! !INPUT PARAMETERS:
+   integer,intent(in) :: nlev
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer :: i
+   REALTYPE :: rhs(1:nlev,1:size(model%state_variables)),bottom_flux(size(model%bottom_state_variables)),surface_flux(size(model%surface_state_variables))
+!
+!EOP
+!-----------------------------------------------------------------------!
+!BOC
+   call fabm_check_ready(model)
+   fabm_ready = .true.
+
+   ! Allow individual biogeochemical models to provide a custom initial state.
+   call fabm_initialize_state(model,1,nlev)
+   call fabm_initialize_surface_state(model,nlev)
+   call fabm_initialize_bottom_state(model,1)
+
+   ! If custom initial state have been provided through fabm_input.nml, use these to override the current initial state.
+   do i=1,size(model%state_variables)
+      if (associated(cc_obs(i)%data)) cc(:,i) = cc_obs(i)%data
+   end do
+   do i=1,size(model%bottom_state_variables)
+      if (associated(cc_ben_obs(i)%data)) cc(1,size(model%state_variables,1)+i) = cc_ben_obs(i)%data
+   end do
+
+   ! Compute pressure, depth, day of the year
+   call calculate_derived_input(nlev,_ZERO_)
+
+   ! Update derived expressions (vertical means, etc.)
+   call update_fabm_expressions(nlev)
+
+   ! Call fabm_do here to make sure diagnostic variables all have an initial value.
+   ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
+   rhs = _ZERO_
+   call fabm_do(model,1,nlev,rhs)
+   call fabm_do_surface(model,nlev,rhs(nlev,:))
+   call fabm_do_bottom(model,1,rhs(1,:),bottom_flux)
+
+   ! Obtain current values of diagnostic variables from FABM.
+   do i=1,size(model%horizontal_diagnostic_variables)
+      if (model%horizontal_diagnostic_variables(i)%output/=output_time_integrated &
+          .and.model%horizontal_diagnostic_variables(i)%output/=output_none) &
+         cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
+   end do
+   do i=1,size(model%diagnostic_variables)
+      if (model%diagnostic_variables(i)%output/=output_time_integrated.and.model%diagnostic_variables(i)%output/=output_none) &
+         cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
+   end do
+   end subroutine init_gotm_fabm_state
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
 ! !IROUTINE: Set environment for FABM
 !
 ! !INTERFACE:
@@ -1170,136 +1236,6 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Initialise the FABM driver
-!
-! !INTERFACE:
-   subroutine save_diagnostics()
-!
-! !DESCRIPTION:
-! TODO
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-! !LOCAL VARIABLES:
-   integer :: i
-!
-!EOP
-!-----------------------------------------------------------------------!
-!BOC
-   ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
-   do i=1,size(model%horizontal_diagnostic_variables)
-      if (model%horizontal_diagnostic_variables(i)%output==output_instantaneous) then
-         ! Simply use last value
-         cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
-      elseif (model%horizontal_diagnostic_variables(i)%output/=output_none) then
-         ! Integration or averaging in time needed: for now do simple Forward Euler integration.
-         ! If averaging is required, this will be done upon output by dividing by the elapsed period.
-         cc_diag_hz(i) = cc_diag_hz(i) + fabm_get_horizontal_diagnostic_data(model,i)*dt_eff
-      end if
-   end do
-
-   ! Time-integrate diagnostic variables defined on the full domain, where needed.
-   do i=1,size(model%diagnostic_variables)
-      if (model%diagnostic_variables(i)%output==output_instantaneous) then
-         ! Simply use last value
-         cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
-      elseif (model%diagnostic_variables(i)%output/=output_none) then
-         ! Integration or averaging in time needed: for now do simple Forward Euler integration.
-         ! If averaging is required, this will be done upon output by dividing by the elapsed period.
-         cc_diag(:,i) = cc_diag(:,i) + fabm_get_bulk_diagnostic_data(model,i)*dt_eff
-      end if
-   end do
-   end subroutine save_diagnostics
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Finish biogeochemical model
-!
-! !INTERFACE:
-   subroutine clean_gotm_fabm
-!
-! !DESCRIPTION:
-!  Report timing results and deallocate memory.
-!
-! !REVISION HISTORY:
-!  Original author(s): Jorn Bruggeman
-!
-! !LOCAL VARIABLES:
-   integer(8) :: clock,ticks_per_sec
-   REALTYPE :: tick_rate
-!
-!EOP
-!-----------------------------------------------------------------------
-!BOC
-   if (.not. fabm_calc) return
-
-   LEVEL1 'clean_gotm_fabm'
-
-   call system_clock( count=clock, count_rate=ticks_per_sec)
-   tick_rate = _ONE_/ticks_per_sec
-
-   LEVEL1 'Time spent on advection of FABM variables:',clock_adv*tick_rate
-   LEVEL1 'Time spent on diffusion of FABM variables:',clock_diff*tick_rate
-   LEVEL1 'Time spent on sink/source terms of FABM variables:',clock_source*tick_rate
-
-   ! Deallocate internal arrays
-   if (allocated(cc))         deallocate(cc)
-   if (allocated(cc_obs))     deallocate(cc_obs)
-   if (allocated(cc_ben_obs)) deallocate(cc_ben_obs)
-   if (allocated(cc_diag))    deallocate(cc_diag)
-   if (allocated(cc_diag_hz)) deallocate(cc_diag_hz)
-   if (allocated(horizontal_expression_data)) deallocate(horizontal_expression_data)
-
-   ! Deallocate work arrays used from do_gotm_fabm.
-   if (allocated(ws))              deallocate(ws)
-   if (allocated(sfl))             deallocate(sfl)
-   if (allocated(bfl))             deallocate(bfl)
-   if (allocated(Qsour))           deallocate(Qsour)
-   if (allocated(Lsour))           deallocate(Lsour)
-   if (allocated(DefaultRelaxTau)) deallocate(DefaultRelaxTau)
-   if (allocated(curh))            deallocate(curh)
-   if (allocated(curnuh))          deallocate(curnuh)
-   if (allocated(cc_transport))    deallocate(cc_transport)
-   if (allocated(posconc))         deallocate(posconc)
-
-   ! Deallocate arrays with internally computed environmental variables.
-   if (allocated(par))   deallocate(par)
-   if (allocated(k_par)) deallocate(k_par)
-   if (allocated(swr))   deallocate(swr)
-   if (allocated(pres))  deallocate(pres)
-   if (allocated(z))     deallocate(z)
-
-   ! Reset all module-level pointers
-   nullify(nuh)
-   nullify(h)
-   nullify(bioshade)
-   nullify(w)
-   nullify(rho)
-   nullify(SRelaxTau)
-   nullify(sProf)
-   nullify(salt)
-   nullify(precip)
-   nullify(evap)
-   nullify(bio_drag_scale)
-   nullify(bio_albedo)
-   nullify(I_0)
-   nullify(A)
-   nullify(g1)
-   nullify(g2)
-   nullify(yearday)
-   nullify(secondsofday)
-
-   LEVEL1 'done.'
-
-   end subroutine clean_gotm_fabm
-!EOC
-
-!-----------------------------------------------------------------------
-!BOP
-!
 ! !IROUTINE: Calculate light over entire column
 !
 ! !INTERFACE:
@@ -1549,64 +1485,128 @@
 ! !IROUTINE: Initialise the FABM driver
 !
 ! !INTERFACE:
-   subroutine init_gotm_fabm_state(nlev)
+   subroutine save_diagnostics()
 !
 ! !DESCRIPTION:
 ! TODO
-!
-! !INPUT PARAMETERS:
-   integer,intent(in) :: nlev
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
 !
 ! !LOCAL VARIABLES:
    integer :: i
-   REALTYPE :: rhs(1:nlev,1:size(model%state_variables)),bottom_flux(size(model%bottom_state_variables)),surface_flux(size(model%surface_state_variables))
 !
 !EOP
 !-----------------------------------------------------------------------!
 !BOC
-   call fabm_check_ready(model)
-   fabm_ready = .true.
-
-   ! Allow individual biogeochemical models to provide a custom initial state.
-   call fabm_initialize_state(model,1,nlev)
-   call fabm_initialize_surface_state(model,nlev)
-   call fabm_initialize_bottom_state(model,1)
-
-   ! If custom initial state have been provided through fabm_input.nml, use these to override the current initial state.
-   do i=1,size(model%state_variables)
-      if (associated(cc_obs(i)%data)) cc(:,i) = cc_obs(i)%data
-   end do
-   do i=1,size(model%bottom_state_variables)
-      if (associated(cc_ben_obs(i)%data)) cc(1,size(model%state_variables,1)+i) = cc_ben_obs(i)%data
-   end do
-
-   ! Compute pressure, depth, day of the year
-   call calculate_derived_input(nlev,_ZERO_)
-
-   ! Update derived expressions (vertical means, etc.)
-   call update_fabm_expressions(nlev)
-
-   ! Call fabm_do here to make sure diagnostic variables all have an initial value.
-   ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
-   rhs = _ZERO_
-   call fabm_do(model,1,nlev,rhs)
-   call fabm_do_surface(model,nlev,rhs(nlev,:))
-   call fabm_do_bottom(model,1,rhs(1,:),bottom_flux)
-
-   ! Obtain current values of diagnostic variables from FABM.
+   ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
    do i=1,size(model%horizontal_diagnostic_variables)
-      if (model%horizontal_diagnostic_variables(i)%output/=output_time_integrated &
-          .and.model%horizontal_diagnostic_variables(i)%output/=output_none) &
+      if (model%horizontal_diagnostic_variables(i)%output==output_instantaneous) then
+         ! Simply use last value
          cc_diag_hz(i) = fabm_get_horizontal_diagnostic_data(model,i)
+      elseif (model%horizontal_diagnostic_variables(i)%output/=output_none) then
+         ! Integration or averaging in time needed: for now do simple Forward Euler integration.
+         ! If averaging is required, this will be done upon output by dividing by the elapsed period.
+         cc_diag_hz(i) = cc_diag_hz(i) + fabm_get_horizontal_diagnostic_data(model,i)*dt_eff
+      end if
    end do
+
+   ! Time-integrate diagnostic variables defined on the full domain, where needed.
    do i=1,size(model%diagnostic_variables)
-      if (model%diagnostic_variables(i)%output/=output_time_integrated.and.model%diagnostic_variables(i)%output/=output_none) &
+      if (model%diagnostic_variables(i)%output==output_instantaneous) then
+         ! Simply use last value
          cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
+      elseif (model%diagnostic_variables(i)%output/=output_none) then
+         ! Integration or averaging in time needed: for now do simple Forward Euler integration.
+         ! If averaging is required, this will be done upon output by dividing by the elapsed period.
+         cc_diag(:,i) = cc_diag(:,i) + fabm_get_bulk_diagnostic_data(model,i)*dt_eff
+      end if
    end do
-   end subroutine init_gotm_fabm_state
+   end subroutine save_diagnostics
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Finish biogeochemical model
+!
+! !INTERFACE:
+   subroutine clean_gotm_fabm
+!
+! !DESCRIPTION:
+!  Report timing results and deallocate memory.
+!
+! !REVISION HISTORY:
+!  Original author(s): Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+   integer(8) :: clock,ticks_per_sec
+   REALTYPE :: tick_rate
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   if (.not. fabm_calc) return
+
+   LEVEL1 'clean_gotm_fabm'
+
+   call system_clock( count=clock, count_rate=ticks_per_sec)
+   tick_rate = _ONE_/ticks_per_sec
+
+   LEVEL1 'Time spent on advection of FABM variables:',clock_adv*tick_rate
+   LEVEL1 'Time spent on diffusion of FABM variables:',clock_diff*tick_rate
+   LEVEL1 'Time spent on sink/source terms of FABM variables:',clock_source*tick_rate
+
+   ! Deallocate internal arrays
+   if (allocated(cc))         deallocate(cc)
+   if (allocated(cc_obs))     deallocate(cc_obs)
+   if (allocated(cc_ben_obs)) deallocate(cc_ben_obs)
+   if (allocated(cc_diag))    deallocate(cc_diag)
+   if (allocated(cc_diag_hz)) deallocate(cc_diag_hz)
+   if (allocated(horizontal_expression_data)) deallocate(horizontal_expression_data)
+
+   ! Deallocate work arrays used from do_gotm_fabm.
+   if (allocated(ws))              deallocate(ws)
+   if (allocated(sfl))             deallocate(sfl)
+   if (allocated(bfl))             deallocate(bfl)
+   if (allocated(Qsour))           deallocate(Qsour)
+   if (allocated(Lsour))           deallocate(Lsour)
+   if (allocated(DefaultRelaxTau)) deallocate(DefaultRelaxTau)
+   if (allocated(curh))            deallocate(curh)
+   if (allocated(curnuh))          deallocate(curnuh)
+   if (allocated(cc_transport))    deallocate(cc_transport)
+   if (allocated(posconc))         deallocate(posconc)
+
+   ! Deallocate arrays with internally computed environmental variables.
+   if (allocated(par))   deallocate(par)
+   if (allocated(k_par)) deallocate(k_par)
+   if (allocated(swr))   deallocate(swr)
+   if (allocated(pres))  deallocate(pres)
+   if (allocated(z))     deallocate(z)
+
+   ! Reset all module-level pointers
+   nullify(nuh)
+   nullify(h)
+   nullify(bioshade)
+   nullify(w)
+   nullify(rho)
+   nullify(SRelaxTau)
+   nullify(sProf)
+   nullify(salt)
+   nullify(precip)
+   nullify(evap)
+   nullify(bio_drag_scale)
+   nullify(bio_albedo)
+   nullify(I_0)
+   nullify(A)
+   nullify(g1)
+   nullify(g2)
+   nullify(yearday)
+   nullify(secondsofday)
+
+   LEVEL1 'done.'
+
+   end subroutine clean_gotm_fabm
 !EOC
 
 !-----------------------------------------------------------------------
