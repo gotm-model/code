@@ -321,7 +321,8 @@
 	</seagrass>
 	<streams>
 		<stream>
-			<name>inflow</name>
+			<name></name>
+			<method>1</method>
 			<zu>-1.0</zu>
 			<zl>-0.0</zl>
 			<Q_file>inflow_file.dat</Q_file>
@@ -334,7 +335,7 @@
 	</streams>
 	<fabm_input>
 		<observations>
-			<variable>instance_varname_streamname</variable>
+			<variable></variable>
 		</observations>
 	</fabm_input>
 </scenario>

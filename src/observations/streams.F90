@@ -33,17 +33,20 @@
 ! !LOCAL VARIABLES:
    type type_stream
       character(len=64)      :: name = ''
-      REALTYPE               :: zl,zu,QI,SI,TI
+      integer                :: method
+      REALTYPE               :: zl,zu
+      REALTYPE               :: QI,SI,TI
       logical                :: has_S = .false.
       logical                :: has_T = .false.
-!      logical                :: interleaving = .false.
-!      logical                :: surface      = .false.
-!      logical                :: depth_range  = .false.
-      REALTYPE, allocatable  :: Q(:)
+      REALTYPE, allocatable  :: weights(:), Q(:)
       type (type_stream), pointer :: next => null()
    end type
 
-   integer                     :: nstreams
+   integer, parameter        :: surface_flow=1
+   integer, parameter        :: bottom_flow=2
+   integer, parameter        :: depth_range=3
+   integer, parameter        :: interleaving=4
+   integer                   :: nstreams
    type (type_stream), pointer :: first_stream
 
 ! !DEFINED PARAMETERS:
@@ -73,13 +76,14 @@
 
    integer,parameter :: unit = 666
 
-   integer             :: rc
+   integer                 :: rc
+   integer                 :: method
    character(len=64)       :: name
    REALTYPE                :: zl,zu
    character(len=PATH_MAX) :: Q_file,T_file,S_file
    integer                 :: Q_col,T_col,S_col
 
-   namelist /stream/ name,zl,zu,Q_file,T_file,S_file,Q_col,T_col,S_col
+   namelist /stream/ name,method,zl,zu,Q_file,T_file,S_file,Q_col,T_col,S_col
 
    type (type_stream), pointer :: current_stream
 !
@@ -95,14 +99,15 @@
    LEVEL1 'init_streams'
    do
       name   = ''
-      zl = 10.0
-      zu =  0.0
+      method = surface_flow
+      zl     = -1.0
+      zu     = -0.0
       Q_file = ''
       S_file = ''
       T_file = ''
-      Q_col = 1
-      T_col = 1
-      S_col = 1
+      Q_col  = 1
+      T_col  = 1
+      S_col  = 1
 
       read(unit,nml=stream,err=99,end=97)
       if (name=='') cycle
@@ -119,18 +124,11 @@
          current_stream => current_stream%next
       end if
 
-      LEVEL2 '.... ',trim(name),real(zl),real(zu)
+      LEVEL2 '.... ',trim(name),method,real(zl),real(zu)
       current_stream%name = name
-      current_stream%zl   = zl
+      current_stream%method = method
       current_stream%zu   = zu
-
-!KB will this increase readabillity ? And the use them below
-!KK I am not sure. IMO having all possible conditions of zl and zu written
-!   out directly in the if clauses avoids scrolling and simplifies understanding...
-!      if ( current_stream%zl .gt. current_stream%zu ) then
-!         current_stream%interleaving = .true. ! default stream
-!         current_stream%surface      = .true. ! default outflow
-!      end if
+      current_stream%zl   = zl
 
       if (Q_file=='') then
          FATAL 'Error: "Q_file" must be provided in namelist "stream".'
@@ -148,9 +146,28 @@
          current_stream%has_S = .true.
       end if
 
+      allocate(current_stream%weights(0:nlev),stat=rc)
+      if (rc /= 0) STOP 'init_observations: Error allocating (weights)'
+      current_stream%weights = _ZERO_
+
       allocate(current_stream%Q(0:nlev),stat=rc)
       if (rc /= 0) STOP 'init_observations: Error allocating (Q)'
       current_stream%Q = _ZERO_
+
+      if (current_stream%method .eq. interleaving .and. .not. current_stream%has_T) then
+         LEVEL1 trim(current_stream%name),' ....'
+         FATAL "Can't specify - interleaving - without providing either S or T"
+         stop 'init_streams()'
+      end if
+
+      select case (current_stream%method)
+         case (surface_flow)
+            current_stream%weights(nlev) = _ONE_
+         case (bottom_flow)
+            current_stream%weights(1) = _ONE_
+!        other methods are dynamic are are update in update_streams()
+      end select
+
       nstreams = nstreams + 1
 
    end do
@@ -192,7 +209,6 @@
    REALTYPE, intent(in)                   :: S(0:nlev), T(0:nlev)
    REALTYPE,dimension(0:nlev),intent(in)  :: z,zi,h,Ac
    REALTYPE,dimension(0:nlev),intent(inout) :: Qs,Qt,Ls,Lt,Q
-!EOP
 !
 ! !LOCAL VARIABLES:
    integer              :: n,nmin,nmax
@@ -200,8 +216,10 @@
    REALTYPE             :: depth
    REALTYPE             :: VI_basin
    REALTYPE             :: hI,TI,SI
+   REALTYPE             :: invV
    type (type_stream), pointer :: current_stream
 !
+!EOP
 !-----------------------------------------------------------------------
 !BOC
    Qs = _ZERO_
@@ -209,49 +227,47 @@
    Ls = _ZERO_
    Lt = _ZERO_
    Q  = _ZERO_
-!KBSTDERR zi
-!KBSTDERR z
 
    current_stream => first_stream
    do while (associated(current_stream))
+
+
+      if (current_stream%QI .eq. _ZERO_) cycle
+
       current_stream%Q = _ZERO_
 
-      if (current_stream%has_T) then
-         TI = current_stream%TI
-      else
-         TI = T(nlev)
-      end if
-      if (current_stream%has_S) then
-         SI = current_stream%SI
-      else
-         SI = S(nlev)
-      end if
+      select case (current_stream%method)
+         case (surface_flow)
+         case (bottom_flow)
+         case (depth_range)
+            nmin = nlev
+            do n=1,nlev
+               if ( current_stream%zl .lt. zi(n) ) then
+                  nmin = n
+                  exit
+               end if
+            end do
+            nmax = nmin
+            do n=nlev,nmin,-1
+               if ( zi(n-1) .lt. current_stream%zu ) then
+                  nmax = n
+                  exit
+               end if
+            end do
 
-      nmin = -1
-      nmax = -1
+            call get_weights(nlev,nmin,nmax,h,zi,current_stream)
 
-      ! stream triggered or still in progress
-!      if (current_stream%QI .eq. _ZERO_) to avoid calculations when Q=0 something must be done
-      if (current_stream%QI .gt. _ZERO_) then
+         case (interleaving)
 
-!STDERR 'TI ',TI
-
-         ! interleaving
-         if ( current_stream%zl .gt. current_stream%zu ) then
-!KB         if ( current_stream%interleaving ) then
-
-!STDERR 'interleaving ',current_stream%name
+            TI = current_stream%TI
+            SI = current_stream%SI
 
             ! find minimal depth where the inflow will take place
             nmin = 0
             rhoI = unesco(SI,TI,_ZERO_,.false.)
             do n=1,nlev
                depth = zi(nlev) - z(n)
-!STDERR 'R ',SI,TI
-!STDERR 'A ',S(n),T(n)
-!KB - UNPress is false               rhoI = unesco(SI,TI,depth/10.0d0,.false.)
                rho = unesco(S(n),T(n),depth/10.0d0,.false.)
-!STDERR n,rhoI,rho
                ! if the density of the inflowing water is greater than the
                ! ambient water then the lowest interleaving depth is found
                if (rhoI > rho) then
@@ -267,174 +283,137 @@
                nmax = nlev
             endif
 
-            ! find the z-levels in which the water will interleave
-!KB What is the logic behind this - and is needed/correct?
-!KK seems to be some kind of CFL checking. Same as above - needs to be discussed with Hans/Lars.
-!KB - removed
-#if 0
-            VI_basin = _ZERO_
-            nmax = nmin
-            do while (VI_basin < current_stream%QI*dt)
-               VI_basin = VI_basin + Ac(nmax) * h(nmax)
-               nmax = nmax+1
-               if (nmax .gt. nlev) then
-                  !if inflow at surface -> no inflow
-                  !debug output only
-!                  write(*,*) "Warning: Too much water flowing into the basin."
-!                  return
-               end if
-            end do
-            ! VI_basin is now too big so go back one step
-            nmax = nmax-1
-#endif
+            call get_weights(nlev,nmin,nmax,h,zi,current_stream)
 
-            ! calculate the source terms
-            ! "+1" because loop includes both n and nmin - KB ?
-            do n=nmin,nmax
-               current_stream%Q(n) = current_stream%QI / (nmax-nmin+1)
-            end do
+      end select
 
-         ! given depth range
-         else if ( zi(0) .le. current_stream%zu ) then
-!KB - should the water not fill up the basin? I.e. n=1!
-!KK - depends on zl
+!     weights have been found - now apply them for the flow
+      current_stream%Q = current_stream%weights*current_stream%QI
 
-            nmin = nlev
-            do n=1,nlev
-               if ( current_stream%zl .lt. zi(n) ) then
-                  nmin = n
-                  exit
-               end if
-            end do
-            nmax = nmin
-            do n=nlev,nmin,-1
-               if ( zi(n-1) .lt. current_stream%zu ) then
-                  nmax = n
-                  exit
-               end if
-            end do
+!     now get the - active - temperature and salinity
+!     think it only make really sense for inflows to specify T and S
+      if (current_stream%has_T) then
+         TI = current_stream%TI
+      else
+!KB      is there a mean !!!!
+         TI = sum(T(nmin:nmax))/(nmax-nmin+1)
+      end if
+      if (current_stream%has_S) then
+         SI = current_stream%SI
+      else
+!KB      is there a mean !!!!
+         SI = sum(T(nmin:nmax))/(nmax-nmin+1)
+      end if
 
-            if (current_stream%zl .eq. current_stream%zu) then
-               current_stream%Q(nmax) = current_stream%QI
-            else
-!              consider full discharge (even if below bathy)
-               hI = current_stream%zu - max(current_stream%zl,zi(0)) + SMALL
-
-               do n=nmin,nmax-1
-                  current_stream%Q(n) = current_stream%QI * ( min(zi(n),current_stream%zu)-max(current_stream%zl,zi(n-1)) ) / hI
-               end do
-!              discharge above fse counts for surface layer
-               current_stream%Q(n) = current_stream%QI * ( current_stream%zu-max(current_stream%zl,zi(n-1)) ) / hI
-            end if
-
-         else
-!KB - is the cycle needed?
-!           ignore inflows which are fully below the bottom (zl<=zu<zi(0))
-            cycle
-
-         end if
-
+      ! inflow stream
+      if (current_stream%QI .gt. _ZERO_) then
          int_inflow = int_inflow + dt*current_stream%QI
 
-         do n=nmin,nmax
-            Qs(n) = Qs(n) + SI * current_stream%Q(n) / (Ac(n) * h(n))
-            Qt(n) = Qt(n) + TI * current_stream%Q(n) / (Ac(n) * h(n))
+         do n=1,nlev
+            invV = _ONE_/(Ac(n) * h(n))
+            Qt(n) = Qt(n) + TI * current_stream%Q(n) * invV
+            Qs(n) = Qs(n) + SI * current_stream%Q(n) * invV
          end do
 
-!KB - should this go?
-!KK - yes, because the correct FQ is calculated later in water_balance
-         ! calculate the sink term at sea surface
-         !Qs(nlev) = Qs(nlev) -S(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
-         !Qt(nlev) = Qt(nlev) -T(nlev) * FQ(nlev-1) / (Ac(nlev) * h(nlev))
-
-!STDERR nmin,nmax,nlev
-
       else ! outflow
-
-!KBSTDERR current_stream%zl,current_stream%zu
-
-         ! surface outflow
-         if ( current_stream%zl .gt. current_stream%zu ) then
-!KB         if ( current_stream%surface ) then
-
-            nmin = nlev
-            nmax = nlev
-            current_stream%Q(nlev) = current_stream%QI
-
-         else if ( current_stream%zl .le. zi(nlev) ) then
-!KB - should zl=zu=0 not mean surface flow?
-!KK - only if zi(nlev-1)<=0<=zi(nlev)
-!KK - but you are right: I now added the special case zl=zu=zi(nlev) here
-
-            nmin = nlev
-            do n=1,nlev
-               if ( current_stream%zl .lt. zi(n) ) then
-                  nmin = n
-                  exit
-               end if
-            end do
-            nmax = nmin
-            do n=nlev,nmin,-1
-               if ( zi(n-1) .lt. current_stream%zu ) then
-                  nmax = n
-                  exit
-               end if
-            end do
-
-            if (current_stream%zl .eq. current_stream%zu) then
-
-               current_stream%Q(nmax) = current_stream%QI
-
-            else
-
-!              consider full discharge
-               hI = min(zi(nlev),current_stream%zu) - max(current_stream%zl,zi(0)) + SMALL
-
-               do n=nmin,nmax
-                  current_stream%Q(n) = current_stream%QI * ( min(zi(n),current_stream%zu)-max(current_stream%zl,zi(n-1)) ) / hI
-               end do
-
-            end if
-
-!STDERR nmin,nmax,nlev
-
-         else
-
-            cycle
-
-         end if
 
          int_outflow = int_outflow + dt*current_stream%QI
 
          if (current_stream%has_T) then
-            do n=nmin,nmax
-               Qt(n) = Qt(n) + TI * current_stream%Q(n) / (Ac(n) * h(n))
+            do n=1,nlev
+               invV = _ONE_/(Ac(n) * h(n))
+               Qt(n) = Qt(n) + TI * current_stream%Q(n) * invV
             end do
          else
-            do n=nmin,nmax
-               Lt(n) = Lt(n) + current_stream%Q(n) / (Ac(n) * h(n))
+            do n=1,nlev
+               invV = _ONE_/(Ac(n) * h(n))
+               Lt(n) = Lt(n) + current_stream%Q(n) * invV
             end do
          end if
          if (current_stream%has_S) then
-            do n=nmin,nmax
-               Qs(n) = Qs(n) + SI * current_stream%Q(n) / (Ac(n) * h(n))
+            do n=1,nlev
+               invV = _ONE_/(Ac(n) * h(n))
+               Qs(n) = Qs(n) + SI * current_stream%Q(n) * invV
             end do
          else
-            do n=nmin,nmax
-               Ls(n) = Ls(n) + current_stream%Q(n) / (Ac(n) * h(n))
+            do n=1,nlev
+               invV = _ONE_/(Ac(n) * h(n))
+               Ls(n) = Ls(n) + current_stream%Q(n) * invV
             end do
          end if
 
       end if
 
-      do n=nmin,nmax
-         Q(n) = Q(n) + current_stream%Q(n)
-      end do
+      Q = Q + current_stream%Q
 
       current_stream => current_stream%next
    end do
 
    end subroutine update_streams
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !ROUTINE: get the distribution weights
+!
+! !INTERFACE:
+   subroutine get_weights(nlev,nmin,nmax,h,zi,stream)
+!
+! !DESCRIPTION:
+!  Calculate the weights the flow is distributed by over the water
+!  column
+!
+! !USES:
+   IMPLICIT NONE
+!
+   integer, intent(in)                        :: nlev,nmin,nmax
+   REALTYPE,dimension(0:nlev),intent(in)      :: h,zi
+   type (type_stream), pointer, intent(inout) :: stream
+!
+! !LOCAL VARIABLES:
+   REALTYPE             :: d,yi,yl,yh
+!
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   stream%weights = _ZERO_
+
+   if (nmin .eq. nmax) then
+      stream%weights(nmin) = _ONE_
+      return
+   end if
+
+!  check: d == yh+yi+yl
+   d  = -(stream%zl - stream%zu)   ! active inflow layer height
+
+   if (nmax-nmin .eq. 1) then
+      yh =   (stream%zu - zi(nmax-1)) ! height above - inner - layer
+      yl = -(stream%zl - zi(nmin))    ! height below - inner - layer
+      stream%weights(nmax) = yh/d
+      stream%weights(nmin) = yl/d
+      return
+   end if
+
+   yh =   (stream%zu - zi(nmax-1)) ! height above - inner - layer
+   yi =  sum(h(nmin+1:nmax-1))     ! height of - inner - layers 
+   yl = -(stream%zl - zi(nmin))    ! height below - inner - layer
+   stream%weights(nmax) = yh/d
+   stream%weights(nmin+1:nmax-1) = h(nmin+1:nmax-1)/d
+   stream%weights(nmin) = yl/d
+
+   if (abs(sum(stream%weights) - _ONE_) .gt. 0.00001) then
+      FATAL 'Check weight calculations in streams::get_weights()'
+   end if
+
+#if 0
+   STDERR d,yh+yi+yl
+   STDERR sum(stream%weights)
+   STDERR stream%weights
+   stop 'get_weights()'
+#endif
+
+   end subroutine get_weights
 !EOC
 
 !-----------------------------------------------------------------------

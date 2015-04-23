@@ -1199,8 +1199,20 @@
 	<element name="streams" label="basic settings for streams" optional="True">
 		<element name="stream" label="observed stream profiles">
 			<element name="name" type="string" label="name of stream" />
-			<element name="zl" type="float" label="vertical position of lower inflow boundary" description="if zu &lt;= zl interleaving"/>
-			<element name="zu" type="float" label="vertical position of upper inflow boundary" description="if zu &lt;= zl interleaving"/>
+			<element name="method" type="int" label="inflow/outflow method" >
+                                <options>
+                                        <option value="1" label="surface flow" />
+                                        <option value="2" label="bottom flow" />
+                                        <option value="3" label="depth range" />
+                                        <option value="4" label="interleaving - only for inflow" />
+                                </options>
+			</element>
+			<element name="zl" type="float" label="vertical position of lower inflow boundary" description="as a negative value" >
+                                <condition type="eq" variable="./method" value="3" />
+			</element>
+			<element name="zu" type="float" label="vertical position of upper inflow boundary" description="as a negative value" >
+                                <condition type="eq" variable="./method" value="3" />
+			</element>
 			<element name="Q_file" type="string" label="filename of file with discharge data" />
 			<element name="S_file" type="string" label="filename of file with salinity data" />
 			<element name="T_file" type="string" label="filename of file with temperature data" />
@@ -1211,7 +1223,7 @@
 	</element>
 	<element name="fabm_input" label="FABM input specifications" optional="True">
 		<element name="observations" label="observed FABM scalar or profile data">
-			<element name="variable" type="string" label="name of FABM variable" />
+			<element name="variable" type="string" label="name of FABM variable - instance_varname_streamname" />
 			<element name="file" type="string" label="file name" />
 			<element name="index" type="int" label="file name" />
 			<element name="constant_value" type="float" label="constant variable value" />
