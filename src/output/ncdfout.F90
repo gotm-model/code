@@ -110,7 +110,7 @@
    logical,private           :: GrADS
    integer, private          :: Ac_id,Af_id,dAdz_id
    integer, private          :: total_salt_id
-   integer, private          :: Qs_id, Qt_id
+   integer, private          :: Q_id,Qs_id, Qt_id
    integer, private          :: wIs_id
    integer, private          :: FQ_id
    integer, private,allocatable :: Q_ids(:)
@@ -318,6 +318,8 @@
       iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
       call check_err(iret)
       if (nstreams>0) then
+         iret = nf90_def_var(ncid,'Q',NF90_REAL,dim4d,Q_id)
+         call check_err(iret)
          iret = nf90_def_var(ncid,'Qs',NF90_REAL,dim4d,Qs_id)
          call check_err(iret)
          iret = nf90_def_var(ncid,'Qt',NF90_REAL,dim4d,Qt_id)
@@ -514,6 +516,8 @@
       iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsograph')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
       if (nstreams>0) then
+         iret = set_attributes(ncid,Q_id,units='m^3/s', &
+                               long_name='inflows over water column')
          iret = set_attributes(ncid,Qs_id,units='1/s', &
                                long_name='salt inflow')
          iret = set_attributes(ncid,Qt_id,units='celsius/s', &
@@ -639,7 +643,7 @@
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
-   use observations, only: Qs, Qt, FQ
+   use observations, only: Q, Qs, Qt, FQ
    use streams,      only: nstreams,first_stream,type_stream
    use streams,      only: int_inflow,int_outflow
    use eqstate,      only: eqstate1
@@ -780,6 +784,7 @@
       iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
       iret = store_data(ncid,dAdz_id,XYZT_SHAPE,nlev,array=dAdz)
       if (associated(first_stream)) then
+         iret = store_data(ncid,Q_id,XYZT_SHAPE,nlev,array=Q)
          iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)
          iret = store_data(ncid,Qt_id,XYZT_SHAPE,nlev,array=Qt)
          do i=1,nlev
