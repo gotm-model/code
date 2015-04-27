@@ -50,6 +50,7 @@
 
    if (lake) then
       net_water_balance = sum(Q(1:nlev)) - Af(nlev)*(evap + precip)
+!KBSTDERR 'net ',net_water_balance
       select case (water_balance_method)
          case(WATER_BALANCE_SURFACE)
             Qres(nlev) = -net_water_balance

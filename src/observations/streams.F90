@@ -230,15 +230,23 @@
 
    current_stream => first_stream
    do while (associated(current_stream))
+!KBSTDERR trim(current_stream%name)
 
 
-      if (current_stream%QI .eq. _ZERO_) cycle
+#if 1
+      if (current_stream%QI .eq. _ZERO_) then
+         current_stream => current_stream%next
+         cycle
+      end if
+#endif
 
       current_stream%Q = _ZERO_
 
       select case (current_stream%method)
          case (surface_flow)
+            nmin = nlev ; nmax = nlev
          case (bottom_flow)
+            nmin = 1 ; nmax = 1
          case (depth_range)
             nmin = nlev
             do n=1,nlev
@@ -263,29 +271,40 @@
             SI = current_stream%SI
 
             ! find minimal depth where the inflow will take place
-            nmin = 0
+            nmin = nlev
             rhoI = unesco(SI,TI,_ZERO_,.false.)
             do n=1,nlev
                depth = zi(nlev) - z(n)
                rho = unesco(S(n),T(n),depth/10.0d0,.false.)
+!KBSTDERR depth,TI,T(n)
+!KBSTDERR depth,rhoI,rho
                ! if the density of the inflowing water is greater than the
                ! ambient water then the lowest interleaving depth is found
                if (rhoI > rho) then
                   nmin = n
-                  nmax = n
                   exit
                end if
             end do
 
-            ! density of the inflowing water is too small -> surface inflow
-            if (nmin .eq. 0) then
-               nmin = nlev
-               nmax = nlev
-            endif
+            nmax = nmin
+            do n=nlev,nmin,-1
+               depth = zi(nlev) - z(n)
+               rho = unesco(S(n),T(n),depth/10.0d0,.false.)
+!KBSTDERR depth,TI,T(n)
+!KBSTDERR depth,rhoI,rho
+               if ( rhoI < rho ) then
+                  nmax = n
+                  exit
+               end if
+            end do
+!KBSTDERR nmin,nmax
 
             call get_weights(nlev,nmin,nmax,h,zi,current_stream)
 
       end select
+!KBSTDERR current_stream%has_T,current_stream%has_S
+!KBSTDERR nmin,nmax,sum(current_stream%weights)
+
 
 !     weights have been found - now apply them for the flow
       current_stream%Q = current_stream%weights*current_stream%QI
