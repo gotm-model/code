@@ -113,7 +113,7 @@
    integer, private          :: Q_id,Qs_id, Qt_id
    integer, private          :: wIs_id
    integer, private          :: FQ_id
-   integer, private,allocatable :: Q_ids(:)
+   integer, private,allocatable :: Q_ids(:), T_ids(:)
    integer, private          :: int_inflow_id,int_outflow_id
 !
 !-----------------------------------------------------------------------
@@ -149,7 +149,7 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                   :: iret,istream
+   integer                   :: iret,istream,n
    character(len=128)        :: ncdf_time_str,history
    type (type_stream), pointer :: current_stream
 !-------------------------------------------------------------------------
@@ -332,12 +332,27 @@
          allocate(Q_ids(nstreams))
          istream = 0
          current_stream => first_stream
+         n = 0
          do while (associated(current_stream))
+            if (current_stream%has_T) n=n+1
             istream = istream + 1
             iret = nf90_def_var(ncid,'Q_'//trim(current_stream%name),NF90_REAL,dim3d,Q_ids(istream))
             call check_err(iret)
             current_stream => current_stream%next
          end do
+
+         istream = 0
+         allocate(T_ids(n))
+         current_stream => first_stream
+         do while (associated(current_stream))
+            if (current_stream%has_T) then
+               istream = istream + 1
+               iret = nf90_def_var(ncid,'T_'//trim(current_stream%name),NF90_REAL,dim3d,T_ids(istream))
+               call check_err(iret)
+            end if
+            current_stream => current_stream%next
+         end do
+
          iret = nf90_def_var(ncid,'int_inflow',NF90_REAL,dim3d,int_inflow_id)
          call check_err(iret)
          iret = nf90_def_var(ncid,'int_outflow',NF90_REAL,dim3d,int_outflow_id)
@@ -533,10 +548,23 @@
             istream = istream + 1
             iret = set_attributes(ncid,Q_ids(istream),units='m**3/s', &
 !KB                                  long_name='Water transport from stream '//trim(current_stream%name))
-                                  long_name='stream '//trim(current_stream%name))
+                                  long_name='stream (Q): '//trim(current_stream%name))
             call check_err(iret)
             current_stream => current_stream%next
          end do
+
+         istream = 0
+         current_stream => first_stream
+         do while (associated(current_stream))
+            if (current_stream%has_T) then
+               istream = istream + 1
+               iret = set_attributes(ncid,T_ids(istream),units='Celsius', &
+                                     long_name='stream (T): '//trim(current_stream%name))
+               call check_err(iret)
+            end if
+            current_stream => current_stream%next
+         end do
+
          iret = set_attributes(ncid,int_inflow_id,units='m^3', &
                                long_name='Integrated inflow')
          iret = set_attributes(ncid,int_outflow_id,units='m^3', &
@@ -750,6 +778,7 @@
          dum(1) = dum(1) + Ac(i) * S(i) * h(i)
       end do
       iret = store_data(ncid,total_salt_id,XYT_SHAPE,1,scalar=dum(1))
+
       istream = 0
       current_stream => first_stream
       do while (associated(current_stream))
@@ -757,6 +786,17 @@
          iret = store_data(ncid,Q_ids(istream),XYT_SHAPE,1,scalar=current_stream%QI)
          current_stream => current_stream%next
       end do
+
+      istream = 0
+      current_stream => first_stream
+      do while (associated(current_stream))
+         if (current_stream%has_T) then
+            istream = istream+1
+            iret = store_data(ncid,T_ids(istream),XYT_SHAPE,1,scalar=current_stream%TI)
+         end if
+         current_stream => current_stream%next
+      end do
+
       if (nstreams .gt. 0) then
          iret = store_data(ncid,int_inflow_id,XYT_SHAPE,1,scalar=int_inflow)
          iret = store_data(ncid,int_outflow_id,XYT_SHAPE,1,scalar=int_outflow)
