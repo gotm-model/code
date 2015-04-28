@@ -230,15 +230,11 @@
 
    current_stream => first_stream
    do while (associated(current_stream))
-!KBSTDERR trim(current_stream%name)
 
-
-#if 1
       if (current_stream%QI .eq. _ZERO_) then
          current_stream => current_stream%next
          cycle
       end if
-#endif
 
       current_stream%Q = _ZERO_
 
@@ -285,6 +281,7 @@
                   exit
                end if
             end do
+!KBSTDERR 'nmin ',nmin,rhoI,rho
 
             nmax = nmin
             do n=nlev,nmin,-1
@@ -297,7 +294,7 @@
                   exit
                end if
             end do
-!KBSTDERR nmin,nmax
+!KBSTDERR 'nmax ',nmax,rhoI,rho
 
             call get_weights(nlev,nmin,nmax,h,zi,current_stream)
 
@@ -403,34 +400,34 @@
       return
    end if
 
-!  check: d == yh+yi+yl
-   d  = -(stream%zl - stream%zu)   ! active inflow layer height
-
-   if (nmax-nmin .eq. 1) then
-      yh =   (stream%zu - zi(nmax-1)) ! height above - inner - layer
-      yl = -(stream%zl - zi(nmin))    ! height below - inner - layer
-      stream%weights(nmax) = yh/d
-      stream%weights(nmin) = yl/d
-      return
-   end if
-
-   yh =   (stream%zu - zi(nmax-1)) ! height above - inner - layer
-   yi =  sum(h(nmin+1:nmax-1))     ! height of - inner - layers 
-   yl = -(stream%zl - zi(nmin))    ! height below - inner - layer
-   stream%weights(nmax) = yh/d
-   stream%weights(nmin+1:nmax-1) = h(nmin+1:nmax-1)/d
-   stream%weights(nmin) = yl/d
+   select case (stream%method) 
+      case (surface_flow, bottom_flow)
+      case (depth_range)
+!        check: d == yh+yi+yl
+         d  = -(stream%zl - stream%zu)   ! active inflow layer height
+         if (nmax-nmin .eq. 1) then
+            yh =   (stream%zu - zi(nmax-1)) ! height above - inner - layer
+            yl = -(stream%zl - zi(nmin))    ! height below - inner - layer
+            stream%weights(nmax) = yh/d
+            stream%weights(nmin) = yl/d
+            return
+         end if
+         yh =   (stream%zu - zi(nmax-1)) ! height above - inner - layer
+         yi =  sum(h(nmin+1:nmax-1))     ! height of - inner - layers 
+         yl = -(stream%zl - zi(nmin))    ! height below - inner - layer
+         stream%weights(nmax) = yh/d
+         stream%weights(nmin+1:nmax-1) = h(nmin+1:nmax-1)/d
+         stream%weights(nmin) = yl/d
+      case (interleaving)
+         d  = zi(nmax) - zi(nmin-1)
+         stream%weights(nmin:nmax) = h(nmin:nmax)/d
+   end select
 
    if (abs(sum(stream%weights) - _ONE_) .gt. 0.00001) then
       FATAL 'Check weight calculations in streams::get_weights()'
+      STDERR stream%weights
+      stop
    end if
-
-#if 0
-   STDERR d,yh+yi+yl
-   STDERR sum(stream%weights)
-   STDERR stream%weights
-   stop 'get_weights()'
-#endif
 
    end subroutine get_weights
 !EOC
