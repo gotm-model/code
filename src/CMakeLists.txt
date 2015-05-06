@@ -329,6 +329,13 @@ add_executable(test_airsea EXCLUDE_FROM_ALL
               )
 target_link_libraries(test_airsea util)
 
+add_executable(test_albedo EXCLUDE_FROM_ALL
+               airsea/test_albedo.F90
+               $<TARGET_OBJECTS:airsea>
+               $<TARGET_OBJECTS:input>
+              )
+target_link_libraries(test_albedo util)
+
 add_executable(test_eqstate EXCLUDE_FROM_ALL
                util/test_eqstate.F90
               )
