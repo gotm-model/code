@@ -5,13 +5,20 @@
 ! !DESCRIPTION:
 !  program to test the airsea inter action routines
 !
-!  To execute:
+!  To build:
 !  make test_airsea
+!  To execute:
+!  ./test_airsea
+!  To plot:
+!  python $GOTM_BASE/scr/plot_airsea.py
 !
 ! !USES:
    use airsea_variables ! only for printing variables
    implicit none
 !
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding
+
 ! !LOCAL VARIABLES
 !  basic airsea interaction variables
    integer  :: hum_method=1 ! 2,3,4
@@ -37,7 +44,9 @@
    REALTYPE :: hh
    REALTYPE :: dlon=0.
    REALTYPE :: albedo, albedo_water
-   REALTYPE :: swr, short_wave_radiation
+   REALTYPE :: swr,short_wave_radiation
+   REALTYPE :: z1,z2,z3,z4,solar_zenith_angle
+   REALTYPE :: s1,s2,s3,s4
 
    integer  :: i
 !EOP
@@ -114,15 +123,43 @@
    STDERR 'qh=   ',qh
    STDERR
 
-   STDERR 'short wave radiation and albedo:'
+   STDERR 'solar zenith andgle and short wave radiation (during 1 day):'
    STDERR 'yday=   ',yday
    STDERR 'dlon=   ',dlon
-   STDERR 'dlat=   ',dlat
-   do i=0,24
-      hh=i*_ONE_
-      swr = short_wave_radiation(yday,hh,dlon,dlat,cloud)
-      albedo = albedo_water(1,yday,hh,dlon,dlat)
-      STDERR hh,swr,albedo
+   STDERR 'dlat is varying'
+   write(100,'(a5,4a8)') 'hour','00','30','60','90'
+   write(101,'(a5,4a8)') 'hour','00','30','60','90'
+   do i=0,48
+      hh=i*_HALF_
+      z1 = solar_zenith_angle(yday,hh,dlon,_ONE_*0.)
+      z2 = solar_zenith_angle(yday,hh,dlon,_ONE_*30.)
+      z3 = solar_zenith_angle(yday,hh,dlon,_ONE_*60.)
+      z4 = solar_zenith_angle(yday,hh,dlon,_ONE_*90.)
+      s1 = short_wave_radiation(z1,yday,dlon,_ONE_*0. ,cloud)
+      s2 = short_wave_radiation(z2,yday,dlon,_ONE_*30.,cloud)
+      s3 = short_wave_radiation(z3,yday,dlon,_ONE_*60.,cloud)
+      s4 = short_wave_radiation(z4,yday,dlon,_ONE_*90.,cloud)
+      write(100,'(F5.1,5F8.4)') hh,z1,z2,z3,z4
+      write(101,'(F5.1,5F8.2)') hh,s1,s2,s3,s4
+   end do
+
+   STDERR 'solar zenith andgle and short wave radiation (during 1 year):'
+   STDERR 'dlon=   ',dlon
+   STDERR 'dlat is varying'
+   write(200,'(a5,4a8)') 'hour','00','30','60','90'
+   write(201,'(a5,4a8)') 'hour','00','30','60','90'
+   do i=1,365
+      hh= 12.
+      z1 = solar_zenith_angle(i,hh,dlon,_ONE_*0.)
+      z2 = solar_zenith_angle(i,hh,dlon,_ONE_*30.)
+      z3 = solar_zenith_angle(i,hh,dlon,_ONE_*60.)
+      z4 = solar_zenith_angle(i,hh,dlon,_ONE_*90.)
+      s1 = short_wave_radiation(z1,i,dlon,_ONE_*0. ,cloud)
+      s2 = short_wave_radiation(z2,i,dlon,_ONE_*30.,cloud)
+      s3 = short_wave_radiation(z3,i,dlon,_ONE_*60.,cloud)
+      s4 = short_wave_radiation(z4,i,dlon,_ONE_*90.,cloud)
+      write(200,'(i5,5F8.4)') i,z1,z2,z3,z4
+      write(201,'(i5,5F8.2)') i,s1,s2,s3,s4
    end do
 
    end program test_airsea
