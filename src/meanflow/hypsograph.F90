@@ -14,7 +14,7 @@
 !  The hypsograph is only used if lake is true.
 !
 ! !USES
-   use meanflow, only: lake,Ac,Af,dAdz,hypsograph_file
+   use meanflow, only: lake,depth0,depth,Ac,Af,dAdz,hypsograph_file
    IMPLICIT NONE
    public                                :: init_hypsograph,clean_hypsograph
    public                                :: read_hypsograph,update_hypsograph
@@ -77,6 +77,12 @@
             dAdz = _ZERO_
             open(hypsograph_unit,file=hypsograph_file,status='unknown',err=112)
          call read_hypsograph(hypsograph_unit,rc)
+         if (depth .ne. -depth_input(1)) then
+            LEVEL2 'adjusting depth from namelist to confirm with hypsograph'
+            LEVEL3 'depth:',depth,'--->',-depth_input(1)
+            depth = -depth_input(1)
+            depth0 = depth
+         end if
       else
          lake = .false.
       end if
@@ -124,6 +130,7 @@
    ierr = 0
    read(unit,*,ERR=100,END=110) N_input,up_down
    lines = 1
+   LEVEL3 '# of lines',N_input,'read order',up_down
 
    if (allocated(depth_input)) deallocate(depth_input)
    allocate(depth_input(0:N_input),stat=rc)
