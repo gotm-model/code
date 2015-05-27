@@ -288,7 +288,7 @@
       swr_sf_id    = model%get_horizontal_variable_id(standard_variables%surface_downwelling_shortwave_flux)
       cloud_id     = model%get_horizontal_variable_id(standard_variables%cloud_area_fraction)
       taub_id      = model%get_horizontal_variable_id(standard_variables%bottom_stress)
-      z0b_id       = model%get_horizontal_variable_id(standard_variables%bottom_roughness)
+      z0b_id       = model%get_horizontal_variable_id(standard_variables%bottom_roughness_length)
 
       ! Initialize spatially explicit variables
       call init_var_gotm_fabm(nlev)
