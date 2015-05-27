@@ -113,8 +113,6 @@
 !  calculate bottom stress, which is used by sediment resuspension models
    taub = u_taub*u_taub*rho_0
 
-   write(6,*) 'friction.F90'
-   write(6,*) taub
 !  add bottom friction as source term for the momentum equation
    drag(1) = drag(1) +  rr*rr
 
