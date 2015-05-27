@@ -55,7 +55,7 @@
 !
 ! !USES:
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za
-   use meanflow,      only: u,v,rho,gravity
+   use meanflow,      only: u,v,rho_0,gravity
    use meanflow,      only: u_taub,u_taus,drag,taub
    use meanflow,      only: charnock,charnock_val,z0s_min
 
@@ -96,6 +96,8 @@
          z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
       end if
 
+      z0b = h0b
+
 !     compute the factor r (version 1, with log-law)
       rr=kappa/(log((z0b+h(1)/2)/z0b))
 
@@ -109,8 +111,10 @@
    end do
 
 !  calculate bottom stress, which is used by sediment resuspension models
-   taub = u_taub*u_taub*rho(1)
+   taub = u_taub*u_taub*rho_0
 
+   write(6,*) 'friction.F90'
+   write(6,*) taub
 !  add bottom friction as source term for the momentum equation
    drag(1) = drag(1) +  rr*rr
 
