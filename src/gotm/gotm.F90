@@ -251,6 +251,7 @@
    if (fabm_calc) then
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth,depth)
       call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_depth_below_geoid,depth0)
+      call model_fabm%link_horizontal_data(standard_variables_fabm%bottom_roughness_length,z0b)
       if (calc_fluxes) then
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_specific_humidity,qa)
          call model_fabm%link_horizontal_data(standard_variables_fabm%surface_air_pressure,airp)

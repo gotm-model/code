@@ -78,7 +78,7 @@
    end interface
 
    type (type_bulk_variable_id),      save :: temp_id,salt_id,rho_id,h_id,swr_id,par_id,pres_id
-   type (type_horizontal_variable_id),save :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id,z0b_id,swr_sf_id
+   type (type_horizontal_variable_id),save :: lon_id,lat_id,windspeed_id,par_sf_id,cloud_id,taub_id,swr_sf_id
 
 !  Variables to hold time spent on advection, diffusion, sink/source terms.
    integer(8) :: clock_adv,clock_diff,clock_source
@@ -288,7 +288,6 @@
       swr_sf_id    = model%get_horizontal_variable_id(standard_variables%surface_downwelling_shortwave_flux)
       cloud_id     = model%get_horizontal_variable_id(standard_variables%cloud_area_fraction)
       taub_id      = model%get_horizontal_variable_id(standard_variables%bottom_stress)
-      z0b_id       = model%get_horizontal_variable_id(standard_variables%bottom_roughness_length)
 
       ! Initialize spatially explicit variables
       call init_var_gotm_fabm(nlev)
@@ -487,7 +486,7 @@
 !
 ! !INTERFACE:
    subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
-                                bioshade_,I_0_,cloud,taub,z0b_,wnd,precip_,evap_,z_,A_,g1_,g2_, &
+                                bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
                                 yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
 !
 ! !DESCRIPTION:
@@ -499,7 +498,7 @@
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
    REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
-   REALTYPE, intent(in),target :: I_0_,cloud,wnd,precip_,evap_,taub,z0b_
+   REALTYPE, intent(in),target :: I_0_,cloud,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_
    REALTYPE, intent(in),optional,target,dimension(:) :: SRelaxTau_,sProf_
@@ -525,7 +524,6 @@
    call fabm_link_horizontal_data(model,swr_sf_id,   I_0_)
    call fabm_link_horizontal_data(model,cloud_id,    cloud)
    call fabm_link_horizontal_data(model,taub_id,     taub)
-   call fabm_link_horizontal_data(model,z0b_id,     z0b_)
 
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
