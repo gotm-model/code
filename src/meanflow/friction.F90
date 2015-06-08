@@ -96,8 +96,6 @@
          z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
       end if
 
-      z0b = h0b
-
 !     compute the factor r (version 1, with log-law)
       rr=kappa/(log((z0b+h(1)/2)/z0b))
 
