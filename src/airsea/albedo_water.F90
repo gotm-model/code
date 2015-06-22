@@ -43,7 +43,7 @@
       case (PAYNE)
 !        calculates the albedo as a function of the solar zenith angle :
 !        (after Payne jas 1972)
-         albedo_water=albedo_payne(zenith_angle,yday)
+         albedo_water=albedo_payne(zenith_angle)
       case (COGLEY)
          albedo_water=albedo_cogley(zenith_angle,yday)
       case default
@@ -61,7 +61,7 @@
 ! !IFUNCTION: Albedo over water asccording to Payne(1972)
 !
 ! !INTERFACE:
-   REALTYPE function albedo_payne(zen,yd)
+   REALTYPE function albedo_payne(zen)
 !
 ! !DESCRIPTION:
 !  The albedo monthly values from \cite{Payne72} are given  here
@@ -76,7 +76,6 @@
 !
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in)      :: zen
-   integer, intent(in)       :: yd
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, parameter       :: alb1(20) = &
@@ -100,8 +99,13 @@
    else
       jab=.10*(50.-zen)+15.
    endif
-   dzen=(za(jab)-zen)/dza(jab)
-   albedo_payne=alb1(jab)+dzen*(alb1(jab+1)-alb1(jab))
+   if (jab .eq. 20) then
+      dzen = _ZERO_
+      albedo_payne=alb1(jab)
+   else
+      dzen=(za(jab)-zen)/dza(jab)
+      albedo_payne=alb1(jab)+dzen*(alb1(jab+1)-alb1(jab))
+   end if
 
    end function albedo_payne
 !EOC
@@ -130,23 +134,33 @@
 !
 ! !DEFINED PARAMETERS:
    REALTYPE, parameter       :: a1(12,10) = reshape( &
-      (/1.,1.,.301,.293,.171,.148,.16,.246,.342,1.,1.,1., &
-       1.,.301,.319,.225,.16,.131,.145,.206,.294,.305,1.,1., &
-       .301,.338,.229,.148,.116,.112,.114,.134,.202,.313,.301,1., &
-       .339,.24,.155,.105,.088,.084,.086,.098,.136,.216,.321,.3550,&
-       .22,.161,.108,.084,.075,.073,.074,.08,.099,.144,.21,.241, &
-       .145,.111,.085,.073,.068,.067,.068,.071,.08,.103,.138,.161,&
-       .103,.086,.073,.067,.065,.064,.064,.066,.071,.082,.1,.111, &
-       .083,.074,.067,.064,.063,.063,.063,.064,.066,.072,.081,.087, &
-       .072,.067,.064,.063,.064,.064,.064,.063,.063,.066,.071,.074, &
-       .066,.064,.063,.064,.066,.068,.067,.064,.063,.064,.066,.068/) &
+!  Maybe 0.293 should be changed to 0.239 to give a smooth curve - KB 2015-05-06
+!  From Table 5 in Cogley 1979
+      (/1.   ,1.   ,0.301,0.293,0.171,0.148,0.160,0.246,0.342,1.   ,1.   ,1.   ,  &
+        1.   ,0.301,0.319,0.225,0.16 ,0.131,0.145,0.206,0.294,0.305,1.   ,1.   ,  &
+        0.301,0.338,0.229,0.148,0.116,0.112,0.114,0.134,0.202,0.313,0.301,1.   ,  &
+        0.339,0.240,0.155,0.105,0.088,0.084,0.086,0.098,0.136,0.216,0.321,0.355,  &
+        0.220,0.161,0.108,0.084,0.075,0.073,0.074,0.08 ,0.099,0.144,0.210,0.241,  &
+        0.145,0.111,0.085,0.073,0.068,0.067,0.068,0.071,0.08 ,0.103,0.138,0.161,  &
+        0.103,0.086,0.073,0.067,0.065,0.064,0.064,0.066,0.071,0.082,0.100,0.111,  &
+        0.083,0.074,0.067,0.064,0.063,0.063,0.063,0.064,0.066,0.072,0.081,0.087,  &
+        0.072,0.067,0.064,0.063,0.064,0.064,0.064,0.063,0.063,0.066,0.071,0.074,  &
+        0.066,0.064,0.063,0.064,0.066,0.068,0.067,0.064,0.063,0.064,0.066,0.068/) &
        , shape(a1))
    REALTYPE, parameter       :: za(10) = (/90.,80.,70.,60.,50.,40.,30.,20.,10.,0.0/)
    REALTYPE, parameter       :: dz =  10.0
+#if 0 
+! This is the original provided by AS - as Fortran code
    REALTYPE, parameter       :: tim(12)= (/ &
                                            15.21,45.62,76.03,106.44,136.85,167.26, &
                                           197.67,228.08,258.49,288.90, 319.31, 349.72 &
                                          /)
+#else
+!  The corresponds to the R test code  - also from AS
+   REALTYPE, parameter       :: tim(12)= (/ &
+                                 1,32,60,91,121,152,182,213,244,274,305,335 &
+                                         /)
+#endif
    REALTYPE, parameter       :: dt= 365.25/12.
 !
 ! !LOCAL VARIABLES:
@@ -154,16 +168,17 @@
    REALTYPE                  :: dzen,dti,r1,r2,x
 !-----------------------------------------------------------------------
 !BOC
-   jab=dmin1(dmax1(dble((90.-zen)/dz+1d0),1d0),10d0)
-   tab=dmin1(dmax1(dble(yd/dt+1d0),1d0),12d0)
+   jab=min(max(((90.-zen)/dz+1d0),1d0),10d0)
+   tab=min(max(floor(yd/dt)+1d0,1d0),12d0)
 
    dzen=(za(jab)-zen)/dz
-   dti=((yd)-tim(tab))/dt
+   dti=(yd-tim(tab))/dt
 
 !  interploate the two latitudes
    jab1=min(jab+1,10)
-   tab1=mod((tab+1),12)
-   r1=a1(tab,jab)+dzen*(a1(tab,jab1)-a1(tab,jab))
+   tab1 = tab+1
+   if (tab1 .gt. 12) tab1 = 1
+   r1=a1(tab,jab) +dzen*(a1(tab,jab1) -a1(tab,jab))
    r2=a1(tab1,jab)+dzen*(a1(tab1,jab1)-a1(tab1,jab))
 
 !  interpolate the time
