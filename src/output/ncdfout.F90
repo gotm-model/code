@@ -538,9 +538,9 @@
          iret = set_attributes(ncid,Qt_id,units='celsius/s', &
                                long_name='temperature inflow')
          iret = set_attributes(ncid,wIs_id,units='m/s', &
-                               long_name='vertical salinity advection velocity')
+                               long_name='vertical water balance advection velocity')
          iret = set_attributes(ncid,FQ_id,units='m**3/s', &
-                               long_name='vertical salinity transport')
+                               long_name='vertical water balance flux')
 
          istream = 0
          current_stream => first_stream
