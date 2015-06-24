@@ -111,7 +111,7 @@
    integer, private          :: Ac_id,Af_id,dAdz_id
    integer, private          :: total_salt_id
    integer, private          :: Q_id,Qs_id, Qt_id
-   integer, private          :: wIs_id
+   integer, private          :: wq_id
    integer, private          :: FQ_id
    integer, private,allocatable :: Q_ids(:), T_ids(:)
    integer, private          :: int_inflow_id,int_outflow_id
@@ -324,7 +324,7 @@
          call check_err(iret)
          iret = nf90_def_var(ncid,'Qt',NF90_REAL,dim4d,Qt_id)
          call check_err(iret)
-         iret = nf90_def_var(ncid,'wIs',NF90_REAL,dim4d,wIs_id)
+         iret = nf90_def_var(ncid,'wq',NF90_REAL,dim4d,wq_id)
          call check_err(iret)
          iret = nf90_def_var(ncid,'FQ',NF90_REAL,dim4d,FQ_id)
          call check_err(iret)
@@ -537,7 +537,7 @@
                                long_name='salt inflow')
          iret = set_attributes(ncid,Qt_id,units='celsius/s', &
                                long_name='temperature inflow')
-         iret = set_attributes(ncid,wIs_id,units='m/s', &
+         iret = set_attributes(ncid,wq_id,units='m/s', &
                                long_name='vertical water balance advection velocity')
          iret = set_attributes(ncid,FQ_id,units='m**3/s', &
                                long_name='vertical water balance flux')
@@ -830,7 +830,7 @@
          do i=1,nlev
             dum(i) = FQ(i) / Af(i)
          end do
-         iret = store_data(ncid,wIs_id,XYZT_SHAPE,nlev,array=dum)
+         iret = store_data(ncid,wq_id,XYZT_SHAPE,nlev,array=dum)
          iret = store_data(ncid,FQ_id,XYZT_SHAPE,nlev,array=FQ)
       endif
    endif
