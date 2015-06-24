@@ -113,6 +113,7 @@
    integer, private          :: Q_id,Qs_id, Qt_id
    integer, private          :: wq_id
    integer, private          :: FQ_id
+   integer, private          :: Qres_id
    integer, private,allocatable :: Q_ids(:), T_ids(:)
    integer, private          :: int_inflow_id,int_outflow_id
 !
@@ -328,6 +329,8 @@
          call check_err(iret)
          iret = nf90_def_var(ncid,'FQ',NF90_REAL,dim4d,FQ_id)
          call check_err(iret)
+         iret = nf90_def_var(ncid,'Qres',NF90_REAL,dim4d,Qres_id)
+         call check_err(iret)
 
          allocate(Q_ids(nstreams))
          istream = 0
@@ -541,6 +544,8 @@
                                long_name='vertical water balance advection velocity')
          iret = set_attributes(ncid,FQ_id,units='m**3/s', &
                                long_name='vertical water balance flux')
+         iret = set_attributes(ncid,Qres_id,units='m**3/s', &
+                               long_name='residual water balance inflows')
 
          istream = 0
          current_stream => first_stream
@@ -671,7 +676,7 @@
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
-   use observations, only: Q, Qs, Qt, FQ
+   use observations, only: Q, Qs, Qt, FQ, Qres
    use streams,      only: nstreams,first_stream,type_stream
    use streams,      only: int_inflow,int_outflow
    use eqstate,      only: eqstate1
@@ -832,6 +837,7 @@
          end do
          iret = store_data(ncid,wq_id,XYZT_SHAPE,nlev,array=dum)
          iret = store_data(ncid,FQ_id,XYZT_SHAPE,nlev,array=FQ)
+         iret = store_data(ncid,Qres_id,XYZT_SHAPE,nlev,array=Qres)
       endif
    endif
    iret = store_data(ncid,SS_id,XYZT_SHAPE,nlev,array=SS)
