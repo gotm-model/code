@@ -190,9 +190,12 @@
 
       ! Create model tree
       if (configuration_method==-1) then
-         configuration_method = 0
+         configuration_method = 1
          inquire(file='fabm.yaml',exist=file_exists)
-         if (file_exists) configuration_method = 1
+         if (.not.file_exists) then
+            inquire(file='fabm.nml',exist=file_exists)
+            if (file_exists) configuration_method = 0
+         end if
       end if
       select case (configuration_method)
          case (0)
