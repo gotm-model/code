@@ -37,7 +37,7 @@
 ! !ROUTINE: General ODE solver \label{sec:ode-solver}
 !
 ! !INTERFACE:
-   subroutine _NAME_(solver,_SIZE_,dt,cc,right_hand_side_rhs,right_hand_side_ppdd)
+   subroutine _NAME_(solver,_SIZE_,dt,cc,get_rhs,get_ppdd)
 !
 ! !DESCRIPTION:
 ! Here, 10 different numerical solvers for the right hand sides of the
@@ -106,7 +106,7 @@
    REALTYPE, intent(inout) :: cc _DIMCC_
 
    interface
-      subroutine right_hand_side_ppdd(first,_SIZE_,cc,pp,dd)
+      subroutine get_ppdd(first,_SIZE_,cc,pp,dd)
          import
          logical,  intent(in)                     :: first
          integer,  intent(in)                     :: _SIZE_
@@ -116,7 +116,7 @@
    end interface
 
    interface
-      subroutine right_hand_side_rhs(first,_SIZE_,cc,rhs)
+      subroutine get_rhs(first,_SIZE_,cc,rhs)
          import
          logical,  intent(in)  :: first
          integer,  intent(in)  :: _SIZE_
@@ -190,7 +190,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_rhs(.true.,_SIZE_,cc,rhs)
+   call get_rhs(.true.,_SIZE_,cc,rhs)
    cc = cc + dt*rhs
 
    end subroutine euler_forward
@@ -233,9 +233,9 @@
 !-----------------------------------------------------------------------
 !BOC
    ! Midpoint method
-   call right_hand_side_rhs(.true.,_SIZE_,cc,rhs)
+   call get_rhs(.true.,_SIZE_,cc,rhs)
    cc1 = cc + dt*rhs/2
-   call right_hand_side_rhs(.false.,_SIZE_,cc1,rhs)
+   call get_rhs(.false.,_SIZE_,cc1,rhs)
    cc = cc + dt*rhs
 
    end subroutine runge_kutta_2
@@ -289,16 +289,16 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_rhs(.true.,_SIZE_,cc,rhs)
+   call get_rhs(.true.,_SIZE_,cc,rhs)
    rhs1 = rhs/2
    cc1 = cc + dt/2*rhs
-   call right_hand_side_rhs(.false.,_SIZE_,cc1,rhs)
+   call get_rhs(.false.,_SIZE_,cc1,rhs)
    rhs1 = rhs1 + rhs
    cc1 = cc + dt/2*rhs
-   call right_hand_side_rhs(.false.,_SIZE_,cc1,rhs)
+   call get_rhs(.false.,_SIZE_,cc1,rhs)
    rhs1 = rhs1 + rhs
    cc1 = cc + dt*rhs
-   call right_hand_side_rhs(.false.,_SIZE_,cc1,rhs)
+   call get_rhs(.false.,_SIZE_,cc1,rhs)
    rhs1 = rhs1 + rhs/2
    cc = cc + dt*rhs1/3
 
@@ -337,7 +337,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_ppdd(.true.,_SIZE_,cc,pp,dd)
+   call get_ppdd(.true.,_SIZE_,cc,pp,dd)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -400,7 +400,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_ppdd(.true.,_SIZE_,cc,pp,dd)
+   call get_ppdd(.true.,_SIZE_,cc,pp,dd)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -414,7 +414,7 @@
       end do
    _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(.false.,_SIZE_,cc1,pp,dd)
+   call get_ppdd(.false.,_SIZE_,cc1,pp,dd)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -452,7 +452,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_ppdd(.true.,_SIZE_,cc,pp,dd)
+   call get_ppdd(.true.,_SIZE_,cc,pp,dd)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -466,7 +466,7 @@
       end do
    _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(.false.,_SIZE_,cc1,pp,dd)
+   call get_ppdd(.false.,_SIZE_,cc1,pp,dd)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -480,7 +480,7 @@
       end do
    _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(.false.,_SIZE_,cc1,pp,dd)
+   call get_ppdd(.false.,_SIZE_,cc1,pp,dd)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -494,7 +494,7 @@
       end do
    _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(.false.,_SIZE_,cc1,pp,dd)
+   call get_ppdd(.false.,_SIZE_,cc1,pp,dd)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -548,7 +548,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_ppdd(.true.,_SIZE_,cc,pp,dd)
+   call get_ppdd(.true.,_SIZE_,cc,pp,dd)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -627,7 +627,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_ppdd(.true.,_SIZE_,cc,pp,dd)
+   call get_ppdd(.true.,_SIZE_,cc,pp,dd)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -643,7 +643,7 @@
       call matrix(numc,a,r,cc1 _INCC_(:,ci))
    _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(.false.,_SIZE_,cc1,pp1,dd1)
+   call get_ppdd(.false.,_SIZE_,cc1,pp1,dd1)
 
    pp=(pp+pp1)/2
    dd=(dd+dd1)/2
@@ -691,7 +691,7 @@
 !-----------------------------------------------------------------------
 !BOC
    first=.true.
-   call right_hand_side_ppdd(first,_SIZE_,cc,pp,dd)
+   call get_ppdd(first,_SIZE_,cc,pp,dd)
    first=.false.
 
    _ODE_LOOP_BEGIN_
@@ -708,7 +708,7 @@
       call matrix(numc,a,r,cc1 _INCC_(:,ci))
    _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(first,_SIZE_,cc1,pp1,dd1)
+   call get_ppdd(first,_SIZE_,cc1,pp1,dd1)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -724,7 +724,7 @@
       call matrix(numc,a,r,cc1 _INCC_(:,ci))
    _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(first,_SIZE_,cc1,pp2,dd2)
+   call get_ppdd(first,_SIZE_,cc1,pp2,dd2)
 
    _ODE_LOOP_BEGIN_
       do i=1,numc
@@ -740,7 +740,7 @@
       call matrix(numc,a,r,cc1 _INCC_(:,ci))
    _ODE_LOOP_END_
 
-   call right_hand_side_ppdd(first,_SIZE_,cc1,pp3,dd3)
+   call get_ppdd(first,_SIZE_,cc1,pp3,dd3)
 
    pp=(pp/2+pp1+pp2+pp3/2)/3
    dd=(dd/2+dd1+dd2+dd3/2)/3
@@ -795,7 +795,7 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_rhs(.true.,_SIZE_,cc,derivative)
+   call get_rhs(.true.,_SIZE_,cc,derivative)
 
    _ODE_LOOP_BEGIN_
       call findp_bisection(numc, cc _INCC_(:,ci), derivative _INCC_(:,ci), dt, 1.d-9, pi)
@@ -855,14 +855,14 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   call right_hand_side_rhs(.true.,_SIZE_,cc,rhs)
+   call get_rhs(.true.,_SIZE_,cc,rhs)
 
    _ODE_LOOP_BEGIN_
       call findp_bisection(numc, cc _INCC_(:,ci), rhs _INCC_(:,ci), dt, 1.d-9, pi)
       cc_med _INCC_(:,ci) = cc _INCC_(:,ci) + dt*rhs _INCC_(:,ci)*pi
    _ODE_LOOP_END_
 
-   call right_hand_side_rhs(.false.,_SIZE_,cc_med,rhs_med)
+   call get_rhs(.false.,_SIZE_,cc_med,rhs_med)
 
    _ODE_LOOP_BEGIN_
       rhs _INCC_(:,ci) = (rhs _INCC_(:,ci) + rhs_med _INCC_(:,ci))/2
