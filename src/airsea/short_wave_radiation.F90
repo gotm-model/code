@@ -10,8 +10,8 @@
 ! !DESCRIPTION:
 !  This subroutine calculates the short--wave net radiation based on
 !  solar zenith angle, year day, longitude, latitude, and fractional cloud cover.
-!  No corrections for albedo - must be done by calls to albedo_water() and
-!  if ice is included albedo_ice().
+!  No corrections for albedo - must be done by calls to albedo\_water() and
+!  if ice is included albedo\_ice().
 !  The basic formula for the short-wave radiation at the surface, $Q_s$,
 !  has been taken from \cite{RosatiMiyacoda88}, who adapted the work
 !  of \cite{Reed77} and \cite{SimpsonPaulson99}:

@@ -200,8 +200,8 @@
 !                          & 2: read short wave radiation from file                                 \\
 !                          & 3: Solar radiation is calculated from time, longitude, latitude,       \\
 !                          & and cloud cover.                                                       \\
-! {\tt albedo_method}    & 0=const, 1=Payne, 2=Cogley \\
-! {\tt const_albedo}     & used if albedo_method=0 - must be <= 1.0    \\
+! {\tt albedo\_method}    & 0=const, 1=Payne, 2=Cogley \\
+! {\tt const\_albedo}     & used if {tt albedo\_method}=0 - must be <= 1.0    \\
 ! {\tt const\_swr}       & constant value for short wave radiation in W\,m$^{-2}$                 \\
 !                          & (always positive)                                                      \\
 ! {\tt swr\_file}        & file with short wave radiation in W\,m$^{-2}$                          \\
