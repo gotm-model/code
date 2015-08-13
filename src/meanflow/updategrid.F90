@@ -18,10 +18,12 @@
 !  are specified in {\tt gotmmean.nml}.
 !  Zooming is applied according to the formula
 !  \begin{equation}\label{formula_Antoine}
-!    h_k = D\frac{\mbox{tanh}\left( (d_l+d_u)\frac{k}{M}-d_l\right)
+!    \gamma_i = \frac{\mbox{tanh}\left( (d_l+d_u)\frac{i}{M}-d_l\right)
 !    +\mbox{tanh}(d_l)}{\mbox{tanh}(d_l)+\mbox{tanh}(d_u)}-1
 !   \point
 !  \end{equation}
+!  with $\gamma_i$ being the non-dimensional vertical position of the
+!  $i$-th interface in \eq{grid}.
 !
 !  From this formula, the following grids are constructed:
 !  \begin{itemize}

@@ -58,7 +58,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IFUNCTION: Albedo over water asccording to Payne(1972)
+! !IROUTINE: Albedo over water asccording to Payne(1972)
 !
 ! !INTERFACE:
    REALTYPE function albedo_payne(zen)
@@ -90,6 +90,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: jab
    REALTYPE                  :: dzen
+!EOP
 !-----------------------------------------------------------------------
 !BOC
    if(zen .ge. 74.)then
@@ -113,7 +114,7 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IFUNCTION: Albedo over water asccording to Cogley()
+! !IROUTINE: Albedo over water asccording to Cogley()
 !
 ! !INTERFACE:
    REALTYPE function albedo_cogley(zen,yd)
@@ -166,6 +167,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: jab,tab,jab1,tab1
    REALTYPE                  :: dzen,dti,r1,r2,x
+!EOP
 !-----------------------------------------------------------------------
 !BOC
    jab=min(max(((90.-zen)/dz+1d0),1d0),10d0)

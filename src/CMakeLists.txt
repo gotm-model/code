@@ -157,12 +157,11 @@ if(GOTM_USE_FABM)
     add_subdirectory(${FABM_BASE}/src fabm_src)
     set(FABM_LIBRARIES fabm)
     set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm_src/modules)
-    mark_as_advanced(FORCE FABM_PREFIX)
   else()
     # Use FABM_PREFIX to locate include and lib directories
-    mark_as_advanced(CLEAR FABM_PREFIX)
     find_package(FABM REQUIRED)
   endif()
+  mark_as_advanced(FORCE FABM_PREFIX)
   add_library(gotm_fabm
               fabm/gotm_fabm.F90
              )
