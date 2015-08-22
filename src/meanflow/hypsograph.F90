@@ -78,10 +78,10 @@
             dAdz = _ZERO_
             open(hypsograph_unit,file=hypsograph_file,status='unknown',err=112)
          call read_hypsograph(hypsograph_unit,rc)
-         if (depth .ne. -zi_input(1)) then
+         if (depth .ne. -zi_input(0)) then
             LEVEL2 'adjusting depth from namelist to confirm with hypsograph'
-            LEVEL3 'depth:',depth,'--->',-zi_input(1)
-            depth = -zi_input(1)
+            LEVEL3 'depth:',depth,'--->',-zi_input(0)
+            depth = -zi_input(0)
             depth0 = depth
          end if
       else
