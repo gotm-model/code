@@ -287,9 +287,63 @@
 
       return
    end subroutine clean_hypsograph
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Calculate volumes of layers
+!
+! !INTERFACE:
+   subroutine zi2V(nlev,zi,Af,V)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer , intent(in)      :: nlev
+   REALTYPE, intent(in)      :: zi(0:nlev)
+   REALTYPE, intent(in)      :: Af(0:nlev)
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)     :: V(1:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Knut Klingbeil
+!
+! !LOCAL VARIABLES:
+   integer                   :: i,ii
+   REALTYPE                  :: dVfilled,Vfrust
+   REALTYPE,parameter        :: OneThird=_ONE_/3
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   V = _ZERO_
+
+   ii = 1
+   dVfilled = _ZERO_
+
+   do i=1,nlev
+      do while ( ii.le.nlev_input .and. zi_input(ii).lt.zi(i) )
+         V(i) = V(i) + V_input(ii) - dVfilled
+         ii = ii + 1
+         dVfilled = _ZERO_
+      end do
+      Vfrust = OneThird * ( zi(i) - zi_input(ii-1) ) &
+               * ( Af_input(ii-1) + sqrt(Af_input(ii-1)*Af(i)) + Af(i) )
+      V(i) = V(i) + Vfrust - dVfilled
+      dVfilled = Vfrust
+   end do
+
+   return
+   end subroutine zi2V
+
+!-----------------------------------------------------------------------
 
    end module hypsograph
-!EOC
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
