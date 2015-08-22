@@ -152,7 +152,12 @@
    if (lake) then
       do i=1,nlev
          Qsour(i) = Qsour(i) + Qs(i)
-         Lsour(i) = Lsour(i) + Ls(i) + Qres(i)/(Ac(i)*h(i))
+         Lsour(i) = Lsour(i) + Ls(i)
+         if ( Qres(i) .gt. _ZERO_ ) then
+            Qsour(i) = Qsour(i) + Qres(i)/(Ac(i)*h(i))*S(i)
+         else
+            Lsour(i) = Lsour(i) + Qres(i)/(Ac(i)*h(i))
+         end if
          wq(i) = FQ(i) / Af(i)
       end do
       wq(0   )=_ZERO_

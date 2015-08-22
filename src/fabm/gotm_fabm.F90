@@ -824,8 +824,12 @@
          ! Add stream (e.g., rivers) to source term that is to be used in diffusion solver.
          if (associated(first_stream)) then
             do k=1,nlev
+               if ( Qres(k) .gt. _ZERO_ ) then
+                  Qsour(k) = Qsour(k) + Qres(k)/(Ac(k)*curh(k))*cc(k,i)
+               else
+                  Lsour(k) = Lsour(k) + Qres(k)/(Ac(k)*curh(k))
+               end if
                wq(k) = FQ(k) / Af(k)
-               Lsour(k) = Lsour(k) + Qres(k) / (Ac(k) * curh(k))
             end do
             wq(0) = _ZERO_
             ! Calculate the sink term at sea surface
