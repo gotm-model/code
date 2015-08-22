@@ -225,8 +225,8 @@
 ! !LOCAL VARIABLES:
    integer                   :: i
    integer                   :: rc
-   REALTYPE,allocatable,dimension(:) :: prof
    REALTYPE                  :: zPrime(0:nlev+1)
+   REALTYPE                  :: prof  (0:nlev+1)
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -240,18 +240,12 @@
       zPrime(i) = zPrime(i+1) - h(i)
    end do
 
-   if (allocated(prof)) deallocate(prof)
-      allocate(prof(0:nlev+1),stat=rc)
-   if (rc /= 0) stop 'read_hypsograph: Error allocating memory (prof)'
-      prof = _ZERO_
 !  interpolate hypsograph Af to grid interfaces used by GOTM
    call gridinterpol(nlev_input+1,1,zi_input,Af_input,nlev+1,zPrime,prof)
 
    do i = 0, nlev
       Af(i) = prof(i+1)
    end do
-
-   if (allocated(prof)) deallocate(prof)
 
 !  interpolate hypsograph Ac to grid centres used by GOTM
    call gridinterpol(nlev_input+1,1,zi_input,Af_input,nlev,z,Ac)
