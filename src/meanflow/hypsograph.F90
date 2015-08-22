@@ -22,7 +22,7 @@
 
 !  !input variables
    integer                               :: N_input
-   REALTYPE, dimension(:), allocatable   :: A_input,zi_input
+   REALTYPE, dimension(:), allocatable   :: Af_input,zi_input
    REALTYPE, dimension(:), allocatable   :: V_input
 
 !
@@ -139,12 +139,12 @@
    allocate(zi_input(-1:N_input),stat=rc)
    if (rc /= 0) stop 'read_hypsograph: Error allocating memory (zi_input)'
    zi_input = _ZERO_
-   if (allocated(A_input)) deallocate(A_input)
-   allocate(A_input(-1:N_input),stat=rc)
+   if (allocated(Af_input)) deallocate(Af_input)
+   allocate(Af_input(-1:N_input),stat=rc)
    if (rc /= 0) then
-      stop 'read_hypsograph: Error allocating memory (A_input)'
+      stop 'read_hypsograph: Error allocating memory (Af_input)'
    end if
-   A_input = _ZERO_
+   Af_input = _ZERO_
    allocate(V_input(0:N_input),stat=rc)
    if (rc /= 0) then
       stop 'read_hypsograph: Error allocating memory (V_input)'
@@ -156,22 +156,22 @@
    select case (up_down)
       case(1)  ! surface ref, read from bottom
          do i=0,N_input
-            read(unit,*,ERR=100,END=110) zi_input(i), A_input(i)
+            read(unit,*,ERR=100,END=110) zi_input(i), Af_input(i)
          end do
       case(2)  ! surface ref, read from surface
          do i=N_input,0,-1
-            read(unit,*,ERR=100,END=110) zi_input(i), A_input(i)
+            read(unit,*,ERR=100,END=110) zi_input(i), Af_input(i)
          end do
       case(3)  ! bottom ref, read from bottom
          do i=0,N_input
-            read(unit,*,ERR=100,END=110) zi_input(i), A_input(i)
+            read(unit,*,ERR=100,END=110) zi_input(i), Af_input(i)
          end do
          do i=0,N_input
             zi_input(i) = zi_input(i)-zi_input(N_input)
          end do
       case(4)  ! bottom ref, read from surface
          do i=N_input,0,-1
-            read(unit,*,ERR=100,END=110) zi_input(i), A_input(i)
+            read(unit,*,ERR=100,END=110) zi_input(i), Af_input(i)
          end do
          do i=0,N_input
             zi_input(i) = zi_input(i)-zi_input(N_input)
@@ -181,7 +181,7 @@
 
    do i=1,N_input
       V_input(i) = OneThird * ( zi_input(i) - zi_input(i-1) ) &
-         * ( A_input(i-1) + sqrt(A_input(i-1)*A_input(i)) + A_input(i) )
+         * ( Af_input(i-1) + sqrt(Af_input(i-1)*Af_input(i)) + Af_input(i) )
    end do
 
    return
@@ -245,7 +245,7 @@
    if (rc /= 0) stop 'read_hypsograph: Error allocating memory (prof)'
       prof = _ZERO_
 !  interpolate hypsograph Af to grid interfaces used by GOTM
-   call gridinterpol(N_input+1,1,zi_input,A_input,nlev+1,zPrime,prof)
+   call gridinterpol(N_input+1,1,zi_input,Af_input,nlev+1,zPrime,prof)
 
    do i = 0, nlev
       Af(i) = prof(i+1)
@@ -254,7 +254,7 @@
    if (allocated(prof)) deallocate(prof)
 
 !  interpolate hypsograph Ac to grid centres used by GOTM
-   call gridinterpol(N_input+1,1,zi_input,A_input,nlev,z,Ac)
+   call gridinterpol(N_input+1,1,zi_input,Af_input,nlev,z,Ac)
 
 !  calculate the derivative of the hypsograph wrt z
 !  dAdz is defined at the grid centres
