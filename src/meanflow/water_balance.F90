@@ -59,7 +59,7 @@
             Qres = -net_water_balance * Vc / sum(Vc(1:nlev))
       end select
       ! calculate the vertical flux terms
-      do k=1,nlev
+      do k=1,nlev-1
          FQ(k) = FQ(k-1) + Q(k) + Qres(k)
       end do
    end if

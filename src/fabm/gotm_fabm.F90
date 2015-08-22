@@ -831,13 +831,8 @@
                end if
                wq(k) = FQ(k) / Af(k)
             end do
-            wq(0) = _ZERO_
-            ! Calculate the sink term at sea surface
+            wq(0   )=_ZERO_
             wq(nlev)=_ZERO_
-            ! This is taken directly from the original stream scheme.
-            !Qsour(nlev) = Qsour(nlev) - cc(nlev,i) * FQ(nlev-1) / (Ac(nlev) * curh(nlev))
-            Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * curh(nlev))
-
             call adv_center(nlev,dt,curh,curh,Ac,Af,wq,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
          end if
 
