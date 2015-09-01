@@ -323,14 +323,14 @@
 
    V = _ZERO_
 
-   ii = 1
    dVfilled = _ZERO_
+   ii = 1
 
    do i=1,nlev
       do while ( ii.le.nlev_input .and. zi_input(ii).lt.zi(i) )
          V(i) = V(i) + V_input(ii) - dVfilled
-         ii = ii + 1
          dVfilled = _ZERO_
+         ii = ii + 1
       end do
       Vfrust = OneThird * ( zi(i) - zi_input(ii-1) ) &
                * ( Af_input(ii-1) + sqrt(Af_input(ii-1)*Af(i)) + Af(i) )
@@ -340,6 +340,65 @@
 
    return
    end subroutine zi2V
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Calculate layer heights
+!
+! !INTERFACE:
+   subroutine V2zi(nlev,V,zi)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer , intent(in)      :: nlev
+   REALTYPE, intent(in)      :: V(1:nlev)
+!
+! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)     :: zi(0:nlev)
+!
+! !REVISION HISTORY:
+!  Original author(s): Knut Klingbeil
+!
+! !LOCAL VARIABLES:
+   integer                   :: i,ii
+   REALTYPE                  :: dVfilled,Vfrust
+   REALTYPE                  :: theta,rb,rt,rf,hfrust
+   REALTYPE,parameter        :: OneThird=_ONE_/3
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+
+   zi(0) = -depth0
+
+   Vfrust = _ZERO_
+   ii = 1
+
+   do i=1,nlev
+      dVfilled = _ZERO_
+      do while ( ii.lt.nlev_input .and. V_input(ii)-Vfrust.lt.V(i)-dVfilled )
+         dVfilled = dVfilled + V_input(ii) - Vfrust
+         Vfrust = _ZERO_
+         ii = ii + 1
+      end do
+      Vfrust = Vfrust + V(i) - dVfilled
+
+      theta = Vfrust / V_input(ii)
+      rb = sqrt(Af_input(ii-1))
+      rt = sqrt(Af_input(ii  ))
+      rf = ( theta*rt**3 + (1-theta)*rb**3 ) ** OneThird
+      hfrust = ( zi_input(ii)-zi_input(ii-1) ) * ( rf - rb ) / ( rt - rb )
+
+      zi(i) = zi_input(ii-1) + hfrust
+   end do
+
+   return
+   end subroutine V2zi
 !EOC
 
 !-----------------------------------------------------------------------
