@@ -22,7 +22,8 @@
 
 !  !input variables
    integer                               :: nlev_input
-   REALTYPE, dimension(:), allocatable   :: Af_input,zi_input
+   REALTYPE, dimension(:), allocatable   :: zi_input
+   REALTYPE, dimension(:), allocatable   :: Af_input,sqrt_Af_input
    REALTYPE, dimension(:), allocatable   :: V_input
 
 !
@@ -145,6 +146,11 @@
       stop 'read_hypsograph: Error allocating memory (Af_input)'
    end if
    Af_input = _ZERO_
+   allocate(sqrt_Af_input(0:nlev_input),stat=rc)
+   if (rc /= 0) then
+      stop 'read_hypsograph: Error allocating memory (sqrt_Af_input)'
+   end if
+   sqrt_Af_input = _ZERO_
    allocate(V_input(0:nlev_input),stat=rc)
    if (rc /= 0) then
       stop 'read_hypsograph: Error allocating memory (V_input)'
@@ -180,8 +186,9 @@
    end select
 
    do i=1,nlev_input
+      sqrt_Af_input(i) = sqrt( Af_input(i) )
       V_input(i) = OneThird * ( zi_input(i) - zi_input(i-1) ) &
-         * ( Af_input(i-1) + sqrt(Af_input(i-1)*Af_input(i)) + Af_input(i) )
+         * ( Af_input(i-1) + sqrt_Af_input(i-1)*sqrt_Af_input(i) + Af_input(i) )
    end do
 
    return
@@ -336,8 +343,8 @@
       end do
       hfrust = zi(i) - zi_input(ii-1)
       theta = hfrust / ( zi_input(ii) - zi_input(ii-1) )
-      sqrtAb = sqrt( Af_input(ii-1) )
-      sqrtAt = sqrt( Af_input(ii  ) )
+      sqrtAb = sqrt_Af_input(ii-1)
+      sqrtAt = sqrt_Af_input(ii  )
       sqrtAf = theta*sqrtAt + (1-theta)*sqrtAb
       Af(i) = sqrtAf * sqrtAf
       Vfrust = OneThird * hfrust * ( Af_input(ii-1) + sqrtAb*sqrtAf + Af(i) )
@@ -395,8 +402,8 @@
       end do
       Vfrust = Vfrust + V(i) - dVfilled
       theta = Vfrust / V_input(ii)
-      sqrtAb = sqrt( Af_input(ii-1) )
-      sqrtAt = sqrt( Af_input(ii  ) )
+      sqrtAb = sqrt_Af_input(ii-1)
+      sqrtAt = sqrt_Af_input(ii  )
       sqrtAf = ( theta*sqrtAt**3 + (1-theta)*sqrtAb**3 ) ** OneThird
       hfrust = ( zi_input(ii)-zi_input(ii-1) ) * ( sqrtAf - sqrtAb ) / ( sqrtAt - sqrtAb )
       zi(i) = zi_input(ii-1) + hfrust
