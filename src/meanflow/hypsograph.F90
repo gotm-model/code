@@ -305,9 +305,9 @@
 ! !INPUT PARAMETERS:
    integer , intent(in)      :: nlev
    REALTYPE, intent(in)      :: zi(0:nlev)
-   REALTYPE, intent(in)      :: Af(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
+   REALTYPE, intent(out)     :: Af(0:nlev)
    REALTYPE, intent(out)     :: V(1:nlev)
 !
 ! !REVISION HISTORY:
@@ -315,25 +315,32 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,ii
-   REALTYPE                  :: dVfilled,Vfrust
+   REALTYPE                  :: dVfilled,Vfrust,hfrust
+   REALTYPE                  :: theta,sqrtAb,sqrtAt,sqrtAf
    REALTYPE,parameter        :: OneThird=_ONE_/3
 !EOP
 !-----------------------------------------------------------------------
 !BOC
 
+   Af(0) = Af_input(0)
    V = _ZERO_
 
    dVfilled = _ZERO_
    ii = 1
 
    do i=1,nlev
-      do while ( ii.le.nlev_input .and. zi_input(ii).lt.zi(i) )
+      do while ( ii.lt.nlev_input .and. zi_input(ii).lt.zi(i) )
          V(i) = V(i) + V_input(ii) - dVfilled
          dVfilled = _ZERO_
          ii = ii + 1
       end do
-      Vfrust = OneThird * ( zi(i) - zi_input(ii-1) ) &
-               * ( Af_input(ii-1) + sqrt(Af_input(ii-1)*Af(i)) + Af(i) )
+      hfrust = zi(i) - zi_input(ii-1)
+      theta = hfrust / ( zi_input(ii) - zi_input(ii-1) )
+      sqrtAb = sqrt( Af_input(ii-1) )
+      sqrtAt = sqrt( Af_input(ii  ) )
+      sqrtAf = theta*sqrtAt + (1-theta)*sqrtAb
+      Af(i) = sqrtAf * sqrtAf
+      Vfrust = OneThird * hfrust * ( Af_input(ii-1) + sqrtAb*sqrtAf + Af(i) )
       V(i) = V(i) + Vfrust - dVfilled
       dVfilled = Vfrust
    end do
@@ -367,8 +374,8 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,ii
-   REALTYPE                  :: dVfilled,Vfrust
-   REALTYPE                  :: theta,rb,rt,rf,hfrust
+   REALTYPE                  :: dVfilled,Vfrust,hfrust
+   REALTYPE                  :: theta,sqrtAb,sqrtAt,sqrtAf
    REALTYPE,parameter        :: OneThird=_ONE_/3
 !EOP
 !-----------------------------------------------------------------------
@@ -387,13 +394,11 @@
          ii = ii + 1
       end do
       Vfrust = Vfrust + V(i) - dVfilled
-
       theta = Vfrust / V_input(ii)
-      rb = sqrt(Af_input(ii-1))
-      rt = sqrt(Af_input(ii  ))
-      rf = ( theta*rt**3 + (1-theta)*rb**3 ) ** OneThird
-      hfrust = ( zi_input(ii)-zi_input(ii-1) ) * ( rf - rb ) / ( rt - rb )
-
+      sqrtAb = sqrt( Af_input(ii-1) )
+      sqrtAt = sqrt( Af_input(ii  ) )
+      sqrtAf = ( theta*sqrtAt**3 + (1-theta)*sqrtAb**3 ) ** OneThird
+      hfrust = ( zi_input(ii)-zi_input(ii-1) ) * ( sqrtAf - sqrtAb ) / ( sqrtAt - sqrtAb )
       zi(i) = zi_input(ii-1) + hfrust
    end do
 
