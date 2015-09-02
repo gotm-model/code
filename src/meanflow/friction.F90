@@ -75,7 +75,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                             :: i,j,j_max
-   REALTYPE                            :: rr
+   REALTYPE                            :: rr,vel
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -102,30 +102,42 @@
 !  iterate from nlev to 1 so that u_taub is located at 1 at the end
 !  this is important for other modules
    do j=j_max,1,-1
-      do i=1,MaxItz0b
+      vel = sqrt( u(j)*u(j) + v(j)*v(j) )
 
-         if (avmolu.le.0) then
-            z0b=0.03*h0b + za
-         else
-            z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
-         end if
+      z0b = 0.03d0*h0b + za
 
-!        compute the factor r (version 1, with log-law)
-         rr=kappa/(log((z0b+h(j)/2)/z0b))
+!     compute the factor r (version 1, with log-law)
+      !rr=kappa/(log((z0b+h(j)/2)/z0b))
+      rr = kappa / log(_ONE_+_HALF_*h(j)/z0b)
 
-!        compute the factor r (version 2, with meanvalue log-law)
-!        frac=(z0b+h(j))/z0b
-!        rr=kappa/((z0b+h(j))/h(j)*log(frac)-1.)
+!     compute the factor r (version 2, with meanvalue log-law)
+!     frac=(z0b+h(j))/z0b
+!     rr=kappa/((z0b+h(j))/h(j)*log(frac)-1.)
 
-!        compute the friction velocity at every grid cell
-         u_taub = rr*sqrt( u(j)*u(j) + v(j)*v(j) )
+      if ( avmolu.gt._ZERO_ .and. vel.gt._ZERO_ ) then
+         do i=1,MaxItz0b
+            !z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
+            z0b = 0.1d0*avmolu/(rr*vel) + 0.03d0*h0b + za
 
-      end do
+!           compute the factor r (version 1, with log-law)
+            !rr=kappa/(log((z0b+h(j)/2)/z0b))
+            rr = kappa / log(_ONE_+_HALF_*h(j)/z0b)
+
+!           compute the factor r (version 2, with meanvalue log-law)
+!           frac=(z0b+h(j))/z0b
+!           rr=kappa/((z0b+h(j))/h(j)*log(frac)-1.)
+
+         end do
+      end if
+
 !     add bottom friction as source term for the momentum equation
-      drag(j) = drag(j) +  rr*rr * ( Af(i) - Af(i-1) ) / Ac(i)
+      drag(j) = drag(j) +  rr*rr * ( Af(j) - Af(j-1) ) / Ac(j)
    end do
 
    drag(1) = drag(1) + rr*rr
+
+!  compute the friction velocity at every grid cell
+   u_taub = rr*vel
 
 !  calculate bottom stress, which is used by sediment resuspension models
    taub = u_taub*u_taub*rho_0
