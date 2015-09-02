@@ -125,6 +125,8 @@
       drag(j) = drag(j) +  rr*rr * ( Af(i) - Af(i-1) ) / Ac(i)
    end do
 
+   drag(1) = drag(1) + rr*rr
+
 !  calculate bottom stress, which is used by sediment resuspension models
    taub = u_taub*u_taub*rho_0
 
