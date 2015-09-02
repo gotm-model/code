@@ -62,36 +62,36 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-      !always allocate memory for Ac, Af so that diff_center() works
-      allocate(Ac(0:nlev),stat=rc)
-      if (rc /= 0) stop 'init_hypsograph: Error allocating (Ac)'
-         Ac = _ONE_
-      allocate(Af(0:nlev),stat=rc)
-      if (rc /= 0) stop 'init_hypsograph: Error allocating (Af)'
-         Af = _ONE_
-      if (hypsograph_file .ne. '') then
-         LEVEL1 'init_hypsograph'
-         LEVEL2 'reading hypsograph from:'
-         LEVEL3 trim(hypsograph_file)
-         lake = .true.
-         allocate(dAdz(0:nlev),stat=rc)
-         if (rc /= 0) stop 'init_hypsograph: Error allocating (dAdz)'
-            dAdz = _ZERO_
-            open(hypsograph_unit,file=hypsograph_file,status='unknown',err=112)
-         call read_hypsograph(hypsograph_unit,rc)
-         if (depth .ne. -zi_input(0)) then
-            LEVEL2 'adjusting depth from namelist to confirm with hypsograph'
-            LEVEL3 'depth:',depth,'--->',-zi_input(0)
-            depth = -zi_input(0)
-            depth0 = depth
-         end if
-      else
-         lake = .false.
+   !always allocate memory for Ac, Af so that diff_center() works
+   allocate(Ac(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_hypsograph: Error allocating (Ac)'
+   Ac = _ONE_
+   allocate(Af(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_hypsograph: Error allocating (Af)'
+   Af = _ONE_
+   if (hypsograph_file .ne. '') then
+      LEVEL1 'init_hypsograph'
+      LEVEL2 'reading hypsograph from:'
+      LEVEL3 trim(hypsograph_file)
+      lake = .true.
+      allocate(dAdz(0:nlev),stat=rc)
+      if (rc /= 0) stop 'init_hypsograph: Error allocating (dAdz)'
+      dAdz = _ZERO_
+      open(hypsograph_unit,file=hypsograph_file,status='unknown',err=112)
+      call read_hypsograph(hypsograph_unit,rc)
+      if (depth .ne. -zi_input(0)) then
+         LEVEL2 'adjusting depth from namelist to confirm with hypsograph'
+         LEVEL3 'depth:',depth,'--->',-zi_input(0)
+         depth = -zi_input(0)
+         depth0 = depth
       end if
+   else
+      lake = .false.
+   end if
 
-      return
+   return
 112 FATAL 'Unable to open "',trim(hypsograph_file),'" for reading'
-      stop 'init_hypsograph'
+   stop 'init_hypsograph'
 
    end subroutine init_hypsograph
 !EOC
@@ -288,11 +288,11 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-      if (allocated(Ac)) deallocate(Ac)
-      if (allocated(Af)) deallocate(Af)
-      if (allocated(dAdz)) deallocate(dAdz)
+   if (allocated(Ac)) deallocate(Ac)
+   if (allocated(Af)) deallocate(Af)
+   if (allocated(dAdz)) deallocate(dAdz)
 
-      return
+   return
    end subroutine clean_hypsograph
 !EOC
 
