@@ -185,6 +185,7 @@
       case default
    end select
 
+   sqrt_Af_input(0) = sqrt( Af_input(0) )
    do i=1,nlev_input
       sqrt_Af_input(i) = sqrt( Af_input(i) )
       V_input(i) = OneThird * ( zi_input(i) - zi_input(i-1) ) &
