@@ -174,9 +174,7 @@
 !     add external and internal pressure gradients
       Qsour(i) = Qsour(i) - gravity*dzetadx + idpdx(i)
 
-#ifdef SEAGRASS
       Lsour(i) = -drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))
-#endif
 
 !     add non-local fluxes
 #ifdef NONLOCAL
@@ -188,7 +186,6 @@
 !  implement bottom friction as source term
    if (lake) then
       do i=1,nlev
-         Lsour(i)= - (drag(i)/h(i)*sqrt(u(i)*u(i)+v(i)*v(i))) / (Ac(i) * h(i))
          wq(i) = FQ(i) / Af(i)
       end do
       wq(0   ) = _ZERO_
@@ -196,8 +193,6 @@
       !Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * h(nlev))
       call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,              &
                       AdvUup,AdvUdw,1,1,U)
-   else
-      Lsour(1) = - drag(1)/h(1)*sqrt(u(1)*u(1)+v(1)*v(1))
    end if
 
 !  do advection step

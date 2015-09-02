@@ -60,7 +60,7 @@
    use meanflow,      only: u,v,rho_0,gravity
    use meanflow,      only: u_taub,u_taus,drag,taub
    use meanflow,      only: charnock,charnock_val,z0s_min
-   use meanflow,      only: lake
+   use meanflow,      only: lake,Af,Ac
 
 !
    IMPLICIT NONE
@@ -122,7 +122,7 @@
 
       end do
 !     add bottom friction as source term for the momentum equation
-      drag(j) = drag(j) +  rr*rr
+      drag(j) = drag(j) +  rr*rr * ( Af(i) - Af(i-1) ) / Ac(i)
    end do
 
 !  calculate bottom stress, which is used by sediment resuspension models
