@@ -163,7 +163,7 @@
       wq(0   )=_ZERO_
       wq(nlev)=_ZERO_
       call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,               &
-                          AdvSup,AdvSdw,w_adv_discr,1,S)
+                      AdvSup,AdvSdw,w_adv_discr,1,S)
    end if
 
 !  do advection step
