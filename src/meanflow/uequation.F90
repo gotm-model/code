@@ -128,6 +128,7 @@
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: URelaxTau(0:nlev)
    REALTYPE                  :: wq(0:nlev)
+   logical                   :: call_adv
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -185,14 +186,20 @@
 
 !  implement bottom friction as source term
    if (lake) then
+      call_adv = .false.
       do i=1,nlev
          wq(i) = FQ(i) / Af(i)
+         if (wq(i) .ne. _ZERO_) then
+            call_adv = .true.
+         end if
       end do
       wq(0   ) = _ZERO_
       wq(nlev) = _ZERO_
       !Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * h(nlev))
-      call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,              &
-                      AdvUup,AdvUdw,1,1,U)
+      if (call_adv) then
+         call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,              &
+                         AdvUup,AdvUdw,1,1,U)
+      end if
    end if
 
 !  do advection step
