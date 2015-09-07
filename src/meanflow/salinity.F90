@@ -153,7 +153,7 @@
       do i=1,nlev
          Qsour(i) = Qsour(i) + Qs(i)
          Lsour(i) = Lsour(i) + Ls(i)
-         if ( Qres(i).lt._ZERO_ .and. posconc.ne.1 ) then
+         if ( Qres(i).lt._ZERO_ .and. posconc.eq.1 ) then
             Lsour(i) = Lsour(i) + Qres(i)/(Ac(i)*h(i))
          else
             Qsour(i) = Qsour(i) + Qres(i)/(Ac(i)*h(i))*S(i)

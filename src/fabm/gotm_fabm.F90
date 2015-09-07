@@ -824,7 +824,7 @@
          ! Add stream (e.g., rivers) to source term that is to be used in diffusion solver.
          if (associated(first_stream)) then
             do k=1,nlev
-               if ( Qres(k).lt._ZERO_ .and. posconc(i).ne.1 ) then
+               if ( Qres(k).lt._ZERO_ .and. posconc(i).eq.1 ) then
                   Lsour(k) = Lsour(k) + Qres(k)/(Ac(k)*curh(k))
                else
                   Qsour(k) = Qsour(k) + Qres(k)/(Ac(k)*curh(k))*cc(k,i)
