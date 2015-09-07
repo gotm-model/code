@@ -192,10 +192,10 @@
       do i=1,nlev
          Qsour(i) = Qsour(i) + Qt(i)
          Lsour(i) = Lsour(i) + Lt(i)
-         if ( Qres(i) .gt. _ZERO_ ) then
-            Qsour(i) = Qsour(i) + Qres(i)/(Ac(i)*h(i))*T(i)
-         else
+         if ( Qres(i).lt._ZERO_ .and. posconc.ne.1 ) then
             Lsour(i) = Lsour(i) + Qres(i)/(Ac(i)*h(i))
+         else
+            Qsour(i) = Qsour(i) + Qres(i)/(Ac(i)*h(i))*T(i)
          end if
          wq(i) = FQ(i) / Af(i)
       end do
