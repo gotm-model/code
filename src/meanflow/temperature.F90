@@ -76,7 +76,7 @@
    use observations, only: w_adv_discr,w_adv_method
    use observations, only: tprof,TRelaxTau
    use observations, only: A,g1,g2
-   use observations, only: Qt, Lt, Qres, FQ
+   use observations, only: Qt, Lt, Qres, wq
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -125,7 +125,6 @@
    REALTYPE                  :: AdvTup,AdvTdw
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
-   REALTYPE                  :: wq(0:nlev)
    REALTYPE                  :: z
 !
 !-----------------------------------------------------------------------
@@ -197,10 +196,7 @@
          else
             Lsour(i) = Lsour(i) + Qres(i)/(Ac(i)*h(i))
          end if
-         wq(i) = FQ(i) / Af(i)
       end do
-      wq(0   )=_ZERO_
-      wq(nlev)=_ZERO_
       call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,               &
                       AdvTup,AdvTdw,w_adv_discr,1,T)
    end if

@@ -16,7 +16,7 @@
    use meanflow,      only: lake,Af,Ac,h
    use streams,       only: int_inflow,int_outflow
    use airsea,        only: int_net_precip,evap,precip
-   use observations,  only: Q,Qres,FQ
+   use observations,  only: Q,Qres,FQ,wq
 !
    IMPLICIT NONE
 
@@ -61,6 +61,7 @@
       ! calculate the vertical flux terms
       do k=1,nlev-1
          FQ(k) = FQ(k-1) + Q(k) + Qres(k)
+         wq(k) = FQ(k) / Af(k)
       end do
    end if
 

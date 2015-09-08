@@ -676,7 +676,7 @@
    use turbulence,   only: tke,kb,eps,epsb,L,uu,vv,ww
    use kpp,          only: zsbl,zbbl
    use observations, only: zeta,uprof,vprof,tprof,sprof,epsprof,o2_prof
-   use observations, only: Q, Qs, Qt, FQ, Qres
+   use observations, only: Q, Qs, Qt, FQ, wq, Qres
    use streams,      only: nstreams,first_stream,type_stream
    use streams,      only: int_inflow,int_outflow
    use eqstate,      only: eqstate1
@@ -832,10 +832,7 @@
          iret = store_data(ncid,Q_id,XYZT_SHAPE,nlev,array=Q)
          iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)
          iret = store_data(ncid,Qt_id,XYZT_SHAPE,nlev,array=Qt)
-         do i=1,nlev
-            dum(i) = FQ(i) / Af(i)
-         end do
-         iret = store_data(ncid,wq_id,XYZT_SHAPE,nlev,array=dum)
+         iret = store_data(ncid,wq_id,XYZT_SHAPE,nlev,array=wq)
          iret = store_data(ncid,FQ_id,XYZT_SHAPE,nlev,array=FQ)
          iret = store_data(ncid,Qres_id,XYZT_SHAPE,nlev,array=Qres)
       endif

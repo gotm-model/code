@@ -79,7 +79,7 @@
 
 !  streams for lake model
    REALTYPE, public, dimension(:), allocatable   :: Qs, Qt, Ls, Lt
-   REALTYPE, public, dimension(:), allocatable   :: Q, Qres, FQ
+   REALTYPE, public, dimension(:), allocatable   :: Q, Qres, FQ, wq
 
 !------------------------------------------------------------------------------
 !
@@ -844,6 +844,10 @@
    allocate(FQ(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_observations: Error allocating (FQ)'
    FQ = _ZERO_
+
+   allocate(wq(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_observations: Error allocating (wq)'
+   wq = _ZERO_
 
    call init_streams(lake,nlev)
 

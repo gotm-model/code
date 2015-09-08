@@ -115,7 +115,7 @@
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(:) :: nuh,h,Ac,Af,Qres,FQ,bioshade,w,rho
+   REALTYPE,pointer,dimension(:) :: nuh,h,Ac,Af,Qres,wq,bioshade,w,rho
    REALTYPE,pointer,dimension(:) :: SRelaxTau,sProf,salt
    REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
 
@@ -570,7 +570,7 @@
 ! !IROUTINE: Set environment for FABM
 !
 ! !INTERFACE:
-   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,Ac_,Af_,Qres_,FQ_,w_, &
+   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,Ac_,Af_,Qres_,wq_,w_, &
                                 bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
                                 yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
 !
@@ -582,7 +582,7 @@
    REALTYPE, intent(in),target :: latitude,longitude
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,Ac_,Af_,Qres_,FQ_,w_,bioshade_,z_
+   REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,Ac_,Af_,Qres_,wq_,w_,bioshade_,z_
    REALTYPE, intent(in),target :: I_0_,cloud,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_
@@ -616,7 +616,7 @@
    Ac(0:)   => Ac_         ! hypsograph
    Af(0:)   => Af_         ! hypsograph
    Qres     => Qres_
-   FQ       => FQ_
+   wq       => wq_
    w        => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
    precip   => precip_     ! precipitation [scalar] - used to calculate dilution due to increased water volume
@@ -743,7 +743,6 @@
    integer, parameter        :: adv_mode_0=0
    integer, parameter        :: adv_mode_1=1
    REALTYPE,dimension(0:nlev):: ws1d
-   REALTYPE,dimension(0:nlev):: wq
    REALTYPE                  :: dilution,virtual_dilution
    integer                   :: i,k
    integer                   :: split
@@ -829,10 +828,7 @@
                else
                   Lsour(k) = Lsour(k) + Qres(k)/(Ac(k)*curh(k))
                end if
-               wq(k) = FQ(k) / Af(k)
             end do
-            wq(0   )=_ZERO_
-            wq(nlev)=_ZERO_
             call adv_center(nlev,dt,curh,curh,Ac,Af,wq,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
          end if
 
