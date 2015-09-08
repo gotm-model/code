@@ -53,7 +53,7 @@
    use observations, only: w_adv_method,w_adv_discr
    use observations, only: vProf,vel_relax_tau,vel_relax_ramp
    use observations, only: idpdy,dpdy
-   use observations, only: FQ
+   use observations, only: wq
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -105,7 +105,6 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: VRelaxTau(0:nlev)
-   REALTYPE                  :: wq(0:nlev)
    logical                   :: call_adv
 !
 !-----------------------------------------------------------------------
@@ -164,15 +163,7 @@
 
 !  implement bottom friction as source term
    if (lake) then
-      call_adv = .false.
-      do i=1,nlev
-         wq(i) = FQ(i) / Af(i)
-         if (wq(i) .ne. _ZERO_) then
-            call_adv = .true.
-         end if
-      end do
-      wq(0   ) = _ZERO_
-      wq(nlev) = _ZERO_
+      call_adv = ANY( wq(1:nlev-1) .ne. _ZERO_ )
       !Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * h(nlev))
       if (call_adv) then
          call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,              &
