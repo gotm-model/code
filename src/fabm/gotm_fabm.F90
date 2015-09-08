@@ -820,18 +820,6 @@
          Qsour = _ZERO_
          Lsour = _ZERO_
 
-         ! Add stream (e.g., rivers) to source term that is to be used in diffusion solver.
-         if (associated(first_stream)) then
-            do k=1,nlev
-               if ( Qres(k).gt._ZERO_ .and. posconc(i).eq.1 ) then
-                  Qsour(k) = Qsour(k) + Qres(k)/(Ac(k)*curh(k))*cc(k,i)
-               else
-                  Lsour(k) = Lsour(k) + Qres(k)/(Ac(k)*curh(k))
-               end if
-            end do
-            call adv_center(nlev,dt,curh,curh,Ac,Af,wq,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
-         end if
-
          stream => first_stream
          do while (associated(stream))
 
@@ -869,6 +857,22 @@
 
             stream => stream%next
          end do
+
+         if (associated(first_stream)) then
+            do k=1,nlev
+               if ( Qres(k).gt._ZERO_ .and. posconc(i).eq.1 ) then
+                  Qsour(k) = Qsour(k) + Qres(k)/(Ac(k)*curh(k))*cc(k,i)
+               else
+                  Lsour(k) = Lsour(k) + Qres(k)/(Ac(k)*curh(k))
+               end if
+            end do
+            call adv_center(nlev,dt,curh,curh,Ac,Af,wq,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
+            cc(k,i) = ( cc(k,i) + dt*Qsour(k) ) / ( _ONE_ - dt*Lsour(k) )
+         end if
+
+         ! Add stream (e.g., rivers) to source term that is to be used in diffusion solver.
+         Qsour = _ZERO_
+         Lsour = _ZERO_
 
          ! Do diffusion step
          if (associated(cc_obs(i)%data)) then

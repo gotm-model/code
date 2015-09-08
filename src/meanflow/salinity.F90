@@ -149,17 +149,17 @@
 
 !  ... and from streams
    if (lake) then
-      do i=1,nlev
-         Qsour(i) = Qsour(i) + Qs(i)
-         Lsour(i) = Lsour(i) + Ls(i)
-         if ( Qres(i).gt._ZERO_ .and. posconc.eq.1 ) then
-            Qsour(i) = Qsour(i) + Qres(i)/(Ac(i)*h(i))*S(i)
-         else
-            Lsour(i) = Lsour(i) + Qres(i)/(Ac(i)*h(i))
-         end if
-      end do
       call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,               &
                       AdvSup,AdvSdw,w_adv_discr,1,S)
+      do i=1,nlev
+         if ( Qres(i).gt._ZERO_ .and. posconc.eq.1 ) then
+            Qs(i) = Qs(i) + Qres(i)/(Ac(i)*h(i))*S(i)
+         else
+            Ls(i) = Ls(i) + Qres(i)/(Ac(i)*h(i))
+         end if
+         S(i) = ( S(i) + dt*Qs(i) ) / ( _ONE_ - dt*Ls(i) )
+      end do
+
    end if
 
 !  do advection step
