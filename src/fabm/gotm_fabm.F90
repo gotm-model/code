@@ -859,15 +859,15 @@
          end do
 
          if (associated(first_stream)) then
+            call adv_center(nlev,dt,curh,curh,Ac,Af,wq,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
             do k=1,nlev
                if ( Qres(k).gt._ZERO_ .and. posconc(i).eq.1 ) then
                   Qsour(k) = Qsour(k) + Qres(k)/(Ac(k)*curh(k))*cc(k,i)
                else
                   Lsour(k) = Lsour(k) + Qres(k)/(Ac(k)*curh(k))
                end if
+               cc(k,i) = ( cc(k,i) + dt*Qsour(k) ) / ( _ONE_ - dt*Lsour(k) )
             end do
-            call adv_center(nlev,dt,curh,curh,Ac,Af,wq,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
-            cc(k,i) = ( cc(k,i) + dt*Qsour(k) ) / ( _ONE_ - dt*Lsour(k) )
          end if
 
          ! Add stream (e.g., rivers) to source term that is to be used in diffusion solver.
