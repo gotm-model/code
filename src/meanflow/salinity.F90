@@ -152,7 +152,7 @@
       call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,               &
                       AdvSup,AdvSdw,w_adv_discr,1,S)
       do i=1,nlev
-         if ( Qres(i).gt._ZERO_ .and. posconc.eq.1 ) then
+         if ( Qres(i) .gt. _ZERO_ ) then
             Qs(i) = Qs(i) + Qres(i)/(Ac(i)*h(i))*S(i)
          else
             Ls(i) = Ls(i) + Qres(i)/(Ac(i)*h(i))
