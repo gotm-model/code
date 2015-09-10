@@ -13,7 +13,7 @@
    use meanflow,      only: water_balance_method,WATER_BALANCE_NONE
    use meanflow,      only: WATER_BALANCE_SURFACE,WATER_BALANCE_ALLLAYERS
    use meanflow,      only: int_flows,net_water_balance,int_fwf
-   use meanflow,      only: lake,Af,Ac,h
+   use meanflow,      only: lake,Af,Ac,h,Vc
    use streams,       only: int_inflow,int_outflow
    use airsea,        only: int_net_precip,evap,precip
    use observations,  only: Q,Qres,FQ,wq
@@ -32,7 +32,6 @@
 !
 ! !LOCAL VARIABLES:
    integer              :: k
-   REALTYPE             :: Vc(0:nlev)
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -55,7 +54,6 @@
          case(WATER_BALANCE_SURFACE)
             Qres(nlev) = -net_water_balance
          case(WATER_BALANCE_ALLLAYERS)
-            Vc = Ac * h
             Qres = -net_water_balance * Vc / sum(Vc(1:nlev))
       end select
       ! calculate the vertical flux terms
