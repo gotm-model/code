@@ -188,14 +188,16 @@
 
 !  ... and from streams
    if (lake) then
-      call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,               &
-                      AdvTup,AdvTdw,w_adv_discr,1,T)
       do i=1,nlev
          if ( Qres(i) .gt. _ZERO_ ) then
             Qt(i) = Qt(i) + Qres(i)/(Ac(i)*h(i))*T(i)
          else
             Lt(i) = Lt(i) + Qres(i)/(Ac(i)*h(i))
          end if
+      end do
+      call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,               &
+                      AdvTup,AdvTdw,w_adv_discr,1,T)
+      do i=1,nlev
          T(i) = ( T(i) + dt*Qt(i) ) / ( _ONE_ - dt*Lt(i) )
       end do
    end if
