@@ -29,6 +29,9 @@
 !  coordinate z, layer thicknesses
    REALTYPE, public, dimension(:), allocatable, target  :: ga,z,zi,h,ho
 
+!  volume of cells
+   REALTYPE, public, dimension(:), allocatable, target  :: Vc
+
 !  the velocity components
    REALTYPE, public, dimension(:), allocatable, target  :: u,v,w
 
@@ -270,6 +273,10 @@
    if (rc /= 0) STOP 'init_meanflow: Error allocating (ho)'
    ho = _ZERO_
 
+   allocate(Vc(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Vc)'
+   Vc = _ZERO_
+
    allocate(u(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (u)'
    u = _ZERO_
@@ -421,6 +428,7 @@
    if (allocated(zi)) deallocate(zi)
    if (allocated(h)) deallocate(h)
    if (allocated(ho)) deallocate(ho)
+   if (allocated(Vc)) deallocate(Vc)
    if (allocated(u)) deallocate(u)
    if (allocated(uo)) deallocate(uo)
    if (allocated(v)) deallocate(v)
@@ -484,6 +492,7 @@
    if (allocated(zi))  LEVEL2 'zi',zi
    if (allocated(h))   LEVEL2 'h',h
    if (allocated(ho))  LEVEL2 'ho',ho
+   if (allocated(Vc))  LEVEL2 'Vc',Vc
    if (allocated(u))   LEVEL2 'u',u
    if (allocated(v))   LEVEL2 'v',v
    if (allocated(w))   LEVEL2 'w',w

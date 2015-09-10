@@ -14,7 +14,7 @@
 !  The hypsograph is only used if lake is true.
 !
 ! !USES
-   use meanflow, only: lake,depth0,depth,Ac,Af,hypsograph_file
+   use meanflow, only: lake,depth0,depth,zi,Ac,Af,Vc,hypsograph_file
    IMPLICIT NONE
    public                                :: init_hypsograph,clean_hypsograph
    public                                :: read_hypsograph,update_hypsograph
@@ -225,35 +225,13 @@
 ! !REVISION HISTORY:
 !  Original author(s): Lennart Schueler
 !
-!EOP
-!
 ! !LOCAL VARIABLES:
-   integer                   :: i
-   integer                   :: rc
-   REALTYPE                  :: zPrime(0:nlev+1)
-   REALTYPE                  :: prof  (0:nlev+1)
-!
+!EOP
 !-----------------------------------------------------------------------
 !BOC
-!  z' defined on the interfaces, not as z on the grid centers
-!  let it start at "1", because the gridinterpol-routine-loop starts at "1"
-!  hypsograph is defined at grid interfaces
-!  TODO: maybe we should use zi from meanflow ???
-   zPrime(nlev+1) = _ZERO_
-   zPrime(nlev) = -h(nlev)
-   do i = nlev-1, 1, -1
-      zPrime(i) = zPrime(i+1) - h(i)
-   end do
 
-!  interpolate hypsograph Af to grid interfaces used by GOTM
-   call gridinterpol(nlev_input+1,1,zi_input,Af_input,nlev+1,zPrime,prof)
-
-   do i = 0, nlev
-      Af(i) = prof(i+1)
-   end do
-
-!  interpolate hypsograph Ac to grid centres used by GOTM
-   call gridinterpol(nlev_input+1,1,zi_input,Af_input,nlev,z,Ac)
+   call zi2Vc(nlev,zi,Af,Vc(1:nlev))
+   Ac(1:nlev) = Vc(1:nlev) / h(1:nlev)
 
    end subroutine update_hypsograph
 !EOC
@@ -293,7 +271,7 @@
 ! !IROUTINE: Calculate volumes of layers
 !
 ! !INTERFACE:
-   subroutine zi2V(nlev,zi,Af,V)
+   subroutine zi2Vc(nlev,zi,Af,Vc)
 !
 ! !DESCRIPTION:
 !
@@ -306,7 +284,7 @@
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)     :: Af(0:nlev)
-   REALTYPE, intent(out)     :: V(1:nlev)
+   REALTYPE, intent(out)     :: Vc(1:nlev)
 !
 ! !REVISION HISTORY:
 !  Original author(s): Knut Klingbeil
@@ -321,14 +299,14 @@
 !BOC
 
    Af(0) = Af_input(0)
-   V = _ZERO_
+   Vc = _ZERO_
 
    dVfilled = _ZERO_
    ii = 1
 
    do i=1,nlev
       do while ( ii.lt.nlev_input .and. zi_input(ii).lt.zi(i) )
-         V(i) = V(i) + V_input(ii) - dVfilled
+         Vc(i) = Vc(i) + V_input(ii) - dVfilled
          dVfilled = _ZERO_
          ii = ii + 1
       end do
@@ -339,12 +317,12 @@
       sqrtAf = theta*sqrtAt + (1-theta)*sqrtAb
       Af(i) = sqrtAf * sqrtAf
       Vfrust = OneThird * hfrust * ( Af_input(ii-1) + sqrtAb*sqrtAf + Af(i) )
-      V(i) = V(i) + Vfrust - dVfilled
+      Vc(i) = Vc(i) + Vfrust - dVfilled
       dVfilled = Vfrust
    end do
 
    return
-   end subroutine zi2V
+   end subroutine zi2Vc
 !EOC
 
 !-----------------------------------------------------------------------
@@ -353,7 +331,7 @@
 ! !IROUTINE: Calculate layer heights
 !
 ! !INTERFACE:
-   subroutine V2zi(nlev,V,zi)
+   subroutine Vc2zi(nlev,Vc,zi)
 !
 ! !DESCRIPTION:
 !
@@ -362,7 +340,7 @@
 !
 ! !INPUT PARAMETERS:
    integer , intent(in)      :: nlev
-   REALTYPE, intent(in)      :: V(1:nlev)
+   REALTYPE, intent(in)      :: Vc(1:nlev)
 !
 ! !OUTPUT PARAMETERS:
    REALTYPE, intent(out)     :: zi(0:nlev)
@@ -386,12 +364,12 @@
 
    do i=1,nlev
       dVfilled = _ZERO_
-      do while ( ii.lt.nlev_input .and. V_input(ii)-Vfrust.lt.V(i)-dVfilled )
+      do while ( ii.lt.nlev_input .and. V_input(ii)-Vfrust.lt.Vc(i)-dVfilled )
          dVfilled = dVfilled + V_input(ii) - Vfrust
          Vfrust = _ZERO_
          ii = ii + 1
       end do
-      Vfrust = Vfrust + V(i) - dVfilled
+      Vfrust = Vfrust + Vc(i) - dVfilled
       theta = Vfrust / V_input(ii)
       sqrtAb = sqrt_Af_input(ii-1)
       sqrtAt = sqrt_Af_input(ii  )
@@ -401,7 +379,7 @@
    end do
 
    return
-   end subroutine V2zi
+   end subroutine Vc2zi
 !EOC
 
 !-----------------------------------------------------------------------
