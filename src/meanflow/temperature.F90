@@ -69,7 +69,7 @@
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
    use meanflow,     only: lake
-   use meanflow,     only: h,Ac,Af
+   use meanflow,     only: h,Vc,Af
    use meanflow,     only: u,v,w,T,S,avh
    use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
@@ -192,18 +192,18 @@
    if (lake) then
       net_precip = precip + evap
       if ( net_precip .gt. _ZERO_ ) then
-         Qt(nlev) = Qt(nlev) + net_precip*Af(nlev)/(Ac(nlev)*h(nlev))*T(nlev)
+         Qt(nlev) = Qt(nlev) + net_precip*Af(nlev)/Vc(nlev)*T(nlev)
       else
-         Lt(nlev) = Lt(nlev) + net_precip*Af(nlev)/(Ac(nlev)*h(nlev))
+         Lt(nlev) = Lt(nlev) + net_precip*Af(nlev)/Vc(nlev)
       end if
       do i=1,nlev
          if ( Qres(i) .gt. _ZERO_ ) then
-            Qt(i) = Qt(i) + Qres(i)/(Ac(i)*h(i))*T(i)
+            Qt(i) = Qt(i) + Qres(i)/Vc(i)*T(i)
          else
-            Lt(i) = Lt(i) + Qres(i)/(Ac(i)*h(i))
+            Lt(i) = Lt(i) + Qres(i)/Vc(i)
          end if
       end do
-      call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,               &
+      call adv_center(nlev,dt,h,h,Vc,Af,wq,AdvBcup,AdvBcdw,               &
                       AdvTup,AdvTdw,w_adv_discr,1,T)
       do i=1,nlev
          T(i) = ( T(i) + dt*Qt(i) ) / ( _ONE_ - dt*Lt(i) )
@@ -212,12 +212,12 @@
 
 !  do advection step
    if (w_adv_method.ne.0) then
-      call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,               &
+      call adv_center(nlev,dt,h,h,Vc,Af,w,AdvBcup,AdvBcdw,               &
                           AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
    end if
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,DiffBcup,DiffBcdw,    &
+   call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
                     DiffTup,DiffTdw,avh,Lsour,Qsour,TRelaxTau,tProf,T)
    return
    end subroutine temperature

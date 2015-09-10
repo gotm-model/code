@@ -115,7 +115,7 @@
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(:) :: nuh,h,Ac,Af,Qres,wq,bioshade,w,rho
+   REALTYPE,pointer,dimension(:) :: nuh,h,Vc,Af,Qres,wq,bioshade,w,rho
    REALTYPE,pointer,dimension(:) :: SRelaxTau,sProf,salt
    REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
 
@@ -570,7 +570,7 @@
 ! !IROUTINE: Set environment for FABM
 !
 ! !INTERFACE:
-   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,Ac_,Af_,Qres_,wq_,w_, &
+   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,Vc_,Af_,Qres_,wq_,w_, &
                                 bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
                                 yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
 !
@@ -582,7 +582,7 @@
    REALTYPE, intent(in),target :: latitude,longitude
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,Ac_,Af_,Qres_,wq_,w_,bioshade_,z_
+   REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,Vc_,Af_,Qres_,wq_,w_,bioshade_,z_
    REALTYPE, intent(in),target :: I_0_,cloud,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_
@@ -613,7 +613,7 @@
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
    h        => h_          ! layer heights [1d array] needed for advection, diffusion
-   Ac(0:)   => Ac_         ! hypsograph
+   Vc       => Vc_         ! volume of cells in water column
    Af(0:)   => Af_         ! hypsograph
    Qres     => Qres_
    wq       => wq_
@@ -803,10 +803,10 @@
       if (cc_transport(i)) then
          ! Do advection step due to settling or rising
          ws1d(1:nlev-1) = iweights(1:nlev-1)*ws(1:nlev-1,i) + (_ONE_-iweights(1:nlev-1))*ws(2:nlev,i)
-         call adv_center(nlev,dt,curh,curh,Ac,Af,ws1d,flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(:,i))
+         call adv_center(nlev,dt,curh,curh,Vc,Af,ws1d,flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(:,i))
 
          ! Do advection step due to vertical velocity
-         if (w_adv_method/=0) call adv_center(nlev,dt,curh,curh,Ac,Af,w,flux,flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(:,i))
+         if (w_adv_method/=0) call adv_center(nlev,dt,curh,curh,Vc,Af,w,flux,flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(:,i))
       end if
    end do
    call system_clock(clock_end)
@@ -837,7 +837,7 @@
 
                ! Calculate change in all layers due to stream
                do k=1,nlev
-                  Qsour(k) = Qsour(k) + stream_conc * stream%Q(k) / (Ac(k) * curh(k))
+                  Qsour(k) = Qsour(k) + stream_conc * stream%Q(k) / Vc(k)
                end do
 
             else
@@ -845,11 +845,11 @@
                if (associated(stream%cc(i)%data)) then
                   stream_conc = stream%cc(i)%data
                   do k=1,nlev
-                     Qsour(k) = Qsour(k) + stream_conc * stream%Q(k) / (Ac(k) * curh(k))
+                     Qsour(k) = Qsour(k) + stream_conc * stream%Q(k) / Vc(k)
                   end do
                else
                   do k=1,nlev
-                     Lsour(k) = Lsour(k) +               stream%Q(k) / (Ac(k) * curh(k))
+                     Lsour(k) = Lsour(k) +               stream%Q(k) / Vc(k)
                   end do
                end if
 
@@ -861,12 +861,12 @@
          if (associated(first_stream)) then
             do k=1,nlev
                if ( Qres(k) .gt. _ZERO_ ) then
-                  Qsour(k) = Qsour(k) + Qres(k)/(Ac(k)*curh(k))*cc(k,i)
+                  Qsour(k) = Qsour(k) + Qres(k)/Vc(k)*cc(k,i)
                else
-                  Lsour(k) = Lsour(k) + Qres(k)/(Ac(k)*curh(k))
+                  Lsour(k) = Lsour(k) + Qres(k)/Vc(k)
                end if
             end do
-            call adv_center(nlev,dt,curh,curh,Ac,Af,wq,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
+            call adv_center(nlev,dt,curh,curh,Vc,Af,wq,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
             do k=1,nlev
                cc(k,i) = ( cc(k,i) + dt*Qsour(k) ) / ( _ONE_ - dt*Lsour(k) )
             end do
@@ -879,11 +879,11 @@
          ! Do diffusion step
          if (associated(cc_obs(i)%data)) then
    !        Observations on this variable are available.
-            call diff_center(nlev,dt,cnpar,posconc(i),curh,Ac,Af,Neumann,Neumann,&
+            call diff_center(nlev,dt,cnpar,posconc(i),curh,Vc,Af,Neumann,Neumann,&
                sfl(i),bfl(i),curnuh,Lsour,Qsour,cc_obs(i)%relax_tau,cc_obs(i)%data,cc(:,i))
          else
    !        Observations on this variable are not available.
-            call diff_center(nlev,dt,cnpar,posconc(i),curh,Ac,Af,Neumann,Neumann,&
+            call diff_center(nlev,dt,cnpar,posconc(i),curh,Vc,Af,Neumann,Neumann,&
                sfl(i),bfl(i),curnuh,Lsour,Qsour,DefaultRelaxTau,cc(:,i),cc(:,i))
          end if
       end if

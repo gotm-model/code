@@ -190,7 +190,7 @@
 ! !ROUTINE: calculate streams
 !
 ! !INTERFACE:
-   subroutine update_streams(nlev,dt,S,T,z,zi,h,Ac,Qs,Qt,Ls,Lt,Q)
+   subroutine update_streams(nlev,dt,S,T,z,zi,h,Vc,Qs,Qt,Ls,Lt,Q)
 !
 ! !DESCRIPTION:
 !  Calculates the depth where the stream occurs and
@@ -207,7 +207,7 @@
    integer, intent(in)                    :: nlev
    REALTYPE, intent(in)                   :: dt
    REALTYPE, intent(in)                   :: S(0:nlev), T(0:nlev)
-   REALTYPE,dimension(0:nlev),intent(in)  :: z,zi,h,Ac
+   REALTYPE,dimension(0:nlev),intent(in)  :: z,zi,h,Vc
    REALTYPE,dimension(0:nlev),intent(inout) :: Qs,Qt,Ls,Lt,Q
 !
 ! !LOCAL VARIABLES:
@@ -326,7 +326,7 @@
          int_inflow = int_inflow + dt*current_stream%QI
 
          do n=1,nlev
-            invV = _ONE_/(Ac(n) * h(n))
+            invV = _ONE_/Vc(n)
             Qt(n) = Qt(n) + TI * current_stream%Q(n) * invV
             Qs(n) = Qs(n) + SI * current_stream%Q(n) * invV
          end do
@@ -337,23 +337,23 @@
 
          if (current_stream%has_T) then
             do n=1,nlev
-               invV = _ONE_/(Ac(n) * h(n))
+               invV = _ONE_/Vc(n)
                Qt(n) = Qt(n) + TI * current_stream%Q(n) * invV
             end do
          else
             do n=1,nlev
-               invV = _ONE_/(Ac(n) * h(n))
+               invV = _ONE_/Vc(n)
                Lt(n) = Lt(n) + current_stream%Q(n) * invV
             end do
          end if
          if (current_stream%has_S) then
             do n=1,nlev
-               invV = _ONE_/(Ac(n) * h(n))
+               invV = _ONE_/Vc(n)
                Qs(n) = Qs(n) + SI * current_stream%Q(n) * invV
             end do
          else
             do n=1,nlev
-               invV = _ONE_/(Ac(n) * h(n))
+               invV = _ONE_/Vc(n)
                Ls(n) = Ls(n) + current_stream%Q(n) * invV
             end do
          end if

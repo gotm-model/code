@@ -65,7 +65,7 @@
 ! !USES:
    use meanflow,     only: avmols
    use meanflow,     only: lake
-   use meanflow,     only: h,Ac,Af
+   use meanflow,     only: h,Vc,Af
    use meanflow,     only: u,v,w,S,avh
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
@@ -156,12 +156,12 @@
    if (lake) then
       do i=1,nlev
          if ( Qres(i) .gt. _ZERO_ ) then
-            Qs(i) = Qs(i) + Qres(i)/(Ac(i)*h(i))*S(i)
+            Qs(i) = Qs(i) + Qres(i)/Vc(i)*S(i)
          else
-            Ls(i) = Ls(i) + Qres(i)/(Ac(i)*h(i))
+            Ls(i) = Ls(i) + Qres(i)/Vc(i)
          end if
       end do
-      call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,               &
+      call adv_center(nlev,dt,h,h,Vc,Af,wq,AdvBcup,AdvBcdw,               &
                       AdvSup,AdvSdw,w_adv_discr,1,S)
       do i=1,nlev
          S(i) = ( S(i) + dt*Qs(i) ) / ( _ONE_ - dt*Ls(i) )
@@ -171,12 +171,12 @@
 
 !  do advection step
    if (w_adv_method.ne.0) then
-      call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,               &
+      call adv_center(nlev,dt,h,h,Vc,Af,w,AdvBcup,AdvBcdw,               &
                           AdvSup,AdvSdw,w_adv_discr,adv_mode,S)
    end if
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,DiffBcup,DiffBcdw,    &
+   call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
                     DiffSup,DiffSdw,avh,LSour,Qsour,SRelaxTau,sProf,S)
 
    return

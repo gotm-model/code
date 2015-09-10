@@ -60,7 +60,7 @@
    use meanflow,      only: u,v,rho_0,gravity
    use meanflow,      only: u_taub,u_taus,drag,taub
    use meanflow,      only: charnock,charnock_val,z0s_min
-   use meanflow,      only: lake,Af,Ac
+   use meanflow,      only: lake,Af,Vc
 
 !
    IMPLICIT NONE
@@ -129,7 +129,7 @@
       end if
 
 !     add bottom friction as source term for the momentum equation
-      drag(j) = drag(j) +  rr*rr * ( Af(j) - Af(j-1) ) / Ac(j)
+      drag(j) = drag(j) +  rr*rr * ( Af(j) - Af(j-1) ) / Vc(j) * h(j)
    end do
 
    drag(1) = drag(1) + rr*rr

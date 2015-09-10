@@ -51,7 +51,7 @@
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
 ! !USES:
-   use meanflow,      only: h,Ac,Af
+   use meanflow,      only: h,Vc,Af
    use meanflow,      only: w,buoy,T,avh,init_buoyancy
    use meanflow,      only: grid_method
    use observations,  only: b_obs_NN,b_obs_surf,b_obs_sbf
@@ -135,12 +135,12 @@
 
 !  do advection step
    if (w_adv_method .ne. 0) then
-      call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,              &
+      call adv_center(nlev,dt,h,h,Vc,Af,w,AdvBcup,AdvBcdw,              &
                       AdvBup,AdvBdw,w_adv_discr,adv_mode,buoy)
    end if
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,DiffBcup,DiffBcdw,    &
+   call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
                     DiffBup,DiffBdw,avh,Lsour,Qsour,                    &
                     BRelaxTau,buoy,buoy)
 

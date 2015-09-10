@@ -5,7 +5,7 @@
 ! !ROUTINE: Advection schemes --- grid centers\label{sec:advectionMean}
 !
 ! !INTERFACE:
-   subroutine adv_center(N,dt,h,ho,Ac,Af,ww,Bcup,Bcdw,Yup,Ydw,method,mode,Y)
+   subroutine adv_center(N,dt,h,ho,Vc,Af,ww,Bcup,Bcdw,Yup,Ydw,method,mode,Y)
 !
 ! !DESCRIPTION:
 !
@@ -176,7 +176,7 @@
    REALTYPE, intent(in)                :: ho(0:N)
 
 !  hypsograph at grid centre
-   REALTYPE, intent(in)                :: Ac(0:N)
+   REALTYPE, intent(in)                :: Vc(0:N)
 
 !  hypsograph at grid face
    REALTYPE, intent(in)                :: Af(0:N)
@@ -387,7 +387,7 @@
          enddo
       else                ! conservative
          do k=1,N
-            Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/(Ac(k)*h(k)))
+            Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/Vc(k))
          enddo
       end if
 

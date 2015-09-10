@@ -108,7 +108,7 @@
    integer, private          :: ncdf_time_unit
    integer, private          :: start(4),edges(4)
    logical,private           :: GrADS
-   integer, private          :: Ac_id,Af_id
+   integer, private          :: Af_id
    integer, private          :: total_salt_id
    integer, private          :: Q_id,Qs_id, Qt_id
    integer, private          :: wq_id
@@ -310,8 +310,6 @@
    iret = nf90_def_var(ncid,'temp_obs',NF90_REAL,dim4d,temp_obs_id)
    call check_err(iret)
    if (lake) then
-      iret = nf90_def_var(ncid,'Ac',NF90_REAL,dim4d,Ac_id)
-      call check_err(iret)
       iret = nf90_def_var(ncid,'Af',NF90_REAL,dim4d,Af_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
@@ -525,8 +523,6 @@
    iret = set_attributes(ncid,temp_id,units='celsius',long_name='temperature')
    iret = set_attributes(ncid,temp_obs_id,units='celsius',long_name='obs. temperature')
    if (lake) then
-      iret = set_attributes(ncid,Ac_id,units='m2', &
-                            long_name='hypsograph at grid centres')
       iret = set_attributes(ncid,Af_id,units='m2', &
                             long_name='hypsograph at grid interfaces')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
@@ -665,7 +661,7 @@
    use meanflow,     only: int_flows,int_fwf
    use meanflow,     only: lake
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
-   use meanflow,     only: h,Ac,Af
+   use meanflow,     only: h,Vc,Af
    use meanflow,     only: u,v,z,S,rad,T,buoy,SS,NN
    use turbulence,   only: P,B,Pb
    use turbulence,   only: num,nuh,nus
@@ -777,7 +773,7 @@
    if (lake) then
       dum(1) = 0
       do i=1,nlev
-         dum(1) = dum(1) + Ac(i) * S(i) * h(i)
+         dum(1) = dum(1) + Vc(i) * S(i)
       end do
       iret = store_data(ncid,total_salt_id,XYT_SHAPE,1,scalar=dum(1))
 
@@ -822,7 +818,6 @@
    iret = store_data(ncid,temp_id,XYZT_SHAPE,nlev,array=T)
    iret = store_data(ncid,temp_obs_id,XYZT_SHAPE,nlev,array=tprof)
    if (lake) then
-      iret = store_data(ncid,Ac_id,XYZT_SHAPE,nlev,array=Ac)
       iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
       if (associated(first_stream)) then
          iret = store_data(ncid,Q_id,XYZT_SHAPE,nlev,array=Q)

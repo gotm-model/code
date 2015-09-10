@@ -68,7 +68,7 @@
 ! !USES:
    use meanflow,     only: gravity,avmolu
    use meanflow,     only: lake
-   use meanflow,     only: h,Ac,Af
+   use meanflow,     only: h,Vc,Af
    use meanflow,     only: u,uo,v,w,avh
    use meanflow,     only: drag,SS,runtimeu
    use observations, only: w_adv_method,w_adv_discr
@@ -186,21 +186,20 @@
 !  implement bottom friction as source term
    if (lake) then
       call_adv = ANY( wq(1:nlev-1) .ne. _ZERO_ )
-      !Lsour(nlev) = Lsour(nlev) - FQ(nlev) / (Ac(nlev) * h(nlev))
       if (call_adv) then
-         call adv_center(nlev,dt,h,h,Ac,Af,wq,AdvBcup,AdvBcdw,              &
+         call adv_center(nlev,dt,h,h,Vc,Af,wq,AdvBcup,AdvBcdw,              &
                          AdvUup,AdvUdw,1,1,U)
       end if
    end if
 
 !  do advection step
    if (w_adv_method.ne.0) then
-      call adv_center(nlev,dt,h,h,Ac,Af,w,AdvBcup,AdvBcdw,              &
+      call adv_center(nlev,dt,h,h,Vc,Af,w,AdvBcup,AdvBcdw,              &
                       AdvUup,AdvUdw,w_adv_discr,adv_mode,U)
    end if
 
 !  do diffusion step
-   call diff_center(nlev,dt,cnpar,posconc,h,Ac,Af,DiffBcup,DiffBcdw,    &
+   call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &
                     DiffUup,DiffUdw,avh,Lsour,Qsour,URelaxTau,uProf,U)
 
 

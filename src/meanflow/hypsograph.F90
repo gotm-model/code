@@ -14,7 +14,7 @@
 !  The hypsograph is only used if lake is true.
 !
 ! !USES
-   use meanflow, only: lake,depth0,depth,zi,Ac,Af,Vc,hypsograph_file
+   use meanflow, only: lake,depth0,depth,zi,Vc,Af,hypsograph_file
    IMPLICIT NONE
    public                                :: init_hypsograph,clean_hypsograph
    public                                :: read_hypsograph,update_hypsograph
@@ -62,10 +62,6 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   !always allocate memory for Ac, Af so that diff_center() works
-   allocate(Ac(0:nlev),stat=rc)
-   if (rc /= 0) stop 'init_hypsograph: Error allocating (Ac)'
-   Ac = _ONE_
    allocate(Af(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_hypsograph: Error allocating (Af)'
    Af = _ONE_
@@ -231,7 +227,6 @@
 !BOC
 
    call zi2Vc(nlev,zi,Af,Vc(1:nlev))
-   Ac(1:nlev) = Vc(1:nlev) / h(1:nlev)
 
    end subroutine update_hypsograph
 !EOC
@@ -258,7 +253,6 @@
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   if (allocated(Ac)) deallocate(Ac)
    if (allocated(Af)) deallocate(Af)
 
    return
