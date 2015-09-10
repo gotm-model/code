@@ -114,9 +114,8 @@
 !  variables needed for the lake model
    logical, public                               :: lake
    CHARACTER(LEN=PATH_MAX), public               :: hypsograph_file
-!  the hypsograph at the grid centers Ac, at the interfaces Af and the
-!  derivative wrt. z dAdz
-   REALTYPE, public, dimension(:), allocatable   :: Ac,Af,dAdz
+!  the hypsograph at the grid centers Ac, at the interfaces Af
+   REALTYPE, public, dimension(:), allocatable   :: Ac,Af
    integer,  public, parameter                   :: WATER_BALANCE_NONE=0
    integer,  public, parameter                   :: WATER_BALANCE_SURFACE=1
    integer,  public, parameter                   :: WATER_BALANCE_ALLLAYERS=2

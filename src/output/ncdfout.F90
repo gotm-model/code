@@ -108,7 +108,7 @@
    integer, private          :: ncdf_time_unit
    integer, private          :: start(4),edges(4)
    logical,private           :: GrADS
-   integer, private          :: Ac_id,Af_id,dAdz_id
+   integer, private          :: Ac_id,Af_id
    integer, private          :: total_salt_id
    integer, private          :: Q_id,Qs_id, Qt_id
    integer, private          :: wq_id
@@ -313,8 +313,6 @@
       iret = nf90_def_var(ncid,'Ac',NF90_REAL,dim4d,Ac_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'Af',NF90_REAL,dim4d,Af_id)
-      call check_err(iret)
-      iret = nf90_def_var(ncid,'dAdz',NF90_REAL,dim4d, dAdz_id)
       call check_err(iret)
       iret = nf90_def_var(ncid,'total salt',NF90_REAL,dim3d,total_salt_id)
       call check_err(iret)
@@ -531,7 +529,6 @@
                             long_name='hypsograph at grid centres')
       iret = set_attributes(ncid,Af_id,units='m2', &
                             long_name='hypsograph at grid interfaces')
-      iret = set_attributes(ncid,dAdz_id,units='m',long_name='slope of hypsograph')
       iret = set_attributes(ncid,total_salt_id,units='kg',long_name='total mass of salt')
       if (nstreams>0) then
          iret = set_attributes(ncid,Q_id,units='m^3/s', &
@@ -668,7 +665,7 @@
    use meanflow,     only: int_flows,int_fwf
    use meanflow,     only: lake
    use meanflow,     only: depth0,u_taub,u_taus,rho_0,gravity
-   use meanflow,     only: h,Ac,Af,dAdz
+   use meanflow,     only: h,Ac,Af
    use meanflow,     only: u,v,z,S,rad,T,buoy,SS,NN
    use turbulence,   only: P,B,Pb
    use turbulence,   only: num,nuh,nus
@@ -827,7 +824,6 @@
    if (lake) then
       iret = store_data(ncid,Ac_id,XYZT_SHAPE,nlev,array=Ac)
       iret = store_data(ncid,Af_id,XYZT_SHAPE,nlev,array=Af)
-      iret = store_data(ncid,dAdz_id,XYZT_SHAPE,nlev,array=dAdz)
       if (associated(first_stream)) then
          iret = store_data(ncid,Q_id,XYZT_SHAPE,nlev,array=Q)
          iret = store_data(ncid,Qs_id,XYZT_SHAPE,nlev,array=Qs)

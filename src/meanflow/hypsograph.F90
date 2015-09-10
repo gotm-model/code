@@ -14,7 +14,7 @@
 !  The hypsograph is only used if lake is true.
 !
 ! !USES
-   use meanflow, only: lake,depth0,depth,Ac,Af,dAdz,hypsograph_file
+   use meanflow, only: lake,depth0,depth,Ac,Af,hypsograph_file
    IMPLICIT NONE
    public                                :: init_hypsograph,clean_hypsograph
    public                                :: read_hypsograph,update_hypsograph
@@ -74,9 +74,6 @@
       LEVEL2 'reading hypsograph from:'
       LEVEL3 trim(hypsograph_file)
       lake = .true.
-      allocate(dAdz(0:nlev),stat=rc)
-      if (rc /= 0) stop 'init_hypsograph: Error allocating (dAdz)'
-      dAdz = _ZERO_
       open(hypsograph_unit,file=hypsograph_file,status='unknown',err=112)
       call read_hypsograph(hypsograph_unit,rc)
       if (depth .ne. -zi_input(0)) then
@@ -258,12 +255,6 @@
 !  interpolate hypsograph Ac to grid centres used by GOTM
    call gridinterpol(nlev_input+1,1,zi_input,Af_input,nlev,z,Ac)
 
-!  calculate the derivative of the hypsograph wrt z
-!  dAdz is defined at the grid centres
-   do i = 1, nlev
-      dAdz(i) = (Af(i) - Af(i-1)) / (h(i))
-   end do
-
    end subroutine update_hypsograph
 !EOC
 
@@ -291,7 +282,6 @@
 !BOC
    if (allocated(Ac)) deallocate(Ac)
    if (allocated(Af)) deallocate(Af)
-   if (allocated(dAdz)) deallocate(dAdz)
 
    return
    end subroutine clean_hypsograph

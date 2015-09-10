@@ -92,8 +92,6 @@
 
 !  iterate bottom roughness length MaxItz0b times
 !  for lake model the friction has to be calculacted at every depth
-!  drag(j) = drag(j) * dAdz(j)/Ac(j) is done implicitly when solving
-!  the diffusion equation, see u-,v-equation.F90 and diff_center_hypso.F90
    if (lake) then
       j_max = SIZE(h) - 1
    else
