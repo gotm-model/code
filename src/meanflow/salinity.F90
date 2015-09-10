@@ -116,7 +116,12 @@
 !  set boundary conditions
    DiffBcup       = Neumann
    DiffBcdw       = Neumann
-   DiffSup        = -S(nlev)*(precip+evap)
+   if (lake) then
+!     (ZERO) salt flux due to evap and precip already accounted for in advection
+      DiffSup     = _ZERO_
+   else
+      DiffSup     = -S(nlev)*(precip+evap)
+   end if
    DiffSdw        = _ZERO_
 
    AdvBcup       = oneSided

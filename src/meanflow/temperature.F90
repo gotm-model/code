@@ -77,6 +77,7 @@
    use observations, only: tprof,TRelaxTau
    use observations, only: A,g1,g2
    use observations, only: Qt, Lt, Qres, wq
+   use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
    use util,         only: oneSided,zeroDivergence
 
@@ -126,6 +127,7 @@
    REALTYPE                  :: Lsour(0:nlev)
    REALTYPE                  :: Qsour(0:nlev)
    REALTYPE                  :: z
+   REALTYPE                  :: net_precip
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -188,6 +190,12 @@
 
 !  ... and from streams
    if (lake) then
+      net_precip = precip + evap
+      if ( net_precip .gt. _ZERO_ ) then
+         Qt(nlev) = Qt(nlev) + net_precip*Af(nlev)/(Ac(nlev)*h(nlev))*T(nlev)
+      else
+         Lt(nlev) = Lt(nlev) + net_precip*Af(nlev)/(Ac(nlev)*h(nlev))
+      end if
       do i=1,nlev
          if ( Qres(i) .gt. _ZERO_ ) then
             Qt(i) = Qt(i) + Qres(i)/(Ac(i)*h(i))*T(i)
