@@ -772,6 +772,7 @@
    ! as biogeochemical processes that cause surface fluxes are handled as part of the sink/source terms.
    sfl = _ZERO_
 
+   if (.not. associated(first_stream)) then
    ! Calculate dilution due to surface freshwater flux (m/s)
    dilution = precip+evap
 
@@ -793,6 +794,7 @@
          if (virtual_dilution/=_ZERO_) sfl(i) = sfl(i)-sum(cc(1:nlev,i)*curh(1:nlev))*virtual_dilution
       end if
    end do
+   end if
 
    ! Vertical advection and residual movement (sinking/floating)
    ws1d(0   ) = _ZERO_
