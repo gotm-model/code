@@ -142,10 +142,10 @@
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
-   integer, intent(in)                  :: namlst
-   character(len=*), intent(in)         :: fn
-   integer, intent(in)                  :: nlev
-   REALTYPE, intent(in)                 :: latitude
+   integer, intent(in)                      :: namlst
+   character(len=*), intent(in)             :: fn
+   integer, intent(in)                      :: nlev
+   REALTYPE, intent(in)                     :: latitude
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding & Hans Burchard
@@ -330,7 +330,7 @@
 
    allocate(bioshade(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (bioshade)'
-   bioshade= _ONE_
+   bioshade = _ONE_
 
 # ifdef EXTRA_OUTPUT
 

@@ -39,6 +39,8 @@
 			</element>
 		</element>
 		<element name="output" label="format for output and filename(s)">
+			<element name="list_fields" type="bool" label="list registrated variables in the GOTM configuration">
+			</element>
 			<element name="out_fmt" type="int" label="format for GOTM output">
 				<options>
 					<option value="1" label="ASCII" />

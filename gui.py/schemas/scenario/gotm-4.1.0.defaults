@@ -13,6 +13,7 @@
 			<timefmt>2</timefmt>
 		</time>
 		<output>
+			<list_fields>False</list_fields>
 			<out_fmt>2</out_fmt>
 			<out_dir>.</out_dir>
 			<out_fn>gotland</out_fn>
