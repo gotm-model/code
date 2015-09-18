@@ -50,7 +50,7 @@ if(GOTM_USE_FLEXIBLE_OUTPUT)
   add_definitions(-D_FLEXIBLE_OUTPUT_)
 endif()
 
-if(NOT GOTM_BUILD_LIBRARIES_ONLY)
+if(NOT GOTM_BUILD_LIBRARIES_ONLY OR GOTM_USE_FLEXIBLE_OUTPUT)
   option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
   if(GOTM_USE_NetCDF)
     find_package(NetCDF REQUIRED)
@@ -62,7 +62,7 @@ if(NOT GOTM_BUILD_LIBRARIES_ONLY)
       add_compile_options("/libs:static")
     endif()
   endif(GOTM_USE_NetCDF)
-endif(NOT GOTM_BUILD_LIBRARIES_ONLY)
+endif()
 
 # Global include directories
 include_directories(BEFORE "${CMAKE_BINARY_DIR}"
