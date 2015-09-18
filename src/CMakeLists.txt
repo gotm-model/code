@@ -45,7 +45,12 @@ if(GOTM_EXTRA_OUTPUT)
   add_definitions(-DEXTRA_OUTPUT)
 endif()
 
-if(NOT GOTM_BUILD_LIBRARIES_ONLY)
+option(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON)
+if(GOTM_USE_FLEXIBLE_OUTPUT)
+  add_definitions(-D_FLEXIBLE_OUTPUT_)
+endif()
+
+if(NOT GOTM_BUILD_LIBRARIES_ONLY OR GOTM_USE_FLEXIBLE_OUTPUT)
   option(GOTM_USE_NetCDF "Enable output in NetCDF format" ON)
   if(GOTM_USE_NetCDF)
     find_package(NetCDF REQUIRED)
@@ -57,7 +62,7 @@ if(NOT GOTM_BUILD_LIBRARIES_ONLY)
       add_compile_options("/libs:static")
     endif()
   endif(GOTM_USE_NetCDF)
-endif(NOT GOTM_BUILD_LIBRARIES_ONLY)
+endif()
 
 # Global include directories
 include_directories(BEFORE "${CMAKE_BINARY_DIR}"
@@ -78,6 +83,7 @@ add_library(util
             util/time.F90
             util/tridiagonal.F90
             util/util.F90
+            util/field_manager.F90
            )
 set_property(TARGET util PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 
@@ -172,6 +178,18 @@ if(GOTM_USE_FABM)
   set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
   add_definitions(-D_FABM_)
   target_link_libraries(gotm_fabm ${FABM_LIBRARIES})
+
+  if(GOTM_USE_FLEXIBLE_OUTPUT)
+    add_library(output_manager
+                output/output_manager.F90
+                output/output_manager_core.F90
+                output/netcdf_output.F90
+               )
+    target_link_libraries(output_manager util ${FABM_LIBRARIES})
+    set_property(TARGET output_manager APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+    set_property(TARGET output_manager PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+    set_property(TARGET output_manager PROPERTY FOLDER gotm)
+  endif(GOTM_USE_FLEXIBLE_OUTPUT)
 else()
   mark_as_advanced(FORCE FABM_PREFIX FABM_BASE)
 endif(GOTM_USE_FABM)
@@ -227,19 +245,29 @@ add_library(meanflow OBJECT
            )
 add_dependencies(meanflow util observations airsea)
 
-add_library(output OBJECT
-            output/asciiout.F90
-            output/ncdfout.F90
-            output/output.F90
-           )
-add_dependencies(output util meanflow turbulence observations airsea)
+if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
+  add_library(output OBJECT
+              output/asciiout.F90
+              output/ncdfout.F90
+              output/output.F90
+             )
+  add_dependencies(output util meanflow turbulence observations airsea)
+  set_property(TARGET output PROPERTY FOLDER gotm)
+endif(GOTM_USE_FLEXIBLE_OUTPUT)
 
 add_library(gotm OBJECT
             gotm/gotm.F90
+            gotm/register_all_variables.F90
            )
-add_dependencies(gotm input output util meanflow turbulence observations airsea)
+add_dependencies(gotm input util meanflow turbulence observations airsea)
+if(GOTM_USE_FLEXIBLE_OUTPUT)
+  add_dependencies(gotm output_manager)
+else()
+  add_dependencies(gotm output)
+  set(EXTRA_SRCS ${EXTRA_SRCS} $<TARGET_OBJECTS:output>)
+endif()
 
-set_property(TARGET input airsea observations meanflow output gotm PROPERTY FOLDER gotm)
+set_property(TARGET input airsea observations meanflow gotm PROPERTY FOLDER gotm)
 
 #option(GOTM_USE_ICE "Include ICE support" OFF)
 #if(GOTM_USE_ICE)
@@ -260,12 +288,19 @@ if(GOTM_USE_SEAGRASS)
 endif()
 
 if(GOTM_USE_FABM)
-  add_library(gotm_fabm_io
-              fabm/gotm_fabm_input.F90
-              fabm/gotm_fabm_output.F90
-             )
+  if(GOTM_USE_FLEXIBLE_OUTPUT)
+    add_library(gotm_fabm_io
+                fabm/gotm_fabm_input.F90
+               )
+  else()
+    add_library(gotm_fabm_io
+                fabm/gotm_fabm_input.F90
+                fabm/gotm_fabm_output.F90
+               )
+    add_dependencies(gotm_fabm_io output)
+  endif()
   set_property(TARGET gotm_fabm_io APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-  add_dependencies(gotm_fabm_io input output gotm_fabm)
+  add_dependencies(gotm_fabm_io input gotm_fabm)
   add_dependencies(gotm gotm_fabm gotm_fabm_io)
   set_property(TARGET gotm APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set_property(TARGET gotm_fabm_io PROPERTY FOLDER gotm)
@@ -278,12 +313,14 @@ add_executable(gotm_exe
                $<TARGET_OBJECTS:airsea>
                $<TARGET_OBJECTS:meanflow>
                $<TARGET_OBJECTS:observations>
-               $<TARGET_OBJECTS:output>
                $<TARGET_OBJECTS:input>
                ${EXTRA_SRCS}
               )
 set_property(TARGET gotm_exe PROPERTY OUTPUT_NAME "gotm")
 target_link_libraries(gotm_exe turbulence util)
+if(GOTM_USE_FLEXIBLE_OUTPUT)
+  target_link_libraries(gotm_exe output_manager)
+endif()
 
 if(GOTM_USE_NetCDF)
   target_link_libraries(gotm_exe "${NetCDF_LIBRARIES}")
