@@ -2,34 +2,93 @@
 !-----------------------------------------------------------------------
 !BOP
 !
-! !ROUTINE: Variable registration 
+! !MODULE: register_all_variables
 !
 ! !INTERFACE:
-   subroutine register_all_variables(lat,lon,nlev,fm)
+   module register_all_variables
 !
 ! !DESCRIPTION:
 !
 ! !USES:
    use field_manager
-   use airsea_variables, only: es,ea,qs,qa,rhoa
-   use airsea
-   use meanflow
-   use turbulence
+   IMPLICIT NONE
+!
+!  default: all is private.
+   private
+!
+! !PUBLIC MEMBER FUNCTIONS:
+   public :: do_register_all_variables
+!
+! !PUBLIC DATA MEMBERS:
+   type (type_field_manager), public, target :: fm
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Jorn Bruggeman
+!
+! !PRIVATE DATA MEMBERS
+   integer :: N=0
+!
+!-----------------------------------------------------------------------
+
+   contains
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !ROUTINE: do_register_all_variables
+!
+! !INTERFACE:
+   subroutine do_register_all_variables(lat,lon,nlev)
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !DESCRIPTION:
+!
+! !INPUT PARAMETERS:
+   REALTYPE, intent(in)                :: lat,lon
+   integer, intent(in)                 :: nlev
+!
+! !REVISION HISTORY:
+!  Original author(s): Karsten Bolding & Jorn Bruggeman
+!
+! !LOCAL VARIABLES:
+!EOP
+!-------------------------------------------------------------------------
+!BOC
+   LEVEL1 'register_all_variables()'
+   call register_coordinate_variables(lat,lon,nlev)
+   call register_airsea_variables(nlev)
+!   call register_observation_variables(nlev)
+   call register_stream_variables(nlev)
+   call register_meanflow_variables(nlev)
+   call register_turbulence_variables(nlev)
+!   LEVEL2 'registrated ',N,'variables'
+   return
+   end subroutine do_register_all_variables
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+! !IROUTINE: Coordinate variable registration 
+!
+! !INTERFACE:
+   subroutine register_coordinate_variables(lat,lon,nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    REALTYPE, intent(in) :: lat,lon
    integer, intent(in)  :: nlev
-
-! !INPUT/OUTPUT PARAMETERS:
-!KB   class (type_field_manager), target intent(inout) :: fm
-   type (type_field_manager), target :: fm
 !
 ! !LOCAL VARIABLES:
 !EOP
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'register_all_variables()'
+   LEVEL2 'register_coordinate_variables()'
 
 !  register - dimension
    call fm%register_dimension('lon',1,id=id_dim_lon)
@@ -38,18 +97,44 @@
    call fm%register_dimension('z1',nlev,id=id_dim_z1)
    call fm%register_dimension('time',id=id_dim_time)
    call fm%initialize(prepend_by_default=(/id_dim_lon,id_dim_lat/),append_by_default=(/id_dim_time/))
-
    call fm%register('lon','degrees_east','longitude',dimensions=(/id_dim_lon/),no_default_dimensions=.true.,data0d=lon,coordinate_dimension=id_dim_lon)
    call fm%register('lat','degrees_north','latitude',dimensions=(/id_dim_lat/),no_default_dimensions=.true.,data0d=lat,coordinate_dimension=id_dim_lat)
+!  register - fabm
+!         call fm%register(model%state_variables(i)%name, model%state_variables(i)%units, &
+!         call fm%register(model%bottom_state_variables(i)%name, model%bottom_state_variables(i)%units, &
+!         call fm%register(model%surface_state_variables(i)%name, model%surface_state_variables(i)%units, &
+   return
+   end subroutine register_coordinate_variables
+!EOC
 
-!  register - airsea_variables
+!-----------------------------------------------------------------------
+!BOP
+! !IROUTINE: airsea variable registration 
+!
+! !INTERFACE:
+   subroutine register_airsea_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use airsea_variables, only: es,ea,qs,qa,rhoa
+   use airsea
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_airsea_variables()'
    call fm%register('es', 'Pascal', 'saturation water vapor pressure', standard_name='', data0d=es)
    call fm%register('ea', 'Pascal', 'actual water vapor presure', standard_name='', data0d=ea)
    call fm%register('qs', 'kg/kg', 'saturation specific humidity', standard_name='', data0d=qs)
    call fm%register('qa', 'kg/kg', 'specific humidity', standard_name='', data0d=qa)
    call fm%register('rhoa', 'kg/m3', 'air density', standard_name='', data0d=rhoa)
 
-!  register - airsea
    call fm%register('I_0', 'W/m2', 'incoming short wave radiation', standard_name='', data0d=I_0)
    call fm%register('albedo', '', 'albedo', standard_name='', data0d=albedo)
    call fm%register('qe', 'W/m2', 'sensible heat', standard_name='', data0d=qe)
@@ -81,13 +166,88 @@
    call fm%register('airp', 'Pa', 'air pressure', standard_name='', data0d=airp)
    call fm%register('int_precip', 'm', 'integrated precipitation', standard_name='', data0d=int_precip)
    call fm%register('int_evap','m', 'integrated evaporation', standard_name='', data0d=int_evap)
-   call fm%register('int_fwf','m', 'integrated fresh water fluxes', standard_name='', data0d=int_fwf)
+!KB   call fm%register('int_fwf','m', 'integrated fresh water fluxes', standard_name='', data0d=int_fwf)
    call fm%register('int_swr','J/m2', 'integrated short wave radiation', standard_name='', data0d=int_swr)
    call fm%register('int_heat','J/m2', 'integrated surface heat fluxes', standard_name='', data0d=int_heat)
    call fm%register('int_total','J/m2', 'integrated total surface heat exchange', standard_name='', data0d=int_total)
+   return
+   end subroutine register_airsea_variables
+!EOC
 
-!  register - meanflow
+!-----------------------------------------------------------------------
+!BOP
+! !IROUTINE: stream variable registration 
+!
+! !INTERFACE:
+   subroutine register_stream_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use observations, only: Q, Qs, Qt, wq, FQ, Qres
+   use streams
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+   integer :: istream
+   type (type_stream), pointer :: current_stream
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_stream_variables()'
+   if (nstreams>0) then
+      call fm%register('Q', 'm^3/s', 'inflows over water column', standard_name='??', dimensions=(/id_dim_z/), data1d=Q(1:nlev), category='streams')
+      call fm%register('Qs', '1/s', 'salt inflow', standard_name='??', dimensions=(/id_dim_z/), data1d=Qs(1:nlev), category='streams')
+      call fm%register('Qt', 'celsius/s', 'temperature inflow', standard_name='??', dimensions=(/id_dim_z/), data1d=Qt(1:nlev), category='streams')
+      call fm%register('wq', 'm/s', 'vertical water balance advection velocity', standard_name='??', dimensions=(/id_dim_z/), data1d=wq(1:nlev), category='streams')
+      call fm%register('FQ', 'm^3/s', 'vertical water balance flux', standard_name='??', dimensions=(/id_dim_z/), data1d=FQ(1:nlev), category='streams')
+      call fm%register('Qres', 'm^3/s', 'residual water balance inflows', standard_name='??', dimensions=(/id_dim_z/), data1d=Qres(1:nlev), category='streams')
+   end if
+
+   current_stream => first_stream
+   do while (associated(current_stream))
+      call fm%register('Q_'//trim(current_stream%name), 'm^3/s', 'stream (Q): '//trim(current_stream%name), data0d=current_stream%QI, category='streams')
+      if (current_stream%has_T) then
+         call fm%register('T_'//trim(current_stream%name), 'Celsius', 'stream (T): '//trim(current_stream%name), data0d=current_stream%TI, category='streams')
+      end if
+      current_stream => current_stream%next
+   end do
+
+   call fm%register('int_inflow', 'm^3/s', 'integrated inflow', data0d=int_inflow, category='streams')
+   call fm%register('int_outflow', 'm^3/s', 'integrated outflow', data0d=int_outflow, category='streams')
+
+   return
+   end subroutine register_stream_variables
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+! !IROUTINE: meanflow variable registration 
+!
+! !INTERFACE:
+   subroutine register_meanflow_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use meanflow
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_meanflow_variables()'
    call fm%register('ga', '', 'coordinate scaling', standard_name='??', dimensions=(/id_dim_z/), data1d=ga(1:nlev),category='meanflow')
+   if (lake) then
+      call fm%register('Af', 'm^2', 'hypsograph at grid interfaces', standard_name='??', dimensions=(/id_dim_z/), data1d=Af(1:nlev), category='meanflow')
+   end if
    call fm%register('z', 'm', 'depth', standard_name='??', dimensions=(/id_dim_z/), data1d=z(1:nlev), coordinate_dimension=id_dim_z,category='meanflow')
    call fm%register('h', 'm', 'layer thickness', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='meanflow')
    call fm%register('ho', 'm', 'layer thickness - old time step', standard_name='cell_thickness', dimensions=(/id_dim_z/), data1d=h(1:nlev),category='meanflow')
@@ -105,10 +265,8 @@
    call fm%register('NNT', '1/s**2', 'contribution of T-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNT(1:nlev),category='meanflow')
    call fm%register('NNS', '1/s**2', 'contribution of S-gradient to buoyancy frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=NNS(1:nlev),category='meanflow')
    call fm%register('SS', '1/s**2', 'shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SS(1:nlev),category='meanflow')
-
-!  SSU and SSV are both in meanflow and airsea
-!KB   call fm%register('SSU', '1/s**2', 'x-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSU(1:nlev),category='meanflow')
-!KB   call fm%register('SSV', '1/s**2', 'y-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSV(1:nlev),category='meanflow')
+   call fm%register('SSU', '1/s**2', 'x-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSU(1:nlev),category='meanflow', output_level=output_level_debug)
+   call fm%register('SSV', '1/s**2', 'y-contribution to shear frequency squared', standard_name='??', dimensions=(/id_dim_z/), data1d=SSV(1:nlev),category='meanflow', output_level=output_level_debug)
    call fm%register('xP', 'm**2/s**3', 'extra turbulence production', standard_name='??', dimensions=(/id_dim_z/), data1d=xP(1:nlev),category='meanflow')
    call fm%register('buoy', 'm/s**2', 'buoyancy', standard_name='??', dimensions=(/id_dim_z/), data1d=buoy(1:nlev),category='meanflow')
    call fm%register('rad', 'W/m**2', 'short-wave radiation', standard_name='??', dimensions=(/id_dim_z/), data1d=rad(1:nlev),category='meanflow')
@@ -121,8 +279,31 @@
    call fm%register('mean4', '??', '4. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean4(1:nlev),category='meanflow',output_level=output_level_debug)
    call fm%register('mean5', '??', '5. mean dummy variable', standard_name='??', dimensions=(/id_dim_z/), data1d=mean5(1:nlev),category='meanflow',output_level=output_level_debug)
 #endif
+   return
+   end subroutine register_meanflow_variables
+!EOC
 
-!  register - turbulence
+!-----------------------------------------------------------------------
+!BOP
+! !IROUTINE: turbulence variable registration 
+!
+! !INTERFACE:
+   subroutine register_turbulence_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use turbulence
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_turbulence_variables()'
    call fm%register('tke', 'm2/s2', 'turbulent kinetic energy', standard_name='??', dimensions=(/id_dim_z1/), data1d=tke(1:nlev),category='turbulence')
    call fm%register('tkeo', 'm2/s2', 'turbulent kinetic energy - old time step', standard_name='??', dimensions=(/id_dim_z1/), data1d=tkeo(1:nlev),category='turbulence',output_level=output_level_debug)
    call fm%register('eps', 'm2/s3', 'energy dissipation rate', standard_name='??', dimensions=(/id_dim_z1/), data1d=eps(1:nlev),category='turbulence')
@@ -159,15 +340,42 @@
    call fm%register('turb4', '', '4. turbulence dummy variable', dimensions=(/id_dim_z1/), data1d=turb4(1:nlev),category='turbulence',output_level=output_level_debug)
    call fm%register('turb5', '', '5. turbulence dummy variable', dimensions=(/id_dim_z1/), data1d=turb5(1:nlev),category='turbulence',output_level=output_level_debug)
 #endif
-
-!  register - fabm
-!         call fm%register(model%state_variables(i)%name, model%state_variables(i)%units, &
-!         call fm%register(model%bottom_state_variables(i)%name, model%bottom_state_variables(i)%units, &
-!         call fm%register(model%surface_state_variables(i)%name, model%surface_state_variables(i)%units, &
    return
-   end subroutine register_all_variables
+   end subroutine register_turbulence_variables
 !EOC
+
+!-----------------------------------------------------------------------
+
+   end module register_all_variables
 
 !-----------------------------------------------------------------------
 ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
 !-----------------------------------------------------------------------
+
+#if 0
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: AAA variable registration 
+!
+! !INTERFACE:
+   subroutine register_AAA_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_AAA_variables()'
+
+   return
+   end subroutine register_AAA_variables
+!EOC
+#endif
