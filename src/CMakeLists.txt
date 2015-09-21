@@ -250,7 +250,7 @@ if(NOT GOTM_USE_FLEXIBLE_OUTPUT)
              )
   add_dependencies(output util meanflow turbulence observations airsea)
   set_property(TARGET output PROPERTY FOLDER gotm)
-endif(GOTM_USE_FLEXIBLE_OUTPUT)
+endif(NOT GOTM_USE_FLEXIBLE_OUTPUT)
 
 add_library(gotm OBJECT
             gotm/gotm.F90
