@@ -16,7 +16,8 @@ MOD   = \
 ${LIB}(util.o)			\
 ${LIB}(time.o)			\
 ${LIB}(tridiagonal.o)		\
-${LIB}(eqstate.o)
+${LIB}(eqstate.o)    \
+${LIB}(field_manager.o)
 
 OBJ   = \
 ${LIB}(ode_solvers.o)		\
