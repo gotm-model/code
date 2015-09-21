@@ -83,6 +83,8 @@
    use output
 #endif
 
+   use register_all_variables, only: do_register_all_variables, fm
+
    IMPLICIT NONE
    private
 !
@@ -121,8 +123,6 @@
       procedure :: calendar_date => gotm_host_calendar_date
    end type
 #endif
-
-   type (type_field_manager),target :: fm
 !
 !-----------------------------------------------------------------------
 
@@ -265,7 +265,7 @@
 
    call init_air_sea(namlst,latitude,longitude)
 
-   call register_all_variables(latitude,longitude,nlev,fm)
+   call do_register_all_variables(latitude,longitude,nlev)
 #if defined(_FLEXIBLE_OUTPUT_)
    allocate(type_gotm_host::output_manager_host)
    call output_manager_init(fm)
@@ -405,6 +405,7 @@
 #else
    call output_manager_save(julianday,secondsofday)
 #endif
+   STDERR LINE
    LEVEL1 'time_loop'
    progress = (MaxN-MinN+1)/10
    i=0
