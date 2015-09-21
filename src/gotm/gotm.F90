@@ -85,6 +85,7 @@
 
    use hypsograph, only: lake,init_hypsograph,clean_hypsograph
    use streams, only: update_streams
+
    use register_all_variables, only: do_register_all_variables, fm
 
    IMPLICIT NONE
