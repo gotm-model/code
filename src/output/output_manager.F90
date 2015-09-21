@@ -53,10 +53,11 @@ contains
          call output_category%source%get_all_fields(list,output_category%output_level)
          field_node => list%first_child
          if (.not.associated(field_node)) call host%log_message('WARNING: output category "'//trim(output_category%name)//'" does not contain any variables with requested output level.')
+         write (*,'(A)',ADVANCE="NO") '  adding: '
          do while (associated(field_node))
             select type (field_node)
             class is (type_field_node)
-               write (*,*) '  adding '//trim(field_node%field%name)
+               write (*,'(A)',ADVANCE="NO") ' '//trim(field_node%field%name)
                output_field => file%create_field()
                output_field%time_method = output_category%time_method
                output_field%source => field_node%field
@@ -69,6 +70,8 @@ contains
          end do
          output_category => output_category%next
       end do
+      write (*,*)
+      write (*,*)
    end subroutine collect_from_categories
 
    subroutine filter_variables(file)
