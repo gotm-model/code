@@ -386,6 +386,7 @@
 !
 ! !LOCAL VARIABLES:
    integer(kind=timestepkind):: n,progress
+   integer                   :: i
 
    REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
