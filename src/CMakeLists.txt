@@ -45,6 +45,11 @@ if(GOTM_EXTRA_OUTPUT)
   add_definitions(-DEXTRA_OUTPUT)
 endif()
 
+option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
+if(GOTM_USE_FABM)
+  add_definitions(-D_FABM_)
+endif()
+
 #option(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON)
 include(CMakeDependentOption)
 CMAKE_DEPENDENT_OPTION(GOTM_USE_FLEXIBLE_OUTPUT "Use new output manager" ON "GOTM_USE_FABM" OFF)
@@ -155,7 +160,6 @@ set_property(TARGET turbulence PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT
 
 set_property(TARGET util turbulence PROPERTY FOLDER gotm)
 
-option(GOTM_USE_FABM "Include support for Framework for Aquatic Biogeochemical Models (fabm.net)" ON)
 if(GOTM_USE_FABM)
   find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
   if(FABM_BASE)
@@ -178,7 +182,6 @@ if(GOTM_USE_FABM)
   set_property(TARGET gotm_fabm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
   set_property(TARGET gotm_fabm PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
   set_property(TARGET gotm_fabm PROPERTY FOLDER gotm)
-  add_definitions(-D_FABM_)
   target_link_libraries(gotm_fabm ${FABM_LIBRARIES})
 
   if(GOTM_USE_FLEXIBLE_OUTPUT)
