@@ -113,7 +113,7 @@
 !     rr=kappa/((z0b+h(j))/h(j)*log(frac)-1.)
 
       if ( avmolu.gt._ZERO_ .and. vel.gt._ZERO_ ) then
-         do i=1,MaxItz0b
+         do i=2,MaxItz0b
             !z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
             z0b = 0.1d0*avmolu/(rr*vel) + 0.03d0*h0b + za
 
