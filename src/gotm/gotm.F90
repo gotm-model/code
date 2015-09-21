@@ -385,10 +385,13 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer(kind=timestepkind):: n
+   integer(kind=timestepkind):: n,progress
 
    REALTYPE                  :: tFlux,btFlux,sFlux,bsFlux
    REALTYPE                  :: tRad(0:nlev),bRad(0:nlev)
+   character(8)              :: d_
+   character(10)             :: t_
+
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -402,7 +405,19 @@
    call output_manager_save(julianday,secondsofday)
 #endif
    LEVEL1 'time_loop'
+   progress = (MaxN-MinN+1)/10
+   i=0
    do n=MinN,MaxN
+
+      if(mod(n,progress) .eq. 0 .or. n .eq. MinN) then
+#if 0
+         call date_and_time(date=d_,time=t_)
+         LEVEL0 i,'%: ',t_(1:2),':',t_(3:4),':',t_(5:10)
+#else
+         LEVEL0 i,'%'
+#endif
+         i = i +10
+      end if
 
 !     prepare time and output
       call update_time(n)
