@@ -65,6 +65,7 @@
 #endif
    call register_meanflow_variables(nlev)
    call register_turbulence_variables(nlev)
+   call register_diagnostic_variables(nlev)
 !   LEVEL2 'registrated ',N,'variables'
    return
    end subroutine do_register_all_variables
@@ -351,6 +352,37 @@
 #endif
    return
    end subroutine register_turbulence_variables
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: diagnostic variable registration 
+!
+! !INTERFACE:
+   subroutine register_diagnostic_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+   use diagnostics
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_diagnostic_variables()'
+!   LEVEL3 'remeber to add the variables declared and calculated in diagnostics'
+   call fm%register('Ekin',  'Joule', 'kinetic energy water vapor pressure', data0d=ekin)
+   call fm%register('Epot',  'Joule', 'potential energy water vapor pressure', data0d=epot)
+   call fm%register('Eturb', 'Joule', 'turbulent kinetic energy water vapor pressure', data0d=eturb)
+
+   return
+   end subroutine register_diagnostic_variables
 !EOC
 
 !-----------------------------------------------------------------------
