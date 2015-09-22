@@ -59,7 +59,7 @@
    LEVEL1 'register_all_variables()'
    call register_coordinate_variables(lat,lon,nlev)
    call register_airsea_variables(nlev)
-!   call register_observation_variables(nlev)
+   call register_observation_variables(nlev)
 #if 0
    call register_stream_variables(nlev)
 #endif
@@ -175,6 +175,35 @@
    call fm%register('int_total','J/m2', 'integrated total surface heat exchange', standard_name='', data0d=int_total)
    return
    end subroutine register_airsea_variables
+!EOC
+
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: observation variable registration 
+!
+! !INTERFACE:
+   subroutine register_observation_variables(nlev)
+!
+! !DESCRIPTION:
+!
+! !USES:
+  use observations
+   IMPLICIT NONE
+!
+! !INPUT PARAMETERS:
+   integer, intent(in)  :: nlev
+!
+! !LOCAL VARIABLES:
+!EOP
+!-----------------------------------------------------------------------
+!BOC
+   LEVEL2 'register_observation_variables()'
+   call fm%register('tprof', 'Celsius', 'observed temperature', standard_name='sea_water_temperature', dimensions=(/id_dim_z/), data1d=tprof(1:nlev),category='observations')
+   call fm%register('sprof', 'PSU', 'observed salinity', standard_name='sea_water_salinity', dimensions=(/id_dim_z/), data1d=sprof(1:nlev),category='observations')
+
+   return
+   end subroutine register_observation_variables
 !EOC
 
 #if 0
