@@ -87,6 +87,7 @@
    use streams, only: update_streams
 
    use register_all_variables, only: do_register_all_variables, fm
+   use diagnostics
 
    IMPLICIT NONE
    private
@@ -525,6 +526,10 @@
 #else
       call output_manager_save(julianday,secondsofday)
 #endif
+
+      call do_diagnostics(nlev)
+
+      call integrated_fluxes(dt)
 
 #if !defined(_FLEXIBLE_OUTPUT_)
 !     diagnostic output

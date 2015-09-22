@@ -262,6 +262,7 @@ endif(NOT GOTM_USE_FLEXIBLE_OUTPUT)
 
 add_library(gotm OBJECT
             gotm/gotm.F90
+            gotm/diagnostics.F90
             gotm/register_all_variables.F90
            )
 add_dependencies(gotm input util meanflow turbulence observations airsea)
