@@ -126,8 +126,8 @@
 !
 !  set up matrix
    do i=2,N-1
-      c     = 2.0*dt*Af(i)*nuY(i)    /(h(i)+h(i+1))/Vc(i)
-      a     = 2.0*dt*Af(i-1)*nuY(i-1)/(h(i)+h(i-1))/Vc(i)
+      c     = 2.0d0*dt*Af(i)*nuY(i)    /(h(i)+h(i+1))/Vc(i)
+      a     = 2.0d0*dt*Af(i-1)*nuY(i-1)/(h(i)+h(i-1))/Vc(i)
       l     =     dt*Lsour(i)
 
       cu(i) =-cnpar*c
@@ -140,7 +140,7 @@
 !   set up upper boundary condition
    select case(Bcup)
    case(Neumann)
-      a     = 2.0*dt*Af(N-1)*nuY(N-1)/(h(N)+h(N-1))/Vc(N)
+      a     = 2.0d0*dt*Af(N-1)*nuY(N-1)/(h(N)+h(N-1))/Vc(N)
       l     = dt*Lsour(N)
 
       au(N) =-cnpar*a
@@ -165,7 +165,7 @@
 !   set up lower boundary condition
    select case(Bcdw)
    case(Neumann)
-      c     = 2.0*dt*Af(1)*nuY(1)/(h(1)+h(2))/Vc(1)
+      c     = 2.0d0*dt*Af(1)*nuY(1)/(h(1)+h(2))/Vc(1)
       l     = dt*Lsour(1)
 
       cu(1) =-cnpar*c
@@ -188,7 +188,7 @@
    end select
 
 !  relaxation to observed value
-   if (minval(Taur).lt.1.E10) then
+   if (minval(Taur).lt.1.d10) then
       do i=1,N
          bu(i)=bu(i)+dt/Taur(i)
          du(i)=du(i)+dt/Taur(i)*Yobs(i)
