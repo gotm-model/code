@@ -34,10 +34,15 @@
 !
 ! !USES:
    use field_manager
+   use register_all_variables, only: do_register_all_variables, fm
 #if defined(_FLEXIBLE_OUTPUT_)
    use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host
    use output_manager
+   use diagnostics
+#else
+   use output
 #endif
+
    use meanflow
    use input
    use observations
@@ -79,15 +84,8 @@
 #endif
 #endif
 
-#if !defined(_FLEXIBLE_OUTPUT_)
-   use output
-#endif
-
    use hypsograph, only: lake,init_hypsograph,clean_hypsograph
    use streams, only: update_streams
-
-   use register_all_variables, only: do_register_all_variables, fm
-   use diagnostics
 
    IMPLICIT NONE
    private
@@ -408,7 +406,7 @@
       call do_all_output(0_timestepkind)
    end if
 #else
-   call output_manager_save(julianday,secondsofday)
+   call output_manager_save(julianday,secondsofday,0)
 #endif
    STDERR LINE
    LEVEL1 'time_loop'
@@ -523,19 +521,13 @@
       if (write_results) then
          call do_all_output(n)
       end if
-#else
-      call output_manager_save(julianday,secondsofday)
-#endif
-
-      call do_diagnostics(nlev)
-
-      call integrated_fluxes(dt)
-
-#if !defined(_FLEXIBLE_OUTPUT_)
 !     diagnostic output
       if(diagnostics) then
          call do_diagnostics(n,nlev,buoy_method,dt,u_taus,u_taub,I_0,heat)
       end if
+#else
+      call do_diagnostics(nlev)
+      call output_manager_save(julianday,secondsofday,int(n))
 #endif
 
    end do

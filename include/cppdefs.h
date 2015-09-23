@@ -61,6 +61,13 @@
 #define _ONE_  1.0d0
 #endif
 
+! Definition to write NetCDF output reals as single or double precision:
+#ifdef _NCDF_SAVE_DOUBLE_
+#define NCDF_FLOAT_PRECISION NF90_DOUBLE
+#else
+#define NCDF_FLOAT_PRECISION NF90_REAL
+#endif
+
 ! non-local fluxes
 #undef NONLOCAL
 

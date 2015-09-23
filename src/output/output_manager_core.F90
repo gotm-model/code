@@ -24,6 +24,7 @@ module output_manager_core
    integer,parameter,public :: time_unit_day    = 3
    integer,parameter,public :: time_unit_month  = 4
    integer,parameter,public :: time_unit_year   = 5
+   integer,parameter,public :: time_unit_dt     = 6
 
    integer,parameter,public :: rk = kind(_ONE_)
 
@@ -114,6 +115,8 @@ module output_manager_core
       integer                               :: time_unit       = time_unit_none
       integer                               :: time_step       = 0
       integer                               :: n               = 0  ! Number of model time steps processed so far for next output
+      integer                               :: next_index      = -1
+      integer                               :: first_index     = -1
       integer                               :: next_julian     = -1
       integer                               :: next_seconds    = -1
       integer                               :: first_julian    = -1

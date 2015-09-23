@@ -400,9 +400,9 @@
 !BOC
    LEVEL2 'register_diagnostic_variables()'
 !   LEVEL3 'remeber to add the variables declared and calculated in diagnostics'
-   call fm%register('Ekin',  'Joule', 'kinetic energy', data0d=ekin)
-   call fm%register('Epot',  'Joule', 'potential energy', data0d=epot)
-   call fm%register('Eturb', 'Joule', 'turbulent kinetic energy', data0d=eturb)
+   call fm%register('Ekin',  'Joule', 'kinetic energy', data0d=ekin,category='diagnostics')
+   call fm%register('Epot',  'Joule', 'potential energy', data0d=epot,category='diagnostics')
+   call fm%register('Eturb', 'Joule', 'turbulent kinetic energy', data0d=eturb,category='diagnostics')
 
    return
    end subroutine register_diagnostic_variables
