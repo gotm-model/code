@@ -569,7 +569,7 @@
    integer                             :: iret,i
    REALTYPE                            :: temp_time
    REALTYPE                            :: dum(0:nlev)
-   REAL_4B                             :: buoyp,buoym,dz
+   REALTYPE                            :: buoyp,buoym,dz
    REALTYPE                            :: zz
 !
 !-------------------------------------------------------------------------
@@ -890,7 +890,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: iret
-   REAL_4B                   :: vals(2)
+   REALTYPE                  :: vals(2)
 !
 !EOP
 !-----------------------------------------------------------------------
@@ -984,8 +984,7 @@
 ! !LOCAL VARIABLES:
    integer                   :: iret,n
    integer                   :: idum(1)
-   REAL_4B                   :: r4
-   REAL_4B                   :: dum(1)
+   REALTYPE                  :: dum(1)
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -1019,8 +1018,7 @@
    else if (present(scalar)) then
       select case (var_shape)
          case(POINT)
-            r4 = scalar
-            iret = nf90_put_var(ncid,id,r4)
+            iret = nf90_put_var(ncid,id,scalar)
          case(T_SHAPE)
             start(1) = set_no; edges(1) = 1
             dum(1)=scalar
