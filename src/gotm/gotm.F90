@@ -443,6 +443,8 @@
       tx = tx/rho_0
       ty = ty/rho_0
 
+      call integrated_fluxes(dt)
+
 !     meanflow integration starts
       call updategrid(nlev,dt,zeta)
       call coriolis(nlev,dt)
@@ -518,8 +520,6 @@
 #endif
 
       call do_diagnostics(nlev)
-
-      call integrated_fluxes(dt)
 
 #if !defined(_FLEXIBLE_OUTPUT_)
 !     diagnostic output
