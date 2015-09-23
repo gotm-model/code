@@ -518,8 +518,8 @@
          call do_diagnostics(n,nlev,buoy_method,dt,u_taus,u_taub,I_0,heat)
       end if
 #else
-      call output_manager_save(julianday,secondsofday,int(n))
       call do_diagnostics(nlev)
+      call output_manager_save(julianday,secondsofday,int(n))
 #endif
 
    end do
