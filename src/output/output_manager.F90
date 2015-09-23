@@ -139,13 +139,14 @@ contains
       end do
    end subroutine add_coordinate_variables
 
-   subroutine output_manager_save(julianday,secondsofday)
-      integer,intent(in) :: julianday,secondsofday
+   subroutine output_manager_save(julianday,secondsofday,n)
+      integer,intent(in) :: julianday,secondsofday,n
 
       class (type_file),            pointer :: file
       class (type_output_field),    pointer :: output_field
       integer                               :: yyyy,mm,dd
       logical                               :: in_window
+      logical                               :: output_based_on_time, output_based_on_index
       type (type_output_dimension), pointer :: output_dim
       integer, allocatable, dimension(:)    :: starts, stops, strides
       integer                               :: i,j
@@ -159,7 +160,14 @@ contains
          if (in_window) then
 
          ! Determine whether output is required
-         if ((julianday==file%next_julian.and.secondsofday>=file%next_seconds) .or. julianday>file%next_julian) then
+         if (file%time_unit .ne. time_unit_dt) then
+            output_based_on_time  = (julianday==file%next_julian.and.secondsofday>=file%next_seconds) .or. julianday>file%next_julian
+            output_based_on_index = .false.
+         else
+            output_based_on_time  = .false.
+            output_based_on_index = file%next_index >= file%first_index .and. mod(n,file%time_step) .eq. 0
+         end if
+         if (output_based_on_time .or. output_based_on_index) then
             ! Output required
             if (file%next_julian==-1) then
                ! Add variables below selected categories to output
@@ -190,6 +198,7 @@ contains
                   file%first_julian = julianday
                   file%first_seconds = secondsofday
                end if
+               file%first_index = n
 
                ! Create output file
                call file%initialize()
@@ -197,6 +206,7 @@ contains
                ! Store current time step so next time step can be computed correctly.
                file%next_julian = file%first_julian
                file%next_seconds = file%first_seconds
+               file%next_index = file%first_index
 
                ! Initialize fields based on time integrals
                output_field => file%first_field
@@ -330,6 +340,8 @@ contains
                   call host%calendar_date(julianday,yyyy,mm,dd)
                   yyyy = yyyy + file%time_step
                   call host%julian_day(yyyy,mm,dd,file%next_julian)
+               case (time_unit_dt)
+                  file%next_index = file%next_index + file%time_step
             end select
 
             ! Reset time step counter   
@@ -461,6 +473,8 @@ contains
             file%time_unit = time_unit_month
          case ('year')
             file%time_unit = time_unit_year
+         case ('dt')
+            file%time_unit = time_unit_dt
          case default
             call host%fatal_error('process_file','Invalid value "'//trim(scalar%string)//'" specified for time_unit of file "'//trim(path)//'". Valid options are second, day, month, year.')
       end select

@@ -402,7 +402,7 @@
       call do_all_output(0_timestepkind)
    end if
 #else
-   call output_manager_save(julianday,secondsofday)
+   call output_manager_save(julianday,secondsofday,0)
 #endif
    STDERR LINE
    LEVEL1 'time_loop'
@@ -518,7 +518,7 @@
          call do_diagnostics(n,nlev,buoy_method,dt,u_taus,u_taub,I_0,heat)
       end if
 #else
-      call output_manager_save(julianday,secondsofday)
+      call output_manager_save(julianday,secondsofday,int(n))
       call do_diagnostics(nlev)
 #endif
 
