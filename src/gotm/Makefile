@@ -11,6 +11,7 @@ main.F90  \
 gotm.F90
 
 MOD	= \
+${LIB}(diagnostics.o) \
 ${LIB}(register_all_variables.o) \
 ${LIB}(gotm.o)
 

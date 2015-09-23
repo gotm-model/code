@@ -34,10 +34,15 @@
 !
 ! !USES:
    use field_manager
+   use register_all_variables, only: do_register_all_variables, fm
 #if defined(_FLEXIBLE_OUTPUT_)
    use output_manager_core, only:output_manager_host=>host, type_output_manager_host=>type_host
    use output_manager
+   use diagnostics
+#else
+   use output
 #endif
+
    use meanflow
    use input
    use observations
@@ -78,13 +83,6 @@
    use gotm_fabm_output,only:init_gotm_fabm_output,do_gotm_fabm_output,clean_gotm_fabm_output
 #endif
 #endif
-
-#if !defined(_FLEXIBLE_OUTPUT_)
-   use output
-#endif
-
-   use register_all_variables, only: do_register_all_variables, fm
-   use diagnostics
 
    IMPLICIT NONE
    private
@@ -515,17 +513,13 @@
       if (write_results) then
          call do_all_output(n)
       end if
-#else
-      call output_manager_save(julianday,secondsofday)
-#endif
-
-      call do_diagnostics(nlev)
-
-#if !defined(_FLEXIBLE_OUTPUT_)
 !     diagnostic output
       if(diagnostics) then
          call do_diagnostics(n,nlev,buoy_method,dt,u_taus,u_taub,I_0,heat)
       end if
+#else
+      call output_manager_save(julianday,secondsofday)
+      call do_diagnostics(nlev)
 #endif
 
    end do
