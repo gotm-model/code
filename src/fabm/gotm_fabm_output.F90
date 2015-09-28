@@ -121,7 +121,7 @@ contains
 
          ! Add a variable for each conserved quantity
          do n=1,size(model%conserved_quantities)
-            iret = new_nc_variable(ncid,'int_change_in_'//trim(model%conserved_quantities(n)%name),NF90_REAL, &
+            iret = new_nc_variable(ncid,'int_change_in_'//trim(model%conserved_quantities(n)%name),NCDF_FLOAT_PRECISION, &
                                    dim3d,model%conserved_quantities(n)%externalid)
             iret = set_attributes(ncid,model%conserved_quantities(n)%externalid,      &
                                   units=trim(model%conserved_quantities(n)%units)//'*m',    &
@@ -135,9 +135,9 @@ contains
             cur_obs_variable => first_input_variable
             do while (associated(cur_obs_variable))
                if (allocated(cur_obs_variable%data_1d)) then
-                  iret = new_nc_variable(ncid,trim(get_safe_name(cur_obs_variable%name))//'_obs',NF90_REAL,dim4d,cur_obs_variable%ncid)
+                  iret = new_nc_variable(ncid,trim(get_safe_name(cur_obs_variable%name))//'_obs',NCDF_FLOAT_PRECISION,dim4d,cur_obs_variable%ncid)
                else
-                  iret = new_nc_variable(ncid,trim(get_safe_name(cur_obs_variable%name))//'_obs',NF90_REAL,dim3d,cur_obs_variable%ncid)
+                  iret = new_nc_variable(ncid,trim(get_safe_name(cur_obs_variable%name))//'_obs',NCDF_FLOAT_PRECISION,dim3d,cur_obs_variable%ncid)
                end if
                iret = nf90_put_att(ncid,cur_obs_variable%ncid,'source_file',trim(cur_obs_variable%path))
                call check_err(iret)
@@ -162,7 +162,7 @@ contains
       integer                                      :: iret
 
       if (variable%output==output_none) return
-      iret = new_nc_variable(ncid,trim(variable%name),NF90_REAL,dims,variable%externalid)
+      iret = new_nc_variable(ncid,trim(variable%name),NCDF_FLOAT_PRECISION,dims,variable%externalid)
       iret = set_attributes(ncid,variable%externalid,units=trim(variable%units), &
                             long_name=trim(variable%long_name), &
                             FillValue=variable%missing_value,missing_value=variable%missing_value)

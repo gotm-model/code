@@ -890,7 +890,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: iret
-   REALTYPE                  :: vals(2)
+   NCDF_REAL                 :: vals(2)
 !
 !EOP
 !-----------------------------------------------------------------------
