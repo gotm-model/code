@@ -406,6 +406,13 @@
 !BOC
    LEVEL2 'register_diagnostic_variables()'
 !   LEVEL3 'remeber to add the variables declared and calculated in diagnostics'
+#if 0
+   call fm%register('mld_surf','m', 'mixed layer depth - surface',fill_value=_ZERO_, data0d=mld_surf,category='diagnostics')
+   call fm%register('mld_bott','m', 'mixed layer depth - bottom',fill_value=_ZERO_, data0d=mld_bott,category='diagnostics')
+#else
+   call fm%register('mld_surf','m', 'mixed layer depth - surface', data0d=mld_surf,category='diagnostics')
+   call fm%register('mld_bott','m', 'mixed layer depth - bottom', data0d=mld_bott,category='diagnostics')
+#endif
    call fm%register('Ekin',  'Joule', 'kinetic energy', data0d=ekin,category='diagnostics')
    call fm%register('Epot',  'Joule', 'potential energy', data0d=epot,category='diagnostics')
    call fm%register('Eturb', 'Joule', 'turbulent kinetic energy', data0d=eturb,category='diagnostics')

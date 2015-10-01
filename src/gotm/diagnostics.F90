@@ -8,10 +8,11 @@
    module diagnostics
 !
 ! !DESCRIPTION:
-!  This module acts as an interface between GOTM and modules/routines
-!  doing the actual output. In order to add a new output format it is only
-!  necessary to add hooks in this module and write the actual output
-!  routines. It is not necessary to change anything in GOTM itself.
+!  This module calculates different diagnostics. It is very easy to extend
+!  the number of diagnostics calculated - and have those newly defined
+!  values saved in a file. In addition to adding the variable as a public
+!  variable in this module - like e.g. ekin - add an appropriate line in
+!  register_all_variables.F90 - use agin ekin as example. 
 !
 ! !USES:
    IMPLICIT NONE
@@ -22,21 +23,20 @@
 !
 ! !PUBLIC DATA MEMBERS:
    REALTYPE, public                    :: ekin,epot,eturb
+   integer, public                     :: mld_method=1
+   REALTYPE, public                    :: mld_surf,mld_bott
+   REALTYPE                            :: diff_k = 1e-05
+   REALTYPE                            :: Ri_crit = 0.5
 #if 0
    logical                             :: diagnostics
-   integer                             :: mld_method
-   REALTYPE                            :: diff_k
-   REALTYPE                            :: Ri_crit
    logical                             :: rad_corr
 #endif
    logical                             :: init_diagnostics=.true.
-
 !
 ! !REVISION HISTORY:
-!  Original author(s): Karsten Bolding, Jorn Bruggeman
+!  Original author(s): Karsten Bolding, Jorn Bruggeman and Hans Burchard
 !
 ! !PRIVATE DATA MEMBERS:
-
 !EOP
 !-----------------------------------------------------------------------
 
@@ -56,7 +56,7 @@
 ! !USES:
    use airsea,       only: sst
    use meanflow,     only: gravity,rho_0,cp
-   use meanflow,     only: h,u,v,s,t,NN,SS,buoy,rad
+   use meanflow,     only: h,u,v,s,t,rho,NN,SS,buoy,rad
    use turbulence,   only: kappa
    use turbulence,   only: tke
    use observations, only: tprof,b_obs_sbf
@@ -82,49 +82,48 @@
    REALTYPE, save            :: epot0
    REALTYPE                  :: z
    integer                   :: i
+   integer                   :: j(1)
+   REALTYPE                  :: Ri(0:nlev)
 #if 0
    integer                   :: i
-   REALTYPE                  :: mld_surf,mld_bott
    REALTYPE                  :: heat_sim,heat_obs
    REALTYPE, save            :: heat_sim0,heat_obs0,heat_flux
    REALTYPE                  :: z,dtt,dtb,x
    REALTYPE                  :: wstar,tstar
    REALTYPE                  :: sbf,stf,MOL
-   REALTYPE                  :: Ri(0:nlev)
 #endif
 !
 !-----------------------------------------------------------------------
 !BOC
-#if 0
    select case(mld_method)
       case(1)          ! MLD according to TKE criterium
-         mld_surf    = 0.0
-         i=nlev
-100      i=i-1
-         mld_surf=mld_surf+h(i+1)
-         if ((tke(i) .gt. diff_k) .and. (i .gt. 0)) goto 100
-         mld_bott    = 0.0
-         i=0
-101      i=i+1
-         mld_bott=mld_bott+h(i)
-         if ((tke(i) .gt. diff_k) .and. (i .lt. nlev)) goto 101
+         mld_surf = _ZERO_
+         do i=nlev,1,-1
+            if (tke(i) .lt. diff_k) exit 
+            mld_surf=mld_surf+h(i)
+         end do
+         mld_bott = _ZERO_
+         do i=1,nlev
+            if (tke(i) .lt. diff_k) exit 
+            mld_bott=mld_bott+h(i)
+         end do 
       case(2)          ! MLD according to critical Ri number
          do i=1,nlev-1
             Ri(i)=NN(i)/(SS(i)+1.e-10)
          end do
-         mld_surf    = 0.0
-         i=nlev
-200      i=i-1
-         mld_surf=mld_surf+h(i+1)
-         if ((Ri(i) .lt. Ri_crit) .and. (i .gt. 0)) goto 200
-         mld_bott    = 0.0
-         i=0
-201      i=i+1
-         mld_bott=mld_bott+h(i)
-         if ((Ri(i) .lt. Ri_crit) .and. (i .lt. nlev)) goto 201
+         mld_surf    = h(nlev)
+         do i=nlev-1,1,-1
+            if (Ri(i) .gt. Ri_crit) exit 
+            mld_surf=mld_surf+h(i)
+         end do 
+      case(3)          ! MLD according to maxiumun NN
+         j = maxloc(NN(1:nlev))
+         mld_surf = sum(h(j(1):nlev))
+         mld_bott = _ZERO_
       case default
    end select
 
+#if 0
 !  Here, the surface buoyancy flux (sbf) and the surface temperature
 !  flux (stf) are calculated.
 
