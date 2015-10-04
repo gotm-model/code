@@ -604,6 +604,9 @@
    ! Update derived expressions (vertical means, etc.)
    call update_fabm_expressions(nlev)
 
+   ! Update the light field
+   call light(nlev,bioshade_feedback)
+
    ! Call fabm_do here to make sure diagnostic variables all have an initial value.
    ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
    rhs = _ZERO_
