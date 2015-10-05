@@ -41,24 +41,13 @@
 !  This method is not recommended when a varying sea surface is considered.
 !  \end{enumerate}
 !
-!  Furthermore, vertical velocity profiles are calculated here, if
-!  {\tt w\_adv\_method} is 1 or 2, which has to be chosen in the
-!  {\tt w\_advspec} namelist in {\tt obs.nml}. The profiles of vertical
-!  velocity are determined by two values,
-!  the height of maximum absolute value of vertical velocity, {\tt w\_height},
-!  and the vertical velocity at this height, {\tt w\_adv}. From {\tt w\_height},
-!  the vertical velocity is linearly decreasing towards the surface and
-!  the bottom, where its value is zero.
-
-!
 ! !USES:
    use meanflow,     only: grid_ready
    use meanflow,     only: depth0,depth
    use meanflow,     only: ga,z,zi,h,ho,ddu,ddl,grid_method
-   use meanflow,     only: grid_file,w
+   use meanflow,     only: grid_file
    use meanflow,     only: lake,Vc
-   use observations, only: zeta_method,w_adv_method
-   use observations, only: w_adv,w_height
+   use observations, only: zeta_method
    use hypsograph,   only: update_hypsograph
    IMPLICIT NONE
 !
@@ -73,7 +62,6 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,j,nlayers
-   REALTYPE                  :: z_crit
    integer, parameter        :: grid_unit = 101
 !-----------------------------------------------------------------------
 !BOC
@@ -194,29 +182,6 @@
       zi(i) = zi(i-1) +     h(i)
       z (i) = zi(i-1) + 0.5*h(i)
    end do
-
-!  Vertical velocity calculation:
-
-   select case(w_adv_method)
-      case(0)
-         ! no vertical advection
-      case(1,2)
-         ! linearly varying advection velocity with peak at "w_height"
-         z_crit=zi(nlev)-0.01*(zi(nlev)-zi(0))
-         if (w_height.gt.z_crit) w_height=z_crit
-         z_crit=zi(0)+0.01*(zi(nlev)-zi(0))
-         if (w_height.lt.z_crit) w_height=z_crit
-         do i=1,nlev-1
-            if (zi(i).gt.w_height) then
-               w(i)=(zi(nlev)-zi(i))/(zi(nlev)-w_height)*w_adv
-            else
-               w(i)=(zi(0)-zi(i))/(zi(0)-w_height)*w_adv
-            end if
-         end do
-         w(0)    =_ZERO_
-         w(nlev) =_ZERO_
-      case default
-    end select
 
    if (lake) then
       call update_hypsograph(nlev,z,h)

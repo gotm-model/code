@@ -449,6 +449,7 @@
 
 !     meanflow integration starts
       call updategrid(nlev,dt,zeta)
+      call wequation(nlev)
       call coriolis(nlev,dt)
 
 !     TODO: move these 2 calls between integrated_fluxes() and updategrid() ?

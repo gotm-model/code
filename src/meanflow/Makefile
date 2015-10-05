@@ -10,6 +10,7 @@ DOCSRC	= \
 meanflow.F90		\
 hypsograph.F90		\
 updategrid.F90		\
+wequation.F90		\
 coriolis.F90		\
 uequation.F90		\
 vequation.F90		\
@@ -29,6 +30,7 @@ ${LIB}(hypsograph.o)
 
 OBJ   = \
 ${LIB}(updategrid.o)		\
+${LIB}(wequation.o)		\
 ${LIB}(coriolis.o)		\
 ${LIB}(uequation.o)		\
 ${LIB}(vequation.o)		\

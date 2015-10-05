@@ -247,6 +247,7 @@ add_library(meanflow OBJECT
             meanflow/updategrid.F90
             meanflow/vequation.F90
             meanflow/water_balance.F90
+            meanflow/wequation.F90
            )
 add_dependencies(meanflow util observations airsea)
 
