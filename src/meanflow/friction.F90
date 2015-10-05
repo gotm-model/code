@@ -58,7 +58,7 @@
 ! !USES:
    use meanflow,      only: h,z0b,h0b,MaxItz0b,z0s,za
    use meanflow,      only: u,v,rho_0,gravity
-   use meanflow,      only: u_taub,u_taus,drag,taub
+   use meanflow,      only: u_taub1=>u_taub,u_taus,drag,taub
    use meanflow,      only: charnock,charnock_val,z0s_min
    use meanflow,      only: lake,Af,Vc
 
@@ -74,8 +74,10 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer                             :: i,j,j_max
-   REALTYPE                            :: rr,vel
+   integer                             :: i,j,j_max, rc
+   REALTYPE                            :: rr
+   REALTYPE,dimension(:),allocatable,save :: u_taub
+   logical,save                        :: first=.true.
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -92,53 +94,49 @@
 
 !  iterate bottom roughness length MaxItz0b times
 !  for lake model the friction has to be calculacted at every depth
+
    if (lake) then
       j_max = SIZE(h) - 1
    else
       j_max = 1
    end if
-!  iterate from nlev to 1 so that u_taub is located at 1 at the end
-!  this is important for other modules
+   if (first) then
+      allocate(u_taub(1:j_max),stat=rc)
+      if (rc /= 0) stop 'friction: Error allocating (u_taub)'
+      u_taub = _ZERO_
+      first = .false.
+   end if
+
+!  iterate from nlev to 1 so that rr is located at 1 at the end
    do j=j_max,1,-1
-      vel = sqrt( u(j)*u(j) + v(j)*v(j) )
+      do i=1,MaxItz0b
 
-      z0b = 0.03d0*h0b + za
+         if (avmolu.le.0) then
+            z0b=0.03*h0b + za
+         else
+            z0b=0.1*avmolu/max(avmolu,u_taub(j))+0.03*h0b + za
+         end if
 
-!     compute the factor r (version 1, with log-law)
-      !rr=kappa/(log((z0b+h(j)/2)/z0b))
-      rr = kappa / log(_ONE_+_HALF_*h(j)/z0b)
+!        compute the factor r (version 1, with log-law)
+         rr=kappa/(log((z0b+h(j)/2)/z0b))
 
-!     compute the factor r (version 2, with meanvalue log-law)
-!     frac=(z0b+h(j))/z0b
-!     rr=kappa/((z0b+h(j))/h(j)*log(frac)-1.)
+!        compute the factor r (version 2, with meanvalue log-law)
+!        frac=(z0b+h(j))/z0b
+!        rr=kappa/((z0b+h(j))/h(j)*log(frac)-1.)
 
-      if ( avmolu.gt._ZERO_ .and. vel.gt._ZERO_ ) then
-         do i=2,MaxItz0b
-            !z0b=0.1*avmolu/max(avmolu,u_taub)+0.03*h0b + za
-            z0b = 0.1d0*avmolu/(rr*vel) + 0.03d0*h0b + za
+!        compute the friction velocity at every grid cell
+         u_taub(j) = rr*sqrt( u(j)*u(j) + v(j)*v(j) )
 
-!           compute the factor r (version 1, with log-law)
-            !rr=kappa/(log((z0b+h(j)/2)/z0b))
-            rr = kappa / log(_ONE_+_HALF_*h(j)/z0b)
-
-!           compute the factor r (version 2, with meanvalue log-law)
-!           frac=(z0b+h(j))/z0b
-!           rr=kappa/((z0b+h(j))/h(j)*log(frac)-1.)
-
-         end do
-      end if
-
+      end do
 !     add bottom friction as source term for the momentum equation
       drag(j) = drag(j) +  rr*rr * ( Af(j) - Af(j-1) ) / Vc(j) * h(j)
    end do
 
    drag(1) = drag(1) + rr*rr
 
-!  compute the friction velocity at every grid cell
-   u_taub = rr*vel
-
 !  calculate bottom stress, which is used by sediment resuspension models
-   taub = u_taub*u_taub*rho_0
+   u_taub1 = u_taub(1)
+   taub = u_taub(1)*u_taub(1)*rho_0
 
 !  be careful: tx and ty are the surface shear-stresses
 !  already divided by rho!
