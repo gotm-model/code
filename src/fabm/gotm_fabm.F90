@@ -115,6 +115,10 @@
    REALTYPE, target :: decimal_yearday
    logical          :: fabm_ready
 
+   integer :: repair_interior_count
+   integer :: repair_surface_count
+   integer :: repair_bottom_count
+
    contains
 
 #include "../src/util/ode_solvers_template.F90"
@@ -188,6 +192,10 @@
       clock_adv    = 0
       clock_diff   = 0
       clock_source = 0
+
+      repair_interior_count = 0
+      repair_surface_count = 0
+      repair_bottom_count = 0
 
       fabm_ready = .false.
 
@@ -934,12 +942,15 @@
 !-----------------------------------------------------------------------
 !BOC
    call fabm_check_state(model,1,nlev,repair_state,valid)
+   if (repair_state.and..not.valid) repair_interior_count = repair_interior_count + 1
    if (valid .or. repair_state) then
       call fabm_check_surface_state(model,nlev,repair_state,tmpvalid)
+      if (repair_state.and..not.tmpvalid) repair_surface_count = repair_surface_count + 1
       valid = valid.and.tmpvalid
    end if
    if (valid .or. repair_state) then
       call fabm_check_bottom_state(model,1,repair_state,tmpvalid)
+      if (repair_state.and..not.tmpvalid) repair_bottom_count = repair_bottom_count + 1
       valid = valid.and.tmpvalid
    end if
    if (.not. (valid .or. repair_state)) then
@@ -1149,6 +1160,12 @@
 
    call system_clock( count=clock, count_rate=ticks_per_sec)
    tick_rate = _ONE_/ticks_per_sec
+
+   if (repair_state) then
+      LEVEL1 'FABM interior state was repaired',repair_interior_count,'times.'
+      LEVEL1 'FABM surface state was repaired',repair_surface_count,'times.'
+      LEVEL1 'FABM bottom state was repaired',repair_bottom_count,'times.'
+   end if
 
    LEVEL1 'Time spent on advection of FABM variables:',clock_adv*tick_rate
    LEVEL1 'Time spent on diffusion of FABM variables:',clock_diff*tick_rate
