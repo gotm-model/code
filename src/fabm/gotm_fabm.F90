@@ -1429,7 +1429,7 @@
       integer :: n
 
       ! Add conserved quantities at boundaries (in m-2)
-      call fabm_get_horizontal_conserved_quantities(model,total)
+      call fabm_get_horizontal_conserved_quantities(model,1,total)
 
       call fabm_get_conserved_quantities(model,1,nlev,local)
       do n=1,size(model%conserved_quantities)
