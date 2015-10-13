@@ -31,6 +31,7 @@
    public clean_gotm_fabm
    public fabm_calc
    public register_observation
+   public calculate_conserved_quantities, total0
 
    ! Passed through from fabm_types, used by hosts to provide additional inputs:
    public standard_variables
@@ -114,6 +115,11 @@
    integer,pointer  :: yearday,secondsofday
    REALTYPE, target :: decimal_yearday
    logical          :: fabm_ready
+
+   logical              :: check_conservation
+   REALTYPE,allocatable :: local(:,:)
+   REALTYPE,allocatable :: total0(:)
+   REALTYPE,allocatable :: change_in_total(:)
 
    integer :: repair_interior_count
    integer :: repair_surface_count
@@ -369,6 +375,7 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i,rc,output_level
+   logical                   :: used
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -378,7 +385,7 @@
    ! in multi-step algorithms. Due to the design of the integration schemes, this currently can only be achieved by
    ! storing bottom-bound and surface-bound values together with the pelagic, in a fully depth-explicit array.
    allocate(cc(0:nlev,1:size(model%state_variables)+size(model%bottom_state_variables)+size(model%surface_state_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc)'
    cc = _ZERO_
    do i=1,size(model%state_variables)
       cc(:,i) = model%state_variables(i)%initial_value
@@ -392,6 +399,15 @@
       cc(1,size(model%state_variables)+size(model%bottom_state_variables)+i) = model%surface_state_variables(i)%initial_value
       call fabm_link_surface_state_data(model,i,cc(nlev,size(model%state_variables)+size(model%bottom_state_variables)+i))
    end do
+
+   ! Allocate arrays fro conserved quantity management
+   allocate(local(1:nlev,1:size(model%conserved_quantities)),stat=rc)
+   if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (local)'
+   allocate(total0(1:size(model%conserved_quantities)),stat=rc)
+   if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (total0)'
+   allocate(change_in_total(1:size(model%conserved_quantities)),stat=rc)
+   if (rc /= 0) stop 'init_var_gotm_fabm: Error allocating (change_in_total)'
+   change_in_total = 0
 
    if (present(field_manager)) then
       do i=1,size(model%state_variables)
@@ -418,6 +434,14 @@
             data0d=cc(1,size(model%state_variables)+size(model%bottom_state_variables)+i), category='fabm'//model%state_variables(i)%target%owner%get_path(), output_level=output_level)
       end do
 
+      check_conservation = .false.
+      do i=1,size(model%conserved_quantities)
+         call field_manager%register('int_change_in_'//trim(model%conserved_quantities(i)%name), trim(model%conserved_quantities(i)%units)//'*m', &
+            'integrated change in '//trim(model%conserved_quantities(i)%long_name), fill_value=-1d20, &
+            data0d=change_in_total(i), category='fabm', output_level=output_level_debug, used=used)
+         if (used) check_conservation = .true.
+      end do
+
       ! Send pointers to diagnostic data to output manager.
       do i=1,size(model%diagnostic_variables)
          if (model%diagnostic_variables(i)%save) &
@@ -432,43 +456,43 @@
    ! Allocate arrays that contain observation indices of pelagic and benthic state variables.
    ! Initialize observation indices to -1 (no external observations provided)
    allocate(cc_obs(1:size(model%state_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_obs)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_obs)'
    allocate(cc_ben_obs(1:size(model%bottom_state_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_ben_obs)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_ben_obs)'
 
    ! Allocate array for pelagic diagnostic variables; set all values to zero.
    ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
    allocate(cc_diag(1:nlev,1:size(model%diagnostic_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_diag)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_diag)'
    cc_diag = _ZERO_
 
    ! Allocate array for diagnostic variables on horizontal surfaces; set all values to zero.
    ! (zeroing is needed because time-integrated/averaged variables will increment rather than set the array)
    allocate(cc_diag_hz(1:size(model%horizontal_diagnostic_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_diag_hz)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_diag_hz)'
    cc_diag_hz = _ZERO_
 
    ! Allocate array for vertical movement rates (m/s, positive for upwards),
    ! and set these to the values provided by the model.
    allocate(ws(0:nlev,1:size(model%state_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (ws)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (ws)'
    do i=1,size(model%state_variables)
       ws(:,i) = model%state_variables(i)%vertical_movement
    end do
 
    ! Allocate array for surface fluxes and initialize these to zero (no flux).
    allocate(sfl(1:size(model%state_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (sfl)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (sfl)'
    sfl = _ZERO_
 
    ! Allocate array for bottom fluxes and initialize these to zero (no flux).
    allocate(bfl(1:size(model%state_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (bfl)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (bfl)'
    bfl = _ZERO_
 
    ! Allocate array for surface fluxes and initialize these to zero (no flux).
    allocate(cc_transport(1:size(model%state_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (cc_transport)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (cc_transport)'
    cc_transport = .true.
    do i=1,size(model%state_variables)
       cc_transport(i) = .not.model%state_variables(i)%properties%get_logical('disable_transport',default=.false.)
@@ -477,21 +501,21 @@
    ! Allocate array for photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    allocate(par(1:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (par)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (par)'
    par = _ZERO_
    if (fabm_variable_needs_values(model,par_id)) call fabm_link_bulk_data(model,par_id,par)
 
    ! Allocate array for attenuation coefficient pf photosynthetically active radiation (PAR).
    ! This will be calculated internally during each time step.
    allocate(k_par(1:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (k_par)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (k_par)'
    k_par = _ZERO_
    call fabm_link_bulk_data(model,standard_variables%attenuation_coefficient_of_photosynthetic_radiative_flux,k_par)
 
    ! Allocate array for shortwave radiation (swr).
    ! This will be calculated internally during each time step.
    allocate(swr(1:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (swr)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (swr)'
    swr = _ZERO_
    if (fabm_variable_needs_values(model,swr_id)) call fabm_link_bulk_data(model,swr_id,swr)
 
@@ -499,7 +523,7 @@
    ! This will be calculated from layer depths and density internally during each time step.
    if (fabm_variable_needs_values(model,pres_id)) then
       allocate(pres(1:nlev),stat=rc)
-      if (rc /= 0) stop 'allocate_memory(): Error allocating (pres)'
+      if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (pres)'
       pres = _ZERO_
       call fabm_link_bulk_data(model,pres_id,pres)
    end if
@@ -507,7 +531,7 @@
    ! Allocate array for local depth (below water surface).
    ! This will be calculated from layer depths.
    allocate(z(1:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (z)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (z)'
    z = _ZERO_
    call fabm_link_bulk_data(model,standard_variables%depth,z)
 
@@ -517,31 +541,31 @@
    call fabm_link_scalar_data(model,standard_variables%number_of_days_since_start_of_the_year,decimal_yearday)
 
    allocate(Qsour(0:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (Qsour)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (Qsour)'
    Qsour = _ZERO_
 
    allocate(Lsour(0:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (Lsour)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (Lsour)'
    Lsour = _ZERO_
 
    allocate(DefaultRelaxTau(0:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (DefaultRelaxTau)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (DefaultRelaxTau)'
    DefaultRelaxTau = 1.d15
 
    allocate(curh(0:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (curh)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (curh)'
    curh = _ZERO_
 
    allocate(curnuh(0:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (curnuh)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (curnuh)'
    curnuh = _ZERO_
 
    allocate(iweights(0:nlev),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (iweights)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (iweights)'
    iweights = _ZERO_
 
    allocate(posconc(1:size(model%state_variables)),stat=rc)
-   if (rc /= 0) stop 'allocate_memory(): Error allocating (posconc)'
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (posconc)'
    posconc = 0
    do i=1,size(model%state_variables)
       if (model%state_variables(i)%minimum>=_ZERO_) posconc(i) = 1
@@ -822,6 +846,11 @@
       ! Repair state
       call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after time integration')
    end do
+
+   if (check_conservation) then
+      call calculate_conserved_quantities(nlev,change_in_total)
+      change_in_total = change_in_total - total0
+   end if
 
    call system_clock(clock_end)
    clock_source = clock_source + clock_end-clock_start
@@ -1190,6 +1219,9 @@
    if (allocated(curnuh))          deallocate(curnuh)
    if (allocated(cc_transport))    deallocate(cc_transport)
    if (allocated(posconc))         deallocate(posconc)
+   if (allocated(local))           deallocate(local)
+   if (allocated(total0))          deallocate(total0)
+   if (allocated(change_in_total)) deallocate(change_in_total)
 
    ! Deallocate arrays with internally computed environmental variables.
    if (allocated(par))   deallocate(par)
@@ -1370,6 +1402,9 @@
             cc_diag(:,i) = fabm_get_bulk_diagnostic_data(model,i)
       end do
 
+      ! Compute totals of conserved quantities at simulation start (to be used in outputs related to mass conservation checks)
+      call calculate_conserved_quantities(nlev,total0)
+
    end subroutine init_gotm_fabm_state
 
    subroutine gotm_driver_fatal_error(self,location,message)
@@ -1386,6 +1421,23 @@
 
       write (*,*) trim(message)
    end subroutine
+
+   subroutine calculate_conserved_quantities(nlev,total)
+      integer, intent(in)  :: nlev
+      REALTYPE,intent(out) :: total(:)
+
+      integer :: n
+
+      ! Add conserved quantities at boundaries (in m-2)
+      call fabm_get_horizontal_conserved_quantities(model,total)
+
+      call fabm_get_conserved_quantities(model,1,nlev,local)
+      do n=1,size(model%conserved_quantities)
+         ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
+         ! We therefore need to increment the index by 1 in order to address original elements >=1!
+         total(n) = total(n) + sum(h(2:nlev+1)*local(1:nlev,n))
+      end do
+   end subroutine calculate_conserved_quantities
 
    end module gotm_fabm
 
