@@ -676,11 +676,11 @@
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
    h        => h_          ! layer heights [1d array] needed for advection, diffusion
-   Vc       => Vc_         ! volume of cells in water column
+   Vc(0:)   => Vc_         ! volume of cells in water column
    Af(0:)   => Af_         ! hypsograph
    Qres     => Qres_
-   wq       => wq_
-   w        => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
+   wq(0:)   => wq_
+   w(0:)    => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
    precip   => precip_     ! precipitation [scalar] - used to calculate dilution due to increased water volume
    evap     => evap_       ! evaporation [scalar] - used to calculate concentration due to decreased water volume
