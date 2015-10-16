@@ -16,7 +16,7 @@
 !
 ! !USES:
    use fabm_types,only:rk,get_safe_name,output_time_step_integrated,output_time_step_averaged,output_none
-   use fabm,only:type_external_variable,fabm_get_conserved_quantities,fabm_get_horizontal_conserved_quantities
+   use fabm,only:type_external_variable
 
    use gotm_fabm_input
    use gotm_fabm

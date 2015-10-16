@@ -847,11 +847,6 @@
       call do_repair_state(nlev,'gotm_fabm::do_gotm_fabm, after time integration')
    end do
 
-   if (check_conservation) then
-      call calculate_conserved_quantities(nlev,change_in_total)
-      change_in_total = change_in_total - total0
-   end if
-
    call system_clock(clock_end)
    clock_source = clock_source + clock_end-clock_start
 
@@ -1061,7 +1056,7 @@
    ! Add pelagic sink and source terms for all depth levels.
    call fabm_do(model,1,nlev,rhs(1:nlev,1:n))
 
-   if (first) call save_diagnostics()
+   if (first) call save_diagnostics(nlev)
 
    end subroutine right_hand_side_rhs
 !EOC
@@ -1130,12 +1125,14 @@
    ! Add pelagic sink and source terms for all depth levels.
    call fabm_do(model,1,nlev,pp(1:nlev,1:n,1:n),dd(1:nlev,1:n,1:n))
 
-   if (first) call save_diagnostics()
+   if (first) call save_diagnostics(nlev)
 
    end subroutine right_hand_side_ppdd
 !EOC
 
-   subroutine save_diagnostics()
+   subroutine save_diagnostics(nlev)
+      integer,intent(in) :: nlev
+
       integer :: i
 
       ! Time-integrate diagnostic variables defined on horizontal slices, where needed.
@@ -1161,6 +1158,11 @@
             cc_diag(:,i) = cc_diag(:,i) + fabm_get_bulk_diagnostic_data(model,i)*dt_eff
          end if
       end do
+
+      if (check_conservation) then
+         call calculate_conserved_quantities(nlev,change_in_total)
+         change_in_total = change_in_total - total0
+      end if
    end subroutine
 
 !-----------------------------------------------------------------------
