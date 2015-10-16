@@ -14,6 +14,7 @@ module output_manager
    private
 
    class (type_file),pointer :: first_file
+   logical                   :: files_initialized
 
 contains
 
@@ -26,6 +27,7 @@ contains
          stop 1
       end if
       nullify(first_file)
+      files_initialized = .false.
       call configure_from_yaml(field_manager,postfix)
    end subroutine
 
@@ -139,6 +141,122 @@ contains
       end do
    end subroutine add_coordinate_variables
 
+   subroutine initialize_files(julianday,secondsofday,n)
+      integer,intent(in) :: julianday,secondsofday,n
+
+      class (type_file),            pointer :: file
+      class (type_output_field),    pointer :: output_field
+      type (type_output_dimension), pointer :: output_dim
+      integer, allocatable, dimension(:)    :: starts, stops, strides
+      integer                               :: i,j
+
+      file => first_file
+      do while (associated(file))
+         ! Add variables below selected categories to output
+         call collect_from_categories(file)
+
+         ! Remove empty variables (with one or more zero-length dimensions)
+         call filter_variables(file)
+
+         ! Add any missing coordinate variables
+         call add_coordinate_variables(file)
+
+         ! First check whether all fields included in this file have been registered.
+         output_field => file%first_field
+         do while (associated(output_field))
+            select case (output_field%source%status)
+               case (status_not_registered)
+                  call host%fatal_error('output_manager_save', 'File '//trim(file%path)//': &
+                     requested field "'//trim(output_field%source%name)//'" has not been registered with field manager.')
+               case (status_registered_no_data)
+                  call host%fatal_error('output_manager_save', 'File '//trim(file%path)//': &
+                     data for requested field "'//trim(output_field%source%name)//'" have not been provided.')
+            end select
+            output_field => output_field%next
+         end do
+
+         ! If we do not have a start time yet, use current.
+         if (file%first_julian<=0) then
+            file%first_julian = julianday
+            file%first_seconds = secondsofday
+         end if
+         file%first_index = n
+
+         ! Create output file
+         call file%initialize()
+
+         ! Initialize fields based on time integrals
+         output_field => file%first_field
+         do while (associated(output_field))
+            ! Determine effective dimension range
+            allocate(starts(1:size(output_field%source%dimensions)))
+            allocate(stops(1:size(output_field%source%dimensions)))
+            allocate(strides(1:size(output_field%source%dimensions)))
+            j = 0
+            do i=1,size(output_field%source%dimensions)
+               if (output_field%source%dimensions(i)%p%length>1) then
+                  ! Not a singleton dimension - create the slice spec
+                  j = j + 1
+                  output_dim => file%get_dimension(output_field%source%dimensions(i)%p)
+                  starts(j) = output_dim%start
+                  stops(j) = output_dim%stop
+                  strides(j) = output_dim%stride
+               end if
+            end do
+
+            if (all(stops(1:j)>=starts(1:j))) then
+               ! Select appropriate data slice
+               if (associated(output_field%source%data_3d)) then
+                  if (j/=3) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
+                  output_field%source_3d => output_field%source%data_3d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2),starts(3):stops(3):strides(3))
+               elseif (associated(output_field%source%data_2d)) then
+                  if (j/=2) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
+                  output_field%source_2d => output_field%source%data_2d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2))
+               elseif (associated(output_field%source%data_1d)) then                  
+                  if (j/=1) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
+                  output_field%source_1d => output_field%source%data_1d(starts(1):stops(1):strides(1))
+               else
+                  if (j/=0) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
+                  output_field%source_0d => output_field%source%data_0d
+               end if
+            end if
+
+            ! Deallocate dimension range specifyers.
+            deallocate(starts,stops,strides)
+
+            ! Store instantaneous data by default.
+            output_field%data_0d => output_field%source_0d
+            output_field%data_1d => output_field%source_1d
+            output_field%data_2d => output_field%source_2d
+            output_field%data_3d => output_field%source_3d
+
+            if (output_field%time_method/=time_method_instantaneous.and.output_field%time_method/=time_method_none) then
+               ! We are not storing the instantaneous value. Create a work array that will be stored instead.
+               if (associated(output_field%source_3d)) then
+                  allocate(output_field%work_3d(size(output_field%source_3d,1),size(output_field%source_3d,2),size(output_field%source_3d,3)))
+                  output_field%work_3d(:,:,:) = 0.0_rk
+                  output_field%data_3d => output_field%work_3d
+               elseif (associated(output_field%source_2d)) then
+                  allocate(output_field%work_2d(size(output_field%source_2d,1),size(output_field%source_2d,2)))
+                  output_field%work_2d(:,:) = 0.0_rk
+                  output_field%data_2d => output_field%work_2d
+               elseif (associated(output_field%source_1d)) then
+                  allocate(output_field%work_1d(size(output_field%source_1d)))
+                  output_field%work_1d(:) = 0.0_rk
+                  output_field%data_1d => output_field%work_1d
+               elseif (associated(output_field%source_0d)) then
+                  output_field%work_0d = 0.0_rk
+                  output_field%data_0d => output_field%work_0d
+               end if
+            end if
+
+            output_field => output_field%next
+         end do
+         file => file%next
+      end do
+      files_initialized = .true.
+   end subroutine
+
    subroutine output_manager_save(julianday,secondsofday,n)
       integer,intent(in) :: julianday,secondsofday,n
 
@@ -147,9 +265,8 @@ contains
       integer                               :: yyyy,mm,dd
       logical                               :: in_window
       logical                               :: output_based_on_time, output_based_on_index
-      type (type_output_dimension), pointer :: output_dim
-      integer, allocatable, dimension(:)    :: starts, stops, strides
-      integer                               :: i,j
+
+      if (.not.files_initialized) call initialize_files(julianday,secondsofday,n)
 
       file => first_file
       do while (associated(file))
@@ -158,6 +275,32 @@ contains
          in_window = ((julianday==file%first_julian.and.secondsofday>=file%first_seconds) .or. julianday>file%first_julian) &
                .and. ((julianday==file%last_julian .and.secondsofday<=file%last_seconds)  .or. julianday<file%last_julian)
          if (in_window) then
+
+         ! Increment time-integrated fields
+         output_field => file%first_field
+         do while (associated(output_field))
+            if (output_field%time_method==time_method_mean .or. (output_field%time_method==time_method_integrated.and.file%next_julian/=-1)) then
+               ! This is a time-integrated field that needs to be incremented.
+               if (associated(output_field%source_3d)) then
+                  output_field%work_3d(:,:,:) = output_field%work_3d + output_field%source_3d
+               elseif (associated(output_field%source_2d)) then
+                  output_field%work_2d(:,:) = output_field%work_2d + output_field%source_2d
+               elseif (associated(output_field%source_1d)) then
+                  output_field%work_1d(:) = output_field%work_1d + output_field%source_1d
+               elseif (associated(output_field%source_0d)) then
+                  output_field%work_0d = output_field%work_0d + output_field%source_0d
+               end if
+            end if
+            output_field => output_field%next
+         end do
+         file%n = file%n + 1
+
+         if (file%next_julian==-1) then
+            ! Store current time step so next time step can be computed correctly.
+            file%next_julian = file%first_julian
+            file%next_seconds = file%first_seconds
+            file%next_index = file%first_index
+         end if
 
          ! Determine whether output is required
          if (file%time_unit .ne. time_unit_dt) then
@@ -169,156 +312,29 @@ contains
          end if
          if (output_based_on_time .or. output_based_on_index) then
             ! Output required
-            if (file%next_julian==-1) then
-               ! Add variables below selected categories to output
-               call collect_from_categories(file)
 
-               ! Remove empty variables (with one or more zero-length dimensions)
-               call filter_variables(file)
-
-               ! Add any missing coordinate variables
-               call add_coordinate_variables(file)
-
-               ! First check whether all fields included in this file have been registered.
-               output_field => file%first_field
-               do while (associated(output_field))
-                  select case (output_field%source%status)
-                     case (status_not_registered)
-                        call host%fatal_error('output_manager_save', 'File '//trim(file%path)//': &
-                           requested field "'//trim(output_field%source%name)//'" has not been registered with field manager.')
-                     case (status_registered_no_data)
-                        call host%fatal_error('output_manager_save', 'File '//trim(file%path)//': &
-                           data for requested field "'//trim(output_field%source%name)//'" have not been provided.')
-                  end select
-                  output_field => output_field%next
-               end do
-
-               ! If we do not have a start time yet, use current.
-               if (file%first_julian<=0) then
-                  file%first_julian = julianday
-                  file%first_seconds = secondsofday
+            ! Perform temporal averaging where required.
+            output_field => file%first_field
+            do while (associated(output_field))
+               if (output_field%time_method==time_method_mean) then
+                  ! This is a time-integrated field that needs to be incremented.
+                  if (associated(output_field%source_3d)) then
+                     output_field%work_3d(:,:,:) = output_field%work_3d/file%n
+                  elseif (associated(output_field%source_2d)) then
+                     output_field%work_2d(:,:) = output_field%work_2d/file%n
+                  elseif (associated(output_field%source_1d)) then
+                     output_field%work_1d(:) = output_field%work_1d/file%n
+                  elseif (associated(output_field%source_0d)) then
+                     output_field%work_0d = output_field%work_0d/file%n
+                  end if
                end if
-               file%first_index = n
-
-               ! Create output file
-               call file%initialize()
-
-               ! Store current time step so next time step can be computed correctly.
-               file%next_julian = file%first_julian
-               file%next_seconds = file%first_seconds
-               file%next_index = file%first_index
-
-               ! Initialize fields based on time integrals
-               output_field => file%first_field
-               do while (associated(output_field))
-                  ! Determine effective dimension range
-                  allocate(starts(1:size(output_field%source%dimensions)))
-                  allocate(stops(1:size(output_field%source%dimensions)))
-                  allocate(strides(1:size(output_field%source%dimensions)))
-                  j = 0
-                  do i=1,size(output_field%source%dimensions)
-                     if (output_field%source%dimensions(i)%p%length>1) then
-                        ! Not a singleton dimension - create the slice spec
-                        j = j + 1
-                        output_dim => file%get_dimension(output_field%source%dimensions(i)%p)
-                        starts(j) = output_dim%start
-                        stops(j) = output_dim%stop
-                        strides(j) = output_dim%stride
-                     end if
-                  end do
-
-                  if (all(stops(1:j)>=starts(1:j))) then
-                     ! Select appropriate data slice
-                     if (associated(output_field%source%data_3d)) then
-                        if (j/=3) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                        output_field%source_3d => output_field%source%data_3d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2),starts(3):stops(3):strides(3))
-                     elseif (associated(output_field%source%data_2d)) then
-                        if (j/=2) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                        output_field%source_2d => output_field%source%data_2d(starts(1):stops(1):strides(1),starts(2):stops(2):strides(2))
-                     elseif (associated(output_field%source%data_1d)) then                  
-                        if (j/=1) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                        output_field%source_1d => output_field%source%data_1d(starts(1):stops(1):strides(1))
-                     else
-                        if (j/=0) call host%fatal_error('output_manager_save','BUG: data of '//trim(output_field%source%name)//' contains one or more singleton dimensions.')
-                        output_field%source_0d => output_field%source%data_0d
-                     end if
-                  end if
-
-                  ! Deallocate dimension range specifyers.
-                  deallocate(starts,stops,strides)
-
-                  ! Store instantaneous data by default.
-                  output_field%data_0d => output_field%source_0d
-                  output_field%data_1d => output_field%source_1d
-                  output_field%data_2d => output_field%source_2d
-                  output_field%data_3d => output_field%source_3d
-
-                  if (output_field%time_method/=time_method_instantaneous) then
-                     ! We are not storing the instantaneous value. Create a work array that will be stored instead.
-                     if (associated(output_field%source_3d)) then
-                        allocate(output_field%work_3d(size(output_field%source_3d,1),size(output_field%source_3d,2),size(output_field%source_3d,3)))
-                        output_field%data_3d => output_field%work_3d
-                     elseif (associated(output_field%source_2d)) then
-                        allocate(output_field%work_2d(size(output_field%source_2d,1),size(output_field%source_2d,2)))
-                        output_field%data_2d => output_field%work_2d
-                     elseif (associated(output_field%source_1d)) then
-                        allocate(output_field%work_1d(size(output_field%source_1d)))
-                        output_field%data_1d => output_field%work_1d
-                     elseif (associated(output_field%source_0d)) then
-                        output_field%data_0d => output_field%work_0d
-                     end if
-                  end if
-
-                  select case (output_field%time_method)
-                     case (time_method_mean)
-                        ! Temporal mean: use initial value on first output.
-                        if (associated(output_field%source_3d)) then
-                           output_field%work_3d(:,:,:) = output_field%source_3d
-                        elseif (associated(output_field%source_2d)) then
-                           output_field%work_2d(:,:) = output_field%source_2d
-                        elseif (associated(output_field%source_1d)) then
-                           output_field%work_1d(:) = output_field%source_1d
-                        elseif (associated(output_field%source_0d)) then
-                           output_field%work_0d = output_field%source_0d
-                        end if
-                     case (time_method_integrated)
-                        ! Time integral: use zero at first output.
-                        if (associated(output_field%source_3d)) then
-                           output_field%work_3d(:,:,:) = 0.0_rk
-                        elseif (associated(output_field%source_2d)) then
-                           output_field%work_2d(:,:) = 0.0_rk
-                        elseif (associated(output_field%source_1d)) then
-                           output_field%work_1d(:) = 0.0_rk
-                        elseif (associated(output_field%source_0d)) then
-                           output_field%work_0d = 0.0_rk
-                        end if
-                  end select
-                  output_field => output_field%next
-               end do
-            else
-               ! Perform temporal averaging where required.
-               output_field => file%first_field
-               do while (associated(output_field))
-                  if (output_field%time_method==time_method_mean) then
-                     ! This is a time-integrated field that needs to be incremented.
-                     if (associated(output_field%source_3d)) then
-                        output_field%work_3d(:,:,:) = output_field%work_3d/file%n
-                     elseif (associated(output_field%source_2d)) then
-                        output_field%work_2d(:,:) = output_field%work_2d/file%n
-                     elseif (associated(output_field%source_1d)) then
-                        output_field%work_1d(:) = output_field%work_1d/file%n
-                     elseif (associated(output_field%source_0d)) then
-                        output_field%work_0d = output_field%work_0d/file%n
-                     end if
-                  end if
-                  output_field => output_field%next
-               end do
-            end if
+               output_field => output_field%next
+            end do
 
             ! Do NetCDF output
             call file%save(julianday,secondsofday)
 
-            ! Determine time (juian day, seconds of day) for next output.
+            ! Determine time (julian day, seconds of day) for next output.
             select case (file%time_unit)
                case (time_unit_second)
                   file%next_seconds = file%next_seconds + file%time_step
@@ -364,26 +380,6 @@ contains
                output_field => output_field%next
             end do
          end if
-
-         ! Increment time-integrated fields
-         output_field => file%first_field
-         do while (associated(output_field))
-            select case (output_field%time_method)
-               case (time_method_mean,time_method_integrated)
-                  ! This is a time-integrated field that needs to be incremented.
-                  if (associated(output_field%source_3d)) then
-                     output_field%work_3d(:,:,:) = output_field%work_3d + output_field%source_3d
-                  elseif (associated(output_field%source_2d)) then
-                     output_field%work_2d(:,:) = output_field%work_2d + output_field%source_2d
-                  elseif (associated(output_field%source_1d)) then
-                     output_field%work_1d(:) = output_field%work_1d + output_field%source_1d
-                  elseif (associated(output_field%source_0d)) then
-                     output_field%work_0d = output_field%work_0d + output_field%source_0d
-                  end if
-            end select
-            output_field => output_field%next
-         end do
-         file%n = file%n + 1
 
          end if ! in output time window
 

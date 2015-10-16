@@ -16,7 +16,7 @@
 !
 ! !USES:
    use fabm_types,only:rk,get_safe_name,output_time_step_integrated,output_time_step_averaged,output_none
-   use fabm,only:type_external_variable,fabm_get_conserved_quantities,fabm_get_horizontal_conserved_quantities
+   use fabm,only:type_external_variable
 
    use gotm_fabm_input
    use gotm_fabm
@@ -29,8 +29,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
    public init_gotm_fabm_output, do_gotm_fabm_output, clean_gotm_fabm_output
 
-   REALTYPE,allocatable :: total0(:),total(:)
-   REALTYPE,allocatable :: local(:,:)
+   REALTYPE,allocatable :: total(:)
 !EOP
 !-----------------------------------------------------------------------
 
@@ -72,12 +71,8 @@ contains
 !-----------------------------------------------------------------------
 !BOC
    ! Allocate memory for conserved quantity totals
-   allocate(total0(1:size(model%conserved_quantities)),stat=rc)
-   if (rc /= 0) stop 'init_gotm_fabm_output: Error allocating (total0)'
    allocate(total(1:size(model%conserved_quantities)),stat=rc)
    if (rc /= 0) stop 'init_gotm_fabm_output: Error allocating (total)'
-   allocate(local(1:nlev,1:size(model%conserved_quantities)),stat=rc)
-   if (rc /= 0) stop 'init_gotm_fabm_output: Error allocating (local)'
 
    select case (out_fmt)
       case (NETCDF)
@@ -151,7 +146,6 @@ contains
          iret = define_mode(ncid,.false.)
 #endif
    end select
-   call calculate_conserved_quantities(nlev,total0)
 
 #ifdef NETCDF_FMT
    contains
@@ -327,27 +321,8 @@ contains
    end subroutine do_gotm_fabm_output
 !EOC
 
-   subroutine calculate_conserved_quantities(nlev,total)
-      integer, intent(in)  :: nlev
-      REALTYPE,intent(out) :: total(:)
-
-      integer :: n
-
-      ! Add conserved quantities at boundaries (in m-2)
-      call fabm_get_horizontal_conserved_quantities(model,1,total)
-
-      call fabm_get_conserved_quantities(model,1,nlev,local)
-      do n=1,size(model%conserved_quantities)
-         ! Note: our pointer to h has a lower bound of 1, while the original pointed-to data starts at 0.
-         ! We therefore need to increment the index by 1 in order to address original elements >=1!
-         total(n) = total(n) + sum(h(2:nlev+1)*local(1:nlev,n))
-      end do
-   end subroutine
-
    subroutine clean_gotm_fabm_output()
-      if (allocated(total0))           deallocate(total0)
-      if (allocated(total))            deallocate(total)
-      if (allocated(local))            deallocate(local)
+      if (allocated(total)) deallocate(total)
    end subroutine
 
 !-----------------------------------------------------------------------
