@@ -306,24 +306,21 @@
 !     weights have been found - now apply them for the flow
       current_stream%Q = current_stream%weights*current_stream%QI
 
-!     now get the - active - temperature and salinity
-!     think it only make really sense for inflows to specify T and S
-      if (current_stream%has_T) then
-         TI = current_stream%TI
-      else
-!KB      is there a mean !!!!
-         TI = sum(T(nmin:nmax))/(nmax-nmin+1)
-      end if
-      if (current_stream%has_S) then
-         SI = current_stream%SI
-      else
-!KB      is there a mean !!!!
-         SI = sum(T(nmin:nmax))/(nmax-nmin+1)
-      end if
-
       ! inflow stream
       if (current_stream%QI .gt. _ZERO_) then
          int_inflow = int_inflow + dt*current_stream%QI
+
+         if (current_stream%has_T) then
+            TI = current_stream%TI
+         else
+!KB         is there a mean !!!!
+            TI = sum(T(nmin:nmax))/(nmax-nmin+1)
+         end if
+         if (current_stream%has_S) then
+            SI = current_stream%SI
+         else
+            SI = _ZERO_
+         end if
 
          do n=1,nlev
             invV = _ONE_/Vc(n)
@@ -336,6 +333,7 @@
          int_outflow = int_outflow + dt*current_stream%QI
 
          if (current_stream%has_T) then
+            TI = current_stream%TI
             do n=1,nlev
                invV = _ONE_/Vc(n)
                Qt(n) = Qt(n) + TI * current_stream%Q(n) * invV
@@ -347,6 +345,7 @@
             end do
          end if
          if (current_stream%has_S) then
+            SI = current_stream%SI
             do n=1,nlev
                invV = _ONE_/Vc(n)
                Qs(n) = Qs(n) + SI * current_stream%Q(n) * invV
