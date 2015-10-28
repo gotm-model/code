@@ -35,7 +35,7 @@
       character(len=64)      :: name = ''
       integer                :: method
       REALTYPE               :: zl,zu
-      REALTYPE               :: QI,SI,TI
+      REALTYPE               :: QI,SI=_ZERO_,TI
       logical                :: has_S = .false.
       logical                :: has_T = .false.
       REALTYPE, allocatable  :: weights(:), Q(:)
