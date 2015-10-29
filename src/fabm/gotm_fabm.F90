@@ -265,6 +265,8 @@
 
       ! Initialize model tree (creates metadata and assigns variable identifiers)
       call fabm_set_domain(model,nlev,dt)
+      call model%set_bottom_index(1)
+      call model%set_surface_index(nlev)
 
       ! Report prognostic variable descriptions
       LEVEL2 'FABM pelagic state variables:'
@@ -1028,8 +1030,8 @@
    call system_clock(clock_end)
    clock_source = clock_source + clock_end-clock_start
 
-   if (associated(bio_albedo))     call fabm_get_albedo(model,nlev,bio_albedo)
-   if (associated(bio_drag_scale)) call fabm_get_drag(model,nlev,bio_drag_scale)
+   if (associated(bio_albedo))     call fabm_get_albedo(model,bio_albedo)
+   if (associated(bio_drag_scale)) call fabm_get_drag(model,bio_drag_scale)
 
    end subroutine do_gotm_fabm
 !EOC
@@ -1186,12 +1188,12 @@
    call fabm_check_state(model,1,nlev,repair_state,valid)
    if (repair_state.and..not.valid) repair_interior_count = repair_interior_count + 1
    if (valid .or. repair_state) then
-      call fabm_check_surface_state(model,nlev,repair_state,tmpvalid)
+      call fabm_check_surface_state(model,repair_state,tmpvalid)
       if (repair_state.and..not.tmpvalid) repair_surface_count = repair_surface_count + 1
       valid = valid.and.tmpvalid
    end if
    if (valid .or. repair_state) then
-      call fabm_check_bottom_state(model,1,repair_state,tmpvalid)
+      call fabm_check_bottom_state(model,repair_state,tmpvalid)
       if (repair_state.and..not.tmpvalid) repair_bottom_count = repair_bottom_count + 1
       valid = valid.and.tmpvalid
    end if
@@ -1257,14 +1259,14 @@
    rhs = _ZERO_
 
    ! Calculate temporal derivatives due to bottom processes (e.g. sedimentation, benthic biota).
-   call fabm_do_bottom(model,1,rhs(1,1:n),rhs(1,n+1:n+size(model%bottom_state_variables)))
+   call fabm_do_bottom(model,rhs(1,1:n),rhs(1,n+1:n+size(model%bottom_state_variables)))
 
    ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
    rhs(1,1:n) = rhs(1,1:n)/curh(1)
 
    if (.not.no_surface) then
       ! Calculate temporal derivatives due to surface processes (e.g. gas exchange, ice algae).
-      call fabm_do_surface(model,nlev,rhs(nlev,1:n),rhs(nlev,n+size(model%bottom_state_variables)+1:))
+      call fabm_do_surface(model,rhs(nlev,1:n),rhs(nlev,n+size(model%bottom_state_variables)+1:))
 
       ! Distribute surface flux into pelagic over surface box (i.e., divide by layer height).
       rhs(nlev,1:n) = rhs(nlev,1:n)/curh(nlev)
@@ -1332,7 +1334,7 @@
    dd = _ZERO_
 
    ! Calculate temporal derivatives due to benthic processes.
-   call fabm_do_benthos(model,1,pp(1,:,:),dd(1,:,:),n)
+   call fabm_do_bottom(model,pp(1,:,:),dd(1,:,:),n)
 
    ! Distribute bottom flux into pelagic over bottom box (i.e., divide by layer height).
    pp(1,1:n,:) = pp(1,1:n,:)/curh(1)
@@ -1791,7 +1793,7 @@
       integer :: n
 
       ! Add conserved quantities at boundaries (in m-2)
-      call fabm_get_horizontal_conserved_quantities(model,1,total)
+      call fabm_get_horizontal_conserved_quantities(model,total)
 
       call fabm_get_conserved_quantities(model,1,nlev,local)
       do n=1,size(model%conserved_quantities)
