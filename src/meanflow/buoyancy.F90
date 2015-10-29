@@ -51,7 +51,7 @@
 !  see section \ref{sec:advectionMean} on page \pageref{sec:advectionMean}.
 !
 ! !USES:
-   use meanflow,      only: h,Vc,Af
+   use meanflow,      only: lake,h,Vco,Vc,Af
    use meanflow,      only: w,buoy,T,avh,init_buoyancy
    use meanflow,      only: grid_method
    use observations,  only: b_obs_NN,b_obs_surf,b_obs_sbf
@@ -124,20 +124,26 @@
       init_buoyancy=.false.
    end if
 
+!  no relaxation to observed values
+   BRelaxTau = 1.e15
+
+   if (lake) then
+      stop 'lake mode does not support analytical buoyancy equation yet'
+   end if
+
+!  do advection step
+   if (w_adv_method .ne. 0) then
+      Lsour = _ZERO_
+      QSour = _ZERO_
+      call adv_center(nlev,dt,h,Vc,Vc,Af,w,AdvBcup,AdvBcdw,             &
+                      AdvBup,AdvBdw,Lsour,Qsour,w_adv_discr,adv_mode,buoy)
+   end if
+
 !  compose source term
    do i=1,nlev
       Lsour(i) = _ZERO_
       Qsour(i) = - (gamB(i)-gamB(i-1))/h(i)
    end do
-
-!  no relaxation to observed values
-   BRelaxTau = 1.e15
-
-!  do advection step
-   if (w_adv_method .ne. 0) then
-      call adv_center(nlev,dt,h,h,Vc,Af,w,AdvBcup,AdvBcdw,              &
-                      AdvBup,AdvBdw,w_adv_discr,adv_mode,buoy)
-   end if
 
 !  do diffusion step
    call diff_center(nlev,dt,cnpar,posconc,h,Vc,Af,DiffBcup,DiffBcdw,    &

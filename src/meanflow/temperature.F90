@@ -69,7 +69,7 @@
 ! !USES:
    use meanflow,     only: avmolt,rho_0,cp
    use meanflow,     only: lake
-   use meanflow,     only: h,Vc,Af
+   use meanflow,     only: h,Vco,Vc,Af
    use meanflow,     only: u,v,w,T,S,avh
    use meanflow,     only: bioshade
    use observations, only: dtdx,dtdy,t_adv
@@ -79,7 +79,7 @@
    use observations, only: Qt, Lt, Qres, wq
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
-   use util,         only: oneSided,zeroDivergence
+   use util,         only: oneSided,zeroDivergence,flux
 
    IMPLICIT NONE
 !
@@ -163,6 +163,32 @@
       avh(i)=nuh(i)+avmolT
    end do
 
+!  ... and from streams
+   if (lake) then
+      net_precip = precip + evap
+      if ( net_precip .gt. _ZERO_ ) then
+         Qt(nlev) = Qt(nlev) + net_precip*Af(nlev)*T(nlev)
+      else
+         Lt(nlev) = Lt(nlev) + net_precip*Af(nlev)
+      end if
+      do i=1,nlev
+         if ( Qres(i) .gt. _ZERO_ ) then
+            Qt(i) = Qt(i) + Qres(i)*T(i)
+         else
+            Lt(i) = Lt(i) + Qres(i)
+         end if
+      end do
+      call adv_center(nlev,dt,h,Vco,Vc,Af,wq,flux,flux,                 &
+                      _ZERO_,_ZERO_,Lt,Qt,w_adv_discr,1,T)
+   end if
+
+!  do advection step
+   if (w_adv_method.ne.0) then
+      Lsour = _ZERO_
+      Qsour = _ZERO_
+      call adv_center(nlev,dt,h,Vc,Vc,Af,w,AdvBcup,AdvBcdw,             &
+                      AdvTup,AdvTdw,Lsour,Qsour,w_adv_discr,adv_mode,T)
+   end if
 
 !  add contributions to source term
    Lsour=_ZERO_
@@ -186,34 +212,6 @@
       do i=1,nlev
          Qsour(i) = Qsour(i) - u(i)*dtdx(i) - v(i)*dtdy(i)
       end do
-   end if
-
-!  ... and from streams
-   if (lake) then
-      net_precip = precip + evap
-      if ( net_precip .gt. _ZERO_ ) then
-         Qt(nlev) = Qt(nlev) + net_precip*Af(nlev)/Vc(nlev)*T(nlev)
-      else
-         Lt(nlev) = Lt(nlev) + net_precip*Af(nlev)/Vc(nlev)
-      end if
-      do i=1,nlev
-         if ( Qres(i) .gt. _ZERO_ ) then
-            Qt(i) = Qt(i) + Qres(i)/Vc(i)*T(i)
-         else
-            Lt(i) = Lt(i) + Qres(i)/Vc(i)
-         end if
-      end do
-      call adv_center(nlev,dt,h,h,Vc,Af,wq,AdvBcup,AdvBcdw,               &
-                      AdvTup,AdvTdw,w_adv_discr,1,T)
-      do i=1,nlev
-         T(i) = ( T(i) + dt*Qt(i) ) / ( _ONE_ - dt*Lt(i) )
-      end do
-   end if
-
-!  do advection step
-   if (w_adv_method.ne.0) then
-      call adv_center(nlev,dt,h,h,Vc,Af,w,AdvBcup,AdvBcdw,               &
-                          AdvTup,AdvTdw,w_adv_discr,adv_mode,T)
    end if
 
 !  do diffusion step

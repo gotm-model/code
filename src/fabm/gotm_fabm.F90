@@ -107,8 +107,9 @@
                                 save_inputs, no_surface
 
    ! Arrays for work, vertical movement, and cross-boundary fluxes
+   REALTYPE,allocatable,dimension(:),target :: zeros,ones,curh
    REALTYPE,allocatable,dimension(:,:) :: ws
-   REALTYPE,allocatable,dimension(:)   :: sfl,bfl,Qsour,Lsour,DefaultRelaxTau,curh,curnuh,iweights
+   REALTYPE,allocatable,dimension(:)   :: sfl,bfl,Qsour,Lsour,DefaultRelaxTau,curnuh,iweights
    logical,allocatable, dimension(:)   :: cc_transport
    integer,allocatable, dimension(:)   :: posconc
 
@@ -118,9 +119,12 @@
    ! External variables
    REALTYPE :: dt,dt_eff   ! External and internal time steps
    integer  :: w_adv_ctr   ! Scheme for vertical advection (0 if not used)
-   REALTYPE,pointer,dimension(:) :: nuh,h,Vc,Af,Qres,wq,bioshade,w,rho
+   REALTYPE,pointer,dimension(:) :: nuh,h,bioshade,w,rho
    REALTYPE,pointer,dimension(:) :: SRelaxTau,sProf,salt
    REALTYPE,pointer              :: precip,evap,bio_drag_scale,bio_albedo
+
+!  GOTM-specific quantities
+   REALTYPE,pointer,dimension(:) :: Af,Vc,Vco,wq,Qres
 
    REALTYPE,pointer :: I_0,A,g1,g2
    integer,pointer  :: yearday,secondsofday
@@ -589,6 +593,19 @@
       if (model%state_variables(i)%minimum>=_ZERO_) posconc(i) = 1
    end do
 
+   allocate(zeros(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (zeros)'
+   zeros = _ZERO_
+   allocate(ones(0:nlev),stat=rc)
+   if (rc /= 0) stop 'init_var_gotm_fabm(): Error allocating (ones)'
+   ones = _ONE_
+
+   Af   => ones
+   Vc   => curh
+   Vco  => curh
+   wq   => zeros
+   Qres => zeros
+
    end subroutine init_var_gotm_fabm
 !EOC
 
@@ -671,9 +688,10 @@
 ! !IROUTINE: Set environment for FABM
 !
 ! !INTERFACE:
-   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,Vc_,Af_,Qres_,wq_,w_, &
+   subroutine set_env_gotm_fabm(latitude,longitude,dt_,w_adv_method_,w_adv_ctr_,temp,salt_,rho_,nuh_,h_,w_, &
                                 bioshade_,I_0_,cloud,taub,wnd,precip_,evap_,z_,A_,g1_,g2_, &
-                                yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_)
+                                yearday_,secondsofday_,SRelaxTau_,sProf_,bio_albedo_,bio_drag_scale_,       &
+                                Af_,Vc_,Vco_,wq_,Qres_)
 !
 ! !DESCRIPTION:
 ! This routine is called once from GOTM to provide pointers to the arrays that describe
@@ -683,12 +701,13 @@
    REALTYPE, intent(in),target :: latitude,longitude
    REALTYPE, intent(in) :: dt_
    integer,  intent(in) :: w_adv_method_,w_adv_ctr_
-   REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,Vc_,Af_,Qres_,wq_,w_,bioshade_,z_
+   REALTYPE, intent(in),target,dimension(:) :: temp,salt_,rho_,nuh_,h_,w_,bioshade_,z_
    REALTYPE, intent(in),target :: I_0_,cloud,wnd,precip_,evap_,taub
    REALTYPE, intent(in),target :: A_,g1_,g2_
    integer,  intent(in),target :: yearday_,secondsofday_
    REALTYPE, intent(in),optional,target,dimension(:) :: SRelaxTau_,sProf_
    REALTYPE, intent(in),optional,target :: bio_albedo_,bio_drag_scale_
+   REALTYPE, intent(in),optional,target,dimension(:) :: Af_,Vc_,Vco_,wq_,Qres_
 !
 ! !REVISION HISTORY:
 !  Original author(s): Jorn Bruggeman
@@ -714,10 +733,6 @@
    ! Save pointers to external dynamic variables that we need later (in do_gotm_fabm)
    nuh      => nuh_        ! turbulent heat diffusivity [1d array] used to diffuse biogeochemical state variables
    h        => h_          ! layer heights [1d array] needed for advection, diffusion
-   Vc(0:)   => Vc_         ! volume of cells in water column
-   Af(0:)   => Af_         ! hypsograph
-   Qres     => Qres_
-   wq(0:)   => wq_
    w(0:)    => w_          ! vertical medium velocity [1d array] needed for advection of biogeochemical state variables
    bioshade => bioshade_   ! biogeochemical light attenuation coefficients [1d array], output of biogeochemistry, input for physics
    precip   => precip_     ! precipitation [scalar] - used to calculate dilution due to increased water volume
@@ -745,6 +760,23 @@
               &but salinity relaxation arrays are not provided.'
       nullify(SRelaxTau)
       nullify(sProf)
+   end if
+
+   if ( present(Af_) .and. present(Vc_) .and. present(Vco_) ) then
+      Af (0:) => Af_
+      Vc (0:) => Vc_
+      Vco(0:) => Vco_
+   else
+      Af  => ones
+      Vc  => curh
+      Vco => curh
+   end if
+   if ( present(wq_) .and. present(Qres_) ) then
+      wq  (0:) => wq_
+      Qres(0:) => Qres_
+   else
+      wq   => zeros
+      Qres => zeros
    end if
 
    ! Copy scalars that will not change during simulation, and are needed in do_gotm_fabm)
@@ -904,22 +936,6 @@
    call system_clock(clock_start)
    do i=1,size(model%state_variables)
       if (cc_transport(i)) then
-         ! Do advection step due to settling or rising
-         ws1d(1:nlev-1) = iweights(1:nlev-1)*ws(1:nlev-1,i) + (_ONE_-iweights(1:nlev-1))*ws(2:nlev,i)
-         call adv_center(nlev,dt,curh,curh,Vc,Af,ws1d,flux,flux,_ZERO_,_ZERO_,w_adv_discr,adv_mode_1,cc(:,i))
-
-         ! Do advection step due to vertical velocity
-         if (w_adv_method/=0) call adv_center(nlev,dt,curh,curh,Vc,Af,w,flux,flux,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_0,cc(:,i))
-      end if
-   end do
-   call system_clock(clock_end)
-   clock_adv = clock_adv + clock_end-clock_start
-
-   ! Vertical diffusion
-   clock_start = clock_end
-   do i=1,size(model%state_variables)
-      if (cc_transport(i)) then
-
          Qsour = _ZERO_
          Lsour = _ZERO_
 
@@ -940,7 +956,7 @@
 
                ! Calculate change in all layers due to stream
                do k=1,nlev
-                  Qsour(k) = Qsour(k) + stream_conc * stream%Q(k) / Vc(k)
+                  Qsour(k) = Qsour(k) + stream%Q(k)*stream_conc
                end do
 
             else
@@ -948,11 +964,11 @@
                if (associated(stream%cc(i)%data)) then
                   stream_conc = stream%cc(i)%data
                   do k=1,nlev
-                     Qsour(k) = Qsour(k) + stream_conc * stream%Q(k) / Vc(k)
+                     Qsour(k) = Qsour(k) + stream%Q(k)*stream_conc
                   end do
                else
                   do k=1,nlev
-                     Lsour(k) = Lsour(k) +               stream%Q(k) / Vc(k)
+                     Lsour(k) = Lsour(k) + stream%Q(k)
                   end do
                end if
 
@@ -964,21 +980,35 @@
          if (associated(first_stream)) then
             do k=1,nlev
                if ( Qres(k) .gt. _ZERO_ ) then
-                  Qsour(k) = Qsour(k) + Qres(k)/Vc(k)*cc(k,i)
+                  Qsour(k) = Qsour(k) + Qres(k)*cc(k,i)
                else
-                  Lsour(k) = Lsour(k) + Qres(k)/Vc(k)
+                  Lsour(k) = Lsour(k) + Qres(k)
                end if
             end do
-            call adv_center(nlev,dt,curh,curh,Vc,Af,wq,oneSided,oneSided,_ZERO_,_ZERO_,w_adv_ctr,adv_mode_1,cc(:,i))
-            do k=1,nlev
-               cc(k,i) = ( cc(k,i) + dt*Qsour(k) ) / ( _ONE_ - dt*Lsour(k) )
-            end do
+            call adv_center(nlev,dt,curh,Vco,Vc,Af,wq,flux,flux,        &
+                            _ZERO_,_ZERO_,Lsour,Qsour,w_adv_ctr,adv_mode_1,cc(:,i))
          end if
 
-         ! Add stream (e.g., rivers) to source term that is to be used in diffusion solver.
          Qsour = _ZERO_
          Lsour = _ZERO_
+         ! Do advection step due to settling or rising
+         ws1d(1:nlev-1) = iweights(1:nlev-1)*ws(1:nlev-1,i) + (_ONE_-iweights(1:nlev-1))*ws(2:nlev,i)
+         call adv_center(nlev,dt,curh,Vc,Vc,Af,ws1d,flux,flux,          &
+                         _ZERO_,_ZERO_,Lsour,Qsour,w_adv_discr,adv_mode_1,cc(:,i))
 
+         ! Do advection step due to vertical velocity
+         if (w_adv_method/=0) call adv_center(nlev,dt,curh,Vc,Vc,Af,w,flux,flux,_ZERO_,_ZERO_,Lsour,Qsour,w_adv_ctr,adv_mode_0,cc(:,i))
+      end if
+   end do
+   call system_clock(clock_end)
+   clock_adv = clock_adv + clock_end-clock_start
+
+   ! Vertical diffusion
+   clock_start = clock_end
+   do i=1,size(model%state_variables)
+      if (cc_transport(i)) then
+         Qsour = _ZERO_
+         Lsour = _ZERO_
          ! Do diffusion step
          if (associated(cc_obs(i)%data)) then
    !        Observations on this variable are available.

@@ -30,7 +30,7 @@
    REALTYPE, public, dimension(:), allocatable, target  :: ga,z,zi,h,ho
 
 !  volume of cells
-   REALTYPE, public, dimension(:), allocatable, target  :: Vc
+   REALTYPE, public, dimension(:), allocatable, target  :: Vc,Vco
 
 !  the velocity components
    REALTYPE, public, dimension(:), allocatable, target  :: u,v,w
@@ -122,6 +122,7 @@
    integer,  public, parameter                   :: WATER_BALANCE_NONE=0
    integer,  public, parameter                   :: WATER_BALANCE_SURFACE=1
    integer,  public, parameter                   :: WATER_BALANCE_ALLLAYERS=2
+   integer,  public, parameter                   :: WATER_BALANCE_ZETA=3
    integer,  public                              :: water_balance_method=WATER_BALANCE_SURFACE
    REALTYPE, public                              :: net_water_balance
    REALTYPE, public                              :: int_flows
@@ -276,6 +277,10 @@
    allocate(Vc(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (Vc)'
    Vc = _ZERO_
+
+   allocate(Vco(0:nlev),stat=rc)
+   if (rc /= 0) STOP 'init_meanflow: Error allocating (Vco)'
+   Vco = _ZERO_
 
    allocate(u(0:nlev),stat=rc)
    if (rc /= 0) STOP 'init_meanflow: Error allocating (u)'

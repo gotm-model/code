@@ -65,7 +65,7 @@
 ! !USES:
    use meanflow,     only: avmols
    use meanflow,     only: lake
-   use meanflow,     only: h,Vc,Af
+   use meanflow,     only: h,Vco,Vc,Af
    use meanflow,     only: u,v,w,S,avh
    use observations, only: dsdx,dsdy,s_adv
    use observations, only: w_adv_discr,w_adv_method
@@ -73,7 +73,7 @@
    use observations, only: Qs, Ls, Qres, wq
    use airsea,       only: precip,evap
    use util,         only: Dirichlet,Neumann
-   use util,         only: oneSided,zeroDivergence
+   use util,         only: oneSided,zeroDivergence,flux
 
    IMPLICIT NONE
 !
@@ -134,6 +134,27 @@
       avh(i)=nus(i)+avmolS
    end do
 
+!  ... and from streams
+   if (lake) then
+      do i=1,nlev
+         if ( Qres(i) .gt. _ZERO_ ) then
+            Qs(i) = Qs(i) + Qres(i)*S(i)
+         else
+            Ls(i) = Ls(i) + Qres(i)
+         end if
+      end do
+      call adv_center(nlev,dt,h,Vco,Vc,Af,wq,flux,flux,                 &
+                      _ZERO_,_ZERO_,Ls,Qs,w_adv_discr,1,S)
+   end if
+
+!  do advection step
+   if (w_adv_method.ne.0) then
+      Lsour = _ZERO_
+      Qsour = _ZERO_
+      call adv_center(nlev,dt,h,Vc,Vc,Af,w,AdvBcup,AdvBcdw,             &
+                      AdvSup,AdvSdw,Lsour,Qsour,w_adv_discr,adv_mode,S)
+   end if
+
 !  add contributions to source term
    Lsour=_ZERO_
    Qsour=_ZERO_
@@ -150,29 +171,6 @@
       do i=1,nlev
          Qsour(i) = Qsour(i) - u(i)*dsdx(i) - v(i)*dsdy(i)
       end do
-   end if
-
-!  ... and from streams
-   if (lake) then
-      do i=1,nlev
-         if ( Qres(i) .gt. _ZERO_ ) then
-            Qs(i) = Qs(i) + Qres(i)/Vc(i)*S(i)
-         else
-            Ls(i) = Ls(i) + Qres(i)/Vc(i)
-         end if
-      end do
-      call adv_center(nlev,dt,h,h,Vc,Af,wq,AdvBcup,AdvBcdw,               &
-                      AdvSup,AdvSdw,w_adv_discr,1,S)
-      do i=1,nlev
-         S(i) = ( S(i) + dt*Qs(i) ) / ( _ONE_ - dt*Ls(i) )
-      end do
-
-   end if
-
-!  do advection step
-   if (w_adv_method.ne.0) then
-      call adv_center(nlev,dt,h,h,Vc,Af,w,AdvBcup,AdvBcdw,               &
-                          AdvSup,AdvSdw,w_adv_discr,adv_mode,S)
    end if
 
 !  do diffusion step

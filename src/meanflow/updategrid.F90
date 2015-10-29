@@ -46,7 +46,7 @@
    use meanflow,     only: depth0,depth
    use meanflow,     only: ga,z,zi,h,ho,ddu,ddl,grid_method
    use meanflow,     only: grid_file
-   use meanflow,     only: lake,Vc
+   use meanflow,     only: lake,Vc,Vco
    use observations, only: zeta_method
    use hypsograph,   only: update_hypsograph
    IMPLICIT NONE
@@ -173,6 +173,7 @@
       h = ga *depth
    case (2)
       ho=h
+      h(nlev) = depth - SUM( h(1:nlev-1) )
     case default
          stop "updategrid: No valid grid_method specified"
    end select
@@ -184,9 +185,11 @@
    end do
 
    if (lake) then
+      Vco = Vc
       call update_hypsograph(nlev,z,h)
    else
-      Vc = h
+      Vco = ho
+      Vc  = h
    end if
 
    return

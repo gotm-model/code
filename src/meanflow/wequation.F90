@@ -5,7 +5,7 @@
 ! !ROUTINE: wequation
 !
 ! !INTERFACE:
-   subroutine wequation(nlev)
+   subroutine wequation(nlev,dt)
 !
 ! !DESCRIPTION:
 !  This subroutine calculates vertical velocity profiles, if
@@ -18,12 +18,13 @@
 !  the bottom, where its value is zero.
 !
 ! !USES:
-   use meanflow,     only: zi,w
-   use observations, only: w_adv_method,w_adv,w_height
+   use meanflow    , only: zi,w,lake,Vc,Vco,Af
+   use observations, only: w_adv_method,w_adv,w_height,Q,Qres,FQ,wq
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
    integer, intent(in)                 :: nlev
+   REALTYPE, intent(in)                :: dt
 !
 ! !REVISION HISTORY:
 !  Original author(s): Hans Burchard & Karsten Bolding
@@ -32,11 +33,20 @@
 !
 ! !LOCAL VARIABLES:
    integer                   :: i
-   REALTYPE                  :: z_crit
+   REALTYPE                  :: dtm1,z_crit
 !-----------------------------------------------------------------------
 !BOC
 
 !  Vertical velocity calculation:
+
+   if (lake) then
+      dtm1 = _ONE_ / dt
+      ! calculate the vertical flux terms
+      do i=1,nlev-1
+         FQ(i) = FQ(i-1) + Q(i) + Qres(i) - ( Vc(i) - Vco(i) )*dtm1
+         wq(i) = FQ(i) / Af(i)
+      end do
+   end if
 
    select case(w_adv_method)
       case(0)

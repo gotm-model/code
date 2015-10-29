@@ -5,18 +5,20 @@
 ! !ROUTINE: The total water balance \label{sec:water_balance}
 !
 ! !INTERFACE:
-   subroutine water_balance(nlev)
+   subroutine water_balance(nlev,dt)
 !
 ! !DESCRIPTION:
 !
 ! !USES:
    use meanflow,      only: water_balance_method,WATER_BALANCE_NONE
    use meanflow,      only: WATER_BALANCE_SURFACE,WATER_BALANCE_ALLLAYERS
+   use meanflow,      only: WATER_BALANCE_ZETA
    use meanflow,      only: int_flows,net_water_balance,int_fwf
-   use meanflow,      only: lake,Af,Vc,h
+   use meanflow,      only: lake,Af,Vc
    use streams,       only: int_inflow,int_outflow
-   use airsea,        only: int_net_precip,evap,precip
-   use observations,  only: Q,Qres,FQ,wq
+   use airsea,        only: evap,precip
+   use observations,  only: Q,Qres,zeta_method,zeta
+   use hypsograph,    only: Vc2zi,zi2Vc
 !
    IMPLICIT NONE
 
@@ -24,6 +26,8 @@
 
 !  number of vertical layers
    integer, intent(in)                 :: nlev
+!  timestep
+   REALTYPE, intent(in)                :: dt
 !
 ! !REVISION HISTORY:
 !  Original author(s): Karsten Bolding
@@ -31,7 +35,8 @@
 !EOP
 !
 ! !LOCAL VARIABLES:
-   integer              :: k
+   REALTYPE             :: zi1(0:1),Af1(0:1),Vc1(1)
+   REALTYPE             :: sumVc,sumVcn
 !
 !-----------------------------------------------------------------------
 !BOC
@@ -42,25 +47,29 @@
 #else
       int_flows = (int_inflow + int_outflow)/Af(size(Af)-1)
 #endif
-      int_fwf = int_flows + int_net_precip
-   else
-      int_fwf = int_net_precip
-   end if
+      int_fwf = int_fwf + int_flows
 
-   if (lake) then
+      sumVc = sum(Vc(1:nlev))
       net_water_balance = sum(Q(1:nlev)) + Af(nlev)*(evap + precip)
+      if (zeta_method.eq.1 .or. zeta_method.eq.2) then
+!        zeta is already updated by observations
+         zi1(1) = zeta
+         call zi2Vc(1,zi1,Af1,Vc1)
+         sumVcn = Vc1(1)
+         net_water_balance = net_water_balance - (sumVcn-sumVc)/dt
+      end if
 !KBSTDERR 'net ',net_water_balance
       select case (water_balance_method)
          case(WATER_BALANCE_SURFACE)
             Qres(nlev) = -net_water_balance
          case(WATER_BALANCE_ALLLAYERS)
-            Qres = -net_water_balance * Vc / sum(Vc(1:nlev))
+            Qres = -net_water_balance * Vc / sumVc
+         case(WATER_BALANCE_ZETA)
+            if (zeta_method .ne. 3) stop 'WATER_BALANCE_ZETA requires zeta_method=3'
+            Vc1(1) = sumVc + dt*net_water_balance
+            call Vc2zi(1,Vc1,zi1)
+            zeta = zi1(1)
       end select
-      ! calculate the vertical flux terms
-      do k=1,nlev-1
-         FQ(k) = FQ(k-1) + Q(k) + Qres(k)
-         wq(k) = FQ(k) / Af(k)
-      end do
    end if
 
    return

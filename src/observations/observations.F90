@@ -197,6 +197,7 @@
    integer, parameter        :: ANALYTICAL=1
    integer, parameter        :: CONSTANT=1
    integer, parameter        :: FROMFILE=2
+   integer, parameter        :: FREE_SURFACE=3
    integer, parameter        :: CONST_PROF=1
    integer, parameter        :: TWO_LAYERS=2
    integer, parameter        :: CONST_NN=3
@@ -732,6 +733,9 @@
          call register_input_0d(zeta_file,1,zeta,'observed sea surface elevation')
          LEVEL2 'Reading sea surface elevations from:'
          LEVEL3 trim(zeta_file)
+      case (FREE_SURFACE)
+         LEVEL3 "free surface"
+         zeta = zeta_0
       case default
          LEVEL1 'A non-valid zeta_method has been given ',zeta_method
          stop 'init_observations()'

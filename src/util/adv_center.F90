@@ -5,7 +5,7 @@
 ! !ROUTINE: Advection schemes --- grid centers\label{sec:advectionMean}
 !
 ! !INTERFACE:
-   subroutine adv_center(N,dt,h,ho,Vc,Af,ww,Bcup,Bcdw,Yup,Ydw,method,mode,Y)
+   subroutine adv_center(N,dt,h,Vco,Vc,Af,ww,Bcup,Bcdw,Yup,Ydw,Lsour,Qsour,method,mode,Y)
 !
 ! !DESCRIPTION:
 !
@@ -172,10 +172,10 @@
 !  layer thickness (m)
    REALTYPE, intent(in)                :: h(0:N)
 
-!  old layer thickness (m)
-   REALTYPE, intent(in)                :: ho(0:N)
+!  old cell volume
+   REALTYPE, intent(in)                :: Vco(0:N)
 
-!  hypsograph at grid centre
+!  new cell volume
    REALTYPE, intent(in)                :: Vc(0:N)
 
 !  hypsograph at grid face
@@ -195,6 +195,14 @@
 
 !  value of lower BC
    REALTYPE, intent(in)                :: Ydw
+
+!  linear source term
+!  (treated implicitly)
+   REALTYPE, intent(in)                :: Lsour(0:N)
+
+!  constant source term
+!  (treated explicitly)
+   REALTYPE, intent(in)                :: Qsour(0:N)
 
 !  type of advection scheme
    integer,  intent(in)                :: method
@@ -218,7 +226,7 @@
    integer                              :: i,k,it
    REALTYPE                             :: x,r,Phi,limit
    REALTYPE                             :: Yu,Yc,Yd
-   REALTYPE                             :: c,cmax
+   REALTYPE                             :: c,cmax,dti
    REALTYPE                             :: cu(0:N)
 !
 !-----------------------------------------------------------------------
@@ -255,6 +263,8 @@
       STDERR '            cfl=',real(cmax/itmax)
    end if
 
+   dti = dt / it
+
 !  splitting loop
    do i=1,it
 
@@ -265,7 +275,7 @@
          if (ww(k) .gt. _ZERO_) then
 
 !           compute Courant number
-            c=ww(k)/float(it)*dt/(0.5*(h(k)+h(k+1)))
+            c=ww(k)*dti/(0.5*(h(k)+h(k+1)))
 
             if (k .gt. 1) then
                Yu=Y(k-1)                              ! upstream value
@@ -286,7 +296,7 @@
          else
 
 !           compute Courant number
-            c=-ww(k)/float(it)*dt/(0.5*(h(k)+h(k+1)))
+            c=-ww(k)*dti/(0.5*(h(k)+h(k+1)))
 
             if (k .lt. N-1) then
                Yu=Y(k+2)                              ! upstream value
@@ -334,7 +344,7 @@
           end select
 
 !        compute the limited flux
-         cu(k)=Af(k)*ww(k)*(Yc+0.5*limit*(1-c)*(Yd-Yc))
+         cu(k)=ww(k)*(Yc+0.5*limit*(1-c)*(Yd-Yc))
 
       end do
 
@@ -346,7 +356,7 @@
          cu(N) =  ww(N)*Yup
       case (oneSided)
          if (ww(N).ge._ZERO_) then
-            cu(N) =  Af(N)*ww(N)*Y(N)
+            cu(N) =  ww(N)*Y(N)
          else
             cu(N) = _ZERO_
          end if
@@ -366,7 +376,7 @@
          cu(0) =  ww(0)*Ydw
       case (oneSided)
          if(ww(0).le._ZERO_) then
-            cu(0) =  Af(0)*ww(0)*Y(1)
+            cu(0) =  ww(0)*Y(1)
          else
             cu(0) = _ZERO_
          end if
@@ -382,12 +392,14 @@
 
       if (mode.eq.0) then ! non-conservative
          do k=1,N
-            Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/        &
+            Y(k)=Y(k)-dti*((cu(k)-cu(k-1))/        &
                  h(k)-Y(k)*(ww(k)-ww(k-1))/h(k))
          enddo
       else                ! conservative
+         cu = Af * cu
          do k=1,N
-            Y(k)=Y(k)-1./float(it)*dt*((cu(k)-cu(k-1))/Vc(k))
+            Y(k) =   ( Vco(k)*Y(k) - dti*(cu(k)-cu(k-1)-Qsour(k)) ) &
+                   / ( Vc(k) - dti*Lsour(k) )
          enddo
       end if
 
