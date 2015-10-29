@@ -621,8 +621,8 @@
 
    ! Allow individual biogeochemical models to provide a custom initial state.
    call fabm_initialize_state(model,1,nlev)
-   call fabm_initialize_surface_state(model,nlev)
-   call fabm_initialize_bottom_state(model,1)
+   call fabm_initialize_surface_state(model)
+   call fabm_initialize_bottom_state(model)
 
    ! If custom initial state have been provided through fabm_input.nml, use these to override the current initial state.
    do i=1,size(model%state_variables)
@@ -645,8 +645,8 @@
    ! Note that rhs (biogeochemical source-sink terms) is a dummy variable that remains unused.
    rhs = _ZERO_
    call fabm_do(model,1,nlev,rhs)
-   call fabm_do_surface(model,nlev,rhs(nlev,:))
-   call fabm_do_bottom(model,1,rhs(1,:),bottom_flux)
+   call fabm_do_surface(model,rhs(nlev,:))
+   call fabm_do_bottom(model,rhs(1,:),bottom_flux)
 
    ! Obtain current values of diagnostic variables from FABM.
    do i=1,size(model%horizontal_diagnostic_variables)
