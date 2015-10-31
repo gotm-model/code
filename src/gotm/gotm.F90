@@ -457,7 +457,7 @@
          call water_balance(nlev,dt)
       end if
       call updategrid(nlev,dt,zeta)
-      call wequation(nlev)
+      call wequation(nlev,dt)
       call coriolis(nlev,dt)
 
 !     update velocity
