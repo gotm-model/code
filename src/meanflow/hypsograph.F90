@@ -274,10 +274,16 @@
 !
 ! !INPUT PARAMETERS:
    integer , intent(in)      :: nlev
+
+!  z positions of interfaces
    REALTYPE, intent(in)      :: zi(0:nlev)
 !
 ! !OUTPUT PARAMETERS:
+
+!  interface areas
    REALTYPE, intent(out)     :: Af(0:nlev)
+
+!  cell volumes
    REALTYPE, intent(out)     :: Vc(1:nlev)
 !
 ! !REVISION HISTORY:
@@ -334,9 +340,13 @@
 !
 ! !INPUT PARAMETERS:
    integer , intent(in)      :: nlev
+
+!  cell volumes
    REALTYPE, intent(in)      :: Vc(1:nlev)
 !
 ! !OUTPUT PARAMETERS:
+
+!  z positions of interfaces
    REALTYPE, intent(out)     :: zi(0:nlev)
 !
 ! !REVISION HISTORY:
