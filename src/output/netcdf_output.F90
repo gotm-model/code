@@ -76,6 +76,8 @@ contains
       end type
       type (type_dimension_ids), pointer :: first_dim_id, dim_id
 
+      call host%log_message('Using NetCDF version: '//trim(NF90_INQ_LIBVERS()))
+
       if (.not.associated(self%first_field)) then
          call host%log_message('NOTE: "'//trim(self%path)//trim(self%postfix)//'.nc" will not be created because it would contain no data.')
          return
