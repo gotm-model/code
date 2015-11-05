@@ -164,7 +164,9 @@ contains
 
       ! Basic consistency checks
       if (dim%length<-1) call fatal_error('register_dimension','length for dimension '//trim(dim%name)//' must be -1 (unlimited) or more')
+#if 0
       if (dim%offset<0)  call fatal_error('register_dimension','offset for dimension '//trim(dim%name)//' must be 0 or more')
+#endif
 
       ! Prepend to dimension list.
       dim%next => self%first_dimension
