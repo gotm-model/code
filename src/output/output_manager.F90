@@ -433,9 +433,9 @@ contains
 
    subroutine process_file(field_manager,path,mapping,postfix)
       type (type_field_manager), target      :: field_manager
-      character(len=*), optional, intent(in) :: postfix
       character(len=*),           intent(in) :: path
       class (type_dictionary),    intent(in) :: mapping
+      character(len=*), optional, intent(in) :: postfix
 
       type (type_error),  pointer :: config_error
       class (type_scalar),pointer :: scalar
@@ -454,6 +454,10 @@ contains
       if (present(postfix)) file%postfix = postfix
       file%next => first_file
       first_file => file
+
+      ! Can be used for CF global attributes
+      file%title = mapping%get_string('title',default='',error=config_error)
+      if (associated(config_error)) call host%fatal_error('process_file',config_error%message)
 
       ! Determine time unit
       scalar => mapping%get_scalar('time_unit',required=.true.,error=config_error)

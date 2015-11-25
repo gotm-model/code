@@ -25,6 +25,7 @@ module output_manager_core
    integer,parameter,public :: time_unit_month  = 4
    integer,parameter,public :: time_unit_year   = 5
    integer,parameter,public :: time_unit_dt     = 6
+   integer,parameter,public :: time_from_list   = 7
 
    integer,parameter,public :: rk = kind(_ONE_)
 
@@ -112,6 +113,7 @@ module output_manager_core
       type (type_field_manager),    pointer :: field_manager   => null()
       character(len=max_path)               :: path            = ''
       character(len=max_path)               :: postfix         = ''
+      character(len=string_length)          :: title           = ''
       integer                               :: time_unit       = time_unit_none
       integer                               :: time_step       = 0
       integer                               :: n               = 0  ! Number of model time steps processed so far for next output
