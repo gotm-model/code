@@ -128,7 +128,9 @@ contains
       if (self%is_dimension_used(dim)) then
          iret = nf90_def_var(self%ncid,'time',NF90_REAL,(/get_dim_id(dim)/),self%time_id); call check_err(iret)
          call write_time_string(self%reference_julian,self%reference_seconds,time_string)
+         iret = nf90_put_att(self%ncid,self%time_id,'long_name','time'); call check_err(iret)
          iret = nf90_put_att(self%ncid,self%time_id,'units','seconds since '//trim(time_string)); call check_err(iret)
+         iret = nf90_put_att(self%ncid,self%time_id,'calendar','standard'); call check_err(iret)
       end if
 
       ! Create variables
