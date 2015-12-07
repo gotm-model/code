@@ -148,7 +148,7 @@
    call fm%register('evap', 'm/s', 'evaporation', standard_name='', data0d=evap)
    call fm%register('sst', 'Celsius', 'sea surface temperature', standard_name='sea_surface_temperature', data0d=sst)
    call fm%register('sst_obs', 'Celsius', 'observed sea surface temperature', standard_name='sea_surface_temperature', data0d=sst_obs)
-   call fm%register('sss', 'PSU', 'sea surface salinity', standard_name='sea_surface_salinity', data0d=sss)
+   call fm%register('sss', '1e-3', 'sea surface salinity', standard_name='sea_surface_salinity', data0d=sss)
    call fm%register('cloud', '', 'cloud cover', standard_name='', data0d=cloud)
    select case (hum_method)
       case (1) ! relative humidity in % given

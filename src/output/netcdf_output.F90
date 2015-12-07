@@ -111,12 +111,26 @@ contains
          dim => dim%next
       end do
 
+      ! Create recommended CF global attributes
+      if ( len(trim(self%title)) .gt. 0) then
+         iret = nf90_put_att(self%ncid,NF90_GLOBAL,'title',trim(self%title)); call check_err(iret)
+      end if
+#if 0
+!      iret = nf90_put_att(self%ncid,NF90_GLOBAL,'institution','add an institution'); call check_err(iret)
+!      iret = nf90_put_att(self%ncid,NF90_GLOBAL,'source','add a source'); call check_err(iret)
+!      iret = nf90_put_att(self%ncid,NF90_GLOBAL,'history','add a history'); call check_err(iret)
+!      iret = nf90_put_att(self%ncid,NF90_GLOBAL,'references','add references'); call check_err(iret)
+#endif
+      iret = nf90_put_att(self%ncid,NF90_GLOBAL,'comment','file created by the GOTM output_manager'); call check_err(iret)
+
       ! Create time coordinate
       dim => self%field_manager%find_dimension(id_dim_time)
       if (self%is_dimension_used(dim)) then
          iret = nf90_def_var(self%ncid,'time',NF90_REAL,(/get_dim_id(dim)/),self%time_id); call check_err(iret)
          call write_time_string(self%reference_julian,self%reference_seconds,time_string)
+         iret = nf90_put_att(self%ncid,self%time_id,'long_name','time'); call check_err(iret)
          iret = nf90_put_att(self%ncid,self%time_id,'units','seconds since '//trim(time_string)); call check_err(iret)
+         iret = nf90_put_att(self%ncid,self%time_id,'calendar','standard'); call check_err(iret)
       end if
 
       ! Create variables
