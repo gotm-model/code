@@ -334,6 +334,22 @@
 			<T_col>1</T_col>
 		</stream>
 	</streams>
+	<gotm_fabm>
+		<gotm_fabm_nml>
+			<fabm_calc>False</fabm_calc>
+			<cnpar>1.</cnpar>
+			<w_adv_discr>6</w_adv_discr>
+			<ode_method>1</ode_method>
+			<split_factor>1</split_factor>
+			<bioshade_feedback>False</bioshade_feedback>
+			<bioalbedo_feedback>False</bioalbedo_feedback>
+			<biodrag_feedback>False</biodrag_feedback>
+			<repair_state>False</repair_state>
+			<salinity_relaxation_to_freshwater_flux>False</salinity_relaxation_to_freshwater_flux>
+			<no_precipitation_dilution>False</no_precipitation_dilution>
+			<save_inputs>False</save_inputs>
+		</gotm_fabm_nml>
+	</gotm_fabm>
 	<fabm_input>
 		<observations>
 			<variable></variable>
