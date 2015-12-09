@@ -198,6 +198,9 @@
 					<option value="0" label="no water balance" />
 					<option value="1" label="residual stream at surface layer" />
 					<option value="2" label="volume-weighted residual streams at all layers" />
+					<option value="3" label="water balance by free surface adjustment">
+						<condition type="eq" variable="/obs/zetaspec/zeta_method" value="3" />
+					</option>
 				</options>
 			</element>
 		</element>
@@ -1043,6 +1046,7 @@
 					<option value="0" label="constant sea surface elevation" />
 					<option value="1" label="sea surface elevation from tidal constituents" />
 					<option value="2" label="sea surface elevation from file" />
+					<option value="3" label="free sea surface elevation" />
 				</options>
 			</element>
 			<element name="zeta_file" type="gotmdatafile" label="filename for file with sea surface elevations">
