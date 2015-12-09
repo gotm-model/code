@@ -353,7 +353,7 @@
 	<fabm_input>
 		<observations>
 			<index>1</index>
-			<relex_tau>1.e15</relex_tau>
+			<relax_tau>1.e15</relax_tau>
 		</observations>
 	</fabm_input>
 </scenario>
