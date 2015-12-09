@@ -1227,17 +1227,15 @@
 			<element name="T_col" type="int" label="column in &quot;T_file&quot; after timestamp" />
 		</element>
 	</element>
-	<element name="gotm_fabm" label="FABM settings" optional="True">
-		<element name="gotm_fabm_nml" label="parameters related to GOTM-FABM coupling">
-			<element name="fabm_calc" type="bool" label="apply FABM - or not" value="True" />
+	<element name="gotm_fabm" label="FABM specific settings" optional="True">
+		<element name="gotm_fabm_nml" label="GOTM coupling">
+			<element name="fabm_calc" type="bool" label="apply FABM - or not" />
 			<element name="cnpar" type="float" value = "1." label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)"
 				minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forw     ard Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems." >
 				<condition type="eq" variable="./fabm_calc" value="True" />
 			</element>
 			<element name="w_adv_discr" type="int" label="method to discretize the vertical advection term">
-<!--
-				<condition type="eq" variable="./calc_fabm" value="True" />
--->
+				<condition type="eq" variable="./fabm_calc" value="True" />
 				<options>
 					<option value="1" label="first-order upstream" />
 					<option value="2" label="second-order polynomial (P2)" />
@@ -1248,9 +1246,7 @@
 				</options>
 			</element>
 			<element name="ode_method" type="int" label="ODE scheme for source and sink dynamics">
-<!--
-				<condition type="eq" variable="./calc_fabm" value="True" />
--->
+				<condition type="eq" variable="./fabm_calc" value="True" />
 				<options>
 					<option value="1" label="first-order explicit (not positive)" />
 					<option value="2" label="second-order explicit Runge-Kutta (not positive)" />
@@ -1290,27 +1286,47 @@
 				<condition type="eq" variable="./fabm_calc" value="True" />
 			</element>
 		</element>
-<!-- KB - should fabm_input not only be included if apllying FABM - but I can't get it to work right now
-		<element name="fabm_input" label="FABM input specifications" optional="True">
-			<element name="observations" label="observed FABM scalar or profile data">
-				<element name="variable" type="string" label="name of FABM variable - instance_varname_streamname" />
-				<element name="file" type="string" label="file name" />
-				<element name="index" type="int" label="file name" />
-				<element name="constant_value" type="float" label="constant variable value" />
-				<element name="relax_tau" type="float" label="relaxation time (set to 1.e15 s for no relaxation)" unit="s" />
-			</element>
-		</element>
--->
 	</element>
-	<element name="fabm_input" label="FABM input specifications" optional="True">
-		<element name="observations" label="observed FABM scalar or profile data" minOccurs="0" maxOccurs="unbounded">
-			<element name="variable" type="string" label="name of FABM variable - instance_varname_streamname" />
+	<element name="fabm_input" label="Input specifications" optional="True">
+		<condition type="eq" variable="/gotm_fabm/gotm_fabm_nml/fabm_calc" value="True" />
+		<element name="observations" label="scalar or profile data" minOccurs="0" maxOccurs="unbounded">
+			<element name="variable" type="string" label="name of variable - instance_varname[_streamname]" />
 			<element name="file" type="string" label="file name" />
-			<element name="index" type="int" label="file name" />
-			<element name="constant_value" type="float" label="constant variable value" />
-			<element name="relax_tau" type="float" label="relaxation time (set to 1.e15 s for no relaxation)" unit="s" />
-
+			<element name="index" type="int" label="column # in file" optional="True" >
+<!--
+				<condition type="ne" variable="./file" value="" />
+-->
+			</element>
+			<element name="relax_tau" type="float" label="relaxation time" unit="s" optional="True" >
+<!--
+				<condition type="ne" variable="./file" value="" />
+-->
+			</element>
+			<element name="constant_value" type="float" label="constant variable value" >
+<!--
+				<condition type="eq" variable="./file" value="" />
+-->
+			</element>
 		</element>
 	</element>
 </element>
 
+<!--
+		<element name="fabm_input" label="Input specifications" optional="True">
+			<condition type="eq" variable="/gotm_fabm/gotm_fabm_nml/fabm_calc" value="True" />
+			<element name="observations" label="scalar or profile data" minOccurs="0" maxOccurs="unbounded">
+				<element name="variable" type="string" label="name of variable - instance_varname[_streamname]" />
+				<element name="file" type="string" label="file name" />
+				<element name="index" type="int" label="column # in file" optional="True" >
+					<condition type="ne" variable="./file" value="" />
+				</element>
+				<element name="relax_tau" type="float" label="relaxation time" unit="s" optional="True" >
+					<condition type="ne" variable="./file" value="" />
+				</element>
+				<element name="constant_value" type="float" label="constant variable value" >
+					<condition type="eq" variable="./file" value="" />
+				</element>
+			</element>
+		</element>
+	</element>
+-->

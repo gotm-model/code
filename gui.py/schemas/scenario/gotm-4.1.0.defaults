@@ -352,7 +352,8 @@
 	</gotm_fabm>
 	<fabm_input>
 		<observations>
-			<variable></variable>
+			<index>1</index>
+			<relex_tau>1.e15</relex_tau>
 		</observations>
 	</fabm_input>
 </scenario>
