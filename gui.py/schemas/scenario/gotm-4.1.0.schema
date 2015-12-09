@@ -1231,11 +1231,14 @@
 		<element name="gotm_fabm_nml" label="GOTM coupling">
 			<element name="fabm_calc" type="bool" label="apply FABM - or not" />
 			<element name="cnpar" type="float" value = "1." label="&quot;explicitness&quot; of numerical scheme (between 0.0 and 1.0)"
-				minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forw     ard Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems." >
+				minInclusive="0" maxInclusive="1" description="Constant for the theta scheme used for time integration of diffusion-reaction components. θ=0.5 for Cranck-Nicholson (second-order accurate), θ=0 for Forward Euler (first-order accurate), θ=1 for Backward Euler (first-order accurate). Note that only θ=1 guarantees positive solutions for positive definite systems." >
 				<condition type="eq" variable="./fabm_calc" value="True" />
 			</element>
 			<element name="w_adv_discr" type="int" label="method to discretize the vertical advection term">
-				<condition type="eq" variable="./fabm_calc" value="True" />
+				<condition type="and">
+					<condition type="eq" variable="./fabm_calc" value="True" />
+					<condition type="ne" variable="/obs/w_advspec/w_adv_method" value="0" />
+				</condition>
 				<options>
 					<option value="1" label="first-order upstream" />
 					<option value="2" label="second-order polynomial (P2)" />
@@ -1289,7 +1292,8 @@
 	</element>
 	<element name="fabm_input" label="Input specifications" optional="True">
 		<condition type="eq" variable="/gotm_fabm/gotm_fabm_nml/fabm_calc" value="True" />
-		<element name="observations" label="scalar or profile data" minOccurs="0" maxOccurs="unbounded">
+<!--		<element name="observations" label="scalar or profile data" minOccurs="0" maxOccurs="unbounded">-->
+		<element name="observations" label="scalar or profile data">
 			<element name="variable" type="string" label="name of variable - instance_varname[_streamname]" />
 			<element name="file" type="string" label="file name" />
 			<element name="index" type="int" label="column # in file" optional="True" >
