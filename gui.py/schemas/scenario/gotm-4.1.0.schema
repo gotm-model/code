@@ -1229,6 +1229,8 @@
 			<element name="file" type="string" label="file name" />
 			<element name="index" type="int" label="file name" />
 			<element name="constant_value" type="float" label="constant variable value" />
+			<element name="relax_tau" type="float" label="relaxation time (set to 1.e15 s for no relaxation)" unit="s" />
+
 		</element>
 	</element>
 </element>
