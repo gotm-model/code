@@ -1288,6 +1288,18 @@
 			<element name="save_inputs" type="bool" label="save FABM specific input to output file" >
 				<condition type="eq" variable="./fabm_calc" value="True" />
 			</element>
+			<element name="no_surface" type="bool" label="switch off surface processes, e.g. gas exchange and ice algae (good to check mass conservation)" >
+				<condition type="eq" variable="./fabm_calc" value="True" />
+			</element>
+			<element name="configuration_method" type="int" label="type of fabm specifications file">
+				<condition type="eq" variable="./fabm_calc" value="True" />
+				<options>
+					<option value="-1" label="first try fabm.yaml, then fabm.nml" />
+					<option value="0" label="fabm.nml (containing Fortran namelists)" />
+					<option value="1" label="fabm.yaml (containing YAML trees)" />
+				</options>
+			</element>
+
 		</element>
 	</element>
 	<element name="fabm_input" label="Input specifications" optional="True">
