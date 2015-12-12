@@ -1279,10 +1279,10 @@
 			<element name="repair_state" type="bool" label="allow FABM to keep variables within given limits" >
 				<condition type="eq" variable="./fabm_calc" value="True" />
 			</element>
-			<element name="salinity_relaxation_to_freshwater_flux" type="bool" label="??" >
+			<element name="salinity_relaxation_to_freshwater_flux" type="bool" label="add virtual surface freshwater flux corresponding to relaxation of salinity profile" >
 				<condition type="eq" variable="./fabm_calc" value="True" />
 			</element>
-			<element name="no_precipitation_dilution" type="bool" label="??" >
+			<element name="no_precipitation_dilution" type="bool" label="switch off dilution due to surface freshwater fluxes (useful to check mass conservation)" >
 				<condition type="eq" variable="./fabm_calc" value="True" />
 			</element>
 			<element name="save_inputs" type="bool" label="save FABM specific input to output file" >
