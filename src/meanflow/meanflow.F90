@@ -212,7 +212,7 @@
    avmolS       = 1.1e-9
    MaxItz0b     = 10
    no_shear     = .false.
-   hypsograph_file  = 'hypsograph.dat'
+   hypsograph_file  = ''
    net_water_balance = _ZERO_
    int_flows    = _ZERO_
    int_fwf      = _ZERO_
