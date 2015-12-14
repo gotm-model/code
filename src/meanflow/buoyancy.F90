@@ -109,6 +109,10 @@
    AdvBup        = _ZERO_
    AdvBdw        = _ZERO_
 
+!  compute total diffusivity
+   do i=0,nlev
+      avh(i)=nub(i)
+   end do
 
 !  construct initial linear profile from information in namelist
    if (init_buoyancy) then
