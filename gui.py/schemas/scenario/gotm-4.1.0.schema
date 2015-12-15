@@ -361,17 +361,13 @@
         <condition type="eq" variable="./precip_method" value="2" />
       </element>
       <element name="sst_method" type="int" label="method how sea surface temperature (SST) is given">
-				<condition type="eq" variable="./calc_fluxes" value="False" />
 				<options>
 					<option value="0" label="no independent SST observation is read from file" />
 					<option value="2" label="independent SST observation is read from file, only for output" />
 				</options>
 			</element>
 			<element name="sst_file" type="gotmdatafile" label="file with independent SST observation">
-				<condition type="and">
-					<condition type="eq" variable="./calc_fluxes" value="False" />
-					<condition type="eq" variable="./sst_method" value="2" />
-				</condition>
+				<condition type="eq" variable="./sst_method" value="2" />
 				<fileinfo type="pointsintime">
 					<filevariables>
 						<filevariable name="sst" label="sea surface temperature" unit="°C" />
@@ -379,17 +375,13 @@
 				</fileinfo>
 			</element>
 			<element name="sss_method" type="int" label="method how sea surface salinity (SSS) is given">
-				<condition type="eq" variable="./calc_fluxes" value="False" />
 				<options>
 					<option value="0" label="no independent SSS observation is read from file" />
 					<option value="2" label="independent SSS observation is read from file, only for output" />
 				</options>
 			</element>
 			<element name="sss_file" type="gotmdatafile" label="file with independent SSS observation">
-				<condition type="and">
-					<condition type="eq" variable="./calc_fluxes" value="False" />
-					<condition type="eq" variable="./sss_method" value="2" />
-				</condition>
+				<condition type="eq" variable="./sss_method" value="2" />
 				<fileinfo type="pointsintime">
 					<filevariables>
 						<filevariable name="sss" label="sea surface salinity" unit="psu" />
