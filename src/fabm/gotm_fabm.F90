@@ -367,6 +367,7 @@
 ! !DESCRIPTION:
 ! This routine allocates memory for all FABM variables.
 !
+! !INPUT PARAMETERS:
    integer,                   intent(in)             :: nlev
    class (type_field_manager),intent(inout),optional :: field_manager
 !
